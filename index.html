@@ -1843,7 +1843,7 @@ async function renderTasas() {
       fetch('https://ve.dolarapi.com/v1/dolares/oficial').then(r => r.json()),
       fetch('https://ve.dolarapi.com/v1/euros/oficial').then(r => r.json()),
       fetch('https://ve.dolarapi.com/v1/dolares/paralelo').then(r => r.json()),
-      api('tasas', 'GET', null, '?select=*&id_usuario=eq.sistema%40bcv.auto&order=fecha_valor.desc&limit=30')
+      api('tasas', 'GET', null, '?select=*&id_usuario=eq.sistema%40bcv.auto&order=fecha_valor.desc&limit=50')
     ]);
 
     const usd  = resUsd.status  === 'fulfilled' ? resUsd.value  : null;
@@ -1852,11 +1852,14 @@ async function renderTasas() {
 
     // Extraer valores y cierres
     const usdVal    = usd  && usd.promedio  ? parseFloat(usd.promedio)  : null;
-    const usdCierre = usd  && usd.cierre    ? parseFloat(usd.cierre)    : null;
+    const usdCierre = usd  && (usd.cierre || usd.ultimo_cierre || usd.lastClose) ? parseFloat(usd.cierre || usd.ultimo_cierre || usd.lastClose) : null;
     const eurVal    = eur  && eur.promedio  ? parseFloat(eur.promedio)  : null;
-    const eurCierre = eur  && eur.cierre    ? parseFloat(eur.cierre)    : null;
+    const eurCierre = eur  && (eur.cierre || eur.ultimo_cierre || eur.lastClose) ? parseFloat(eur.cierre || eur.ultimo_cierre || eur.lastClose) : null;
     const usdtVal   = usdt && usdt.promedio ? parseFloat(usdt.promedio) : null;
-    const usdtCierre= usdt && usdt.cierre   ? parseFloat(usdt.cierre)   : null;
+    const usdtCierre= usdt && (usdt.cierre || usdt.ultimo_cierre || usdt.lastClose) ? parseFloat(usdt.cierre || usdt.ultimo_cierre || usdt.lastClose) : null;
+
+    // Si la API no devuelve cierre, calcularlo desde el historial local
+    // Se usará el valor de la fila más reciente anterior a hoy en la BD
 
     const horaActual = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
 
@@ -1908,6 +1911,20 @@ async function renderTasas() {
 
     // ── Agrupar historial local por fecha (solo días hábiles) ──
     const localTasas = resLocal.status === 'fulfilled' ? resLocal.value : [];
+
+    // Calcular cierres desde BD local si la API no los proveyó
+    // Buscar el valor más reciente anterior a hoy para cada moneda
+    function getCierreLocal(moneda) {
+      const hoyStr = new Date().toISOString().split('T')[0];
+      const registros = localTasas.filter(function(t) {
+        return t.moneda_origen === moneda && t.fecha_valor < hoyStr;
+      }).sort(function(a, b) { return b.fecha_valor.localeCompare(a.fecha_valor); });
+      return registros.length ? parseFloat(registros[0].tipo_cambio) : null;
+    }
+
+    const usdCierreEfectivo  = usdCierre  || getCierreLocal('USD');
+    const eurCierreEfectivo  = eurCierre  || getCierreLocal('EUR');
+    const usdtCierreEfectivo = usdtCierre || getCierreLocal('USDT');
     const porFecha = {};
     localTasas.forEach(function(t) {
       const f = t.fecha_valor;
@@ -1978,9 +1995,9 @@ async function renderTasas() {
       + '<button onclick="renderTasas()" class="btn-secundario">↻ Actualizar</button>'
       + '</div>'
       + '<div style="display:flex;gap:16px;flex-wrap:wrap">'
-      + tarjeta('🇺🇸', 'USD', usdVal,  usdCierre,  'BCV Oficial',        '#FF6B00')
-      + tarjeta('🇪🇺', 'EUR', eurVal,  eurCierre,  'BCV Oficial',        '#4299e1')
-      + tarjeta('💲',  'USDT', usdtVal, usdtCierre, 'Mercado P2P',        '#F0B90B')
+      + tarjeta('🇺🇸', 'USD',  usdVal,  usdCierreEfectivo,  'BCV Oficial',  '#FF6B00')
+      + tarjeta('🇪🇺', 'EUR',  eurVal,  eurCierreEfectivo,  'BCV Oficial',  '#4299e1')
+      + tarjeta('💲',  'USDT', usdtVal, usdtCierreEfectivo, 'Mercado P2P',  '#F0B90B')
       + '</div></div>'
 
       // ZONA 2: HISTORIAL
@@ -2023,6 +2040,19 @@ async function consultarTasaPorFecha() {
   resEl.innerHTML = '<div class="loading"><div class="spinner"></div> Consultando historial...</div>';
 
   try {
+    // Determinar fecha de búsqueda (si es fin de semana usar el viernes anterior)
+    const fechaObj  = new Date(fecha + 'T12:00:00');
+    const diaSemana = fechaObj.getDay();
+    const esFDS     = diaSemana === 0 || diaSemana === 6;
+    let fechaBuscar = fecha;
+    if (diaSemana === 0) { // domingo → viernes
+      const v = new Date(fechaObj); v.setDate(v.getDate() - 2);
+      fechaBuscar = v.toISOString().split('T')[0];
+    } else if (diaSemana === 6) { // sábado → viernes
+      const v = new Date(fechaObj); v.setDate(v.getDate() - 1);
+      fechaBuscar = v.toISOString().split('T')[0];
+    }
+
     const [resUsdH, resEurH, resUsdtH, locUsdR, locEurR] = await Promise.allSettled([
       fetch('https://ve.dolarapi.com/v1/historicos/dolares/oficial').then(r => r.json()),
       fetch('https://ve.dolarapi.com/v1/historicos/euros/oficial').then(r => r.json()),
@@ -2040,19 +2070,15 @@ async function consultarTasaPorFecha() {
     const locUsd   = locUsdR.status === 'fulfilled' && locUsdR.value.length ? locUsdR.value[0] : null;
     const locEur   = locEurR.status === 'fulfilled' && locEurR.value.length ? locEurR.value[0] : null;
 
-    const fechaObj = new Date(fecha + 'T12:00:00');
-    const fechaFmt = fechaObj.toLocaleDateString('es-VE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const diaSemana = fechaObj.getDay();
-    const esFDS    = diaSemana === 0 || diaSemana === 6;
-    // Si es fin de semana, buscar el viernes anterior
-    let fechaBuscar = fecha;
-    if (diaSemana === 0) { // domingo → viernes
-      const v = new Date(fechaObj); v.setDate(v.getDate() - 2);
-      fechaBuscar = v.toISOString().split('T')[0];
-    } else if (diaSemana === 6) { // sábado → viernes
-      const v = new Date(fechaObj); v.setDate(v.getDate() - 1);
-      fechaBuscar = v.toISOString().split('T')[0];
-    }
+    // USDT histórico: API paralelo primero, luego BD local como respaldo
+    const locUsdtR   = await api('tasas', 'GET', null, '?moneda_origen=eq.USDT&fecha_valor=eq.' + fechaBuscar + '&id_usuario=eq.sistema%40bcv.auto&select=*&limit=1').catch(function() { return []; });
+    const locUsdt    = Array.isArray(locUsdtR) && locUsdtR.length ? locUsdtR[0] : null;
+    const usdtHistVal = diaUsdt ? diaUsdt.promedio : (locUsdt ? locUsdt.tipo_cambio : null);
+    const usdtFuente  = diaUsdt ? '🌐 DolarAPI (ve.dolarapi.com)' : (locUsdt ? '💾 Base de datos local' : null);
+
+    const fechaFmt = new Date(fechaBuscar + 'T12:00:00').toLocaleDateString('es-VE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const capFecha = fechaFmt.charAt(0).toUpperCase() + fechaFmt.slice(1);
+    const fechaOrig = esFDS ? new Date(fecha + 'T12:00:00').toLocaleDateString('es-VE', { weekday: 'long', day: '2-digit', month: 'long' }) : null;
 
     function bloqueResultadoUsdt(icono, val, fuente, color) {
       if (!val) {
@@ -2076,20 +2102,16 @@ async function consultarTasaPorFecha() {
     function bloqueResultado(titulo, icono, apiVal, localVal, color) {
       const tieneApi   = apiVal !== null && apiVal !== undefined;
       const tieneLocal = localVal !== null;
-      const valor      = tieneApi ? parseFloat(apiVal).toFixed(4)
-                       : tieneLocal ? parseFloat(localVal.tipo_cambio).toFixed(4) : null;
-
+      const valor      = tieneApi ? parseFloat(apiVal).toFixed(4) : tieneLocal ? parseFloat(localVal.tipo_cambio).toFixed(4) : null;
       if (!valor) {
         return '<div style="background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:16px 20px;display:flex;align-items:center;gap:12px;margin-bottom:10px">'
           + '<span style="font-size:18px">' + icono + '</span>'
           + '<div style="font-size:13px;color:#444">' + titulo + ' — Sin datos para esta fecha</div></div>';
       }
-
       const fuente = tieneApi ? '🌐 DolarAPI (ve.dolarapi.com)' : '💾 Base de datos local';
       const bdExtra = tieneApi && tieneLocal
-        ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--borde);font-size:11px;color:#555">💾 BD local: ' + parseFloat(localVal.tipo_cambio).toFixed(4) + ' Bs</div>'
+        ? '<div style="margin-top:8px;font-size:11px;color:#555">💾 BD local: ' + parseFloat(localVal.tipo_cambio).toFixed(4) + ' Bs</div>'
         : '';
-
       return '<div style="background:var(--gris1);border:1px solid ' + color + '30;border-left:3px solid ' + color + ';border-radius:8px;padding:18px 22px;margin-bottom:10px">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'
         + '<div style="display:flex;align-items:center;gap:10px">'
@@ -2103,29 +2125,22 @@ async function consultarTasaPorFecha() {
         + '</div>' + bdExtra + '</div>';
     }
 
-    // USDT histórico: API paralelo primero, luego BD local como respaldo
-    const locUsdtR = await api('tasas', 'GET', null, '?moneda_origen=eq.USDT&fecha_valor=eq.' + fechaBuscar + '&id_usuario=eq.sistema%40bcv.auto&select=*&limit=1').catch(() => []);
-    const locUsdt  = Array.isArray(locUsdtR) && locUsdtR.length ? locUsdtR[0] : null;
-    const usdtHistVal = diaUsdt ? diaUsdt.promedio : (locUsdt ? locUsdt.tipo_cambio : null);
-    const usdtFuente  = diaUsdt ? '🌐 DolarAPI (ve.dolarapi.com)' : (locUsdt ? '💾 Base de datos local' : null);
-    const capFecha = fechaFmt.charAt(0).toUpperCase() + fechaFmt.slice(1);
-
     resEl.innerHTML =
-      '<div style="margin-bottom:14px">'
+      '<div style="margin-bottom:16px">'
       + '<div style="font-family:var(--font-display);font-size:17px;color:var(--naranja);margin-bottom:4px">' + capFecha + '</div>'
-      + (esFDS ? '<div style="font-size:11px;color:#888;margin-bottom:8px">⚠️ Fin de semana — mostrando tasas del viernes anterior</div>' : '')
+      + (esFDS ? '<div style="font-size:11px;color:#888;margin-bottom:8px">⚠️ ' + (fechaOrig || '') + ' es fin de semana — mostrando tasas del viernes anterior</div>' : '')
       + '</div>'
-      + bloqueResultado('USD — Dólar Oficial BCV', '🇺🇸', diaUsd ? diaUsd.promedio : null, locUsd, '#FF6B00')
-      + bloqueResultado('EUR — Euro Oficial BCV',   '🇪🇺', diaEur ? diaEur.promedio : null, locEur, '#4299e1')
+      + bloqueResultado('USD — Dólar Oficial BCV / VES', '🇺🇸', diaUsd ? diaUsd.promedio : null, locUsd, '#FF6B00')
+      + bloqueResultado('EUR — Euro Oficial BCV / VES',  '🇪🇺', diaEur ? diaEur.promedio : null, locEur, '#4299e1')
       + bloqueResultadoUsdt('💲', usdtHistVal, usdtFuente, '#F0B90B');
 
   } catch(e) {
     resEl.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+    console.error(e);
   }
 }
 
 
-// ─── MÓDULO PARÁMETROS ───
 async function renderParametros() {
   const c = document.getElementById('contenido-principal');
   c.innerHTML = `<div class="loading"><div class="spinner"></div> Cargando...</div>`;
