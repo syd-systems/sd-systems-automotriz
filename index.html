@@ -1840,47 +1840,20 @@ async function renderTasas() {
 
   try {
     // Fetch en paralelo: USD BCV, EUR BCV, USDT P2P via pydolarve, últimas tasas locales
-    const [resUsd, resEur, resCripto, resLocal] = await Promise.allSettled([
+    const [resUsd, resEur, resUsdt, resLocal] = await Promise.allSettled([
       fetch('https://ve.dolarapi.com/v1/dolares/oficial').then(r => r.json()),
       fetch('https://ve.dolarapi.com/v1/euros/oficial').then(r => r.json()),
-      fetch('https://pydolarve.org/api/v2/dollar?page=bcv&monitor=usd').then(r => r.json()),
-      Promise.all([
-        api('tasas', 'GET', null, '?select=*&moneda_origen=eq.USD&id_usuario=eq.sistema%40bcv.auto&order=fecha_registro.desc&limit=5'),
-        api('tasas', 'GET', null, '?select=*&moneda_origen=eq.EUR&id_usuario=eq.sistema%40bcv.auto&order=fecha_registro.desc&limit=5'),
-        api('tasas', 'GET', null, '?select=*&moneda_origen=eq.USDT&id_usuario=eq.sistema%40bcv.auto&order=fecha_registro.desc&limit=5')
-      ])
+      fetch('https://ve.dolarapi.com/v1/dolares/paralelo').then(r => r.json()),
+      api('tasas', 'GET', null, '?select=*&id_usuario=eq.sistema%40bcv.auto&order=fecha_valor.desc&limit=30')
     ]);
 
-    const usd   = resUsd.status   === 'fulfilled' ? resUsd.value   : null;
-    const eur   = resEur.status   === 'fulfilled' ? resEur.value   : null;
-    // resLocal.value es un array de 3 arrays: [usd[], eur[], usdt[]]
-    const localRaw   = resLocal.status === 'fulfilled' ? resLocal.value : [[], [], []];
-    const localUSD   = Array.isArray(localRaw[0]) ? localRaw[0] : [];
-    const localEUR   = Array.isArray(localRaw[1]) ? localRaw[1] : [];
-    const localUSDT  = Array.isArray(localRaw[2]) ? localRaw[2] : [];
+    const usd  = resUsd.status  === 'fulfilled' ? resUsd.value  : null;
+    const eur  = resEur.status  === 'fulfilled' ? resEur.value  : null;
+    const usdt = resUsdt.status === 'fulfilled' ? resUsdt.value : null;
 
-    // Para USDT usamos: precio USD BCV * 1 (USDT≈1USD) + spread P2P ~3%
-    // O si pydolarve respondió con el cripto
-    let usdtVes    = null;
-    let usdtCambio = null;
-    let usdtCierre = null;
-
-    if (resCripto.status === 'fulfilled' && resCripto.value && resCripto.value.monitors) {
-      const mon = resCripto.value.monitors;
-      // pydolarve tiene monitor 'usd' con datos del BCV
-      const bcvMon = mon.usd || mon.USD || null;
-      if (bcvMon && bcvMon.price) {
-        // Usar tasa BCV como base para USDT (USDT≈USD)
-        usdtVes    = parseFloat(bcvMon.price).toFixed(4);
-        usdtCambio = bcvMon.percent ? parseFloat(bcvMon.percent) : null;
-        usdtCierre = bcvMon.last_close ? parseFloat(bcvMon.last_close) : null;
-      }
-    }
-
-    // Si pydolarve falló, calcular USDT desde USD BCV
-    if (!usdtVes && usd && usd.promedio) {
-      usdtVes = parseFloat(usd.promedio).toFixed(4);
-    }
+    // USDT = dólar paralelo venezolano (ve.dolarapi.com/v1/dolares/paralelo)
+    const usdtVes    = usdt && usdt.promedio ? usdt.promedio : null;
+    const usdtCierre = usdt && usdt.cierre   ? usdt.cierre   : null;
 
     const horaActual = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
 
@@ -1939,55 +1912,40 @@ async function renderTasas() {
     const eurVarAbs = calcVarAbs(eurPromedio, eurCierre);
     const eurVarPct = calcVarPct(eurPromedio, eurCierre);
     const usdtVarAbs = calcVarAbs(usdtVes, usdtCierre);
-    const usdtVarPct = usdtCambio !== null ? usdtCambio : calcVarPct(usdtVes, usdtCierre);
+    const usdtVarPct = calcVarPct(usdtVes, usdtCierre);
 
-    // ── Últimas 5 tasas por moneda ──
-    function buildFilas(arr, color) {
-      if (!arr.length) return '<tr><td colspan="5" style="text-align:center;padding:16px;color:#444">Sin registros</td></tr>';
-      return arr.map(function(t) {
-        const fechaStr = new Date(t.fecha_valor + 'T12:00:00').toLocaleDateString('es-VE');
-        return '<tr>'
-          + '<td><span class="badge" style="background:' + color + '20;color:' + color + ';border:1px solid ' + color + '40">' + t.moneda_origen + '</span></td>'
-          + '<td><span class="badge badge-gris">' + t.moneda_destino + '</span></td>'
-          + '<td style="font-family:var(--font-mono);color:' + color + ';font-size:14px">' + parseFloat(t.tipo_cambio).toFixed(4) + '</td>'
-          + '<td style="font-size:11px;color:var(--suave)">' + fechaStr + '</td>'
-          + '<td><span class="badge badge-verde" style="font-size:9px">🤖 Auto</span></td>'
-          + '</tr>';
-      }).join('');
+    // ── Historial: 1 fila por día con USD, EUR, USDT y variación ──
+    function celdaTasa(valor, valorAnterior) {
+      if (valor === null) return '<td style="color:#444;font-size:13px;text-align:center">—</td>';
+      const tasaFmt = valor.toFixed(4);
+      let varHTML = '';
+      if (valorAnterior !== null && valorAnterior !== undefined) {
+        const diff = valor - valorAnterior;
+        const pct  = (diff / valorAnterior * 100).toFixed(2);
+        const col  = diff > 0 ? '#68d391' : diff < 0 ? '#fc8181' : '#888';
+        const arr  = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
+        const sign = diff > 0 ? '+' : '';
+        varHTML = '<div style="font-size:10px;color:' + col + ';margin-top:2px">' + arr + ' ' + sign + pct + '%</div>';
+      }
+      return '<td style="text-align:center;padding:14px 20px"><div style="font-family:var(--font-mono);font-size:14px;font-weight:600;color:var(--texto)">'
+        + tasaFmt + '</div>' + varHTML + '</td>';
     }
 
-    // Tabla combinada: intercalar USD, EUR, USDT ordenadas por fecha
-    const allLocal = localUSD.concat(localEUR).concat(localUSDT)
-      .sort(function(a, b) { return new Date(b.fecha_registro) - new Date(a.fecha_registro); })
-      .slice(0, 15);
-
     let filasLocales = '';
-    if (allLocal.length) {
-      allLocal.forEach(function(t) {
-        const esBcv    = t.id_usuario === 'sistema@bcv.auto';
-        const badgeC   = t.moneda_origen === 'USD' ? 'badge-naranja' : t.moneda_origen === 'EUR' ? 'badge-gris' : 'badge-verde';
-        const fechaStr = new Date(t.fecha_valor + 'T12:00:00').toLocaleDateString('es-VE');
+    if (fechasOrdenadas.length) {
+      fechasOrdenadas.forEach(function(f, i) {
+        const dia      = porFecha[f];
+        const diaAntes = i < fechasOrdenadas.length - 1 ? porFecha[fechasOrdenadas[i + 1]] : null;
+        const fechaFmt = new Date(f + 'T12:00:00').toLocaleDateString('es-VE', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
         filasLocales += '<tr>'
-          + '<td><span class="badge ' + badgeC + '">' + t.moneda_origen + '</span></td>'
-          + '<td><span class="badge badge-gris">' + t.moneda_destino + '</span></td>'
-          + '<td style="font-family:var(--font-mono);color:var(--naranja);font-size:14px">' + parseFloat(t.tipo_cambio).toFixed(4) + '</td>'
-          + '<td style="font-size:11px;color:var(--suave)">' + fechaStr + '</td>'
-          + '<td><span class="badge ' + (esBcv ? 'badge-verde' : 'badge-gris') + '">'
-          + (esBcv ? '🤖 Auto BCV' : '👤 Manual') + '</span></td>'
-          
-          + '</tr>';
-        const tColor = t.moneda_origen === 'USD' ? '#FF6B00' : t.moneda_origen === 'EUR' ? '#4299e1' : '#F0B90B';
-        const tFecha = new Date(t.fecha_valor + 'T12:00:00').toLocaleDateString('es-VE');
-        filasLocales += '<tr>'
-          + '<td><span class="badge" style="background:' + tColor + '20;color:' + tColor + ';border:1px solid ' + tColor + '40">' + t.moneda_origen + '</span></td>'
-          + '<td><span class="badge badge-gris">' + t.moneda_destino + '</span></td>'
-          + '<td style="font-family:var(--font-mono);color:' + tColor + ';font-size:14px">' + parseFloat(t.tipo_cambio).toFixed(4) + '</td>'
-          + '<td style="font-size:11px;color:var(--suave)">' + tFecha + '</td>'
-          + '<td><span class="badge badge-verde" style="font-size:9px">🤖 Auto</span></td>'
+          + '<td style="font-size:12px;color:var(--suave);white-space:nowrap;padding:14px 20px">' + fechaFmt + '</td>'
+          + celdaTasa(dia.USD,  diaAntes ? diaAntes.USD  : null)
+          + celdaTasa(dia.EUR,  diaAntes ? diaAntes.EUR  : null)
+          + celdaTasa(dia.USDT, diaAntes ? diaAntes.USDT : null)
           + '</tr>';
       });
     } else {
-      filasLocales = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--suave)">No hay tasas automáticas registradas aún</td></tr>';
+      filasLocales = '<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--suave)">No hay registros automáticos aún — se acumularán cada día hábil</td></tr>';
     }
 
     const fechaAyer = new Date(Date.now() - 86400000).toISOString().split('T')[0];
@@ -2004,17 +1962,22 @@ async function renderTasas() {
       + '<div style="display:flex;gap:16px;flex-wrap:wrap">'
       + tarjetaHTML('🇺🇸', 'USD', usdPromedio, usdVarAbs, usdVarPct, 'BCV Oficial', '#FF6B00')
       + tarjetaHTML('🇪🇺', 'EUR', eurPromedio, eurVarAbs, eurVarPct, 'BCV Oficial', '#4299e1')
-      + tarjetaHTML('💲', 'USDT', usdtVes, usdtVarAbs, usdtVarPct, 'BCV × USDT', '#F0B90B')
+      + tarjetaHTML('💲', 'USDT', usdtVes, usdtVarAbs, usdtVarPct, 'Dólar Paralelo / P2P', '#F0B90B')
       + '</div></div>'
 
       // ── ZONA 2: HISTORIAL LOCAL ──
       + '<div class="panel" style="margin-bottom:24px">'
       + '<div class="panel-header">'
-      + '<h3>Últimas 5 Tasas BCV Automáticas</h3>'
+      + '<h3>Historial de Tasas — Últimos 5 Días</h3>'
       + 
       + '</div>'
       + '<div class="tabla-container"><table>'
-      + '<thead><tr><th>Moneda</th><th>Destino</th><th>Valor BCV</th><th>Fecha</th><th>Fuente</th></tr></thead>'
+      + '<thead><tr>'
+      + '<th style="width:130px">Fecha</th>'
+      + '<th style="text-align:center;color:#FF6B00">🇺🇸 USD / Bs</th>'
+      + '<th style="text-align:center;color:#4299e1">🇪🇺 EUR / Bs</th>'
+      + '<th style="text-align:center;color:#F0B90B">💲 USDT / Bs</th>'
+      + '</tr></thead>'
       + '<tbody>' + filasLocales + '</tbody>'
       + '</table></div></div>'
 
