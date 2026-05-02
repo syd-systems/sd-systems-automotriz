@@ -1914,7 +1914,19 @@ async function renderTasas() {
     const usdtVarAbs = calcVarAbs(usdtVes, usdtCierre);
     const usdtVarPct = calcVarPct(usdtVes, usdtCierre);
 
-    // ── Historial: 1 fila por día con USD, EUR, USDT y variación ──
+    // Agrupar tasas locales por fecha
+    const localTasas = resLocal.status === 'fulfilled' ? resLocal.value : [];
+    const porFecha = {};
+    localTasas.forEach(function(t) {
+      const f = t.fecha_valor;
+      if (!porFecha[f]) porFecha[f] = { USD: null, EUR: null, USDT: null };
+      porFecha[f][t.moneda_origen] = parseFloat(t.tipo_cambio);
+    });
+    const fechasOrdenadas = Object.keys(porFecha)
+      .sort(function(a,b){ return b.localeCompare(a); })
+      .slice(0, 5);
+
+        // ── Historial: 1 fila por día con USD, EUR, USDT y variación ──
     function celdaTasa(valor, valorAnterior) {
       if (valor === null) return '<td style="color:#444;font-size:13px;text-align:center">—</td>';
       const tasaFmt = valor.toFixed(4);
