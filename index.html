@@ -1924,27 +1924,32 @@ async function renderTasas() {
 
     // ── Historial: últimos 5 días hábiles desde la API ──
     // Combinar los 3 historiales por fecha
-    function getUltimosDiasHabiles(n) {
-      // Obtener todas las fechas hábiles disponibles en USD (más completo)
-      const todasFechas = histUsd
-        .filter(function(h) {
-          if (!h.fecha) return false;
-          const d = new Date(h.fecha + 'T12:00:00').getDay();
-          return d >= 1 && d <= 5;
-        })
-        .map(function(h) { return h.fecha.split('T')[0]; })
-        .sort(function(a, b) { return b.localeCompare(a); })
-        .slice(0, n + 1); // +1 para tener el día anterior para variación
-      return todasFechas;
-    }
-
     function getValorFecha(hist, fecha) {
       const r = hist.find(function(h) { return h.fecha && h.fecha.startsWith(fecha); });
       return r && r.promedio ? parseFloat(r.promedio) : null;
     }
 
-    const diasHabiles = getUltimosDiasHabiles(6); // 6 para tener variación del 5to día
-    const dias5 = diasHabiles.slice(0, 5);
+    // Separar fechas en: pasadas, hoy, y próximo día hábil
+    const hoyDow = new Date().getDay(); // 0=dom, 6=sab
+
+    // Obtener todas las fechas hábiles de la API ordenadas desc
+    const todasFechasHabiles = histUsd
+      .filter(function(h) {
+        if (!h.fecha) return false;
+        const d = new Date(h.fecha + 'T12:00:00').getDay();
+        return d >= 1 && d <= 5;
+      })
+      .map(function(h) { return h.fecha.split('T')[0]; })
+      .sort(function(a, b) { return b.localeCompare(a); });
+
+    // Próximo día hábil: fecha más reciente que sea HOY o FUTURA
+    const proximaFecha = todasFechasHabiles.find(function(f) { return f >= hoyStr; }) || null;
+
+    // Historial: fechas estrictamente ANTERIORES a hoy (pasado), últimas 5 + 1 para variación
+    const fechasPasadas = todasFechasHabiles
+      .filter(function(f) { return f < hoyStr; })
+      .slice(0, 6); // 5 + 1 para variación del 1er día
+    const dias5 = fechasPasadas.slice(0, 5);
 
     function celdaHist(val, valAnterior) {
       if (val === null) return '<td style="text-align:center;color:#444;padding:12px 16px">—</td>';
@@ -1966,7 +1971,7 @@ async function renderTasas() {
     let filasHist = '';
     if (dias5.length) {
       dias5.forEach(function(f, i) {
-        const fAntes   = diasHabiles[i + 1] || null;
+        const fAntes   = fechasPasadas[i + 1] || null;
         const usdH     = getValorFecha(histUsd,  f);
         const eurH     = getValorFecha(histEur,  f);
         const usdtH    = getValorFecha(histUsdt, f);
@@ -1983,6 +1988,40 @@ async function renderTasas() {
       });
     } else {
       filasHist = '<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--suave)">No se pudieron cargar los datos históricos</td></tr>';
+    }
+
+    // ── Próxima tasa hábil ──
+    let proximaHTML = '';
+    if (proximaFecha) {
+      const eHoy    = proximaFecha === hoyStr;
+      const pUsd    = getValorFecha(histUsd,  proximaFecha);
+      const pEur    = getValorFecha(histEur,  proximaFecha);
+      const pUsdt   = getValorFecha(histUsdt, proximaFecha);
+      const pFmt    = new Date(proximaFecha + 'T12:00:00').toLocaleDateString('es-VE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+      const pCap    = pFmt.charAt(0).toUpperCase() + pFmt.slice(1);
+      const label   = eHoy ? 'TASA DE HOY' : 'PRÓXIMA TASA HÁBIL';
+      const subLabel= eHoy ? 'Publicada por el BCV' : 'Disponible anticipadamente';
+
+      function celdaProx(val, color) {
+        if (!val) return '<div style="color:#444;font-size:13px">—</div>';
+        return '<div style="font-family:var(--font-mono);font-size:22px;font-weight:700;color:' + color + '">'
+          + val.toFixed(4) + ' <span style="font-size:11px;color:#555;font-weight:400">Bs</span></div>';
+      }
+
+      proximaHTML = '<div style="background:var(--gris1);border:1px solid var(--borde);border-radius:8px;padding:20px 24px;margin-bottom:24px">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">'
+        + '<div>'
+        + '<div style="font-family:var(--font-display);font-size:13px;letter-spacing:3px;color:var(--naranja);text-transform:uppercase">' + label + '</div>'
+        + '<div style="font-size:12px;color:var(--suave);margin-top:3px">' + pCap + ' · ' + subLabel + '</div>'
+        + '</div></div>'
+        + '<div style="display:flex;gap:32px;flex-wrap:wrap">'
+        + '<div><div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">🇺🇸 USD</div>' + celdaProx(pUsd, '#FF6B00') + '</div>'
+        + '<div><div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">🇪🇺 EUR</div>' + celdaProx(pEur, '#4299e1') + '</div>'
+        + '<div><div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">💲 USDT</div>' + celdaProx(pUsdt, '#F0B90B') + '</div>'
+        + '</div></div>';
+    } else {
+      proximaHTML = '<div style="background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:16px 20px;margin-bottom:24px;font-size:13px;color:var(--suave)">'
+        + '⏳ La próxima tasa hábil aún no está disponible — estará publicada en breve</div>';
     }
 
     const hoy  = new Date().toISOString().split('T')[0];
@@ -2003,6 +2042,7 @@ async function renderTasas() {
       + tarjeta('💲',  'USDT', usdtVal, usdtCierre, 'Mercado P2P',  '#F0B90B')
       + '</div></div>'
 
+      + proximaHTML
       + '<div class="panel" style="margin-bottom:24px">'
       + '<div class="panel-header"><h3>Historial — Últimos 5 Días Hábiles</h3></div>'
       + '<div class="tabla-container"><table>'
@@ -2087,7 +2127,9 @@ async function consultarTasaPorFecha() {
         return '<div style="background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:16px 20px;'
           + 'display:flex;align-items:center;gap:12px;margin-bottom:10px">'
           + '<span style="font-size:20px">' + icono + '</span>'
-          + '<div style="font-size:13px;color:#444">' + nombre + ' — Sin datos para esta fecha</div></div>';
+          + '<div><div style="font-size:13px;color:#444">' + nombre + ' — Sin datos para esta fecha</div>'
+          + '<div style="font-size:10px;color:#555;margin-top:4px">El historial del mercado P2P está disponible desde mediados de febrero 2026</div>'
+          + '</div></div>';
       }
       return '<div style="background:var(--gris1);border:1px solid ' + color + '30;border-left:3px solid ' + color + ';'
         + 'border-radius:8px;padding:18px 22px;margin-bottom:10px">'
