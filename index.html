@@ -1193,6 +1193,99 @@ function cerrarMenuMovil() {
   }
 }
 
+
+// ─── CIERRE POR INACTIVIDAD (solo operadores) ───
+let timerInactividad = null;
+let contadorAviso   = null;
+const MINUTOS_INACTIVIDAD = 5;
+
+function iniciarTimerInactividad() {
+  // Solo aplica a operadores
+  if (!sesionActual || sesionActual.administrador) return;
+
+  reiniciarTimerInactividad();
+
+  // Eventos que reinician el timer
+  const eventos = ['mousemove','keydown','click','scroll','touchstart'];
+  eventos.forEach(e => document.addEventListener(e, reiniciarTimerInactividad));
+}
+
+function reiniciarTimerInactividad() {
+  if (!sesionActual || sesionActual.administrador) return;
+
+  // Limpiar timers anteriores
+  if (timerInactividad) clearTimeout(timerInactividad);
+  if (contadorAviso)   clearTimeout(contadorAviso);
+
+  // Ocultar aviso si estaba visible
+  const aviso = document.getElementById('aviso-inactividad');
+  if (aviso) aviso.style.display = 'none';
+
+  // Aviso 1 minuto antes (a los 4 minutos)
+  contadorAviso = setTimeout(() => {
+    mostrarAvisoInactividad();
+  }, (MINUTOS_INACTIVIDAD - 1) * 60 * 1000);
+
+  // Cerrar sesión a los 5 minutos
+  timerInactividad = setTimeout(() => {
+    cerrarSesionInactividad();
+  }, MINUTOS_INACTIVIDAD * 60 * 1000);
+}
+
+function detenerTimerInactividad() {
+  if (timerInactividad) clearTimeout(timerInactividad);
+  if (contadorAviso)   clearTimeout(contadorAviso);
+  const aviso = document.getElementById('aviso-inactividad');
+  if (aviso) aviso.style.display = 'none';
+  const eventos = ['mousemove','keydown','click','scroll','touchstart'];
+  eventos.forEach(e => document.removeEventListener(e, reiniciarTimerInactividad));
+}
+
+function mostrarAvisoInactividad() {
+  if (!sesionActual || sesionActual.administrador) return;
+  const aviso = document.getElementById('aviso-inactividad');
+  if (aviso) {
+    aviso.style.display = 'flex';
+    // Cuenta regresiva de 60 segundos
+    let seg = 60;
+    const contador = document.getElementById('inactividad-contador');
+    if (contador) contador.textContent = seg;
+    const interval = setInterval(() => {
+      seg--;
+      if (contador) contador.textContent = seg;
+      if (seg <= 0) clearInterval(interval);
+    }, 1000);
+  }
+}
+
+async function cerrarSesionInactividad() {
+  detenerTimerInactividad();
+  // Marcar sesión inactiva
+  try {
+    await api('usuarios', 'PATCH', {
+      sesion_activa: false,
+      ultima_desconexion: new Date().toISOString()
+    }, `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`);
+  } catch(e) {}
+
+  sesionActual   = null;
+  modulosAcceso  = [];
+  sessionStorage.removeItem('sd_sesion');
+
+  document.getElementById('pantalla-app').style.display  = 'none';
+  document.getElementById('pantalla-login').style.display = 'flex';
+  document.getElementById('login-correo').value = '';
+  document.getElementById('login-clave').value  = '';
+
+  // Mostrar mensaje en login
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '⏱ Sesión cerrada por inactividad.';
+  errEl.style.display = 'block';
+  errEl.style.background = 'rgba(255,107,0,0.12)';
+  errEl.style.borderColor = 'rgba(255,107,0,0.4)';
+  errEl.style.color = 'var(--naranja)';
+}
+
 // ─── RELOJ ───
 function actualizarReloj() {
   const ahora = new Date();
@@ -1264,6 +1357,7 @@ async function iniciarSesion() {
     sessionStorage.setItem('sd_sesion', JSON.stringify({ usuario: u, accesos: modulosAcceso }));
 
     iniciarApp();
+    iniciarTimerInactividad();
 
     // Verificar vencimiento de clave DESPUÉS de iniciar app
     if (verificarVencimientoClave(u)) {
@@ -2434,6 +2528,7 @@ window.addEventListener('load', () => {
       sesionActual = usuario;
       modulosAcceso = accesos;
       iniciarApp();
+      iniciarTimerInactividad();
     } catch(e) {
       sessionStorage.removeItem('sd_sesion');
     }
@@ -2496,6 +2591,26 @@ window.addEventListener('load', () => {
       <button class="btn-primario" onclick="procesarCambioClave()">GUARDAR NUEVA CONTRASEÑA</button>
     </div>
   </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════ -->
+<!--    AVISO INACTIVIDAD                   -->
+<!-- ═══════════════════════════════════════ -->
+<div id="aviso-inactividad" style="display:none;position:fixed;bottom:24px;right:24px;z-index:3000;
+  background:var(--gris1);border:1px solid rgba(255,107,0,0.5);border-radius:10px;
+  padding:20px 24px;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.5);
+  flex-direction:column;gap:12px">
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="font-size:22px">⏱</span>
+    <div>
+      <div style="font-family:var(--font-display);font-size:16px;letter-spacing:1px;color:var(--naranja)">SESIÓN POR VENCER</div>
+      <div style="font-size:12px;color:var(--suave);margin-top:2px">La sesión se cerrará en <strong id="inactividad-contador" style="color:var(--naranja)">60</strong> segundos por inactividad.</div>
+    </div>
+  </div>
+  <button onclick="reiniciarTimerInactividad()" style="width:100%;background:var(--naranja);color:#fff;border:none;
+    font-family:var(--font-display);font-size:16px;letter-spacing:2px;padding:10px;
+    border-radius:5px;cursor:pointer">CONTINUAR SESIÓN</button>
 </div>
 
 </body>
