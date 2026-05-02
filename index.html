@@ -1839,39 +1839,55 @@ async function renderTasas() {
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando tasas en tiempo real...</div>';
 
   try {
-    const [resUsd, resEur, resUsdt, resLocal] = await Promise.allSettled([
+    // Fetch en paralelo: tasas vigentes + historiales completos
+    const [resUsd, resEur, resUsdt, resHistUsd, resHistEur, resHistUsdt] = await Promise.allSettled([
       fetch('https://ve.dolarapi.com/v1/dolares/oficial').then(r => r.json()),
       fetch('https://ve.dolarapi.com/v1/euros/oficial').then(r => r.json()),
       fetch('https://ve.dolarapi.com/v1/dolares/paralelo').then(r => r.json()),
-      api('tasas', 'GET', null, '?select=*&id_usuario=eq.sistema%40bcv.auto&order=fecha_valor.desc&limit=50')
+      fetch('https://ve.dolarapi.com/v1/historicos/dolares/oficial').then(r => r.json()),
+      fetch('https://ve.dolarapi.com/v1/historicos/euros/oficial').then(r => r.json()),
+      fetch('https://ve.dolarapi.com/v1/historicos/dolares/paralelo').then(r => r.json())
     ]);
 
-    const usd  = resUsd.status  === 'fulfilled' ? resUsd.value  : null;
-    const eur  = resEur.status  === 'fulfilled' ? resEur.value  : null;
-    const usdt = resUsdt.status === 'fulfilled' ? resUsdt.value : null;
+    const usd      = resUsd.status      === 'fulfilled' ? resUsd.value      : null;
+    const eur      = resEur.status      === 'fulfilled' ? resEur.value      : null;
+    const usdt     = resUsdt.status     === 'fulfilled' ? resUsdt.value     : null;
+    const histUsd  = resHistUsd.status  === 'fulfilled' && Array.isArray(resHistUsd.value)  ? resHistUsd.value  : [];
+    const histEur  = resHistEur.status  === 'fulfilled' && Array.isArray(resHistEur.value)  ? resHistEur.value  : [];
+    const histUsdt = resHistUsdt.status === 'fulfilled' && Array.isArray(resHistUsdt.value) ? resHistUsdt.value : [];
 
-    // Extraer valores y cierres
-    const usdVal    = usd  && usd.promedio  ? parseFloat(usd.promedio)  : null;
-    const usdCierre = usd  && (usd.cierre || usd.ultimo_cierre || usd.lastClose) ? parseFloat(usd.cierre || usd.ultimo_cierre || usd.lastClose) : null;
-    const eurVal    = eur  && eur.promedio  ? parseFloat(eur.promedio)  : null;
-    const eurCierre = eur  && (eur.cierre || eur.ultimo_cierre || eur.lastClose) ? parseFloat(eur.cierre || eur.ultimo_cierre || eur.lastClose) : null;
-    const usdtVal   = usdt && usdt.promedio ? parseFloat(usdt.promedio) : null;
-    const usdtCierre= usdt && (usdt.cierre || usdt.ultimo_cierre || usdt.lastClose) ? parseFloat(usdt.cierre || usdt.ultimo_cierre || usdt.lastClose) : null;
+    // Valores vigentes
+    const usdVal  = usd  && usd.promedio  ? parseFloat(usd.promedio)  : null;
+    const eurVal  = eur  && eur.promedio  ? parseFloat(eur.promedio)  : null;
+    const usdtVal = usdt && usdt.promedio ? parseFloat(usdt.promedio) : null;
 
-    // Si la API no devuelve cierre, calcularlo desde el historial local
-    // Se usará el valor de la fila más reciente anterior a hoy en la BD
-
-    const horaActual = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
-
-    // Calcular variación absoluta y porcentual
-    function varCalc(val, cierre) {
-      if (!val || !cierre || cierre === 0) return { abs: null, pct: null };
-      const abs = val - cierre;
-      const pct = (abs / cierre * 100);
-      return { abs: abs.toFixed(4), pct: pct.toFixed(2) };
+    // Cierres desde la API (campo 'cierre') o desde el historial (penúltimo día hábil)
+    function getCierreDeHistorial(hist, fechaHoy) {
+      if (!hist.length) return null;
+      const diasHabiles = hist
+        .filter(function(h) {
+          if (!h.fecha) return false;
+          const d = new Date(h.fecha + 'T12:00:00').getDay();
+          return d >= 1 && d <= 5 && h.fecha < fechaHoy;
+        })
+        .sort(function(a, b) { return b.fecha.localeCompare(a.fecha); });
+      return diasHabiles.length ? parseFloat(diasHabiles[0].promedio) : null;
     }
 
-    // Badge de variación
+    const hoyStr    = new Date().toISOString().split('T')[0];
+    const usdCierre  = (usd  && usd.cierre)  ? parseFloat(usd.cierre)  : getCierreDeHistorial(histUsd,  hoyStr);
+    const eurCierre  = (eur  && eur.cierre)  ? parseFloat(eur.cierre)  : getCierreDeHistorial(histEur,  hoyStr);
+    const usdtCierre = (usdt && usdt.cierre) ? parseFloat(usdt.cierre) : getCierreDeHistorial(histUsdt, hoyStr);
+
+    const horaActual = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+    const esFDS = [0, 6].includes(new Date().getDay());
+
+    // Calcular variación
+    function varCalc(val, cierre) {
+      if (!val || !cierre || cierre === 0) return { abs: null, pct: null };
+      return { abs: (val - cierre).toFixed(4), pct: ((val - cierre) / cierre * 100).toFixed(2) };
+    }
+
     function varHTML(abs, pct) {
       if (abs === null) return '<span style="color:#444;font-size:12px">Sin datos de cierre anterior</span>';
       const n    = parseFloat(abs);
@@ -1881,12 +1897,9 @@ async function renderTasas() {
       return '<span style="color:' + col + ';font-size:13px;font-weight:600">'
         + arr + ' ' + sign + parseFloat(pct).toFixed(2) + '%'
         + '</span>'
-        + '<span style="color:' + col + ';font-size:11px;margin-left:6px">'
-        + '(' + sign + parseFloat(abs).toFixed(4) + ' Bs)'
-        + '</span>';
+        + ' <span style="color:' + col + ';font-size:11px">(' + sign + parseFloat(abs).toFixed(4) + ' Bs)</span>';
     }
 
-    // Tarjeta principal
     function tarjeta(icono, nombre, val, cierre, fuente, color) {
       const fmt  = val ? val.toFixed(4) : '—';
       const vVar = varCalc(val, cierre);
@@ -1909,45 +1922,32 @@ async function renderTasas() {
         + '</div></div>';
     }
 
-    // ── Agrupar historial local por fecha (solo días hábiles) ──
-    const localTasas = resLocal.status === 'fulfilled' ? resLocal.value : [];
-
-    // Calcular cierres desde BD local si la API no los proveyó
-    // Buscar el valor más reciente anterior a hoy para cada moneda
-    function getCierreLocal(moneda) {
-      const hoyStr = new Date().toISOString().split('T')[0];
-      const registros = localTasas.filter(function(t) {
-        return t.moneda_origen === moneda && t.fecha_valor < hoyStr;
-      }).sort(function(a, b) { return b.fecha_valor.localeCompare(a.fecha_valor); });
-      return registros.length ? parseFloat(registros[0].tipo_cambio) : null;
+    // ── Historial: últimos 5 días hábiles desde la API ──
+    // Combinar los 3 historiales por fecha
+    function getUltimosDiasHabiles(n) {
+      // Obtener todas las fechas hábiles disponibles en USD (más completo)
+      const todasFechas = histUsd
+        .filter(function(h) {
+          if (!h.fecha) return false;
+          const d = new Date(h.fecha + 'T12:00:00').getDay();
+          return d >= 1 && d <= 5;
+        })
+        .map(function(h) { return h.fecha.split('T')[0]; })
+        .sort(function(a, b) { return b.localeCompare(a); })
+        .slice(0, n + 1); // +1 para tener el día anterior para variación
+      return todasFechas;
     }
 
-    const usdCierreEfectivo  = usdCierre  || getCierreLocal('USD');
-    const eurCierreEfectivo  = eurCierre  || getCierreLocal('EUR');
-    const usdtCierreEfectivo = usdtCierre || getCierreLocal('USDT');
-    const porFecha = {};
-    localTasas.forEach(function(t) {
-      const f = t.fecha_valor;
-      if (!porFecha[f]) porFecha[f] = { USD: null, EUR: null, USDT: null };
-      porFecha[f][t.moneda_origen] = parseFloat(t.tipo_cambio);
-    });
+    function getValorFecha(hist, fecha) {
+      const r = hist.find(function(h) { return h.fecha && h.fecha.startsWith(fecha); });
+      return r && r.promedio ? parseFloat(r.promedio) : null;
+    }
 
-    // Filtrar solo días hábiles (lun-vie) y tomar los últimos 5
-    const fechasHabiles = Object.keys(porFecha)
-      .filter(function(f) {
-        const d = new Date(f + 'T12:00:00').getDay();
-        return d >= 1 && d <= 5; // lunes=1 ... viernes=5
-      })
-      .sort(function(a, b) { return b.localeCompare(a); })
-      .slice(0, 5);
+    const diasHabiles = getUltimosDiasHabiles(6); // 6 para tener variación del 5to día
+    const dias5 = diasHabiles.slice(0, 5);
 
-    // Si hoy es fin de semana y el viernes está disponible, lo mostramos igual
-    const hoyDia = new Date().getDay();
-    const esFinDeSemana = hoyDia === 0 || hoyDia === 6;
-
-    // Celda del historial con variación
     function celdaHist(val, valAnterior) {
-      if (val === null) return '<td style="text-align:center;color:#444">—</td>';
+      if (val === null) return '<td style="text-align:center;color:#444;padding:12px 16px">—</td>';
       const fmt = val.toFixed(4);
       let varStr = '';
       if (valAnterior !== null) {
@@ -1964,43 +1964,45 @@ async function renderTasas() {
     }
 
     let filasHist = '';
-    if (fechasHabiles.length) {
-      fechasHabiles.forEach(function(f, i) {
-        const dia      = porFecha[f];
-        const diaAntes = i < fechasHabiles.length - 1 ? porFecha[fechasHabiles[i + 1]] : null;
-        const esFDS2   = new Date(f + 'T12:00:00').getDay();
+    if (dias5.length) {
+      dias5.forEach(function(f, i) {
+        const fAntes   = diasHabiles[i + 1] || null;
+        const usdH     = getValorFecha(histUsd,  f);
+        const eurH     = getValorFecha(histEur,  f);
+        const usdtH    = getValorFecha(histUsdt, f);
+        const usdHA    = fAntes ? getValorFecha(histUsd,  fAntes) : null;
+        const eurHA    = fAntes ? getValorFecha(histEur,  fAntes) : null;
+        const usdtHA   = fAntes ? getValorFecha(histUsdt, fAntes) : null;
         const fechaFmt = new Date(f + 'T12:00:00').toLocaleDateString('es-VE', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
         filasHist += '<tr>'
           + '<td style="font-size:12px;color:var(--suave);white-space:nowrap;padding:12px 16px">' + fechaFmt + '</td>'
-          + celdaHist(dia.USD,  diaAntes ? diaAntes.USD  : null)
-          + celdaHist(dia.EUR,  diaAntes ? diaAntes.EUR  : null)
-          + celdaHist(dia.USDT, diaAntes ? diaAntes.USDT : null)
+          + celdaHist(usdH,  usdHA)
+          + celdaHist(eurH,  eurHA)
+          + celdaHist(usdtH, usdtHA)
           + '</tr>';
       });
     } else {
-      filasHist = '<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--suave)">Las tasas se acumulan automáticamente cada día hábil</td></tr>';
+      filasHist = '<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--suave)">No se pudieron cargar los datos históricos</td></tr>';
     }
 
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy  = new Date().toISOString().split('T')[0];
     const ayer = new Date(Date.now() - 86400000).toISOString().split('T')[0];
 
     c.innerHTML =
-      // ZONA 1: TASAS VIGENTES
       '<div style="margin-bottom:24px">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
       + '<div style="font-family:var(--font-display);font-size:13px;letter-spacing:3px;color:var(--suave);text-transform:uppercase">'
       + '<span style="color:var(--naranja)">●</span> TASAS VIGENTES'
-      + (esFinDeSemana ? ' <span style="font-size:10px;color:#555;letter-spacing:1px">— Fin de semana, mostrando último cierre hábil</span>' : '')
+      + (esFDS ? ' <span style="font-size:10px;color:#555;letter-spacing:1px">— Fin de semana, último cierre hábil</span>' : '')
       + '</div>'
       + '<button onclick="renderTasas()" class="btn-secundario">↻ Actualizar</button>'
       + '</div>'
       + '<div style="display:flex;gap:16px;flex-wrap:wrap">'
-      + tarjeta('🇺🇸', 'USD',  usdVal,  usdCierreEfectivo,  'BCV Oficial',  '#FF6B00')
-      + tarjeta('🇪🇺', 'EUR',  eurVal,  eurCierreEfectivo,  'BCV Oficial',  '#4299e1')
-      + tarjeta('💲',  'USDT', usdtVal, usdtCierreEfectivo, 'Mercado P2P',  '#F0B90B')
+      + tarjeta('🇺🇸', 'USD',  usdVal,  usdCierre,  'BCV Oficial',  '#FF6B00')
+      + tarjeta('🇪🇺', 'EUR',  eurVal,  eurCierre,  'BCV Oficial',  '#4299e1')
+      + tarjeta('💲',  'USDT', usdtVal, usdtCierre, 'Mercado P2P',  '#F0B90B')
       + '</div></div>'
 
-      // ZONA 2: HISTORIAL
       + '<div class="panel" style="margin-bottom:24px">'
       + '<div class="panel-header"><h3>Historial — Últimos 5 Días Hábiles</h3></div>'
       + '<div class="tabla-container"><table>'
@@ -2013,7 +2015,6 @@ async function renderTasas() {
       + '<tbody>' + filasHist + '</tbody>'
       + '</table></div></div>'
 
-      // ZONA 3: CONSULTA POR FECHA
       + '<div class="panel">'
       + '<div class="panel-header"><h3>Consultar Tasa por Fecha</h3></div>'
       + '<div style="padding:24px">'
@@ -2031,7 +2032,6 @@ async function renderTasas() {
 }
 
 
-// ─── CONSULTA TASA POR FECHA ───
 async function consultarTasaPorFecha() {
   const fecha = document.getElementById('fecha-consulta').value;
   const resEl = document.getElementById('resultado-fecha');
@@ -2040,99 +2040,79 @@ async function consultarTasaPorFecha() {
   resEl.innerHTML = '<div class="loading"><div class="spinner"></div> Consultando historial...</div>';
 
   try {
-    // Determinar fecha de búsqueda (si es fin de semana usar el viernes anterior)
+    // Determinar fecha de búsqueda (fin de semana → viernes anterior)
     const fechaObj  = new Date(fecha + 'T12:00:00');
     const diaSemana = fechaObj.getDay();
     const esFDS     = diaSemana === 0 || diaSemana === 6;
     let fechaBuscar = fecha;
-    if (diaSemana === 0) { // domingo → viernes
+    if (diaSemana === 0) {
       const v = new Date(fechaObj); v.setDate(v.getDate() - 2);
       fechaBuscar = v.toISOString().split('T')[0];
-    } else if (diaSemana === 6) { // sábado → viernes
+    } else if (diaSemana === 6) {
       const v = new Date(fechaObj); v.setDate(v.getDate() - 1);
       fechaBuscar = v.toISOString().split('T')[0];
     }
 
-    const [resUsdH, resEurH, resUsdtH, locUsdR, locEurR] = await Promise.allSettled([
+    // Consultar los 3 historiales desde la API
+    const [resUsdH, resEurH, resUsdtH] = await Promise.allSettled([
       fetch('https://ve.dolarapi.com/v1/historicos/dolares/oficial').then(r => r.json()),
       fetch('https://ve.dolarapi.com/v1/historicos/euros/oficial').then(r => r.json()),
-      fetch('https://ve.dolarapi.com/v1/historicos/dolares/paralelo').then(r => r.json()),
-      api('tasas', 'GET', null, '?moneda_origen=eq.USD&fecha_valor=eq.' + fechaBuscar + '&select=*&order=fecha_registro.desc&limit=1'),
-      api('tasas', 'GET', null, '?moneda_origen=eq.EUR&fecha_valor=eq.' + fechaBuscar + '&select=*&order=fecha_registro.desc&limit=1')
+      fetch('https://ve.dolarapi.com/v1/historicos/dolares/paralelo').then(r => r.json())
     ]);
 
     const histUsd  = resUsdH.status  === 'fulfilled' && Array.isArray(resUsdH.value)  ? resUsdH.value  : [];
     const histEur  = resEurH.status  === 'fulfilled' && Array.isArray(resEurH.value)  ? resEurH.value  : [];
     const histUsdt = resUsdtH.status === 'fulfilled' && Array.isArray(resUsdtH.value) ? resUsdtH.value : [];
-    const diaUsd   = histUsd.find(function(h)  { return h.fecha && h.fecha.startsWith(fechaBuscar); }) || null;
-    const diaEur   = histEur.find(function(h)  { return h.fecha && h.fecha.startsWith(fechaBuscar); }) || null;
-    const diaUsdt  = histUsdt.find(function(h) { return h.fecha && h.fecha.startsWith(fechaBuscar); }) || null;
-    const locUsd   = locUsdR.status === 'fulfilled' && locUsdR.value.length ? locUsdR.value[0] : null;
-    const locEur   = locEurR.status === 'fulfilled' && locEurR.value.length ? locEurR.value[0] : null;
 
-    // USDT histórico: API paralelo primero, luego BD local como respaldo
-    const locUsdtR   = await api('tasas', 'GET', null, '?moneda_origen=eq.USDT&fecha_valor=eq.' + fechaBuscar + '&id_usuario=eq.sistema%40bcv.auto&select=*&limit=1').catch(function() { return []; });
-    const locUsdt    = Array.isArray(locUsdtR) && locUsdtR.length ? locUsdtR[0] : null;
-    const usdtHistVal = diaUsdt ? diaUsdt.promedio : (locUsdt ? locUsdt.tipo_cambio : null);
-    const usdtFuente  = diaUsdt ? '🌐 DolarAPI (ve.dolarapi.com)' : (locUsdt ? '💾 Base de datos local' : null);
-
-    const fechaFmt = new Date(fechaBuscar + 'T12:00:00').toLocaleDateString('es-VE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const capFecha = fechaFmt.charAt(0).toUpperCase() + fechaFmt.slice(1);
-    const fechaOrig = esFDS ? new Date(fecha + 'T12:00:00').toLocaleDateString('es-VE', { weekday: 'long', day: '2-digit', month: 'long' }) : null;
-
-    function bloqueResultadoUsdt(icono, val, fuente, color) {
-      if (!val) {
-        return '<div style="background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:16px 20px;display:flex;align-items:center;gap:12px;margin-bottom:10px">'
-          + '<span style="font-size:18px">' + icono + '</span>'
-          + '<div style="font-size:13px;color:#444">USDT — Sin datos para esta fecha</div></div>';
-      }
-      return '<div style="background:var(--gris1);border:1px solid ' + color + '30;border-left:3px solid ' + color + ';border-radius:8px;padding:18px 22px;margin-bottom:10px">'
-        + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'
-        + '<div style="display:flex;align-items:center;gap:10px">'
-        + '<span style="font-size:20px">' + icono + '</span>'
-        + '<div>'
-        + '<div style="font-family:var(--font-display);font-size:16px;color:var(--texto)">USDT — Mercado P2P / VES</div>'
-        + '<div style="font-size:10px;color:#555;margin-top:2px">' + (fuente || '—') + '</div>'
-        + '</div></div>'
-        + '<div style="font-family:var(--font-mono);font-size:30px;font-weight:700;color:' + color + '">'
-        + parseFloat(val).toFixed(4) + ' <span style="font-size:12px;color:#555;font-weight:400">Bs</span></div>'
-        + '</div></div>';
+    function getValor(hist, f) {
+      const r = hist.find(function(h) { return h.fecha && h.fecha.startsWith(f); });
+      return r && r.promedio ? parseFloat(r.promedio) : null;
     }
 
-    function bloqueResultado(titulo, icono, apiVal, localVal, color) {
-      const tieneApi   = apiVal !== null && apiVal !== undefined;
-      const tieneLocal = localVal !== null;
-      const valor      = tieneApi ? parseFloat(apiVal).toFixed(4) : tieneLocal ? parseFloat(localVal.tipo_cambio).toFixed(4) : null;
-      if (!valor) {
-        return '<div style="background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:16px 20px;display:flex;align-items:center;gap:12px;margin-bottom:10px">'
-          + '<span style="font-size:18px">' + icono + '</span>'
-          + '<div style="font-size:13px;color:#444">' + titulo + ' — Sin datos para esta fecha</div></div>';
+    const usdVal  = getValor(histUsd,  fechaBuscar);
+    const eurVal  = getValor(histEur,  fechaBuscar);
+    const usdtVal = getValor(histUsdt, fechaBuscar);
+
+    // Formatear fecha mostrada
+    const fechaMostrar = new Date(fechaBuscar + 'T12:00:00').toLocaleDateString('es-VE', {
+      weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
+    });
+    const fechaOrig = esFDS ? new Date(fecha + 'T12:00:00').toLocaleDateString('es-VE', {
+      weekday: 'long', day: '2-digit', month: 'long'
+    }) : null;
+    const capFecha = fechaMostrar.charAt(0).toUpperCase() + fechaMostrar.slice(1);
+
+    function bloque(icono, nombre, val, color) {
+      if (!val) {
+        return '<div style="background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:16px 20px;'
+          + 'display:flex;align-items:center;gap:12px;margin-bottom:10px">'
+          + '<span style="font-size:20px">' + icono + '</span>'
+          + '<div style="font-size:13px;color:#444">' + nombre + ' — Sin datos para esta fecha</div></div>';
       }
-      const fuente = tieneApi ? '🌐 DolarAPI (ve.dolarapi.com)' : '💾 Base de datos local';
-      const bdExtra = tieneApi && tieneLocal
-        ? '<div style="margin-top:8px;font-size:11px;color:#555">💾 BD local: ' + parseFloat(localVal.tipo_cambio).toFixed(4) + ' Bs</div>'
-        : '';
-      return '<div style="background:var(--gris1);border:1px solid ' + color + '30;border-left:3px solid ' + color + ';border-radius:8px;padding:18px 22px;margin-bottom:10px">'
+      return '<div style="background:var(--gris1);border:1px solid ' + color + '30;border-left:3px solid ' + color + ';'
+        + 'border-radius:8px;padding:18px 22px;margin-bottom:10px">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'
         + '<div style="display:flex;align-items:center;gap:10px">'
-        + '<span style="font-size:20px">' + icono + '</span>'
-        + '<div>'
-        + '<div style="font-family:var(--font-display);font-size:16px;color:var(--texto)">' + titulo + '</div>'
-        + '<div style="font-size:10px;color:#555;margin-top:2px">' + fuente + '</div>'
+        + '<span style="font-size:22px">' + icono + '</span>'
+        + '<div style="font-family:var(--font-display);font-size:17px;letter-spacing:1px;color:var(--texto)">' + nombre + '</div>'
+        + '</div>'
+        + '<div style="font-family:var(--font-mono);font-size:32px;font-weight:700;color:' + color + '">'
+        + val.toFixed(4) + ' <span style="font-size:13px;color:#555;font-weight:400">Bs</span>'
         + '</div></div>'
-        + '<div style="font-family:var(--font-mono);font-size:30px;font-weight:700;color:' + color + '">'
-        + valor + ' <span style="font-size:12px;color:#555;font-weight:400">Bs</span></div>'
-        + '</div>' + bdExtra + '</div>';
+        + '<div style="font-size:10px;color:#555;margin-top:8px">🌐 ve.dolarapi.com</div>'
+        + '</div>';
     }
 
     resEl.innerHTML =
       '<div style="margin-bottom:16px">'
       + '<div style="font-family:var(--font-display);font-size:17px;color:var(--naranja);margin-bottom:4px">' + capFecha + '</div>'
-      + (esFDS ? '<div style="font-size:11px;color:#888;margin-bottom:8px">⚠️ ' + (fechaOrig || '') + ' es fin de semana — mostrando tasas del viernes anterior</div>' : '')
+      + (esFDS ? '<div style="font-size:11px;color:#888;margin-bottom:10px">⚠️ '
+        + (fechaOrig ? fechaOrig.charAt(0).toUpperCase() + fechaOrig.slice(1) : '')
+        + ' es fin de semana — mostrando tasas del viernes anterior</div>' : '')
       + '</div>'
-      + bloqueResultado('USD — Dólar Oficial BCV / VES', '🇺🇸', diaUsd ? diaUsd.promedio : null, locUsd, '#FF6B00')
-      + bloqueResultado('EUR — Euro Oficial BCV / VES',  '🇪🇺', diaEur ? diaEur.promedio : null, locEur, '#4299e1')
-      + bloqueResultadoUsdt('💲', usdtHistVal, usdtFuente, '#F0B90B');
+      + bloque('🇺🇸', 'USD — Dólar Oficial BCV / VES', usdVal,  '#FF6B00')
+      + bloque('🇪🇺', 'EUR — Euro Oficial BCV / VES',  eurVal,  '#4299e1')
+      + bloque('💲',  'USDT — Mercado P2P / VES',      usdtVal, '#F0B90B');
 
   } catch(e) {
     resEl.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
