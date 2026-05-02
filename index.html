@@ -1836,10 +1836,9 @@ async function eliminarUsuario(id, nombre) {
 // ─── MÓDULO TASAS ───
 async function renderTasas() {
   const c = document.getElementById('contenido-principal');
-  c.innerHTML = `<div class="loading"><div class="spinner"></div> Cargando tasas...</div>`;
+  c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando tasas...</div>';
 
   try {
-    // ── Fetch en paralelo: USD, EUR, USDT y últimas 5 tasas locales ──
     const [resUsd, resEur, resUsdt, tasasLocales] = await Promise.allSettled([
       fetch('https://ve.dolarapi.com/v1/dolares/oficial').then(r => r.json()),
       fetch('https://ve.dolarapi.com/v1/euros/oficial').then(r => r.json()),
@@ -1852,13 +1851,12 @@ async function renderTasas() {
     const usdt  = resUsdt.status  === 'fulfilled' ? resUsdt.value  : null;
     const local = tasasLocales.status === 'fulfilled' ? tasasLocales.value : [];
 
-    // Calcular USDT en VES usando precio USDT/USD * tasa BCV
     const usdtPrecio = usdt ? parseFloat(usdt.lastPrice) : null;
-    const usdtVes    = (usdtPrecio && usd?.promedio) ? (usdtPrecio * parseFloat(usd.promedio)).toFixed(4) : null;
+    const usdtVes    = (usdtPrecio && usd && usd.promedio) ? (usdtPrecio * parseFloat(usd.promedio)).toFixed(4) : null;
     const usdtCambio = usdt ? parseFloat(usdt.priceChangePercent) : null;
+    const horaActual = new Date().toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' });
 
-    // Helper: badge de variación
-    function varBadge(val, esPct = false) {
+    function varBadge(val, esPct) {
       if (val === null || val === undefined) return '<span style="color:#555">—</span>';
       const n = parseFloat(val);
       const color = n > 0 ? '#68d391' : n < 0 ? '#fc8181' : '#888';
@@ -1868,224 +1866,166 @@ async function renderTasas() {
       return '<span style="color:' + color + ';font-size:13px">' + arrow + ' ' + txt + '</span>';
     }
 
-    // Helper: variación absoluta USD/EUR
     function varAbs(promedio, cierre) {
       if (!promedio || !cierre) return null;
       return (parseFloat(promedio) - parseFloat(cierre)).toFixed(4);
     }
 
-    // Hora de actualización
-    const horaActual = new Date().toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' });
-
-    // ── TARJETAS PRINCIPALES ──
-    function tarjetaPrincipal(icono, nombre, tasa, variacionAbs, variacionPct, fuente, color) {
+    function tarjetaHTML(icono, nombre, tasa, varAb, varPct, fuente, color) {
       const tasaFmt = tasa ? parseFloat(tasa).toFixed(4) : '—';
-      return `
-        <div style="background:var(--gris1);border:1px solid var(--borde);border-radius:10px;padding:28px;flex:1;min-width:220px;position:relative;overflow:hidden">
-          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:\${color}"></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-            <div style="display:flex;align-items:center;gap:10px">
-              <span style="font-size:24px">\${icono}</span>
-              <div>
-                <div style="font-family:var(--font-display);font-size:18px;letter-spacing:2px;color:var(--texto)">\${nombre}</div>
-                <div style="font-size:10px;color:#555;letter-spacing:1px">\${fuente}</div>
-              </div>
-            </div>
-            <div style="font-size:10px;color:#444">\${horaActual}</div>
-          </div>
-          <div style="font-family:var(--font-mono);font-size:36px;font-weight:600;color:\${color};margin-bottom:12px">
-            \${tasaFmt} <span style="font-size:14px;color:#555">Bs</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-            <div>
-              <div style="font-size:10px;color:#555;margin-bottom:3px">VS CIERRE ANTERIOR</div>
-              <div>\${varBadge(variacionAbs)}</div>
-            </div>
-            <div>
-              <div style="font-size:10px;color:#555;margin-bottom:3px">VARIACIÓN %</div>
-              <div>\${varBadge(variacionPct, true)}</div>
-            </div>
-          </div>
-        </div>`;
+      return '<div style="background:var(--gris1);border:1px solid var(--borde);border-radius:10px;padding:28px;flex:1;min-width:220px;position:relative;overflow:hidden">'
+        + '<div style="position:absolute;top:0;left:0;right:0;height:3px;background:' + color + '"></div>'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
+        + '<div style="display:flex;align-items:center;gap:10px">'
+        + '<span style="font-size:24px">' + icono + '</span>'
+        + '<div>'
+        + '<div style="font-family:var(--font-display);font-size:18px;letter-spacing:2px;color:var(--texto)">' + nombre + '</div>'
+        + '<div style="font-size:10px;color:#555;letter-spacing:1px">' + fuente + '</div>'
+        + '</div></div>'
+        + '<div style="font-size:10px;color:#444">' + horaActual + '</div>'
+        + '</div>'
+        + '<div style="font-family:var(--font-mono);font-size:36px;font-weight:600;color:' + color + ';margin-bottom:12px">'
+        + tasaFmt + ' <span style="font-size:14px;color:#555">Bs</span></div>'
+        + '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">'
+        + '<div><div style="font-size:10px;color:#555;margin-bottom:3px">VS CIERRE ANTERIOR</div><div>' + varBadge(varAb, false) + '</div></div>'
+        + '<div><div style="font-size:10px;color:#555;margin-bottom:3px">VARIACIÓN %</div><div>' + varBadge(varPct, true) + '</div></div>'
+        + '</div></div>';
     }
 
-    const tarjetaUsd = tarjetaPrincipal(
-      '🇺🇸', 'USD', usd?.promedio,
-      varAbs(usd?.promedio, usd?.cierre),
-      usd ? ((parseFloat(usd.promedio) - parseFloat(usd.cierre)) / parseFloat(usd.cierre) * 100).toFixed(2) : null,
-      'BCV Oficial', '#FF6B00'
-    );
+    const usdVarAbs = varAbs(usd ? usd.promedio : null, usd ? usd.cierre : null);
+    const usdVarPct = (usd && usd.promedio && usd.cierre)
+      ? ((parseFloat(usd.promedio) - parseFloat(usd.cierre)) / parseFloat(usd.cierre) * 100).toFixed(2)
+      : null;
 
-    const tarjetaEur = tarjetaPrincipal(
-      '🇪🇺', 'EUR', eur?.promedio,
-      varAbs(eur?.promedio, eur?.cierre),
-      eur ? ((parseFloat(eur.promedio) - parseFloat(eur.cierre)) / parseFloat(eur.cierre) * 100).toFixed(2) : null,
-      'BCV Oficial', '#4299e1'
-    );
+    const eurVarAbs = varAbs(eur ? eur.promedio : null, eur ? eur.cierre : null);
+    const eurVarPct = (eur && eur.promedio && eur.cierre)
+      ? ((parseFloat(eur.promedio) - parseFloat(eur.cierre)) / parseFloat(eur.cierre) * 100).toFixed(2)
+      : null;
 
-    const tarjetaUsdt = tarjetaPrincipal(
-      '₿', 'USDT', usdtVes,
-      null,
-      usdtCambio,
-      'Binance · USD×BCV', '#F0B90B'
-    );
+    // Últimas 5 tasas locales
+    let filasLocales = '';
+    if (local.length) {
+      local.forEach(function(t) {
+        const esBcv = t.id_usuario === 'sistema@bcv.auto';
+        const badgeClass = t.moneda_origen === 'USD' ? 'badge-naranja' : t.moneda_origen === 'EUR' ? 'badge-gris' : 'badge-verde';
+        filasLocales += '<tr>'
+          + '<td><span class="badge ' + badgeClass + '">' + t.moneda_origen + '</span></td>'
+          + '<td><span class="badge badge-gris">' + t.moneda_destino + '</span></td>'
+          + '<td style="font-family:var(--font-mono);color:var(--naranja)">' + parseFloat(t.tipo_cambio).toFixed(4) + '</td>'
+          + '<td style="font-size:11px;color:var(--suave)">' + new Date(t.fecha_valor + 'T12:00:00').toLocaleDateString('es-VE') + '</td>'
+          + '<td><span class="badge ' + (esBcv ? 'badge-verde' : 'badge-gris') + '">' + (esBcv ? '🤖 Auto' : '👤 Manual') + '</span></td>'
+          + '</tr>';
+      });
+    } else {
+      filasLocales = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--suave)">No hay tasas registradas aún</td></tr>';
+    }
 
-    // ── ÚLTIMAS 5 TASAS LOCALES ──
-    const filasLocales = local.length ? local.map(t => {
-      const esBcv = t.id_usuario === 'sistema@bcv.auto';
-      return `
-        <tr>
-          <td><span class="badge \${t.moneda_origen === 'USD' ? 'badge-naranja' : t.moneda_origen === 'EUR' ? 'badge-gris' : 'badge-verde'}">\${t.moneda_origen}</span></td>
-          <td><span class="badge badge-gris">\${t.moneda_destino}</span></td>
-          <td style="font-family:var(--font-mono);color:var(--naranja)">\${parseFloat(t.tipo_cambio).toFixed(4)}</td>
-          <td style="font-size:11px;color:var(--suave)">\${new Date(t.fecha_valor+'T12:00:00').toLocaleDateString('es-VE')}</td>
-          <td><span class="badge \${esBcv ? 'badge-verde' : 'badge-gris'}">\${esBcv ? '🤖 Auto' : '👤 Manual'}</span></td>
-        </tr>`;
-    }).join('') : `<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--suave)">No hay tasas registradas aún</td></tr>`;
+    const fechaAyer = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const hoy       = new Date().toISOString().split('T')[0];
 
-    // ── RENDER COMPLETO ──
-    c.innerHTML = `
-      <!-- ZONA 1: TASAS VIGENTES -->
-      <div style="margin-bottom:8px">
-        <div style="font-family:var(--font-display);font-size:13px;letter-spacing:3px;color:var(--suave);text-transform:uppercase;margin-bottom:16px">
-          ● TASAS VIGENTES — Actualizado \${horaActual}
-          <button onclick="renderTasas()" style="background:none;border:none;color:var(--naranja);cursor:pointer;font-size:12px;margin-left:12px;font-family:var(--font-body)">↻ Refrescar</button>
-        </div>
-        <div style="display:flex;gap:16px;flex-wrap:wrap">
-          \${tarjetaUsd}
-          \${tarjetaEur}
-          \${tarjetaUsdt}
-        </div>
-      </div>
+    c.innerHTML =
+      // ZONA 1
+      '<div style="margin-bottom:8px">'
+      + '<div style="font-family:var(--font-display);font-size:13px;letter-spacing:3px;color:var(--suave);text-transform:uppercase;margin-bottom:16px">'
+      + '● TASAS VIGENTES — Actualizado ' + horaActual
+      + ' <button onclick="renderTasas()" style="background:none;border:none;color:var(--naranja);cursor:pointer;font-size:12px;margin-left:12px;font-family:var(--font-body)">↻ Refrescar</button>'
+      + '</div>'
+      + '<div style="display:flex;gap:16px;flex-wrap:wrap">'
+      + tarjetaHTML('🇺🇸', 'USD', usd ? usd.promedio : null, usdVarAbs, usdVarPct, 'BCV Oficial', '#FF6B00')
+      + tarjetaHTML('🇪🇺', 'EUR', eur ? eur.promedio : null, eurVarAbs, eurVarPct, 'BCV Oficial', '#4299e1')
+      + tarjetaHTML('₿', 'USDT', usdtVes, null, usdtCambio, 'Binance × BCV', '#F0B90B')
+      + '</div></div>'
 
-      <!-- ZONA 2: ÚLTIMAS 5 TASAS LOCALES -->
-      <div class="panel">
-        <div class="panel-header">
-          <h3>Últimas Tasas Registradas</h3>
-          <button class="btn-primario" onclick="abrirModal('modal-tasa')">+ Nueva Tasa</button>
-        </div>
-        <div class="tabla-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Moneda</th>
-                <th>Destino</th>
-                <th>Valor</th>
-                <th>Vigencia</th>
-                <th>Origen</th>
-              </tr>
-            </thead>
-            <tbody>\${filasLocales}</tbody>
-          </table>
-        </div>
-      </div>
+      // ZONA 2
+      + '<div class="panel">'
+      + '<div class="panel-header"><h3>Últimas Tasas Registradas</h3>'
+      + '<button class="btn-primario" onclick="abrirModal(\'modal-tasa\')">+ Nueva Tasa</button></div>'
+      + '<div class="tabla-container"><table>'
+      + '<thead><tr><th>Moneda</th><th>Destino</th><th>Valor</th><th>Vigencia</th><th>Origen</th></tr></thead>'
+      + '<tbody>' + filasLocales + '</tbody>'
+      + '</table></div></div>'
 
-      <!-- ZONA 3: CONSULTA POR FECHA -->
-      <div class="panel">
-        <div class="panel-header">
-          <h3>Consultar Tasa por Fecha</h3>
-        </div>
-        <div style="padding:24px">
-          <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
-            <div class="form-campo" style="flex:1;min-width:200px">
-              <label>Selecciona una fecha</label>
-              <input type="date" id="fecha-consulta"
-                max="\${new Date().toISOString().split('T')[0]}"
-                value="\${new Date(Date.now() - 86400000).toISOString().split('T')[0]}">
-            </div>
-            <button class="btn-primario" onclick="consultarTasaPorFecha()" style="margin-bottom:1px">CONSULTAR</button>
-          </div>
-          <div id="resultado-fecha" style="margin-top:20px"></div>
-        </div>
-      </div>
-    `;
+      // ZONA 3
+      + '<div class="panel"><div class="panel-header"><h3>Consultar Tasa por Fecha</h3></div>'
+      + '<div style="padding:24px">'
+      + '<div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">'
+      + '<div class="form-campo" style="flex:1;min-width:200px"><label>Selecciona una fecha</label>'
+      + '<input type="date" id="fecha-consulta" max="' + hoy + '" value="' + fechaAyer + '"></div>'
+      + '<button class="btn-primario" onclick="consultarTasaPorFecha()" style="margin-bottom:1px">CONSULTAR</button>'
+      + '</div><div id="resultado-fecha" style="margin-top:20px"></div>'
+      + '</div></div>';
 
   } catch(e) {
-    c.innerHTML = `<div class="alerta alerta-error" style="display:block">Error cargando tasas: \${e.message}</div>`;
+    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error cargando tasas: ' + e.message + '</div>';
   }
 }
 
 // ─── CONSULTA TASA POR FECHA ───
 async function consultarTasaPorFecha() {
-  const fecha  = document.getElementById('fecha-consulta').value;
-  const resEl  = document.getElementById('resultado-fecha');
+  const fecha = document.getElementById('fecha-consulta').value;
+  const resEl = document.getElementById('resultado-fecha');
   if (!fecha) return;
 
-  resEl.innerHTML = `<div class="loading"><div class="spinner"></div> Consultando...</div>`;
+  resEl.innerHTML = '<div class="loading"><div class="spinner"></div> Consultando...</div>';
 
   try {
-    // Consultar historial USD y EUR en ve.dolarapi.com
     const [resUsd, resEur, localUsd, localEur] = await Promise.allSettled([
-      fetch(`https://ve.dolarapi.com/v1/historicos/dolares/oficial`).then(r => r.json()),
-      fetch(`https://ve.dolarapi.com/v1/historicos/euros/oficial`).then(r => r.json()),
-      api('tasas', 'GET', null, `?moneda_origen=eq.USD&fecha_valor=eq.\${fecha}&select=*`),
-      api('tasas', 'GET', null, `?moneda_origen=eq.EUR&fecha_valor=eq.\${fecha}&select=*`)
+      fetch('https://ve.dolarapi.com/v1/historicos/dolares/oficial').then(r => r.json()),
+      fetch('https://ve.dolarapi.com/v1/historicos/euros/oficial').then(r => r.json()),
+      api('tasas', 'GET', null, '?moneda_origen=eq.USD&fecha_valor=eq.' + fecha + '&select=*'),
+      api('tasas', 'GET', null, '?moneda_origen=eq.EUR&fecha_valor=eq.' + fecha + '&select=*')
     ]);
 
-    // Filtrar por fecha en el historial de la API
-    const histUsd = resUsd.status === 'fulfilled' ? resUsd.value : [];
-    const histEur = resEur.status === 'fulfilled' ? resEur.value : [];
+    const histUsd = resUsd.status === 'fulfilled' && Array.isArray(resUsd.value) ? resUsd.value : [];
+    const histEur = resEur.status === 'fulfilled' && Array.isArray(resEur.value) ? resEur.value : [];
+    const diaUsd  = histUsd.find(function(h) { return h.fecha && h.fecha.startsWith(fecha); }) || null;
+    const diaEur  = histEur.find(function(h) { return h.fecha && h.fecha.startsWith(fecha); }) || null;
+    const locUsd  = localUsd.status === 'fulfilled' && localUsd.value.length ? localUsd.value[0] : null;
+    const locEur  = localEur.status === 'fulfilled' && localEur.value.length ? localEur.value[0] : null;
 
-    const diaUsd = Array.isArray(histUsd) ? histUsd.find(h => h.fecha && h.fecha.startsWith(fecha)) : null;
-    const diaEur = Array.isArray(histEur) ? histEur.find(h => h.fecha && h.fecha.startsWith(fecha)) : null;
-
-    const locUsd = localUsd.status === 'fulfilled' && localUsd.value.length ? localUsd.value[0] : null;
-    const locEur = localEur.status === 'fulfilled' && localEur.value.length ? localEur.value[0] : null;
-
-    const fechaFmt = new Date(fecha + 'T12:00:00').toLocaleDateString('es-VE', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-    });
+    const fechaObj = new Date(fecha + 'T12:00:00');
+    const fechaFmt = fechaObj.toLocaleDateString('es-VE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+    const esFDS    = [0, 6].includes(fechaObj.getDay());
 
     function filaResultado(moneda, icono, apiVal, localVal, color) {
       const tieneApi   = apiVal !== null && apiVal !== undefined;
       const tieneLocal = localVal !== null;
       const valor      = tieneApi ? parseFloat(apiVal).toFixed(4) : tieneLocal ? parseFloat(localVal.tipo_cambio).toFixed(4) : null;
 
-      if (!valor) return `
-        <div style="background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:16px 20px;display:flex;align-items:center;gap:12px">
-          <span style="font-size:20px">\${icono}</span>
-          <div>
-            <div style="font-family:var(--font-display);font-size:15px;color:#444">\${moneda}</div>
-            <div style="font-size:12px;color:#444">Sin datos para esta fecha</div>
-          </div>
-        </div>`;
+      if (!valor) {
+        return '<div style="background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:16px 20px;display:flex;align-items:center;gap:12px">'
+          + '<span style="font-size:20px">' + icono + '</span>'
+          + '<div><div style="font-family:var(--font-display);font-size:15px;color:#444">' + moneda + '</div>'
+          + '<div style="font-size:12px;color:#444">Sin datos para esta fecha</div></div></div>';
+      }
 
-      return `
-        <div style="background:var(--gris1);border:1px solid \${color}40;border-radius:8px;padding:16px 20px;position:relative;overflow:hidden">
-          <div style="position:absolute;top:0;left:0;bottom:0;width:3px;background:\${color}"></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-            <div style="display:flex;align-items:center;gap:10px">
-              <span style="font-size:20px">\${icono}</span>
-              <div>
-                <div style="font-family:var(--font-display);font-size:16px;letter-spacing:1px;color:var(--texto)">\${moneda} / VES</div>
-                <div style="font-size:10px;color:#555">\${tieneApi ? '🌐 Fuente: DolarAPI' : '💾 Fuente: Base de datos local'}</div>
-              </div>
-            </div>
-            <div style="font-family:var(--font-mono);font-size:28px;font-weight:600;color:\${color}">
-              \${valor} <span style="font-size:12px;color:#555">Bs</span>
-            </div>
-          </div>
-          ${tieneLocal && tieneApi ? '<div style="margin-top:8px;font-size:11px;color:#555">BD local: ' + parseFloat(localVal.tipo_cambio).toFixed(4) + ' Bs</div>' : ''}
-        </div>`;
+      return '<div style="background:var(--gris1);border:1px solid ' + color + '40;border-radius:8px;padding:16px 20px;position:relative;overflow:hidden">'
+        + '<div style="position:absolute;top:0;left:0;bottom:0;width:3px;background:' + color + '"></div>'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'
+        + '<div style="display:flex;align-items:center;gap:10px">'
+        + '<span style="font-size:20px">' + icono + '</span>'
+        + '<div><div style="font-family:var(--font-display);font-size:16px;letter-spacing:1px;color:var(--texto)">' + moneda + ' / VES</div>'
+        + '<div style="font-size:10px;color:#555">' + (tieneApi ? '🌐 DolarAPI' : '💾 Base de datos local') + '</div></div></div>'
+        + '<div style="font-family:var(--font-mono);font-size:28px;font-weight:600;color:' + color + '">'
+        + valor + ' <span style="font-size:12px;color:#555">Bs</span></div></div>'
+        + (tieneLocal && tieneApi ? '<div style="margin-top:8px;font-size:11px;color:#555">💾 BD local: ' + parseFloat(localVal.tipo_cambio).toFixed(4) + ' Bs</div>' : '')
+        + '</div>';
     }
 
-    const esFinDeSemana = [0, 6].includes(new Date(fecha + 'T12:00:00').getDay());
+    const capFecha = fechaFmt.charAt(0).toUpperCase() + fechaFmt.slice(1);
 
-    resEl.innerHTML = `
-      <div style="margin-bottom:16px">
-        <div style="font-family:var(--font-display);font-size:16px;letter-spacing:1px;color:var(--naranja);margin-bottom:4px">
-          \${fechaFmt.charAt(0).toUpperCase() + fechaFmt.slice(1)}
-        </div>
-        \${esFinDeSemana ? '<div style="font-size:11px;color:#555;margin-bottom:12px">⚠️ Fin de semana — el BCV no publica tasas en días no hábiles</div>' : ''}
-      </div>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        \${filaResultado('USD — Dólar Oficial BCV', '🇺🇸', diaUsd?.promedio, locUsd, '#FF6B00')}
-        \${filaResultado('EUR — Euro Oficial BCV', '🇪🇺', diaEur?.promedio, locEur, '#4299e1')}
-      </div>
-    `;
+    resEl.innerHTML =
+      '<div style="margin-bottom:16px">'
+      + '<div style="font-family:var(--font-display);font-size:16px;letter-spacing:1px;color:var(--naranja);margin-bottom:4px">' + capFecha + '</div>'
+      + (esFDS ? '<div style="font-size:11px;color:#555;margin-bottom:12px">⚠️ Fin de semana — el BCV no publica tasas en días no hábiles</div>' : '')
+      + '</div>'
+      + '<div style="display:flex;flex-direction:column;gap:10px">'
+      + filaResultado('USD — Dólar Oficial BCV', '🇺🇸', diaUsd ? diaUsd.promedio : null, locUsd, '#FF6B00')
+      + filaResultado('EUR — Euro Oficial BCV', '🇪🇺', diaEur ? diaEur.promedio : null, locEur, '#4299e1')
+      + '</div>';
 
   } catch(e) {
-    resEl.innerHTML = `<div class="alerta alerta-error" style="display:block">Error en la consulta: \${e.message}</div>`;
+    resEl.innerHTML = '<div class="alerta alerta-error" style="display:block">Error en la consulta: ' + e.message + '</div>';
   }
 }
 
