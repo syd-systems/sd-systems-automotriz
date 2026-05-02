@@ -1,0 +1,2502 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<!-- v20260502194759 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>S&D Systems Automotriz</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  /* ─── VARIABLES ─── */
+  :root {
+    --negro:    #0a0a0a;
+    --gris1:    #111111;
+    --gris2:    #1a1a1a;
+    --gris3:    #242424;
+    --gris4:    #2e2e2e;
+    --borde:    #333333;
+    --texto:    #e8e8e8;
+    --suave:    #888888;
+    --naranja:  #FF6B00;
+    --naranja2: #FF8C00;
+    --rojo:     #e53e3e;
+    --verde:    #38a169;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body:    'DM Sans', sans-serif;
+    --font-mono:    'JetBrains Mono', monospace;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--negro);
+    color: var(--texto);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── PANTALLA LOGIN ─── */
+  #pantalla-login {
+    min-height: 100vh;
+    display: flex;
+    align-items: stretch;
+  }
+
+  .login-izquierda {
+    flex: 1;
+    background: var(--gris1);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 40px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .login-izquierda::before {
+    content: '';
+    position: absolute;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(255,107,0,0.12) 0%, transparent 70%);
+    top: -100px; left: -100px;
+    pointer-events: none;
+  }
+
+  .login-izquierda::after {
+    content: '';
+    position: absolute;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(255,107,0,0.08) 0%, transparent 70%);
+    bottom: 50px; right: -50px;
+    pointer-events: none;
+  }
+
+  .login-logo {
+    text-align: center;
+    margin-bottom: 50px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .login-logo .marca {
+    font-family: var(--font-display);
+    font-size: 68px;
+    letter-spacing: 4px;
+    color: var(--naranja);
+    line-height: 1;
+    text-shadow: 0 0 40px rgba(255,107,0,0.3);
+  }
+
+  .login-logo .subtitulo {
+    font-size: 13px;
+    letter-spacing: 6px;
+    color: var(--suave);
+    text-transform: uppercase;
+    margin-top: 6px;
+    font-weight: 300;
+  }
+
+  .login-form-box {
+    width: 100%;
+    max-width: 380px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .login-form-box h2 {
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--suave);
+    margin-bottom: 32px;
+  }
+
+  .campo {
+    margin-bottom: 20px;
+  }
+
+  .campo label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--suave);
+    margin-bottom: 8px;
+  }
+
+  .campo input {
+    width: 100%;
+    background: var(--gris2);
+    border: 1px solid var(--borde);
+    color: var(--texto);
+    font-family: var(--font-body);
+    font-size: 14px;
+    padding: 14px 16px;
+    border-radius: 6px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+
+  .campo input:focus {
+    border-color: var(--naranja);
+    box-shadow: 0 0 0 3px rgba(255,107,0,0.12);
+  }
+
+  .campo input::placeholder { color: #444; }
+
+  .btn-login {
+    width: 100%;
+    background: var(--naranja);
+    color: #fff;
+    border: none;
+    font-family: var(--font-display);
+    font-size: 20px;
+    letter-spacing: 3px;
+    padding: 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+    margin-top: 10px;
+  }
+
+  .btn-login:hover {
+    background: var(--naranja2);
+    box-shadow: 0 6px 24px rgba(255,107,0,0.35);
+    transform: translateY(-1px);
+  }
+
+  .btn-login:active { transform: translateY(0); }
+
+  .login-error {
+    background: rgba(229,62,62,0.12);
+    border: 1px solid rgba(229,62,62,0.4);
+    color: #fc8181;
+    font-size: 13px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-top: 16px;
+    display: none;
+    text-align: center;
+  }
+
+  .login-derecha {
+    width: 420px;
+    background: linear-gradient(135deg, var(--gris2) 0%, var(--negro) 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 50px;
+    border-left: 1px solid var(--borde);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .login-derecha .patron {
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,107,0,0.04) 39px, rgba(255,107,0,0.04) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,107,0,0.04) 39px, rgba(255,107,0,0.04) 40px);
+    pointer-events: none;
+  }
+
+  .login-derecha .info-titulo {
+    font-family: var(--font-display);
+    font-size: 42px;
+    line-height: 1.1;
+    color: var(--naranja);
+    margin-bottom: 30px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .modulos-lista {
+    list-style: none;
+    position: relative;
+    z-index: 1;
+  }
+
+  .modulos-lista li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--borde);
+    font-size: 13px;
+    color: var(--suave);
+    font-weight: 400;
+  }
+
+  .modulos-lista li:last-child { border-bottom: none; }
+
+  .modulos-lista li .icono {
+    width: 28px; height: 28px;
+    background: rgba(255,107,0,0.1);
+    border: 1px solid rgba(255,107,0,0.2);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+
+  /* ─── PANTALLA PRINCIPAL ─── */
+  #pantalla-app { display: none; min-height: 100vh; }
+
+  /* SIDEBAR */
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: 240px;
+    background: var(--gris1);
+    border-right: 1px solid var(--borde);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    transition: transform 0.3s;
+  }
+
+  .sidebar-logo {
+    padding: 24px 20px;
+    border-bottom: 1px solid var(--borde);
+  }
+
+  .sidebar-logo .marca {
+    font-family: var(--font-display);
+    font-size: 28px;
+    letter-spacing: 2px;
+    color: var(--naranja);
+  }
+
+  .sidebar-logo .sub {
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--suave);
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 0;
+  }
+
+  .nav-seccion {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #444;
+    padding: 16px 20px 6px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--suave);
+    transition: all 0.15s;
+    border-left: 3px solid transparent;
+    text-decoration: none;
+  }
+
+  .nav-item:hover {
+    background: var(--gris2);
+    color: var(--texto);
+  }
+
+  .nav-item.activo {
+    color: var(--naranja);
+    background: rgba(255,107,0,0.06);
+    border-left-color: var(--naranja);
+    font-weight: 500;
+  }
+
+  .nav-item .nav-icono { font-size: 15px; width: 20px; text-align: center; }
+
+  .sidebar-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--borde);
+  }
+
+  .usuario-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .usuario-avatar {
+    width: 34px; height: 34px;
+    background: var(--naranja);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display);
+    font-size: 16px;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .usuario-datos .nombre {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--texto);
+    line-height: 1.2;
+  }
+
+  .usuario-datos .rol {
+    font-size: 10px;
+    color: var(--naranja);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .btn-salir {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--borde);
+    color: var(--suave);
+    font-family: var(--font-body);
+    font-size: 12px;
+    padding: 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .btn-salir:hover { background: rgba(229,62,62,0.1); color: #fc8181; border-color: rgba(229,62,62,0.3); }
+
+  /* CONTENIDO PRINCIPAL */
+  .main-content {
+    margin-left: 240px;
+    min-height: 100vh;
+    background: var(--negro);
+  }
+
+  .topbar {
+    background: var(--gris1);
+    border-bottom: 1px solid var(--borde);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 50;
+  }
+
+  .topbar-titulo {
+    font-family: var(--font-display);
+    font-size: 26px;
+    letter-spacing: 2px;
+    color: var(--texto);
+  }
+
+  .topbar-meta {
+    font-size: 11px;
+    color: var(--suave);
+    letter-spacing: 1px;
+    font-family: var(--font-mono);
+  }
+
+  .contenido {
+    padding: 32px;
+  }
+
+  /* ─── DASHBOARD ─── */
+  .bienvenida {
+    background: linear-gradient(135deg, var(--gris2) 0%, rgba(255,107,0,0.05) 100%);
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    padding: 32px;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .bienvenida h1 {
+    font-family: var(--font-display);
+    font-size: 36px;
+    letter-spacing: 2px;
+    color: var(--naranja);
+    margin-bottom: 6px;
+  }
+
+  .bienvenida p { font-size: 14px; color: var(--suave); }
+
+  .bienvenida .hora {
+    font-family: var(--font-mono);
+    font-size: 32px;
+    color: var(--borde);
+    font-weight: 600;
+  }
+
+  .tarjetas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .tarjeta-stat {
+    background: var(--gris1);
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tarjeta-stat::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--naranja);
+    transform: scaleX(0);
+    transition: transform 0.3s;
+  }
+
+  .tarjeta-stat:hover { border-color: var(--naranja); transform: translateY(-2px); }
+  .tarjeta-stat:hover::before { transform: scaleX(1); }
+
+  .tarjeta-icono { font-size: 24px; margin-bottom: 12px; }
+  .tarjeta-valor {
+    font-family: var(--font-display);
+    font-size: 32px;
+    color: var(--naranja);
+    letter-spacing: 1px;
+  }
+  .tarjeta-nombre { font-size: 11px; color: var(--suave); letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
+
+  /* ─── MÓDULO USUARIOS ─── */
+  .panel {
+    background: var(--gris1);
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--borde);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel-header h3 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    letter-spacing: 1px;
+    color: var(--texto);
+  }
+
+  .btn-primario {
+    background: var(--naranja);
+    color: #fff;
+    border: none;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 10px 18px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primario:hover { background: var(--naranja2); transform: translateY(-1px); }
+
+  .btn-secundario {
+    background: transparent;
+    color: var(--suave);
+    border: 1px solid var(--borde);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-secundario:hover { border-color: var(--naranja); color: var(--naranja); }
+
+  .btn-peligro {
+    background: transparent;
+    color: #fc8181;
+    border: 1px solid rgba(229,62,62,0.3);
+    font-family: var(--font-body);
+    font-size: 12px;
+    padding: 8px 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-peligro:hover { background: rgba(229,62,62,0.1); }
+
+  /* TABLA */
+  .tabla-container { overflow-x: auto; }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  thead th {
+    text-align: left;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--suave);
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--borde);
+    background: var(--gris2);
+  }
+
+  tbody tr {
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+  }
+
+  tbody tr:hover { background: rgba(255,107,0,0.03); }
+  tbody tr:last-child { border-bottom: none; }
+
+  tbody td {
+    padding: 14px 20px;
+    font-size: 13px;
+    color: var(--texto);
+    vertical-align: middle;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+  }
+
+  .badge-verde { background: rgba(56,161,105,0.15); color: #68d391; border: 1px solid rgba(56,161,105,0.3); }
+  .badge-rojo  { background: rgba(229,62,62,0.15);  color: #fc8181; border: 1px solid rgba(229,62,62,0.3); }
+  .badge-naranja { background: rgba(255,107,0,0.15); color: var(--naranja); border: 1px solid rgba(255,107,0,0.3); }
+  .badge-gris  { background: rgba(100,100,100,0.15); color: var(--suave); border: 1px solid var(--borde); }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.abierto { display: flex; }
+
+  .modal {
+    background: var(--gris1);
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.25s ease;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+
+  .modal-header {
+    padding: 24px 28px 20px;
+    border-bottom: 1px solid var(--borde);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .modal-header h3 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    letter-spacing: 1px;
+    color: var(--naranja);
+  }
+
+  .modal-cerrar {
+    background: none; border: none;
+    color: var(--suave); font-size: 20px;
+    cursor: pointer; padding: 4px 8px; border-radius: 4px;
+    transition: color 0.2s;
+  }
+
+  .modal-cerrar:hover { color: var(--texto); }
+
+  .modal-body { padding: 24px 28px; }
+
+  .modal-footer {
+    padding: 16px 28px;
+    border-top: 1px solid var(--borde);
+    display: flex; gap: 10px; justify-content: flex-end;
+  }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-full  { grid-column: 1 / -1; }
+
+  .form-campo { display: flex; flex-direction: column; gap: 6px; }
+  .form-campo label {
+    font-size: 10px; font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--suave);
+  }
+
+  .form-campo input,
+  .form-campo select {
+    background: var(--gris2);
+    border: 1px solid var(--borde);
+    color: var(--texto);
+    font-family: var(--font-body);
+    font-size: 13px;
+    padding: 11px 14px;
+    border-radius: 5px;
+    outline: none;
+    transition: border-color 0.2s;
+    appearance: none;
+  }
+
+  .form-campo input:focus,
+  .form-campo select:focus { border-color: var(--naranja); }
+
+  /* ACCESOS CHECKBOXES */
+  .accesos-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .acceso-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--gris2);
+    border: 1px solid var(--borde);
+    border-radius: 5px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .acceso-item:hover { border-color: var(--naranja); }
+  .acceso-item.seleccionado { border-color: var(--naranja); background: rgba(255,107,0,0.06); }
+
+  .acceso-check {
+    width: 16px; height: 16px;
+    border: 2px solid var(--borde);
+    border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+
+  .acceso-item.seleccionado .acceso-check {
+    background: var(--naranja);
+    border-color: var(--naranja);
+    color: #fff;
+  }
+
+  .acceso-nombre { font-size: 12px; color: var(--texto); }
+
+  /* ALERTA */
+  .alerta {
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 20px;
+    display: none;
+  }
+
+  .alerta-exito { background: rgba(56,161,105,0.12); border: 1px solid rgba(56,161,105,0.3); color: #68d391; }
+  .alerta-error { background: rgba(229,62,62,0.12);  border: 1px solid rgba(229,62,62,0.3);  color: #fc8181; }
+
+  /* LOADING */
+  .loading {
+    display: flex; align-items: center; justify-content: center;
+    padding: 60px; color: var(--suave); font-size: 13px;
+    gap: 12px;
+  }
+
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--borde);
+    border-top-color: var(--naranja);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* PRÓXIMO MÓDULO */
+  .prox-modulo {
+    background: var(--gris2);
+    border: 2px dashed var(--borde);
+    border-radius: 8px;
+    padding: 48px;
+    text-align: center;
+    color: var(--suave);
+  }
+
+  .prox-modulo .icono { font-size: 36px; margin-bottom: 16px; }
+  .prox-modulo h3 { font-family: var(--font-display); font-size: 24px; color: #444; margin-bottom: 8px; letter-spacing: 2px; }
+  .prox-modulo p { font-size: 13px; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--gris1); }
+  ::-webkit-scrollbar-thumb { background: var(--borde); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--naranja); }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .login-derecha { display: none; }
+    .sidebar {
+      transform: translateX(-240px);
+      transition: transform 0.3s;
+      z-index: 200;
+    }
+    .sidebar.abierta { transform: translateX(0); }
+    .main-content { margin-left: 0; }
+    .form-grid { grid-template-columns: 1fr; }
+    .accesos-grid { grid-template-columns: 1fr; }
+    #btn-menu { display: block !important; }
+    .topbar { padding: 12px 16px; }
+    .contenido { padding: 16px; }
+    .tarjetas-grid { grid-template-columns: 1fr 1fr; }
+    .tabla-container { font-size: 12px; }
+    .bienvenida { flex-direction: column; gap: 12px; }
+    .bienvenida .hora { font-size: 22px; }
+    .modal { margin: 16px; max-width: calc(100vw - 32px); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════ -->
+<!--           PANTALLA LOGIN               -->
+<!-- ═══════════════════════════════════════ -->
+<div id="pantalla-login">
+
+  <!-- FORMULARIO IZQUIERDA -->
+  <div class="login-izquierda">
+    <div class="login-logo">
+      <div class="marca">S&D</div>
+      <div class="subtitulo">Systems Automotriz</div>
+    </div>
+
+    <div class="login-form-box">
+      <h2>Iniciar Sesión</h2>
+
+      <div class="campo">
+        <label>Correo Electrónico</label>
+        <input type="email" id="login-correo" placeholder="usuario@correo.com" autocomplete="email">
+      </div>
+
+      <div class="campo">
+        <label>Contraseña</label>
+        <input type="password" id="login-clave" placeholder="••••••••" autocomplete="current-password">
+      </div>
+
+      <button class="btn-login" id="btn-ingresar" onclick="iniciarSesion()">INGRESAR</button>
+
+      <div class="login-error" id="login-error"></div>
+
+      <div style="text-align:center;margin-top:16px">
+        <span style="font-size:12px;color:var(--suave)">¿Olvidaste tu contraseña?</span>
+        <button onclick="mostrarRecuperar()" style="background:none;border:none;color:var(--naranja);font-size:12px;cursor:pointer;margin-left:6px;text-decoration:underline;font-family:var(--font-body)">Recupérala aquí</button>
+      </div>
+    </div>
+
+    <!-- FORMULARIO RECUPERAR CONTRASEÑA -->
+    <div class="login-form-box" id="form-recuperar" style="display:none">
+      <h2>Recuperar Contraseña</h2>
+      <p style="font-size:13px;color:var(--suave);margin-bottom:24px">Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.</p>
+      <div class="campo">
+        <label>Correo Electrónico</label>
+        <input type="email" id="rec-correo" placeholder="usuario@correo.com">
+      </div>
+      <button class="btn-login" onclick="enviarRecuperacion()">ENVIAR ENLACE</button>
+      <div class="login-error" id="rec-error" style="display:none"></div>
+      <div class="alerta alerta-exito" id="rec-exito" style="display:none;margin-top:16px"></div>
+      <div style="text-align:center;margin-top:16px">
+        <button onclick="mostrarLogin()" style="background:none;border:none;color:var(--suave);font-size:12px;cursor:pointer;font-family:var(--font-body)">← Volver al login</button>
+      </div>
+    </div>
+
+    <!-- FORMULARIO NUEVA CONTRASEÑA -->
+    <div class="login-form-box" id="form-nueva-clave" style="display:none">
+      <h2>Nueva Contraseña</h2>
+      <p style="font-size:13px;color:var(--suave);margin-bottom:24px">Ingresa tu nueva contraseña.</p>
+      <div class="campo">
+        <label>Nueva Contraseña</label>
+        <input type="password" id="nueva-clave" placeholder="Mínimo 8 caracteres"
+               oninput="validarFortalezaRec(this.value)">
+        <div id="fortaleza-rec" style="margin-top:10px">
+          <div style="height:4px;background:var(--borde);border-radius:2px;overflow:hidden;margin-bottom:10px">
+            <div id="fortaleza-fill-rec" style="height:100%;width:0%;transition:width 0.3s,background 0.3s;border-radius:2px"></div>
+          </div>
+          <div style="font-size:10px;font-weight:600;letter-spacing:1px;color:var(--suave);text-transform:uppercase;margin-bottom:8px">Requisitos de la contraseña</div>
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="r-req-largo-icon"    style="font-size:12px;width:16px;color:#444">✗</span>
+              <span id="r-req-largo"         style="font-size:12px;color:#444">Mínimo 8 caracteres</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="r-req-letra-icon"    style="font-size:12px;width:16px;color:#444">✗</span>
+              <span id="r-req-letra"         style="font-size:12px;color:#444">Al menos una letra</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="r-req-numero-icon"   style="font-size:12px;width:16px;color:#444">✗</span>
+              <span id="r-req-numero"        style="font-size:12px;color:#444">Al menos un número</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="r-req-especial-icon" style="font-size:12px;width:16px;color:#444">✗</span>
+              <span id="r-req-especial"      style="font-size:12px;color:#444">Al menos un carácter especial (!@#$%...)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="campo">
+        <label>Confirmar Contraseña</label>
+        <input type="password" id="confirmar-clave" placeholder="Repite la contraseña">
+      </div>
+      <button class="btn-login" onclick="guardarNuevaClave()">GUARDAR CONTRASEÑA</button>
+      <div class="login-error" id="nueva-error" style="display:none"></div>
+      <div class="alerta alerta-exito" id="nueva-exito" style="display:none;margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- INFO DERECHA -->
+  <div class="login-derecha">
+    <div class="patron"></div>
+    <div class="info-titulo">SISTEMA DE<br>GESTIÓN<br>AUTOMOTRIZ</div>
+    <ul class="modulos-lista">
+      <li><span class="icono">🚗</span> Vehículos y Propietarios</li>
+      <li><span class="icono">🔧</span> Órdenes de Servicio</li>
+      <li><span class="icono">🧾</span> Facturación y Pagos</li>
+      <li><span class="icono">👥</span> Empleados y Nómina</li>
+      <li><span class="icono">📦</span> Proveedores</li>
+      <li><span class="icono">📊</span> Tributos e Impuestos</li>
+      <li><span class="icono">💱</span> Tipos de Cambio</li>
+      <li><span class="icono">⚙️</span> Configuración del Sistema</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--         PANTALLA PRINCIPAL             -->
+<!-- ═══════════════════════════════════════ -->
+<div id="pantalla-app">
+
+  <!-- Overlay para cerrar menú en móvil -->
+  <div id="menu-overlay" onclick="toggleMenu()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99"></div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="marca">S&D</div>
+      <div class="sub">Systems Automotriz</div>
+    </div>
+
+    <nav class="sidebar-nav" id="sidebar-nav">
+      <div class="nav-seccion">Principal</div>
+      <div class="nav-item activo" onclick="mostrarModulo('dashboard', this); cerrarMenuMovil()">
+        <span class="nav-icono">📊</span> Dashboard
+      </div>
+
+      <div class="nav-seccion" id="nav-seccion-operaciones">Operaciones</div>
+      <div class="nav-item" id="nav-VEHICULOS" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">🚗</span> Vehículos
+      </div>
+      <div class="nav-item" id="nav-PROPIETARIOS" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">👤</span> Propietarios
+      </div>
+      <div class="nav-item" id="nav-SERVICIOS" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">🔧</span> Servicios
+      </div>
+
+      <div class="nav-seccion" id="nav-seccion-finanzas">Finanzas</div>
+      <div class="nav-item" id="nav-FACTURAS" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">🧾</span> Facturas
+      </div>
+      <div class="nav-item" id="nav-PAGOS" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">💳</span> Pagos
+      </div>
+      <div class="nav-item" id="nav-TASAS" onclick="mostrarModulo('tasas', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">💱</span> Tipo de Cambio
+      </div>
+
+      <div class="nav-seccion" id="nav-seccion-admin">Administración</div>
+      <div class="nav-item" id="nav-EMPLEADOS" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">👷</span> Empleados
+      </div>
+      <div class="nav-item" id="nav-PROVEEDORES" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">📦</span> Proveedores
+      </div>
+      <div class="nav-item" id="nav-TRIBUTOS" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">📋</span> Tributos
+      </div>
+      <div class="nav-item" id="nav-USUARIOS" onclick="mostrarModulo('usuarios', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">🔐</span> Usuarios
+      </div>
+      <div class="nav-item" id="nav-PARAMETROS" onclick="mostrarModulo('parametros', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">⚙️</span> Parámetros
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="usuario-info">
+        <div class="usuario-avatar" id="avatar-inicial">A</div>
+        <div class="usuario-datos">
+          <div class="nombre" id="nombre-usuario">Administrador</div>
+          <div class="rol" id="rol-usuario">Admin</div>
+          <div id="dias-clave" style="font-size:9px;margin-top:2px;color:#555"></div>
+        </div>
+      </div>
+      <button class="btn-salir" onclick="cerrarSesion()">Cerrar Sesión</button>
+    </div>
+  </aside>
+
+  <!-- CONTENIDO -->
+  <main class="main-content">
+    <div class="topbar">
+      <button id="btn-menu" onclick="toggleMenu()" style="display:none;background:none;border:none;color:var(--texto);font-size:22px;cursor:pointer;padding:4px 10px;margin-right:10px;line-height:1">☰</button>
+      <div class="topbar-titulo" id="topbar-titulo">DASHBOARD</div>
+      <div class="topbar-meta" id="topbar-fecha"></div>
+    </div>
+
+    <div class="contenido" id="contenido-principal">
+      <!-- Se carga dinámicamente -->
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL NUEVO/EDITAR USUARIO          -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-usuario">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-titulo">NUEVO USUARIO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-usuario')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="alerta alerta-exito" id="alerta-modal-ok"></div>
+      <div class="alerta alerta-error"  id="alerta-modal-error"></div>
+
+      <div class="form-grid">
+        <div class="form-campo form-full">
+          <label>Nombre Completo</label>
+          <input type="text" id="u-nombre" placeholder="Ej: María García">
+        </div>
+        <div class="form-campo form-full">
+          <label>Correo Electrónico</label>
+          <input type="email" id="u-correo" placeholder="correo@ejemplo.com">
+        </div>
+        <div class="form-campo form-full">
+          <label>Contraseña</label>
+          <input type="password" id="u-clave" placeholder="Mínimo 8 caracteres" oninput="validarFortalezaUsuario(this.value)" onfocus="document.getElementById('fortaleza-usuario').style.display='block'">
+          <div id="fortaleza-usuario" style="display:none;margin-top:10px">
+            <div style="height:4px;background:var(--borde);border-radius:2px;overflow:hidden;margin-bottom:10px">
+              <div id="fortaleza-fill-u" style="height:100%;width:0%;transition:width 0.3s,background 0.3s;border-radius:2px"></div>
+            </div>
+            <div style="font-size:10px;font-weight:600;letter-spacing:1px;color:var(--suave);text-transform:uppercase;margin-bottom:8px">Requisitos de la contraseña</div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span id="u-req-largo-icon"    style="font-size:12px;width:16px;color:#444">✗</span>
+                <span id="u-req-largo"         style="font-size:12px;color:#444">Mínimo 8 caracteres</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span id="u-req-letra-icon"    style="font-size:12px;width:16px;color:#444">✗</span>
+                <span id="u-req-letra"         style="font-size:12px;color:#444">Al menos una letra</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span id="u-req-numero-icon"   style="font-size:12px;width:16px;color:#444">✗</span>
+                <span id="u-req-numero"        style="font-size:12px;color:#444">Al menos un número</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span id="u-req-especial-icon" style="font-size:12px;width:16px;color:#444">✗</span>
+                <span id="u-req-especial"      style="font-size:12px;color:#444">Al menos un carácter especial (!@#$%...)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="form-campo">
+          <label>Estado</label>
+          <select id="u-estado">
+            <option value="ACTIVO">Activo</option>
+            <option value="INACTIVO">Inactivo</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Tipo de Usuario</label>
+          <select id="u-admin">
+            <option value="false">Operador (accesos limitados)</option>
+            <option value="true">Administrador (acceso total)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ACCESOS POR MÓDULO -->
+      <div id="seccion-accesos" style="margin-top:20px">
+        <label style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);display:block;margin-bottom:10px">Módulos con acceso</label>
+        <div class="accesos-grid" id="accesos-grid"></div>
+      </div>
+
+      <input type="hidden" id="u-id-editando" value="">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-usuario')">Cancelar</button>
+      <button class="btn-primario" onclick="guardarUsuario()">GUARDAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL TIPO DE CAMBIO                -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-tasa">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>NUEVA TASA</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-tasa')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alerta alerta-error" id="alerta-tasa-error"></div>
+      <div class="form-grid">
+        <div class="form-campo">
+          <label>Moneda Origen</label>
+          <select id="t-origen">
+            <option value="USD">USD - Dólar</option>
+            <option value="EUR">EUR - Euro</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Moneda Destino</label>
+          <select id="t-destino">
+            <option value="VES">VES - Bolívar</option>
+            <option value="USD">USD - Dólar</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Valor de la Tasa</label>
+          <input type="number" id="t-valor" placeholder="Ej: 36.50" step="0.01" min="0">
+        </div>
+        <div class="form-campo form-full">
+          <label>Fecha de Vigencia</label>
+          <input type="date" id="t-fecha">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-tasa')">Cancelar</button>
+      <button class="btn-primario" onclick="guardarTasa()">REGISTRAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--         JAVASCRIPT                     -->
+<!-- ═══════════════════════════════════════ -->
+<script>
+// ─── CONFIGURACIÓN SUPABASE ───
+const SUPABASE_URL = 'https://fpqvgefclvrhfehtvkbd.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwcXZnZWZjbHZyaGZlaHR2a2JkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTc5NDEsImV4cCI6MjA5MzE3Mzk0MX0.sa4GjyT-RoA_Regzjwqehfsso88bIGHTq73DqW0_1Jo';
+
+// ─── ESTADO GLOBAL ───
+let sesionActual = null;  // Usuario logueado
+let modulosAcceso = [];   // Módulos a los que tiene acceso
+
+// ─── MÓDULOS DEL SISTEMA ───
+const TODOS_LOS_MODULOS = [
+  { sigla: 'VEHICULOS',    nombre: 'Vehículos',        icono: '🚗' },
+  { sigla: 'PROPIETARIOS', nombre: 'Propietarios',     icono: '👤' },
+  { sigla: 'SERVICIOS',    nombre: 'Órdenes Servicio', icono: '🔧' },
+  { sigla: 'FACTURAS',     nombre: 'Facturas',         icono: '🧾' },
+  { sigla: 'PAGOS',        nombre: 'Pagos',            icono: '💳' },
+  { sigla: 'TASAS',        nombre: 'Tipo de Cambio',   icono: '💱' },
+  { sigla: 'EMPLEADOS',    nombre: 'Empleados',        icono: '👷' },
+  { sigla: 'PROVEEDORES',  nombre: 'Proveedores',      icono: '📦' },
+  { sigla: 'TRIBUTOS',     nombre: 'Tributos',         icono: '📋' },
+  { sigla: 'USUARIOS',     nombre: 'Usuarios',         icono: '🔐' },
+  { sigla: 'PARAMETROS',   nombre: 'Parámetros',       icono: '⚙️' },
+];
+
+// ─── API SUPABASE ───
+async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '') {
+  const url = `${SUPABASE_URL}/rest/v1/${tabla}${filtro}`;
+  const ops = {
+    method: metodo,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': metodo === 'POST' ? 'return=representation' : 'return=minimal'
+    }
+  };
+  if (cuerpo) ops.body = JSON.stringify(cuerpo);
+  const r = await fetch(url, ops);
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.message || `Error ${r.status}`);
+  }
+  return metodo === 'GET' ? r.json() : (r.status === 204 ? null : r.json().catch(() => null));
+}
+
+
+// ─── MENÚ MÓVIL ───
+function toggleMenu() {
+  const sidebar  = document.getElementById('sidebar');
+  const overlay  = document.getElementById('menu-overlay');
+  const abierto  = sidebar.classList.contains('abierta');
+  if (abierto) {
+    sidebar.classList.remove('abierta');
+    overlay.style.display = 'none';
+  } else {
+    sidebar.classList.add('abierta');
+    overlay.style.display = 'block';
+  }
+}
+
+// Cerrar menú al hacer clic en un item (móvil)
+function cerrarMenuMovil() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('menu-overlay');
+  if (window.innerWidth <= 768) {
+    sidebar.classList.remove('abierta');
+    overlay.style.display = 'none';
+  }
+}
+
+// ─── RELOJ ───
+function actualizarReloj() {
+  const ahora = new Date();
+  const f = ahora.toLocaleDateString('es-VE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  const h = ahora.toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' });
+  const el = document.getElementById('topbar-fecha');
+  if (el) el.textContent = `${f}  ${h}`;
+}
+setInterval(actualizarReloj, 1000);
+actualizarReloj();
+
+// ─── LOGIN ───
+document.getElementById('login-clave').addEventListener('keypress', e => {
+  if (e.key === 'Enter') iniciarSesion();
+});
+
+async function iniciarSesion() {
+  const correo = document.getElementById('login-correo').value.trim();
+  const clave  = document.getElementById('login-clave').value;
+  const errEl  = document.getElementById('login-error');
+  const btn    = document.getElementById('btn-ingresar');
+
+  errEl.style.display = 'none';
+
+  if (!correo || !clave) {
+    mostrarError('Por favor complete todos los campos.');
+    return;
+  }
+
+  btn.textContent = 'VERIFICANDO...';
+  btn.disabled = true;
+
+  try {
+    // Buscar usuario en Supabase
+    const usuarios = await api('usuarios', 'GET', null,
+      `?correo_usuario=eq.${encodeURIComponent(correo)}&select=*`);
+
+    if (!usuarios || usuarios.length === 0) {
+      mostrarError('Correo no registrado en el sistema.');
+      return;
+    }
+
+    const u = usuarios[0];
+
+    if (u.estado_usuario !== 'ACTIVO') {
+      mostrarError('Usuario inactivo. Contacte al Administrador.');
+      return;
+    }
+
+    if (u.contrasena !== clave) {
+      mostrarError('Contraseña incorrecta.');
+      return;
+    }
+
+    // Obtener accesos del usuario
+    const accesos = await api('usuarios_accesos', 'GET', null,
+      `?correo_usuario=eq.${encodeURIComponent(correo)}&activo=eq.true&select=acceso_tipo`);
+
+    sesionActual = u;
+    modulosAcceso = accesos.map(a => a.acceso_tipo);
+
+    // Marcar sesión activa en Supabase
+    await api('usuarios', 'PATCH', {
+      sesion_activa: true,
+      ultima_conexion: new Date().toISOString()
+    }, `?correo_usuario=eq.${encodeURIComponent(correo)}`);
+
+    // Guardar en sessionStorage
+    sessionStorage.setItem('sd_sesion', JSON.stringify({ usuario: u, accesos: modulosAcceso }));
+
+    iniciarApp();
+
+    // Verificar vencimiento de clave DESPUÉS de iniciar app
+    if (verificarVencimientoClave(u)) {
+      mostrarCambioObligatorio(true);
+    } else {
+      const diasRestantes = diasRestantesClave(u);
+      if (diasRestantes <= 15) {
+        // Avisar si quedan 15 días o menos
+        setTimeout(() => {
+          if (confirm(`⚠️ Tu contraseña vence en ${diasRestantes} días.\n¿Deseas cambiarla ahora?`)) {
+            mostrarCambioObligatorio(false);
+          }
+        }, 1000);
+      }
+    }
+
+  } catch (e) {
+    mostrarError('No se pudo conectar al servidor. Verifique su conexión.');
+    console.error(e);
+  } finally {
+    btn.textContent = 'INGRESAR';
+    btn.disabled = false;
+  }
+}
+
+function mostrarError(msg) {
+  const el = document.getElementById('login-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// ─── INICIAR APP ───
+function iniciarApp() {
+  document.getElementById('pantalla-login').style.display = 'none';
+  document.getElementById('pantalla-app').style.display = 'block';
+
+  // Actualizar datos del usuario en sidebar
+  const nombre = sesionActual.nombre || sesionActual.correo_usuario;
+  document.getElementById('nombre-usuario').textContent = nombre;
+  document.getElementById('rol-usuario').textContent = sesionActual.administrador ? 'Administrador' : 'Operador';
+  document.getElementById('avatar-inicial').textContent = nombre.charAt(0).toUpperCase();
+
+  // Mostrar días restantes de clave
+  const diasClave = diasRestantesClave(sesionActual);
+  const elDias = document.getElementById('dias-clave');
+  if (elDias) {
+    if (diasClave <= 15) {
+      elDias.textContent = `⚠️ Clave vence en ${diasClave}d`;
+      elDias.style.color = diasClave <= 5 ? '#fc8181' : '#FF6B00';
+    } else {
+      elDias.textContent = `🔒 Clave: ${diasClave}d restantes`;
+      elDias.style.color = '#555';
+    }
+  }
+
+  // Mostrar módulos según accesos
+  const esAdmin = sesionActual.administrador;
+  TODOS_LOS_MODULOS.forEach(m => {
+    const nav = document.getElementById(`nav-${m.sigla}`);
+    if (nav) {
+      if (esAdmin || modulosAcceso.includes(m.sigla)) {
+        nav.style.display = 'flex';
+      }
+    }
+  });
+
+  mostrarModulo('dashboard', null);
+}
+
+// ─── CERRAR SESIÓN ───
+async function cerrarSesion() {
+  if (!confirm('¿Desea cerrar sesión?')) return;
+  // Marcar sesión inactiva en Supabase
+  try {
+    await api('usuarios', 'PATCH', {
+      sesion_activa: false,
+      ultima_desconexion: new Date().toISOString()
+    }, `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`);
+  } catch(e) { console.error('Error cerrando sesión:', e); }
+
+  sesionActual = null;
+  modulosAcceso = [];
+  sessionStorage.removeItem('sd_sesion');
+  document.getElementById('pantalla-app').style.display = 'none';
+  document.getElementById('pantalla-login').style.display = 'flex';
+  document.getElementById('login-correo').value = '';
+  document.getElementById('login-clave').value = '';
+}
+
+// ─── NAVEGACIÓN ───
+function mostrarModulo(modulo, navEl) {
+  // Quitar activo de todos
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('activo'));
+  if (navEl) navEl.classList.add('activo');
+
+  const titulos = {
+    dashboard:  'DASHBOARD',
+    usuarios:   'GESTIÓN DE USUARIOS',
+    tasas:      'TIPOS DE CAMBIO',
+    parametros: 'PARÁMETROS DEL SISTEMA',
+    proximo:    'PRÓXIMAMENTE'
+  };
+
+  document.getElementById('topbar-titulo').textContent = titulos[modulo] || modulo.toUpperCase();
+
+  switch(modulo) {
+    case 'dashboard':  renderDashboard();  break;
+    case 'usuarios':   renderUsuarios();   break;
+    case 'tasas':      renderTasas();      break;
+    case 'parametros': renderParametros(); break;
+    default:           renderProximo(navEl?.querySelector('.nav-icono')?.textContent || '🔧',
+                                     navEl?.textContent.trim() || modulo);
+  }
+}
+
+// ─── DASHBOARD ───
+async function renderDashboard() {
+  const c = document.getElementById('contenido-principal');
+  c.innerHTML = `<div class="loading"><div class="spinner"></div> Cargando datos...</div>`;
+
+  try {
+    // Contar registros de tablas existentes
+    const [usuarios, tasas] = await Promise.all([
+      api('usuarios', 'GET', null, '?select=id_usuario'),
+      api('tasas', 'GET', null, '?select=id_tasa&order=fecha_registro.desc&limit=1'),
+    ]);
+
+    const ultimaTasa = tasas.length > 0 ? tasas[0] : null;
+    let tasaValor = '—';
+    if (ultimaTasa) {
+      const t = await api('tasas', 'GET', null, `?id_tasa=eq.${ultimaTasa.id_tasa}&select=tipo_cambio,moneda_origen,moneda_destino`);
+      if (t.length > 0) tasaValor = parseFloat(t[0].tipo_cambio).toFixed(2);
+    }
+
+    const hora = new Date().toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' });
+
+    c.innerHTML = `
+      <div class="bienvenida">
+        <div>
+          <h1>BIENVENIDO</h1>
+          <p>${sesionActual.nombre} · ${sesionActual.administrador ? 'Administrador del Sistema' : 'Operador'}</p>
+          <p style="margin-top:6px;font-size:12px;color:#555">S&D Systems Automotriz · Fase 1 activa</p>
+        </div>
+        <div class="hora">${hora}</div>
+      </div>
+
+      <div class="tarjetas-grid">
+        <div class="tarjeta-stat" onclick="mostrarModulo('usuarios', document.getElementById('nav-USUARIOS'))">
+          <div class="tarjeta-icono">👥</div>
+          <div class="tarjeta-valor">${usuarios.length}</div>
+          <div class="tarjeta-nombre">Usuarios</div>
+        </div>
+        <div class="tarjeta-stat" onclick="mostrarModulo('tasas', document.getElementById('nav-TASAS'))">
+          <div class="tarjeta-icono">💱</div>
+          <div class="tarjeta-valor">${tasaValor}</div>
+          <div class="tarjeta-nombre">Última Tasa USD</div>
+        </div>
+        <div class="tarjeta-stat" style="cursor:default">
+          <div class="tarjeta-icono">🚗</div>
+          <div class="tarjeta-valor">—</div>
+          <div class="tarjeta-nombre">Vehículos · Fase 2</div>
+        </div>
+        <div class="tarjeta-stat" style="cursor:default">
+          <div class="tarjeta-icono">🔧</div>
+          <div class="tarjeta-valor">—</div>
+          <div class="tarjeta-nombre">Servicios · Fase 3</div>
+        </div>
+        <div class="tarjeta-stat" style="cursor:default">
+          <div class="tarjeta-icono">🧾</div>
+          <div class="tarjeta-valor">—</div>
+          <div class="tarjeta-nombre">Facturas · Fase 4</div>
+        </div>
+        <div class="tarjeta-stat" style="cursor:default">
+          <div class="tarjeta-icono">👷</div>
+          <div class="tarjeta-valor">—</div>
+          <div class="tarjeta-nombre">Empleados · Fase 5</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Estado del Sistema</h3>
+          <span class="badge badge-verde">● EN LÍNEA</span>
+        </div>
+        <div style="padding:20px 24px">
+          <table>
+            <thead>
+              <tr>
+                <th>Módulo</th>
+                <th>Fase</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Login y Control de Accesos</td><td>Fase 1</td><td><span class="badge badge-verde">Activo</span></td></tr>
+              <tr><td>Usuarios y Permisos</td><td>Fase 1</td><td><span class="badge badge-verde">Activo</span></td></tr>
+              <tr><td>Tipos de Cambio</td><td>Fase 1</td><td><span class="badge badge-verde">Activo</span></td></tr>
+              <tr><td>Vehículos y Propietarios</td><td>Fase 2</td><td><span class="badge badge-gris">Pendiente</span></td></tr>
+              <tr><td>Órdenes de Servicio</td><td>Fase 3</td><td><span class="badge badge-gris">Pendiente</span></td></tr>
+              <tr><td>Facturación y Pagos</td><td>Fase 4</td><td><span class="badge badge-gris">Pendiente</span></td></tr>
+              <tr><td>Empleados y Nómina</td><td>Fase 5</td><td><span class="badge badge-gris">Pendiente</span></td></tr>
+              <tr><td>Proveedores y Tributos</td><td>Fase 6</td><td><span class="badge badge-gris">Pendiente</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    c.innerHTML = `<div class="alerta alerta-error" style="display:block">Error cargando datos: ${e.message}</div>`;
+  }
+}
+
+// ─── MÓDULO USUARIOS ───
+let usuariosCache = [];
+
+async function renderUsuarios() {
+  if (!sesionActual?.administrador && !modulosAcceso.includes('USUARIOS')) {
+    document.getElementById('contenido-principal').innerHTML =
+      `<div class="alerta alerta-error" style="display:block">No tiene acceso a este módulo.</div>`;
+    return;
+  }
+
+  const c = document.getElementById('contenido-principal');
+  c.innerHTML = `<div class="loading"><div class="spinner"></div> Cargando usuarios...</div>`;
+
+  try {
+    const usuarios = await api('usuarios', 'GET', null, '?select=*&order=fecha_registro.asc');
+    usuariosCache = usuarios;
+
+    const filas = usuarios.map(u => {
+      const enLinea = u.sesion_activa === true;
+      const ultimaCon = u.ultima_conexion
+        ? new Date(u.ultima_conexion).toLocaleString('es-VE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
+        : 'Nunca';
+      const ultimaDes = u.ultima_desconexion
+        ? new Date(u.ultima_desconexion).toLocaleString('es-VE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
+        : '—';
+
+      return `
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="position:relative">
+              <div class="usuario-avatar" style="width:30px;height:30px;font-size:13px">${u.nombre.charAt(0)}</div>
+              <div style="position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;background:${enLinea ? '#38a169' : '#444'};border:2px solid var(--gris1)"></div>
+            </div>
+            <div>
+              <div style="font-weight:500">${u.nombre}</div>
+              <div style="font-size:11px;color:var(--suave)">${u.correo_usuario}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="badge ${u.administrador ? 'badge-naranja' : 'badge-gris'}">${u.administrador ? 'Admin' : 'Operador'}</span></td>
+        <td>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span class="badge ${u.estado_usuario === 'ACTIVO' ? 'badge-verde' : 'badge-rojo'}">${u.estado_usuario}</span>
+            <span style="font-size:10px;color:${enLinea ? '#68d391' : 'var(--suave)'}">
+              ${enLinea ? '● En línea' : '○ Desconectado'}
+            </span>
+          </div>
+        </td>
+        <td style="font-size:11px;color:var(--suave)">
+          <div>Reg: ${new Date(u.fecha_registro).toLocaleDateString('es-VE')}</div>
+          <div style="margin-top:3px">Ent: ${ultimaCon}</div>
+          <div style="margin-top:3px;color:#444">Sal: ${ultimaDes}</div>
+        </td>
+        <td>
+          <div style="display:flex;gap:8px">
+            <button class="btn-secundario" onclick="abrirEditarUsuario(${u.id_usuario})">Editar</button>
+            <button class="btn-secundario" onclick="resetearClave('${u.correo_usuario}','${u.nombre}')" title="Enviar correo de recuperación">🔑 Reset</button>
+            ${u.correo_usuario !== sesionActual.correo_usuario
+              ? `<button class="btn-peligro" onclick="eliminarUsuario(${u.id_usuario},'${u.nombre}')">Eliminar</button>`
+              : `<span style="font-size:11px;color:var(--suave);padding:8px 4px">Tú</span>`}
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+    c.innerHTML = `
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Usuarios del Sistema (${usuarios.length})</h3>
+          <div style="display:flex;gap:10px;align-items:center">
+            <span style="font-size:11px;color:var(--suave)" id="ultima-actualizacion">Actualizado: ahora</span>
+            <button class="btn-secundario" onclick="renderUsuarios()">↻ Actualizar</button>
+            <button class="btn-primario" onclick="abrirNuevoUsuario()">+ Nuevo Usuario</button>
+          </div>
+        </div>
+        <div class="tabla-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Tipo</th>
+                <th>Estado / Conexión</th>
+                <th>Fechas</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>${filas}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  } catch(e) {
+    c.innerHTML = `<div class="alerta alerta-error" style="display:block">Error: ${e.message}</div>`;
+  }
+}
+
+function abrirNuevoUsuario() {
+  document.getElementById('modal-titulo').textContent = 'NUEVO USUARIO';
+  document.getElementById('u-nombre').value = '';
+  document.getElementById('u-correo').value = '';
+  document.getElementById('u-clave').value = '';
+  document.getElementById('u-estado').value = 'ACTIVO';
+  document.getElementById('u-admin').value = 'false';
+  document.getElementById('u-id-editando').value = '';
+  document.getElementById('u-correo').disabled = false;
+  document.getElementById('alerta-modal-ok').style.display = 'none';
+  document.getElementById('alerta-modal-error').style.display = 'none';
+  document.getElementById('fortaleza-usuario').style.display = 'none';
+  document.getElementById('fortaleza-fill-u').style.width = '0%';
+  renderAccesosModal([]);
+  abrirModal('modal-usuario');
+}
+
+async function abrirEditarUsuario(id) {
+  const u = usuariosCache.find(x => x.id_usuario === id);
+  if (!u) return;
+
+  document.getElementById('modal-titulo').textContent = 'EDITAR USUARIO';
+  document.getElementById('u-nombre').value = u.nombre;
+  document.getElementById('u-correo').value = u.correo_usuario;
+  document.getElementById('u-correo').disabled = true;
+  document.getElementById('u-clave').value = '';
+  document.getElementById('u-estado').value = u.estado_usuario;
+  document.getElementById('u-admin').value = u.administrador ? 'true' : 'false';
+  document.getElementById('u-id-editando').value = id;
+  document.getElementById('alerta-modal-ok').style.display = 'none';
+  document.getElementById('alerta-modal-error').style.display = 'none';
+
+  // Cargar accesos actuales
+  const accesos = await api('usuarios_accesos', 'GET', null,
+    `?correo_usuario=eq.${encodeURIComponent(u.correo_usuario)}&activo=eq.true&select=acceso_tipo`);
+  const modulosActuales = accesos.map(a => a.acceso_tipo);
+  renderAccesosModal(modulosActuales);
+
+  abrirModal('modal-usuario');
+}
+
+function renderAccesosModal(seleccionados) {
+  const grid = document.getElementById('accesos-grid');
+  grid.innerHTML = TODOS_LOS_MODULOS.map(m => `
+    <div class="acceso-item ${seleccionados.includes(m.sigla) ? 'seleccionado' : ''}"
+         onclick="toggleAcceso(this, '${m.sigla}')">
+      <div class="acceso-check">${seleccionados.includes(m.sigla) ? '✓' : ''}</div>
+      <span class="acceso-nombre">${m.icono} ${m.nombre}</span>
+    </div>
+  `).join('');
+}
+
+function toggleAcceso(el, sigla) {
+  el.classList.toggle('seleccionado');
+  const check = el.querySelector('.acceso-check');
+  check.textContent = el.classList.contains('seleccionado') ? '✓' : '';
+}
+
+async function guardarUsuario() {
+  const nombre  = document.getElementById('u-nombre').value.trim();
+  const correo  = document.getElementById('u-correo').value.trim();
+  const clave   = document.getElementById('u-clave').value;
+  const estado  = document.getElementById('u-estado').value;
+  const esAdmin = document.getElementById('u-admin').value === 'true';
+  const idEdit  = document.getElementById('u-id-editando').value;
+
+  const okEl  = document.getElementById('alerta-modal-ok');
+  const errEl = document.getElementById('alerta-modal-error');
+  okEl.style.display = 'none';
+  errEl.style.display = 'none';
+
+  if (!nombre || !correo) {
+    errEl.textContent = 'Nombre y correo son obligatorios.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  if (!idEdit && !clave) {
+    errEl.textContent = 'La contraseña es obligatoria para nuevos usuarios.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  // Validar política si se ingresó una clave
+  if (clave) {
+    const erroresPol = validarPoliticaClave(clave);
+    if (erroresPol.length > 0) {
+      errEl.textContent = erroresPol[0];
+      errEl.style.display = 'block';
+      return;
+    }
+  }
+
+  // Accesos seleccionados
+  const accesosSelec = [...document.querySelectorAll('.acceso-item.seleccionado')]
+    .map(el => el.getAttribute('onclick').match(/'([^']+)'\)/)[1]);
+
+  try {
+    if (!idEdit) {
+      // NUEVO USUARIO
+      await api('usuarios', 'POST', {
+        correo_usuario: correo,
+        nombre, contrasena: clave,
+        estado_usuario: estado,
+        administrador: esAdmin
+      });
+      // Insertar accesos
+      for (const sigla of accesosSelec) {
+        await api('usuarios_accesos', 'POST', {
+          correo_usuario: correo,
+          acceso_tipo: sigla,
+          id_usuario: sesionActual.correo_usuario,
+          activo: true
+        });
+      }
+      okEl.textContent = '✓ Usuario creado exitosamente.';
+    } else {
+      // EDITAR USUARIO
+      const datos = { nombre, estado_usuario: estado, administrador: esAdmin };
+      if (clave) datos.contrasena = clave;
+      await api('usuarios', 'PATCH', datos, `?id_usuario=eq.${idEdit}`);
+
+      // Actualizar accesos: borrar y reinsertar
+      const correoEdit = usuariosCache.find(u => u.id_usuario == idEdit)?.correo_usuario;
+      if (correoEdit) {
+        await api('usuarios_accesos', 'DELETE', null, `?correo_usuario=eq.${encodeURIComponent(correoEdit)}`);
+        for (const sigla of accesosSelec) {
+          await api('usuarios_accesos', 'POST', {
+            correo_usuario: correoEdit,
+            acceso_tipo: sigla,
+            id_usuario: sesionActual.correo_usuario,
+            activo: true
+          });
+        }
+      }
+      okEl.textContent = '✓ Usuario actualizado exitosamente.';
+    }
+
+    okEl.style.display = 'block';
+    setTimeout(() => {
+      cerrarModal('modal-usuario');
+      renderUsuarios();
+    }, 1200);
+
+  } catch(e) {
+    errEl.textContent = `Error: ${e.message}`;
+    errEl.style.display = 'block';
+  }
+}
+
+async function eliminarUsuario(id, nombre) {
+  if (!confirm(`¿Eliminar al usuario "${nombre}"? Esta acción no se puede deshacer.`)) return;
+  try {
+    await api('usuarios', 'DELETE', null, `?id_usuario=eq.${id}`);
+    renderUsuarios();
+  } catch(e) {
+    alert('Error al eliminar: ' + e.message);
+  }
+}
+
+// ─── MÓDULO TASAS ───
+async function renderTasas() {
+  const c = document.getElementById('contenido-principal');
+  c.innerHTML = `<div class="loading"><div class="spinner"></div> Cargando tasas...</div>`;
+
+  try {
+    const tasas = await api('tasas', 'GET', null, '?select=*&order=fecha_registro.desc&limit=50');
+
+    // Hoy para input date
+    document.getElementById('t-fecha').value = new Date().toISOString().split('T')[0];
+
+    const filas = tasas.map(t => `
+      <tr>
+        <td><span class="badge badge-naranja">${t.moneda_origen}</span></td>
+        <td><span class="badge badge-gris">${t.moneda_destino}</span></td>
+        <td style="font-family:var(--font-mono);font-size:14px;color:var(--naranja)">${parseFloat(t.tipo_cambio).toFixed(4)}</td>
+        <td style="font-size:12px;color:var(--suave)">${new Date(t.fecha_valor+'T12:00:00').toLocaleDateString('es-VE')}</td>
+        <td style="font-size:11px;color:#444">${new Date(t.fecha_registro).toLocaleDateString('es-VE')}</td>
+        <td>
+          <button class="btn-peligro" onclick="eliminarTasa(${t.id_tasa})">Eliminar</button>
+        </td>
+      </tr>
+    `).join('');
+
+    c.innerHTML = `
+      <div class="panel" style="margin-bottom:24px">
+        <div class="panel-header">
+          <h3>Tipos de Cambio</h3>
+          <button class="btn-primario" onclick="abrirModal('modal-tasa')">+ Nueva Tasa</button>
+        </div>
+        <div class="tabla-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Moneda Origen</th>
+                <th>Moneda Destino</th>
+                <th>Valor</th>
+                <th>Vigencia</th>
+                <th>Registrada</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>${filas.length ? filas : '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--suave)">No hay tasas registradas</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  } catch(e) {
+    c.innerHTML = `<div class="alerta alerta-error" style="display:block">Error: ${e.message}</div>`;
+  }
+}
+
+async function guardarTasa() {
+  const origen  = document.getElementById('t-origen').value;
+  const destino = document.getElementById('t-destino').value;
+  const valor   = parseFloat(document.getElementById('t-valor').value);
+  const fecha   = document.getElementById('t-fecha').value;
+  const errEl   = document.getElementById('alerta-tasa-error');
+  errEl.style.display = 'none';
+
+  if (!valor || valor <= 0) {
+    errEl.textContent = 'Ingrese un valor de tasa válido.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (!fecha) {
+    errEl.textContent = 'Seleccione la fecha de vigencia.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (origen === destino) {
+    errEl.textContent = 'Moneda origen y destino deben ser diferentes.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    await api('tasas', 'POST', {
+      tipo_cambio: valor,
+      moneda_origen: origen,
+      moneda_destino: destino,
+      fecha_valor: fecha,
+      id_usuario: sesionActual.correo_usuario
+    });
+    cerrarModal('modal-tasa');
+    renderTasas();
+  } catch(e) {
+    errEl.textContent = `Error: ${e.message}`;
+    errEl.style.display = 'block';
+  }
+}
+
+async function eliminarTasa(id) {
+  if (!confirm('¿Eliminar esta tasa?')) return;
+  try {
+    await api('tasas', 'DELETE', null, `?id_tasa=eq.${id}`);
+    renderTasas();
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
+}
+
+// ─── MÓDULO PARÁMETROS ───
+async function renderParametros() {
+  const c = document.getElementById('contenido-principal');
+  c.innerHTML = `<div class="loading"><div class="spinner"></div> Cargando...</div>`;
+
+  try {
+    const params = await api('parametros', 'GET', null, '?select=*&limit=1');
+    const p = params[0] || {};
+
+    c.innerHTML = `
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Parámetros del Sistema</h3>
+          <button class="btn-primario" onclick="guardarParametros()">GUARDAR CAMBIOS</button>
+        </div>
+        <div style="padding:28px">
+          <div class="alerta alerta-exito" id="alerta-params-ok"></div>
+          <div class="alerta alerta-error" id="alerta-params-err"></div>
+          <div class="form-grid">
+            <div class="form-campo form-full">
+              <label>Nombre de la Empresa</label>
+              <input type="text" id="p-nombre" value="${p.nombre_empresa || 'S&D Systems Automotriz'}">
+            </div>
+            <div class="form-campo">
+              <label>RIF de la Empresa</label>
+              <input type="text" id="p-rif" value="${p.rif_empresa || ''}" placeholder="J-XXXXXXXX-X">
+            </div>
+            <div class="form-campo">
+              <label>Teléfono</label>
+              <input type="text" id="p-telefono" value="${p.telefono || ''}" placeholder="0212-XXXXXXX">
+            </div>
+            <div class="form-campo form-full">
+              <label>Correo Electrónico</label>
+              <input type="email" id="p-correo" value="${p.correo || ''}" placeholder="empresa@correo.com">
+            </div>
+            <div class="form-campo form-full">
+              <label>Dirección</label>
+              <input type="text" id="p-direccion" value="${p.direccion || ''}" placeholder="Dirección completa">
+            </div>
+            <div class="form-campo">
+              <label>Moneda Principal</label>
+              <select id="p-moneda1">
+                <option value="USD" ${p.moneda_principal==='USD'?'selected':''}>USD - Dólar</option>
+                <option value="VES" ${p.moneda_principal==='VES'?'selected':''}>VES - Bolívar</option>
+                <option value="EUR" ${p.moneda_principal==='EUR'?'selected':''}>EUR - Euro</option>
+              </select>
+            </div>
+            <div class="form-campo">
+              <label>Moneda Secundaria</label>
+              <select id="p-moneda2">
+                <option value="VES" ${p.moneda_secundaria==='VES'?'selected':''}>VES - Bolívar</option>
+                <option value="USD" ${p.moneda_secundaria==='USD'?'selected':''}>USD - Dólar</option>
+                <option value="EUR" ${p.moneda_secundaria==='EUR'?'selected':''}>EUR - Euro</option>
+              </select>
+            </div>
+          </div>
+          <input type="hidden" id="p-id" value="${p.id_parametro || ''}">
+        </div>
+      </div>
+    `;
+  } catch(e) {
+    c.innerHTML = `<div class="alerta alerta-error" style="display:block">Error: ${e.message}</div>`;
+  }
+}
+
+async function guardarParametros() {
+  const id = document.getElementById('p-id').value;
+  const datos = {
+    nombre_empresa:    document.getElementById('p-nombre').value,
+    rif_empresa:       document.getElementById('p-rif').value,
+    telefono:          document.getElementById('p-telefono').value,
+    correo:            document.getElementById('p-correo').value,
+    direccion:         document.getElementById('p-direccion').value,
+    moneda_principal:  document.getElementById('p-moneda1').value,
+    moneda_secundaria: document.getElementById('p-moneda2').value,
+    id_usuario:        sesionActual.correo_usuario
+  };
+  const okEl  = document.getElementById('alerta-params-ok');
+  const errEl = document.getElementById('alerta-params-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  try {
+    if (id) {
+      await api('parametros', 'PATCH', datos, `?id_parametro=eq.${id}`);
+    } else {
+      await api('parametros', 'POST', datos);
+    }
+    okEl.textContent = '✓ Parámetros guardados correctamente.';
+    okEl.style.display = 'block';
+    setTimeout(() => renderParametros(), 1500);
+  } catch(e) {
+    errEl.textContent = `Error: ${e.message}`;
+    errEl.style.display = 'block';
+  }
+}
+
+// ─── PRÓXIMO MÓDULO ───
+function renderProximo(icono, nombre) {
+  document.getElementById('contenido-principal').innerHTML = `
+    <div class="prox-modulo">
+      <div class="icono">${icono}</div>
+      <h3>${nombre.toUpperCase()}</h3>
+      <p>Este módulo estará disponible en la próxima fase de desarrollo.</p>
+    </div>
+  `;
+}
+
+// ─── MODALES ───
+function abrirModal(id) {
+  document.getElementById(id).classList.add('abierto');
+}
+
+function cerrarModal(id) {
+  document.getElementById(id).classList.remove('abierto');
+}
+
+// Cerrar modal al hacer clic fuera
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('abierto');
+  });
+});
+
+
+
+
+// ─── POLÍTICA DE CONTRASEÑAS ───
+
+// Valida que la clave cumpla la política de seguridad
+function validarPoliticaClave(clave) {
+  const errores = [];
+  if (clave.length < 8)                    errores.push('Mínimo 8 caracteres');
+  if (!/[A-Za-z]/.test(clave))             errores.push('Debe contener al menos una letra');
+  if (!/[0-9]/.test(clave))               errores.push('Debe contener al menos un número');
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(clave))
+                                            errores.push('Debe contener al menos un carácter especial (!@#$%...)');
+  return errores;
+}
+
+
+// Indicador de fortaleza para modal de usuario
+
+function validarFortalezaRec(clave) {
+  const fill = document.getElementById('fortaleza-fill-rec');
+  if (!fill) return;
+  const largo    = clave.length >= 8;
+  const numero   = /[0-9]/.test(clave);
+  const letra    = /[A-Za-z]/.test(clave);
+  const especial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(clave);
+  const cumple   = [largo, numero, letra, especial].filter(Boolean).length;
+  const colores  = ['#e53e3e','#e53e3e','#FF6B00','#38a169'];
+  fill.style.width      = `${cumple * 25}%`;
+  fill.style.background = colores[cumple - 1] || '#e53e3e';
+  const reqs = [
+    { key: 'largo',    ok: largo },
+    { key: 'letra',    ok: letra },
+    { key: 'numero',   ok: numero },
+    { key: 'especial', ok: especial }
+  ];
+  reqs.forEach(r => {
+    const icon = document.getElementById(`r-req-${r.key}-icon`);
+    const text = document.getElementById(`r-req-${r.key}`);
+    if (icon) { icon.textContent = r.ok ? '✓' : '✗'; icon.style.color = r.ok ? '#68d391' : '#444'; }
+    if (text) { text.style.color = r.ok ? '#68d391' : '#888'; }
+  });
+}
+
+function validarFortalezaUsuario(clave) {
+  const fill = document.getElementById('fortaleza-fill-u');
+  if (!fill) return;
+  const largo    = clave.length >= 8;
+  const numero   = /[0-9]/.test(clave);
+  const letra    = /[A-Za-z]/.test(clave);
+  const especial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(clave);
+  const cumple   = [largo, numero, letra, especial].filter(Boolean).length;
+  const colores  = ['#e53e3e','#e53e3e','#FF6B00','#38a169'];
+  fill.style.width      = `${cumple * 25}%`;
+  fill.style.background = colores[cumple - 1] || '#e53e3e';
+  const reqs = [
+    { key: 'largo',    ok: largo,    texto: 'Mínimo 8 caracteres' },
+    { key: 'letra',    ok: letra,    texto: 'Al menos una letra' },
+    { key: 'numero',   ok: numero,   texto: 'Al menos un número' },
+    { key: 'especial', ok: especial, texto: 'Al menos un carácter especial (!@#$%...)' }
+  ];
+  reqs.forEach(r => {
+    const icon = document.getElementById(`u-req-${r.key}-icon`);
+    const text = document.getElementById(`u-req-${r.key}`);
+    if (icon) { icon.textContent = r.ok ? '✓' : '✗'; icon.style.color = r.ok ? '#68d391' : '#444'; }
+    if (text) { text.style.color = r.ok ? '#68d391' : '#888'; }
+  });
+}
+
+// Mostrar requisitos al enfocar el campo
+function mostrarRequisitos() {
+  const bar = document.getElementById('fortaleza-bar');
+  if (bar) bar.style.display = 'block';
+}
+
+// Indicador visual de fortaleza
+function validarFortaleza(clave) {
+  const fill = document.getElementById('fortaleza-fill');
+  if (!fill) return;
+
+  const largo    = clave.length >= 8;
+  const numero   = /[0-9]/.test(clave);
+  const letra    = /[A-Za-z]/.test(clave);
+  const especial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(clave);
+
+  const cumple = [largo, numero, letra, especial].filter(Boolean).length;
+
+  const colores = ['#e53e3e','#e53e3e','#FF6B00','#38a169'];
+  fill.style.width   = `${cumple * 25}%`;
+  fill.style.background = colores[cumple - 1] || '#e53e3e';
+
+  const reqs = [
+    { key: 'largo',    ok: largo,    texto: 'Mínimo 8 caracteres' },
+    { key: 'letra',    ok: letra,    texto: 'Al menos una letra' },
+    { key: 'numero',   ok: numero,   texto: 'Al menos un número' },
+    { key: 'especial', ok: especial, texto: 'Al menos un carácter especial (!@#$%...)' }
+  ];
+  reqs.forEach(r => {
+    const icon = document.getElementById(`req-${r.key}-icon`);
+    const text = document.getElementById(`req-${r.key}`);
+    if (icon) { icon.textContent = r.ok ? '✓' : '✗'; icon.style.color = r.ok ? '#68d391' : '#444'; }
+    if (text) { text.style.color = r.ok ? '#68d391' : '#888'; }
+  });
+}
+
+// Verificar si la clave ya fue usada antes (historial completo, nunca se puede repetir)
+async function claveYaUsada(correo, nuevaClave) {
+  try {
+    const historial = await api('historial_claves', 'GET', null,
+      `?correo_usuario=eq.${encodeURIComponent(correo)}&select=contrasena`);
+    return historial.some(h => h.contrasena === nuevaClave);
+  } catch(e) { return false; }
+}
+
+// Guardar nueva clave en historial
+async function guardarEnHistorial(correo, clave) {
+  try {
+    await api('historial_claves', 'POST', { correo_usuario: correo, contrasena: clave });
+  } catch(e) { console.error('Error guardando historial:', e); }
+}
+
+// Verificar vencimiento de clave al hacer login
+function verificarVencimientoClave(usuario) {
+  if (!usuario.fecha_clave) return false;
+  const fechaClave = new Date(usuario.fecha_clave);
+  const hoy = new Date();
+  const diasTranscurridos = Math.floor((hoy - fechaClave) / (1000 * 60 * 60 * 24));
+  return diasTranscurridos >= 180;
+}
+
+function diasRestantesClave(usuario) {
+  if (!usuario.fecha_clave) return 180;
+  const fechaClave = new Date(usuario.fecha_clave);
+  const hoy = new Date();
+  const diasTranscurridos = Math.floor((hoy - fechaClave) / (1000 * 60 * 60 * 24));
+  return Math.max(0, 180 - diasTranscurridos);
+}
+
+// Mostrar modal de cambio obligatorio
+function mostrarCambioObligatorio(vencida = false) {
+  const modal = document.getElementById('modal-cambio-clave');
+  const aviso = document.getElementById('cambio-aviso');
+  const titulo = document.getElementById('cambio-titulo');
+  modal.style.display = 'flex';
+  if (vencida) {
+    aviso.style.display = 'block';
+    titulo.textContent = 'CONTRASEÑA VENCIDA';
+  } else {
+    aviso.style.display = 'none';
+    titulo.textContent = 'CAMBIAR CONTRASEÑA';
+  }
+  document.getElementById('cambio-nueva').value = '';
+  document.getElementById('cambio-confirmar').value = '';
+  document.getElementById('cambio-error').style.display = 'none';
+  document.getElementById('cambio-exito').style.display = 'none';
+}
+
+// Procesar el cambio de clave
+async function procesarCambioClave() {
+  const nueva     = document.getElementById('cambio-nueva').value;
+  const confirmar = document.getElementById('cambio-confirmar').value;
+  const errEl     = document.getElementById('cambio-error');
+  const okEl      = document.getElementById('cambio-exito');
+  errEl.style.display = 'none';
+  okEl.style.display  = 'none';
+
+  // Validar política
+  const errores = validarPoliticaClave(nueva);
+  if (errores.length > 0) {
+    errEl.textContent = errores[0];
+    errEl.style.display = 'block';
+    return;
+  }
+
+  if (nueva !== confirmar) {
+    errEl.textContent = 'Las contraseñas no coinciden.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  // Verificar que no sea igual a la anterior
+  const yaUsada = await claveYaUsada(sesionActual.correo_usuario, nueva);
+  if (yaUsada) {
+    errEl.textContent = 'La nueva contraseña no puede ser igual a una contraseña anterior.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    // Actualizar contraseña y fecha
+    await api('usuarios', 'PATCH', {
+      contrasena: nueva,
+      fecha_clave: new Date().toISOString().split('T')[0]
+    }, `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`);
+
+    // Guardar en historial
+    await guardarEnHistorial(sesionActual.correo_usuario, nueva);
+
+    // Actualizar sesión local
+    sesionActual.contrasena = nueva;
+    sesionActual.fecha_clave = new Date().toISOString().split('T')[0];
+    sessionStorage.setItem('sd_sesion', JSON.stringify({ usuario: sesionActual, accesos: modulosAcceso }));
+
+    okEl.textContent = '✓ Contraseña actualizada correctamente.';
+    okEl.style.display = 'block';
+
+    setTimeout(() => {
+      document.getElementById('modal-cambio-clave').style.display = 'none';
+    }, 1500);
+
+  } catch(e) {
+    errEl.textContent = 'Error al actualizar. Intente nuevamente.';
+    errEl.style.display = 'block';
+  }
+}
+
+// ─── RECUPERACIÓN DE CONTRASEÑA ───
+const GMAIL_USER = 'syd.systems2001@gmail.com';
+const GMAIL_PASS = 'xmuhiofyfvcxvskx';
+
+function mostrarRecuperar() {
+  document.querySelector('.login-form-box').style.display = 'none';
+  document.getElementById('form-recuperar').style.display = 'block';
+  document.getElementById('form-nueva-clave').style.display = 'none';
+  document.getElementById('rec-correo').value = '';
+  document.getElementById('rec-error').style.display = 'none';
+  document.getElementById('rec-exito').style.display = 'none';
+}
+
+function mostrarLogin() {
+  document.querySelector('.login-form-box').style.display = 'block';
+  document.getElementById('form-recuperar').style.display = 'none';
+  document.getElementById('form-nueva-clave').style.display = 'none';
+}
+
+function generarToken() {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36) + Math.random().toString(36).substring(2);
+}
+
+async function enviarCorreoRecuperacion(destinatario, nombre, enlace, esAdmin = false) {
+  const asunto = esAdmin
+    ? 'Restablecimiento de contraseña — S&D Systems Automotriz'
+    : 'Recuperación de contraseña — S&D Systems Automotriz';
+
+  const intro = esAdmin
+    ? 'El administrador del sistema ha solicitado restablecer tu contraseña de acceso.'
+    : 'Recibimos una solicitud para restablecer la contraseña de tu cuenta.';
+
+  const btnTexto = esAdmin ? 'CREAR NUEVA CONTRASEÑA' : 'RESTABLECER CONTRASEÑA';
+
+  const htmlCorreo = `
+    <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;background:#0a0a0a;color:#e8e8e8;padding:40px;border-radius:10px">
+      <div style="text-align:center;margin-bottom:30px">
+        <h1 style="color:#FF6B00;font-size:36px;letter-spacing:4px;margin:0">S&D</h1>
+        <p style="color:#888;font-size:11px;letter-spacing:4px;margin:4px 0 0">SYSTEMS AUTOMOTRIZ</p>
+      </div>
+      <h2 style="color:#e8e8e8;font-size:18px">Hola, ${nombre}</h2>
+      <p style="color:#888;font-size:14px;line-height:1.6">${intro}</p>
+      <div style="text-align:center;margin:30px 0">
+        <a href="${enlace}" style="background:#FF6B00;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:bold;letter-spacing:2px">${btnTexto}</a>
+      </div>
+      <p style="color:#555;font-size:12px">Este enlace es válido por <strong style="color:#888">30 minutos</strong>.<br>Si no solicitaste este cambio, ignora este correo.</p>
+      <hr style="border:none;border-top:1px solid #333;margin:24px 0">
+      <p style="color:#444;font-size:11px;text-align:center">S&D Systems Automotriz · Sistema de Gestión</p>
+    </div>`;
+
+  const resp = await fetch(`${SUPABASE_URL}/functions/v1/resend-email`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ to: destinatario, subject: asunto, html: htmlCorreo })
+  });
+
+  if (!resp.ok) throw new Error('No se pudo enviar el correo');
+  return true;
+}
+
+async function enviarRecuperacion() {
+  const correo = document.getElementById('rec-correo').value.trim();
+  const errEl  = document.getElementById('rec-error');
+  const okEl   = document.getElementById('rec-exito');
+  errEl.style.display = 'none';
+  okEl.style.display  = 'none';
+
+  if (!correo) {
+    errEl.textContent = 'Ingrese su correo electrónico.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    // Verificar que el correo existe
+    const usuarios = await api('usuarios', 'GET', null,
+      `?correo_usuario=eq.${encodeURIComponent(correo)}&select=correo_usuario,nombre,estado_usuario`);
+
+    if (!usuarios || usuarios.length === 0) {
+      errEl.textContent = 'No existe ningún usuario con ese correo.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    if (usuarios[0].estado_usuario !== 'ACTIVO') {
+      errEl.textContent = 'Usuario inactivo. Contacte al administrador.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    const nombre = usuarios[0].nombre;
+
+    // Invalidar tokens anteriores del mismo correo
+    await api('tokens_recuperacion', 'PATCH', { usado: true },
+      `?correo=eq.${encodeURIComponent(correo)}&usado=eq.false`);
+
+    // Generar y guardar token en Supabase
+    const token = generarToken();
+    const expira = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+    await api('tokens_recuperacion', 'POST', { token, correo, expira, usado: false });
+
+    const enlace = `${window.location.origin}${window.location.pathname}?reset=${token}`;
+
+    await enviarCorreoRecuperacion(correo, nombre, enlace, false);
+
+    okEl.textContent = `✓ Enlace enviado a ${correo}. Revisa tu bandeja de entrada.`;
+    okEl.style.display = 'block';
+
+  } catch(e) {
+    errEl.textContent = 'Error al enviar el correo. Intente nuevamente.';
+    errEl.style.display = 'block';
+    console.error(e);
+  }
+}
+
+async function guardarNuevaClave() {
+  const clave1 = document.getElementById('nueva-clave').value;
+  const clave2 = document.getElementById('confirmar-clave').value;
+  const errEl  = document.getElementById('nueva-error');
+  const okEl   = document.getElementById('nueva-exito');
+  errEl.style.display = 'none';
+  okEl.style.display  = 'none';
+
+  // Validar política de contraseñas
+  const erroresPol = validarPoliticaClave(clave1);
+  if (erroresPol.length > 0) {
+    errEl.textContent = erroresPol[0];
+    errEl.style.display = 'block';
+    return;
+  }
+
+  if (clave1 !== clave2) {
+    errEl.textContent = 'Las contraseñas no coinciden.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const token  = params.get('reset');
+
+  if (!token) {
+    errEl.textContent = 'Enlace inválido. Solicita uno nuevo.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    // Verificar token en Supabase
+    const tokens = await api('tokens_recuperacion', 'GET', null,
+      `?token=eq.${token}&usado=eq.false&select=*`);
+
+    if (!tokens || tokens.length === 0) {
+      errEl.textContent = 'Enlace inválido o ya fue usado. Solicita uno nuevo.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    const datos = tokens[0];
+
+    if (new Date() > new Date(datos.expira)) {
+      errEl.textContent = 'El enlace ha expirado. Solicita uno nuevo.';
+      errEl.style.display = 'block';
+      await api('tokens_recuperacion', 'PATCH', { usado: true }, `?token=eq.${token}`);
+      return;
+    }
+
+    // Verificar que no sea igual a una anterior
+    const yaUsada = await claveYaUsada(datos.correo, clave1);
+    if (yaUsada) {
+      errEl.textContent = 'La nueva contraseña no puede ser igual a una contraseña anterior.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    // Actualizar contraseña y fecha
+    await api('usuarios', 'PATCH', {
+      contrasena: clave1,
+      fecha_clave: new Date().toISOString().split('T')[0]
+    }, `?correo_usuario=eq.${encodeURIComponent(datos.correo)}`);
+
+    // Guardar en historial
+    await guardarEnHistorial(datos.correo, clave1);
+
+    // Marcar token como usado
+    await api('tokens_recuperacion', 'PATCH', { usado: true }, `?token=eq.${token}`);
+
+    okEl.textContent = '✓ Contraseña actualizada. Puedes iniciar sesión.';
+    okEl.style.display = 'block';
+
+    setTimeout(() => {
+      window.history.replaceState({}, '', window.location.pathname);
+      mostrarLogin();
+    }, 2500);
+
+  } catch(e) {
+    errEl.textContent = 'Error al actualizar la contraseña. Intente nuevamente.';
+    errEl.style.display = 'block';
+    console.error(e);
+  }
+}
+
+// ─── RESET DESDE PANEL ADMIN ───
+async function resetearClave(correo, nombre) {
+  if (!confirm(`¿Enviar correo de recuperación a ${nombre} (${correo})?`)) return;
+
+  try {
+    // Invalidar tokens anteriores
+    await api('tokens_recuperacion', 'PATCH', { usado: true },
+      `?correo=eq.${encodeURIComponent(correo)}&usado=eq.false`);
+
+    const token  = generarToken();
+    const expira = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+    await api('tokens_recuperacion', 'POST', { token, correo, expira, usado: false });
+
+    const enlace = `${window.location.origin}${window.location.pathname}?reset=${token}`;
+
+    await enviarCorreoRecuperacion(correo, nombre, enlace, true);
+
+    alert(`✓ Correo de recuperación enviado a ${correo}`);
+  } catch(e) {
+    alert('Error al enviar el correo: ' + e.message);
+    console.error(e);
+  }
+}
+
+// ─── DETECTAR TOKEN EN URL ───
+window.addEventListener('load', () => {
+  const params = new URLSearchParams(window.location.search);
+  const token  = params.get('reset');
+  if (token) {
+    document.querySelector('.login-form-box').style.display = 'none';
+    document.getElementById('form-recuperar').style.display = 'none';
+    document.getElementById('form-nueva-clave').style.display = 'block';
+  }
+});
+
+// Marcar desconexión si cierra el navegador
+window.addEventListener('beforeunload', async () => {
+  if (sesionActual) {
+    navigator.sendBeacon(
+      `${SUPABASE_URL}/rest/v1/usuarios?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`,
+      JSON.stringify({ sesion_activa: false, ultima_desconexion: new Date().toISOString() })
+    );
+  }
+});
+
+// ─── VERIFICAR SESIÓN AL CARGAR ───
+window.addEventListener('load', () => {
+  const guardado = sessionStorage.getItem('sd_sesion');
+  if (guardado) {
+    try {
+      const { usuario, accesos } = JSON.parse(guardado);
+      sesionActual = usuario;
+      modulosAcceso = accesos;
+      iniciarApp();
+    } catch(e) {
+      sessionStorage.removeItem('sd_sesion');
+    }
+  }
+});
+</script>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay abierto" id="modal-cambio-clave" style="display:none;z-index:2000">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="cambio-titulo">CAMBIAR CONTRASEÑA</h3>
+    </div>
+    <div class="modal-body">
+      <div id="cambio-aviso" style="background:rgba(255,107,0,0.1);border:1px solid rgba(255,107,0,0.3);color:var(--naranja);padding:12px 16px;border-radius:6px;font-size:13px;margin-bottom:20px;display:none">
+        ⚠️ Tu contraseña ha vencido. Debes crear una nueva para continuar.
+      </div>
+      <div class="alerta alerta-error"  id="cambio-error"  style="display:none"></div>
+      <div class="alerta alerta-exito" id="cambio-exito" style="display:none"></div>
+
+      <div class="form-grid">
+        <div class="form-campo form-full">
+          <label>Nueva Contraseña</label>
+          <input type="password" id="cambio-nueva" placeholder="Mínimo 8 caracteres" oninput="validarFortaleza(this.value)" onfocus="mostrarRequisitos()">
+          <!-- Indicador de fortaleza -->
+          <div id="fortaleza-bar" style="margin-top:12px">
+            <div style="height:4px;background:var(--borde);border-radius:2px;overflow:hidden;margin-bottom:10px">
+              <div id="fortaleza-fill" style="height:100%;width:0%;transition:width 0.3s,background 0.3s;border-radius:2px"></div>
+            </div>
+            <div style="font-size:10px;font-weight:600;letter-spacing:1px;color:var(--suave);text-transform:uppercase;margin-bottom:8px">Requisitos de la contraseña</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span id="req-largo-icon"    style="font-size:12px;width:16px;text-align:center;color:#444">✗</span>
+                <span id="req-largo"         style="font-size:12px;color:#444">Mínimo 8 caracteres</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span id="req-letra-icon"    style="font-size:12px;width:16px;text-align:center;color:#444">✗</span>
+                <span id="req-letra"         style="font-size:12px;color:#444">Al menos una letra</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span id="req-numero-icon"   style="font-size:12px;width:16px;text-align:center;color:#444">✗</span>
+                <span id="req-numero"        style="font-size:12px;color:#444">Al menos un número</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span id="req-especial-icon" style="font-size:12px;width:16px;text-align:center;color:#444">✗</span>
+                <span id="req-especial"      style="font-size:12px;color:#444">Al menos un carácter especial (!@#$%...)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="form-campo form-full">
+          <label>Confirmar Nueva Contraseña</label>
+          <input type="password" id="cambio-confirmar" placeholder="Repite la contraseña">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primario" onclick="procesarCambioClave()">GUARDAR NUEVA CONTRASEÑA</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
