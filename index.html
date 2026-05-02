@@ -1590,10 +1590,10 @@ async function renderUsuarios() {
     usuariosCache = usuarios;
 
     const filas = usuarios.map(u => {
-      // Considerar conectado solo si ultima_conexion fue hace menos de 10 minutos
+      // Considerar conectado solo si ultima_conexion fue hace menos de 6 minutos
       const ahora = new Date();
-      const ultimaCon = u.ultima_conexion ? new Date(u.ultima_conexion) : null;
-      const minutosDesdeConexion = ultimaCon ? (ahora - ultimaCon) / (1000 * 60) : 999;
+      const fechaUltimaCon = u.ultima_conexion ? new Date(u.ultima_conexion) : null;
+      const minutosDesdeConexion = fechaUltimaCon ? (ahora - fechaUltimaCon) / (1000 * 60) : 999;
       const enLinea = u.sesion_activa === true && minutosDesdeConexion < 6;
       const ultimaCon = u.ultima_conexion
         ? new Date(u.ultima_conexion).toLocaleString('es-VE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
