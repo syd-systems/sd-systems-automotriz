@@ -1260,13 +1260,15 @@ function mostrarAvisoInactividad() {
 
 async function cerrarSesionInactividad() {
   detenerTimerInactividad();
-  // Marcar sesión inactiva
+  // Marcar sesión inactiva en Supabase
   try {
-    await api('usuarios', 'PATCH', {
-      sesion_activa: false,
-      ultima_desconexion: new Date().toISOString()
-    }, `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`);
-  } catch(e) {}
+    if (sesionActual) {
+      await api('usuarios', 'PATCH', {
+        sesion_activa: false,
+        ultima_desconexion: new Date().toISOString()
+      }, `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`);
+    }
+  } catch(e) { console.error('Error marcando desconexión:', e); }
 
   sesionActual   = null;
   modulosAcceso  = [];
@@ -1588,7 +1590,11 @@ async function renderUsuarios() {
     usuariosCache = usuarios;
 
     const filas = usuarios.map(u => {
-      const enLinea = u.sesion_activa === true;
+      // Considerar conectado solo si ultima_conexion fue hace menos de 10 minutos
+      const ahora = new Date();
+      const ultimaCon = u.ultima_conexion ? new Date(u.ultima_conexion) : null;
+      const minutosDesdeConexion = ultimaCon ? (ahora - ultimaCon) / (1000 * 60) : 999;
+      const enLinea = u.sesion_activa === true && minutosDesdeConexion < 6;
       const ultimaCon = u.ultima_conexion
         ? new Date(u.ultima_conexion).toLocaleString('es-VE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
         : 'Nunca';
