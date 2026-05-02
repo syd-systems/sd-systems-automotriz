@@ -1862,22 +1862,27 @@ async function renderTasas() {
     const usdtVal = usdt && usdt.promedio ? parseFloat(usdt.promedio) : null;
 
     // Cierres desde la API (campo 'cierre') o desde el historial (penúltimo día hábil)
-    function getCierreDeHistorial(hist, fechaHoy) {
+    // Obtener el cierre anterior: último día hábil disponible estrictamente anterior a hoy
+    const hoyStr = new Date().toISOString().split('T')[0];
+
+    function getCierreAnterior(hist, valorHoy) {
       if (!hist.length) return null;
-      const diasHabiles = hist
+      // Filtrar días hábiles con fecha estrictamente anterior a hoy y con valor válido
+      const candidatos = hist
         .filter(function(h) {
-          if (!h.fecha) return false;
-          const d = new Date(h.fecha + 'T12:00:00').getDay();
-          return d >= 1 && d <= 5 && h.fecha < fechaHoy;
+          if (!h.fecha || !h.promedio) return false;
+          const f = h.fecha.split('T')[0];
+          const d = new Date(f + 'T12:00:00').getDay();
+          const val = parseFloat(h.promedio);
+          return d >= 1 && d <= 5 && f < hoyStr && val > 0 && val !== valorHoy;
         })
         .sort(function(a, b) { return b.fecha.localeCompare(a.fecha); });
-      return diasHabiles.length ? parseFloat(diasHabiles[0].promedio) : null;
+      return candidatos.length ? parseFloat(candidatos[0].promedio) : null;
     }
 
-    const hoyStr    = new Date().toISOString().split('T')[0];
-    const usdCierre  = (usd  && usd.cierre)  ? parseFloat(usd.cierre)  : getCierreDeHistorial(histUsd,  hoyStr);
-    const eurCierre  = (eur  && eur.cierre)  ? parseFloat(eur.cierre)  : getCierreDeHistorial(histEur,  hoyStr);
-    const usdtCierre = (usdt && usdt.cierre) ? parseFloat(usdt.cierre) : getCierreDeHistorial(histUsdt, hoyStr);
+    const usdCierre  = getCierreAnterior(histUsd,  usdVal);
+    const eurCierre  = getCierreAnterior(histEur,  eurVal);
+    const usdtCierre = getCierreAnterior(histUsdt, usdtVal);
 
     const horaActual = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
     const esFDS = [0, 6].includes(new Date().getDay());
