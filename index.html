@@ -1466,9 +1466,11 @@ function mostrarModulo(modulo, navEl) {
   document.getElementById('topbar-titulo').textContent = titulos[modulo] || modulo.toUpperCase();
 
   switch(modulo) {
-    case 'dashboard':  renderDashboard();  break;
-    case 'usuarios':   renderUsuarios();   break;
-    case 'tasas':      renderTasas();      break;
+    case 'dashboard':    renderDashboard();    break;
+    case 'usuarios':     renderUsuarios();     break;
+    case 'tasas':        renderTasas();        break;
+    case 'vehiculos':    renderVehiculos();    break;
+    case 'propietarios': renderPropietarios(); break;
     case 'parametros': renderParametros(); break;
     default:           renderProximo(navEl?.querySelector('.nav-icono')?.textContent || '🔧',
                                      navEl?.textContent.trim() || modulo);
