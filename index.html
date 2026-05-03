@@ -929,10 +929,10 @@
       </div>
 
       <div class="nav-seccion" id="nav-seccion-operaciones">Operaciones</div>
-      <div class="nav-item" id="nav-VEHICULOS" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
+      <div class="nav-item" id="nav-VEHICULOS" onclick="mostrarModulo('vehiculos', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">🚗</span> Vehículos
       </div>
-      <div class="nav-item" id="nav-PROPIETARIOS" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
+      <div class="nav-item" id="nav-PROPIETARIOS" onclick="mostrarModulo('propietarios', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">👤</span> Propietarios
       </div>
       <div class="nav-item" id="nav-SERVICIOS" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
@@ -2757,6 +2757,495 @@ window.addEventListener('beforeunload', async () => {
   }
 });
 
+
+// ═══════════════════════════════════════════════════════
+// FASE 2 — VEHÍCULOS Y PROPIETARIOS
+// ═══════════════════════════════════════════════════════
+
+const SUPABASE_STORAGE_URL = SUPABASE_URL + '/storage/v1/object/public/sd-systems-fotos/';
+const SUPABASE_UPLOAD_URL  = SUPABASE_URL + '/storage/v1/object/sd-systems-fotos/';
+
+// ── Subir archivo a Supabase Storage ──
+async function subirFoto(archivo, carpeta) {
+  const ext      = archivo.name.split('.').pop();
+  const nombre   = carpeta + '/' + Date.now() + '_' + Math.random().toString(36).substring(2) + '.' + ext;
+  const resp     = await fetch(SUPABASE_UPLOAD_URL + nombre, {
+    method: 'POST',
+    headers: {
+      'apikey':        SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type':  archivo.type,
+      'x-upsert':      'true'
+    },
+    body: archivo
+  });
+  if (!resp.ok) throw new Error('Error subiendo foto');
+  return SUPABASE_STORAGE_URL + nombre;
+}
+
+// ══════════════════════════════
+// MÓDULO PROPIETARIOS
+// ══════════════════════════════
+let propietariosCache = [];
+
+async function renderPropietarios() {
+  if (!sesionActual?.administrador && !modulosAcceso.includes('PROPIETARIOS')) {
+    document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
+    return;
+  }
+  const c = document.getElementById('contenido-principal');
+  c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando propietarios...</div>';
+  await cargarPropietarios();
+}
+
+async function cargarPropietarios(filtro) {
+  const c = document.getElementById('contenido-principal');
+  try {
+    let query = '?select=*,vehiculos(id_vehiculo,placa,marca,modelo)&order=fecha_registro.desc';
+    if (filtro) query += '&or=(nombre_completo.ilike.*' + filtro + '*,numero_doc.ilike.*' + filtro + '*)';
+    const props = await api('propietarios', 'GET', null, query);
+    propietariosCache = props;
+
+    const filas = props.map(function(p) {
+      const vCount = p.vehiculos ? p.vehiculos.length : 0;
+      const vList  = p.vehiculos ? p.vehiculos.map(function(v) { return v.placa; }).join(', ') : '—';
+      return '<tr>'
+        + '<td>'
+        + '<div style="display:flex;align-items:center;gap:10px">'
+        + (p.foto_documento
+          ? '<img src="' + p.foto_documento + '" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--borde)">'
+          : '<div style="width:32px;height:32px;border-radius:50%;background:var(--gris3);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--suave)">👤</div>')
+        + '<div>'
+        + '<div style="font-weight:500">' + p.nombre_completo + '</div>'
+        + '<div style="font-size:11px;color:var(--suave)">' + p.tipo_doc + '-' + p.numero_doc + '</div>'
+        + '</div></div></td>'
+        + '<td style="font-size:12px">' + (p.telefono || '—') + '</td>'
+        + '<td style="font-size:12px">' + (p.correo || '—') + '</td>'
+        + '<td><span class="badge badge-naranja" style="cursor:pointer" onclick="verVehiculosPropietario(' + p.id_propietario + ')">' + vCount + ' veh.</span></td>'
+        + '<td style="font-size:11px;color:var(--suave)">' + (vList.length > 30 ? vList.substring(0,30)+'...' : vList) + '</td>'
+        + '<td>'
+        + '<div style="display:flex;gap:6px">'
+        + '<button class="btn-secundario" onclick="abrirPropietario(' + p.id_propietario + ')">Editar</button>'
+        + '<button class="btn-secundario" onclick="verFichaPropietario(' + p.id_propietario + ')">Ficha</button>'
+        + '</div></td>'
+        + '</tr>';
+    }).join('');
+
+    c.innerHTML =
+      '<div class="panel">'
+      + '<div class="panel-header">'
+      + '<h3>Propietarios (' + props.length + ')</h3>'
+      + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+      + '<input type="text" id="buscar-prop" placeholder="Buscar por nombre o documento..." onkeyup="cargarPropietarios(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:250px">'
+      + '<button class="btn-primario" onclick="abrirPropietario(null)">+ Nuevo Propietario</button>'
+      + '</div></div>'
+      + '<div class="tabla-container"><table>'
+      + '<thead><tr><th>Propietario</th><th>Teléfono</th><th>Correo</th><th>Vehículos</th><th>Placas</th><th>Acciones</th></tr></thead>'
+      + '<tbody>' + (filas || '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--suave)">No hay propietarios registrados</td></tr>') + '</tbody>'
+      + '</table></div></div>';
+  } catch(e) {
+    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+  }
+}
+
+function abrirPropietario(id) {
+  const p = id ? propietariosCache.find(function(x) { return x.id_propietario === id; }) : null;
+  document.getElementById('modal-prop-titulo').textContent = p ? 'EDITAR PROPIETARIO' : 'NUEVO PROPIETARIO';
+  document.getElementById('prop-id').value          = p ? p.id_propietario : '';
+  document.getElementById('prop-tipo-doc').value    = p ? p.tipo_doc        : 'V';
+  document.getElementById('prop-num-doc').value     = p ? p.numero_doc      : '';
+  document.getElementById('prop-nombre').value      = p ? p.nombre_completo : '';
+  document.getElementById('prop-telefono').value    = p ? (p.telefono || '') : '';
+  document.getElementById('prop-correo').value      = p ? (p.correo || '')   : '';
+  document.getElementById('prop-direccion').value   = p ? (p.direccion || '') : '';
+  document.getElementById('prop-empresa').value     = p ? (p.empresa || '')  : '';
+  document.getElementById('prop-foto-preview').src  = p && p.foto_documento ? p.foto_documento : '';
+  document.getElementById('prop-foto-preview').style.display = p && p.foto_documento ? 'block' : 'none';
+  document.getElementById('alerta-prop-ok').style.display    = 'none';
+  document.getElementById('alerta-prop-err').style.display   = 'none';
+  abrirModal('modal-propietario');
+}
+
+async function guardarPropietario() {
+  const id      = document.getElementById('prop-id').value;
+  const tipDoc  = document.getElementById('prop-tipo-doc').value;
+  const numDoc  = document.getElementById('prop-num-doc').value.trim();
+  const nombre  = document.getElementById('prop-nombre').value.trim();
+  const tel     = document.getElementById('prop-telefono').value.trim();
+  const correo  = document.getElementById('prop-correo').value.trim();
+  const dir     = document.getElementById('prop-direccion').value.trim();
+  const emp     = document.getElementById('prop-empresa').value.trim();
+  const fotoFile= document.getElementById('prop-foto-file').files[0];
+  const okEl    = document.getElementById('alerta-prop-ok');
+  const errEl   = document.getElementById('alerta-prop-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  if (!nombre || !numDoc) {
+    errEl.textContent = 'Nombre y número de documento son obligatorios.';
+    errEl.style.display = 'block'; return;
+  }
+
+  try {
+    let fotoUrl = id ? (propietariosCache.find(function(p) { return p.id_propietario == id; })?.foto_documento || null) : null;
+    if (fotoFile) fotoUrl = await subirFoto(fotoFile, 'propietarios');
+
+    const datos = {
+      tipo_doc: tipDoc, numero_doc: numDoc, nombre_completo: nombre,
+      telefono: tel || null, correo: correo || null,
+      direccion: dir || null, empresa: emp || null,
+      foto_documento: fotoUrl, id_usuario: sesionActual.correo_usuario
+    };
+
+    if (id) {
+      await api('propietarios', 'PATCH', datos, '?id_propietario=eq.' + id);
+      okEl.textContent = '✓ Propietario actualizado.';
+    } else {
+      await api('propietarios', 'POST', datos);
+      okEl.textContent = '✓ Propietario registrado.';
+    }
+    okEl.style.display = 'block';
+    setTimeout(function() { cerrarModal('modal-propietario'); cargarPropietarios(); }, 1200);
+  } catch(e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+async function verFichaPropietario(id) {
+  const p = propietariosCache.find(function(x) { return x.id_propietario === id; });
+  if (!p) return;
+  const vehs = await api('vehiculos', 'GET', null, '?id_propietario=eq.' + id + '&select=*');
+
+  const vehsHTML = vehs.length ? vehs.map(function(v) {
+    return '<div style="background:var(--gris3);border-radius:6px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">'
+      + '<div>'
+      + '<div style="font-weight:500;font-size:14px">' + v.placa + ' — ' + v.marca + ' ' + v.modelo + ' ' + v.anio + '</div>'
+      + '<div style="font-size:11px;color:var(--suave)">' + (v.color || '') + ' · ' + (v.tipo_carroceria || '') + '</div>'
+      + '</div>'
+      + '<button class="btn-secundario" style="font-size:11px" onclick="cerrarModal(\'modal-ficha-prop\');abrirVehiculo(' + v.id_vehiculo + ')">Ver</button>'
+      + '</div>';
+  }).join('') : '<div style="color:var(--suave);font-size:13px">Sin vehículos registrados</div>';
+
+  document.getElementById('ficha-prop-contenido').innerHTML =
+    '<div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">'
+    + (p.foto_documento ? '<img src="' + p.foto_documento + '" style="width:60px;height:60px;border-radius:8px;object-fit:cover;border:2px solid var(--borde)">' : '')
+    + '<div>'
+    + '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + p.nombre_completo + '</div>'
+    + '<div style="font-size:13px;color:var(--suave)">' + p.tipo_doc + '-' + p.numero_doc + '</div>'
+    + '</div></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
+    + '<div><div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div style="font-size:13px">' + (p.telefono || '—') + '</div></div>'
+    + '<div><div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:13px">' + (p.correo || '—') + '</div></div>'
+    + '<div><div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Empresa</div><div style="font-size:13px">' + (p.empresa || '—') + '</div></div>'
+    + '<div><div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:13px">' + (p.direccion || '—') + '</div></div>'
+    + '</div>'
+    + '<div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Vehículos (' + vehs.length + ')</div>'
+    + vehsHTML;
+
+  abrirModal('modal-ficha-prop');
+}
+
+function verVehiculosPropietario(id) {
+  mostrarModulo('vehiculos', document.getElementById('nav-VEHICULOS'));
+  setTimeout(function() { filtrarVehiculosPorPropietario(id); }, 500);
+}
+
+// ══════════════════════════════
+// MÓDULO VEHÍCULOS
+// ══════════════════════════════
+let vehiculosCache = [];
+let propietariosSimple = [];
+
+async function renderVehiculos() {
+  if (!sesionActual?.administrador && !modulosAcceso.includes('VEHICULOS')) {
+    document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
+    return;
+  }
+  const c = document.getElementById('contenido-principal');
+  c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando vehículos...</div>';
+  propietariosSimple = await api('propietarios', 'GET', null, '?select=id_propietario,tipo_doc,numero_doc,nombre_completo&order=nombre_completo.asc');
+  await cargarVehiculos();
+}
+
+async function cargarVehiculos(filtro, propId) {
+  const c = document.getElementById('contenido-principal');
+  try {
+    let query = '?select=*,propietarios(id_propietario,tipo_doc,numero_doc,nombre_completo),vehiculos_fotos(url_foto,orden)&order=fecha_registro.desc';
+    if (filtro) query += '&or=(placa.ilike.*' + filtro + '*,marca.ilike.*' + filtro + '*,modelo.ilike.*' + filtro + '*)';
+    if (propId) query += '&id_propietario=eq.' + propId;
+    const vehs = await api('vehiculos', 'GET', null, query);
+    vehiculosCache = vehs;
+
+    const tarjetas = vehs.map(function(v) {
+      const prop    = v.propietarios;
+      const fotos   = v.vehiculos_fotos ? v.vehiculos_fotos.sort(function(a,b) { return a.orden - b.orden; }) : [];
+      const fotoUrl = fotos.length ? fotos[0].url_foto : null;
+      return '<div style="background:var(--gris1);border:1px solid var(--borde);border-radius:10px;overflow:hidden;transition:all 0.2s" onmouseover="this.style.borderColor=\'var(--naranja)\'" onmouseout="this.style.borderColor=\'var(--borde)\'">'
+        + '<div style="height:140px;background:var(--gris2);position:relative;overflow:hidden">'
+        + (fotoUrl
+          ? '<img src="' + fotoUrl + '" style="width:100%;height:100%;object-fit:cover">'
+          : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;color:var(--borde)">🚗</div>')
+        + '<div style="position:absolute;top:8px;right:8px"><span class="badge ' + (v.estado_vehiculo === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + v.estado_vehiculo + '</span></div>'
+        + '<div style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,0.75);color:#fff;font-family:var(--font-mono);font-size:13px;padding:3px 10px;border-radius:4px;font-weight:700">' + v.placa + '</div>'
+        + '</div>'
+        + '<div style="padding:14px 16px">'
+        + '<div style="font-family:var(--font-display);font-size:18px;letter-spacing:1px;color:var(--texto);margin-bottom:4px">' + v.marca + ' ' + v.modelo + '</div>'
+        + '<div style="font-size:12px;color:var(--suave);margin-bottom:8px">' + v.anio + (v.color ? ' · ' + v.color : '') + (v.tipo_carroceria ? ' · ' + v.tipo_carroceria : '') + '</div>'
+        + (prop ? '<div style="font-size:11px;background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:4px;padding:5px 8px;color:var(--naranja)">👤 ' + prop.nombre_completo + '</div>' : '<div style="font-size:11px;color:#444">Sin propietario</div>')
+        + '<div style="display:flex;gap:8px;margin-top:12px">'
+        + '<button class="btn-secundario" style="flex:1;font-size:11px" onclick="abrirVehiculo(' + v.id_vehiculo + ')">Editar</button>'
+        + '<button class="btn-secundario" style="flex:1;font-size:11px" onclick="verFichaVehiculo(' + v.id_vehiculo + ')">Ficha</button>'
+        + '<button class="btn-secundario" style="font-size:11px;padding:8px" onclick="verFotosVehiculo(' + v.id_vehiculo + ')">📷 ' + fotos.length + '</button>'
+        + '</div></div></div>';
+    }).join('');
+
+    c.innerHTML =
+      '<div style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">'
+      + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+      + '<input type="text" id="buscar-veh" placeholder="Buscar placa, marca, modelo..." onkeyup="cargarVehiculos(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:260px">'
+      + '<select id="filtro-prop-veh" onchange="cargarVehiculos(null, this.value || null)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none">'
+      + '<option value="">Todos los propietarios</option>'
+      + propietariosSimple.map(function(p) { return '<option value="' + p.id_propietario + '">' + p.nombre_completo + '</option>'; }).join('')
+      + '</select>'
+      + '</div>'
+      + '<button class="btn-primario" onclick="abrirVehiculo(null)">+ Nuevo Vehículo</button>'
+      + '</div>'
+      + '<div style="font-size:12px;color:var(--suave);margin-bottom:16px">' + vehs.length + ' vehículo(s) encontrado(s)</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">'
+      + (tarjetas || '<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--suave)">No hay vehículos registrados</div>')
+      + '</div>';
+  } catch(e) {
+    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+  }
+}
+
+function filtrarVehiculosPorPropietario(propId) {
+  const sel = document.getElementById('filtro-prop-veh');
+  if (sel) sel.value = propId;
+  cargarVehiculos(null, propId);
+}
+
+async function abrirVehiculo(id) {
+  const v = id ? vehiculosCache.find(function(x) { return x.id_vehiculo === id; }) : null;
+  document.getElementById('modal-veh-titulo').textContent = v ? 'EDITAR VEHÍCULO' : 'NUEVO VEHÍCULO';
+  document.getElementById('veh-id').value            = v ? v.id_vehiculo       : '';
+  document.getElementById('veh-placa').value         = v ? v.placa             : '';
+  document.getElementById('veh-marca').value         = v ? v.marca             : '';
+  document.getElementById('veh-modelo').value        = v ? v.modelo            : '';
+  document.getElementById('veh-anio').value          = v ? v.anio              : new Date().getFullYear();
+  document.getElementById('veh-color').value         = v ? (v.color || '')     : '';
+  document.getElementById('veh-carroceria').value    = v ? (v.tipo_carroceria || '') : '';
+  document.getElementById('veh-motor').value         = v ? (v.numero_motor || '')   : '';
+  document.getElementById('veh-chasis').value        = v ? (v.numero_chasis || '')  : '';
+  document.getElementById('veh-km').value            = v ? (v.kilometraje || 0)     : 0;
+  document.getElementById('veh-estado').value        = v ? v.estado_vehiculo        : 'ACTIVO';
+  document.getElementById('veh-propietario').value   = v && v.id_propietario ? v.id_propietario : '';
+  document.getElementById('veh-carnet-preview').style.display = 'none';
+  if (v && v.foto_carnet) {
+    document.getElementById('veh-carnet-preview').src = v.foto_carnet;
+    document.getElementById('veh-carnet-preview').style.display = 'block';
+  }
+  document.getElementById('alerta-veh-ok').style.display  = 'none';
+  document.getElementById('alerta-veh-err').style.display = 'none';
+  document.getElementById('veh-fotos-preview').innerHTML  = '';
+
+  // Populate propietarios dropdown
+  const sel = document.getElementById('veh-propietario');
+  sel.innerHTML = '<option value="">Sin propietario</option>'
+    + propietariosSimple.map(function(p) {
+        return '<option value="' + p.id_propietario + '" ' + (v && v.id_propietario == p.id_propietario ? 'selected' : '') + '>'
+          + p.tipo_doc + '-' + p.numero_doc + ' · ' + p.nombre_completo + '</option>';
+      }).join('');
+
+  abrirModal('modal-vehiculo');
+}
+
+async function guardarVehiculo() {
+  const id       = document.getElementById('veh-id').value;
+  const placa    = document.getElementById('veh-placa').value.trim().toUpperCase();
+  const marca    = document.getElementById('veh-marca').value.trim();
+  const modelo   = document.getElementById('veh-modelo').value.trim();
+  const anio     = parseInt(document.getElementById('veh-anio').value);
+  const color    = document.getElementById('veh-color').value.trim();
+  const carr     = document.getElementById('veh-carroceria').value.trim();
+  const motor    = document.getElementById('veh-motor').value.trim();
+  const chasis   = document.getElementById('veh-chasis').value.trim();
+  const km       = parseInt(document.getElementById('veh-km').value) || 0;
+  const estado   = document.getElementById('veh-estado').value;
+  const propId   = document.getElementById('veh-propietario').value || null;
+  const carnetF  = document.getElementById('veh-carnet-file').files[0];
+  const fotosF   = document.getElementById('veh-fotos-files').files;
+  const okEl     = document.getElementById('alerta-veh-ok');
+  const errEl    = document.getElementById('alerta-veh-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  if (!placa || !marca || !modelo || !anio) {
+    errEl.textContent = 'Placa, marca, modelo y año son obligatorios.';
+    errEl.style.display = 'block'; return;
+  }
+
+  try {
+    let carnetUrl = id ? (vehiculosCache.find(function(v) { return v.id_vehiculo == id; })?.foto_carnet || null) : null;
+    if (carnetF) carnetUrl = await subirFoto(carnetF, 'carnets');
+
+    const datos = {
+      placa, marca, modelo, anio, color: color || null,
+      tipo_carroceria: carr || null, numero_motor: motor || null,
+      numero_chasis: chasis || null, kilometraje: km,
+      estado_vehiculo: estado,
+      id_propietario: propId ? parseInt(propId) : null,
+      foto_carnet: carnetUrl,
+      id_usuario: sesionActual.correo_usuario
+    };
+
+    let vehId = id;
+    if (id) {
+      await api('vehiculos', 'PATCH', datos, '?id_vehiculo=eq.' + id);
+    } else {
+      const res = await api('vehiculos', 'POST', datos);
+      if (res && res[0]) vehId = res[0].id_vehiculo;
+    }
+
+    // Subir fotos adicionales
+    if (fotosF && fotosF.length > 0 && vehId) {
+      const fotosExistentes = await api('vehiculos_fotos', 'GET', null, '?id_vehiculo=eq.' + vehId + '&select=orden&order=orden.desc&limit=1');
+      let ordenInicial = fotosExistentes.length ? (fotosExistentes[0].orden + 1) : 1;
+      for (let i = 0; i < Math.min(fotosF.length, 8); i++) {
+        const url = await subirFoto(fotosF[i], 'vehiculos/' + vehId);
+        await api('vehiculos_fotos', 'POST', { id_vehiculo: parseInt(vehId), url_foto: url, orden: ordenInicial + i });
+      }
+    }
+
+    // Registrar en historial de propietarios si cambió
+    if (propId && vehId) {
+      await api('vehiculos_propietarios_hist', 'PATCH', { activo: false, fecha_hasta: new Date().toISOString().split('T')[0] },
+        '?id_vehiculo=eq.' + vehId + '&activo=eq.true&id_propietario=neq.' + propId);
+      const histActivo = await api('vehiculos_propietarios_hist', 'GET', null,
+        '?id_vehiculo=eq.' + vehId + '&activo=eq.true&select=id_hist');
+      if (!histActivo.length) {
+        await api('vehiculos_propietarios_hist', 'POST', {
+          id_vehiculo: parseInt(vehId), id_propietario: parseInt(propId),
+          fecha_desde: new Date().toISOString().split('T')[0], activo: true,
+          id_usuario: sesionActual.correo_usuario
+        });
+      }
+    }
+
+    okEl.textContent = '✓ Vehículo guardado correctamente.';
+    okEl.style.display = 'block';
+    setTimeout(function() { cerrarModal('modal-vehiculo'); cargarVehiculos(); }, 1200);
+  } catch(e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+async function verFichaVehiculo(id) {
+  const v = vehiculosCache.find(function(x) { return x.id_vehiculo === id; });
+  if (!v) return;
+  const [fotos, histProp] = await Promise.all([
+    api('vehiculos_fotos', 'GET', null, '?id_vehiculo=eq.' + id + '&order=orden.asc'),
+    api('vehiculos_propietarios_hist', 'GET', null, '?id_vehiculo=eq.' + id + '&select=*,propietarios(nombre_completo,tipo_doc,numero_doc)&order=fecha_desde.desc')
+  ]);
+
+  const fotosHTML = fotos.length
+    ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-bottom:20px">'
+      + fotos.map(function(f) {
+          return '<img src="' + f.url_foto + '" style="width:100%;height:80px;object-fit:cover;border-radius:6px;border:1px solid var(--borde);cursor:pointer" onclick="window.open(\'' + f.url_foto + '\',\'_blank\')">';
+        }).join('')
+      + '</div>'
+    : '<div style="color:var(--suave);font-size:12px;margin-bottom:16px">Sin fotos registradas</div>';
+
+  const histHTML = histProp.length
+    ? histProp.map(function(h) {
+        const p = h.propietarios;
+        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--borde);font-size:12px">'
+          + '<span>' + (p ? p.nombre_completo : '—') + '</span>'
+          + '<span style="color:var(--suave)">' + h.fecha_desde + (h.fecha_hasta ? ' → ' + h.fecha_hasta : ' → Actual') + '</span>'
+          + '<span class="badge ' + (h.activo ? 'badge-verde' : 'badge-gris') + '">' + (h.activo ? 'Actual' : 'Anterior') + '</span>'
+          + '</div>';
+      }).join('')
+    : '<div style="color:var(--suave);font-size:12px">Sin historial</div>';
+
+  const prop = v.propietarios;
+  document.getElementById('ficha-veh-contenido').innerHTML =
+    '<div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">'
+    + (v.foto_carnet ? '<img src="' + v.foto_carnet + '" style="height:80px;border-radius:6px;border:1px solid var(--borde);cursor:pointer" onclick="window.open(\'' + v.foto_carnet + '\',\'_blank\')">' : '')
+    + '<div>'
+    + '<div style="font-family:var(--font-display);font-size:24px;color:var(--naranja)">' + v.placa + '</div>'
+    + '<div style="font-size:16px;font-weight:500">' + v.marca + ' ' + v.modelo + ' ' + v.anio + '</div>'
+    + '<div style="font-size:12px;color:var(--suave)">' + (v.color || '') + ' · ' + (v.tipo_carroceria || '') + '</div>'
+    + '</div></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
+    + '<div><div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Motor</div><div style="font-size:13px;font-family:var(--font-mono)">' + (v.numero_motor || '—') + '</div></div>'
+    + '<div><div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Chasis</div><div style="font-size:13px;font-family:var(--font-mono)">' + (v.numero_chasis || '—') + '</div></div>'
+    + '<div><div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Kilometraje</div><div style="font-size:13px">' + (v.kilometraje || 0).toLocaleString() + ' km</div></div>'
+    + '<div><div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Estado</div><span class="badge ' + (v.estado_vehiculo === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + v.estado_vehiculo + '</span></div>'
+    + '</div>'
+    + (prop ? '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:12px 16px;margin-bottom:20px">'
+      + '<div style="font-size:9px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Propietario Actual</div>'
+      + '<div style="font-weight:500">' + prop.nombre_completo + '</div>'
+      + '<div style="font-size:11px;color:var(--suave)">' + prop.tipo_doc + '-' + prop.numero_doc + '</div>'
+      + '</div>' : '')
+    + '<div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Fotos del Vehículo</div>'
+    + fotosHTML
+    + '<div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Historial de Propietarios</div>'
+    + histHTML;
+
+  abrirModal('modal-ficha-veh');
+}
+
+async function verFotosVehiculo(id) {
+  const fotos = await api('vehiculos_fotos', 'GET', null, '?id_vehiculo=eq.' + id + '&order=orden.asc');
+  document.getElementById('gal-veh-id').value = id;
+  const cont = document.getElementById('galeria-fotos-cont');
+  cont.innerHTML = fotos.length
+    ? fotos.map(function(f) {
+        return '<div style="position:relative;border-radius:6px;overflow:hidden">'
+          + '<img src="' + f.url_foto + '" style="width:100%;height:120px;object-fit:cover;cursor:pointer" onclick="window.open(\'' + f.url_foto + '\',\'_blank\')">'
+          + '<button onclick="eliminarFoto(' + f.id_foto + ')" style="position:absolute;top:4px;right:4px;background:rgba(229,62,62,0.85);border:none;color:#fff;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:11px">✕</button>'
+          + '</div>';
+      }).join('')
+    : '<div style="color:var(--suave);font-size:13px;text-align:center;padding:20px">Sin fotos registradas</div>';
+  document.getElementById('alerta-gal-ok').style.display  = 'none';
+  document.getElementById('alerta-gal-err').style.display = 'none';
+  abrirModal('modal-galeria');
+}
+
+async function subirMasFotos() {
+  const id    = document.getElementById('gal-veh-id').value;
+  const files = document.getElementById('gal-fotos-files').files;
+  const okEl  = document.getElementById('alerta-gal-ok');
+  const errEl = document.getElementById('alerta-gal-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  if (!files.length) { errEl.textContent = 'Selecciona al menos una foto.'; errEl.style.display = 'block'; return; }
+
+  try {
+    const existentes = await api('vehiculos_fotos', 'GET', null, '?id_vehiculo=eq.' + id + '&select=id_foto');
+    if (existentes.length >= 8) { errEl.textContent = 'Máximo 8 fotos por vehículo.'; errEl.style.display = 'block'; return; }
+    const disponibles = 8 - existentes.length;
+    const orden = existentes.length + 1;
+    for (let i = 0; i < Math.min(files.length, disponibles); i++) {
+      const url = await subirFoto(files[i], 'vehiculos/' + id);
+      await api('vehiculos_fotos', 'POST', { id_vehiculo: parseInt(id), url_foto: url, orden: orden + i });
+    }
+    okEl.textContent = '✓ Fotos subidas correctamente.';
+    okEl.style.display = 'block';
+    setTimeout(function() { verFotosVehiculo(id); }, 800);
+  } catch(e) {
+    errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block';
+  }
+}
+
+async function eliminarFoto(idFoto) {
+  if (!confirm('¿Eliminar esta foto?')) return;
+  await api('vehiculos_fotos', 'DELETE', null, '?id_foto=eq.' + idFoto);
+  const id = document.getElementById('gal-veh-id').value;
+  verFotosVehiculo(id);
+}
+
+
 // ─── VERIFICAR SESIÓN AL CARGAR ───
 window.addEventListener('load', () => {
   const guardado = sessionStorage.getItem('sd_sesion');
@@ -2849,6 +3338,211 @@ window.addEventListener('load', () => {
   <button onclick="reiniciarTimerInactividad()" style="width:100%;background:var(--naranja);color:#fff;border:none;
     font-family:var(--font-display);font-size:16px;letter-spacing:2px;padding:10px;
     border-radius:5px;cursor:pointer">CONTINUAR SESIÓN</button>
+</div>
+
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL PROPIETARIO                   -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-propietario">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header">
+      <h3 id="modal-prop-titulo">NUEVO PROPIETARIO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-propietario')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alerta alerta-exito" id="alerta-prop-ok"></div>
+      <div class="alerta alerta-error"  id="alerta-prop-err"></div>
+      <div class="form-grid">
+        <div class="form-campo">
+          <label>Tipo Documento</label>
+          <select id="prop-tipo-doc">
+            <option value="V">V — Venezolano</option>
+            <option value="E">E — Extranjero</option>
+            <option value="J">J — Jurídico</option>
+            <option value="G">G — Gubernamental</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Número de Documento</label>
+          <input type="text" id="prop-num-doc" placeholder="Ej: 12345678">
+        </div>
+        <div class="form-campo form-full">
+          <label>Nombre Completo</label>
+          <input type="text" id="prop-nombre" placeholder="Nombre completo del propietario">
+        </div>
+        <div class="form-campo">
+          <label>Teléfono</label>
+          <input type="text" id="prop-telefono" placeholder="0414-0000000">
+        </div>
+        <div class="form-campo">
+          <label>Correo Electrónico</label>
+          <input type="email" id="prop-correo" placeholder="correo@ejemplo.com">
+        </div>
+        <div class="form-campo form-full">
+          <label>Dirección</label>
+          <input type="text" id="prop-direccion" placeholder="Dirección completa">
+        </div>
+        <div class="form-campo form-full">
+          <label>Empresa u Organización</label>
+          <input type="text" id="prop-empresa" placeholder="Opcional">
+        </div>
+        <div class="form-campo form-full">
+          <label>Foto del Documento de Identidad</label>
+          <input type="file" id="prop-foto-file" accept="image/*" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:8px;border-radius:5px;width:100%">
+          <img id="prop-foto-preview" style="margin-top:8px;max-height:100px;border-radius:6px;display:none">
+        </div>
+      </div>
+      <input type="hidden" id="prop-id">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-propietario')">Cancelar</button>
+      <button class="btn-primario" onclick="guardarPropietario()">GUARDAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL FICHA PROPIETARIO             -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-ficha-prop">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <h3>FICHA DEL PROPIETARIO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-prop')">✕</button>
+    </div>
+    <div class="modal-body" id="ficha-prop-contenido"></div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-prop')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL VEHÍCULO                      -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-vehiculo">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <h3 id="modal-veh-titulo">NUEVO VEHÍCULO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-vehiculo')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alerta alerta-exito" id="alerta-veh-ok"></div>
+      <div class="alerta alerta-error"  id="alerta-veh-err"></div>
+      <div class="form-grid">
+        <div class="form-campo">
+          <label>Placa</label>
+          <input type="text" id="veh-placa" placeholder="Ej: ABC123" style="text-transform:uppercase">
+        </div>
+        <div class="form-campo">
+          <label>Año</label>
+          <input type="number" id="veh-anio" min="1950" max="2030">
+        </div>
+        <div class="form-campo">
+          <label>Marca</label>
+          <input type="text" id="veh-marca" placeholder="Ej: Toyota">
+        </div>
+        <div class="form-campo">
+          <label>Modelo</label>
+          <input type="text" id="veh-modelo" placeholder="Ej: Corolla">
+        </div>
+        <div class="form-campo">
+          <label>Color</label>
+          <input type="text" id="veh-color" placeholder="Ej: Blanco">
+        </div>
+        <div class="form-campo">
+          <label>Tipo de Carrocería</label>
+          <select id="veh-carroceria">
+            <option value="">Seleccionar...</option>
+            <option>SEDAN</option><option>SUV</option><option>PICKUP</option>
+            <option>HATCHBACK</option><option>COUPE</option><option>VAN</option>
+            <option>BUS</option><option>CAMIÓN</option><option>MOTO</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Número de Motor</label>
+          <input type="text" id="veh-motor" placeholder="Número de motor">
+        </div>
+        <div class="form-campo">
+          <label>Número de Chasis</label>
+          <input type="text" id="veh-chasis" placeholder="VIN / Chasis">
+        </div>
+        <div class="form-campo">
+          <label>Kilometraje</label>
+          <input type="number" id="veh-km" min="0" placeholder="0">
+        </div>
+        <div class="form-campo">
+          <label>Estado</label>
+          <select id="veh-estado">
+            <option value="ACTIVO">Activo</option>
+            <option value="INACTIVO">Inactivo</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Propietario</label>
+          <select id="veh-propietario"></select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Foto del Carnet de Circulación</label>
+          <input type="file" id="veh-carnet-file" accept="image/*" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:8px;border-radius:5px;width:100%">
+          <img id="veh-carnet-preview" style="margin-top:8px;max-height:100px;border-radius:6px;display:none">
+        </div>
+        <div class="form-campo form-full">
+          <label>Fotos del Vehículo (máx. 8)</label>
+          <input type="file" id="veh-fotos-files" accept="image/*" multiple style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:8px;border-radius:5px;width:100%">
+          <div id="veh-fotos-preview" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
+        </div>
+      </div>
+      <input type="hidden" id="veh-id">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-vehiculo')">Cancelar</button>
+      <button class="btn-primario" onclick="guardarVehiculo()">GUARDAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL FICHA VEHÍCULO                -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-ficha-veh">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <h3>FICHA DEL VEHÍCULO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-veh')">✕</button>
+    </div>
+    <div class="modal-body" id="ficha-veh-contenido"></div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-veh')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL GALERÍA DE FOTOS              -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-galeria">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <h3>GALERÍA DE FOTOS</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-galeria')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alerta alerta-exito" id="alerta-gal-ok"></div>
+      <div class="alerta alerta-error"  id="alerta-gal-err"></div>
+      <div id="galeria-fotos-cont" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:20px"></div>
+      <div class="form-campo">
+        <label>Agregar más fotos</label>
+        <input type="file" id="gal-fotos-files" accept="image/*" multiple style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:8px;border-radius:5px;width:100%">
+      </div>
+      <input type="hidden" id="gal-veh-id">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-galeria')">Cerrar</button>
+      <button class="btn-primario" onclick="subirMasFotos()">SUBIR FOTOS</button>
+    </div>
+  </div>
 </div>
 
 </body>
