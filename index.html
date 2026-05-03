@@ -2784,13 +2784,16 @@ async function consultarCedula(tipDoc, numDoc) {
   infoEl.style.display = 'block';
 
   try {
-    const url = 'https://cedula.com.ve/api.php?cedula=' + numDoc
-      + '&nationality=' + tipDoc
-      + '&app_id=' + CEDULA_APP_ID
-      + '&access_token=' + CEDULA_TOKEN
-      + '&fmt=json';
-
-    const resp = await fetch(url);
+    // Consultar via Supabase para evitar bloqueo CORS
+    const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/consultar_cedula', {
+      method: 'POST',
+      headers: {
+        'apikey':        SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type':  'application/json'
+      },
+      body: JSON.stringify({ p_tipo: tipDoc, p_cedula: numDoc })
+    });
     const data = await resp.json();
 
     if (data && data.nombre && data.nombre !== '') {
