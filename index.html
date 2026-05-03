@@ -2798,14 +2798,15 @@ async function consultarCedula(tipDoc, numDoc) {
 
     if (data && data.error === false && data.data) {
       const d      = data.data;
-      const nombre = ((d.primer_nombre || '') + ' ' + (d.segundo_nombre || '') + ' ' + (d.primer_apellido || '') + ' ' + (d.segundo_apellido || '')).replace(/\s+/g, ' ').trim();
+      const nombre = [d.primer_nombre, d.segundo_nombre, d.primer_apellido, d.segundo_apellido]
+        .filter(function(x) { return x && x.trim(); })
+        .join(' ').trim();
       const rif    = d.rif || null;
       const estado = d.cne ? d.cne.estado : null;
       const municipio = d.cne ? d.cne.municipio : null;
       infoEl.innerHTML =
         '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.25);border-radius:6px;padding:10px 14px">'
         + '<div style="font-size:10px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">📋 Datos encontrados en el registro civil</div>'
-        + '<div style="font-size:13px;font-weight:500;color:var(--texto);margin-bottom:3px">' + nombre.trim() + '</div>'
         + '<div style="font-size:13px;font-weight:500;color:var(--texto);margin-bottom:3px">' + nombre + '</div>'
         + (rif ? '<div style="font-size:11px;color:var(--suave);margin-bottom:2px">RIF: ' + tipDoc + '-' + rif + '</div>' : '')
         + (estado ? '<div style="font-size:11px;color:var(--suave)">📍 ' + estado + (municipio ? ' · ' + municipio : '') + '</div>' : '')
