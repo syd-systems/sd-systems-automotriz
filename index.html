@@ -2765,7 +2765,57 @@ window.addEventListener('beforeunload', async () => {
 // ═══════════════════════════════════════════════════════
 
 const SUPABASE_STORAGE_URL = SUPABASE_URL + '/storage/v1/object/public/sd-systems-fotos/';
+const CEDULA_APP_ID = '2130';
+const CEDULA_TOKEN  = '32a4b5d127585d1479df5576453d6333';
 const SUPABASE_UPLOAD_URL  = SUPABASE_URL + '/storage/v1/object/sd-systems-fotos/';
+
+
+// ── Consultar cédula en cedula.com.ve ──
+async function consultarCedula(tipDoc, numDoc) {
+  const infoEl = document.getElementById('prop-cedula-info');
+  if (!infoEl) return;
+
+  if (!numDoc || numDoc.length < 5 || (tipDoc !== 'V' && tipDoc !== 'E')) {
+    infoEl.style.display = 'none';
+    return;
+  }
+
+  infoEl.innerHTML = '<div style="color:var(--suave);font-size:12px">🔍 Consultando...</div>';
+  infoEl.style.display = 'block';
+
+  try {
+    const url = 'https://cedula.com.ve/api.php?cedula=' + numDoc
+      + '&nationality=' + tipDoc
+      + '&app_id=' + CEDULA_APP_ID
+      + '&access_token=' + CEDULA_TOKEN
+      + '&fmt=json';
+
+    const resp = await fetch(url);
+    const data = await resp.json();
+
+    if (data && data.nombre && data.nombre !== '') {
+      const nombre = data.nombre + ' ' + (data.apellido || '');
+      const rif    = data.rif || null;
+      infoEl.innerHTML =
+        '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.25);border-radius:6px;padding:10px 14px">'
+        + '<div style="font-size:10px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">📋 Datos encontrados en el registro civil</div>'
+        + '<div style="font-size:13px;font-weight:500;color:var(--texto);margin-bottom:3px">' + nombre.trim() + '</div>'
+        + (rif ? '<div style="font-size:11px;color:var(--suave)">RIF: ' + tipDoc + '-' + rif + '</div>' : '')
+        + '<div style="font-size:10px;color:#555;margin-top:6px">ℹ️ Esta información es solo referencial. Verifique y complete los datos manualmente.</div>'
+        + '</div>';
+    } else {
+      infoEl.innerHTML =
+        '<div style="background:rgba(100,100,100,0.08);border:1px solid var(--borde);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--suave)">'
+        + '⚠️ No se encontraron datos para esta cédula en el registro civil.'
+        + '</div>';
+    }
+  } catch(e) {
+    infoEl.innerHTML =
+      '<div style="background:rgba(100,100,100,0.08);border:1px solid var(--borde);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--suave)">'
+      + '⚠️ No se pudo conectar al servicio de consulta.'
+      + '</div>';
+  }
+}
 
 // ── Subir archivo a Supabase Storage ──
 async function subirFoto(archivo, carpeta) {
@@ -2865,6 +2915,8 @@ function abrirPropietario(id) {
   document.getElementById('prop-foto-preview').style.display = p && p.foto_documento ? 'block' : 'none';
   document.getElementById('alerta-prop-ok').style.display    = 'none';
   document.getElementById('alerta-prop-err').style.display   = 'none';
+  const infoEl = document.getElementById('prop-cedula-info');
+  if (infoEl) infoEl.style.display = 'none';
   abrirModal('modal-propietario');
 }
 
@@ -3358,7 +3410,7 @@ window.addEventListener('load', () => {
       <div class="form-grid">
         <div class="form-campo">
           <label>Tipo Documento</label>
-          <select id="prop-tipo-doc">
+          <select id="prop-tipo-doc" onchange="consultarCedula(this.value, document.getElementById('prop-num-doc').value)">
             <option value="V">V — Venezolano</option>
             <option value="E">E — Extranjero</option>
             <option value="J">J — Jurídico</option>
@@ -3367,8 +3419,10 @@ window.addEventListener('load', () => {
         </div>
         <div class="form-campo">
           <label>Número de Documento</label>
-          <input type="text" id="prop-num-doc" placeholder="Ej: 12345678">
+          <input type="text" id="prop-num-doc" placeholder="Ej: 12345678"
+            oninput="if(this.value.length>=6) consultarCedula(document.getElementById('prop-tipo-doc').value, this.value)">
         </div>
+        <div style="grid-column:1/-1" id="prop-cedula-info" style="display:none"></div>
         <div class="form-campo form-full">
           <label>Nombre Completo</label>
           <input type="text" id="prop-nombre" placeholder="Nombre completo del propietario">
