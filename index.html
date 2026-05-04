@@ -3213,7 +3213,7 @@ async function verFichaVehiculo(id) {
   const fotosHTML = fotos.length
     ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-bottom:20px">'
       + fotos.map(function(f) {
-          return '<img src="' + f.url_foto + '" style="width:100%;height:80px;object-fit:cover;border-radius:6px;border:1px solid var(--borde);cursor:pointer" onclick="window.open(\'' + f.url_foto + '\',\'_blank\')">';
+          return '<img src="' + f.url_foto + '" style="width:100%;height:80px;object-fit:cover;border-radius:6px;border:1px solid var(--borde);cursor:pointer" onclick="abrirVisor(\'' + f.url_foto + '\')">';
         }).join('')
       + '</div>'
     : '<div style="color:var(--suave);font-size:12px;margin-bottom:16px">Sin fotos registradas</div>';
@@ -3232,7 +3232,7 @@ async function verFichaVehiculo(id) {
   const prop = v.propietarios;
   document.getElementById('ficha-veh-contenido').innerHTML =
     '<div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">'
-    + (v.foto_carnet ? '<img src="' + v.foto_carnet + '" style="height:80px;border-radius:6px;border:1px solid var(--borde);cursor:pointer" onclick="window.open(\'' + v.foto_carnet + '\',\'_blank\')">' : '')
+    + (v.foto_carnet ? '<img src="' + v.foto_carnet + '" style="height:80px;border-radius:6px;border:1px solid var(--borde);cursor:pointer" onclick="abrirVisor(\'' + v.foto_carnet + '\')">' : '')
     + '<div>'
     + '<div style="font-family:var(--font-display);font-size:24px;color:var(--naranja)">' + v.placa + '</div>'
     + '<div style="font-size:16px;font-weight:500">' + v.marca + ' ' + v.modelo + ' ' + v.anio + '</div>'
@@ -3264,7 +3264,7 @@ async function verFotosVehiculo(id) {
   cont.innerHTML = fotos.length
     ? fotos.map(function(f) {
         return '<div style="position:relative;border-radius:6px;overflow:hidden">'
-          + '<img src="' + f.url_foto + '" style="width:100%;height:120px;object-fit:cover;cursor:pointer" onclick="window.open(\'' + f.url_foto + '\',\'_blank\')">'
+          + '<img src="' + f.url_foto + '" style="width:100%;height:120px;object-fit:cover;cursor:pointer" onclick="abrirVisor(\'' + f.url_foto + '\')">'
           + '<button onclick="eliminarFoto(' + f.id_foto + ')" style="position:absolute;top:4px;right:4px;background:rgba(229,62,62,0.85);border:none;color:#fff;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:11px">✕</button>'
           + '</div>';
       }).join('')
