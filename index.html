@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260505230000 -->
+<!-- v20260505240000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -2944,7 +2944,7 @@ async function cargarPropietarios(filtro) {
       + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
       + '<input type="text" id="buscar-prop" placeholder="Buscar por nombre o documento..." '
       + 'onkeyup="cargarPropietarios(this.value)" '
-      + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();cargarPropietarios(this.value)}" '
+      + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();cargarPropietarios(this.value)}else if(event.key===\'Escape\'){this.value=\'\';cargarPropietarios(\'\')}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:250px">'
       + '<button class="btn-primario" onclick="abrirPropietario(null)">+ Nuevo Propietario</button>'
       + '</div></div>'
@@ -3163,7 +3163,7 @@ async function cargarVehiculos(filtro, propId) {
       + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
       + '<input type="text" id="buscar-veh" placeholder="Buscar placa, marca, modelo..." '
       + 'onkeyup="buscarVehiculos(this.value)" '
-      + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();buscarVehiculos(this.value)}" '
+      + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();buscarVehiculos(this.value)}else if(event.key===\'Escape\'){this.value=\'\';buscarVehiculos(\'\')}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:240px">'
       + '<select id="filtro-prop-veh" onchange="filtrarVehiculosPorPropietario(this.value || null)" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none">'
