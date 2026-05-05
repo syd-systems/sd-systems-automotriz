@@ -813,7 +813,8 @@
 
       <div class="campo">
         <label>Correo Electrónico</label>
-        <input type="email" id="login-correo" placeholder="usuario@correo.com" autocomplete="email" onblur="if(this.value.includes('@')) document.getElementById('login-clave').focus()">
+        <input type="email" id="login-correo" placeholder="usuario@correo.com" autocomplete="email"
+  onkeydown="if((event.key==='Tab'||event.key==='Enter')&&this.value.includes('@')){event.preventDefault();document.getElementById('login-clave').focus();}">
       </div>
 
       <div class="campo">
@@ -1303,8 +1304,12 @@ actualizarReloj();
 document.getElementById('login-clave').addEventListener('keypress', e => {
   if (e.key === 'Enter') iniciarSesion();
 });
-document.getElementById('login-clave').addEventListener('blur', function() {
-  if (this.value.length >= 6 && document.getElementById('login-correo').value.includes('@')) iniciarSesion();
+// Auto login on Tab from password field
+document.getElementById('login-clave').addEventListener('keydown', function(e) {
+  if (e.key === 'Tab' && this.value.length >= 6) {
+    e.preventDefault();
+    iniciarSesion();
+  }
 });
 
 async function iniciarSesion() {
