@@ -3227,7 +3227,18 @@ async function verFichaVehiculo(id) {
             + '<button onclick="eliminarFotoFicha(' + f.id_foto + ',' + v.id_vehiculo + ')" style="position:absolute;top:4px;right:4px;background:rgba(229,62,62,0.85);border:none;color:#fff;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:11px">✕</button>'
             + '</div>';
         }).join('')
-    : '<div style="color:var(--suave);font-size:12px">Sin historial</div>';
+    : '<div style="color:var(--suave);font-size:12px;margin-bottom:20px">Sin fotos registradas</div>';
+
+  const histHTML = histProp.length
+    ? histProp.map(function(h) {
+        const p = h.propietarios;
+        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--borde);font-size:12px">'
+          + '<span>' + (p ? p.nombre_completo : '—') + '</span>'
+          + '<span style="color:var(--suave)">' + h.fecha_desde + (h.fecha_hasta ? ' → ' + h.fecha_hasta : ' → Actual') + '</span>'
+          + '<span class="badge ' + (h.activo ? 'badge-verde' : 'badge-gris') + '">' + (h.activo ? 'Actual' : 'Anterior') + '</span>'
+          + '</div>';
+      }).join('')
+    : '<div style="color:var(--suave);font-size:12px">Sin historial de propietarios</div>';
 
   const prop = v.propietarios;
   document.getElementById('ficha-veh-contenido').innerHTML =
