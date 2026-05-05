@@ -3073,11 +3073,17 @@ async function renderVehiculos() {
 async function cargarVehiculos(filtro, propId) {
   const c = document.getElementById('contenido-principal');
   try {
-    let query = '?select=*,propietarios(id_propietario,tipo_doc,numero_doc,nombre_completo),vehiculos_fotos(url_foto,orden)&order=fecha_registro.desc';
+    let query = '?select=*,propietarios(id_propietario,tipo_doc,numero_doc,nombre_completo)&order=fecha_registro.desc';
     if (filtro && filtro.trim()) query += '&or=(placa.ilike.*' + encodeURIComponent(filtro.trim()) + '*,marca.ilike.*' + encodeURIComponent(filtro.trim()) + '*,modelo.ilike.*' + encodeURIComponent(filtro.trim()) + '*)';
     if (propId) query += '&id_propietario=eq.' + propId;
     const vehs = await api('vehiculos', 'GET', null, query);
     vehiculosCache = vehs;
+
+    // Cargar fotos por separado
+    const todasFotos = await api('vehiculos_fotos', 'GET', null, '?select=id_vehiculo,url_foto,orden&order=orden.asc');
+    vehs.forEach(function(v) {
+      v.vehiculos_fotos = todasFotos.filter(function(f) { return f.id_vehiculo === v.id_vehiculo; });
+    });
 
     const filas = vehs.map(function(v) {
       const prop  = v.propietarios;
