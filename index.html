@@ -2974,7 +2974,7 @@ async function guardarPropietario() {
 }
 
 async function verFichaPropietario(id) {
-  const p = propietariosCache.find(function(x) { return x.id_propietario === id; });
+  const p = propietariosCache.find(function(x) { return x.id_propietario == id; });
   if (!p) return;
   const vehs = await api('vehiculos', 'GET', null, '?id_propietario=eq.' + id + '&select=*');
 
@@ -3206,7 +3206,7 @@ async function guardarVehiculo() {
 }
 
 async function verFichaVehiculo(id) {
-  const v = vehiculosCache.find(function(x) { return x.id_vehiculo === id; });
+  const v = vehiculosCache.find(function(x) { return x.id_vehiculo == id; });
   if (!v) return;
   const [fotos, histProp] = await Promise.all([
     api('vehiculos_fotos', 'GET', null, '?id_vehiculo=eq.' + id + '&order=orden.asc'),
