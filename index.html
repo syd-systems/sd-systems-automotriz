@@ -3010,12 +3010,12 @@ async function verFichaPropietario(id) {
     + '<div style="font-size:13px;color:var(--suave)">' + p.tipo_doc + '-' + p.numero_doc + '</div>'
     + '</div></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
-    + '<div><div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div style="font-size:13px">' + (p.telefono || '—') + '</div></div>'
-    + '<div><div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:13px">' + (p.correo || '—') + '</div></div>'
-    + '<div><div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Empresa</div><div style="font-size:13px">' + (p.empresa || '—') + '</div></div>'
-    + '<div><div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:13px">' + (p.direccion || '—') + '</div></div>'
+    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div style="font-size:13px">' + (p.telefono || '—') + '</div></div>'
+    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:13px">' + (p.correo || '—') + '</div></div>'
+    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Empresa</div><div style="font-size:13px">' + (p.empresa || '—') + '</div></div>'
+    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:13px">' + (p.direccion || '—') + '</div></div>'
     + '</div>'
-    + '<div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Vehículos (' + vehs.length + ')</div>'
+    + '<div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Vehículos (' + vehs.length + ')</div>'
     + vehsHTML;
 
   abrirModal('modal-ficha-prop');
@@ -3286,10 +3286,10 @@ async function verFichaVehiculo(id) {
     + '<div style="font-size:12px;color:var(--suave)">' + (v.color || '') + ' · ' + (v.tipo_carroceria || '') + '</div>'
     + '</div></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
-    + '<div><div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Motor</div><div style="font-size:13px;font-family:var(--font-mono)">' + (v.numero_motor || '—') + '</div></div>'
-    + '<div><div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Chasis</div><div style="font-size:13px;font-family:var(--font-mono)">' + (v.numero_chasis || '—') + '</div></div>'
-    + '<div><div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Kilometraje</div><div style="font-size:13px">' + (v.kilometraje || 0).toLocaleString() + ' km</div></div>'
-    + '<div><div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Estado</div><span class="badge ' + (v.estado_vehiculo === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + v.estado_vehiculo + '</span></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Motor</div><div style="font-size:13px;font-family:var(--font-mono)">' + (v.numero_motor || '—') + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Chasis</div><div style="font-size:13px;font-family:var(--font-mono)">' + (v.numero_chasis || '—') + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Kilometraje</div><div style="font-size:13px">' + (v.kilometraje || 0).toLocaleString() + ' km</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Estado</div><span class="badge ' + (v.estado_vehiculo === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + v.estado_vehiculo + '</span></div>'
     + '</div>'
     + (prop ? '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:12px 16px;margin-bottom:20px">'
       + '<div style="font-size:9px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Propietario Actual</div>'
@@ -3297,11 +3297,11 @@ async function verFichaVehiculo(id) {
       + '<div style="font-size:11px;color:var(--suave)">' + prop.tipo_doc + '-' + prop.numero_doc + '</div>'
       + '</div>' : '')
     + '<div style="width:100%">'
-    + '<div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Fotos del Vehículo</div>'
+    + '<div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Fotos del Vehículo</div>'
     + fotosHTML
     + '</div>'
     + '<div style="width:100%;margin-top:20px">'
-    + '<div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Propietarios Anteriores</div>'
+    + '<div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Propietarios Anteriores</div>'
     + histHTML
     + '</div>';
 
