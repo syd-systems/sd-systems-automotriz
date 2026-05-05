@@ -2871,10 +2871,16 @@ async function renderPropietarios() {
 async function cargarPropietarios(filtro) {
   const c = document.getElementById('contenido-principal');
   try {
-    let query = '?select=*,vehiculos(id_vehiculo,placa,marca,modelo)&order=fecha_registro.desc';
-    if (filtro) query += '&or=(nombre_completo.ilike.*' + filtro + '*,numero_doc.ilike.*' + filtro + '*)';
+    let query = '?select=*&order=fecha_registro.desc';
+    if (filtro && filtro.trim()) query += '&or=(nombre_completo.ilike.*' + encodeURIComponent(filtro.trim()) + '*,numero_doc.ilike.*' + encodeURIComponent(filtro.trim()) + '*)';
     const props = await api('propietarios', 'GET', null, query);
     propietariosCache = props;
+
+    // Cargar vehículos de cada propietario por separado
+    const vehs = await api('vehiculos', 'GET', null, '?select=id_vehiculo,placa,marca,modelo,id_propietario');
+    props.forEach(function(p) {
+      p.vehiculos = vehs.filter(function(v) { return v.id_propietario === p.id_propietario; });
+    });
 
     const filas = props.map(function(p) {
       const vCount = p.vehiculos ? p.vehiculos.length : 0;
@@ -3060,7 +3066,7 @@ async function cargarVehiculos(filtro, propId) {
   const c = document.getElementById('contenido-principal');
   try {
     let query = '?select=*,propietarios(id_propietario,tipo_doc,numero_doc,nombre_completo),vehiculos_fotos(url_foto,orden)&order=fecha_registro.desc';
-    if (filtro) query += '&or=(placa.ilike.*' + filtro + '*,marca.ilike.*' + filtro + '*,modelo.ilike.*' + filtro + '*)';
+    if (filtro && filtro.trim()) query += '&or=(placa.ilike.*' + encodeURIComponent(filtro.trim()) + '*,marca.ilike.*' + encodeURIComponent(filtro.trim()) + '*,modelo.ilike.*' + encodeURIComponent(filtro.trim()) + '*)';
     if (propId) query += '&id_propietario=eq.' + propId;
     const vehs = await api('vehiculos', 'GET', null, query);
     vehiculosCache = vehs;
@@ -3102,8 +3108,8 @@ async function cargarVehiculos(filtro, propId) {
       + '<div class="panel-header">'
       + '<h3>Vehículos (' + vehs.length + ')</h3>'
       + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
-      + '<input type="text" id="buscar-veh" placeholder="Buscar placa, marca, modelo..." onkeyup="cargarVehiculos(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:240px">'
-      + '<select id="filtro-prop-veh" onchange="cargarVehiculos(null, this.value || null)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none">'
+      + '<input type="text" id="buscar-veh" placeholder="Buscar placa, marca, modelo..." onkeyup="cargarVehiculos(this.value, document.getElementById('filtro-prop-veh') ? document.getElementById('filtro-prop-veh').value || null : null)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:240px">'
+      + '<select id="filtro-prop-veh" onchange="cargarVehiculos(document.getElementById('buscar-veh') ? document.getElementById('buscar-veh').value : null, this.value || null)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none">'
       + '<option value="">Todos los propietarios</option>'
       + propietariosSimple.map(function(p) { return '<option value="' + p.id_propietario + '">' + p.nombre_completo + '</option>'; }).join('')
       + '</select>'
