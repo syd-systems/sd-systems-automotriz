@@ -3263,18 +3263,17 @@ async function verFichaVehiculo(id) {
         }).join('')
     : '<div style="color:var(--suave);font-size:12px;margin-bottom:20px">Sin fotos registradas</div>';
 
-  const histHTML = histProp.length
-    ? histProp.map(function(h) {
+  // Solo mostrar propietarios anteriores (no el actual)
+  const histAnterior = histProp.filter(function(h) { return !h.activo; });
+  const histHTML = histAnterior.length
+    ? histAnterior.map(function(h) {
         const p = h.propietarios;
         return '<div style="padding:8px 0;border-bottom:1px solid var(--borde)">'
-          + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">'
-          + '<span style="font-size:12px;font-weight:500">' + (p ? p.nombre_completo : '—') + '</span>'
-          + '<span class="badge ' + (h.activo ? 'badge-verde' : 'badge-gris') + '">' + (h.activo ? 'Actual' : 'Anterior') + '</span>'
-          + '</div>'
-          + '<div style="font-size:11px;color:var(--suave);margin-top:3px">' + h.fecha_desde + (h.fecha_hasta ? ' → ' + h.fecha_hasta : ' → Actual') + '</div>'
+          + '<div style="font-size:12px;font-weight:500">' + (p ? p.nombre_completo : '—') + '</div>'
+          + '<div style="font-size:11px;color:var(--suave);margin-top:3px">' + h.fecha_desde + ' → ' + (h.fecha_hasta || 'Desconocido') + '</div>'
           + '</div>';
       }).join('')
-    : '<div style="color:var(--suave);font-size:12px">Sin historial de propietarios</div>';
+    : '<div style="color:var(--suave);font-size:12px">Sin propietarios anteriores</div>';
 
   const prop = v.propietarios;
   document.getElementById('ficha-veh-contenido').innerHTML =
