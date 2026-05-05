@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260505120000 -->
+<!-- v20260505180000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -936,8 +936,14 @@
       <div class="nav-item" id="nav-PROPIETARIOS" onclick="mostrarModulo('propietarios', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">👤</span> Propietarios
       </div>
-      <div class="nav-item" id="nav-SERVICIOS" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
-        <span class="nav-icono">🔧</span> Servicios
+      <div class="nav-item" id="nav-SERVICIOS" onclick="mostrarModulo('ordenes', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">🔧</span> Órdenes de Servicio
+      </div>
+      <div class="nav-item" id="nav-INVENTARIO" onclick="mostrarModulo('inventario', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">📦</span> Inventario
+      </div>
+      <div class="nav-item" id="nav-CATALOGO" onclick="mostrarModulo('catalogo', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">🗂️</span> Catálogo Servicios
       </div>
 
       <div class="nav-seccion" id="nav-seccion-finanzas">Finanzas</div>
@@ -1138,11 +1144,13 @@ const TODOS_LOS_MODULOS = [
   { sigla: 'VEHICULOS',    nombre: 'Vehículos',        icono: '🚗' },
   { sigla: 'PROPIETARIOS', nombre: 'Propietarios',     icono: '👤' },
   { sigla: 'SERVICIOS',    nombre: 'Órdenes Servicio', icono: '🔧' },
+  { sigla: 'INVENTARIO',   nombre: 'Inventario',       icono: '📦' },
+  { sigla: 'CATALOGO',     nombre: 'Catálogo Servicios', icono: '🗂️' },
   { sigla: 'FACTURAS',     nombre: 'Facturas',         icono: '🧾' },
   { sigla: 'PAGOS',        nombre: 'Pagos',            icono: '💳' },
   { sigla: 'TASAS',        nombre: 'Tipo de Cambio',   icono: '💱' },
   { sigla: 'EMPLEADOS',    nombre: 'Empleados',        icono: '👷' },
-  { sigla: 'PROVEEDORES',  nombre: 'Proveedores',      icono: '📦' },
+  { sigla: 'PROVEEDORES',  nombre: 'Proveedores',      icono: '🏭' },
   { sigla: 'TRIBUTOS',     nombre: 'Tributos',         icono: '📋' },
   { sigla: 'USUARIOS',     nombre: 'Usuarios',         icono: '🔐' },
   { sigla: 'PARAMETROS',   nombre: 'Parámetros',       icono: '⚙️' },
@@ -1464,11 +1472,16 @@ function mostrarModulo(modulo, navEl) {
   if (navEl) navEl.classList.add('activo');
 
   const titulos = {
-    dashboard:  'DASHBOARD',
-    usuarios:   'GESTIÓN DE USUARIOS',
-    tasas:      'TIPOS DE CAMBIO',
-    parametros: 'PARÁMETROS DEL SISTEMA',
-    proximo:    'PRÓXIMAMENTE'
+    dashboard:    'DASHBOARD',
+    usuarios:     'GESTIÓN DE USUARIOS',
+    tasas:        'TIPOS DE CAMBIO',
+    parametros:   'PARÁMETROS DEL SISTEMA',
+    vehiculos:    'VEHÍCULOS',
+    propietarios: 'PROPIETARIOS',
+    ordenes:      'ÓRDENES DE SERVICIO',
+    inventario:   'INVENTARIO DE REPUESTOS',
+    catalogo:     'CATÁLOGO DE SERVICIOS',
+    proximo:      'PRÓXIMAMENTE'
   };
 
   document.getElementById('topbar-titulo').textContent = titulos[modulo] || modulo.toUpperCase();
@@ -1479,9 +1492,12 @@ function mostrarModulo(modulo, navEl) {
     case 'tasas':        renderTasas();        break;
     case 'vehiculos':    renderVehiculos();    break;
     case 'propietarios': renderPropietarios(); break;
-    case 'parametros': renderParametros(); break;
-    default:           renderProximo(navEl?.querySelector('.nav-icono')?.textContent || '🔧',
-                                     navEl?.textContent.trim() || modulo);
+    case 'parametros':   renderParametros();   break;
+    case 'ordenes':      renderOrdenes();      break;
+    case 'inventario':   renderInventario();   break;
+    case 'catalogo':     renderCatalogo();     break;
+    default:             renderProximo(navEl?.querySelector('.nav-icono')?.textContent || '🔧',
+                                       navEl?.textContent.trim() || modulo);
   }
 }
 
@@ -1492,11 +1508,12 @@ async function renderDashboard() {
 
   try {
     // Contar registros de tablas existentes
-    const [usuarios, tasas, vehiculos, propietarios] = await Promise.all([
+    const [usuarios, tasas, vehiculos, propietarios, ordenes] = await Promise.all([
       api('usuarios', 'GET', null, '?select=id_usuario'),
       api('tasas', 'GET', null, '?select=id_tasa&order=fecha_registro.desc&limit=1'),
       api('vehiculos', 'GET', null, '?select=id_vehiculo'),
       api('propietarios', 'GET', null, '?select=id_propietario'),
+      api('ordenes_servicio', 'GET', null, '?select=id_orden&estado=neq.CERRADA&estado=neq.ANULADA'),
     ]);
 
     const ultimaTasa = tasas.length > 0 ? tasas[0] : null;
@@ -1539,15 +1556,15 @@ async function renderDashboard() {
           <div class="tarjeta-valor">${propietarios.length}</div>
           <div class="tarjeta-nombre">Propietarios</div>
         </div>
+        <div class="tarjeta-stat" onclick="mostrarModulo('ordenes', document.getElementById('nav-SERVICIOS'))">
+          <div class="tarjeta-icono">🔧</div>
+          <div class="tarjeta-valor">${ordenes.length}</div>
+          <div class="tarjeta-nombre">OS Abiertas</div>
+        </div>
         <div class="tarjeta-stat" style="cursor:default">
           <div class="tarjeta-icono">🧾</div>
           <div class="tarjeta-valor">—</div>
           <div class="tarjeta-nombre">Facturas · Fase 4</div>
-        </div>
-        <div class="tarjeta-stat" style="cursor:default">
-          <div class="tarjeta-icono">👷</div>
-          <div class="tarjeta-valor">—</div>
-          <div class="tarjeta-nombre">Empleados · Fase 5</div>
         </div>
       </div>
 
@@ -1570,7 +1587,7 @@ async function renderDashboard() {
               <tr><td>Usuarios y Permisos</td><td>Fase 1</td><td><span class="badge badge-verde">Activo</span></td></tr>
               <tr><td>Tipos de Cambio</td><td>Fase 1</td><td><span class="badge badge-verde">Activo</span></td></tr>
               <tr><td>Vehículos y Propietarios</td><td>Fase 2</td><td><span class="badge badge-verde">Activo</span></td></tr>
-              <tr><td>Órdenes de Servicio</td><td>Fase 3</td><td><span class="badge badge-gris">Pendiente</span></td></tr>
+              <tr><td>Órdenes de Servicio</td><td>Fase 3</td><td><span class="badge badge-verde">Activo</span></td></tr>
               <tr><td>Facturación y Pagos</td><td>Fase 4</td><td><span class="badge badge-gris">Pendiente</span></td></tr>
               <tr><td>Empleados y Nómina</td><td>Fase 5</td><td><span class="badge badge-gris">Pendiente</span></td></tr>
               <tr><td>Proveedores y Tributos</td><td>Fase 6</td><td><span class="badge badge-gris">Pendiente</span></td></tr>
@@ -3515,7 +3532,786 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') cerrarVisor();
 });
 
-// ─── VERIFICAR SESIÓN AL CARGAR ───
+
+// ══════════════════════════════════════════════════════════════
+//  FASE 3 — CATÁLOGO DE SERVICIOS
+// ══════════════════════════════════════════════════════════════
+let catalogoCache = [];
+
+async function renderCatalogo() {
+  const c = document.getElementById('contenido-principal');
+  c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando catálogo...</div>';
+  try {
+    const items = await api('servicios_catalogo', 'GET', null, '?order=categoria.asc,nombre.asc&select=*');
+    catalogoCache = items;
+    const filas = items.map(function(s) {
+      return '<tr>'
+        + '<td><div style="font-weight:500">' + s.nombre + '</div>'
+        + (s.descripcion ? '<div style="font-size:11px;color:var(--suave);margin-top:2px">' + s.descripcion + '</div>' : '')
+        + '</td>'
+        + '<td><span class="badge badge-gris">' + (s.categoria || '—') + '</span></td>'
+        + '<td style="font-family:var(--font-mono);color:var(--naranja)">$ ' + parseFloat(s.precio_usd || 0).toFixed(2) + '</td>'
+        + '<td><span class="badge ' + (s.activo ? 'badge-verde' : 'badge-rojo') + '">' + (s.activo ? 'Activo' : 'Inactivo') + '</span></td>'
+        + '<td><div style="display:flex;gap:8px">'
+        + '<button class="btn-secundario" onclick="abrirEditarCatalogo(' + s.id_servicio + ')">Editar</button>'
+        + '<button class="btn-peligro" onclick="eliminarCatalogo(' + s.id_servicio + ',\'' + s.nombre.replace(/'/g, "\\'") + '\')">Eliminar</button>'
+        + '</div></td>'
+        + '</tr>';
+    }).join('');
+
+    c.innerHTML = '<div class="panel">'
+      + '<div class="panel-header"><h3>Catálogo de Servicios (' + items.length + ')</h3>'
+      + '<button class="btn-primario" onclick="abrirNuevoCatalogo()">+ Nuevo Servicio</button></div>'
+      + '<div class="tabla-container"><table><thead><tr>'
+      + '<th>Servicio</th><th>Categoría</th><th>Precio USD</th><th>Estado</th><th>Acciones</th>'
+      + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin servicios registrados</td></tr>') + '</tbody></table></div>'
+      + '</div>';
+  } catch(e) {
+    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+  }
+}
+
+function abrirNuevoCatalogo() {
+  document.getElementById('cat-id').value = '';
+  document.getElementById('cat-nombre').value = '';
+  document.getElementById('cat-descripcion').value = '';
+  document.getElementById('cat-categoria').value = '';
+  document.getElementById('cat-precio').value = '';
+  document.getElementById('cat-activo').value = 'true';
+  document.getElementById('modal-cat-titulo').textContent = 'NUEVO SERVICIO';
+  document.getElementById('alerta-cat-ok').style.display = 'none';
+  document.getElementById('alerta-cat-err').style.display = 'none';
+  abrirModal('modal-catalogo');
+}
+
+function abrirEditarCatalogo(id) {
+  const s = catalogoCache.find(function(x) { return x.id_servicio === id; });
+  if (!s) return;
+  document.getElementById('cat-id').value = s.id_servicio;
+  document.getElementById('cat-nombre').value = s.nombre;
+  document.getElementById('cat-descripcion').value = s.descripcion || '';
+  document.getElementById('cat-categoria').value = s.categoria || '';
+  document.getElementById('cat-precio').value = s.precio_usd || '';
+  document.getElementById('cat-activo').value = s.activo ? 'true' : 'false';
+  document.getElementById('modal-cat-titulo').textContent = 'EDITAR SERVICIO';
+  document.getElementById('alerta-cat-ok').style.display = 'none';
+  document.getElementById('alerta-cat-err').style.display = 'none';
+  abrirModal('modal-catalogo');
+}
+
+async function guardarCatalogo() {
+  const id     = document.getElementById('cat-id').value;
+  const nombre = document.getElementById('cat-nombre').value.trim();
+  const desc   = document.getElementById('cat-descripcion').value.trim();
+  const cat    = document.getElementById('cat-categoria').value.trim();
+  const precio = parseFloat(document.getElementById('cat-precio').value) || 0;
+  const activo = document.getElementById('cat-activo').value === 'true';
+  const okEl   = document.getElementById('alerta-cat-ok');
+  const errEl  = document.getElementById('alerta-cat-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
+
+  try {
+    const datos = { nombre, descripcion: desc || null, categoria: cat || null, precio_usd: precio, activo, id_usuario: sesionActual.correo_usuario };
+    if (id) {
+      await api('servicios_catalogo', 'PATCH', datos, '?id_servicio=eq.' + id);
+    } else {
+      await api('servicios_catalogo', 'POST', datos);
+    }
+    okEl.textContent = '✓ Servicio guardado.'; okEl.style.display = 'block';
+    setTimeout(function() { cerrarModal('modal-catalogo'); renderCatalogo(); }, 1000);
+  } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+}
+
+async function eliminarCatalogo(id, nombre) {
+  if (!confirm('¿Eliminar "' + nombre + '"?')) return;
+  try {
+    await api('servicios_catalogo', 'DELETE', null, '?id_servicio=eq.' + id);
+    renderCatalogo();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  FASE 3 — INVENTARIO DE REPUESTOS
+// ══════════════════════════════════════════════════════════════
+let inventarioCache = [];
+
+async function renderInventario() {
+  const c = document.getElementById('contenido-principal');
+  c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando inventario...</div>';
+  try {
+    const items = await api('inventario', 'GET', null, '?order=nombre.asc&select=*');
+    inventarioCache = items;
+
+    const filas = items.map(function(r) {
+      const stockBajo = r.stock_actual <= r.stock_minimo;
+      return '<tr>'
+        + '<td><div style="font-family:var(--font-mono);font-size:11px;color:var(--suave)">' + (r.codigo || '—') + '</div>'
+        + '<div style="font-weight:500">' + r.nombre + '</div>'
+        + (r.descripcion ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion + '</div>' : '')
+        + '</td>'
+        + '<td><span class="badge ' + (stockBajo ? 'badge-rojo' : 'badge-verde') + '">' + r.stock_actual + ' ' + (r.unidad || 'UND') + '</span>'
+        + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo + ')</div>' : '')
+        + '</td>'
+        + '<td style="font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:10px">Costo</div>$ ' + parseFloat(r.precio_costo_usd || 0).toFixed(2) + '</td>'
+        + '<td style="font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:10px">Venta</div><span style="color:var(--naranja)">$ ' + parseFloat(r.precio_venta_usd || 0).toFixed(2) + '</span></td>'
+        + '<td><div style="display:flex;gap:8px">'
+        + '<button class="btn-secundario" onclick="abrirEditarInventario(' + r.id_repuesto + ')">Editar</button>'
+        + '<button class="btn-peligro" onclick="eliminarInventario(' + r.id_repuesto + ',\'' + r.nombre.replace(/'/g, "\\'") + '\')">Eliminar</button>'
+        + '</div></td>'
+        + '</tr>';
+    }).join('');
+
+    const stockBajos = items.filter(function(r) { return r.stock_actual <= r.stock_minimo; }).length;
+
+    c.innerHTML = (stockBajos > 0
+      ? '<div class="alerta alerta-error" style="display:block;margin-bottom:16px">⚠ ' + stockBajos + ' repuesto(s) con stock bajo o agotado</div>' : '')
+      + '<div class="panel">'
+      + '<div class="panel-header"><h3>Inventario de Repuestos (' + items.length + ')</h3>'
+      + '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Repuesto</button></div>'
+      + '<div class="tabla-container"><table><thead><tr>'
+      + '<th>Repuesto</th><th>Stock</th><th>Precio Costo</th><th>Precio Venta</th><th>Acciones</th>'
+      + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos registrados</td></tr>') + '</tbody></table></div>'
+      + '</div>';
+  } catch(e) {
+    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+  }
+}
+
+function abrirNuevoInventario() {
+  ['inv-id','inv-codigo','inv-nombre','inv-descripcion','inv-stock','inv-stock-min','inv-costo','inv-venta'].forEach(function(id) {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('inv-unidad').value = 'UND';
+  document.getElementById('modal-inv-titulo').textContent = 'NUEVO REPUESTO';
+  document.getElementById('alerta-inv-ok').style.display = 'none';
+  document.getElementById('alerta-inv-err').style.display = 'none';
+  abrirModal('modal-inventario');
+}
+
+function abrirEditarInventario(id) {
+  const r = inventarioCache.find(function(x) { return x.id_repuesto === id; });
+  if (!r) return;
+  document.getElementById('inv-id').value = r.id_repuesto;
+  document.getElementById('inv-codigo').value = r.codigo || '';
+  document.getElementById('inv-nombre').value = r.nombre;
+  document.getElementById('inv-descripcion').value = r.descripcion || '';
+  document.getElementById('inv-stock').value = r.stock_actual;
+  document.getElementById('inv-stock-min').value = r.stock_minimo;
+  document.getElementById('inv-costo').value = r.precio_costo_usd || '';
+  document.getElementById('inv-venta').value = r.precio_venta_usd || '';
+  document.getElementById('inv-unidad').value = r.unidad || 'UND';
+  document.getElementById('modal-inv-titulo').textContent = 'EDITAR REPUESTO';
+  document.getElementById('alerta-inv-ok').style.display = 'none';
+  document.getElementById('alerta-inv-err').style.display = 'none';
+  abrirModal('modal-inventario');
+}
+
+async function guardarInventario() {
+  const id       = document.getElementById('inv-id').value;
+  const codigo   = document.getElementById('inv-codigo').value.trim();
+  const nombre   = document.getElementById('inv-nombre').value.trim();
+  const desc     = document.getElementById('inv-descripcion').value.trim();
+  const stock    = parseInt(document.getElementById('inv-stock').value) || 0;
+  const stockMin = parseInt(document.getElementById('inv-stock-min').value) || 0;
+  const costo    = parseFloat(document.getElementById('inv-costo').value) || 0;
+  const venta    = parseFloat(document.getElementById('inv-venta').value) || 0;
+  const unidad   = document.getElementById('inv-unidad').value;
+  const okEl     = document.getElementById('alerta-inv-ok');
+  const errEl    = document.getElementById('alerta-inv-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
+
+  try {
+    const datos = { nombre, descripcion: desc || null, codigo: codigo || null, stock_actual: stock,
+      stock_minimo: stockMin, precio_costo_usd: costo, precio_venta_usd: venta, unidad,
+      id_usuario: sesionActual.correo_usuario };
+    if (id) {
+      await api('inventario', 'PATCH', datos, '?id_repuesto=eq.' + id);
+    } else {
+      await api('inventario', 'POST', datos);
+    }
+    okEl.textContent = '✓ Repuesto guardado.'; okEl.style.display = 'block';
+    setTimeout(function() { cerrarModal('modal-inventario'); renderInventario(); }, 1000);
+  } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+}
+
+async function eliminarInventario(id, nombre) {
+  if (!confirm('¿Eliminar "' + nombre + '"?')) return;
+  try {
+    await api('inventario', 'DELETE', null, '?id_repuesto=eq.' + id);
+    renderInventario();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  FASE 3 — ÓRDENES DE SERVICIO
+// ══════════════════════════════════════════════════════════════
+let ordenesCache = [];
+let osServiciosLineas = [];  // líneas de servicios de la OS activa
+let osRepuestosLineas = [];  // líneas de repuestos de la OS activa
+let tasaActualOS = 1;        // tasa USD→VES al crear/editar OS
+
+const ESTADOS_OS = {
+  'ABIERTA':          { clase: 'badge-naranja', label: 'Abierta' },
+  'EN_PROCESO':       { clase: 'badge-verde',   label: 'En Proceso' },
+  'ESPERA_REPUESTO':  { clase: 'badge-rojo',    label: 'Espera Repuesto' },
+  'CERRADA':          { clase: 'badge-gris',    label: 'Cerrada' },
+  'ANULADA':          { clase: 'badge-rojo',    label: 'Anulada' },
+};
+
+async function renderOrdenes() {
+  const c = document.getElementById('contenido-principal');
+  c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando órdenes...</div>';
+  try {
+    const [ordenes, tasas] = await Promise.all([
+      api('ordenes_servicio', 'GET', null,
+        '?order=fecha_registro.desc&select=*,vehiculos(placa,marca,modelo),propietarios(nombre_completo)'),
+      api('tasas', 'GET', null, '?order=fecha_registro.desc&limit=1&select=tipo_cambio'),
+    ]);
+    ordenesCache = ordenes;
+    if (tasas.length) tasaActualOS = parseFloat(tasas[0].tipo_cambio);
+
+    // Filtros
+    const filtroEstado = (window._osEstadoFiltro || '');
+
+    const ordenesFiltradas = filtroEstado
+      ? ordenes.filter(function(o) { return o.estado === filtroEstado; })
+      : ordenes;
+
+    const filas = ordenesFiltradas.map(function(o) {
+      const est = ESTADOS_OS[o.estado] || { clase: 'badge-gris', label: o.estado };
+      const veh = o.vehiculos;
+      const prop = o.propietarios;
+      return '<tr>'
+        + '<td><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + (o.numero_os || '—') + '</div>'
+        + '<div style="font-size:11px;color:var(--suave)">' + o.fecha_entrada + '</div></td>'
+        + '<td>' + (veh ? '<div style="font-weight:500">' + veh.placa + '</div><div style="font-size:11px;color:var(--suave)">' + veh.marca + ' ' + veh.modelo + '</div>' : '—') + '</td>'
+        + '<td>' + (prop ? prop.nombre_completo : '—') + '</td>'
+        + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
+        + '<td style="font-family:var(--font-mono)"><span style="color:var(--naranja)">$ ' + parseFloat(o.total_usd || 0).toFixed(2) + '</span>'
+        + '<div style="font-size:10px;color:var(--suave)">' + parseFloat(o.total_ves || 0).toLocaleString('es-VE', {minimumFractionDigits:2}) + ' Bs</div></td>'
+        + '<td><div style="display:flex;gap:6px;flex-wrap:wrap">'
+        + '<button class="btn-secundario" onclick="verFichaOS(' + o.id_orden + ')">Ver</button>'
+        + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA'
+          ? '<button class="btn-secundario" onclick="abrirEditarOS(' + o.id_orden + ')">Editar</button>'
+            + '<button class="btn-peligro" onclick="anularOS(' + o.id_orden + ',\'' + (o.numero_os || '') + '\')">Anular</button>'
+          : '')
+        + '</div></td>'
+        + '</tr>';
+    }).join('');
+
+    const resumen = {
+      ABIERTA: ordenes.filter(function(o) { return o.estado === 'ABIERTA'; }).length,
+      EN_PROCESO: ordenes.filter(function(o) { return o.estado === 'EN_PROCESO'; }).length,
+      ESPERA_REPUESTO: ordenes.filter(function(o) { return o.estado === 'ESPERA_REPUESTO'; }).length,
+      CERRADA: ordenes.filter(function(o) { return o.estado === 'CERRADA'; }).length,
+    };
+
+    c.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:24px">'
+      + Object.entries(resumen).map(function(entry) {
+          var k = entry[0], v = entry[1];
+          var est = ESTADOS_OS[k];
+          var activo = window._osEstadoFiltro === k ? ';border-color:var(--naranja)' : '';
+          return '<div class="tarjeta-stat" style="padding:16px;cursor:pointer' + activo + '" onclick="window._osEstadoFiltro=\'' + k + '\';renderOrdenes()">'
+            + '<div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">' + est.label + '</div>'
+            + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + v + '</div>'
+            + '</div>';
+        }).join('')
+      + '<div class="tarjeta-stat" style="padding:16px;cursor:pointer;' + (!window._osEstadoFiltro ? 'border-color:var(--naranja)' : '') + '" onclick="window._osEstadoFiltro=\'\';renderOrdenes()">'
+      + '<div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Todas</div>'
+      + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + ordenes.length + '</div>'
+      + '</div></div>'
+
+      + '<div class="panel">'
+      + '<div class="panel-header"><h3>Órdenes de Servicio' + (filtroEstado ? ' — ' + (ESTADOS_OS[filtroEstado]?.label || filtroEstado) : '') + '</h3>'
+      + '<div style="display:flex;gap:10px">'
+      + '<span style="font-size:11px;color:var(--suave);align-self:center">Tasa: $ 1 = ' + tasaActualOS.toFixed(2) + ' Bs</span>'
+      + '<button class="btn-primario" onclick="abrirNuevaOS()">+ Nueva OS</button></div></div>'
+      + '<div class="tabla-container"><table><thead><tr>'
+      + '<th>N° OS / Fecha</th><th>Vehículo</th><th>Propietario</th><th>Estado</th><th>Total</th><th>Acciones</th>'
+      + '</tr></thead><tbody>'
+      + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">Sin órdenes registradas</td></tr>')
+      + '</tbody></table></div></div>';
+  } catch(e) {
+    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+  }
+}
+
+// ─── ABRIR NUEVA OS ───
+async function abrirNuevaOS() {
+  osServiciosLineas = [];
+  osRepuestosLineas = [];
+
+  // Obtener tasa vigente
+  try {
+    const tasas = await api('tasas', 'GET', null, '?order=fecha_registro.desc&limit=1&select=tipo_cambio');
+    tasaActualOS = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
+  } catch(e) { tasaActualOS = 1; }
+
+  document.getElementById('os-id').value = '';
+  document.getElementById('os-numero').textContent = 'Se asignará al guardar';
+  document.getElementById('os-placa-bus').value = '';
+  document.getElementById('os-veh-id').value = '';
+  document.getElementById('os-veh-info').innerHTML = '';
+  document.getElementById('os-km').value = '';
+  document.getElementById('os-fecha-entrada').value = new Date().toISOString().split('T')[0];
+  document.getElementById('os-fecha-prometida').value = '';
+  document.getElementById('os-estado').value = 'ABIERTA';
+  document.getElementById('os-diagnostico').value = '';
+  document.getElementById('os-observaciones').value = '';
+  document.getElementById('os-tasa').textContent = tasaActualOS.toFixed(2);
+  document.getElementById('alerta-os-ok').style.display = 'none';
+  document.getElementById('alerta-os-err').style.display = 'none';
+  document.getElementById('modal-os-titulo').textContent = 'NUEVA ORDEN DE SERVICIO';
+
+  renderLineasOS();
+  calcularTotalesOS();
+  abrirModal('modal-os');
+}
+
+// ─── ABRIR EDITAR OS ───
+async function abrirEditarOS(id) {
+  const o = ordenesCache.find(function(x) { return x.id_orden === id; });
+  if (!o) return;
+
+  osServiciosLineas = [];
+  osRepuestosLineas = [];
+
+  try {
+    const [linServ, linRep, tasas] = await Promise.all([
+      api('os_servicios', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
+      api('os_repuestos', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
+      api('tasas', 'GET', null, '?order=fecha_registro.desc&limit=1&select=tipo_cambio'),
+    ]);
+    osServiciosLineas = linServ.map(function(l) {
+      return { id: l.id_os_serv, id_servicio: l.id_servicio, descripcion: l.descripcion, cantidad: l.cantidad, precio_usd: l.precio_usd };
+    });
+    osRepuestosLineas = linRep.map(function(l) {
+      return { id: l.id_os_rep, id_repuesto: l.id_repuesto, descripcion: l.descripcion, cantidad: l.cantidad, precio_usd: l.precio_usd };
+    });
+    tasaActualOS = tasas.length ? parseFloat(tasas[0].tipo_cambio) : (o.tasa_cambio_usd || 1);
+  } catch(e) {}
+
+  document.getElementById('os-id').value = o.id_orden;
+  document.getElementById('os-numero').textContent = o.numero_os || '—';
+  document.getElementById('os-km').value = o.kilometraje_entrada || '';
+  document.getElementById('os-fecha-entrada').value = o.fecha_entrada || '';
+  document.getElementById('os-fecha-prometida').value = o.fecha_prometida || '';
+  document.getElementById('os-estado').value = o.estado;
+  document.getElementById('os-diagnostico').value = o.diagnostico || '';
+  document.getElementById('os-observaciones').value = o.observaciones || '';
+  document.getElementById('os-tasa').textContent = tasaActualOS.toFixed(2);
+  document.getElementById('os-veh-id').value = o.id_vehiculo || '';
+  document.getElementById('alerta-os-ok').style.display = 'none';
+  document.getElementById('alerta-os-err').style.display = 'none';
+  document.getElementById('modal-os-titulo').textContent = 'EDITAR OS — ' + (o.numero_os || '');
+
+  // Mostrar info del vehículo
+  if (o.vehiculos) {
+    const v = o.vehiculos;
+    document.getElementById('os-placa-bus').value = v.placa;
+    document.getElementById('os-veh-info').innerHTML = renderVehInfoOS({ placa: v.placa, marca: v.marca, modelo: v.modelo });
+  }
+
+  renderLineasOS();
+  calcularTotalesOS();
+  abrirModal('modal-os');
+}
+
+// ─── BUSCAR VEHÍCULO EN OS ───
+async function buscarVehiculoOS() {
+  const placa = document.getElementById('os-placa-bus').value.trim().toUpperCase();
+  const infoDiv = document.getElementById('os-veh-info');
+  if (!placa) { infoDiv.innerHTML = ''; return; }
+
+  infoDiv.innerHTML = '<div class="loading" style="padding:12px"><div class="spinner"></div> Buscando...</div>';
+  try {
+    const vehs = await api('vehiculos', 'GET', null,
+      '?placa=eq.' + encodeURIComponent(placa) + '&select=*,propietarios(nombre_completo)');
+    if (!vehs.length) {
+      infoDiv.innerHTML = '<div style="color:#fc8181;font-size:12px;padding:8px">Vehículo no encontrado</div>';
+      document.getElementById('os-veh-id').value = '';
+      return;
+    }
+    const v = vehs[0];
+    document.getElementById('os-veh-id').value = v.id_vehiculo;
+    infoDiv.innerHTML = renderVehInfoOS(v);
+  } catch(e) {
+    infoDiv.innerHTML = '<div style="color:#fc8181;font-size:12px">' + e.message + '</div>';
+  }
+}
+
+function renderVehInfoOS(v) {
+  return '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:12px 16px;margin-top:8px">'
+    + '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">'
+    + '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + v.placa + '</div>'
+    + '<div><div style="font-weight:500">' + v.marca + ' ' + v.modelo + '</div>'
+    + (v.propietarios ? '<div style="font-size:12px;color:var(--suave)">👤 ' + v.propietarios.nombre_completo + '</div>' : '')
+    + '</div></div></div>';
+}
+
+// ─── LÍNEAS DE SERVICIOS ───
+function renderLineasOS() {
+  const cont = document.getElementById('os-lineas-serv');
+  if (!cont) return;
+  if (!osServiciosLineas.length) {
+    cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Sin servicios agregados</div>';
+    return;
+  }
+  cont.innerHTML = osServiciosLineas.map(function(l, i) {
+    return '<div style="display:grid;grid-template-columns:1fr 80px 100px auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
+      + '<div style="font-size:13px">' + l.descripcion + '</div>'
+      + '<div style="font-size:12px;color:var(--suave);text-align:center">' + l.cantidad + '</div>'
+      + '<div style="font-family:var(--font-mono);font-size:12px;color:var(--naranja)">$ ' + (parseFloat(l.precio_usd) * parseFloat(l.cantidad)).toFixed(2) + '</div>'
+      + '<button onclick="quitarLineaServ(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px">✕</button>'
+      + '</div>';
+  }).join('');
+  calcularTotalesOS();
+}
+
+function renderLineasRep() {
+  const cont = document.getElementById('os-lineas-rep');
+  if (!cont) return;
+  if (!osRepuestosLineas.length) {
+    cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Sin repuestos agregados</div>';
+    return;
+  }
+  cont.innerHTML = osRepuestosLineas.map(function(l, i) {
+    return '<div style="display:grid;grid-template-columns:1fr 80px 100px auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
+      + '<div style="font-size:13px">' + l.descripcion + '</div>'
+      + '<div style="font-size:12px;color:var(--suave);text-align:center">' + l.cantidad + '</div>'
+      + '<div style="font-family:var(--font-mono);font-size:12px;color:var(--naranja)">$ ' + (parseFloat(l.precio_usd) * parseFloat(l.cantidad)).toFixed(2) + '</div>'
+      + '<button onclick="quitarLineaRep(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px">✕</button>'
+      + '</div>';
+  }).join('');
+  calcularTotalesOS();
+}
+
+function quitarLineaServ(i) { osServiciosLineas.splice(i, 1); renderLineasOS(); }
+function quitarLineaRep(i)  { osRepuestosLineas.splice(i, 1); renderLineasRep(); }
+
+function calcularTotalesOS() {
+  const totServ = osServiciosLineas.reduce(function(acc, l) { return acc + parseFloat(l.precio_usd) * parseFloat(l.cantidad); }, 0);
+  const totRep  = osRepuestosLineas.reduce(function(acc, l) { return acc + parseFloat(l.precio_usd) * parseFloat(l.cantidad); }, 0);
+  const total   = totServ + totRep;
+  const totalVes = total * tasaActualOS;
+  const el = document.getElementById('os-totales');
+  if (el) el.innerHTML = '<div style="display:flex;gap:24px;flex-wrap:wrap;justify-content:flex-end;padding:12px 0">'
+    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Servicios</div><div style="font-family:var(--font-mono)">$ ' + totServ.toFixed(2) + '</div></div>'
+    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Repuestos</div><div style="font-family:var(--font-mono)">$ ' + totRep.toFixed(2) + '</div></div>'
+    + '<div style="border-left:1px solid var(--borde);padding-left:24px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL USD</div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">$ ' + total.toFixed(2) + '</div></div>'
+    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL Bs</div><div style="font-family:var(--font-mono);font-size:14px;color:var(--suave)">' + totalVes.toLocaleString('es-VE', {minimumFractionDigits:2}) + '</div></div>'
+    + '</div>';
+}
+
+// ─── AGREGAR LÍNEA SERVICIO DESDE CATÁLOGO ───
+async function agregarServicioCatalogo() {
+  if (!catalogoCache.length) {
+    try { catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=categoria.asc,nombre.asc'); } catch(e) {}
+  }
+  const sel = document.getElementById('os-sel-cat');
+  const precio = document.getElementById('os-precio-cat');
+  const cant = document.getElementById('os-cant-cat');
+  if (!sel.value) {
+    // Modo descripción libre
+    const descEl = document.getElementById('os-desc-libre');
+    if (!descEl.value.trim()) { alert('Escribe una descripción o selecciona del catálogo.'); return; }
+    osServiciosLineas.push({ id_servicio: null, descripcion: descEl.value.trim(),
+      cantidad: parseFloat(cant.value) || 1, precio_usd: parseFloat(precio.value) || 0 });
+    descEl.value = ''; precio.value = ''; cant.value = '1';
+  } else {
+    const s = catalogoCache.find(function(x) { return x.id_servicio == sel.value; });
+    if (!s) return;
+    osServiciosLineas.push({ id_servicio: s.id_servicio, descripcion: s.nombre,
+      cantidad: parseFloat(cant.value) || 1, precio_usd: parseFloat(precio.value) || parseFloat(s.precio_usd) });
+    sel.value = ''; precio.value = ''; cant.value = '1';
+  }
+  renderLineasOS();
+}
+
+function onSelCatalogoChange() {
+  const sel = document.getElementById('os-sel-cat');
+  const precio = document.getElementById('os-precio-cat');
+  if (!sel.value) { precio.value = ''; return; }
+  const s = catalogoCache.find(function(x) { return x.id_servicio == sel.value; });
+  if (s) precio.value = parseFloat(s.precio_usd || 0).toFixed(2);
+}
+
+// ─── AGREGAR LÍNEA REPUESTO DESDE INVENTARIO ───
+async function agregarRepuestoInventario() {
+  if (!inventarioCache.length) {
+    try { inventarioCache = await api('inventario', 'GET', null, '?order=nombre.asc'); } catch(e) {}
+  }
+  const sel = document.getElementById('os-sel-inv');
+  const precio = document.getElementById('os-precio-inv');
+  const cant = document.getElementById('os-cant-inv');
+  const desc = document.getElementById('os-desc-rep-libre');
+  const cantVal = parseFloat(cant.value) || 1;
+
+  if (!sel.value) {
+    if (!desc.value.trim()) { alert('Escribe una descripción o selecciona del inventario.'); return; }
+    osRepuestosLineas.push({ id_repuesto: null, descripcion: desc.value.trim(),
+      cantidad: cantVal, precio_usd: parseFloat(precio.value) || 0 });
+    desc.value = ''; precio.value = ''; cant.value = '1';
+  } else {
+    const r = inventarioCache.find(function(x) { return x.id_repuesto == sel.value; });
+    if (!r) return;
+    if (r.stock_actual < cantVal) {
+      if (!confirm('⚠ Stock insuficiente (' + r.stock_actual + ' disponibles). ¿Agregar igual?')) return;
+    }
+    osRepuestosLineas.push({ id_repuesto: r.id_repuesto, descripcion: r.nombre,
+      cantidad: cantVal, precio_usd: parseFloat(precio.value) || parseFloat(r.precio_venta_usd) });
+    sel.value = ''; precio.value = ''; cant.value = '1';
+  }
+  renderLineasRep();
+}
+
+function onSelInventarioChange() {
+  const sel = document.getElementById('os-sel-inv');
+  const precio = document.getElementById('os-precio-inv');
+  if (!sel.value) { precio.value = ''; return; }
+  const r = inventarioCache.find(function(x) { return x.id_repuesto == sel.value; });
+  if (r) precio.value = parseFloat(r.precio_venta_usd || 0).toFixed(2);
+}
+
+// ─── GUARDAR OS ───
+async function guardarOS() {
+  const id          = document.getElementById('os-id').value;
+  const vehId       = document.getElementById('os-veh-id').value;
+  const km          = parseInt(document.getElementById('os-km').value) || null;
+  const fechaEnt    = document.getElementById('os-fecha-entrada').value;
+  const fechaProm   = document.getElementById('os-fecha-prometida').value;
+  const estado      = document.getElementById('os-estado').value;
+  const diagnostico = document.getElementById('os-diagnostico').value.trim();
+  const obs         = document.getElementById('os-observaciones').value.trim();
+  const okEl        = document.getElementById('alerta-os-ok');
+  const errEl       = document.getElementById('alerta-os-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  if (!vehId) { errEl.textContent = 'Debe buscar y seleccionar un vehículo.'; errEl.style.display = 'block'; return; }
+  if (!fechaEnt) { errEl.textContent = 'La fecha de entrada es obligatoria.'; errEl.style.display = 'block'; return; }
+
+  const totServ = osServiciosLineas.reduce(function(acc, l) { return acc + parseFloat(l.precio_usd) * parseFloat(l.cantidad); }, 0);
+  const totRep  = osRepuestosLineas.reduce(function(acc, l) { return acc + parseFloat(l.precio_usd) * parseFloat(l.cantidad); }, 0);
+  const total   = totServ + totRep;
+
+  // Obtener id_propietario del vehículo
+  let idPropietario = null;
+  try {
+    const veh = await api('vehiculos', 'GET', null, '?id_vehiculo=eq.' + vehId + '&select=id_propietario');
+    if (veh.length) idPropietario = veh[0].id_propietario;
+  } catch(e) {}
+
+  try {
+    let osId = id;
+    const datos = {
+      id_vehiculo: parseInt(vehId),
+      id_propietario: idPropietario,
+      kilometraje_entrada: km,
+      fecha_entrada: fechaEnt,
+      fecha_prometida: fechaProm || null,
+      estado,
+      diagnostico: diagnostico || null,
+      observaciones: obs || null,
+      tasa_cambio_usd: tasaActualOS,
+      total_servicios_usd: totServ,
+      total_repuestos_usd: totRep,
+      total_usd: total,
+      total_ves: total * tasaActualOS,
+      id_usuario: sesionActual.correo_usuario,
+    };
+
+    if (id) {
+      // Editar
+      await api('ordenes_servicio', 'PATCH', datos, '?id_orden=eq.' + id);
+      // Borrar líneas anteriores y reinsertar
+      await Promise.all([
+        api('os_servicios', 'DELETE', null, '?id_orden=eq.' + id),
+        api('os_repuestos', 'DELETE', null, '?id_orden=eq.' + id),
+      ]);
+    } else {
+      // Nueva — generar número OS
+      const hoy = new Date();
+      const anio = hoy.getFullYear();
+      const existentes = await api('ordenes_servicio', 'GET', null, '?select=numero_os&numero_os=like.OS-' + anio + '-*&order=numero_os.desc&limit=1');
+      let seq = 1;
+      if (existentes.length) {
+        const partes = existentes[0].numero_os.split('-');
+        seq = parseInt(partes[partes.length - 1]) + 1;
+      }
+      datos.numero_os = 'OS-' + anio + '-' + String(seq).padStart(4, '0');
+      const res = await api('ordenes_servicio', 'POST', datos);
+      if (res && res[0]) osId = res[0].id_orden;
+    }
+
+    // Insertar líneas de servicios
+    for (var i = 0; i < osServiciosLineas.length; i++) {
+      var l = osServiciosLineas[i];
+      await api('os_servicios', 'POST', {
+        id_orden: parseInt(osId), id_servicio: l.id_servicio || null,
+        descripcion: l.descripcion, cantidad: l.cantidad,
+        precio_usd: l.precio_usd, subtotal_usd: parseFloat(l.precio_usd) * parseFloat(l.cantidad)
+      });
+    }
+
+    // Insertar líneas de repuestos y descontar stock si se cierra
+    for (var j = 0; j < osRepuestosLineas.length; j++) {
+      var lr = osRepuestosLineas[j];
+      await api('os_repuestos', 'POST', {
+        id_orden: parseInt(osId), id_repuesto: lr.id_repuesto || null,
+        descripcion: lr.descripcion, cantidad: lr.cantidad,
+        precio_usd: lr.precio_usd, subtotal_usd: parseFloat(lr.precio_usd) * parseFloat(lr.cantidad)
+      });
+      // Descontar stock si estado es CERRADA
+      if (estado === 'CERRADA' && lr.id_repuesto) {
+        try {
+          const invItem = inventarioCache.find(function(x) { return x.id_repuesto == lr.id_repuesto; });
+          if (invItem) {
+            const nuevoStock = Math.max(0, invItem.stock_actual - parseFloat(lr.cantidad));
+            await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_repuesto=eq.' + lr.id_repuesto);
+          }
+        } catch(eStock) { console.warn('Error descontando stock:', eStock); }
+      }
+    }
+
+    okEl.textContent = '✓ Orden de servicio guardada correctamente.';
+    okEl.style.display = 'block';
+    setTimeout(function() { cerrarModal('modal-os'); renderOrdenes(); }, 1200);
+  } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+}
+
+// ─── ANULAR OS ───
+async function anularOS(id, numero) {
+  if (!confirm('¿Anular la orden ' + numero + '? Esta acción no se puede deshacer.')) return;
+  try {
+    await api('ordenes_servicio', 'PATCH', { estado: 'ANULADA' }, '?id_orden=eq.' + id);
+    renderOrdenes();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ─── FICHA OS ───
+async function verFichaOS(id) {
+  const o = ordenesCache.find(function(x) { return x.id_orden === id; });
+  if (!o) return;
+  try {
+    const [linServ, linRep] = await Promise.all([
+      api('os_servicios', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
+      api('os_repuestos', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
+    ]);
+    const est = ESTADOS_OS[o.estado] || { clase: 'badge-gris', label: o.estado };
+    const veh = o.vehiculos;
+    const prop = o.propietarios;
+
+    const tablaServ = linServ.length
+      ? '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+        + '<thead><tr>'
+        + '<th style="text-align:left;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;letter-spacing:1px">DESCRIPCIÓN</th>'
+        + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CANT</th>'
+        + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">P/U USD</th>'
+        + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">SUBTOTAL</th>'
+        + '</tr></thead><tbody>'
+        + linServ.map(function(l) {
+            return '<tr><td style="padding:6px 0">' + l.descripcion + '</td>'
+              + '<td style="text-align:right;padding:6px 0">' + l.cantidad + '</td>'
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">$ ' + parseFloat(l.precio_usd).toFixed(2) + '</td>'
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">$ ' + parseFloat(l.subtotal_usd).toFixed(2) + '</td></tr>';
+          }).join('')
+        + '</tbody></table>'
+      : '<div style="color:var(--suave);font-size:12px">Sin servicios</div>';
+
+    const tablaRep = linRep.length
+      ? '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+        + '<thead><tr>'
+        + '<th style="text-align:left;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;letter-spacing:1px">REPUESTO</th>'
+        + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CANT</th>'
+        + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">P/U USD</th>'
+        + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">SUBTOTAL</th>'
+        + '</tr></thead><tbody>'
+        + linRep.map(function(l) {
+            return '<tr><td style="padding:6px 0">' + l.descripcion + '</td>'
+              + '<td style="text-align:right;padding:6px 0">' + l.cantidad + '</td>'
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">$ ' + parseFloat(l.precio_usd).toFixed(2) + '</td>'
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">$ ' + parseFloat(l.subtotal_usd).toFixed(2) + '</td></tr>';
+          }).join('')
+        + '</tbody></table>'
+      : '<div style="color:var(--suave);font-size:12px">Sin repuestos</div>';
+
+    document.getElementById('ficha-os-contenido').innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:20px;flex-wrap:wrap">'
+      + '<div><div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + (o.numero_os || '—') + '</div>'
+      + '<span class="badge ' + est.clase + '">' + est.label + '</span></div>'
+      + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL</div>'
+      + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">$ ' + parseFloat(o.total_usd || 0).toFixed(2) + '</div>'
+      + '<div style="font-size:11px;color:var(--suave)">' + parseFloat(o.total_ves || 0).toLocaleString('es-VE', {minimumFractionDigits:2}) + ' Bs</div>'
+      + '</div></div>'
+
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Vehículo</div>'
+      + '<div style="font-weight:500">' + (veh ? veh.placa + ' — ' + veh.marca + ' ' + veh.modelo : '—') + '</div></div>'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Propietario</div>'
+      + '<div>' + (prop ? prop.nombre_completo : '—') + '</div></div>'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Fecha Entrada</div>'
+      + '<div>' + (o.fecha_entrada || '—') + '</div></div>'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Fecha Prometida</div>'
+      + '<div>' + (o.fecha_prometida || '—') + '</div></div>'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Km Entrada</div>'
+      + '<div>' + (o.kilometraje_entrada ? o.kilometraje_entrada.toLocaleString() + ' km' : '—') + '</div></div>'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Tasa USD</div>'
+      + '<div style="font-family:var(--font-mono)">' + parseFloat(o.tasa_cambio_usd || 1).toFixed(2) + ' Bs/$</div></div>'
+      + '</div>'
+
+      + (o.diagnostico ? '<div style="margin-bottom:16px"><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Diagnóstico</div>'
+        + '<div style="background:var(--gris2);border-radius:6px;padding:12px;font-size:13px">' + o.diagnostico + '</div></div>' : '')
+      + (o.observaciones ? '<div style="margin-bottom:16px"><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Observaciones</div>'
+        + '<div style="background:var(--gris2);border-radius:6px;padding:12px;font-size:13px">' + o.observaciones + '</div></div>' : '')
+
+      + '<div style="margin-bottom:16px"><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">🔧 Servicios Realizados</div>'
+      + tablaServ + '</div>'
+      + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">📦 Repuestos Utilizados</div>'
+      + tablaRep + '</div>';
+
+    document.getElementById('ficha-os-editar-btn').setAttribute('onclick', 'cerrarModal(\'modal-ficha-os\');abrirEditarOS(' + id + ')');
+    document.getElementById('ficha-os-editar-btn').style.display = (o.estado !== 'CERRADA' && o.estado !== 'ANULADA') ? '' : 'none';
+    abrirModal('modal-ficha-os');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ─── Cargar catálogo e inventario en selects del modal OS ───
+async function cargarSelectsOS() {
+  try {
+    if (!catalogoCache.length) catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=categoria.asc,nombre.asc');
+    if (!inventarioCache.length) inventarioCache = await api('inventario', 'GET', null, '?order=nombre.asc');
+  } catch(e) {}
+
+  const selCat = document.getElementById('os-sel-cat');
+  const selInv = document.getElementById('os-sel-inv');
+  if (selCat) {
+    selCat.innerHTML = '<option value="">— Descripción libre —</option>'
+      + catalogoCache.map(function(s) {
+          return '<option value="' + s.id_servicio + '">' + (s.categoria ? '[' + s.categoria + '] ' : '') + s.nombre + ' — $' + parseFloat(s.precio_usd || 0).toFixed(2) + '</option>';
+        }).join('');
+  }
+  if (selInv) {
+    selInv.innerHTML = '<option value="">— Descripción libre —</option>'
+      + inventarioCache.map(function(r) {
+          return '<option value="' + r.id_repuesto + '">' + r.nombre + ' (Stock: ' + r.stock_actual + ') — $' + parseFloat(r.precio_venta_usd || 0).toFixed(2) + '</option>';
+        }).join('');
+  }
+}
+
+// Cargar selects cuando se abre el modal OS
+const _originalAbrirModal = abrirModal;
+function abrirModal(id) {
+  _originalAbrirModal(id);
+  if (id === 'modal-os') { cargarSelectsOS(); renderLineasOS(); renderLineasRep(); }
+}
+
+
 window.addEventListener('load', () => {
   const guardado = sessionStorage.getItem('sd_sesion');
   if (guardado) {
@@ -3821,8 +4617,269 @@ window.addEventListener('load', () => {
 
 
 <!-- ═══════════════════════════════════════ -->
-<!--    VISOR DE IMAGEN                     -->
+<!--    MODAL CATÁLOGO DE SERVICIOS        -->
 <!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-catalogo">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <h3 id="modal-cat-titulo">NUEVO SERVICIO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-catalogo')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alerta alerta-exito" id="alerta-cat-ok"></div>
+      <div class="alerta alerta-error"  id="alerta-cat-err"></div>
+      <div class="form-grid">
+        <div class="form-campo form-full">
+          <label>Nombre del Servicio</label>
+          <input type="text" id="cat-nombre" placeholder="Ej: Cambio de aceite y filtro">
+        </div>
+        <div class="form-campo form-full">
+          <label>Descripción</label>
+          <input type="text" id="cat-descripcion" placeholder="Descripción opcional">
+        </div>
+        <div class="form-campo">
+          <label>Categoría</label>
+          <select id="cat-categoria">
+            <option value="">Sin categoría</option>
+            <option>MECÁNICA</option>
+            <option>ELÉCTRICA</option>
+            <option>CARROCERÍA</option>
+            <option>FRENOS</option>
+            <option>SUSPENSIÓN</option>
+            <option>AIRES</option>
+            <option>TRANSMISIÓN</option>
+            <option>DIAGNÓSTICO</option>
+            <option>OTROS</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Precio USD</label>
+          <input type="number" id="cat-precio" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div class="form-campo form-full">
+          <label>Estado</label>
+          <select id="cat-activo">
+            <option value="true">Activo</option>
+            <option value="false">Inactivo</option>
+          </select>
+        </div>
+      </div>
+      <input type="hidden" id="cat-id">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-catalogo')">Cancelar</button>
+      <button class="btn-primario" onclick="guardarCatalogo()">GUARDAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL INVENTARIO REPUESTOS          -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-inventario">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <h3 id="modal-inv-titulo">NUEVO REPUESTO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-inventario')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alerta alerta-exito" id="alerta-inv-ok"></div>
+      <div class="alerta alerta-error"  id="alerta-inv-err"></div>
+      <div class="form-grid">
+        <div class="form-campo">
+          <label>Código</label>
+          <input type="text" id="inv-codigo" placeholder="Ej: REP-001" style="text-transform:uppercase">
+        </div>
+        <div class="form-campo">
+          <label>Unidad</label>
+          <select id="inv-unidad">
+            <option value="UND">UND — Unidad</option>
+            <option value="LT">LT — Litro</option>
+            <option value="KG">KG — Kilogramo</option>
+            <option value="MT">MT — Metro</option>
+            <option value="JGO">JGO — Juego</option>
+            <option value="PAR">PAR — Par</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Nombre del Repuesto</label>
+          <input type="text" id="inv-nombre" placeholder="Ej: Filtro de aceite Bosch">
+        </div>
+        <div class="form-campo form-full">
+          <label>Descripción</label>
+          <input type="text" id="inv-descripcion" placeholder="Descripción opcional">
+        </div>
+        <div class="form-campo">
+          <label>Stock Actual</label>
+          <input type="number" id="inv-stock" placeholder="0" min="0">
+        </div>
+        <div class="form-campo">
+          <label>Stock Mínimo</label>
+          <input type="number" id="inv-stock-min" placeholder="0" min="0">
+        </div>
+        <div class="form-campo">
+          <label>Precio Costo USD</label>
+          <input type="number" id="inv-costo" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div class="form-campo">
+          <label>Precio Venta USD</label>
+          <input type="number" id="inv-venta" placeholder="0.00" step="0.01" min="0">
+        </div>
+      </div>
+      <input type="hidden" id="inv-id">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-inventario')">Cancelar</button>
+      <button class="btn-primario" onclick="guardarInventario()">GUARDAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL ORDEN DE SERVICIO             -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-os">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header">
+      <h3 id="modal-os-titulo">NUEVA ORDEN DE SERVICIO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-os')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alerta alerta-exito" id="alerta-os-ok"></div>
+      <div class="alerta alerta-error"  id="alerta-os-err"></div>
+
+      <!-- INFO OS -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding:10px 14px;background:var(--gris2);border-radius:6px;border:1px solid var(--borde)">
+        <div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">N° Orden</div>
+          <div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)" id="os-numero">—</div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">Tasa USD</div>
+          <div style="font-family:var(--font-mono);font-size:14px">1 $ = <span id="os-tasa">—</span> Bs</div>
+        </div>
+      </div>
+
+      <!-- BÚSQUEDA VEHÍCULO -->
+      <div style="margin-bottom:16px">
+        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:8px">Vehículo</div>
+        <div style="display:flex;gap:10px">
+          <input type="text" id="os-placa-bus" placeholder="Buscar por placa..." style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;text-transform:uppercase"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();buscarVehiculoOS()}">
+          <button class="btn-primario" onclick="buscarVehiculoOS()">BUSCAR</button>
+        </div>
+        <div id="os-veh-info"></div>
+        <input type="hidden" id="os-veh-id">
+      </div>
+
+      <div class="form-grid">
+        <div class="form-campo">
+          <label>Km de Entrada</label>
+          <input type="number" id="os-km" placeholder="0" min="0">
+        </div>
+        <div class="form-campo">
+          <label>Estado</label>
+          <select id="os-estado">
+            <option value="ABIERTA">Abierta</option>
+            <option value="EN_PROCESO">En Proceso</option>
+            <option value="ESPERA_REPUESTO">Espera Repuesto</option>
+            <option value="CERRADA">Cerrada</option>
+            <option value="ANULADA">Anulada</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Fecha de Entrada</label>
+          <input type="date" id="os-fecha-entrada">
+        </div>
+        <div class="form-campo">
+          <label>Fecha Prometida</label>
+          <input type="date" id="os-fecha-prometida">
+        </div>
+        <div class="form-campo form-full">
+          <label>Diagnóstico</label>
+          <textarea id="os-diagnostico" placeholder="Descripción del problema o diagnóstico inicial..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%"></textarea>
+        </div>
+        <div class="form-campo form-full">
+          <label>Observaciones</label>
+          <textarea id="os-observaciones" placeholder="Observaciones adicionales..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%"></textarea>
+        </div>
+      </div>
+
+      <!-- LÍNEAS DE SERVICIOS -->
+      <div style="margin-top:20px;border-top:1px solid var(--borde);padding-top:16px">
+        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:12px">🔧 Servicios</div>
+        <div id="os-lineas-serv" style="margin-bottom:12px"></div>
+        <!-- Agregar servicio -->
+        <div style="display:grid;grid-template-columns:1fr 80px 100px auto;gap:8px;align-items:end;padding:10px;background:var(--gris2);border-radius:6px">
+          <div class="form-campo" style="margin:0">
+            <label style="font-size:9px">Del catálogo o libre</label>
+            <select id="os-sel-cat" onchange="onSelCatalogoChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%"></select>
+            <input type="text" id="os-desc-libre" placeholder="O escribe descripción libre..." style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%;margin-top:4px">
+          </div>
+          <div class="form-campo" style="margin:0">
+            <label style="font-size:9px">Cant.</label>
+            <input type="number" id="os-cant-cat" value="1" min="0.01" step="0.01" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+          </div>
+          <div class="form-campo" style="margin:0">
+            <label style="font-size:9px">Precio USD</label>
+            <input type="number" id="os-precio-cat" placeholder="0.00" step="0.01" min="0" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+          </div>
+          <button class="btn-primario" onclick="agregarServicioCatalogo()" style="padding:8px 12px;font-size:11px;align-self:end">+ AGREGAR</button>
+        </div>
+      </div>
+
+      <!-- LÍNEAS DE REPUESTOS -->
+      <div style="margin-top:20px;border-top:1px solid var(--borde);padding-top:16px">
+        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:12px">📦 Repuestos</div>
+        <div id="os-lineas-rep" style="margin-bottom:12px"></div>
+        <!-- Agregar repuesto -->
+        <div style="display:grid;grid-template-columns:1fr 80px 100px auto;gap:8px;align-items:end;padding:10px;background:var(--gris2);border-radius:6px">
+          <div class="form-campo" style="margin:0">
+            <label style="font-size:9px">Del inventario o libre</label>
+            <select id="os-sel-inv" onchange="onSelInventarioChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%"></select>
+            <input type="text" id="os-desc-rep-libre" placeholder="O escribe descripción libre..." style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%;margin-top:4px">
+          </div>
+          <div class="form-campo" style="margin:0">
+            <label style="font-size:9px">Cant.</label>
+            <input type="number" id="os-cant-inv" value="1" min="0.01" step="0.01" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+          </div>
+          <div class="form-campo" style="margin:0">
+            <label style="font-size:9px">Precio USD</label>
+            <input type="number" id="os-precio-inv" placeholder="0.00" step="0.01" min="0" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+          </div>
+          <button class="btn-primario" onclick="agregarRepuestoInventario()" style="padding:8px 12px;font-size:11px;align-self:end">+ AGREGAR</button>
+        </div>
+      </div>
+
+      <!-- TOTALES -->
+      <div id="os-totales" style="border-top:1px solid var(--borde);margin-top:16px"></div>
+      <input type="hidden" id="os-id">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-os')">Cancelar</button>
+      <button class="btn-primario" onclick="guardarOS()">GUARDAR OS</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL FICHA OS                      -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-ficha-os">
+  <div class="modal" style="max-width:660px">
+    <div class="modal-header">
+      <h3>ORDEN DE SERVICIO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-os')">✕</button>
+    </div>
+    <div class="modal-body" id="ficha-os-contenido"></div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-os')">Cerrar</button>
+      <button class="btn-primario" id="ficha-os-editar-btn" onclick="">Editar OS</button>
+    </div>
+  </div>
+</div>
+
+
 <div id="visor-imagen" onclick="cerrarVisor()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out">
   <button onclick="cerrarVisor()" style="position:absolute;top:20px;right:24px;background:none;border:none;color:#fff;font-size:28px;cursor:pointer;z-index:10000">✕</button>
   <img id="visor-imagen-src" src="" style="max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px;box-shadow:0 8px 48px rgba(0,0,0,0.8)" onclick="event.stopPropagation()">
