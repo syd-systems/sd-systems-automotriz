@@ -3206,8 +3206,14 @@ async function guardarVehiculo() {
 }
 
 async function verFichaVehiculo(id) {
-  const v = vehiculosCache.find(function(x) { return x.id_vehiculo == id; });
-  if (!v) return;
+  try {
+  // Buscar directo en Supabase para tener datos completos
+  let v = vehiculosCache.find(function(x) { return x.id_vehiculo == id; });
+  if (!v) {
+    const res = await api('vehiculos', 'GET', null, '?id_vehiculo=eq.' + id + '&select=*,propietarios(id_propietario,tipo_doc,numero_doc,nombre_completo)');
+    if (!res || !res.length) { alert('Vehículo no encontrado'); return; }
+    v = res[0];
+  }
   const [fotos, histProp] = await Promise.all([
     api('vehiculos_fotos', 'GET', null, '?id_vehiculo=eq.' + id + '&order=orden.asc'),
     api('vehiculos_propietarios_hist', 'GET', null, '?id_vehiculo=eq.' + id + '&select=*,propietarios(nombre_completo,tipo_doc,numero_doc)&order=fecha_desde.desc')
@@ -3252,6 +3258,7 @@ async function verFichaVehiculo(id) {
     + histHTML;
 
   abrirModal('modal-ficha-veh');
+  } catch(e) { alert('Error abriendo ficha: ' + e.message); console.error(e); }
 }
 
 async function verFotosVehiculo(id) {
