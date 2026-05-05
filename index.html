@@ -2961,12 +2961,15 @@ async function guardarPropietario() {
     errEl.style.display = 'block'; return;
   }
 
+  // Capitalizar nombre correctamente
+  const nombreFinal = capitalizarNombre(nombre);
+
   try {
     let fotoUrl = id ? (propietariosCache.find(function(p) { return p.id_propietario == id; })?.foto_documento || null) : null;
     if (fotoFile) fotoUrl = await subirFoto(fotoFile, 'propietarios');
 
     const datos = {
-      tipo_doc: tipDoc, numero_doc: numDoc, nombre_completo: nombre,
+      tipo_doc: tipDoc, numero_doc: numDoc, nombre_completo: nombreFinal,
       telefono: tel || null, correo: correo || null,
       direccion: dir || null, empresa: emp || null,
       foto_documento: fotoUrl, id_usuario: sesionActual.correo_usuario
@@ -2998,7 +3001,7 @@ async function verFichaPropietario(id) {
       + '<div style="font-weight:500;font-size:14px">' + v.placa + ' — ' + v.marca + ' ' + v.modelo + ' ' + v.anio + '</div>'
       + '<div style="font-size:11px;color:var(--suave)">' + (v.color || '') + ' · ' + (v.tipo_carroceria || '') + '</div>'
       + '</div>'
-      + '<button class="btn-secundario" style="font-size:11px" onclick="cerrarModal(\'modal-ficha-prop\');abrirVehiculo(' + v.id_vehiculo + ')">Ver</button>'
+      + '<button class="btn-secundario" style="font-size:11px" onclick="cerrarModal(\'modal-ficha-prop\');verFichaVehiculo(' + v.id_vehiculo + ')">Ver Ficha</button>'
       + '</div>';
   }).join('') : '<div style="color:var(--suave);font-size:13px">Sin vehículos registrados</div>';
 
@@ -3561,7 +3564,7 @@ window.addEventListener('load', () => {
         <div style="grid-column:1/-1" id="prop-cedula-info" style="display:none"></div>
         <div class="form-campo form-full">
           <label>Nombre Completo</label>
-          <input type="text" id="prop-nombre" placeholder="Nombre completo del propietario">
+          <input type="text" id="prop-nombre" placeholder="Nombre completo del propietario" onblur="this.value=capitalizarNombre(this.value)">
         </div>
         <div class="form-campo">
           <label>Teléfono</label>
