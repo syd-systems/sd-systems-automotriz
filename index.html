@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260505260000 -->
+<!-- v20260505280000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -773,11 +773,15 @@
     right: 12px; top: 50%; transform: translateY(-50%);
     background: none; border: none;
     color: var(--suave); cursor: pointer;
-    font-size: 16px; padding: 4px;
+    font-size: 18px; padding: 6px;
     transition: color 0.2s;
     line-height: 1;
+    z-index: 10;
+    user-select: none;
+    -webkit-user-select: none;
   }
   .ojo-btn:hover { color: var(--naranja); }
+  .ojo-btn:active { opacity: 0.7; }
 
   /* SCROLLBAR */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -835,7 +839,7 @@
         <label>Contraseña</label>
         <div class="campo-pass">
           <input type="password" id="login-clave" placeholder="••••••••" autocomplete="current-password">
-          <button type="button" class="ojo-btn" onclick="togglePass('login-clave',this)" tabindex="-1">👁</button>
+          <button type="button" class="ojo-btn" onclick="togglePass('login-clave',this)">👁</button>
         </div>
       </div>
 
@@ -1757,6 +1761,8 @@ async function renderUsuarios(filtro) {
     else document.getElementById('contenido-principal').innerHTML = `<div class="alerta alerta-error" style="display:block">Error: ${e.message}</div>`;
   }
 }
+
+function abrirNuevoUsuario() {
   document.getElementById('modal-titulo').textContent = 'NUEVO USUARIO';
   document.getElementById('u-nombre').value = '';
   document.getElementById('u-correo').value = '';
