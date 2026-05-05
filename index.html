@@ -3067,7 +3067,7 @@ async function renderVehiculos() {
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando vehículos...</div>';
   propietariosSimple = await api('propietarios', 'GET', null, '?select=id_propietario,tipo_doc,numero_doc,nombre_completo&order=nombre_completo.asc');
-  await cargarVehiculos();
+  await cargarVehiculos(null, null); // Sin filtros al cargar
 }
 
 async function cargarVehiculos(filtro, propId) {
