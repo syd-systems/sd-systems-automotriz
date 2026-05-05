@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260505180000 -->
+<!-- v20260505200000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -765,6 +765,20 @@
   .prox-modulo h3 { font-family: var(--font-display); font-size: 24px; color: #444; margin-bottom: 8px; letter-spacing: 2px; }
   .prox-modulo p { font-size: 13px; }
 
+  /* ─── OJO CONTRASEÑA ─── */
+  .campo-pass { position: relative; }
+  .campo-pass input { padding-right: 44px !important; }
+  .ojo-btn {
+    position: absolute;
+    right: 12px; top: 50%; transform: translateY(-50%);
+    background: none; border: none;
+    color: var(--suave); cursor: pointer;
+    font-size: 16px; padding: 4px;
+    transition: color 0.2s;
+    line-height: 1;
+  }
+  .ojo-btn:hover { color: var(--naranja); }
+
   /* SCROLLBAR */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: var(--gris1); }
@@ -819,7 +833,10 @@
 
       <div class="campo">
         <label>Contraseña</label>
-        <input type="password" id="login-clave" placeholder="••••••••" autocomplete="current-password">
+        <div class="campo-pass">
+          <input type="password" id="login-clave" placeholder="••••••••" autocomplete="current-password">
+          <button type="button" class="ojo-btn" onclick="togglePass('login-clave',this)" tabindex="-1">👁</button>
+        </div>
       </div>
 
       <button class="btn-login" id="btn-ingresar" onclick="iniciarSesion()">INGRESAR</button>
@@ -854,8 +871,11 @@
       <p style="font-size:13px;color:var(--suave);margin-bottom:24px">Ingresa tu nueva contraseña.</p>
       <div class="campo">
         <label>Nueva Contraseña</label>
-        <input type="password" id="nueva-clave" placeholder="Mínimo 8 caracteres"
-               oninput="validarFortalezaRec(this.value)">
+        <div class="campo-pass">
+          <input type="password" id="nueva-clave" placeholder="Mínimo 8 caracteres"
+                 oninput="validarFortalezaRec(this.value)">
+          <button type="button" class="ojo-btn" onclick="togglePass('nueva-clave',this)" tabindex="-1">👁</button>
+        </div>
         <div id="fortaleza-rec" style="margin-top:10px">
           <div style="height:4px;background:var(--borde);border-radius:2px;overflow:hidden;margin-bottom:10px">
             <div id="fortaleza-fill-rec" style="height:100%;width:0%;transition:width 0.3s,background 0.3s;border-radius:2px"></div>
@@ -883,7 +903,10 @@
       </div>
       <div class="campo">
         <label>Confirmar Contraseña</label>
-        <input type="password" id="confirmar-clave" placeholder="Repite la contraseña">
+        <div class="campo-pass">
+          <input type="password" id="confirmar-clave" placeholder="Repite la contraseña">
+          <button type="button" class="ojo-btn" onclick="togglePass('confirmar-clave',this)" tabindex="-1">👁</button>
+        </div>
       </div>
       <button class="btn-login" onclick="guardarNuevaClave()">GUARDAR CONTRASEÑA</button>
       <div class="login-error" id="nueva-error" style="display:none"></div>
@@ -1027,7 +1050,10 @@
         </div>
         <div class="form-campo form-full">
           <label>Contraseña</label>
-          <input type="password" id="u-clave" placeholder="Mínimo 8 caracteres" oninput="validarFortalezaUsuario(this.value)" onfocus="document.getElementById('fortaleza-usuario').style.display='block'">
+          <div class="campo-pass">
+            <input type="password" id="u-clave" placeholder="Mínimo 8 caracteres" oninput="validarFortalezaUsuario(this.value)" onfocus="document.getElementById('fortaleza-usuario').style.display='block'">
+            <button type="button" class="ojo-btn" onclick="togglePass('u-clave',this)" tabindex="-1">👁</button>
+          </div>
           <div id="fortaleza-usuario" style="display:none;margin-top:10px">
             <div style="height:4px;background:var(--borde);border-radius:2px;overflow:hidden;margin-bottom:10px">
               <div id="fortaleza-fill-u" style="height:100%;width:0%;transition:width 0.3s,background 0.3s;border-radius:2px"></div>
@@ -1177,6 +1203,16 @@ async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '') {
   return metodo === 'GET' ? r.json() : (r.status === 204 ? null : r.json().catch(() => null));
 }
 
+
+// ─── TOGGLE CONTRASEÑA ───
+function togglePass(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const visible = input.type === 'text';
+  input.type = visible ? 'password' : 'text';
+  btn.textContent = visible ? '👁' : '🙈';
+  btn.style.color = visible ? '' : 'var(--naranja)';
+}
 
 // ─── MENÚ MÓVIL ───
 function toggleMenu() {
@@ -4346,7 +4382,10 @@ window.addEventListener('load', () => {
       <div class="form-grid">
         <div class="form-campo form-full">
           <label>Nueva Contraseña</label>
-          <input type="password" id="cambio-nueva" placeholder="Mínimo 8 caracteres" oninput="validarFortaleza(this.value)" onfocus="mostrarRequisitos()">
+          <div class="campo-pass">
+            <input type="password" id="cambio-nueva" placeholder="Mínimo 8 caracteres" oninput="validarFortaleza(this.value)" onfocus="mostrarRequisitos()">
+            <button type="button" class="ojo-btn" onclick="togglePass('cambio-nueva',this)" tabindex="-1">👁</button>
+          </div>
           <!-- Indicador de fortaleza -->
           <div id="fortaleza-bar" style="margin-top:12px">
             <div style="height:4px;background:var(--borde);border-radius:2px;overflow:hidden;margin-bottom:10px">
@@ -4375,7 +4414,10 @@ window.addEventListener('load', () => {
         </div>
         <div class="form-campo form-full">
           <label>Confirmar Nueva Contraseña</label>
-          <input type="password" id="cambio-confirmar" placeholder="Repite la contraseña">
+          <div class="campo-pass">
+            <input type="password" id="cambio-confirmar" placeholder="Repite la contraseña">
+            <button type="button" class="ojo-btn" onclick="togglePass('cambio-confirmar',this)" tabindex="-1">👁</button>
+          </div>
         </div>
       </div>
     </div>
