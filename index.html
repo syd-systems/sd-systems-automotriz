@@ -3073,15 +3073,25 @@ async function renderVehiculos() {
 async function cargarVehiculos(filtro, propId) {
   const c = document.getElementById('contenido-principal');
   try {
-    let query = '?select=*,propietarios(id_propietario,tipo_doc,numero_doc,nombre_completo)&order=fecha_registro.desc';
-    if (filtro && filtro.trim()) query += '&or=(placa.ilike.*' + encodeURIComponent(filtro.trim()) + '*,marca.ilike.*' + encodeURIComponent(filtro.trim()) + '*,modelo.ilike.*' + encodeURIComponent(filtro.trim()) + '*)';
+    // Consultas completamente separadas para evitar problemas de join
+    let query = '?select=*&order=fecha_registro.desc';
+    if (filtro && filtro.trim()) {
+      const f = encodeURIComponent(filtro.trim());
+      query += '&or=(placa.ilike.*' + f + '*,marca.ilike.*' + f + '*,modelo.ilike.*' + f + '*)';
+    }
     if (propId) query += '&id_propietario=eq.' + propId;
-    const vehs = await api('vehiculos', 'GET', null, query);
+
+    const [vehs, todosProp, todasFotos] = await Promise.all([
+      api('vehiculos', 'GET', null, query),
+      api('propietarios', 'GET', null, '?select=id_propietario,tipo_doc,numero_doc,nombre_completo'),
+      api('vehiculos_fotos', 'GET', null, '?select=id_vehiculo,url_foto,orden&order=orden.asc')
+    ]);
+
     vehiculosCache = vehs;
 
-    // Cargar fotos por separado
-    const todasFotos = await api('vehiculos_fotos', 'GET', null, '?select=id_vehiculo,url_foto,orden&order=orden.asc');
+    // Asociar propietarios y fotos manualmente
     vehs.forEach(function(v) {
+      v.propietarios = todosProp.find(function(p) { return p.id_propietario === v.id_propietario; }) || null;
       v.vehiculos_fotos = todasFotos.filter(function(f) { return f.id_vehiculo === v.id_vehiculo; });
     });
 
