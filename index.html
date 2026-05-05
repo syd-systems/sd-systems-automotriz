@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260502194759 -->
+<!-- v20260505120000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -1492,9 +1492,11 @@ async function renderDashboard() {
 
   try {
     // Contar registros de tablas existentes
-    const [usuarios, tasas] = await Promise.all([
+    const [usuarios, tasas, vehiculos, propietarios] = await Promise.all([
       api('usuarios', 'GET', null, '?select=id_usuario'),
       api('tasas', 'GET', null, '?select=id_tasa&order=fecha_registro.desc&limit=1'),
+      api('vehiculos', 'GET', null, '?select=id_vehiculo'),
+      api('propietarios', 'GET', null, '?select=id_propietario'),
     ]);
 
     const ultimaTasa = tasas.length > 0 ? tasas[0] : null;
@@ -1527,15 +1529,15 @@ async function renderDashboard() {
           <div class="tarjeta-valor">${tasaValor}</div>
           <div class="tarjeta-nombre">Última Tasa USD</div>
         </div>
-        <div class="tarjeta-stat" style="cursor:default">
+        <div class="tarjeta-stat" onclick="mostrarModulo('vehiculos', document.getElementById('nav-VEHICULOS'))">
           <div class="tarjeta-icono">🚗</div>
-          <div class="tarjeta-valor">—</div>
-          <div class="tarjeta-nombre">Vehículos · Fase 2</div>
+          <div class="tarjeta-valor">${vehiculos.length}</div>
+          <div class="tarjeta-nombre">Vehículos</div>
         </div>
-        <div class="tarjeta-stat" style="cursor:default">
-          <div class="tarjeta-icono">🔧</div>
-          <div class="tarjeta-valor">—</div>
-          <div class="tarjeta-nombre">Servicios · Fase 3</div>
+        <div class="tarjeta-stat" onclick="mostrarModulo('propietarios', document.getElementById('nav-PROPIETARIOS'))">
+          <div class="tarjeta-icono">👤</div>
+          <div class="tarjeta-valor">${propietarios.length}</div>
+          <div class="tarjeta-nombre">Propietarios</div>
         </div>
         <div class="tarjeta-stat" style="cursor:default">
           <div class="tarjeta-icono">🧾</div>
@@ -1567,7 +1569,7 @@ async function renderDashboard() {
               <tr><td>Login y Control de Accesos</td><td>Fase 1</td><td><span class="badge badge-verde">Activo</span></td></tr>
               <tr><td>Usuarios y Permisos</td><td>Fase 1</td><td><span class="badge badge-verde">Activo</span></td></tr>
               <tr><td>Tipos de Cambio</td><td>Fase 1</td><td><span class="badge badge-verde">Activo</span></td></tr>
-              <tr><td>Vehículos y Propietarios</td><td>Fase 2</td><td><span class="badge badge-gris">Pendiente</span></td></tr>
+              <tr><td>Vehículos y Propietarios</td><td>Fase 2</td><td><span class="badge badge-verde">Activo</span></td></tr>
               <tr><td>Órdenes de Servicio</td><td>Fase 3</td><td><span class="badge badge-gris">Pendiente</span></td></tr>
               <tr><td>Facturación y Pagos</td><td>Fase 4</td><td><span class="badge badge-gris">Pendiente</span></td></tr>
               <tr><td>Empleados y Nómina</td><td>Fase 5</td><td><span class="badge badge-gris">Pendiente</span></td></tr>
@@ -3132,8 +3134,8 @@ async function cargarVehiculos(filtro, propId) {
       + '<div class="panel-header">'
       + '<h3>Vehículos (' + vehs.length + ')</h3>'
       + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
-      + '<input type="text" id="buscar-veh" placeholder="Buscar placa, marca, modelo..." onkeyup="cargarVehiculos(this.value, document.getElementById(&quot;filtro-prop-veh&quot;) ? document.getElementById(&quot;filtro-prop-veh&quot;).value || null : null)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:240px">'
-      + '<select id="filtro-prop-veh" onchange="filtrarVehProp(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none">'
+      + '<input type="text" id="buscar-veh" placeholder="Buscar placa, marca, modelo..." onkeyup="buscarVehiculos(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:240px">'
+      + '<select id="filtro-prop-veh" onchange="cargarVehiculos(document.getElementById(\'buscar-veh\') ? document.getElementById(\'buscar-veh\').value : null, this.value || null)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none">'
       + '<option value="">Todos los propietarios</option>'
       + propietariosSimple.map(function(p) { return '<option value="' + p.id_propietario + '">' + p.nombre_completo + '</option>'; }).join('')
       + '</select>'
@@ -3158,10 +3160,19 @@ async function cargarVehiculos(filtro, propId) {
 }
 
 
+// Helper: buscar por texto respetando filtro de propietario activo
+function buscarVehiculos(texto) {
+  const filtroEl = document.getElementById('filtro-prop-veh');
+  const propId = filtroEl ? filtroEl.value || null : null;
+  cargarVehiculos(texto, propId);
+}
+
+// Helper: filtrar por propietario respetando texto de búsqueda activo
 function filtrarVehiculosPorPropietario(propId) {
   const sel = document.getElementById('filtro-prop-veh');
   if (sel) sel.value = propId;
-  cargarVehiculos(null, propId);
+  const buscarEl = document.getElementById('buscar-veh');
+  cargarVehiculos(buscarEl ? buscarEl.value : null, propId);
 }
 
 async function abrirVehiculo(id) {
@@ -3298,7 +3309,12 @@ async function guardarVehiculo() {
 
     okEl.textContent = '✓ Vehículo guardado correctamente.';
     okEl.style.display = 'block';
-    setTimeout(function() { cerrarModal('modal-vehiculo'); cargarVehiculos(); }, 1200);
+    setTimeout(function() {
+      cerrarModal('modal-vehiculo');
+      const buscarEl = document.getElementById('buscar-veh');
+      const filtroEl = document.getElementById('filtro-prop-veh');
+      cargarVehiculos(buscarEl ? buscarEl.value : null, filtroEl ? filtroEl.value || null : null);
+    }, 1200);
   } catch(e) {
     errEl.textContent = 'Error: ' + e.message;
     errEl.style.display = 'block';
