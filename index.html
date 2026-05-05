@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260505220000 -->
+<!-- v20260505230000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -3948,7 +3948,9 @@ async function abrirNuevaOS() {
   document.getElementById('modal-os-titulo').textContent = 'NUEVA ORDEN DE SERVICIO';
 
   renderLineasOS();
+  renderLineasRep();
   calcularTotalesOS();
+  await cargarSelectsOS();
   abrirModal('modal-os');
 }
 
@@ -3997,7 +3999,9 @@ async function abrirEditarOS(id) {
   }
 
   renderLineasOS();
+  renderLineasRep();
   calcularTotalesOS();
+  await cargarSelectsOS();
   abrirModal('modal-os');
 }
 
@@ -4383,11 +4387,7 @@ async function cargarSelectsOS() {
 }
 
 // Cargar selects cuando se abre el modal OS
-const _originalAbrirModal = abrirModal;
-function abrirModal(id) {
-  _originalAbrirModal(id);
-  if (id === 'modal-os') { cargarSelectsOS(); renderLineasOS(); renderLineasRep(); }
-}
+// NOTA: No sobreescribir abrirModal — llamar cargarSelectsOS directamente desde abrirNuevaOS y abrirEditarOS
 
 
 window.addEventListener('load', () => {
