@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260505200000 -->
+<!-- v20260505220000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -2933,13 +2933,34 @@ async function renderPropietarios() {
 
 async function cargarPropietarios(filtro) {
   const c = document.getElementById('contenido-principal');
+
+  const panelYaExiste = !!document.getElementById('buscar-prop');
+
+  if (!panelYaExiste) {
+    c.innerHTML =
+      '<div class="panel" id="panel-propietarios">'
+      + '<div class="panel-header">'
+      + '<h3 id="prop-contador">Propietarios</h3>'
+      + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+      + '<input type="text" id="buscar-prop" placeholder="Buscar por nombre o documento..." '
+      + 'onkeyup="cargarPropietarios(this.value)" '
+      + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();cargarPropietarios(this.value)}" '
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:250px">'
+      + '<button class="btn-primario" onclick="abrirPropietario(null)">+ Nuevo Propietario</button>'
+      + '</div></div>'
+      + '<div class="tabla-container" id="tabla-prop-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
+      + '</div>';
+  }
+
+  const tablaCont = document.getElementById('tabla-prop-cont');
+  if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+
   try {
     let query = '?select=*&order=fecha_registro.desc';
     if (filtro && filtro.trim()) query += '&or=(nombre_completo.ilike.*' + encodeURIComponent(filtro.trim()) + '*,numero_doc.ilike.*' + encodeURIComponent(filtro.trim()) + '*)';
     const props = await api('propietarios', 'GET', null, query);
     propietariosCache = props;
 
-    // Cargar vehículos de cada propietario por separado
     const vehs = await api('vehiculos', 'GET', null, '?select=id_vehiculo,placa,marca,modelo,id_propietario');
     props.forEach(function(p) {
       p.vehiculos = vehs.filter(function(v) { return v.id_propietario === p.id_propietario; });
@@ -2970,20 +2991,18 @@ async function cargarPropietarios(filtro) {
         + '</tr>';
     }).join('');
 
-    c.innerHTML =
-      '<div class="panel">'
-      + '<div class="panel-header">'
-      + '<h3>Propietarios (' + props.length + ')</h3>'
-      + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
-      + '<input type="text" id="buscar-prop" placeholder="Buscar por nombre o documento..." onkeyup="cargarPropietarios(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:250px">'
-      + '<button class="btn-primario" onclick="abrirPropietario(null)">+ Nuevo Propietario</button>'
-      + '</div></div>'
-      + '<div class="tabla-container"><table>'
-      + '<thead><tr><th>Propietario</th><th>Teléfono</th><th>Correo</th><th>Vehículos</th><th>Placas</th><th>Acciones</th></tr></thead>'
+    const contador = document.getElementById('prop-contador');
+    if (contador) contador.textContent = 'Propietarios (' + props.length + ')';
+
+    const tabla = document.getElementById('tabla-prop-cont');
+    if (tabla) tabla.innerHTML =
+      '<table><thead><tr><th>Propietario</th><th>Teléfono</th><th>Correo</th><th>Vehículos</th><th>Placas</th><th>Acciones</th></tr></thead>'
       + '<tbody>' + (filas || '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--suave)">No hay propietarios registrados</td></tr>') + '</tbody>'
-      + '</table></div></div>';
+      + '</table>';
+
   } catch(e) {
-    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+    const tabla = document.getElementById('tabla-prop-cont');
+    if (tabla) tabla.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
   }
 }
 
@@ -3062,7 +3081,11 @@ async function guardarPropietario() {
       okEl.textContent = '✓ Propietario registrado.';
     }
     okEl.style.display = 'block';
-    setTimeout(function() { cerrarModal('modal-propietario'); cargarPropietarios(); }, 1200);
+    setTimeout(function() {
+      cerrarModal('modal-propietario');
+      document.getElementById('contenido-principal').innerHTML = '';
+      renderPropietarios();
+    }, 1200);
   } catch(e) {
     errEl.textContent = 'Error: ' + e.message;
     errEl.style.display = 'block';
@@ -3127,8 +3150,42 @@ async function renderVehiculos() {
 
 async function cargarVehiculos(filtro, propId) {
   const c = document.getElementById('contenido-principal');
+
+  // Si el panel ya existe, solo actualizar la tabla — no reconstruir el header
+  const panelYaExiste = !!document.getElementById('buscar-veh');
+
+  if (!panelYaExiste) {
+    // Primera carga: construir el panel completo con header y tabla vacía
+    c.innerHTML =
+      '<div class="panel" id="panel-vehiculos">'
+      + '<div class="panel-header">'
+      + '<h3 id="veh-contador">Vehículos</h3>'
+      + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+      + '<input type="text" id="buscar-veh" placeholder="Buscar placa, marca, modelo..." '
+      + 'onkeyup="buscarVehiculos(this.value)" '
+      + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();buscarVehiculos(this.value)}" '
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:240px">'
+      + '<select id="filtro-prop-veh" onchange="filtrarVehiculosPorPropietario(this.value || null)" '
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none">'
+      + '<option value="">Todos los propietarios</option>'
+      + propietariosSimple.map(function(p) { return '<option value="' + p.id_propietario + '">' + p.nombre_completo + '</option>'; }).join('')
+      + '</select>'
+      + '<button class="btn-primario" onclick="abrirVehiculo(null)">+ Nuevo Vehículo</button>'
+      + '</div></div>'
+      + '<div class="tabla-container" id="tabla-vehiculos-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
+      + '</div>';
+  }
+
+  // Actualizar el select de propietarios si ya existe
+  const selProp = document.getElementById('filtro-prop-veh');
+  if (selProp && propId !== undefined) {
+    selProp.value = propId || '';
+  }
+
+  const tablaCont = document.getElementById('tabla-vehiculos-cont');
+  if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+
   try {
-    // Consultas completamente separadas para evitar problemas de join
     let query = '?select=*&order=fecha_registro.desc';
     if (filtro && filtro.trim()) {
       const f = encodeURIComponent(filtro.trim());
@@ -3144,7 +3201,6 @@ async function cargarVehiculos(filtro, propId) {
 
     vehiculosCache = vehs;
 
-    // Asociar propietarios y fotos manualmente
     vehs.forEach(function(v) {
       v.propietarios = todosProp.find(function(p) { return p.id_propietario === v.id_propietario; }) || null;
       v.vehiculos_fotos = todasFotos.filter(function(f) { return f.id_vehiculo === v.id_vehiculo; });
@@ -3182,33 +3238,20 @@ async function cargarVehiculos(filtro, propId) {
         + '</tr>';
     }).join('');
 
-    c.innerHTML =
-      '<div class="panel">'
-      + '<div class="panel-header">'
-      + '<h3>Vehículos (' + vehs.length + ')</h3>'
-      + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
-      + '<input type="text" id="buscar-veh" placeholder="Buscar placa, marca, modelo..." onkeyup="buscarVehiculos(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:240px">'
-      + '<select id="filtro-prop-veh" onchange="cargarVehiculos(document.getElementById(\'buscar-veh\') ? document.getElementById(\'buscar-veh\').value : null, this.value || null)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none">'
-      + '<option value="">Todos los propietarios</option>'
-      + propietariosSimple.map(function(p) { return '<option value="' + p.id_propietario + '">' + p.nombre_completo + '</option>'; }).join('')
-      + '</select>'
-      + '<button class="btn-primario" onclick="abrirVehiculo(null)">+ Nuevo Vehículo</button>'
-      + '</div></div>'
-      + '<div class="tabla-container"><table>'
-      + '<thead><tr>'
-      + '<th>Vehículo</th>'
-      + '<th>Año</th>'
-      + '<th>Color · Tipo</th>'
-      + '<th>Propietario</th>'
-      + '<th>Fotos</th>'
-      + '<th>Estado</th>'
-      + '<th>Acciones</th>'
+    const contador = document.getElementById('veh-contador');
+    if (contador) contador.textContent = 'Vehículos (' + vehs.length + ')';
+
+    const tabla = document.getElementById('tabla-vehiculos-cont');
+    if (tabla) tabla.innerHTML =
+      '<table><thead><tr>'
+      + '<th>Vehículo</th><th>Año</th><th>Color · Tipo</th><th>Propietario</th><th>Fotos</th><th>Estado</th><th>Acciones</th>'
       + '</tr></thead>'
       + '<tbody>' + (filas || '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--suave)">No hay vehículos registrados</td></tr>') + '</tbody>'
-      + '</table></div></div>';
+      + '</table>';
 
   } catch(e) {
-    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+    const tabla = document.getElementById('tabla-vehiculos-cont');
+    if (tabla) tabla.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
   }
 }
 
@@ -3364,9 +3407,8 @@ async function guardarVehiculo() {
     okEl.style.display = 'block';
     setTimeout(function() {
       cerrarModal('modal-vehiculo');
-      const buscarEl = document.getElementById('buscar-veh');
-      const filtroEl = document.getElementById('filtro-prop-veh');
-      cargarVehiculos(buscarEl ? buscarEl.value : null, filtroEl ? filtroEl.value || null : null);
+      document.getElementById('contenido-principal').innerHTML = '';
+      renderVehiculos();
     }, 1200);
   } catch(e) {
     errEl.textContent = 'Error: ' + e.message;
