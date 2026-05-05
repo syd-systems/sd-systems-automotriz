@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260505240000 -->
+<!-- v20260505260000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -1640,7 +1640,7 @@ async function renderDashboard() {
 // ─── MÓDULO USUARIOS ───
 let usuariosCache = [];
 
-async function renderUsuarios() {
+async function renderUsuarios(filtro) {
   if (!sesionActual?.administrador && !modulosAcceso.includes('USUARIOS')) {
     document.getElementById('contenido-principal').innerHTML =
       `<div class="alerta alerta-error" style="display:block">No tiene acceso a este módulo.</div>`;
@@ -1648,13 +1648,40 @@ async function renderUsuarios() {
   }
 
   const c = document.getElementById('contenido-principal');
-  c.innerHTML = `<div class="loading"><div class="spinner"></div> Cargando usuarios...</div>`;
+  const panelYaExiste = !!document.getElementById('buscar-usu');
+
+  if (!panelYaExiste) {
+    c.innerHTML = `
+      <div class="panel" id="panel-usuarios">
+        <div class="panel-header">
+          <h3 id="usu-contador">Usuarios del Sistema</h3>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <input type="text" id="buscar-usu" placeholder="Buscar por nombre o correo..."
+              onkeyup="renderUsuarios(this.value)"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();renderUsuarios(this.value)}else if(event.key==='Escape'){this.value='';renderUsuarios('')}"
+              style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:240px">
+            <button class="btn-secundario" onclick="document.getElementById('buscar-usu').value='';renderUsuarios()">↻ Actualizar</button>
+            <button class="btn-primario" onclick="abrirNuevoUsuario()">+ Nuevo Usuario</button>
+          </div>
+        </div>
+        <div class="tabla-container" id="tabla-usu-cont">
+          <div class="loading"><div class="spinner"></div> Cargando usuarios...</div>
+        </div>
+      </div>`;
+  }
+
+  const tablaCont = document.getElementById('tabla-usu-cont');
+  if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
 
   try {
     const usuarios = await api('usuarios', 'GET', null, '?select=*&order=fecha_registro.asc');
     usuariosCache = usuarios;
 
-    const filas = usuarios.map(u => {
+    const usuariosFiltrados = (filtro && filtro.trim())
+      ? usuarios.filter(u => u.nombre.toLowerCase().includes(filtro.toLowerCase()) || u.correo_usuario.toLowerCase().includes(filtro.toLowerCase()))
+      : usuarios;
+
+    const filas = usuariosFiltrados.map(u => {
       // Considerar conectado solo si ultima_conexion fue hace menos de 6 minutos
       const ahora = new Date();
       const fechaUltimaCon = u.ultima_conexion ? new Date(u.ultima_conexion) : null;
@@ -1707,38 +1734,29 @@ async function renderUsuarios() {
       </tr>`;
     }).join('');
 
-    c.innerHTML = `
-      <div class="panel">
-        <div class="panel-header">
-          <h3>Usuarios del Sistema (${usuarios.length})</h3>
-          <div style="display:flex;gap:10px;align-items:center">
-            <span style="font-size:11px;color:var(--suave)" id="ultima-actualizacion">Actualizado: ahora</span>
-            <button class="btn-secundario" onclick="renderUsuarios()">↻ Actualizar</button>
-            <button class="btn-primario" onclick="abrirNuevoUsuario()">+ Nuevo Usuario</button>
-          </div>
-        </div>
-        <div class="tabla-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Usuario</th>
-                <th>Tipo</th>
-                <th>Estado / Conexión</th>
-                <th>Fechas</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>${filas}</tbody>
-          </table>
-        </div>
-      </div>
-    `;
+    const contador = document.getElementById('usu-contador');
+    if (contador) contador.textContent = `Usuarios del Sistema (${usuariosFiltrados.length})`;
+
+    const tabla = document.getElementById('tabla-usu-cont');
+    if (tabla) tabla.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Tipo</th>
+            <th>Estado / Conexión</th>
+            <th>Fechas</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>${filas || '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--suave)">No hay usuarios que coincidan</td></tr>'}</tbody>
+      </table>`;
   } catch(e) {
-    c.innerHTML = `<div class="alerta alerta-error" style="display:block">Error: ${e.message}</div>`;
+    const tabla = document.getElementById('tabla-usu-cont');
+    if (tabla) tabla.innerHTML = `<div class="alerta alerta-error" style="display:block">Error: ${e.message}</div>`;
+    else document.getElementById('contenido-principal').innerHTML = `<div class="alerta alerta-error" style="display:block">Error: ${e.message}</div>`;
   }
 }
-
-function abrirNuevoUsuario() {
   document.getElementById('modal-titulo').textContent = 'NUEVO USUARIO';
   document.getElementById('u-nombre').value = '';
   document.getElementById('u-correo').value = '';
@@ -1879,6 +1897,7 @@ async function guardarUsuario() {
     okEl.style.display = 'block';
     setTimeout(() => {
       cerrarModal('modal-usuario');
+      document.getElementById('contenido-principal').innerHTML = '';
       renderUsuarios();
     }, 1200);
 
@@ -3258,17 +3277,24 @@ async function cargarVehiculos(filtro, propId) {
 
 // Helper: buscar por texto respetando filtro de propietario activo
 function buscarVehiculos(texto) {
-  const filtroEl = document.getElementById('filtro-prop-veh');
-  const propId = filtroEl ? filtroEl.value || null : null;
-  cargarVehiculos(texto, propId);
+  // Si hay texto, limpiar el filtro de propietario
+  if (texto && texto.trim()) {
+    const selProp = document.getElementById('filtro-prop-veh');
+    if (selProp) selProp.value = '';
+  }
+  cargarVehiculos(texto || null, null);
 }
 
-// Helper: filtrar por propietario respetando texto de búsqueda activo
+// Helper: filtrar por propietario — limpia el texto de búsqueda
 function filtrarVehiculosPorPropietario(propId) {
   const sel = document.getElementById('filtro-prop-veh');
-  if (sel) sel.value = propId;
-  const buscarEl = document.getElementById('buscar-veh');
-  cargarVehiculos(buscarEl ? buscarEl.value : null, propId);
+  if (sel) sel.value = propId || '';
+  // Si hay propietario seleccionado, limpiar búsqueda de texto
+  if (propId) {
+    const buscarEl = document.getElementById('buscar-veh');
+    if (buscarEl) buscarEl.value = '';
+  }
+  cargarVehiculos(null, propId || null);
 }
 
 async function abrirVehiculo(id) {
@@ -3616,13 +3642,47 @@ document.addEventListener('keydown', function(e) {
 // ══════════════════════════════════════════════════════════════
 let catalogoCache = [];
 
-async function renderCatalogo() {
+async function renderCatalogo(filtro, categoria) {
   const c = document.getElementById('contenido-principal');
-  c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando catálogo...</div>';
+  const panelYaExiste = !!document.getElementById('buscar-cat');
+
+  if (!panelYaExiste) {
+    c.innerHTML = '<div class="panel" id="panel-catalogo">'
+      + '<div class="panel-header"><h3 id="cat-contador">Catálogo de Servicios</h3>'
+      + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+      + '<input type="text" id="buscar-cat" placeholder="Buscar servicio..." '
+      + 'onkeyup="renderCatalogo(this.value, document.getElementById(\'filtro-cat-cat\').value||null)" '
+      + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderCatalogo(this.value,document.getElementById(\'filtro-cat-cat\').value||null)}else if(event.key===\'Escape\'){this.value=\'\';renderCatalogo(\'\',document.getElementById(\'filtro-cat-cat\').value||null)}" '
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:200px">'
+      + '<select id="filtro-cat-cat" onchange="renderCatalogo(document.getElementById(\'buscar-cat\').value||null,this.value||null)" '
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none">'
+      + '<option value="">Todas las categorías</option>'
+      + ['MECÁNICA','ELÉCTRICA','CARROCERÍA','FRENOS','SUSPENSIÓN','AIRES','TRANSMISIÓN','DIAGNÓSTICO','OTROS'].map(function(cat) { return '<option value="' + cat + '">' + cat + '</option>'; }).join('')
+      + '</select>'
+      + '<button class="btn-primario" onclick="abrirNuevoCatalogo()">+ Nuevo Servicio</button>'
+      + '</div></div>'
+      + '<div class="tabla-container" id="tabla-cat-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
+      + '</div>';
+  }
+
+  // Sync filter values if panel exists
+  const selCat = document.getElementById('filtro-cat-cat');
+  if (selCat && categoria !== undefined) selCat.value = categoria || '';
+
+  const tablaCont = document.getElementById('tabla-cat-cont');
+  if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+
   try {
     const items = await api('servicios_catalogo', 'GET', null, '?order=categoria.asc,nombre.asc&select=*');
     catalogoCache = items;
-    const filas = items.map(function(s) {
+
+    const itemsFiltrados = items.filter(function(s) {
+      const matchTexto = !filtro || !filtro.trim() || s.nombre.toLowerCase().includes(filtro.toLowerCase()) || (s.descripcion || '').toLowerCase().includes(filtro.toLowerCase());
+      const matchCat = !categoria || s.categoria === categoria;
+      return matchTexto && matchCat;
+    });
+
+    const filas = itemsFiltrados.map(function(s) {
       return '<tr>'
         + '<td><div style="font-weight:500">' + s.nombre + '</div>'
         + (s.descripcion ? '<div style="font-size:11px;color:var(--suave);margin-top:2px">' + s.descripcion + '</div>' : '')
@@ -3637,15 +3697,17 @@ async function renderCatalogo() {
         + '</tr>';
     }).join('');
 
-    c.innerHTML = '<div class="panel">'
-      + '<div class="panel-header"><h3>Catálogo de Servicios (' + items.length + ')</h3>'
-      + '<button class="btn-primario" onclick="abrirNuevoCatalogo()">+ Nuevo Servicio</button></div>'
-      + '<div class="tabla-container"><table><thead><tr>'
+    const contador = document.getElementById('cat-contador');
+    if (contador) contador.textContent = 'Catálogo de Servicios (' + itemsFiltrados.length + ')';
+
+    const tabla = document.getElementById('tabla-cat-cont');
+    if (tabla) tabla.innerHTML = '<table><thead><tr>'
       + '<th>Servicio</th><th>Categoría</th><th>Precio USD</th><th>Estado</th><th>Acciones</th>'
-      + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin servicios registrados</td></tr>') + '</tbody></table></div>'
-      + '</div>';
+      + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin servicios registrados</td></tr>') + '</tbody></table>';
+
   } catch(e) {
-    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+    const tabla = document.getElementById('tabla-cat-cont');
+    if (tabla) tabla.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
   }
 }
 
@@ -3698,7 +3760,7 @@ async function guardarCatalogo() {
       await api('servicios_catalogo', 'POST', datos);
     }
     okEl.textContent = '✓ Servicio guardado.'; okEl.style.display = 'block';
-    setTimeout(function() { cerrarModal('modal-catalogo'); renderCatalogo(); }, 1000);
+    setTimeout(function() { cerrarModal('modal-catalogo'); document.getElementById('contenido-principal').innerHTML=''; renderCatalogo(); }, 1000);
   } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
 }
 
@@ -3706,6 +3768,7 @@ async function eliminarCatalogo(id, nombre) {
   if (!confirm('¿Eliminar "' + nombre + '"?')) return;
   try {
     await api('servicios_catalogo', 'DELETE', null, '?id_servicio=eq.' + id);
+    document.getElementById('contenido-principal').innerHTML='';
     renderCatalogo();
   } catch(e) { alert('Error: ' + e.message); }
 }
@@ -3716,14 +3779,51 @@ async function eliminarCatalogo(id, nombre) {
 // ══════════════════════════════════════════════════════════════
 let inventarioCache = [];
 
-async function renderInventario() {
+async function renderInventario(filtro) {
   const c = document.getElementById('contenido-principal');
-  c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando inventario...</div>';
+  const panelYaExiste = !!document.getElementById('buscar-inv');
+
+  if (!panelYaExiste) {
+    c.innerHTML = '<div class="panel" id="panel-inventario">'
+      + '<div class="panel-header"><h3 id="inv-contador">Inventario de Repuestos</h3>'
+      + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+      + '<input type="text" id="buscar-inv" placeholder="Buscar repuesto o código..." '
+      + 'onkeyup="renderInventario(this.value)" '
+      + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\')}" '
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:220px">'
+      + '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Repuesto</button>'
+      + '</div></div>'
+      + '<div id="alerta-stock-bajo" style="display:none"></div>'
+      + '<div class="tabla-container" id="tabla-inv-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
+      + '</div>';
+  }
+
+  const tablaCont = document.getElementById('tabla-inv-cont');
+  if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+
   try {
     const items = await api('inventario', 'GET', null, '?order=nombre.asc&select=*');
     inventarioCache = items;
 
-    const filas = items.map(function(r) {
+    const itemsFiltrados = (filtro && filtro.trim())
+      ? items.filter(function(r) {
+          const t = filtro.toLowerCase();
+          return r.nombre.toLowerCase().includes(t) || (r.codigo || '').toLowerCase().includes(t) || (r.descripcion || '').toLowerCase().includes(t);
+        })
+      : items;
+
+    const stockBajos = items.filter(function(r) { return r.stock_actual <= r.stock_minimo; }).length;
+    const alertaDiv = document.getElementById('alerta-stock-bajo');
+    if (alertaDiv) {
+      if (stockBajos > 0) {
+        alertaDiv.innerHTML = '<div class="alerta alerta-error" style="display:block;margin:0 0 0 0;border-radius:0">⚠ ' + stockBajos + ' repuesto(s) con stock bajo o agotado</div>';
+        alertaDiv.style.display = 'block';
+      } else {
+        alertaDiv.style.display = 'none';
+      }
+    }
+
+    const filas = itemsFiltrados.map(function(r) {
       const stockBajo = r.stock_actual <= r.stock_minimo;
       return '<tr>'
         + '<td><div style="font-family:var(--font-mono);font-size:11px;color:var(--suave)">' + (r.codigo || '—') + '</div>'
@@ -3742,19 +3842,17 @@ async function renderInventario() {
         + '</tr>';
     }).join('');
 
-    const stockBajos = items.filter(function(r) { return r.stock_actual <= r.stock_minimo; }).length;
+    const contador = document.getElementById('inv-contador');
+    if (contador) contador.textContent = 'Inventario de Repuestos (' + itemsFiltrados.length + ')';
 
-    c.innerHTML = (stockBajos > 0
-      ? '<div class="alerta alerta-error" style="display:block;margin-bottom:16px">⚠ ' + stockBajos + ' repuesto(s) con stock bajo o agotado</div>' : '')
-      + '<div class="panel">'
-      + '<div class="panel-header"><h3>Inventario de Repuestos (' + items.length + ')</h3>'
-      + '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Repuesto</button></div>'
-      + '<div class="tabla-container"><table><thead><tr>'
+    const tabla = document.getElementById('tabla-inv-cont');
+    if (tabla) tabla.innerHTML = '<table><thead><tr>'
       + '<th>Repuesto</th><th>Stock</th><th>Precio Costo</th><th>Precio Venta</th><th>Acciones</th>'
-      + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos registrados</td></tr>') + '</tbody></table></div>'
-      + '</div>';
+      + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos registrados</td></tr>') + '</tbody></table>';
+
   } catch(e) {
-    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+    const tabla = document.getElementById('tabla-inv-cont');
+    if (tabla) tabla.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
   }
 }
 
@@ -3813,7 +3911,7 @@ async function guardarInventario() {
       await api('inventario', 'POST', datos);
     }
     okEl.textContent = '✓ Repuesto guardado.'; okEl.style.display = 'block';
-    setTimeout(function() { cerrarModal('modal-inventario'); renderInventario(); }, 1000);
+    setTimeout(function() { cerrarModal('modal-inventario'); document.getElementById('contenido-principal').innerHTML=''; renderInventario(); }, 1000);
   } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
 }
 
@@ -3821,6 +3919,7 @@ async function eliminarInventario(id, nombre) {
   if (!confirm('¿Eliminar "' + nombre + '"?')) return;
   try {
     await api('inventario', 'DELETE', null, '?id_repuesto=eq.' + id);
+    document.getElementById('contenido-principal').innerHTML='';
     renderInventario();
   } catch(e) { alert('Error: ' + e.message); }
 }
