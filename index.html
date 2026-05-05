@@ -813,7 +813,7 @@
 
       <div class="campo">
         <label>Correo Electrónico</label>
-        <input type="email" id="login-correo" placeholder="usuario@correo.com" autocomplete="email">
+        <input type="email" id="login-correo" placeholder="usuario@correo.com" autocomplete="email" onblur="if(this.value.includes('@')) document.getElementById('login-clave').focus()">
       </div>
 
       <div class="campo">
@@ -1302,6 +1302,9 @@ actualizarReloj();
 // ─── LOGIN ───
 document.getElementById('login-clave').addEventListener('keypress', e => {
   if (e.key === 'Enter') iniciarSesion();
+});
+document.getElementById('login-clave').addEventListener('blur', function() {
+  if (this.value.length >= 6 && document.getElementById('login-correo').value.includes('@')) iniciarSesion();
 });
 
 async function iniciarSesion() {
@@ -3108,8 +3111,8 @@ async function cargarVehiculos(filtro, propId) {
       + '<div class="panel-header">'
       + '<h3>Vehículos (' + vehs.length + ')</h3>'
       + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
-      + '<input type="text" id="buscar-veh" placeholder="Buscar placa, marca, modelo..." onkeyup="cargarVehiculos(this.value, document.getElementById('filtro-prop-veh') ? document.getElementById('filtro-prop-veh').value || null : null)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:240px">'
-      + '<select id="filtro-prop-veh" onchange="cargarVehiculos(document.getElementById('buscar-veh') ? document.getElementById('buscar-veh').value : null, this.value || null)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none">'
+      + '<input type="text" id="buscar-veh" placeholder="Buscar placa, marca, modelo..." onkeyup="cargarVehiculos(this.value, document.getElementById(&quot;filtro-prop-veh&quot;) ? document.getElementById(&quot;filtro-prop-veh&quot;).value || null : null)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:240px">'
+      + '<select id="filtro-prop-veh" onchange="filtrarVehProp(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none">'
       + '<option value="">Todos los propietarios</option>'
       + propietariosSimple.map(function(p) { return '<option value="' + p.id_propietario + '">' + p.nombre_completo + '</option>'; }).join('')
       + '</select>'
