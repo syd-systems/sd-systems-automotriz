@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260505310000 -->
+<!-- v20260505320000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -2094,8 +2094,9 @@ async function renderTasas() {
       const pUsd    = getValorFecha(histUsd,  proximaFecha);
       const pEur    = getValorFecha(histEur,  proximaFecha);
       const pUsdt   = getValorFecha(histUsdt, proximaFecha);
-      const pFmt    = new Date(proximaFecha + 'T12:00:00').toLocaleDateString('es-VE', { day:'2-digit', month:'2-digit', year:'numeric' });
-      const label   = eHoy ? 'TASA PARA EL DÍA DE HOY · ' + pFmt : 'TASA PARA EL DÍA DE MAÑANA · ' + pFmt;
+      const pFmt    = new Date(proximaFecha + 'T12:00:00').toLocaleDateString('es-VE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+      const pCap    = pFmt.charAt(0).toUpperCase() + pFmt.slice(1);
+      const label   = 'FECHA VALOR : ' + pCap;
       const subLabel= eHoy ? 'Publicada por el BCV' : 'Disponible anticipadamente';
 
       function celdaProx(val, color) {
