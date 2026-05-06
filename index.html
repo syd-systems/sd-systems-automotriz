@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260506310000 -->
+<!-- v20260506320000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -4663,9 +4663,10 @@ async function abrirNuevaOS() {
   document.getElementById('os-estado').value = 'ABIERTA';
   document.getElementById('os-diagnostico').value = '';
   document.getElementById('os-observaciones').value = '';
-  document.getElementById('os-tipo-cambio').value = 'USD';
-  document.getElementById('os-tasa').textContent = tasaActualOS.toFixed(2);
-  document.getElementById('os-moneda-label').textContent = '$';
+  const tasaUsdEl = document.getElementById('os-tasa-usd');
+  const tasaEurEl = document.getElementById('os-tasa-eur');
+  if (tasaUsdEl) tasaUsdEl.textContent = tasasDisponiblesOS.USD.toFixed(2);
+  if (tasaEurEl) tasaEurEl.textContent = tasasDisponiblesOS.EUR.toFixed(2);
   document.getElementById('alerta-os-ok').style.display = 'none';
   document.getElementById('alerta-os-err').style.display = 'none';
   document.getElementById('modal-os-titulo').textContent = 'NUEVA ORDEN DE SERVICIO';
@@ -4708,7 +4709,10 @@ async function abrirEditarOS(id) {
   document.getElementById('os-estado').value = o.estado;
   document.getElementById('os-diagnostico').value = o.diagnostico || '';
   document.getElementById('os-observaciones').value = o.observaciones || '';
-  document.getElementById('os-tasa').textContent = tasaActualOS.toFixed(2);
+  const tasaUsdEl2 = document.getElementById('os-tasa-usd');
+  const tasaEurEl2 = document.getElementById('os-tasa-eur');
+  if (tasaUsdEl2) tasaUsdEl2.textContent = tasasDisponiblesOS.USD.toFixed(2);
+  if (tasaEurEl2) tasaEurEl2.textContent = tasasDisponiblesOS.EUR.toFixed(2);
   document.getElementById('os-tipo-cambio').value = o.moneda_cambio || 'USD';
   document.getElementById('os-moneda-label').textContent = (o.moneda_cambio === 'EUR') ? '€' : '$';
   document.getElementById('os-veh-id').value = o.id_vehiculo || '';
@@ -4972,8 +4976,7 @@ async function guardarOS() {
       estado,
       diagnostico: diagnostico || null,
       observaciones: obs || null,
-      tasa_cambio_usd: tasaActualOS,
-      moneda_cambio: document.getElementById('os-tipo-cambio').value || 'USD',
+      tasa_cambio_usd: tasasDisponiblesOS.USD,
       total_servicios_usd: totServ,
       total_repuestos_usd: totRep,
       total_usd: total,
@@ -5686,12 +5689,8 @@ window.addEventListener('load', () => {
           <div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)" id="os-numero">—</div>
         </div>
         <div>
-          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Tipo de Cambio</div>
-          <select id="os-tipo-cambio" onchange="cambiarTipoTasaOS(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:6px 10px;border-radius:5px;outline:none;margin-bottom:4px">
-            <option value="USD">Dólares (USD)</option>
-            <option value="EUR">Euros (EUR)</option>
-          </select>
-          <div style="font-family:var(--font-mono);font-size:13px">1 <span id="os-moneda-label">$</span> = <span id="os-tasa">—</span> Bs</div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">Tasa Referencial</div>
+          <div style="font-family:var(--font-mono);font-size:13px">$ <span id="os-tasa-usd">—</span> · € <span id="os-tasa-eur">—</span> Bs</div>
         </div>
       </div>
 
