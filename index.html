@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260505380000 -->
+<!-- v20260505390000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -2629,11 +2629,6 @@ async function sincronizarTasasBCV(btn) {
   btn.innerHTML = '<span style="display:inline-block;animation:spin 0.8s linear infinite">↻</span> Sincronizando...';
 
   try {
-    const [respUsd, respEur] = await Promise.all([
-      fetch('https://ve.dolarapi.com/v1/dolares/oficial').then(function(r) { return r.json(); }),
-      fetch('https://ve.dolarapi.com/v1/euros/oficial').then(function(r) { return r.json(); })
-    ]);
-
     const _ahora  = new Date();
     const _vzla   = new Date(_ahora.getTime() - (4 * 60 * 60 * 1000));
     const hoy     = _vzla.toISOString().split('T')[0];
@@ -2645,15 +2640,22 @@ async function sincronizarTasasBCV(btn) {
       while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
       return d.toISOString().split('T')[0];
     }
+    const fechaMañana = proximoDiaHabil(hoy);
 
-    // Usar fecha de la API solo si es futura (mañana o después), sino calcular próximo hábil
-    const fechaApiUsd = respUsd.fecha ? respUsd.fecha.split('T')[0] : null;
-    const fechaUsd    = (fechaApiUsd && fechaApiUsd > hoy) ? fechaApiUsd : proximoDiaHabil(hoy);
-    const fechaEur    = fechaUsd; // Siempre misma fecha para ambas
-    const tasaUsd  = parseFloat(respUsd.promedio);
-    const tasaEur  = parseFloat(respEur.promedio);
+    // Buscar la tasa de mañana en el historial
+    const [histUsdSync, histEurSync] = await Promise.all([
+      fetch('https://ve.dolarapi.com/v1/historicos/dolares/oficial').then(function(r) { return r.json(); }),
+      fetch('https://ve.dolarapi.com/v1/historicos/euros/oficial').then(function(r) { return r.json(); })
+    ]);
 
-    if (!tasaUsd || !tasaEur) throw new Error('No se pudieron obtener las tasas');
+    // Buscar registro con fecha == mañana
+    const regUsd = Array.isArray(histUsdSync) ? histUsdSync.find(function(h) { return h.fecha && h.fecha.startsWith(fechaMañana); }) : null;
+    const regEur = Array.isArray(histEurSync) ? histEurSync.find(function(h) { return h.fecha && h.fecha.startsWith(fechaMañana); }) : null;
+
+    const tasaUsd = regUsd ? parseFloat(regUsd.promedio) : null;
+    const tasaEur = regEur ? parseFloat(regEur.promedio) : null;
+
+    if (!tasaUsd || !tasaEur) throw new Error('La tasa del ' + fechaMañana + ' aún no está publicada en dolarapi. Intente más tarde.');
 
     // Guardar en Supabase
     await Promise.all([
