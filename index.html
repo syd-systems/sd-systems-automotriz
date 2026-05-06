@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260506130000 -->
+<!-- v20260506140000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -3082,11 +3082,13 @@ async function consultarCedula(tipDoc, numDoc) {
     return;
   }
 
+  // Rellenar con ceros a la izquierda hasta 8 dígitos (requerido por la API)
+  const numDocPadded = numDoc.replace(/\D/g, '').padStart(8, '0');
+
   infoEl.innerHTML = '<div style="color:var(--suave);font-size:12px">🔍 Consultando...</div>';
   infoEl.style.display = 'block';
 
   try {
-    // Consultar via Supabase para evitar bloqueo CORS
     const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/consultar_cedula', {
       method: 'POST',
       headers: {
@@ -3094,7 +3096,7 @@ async function consultarCedula(tipDoc, numDoc) {
         'Authorization': 'Bearer ' + SUPABASE_KEY,
         'Content-Type':  'application/json'
       },
-      body: JSON.stringify({ p_tipo: tipDoc, p_cedula: numDoc })
+      body: JSON.stringify({ p_tipo: tipDoc, p_cedula: numDocPadded })
     });
     const data = await resp.json();
 
