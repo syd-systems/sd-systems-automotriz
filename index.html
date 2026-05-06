@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260505370000 -->
+<!-- v20260505380000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -2637,8 +2637,19 @@ async function sincronizarTasasBCV(btn) {
     const _ahora  = new Date();
     const _vzla   = new Date(_ahora.getTime() - (4 * 60 * 60 * 1000));
     const hoy     = _vzla.toISOString().split('T')[0];
-    const fechaUsd = respUsd.fecha ? respUsd.fecha.split('T')[0] : hoy;
-    const fechaEur = respEur.fecha ? respEur.fecha.split('T')[0] : hoy;
+
+    // Calcular próximo día hábil desde hoy
+    function proximoDiaHabil(fechaBase) {
+      const d = new Date(fechaBase + 'T12:00:00');
+      d.setDate(d.getDate() + 1);
+      while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+      return d.toISOString().split('T')[0];
+    }
+
+    // Usar fecha de la API solo si es futura (mañana o después), sino calcular próximo hábil
+    const fechaApiUsd = respUsd.fecha ? respUsd.fecha.split('T')[0] : null;
+    const fechaUsd    = (fechaApiUsd && fechaApiUsd > hoy) ? fechaApiUsd : proximoDiaHabil(hoy);
+    const fechaEur    = fechaUsd; // Siempre misma fecha para ambas
     const tasaUsd  = parseFloat(respUsd.promedio);
     const tasaEur  = parseFloat(respEur.promedio);
 
