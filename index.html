@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260505360000 -->
+<!-- v20260505370000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -1946,17 +1946,42 @@ async function renderTasas() {
     const histEur  = resHistEur.status  === 'fulfilled' && Array.isArray(resHistEur.value)  ? resHistEur.value  : [];
     const histUsdt = resHistUsdt.status === 'fulfilled' && Array.isArray(resHistUsdt.value) ? resHistUsdt.value : [];
 
-    // Valores vigentes
-    const usdVal  = usd  && usd.promedio  ? parseFloat(usd.promedio)  : null;
-    const eurVal  = eur  && eur.promedio  ? parseFloat(eur.promedio)  : null;
-    const usdtVal = usdt && usdt.promedio ? parseFloat(usdt.promedio) : null;
-
-    // Cierres desde la API (campo 'cierre') o desde el historial (penúltimo día hábil)
-    // Obtener el cierre anterior: último día hábil disponible estrictamente anterior a hoy
     // Fecha actual en zona horaria Venezuela (UTC-4)
     const _ahora = new Date();
     const _vzla  = new Date(_ahora.getTime() - (4 * 60 * 60 * 1000));
     const hoyStr = _vzla.toISOString().split('T')[0];
+
+    // Función para obtener valor de una fecha específica del historial
+    function getValorFecha(hist, fecha) {
+      const r = hist.find(function(h) { return h.fecha && h.fecha.startsWith(fecha); });
+      return r && r.promedio ? parseFloat(r.promedio) : null;
+    }
+
+    // Último día hábil disponible en el historial (<=hoy)
+    function getUltimoDiaHabil(hist) {
+      const candidatos = hist
+        .filter(function(h) {
+          if (!h.fecha || !h.promedio) return false;
+          const f = h.fecha.split('T')[0];
+          const d = new Date(f + 'T12:00:00').getDay();
+          return d >= 1 && d <= 5 && f <= hoyStr;
+        })
+        .sort(function(a, b) { return b.fecha.localeCompare(a.fecha); });
+      return candidatos.length ? candidatos[0] : null;
+    }
+
+    // Valores vigentes: tomar del historial el último día hábil <= hoy
+    // (evita que la API adelante la tasa de mañana en las tarjetas de hoy)
+    const _ultUsd  = getUltimoDiaHabil(histUsd);
+    const _ultEur  = getUltimoDiaHabil(histEur);
+    const _ultUsdt = getUltimoDiaHabil(histUsdt);
+
+    const usdVal   = _ultUsd  ? parseFloat(_ultUsd.promedio)  : (usd  && usd.promedio  ? parseFloat(usd.promedio)  : null);
+    const eurVal   = _ultEur  ? parseFloat(_ultEur.promedio)  : (eur  && eur.promedio  ? parseFloat(eur.promedio)  : null);
+    const usdtVal  = _ultUsdt ? parseFloat(_ultUsdt.promedio) : (usdt && usdt.promedio ? parseFloat(usdt.promedio) : null);
+
+    // Fecha real de las tarjetas vigentes
+    const vigenteFecha = _ultUsd ? _ultUsd.fecha.split('T')[0] : hoyStr;
 
     function getCierreAnterior(hist, valorHoy) {
       if (!hist.length) return null;
@@ -2018,13 +2043,6 @@ async function renderTasas() {
         + '<div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">vs cierre anterior</div>'
         + varHTML(vVar.abs, vVar.pct)
         + '</div></div>';
-    }
-
-    // ── Historial: últimos 5 días hábiles desde la API ──
-    // Combinar los 3 historiales por fecha
-    function getValorFecha(hist, fecha) {
-      const r = hist.find(function(h) { return h.fecha && h.fecha.startsWith(fecha); });
-      return r && r.promedio ? parseFloat(r.promedio) : null;
     }
 
     // Separar fechas en: pasadas, hoy, y próximo día hábil
@@ -2090,8 +2108,8 @@ async function renderTasas() {
 
     // ── Próxima tasa hábil ──
     let proximaHTML = '';
-      const fechaHoyFmt = new Date(hoyStr + 'T12:00:00').toLocaleDateString('es-VE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
-      const fechaHoyCap = fechaHoyFmt.charAt(0).toUpperCase() + fechaHoyFmt.slice(1);
+    const fechaHoyFmt = new Date(vigenteFecha + 'T12:00:00').toLocaleDateString('es-VE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+    const fechaHoyCap = fechaHoyFmt.charAt(0).toUpperCase() + fechaHoyFmt.slice(1);
 
     if (proximaFecha) {
       const eHoy    = proximaFecha === hoyStr;
