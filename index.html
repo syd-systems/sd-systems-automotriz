@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260506160000 -->
+<!-- v20260506170000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -3920,12 +3920,14 @@ async function renderCatalogo(filtro, categoria) {
 
     const filas = itemsFiltrados.map(function(s) {
       return '<tr>'
-        + '<td><div style="font-weight:500">' + s.nombre + '</div>'
-        + (s.descripcion ? '<div style="font-size:11px;color:var(--suave);margin-top:2px">' + s.descripcion + '</div>' : '')
+        + '<td><div style="font-size:11px;color:var(--naranja);font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">' + (s.grupo || '—') + '</div>'
+        + '<div style="font-weight:600;font-size:14px;color:var(--texto)">' + s.nombre + '</div>'
+        + (s.descripcion ? '<div style="font-size:12px;color:var(--suave);margin-top:2px">' + s.descripcion + '</div>' : '')
         + '</td>'
-        + '<td><span class="badge badge-gris">' + (s.categoria || '—') + '</span></td>'
-        + '<td style="font-family:var(--font-mono);color:var(--naranja)">$ ' + parseFloat(s.precio_usd || 0).toFixed(2) + '</td>'
-        + '<td><span class="badge ' + (s.activo ? 'badge-verde' : 'badge-rojo') + '">' + (s.activo ? 'Activo' : 'Inactivo') + '</span></td>'
+        + '<td><span class="badge badge-gris" style="font-size:12px;font-weight:600">' + (s.categoria || '—') + '</span></td>'
+        + '<td><span style="font-size:12px;color:var(--suave)">' + (s.tipo_carroceria || 'Todas') + '</span></td>'
+        + '<td style="font-family:var(--font-mono);color:var(--naranja);font-size:14px;font-weight:700">$ ' + parseFloat(s.precio_usd || 0).toFixed(2) + '</td>'
+        + '<td><span class="badge ' + (s.activo ? 'badge-verde' : 'badge-rojo') + '" style="font-size:12px">' + (s.activo ? 'Activo' : 'Inactivo') + '</span></td>'
         + '<td><div style="display:flex;gap:8px">'
         + '<button class="btn-secundario" onclick="abrirEditarCatalogo(' + s.id_servicio + ')">Editar</button>'
         + '<button class="btn-peligro" onclick="eliminarCatalogo(' + s.id_servicio + ',\'' + s.nombre.replace(/'/g, "\\'") + '\')">Eliminar</button>'
@@ -3938,8 +3940,8 @@ async function renderCatalogo(filtro, categoria) {
 
     const tabla = document.getElementById('tabla-cat-cont');
     if (tabla) tabla.innerHTML = '<table><thead><tr>'
-      + '<th>Servicio</th><th>Categoría</th><th>Precio USD</th><th>Estado</th><th>Acciones</th>'
-      + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin servicios registrados</td></tr>') + '</tbody></table>';
+      + '<th style="font-size:13px">Servicio</th><th style="font-size:13px">Categoría</th><th style="font-size:13px">Carrocería</th><th style="font-size:13px">Precio USD</th><th style="font-size:13px">Estado</th><th style="font-size:13px">Acciones</th>'
+      + '</tr></thead><tbody>' + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px;font-size:14px">Sin servicios registrados</td></tr>') + '</tbody></table>';
 
   } catch(e) {
     const tabla = document.getElementById('tabla-cat-cont');
@@ -3949,14 +3951,17 @@ async function renderCatalogo(filtro, categoria) {
 
 function abrirNuevoCatalogo() {
   document.getElementById('cat-id').value = '';
+  document.getElementById('cat-grupo').value = '';
   document.getElementById('cat-nombre').value = '';
   document.getElementById('cat-descripcion').value = '';
   document.getElementById('cat-categoria').value = '';
+  document.getElementById('cat-carroceria').value = '';
   document.getElementById('cat-precio').value = '';
   document.getElementById('cat-activo').value = 'true';
   document.getElementById('modal-cat-titulo').textContent = 'NUEVO SERVICIO';
   document.getElementById('alerta-cat-ok').style.display = 'none';
   document.getElementById('alerta-cat-err').style.display = 'none';
+  cargarGruposSelect();
   abrirModal('modal-catalogo');
 }
 
@@ -3967,29 +3972,41 @@ function abrirEditarCatalogo(id) {
   document.getElementById('cat-nombre').value = s.nombre;
   document.getElementById('cat-descripcion').value = s.descripcion || '';
   document.getElementById('cat-categoria').value = s.categoria || '';
+  document.getElementById('cat-carroceria').value = s.tipo_carroceria || '';
   document.getElementById('cat-precio').value = s.precio_usd || '';
   document.getElementById('cat-activo').value = s.activo ? 'true' : 'false';
   document.getElementById('modal-cat-titulo').textContent = 'EDITAR SERVICIO';
   document.getElementById('alerta-cat-ok').style.display = 'none';
   document.getElementById('alerta-cat-err').style.display = 'none';
+  cargarGruposSelect(s.grupo || '');
   abrirModal('modal-catalogo');
 }
 
 async function guardarCatalogo() {
-  const id     = document.getElementById('cat-id').value;
-  const nombre = document.getElementById('cat-nombre').value.trim();
-  const desc   = document.getElementById('cat-descripcion').value.trim();
-  const cat    = document.getElementById('cat-categoria').value.trim();
-  const precio = parseFloat(document.getElementById('cat-precio').value) || 0;
-  const activo = document.getElementById('cat-activo').value === 'true';
-  const okEl   = document.getElementById('alerta-cat-ok');
-  const errEl  = document.getElementById('alerta-cat-err');
+  const id         = document.getElementById('cat-id').value;
+  const grupo      = document.getElementById('cat-grupo').value.trim();
+  const nombre     = document.getElementById('cat-nombre').value.trim();
+  const desc       = document.getElementById('cat-descripcion').value.trim();
+  const cat        = document.getElementById('cat-categoria').value.trim();
+  const carroceria = document.getElementById('cat-carroceria').value.trim();
+  const precio     = parseFloat(document.getElementById('cat-precio').value) || 0;
+  const activo     = document.getElementById('cat-activo').value === 'true';
+  const okEl       = document.getElementById('alerta-cat-ok');
+  const errEl      = document.getElementById('alerta-cat-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
 
-  if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
+  if (!nombre) { errEl.textContent = 'El nombre del servicio es obligatorio.'; errEl.style.display = 'block'; return; }
+
+  // Validar duplicado
+  const duplicado = catalogoCache.find(function(s) {
+    return s.nombre.toLowerCase() === nombre.toLowerCase() && s.id_servicio != id;
+  });
+  if (duplicado) { errEl.textContent = 'Ya existe un servicio con ese nombre.'; errEl.style.display = 'block'; return; }
 
   try {
-    const datos = { nombre, descripcion: desc || null, categoria: cat || null, precio_usd: precio, activo, id_usuario: sesionActual.correo_usuario };
+    const datos = { nombre, grupo: grupo || null, descripcion: desc || null, categoria: cat || null,
+      tipo_carroceria: carroceria || null, precio_usd: precio, activo,
+      id_usuario: sesionActual.correo_usuario };
     if (id) {
       await api('servicios_catalogo', 'PATCH', datos, '?id_servicio=eq.' + id);
     } else {
@@ -3998,6 +4015,99 @@ async function guardarCatalogo() {
     okEl.textContent = '✓ Servicio guardado.'; okEl.style.display = 'block';
     setTimeout(function() { cerrarModal('modal-catalogo'); document.getElementById('contenido-principal').innerHTML=''; renderCatalogo(); }, 1000);
   } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+}
+
+// ─── GESTIÓN DE GRUPOS DEL CATÁLOGO ───
+let gruposCatalogo = [];
+
+async function cargarGruposSelect(valorActual) {
+  try {
+    const res = await api('servicios_catalogo', 'GET', null, '?select=grupo&grupo=not.is.null&order=grupo.asc');
+    const unicos = [...new Set(res.map(function(r) { return r.grupo; }).filter(Boolean))].sort();
+    gruposCatalogo = unicos;
+    const sel = document.getElementById('cat-grupo');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— Sin grupo —</option>'
+      + unicos.map(function(g) {
+          return '<option value="' + g + '"' + (g === valorActual ? ' selected' : '') + '>' + g + '</option>';
+        }).join('');
+    if (valorActual) sel.value = valorActual;
+  } catch(e) {}
+}
+
+function gestionarGruposCatalogo() {
+  renderListaGrupos();
+  abrirModal('modal-grupos-cat');
+}
+
+function renderListaGrupos() {
+  const lista = document.getElementById('lista-grupos-cat');
+  if (!lista) return;
+  if (!gruposCatalogo.length) {
+    lista.innerHTML = '<div style="color:var(--suave);font-size:13px;text-align:center;padding:20px">Sin grupos registrados</div>';
+    return;
+  }
+  lista.innerHTML = gruposCatalogo.map(function(g) {
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--gris2);border-radius:6px;margin-bottom:8px">'
+      + '<span style="font-size:14px;font-weight:600;color:var(--texto)">' + g + '</span>'
+      + '<div style="display:flex;gap:8px">'
+      + '<button class="btn-secundario" onclick="editarGrupoCatalogo(\'' + g + '\')" style="font-size:11px;padding:5px 10px">✏️ Editar</button>'
+      + '<button class="btn-peligro" onclick="eliminarGrupoCatalogo(\'' + g + '\')" style="font-size:11px;padding:5px 10px">🗑 Eliminar</button>'
+      + '</div></div>';
+  }).join('');
+}
+
+async function agregarGrupoCatalogo() {
+  const input = document.getElementById('nuevo-grupo-cat');
+  const nombre = input.value.trim().toUpperCase();
+  if (!nombre) return;
+
+  // Validar duplicado
+  if (gruposCatalogo.includes(nombre)) {
+    alert('Ya existe un grupo con ese nombre.');
+    return;
+  }
+
+  gruposCatalogo.push(nombre);
+  gruposCatalogo.sort();
+  input.value = '';
+  renderListaGrupos();
+
+  // Actualizar el select del modal principal
+  const sel = document.getElementById('cat-grupo');
+  if (sel) {
+    const opt = document.createElement('option');
+    opt.value = nombre; opt.textContent = nombre;
+    sel.appendChild(opt);
+    sel.value = nombre;
+  }
+}
+
+async function editarGrupoCatalogo(grupoActual) {
+  const nuevoNombre = prompt('Nuevo nombre para el grupo "' + grupoActual + '":', grupoActual);
+  if (!nuevoNombre || nuevoNombre.trim() === grupoActual) return;
+  const nuevo = nuevoNombre.trim().toUpperCase();
+
+  if (gruposCatalogo.includes(nuevo)) { alert('Ya existe un grupo con ese nombre.'); return; }
+
+  try {
+    // Actualizar todos los servicios de ese grupo
+    await api('servicios_catalogo', 'PATCH', { grupo: nuevo }, '?grupo=eq.' + encodeURIComponent(grupoActual));
+    gruposCatalogo = gruposCatalogo.map(function(g) { return g === grupoActual ? nuevo : g; }).sort();
+    renderListaGrupos();
+    await cargarGruposSelect(nuevo);
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function eliminarGrupoCatalogo(grupo) {
+  const count = catalogoCache.filter(function(s) { return s.grupo === grupo; }).length;
+  if (!confirm('¿Eliminar el grupo "' + grupo + '"?' + (count > 0 ? '\n' + count + ' servicio(s) quedarán sin grupo.' : ''))) return;
+  try {
+    await api('servicios_catalogo', 'PATCH', { grupo: null }, '?grupo=eq.' + encodeURIComponent(grupo));
+    gruposCatalogo = gruposCatalogo.filter(function(g) { return g !== grupo; });
+    renderListaGrupos();
+    await cargarGruposSelect();
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
 async function eliminarCatalogo(id, nombre) {
@@ -5043,7 +5153,7 @@ window.addEventListener('load', () => {
 <!--    MODAL CATÁLOGO DE SERVICIOS        -->
 <!-- ═══════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-catalogo">
-  <div class="modal" style="max-width:520px">
+  <div class="modal" style="max-width:560px">
     <div class="modal-header">
       <h3 id="modal-cat-titulo">NUEVO SERVICIO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-catalogo')">✕</button>
@@ -5053,16 +5163,25 @@ window.addEventListener('load', () => {
       <div class="alerta alerta-error"  id="alerta-cat-err"></div>
       <div class="form-grid">
         <div class="form-campo form-full">
-          <label>Nombre del Servicio</label>
-          <input type="text" id="cat-nombre" placeholder="Ej: Cambio de aceite y filtro">
+          <label style="font-size:13px;font-weight:700;color:var(--texto);letter-spacing:1px">Grupo de Servicio</label>
+          <div style="display:flex;gap:8px">
+            <select id="cat-grupo" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
+              <option value="">— Seleccionar grupo —</option>
+            </select>
+            <button type="button" class="btn-secundario" onclick="gestionarGruposCatalogo()" style="white-space:nowrap;font-size:12px">✏️ Gestionar</button>
+          </div>
         </div>
         <div class="form-campo form-full">
-          <label>Descripción</label>
-          <input type="text" id="cat-descripcion" placeholder="Descripción opcional">
+          <label style="font-size:13px;font-weight:700;color:var(--texto);letter-spacing:1px">Nombre del Servicio</label>
+          <input type="text" id="cat-nombre" placeholder="Ej: Cambio de aceite y filtro" style="font-size:14px;font-weight:500">
+        </div>
+        <div class="form-campo form-full">
+          <label style="font-size:13px;font-weight:600;color:var(--texto)">Descripción</label>
+          <input type="text" id="cat-descripcion" placeholder="Descripción opcional" style="font-size:13px">
         </div>
         <div class="form-campo">
-          <label>Categoría</label>
-          <select id="cat-categoria">
+          <label style="font-size:13px;font-weight:600;color:var(--texto)">Categoría</label>
+          <select id="cat-categoria" style="font-size:13px;font-weight:500">
             <option value="">Sin categoría</option>
             <option>MECÁNICA</option>
             <option>ELÉCTRICA</option>
@@ -5076,12 +5195,22 @@ window.addEventListener('load', () => {
           </select>
         </div>
         <div class="form-campo">
-          <label>Precio USD</label>
-          <input type="number" id="cat-precio" placeholder="0.00" step="0.01" min="0">
+          <label style="font-size:13px;font-weight:600;color:var(--texto)">Tipo de Carrocería</label>
+          <select id="cat-carroceria" style="font-size:13px;font-weight:500">
+            <option value="">Todas las carrocerías</option>
+            <option>SEDAN</option><option>SUV</option><option>PICKUP</option>
+            <option>HATCHBACK</option><option>COUPE</option><option>VAN</option>
+            <option>BUS</option><option>CAMIÓN</option><option>MOTO</option>
+            <option>TODOS</option>
+          </select>
         </div>
-        <div class="form-campo form-full">
-          <label>Estado</label>
-          <select id="cat-activo">
+        <div class="form-campo">
+          <label style="font-size:13px;font-weight:600;color:var(--texto)">Precio USD</label>
+          <input type="number" id="cat-precio" placeholder="0.00" step="0.01" min="0" style="font-size:14px;font-weight:600">
+        </div>
+        <div class="form-campo">
+          <label style="font-size:13px;font-weight:600;color:var(--texto)">Estado</label>
+          <select id="cat-activo" style="font-size:13px;font-weight:500">
             <option value="true">Activo</option>
             <option value="false">Inactivo</option>
           </select>
@@ -5092,6 +5221,28 @@ window.addEventListener('load', () => {
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-catalogo')">Cancelar</button>
       <button class="btn-primario" onclick="guardarCatalogo()">GUARDAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL GESTIONAR GRUPOS CATÁLOGO     -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-grupos-cat">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <h3>GESTIONAR GRUPOS</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-grupos-cat')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input type="text" id="nuevo-grupo-cat" placeholder="Nombre del grupo..." style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none;text-transform:uppercase">
+        <button class="btn-primario" onclick="agregarGrupoCatalogo()" style="white-space:nowrap">+ Agregar</button>
+      </div>
+      <div id="lista-grupos-cat" style="max-height:300px;overflow-y:auto"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-grupos-cat')">Cerrar</button>
     </div>
   </div>
 </div>
