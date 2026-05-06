@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260505430000 -->
+<!-- v20260506090000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -1929,14 +1929,17 @@ async function renderTasas() {
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando tasas en tiempo real...</div>';
 
   try {
-    // Fetch en paralelo: tasas vigentes + historiales completos
-    const [resUsd, resEur, resUsdt, resHistUsd, resHistEur, resHistUsdt] = await Promise.allSettled([
+    // Fetch en paralelo: tasas de Supabase + historiales de dolarapi
+    const [resUsd, resEur, resUsdt, resHistUsd, resHistEur, resHistUsdt, resTasasSupabase] = await Promise.allSettled([
       fetch('https://ve.dolarapi.com/v1/dolares/oficial').then(r => r.json()),
       fetch('https://ve.dolarapi.com/v1/euros/oficial').then(r => r.json()),
       fetch('https://ve.dolarapi.com/v1/dolares/paralelo').then(r => r.json()),
       fetch('https://ve.dolarapi.com/v1/historicos/dolares/oficial').then(r => r.json()),
       fetch('https://ve.dolarapi.com/v1/historicos/euros/oficial').then(r => r.json()),
-      fetch('https://ve.dolarapi.com/v1/historicos/dolares/paralelo').then(r => r.json())
+      fetch('https://ve.dolarapi.com/v1/historicos/dolares/paralelo').then(r => r.json()),
+      fetch(SUPABASE_URL + '/rest/v1/tasas?select=*&order=fecha_registro.desc&limit=20', {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+      }).then(r => r.json())
     ]);
 
     const usd      = resUsd.status      === 'fulfilled' ? resUsd.value      : null;
@@ -1945,16 +1948,25 @@ async function renderTasas() {
     const histUsd  = resHistUsd.status  === 'fulfilled' && Array.isArray(resHistUsd.value)  ? resHistUsd.value  : [];
     const histEur  = resHistEur.status  === 'fulfilled' && Array.isArray(resHistEur.value)  ? resHistEur.value  : [];
     const histUsdt = resHistUsdt.status === 'fulfilled' && Array.isArray(resHistUsdt.value) ? resHistUsdt.value : [];
+    const tasasDB  = resTasasSupabase.status === 'fulfilled' && Array.isArray(resTasasSupabase.value) ? resTasasSupabase.value : [];
 
     // Fecha actual en zona horaria Venezuela (UTC-4)
     const _ahora = new Date();
     const _vzla  = new Date(_ahora.getTime() - (4 * 60 * 60 * 1000));
     const hoyStr = _vzla.toISOString().split('T')[0];
 
-    // Función para obtener valor de una fecha específica del historial
+    // Función para obtener valor de una fecha específica del historial dolarapi
     function getValorFecha(hist, fecha) {
       const r = hist.find(function(h) { return h.fecha && h.fecha.startsWith(fecha); });
       return r && r.promedio ? parseFloat(r.promedio) : null;
+    }
+
+    // Función para obtener tasa de Supabase por moneda y fecha <= hoy
+    function getTasaDB(moneda, fechaMax) {
+      const registros = tasasDB.filter(function(t) {
+        return t.moneda_origen === moneda && t.fecha_registro <= fechaMax;
+      }).sort(function(a, b) { return b.fecha_registro.localeCompare(a.fecha_registro); });
+      return registros.length ? registros[0] : null;
     }
 
     // Último día hábil disponible en el historial (<=hoy)
@@ -1970,18 +1982,24 @@ async function renderTasas() {
       return candidatos.length ? candidatos[0] : null;
     }
 
-    // Valores vigentes: tomar del historial el último día hábil <= hoy
-    // (evita que la API adelante la tasa de mañana en las tarjetas de hoy)
+    // Valores vigentes: Supabase primero, dolarapi como respaldo
     const _ultUsd  = getUltimoDiaHabil(histUsd);
     const _ultEur  = getUltimoDiaHabil(histEur);
     const _ultUsdt = getUltimoDiaHabil(histUsdt);
 
-    const usdVal   = _ultUsd  ? parseFloat(_ultUsd.promedio)  : (usd  && usd.promedio  ? parseFloat(usd.promedio)  : null);
-    const eurVal   = _ultEur  ? parseFloat(_ultEur.promedio)  : (eur  && eur.promedio  ? parseFloat(eur.promedio)  : null);
-    const usdtVal  = _ultUsdt ? parseFloat(_ultUsdt.promedio) : (usdt && usdt.promedio ? parseFloat(usdt.promedio) : null);
+    const _dbUsd  = getTasaDB('USD', hoyStr);
+    const _dbEur  = getTasaDB('EUR', hoyStr);
 
-    // Fecha real de las tarjetas vigentes
-    const vigenteFecha = _ultUsd ? _ultUsd.fecha.split('T')[0] : hoyStr;
+    const usdVal  = _dbUsd  ? parseFloat(_dbUsd.tipo_cambio)  : (_ultUsd  ? parseFloat(_ultUsd.promedio)  : null);
+    const eurVal  = _dbEur  ? parseFloat(_dbEur.tipo_cambio)  : (_ultEur  ? parseFloat(_ultEur.promedio)  : null);
+    const usdtVal = _ultUsdt ? parseFloat(_ultUsdt.promedio) : (usdt && usdt.promedio ? parseFloat(usdt.promedio) : null);
+
+    // Fecha de las tarjetas vigentes
+    const vigenteFecha = _dbUsd ? _dbUsd.fecha_registro : (_ultUsd ? _ultUsd.fecha.split('T')[0] : hoyStr);
+
+    // Fuente de los datos
+    const fuenteUsd  = _dbUsd ? 'BCV Oficial' : 'dolarapi.com';
+    const fuenteEur  = _dbEur ? 'BCV Oficial' : 'dolarapi.com';
 
     function getCierreAnterior(hist, valorHoy) {
       if (!hist.length) return null;
@@ -2158,8 +2176,8 @@ async function renderTasas() {
       + '<button onclick="sincronizarTasasBCV(this)" class="btn-primario" style="display:flex;align-items:center;gap:6px"><span>⬇</span> Sincronizar BCV</button>'
       + '</div></div>'
       + '<div style="display:flex;gap:16px;flex-wrap:wrap">'
-      + tarjeta('🇺🇸', 'USD',  usdVal,  usdCierre,  'BCV Oficial',  '#FF6B00')
-      + tarjeta('🇪🇺', 'EUR',  eurVal,  eurCierre,  'BCV Oficial',  '#4299e1')
+      + tarjeta('🇺🇸', 'USD',  usdVal,  usdCierre,  fuenteUsd,  '#FF6B00')
+      + tarjeta('🇪🇺', 'EUR',  eurVal,  eurCierre,  fuenteEur,  '#4299e1')
       + tarjeta('💲',  'USDT', usdtVal, usdtCierre, 'Mercado P2P',  '#F0B90B')
       + '</div></div>'
 
