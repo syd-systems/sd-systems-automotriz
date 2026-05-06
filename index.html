@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260506210000 -->
+<!-- v20260506220000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -4070,11 +4070,15 @@ async function guardarCatalogo() {
 
 // ─── GESTIÓN DE SERVICIOS DEL CATÁLOGO ───
 async function gestionarServiciosCatalogo() {
-  const grupo = document.getElementById('cat-grupo').value;
-  const titulo = grupo ? 'SERVICIOS — ' + grupo : 'TODOS LOS SERVICIOS';
+  try {
+    catalogoCache = await api('servicios_catalogo', 'GET', null, '?order=nombre.asc&select=*');
+  } catch(e) {}
+
+  const grupoEl = document.getElementById('cat-grupo');
+  const grupo   = grupoEl ? grupoEl.value : '';
+  const titulo  = grupo ? 'SERVICIOS — ' + grupo : 'TODOS LOS SERVICIOS';
   document.getElementById('modal-servicios-cat-titulo').textContent = titulo;
   document.getElementById('nuevo-servicio-nombre').value = '';
-  document.getElementById('nuevo-servicio-precio').value = '';
   document.getElementById('msg-nuevo-servicio').style.display = 'none';
   await renderListaServicios(grupo);
   abrirModal('modal-servicios-cat');
@@ -5352,14 +5356,14 @@ window.addEventListener('load', () => {
             <select id="cat-grupo" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
               <option value="">— Seleccionar grupo —</option>
             </select>
-            <button type="button" class="btn-secundario" onclick="gestionarGruposCatalogo()" style="white-space:nowrap;font-size:12px">✏️ Gestionar</button>
+            <button type="button" class="btn-secundario" onclick="event.stopPropagation();gestionarGruposCatalogo()" style="white-space:nowrap;font-size:12px">✏️ Gestionar</button>
           </div>
         </div>
         <div class="form-campo form-full">
           <label style="font-size:13px;font-weight:700;color:var(--texto);letter-spacing:1px">Nombre del Servicio</label>
           <div style="display:flex;gap:8px">
             <input type="text" id="cat-nombre" placeholder="Ej: Cambio de aceite y filtro" style="flex:1;font-size:14px;font-weight:500">
-            <button type="button" class="btn-secundario" onclick="gestionarServiciosCatalogo()" style="white-space:nowrap;font-size:12px">✏️ Gestionar</button>
+            <button type="button" class="btn-secundario" onclick="event.stopPropagation();gestionarServiciosCatalogo()" style="white-space:nowrap;font-size:12px">✏️ Gestionar</button>
           </div>
         </div>
         <div class="form-campo form-full">
