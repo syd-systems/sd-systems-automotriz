@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260505300000 -->
+<!-- v20260505310000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -2606,32 +2606,54 @@ async function sincronizarTasasBCV(btn) {
   btn.innerHTML = '<span style="display:inline-block;animation:spin 0.8s linear infinite">↻</span> Sincronizando...';
 
   try {
-    // Llamar la función de Supabase directamente via RPC
-    const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/insertar_tasas_bcv`, {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({})
-    });
+    // Obtener tasas del próximo día hábil desde dolarapi
+    const [respUsd, respEur] = await Promise.all([
+      fetch('https://ve.dolarapi.com/v1/dolares/oficial').then(function(r) { return r.json(); }),
+      fetch('https://ve.dolarapi.com/v1/euros/oficial').then(function(r) { return r.json(); })
+    ]);
 
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      throw new Error(err.message || `Error ${resp.status}`);
-    }
+    // dolarapi publica la tasa del próximo día hábil — usar su fecha si está disponible
+    const hoy = new Date().toISOString().split('T')[0];
+    const fechaUsd  = respUsd.fecha  ? respUsd.fecha.split('T')[0]  : hoy;
+    const fechaEur  = respEur.fecha  ? respEur.fecha.split('T')[0]  : hoy;
+    const tasaUsd   = parseFloat(respUsd.promedio);
+    const tasaEur   = parseFloat(respEur.promedio);
 
-    btn.innerHTML = '✓ Tasas actualizadas';
+    if (!tasaUsd || !tasaEur) throw new Error('No se pudieron obtener las tasas');
+
+    // Insertar en Supabase usando la fecha de la API
+    await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/tasas`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=ignore-duplicates'
+        },
+        body: JSON.stringify({ moneda_origen: 'USD', moneda_destino: 'VES', tipo_cambio: tasaUsd, fecha_registro: fechaUsd })
+      }),
+      fetch(`${SUPABASE_URL}/rest/v1/tasas`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=ignore-duplicates'
+        },
+        body: JSON.stringify({ moneda_origen: 'EUR', moneda_destino: 'VES', tipo_cambio: tasaEur, fecha_registro: fechaEur })
+      })
+    ]);
+
+    btn.innerHTML = '✓ USD ' + tasaUsd.toFixed(4) + ' · EUR ' + tasaEur.toFixed(4);
     btn.style.background = 'var(--verde)';
 
-    // Recargar el módulo tras 1.5 segundos
     setTimeout(function() {
       btn.innerHTML = texto;
       btn.style.background = '';
       btn.disabled = false;
       renderTasas();
-    }, 1500);
+    }, 2000);
 
   } catch(e) {
     btn.innerHTML = '✗ Error: ' + e.message;
