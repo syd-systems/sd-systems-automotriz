@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260506260000 -->
+<!-- v20260506270000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -4050,11 +4050,25 @@ async function guardarCatalogo() {
   const nombreFinal = capitalizarNombre(nombre);
   const grupoFinal  = grupo ? grupo.toUpperCase() : null;
 
-  // Validar duplicado
-  const duplicado = catalogoCache.find(function(s) {
-    return s.nombre.toLowerCase() === nombreFinal.toLowerCase() && s.id_servicio != id;
-  });
-  if (duplicado) { errEl.textContent = 'Ya existe un servicio con ese nombre.'; errEl.style.display = 'block'; return; }
+  // Validar duplicado solo si es registro verdaderamente nuevo (sin id y sin match en caché del mismo grupo)
+  if (!id) {
+    const duplicado = catalogoCache.find(function(s) {
+      return s.nombre.toLowerCase() === nombreFinal.toLowerCase()
+        && (grupoFinal ? s.grupo === grupoFinal : true);
+    });
+    if (duplicado) {
+      // Si ya existe, actualizar ese registro en lugar de crear uno nuevo
+      const datos = { descripcion: desc || null, categoria: cat || null,
+        tipo_carroceria: carroceria || null, precio_usd: precio, activo,
+        id_usuario: sesionActual.correo_usuario };
+      try {
+        await api('servicios_catalogo', 'PATCH', datos, '?id_servicio=eq.' + duplicado.id_servicio);
+        okEl.textContent = '✓ Servicio actualizado correctamente.'; okEl.style.display = 'block';
+        setTimeout(function() { cerrarModal('modal-catalogo'); document.getElementById('contenido-principal').innerHTML=''; renderCatalogo(); }, 1000);
+      } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+      return;
+    }
+  }
 
   try {
     const datos = { nombre: nombreFinal, grupo: grupoFinal, descripcion: desc || null, categoria: cat || null,
@@ -4223,6 +4237,29 @@ async function cargarGruposSelect(valorActual) {
         }).join('');
     if (valorActual) sel.value = valorActual;
   } catch(e) {}
+}
+
+function cargarDatosServicioSeleccionado(nombre) {
+  if (!nombre) {
+    // Limpiar campos
+    document.getElementById('cat-id').value = '';
+    document.getElementById('cat-descripcion').value = '';
+    document.getElementById('cat-categoria').value = '';
+    document.getElementById('cat-carroceria').value = '';
+    document.getElementById('cat-precio').value = '';
+    document.getElementById('cat-activo').value = 'true';
+    document.getElementById('modal-cat-titulo').textContent = 'NUEVO SERVICIO';
+    return;
+  }
+  const s = catalogoCache.find(function(x) { return x.nombre === nombre; });
+  if (!s) return;
+  document.getElementById('cat-id').value = s.id_servicio;
+  document.getElementById('cat-descripcion').value = s.descripcion || '';
+  document.getElementById('cat-categoria').value = s.categoria || '';
+  document.getElementById('cat-carroceria').value = s.tipo_carroceria || '';
+  document.getElementById('cat-precio').value = s.precio_usd || '';
+  document.getElementById('cat-activo').value = s.activo ? 'true' : 'false';
+  document.getElementById('modal-cat-titulo').textContent = 'EDITAR SERVICIO';
 }
 
 async function cargarServiciosSelect(grupo, valorActual) {
@@ -5384,7 +5421,7 @@ window.addEventListener('load', () => {
         <div class="form-campo form-full">
           <label style="font-size:13px;font-weight:700;color:var(--texto);letter-spacing:1px">Nombre del Servicio</label>
           <div style="display:flex;gap:8px">
-            <select id="cat-nombre" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
+            <select id="cat-nombre" onchange="cargarDatosServicioSeleccionado(this.value)" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
               <option value="">— Seleccionar servicio —</option>
             </select>
             <button type="button" class="btn-secundario" onclick="event.stopPropagation();gestionarServiciosCatalogo()" style="white-space:nowrap;font-size:12px">✏️ Gestionar</button>
