@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260506140000 -->
+<!-- v20260506150000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -3108,13 +3108,25 @@ async function consultarCedula(tipDoc, numDoc) {
       const rif    = d.rif || null;
       const estado = d.cne ? d.cne.estado : null;
       const municipio = d.cne ? d.cne.municipio : null;
+
+      // Auto-llenar campos del formulario
+      const campoNombre = document.getElementById('prop-nombre');
+      if (campoNombre && !campoNombre.value.trim() && nombre) {
+        campoNombre.value = capitalizarNombre(nombre);
+      }
+      const campoRif = document.getElementById('prop-rif-civil');
+      if (campoRif && !campoRif.value.trim() && rif) {
+        campoRif.value = tipDoc + '-' + rif;
+      }
+
       infoEl.innerHTML =
         '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.25);border-radius:6px;padding:10px 14px">'
         + '<div style="font-size:10px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">📋 Datos encontrados en el registro civil</div>'
-        + '<div style="font-size:13px;font-weight:500;color:var(--texto);margin-bottom:3px">' + nombre + '</div>'
+        + '<div style="font-size:13px;font-weight:500;color:var(--texto);margin-bottom:3px">' + capitalizarNombre(nombre) + '</div>'
         + (rif ? '<div style="font-size:11px;color:var(--suave);margin-bottom:2px">RIF: ' + tipDoc + '-' + rif + '</div>' : '')
         + (estado ? '<div style="font-size:11px;color:var(--suave)">📍 ' + estado + (municipio ? ' · ' + municipio : '') + '</div>' : '')
-        + '<div style="font-size:10px;color:#555;margin-top:6px">ℹ️ Esta información es solo referencial. Verifique y complete los datos manualmente.</div>'
+        + '<div style="font-size:10px;color:#555;margin-top:6px">ℹ️ Datos autocompletados. Verifique y complete manualmente.</div>'
+        + '</div>';
     } else {
       infoEl.innerHTML =
         '<div style="background:rgba(100,100,100,0.08);border:1px solid var(--borde);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--suave)">'
@@ -3254,6 +3266,7 @@ function abrirPropietario(id) {
   document.getElementById('prop-tipo-doc').value    = p ? p.tipo_doc        : 'V';
   document.getElementById('prop-num-doc').value     = p ? p.numero_doc      : '';
   document.getElementById('prop-nombre').value      = p ? p.nombre_completo : '';
+  document.getElementById('prop-rif-civil').value   = p ? (p.rif || '') : '';
   document.getElementById('prop-telefono').value    = p ? (p.telefono || '') : '';
   document.getElementById('prop-correo').value      = p ? (p.correo || '')   : '';
   document.getElementById('prop-direccion').value   = p ? (p.direccion || '') : '';
@@ -3290,6 +3303,7 @@ async function guardarPropietario() {
   const correo  = document.getElementById('prop-correo').value.trim();
   const dir     = document.getElementById('prop-direccion').value.trim();
   const emp     = document.getElementById('prop-empresa').value.trim();
+  const rif     = document.getElementById('prop-rif-civil').value.trim();
   const fotoFile= document.getElementById('prop-foto-file').files[0];
   const okEl    = document.getElementById('alerta-prop-ok');
   const errEl   = document.getElementById('alerta-prop-err');
@@ -3309,7 +3323,7 @@ async function guardarPropietario() {
 
     const datos = {
       tipo_doc: tipDoc, numero_doc: numDoc, nombre_completo: nombreFinal,
-      telefono: tel || null, correo: correo || null,
+      rif: rif || null, telefono: tel || null, correo: correo || null,
       direccion: dir || null, empresa: emp || null,
       foto_documento: fotoUrl, id_usuario: sesionActual.correo_usuario
     };
@@ -4842,6 +4856,10 @@ window.addEventListener('load', () => {
         <div class="form-campo form-full">
           <label>Nombre Completo</label>
           <input type="text" id="prop-nombre" placeholder="Nombre completo del propietario" onblur="this.value=capitalizarNombre(this.value)">
+        </div>
+        <div class="form-campo">
+          <label>RIF</label>
+          <input type="text" id="prop-rif-civil" placeholder="Ej: V-04284968" style="text-transform:uppercase">
         </div>
         <div class="form-campo">
           <label>Teléfono</label>
