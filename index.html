@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260506290000 -->
+<!-- v20260506310000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -4612,15 +4612,44 @@ async function renderOrdenes() {
   }
 }
 
+let tasasDisponiblesOS = { USD: 1, EUR: 1 };
+
+function cambiarTipoTasaOS(moneda) {
+  tasaActualOS = tasasDisponiblesOS[moneda] || 1;
+  const labelMap = { USD: '$', EUR: '€' };
+  const tasaEl = document.getElementById('os-tasa');
+  const monedaEl = document.getElementById('os-moneda-label');
+  if (tasaEl) tasaEl.textContent = tasaActualOS.toFixed(2);
+  if (monedaEl) monedaEl.textContent = labelMap[moneda] || '$';
+  calcularTotalesOS();
+}
+
 // ─── ABRIR NUEVA OS ───
 async function abrirNuevaOS() {
   osServiciosLineas = [];
   osRepuestosLineas = [];
 
-  // Obtener tasa vigente
+  // Obtener tasas vigentes (USD y EUR)
   try {
-    const tasas = await api('tasas', 'GET', null, '?order=fecha_registro.desc&limit=1&select=tipo_cambio');
-    tasaActualOS = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
+    const tasasDB = await api('tasas', 'GET', null, '?order=fecha_valor.desc&limit=10&select=*');
+    const hoy = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
+
+    function getTasaOS(moneda) {
+      const reg = tasasDB.filter(function(t) {
+        return t.moneda_origen === moneda &&
+          String(t.fecha_valor || '').substring(0,10) <= hoy;
+      }).sort(function(a,b) {
+        const fa = String(a.fecha_valor||'').substring(0,10);
+        const fb = String(b.fecha_valor||'').substring(0,10);
+        if (fb !== fa) return fb.localeCompare(fa);
+        return (b.id_tasa||0) - (a.id_tasa||0);
+      });
+      return reg.length ? parseFloat(reg[0].tipo_cambio) : 1;
+    }
+
+    tasasDisponiblesOS.USD = getTasaOS('USD');
+    tasasDisponiblesOS.EUR = getTasaOS('EUR');
+    tasaActualOS = tasasDisponiblesOS.USD;
   } catch(e) { tasaActualOS = 1; }
 
   document.getElementById('os-id').value = '';
@@ -4634,7 +4663,9 @@ async function abrirNuevaOS() {
   document.getElementById('os-estado').value = 'ABIERTA';
   document.getElementById('os-diagnostico').value = '';
   document.getElementById('os-observaciones').value = '';
+  document.getElementById('os-tipo-cambio').value = 'USD';
   document.getElementById('os-tasa').textContent = tasaActualOS.toFixed(2);
+  document.getElementById('os-moneda-label').textContent = '$';
   document.getElementById('alerta-os-ok').style.display = 'none';
   document.getElementById('alerta-os-err').style.display = 'none';
   document.getElementById('modal-os-titulo').textContent = 'NUEVA ORDEN DE SERVICIO';
@@ -4678,6 +4709,8 @@ async function abrirEditarOS(id) {
   document.getElementById('os-diagnostico').value = o.diagnostico || '';
   document.getElementById('os-observaciones').value = o.observaciones || '';
   document.getElementById('os-tasa').textContent = tasaActualOS.toFixed(2);
+  document.getElementById('os-tipo-cambio').value = o.moneda_cambio || 'USD';
+  document.getElementById('os-moneda-label').textContent = (o.moneda_cambio === 'EUR') ? '€' : '$';
   document.getElementById('os-veh-id').value = o.id_vehiculo || '';
   document.getElementById('alerta-os-ok').style.display = 'none';
   document.getElementById('alerta-os-err').style.display = 'none';
@@ -4737,11 +4770,20 @@ function renderLineasOS() {
     cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Sin servicios agregados</div>';
     return;
   }
-  cont.innerHTML = osServiciosLineas.map(function(l, i) {
-    return '<div style="display:grid;grid-template-columns:1fr 70px 110px auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
+  const monedaLabels = { USD: '$ USD', EUR: '€ EUR', VES: 'Bs VES' };
+  cont.innerHTML = '<div style="display:grid;grid-template-columns:1fr 70px 110px 60px auto;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:4px">'
+    + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px">Descripción</div>'
+    + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px;text-align:center">Cant.</div>'
+    + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px;text-align:right">Precio</div>'
+    + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px;text-align:center">Mon.</div>'
+    + '<div></div></div>'
+  + osServiciosLineas.map(function(l, i) {
+    const mon = l.moneda || 'USD';
+    return '<div style="display:grid;grid-template-columns:1fr 70px 110px 60px auto;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
       + '<div style="font-size:13px;font-weight:500">' + l.descripcion + '</div>'
       + '<input type="number" value="' + l.cantidad + '" min="0.01" step="0.01" onchange="osServiciosLineas[' + i + '].cantidad=parseFloat(this.value)||1;calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:center">'
-      + '<input type="number" value="' + parseFloat(l.precio_usd).toFixed(2) + '" min="0" step="0.01" onchange="osServiciosLineas[' + i + '].precio_usd=parseFloat(this.value)||0;calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
+      + '<input type="number" value="' + (l.precio_original !== undefined ? l.precio_original : parseFloat(l.precio_usd).toFixed(2)) + '" min="0" step="0.01" onchange="osServiciosLineas[' + i + '].precio_original=parseFloat(this.value)||0;osServiciosLineas[' + i + '].precio_usd=convertirAUSD(parseFloat(this.value)||0,osServiciosLineas[' + i + '].moneda||\'USD\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
+      + '<div style="font-size:10px;font-weight:600;color:var(--suave);text-align:center">' + (monedaLabels[mon] || mon) + '</div>'
       + '<button onclick="quitarLineaServ(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px;padding:0 4px">✕</button>'
       + '</div>';
   }).join('');
@@ -4755,15 +4797,30 @@ function renderLineasRep() {
     cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Sin repuestos agregados</div>';
     return;
   }
-  cont.innerHTML = osRepuestosLineas.map(function(l, i) {
-    return '<div style="display:grid;grid-template-columns:1fr 70px 110px auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
+  const monedaLabels = { USD: '$ USD', EUR: '€ EUR', VES: 'Bs VES' };
+  cont.innerHTML = '<div style="display:grid;grid-template-columns:1fr 70px 110px 60px auto;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:4px">'
+    + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px">Descripción</div>'
+    + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px;text-align:center">Cant.</div>'
+    + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px;text-align:right">Precio</div>'
+    + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px;text-align:center">Mon.</div>'
+    + '<div></div></div>'
+  + osRepuestosLineas.map(function(l, i) {
+    const mon = l.moneda || 'USD';
+    return '<div style="display:grid;grid-template-columns:1fr 70px 110px 60px auto;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
       + '<div style="font-size:13px;font-weight:500">' + l.descripcion + '</div>'
       + '<input type="number" value="' + l.cantidad + '" min="0.01" step="0.01" onchange="osRepuestosLineas[' + i + '].cantidad=parseFloat(this.value)||1;calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:center">'
-      + '<input type="number" value="' + parseFloat(l.precio_usd).toFixed(2) + '" min="0" step="0.01" onchange="osRepuestosLineas[' + i + '].precio_usd=parseFloat(this.value)||0;calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
+      + '<input type="number" value="' + (l.precio_original !== undefined ? l.precio_original : parseFloat(l.precio_usd).toFixed(2)) + '" min="0" step="0.01" onchange="osRepuestosLineas[' + i + '].precio_original=parseFloat(this.value)||0;osRepuestosLineas[' + i + '].precio_usd=convertirAUSD(parseFloat(this.value)||0,osRepuestosLineas[' + i + '].moneda||\'USD\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
+      + '<div style="font-size:10px;font-weight:600;color:var(--suave);text-align:center">' + (monedaLabels[mon] || mon) + '</div>'
       + '<button onclick="quitarLineaRep(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px;padding:0 4px">✕</button>'
       + '</div>';
   }).join('');
   calcularTotalesOS();
+}
+
+function convertirAUSD(precio, moneda) {
+  if (moneda === 'VES') return tasasDisponiblesOS.USD > 0 ? precio / tasasDisponiblesOS.USD : precio;
+  if (moneda === 'EUR') return tasasDisponiblesOS.USD > 0 && tasasDisponiblesOS.EUR > 0 ? precio * (tasasDisponiblesOS.EUR / tasasDisponiblesOS.USD) : precio;
+  return precio; // USD
 }
 
 function quitarLineaServ(i) { osServiciosLineas.splice(i, 1); renderLineasOS(); }
@@ -4786,23 +4843,35 @@ function calcularTotalesOS() {
 // ─── AGREGAR LÍNEA SERVICIO DESDE CATÁLOGO ───
 async function agregarServicioCatalogo() {
   if (!catalogoCache.length) {
-    try { catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=categoria.asc,nombre.asc'); } catch(e) {}
+    try { catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=grupo.asc,nombre.asc'); } catch(e) {}
   }
-  const sel = document.getElementById('os-sel-cat');
+  const sel    = document.getElementById('os-sel-cat');
   const precio = document.getElementById('os-precio-cat');
-  const cant = document.getElementById('os-cant-cat');
+  const cant   = document.getElementById('os-cant-cat');
+  const moneda = document.getElementById('os-moneda-cat').value;
+
+  // Convertir precio a USD equivalente según moneda
+  function precioAUSD(p, mon) {
+    if (mon === 'VES') return tasasDisponiblesOS.USD > 0 ? p / tasasDisponiblesOS.USD : p;
+    if (mon === 'EUR') return tasasDisponiblesOS.USD > 0 && tasasDisponiblesOS.EUR > 0 ? p * (tasasDisponiblesOS.EUR / tasasDisponiblesOS.USD) : p;
+    return p; // USD
+  }
+
   if (!sel.value) {
-    // Modo descripción libre
     const descEl = document.getElementById('os-desc-libre');
     if (!descEl.value.trim()) { alert('Escribe una descripción o selecciona del catálogo.'); return; }
+    const pVal = parseFloat(precio.value) || 0;
     osServiciosLineas.push({ id_servicio: null, descripcion: descEl.value.trim(),
-      cantidad: parseFloat(cant.value) || 1, precio_usd: parseFloat(precio.value) || 0 });
+      cantidad: parseFloat(cant.value) || 1, precio_usd: precioAUSD(pVal, moneda),
+      precio_original: pVal, moneda });
     descEl.value = ''; precio.value = ''; cant.value = '1';
   } else {
     const s = catalogoCache.find(function(x) { return x.id_servicio == sel.value; });
     if (!s) return;
+    const pVal = parseFloat(precio.value) || parseFloat(s.precio_usd) || 0;
     osServiciosLineas.push({ id_servicio: s.id_servicio, descripcion: s.nombre,
-      cantidad: parseFloat(cant.value) || 1, precio_usd: parseFloat(precio.value) || parseFloat(s.precio_usd) });
+      cantidad: parseFloat(cant.value) || 1, precio_usd: precioAUSD(pVal, moneda),
+      precio_original: pVal, moneda });
     sel.value = ''; precio.value = ''; cant.value = '1';
   }
   renderLineasOS();
@@ -4821,16 +4890,25 @@ async function agregarRepuestoInventario() {
   if (!inventarioCache.length) {
     try { inventarioCache = await api('inventario', 'GET', null, '?order=nombre.asc'); } catch(e) {}
   }
-  const sel = document.getElementById('os-sel-inv');
+  const sel    = document.getElementById('os-sel-inv');
   const precio = document.getElementById('os-precio-inv');
-  const cant = document.getElementById('os-cant-inv');
-  const desc = document.getElementById('os-desc-rep-libre');
+  const cant   = document.getElementById('os-cant-inv');
+  const desc   = document.getElementById('os-desc-rep-libre');
+  const moneda = document.getElementById('os-moneda-inv').value;
   const cantVal = parseFloat(cant.value) || 1;
+
+  function precioAUSD(p, mon) {
+    if (mon === 'VES') return tasasDisponiblesOS.USD > 0 ? p / tasasDisponiblesOS.USD : p;
+    if (mon === 'EUR') return tasasDisponiblesOS.USD > 0 && tasasDisponiblesOS.EUR > 0 ? p * (tasasDisponiblesOS.EUR / tasasDisponiblesOS.USD) : p;
+    return p;
+  }
 
   if (!sel.value) {
     if (!desc.value.trim()) { alert('Escribe una descripción o selecciona del inventario.'); return; }
+    const pVal = parseFloat(precio.value) || 0;
     osRepuestosLineas.push({ id_repuesto: null, descripcion: desc.value.trim(),
-      cantidad: cantVal, precio_usd: parseFloat(precio.value) || 0 });
+      cantidad: cantVal, precio_usd: precioAUSD(pVal, moneda),
+      precio_original: pVal, moneda });
     desc.value = ''; precio.value = ''; cant.value = '1';
   } else {
     const r = inventarioCache.find(function(x) { return x.id_repuesto == sel.value; });
@@ -4838,8 +4916,10 @@ async function agregarRepuestoInventario() {
     if (r.stock_actual < cantVal) {
       if (!confirm('⚠ Stock insuficiente (' + r.stock_actual + ' disponibles). ¿Agregar igual?')) return;
     }
+    const pVal = parseFloat(precio.value) || parseFloat(r.precio_venta_usd) || 0;
     osRepuestosLineas.push({ id_repuesto: r.id_repuesto, descripcion: r.nombre,
-      cantidad: cantVal, precio_usd: parseFloat(precio.value) || parseFloat(r.precio_venta_usd) });
+      cantidad: cantVal, precio_usd: precioAUSD(pVal, moneda),
+      precio_original: pVal, moneda });
     sel.value = ''; precio.value = ''; cant.value = '1';
   }
   renderLineasRep();
@@ -4893,6 +4973,7 @@ async function guardarOS() {
       diagnostico: diagnostico || null,
       observaciones: obs || null,
       tasa_cambio_usd: tasaActualOS,
+      moneda_cambio: document.getElementById('os-tipo-cambio').value || 'USD',
       total_servicios_usd: totServ,
       total_repuestos_usd: totRep,
       total_usd: total,
@@ -5605,8 +5686,12 @@ window.addEventListener('load', () => {
           <div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)" id="os-numero">—</div>
         </div>
         <div>
-          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">Tasa USD</div>
-          <div style="font-family:var(--font-mono);font-size:14px">1 $ = <span id="os-tasa">—</span> Bs</div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Tipo de Cambio</div>
+          <select id="os-tipo-cambio" onchange="cambiarTipoTasaOS(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:6px 10px;border-radius:5px;outline:none;margin-bottom:4px">
+            <option value="USD">Dólares (USD)</option>
+            <option value="EUR">Euros (EUR)</option>
+          </select>
+          <div style="font-family:var(--font-mono);font-size:13px">1 <span id="os-moneda-label">$</span> = <span id="os-tasa">—</span> Bs</div>
         </div>
       </div>
 
@@ -5660,7 +5745,7 @@ window.addEventListener('load', () => {
         <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:12px">🔧 Servicios</div>
         <div id="os-lineas-serv" style="margin-bottom:12px"></div>
         <!-- Agregar servicio -->
-        <div style="display:grid;grid-template-columns:1fr 80px 100px auto;gap:8px;align-items:end;padding:10px;background:var(--gris2);border-radius:6px">
+        <div style="display:grid;grid-template-columns:1fr 70px 80px 80px auto;gap:8px;align-items:end;padding:10px;background:var(--gris2);border-radius:6px">
           <div class="form-campo" style="margin:0">
             <label style="font-size:9px">Del catálogo o libre</label>
             <select id="os-sel-cat" onchange="onSelCatalogoChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%"></select>
@@ -5671,8 +5756,16 @@ window.addEventListener('load', () => {
             <input type="number" id="os-cant-cat" value="1" min="0.01" step="0.01" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
           </div>
           <div class="form-campo" style="margin:0">
-            <label style="font-size:9px">Precio USD</label>
+            <label style="font-size:9px">Precio</label>
             <input type="number" id="os-precio-cat" placeholder="0.00" step="0.01" min="0" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+          </div>
+          <div class="form-campo" style="margin:0">
+            <label style="font-size:9px">Moneda</label>
+            <select id="os-moneda-cat" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 6px;border-radius:5px;outline:none;width:100%">
+              <option value="USD">$ USD</option>
+              <option value="EUR">€ EUR</option>
+              <option value="VES">Bs VES</option>
+            </select>
           </div>
           <button class="btn-primario" onclick="agregarServicioCatalogo()" style="padding:8px 12px;font-size:11px;align-self:end">+ AGREGAR</button>
         </div>
@@ -5683,7 +5776,7 @@ window.addEventListener('load', () => {
         <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:12px">📦 Repuestos</div>
         <div id="os-lineas-rep" style="margin-bottom:12px"></div>
         <!-- Agregar repuesto -->
-        <div style="display:grid;grid-template-columns:1fr 80px 100px auto;gap:8px;align-items:end;padding:10px;background:var(--gris2);border-radius:6px">
+        <div style="display:grid;grid-template-columns:1fr 70px 80px 80px auto;gap:8px;align-items:end;padding:10px;background:var(--gris2);border-radius:6px">
           <div class="form-campo" style="margin:0">
             <label style="font-size:9px">Del inventario o libre</label>
             <select id="os-sel-inv" onchange="onSelInventarioChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%"></select>
@@ -5694,8 +5787,16 @@ window.addEventListener('load', () => {
             <input type="number" id="os-cant-inv" value="1" min="0.01" step="0.01" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
           </div>
           <div class="form-campo" style="margin:0">
-            <label style="font-size:9px">Precio USD</label>
+            <label style="font-size:9px">Precio</label>
             <input type="number" id="os-precio-inv" placeholder="0.00" step="0.01" min="0" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+          </div>
+          <div class="form-campo" style="margin:0">
+            <label style="font-size:9px">Moneda</label>
+            <select id="os-moneda-inv" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 6px;border-radius:5px;outline:none;width:100%">
+              <option value="USD">$ USD</option>
+              <option value="EUR">€ EUR</option>
+              <option value="VES">Bs VES</option>
+            </select>
           </div>
           <button class="btn-primario" onclick="agregarRepuestoInventario()" style="padding:8px 12px;font-size:11px;align-self:end">+ AGREGAR</button>
         </div>
