@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260505290000 -->
+<!-- v20260505300000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -2087,14 +2087,15 @@ async function renderTasas() {
 
     // ── Próxima tasa hábil ──
     let proximaHTML = '';
+      const fechaHoyFmt = new Date(hoyStr + 'T12:00:00').toLocaleDateString('es-VE', { day:'2-digit', month:'2-digit', year:'numeric' });
+
     if (proximaFecha) {
       const eHoy    = proximaFecha === hoyStr;
       const pUsd    = getValorFecha(histUsd,  proximaFecha);
       const pEur    = getValorFecha(histEur,  proximaFecha);
       const pUsdt   = getValorFecha(histUsdt, proximaFecha);
-      const pFmt    = new Date(proximaFecha + 'T12:00:00').toLocaleDateString('es-VE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
-      const pCap    = pFmt.charAt(0).toUpperCase() + pFmt.slice(1);
-      const label   = eHoy ? 'TASA DE HOY' : 'PRÓXIMA TASA HÁBIL';
+      const pFmt    = new Date(proximaFecha + 'T12:00:00').toLocaleDateString('es-VE', { day:'2-digit', month:'2-digit', year:'numeric' });
+      const label   = eHoy ? 'TASA PARA EL DÍA DE HOY · ' + pFmt : 'TASA PARA EL DÍA DE MAÑANA · ' + pFmt;
       const subLabel= eHoy ? 'Publicada por el BCV' : 'Disponible anticipadamente';
 
       function celdaProx(val, color) {
@@ -2107,7 +2108,7 @@ async function renderTasas() {
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">'
         + '<div>'
         + '<div style="font-family:var(--font-display);font-size:13px;letter-spacing:3px;color:var(--naranja);text-transform:uppercase">' + label + '</div>'
-        + '<div style="font-size:12px;color:var(--suave);margin-top:3px">' + pCap + ' · ' + subLabel + '</div>'
+        + '<div style="font-size:12px;color:var(--suave);margin-top:3px">' + subLabel + '</div>'
         + '</div></div>'
         + '<div style="display:flex;gap:32px;flex-wrap:wrap">'
         + '<div><div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">🇺🇸 USD</div>' + celdaProx(pUsd, '#FF6B00') + '</div>'
@@ -2116,7 +2117,7 @@ async function renderTasas() {
         + '</div></div>';
     } else {
       proximaHTML = '<div style="background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:16px 20px;margin-bottom:24px;font-size:13px;color:var(--suave)">'
-        + '⏳ La próxima tasa hábil aún no está disponible — estará publicada en breve</div>';
+        + '⏳ La tasa del próximo día hábil aún no está disponible — estará publicada en breve</div>';
     }
 
     const hoy  = new Date().toISOString().split('T')[0];
@@ -2124,14 +2125,15 @@ async function renderTasas() {
 
     c.innerHTML =
       '<div style="margin-bottom:24px">'
-      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">'
       + '<div style="font-family:var(--font-display);font-size:13px;letter-spacing:3px;color:var(--suave);text-transform:uppercase">'
-      + '<span style="color:var(--naranja)">●</span> TASAS VIGENTES'
+      + '<span style="color:var(--naranja)">●</span> TASAS VIGENTES · ' + fechaHoyFmt
       + (esFDS ? ' <span style="font-size:10px;color:#555;letter-spacing:1px">— Fin de semana, último cierre hábil</span>' : '')
       + '</div>'
+      + '<div style="display:flex;gap:10px">'
       + '<button onclick="renderTasas()" class="btn-secundario">↻ Actualizar vista</button>'
       + '<button onclick="sincronizarTasasBCV(this)" class="btn-primario" style="display:flex;align-items:center;gap:6px"><span>⬇</span> Sincronizar BCV</button>'
-      + '</div>'
+      + '</div></div>'
       + '<div style="display:flex;gap:16px;flex-wrap:wrap">'
       + tarjeta('🇺🇸', 'USD',  usdVal,  usdCierre,  'BCV Oficial',  '#FF6B00')
       + tarjeta('🇪🇺', 'EUR',  eurVal,  eurCierre,  'BCV Oficial',  '#4299e1')
