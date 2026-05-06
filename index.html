@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260506320000 -->
+<!-- v20260506330000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -4612,6 +4612,60 @@ async function renderOrdenes() {
   }
 }
 
+// ─── VALIDACIÓN DE FECHAS OS ───
+function getHoyVzla() {
+  const _vzla = new Date(new Date().getTime() - 4 * 60 * 60 * 1000);
+  return _vzla.toISOString().split('T')[0];
+}
+
+function validarFechaEntradaOS(input) {
+  const hoy = getHoyVzla();
+  const esAdmin = sesionActual && sesionActual.administrador;
+  if (input.value > hoy) {
+    if (!esAdmin) {
+      mostrarAlertaFecha('La fecha de entrada no puede ser posterior a hoy (' + formatearFechaCorta(hoy) + ').');
+      input.value = hoy;
+    } else {
+      // Admin puede forzar — solo advierte
+      if (!confirm('⚠ La fecha de entrada es posterior a hoy. ¿Confirmar como administrador?')) {
+        input.value = hoy;
+      }
+    }
+  }
+}
+
+function validarFechaPrometidaOS(input) {
+  const hoy = getHoyVzla();
+  const esAdmin = sesionActual && sesionActual.administrador;
+  if (input.value && input.value < hoy) {
+    if (!esAdmin) {
+      mostrarAlertaFecha('La fecha prometida no puede ser anterior a hoy (' + formatearFechaCorta(hoy) + ').');
+      input.value = '';
+    } else {
+      if (!confirm('⚠ La fecha prometida es anterior a hoy. ¿Confirmar como administrador?')) {
+        input.value = '';
+      }
+    }
+  }
+}
+
+function formatearFechaCorta(fechaStr) {
+  if (!fechaStr) return '';
+  const d = new Date(fechaStr + 'T12:00:00');
+  return d.toLocaleDateString('es-VE', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+function mostrarAlertaFecha(msg) {
+  const errEl = document.getElementById('alerta-os-err');
+  if (errEl) {
+    errEl.textContent = '⚠ ' + msg;
+    errEl.style.display = 'block';
+    setTimeout(function() { errEl.style.display = 'none'; }, 4000);
+  } else {
+    alert(msg);
+  }
+}
+
 let tasasDisponiblesOS = { USD: 1, EUR: 1 };
 
 function cambiarTipoTasaOS(moneda) {
@@ -4658,8 +4712,11 @@ async function abrirNuevaOS() {
   document.getElementById('os-veh-id').value = '';
   document.getElementById('os-veh-info').innerHTML = '';
   document.getElementById('os-km').value = '';
-  document.getElementById('os-fecha-entrada').value = new Date().toISOString().split('T')[0];
+  const hoyOS = getHoyVzla();
+  document.getElementById('os-fecha-entrada').value = hoyOS;
+  document.getElementById('os-fecha-entrada').max = sesionActual.administrador ? '' : hoyOS;
   document.getElementById('os-fecha-prometida').value = '';
+  document.getElementById('os-fecha-prometida').min = sesionActual.administrador ? '' : hoyOS;
   document.getElementById('os-estado').value = 'ABIERTA';
   document.getElementById('os-diagnostico').value = '';
   document.getElementById('os-observaciones').value = '';
@@ -5723,11 +5780,11 @@ window.addEventListener('load', () => {
         </div>
         <div class="form-campo">
           <label>Fecha de Entrada</label>
-          <input type="date" id="os-fecha-entrada">
+          <input type="date" id="os-fecha-entrada" onchange="validarFechaEntradaOS(this)">
         </div>
         <div class="form-campo">
           <label>Fecha Prometida</label>
-          <input type="date" id="os-fecha-prometida">
+          <input type="date" id="os-fecha-prometida" onchange="validarFechaPrometidaOS(this)">
         </div>
         <div class="form-campo form-full">
           <label>Diagnóstico</label>
