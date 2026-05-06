@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260505410000 -->
+<!-- v20260505430000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -2164,6 +2164,34 @@ async function renderTasas() {
       + '</div></div>'
 
       + proximaHTML
+
+      + '<div class="panel" style="margin-bottom:24px;border:1px solid rgba(255,107,0,0.3)">'
+      + '<div class="panel-header" style="border-bottom:1px solid rgba(255,107,0,0.15)">'
+      + '<div>'
+      + '<h3 style="color:var(--naranja)">📋 Ingresar Tasa Oficial BCV</h3>'
+      + '<div style="font-size:11px;color:var(--suave);margin-top:3px">Registro manual de la tasa publicada en bcv.org.ve</div>'
+      + '</div></div>'
+      + '<div style="padding:20px 24px">'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;align-items:end">'
+      + '<div class="form-campo" style="margin:0">'
+      + '<label>Fecha Valor</label>'
+      + '<input type="date" id="bcv-fecha" value="' + (proximaFecha || hoy) + '" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;width:100%">'
+      + '</div>'
+      + '<div class="form-campo" style="margin:0">'
+      + '<label>🇺🇸 USD / Bs</label>'
+      + '<input type="number" id="bcv-usd" placeholder="Ej: 493.37650000" step="0.00000001" min="0" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:14px;padding:10px 14px;border-radius:5px;outline:none;width:100%">'
+      + '</div>'
+      + '<div class="form-campo" style="margin:0">'
+      + '<label>🇪🇺 EUR / Bs</label>'
+      + '<input type="number" id="bcv-eur" placeholder="Ej: 577.52186207" step="0.00000001" min="0" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:14px;padding:10px 14px;border-radius:5px;outline:none;width:100%">'
+      + '</div>'
+      + '<div style="padding-bottom:1px">'
+      + '<button class="btn-primario" style="width:100%;padding:11px" onclick="guardarTasaBCVManual()">💾 GUARDAR TASAS BCV</button>'
+      + '</div>'
+      + '</div>'
+      + '<div id="bcv-manual-msg" style="margin-top:12px;display:none"></div>'
+      + '</div></div>'
+
       + '<div class="panel" style="margin-bottom:24px">'
       + '<div class="panel-header"><h3>Historial — Últimos 5 Días Hábiles</h3></div>'
       + '<div class="tabla-container"><table>'
@@ -2623,6 +2651,66 @@ async function procesarCambioClave() {
 }
 
 // ─── SINCRONIZAR TASAS BCV MANUAL ───
+// ─── GUARDAR TASA BCV MANUAL ───
+async function guardarTasaBCVManual() {
+  const fecha = document.getElementById('bcv-fecha').value;
+  const usd   = parseFloat(document.getElementById('bcv-usd').value);
+  const eur   = parseFloat(document.getElementById('bcv-eur').value);
+  const msg   = document.getElementById('bcv-manual-msg');
+
+  msg.style.display = 'none';
+
+  if (!fecha)           { msg.innerHTML = '<div class="alerta alerta-error" style="display:block">La fecha es obligatoria.</div>'; msg.style.display='block'; return; }
+  if (!usd || usd <= 0) { msg.innerHTML = '<div class="alerta alerta-error" style="display:block">Ingresa un valor válido para USD.</div>'; msg.style.display='block'; return; }
+  if (!eur || eur <= 0) { msg.innerHTML = '<div class="alerta alerta-error" style="display:block">Ingresa un valor válido para EUR.</div>'; msg.style.display='block'; return; }
+
+  try {
+    await Promise.all([
+      fetch(SUPABASE_URL + '/rest/v1/tasas', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify({ moneda_origen: 'USD', moneda_destino: 'VES', tipo_cambio: usd, fecha_registro: fecha })
+      }),
+      fetch(SUPABASE_URL + '/rest/v1/tasas', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify({ moneda_origen: 'EUR', moneda_destino: 'VES', tipo_cambio: eur, fecha_registro: fecha })
+      })
+    ]);
+
+    const pFmt = new Date(fecha + 'T12:00:00').toLocaleDateString('es-VE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+    const pCap = pFmt.charAt(0).toUpperCase() + pFmt.slice(1);
+
+    msg.innerHTML = '<div class="alerta alerta-exito" style="display:block">✓ Tasas BCV guardadas para <strong>' + pCap + '</strong> — USD: ' + usd.toFixed(8) + ' · EUR: ' + eur.toFixed(8) + '</div>';
+    msg.style.display = 'block';
+
+    // Actualizar sección FECHA VALOR visualmente
+    const seccion = document.getElementById('seccion-proxima-tasa');
+    if (seccion) {
+      seccion.innerHTML =
+        '<div style="margin-bottom:16px">'
+        + '<div style="font-family:var(--font-display);font-size:13px;letter-spacing:3px;color:var(--naranja);text-transform:uppercase">FECHA VALOR : ' + pCap + '</div>'
+        + '<div style="font-size:12px;color:var(--suave);margin-top:3px">Ingresado manualmente desde BCV oficial</div>'
+        + '</div>'
+        + '<div style="display:flex;gap:32px;flex-wrap:wrap">'
+        + '<div><div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">🇺🇸 USD</div>'
+        + '<div style="font-family:var(--font-mono);font-size:22px;font-weight:700;color:#FF6B00">' + usd.toFixed(4) + ' <span style="font-size:11px;color:#555">Bs</span></div></div>'
+        + '<div><div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">🇪🇺 EUR</div>'
+        + '<div style="font-family:var(--font-mono);font-size:22px;font-weight:700;color:#4299e1">' + eur.toFixed(4) + ' <span style="font-size:11px;color:#555">Bs</span></div></div>'
+        + '</div>';
+    }
+
+    document.getElementById('bcv-usd').value = '';
+    document.getElementById('bcv-eur').value = '';
+
+  } catch(e) {
+    msg.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+    msg.style.display = 'block';
+  }
+}
+
 async function sincronizarTasasBCV(btn) {
   const texto = btn.innerHTML;
   btn.disabled = true;
@@ -2646,7 +2734,7 @@ async function sincronizarTasasBCV(btn) {
     }
 
     const data = await resp.json();
-    if (!data || !data.ok) throw new Error('La función no retornó datos válidos');
+    if (!data || !data.ok) throw new Error(data.mensaje || 'La tasa del próximo día hábil aún no está publicada. Intente más tarde.');
 
     const tasaUsd  = parseFloat(data.usd);
     const tasaEur  = parseFloat(data.eur);
