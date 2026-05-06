@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260506170000 -->
+<!-- v20260506190000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -765,7 +765,45 @@
   .prox-modulo h3 { font-family: var(--font-display); font-size: 24px; color: #444; margin-bottom: 8px; letter-spacing: 2px; }
   .prox-modulo p { font-size: 13px; }
 
-  /* ─── OJO CONTRASEÑA ─── */
+  /* ─── TIPOGRAFÍA LABELS MEJORADA ─── */
+  .form-campo label,
+  .campo label {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    color: var(--texto) !important;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    display: block;
+  }
+  .form-campo input,
+  .form-campo select,
+  .form-campo textarea,
+  .campo input,
+  .campo select {
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    color: var(--texto) !important;
+  }
+  .form-campo input::placeholder,
+  .campo input::placeholder {
+    font-weight: 400 !important;
+    color: var(--suave) !important;
+    font-size: 13px !important;
+  }
+
+  /* ─── TIPOGRAFÍA MODALES ─── */
+  .modal-body {
+    font-size: 14px;
+  }
+  .modal-header h3 {
+    font-size: 16px !important;
+    letter-spacing: 2px !important;
+  }
+  .panel-header h3 {
+    font-size: 15px !important;
+  }
+
+  /* OJO CONTRASEÑA */
   .campo-pass { position: relative; }
   .campo-pass input { padding-right: 44px !important; }
   .ojo-btn {
@@ -782,6 +820,16 @@
   }
   .ojo-btn:hover { color: var(--naranja); }
   .ojo-btn:active { opacity: 0.7; }
+
+  /* ─── TIPOGRAFÍA TABLAS ─── */
+  .tabla-container table td {
+    font-size: 13px !important;
+  }
+  .tabla-container table th {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    letter-spacing: 1px !important;
+  }
 
   /* SCROLLBAR */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -4017,6 +4065,144 @@ async function guardarCatalogo() {
   } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
 }
 
+// ─── GESTIÓN DE SERVICIOS DEL CATÁLOGO ───
+async function gestionarServiciosCatalogo() {
+  const grupo = document.getElementById('cat-grupo').value;
+  const titulo = grupo ? 'SERVICIOS — ' + grupo : 'TODOS LOS SERVICIOS';
+  document.getElementById('modal-servicios-cat-titulo').textContent = titulo;
+  document.getElementById('nuevo-servicio-nombre').value = '';
+  document.getElementById('nuevo-servicio-precio').value = '';
+  document.getElementById('msg-nuevo-servicio').style.display = 'none';
+  await renderListaServicios(grupo);
+  abrirModal('modal-servicios-cat');
+}
+
+async function renderListaServicios(grupo) {
+  const lista = document.getElementById('lista-servicios-cat');
+  if (!lista) return;
+  lista.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:10px">Cargando...</div>';
+
+  try {
+    // Recargar desde Supabase para tener datos frescos
+    let query = '?order=nombre.asc&select=*';
+    if (grupo) query += '&grupo=eq.' + encodeURIComponent(grupo);
+    const servicios = await api('servicios_catalogo', 'GET', null, query);
+    // Actualizar cache
+    if (!grupo) catalogoCache = servicios;
+
+    if (!servicios.length) {
+      lista.innerHTML = '<div style="color:var(--suave);font-size:13px;text-align:center;padding:24px">'
+        + (grupo ? 'Sin servicios en el grupo "' + grupo + '"' : 'Sin servicios registrados') + '</div>';
+      return;
+    }
+
+    lista.innerHTML = servicios.map(function(s) {
+      return '<div id="serv-row-' + s.id_servicio + '" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--gris2);border-radius:6px;margin-bottom:8px">'
+        + '<div style="flex:1">'
+        + '<div style="font-size:14px;font-weight:600;color:var(--texto)">' + s.nombre + '</div>'
+        + '<div style="font-size:11px;color:var(--suave);margin-top:2px">'
+        + (s.grupo ? '<span style="color:var(--naranja)">' + s.grupo + '</span> · ' : '')
+        + (s.categoria || 'Sin categoría') + ' · '
+        + '<span style="font-family:var(--font-mono);color:var(--naranja)">$ ' + parseFloat(s.precio_usd || 0).toFixed(2) + '</span>'
+        + '</div></div>'
+        + '<div style="display:flex;gap:6px;flex-shrink:0">'
+        + '<button class="btn-secundario" onclick="editarServicioEnLinea(' + s.id_servicio + ')" style="font-size:11px;padding:5px 10px">✏️ Editar</button>'
+        + '<button class="btn-peligro" onclick="eliminarServicioEnLinea(' + s.id_servicio + ',\'' + s.nombre.replace(/'/g, "\\'") + '\')" style="font-size:11px;padding:5px 10px">🗑</button>'
+        + '</div></div>';
+    }).join('');
+  } catch(e) {
+    lista.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+  }
+}
+
+async function agregarServicioDesdeGestion() {
+  const nombre = document.getElementById('nuevo-servicio-nombre').value.trim();
+  const precio = parseFloat(document.getElementById('nuevo-servicio-precio').value) || 0;
+  const grupo  = document.getElementById('cat-grupo').value || null;
+  const msg    = document.getElementById('msg-nuevo-servicio');
+
+  if (!nombre) {
+    msg.innerHTML = '<span style="color:#fc8181">El nombre es obligatorio.</span>';
+    msg.style.display = 'block'; return;
+  }
+
+  // Validar duplicado
+  const existe = catalogoCache.find(function(s) { return s.nombre.toLowerCase() === nombre.toLowerCase(); });
+  if (existe) {
+    msg.innerHTML = '<span style="color:#fc8181">Ya existe un servicio con ese nombre.</span>';
+    msg.style.display = 'block'; return;
+  }
+
+  try {
+    await api('servicios_catalogo', 'POST', {
+      nombre, grupo, precio_usd: precio, activo: true,
+      id_usuario: sesionActual.correo_usuario
+    });
+    msg.innerHTML = '<span style="color:#68d391">✓ Servicio agregado.</span>';
+    msg.style.display = 'block';
+    document.getElementById('nuevo-servicio-nombre').value = '';
+    document.getElementById('nuevo-servicio-precio').value = '';
+
+    // Actualizar cache y lista
+    const nuevos = await api('servicios_catalogo', 'GET', null, '?order=nombre.asc&select=*');
+    catalogoCache = nuevos;
+    await renderListaServicios(grupo);
+
+    // Actualizar select nombre en el modal principal
+    const selNombre = document.getElementById('cat-nombre');
+    if (selNombre) selNombre.value = nombre;
+
+    setTimeout(function() { msg.style.display = 'none'; }, 2000);
+  } catch(e) {
+    msg.innerHTML = '<span style="color:#fc8181">Error: ' + e.message + '</span>';
+    msg.style.display = 'block';
+  }
+}
+
+function editarServicioEnLinea(id) {
+  const s = catalogoCache.find(function(x) { return x.id_servicio === id; });
+  if (!s) return;
+  const row = document.getElementById('serv-row-' + id);
+  if (!row) return;
+
+  row.innerHTML = '<div style="flex:1;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+    + '<input type="text" id="edit-nombre-' + id + '" value="' + s.nombre + '" style="flex:1;min-width:140px;background:var(--gris3);border:1px solid var(--naranja);color:var(--texto);font-family:var(--font-body);font-size:13px;font-weight:600;padding:7px 10px;border-radius:5px;outline:none">'
+    + '<input type="number" id="edit-precio-' + id + '" value="' + parseFloat(s.precio_usd || 0).toFixed(2) + '" step="0.01" min="0" style="width:100px;background:var(--gris3);border:1px solid var(--naranja);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:7px 10px;border-radius:5px;outline:none">'
+    + '</div>'
+    + '<div style="display:flex;gap:6px;flex-shrink:0">'
+    + '<button class="btn-primario" onclick="guardarServicioEnLinea(' + id + ')" style="font-size:11px;padding:5px 10px">💾 Guardar</button>'
+    + '<button class="btn-secundario" onclick="renderListaServicios(document.getElementById(\'cat-grupo\').value)" style="font-size:11px;padding:5px 10px">Cancelar</button>'
+    + '</div>';
+}
+
+async function guardarServicioEnLinea(id) {
+  const nombre = document.getElementById('edit-nombre-' + id).value.trim();
+  const precio = parseFloat(document.getElementById('edit-precio-' + id).value) || 0;
+  if (!nombre) { alert('El nombre es obligatorio.'); return; }
+
+  // Validar duplicado
+  const existe = catalogoCache.find(function(s) { return s.nombre.toLowerCase() === nombre.toLowerCase() && s.id_servicio !== id; });
+  if (existe) { alert('Ya existe un servicio con ese nombre.'); return; }
+
+  try {
+    await api('servicios_catalogo', 'PATCH', { nombre, precio_usd: precio }, '?id_servicio=eq.' + id);
+    const grupo = document.getElementById('cat-grupo').value || null;
+    const nuevos = await api('servicios_catalogo', 'GET', null, '?order=nombre.asc&select=*');
+    catalogoCache = nuevos;
+    await renderListaServicios(grupo);
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function eliminarServicioEnLinea(id, nombre) {
+  if (!confirm('¿Eliminar el servicio "' + nombre + '"?')) return;
+  try {
+    await api('servicios_catalogo', 'DELETE', null, '?id_servicio=eq.' + id);
+    catalogoCache = catalogoCache.filter(function(s) { return s.id_servicio !== id; });
+    const grupo = document.getElementById('cat-grupo').value || null;
+    await renderListaServicios(grupo);
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
 // ─── GESTIÓN DE GRUPOS DEL CATÁLOGO ───
 let gruposCatalogo = [];
 
@@ -5173,7 +5359,10 @@ window.addEventListener('load', () => {
         </div>
         <div class="form-campo form-full">
           <label style="font-size:13px;font-weight:700;color:var(--texto);letter-spacing:1px">Nombre del Servicio</label>
-          <input type="text" id="cat-nombre" placeholder="Ej: Cambio de aceite y filtro" style="font-size:14px;font-weight:500">
+          <div style="display:flex;gap:8px">
+            <input type="text" id="cat-nombre" placeholder="Ej: Cambio de aceite y filtro" style="flex:1;font-size:14px;font-weight:500">
+            <button type="button" class="btn-secundario" onclick="gestionarServiciosCatalogo()" style="white-space:nowrap;font-size:12px">✏️ Gestionar</button>
+          </div>
         </div>
         <div class="form-campo form-full">
           <label style="font-size:13px;font-weight:600;color:var(--texto)">Descripción</label>
@@ -5248,8 +5437,33 @@ window.addEventListener('load', () => {
 </div>
 
 <!-- ═══════════════════════════════════════ -->
-<!--    MODAL INVENTARIO REPUESTOS          -->
+<!--    MODAL GESTIONAR SERVICIOS CATÁLOGO  -->
 <!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-servicios-cat">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-header">
+      <h3 id="modal-servicios-cat-titulo">GESTIONAR SERVICIOS</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-servicios-cat')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Agregar nuevo servicio rápido -->
+      <div style="background:var(--gris2);border-radius:6px;padding:14px 16px;margin-bottom:16px">
+        <div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Agregar nuevo servicio</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="text" id="nuevo-servicio-nombre" placeholder="Nombre del servicio..." style="flex:1;min-width:180px;background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:9px 12px;border-radius:5px;outline:none">
+          <input type="number" id="nuevo-servicio-precio" placeholder="Precio USD" step="0.01" min="0" style="width:120px;background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:9px 12px;border-radius:5px;outline:none">
+          <button class="btn-primario" onclick="agregarServicioDesdeGestion()" style="white-space:nowrap">+ Agregar</button>
+        </div>
+        <div id="msg-nuevo-servicio" style="display:none;margin-top:8px;font-size:12px"></div>
+      </div>
+      <!-- Lista de servicios del grupo -->
+      <div id="lista-servicios-cat" style="max-height:350px;overflow-y:auto"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-servicios-cat')">Cerrar</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="modal-inventario">
   <div class="modal" style="max-width:560px">
     <div class="modal-header">
