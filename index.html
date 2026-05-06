@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260505320000 -->
+<!-- v20260505330000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -2087,7 +2087,8 @@ async function renderTasas() {
 
     // ── Próxima tasa hábil ──
     let proximaHTML = '';
-      const fechaHoyFmt = new Date(hoyStr + 'T12:00:00').toLocaleDateString('es-VE', { day:'2-digit', month:'2-digit', year:'numeric' });
+      const fechaHoyFmt = new Date(hoyStr + 'T12:00:00').toLocaleDateString('es-VE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+      const fechaHoyCap = fechaHoyFmt.charAt(0).toUpperCase() + fechaHoyFmt.slice(1);
 
     if (proximaFecha) {
       const eHoy    = proximaFecha === hoyStr;
@@ -2128,7 +2129,7 @@ async function renderTasas() {
       '<div style="margin-bottom:24px">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">'
       + '<div style="font-family:var(--font-display);font-size:13px;letter-spacing:3px;color:var(--suave);text-transform:uppercase">'
-      + '<span style="color:var(--naranja)">●</span> TASAS VIGENTES · ' + fechaHoyFmt
+      + '<span style="color:var(--naranja)">●</span> TASA VIGENTE : ' + fechaHoyCap
       + (esFDS ? ' <span style="font-size:10px;color:#555;letter-spacing:1px">— Fin de semana, último cierre hábil</span>' : '')
       + '</div>'
       + '<div style="display:flex;gap:10px">'
