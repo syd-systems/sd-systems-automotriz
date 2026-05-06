@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260506120000 -->
+<!-- v20260506130000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -2142,13 +2142,16 @@ async function renderTasas() {
 
     if (proximaFecha) {
       const eHoy    = proximaFecha === hoyStr;
-      const pUsd    = getValorFecha(histUsd,  proximaFecha);
-      const pEur    = getValorFecha(histEur,  proximaFecha);
+      // USD y EUR: Supabase primero, dolarapi como respaldo
+      const _dbPUsd = getTasaDB('USD', proximaFecha);
+      const _dbPEur = getTasaDB('EUR', proximaFecha);
+      const pUsd    = _dbPUsd ? parseFloat(_dbPUsd.tipo_cambio) : getValorFecha(histUsd,  proximaFecha);
+      const pEur    = _dbPEur ? parseFloat(_dbPEur.tipo_cambio) : getValorFecha(histEur,  proximaFecha);
       const pUsdt   = getValorFecha(histUsdt, proximaFecha);
+      const subLabel= (_dbPUsd || _dbPEur) ? 'Publicada por el BCV' : 'Disponible anticipadamente';
       const pFmt    = new Date(proximaFecha + 'T12:00:00').toLocaleDateString('es-VE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
       const pCap    = pFmt.charAt(0).toUpperCase() + pFmt.slice(1);
       const label   = 'FECHA VALOR : ' + pCap;
-      const subLabel= eHoy ? 'Publicada por el BCV' : 'Disponible anticipadamente';
 
       function celdaProx(val, color) {
         if (!val) return '<div style="color:#444;font-size:13px">—</div>';
