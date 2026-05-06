@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260506190000 -->
+<!-- v20260506210000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -4045,14 +4045,17 @@ async function guardarCatalogo() {
 
   if (!nombre) { errEl.textContent = 'El nombre del servicio es obligatorio.'; errEl.style.display = 'block'; return; }
 
+  const nombreFinal = capitalizarNombre(nombre);
+  const grupoFinal  = grupo ? grupo.toUpperCase() : null;
+
   // Validar duplicado
   const duplicado = catalogoCache.find(function(s) {
-    return s.nombre.toLowerCase() === nombre.toLowerCase() && s.id_servicio != id;
+    return s.nombre.toLowerCase() === nombreFinal.toLowerCase() && s.id_servicio != id;
   });
   if (duplicado) { errEl.textContent = 'Ya existe un servicio con ese nombre.'; errEl.style.display = 'block'; return; }
 
   try {
-    const datos = { nombre, grupo: grupo || null, descripcion: desc || null, categoria: cat || null,
+    const datos = { nombre: nombreFinal, grupo: grupoFinal, descripcion: desc || null, categoria: cat || null,
       tipo_carroceria: carroceria || null, precio_usd: precio, activo,
       id_usuario: sesionActual.correo_usuario };
     if (id) {
@@ -4116,17 +4119,16 @@ async function renderListaServicios(grupo) {
 }
 
 async function agregarServicioDesdeGestion() {
-  const nombre = document.getElementById('nuevo-servicio-nombre').value.trim();
-  const precio = parseFloat(document.getElementById('nuevo-servicio-precio').value) || 0;
-  const grupo  = document.getElementById('cat-grupo').value || null;
-  const msg    = document.getElementById('msg-nuevo-servicio');
+  const nombreRaw = document.getElementById('nuevo-servicio-nombre').value.trim();
+  const nombre    = capitalizarNombre(nombreRaw);
+  const grupo     = document.getElementById('cat-grupo').value || null;
+  const msg       = document.getElementById('msg-nuevo-servicio');
 
   if (!nombre) {
     msg.innerHTML = '<span style="color:#fc8181">El nombre es obligatorio.</span>';
     msg.style.display = 'block'; return;
   }
 
-  // Validar duplicado
   const existe = catalogoCache.find(function(s) { return s.nombre.toLowerCase() === nombre.toLowerCase(); });
   if (existe) {
     msg.innerHTML = '<span style="color:#fc8181">Ya existe un servicio con ese nombre.</span>';
@@ -4135,20 +4137,17 @@ async function agregarServicioDesdeGestion() {
 
   try {
     await api('servicios_catalogo', 'POST', {
-      nombre, grupo, precio_usd: precio, activo: true,
+      nombre, grupo, precio_usd: 0, activo: true,
       id_usuario: sesionActual.correo_usuario
     });
     msg.innerHTML = '<span style="color:#68d391">✓ Servicio agregado.</span>';
     msg.style.display = 'block';
     document.getElementById('nuevo-servicio-nombre').value = '';
-    document.getElementById('nuevo-servicio-precio').value = '';
 
-    // Actualizar cache y lista
     const nuevos = await api('servicios_catalogo', 'GET', null, '?order=nombre.asc&select=*');
     catalogoCache = nuevos;
     await renderListaServicios(grupo);
 
-    // Actualizar select nombre en el modal principal
     const selNombre = document.getElementById('cat-nombre');
     if (selNombre) selNombre.value = nombre;
 
@@ -4176,7 +4175,7 @@ function editarServicioEnLinea(id) {
 }
 
 async function guardarServicioEnLinea(id) {
-  const nombre = document.getElementById('edit-nombre-' + id).value.trim();
+  const nombre = capitalizarNombre(document.getElementById('edit-nombre-' + id).value.trim());
   const precio = parseFloat(document.getElementById('edit-precio-' + id).value) || 0;
   if (!nombre) { alert('El nombre es obligatorio.'); return; }
 
@@ -4248,7 +4247,6 @@ async function agregarGrupoCatalogo() {
   const nombre = input.value.trim().toUpperCase();
   if (!nombre) return;
 
-  // Validar duplicado
   if (gruposCatalogo.includes(nombre)) {
     alert('Ya existe un grupo con ese nombre.');
     return;
@@ -5425,7 +5423,7 @@ window.addEventListener('load', () => {
     </div>
     <div class="modal-body">
       <div style="display:flex;gap:8px;margin-bottom:16px">
-        <input type="text" id="nuevo-grupo-cat" placeholder="Nombre del grupo..." style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none;text-transform:uppercase">
+        <input type="text" id="nuevo-grupo-cat" placeholder="Nombre del grupo..." oninput="this.value=this.value.toUpperCase()" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
         <button class="btn-primario" onclick="agregarGrupoCatalogo()" style="white-space:nowrap">+ Agregar</button>
       </div>
       <div id="lista-grupos-cat" style="max-height:300px;overflow-y:auto"></div>
@@ -5451,7 +5449,6 @@ window.addEventListener('load', () => {
         <div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Agregar nuevo servicio</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <input type="text" id="nuevo-servicio-nombre" placeholder="Nombre del servicio..." style="flex:1;min-width:180px;background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:9px 12px;border-radius:5px;outline:none">
-          <input type="number" id="nuevo-servicio-precio" placeholder="Precio USD" step="0.01" min="0" style="width:120px;background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:9px 12px;border-radius:5px;outline:none">
           <button class="btn-primario" onclick="agregarServicioDesdeGestion()" style="white-space:nowrap">+ Agregar</button>
         </div>
         <div id="msg-nuevo-servicio" style="display:none;margin-top:8px;font-size:12px"></div>
