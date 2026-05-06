@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260505340000 -->
+<!-- v20260505350000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -1954,7 +1954,9 @@ async function renderTasas() {
     // Cierres desde la API (campo 'cierre') o desde el historial (penúltimo día hábil)
     // Obtener el cierre anterior: último día hábil disponible estrictamente anterior a hoy
     // Fecha actual en zona horaria Venezuela (UTC-4)
-    const hoyStr = new Date(new Date().toLocaleString('en-CA', { timeZone: 'America/Caracas' })).toISOString().split('T')[0];
+    const _ahora = new Date();
+    const _vzla  = new Date(_ahora.getTime() - (4 * 60 * 60 * 1000));
+    const hoyStr = _vzla.toISOString().split('T')[0];
 
     function getCierreAnterior(hist, valorHoy) {
       if (!hist.length) return null;
