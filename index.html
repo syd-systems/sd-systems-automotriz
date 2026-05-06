@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260506220000 -->
+<!-- v20260506240000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -3934,7 +3934,7 @@ async function renderCatalogo(filtro, categoria) {
     c.innerHTML = '<div class="panel" id="panel-catalogo">'
       + '<div class="panel-header"><h3 id="cat-contador">Catálogo de Servicios</h3>'
       + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
-      + '<input type="text" id="buscar-cat" placeholder="Buscar servicio..." '
+      + '<input type="text" id="buscar-cat" placeholder="Buscar por grupo, servicio..." '
       + 'onkeyup="renderCatalogo(this.value, document.getElementById(\'filtro-cat-cat\').value||null)" '
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderCatalogo(this.value,document.getElementById(\'filtro-cat-cat\').value||null)}else if(event.key===\'Escape\'){this.value=\'\';renderCatalogo(\'\',document.getElementById(\'filtro-cat-cat\').value||null)}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:200px">'
@@ -3961,19 +3961,21 @@ async function renderCatalogo(filtro, categoria) {
     catalogoCache = items;
 
     const itemsFiltrados = items.filter(function(s) {
-      const matchTexto = !filtro || !filtro.trim() || s.nombre.toLowerCase().includes(filtro.toLowerCase()) || (s.descripcion || '').toLowerCase().includes(filtro.toLowerCase());
+      const matchTexto = !filtro || !filtro.trim() || 
+        s.nombre.toLowerCase().includes(filtro.toLowerCase()) || 
+        (s.descripcion || '').toLowerCase().includes(filtro.toLowerCase()) ||
+        (s.grupo || '').toLowerCase().includes(filtro.toLowerCase());
       const matchCat = !categoria || s.categoria === categoria;
       return matchTexto && matchCat;
     });
 
     const filas = itemsFiltrados.map(function(s) {
       return '<tr>'
-        + '<td><div style="font-size:11px;color:var(--naranja);font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">' + (s.grupo || '—') + '</div>'
-        + '<div style="font-weight:600;font-size:14px;color:var(--texto)">' + s.nombre + '</div>'
+        + '<td><div style="font-size:13px;font-weight:700;color:var(--naranja)">' + (s.grupo || '—') + '</div></td>'
+        + '<td><div style="font-weight:600;font-size:14px;color:var(--texto)">' + s.nombre + '</div>'
         + (s.descripcion ? '<div style="font-size:12px;color:var(--suave);margin-top:2px">' + s.descripcion + '</div>' : '')
         + '</td>'
         + '<td><span class="badge badge-gris" style="font-size:12px;font-weight:600">' + (s.categoria || '—') + '</span></td>'
-        + '<td><span style="font-size:12px;color:var(--suave)">' + (s.tipo_carroceria || 'Todas') + '</span></td>'
         + '<td style="font-family:var(--font-mono);color:var(--naranja);font-size:14px;font-weight:700">$ ' + parseFloat(s.precio_usd || 0).toFixed(2) + '</td>'
         + '<td><span class="badge ' + (s.activo ? 'badge-verde' : 'badge-rojo') + '" style="font-size:12px">' + (s.activo ? 'Activo' : 'Inactivo') + '</span></td>'
         + '<td><div style="display:flex;gap:8px">'
@@ -3988,7 +3990,7 @@ async function renderCatalogo(filtro, categoria) {
 
     const tabla = document.getElementById('tabla-cat-cont');
     if (tabla) tabla.innerHTML = '<table><thead><tr>'
-      + '<th style="font-size:13px">Servicio</th><th style="font-size:13px">Categoría</th><th style="font-size:13px">Carrocería</th><th style="font-size:13px">Precio USD</th><th style="font-size:13px">Estado</th><th style="font-size:13px">Acciones</th>'
+      + '<th style="font-size:13px">Grupo</th><th style="font-size:13px">Servicio</th><th style="font-size:13px">Categoría</th><th style="font-size:13px">Precio USD</th><th style="font-size:13px">Estado</th><th style="font-size:13px">Acciones</th>'
       + '</tr></thead><tbody>' + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px;font-size:14px">Sin servicios registrados</td></tr>') + '</tbody></table>';
 
   } catch(e) {
@@ -4170,7 +4172,6 @@ function editarServicioEnLinea(id) {
 
   row.innerHTML = '<div style="flex:1;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
     + '<input type="text" id="edit-nombre-' + id + '" value="' + s.nombre + '" style="flex:1;min-width:140px;background:var(--gris3);border:1px solid var(--naranja);color:var(--texto);font-family:var(--font-body);font-size:13px;font-weight:600;padding:7px 10px;border-radius:5px;outline:none">'
-    + '<input type="number" id="edit-precio-' + id + '" value="' + parseFloat(s.precio_usd || 0).toFixed(2) + '" step="0.01" min="0" style="width:100px;background:var(--gris3);border:1px solid var(--naranja);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:7px 10px;border-radius:5px;outline:none">'
     + '</div>'
     + '<div style="display:flex;gap:6px;flex-shrink:0">'
     + '<button class="btn-primario" onclick="guardarServicioEnLinea(' + id + ')" style="font-size:11px;padding:5px 10px">💾 Guardar</button>'
@@ -4180,16 +4181,14 @@ function editarServicioEnLinea(id) {
 
 async function guardarServicioEnLinea(id) {
   const nombre = capitalizarNombre(document.getElementById('edit-nombre-' + id).value.trim());
-  const precio = parseFloat(document.getElementById('edit-precio-' + id).value) || 0;
   if (!nombre) { alert('El nombre es obligatorio.'); return; }
 
-  // Validar duplicado
   const existe = catalogoCache.find(function(s) { return s.nombre.toLowerCase() === nombre.toLowerCase() && s.id_servicio !== id; });
   if (existe) { alert('Ya existe un servicio con ese nombre.'); return; }
 
   try {
-    await api('servicios_catalogo', 'PATCH', { nombre, precio_usd: precio }, '?id_servicio=eq.' + id);
-    const grupo = document.getElementById('cat-grupo').value || null;
+    await api('servicios_catalogo', 'PATCH', { nombre }, '?id_servicio=eq.' + id);
+    const grupo = document.getElementById('cat-grupo') ? document.getElementById('cat-grupo').value || null : null;
     const nuevos = await api('servicios_catalogo', 'GET', null, '?order=nombre.asc&select=*');
     catalogoCache = nuevos;
     await renderListaServicios(grupo);
