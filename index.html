@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260506110000 -->
+<!-- v20260506120000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -1970,7 +1970,10 @@ async function renderTasas() {
           return fv >= '2020-01-01' && fv <= fechaMax;
         })
         .sort(function(a, b) {
-          return String(b.fecha_valor).substring(0, 10).localeCompare(String(a.fecha_valor).substring(0, 10));
+          const fa = String(a.fecha_valor || '').substring(0, 10);
+          const fb = String(b.fecha_valor || '').substring(0, 10);
+          if (fb !== fa) return fb.localeCompare(fa);
+          return (b.id_tasa || 0) - (a.id_tasa || 0);
         });
       return registros.length ? registros[0] : null;
     }
