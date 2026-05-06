@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260505280000 -->
+<!-- v20260505290000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -2129,7 +2129,8 @@ async function renderTasas() {
       + '<span style="color:var(--naranja)">●</span> TASAS VIGENTES'
       + (esFDS ? ' <span style="font-size:10px;color:#555;letter-spacing:1px">— Fin de semana, último cierre hábil</span>' : '')
       + '</div>'
-      + '<button onclick="renderTasas()" class="btn-secundario">↻ Actualizar</button>'
+      + '<button onclick="renderTasas()" class="btn-secundario">↻ Actualizar vista</button>'
+      + '<button onclick="sincronizarTasasBCV(this)" class="btn-primario" style="display:flex;align-items:center;gap:6px"><span>⬇</span> Sincronizar BCV</button>'
       + '</div>'
       + '<div style="display:flex;gap:16px;flex-wrap:wrap">'
       + tarjeta('🇺🇸', 'USD',  usdVal,  usdCierre,  'BCV Oficial',  '#FF6B00')
@@ -2596,7 +2597,50 @@ async function procesarCambioClave() {
   }
 }
 
-// ─── RECUPERACIÓN DE CONTRASEÑA ───
+// ─── SINCRONIZAR TASAS BCV MANUAL ───
+async function sincronizarTasasBCV(btn) {
+  const texto = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span style="display:inline-block;animation:spin 0.8s linear infinite">↻</span> Sincronizando...';
+
+  try {
+    // Llamar la función de Supabase directamente via RPC
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/insertar_tasas_bcv`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({})
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.message || `Error ${resp.status}`);
+    }
+
+    btn.innerHTML = '✓ Tasas actualizadas';
+    btn.style.background = 'var(--verde)';
+
+    // Recargar el módulo tras 1.5 segundos
+    setTimeout(function() {
+      btn.innerHTML = texto;
+      btn.style.background = '';
+      btn.disabled = false;
+      renderTasas();
+    }, 1500);
+
+  } catch(e) {
+    btn.innerHTML = '✗ Error: ' + e.message;
+    btn.style.background = 'var(--rojo)';
+    setTimeout(function() {
+      btn.innerHTML = texto;
+      btn.style.background = '';
+      btn.disabled = false;
+    }, 3000);
+  }
+}
 const GMAIL_USER = 'syd.systems2001@gmail.com';
 const GMAIL_PASS = 'xmuhiofyfvcxvskx';
 
