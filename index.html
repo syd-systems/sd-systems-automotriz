@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260506270000 -->
+<!-- v20260506280000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -3957,7 +3957,7 @@ async function renderCatalogo(filtro, categoria) {
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
 
   try {
-    const items = await api('servicios_catalogo', 'GET', null, '?order=categoria.asc,nombre.asc&select=*');
+    const items = await api('servicios_catalogo', 'GET', null, '?order=grupo.asc,nombre.asc&select=*');
     catalogoCache = items;
 
     const itemsFiltrados = items.filter(function(s) {
@@ -4091,7 +4091,7 @@ async function guardarCatalogo() {
 // ─── GESTIÓN DE SERVICIOS DEL CATÁLOGO ───
 async function gestionarServiciosCatalogo() {
   try {
-    catalogoCache = await api('servicios_catalogo', 'GET', null, '?order=nombre.asc&select=*');
+    catalogoCache = await api('servicios_catalogo', 'GET', null, '?order=grupo.asc,nombre.asc&select=*');
   } catch(e) {}
 
   const grupoEl = document.getElementById('cat-grupo');
@@ -4168,7 +4168,7 @@ async function agregarServicioDesdeGestion() {
     msg.style.display = 'block';
     document.getElementById('nuevo-servicio-nombre').value = '';
 
-    const nuevos = await api('servicios_catalogo', 'GET', null, '?order=nombre.asc&select=*');
+    const nuevos = await api('servicios_catalogo', 'GET', null, '?order=grupo.asc,nombre.asc&select=*');
     catalogoCache = nuevos;
     await renderListaServicios(grupo);
     await cargarServiciosSelect(grupo, nombre);
@@ -4205,7 +4205,7 @@ async function guardarServicioEnLinea(id) {
   try {
     await api('servicios_catalogo', 'PATCH', { nombre }, '?id_servicio=eq.' + id);
     const grupo = document.getElementById('cat-grupo') ? document.getElementById('cat-grupo').value || null : null;
-    const nuevos = await api('servicios_catalogo', 'GET', null, '?order=nombre.asc&select=*');
+    const nuevos = await api('servicios_catalogo', 'GET', null, '?order=grupo.asc,nombre.asc&select=*');
     catalogoCache = nuevos;
     await renderListaServicios(grupo);
   } catch(e) { alert('Error: ' + e.message); }
