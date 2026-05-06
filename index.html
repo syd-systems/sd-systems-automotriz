@@ -791,6 +791,79 @@
     font-size: 13px !important;
   }
 
+  /* ─── FIX: INPUT[TYPE="DATE"] VISIBLE EN TEMA OSCURO ─── */
+  input[type="date"],
+  input[type="date"].form-campo input {
+    color: var(--texto) !important;
+    background: var(--gris2);
+    border: 1px solid var(--borde);
+    border-radius: 5px;
+    padding: 11px 14px;
+    font-family: var(--font-body);
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+    box-sizing: border-box;
+    cursor: pointer;
+    /* Forzar esquema de color oscuro para que el navegador use colores claros */
+    color-scheme: dark;
+  }
+
+  /* Partes internas del date picker (Chrome/Edge/Safari) */
+  input[type="date"]::-webkit-datetime-edit {
+    color: var(--texto);
+    padding: 0;
+  }
+  input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+    color: var(--texto);
+  }
+  input[type="date"]::-webkit-datetime-edit-text {
+    color: var(--suave);
+    padding: 0 2px;
+  }
+  input[type="date"]::-webkit-datetime-edit-day-field,
+  input[type="date"]::-webkit-datetime-edit-month-field,
+  input[type="date"]::-webkit-datetime-edit-year-field {
+    color: var(--texto);
+    background: transparent;
+    border-radius: 2px;
+    padding: 0 1px;
+  }
+  input[type="date"]::-webkit-datetime-edit-day-field:focus,
+  input[type="date"]::-webkit-datetime-edit-month-field:focus,
+  input[type="date"]::-webkit-datetime-edit-year-field:focus {
+    background: var(--naranja);
+    color: #fff;
+    outline: none;
+  }
+
+  /* Ícono del calendario — naranja para coincidir con el branding */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23FF6B00' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 16px;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
+
+  /* Hover y focus del campo completo */
+  input[type="date"]:hover {
+    border-color: rgba(255,107,0,0.5);
+  }
+  input[type="date"]:focus {
+    border-color: var(--naranja);
+    box-shadow: 0 0 0 3px rgba(255,107,0,0.12);
+  }
+
   /* ─── TIPOGRAFÍA MODALES ─── */
   .modal-body {
     font-size: 14px;
