@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260506250000 -->
+<!-- v20260506260000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -4002,7 +4002,7 @@ async function renderCatalogo(filtro, categoria) {
 function abrirNuevoCatalogo() {
   document.getElementById('cat-id').value = '';
   document.getElementById('cat-grupo').value = '';
-  document.getElementById('cat-nombre').value = '';
+  document.getElementById('cat-nombre').innerHTML = '<option value="">— Seleccionar servicio —</option>';
   document.getElementById('cat-descripcion').value = '';
   document.getElementById('cat-categoria').value = '';
   document.getElementById('cat-carroceria').value = '';
@@ -4019,7 +4019,6 @@ function abrirEditarCatalogo(id) {
   const s = catalogoCache.find(function(x) { return x.id_servicio === id; });
   if (!s) return;
   document.getElementById('cat-id').value = s.id_servicio;
-  document.getElementById('cat-nombre').value = s.nombre;
   document.getElementById('cat-descripcion').value = s.descripcion || '';
   document.getElementById('cat-categoria').value = s.categoria || '';
   document.getElementById('cat-carroceria').value = s.tipo_carroceria || '';
@@ -4029,6 +4028,7 @@ function abrirEditarCatalogo(id) {
   document.getElementById('alerta-cat-ok').style.display = 'none';
   document.getElementById('alerta-cat-err').style.display = 'none';
   cargarGruposSelect(s.grupo || '');
+  cargarServiciosSelect(s.grupo || '', s.nombre);
   abrirModal('modal-catalogo');
 }
 
@@ -4066,7 +4066,11 @@ async function guardarCatalogo() {
       await api('servicios_catalogo', 'POST', datos);
     }
     okEl.textContent = '✓ Servicio guardado.'; okEl.style.display = 'block';
-    setTimeout(function() { cerrarModal('modal-catalogo'); document.getElementById('contenido-principal').innerHTML=''; renderCatalogo(); }, 1000);
+    setTimeout(function() {
+      cerrarModal('modal-catalogo');
+      document.getElementById('contenido-principal').innerHTML='';
+      renderCatalogo();
+    }, 1000);
   } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
 }
 
@@ -4153,9 +4157,7 @@ async function agregarServicioDesdeGestion() {
     const nuevos = await api('servicios_catalogo', 'GET', null, '?order=nombre.asc&select=*');
     catalogoCache = nuevos;
     await renderListaServicios(grupo);
-
-    const selNombre = document.getElementById('cat-nombre');
-    if (selNombre) selNombre.value = nombre;
+    await cargarServiciosSelect(grupo, nombre);
 
     setTimeout(function() { msg.style.display = 'none'; }, 2000);
   } catch(e) {
@@ -4219,6 +4221,27 @@ async function cargarGruposSelect(valorActual) {
       + unicos.map(function(g) {
           return '<option value="' + g + '"' + (g === valorActual ? ' selected' : '') + '>' + g + '</option>';
         }).join('');
+    if (valorActual) sel.value = valorActual;
+  } catch(e) {}
+}
+
+async function cargarServiciosSelect(grupo, valorActual) {
+  const sel = document.getElementById('cat-nombre');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Seleccionar servicio —</option>';
+
+  if (!grupo) return;
+
+  try {
+    const servicios = await api('servicios_catalogo', 'GET', null,
+      '?grupo=eq.' + encodeURIComponent(grupo) + '&activo=eq.true&order=nombre.asc&select=id_servicio,nombre');
+    servicios.forEach(function(s) {
+      const opt = document.createElement('option');
+      opt.value = s.nombre;
+      opt.textContent = s.nombre;
+      if (s.nombre === valorActual) opt.selected = true;
+      sel.appendChild(opt);
+    });
     if (valorActual) sel.value = valorActual;
   } catch(e) {}
 }
@@ -5352,7 +5375,7 @@ window.addEventListener('load', () => {
         <div class="form-campo form-full">
           <label style="font-size:13px;font-weight:700;color:var(--texto);letter-spacing:1px">Grupo de Servicio</label>
           <div style="display:flex;gap:8px">
-            <select id="cat-grupo" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
+            <select id="cat-grupo" onchange="cargarServiciosSelect(this.value)" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
               <option value="">— Seleccionar grupo —</option>
             </select>
             <button type="button" class="btn-secundario" onclick="event.stopPropagation();gestionarGruposCatalogo()" style="white-space:nowrap;font-size:12px">✏️ Gestionar</button>
@@ -5361,7 +5384,9 @@ window.addEventListener('load', () => {
         <div class="form-campo form-full">
           <label style="font-size:13px;font-weight:700;color:var(--texto);letter-spacing:1px">Nombre del Servicio</label>
           <div style="display:flex;gap:8px">
-            <input type="text" id="cat-nombre" placeholder="Ej: Cambio de aceite y filtro" style="flex:1;font-size:14px;font-weight:500">
+            <select id="cat-nombre" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
+              <option value="">— Seleccionar servicio —</option>
+            </select>
             <button type="button" class="btn-secundario" onclick="event.stopPropagation();gestionarServiciosCatalogo()" style="white-space:nowrap;font-size:12px">✏️ Gestionar</button>
           </div>
         </div>
