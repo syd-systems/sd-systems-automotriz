@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260506100000 -->
+<!-- v20260506110000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -1963,14 +1963,15 @@ async function renderTasas() {
 
     // Función para obtener tasa de Supabase por moneda y fecha_valor <= hoy
     function getTasaDB(moneda, fechaMax) {
-      const registros = tasasDB.filter(function(t) {
-        const fv = t.fecha_valor ? t.fecha_valor.split('T')[0] : (t.fecha_registro ? t.fecha_registro.split('T')[0] : '');
-        return t.moneda_origen === moneda && fv <= fechaMax;
-      }).sort(function(a, b) {
-        const fa = a.fecha_valor || a.fecha_registro || '';
-        const fb = b.fecha_valor || b.fecha_registro || '';
-        return fb.localeCompare(fa);
-      });
+      const registros = tasasDB
+        .filter(function(t) {
+          if (t.moneda_origen !== moneda) return false;
+          const fv = String(t.fecha_valor || '').substring(0, 10);
+          return fv >= '2020-01-01' && fv <= fechaMax;
+        })
+        .sort(function(a, b) {
+          return String(b.fecha_valor).substring(0, 10).localeCompare(String(a.fecha_valor).substring(0, 10));
+        });
       return registros.length ? registros[0] : null;
     }
 
@@ -1997,10 +1998,12 @@ async function renderTasas() {
 
     const usdVal  = _dbUsd  ? parseFloat(_dbUsd.tipo_cambio)  : (_ultUsd  ? parseFloat(_ultUsd.promedio)  : null);
     const eurVal  = _dbEur  ? parseFloat(_dbEur.tipo_cambio)  : (_ultEur  ? parseFloat(_ultEur.promedio)  : null);
-    const usdtVal = _ultUsdt ? parseFloat(_ultUsdt.promedio) : (usdt && usdt.promedio ? parseFloat(usdt.promedio) : null);
+    const usdtVal = _ultUsdt ? parseFloat(_ultUsdt.promedio)  : (usdt && usdt.promedio ? parseFloat(usdt.promedio) : null);
 
-    // Fecha de las tarjetas vigentes
-    const vigenteFecha = _dbUsd ? _dbUsd.fecha_registro : (_ultUsd ? _ultUsd.fecha.split('T')[0] : hoyStr);
+    // Fecha de las tarjetas vigentes — siempre string YYYY-MM-DD
+    const vigenteFecha = _dbUsd
+      ? String(_dbUsd.fecha_valor).substring(0, 10)
+      : (_ultUsd ? String(_ultUsd.fecha).substring(0, 10) : hoyStr);
 
     // Fuente de los datos
     const fuenteUsd  = _dbUsd ? 'BCV Oficial' : 'dolarapi.com';
