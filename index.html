@@ -4749,6 +4749,10 @@ async function guardarEntradaStock() {
 
 function abrirNuevoInventario() {
   document.getElementById('inv-categoria').value = 'repuesto';
+  setTimeout(function() {
+    const body = document.querySelector('#modal-inventario .modal-body');
+    if (body) body.scrollTop = 0;
+  }, 50);
   ['inv-id','inv-codigo','inv-nombre','inv-descripcion','inv-stock','inv-stock-min','inv-costo','inv-venta','inv-demanda-anual','inv-lead-time','inv-costo-pedido','inv-stock-seg'].forEach(function(id) {
     document.getElementById(id).value = '';
   });
@@ -4780,6 +4784,10 @@ function abrirEditarInventario(id) {
   document.getElementById('alerta-inv-ok').style.display = 'none';
   document.getElementById('alerta-inv-err').style.display = 'none';
   abrirModal('modal-inventario');
+  setTimeout(function() {
+    const body = document.querySelector('#modal-inventario .modal-body');
+    if (body) body.scrollTop = 0;
+  }, 50);
 }
 
 async function guardarInventario() {
