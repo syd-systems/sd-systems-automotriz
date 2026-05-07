@@ -5242,6 +5242,11 @@ async function guardarOS() {
       // Editar
       await api('ordenes_servicio', 'PATCH', datos, '?id_orden=eq.' + id);
       // Borrar líneas anteriores y reinsertar
+      // Guardar líneas de repuestos anteriores para restaurar stock
+      var lineasRepuestosAntes = [];
+      try {
+        lineasRepuestosAntes = await api('os_repuestos', 'GET', null, '?id_orden=eq.' + id + '&select=id_repuesto,cantidad');
+      } catch(e) {}
       await Promise.all([
         api('os_servicios', 'DELETE', null, '?id_orden=eq.' + id),
         api('os_repuestos', 'DELETE', null, '?id_orden=eq.' + id),
@@ -5271,7 +5276,25 @@ async function guardarOS() {
       });
     }
 
-    // Insertar líneas de repuestos y descontar stock si se cierra
+    // ── Restaurar stock de repuestos anteriores (solo en edición) ──
+    // Si es edición, las líneas anteriores ya fueron borradas arriba.
+    // Necesitamos restaurar el stock que consumieron antes de descontar el nuevo.
+    if (id && lineasRepuestosAntes && lineasRepuestosAntes.length) {
+      for (var k = 0; k < lineasRepuestosAntes.length; k++) {
+        var la = lineasRepuestosAntes[k];
+        if (!la.id_repuesto) continue;
+        try {
+          const invAntes = inventarioCache.find(function(x) { return x.id_repuesto == la.id_repuesto; });
+          if (invAntes) {
+            const stockRestaurado = invAntes.stock_actual + parseFloat(la.cantidad || 0);
+            await api('inventario', 'PATCH', { stock_actual: stockRestaurado }, '?id_repuesto=eq.' + la.id_repuesto);
+            invAntes.stock_actual = stockRestaurado; // actualizar cache local
+          }
+        } catch(eRest) { console.warn('Error restaurando stock:', eRest); }
+      }
+    }
+
+    // ── Insertar nuevas líneas de repuestos y descontar stock ──
     for (var j = 0; j < osRepuestosLineas.length; j++) {
       var lr = osRepuestosLineas[j];
       await api('os_repuestos', 'POST', {
@@ -5279,13 +5302,14 @@ async function guardarOS() {
         descripcion: lr.descripcion, cantidad: lr.cantidad,
         precio_usd: lr.precio_usd, subtotal_usd: parseFloat(lr.precio_usd) * parseFloat(lr.cantidad)
       });
-      // Descontar stock si estado es CERRADA
-      if (estado === 'CERRADA' && lr.id_repuesto) {
+      // Descontar stock siempre que haya repuesto de inventario vinculado
+      if (lr.id_repuesto) {
         try {
           const invItem = inventarioCache.find(function(x) { return x.id_repuesto == lr.id_repuesto; });
           if (invItem) {
             const nuevoStock = Math.max(0, invItem.stock_actual - parseFloat(lr.cantidad));
             await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_repuesto=eq.' + lr.id_repuesto);
+            invItem.stock_actual = nuevoStock; // actualizar cache local
           }
         } catch(eStock) { console.warn('Error descontando stock:', eStock); }
       }
