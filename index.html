@@ -4569,7 +4569,13 @@ function invRenderTabla(items, cont) {
       + (r.descripcion ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion + '</div>' : '') + '</div></div></td>'
       + '<td><span class="badge ' + (stockBajo ? 'badge-rojo' : 'badge-verde') + '">' + r.stock_actual + ' ' + (r.unidad || 'UND') + '</span>'
       + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo + ')</div>' : '') + '</td>'
-      + '<td style="font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:10px">Costo</div>$ ' + fmtUSD(r.precio_costo_usd) + '</td>'
+      + '<td style="font-family:var(--font-mono);font-size:12px">'
+      + '<div style="color:var(--suave);font-size:9px;letter-spacing:1px">COSTO PROM. (CPP)</div>'
+      + '<div>$ ' + fmtUSD(r.precio_costo_usd) + '</div>'
+      + (r.precio_costo_ultimo_usd && Math.abs(r.precio_costo_ultimo_usd - r.precio_costo_usd) > 0.001
+          ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Última compra: $ ' + fmtUSD(r.precio_costo_ultimo_usd) + '</div>'
+          : '')
+      + '</td>'
       + '<td style="font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:10px">Venta</div>'
       + '<span style="color:var(--naranja)">$ ' + fmtUSD(r.precio_venta_usd) + '</span>'
       + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen.toFixed(1) + '%</div></td>'
@@ -4702,11 +4708,25 @@ async function guardarEntradaStock() {
   }
   try {
     const r = inventarioCache.find(function(x) { return x.id_repuesto === id; });
-    const nuevoPrecioCosto = parseFloat(document.getElementById('es-precio-costo').value) || null;
+    const nuevoPrecioCosto = parseFloat(document.getElementById('es-precio-costo').value) || 0;
     const nuevoPrecioVenta = parseFloat(document.getElementById('es-precio-venta').value) || null;
-    const nuevoStock = parseFloat(r.stock_actual || 0) + cantidad;
-    const patch = { stock_actual: nuevoStock };
-    if (nuevoPrecioCosto && nuevoPrecioCosto > 0) patch.precio_costo_usd = nuevoPrecioCosto;
+    const stockActual = parseFloat(r.stock_actual || 0);
+    const nuevoStock  = stockActual + cantidad;
+
+    // Costo Promedio Ponderado (CPP)
+    var costoActual = parseFloat(r.precio_costo_usd || 0);
+    var cpp = costoActual;
+    if (nuevoPrecioCosto > 0) {
+      cpp = nuevoStock > 0
+        ? ((stockActual * costoActual) + (cantidad * nuevoPrecioCosto)) / nuevoStock
+        : nuevoPrecioCosto;
+    }
+
+    const patch = {
+      stock_actual: nuevoStock,
+      precio_costo_usd: parseFloat(cpp.toFixed(4)),
+    };
+    if (nuevoPrecioCosto > 0) patch.precio_costo_ultimo_usd = nuevoPrecioCosto;
     if (nuevoPrecioVenta && nuevoPrecioVenta > 0) patch.precio_venta_usd = nuevoPrecioVenta;
     await api('inventario', 'PATCH', patch, '?id_repuesto=eq.' + id);
     okEl.textContent = 'Stock actualizado: ' + r.stock_actual + ' → ' + nuevoStock + ' ' + (r.unidad || 'UND');
