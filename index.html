@@ -4749,6 +4749,8 @@ async function guardarEntradaStock() {
 
 function abrirNuevoInventario() {
   document.getElementById('inv-categoria').value = 'repuesto';
+  var infoEl = document.getElementById('inv-info-stock-costo');
+  if (infoEl) infoEl.style.display = 'none';
   setTimeout(function() {
     const body = document.querySelector('#modal-inventario .modal-body');
     if (body) body.scrollTop = 0;
@@ -4783,6 +4785,13 @@ function abrirEditarInventario(id) {
   document.getElementById('modal-inv-titulo').textContent = 'EDITAR ARTÍCULO';
   document.getElementById('alerta-inv-ok').style.display = 'none';
   document.getElementById('alerta-inv-err').style.display = 'none';
+  // En edición mostrar stock actual y precio costo como info (solo lectura)
+  var infoEl = document.getElementById('inv-info-stock-costo');
+  if (infoEl) {
+    infoEl.style.display = '';
+    document.getElementById('inv-info-stock-val').textContent = r.stock_actual + ' ' + (r.unidad || 'UND');
+    document.getElementById('inv-info-costo-val').textContent = '$ ' + parseFloat(r.precio_costo_usd || 0).toFixed(2) + ' (CPP)';
+  }
   abrirModal('modal-inventario');
   setTimeout(function() {
     const body = document.querySelector('#modal-inventario .modal-body');
@@ -6404,22 +6413,31 @@ window.addEventListener('load', () => {
           <input type="text" id="inv-descripcion" placeholder="Descripción opcional">
         </div>
         <div class="form-campo">
-          <label>Stock Actual</label>
-          <input type="number" id="inv-stock" placeholder="0" min="0">
-        </div>
-        <div class="form-campo">
           <label>Stock Mínimo</label>
           <input type="number" id="inv-stock-min" placeholder="0" min="0">
-        </div>
-        <div class="form-campo">
-          <label>Precio Costo USD</label>
-          <input type="number" id="inv-costo" placeholder="0.00" step="0.01" min="0">
         </div>
         <div class="form-campo">
           <label>Precio Venta USD</label>
           <input type="number" id="inv-venta" placeholder="0.00" step="0.01" min="0">
         </div>
+        <!-- Campos ocultos para compatibilidad con guardarInventario -->
+        <input type="hidden" id="inv-stock" value="0">
+        <input type="hidden" id="inv-costo" value="0">
       </div>
+      <!-- Info stock/costo solo en edición -->
+      <div id="inv-info-stock-costo" style="display:none;margin-top:12px;padding:10px 14px;background:var(--gris2);border-radius:6px;display:flex;gap:24px">
+        <div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">Stock Actual</div>
+          <div id="inv-info-stock-val" style="font-family:var(--font-mono);color:var(--naranja);font-size:15px">—</div>
+          <div style="font-size:10px;color:var(--suave);margin-top:2px">Usa "+ Stock" para modificar</div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">Precio Costo</div>
+          <div id="inv-info-costo-val" style="font-family:var(--font-mono);font-size:15px">—</div>
+          <div style="font-size:10px;color:var(--suave);margin-top:2px">Usa "+ Stock" para actualizar</div>
+        </div>
+      </div>
+
       <!-- Campos para técnicas de inventario -->
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--borde)">
         <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:10px">Parámetros de Gestión (EOQ / Reorden / JIT)</div>
