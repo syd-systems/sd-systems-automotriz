@@ -1640,7 +1640,7 @@ function mostrarModulo(modulo, navEl) {
     vehiculos:    'VEHÍCULOS',
     propietarios: 'PROPIETARIOS',
     ordenes:      'ÓRDENES DE SERVICIO',
-    inventario:   'INVENTARIO DE REPUESTOS',
+    inventario:   'INVENTARIO GENERAL',
     catalogo:     'CATÁLOGO DE SERVICIOS',
     proximo:      'PRÓXIMAMENTE'
   };
@@ -4446,7 +4446,7 @@ async function eliminarCatalogo(id, nombre) {
 
 
 // ══════════════════════════════════════════════════════════════
-//  FASE 3 — INVENTARIO DE REPUESTOS
+//  FASE 3 — INVENTARIO GENERAL
 // ══════════════════════════════════════════════════════════════
 let inventarioCache = [];
 
@@ -4488,7 +4488,7 @@ async function renderInventario(filtro) {
   if (!panelYaExiste) {
     c.innerHTML = '<div class="panel" id="panel-inventario">'
       + '<div class="panel-header" style="flex-wrap:wrap;gap:10px">'
-      + '<h3 id="inv-contador" style="white-space:nowrap">Inventario de Repuestos</h3>'
+      + '<h3 id="inv-contador" style="white-space:nowrap">Inventario General</h3>'
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end">'
       + '<div style="display:flex;gap:3px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:3px">'
       + '<button id="inv-tab-tabla"   onclick="invCambiarVista(\'tabla\')"   class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:var(--naranja);color:#fff">Inventario</button>'
@@ -4496,11 +4496,11 @@ async function renderInventario(filtro) {
       + '<button id="inv-tab-reorden" onclick="invCambiarVista(\'reorden\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">Reorden</button>'
       + '<button id="inv-tab-eoq"     onclick="invCambiarVista(\'eoq\')"     class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">EOQ</button>'
       + '</div>'
-      + '<input type="text" id="buscar-inv" placeholder="Buscar repuesto o código..." '
+      + '<input type="text" id="buscar-inv" placeholder="Buscar artículo o código..." '
       + 'onkeyup="renderInventario(this.value)" '
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\')}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:200px">'
-      + '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Repuesto</button>'
+      + '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Artículo</button>'
       + '</div></div>'
       + '<div id="alerta-stock-bajo" style="display:none"></div>'
       + '<div id="tabla-inv-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
@@ -4521,12 +4521,12 @@ async function renderInventario(filtro) {
     const alertaDiv = document.getElementById('alerta-stock-bajo');
     if (alertaDiv) {
       if (stockBajos > 0) {
-        alertaDiv.innerHTML = '<div class="alerta alerta-error" style="display:block;margin:0;border-radius:0">⚠ ' + stockBajos + ' repuesto(s) con stock bajo o agotado. Revisar pestaña Reorden.</div>';
+        alertaDiv.innerHTML = '<div class="alerta alerta-error" style="display:block;margin:0;border-radius:0">⚠ ' + stockBajos + ' artículo(s) con stock bajo o agotado. Revisar pestaña Reorden.</div>';
         alertaDiv.style.display = 'block';
       } else { alertaDiv.style.display = 'none'; }
     }
     const contador = document.getElementById('inv-contador');
-    if (contador) contador.textContent = 'Inventario de Repuestos (' + itemsFiltrados.length + ')';
+    if (contador) contador.textContent = 'Inventario General (' + itemsFiltrados.length + ')';
     invRenderVista(itemsFiltrados, _invVista);
   } catch(e) {
     const tabla = document.getElementById('tabla-inv-cont');
@@ -4564,7 +4564,8 @@ function invRenderTabla(items, cont) {
     return '<tr>'
       + '<td><div style="display:flex;align-items:center;gap:8px">'
       + '<span style="font-size:10px;font-weight:700;color:' + (abcColor[abc]||'#888') + ';background:' + (abcColor[abc]||'#888') + '22;padding:2px 6px;border-radius:3px">' + abc + '</span>'
-      + '<div><div style="font-family:var(--font-mono);font-size:11px;color:var(--suave)">' + (r.codigo || '—') + '</div>'
+      + '<div><div style="font-family:var(--font-mono);font-size:11px;color:var(--suave)">' + (r.codigo || '—')
+      + (r.categoria && r.categoria !== 'repuesto' ? ' · <span style="color:var(--suave)">' + ({'venta':'🛒 Venta','oficina':'📎 Oficina','limpieza':'🧹 Limpieza','otro':'📦 Otro'}[r.categoria]||r.categoria) + '</span>' : '') + '</div>'
       + '<div style="font-weight:500">' + r.nombre + '</div>'
       + (r.descripcion ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion + '</div>' : '') + '</div></div></td>'
       + '<td><span class="badge ' + (stockBajo ? 'badge-rojo' : 'badge-verde') + '">' + r.stock_actual + ' ' + (r.unidad || 'UND') + '</span>'
@@ -4587,7 +4588,7 @@ function invRenderTabla(items, cont) {
   }).join('');
   cont.innerHTML = '<div class="tabla-container"><table><thead><tr>'
     + '<th>Repuesto</th><th>Stock</th><th>Precio Costo</th><th>Precio Venta</th><th>Acciones</th>'
-    + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos registrados</td></tr>') + '</tbody></table></div>';
+    + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin artículos registrados</td></tr>') + '</tbody></table></div>';
 }
 
 function invRenderABC(items, cont) {
@@ -4747,11 +4748,12 @@ async function guardarEntradaStock() {
 }
 
 function abrirNuevoInventario() {
+  document.getElementById('inv-categoria').value = 'repuesto';
   ['inv-id','inv-codigo','inv-nombre','inv-descripcion','inv-stock','inv-stock-min','inv-costo','inv-venta','inv-demanda-anual','inv-lead-time','inv-costo-pedido','inv-stock-seg'].forEach(function(id) {
     document.getElementById(id).value = '';
   });
   document.getElementById('inv-unidad').value = 'UND';
-  document.getElementById('modal-inv-titulo').textContent = 'NUEVO REPUESTO';
+  document.getElementById('modal-inv-titulo').textContent = 'NUEVO ARTÍCULO';
   document.getElementById('alerta-inv-ok').style.display = 'none';
   document.getElementById('alerta-inv-err').style.display = 'none';
   abrirModal('modal-inventario');
@@ -4769,11 +4771,12 @@ function abrirEditarInventario(id) {
   document.getElementById('inv-costo').value = r.precio_costo_usd || '';
   document.getElementById('inv-venta').value = r.precio_venta_usd || '';
   document.getElementById('inv-unidad').value = r.unidad || 'UND';
+  document.getElementById('inv-categoria').value = r.categoria || 'repuesto';
   document.getElementById('inv-demanda-anual').value = r.demanda_anual || '';
   document.getElementById('inv-lead-time').value = r.lead_time_dias || '';
   document.getElementById('inv-costo-pedido').value = r.costo_pedido_usd || '';
   document.getElementById('inv-stock-seg').value = r.stock_seguridad || '';
-  document.getElementById('modal-inv-titulo').textContent = 'EDITAR REPUESTO';
+  document.getElementById('modal-inv-titulo').textContent = 'EDITAR ARTÍCULO';
   document.getElementById('alerta-inv-ok').style.display = 'none';
   document.getElementById('alerta-inv-err').style.display = 'none';
   abrirModal('modal-inventario');
@@ -4800,8 +4803,9 @@ async function guardarInventario() {
     const leadTime     = parseInt(document.getElementById('inv-lead-time').value) || null;
     const costoPedido  = parseFloat(document.getElementById('inv-costo-pedido').value) || null;
     const stockSeg     = parseInt(document.getElementById('inv-stock-seg').value) || 0;
+    const categoria = document.getElementById('inv-categoria').value || 'repuesto';
     const datos = { nombre, descripcion: desc || null, codigo: codigo || null, stock_actual: stock,
-      stock_minimo: stockMin, precio_costo_usd: costo, precio_venta_usd: venta, unidad,
+      stock_minimo: stockMin, precio_costo_usd: costo, precio_venta_usd: venta, unidad, categoria,
       demanda_anual: demandaAnual, lead_time_dias: leadTime, costo_pedido_usd: costoPedido, stock_seguridad: stockSeg,
       id_usuario: sesionActual.correo_usuario };
     if (id) {
@@ -5254,7 +5258,7 @@ function renderLineasRep() {
   const cont = document.getElementById('os-lineas-rep');
   if (!cont) return;
   if (!osRepuestosLineas.length) {
-    cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Sin repuestos agregados</div>';
+    cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Sin repuestos / materiales agregados</div>';
     return;
   }
   const monedaLabels = { USD: '$ USD', EUR: '€ EUR', VES: 'Bs VES' };
@@ -6351,7 +6355,7 @@ window.addEventListener('load', () => {
 <div class="modal-overlay" id="modal-inventario">
   <div class="modal" style="max-width:560px">
     <div class="modal-header">
-      <h3 id="modal-inv-titulo">NUEVO REPUESTO</h3>
+      <h3 id="modal-inv-titulo">NUEVO ARTÍCULO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-inventario')">✕</button>
     </div>
     <div class="modal-body">
@@ -6374,8 +6378,18 @@ window.addEventListener('load', () => {
           </select>
         </div>
         <div class="form-campo form-full">
-          <label>Nombre del Repuesto</label>
+          <label>Nombre del Artículo *</label>
           <input type="text" id="inv-nombre" placeholder="Ej: Filtro de aceite Bosch">
+        </div>
+        <div class="form-campo">
+          <label>Categoría</label>
+          <select id="inv-categoria" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
+            <option value="repuesto">🔧 Repuesto</option>
+            <option value="venta">🛒 Artículo para Venta</option>
+            <option value="oficina">📎 Oficina</option>
+            <option value="limpieza">🧹 Limpieza</option>
+            <option value="otro">📦 Otro</option>
+          </select>
         </div>
         <div class="form-campo form-full">
           <label>Descripción</label>
