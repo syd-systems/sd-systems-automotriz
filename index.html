@@ -4630,7 +4630,7 @@ async function renderOrdenes() {
       const est = ESTADOS_OS[o.estado] || { clase: 'badge-gris', label: o.estado };
       const veh = o.vehiculos;
       const prop = o.propietarios;
-      return '<tr>'
+      return '<tr data-id="' + o.id_orden + '">'
         + '<td><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + (o.numero_os || '—') + '</div>'
         + '<div style="font-size:11px;color:var(--suave)">' + o.fecha_entrada + '</div></td>'
         + '<td>' + (veh ? '<div style="font-weight:500">' + veh.placa + '</div><div style="font-size:11px;color:var(--suave)">' + veh.marca + ' ' + veh.modelo + '</div>' : '—') + '</td>'
@@ -4675,18 +4675,73 @@ async function renderOrdenes() {
       + '</div></div>'
 
       + '<div class="panel">'
-      + '<div class="panel-header"><h3>Órdenes de Servicio' + (filtroEstado ? ' — ' + (ESTADOS_OS[filtroEstado]?.label || filtroEstado) : '') + '</h3>'
-      + '<div style="display:flex;gap:10px">'
-      + '<span style="font-size:11px;color:var(--suave);align-self:center">Tasa: $ 1 = ' + tasaActualOS.toFixed(2) + ' Bs</span>'
-      + '<button class="btn-primario" onclick="abrirNuevaOS()">+ Nueva OS</button></div></div>'
-      + '<div class="tabla-container"><table><thead><tr>'
+      + '<div class="panel-header" style="flex-wrap:wrap;gap:12px">'
+      + '<h3 style="white-space:nowrap">Órdenes de Servicio</h3>'
+      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end">'
+      // Buscador texto libre
+      + '<input type="text" id="os-buscar" placeholder="Buscar N° OS, vehículo, propietario..." '
+      + 'value="' + (window._osBuscar || '') + '" '
+      + 'oninput="window._osBuscar=this.value;filtrarTablaOS()" '
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:220px;transition:border-color 0.2s" '
+      + 'onfocus="this.style.borderColor='var(--naranja)'" onblur="this.style.borderColor='var(--borde)'">'
+      // Selector de estado
+      + '<select id="os-filtro-estado" onchange="window._osEstadoFiltro=this.value;filtrarTablaOS()" '
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer;transition:border-color 0.2s">'
+      + '<option value="">Todos los estados</option>'
+      + Object.entries(ESTADOS_OS).map(function(e) {
+          return '<option value="' + e[0] + '"' + (window._osEstadoFiltro === e[0] ? ' selected' : '') + '>' + e[1].label + '</option>';
+        }).join('')
+      + '</select>'
+      + '<span style="font-size:11px;color:var(--suave);white-space:nowrap">Tasa: $ 1 = ' + tasaActualOS.toFixed(2) + ' Bs</span>'
+      + '<button class="btn-primario" onclick="abrirNuevaOS()">+ Nueva OS</button>'
+      + '</div></div>'
+      + '<div class="tabla-container"><table id="os-tabla"><thead><tr>'
       + '<th>N° OS / Fecha</th><th>Vehículo</th><th>Propietario</th><th>Estado</th><th>Total</th><th>Acciones</th>'
-      + '</tr></thead><tbody>'
+      + '</tr></thead><tbody id="os-tbody">'
       + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">Sin órdenes registradas</td></tr>')
       + '</tbody></table></div></div>';
   } catch(e) {
     c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
   }
+}
+
+// ─── FILTRO EN TIEMPO REAL DE TABLA OS ───
+function filtrarTablaOS() {
+  const estado  = (window._osEstadoFiltro || '').toUpperCase();
+  const buscar  = (window._osBuscar || '').toLowerCase().trim();
+  const tbody   = document.getElementById('os-tbody');
+  if (!tbody) return;
+
+  const filas = Array.from(tbody.querySelectorAll('tr[data-id]'));
+  let visibles = 0;
+
+  filas.forEach(function(tr) {
+    const oId    = parseInt(tr.dataset.id);
+    const o      = ordenesCache.find(function(x) { return x.id_orden === oId; });
+    if (!o) { tr.style.display = 'none'; return; }
+
+    const matchEstado = !estado || o.estado === estado;
+    const hayBusqueda = buscar.length > 0;
+    const matchBuscar = !hayBusqueda || [
+      o.numero_os || '',
+      (o.vehiculos ? o.vehiculos.placa + ' ' + o.vehiculos.marca + ' ' + o.vehiculos.modelo : ''),
+      (o.propietarios ? o.propietarios.nombre_completo : ''),
+    ].some(function(s) { return s.toLowerCase().includes(buscar); });
+
+    const visible = matchEstado && matchBuscar;
+    tr.style.display = visible ? '' : 'none';
+    if (visible) visibles++;
+  });
+
+  // Mostrar mensaje si no hay resultados
+  let noResultEl = document.getElementById('os-no-results');
+  if (!noResultEl) {
+    noResultEl = document.createElement('tr');
+    noResultEl.id = 'os-no-results';
+    noResultEl.innerHTML = '<td colspan="6" style="text-align:center;color:var(--suave);padding:32px">Sin resultados para la búsqueda</td>';
+    tbody.appendChild(noResultEl);
+  }
+  noResultEl.style.display = visibles === 0 ? '' : 'none';
 }
 
 // ─── VALIDACIÓN DE FECHAS OS ───
