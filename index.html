@@ -1686,17 +1686,20 @@ async function renderDashboard() {
 
     const hora = new Date().toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' });
 
+    const esAdmin = sesionActual.administrador;
+
     c.innerHTML = `
       <div class="bienvenida">
         <div>
           <h1>BIENVENIDO</h1>
-          <p>${sesionActual.nombre} · ${sesionActual.administrador ? 'Administrador del Sistema' : 'Operador'}</p>
+          <p>${sesionActual.nombre} · ${esAdmin ? 'Administrador del Sistema' : 'Operador'}</p>
           <p style="margin-top:6px;font-size:12px;color:#555">S&D Systems Automotriz · Fase 1 activa</p>
         </div>
         <div class="hora">${hora}</div>
       </div>
 
       <div class="tarjetas-grid">
+        ${esAdmin ? `
         <div class="tarjeta-stat" onclick="mostrarModulo('usuarios', document.getElementById('nav-USUARIOS'))">
           <div class="tarjeta-icono">👥</div>
           <div class="tarjeta-valor">${usuarios.length}</div>
@@ -1706,7 +1709,7 @@ async function renderDashboard() {
           <div class="tarjeta-icono">💱</div>
           <div class="tarjeta-valor">${tasaValor}</div>
           <div class="tarjeta-nombre">Última Tasa USD</div>
-        </div>
+        </div>` : ''}
         <div class="tarjeta-stat" onclick="mostrarModulo('vehiculos', document.getElementById('nav-VEHICULOS'))">
           <div class="tarjeta-icono">🚗</div>
           <div class="tarjeta-valor">${vehiculos.length}</div>
@@ -1722,13 +1725,15 @@ async function renderDashboard() {
           <div class="tarjeta-valor">${ordenes.length}</div>
           <div class="tarjeta-nombre">OS Abiertas</div>
         </div>
+        ${esAdmin ? `
         <div class="tarjeta-stat" style="cursor:default">
           <div class="tarjeta-icono">🧾</div>
           <div class="tarjeta-valor">—</div>
           <div class="tarjeta-nombre">Facturas · Fase 4</div>
-        </div>
+        </div>` : ''}
       </div>
 
+      ${esAdmin ? `
       <div class="panel">
         <div class="panel-header">
           <h3>Estado del Sistema</h3>
@@ -1755,7 +1760,7 @@ async function renderDashboard() {
             </tbody>
           </table>
         </div>
-      </div>
+      </div>` : ''}
     `;
   } catch (e) {
     c.innerHTML = `<div class="alerta alerta-error" style="display:block">Error cargando datos: ${e.message}</div>`;
