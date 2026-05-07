@@ -5051,11 +5051,15 @@ function calcularTotalesOS() {
   const total   = totServ + totRep;
   const totalVes = total * tasaActualOS;
   const el = document.getElementById('os-totales');
-  if (el) el.innerHTML = '<div style="display:flex;gap:24px;flex-wrap:wrap;justify-content:flex-end;padding:12px 0">'
+  if (el) el.innerHTML = '<div style="display:flex;gap:24px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:12px 0">'
     + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Servicios</div><div style="font-family:var(--font-mono)">$ ' + totServ.toFixed(2) + '</div></div>'
     + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Repuestos</div><div style="font-family:var(--font-mono)">$ ' + totRep.toFixed(2) + '</div></div>'
     + '<div style="border-left:1px solid var(--borde);padding-left:24px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL USD</div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">$ ' + total.toFixed(2) + '</div></div>'
-    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL Bs</div><div style="font-family:var(--font-mono);font-size:14px;color:var(--suave)">' + totalVes.toFixed(2) + '</div></div>'
+    + '<div style="border-left:1px solid var(--borde);padding-left:24px">'
+    +   '<div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL Bs</div>'
+    +   '<div style="font-family:var(--font-mono);font-size:14px;color:var(--suave)">' + totalVes.toFixed(2) + '</div>'
+    +   '<div style="font-size:9px;color:var(--suave);margin-top:2px">Tasa: $ 1 = ' + tasaActualOS.toFixed(2) + ' Bs</div>'
+    + '</div>'
     + '</div>';
 }
 
@@ -6051,10 +6055,9 @@ window.addEventListener('load', () => {
           <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">N° Orden</div>
           <div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)" id="os-numero">—</div>
         </div>
-        <div>
-          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">Tasa Referencial</div>
-          <div style="font-family:var(--font-mono);font-size:13px">$ <span id="os-tasa-usd">—</span> · € <span id="os-tasa-eur">—</span> Bs</div>
-        </div>
+        <!-- os-tasa-usd y os-tasa-eur se mantienen ocultos para compatibilidad con el JS existente -->
+        <span id="os-tasa-usd" style="display:none"></span>
+        <span id="os-tasa-eur" style="display:none"></span>
       </div>
 
       <!-- BÚSQUEDA VEHÍCULO -->
