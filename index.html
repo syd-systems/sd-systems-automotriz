@@ -4753,6 +4753,11 @@ function cambiarTipoTasaOS(moneda) {
 
 // ─── ABRIR NUEVA OS ───
 async function abrirNuevaOS() {
+  // Scroll al inicio del modal al abrir
+  setTimeout(function() {
+    const modal = document.querySelector('#modal-os .modal');
+    if (modal) modal.scrollTop = 0;
+  }, 50);
   osServiciosLineas = [];
   osRepuestosLineas = [];
 
@@ -4805,11 +4810,18 @@ async function abrirNuevaOS() {
   renderLineasRep();
   calcularTotalesOS();
   await cargarSelectsOS();
+  // Resetear grupo al abrir modal
+  const grpSel = document.getElementById('os-sel-grupo-cat');
+  if (grpSel) grpSel.value = '';
   abrirModal('modal-os');
 }
 
 // ─── ABRIR EDITAR OS ───
 async function abrirEditarOS(id) {
+  setTimeout(function() {
+    const modal = document.querySelector('#modal-os .modal');
+    if (modal) modal.scrollTop = 0;
+  }, 50);
   const o = ordenesCache.find(function(x) { return x.id_orden === id; });
   if (!o) return;
 
@@ -5272,23 +5284,55 @@ async function verFichaOS(id) {
 // ─── Cargar catálogo e inventario en selects del modal OS ───
 async function cargarSelectsOS() {
   try {
-    if (!catalogoCache.length) catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=categoria.asc,nombre.asc');
+    if (!catalogoCache.length) catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=grupo.asc,nombre.asc');
     if (!inventarioCache.length) inventarioCache = await api('inventario', 'GET', null, '?order=nombre.asc');
   } catch(e) {}
 
+  // ── Cargar selector de GRUPOS (sin corchetes, sin categoría) ──
+  const selGrupo = document.getElementById('os-sel-grupo-cat');
+  if (selGrupo) {
+    const grupos = [...new Set(catalogoCache.map(function(s) { return s.grupo; }).filter(Boolean))].sort();
+    selGrupo.innerHTML = '<option value="">— Todos los grupos —</option>'
+      + grupos.map(function(g) { return '<option value="' + g + '">' + g + '</option>'; }).join('');
+  }
+
+  // ── Cargar selector de SERVICIOS (todos por defecto, sin corchetes) ──
   const selCat = document.getElementById('os-sel-cat');
-  const selInv = document.getElementById('os-sel-inv');
   if (selCat) {
-    selCat.innerHTML = '<option value="">— Descripción libre —</option>'
+    selCat.innerHTML = '<option value="">— Seleccionar servicio —</option>'
       + catalogoCache.map(function(s) {
-          return '<option value="' + s.id_servicio + '">' + (s.categoria ? '[' + s.categoria + '] ' : '') + s.nombre + ' — $' + parseFloat(s.precio_usd || 0).toFixed(2) + '</option>';
+          return '<option value="' + s.id_servicio + '" data-grupo="' + (s.grupo || '') + '">'
+            + s.nombre + ' — $' + parseFloat(s.precio_usd || 0).toFixed(2) + '</option>';
         }).join('');
   }
+
+  // ── Cargar selector de INVENTARIO ──
+  const selInv = document.getElementById('os-sel-inv');
   if (selInv) {
     selInv.innerHTML = '<option value="">— Descripción libre —</option>'
       + inventarioCache.map(function(r) {
           return '<option value="' + r.id_repuesto + '">' + r.nombre + ' (Stock: ' + r.stock_actual + ') — $' + parseFloat(r.precio_venta_usd || 0).toFixed(2) + '</option>';
         }).join('');
+  }
+}
+
+// ── Filtrar servicios al cambiar el Grupo ──
+function onSelGrupoCatChange() {
+  const grupo = document.getElementById('os-sel-grupo-cat').value;
+  const selCat = document.getElementById('os-sel-cat');
+  const precio = document.getElementById('os-precio-cat');
+  selCat.value = '';
+  precio.value = '';
+  // Mostrar solo servicios del grupo seleccionado (o todos si grupo vacío)
+  Array.from(selCat.options).forEach(function(opt) {
+    if (!opt.value) { opt.style.display = ''; return; } // placeholder siempre visible
+    opt.style.display = (!grupo || opt.dataset.grupo === grupo) ? '' : 'none';
+  });
+  // Seleccionar primer visible si hay grupo
+  if (grupo) {
+    const primera = Array.from(selCat.options).find(function(o) { return o.value && o.style.display !== 'none'; });
+    if (primera) { selCat.value = primera.value; onSelCatalogoChange(); }
+    else selCat.value = '';
   }
 }
 
@@ -5873,30 +5917,47 @@ window.addEventListener('load', () => {
       <div style="margin-top:20px;border-top:1px solid var(--borde);padding-top:16px">
         <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:12px">🔧 Servicios</div>
         <div id="os-lineas-serv" style="margin-bottom:12px"></div>
-        <!-- Agregar servicio -->
-        <div style="display:grid;grid-template-columns:1fr 70px 80px 80px auto;gap:8px;align-items:end;padding:10px;background:var(--gris2);border-radius:6px">
-          <div class="form-campo" style="margin:0">
-            <label style="font-size:9px">Del catálogo o libre</label>
-            <select id="os-sel-cat" onchange="onSelCatalogoChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%"></select>
-            <input type="text" id="os-desc-libre" placeholder="O escribe descripción libre..." style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%;margin-top:4px">
+        <!-- Agregar servicio - búsqueda en cascada: Grupo → Nombre -->
+        <div style="padding:12px;background:var(--gris2);border-radius:6px;display:flex;flex-direction:column;gap:10px">
+          <!-- Fila 1: Grupo + Nombre del Servicio -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-campo" style="margin:0">
+              <label style="font-size:9px">Grupo de Servicio</label>
+              <select id="os-sel-grupo-cat" onchange="onSelGrupoCatChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+                <option value="">— Todos los grupos —</option>
+              </select>
+            </div>
+            <div class="form-campo" style="margin:0">
+              <label style="font-size:9px">Nombre del Servicio</label>
+              <select id="os-sel-cat" onchange="onSelCatalogoChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+                <option value="">— Seleccionar servicio —</option>
+              </select>
+            </div>
           </div>
-          <div class="form-campo" style="margin:0">
-            <label style="font-size:9px">Cant.</label>
-            <input type="number" id="os-cant-cat" value="1" min="0.01" step="0.01" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+          <!-- Fila 2: Descripción libre + Cant + Precio + Moneda + Botón -->
+          <div style="display:grid;grid-template-columns:1fr 70px 80px 80px auto;gap:8px;align-items:end">
+            <div class="form-campo" style="margin:0">
+              <label style="font-size:9px">O descripción libre</label>
+              <input type="text" id="os-desc-libre" placeholder="Escribe descripción libre..." style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+            </div>
+            <div class="form-campo" style="margin:0">
+              <label style="font-size:9px">Cant.</label>
+              <input type="number" id="os-cant-cat" value="1" min="0.01" step="0.01" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+            </div>
+            <div class="form-campo" style="margin:0">
+              <label style="font-size:9px">Precio</label>
+              <input type="number" id="os-precio-cat" placeholder="0.00" step="0.01" min="0" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+            </div>
+            <div class="form-campo" style="margin:0">
+              <label style="font-size:9px">Moneda</label>
+              <select id="os-moneda-cat" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 6px;border-radius:5px;outline:none;width:100%">
+                <option value="USD">$ USD</option>
+                <option value="EUR">€ EUR</option>
+                <option value="VES">Bs VES</option>
+              </select>
+            </div>
+            <button class="btn-primario" onclick="agregarServicioCatalogo()" style="padding:8px 12px;font-size:11px;align-self:end">+ AGREGAR</button>
           </div>
-          <div class="form-campo" style="margin:0">
-            <label style="font-size:9px">Precio</label>
-            <input type="number" id="os-precio-cat" placeholder="0.00" step="0.01" min="0" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
-          </div>
-          <div class="form-campo" style="margin:0">
-            <label style="font-size:9px">Moneda</label>
-            <select id="os-moneda-cat" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 6px;border-radius:5px;outline:none;width:100%">
-              <option value="USD">$ USD</option>
-              <option value="EUR">€ EUR</option>
-              <option value="VES">Bs VES</option>
-            </select>
-          </div>
-          <button class="btn-primario" onclick="agregarServicioCatalogo()" style="padding:8px 12px;font-size:11px;align-self:end">+ AGREGAR</button>
         </div>
       </div>
 
