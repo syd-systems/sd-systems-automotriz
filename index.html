@@ -5029,21 +5029,19 @@ function onSelCatalogoChange() {
   const sel = document.getElementById('os-sel-cat');
   const precio = document.getElementById('os-precio-cat');
   const descLibre = document.getElementById('os-desc-libre');
+  const cant = document.getElementById('os-cant-cat');
 
   if (!sel.value) {
+    // Sin servicio seleccionado → posicionar en descripción libre
     precio.value = '';
+    if (descLibre) setTimeout(function() { descLibre.focus(); }, 50);
     return;
   }
 
-  // Autocompletar precio desde el catálogo
+  // Servicio seleccionado → autocompletar precio y posicionar en Cantidad
   const s = catalogoCache.find(function(x) { return x.id_servicio == sel.value; });
   if (s) precio.value = parseFloat(s.precio_usd || 0).toFixed(2);
-
-  // Limpiar descripción libre y enfocarla para que el usuario pueda añadir detalles
-  if (descLibre) {
-    descLibre.value = '';
-    setTimeout(function() { descLibre.focus(); }, 50);
-  }
+  if (cant) setTimeout(function() { cant.focus(); cant.select(); }, 50);
 }
 
 // ─── AGREGAR LÍNEA REPUESTO DESDE INVENTARIO ───
