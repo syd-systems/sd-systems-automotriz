@@ -2578,7 +2578,12 @@ function renderProximo(icono, nombre) {
 
 // ─── MODALES ───
 function abrirModal(id) {
-  document.getElementById(id).classList.add('abierto');
+  const el = document.getElementById(id);
+  el.classList.add('abierto');
+  setTimeout(function() {
+    const body = el.querySelector('.modal-body');
+    if (body) body.scrollTop = 0;
+  }, 30);
 }
 
 function cerrarModal(id) {
@@ -4753,8 +4758,10 @@ function abrirNuevoInventario() {
   if (infoEl) infoEl.style.display = 'none';
   setTimeout(function() {
     const body = document.querySelector('#modal-inventario .modal-body');
-    if (body) body.scrollTop = 0;
-  }, 50);
+    if (body) { body.scrollTop = 0; }
+    const overlay = document.getElementById('modal-inventario');
+    if (overlay) overlay.scrollTop = 0;
+  }, 80);
   ['inv-id','inv-codigo','inv-nombre','inv-descripcion','inv-stock','inv-stock-min','inv-costo','inv-venta','inv-demanda-anual','inv-lead-time','inv-costo-pedido','inv-stock-seg'].forEach(function(id) {
     document.getElementById(id).value = '';
   });
