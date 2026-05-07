@@ -5095,8 +5095,22 @@ async function agregarServicioCatalogo() {
 
   if (!sel.value) {
     const descEl = document.getElementById('os-desc-libre');
-    if (!descEl.value.trim()) { alert('Escribe una descripción o selecciona del catálogo.'); return; }
+    if (!descEl.value.trim()) {
+      descEl.style.borderColor = 'var(--naranja)';
+      descEl.placeholder = '⚠ Requerido';
+      setTimeout(function() { descEl.style.borderColor = ''; descEl.placeholder = 'Escribe descripción libre...'; }, 2000);
+      descEl.focus();
+      return;
+    }
     const pVal = parseFloat(precio.value) || 0;
+    if (pVal <= 0) {
+      precio.style.borderColor = 'var(--naranja)';
+      precio.style.boxShadow = '0 0 0 3px rgba(255,107,0,0.2)';
+      setTimeout(function() { precio.style.borderColor = ''; precio.style.boxShadow = ''; }, 2000);
+      precio.focus();
+      precio.select();
+      return;
+    }
     osServiciosLineas.push({ id_servicio: null, descripcion: descEl.value.trim(),
       cantidad: parseFloat(cant.value) || 1, precio_usd: precioAUSD(pVal, moneda),
       precio_original: pVal, moneda });
