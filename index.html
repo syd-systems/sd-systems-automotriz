@@ -4653,10 +4653,11 @@ async function renderOrdenes() {
     }).join('');
 
     const resumen = {
-      ABIERTA: ordenes.filter(function(o) { return o.estado === 'ABIERTA'; }).length,
-      EN_PROCESO: ordenes.filter(function(o) { return o.estado === 'EN_PROCESO'; }).length,
+      ABIERTA:         ordenes.filter(function(o) { return o.estado === 'ABIERTA'; }).length,
+      EN_PROCESO:      ordenes.filter(function(o) { return o.estado === 'EN_PROCESO'; }).length,
       ESPERA_REPUESTO: ordenes.filter(function(o) { return o.estado === 'ESPERA_REPUESTO'; }).length,
-      CERRADA: ordenes.filter(function(o) { return o.estado === 'CERRADA'; }).length,
+      CERRADA:         ordenes.filter(function(o) { return o.estado === 'CERRADA'; }).length,
+      ANULADA:         ordenes.filter(function(o) { return o.estado === 'ANULADA'; }).length,
     };
 
     c.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:24px">'
@@ -5267,6 +5268,10 @@ async function guardarOS() {
 
 // ─── ANULAR OS ───
 async function anularOS(id, numero) {
+  if (!sesionActual || !sesionActual.administrador) {
+    alert('Solo un administrador puede anular una orden de servicio.');
+    return;
+  }
   if (!confirm('¿Anular la orden ' + numero + '? Esta acción no se puede deshacer.')) return;
   try {
     const hoyAnul = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
