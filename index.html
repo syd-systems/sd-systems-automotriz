@@ -4815,11 +4815,10 @@ function cambiarTipoTasaOS(moneda) {
 
 // ─── ABRIR NUEVA OS ───
 async function abrirNuevaOS() {
-  // Scroll al inicio del modal al abrir
   setTimeout(function() {
-    const modal = document.querySelector('#modal-os .modal');
-    if (modal) modal.scrollTop = 0;
-  }, 50);
+    const body = document.querySelector('#modal-os .modal-body');
+    if (body) body.scrollTop = 0;
+  }, 80);
   osServiciosLineas = [];
   osRepuestosLineas = [];
 
@@ -4881,9 +4880,9 @@ async function abrirNuevaOS() {
 // ─── ABRIR EDITAR OS ───
 async function abrirEditarOS(id) {
   setTimeout(function() {
-    const modal = document.querySelector('#modal-os .modal');
-    if (modal) modal.scrollTop = 0;
-  }, 50);
+    const body = document.querySelector('#modal-os .modal-body');
+    if (body) body.scrollTop = 0;
+  }, 80);
   // Refrescar OS desde Supabase antes de editar
   try {
     const fresh = await api('ordenes_servicio', 'GET', null,
