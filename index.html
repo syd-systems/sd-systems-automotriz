@@ -5564,14 +5564,40 @@ async function guardarOS() {
 }
 
 // ─── ANULAR OS ───
+// ─── HELPER: restaurar o descontar stock de repuestos de una OS ───
+async function ajustarStockOS(idOrden, operacion) {
+  // operacion: 'restaurar' suma al stock, 'descontar' resta
+  try {
+    const lineas = await api('os_repuestos', 'GET', null, '?id_orden=eq.' + idOrden + '&select=id_repuesto,cantidad');
+    for (var k = 0; k < lineas.length; k++) {
+      var l = lineas[k];
+      if (!l.id_repuesto) continue;
+      try {
+        const inv = await api('inventario', 'GET', null, '?id_repuesto=eq.' + l.id_repuesto + '&select=id_repuesto,stock_actual');
+        if (!inv.length) continue;
+        var cant = parseFloat(l.cantidad || 0);
+        var nuevoStock = operacion === 'restaurar'
+          ? inv[0].stock_actual + cant
+          : Math.max(0, inv[0].stock_actual - cant);
+        await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_repuesto=eq.' + l.id_repuesto);
+        // Actualizar cache local
+        var cached = inventarioCache.find(function(x) { return x.id_repuesto == l.id_repuesto; });
+        if (cached) cached.stock_actual = nuevoStock;
+      } catch(eInv) { console.warn('Error ajustando stock repuesto', l.id_repuesto, eInv); }
+    }
+  } catch(e) { console.warn('Error ajustarStockOS:', e); }
+}
+
 async function anularOS(id, numero) {
   if (!sesionActual || !sesionActual.administrador) {
     alert('Solo un administrador puede anular una orden de servicio.');
     return;
   }
-  if (!confirm('¿Anular la orden ' + numero + '? Esta acción no se puede deshacer.')) return;
+  if (!confirm('¿Anular la orden ' + numero + '? Se restaurará el stock de los repuestos utilizados.')) return;
   try {
     const hoyAnul = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
+    // Restaurar stock ANTES de anular
+    await ajustarStockOS(id, 'restaurar');
     await api('ordenes_servicio', 'PATCH', {
       estado: 'ANULADA',
       fecha_estado: hoyAnul,
@@ -5587,9 +5613,11 @@ async function reabrirOS(id, numero) {
     alert('Solo un administrador puede reabrir una orden de servicio.');
     return;
   }
-  if (!confirm('¿Reabrir la orden ' + numero + '? Quedará en estado ABIERTA.')) return;
+  if (!confirm('¿Reabrir la orden ' + numero + '? Se descontará nuevamente el stock de los repuestos.')) return;
   try {
     const hoyReab = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
+    // Descontar stock nuevamente al reabrir
+    await ajustarStockOS(id, 'descontar');
     await api('ordenes_servicio', 'PATCH', {
       estado: 'ABIERTA',
       fecha_estado: hoyReab,
