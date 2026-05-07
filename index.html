@@ -5340,10 +5340,14 @@ async function verFichaOS(id) {
       + (o.fecha_estado ? '<div style="font-size:10px;color:var(--suave);margin-top:3px">' + o.fecha_estado + '</div>' : '');
   }
   try {
-    const [linServ, linRep] = await Promise.all([
+    const [linServ, linRep, tasasActuales] = await Promise.all([
       api('os_servicios', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
       api('os_repuestos', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
+      api('tasas', 'GET', null, '?moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
+    const tasaActualFicha = tasasActuales.length ? parseFloat(tasasActuales[0].tipo_cambio) : null;
+    const tasaHistorica = parseFloat(o.tasa_cambio_usd || 1);
+    const tasaDiferente = tasaActualFicha && Math.abs(tasaActualFicha - tasaHistorica) > 0.01;
     const est = ESTADOS_OS[o.estado] || { clase: 'badge-gris', label: o.estado };
     const veh = o.vehiculos;
     const prop = o.propietarios;
@@ -5404,8 +5408,15 @@ async function verFichaOS(id) {
       + '<div>' + (o.fecha_prometida || '—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Km Entrada</div>'
       + '<div>' + (o.kilometraje_entrada ? o.kilometraje_entrada.toLocaleString() + ' km' : '—') + '</div></div>'
-      + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Tasa USD</div>'
-      + '<div style="font-family:var(--font-mono)">' + parseFloat(o.tasa_cambio_usd || 1).toFixed(2) + ' Bs/$</div></div>'
+      + (function() {
+          const osAbierta = o.estado !== 'CERRADA' && o.estado !== 'ANULADA';
+          const tasaMostrar = osAbierta && tasaActualFicha ? tasaActualFicha : tasaHistorica;
+          const labelTasa = osAbierta ? 'Tasa USD Actual' : 'Tasa USD al Cerrar';
+          return '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">' + labelTasa + '</div>'
+            + '<div style="font-family:var(--font-mono)">' + tasaMostrar.toFixed(2) + ' Bs/$'
+            + (osAbierta && tasaDiferente ? '<span style="font-size:10px;color:var(--suave);margin-left:6px">(creada: ' + tasaHistorica.toFixed(2) + ')</span>' : '')
+            + '</div></div>';
+        })()
       + '</div>'
 
       + (o.diagnostico ? '<div style="margin-bottom:16px"><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Diagnóstico</div>'
@@ -5413,6 +5424,12 @@ async function verFichaOS(id) {
       + (o.observaciones ? '<div style="margin-bottom:16px"><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Observaciones</div>'
         + '<div style="background:var(--gris2);border-radius:6px;padding:12px;font-size:13px">' + o.observaciones + '</div></div>' : '')
 
+      + (tasaDiferente && sesionActual && sesionActual.administrador && o.estado !== 'CERRADA' && o.estado !== 'ANULADA'
+          ? '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.25);border-radius:6px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px">'
+            + '<div style="font-size:12px;color:var(--naranja)">⚠ La tasa vigente (' + tasaActualFicha.toFixed(2) + ' Bs/$) difiere de la registrada en esta OS (' + tasaHistorica.toFixed(2) + ' Bs/$).</div>'
+            + '<button class="btn-primario" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="recalcularTasaOS(' + id + ',' + tasaActualFicha + ')">Recalcular Bs</button>'
+            + '</div>'
+          : '')
       + '<div style="margin-bottom:16px"><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">🔧 Servicios Realizados</div>'
       + tablaServ + '</div>'
       + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">📦 Repuestos Utilizados</div>'
@@ -5437,6 +5454,26 @@ async function verFichaOS(id) {
       btnReabrir.style.display = 'none';
     }
     abrirModal('modal-ficha-os');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ─── RECALCULAR TOTAL EN BS CON TASA ACTUAL (solo admins) ───
+async function recalcularTasaOS(id, nuevaTasa) {
+  if (!sesionActual || !sesionActual.administrador) return;
+  if (!confirm('¿Recalcular el Total en Bs de esta OS usando la tasa actual (' + parseFloat(nuevaTasa).toFixed(2) + ' Bs/$)?')) return;
+  try {
+    const o = ordenesCache.find(function(x) { return x.id_orden === id; });
+    if (!o) return;
+    const nuevoTotalVes = parseFloat(o.total_usd || 0) * nuevaTasa;
+    await api('ordenes_servicio', 'PATCH', {
+      tasa_cambio_usd: nuevaTasa,
+      total_ves: nuevoTotalVes,
+    }, '?id_orden=eq.' + id);
+    // Actualizar cache local
+    o.tasa_cambio_usd = nuevaTasa;
+    o.total_ves = nuevoTotalVes;
+    cerrarModal('modal-ficha-os');
+    renderOrdenes();
   } catch(e) { alert('Error: ' + e.message); }
 }
 
