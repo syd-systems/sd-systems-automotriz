@@ -5408,15 +5408,12 @@ async function verFichaOS(id) {
       + '<div>' + (o.fecha_prometida || '—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Km Entrada</div>'
       + '<div>' + (o.kilometraje_entrada ? o.kilometraje_entrada.toLocaleString() + ' km' : '—') + '</div></div>'
-      + (function() {
-          const osAbierta = o.estado !== 'CERRADA' && o.estado !== 'ANULADA';
-          const tasaMostrar = osAbierta && tasaActualFicha ? tasaActualFicha : tasaHistorica;
-          const labelTasa = osAbierta ? 'Tasa USD Actual' : 'Tasa USD al Cerrar';
-          return '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">' + labelTasa + '</div>'
-            + '<div style="font-family:var(--font-mono)">' + tasaMostrar.toFixed(2) + ' Bs/$'
-            + (osAbierta && tasaDiferente ? '<span style="font-size:10px;color:var(--suave);margin-left:6px">(creada: ' + tasaHistorica.toFixed(2) + ')</span>' : '')
-            + '</div></div>';
-        })()
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">'
+      + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' ? 'Tasa USD Actual' : 'Tasa USD al Cerrar')
+      + '</div><div style="font-family:var(--font-mono)">'
+      + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' && tasaActualFicha ? tasaActualFicha : tasaHistorica).toFixed(2) + ' Bs/$'
+      + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' && tasaDiferente ? '<span style="font-size:10px;color:var(--suave);margin-left:6px">(creada: ' + tasaHistorica.toFixed(2) + ')</span>' : '')
+      + '</div></div>'
       + '</div>'
 
       + (o.diagnostico ? '<div style="margin-bottom:16px"><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Diagnóstico</div>'
