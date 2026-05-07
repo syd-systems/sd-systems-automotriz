@@ -4574,6 +4574,7 @@ function invRenderTabla(items, cont) {
       + '<span style="color:var(--naranja)">$ ' + fmtUSD(r.precio_venta_usd) + '</span>'
       + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen.toFixed(1) + '%</div></td>'
       + '<td><div style="display:flex;gap:8px">'
+      + '<button class="btn-secundario" style="color:var(--naranja);border-color:rgba(255,107,0,0.4)" onclick="abrirEntradaStock(' + r.id_repuesto + ')">+ Stock</button>'
       + '<button class="btn-secundario" onclick="abrirEditarInventario(' + r.id_repuesto + ')">Editar</button>'
       + '<button class="btn-peligro" onclick="eliminarInventario(' + r.id_repuesto + ',\'' + r.nombre.replace(/'/g, "\'") + '\')">Eliminar</button>'
       + '</div></td></tr>';
@@ -4671,6 +4672,47 @@ function invRenderEOQ(items, cont) {
     + '</tr></thead><tbody>'
     + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos</td></tr>')
     + '</tbody></table></div>';
+}
+
+function abrirEntradaStock(id) {
+  const r = inventarioCache.find(function(x) { return x.id_repuesto === id; });
+  if (!r) return;
+  document.getElementById('es-id').value = id;
+  document.getElementById('es-nombre').textContent = r.nombre;
+  document.getElementById('es-stock-actual').textContent = r.stock_actual + ' ' + (r.unidad || 'UND');
+  document.getElementById('es-cantidad').value = '';
+  document.getElementById('es-motivo').value = 'compra';
+  document.getElementById('es-referencia').value = '';
+  document.getElementById('alerta-es-ok').style.display = 'none';
+  document.getElementById('alerta-es-err').style.display = 'none';
+  abrirModal('modal-entrada-stock');
+  setTimeout(function() { document.getElementById('es-cantidad').focus(); }, 100);
+}
+
+async function guardarEntradaStock() {
+  const id       = parseInt(document.getElementById('es-id').value);
+  const cantidad = parseFloat(document.getElementById('es-cantidad').value) || 0;
+  const okEl     = document.getElementById('alerta-es-ok');
+  const errEl    = document.getElementById('alerta-es-err');
+  if (cantidad <= 0) {
+    errEl.textContent = 'Ingresa una cantidad mayor a 0.';
+    errEl.style.display = 'block'; return;
+  }
+  try {
+    const r = inventarioCache.find(function(x) { return x.id_repuesto === id; });
+    const nuevoStock = parseFloat(r.stock_actual || 0) + cantidad;
+    await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_repuesto=eq.' + id);
+    okEl.textContent = 'Stock actualizado: ' + r.stock_actual + ' → ' + nuevoStock + ' ' + (r.unidad || 'UND');
+    okEl.style.display = 'block';
+    r.stock_actual = nuevoStock;
+    setTimeout(function() {
+      cerrarModal('modal-entrada-stock');
+      renderInventario(document.getElementById('buscar-inv') ? document.getElementById('buscar-inv').value : '');
+    }, 1200);
+  } catch(e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+  }
 }
 
 function abrirNuevoInventario() {
@@ -6183,6 +6225,57 @@ window.addEventListener('load', () => {
     </div>
   </div>
 </div>
+<div class="modal-overlay" id="modal-entrada-stock">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h3>ENTRADA DE STOCK</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-entrada-stock')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alerta alerta-exito" id="alerta-es-ok" style="display:none"></div>
+      <div class="alerta alerta-error" id="alerta-es-err" style="display:none"></div>
+      <input type="hidden" id="es-id">
+      <!-- Info repuesto -->
+      <div style="padding:12px 16px;background:var(--gris2);border-radius:6px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">Repuesto</div>
+          <div style="font-weight:600;font-size:15px" id="es-nombre">—</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">Stock Actual</div>
+          <div style="font-family:var(--font-mono);font-size:16px;color:var(--naranja)" id="es-stock-actual">—</div>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-campo">
+          <label>Cantidad a Ingresar</label>
+          <input type="number" id="es-cantidad" placeholder="0" min="0.01" step="0.01"
+            style="font-size:20px;font-family:var(--font-mono);text-align:center;color:var(--naranja)"
+            onkeydown="if(event.key==='Enter'){guardarEntradaStock()}">
+        </div>
+        <div class="form-campo">
+          <label>Motivo</label>
+          <select id="es-motivo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
+            <option value="compra">Compra a proveedor</option>
+            <option value="devolucion">Devolución de cliente</option>
+            <option value="ajuste">Ajuste de inventario</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-campo">
+        <label>Referencia / N° Factura (opcional)</label>
+        <input type="text" id="es-referencia" placeholder="Ej: FAC-2026-001">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-entrada-stock')">Cancelar</button>
+      <button class="btn-primario" onclick="guardarEntradaStock()">INGRESAR STOCK</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-inventario">
   <div class="modal" style="max-width:560px">
     <div class="modal-header">
