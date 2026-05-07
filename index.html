@@ -4672,10 +4672,10 @@ function invRenderEOQ(items, cont) {
       + '<td style="font-family:var(--font-mono);text-align:center;color:var(--suave)">' + (ciclo !== null ? 'c/' + ciclo + ' días' : '—') + '</td></tr>';
   }).join('');
   cont.innerHTML = '<div style="padding:8px 14px;background:var(--gris2);border-radius:6px;margin-bottom:10px;font-size:11px;color:var(--suave)">'
-    + '<b style="color:var(--naranja)">EOQ = √(2 × D × S / H)</b> donde D = demanda anual, S = costo por pedido ($25 default), H = costo de mantenimiento (20% del precio costo). '
-    + 'Configura <b>Demanda Anual</b> y <b>Costo por Pedido</b> en la edición de cada repuesto.</div>'
+    + '<b style="color:var(--naranja)">EOQ = √(2 × D × S / H)</b> donde D = demanda anual, S = costos operativos ($25 default), H = costo de mantenimiento (20% del precio costo). '
+    + 'Configura <b>Demanda Anual</b> y <b>Costos Operativos</b> en la edición de cada repuesto.</div>'
     + '<div class="tabla-container"><table><thead><tr>'
-    + '<th>Repuesto</th><th style="text-align:center">Demanda Anual</th><th style="text-align:center">Costo Pedido</th><th style="text-align:center">Costo Mant.</th><th style="text-align:center">EOQ Óptimo</th><th style="text-align:center">Pedidos/Año</th><th style="text-align:center">Frecuencia</th>'
+    + '<th>Repuesto</th><th style="text-align:center">Demanda Anual</th><th style="text-align:center">Costos Operativos</th><th style="text-align:center">Costo Mant.</th><th style="text-align:center">EOQ Óptimo</th><th style="text-align:center">Pedidos/Año</th><th style="text-align:center">Frecuencia</th>'
     + '</tr></thead><tbody>'
     + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos</td></tr>')
     + '</tbody></table></div>';
@@ -6451,7 +6451,7 @@ window.addEventListener('load', () => {
             <input type="number" id="inv-lead-time" placeholder="7" min="1" step="1">
           </div>
           <div class="form-campo">
-            <label>Costo por Pedido USD</label>
+            <label>Costos Operativos del Producto</label>
             <input type="number" id="inv-costo-pedido" placeholder="25.00" step="0.01" min="0">
           </div>
           <div class="form-campo">
