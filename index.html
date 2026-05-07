@@ -4884,6 +4884,16 @@ async function abrirEditarOS(id) {
     const modal = document.querySelector('#modal-os .modal');
     if (modal) modal.scrollTop = 0;
   }, 50);
+  // Refrescar OS desde Supabase antes de editar
+  try {
+    const fresh = await api('ordenes_servicio', 'GET', null,
+      '?id_orden=eq.' + id + '&select=*,vehiculos(placa,marca,modelo),propietarios(nombre_completo)');
+    if (fresh && fresh[0]) {
+      const idx = ordenesCache.findIndex(function(x) { return x.id_orden === id; });
+      if (idx >= 0) ordenesCache[idx] = fresh[0];
+      else ordenesCache.push(fresh[0]);
+    }
+  } catch(e) {}
   const o = ordenesCache.find(function(x) { return x.id_orden === id; });
   if (!o) return;
 
@@ -5309,8 +5319,26 @@ async function reabrirOS(id, numero) {
 
 // ─── FICHA OS ───
 async function verFichaOS(id) {
+  // Refrescar OS desde Supabase antes de mostrar
+  try {
+    const fresh = await api('ordenes_servicio', 'GET', null,
+      '?id_orden=eq.' + id + '&select=*,vehiculos(placa,marca,modelo),propietarios(nombre_completo)');
+    if (fresh && fresh[0]) {
+      const idx = ordenesCache.findIndex(function(x) { return x.id_orden === id; });
+      if (idx >= 0) ordenesCache[idx] = fresh[0];
+      else ordenesCache.push(fresh[0]);
+    }
+  } catch(e) {}
   const o = ordenesCache.find(function(x) { return x.id_orden === id; });
   if (!o) return;
+  // Actualizar fila de la tabla si el estado cambió
+  const fila = document.querySelector('tr[data-id="' + id + '"]');
+  if (fila && o) {
+    const est = ESTADOS_OS[o.estado] || { clase: 'badge-gris', label: o.estado };
+    const tdEstado = fila.cells[3];
+    if (tdEstado) tdEstado.innerHTML = '<span class="badge ' + est.clase + '">' + est.label + '</span>'
+      + (o.fecha_estado ? '<div style="font-size:10px;color:var(--suave);margin-top:3px">' + o.fecha_estado + '</div>' : '');
+  }
   try {
     const [linServ, linRep] = await Promise.all([
       api('os_servicios', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
