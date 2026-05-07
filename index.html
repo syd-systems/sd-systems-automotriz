@@ -4450,85 +4450,231 @@ async function eliminarCatalogo(id, nombre) {
 // ══════════════════════════════════════════════════════════════
 let inventarioCache = [];
 
+// ─── CLASIFICACIÓN ABC ───
+function clasificarABC(items) {
+  if (!items.length) return items;
+  const conValor = items.map(function(r) {
+    return Object.assign({}, r, { valor_inventario: parseFloat(r.precio_venta_usd || 0) * parseFloat(r.stock_actual || 0) });
+  });
+  conValor.sort(function(a, b) { return b.valor_inventario - a.valor_inventario; });
+  const totalValor = conValor.reduce(function(s, r) { return s + r.valor_inventario; }, 0);
+  var acumulado = 0;
+  return conValor.map(function(r) {
+    acumulado += r.valor_inventario;
+    var pct = totalValor > 0 ? (acumulado / totalValor) * 100 : 0;
+    return Object.assign({}, r, { clase_abc: pct <= 80 ? 'A' : pct <= 95 ? 'B' : 'C' });
+  });
+}
+function calcularEOQ(demandaAnual, costoPedido, costoMantenimiento) {
+  if (!demandaAnual || !costoPedido || !costoMantenimiento) return null;
+  return Math.sqrt((2 * demandaAnual * costoPedido) / costoMantenimiento);
+}
+function calcularPuntoReorden(r) {
+  var lead = parseFloat(r.lead_time_dias || 7);
+  var demanda = parseFloat(r.demanda_diaria || (r.demanda_anual ? r.demanda_anual / 365 : 0));
+  var stockSeg = parseFloat(r.stock_seguridad || r.stock_minimo || 0);
+  return Math.ceil(demanda * lead + stockSeg);
+}
+function calcularMargen(r) {
+  var venta = parseFloat(r.precio_venta_usd || 0);
+  if (!venta) return 0;
+  return ((venta - parseFloat(r.precio_costo_usd || 0)) / venta * 100);
+}
+var _invVista = 'tabla';
+
 async function renderInventario(filtro) {
   const c = document.getElementById('contenido-principal');
   const panelYaExiste = !!document.getElementById('buscar-inv');
-
   if (!panelYaExiste) {
     c.innerHTML = '<div class="panel" id="panel-inventario">'
-      + '<div class="panel-header"><h3 id="inv-contador">Inventario de Repuestos</h3>'
-      + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+      + '<div class="panel-header" style="flex-wrap:wrap;gap:10px">'
+      + '<h3 id="inv-contador" style="white-space:nowrap">Inventario de Repuestos</h3>'
+      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end">'
+      + '<div style="display:flex;gap:3px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:3px">'
+      + '<button id="inv-tab-tabla"   onclick="invCambiarVista(\'tabla\')"   class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:var(--naranja);color:#fff">Inventario</button>'
+      + '<button id="inv-tab-abc"     onclick="invCambiarVista(\'abc\')"     class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">Análisis ABC</button>'
+      + '<button id="inv-tab-reorden" onclick="invCambiarVista(\'reorden\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">Reorden</button>'
+      + '<button id="inv-tab-eoq"     onclick="invCambiarVista(\'eoq\')"     class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">EOQ</button>'
+      + '</div>'
       + '<input type="text" id="buscar-inv" placeholder="Buscar repuesto o código..." '
       + 'onkeyup="renderInventario(this.value)" '
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\')}" '
-      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:220px">'
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:200px">'
       + '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Repuesto</button>'
       + '</div></div>'
       + '<div id="alerta-stock-bajo" style="display:none"></div>'
-      + '<div class="tabla-container" id="tabla-inv-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
+      + '<div id="tabla-inv-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
       + '</div>';
   }
-
   const tablaCont = document.getElementById('tabla-inv-cont');
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
-
   try {
     const items = await api('inventario', 'GET', null, '?order=nombre.asc&select=*');
     inventarioCache = items;
-
     const itemsFiltrados = (filtro && filtro.trim())
       ? items.filter(function(r) {
           const t = filtro.toLowerCase();
           return r.nombre.toLowerCase().includes(t) || (r.codigo || '').toLowerCase().includes(t) || (r.descripcion || '').toLowerCase().includes(t);
         })
       : items;
-
     const stockBajos = items.filter(function(r) { return r.stock_actual <= r.stock_minimo; }).length;
     const alertaDiv = document.getElementById('alerta-stock-bajo');
     if (alertaDiv) {
       if (stockBajos > 0) {
-        alertaDiv.innerHTML = '<div class="alerta alerta-error" style="display:block;margin:0 0 0 0;border-radius:0">⚠ ' + stockBajos + ' repuesto(s) con stock bajo o agotado</div>';
+        alertaDiv.innerHTML = '<div class="alerta alerta-error" style="display:block;margin:0;border-radius:0">⚠ ' + stockBajos + ' repuesto(s) con stock bajo o agotado. Revisar pestaña Reorden.</div>';
         alertaDiv.style.display = 'block';
-      } else {
-        alertaDiv.style.display = 'none';
-      }
+      } else { alertaDiv.style.display = 'none'; }
     }
-
-    const filas = itemsFiltrados.map(function(r) {
-      const stockBajo = r.stock_actual <= r.stock_minimo;
-      return '<tr>'
-        + '<td><div style="font-family:var(--font-mono);font-size:11px;color:var(--suave)">' + (r.codigo || '—') + '</div>'
-        + '<div style="font-weight:500">' + r.nombre + '</div>'
-        + (r.descripcion ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion + '</div>' : '')
-        + '</td>'
-        + '<td><span class="badge ' + (stockBajo ? 'badge-rojo' : 'badge-verde') + '">' + r.stock_actual + ' ' + (r.unidad || 'UND') + '</span>'
-        + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo + ')</div>' : '')
-        + '</td>'
-        + '<td style="font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:10px">Costo</div>$ ' + parseFloat(r.precio_costo_usd || 0).toFixed(2) + '</td>'
-        + '<td style="font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:10px">Venta</div><span style="color:var(--naranja)">$ ' + parseFloat(r.precio_venta_usd || 0).toFixed(2) + '</span></td>'
-        + '<td><div style="display:flex;gap:8px">'
-        + '<button class="btn-secundario" onclick="abrirEditarInventario(' + r.id_repuesto + ')">Editar</button>'
-        + '<button class="btn-peligro" onclick="eliminarInventario(' + r.id_repuesto + ',\'' + r.nombre.replace(/'/g, "\\'") + '\')">Eliminar</button>'
-        + '</div></td>'
-        + '</tr>';
-    }).join('');
-
     const contador = document.getElementById('inv-contador');
     if (contador) contador.textContent = 'Inventario de Repuestos (' + itemsFiltrados.length + ')';
-
-    const tabla = document.getElementById('tabla-inv-cont');
-    if (tabla) tabla.innerHTML = '<table><thead><tr>'
-      + '<th>Repuesto</th><th>Stock</th><th>Precio Costo</th><th>Precio Venta</th><th>Acciones</th>'
-      + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos registrados</td></tr>') + '</tbody></table>';
-
+    invRenderVista(itemsFiltrados, _invVista);
   } catch(e) {
     const tabla = document.getElementById('tabla-inv-cont');
     if (tabla) tabla.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
   }
 }
 
+function invCambiarVista(vista) {
+  _invVista = vista;
+  document.querySelectorAll('.inv-tab').forEach(function(btn) {
+    var activo = btn.id === 'inv-tab-' + vista;
+    btn.style.background = activo ? 'var(--naranja)' : 'transparent';
+    btn.style.color = activo ? '#fff' : 'var(--suave)';
+  });
+  invRenderVista(inventarioCache, vista);
+}
+
+function invRenderVista(items, vista) {
+  const cont = document.getElementById('tabla-inv-cont');
+  if (!cont) return;
+  if (vista === 'tabla') invRenderTabla(items, cont);
+  else if (vista === 'abc') invRenderABC(items, cont);
+  else if (vista === 'reorden') invRenderReorden(items, cont);
+  else if (vista === 'eoq') invRenderEOQ(items, cont);
+}
+
+function invRenderTabla(items, cont) {
+  const abcMap = {};
+  clasificarABC(inventarioCache).forEach(function(r) { abcMap[r.id_repuesto] = r.clase_abc; });
+  const abcColor = { A: '#22c55e', B: '#f59e0b', C: '#94a3b8' };
+  const filas = items.map(function(r) {
+    const stockBajo = r.stock_actual <= r.stock_minimo;
+    const abc = abcMap[r.id_repuesto] || '—';
+    const margen = calcularMargen(r);
+    return '<tr>'
+      + '<td><div style="display:flex;align-items:center;gap:8px">'
+      + '<span style="font-size:10px;font-weight:700;color:' + (abcColor[abc]||'#888') + ';background:' + (abcColor[abc]||'#888') + '22;padding:2px 6px;border-radius:3px">' + abc + '</span>'
+      + '<div><div style="font-family:var(--font-mono);font-size:11px;color:var(--suave)">' + (r.codigo || '—') + '</div>'
+      + '<div style="font-weight:500">' + r.nombre + '</div>'
+      + (r.descripcion ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion + '</div>' : '') + '</div></div></td>'
+      + '<td><span class="badge ' + (stockBajo ? 'badge-rojo' : 'badge-verde') + '">' + r.stock_actual + ' ' + (r.unidad || 'UND') + '</span>'
+      + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo + ')</div>' : '') + '</td>'
+      + '<td style="font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:10px">Costo</div>$ ' + fmtUSD(r.precio_costo_usd) + '</td>'
+      + '<td style="font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:10px">Venta</div>'
+      + '<span style="color:var(--naranja)">$ ' + fmtUSD(r.precio_venta_usd) + '</span>'
+      + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen.toFixed(1) + '%</div></td>'
+      + '<td><div style="display:flex;gap:8px">'
+      + '<button class="btn-secundario" onclick="abrirEditarInventario(' + r.id_repuesto + ')">Editar</button>'
+      + '<button class="btn-peligro" onclick="eliminarInventario(' + r.id_repuesto + ',\'' + r.nombre.replace(/'/g, "\'") + '\')">Eliminar</button>'
+      + '</div></td></tr>';
+  }).join('');
+  cont.innerHTML = '<div class="tabla-container"><table><thead><tr>'
+    + '<th>Repuesto</th><th>Stock</th><th>Precio Costo</th><th>Precio Venta</th><th>Acciones</th>'
+    + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos registrados</td></tr>') + '</tbody></table></div>';
+}
+
+function invRenderABC(items, cont) {
+  const clasificados = clasificarABC(items);
+  const totalValor = clasificados.reduce(function(s, r) { return s + r.valor_inventario; }, 0);
+  const grupos = { A: [], B: [], C: [] };
+  clasificados.forEach(function(r) { grupos[r.clase_abc].push(r); });
+  const abcColor = { A: '#22c55e', B: '#f59e0b', C: '#94a3b8' };
+  const abcDesc = { A: 'Alta rotación y valor (80% del total)', B: 'Valor y rotación media (15%)', C: 'Bajo valor y rotación (5%)' };
+  var filasHTML = '';
+  ['A','B','C'].forEach(function(g) {
+    const gs = grupos[g];
+    const vg = gs.reduce(function(s, r) { return s + r.valor_inventario; }, 0);
+    const pct = totalValor > 0 ? (vg / totalValor * 100).toFixed(1) : '0.0';
+    filasHTML += '<tr style="background:' + abcColor[g] + '12"><td colspan="6" style="padding:6px 12px;font-size:10px;font-weight:700;letter-spacing:2px;color:' + abcColor[g] + '">CLASE ' + g + ' — ' + abcDesc[g] + ' (' + gs.length + ' items · ' + pct + '% del valor total)</td></tr>';
+    gs.forEach(function(r) {
+      filasHTML += '<tr>'
+        + '<td><span style="font-size:10px;font-weight:700;color:' + abcColor[g] + ';background:' + abcColor[g] + '22;padding:2px 7px;border-radius:3px">' + g + '</span></td>'
+        + '<td style="font-weight:500">' + r.nombre + '</td>'
+        + '<td style="font-family:var(--font-mono);text-align:center">' + r.stock_actual + ' ' + (r.unidad||'UND') + '</td>'
+        + '<td style="font-family:var(--font-mono)">$ ' + fmtUSD(r.precio_venta_usd) + '</td>'
+        + '<td style="font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(r.valor_inventario) + '</td>'
+        + '<td style="font-size:11px;color:var(--suave)">' + pct + '%</td></tr>';
+    });
+  });
+  cont.innerHTML = '<div style="display:flex;gap:12px;padding:12px;background:var(--gris2);border-radius:6px;margin-bottom:10px;font-size:11px;flex-wrap:wrap">'
+    + '<div><span style="color:#22c55e;font-weight:700">● Clase A</span> — Supervisión diaria · Stock seguridad alto · Pedidos frecuentes</div>'
+    + '<div><span style="color:#f59e0b;font-weight:700">● Clase B</span> — Revisión semanal · Reorden automático</div>'
+    + '<div><span style="color:#94a3b8;font-weight:700">● Clase C</span> — Revisión mensual · Pedidos consolidados</div>'
+    + '</div>'
+    + '<div style="padding:8px 14px;background:rgba(255,107,0,0.08);border-left:3px solid var(--naranja);border-radius:4px;margin-bottom:10px;font-size:11px;color:var(--suave)">'
+    + '<b style="color:var(--naranja)">FIFO / PEPS:</b> El stock existente (ingresado primero) se consume antes que el nuevo. Los items Clase A deben rotarse con mayor control. Registra la fecha de ingreso al editar cada repuesto.</div>'
+    + '<div class="tabla-container"><table><thead><tr><th>Clase</th><th>Repuesto</th><th style="text-align:center">Stock</th><th>P. Venta</th><th>Valor Inventario</th><th>% Total</th></tr></thead><tbody>'
+    + filasHTML + '</tbody></table></div>';
+}
+
+function invRenderReorden(items, cont) {
+  const filas = items.map(function(r) {
+    const pr = calcularPuntoReorden(r);
+    const critico = r.stock_actual <= r.stock_minimo;
+    const enReorden = !critico && r.stock_actual <= pr;
+    const demanda = r.demanda_diaria || (r.demanda_anual ? (r.demanda_anual/365).toFixed(2) : null);
+    return '<tr>'
+      + '<td><div style="font-weight:500">' + r.nombre + '</div><div style="font-size:10px;color:var(--suave)">' + (r.codigo||'') + '</div></td>'
+      + '<td style="font-family:var(--font-mono);text-align:center">' + r.stock_actual + '</td>'
+      + '<td style="font-family:var(--font-mono);text-align:center">' + r.stock_minimo + '</td>'
+      + '<td style="font-family:var(--font-mono);text-align:center">' + (demanda !== null ? demanda : '<span style="color:var(--suave);font-size:10px">—</span>') + '</td>'
+      + '<td style="font-family:var(--font-mono);text-align:center">' + (r.lead_time_dias || 7) + ' días</td>'
+      + '<td style="text-align:center;font-family:var(--font-mono);font-weight:700;color:' + (critico ? '#ef4444' : enReorden ? '#f59e0b' : '#22c55e') + '">' + pr + '</td>'
+      + '<td style="text-align:center">'
+      + (critico ? '<span style="font-size:10px;font-weight:700;color:#fff;background:#ef4444;padding:3px 8px;border-radius:4px">⚠ CRÍTICO</span>'
+        : enReorden ? '<span style="font-size:10px;font-weight:700;color:#fff;background:#f59e0b;padding:3px 8px;border-radius:4px">Pedir ahora</span>'
+        : '<span style="font-size:10px;color:#22c55e">✓ OK</span>')
+      + '</td></tr>';
+  }).join('');
+  cont.innerHTML = '<div style="padding:8px 14px;background:rgba(255,107,0,0.08);border-left:3px solid var(--naranja);border-radius:4px;margin-bottom:10px;font-size:11px;color:var(--suave)">'
+    + '<b style="color:var(--naranja)">Punto de Reorden = (Demanda Diaria × Lead Time) + Stock de Seguridad.</b> '
+    + 'JIT: Pedir solo lo necesario al alcanzar el punto de reorden. Configura Demanda Anual y Lead Time en cada repuesto.</div>'
+    + '<div class="tabla-container"><table><thead><tr>'
+    + '<th>Repuesto</th><th style="text-align:center">Stock</th><th style="text-align:center">Mínimo</th><th style="text-align:center">Dem./Día</th><th style="text-align:center">Lead Time</th><th style="text-align:center">Punto Reorden</th><th style="text-align:center">Estado</th>'
+    + '</tr></thead><tbody>'
+    + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos</td></tr>')
+    + '</tbody></table></div>';
+}
+
+function invRenderEOQ(items, cont) {
+  const filas = items.map(function(r) {
+    var D = parseFloat(r.demanda_anual || 0);
+    var S = parseFloat(r.costo_pedido_usd || 25);
+    var H = parseFloat(r.precio_costo_usd || 0) * 0.20;
+    var eoq = (D && H) ? Math.round(calcularEOQ(D, S, H)) : null;
+    var nPed = (eoq && D) ? Math.ceil(D / eoq) : null;
+    var ciclo = (nPed && nPed > 0) ? Math.round(365 / nPed) : null;
+    return '<tr>'
+      + '<td><div style="font-weight:500">' + r.nombre + '</div></td>'
+      + '<td style="font-family:var(--font-mono);text-align:center">' + (D || '<span style="color:var(--suave);font-size:10px">No configurado</span>') + '</td>'
+      + '<td style="font-family:var(--font-mono);text-align:center">$ ' + fmtUSD(S) + '</td>'
+      + '<td style="font-family:var(--font-mono);text-align:center">$ ' + fmtUSD(H) + '</td>'
+      + '<td style="text-align:center;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">' + (eoq !== null ? eoq + ' ' + (r.unidad||'UND') : '—') + '</td>'
+      + '<td style="font-family:var(--font-mono);text-align:center;color:var(--suave)">' + (nPed !== null ? nPed + ' veces/año' : '—') + '</td>'
+      + '<td style="font-family:var(--font-mono);text-align:center;color:var(--suave)">' + (ciclo !== null ? 'c/' + ciclo + ' días' : '—') + '</td></tr>';
+  }).join('');
+  cont.innerHTML = '<div style="padding:8px 14px;background:var(--gris2);border-radius:6px;margin-bottom:10px;font-size:11px;color:var(--suave)">'
+    + '<b style="color:var(--naranja)">EOQ = √(2 × D × S / H)</b> donde D = demanda anual, S = costo por pedido ($25 default), H = costo de mantenimiento (20% del precio costo). '
+    + 'Configura <b>Demanda Anual</b> y <b>Costo por Pedido</b> en la edición de cada repuesto.</div>'
+    + '<div class="tabla-container"><table><thead><tr>'
+    + '<th>Repuesto</th><th style="text-align:center">Demanda Anual</th><th style="text-align:center">Costo Pedido</th><th style="text-align:center">Costo Mant.</th><th style="text-align:center">EOQ Óptimo</th><th style="text-align:center">Pedidos/Año</th><th style="text-align:center">Frecuencia</th>'
+    + '</tr></thead><tbody>'
+    + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos</td></tr>')
+    + '</tbody></table></div>';
+}
+
 function abrirNuevoInventario() {
-  ['inv-id','inv-codigo','inv-nombre','inv-descripcion','inv-stock','inv-stock-min','inv-costo','inv-venta'].forEach(function(id) {
+  ['inv-id','inv-codigo','inv-nombre','inv-descripcion','inv-stock','inv-stock-min','inv-costo','inv-venta','inv-demanda-anual','inv-lead-time','inv-costo-pedido','inv-stock-seg'].forEach(function(id) {
     document.getElementById(id).value = '';
   });
   document.getElementById('inv-unidad').value = 'UND';
@@ -4550,6 +4696,10 @@ function abrirEditarInventario(id) {
   document.getElementById('inv-costo').value = r.precio_costo_usd || '';
   document.getElementById('inv-venta').value = r.precio_venta_usd || '';
   document.getElementById('inv-unidad').value = r.unidad || 'UND';
+  document.getElementById('inv-demanda-anual').value = r.demanda_anual || '';
+  document.getElementById('inv-lead-time').value = r.lead_time_dias || '';
+  document.getElementById('inv-costo-pedido').value = r.costo_pedido_usd || '';
+  document.getElementById('inv-stock-seg').value = r.stock_seguridad || '';
   document.getElementById('modal-inv-titulo').textContent = 'EDITAR REPUESTO';
   document.getElementById('alerta-inv-ok').style.display = 'none';
   document.getElementById('alerta-inv-err').style.display = 'none';
@@ -4573,8 +4723,13 @@ async function guardarInventario() {
   if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
 
   try {
+    const demandaAnual = parseInt(document.getElementById('inv-demanda-anual').value) || null;
+    const leadTime     = parseInt(document.getElementById('inv-lead-time').value) || null;
+    const costoPedido  = parseFloat(document.getElementById('inv-costo-pedido').value) || null;
+    const stockSeg     = parseInt(document.getElementById('inv-stock-seg').value) || 0;
     const datos = { nombre, descripcion: desc || null, codigo: codigo || null, stock_actual: stock,
       stock_minimo: stockMin, precio_costo_usd: costo, precio_venta_usd: venta, unidad,
+      demanda_anual: demandaAnual, lead_time_dias: leadTime, costo_pedido_usd: costoPedido, stock_seguridad: stockSeg,
       id_usuario: sesionActual.correo_usuario };
     if (id) {
       await api('inventario', 'PATCH', datos, '?id_repuesto=eq.' + id);
@@ -6076,6 +6231,28 @@ window.addEventListener('load', () => {
         <div class="form-campo">
           <label>Precio Venta USD</label>
           <input type="number" id="inv-venta" placeholder="0.00" step="0.01" min="0">
+        </div>
+      </div>
+      <!-- Campos para técnicas de inventario -->
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--borde)">
+        <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:10px">Parámetros de Gestión (EOQ / Reorden / JIT)</div>
+        <div class="form-grid">
+          <div class="form-campo">
+            <label>Demanda Anual (unidades)</label>
+            <input type="number" id="inv-demanda-anual" placeholder="Ej: 120" min="0" step="1">
+          </div>
+          <div class="form-campo">
+            <label>Lead Time (días)</label>
+            <input type="number" id="inv-lead-time" placeholder="7" min="1" step="1">
+          </div>
+          <div class="form-campo">
+            <label>Costo por Pedido USD</label>
+            <input type="number" id="inv-costo-pedido" placeholder="25.00" step="0.01" min="0">
+          </div>
+          <div class="form-campo">
+            <label>Stock de Seguridad</label>
+            <input type="number" id="inv-stock-seg" placeholder="0" min="0" step="1">
+          </div>
         </div>
       </div>
       <input type="hidden" id="inv-id">
