@@ -4678,15 +4678,12 @@ async function renderOrdenes() {
       + '<div class="panel-header" style="flex-wrap:wrap;gap:12px">'
       + '<h3 style="white-space:nowrap">Órdenes de Servicio</h3>'
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end">'
-      // Buscador texto libre
       + '<input type="text" id="os-buscar" placeholder="Buscar N° OS, vehículo, propietario..." '
       + 'value="' + (window._osBuscar || '') + '" '
       + 'oninput="window._osBuscar=this.value;filtrarTablaOS()" '
-      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:220px;transition:border-color 0.2s" '
-      + 'onfocus="this.style.borderColor='var(--naranja)'" onblur="this.style.borderColor='var(--borde)'">'
-      // Selector de estado
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:220px">'
       + '<select id="os-filtro-estado" onchange="window._osEstadoFiltro=this.value;filtrarTablaOS()" '
-      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer;transition:border-color 0.2s">'
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todos los estados</option>'
       + Object.entries(ESTADOS_OS).map(function(e) {
           return '<option value="' + e[0] + '"' + (window._osEstadoFiltro === e[0] ? ' selected' : '') + '>' + e[1].label + '</option>';
