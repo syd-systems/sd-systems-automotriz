@@ -4855,8 +4855,10 @@ async function abrirEditarOS(id) {
   const tasaEurEl2 = document.getElementById('os-tasa-eur');
   if (tasaUsdEl2) tasaUsdEl2.textContent = tasasDisponiblesOS.USD.toFixed(2);
   if (tasaEurEl2) tasaEurEl2.textContent = tasasDisponiblesOS.EUR.toFixed(2);
-  document.getElementById('os-tipo-cambio').value = o.moneda_cambio || 'USD';
-  document.getElementById('os-moneda-label').textContent = (o.moneda_cambio === 'EUR') ? '€' : '$';
+  const tipoCambioEl = document.getElementById('os-tipo-cambio');
+  if (tipoCambioEl) tipoCambioEl.value = o.moneda_cambio || 'USD';
+  const monedaLabelEl = document.getElementById('os-moneda-label');
+  if (monedaLabelEl) monedaLabelEl.textContent = (o.moneda_cambio === 'EUR') ? '€' : '$';
   document.getElementById('os-veh-id').value = o.id_vehiculo || '';
   document.getElementById('alerta-os-ok').style.display = 'none';
   document.getElementById('alerta-os-err').style.display = 'none';
