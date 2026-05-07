@@ -4602,6 +4602,19 @@ async function eliminarInventario(id, nombre) {
 let ordenesCache = [];
 let osServiciosLineas = [];  // líneas de servicios de la OS activa
 let osRepuestosLineas = [];  // líneas de repuestos de la OS activa
+// ─── FORMATEO MONETARIO GLOBAL ───
+function fmtBs(valor) {
+  // Formato venezolano: punto miles, coma decimales → 408.394,34
+  var n = parseFloat(valor || 0).toFixed(2);
+  var partes = n.split('.');
+  partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return partes[0] + ',' + partes[1];
+}
+function fmtUSD(valor) {
+  // Formato estándar USD: coma miles, punto decimales → 822.00
+  return parseFloat(valor || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 let tasaActualOS = 1;        // tasa USD→VES al crear/editar OS
 
 const ESTADOS_OS = {
@@ -4643,8 +4656,8 @@ async function renderOrdenes() {
         + '<td><span class="badge ' + est.clase + '">' + est.label + '</span>'
         + (o.fecha_estado ? '<div style="font-size:10px;color:var(--suave);margin-top:3px">' + o.fecha_estado + '</div>' : '')
         + '</td>'
-        + '<td style="font-family:var(--font-mono)"><span style="color:var(--naranja)">$ ' + parseFloat(o.total_usd || 0).toFixed(2) + '</span>'
-        + '<div style="font-size:10px;color:var(--suave)">' + parseFloat(o.total_ves || 0).toLocaleString('es-VE', {minimumFractionDigits:2}) + ' Bs</div></td>'
+        + '<td style="font-family:var(--font-mono)"><span style="color:var(--naranja)">$ ' + fmtUSD(o.total_usd) + '</span>'
+        + '<div style="font-size:10px;color:var(--suave)">' + fmtBs(o.total_ves) + ' Bs</div></td>'
         + '<td><div style="display:flex;gap:6px;flex-wrap:wrap">'
         + '<button class="btn-secundario" onclick="verFichaOS(' + o.id_orden + ')">Ver</button>'
         + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA'
@@ -5001,7 +5014,7 @@ function renderLineasOS() {
     return '<div style="display:grid;grid-template-columns:1fr 70px 110px 60px auto;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
       + '<div style="font-size:13px;font-weight:500">' + l.descripcion + '</div>'
       + '<input type="number" value="' + l.cantidad + '" min="0.01" step="0.01" onchange="osServiciosLineas[' + i + '].cantidad=parseFloat(this.value)||1;calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:center">'
-      + '<input type="number" value="' + (l.precio_original !== undefined ? l.precio_original : parseFloat(l.precio_usd).toFixed(2)) + '" min="0" step="0.01" onchange="osServiciosLineas[' + i + '].precio_original=parseFloat(this.value)||0;osServiciosLineas[' + i + '].precio_usd=convertirAUSD(parseFloat(this.value)||0,osServiciosLineas[' + i + '].moneda||\'USD\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
+      + '<input type="number" value="' + (l.precio_original !== undefined ? l.precio_original : fmtUSD(l.precio_usd)) + '" min="0" step="0.01" onchange="osServiciosLineas[' + i + '].precio_original=parseFloat(this.value)||0;osServiciosLineas[' + i + '].precio_usd=convertirAUSD(parseFloat(this.value)||0,osServiciosLineas[' + i + '].moneda||\'USD\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
       + '<div style="font-size:10px;font-weight:600;color:var(--suave);text-align:center">' + (monedaLabels[mon] || mon) + '</div>'
       + '<button onclick="quitarLineaServ(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px;padding:0 4px">✕</button>'
       + '</div>';
@@ -5028,7 +5041,7 @@ function renderLineasRep() {
     return '<div style="display:grid;grid-template-columns:1fr 70px 110px 60px auto;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
       + '<div style="font-size:13px;font-weight:500">' + l.descripcion + '</div>'
       + '<input type="number" value="' + l.cantidad + '" min="0.01" step="0.01" onchange="osRepuestosLineas[' + i + '].cantidad=parseFloat(this.value)||1;calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:center">'
-      + '<input type="number" value="' + (l.precio_original !== undefined ? l.precio_original : parseFloat(l.precio_usd).toFixed(2)) + '" min="0" step="0.01" onchange="osRepuestosLineas[' + i + '].precio_original=parseFloat(this.value)||0;osRepuestosLineas[' + i + '].precio_usd=convertirAUSD(parseFloat(this.value)||0,osRepuestosLineas[' + i + '].moneda||\'USD\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
+      + '<input type="number" value="' + (l.precio_original !== undefined ? l.precio_original : fmtUSD(l.precio_usd)) + '" min="0" step="0.01" onchange="osRepuestosLineas[' + i + '].precio_original=parseFloat(this.value)||0;osRepuestosLineas[' + i + '].precio_usd=convertirAUSD(parseFloat(this.value)||0,osRepuestosLineas[' + i + '].moneda||\'USD\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
       + '<div style="font-size:10px;font-weight:600;color:var(--suave);text-align:center">' + (monedaLabels[mon] || mon) + '</div>'
       + '<button onclick="quitarLineaRep(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px;padding:0 4px">✕</button>'
       + '</div>';
@@ -5052,12 +5065,12 @@ function calcularTotalesOS() {
   const totalVes = total * tasaActualOS;
   const el = document.getElementById('os-totales');
   if (el) el.innerHTML = '<div style="display:flex;gap:24px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:12px 0">'
-    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Servicios</div><div style="font-family:var(--font-mono)">$ ' + totServ.toFixed(2) + '</div></div>'
-    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Repuestos</div><div style="font-family:var(--font-mono)">$ ' + totRep.toFixed(2) + '</div></div>'
-    + '<div style="border-left:1px solid var(--borde);padding-left:24px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL USD</div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">$ ' + total.toFixed(2) + '</div></div>'
+    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Servicios</div><div style="font-family:var(--font-mono)">$ ' + fmtUSD(totServ) + '</div></div>'
+    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Repuestos</div><div style="font-family:var(--font-mono)">$ ' + fmtUSD(totRep) + '</div></div>'
+    + '<div style="border-left:1px solid var(--borde);padding-left:24px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL USD</div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">$ ' + fmtUSD(total) + '</div></div>'
     + '<div style="border-left:1px solid var(--borde);padding-left:24px">'
     +   '<div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL Bs</div>'
-    +   '<div style="font-family:var(--font-mono);font-size:14px;color:var(--suave)">' + totalVes.toFixed(2) + '</div>'
+    +   '<div style="font-family:var(--font-mono);font-size:14px;color:var(--suave)">' + fmtBs(totalVes) + '</div>'
     +   '<div style="font-size:9px;color:var(--suave);margin-top:2px">Tasa: $ 1 = ' + tasaActualOS.toFixed(2) + ' Bs</div>'
     + '</div>'
     + '</div>';
@@ -5366,8 +5379,8 @@ async function verFichaOS(id) {
         + linServ.map(function(l) {
             return '<tr><td style="padding:6px 0">' + l.descripcion + '</td>'
               + '<td style="text-align:right;padding:6px 0">' + l.cantidad + '</td>'
-              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">$ ' + parseFloat(l.precio_usd).toFixed(2) + '</td>'
-              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">$ ' + parseFloat(l.subtotal_usd).toFixed(2) + '</td></tr>';
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">$ ' + fmtUSD(l.precio_usd) + '</td>'
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(l.subtotal_usd) + '</td></tr>';
           }).join('')
         + '</tbody></table>'
       : '<div style="color:var(--suave);font-size:12px">Sin servicios</div>';
@@ -5383,8 +5396,8 @@ async function verFichaOS(id) {
         + linRep.map(function(l) {
             return '<tr><td style="padding:6px 0">' + l.descripcion + '</td>'
               + '<td style="text-align:right;padding:6px 0">' + l.cantidad + '</td>'
-              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">$ ' + parseFloat(l.precio_usd).toFixed(2) + '</td>'
-              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">$ ' + parseFloat(l.subtotal_usd).toFixed(2) + '</td></tr>';
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">$ ' + fmtUSD(l.precio_usd) + '</td>'
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(l.subtotal_usd) + '</td></tr>';
           }).join('')
         + '</tbody></table>'
       : '<div style="color:var(--suave);font-size:12px">Sin repuestos</div>';
@@ -5396,7 +5409,7 @@ async function verFichaOS(id) {
       + (o.fecha_estado ? '<span style="font-size:10px;color:var(--suave);margin-left:8px">desde ' + o.fecha_estado + (o.usuario_estado ? ' · ' + o.usuario_estado : '') + '</span>' : '')
       + '</div>'
       + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL</div>'
-      + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">$ ' + parseFloat(o.total_usd || 0).toFixed(2) + '</div>'
+      + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">$ ' + fmtUSD(o.total_usd) + '</div>'
       + '<div style="font-size:11px;color:var(--suave)">' + parseFloat(o.total_ves || 0).toLocaleString('es-VE', {minimumFractionDigits:2}) + ' Bs</div>'
       + '</div></div>'
 
