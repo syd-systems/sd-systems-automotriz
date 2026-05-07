@@ -4635,7 +4635,9 @@ async function renderOrdenes() {
         + '<div style="font-size:11px;color:var(--suave)">' + o.fecha_entrada + '</div></td>'
         + '<td>' + (veh ? '<div style="font-weight:500">' + veh.placa + '</div><div style="font-size:11px;color:var(--suave)">' + veh.marca + ' ' + veh.modelo + '</div>' : '—') + '</td>'
         + '<td>' + (prop ? prop.nombre_completo : '—') + '</td>'
-        + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
+        + '<td><span class="badge ' + est.clase + '">' + est.label + '</span>'
+        + (o.fecha_estado ? '<div style="font-size:10px;color:var(--suave);margin-top:3px">' + o.fecha_estado + '</div>' : '')
+        + '</td>'
         + '<td style="font-family:var(--font-mono)"><span style="color:var(--naranja)">$ ' + parseFloat(o.total_usd || 0).toFixed(2) + '</span>'
         + '<div style="font-size:10px;color:var(--suave)">' + parseFloat(o.total_ves || 0).toLocaleString('es-VE', {minimumFractionDigits:2}) + ' Bs</div></td>'
         + '<td><div style="display:flex;gap:6px;flex-wrap:wrap">'
@@ -4643,7 +4645,9 @@ async function renderOrdenes() {
         + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA'
           ? '<button class="btn-secundario" onclick="abrirEditarOS(' + o.id_orden + ')">Editar</button>'
             + '<button class="btn-peligro" onclick="anularOS(' + o.id_orden + ',\'' + (o.numero_os || '') + '\')">Anular</button>'
-          : '')
+          : (sesionActual && sesionActual.administrador
+              ? '<button class="btn-secundario" style="border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="reabrirOS(' + o.id_orden + ',\'' + (o.numero_os || '') + '\')">↺ Reabrir</button>'
+              : ''))
         + '</div></td>'
         + '</tr>';
     }).join('');
@@ -5122,6 +5126,12 @@ async function guardarOS() {
 
   try {
     let osId = id;
+    // Fecha del estado actual (Venezuela UTC-4)
+    const hoyEstado = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
+    // Detectar si el estado cambió (en edición) para actualizar fecha_estado
+    const osActual = id ? ordenesCache.find(function(x) { return x.id_orden == id; }) : null;
+    const estadoCambio = !osActual || osActual.estado !== estado;
+
     const datos = {
       id_vehiculo: parseInt(vehId),
       id_propietario: idPropietario,
@@ -5137,6 +5147,11 @@ async function guardarOS() {
       total_usd: total,
       total_ves: total * tasaActualOS,
       id_usuario: sesionActual.correo_usuario,
+      // Actualizar fecha y usuario del estado solo si cambió
+      ...(estadoCambio ? {
+        fecha_estado: hoyEstado,
+        usuario_estado: sesionActual.nombre || sesionActual.correo_usuario,
+      } : {}),
     };
 
     if (id) {
@@ -5202,7 +5217,30 @@ async function guardarOS() {
 async function anularOS(id, numero) {
   if (!confirm('¿Anular la orden ' + numero + '? Esta acción no se puede deshacer.')) return;
   try {
-    await api('ordenes_servicio', 'PATCH', { estado: 'ANULADA' }, '?id_orden=eq.' + id);
+    const hoyAnul = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
+    await api('ordenes_servicio', 'PATCH', {
+      estado: 'ANULADA',
+      fecha_estado: hoyAnul,
+      usuario_estado: sesionActual.nombre || sesionActual.correo_usuario,
+    }, '?id_orden=eq.' + id);
+    renderOrdenes();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ─── REABRIR OS (solo administradores) ───
+async function reabrirOS(id, numero) {
+  if (!sesionActual || !sesionActual.administrador) {
+    alert('Solo un administrador puede reabrir una orden de servicio.');
+    return;
+  }
+  if (!confirm('¿Reabrir la orden ' + numero + '? Quedará en estado ABIERTA.')) return;
+  try {
+    const hoyReab = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
+    await api('ordenes_servicio', 'PATCH', {
+      estado: 'ABIERTA',
+      fecha_estado: hoyReab,
+      usuario_estado: sesionActual.nombre || sesionActual.correo_usuario,
+    }, '?id_orden=eq.' + id);
     renderOrdenes();
   } catch(e) { alert('Error: ' + e.message); }
 }
@@ -5257,7 +5295,9 @@ async function verFichaOS(id) {
     document.getElementById('ficha-os-contenido').innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:20px;flex-wrap:wrap">'
       + '<div><div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + (o.numero_os || '—') + '</div>'
-      + '<span class="badge ' + est.clase + '">' + est.label + '</span></div>'
+      + '<span class="badge ' + est.clase + '">' + est.label + '</span>'
+      + (o.fecha_estado ? '<span style="font-size:10px;color:var(--suave);margin-left:8px">desde ' + o.fecha_estado + (o.usuario_estado ? ' · ' + o.usuario_estado : '') + '</span>' : '')
+      + '</div>'
       + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL</div>'
       + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">$ ' + parseFloat(o.total_usd || 0).toFixed(2) + '</div>'
       + '<div style="font-size:11px;color:var(--suave)">' + parseFloat(o.total_ves || 0).toLocaleString('es-VE', {minimumFractionDigits:2}) + ' Bs</div>'
@@ -5290,6 +5330,22 @@ async function verFichaOS(id) {
 
     document.getElementById('ficha-os-editar-btn').setAttribute('onclick', 'cerrarModal(\'modal-ficha-os\');abrirEditarOS(' + id + ')');
     document.getElementById('ficha-os-editar-btn').style.display = (o.estado !== 'CERRADA' && o.estado !== 'ANULADA') ? '' : 'none';
+    // Botón Reabrir (solo admins, solo en CERRADA o ANULADA)
+    let btnReabrir = document.getElementById('ficha-os-reabrir-btn');
+    if (!btnReabrir) {
+      btnReabrir = document.createElement('button');
+      btnReabrir.id = 'ficha-os-reabrir-btn';
+      btnReabrir.className = 'btn-secundario';
+      btnReabrir.style.cssText = 'border-color:rgba(255,107,0,0.4);color:var(--naranja)';
+      document.getElementById('ficha-os-editar-btn').parentNode.insertBefore(btnReabrir, document.getElementById('ficha-os-editar-btn'));
+    }
+    if (sesionActual && sesionActual.administrador && (o.estado === 'CERRADA' || o.estado === 'ANULADA')) {
+      btnReabrir.textContent = '↺ Reabrir OS';
+      btnReabrir.setAttribute('onclick', 'cerrarModal(\'modal-ficha-os\');reabrirOS(' + id + ',\'' + (o.numero_os || '') + '\')');
+      btnReabrir.style.display = '';
+    } else {
+      btnReabrir.style.display = 'none';
+    }
     abrirModal('modal-ficha-os');
   } catch(e) { alert('Error: ' + e.message); }
 }
