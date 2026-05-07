@@ -5028,9 +5028,22 @@ async function agregarServicioCatalogo() {
 function onSelCatalogoChange() {
   const sel = document.getElementById('os-sel-cat');
   const precio = document.getElementById('os-precio-cat');
-  if (!sel.value) { precio.value = ''; return; }
+  const descLibre = document.getElementById('os-desc-libre');
+
+  if (!sel.value) {
+    precio.value = '';
+    return;
+  }
+
+  // Autocompletar precio desde el catálogo
   const s = catalogoCache.find(function(x) { return x.id_servicio == sel.value; });
   if (s) precio.value = parseFloat(s.precio_usd || 0).toFixed(2);
+
+  // Limpiar descripción libre y enfocarla para que el usuario pueda añadir detalles
+  if (descLibre) {
+    descLibre.value = '';
+    setTimeout(function() { descLibre.focus(); }, 50);
+  }
 }
 
 // ─── AGREGAR LÍNEA REPUESTO DESDE INVENTARIO ───
@@ -5323,19 +5336,16 @@ function onSelGrupoCatChange() {
   const grupo = document.getElementById('os-sel-grupo-cat').value;
   const selCat = document.getElementById('os-sel-cat');
   const precio = document.getElementById('os-precio-cat');
-  selCat.value = '';
-  precio.value = '';
+
   // Mostrar solo servicios del grupo seleccionado (o todos si grupo vacío)
   Array.from(selCat.options).forEach(function(opt) {
     if (!opt.value) { opt.style.display = ''; return; } // placeholder siempre visible
     opt.style.display = (!grupo || opt.dataset.grupo === grupo) ? '' : 'none';
   });
-  // Seleccionar primer visible si hay grupo
-  if (grupo) {
-    const primera = Array.from(selCat.options).find(function(o) { return o.value && o.style.display !== 'none'; });
-    if (primera) { selCat.value = primera.value; onSelCatalogoChange(); }
-    else selCat.value = '';
-  }
+
+  // Siempre resetear a "— Seleccionar servicio —" y limpiar precio
+  selCat.value = '';
+  precio.value = '';
 }
 
 // Cargar selects cuando se abre el modal OS
