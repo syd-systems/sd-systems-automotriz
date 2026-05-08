@@ -4501,10 +4501,18 @@ async function renderInventario(filtro) {
       + '<button id="inv-tab-reorden" onclick="invCambiarVista(\'reorden\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">Reorden</button>'
       + '<button id="inv-tab-eoq"     onclick="invCambiarVista(\'eoq\')"     class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">EOQ</button>'
       + '</div>'
+      + '<select id="inv-filtro-cat" onchange="invFiltrarCategoria()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
+      + '<option value="">Todas las categorías</option>'
+      + '<option value="limpieza">🧹 Limpieza</option>'
+      + '<option value="oficina">📎 Oficina</option>'
+      + '<option value="otro">📦 Otro</option>'
+      + '<option value="repuesto">🔧 Repuesto</option>'
+      + '<option value="venta">🛒 Venta</option>'
+      + '</select>'
       + '<input type="text" id="buscar-inv" placeholder="Buscar artículo o código..." '
       + 'onkeyup="renderInventario(this.value)" '
-      + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\')}" '
-      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:200px">'
+      + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\');}" '
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:180px">'
       + '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Artículo</button>'
       + '</div></div>'
       + '<div id="alerta-stock-bajo" style="display:none"></div>'
@@ -4516,12 +4524,16 @@ async function renderInventario(filtro) {
   try {
     const items = await api('inventario', 'GET', null, '?order=nombre.asc&select=*');
     inventarioCache = items;
-    const itemsFiltrados = (filtro && filtro.trim())
-      ? items.filter(function(r) {
-          const t = filtro.toLowerCase();
-          return r.nombre.toLowerCase().includes(t) || (r.codigo || '').toLowerCase().includes(t) || (r.descripcion || '').toLowerCase().includes(t);
-        })
-      : items;
+    const catFiltro = document.getElementById('inv-filtro-cat') ? document.getElementById('inv-filtro-cat').value : '';
+  var itemsFiltrados = catFiltro
+    ? items.filter(function(r) { return (r.categoria || 'repuesto') === catFiltro; })
+    : items;
+  if (filtro && filtro.trim()) {
+    const t = filtro.toLowerCase();
+    itemsFiltrados = itemsFiltrados.filter(function(r) {
+      return r.nombre.toLowerCase().includes(t) || (r.codigo || '').toLowerCase().includes(t) || (r.descripcion || '').toLowerCase().includes(t);
+    });
+  }
     const stockBajos = items.filter(function(r) { return r.stock_actual <= r.stock_minimo; }).length;
     const alertaDiv = document.getElementById('alerta-stock-bajo');
     if (alertaDiv) {
@@ -4537,6 +4549,24 @@ async function renderInventario(filtro) {
     const tabla = document.getElementById('tabla-inv-cont');
     if (tabla) tabla.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
   }
+}
+
+function invFiltrarCategoria() {
+  var cat = document.getElementById('inv-filtro-cat').value;
+  var items = cat
+    ? inventarioCache.filter(function(r) { return (r.categoria || 'repuesto') === cat; })
+    : inventarioCache;
+  // Aplicar también filtro de búsqueda si existe
+  var buscar = document.getElementById('buscar-inv');
+  if (buscar && buscar.value.trim()) {
+    var t = buscar.value.toLowerCase();
+    items = items.filter(function(r) {
+      return r.nombre.toLowerCase().includes(t) || (r.codigo || '').toLowerCase().includes(t);
+    });
+  }
+  var contador = document.getElementById('inv-contador');
+  if (contador) contador.textContent = 'Inventario General (' + items.length + ')';
+  invRenderVista(items, _invVista);
 }
 
 function invCambiarVista(vista) {
@@ -4570,7 +4600,7 @@ function invRenderTabla(items, cont) {
       + '<td><div style="display:flex;align-items:center;gap:8px">'
       + '<span style="font-size:10px;font-weight:700;color:' + (abcColor[abc]||'#888') + ';background:' + (abcColor[abc]||'#888') + '22;padding:2px 6px;border-radius:3px">' + abc + '</span>'
       + '<div><div style="font-family:var(--font-mono);font-size:11px;color:var(--suave)">' + (r.codigo || '—')
-      + (r.categoria && r.categoria !== 'repuesto' ? ' · <span style="color:var(--suave)">' + ({'venta':'🛒 Venta','oficina':'📎 Oficina','limpieza':'🧹 Limpieza','otro':'📦 Otro'}[r.categoria]||r.categoria) + '</span>' : '') + '</div>'
+      + ' · <span style="color:var(--suave)">' + ({'repuesto':'🔧 Repuesto','venta':'🛒 Venta','oficina':'📎 Oficina','limpieza':'🧹 Limpieza','otro':'📦 Otro'}[r.categoria] || r.categoria || '🔧 Repuesto') + '</span></div>'
       + '<div style="font-weight:500">' + r.nombre + '</div>'
       + (r.descripcion ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion + '</div>' : '') + '</div></div></td>'
       + '<td><span class="badge ' + (stockBajo ? 'badge-rojo' : 'badge-verde') + '">' + r.stock_actual + ' ' + (r.unidad || 'UND') + '</span>'
