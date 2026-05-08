@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260508370000 -->
+<!-- v20260508380000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -2010,18 +2010,9 @@ async function abrirEditarUsuario(id) {
     yaConfigurado = marcador.length > 0;
   } catch(e) {}
 
-  var tienePermisosGuardados = Object.keys(permisosUsuario).length > 0;
-  var tieneAccesosActivos    = accesosTemp.length > 0;
-
-  if (!yaConfigurado && !tienePermisosGuardados && tieneAccesosActivos) {
-    // Primera vez: pre-seleccionar todo como punto de partida
-    accesosTemp.forEach(function(sigla) {
-      var acciones = PERMISOS_POR_MODULO[sigla];
-      if (acciones) permisosUsuario[sigla] = acciones.map(function(a) { return a.accion; });
-    });
-  }
-  // Si yaConfigurado=true, se respeta EXACTAMENTE lo guardado en Supabase.
-  // Lo que no este en permisosUsuario = permiso desactivado.
+  // Respetar EXACTAMENTE lo guardado en Supabase.
+  // Si no hay permisos guardados = todos desactivados (el admin los configura manualmente).
+  // NUNCA se pre-llenan permisos automáticamente.
   document.getElementById('u-correo').value = u.correo_usuario;
   document.getElementById('u-correo').disabled = true;
   document.getElementById('u-clave').value = '';
@@ -2104,21 +2095,23 @@ function _toggleModulo(sigla, val) {
     ico.innerHTML         = val ? '&#10003;' : '';
   }
 
-  // Auto-seleccionar/deseleccionar TODOS los permisos del modulo
-  var acciones = PERMISOS_POR_MODULO[sigla] || [];
+  // Al DESACTIVAR el módulo: limpiar todos sus permisos en el estado JS
+  // Al ACTIVAR: dejar los permisos en blanco (el admin los configura manualmente)
   if (!_estadoPermisos[sigla]) _estadoPermisos[sigla] = {};
-  acciones.forEach(function(a) {
-    _estadoPermisos[sigla][a.accion] = val;
-  });
-
-  // Actualizar checkboxes de permisos en el DOM
-  var panel = document.getElementById('pnl-' + sigla);
-  if (panel) {
-    var allChecks = panel.querySelectorAll('input[type="checkbox"]');
-    allChecks.forEach(function(cb, idx) {
-      if (idx === 0) return; // primer checkbox es el del modulo mismo
-      cb.checked = val;
+  if (!val) {
+    var acciones = PERMISOS_POR_MODULO[sigla] || [];
+    acciones.forEach(function(a) {
+      _estadoPermisos[sigla][a.accion] = false;
     });
+    // Desmarcar checkboxes en el DOM
+    var panel = document.getElementById('pnl-' + sigla);
+    if (panel) {
+      var allChecks = panel.querySelectorAll('input[type="checkbox"]');
+      allChecks.forEach(function(cb, idx) {
+        if (idx === 0) return;
+        cb.checked = false;
+      });
+    }
   }
 }
 function _togglePermiso(sigla, accion, val) {
@@ -2165,20 +2158,37 @@ async function guardarUsuario() {
     }
   }
 
-  // Accesos seleccionados — checkboxes con name="mod_SIGLA"
-  // Leer estado directamente desde variables JS (no desde el DOM)
+  // Leer estado DESDE EL DOM (fuente de verdad) para evitar desincronización
   var accesosSelec = [];
   var permisosSelec = {};
-  Object.keys(_estadoModulos).forEach(function(sigla) {
-    if (_estadoModulos[sigla]) accesosSelec.push(sigla);
-  });
-  Object.keys(_estadoPermisos).forEach(function(sigla) {
-    Object.keys(_estadoPermisos[sigla]).forEach(function(accion) {
-      if (_estadoPermisos[sigla][accion]) {
-        if (!permisosSelec[sigla]) permisosSelec[sigla] = [];
-        permisosSelec[sigla].push(accion);
-      }
-    });
+
+  TODOS_LOS_MODULOS.forEach(function(m) {
+    var sigla  = m.sigla;
+    var blk    = document.getElementById('blk-' + sigla);
+    var panel  = document.getElementById('pnl-' + sigla);
+    if (!blk || !panel) return;
+
+    // Checkbox principal del módulo (primer checkbox dentro del panel)
+    var cbModulo = panel.querySelector('input[type="checkbox"]');
+    var moduloActivo = cbModulo ? cbModulo.checked : false;
+
+    if (moduloActivo) {
+      accesosSelec.push(sigla);
+      // Leer cada permiso granular desde sus checkboxes en el DOM
+      var acciones = PERMISOS_POR_MODULO[sigla] || [];
+      var cbsPermisos = panel.querySelectorAll('input[type="checkbox"]');
+      cbsPermisos.forEach(function(cb, idx) {
+        if (idx === 0) return; // saltar el checkbox del módulo
+        if (cb.checked) {
+          // Obtener la acción desde el índice
+          var accionIdx = idx - 1;
+          if (acciones[accionIdx]) {
+            if (!permisosSelec[sigla]) permisosSelec[sigla] = [];
+            permisosSelec[sigla].push(acciones[accionIdx].accion);
+          }
+        }
+      });
+    }
   });
 
   try {
