@@ -2102,21 +2102,24 @@ async function guardarUsuario() {
   }
 
   // Accesos seleccionados — checkboxes con name="mod_SIGLA"
-  // Accesos seleccionados — checkboxes con id="mod-SIGLA"
+  // Accesos seleccionados
   var accesosSelec = [];
-  document.querySelectorAll('#accesos-grid input[type=checkbox][id^="mod-"]:checked').forEach(function(cb) {
-    accesosSelec.push(cb.dataset.sigla);
-  });
-  // Permisos granulares — checkboxes con data-modulo y data-accion
   var permisosSelec = {};
-  document.querySelectorAll('#accesos-grid input[type=checkbox][data-modulo]:checked').forEach(function(cb) {
-    var mod = cb.dataset.modulo;
-    var acc = cb.dataset.accion;
-    if (mod && acc) {
-      if (!permisosSelec[mod]) permisosSelec[mod] = [];
-      permisosSelec[mod].push(acc);
+  var allChecks = document.getElementById('accesos-grid').querySelectorAll('input[type=checkbox]');
+  allChecks.forEach(function(cb) {
+    if (!cb.checked) return;
+    var sigla = cb.getAttribute('data-sigla');
+    var modulo = cb.getAttribute('data-modulo');
+    var accion = cb.getAttribute('data-accion');
+    if (sigla) {
+      accesosSelec.push(sigla);
+    } else if (modulo && accion) {
+      if (!permisosSelec[modulo]) permisosSelec[modulo] = [];
+      permisosSelec[modulo].push(accion);
     }
   });
+  console.log('accesosSelec:', accesosSelec);
+  console.log('permisosSelec:', JSON.stringify(permisosSelec));
 
   try {
     if (!idEdit) {
