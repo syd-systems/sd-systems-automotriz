@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260506330000 -->
+<!-- v20260508340000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -2053,13 +2053,13 @@ function renderAccesosModal(seleccionados, permisosSelec) {
     var acciones = PERMISOS_POR_MODULO[m.sigla] || [];
     html += '<div id="blk-' + m.sigla + '" style="border:1px solid ' + (on ? 'var(--naranja)' : 'var(--borde)') + ';border-radius:6px;margin-bottom:4px">';
     html += '<div onclick="_togglePanel(\'' + m.sigla + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--gris2);cursor:pointer">';
-    html += '<div style="width:16px;height:16px;border-radius:3px;border:2px solid ' + (on ? 'var(--naranja)' : 'var(--borde)') + ';background:' + (on ? 'var(--naranja)' : 'transparent') + ';color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center">' + (on ? '&#10003;' : '') + '</div>';
+    html += '<div id="ico-' + m.sigla + '" style="width:16px;height:16px;border-radius:3px;border:2px solid ' + (on ? 'var(--naranja)' : 'var(--borde)') + ';background:' + (on ? 'var(--naranja)' : 'transparent') + ';color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + (on ? '&#10003;' : '') + '</div>';
     html += '<span style="font-size:13px;font-weight:500">' + m.icono + ' ' + m.nombre + '</span>';
     html += '<span style="margin-left:auto;font-size:10px;color:var(--suave)">' + (acciones.length ? acciones.length + ' permisos' : '') + '</span>';
     html += '</div>';
     html += '<div id="pnl-' + m.sigla + '" style="display:none;padding:10px 14px 12px;border-top:1px solid var(--borde)">';
-    html += '<label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;font-weight:600;padding:3px 0">';
-    html += '<input type="checkbox" style="accent-color:var(--naranja);width:14px;height:14px" ' + (on ? 'checked' : '') + ' onchange="_toggleModulo(\'' + m.sigla + '\',this.checked)"> Dar acceso a ' + m.nombre + '</label>';
+    html += '<label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;font-weight:600;padding:3px 0" onclick="event.stopPropagation()">';
+    html += '<input type="checkbox" style="accent-color:var(--naranja);width:14px;height:14px" ' + (on ? 'checked' : '') + ' onchange="event.stopPropagation();_toggleModulo(\'' + m.sigla + '\',this.checked)"> Dar acceso a ' + m.nombre + '</label>';
     if (acciones.length) {
       html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--borde)">';
       acciones.forEach(function(a) {
@@ -2067,7 +2067,7 @@ function renderAccesosModal(seleccionados, permisosSelec) {
         var lock = a.label.indexOf('\uD83D\uDD12') >= 0 || a.label.indexOf('\uD83D') === 0;
         var col = lock ? '#f59e0b' : 'var(--suave)';
         html += '<label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;padding:3px 0;color:' + col + '">';
-        html += '<input type="checkbox" style="accent-color:var(--naranja);width:13px;height:13px" ' + (c ? 'checked' : '') + ' onchange="_togglePermiso(\'' + m.sigla + '\',\'' + a.accion + '\',this.checked)"> ';
+        html += '<input type="checkbox" style="accent-color:var(--naranja);width:13px;height:13px" ' + (c ? 'checked' : '') + ' onchange="event.stopPropagation();_togglePermiso(\'' + m.sigla + '\',\'' + a.accion + '\',this.checked)"> ';
         html += a.label + '</label>';
       });
       html += '</div>';
@@ -2082,8 +2082,35 @@ function _togglePanel(sigla) {
 }
 function _toggleModulo(sigla, val) {
   _estadoModulos[sigla] = val;
+
+  // Actualizar borde del bloque
   var b = document.getElementById('blk-' + sigla);
   if (b) b.style.borderColor = val ? 'var(--naranja)' : 'var(--borde)';
+
+  // Actualizar icono visual del cuadrito
+  var ico = document.getElementById('ico-' + sigla);
+  if (ico) {
+    ico.style.background  = val ? 'var(--naranja)' : 'transparent';
+    ico.style.borderColor = val ? 'var(--naranja)' : 'var(--borde)';
+    ico.innerHTML         = val ? '&#10003;' : '';
+  }
+
+  // Auto-seleccionar/deseleccionar TODOS los permisos del modulo
+  var acciones = PERMISOS_POR_MODULO[sigla] || [];
+  if (!_estadoPermisos[sigla]) _estadoPermisos[sigla] = {};
+  acciones.forEach(function(a) {
+    _estadoPermisos[sigla][a.accion] = val;
+  });
+
+  // Actualizar checkboxes de permisos en el DOM
+  var panel = document.getElementById('pnl-' + sigla);
+  if (panel) {
+    var allChecks = panel.querySelectorAll('input[type="checkbox"]');
+    allChecks.forEach(function(cb, idx) {
+      if (idx === 0) return; // primer checkbox es el del modulo mismo
+      cb.checked = val;
+    });
+  }
 }
 function _togglePermiso(sigla, accion, val) {
   if (!_estadoPermisos[sigla]) _estadoPermisos[sigla] = {};
