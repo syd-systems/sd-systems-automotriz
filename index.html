@@ -6390,29 +6390,29 @@ window.addEventListener('load', () => {
           <label>Código</label>
           <input type="text" id="inv-codigo" placeholder="Ej: REP-001" style="text-transform:uppercase">
         </div>
-        <div class="form-campo">
-          <label>Unidad</label>
-          <select id="inv-unidad">
-            <option value="UND">UND — Unidad</option>
-            <option value="LT">LT — Litro</option>
-            <option value="KG">KG — Kilogramo</option>
-            <option value="MT">MT — Metro</option>
-            <option value="JGO">JGO — Juego</option>
-            <option value="PAR">PAR — Par</option>
-          </select>
-        </div>
         <div class="form-campo form-full">
           <label>Nombre del Artículo *</label>
           <input type="text" id="inv-nombre" placeholder="Ej: Filtro de aceite Bosch">
         </div>
         <div class="form-campo">
-          <label>Categoría</label>
+          <label>Selección Categoría</label>
           <select id="inv-categoria" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
-            <option value="repuesto">🔧 Repuesto</option>
-            <option value="venta">🛒 Artículo para Venta</option>
-            <option value="oficina">📎 Oficina</option>
             <option value="limpieza">🧹 Limpieza</option>
+            <option value="oficina">📎 Oficina</option>
             <option value="otro">📦 Otro</option>
+            <option value="repuesto">🔧 Repuesto</option>
+            <option value="venta">🛒 Venta</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Selección Unidad</label>
+          <select id="inv-unidad" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
+            <option value="JGO">JGO — Juego</option>
+            <option value="KG">KG — Kilogramo</option>
+            <option value="LT">LT — Litro</option>
+            <option value="MT">MT — Metro</option>
+            <option value="PAR">PAR — Par</option>
+            <option value="UND">UND — Unidad</option>
           </select>
         </div>
         <div class="form-campo form-full">
