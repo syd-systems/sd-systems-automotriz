@@ -2028,67 +2028,43 @@ async function abrirEditarUsuario(id) {
 function renderAccesosModal(seleccionados, permisosSelec) {
   permisosSelec = permisosSelec || {};
   const grid = document.getElementById('accesos-grid');
-  // Use full-width single column for expandable blocks
   grid.style.gridTemplateColumns = '1fr';
+  grid.style.gap = '6px';
   var html = '';
   TODOS_LOS_MODULOS.forEach(function(m) {
     var tieneAcceso = seleccionados.includes(m.sigla);
     var acciones = PERMISOS_POR_MODULO[m.sigla] || [];
     var permsMod = permisosSelec[m.sigla] || [];
-    var uid = 'mod-' + m.sigla;
-    var accionesHTML = '';
+    // Módulo header row
+    html += '<div style="border:1px solid ' + (tieneAcceso ? 'var(--naranja)' : 'var(--borde)') + ';border-radius:6px;overflow:hidden">';
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--gris2);cursor:pointer" onclick="(function(el){var d=el.nextElementSibling;d.style.display=d.style.display===\'none\'?\'block\':\'none\';})(this)">';
+    html += '<input type="checkbox" id="mod-' + m.sigla + '" data-sigla="' + m.sigla + '"';
+    html += (tieneAcceso ? ' checked' : '');
+    html += ' style="accent-color:var(--naranja);width:15px;height:15px;flex-shrink:0" onclick="event.stopPropagation()">';
+    html += '<span style="font-size:13px;font-weight:500">' + m.icono + ' ' + m.nombre + '</span>';
+    html += '<span style="margin-left:auto;font-size:10px;color:var(--suave)">' + (acciones.length ? '▾ ' + acciones.length + ' permisos' : '') + '</span>';
+    html += '</div>';
+    // Acciones panel
+    html += '<div style="display:' + (tieneAcceso ? 'block' : 'none') + ';padding:10px 14px 12px;border-top:1px solid var(--borde)">';
     acciones.forEach(function(a) {
       var checked = permsMod.includes(a.accion);
-      var esSensible = a.label.indexOf('🔒') === 0;
-      accionesHTML += '<label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;padding:4px 0;color:' + (esSensible ? '#f59e0b' : 'var(--suave)') + '">'
-        + '<input type="checkbox" data-modulo="' + m.sigla + '" data-accion="' + a.accion + '"'
-        + (checked ? ' checked' : '') + ' style="accent-color:var(--naranja);width:13px;height:13px;flex-shrink:0"> '
-        + a.label + '</label>';
+      var color = a.label.indexOf('🔒') === 0 ? '#f59e0b' : 'var(--suave)';
+      html += '<label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;padding:3px 0;color:' + color + '">';
+      html += '<input type="checkbox" data-modulo="' + m.sigla + '" data-accion="' + a.accion + '"';
+      html += (checked ? ' checked' : '');
+      html += ' style="accent-color:var(--naranja);width:13px;height:13px;flex-shrink:0"> ';
+      html += a.label + '</label>';
     });
-    // Use <details>/<summary> for native expand - no JS needed for toggle
-    html += '<details' + (tieneAcceso ? ' open' : '') + ' style="border:1px solid ' + (tieneAcceso ? 'var(--naranja)' : 'var(--borde)') + ';border-radius:6px;overflow:hidden;background:var(--gris2)">'
-      + '<summary style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;list-style:none;outline:none" '
-      + 'onclick="toggleModuloDetalle(this)">'
-      + '<div id="chk-' + m.sigla + '" style="width:18px;height:18px;border-radius:3px;border:2px solid ' + (tieneAcceso ? 'var(--naranja)' : 'var(--borde)') + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:' + (tieneAcceso ? 'var(--naranja)' : 'transparent') + ';color:#fff;flex-shrink:0">'
-      + (tieneAcceso ? '✓' : '') + '</div>'
-      + '<span style="font-size:13px;font-weight:500">' + m.icono + ' ' + m.nombre + '</span>'
-      + '<span style="margin-left:auto;font-size:10px;color:var(--suave)">' + (acciones.length ? acciones.length + ' permisos' : '') + '</span>'
-      + '</summary>'
-      + '<div style="padding:10px 14px 12px;border-top:1px solid var(--borde)">'
-      + '<div style="font-size:10px;color:var(--suave);margin-bottom:6px;letter-spacing:1px">ACCESO AL MÓDULO</div>'
-      + '<label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:4px 0;font-weight:500">'
-      + '<input type="checkbox" id="acc-' + m.sigla + '" data-sigla="' + m.sigla + '" onchange="toggleModuloAcceso(this)"'
-      + (tieneAcceso ? ' checked' : '') + ' style="accent-color:var(--naranja);width:14px;height:14px"> '
-      + 'Dar acceso a ' + m.nombre + '</label>'
-      + (acciones.length ? '<div style="font-size:10px;color:var(--suave);margin:8px 0 4px;letter-spacing:1px">ACCIONES PERMITIDAS</div>' + accionesHTML : '')
-      + '</div>'
-      + '</details>';
+    html += '</div>';
+    html += '</div>';
   });
   grid.innerHTML = html;
 }
 
-function toggleModuloDetalle(summary) {
-  // Update border color of parent details when opened/closed
-  setTimeout(function() {
-    var details = summary.parentElement;
-    var abierto = details.open;
-    details.style.borderColor = abierto ? 'var(--naranja)' : 'var(--borde)';
-  }, 10);
-}
-
-function toggleModuloAcceso(cb) {
-  var sigla = cb.dataset.sigla;
-  var chk = document.getElementById('chk-' + sigla);
-  if (chk) {
-    chk.style.background = cb.checked ? 'var(--naranja)' : 'transparent';
-    chk.style.borderColor = cb.checked ? 'var(--naranja)' : 'var(--borde)';
-    chk.textContent = cb.checked ? '✓' : '';
-  }
-}
-
-// Deprecated - kept for compat
 function toggleAcceso(el, sigla) {}
 function toggleAccesoBloque(el) {}
+function toggleModuloDetalle(s) {}
+function toggleModuloAcceso(cb) {}
 
 async function guardarUsuario() {
   const nombre  = document.getElementById('u-nombre').value.trim();
@@ -2125,16 +2101,21 @@ async function guardarUsuario() {
     }
   }
 
-  // Accesos seleccionados (nueva estructura con checkboxes por módulo)
-  const accesosSelec = [...document.querySelectorAll('#accesos-grid input[type=checkbox][id^=acc-]:checked')]
-    .map(function(cb) { return cb.dataset.sigla; }).filter(Boolean);
-  // Permisos granulares seleccionados
-  const permisosSelec = {};
+  // Accesos seleccionados — checkboxes con name="mod_SIGLA"
+  // Accesos seleccionados — checkboxes con id="mod-SIGLA"
+  var accesosSelec = [];
+  document.querySelectorAll('#accesos-grid input[type=checkbox][id^="mod-"]:checked').forEach(function(cb) {
+    accesosSelec.push(cb.dataset.sigla);
+  });
+  // Permisos granulares — checkboxes con data-modulo y data-accion
+  var permisosSelec = {};
   document.querySelectorAll('#accesos-grid input[type=checkbox][data-modulo]:checked').forEach(function(cb) {
-    const mod = cb.dataset.modulo;
-    const acc = cb.dataset.accion;
-    if (!permisosSelec[mod]) permisosSelec[mod] = [];
-    permisosSelec[mod].push(acc);
+    var mod = cb.dataset.modulo;
+    var acc = cb.dataset.accion;
+    if (mod && acc) {
+      if (!permisosSelec[mod]) permisosSelec[mod] = [];
+      permisosSelec[mod].push(acc);
+    }
   });
 
   try {
