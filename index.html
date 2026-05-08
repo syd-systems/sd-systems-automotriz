@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260508360000 -->
+<!-- v20260508370000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -1308,60 +1308,59 @@ const TODOS_LOS_MODULOS = [
 ];
 
 // ─── PERMISOS GRANULARES POR MÓDULO ───
+// NOTA: Ver la lista siempre está disponible si el módulo está activo.
+// VER = abrir la ficha del registro | CREAR/EDITAR/ELIMINAR = acciones sobre registros
 const PERMISOS_POR_MODULO = {
-  VEHICULOS:    [
-    { accion: 'VER',      label: 'Ver vehículos' },
+  VEHICULOS: [
+    { accion: 'VER',      label: 'Ver ficha del vehículo' },
     { accion: 'CREAR',    label: 'Registrar nuevo vehículo' },
     { accion: 'EDITAR',   label: 'Editar vehículo' },
     { accion: 'ELIMINAR', label: 'Eliminar vehículo' },
   ],
   PROPIETARIOS: [
-    { accion: 'VER',                  label: 'Ver propietarios' },
+    { accion: 'VER',                  label: 'Ver ficha del propietario' },
     { accion: 'CREAR',                label: 'Registrar propietario' },
     { accion: 'EDITAR',               label: 'Editar propietario' },
     { accion: 'ELIMINAR',             label: 'Eliminar propietario' },
-    { accion: 'VER_DATOS_PERSONALES', label: '🔒 Ver datos personales (teléfono, dirección)' },
+    { accion: 'VER_DATOS_PERSONALES', label: '🔒 Ver datos personales (teléfono, dirección, correo)' },
   ],
   SERVICIOS: [
-    { accion: 'VER',         label: 'Ver órdenes de servicio' },
+    { accion: 'VER',         label: 'Ver ficha / detalle de la OS' },
     { accion: 'CREAR',       label: 'Crear nueva OS' },
     { accion: 'EDITAR',      label: 'Editar OS abierta' },
     { accion: 'ANULAR',      label: 'Anular OS' },
-    { accion: 'REABRIR',     label: 'Reabrir OS cerrada/anulada' },
-    { accion: 'VER_TOTALES', label: '🔒 Ver totales y montos' },
+    { accion: 'REABRIR',     label: 'Reabrir OS cerrada / anulada' },
+    { accion: 'VER_TOTALES', label: '🔒 Ver totales y montos de la OS' },
     { accion: 'VER_TASA',    label: '🔒 Ver tasa de cambio en OS' },
   ],
   INVENTARIO: [
-    { accion: 'VER',           label: 'Ver inventario general' },
     { accion: 'CREAR',         label: 'Registrar nuevo artículo' },
     { accion: 'EDITAR',        label: 'Editar artículo' },
     { accion: 'ELIMINAR',      label: 'Eliminar artículo' },
-    { accion: 'ENTRADA_STOCK', label: 'Registrar entrada de stock' },
+    { accion: 'ENTRADA_STOCK', label: 'Registrar entrada de stock (+ Stock)' },
     { accion: 'VER_COSTOS',    label: '🔒 Ver precios de costo y CPP' },
     { accion: 'VER_EOQ_ABC',   label: '🔒 Ver análisis ABC / EOQ / Reorden' },
   ],
   CATALOGO: [
-    { accion: 'VER',      label: 'Ver catálogo de servicios' },
     { accion: 'CREAR',    label: 'Agregar servicio al catálogo' },
     { accion: 'EDITAR',   label: 'Editar servicio del catálogo' },
     { accion: 'ELIMINAR', label: 'Eliminar servicio del catálogo' },
   ],
   TASAS: [
-    { accion: 'VER',    label: '🔒 Ver tipos de cambio' },
-    { accion: 'CREAR',  label: 'Registrar nueva tasa' },
+    { accion: 'VER',    label: '🔒 Ver valores de tasas de cambio' },
+    { accion: 'CREAR',  label: 'Registrar / sincronizar nueva tasa' },
     { accion: 'EDITAR', label: 'Editar tasa existente' },
   ],
   EMPLEADOS: [
-    { accion: 'VER',                  label: 'Ver empleados' },
+    { accion: 'VER',                  label: 'Ver ficha del empleado' },
     { accion: 'CREAR',                label: 'Registrar empleado' },
     { accion: 'EDITAR',               label: 'Editar empleado' },
     { accion: 'ELIMINAR',             label: 'Eliminar empleado' },
-    { accion: 'VER_DATOS_PERSONALES', label: '🔒 Ver datos personales (sueldo, ID, teléfono)' },
+    { accion: 'VER_DATOS_PERSONALES', label: '🔒 Ver datos personales (sueldo, cédula, teléfono)' },
   ],
   USUARIOS: [
-    { accion: 'VER',    label: 'Ver lista de usuarios' },
     { accion: 'CREAR',  label: 'Crear nuevo usuario' },
-    { accion: 'EDITAR', label: 'Editar usuario' },
+    { accion: 'EDITAR', label: 'Editar usuario y permisos' },
   ],
 };
 
