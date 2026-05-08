@@ -2028,54 +2028,67 @@ async function abrirEditarUsuario(id) {
 function renderAccesosModal(seleccionados, permisosSelec) {
   permisosSelec = permisosSelec || {};
   const grid = document.getElementById('accesos-grid');
+  // Use full-width single column for expandable blocks
+  grid.style.gridTemplateColumns = '1fr';
   var html = '';
   TODOS_LOS_MODULOS.forEach(function(m) {
     var tieneAcceso = seleccionados.includes(m.sigla);
     var acciones = PERMISOS_POR_MODULO[m.sigla] || [];
     var permsMod = permisosSelec[m.sigla] || [];
+    var uid = 'mod-' + m.sigla;
     var accionesHTML = '';
     acciones.forEach(function(a) {
       var checked = permsMod.includes(a.accion);
       var esSensible = a.label.indexOf('🔒') === 0;
-      accionesHTML += '<label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;padding:3px 0;color:' + (esSensible ? '#f59e0b' : 'var(--suave)') + '">'
-        + '<input type="checkbox" data-modulo="' + m.sigla + '" data-accion="' + a.accion + '" '
-        + (checked ? 'checked' : '') + ' style="accent-color:var(--naranja);width:13px;height:13px"> '
+      accionesHTML += '<label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;padding:4px 0;color:' + (esSensible ? '#f59e0b' : 'var(--suave)') + '">'
+        + '<input type="checkbox" data-modulo="' + m.sigla + '" data-accion="' + a.accion + '"'
+        + (checked ? ' checked' : '') + ' style="accent-color:var(--naranja);width:13px;height:13px;flex-shrink:0"> '
         + a.label + '</label>';
     });
-    var checkBg = tieneAcceso ? 'var(--naranja)' : 'transparent';
-    var checkBorder = tieneAcceso ? 'var(--naranja)' : 'var(--borde)';
-    var checkMark = tieneAcceso ? '&#10003;' : '';
-    html += '<div class="acceso-bloque" style="background:var(--gris2);border:1px solid var(--borde);border-radius:6px;overflow:hidden;margin-bottom:6px">'
-      + '<div class="acceso-item ' + (tieneAcceso ? 'seleccionado' : '') + '" data-sigla="' + m.sigla + '" '
-      + 'onclick="toggleAccesoBloque(this)" '
-      + 'style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px">'
-      + '<div class="acceso-check" style="width:18px;height:18px;border-radius:3px;border:2px solid ' + checkBorder + ';display:flex;align-items:center;justify-content:center;font-size:11px;background:' + checkBg + '">'
-      + checkMark + '</div>'
-      + '<span style="font-size:13px">' + m.icono + ' ' + m.nombre + '</span>'
+    // Use <details>/<summary> for native expand - no JS needed for toggle
+    html += '<details' + (tieneAcceso ? ' open' : '') + ' style="border:1px solid ' + (tieneAcceso ? 'var(--naranja)' : 'var(--borde)') + ';border-radius:6px;overflow:hidden;background:var(--gris2)">'
+      + '<summary style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;list-style:none;outline:none" '
+      + 'onclick="toggleModuloDetalle(this)">'
+      + '<div id="chk-' + m.sigla + '" style="width:18px;height:18px;border-radius:3px;border:2px solid ' + (tieneAcceso ? 'var(--naranja)' : 'var(--borde)') + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:' + (tieneAcceso ? 'var(--naranja)' : 'transparent') + ';color:#fff;flex-shrink:0">'
+      + (tieneAcceso ? '✓' : '') + '</div>'
+      + '<span style="font-size:13px;font-weight:500">' + m.icono + ' ' + m.nombre + '</span>'
+      + '<span style="margin-left:auto;font-size:10px;color:var(--suave)">' + (acciones.length ? acciones.length + ' permisos' : '') + '</span>'
+      + '</summary>'
+      + '<div style="padding:10px 14px 12px;border-top:1px solid var(--borde)">'
+      + '<div style="font-size:10px;color:var(--suave);margin-bottom:6px;letter-spacing:1px">ACCESO AL MÓDULO</div>'
+      + '<label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:4px 0;font-weight:500">'
+      + '<input type="checkbox" id="acc-' + m.sigla + '" data-sigla="' + m.sigla + '" onchange="toggleModuloAcceso(this)"'
+      + (tieneAcceso ? ' checked' : '') + ' style="accent-color:var(--naranja);width:14px;height:14px"> '
+      + 'Dar acceso a ' + m.nombre + '</label>'
+      + (acciones.length ? '<div style="font-size:10px;color:var(--suave);margin:8px 0 4px;letter-spacing:1px">ACCIONES PERMITIDAS</div>' + accionesHTML : '')
       + '</div>'
-      + '<div class="acceso-acciones" style="padding:' + (tieneAcceso ? '8px 14px 10px' : '0') + ';display:' + (tieneAcceso ? 'block' : 'none') + '">'
-      + accionesHTML
-      + '</div></div>';
+      + '</details>';
   });
   grid.innerHTML = html;
 }
 
-function toggleAccesoBloque(el) {
-  el.classList.toggle('seleccionado');
-  const check = el.querySelector('.acceso-check');
-  const tieneAcceso = el.classList.contains('seleccionado');
-  check.style.background = tieneAcceso ? 'var(--naranja)' : 'transparent';
-  check.style.borderColor = tieneAcceso ? 'var(--naranja)' : 'var(--borde)';
-  check.textContent = tieneAcceso ? '✓' : '';
-  const accionesDiv = el.nextElementSibling;
-  if (accionesDiv) {
-    accionesDiv.style.display = tieneAcceso ? 'block' : 'none';
-    accionesDiv.style.padding = tieneAcceso ? '8px 14px 10px' : '0';
+function toggleModuloDetalle(summary) {
+  // Update border color of parent details when opened/closed
+  setTimeout(function() {
+    var details = summary.parentElement;
+    var abierto = details.open;
+    details.style.borderColor = abierto ? 'var(--naranja)' : 'var(--borde)';
+  }, 10);
+}
+
+function toggleModuloAcceso(cb) {
+  var sigla = cb.dataset.sigla;
+  var chk = document.getElementById('chk-' + sigla);
+  if (chk) {
+    chk.style.background = cb.checked ? 'var(--naranja)' : 'transparent';
+    chk.style.borderColor = cb.checked ? 'var(--naranja)' : 'var(--borde)';
+    chk.textContent = cb.checked ? '✓' : '';
   }
 }
 
 // Deprecated - kept for compat
-function toggleAcceso(el, sigla) { toggleAccesoBloque(el, sigla); }
+function toggleAcceso(el, sigla) {}
+function toggleAccesoBloque(el) {}
 
 async function guardarUsuario() {
   const nombre  = document.getElementById('u-nombre').value.trim();
@@ -2112,12 +2125,9 @@ async function guardarUsuario() {
     }
   }
 
-  // Accesos seleccionados
-  const accesosSelec = [...document.querySelectorAll('.acceso-item.seleccionado')]
-    .map(el => {
-      const match = el.getAttribute('onclick') && el.getAttribute('onclick').match(/'([^']+)'\)/);
-      return match ? match[1] : null;
-    }).filter(Boolean);
+  // Accesos seleccionados (nueva estructura con checkboxes por módulo)
+  const accesosSelec = [...document.querySelectorAll('#accesos-grid input[type=checkbox][id^=acc-]:checked')]
+    .map(function(cb) { return cb.dataset.sigla; }).filter(Boolean);
   // Permisos granulares seleccionados
   const permisosSelec = {};
   document.querySelectorAll('.acceso-acciones input[type=checkbox]:checked').forEach(function(cb) {
