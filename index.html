@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260508340000 -->
+<!-- v20260508350000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -2003,16 +2003,26 @@ async function abrirEditarUsuario(id) {
       '?correo_usuario=eq.' + encodeURIComponent(u.correo_usuario) + '&activo=eq.true&select=acceso_tipo');
     accesosTemp = aTemp.map(function(a) { return a.acceso_tipo; });
   } catch(e) {}
-  // Solo pre-llenar si NO hay permisos guardados (primera vez)
-  // Esto evita sobreescribir permisos guardados con la lista completa
+  // Detectar si ya fue configurado via modal (tiene marcador _CONFIGURADO)
+  var yaConfigurado = false;
+  try {
+    var marcador = await api('usuarios_permisos', 'GET', null,
+      '?correo_usuario=eq.' + encodeURIComponent(u.correo_usuario) + '&accion=eq._CONFIGURADO&select=id_permiso');
+    yaConfigurado = marcador.length > 0;
+  } catch(e) {}
+
   var tienePermisosGuardados = Object.keys(permisosUsuario).length > 0;
-  if (!tienePermisosGuardados && accesosTemp.length > 0) {
-    // Primera vez: pre-seleccionar todo para no romper accesos existentes
+  var tieneAccesosActivos    = accesosTemp.length > 0;
+
+  if (!yaConfigurado && !tienePermisosGuardados && tieneAccesosActivos) {
+    // Primera vez: pre-seleccionar todo como punto de partida
     accesosTemp.forEach(function(sigla) {
       var acciones = PERMISOS_POR_MODULO[sigla];
       if (acciones) permisosUsuario[sigla] = acciones.map(function(a) { return a.accion; });
     });
   }
+  // Si yaConfigurado=true, se respeta EXACTAMENTE lo guardado en Supabase.
+  // Lo que no este en permisosUsuario = permiso desactivado.
   document.getElementById('u-correo').value = u.correo_usuario;
   document.getElementById('u-correo').disabled = true;
   document.getElementById('u-clave').value = '';
@@ -2066,7 +2076,7 @@ function renderAccesosModal(seleccionados, permisosSelec) {
         var c = _estadoPermisos[m.sigla][a.accion];
         var lock = a.label.indexOf('\uD83D\uDD12') >= 0 || a.label.indexOf('\uD83D') === 0;
         var col = lock ? '#f59e0b' : 'var(--suave)';
-        html += '<label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;padding:3px 0;color:' + col + '">';
+        html += '<label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;padding:3px 0;color:' + col + '" onclick="event.stopPropagation()">';
         html += '<input type="checkbox" style="accent-color:var(--naranja);width:13px;height:13px" ' + (c ? 'checked' : '') + ' onchange="event.stopPropagation();_togglePermiso(\'' + m.sigla + '\',\'' + a.accion + '\',this.checked)"> ';
         html += a.label + '</label>';
       });
@@ -2203,6 +2213,10 @@ async function guardarUsuario() {
           } catch(eNP) { console.warn('Error permiso nuevo:', npMod, npAccs[npj], eNP); }
         }
       }
+      // Insertar marcador de configuracion (evita pre-llenado en futuras ediciones)
+      try {
+        await api('usuarios_permisos', 'POST', { correo_usuario: correo, modulo: '_SISTEMA', accion: '_CONFIGURADO' });
+      } catch(eM) {}
       okEl.textContent = '✓ Usuario creado exitosamente.';
     } else {
       // EDITAR USUARIO
@@ -2238,6 +2252,13 @@ async function guardarUsuario() {
           }
         }
       }
+      // Reinsertar marcador de configuracion
+      try {
+        const correoMarcador = usuariosCache.find(function(u){ return u.id_usuario == idEdit; })?.correo_usuario;
+        if (correoMarcador) {
+          await api('usuarios_permisos', 'POST', { correo_usuario: correoMarcador, modulo: '_SISTEMA', accion: '_CONFIGURADO' });
+        }
+      } catch(eM) {}
       okEl.textContent = '✓ Usuario actualizado exitosamente.';
     }
 
