@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260508350000 -->
+<!-- v20260508360000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -1867,7 +1867,7 @@ async function renderUsuarios(filtro) {
               onkeydown="if(event.key==='Enter'){event.preventDefault();renderUsuarios(this.value)}else if(event.key==='Escape'){this.value='';renderUsuarios('')}"
               style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:240px">
             <button class="btn-secundario" onclick="document.getElementById('buscar-usu').value='';renderUsuarios()">↻ Actualizar</button>
-            <button class="btn-primario" onclick="abrirNuevoUsuario()">+ Nuevo Usuario</button>
+            ${puedo('USUARIOS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoUsuario()">+ Nuevo Usuario</button>' : ''}
           </div>
         </div>
         <div class="tabla-container" id="tabla-usu-cont">
@@ -1930,7 +1930,7 @@ async function renderUsuarios(filtro) {
         </td>
         <td>
           <div style="display:flex;gap:8px">
-            <button class="btn-secundario" onclick="abrirEditarUsuario(${u.id_usuario})">Editar</button>
+            ${puedo('USUARIOS','EDITAR') ? `<button class="btn-secundario" onclick="abrirEditarUsuario(${u.id_usuario})">Editar</button>` : ''}
             <button class="btn-secundario" onclick="resetearClave('${u.correo_usuario}','${u.nombre}')" title="Enviar correo de recuperación">🔑 Reset</button>
             ${u.correo_usuario !== sesionActual.correo_usuario
               ? `<button class="btn-peligro" onclick="eliminarUsuario(${u.id_usuario},'${u.nombre}')">Eliminar</button>`
@@ -2549,7 +2549,7 @@ async function renderTasas() {
       + '</div>'
       + '<div style="display:flex;gap:10px">'
       + '<button onclick="renderTasas()" class="btn-secundario">↻ Actualizar vista</button>'
-      + '<button onclick="sincronizarTasasBCV(this)" class="btn-primario" style="display:flex;align-items:center;gap:6px"><span>⬇</span> Sincronizar BCV</button>'
+      + (puedo('TASAS','CREAR') ? '<button onclick="sincronizarTasasBCV(this)" class="btn-primario" style="display:flex;align-items:center;gap:6px"><span>⬇</span> Sincronizar BCV</button>' : '')
       + '</div></div>'
       + '<div style="display:flex;gap:16px;flex-wrap:wrap">'
       + tarjeta('🇺🇸', 'USD',  usdVal,  usdCierre,  fuenteUsd,  '#FF6B00')
@@ -3566,7 +3566,7 @@ async function cargarPropietarios(filtro) {
       + 'onkeyup="cargarPropietarios(this.value)" '
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();cargarPropietarios(this.value)}else if(event.key===\'Escape\'){this.value=\'\';cargarPropietarios(\'\')}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:250px">'
-      + '<button class="btn-primario" onclick="abrirPropietario(null)">+ Nuevo Propietario</button>'
+      + (puedo('PROPIETARIOS','CREAR') ? '<button class="btn-primario" onclick="abrirPropietario(null)">+ Nuevo Propietario</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container" id="tabla-prop-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
       + '</div>';
@@ -3599,14 +3599,14 @@ async function cargarPropietarios(filtro) {
         + '<div style="font-weight:500">' + p.nombre_completo + '</div>'
         + '<div style="font-size:11px;color:var(--suave)">' + p.tipo_doc + '-' + p.numero_doc + '</div>'
         + '</div></div></td>'
-        + '<td style="font-size:12px">' + (p.telefono || '—') + '</td>'
-        + '<td style="font-size:12px">' + (p.correo || '—') + '</td>'
+        + '<td style="font-size:12px">' + (puedo('PROPIETARIOS','VER_DATOS_PERSONALES') ? (p.telefono || '—') : '<span style="color:#444;font-size:11px">🔒 Restringido</span>') + '</td>'
+        + '<td style="font-size:12px">' + (puedo('PROPIETARIOS','VER_DATOS_PERSONALES') ? (p.correo || '—') : '<span style="color:#444;font-size:11px">🔒 Restringido</span>') + '</td>'
         + '<td><span class="badge badge-naranja" style="cursor:pointer" onclick="verVehiculosPropietario(' + p.id_propietario + ')">' + vCount + ' veh.</span></td>'
         + '<td style="font-size:11px;color:var(--suave)">' + (vList.length > 30 ? vList.substring(0,30)+'...' : vList) + '</td>'
         + '<td>'
         + '<div style="display:flex;gap:6px">'
-        + '<button class="btn-secundario" onclick="abrirPropietario(' + p.id_propietario + ')">Editar</button>'
-        + '<button class="btn-secundario" onclick="verFichaPropietario(' + p.id_propietario + ')">Ficha</button>'
+        + (puedo('PROPIETARIOS','EDITAR') ? '<button class="btn-secundario" onclick="abrirPropietario(' + p.id_propietario + ')">Editar</button>' : '')
+        + (puedo('PROPIETARIOS','VER') ? '<button class="btn-secundario" onclick="verFichaPropietario(' + p.id_propietario + ')">Ficha</button>' : '')
         + '</div></td>'
         + '</tr>';
     }).join('');
@@ -3627,6 +3627,8 @@ async function cargarPropietarios(filtro) {
 }
 
 function abrirPropietario(id) {
+  if (id && !puedo('PROPIETARIOS','EDITAR')) return;
+  if (!id && !puedo('PROPIETARIOS','CREAR')) return;
   const p = id ? propietariosCache.find(function(x) { return x.id_propietario === id; }) : null;
   document.getElementById('modal-prop-titulo').textContent = p ? 'EDITAR PROPIETARIO' : 'NUEVO PROPIETARIO';
   document.getElementById('prop-id').value          = p ? p.id_propietario : '';
@@ -3715,6 +3717,7 @@ async function guardarPropietario() {
 }
 
 async function verFichaPropietario(id) {
+  if (!puedo('PROPIETARIOS','VER')) return;
   const p = propietariosCache.find(function(x) { return x.id_propietario == id; });
   if (!p) return;
   const vehs = await api('vehiculos', 'GET', null, '?id_propietario=eq.' + id + '&select=*');
@@ -3792,7 +3795,7 @@ async function cargarVehiculos(filtro, propId) {
       + '<option value="">Todos los propietarios</option>'
       + propietariosSimple.map(function(p) { return '<option value="' + p.id_propietario + '">' + p.nombre_completo + '</option>'; }).join('')
       + '</select>'
-      + '<button class="btn-primario" onclick="abrirVehiculo(null)">+ Nuevo Vehículo</button>'
+      + (puedo('VEHICULOS','CREAR') ? '<button class="btn-primario" onclick="abrirVehiculo(null)">+ Nuevo Vehículo</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container" id="tabla-vehiculos-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
       + '</div>';
@@ -3854,8 +3857,8 @@ async function cargarVehiculos(filtro, propId) {
         + '<td><span class="badge ' + (v.estado_vehiculo === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + v.estado_vehiculo + '</span></td>'
         + '<td>'
         + '<div style="display:flex;gap:6px">'
-        + '<button class="btn-secundario" onclick="abrirVehiculo(' + v.id_vehiculo + ')">Editar</button>'
-        + '<button class="btn-secundario" onclick="verFichaVehiculo(' + v.id_vehiculo + ')">Ficha</button>'
+        + (puedo('VEHICULOS','EDITAR') ? '<button class="btn-secundario" onclick="abrirVehiculo(' + v.id_vehiculo + ')">Editar</button>' : '')
+        + (puedo('VEHICULOS','VER') ? '<button class="btn-secundario" onclick="verFichaVehiculo(' + v.id_vehiculo + ')">Ficha</button>' : '')
         + '</div></td>'
         + '</tr>';
     }).join('');
@@ -3901,6 +3904,8 @@ function filtrarVehiculosPorPropietario(propId) {
 }
 
 async function abrirVehiculo(id) {
+  if (id && !puedo('VEHICULOS','EDITAR')) return;
+  if (!id && !puedo('VEHICULOS','CREAR')) return;
   const v = id ? vehiculosCache.find(function(x) { return x.id_vehiculo === id; }) : null;
   document.getElementById('modal-veh-titulo').textContent = v ? 'EDITAR VEHÍCULO' : 'NUEVO VEHÍCULO';
   document.getElementById('veh-id').value            = v ? v.id_vehiculo       : '';
@@ -4046,6 +4051,7 @@ async function guardarVehiculo() {
 }
 
 async function verFichaVehiculo(id) {
+  if (!puedo('VEHICULOS','VER')) return;
   try {
   // Buscar directo en Supabase para tener datos completos
   let v = vehiculosCache.find(function(x) { return x.id_vehiculo == id; });
@@ -4262,7 +4268,7 @@ async function renderCatalogo(filtro, categoria) {
       + '<option value="">Todas las categorías</option>'
       + ['MECÁNICA','ELÉCTRICA','CARROCERÍA','FRENOS','SUSPENSIÓN','AIRES','TRANSMISIÓN','DIAGNÓSTICO','OTROS'].map(function(cat) { return '<option value="' + cat + '">' + cat + '</option>'; }).join('')
       + '</select>'
-      + '<button class="btn-primario" onclick="abrirNuevoCatalogo()">+ Nuevo Servicio</button>'
+      + (puedo('CATALOGO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoCatalogo()">+ Nuevo Servicio</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container" id="tabla-cat-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
       + '</div>';
@@ -4298,8 +4304,8 @@ async function renderCatalogo(filtro, categoria) {
         + '<td style="font-family:var(--font-mono);color:var(--naranja);font-size:14px;font-weight:700">$ ' + parseFloat(s.precio_usd || 0).toFixed(2) + '</td>'
         + '<td><span class="badge ' + (s.activo ? 'badge-verde' : 'badge-rojo') + '" style="font-size:12px">' + (s.activo ? 'Activo' : 'Inactivo') + '</span></td>'
         + '<td><div style="display:flex;gap:8px">'
-        + '<button class="btn-secundario" onclick="abrirEditarCatalogo(' + s.id_servicio + ')">Editar</button>'
-        + '<button class="btn-peligro" onclick="eliminarCatalogo(' + s.id_servicio + ',\'' + s.nombre.replace(/'/g, "\\'") + '\')">Eliminar</button>'
+        + (puedo('CATALOGO','EDITAR') ? '<button class="btn-secundario" onclick="abrirEditarCatalogo(' + s.id_servicio + ')">Editar</button>' : '')
+        + (puedo('CATALOGO','ELIMINAR') ? '<button class="btn-peligro" onclick="eliminarCatalogo(' + s.id_servicio + ',\'' + s.nombre.replace(/'/g, "\\'") + '\')">Eliminar</button>' : '')
         + '</div></td>'
         + '</tr>';
     }).join('');
@@ -4733,9 +4739,9 @@ async function renderInventario(filtro) {
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end">'
       + '<div style="display:flex;gap:3px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:3px">'
       + '<button id="inv-tab-tabla"   onclick="invCambiarVista(\'tabla\')"   class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:var(--naranja);color:#fff">Inventario</button>'
-      + '<button id="inv-tab-abc"     onclick="invCambiarVista(\'abc\')"     class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">Análisis ABC</button>'
-      + '<button id="inv-tab-reorden" onclick="invCambiarVista(\'reorden\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">Reorden</button>'
-      + '<button id="inv-tab-eoq"     onclick="invCambiarVista(\'eoq\')"     class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">EOQ</button>'
+      + (puedo('INVENTARIO','VER_EOQ_ABC') ? '<button id="inv-tab-abc"     onclick="invCambiarVista(\'abc\')"     class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">Análisis ABC</button>' : '')
+      + (puedo('INVENTARIO','VER_EOQ_ABC') ? '<button id="inv-tab-reorden" onclick="invCambiarVista(\'reorden\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">Reorden</button>' : '')
+      + (puedo('INVENTARIO','VER_EOQ_ABC') ? '<button id="inv-tab-eoq"     onclick="invCambiarVista(\'eoq\')"     class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">EOQ</button>' : '')
       + '</div>'
       + '<select id="inv-filtro-cat" onchange="invFiltrarCategoria()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todas las categorías</option>'
@@ -4749,7 +4755,7 @@ async function renderInventario(filtro) {
       + 'onkeyup="renderInventario(this.value)" '
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\');}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:180px">'
-      + '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Artículo</button>'
+      + (puedo('INVENTARIO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Artículo</button>' : '')
       + '</div></div>'
       + '<div id="alerta-stock-bajo" style="display:none"></div>'
       + '<div id="tabla-inv-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
@@ -4841,24 +4847,24 @@ function invRenderTabla(items, cont) {
       + (r.descripcion ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion + '</div>' : '') + '</div></div></td>'
       + '<td><span class="badge ' + (stockBajo ? 'badge-rojo' : 'badge-verde') + '">' + r.stock_actual + ' ' + (r.unidad || 'UND') + '</span>'
       + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo + ')</div>' : '') + '</td>'
-      + '<td style="font-family:var(--font-mono);font-size:12px">'
+      + (puedo('INVENTARIO','VER_COSTOS') ? '<td style="font-family:var(--font-mono);font-size:12px">'
       + '<div style="color:var(--suave);font-size:9px;letter-spacing:1px">COSTO PROM. (CPP)</div>'
       + '<div>$ ' + fmtUSD(r.precio_costo_usd) + '</div>'
       + (r.precio_costo_ultimo_usd && Math.abs(r.precio_costo_ultimo_usd - r.precio_costo_usd) > 0.001
           ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Última compra: $ ' + fmtUSD(r.precio_costo_ultimo_usd) + '</div>'
           : '')
-      + '</td>'
+      + '</td>' : '')
       + '<td style="font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:10px">Venta</div>'
       + '<span style="color:var(--naranja)">$ ' + fmtUSD(r.precio_venta_usd) + '</span>'
       + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen.toFixed(1) + '%</div></td>'
       + '<td><div style="display:flex;gap:8px">'
-      + '<button class="btn-secundario" style="color:var(--naranja);border-color:rgba(255,107,0,0.4)" onclick="abrirEntradaStock(' + r.id_repuesto + ')">+ Stock</button>'
-      + '<button class="btn-secundario" onclick="abrirEditarInventario(' + r.id_repuesto + ')">Editar</button>'
-      + '<button class="btn-peligro" onclick="eliminarInventario(' + r.id_repuesto + ',\'' + r.nombre.replace(/'/g, "\'") + '\')">Eliminar</button>'
+      + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" style="color:var(--naranja);border-color:rgba(255,107,0,0.4)" onclick="abrirEntradaStock(' + r.id_repuesto + ')">+ Stock</button>' : '')
+      + (puedo('INVENTARIO','EDITAR') ? '<button class="btn-secundario" onclick="abrirEditarInventario(' + r.id_repuesto + ')">Editar</button>' : '')
+      + (puedo('INVENTARIO','ELIMINAR') ? '<button class="btn-peligro" onclick="eliminarInventario(' + r.id_repuesto + ',\'' + r.nombre.replace(/'/g, "\'") + '\')">Eliminar</button>' : '')
       + '</div></td></tr>';
   }).join('');
   cont.innerHTML = '<div class="tabla-container"><table><thead><tr>'
-    + '<th>Artículo</th><th>Stock</th><th>Precio Costo</th><th>Precio Venta</th><th>Acciones</th>'
+    + '<th>Artículo</th><th>Stock</th>' + (puedo('INVENTARIO','VER_COSTOS') ? '<th>Precio Costo</th>' : '') + '<th>Precio Venta</th><th>Acciones</th>'
     + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin artículos registrados</td></tr>') + '</tbody></table></div>';
 }
 
@@ -5178,14 +5184,13 @@ async function renderOrdenes() {
         + '<td><span class="badge ' + est.clase + '">' + est.label + '</span>'
         + (o.fecha_estado ? '<div style="font-size:10px;color:var(--suave);margin-top:3px">' + o.fecha_estado + '</div>' : '')
         + '</td>'
-        + '<td style="font-family:var(--font-mono)"><span style="color:var(--naranja)">$ ' + fmtUSD(o.total_usd) + '</span>'
-        + '<div style="font-size:10px;color:var(--suave)">' + fmtBs(o.total_ves) + ' Bs</div></td>'
+        + '<td style="font-family:var(--font-mono)">' + (puedo('SERVICIOS','VER_TOTALES') ? '<span style="color:var(--naranja)">$ ' + fmtUSD(o.total_usd) + '</span><div style="font-size:10px;color:var(--suave)">' + fmtBs(o.total_ves) + ' Bs</div>' : '<span style="color:#444;font-size:11px">🔒 Restringido</span>') + '</td>'
         + '<td><div style="display:flex;gap:6px;flex-wrap:wrap">'
-        + '<button class="btn-secundario" onclick="verFichaOS(' + o.id_orden + ')">Ver</button>'
+        + (puedo('SERVICIOS','VER') ? '<button class="btn-secundario" onclick="verFichaOS(' + o.id_orden + ')">Ver</button>' : '')
         + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA'
-          ? '<button class="btn-secundario" onclick="abrirEditarOS(' + o.id_orden + ')">Editar</button>'
-            + '<button class="btn-peligro" onclick="anularOS(' + o.id_orden + ',\'' + (o.numero_os || '') + '\')">Anular</button>'
-          : (sesionActual && sesionActual.administrador
+          ? (puedo('SERVICIOS','EDITAR') ? '<button class="btn-secundario" onclick="abrirEditarOS(' + o.id_orden + ')">Editar</button>' : '')
+            + (puedo('SERVICIOS','ANULAR') ? '<button class="btn-peligro" onclick="anularOS(' + o.id_orden + ',\'' + (o.numero_os || '') + '\')">Anular</button>' : '')
+          : (puedo('SERVICIOS','REABRIR') && (sesionActual && sesionActual.administrador)
               ? '<button class="btn-secundario" style="border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="reabrirOS(' + o.id_orden + ',\'' + (o.numero_os || '') + '\')">↺ Reabrir</button>'
               : ''))
         + '</div></td>'
@@ -5230,8 +5235,8 @@ async function renderOrdenes() {
           return '<option value="' + e[0] + '"' + (window._osEstadoFiltro === e[0] ? ' selected' : '') + '>' + e[1].label + '</option>';
         }).join('')
       + '</select>'
-      + '<span style="font-size:11px;color:var(--suave);white-space:nowrap">Tasa: $ 1 = ' + tasaActualOS.toFixed(2) + ' Bs</span>'
-      + '<button class="btn-primario" onclick="abrirNuevaOS()">+ Nueva OS</button>'
+      + (puedo('SERVICIOS','VER_TASA') ? '<span style="font-size:11px;color:var(--suave);white-space:nowrap">Tasa: $ 1 = ' + tasaActualOS.toFixed(2) + ' Bs</span>' : '')
+      + (puedo('SERVICIOS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevaOS()">+ Nueva OS</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container"><table id="os-tabla"><thead><tr>'
       + '<th>N° OS / Fecha</th><th>Vehículo</th><th>Propietario</th><th>Estado</th><th>Total</th><th>Acciones</th>'
