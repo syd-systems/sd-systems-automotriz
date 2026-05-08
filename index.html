@@ -2019,11 +2019,8 @@ async function abrirEditarUsuario(id) {
   document.getElementById('alerta-modal-ok').style.display = 'none';
   document.getElementById('alerta-modal-error').style.display = 'none';
 
-  // Cargar accesos actuales
-  const accesos = await api('usuarios_accesos', 'GET', null,
-    `?correo_usuario=eq.${encodeURIComponent(u.correo_usuario)}&activo=eq.true&select=acceso_tipo`);
-  const modulosActuales = accesos.map(a => a.acceso_tipo);
-  renderAccesosModal(modulosActuales, permisosUsuario);
+  // Usar accesosTemp ya cargado arriba (evita doble llamada a la API)
+  renderAccesosModal(accesosTemp, permisosUsuario);
 
   abrirModal('modal-usuario');
 }
