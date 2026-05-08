@@ -2028,46 +2028,71 @@ async function abrirEditarUsuario(id) {
   abrirModal('modal-usuario');
 }
 
+// Estado JS de permisos — se actualiza con cada clic
+var _estadoModulos = {};
+var _estadoPermisos = {};
+
 function renderAccesosModal(seleccionados, permisosSelec) {
   permisosSelec = permisosSelec || {};
-  const grid = document.getElementById('accesos-grid');
+  _estadoModulos = {};
+  _estadoPermisos = {};
+  TODOS_LOS_MODULOS.forEach(function(m) {
+    _estadoModulos[m.sigla] = seleccionados.includes(m.sigla);
+    _estadoPermisos[m.sigla] = {};
+    var permsMod = permisosSelec[m.sigla] || [];
+    (PERMISOS_POR_MODULO[m.sigla] || []).forEach(function(a) {
+      _estadoPermisos[m.sigla][a.accion] = permsMod.includes(a.accion);
+    });
+  });
+  var grid = document.getElementById('accesos-grid');
   grid.style.gridTemplateColumns = '1fr';
-  grid.style.gap = '6px';
+  grid.style.gap = '4px';
   var html = '';
   TODOS_LOS_MODULOS.forEach(function(m) {
-    var tieneAcceso = seleccionados.includes(m.sigla);
+    var on = _estadoModulos[m.sigla];
     var acciones = PERMISOS_POR_MODULO[m.sigla] || [];
-    var permsMod = permisosSelec[m.sigla] || [];
-    // Módulo header row
-    html += '<div style="border:1px solid ' + (tieneAcceso ? 'var(--naranja)' : 'var(--borde)') + ';border-radius:6px;overflow:hidden">';
-    html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--gris2);cursor:pointer" onclick="(function(el){var d=el.nextElementSibling;d.style.display=d.style.display===\'none\'?\'block\':\'none\';})(this)">';
-    html += '<input type="checkbox" id="mod-' + m.sigla + '" data-sigla="' + m.sigla + '"';
-    html += (tieneAcceso ? ' checked' : '');
-    html += ' style="accent-color:var(--naranja);width:15px;height:15px;flex-shrink:0" onclick="event.stopPropagation()">';
+    html += '<div id="blk-' + m.sigla + '" style="border:1px solid ' + (on ? 'var(--naranja)' : 'var(--borde)') + ';border-radius:6px;margin-bottom:4px">';
+    html += '<div onclick="_togglePanel(\'' + m.sigla + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--gris2);cursor:pointer">';
+    html += '<div style="width:16px;height:16px;border-radius:3px;border:2px solid ' + (on ? 'var(--naranja)' : 'var(--borde)') + ';background:' + (on ? 'var(--naranja)' : 'transparent') + ';color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center">' + (on ? '&#10003;' : '') + '</div>';
     html += '<span style="font-size:13px;font-weight:500">' + m.icono + ' ' + m.nombre + '</span>';
-    html += '<span style="margin-left:auto;font-size:10px;color:var(--suave)">' + (acciones.length ? '▾ ' + acciones.length + ' permisos' : '') + '</span>';
+    html += '<span style="margin-left:auto;font-size:10px;color:var(--suave)">' + (acciones.length ? acciones.length + ' permisos' : '') + '</span>';
     html += '</div>';
-    // Acciones panel
-    html += '<div style="display:' + (tieneAcceso ? 'block' : 'none') + ';padding:10px 14px 12px;border-top:1px solid var(--borde)">';
-    acciones.forEach(function(a) {
-      var checked = permsMod.includes(a.accion);
-      var color = a.label.indexOf('🔒') === 0 ? '#f59e0b' : 'var(--suave)';
-      html += '<label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;padding:3px 0;color:' + color + '">';
-      html += '<input type="checkbox" data-modulo="' + m.sigla + '" data-accion="' + a.accion + '"';
-      html += (checked ? ' checked' : '');
-      html += ' style="accent-color:var(--naranja);width:13px;height:13px;flex-shrink:0"> ';
-      html += a.label + '</label>';
-    });
-    html += '</div>';
-    html += '</div>';
+    html += '<div id="pnl-' + m.sigla + '" style="display:none;padding:10px 14px 12px;border-top:1px solid var(--borde)">';
+    html += '<label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;font-weight:600;padding:3px 0">';
+    html += '<input type="checkbox" style="accent-color:var(--naranja);width:14px;height:14px" ' + (on ? 'checked' : '') + ' onchange="_toggleModulo(\'' + m.sigla + '\',this.checked)"> Dar acceso a ' + m.nombre + '</label>';
+    if (acciones.length) {
+      html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--borde)">';
+      acciones.forEach(function(a) {
+        var c = _estadoPermisos[m.sigla][a.accion];
+        var lock = a.label.indexOf('\uD83D\uDD12') >= 0 || a.label.indexOf('\uD83D') === 0;
+        var col = lock ? '#f59e0b' : 'var(--suave)';
+        html += '<label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;padding:3px 0;color:' + col + '">';
+        html += '<input type="checkbox" style="accent-color:var(--naranja);width:13px;height:13px" ' + (c ? 'checked' : '') + ' onchange="_togglePermiso(\'' + m.sigla + '\',\'' + a.accion + '\',this.checked)"> ';
+        html += a.label + '</label>';
+      });
+      html += '</div>';
+    }
+    html += '</div></div>';
   });
   grid.innerHTML = html;
 }
-
-function toggleAcceso(el, sigla) {}
-function toggleAccesoBloque(el) {}
-function toggleModuloDetalle(s) {}
-function toggleModuloAcceso(cb) {}
+function _togglePanel(sigla) {
+  var p = document.getElementById('pnl-' + sigla);
+  if (p) p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+function _toggleModulo(sigla, val) {
+  _estadoModulos[sigla] = val;
+  var b = document.getElementById('blk-' + sigla);
+  if (b) b.style.borderColor = val ? 'var(--naranja)' : 'var(--borde)';
+}
+function _togglePermiso(sigla, accion, val) {
+  if (!_estadoPermisos[sigla]) _estadoPermisos[sigla] = {};
+  _estadoPermisos[sigla][accion] = val;
+}
+function toggleAcceso(el,s){}
+function toggleAccesoBloque(el){}
+function toggleModuloDetalle(s){}
+function toggleModuloAcceso(cb){}
 
 async function guardarUsuario() {
   const nombre  = document.getElementById('u-nombre').value.trim();
@@ -2105,27 +2130,20 @@ async function guardarUsuario() {
   }
 
   // Accesos seleccionados — checkboxes con name="mod_SIGLA"
-  // Accesos seleccionados
+  // Leer estado directamente desde variables JS (no desde el DOM)
   var accesosSelec = [];
   var permisosSelec = {};
-  var grid = document.getElementById('accesos-grid');
-  var allChecks = grid.querySelectorAll('input[type=checkbox]');
-  console.log('Total checkboxes encontrados:', allChecks.length);
-  allChecks.forEach(function(cb) {
-    var sigla = cb.getAttribute('data-sigla');
-    var modulo = cb.getAttribute('data-modulo');
-    var accion = cb.getAttribute('data-accion');
-    console.log('cb:', cb.id||'(sin id)', 'sigla='+sigla, 'mod='+modulo, 'acc='+accion, 'checked='+cb.checked);
-    if (!cb.checked) return;
-    if (sigla) {
-      accesosSelec.push(sigla);
-    } else if (modulo && accion) {
-      if (!permisosSelec[modulo]) permisosSelec[modulo] = [];
-      permisosSelec[modulo].push(accion);
-    }
+  Object.keys(_estadoModulos).forEach(function(sigla) {
+    if (_estadoModulos[sigla]) accesosSelec.push(sigla);
   });
-  console.log('accesosSelec:', accesosSelec);
-  console.log('permisosSelec:', JSON.stringify(permisosSelec));
+  Object.keys(_estadoPermisos).forEach(function(sigla) {
+    Object.keys(_estadoPermisos[sigla]).forEach(function(accion) {
+      if (_estadoPermisos[sigla][accion]) {
+        if (!permisosSelec[sigla]) permisosSelec[sigla] = [];
+        permisosSelec[sigla].push(accion);
+      }
+    });
+  });
 
   try {
     if (!idEdit) {
