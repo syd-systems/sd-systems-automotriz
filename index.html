@@ -2130,7 +2130,7 @@ async function guardarUsuario() {
     .map(function(cb) { return cb.dataset.sigla; }).filter(Boolean);
   // Permisos granulares seleccionados
   const permisosSelec = {};
-  document.querySelectorAll('.acceso-acciones input[type=checkbox]:checked').forEach(function(cb) {
+  document.querySelectorAll('#accesos-grid input[type=checkbox][data-modulo]:checked').forEach(function(cb) {
     const mod = cb.dataset.modulo;
     const acc = cb.dataset.accion;
     if (!permisosSelec[mod]) permisosSelec[mod] = [];
