@@ -2046,8 +2046,8 @@ function renderAccesosModal(seleccionados, permisosSelec) {
     var checkBorder = tieneAcceso ? 'var(--naranja)' : 'var(--borde)';
     var checkMark = tieneAcceso ? '&#10003;' : '';
     html += '<div class="acceso-bloque" style="background:var(--gris2);border:1px solid var(--borde);border-radius:6px;overflow:hidden;margin-bottom:6px">'
-      + '<div class="acceso-item ' + (tieneAcceso ? 'seleccionado' : '') + '" id="bloque-' + m.sigla + '" '
-      + 'onclick="toggleAccesoBloque(this, \"' + m.sigla + '\")" '
+      + '<div class="acceso-item ' + (tieneAcceso ? 'seleccionado' : '') + '" data-sigla="' + m.sigla + '" '
+      + 'onclick="toggleAccesoBloque(this)" '
       + 'style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px">'
       + '<div class="acceso-check" style="width:18px;height:18px;border-radius:3px;border:2px solid ' + checkBorder + ';display:flex;align-items:center;justify-content:center;font-size:11px;background:' + checkBg + '">'
       + checkMark + '</div>'
@@ -2060,14 +2060,13 @@ function renderAccesosModal(seleccionados, permisosSelec) {
   grid.innerHTML = html;
 }
 
-function toggleAccesoBloque(el, sigla) {
+function toggleAccesoBloque(el) {
   el.classList.toggle('seleccionado');
   const check = el.querySelector('.acceso-check');
   const tieneAcceso = el.classList.contains('seleccionado');
   check.style.background = tieneAcceso ? 'var(--naranja)' : 'transparent';
   check.style.borderColor = tieneAcceso ? 'var(--naranja)' : 'var(--borde)';
   check.textContent = tieneAcceso ? '✓' : '';
-  el.style.borderBottom = tieneAcceso ? '1px solid var(--borde)' : 'none';
   const accionesDiv = el.nextElementSibling;
   if (accionesDiv) {
     accionesDiv.style.display = tieneAcceso ? 'block' : 'none';
