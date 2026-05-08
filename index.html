@@ -1307,6 +1307,73 @@ const TODOS_LOS_MODULOS = [
   { sigla: 'PARAMETROS',   nombre: 'Parámetros',       icono: '⚙️' },
 ];
 
+// ─── PERMISOS GRANULARES POR MÓDULO ───
+const PERMISOS_POR_MODULO = {
+  VEHICULOS:    [
+    { accion: 'VER',      label: 'Ver vehículos' },
+    { accion: 'CREAR',    label: 'Registrar nuevo vehículo' },
+    { accion: 'EDITAR',   label: 'Editar vehículo' },
+    { accion: 'ELIMINAR', label: 'Eliminar vehículo' },
+  ],
+  PROPIETARIOS: [
+    { accion: 'VER',                  label: 'Ver propietarios' },
+    { accion: 'CREAR',                label: 'Registrar propietario' },
+    { accion: 'EDITAR',               label: 'Editar propietario' },
+    { accion: 'ELIMINAR',             label: 'Eliminar propietario' },
+    { accion: 'VER_DATOS_PERSONALES', label: '🔒 Ver datos personales (teléfono, dirección)' },
+  ],
+  SERVICIOS: [
+    { accion: 'VER',         label: 'Ver órdenes de servicio' },
+    { accion: 'CREAR',       label: 'Crear nueva OS' },
+    { accion: 'EDITAR',      label: 'Editar OS abierta' },
+    { accion: 'ANULAR',      label: 'Anular OS' },
+    { accion: 'REABRIR',     label: 'Reabrir OS cerrada/anulada' },
+    { accion: 'VER_TOTALES', label: '🔒 Ver totales y montos' },
+    { accion: 'VER_TASA',    label: '🔒 Ver tasa de cambio en OS' },
+  ],
+  INVENTARIO: [
+    { accion: 'VER',           label: 'Ver inventario general' },
+    { accion: 'CREAR',         label: 'Registrar nuevo artículo' },
+    { accion: 'EDITAR',        label: 'Editar artículo' },
+    { accion: 'ELIMINAR',      label: 'Eliminar artículo' },
+    { accion: 'ENTRADA_STOCK', label: 'Registrar entrada de stock' },
+    { accion: 'VER_COSTOS',    label: '🔒 Ver precios de costo y CPP' },
+    { accion: 'VER_EOQ_ABC',   label: '🔒 Ver análisis ABC / EOQ / Reorden' },
+  ],
+  CATALOGO: [
+    { accion: 'VER',      label: 'Ver catálogo de servicios' },
+    { accion: 'CREAR',    label: 'Agregar servicio al catálogo' },
+    { accion: 'EDITAR',   label: 'Editar servicio del catálogo' },
+    { accion: 'ELIMINAR', label: 'Eliminar servicio del catálogo' },
+  ],
+  TASAS: [
+    { accion: 'VER',    label: '🔒 Ver tipos de cambio' },
+    { accion: 'CREAR',  label: 'Registrar nueva tasa' },
+    { accion: 'EDITAR', label: 'Editar tasa existente' },
+  ],
+  EMPLEADOS: [
+    { accion: 'VER',                  label: 'Ver empleados' },
+    { accion: 'CREAR',                label: 'Registrar empleado' },
+    { accion: 'EDITAR',               label: 'Editar empleado' },
+    { accion: 'ELIMINAR',             label: 'Eliminar empleado' },
+    { accion: 'VER_DATOS_PERSONALES', label: '🔒 Ver datos personales (sueldo, ID, teléfono)' },
+  ],
+  USUARIOS: [
+    { accion: 'VER',    label: 'Ver lista de usuarios' },
+    { accion: 'CREAR',  label: 'Crear nuevo usuario' },
+    { accion: 'EDITAR', label: 'Editar usuario' },
+  ],
+};
+
+// Variable global de permisos del usuario en sesión
+var permisosActuales = {}; // { MODULO: ['ACCION1','ACCION2'] }
+
+// Verificar si el usuario tiene un permiso (admins tienen todo)
+function puedo(modulo, accion) {
+  if (sesionActual && sesionActual.administrador) return true;
+  return permisosActuales[modulo] && permisosActuales[modulo].includes(accion);
+}
+
 // ─── API SUPABASE ───
 async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '') {
   const url = `${SUPABASE_URL}/rest/v1/${tabla}${filtro}`;
@@ -1525,6 +1592,15 @@ async function iniciarSesion() {
 
     sesionActual = u;
     modulosAcceso = accesos.map(a => a.acceso_tipo);
+    // Cargar permisos granulares
+    try {
+      const perms = await api('usuarios_permisos', 'GET', null, '?correo_usuario=eq.' + encodeURIComponent(u.correo_usuario));
+      permisosActuales = {};
+      perms.forEach(function(p) {
+        if (!permisosActuales[p.modulo]) permisosActuales[p.modulo] = [];
+        permisosActuales[p.modulo].push(p.accion);
+      });
+    } catch(eP) { permisosActuales = {}; }
 
     // Marcar sesión activa en Supabase
     await api('usuarios', 'PATCH', {
@@ -1911,6 +1987,15 @@ async function abrirEditarUsuario(id) {
 
   document.getElementById('modal-titulo').textContent = 'EDITAR USUARIO';
   document.getElementById('u-nombre').value = u.nombre;
+  // Cargar permisos granulares del usuario a editar
+  var permisosUsuario = {};
+  try {
+    var permsU = await api('usuarios_permisos', 'GET', null, '?correo_usuario=eq.' + encodeURIComponent(u.correo_usuario));
+    permsU.forEach(function(p) {
+      if (!permisosUsuario[p.modulo]) permisosUsuario[p.modulo] = [];
+      permisosUsuario[p.modulo].push(p.accion);
+    });
+  } catch(e) {}
   document.getElementById('u-correo').value = u.correo_usuario;
   document.getElementById('u-correo').disabled = true;
   document.getElementById('u-clave').value = '';
@@ -1924,27 +2009,63 @@ async function abrirEditarUsuario(id) {
   const accesos = await api('usuarios_accesos', 'GET', null,
     `?correo_usuario=eq.${encodeURIComponent(u.correo_usuario)}&activo=eq.true&select=acceso_tipo`);
   const modulosActuales = accesos.map(a => a.acceso_tipo);
-  renderAccesosModal(modulosActuales);
+  renderAccesosModal(modulosActuales, permisosUsuario);
 
   abrirModal('modal-usuario');
 }
 
-function renderAccesosModal(seleccionados) {
+function renderAccesosModal(seleccionados, permisosSelec) {
+  permisosSelec = permisosSelec || {};
   const grid = document.getElementById('accesos-grid');
-  grid.innerHTML = TODOS_LOS_MODULOS.map(m => `
-    <div class="acceso-item ${seleccionados.includes(m.sigla) ? 'seleccionado' : ''}"
-         onclick="toggleAcceso(this, '${m.sigla}')">
-      <div class="acceso-check">${seleccionados.includes(m.sigla) ? '✓' : ''}</div>
-      <span class="acceso-nombre">${m.icono} ${m.nombre}</span>
-    </div>
-  `).join('');
+  var html = '';
+  TODOS_LOS_MODULOS.forEach(function(m) {
+    var tieneAcceso = seleccionados.includes(m.sigla);
+    var acciones = PERMISOS_POR_MODULO[m.sigla] || [];
+    var permsMod = permisosSelec[m.sigla] || [];
+    var accionesHTML = '';
+    acciones.forEach(function(a) {
+      var checked = permsMod.includes(a.accion);
+      var esSensible = a.label.indexOf('🔒') === 0;
+      accionesHTML += '<label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;padding:3px 0;color:' + (esSensible ? '#f59e0b' : 'var(--suave)') + '">'
+        + '<input type="checkbox" data-modulo="' + m.sigla + '" data-accion="' + a.accion + '" '
+        + (checked ? 'checked' : '') + ' style="accent-color:var(--naranja);width:13px;height:13px"> '
+        + a.label + '</label>';
+    });
+    var checkBg = tieneAcceso ? 'var(--naranja)' : 'transparent';
+    var checkBorder = tieneAcceso ? 'var(--naranja)' : 'var(--borde)';
+    var checkMark = tieneAcceso ? '&#10003;' : '';
+    html += '<div class="acceso-bloque" style="background:var(--gris2);border:1px solid var(--borde);border-radius:6px;overflow:hidden;margin-bottom:6px">'
+      + '<div class="acceso-item ' + (tieneAcceso ? 'seleccionado' : '') + '" id="bloque-' + m.sigla + '" '
+      + 'onclick="toggleAccesoBloque(this, \"' + m.sigla + '\")" '
+      + 'style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px">'
+      + '<div class="acceso-check" style="width:18px;height:18px;border-radius:3px;border:2px solid ' + checkBorder + ';display:flex;align-items:center;justify-content:center;font-size:11px;background:' + checkBg + '">'
+      + checkMark + '</div>'
+      + '<span style="font-size:13px">' + m.icono + ' ' + m.nombre + '</span>'
+      + '</div>'
+      + '<div class="acceso-acciones" style="padding:' + (tieneAcceso ? '8px 14px 10px' : '0') + ';display:' + (tieneAcceso ? 'block' : 'none') + '">'
+      + accionesHTML
+      + '</div></div>';
+  });
+  grid.innerHTML = html;
 }
 
-function toggleAcceso(el, sigla) {
+function toggleAccesoBloque(el, sigla) {
   el.classList.toggle('seleccionado');
   const check = el.querySelector('.acceso-check');
-  check.textContent = el.classList.contains('seleccionado') ? '✓' : '';
+  const tieneAcceso = el.classList.contains('seleccionado');
+  check.style.background = tieneAcceso ? 'var(--naranja)' : 'transparent';
+  check.style.borderColor = tieneAcceso ? 'var(--naranja)' : 'var(--borde)';
+  check.textContent = tieneAcceso ? '✓' : '';
+  el.style.borderBottom = tieneAcceso ? '1px solid var(--borde)' : 'none';
+  const accionesDiv = el.nextElementSibling;
+  if (accionesDiv) {
+    accionesDiv.style.display = tieneAcceso ? 'block' : 'none';
+    accionesDiv.style.padding = tieneAcceso ? '8px 14px 10px' : '0';
+  }
 }
+
+// Deprecated - kept for compat
+function toggleAcceso(el, sigla) { toggleAccesoBloque(el, sigla); }
 
 async function guardarUsuario() {
   const nombre  = document.getElementById('u-nombre').value.trim();
@@ -1983,7 +2104,18 @@ async function guardarUsuario() {
 
   // Accesos seleccionados
   const accesosSelec = [...document.querySelectorAll('.acceso-item.seleccionado')]
-    .map(el => el.getAttribute('onclick').match(/'([^']+)'\)/)[1]);
+    .map(el => {
+      const match = el.getAttribute('onclick') && el.getAttribute('onclick').match(/'([^']+)'\)/);
+      return match ? match[1] : null;
+    }).filter(Boolean);
+  // Permisos granulares seleccionados
+  const permisosSelec = {};
+  document.querySelectorAll('.acceso-acciones input[type=checkbox]:checked').forEach(function(cb) {
+    const mod = cb.dataset.modulo;
+    const acc = cb.dataset.accion;
+    if (!permisosSelec[mod]) permisosSelec[mod] = [];
+    permisosSelec[mod].push(acc);
+  });
 
   try {
     if (!idEdit) {
@@ -1994,7 +2126,7 @@ async function guardarUsuario() {
         estado_usuario: estado,
         administrador: esAdmin
       });
-      // Insertar accesos
+      // Insertar accesos y permisos
       for (const sigla of accesosSelec) {
         await api('usuarios_accesos', 'POST', {
           correo_usuario: correo,
@@ -2002,6 +2134,14 @@ async function guardarUsuario() {
           id_usuario: sesionActual.correo_usuario,
           activo: true
         });
+      }
+      // Insertar permisos granulares
+      for (const [mod, acciones] of Object.entries(permisosSelec)) {
+        for (const accion of acciones) {
+          await api('usuarios_permisos', 'POST', {
+            correo_usuario: correo, modulo: mod, accion: accion
+          }).catch(function() {});
+        }
       }
       okEl.textContent = '✓ Usuario creado exitosamente.';
     } else {
@@ -2014,6 +2154,7 @@ async function guardarUsuario() {
       const correoEdit = usuariosCache.find(u => u.id_usuario == idEdit)?.correo_usuario;
       if (correoEdit) {
         await api('usuarios_accesos', 'DELETE', null, `?correo_usuario=eq.${encodeURIComponent(correoEdit)}`);
+        await api('usuarios_permisos', 'DELETE', null, `?correo_usuario=eq.${encodeURIComponent(correoEdit)}`);
         for (const sigla of accesosSelec) {
           await api('usuarios_accesos', 'POST', {
             correo_usuario: correoEdit,
@@ -2021,6 +2162,14 @@ async function guardarUsuario() {
             id_usuario: sesionActual.correo_usuario,
             activo: true
           });
+        }
+        // Reinsertar permisos granulares
+        for (const [mod, acciones] of Object.entries(permisosSelec)) {
+          for (const accion of acciones) {
+            await api('usuarios_permisos', 'POST', {
+              correo_usuario: correoEdit, modulo: mod, accion: accion
+            }).catch(function() {});
+          }
         }
       }
       okEl.textContent = '✓ Usuario actualizado exitosamente.';
