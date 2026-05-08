@@ -2003,8 +2003,11 @@ async function abrirEditarUsuario(id) {
       '?correo_usuario=eq.' + encodeURIComponent(u.correo_usuario) + '&activo=eq.true&select=acceso_tipo');
     accesosTemp = aTemp.map(function(a) { return a.acceso_tipo; });
   } catch(e) {}
-  // Si el usuario no tiene permisos configurados, pre-seleccionar todas las acciones de sus módulos
-  if (Object.keys(permisosUsuario).length === 0 && accesosTemp.length > 0) {
+  // Solo pre-llenar si NO hay permisos guardados (primera vez)
+  // Esto evita sobreescribir permisos guardados con la lista completa
+  var tienePermisosGuardados = Object.keys(permisosUsuario).length > 0;
+  if (!tienePermisosGuardados && accesosTemp.length > 0) {
+    // Primera vez: pre-seleccionar todo para no romper accesos existentes
     accesosTemp.forEach(function(sigla) {
       var acciones = PERMISOS_POR_MODULO[sigla];
       if (acciones) permisosUsuario[sigla] = acciones.map(function(a) { return a.accion; });
@@ -2105,12 +2108,15 @@ async function guardarUsuario() {
   // Accesos seleccionados
   var accesosSelec = [];
   var permisosSelec = {};
-  var allChecks = document.getElementById('accesos-grid').querySelectorAll('input[type=checkbox]');
+  var grid = document.getElementById('accesos-grid');
+  var allChecks = grid.querySelectorAll('input[type=checkbox]');
+  console.log('Total checkboxes encontrados:', allChecks.length);
   allChecks.forEach(function(cb) {
-    if (!cb.checked) return;
     var sigla = cb.getAttribute('data-sigla');
     var modulo = cb.getAttribute('data-modulo');
     var accion = cb.getAttribute('data-accion');
+    console.log('cb:', cb.id||'(sin id)', 'sigla='+sigla, 'mod='+modulo, 'acc='+accion, 'checked='+cb.checked);
+    if (!cb.checked) return;
     if (sigla) {
       accesosSelec.push(sigla);
     } else if (modulo && accion) {
@@ -2140,11 +2146,16 @@ async function guardarUsuario() {
         });
       }
       // Insertar permisos granulares
-      for (const [mod, acciones] of Object.entries(permisosSelec)) {
-        for (const accion of acciones) {
-          await api('usuarios_permisos', 'POST', {
-            correo_usuario: correo, modulo: mod, accion: accion
-          }).catch(function() {});
+      var newPermEntries = Object.entries(permisosSelec);
+      for (var npi = 0; npi < newPermEntries.length; npi++) {
+        var npMod = newPermEntries[npi][0];
+        var npAccs = newPermEntries[npi][1];
+        for (var npj = 0; npj < npAccs.length; npj++) {
+          try {
+            await api('usuarios_permisos', 'POST', {
+              correo_usuario: correo, modulo: npMod, accion: npAccs[npj]
+            });
+          } catch(eNP) { console.warn('Error permiso nuevo:', npMod, npAccs[npj], eNP); }
         }
       }
       okEl.textContent = '✓ Usuario creado exitosamente.';
@@ -2168,11 +2179,17 @@ async function guardarUsuario() {
           });
         }
         // Reinsertar permisos granulares
-        for (const [mod, acciones] of Object.entries(permisosSelec)) {
-          for (const accion of acciones) {
-            await api('usuarios_permisos', 'POST', {
-              correo_usuario: correoEdit, modulo: mod, accion: accion
-            }).catch(function() {});
+        var permEntries = Object.entries(permisosSelec);
+        console.log('Guardando permisos:', permEntries.length, 'módulos', JSON.stringify(permisosSelec));
+        for (var pi = 0; pi < permEntries.length; pi++) {
+          var pMod = permEntries[pi][0];
+          var pAccs = permEntries[pi][1];
+          for (var pj = 0; pj < pAccs.length; pj++) {
+            try {
+              await api('usuarios_permisos', 'POST', {
+                correo_usuario: correoEdit, modulo: pMod, accion: pAccs[pj]
+              });
+            } catch(eP) { console.warn('Error guardando permiso:', pMod, pAccs[pj], eP); }
           }
         }
       }
