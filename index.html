@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260508490000 -->
+<!-- v20260509010000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -38,9 +38,11 @@
 
   /* ─── PANTALLA LOGIN ─── */
   #pantalla-login {
-    min-height: 100vh;
+    height: 100vh;
+    max-height: 100vh;
     display: flex;
     align-items: stretch;
+    overflow: hidden;
   }
 
   .login-izquierda {
@@ -50,7 +52,7 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 60px 40px;
+    padding: clamp(20px, 4vh, 60px) 40px;
     position: relative;
     overflow: hidden;
   }
@@ -75,14 +77,14 @@
 
   .login-logo {
     text-align: center;
-    margin-bottom: 50px;
+    margin-bottom: clamp(12px, 2.5vh, 50px);
     position: relative;
     z-index: 1;
   }
 
   .login-logo .marca {
     font-family: var(--font-display);
-    font-size: 68px;
+    font-size: clamp(36px, 6vh, 68px);
     letter-spacing: 4px;
     color: var(--naranja);
     line-height: 1;
@@ -115,7 +117,7 @@
   }
 
   .campo {
-    margin-bottom: 20px;
+    margin-bottom: clamp(10px, 1.8vh, 20px);
   }
 
   .campo label {
@@ -156,11 +158,11 @@
     font-family: var(--font-display);
     font-size: 20px;
     letter-spacing: 3px;
-    padding: 15px;
+    padding: clamp(10px, 1.8vh, 15px);
     border-radius: 6px;
     cursor: pointer;
     transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
-    margin-top: 10px;
+    margin-top: clamp(6px, 1vh, 10px);
   }
 
   .btn-login:hover {
@@ -189,7 +191,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 60px 50px;
+    padding: clamp(20px, 4vh, 60px) 50px;
     border-left: 1px solid var(--borde);
     position: relative;
     overflow: hidden;
@@ -206,10 +208,10 @@
 
   .login-derecha .info-titulo {
     font-family: var(--font-display);
-    font-size: 42px;
+    font-size: clamp(26px, 4vh, 42px);
     line-height: 1.1;
     color: var(--naranja);
-    margin-bottom: 30px;
+    margin-bottom: clamp(14px, 2.5vh, 30px);
     position: relative;
     z-index: 1;
   }
@@ -224,9 +226,9 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 0;
+    padding: clamp(6px, 1.2vh, 12px) 0;
     border-bottom: 1px solid var(--borde);
-    font-size: 13px;
+    font-size: clamp(11px, 1.5vh, 13px);
     color: var(--suave);
     font-weight: 400;
   }
@@ -1043,8 +1045,7 @@
   <div class="login-derecha">
     <div class="patron"></div>
     <div class="info-titulo">SISTEMA DE<br>GESTIÓN<br>AUTOMOTRIZ</div>
-
-        <ul class="modulos-lista">
+    <ul class="modulos-lista">
       <li><span class="icono">🚗</span> Vehículos y Propietarios</li>
       <li><span class="icono">🔧</span> Órdenes de Servicio</li>
       <li><span class="icono">🧾</span> Facturación y Pagos</li>
@@ -1309,59 +1310,60 @@ const TODOS_LOS_MODULOS = [
 ];
 
 // ─── PERMISOS GRANULARES POR MÓDULO ───
-// NOTA: Ver la lista siempre está disponible si el módulo está activo.
-// VER = abrir la ficha del registro | CREAR/EDITAR/ELIMINAR = acciones sobre registros
 const PERMISOS_POR_MODULO = {
-  VEHICULOS: [
-    { accion: 'VER',      label: 'Ver ficha del vehículo' },
+  VEHICULOS:    [
+    { accion: 'VER',      label: 'Ver vehículos' },
     { accion: 'CREAR',    label: 'Registrar nuevo vehículo' },
     { accion: 'EDITAR',   label: 'Editar vehículo' },
     { accion: 'ELIMINAR', label: 'Eliminar vehículo' },
   ],
   PROPIETARIOS: [
-    { accion: 'VER',                  label: 'Ver ficha del propietario' },
+    { accion: 'VER',                  label: 'Ver propietarios' },
     { accion: 'CREAR',                label: 'Registrar propietario' },
     { accion: 'EDITAR',               label: 'Editar propietario' },
     { accion: 'ELIMINAR',             label: 'Eliminar propietario' },
-    { accion: 'VER_DATOS_PERSONALES', label: '🔒 Ver datos personales (teléfono, dirección, correo)' },
+    { accion: 'VER_DATOS_PERSONALES', label: '🔒 Ver datos personales (teléfono, dirección)' },
   ],
   SERVICIOS: [
-    { accion: 'VER',         label: 'Ver ficha / detalle de la OS' },
+    { accion: 'VER',         label: 'Ver órdenes de servicio' },
     { accion: 'CREAR',       label: 'Crear nueva OS' },
     { accion: 'EDITAR',      label: 'Editar OS abierta' },
     { accion: 'ANULAR',      label: 'Anular OS' },
-    { accion: 'REABRIR',     label: 'Reabrir OS cerrada / anulada' },
-    { accion: 'VER_TOTALES', label: '🔒 Ver totales y montos de la OS' },
+    { accion: 'REABRIR',     label: 'Reabrir OS cerrada/anulada' },
+    { accion: 'VER_TOTALES', label: '🔒 Ver totales y montos' },
     { accion: 'VER_TASA',    label: '🔒 Ver tasa de cambio en OS' },
   ],
   INVENTARIO: [
+    { accion: 'VER',           label: 'Ver inventario general' },
     { accion: 'CREAR',         label: 'Registrar nuevo artículo' },
     { accion: 'EDITAR',        label: 'Editar artículo' },
     { accion: 'ELIMINAR',      label: 'Eliminar artículo' },
-    { accion: 'ENTRADA_STOCK', label: 'Registrar entrada de stock (+ Stock)' },
+    { accion: 'ENTRADA_STOCK', label: 'Registrar entrada de stock' },
     { accion: 'VER_COSTOS',    label: '🔒 Ver precios de costo y CPP' },
     { accion: 'VER_EOQ_ABC',   label: '🔒 Ver análisis ABC / EOQ / Reorden' },
   ],
   CATALOGO: [
+    { accion: 'VER',      label: 'Ver catálogo de servicios' },
     { accion: 'CREAR',    label: 'Agregar servicio al catálogo' },
     { accion: 'EDITAR',   label: 'Editar servicio del catálogo' },
     { accion: 'ELIMINAR', label: 'Eliminar servicio del catálogo' },
   ],
   TASAS: [
-    { accion: 'VER',    label: '🔒 Ver valores de tasas de cambio' },
-    { accion: 'CREAR',  label: 'Registrar / sincronizar nueva tasa' },
+    { accion: 'VER',    label: '🔒 Ver tipos de cambio' },
+    { accion: 'CREAR',  label: 'Registrar nueva tasa' },
     { accion: 'EDITAR', label: 'Editar tasa existente' },
   ],
   EMPLEADOS: [
-    { accion: 'VER',                  label: 'Ver ficha del empleado' },
+    { accion: 'VER',                  label: 'Ver empleados' },
     { accion: 'CREAR',                label: 'Registrar empleado' },
     { accion: 'EDITAR',               label: 'Editar empleado' },
     { accion: 'ELIMINAR',             label: 'Eliminar empleado' },
-    { accion: 'VER_DATOS_PERSONALES', label: '🔒 Ver datos personales (sueldo, cédula, teléfono)' },
+    { accion: 'VER_DATOS_PERSONALES', label: '🔒 Ver datos personales (sueldo, ID, teléfono)' },
   ],
   USUARIOS: [
+    { accion: 'VER',    label: 'Ver lista de usuarios' },
     { accion: 'CREAR',  label: 'Crear nuevo usuario' },
-    { accion: 'EDITAR', label: 'Editar usuario y permisos' },
+    { accion: 'EDITAR', label: 'Editar usuario' },
   ],
 };
 
@@ -1497,18 +1499,6 @@ function mostrarAvisoInactividad() {
 
 async function cerrarSesionInactividad() {
   detenerTimerInactividad();
-
-  // Cerrar TODOS los modales abiertos antes de cerrar sesión
-  document.querySelectorAll('.modal-overlay.abierto').forEach(function(m) {
-    m.classList.remove('abierto');
-  });
-  // También cerrar el visor de imagen si estaba abierto
-  const visor = document.getElementById('visor-imagen');
-  if (visor) { visor.style.display = 'none'; document.body.style.overflow = ''; }
-  // Cerrar aviso de inactividad
-  const aviso = document.getElementById('aviso-inactividad');
-  if (aviso) aviso.style.display = 'none';
-
   // Marcar sesión inactiva en Supabase
   try {
     if (sesionActual) {
@@ -1521,7 +1511,6 @@ async function cerrarSesionInactividad() {
 
   sesionActual   = null;
   modulosAcceso  = [];
-  permisosActuales = {};
   sessionStorage.removeItem('sd_sesion');
 
   document.getElementById('pantalla-app').style.display  = 'none';
@@ -1536,40 +1525,6 @@ async function cerrarSesionInactividad() {
   errEl.style.background = 'rgba(255,107,0,0.12)';
   errEl.style.borderColor = 'rgba(255,107,0,0.4)';
   errEl.style.color = 'var(--naranja)';
-}
-
-// ─── HELPER: Convertir fecha UTC a hora Venezuela (UTC-4) ───
-// Venezuela = UTC-4. Supabase guarda en UTC (sin Z a veces).
-// Forzamos parseo UTC y luego restamos 4h para obtener hora Vzla.
-function toVzla(fechaISO) {
-  if (!fechaISO) return null;
-  // Asegurar que se parsee como UTC agregando Z si no la tiene
-  var iso = fechaISO.trim();
-  if (!iso.endsWith('Z') && !iso.includes('+')) iso = iso + 'Z';
-  var utcMs = new Date(iso).getTime();
-  // Restar 4 horas (UTC-4 = Venezuela)
-  return new Date(utcMs - (4 * 60 * 60 * 1000));
-}
-
-function fmtFechaCorta(fechaISO) {
-  if (!fechaISO) return '—';
-  var d    = toVzla(fechaISO);
-  var dia  = String(d.getUTCDate()).padStart(2,'0');
-  var mes  = String(d.getUTCMonth()+1).padStart(2,'0');
-  var h24  = d.getUTCHours();
-  var min  = String(d.getUTCMinutes()).padStart(2,'0');
-  var ampm = h24 >= 12 ? 'p.m.' : 'a.m.';
-  var h12  = h24 % 12 || 12;
-  return dia + '/' + mes + ' ' + h12 + ':' + min + ' ' + ampm;
-}
-
-function fmtFechaSolo(fechaISO) {
-  if (!fechaISO) return '—';
-  var d = toVzla(fechaISO);
-  var dia  = String(d.getUTCDate()).padStart(2,'0');
-  var mes  = String(d.getUTCMonth()+1).padStart(2,'0');
-  var anio = d.getUTCFullYear();
-  return dia + '/' + mes + '/' + anio;
 }
 
 // ─── RELOJ ───
@@ -1740,16 +1695,8 @@ async function cerrarSesion() {
     }, `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`);
   } catch(e) { console.error('Error cerrando sesión:', e); }
 
-  // Cerrar todos los modales abiertos
-  document.querySelectorAll('.modal-overlay.abierto').forEach(function(m) {
-    m.classList.remove('abierto');
-  });
-  const visorS = document.getElementById('visor-imagen');
-  if (visorS) { visorS.style.display = 'none'; document.body.style.overflow = ''; }
-
   sesionActual = null;
   modulosAcceso = [];
-  permisosActuales = {};
   sessionStorage.removeItem('sd_sesion');
   document.getElementById('pantalla-app').style.display = 'none';
   document.getElementById('pantalla-login').style.display = 'flex';
@@ -1922,7 +1869,7 @@ async function renderUsuarios(filtro) {
               onkeydown="if(event.key==='Enter'){event.preventDefault();renderUsuarios(this.value)}else if(event.key==='Escape'){this.value='';renderUsuarios('')}"
               style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:240px">
             <button class="btn-secundario" onclick="document.getElementById('buscar-usu').value='';renderUsuarios()">↻ Actualizar</button>
-            ${puedo('USUARIOS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoUsuario()">+ Nuevo Usuario</button>' : ''}
+            <button class="btn-primario" onclick="abrirNuevoUsuario()">+ Nuevo Usuario</button>
           </div>
         </div>
         <div class="tabla-container" id="tabla-usu-cont">
@@ -1948,8 +1895,12 @@ async function renderUsuarios(filtro) {
       const fechaUltimaCon = u.ultima_conexion ? new Date(u.ultima_conexion) : null;
       const minutosDesdeConexion = fechaUltimaCon ? (ahora - fechaUltimaCon) / (1000 * 60) : 999;
       const enLinea = u.sesion_activa === true && minutosDesdeConexion < 6;
-      const ultimaCon = u.ultima_conexion ? fmtFechaCorta(u.ultima_conexion) : 'Nunca';
-      const ultimaDes = u.ultima_desconexion ? fmtFechaCorta(u.ultima_desconexion) : '—';
+      const ultimaCon = u.ultima_conexion
+        ? new Date(u.ultima_conexion).toLocaleString('es-VE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
+        : 'Nunca';
+      const ultimaDes = u.ultima_desconexion
+        ? new Date(u.ultima_desconexion).toLocaleString('es-VE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
+        : '—';
 
       return `
       <tr>
@@ -1975,13 +1926,13 @@ async function renderUsuarios(filtro) {
           </div>
         </td>
         <td style="font-size:11px;color:var(--suave)">
-          <div>Reg: ${fmtFechaSolo(u.fecha_registro)}</div>
+          <div>Reg: ${new Date(u.fecha_registro).toLocaleDateString('es-VE')}</div>
           <div style="margin-top:3px">Ent: ${ultimaCon}</div>
           <div style="margin-top:3px;color:#444">Sal: ${ultimaDes}</div>
         </td>
         <td>
           <div style="display:flex;gap:8px">
-            ${puedo('USUARIOS','EDITAR') ? `<button class="btn-secundario" onclick="abrirEditarUsuario(${u.id_usuario})">Editar</button>` : ''}
+            <button class="btn-secundario" onclick="abrirEditarUsuario(${u.id_usuario})">Editar</button>
             <button class="btn-secundario" onclick="resetearClave('${u.correo_usuario}','${u.nombre}')" title="Enviar correo de recuperación">🔑 Reset</button>
             ${u.correo_usuario !== sesionActual.correo_usuario
               ? `<button class="btn-peligro" onclick="eliminarUsuario(${u.id_usuario},'${u.nombre}')">Eliminar</button>`
@@ -2054,17 +2005,16 @@ async function abrirEditarUsuario(id) {
       '?correo_usuario=eq.' + encodeURIComponent(u.correo_usuario) + '&activo=eq.true&select=acceso_tipo');
     accesosTemp = aTemp.map(function(a) { return a.acceso_tipo; });
   } catch(e) {}
-  // Detectar si ya fue configurado via modal (tiene marcador _CONFIGURADO)
-  var yaConfigurado = false;
-  try {
-    var marcador = await api('usuarios_permisos', 'GET', null,
-      '?correo_usuario=eq.' + encodeURIComponent(u.correo_usuario) + '&accion=eq._CONFIGURADO&select=id_permiso');
-    yaConfigurado = marcador.length > 0;
-  } catch(e) {}
-
-  // Respetar EXACTAMENTE lo guardado en Supabase.
-  // Si no hay permisos guardados = todos desactivados (el admin los configura manualmente).
-  // NUNCA se pre-llenan permisos automáticamente.
+  // Solo pre-llenar si NO hay permisos guardados (primera vez)
+  // Esto evita sobreescribir permisos guardados con la lista completa
+  var tienePermisosGuardados = Object.keys(permisosUsuario).length > 0;
+  if (!tienePermisosGuardados && accesosTemp.length > 0) {
+    // Primera vez: pre-seleccionar todo para no romper accesos existentes
+    accesosTemp.forEach(function(sigla) {
+      var acciones = PERMISOS_POR_MODULO[sigla];
+      if (acciones) permisosUsuario[sigla] = acciones.map(function(a) { return a.accion; });
+    });
+  }
   document.getElementById('u-correo').value = u.correo_usuario;
   document.getElementById('u-correo').disabled = true;
   document.getElementById('u-clave').value = '';
@@ -2105,21 +2055,21 @@ function renderAccesosModal(seleccionados, permisosSelec) {
     var acciones = PERMISOS_POR_MODULO[m.sigla] || [];
     html += '<div id="blk-' + m.sigla + '" style="border:1px solid ' + (on ? 'var(--naranja)' : 'var(--borde)') + ';border-radius:6px;margin-bottom:4px">';
     html += '<div onclick="_togglePanel(\'' + m.sigla + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--gris2);cursor:pointer">';
-    html += '<div id="ico-' + m.sigla + '" style="width:16px;height:16px;border-radius:3px;border:2px solid ' + (on ? 'var(--naranja)' : 'var(--borde)') + ';background:' + (on ? 'var(--naranja)' : 'transparent') + ';color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + (on ? '&#10003;' : '') + '</div>';
+    html += '<div style="width:16px;height:16px;border-radius:3px;border:2px solid ' + (on ? 'var(--naranja)' : 'var(--borde)') + ';background:' + (on ? 'var(--naranja)' : 'transparent') + ';color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center">' + (on ? '&#10003;' : '') + '</div>';
     html += '<span style="font-size:13px;font-weight:500">' + m.icono + ' ' + m.nombre + '</span>';
     html += '<span style="margin-left:auto;font-size:10px;color:var(--suave)">' + (acciones.length ? acciones.length + ' permisos' : '') + '</span>';
     html += '</div>';
     html += '<div id="pnl-' + m.sigla + '" style="display:none;padding:10px 14px 12px;border-top:1px solid var(--borde)">';
-    html += '<label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;font-weight:600;padding:3px 0" onclick="event.stopPropagation()">';
-    html += '<input type="checkbox" style="accent-color:var(--naranja);width:14px;height:14px" ' + (on ? 'checked' : '') + ' onchange="event.stopPropagation();_toggleModulo(\'' + m.sigla + '\',this.checked)"> Dar acceso a ' + m.nombre + '</label>';
+    html += '<label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;font-weight:600;padding:3px 0">';
+    html += '<input type="checkbox" style="accent-color:var(--naranja);width:14px;height:14px" ' + (on ? 'checked' : '') + ' onchange="_toggleModulo(\'' + m.sigla + '\',this.checked)"> Dar acceso a ' + m.nombre + '</label>';
     if (acciones.length) {
       html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--borde)">';
       acciones.forEach(function(a) {
         var c = _estadoPermisos[m.sigla][a.accion];
         var lock = a.label.indexOf('\uD83D\uDD12') >= 0 || a.label.indexOf('\uD83D') === 0;
         var col = lock ? '#f59e0b' : 'var(--suave)';
-        html += '<label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;padding:3px 0;color:' + col + '" onclick="event.stopPropagation()">';
-        html += '<input type="checkbox" data-modulo="' + m.sigla + '" data-accion="' + a.accion + '" style="accent-color:var(--naranja);width:13px;height:13px" ' + (c ? 'checked' : '') + ' onchange="event.stopPropagation();_togglePermiso(\'' + m.sigla + '\',\'' + a.accion + '\',this.checked)"> ';
+        html += '<label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;padding:3px 0;color:' + col + '">';
+        html += '<input type="checkbox" style="accent-color:var(--naranja);width:13px;height:13px" ' + (c ? 'checked' : '') + ' onchange="_togglePermiso(\'' + m.sigla + '\',\'' + a.accion + '\',this.checked)"> ';
         html += a.label + '</label>';
       });
       html += '</div>';
@@ -2134,37 +2084,8 @@ function _togglePanel(sigla) {
 }
 function _toggleModulo(sigla, val) {
   _estadoModulos[sigla] = val;
-
-  // Actualizar borde del bloque
   var b = document.getElementById('blk-' + sigla);
   if (b) b.style.borderColor = val ? 'var(--naranja)' : 'var(--borde)';
-
-  // Actualizar icono visual del cuadrito
-  var ico = document.getElementById('ico-' + sigla);
-  if (ico) {
-    ico.style.background  = val ? 'var(--naranja)' : 'transparent';
-    ico.style.borderColor = val ? 'var(--naranja)' : 'var(--borde)';
-    ico.innerHTML         = val ? '&#10003;' : '';
-  }
-
-  // Al DESACTIVAR el módulo: limpiar todos sus permisos en el estado JS
-  // Al ACTIVAR: dejar los permisos en blanco (el admin los configura manualmente)
-  if (!_estadoPermisos[sigla]) _estadoPermisos[sigla] = {};
-  if (!val) {
-    var acciones = PERMISOS_POR_MODULO[sigla] || [];
-    acciones.forEach(function(a) {
-      _estadoPermisos[sigla][a.accion] = false;
-    });
-    // Desmarcar checkboxes en el DOM
-    var panel = document.getElementById('pnl-' + sigla);
-    if (panel) {
-      var allChecks = panel.querySelectorAll('input[type="checkbox"]');
-      allChecks.forEach(function(cb, idx) {
-        if (idx === 0) return;
-        cb.checked = false;
-      });
-    }
-  }
 }
 function _togglePermiso(sigla, accion, val) {
   if (!_estadoPermisos[sigla]) _estadoPermisos[sigla] = {};
@@ -2210,31 +2131,20 @@ async function guardarUsuario() {
     }
   }
 
-  // Leer estado DESDE EL DOM (fuente de verdad) para evitar desincronización
+  // Accesos seleccionados — checkboxes con name="mod_SIGLA"
+  // Leer estado directamente desde variables JS (no desde el DOM)
   var accesosSelec = [];
   var permisosSelec = {};
-
-  TODOS_LOS_MODULOS.forEach(function(m) {
-    var sigla = m.sigla;
-    var panel = document.getElementById('pnl-' + sigla);
-    if (!panel) return;
-
-    // Leer si el módulo está activo (primer checkbox del panel)
-    var cbModulo = panel.querySelector('input[type="checkbox"]');
-    var moduloActivo = cbModulo ? cbModulo.checked : false;
-
-    if (moduloActivo) {
-      accesosSelec.push(sigla);
-      // Leer permisos por data-accion — 100% confiable sin importar el orden
-      var cbsPermisos = panel.querySelectorAll('input[data-accion]');
-      cbsPermisos.forEach(function(cb) {
-        if (cb.checked) {
-          var accion = cb.getAttribute('data-accion');
-          if (!permisosSelec[sigla]) permisosSelec[sigla] = [];
-          permisosSelec[sigla].push(accion);
-        }
-      });
-    }
+  Object.keys(_estadoModulos).forEach(function(sigla) {
+    if (_estadoModulos[sigla]) accesosSelec.push(sigla);
+  });
+  Object.keys(_estadoPermisos).forEach(function(sigla) {
+    Object.keys(_estadoPermisos[sigla]).forEach(function(accion) {
+      if (_estadoPermisos[sigla][accion]) {
+        if (!permisosSelec[sigla]) permisosSelec[sigla] = [];
+        permisosSelec[sigla].push(accion);
+      }
+    });
   });
 
   try {
@@ -2268,10 +2178,6 @@ async function guardarUsuario() {
           } catch(eNP) { console.warn('Error permiso nuevo:', npMod, npAccs[npj], eNP); }
         }
       }
-      // Insertar marcador de configuracion (evita pre-llenado en futuras ediciones)
-      try {
-        await api('usuarios_permisos', 'POST', { correo_usuario: correo, modulo: '_SISTEMA', accion: '_CONFIGURADO' });
-      } catch(eM) {}
       okEl.textContent = '✓ Usuario creado exitosamente.';
     } else {
       // EDITAR USUARIO
@@ -2307,13 +2213,6 @@ async function guardarUsuario() {
           }
         }
       }
-      // Reinsertar marcador de configuracion
-      try {
-        const correoMarcador = usuariosCache.find(function(u){ return u.id_usuario == idEdit; })?.correo_usuario;
-        if (correoMarcador) {
-          await api('usuarios_permisos', 'POST', { correo_usuario: correoMarcador, modulo: '_SISTEMA', accion: '_CONFIGURADO' });
-        }
-      } catch(eM) {}
       okEl.textContent = '✓ Usuario actualizado exitosamente.';
     }
 
@@ -2604,7 +2503,7 @@ async function renderTasas() {
       + '</div>'
       + '<div style="display:flex;gap:10px">'
       + '<button onclick="renderTasas()" class="btn-secundario">↻ Actualizar vista</button>'
-      + (puedo('TASAS','CREAR') ? '<button onclick="sincronizarTasasBCV(this)" class="btn-primario" style="display:flex;align-items:center;gap:6px"><span>⬇</span> Sincronizar BCV</button>' : '')
+      + '<button onclick="sincronizarTasasBCV(this)" class="btn-primario" style="display:flex;align-items:center;gap:6px"><span>⬇</span> Sincronizar BCV</button>'
       + '</div></div>'
       + '<div style="display:flex;gap:16px;flex-wrap:wrap">'
       + tarjeta('🇺🇸', 'USD',  usdVal,  usdCierre,  fuenteUsd,  '#FF6B00')
@@ -2614,7 +2513,7 @@ async function renderTasas() {
 
       + proximaHTML
 
-      + (puedo('TASAS','CREAR') ? '<div class="panel" style="margin-bottom:24px;border:1px solid rgba(255,107,0,0.3)">'
+      + '<div class="panel" style="margin-bottom:24px;border:1px solid rgba(255,107,0,0.3)">'
       + '<div class="panel-header" style="border-bottom:1px solid rgba(255,107,0,0.15)">'
       + '<div>'
       + '<h3 style="color:var(--naranja)">📋 Ingresar Tasa Oficial BCV</h3>'
@@ -2639,7 +2538,7 @@ async function renderTasas() {
       + '</div>'
       + '</div>'
       + '<div id="bcv-manual-msg" style="margin-top:12px;display:none"></div>'
-      + '</div></div>' : '')
+      + '</div></div>'
 
       + '<div class="panel" style="margin-bottom:24px">'
       + '<div class="panel-header"><h3>Historial — Últimos 5 Días Hábiles</h3></div>'
@@ -3107,7 +3006,6 @@ async function procesarCambioClave() {
 // ─── SINCRONIZAR TASAS BCV MANUAL ───
 // ─── GUARDAR TASA BCV MANUAL ───
 async function guardarTasaBCVManual() {
-  if (!puedo('TASAS','CREAR')) return;
   const fecha = document.getElementById('bcv-fecha').value;
   const usd   = parseFloat(document.getElementById('bcv-usd').value);
   const eur   = parseFloat(document.getElementById('bcv-eur').value);
@@ -3167,7 +3065,6 @@ async function guardarTasaBCVManual() {
 }
 
 async function sincronizarTasasBCV(btn) {
-  if (!puedo('TASAS','CREAR')) return;
   const texto = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<span style="display:inline-block;animation:spin 0.8s linear infinite">↻</span> Sincronizando...';
@@ -3226,28 +3123,13 @@ async function sincronizarTasasBCV(btn) {
     }, 2500);
 
   } catch(e) {
-    // Mostrar mensaje claro y desplazar al formulario manual
-    btn.innerHTML = '✗ No disponible en dolarapi.com';
+    btn.innerHTML = '✗ ' + e.message;
     btn.style.background = '#e53e3e';
-
-    // Mostrar aviso detallado en el panel de ingreso manual
-    const msgManual = document.getElementById('bcv-manual-msg');
-    if (msgManual) {
-      msgManual.innerHTML = '<div class="alerta alerta-error" style="display:block">'
-        + '⚠️ <strong>dolarapi.com aún no ha publicado la tasa del próximo día hábil.</strong><br>'
-        + 'Ingresa los valores manualmente desde <a href="https://bcv.org.ve" target="_blank" style="color:var(--naranja)">bcv.org.ve</a> '
-        + 'y usa el formulario de abajo para registrarlos.'
-        + '</div>';
-      msgManual.style.display = 'block';
-      // Hacer scroll al formulario manual
-      msgManual.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-
     setTimeout(function() {
       btn.innerHTML = texto;
       btn.style.background = '';
       btn.disabled = false;
-    }, 4000);
+    }, 3500);
   }
 }
 const GMAIL_USER = 'syd.systems2001@gmail.com';
@@ -3638,7 +3520,7 @@ async function cargarPropietarios(filtro) {
       + 'onkeyup="cargarPropietarios(this.value)" '
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();cargarPropietarios(this.value)}else if(event.key===\'Escape\'){this.value=\'\';cargarPropietarios(\'\')}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:250px">'
-      + (puedo('PROPIETARIOS','CREAR') ? '<button class="btn-primario" onclick="abrirPropietario(null)">+ Nuevo Propietario</button>' : '')
+      + '<button class="btn-primario" onclick="abrirPropietario(null)">+ Nuevo Propietario</button>'
       + '</div></div>'
       + '<div class="tabla-container" id="tabla-prop-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
       + '</div>';
@@ -3671,14 +3553,14 @@ async function cargarPropietarios(filtro) {
         + '<div style="font-weight:500">' + p.nombre_completo + '</div>'
         + '<div style="font-size:11px;color:var(--suave)">' + p.tipo_doc + '-' + p.numero_doc + '</div>'
         + '</div></div></td>'
-        + '<td style="font-size:12px">' + (puedo('PROPIETARIOS','VER_DATOS_PERSONALES') ? (p.telefono || '—') : '<span style="color:#444;font-size:11px">🔒 Restringido</span>') + '</td>'
-        + '<td style="font-size:12px">' + (puedo('PROPIETARIOS','VER_DATOS_PERSONALES') ? (p.correo || '—') : '<span style="color:#444;font-size:11px">🔒 Restringido</span>') + '</td>'
+        + '<td style="font-size:12px">' + (p.telefono || '—') + '</td>'
+        + '<td style="font-size:12px">' + (p.correo || '—') + '</td>'
         + '<td><span class="badge badge-naranja" style="cursor:pointer" onclick="verVehiculosPropietario(' + p.id_propietario + ')">' + vCount + ' veh.</span></td>'
         + '<td style="font-size:11px;color:var(--suave)">' + (vList.length > 30 ? vList.substring(0,30)+'...' : vList) + '</td>'
         + '<td>'
         + '<div style="display:flex;gap:6px">'
-        + (puedo('PROPIETARIOS','EDITAR') ? '<button class="btn-secundario" onclick="abrirPropietario(' + p.id_propietario + ')">Editar</button>' : '')
-        + (puedo('PROPIETARIOS','VER') ? '<button class="btn-secundario" onclick="verFichaPropietario(' + p.id_propietario + ')">Ficha</button>' : '')
+        + '<button class="btn-secundario" onclick="abrirPropietario(' + p.id_propietario + ')">Editar</button>'
+        + '<button class="btn-secundario" onclick="verFichaPropietario(' + p.id_propietario + ')">Ficha</button>'
         + '</div></td>'
         + '</tr>';
     }).join('');
@@ -3699,8 +3581,6 @@ async function cargarPropietarios(filtro) {
 }
 
 function abrirPropietario(id) {
-  if (id && !puedo('PROPIETARIOS','EDITAR')) return;
-  if (!id && !puedo('PROPIETARIOS','CREAR')) return;
   const p = id ? propietariosCache.find(function(x) { return x.id_propietario === id; }) : null;
   document.getElementById('modal-prop-titulo').textContent = p ? 'EDITAR PROPIETARIO' : 'NUEVO PROPIETARIO';
   document.getElementById('prop-id').value          = p ? p.id_propietario : '';
@@ -3708,9 +3588,9 @@ function abrirPropietario(id) {
   document.getElementById('prop-num-doc').value     = p ? p.numero_doc      : '';
   document.getElementById('prop-nombre').value      = p ? p.nombre_completo : '';
   document.getElementById('prop-rif-civil').value   = p ? (p.rif || '') : '';
-  document.getElementById('prop-telefono').value    = (p && puedo('PROPIETARIOS','VER_DATOS_PERSONALES')) ? (p.telefono || '') : '';
-  document.getElementById('prop-correo').value      = (p && puedo('PROPIETARIOS','VER_DATOS_PERSONALES')) ? (p.correo || '')   : '';
-  document.getElementById('prop-direccion').value   = (p && puedo('PROPIETARIOS','VER_DATOS_PERSONALES')) ? (p.direccion || '') : '';
+  document.getElementById('prop-telefono').value    = p ? (p.telefono || '') : '';
+  document.getElementById('prop-correo').value      = p ? (p.correo || '')   : '';
+  document.getElementById('prop-direccion').value   = p ? (p.direccion || '') : '';
   document.getElementById('prop-empresa').value     = p ? (p.empresa || '')  : '';
   const propFotoPreview = document.getElementById('prop-foto-preview');
   propFotoPreview.src = p && p.foto_documento ? p.foto_documento : '';
@@ -3789,7 +3669,6 @@ async function guardarPropietario() {
 }
 
 async function verFichaPropietario(id) {
-  if (!puedo('PROPIETARIOS','VER')) return;
   const p = propietariosCache.find(function(x) { return x.id_propietario == id; });
   if (!p) return;
   const vehs = await api('vehiculos', 'GET', null, '?id_propietario=eq.' + id + '&select=*');
@@ -3812,10 +3691,10 @@ async function verFichaPropietario(id) {
     + '<div style="font-size:13px;color:var(--suave)">' + p.tipo_doc + '-' + p.numero_doc + '</div>'
     + '</div></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
-    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div style="font-size:13px">' + (puedo('PROPIETARIOS','VER_DATOS_PERSONALES') ? (p.telefono || '—') : '<span style="color:#444;font-size:11px">🔒 Restringido</span>') + '</div></div>'
-    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:13px">' + (puedo('PROPIETARIOS','VER_DATOS_PERSONALES') ? (p.correo || '—') : '<span style="color:#444;font-size:11px">🔒 Restringido</span>') + '</div></div>'
+    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div style="font-size:13px">' + (p.telefono || '—') + '</div></div>'
+    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:13px">' + (p.correo || '—') + '</div></div>'
     + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Empresa</div><div style="font-size:13px">' + (p.empresa || '—') + '</div></div>'
-    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:13px">' + (puedo('PROPIETARIOS','VER_DATOS_PERSONALES') ? (p.direccion || '—') : '<span style="color:#444;font-size:11px">🔒 Restringido</span>') + '</div></div>'
+    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:13px">' + (p.direccion || '—') + '</div></div>'
     + '</div>'
     + '<div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Vehículos (' + vehs.length + ')</div>'
     + vehsHTML;
@@ -3867,7 +3746,7 @@ async function cargarVehiculos(filtro, propId) {
       + '<option value="">Todos los propietarios</option>'
       + propietariosSimple.map(function(p) { return '<option value="' + p.id_propietario + '">' + p.nombre_completo + '</option>'; }).join('')
       + '</select>'
-      + (puedo('VEHICULOS','CREAR') ? '<button class="btn-primario" onclick="abrirVehiculo(null)">+ Nuevo Vehículo</button>' : '')
+      + '<button class="btn-primario" onclick="abrirVehiculo(null)">+ Nuevo Vehículo</button>'
       + '</div></div>'
       + '<div class="tabla-container" id="tabla-vehiculos-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
       + '</div>';
@@ -3929,8 +3808,8 @@ async function cargarVehiculos(filtro, propId) {
         + '<td><span class="badge ' + (v.estado_vehiculo === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + v.estado_vehiculo + '</span></td>'
         + '<td>'
         + '<div style="display:flex;gap:6px">'
-        + (puedo('VEHICULOS','EDITAR') ? '<button class="btn-secundario" onclick="abrirVehiculo(' + v.id_vehiculo + ')">Editar</button>' : '')
-        + (puedo('VEHICULOS','VER') ? '<button class="btn-secundario" onclick="verFichaVehiculo(' + v.id_vehiculo + ')">Ficha</button>' : '')
+        + '<button class="btn-secundario" onclick="abrirVehiculo(' + v.id_vehiculo + ')">Editar</button>'
+        + '<button class="btn-secundario" onclick="verFichaVehiculo(' + v.id_vehiculo + ')">Ficha</button>'
         + '</div></td>'
         + '</tr>';
     }).join('');
@@ -3976,8 +3855,6 @@ function filtrarVehiculosPorPropietario(propId) {
 }
 
 async function abrirVehiculo(id) {
-  if (id && !puedo('VEHICULOS','EDITAR')) return;
-  if (!id && !puedo('VEHICULOS','CREAR')) return;
   const v = id ? vehiculosCache.find(function(x) { return x.id_vehiculo === id; }) : null;
   document.getElementById('modal-veh-titulo').textContent = v ? 'EDITAR VEHÍCULO' : 'NUEVO VEHÍCULO';
   document.getElementById('veh-id').value            = v ? v.id_vehiculo       : '';
@@ -4123,7 +4000,6 @@ async function guardarVehiculo() {
 }
 
 async function verFichaVehiculo(id) {
-  if (!puedo('VEHICULOS','VER')) return;
   try {
   // Buscar directo en Supabase para tener datos completos
   let v = vehiculosCache.find(function(x) { return x.id_vehiculo == id; });
@@ -4340,7 +4216,7 @@ async function renderCatalogo(filtro, categoria) {
       + '<option value="">Todas las categorías</option>'
       + ['MECÁNICA','ELÉCTRICA','CARROCERÍA','FRENOS','SUSPENSIÓN','AIRES','TRANSMISIÓN','DIAGNÓSTICO','OTROS'].map(function(cat) { return '<option value="' + cat + '">' + cat + '</option>'; }).join('')
       + '</select>'
-      + (puedo('CATALOGO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoCatalogo()">+ Nuevo Servicio</button>' : '')
+      + '<button class="btn-primario" onclick="abrirNuevoCatalogo()">+ Nuevo Servicio</button>'
       + '</div></div>'
       + '<div class="tabla-container" id="tabla-cat-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
       + '</div>';
@@ -4376,8 +4252,8 @@ async function renderCatalogo(filtro, categoria) {
         + '<td style="font-family:var(--font-mono);color:var(--naranja);font-size:14px;font-weight:700">$ ' + parseFloat(s.precio_usd || 0).toFixed(2) + '</td>'
         + '<td><span class="badge ' + (s.activo ? 'badge-verde' : 'badge-rojo') + '" style="font-size:12px">' + (s.activo ? 'Activo' : 'Inactivo') + '</span></td>'
         + '<td><div style="display:flex;gap:8px">'
-        + (puedo('CATALOGO','EDITAR') ? '<button class="btn-secundario" onclick="abrirEditarCatalogo(' + s.id_servicio + ')">Editar</button>' : '')
-        + (puedo('CATALOGO','ELIMINAR') ? '<button class="btn-peligro" onclick="eliminarCatalogo(' + s.id_servicio + ',\'' + s.nombre.replace(/'/g, "\\'") + '\')">Eliminar</button>' : '')
+        + '<button class="btn-secundario" onclick="abrirEditarCatalogo(' + s.id_servicio + ')">Editar</button>'
+        + '<button class="btn-peligro" onclick="eliminarCatalogo(' + s.id_servicio + ',\'' + s.nombre.replace(/'/g, "\\'") + '\')">Eliminar</button>'
         + '</div></td>'
         + '</tr>';
     }).join('');
@@ -4811,9 +4687,9 @@ async function renderInventario(filtro) {
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end">'
       + '<div style="display:flex;gap:3px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:3px">'
       + '<button id="inv-tab-tabla"   onclick="invCambiarVista(\'tabla\')"   class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:var(--naranja);color:#fff">Inventario</button>'
-      + (puedo('INVENTARIO','VER_EOQ_ABC') ? '<button id="inv-tab-abc"     onclick="invCambiarVista(\'abc\')"     class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">Análisis ABC</button>' : '')
-      + (puedo('INVENTARIO','VER_EOQ_ABC') ? '<button id="inv-tab-reorden" onclick="invCambiarVista(\'reorden\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">Reorden</button>' : '')
-      + (puedo('INVENTARIO','VER_EOQ_ABC') ? '<button id="inv-tab-eoq"     onclick="invCambiarVista(\'eoq\')"     class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">EOQ</button>' : '')
+      + '<button id="inv-tab-abc"     onclick="invCambiarVista(\'abc\')"     class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">Análisis ABC</button>'
+      + '<button id="inv-tab-reorden" onclick="invCambiarVista(\'reorden\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">Reorden</button>'
+      + '<button id="inv-tab-eoq"     onclick="invCambiarVista(\'eoq\')"     class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">EOQ</button>'
       + '</div>'
       + '<select id="inv-filtro-cat" onchange="invFiltrarCategoria()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todas las categorías</option>'
@@ -4827,7 +4703,7 @@ async function renderInventario(filtro) {
       + 'onkeyup="renderInventario(this.value)" '
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\');}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:180px">'
-      + (puedo('INVENTARIO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Artículo</button>' : '')
+      + '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Artículo</button>'
       + '</div></div>'
       + '<div id="alerta-stock-bajo" style="display:none"></div>'
       + '<div id="tabla-inv-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
@@ -4919,24 +4795,24 @@ function invRenderTabla(items, cont) {
       + (r.descripcion ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion + '</div>' : '') + '</div></div></td>'
       + '<td><span class="badge ' + (stockBajo ? 'badge-rojo' : 'badge-verde') + '">' + r.stock_actual + ' ' + (r.unidad || 'UND') + '</span>'
       + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo + ')</div>' : '') + '</td>'
-      + (puedo('INVENTARIO','VER_COSTOS') ? '<td style="font-family:var(--font-mono);font-size:12px">'
+      + '<td style="font-family:var(--font-mono);font-size:12px">'
       + '<div style="color:var(--suave);font-size:9px;letter-spacing:1px">COSTO PROM. (CPP)</div>'
       + '<div>$ ' + fmtUSD(r.precio_costo_usd) + '</div>'
       + (r.precio_costo_ultimo_usd && Math.abs(r.precio_costo_ultimo_usd - r.precio_costo_usd) > 0.001
           ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Última compra: $ ' + fmtUSD(r.precio_costo_ultimo_usd) + '</div>'
           : '')
-      + '</td>' : '')
+      + '</td>'
       + '<td style="font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:10px">Venta</div>'
       + '<span style="color:var(--naranja)">$ ' + fmtUSD(r.precio_venta_usd) + '</span>'
       + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen.toFixed(1) + '%</div></td>'
       + '<td><div style="display:flex;gap:8px">'
-      + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" style="color:var(--naranja);border-color:rgba(255,107,0,0.4)" onclick="abrirEntradaStock(' + r.id_repuesto + ')">+ Stock</button>' : '')
-      + (puedo('INVENTARIO','EDITAR') ? '<button class="btn-secundario" onclick="abrirEditarInventario(' + r.id_repuesto + ')">Editar</button>' : '')
-      + (puedo('INVENTARIO','ELIMINAR') ? '<button class="btn-peligro" onclick="eliminarInventario(' + r.id_repuesto + ',\'' + r.nombre.replace(/'/g, "\'") + '\')">Eliminar</button>' : '')
+      + '<button class="btn-secundario" style="color:var(--naranja);border-color:rgba(255,107,0,0.4)" onclick="abrirEntradaStock(' + r.id_repuesto + ')">+ Stock</button>'
+      + '<button class="btn-secundario" onclick="abrirEditarInventario(' + r.id_repuesto + ')">Editar</button>'
+      + '<button class="btn-peligro" onclick="eliminarInventario(' + r.id_repuesto + ',\'' + r.nombre.replace(/'/g, "\'") + '\')">Eliminar</button>'
       + '</div></td></tr>';
   }).join('');
   cont.innerHTML = '<div class="tabla-container"><table><thead><tr>'
-    + '<th>Artículo</th><th>Stock</th>' + (puedo('INVENTARIO','VER_COSTOS') ? '<th>Precio Costo</th>' : '') + '<th>Precio Venta</th><th>Acciones</th>'
+    + '<th>Artículo</th><th>Stock</th><th>Precio Costo</th><th>Precio Venta</th><th>Acciones</th>'
     + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin artículos registrados</td></tr>') + '</tbody></table></div>';
 }
 
@@ -5256,13 +5132,14 @@ async function renderOrdenes() {
         + '<td><span class="badge ' + est.clase + '">' + est.label + '</span>'
         + (o.fecha_estado ? '<div style="font-size:10px;color:var(--suave);margin-top:3px">' + o.fecha_estado + '</div>' : '')
         + '</td>'
-        + '<td style="font-family:var(--font-mono)">' + (puedo('SERVICIOS','VER_TOTALES') ? '<span style="color:var(--naranja)">$ ' + fmtUSD(o.total_usd) + '</span><div style="font-size:10px;color:var(--suave)">' + fmtBs(o.total_ves) + ' Bs</div>' : '<span style="color:#444;font-size:11px">🔒 Restringido</span>') + '</td>'
+        + '<td style="font-family:var(--font-mono)"><span style="color:var(--naranja)">$ ' + fmtUSD(o.total_usd) + '</span>'
+        + '<div style="font-size:10px;color:var(--suave)">' + fmtBs(o.total_ves) + ' Bs</div></td>'
         + '<td><div style="display:flex;gap:6px;flex-wrap:wrap">'
-        + (puedo('SERVICIOS','VER') ? '<button class="btn-secundario" onclick="verFichaOS(' + o.id_orden + ')">Ver</button>' : '')
+        + '<button class="btn-secundario" onclick="verFichaOS(' + o.id_orden + ')">Ver</button>'
         + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA'
-          ? (puedo('SERVICIOS','EDITAR') ? '<button class="btn-secundario" onclick="abrirEditarOS(' + o.id_orden + ')">Editar</button>' : '')
-            + (puedo('SERVICIOS','ANULAR') ? '<button class="btn-peligro" onclick="anularOS(' + o.id_orden + ',\'' + (o.numero_os || '') + '\')">Anular</button>' : '')
-          : (puedo('SERVICIOS','REABRIR') && (sesionActual && sesionActual.administrador)
+          ? '<button class="btn-secundario" onclick="abrirEditarOS(' + o.id_orden + ')">Editar</button>'
+            + '<button class="btn-peligro" onclick="anularOS(' + o.id_orden + ',\'' + (o.numero_os || '') + '\')">Anular</button>'
+          : (sesionActual && sesionActual.administrador
               ? '<button class="btn-secundario" style="border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="reabrirOS(' + o.id_orden + ',\'' + (o.numero_os || '') + '\')">↺ Reabrir</button>'
               : ''))
         + '</div></td>'
@@ -5307,8 +5184,8 @@ async function renderOrdenes() {
           return '<option value="' + e[0] + '"' + (window._osEstadoFiltro === e[0] ? ' selected' : '') + '>' + e[1].label + '</option>';
         }).join('')
       + '</select>'
-      + (puedo('SERVICIOS','VER_TASA') ? '<span style="font-size:11px;color:var(--suave);white-space:nowrap">Tasa: $ 1 = ' + tasaActualOS.toFixed(2) + ' Bs</span>' : '')
-      + (puedo('SERVICIOS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevaOS()">+ Nueva OS</button>' : '')
+      + '<span style="font-size:11px;color:var(--suave);white-space:nowrap">Tasa: $ 1 = ' + tasaActualOS.toFixed(2) + ' Bs</span>'
+      + '<button class="btn-primario" onclick="abrirNuevaOS()">+ Nueva OS</button>'
       + '</div></div>'
       + '<div class="tabla-container"><table id="os-tabla"><thead><tr>'
       + '<th>N° OS / Fecha</th><th>Vehículo</th><th>Propietario</th><th>Estado</th><th>Total</th><th>Acciones</th>'
