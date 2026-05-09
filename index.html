@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260508400000 -->
+<!-- v20260508420000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -3174,13 +3174,28 @@ async function sincronizarTasasBCV(btn) {
     }, 2500);
 
   } catch(e) {
-    btn.innerHTML = '✗ ' + e.message;
+    // Mostrar mensaje claro y desplazar al formulario manual
+    btn.innerHTML = '✗ No disponible en dolarapi.com';
     btn.style.background = '#e53e3e';
+
+    // Mostrar aviso detallado en el panel de ingreso manual
+    const msgManual = document.getElementById('bcv-manual-msg');
+    if (msgManual) {
+      msgManual.innerHTML = '<div class="alerta alerta-error" style="display:block">'
+        + '⚠️ <strong>dolarapi.com aún no ha publicado la tasa del próximo día hábil.</strong><br>'
+        + 'Ingresa los valores manualmente desde <a href="https://bcv.org.ve" target="_blank" style="color:var(--naranja)">bcv.org.ve</a> '
+        + 'y usa el formulario de abajo para registrarlos.'
+        + '</div>';
+      msgManual.style.display = 'block';
+      // Hacer scroll al formulario manual
+      msgManual.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
     setTimeout(function() {
       btn.innerHTML = texto;
       btn.style.background = '';
       btn.disabled = false;
-    }, 3500);
+    }, 4000);
   }
 }
 const GMAIL_USER = 'syd.systems2001@gmail.com';
@@ -3641,9 +3656,9 @@ function abrirPropietario(id) {
   document.getElementById('prop-num-doc').value     = p ? p.numero_doc      : '';
   document.getElementById('prop-nombre').value      = p ? p.nombre_completo : '';
   document.getElementById('prop-rif-civil').value   = p ? (p.rif || '') : '';
-  document.getElementById('prop-telefono').value    = p ? (p.telefono || '') : '';
-  document.getElementById('prop-correo').value      = p ? (p.correo || '')   : '';
-  document.getElementById('prop-direccion').value   = p ? (p.direccion || '') : '';
+  document.getElementById('prop-telefono').value    = (p && puedo('PROPIETARIOS','VER_DATOS_PERSONALES')) ? (p.telefono || '') : '';
+  document.getElementById('prop-correo').value      = (p && puedo('PROPIETARIOS','VER_DATOS_PERSONALES')) ? (p.correo || '')   : '';
+  document.getElementById('prop-direccion').value   = (p && puedo('PROPIETARIOS','VER_DATOS_PERSONALES')) ? (p.direccion || '') : '';
   document.getElementById('prop-empresa').value     = p ? (p.empresa || '')  : '';
   const propFotoPreview = document.getElementById('prop-foto-preview');
   propFotoPreview.src = p && p.foto_documento ? p.foto_documento : '';
@@ -3745,10 +3760,10 @@ async function verFichaPropietario(id) {
     + '<div style="font-size:13px;color:var(--suave)">' + p.tipo_doc + '-' + p.numero_doc + '</div>'
     + '</div></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
-    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div style="font-size:13px">' + (p.telefono || '—') + '</div></div>'
-    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:13px">' + (p.correo || '—') + '</div></div>'
+    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div style="font-size:13px">' + (puedo('PROPIETARIOS','VER_DATOS_PERSONALES') ? (p.telefono || '—') : '<span style="color:#444;font-size:11px">🔒 Restringido</span>') + '</div></div>'
+    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:13px">' + (puedo('PROPIETARIOS','VER_DATOS_PERSONALES') ? (p.correo || '—') : '<span style="color:#444;font-size:11px">🔒 Restringido</span>') + '</div></div>'
     + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Empresa</div><div style="font-size:13px">' + (p.empresa || '—') + '</div></div>'
-    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:13px">' + (p.direccion || '—') + '</div></div>'
+    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:13px">' + (puedo('PROPIETARIOS','VER_DATOS_PERSONALES') ? (p.direccion || '—') : '<span style="color:#444;font-size:11px">🔒 Restringido</span>') + '</div></div>'
     + '</div>'
     + '<div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Vehículos (' + vehs.length + ')</div>'
     + vehsHTML;
