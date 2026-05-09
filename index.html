@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260508440000 -->
+<!-- v20260508450000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -1538,21 +1538,31 @@ async function cerrarSesionInactividad() {
 }
 
 // ─── HELPER: Convertir fecha UTC a hora Venezuela (UTC-4) ───
-function fmtFechaVzla(fechaISO, opciones) {
-  if (!fechaISO) return '—';
-  // Sumar el offset de Venezuela (UTC-4) manualmente para forzar la zona
+// Conversión manual: resta 4 horas al timestamp UTC
+function toVzla(fechaISO) {
+  if (!fechaISO) return null;
   var d = new Date(fechaISO);
-  return d.toLocaleString('es-VE', Object.assign({ timeZone: 'America/Caracas' }, opciones || {}));
+  // Venezuela es UTC-4 fijo (sin horario de verano)
+  return new Date(d.getTime() - (4 * 60 * 60 * 1000));
 }
 
 function fmtFechaCorta(fechaISO) {
   if (!fechaISO) return '—';
-  return fmtFechaVzla(fechaISO, { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+  var d = toVzla(fechaISO);
+  var dia  = String(d.getUTCDate()).padStart(2,'0');
+  var mes  = String(d.getUTCMonth()+1).padStart(2,'0');
+  var hora = String(d.getUTCHours()).padStart(2,'0');
+  var min  = String(d.getUTCMinutes()).padStart(2,'0');
+  return dia + '/' + mes + ' ' + hora + ':' + min;
 }
 
 function fmtFechaSolo(fechaISO) {
   if (!fechaISO) return '—';
-  return fmtFechaVzla(fechaISO, { day:'2-digit', month:'2-digit', year:'numeric' });
+  var d = toVzla(fechaISO);
+  var dia  = String(d.getUTCDate()).padStart(2,'0');
+  var mes  = String(d.getUTCMonth()+1).padStart(2,'0');
+  var anio = d.getUTCFullYear();
+  return dia + '/' + mes + '/' + anio;
 }
 
 // ─── RELOJ ───
