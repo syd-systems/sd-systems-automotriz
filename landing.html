@@ -4,11 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
     --negro:   #0a0a0a;
-    --gris1:   #111111;
     --borde:   #222222;
     --texto:   #e8e8e8;
     --suave:   #666666;
@@ -16,13 +15,16 @@
     --naranja2:#FF8C00;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body {
+
+  html, body {
+    height: 100%;
     font-family: 'DM Sans', sans-serif;
     background: var(--negro);
     color: var(--texto);
-    min-height: 100vh;
-    overflow-x: hidden;
+    overflow: hidden;
   }
+
+  /* Grid de fondo */
   body::before {
     content: '';
     position: fixed;
@@ -34,6 +36,8 @@
     pointer-events: none;
     z-index: 0;
   }
+
+  /* Glow central */
   body::after {
     content: '';
     position: fixed;
@@ -46,65 +50,21 @@
     pointer-events: none;
     z-index: 0;
   }
-  header {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 48px;
-    border-bottom: 1px solid var(--borde);
-    background: rgba(10,10,10,0.85);
-    backdrop-filter: blur(12px);
-  }
-  .logo { display: flex; align-items: center; gap: 14px; }
-  .logo-marca {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 32px;
-    letter-spacing: 3px;
-    color: var(--naranja);
-    line-height: 1;
-  }
-  .logo-sep { width: 1px; height: 28px; background: var(--borde); }
-  .logo-sub {
-    font-size: 10px;
-    letter-spacing: 3px;
-    color: var(--suave);
-    text-transform: uppercase;
-    font-weight: 300;
-    line-height: 1.4;
-  }
-  .btn-acceso {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--naranja);
-    color: #fff;
-    text-decoration: none;
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 16px;
-    letter-spacing: 2px;
-    padding: 10px 24px;
-    border-radius: 6px;
-    transition: all 0.2s;
-  }
-  .btn-acceso:hover {
-    background: var(--naranja2);
-    transform: translateY(-1px);
-    box-shadow: 0 8px 24px rgba(255,107,0,0.3);
-  }
+
+  /* Hero ocupa toda la pantalla */
   .hero {
     position: relative;
     z-index: 1;
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 120px 24px 80px;
+    padding: 24px;
+    gap: clamp(8px, 2vh, 24px);
   }
+
   .hero-badge {
     display: inline-flex;
     align-items: center;
@@ -113,13 +73,13 @@
     border: 1px solid rgba(255,107,0,0.2);
     border-radius: 20px;
     padding: 6px 16px;
-    font-size: 11px;
+    font-size: clamp(9px, 1vw, 11px);
     letter-spacing: 3px;
     text-transform: uppercase;
     color: var(--naranja);
-    margin-bottom: 32px;
     animation: fadeUp 0.6s ease both;
   }
+
   .hero-badge::before {
     content: '';
     width: 6px;
@@ -127,111 +87,81 @@
     background: var(--naranja);
     border-radius: 50%;
     animation: pulse 2s infinite;
+    flex-shrink: 0;
   }
+
   @keyframes pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.5; transform: scale(0.8); }
   }
+
   .hero-titulo {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(72px, 12vw, 140px);
+    font-size: clamp(48px, 10vw, 120px);
     letter-spacing: 6px;
     line-height: 0.9;
     color: var(--texto);
-    margin-bottom: 8px;
     animation: fadeUp 0.6s 0.1s ease both;
   }
-  .hero-titulo span { color: var(--naranja); display: block; }
+
+  .hero-titulo span {
+    color: var(--naranja);
+    display: block;
+  }
+
   .hero-subtitulo {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(24px, 4vw, 42px);
+    font-size: clamp(16px, 3vw, 36px);
     letter-spacing: 8px;
     color: var(--suave);
-    margin-bottom: 32px;
     animation: fadeUp 0.6s 0.2s ease both;
   }
+
   .hero-desc {
-    max-width: 520px;
-    font-size: 15px;
+    max-width: 500px;
+    font-size: clamp(12px, 1.2vw, 15px);
     color: var(--suave);
-    line-height: 1.7;
+    line-height: 1.6;
     font-weight: 300;
-    margin-bottom: 48px;
     animation: fadeUp 0.6s 0.3s ease both;
   }
-  .hero-cta {
-    display: flex;
-    gap: 14px;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    animation: fadeUp 0.6s 0.4s ease both;
-  }
+
   .btn-primary {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 12px;
     background: var(--naranja);
     color: #fff;
     text-decoration: none;
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px;
+    font-size: clamp(16px, 1.5vw, 20px);
     letter-spacing: 3px;
-    padding: 16px 36px;
+    padding: clamp(12px, 1.5vh, 16px) clamp(24px, 3vw, 36px);
     border-radius: 8px;
     transition: all 0.2s;
-    position: relative;
-    overflow: hidden;
+    animation: fadeUp 0.6s 0.4s ease both;
   }
+
   .btn-primary:hover {
     background: var(--naranja2);
     transform: translateY(-2px);
     box-shadow: 0 12px 36px rgba(255,107,0,0.4);
   }
-  .stats {
-    display: flex;
-    gap: 48px;
-    align-items: center;
-    justify-content: center;
-    margin-top: 64px;
-    padding-top: 48px;
-    border-top: 1px solid var(--borde);
-    flex-wrap: wrap;
-    animation: fadeUp 0.6s 0.5s ease both;
-  }
-  .stat { text-align: center; }
-  .stat-valor {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 42px;
-    color: var(--naranja);
-    letter-spacing: 2px;
-    line-height: 1;
-  }
-  .stat-label {
-    font-size: 10px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--suave);
-    margin-top: 4px;
-  }
-  .stat-sep { width: 1px; height: 48px; background: var(--borde); }
+
   @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(20px); }
+    from { opacity: 0; transform: translateY(16px); }
     to   { opacity: 1; transform: translateY(0); }
   }
+
+  /* Móvil */
   @media (max-width: 768px) {
-    header { padding: 16px 20px; }
-    .logo-sub { display: none; }
-    .stats { gap: 24px; }
-    .stat-sep { display: none; }
+    html, body { overflow: auto; }
+    .hero { height: auto; min-height: 100vh; padding: 40px 20px; }
   }
 </style>
 </head>
 <body>
 
-
-
-<!-- HERO -->
 <section class="hero">
   <div class="hero-badge">Sistema de Gestión Automotriz</div>
 
@@ -239,23 +169,21 @@
     S&amp;D
     <span>SYSTEMS</span>
   </h1>
+
   <div class="hero-subtitulo">Automotriz</div>
 
   <p class="hero-desc">
     Plataforma integral para la gestión de talleres automotrices. Control de vehículos, propietarios, órdenes de servicio, inventario y finanzas en un solo lugar.
   </p>
 
-  <div class="hero-cta">
-    <a href="https://syd-systems.github.io/sd-systems-automotriz/" class="btn-primary">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-        <polyline points="10 17 15 12 10 7"/>
-        <line x1="15" y1="12" x2="3" y2="12"/>
-      </svg>
-      INICIAR SESIÓN
-    </a>
-  </div>
-
+  <a href="https://syd-systems.github.io/sd-systems-automotriz/" class="btn-primary">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+      <polyline points="10 17 15 12 10 7"/>
+      <line x1="15" y1="12" x2="3" y2="12"/>
+    </svg>
+    INICIAR SESIÓN
+  </a>
 </section>
 
 </body>
