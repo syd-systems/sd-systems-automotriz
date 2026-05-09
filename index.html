@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260508450000 -->
+<!-- v20260508470000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -1538,22 +1538,28 @@ async function cerrarSesionInactividad() {
 }
 
 // ─── HELPER: Convertir fecha UTC a hora Venezuela (UTC-4) ───
-// Conversión manual: resta 4 horas al timestamp UTC
+// Venezuela = UTC-4. Supabase guarda en UTC (sin Z a veces).
+// Forzamos parseo UTC y luego restamos 4h para obtener hora Vzla.
 function toVzla(fechaISO) {
   if (!fechaISO) return null;
-  var d = new Date(fechaISO);
-  // Venezuela es UTC-4 fijo (sin horario de verano)
-  return new Date(d.getTime() - (4 * 60 * 60 * 1000));
+  // Asegurar que se parsee como UTC agregando Z si no la tiene
+  var iso = fechaISO.trim();
+  if (!iso.endsWith('Z') && !iso.includes('+')) iso = iso + 'Z';
+  var utcMs = new Date(iso).getTime();
+  // Restar 4 horas (UTC-4 = Venezuela)
+  return new Date(utcMs - (4 * 60 * 60 * 1000));
 }
 
 function fmtFechaCorta(fechaISO) {
   if (!fechaISO) return '—';
-  var d = toVzla(fechaISO);
+  var d    = toVzla(fechaISO);
   var dia  = String(d.getUTCDate()).padStart(2,'0');
   var mes  = String(d.getUTCMonth()+1).padStart(2,'0');
-  var hora = String(d.getUTCHours()).padStart(2,'0');
+  var h24  = d.getUTCHours();
   var min  = String(d.getUTCMinutes()).padStart(2,'0');
-  return dia + '/' + mes + ' ' + hora + ':' + min;
+  var ampm = h24 >= 12 ? 'p.m.' : 'a.m.';
+  var h12  = h24 % 12 || 12;
+  return dia + '/' + mes + ' ' + h12 + ':' + min + ' ' + ampm;
 }
 
 function fmtFechaSolo(fechaISO) {
