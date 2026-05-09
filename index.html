@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260508430000 -->
+<!-- v20260508440000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -1537,6 +1537,24 @@ async function cerrarSesionInactividad() {
   errEl.style.color = 'var(--naranja)';
 }
 
+// ─── HELPER: Convertir fecha UTC a hora Venezuela (UTC-4) ───
+function fmtFechaVzla(fechaISO, opciones) {
+  if (!fechaISO) return '—';
+  // Sumar el offset de Venezuela (UTC-4) manualmente para forzar la zona
+  var d = new Date(fechaISO);
+  return d.toLocaleString('es-VE', Object.assign({ timeZone: 'America/Caracas' }, opciones || {}));
+}
+
+function fmtFechaCorta(fechaISO) {
+  if (!fechaISO) return '—';
+  return fmtFechaVzla(fechaISO, { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+
+function fmtFechaSolo(fechaISO) {
+  if (!fechaISO) return '—';
+  return fmtFechaVzla(fechaISO, { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
 // ─── RELOJ ───
 function actualizarReloj() {
   const ahora = new Date();
@@ -1913,12 +1931,8 @@ async function renderUsuarios(filtro) {
       const fechaUltimaCon = u.ultima_conexion ? new Date(u.ultima_conexion) : null;
       const minutosDesdeConexion = fechaUltimaCon ? (ahora - fechaUltimaCon) / (1000 * 60) : 999;
       const enLinea = u.sesion_activa === true && minutosDesdeConexion < 6;
-      const ultimaCon = u.ultima_conexion
-        ? new Date(u.ultima_conexion).toLocaleString('es-VE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
-        : 'Nunca';
-      const ultimaDes = u.ultima_desconexion
-        ? new Date(u.ultima_desconexion).toLocaleString('es-VE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
-        : '—';
+      const ultimaCon = u.ultima_conexion ? fmtFechaCorta(u.ultima_conexion) : 'Nunca';
+      const ultimaDes = u.ultima_desconexion ? fmtFechaCorta(u.ultima_desconexion) : '—';
 
       return `
       <tr>
@@ -1944,7 +1958,7 @@ async function renderUsuarios(filtro) {
           </div>
         </td>
         <td style="font-size:11px;color:var(--suave)">
-          <div>Reg: ${new Date(u.fecha_registro).toLocaleDateString('es-VE')}</div>
+          <div>Reg: ${fmtFechaSolo(u.fecha_registro)}</div>
           <div style="margin-top:3px">Ent: ${ultimaCon}</div>
           <div style="margin-top:3px;color:#444">Sal: ${ultimaDes}</div>
         </td>
