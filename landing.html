@@ -8,26 +8,22 @@
 <style>
   :root {
     --negro:   #0a0a0a;
-    --gris1:   #111111;
-    --gris2:   #1a1a1a;
     --borde:   #222222;
     --texto:   #e8e8e8;
     --suave:   #666666;
     --naranja: #FF6B00;
     --naranja2:#FF8C00;
   }
-
   * { margin:0; padding:0; box-sizing:border-box; }
-
   body {
     font-family: 'DM Sans', sans-serif;
     background: var(--negro);
     color: var(--texto);
     min-height: 100vh;
     overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
   }
-
-  /* ── GRID DE FONDO ── */
   body::before {
     content: '';
     position: fixed;
@@ -39,8 +35,6 @@
     pointer-events: none;
     z-index: 0;
   }
-
-  /* ── GLOW CENTRAL ── */
   body::after {
     content: '';
     position: fixed;
@@ -53,8 +47,6 @@
     pointer-events: none;
     z-index: 0;
   }
-
-  /* ── HEADER ── */
   header {
     position: fixed;
     top: 0; left: 0; right: 0;
@@ -67,13 +59,7 @@
     background: rgba(10,10,10,0.85);
     backdrop-filter: blur(12px);
   }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-
+  .logo { display: flex; align-items: center; gap: 14px; }
   .logo-marca {
     font-family: 'Bebas Neue', sans-serif;
     font-size: 32px;
@@ -81,13 +67,7 @@
     color: var(--naranja);
     line-height: 1;
   }
-
-  .logo-sep {
-    width: 1px;
-    height: 28px;
-    background: var(--borde);
-  }
-
+  .logo-sep { width: 1px; height: 28px; background: var(--borde); }
   .logo-sub {
     font-size: 10px;
     letter-spacing: 3px;
@@ -96,7 +76,6 @@
     font-weight: 300;
     line-height: 1.4;
   }
-
   .btn-acceso {
     display: flex;
     align-items: center;
@@ -111,316 +90,11 @@
     border-radius: 6px;
     transition: all 0.2s;
   }
-
   .btn-acceso:hover {
     background: var(--naranja2);
     transform: translateY(-1px);
     box-shadow: 0 8px 24px rgba(255,107,0,0.3);
   }
-
-  /* ── HERO ── */
-  .hero {
-    position: relative;
-    z-index: 1;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 120px 24px 80px;
-  }
-
-  .hero-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(255,107,0,0.08);
-    border: 1px solid rgba(255,107,0,0.2);
-    border-radius: 20px;
-    padding: 6px 16px;
-    font-size: 11px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--naranja);
-    margin-bottom: 32px;
-    animation: fadeUp 0.6s ease both;
-  }
-
-  .hero-badge::before {
-    content: '';
-    width: 6px;
-    height: 6px;
-    background: var(--naranja);
-    border-radius: 50%;
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(0.8); }
-  }
-
-  .hero-titulo {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(72px, 12vw, 140px);
-    letter-spacing: 6px;
-    line-height: 0.9;
-    color: var(--texto);
-    margin-bottom: 8px;
-    animation: fadeUp 0.6s 0.1s ease both;
-  }
-
-  .hero-titulo span {
-    color: var(--naranja);
-    display: block;
-  }
-
-  .hero-subtitulo {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(24px, 4vw, 42px);
-    letter-spacing: 8px;
-    color: var(--suave);
-    margin-bottom: 32px;
-    animation: fadeUp 0.6s 0.2s ease both;
-  }
-
-  .hero-desc {
-    max-width: 520px;
-    font-size: 15px;
-    color: var(--suave);
-    line-height: 1.7;
-    font-weight: 300;
-    margin-bottom: 48px;
-    animation: fadeUp 0.6s 0.3s ease both;
-  }
-
-  .hero-cta {
-    display: flex;
-    gap: 14px;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    animation: fadeUp 0.6s 0.4s ease both;
-  }
-
-  .btn-primary {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: var(--naranja);
-    color: #fff;
-    text-decoration: none;
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px;
-    letter-spacing: 3px;
-    padding: 16px 36px;
-    border-radius: 8px;
-    transition: all 0.2s;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .btn-primary::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-
-  .btn-primary:hover {
-    background: var(--naranja2);
-    transform: translateY(-2px);
-    box-shadow: 0 12px 36px rgba(255,107,0,0.4);
-  }
-
-  .btn-primary:hover::before { opacity: 1; }
-
-  .btn-secondary {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--suave);
-    text-decoration: none;
-    font-size: 13px;
-    letter-spacing: 1px;
-    padding: 16px 24px;
-    border: 1px solid var(--borde);
-    border-radius: 8px;
-    transition: all 0.2s;
-  }
-
-  .btn-secondary:hover {
-    border-color: var(--naranja);
-    color: var(--naranja);
-  }
-
-  /* ── STATS ── */
-  .stats {
-    display: flex;
-    gap: 48px;
-    align-items: center;
-    justify-content: center;
-    margin-top: 64px;
-    padding-top: 48px;
-    border-top: 1px solid var(--borde);
-    flex-wrap: wrap;
-    animation: fadeUp 0.6s 0.5s ease both;
-  }
-
-  .stat {
-    text-align: center;
-  }
-
-  .stat-valor {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 42px;
-    color: var(--naranja);
-    letter-spacing: 2px;
-    line-height: 1;
-  }
-
-  .stat-label {
-    font-size: 10px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--suave);
-    margin-top: 4px;
-  }
-
-  .stat-sep {
-    width: 1px;
-    height: 48px;
-    background: var(--borde);
-  }
-
-  /* ── MÓDULOS ── */
-  .modulos {
-    position: relative;
-    z-index: 1;
-    padding: 80px 48px;
-    max-width: 1100px;
-    margin: 0 auto;
-  }
-
-  .seccion-label {
-    font-size: 10px;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    color: var(--naranja);
-    margin-bottom: 16px;
-  }
-
-  .seccion-titulo {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 48px;
-    letter-spacing: 3px;
-    color: var(--texto);
-    margin-bottom: 48px;
-  }
-
-  .modulos-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 16px;
-  }
-
-  .modulo-card {
-    background: var(--gris1);
-    border: 1px solid var(--borde);
-    border-radius: 10px;
-    padding: 24px;
-    transition: all 0.2s;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .modulo-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: var(--naranja);
-    transform: scaleX(0);
-    transition: transform 0.3s;
-  }
-
-  .modulo-card:hover {
-    border-color: rgba(255,107,0,0.3);
-    transform: translateY(-3px);
-    box-shadow: 0 12px 32px rgba(0,0,0,0.4);
-  }
-
-  .modulo-card:hover::before { transform: scaleX(1); }
-
-  .modulo-icono {
-    font-size: 28px;
-    margin-bottom: 14px;
-    display: block;
-  }
-
-  .modulo-nombre {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px;
-    letter-spacing: 2px;
-    color: var(--texto);
-    margin-bottom: 8px;
-  }
-
-  .modulo-desc {
-    font-size: 12px;
-    color: var(--suave);
-    line-height: 1.5;
-  }
-
-  .modulo-fase {
-    display: inline-block;
-    margin-top: 14px;
-    font-size: 9px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    padding: 3px 10px;
-    border-radius: 20px;
-  }
-
-  .fase-activa {
-    background: rgba(56,161,105,0.12);
-    color: #68d391;
-    border: 1px solid rgba(56,161,105,0.3);
-  }
-
-  .fase-pronto {
-    background: rgba(100,100,100,0.1);
-    color: #555;
-    border: 1px solid #222;
-  }
-
-  /* ── CTA FINAL ── */
-  .cta-final {
-    position: relative;
-    z-index: 1;
-    text-align: center;
-    padding: 80px 24px 100px;
-    border-top: 1px solid var(--borde);
-  }
-
-  .cta-final h2 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(40px, 6vw, 72px);
-    letter-spacing: 4px;
-    color: var(--texto);
-    margin-bottom: 16px;
-  }
-
-  .cta-final p {
-    font-size: 14px;
-    color: var(--suave);
-    margin-bottom: 36px;
-  }
-
-  /* ── FOOTER ── */
   footer {
     position: relative;
     z-index: 1;
@@ -430,29 +104,17 @@
     font-size: 11px;
     color: #333;
     letter-spacing: 2px;
+    margin-top: auto;
   }
-
   footer span { color: var(--naranja); }
-
-  /* ── ANIMACIONES ── */
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  /* ── RESPONSIVE ── */
   @media (max-width: 768px) {
     header { padding: 16px 20px; }
     .logo-sub { display: none; }
-    .modulos { padding: 60px 20px; }
-    .stats { gap: 24px; }
-    .stat-sep { display: none; }
   }
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
 <header>
   <div class="logo">
     <div class="logo-marca">S&D</div>
@@ -469,132 +131,6 @@
   </a>
 </header>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="hero-badge">Sistema de Gestión Automotriz</div>
-
-  <h1 class="hero-titulo">
-    S&amp;D
-    <span>SYSTEMS</span>
-  </h1>
-  <div class="hero-subtitulo">Automotriz</div>
-
-  <p class="hero-desc">
-    Plataforma integral para la gestión de talleres automotrices. Control de vehículos, propietarios, órdenes de servicio, inventario y finanzas en un solo lugar.
-  </p>
-
-  <div class="hero-cta">
-    <a href="https://syd-systems.github.io/sd-systems-automotriz/" class="btn-primary">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-        <polyline points="10 17 15 12 10 7"/>
-        <line x1="15" y1="12" x2="3" y2="12"/>
-      </svg>
-      INICIAR SESIÓN
-    </a>
-    <a href="#modulos" class="btn-secondary">
-      Ver módulos
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="6 9 12 15 18 9"/>
-      </svg>
-    </a>
-  </div>
-
-  <div class="stats">
-    <div class="stat">
-      <div class="stat-valor">8+</div>
-      <div class="stat-label">Módulos</div>
-    </div>
-    <div class="stat-sep"></div>
-    <div class="stat">
-      <div class="stat-valor">3</div>
-      <div class="stat-label">Fases activas</div>
-    </div>
-    <div class="stat-sep"></div>
-    <div class="stat">
-      <div class="stat-valor">VES</div>
-      <div class="stat-label">Moneda local</div>
-    </div>
-    <div class="stat-sep"></div>
-    <div class="stat">
-      <div class="stat-valor">BCV</div>
-      <div class="stat-label">Tasa oficial</div>
-    </div>
-  </div>
-</section>
-
-<!-- MÓDULOS -->
-<section class="modulos" id="modulos">
-  <div class="seccion-label">Funcionalidades</div>
-  <div class="seccion-titulo">MÓDULOS DEL SISTEMA</div>
-
-  <div class="modulos-grid">
-    <div class="modulo-card">
-      <span class="modulo-icono">🚗</span>
-      <div class="modulo-nombre">Vehículos</div>
-      <div class="modulo-desc">Registro completo de vehículos con fotos, carnet de circulación e historial de propietarios.</div>
-      <span class="modulo-fase fase-activa">● Activo</span>
-    </div>
-    <div class="modulo-card">
-      <span class="modulo-icono">👤</span>
-      <div class="modulo-nombre">Propietarios</div>
-      <div class="modulo-desc">Gestión de clientes con consulta automática al registro civil y control de datos personales.</div>
-      <span class="modulo-fase fase-activa">● Activo</span>
-    </div>
-    <div class="modulo-card">
-      <span class="modulo-icono">🔧</span>
-      <div class="modulo-nombre">Órdenes de Servicio</div>
-      <div class="modulo-desc">Control completo de OS con servicios, repuestos, totales en USD y Bs, y tasa BCV integrada.</div>
-      <span class="modulo-fase fase-activa">● Activo</span>
-    </div>
-    <div class="modulo-card">
-      <span class="modulo-icono">📦</span>
-      <div class="modulo-nombre">Inventario</div>
-      <div class="modulo-desc">Gestión de repuestos con análisis ABC, EOQ, punto de reorden y costo promedio ponderado.</div>
-      <span class="modulo-fase fase-activa">● Activo</span>
-    </div>
-    <div class="modulo-card">
-      <span class="modulo-icono">💱</span>
-      <div class="modulo-nombre">Tipo de Cambio</div>
-      <div class="modulo-desc">Tasas BCV en tiempo real, historial, sincronización automática y registro manual.</div>
-      <span class="modulo-fase fase-activa">● Activo</span>
-    </div>
-    <div class="modulo-card">
-      <span class="modulo-icono">🔐</span>
-      <div class="modulo-nombre">Usuarios y Permisos</div>
-      <div class="modulo-desc">Control granular de acceso por módulo y acción. Administradores y operadores con roles diferenciados.</div>
-      <span class="modulo-fase fase-activa">● Activo</span>
-    </div>
-    <div class="modulo-card">
-      <span class="modulo-icono">🧾</span>
-      <div class="modulo-nombre">Facturación</div>
-      <div class="modulo-desc">Emisión de facturas, notas de crédito y control de pagos en múltiples monedas.</div>
-      <span class="modulo-fase fase-pronto">Próximamente</span>
-    </div>
-    <div class="modulo-card">
-      <span class="modulo-icono">👷</span>
-      <div class="modulo-nombre">Empleados y Nómina</div>
-      <div class="modulo-desc">Registro de empleados, control de asistencia y cálculo de nómina con beneficios de ley.</div>
-      <span class="modulo-fase fase-pronto">Próximamente</span>
-    </div>
-  </div>
-</section>
-
-<!-- CTA FINAL -->
-<div class="cta-final">
-  <h2>LISTO PARA EMPEZAR</h2>
-  <p>Accede al sistema con tus credenciales asignadas por el administrador.</p>
-  <a href="https://syd-systems.github.io/sd-systems-automotriz/" class="btn-primary" style="display:inline-flex">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-      <polyline points="10 17 15 12 10 7"/>
-      <line x1="15" y1="12" x2="3" y2="12"/>
-    </svg>
-    INGRESAR AL SISTEMA
-  </a>
-</div>
-
-<!-- FOOTER -->
 <footer>
   <span>S&D</span> SYSTEMS AUTOMOTRIZ &nbsp;·&nbsp; SISTEMA DE GESTIÓN INTEGRAL
 </footer>
