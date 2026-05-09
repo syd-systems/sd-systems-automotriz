@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- v20260508420000 -->
+<!-- v20260508430000 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>S&D Systems Automotriz</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -1496,6 +1496,18 @@ function mostrarAvisoInactividad() {
 
 async function cerrarSesionInactividad() {
   detenerTimerInactividad();
+
+  // Cerrar TODOS los modales abiertos antes de cerrar sesión
+  document.querySelectorAll('.modal-overlay.abierto').forEach(function(m) {
+    m.classList.remove('abierto');
+  });
+  // También cerrar el visor de imagen si estaba abierto
+  const visor = document.getElementById('visor-imagen');
+  if (visor) { visor.style.display = 'none'; document.body.style.overflow = ''; }
+  // Cerrar aviso de inactividad
+  const aviso = document.getElementById('aviso-inactividad');
+  if (aviso) aviso.style.display = 'none';
+
   // Marcar sesión inactiva en Supabase
   try {
     if (sesionActual) {
@@ -1508,6 +1520,7 @@ async function cerrarSesionInactividad() {
 
   sesionActual   = null;
   modulosAcceso  = [];
+  permisosActuales = {};
   sessionStorage.removeItem('sd_sesion');
 
   document.getElementById('pantalla-app').style.display  = 'none';
@@ -1692,8 +1705,16 @@ async function cerrarSesion() {
     }, `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`);
   } catch(e) { console.error('Error cerrando sesión:', e); }
 
+  // Cerrar todos los modales abiertos
+  document.querySelectorAll('.modal-overlay.abierto').forEach(function(m) {
+    m.classList.remove('abierto');
+  });
+  const visorS = document.getElementById('visor-imagen');
+  if (visorS) { visorS.style.display = 'none'; document.body.style.overflow = ''; }
+
   sesionActual = null;
   modulosAcceso = [];
+  permisosActuales = {};
   sessionStorage.removeItem('sd_sesion');
   document.getElementById('pantalla-app').style.display = 'none';
   document.getElementById('pantalla-login').style.display = 'flex';
