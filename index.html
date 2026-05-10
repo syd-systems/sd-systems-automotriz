@@ -1909,7 +1909,7 @@ async function renderUsuarios(filtro) {
               onkeydown="if(event.key==='Enter'){event.preventDefault();renderUsuarios(this.value)}else if(event.key==='Escape'){this.value='';renderUsuarios('')}"
               style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:240px">
             <button class="btn-secundario" onclick="document.getElementById('buscar-usu').value='';renderUsuarios()">↻ Actualizar</button>
-            ${puedo('USUARIOS','CREAR') ? `<button class="btn-primario" onclick="abrirNuevoUsuario()">+ Nuevo Usuario</button>` : ''}
+            ${puedo('USUARIOS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoUsuario()">+ Nuevo Usuario</button>' : ''}
           </div>
         </div>
         <div class="tabla-container" id="tabla-usu-cont">
@@ -1972,11 +1972,11 @@ async function renderUsuarios(filtro) {
         </td>
         <td>
           <div style="display:flex;gap:8px">
-            ${puedo('USUARIOS','EDITAR') ? `<button class="btn-secundario" onclick="abrirEditarUsuario(${u.id_usuario})">Editar</button>` : ''}
-            ${puedo('USUARIOS','EDITAR') ? `<button class="btn-secundario" onclick="resetearClave('${u.correo_usuario}','${u.nombre}')" title="Enviar correo de recuperación">🔑 Reset</button>` : ''}
+            ${puedo('USUARIOS','EDITAR') ? '<button class="btn-secundario" onclick="abrirEditarUsuario(' + u.id_usuario + ')">Editar</button>' : ''}
+            ${puedo('USUARIOS','EDITAR') ? '<button class="btn-secundario" onclick="resetearClave(' + JSON.stringify(u.correo_usuario) + ',' + JSON.stringify(u.nombre) + ')" title="Enviar correo de recuperación">🔑 Reset</button>' : ''}
             ${u.correo_usuario !== sesionActual.correo_usuario
-              ? `<button class="btn-peligro" onclick="eliminarUsuario(${u.id_usuario},'${u.nombre}')">Eliminar</button>`
-              : `<span style="font-size:11px;color:var(--suave);padding:8px 4px">Tú</span>`}
+              ? '<button class="btn-peligro" onclick="eliminarUsuario(' + u.id_usuario + ',' + JSON.stringify(u.nombre) + ')">Eliminar</button>'
+              : '<span style="font-size:11px;color:var(--suave);padding:8px 4px">Tú</span>'}
           </div>
         </td>
       </tr>`;
