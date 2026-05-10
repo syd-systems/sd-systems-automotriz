@@ -47,6 +47,7 @@
 
   .login-izquierda {
     flex: 1;
+    min-width: 380px;
     background: var(--gris1);
     display: flex;
     flex-direction: column;
@@ -186,7 +187,8 @@
   }
 
   .login-derecha {
-    width: 420px;
+    width: 380px;
+    min-width: 380px;
     background: linear-gradient(135deg, var(--gris2) 0%, var(--negro) 100%);
     display: flex;
     flex-direction: column;
@@ -195,6 +197,7 @@
     border-left: 1px solid var(--borde);
     position: relative;
     overflow: hidden;
+    pointer-events: none;
   }
 
   .login-derecha .patron {
@@ -916,7 +919,7 @@
   ::-webkit-scrollbar-thumb:hover { background: var(--naranja); }
 
   /* RESPONSIVE */
-  @media (max-width: 768px) {
+  @media (max-width: 900px) {
     .login-derecha { display: none; }
     .sidebar {
       transform: translateX(-240px);
