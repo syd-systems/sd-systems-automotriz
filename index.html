@@ -1446,6 +1446,16 @@ async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '') {
 
 
 // ─── TOGGLE CONTRASEÑA ───
+function resetCampoPass(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.type = 'password';
+  input.value = '';
+  // Resetear el ojo
+  const btn = input.parentElement ? input.parentElement.querySelector('.ojo-btn') : null;
+  if (btn) { btn.textContent = '👁'; btn.style.color = ''; }
+}
+
 function togglePass(inputId, btn) {
   const input = document.getElementById(inputId);
   if (!input) return;
@@ -1563,7 +1573,7 @@ async function cerrarSesionInactividad() {
   document.getElementById('pantalla-app').style.display  = 'none';
   document.getElementById('pantalla-login').style.display = 'flex';
   document.getElementById('login-correo').value = '';
-  document.getElementById('login-clave').value  = '';
+  resetCampoPass('login-clave');
 
   // Mostrar mensaje en login
   const errEl = document.getElementById('login-error');
@@ -1605,7 +1615,7 @@ async function verificarSesionActiva() {
       document.getElementById('pantalla-app').style.display   = 'none';
       document.getElementById('pantalla-login').style.display = 'flex';
       document.getElementById('login-correo').value = '';
-      document.getElementById('login-clave').value  = '';
+      resetCampoPass('login-clave');
       const errEl = document.getElementById('login-error');
       errEl.textContent = '🔄 Tu perfil fue modificado por el administrador. Inicia sesión nuevamente.';
       errEl.style.display  = 'block';
@@ -1693,6 +1703,7 @@ async function iniciarSesion() {
     // Guardar en sessionStorage
     sessionStorage.setItem('sd_sesion', JSON.stringify({ usuario: u, accesos: modulosAcceso }));
 
+    resetCampoPass('login-clave');
     iniciarApp();
     iniciarTimerInactividad();
 
@@ -1782,7 +1793,7 @@ async function cerrarSesion() {
   document.getElementById('pantalla-app').style.display = 'none';
   document.getElementById('pantalla-login').style.display = 'flex';
   document.getElementById('login-correo').value = '';
-  document.getElementById('login-clave').value = '';
+  resetCampoPass('login-clave');
 }
 
 // ─── NAVEGACIÓN ───
