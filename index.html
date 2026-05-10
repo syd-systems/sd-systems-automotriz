@@ -1103,6 +1103,9 @@
       </div>
 
       <div class="nav-seccion" id="nav-seccion-finanzas">Finanzas</div>
+      <div class="nav-item" id="nav-EMISORES" onclick="mostrarModulo('emisores', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">🏢</span> Emisores
+      </div>
       <div class="nav-item" id="nav-FACTURAS" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">🧾</span> Facturas
       </div>
@@ -1305,6 +1308,7 @@ const TODOS_LOS_MODULOS = [
   { sigla: 'SERVICIOS',    nombre: 'Órdenes Servicio', icono: '🔧' },
   { sigla: 'INVENTARIO',   nombre: 'Inventario',       icono: '📦' },
   { sigla: 'CATALOGO',     nombre: 'Catálogo Servicios', icono: '🗂️' },
+  { sigla: 'EMISORES',     nombre: 'Emisores',         icono: '🏢' },
   { sigla: 'FACTURAS',     nombre: 'Facturas',         icono: '🧾' },
   { sigla: 'PAGOS',        nombre: 'Pagos',            icono: '💳' },
   { sigla: 'TASAS',        nombre: 'Tipo de Cambio',   icono: '💱' },
@@ -1372,6 +1376,12 @@ const PERMISOS_POR_MODULO = {
     { accion: 'CREAR',    label: 'Crear nuevo usuario' },
     { accion: 'EDITAR',   label: 'Editar usuario' },
     { accion: 'ELIMINAR', label: 'Eliminar usuario' },
+  ],
+  EMISORES: [
+    { accion: 'VER',      label: 'Ver emisores' },
+    { accion: 'CREAR',    label: 'Registrar emisor' },
+    { accion: 'EDITAR',   label: 'Editar emisor' },
+    { accion: 'ELIMINAR', label: 'Eliminar emisor' },
   ],
   FACTURAS: [
     { accion: 'VER',      label: 'Ver facturas' },
@@ -1791,6 +1801,7 @@ function mostrarModulo(modulo, navEl) {
     ordenes:      'ÓRDENES DE SERVICIO',
     inventario:   'INVENTARIO GENERAL',
     catalogo:     'CATÁLOGO DE SERVICIOS',
+    emisores:     'EMISORES',
     proximo:      'PRÓXIMAMENTE'
   };
 
@@ -1806,6 +1817,7 @@ function mostrarModulo(modulo, navEl) {
     case 'ordenes':      renderOrdenes();      break;
     case 'inventario':   renderInventario();   break;
     case 'catalogo':     renderCatalogo();     break;
+    case 'emisores':     renderEmisores();     break;
     default:             renderProximo(navEl?.querySelector('.nav-icono')?.textContent || '🔧',
                                        navEl?.textContent.trim() || modulo);
   }
@@ -2843,6 +2855,154 @@ async function guardarParametros() {
     errEl.textContent = `Error: ${e.message}`;
     errEl.style.display = 'block';
   }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MÓDULO EMISORES
+// ══════════════════════════════════════════════════════════════
+let emisoresCache = [];
+
+async function renderEmisores() {
+  if (!sesionActual?.administrador && !modulosAcceso.includes('EMISORES')) {
+    document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
+    return;
+  }
+  const c = document.getElementById('contenido-principal');
+  c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando emisores...</div>';
+
+  try {
+    const emisores = await api('emisores', 'GET', null, '?order=nombre.asc&select=*');
+    emisoresCache = emisores;
+
+    const tipoLabel = {
+      'ORDINARIO': 'Contribuyente Ordinario',
+      'ESPECIAL':  'Contribuyente Especial',
+      'FORMAL':    'Contribuyente Formal',
+    };
+    const tipoColor = {
+      'ORDINARIO': 'badge-naranja',
+      'ESPECIAL':  'badge-verde',
+      'FORMAL':    'badge-gris',
+    };
+
+    const filas = emisores.map(function(e) {
+      return '<tr>'
+        + '<td>'
+        + '<div style="font-weight:600;font-size:14px">' + e.nombre + '</div>'
+        + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono);margin-top:2px">' + (e.rif || '—') + '</div>'
+        + '</td>'
+        + '<td><span class="badge ' + (tipoColor[e.tipo_contribuyente] || 'badge-gris') + '">'
+        + (tipoLabel[e.tipo_contribuyente] || '—') + '</span></td>'
+        + '<td style="font-size:12px">' + (e.telefono || '—') + '</td>'
+        + '<td style="font-size:12px">' + (e.correo || '—') + '</td>'
+        + '<td style="font-size:12px;color:var(--suave)">' + (e.direccion || '—') + '</td>'
+        + '<td><span class="badge ' + (e.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (e.estado || 'ACTIVO') + '</span></td>'
+        + '<td><div style="display:flex;gap:6px">'
+        + (puedo('EMISORES','EDITAR')   ? '<button class="btn-secundario" onclick="abrirEmisor(' + e.id_emisor + ')">Editar</button>' : '')
+        + (puedo('EMISORES','ELIMINAR') ? '<button class="btn-peligro" onclick="eliminarEmisor(' + e.id_emisor + ',' + JSON.stringify(e.nombre) + ')">Eliminar</button>' : '')
+        + '</div></td>'
+        + '</tr>';
+    }).join('');
+
+    c.innerHTML = '<div class="panel">'
+      + '<div class="panel-header">'
+      + '<h3>Emisores (' + emisores.length + ')</h3>'
+      + (puedo('EMISORES','CREAR') ? '<button class="btn-primario" onclick="abrirEmisor(null)">+ Nuevo Emisor</button>' : '')
+      + '</div>'
+      + '<div class="tabla-container"><table><thead><tr>'
+      + '<th>Nombre / RIF</th><th>Tipo Contribuyente</th><th>Teléfono</th><th>Correo</th><th>Dirección</th><th>Estado</th><th>Acciones</th>'
+      + '</tr></thead><tbody>'
+      + (filas || '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--suave)">No hay emisores registrados</td></tr>')
+      + '</tbody></table></div></div>';
+
+  } catch(e) {
+    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+  }
+}
+
+async function abrirEmisor(id) {
+  if (id && !puedo('EMISORES','EDITAR')) { alert('No tiene permiso para editar emisores.'); return; }
+  if (!id && !puedo('EMISORES','CREAR')) { alert('No tiene permiso para registrar emisores.'); return; }
+
+  const e = id ? emisoresCache.find(function(x) { return x.id_emisor === id; }) : null;
+
+  // Si es nuevo, pre-llenar con datos de Parámetros del sistema
+  let params = {};
+  if (!e) {
+    try {
+      const res = await api('parametros', 'GET', null, '?select=*&limit=1');
+      params = res[0] || {};
+    } catch(eP) {}
+  }
+
+  document.getElementById('modal-emisor-titulo').textContent = e ? 'EDITAR EMISOR' : 'NUEVO EMISOR';
+  document.getElementById('em-id').value              = e ? e.id_emisor : '';
+  document.getElementById('em-nombre').value          = e ? e.nombre         : (params.nombre_empresa || '');
+  document.getElementById('em-rif').value             = e ? e.rif            : (params.rif_empresa || '');
+  document.getElementById('em-telefono').value        = e ? e.telefono       : (params.telefono || '');
+  document.getElementById('em-correo').value          = e ? e.correo         : (params.correo || '');
+  document.getElementById('em-direccion').value       = e ? e.direccion      : (params.direccion || '');
+  document.getElementById('em-tipo-contribuyente').value = e ? (e.tipo_contribuyente || '') : '';
+  document.getElementById('em-moneda1').value         = e ? (e.moneda_principal   || 'USD') : (params.moneda_principal   || 'USD');
+  document.getElementById('em-moneda2').value         = e ? (e.moneda_secundaria  || 'VES') : (params.moneda_secundaria  || 'VES');
+  document.getElementById('em-estado').value          = e ? (e.estado || 'ACTIVO') : 'ACTIVO';
+  document.getElementById('alerta-emisor-ok').style.display  = 'none';
+  document.getElementById('alerta-emisor-err').style.display = 'none';
+  abrirModal('modal-emisor');
+}
+
+async function guardarEmisor() {
+  const id     = document.getElementById('em-id').value;
+  if (id && !puedo('EMISORES','EDITAR')) { alert('No tiene permiso para editar emisores.'); return; }
+  if (!id && !puedo('EMISORES','CREAR')) { alert('No tiene permiso para registrar emisores.'); return; }
+
+  const nombre  = document.getElementById('em-nombre').value.trim();
+  const rif     = document.getElementById('em-rif').value.trim().toUpperCase();
+  const tel     = document.getElementById('em-telefono').value.trim();
+  const correo  = document.getElementById('em-correo').value.trim();
+  const dir     = document.getElementById('em-direccion').value.trim();
+  const tipo    = document.getElementById('em-tipo-contribuyente').value;
+  const moneda1 = document.getElementById('em-moneda1').value;
+  const moneda2 = document.getElementById('em-moneda2').value;
+  const estado  = document.getElementById('em-estado').value;
+  const okEl    = document.getElementById('alerta-emisor-ok');
+  const errEl   = document.getElementById('alerta-emisor-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
+  if (!rif)    { errEl.textContent = 'El RIF es obligatorio.';    errEl.style.display = 'block'; return; }
+  if (!tipo)   { errEl.textContent = 'Seleccione el tipo de contribuyente.'; errEl.style.display = 'block'; return; }
+
+  const datos = {
+    nombre, rif, telefono: tel || null, correo: correo || null,
+    direccion: dir || null, tipo_contribuyente: tipo,
+    moneda_principal: moneda1, moneda_secundaria: moneda2,
+    estado, id_usuario: sesionActual.correo_usuario
+  };
+
+  try {
+    if (id) {
+      await api('emisores', 'PATCH', datos, '?id_emisor=eq.' + id);
+      okEl.textContent = '✓ Emisor actualizado correctamente.';
+    } else {
+      await api('emisores', 'POST', datos);
+      okEl.textContent = '✓ Emisor registrado correctamente.';
+    }
+    okEl.style.display = 'block';
+    setTimeout(function() { cerrarModal('modal-emisor'); renderEmisores(); }, 1200);
+  } catch(e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+async function eliminarEmisor(id, nombre) {
+  if (!puedo('EMISORES','ELIMINAR')) { alert('No tiene permiso para eliminar emisores.'); return; }
+  if (!confirm('¿Eliminar el emisor "' + nombre + '"?')) return;
+  try {
+    await api('emisores', 'DELETE', null, '?id_emisor=eq.' + id);
+    renderEmisores();
+  } catch(e) { alert('Error al eliminar: ' + e.message); }
 }
 
 // ─── PRÓXIMO MÓDULO ───
@@ -7072,6 +7232,81 @@ window.addEventListener('load', async () => {
   </div>
 </div>
 
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL EMISOR                        -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-emisor">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-header">
+      <h3 id="modal-emisor-titulo">NUEVO EMISOR</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-emisor')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alerta alerta-exito" id="alerta-emisor-ok"></div>
+      <div class="alerta alerta-error"  id="alerta-emisor-err"></div>
+      <div class="form-grid">
+        <div class="form-campo form-full">
+          <label>Nombre / Razón Social</label>
+          <input type="text" id="em-nombre" placeholder="Nombre completo de la empresa">
+        </div>
+        <div class="form-campo">
+          <label>RIF</label>
+          <input type="text" id="em-rif" placeholder="J-XXXXXXXX-X" style="text-transform:uppercase">
+        </div>
+        <div class="form-campo">
+          <label>Teléfono</label>
+          <input type="text" id="em-telefono" placeholder="0212-XXXXXXX">
+        </div>
+        <div class="form-campo form-full">
+          <label>Correo Electrónico</label>
+          <input type="email" id="em-correo" placeholder="empresa@correo.com">
+        </div>
+        <div class="form-campo form-full">
+          <label>Dirección Fiscal</label>
+          <input type="text" id="em-direccion" placeholder="Dirección fiscal completa">
+        </div>
+        <div class="form-campo form-full">
+          <label>Tipo de Contribuyente</label>
+          <select id="em-tipo-contribuyente">
+            <option value="">— Seleccionar —</option>
+            <option value="ORDINARIO">Contribuyente Ordinario</option>
+            <option value="ESPECIAL">Contribuyente Especial</option>
+            <option value="FORMAL">Contribuyente Formal</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Moneda Principal</label>
+          <select id="em-moneda1">
+            <option value="USD">USD — Dólar</option>
+            <option value="VES">VES — Bolívar</option>
+            <option value="EUR">EUR — Euro</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Moneda Secundaria</label>
+          <select id="em-moneda2">
+            <option value="VES">VES — Bolívar</option>
+            <option value="USD">USD — Dólar</option>
+            <option value="EUR">EUR — Euro</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Estado</label>
+          <select id="em-estado">
+            <option value="ACTIVO">Activo</option>
+            <option value="INACTIVO">Inactivo</option>
+          </select>
+        </div>
+      </div>
+      <input type="hidden" id="em-id">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-emisor')">Cancelar</button>
+      <button class="btn-primario" onclick="guardarEmisor()">GUARDAR</button>
+    </div>
+  </div>
+</div>
 
 <div id="visor-imagen" onclick="cerrarVisor()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out">
   <button onclick="cerrarVisor()" style="position:absolute;top:20px;right:24px;background:none;border:none;color:#fff;font-size:28px;cursor:pointer;z-index:10000">✕</button>
