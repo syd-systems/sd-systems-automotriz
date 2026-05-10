@@ -3725,6 +3725,10 @@ async function guardarPropietario() {
 }
 
 async function verFichaPropietario(id) {
+  if (!sesionActual?.administrador && !puedo('PROPIETARIOS','VER')) {
+    alert('No tiene permiso para ver la ficha del propietario.');
+    return;
+  }
   const p = propietariosCache.find(function(x) { return x.id_propietario == id; });
   if (!p) return;
   const vehs = await api('vehiculos', 'GET', null, '?id_propietario=eq.' + id + '&select=*');
@@ -3759,6 +3763,10 @@ async function verFichaPropietario(id) {
 }
 
 function verVehiculosPropietario(id) {
+  if (!sesionActual?.administrador && !modulosAcceso.includes('VEHICULOS')) {
+    alert('No tiene acceso al módulo de Vehículos.');
+    return;
+  }
   mostrarModulo('vehiculos', document.getElementById('nav-VEHICULOS'));
   setTimeout(function() { filtrarVehiculosPorPropietario(id); }, 500);
 }
@@ -4061,6 +4069,10 @@ async function guardarVehiculo() {
 }
 
 async function verFichaVehiculo(id) {
+  if (!sesionActual?.administrador && !puedo('VEHICULOS','VER')) {
+    alert('No tiene permiso para ver la ficha del vehículo.');
+    return;
+  }
   try {
   // Buscar directo en Supabase para tener datos completos
   let v = vehiculosCache.find(function(x) { return x.id_vehiculo == id; });
@@ -5966,6 +5978,10 @@ async function reabrirOS(id, numero) {
 
 // ─── FICHA OS ───
 async function verFichaOS(id) {
+  if (!sesionActual?.administrador && !puedo('SERVICIOS','VER')) {
+    alert('No tiene permiso para ver la ficha de la orden de servicio.');
+    return;
+  }
   // Refrescar OS desde Supabase antes de mostrar
   try {
     const fresh = await api('ordenes_servicio', 'GET', null,
