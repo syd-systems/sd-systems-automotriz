@@ -2893,11 +2893,9 @@ async function renderEmisores() {
         + '</td>'
         + '<td><span class="badge ' + (tipoColor[e.tipo_contribuyente] || 'badge-gris') + '">'
         + (tipoLabel[e.tipo_contribuyente] || '—') + '</span></td>'
-        + '<td style="font-size:12px">' + (e.telefono || '—') + '</td>'
-        + '<td style="font-size:12px">' + (e.correo || '—') + '</td>'
-        + '<td style="font-size:12px;color:var(--suave)">' + (e.direccion || '—') + '</td>'
         + '<td><span class="badge ' + (e.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (e.estado || 'ACTIVO') + '</span></td>'
         + '<td><div style="display:flex;gap:6px">'
+        + (puedo('EMISORES','VER')      ? '<button class="btn-secundario" onclick="verFichaEmisor(' + e.id_emisor + ')">Ficha</button>' : '')
         + (puedo('EMISORES','EDITAR')   ? '<button class="btn-secundario" onclick="abrirEmisor(' + e.id_emisor + ')">Editar</button>' : '')
         + (puedo('EMISORES','ELIMINAR') ? '<button class="btn-peligro" onclick="eliminarEmisor(' + e.id_emisor + ',' + JSON.stringify(e.nombre) + ')">Eliminar</button>' : '')
         + '</div></td>'
@@ -2910,9 +2908,9 @@ async function renderEmisores() {
       + (puedo('EMISORES','CREAR') ? '<button class="btn-primario" onclick="abrirEmisor(null)">+ Nuevo Emisor</button>' : '')
       + '</div>'
       + '<div class="tabla-container"><table><thead><tr>'
-      + '<th>Nombre / RIF</th><th>Tipo Contribuyente</th><th>Teléfono</th><th>Correo</th><th>Dirección</th><th>Estado</th><th>Acciones</th>'
+      + '<th>Nombre / RIF</th><th>Tipo Contribuyente</th><th>Estado</th><th>Acciones</th>'
       + '</tr></thead><tbody>'
-      + (filas || '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--suave)">No hay emisores registrados</td></tr>')
+      + (filas || '<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--suave)">No hay emisores registrados</td></tr>')
       + '</tbody></table></div></div>';
 
   } catch(e) {
@@ -2994,6 +2992,64 @@ async function guardarEmisor() {
     errEl.textContent = 'Error: ' + e.message;
     errEl.style.display = 'block';
   }
+}
+
+async function verFichaEmisor(id) {
+  if (!sesionActual?.administrador && !puedo('EMISORES','VER')) {
+    alert('No tiene permiso para ver la ficha del emisor.'); return;
+  }
+  const e = emisoresCache.find(function(x) { return x.id_emisor === id; });
+  if (!e) return;
+
+  const tipoLabel = {
+    'ORDINARIO': 'Contribuyente Ordinario',
+    'ESPECIAL':  'Contribuyente Especial',
+    'FORMAL':    'Contribuyente Formal',
+  };
+  const tipoColor = {
+    'ORDINARIO': 'badge-naranja',
+    'ESPECIAL':  'badge-verde',
+    'FORMAL':    'badge-gris',
+  };
+
+  document.getElementById('ficha-emisor-contenido').innerHTML =
+    '<div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">'
+    + '<div style="width:56px;height:56px;background:rgba(255,107,0,0.1);border:1px solid rgba(255,107,0,0.3);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px">🏢</div>'
+    + '<div>'
+    + '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + e.nombre + '</div>'
+    + '<div style="font-size:13px;color:var(--suave);font-family:var(--font-mono)">' + (e.rif || '—') + '</div>'
+    + '</div></div>'
+
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">'
+
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Tipo de Contribuyente</div>'
+    + '<span class="badge ' + (tipoColor[e.tipo_contribuyente] || 'badge-gris') + '">' + (tipoLabel[e.tipo_contribuyente] || '—') + '</span></div>'
+
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Estado</div>'
+    + '<span class="badge ' + (e.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (e.estado || 'ACTIVO') + '</span></div>'
+
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Teléfono</div>'
+    + '<div style="font-size:13px">' + (e.telefono || '—') + '</div></div>'
+
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Correo Electrónico</div>'
+    + '<div style="font-size:13px">' + (e.correo || '—') + '</div></div>'
+
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Moneda Principal</div>'
+    + '<div style="font-size:13px">' + (e.moneda_principal || 'USD') + '</div></div>'
+
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Moneda Secundaria</div>'
+    + '<div style="font-size:13px">' + (e.moneda_secundaria || 'VES') + '</div></div>'
+
+    + '</div>'
+
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Dirección Fiscal</div>'
+    + '<div style="font-size:13px;background:var(--gris2);border-radius:6px;padding:12px 16px">' + (e.direccion || '—') + '</div></div>';
+
+  var btnEditar = document.getElementById('ficha-emisor-editar-btn');
+  btnEditar._emisorId = e.id_emisor;
+  btnEditar.onclick = function() { cerrarModal('modal-ficha-emisor'); abrirEmisor(this._emisorId); };
+  btnEditar.style.display = puedo('EMISORES','EDITAR') ? '' : 'none';
+  abrirModal('modal-ficha-emisor');
 }
 
 async function eliminarEmisor(id, nombre) {
@@ -7232,6 +7288,23 @@ window.addEventListener('load', async () => {
   </div>
 </div>
 
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL FICHA EMISOR                  -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-ficha-emisor">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-header">
+      <h3>FICHA DEL EMISOR</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-emisor')">✕</button>
+    </div>
+    <div class="modal-body" id="ficha-emisor-contenido"></div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-emisor')">Cerrar</button>
+      <button class="btn-primario" id="ficha-emisor-editar-btn">Editar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL EMISOR                        -->
