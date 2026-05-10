@@ -1889,11 +1889,7 @@ async function renderUsuarios(filtro) {
       `<div class="alerta alerta-error" style="display:block">No tiene acceso a este módulo.</div>`;
     return;
   }
-  if (!sesionActual?.administrador && !puedo('USUARIOS','VER')) {
-    document.getElementById('contenido-principal').innerHTML =
-      '<div class="alerta alerta-error" style="display:block">No tiene permiso para ver la lista de Usuarios.</div>';
-    return;
-  }
+
 
   const c = document.getElementById('contenido-principal');
   const panelYaExiste = !!document.getElementById('buscar-usu');
@@ -2288,10 +2284,7 @@ async function renderTasas() {
     document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
     return;
   }
-  if (!sesionActual?.administrador && !puedo('TASAS','VER')) {
-    document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">No tiene permiso para ver Tipos de Cambio.</div>';
-    return;
-  }
+
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando tasas en tiempo real...</div>';
 
@@ -2716,10 +2709,7 @@ async function renderParametros() {
     document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
     return;
   }
-  if (!sesionActual?.administrador && !puedo('PARAMETROS','VER')) {
-    document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">No tiene permiso para ver Parámetros del Sistema.</div>';
-    return;
-  }
+
   const c = document.getElementById('contenido-principal');
   c.innerHTML = `<div class="loading"><div class="spinner"></div> Cargando...</div>`;
 
@@ -3561,10 +3551,7 @@ async function renderPropietarios() {
     document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
     return;
   }
-  if (!sesionActual?.administrador && !puedo('PROPIETARIOS','VER')) {
-    document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">No tiene permiso para ver Propietarios.</div>';
-    return;
-  }
+
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando propietarios...</div>';
   await cargarPropietarios();
@@ -3787,10 +3774,7 @@ async function renderVehiculos() {
     document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
     return;
   }
-  if (!sesionActual?.administrador && !puedo('VEHICULOS','VER')) {
-    document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">No tiene permiso para ver Vehículos.</div>';
-    return;
-  }
+
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando vehículos...</div>';
   propietariosSimple = await api('propietarios', 'GET', null, '?select=id_propietario,tipo_doc,numero_doc,nombre_completo&order=nombre_completo.asc');
@@ -4281,10 +4265,7 @@ async function renderCatalogo(filtro, categoria) {
     document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
     return;
   }
-  if (!sesionActual?.administrador && !puedo('CATALOGO','VER')) {
-    document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">No tiene permiso para ver el Catálogo de Servicios.</div>';
-    return;
-  }
+
   const c = document.getElementById('contenido-principal');
   const panelYaExiste = !!document.getElementById('buscar-cat');
 
@@ -4770,10 +4751,7 @@ async function renderInventario(filtro) {
     document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
     return;
   }
-  if (!sesionActual?.administrador && !puedo('INVENTARIO','VER')) {
-    document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">No tiene permiso para ver el Inventario.</div>';
-    return;
-  }
+
   const c = document.getElementById('contenido-principal');
   const panelYaExiste = !!document.getElementById('buscar-inv');
   if (!panelYaExiste) {
@@ -5208,10 +5186,7 @@ async function renderOrdenes() {
     document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
     return;
   }
-  if (!sesionActual?.administrador && !puedo('SERVICIOS','VER')) {
-    document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">No tiene permiso para ver Órdenes de Servicio.</div>';
-    return;
-  }
+
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando órdenes...</div>';
   try {
