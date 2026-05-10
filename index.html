@@ -2924,26 +2924,20 @@ async function abrirEmisor(id) {
 
   const e = id ? emisoresCache.find(function(x) { return x.id_emisor === id; }) : null;
 
-  // Si es nuevo, pre-llenar con datos de Parámetros del sistema
-  let params = {};
-  if (!e) {
-    try {
-      const res = await api('parametros', 'GET', null, '?select=*&limit=1');
-      params = res[0] || {};
-    } catch(eP) {}
-  }
+
 
   document.getElementById('modal-emisor-titulo').textContent = e ? 'EDITAR EMISOR' : 'NUEVO EMISOR';
   document.getElementById('em-id').value              = e ? e.id_emisor : '';
-  document.getElementById('em-nombre').value          = e ? e.nombre         : (params.nombre_empresa || '');
-  document.getElementById('em-rif').value             = e ? e.rif            : (params.rif_empresa || '');
-  document.getElementById('em-telefono').value        = e ? e.telefono       : (params.telefono || '');
-  document.getElementById('em-correo').value          = e ? e.correo         : (params.correo || '');
-  document.getElementById('em-direccion').value       = e ? e.direccion      : (params.direccion || '');
+  document.getElementById('em-nombre').value          = e ? e.nombre              : '';
+  document.getElementById('em-rif').value             = e ? e.rif                 : '';
+  document.getElementById('em-telefono').value        = e ? e.telefono            : '';
+  document.getElementById('em-correo').value          = e ? e.correo              : '';
+  document.getElementById('em-direccion').value       = e ? e.direccion           : '';
   document.getElementById('em-tipo-contribuyente').value = e ? (e.tipo_contribuyente || '') : '';
-  document.getElementById('em-moneda1').value         = e ? (e.moneda_principal   || 'USD') : (params.moneda_principal   || 'USD');
-  document.getElementById('em-moneda2').value         = e ? (e.moneda_secundaria  || 'VES') : (params.moneda_secundaria  || 'VES');
+  document.getElementById('em-moneda1').value         = e ? (e.moneda_principal  || 'USD') : 'USD';
+  document.getElementById('em-moneda2').value         = e ? (e.moneda_secundaria || 'VES') : 'VES';
   document.getElementById('em-estado').value          = e ? (e.estado || 'ACTIVO') : 'ACTIVO';
+
   document.getElementById('alerta-emisor-ok').style.display  = 'none';
   document.getElementById('alerta-emisor-err').style.display = 'none';
   abrirModal('modal-emisor');
@@ -7323,6 +7317,7 @@ window.addEventListener('load', async () => {
           <label>Nombre / Razón Social</label>
           <input type="text" id="em-nombre" placeholder="Nombre completo de la empresa">
         </div>
+
         <div class="form-campo">
           <label>RIF</label>
           <input type="text" id="em-rif" placeholder="J-XXXXXXXX-X" style="text-transform:uppercase">
