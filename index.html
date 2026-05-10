@@ -1575,6 +1575,38 @@ function actualizarReloj() {
 setInterval(actualizarReloj, 1000);
 actualizarReloj();
 
+// ─── VERIFICAR SESIÓN INVALIDADA (cada 30 segundos) ───
+async function verificarSesionActiva() {
+  if (!sesionActual) return;
+  try {
+    const res = await api('usuarios', 'GET', null,
+      `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}&select=sesion_activa,sesion_invalidada,estado_usuario`);
+    if (!res || !res.length) return;
+    const u = res[0];
+    // Forzar re-login si: sesión invalidada, estado inactivo, o sesión marcada como cerrada
+    const forzarSalida = u.sesion_invalidada === true || u.estado_usuario === 'INACTIVO';
+    if (forzarSalida) {
+      // Limpiar flag de invalidación
+      try { await api('usuarios', 'PATCH', { sesion_invalidada: false }, `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`); } catch(e) {}
+      sesionActual  = null;
+      modulosAcceso = [];
+      permisosActuales = {};
+      sessionStorage.removeItem('sd_sesion');
+      document.getElementById('pantalla-app').style.display   = 'none';
+      document.getElementById('pantalla-login').style.display = 'flex';
+      document.getElementById('login-correo').value = '';
+      document.getElementById('login-clave').value  = '';
+      const errEl = document.getElementById('login-error');
+      errEl.textContent = '🔄 Tu perfil fue modificado por el administrador. Inicia sesión nuevamente.';
+      errEl.style.display  = 'block';
+      errEl.style.background   = 'rgba(255,107,0,0.12)';
+      errEl.style.borderColor  = 'rgba(255,107,0,0.4)';
+      errEl.style.color        = 'var(--naranja)';
+    }
+  } catch(e) { console.warn('Error verificando sesión:', e); }
+}
+setInterval(verificarSesionActiva, 30000);
+
 // ─── LOGIN ───
 document.getElementById('login-clave').addEventListener('keypress', e => {
   if (e.key === 'Enter') iniciarSesion();
@@ -1641,9 +1673,10 @@ async function iniciarSesion() {
       });
     } catch(eP) { permisosActuales = {}; }
 
-    // Marcar sesión activa en Supabase
+    // Marcar sesión activa y limpiar flag de invalidación
     await api('usuarios', 'PATCH', {
       sesion_activa: true,
+      sesion_invalidada: false,
       ultima_conexion: new Date().toISOString()
     }, `?correo_usuario=eq.${encodeURIComponent(correo)}`);
 
@@ -1728,6 +1761,7 @@ async function cerrarSesion() {
   try {
     await api('usuarios', 'PATCH', {
       sesion_activa: false,
+      sesion_invalidada: false,
       ultima_desconexion: new Date().toISOString()
     }, `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`);
   } catch(e) { console.error('Error cerrando sesión:', e); }
@@ -2245,6 +2279,19 @@ async function guardarUsuario() {
         }
       }
       okEl.textContent = '✓ Usuario actualizado exitosamente.';
+
+      // Si el usuario editado tiene sesión activa, invalidarla para forzar re-login
+      try {
+        const uEditado = usuariosCache.find(u => u.id_usuario == idEdit);
+        if (uEditado && uEditado.sesion_activa) {
+          await api('usuarios', 'PATCH', {
+            sesion_activa: false,
+            sesion_invalidada: true,
+            ultima_desconexion: new Date().toISOString()
+          }, `?id_usuario=eq.${idEdit}`);
+          okEl.textContent = '✓ Usuario actualizado. Se cerró su sesión activa.';
+        }
+      } catch(eInv) { console.warn('Error invalidando sesión:', eInv); }
     }
 
     okEl.style.display = 'block';
