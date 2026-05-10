@@ -881,6 +881,7 @@
   /* OJO CONTRASEÑA */
   .campo-pass { position: relative; }
   .campo-pass input { padding-right: 44px !important; }
+  .campo-pass button { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 100; pointer-events: all; }
   .ojo-btn {
     position: absolute;
     right: 12px; top: 50%; transform: translateY(-50%);
@@ -889,9 +890,11 @@
     font-size: 18px; padding: 6px;
     transition: color 0.2s;
     line-height: 1;
-    z-index: 10;
+    z-index: 100;
     user-select: none;
     -webkit-user-select: none;
+    pointer-events: all;
+    -webkit-tap-highlight-color: transparent;
   }
   .ojo-btn:hover { color: var(--naranja); }
   .ojo-btn:active { opacity: 0.7; }
