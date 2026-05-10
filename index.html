@@ -2043,16 +2043,7 @@ async function abrirEditarUsuario(id) {
       '?correo_usuario=eq.' + encodeURIComponent(u.correo_usuario) + '&activo=eq.true&select=acceso_tipo');
     accesosTemp = aTemp.map(function(a) { return a.acceso_tipo; });
   } catch(e) {}
-  // Solo pre-llenar si NO hay permisos guardados (primera vez)
-  // Esto evita sobreescribir permisos guardados con la lista completa
-  var tienePermisosGuardados = Object.keys(permisosUsuario).length > 0;
-  if (!tienePermisosGuardados && accesosTemp.length > 0) {
-    // Primera vez: pre-seleccionar todo para no romper accesos existentes
-    accesosTemp.forEach(function(sigla) {
-      var acciones = PERMISOS_POR_MODULO[sigla];
-      if (acciones) permisosUsuario[sigla] = acciones.map(function(a) { return a.accion; });
-    });
-  }
+  // Los permisos solo se activan manualmente — nunca se pre-seleccionan automáticamente
   document.getElementById('u-correo').value = u.correo_usuario;
   document.getElementById('u-correo').disabled = true;
   document.getElementById('u-clave').value = '';
