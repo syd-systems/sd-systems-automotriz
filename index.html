@@ -2137,7 +2137,7 @@ function toggleModuloDetalle(s){}
 function toggleModuloAcceso(cb){}
 
 async function guardarUsuario() {
-  const idEdit = document.getElementById('u-id-editando').value;
+  const idEdit  = document.getElementById('u-id-editando').value;
   if (idEdit && !puedo('USUARIOS','EDITAR')) { alert('No tiene permiso para editar usuarios.'); return; }
   if (!idEdit && !puedo('USUARIOS','CREAR')) { alert('No tiene permiso para crear usuarios.'); return; }
   const nombre  = document.getElementById('u-nombre').value.trim();
@@ -2145,7 +2145,6 @@ async function guardarUsuario() {
   const clave   = document.getElementById('u-clave').value;
   const estado  = document.getElementById('u-estado').value;
   const esAdmin = document.getElementById('u-admin').value === 'true';
-  const idEdit  = document.getElementById('u-id-editando').value;
 
   const okEl  = document.getElementById('alerta-modal-ok');
   const errEl = document.getElementById('alerta-modal-error');
