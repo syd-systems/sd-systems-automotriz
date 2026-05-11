@@ -3522,29 +3522,37 @@ async function guardarEmpleado() {
     }
   }
 
-  // Validar número de cuenta si se seleccionó banco
-  var idBancoVal = document.getElementById('emp-banco')?.value;
-  if (idBancoVal) {
-    var tipoCuenta = document.getElementById('emp-tipo-cuenta')?.value;
-    if (!tipoCuenta) {
-      errEl.textContent = 'Selecciona el Tipo de Cuenta.';
-      errEl.style.display = 'block';
-      document.getElementById('emp-tipo-cuenta')?.focus();
-      return;
-    }
-    var restoVal = (document.getElementById('emp-num-cuenta-resto')?.value || '').replace(/\s/g,'');
-    if (restoVal.length !== 16) {
-      errEl.textContent = 'El número de cuenta debe tener exactamente 16 dígitos después del código del banco.';
-      errEl.style.display = 'block';
-      document.getElementById('emp-num-cuenta-resto')?.focus();
-      return;
-    }
-    if (!/^\d+$/.test(restoVal)) {
-      errEl.textContent = 'El número de cuenta solo debe contener dígitos.';
-      errEl.style.display = 'block';
-      document.getElementById('emp-num-cuenta-resto')?.focus();
-      return;
-    }
+  // Validar Cuenta Nómina — todos los campos son obligatorios
+  var idBancoVal   = document.getElementById('emp-banco')?.value;
+  var tipoCuentaVal = document.getElementById('emp-tipo-cuenta')?.value;
+  var restoVal     = (document.getElementById('emp-num-cuenta-resto')?.value || '').replace(/\s/g,'');
+
+  if (!idBancoVal) {
+    errEl.textContent = 'La Institución Financiera de la Cuenta Nómina es obligatoria.';
+    errEl.style.display = 'block';
+    document.getElementById('emp-banco')?.focus();
+    document.getElementById('emp-banco')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  if (!tipoCuentaVal) {
+    errEl.textContent = 'El Tipo de Cuenta es obligatorio.';
+    errEl.style.display = 'block';
+    document.getElementById('emp-tipo-cuenta')?.focus();
+    document.getElementById('emp-tipo-cuenta')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  if (restoVal.length !== 16) {
+    errEl.textContent = 'El número de cuenta debe tener exactamente 16 dígitos después del código del banco.';
+    errEl.style.display = 'block';
+    document.getElementById('emp-num-cuenta-resto')?.focus();
+    document.getElementById('emp-num-cuenta-resto')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  if (!/^\d+$/.test(restoVal)) {
+    errEl.textContent = 'El número de cuenta solo debe contener dígitos.';
+    errEl.style.display = 'block';
+    document.getElementById('emp-num-cuenta-resto')?.focus();
+    return;
   }
 
   // Validar duplicado por documento
@@ -8451,11 +8459,11 @@ window.addEventListener('load', async () => {
       <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--naranja);margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--borde)">🏦 Cuenta Nómina</div>
       <div class="form-grid">
         <div class="form-campo form-full">
-          <label>Institución Financiera</label>
+          <label>Institución Financiera *</label>
           <select id="emp-banco" onchange="onSelBancoEmpleado()"></select>
         </div>
         <div class="form-campo">
-          <label>Tipo de Cuenta</label>
+          <label>Tipo de Cuenta *</label>
           <select id="emp-tipo-cuenta">
             <option value="">— Seleccionar —</option>
             <option value="CORRIENTE">Corriente</option>
@@ -8463,7 +8471,7 @@ window.addEventListener('load', async () => {
           </select>
         </div>
         <div class="form-campo">
-          <label>Número de Cuenta</label>
+          <label>Número de Cuenta *</label>
           <div style="display:flex;align-items:center;gap:0">
             <input type="text" id="emp-cod-banco" maxlength="4" readonly
               style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--naranja);background:var(--gris3);border:1px solid var(--borde);border-right:none;padding:11px 10px;border-radius:5px 0 0 5px;width:60px;outline:none;cursor:not-allowed;text-align:center">
