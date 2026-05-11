@@ -3417,7 +3417,17 @@ async function abrirEmpleado(id) {
   // ── Cuenta Nómina ──
   document.getElementById('emp-banco').innerHTML     = selOpts(p.bancos, e?.id_institucion);
   document.getElementById('emp-tipo-cuenta').value   = e ? (e.tipo_cuenta||'') : '';
-  document.getElementById('emp-num-cuenta').value    = e ? (e.numero_cuenta||'') : '';
+  // Separar número de cuenta: primeros 4 = código banco, resto = dígitos
+  var numCuenta = e ? (e.numero_cuenta||'') : '';
+  var codBanco  = '';
+  if (e && e.id_institucion) {
+    var bancoSel = (p.bancos||[]).find(function(b) { return b.id === e.id_institucion; });
+    codBanco = bancoSel && bancoSel.codigo ? bancoSel.codigo.replace(/\D/g,'').substring(0,4) : numCuenta.substring(0,4);
+  }
+  var restoCuenta = numCuenta.length > 4 ? numCuenta.substring(4) : (numCuenta.length === 4 ? '' : numCuenta);
+  document.getElementById('emp-cod-banco').value        = codBanco;
+  document.getElementById('emp-num-cuenta-resto').value = restoCuenta;
+  document.getElementById('emp-num-cuenta').value       = numCuenta;
 
   document.getElementById('emp-id').value = e ? e.id_empleado : '';
 
@@ -3427,7 +3437,7 @@ async function abrirEmpleado(id) {
     'emp-numero-doc','emp-fecha-nac','emp-correo','emp-tel-movil','emp-tel-fijo',
     'emp-direccion','emp-monto-sal','emp-moneda-calc','emp-moneda-pago',
     'emp-bono-ali','emp-bono-trans','emp-bono-prod','emp-comision',
-    'emp-banco','emp-tipo-cuenta','emp-num-cuenta'
+    'emp-banco','emp-tipo-cuenta','emp-num-cuenta','emp-cod-banco','emp-num-cuenta-resto'
   ];
   camposSensibles.forEach(function(cid) {
     var el = document.getElementById(cid);
@@ -3625,6 +3635,30 @@ async function eliminarEmpleado(id, nombre) {
     await api('empleados', 'DELETE', null, '?id_empleado=eq.' + id);
     renderEmpleados();
   } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ─── SELECTOR BANCO EMPLEADO ───
+function onSelBancoEmpleado() {
+  var sel    = document.getElementById('emp-banco');
+  var codEl  = document.getElementById('emp-cod-banco');
+  var restoEl = document.getElementById('emp-num-cuenta-resto');
+  if (!sel || !codEl) return;
+
+  var idBanco = parseInt(sel.value);
+  var banco   = (_empParamCache.bancos || []).find(function(b) { return b.id === idBanco; });
+  var codigo  = banco && banco.codigo ? banco.codigo.replace(/\D/g,'').substring(0,4) : '';
+
+  codEl.value = codigo;
+  // Limpiar el resto si cambió el banco
+  if (restoEl) restoEl.value = '';
+  sincronizarNumeroCuenta();
+}
+
+function sincronizarNumeroCuenta() {
+  var cod   = document.getElementById('emp-cod-banco')?.value || '';
+  var resto = document.getElementById('emp-num-cuenta-resto')?.value || '';
+  var hidden = document.getElementById('emp-num-cuenta');
+  if (hidden) hidden.value = (cod + resto).replace(/\s/g,'');
 }
 
 // ─── ELIMINAR FOTO EMPLEADO ───
@@ -8312,7 +8346,7 @@ window.addEventListener('load', async () => {
       <div class="form-grid">
         <div class="form-campo form-full">
           <label>Institución Financiera</label>
-          <select id="emp-banco"></select>
+          <select id="emp-banco" onchange="onSelBancoEmpleado()"></select>
         </div>
         <div class="form-campo">
           <label>Tipo de Cuenta</label>
@@ -8324,7 +8358,14 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo">
           <label>Número de Cuenta</label>
-          <input type="text" id="emp-num-cuenta" placeholder="XXXX XXXX XXXX XXXX XXXX" style="font-family:var(--font-mono)">
+          <div style="display:flex;align-items:center;gap:0">
+            <input type="text" id="emp-cod-banco" maxlength="4" readonly
+              style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--naranja);background:var(--gris3);border:1px solid var(--borde);border-right:none;padding:11px 10px;border-radius:5px 0 0 5px;width:60px;outline:none;cursor:not-allowed;text-align:center">
+            <input type="text" id="emp-num-cuenta-resto" maxlength="16" placeholder="0000 0000 0000 0000"
+              oninput="sincronizarNumeroCuenta()"
+              style="font-family:var(--font-mono);font-size:13px;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:11px 10px;border-radius:0 5px 5px 0;flex:1;outline:none">
+          </div>
+          <input type="hidden" id="emp-num-cuenta">
         </div>
       </div>
 
