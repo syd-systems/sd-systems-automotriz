@@ -3141,7 +3141,12 @@ async function abrirParamItem(key, id) {
 
   document.getElementById('modal-param-guardar').onclick = function() { guardarParamItem(); };
   abrirModal('modal-param');
-  setTimeout(function() { document.getElementById('param-item-nombre')?.focus(); }, 100);
+  setTimeout(function() {
+    var primerCampo = (def.tieneCodigo || key === 'areas')
+      ? document.getElementById('param-item-codigo')
+      : document.getElementById('param-item-nombre');
+    if (primerCampo) primerCampo.focus();
+  }, 100);
 }
 
 async function guardarParamItem() {
@@ -3157,6 +3162,26 @@ async function guardarParamItem() {
   if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
 
   const def = TABLAS_MAESTRAS.find(function(t) { return t.key === key; });
+
+  // ── Validar duplicado ──
+  try {
+    const existe = await api(def.tabla, 'GET', null, '?nombre=ilike.' + encodeURIComponent(nombre) + (id ? '&id=neq.' + id : ''));
+    if (existe && existe.length > 0) {
+      errEl.textContent = 'Ya existe un registro con el nombre "' + nombre + '".';
+      errEl.style.display = 'block';
+      return;
+    }
+    // Validar código duplicado si aplica
+    const codigo = (def.tieneCodigo || key === 'areas') ? (document.getElementById('param-item-codigo')?.value.trim() || '') : '';
+    if (codigo) {
+      const existeCod = await api(def.tabla, 'GET', null, '?codigo=ilike.' + encodeURIComponent(codigo) + (id ? '&id=neq.' + id : ''));
+      if (existeCod && existeCod.length > 0) {
+        errEl.textContent = 'Ya existe un registro con el código "' + codigo + '".';
+        errEl.style.display = 'block';
+        return;
+      }
+    }
+  } catch(eDup) { console.warn('Error validando duplicado:', eDup); }
   const datos = { nombre, estado };
   if (key === 'areas') {
     datos.codigo        = document.getElementById('param-item-codigo')?.value.trim() || null;
