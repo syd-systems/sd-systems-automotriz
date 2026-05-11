@@ -3249,8 +3249,12 @@ async function renderFacturas() {
         + '</td>'
         + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
         + (puedo('FACTURAS','VER_TOTALES')
-            ? '<td style="font-family:var(--font-mono)"><span style="color:var(--naranja)">$ ' + fmtUSD(f.total_usd) + '</span>'
-              + '<div style="font-size:10px;color:var(--suave)">' + fmtBs(f.total_ves) + ' Bs</div></td>'
+            ? '<td style="font-family:var(--font-mono)">'
+              + (f.moneda_cobro === 'VES'
+                  ? '<span style="color:var(--naranja)">' + fmtBs(f.total_ves) + ' Bs</span>'
+                    + '<div style="font-size:10px;color:var(--suave)">$ ' + fmtUSD(f.total_usd) + '</div>'
+                  : '<span style="color:var(--naranja)">$ ' + fmtUSD(f.total_usd) + '</span>')
+              + '</td>'
             : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
         + '<td><button class="btn-secundario" onclick="verFichaFactura(' + f.id_factura + ')">Ficha</button></td>'
         + '</tr>';
@@ -3345,9 +3349,13 @@ async function abrirNuevaFactura() {
   document.getElementById('fac-receptor-nombre').value = '';
   document.getElementById('fac-receptor-rif').value    = '';
   document.getElementById('fac-receptor-dir').value    = '';
+  document.getElementById('fac-moneda').value          = 'USD';
   document.getElementById('fac-aplica-iva').checked    = false;
   document.getElementById('fac-aplica-igtf').checked   = false;
   document.getElementById('fac-tasa').value             = tasaActual.toFixed(4);
+  // Ocultar tasa por defecto (moneda USD)
+  var tasaCont = document.getElementById('fac-tasa-cont');
+  if (tasaCont) tasaCont.style.display = 'none';
   document.getElementById('fac-fecha').value            = getHoyVzla();
   document.getElementById('fac-estado').value           = 'BORRADOR';
   document.getElementById('fac-observaciones').value    = '';
@@ -3461,34 +3469,51 @@ async function onSelOSFactura() {
   }
 }
 
+// ─── CAMBIAR MONEDA FACTURA ───
+function onCambiarMonedaFactura() {
+  const moneda  = document.getElementById('fac-moneda')?.value || 'USD';
+  const tasaCont = document.getElementById('fac-tasa-cont');
+  if (tasaCont) tasaCont.style.display = moneda === 'VES' ? 'block' : 'none';
+  calcularTotalesFactura();
+}
+
 // ─── CALCULAR TOTALES FACTURA ───
 function calcularTotalesFactura() {
   const subtotal = window._facSubtotalOS || 0;
-  const tasa     = parseFloat(document.getElementById('fac-tasa')?.value || 1);
+  const moneda   = document.getElementById('fac-moneda')?.value || 'USD';
+  const tasa     = moneda === 'VES' ? (parseFloat(document.getElementById('fac-tasa')?.value) || 1) : 1;
   const aplIVA   = document.getElementById('fac-aplica-iva')?.checked;
   const aplIGTF  = document.getElementById('fac-aplica-igtf')?.checked;
+  const esVES    = moneda === 'VES';
 
+  // Calcular siempre en USD base
   const iva    = aplIVA  ? subtotal * 0.16 : 0;
   const base   = subtotal + iva;
   const igtf   = aplIGTF ? base * 0.03 : 0;
   const total  = base + igtf;
   const totVes = total * tasa;
 
+  // Función para formatear según moneda
+  function fmt(usd) {
+    return esVES ? fmtBs(usd * tasa) + ' Bs' : '$ ' + fmtUSD(usd);
+  }
+
   const el = document.getElementById('fac-totales');
   if (!el) return;
   el.innerHTML =
     '<div style="display:flex;flex-direction:column;gap:6px;padding:14px 0">'
-    + '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">Subtotal</span><span style="font-family:var(--font-mono)">$ ' + fmtUSD(subtotal) + '</span></div>'
-    + (aplIVA  ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IVA (16%)</span><span style="font-family:var(--font-mono)">$ ' + fmtUSD(iva) + '</span></div>' : '')
-    + (aplIGTF ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IGTF (3%)</span><span style="font-family:var(--font-mono)">$ ' + fmtUSD(igtf) + '</span></div>' : '')
+    + '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">Subtotal</span><span style="font-family:var(--font-mono)">' + fmt(subtotal) + '</span></div>'
+    + (aplIVA  ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IVA (16%)</span><span style="font-family:var(--font-mono)">' + fmt(iva) + '</span></div>' : '')
+    + (aplIGTF ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IGTF (3%)</span><span style="font-family:var(--font-mono)">' + fmt(igtf) + '</span></div>' : '')
     + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:8px;margin-top:4px">'
     + '<span style="font-family:var(--font-display);font-size:16px;letter-spacing:1px">TOTAL</span>'
-    + '<div style="text-align:right"><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">$ ' + fmtUSD(total) + '</div>'
-    + '<div style="font-size:11px;color:var(--suave)">' + fmtBs(totVes) + ' Bs · Tasa: ' + tasa.toFixed(2) + '</div></div>'
-    + '</div></div>';
+    + '<div style="text-align:right">'
+    + '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + fmt(total) + '</div>'
+    + (esVES ? '<div style="font-size:11px;color:var(--suave)">Tasa: ' + tasa.toFixed(2) + ' Bs/$</div>' : '')
+    + '</div></div></div>';
 
   // Guardar valores calculados
-  window._facTotales = { subtotal, iva, igtf, total, totVes };
+  window._facTotales = { subtotal, iva, igtf, total, totVes, moneda, tasa };
 }
 
 // ─── GUARDAR FACTURA ───
@@ -3532,9 +3557,10 @@ async function guardarFactura(emitir) {
       receptor_nombre: recNom, receptor_rif: recRif || null, receptor_direccion: recDir || null,
       receptor_tipo_contribuyente: document.getElementById('fac-receptor-tipo-contrib')?.value || null,
       fecha_emision: fecha, estado,
+      moneda_cobro: document.getElementById('fac-moneda')?.value || 'USD',
       aplica_iva: aplIVA, aplica_igtf: aplIGTF,
       subtotal_usd: tot.subtotal, iva_usd: tot.iva, igtf_usd: tot.igtf,
-      total_usd: tot.total, total_ves: tot.totVes, tasa_cambio: tasa,
+      total_usd: tot.total, total_ves: tot.totVes, tasa_cambio: tot.tasa || tasa,
       observaciones: obs || null, id_usuario: sesionActual.correo_usuario
     };
 
@@ -3612,9 +3638,11 @@ async function verFichaFactura(id) {
       + (puedo('FACTURAS','VER_TOTALES')
           ? '<div style="text-align:right">'
             + '<div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">TOTAL</div>'
-            + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">$ ' + fmtUSD(f.total_usd) + '</div>'
-            + '<div style="font-size:11px;color:var(--suave)">' + fmtBs(f.total_ves) + ' Bs</div>'
-            + '</div>'
+            + (f.moneda_cobro === 'VES'
+                ? '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + fmtBs(f.total_ves) + ' Bs</div>'
+                  + '<div style="font-size:11px;color:var(--suave)">$ ' + fmtUSD(f.total_usd) + ' · Tasa: ' + parseFloat(f.tasa_cambio||1).toFixed(2) + ' Bs/$</div>'
+                : '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">$ ' + fmtUSD(f.total_usd) + '</div>')
+            + '<div style="font-size:10px;color:#555;margin-top:3px">' + (f.moneda_cobro || 'USD') + '</div>'
           : '')
       + '</div>'
 
@@ -3638,13 +3666,18 @@ async function verFichaFactura(id) {
       // Detalle impuestos y totales
       + (puedo('FACTURAS','VER_TOTALES')
           ? '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
-            + '<div style="display:flex;flex-direction:column;gap:5px;font-size:12px">'
-            + '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">Subtotal</span><span style="font-family:var(--font-mono)">$ ' + fmtUSD(f.subtotal_usd) + '</span></div>'
-            + (f.aplica_iva  ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">IVA (16%)</span><span style="font-family:var(--font-mono)">$ ' + fmtUSD(f.iva_usd) + '</span></div>' : '')
-            + (f.aplica_igtf ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">IGTF (3%)</span><span style="font-family:var(--font-mono)">$ ' + fmtUSD(f.igtf_usd) + '</span></div>' : '')
-            + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:6px;font-weight:600"><span>Total</span><span style="font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(f.total_usd) + '</span></div>'
-            + '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">Tasa</span><span style="font-family:var(--font-mono)">' + parseFloat(f.tasa_cambio||1).toFixed(2) + ' Bs/$</span></div>'
-            + '</div></div>'
+            + (function() {
+              var esVES = f.moneda_cobro === 'VES';
+              var t = parseFloat(f.tasa_cambio || 1);
+              function fmtF(usd) { return esVES ? fmtBs(usd * t) + ' Bs' : '$ ' + fmtUSD(usd); }
+              return '<div style="display:flex;flex-direction:column;gap:5px;font-size:12px">'
+                + '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">Subtotal</span><span style="font-family:var(--font-mono)">' + fmtF(f.subtotal_usd) + '</span></div>'
+                + (f.aplica_iva  ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">IVA (16%)</span><span style="font-family:var(--font-mono)">' + fmtF(f.iva_usd) + '</span></div>' : '')
+                + (f.aplica_igtf ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">IGTF (3%)</span><span style="font-family:var(--font-mono)">' + fmtF(f.igtf_usd) + '</span></div>' : '')
+                + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:6px;font-weight:600"><span>Total</span><span style="font-family:var(--font-mono);color:var(--naranja)">' + fmtF(f.total_usd) + '</span></div>'
+                + (esVES ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">Tasa</span><span style="font-family:var(--font-mono)">' + t.toFixed(2) + ' Bs/$</span></div>' : '')
+                + '</div></div>';
+            })()
           : '')
 
       // Tabla de líneas
@@ -8157,8 +8190,15 @@ window.addEventListener('load', async () => {
 
       <!-- IMPUESTOS Y TASA -->
       <div style="padding:14px;background:var(--gris2);border-radius:6px;margin-bottom:16px">
-        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:10px">Impuestos y Tasa</div>
+        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:10px">Moneda e Impuestos</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:center">
+          <div class="form-campo" style="margin:0">
+            <label style="font-size:9px">Moneda de Cobro</label>
+            <select id="fac-moneda" onchange="onCambiarMonedaFactura()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:4px;outline:none;width:100%">
+              <option value="USD">USD — Dólar</option>
+              <option value="VES">VES — Bolívar</option>
+            </select>
+          </div>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
             <input type="checkbox" id="fac-aplica-iva" onchange="calcularTotalesFactura()" style="accent-color:var(--naranja);width:16px;height:16px">
             IVA (16%)
@@ -8167,8 +8207,11 @@ window.addEventListener('load', async () => {
             <input type="checkbox" id="fac-aplica-igtf" onchange="calcularTotalesFactura()" style="accent-color:var(--naranja);width:16px;height:16px">
             IGTF (3%)
           </label>
-          <div class="form-campo" style="margin:0">
-            <label style="font-size:9px">Tasa USD/Bs</label>
+        </div>
+        <!-- Tasa solo visible cuando moneda = VES -->
+        <div id="fac-tasa-cont" style="margin-top:12px;display:none">
+          <div class="form-campo" style="margin:0;max-width:220px">
+            <label style="font-size:9px">Tasa USD / Bs</label>
             <input type="number" id="fac-tasa" step="0.0001" min="0" oninput="calcularTotalesFactura()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:8px 10px;border-radius:4px;outline:none;width:100%">
           </div>
         </div>
