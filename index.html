@@ -2931,7 +2931,7 @@ async function renderParametros() {
 
   // Cargar áreas para el selector de cargos
   try {
-    _paramAreasCache = await api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=nombre.asc');
+    _paramAreasCache = await api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc');
   } catch(e) { _paramAreasCache = []; }
 
   // Construir UI con tabs para cada tabla
@@ -3136,7 +3136,7 @@ async function guardarParamItem() {
       okEl.textContent = '✓ Registro creado.';
       // Actualizar cache de áreas si se creó una nueva área
       if (key === 'areas') {
-        _paramAreasCache = await api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=nombre.asc');
+        _paramAreasCache = await api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc');
       }
     }
     okEl.style.display = 'block';
