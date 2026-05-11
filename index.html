@@ -3353,9 +3353,11 @@ async function abrirNuevaFactura() {
   document.getElementById('fac-aplica-iva').checked    = false;
   document.getElementById('fac-aplica-igtf').checked   = false;
   document.getElementById('fac-tasa').value             = tasaActual.toFixed(4);
-  // Ocultar tasa por defecto (moneda USD)
+  // Ocultar tasa por defecto (moneda USD), mostrar IGTF
   var tasaCont = document.getElementById('fac-tasa-cont');
   if (tasaCont) tasaCont.style.display = 'none';
+  var igtfCont = document.getElementById('fac-igtf-cont');
+  if (igtfCont) igtfCont.style.display = 'flex';
   document.getElementById('fac-fecha').value            = getHoyVzla();
   document.getElementById('fac-estado').value           = 'BORRADOR';
   document.getElementById('fac-observaciones').value    = '';
@@ -3486,9 +3488,16 @@ function actualizarSubtotalOSLabel() {
 
 // ─── CAMBIAR MONEDA FACTURA ───
 function onCambiarMonedaFactura() {
-  const moneda   = document.getElementById('fac-moneda')?.value || 'USD';
-  const tasaCont = document.getElementById('fac-tasa-cont');
-  if (tasaCont) tasaCont.style.display = moneda === 'VES' ? 'block' : 'none';
+  const moneda    = document.getElementById('fac-moneda')?.value || 'USD';
+  const esVES     = moneda === 'VES';
+  const tasaCont  = document.getElementById('fac-tasa-cont');
+  const igtfCont  = document.getElementById('fac-igtf-cont');
+  const igtfChk   = document.getElementById('fac-aplica-igtf');
+  // Mostrar tasa solo en VES
+  if (tasaCont) tasaCont.style.display = esVES ? 'block' : 'none';
+  // Ocultar IGTF en VES (aplica solo a divisas) y desmarcar si estaba activo
+  if (igtfCont) igtfCont.style.display = esVES ? 'none' : 'flex';
+  if (igtfChk && esVES) igtfChk.checked = false;
   actualizarSubtotalOSLabel();
   // Recargar tabla de líneas si hay OS seleccionada
   var idOS = document.getElementById('fac-os-id')?.value;
@@ -8222,7 +8231,7 @@ window.addEventListener('load', async () => {
             <input type="checkbox" id="fac-aplica-iva" onchange="calcularTotalesFactura()" style="accent-color:var(--naranja);width:16px;height:16px">
             IVA (16%)
           </label>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+          <label id="fac-igtf-cont" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
             <input type="checkbox" id="fac-aplica-igtf" onchange="calcularTotalesFactura()" style="accent-color:var(--naranja);width:16px;height:16px">
             IGTF (3%)
           </label>
