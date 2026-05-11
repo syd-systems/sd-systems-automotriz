@@ -3639,8 +3639,8 @@ async function eliminarEmpleado(id, nombre) {
 
 // ─── SELECTOR BANCO EMPLEADO ───
 function onSelBancoEmpleado() {
-  var sel    = document.getElementById('emp-banco');
-  var codEl  = document.getElementById('emp-cod-banco');
+  var sel     = document.getElementById('emp-banco');
+  var codEl   = document.getElementById('emp-cod-banco');
   var restoEl = document.getElementById('emp-num-cuenta-resto');
   if (!sel || !codEl) return;
 
@@ -3650,7 +3650,7 @@ function onSelBancoEmpleado() {
 
   codEl.value = codigo;
   // Limpiar el resto si cambió el banco
-  if (restoEl) restoEl.value = '';
+  if (restoEl) { restoEl.value = ''; restoEl.focus(); }
   sincronizarNumeroCuenta();
 }
 
