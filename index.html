@@ -1103,9 +1103,6 @@
       </div>
 
       <div class="nav-seccion" id="nav-seccion-finanzas">Finanzas</div>
-      <div class="nav-item" id="nav-EMISORES" onclick="mostrarModulo('emisores', this); cerrarMenuMovil()" style="display:none">
-        <span class="nav-icono">🏢</span> Emisores
-      </div>
       <div class="nav-item" id="nav-FACTURAS" onclick="mostrarModulo('facturas', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">🧾</span> Facturas
       </div>
@@ -1117,6 +1114,9 @@
       </div>
 
       <div class="nav-seccion" id="nav-seccion-admin">Administración</div>
+      <div class="nav-item" id="nav-EMISORES" onclick="mostrarModulo('emisores', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">🏢</span> Datos de Empresas
+      </div>
       <div class="nav-item" id="nav-EMPLEADOS" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">👷</span> Empleados
       </div>
@@ -1308,7 +1308,7 @@ const TODOS_LOS_MODULOS = [
   { sigla: 'SERVICIOS',    nombre: 'Órdenes Servicio', icono: '🔧' },
   { sigla: 'INVENTARIO',   nombre: 'Inventario',       icono: '📦' },
   { sigla: 'CATALOGO',     nombre: 'Catálogo Servicios', icono: '🗂️' },
-  { sigla: 'EMISORES',     nombre: 'Emisores',         icono: '🏢' },
+  { sigla: 'EMISORES',     nombre: 'Datos de Empresas',         icono: '🏢' },
   { sigla: 'FACTURAS',     nombre: 'Facturas',         icono: '🧾' },
   { sigla: 'PAGOS',        nombre: 'Pagos',            icono: '💳' },
   { sigla: 'TASAS',        nombre: 'Tipo de Cambio',   icono: '💱' },
@@ -1378,10 +1378,10 @@ const PERMISOS_POR_MODULO = {
     { accion: 'ELIMINAR', label: 'Eliminar usuario' },
   ],
   EMISORES: [
-    { accion: 'VER',      label: 'Ver emisores' },
-    { accion: 'CREAR',    label: 'Registrar emisor' },
-    { accion: 'EDITAR',   label: 'Editar emisor' },
-    { accion: 'ELIMINAR', label: 'Eliminar emisor' },
+    { accion: 'VER',      label: 'Ver empresas' },
+    { accion: 'CREAR',    label: 'Registrar empresa' },
+    { accion: 'EDITAR',   label: 'Editar empresa' },
+    { accion: 'ELIMINAR', label: 'Eliminar empresa' },
   ],
   FACTURAS: [
     { accion: 'VER',         label: 'Ver facturas' },
@@ -1831,7 +1831,7 @@ function mostrarModulo(modulo, navEl) {
     ordenes:      'ÓRDENES DE SERVICIO',
     inventario:   'INVENTARIO GENERAL',
     catalogo:     'CATÁLOGO DE SERVICIOS',
-    emisores:     'EMISORES',
+    emisores:     'DATOS DE EMPRESAS',
     facturas:     'FACTURAS',
     proximo:      'PRÓXIMAMENTE'
   };
@@ -3048,13 +3048,13 @@ async function renderEmisores() {
 
     c.innerHTML = '<div class="panel">'
       + '<div class="panel-header">'
-      + '<h3>Emisores (' + emisores.length + ')</h3>'
-      + (puedo('EMISORES','CREAR') ? '<button class="btn-primario" onclick="abrirEmisor(null)">+ Nuevo Emisor</button>' : '')
+      + '<h3>Datos de Empresas (' + emisores.length + ')</h3>'
+      + (puedo('EMISORES','CREAR') ? '<button class="btn-primario" onclick="abrirEmisor(null)">+ Nueva Empresa</button>' : '')
       + '</div>'
       + '<div class="tabla-container"><table><thead><tr>'
       + '<th>Nombre / RIF</th><th>Tipo Contribuyente</th><th>Estado</th><th>Acciones</th>'
       + '</tr></thead><tbody>'
-      + (filas || '<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--suave)">No hay emisores registrados</td></tr>')
+      + (filas || '<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--suave)">No hay empresas registradas</td></tr>')
       + '</tbody></table></div></div>';
 
   } catch(e) {
@@ -3063,14 +3063,14 @@ async function renderEmisores() {
 }
 
 async function abrirEmisor(id) {
-  if (id && !puedo('EMISORES','EDITAR')) { alert('No tiene permiso para editar emisores.'); return; }
-  if (!id && !puedo('EMISORES','CREAR')) { alert('No tiene permiso para registrar emisores.'); return; }
+  if (id && !puedo('EMISORES','EDITAR')) { alert('No tiene permiso para editar empresas.'); return; }
+  if (!id && !puedo('EMISORES','CREAR')) { alert('No tiene permiso para registrar empresas.'); return; }
 
   const e = id ? emisoresCache.find(function(x) { return x.id_emisor === id; }) : null;
 
 
 
-  document.getElementById('modal-emisor-titulo').textContent = e ? 'EDITAR EMISOR' : 'NUEVO EMISOR';
+  document.getElementById('modal-emisor-titulo').textContent = e ? 'EDITAR EMPRESA' : 'NUEVA EMPRESA';
   document.getElementById('em-id').value              = e ? e.id_emisor : '';
   document.getElementById('em-nombre').value          = e ? e.nombre              : '';
   document.getElementById('em-rif').value             = e ? e.rif                 : '';
@@ -3089,8 +3089,8 @@ async function abrirEmisor(id) {
 
 async function guardarEmisor() {
   const id     = document.getElementById('em-id').value;
-  if (id && !puedo('EMISORES','EDITAR')) { alert('No tiene permiso para editar emisores.'); return; }
-  if (!id && !puedo('EMISORES','CREAR')) { alert('No tiene permiso para registrar emisores.'); return; }
+  if (id && !puedo('EMISORES','EDITAR')) { alert('No tiene permiso para editar empresas.'); return; }
+  if (!id && !puedo('EMISORES','CREAR')) { alert('No tiene permiso para registrar empresas.'); return; }
 
   const nombre  = document.getElementById('em-nombre').value.trim();
   const rif     = document.getElementById('em-rif').value.trim().toUpperCase();
@@ -3119,10 +3119,10 @@ async function guardarEmisor() {
   try {
     if (id) {
       await api('emisores', 'PATCH', datos, '?id_emisor=eq.' + id);
-      okEl.textContent = '✓ Emisor actualizado correctamente.';
+      okEl.textContent = '✓ Empresa actualizada correctamente.';
     } else {
       await api('emisores', 'POST', datos);
-      okEl.textContent = '✓ Emisor registrado correctamente.';
+      okEl.textContent = '✓ Empresa registrada correctamente.';
     }
     okEl.style.display = 'block';
     setTimeout(function() { cerrarModal('modal-emisor'); renderEmisores(); }, 1200);
@@ -3134,7 +3134,7 @@ async function guardarEmisor() {
 
 async function verFichaEmisor(id) {
   if (!sesionActual?.administrador && !puedo('EMISORES','VER')) {
-    alert('No tiene permiso para ver la ficha del emisor.'); return;
+    alert('No tiene permiso para ver la ficha de la empresa.'); return;
   }
   const e = emisoresCache.find(function(x) { return x.id_emisor === id; });
   if (!e) return;
@@ -3191,8 +3191,8 @@ async function verFichaEmisor(id) {
 }
 
 async function eliminarEmisor(id, nombre) {
-  if (!puedo('EMISORES','ELIMINAR')) { alert('No tiene permiso para eliminar emisores.'); return; }
-  if (!confirm('¿Eliminar el emisor "' + nombre + '"?')) return;
+  if (!puedo('EMISORES','ELIMINAR')) { alert('No tiene permiso para eliminar empresas.'); return; }
+  if (!confirm('¿Eliminar la empresa "' + nombre + '"?')) return;
   try {
     await api('emisores', 'DELETE', null, '?id_emisor=eq.' + id);
     renderEmisores();
@@ -8347,7 +8347,7 @@ window.addEventListener('load', async () => {
 <div class="modal-overlay" id="modal-ficha-emisor">
   <div class="modal" style="max-width:540px">
     <div class="modal-header">
-      <h3>FICHA DEL EMISOR</h3>
+      <h3>FICHA DE LA EMPRESA</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-emisor')">✕</button>
     </div>
     <div class="modal-body" id="ficha-emisor-contenido"></div>
@@ -8364,7 +8364,7 @@ window.addEventListener('load', async () => {
 <div class="modal-overlay" id="modal-emisor">
   <div class="modal" style="max-width:620px">
     <div class="modal-header">
-      <h3 id="modal-emisor-titulo">NUEVO EMISOR</h3>
+      <h3 id="modal-emisor-titulo">NUEVA EMPRESA</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-emisor')">✕</button>
     </div>
     <div class="modal-body">
