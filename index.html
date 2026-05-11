@@ -1178,7 +1178,7 @@
           <input type="text" id="u-nombre" placeholder="Ej: María García">
         </div>
         <div class="form-campo form-full">
-          <label>Correo Electrónico</label>
+          <label>Correo Electrónico *</label>
           <input type="email" id="u-correo" placeholder="correo@ejemplo.com">
         </div>
         <div class="form-campo form-full">
@@ -3471,9 +3471,67 @@ async function guardarEmpleado() {
   if (!numDoc) { errEl.textContent = 'El número de documento es obligatorio.'; errEl.style.display = 'block'; return; }
   if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
 
+  // ── Validaciones de campos obligatorios ──
+  var validaciones = [
+    { id: 'emp-fecha-nac',    label: 'Fecha de Nacimiento' },
+    { id: 'emp-estado-civil', label: 'Estado Civil' },
+    { id: 'emp-sexo',         label: 'Sexo' },
+    { id: 'emp-nivel-edu',    label: 'Nivel Educativo' },
+    { id: 'emp-correo',       label: 'Correo Electrónico' },
+    { id: 'emp-tel-movil',    label: 'Teléfono Móvil' },
+    { id: 'emp-direccion',    label: 'Dirección' },
+    { id: 'emp-emerg-nombre', label: 'Nombre del Contacto de Emergencia' },
+    { id: 'emp-emerg-tel',    label: 'Teléfono del Contacto de Emergencia' },
+    { id: 'emp-area',         label: 'Área' },
+    { id: 'emp-cargo',        label: 'Cargo' },
+    { id: 'emp-contrato',     label: 'Tipo de Contrato' },
+    { id: 'emp-tipo-sal',     label: 'Tipo de Salario' },
+    { id: 'emp-calc-sal',     label: 'Cálculo del Salario' },
+    { id: 'emp-freq-pago',    label: 'Frecuencia de Pago' },
+    { id: 'emp-monto-sal',    label: 'Monto del Salario' },
+    { id: 'emp-moneda-calc',  label: 'Moneda de Cálculo' },
+    { id: 'emp-moneda-pago',  label: 'Moneda de Pago' },
+    { id: 'emp-fecha-ingreso',label: 'Fecha de Ingreso' },
+    { id: 'emp-estatus',      label: 'Estatus' },
+  ];
+  for (var vi = 0; vi < validaciones.length; vi++) {
+    var v = validaciones[vi];
+    var el = document.getElementById(v.id);
+    if (!el) continue;
+    var val = el.value ? el.value.trim() : '';
+    if (!val) {
+      errEl.textContent = 'El campo "' + v.label + '" es obligatorio.';
+      errEl.style.display = 'block';
+      el.focus();
+      // Scroll al campo
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+  }
+
+  // Validar fecha de egreso si estatus es RETIRADO o RENUNCIA
+  var estatusVal = document.getElementById('emp-estatus')?.value;
+  if (estatusVal === 'RETIRADO' || estatusVal === 'RENUNCIA') {
+    var fechaEgreso = document.getElementById('emp-fecha-egreso')?.value;
+    if (!fechaEgreso) {
+      errEl.textContent = 'La Fecha de Egreso es obligatoria cuando el estatus es "' + (estatusVal === 'RETIRADO' ? 'Retirado' : 'Renuncia') + '".';
+      errEl.style.display = 'block';
+      document.getElementById('emp-fecha-egreso')?.focus();
+      document.getElementById('emp-fecha-egreso')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+  }
+
   // Validar número de cuenta si se seleccionó banco
   var idBancoVal = document.getElementById('emp-banco')?.value;
   if (idBancoVal) {
+    var tipoCuenta = document.getElementById('emp-tipo-cuenta')?.value;
+    if (!tipoCuenta) {
+      errEl.textContent = 'Selecciona el Tipo de Cuenta.';
+      errEl.style.display = 'block';
+      document.getElementById('emp-tipo-cuenta')?.focus();
+      return;
+    }
     var restoVal = (document.getElementById('emp-num-cuenta-resto')?.value || '').replace(/\s/g,'');
     if (restoVal.length !== 16) {
       errEl.textContent = 'El número de cuenta debe tener exactamente 16 dígitos después del código del banco.';
@@ -3654,6 +3712,16 @@ async function eliminarEmpleado(id, nombre) {
     await api('empleados', 'DELETE', null, '?id_empleado=eq.' + id);
     renderEmpleados();
   } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ─── VALIDAR FECHA EGRESO SEGÚN ESTATUS ───
+function validarFechaEgresoEmp() {
+  var estatus  = document.getElementById('emp-estatus')?.value;
+  var reqEl    = document.getElementById('emp-egreso-req');
+  var inputEl  = document.getElementById('emp-fecha-egreso');
+  var requiere = estatus === 'RETIRADO' || estatus === 'RENUNCIA';
+  if (reqEl)   reqEl.style.display   = requiere ? 'inline' : 'none';
+  if (inputEl) inputEl.style.borderColor = (requiere && !inputEl.value) ? '#fc8181' : '';
 }
 
 // ─── SELECTOR BANCO EMPLEADO ───
@@ -7359,11 +7427,11 @@ window.addEventListener('load', async () => {
           <input type="text" id="prop-telefono" placeholder="0414-0000000">
         </div>
         <div class="form-campo">
-          <label>Correo Electrónico</label>
+          <label>Correo Electrónico *</label>
           <input type="email" id="prop-correo" placeholder="correo@ejemplo.com">
         </div>
         <div class="form-campo form-full">
-          <label>Dirección</label>
+          <label>Dirección *</label>
           <input type="text" id="prop-direccion" placeholder="Dirección completa">
         </div>
         <div class="form-campo form-full">
@@ -8097,7 +8165,7 @@ window.addEventListener('load', async () => {
             <input type="text" id="fac-receptor-rif" placeholder="J-XXXXXXXX-X">
           </div>
           <div class="form-campo">
-            <label>Dirección</label>
+            <label>Dirección *</label>
             <input type="text" id="fac-receptor-dir" placeholder="Dirección fiscal">
           </div>
           <div class="form-campo form-full">
@@ -8245,7 +8313,7 @@ window.addEventListener('load', async () => {
           <input type="text" id="emp-nombre" placeholder="Apellidos y Nombres">
         </div>
         <div class="form-campo">
-          <label>Fecha de Nacimiento</label>
+          <label>Fecha de Nacimiento *</label>
           <input type="date" id="emp-fecha-nac">
         </div>
         <div class="form-campo">
@@ -8261,11 +8329,11 @@ window.addEventListener('load', async () => {
           <select id="emp-nivel-edu"></select>
         </div>
         <div class="form-campo form-full">
-          <label>Correo Electrónico</label>
+          <label>Correo Electrónico *</label>
           <input type="email" id="emp-correo" placeholder="correo@ejemplo.com">
         </div>
         <div class="form-campo">
-          <label>Teléfono Móvil</label>
+          <label>Teléfono Móvil *</label>
           <input type="text" id="emp-tel-movil" placeholder="0414-0000000">
         </div>
         <div class="form-campo">
@@ -8273,11 +8341,11 @@ window.addEventListener('load', async () => {
           <input type="text" id="emp-tel-fijo" placeholder="0212-0000000">
         </div>
         <div class="form-campo form-full">
-          <label>Dirección</label>
+          <label>Dirección *</label>
           <input type="text" id="emp-direccion" placeholder="Dirección completa">
         </div>
         <div class="form-campo form-full">
-          <label>Foto Documento de Identidad</label>
+          <label>Foto Documento de Identidad <span style="font-weight:400;color:var(--suave);font-size:11px">(Opcional)</span></label>
           <div id="emp-foto-actual" style="margin-bottom:8px"></div>
           <input type="file" id="emp-foto-file" accept="image/*" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:8px;border-radius:5px;width:100%">
         </div>
@@ -8287,11 +8355,11 @@ window.addEventListener('load', async () => {
       <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--naranja);margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--borde)">🚨 Contacto de Emergencia</div>
       <div class="form-grid">
         <div class="form-campo form-full">
-          <label>Nombre</label>
+          <label>Nombre *</label>
           <input type="text" id="emp-emerg-nombre" placeholder="Nombre del contacto">
         </div>
         <div class="form-campo">
-          <label>Teléfono Móvil</label>
+          <label>Teléfono Móvil *</label>
           <input type="text" id="emp-emerg-tel" placeholder="0414-0000000">
         </div>
       </div>
@@ -8324,7 +8392,7 @@ window.addEventListener('load', async () => {
           <select id="emp-freq-pago"></select>
         </div>
         <div class="form-campo">
-          <label>Monto Salario</label>
+          <label>Monto Salario *</label>
           <input type="number" id="emp-monto-sal" placeholder="0.00" step="0.01" min="0">
         </div>
         <div class="form-campo">
@@ -8360,12 +8428,12 @@ window.addEventListener('load', async () => {
           <input type="number" id="emp-comision" placeholder="0.00" step="0.01" min="0" max="100">
         </div>
         <div class="form-campo">
-          <label>Fecha de Ingreso</label>
+          <label>Fecha de Ingreso *</label>
           <input type="date" id="emp-fecha-ingreso">
         </div>
         <div class="form-campo">
           <label>Estatus</label>
-          <select id="emp-estatus">
+          <select id="emp-estatus" onchange="validarFechaEgresoEmp()">
             <option value="ACTIVO">Activo</option>
             <option value="INACTIVO">Inactivo</option>
             <option value="SUSPENDIDO">Suspendido</option>
@@ -8374,8 +8442,8 @@ window.addEventListener('load', async () => {
           </select>
         </div>
         <div class="form-campo">
-          <label>Fecha de Egreso</label>
-          <input type="date" id="emp-fecha-egreso">
+          <label>Fecha de Egreso <span id="emp-egreso-req" style="color:#fc8181;display:none">*</span> <span style="font-size:11px;color:var(--suave)">(Requerida si Retirado o Renuncia)</span></label>
+          <input type="date" id="emp-fecha-egreso" onchange="validarFechaEgresoEmp()">
         </div>
       </div>
 
@@ -8539,7 +8607,7 @@ window.addEventListener('load', async () => {
           <input type="text" id="em-telefono" placeholder="0212-XXXXXXX">
         </div>
         <div class="form-campo form-full">
-          <label>Correo Electrónico</label>
+          <label>Correo Electrónico *</label>
           <input type="email" id="em-correo" placeholder="empresa@correo.com">
         </div>
         <div class="form-campo form-full">
