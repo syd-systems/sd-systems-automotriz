@@ -1445,6 +1445,19 @@ async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '') {
 }
 
 
+// ─── CERRAR TODOS LOS MODALES ───
+function cerrarTodosLosModales() {
+  document.querySelectorAll('.modal-overlay.abierto').forEach(function(m) {
+    m.classList.remove('abierto');
+  });
+  // También cerrar el visor de imágenes si está abierto
+  var visor = document.getElementById('visor-imagen');
+  if (visor) visor.style.display = 'none';
+  // Cerrar aviso de inactividad
+  var aviso = document.getElementById('aviso-inactividad');
+  if (aviso) aviso.style.display = 'none';
+}
+
 // ─── TOGGLE CONTRASEÑA ───
 function resetCampoPass(inputId) {
   const input = document.getElementById(inputId);
@@ -1556,6 +1569,7 @@ function mostrarAvisoInactividad() {
 
 async function cerrarSesionInactividad() {
   detenerTimerInactividad();
+  cerrarTodosLosModales();
   // Marcar sesión inactiva en Supabase
   try {
     if (sesionActual) {
@@ -1607,6 +1621,7 @@ async function verificarSesionActiva() {
     const forzarSalida = u.sesion_invalidada === true || u.estado_usuario === 'INACTIVO';
     if (forzarSalida) {
       // Limpiar flag de invalidación
+      cerrarTodosLosModales();
       try { await api('usuarios', 'PATCH', { sesion_invalidada: false }, `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`); } catch(e) {}
       sesionActual  = null;
       modulosAcceso = [];
@@ -1778,6 +1793,7 @@ function iniciarApp() {
 // ─── CERRAR SESIÓN ───
 async function cerrarSesion() {
   if (!confirm('¿Desea cerrar sesión?')) return;
+  cerrarTodosLosModales();
   // Marcar sesión inactiva en Supabase
   try {
     await api('usuarios', 'PATCH', {
