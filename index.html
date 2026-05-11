@@ -1447,15 +1447,22 @@ async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '') {
 
 // ─── CERRAR TODOS LOS MODALES ───
 function cerrarTodosLosModales() {
+  // Cerrar modales con clase 'abierto'
   document.querySelectorAll('.modal-overlay.abierto').forEach(function(m) {
     m.classList.remove('abierto');
   });
-  // También cerrar el visor de imágenes si está abierto
+  // Cerrar modales con display:flex (ej: modal-cambio-clave)
+  document.querySelectorAll('.modal-overlay').forEach(function(m) {
+    m.style.display = 'none';
+  });
+  // Cerrar visor de imágenes
   var visor = document.getElementById('visor-imagen');
   if (visor) visor.style.display = 'none';
   // Cerrar aviso de inactividad
   var aviso = document.getElementById('aviso-inactividad');
   if (aviso) aviso.style.display = 'none';
+  // Restaurar scroll del body
+  document.body.style.overflow = '';
 }
 
 // ─── TOGGLE CONTRASEÑA ───
@@ -1568,27 +1575,14 @@ function mostrarAvisoInactividad() {
 }
 
 async function cerrarSesionInactividad() {
-  detenerTimerInactividad();
-  cerrarTodosLosModales();
-  // Marcar sesión inactiva en Supabase
+  const correo = sesionActual?.correo_usuario;
+  limpiarSesionLocal();
   try {
-    if (sesionActual) {
-      await api('usuarios', 'PATCH', {
-        sesion_activa: false,
-        ultima_desconexion: new Date().toISOString()
-      }, `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`);
-    }
+    if (correo) await api('usuarios', 'PATCH', {
+      sesion_activa: false,
+      ultima_desconexion: new Date().toISOString()
+    }, `?correo_usuario=eq.${encodeURIComponent(correo)}`);
   } catch(e) { console.error('Error marcando desconexión:', e); }
-
-  sesionActual   = null;
-  modulosAcceso  = [];
-  sessionStorage.removeItem('sd_sesion');
-
-  document.getElementById('pantalla-app').style.display  = 'none';
-  document.getElementById('pantalla-login').style.display = 'flex';
-  document.getElementById('login-correo').value = '';
-  resetCampoPass('login-clave');
-
   // Mostrar mensaje en login
   const errEl = document.getElementById('login-error');
   errEl.textContent = '⏱ Sesión cerrada por inactividad.';
@@ -1620,23 +1614,21 @@ async function verificarSesionActiva() {
     // Forzar re-login si: sesión invalidada, estado inactivo, o sesión marcada como cerrada
     const forzarSalida = u.sesion_invalidada === true || u.estado_usuario === 'INACTIVO';
     if (forzarSalida) {
-      // Limpiar flag de invalidación
-      cerrarTodosLosModales();
-      try { await api('usuarios', 'PATCH', { sesion_invalidada: false }, `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`); } catch(e) {}
-      sesionActual  = null;
-      modulosAcceso = [];
-      permisosActuales = {};
-      sessionStorage.removeItem('sd_sesion');
-      document.getElementById('pantalla-app').style.display   = 'none';
-      document.getElementById('pantalla-login').style.display = 'flex';
-      document.getElementById('login-correo').value = '';
-      resetCampoPass('login-clave');
+      const correoActual = sesionActual.correo_usuario;
+      const estaInactivo    = u.estado_usuario === 'INACTIVO';
+      const fueInvalidada   = u.sesion_invalidada === true;
+      limpiarSesionLocal();
+      try { await api('usuarios', 'PATCH', { sesion_invalidada: false }, `?correo_usuario=eq.${encodeURIComponent(correoActual)}`); } catch(e) {}
       const errEl = document.getElementById('login-error');
-      errEl.textContent = '🔄 Tu perfil fue modificado por el administrador. Inicia sesión nuevamente.';
-      errEl.style.display  = 'block';
-      errEl.style.background   = 'rgba(255,107,0,0.12)';
-      errEl.style.borderColor  = 'rgba(255,107,0,0.4)';
-      errEl.style.color        = 'var(--naranja)';
+      if (estaInactivo) {
+        errEl.textContent = '🚫 Tu usuario fue desactivado por el administrador. Contacta al soporte.';
+      } else if (fueInvalidada) {
+        errEl.textContent = '🔄 Tu perfil fue modificado por el administrador. Inicia sesión nuevamente.';
+      }
+      errEl.style.display     = 'block';
+      errEl.style.background  = 'rgba(255,107,0,0.12)';
+      errEl.style.borderColor = 'rgba(255,107,0,0.4)';
+      errEl.style.color       = 'var(--naranja)';
     }
   } catch(e) { console.warn('Error verificando sesión:', e); }
 }
@@ -1790,26 +1782,36 @@ function iniciarApp() {
   mostrarModulo('dashboard', null);
 }
 
-// ─── CERRAR SESIÓN ───
-async function cerrarSesion() {
-  if (!confirm('¿Desea cerrar sesión?')) return;
+// ─── LIMPIEZA COMPLETA DE SESIÓN ───
+function limpiarSesionLocal() {
   cerrarTodosLosModales();
-  // Marcar sesión inactiva en Supabase
-  try {
-    await api('usuarios', 'PATCH', {
-      sesion_activa: false,
-      sesion_invalidada: false,
-      ultima_desconexion: new Date().toISOString()
-    }, `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`);
-  } catch(e) { console.error('Error cerrando sesión:', e); }
-
-  sesionActual = null;
-  modulosAcceso = [];
+  detenerTimerInactividad();
+  sesionActual     = null;
+  modulosAcceso    = [];
+  permisosActuales = {};
   sessionStorage.removeItem('sd_sesion');
-  document.getElementById('pantalla-app').style.display = 'none';
+  document.getElementById('pantalla-app').style.display   = 'none';
   document.getElementById('pantalla-login').style.display = 'flex';
   document.getElementById('login-correo').value = '';
   resetCampoPass('login-clave');
+  // Ocultar sidebar nav items
+  document.querySelectorAll('.nav-item[id^="nav-"]').forEach(function(n) {
+    n.style.display = 'none';
+  });
+}
+
+// ─── CERRAR SESIÓN ───
+async function cerrarSesion() {
+  if (!confirm('¿Desea cerrar sesión?')) return;
+  const correo = sesionActual?.correo_usuario;
+  limpiarSesionLocal();
+  try {
+    if (correo) await api('usuarios', 'PATCH', {
+      sesion_activa: false,
+      sesion_invalidada: false,
+      ultima_desconexion: new Date().toISOString()
+    }, `?correo_usuario=eq.${encodeURIComponent(correo)}`);
+  } catch(e) { console.error('Error cerrando sesión:', e); }
 }
 
 // ─── NAVEGACIÓN ───
@@ -1980,6 +1982,7 @@ async function renderUsuarios(filtro) {
               onkeydown="if(event.key==='Enter'){event.preventDefault();renderUsuarios(this.value)}else if(event.key==='Escape'){this.value='';renderUsuarios('')}"
               style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:240px">
             <button class="btn-secundario" onclick="document.getElementById('buscar-usu').value='';renderUsuarios()">↻ Actualizar</button>
+            ${sesionActual?.administrador ? '<button class="btn-secundario" style="border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="cerrarTodasLasSesiones()">⏻ Cerrar Todas las Sesiones</button>' : ''}
             ${puedo('USUARIOS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoUsuario()">+ Nuevo Usuario</button>' : ''}
           </div>
         </div>
@@ -2136,6 +2139,13 @@ async function verFichaUsuario(id) {
   if (btnEditar)  { btnEditar._id = u.id_usuario; btnEditar.onclick = function() { cerrarModal('modal-ficha-usu'); abrirEditarUsuario(this._id); }; btnEditar.style.display = puedo('USUARIOS','EDITAR') ? '' : 'none'; }
   if (btnReset)   { btnReset._correo = u.correo_usuario; btnReset._nombre = u.nombre; btnReset.onclick = function() { resetearClave(this._correo, this._nombre); }; btnReset.style.display = puedo('USUARIOS','EDITAR') && u.correo_usuario !== sesionActual.correo_usuario ? '' : 'none'; }
   if (btnEliminar){ btnEliminar._id = u.id_usuario; btnEliminar._nombre = u.nombre; btnEliminar.onclick = function() { cerrarModal('modal-ficha-usu'); eliminarUsuario(this._id, this._nombre); }; btnEliminar.style.display = puedo('USUARIOS','ELIMINAR') && u.correo_usuario !== sesionActual.correo_usuario ? '' : 'none'; }
+  var btnCerrarSesion = document.getElementById('ficha-usu-btn-cerrar-sesion');
+  if (btnCerrarSesion) {
+    btnCerrarSesion._correo = u.correo_usuario;
+    btnCerrarSesion._nombre = u.nombre;
+    btnCerrarSesion.onclick = function() { cerrarSesionUsuario(this._correo, this._nombre); };
+    btnCerrarSesion.style.display = sesionActual?.administrador && enLinea && u.correo_usuario !== sesionActual.correo_usuario ? '' : 'none';
+  }
 
   abrirModal('modal-ficha-usu');
 }
@@ -2386,12 +2396,15 @@ async function guardarUsuario() {
       try {
         const uEditado = usuariosCache.find(u => u.id_usuario == idEdit);
         if (uEditado && uEditado.sesion_activa) {
+          const cambioAInactivo = estado === 'INACTIVO';
           await api('usuarios', 'PATCH', {
             sesion_activa: false,
             sesion_invalidada: true,
             ultima_desconexion: new Date().toISOString()
           }, `?id_usuario=eq.${idEdit}`);
-          okEl.textContent = '✓ Usuario actualizado. Se cerró su sesión activa.';
+          okEl.textContent = cambioAInactivo
+            ? '✓ Usuario desactivado. Su sesión activa fue cerrada.'
+            : '✓ Usuario actualizado. Se cerró su sesión activa.';
         }
       } catch(eInv) { console.warn('Error invalidando sesión:', eInv); }
     }
@@ -2407,6 +2420,46 @@ async function guardarUsuario() {
     errEl.textContent = `Error: ${e.message}`;
     errEl.style.display = 'block';
   }
+}
+
+// ─── CERRAR SESIÓN DE UN USUARIO ESPECÍFICO ───
+async function cerrarSesionUsuario(correo, nombre) {
+  if (!confirm('¿Cerrar la sesión activa de "' + nombre + '"?')) return;
+  try {
+    await api('usuarios', 'PATCH', {
+      sesion_activa: false,
+      sesion_invalidada: true,
+      ultima_desconexion: new Date().toISOString()
+    }, '?correo_usuario=eq.' + encodeURIComponent(correo));
+    cerrarModal('modal-ficha-usu');
+    renderUsuarios();
+    alert('✓ Sesión de "' + nombre + '" cerrada. El usuario será expulsado en los próximos 30 segundos.');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ─── CERRAR TODAS LAS SESIONES ACTIVAS ───
+async function cerrarTodasLasSesiones() {
+  if (!confirm('¿Cerrar TODAS las sesiones activas del sistema?\n\nTodos los usuarios conectados serán expulsados en los próximos 30 segundos.')) return;
+  try {
+    // Marcar como invalidadas todas las sesiones activas excepto la del admin actual
+    await api('usuarios', 'PATCH', {
+      sesion_activa: false,
+      sesion_invalidada: true,
+      ultima_desconexion: new Date().toISOString()
+    }, '?sesion_activa=eq.true&correo_usuario=neq.' + encodeURIComponent(sesionActual.correo_usuario));
+    renderUsuarios();
+    // Mostrar confirmación en el panel
+    const cont = document.getElementById('tabla-usu-cont');
+    if (cont) {
+      const aviso = document.createElement('div');
+      aviso.className = 'alerta alerta-exito';
+      aviso.style.display = 'block';
+      aviso.style.margin = '0 0 12px 0';
+      aviso.textContent = '✓ Todas las sesiones activas han sido cerradas.';
+      cont.parentElement.insertBefore(aviso, cont);
+      setTimeout(function() { aviso.remove(); }, 4000);
+    }
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
 async function eliminarUsuario(id, nombre) {
@@ -7502,6 +7555,7 @@ window.addEventListener('load', async () => {
     <div class="modal-body" id="ficha-usu-contenido"></div>
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-usu')">Cerrar</button>
+      <button class="btn-secundario" id="ficha-usu-btn-cerrar-sesion" style="display:none;border-color:rgba(255,107,0,0.4);color:var(--naranja)">⏻ Cerrar Sesión</button>
       <button class="btn-secundario" id="ficha-usu-btn-reset">🔑 Reset Clave</button>
       <button class="btn-secundario" id="ficha-usu-btn-editar">Editar</button>
       <button class="btn-peligro"    id="ficha-usu-btn-eliminar">Eliminar</button>
