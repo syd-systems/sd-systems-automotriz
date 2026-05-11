@@ -2987,13 +2987,27 @@ async function mostrarTablaParam(key) {
     var items = await api(def.tabla, 'GET', null, query);
 
     // Para Cargos: ordenar por código jerárquico del área
-    if (key === 'cargos' && _paramAreasCache.length) {
+    if (key === 'cargos') {
+      // Asegurar que tenemos las áreas cargadas con sus códigos
+      if (!_paramAreasCache.length) {
+        try { _paramAreasCache = await api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'); } catch(e) {}
+      }
       var areaCodigoMap = {};
-      _paramAreasCache.forEach(function(a) { areaCodigoMap[a.id] = a.codigo || 'zzz'; });
+      _paramAreasCache.forEach(function(a) { areaCodigoMap[a.id] = a.codigo || '999'; });
       items = items.slice().sort(function(a, b) {
-        var ca = (areaCodigoMap[a.id_area] || 'zzz') + '|' + a.nombre;
-        var cb = (areaCodigoMap[b.id_area] || 'zzz') + '|' + b.nombre;
-        return ca.localeCompare(cb);
+        // Ordenar por código de área (jerárquico) y luego por nombre del cargo
+        var codA = areaCodigoMap[a.id_area] || '999';
+        var codB = areaCodigoMap[b.id_area] || '999';
+        // Comparación numérica por segmentos del código (01 < 01.01 < 01.01.01)
+        var segsA = codA.split('.').map(Number);
+        var segsB = codB.split('.').map(Number);
+        var maxLen = Math.max(segsA.length, segsB.length);
+        for (var i = 0; i < maxLen; i++) {
+          var sa = segsA[i] !== undefined ? segsA[i] : -1;
+          var sb = segsB[i] !== undefined ? segsB[i] : -1;
+          if (sa !== sb) return sa - sb;
+        }
+        return a.nombre.localeCompare(b.nombre);
       });
     }
 
