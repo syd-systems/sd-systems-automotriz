@@ -3328,7 +3328,7 @@ async function abrirNuevaFactura() {
   try {
     const [os, em, ta] = await Promise.all([
       api('ordenes_servicio', 'GET', null,
-        '?estado=eq.CERRADA&select=id_orden,numero_os,fecha_entrada,total_usd,total_ves,id_vehiculo,id_propietario,vehiculos(placa,marca,modelo),propietarios(nombre_completo,tipo_doc,numero_doc)&order=fecha_entrada.desc'),
+        '?estado=neq.ANULADA&select=id_orden,numero_os,fecha_entrada,total_usd,total_ves,estado,id_vehiculo,id_propietario,vehiculos(placa,marca,modelo),propietarios(nombre_completo,tipo_doc,numero_doc)&order=fecha_entrada.desc'),
       api('emisores', 'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=*'),
       api('tasas', 'GET', null, '?order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
@@ -3369,7 +3369,7 @@ async function abrirNuevaFactura() {
         const veh  = o.vehiculos;
         const prop = o.propietarios;
         return '<option value="' + o.id_orden + '" data-prop-nombre="' + (prop ? prop.nombre_completo : '') + '" data-prop-doc="' + (prop ? prop.tipo_doc + '-' + prop.numero_doc : '') + '">'
-          + o.numero_os + ' — ' + (veh ? veh.placa + ' ' + veh.marca + ' ' + veh.modelo : '') + (prop ? ' · ' + prop.nombre_completo : '')
+          + o.numero_os + ' [' + (o.estado||'') + '] — ' + (veh ? veh.placa + ' ' + veh.marca + ' ' + veh.modelo : '') + (prop ? ' · ' + prop.nombre_completo : '')
           + '</option>';
       }).join('');
 
