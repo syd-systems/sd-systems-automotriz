@@ -2984,7 +2984,18 @@ async function mostrarTablaParam(key) {
   try {
 
     var query = key === 'areas' ? '?order=codigo.asc,nombre.asc&select=*' : '?order=nombre.asc&select=*';
-    const items = await api(def.tabla, 'GET', null, query);
+    var items = await api(def.tabla, 'GET', null, query);
+
+    // Para Cargos: ordenar por código jerárquico del área
+    if (key === 'cargos' && _paramAreasCache.length) {
+      var areaCodigoMap = {};
+      _paramAreasCache.forEach(function(a) { areaCodigoMap[a.id] = a.codigo || 'zzz'; });
+      items = items.slice().sort(function(a, b) {
+        var ca = (areaCodigoMap[a.id_area] || 'zzz') + '|' + a.nombre;
+        var cb = (areaCodigoMap[b.id_area] || 'zzz') + '|' + b.nombre;
+        return ca.localeCompare(cb);
+      });
+    }
 
     // Mapa de áreas para cargos y para área padre
     var areasMap = {};
