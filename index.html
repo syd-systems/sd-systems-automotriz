@@ -3367,7 +3367,7 @@ async function abrirNuevaFactura() {
 
   // Llenar select de emisores
   const selEm = document.getElementById('fac-emisor');
-  selEm.innerHTML = '<option value="">— Seleccionar emisor —</option>'
+  selEm.innerHTML = '<option value="">— Seleccionar empresa —</option>'
     + emisoresList.map(function(e) {
         return '<option value="' + e.id_emisor + '">' + e.nombre + ' (' + (e.rif||'') + ')</option>';
       }).join('');
@@ -3684,7 +3684,7 @@ async function verFichaFactura(id) {
 
       // Receptor
       + '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
-      + '<div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Receptor</div>'
+      + '<div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Cliente</div>'
       + '<div style="font-weight:600">' + (f.receptor_nombre || '—') + '</div>'
       + (f.receptor_rif ? '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + f.receptor_rif + '</div>' : '')
       + (f.receptor_tipo_contribuyente ? '<span class="badge ' + ({'ORDINARIO':'badge-naranja','ESPECIAL':'badge-verde','FORMAL':'badge-gris'}[f.receptor_tipo_contribuyente]||'badge-gris') + '" style="font-size:10px;margin-top:4px;display:inline-block">' + ({'ORDINARIO':'Contribuyente Ordinario','ESPECIAL':'Contribuyente Especial','FORMAL':'Contribuyente Formal'}[f.receptor_tipo_contribuyente]||f.receptor_tipo_contribuyente) + '</span>' : '')
@@ -8162,9 +8162,9 @@ window.addEventListener('load', async () => {
 
       <!-- EMISOR -->
       <div class="form-campo form-full" style="margin-bottom:16px">
-        <label>Emisor</label>
+        <label>Empresa</label>
         <select id="fac-emisor" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-          <option value="">— Seleccionar emisor —</option>
+          <option value="">— Seleccionar empresa —</option>
         </select>
       </div>
 
@@ -8180,7 +8180,7 @@ window.addEventListener('load', async () => {
 
       <!-- RECEPTOR -->
       <div style="margin-bottom:16px;padding:14px;background:var(--gris2);border-radius:6px">
-        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:10px">Datos del Receptor</div>
+        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:10px">Datos del Cliente</div>
         <div class="form-grid">
           <div class="form-campo form-full">
             <label>Nombre / Razón Social</label>
