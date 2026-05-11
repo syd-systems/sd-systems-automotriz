@@ -3027,7 +3027,7 @@ async function mostrarTablaParam(key) {
     }
 
     var thead = key === 'areas'
-      ? '<th style="width:100px">Código</th><th>Nombre</th><th>Área Padre</th><th>Estado</th><th>Acciones</th>'
+      ? '<th style="width:100px">Código</th><th>Nombre</th><th>Nivel Superior</th><th>Estado</th><th>Acciones</th>'
       : (def.tieneCodigo ? '<th>Código · Nombre</th>' : '<th>Nombre</th>') + (def.tieneArea ? '<th>Área</th>' : '') + '<th>Estado</th><th>Acciones</th>';
     var colspan = key === 'areas' ? 5 : (2 + (def.tieneArea?1:0));
 
@@ -3075,7 +3075,7 @@ async function abrirParamItem(key, id) {
       return '<option value="' + a.id + '"' + (item && item.id_area_padre === a.id ? ' selected' : '') + '>'
         + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
     }).join('');
-    camposHTML += '<div class="form-campo form-full"><label>Área Padre (nivel superior)</label>'
+    camposHTML += '<div class="form-campo form-full"><label>Nivel Superior</label>'
       + '<select id="param-item-area-padre" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
       + '<option value="">— Sin área padre (nivel raíz) —</option>' + opcPadre + '</select></div>';
   } else {
