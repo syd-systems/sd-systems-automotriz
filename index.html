@@ -1117,7 +1117,7 @@
       <div class="nav-item" id="nav-EMISORES" onclick="mostrarModulo('emisores', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">🏢</span> Datos de Empresas
       </div>
-      <div class="nav-item" id="nav-EMPLEADOS" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
+      <div class="nav-item" id="nav-EMPLEADOS" onclick="mostrarModulo('empleados', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">👷</span> Empleados
       </div>
       <div class="nav-item" id="nav-PROVEEDORES" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
@@ -1832,6 +1832,7 @@ function mostrarModulo(modulo, navEl) {
     catalogo:     'CATÁLOGO DE SERVICIOS',
     emisores:     'DATOS DE EMPRESAS',
     facturas:     'FACTURAS',
+    empleados:    'EMPLEADOS',
     proximo:      'PRÓXIMAMENTE'
   };
 
@@ -1849,6 +1850,7 @@ function mostrarModulo(modulo, navEl) {
     case 'catalogo':     renderCatalogo();     break;
     case 'emisores':     renderEmisores();     break;
     case 'facturas':     renderFacturas();     break;
+    case 'empleados':    renderEmpleados();    break;
     default:             renderProximo(navEl?.querySelector('.nav-icono')?.textContent || '🔧',
                                        navEl?.textContent.trim() || modulo);
   }
@@ -3220,6 +3222,419 @@ async function eliminarParamItem(key, id, nombre) {
   try {
     await api(def.tabla, 'DELETE', null, '?id=eq.' + id);
     mostrarTablaParam(key);
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  FASE 5 — MÓDULO EMPLEADOS
+// ══════════════════════════════════════════════════════════════
+let empleadosCache = [];
+let _empParamCache = {}; // cache de tablas maestras para el módulo
+
+const ESTATUS_EMP = {
+  'ACTIVO':     { clase: 'badge-verde',   label: 'Activo'     },
+  'INACTIVO':   { clase: 'badge-rojo',    label: 'Inactivo'   },
+  'SUSPENDIDO': { clase: 'badge-naranja', label: 'Suspendido' },
+  'RETIRADO':   { clase: 'badge-gris',    label: 'Retirado'   },
+  'RENUNCIA':   { clase: 'badge-gris',    label: 'Renuncia'   },
+};
+
+async function renderEmpleados() {
+  if (!sesionActual?.administrador && !modulosAcceso.includes('EMPLEADOS')) {
+    document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
+    return;
+  }
+  const c = document.getElementById('contenido-principal');
+  c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando empleados...</div>';
+
+  try {
+    const empleados = await api('empleados', 'GET', null,
+      '?order=nombre_completo.asc&select=*,param_areas(nombre),param_cargos(nombre)');
+    empleadosCache = empleados;
+
+    const resumen = { ACTIVO:0, INACTIVO:0, SUSPENDIDO:0, RETIRADO:0, RENUNCIA:0 };
+    empleados.forEach(function(e) { if (resumen[e.estatus] !== undefined) resumen[e.estatus]++; });
+
+    const verDatosEmp = sesionActual?.administrador || puedo('EMPLEADOS','VER_DATOS_PERSONALES');
+
+    const filas = empleados.map(function(e) {
+      const est = ESTATUS_EMP[e.estatus] || { clase: 'badge-gris', label: e.estatus };
+      return '<tr data-id="' + e.id_empleado + '">'
+        + '<td>'
+        + '<div style="display:flex;align-items:center;gap:10px">'
+        + (e.foto_documento
+            ? '<img src="' + e.foto_documento + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--borde)">'
+            : '<div style="width:36px;height:36px;border-radius:50%;background:var(--gris3);display:flex;align-items:center;justify-content:center;font-size:16px">👤</div>')
+        + '<div>'
+        + '<div style="font-weight:500">' + e.nombre_completo + '</div>'
+        + (verDatosEmp ? '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (e.tipo_doc||'V') + '-' + e.numero_doc + '</div>' : '')
+        + '</div></div></td>'
+        + '<td style="font-size:12px">' + (e.param_areas ? e.param_areas.nombre : '—') + '</td>'
+        + '<td style="font-size:12px">' + (e.param_cargos ? e.param_cargos.nombre : '—') + '</td>'
+        + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
+        + '<td style="font-size:11px;color:var(--suave)">' + (e.fecha_ingreso || '—') + '</td>'
+        + '<td><button class="btn-secundario" onclick="verFichaEmpleado(' + e.id_empleado + ')">Ficha</button></td>'
+        + '</tr>';
+    }).join('');
+
+    c.innerHTML =
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:24px">'
+      + Object.entries(ESTATUS_EMP).map(function(entry) {
+          return '<div class="tarjeta-stat" style="padding:14px">'
+            + '<div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">' + entry[1].label + '</div>'
+            + '<div style="font-family:var(--font-display);font-size:26px;color:var(--naranja)">' + (resumen[entry[0]]||0) + '</div>'
+            + '</div>';
+        }).join('')
+      + '<div class="tarjeta-stat" style="padding:14px">'
+      + '<div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Total</div>'
+      + '<div style="font-family:var(--font-display);font-size:26px;color:var(--naranja)">' + empleados.length + '</div>'
+      + '</div></div>'
+      + '<div class="panel">'
+      + '<div class="panel-header" style="flex-wrap:wrap;gap:10px">'
+      + '<h3 style="white-space:nowrap">Empleados</h3>'
+      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end">'
+      + '<select id="emp-filtro-estatus" onchange="filtrarTablaEmpleados()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
+      + '<option value="">Todos los estatus</option>'
+      + Object.entries(ESTATUS_EMP).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('')
+      + '</select>'
+      + '<input type="text" id="emp-buscar" placeholder="Buscar nombre o cédula..." oninput="filtrarTablaEmpleados()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
+      + (puedo('EMPLEADOS','CREAR') ? '<button class="btn-primario" onclick="abrirEmpleado(null)">+ Nuevo Empleado</button>' : '')
+      + '</div></div>'
+      + '<div class="tabla-container"><table id="emp-tabla"><thead><tr>'
+      + '<th>Empleado</th><th>Área</th><th>Cargo</th><th>Estatus</th><th>F. Ingreso</th><th>Acciones</th>'
+      + '</tr></thead><tbody id="emp-tbody">'
+      + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">No hay empleados registrados</td></tr>')
+      + '</tbody></table></div></div>';
+
+  } catch(e) {
+    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+  }
+}
+
+function filtrarTablaEmpleados() {
+  const estatus = document.getElementById('emp-filtro-estatus')?.value || '';
+  const buscar  = (document.getElementById('emp-buscar')?.value || '').toLowerCase().trim();
+  const tbody   = document.getElementById('emp-tbody');
+  if (!tbody) return;
+  Array.from(tbody.querySelectorAll('tr[data-id]')).forEach(function(tr) {
+    const eId = parseInt(tr.dataset.id);
+    const e   = empleadosCache.find(function(x) { return x.id_empleado === eId; });
+    if (!e) { tr.style.display = 'none'; return; }
+    const matchEst    = !estatus || e.estatus === estatus;
+    const matchBuscar = !buscar  || e.nombre_completo.toLowerCase().includes(buscar) || (e.numero_doc||'').includes(buscar);
+    tr.style.display = matchEst && matchBuscar ? '' : 'none';
+  });
+}
+
+// ─── CARGAR TABLAS MAESTRAS PARA SELECTORES ───
+async function cargarParamEmpleados() {
+  if (Object.keys(_empParamCache).length > 0) return; // ya cargado
+  try {
+    const [areas, cargos, contratos, salarios, calculos, frecuencias,
+           niveles, civiles, sexos, bancos] = await Promise.all([
+      api('param_areas',              'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
+      api('param_cargos',             'GET', null, '?estado=eq.ACTIVO&order=nombre.asc'),
+      api('param_tipos_contrato',     'GET', null, '?estado=eq.ACTIVO&order=nombre.asc'),
+      api('param_tipos_salario',      'GET', null, '?estado=eq.ACTIVO&order=nombre.asc'),
+      api('param_calculos_salario',   'GET', null, '?estado=eq.ACTIVO&order=nombre.asc'),
+      api('param_frecuencias_pago',   'GET', null, '?estado=eq.ACTIVO&order=nombre.asc'),
+      api('param_niveles_educativos', 'GET', null, '?estado=eq.ACTIVO&order=nombre.asc'),
+      api('param_estados_civiles',    'GET', null, '?estado=eq.ACTIVO&order=nombre.asc'),
+      api('param_sexos',              'GET', null, '?estado=eq.ACTIVO&order=nombre.asc'),
+      api('param_bancos',             'GET', null, '?estado=eq.ACTIVO&order=nombre.asc'),
+    ]);
+    _empParamCache = { areas, cargos, contratos, salarios, calculos, frecuencias, niveles, civiles, sexos, bancos };
+  } catch(e) { console.error('Error cargando parámetros empleados:', e); }
+}
+
+function selOpts(lista, valorActual, campoNombre) {
+  campoNombre = campoNombre || 'nombre';
+  return '<option value="">— Seleccionar —</option>'
+    + (lista||[]).map(function(item) {
+        return '<option value="' + item.id + '"' + (valorActual && valorActual == item.id ? ' selected' : '') + '>'
+          + (item.codigo ? item.codigo + ' — ' : '') + item[campoNombre] + '</option>';
+      }).join('');
+}
+
+// ─── ABRIR FORMULARIO EMPLEADO ───
+async function abrirEmpleado(id) {
+  if (id && !puedo('EMPLEADOS','EDITAR')) { alert('No tiene permiso para editar empleados.'); return; }
+  if (!id && !puedo('EMPLEADOS','CREAR')) { alert('No tiene permiso para registrar empleados.'); return; }
+
+  await cargarParamEmpleados();
+  const p = _empParamCache;
+  const e = id ? empleadosCache.find(function(x) { return x.id_empleado === id; }) : null;
+
+  document.getElementById('modal-emp-titulo').textContent = e ? 'EDITAR EMPLEADO' : 'NUEVO EMPLEADO';
+  document.getElementById('alerta-emp-ok').style.display  = 'none';
+  document.getElementById('alerta-emp-err').style.display = 'none';
+
+  // ── Datos Personales ──
+  document.getElementById('emp-tipo-doc').value       = e ? (e.tipo_doc||'V') : 'V';
+  document.getElementById('emp-numero-doc').value     = e ? (e.numero_doc||'') : '';
+  document.getElementById('emp-nombre').value         = e ? (e.nombre_completo||'') : '';
+  document.getElementById('emp-fecha-nac').value      = e ? (e.fecha_nacimiento||'') : '';
+  document.getElementById('emp-correo').value         = e ? (e.correo||'') : '';
+  document.getElementById('emp-tel-movil').value      = e ? (e.telefono_movil||'') : '';
+  document.getElementById('emp-tel-fijo').value       = e ? (e.telefono_fijo||'') : '';
+  document.getElementById('emp-direccion').value      = e ? (e.direccion||'') : '';
+  document.getElementById('emp-estado-civil').innerHTML = selOpts(p.civiles, e?.id_estado_civil);
+  document.getElementById('emp-sexo').innerHTML       = selOpts(p.sexos, e?.id_sexo);
+  document.getElementById('emp-nivel-edu').innerHTML  = selOpts(p.niveles, e?.id_nivel_educativo);
+
+  // Foto
+  const fotoActual = document.getElementById('emp-foto-actual');
+  fotoActual.innerHTML = e && e.foto_documento
+    ? '<div style="position:relative;display:inline-block">'
+      + '<img src="' + e.foto_documento + '" style="height:70px;border-radius:6px;border:1px solid var(--borde);cursor:pointer" onclick="abrirVisor(\'' + e.foto_documento + '\')">'
+      + '<button onclick="eliminarFotoEmp(' + (e?e.id_empleado:0) + ')" style="position:absolute;top:-6px;right:-6px;background:rgba(229,62,62,0.85);border:none;color:#fff;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:10px">✕</button>'
+      + '</div>'
+    : '';
+
+  // ── Contacto Emergencia ──
+  document.getElementById('emp-emerg-nombre').value  = e ? (e.emergencia_nombre||'') : '';
+  document.getElementById('emp-emerg-tel').value     = e ? (e.emergencia_telefono||'') : '';
+
+  // ── Datos Laborales ──
+  document.getElementById('emp-area').innerHTML      = selOpts(p.areas, e?.id_area);
+  document.getElementById('emp-cargo').innerHTML     = selOpts(p.cargos, e?.id_cargo);
+  document.getElementById('emp-contrato').innerHTML  = selOpts(p.contratos, e?.id_tipo_contrato);
+  document.getElementById('emp-tipo-sal').innerHTML  = selOpts(p.salarios, e?.id_tipo_salario);
+  document.getElementById('emp-calc-sal').innerHTML  = selOpts(p.calculos, e?.id_calculo_salario);
+  document.getElementById('emp-freq-pago').innerHTML = selOpts(p.frecuencias, e?.id_frecuencia_pago);
+  document.getElementById('emp-monto-sal').value     = e ? (e.monto_salario||'') : '';
+  document.getElementById('emp-moneda-calc').value   = e ? (e.moneda_calculo||'USD') : 'USD';
+  document.getElementById('emp-moneda-pago').value   = e ? (e.moneda_pago||'VES') : 'VES';
+  document.getElementById('emp-bono-ali').value      = e ? (e.bono_alimentacion||'') : '';
+  document.getElementById('emp-bono-trans').value    = e ? (e.bono_transporte||'') : '';
+  document.getElementById('emp-bono-prod').value     = e ? (e.bono_productividad||'') : '';
+  document.getElementById('emp-comision').value      = e ? (e.comision_pct||'') : '';
+  document.getElementById('emp-fecha-ingreso').value = e ? (e.fecha_ingreso||'') : '';
+  document.getElementById('emp-estatus').value       = e ? (e.estatus||'ACTIVO') : 'ACTIVO';
+  document.getElementById('emp-fecha-egreso').value  = e ? (e.fecha_egreso||'') : '';
+
+  // ── Cuenta Nómina ──
+  document.getElementById('emp-banco').innerHTML     = selOpts(p.bancos, e?.id_institucion);
+  document.getElementById('emp-tipo-cuenta').value   = e ? (e.tipo_cuenta||'') : '';
+  document.getElementById('emp-num-cuenta').value    = e ? (e.numero_cuenta||'') : '';
+
+  document.getElementById('emp-id').value = e ? e.id_empleado : '';
+
+  // Deshabilitar campos sensibles si no tiene permiso VER_DATOS_PERSONALES
+  var tienePerm = sesionActual?.administrador || puedo('EMPLEADOS','VER_DATOS_PERSONALES');
+  var camposSensibles = [
+    'emp-numero-doc','emp-fecha-nac','emp-correo','emp-tel-movil','emp-tel-fijo',
+    'emp-direccion','emp-monto-sal','emp-moneda-calc','emp-moneda-pago',
+    'emp-bono-ali','emp-bono-trans','emp-bono-prod','emp-comision',
+    'emp-banco','emp-tipo-cuenta','emp-num-cuenta'
+  ];
+  camposSensibles.forEach(function(cid) {
+    var el = document.getElementById(cid);
+    if (el) {
+      el.disabled = !tienePerm;
+      el.style.opacity = tienePerm ? '1' : '0.4';
+      el.title = tienePerm ? '' : 'No tiene permiso para ver/editar este campo';
+    }
+  });
+  // Mostrar aviso si no tiene permiso
+  var avisoEl = document.getElementById('emp-aviso-datos');
+  if (avisoEl) avisoEl.style.display = tienePerm ? 'none' : 'block';
+
+  abrirModal('modal-empleado');
+  setTimeout(function() { document.getElementById('emp-numero-doc')?.focus(); }, 100);
+}
+
+// ─── GUARDAR EMPLEADO ───
+async function guardarEmpleado() {
+  const id     = document.getElementById('emp-id').value;
+  if (id && !puedo('EMPLEADOS','EDITAR')) { alert('No tiene permiso para editar empleados.'); return; }
+  if (!id && !puedo('EMPLEADOS','CREAR')) { alert('No tiene permiso para crear empleados.'); return; }
+
+  const numDoc  = document.getElementById('emp-numero-doc').value.trim();
+  const nombre  = document.getElementById('emp-nombre').value.trim();
+  const okEl    = document.getElementById('alerta-emp-ok');
+  const errEl   = document.getElementById('alerta-emp-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  if (!numDoc) { errEl.textContent = 'El número de documento es obligatorio.'; errEl.style.display = 'block'; return; }
+  if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
+
+  // Validar duplicado por documento
+  try {
+    const existe = await api('empleados', 'GET', null,
+      '?numero_doc=eq.' + encodeURIComponent(numDoc) + (id ? '&id_empleado=neq.' + id : ''));
+    if (existe && existe.length > 0) {
+      errEl.textContent = 'Ya existe un empleado con el documento ' + numDoc + '.';
+      errEl.style.display = 'block'; return;
+    }
+  } catch(eDup) {}
+
+  const fotoFile = document.getElementById('emp-foto-file').files[0];
+  let fotoUrl = id ? (empleadosCache.find(function(x){return x.id_empleado==id;})?.foto_documento || null) : null;
+  if (fotoFile) {
+    try { fotoUrl = await subirFoto(fotoFile, 'empleados'); } catch(eF) {}
+  }
+
+  const datos = {
+    tipo_doc:           document.getElementById('emp-tipo-doc').value,
+    numero_doc:         numDoc,
+    nombre_completo:    capitalizarNombre(nombre),
+    fecha_nacimiento:   document.getElementById('emp-fecha-nac').value || null,
+    id_estado_civil:    parseInt(document.getElementById('emp-estado-civil').value) || null,
+    id_sexo:            parseInt(document.getElementById('emp-sexo').value) || null,
+    correo:             document.getElementById('emp-correo').value.trim() || null,
+    telefono_movil:     document.getElementById('emp-tel-movil').value.trim() || null,
+    telefono_fijo:      document.getElementById('emp-tel-fijo').value.trim() || null,
+    direccion:          document.getElementById('emp-direccion').value.trim() || null,
+    id_nivel_educativo: parseInt(document.getElementById('emp-nivel-edu').value) || null,
+    foto_documento:     fotoUrl,
+    emergencia_nombre:  document.getElementById('emp-emerg-nombre').value.trim() || null,
+    emergencia_telefono:document.getElementById('emp-emerg-tel').value.trim() || null,
+    id_area:            parseInt(document.getElementById('emp-area').value) || null,
+    id_cargo:           parseInt(document.getElementById('emp-cargo').value) || null,
+    id_tipo_contrato:   parseInt(document.getElementById('emp-contrato').value) || null,
+    id_tipo_salario:    parseInt(document.getElementById('emp-tipo-sal').value) || null,
+    id_calculo_salario: parseInt(document.getElementById('emp-calc-sal').value) || null,
+    id_frecuencia_pago: parseInt(document.getElementById('emp-freq-pago').value) || null,
+    monto_salario:      parseFloat(document.getElementById('emp-monto-sal').value) || 0,
+    moneda_calculo:     document.getElementById('emp-moneda-calc').value || 'USD',
+    moneda_pago:        document.getElementById('emp-moneda-pago').value || 'VES',
+    bono_alimentacion:  parseFloat(document.getElementById('emp-bono-ali').value) || 0,
+    bono_transporte:    parseFloat(document.getElementById('emp-bono-trans').value) || 0,
+    bono_productividad: parseFloat(document.getElementById('emp-bono-prod').value) || 0,
+    comision_pct:       parseFloat(document.getElementById('emp-comision').value) || 0,
+    fecha_ingreso:      document.getElementById('emp-fecha-ingreso').value || null,
+    estatus:            document.getElementById('emp-estatus').value || 'ACTIVO',
+    fecha_egreso:       document.getElementById('emp-fecha-egreso').value || null,
+    id_institucion:     parseInt(document.getElementById('emp-banco').value) || null,
+    tipo_cuenta:        document.getElementById('emp-tipo-cuenta').value || null,
+    numero_cuenta:      document.getElementById('emp-num-cuenta').value.trim() || null,
+    id_usuario:         sesionActual.correo_usuario,
+  };
+
+  try {
+    if (id) {
+      await api('empleados', 'PATCH', datos, '?id_empleado=eq.' + id);
+      okEl.textContent = '✓ Empleado actualizado correctamente.';
+    } else {
+      await api('empleados', 'POST', datos);
+      okEl.textContent = '✓ Empleado registrado correctamente.';
+    }
+    okEl.style.display = 'block';
+    setTimeout(function() { cerrarModal('modal-empleado'); renderEmpleados(); }, 1200);
+  } catch(e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+// ─── FICHA EMPLEADO ───
+async function verFichaEmpleado(id) {
+  if (!sesionActual?.administrador && !puedo('EMPLEADOS','VER')) {
+    alert('No tiene permiso para ver la ficha del empleado.'); return;
+  }
+  const e = empleadosCache.find(function(x) { return x.id_empleado === id; });
+  if (!e) return;
+  await cargarParamEmpleados();
+  const p = _empParamCache;
+
+  function getNombre(lista, idVal) {
+    var item = (lista||[]).find(function(x) { return x.id === idVal; });
+    return item ? item.nombre : '—';
+  }
+
+  const est = ESTATUS_EMP[e.estatus] || { clase: 'badge-gris', label: e.estatus };
+
+  const verDatos = sesionActual?.administrador || puedo('EMPLEADOS','VER_DATOS_PERSONALES');
+
+  document.getElementById('ficha-emp-contenido').innerHTML =
+    // Cabecera
+    '<div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">'
+    + (e.foto_documento
+        ? '<img src="' + e.foto_documento + '" style="width:70px;height:70px;border-radius:50%;object-fit:cover;border:2px solid var(--naranja);cursor:pointer" onclick="abrirVisor(\'' + e.foto_documento + '\')">'
+        : '<div style="width:70px;height:70px;border-radius:50%;background:var(--gris3);display:flex;align-items:center;justify-content:center;font-size:28px">👤</div>')
+    + '<div>'
+    + '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + e.nombre_completo + '</div>'
+    + '<div style="font-size:12px;color:var(--suave);font-family:var(--font-mono)">' + (e.tipo_doc||'V') + '-' + e.numero_doc + '</div>'
+    + '<span class="badge ' + est.clase + '" style="margin-top:4px;display:inline-block">' + est.label + '</span>'
+    + '</div></div>'
+
+    // Datos Personales
+    + '<div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;border-bottom:1px solid var(--borde);padding-bottom:6px">Datos Personales</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Fecha Nacimiento</div><div style="font-size:13px">' + (e.fecha_nacimiento||'—') + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Estado Civil</div><div style="font-size:13px">' + getNombre(p.civiles, e.id_estado_civil) + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Sexo</div><div style="font-size:13px">' + getNombre(p.sexos, e.id_sexo) + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Nivel Educativo</div><div style="font-size:13px">' + getNombre(p.niveles, e.id_nivel_educativo) + '</div></div>'
+    + (verDatos ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:13px">' + (e.correo||'—') + '</div></div>' : '')
+    + (verDatos ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Teléfono Móvil</div><div style="font-size:13px">' + (e.telefono_movil||'—') + '</div></div>' : '')
+    + (verDatos ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Teléfono Fijo</div><div style="font-size:13px">' + (e.telefono_fijo||'—') + '</div></div>' : '')
+    + (verDatos ? '<div class="form-full" style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:13px">' + (e.direccion||'—') + '</div></div>' : '')
+    + '</div>'
+
+    // Contacto Emergencia
+    + (e.emergencia_nombre ? '<div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;border-bottom:1px solid var(--borde);padding-bottom:6px">Contacto de Emergencia</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Nombre</div><div style="font-size:13px">' + e.emergencia_nombre + '</div></div>'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div style="font-size:13px">' + (e.emergencia_telefono||'—') + '</div></div>'
+      + '</div>' : '')
+
+    // Datos Laborales
+    + '<div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;border-bottom:1px solid var(--borde);padding-bottom:6px">Datos Laborales</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Área</div><div style="font-size:13px">' + getNombre(p.areas, e.id_area) + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Cargo</div><div style="font-size:13px">' + getNombre(p.cargos, e.id_cargo) + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Tipo Contrato</div><div style="font-size:13px">' + getNombre(p.contratos, e.id_tipo_contrato) + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Tipo Salario</div><div style="font-size:13px">' + getNombre(p.salarios, e.id_tipo_salario) + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Cálculo Salario</div><div style="font-size:13px">' + getNombre(p.calculos, e.id_calculo_salario) + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Frecuencia Pago</div><div style="font-size:13px">' + getNombre(p.frecuencias, e.id_frecuencia_pago) + '</div></div>'
+    + (verDatos ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Salario</div><div style="font-family:var(--font-mono);color:var(--naranja)">' + (e.monto_salario ? (e.moneda_calculo||'USD') + ' ' + fmtUSD(e.monto_salario) : '—') + '</div></div>' : '')
+    + (verDatos ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Moneda Cálculo</div><div style="font-size:13px">' + (e.moneda_calculo||'—') + '</div></div>' : '')
+    + (verDatos ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Moneda Pago</div><div style="font-size:13px">' + (e.moneda_pago||'—') + '</div></div>' : '')
+    + (verDatos && e.bono_alimentacion ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Bono Alimentación</div><div style="font-family:var(--font-mono)">' + fmtUSD(e.bono_alimentacion) + '</div></div>' : '')
+    + (verDatos && e.bono_transporte   ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Bono Transporte</div><div style="font-family:var(--font-mono)">' + fmtUSD(e.bono_transporte) + '</div></div>' : '')
+    + (verDatos && e.bono_productividad? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Bono Productividad</div><div style="font-family:var(--font-mono)">' + fmtUSD(e.bono_productividad) + '</div></div>' : '')
+    + (verDatos && e.comision_pct      ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Comisión</div><div style="font-family:var(--font-mono)">' + e.comision_pct + '%</div></div>' : '')
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">F. Ingreso</div><div style="font-size:13px">' + (e.fecha_ingreso||'—') + '</div></div>'
+    + (e.fecha_egreso ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">F. Egreso</div><div style="font-size:13px">' + e.fecha_egreso + '</div></div>' : '')
+    + '</div>'
+
+    // Cuenta Nómina
+    + (verDatos && e.id_institucion ? '<div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;border-bottom:1px solid var(--borde);padding-bottom:6px">Cuenta Nómina</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Institución</div><div style="font-size:13px">' + getNombre(p.bancos, e.id_institucion) + '</div></div>'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Tipo Cuenta</div><div style="font-size:13px">' + (e.tipo_cuenta||'—') + '</div></div>'
+      + '<div class="form-full" style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">N° Cuenta</div><div style="font-size:13px;font-family:var(--font-mono)">' + (e.numero_cuenta||'—') + '</div></div>'
+      + '</div>' : '');
+
+  // Botones footer
+  var btnEditar   = document.getElementById('ficha-emp-btn-editar');
+  var btnEliminar = document.getElementById('ficha-emp-btn-eliminar');
+  if (btnEditar)  { btnEditar._id = e.id_empleado;  btnEditar.onclick  = function() { cerrarModal('modal-ficha-emp'); abrirEmpleado(this._id); };         btnEditar.style.display  = puedo('EMPLEADOS','EDITAR') ? '' : 'none'; }
+  if (btnEliminar){ btnEliminar._id = e.id_empleado; btnEliminar._nombre = e.nombre_completo; btnEliminar.onclick = function() { cerrarModal('modal-ficha-emp'); eliminarEmpleado(this._id, this._nombre); }; btnEliminar.style.display = puedo('EMPLEADOS','ELIMINAR') ? '' : 'none'; }
+
+  abrirModal('modal-ficha-emp');
+}
+
+// ─── ELIMINAR EMPLEADO ───
+async function eliminarEmpleado(id, nombre) {
+  if (!puedo('EMPLEADOS','ELIMINAR')) { alert('No tiene permiso para eliminar empleados.'); return; }
+  if (!confirm('¿Eliminar al empleado "' + nombre + '"?\\nEsta acción no se puede deshacer.')) return;
+  try {
+    await api('empleados', 'DELETE', null, '?id_empleado=eq.' + id);
+    renderEmpleados();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ─── ELIMINAR FOTO EMPLEADO ───
+async function eliminarFotoEmp(id) {
+  if (!confirm('¿Eliminar la foto del documento?')) return;
+  try {
+    await api('empleados', 'PATCH', { foto_documento: null }, '?id_empleado=eq.' + id);
+    const emp = empleadosCache.find(function(x) { return x.id_empleado == id; });
+    if (emp) emp.foto_documento = null;
+    document.getElementById('emp-foto-actual').innerHTML = '';
   } catch(e) { alert('Error: ' + e.message); }
 }
 
@@ -7718,6 +8133,224 @@ window.addEventListener('load', async () => {
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-param')">Cancelar</button>
       <button class="btn-primario" id="modal-param-guardar">GUARDAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL NUEVO/EDITAR EMPLEADO         -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-empleado">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header">
+      <h3 id="modal-emp-titulo">NUEVO EMPLEADO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-empleado')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alerta alerta-exito" id="alerta-emp-ok"></div>
+      <div class="alerta alerta-error"  id="alerta-emp-err"></div>
+      <div id="emp-aviso-datos" style="display:none;background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.3);color:var(--naranja);padding:10px 14px;border-radius:6px;font-size:12px;margin-bottom:16px">
+        🔒 No tiene permiso para ver o editar los datos sensibles de este empleado.
+      </div>
+
+      <!-- DATOS PERSONALES -->
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--naranja);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--borde)">👤 Datos Personales</div>
+      <div class="form-grid">
+        <div class="form-campo">
+          <label>Tipo Doc.</label>
+          <select id="emp-tipo-doc">
+            <option value="V">V — Venezolano</option>
+            <option value="E">E — Extranjero</option>
+            <option value="J">J — Jurídico</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>N° Documento *</label>
+          <input type="text" id="emp-numero-doc" placeholder="Ej: 12345678">
+        </div>
+        <div class="form-campo form-full">
+          <label>Nombre Completo *</label>
+          <input type="text" id="emp-nombre" placeholder="Apellidos y Nombres">
+        </div>
+        <div class="form-campo">
+          <label>Fecha de Nacimiento</label>
+          <input type="date" id="emp-fecha-nac">
+        </div>
+        <div class="form-campo">
+          <label>Estado Civil</label>
+          <select id="emp-estado-civil"></select>
+        </div>
+        <div class="form-campo">
+          <label>Sexo</label>
+          <select id="emp-sexo"></select>
+        </div>
+        <div class="form-campo">
+          <label>Nivel Educativo</label>
+          <select id="emp-nivel-edu"></select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Correo Electrónico</label>
+          <input type="email" id="emp-correo" placeholder="correo@ejemplo.com">
+        </div>
+        <div class="form-campo">
+          <label>Teléfono Móvil</label>
+          <input type="text" id="emp-tel-movil" placeholder="0414-0000000">
+        </div>
+        <div class="form-campo">
+          <label>Teléfono Fijo</label>
+          <input type="text" id="emp-tel-fijo" placeholder="0212-0000000">
+        </div>
+        <div class="form-campo form-full">
+          <label>Dirección</label>
+          <input type="text" id="emp-direccion" placeholder="Dirección completa">
+        </div>
+        <div class="form-campo form-full">
+          <label>Foto Documento de Identidad</label>
+          <div id="emp-foto-actual" style="margin-bottom:8px"></div>
+          <input type="file" id="emp-foto-file" accept="image/*" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:8px;border-radius:5px;width:100%">
+        </div>
+      </div>
+
+      <!-- CONTACTO EMERGENCIA -->
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--naranja);margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--borde)">🚨 Contacto de Emergencia</div>
+      <div class="form-grid">
+        <div class="form-campo form-full">
+          <label>Nombre</label>
+          <input type="text" id="emp-emerg-nombre" placeholder="Nombre del contacto">
+        </div>
+        <div class="form-campo">
+          <label>Teléfono Móvil</label>
+          <input type="text" id="emp-emerg-tel" placeholder="0414-0000000">
+        </div>
+      </div>
+
+      <!-- DATOS LABORALES -->
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--naranja);margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--borde)">💼 Datos Laborales</div>
+      <div class="form-grid">
+        <div class="form-campo">
+          <label>Área</label>
+          <select id="emp-area"></select>
+        </div>
+        <div class="form-campo">
+          <label>Cargo</label>
+          <select id="emp-cargo"></select>
+        </div>
+        <div class="form-campo">
+          <label>Tipo de Contrato</label>
+          <select id="emp-contrato"></select>
+        </div>
+        <div class="form-campo">
+          <label>Tipo de Salario</label>
+          <select id="emp-tipo-sal"></select>
+        </div>
+        <div class="form-campo">
+          <label>Cálculo del Salario</label>
+          <select id="emp-calc-sal"></select>
+        </div>
+        <div class="form-campo">
+          <label>Frecuencia de Pago</label>
+          <select id="emp-freq-pago"></select>
+        </div>
+        <div class="form-campo">
+          <label>Monto Salario</label>
+          <input type="number" id="emp-monto-sal" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div class="form-campo">
+          <label>Moneda de Cálculo</label>
+          <select id="emp-moneda-calc">
+            <option value="USD">USD — Dólar</option>
+            <option value="VES">VES — Bolívar</option>
+            <option value="EUR">EUR — Euro</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Moneda de Pago</label>
+          <select id="emp-moneda-pago">
+            <option value="VES">VES — Bolívar</option>
+            <option value="USD">USD — Dólar</option>
+            <option value="EUR">EUR — Euro</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Bono Alimentación</label>
+          <input type="number" id="emp-bono-ali" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div class="form-campo">
+          <label>Bono Transporte</label>
+          <input type="number" id="emp-bono-trans" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div class="form-campo">
+          <label>Bono Productividad</label>
+          <input type="number" id="emp-bono-prod" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div class="form-campo">
+          <label>Comisión %</label>
+          <input type="number" id="emp-comision" placeholder="0.00" step="0.01" min="0" max="100">
+        </div>
+        <div class="form-campo">
+          <label>Fecha de Ingreso</label>
+          <input type="date" id="emp-fecha-ingreso">
+        </div>
+        <div class="form-campo">
+          <label>Estatus</label>
+          <select id="emp-estatus">
+            <option value="ACTIVO">Activo</option>
+            <option value="INACTIVO">Inactivo</option>
+            <option value="SUSPENDIDO">Suspendido</option>
+            <option value="RETIRADO">Retirado</option>
+            <option value="RENUNCIA">Renuncia</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Fecha de Egreso</label>
+          <input type="date" id="emp-fecha-egreso">
+        </div>
+      </div>
+
+      <!-- CUENTA NÓMINA -->
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--naranja);margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--borde)">🏦 Cuenta Nómina</div>
+      <div class="form-grid">
+        <div class="form-campo form-full">
+          <label>Institución Financiera</label>
+          <select id="emp-banco"></select>
+        </div>
+        <div class="form-campo">
+          <label>Tipo de Cuenta</label>
+          <select id="emp-tipo-cuenta">
+            <option value="">— Seleccionar —</option>
+            <option value="CORRIENTE">Corriente</option>
+            <option value="AHORRO">Ahorro</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Número de Cuenta</label>
+          <input type="text" id="emp-num-cuenta" placeholder="XXXX XXXX XXXX XXXX XXXX" style="font-family:var(--font-mono)">
+        </div>
+      </div>
+
+      <input type="hidden" id="emp-id">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-empleado')">Cancelar</button>
+      <button class="btn-primario" onclick="guardarEmpleado()">GUARDAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL FICHA EMPLEADO                -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-ficha-emp">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-header">
+      <h3>FICHA DEL EMPLEADO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-emp')">✕</button>
+    </div>
+    <div class="modal-body" id="ficha-emp-contenido"></div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-emp')">Cerrar</button>
+      <button class="btn-secundario" id="ficha-emp-btn-editar"   style="display:none">Editar</button>
+      <button class="btn-peligro"    id="ficha-emp-btn-eliminar" style="display:none">Eliminar</button>
     </div>
   </div>
 </div>
