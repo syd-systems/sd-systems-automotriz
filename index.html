@@ -2916,7 +2916,7 @@ const TABLAS_MAESTRAS = [
   { key: 'niveles_educativos', tabla: 'param_niveles_educativos', nombre: 'Niveles Educativos',     icono: '🎓', tieneCodigo: false, tieneArea: false },
   { key: 'estados_civiles',    tabla: 'param_estados_civiles',    nombre: 'Estados Civiles',        icono: '💍', tieneCodigo: false, tieneArea: false },
   { key: 'sexos',              tabla: 'param_sexos',              nombre: 'Sexos',                  icono: '⚧',  tieneCodigo: false, tieneArea: false },
-  { key: 'bancos',             tabla: 'param_bancos',             nombre: 'Instituciones Financieras', icono: '🏦', tieneCodigo: true,  tieneArea: false },
+  { key: 'bancos',             tabla: 'param_bancos',             nombre: 'Instituciones Financieras', icono: '🏦', tieneCodigo: true,  tieneArea: false, tieneTipoSector: true },
 ];
 
 // Cache de áreas para el selector de cargos
@@ -3043,6 +3043,7 @@ async function mostrarTablaParam(key) {
         return '<tr>'
           + '<td style="font-size:13px;font-weight:500">' + (item.codigo ? '<span style="font-family:var(--font-mono);color:var(--suave);margin-right:8px">' + item.codigo + '</span>' : '') + item.nombre + '</td>'
           + (def.tieneArea ? '<td style="font-size:12px;color:var(--suave)">' + (areasMap[item.id_area] ? areasMap[item.id_area].nombre : '—') + '</td>' : '')
+          + (def.tieneTipoSector ? '<td style="font-size:12px;color:var(--suave)">' + (item.tipo_sector || '—') + '</td>' : '')
           + '<td><span class="badge ' + (item.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (item.estado || 'ACTIVO') + '</span></td>'
           + '<td><div style="display:flex;gap:6px">'
           + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-secundario" onclick="abrirParamItem(\'' + key + '\',' + item.id + ')" style="font-size:11px;padding:5px 10px">Editar</button>' : '')
@@ -3054,8 +3055,8 @@ async function mostrarTablaParam(key) {
 
     var thead = key === 'areas'
       ? '<th style="width:100px">Código</th><th>Nombre</th><th>Nivel Superior</th><th>Estado</th><th>Acciones</th>'
-      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : '<th>Nombre</th>') + (def.tieneArea ? '<th>Área</th>' : '') + '<th>Estado</th><th>Acciones</th>';
-    var colspan = key === 'areas' ? 5 : (2 + (def.tieneArea?1:0));
+      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : '<th>Nombre</th>') + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + '<th>Estado</th><th>Acciones</th>';
+    var colspan = key === 'areas' ? 5 : (2 + (def.tieneArea?1:0) + (def.tieneTipoSector?1:0));
 
     cont.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
@@ -3112,6 +3113,15 @@ async function abrirParamItem(key, id) {
     if (def.tieneDescripcion) {
       camposHTML += '<div class="form-campo form-full"><label>Descripción</label><textarea id="param-item-descripcion" placeholder="Descripción opcional..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%">' + (item ? (item.descripcion||'') : '') + '</textarea></div>';
     }
+    if (def.tieneTipoSector) {
+      camposHTML += '<div class="form-campo form-full"><label>Tipo / Sector</label><select id="param-item-tipo-sector" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
+        + '<option value="">— Seleccionar —</option>'
+        + '<option value="PÚBLICO"'    + (item && item.tipo_sector === 'PÚBLICO'    ? ' selected' : '') + '>Público</option>'
+        + '<option value="PRIVADO"'    + (item && item.tipo_sector === 'PRIVADO'    ? ' selected' : '') + '>Privado</option>'
+        + '<option value="MICROFINANCIERO"' + (item && item.tipo_sector === 'MICROFINANCIERO' ? ' selected' : '') + '>Microfinanciero</option>'
+        + '<option value="EXTRANJERO"' + (item && item.tipo_sector === 'EXTRANJERO' ? ' selected' : '') + '>Extranjero</option>'
+        + '</select></div>';
+    }
     if (def.tieneArea) {
       const opcAreas = _paramAreasCache.map(function(a) {
         return '<option value="' + a.id + '"' + (item && item.id_area === a.id ? ' selected' : '') + '>' + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
@@ -3154,7 +3164,8 @@ async function guardarParamItem() {
   } else {
     if (def.tieneCodigo)      datos.codigo      = document.getElementById('param-item-codigo')?.value.trim().toUpperCase() || null;
     if (def.tieneArea)        datos.id_area     = parseInt(document.getElementById('param-item-area')?.value) || null;
-    if (def.tieneDescripcion) datos.descripcion = document.getElementById('param-item-descripcion')?.value.trim() || null;
+    if (def.tieneDescripcion)  datos.descripcion  = document.getElementById('param-item-descripcion')?.value.trim() || null;
+    if (def.tieneTipoSector)   datos.tipo_sector  = document.getElementById('param-item-tipo-sector')?.value || null;
   }
 
   try {
