@@ -1173,6 +1173,12 @@
     <div class="modal-body">
 
       <div class="form-grid">
+        <div class="form-campo form-full" id="u-emp-selector-cont">
+          <label>Importar desde Empleados <span style="font-size:11px;color:var(--suave);font-weight:400">(Opcional)</span></label>
+          <select id="u-emp-selector" onchange="onSelEmpleadoUsuario()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar empleado —</option>
+          </select>
+        </div>
         <div class="form-campo form-full">
           <label>Nombre Completo</label>
           <input type="text" id="u-nombre" placeholder="Ej: María García">
@@ -2155,7 +2161,21 @@ async function verFichaUsuario(id) {
   abrirModal('modal-ficha-usu');
 }
 
-function abrirNuevoUsuario() {
+async function onSelEmpleadoUsuario() {
+  var sel = document.getElementById('u-emp-selector');
+  if (!sel || !sel.value) return;
+  var opt = sel.options[sel.selectedIndex];
+  var nombre = opt.dataset.nombre || '';
+  var correo = opt.dataset.correo || '';
+  if (nombre) document.getElementById('u-nombre').value = nombre;
+  if (correo) {
+    document.getElementById('u-correo').value = correo;
+  }
+  // Resetear selector después de importar
+  sel.value = '';
+}
+
+async function abrirNuevoUsuario() {
   document.getElementById('modal-titulo').textContent = 'NUEVO USUARIO';
   document.getElementById('u-nombre').value = '';
   document.getElementById('u-correo').value = '';
@@ -2169,6 +2189,26 @@ function abrirNuevoUsuario() {
   document.getElementById('fortaleza-usuario').style.display = 'none';
   document.getElementById('fortaleza-fill-u').style.width = '0%';
   renderAccesosModal([]);
+
+  // Cargar empleados para el selector (solo en nuevo usuario)
+  try {
+    const emps = await api('empleados', 'GET', null, '?estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo,correo');
+    const selEmp = document.getElementById('u-emp-selector');
+    if (selEmp) {
+      selEmp.innerHTML = '<option value="">— Seleccionar empleado —</option>'
+        + emps.map(function(e) {
+            return '<option value="' + e.id_empleado + '" data-nombre="' + (e.nombre_completo||'') + '" data-correo="' + (e.correo||'') + '">'
+              + e.nombre_completo + (e.correo ? ' · ' + e.correo : '') + '</option>';
+          }).join('');
+    }
+    // Mostrar selector solo en nuevo usuario
+    var empCont = document.getElementById('u-emp-selector-cont');
+    if (empCont) empCont.style.display = '';
+  } catch(eEmp) {
+    var empCont = document.getElementById('u-emp-selector-cont');
+    if (empCont) empCont.style.display = 'none';
+  }
+
   abrirModal('modal-usuario');
 }
 
@@ -2197,6 +2237,9 @@ async function abrirEditarUsuario(id) {
   // Los permisos solo se activan manualmente — nunca se pre-seleccionan automáticamente
   document.getElementById('u-correo').value = u.correo_usuario;
   document.getElementById('u-correo').disabled = true;
+  // Ocultar selector de empleado en edición
+  var empCont = document.getElementById('u-emp-selector-cont');
+  if (empCont) empCont.style.display = 'none';
   document.getElementById('u-clave').value = '';
   document.getElementById('u-estado').value = u.estado_usuario;
   document.getElementById('u-admin').value = u.administrador ? 'true' : 'false';
@@ -3429,6 +3472,10 @@ async function abrirEmpleado(id) {
   document.getElementById('emp-cod-banco').value        = codBanco;
   document.getElementById('emp-num-cuenta-resto').value = restoCuenta;
   document.getElementById('emp-num-cuenta').value       = numCuenta;
+  // Si hay código de banco pero no hay dígitos restantes, posicionar cursor en el campo resto
+  if (codBanco && !restoCuenta) {
+    setTimeout(function() { document.getElementById('emp-num-cuenta-resto')?.focus(); }, 150);
+  }
 
   document.getElementById('emp-id').value = e ? e.id_empleado : '';
 
