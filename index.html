@@ -1106,7 +1106,7 @@
       <div class="nav-item" id="nav-EMISORES" onclick="mostrarModulo('emisores', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">🏢</span> Emisores
       </div>
-      <div class="nav-item" id="nav-FACTURAS" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
+      <div class="nav-item" id="nav-FACTURAS" onclick="mostrarModulo('facturas', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">🧾</span> Facturas
       </div>
       <div class="nav-item" id="nav-PAGOS" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
@@ -1384,10 +1384,11 @@ const PERMISOS_POR_MODULO = {
     { accion: 'ELIMINAR', label: 'Eliminar emisor' },
   ],
   FACTURAS: [
-    { accion: 'VER',      label: 'Ver facturas' },
-    { accion: 'CREAR',    label: 'Crear factura' },
-    { accion: 'EDITAR',   label: 'Editar factura' },
-    { accion: 'ANULAR',   label: 'Anular factura' },
+    { accion: 'VER',         label: 'Ver facturas' },
+    { accion: 'CREAR',       label: 'Crear factura' },
+    { accion: 'EDITAR',      label: 'Editar factura borrador' },
+    { accion: 'ANULAR',      label: 'Anular factura emitida' },
+    { accion: 'ELIMINAR',    label: 'Eliminar factura anulada' },
     { accion: 'VER_TOTALES', label: '🔒 Ver montos y totales' },
   ],
   PAGOS: [
@@ -1831,6 +1832,7 @@ function mostrarModulo(modulo, navEl) {
     inventario:   'INVENTARIO GENERAL',
     catalogo:     'CATÁLOGO DE SERVICIOS',
     emisores:     'EMISORES',
+    facturas:     'FACTURAS',
     proximo:      'PRÓXIMAMENTE'
   };
 
@@ -1847,6 +1849,7 @@ function mostrarModulo(modulo, navEl) {
     case 'inventario':   renderInventario();   break;
     case 'catalogo':     renderCatalogo();     break;
     case 'emisores':     renderEmisores();     break;
+    case 'facturas':     renderFacturas();     break;
     default:             renderProximo(navEl?.querySelector('.nav-icono')?.textContent || '🔧',
                                        navEl?.textContent.trim() || modulo);
   }
@@ -3196,6 +3199,549 @@ async function eliminarEmisor(id, nombre) {
   } catch(e) { alert('Error al eliminar: ' + e.message); }
 }
 
+// ══════════════════════════════════════════════════════════════
+//  FASE 4 — FACTURAS
+// ══════════════════════════════════════════════════════════════
+let facturasCache = [];
+
+const ESTADOS_FAC = {
+  'BORRADOR': { clase: 'badge-gris',    label: 'Borrador' },
+  'EMITIDA':  { clase: 'badge-naranja', label: 'Emitida'  },
+  'PAGADA':   { clase: 'badge-verde',   label: 'Pagada'   },
+  'ANULADA':  { clase: 'badge-rojo',    label: 'Anulada'  },
+};
+
+async function renderFacturas() {
+  if (!sesionActual?.administrador && !modulosAcceso.includes('FACTURAS')) {
+    document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
+    return;
+  }
+  const c = document.getElementById('contenido-principal');
+  c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando facturas...</div>';
+
+  try {
+    const [facturas, tasas] = await Promise.all([
+      api('facturas', 'GET', null, '?order=fecha_emision.desc&select=*,emisores(nombre,rif),propietarios(nombre_completo)'),
+      api('tasas', 'GET', null, '?order=fecha_valor.desc&limit=1&select=tipo_cambio'),
+    ]);
+    facturasCache = facturas;
+    const tasaActual = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
+
+    // Resumen por estado
+    const resumen = {};
+    Object.keys(ESTADOS_FAC).forEach(function(k) { resumen[k] = 0; });
+    facturas.forEach(function(f) { if (resumen[f.estado] !== undefined) resumen[f.estado]++; });
+
+    const filas = facturas.map(function(f) {
+      const est = ESTADOS_FAC[f.estado] || { clase: 'badge-gris', label: f.estado };
+      const emisor = f.emisores;
+      const prop   = f.propietarios;
+      return '<tr data-id="' + f.id_factura + '">'
+        + '<td>'
+        + '<div style="font-family:var(--font-display);font-size:17px;color:var(--naranja)">' + (f.numero_factura || '—') + '</div>'
+        + '<div style="font-size:11px;color:var(--suave)">' + (f.fecha_emision || '—') + '</div>'
+        + '</td>'
+        + '<td style="font-size:12px">'
+        + (emisor ? '<div style="font-weight:500">' + emisor.nombre + '</div><div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (emisor.rif||'') + '</div>' : '—')
+        + '</td>'
+        + '<td style="font-size:12px">'
+        + (prop ? prop.nombre_completo : (f.receptor_nombre || '—'))
+        + '</td>'
+        + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
+        + (puedo('FACTURAS','VER_TOTALES')
+            ? '<td style="font-family:var(--font-mono)"><span style="color:var(--naranja)">$ ' + fmtUSD(f.total_usd) + '</span>'
+              + '<div style="font-size:10px;color:var(--suave)">' + fmtBs(f.total_ves) + ' Bs</div></td>'
+            : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
+        + '<td><button class="btn-secundario" onclick="verFichaFactura(' + f.id_factura + ')">Ficha</button></td>'
+        + '</tr>';
+    }).join('');
+
+    c.innerHTML =
+      // Tarjetas resumen
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:24px">'
+      + Object.entries(ESTADOS_FAC).map(function(entry) {
+          const k = entry[0], v = entry[1];
+          return '<div class="tarjeta-stat" style="padding:16px">'
+            + '<div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">' + v.label + '</div>'
+            + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + (resumen[k]||0) + '</div>'
+            + '</div>';
+        }).join('')
+      + '<div class="tarjeta-stat" style="padding:16px">'
+      + '<div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Total</div>'
+      + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + facturas.length + '</div>'
+      + '</div></div>'
+
+      // Panel tabla
+      + '<div class="panel">'
+      + '<div class="panel-header" style="flex-wrap:wrap;gap:10px">'
+      + '<h3 style="white-space:nowrap">Facturas</h3>'
+      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end">'
+      + '<select id="fac-filtro-estado" onchange="filtrarTablaFacturas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
+      + '<option value="">Todos los estados</option>'
+      + Object.entries(ESTADOS_FAC).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('')
+      + '</select>'
+      + '<input type="text" id="fac-buscar" placeholder="Buscar N° factura, cliente..." oninput="filtrarTablaFacturas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
+      + '<span style="font-size:11px;color:var(--suave);white-space:nowrap">Tasa: $ 1 = ' + tasaActual.toFixed(2) + ' Bs</span>'
+      + (puedo('FACTURAS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevaFactura()">+ Nueva Factura</button>' : '')
+      + '</div></div>'
+      + '<div class="tabla-container"><table id="fac-tabla"><thead><tr>'
+      + '<th>N° / Fecha</th><th>Emisor</th><th>Receptor</th><th>Estado</th><th>Total</th><th>Acciones</th>'
+      + '</tr></thead><tbody id="fac-tbody">'
+      + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">No hay facturas registradas</td></tr>')
+      + '</tbody></table></div></div>';
+
+  } catch(e) {
+    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+  }
+}
+
+function filtrarTablaFacturas() {
+  const estado = (document.getElementById('fac-filtro-estado')?.value || '').toUpperCase();
+  const buscar = (document.getElementById('fac-buscar')?.value || '').toLowerCase().trim();
+  const tbody  = document.getElementById('fac-tbody');
+  if (!tbody) return;
+  Array.from(tbody.querySelectorAll('tr[data-id]')).forEach(function(tr) {
+    const fId = parseInt(tr.dataset.id);
+    const f   = facturasCache.find(function(x) { return x.id_factura === fId; });
+    if (!f) { tr.style.display = 'none'; return; }
+    const matchEstado = !estado || f.estado === estado;
+    const matchBuscar = !buscar || [
+      f.numero_factura || '',
+      f.receptor_nombre || '',
+      f.emisores ? f.emisores.nombre : '',
+      f.propietarios ? f.propietarios.nombre_completo : '',
+    ].some(function(s) { return s.toLowerCase().includes(buscar); });
+    tr.style.display = matchEstado && matchBuscar ? '' : 'none';
+  });
+}
+
+// ─── ABRIR NUEVA FACTURA ───
+async function abrirNuevaFactura() {
+  if (!puedo('FACTURAS','CREAR')) { alert('No tiene permiso para crear facturas.'); return; }
+  setTimeout(function() {
+    const body = document.querySelector('#modal-factura .modal-body');
+    if (body) body.scrollTop = 0;
+  }, 80);
+
+  // Cargar datos necesarios
+  let osDisponibles = [], emisoresList = [], tasaActual = 1;
+  try {
+    const [os, em, ta] = await Promise.all([
+      api('ordenes_servicio', 'GET', null,
+        '?estado=eq.CERRADA&select=id_orden,numero_os,fecha_entrada,total_usd,total_ves,id_vehiculo,id_propietario,vehiculos(placa,marca,modelo),propietarios(nombre_completo,tipo_doc,numero_doc)&order=fecha_entrada.desc'),
+      api('emisores', 'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=*'),
+      api('tasas', 'GET', null, '?order=fecha_valor.desc&limit=1&select=tipo_cambio'),
+    ]);
+    osDisponibles  = os;
+    emisoresList   = em;
+    tasaActual     = ta.length ? parseFloat(ta[0].tipo_cambio) : 1;
+  } catch(e) {}
+
+  document.getElementById('fac-id').value = '';
+  document.getElementById('fac-numero').textContent = 'Se asignará al emitir';
+  document.getElementById('fac-os-id').value = '';
+  document.getElementById('fac-os-info').innerHTML = '';
+  document.getElementById('fac-lineas-cont').innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Selecciona una OS para cargar las líneas</div>';
+  document.getElementById('fac-receptor-nombre').value = '';
+  document.getElementById('fac-receptor-rif').value    = '';
+  document.getElementById('fac-receptor-dir').value    = '';
+  document.getElementById('fac-aplica-iva').checked    = false;
+  document.getElementById('fac-aplica-igtf').checked   = false;
+  document.getElementById('fac-tasa').value             = tasaActual.toFixed(4);
+  document.getElementById('fac-fecha').value            = getHoyVzla();
+  document.getElementById('fac-estado').value           = 'BORRADOR';
+  document.getElementById('fac-observaciones').value    = '';
+  document.getElementById('alerta-fac-ok').style.display  = 'none';
+  document.getElementById('alerta-fac-err').style.display = 'none';
+  document.getElementById('modal-fac-titulo').textContent = 'NUEVA FACTURA';
+
+  // Llenar select de emisores
+  const selEm = document.getElementById('fac-emisor');
+  selEm.innerHTML = '<option value="">— Seleccionar emisor —</option>'
+    + emisoresList.map(function(e) {
+        return '<option value="' + e.id_emisor + '">' + e.nombre + ' (' + (e.rif||'') + ')</option>';
+      }).join('');
+
+  // Llenar select de OS disponibles
+  const selOS = document.getElementById('fac-os-sel');
+  selOS.innerHTML = '<option value="">— Seleccionar OS —</option>'
+    + osDisponibles.map(function(o) {
+        const veh  = o.vehiculos;
+        const prop = o.propietarios;
+        return '<option value="' + o.id_orden + '" data-prop-nombre="' + (prop ? prop.nombre_completo : '') + '" data-prop-doc="' + (prop ? prop.tipo_doc + '-' + prop.numero_doc : '') + '">'
+          + o.numero_os + ' — ' + (veh ? veh.placa + ' ' + veh.marca + ' ' + veh.modelo : '') + (prop ? ' · ' + prop.nombre_completo : '')
+          + '</option>';
+      }).join('');
+
+  calcularTotalesFactura();
+  abrirModal('modal-factura');
+}
+
+// ─── SELECCIONAR OS EN FACTURA ───
+async function onSelOSFactura() {
+  const sel   = document.getElementById('fac-os-sel');
+  const idOS  = parseInt(sel.value);
+  const infoDiv = document.getElementById('fac-os-info');
+  const linDiv  = document.getElementById('fac-lineas-cont');
+
+  if (!idOS) {
+    infoDiv.innerHTML = '';
+    linDiv.innerHTML  = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Selecciona una OS para cargar las líneas</div>';
+    document.getElementById('fac-os-id').value = '';
+    calcularTotalesFactura();
+    return;
+  }
+
+  document.getElementById('fac-os-id').value = idOS;
+  linDiv.innerHTML = '<div class="loading" style="padding:16px"><div class="spinner"></div> Cargando líneas...</div>';
+
+  try {
+    const [linServ, linRep, osData] = await Promise.all([
+      api('os_servicios', 'GET', null, '?id_orden=eq.' + idOS + '&select=*'),
+      api('os_repuestos', 'GET', null, '?id_orden=eq.' + idOS + '&select=*'),
+      api('ordenes_servicio', 'GET', null, '?id_orden=eq.' + idOS + '&select=*,vehiculos(placa,marca,modelo),propietarios(nombre_completo,tipo_doc,numero_doc,correo,telefono,direccion)'),
+    ]);
+    const o    = osData[0] || {};
+    const prop = o.propietarios;
+    const veh  = o.vehiculos;
+
+    // Auto-llenar receptor con datos del propietario
+    if (prop) {
+      document.getElementById('fac-receptor-nombre').value = prop.nombre_completo || '';
+      document.getElementById('fac-receptor-rif').value    = (prop.tipo_doc && prop.numero_doc) ? prop.tipo_doc + '-' + prop.numero_doc : '';
+      document.getElementById('fac-receptor-dir').value    = prop.direccion || '';
+      // Tipo contribuyente del propietario
+      const tcEl = document.getElementById('fac-receptor-tipo-contrib');
+      if (tcEl) tcEl.value = prop.tipo_contribuyente || '';
+    }
+
+    // Info OS
+    infoDiv.innerHTML = '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:10px 14px;margin-top:6px">'
+      + '<div style="display:flex;gap:16px;flex-wrap:wrap">'
+      + '<div><div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">OS</div><div style="font-weight:600;color:var(--naranja)">' + o.numero_os + '</div></div>'
+      + (veh ? '<div><div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Vehículo</div><div>' + veh.placa + ' · ' + veh.marca + ' ' + veh.modelo + '</div></div>' : '')
+      + (prop ? '<div><div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Propietario</div><div>' + prop.nombre_completo + '</div></div>' : '')
+      + '</div></div>';
+
+    // Renderizar líneas
+    const todasLineas = [
+      ...linServ.map(function(l) { return { tipo: 'servicio', desc: l.descripcion, cant: l.cantidad, precio: l.precio_usd, subtotal: l.subtotal_usd }; }),
+      ...linRep.map(function(l)  { return { tipo: 'repuesto', desc: l.descripcion, cant: l.cantidad, precio: l.precio_usd, subtotal: l.subtotal_usd }; }),
+    ];
+
+    if (!todasLineas.length) {
+      linDiv.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0">Esta OS no tiene líneas de servicios ni repuestos.</div>';
+    } else {
+      linDiv.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+        + '<thead><tr>'
+        + '<th style="text-align:left;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;letter-spacing:1px">DESCRIPCIÓN</th>'
+        + '<th style="text-align:center;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">TIPO</th>'
+        + '<th style="text-align:center;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CANT</th>'
+        + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">P/U USD</th>'
+        + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">SUBTOTAL</th>'
+        + '</tr></thead><tbody>'
+        + todasLineas.map(function(l) {
+            return '<tr>'
+              + '<td style="padding:6px 0">' + l.desc + '</td>'
+              + '<td style="text-align:center;padding:6px"><span class="badge ' + (l.tipo === 'servicio' ? 'badge-naranja' : 'badge-gris') + '" style="font-size:9px">' + (l.tipo === 'servicio' ? 'Serv.' : 'Rep.') + '</span></td>'
+              + '<td style="text-align:center;padding:6px;font-family:var(--font-mono)">' + l.cant + '</td>'
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">$ ' + fmtUSD(l.precio) + '</td>'
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(l.subtotal) + '</td>'
+              + '</tr>';
+          }).join('')
+        + '</tbody></table>';
+    }
+
+    // Actualizar totales con subtotal de OS
+    document.getElementById('fac-subtotal-os').textContent = '$ ' + fmtUSD(o.total_usd);
+    window._facSubtotalOS = parseFloat(o.total_usd || 0);
+    calcularTotalesFactura();
+  } catch(e) {
+    linDiv.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+  }
+}
+
+// ─── CALCULAR TOTALES FACTURA ───
+function calcularTotalesFactura() {
+  const subtotal = window._facSubtotalOS || 0;
+  const tasa     = parseFloat(document.getElementById('fac-tasa')?.value || 1);
+  const aplIVA   = document.getElementById('fac-aplica-iva')?.checked;
+  const aplIGTF  = document.getElementById('fac-aplica-igtf')?.checked;
+
+  const iva    = aplIVA  ? subtotal * 0.16 : 0;
+  const base   = subtotal + iva;
+  const igtf   = aplIGTF ? base * 0.03 : 0;
+  const total  = base + igtf;
+  const totVes = total * tasa;
+
+  const el = document.getElementById('fac-totales');
+  if (!el) return;
+  el.innerHTML =
+    '<div style="display:flex;flex-direction:column;gap:6px;padding:14px 0">'
+    + '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">Subtotal</span><span style="font-family:var(--font-mono)">$ ' + fmtUSD(subtotal) + '</span></div>'
+    + (aplIVA  ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IVA (16%)</span><span style="font-family:var(--font-mono)">$ ' + fmtUSD(iva) + '</span></div>' : '')
+    + (aplIGTF ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IGTF (3%)</span><span style="font-family:var(--font-mono)">$ ' + fmtUSD(igtf) + '</span></div>' : '')
+    + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:8px;margin-top:4px">'
+    + '<span style="font-family:var(--font-display);font-size:16px;letter-spacing:1px">TOTAL</span>'
+    + '<div style="text-align:right"><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">$ ' + fmtUSD(total) + '</div>'
+    + '<div style="font-size:11px;color:var(--suave)">' + fmtBs(totVes) + ' Bs · Tasa: ' + tasa.toFixed(2) + '</div></div>'
+    + '</div></div>';
+
+  // Guardar valores calculados
+  window._facTotales = { subtotal, iva, igtf, total, totVes };
+}
+
+// ─── GUARDAR FACTURA ───
+async function guardarFactura(emitir) {
+  const id       = document.getElementById('fac-id').value;
+  if (id && !puedo('FACTURAS','EDITAR'))  { alert('No tiene permiso para editar facturas.'); return; }
+  if (!id && !puedo('FACTURAS','CREAR'))  { alert('No tiene permiso para crear facturas.'); return; }
+
+  const idOS     = parseInt(document.getElementById('fac-os-id').value) || null;
+  const idEmisor = parseInt(document.getElementById('fac-emisor').value) || null;
+  const recNom   = document.getElementById('fac-receptor-nombre').value.trim();
+  const recRif   = document.getElementById('fac-receptor-rif').value.trim();
+  const recDir   = document.getElementById('fac-receptor-dir').value.trim();
+  const tasa     = parseFloat(document.getElementById('fac-tasa').value) || 1;
+  const fecha    = document.getElementById('fac-fecha').value;
+  const estado   = emitir ? 'EMITIDA' : document.getElementById('fac-estado').value;
+  const obs      = document.getElementById('fac-observaciones').value.trim();
+  const aplIVA   = document.getElementById('fac-aplica-iva').checked;
+  const aplIGTF  = document.getElementById('fac-aplica-igtf').checked;
+  const okEl     = document.getElementById('alerta-fac-ok');
+  const errEl    = document.getElementById('alerta-fac-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  if (!idOS)     { errEl.textContent = 'Debe seleccionar una Orden de Servicio.'; errEl.style.display = 'block'; return; }
+  if (!idEmisor) { errEl.textContent = 'Debe seleccionar un Emisor.';             errEl.style.display = 'block'; return; }
+  if (!recNom)   { errEl.textContent = 'El nombre del receptor es obligatorio.';  errEl.style.display = 'block'; return; }
+  if (!fecha)    { errEl.textContent = 'La fecha es obligatoria.';                errEl.style.display = 'block'; return; }
+
+  const tot = window._facTotales || { subtotal:0, iva:0, igtf:0, total:0, totVes:0 };
+
+  // Obtener id_propietario de la OS
+  let idProp = null;
+  try {
+    const os = await api('ordenes_servicio', 'GET', null, '?id_orden=eq.' + idOS + '&select=id_propietario');
+    if (os.length) idProp = os[0].id_propietario;
+  } catch(e) {}
+
+  try {
+    const datos = {
+      id_orden: idOS, id_emisor: idEmisor, id_propietario: idProp,
+      receptor_nombre: recNom, receptor_rif: recRif || null, receptor_direccion: recDir || null,
+      receptor_tipo_contribuyente: document.getElementById('fac-receptor-tipo-contrib')?.value || null,
+      fecha_emision: fecha, estado,
+      aplica_iva: aplIVA, aplica_igtf: aplIGTF,
+      subtotal_usd: tot.subtotal, iva_usd: tot.iva, igtf_usd: tot.igtf,
+      total_usd: tot.total, total_ves: tot.totVes, tasa_cambio: tasa,
+      observaciones: obs || null, id_usuario: sesionActual.correo_usuario
+    };
+
+    let facId = id;
+    if (id) {
+      await api('facturas', 'PATCH', datos, '?id_factura=eq.' + id);
+    } else {
+      // Generar número de factura
+      const anio = new Date().getFullYear();
+      const existentes = await api('facturas', 'GET', null, '?select=numero_factura&numero_factura=like.FAC-' + anio + '-*&order=numero_factura.desc&limit=1');
+      let seq = 1;
+      if (existentes.length) {
+        const partes = existentes[0].numero_factura.split('-');
+        seq = parseInt(partes[partes.length - 1]) + 1;
+      }
+      datos.numero_factura = 'FAC-' + anio + '-' + String(seq).padStart(4, '0');
+      const res = await api('facturas', 'POST', datos);
+      if (res && res[0]) facId = res[0].id_factura;
+    }
+
+    okEl.textContent = emitir ? '✓ Factura emitida correctamente.' : '✓ Factura guardada como borrador.';
+    okEl.style.display = 'block';
+    setTimeout(function() { cerrarModal('modal-factura'); renderFacturas(); }, 1200);
+  } catch(e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+// ─── FICHA FACTURA ───
+async function verFichaFactura(id) {
+  if (!sesionActual?.administrador && !puedo('FACTURAS','VER')) {
+    alert('No tiene permiso para ver la ficha de la factura.'); return;
+  }
+  try {
+    const [facArr, tasas] = await Promise.all([
+      api('facturas', 'GET', null, '?id_factura=eq.' + id + '&select=*,emisores(*),propietarios(nombre_completo,tipo_doc,numero_doc)'),
+      api('tasas', 'GET', null, '?order=fecha_valor.desc&limit=1&select=tipo_cambio'),
+    ]);
+    const f = facArr[0];
+    if (!f) return;
+
+    // Cargar líneas de la OS vinculada
+    let linServ = [], linRep = [];
+    if (f.id_orden) {
+      [linServ, linRep] = await Promise.all([
+        api('os_servicios', 'GET', null, '?id_orden=eq.' + f.id_orden + '&select=*'),
+        api('os_repuestos', 'GET', null, '?id_orden=eq.' + f.id_orden + '&select=*'),
+      ]);
+    }
+
+    const est    = ESTADOS_FAC[f.estado] || { clase: 'badge-gris', label: f.estado };
+    const emisor = f.emisores;
+
+    const tablaLineas = [...linServ.map(function(l) { return { desc: l.descripcion, tipo: 'Serv.', cant: l.cantidad, precio: l.precio_usd, sub: l.subtotal_usd }; }),
+                         ...linRep.map(function(l)  { return { desc: l.descripcion, tipo: 'Rep.',  cant: l.cantidad, precio: l.precio_usd, sub: l.subtotal_usd }; })]
+      .map(function(l) {
+        return '<tr>'
+          + '<td style="padding:6px 0;font-size:12px">' + l.desc + '</td>'
+          + '<td style="text-align:center;padding:6px"><span class="badge badge-gris" style="font-size:9px">' + l.tipo + '</span></td>'
+          + '<td style="text-align:center;font-family:var(--font-mono);font-size:12px">' + l.cant + '</td>'
+          + '<td style="text-align:right;font-family:var(--font-mono);font-size:12px">$ ' + fmtUSD(l.precio) + '</td>'
+          + '<td style="text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">$ ' + fmtUSD(l.sub) + '</td>'
+          + '</tr>';
+      }).join('');
+
+    document.getElementById('ficha-fac-contenido').innerHTML =
+      // Cabecera
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">'
+      + '<div>'
+      + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + (f.numero_factura || '—') + '</div>'
+      + '<span class="badge ' + est.clase + '">' + est.label + '</span>'
+      + '<div style="font-size:11px;color:var(--suave);margin-top:4px">Fecha: ' + (f.fecha_emision || '—') + '</div>'
+      + '</div>'
+      + (puedo('FACTURAS','VER_TOTALES')
+          ? '<div style="text-align:right">'
+            + '<div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">TOTAL</div>'
+            + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">$ ' + fmtUSD(f.total_usd) + '</div>'
+            + '<div style="font-size:11px;color:var(--suave)">' + fmtBs(f.total_ves) + ' Bs</div>'
+            + '</div>'
+          : '')
+      + '</div>'
+
+      // Emisor
+      + (emisor ? '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
+          + '<div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Emisor</div>'
+          + '<div style="font-weight:600">' + emisor.nombre + '</div>'
+          + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (emisor.rif||'') + '</div>'
+          + (emisor.direccion ? '<div style="font-size:11px;color:var(--suave);margin-top:2px">' + emisor.direccion + '</div>' : '')
+          + '</div>' : '')
+
+      // Receptor
+      + '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
+      + '<div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Receptor</div>'
+      + '<div style="font-weight:600">' + (f.receptor_nombre || '—') + '</div>'
+      + (f.receptor_rif ? '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + f.receptor_rif + '</div>' : '')
+      + (f.receptor_tipo_contribuyente ? '<span class="badge ' + ({'ORDINARIO':'badge-naranja','ESPECIAL':'badge-verde','FORMAL':'badge-gris'}[f.receptor_tipo_contribuyente]||'badge-gris') + '" style="font-size:10px;margin-top:4px;display:inline-block">' + ({'ORDINARIO':'Contribuyente Ordinario','ESPECIAL':'Contribuyente Especial','FORMAL':'Contribuyente Formal'}[f.receptor_tipo_contribuyente]||f.receptor_tipo_contribuyente) + '</span>' : '')
+      + (f.receptor_direccion ? '<div style="font-size:11px;color:var(--suave);margin-top:4px">' + f.receptor_direccion + '</div>' : '')
+      + '</div>'
+
+      // Detalle impuestos y totales
+      + (puedo('FACTURAS','VER_TOTALES')
+          ? '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
+            + '<div style="display:flex;flex-direction:column;gap:5px;font-size:12px">'
+            + '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">Subtotal</span><span style="font-family:var(--font-mono)">$ ' + fmtUSD(f.subtotal_usd) + '</span></div>'
+            + (f.aplica_iva  ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">IVA (16%)</span><span style="font-family:var(--font-mono)">$ ' + fmtUSD(f.iva_usd) + '</span></div>' : '')
+            + (f.aplica_igtf ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">IGTF (3%)</span><span style="font-family:var(--font-mono)">$ ' + fmtUSD(f.igtf_usd) + '</span></div>' : '')
+            + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:6px;font-weight:600"><span>Total</span><span style="font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(f.total_usd) + '</span></div>'
+            + '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">Tasa</span><span style="font-family:var(--font-mono)">' + parseFloat(f.tasa_cambio||1).toFixed(2) + ' Bs/$</span></div>'
+            + '</div></div>'
+          : '')
+
+      // Tabla de líneas
+      + '<div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Detalle</div>'
+      + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse">'
+      + '<thead><tr>'
+      + '<th style="text-align:left;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">DESCRIPCIÓN</th>'
+      + '<th style="text-align:center;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">TIPO</th>'
+      + '<th style="text-align:center;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CANT</th>'
+      + '<th style="text-align:right;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">P/U</th>'
+      + '<th style="text-align:right;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">SUBTOTAL</th>'
+      + '</tr></thead><tbody>'
+      + (tablaLineas || '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--suave)">Sin líneas</td></tr>')
+      + '</tbody></table></div>'
+      + (f.observaciones ? '<div style="margin-top:14px"><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Observaciones</div><div style="background:var(--gris2);border-radius:6px;padding:10px 14px;font-size:13px">' + f.observaciones + '</div></div>' : '');
+
+    // Botones footer según estado y permisos
+    var btnEditar   = document.getElementById('ficha-fac-btn-editar');
+    var btnEmitir   = document.getElementById('ficha-fac-btn-emitir');
+    var btnAnular   = document.getElementById('ficha-fac-btn-anular');
+    var btnEliminar = document.getElementById('ficha-fac-btn-eliminar');
+
+    if (btnEditar)  { btnEditar._id = f.id_factura;  btnEditar.onclick  = function() { cerrarModal('modal-ficha-fac'); abrirEditarFactura(this._id); };       btnEditar.style.display  = puedo('FACTURAS','EDITAR') && f.estado === 'BORRADOR' ? '' : 'none'; }
+    if (btnEmitir)  { btnEmitir._id = f.id_factura;  btnEmitir.onclick  = function() { emitirFactura(this._id); };                                           btnEmitir.style.display  = puedo('FACTURAS','CREAR') && f.estado === 'BORRADOR' ? '' : 'none'; }
+    if (btnAnular)  { btnAnular._id = f.id_factura;  btnAnular._num = f.numero_factura; btnAnular.onclick = function() { anularFactura(this._id, this._num); }; btnAnular.style.display = puedo('FACTURAS','ANULAR') && (f.estado === 'EMITIDA' || f.estado === 'PAGADA') ? '' : 'none'; }
+    if (btnEliminar){ btnEliminar._id = f.id_factura; btnEliminar._num = f.numero_factura; btnEliminar.onclick = function() { eliminarFactura(this._id, this._num); }; btnEliminar.style.display = puedo('FACTURAS','ELIMINAR') && f.estado === 'ANULADA' ? '' : 'none'; }
+
+    abrirModal('modal-ficha-fac');
+  } catch(e) { alert('Error: ' + e.message); console.error(e); }
+}
+
+// ─── EDITAR FACTURA BORRADOR ───
+async function abrirEditarFactura(id) {
+  if (!puedo('FACTURAS','EDITAR')) { alert('No tiene permiso para editar facturas.'); return; }
+  const f = facturasCache.find(function(x) { return x.id_factura === id; });
+  if (!f || f.estado !== 'BORRADOR') { alert('Solo se pueden editar facturas en estado Borrador.'); return; }
+
+  await abrirNuevaFactura();
+
+  // Esperar a que el modal cargue y llenar datos
+  setTimeout(async function() {
+    document.getElementById('fac-id').value = f.id_factura;
+    document.getElementById('fac-numero').textContent = f.numero_factura || 'Borrador';
+    document.getElementById('fac-emisor').value       = f.id_emisor || '';
+    document.getElementById('fac-fecha').value         = f.fecha_emision || getHoyVzla();
+    document.getElementById('fac-estado').value        = f.estado;
+    document.getElementById('fac-tasa').value          = parseFloat(f.tasa_cambio||1).toFixed(4);
+    document.getElementById('fac-receptor-nombre').value = f.receptor_nombre || '';
+    document.getElementById('fac-receptor-rif').value    = f.receptor_rif || '';
+    document.getElementById('fac-receptor-dir').value    = f.receptor_direccion || '';
+    document.getElementById('fac-aplica-iva').checked   = !!f.aplica_iva;
+    document.getElementById('fac-aplica-igtf').checked  = !!f.aplica_igtf;
+    document.getElementById('fac-observaciones').value  = f.observaciones || '';
+    document.getElementById('modal-fac-titulo').textContent = 'EDITAR FACTURA — ' + (f.numero_factura || 'Borrador');
+
+    if (f.id_orden) {
+      document.getElementById('fac-os-sel').value = f.id_orden;
+      await onSelOSFactura();
+    }
+    calcularTotalesFactura();
+  }, 300);
+}
+
+// ─── EMITIR FACTURA ───
+async function emitirFactura(id) {
+  if (!puedo('FACTURAS','CREAR')) { alert('No tiene permiso para emitir facturas.'); return; }
+  if (!confirm('¿Emitir esta factura? Una vez emitida no podrá editarse.')) return;
+  try {
+    await api('facturas', 'PATCH', { estado: 'EMITIDA' }, '?id_factura=eq.' + id);
+    cerrarModal('modal-ficha-fac');
+    renderFacturas();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ─── ANULAR FACTURA ───
+async function anularFactura(id, numero) {
+  if (!puedo('FACTURAS','ANULAR')) { alert('No tiene permiso para anular facturas.'); return; }
+  if (!confirm('¿Anular la factura ' + numero + '? Esta acción no se puede deshacer.')) return;
+  try {
+    await api('facturas', 'PATCH', { estado: 'ANULADA' }, '?id_factura=eq.' + id);
+    cerrarModal('modal-ficha-fac');
+    renderFacturas();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ─── ELIMINAR FACTURA ───
+async function eliminarFactura(id, numero) {
+  if (!puedo('FACTURAS','ELIMINAR')) { alert('No tiene permiso para eliminar facturas.'); return; }
+  if (!confirm('¿Eliminar definitivamente la factura ' + numero + '?\\nEsta acción no se puede deshacer.')) return;
+  try {
+    await api('facturas', 'DELETE', null, '?id_factura=eq.' + id);
+    cerrarModal('modal-ficha-fac');
+    renderFacturas();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+
 // ─── PRÓXIMO MÓDULO ───
 function renderProximo(icono, nombre) {
   document.getElementById('contenido-principal').innerHTML = `
@@ -3995,6 +4541,7 @@ async function cargarPropietarios(filtro) {
         + '<div>'
         + '<div style="font-weight:500">' + p.nombre_completo + '</div>'
         + '<div style="font-size:11px;color:var(--suave)">' + p.tipo_doc + '-' + p.numero_doc + '</div>'
+        + (p.tipo_contribuyente ? '<span class="badge ' + ({'ORDINARIO':'badge-naranja','ESPECIAL':'badge-verde','FORMAL':'badge-gris'}[p.tipo_contribuyente]||'badge-gris') + '" style="font-size:9px;margin-top:3px;display:inline-block">' + ({'ORDINARIO':'Ord.','ESPECIAL':'Esp.','FORMAL':'Form.'}[p.tipo_contribuyente]||p.tipo_contribuyente) + '</span>' : '')
         + '</div></div></td>'
         + '<td style="font-size:12px">' + (puedo('PROPIETARIOS','VER_DATOS_PERSONALES') ? (p.telefono || '—') : '🔒') + '</td>'
         + '<td style="font-size:12px">' + (puedo('PROPIETARIOS','VER_DATOS_PERSONALES') ? (p.correo || '—') : '🔒') + '</td>'
@@ -4035,7 +4582,8 @@ function abrirPropietario(id) {
   document.getElementById('prop-telefono').value    = p ? (p.telefono || '') : '';
   document.getElementById('prop-correo').value      = p ? (p.correo || '')   : '';
   document.getElementById('prop-direccion').value   = p ? (p.direccion || '') : '';
-  document.getElementById('prop-empresa').value     = p ? (p.empresa || '')  : '';
+  document.getElementById('prop-empresa').value          = p ? (p.empresa || '')  : '';
+  document.getElementById('prop-tipo-contribuyente').value = p ? (p.tipo_contribuyente || '') : '';
   const propFotoPreview = document.getElementById('prop-foto-preview');
   propFotoPreview.src = p && p.foto_documento ? p.foto_documento : '';
   propFotoPreview.style.display = 'none';
@@ -4071,6 +4619,7 @@ async function guardarPropietario() {
   const dir     = document.getElementById('prop-direccion').value.trim();
   const emp     = document.getElementById('prop-empresa').value.trim();
   const rif     = document.getElementById('prop-rif-civil').value.trim();
+  const tipoContrib = document.getElementById('prop-tipo-contribuyente').value;
   const fotoFile= document.getElementById('prop-foto-file').files[0];
   const okEl    = document.getElementById('alerta-prop-ok');
   const errEl   = document.getElementById('alerta-prop-err');
@@ -4092,6 +4641,7 @@ async function guardarPropietario() {
       tipo_doc: tipDoc, numero_doc: numDoc, nombre_completo: nombreFinal,
       rif: rif || null, telefono: tel || null, correo: correo || null,
       direccion: dir || null, empresa: emp || null,
+      tipo_contribuyente: tipoContrib || null,
       foto_documento: fotoUrl, id_usuario: sesionActual.correo_usuario
     };
 
@@ -4161,6 +4711,8 @@ async function verFichaPropietario(id) {
     + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div style="font-size:13px">' + (p.telefono || '—') + '</div></div>'
     + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:13px">' + (p.correo || '—') + '</div></div>'
     + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Empresa</div><div style="font-size:13px">' + (p.empresa || '—') + '</div></div>'
+    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Tipo Contribuyente</div>'
+    + '<div>' + (p.tipo_contribuyente ? '<span class="badge ' + ({'ORDINARIO':'badge-naranja','ESPECIAL':'badge-verde','FORMAL':'badge-gris'}[p.tipo_contribuyente]||'badge-gris') + '">' + ({'ORDINARIO':'Contribuyente Ordinario','ESPECIAL':'Contribuyente Especial','FORMAL':'Contribuyente Formal'}[p.tipo_contribuyente]||p.tipo_contribuyente) + '</span>' : '<span style="color:var(--suave);font-size:12px">No especificado</span>') + '</div></div>'
     + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:13px">' + (p.direccion || '—') + '</div></div>'
     + '</div>'
     + '<div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Vehículos (' + vehs.length + ')</div>'
@@ -6870,6 +7422,15 @@ window.addEventListener('load', async () => {
           <input type="text" id="prop-empresa" placeholder="Opcional">
         </div>
         <div class="form-campo form-full">
+          <label>Tipo de Contribuyente</label>
+          <select id="prop-tipo-contribuyente">
+            <option value="">— No aplica / No especificado —</option>
+            <option value="ORDINARIO">Contribuyente Ordinario</option>
+            <option value="ESPECIAL">Contribuyente Especial</option>
+            <option value="FORMAL">Contribuyente Formal</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
           <label>Foto del Documento de Identidad</label>
           <div id="prop-foto-actual" style="margin-bottom:8px"></div>
           <input type="file" id="prop-foto-file" accept="image/*" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:8px;border-radius:5px;width:100%">
@@ -7505,6 +8066,152 @@ window.addEventListener('load', async () => {
   </div>
 </div>
 
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL NUEVA/EDITAR FACTURA          -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-factura">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header">
+      <h3 id="modal-fac-titulo">NUEVA FACTURA</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-factura')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alerta alerta-exito" id="alerta-fac-ok"></div>
+      <div class="alerta alerta-error"  id="alerta-fac-err"></div>
+
+      <!-- INFO FACTURA -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding:10px 14px;background:var(--gris2);border-radius:6px;border:1px solid var(--borde)">
+        <div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">N° Factura</div>
+          <div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)" id="fac-numero">Se asignará al emitir</div>
+        </div>
+        <div class="form-campo" style="margin:0;min-width:160px">
+          <label style="font-size:9px">Fecha</label>
+          <input type="date" id="fac-fecha">
+        </div>
+        <div class="form-campo" style="margin:0">
+          <label style="font-size:9px">Estado</label>
+          <select id="fac-estado" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:7px 10px;border-radius:4px;outline:none">
+            <option value="BORRADOR">Borrador</option>
+            <option value="EMITIDA">Emitida</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- EMISOR -->
+      <div class="form-campo form-full" style="margin-bottom:16px">
+        <label>Emisor</label>
+        <select id="fac-emisor" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <option value="">— Seleccionar emisor —</option>
+        </select>
+      </div>
+
+      <!-- OS VINCULADA -->
+      <div style="margin-bottom:16px">
+        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:8px">Orden de Servicio</div>
+        <select id="fac-os-sel" onchange="onSelOSFactura()" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none">
+          <option value="">— Seleccionar OS —</option>
+        </select>
+        <div id="fac-os-info"></div>
+        <input type="hidden" id="fac-os-id">
+      </div>
+
+      <!-- RECEPTOR -->
+      <div style="margin-bottom:16px;padding:14px;background:var(--gris2);border-radius:6px">
+        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:10px">Datos del Receptor</div>
+        <div class="form-grid">
+          <div class="form-campo form-full">
+            <label>Nombre / Razón Social</label>
+            <input type="text" id="fac-receptor-nombre" placeholder="Nombre completo del receptor">
+          </div>
+          <div class="form-campo">
+            <label>RIF / Cédula</label>
+            <input type="text" id="fac-receptor-rif" placeholder="J-XXXXXXXX-X">
+          </div>
+          <div class="form-campo">
+            <label>Dirección</label>
+            <input type="text" id="fac-receptor-dir" placeholder="Dirección fiscal">
+          </div>
+          <div class="form-campo form-full">
+            <label>Tipo de Contribuyente</label>
+            <select id="fac-receptor-tipo-contrib">
+              <option value="">— No aplica / No especificado —</option>
+              <option value="ORDINARIO">Contribuyente Ordinario</option>
+              <option value="ESPECIAL">Contribuyente Especial</option>
+              <option value="FORMAL">Contribuyente Formal</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- LÍNEAS OS -->
+      <div style="margin-bottom:16px">
+        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:8px">Detalle de la OS</div>
+        <div id="fac-lineas-cont" style="background:var(--gris2);border-radius:6px;padding:12px"></div>
+        <div style="display:flex;justify-content:flex-end;padding:6px 0">
+          <span style="font-size:11px;color:var(--suave)">Subtotal OS: </span>
+          <span id="fac-subtotal-os" style="font-family:var(--font-mono);font-size:13px;color:var(--naranja);margin-left:8px">$ 0.00</span>
+        </div>
+      </div>
+
+      <!-- IMPUESTOS Y TASA -->
+      <div style="padding:14px;background:var(--gris2);border-radius:6px;margin-bottom:16px">
+        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:10px">Impuestos y Tasa</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:center">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="fac-aplica-iva" onchange="calcularTotalesFactura()" style="accent-color:var(--naranja);width:16px;height:16px">
+            IVA (16%)
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="fac-aplica-igtf" onchange="calcularTotalesFactura()" style="accent-color:var(--naranja);width:16px;height:16px">
+            IGTF (3%)
+          </label>
+          <div class="form-campo" style="margin:0">
+            <label style="font-size:9px">Tasa USD/Bs</label>
+            <input type="number" id="fac-tasa" step="0.0001" min="0" oninput="calcularTotalesFactura()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:8px 10px;border-radius:4px;outline:none;width:100%">
+          </div>
+        </div>
+      </div>
+
+      <!-- TOTALES -->
+      <div id="fac-totales" style="border-top:1px solid var(--borde)"></div>
+
+      <!-- OBSERVACIONES -->
+      <div class="form-campo form-full" style="margin-top:14px">
+        <label>Observaciones</label>
+        <textarea id="fac-observaciones" placeholder="Observaciones opcionales..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%"></textarea>
+      </div>
+
+      <input type="hidden" id="fac-id">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-factura')">Cancelar</button>
+      <button class="btn-secundario" onclick="guardarFactura(false)">Guardar Borrador</button>
+      <button class="btn-primario"   onclick="guardarFactura(true)">✓ Emitir Factura</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL FICHA FACTURA                 -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-ficha-fac">
+  <div class="modal" style="max-width:660px">
+    <div class="modal-header">
+      <h3>FACTURA</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-fac')">✕</button>
+    </div>
+    <div class="modal-body" id="ficha-fac-contenido"></div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-fac')">Cerrar</button>
+      <button class="btn-secundario" id="ficha-fac-btn-editar"  style="display:none">Editar</button>
+      <button class="btn-primario"   id="ficha-fac-btn-emitir"  style="display:none">✓ Emitir</button>
+      <button class="btn-peligro"    id="ficha-fac-btn-anular"  style="display:none">Anular</button>
+      <button class="btn-peligro"    id="ficha-fac-btn-eliminar" style="display:none">Eliminar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL FICHA INVENTARIO              -->
