@@ -1172,9 +1172,6 @@
     </div>
     <div class="modal-body">
 
-      <div class="alerta alerta-exito" id="alerta-modal-ok"></div>
-      <div class="alerta alerta-error"  id="alerta-modal-error"></div>
-
       <div class="form-grid">
         <div class="form-campo form-full">
           <label>Nombre Completo</label>
@@ -1239,9 +1236,13 @@
 
       <input type="hidden" id="u-id-editando" value="">
     </div>
-    <div class="modal-footer">
-      <button class="btn-secundario" onclick="cerrarModal('modal-usuario')">Cancelar</button>
-      <button class="btn-primario" onclick="guardarUsuario()">GUARDAR</button>
+    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="alerta alerta-exito" id="alerta-modal-ok" style="margin:0;width:100%"></div>
+      <div class="alerta alerta-error" id="alerta-modal-error" style="margin:0;width:100%"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
+        <button class="btn-secundario" onclick="cerrarModal('modal-usuario')">Cancelar</button>
+        <button class="btn-primario" onclick="guardarUsuario()">GUARDAR</button>
+      </div>
     </div>
   </div>
 </div>
@@ -7328,8 +7329,7 @@ window.addEventListener('load', async () => {
       <button class="modal-cerrar" onclick="cerrarModal('modal-propietario')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="alerta alerta-exito" id="alerta-prop-ok"></div>
-      <div class="alerta alerta-error"  id="alerta-prop-err"></div>
+
       <div class="form-grid">
         <div class="form-campo">
           <label>Tipo Documento</label>
@@ -7388,9 +7388,13 @@ window.addEventListener('load', async () => {
       </div>
       <input type="hidden" id="prop-id">
     </div>
-    <div class="modal-footer">
-      <button class="btn-secundario" onclick="cerrarModal('modal-propietario')">Cancelar</button>
-      <button class="btn-primario" onclick="guardarPropietario()">GUARDAR</button>
+    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="alerta alerta-exito" id="alerta-prop-ok" style="margin:0;width:100%"></div>
+      <div class="alerta alerta-error" id="alerta-prop-err" style="margin:0;width:100%"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
+        <button class="btn-secundario" onclick="cerrarModal('modal-propietario')">Cancelar</button>
+        <button class="btn-primario" onclick="guardarPropietario()">GUARDAR</button>
+      </div>
     </div>
   </div>
 </div>
@@ -7423,8 +7427,7 @@ window.addEventListener('load', async () => {
       <button class="modal-cerrar" onclick="cerrarModal('modal-vehiculo')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="alerta alerta-exito" id="alerta-veh-ok"></div>
-      <div class="alerta alerta-error"  id="alerta-veh-err"></div>
+
       <div class="form-grid">
         <div class="form-campo">
           <label>Placa</label>
@@ -7493,9 +7496,13 @@ window.addEventListener('load', async () => {
       </div>
       <input type="hidden" id="veh-id">
     </div>
-    <div class="modal-footer">
-      <button class="btn-secundario" onclick="cerrarModal('modal-vehiculo')">Cancelar</button>
-      <button class="btn-primario" onclick="guardarVehiculo()">GUARDAR</button>
+    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="alerta alerta-exito" id="alerta-veh-ok" style="margin:0;width:100%"></div>
+      <div class="alerta alerta-error" id="alerta-veh-err" style="margin:0;width:100%"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
+        <button class="btn-secundario" onclick="cerrarModal('modal-vehiculo')">Cancelar</button>
+        <button class="btn-primario" onclick="guardarVehiculo()">GUARDAR</button>
+      </div>
     </div>
   </div>
 </div>
@@ -7555,8 +7562,7 @@ window.addEventListener('load', async () => {
       <button class="modal-cerrar" onclick="cerrarModal('modal-catalogo')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="alerta alerta-exito" id="alerta-cat-ok"></div>
-      <div class="alerta alerta-error"  id="alerta-cat-err"></div>
+
       <div class="form-grid">
         <div class="form-campo form-full">
           <label style="font-size:13px;font-weight:700;color:var(--texto);letter-spacing:1px">Grupo de Servicio</label>
@@ -7619,9 +7625,13 @@ window.addEventListener('load', async () => {
       </div>
       <input type="hidden" id="cat-id">
     </div>
-    <div class="modal-footer">
-      <button class="btn-secundario" onclick="cerrarModal('modal-catalogo')">Cancelar</button>
-      <button class="btn-primario" onclick="guardarCatalogo()">GUARDAR</button>
+    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="alerta alerta-exito" id="alerta-cat-ok" style="margin:0;width:100%"></div>
+      <div class="alerta alerta-error" id="alerta-cat-err" style="margin:0;width:100%"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
+        <button class="btn-secundario" onclick="cerrarModal('modal-catalogo')">Cancelar</button>
+        <button class="btn-primario" onclick="guardarCatalogo()">GUARDAR</button>
+      </div>
     </div>
   </div>
 </div>
@@ -7682,8 +7692,7 @@ window.addEventListener('load', async () => {
       <button class="modal-cerrar" onclick="cerrarModal('modal-entrada-stock')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="alerta alerta-exito" id="alerta-es-ok" style="display:none"></div>
-      <div class="alerta alerta-error" id="alerta-es-err" style="display:none"></div>
+
       <input type="hidden" id="es-id">
       <!-- Info repuesto -->
       <div style="padding:12px 16px;background:var(--gris2);border-radius:6px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
@@ -7732,9 +7741,13 @@ window.addEventListener('load', async () => {
         <input type="text" id="es-referencia" placeholder="Ej: FAC-2026-001">
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn-secundario" onclick="cerrarModal('modal-entrada-stock')">Cancelar</button>
-      <button class="btn-primario" onclick="guardarEntradaStock()">INGRESAR STOCK</button>
+    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="alerta alerta-exito" id="alerta-es-ok" style="display:none;margin:0;width:100%"></div>
+      <div class="alerta alerta-error" id="alerta-es-err" style="display:none;margin:0;width:100%"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
+        <button class="btn-secundario" onclick="cerrarModal('modal-entrada-stock')">Cancelar</button>
+        <button class="btn-primario" onclick="guardarEntradaStock()">INGRESAR STOCK</button>
+      </div>
     </div>
   </div>
 </div>
@@ -7746,8 +7759,7 @@ window.addEventListener('load', async () => {
       <button class="modal-cerrar" onclick="cerrarModal('modal-inventario')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="alerta alerta-exito" id="alerta-inv-ok"></div>
-      <div class="alerta alerta-error"  id="alerta-inv-err"></div>
+
       <div class="form-grid">
         <div class="form-campo">
           <label>Código</label>
@@ -7832,9 +7844,13 @@ window.addEventListener('load', async () => {
       </div>
       <input type="hidden" id="inv-id">
     </div>
-    <div class="modal-footer">
-      <button class="btn-secundario" onclick="cerrarModal('modal-inventario')">Cancelar</button>
-      <button class="btn-primario" onclick="guardarInventario()">GUARDAR</button>
+    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="alerta alerta-exito" id="alerta-inv-ok" style="margin:0;width:100%"></div>
+      <div class="alerta alerta-error" id="alerta-inv-err" style="margin:0;width:100%"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
+        <button class="btn-secundario" onclick="cerrarModal('modal-inventario')">Cancelar</button>
+        <button class="btn-primario" onclick="guardarInventario()">GUARDAR</button>
+      </div>
     </div>
   </div>
 </div>
@@ -7849,8 +7865,7 @@ window.addEventListener('load', async () => {
       <button class="modal-cerrar" onclick="cerrarModal('modal-os')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="alerta alerta-exito" id="alerta-os-ok"></div>
-      <div class="alerta alerta-error"  id="alerta-os-err"></div>
+
 
       <!-- INFO OS -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding:10px 14px;background:var(--gris2);border-radius:6px;border:1px solid var(--borde)">
@@ -7991,9 +8006,13 @@ window.addEventListener('load', async () => {
       <div id="os-totales" style="border-top:1px solid var(--borde);margin-top:16px"></div>
       <input type="hidden" id="os-id">
     </div>
-    <div class="modal-footer">
-      <button class="btn-secundario" onclick="cerrarModal('modal-os')">Cancelar</button>
-      <button class="btn-primario" onclick="guardarOS()">GUARDAR OS</button>
+    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="alerta alerta-exito" id="alerta-os-ok" style="margin:0;width:100%"></div>
+      <div class="alerta alerta-error" id="alerta-os-err" style="margin:0;width:100%"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
+        <button class="btn-secundario" onclick="cerrarModal('modal-os')">Cancelar</button>
+        <button class="btn-primario" onclick="guardarOS()">GUARDAR OS</button>
+      </div>
     </div>
   </div>
 </div>
@@ -8026,8 +8045,7 @@ window.addEventListener('load', async () => {
       <button class="modal-cerrar" onclick="cerrarModal('modal-factura')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="alerta alerta-exito" id="alerta-fac-ok"></div>
-      <div class="alerta alerta-error"  id="alerta-fac-err"></div>
+
 
       <!-- INFO FACTURA -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding:10px 14px;background:var(--gris2);border-radius:6px;border:1px solid var(--borde)">
@@ -8144,10 +8162,14 @@ window.addEventListener('load', async () => {
 
       <input type="hidden" id="fac-id">
     </div>
-    <div class="modal-footer">
-      <button class="btn-secundario" onclick="cerrarModal('modal-factura')">Cancelar</button>
-      <button class="btn-secundario" onclick="guardarFactura(false)">Guardar Borrador</button>
-      <button class="btn-primario"   onclick="guardarFactura(true)">✓ Emitir Factura</button>
+    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="alerta alerta-exito" id="alerta-fac-ok" style="margin:0;width:100%"></div>
+      <div class="alerta alerta-error" id="alerta-fac-err" style="margin:0;width:100%"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
+        <button class="btn-secundario" onclick="cerrarModal('modal-factura')">Cancelar</button>
+        <button class="btn-secundario" onclick="guardarFactura(false)">Guardar Borrador</button>
+        <button class="btn-primario"   onclick="guardarFactura(true)">✓ Emitir Factura</button>
+      </div>
     </div>
   </div>
 </div>
@@ -8199,8 +8221,6 @@ window.addEventListener('load', async () => {
       <button class="modal-cerrar" onclick="cerrarModal('modal-empleado')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="alerta alerta-exito" id="alerta-emp-ok"></div>
-      <div class="alerta alerta-error"  id="alerta-emp-err"></div>
       <div id="emp-aviso-datos" style="display:none;background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.3);color:var(--naranja);padding:10px 14px;border-radius:6px;font-size:12px;margin-bottom:16px">
         🔒 No tiene permiso para ver o editar los datos sensibles de este empleado.
       </div>
@@ -8390,9 +8410,13 @@ window.addEventListener('load', async () => {
 
       <input type="hidden" id="emp-id">
     </div>
-    <div class="modal-footer">
-      <button class="btn-secundario" onclick="cerrarModal('modal-empleado')">Cancelar</button>
-      <button class="btn-primario" onclick="guardarEmpleado()">GUARDAR</button>
+    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="alerta alerta-exito" id="alerta-emp-ok" style="margin:0"></div>
+      <div class="alerta alerta-error"  id="alerta-emp-err" style="margin:0"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-secundario" onclick="cerrarModal('modal-empleado')">Cancelar</button>
+        <button class="btn-primario" onclick="guardarEmpleado()">GUARDAR</button>
+      </div>
     </div>
   </div>
 </div>
@@ -8499,8 +8523,7 @@ window.addEventListener('load', async () => {
       <button class="modal-cerrar" onclick="cerrarModal('modal-emisor')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="alerta alerta-exito" id="alerta-emisor-ok"></div>
-      <div class="alerta alerta-error"  id="alerta-emisor-err"></div>
+
       <div class="form-grid">
         <div class="form-campo form-full">
           <label>Nombre / Razón Social</label>
@@ -8558,9 +8581,13 @@ window.addEventListener('load', async () => {
       </div>
       <input type="hidden" id="em-id">
     </div>
-    <div class="modal-footer">
-      <button class="btn-secundario" onclick="cerrarModal('modal-emisor')">Cancelar</button>
-      <button class="btn-primario" onclick="guardarEmisor()">GUARDAR</button>
+    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="alerta alerta-exito" id="alerta-emisor-ok" style="margin:0;width:100%"></div>
+      <div class="alerta alerta-error" id="alerta-emisor-err" style="margin:0;width:100%"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
+        <button class="btn-secundario" onclick="cerrarModal('modal-emisor')">Cancelar</button>
+        <button class="btn-primario" onclick="guardarEmisor()">GUARDAR</button>
+      </div>
     </div>
   </div>
 </div>
