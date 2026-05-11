@@ -2910,12 +2910,13 @@ const TABLAS_MAESTRAS = [
   { key: 'areas',              tabla: 'param_areas',              nombre: 'Áreas',                  icono: '🏢', tieneCodigo: true,  tieneArea: false, tieneAreaPadre: true },
   { key: 'cargos',             tabla: 'param_cargos',             nombre: 'Cargos',                 icono: '👔', tieneCodigo: false, tieneArea: true  },
   { key: 'tipos_contrato',     tabla: 'param_tipos_contrato',     nombre: 'Tipos de Contrato',      icono: '📄', tieneCodigo: false, tieneArea: false },
-  { key: 'periodos_pago',      tabla: 'param_periodos_pago',      nombre: 'Períodos de Pago',       icono: '📅', tieneCodigo: false, tieneArea: false },
   { key: 'tipos_salario',      tabla: 'param_tipos_salario',      nombre: 'Tipos de Salario',       icono: '💰', tieneCodigo: false, tieneArea: false },
-  { key: 'bancos',             tabla: 'param_bancos',             nombre: 'Bancos',                 icono: '🏦', tieneCodigo: true,  tieneArea: false },
-  { key: 'operadoras',         tabla: 'param_operadoras',         nombre: 'Operadoras Telefónicas', icono: '📱', tieneCodigo: false, tieneArea: false },
+  { key: 'calculos_salario',   tabla: 'param_calculos_salario',   nombre: 'Cálculo del Salario',    icono: '🧮', tieneCodigo: false, tieneArea: false, tieneDescripcion: true },
+  { key: 'frecuencias_pago',   tabla: 'param_frecuencias_pago',   nombre: 'Frecuencias de Pago',    icono: '📅', tieneCodigo: false, tieneArea: false },
   { key: 'niveles_educativos', tabla: 'param_niveles_educativos', nombre: 'Niveles Educativos',     icono: '🎓', tieneCodigo: false, tieneArea: false },
   { key: 'estados_civiles',    tabla: 'param_estados_civiles',    nombre: 'Estados Civiles',        icono: '💍', tieneCodigo: false, tieneArea: false },
+  { key: 'sexos',              tabla: 'param_sexos',              nombre: 'Sexos',                  icono: '⚧',  tieneCodigo: false, tieneArea: false },
+  { key: 'bancos',             tabla: 'param_bancos',             nombre: 'Bancos',                 icono: '🏦', tieneCodigo: true,  tieneArea: false },
 ];
 
 // Cache de áreas para el selector de cargos
@@ -3108,6 +3109,9 @@ async function abrirParamItem(key, id) {
       camposHTML += '<div class="form-campo form-full"><label>Código</label><input type="text" id="param-item-codigo" value="' + (item ? (item.codigo||'') : '') + '" placeholder="Ej: 0102" style="text-transform:uppercase"></div>';
     }
     camposHTML += '<div class="form-campo form-full"><label>Nombre</label><input type="text" id="param-item-nombre" value="' + (item ? item.nombre : '') + '" placeholder="Nombre del registro"></div>';
+    if (def.tieneDescripcion) {
+      camposHTML += '<div class="form-campo form-full"><label>Descripción</label><textarea id="param-item-descripcion" placeholder="Descripción opcional..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%">' + (item ? (item.descripcion||'') : '') + '</textarea></div>';
+    }
     if (def.tieneArea) {
       const opcAreas = _paramAreasCache.map(function(a) {
         return '<option value="' + a.id + '"' + (item && item.id_area === a.id ? ' selected' : '') + '>' + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
@@ -3145,11 +3149,12 @@ async function guardarParamItem() {
   const def = TABLAS_MAESTRAS.find(function(t) { return t.key === key; });
   const datos = { nombre, estado };
   if (key === 'areas') {
-    datos.codigo       = document.getElementById('param-item-codigo')?.value.trim() || null;
+    datos.codigo        = document.getElementById('param-item-codigo')?.value.trim() || null;
     datos.id_area_padre = parseInt(document.getElementById('param-item-area-padre')?.value) || null;
   } else {
-    if (def.tieneCodigo) datos.codigo   = document.getElementById('param-item-codigo')?.value.trim().toUpperCase() || null;
-    if (def.tieneArea)   datos.id_area  = parseInt(document.getElementById('param-item-area')?.value) || null;
+    if (def.tieneCodigo)      datos.codigo      = document.getElementById('param-item-codigo')?.value.trim().toUpperCase() || null;
+    if (def.tieneArea)        datos.id_area     = parseInt(document.getElementById('param-item-area')?.value) || null;
+    if (def.tieneDescripcion) datos.descripcion = document.getElementById('param-item-descripcion')?.value.trim() || null;
   }
 
   try {
