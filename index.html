@@ -3470,6 +3470,24 @@ async function guardarEmpleado() {
   if (!numDoc) { errEl.textContent = 'El número de documento es obligatorio.'; errEl.style.display = 'block'; return; }
   if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
 
+  // Validar número de cuenta si se seleccionó banco
+  var idBancoVal = document.getElementById('emp-banco')?.value;
+  if (idBancoVal) {
+    var restoVal = (document.getElementById('emp-num-cuenta-resto')?.value || '').replace(/\s/g,'');
+    if (restoVal.length !== 16) {
+      errEl.textContent = 'El número de cuenta debe tener exactamente 16 dígitos después del código del banco.';
+      errEl.style.display = 'block';
+      document.getElementById('emp-num-cuenta-resto')?.focus();
+      return;
+    }
+    if (!/^\d+$/.test(restoVal)) {
+      errEl.textContent = 'El número de cuenta solo debe contener dígitos.';
+      errEl.style.display = 'block';
+      document.getElementById('emp-num-cuenta-resto')?.focus();
+      return;
+    }
+  }
+
   // Validar duplicado por documento
   try {
     const existe = await api('empleados', 'GET', null,
@@ -8362,7 +8380,8 @@ window.addEventListener('load', async () => {
             <input type="text" id="emp-cod-banco" maxlength="4" readonly
               style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--naranja);background:var(--gris3);border:1px solid var(--borde);border-right:none;padding:11px 10px;border-radius:5px 0 0 5px;width:60px;outline:none;cursor:not-allowed;text-align:center">
             <input type="text" id="emp-num-cuenta-resto" maxlength="16" placeholder="0000 0000 0000 0000"
-              oninput="sincronizarNumeroCuenta()"
+              oninput="this.value=this.value.replace(/[^0-9]/g,'');sincronizarNumeroCuenta()"
+              maxlength="16"
               style="font-family:var(--font-mono);font-size:13px;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:11px 10px;border-radius:0 5px 5px 0;flex:1;outline:none">
           </div>
           <input type="hidden" id="emp-num-cuenta">
