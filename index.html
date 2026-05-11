@@ -3440,41 +3440,62 @@ async function onSelOSFactura() {
     if (!todasLineas.length) {
       linDiv.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0">Esta OS no tiene líneas de servicios ni repuestos.</div>';
     } else {
+      // Leer moneda y tasa actuales del formulario
+      var monedaLineas = document.getElementById('fac-moneda')?.value || 'USD';
+      var tasaLineas   = monedaLineas === 'VES' ? (parseFloat(document.getElementById('fac-tasa')?.value) || 1) : 1;
+      var esVESLineas  = monedaLineas === 'VES';
+      function fmtLin(usd) { return esVESLineas ? fmtBs(usd * tasaLineas) + ' Bs' : '$ ' + fmtUSD(usd); }
+      var labelPU  = esVESLineas ? 'P/U Bs' : 'P/U USD';
+      var labelSub = esVESLineas ? 'SUBTOTAL Bs' : 'SUBTOTAL';
+
       linDiv.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px">'
         + '<thead><tr>'
         + '<th style="text-align:left;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;letter-spacing:1px">DESCRIPCIÓN</th>'
         + '<th style="text-align:center;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">TIPO</th>'
         + '<th style="text-align:center;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CANT</th>'
-        + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">P/U USD</th>'
-        + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">SUBTOTAL</th>'
+        + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">' + labelPU + '</th>'
+        + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">' + labelSub + '</th>'
         + '</tr></thead><tbody>'
         + todasLineas.map(function(l) {
             return '<tr>'
               + '<td style="padding:6px 0">' + l.desc + '</td>'
               + '<td style="text-align:center;padding:6px"><span class="badge ' + (l.tipo === 'servicio' ? 'badge-naranja' : 'badge-gris') + '" style="font-size:9px">' + (l.tipo === 'servicio' ? 'Serv.' : 'Rep.') + '</span></td>'
               + '<td style="text-align:center;padding:6px;font-family:var(--font-mono)">' + l.cant + '</td>'
-              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">$ ' + fmtUSD(l.precio) + '</td>'
-              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(l.subtotal) + '</td>'
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">' + fmtLin(l.precio) + '</td>'
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">' + fmtLin(l.subtotal) + '</td>'
               + '</tr>';
           }).join('')
         + '</tbody></table>';
     }
 
     // Actualizar totales con subtotal de OS
-    document.getElementById('fac-subtotal-os').textContent = '$ ' + fmtUSD(o.total_usd);
     window._facSubtotalOS = parseFloat(o.total_usd || 0);
+    actualizarSubtotalOSLabel();
     calcularTotalesFactura();
   } catch(e) {
     linDiv.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
   }
 }
 
+// ─── ACTUALIZAR LABEL SUBTOTAL OS ───
+function actualizarSubtotalOSLabel() {
+  const sub    = window._facSubtotalOS || 0;
+  const moneda = document.getElementById('fac-moneda')?.value || 'USD';
+  const tasa   = moneda === 'VES' ? (parseFloat(document.getElementById('fac-tasa')?.value) || 1) : 1;
+  const el     = document.getElementById('fac-subtotal-os');
+  if (el) el.textContent = moneda === 'VES' ? fmtBs(sub * tasa) + ' Bs' : '$ ' + fmtUSD(sub);
+}
+
 // ─── CAMBIAR MONEDA FACTURA ───
 function onCambiarMonedaFactura() {
-  const moneda  = document.getElementById('fac-moneda')?.value || 'USD';
+  const moneda   = document.getElementById('fac-moneda')?.value || 'USD';
   const tasaCont = document.getElementById('fac-tasa-cont');
   if (tasaCont) tasaCont.style.display = moneda === 'VES' ? 'block' : 'none';
-  calcularTotalesFactura();
+  actualizarSubtotalOSLabel();
+  // Recargar tabla de líneas si hay OS seleccionada
+  var idOS = document.getElementById('fac-os-id')?.value;
+  if (idOS) onSelOSFactura();
+  else calcularTotalesFactura();
 }
 
 // ─── CALCULAR TOTALES FACTURA ───
@@ -8183,7 +8204,7 @@ window.addEventListener('load', async () => {
         <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:8px">Detalle de la OS</div>
         <div id="fac-lineas-cont" style="background:var(--gris2);border-radius:6px;padding:12px"></div>
         <div style="display:flex;justify-content:flex-end;padding:6px 0">
-          <span style="font-size:11px;color:var(--suave)">Subtotal OS: </span>
+          <span style="font-size:11px;color:var(--suave)" id="fac-subtotal-label">Subtotal OS: </span>
           <span id="fac-subtotal-os" style="font-family:var(--font-mono);font-size:13px;color:var(--naranja);margin-left:8px">$ 0.00</span>
         </div>
       </div>
@@ -8212,7 +8233,7 @@ window.addEventListener('load', async () => {
         <div id="fac-tasa-cont" style="margin-top:12px;display:none">
           <div class="form-campo" style="margin:0;max-width:220px">
             <label style="font-size:9px">Tasa USD / Bs</label>
-            <input type="number" id="fac-tasa" step="0.0001" min="0" oninput="calcularTotalesFactura()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:8px 10px;border-radius:4px;outline:none;width:100%">
+            <input type="number" id="fac-tasa" step="0.0001" min="0" oninput="actualizarSubtotalOSLabel();if(document.getElementById('fac-os-id')?.value)onSelOSFactura();else calcularTotalesFactura();" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:8px 10px;border-radius:4px;outline:none;width:100%">
           </div>
         </div>
       </div>
