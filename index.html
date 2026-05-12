@@ -3832,7 +3832,14 @@ async function verFichaEmpleado(id) {
   var btnEditar   = document.getElementById('ficha-emp-btn-editar');
   var btnEliminar = document.getElementById('ficha-emp-btn-eliminar');
   if (btnEditar)  { btnEditar._id = e.id_empleado;  btnEditar.onclick  = function() { cerrarModal('modal-ficha-emp'); abrirEmpleado(this._id); };         btnEditar.style.display  = puedo('EMPLEADOS','EDITAR') ? '' : 'none'; }
-  if (btnEliminar){ btnEliminar._id = e.id_empleado; btnEliminar._nombre = e.nombre_completo; btnEliminar.onclick = function() { cerrarModal('modal-ficha-emp'); eliminarEmpleado(this._id, this._nombre); }; btnEliminar.style.display = puedo('EMPLEADOS','ELIMINAR') ? '' : 'none'; }
+  if (btnEliminar){
+    btnEliminar._id = e.id_empleado;
+    btnEliminar._nombre = e.nombre_completo;
+    btnEliminar.onclick = function() { cerrarModal('modal-ficha-emp'); eliminarEmpleado(this._id, this._nombre); };
+    var puedeEliminar = sesionActual?.administrador === true || (permisosActuales['EMPLEADOS'] && permisosActuales['EMPLEADOS'].includes('ELIMINAR'));
+    console.log('permisosActuales EMPLEADOS:', permisosActuales['EMPLEADOS'], '| puedeEliminar:', puedeEliminar, '| esAdmin:', sesionActual?.administrador);
+    btnEliminar.style.display = puedeEliminar ? '' : 'none';
+  }
 
   abrirModal('modal-ficha-emp');
 }
