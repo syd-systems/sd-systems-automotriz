@@ -3783,6 +3783,7 @@ async function guardarEmpleado() {
 
 // ─── FICHA EMPLEADO ───
 async function verFichaEmpleado(id) {
+  alert('verFichaEmpleado llamada con id: ' + id + ' | tipo: ' + typeof id);
   try {
   if (!sesionActual?.administrador) {
     try {
