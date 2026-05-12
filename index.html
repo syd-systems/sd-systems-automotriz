@@ -4566,6 +4566,44 @@ async function eliminarFactura(id, numero) {
 
 
 
+// ─── CARGAR EMPLEADOS POR ÁREA ───
+async function cargarEmpleadosPorArea(idArea, selectId) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  if (!idArea) {
+    sel.innerHTML = '<option value="">— Seleccionar área primero —</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">Cargando...</option>';
+  try {
+    const emps = await api('empleados', 'GET', null,
+      '?id_area=eq.' + idArea + '&estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo,id_cargo,param_cargos(nombre)');
+    if (!emps.length) {
+      sel.innerHTML = '<option value="">— Sin empleados en esta área —</option>';
+      return;
+    }
+    sel.innerHTML = '<option value="">— Seleccionar empleado —</option>'
+      + emps.map(function(e) {
+          return '<option value="' + e.id_empleado + '">'
+            + e.nombre_completo
+            + (e.param_cargos ? ' · ' + e.param_cargos.nombre : '')
+            + '</option>';
+        }).join('');
+  } catch(err) {
+    sel.innerHTML = '<option value="">— Error cargando empleados —</option>';
+  }
+}
+
+function onSelAreaSalida() {
+  const idArea = document.getElementById('salida-area')?.value;
+  cargarEmpleadosPorArea(parseInt(idArea)||null, 'salida-empleado');
+}
+
+function onSelAreaEntrada() {
+  const idArea = document.getElementById('es-area')?.value;
+  cargarEmpleadosPorArea(parseInt(idArea)||null, 'es-empleado');
+}
+
 // ─── SALIDA DE STOCK ───
 async function abrirSalidaStock(id, nombre) {
   if (!puedo('INVENTARIO','SALIDA_STOCK')) { alert('No tiene permiso para registrar salidas de stock.'); return; }
@@ -4589,6 +4627,8 @@ async function abrirSalidaStock(id, nombre) {
         return '<option value="' + a.id + '">'
           + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
       }).join('');
+  // Resetear empleado
+  document.getElementById('salida-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
 
   // Mostrar stock actual
   const art = inventarioCache.find(function(x) { return x.id_repuesto === id; });
@@ -4624,9 +4664,11 @@ async function guardarSalidaStock() {
 
   try {
     // Registrar salida
+    const idEmpleadoSal = parseInt(document.getElementById('salida-empleado')?.value) || null;
     await api('stock_salidas', 'POST', {
       id_articulo:   idRep,
       id_area:       idArea,
+      id_empleado:   idEmpleadoSal,
       cantidad:      cantidad,
       fecha_salida:  fecha,
       observaciones: obs || null,
@@ -7095,6 +7137,15 @@ function abrirEntradaStock(id) {
   if (refCPP) refCPP.textContent = '$ ' + fmtUSD(r.precio_costo_usd) + ' (CPP actual)';
   document.getElementById('alerta-es-ok').style.display = 'none';
   document.getElementById('alerta-es-err').style.display = 'none';
+  // Resetear área y empleado
+  document.getElementById('es-area').value = '';
+  document.getElementById('es-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
+  // Cargar áreas
+  api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc').then(function(areas) {
+    var sel = document.getElementById('es-area');
+    sel.innerHTML = '<option value="">— Seleccionar área —</option>'
+      + areas.map(function(a) { return '<option value="' + a.id + '">' + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>'; }).join('');
+  }).catch(function(){});
   abrirModal('modal-entrada-stock');
   setTimeout(function() { document.getElementById('es-cantidad').focus(); }, 100);
 }
@@ -7134,11 +7185,15 @@ async function guardarEntradaStock() {
     await api('inventario', 'PATCH', patch, '?id_repuesto=eq.' + id);
     // Registrar en historial de entradas
     try {
+      const idAreaEnt    = parseInt(document.getElementById('es-area')?.value) || null;
+      const idEmpEnt     = parseInt(document.getElementById('es-empleado')?.value) || null;
       await api('stock_entradas', 'POST', {
         id_articulo:      id,
         cantidad:         cantidad,
         precio_costo_usd: nuevoPrecioCosto || null,
         fecha_entrada:    getHoyVzla(),
+        id_area:          idAreaEnt,
+        id_empleado:      idEmpEnt,
         observaciones:    document.getElementById('es-observaciones')?.value.trim() || null,
         id_usuario:       sesionActual.correo_usuario
       });
@@ -8774,7 +8829,7 @@ window.addEventListener('load', async () => {
   </div>
 </div>
 <div class="modal-overlay" id="modal-entrada-stock">
-  <div class="modal" style="max-width:420px">
+  <div class="modal" style="max-width:580px">
     <div class="modal-header">
       <h3>ENTRADA DE STOCK</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-entrada-stock')">✕</button>
@@ -8827,6 +8882,22 @@ window.addEventListener('load', async () => {
       <div class="form-campo">
         <label>Referencia / N° Factura (opcional)</label>
         <input type="text" id="es-referencia" placeholder="Ej: FAC-2026-001">
+      </div>
+      <div class="form-campo form-full" style="margin-top:8px">
+        <label>Área Receptora</label>
+        <select id="es-area" onchange="onSelAreaEntrada()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <option value="">— Seleccionar área —</option>
+        </select>
+      </div>
+      <div class="form-campo form-full">
+        <label>Empleado que Recibe</label>
+        <select id="es-empleado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <option value="">— Seleccionar área primero —</option>
+        </select>
+      </div>
+      <div class="form-campo form-full">
+        <label>Observaciones</label>
+        <textarea id="es-observaciones" placeholder="Observaciones opcionales..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%"></textarea>
       </div>
     </div>
     <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
@@ -9559,7 +9630,7 @@ window.addEventListener('load', async () => {
 <!--    MODAL SALIDA DE STOCK               -->
 <!-- ═══════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-salida-stock">
-  <div class="modal" style="max-width:480px">
+  <div class="modal" style="max-width:560px">
     <div class="modal-header">
       <h3>SALIDA DE STOCK</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-salida-stock')">✕</button>
@@ -9575,8 +9646,14 @@ window.addEventListener('load', async () => {
       <div class="form-grid">
         <div class="form-campo form-full">
           <label>Área Receptora *</label>
-          <select id="salida-area" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <select id="salida-area" onchange="onSelAreaSalida()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar área —</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Empleado que Recibe *</label>
+          <select id="salida-empleado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar área primero —</option>
           </select>
         </div>
         <div class="form-campo">
