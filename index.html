@@ -2451,27 +2451,25 @@ async function guardarUsuario() {
         estado_usuario: estado,
         administrador: esAdmin
       });
-      // Insertar accesos y permisos
-      for (const sigla of accesosSelec) {
-        await api('usuarios_accesos', 'POST', {
-          correo_usuario: correo,
-          acceso_tipo: sigla,
-          id_usuario: sesionActual.correo_usuario,
-          activo: true
-        });
+      // Insertar accesos en lote
+      if (accesosSelec.length > 0) {
+        await api('usuarios_accesos', 'POST',
+          accesosSelec.map(function(sigla) { return {
+            correo_usuario: correo, acceso_tipo: sigla,
+            id_usuario: sesionActual.correo_usuario, activo: true
+          }; })
+        );
       }
-      // Insertar permisos granulares
-      var newPermEntries = Object.entries(permisosSelec);
-      for (var npi = 0; npi < newPermEntries.length; npi++) {
-        var npMod = newPermEntries[npi][0];
-        var npAccs = newPermEntries[npi][1];
-        for (var npj = 0; npj < npAccs.length; npj++) {
-          try {
-            await api('usuarios_permisos', 'POST', {
-              correo_usuario: correo, modulo: npMod, accion: npAccs[npj]
-            });
-          } catch(eNP) { console.warn('Error permiso nuevo:', npMod, npAccs[npj], eNP); }
-        }
+      // Insertar permisos en lote
+      var newPermsLote = [];
+      Object.entries(permisosSelec).forEach(function(entry) {
+        var mod = entry[0], accs = entry[1];
+        accs.forEach(function(acc) {
+          newPermsLote.push({ correo_usuario: correo, modulo: mod, accion: acc });
+        });
+      });
+      if (newPermsLote.length > 0) {
+        try { await api('usuarios_permisos', 'POST', newPermsLote); } catch(eNP) {}
       }
       okEl.textContent = '✓ Usuario creado exitosamente.';
     } else {
@@ -2485,26 +2483,25 @@ async function guardarUsuario() {
       if (correoEdit) {
         await api('usuarios_accesos', 'DELETE', null, `?correo_usuario=eq.${encodeURIComponent(correoEdit)}`);
         await api('usuarios_permisos', 'DELETE', null, `?correo_usuario=eq.${encodeURIComponent(correoEdit)}`);
-        for (const sigla of accesosSelec) {
-          await api('usuarios_accesos', 'POST', {
-            correo_usuario: correoEdit,
-            acceso_tipo: sigla,
-            id_usuario: sesionActual.correo_usuario,
-            activo: true
-          });
+        // Reinsertar accesos en lote
+        if (accesosSelec.length > 0) {
+          await api('usuarios_accesos', 'POST',
+            accesosSelec.map(function(sigla) { return {
+              correo_usuario: correoEdit, acceso_tipo: sigla,
+              id_usuario: sesionActual.correo_usuario, activo: true
+            }; })
+          );
         }
-        // Reinsertar permisos granulares
-        var permEntries = Object.entries(permisosSelec);
-        for (var pi = 0; pi < permEntries.length; pi++) {
-          var pMod = permEntries[pi][0];
-          var pAccs = permEntries[pi][1];
-          for (var pj = 0; pj < pAccs.length; pj++) {
-            try {
-              await api('usuarios_permisos', 'POST', {
-                correo_usuario: correoEdit, modulo: pMod, accion: pAccs[pj]
-              });
-            } catch(eP) { console.warn('Error guardando permiso:', pMod, pAccs[pj], eP); }
-          }
+        // Reinsertar permisos en lote
+        var permsLote = [];
+        Object.entries(permisosSelec).forEach(function(entry) {
+          var mod = entry[0], accs = entry[1];
+          accs.forEach(function(acc) {
+            permsLote.push({ correo_usuario: correoEdit, modulo: mod, accion: acc });
+          });
+        });
+        if (permsLote.length > 0) {
+          try { await api('usuarios_permisos', 'POST', permsLote); } catch(eP) {}
         }
       }
       okEl.textContent = '✓ Usuario actualizado exitosamente.';
