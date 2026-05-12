@@ -3831,7 +3831,7 @@ async function verFichaEmpleado(id) {
         : '<div style="width:70px;height:70px;border-radius:50%;background:var(--gris3);display:flex;align-items:center;justify-content:center;font-size:28px">👤</div>')
     + '<div>'
     + '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + e.nombre_completo + '</div>'
-    + '<div style="font-size:12px;color:var(--suave);font-family:var(--font-mono)">' + (e.tipo_doc||'V') + '-' + e.numero_doc + '</div>'
+    + (verDatos ? '<div style="font-size:12px;color:var(--suave);font-family:var(--font-mono)">' + (e.tipo_doc||'V') + '-' + e.numero_doc + '</div>' : '<div style="font-size:12px;color:#555">🔒 Documento restringido</div>')
     + '<span class="badge ' + est.clase + '" style="margin-top:4px;display:inline-block">' + est.label + '</span>'
     + '</div></div>'
     + (fotosPerfilEmp && fotosPerfilEmp.length
@@ -3843,7 +3843,7 @@ async function verFichaEmpleado(id) {
     // Datos Personales
     + '<div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;border-bottom:1px solid var(--borde);padding-bottom:6px">Datos Personales</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Fecha Nacimiento</div><div style="font-size:13px">' + (e.fecha_nacimiento||'—') + '</div></div>'
+    + (verDatos ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Fecha Nacimiento</div><div style="font-size:13px">' + (e.fecha_nacimiento||'—') + '</div></div>' : '')
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Estado Civil</div><div style="font-size:13px">' + getNombre(p.civiles, e.id_estado_civil) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Sexo</div><div style="font-size:13px">' + getNombre(p.sexos, e.id_sexo) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Nivel Educativo</div><div style="font-size:13px">' + getNombre(p.niveles, e.id_nivel_educativo) + '</div></div>'
@@ -5524,20 +5524,21 @@ async function verFichaPropietario(id) {
   if (btnPropEditar) { btnPropEditar._id = id; btnPropEditar.onclick = function() { cerrarModal('modal-ficha-prop'); abrirPropietario(this._id); };                            btnPropEditar.style.display = puedo('PROPIETARIOS','EDITAR') ? '' : 'none'; }
   if (btnPropElim)   { btnPropElim._id = id;   btnPropElim._nombre = p.nombre_completo; btnPropElim.onclick = function() { cerrarModal('modal-ficha-prop'); eliminarPropietario(this._id, this._nombre); }; btnPropElim.style.display = puedo('PROPIETARIOS','ELIMINAR') ? '' : 'none'; }
 
+  const verDatosProp = sesionActual?.administrador || puedo('PROPIETARIOS','VER_DATOS_PERSONALES');
   document.getElementById('ficha-prop-contenido').innerHTML =
     '<div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">'
     + (p.foto_documento ? '<img src="' + p.foto_documento + '" style="width:60px;height:60px;border-radius:8px;object-fit:cover;border:2px solid var(--borde);cursor:zoom-in" onclick="abrirVisor(\'' + p.foto_documento + '\')">' : '')
     + '<div>'
     + '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + p.nombre_completo + '</div>'
-    + '<div style="font-size:13px;color:var(--suave)">' + p.tipo_doc + '-' + p.numero_doc + '</div>'
+    + (verDatosProp ? '<div style="font-size:13px;color:var(--suave)">' + p.tipo_doc + '-' + p.numero_doc + '</div>' : '<div style="font-size:13px;color:#555">🔒 Restringido</div>')
     + '</div></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
-    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div style="font-size:13px">' + (p.telefono || '—') + '</div></div>'
-    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:13px">' + (p.correo || '—') + '</div></div>'
+    + (verDatosProp ? '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div style="font-size:13px">' + (p.telefono || '—') + '</div></div>' : '')
+    + (verDatosProp ? '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:13px">' + (p.correo || '—') + '</div></div>' : '')
     + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Empresa</div><div style="font-size:13px">' + (p.empresa || '—') + '</div></div>'
     + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Tipo Contribuyente</div>'
     + '<div>' + (p.tipo_contribuyente ? '<span class="badge ' + ({'ORDINARIO':'badge-naranja','ESPECIAL':'badge-verde','FORMAL':'badge-gris'}[p.tipo_contribuyente]||'badge-gris') + '">' + ({'ORDINARIO':'Contribuyente Ordinario','ESPECIAL':'Contribuyente Especial','FORMAL':'Contribuyente Formal'}[p.tipo_contribuyente]||p.tipo_contribuyente) + '</span>' : '<span style="color:var(--suave);font-size:12px">No especificado</span>') + '</div></div>'
-    + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:13px">' + (p.direccion || '—') + '</div></div>'
+    + (verDatosProp ? '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:13px">' + (p.direccion || '—') + '</div></div>' : '')
     + '</div>'
     + '<div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Vehículos (' + vehs.length + ')</div>'
     + vehsHTML;
