@@ -3418,7 +3418,14 @@ async function abrirEmpleado(id) {
 
   await cargarParamEmpleados();
   const p = _empParamCache;
-  const e = id ? empleadosCache.find(function(x) { return x.id_empleado === id; }) : null;
+  var e = null;
+  if (id) {
+    try {
+      const resE = await api('empleados', 'GET', null, '?id_empleado=eq.' + id + '&select=*');
+      if (resE && resE[0]) e = resE[0];
+    } catch(eEmp) {}
+    if (!e) e = empleadosCache.find(function(x) { return x.id_empleado === id || x.id_empleado === parseInt(id); });
+  }
 
   document.getElementById('modal-emp-titulo').textContent = e ? 'EDITAR EMPLEADO' : 'NUEVO EMPLEADO';
   document.getElementById('alerta-emp-ok').style.display  = 'none';
@@ -3713,14 +3720,12 @@ async function verFichaEmpleado(id) {
   if (!sesionActual?.administrador && !puedo('EMPLEADOS','VER')) {
     alert('No tiene permiso para ver la ficha del empleado.'); return;
   }
-  var e = empleadosCache.find(function(x) { return x.id_empleado === id || x.id_empleado === parseInt(id); });
-  if (!e) {
-    // No está en cache, buscar directamente
-    try {
-      const res = await api('empleados', 'GET', null, '?id_empleado=eq.' + id + '&select=*,param_areas(nombre),param_cargos(nombre)');
-      if (res && res[0]) e = res[0];
-    } catch(eBusc) {}
-  }
+  // Siempre buscar fresco desde Supabase
+  var e = null;
+  try {
+    const res = await api('empleados', 'GET', null, '?id_empleado=eq.' + id + '&select=*,param_areas(nombre),param_cargos(nombre)');
+    if (res && res[0]) e = res[0];
+  } catch(eBusc) { console.error('Error buscando empleado:', eBusc); }
   if (!e) { alert('No se encontró el empleado.'); return; }
   await cargarParamEmpleados();
   const p = _empParamCache;
