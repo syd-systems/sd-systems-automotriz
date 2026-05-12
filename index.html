@@ -4565,6 +4565,90 @@ async function eliminarFactura(id, numero) {
 
 
 
+
+// ─── SALIDA DE STOCK ───
+async function abrirSalidaStock(id, nombre) {
+  if (!puedo('INVENTARIO','SALIDA_STOCK')) { alert('No tiene permiso para registrar salidas de stock.'); return; }
+
+  // Cargar áreas
+  let areas = [];
+  try { areas = await api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'); } catch(e) {}
+
+  document.getElementById('salida-art-nombre').textContent = nombre;
+  document.getElementById('salida-id-repuesto').value      = id;
+  document.getElementById('salida-cantidad').value         = '';
+  document.getElementById('salida-fecha').value            = getHoyVzla();
+  document.getElementById('salida-observaciones').value    = '';
+  document.getElementById('alerta-salida-ok').style.display  = 'none';
+  document.getElementById('alerta-salida-err').style.display = 'none';
+
+  // Llenar áreas
+  const selArea = document.getElementById('salida-area');
+  selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
+    + areas.map(function(a) {
+        return '<option value="' + a.id + '">'
+          + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
+      }).join('');
+
+  // Mostrar stock actual
+  const art = inventarioCache.find(function(x) { return x.id_repuesto === id; });
+  document.getElementById('salida-stock-actual').textContent = art
+    ? art.stock_actual + ' ' + (art.unidad || 'UND') : '—';
+
+  abrirModal('modal-salida-stock');
+  setTimeout(function() { document.getElementById('salida-cantidad')?.focus(); }, 100);
+}
+
+async function guardarSalidaStock() {
+  if (!puedo('INVENTARIO','SALIDA_STOCK')) { alert('No tiene permiso.'); return; }
+
+  const idRep   = parseInt(document.getElementById('salida-id-repuesto').value);
+  const idArea  = parseInt(document.getElementById('salida-area').value) || null;
+  const cantidad = parseFloat(document.getElementById('salida-cantidad').value);
+  const fecha   = document.getElementById('salida-fecha').value;
+  const obs     = document.getElementById('salida-observaciones').value.trim();
+  const okEl    = document.getElementById('alerta-salida-ok');
+  const errEl   = document.getElementById('alerta-salida-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  if (!idArea)          { errEl.textContent = 'Debe seleccionar el Área receptora.'; errEl.style.display = 'block'; return; }
+  if (!cantidad || cantidad <= 0) { errEl.textContent = 'La cantidad debe ser mayor a cero.'; errEl.style.display = 'block'; return; }
+  if (!fecha)           { errEl.textContent = 'La fecha es obligatoria.'; errEl.style.display = 'block'; return; }
+
+  // Validar stock disponible
+  const art = inventarioCache.find(function(x) { return x.id_repuesto === idRep; });
+  if (art && cantidad > art.stock_actual) {
+    errEl.textContent = 'La cantidad supera el stock disponible (' + art.stock_actual + ' ' + (art.unidad||'UND') + ').';
+    errEl.style.display = 'block'; return;
+  }
+
+  try {
+    // Registrar salida
+    await api('stock_salidas', 'POST', {
+      id_articulo:   idRep,
+      id_area:       idArea,
+      cantidad:      cantidad,
+      fecha_salida:  fecha,
+      observaciones: obs || null,
+      id_usuario:    sesionActual.correo_usuario
+    });
+
+    // Descontar del stock_actual
+    const nuevoStock = (art ? art.stock_actual : 0) - cantidad;
+    await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_repuesto=eq.' + idRep);
+
+    // Actualizar cache
+    if (art) art.stock_actual = nuevoStock;
+
+    okEl.textContent = '✓ Salida de ' + cantidad + ' unidades registrada correctamente.';
+    okEl.style.display = 'block';
+    setTimeout(function() { cerrarModal('modal-salida-stock'); }, 1500);
+  } catch(err) {
+    errEl.textContent = 'Error: ' + err.message;
+    errEl.style.display = 'block';
+  }
+}
+
 // ─── PRÓXIMO MÓDULO ───
 function renderProximo(icono, nombre) {
   document.getElementById('contenido-principal').innerHTML = `
@@ -6870,9 +6954,11 @@ function verFichaInventario(id) {
 
   // Botones de acción en el footer
   var btnStock = document.getElementById('ficha-inv-btn-stock');
+  var btnSalida  = document.getElementById('ficha-inv-btn-salida');
   var btnEditar = document.getElementById('ficha-inv-btn-editar');
   var btnEliminar = document.getElementById('ficha-inv-btn-eliminar');
   if (btnStock)   { btnStock._id = r.id_repuesto;   btnStock.onclick = function() { cerrarModal('modal-ficha-inv'); abrirEntradaStock(this._id); };   btnStock.style.display = puedo('INVENTARIO','ENTRADA_STOCK') ? '' : 'none'; }
+  if (btnSalida)  { btnSalida._id = r.id_repuesto; btnSalida._nombre = r.nombre; btnSalida.onclick = function() { cerrarModal('modal-ficha-inv'); abrirSalidaStock(this._id, this._nombre); }; btnSalida.style.display = puedo('INVENTARIO','SALIDA_STOCK') ? '' : 'none'; }
   if (btnEditar)  { btnEditar._id = r.id_repuesto;  btnEditar.onclick = function() { cerrarModal('modal-ficha-inv'); abrirEditarInventario(this._id); }; btnEditar.style.display = puedo('INVENTARIO','EDITAR') ? '' : 'none'; }
   if (btnEliminar){ btnEliminar._id = r.id_repuesto; btnEliminar._nombre = r.nombre; btnEliminar.onclick = function() { cerrarModal('modal-ficha-inv'); eliminarInventario(this._id, this._nombre); }; btnEliminar.style.display = puedo('INVENTARIO','ELIMINAR') ? '' : 'none'; }
 
@@ -9323,6 +9409,56 @@ window.addEventListener('load', async () => {
 </div>
 
 <!-- ═══════════════════════════════════════ -->
+<!--    MODAL SALIDA DE STOCK               -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-salida-stock">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3>SALIDA DE STOCK</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-salida-stock')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Artículo -->
+      <div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:12px 16px;margin-bottom:16px">
+        <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Artículo</div>
+        <div style="font-weight:600;font-size:15px" id="salida-art-nombre">—</div>
+        <div style="font-size:12px;color:var(--suave);margin-top:4px">Stock disponible: <span id="salida-stock-actual" style="color:var(--naranja);font-family:var(--font-mono)">—</span></div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-campo form-full">
+          <label>Área Receptora *</label>
+          <select id="salida-area" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar área —</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Cantidad *</label>
+          <input type="number" id="salida-cantidad" min="0.01" step="0.01" placeholder="0">
+        </div>
+        <div class="form-campo">
+          <label>Fecha *</label>
+          <input type="date" id="salida-fecha">
+        </div>
+        <div class="form-campo form-full">
+          <label>Observaciones</label>
+          <textarea id="salida-observaciones" placeholder="Motivo de la salida..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%"></textarea>
+        </div>
+      </div>
+      <input type="hidden" id="salida-id-repuesto">
+    </div>
+    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="alerta alerta-exito" id="alerta-salida-ok" style="margin:0"></div>
+      <div class="alerta alerta-error"  id="alerta-salida-err" style="margin:0"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-secundario" onclick="cerrarModal('modal-salida-stock')">Cancelar</button>
+        <button class="btn-peligro"    onclick="guardarSalidaStock()">Registrar Salida</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
 <!--    MODAL FICHA INVENTARIO              -->
 <!-- ═══════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-ficha-inv">
@@ -9334,7 +9470,8 @@ window.addEventListener('load', async () => {
     <div class="modal-body" id="ficha-inv-contenido"></div>
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-inv')">Cerrar</button>
-      <button class="btn-secundario" id="ficha-inv-btn-stock"   style="color:var(--naranja);border-color:rgba(255,107,0,0.4)">+ Stock</button>
+      <button class="btn-secundario" id="ficha-inv-btn-stock"   style="color:var(--naranja);border-color:rgba(255,107,0,0.4)">+ Entrada</button>
+      <button class="btn-secundario" id="ficha-inv-btn-salida"  style="color:#fc8181;border-color:rgba(252,129,129,0.4)">- Salida</button>
       <button class="btn-secundario" id="ficha-inv-btn-editar">Editar</button>
       <button class="btn-peligro"    id="ficha-inv-btn-eliminar">Eliminar</button>
     </div>
