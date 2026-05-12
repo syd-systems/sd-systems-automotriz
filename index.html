@@ -1630,10 +1630,12 @@ async function verificarSesionActiva() {
       return;
     }
 
-    // ── CASO 2: Sesión cerrada por admin (sesion_activa=false) → expulsar ──
-    if (u.sesion_activa === false) {
+    // ── CASO 2: Sesión cerrada por admin (sesion_invalidada=true + sesion_activa=false) → expulsar ──
+    // Requiere AMBAS condiciones para evitar falsos positivos del beforeunload
+    if (u.sesion_activa === false && u.sesion_invalidada === true) {
       const correoActual = sesionActual.correo_usuario;
       limpiarSesionLocal();
+      try { await api('usuarios', 'PATCH', { sesion_invalidada: false }, `?correo_usuario=eq.${encodeURIComponent(correoActual)}`); } catch(e) {}
       const errEl = document.getElementById('login-error');
       errEl.textContent = '🔒 Tu sesión fue cerrada por el administrador.';
       errEl.style.display = 'block';
