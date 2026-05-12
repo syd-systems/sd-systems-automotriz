@@ -3675,17 +3675,23 @@ async function guardarEmpleado() {
     // Subir fotos del empleado
     var fotosEmpFiles = document.getElementById('emp-foto-perfil-file')?.files;
     if (fotosEmpFiles && fotosEmpFiles.length > 0 && empIdFinal) {
+      okEl.textContent = (id ? '✓ Empleado actualizado.' : '✓ Empleado registrado.') + ' Subiendo fotos...';
+      okEl.style.display = 'block';
+      var fotosSubidas = 0;
       for (var fi = 0; fi < Math.min(fotosEmpFiles.length, 5); fi++) {
         try {
           var urlFoto = await subirFoto(fotosEmpFiles[fi], 'empleados/' + empIdFinal);
           await api('emp_fotos', 'POST', { id_empleado: empIdFinal, url_foto: urlFoto });
+          fotosSubidas++;
         } catch(eFoto) { console.error('Error subiendo foto:', eFoto); }
       }
       document.getElementById('emp-foto-perfil-file').value = '';
+      okEl.textContent = (id ? '✓ Empleado actualizado.' : '✓ Empleado registrado.') + ' ' + fotosSubidas + ' foto(s) guardada(s).';
+    } else {
+      okEl.style.display = 'block';
     }
 
-    okEl.style.display = 'block';
-    setTimeout(function() { cerrarModal('modal-empleado'); renderEmpleados(); }, 1200);
+    setTimeout(function() { cerrarModal('modal-empleado'); renderEmpleados(); }, 1500);
   } catch(e) {
     errEl.textContent = 'Error: ' + e.message;
     errEl.style.display = 'block';
