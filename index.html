@@ -4649,6 +4649,117 @@ async function guardarSalidaStock() {
   }
 }
 
+
+// ══════════════════════════════════════════════════════════════
+//  HISTORIAL DE MOVIMIENTOS DE STOCK (ENTRADAS Y SALIDAS)
+// ══════════════════════════════════════════════════════════════
+
+async function verHistorialStock(idRepuesto, nombreArt) {
+  if (!puedo('INVENTARIO','VER')) { alert('No tiene permiso.'); return; }
+
+  document.getElementById('historial-art-nombre').textContent = nombreArt;
+  document.getElementById('historial-contenido').innerHTML =
+    '<div class="loading"><div class="spinner"></div> Cargando historial...</div>';
+  document.getElementById('historial-id-repuesto').value = idRepuesto;
+
+  abrirModal('modal-historial-stock');
+  await recargarHistorial(idRepuesto);
+}
+
+async function recargarHistorial(idRepuesto) {
+  if (!idRepuesto) idRepuesto = document.getElementById('historial-id-repuesto').value;
+  const cont = document.getElementById('historial-contenido');
+  try {
+    const [entradas, salidas] = await Promise.all([
+      api('stock_entradas', 'GET', null, '?id_articulo=eq.' + idRepuesto + '&order=fecha_registro.desc&select=*'),
+      api('stock_salidas',  'GET', null, '?id_articulo=eq.' + idRepuesto + '&order=fecha_registro.desc&select=*,param_areas(nombre,codigo)'),
+    ]);
+
+    // Combinar y ordenar por fecha_registro desc
+    const movimientos = [
+      ...entradas.map(function(e) { return { ...e, tipo: 'ENTRADA', fecha: e.fecha_entrada, fecha_reg: e.fecha_registro }; }),
+      ...salidas.map(function(s)  { return { ...s, tipo: 'SALIDA',  fecha: s.fecha_salida,  fecha_reg: s.fecha_registro }; }),
+    ].sort(function(a, b) { return new Date(b.fecha_reg) - new Date(a.fecha_reg); });
+
+    if (!movimientos.length) {
+      cont.innerHTML = '<div style="text-align:center;padding:32px;color:var(--suave)">Sin movimientos registrados</div>';
+      return;
+    }
+
+    cont.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+      + '<thead><tr>'
+      + '<th style="text-align:left;padding:8px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;letter-spacing:1px">FECHA</th>'
+      + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">TIPO</th>'
+      + '<th style="text-align:center;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CANTIDAD</th>'
+      + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ÁREA / DETALLE</th>'
+      + '<th style="text-align:center;padding:8px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ACCIÓN</th>'
+      + '</tr></thead><tbody>'
+      + movimientos.map(function(m) {
+          const esEntrada = m.tipo === 'ENTRADA';
+          const reversada = !!m.reversada;
+          const area = m.param_areas ? (m.param_areas.codigo ? m.param_areas.codigo + ' — ' : '') + m.param_areas.nombre : '—';
+          return '<tr style="opacity:' + (reversada ? '0.5' : '1') + '">'
+            + '<td style="padding:8px 0;font-size:12px;color:var(--suave)">' + (m.fecha||'—') + '</td>'
+            + '<td style="padding:8px"><span class="badge ' + (esEntrada ? 'badge-verde' : 'badge-rojo') + '">'
+            + (esEntrada ? '▲ Entrada' : '▼ Salida') + '</span>'
+            + (reversada ? '<div style="font-size:10px;color:#fc8181;margin-top:2px">Reversada</div>' : '') + '</td>'
+            + '<td style="text-align:center;padding:8px;font-family:var(--font-mono);font-weight:600;color:' + (esEntrada ? '#22c55e' : '#fc8181') + '">'
+            + (esEntrada ? '+' : '-') + m.cantidad + '</td>'
+            + '<td style="padding:8px;font-size:12px">'
+            + (esEntrada ? (m.precio_costo_usd ? '$ ' + fmtUSD(m.precio_costo_usd) + ' / u' : '—') : area)
+            + (m.observaciones ? '<div style="font-size:11px;color:var(--suave)">' + m.observaciones + '</div>' : '')
+            + '</td>'
+            + '<td style="text-align:center;padding:8px 0">'
+            + (!reversada && (sesionActual?.administrador || puedo('INVENTARIO', esEntrada ? 'ENTRADA_STOCK' : 'SALIDA_STOCK'))
+                ? '<button class="btn-secundario" style="font-size:11px;padding:4px 8px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="reversarMovimiento(\'' + m.tipo + '\',' + (esEntrada ? m.id_entrada : m.id_salida) + ',' + m.cantidad + ',' + idRepuesto + ')">↩ Reversar</button>'
+                : '')
+            + '</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table>';
+  } catch(err) {
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + err.message + '</div>';
+  }
+}
+
+async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
+  if (!confirm('¿Reversar este movimiento de ' + cantidad + ' unidades?\\nEsto ajustará el stock automáticamente.')) return;
+
+  try {
+    // Obtener stock actual
+    const artArr = await api('inventario', 'GET', null, '?id_repuesto=eq.' + idRepuesto + '&select=stock_actual,nombre');
+    const art = artArr[0];
+    if (!art) { alert('Artículo no encontrado.'); return; }
+
+    let nuevoStock;
+    if (tipo === 'ENTRADA') {
+      // Reversar entrada = descontar del stock
+      nuevoStock = art.stock_actual - cantidad;
+      if (nuevoStock < 0) { alert('No se puede reversar: el stock resultante sería negativo.'); return; }
+      await api('stock_entradas', 'PATCH', { reversada: true }, '?id_entrada=eq.' + idMovimiento);
+    } else {
+      // Reversar salida = devolver al stock
+      nuevoStock = art.stock_actual + cantidad;
+      await api('stock_salidas', 'PATCH', { reversada: true }, '?id_salida=eq.' + idMovimiento);
+    }
+
+    // Actualizar stock
+    await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_repuesto=eq.' + idRepuesto);
+
+    // Actualizar cache
+    const cached = inventarioCache.find(function(x) { return x.id_repuesto === idRepuesto; });
+    if (cached) cached.stock_actual = nuevoStock;
+
+    // Recargar historial
+    await recargarHistorial(idRepuesto);
+
+    // Refrescar inventario en fondo
+    renderInventario();
+
+  } catch(err) { alert('Error: ' + err.message); }
+}
+
+
 // ─── PRÓXIMO MÓDULO ───
 function renderProximo(icono, nombre) {
   document.getElementById('contenido-principal').innerHTML = `
@@ -6959,6 +7070,8 @@ function verFichaInventario(id) {
   var btnEliminar = document.getElementById('ficha-inv-btn-eliminar');
   if (btnStock)   { btnStock._id = r.id_repuesto;   btnStock.onclick = function() { cerrarModal('modal-ficha-inv'); abrirEntradaStock(this._id); };   btnStock.style.display = puedo('INVENTARIO','ENTRADA_STOCK') ? '' : 'none'; }
   if (btnSalida)  { btnSalida._id = r.id_repuesto; btnSalida._nombre = r.nombre; btnSalida.onclick = function() { cerrarModal('modal-ficha-inv'); abrirSalidaStock(this._id, this._nombre); }; btnSalida.style.display = puedo('INVENTARIO','SALIDA_STOCK') ? '' : 'none'; }
+  var btnHistorial = document.getElementById('ficha-inv-btn-historial');
+  if (btnHistorial) { btnHistorial._id = r.id_repuesto; btnHistorial._nombre = r.nombre; btnHistorial.onclick = function() { cerrarModal('modal-ficha-inv'); verHistorialStock(this._id, this._nombre); }; btnHistorial.style.display = ''; }
   if (btnEditar)  { btnEditar._id = r.id_repuesto;  btnEditar.onclick = function() { cerrarModal('modal-ficha-inv'); abrirEditarInventario(this._id); }; btnEditar.style.display = puedo('INVENTARIO','EDITAR') ? '' : 'none'; }
   if (btnEliminar){ btnEliminar._id = r.id_repuesto; btnEliminar._nombre = r.nombre; btnEliminar.onclick = function() { cerrarModal('modal-ficha-inv'); eliminarInventario(this._id, this._nombre); }; btnEliminar.style.display = puedo('INVENTARIO','ELIMINAR') ? '' : 'none'; }
 
@@ -7019,6 +7132,17 @@ async function guardarEntradaStock() {
     if (nuevoPrecioCosto > 0) patch.precio_costo_ultimo_usd = nuevoPrecioCosto;
     if (nuevoPrecioVenta && nuevoPrecioVenta > 0) patch.precio_venta_usd = nuevoPrecioVenta;
     await api('inventario', 'PATCH', patch, '?id_repuesto=eq.' + id);
+    // Registrar en historial de entradas
+    try {
+      await api('stock_entradas', 'POST', {
+        id_articulo:      id,
+        cantidad:         cantidad,
+        precio_costo_usd: nuevoPrecioCosto || null,
+        fecha_entrada:    getHoyVzla(),
+        observaciones:    document.getElementById('es-observaciones')?.value.trim() || null,
+        id_usuario:       sesionActual.correo_usuario
+      });
+    } catch(eH) { console.warn('Error registrando historial entrada:', eH); }
     okEl.textContent = 'Stock actualizado: ' + r.stock_actual + ' → ' + nuevoStock + ' ' + (r.unidad || 'UND');
     okEl.style.display = 'block';
     r.stock_actual = nuevoStock;
@@ -9409,6 +9533,29 @@ window.addEventListener('load', async () => {
 </div>
 
 <!-- ═══════════════════════════════════════ -->
+<!--    MODAL HISTORIAL DE STOCK            -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-historial-stock">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <h3>HISTORIAL DE MOVIMIENTOS</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-historial-stock')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:10px 16px;margin-bottom:16px">
+        <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Artículo</div>
+        <div style="font-weight:600;font-size:15px" id="historial-art-nombre">—</div>
+      </div>
+      <div id="historial-contenido"></div>
+      <input type="hidden" id="historial-id-repuesto">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-historial-stock')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
 <!--    MODAL SALIDA DE STOCK               -->
 <!-- ═══════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-salida-stock">
@@ -9470,10 +9617,10 @@ window.addEventListener('load', async () => {
     <div class="modal-body" id="ficha-inv-contenido"></div>
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-inv')">Cerrar</button>
-      <button class="btn-secundario" id="ficha-inv-btn-stock"   style="color:var(--naranja);border-color:rgba(255,107,0,0.4)">+ Entrada</button>
-      <button class="btn-secundario" id="ficha-inv-btn-salida"  style="color:#fc8181;border-color:rgba(252,129,129,0.4)">- Salida</button>
+      <button class="btn-secundario" id="ficha-inv-btn-stock"     style="color:var(--naranja);border-color:rgba(255,107,0,0.4)">+ Entrada</button>
+      <button class="btn-secundario" id="ficha-inv-btn-salida"   style="color:#fc8181;border-color:rgba(252,129,129,0.4)">- Salida</button>
+      <button class="btn-secundario" id="ficha-inv-btn-historial" style="color:#60a5fa;border-color:rgba(96,165,250,0.4)">📋 Historial</button>
       <button class="btn-secundario" id="ficha-inv-btn-editar">Editar</button>
-      <button class="btn-peligro"    id="ficha-inv-btn-eliminar">Eliminar</button>
     </div>
   </div>
 </div>
