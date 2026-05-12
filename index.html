@@ -2450,19 +2450,29 @@ async function guardarUsuario() {
       }
       okEl.textContent = '✓ Usuario actualizado exitosamente.';
 
-      // Si el usuario editado tiene sesión activa, invalidarla para forzar re-login
+      // Solo invalidar sesión si cambiaron datos críticos (nombre, clave, estado, perfil admin)
       try {
         const uEditado = usuariosCache.find(u => u.id_usuario == idEdit);
         if (uEditado && uEditado.sesion_activa) {
-          const cambioAInactivo = estado === 'INACTIVO';
-          await api('usuarios', 'PATCH', {
-            sesion_activa: false,
-            sesion_invalidada: true,
-            ultima_desconexion: new Date().toISOString()
-          }, `?id_usuario=eq.${idEdit}`);
-          okEl.textContent = cambioAInactivo
-            ? '✓ Usuario desactivado. Su sesión activa fue cerrada.'
-            : '✓ Usuario actualizado. Se cerró su sesión activa.';
+          const cambioEstado  = estado !== uEditado.estado_usuario;
+          const cambioAdmin   = esAdmin !== uEditado.administrador;
+          const cambioClave   = !!clave;
+          const cambioCritico = cambioEstado || cambioAdmin || cambioClave;
+          if (cambioCritico) {
+            await api('usuarios', 'PATCH', {
+              sesion_activa: false,
+              sesion_invalidada: true,
+              ultima_desconexion: new Date().toISOString()
+            }, `?id_usuario=eq.${idEdit}`);
+            const cambioAInactivo = estado === 'INACTIVO';
+            okEl.textContent = cambioAInactivo
+              ? '✓ Usuario desactivado. Su sesión activa fue cerrada.'
+              : '✓ Usuario actualizado. Se cerró su sesión activa.';
+          }
+          // Si solo cambiaron permisos, actualizar en memoria sin expulsar
+          else {
+            okEl.textContent = '✓ Permisos actualizados. El usuario verá los cambios en su próxima acción.';
+          }
         }
       } catch(eInv) { console.warn('Error invalidando sesión:', eInv); }
     }
