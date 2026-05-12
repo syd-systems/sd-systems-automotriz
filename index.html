@@ -1730,7 +1730,7 @@ async function iniciarSesion() {
         if (!permisosActuales[p.modulo]) permisosActuales[p.modulo] = [];
         permisosActuales[p.modulo].push(p.accion);
       });
-    } catch(eP) { permisosActuales = {}; }
+    } catch(eP) { console.warn('Error cargando permisos al login:', eP); }
 
     // Marcar sesión activa y limpiar flag de invalidación
     await api('usuarios', 'PATCH', {
@@ -7519,7 +7519,7 @@ window.addEventListener('load', async () => {
           if (!permisosActuales[p.modulo]) permisosActuales[p.modulo] = [];
           permisosActuales[p.modulo].push(p.accion);
         });
-      } catch(eP) { permisosActuales = {}; }
+      } catch(eP) { console.warn('Error cargando permisos sessionStorage:', eP); }
       iniciarApp();
       iniciarTimerInactividad();
     } catch(e) {
