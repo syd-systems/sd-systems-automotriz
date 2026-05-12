@@ -3656,30 +3656,31 @@ async function guardarEmpleado() {
   };
 
   try {
+    var empIdFinal;
     if (id) {
       await api('empleados', 'PATCH', datos, '?id_empleado=eq.' + id);
+      empIdFinal = parseInt(id);
       okEl.textContent = '✓ Empleado actualizado correctamente.';
     } else {
-      await api('empleados', 'POST', datos);
+      const resPost = await api('empleados', 'POST', datos);
+      empIdFinal = resPost && resPost[0] ? resPost[0].id_empleado : null;
+      // Si POST no retorna id, buscarlo por documento
+      if (!empIdFinal) {
+        const busq = await api('empleados', 'GET', null, '?numero_doc=eq.' + encodeURIComponent(numDoc) + '&select=id_empleado&order=fecha_registro.desc&limit=1');
+        if (busq && busq[0]) empIdFinal = busq[0].id_empleado;
+      }
       okEl.textContent = '✓ Empleado registrado correctamente.';
     }
+
     // Subir fotos del empleado
     var fotosEmpFiles = document.getElementById('emp-foto-perfil-file')?.files;
-    var empId = id;
-    if (!empId) {
-      try {
-        var recientes = await api('empleados', 'GET', null, '?numero_doc=eq.' + encodeURIComponent(numDoc) + '&select=id_empleado&order=fecha_registro.desc&limit=1');
-        if (recientes && recientes[0]) empId = recientes[0].id_empleado;
-      } catch(eId) {}
-    }
-    if (fotosEmpFiles && fotosEmpFiles.length > 0 && empId) {
+    if (fotosEmpFiles && fotosEmpFiles.length > 0 && empIdFinal) {
       for (var fi = 0; fi < Math.min(fotosEmpFiles.length, 5); fi++) {
         try {
-          var urlFoto = await subirFoto(fotosEmpFiles[fi], 'empleados/' + empId);
-          await api('emp_fotos', 'POST', { id_empleado: parseInt(empId), url_foto: urlFoto });
-        } catch(eFoto) { console.error('Error subiendo foto empleado:', eFoto); }
+          var urlFoto = await subirFoto(fotosEmpFiles[fi], 'empleados/' + empIdFinal);
+          await api('emp_fotos', 'POST', { id_empleado: empIdFinal, url_foto: urlFoto });
+        } catch(eFoto) { console.error('Error subiendo foto:', eFoto); }
       }
-      // Limpiar el input de fotos
       document.getElementById('emp-foto-perfil-file').value = '';
     }
 
