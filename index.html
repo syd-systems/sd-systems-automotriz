@@ -4642,7 +4642,7 @@ async function guardarSalidaStock() {
 
     okEl.textContent = '✓ Salida de ' + cantidad + ' unidades registrada correctamente.';
     okEl.style.display = 'block';
-    setTimeout(function() { cerrarModal('modal-salida-stock'); }, 1500);
+    setTimeout(function() { cerrarModal('modal-salida-stock'); renderInventario(); }, 1500);
   } catch(err) {
     errEl.textContent = 'Error: ' + err.message;
     errEl.style.display = 'block';
