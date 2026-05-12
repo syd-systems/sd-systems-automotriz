@@ -4713,8 +4713,8 @@ async function recargarHistorial(idRepuesto) {
   const cont = document.getElementById('historial-contenido');
   try {
     const [entradas, salidas] = await Promise.all([
-      api('stock_entradas', 'GET', null, '?id_articulo=eq.' + idRepuesto + '&order=fecha_registro.desc&select=*'),
-      api('stock_salidas',  'GET', null, '?id_articulo=eq.' + idRepuesto + '&order=fecha_registro.desc&select=*,param_areas(nombre,codigo)'),
+      api('stock_entradas', 'GET', null, '?id_articulo=eq.' + idRepuesto + '&order=fecha_registro.desc&select=*,param_areas(nombre,codigo),empleados(nombre_completo)'),
+      api('stock_salidas',  'GET', null, '?id_articulo=eq.' + idRepuesto + '&order=fecha_registro.desc&select=*,param_areas(nombre,codigo),empleados(nombre_completo)'),
     ]);
 
     // Combinar y ordenar por fecha_registro desc
@@ -4748,7 +4748,11 @@ async function recargarHistorial(idRepuesto) {
             + '<td style="text-align:center;padding:8px;font-family:var(--font-mono);font-weight:600;color:' + (esEntrada ? '#22c55e' : '#fc8181') + '">'
             + (esEntrada ? '+' : '-') + m.cantidad + '</td>'
             + '<td style="padding:8px;font-size:12px">'
-            + (esEntrada ? (m.precio_costo_usd ? '$ ' + fmtUSD(m.precio_costo_usd) + ' / u' : '—') : area)
+            + (esEntrada
+              ? '<div>' + (m.param_areas ? (m.param_areas.codigo ? m.param_areas.codigo + ' — ' : '') + m.param_areas.nombre : '—') + '</div>'
+                + (m.precio_costo_usd ? '<div style="font-size:11px;color:var(--suave)">$ ' + fmtUSD(m.precio_costo_usd) + ' / u</div>' : '')
+              : '<div>' + area + '</div>')
+            + (m.empleados ? '<div style="font-size:11px;color:#60a5fa">👤 ' + m.empleados.nombre_completo + '</div>' : '')
             + (m.observaciones ? '<div style="font-size:11px;color:var(--suave)">' + m.observaciones + '</div>' : '')
             + '</td>'
             + '<td style="text-align:center;padding:8px 0">'
