@@ -6732,7 +6732,7 @@ function invRenderTabla(items, cont) {
       + '<span style="color:var(--naranja)">$ ' + fmtUSD(r.precio_venta_usd) + '</span>'
       + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen.toFixed(1) + '%</div></td>'
       + '<td><div style="display:flex;gap:8px">'
-      + (puedo('INVENTARIO','VER') ? '<button class="btn-secundario" onclick="verFichaInventario(' + r.id_repuesto + ')">Ficha</button>' : '')
+      + '<button class="btn-secundario" onclick="verFichaInventario(' + r.id_repuesto + ')">Ficha</button>'
 
 
       + '</div></td></tr>';
@@ -6833,6 +6833,9 @@ function invRenderEOQ(items, cont) {
 }
 
 function verFichaInventario(id) {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','VER')) {
+    alert('No tiene permiso para ver la ficha del artículo.'); return;
+  }
   const r = inventarioCache.find(function(x) { return x.id_repuesto === id; });
   if (!r) return;
   const abcMap = {};
