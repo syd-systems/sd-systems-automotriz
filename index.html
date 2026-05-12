@@ -6732,7 +6732,7 @@ function invRenderTabla(items, cont) {
       + '<span style="color:var(--naranja)">$ ' + fmtUSD(r.precio_venta_usd) + '</span>'
       + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen.toFixed(1) + '%</div></td>'
       + '<td><div style="display:flex;gap:8px">'
-      + '<button class="btn-secundario" onclick="verFichaInventario(' + r.id_repuesto + ')">Ficha</button>'
+      + (puedo('INVENTARIO','VER') ? '<button class="btn-secundario" onclick="verFichaInventario(' + r.id_repuesto + ')">Ficha</button>' : '')
 
 
       + '</div></td></tr>';
