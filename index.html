@@ -3806,7 +3806,8 @@ async function verFichaEmpleado(id) {
   } catch(eBusc) { alert('ERROR buscando empleado: ' + eBusc.message); return; }
   if (!e) { alert('No se encontró el empleado.'); return; }
   alert('PASO 3: empleado encontrado, cargando params');
-  await cargarParamEmpleados();
+  try { await cargarParamEmpleados(); } catch(eP) { alert('ERROR en cargarParamEmpleados: ' + eP.message); return; }
+  alert('PASO 4: params cargados, construyendo ficha');
   const p = _empParamCache;
 
   // Cargar fotos del empleado
