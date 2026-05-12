@@ -3783,8 +3783,8 @@ async function guardarEmpleado() {
 
 // ─── FICHA EMPLEADO ───
 async function verFichaEmpleado(id) {
+  try {
   if (!sesionActual?.administrador) {
-    // Siempre recargar permisos frescos antes de verificar
     try {
       const perms = await api('usuarios_permisos', 'GET', null, '?correo_usuario=eq.' + encodeURIComponent(sesionActual.correo_usuario));
       permisosActuales = {};
@@ -3794,7 +3794,7 @@ async function verFichaEmpleado(id) {
       });
     } catch(eR) {}
     if (!puedo('EMPLEADOS','VER')) {
-      alert('Sin permiso. Permisos actuales: ' + JSON.stringify(permisosActuales)); return;
+      alert('Sin permiso.'); return;
     }
   }
   // Siempre buscar fresco desde Supabase
@@ -3900,6 +3900,7 @@ async function verFichaEmpleado(id) {
   }
 
   abrirModal('modal-ficha-emp');
+  } catch(eFicha) { alert('Error en ficha: ' + eFicha.message); console.error(eFicha); }
 }
 
 // ─── ELIMINAR EMPLEADO ───
