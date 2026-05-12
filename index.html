@@ -1838,10 +1838,12 @@ async function cerrarSesion() {
 }
 
 // ─── NAVEGACIÓN ───
-function mostrarModulo(modulo, navEl) {
+async function mostrarModulo(modulo, navEl) {
   // Quitar activo de todos
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('activo'));
   if (navEl) navEl.classList.add('activo');
+  // Recargar permisos frescos antes de mostrar cualquier módulo
+  await recargarPermisosActuales();
 
   const titulos = {
     dashboard:    'DASHBOARD',
@@ -3438,6 +3440,17 @@ function selOpts(lista, valorActual, campoNombre) {
 
 // ─── ABRIR FORMULARIO EMPLEADO ───
 async function abrirEmpleado(id) {
+  // Recargar permisos si es necesario
+  if (!sesionActual?.administrador) {
+    try {
+      const perms = await api('usuarios_permisos', 'GET', null, '?correo_usuario=eq.' + encodeURIComponent(sesionActual.correo_usuario));
+      permisosActuales = {};
+      perms.forEach(function(p) {
+        if (!permisosActuales[p.modulo]) permisosActuales[p.modulo] = [];
+        permisosActuales[p.modulo].push(p.accion);
+      });
+    } catch(eR) {}
+  }
   if (id && !puedo('EMPLEADOS','EDITAR')) { alert('No tiene permiso para editar empleados.'); return; }
   if (!id && !puedo('EMPLEADOS','CREAR')) { alert('No tiene permiso para registrar empleados.'); return; }
 
@@ -3742,8 +3755,24 @@ async function guardarEmpleado() {
 
 // ─── FICHA EMPLEADO ───
 async function verFichaEmpleado(id) {
-  if (!sesionActual?.administrador && !puedo('EMPLEADOS','VER')) {
-    alert('No tiene permiso para ver la ficha del empleado.'); return;
+  // Diagnóstico temporal
+  if (!sesionActual?.administrador) {
+    const tieneVer = puedo('EMPLEADOS','VER');
+    if (!tieneVer) {
+      // Intentar recargar permisos una vez antes de bloquear
+      try {
+        const perms = await api('usuarios_permisos', 'GET', null, '?correo_usuario=eq.' + encodeURIComponent(sesionActual.correo_usuario));
+        permisosActuales = {};
+        perms.forEach(function(p) {
+          if (!permisosActuales[p.modulo]) permisosActuales[p.modulo] = [];
+          permisosActuales[p.modulo].push(p.accion);
+        });
+      } catch(eR) {}
+      // Verificar de nuevo
+      if (!puedo('EMPLEADOS','VER')) {
+        alert('No tiene permiso para ver la ficha del empleado.'); return;
+      }
+    }
   }
   // Siempre buscar fresco desde Supabase
   var e = null;
