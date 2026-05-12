@@ -1824,6 +1824,7 @@ function limpiarSesionLocal() {
   sesionActual     = null;
   modulosAcceso    = [];
   permisosActuales = {};
+  _empParamCache   = {};
   sessionStorage.removeItem('sd_sesion');
   document.getElementById('pantalla-app').style.display   = 'none';
   document.getElementById('pantalla-login').style.display = 'flex';
@@ -3784,7 +3785,6 @@ async function guardarEmpleado() {
 // ─── FICHA EMPLEADO ───
 async function verFichaEmpleado(id) {
   try {
-  alert('PASO 1: iniciando');
   if (!sesionActual?.administrador) {
     try {
       const perms = await api('usuarios_permisos', 'GET', null, '?correo_usuario=eq.' + encodeURIComponent(sesionActual.correo_usuario));
@@ -3798,16 +3798,14 @@ async function verFichaEmpleado(id) {
       alert('Sin permiso.'); return;
     }
   }
-  alert('PASO 2: permisos ok, buscando empleado');
   var e = null;
   try {
     const res = await api('empleados', 'GET', null, '?id_empleado=eq.' + id + '&select=*,param_areas(nombre),param_cargos(nombre)');
     if (res && res[0]) e = res[0];
   } catch(eBusc) { alert('ERROR buscando empleado: ' + eBusc.message); return; }
   if (!e) { alert('No se encontró el empleado.'); return; }
-  alert('PASO 3: empleado encontrado, cargando params');
-  try { await cargarParamEmpleados(); } catch(eP) { alert('ERROR en cargarParamEmpleados: ' + eP.message); return; }
-  alert('PASO 4: params cargados, construyendo ficha');
+  await cargarParamEmpleados();
+
   const p = _empParamCache;
 
   // Cargar fotos del empleado
