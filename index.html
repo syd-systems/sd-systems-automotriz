@@ -3997,6 +3997,7 @@ function renderProximo(icono, nombre) {
 // ─── MODALES ───
 function abrirModal(id) {
   const el = document.getElementById(id);
+  el.style.display = ''; // quitar display:none inline si lo puso cerrarTodosLosModales
   el.classList.add('abierto');
   setTimeout(function() {
     const body = el.querySelector('.modal-body');
