@@ -1612,17 +1612,17 @@ async function verificarSesionActiva() {
   if (!sesionActual) return;
   try {
     const res = await api('usuarios', 'GET', null,
-      `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}&select=sesion_activa,sesion_invalidada,estado_usuario,administrador`);
+      `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}&select=sesion_activa,sesion_invalidada,estado_usuario`);
     if (!res || !res.length) return;
     const u = res[0];
 
-    // Expulsar solo si el usuario fue desactivado
+    // ── CASO 1: Usuario desactivado → expulsar ──
     if (u.estado_usuario === 'INACTIVO') {
       const correoActual = sesionActual.correo_usuario;
       limpiarSesionLocal();
       try { await api('usuarios', 'PATCH', { sesion_invalidada: false }, `?correo_usuario=eq.${encodeURIComponent(correoActual)}`); } catch(e) {}
       const errEl = document.getElementById('login-error');
-      errEl.textContent = '🚫 Tu usuario fue desactivado por el administrador. Contacta al soporte.';
+      errEl.textContent = '🚫 Tu usuario fue desactivado por el administrador.';
       errEl.style.display = 'block';
       errEl.style.background = 'rgba(255,107,0,0.12)';
       errEl.style.borderColor = 'rgba(255,107,0,0.4)';
@@ -1630,11 +1630,22 @@ async function verificarSesionActiva() {
       return;
     }
 
-    // Si sesion_invalidada = true, recargar permisos en memoria sin expulsar
-    // (ocurre cuando el admin cambia perfil admin/operador o contraseña)
+    // ── CASO 2: Sesión cerrada por admin (sesion_activa=false) → expulsar ──
+    if (u.sesion_activa === false) {
+      const correoActual = sesionActual.correo_usuario;
+      limpiarSesionLocal();
+      const errEl = document.getElementById('login-error');
+      errEl.textContent = '🔒 Tu sesión fue cerrada por el administrador.';
+      errEl.style.display = 'block';
+      errEl.style.background = 'rgba(255,107,0,0.12)';
+      errEl.style.borderColor = 'rgba(255,107,0,0.4)';
+      errEl.style.color = 'var(--naranja)';
+      return;
+    }
+
+    // ── CASO 3: Permisos modificados (sesion_invalidada=true pero activo) → recargar sin expulsar ──
     if (u.sesion_invalidada === true) {
       try {
-        // Recargar permisos frescos desde la BD
         const perms = await api('usuarios_permisos', 'GET', null,
           '?correo_usuario=eq.' + encodeURIComponent(sesionActual.correo_usuario));
         permisosActuales = {};
@@ -1645,12 +1656,11 @@ async function verificarSesionActiva() {
         const accesos = await api('usuarios_accesos', 'GET', null,
           '?correo_usuario=eq.' + encodeURIComponent(sesionActual.correo_usuario) + '&activo=eq.true&select=acceso_tipo');
         modulosAcceso = accesos.map(a => a.acceso_tipo);
-        // Limpiar flag
         await api('usuarios', 'PATCH', { sesion_invalidada: false },
           `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`);
-      } catch(eP) { console.warn('Error recargando permisos:', eP); }
+      } catch(eP) {}
     }
-  } catch(e) { console.warn('Error verificando sesión:', e); }
+  } catch(e) {}
 }
 setInterval(verificarSesionActiva, 30000);
 
