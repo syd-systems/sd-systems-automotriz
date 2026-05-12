@@ -2355,21 +2355,46 @@ function _toggleModulo(sigla, val) {
   _estadoModulos[sigla] = val;
   var b = document.getElementById('blk-' + sigla);
   if (b) b.style.borderColor = val ? 'var(--naranja)' : 'var(--borde)';
-  // Al activar el módulo, marcar VER automáticamente y mostrar panel
   var pnl = document.getElementById('pnl-' + sigla);
   if (val) {
+    // Al activar: marcar VER automáticamente
     if (!_estadoPermisos[sigla]) _estadoPermisos[sigla] = {};
     _estadoPermisos[sigla]['VER'] = true;
     var chkVer = document.getElementById('perm-' + sigla + '-VER');
     if (chkVer) chkVer.checked = true;
     if (pnl) pnl.style.display = 'block';
   } else {
+    // Al desactivar: limpiar TODOS los permisos de este módulo
+    _estadoPermisos[sigla] = {};
+    (PERMISOS_POR_MODULO[sigla] || []).forEach(function(a) {
+      _estadoPermisos[sigla][a.accion] = false;
+      var chk = document.getElementById('perm-' + sigla + '-' + a.accion);
+      if (chk) chk.checked = false;
+    });
     if (pnl) pnl.style.display = 'none';
   }
 }
 function _togglePermiso(sigla, accion, val) {
   if (!_estadoPermisos[sigla]) _estadoPermisos[sigla] = {};
   _estadoPermisos[sigla][accion] = val;
+  // Si se desmarca VER, desactivar el módulo completo
+  if (accion === 'VER' && !val) {
+    _estadoModulos[sigla] = false;
+    var b = document.getElementById('blk-' + sigla);
+    if (b) b.style.borderColor = 'var(--borde)';
+    // Desmarcar el checkbox del módulo
+    var blk = document.getElementById('blk-' + sigla);
+    if (blk) {
+      var chkMod = blk.querySelector('input[type="checkbox"]');
+      if (chkMod) chkMod.checked = false;
+    }
+    // Limpiar todos los permisos
+    (PERMISOS_POR_MODULO[sigla] || []).forEach(function(a) {
+      _estadoPermisos[sigla][a.accion] = false;
+      var chk = document.getElementById('perm-' + sigla + '-' + a.accion);
+      if (chk) chk.checked = false;
+    });
+  }
 }
 function toggleAcceso(el,s){}
 function toggleAccesoBloque(el){}
@@ -2433,6 +2458,12 @@ async function guardarUsuario() {
     if (!permisosSelec[sigla]) permisosSelec[sigla] = [];
     if (!permisosSelec[sigla].includes('VER')) {
       permisosSelec[sigla].push('VER');
+    }
+  });
+  // Excluir permisos de módulos no activos
+  Object.keys(permisosSelec).forEach(function(sigla) {
+    if (!accesosSelec.includes(sigla)) {
+      delete permisosSelec[sigla];
     }
   });
 
