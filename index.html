@@ -3783,23 +3783,18 @@ async function guardarEmpleado() {
 
 // ─── FICHA EMPLEADO ───
 async function verFichaEmpleado(id) {
-  // Diagnóstico temporal
   if (!sesionActual?.administrador) {
-    const tieneVer = puedo('EMPLEADOS','VER');
-    if (!tieneVer) {
-      // Intentar recargar permisos una vez antes de bloquear
-      try {
-        const perms = await api('usuarios_permisos', 'GET', null, '?correo_usuario=eq.' + encodeURIComponent(sesionActual.correo_usuario));
-        permisosActuales = {};
-        perms.forEach(function(p) {
-          if (!permisosActuales[p.modulo]) permisosActuales[p.modulo] = [];
-          permisosActuales[p.modulo].push(p.accion);
-        });
-      } catch(eR) {}
-      // Verificar de nuevo
-      if (!puedo('EMPLEADOS','VER')) {
-        alert('No tiene permiso para ver la ficha del empleado.'); return;
-      }
+    // Siempre recargar permisos frescos antes de verificar
+    try {
+      const perms = await api('usuarios_permisos', 'GET', null, '?correo_usuario=eq.' + encodeURIComponent(sesionActual.correo_usuario));
+      permisosActuales = {};
+      perms.forEach(function(p) {
+        if (!permisosActuales[p.modulo]) permisosActuales[p.modulo] = [];
+        permisosActuales[p.modulo].push(p.accion);
+      });
+    } catch(eR) {}
+    if (!puedo('EMPLEADOS','VER')) {
+      alert('Sin permiso. Permisos actuales: ' + JSON.stringify(permisosActuales)); return;
     }
   }
   // Siempre buscar fresco desde Supabase
