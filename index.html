@@ -2377,24 +2377,6 @@ function _toggleModulo(sigla, val) {
 function _togglePermiso(sigla, accion, val) {
   if (!_estadoPermisos[sigla]) _estadoPermisos[sigla] = {};
   _estadoPermisos[sigla][accion] = val;
-  // Si se desmarca VER, desactivar el módulo completo
-  if (accion === 'VER' && !val) {
-    _estadoModulos[sigla] = false;
-    var b = document.getElementById('blk-' + sigla);
-    if (b) b.style.borderColor = 'var(--borde)';
-    // Desmarcar el checkbox del módulo
-    var blk = document.getElementById('blk-' + sigla);
-    if (blk) {
-      var chkMod = blk.querySelector('input[type="checkbox"]');
-      if (chkMod) chkMod.checked = false;
-    }
-    // Limpiar todos los permisos
-    (PERMISOS_POR_MODULO[sigla] || []).forEach(function(a) {
-      _estadoPermisos[sigla][a.accion] = false;
-      var chk = document.getElementById('perm-' + sigla + '-' + a.accion);
-      if (chk) chk.checked = false;
-    });
-  }
 }
 function toggleAcceso(el,s){}
 function toggleAccesoBloque(el){}
