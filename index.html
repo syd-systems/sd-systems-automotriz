@@ -3675,10 +3675,12 @@ async function guardarEmpleado() {
     if (fotosEmpFiles && fotosEmpFiles.length > 0 && empId) {
       for (var fi = 0; fi < Math.min(fotosEmpFiles.length, 5); fi++) {
         try {
-          var urlFoto = await subirFoto(fotosEmpFiles[fi], 'empleados/fotos/' + empId);
+          var urlFoto = await subirFoto(fotosEmpFiles[fi], 'empleados/' + empId);
           await api('emp_fotos', 'POST', { id_empleado: parseInt(empId), url_foto: urlFoto });
-        } catch(eFoto) { console.warn('Error subiendo foto empleado:', eFoto); }
+        } catch(eFoto) { console.error('Error subiendo foto empleado:', eFoto); }
       }
+      // Limpiar el input de fotos
+      document.getElementById('emp-foto-perfil-file').value = '';
     }
 
     okEl.style.display = 'block';
@@ -3701,7 +3703,10 @@ async function verFichaEmpleado(id) {
 
   // Cargar fotos del empleado
   var fotosPerfilEmp = [];
-  try { fotosPerfilEmp = await api('emp_fotos', 'GET', null, '?id_empleado=eq.' + id + '&order=fecha_registro.asc'); } catch(eF) {}
+  try {
+    fotosPerfilEmp = await api('emp_fotos', 'GET', null, '?id_empleado=eq.' + id + '&order=fecha_registro.asc&select=id_foto,url_foto');
+    console.log('Fotos empleado:', fotosPerfilEmp);
+  } catch(eF) { console.error('Error cargando fotos:', eF); }
 
   function getNombre(lista, idVal) {
     var item = (lista||[]).find(function(x) { return x.id === idVal; });
