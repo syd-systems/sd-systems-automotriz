@@ -2460,11 +2460,14 @@ async function guardarUsuario() {
       // Solo invalidar sesión si cambiaron datos críticos (nombre, clave, estado, perfil admin)
       try {
         const uEditado = usuariosCache.find(u => u.id_usuario == idEdit);
+        console.log('uEditado:', uEditado ? JSON.stringify({sesion_activa: uEditado.sesion_activa, estado: uEditado.estado_usuario, admin: uEditado.administrador}) : 'NO ENCONTRADO');
+        console.log('nuevo estado:', estado, '| esAdmin:', esAdmin, '| clave:', !!clave);
         if (uEditado && uEditado.sesion_activa) {
           const cambioEstado  = estado !== uEditado.estado_usuario;
           const cambioAdmin   = esAdmin !== uEditado.administrador;
           const cambioClave   = !!clave;
           const cambioCritico = cambioEstado || cambioAdmin || cambioClave;
+          console.log('cambioEstado:', cambioEstado, '| cambioAdmin:', cambioAdmin, '| cambioClave:', cambioClave, '| cambioCritico:', cambioCritico);
           if (cambioCritico) {
             await api('usuarios', 'PATCH', {
               sesion_activa: false,
