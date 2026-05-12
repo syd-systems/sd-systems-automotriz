@@ -1328,13 +1328,13 @@ const TODOS_LOS_MODULOS = [
 // ─── PERMISOS GRANULARES POR MÓDULO ───
 const PERMISOS_POR_MODULO = {
   VEHICULOS:    [
-    { accion: 'VER',      label: 'Ver vehículos' },
+    { accion: 'VER',      label: 'Ver Ficha' },
     { accion: 'CREAR',    label: 'Registrar nuevo vehículo' },
     { accion: 'EDITAR',   label: 'Editar vehículo' },
     { accion: 'ELIMINAR', label: 'Eliminar vehículo' },
   ],
   PROPIETARIOS: [
-    { accion: 'VER',                  label: 'Ver propietarios' },
+    { accion: 'VER',                  label: 'Ver Ficha' },
     { accion: 'CREAR',                label: 'Registrar propietario' },
     { accion: 'EDITAR',               label: 'Editar propietario' },
     { accion: 'ELIMINAR',             label: 'Eliminar propietario' },
@@ -1371,7 +1371,7 @@ const PERMISOS_POR_MODULO = {
     { accion: 'EDITAR', label: 'Editar tasa existente' },
   ],
   EMPLEADOS: [
-    { accion: 'VER',                  label: 'Ver empleados' },
+    { accion: 'VER',                  label: 'Ver Ficha' },
     { accion: 'CREAR',                label: 'Registrar empleado' },
     { accion: 'EDITAR',               label: 'Editar empleado' },
     { accion: 'ELIMINAR',             label: 'Eliminar empleado' },
@@ -1384,13 +1384,13 @@ const PERMISOS_POR_MODULO = {
     { accion: 'ELIMINAR', label: 'Eliminar usuario' },
   ],
   EMISORES: [
-    { accion: 'VER',      label: 'Ver empresas' },
+    { accion: 'VER',      label: 'Ver Ficha' },
     { accion: 'CREAR',    label: 'Registrar empresa' },
     { accion: 'EDITAR',   label: 'Editar empresa' },
     { accion: 'ELIMINAR', label: 'Eliminar empresa' },
   ],
   FACTURAS: [
-    { accion: 'VER',         label: 'Ver facturas' },
+    { accion: 'VER',         label: 'Ver Ficha' },
     { accion: 'CREAR',       label: 'Crear factura' },
     { accion: 'EDITAR',      label: 'Editar factura borrador' },
     { accion: 'ANULAR',      label: 'Anular factura emitida' },
@@ -1398,13 +1398,13 @@ const PERMISOS_POR_MODULO = {
     { accion: 'VER_TOTALES', label: '🔒 Ver montos y totales' },
   ],
   PAGOS: [
-    { accion: 'VER',    label: 'Ver pagos' },
+    { accion: 'VER',    label: 'Ver Ficha' },
     { accion: 'CREAR',  label: 'Registrar pago' },
     { accion: 'EDITAR', label: 'Editar pago' },
     { accion: 'ANULAR', label: 'Anular pago' },
   ],
   PROVEEDORES: [
-    { accion: 'VER',      label: 'Ver proveedores' },
+    { accion: 'VER',      label: 'Ver Ficha' },
     { accion: 'CREAR',    label: 'Registrar proveedor' },
     { accion: 'EDITAR',   label: 'Editar proveedor' },
     { accion: 'ELIMINAR', label: 'Eliminar proveedor' },
@@ -2284,7 +2284,7 @@ function renderAccesosModal(seleccionados, permisosSelec) {
     html += '</div>';
     html += '<div id="pnl-' + m.sigla + '" style="display:none;padding:10px 14px 12px;border-top:1px solid var(--borde)">';
     html += '<label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;font-weight:600;padding:3px 0">';
-    html += '<input type="checkbox" style="accent-color:var(--naranja);width:14px;height:14px" ' + (on ? 'checked' : '') + ' onchange="_toggleModulo(\'' + m.sigla + '\',this.checked)"> Dar acceso a ' + m.nombre + '</label>';
+    html += '<input type="checkbox" style="accent-color:var(--naranja);width:14px;height:14px" ' + (on ? 'checked' : '') + ' onchange="_toggleModulo(\'' + m.sigla + '\',this.checked)"> ' + m.icono + ' ' + m.nombre + '</label>';
     if (acciones.length) {
       html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--borde)">';
       acciones.forEach(function(a) {
@@ -2292,7 +2292,7 @@ function renderAccesosModal(seleccionados, permisosSelec) {
         var lock = a.label.indexOf('\uD83D\uDD12') >= 0 || a.label.indexOf('\uD83D') === 0;
         var col = lock ? '#f59e0b' : 'var(--suave)';
         html += '<label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;padding:3px 0;color:' + col + '">';
-        html += '<input type="checkbox" style="accent-color:var(--naranja);width:13px;height:13px" ' + (c ? 'checked' : '') + ' onchange="_togglePermiso(\'' + m.sigla + '\',\'' + a.accion + '\',this.checked)"> ';
+         html += '<input type="checkbox" id="perm-' + m.sigla + '-' + a.accion + '" style="accent-color:var(--naranja);width:13px;height:13px" ' + (c ? 'checked' : '') + ' onchange="_togglePermiso(\'' + m.sigla + '\',\'' + a.accion + '\',this.checked)"> ';
         html += a.label + '</label>';
       });
       html += '</div>';
@@ -2309,6 +2309,16 @@ function _toggleModulo(sigla, val) {
   _estadoModulos[sigla] = val;
   var b = document.getElementById('blk-' + sigla);
   if (b) b.style.borderColor = val ? 'var(--naranja)' : 'var(--borde)';
+  // Al activar el módulo, marcar VER automáticamente
+  if (val) {
+    if (!_estadoPermisos[sigla]) _estadoPermisos[sigla] = {};
+    _estadoPermisos[sigla]['VER'] = true;
+    var chkVer = document.getElementById('perm-' + sigla + '-VER');
+    if (chkVer) chkVer.checked = true;
+  }
+  // Mostrar/ocultar bloque de permisos
+  var permsDiv = document.getElementById('perms-' + sigla);
+  if (permsDiv) permsDiv.style.display = val ? 'block' : 'none';
 }
 function _togglePermiso(sigla, accion, val) {
   if (!_estadoPermisos[sigla]) _estadoPermisos[sigla] = {};
