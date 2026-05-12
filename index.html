@@ -2442,7 +2442,6 @@ async function guardarUsuario() {
         }
         // Reinsertar permisos granulares
         var permEntries = Object.entries(permisosSelec);
-        console.log('Guardando permisos:', permEntries.length, 'módulos', JSON.stringify(permisosSelec));
         for (var pi = 0; pi < permEntries.length; pi++) {
           var pMod = permEntries[pi][0];
           var pAccs = permEntries[pi][1];
@@ -2459,15 +2458,14 @@ async function guardarUsuario() {
 
       // Solo invalidar sesión si cambiaron datos críticos (nombre, clave, estado, perfil admin)
       try {
-        const uEditado = usuariosCache.find(u => u.id_usuario == idEdit);
-        console.log('uEditado:', uEditado ? JSON.stringify({sesion_activa: uEditado.sesion_activa, estado: uEditado.estado_usuario, admin: uEditado.administrador}) : 'NO ENCONTRADO');
-        console.log('nuevo estado:', estado, '| esAdmin:', esAdmin, '| clave:', !!clave);
+        // Consultar estado actual fresco desde Supabase
+        const uActual = await api('usuarios', 'GET', null, `?id_usuario=eq.${idEdit}&select=sesion_activa,estado_usuario,administrador`);
+        const uEditado = uActual && uActual[0] ? uActual[0] : null;
         if (uEditado && uEditado.sesion_activa) {
           const cambioEstado  = estado !== uEditado.estado_usuario;
-          const cambioAdmin   = esAdmin !== uEditado.administrador;
+          const cambioAdmin   = !!esAdmin !== !!uEditado.administrador;
           const cambioClave   = !!clave;
           const cambioCritico = cambioEstado || cambioAdmin || cambioClave;
-          console.log('cambioEstado:', cambioEstado, '| cambioAdmin:', cambioAdmin, '| cambioClave:', cambioClave, '| cambioCritico:', cambioCritico);
           if (cambioCritico) {
             await api('usuarios', 'PATCH', {
               sesion_activa: false,
@@ -3754,7 +3752,6 @@ async function verFichaEmpleado(id) {
   var fotosPerfilEmp = [];
   try {
     fotosPerfilEmp = await api('emp_fotos', 'GET', null, '?id_empleado=eq.' + id + '&order=fecha_registro.asc&select=id_foto,url_foto');
-    console.log('Fotos empleado:', fotosPerfilEmp);
   } catch(eF) { console.error('Error cargando fotos:', eF); }
 
   function getNombre(lista, idVal) {
@@ -3839,8 +3836,7 @@ async function verFichaEmpleado(id) {
     btnEliminar._id = e.id_empleado;
     btnEliminar._nombre = e.nombre_completo;
     btnEliminar.onclick = function() { cerrarModal('modal-ficha-emp'); eliminarEmpleado(this._id, this._nombre); };
-    var puedeEliminar = sesionActual?.administrador === true || (permisosActuales['EMPLEADOS'] && permisosActuales['EMPLEADOS'].includes('ELIMINAR'));
-    console.log('permisosActuales EMPLEADOS:', permisosActuales['EMPLEADOS'], '| puedeEliminar:', puedeEliminar, '| esAdmin:', sesionActual?.administrador);
+    var puedeEliminar = sesionActual?.administrador === true || puedo('EMPLEADOS','ELIMINAR');
     btnEliminar.style.display = puedeEliminar ? '' : 'none';
   }
 
