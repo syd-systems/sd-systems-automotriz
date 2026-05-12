@@ -1838,6 +1838,22 @@ async function cerrarSesion() {
 }
 
 // ─── NAVEGACIÓN ───
+async function recargarPermisosActuales() {
+  if (!sesionActual || sesionActual.administrador) return;
+  try {
+    const perms = await api('usuarios_permisos', 'GET', null,
+      '?correo_usuario=eq.' + encodeURIComponent(sesionActual.correo_usuario));
+    permisosActuales = {};
+    perms.forEach(function(p) {
+      if (!permisosActuales[p.modulo]) permisosActuales[p.modulo] = [];
+      permisosActuales[p.modulo].push(p.accion);
+    });
+    const accesos = await api('usuarios_accesos', 'GET', null,
+      '?correo_usuario=eq.' + encodeURIComponent(sesionActual.correo_usuario) + '&activo=eq.true&select=acceso_tipo');
+    modulosAcceso = accesos.map(a => a.acceso_tipo);
+  } catch(e) { /* silencioso — no bloquear navegación */ }
+}
+
 async function mostrarModulo(modulo, navEl) {
   // Quitar activo de todos
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('activo'));
