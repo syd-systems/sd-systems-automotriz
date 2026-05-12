@@ -3710,13 +3710,18 @@ async function guardarEmpleado() {
 
 // ─── FICHA EMPLEADO ───
 async function verFichaEmpleado(id) {
-  console.log('permisosActuales:', JSON.stringify(permisosActuales));
-  console.log('puedo EMPLEADOS VER:', puedo('EMPLEADOS','VER'));
   if (!sesionActual?.administrador && !puedo('EMPLEADOS','VER')) {
     alert('No tiene permiso para ver la ficha del empleado.'); return;
   }
-  const e = empleadosCache.find(function(x) { return x.id_empleado === id; });
-  if (!e) return;
+  var e = empleadosCache.find(function(x) { return x.id_empleado === id || x.id_empleado === parseInt(id); });
+  if (!e) {
+    // No está en cache, buscar directamente
+    try {
+      const res = await api('empleados', 'GET', null, '?id_empleado=eq.' + id + '&select=*,param_areas(nombre),param_cargos(nombre)');
+      if (res && res[0]) e = res[0];
+    } catch(eBusc) {}
+  }
+  if (!e) { alert('No se encontró el empleado.'); return; }
   await cargarParamEmpleados();
   const p = _empParamCache;
 
