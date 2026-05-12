@@ -2358,15 +2358,11 @@ function _toggleModulo(sigla, val) {
   if (b) b.style.borderColor = val ? 'var(--naranja)' : 'var(--borde)';
   var pnl = document.getElementById('pnl-' + sigla);
   if (val) {
-    // Al activar: marcar VER automáticamente
-    if (!_estadoPermisos[sigla]) _estadoPermisos[sigla] = {};
-    _estadoPermisos[sigla]['VER'] = true;
-    var chkVer = document.getElementById('perm-' + sigla + '-VER');
-    if (chkVer) chkVer.checked = true;
+    // Al activar: solo mostrar el panel, sin marcar ningún permiso automáticamente
     if (pnl) pnl.style.display = 'block';
   } else {
     // Al desactivar: limpiar TODOS los permisos de este módulo
-    _estadoPermisos[sigla] = {};
+    if (!_estadoPermisos[sigla]) _estadoPermisos[sigla] = {};
     (PERMISOS_POR_MODULO[sigla] || []).forEach(function(a) {
       _estadoPermisos[sigla][a.accion] = false;
       var chk = document.getElementById('perm-' + sigla + '-' + a.accion);
