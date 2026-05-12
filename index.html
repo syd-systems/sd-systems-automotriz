@@ -3700,6 +3700,8 @@ async function guardarEmpleado() {
 
 // ─── FICHA EMPLEADO ───
 async function verFichaEmpleado(id) {
+  console.log('permisosActuales:', JSON.stringify(permisosActuales));
+  console.log('puedo EMPLEADOS VER:', puedo('EMPLEADOS','VER'));
   if (!sesionActual?.administrador && !puedo('EMPLEADOS','VER')) {
     alert('No tiene permiso para ver la ficha del empleado.'); return;
   }
