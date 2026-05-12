@@ -2435,13 +2435,6 @@ async function guardarUsuario() {
       }
     });
   });
-  // Garantizar que VER siempre esté incluido si el módulo está activo
-  accesosSelec.forEach(function(sigla) {
-    if (!permisosSelec[sigla]) permisosSelec[sigla] = [];
-    if (!permisosSelec[sigla].includes('VER')) {
-      permisosSelec[sigla].push('VER');
-    }
-  });
   // Excluir permisos de módulos no activos
   Object.keys(permisosSelec).forEach(function(sigla) {
     if (!accesosSelec.includes(sigla)) {
