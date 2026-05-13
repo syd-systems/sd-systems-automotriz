@@ -4715,7 +4715,7 @@ async function recargarHistorial(idRepuesto) {
   const cont = document.getElementById('historial-contenido');
   try {
     const [entradas, salidas] = await Promise.all([
-      api('stock_entradas', 'GET', null, '?id_articulo=eq.' + idRepuesto + '&order=fecha_registro.desc&select=*,param_areas(nombre,codigo),empleados(nombre_completo)'),
+      api('stock_entradas', 'GET', null, '?id_articulo=eq.' + idRepuesto + '&order=fecha_registro.desc&select=*,param_areas(nombre,codigo),empleados(nombre_completo),proveedores(nombre)'),
       api('stock_salidas',  'GET', null, '?id_articulo=eq.' + idRepuesto + '&order=fecha_registro.desc&select=*,param_areas(nombre,codigo),empleados(nombre_completo)'),
     ]);
 
@@ -4752,6 +4752,7 @@ async function recargarHistorial(idRepuesto) {
             + '<td style="padding:8px;font-size:12px">'
             + (esEntrada
               ? '<div>' + (m.param_areas ? (m.param_areas.codigo ? m.param_areas.codigo + ' — ' : '') + m.param_areas.nombre : '—') + '</div>'
+                + (m.proveedores ? '<div style="font-size:11px;color:#a78bfa">🏭 ' + m.proveedores.nombre + '</div>' : '')
                 + (m.precio_costo_usd ? '<div style="font-size:11px;color:var(--suave)">$ ' + fmtUSD(m.precio_costo_usd) + ' / u</div>' : '')
               : '<div>' + area + '</div>')
             + (m.empleados ? '<div style="font-size:11px;color:#60a5fa">👤 ' + m.empleados.nombre_completo + '</div>' : '')
@@ -7425,14 +7426,22 @@ function abrirEntradaStock(id) {
   if (refCPP) refCPP.textContent = '$ ' + fmtUSD(r.precio_costo_usd) + ' (CPP actual)';
   document.getElementById('alerta-es-ok').style.display = 'none';
   document.getElementById('alerta-es-err').style.display = 'none';
-  // Resetear área y empleado
+  // Resetear área, empleado y proveedor
   document.getElementById('es-area').value = '';
   document.getElementById('es-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
-  // Cargar áreas
-  api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc').then(function(areas) {
-    var sel = document.getElementById('es-area');
-    sel.innerHTML = '<option value="">— Seleccionar área —</option>'
+  document.getElementById('es-proveedor').innerHTML = '<option value="">— Seleccionar proveedor (opcional) —</option>';
+  // Cargar áreas y proveedores en paralelo
+  Promise.all([
+    api('param_areas',  'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
+    api('proveedores',  'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif'),
+  ]).then(function(res) {
+    var areas = res[0], provs = res[1];
+    var selArea = document.getElementById('es-area');
+    selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
       + areas.map(function(a) { return '<option value="' + a.id + '">' + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>'; }).join('');
+    var selProv = document.getElementById('es-proveedor');
+    selProv.innerHTML = '<option value="">— Seleccionar proveedor (opcional) —</option>'
+      + provs.map(function(p) { return '<option value="' + p.id_proveedor + '">' + p.nombre + (p.rif ? ' (' + p.rif + ')' : '') + '</option>'; }).join('');
   }).catch(function(){});
   abrirModal('modal-entrada-stock');
   setTimeout(function() { document.getElementById('es-cantidad').focus(); }, 100);
@@ -7475,6 +7484,7 @@ async function guardarEntradaStock() {
     try {
       const idAreaEnt    = parseInt(document.getElementById('es-area')?.value) || null;
       const idEmpEnt     = parseInt(document.getElementById('es-empleado')?.value) || null;
+      const idProvEnt = parseInt(document.getElementById('es-proveedor')?.value) || null;
       await api('stock_entradas', 'POST', {
         id_articulo:      id,
         cantidad:         cantidad,
@@ -7482,6 +7492,7 @@ async function guardarEntradaStock() {
         fecha_entrada:    getHoyVzla(),
         id_area:          idAreaEnt,
         id_empleado:      idEmpEnt,
+        id_proveedor:     idProvEnt,
         observaciones:    document.getElementById('es-observaciones')?.value.trim() || null,
         id_usuario:       sesionActual.correo_usuario
       });
@@ -9164,6 +9175,12 @@ window.addEventListener('load', async () => {
             <option value="ajuste">Ajuste de inventario</option>
             <option value="transferencia">Transferencia</option>
             <option value="otro">Otro</option>
+          </select>
+        </div>
+        <div class="form-campo form-full" style="grid-column:1/-1">
+          <label>Proveedor</label>
+          <select id="es-proveedor" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar proveedor (opcional) —</option>
           </select>
         </div>
       </div>
