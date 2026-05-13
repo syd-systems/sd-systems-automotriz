@@ -1120,8 +1120,8 @@
       <div class="nav-item" id="nav-EMPLEADOS" onclick="mostrarModulo('empleados', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">👷</span> Empleados
       </div>
-      <div class="nav-item" id="nav-PROVEEDORES" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
-        <span class="nav-icono">📦</span> Proveedores
+      <div class="nav-item" id="nav-PROVEEDORES" onclick="mostrarModulo('proveedores', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">🏭</span> Proveedores
       </div>
       <div class="nav-item" id="nav-TRIBUTOS" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">📋</span> Tributos
@@ -1888,6 +1888,7 @@ async function mostrarModulo(modulo, navEl) {
     emisores:     'DATOS DE EMPRESAS',
     facturas:     'FACTURAS',
     empleados:    'EMPLEADOS',
+    proveedores:  'PROVEEDORES',
     proximo:      'PRÓXIMAMENTE'
   };
 
@@ -1906,6 +1907,7 @@ async function mostrarModulo(modulo, navEl) {
     case 'emisores':     renderEmisores();     break;
     case 'facturas':     renderFacturas();     break;
     case 'empleados':    renderEmpleados();    break;
+    case 'proveedores':  renderProveedores();  break;
     default:             renderProximo(navEl?.querySelector('.nav-icono')?.textContent || '🔧',
                                        navEl?.textContent.trim() || modulo);
   }
@@ -4892,6 +4894,199 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
     renderInventario();
 
   } catch(err) { alert('Error: ' + err.message); }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  MÓDULO PROVEEDORES
+// ══════════════════════════════════════════════════════════════
+let proveedoresCache = [];
+
+async function renderProveedores() {
+  if (!sesionActual?.administrador && !modulosAcceso.includes('PROVEEDORES')) {
+    document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
+    return;
+  }
+  const c = document.getElementById('contenido-principal');
+  c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando proveedores...</div>';
+  try {
+    const proveedores = await api('proveedores', 'GET', null, '?order=nombre.asc&select=*');
+    proveedoresCache = proveedores;
+
+    const activos   = proveedores.filter(function(p) { return p.estado === 'ACTIVO'; }).length;
+    const inactivos = proveedores.length - activos;
+
+    const tipoLabel = { 'ORDINARIO':'Ord.','ESPECIAL':'Esp.','FORMAL':'Form.' };
+    const tipoColor = { 'ORDINARIO':'badge-naranja','ESPECIAL':'badge-verde','FORMAL':'badge-gris' };
+
+    const filas = proveedores.map(function(p) {
+      return '<tr data-id="' + p.id_proveedor + '">'
+        + '<td>'
+        + '<div style="font-weight:500">' + p.nombre + '</div>'
+        + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (p.rif||'—') + '</div>'
+        + (p.tipo_contribuyente ? '<span class="badge ' + (tipoColor[p.tipo_contribuyente]||'badge-gris') + '" style="font-size:9px;margin-top:3px;display:inline-block">' + (tipoLabel[p.tipo_contribuyente]||p.tipo_contribuyente) + '</span>' : '')
+        + '</td>'
+        + '<td style="font-size:12px">'
+        + '<span class="badge ' + (p.tipo_proveedor === 'NACIONAL' ? 'badge-naranja' : 'badge-gris') + '" style="font-size:10px">' + (p.tipo_proveedor||'NACIONAL') + '</span>'
+        + '</td>'
+        + '<td style="font-size:12px">' + (p.telefono||'—') + '</td>'
+        + '<td style="font-size:12px">' + (p.correo||'—') + '</td>'
+        + '<td style="font-size:12px;font-family:var(--font-mono)">'
+        + (p.moneda_facturacion||'USD')
+        + (p.dias_credito ? '<div style="font-size:10px;color:var(--suave)">' + p.dias_credito + ' días crédito</div>' : '')
+        + '</td>'
+        + '<td><span class="badge ' + (p.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (p.estado||'ACTIVO') + '</span></td>'
+        + '<td><button class="btn-secundario" onclick="verFichaProveedor(' + p.id_proveedor + ')">Ficha</button></td>'
+        + '</tr>';
+    }).join('');
+
+    c.innerHTML =
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:24px">'
+      + '<div class="tarjeta-stat" style="padding:14px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Total</div><div style="font-family:var(--font-display);font-size:26px;color:var(--naranja)">' + proveedores.length + '</div></div>'
+      + '<div class="tarjeta-stat" style="padding:14px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Activos</div><div style="font-family:var(--font-display);font-size:26px;color:var(--naranja)">' + activos + '</div></div>'
+      + '<div class="tarjeta-stat" style="padding:14px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Inactivos</div><div style="font-family:var(--font-display);font-size:26px;color:var(--naranja)">' + inactivos + '</div></div>'
+      + '</div>'
+      + '<div class="panel">'
+      + '<div class="panel-header" style="flex-wrap:wrap;gap:10px">'
+      + '<h3 style="white-space:nowrap">Proveedores</h3>'
+      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end">'
+      + '<select id="prov-filtro-estado" onchange="filtrarTablaProveedores()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
+      + '<option value="">Todos los estados</option>'
+      + '<option value="ACTIVO">Activo</option>'
+      + '<option value="INACTIVO">Inactivo</option>'
+      + '</select>'
+      + '<input type="text" id="prov-buscar" placeholder="Buscar nombre o RIF..." oninput="filtrarTablaProveedores()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
+      + (puedo('PROVEEDORES','CREAR') ? '<button class="btn-primario" onclick="abrirProveedor(null)">+ Nuevo Proveedor</button>' : '')
+      + '</div></div>'
+      + '<div class="tabla-container"><table><thead><tr>'
+      + '<th>Nombre / RIF</th><th>Tipo</th><th>Teléfono</th><th>Correo</th><th>Moneda / Crédito</th><th>Estado</th><th>Acciones</th>'
+      + '</tr></thead><tbody id="prov-tbody">'
+      + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">No hay proveedores registrados</td></tr>')
+      + '</tbody></table></div></div>';
+  } catch(err) {
+    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + err.message + '</div>';
+  }
+}
+
+function filtrarTablaProveedores() {
+  const estado = document.getElementById('prov-filtro-estado')?.value || '';
+  const buscar = (document.getElementById('prov-buscar')?.value || '').toLowerCase().trim();
+  const tbody  = document.getElementById('prov-tbody');
+  if (!tbody) return;
+  Array.from(tbody.querySelectorAll('tr[data-id]')).forEach(function(tr) {
+    const pId = parseInt(tr.dataset.id);
+    const p   = proveedoresCache.find(function(x) { return x.id_proveedor === pId; });
+    if (!p) { tr.style.display = 'none'; return; }
+    const matchEstado = !estado || p.estado === estado;
+    const matchBuscar = !buscar || p.nombre.toLowerCase().includes(buscar) || (p.rif||'').toLowerCase().includes(buscar);
+    tr.style.display = matchEstado && matchBuscar ? '' : 'none';
+  });
+}
+
+async function verFichaProveedor(id) {
+  if (!sesionActual?.administrador && !puedo('PROVEEDORES','VER')) {
+    alert('No tiene permiso para ver la ficha del proveedor.'); return;
+  }
+  const p = proveedoresCache.find(function(x) { return x.id_proveedor === id; });
+  if (!p) return;
+
+  const tipoLabel = { 'ORDINARIO':'Contribuyente Ordinario','ESPECIAL':'Contribuyente Especial','FORMAL':'Contribuyente Formal' };
+  const tipoColor = { 'ORDINARIO':'badge-naranja','ESPECIAL':'badge-verde','FORMAL':'badge-gris' };
+
+  document.getElementById('ficha-prov-contenido').innerHTML =
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Nombre</div><div style="font-weight:600;font-size:15px">' + p.nombre + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">RIF</div><div style="font-family:var(--font-mono)">' + (p.rif||'—') + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Tipo Contribuyente</div><div>' + (p.tipo_contribuyente ? '<span class="badge ' + (tipoColor[p.tipo_contribuyente]||'badge-gris') + '">' + (tipoLabel[p.tipo_contribuyente]||p.tipo_contribuyente) + '</span>' : '—') + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Tipo Proveedor</div><div><span class="badge ' + (p.tipo_proveedor === 'NACIONAL' ? 'badge-naranja' : 'badge-gris') + '">' + (p.tipo_proveedor||'NACIONAL') + '</span></div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div>' + (p.telefono||'—') + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Correo</div><div>' + (p.correo||'—') + '</div></div>'
+    + '<div style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div>' + (p.direccion||'—') + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Moneda Facturación</div><div style="font-family:var(--font-mono)">' + (p.moneda_facturacion||'USD') + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Días de Crédito</div><div>' + (p.dias_credito||0) + ' días</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Límite de Crédito</div><div style="font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(p.limite_credito||0) + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Estado</div><div><span class="badge ' + (p.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (p.estado||'ACTIVO') + '</span></div></div>'
+    + (p.observaciones ? '<div style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Observaciones</div><div style="background:var(--gris2);border-radius:6px;padding:10px 14px;font-size:13px">' + p.observaciones + '</div></div>' : '')
+    + '</div>';
+
+  var btnEditar   = document.getElementById('ficha-prov-btn-editar');
+  var btnEliminar = document.getElementById('ficha-prov-btn-eliminar');
+  if (btnEditar)  { btnEditar._id = p.id_proveedor;  btnEditar.onclick  = function() { cerrarModal('modal-ficha-prov'); abrirProveedor(this._id); }; btnEditar.style.display = puedo('PROVEEDORES','EDITAR') ? '' : 'none'; }
+  if (btnEliminar){ btnEliminar._id = p.id_proveedor; btnEliminar._nombre = p.nombre; btnEliminar.onclick = function() { cerrarModal('modal-ficha-prov'); eliminarProveedor(this._id, this._nombre); }; btnEliminar.style.display = puedo('PROVEEDORES','ELIMINAR') ? '' : 'none'; }
+
+  abrirModal('modal-ficha-prov');
+}
+
+async function abrirProveedor(id) {
+  if (id && !puedo('PROVEEDORES','EDITAR'))  { alert('No tiene permiso para editar proveedores.'); return; }
+  if (!id && !puedo('PROVEEDORES','CREAR'))  { alert('No tiene permiso para registrar proveedores.'); return; }
+
+  const p = id ? proveedoresCache.find(function(x) { return x.id_proveedor === id; }) : null;
+
+  document.getElementById('prov-modal-titulo').textContent   = p ? 'EDITAR PROVEEDOR' : 'NUEVO PROVEEDOR';
+  document.getElementById('prov-id').value                   = p ? p.id_proveedor : '';
+  document.getElementById('prov-nombre').value               = p ? (p.nombre||'') : '';
+  document.getElementById('prov-rif').value                  = p ? (p.rif||'') : '';
+  document.getElementById('prov-tipo-contrib').value         = p ? (p.tipo_contribuyente||'') : '';
+  document.getElementById('prov-tipo').value                 = p ? (p.tipo_proveedor||'NACIONAL') : 'NACIONAL';
+  document.getElementById('prov-telefono').value             = p ? (p.telefono||'') : '';
+  document.getElementById('prov-correo').value               = p ? (p.correo||'') : '';
+  document.getElementById('prov-direccion').value            = p ? (p.direccion||'') : '';
+  document.getElementById('prov-moneda').value               = p ? (p.moneda_facturacion||'USD') : 'USD';
+  document.getElementById('prov-dias-credito').value         = p ? (p.dias_credito||0) : 0;
+  document.getElementById('prov-limite-credito').value       = p ? (p.limite_credito||0) : 0;
+  document.getElementById('prov-estado').value               = p ? (p.estado||'ACTIVO') : 'ACTIVO';
+  document.getElementById('prov-observaciones').value        = p ? (p.observaciones||'') : '';
+  document.getElementById('alerta-prov-ok').style.display    = 'none';
+  document.getElementById('alerta-prov-err').style.display   = 'none';
+  abrirModal('modal-proveedor');
+  setTimeout(function() { document.getElementById('prov-nombre')?.focus(); }, 100);
+}
+
+async function guardarProveedor() {
+  const id     = document.getElementById('prov-id').value;
+  const nombre = document.getElementById('prov-nombre').value.trim();
+  const okEl   = document.getElementById('alerta-prov-ok');
+  const errEl  = document.getElementById('alerta-prov-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
+
+  // Validar duplicado por nombre
+  try {
+    const existe = await api('proveedores', 'GET', null, '?nombre=ilike.' + encodeURIComponent(nombre) + (id ? '&id_proveedor=neq.' + id : ''));
+    if (existe && existe.length > 0) { errEl.textContent = 'Ya existe un proveedor con ese nombre.'; errEl.style.display = 'block'; return; }
+  } catch(e) {}
+
+  const datos = {
+    nombre,
+    rif:                document.getElementById('prov-rif').value.trim().toUpperCase() || null,
+    tipo_contribuyente: document.getElementById('prov-tipo-contrib').value || null,
+    tipo_proveedor:     document.getElementById('prov-tipo').value || 'NACIONAL',
+    telefono:           document.getElementById('prov-telefono').value.trim() || null,
+    correo:             document.getElementById('prov-correo').value.trim() || null,
+    direccion:          document.getElementById('prov-direccion').value.trim() || null,
+    moneda_facturacion: document.getElementById('prov-moneda').value || 'USD',
+    dias_credito:       parseInt(document.getElementById('prov-dias-credito').value) || 0,
+    limite_credito:     parseFloat(document.getElementById('prov-limite-credito').value) || 0,
+    estado:             document.getElementById('prov-estado').value || 'ACTIVO',
+    observaciones:      document.getElementById('prov-observaciones').value.trim() || null,
+    id_usuario:         sesionActual.correo_usuario
+  };
+
+  try {
+    if (id) { await api('proveedores','PATCH',datos,'?id_proveedor=eq.'+id); okEl.textContent = '✓ Proveedor actualizado correctamente.'; }
+    else    { await api('proveedores','POST',datos);                          okEl.textContent = '✓ Proveedor registrado correctamente.'; }
+    okEl.style.display = 'block';
+    setTimeout(function() { cerrarModal('modal-proveedor'); renderProveedores(); }, 1200);
+  } catch(err) { errEl.textContent = 'Error: ' + err.message; errEl.style.display = 'block'; }
+}
+
+async function eliminarProveedor(id, nombre) {
+  if (!puedo('PROVEEDORES','ELIMINAR')) { alert('No tiene permiso para eliminar proveedores.'); return; }
+  if (!confirm('¿Eliminar el proveedor "' + nombre + '"?\\nEsta acción no se puede deshacer.')) return;
+  try { await api('proveedores','DELETE',null,'?id_proveedor=eq.'+id); renderProveedores(); }
+  catch(err) { alert('Error: ' + err.message); }
 }
 
 
@@ -9692,6 +9887,110 @@ window.addEventListener('load', async () => {
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-emp')">Cerrar</button>
       <button class="btn-secundario" id="ficha-emp-btn-editar"   style="display:none">Editar</button>
       <button class="btn-peligro"    id="ficha-emp-btn-eliminar" style="display:none">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL PROVEEDOR                     -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-proveedor">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <h3 id="prov-modal-titulo">NUEVO PROVEEDOR</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-proveedor')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alerta alerta-exito" id="alerta-prov-ok"></div>
+      <div class="alerta alerta-error"  id="alerta-prov-err"></div>
+      <div class="form-grid">
+        <div class="form-campo form-full">
+          <label>Nombre / Razón Social *</label>
+          <input type="text" id="prov-nombre" placeholder="Nombre completo del proveedor">
+        </div>
+        <div class="form-campo">
+          <label>RIF</label>
+          <input type="text" id="prov-rif" placeholder="J-XXXXXXXX-X" style="text-transform:uppercase">
+        </div>
+        <div class="form-campo">
+          <label>Tipo de Contribuyente</label>
+          <select id="prov-tipo-contrib" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar —</option>
+            <option value="ORDINARIO">Contribuyente Ordinario</option>
+            <option value="ESPECIAL">Contribuyente Especial</option>
+            <option value="FORMAL">Contribuyente Formal</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Tipo de Proveedor</label>
+          <select id="prov-tipo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="NACIONAL">Nacional</option>
+            <option value="INTERNACIONAL">Internacional</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Teléfono</label>
+          <input type="text" id="prov-telefono" placeholder="0212-XXXXXXX">
+        </div>
+        <div class="form-campo">
+          <label>Correo Electrónico</label>
+          <input type="email" id="prov-correo" placeholder="proveedor@correo.com">
+        </div>
+        <div class="form-campo form-full">
+          <label>Dirección</label>
+          <input type="text" id="prov-direccion" placeholder="Dirección completa">
+        </div>
+        <div class="form-campo">
+          <label>Moneda de Facturación</label>
+          <select id="prov-moneda" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="USD">USD — Dólar</option>
+            <option value="VES">VES — Bolívar</option>
+            <option value="EUR">EUR — Euro</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Días de Crédito</label>
+          <input type="number" id="prov-dias-credito" placeholder="0" min="0" style="font-family:var(--font-mono)">
+        </div>
+        <div class="form-campo">
+          <label>Límite de Crédito (USD)</label>
+          <input type="number" id="prov-limite-credito" placeholder="0.00" min="0" step="0.01" style="font-family:var(--font-mono)">
+        </div>
+        <div class="form-campo">
+          <label>Estado</label>
+          <select id="prov-estado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="ACTIVO">Activo</option>
+            <option value="INACTIVO">Inactivo</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Observaciones</label>
+          <textarea id="prov-observaciones" placeholder="Observaciones adicionales..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%"></textarea>
+        </div>
+      </div>
+      <input type="hidden" id="prov-id">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-proveedor')">Cancelar</button>
+      <button class="btn-primario"   onclick="guardarProveedor()">GUARDAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL FICHA PROVEEDOR               -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-ficha-prov">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header">
+      <h3>FICHA DEL PROVEEDOR</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-prov')">✕</button>
+    </div>
+    <div class="modal-body" id="ficha-prov-contenido"></div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-prov')">Cerrar</button>
+      <button class="btn-secundario" id="ficha-prov-btn-editar"   style="display:none">Editar</button>
+      <button class="btn-peligro"    id="ficha-prov-btn-eliminar" style="display:none">Eliminar</button>
     </div>
   </div>
 </div>
