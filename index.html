@@ -4816,6 +4816,7 @@ async function editarMovimiento(tipo, idMovimiento, idRepuesto) {
     document.getElementById('edit-mov-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
   }
 
+  cerrarModal('modal-historial-stock');
   abrirModal('modal-edit-movimiento');
 }
 
@@ -4851,7 +4852,7 @@ async function guardarEdicionMovimiento() {
     okEl.style.display = 'block';
     setTimeout(async function() {
       cerrarModal('modal-edit-movimiento');
-      await recargarHistorial(idRepuesto);
+      await verHistorialStock(idRepuesto, document.getElementById('historial-art-nombre').textContent);
     }, 900);
   } catch(err) { errEl.textContent = 'Error: ' + err.message; errEl.style.display = 'block'; }
 }
