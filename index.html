@@ -9707,15 +9707,15 @@ window.addEventListener('load', async () => {
     </div>
     <div class="modal-body">
       <div class="form-grid" style="grid-template-columns:1fr 1fr">
-        <div class="form-campo">
+        <div class="form-campo" style="display:flex;flex-direction:column">
           <label>Cantidad *</label>
           <input type="number" id="edit-mov-cantidad" min="0.01" step="0.01" placeholder="0"
-            style="font-size:18px;font-family:var(--font-mono);text-align:center;color:var(--naranja)">
+            style="font-size:18px;font-family:var(--font-mono);text-align:center;color:var(--naranja);flex:1">
         </div>
-        <div class="form-campo" id="edit-mov-precio-cont">
+        <div class="form-campo" id="edit-mov-precio-cont" style="display:flex;flex-direction:column">
           <label>Precio Costo USD</label>
           <input type="number" id="edit-mov-precio" min="0" step="0.01" placeholder="0.00"
-            style="font-family:var(--font-mono)">
+            style="font-family:var(--font-mono);flex:1">
         </div>
         <div class="form-campo form-full">
           <label>Área Receptora</label>
