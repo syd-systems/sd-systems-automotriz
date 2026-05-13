@@ -4757,7 +4757,7 @@ async function recargarHistorial(idRepuesto) {
             + '</td>'
             + '<td style="text-align:center;padding:8px 0">'
             + (!reversada && (sesionActual?.administrador || puedo('INVENTARIO', esEntrada ? 'ENTRADA_STOCK' : 'SALIDA_STOCK'))
-                ? '<button class="btn-secundario" style="font-size:11px;padding:4px 8px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="reversarMovimiento(\'' + m.tipo + '\',' + (esEntrada ? m.id_entrada : m.id_salida) + ',' + m.cantidad + ',' + idRepuesto + ')">↩ Reversar</button>'
+                ? '<div style="display:flex;gap:4px;flex-direction:column">'                  + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="editarMovimiento(\'' + m.tipo + '\',' + (esEntrada ? m.id_entrada : m.id_salida) + ',' + idRepuesto + ')">✏ Editar</button>'                  + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="reversarMovimiento(\'' + m.tipo + '\',' + (esEntrada ? m.id_entrada : m.id_salida) + ',' + m.cantidad + ',' + idRepuesto + ')">↩ Reversar</button>'                  + '</div>'
                 : '')
             + '</td>'
             + '</tr>';
@@ -4766,6 +4766,94 @@ async function recargarHistorial(idRepuesto) {
   } catch(err) {
     cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + err.message + '</div>';
   }
+}
+
+async function editarMovimiento(tipo, idMovimiento, idRepuesto) {
+  // Cargar datos del movimiento
+  let m = null;
+  try {
+    if (tipo === 'ENTRADA') {
+      const res = await api('stock_entradas', 'GET', null, '?id_entrada=eq.' + idMovimiento + '&select=*,param_areas(nombre,codigo),empleados(nombre_completo)');
+      m = res[0];
+    } else {
+      const res = await api('stock_salidas', 'GET', null, '?id_salida=eq.' + idMovimiento + '&select=*,param_areas(nombre,codigo),empleados(nombre_completo)');
+      m = res[0];
+    }
+  } catch(err) { alert('Error cargando movimiento: ' + err.message); return; }
+  if (!m) return;
+
+  // Cargar áreas
+  let areas = [];
+  try { areas = await api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'); } catch(e) {}
+
+  document.getElementById('edit-mov-tipo').value        = tipo;
+  document.getElementById('edit-mov-id').value          = idMovimiento;
+  document.getElementById('edit-mov-id-repuesto').value = idRepuesto;
+  document.getElementById('edit-mov-cantidad').value    = m.cantidad;
+  document.getElementById('edit-mov-obs').value         = m.observaciones || '';
+  document.getElementById('edit-mov-titulo').textContent = (tipo === 'ENTRADA' ? '✏ EDITAR ENTRADA' : '✏ EDITAR SALIDA') + ' DE STOCK';
+  document.getElementById('alerta-edit-mov-ok').style.display  = 'none';
+  document.getElementById('alerta-edit-mov-err').style.display = 'none';
+
+  // Precio costo solo para entradas
+  const precioCont = document.getElementById('edit-mov-precio-cont');
+  if (precioCont) precioCont.style.display = tipo === 'ENTRADA' ? 'block' : 'none';
+  if (tipo === 'ENTRADA') document.getElementById('edit-mov-precio').value = m.precio_costo_usd || '';
+
+  // Cargar áreas en selector
+  const selArea = document.getElementById('edit-mov-area');
+  selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
+    + areas.map(function(a) {
+        return '<option value="' + a.id + '"' + (m.id_area === a.id ? ' selected' : '') + '>'
+          + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
+      }).join('');
+
+  // Cargar empleados del área actual
+  if (m.id_area) {
+    await cargarEmpleadosPorArea(m.id_area, 'edit-mov-empleado');
+    document.getElementById('edit-mov-empleado').value = m.id_empleado || '';
+  } else {
+    document.getElementById('edit-mov-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
+  }
+
+  abrirModal('modal-edit-movimiento');
+}
+
+async function guardarEdicionMovimiento() {
+  const tipo       = document.getElementById('edit-mov-tipo').value;
+  const id         = document.getElementById('edit-mov-id').value;
+  const idRepuesto = parseInt(document.getElementById('edit-mov-id-repuesto').value);
+  const cantidad   = parseFloat(document.getElementById('edit-mov-cantidad').value);
+  const idArea     = parseInt(document.getElementById('edit-mov-area').value) || null;
+  const idEmp      = parseInt(document.getElementById('edit-mov-empleado').value) || null;
+  const obs        = document.getElementById('edit-mov-obs').value.trim();
+  const okEl       = document.getElementById('alerta-edit-mov-ok');
+  const errEl      = document.getElementById('alerta-edit-mov-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  if (!cantidad || cantidad <= 0) { errEl.textContent = 'La cantidad debe ser mayor a cero.'; errEl.style.display = 'block'; return; }
+
+  try {
+    const datos = {
+      cantidad:      cantidad,
+      id_area:       idArea,
+      id_empleado:   idEmp,
+      observaciones: obs || null,
+    };
+    if (tipo === 'ENTRADA') {
+      const precio = parseFloat(document.getElementById('edit-mov-precio').value) || null;
+      if (precio) datos.precio_costo_usd = precio;
+      await api('stock_entradas', 'PATCH', datos, '?id_entrada=eq.' + id);
+    } else {
+      await api('stock_salidas', 'PATCH', datos, '?id_salida=eq.' + id);
+    }
+    okEl.textContent = '✓ Movimiento actualizado correctamente.';
+    okEl.style.display = 'block';
+    setTimeout(async function() {
+      cerrarModal('modal-edit-movimiento');
+      await recargarHistorial(idRepuesto);
+    }, 900);
+  } catch(err) { errEl.textContent = 'Error: ' + err.message; errEl.style.display = 'block'; }
 }
 
 async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
@@ -6861,7 +6949,7 @@ async function renderInventario(filtro) {
       + '<option value="limpieza">🧹 Limpieza</option>'
       + '<option value="oficina">📎 Oficina</option>'
       + '<option value="otro">📦 Otro</option>'
-      + '<option value="repuesto">🔧 Repuesto</option>'
+      + '<option value="repuesto">🔧 Artículo</option>'
       + '<option value="venta">🛒 Venta</option>'
       + '</select>'
       + '<input type="text" id="buscar-inv" placeholder="Buscar artículo o código..." '
@@ -6955,7 +7043,7 @@ function invRenderTabla(items, cont) {
       + '<td><div style="display:flex;align-items:center;gap:8px">'
       + '<span style="font-size:10px;font-weight:700;color:' + (abcColor[abc]||'#888') + ';background:' + (abcColor[abc]||'#888') + '22;padding:2px 6px;border-radius:3px">' + abc + '</span>'
       + '<div><div style="font-family:var(--font-mono);font-size:11px;color:var(--suave)">' + (r.codigo || '—')
-      + ' · <span style="color:var(--suave)">' + ({'repuesto':'🔧 Repuesto','venta':'🛒 Venta','oficina':'📎 Oficina','limpieza':'🧹 Limpieza','otro':'📦 Otro'}[r.categoria] || r.categoria || '🔧 Repuesto') + '</span></div>'
+      + ' · <span style="color:var(--suave)">' + ({'repuesto':'🔧 Artículo','venta':'🛒 Venta','oficina':'📎 Oficina','limpieza':'🧹 Limpieza','otro':'📦 Otro'}[r.categoria] || r.categoria || '🔧 Artículo') + '</span></div>'
       + '<div style="font-weight:500">' + r.nombre + '</div>'
       + (r.descripcion ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion + '</div>' : '') + '</div></div></td>'
       + '<td><span class="badge ' + (stockBajo ? 'badge-rojo' : 'badge-verde') + '">' + r.stock_actual + ' ' + (r.unidad || 'UND') + '</span>'
@@ -7013,7 +7101,7 @@ function invRenderABC(items, cont) {
     + '</div>'
     + '<div style="padding:8px 14px;background:rgba(255,107,0,0.08);border-left:3px solid var(--naranja);border-radius:4px;margin-bottom:10px;font-size:11px;color:var(--suave)">'
     + '<b style="color:var(--naranja)">FIFO / PEPS:</b> El stock existente (ingresado primero) se consume antes que el nuevo. Los items Clase A deben rotarse con mayor control. Registra la fecha de ingreso al editar cada repuesto.</div>'
-    + '<div class="tabla-container"><table><thead><tr><th>Clase</th><th>Repuesto</th><th style="text-align:center">Stock</th><th>P. Venta</th><th>Valor Inventario</th><th>% Total</th></tr></thead><tbody>'
+    + '<div class="tabla-container"><table><thead><tr><th>Clase</th><th>Artículo</th><th style="text-align:center">Stock</th><th>P. Venta</th><th>Valor Inventario</th><th>% Total</th></tr></thead><tbody>'
     + filasHTML + '</tbody></table></div>';
 }
 
@@ -7040,7 +7128,7 @@ function invRenderReorden(items, cont) {
     + '<b style="color:var(--naranja)">Punto de Reorden = (Demanda Diaria × Lead Time) + Stock de Seguridad.</b> '
     + 'JIT: Pedir solo lo necesario al alcanzar el punto de reorden. Configura Demanda Anual y Lead Time en cada repuesto.</div>'
     + '<div class="tabla-container"><table><thead><tr>'
-    + '<th>Repuesto</th><th style="text-align:center">Stock</th><th style="text-align:center">Mínimo</th><th style="text-align:center">Dem./Día</th><th style="text-align:center">Lead Time</th><th style="text-align:center">Punto Reorden</th><th style="text-align:center">Estado</th>'
+    + '<th>Artículo</th><th style="text-align:center">Stock</th><th style="text-align:center">Mínimo</th><th style="text-align:center">Dem./Día</th><th style="text-align:center">Lead Time</th><th style="text-align:center">Punto Reorden</th><th style="text-align:center">Estado</th>'
     + '</tr></thead><tbody>'
     + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos</td></tr>')
     + '</tbody></table></div>';
@@ -7065,9 +7153,9 @@ function invRenderEOQ(items, cont) {
   }).join('');
   cont.innerHTML = '<div style="padding:8px 14px;background:var(--gris2);border-radius:6px;margin-bottom:10px;font-size:11px;color:var(--suave)">'
     + '<b style="color:var(--naranja)">EOQ = √(2 × D × S / H)</b> donde D = demanda anual, S = costos operativos ($25 default), H = costo de mantenimiento (20% del precio costo). '
-    + 'Configura <b>Demanda Anual</b> y <b>Costos Operativos</b> en la edición de cada repuesto.</div>'
+    + 'Configura <b>Demanda Anual</b> y <b>Costos Operativos</b> en la edición de cada artículo.</div>'
     + '<div class="tabla-container"><table><thead><tr>'
-    + '<th>Repuesto</th><th style="text-align:center">Demanda Anual</th><th style="text-align:center">Costos Operativos</th><th style="text-align:center">Costo Mant.</th><th style="text-align:center">EOQ Óptimo</th><th style="text-align:center">Pedidos/Año</th><th style="text-align:center">Frecuencia</th>'
+    + '<th>Artículo</th><th style="text-align:center">Demanda Anual</th><th style="text-align:center">Costos Operativos</th><th style="text-align:center">Costo Mant.</th><th style="text-align:center">EOQ Óptimo</th><th style="text-align:center">Pedidos/Año</th><th style="text-align:center">Frecuencia</th>'
     + '</tr></thead><tbody>'
     + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos</td></tr>')
     + '</tbody></table></div>';
@@ -7104,7 +7192,7 @@ function verFichaInventario(id) {
     + '<div style="font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(r.precio_venta_usd) + '</div>'
     + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen + '%</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Categoría</div>'
-    + '<div style="font-size:13px">' + (({'repuesto':'🔧 Repuesto','venta':'🛒 Venta','oficina':'📎 Oficina','limpieza':'🧹 Limpieza','otro':'📦 Otro'}[r.categoria]) || r.categoria || '—') + '</div></div>'
+    + '<div style="font-size:13px">' + (({'repuesto':'🔧 Artículo','venta':'🛒 Venta','oficina':'📎 Oficina','limpieza':'🧹 Limpieza','otro':'📦 Otro'}[r.categoria]) || r.categoria || '—') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Valor Inventario</div>'
     + '<div style="font-family:var(--font-mono)">$ ' + fmtUSD(parseFloat(r.precio_venta_usd||0)*parseFloat(r.stock_actual||0)) + '</div></div>'
     + '</div>';
@@ -7302,7 +7390,7 @@ async function guardarInventario() {
     } else {
       await api('inventario', 'POST', datos);
     }
-    okEl.textContent = '✓ Repuesto guardado.'; okEl.style.display = 'block';
+    okEl.textContent = '✓ Artículo guardado.'; okEl.style.display = 'block';
     setTimeout(function() { cerrarModal('modal-inventario'); document.getElementById('contenido-principal').innerHTML=''; renderInventario(); }, 1000);
   } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
 }
@@ -8211,7 +8299,7 @@ async function verFichaOS(id) {
               + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(l.subtotal_usd) + '</td></tr>';
           }).join('')
         + '</tbody></table>'
-      : '<div style="color:var(--suave);font-size:12px">Sin repuestos</div>';
+      : '<div style="color:var(--suave);font-size:12px">Sin artículos</div>';
 
     document.getElementById('ficha-os-contenido').innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:20px;flex-wrap:wrap">'
@@ -8844,7 +8932,7 @@ window.addEventListener('load', async () => {
       <!-- Info repuesto -->
       <div style="padding:12px 16px;background:var(--gris2);border-radius:6px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">Repuesto</div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">Artículo</div>
           <div style="font-weight:600;font-size:15px" id="es-nombre">—</div>
         </div>
         <div style="text-align:right">
@@ -8938,7 +9026,7 @@ window.addEventListener('load', async () => {
             <option value="limpieza">🧹 Limpieza</option>
             <option value="oficina">📎 Oficina</option>
             <option value="otro">📦 Otro</option>
-            <option value="repuesto">🔧 Repuesto</option>
+            <option value="repuesto">🔧 Artículo</option>
             <option value="venta">🛒 Venta</option>
           </select>
         </div>
@@ -9603,6 +9691,61 @@ window.addEventListener('load', async () => {
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-emp')">Cerrar</button>
       <button class="btn-secundario" id="ficha-emp-btn-editar"   style="display:none">Editar</button>
       <button class="btn-peligro"    id="ficha-emp-btn-eliminar" style="display:none">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL EDITAR MOVIMIENTO STOCK       -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-edit-movimiento">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <h3 id="edit-mov-titulo">✏ EDITAR MOVIMIENTO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-edit-movimiento')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-campo">
+          <label>Cantidad *</label>
+          <input type="number" id="edit-mov-cantidad" min="0.01" step="0.01" placeholder="0"
+            style="font-size:18px;font-family:var(--font-mono);text-align:center;color:var(--naranja)">
+        </div>
+        <div class="form-campo" id="edit-mov-precio-cont">
+          <label>Precio Costo USD</label>
+          <input type="number" id="edit-mov-precio" min="0" step="0.01" placeholder="0.00"
+            style="font-family:var(--font-mono)">
+        </div>
+        <div class="form-campo form-full">
+          <label>Área Receptora</label>
+          <select id="edit-mov-area" onchange="cargarEmpleadosPorArea(parseInt(this.value)||null,'edit-mov-empleado')"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar área —</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Empleado que Recibe</label>
+          <select id="edit-mov-empleado"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar área primero —</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Observaciones</label>
+          <textarea id="edit-mov-obs" placeholder="Observaciones..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%"></textarea>
+        </div>
+      </div>
+      <input type="hidden" id="edit-mov-tipo">
+      <input type="hidden" id="edit-mov-id">
+      <input type="hidden" id="edit-mov-id-repuesto">
+    </div>
+    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="alerta alerta-exito" id="alerta-edit-mov-ok" style="margin:0"></div>
+      <div class="alerta alerta-error"  id="alerta-edit-mov-err" style="margin:0"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-secundario" onclick="cerrarModal('modal-edit-movimiento')">Cancelar</button>
+        <button class="btn-primario"   onclick="guardarEdicionMovimiento()">GUARDAR</button>
+      </div>
     </div>
   </div>
 </div>
