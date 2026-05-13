@@ -8922,7 +8922,7 @@ window.addEventListener('load', async () => {
   </div>
 </div>
 <div class="modal-overlay" id="modal-entrada-stock">
-  <div class="modal" style="max-width:580px">
+  <div class="modal" style="max-width:700px">
     <div class="modal-header">
       <h3>ENTRADA DE STOCK</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-entrada-stock')">✕</button>
@@ -8941,22 +8941,12 @@ window.addEventListener('load', async () => {
           <div style="font-family:var(--font-mono);font-size:16px;color:var(--naranja)" id="es-stock-actual">—</div>
         </div>
       </div>
-      <div class="form-grid">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
         <div class="form-campo">
           <label>Cantidad a Ingresar</label>
           <input type="number" id="es-cantidad" placeholder="0" min="0.01" step="0.01"
             style="font-size:18px;font-family:var(--font-mono);text-align:center;color:var(--naranja)"
             onkeydown="if(event.key==='Enter'){document.getElementById('es-precio-costo').focus()}">
-        </div>
-        <div class="form-campo">
-          <label>Motivo</label>
-          <select id="es-motivo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
-            <option value="compra">Compra a proveedor</option>
-            <option value="devolucion">Devolución de cliente</option>
-            <option value="ajuste">Ajuste de inventario</option>
-            <option value="transferencia">Transferencia</option>
-            <option value="otro">Otro</option>
-          </select>
         </div>
         <div class="form-campo">
           <label>Precio Costo USD (esta compra)</label>
@@ -8966,10 +8956,20 @@ window.addEventListener('load', async () => {
           <div id="es-ref-cpp" style="font-size:10px;color:var(--naranja);margin-top:4px"></div>
         </div>
         <div class="form-campo">
-          <label>Precio Venta USD (nueva entrada)</label>
+          <label>Precio Venta USD</label>
           <input type="number" id="es-precio-venta" placeholder="0.00" min="0" step="0.01"
             style="font-family:var(--font-mono)">
-          <div style="font-size:10px;color:var(--suave);margin-top:4px">Dejarlo en blanco mantiene el precio actual</div>
+          <div style="font-size:10px;color:var(--suave);margin-top:4px">Blanco = mantiene precio actual</div>
+        </div>
+        <div class="form-campo form-full" style="grid-column:1/-1">
+          <label>Motivo</label>
+          <select id="es-motivo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
+            <option value="compra">Compra a proveedor</option>
+            <option value="devolucion">Devolución de cliente</option>
+            <option value="ajuste">Ajuste de inventario</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="otro">Otro</option>
+          </select>
         </div>
       </div>
       <div class="form-campo">
@@ -9700,13 +9700,13 @@ window.addEventListener('load', async () => {
 <!--    MODAL EDITAR MOVIMIENTO STOCK       -->
 <!-- ═══════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-edit-movimiento">
-  <div class="modal" style="max-width:500px">
+  <div class="modal" style="max-width:620px">
     <div class="modal-header">
       <h3 id="edit-mov-titulo">✏ EDITAR MOVIMIENTO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-edit-movimiento')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="form-grid">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
         <div class="form-campo">
           <label>Cantidad *</label>
           <input type="number" id="edit-mov-cantidad" min="0.01" step="0.01" placeholder="0"
