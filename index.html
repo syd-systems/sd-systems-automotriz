@@ -4651,6 +4651,30 @@ function onSelAreaEntrada() {
   cargarEmpleadosPorArea(parseInt(idArea)||null, 'es-empleado');
 }
 
+function onCambiarMotivoEntrada() {
+  const motivo = document.getElementById('es-motivo')?.value;
+  const contProv     = document.getElementById('es-campo-proveedor-cont');
+  const contCliente  = document.getElementById('es-campo-cliente-cont');
+  const contTransf   = document.getElementById('es-campo-transferencia-cont');
+  if (!contProv) return;
+
+  // Ocultar todos
+  contProv.style.display    = 'none';
+  contCliente.style.display = 'none';
+  contTransf.style.display  = 'none';
+
+  // Mostrar el correspondiente
+  if (motivo === 'compra') {
+    contProv.style.display = '';
+    contProv.querySelector('label').textContent = 'Proveedor *';
+  } else if (motivo === 'devolucion') {
+    contCliente.style.display = '';
+  } else if (motivo === 'transferencia') {
+    contTransf.style.display = '';
+  }
+  // ajuste y otro: ningún campo adicional
+}
+
 // ─── SALIDA DE STOCK ───
 async function abrirSalidaStock(id, nombre) {
   if (!puedo('INVENTARIO','SALIDA_STOCK')) { alert('No tiene permiso para registrar salidas de stock.'); return; }
@@ -7499,6 +7523,8 @@ function abrirEntradaStock(id) {
   // Resetear área, empleado, proveedor y contraseña
   document.getElementById('es-area').value = '';
   if (document.getElementById('es-clave-receptor')) document.getElementById('es-clave-receptor').value = '';
+  if (document.getElementById('es-cliente-nombre')) document.getElementById('es-cliente-nombre').value = '';
+  if (document.getElementById('es-area-origen'))    document.getElementById('es-area-origen').value = '';
   document.getElementById('es-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
   document.getElementById('es-proveedor').innerHTML = '<option value="">— Seleccionar proveedor (opcional) —</option>';
   // Cargar áreas y proveedores en paralelo
@@ -7511,8 +7537,16 @@ function abrirEntradaStock(id) {
     selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
       + areas.map(function(a) { return '<option value="' + a.id + '">' + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>'; }).join('');
     var selProv = document.getElementById('es-proveedor');
-    selProv.innerHTML = '<option value="">— Seleccionar proveedor (opcional) —</option>'
+    selProv.innerHTML = '<option value="">— Seleccionar proveedor —</option>'
       + provs.map(function(p) { return '<option value="' + p.id_proveedor + '">' + p.nombre + (p.rif ? ' (' + p.rif + ')' : '') + '</option>'; }).join('');
+    // Cargar áreas para transferencia
+    var selOrigen = document.getElementById('es-area-origen');
+    if (selOrigen) {
+      selOrigen.innerHTML = '<option value="">— Seleccionar área de origen —</option>'
+        + areas.map(function(a) { return '<option value="' + a.id + '">' + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>'; }).join('');
+    }
+    // Inicializar vista según motivo actual
+    onCambiarMotivoEntrada();
   }).catch(function(){});
   abrirModal('modal-entrada-stock');
   setTimeout(function() { document.getElementById('es-cantidad').focus(); }, 100);
@@ -7551,24 +7585,47 @@ async function guardarEntradaStock() {
     if (nuevoPrecioCosto > 0) patch.precio_costo_ultimo_usd = nuevoPrecioCosto;
     if (nuevoPrecioVenta && nuevoPrecioVenta > 0) patch.precio_venta_usd = nuevoPrecioVenta;
     await api('inventario', 'PATCH', patch, '?id_repuesto=eq.' + id);
-    // Validar contraseña del receptor
+    // Validar campo obligatorio según motivo
+    const motivoEnt = document.getElementById('es-motivo')?.value;
+    if (motivoEnt === 'compra') {
+      const idProvVal = document.getElementById('es-proveedor')?.value;
+      if (!idProvVal) { errEl.textContent = 'Debe seleccionar el proveedor.'; errEl.style.display = 'block'; return; }
+    } else if (motivoEnt === 'devolucion') {
+      const clienteNom = document.getElementById('es-cliente-nombre')?.value.trim();
+      if (!clienteNom) { errEl.textContent = 'Debe ingresar el nombre del cliente.'; errEl.style.display = 'block'; return; }
+    } else if (motivoEnt === 'transferencia') {
+      const idOrigenVal = document.getElementById('es-area-origen')?.value;
+      if (!idOrigenVal) { errEl.textContent = 'Debe seleccionar el área de origen.'; errEl.style.display = 'block'; return; }
+    }
+
+    // Validar empleado receptor y contraseña — OBLIGATORIO
     const idEmpEntVal  = parseInt(document.getElementById('es-empleado')?.value) || null;
     const claveEnt     = document.getElementById('es-clave-receptor')?.value || '';
-    if (idEmpEntVal) {
-      const validEnt = await validarClaveReceptor(idEmpEntVal, claveEnt);
-      if (!validEnt.ok) {
-        errEl.textContent = validEnt.msg;
-        errEl.style.display = 'block';
-        document.getElementById('es-clave-receptor')?.focus();
-        return;
-      }
+    if (!idEmpEntVal) {
+      errEl.textContent = 'Debe seleccionar el empleado receptor.';
+      errEl.style.display = 'block';
+      document.getElementById('es-empleado')?.focus(); return;
+    }
+    if (!claveEnt) {
+      errEl.textContent = 'El empleado receptor debe ingresar su contraseña para confirmar la recepción.';
+      errEl.style.display = 'block';
+      document.getElementById('es-clave-receptor')?.focus(); return;
+    }
+    const validEnt = await validarClaveReceptor(idEmpEntVal, claveEnt);
+    if (!validEnt.ok) {
+      errEl.textContent = validEnt.msg;
+      errEl.style.display = 'block';
+      document.getElementById('es-clave-receptor')?.focus(); return;
     }
 
     // Registrar en historial de entradas
     try {
       const idAreaEnt    = parseInt(document.getElementById('es-area')?.value) || null;
       const idEmpEnt     = idEmpEntVal;
-      const idProvEnt = parseInt(document.getElementById('es-proveedor')?.value) || null;
+      const motivoEntH   = document.getElementById('es-motivo')?.value;
+      const idProvEnt    = (motivoEntH === 'compra') ? (parseInt(document.getElementById('es-proveedor')?.value) || null) : null;
+      const clienteNomH  = (motivoEntH === 'devolucion') ? (document.getElementById('es-cliente-nombre')?.value.trim() || null) : null;
+      const idAreaOrigenH= (motivoEntH === 'transferencia') ? (parseInt(document.getElementById('es-area-origen')?.value) || null) : null;
       await api('stock_entradas', 'POST', {
         id_articulo:      id,
         cantidad:         cantidad,
@@ -7577,6 +7634,8 @@ async function guardarEntradaStock() {
         id_area:          idAreaEnt,
         id_empleado:      idEmpEnt,
         id_proveedor:     idProvEnt,
+        cliente_nombre:   clienteNomH,
+        id_area_origen:   idAreaOrigenH,
         observaciones:    document.getElementById('es-observaciones')?.value.trim() || null,
         id_usuario:       sesionActual.correo_usuario
       });
@@ -9255,7 +9314,7 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo form-full" style="grid-column:1/-1">
           <label>Motivo</label>
-          <select id="es-motivo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
+          <select id="es-motivo" onchange="onCambiarMotivoEntrada()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
             <option value="compra">Compra a proveedor</option>
             <option value="devolucion">Devolución de cliente</option>
             <option value="ajuste">Ajuste de inventario</option>
@@ -9263,10 +9322,22 @@ window.addEventListener('load', async () => {
             <option value="otro">Otro</option>
           </select>
         </div>
-        <div class="form-campo form-full" style="grid-column:1/-1">
-          <label>Proveedor</label>
+
+        <!-- Campo dinámico según motivo -->
+        <div class="form-campo form-full" id="es-campo-proveedor-cont" style="grid-column:1/-1">
+          <label>Proveedor *</label>
           <select id="es-proveedor" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar proveedor (opcional) —</option>
+            <option value="">— Seleccionar proveedor —</option>
+          </select>
+        </div>
+        <div class="form-campo form-full" id="es-campo-cliente-cont" style="grid-column:1/-1;display:none">
+          <label>Nombre del Cliente *</label>
+          <input type="text" id="es-cliente-nombre" placeholder="Nombre completo del cliente">
+        </div>
+        <div class="form-campo form-full" id="es-campo-transferencia-cont" style="grid-column:1/-1;display:none">
+          <label>Área de Origen *</label>
+          <select id="es-area-origen" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar área de origen —</option>
           </select>
         </div>
         <div class="form-campo form-full" style="grid-column:1/-1;background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
