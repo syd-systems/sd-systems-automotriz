@@ -4585,6 +4585,29 @@ async function eliminarFactura(id, numero) {
 
 
 
+// ─── VALIDAR CONTRASEÑA RECEPTOR ───
+async function validarClaveReceptor(idEmpleado, clave) {
+  if (!idEmpleado || !clave) return { ok: false, msg: 'Debe seleccionar un empleado receptor e ingresar su contraseña.' };
+  try {
+    // Buscar el correo del empleado
+    const empArr = await api('empleados', 'GET', null, '?id_empleado=eq.' + idEmpleado + '&select=id_empleado,nombre_completo,correo');
+    const emp = empArr[0];
+    if (!emp) return { ok: false, msg: 'Empleado no encontrado.' };
+    if (!emp.correo) return { ok: false, msg: 'El empleado receptor no tiene correo registrado en el sistema.' };
+
+    // Buscar usuario por correo y validar contraseña
+    const usuArr = await api('usuarios', 'GET', null,
+      '?correo_usuario=ilike.' + encodeURIComponent(emp.correo) + '&estado_usuario=eq.ACTIVO&select=correo_usuario,contrasena,nombre');
+    const usu = usuArr[0];
+    if (!usu) return { ok: false, msg: 'El empleado "' + emp.nombre_completo + '" no tiene usuario activo en el sistema.' };
+    if (usu.contrasena !== clave) return { ok: false, msg: 'Contraseña incorrecta para el receptor "' + emp.nombre_completo + '".' };
+
+    return { ok: true, nombre: emp.nombre_completo };
+  } catch(err) {
+    return { ok: false, msg: 'Error validando receptor: ' + err.message };
+  }
+}
+
 // ─── CARGAR EMPLEADOS POR ÁREA ───
 async function cargarEmpleadosPorArea(idArea, selectId) {
   const sel = document.getElementById(selectId);
@@ -4618,6 +4641,11 @@ function onSelAreaSalida() {
   cargarEmpleadosPorArea(parseInt(idArea)||null, 'salida-empleado');
 }
 
+function onSelAreaEntrega() {
+  const idArea = document.getElementById('salida-area-entrega')?.value;
+  cargarEmpleadosPorArea(parseInt(idArea)||null, 'salida-empleado-entrega');
+}
+
 function onSelAreaEntrada() {
   const idArea = document.getElementById('es-area')?.value;
   cargarEmpleadosPorArea(parseInt(idArea)||null, 'es-empleado');
@@ -4646,8 +4674,11 @@ async function abrirSalidaStock(id, nombre) {
         return '<option value="' + a.id + '">'
           + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
       }).join('');
-  // Resetear empleado
+  // Resetear campos
   document.getElementById('salida-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
+  document.getElementById('salida-empleado-entrega').innerHTML = '<option value="">— Seleccionar área primero —</option>';
+  document.getElementById('salida-area-entrega').value = '';
+  if (document.getElementById('salida-clave-entrega')) document.getElementById('salida-clave-entrega').value = '';
 
   // Mostrar stock actual
   const art = inventarioCache.find(function(x) { return x.id_repuesto === id; });
@@ -4674,6 +4705,25 @@ async function guardarSalidaStock() {
   if (!cantidad || cantidad <= 0) { errEl.textContent = 'La cantidad debe ser mayor a cero.'; errEl.style.display = 'block'; return; }
   if (!fecha)           { errEl.textContent = 'La fecha es obligatoria.'; errEl.style.display = 'block'; return; }
 
+  // Validar contraseña del empleado que ENTREGA
+  const idEmpEntrega  = parseInt(document.getElementById('salida-empleado-entrega')?.value) || null;
+  const claveEntrega  = document.getElementById('salida-clave-entrega')?.value || '';
+  if (!idEmpEntrega) {
+    errEl.textContent = 'Debe seleccionar el empleado que entrega.';
+    errEl.style.display = 'block'; return;
+  }
+  if (!claveEntrega) {
+    errEl.textContent = 'El empleado que entrega debe ingresar su contraseña.';
+    errEl.style.display = 'block';
+    document.getElementById('salida-clave-entrega')?.focus(); return;
+  }
+  const validEntrega = await validarClaveReceptor(idEmpEntrega, claveEntrega);
+  if (!validEntrega.ok) {
+    errEl.textContent = validEntrega.msg;
+    errEl.style.display = 'block';
+    document.getElementById('salida-clave-entrega')?.focus(); return;
+  }
+
   // Validar stock disponible
   const art = inventarioCache.find(function(x) { return x.id_repuesto === idRep; });
   if (art && cantidad > art.stock_actual) {
@@ -4683,15 +4733,18 @@ async function guardarSalidaStock() {
 
   try {
     // Registrar salida
-    const idEmpleadoSal = parseInt(document.getElementById('salida-empleado')?.value) || null;
+    const idEmpRecibe    = parseInt(document.getElementById('salida-empleado')?.value) || null;
+    const idAreaEntrega  = parseInt(document.getElementById('salida-area-entrega')?.value) || null;
     await api('stock_salidas', 'POST', {
-      id_articulo:   idRep,
-      id_area:       idArea,
-      id_empleado:   idEmpleadoSal,
-      cantidad:      cantidad,
-      fecha_salida:  fecha,
-      observaciones: obs || null,
-      id_usuario:    sesionActual.correo_usuario
+      id_articulo:        idRep,
+      id_area:            idArea,
+      id_empleado:        idEmpRecibe,
+      id_area_entrega:    idAreaEntrega,
+      id_empleado_entrega: idEmpEntrega,
+      cantidad:           cantidad,
+      fecha_salida:       fecha,
+      observaciones:      obs || null,
+      id_usuario:         sesionActual.correo_usuario
     });
 
     // Descontar del stock_actual
@@ -7443,8 +7496,9 @@ function abrirEntradaStock(id) {
   if (refCPP) refCPP.textContent = '$ ' + fmtUSD(r.precio_costo_usd) + ' (CPP actual)';
   document.getElementById('alerta-es-ok').style.display = 'none';
   document.getElementById('alerta-es-err').style.display = 'none';
-  // Resetear área, empleado y proveedor
+  // Resetear área, empleado, proveedor y contraseña
   document.getElementById('es-area').value = '';
+  if (document.getElementById('es-clave-receptor')) document.getElementById('es-clave-receptor').value = '';
   document.getElementById('es-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
   document.getElementById('es-proveedor').innerHTML = '<option value="">— Seleccionar proveedor (opcional) —</option>';
   // Cargar áreas y proveedores en paralelo
@@ -7497,10 +7551,23 @@ async function guardarEntradaStock() {
     if (nuevoPrecioCosto > 0) patch.precio_costo_ultimo_usd = nuevoPrecioCosto;
     if (nuevoPrecioVenta && nuevoPrecioVenta > 0) patch.precio_venta_usd = nuevoPrecioVenta;
     await api('inventario', 'PATCH', patch, '?id_repuesto=eq.' + id);
+    // Validar contraseña del receptor
+    const idEmpEntVal  = parseInt(document.getElementById('es-empleado')?.value) || null;
+    const claveEnt     = document.getElementById('es-clave-receptor')?.value || '';
+    if (idEmpEntVal) {
+      const validEnt = await validarClaveReceptor(idEmpEntVal, claveEnt);
+      if (!validEnt.ok) {
+        errEl.textContent = validEnt.msg;
+        errEl.style.display = 'block';
+        document.getElementById('es-clave-receptor')?.focus();
+        return;
+      }
+    }
+
     // Registrar en historial de entradas
     try {
       const idAreaEnt    = parseInt(document.getElementById('es-area')?.value) || null;
-      const idEmpEnt     = parseInt(document.getElementById('es-empleado')?.value) || null;
+      const idEmpEnt     = idEmpEntVal;
       const idProvEnt = parseInt(document.getElementById('es-proveedor')?.value) || null;
       await api('stock_entradas', 'POST', {
         id_articulo:      id,
@@ -9202,6 +9269,13 @@ window.addEventListener('load', async () => {
             <option value="">— Seleccionar proveedor (opcional) —</option>
           </select>
         </div>
+        <div class="form-campo form-full" style="grid-column:1/-1;background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
+          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🔐 Validación del Receptor</div>
+          <label style="font-size:12px">Contraseña del empleado receptor *</label>
+          <input type="password" id="es-clave-receptor" placeholder="Ingrese la contraseña del receptor"
+            style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">
+          <div style="font-size:11px;color:var(--suave);margin-top:4px">El empleado receptor debe ingresar su contraseña para confirmar la recepción.</div>
+        </div>
       </div>
       <div class="form-campo">
         <label>Referencia / N° Factura (opcional)</label>
@@ -10118,7 +10192,7 @@ window.addEventListener('load', async () => {
 <!--    MODAL SALIDA DE STOCK               -->
 <!-- ═══════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-salida-stock">
-  <div class="modal" style="max-width:560px">
+  <div class="modal" style="max-width:640px">
     <div class="modal-header">
       <h3>SALIDA DE STOCK</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-salida-stock')">✕</button>
@@ -10132,18 +10206,7 @@ window.addEventListener('load', async () => {
       </div>
 
       <div class="form-grid">
-        <div class="form-campo form-full">
-          <label>Área Receptora *</label>
-          <select id="salida-area" onchange="onSelAreaSalida()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar área —</option>
-          </select>
-        </div>
-        <div class="form-campo form-full">
-          <label>Empleado que Recibe *</label>
-          <select id="salida-empleado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar área primero —</option>
-          </select>
-        </div>
+        <!-- Cantidad y Fecha -->
         <div class="form-campo">
           <label>Cantidad *</label>
           <input type="number" id="salida-cantidad" min="0.01" step="0.01" placeholder="0">
@@ -10152,6 +10215,49 @@ window.addEventListener('load', async () => {
           <label>Fecha *</label>
           <input type="date" id="salida-fecha">
         </div>
+
+        <!-- Área y Empleado que ENTREGA (con validación de contraseña) -->
+        <div class="form-campo form-full" style="margin-top:4px">
+          <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;border-bottom:1px solid rgba(255,107,0,0.2);padding-bottom:4px">📤 Quien Entrega</div>
+        </div>
+        <div class="form-campo form-full">
+          <label>Área que Entrega *</label>
+          <select id="salida-area-entrega" onchange="onSelAreaEntrega()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar área —</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Empleado que Entrega *</label>
+          <select id="salida-empleado-entrega" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar área primero —</option>
+          </select>
+        </div>
+        <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
+          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🔐 Validación de quien Entrega</div>
+          <label style="font-size:12px">Contraseña del empleado que entrega *</label>
+          <input type="password" id="salida-clave-entrega" placeholder="Ingrese su contraseña para confirmar"
+            style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">
+          <div style="font-size:11px;color:var(--suave);margin-top:4px">El empleado que entrega debe ingresar su contraseña para autorizar la salida.</div>
+        </div>
+
+        <!-- Área y Empleado que RECIBE -->
+        <div class="form-campo form-full" style="margin-top:4px">
+          <div style="font-size:10px;color:#60a5fa;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;border-bottom:1px solid rgba(96,165,250,0.2);padding-bottom:4px">📥 Quien Recibe</div>
+        </div>
+        <div class="form-campo form-full">
+          <label>Área Receptora *</label>
+          <select id="salida-area" onchange="onSelAreaSalida()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar área —</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Empleado que Recibe</label>
+          <select id="salida-empleado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar área primero —</option>
+          </select>
+        </div>
+
+        <!-- Observaciones -->
         <div class="form-campo form-full">
           <label>Observaciones</label>
           <textarea id="salida-observaciones" placeholder="Motivo de la salida..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%"></textarea>
