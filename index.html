@@ -3277,22 +3277,27 @@ async function guardarParamItem() {
 
   const def = TABLAS_MAESTRAS.find(function(t) { return t.key === key; });
 
-  // ── Validar duplicado ──
+  // ── Validar código obligatorio y único para áreas ──
+  const codigo = (def.tieneCodigo || key === 'areas') ? (document.getElementById('param-item-codigo')?.value.trim() || '') : '';
+  if (key === 'areas' && !codigo) {
+    errEl.textContent = 'El código del área es obligatorio.';
+    errEl.style.display = 'block'; return;
+  }
+
+  // ── Validar duplicados ──
   try {
+    // Duplicado por nombre
     const existe = await api(def.tabla, 'GET', null, '?nombre=ilike.' + encodeURIComponent(nombre) + (id ? '&id=neq.' + id : ''));
     if (existe && existe.length > 0) {
-      errEl.textContent = 'Ya existe un registro con el nombre "' + nombre + '".';
-      errEl.style.display = 'block';
-      return;
+      errEl.textContent = 'Ya existe un área con el nombre "' + nombre + '".';
+      errEl.style.display = 'block'; return;
     }
-    // Validar código duplicado si aplica
-    const codigo = (def.tieneCodigo || key === 'areas') ? (document.getElementById('param-item-codigo')?.value.trim() || '') : '';
+    // Duplicado por código
     if (codigo) {
       const existeCod = await api(def.tabla, 'GET', null, '?codigo=ilike.' + encodeURIComponent(codigo) + (id ? '&id=neq.' + id : ''));
       if (existeCod && existeCod.length > 0) {
-        errEl.textContent = 'Ya existe un registro con el código "' + codigo + '".';
-        errEl.style.display = 'block';
-        return;
+        errEl.textContent = 'Ya existe un área con el código "' + codigo + '". Verifique e ingrese un código único.';
+        errEl.style.display = 'block'; return;
       }
     }
   } catch(eDup) { console.warn('Error validando duplicado:', eDup); }
