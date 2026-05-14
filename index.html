@@ -1291,7 +1291,10 @@
     </div>
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-tasa')">Cancelar</button>
-      <button class="btn-primario" onclick="guardarTasa()">REGISTRAR</button>
+      <div class="alerta alerta-error" id="alerta-tasa-error" style="display:none;margin:0 0 8px 0"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-primario" onclick="guardarTasa()">REGISTRAR</button>
+      </div>
     </div>
   </div>
 </div>
@@ -3246,9 +3249,10 @@ async function abrirParamItem(key, id) {
   camposHTML += '<div class="form-campo form-full"><label>Estado</label><select id="param-item-estado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="ACTIVO"' + (!item || item.estado==='ACTIVO' ? ' selected' : '') + '>Activo</option><option value="INACTIVO"' + (item && item.estado==='INACTIVO' ? ' selected' : '') + '>Inactivo</option></select></div>';
 
   document.getElementById('modal-param-titulo').textContent = (id ? 'EDITAR' : 'NUEVO') + ' — ' + def.nombre.toUpperCase();
-  document.getElementById('modal-param-body').innerHTML =
-    '<div class="alerta alerta-exito" id="alerta-param-ok"></div>'
-    + '<div class="alerta alerta-error" id="alerta-param-err"></div>'
+  document.getElementById('modal-param-footer-alertas').innerHTML =
+    '<div class="alerta alerta-exito" id="alerta-param-ok" style="margin:0"></div>'
+    + '<div class="alerta alerta-error" id="alerta-param-err" style="margin:0"></div>';
+  document.getElementById('modal-param-body').innerHTML = ''
     + '<div class="form-grid">' + camposHTML + '</div>'
     + '<input type="hidden" id="param-item-id" value="' + (id||'') + '">'
     + '<input type="hidden" id="param-item-key" value="' + key + '">';
@@ -8982,8 +8986,6 @@ window.addEventListener('load', async () => {
       <button class="modal-cerrar" onclick="cerrarModal('modal-galeria')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="alerta alerta-exito" id="alerta-gal-ok"></div>
-      <div class="alerta alerta-error"  id="alerta-gal-err"></div>
       <div id="galeria-fotos-cont" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:20px"></div>
       <div class="form-campo">
         <label>Agregar más fotos</label>
@@ -8992,8 +8994,12 @@ window.addEventListener('load', async () => {
       <input type="hidden" id="gal-veh-id">
     </div>
     <div class="modal-footer">
-      <button class="btn-secundario" onclick="cerrarModal('modal-galeria')">Cerrar</button>
-      <button class="btn-primario" onclick="subirMasFotos()">SUBIR FOTOS</button>
+      <div class="alerta alerta-exito" id="alerta-gal-ok"  style="display:none;margin:0 0 8px 0"></div>
+      <div class="alerta alerta-error"  id="alerta-gal-err" style="display:none;margin:0 0 8px 0"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-secundario" onclick="cerrarModal('modal-galeria')">Cerrar</button>
+        <button class="btn-primario" onclick="subirMasFotos()">SUBIR FOTOS</button>
+      </div>
     </div>
   </div>
 </div>
@@ -9673,9 +9679,12 @@ window.addEventListener('load', async () => {
       <button class="modal-cerrar" onclick="cerrarModal('modal-param')">✕</button>
     </div>
     <div class="modal-body" id="modal-param-body"></div>
-    <div class="modal-footer">
-      <button class="btn-secundario" onclick="cerrarModal('modal-param')">Cancelar</button>
-      <button class="btn-primario" id="modal-param-guardar">GUARDAR</button>
+    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div id="modal-param-footer-alertas"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-secundario" onclick="cerrarModal('modal-param')">Cancelar</button>
+        <button class="btn-primario" id="modal-param-guardar">GUARDAR</button>
+      </div>
     </div>
   </div>
 </div>
