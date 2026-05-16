@@ -4937,7 +4937,11 @@ async function editarMovimiento(tipo, idMovimiento, idRepuesto) {
   // Precio costo solo para entradas
   const precioCont = document.getElementById('edit-mov-precio-cont');
   if (precioCont) precioCont.style.display = tipo === 'ENTRADA' ? 'block' : 'none';
-  if (tipo === 'ENTRADA') document.getElementById('edit-mov-precio').value = m.precio_costo_usd || '';
+  if (tipo === 'ENTRADA') {
+    document.getElementById('edit-mov-precio').value = m.precio_costo_usd ? parseFloat(m.precio_costo_usd).toFixed(2) : '0.00';
+    document.getElementById('edit-mov-moneda-cont') && (document.getElementById('edit-mov-moneda-cont').style.display = '');
+    if (document.getElementById('edit-mov-moneda')) document.getElementById('edit-mov-moneda').value = m.moneda_compra || 'USD';
+  }
 
   // Cargar áreas en selector
   const selArea = document.getElementById('edit-mov-area');
@@ -5009,6 +5013,8 @@ async function guardarEdicionMovimiento() {
     if (tipo === 'ENTRADA') {
       const precio = parseFloat(document.getElementById('edit-mov-precio').value) || null;
       if (precio !== null) datos.precio_costo_usd = precio;
+      const monedaEdit = document.getElementById('edit-mov-moneda')?.value || 'USD';
+      datos.moneda_compra = monedaEdit;
       await api('stock_entradas', 'PATCH', datos, '?id_entrada=eq.' + id);
 
       // ── Recalcular CPP si cambió el precio o la cantidad ──
@@ -10330,13 +10336,13 @@ window.addEventListener('load', async () => {
 <!--    MODAL EDITAR MOVIMIENTO STOCK       -->
 <!-- ═══════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-edit-movimiento">
-  <div class="modal" style="max-width:620px">
+  <div class="modal" style="max-width:680px">
     <div class="modal-header">
       <h3 id="edit-mov-titulo">✏ EDITAR MOVIMIENTO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-edit-movimiento')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+      <div class="form-grid" style="grid-template-columns:130px 1fr 1fr">
         <div class="form-campo" style="display:flex;flex-direction:column">
           <label>Cantidad *</label>
           <input type="number" id="edit-mov-cantidad" min="0.01" step="0.01" placeholder="0.00"
@@ -10344,10 +10350,18 @@ window.addEventListener('load', async () => {
             onblur="this.value=parseFloat(this.value||0).toFixed(2)">
         </div>
         <div class="form-campo" id="edit-mov-precio-cont" style="display:flex;flex-direction:column">
-          <label>Precio Compra USD</label>
+          <label>Precio Compra</label>
           <input type="number" id="edit-mov-precio" min="0" step="0.01" placeholder="0.00"
             style="font-family:var(--font-mono);flex:1"
             onblur="this.value=parseFloat(this.value||0).toFixed(2)">
+        </div>
+        <div class="form-campo" id="edit-mov-moneda-cont" style="display:none;flex-direction:column">
+          <label>Moneda de Compra</label>
+          <select id="edit-mov-moneda"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="USD">USD — Dólar</option>
+            <option value="VES">VES — Bolívar</option>
+          </select>
         </div>
         <div class="form-campo form-full">
           <label>Área Receptora</label>
