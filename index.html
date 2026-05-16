@@ -7689,11 +7689,20 @@ async function guardarEntradaStock() {
   const precio_compra_original = precioIngresado;
   const tasa_bcv_usada = monedaCompra === 'VES' ? (parseFloat(document.getElementById('es-tasa-bcv')?.value) || null) : null;
     const nuevoPrecioVenta = parseFloat(document.getElementById('es-precio-venta').value) || null;
-    const stockActual = parseFloat(r.stock_actual || 0);
-    const nuevoStock  = stockActual + cantidad;
+    // Consultar valores frescos desde Supabase para CPP preciso
+    let stockActual = parseFloat(r.stock_actual || 0);
+    let costoActual = parseFloat(r.precio_costo_usd || 0);
+    try {
+      const artFresh = await api('inventario', 'GET', null, '?id_articulo=eq.' + id + '&select=stock_actual,precio_costo_usd');
+      if (artFresh && artFresh[0]) {
+        stockActual = parseFloat(artFresh[0].stock_actual || 0);
+        costoActual = parseFloat(artFresh[0].precio_costo_usd || 0);
+      }
+    } catch(eFresh) {}
+
+    const nuevoStock = stockActual + cantidad;
 
     // Costo Promedio Ponderado (CPP)
-    var costoActual = parseFloat(r.precio_costo_usd || 0);
     var cpp = costoActual;
     if (nuevoPrecioCosto > 0) {
       cpp = nuevoStock > 0
