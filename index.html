@@ -4744,7 +4744,7 @@ async function abrirSalidaStock(id, nombre) {
   if (document.getElementById('salida-clave-entrega')) document.getElementById('salida-clave-entrega').value = '';
 
   // Mostrar stock actual
-  const art = inventarioCache.find(function(x) { return x.id_repuesto === id; });
+  const art = inventarioCache.find(function(x) { return x.id_articulo === id; });
   document.getElementById('salida-stock-actual').textContent = art
     ? art.stock_actual + ' ' + (art.unidad || 'UND') : '—';
 
@@ -4788,7 +4788,7 @@ async function guardarSalidaStock() {
   }
 
   // Validar stock disponible
-  const art = inventarioCache.find(function(x) { return x.id_repuesto === idRep; });
+  const art = inventarioCache.find(function(x) { return x.id_articulo === idRep; });
   if (art && cantidad > art.stock_actual) {
     errEl.textContent = 'La cantidad supera el stock disponible (' + art.stock_actual + ' ' + (art.unidad||'UND') + ').';
     errEl.style.display = 'block'; return;
@@ -4812,7 +4812,7 @@ async function guardarSalidaStock() {
 
     // Descontar del stock_actual
     const nuevoStock = (art ? art.stock_actual : 0) - cantidad;
-    await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_repuesto=eq.' + idRep);
+    await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + idRep);
 
     // Actualizar cache
     if (art) art.stock_actual = nuevoStock;
@@ -5020,7 +5020,7 @@ async function guardarEdicionMovimiento() {
       // ── Recalcular CPP si cambió el precio o la cantidad ──
       if (precio !== null) {
         const artArr = await api('inventario', 'GET', null,
-          '?id_repuesto=eq.' + idRepuesto + '&select=stock_actual,precio_costo_usd');
+          '?id_articulo=eq.' + idRepuesto + '&select=stock_actual,precio_costo_usd');
         const art = artArr[0];
         if (art) {
           // Obtener cantidad original del movimiento antes de editar
@@ -5038,7 +5038,7 @@ async function guardarEdicionMovimiento() {
             : precio;
           await api('inventario', 'PATCH',
             { precio_costo_usd: parseFloat(cpp.toFixed(4)) },
-            '?id_repuesto=eq.' + idRepuesto);
+            '?id_articulo=eq.' + idRepuesto);
         }
       }
     } else {
@@ -5061,7 +5061,7 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
 
   try {
     // Obtener stock actual
-    const artArr = await api('inventario', 'GET', null, '?id_repuesto=eq.' + idRepuesto + '&select=stock_actual,nombre');
+    const artArr = await api('inventario', 'GET', null, '?id_articulo=eq.' + idRepuesto + '&select=stock_actual,nombre');
     const art = artArr[0];
     if (!art) { alert('Artículo no encontrado.'); return; }
 
@@ -5078,10 +5078,10 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
     }
 
     // Actualizar stock
-    await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_repuesto=eq.' + idRepuesto);
+    await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + idRepuesto);
 
     // Actualizar cache
-    const cached = inventarioCache.find(function(x) { return x.id_repuesto === idRepuesto; });
+    const cached = inventarioCache.find(function(x) { return x.id_articulo === idRepuesto; });
     if (cached) cached.stock_actual = nuevoStock;
 
     // Recargar historial
@@ -7426,11 +7426,11 @@ function invRenderVista(items, vista) {
 
 function invRenderTabla(items, cont) {
   const abcMap = {};
-  clasificarABC(inventarioCache).forEach(function(r) { abcMap[r.id_repuesto] = r.clase_abc; });
+  clasificarABC(inventarioCache).forEach(function(r) { abcMap[r.id_articulo] = r.clase_abc; });
   const abcColor = { A: '#22c55e', B: '#f59e0b', C: '#94a3b8' };
   const filas = items.map(function(r) {
     const stockBajo = r.stock_actual <= r.stock_minimo;
-    const abc = abcMap[r.id_repuesto] || '—';
+    const abc = abcMap[r.id_articulo] || '—';
     const margen = calcularMargen(r);
     return '<tr>'
       + '<td><div style="display:flex;align-items:center;gap:8px">'
@@ -7454,7 +7454,7 @@ function invRenderTabla(items, cont) {
       + '<span style="color:var(--naranja)">$ ' + fmtUSD(r.precio_venta_usd) + '</span>'
       + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen.toFixed(1) + '%</div></td>'
       + '<td><div style="display:flex;gap:8px">'
-      + '<button class="btn-secundario" onclick="verFichaInventario(' + r.id_repuesto + ')">Ficha</button>'
+      + '<button class="btn-secundario" onclick="verFichaInventario(' + r.id_articulo + ')">Ficha</button>'
 
 
       + '</div></td></tr>';
@@ -7558,11 +7558,11 @@ function verFichaInventario(id) {
   if (!sesionActual?.administrador && !puedo('INVENTARIO','VER')) {
     alert('No tiene permiso para ver la ficha del artículo.'); return;
   }
-  const r = inventarioCache.find(function(x) { return x.id_repuesto === id; });
+  const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) return;
   const abcMap = {};
-  clasificarABC(inventarioCache).forEach(function(x) { abcMap[x.id_repuesto] = x.clase_abc; });
-  const abc = abcMap[r.id_repuesto] || '—';
+  clasificarABC(inventarioCache).forEach(function(x) { abcMap[x.id_articulo] = x.clase_abc; });
+  const abc = abcMap[r.id_articulo] || '—';
   const abcColor = { A: '#22c55e', B: '#f59e0b', C: '#94a3b8' };
   const margen = ((parseFloat(r.precio_venta_usd||0) - parseFloat(r.precio_costo_usd||0)) / (parseFloat(r.precio_venta_usd||0)||1) * 100).toFixed(1);
   const stockBajo = r.stock_actual <= r.stock_minimo;
@@ -7595,18 +7595,18 @@ function verFichaInventario(id) {
   var btnSalida  = document.getElementById('ficha-inv-btn-salida');
   var btnEditar = document.getElementById('ficha-inv-btn-editar');
   var btnEliminar = document.getElementById('ficha-inv-btn-eliminar');
-  if (btnStock)   { btnStock._id = r.id_repuesto;   btnStock.onclick = function() { cerrarModal('modal-ficha-inv'); abrirEntradaStock(this._id); };   btnStock.style.display = puedo('INVENTARIO','ENTRADA_STOCK') ? '' : 'none'; }
-  if (btnSalida)  { btnSalida._id = r.id_repuesto; btnSalida._nombre = r.nombre; btnSalida.onclick = function() { cerrarModal('modal-ficha-inv'); abrirSalidaStock(this._id, this._nombre); }; btnSalida.style.display = puedo('INVENTARIO','SALIDA_STOCK') ? '' : 'none'; }
+  if (btnStock)   { btnStock._id = r.id_articulo;   btnStock.onclick = function() { cerrarModal('modal-ficha-inv'); abrirEntradaStock(this._id); };   btnStock.style.display = puedo('INVENTARIO','ENTRADA_STOCK') ? '' : 'none'; }
+  if (btnSalida)  { btnSalida._id = r.id_articulo; btnSalida._nombre = r.nombre; btnSalida.onclick = function() { cerrarModal('modal-ficha-inv'); abrirSalidaStock(this._id, this._nombre); }; btnSalida.style.display = puedo('INVENTARIO','SALIDA_STOCK') ? '' : 'none'; }
   var btnHistorial = document.getElementById('ficha-inv-btn-historial');
-  if (btnHistorial) { btnHistorial._id = r.id_repuesto; btnHistorial._nombre = r.nombre; btnHistorial.onclick = function() { cerrarModal('modal-ficha-inv'); verHistorialStock(this._id, this._nombre); }; btnHistorial.style.display = ''; }
-  if (btnEditar)  { btnEditar._id = r.id_repuesto;  btnEditar.onclick = function() { cerrarModal('modal-ficha-inv'); abrirEditarInventario(this._id); }; btnEditar.style.display = puedo('INVENTARIO','EDITAR') ? '' : 'none'; }
-  if (btnEliminar){ btnEliminar._id = r.id_repuesto; btnEliminar._nombre = r.nombre; btnEliminar.onclick = function() { cerrarModal('modal-ficha-inv'); eliminarInventario(this._id, this._nombre); }; btnEliminar.style.display = puedo('INVENTARIO','ELIMINAR') ? '' : 'none'; }
+  if (btnHistorial) { btnHistorial._id = r.id_articulo; btnHistorial._nombre = r.nombre; btnHistorial.onclick = function() { cerrarModal('modal-ficha-inv'); verHistorialStock(this._id, this._nombre); }; btnHistorial.style.display = ''; }
+  if (btnEditar)  { btnEditar._id = r.id_articulo;  btnEditar.onclick = function() { cerrarModal('modal-ficha-inv'); abrirEditarInventario(this._id); }; btnEditar.style.display = puedo('INVENTARIO','EDITAR') ? '' : 'none'; }
+  if (btnEliminar){ btnEliminar._id = r.id_articulo; btnEliminar._nombre = r.nombre; btnEliminar.onclick = function() { cerrarModal('modal-ficha-inv'); eliminarInventario(this._id, this._nombre); }; btnEliminar.style.display = puedo('INVENTARIO','ELIMINAR') ? '' : 'none'; }
 
   abrirModal('modal-ficha-inv');
 }
 
 function abrirEntradaStock(id) {
-  const r = inventarioCache.find(function(x) { return x.id_repuesto === id; });
+  const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) return;
   document.getElementById('es-id').value = id;
   document.getElementById('es-nombre').textContent = r.nombre;
@@ -7673,11 +7673,12 @@ async function guardarEntradaStock() {
     document.getElementById('es-cantidad')?.focus(); return;
   }
   try {
-    const r = inventarioCache.find(function(x) { return x.id_repuesto === id; });
+    const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
     const precioIngresado  = parseFloat(document.getElementById('es-precio-costo').value) || 0;
   const monedaCompra     = document.getElementById('es-moneda-compra')?.value || 'USD';
+  const tasaBCVVal       = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
   const nuevoPrecioCosto = monedaCompra === 'VES'
-    ? (parseFloat(document.getElementById('es-precio-usd-calc')?.value) || 0)
+    ? (tasaBCVVal > 0 ? parseFloat((precioIngresado / tasaBCVVal).toFixed(4)) : (parseFloat(document.getElementById('es-precio-usd-calc')?.value) || 0))
     : precioIngresado;
   if (monedaCompra === 'VES' && precioIngresado > 0 && nuevoPrecioCosto <= 0) {
     errEl.textContent = 'No se encontró tasa BCV para convertir el precio. Verifique que exista una tasa registrada.';
@@ -7706,7 +7707,7 @@ async function guardarEntradaStock() {
     };
     if (nuevoPrecioCosto > 0) patch.precio_costo_ultimo_usd = nuevoPrecioCosto;
     if (nuevoPrecioVenta && nuevoPrecioVenta > 0) patch.precio_venta_usd = nuevoPrecioVenta;
-    await api('inventario', 'PATCH', patch, '?id_repuesto=eq.' + id);
+    await api('inventario', 'PATCH', patch, '?id_articulo=eq.' + id);
     // Validar campo obligatorio según motivo
     const motivoEnt = document.getElementById('es-motivo')?.value;
     if (motivoEnt === 'compra') {
@@ -7799,9 +7800,9 @@ function abrirNuevoInventario() {
 }
 
 function abrirEditarInventario(id) {
-  const r = inventarioCache.find(function(x) { return x.id_repuesto === id; });
+  const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) return;
-  document.getElementById('inv-id').value = r.id_repuesto;
+  document.getElementById('inv-id').value = r.id_articulo;
   document.getElementById('inv-codigo').value = r.codigo || '';
   document.getElementById('inv-nombre').value = r.nombre;
   document.getElementById('inv-descripcion').value = r.descripcion || '';
@@ -7861,7 +7862,7 @@ async function guardarInventario() {
       demanda_anual: demandaAnual, lead_time_dias: leadTime, costo_pedido_usd: costoPedido, stock_seguridad: stockSeg,
       id_usuario: sesionActual.correo_usuario };
     if (id) {
-      await api('inventario', 'PATCH', datos, '?id_repuesto=eq.' + id);
+      await api('inventario', 'PATCH', datos, '?id_articulo=eq.' + id);
     } else {
       await api('inventario', 'POST', datos);
     }
@@ -7874,7 +7875,7 @@ async function eliminarInventario(id, nombre) {
   if (!puedo('INVENTARIO','ELIMINAR')) { alert('No tiene permiso para eliminar artículos.'); return; }
   if (!confirm('¿Eliminar "' + nombre + '"?')) return;
   try {
-    await api('inventario', 'DELETE', null, '?id_repuesto=eq.' + id);
+    await api('inventario', 'DELETE', null, '?id_articulo=eq.' + id);
     document.getElementById('contenido-principal').innerHTML='';
     renderInventario();
   } catch(e) { alert('Error: ' + e.message); }
@@ -8208,7 +8209,7 @@ async function abrirEditarOS(id) {
       return { id: l.id_os_serv, id_servicio: l.id_servicio, descripcion: l.descripcion, cantidad: l.cantidad, precio_usd: l.precio_usd };
     });
     osRepuestosLineas = linRep.map(function(l) {
-      return { id: l.id_os_rep, id_repuesto: l.id_repuesto, descripcion: l.descripcion, cantidad: l.cantidad, precio_usd: l.precio_usd };
+      return { id: l.id_os_rep, id_articulo: l.id_articulo, descripcion: l.descripcion, cantidad: l.cantidad, precio_usd: l.precio_usd };
     });
     tasaActualOS = tasas.length ? parseFloat(tasas[0].tipo_cambio) : (o.tasa_cambio_usd || 1);
   } catch(e) {}
@@ -8453,18 +8454,18 @@ async function agregarRepuestoInventario() {
   if (!sel.value) {
     if (!desc.value.trim()) { alert('Escribe una descripción o selecciona del inventario.'); return; }
     const pVal = parseFloat(precio.value) || 0;
-    osRepuestosLineas.push({ id_repuesto: null, descripcion: desc.value.trim(),
+    osRepuestosLineas.push({ id_articulo: null, descripcion: desc.value.trim(),
       cantidad: cantVal, precio_usd: precioAUSD(pVal, moneda),
       precio_original: pVal, moneda });
     desc.value = ''; precio.value = ''; cant.value = '1';
   } else {
-    const r = inventarioCache.find(function(x) { return x.id_repuesto == sel.value; });
+    const r = inventarioCache.find(function(x) { return x.id_articulo == sel.value; });
     if (!r) return;
     if (r.stock_actual < cantVal) {
       if (!confirm('⚠ Stock insuficiente (' + r.stock_actual + ' disponibles). ¿Agregar igual?')) return;
     }
     const pVal = parseFloat(precio.value) || parseFloat(r.precio_venta_usd) || 0;
-    osRepuestosLineas.push({ id_repuesto: r.id_repuesto, descripcion: r.nombre,
+    osRepuestosLineas.push({ id_articulo: r.id_articulo, descripcion: r.nombre,
       cantidad: cantVal, precio_usd: precioAUSD(pVal, moneda),
       precio_original: pVal, moneda });
     sel.value = ''; precio.value = ''; cant.value = '1';
@@ -8476,7 +8477,7 @@ function onSelInventarioChange() {
   const sel = document.getElementById('os-sel-inv');
   const precio = document.getElementById('os-precio-inv');
   if (!sel.value) { precio.value = ''; return; }
-  const r = inventarioCache.find(function(x) { return x.id_repuesto == sel.value; });
+  const r = inventarioCache.find(function(x) { return x.id_articulo == sel.value; });
   if (r) precio.value = parseFloat(r.precio_venta_usd || 0).toFixed(2);
 }
 
@@ -8584,12 +8585,12 @@ async function guardarOS() {
     if (id && lineasRepuestosAntes && lineasRepuestosAntes.length) {
       for (var k = 0; k < lineasRepuestosAntes.length; k++) {
         var la = lineasRepuestosAntes[k];
-        if (!la.id_repuesto) continue;
+        if (!la.id_articulo) continue;
         try {
-          const invAntes = inventarioCache.find(function(x) { return x.id_repuesto == la.id_repuesto; });
+          const invAntes = inventarioCache.find(function(x) { return x.id_articulo == la.id_articulo; });
           if (invAntes) {
             const stockRestaurado = invAntes.stock_actual + parseFloat(la.cantidad || 0);
-            await api('inventario', 'PATCH', { stock_actual: stockRestaurado }, '?id_repuesto=eq.' + la.id_repuesto);
+            await api('inventario', 'PATCH', { stock_actual: stockRestaurado }, '?id_articulo=eq.' + la.id_articulo);
             invAntes.stock_actual = stockRestaurado; // actualizar cache local
           }
         } catch(eRest) { console.warn('Error restaurando stock:', eRest); }
@@ -8600,17 +8601,17 @@ async function guardarOS() {
     for (var j = 0; j < osRepuestosLineas.length; j++) {
       var lr = osRepuestosLineas[j];
       await api('os_repuestos', 'POST', {
-        id_orden: parseInt(osId), id_repuesto: lr.id_repuesto || null,
+        id_orden: parseInt(osId), id_articulo: lr.id_articulo || null,
         descripcion: lr.descripcion, cantidad: lr.cantidad,
         precio_usd: lr.precio_usd, subtotal_usd: parseFloat(lr.precio_usd) * parseFloat(lr.cantidad)
       });
       // Descontar stock siempre que haya repuesto de inventario vinculado
-      if (lr.id_repuesto) {
+      if (lr.id_articulo) {
         try {
-          const invItem = inventarioCache.find(function(x) { return x.id_repuesto == lr.id_repuesto; });
+          const invItem = inventarioCache.find(function(x) { return x.id_articulo == lr.id_articulo; });
           if (invItem) {
             const nuevoStock = Math.max(0, invItem.stock_actual - parseFloat(lr.cantidad));
-            await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_repuesto=eq.' + lr.id_repuesto);
+            await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + lr.id_articulo);
             invItem.stock_actual = nuevoStock; // actualizar cache local
           }
         } catch(eStock) { console.warn('Error descontando stock:', eStock); }
@@ -8631,19 +8632,19 @@ async function ajustarStockOS(idOrden, operacion) {
     const lineas = await api('os_repuestos', 'GET', null, '?id_orden=eq.' + idOrden + '&select=id_repuesto,cantidad');
     for (var k = 0; k < lineas.length; k++) {
       var l = lineas[k];
-      if (!l.id_repuesto) continue;
+      if (!l.id_articulo) continue;
       try {
-        const inv = await api('inventario', 'GET', null, '?id_repuesto=eq.' + l.id_repuesto + '&select=id_repuesto,stock_actual');
+        const inv = await api('inventario', 'GET', null, '?id_articulo=eq.' + l.id_articulo + '&select=id_articulo,stock_actual');
         if (!inv.length) continue;
         var cant = parseFloat(l.cantidad || 0);
         var nuevoStock = operacion === 'restaurar'
           ? inv[0].stock_actual + cant
           : Math.max(0, inv[0].stock_actual - cant);
-        await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_repuesto=eq.' + l.id_repuesto);
+        await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + l.id_articulo);
         // Actualizar cache local
-        var cached = inventarioCache.find(function(x) { return x.id_repuesto == l.id_repuesto; });
+        var cached = inventarioCache.find(function(x) { return x.id_articulo == l.id_articulo; });
         if (cached) cached.stock_actual = nuevoStock;
-      } catch(eInv) { console.warn('Error ajustando stock repuesto', l.id_repuesto, eInv); }
+      } catch(eInv) { console.warn('Error ajustando stock repuesto', l.id_articulo, eInv); }
     }
   } catch(e) { console.warn('Error ajustarStockOS:', e); }
 }
@@ -8894,7 +8895,7 @@ async function cargarSelectsOS() {
   if (selInv) {
     selInv.innerHTML = '<option value="">— Descripción libre —</option>'
       + inventarioCache.map(function(r) {
-          return '<option value="' + r.id_repuesto + '">' + r.nombre + ' (Stock: ' + r.stock_actual + ') — $' + parseFloat(r.precio_venta_usd || 0).toFixed(2) + '</option>';
+          return '<option value="' + r.id_articulo + '">' + r.nombre + ' (Stock: ' + r.stock_actual + ') — $' + parseFloat(r.precio_venta_usd || 0).toFixed(2) + '</option>';
         }).join('');
   }
 }
