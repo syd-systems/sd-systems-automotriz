@@ -4912,7 +4912,7 @@ async function editarMovimiento(tipo, idMovimiento, idRepuesto) {
   let m = null;
   try {
     if (tipo === 'ENTRADA') {
-      const res = await api('stock_entradas', 'GET', null, '?id_entrada=eq.' + idMovimiento + '&select=*,param_areas(nombre,codigo),empleados(nombre_completo)');
+      const res = await api('stock_entradas', 'GET', null, '?id_entrada=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),area_origen:id_area_origen(nombre,codigo),empleado_recibe:id_empleado(nombre_completo)');
       m = res[0];
     } else {
       const res = await api('stock_salidas', 'GET', null, '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),empleado_entrega:id_empleado_entrega(nombre_completo)');
