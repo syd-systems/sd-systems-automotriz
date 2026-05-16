@@ -4588,6 +4588,22 @@ async function eliminarFactura(id, numero) {
 // ─── ARTÍCULO ACTIVO EN FICHA ───
 var _fichaInvActual = { id: null, nombre: '' };
 
+async function regresarAFichaInv() {
+  if (!_fichaInvActual.id) { renderInventario(); return; }
+  try {
+    // Recargar el artículo fresco desde Supabase
+    const res = await api('inventario', 'GET', null,
+      '?id_articulo=eq.' + _fichaInvActual.id + '&select=*');
+    if (res && res[0]) {
+      // Actualizar cache
+      const idx = inventarioCache.findIndex(function(x) { return x.id_articulo === _fichaInvActual.id; });
+      if (idx !== -1) inventarioCache[idx] = res[0];
+      else inventarioCache.push(res[0]);
+    }
+    verFichaInventario(_fichaInvActual.id);
+  } catch(e) { verFichaInventario(_fichaInvActual.id); }
+}
+
 // ─── VALIDAR CONTRASEÑA RECEPTOR ───
 async function validarClaveReceptor(idEmpleado, clave) {
   if (!idEmpleado || !clave) return { ok: false, msg: 'Debe seleccionar un empleado receptor e ingresar su contraseña.' };
@@ -4822,7 +4838,7 @@ async function guardarSalidaStock() {
 
     okEl.textContent = '✓ Salida de ' + cantidad + ' unidades registrada correctamente.';
     okEl.style.display = 'block';
-    setTimeout(function() { cerrarModal('modal-salida-stock'); if (_fichaInvActual.id) { verFichaInventario(_fichaInvActual.id); } else { renderInventario(); } }, 1500);
+    setTimeout(function() { cerrarModal('modal-salida-stock'); regresarAFichaInv(); }, 1500);
   } catch(err) {
     errEl.textContent = 'Error: ' + err.message;
     errEl.style.display = 'block';
@@ -5054,7 +5070,7 @@ async function guardarEdicionMovimiento() {
     if (document.getElementById('edit-mov-clave')) document.getElementById('edit-mov-clave').value = '';
     setTimeout(async function() {
       cerrarModal('modal-edit-movimiento');
-      if (_fichaInvActual.id) { verFichaInventario(_fichaInvActual.id); } else { renderInventario(); }
+      regresarAFichaInv();
     }, 900);
   } catch(err) { errEl.textContent = 'Error: ' + err.message; errEl.style.display = 'block'; }
 }
@@ -7784,7 +7800,7 @@ async function guardarEntradaStock() {
     r.stock_actual = nuevoStock;
     setTimeout(function() {
       cerrarModal('modal-entrada-stock');
-      if (_fichaInvActual.id) { verFichaInventario(_fichaInvActual.id); } else { renderInventario(); }
+      regresarAFichaInv();
     }, 1200);
   } catch(e) {
     errEl.textContent = 'Error: ' + e.message;
@@ -9415,7 +9431,7 @@ window.addEventListener('load', async () => {
   <div class="modal" style="max-width:780px">
     <div class="modal-header">
       <h3>ENTRADA DE STOCK</h3>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-entrada-stock'); if(_fichaInvActual.id) verFichaInventario(_fichaInvActual.id)">✕</button>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-entrada-stock'); regresarAFichaInv()">✕</button>
     </div>
     <div class="modal-body">
 
@@ -9538,7 +9554,7 @@ window.addEventListener('load', async () => {
       <div class="alerta alerta-exito" id="alerta-es-ok" style="display:none;margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-es-err" style="display:none;margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        <button class="btn-secundario" onclick="cerrarModal('modal-entrada-stock'); if(_fichaInvActual.id) verFichaInventario(_fichaInvActual.id)">Cancelar</button>
+        <button class="btn-secundario" onclick="cerrarModal('modal-entrada-stock'); regresarAFichaInv()">Cancelar</button>
         <button class="btn-primario" onclick="guardarEntradaStock()">INGRESAR STOCK</button>
       </div>
     </div>
@@ -10353,7 +10369,7 @@ window.addEventListener('load', async () => {
   <div class="modal" style="max-width:680px">
     <div class="modal-header">
       <h3 id="edit-mov-titulo">✏ EDITAR MOVIMIENTO</h3>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-edit-movimiento'); if(_fichaInvActual.id) verFichaInventario(_fichaInvActual.id)">✕</button>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-edit-movimiento'); regresarAFichaInv()">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-grid" style="grid-template-columns:130px 1fr 1fr">
@@ -10410,7 +10426,7 @@ window.addEventListener('load', async () => {
       <div class="alerta alerta-exito" id="alerta-edit-mov-ok" style="margin:0"></div>
       <div class="alerta alerta-error"  id="alerta-edit-mov-err" style="margin:0"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button class="btn-secundario" onclick="cerrarModal('modal-edit-movimiento'); if(_fichaInvActual.id) verFichaInventario(_fichaInvActual.id)">Cancelar</button>
+        <button class="btn-secundario" onclick="cerrarModal('modal-edit-movimiento'); regresarAFichaInv()">Cancelar</button>
         <button class="btn-primario"   onclick="guardarEdicionMovimiento()">GUARDAR</button>
       </div>
     </div>
@@ -10424,7 +10440,7 @@ window.addEventListener('load', async () => {
   <div class="modal" style="max-width:680px">
     <div class="modal-header">
       <h3>HISTORIAL DE MOVIMIENTOS</h3>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-historial-stock'); if(_fichaInvActual.id) verFichaInventario(_fichaInvActual.id)">✕</button>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-historial-stock'); regresarAFichaInv()">✕</button>
     </div>
     <div class="modal-body">
       <div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:10px 16px;margin-bottom:16px">
@@ -10435,7 +10451,7 @@ window.addEventListener('load', async () => {
       <input type="hidden" id="historial-id-repuesto">
     </div>
     <div class="modal-footer">
-      <button class="btn-secundario" onclick="cerrarModal('modal-historial-stock'); if(_fichaInvActual.id) verFichaInventario(_fichaInvActual.id)">Cerrar</button>
+      <button class="btn-secundario" onclick="cerrarModal('modal-historial-stock'); regresarAFichaInv()">Cerrar</button>
     </div>
   </div>
 </div>
@@ -10447,7 +10463,7 @@ window.addEventListener('load', async () => {
   <div class="modal" style="max-width:640px">
     <div class="modal-header">
       <h3>SALIDA DE STOCK</h3>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-salida-stock'); if(_fichaInvActual.id) verFichaInventario(_fichaInvActual.id)">✕</button>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-salida-stock'); regresarAFichaInv()">✕</button>
     </div>
     <div class="modal-body">
       <!-- Artículo -->
@@ -10521,7 +10537,7 @@ window.addEventListener('load', async () => {
       <div class="alerta alerta-exito" id="alerta-salida-ok" style="margin:0"></div>
       <div class="alerta alerta-error"  id="alerta-salida-err" style="margin:0"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button class="btn-secundario" onclick="cerrarModal('modal-salida-stock'); if(_fichaInvActual.id) verFichaInventario(_fichaInvActual.id)">Cancelar</button>
+        <button class="btn-secundario" onclick="cerrarModal('modal-salida-stock'); regresarAFichaInv()">Cancelar</button>
         <button class="btn-peligro"    onclick="guardarSalidaStock()">Registrar Salida</button>
       </div>
     </div>
