@@ -4956,6 +4956,7 @@ async function editarMovimiento(tipo, idMovimiento, idRepuesto) {
   }
 
   cerrarModal('modal-historial-stock');
+  if (document.getElementById('edit-mov-clave')) document.getElementById('edit-mov-clave').value = '';
   abrirModal('modal-edit-movimiento');
 }
 
@@ -4967,11 +4968,35 @@ async function guardarEdicionMovimiento() {
   const idArea     = parseInt(document.getElementById('edit-mov-area').value) || null;
   const idEmp      = parseInt(document.getElementById('edit-mov-empleado').value) || null;
   const obs        = document.getElementById('edit-mov-obs').value.trim();
+  const clave      = document.getElementById('edit-mov-clave')?.value || '';
   const okEl       = document.getElementById('alerta-edit-mov-ok');
   const errEl      = document.getElementById('alerta-edit-mov-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
 
-  if (!cantidad || cantidad <= 0) { errEl.textContent = 'La cantidad debe ser mayor a cero.'; errEl.style.display = 'block'; return; }
+  if (!cantidad || cantidad <= 0) {
+    errEl.textContent = 'La cantidad debe ser mayor a cero.';
+    errEl.style.display = 'block';
+    document.getElementById('edit-mov-cantidad')?.focus(); return;
+  }
+
+  // ── Validar contraseña del usuario que edita ──
+  if (!clave) {
+    errEl.textContent = 'Debe ingresar su contraseña para autorizar la modificación.';
+    errEl.style.display = 'block';
+    document.getElementById('edit-mov-clave')?.focus(); return;
+  }
+  try {
+    const usuArr = await api('usuarios', 'GET', null,
+      '?correo_usuario=eq.' + encodeURIComponent(sesionActual.correo_usuario) + '&select=contrasena');
+    if (!usuArr || !usuArr.length || usuArr[0].contrasena !== clave) {
+      errEl.textContent = 'Contraseña incorrecta. No se puede autorizar la modificación.';
+      errEl.style.display = 'block';
+      document.getElementById('edit-mov-clave')?.focus(); return;
+    }
+  } catch(eV) {
+    errEl.textContent = 'Error verificando contraseña: ' + eV.message;
+    errEl.style.display = 'block'; return;
+  }
 
   try {
     const datos = {
@@ -4980,15 +5005,44 @@ async function guardarEdicionMovimiento() {
       id_empleado:   idEmp,
       observaciones: obs || null,
     };
+
     if (tipo === 'ENTRADA') {
       const precio = parseFloat(document.getElementById('edit-mov-precio').value) || null;
-      if (precio) datos.precio_costo_usd = precio;
+      if (precio !== null) datos.precio_costo_usd = precio;
       await api('stock_entradas', 'PATCH', datos, '?id_entrada=eq.' + id);
+
+      // ── Recalcular CPP si cambió el precio o la cantidad ──
+      if (precio !== null) {
+        const artArr = await api('inventario', 'GET', null,
+          '?id_repuesto=eq.' + idRepuesto + '&select=stock_actual,precio_costo_usd');
+        const art = artArr[0];
+        if (art) {
+          // Obtener cantidad original del movimiento antes de editar
+          const movArr = await api('stock_entradas', 'GET', null,
+            '?id_entrada=eq.' + id + '&select=cantidad');
+          const cantOriginal = movArr[0]?.cantidad || cantidad;
+          // Recalcular: quitar el efecto de la entrada original y aplicar la nueva
+          const stockSinEstaEntrada = art.stock_actual - cantOriginal;
+          const valorSinEstaEntrada = (stockSinEstaEntrada > 0)
+            ? stockSinEstaEntrada * art.precio_costo_usd
+            : 0;
+          const nuevoStock = stockSinEstaEntrada + cantidad;
+          const cpp = nuevoStock > 0
+            ? (valorSinEstaEntrada + cantidad * precio) / nuevoStock
+            : precio;
+          await api('inventario', 'PATCH',
+            { precio_costo_usd: parseFloat(cpp.toFixed(4)) },
+            '?id_repuesto=eq.' + idRepuesto);
+        }
+      }
     } else {
       await api('stock_salidas', 'PATCH', datos, '?id_salida=eq.' + id);
     }
+
     okEl.textContent = '✓ Movimiento actualizado correctamente.';
     okEl.style.display = 'block';
+    // Limpiar contraseña
+    if (document.getElementById('edit-mov-clave')) document.getElementById('edit-mov-clave').value = '';
     setTimeout(async function() {
       cerrarModal('modal-edit-movimiento');
       await verHistorialStock(idRepuesto, document.getElementById('historial-art-nombre').textContent);
@@ -10285,13 +10339,15 @@ window.addEventListener('load', async () => {
       <div class="form-grid" style="grid-template-columns:1fr 1fr">
         <div class="form-campo" style="display:flex;flex-direction:column">
           <label>Cantidad *</label>
-          <input type="number" id="edit-mov-cantidad" min="0.01" step="0.01" placeholder="0"
-            style="font-size:18px;font-family:var(--font-mono);text-align:center;color:var(--naranja);flex:1">
+          <input type="number" id="edit-mov-cantidad" min="0.01" step="0.01" placeholder="0.00"
+            style="font-size:18px;font-family:var(--font-mono);text-align:center;color:var(--naranja);flex:1"
+            onblur="this.value=parseFloat(this.value||0).toFixed(2)">
         </div>
         <div class="form-campo" id="edit-mov-precio-cont" style="display:flex;flex-direction:column">
-          <label>Precio Costo USD</label>
+          <label>Precio Compra USD</label>
           <input type="number" id="edit-mov-precio" min="0" step="0.01" placeholder="0.00"
-            style="font-family:var(--font-mono);flex:1">
+            style="font-family:var(--font-mono);flex:1"
+            onblur="this.value=parseFloat(this.value||0).toFixed(2)">
         </div>
         <div class="form-campo form-full">
           <label>Área Receptora</label>
@@ -10312,6 +10368,12 @@ window.addEventListener('load', async () => {
           <textarea id="edit-mov-obs" placeholder="Observaciones..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%"></textarea>
         </div>
       </div>
+        <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-top:8px">
+          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🔐 Autorización</div>
+          <label style="font-size:12px">Su contraseña para confirmar la modificación *</label>
+          <input type="password" id="edit-mov-clave" placeholder="Ingrese su contraseña"
+            style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">
+        </div>
       <input type="hidden" id="edit-mov-tipo">
       <input type="hidden" id="edit-mov-id">
       <input type="hidden" id="edit-mov-id-repuesto">
