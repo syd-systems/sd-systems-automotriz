@@ -4589,6 +4589,7 @@ async function eliminarFactura(id, numero) {
 var _fichaInvActual = { id: null, nombre: '' };
 
 async function regresarAFichaInv() {
+  console.log('regresarAFichaInv llamada, _fichaInvActual:', JSON.stringify(_fichaInvActual));
   if (!_fichaInvActual.id) { renderInventario(); return; }
   try {
     // Recargar el artículo fresco desde Supabase
@@ -7580,6 +7581,7 @@ function verFichaInventario(id) {
   const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) return;
   _fichaInvActual = { id: r.id_articulo, nombre: r.nombre };
+  console.log('_fichaInvActual seteado:', JSON.stringify(_fichaInvActual));
   const abcMap = {};
   clasificarABC(inventarioCache).forEach(function(x) { abcMap[x.id_articulo] = x.clase_abc; });
   const abc = abcMap[r.id_articulo] || '—';
