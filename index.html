@@ -5054,7 +5054,7 @@ async function guardarEdicionMovimiento() {
     if (document.getElementById('edit-mov-clave')) document.getElementById('edit-mov-clave').value = '';
     setTimeout(async function() {
       cerrarModal('modal-edit-movimiento');
-      await verHistorialStock(idRepuesto, document.getElementById('historial-art-nombre').textContent);
+      if (_fichaInvActual.id) { verFichaInventario(_fichaInvActual.id); } else { renderInventario(); }
     }, 900);
   } catch(err) { errEl.textContent = 'Error: ' + err.message; errEl.style.display = 'block'; }
 }
@@ -10353,7 +10353,7 @@ window.addEventListener('load', async () => {
   <div class="modal" style="max-width:680px">
     <div class="modal-header">
       <h3 id="edit-mov-titulo">✏ EDITAR MOVIMIENTO</h3>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-edit-movimiento')">✕</button>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-edit-movimiento'); if(_fichaInvActual.id) verFichaInventario(_fichaInvActual.id)">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-grid" style="grid-template-columns:130px 1fr 1fr">
@@ -10410,7 +10410,7 @@ window.addEventListener('load', async () => {
       <div class="alerta alerta-exito" id="alerta-edit-mov-ok" style="margin:0"></div>
       <div class="alerta alerta-error"  id="alerta-edit-mov-err" style="margin:0"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button class="btn-secundario" onclick="cerrarModal('modal-edit-movimiento')">Cancelar</button>
+        <button class="btn-secundario" onclick="cerrarModal('modal-edit-movimiento'); if(_fichaInvActual.id) verFichaInventario(_fichaInvActual.id)">Cancelar</button>
         <button class="btn-primario"   onclick="guardarEdicionMovimiento()">GUARDAR</button>
       </div>
     </div>
