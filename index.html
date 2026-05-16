@@ -4588,19 +4588,48 @@ async function eliminarFactura(id, numero) {
 // ─── ARTÍCULO ACTIVO EN FICHA ───
 var _fichaInvActual = { id: null, nombre: '' };
 
+function abrirStockArticulo(id, nombre) {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','VER')) {
+    alert('No tiene permiso.'); return;
+  }
+  const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
+  if (!r) return;
+  _fichaInvActual = { id: r.id_articulo, nombre: r.nombre };
+
+  document.getElementById('stock-art-nombre').textContent = r.nombre;
+  document.getElementById('stock-art-stock').textContent  = r.stock_actual + ' ' + (r.unidad || 'UND');
+  document.getElementById('stock-art-venta').textContent  = '$ ' + fmtUSD(r.precio_venta_usd);
+
+  const costoCont = document.getElementById('stock-art-costo-cont');
+  const costoEl   = document.getElementById('stock-art-costo');
+  if (puedo('INVENTARIO','VER_COSTOS')) {
+    costoEl.textContent = '$ ' + fmtUSD(r.precio_costo_usd);
+    costoCont.style.display = '';
+  } else {
+    costoCont.style.display = 'none';
+  }
+
+  // Permisos de botones
+  document.getElementById('stock-btn-entrada').style.display  = puedo('INVENTARIO','ENTRADA_STOCK') ? '' : 'none';
+  document.getElementById('stock-btn-salida').style.display   = puedo('INVENTARIO','SALIDA_STOCK')  ? '' : 'none';
+  document.getElementById('stock-btn-historial').style.display = puedo('INVENTARIO','VER')          ? '' : 'none';
+
+  abrirModal('modal-stock-articulo');
+}
+
 async function regresarAFichaInv() {
   if (!_fichaInvActual.id) { renderInventario(); return; }
-  const idArt = _fichaInvActual.id;
   try {
-    const res = await api('inventario', 'GET', null, '?id_articulo=eq.' + idArt + '&select=*');
+    // Actualizar cache con datos frescos
+    const res = await api('inventario', 'GET', null, '?id_articulo=eq.' + _fichaInvActual.id + '&select=*');
     if (res && res[0]) {
-      const i = inventarioCache.findIndex(function(x) { return x.id_articulo === idArt; });
+      const i = inventarioCache.findIndex(function(x) { return x.id_articulo === _fichaInvActual.id; });
       if (i !== -1) inventarioCache[i] = res[0];
       else inventarioCache.push(res[0]);
-      // Abrir ficha directamente — el modal existe siempre en el DOM
-      verFichaInventario(idArt);
     }
-  } catch(e) { console.error('regresarAFichaInv error:', e); }
+  } catch(e) {}
+  // Regresar al modal de stock
+  abrirStockArticulo(_fichaInvActual.id, _fichaInvActual.nombre);
 }
 
 // ─── VALIDAR CONTRASEÑA RECEPTOR ───
@@ -7473,7 +7502,7 @@ function invRenderTabla(items, cont) {
       + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen.toFixed(1) + '%</div></td>'
       + '<td><div style="display:flex;gap:8px">'
       + '<button class="btn-secundario" onclick="verFichaInventario(' + r.id_articulo + ')">Ficha</button>'
-
+      + '<button class="btn-secundario" style="border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="abrirStockArticulo(' + r.id_articulo + ',\'' + r.nombre.replace(/'/g,"\\'"  ) + '\')" >Stock</button>'
 
       + '</div></td></tr>';
   }).join('');
@@ -9427,6 +9456,60 @@ window.addEventListener('load', async () => {
     </div>
   </div>
 </div>
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL STOCK ARTÍCULO               -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-stock-articulo">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <h3>STOCK DEL ARTÍCULO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-stock-articulo')">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Info artículo -->
+      <div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:16px 20px;margin-bottom:24px">
+        <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Artículo</div>
+        <div style="font-family:var(--font-display);font-size:20px;color:var(--naranja)" id="stock-art-nombre">—</div>
+        <div style="display:flex;gap:24px;margin-top:10px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Stock Actual</div>
+            <div style="font-family:var(--font-mono);font-size:18px;color:var(--naranja)" id="stock-art-stock">—</div>
+          </div>
+          <div id="stock-art-costo-cont">
+            <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">CPP</div>
+            <div style="font-family:var(--font-mono);font-size:16px" id="stock-art-costo">—</div>
+          </div>
+          <div>
+            <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Precio Venta</div>
+            <div style="font-family:var(--font-mono);font-size:16px;color:var(--naranja)" id="stock-art-venta">—</div>
+          </div>
+        </div>
+      </div>
+      <!-- Botones de acción -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <button id="stock-btn-entrada" class="btn-primario" style="padding:16px 8px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px"
+          onclick="cerrarModal('modal-stock-articulo');abrirEntradaStock(_fichaInvActual.id)">
+          <span style="font-size:22px">▲</span>
+          <span>Entrada</span>
+        </button>
+        <button id="stock-btn-salida" class="btn-secundario" style="padding:16px 8px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;border-color:rgba(252,129,129,0.4);color:#fc8181"
+          onclick="cerrarModal('modal-stock-articulo');abrirSalidaStock(_fichaInvActual.id,_fichaInvActual.nombre)">
+          <span style="font-size:22px">▼</span>
+          <span>Salida</span>
+        </button>
+        <button id="stock-btn-historial" class="btn-secundario" style="padding:16px 8px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px"
+          onclick="cerrarModal('modal-stock-articulo');verHistorialStock(_fichaInvActual.id,_fichaInvActual.nombre)">
+          <span style="font-size:22px">📋</span>
+          <span>Historial</span>
+        </button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-stock-articulo')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-entrada-stock">
   <div class="modal" style="max-width:780px">
     <div class="modal-header">
