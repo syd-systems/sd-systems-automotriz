@@ -4589,20 +4589,19 @@ async function eliminarFactura(id, numero) {
 var _fichaInvActual = { id: null, nombre: '' };
 
 async function regresarAFichaInv() {
-  console.log('regresarAFichaInv llamada, _fichaInvActual:', JSON.stringify(_fichaInvActual));
   if (!_fichaInvActual.id) { renderInventario(); return; }
   try {
-    // Recargar el artículo fresco desde Supabase
     const res = await api('inventario', 'GET', null,
       '?id_articulo=eq.' + _fichaInvActual.id + '&select=*');
     if (res && res[0]) {
-      // Actualizar cache
       const idx = inventarioCache.findIndex(function(x) { return x.id_articulo === _fichaInvActual.id; });
       if (idx !== -1) inventarioCache[idx] = res[0];
       else inventarioCache.push(res[0]);
     }
-    verFichaInventario(_fichaInvActual.id);
-  } catch(e) { verFichaInventario(_fichaInvActual.id); }
+  } catch(e) {}
+  // Abrir la ficha directamente sin depender del cache
+  await mostrarModulo('inventario', document.getElementById('nav-INVENTARIO'));
+  setTimeout(function() { verFichaInventario(_fichaInvActual.id); }, 500);
 }
 
 // ─── VALIDAR CONTRASEÑA RECEPTOR ───
@@ -7581,7 +7580,7 @@ function verFichaInventario(id) {
   const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) return;
   _fichaInvActual = { id: r.id_articulo, nombre: r.nombre };
-  console.log('_fichaInvActual seteado:', JSON.stringify(_fichaInvActual));
+
   const abcMap = {};
   clasificarABC(inventarioCache).forEach(function(x) { abcMap[x.id_articulo] = x.clase_abc; });
   const abc = abcMap[r.id_articulo] || '—';
