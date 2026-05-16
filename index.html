@@ -4686,7 +4686,7 @@ function onCambiarPrecioEntrada() {
   const tasa      = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
   const elUSD     = document.getElementById('es-precio-usd-calc');
   if (elUSD) {
-    elUSD.value = tasa > 0 ? (precioVES / tasa).toFixed(4) : '';
+    elUSD.value = tasa > 0 ? (precioVES / tasa).toFixed(2) : '';
   }
 }
 
@@ -7552,11 +7552,11 @@ function abrirEntradaStock(id) {
   document.getElementById('es-nombre').textContent = r.nombre;
   document.getElementById('es-stock-actual').textContent = r.stock_actual + ' ' + (r.unidad || 'UND');
   document.getElementById('es-cantidad').value = '';
-  document.getElementById('es-precio-costo').value = '0';
+  document.getElementById('es-precio-costo').value = '0.00';
   document.getElementById('es-motivo').value = 'compra';
   document.getElementById('es-referencia').value = '';
   // Precio Compra siempre inicia en 0
-  document.getElementById('es-precio-costo').value = '0';
+  document.getElementById('es-precio-costo').value = '0.00';
   document.getElementById('es-precio-venta').value = r.precio_venta_usd || '';
   // Mostrar CPP actual como referencia
   const refCPP = document.getElementById('es-ref-cpp');
@@ -9366,9 +9366,10 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo">
           <label>Precio Compra</label>
-          <input type="number" id="es-precio-costo" placeholder="0.00" min="0" step="0.01" value="0"
+          <input type="number" id="es-precio-costo" placeholder="0.00" min="0" step="0.01" value="0.00"
             style="font-family:var(--font-mono)"
             oninput="onCambiarPrecioEntrada()"
+            onblur="this.value=parseFloat(this.value||0).toFixed(2)"
             onkeydown="if(event.key==='Enter'){guardarEntradaStock()}">
           <div id="es-ref-cpp" style="font-size:10px;color:var(--naranja);margin-top:4px"></div>
         </div>
