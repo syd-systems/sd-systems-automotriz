@@ -1361,6 +1361,7 @@ const PERMISOS_POR_MODULO = {
     { accion: 'ENTRADA_STOCK', label: 'Registrar entrada de stock' },
     { accion: 'SALIDA_STOCK',  label: 'Registrar salida de stock' },
     { accion: 'VER_COSTOS',    label: '🔒 Ver precios de costo y CPP' },
+    { accion: 'VER_PRECIOS_VENTA', label: '🔒 Ver precios de venta' },
     { accion: 'VER_EOQ_ABC',   label: '🔒 Ver análisis ABC / EOQ / Reorden' },
   ],
   CATALOGO: [
@@ -4598,7 +4599,13 @@ function abrirStockArticulo(id, nombre) {
 
   document.getElementById('stock-art-nombre').textContent = r.nombre;
   document.getElementById('stock-art-stock').textContent  = r.stock_actual + ' ' + (r.unidad || 'UND');
-  document.getElementById('stock-art-venta').textContent  = '$ ' + fmtUSD(r.precio_venta_usd);
+  const ventaCont = document.getElementById('stock-art-venta-cont');
+  if (puedo('INVENTARIO','VER_PRECIOS_VENTA')) {
+    document.getElementById('stock-art-venta').textContent = '$ ' + fmtUSD(r.precio_venta_usd);
+    if (ventaCont) ventaCont.style.display = '';
+  } else {
+    if (ventaCont) ventaCont.style.display = 'none';
+  }
 
   const costoCont = document.getElementById('stock-art-costo-cont');
   const costoEl   = document.getElementById('stock-art-costo');
@@ -7497,9 +7504,11 @@ function invRenderTabla(items, cont) {
                 : '')
             + '</td>'
           : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
-      + '<td style="font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:10px">Venta</div>'
-      + '<span style="color:var(--naranja)">$ ' + fmtUSD(r.precio_venta_usd) + '</span>'
-      + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen.toFixed(1) + '%</div></td>'
+      + (puedo('INVENTARIO','VER_PRECIOS_VENTA')
+          ? '<td style="font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:10px">Venta</div>'
+            + '<span style="color:var(--naranja)">$ ' + fmtUSD(r.precio_venta_usd) + '</span>'
+            + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen.toFixed(1) + '%</div></td>'
+          : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
       + '<td><div style="display:flex;gap:8px">'
       + '<button class="btn-secundario" onclick="verFichaInventario(' + r.id_articulo + ')">Ficha</button>'
       + '<button class="btn-secundario" style="border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="abrirStockArticulo(' + r.id_articulo + ',\'' + r.nombre.replace(/'/g,"\\'"  ) + '\')" >Stock</button>'
@@ -7630,9 +7639,12 @@ function verFichaInventario(id) {
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Stock Mínimo</div>'
     + '<div style="font-family:var(--font-mono);font-size:18px">' + r.stock_minimo + ' ' + (r.unidad||'UND') + '</div></div>'
     + (puedo('INVENTARIO','VER_COSTOS') ? '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Costo Prom. (CPP)</div><div style="font-family:var(--font-mono)">$ ' + fmtUSD(r.precio_costo_usd) + '</div></div>' : '')
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
-    + '<div style="font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(r.precio_venta_usd) + '</div>'
-    + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen + '%</div></div>'
+    + (puedo('INVENTARIO','VER_PRECIOS_VENTA')
+        ? '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
+          + '<div style="font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(r.precio_venta_usd) + '</div>'
+          + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen + '%</div></div>'
+        : '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
+          + '<div style="font-size:13px;color:#555">🔒</div></div>')
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Categoría</div>'
     + '<div style="font-size:13px">' + (({'repuesto':'🔧 Artículo','venta':'🛒 Venta','oficina':'📎 Oficina','limpieza':'🧹 Limpieza','otro':'📦 Otro'}[r.categoria]) || r.categoria || '—') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Valor Inventario</div>'
@@ -9473,7 +9485,7 @@ window.addEventListener('load', async () => {
             <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">CPP</div>
             <div style="font-family:var(--font-mono);font-size:16px" id="stock-art-costo">—</div>
           </div>
-          <div>
+          <div id="stock-art-venta-cont">
             <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Precio Venta</div>
             <div style="font-family:var(--font-mono);font-size:16px;color:var(--naranja)" id="stock-art-venta">—</div>
           </div>
