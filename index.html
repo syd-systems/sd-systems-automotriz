@@ -4591,6 +4591,7 @@ var _fichaInvActual = { id: null, nombre: '' };
 async function regresarAFichaInv() {
   if (!_fichaInvActual.id) { renderInventario(); return; }
   try {
+    // Actualizar cache con datos frescos
     const res = await api('inventario', 'GET', null,
       '?id_articulo=eq.' + _fichaInvActual.id + '&select=*');
     if (res && res[0]) {
@@ -4598,10 +4599,11 @@ async function regresarAFichaInv() {
       if (idx !== -1) inventarioCache[idx] = res[0];
       else inventarioCache.push(res[0]);
     }
-  } catch(e) {}
-  // Abrir la ficha directamente sin depender del cache
-  await mostrarModulo('inventario', document.getElementById('nav-INVENTARIO'));
-  setTimeout(function() { verFichaInventario(_fichaInvActual.id); }, 500);
+    // Abrir ficha directamente sin recargar el módulo
+    verFichaInventario(_fichaInvActual.id);
+  } catch(e) {
+    verFichaInventario(_fichaInvActual.id);
+  }
 }
 
 // ─── VALIDAR CONTRASEÑA RECEPTOR ───
