@@ -4651,6 +4651,45 @@ function onSelAreaEntrada() {
   cargarEmpleadosPorArea(parseInt(idArea)||null, 'es-empleado');
 }
 
+async function onCambiarMonedaEntrada() {
+  const moneda   = document.getElementById('es-moneda-compra')?.value || 'USD';
+  const tasaCont = document.getElementById('es-tasa-cont');
+  const usdCont  = document.getElementById('es-precio-usd-cont');
+  const esVES    = moneda === 'VES';
+
+  if (tasaCont) tasaCont.style.display  = esVES ? '' : 'none';
+  if (usdCont)  usdCont.style.display   = esVES ? '' : 'none';
+
+  if (esVES) {
+    // Buscar tasa BCV del día de la entrada
+    const fecha = document.getElementById('es-fecha-entrada')?.value || getHoyVzla();
+    try {
+      // Buscar tasa del mismo día o la más reciente anterior
+      const tasas = await api('tasas', 'GET', null,
+        '?fecha_valor=lte.' + fecha + '&order=fecha_valor.desc&limit=1&select=tipo_cambio,fecha_valor');
+      if (tasas && tasas.length) {
+        document.getElementById('es-tasa-bcv').value = parseFloat(tasas[0].tipo_cambio).toFixed(2);
+        document.getElementById('es-ref-cpp').textContent = 'Tasa BCV: ' + parseFloat(tasas[0].tipo_cambio).toFixed(2) + ' Bs/$ (' + tasas[0].fecha_valor + ')';
+      } else {
+        document.getElementById('es-tasa-bcv').value = '';
+        document.getElementById('es-ref-cpp').textContent = 'No se encontró tasa BCV para esta fecha';
+      }
+    } catch(e) {}
+    onCambiarPrecioEntrada();
+  }
+}
+
+function onCambiarPrecioEntrada() {
+  const moneda = document.getElementById('es-moneda-compra')?.value || 'USD';
+  if (moneda !== 'VES') return;
+  const precioVES = parseFloat(document.getElementById('es-precio-costo')?.value) || 0;
+  const tasa      = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
+  const elUSD     = document.getElementById('es-precio-usd-calc');
+  if (elUSD) {
+    elUSD.value = tasa > 0 ? (precioVES / tasa).toFixed(4) : '';
+  }
+}
+
 function onCambiarMotivoEntrada() {
   const motivo = document.getElementById('es-motivo')?.value;
   const contProv     = document.getElementById('es-campo-proveedor-cont');
@@ -7528,6 +7567,12 @@ function abrirEntradaStock(id) {
   if (document.getElementById('es-clave-receptor')) document.getElementById('es-clave-receptor').value = '';
   if (document.getElementById('es-cliente-nombre')) document.getElementById('es-cliente-nombre').value = '';
   if (document.getElementById('es-area-origen'))    document.getElementById('es-area-origen').value = '';
+  // Resetear moneda y tasa
+  if (document.getElementById('es-moneda-compra'))  document.getElementById('es-moneda-compra').value = 'USD';
+  if (document.getElementById('es-tasa-cont'))      document.getElementById('es-tasa-cont').style.display  = 'none';
+  if (document.getElementById('es-precio-usd-cont'))document.getElementById('es-precio-usd-cont').style.display = 'none';
+  if (document.getElementById('es-tasa-bcv'))       document.getElementById('es-tasa-bcv').value = '';
+  if (document.getElementById('es-precio-usd-calc'))document.getElementById('es-precio-usd-calc').value = '';
   document.getElementById('es-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
   document.getElementById('es-proveedor').innerHTML = '<option value="">— Seleccionar proveedor (opcional) —</option>';
   // Cargar áreas y proveedores en paralelo
@@ -7567,7 +7612,14 @@ async function guardarEntradaStock() {
   }
   try {
     const r = inventarioCache.find(function(x) { return x.id_repuesto === id; });
-    const nuevoPrecioCosto = parseFloat(document.getElementById('es-precio-costo').value) || 0;
+    const precioIngresado  = parseFloat(document.getElementById('es-precio-costo').value) || 0;
+  const monedaCompra     = document.getElementById('es-moneda-compra')?.value || 'USD';
+  const nuevoPrecioCosto = monedaCompra === 'VES'
+    ? (parseFloat(document.getElementById('es-precio-usd-calc')?.value) || 0)
+    : precioIngresado;
+  const moneda_compra_val = monedaCompra;
+  const precio_compra_original = precioIngresado;
+  const tasa_bcv_usada = monedaCompra === 'VES' ? (parseFloat(document.getElementById('es-tasa-bcv')?.value) || null) : null;
     const nuevoPrecioVenta = parseFloat(document.getElementById('es-precio-venta').value) || null;
     const stockActual = parseFloat(r.stock_actual || 0);
     const nuevoStock  = stockActual + cantidad;
@@ -7626,21 +7678,24 @@ async function guardarEntradaStock() {
       const idAreaEnt    = parseInt(document.getElementById('es-area')?.value) || null;
       const idEmpEnt     = idEmpEntVal;
       const motivoEntH   = document.getElementById('es-motivo')?.value;
-      const idProvEnt    = (motivoEntH === 'compra') ? (parseInt(document.getElementById('es-proveedor')?.value) || null) : null;
-      const clienteNomH  = (motivoEntH === 'devolucion') ? (document.getElementById('es-cliente-nombre')?.value.trim() || null) : null;
-      const idAreaOrigenH= (motivoEntH === 'transferencia') ? (parseInt(document.getElementById('es-area-origen')?.value) || null) : null;
+      const idProvEnt       = (motivoEntH === 'compra') ? (parseInt(document.getElementById('es-proveedor')?.value) || null) : null;
+      const clienteNomH     = (motivoEntH === 'devolucion') ? (document.getElementById('es-cliente-nombre')?.value.trim() || null) : null;
+      const idAreaOrigenH   = (motivoEntH === 'transferencia') ? (parseInt(document.getElementById('es-area-origen')?.value) || null) : null;
       await api('stock_entradas', 'POST', {
-        id_articulo:      id,
-        cantidad:         cantidad,
-        precio_costo_usd: nuevoPrecioCosto || null,
-        fecha_entrada:    getHoyVzla(),
-        id_area:          idAreaEnt,
-        id_empleado:      idEmpEnt,
-        id_proveedor:     idProvEnt,
-        cliente_nombre:   clienteNomH,
-        id_area_origen:   idAreaOrigenH,
-        observaciones:    document.getElementById('es-observaciones')?.value.trim() || null,
-        id_usuario:       sesionActual.correo_usuario
+        id_articulo:             id,
+        cantidad:                cantidad,
+        precio_costo_usd:        nuevoPrecioCosto || null,
+        precio_compra_original:  precio_compra_original || null,
+        moneda_compra:           moneda_compra_val,
+        tasa_bcv:                tasa_bcv_usada,
+        fecha_entrada:           getHoyVzla(),
+        id_area:                 idAreaEnt,
+        id_empleado:             idEmpEnt,
+        id_proveedor:            idProvEnt,
+        cliente_nombre:          clienteNomH,
+        id_area_origen:          idAreaOrigenH,
+        observaciones:           document.getElementById('es-observaciones')?.value.trim() || null,
+        id_usuario:              sesionActual.correo_usuario
       });
     } catch(eH) { console.warn('Error registrando historial entrada:', eH); }
     okEl.textContent = 'Stock actualizado: ' + r.stock_actual + ' → ' + nuevoStock + ' ' + (r.unidad || 'UND');
@@ -9303,11 +9358,32 @@ window.addEventListener('load', async () => {
             onkeydown="if(event.key==='Enter'){document.getElementById('es-precio-costo').focus()}">
         </div>
         <div class="form-campo">
-          <label>Precio Costo USD (esta compra)</label>
+          <label>Precio Compra</label>
           <input type="number" id="es-precio-costo" placeholder="0.00" min="0" step="0.01"
             style="font-family:var(--font-mono)"
+            oninput="onCambiarPrecioEntrada()"
             onkeydown="if(event.key==='Enter'){guardarEntradaStock()}">
           <div id="es-ref-cpp" style="font-size:10px;color:var(--naranja);margin-top:4px"></div>
+        </div>
+        <div class="form-campo">
+          <label>Moneda de Compra</label>
+          <select id="es-moneda-compra" onchange="onCambiarMonedaEntrada()"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="USD">USD — Dólar</option>
+            <option value="VES">VES — Bolívar</option>
+          </select>
+        </div>
+        <div class="form-campo" id="es-tasa-cont" style="display:none">
+          <label>Tasa BCV del día</label>
+          <input type="number" id="es-tasa-bcv" placeholder="0.00" min="0" step="0.01"
+            style="font-family:var(--font-mono);background:var(--gris1)" readonly>
+          <div style="font-size:10px;color:var(--suave);margin-top:4px">Tasa del día de la entrada</div>
+        </div>
+        <div class="form-campo" id="es-precio-usd-cont" style="display:none">
+          <label>Precio en USD (calculado)</label>
+          <input type="number" id="es-precio-usd-calc" placeholder="0.00" min="0" step="0.01"
+            style="font-family:var(--font-mono);background:var(--gris1);color:var(--naranja)" readonly>
+          <div style="font-size:10px;color:var(--suave);margin-top:4px">Precio / Tasa BCV</div>
         </div>
         <div class="form-campo">
           <label>Precio Venta USD</label>
