@@ -7640,14 +7640,8 @@ function verFichaInventario(id) {
     + '</div>';
 
   // Botones de acción en el footer
-  var btnStock = document.getElementById('ficha-inv-btn-stock');
-  var btnSalida  = document.getElementById('ficha-inv-btn-salida');
   var btnEditar = document.getElementById('ficha-inv-btn-editar');
   var btnEliminar = document.getElementById('ficha-inv-btn-eliminar');
-  if (btnStock)   { btnStock._id = r.id_articulo;   btnStock.onclick = function() { cerrarModal('modal-ficha-inv'); abrirEntradaStock(this._id); };   btnStock.style.display = puedo('INVENTARIO','ENTRADA_STOCK') ? '' : 'none'; }
-  if (btnSalida)  { btnSalida._id = r.id_articulo; btnSalida._nombre = r.nombre; btnSalida.onclick = function() { cerrarModal('modal-ficha-inv'); abrirSalidaStock(this._id, this._nombre); }; btnSalida.style.display = puedo('INVENTARIO','SALIDA_STOCK') ? '' : 'none'; }
-  var btnHistorial = document.getElementById('ficha-inv-btn-historial');
-  if (btnHistorial) { btnHistorial._id = r.id_articulo; btnHistorial._nombre = r.nombre; btnHistorial.onclick = function() { cerrarModal('modal-ficha-inv'); verHistorialStock(this._id, this._nombre); }; btnHistorial.style.display = ''; }
   if (btnEditar)  { btnEditar._id = r.id_articulo;  btnEditar.onclick = function() { cerrarModal('modal-ficha-inv'); abrirEditarInventario(this._id); }; btnEditar.style.display = puedo('INVENTARIO','EDITAR') ? '' : 'none'; }
   if (btnEliminar){ btnEliminar._id = r.id_articulo; btnEliminar._nombre = r.nombre; btnEliminar.onclick = function() { cerrarModal('modal-ficha-inv'); eliminarInventario(this._id, this._nombre); }; btnEliminar.style.display = puedo('INVENTARIO','ELIMINAR') ? '' : 'none'; }
 
@@ -10639,9 +10633,6 @@ window.addEventListener('load', async () => {
     <div class="modal-body" id="ficha-inv-contenido"></div>
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-inv')">Cerrar</button>
-      <button class="btn-secundario" id="ficha-inv-btn-stock"     style="color:var(--naranja);border-color:rgba(255,107,0,0.4)">+ Entrada</button>
-      <button class="btn-secundario" id="ficha-inv-btn-salida"   style="color:#fc8181;border-color:rgba(252,129,129,0.4)">- Salida</button>
-      <button class="btn-secundario" id="ficha-inv-btn-historial" style="color:#60a5fa;border-color:rgba(96,165,250,0.4)">📋 Historial</button>
       <button class="btn-secundario" id="ficha-inv-btn-editar">Editar</button>
     </div>
   </div>
