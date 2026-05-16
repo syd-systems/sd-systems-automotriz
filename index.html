@@ -1905,7 +1905,7 @@ async function mostrarModulo(modulo, navEl) {
     case 'propietarios': renderPropietarios(); break;
     case 'parametros':   renderParametros();   break;
     case 'ordenes':      renderOrdenes();      break;
-    case 'inventario':   renderInventario();   break;
+    case 'inventario':   await renderInventario();   break;
     case 'catalogo':     renderCatalogo();     break;
     case 'emisores':     renderEmisores();     break;
     case 'facturas':     renderFacturas();     break;
@@ -4590,20 +4590,19 @@ var _fichaInvActual = { id: null, nombre: '' };
 
 async function regresarAFichaInv() {
   if (!_fichaInvActual.id) { renderInventario(); return; }
+  const idArt = _fichaInvActual.id;
   try {
-    // Actualizar cache con datos frescos
-    const res = await api('inventario', 'GET', null,
-      '?id_articulo=eq.' + _fichaInvActual.id + '&select=*');
+    // Recargar artículo fresco y actualizar cache
+    const res = await api('inventario', 'GET', null, '?id_articulo=eq.' + idArt + '&select=*');
     if (res && res[0]) {
-      const idx = inventarioCache.findIndex(function(x) { return x.id_articulo === _fichaInvActual.id; });
-      if (idx !== -1) inventarioCache[idx] = res[0];
+      const i = inventarioCache.findIndex(function(x) { return x.id_articulo === idArt; });
+      if (i !== -1) inventarioCache[i] = res[0];
       else inventarioCache.push(res[0]);
     }
-    // Abrir ficha directamente sin recargar el módulo
-    verFichaInventario(_fichaInvActual.id);
-  } catch(e) {
-    verFichaInventario(_fichaInvActual.id);
-  }
+  } catch(e) { console.error('regresarAFichaInv error:', e); }
+  // Cargar el módulo inventario y esperar que renderice, luego abrir ficha
+  await renderInventario();
+  setTimeout(function() { verFichaInventario(idArt); }, 300);
 }
 
 // ─── VALIDAR CONTRASEÑA RECEPTOR ───
