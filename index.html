@@ -5091,7 +5091,7 @@ async function guardarEdicionMovimiento() {
             ? (valorSinEstaEntrada + cantidad * precio) / nuevoStock
             : precio;
           await api('inventario', 'PATCH',
-            { precio_costo_usd: parseFloat(cpp.toFixed(4)) },
+            { precio_costo_usd: parseFloat(cpp.toFixed(4)), precio_costo_ultimo_usd: precio },
             '?id_articulo=eq.' + idRepuesto);
         }
       }
