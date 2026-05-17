@@ -7673,6 +7673,9 @@ function abrirEntradaStock(id) {
   // Precio Compra siempre inicia en 0
   document.getElementById('es-precio-costo').value = '0.00';
   document.getElementById('es-precio-venta').value = r.precio_venta_usd || '';
+  // Ocultar precio venta si no tiene permiso
+  var esVentaCont = document.getElementById('es-precio-venta-cont');
+  if (esVentaCont) esVentaCont.style.display = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? '' : 'none';
   // Mostrar CPP actual como referencia
   const refCPP = document.getElementById('es-ref-cpp');
   if (refCPP) refCPP.textContent = '$ ' + fmtUSD(r.precio_costo_usd) + ' (CPP actual)';
@@ -7770,7 +7773,7 @@ async function guardarEntradaStock() {
       precio_costo_usd: parseFloat(cpp.toFixed(4)),
     };
     if (nuevoPrecioCosto > 0) patch.precio_costo_ultimo_usd = nuevoPrecioCosto;
-    if (nuevoPrecioVenta && nuevoPrecioVenta > 0) patch.precio_venta_usd = nuevoPrecioVenta;
+    if (nuevoPrecioVenta && nuevoPrecioVenta > 0 && puedo('INVENTARIO','VER_PRECIOS_VENTA')) patch.precio_venta_usd = nuevoPrecioVenta;
     await api('inventario', 'PATCH', patch, '?id_articulo=eq.' + id);
     // Validar campo obligatorio según motivo
     const motivoEnt = document.getElementById('es-motivo')?.value;
@@ -7857,6 +7860,8 @@ function abrirNuevoInventario() {
     document.getElementById(id).value = '';
   });
   document.getElementById('inv-unidad').value = 'UND';
+  var invVentaContN = document.getElementById('inv-venta-cont');
+  if (invVentaContN) invVentaContN.style.display = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? '' : 'none';
   document.getElementById('modal-inv-titulo').textContent = 'NUEVO ARTÍCULO';
   document.getElementById('alerta-inv-ok').style.display = 'none';
   document.getElementById('alerta-inv-err').style.display = 'none';
@@ -7874,6 +7879,8 @@ function abrirEditarInventario(id) {
   document.getElementById('inv-stock-min').value = r.stock_minimo;
   document.getElementById('inv-costo').value = r.precio_costo_usd || '';
   document.getElementById('inv-venta').value = r.precio_venta_usd || '';
+  var invVentaCont = document.getElementById('inv-venta-cont');
+  if (invVentaCont) invVentaCont.style.display = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? '' : 'none';
   document.getElementById('inv-unidad').value = r.unidad || 'UND';
   document.getElementById('inv-categoria').value = r.categoria || 'repuesto';
   document.getElementById('inv-demanda-anual').value = r.demanda_anual || '';
@@ -7921,8 +7928,9 @@ async function guardarInventario() {
     const costoPedido  = parseFloat(document.getElementById('inv-costo-pedido').value) || null;
     const stockSeg     = parseInt(document.getElementById('inv-stock-seg').value) || 0;
     const categoria = document.getElementById('inv-categoria').value || 'repuesto';
+    const ventaFinal = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? venta : undefined;
     const datos = { nombre, descripcion: desc || null, codigo: codigo || null, stock_actual: stock,
-      stock_minimo: stockMin, precio_costo_usd: costo, precio_venta_usd: venta, unidad, categoria,
+      stock_minimo: stockMin, precio_costo_usd: costo, ...(ventaFinal !== undefined ? { precio_venta_usd: ventaFinal } : {}), unidad, categoria,
       demanda_anual: demandaAnual, lead_time_dias: leadTime, costo_pedido_usd: costoPedido, stock_seguridad: stockSeg,
       id_usuario: sesionActual.correo_usuario };
     if (id) {
@@ -9560,7 +9568,7 @@ window.addEventListener('load', async () => {
             <option value="VES">VES — Bolívar</option>
           </select>
         </div>
-        <div class="form-campo">
+        <div class="form-campo" id="es-precio-venta-cont">
           <label>Precio Venta USD</label>
           <input type="number" id="es-precio-venta" placeholder="0.00" min="0" step="0.01"
             style="font-family:var(--font-mono)">
@@ -9696,7 +9704,7 @@ window.addEventListener('load', async () => {
           <label>Stock Mínimo</label>
           <input type="number" id="inv-stock-min" placeholder="0" min="0">
         </div>
-        <div class="form-campo">
+        <div class="form-campo" id="inv-venta-cont">
           <label>Precio Venta USD</label>
           <input type="number" id="inv-venta" placeholder="0.00" step="0.01" min="0">
         </div>
