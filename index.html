@@ -7499,7 +7499,7 @@ function invRenderTabla(items, cont) {
           ? '<td style="font-family:var(--font-mono);font-size:12px">'
             + '<div style="color:var(--suave);font-size:9px;letter-spacing:1px">COSTO PROM. (CPP)</div>'
             + '<div>$ ' + fmtUSD(r.precio_costo_usd) + '</div>'
-            + (r.precio_costo_ultimo_usd && Math.abs(r.precio_costo_ultimo_usd - r.precio_costo_usd) > 0.001
+            + (r.precio_costo_ultimo_usd
                 ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Última compra: $ ' + fmtUSD(r.precio_costo_ultimo_usd) + '</div>'
                 : '')
             + '</td>'
