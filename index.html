@@ -4635,6 +4635,10 @@ async function regresarAFichaInv() {
       else inventarioCache.push(res[0]);
     }
   } catch(e) {}
+  // Recargar tabla del inventario general si está visible
+  if (document.getElementById('tabla-inv-cont')) {
+    invRenderVista(inventarioCache, _invVista);
+  }
   // Regresar al modal de stock
   abrirStockArticulo(_fichaInvActual.id, _fichaInvActual.nombre);
 }
