@@ -8285,7 +8285,7 @@ async function abrirEditarOS(id) {
       return { id: l.id_os_serv, id_servicio: l.id_servicio, descripcion: l.descripcion, cantidad: l.cantidad, precio_usd: l.precio_usd };
     });
     osRepuestosLineas = linRep.map(function(l) {
-      return { id: l.id_os_rep, id_articulo: l.id_articulo, descripcion: l.descripcion, cantidad: l.cantidad, precio_usd: l.precio_usd };
+      return { id: l.id_os_rep, id_articulo: l.id_repuesto, descripcion: l.descripcion, cantidad: l.cantidad, precio_usd: l.precio_usd };
     });
     tasaActualOS = tasas.length ? parseFloat(tasas[0].tipo_cambio) : (o.tasa_cambio_usd || 1);
   } catch(e) {}
@@ -8677,7 +8677,7 @@ async function guardarOS() {
     for (var j = 0; j < osRepuestosLineas.length; j++) {
       var lr = osRepuestosLineas[j];
       await api('os_repuestos', 'POST', {
-        id_orden: parseInt(osId), id_articulo: lr.id_articulo || null,
+        id_orden: parseInt(osId), id_repuesto: lr.id_articulo || null,
         descripcion: lr.descripcion, cantidad: lr.cantidad,
         precio_usd: lr.precio_usd, subtotal_usd: parseFloat(lr.precio_usd) * parseFloat(lr.cantidad)
       });
