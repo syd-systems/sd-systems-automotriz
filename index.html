@@ -1098,6 +1098,9 @@
       <div class="nav-item" id="nav-INVENTARIO" onclick="mostrarModulo('inventario', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">📦</span> Inventario
       </div>
+      <div class="nav-item" id="nav-CONTABILIDAD" onclick="mostrarModulo('contabilidad', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">📒</span> Contabilidad
+      </div>
       <div class="nav-item" id="nav-CATALOGO" onclick="mostrarModulo('catalogo', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">🗂️</span> Catálogo Servicios
       </div>
@@ -1119,6 +1122,9 @@
       </div>
       <div class="nav-item" id="nav-EMPLEADOS" onclick="mostrarModulo('empleados', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">👷</span> Empleados
+      </div>
+      <div class="nav-item" id="nav-CONTABILIDAD" onclick="mostrarModulo('contabilidad', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">📒</span> Contabilidad
       </div>
       <div class="nav-item" id="nav-PROVEEDORES" onclick="mostrarModulo('proveedores', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">🏭</span> Proveedores
@@ -1407,6 +1413,20 @@ const PERMISOS_POR_MODULO = {
     { accion: 'CREAR',  label: 'Registrar pago' },
     { accion: 'EDITAR', label: 'Editar pago' },
     { accion: 'ANULAR', label: 'Anular pago' },
+  ],
+  CONTABILIDAD: [
+    { accion: 'VER',           label: 'Ver asientos y reportes' },
+    { accion: 'CREAR',         label: 'Crear asientos contables' },
+    { accion: 'EDITAR',        label: 'Editar asientos en borrador' },
+    { accion: 'APROBAR',       label: '🔒 Aprobar asientos' },
+    { accion: 'ANULAR',        label: '🔒 Anular asientos' },
+    { accion: 'VER_MAYOR',     label: 'Ver libro mayor' },
+    { accion: 'VER_BALANCE',   label: '🔒 Ver balance y estado de resultados' },
+    { accion: 'PLAN_CUENTAS',  label: '🔒 Gestionar plan de cuentas' },
+    { accion: 'PERIODOS',      label: '🔒 Gestionar períodos contables' },
+    { accion: 'CXC',           label: 'Cuentas por Cobrar' },
+    { accion: 'CXP',           label: 'Cuentas por Pagar' },
+    { accion: 'CONCILIACION',  label: '🔒 Conciliación Bancaria' },
   ],
   PROVEEDORES: [
     { accion: 'VER',      label: 'Ver Ficha' },
@@ -1912,6 +1932,7 @@ async function mostrarModulo(modulo, navEl) {
     case 'facturas':     renderFacturas();     break;
     case 'empleados':    renderEmpleados();    break;
     case 'proveedores':  renderProveedores();  break;
+    case 'contabilidad': renderContabilidad(); break;
     default:             renderProximo(navEl?.querySelector('.nav-icono')?.textContent || '🔧',
                                        navEl?.textContent.trim() || modulo);
   }
@@ -5344,6 +5365,1065 @@ async function eliminarProveedor(id, nombre) {
   catch(err) { alert('Error: ' + err.message); }
 }
 
+
+
+// ══════════════════════════════════════════════════════════════
+//  MÓDULO CONTABILIDAD — VEN-NIF / SENIAT — BIMONEDA USD/VES
+// ══════════════════════════════════════════════════════════════
+let contCuentasCache   = [];
+let contPeriodosCache  = [];
+let contAsientosCache  = [];
+let contCxcCache       = [];
+let contCxpCache       = [];
+let _contVista         = 'diario';  // diario | mayor | balance | cxc | cxp | conciliacion | cuentas | periodos
+
+const TIPOS_CUENTA   = ['ACTIVO','PASIVO','PATRIMONIO','INGRESO','EGRESO'];
+const NATURALE_CUENTA = { ACTIVO:'DEUDORA', PASIVO:'ACREEDORA', PATRIMONIO:'ACREEDORA', INGRESO:'ACREEDORA', EGRESO:'DEUDORA' };
+const METODOS_PAGO   = ['EFECTIVO_VES','EFECTIVO_USD','TRANSFERENCIA_VES','TRANSFERENCIA_USD','ZELLE','PAGO_MOVIL','DIVISAS','OTRO'];
+const ESTADOS_ASIENTO = { BORRADOR:{clase:'badge-gris',label:'Borrador'}, APROBADO:{clase:'badge-verde',label:'Aprobado'}, ANULADO:{clase:'badge-rojo',label:'Anulado'} };
+
+// ─── RENDER PRINCIPAL ───
+async function renderContabilidad() {
+  if (!sesionActual?.administrador && !modulosAcceso.includes('CONTABILIDAD')) {
+    document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
+    return;
+  }
+  const c = document.getElementById('contenido-principal');
+  c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando módulo contable...</div>';
+  try {
+    await Promise.all([
+      contCargarCuentas(),
+      contCargarPeriodos(),
+    ]);
+  } catch(e) {}
+  contRenderShell();
+  contCambiarVista(_contVista);
+}
+
+function contRenderShell() {
+  const c = document.getElementById('contenido-principal');
+  c.innerHTML =
+    '<div class="panel" style="padding:0">'
+    + '<div style="display:flex;gap:3px;background:var(--gris2);border-bottom:1px solid var(--borde);padding:10px 16px;flex-wrap:wrap;gap:6px">'
+    + contTabBtn('diario',       '📓 Libro Diario',   'VER')
+    + contTabBtn('mayor',        '📊 Libro Mayor',    'VER_MAYOR')
+    + contTabBtn('balance',      '⚖ Balance',         'VER_BALANCE')
+    + contTabBtn('cxc',          '💰 Cob.',           'CXC')
+    + contTabBtn('cxp',          '💸 Pagar',          'CXP')
+    + contTabBtn('conciliacion', '🏦 Conc.',          'CONCILIACION')
+    + contTabBtn('cuentas',      '📋 Cuentas',        'PLAN_CUENTAS')
+    + contTabBtn('periodos',     '📅 Períodos',       'PERIODOS')
+    + '</div>'
+    + '<div id="cont-vista-cont" style="padding:16px"></div>'
+    + '</div>';
+}
+
+function contTabBtn(vista, label, permiso) {
+  if (!sesionActual?.administrador && !puedo('CONTABILIDAD', permiso)) return '';
+  const activo = _contVista === vista;
+  return '<button onclick="contCambiarVista(\'' + vista + '\')" '
+    + 'style="font-size:12px;padding:7px 14px;border-radius:5px;border:none;cursor:pointer;font-family:var(--font-body);'
+    + 'background:' + (activo ? 'var(--naranja)' : 'var(--gris3)') + ';'
+    + 'color:' + (activo ? '#fff' : 'var(--suave)') + '">'
+    + label + '</button>';
+}
+
+function contCambiarVista(vista) {
+  _contVista = vista;
+  // Actualizar tabs
+  const shell = document.getElementById('contenido-principal');
+  if (shell) {
+    const btns = shell.querySelectorAll('button[onclick^="contCambiarVista"]');
+    btns.forEach(function(btn) {
+      const v = btn.getAttribute('onclick').match(/'(\w+)'/)[1];
+      btn.style.background = v === vista ? 'var(--naranja)' : 'var(--gris3)';
+      btn.style.color      = v === vista ? '#fff' : 'var(--suave)';
+    });
+  }
+  const cont = document.getElementById('cont-vista-cont');
+  if (!cont) return;
+  cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+  if      (vista === 'diario')       contRenderDiario();
+  else if (vista === 'mayor')        contRenderMayor();
+  else if (vista === 'balance')      contRenderBalance();
+  else if (vista === 'cxc')          contRenderCxc();
+  else if (vista === 'cxp')          contRenderCxp();
+  else if (vista === 'conciliacion') contRenderConciliacion();
+  else if (vista === 'cuentas')      contRenderCuentas();
+  else if (vista === 'periodos')     contRenderPeriodos();
+}
+
+// ─── HELPERS ───
+async function contCargarCuentas() {
+  contCuentasCache = await api('cont_cuentas','GET',null,'?estado=eq.ACTIVA&order=codigo.asc&select=*');
+}
+async function contCargarPeriodos() {
+  contPeriodosCache = await api('cont_periodos','GET',null,'?order=fecha_inicio.desc&select=*');
+}
+function contGetPeriodoActivo() {
+  return contPeriodosCache.find(function(p){ return p.estado === 'ABIERTO'; }) || contPeriodosCache[0];
+}
+function contCuentasMovimiento() {
+  return contCuentasCache.filter(function(c){ return c.permite_movimiento; });
+}
+function contBuildCuentaSelect(selectedId) {
+  const grupos = {};
+  contCuentasCache.filter(function(c){ return c.nivel <= 3; }).forEach(function(c){
+    grupos[c.codigo] = c;
+  });
+  const ctas = contCuentasMovimiento();
+  let opts = '<option value="">— Seleccionar cuenta —</option>';
+  let lastGrp = '';
+  ctas.forEach(function(c) {
+    const partes = c.codigo.split('.');
+    const grp = partes.slice(0,2).join('.');
+    if (grp !== lastGrp) {
+      const g = contCuentasCache.find(function(x){ return x.codigo === grp; });
+      if (g) { if (lastGrp) opts += '</optgroup>'; opts += '<optgroup label="' + g.nombre + '">'; }
+      lastGrp = grp;
+    }
+    opts += '<option value="' + c.id_cuenta + '"' + (c.id_cuenta == selectedId ? ' selected' : '') + '>'
+      + c.codigo + ' — ' + c.nombre + '</option>';
+  });
+  if (lastGrp) opts += '</optgroup>';
+  return opts;
+}
+function contFmtMoneda(val, moneda) {
+  const n = parseFloat(val||0);
+  if (moneda === 'VES') return fmtBs(n) + ' Bs';
+  return '$ ' + fmtUSD(n);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  LIBRO DIARIO
+// ══════════════════════════════════════════════════════════════
+async function contRenderDiario(filtroEstado, filtroPeriodo) {
+  const cont = document.getElementById('cont-vista-cont');
+  if (!cont) return;
+  try {
+    const periodoActivo = contGetPeriodoActivo();
+    const qPeriodo = filtroPeriodo ? '&id_periodo=eq.' + filtroPeriodo : '';
+    const qEstado  = filtroEstado  ? '&estado=eq.' + filtroEstado : '';
+    const asientos = await api('cont_asientos','GET',null,
+      '?order=fecha.desc,numero_asiento.desc&select=*,cont_periodos(nombre)' + qPeriodo + qEstado);
+    contAsientosCache = asientos;
+
+    const perSelect = contPeriodosCache.map(function(p){
+      return '<option value="' + p.id_periodo + '"' + (filtroPeriodo == p.id_periodo ? ' selected':'') + '>' + p.nombre + '</option>';
+    }).join('');
+
+    cont.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
+      + '<h3 style="margin:0">Libro Diario</h3>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+      + '<select onchange="contRenderDiario(document.getElementById(\'cont-filtro-estado\').value, this.value)" style="' + contSelStyle() + '">'
+      + '<option value="">Todos los períodos</option>' + perSelect + '</select>'
+      + '<select id="cont-filtro-estado" onchange="contRenderDiario(this.value, document.querySelector(\'[onchange*=contRenderDiario]\').value)" style="' + contSelStyle() + '">'
+      + '<option value="">Todos los estados</option>'
+      + '<option value="BORRADOR"' + (filtroEstado==='BORRADOR'?' selected':'') + '>Borrador</option>'
+      + '<option value="APROBADO"' + (filtroEstado==='APROBADO'?' selected':'') + '>Aprobado</option>'
+      + '<option value="ANULADO"'  + (filtroEstado==='ANULADO'?' selected':'')  + '>Anulado</option>'
+      + '</select>'
+      + (puedo('CONTABILIDAD','CREAR') ? '<button class="btn-primario" onclick="contAbrirAsiento(null)">+ Nuevo Asiento</button>' : '')
+      + '</div></div>'
+      + '<div class="tabla-container"><table><thead><tr>'
+      + '<th>N° Asiento</th><th>Fecha</th><th>Descripción</th><th>Período</th><th>Moneda</th><th>Estado</th><th>Acciones</th>'
+      + '</tr></thead><tbody>'
+      + (asientos.length ? asientos.map(function(a) {
+          const est = ESTADOS_ASIENTO[a.estado] || {clase:'badge-gris',label:a.estado};
+          return '<tr>'
+            + '<td style="font-family:var(--font-mono);font-weight:600;color:var(--naranja)">' + a.numero_asiento + '</td>'
+            + '<td style="font-size:12px">' + a.fecha + '</td>'
+            + '<td style="font-size:13px">' + a.descripcion
+            + (a.referencia ? '<div style="font-size:10px;color:var(--suave)">Ref: ' + a.referencia + '</div>' : '')
+            + '</td>'
+            + '<td style="font-size:11px;color:var(--suave)">' + (a.cont_periodos ? a.cont_periodos.nombre : '—') + '</td>'
+            + '<td style="font-size:11px;font-family:var(--font-mono)">' + a.moneda_base
+            + '<div style="font-size:10px;color:var(--suave)">Tasa: ' + parseFloat(a.tasa_bcv||1).toFixed(2) + '</div></td>'
+            + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
+            + '<td><div style="display:flex;gap:4px;flex-wrap:wrap">'
+            + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="contVerAsiento(' + a.id_asiento + ')">Ver</button>'
+            + (puedo('CONTABILIDAD','EDITAR') && a.estado==='BORRADOR' ? '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="contAbrirAsiento(' + a.id_asiento + ')">✏</button>' : '')
+            + (puedo('CONTABILIDAD','APROBAR') && a.estado==='BORRADOR' ? '<button class="btn-primario" style="font-size:11px;padding:4px 8px" onclick="contAprobarAsiento(' + a.id_asiento + ')">✓ Aprobar</button>' : '')
+            + (puedo('CONTABILIDAD','ANULAR') && a.estado!=='ANULADO' ? '<button class="btn-secundario" style="font-size:11px;padding:4px 8px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="contAnularAsiento(' + a.id_asiento + ')">Anular</button>' : '')
+            + '</div></td></tr>';
+        }).join('') : '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--suave)">Sin asientos registrados</td></tr>')
+      + '</tbody></table></div>';
+  } catch(e) {
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+  }
+}
+
+function contSelStyle() {
+  return 'background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer';
+}
+
+// ─── VER ASIENTO ───
+async function contVerAsiento(id) {
+  try {
+    const [a, lineas] = await Promise.all([
+      api('cont_asientos','GET',null,'?id_asiento=eq.' + id + '&select=*,cont_periodos(nombre)'),
+      api('cont_asiento_lineas','GET',null,'?id_asiento=eq.' + id + '&order=orden.asc&select=*,cont_cuentas(codigo,nombre)'),
+    ]);
+    const ast = a[0]; if (!ast) return;
+    const est = ESTADOS_ASIENTO[ast.estado] || {clase:'badge-gris',label:ast.estado};
+    const totalDebe  = lineas.reduce(function(s,l){ return s+parseFloat(l.debe_usd||0); }, 0);
+    const totalHaber = lineas.reduce(function(s,l){ return s+parseFloat(l.haber_usd||0); }, 0);
+    const cuadra = Math.abs(totalDebe - totalHaber) < 0.01;
+
+    document.getElementById('cont-asiento-contenido').innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px">'
+      + '<div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + ast.numero_asiento + '</div>'
+      + '<span class="badge ' + est.clase + '">' + est.label + '</span>'
+      + '<div style="font-size:12px;color:var(--suave);margin-top:4px">Fecha: ' + ast.fecha + ' · ' + (ast.cont_periodos ? ast.cont_periodos.nombre : '') + '</div>'
+      + (ast.referencia ? '<div style="font-size:11px;color:var(--suave)">Ref: ' + ast.referencia + '</div>' : '')
+      + '</div>'
+      + '<div style="text-align:right">'
+      + '<div style="font-size:11px;color:var(--suave)">Moneda: ' + ast.moneda_base + ' · Tasa BCV: ' + parseFloat(ast.tasa_bcv||1).toFixed(2) + '</div>'
+      + '<div style="font-size:11px;color:' + (cuadra ? '#22c55e' : '#fc8181') + ';margin-top:4px;font-weight:600">'
+      + (cuadra ? '✓ Asiento cuadrado' : '✗ Asiento descuadrado') + '</div>'
+      + '</div></div>'
+      + '<div style="background:var(--gris2);border-radius:6px;padding:12px;margin-bottom:16px;font-size:13px">' + ast.descripcion + '</div>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+      + '<thead><tr>'
+      + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CUENTA</th>'
+      + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">DEBE USD</th>'
+      + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">HABER USD</th>'
+      + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">DEBE Bs</th>'
+      + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">HABER Bs</th>'
+      + '</tr></thead><tbody>'
+      + lineas.map(function(l){
+          return '<tr>'
+            + '<td style="padding:7px 8px"><div style="font-size:10px;color:var(--naranja);font-family:var(--font-mono)">' + (l.cont_cuentas ? l.cont_cuentas.codigo : '') + '</div>'
+            + '<div>' + (l.cont_cuentas ? l.cont_cuentas.nombre : '') + '</div>'
+            + (l.descripcion ? '<div style="font-size:10px;color:var(--suave)">' + l.descripcion + '</div>' : '')
+            + '</td>'
+            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);color:' + (l.debe_usd>0?'#22c55e':'var(--suave)') + '">' + (l.debe_usd>0?'$ '+fmtUSD(l.debe_usd):'—') + '</td>'
+            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);color:' + (l.haber_usd>0?'#fc8181':'var(--suave)') + '">' + (l.haber_usd>0?'$ '+fmtUSD(l.haber_usd):'—') + '</td>'
+            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:11px;color:var(--suave)">' + (l.debe_ves>0?fmtBs(l.debe_ves)+' Bs':'—') + '</td>'
+            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:11px;color:var(--suave)">' + (l.haber_ves>0?fmtBs(l.haber_ves)+' Bs':'—') + '</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody><tfoot>'
+      + '<tr style="border-top:2px solid var(--borde);font-weight:700">'
+      + '<td style="padding:8px">TOTALES</td>'
+      + '<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(totalDebe) + '</td>'
+      + '<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(totalHaber) + '</td>'
+      + '<td colspan="2"></td></tr>'
+      + '</tfoot></table>';
+
+    abrirModal('modal-cont-asiento-ver');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ─── ABRIR / EDITAR ASIENTO ───
+let contLineasAsiento = [];
+
+async function contAbrirAsiento(id) {
+  if (!puedo('CONTABILIDAD', id ? 'EDITAR' : 'CREAR')) { alert('Sin permiso.'); return; }
+  contLineasAsiento = [];
+  const periodoActivo = contGetPeriodoActivo();
+
+  if (id) {
+    const [a, lineas] = await Promise.all([
+      api('cont_asientos','GET',null,'?id_asiento=eq.' + id + '&select=*'),
+      api('cont_asiento_lineas','GET',null,'?id_asiento=eq.' + id + '&order=orden.asc&select=*'),
+    ]);
+    const ast = a[0]; if (!ast) return;
+    document.getElementById('cont-form-id').value          = ast.id_asiento;
+    document.getElementById('cont-form-fecha').value       = ast.fecha;
+    document.getElementById('cont-form-desc').value        = ast.descripcion;
+    document.getElementById('cont-form-ref').value         = ast.referencia || '';
+    document.getElementById('cont-form-tipo').value        = ast.tipo;
+    document.getElementById('cont-form-moneda').value      = ast.moneda_base;
+    document.getElementById('cont-form-tasa').value        = parseFloat(ast.tasa_bcv||1).toFixed(2);
+    document.getElementById('cont-form-periodo').value     = ast.id_periodo || '';
+    document.getElementById('modal-cont-form-titulo').textContent = 'EDITAR ASIENTO — ' + ast.numero_asiento;
+    contLineasAsiento = lineas.map(function(l){ return { id_cuenta: l.id_cuenta, descripcion: l.descripcion||'', debe_usd: l.debe_usd, haber_usd: l.haber_usd }; });
+  } else {
+    document.getElementById('cont-form-id').value     = '';
+    document.getElementById('cont-form-fecha').value  = getHoyVzla();
+    document.getElementById('cont-form-desc').value   = '';
+    document.getElementById('cont-form-ref').value    = '';
+    document.getElementById('cont-form-tipo').value   = 'MANUAL';
+    document.getElementById('cont-form-moneda').value = 'USD';
+    document.getElementById('cont-form-periodo').value = periodoActivo ? periodoActivo.id_periodo : '';
+    document.getElementById('modal-cont-form-titulo').textContent = 'NUEVO ASIENTO CONTABLE';
+    // Cargar tasa BCV del día
+    try {
+      const tasas = await api('tasas','GET',null,'?order=fecha_valor.desc&limit=1&select=tipo_cambio');
+      document.getElementById('cont-form-tasa').value = tasas.length ? parseFloat(tasas[0].tipo_cambio).toFixed(2) : '1.00';
+    } catch(e) { document.getElementById('cont-form-tasa').value = '1.00'; }
+  }
+
+  // Llenar select de períodos
+  document.getElementById('cont-form-periodo').innerHTML =
+    contPeriodosCache.filter(function(p){ return p.estado==='ABIERTO'; }).map(function(p){
+      return '<option value="' + p.id_periodo + '">' + p.nombre + '</option>';
+    }).join('');
+
+  document.getElementById('alerta-cont-form-ok').style.display  = 'none';
+  document.getElementById('alerta-cont-form-err').style.display = 'none';
+  contRenderLineasForm();
+  abrirModal('modal-cont-asiento-form');
+}
+
+function contRenderLineasForm() {
+  const cont = document.getElementById('cont-lineas-form');
+  if (!cont) return;
+
+  const totalDebe  = contLineasAsiento.reduce(function(s,l){ return s+parseFloat(l.debe_usd||0); },0);
+  const totalHaber = contLineasAsiento.reduce(function(s,l){ return s+parseFloat(l.haber_usd||0); },0);
+  const cuadra = Math.abs(totalDebe - totalHaber) < 0.01;
+  const diff   = totalDebe - totalHaber;
+
+  cont.innerHTML =
+    '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px">'
+    + '<thead><tr>'
+    + '<th style="text-align:left;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:35%">CUENTA</th>'
+    + '<th style="padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:20%">DESCRIPCIÓN</th>'
+    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:15%">DEBE USD</th>'
+    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:15%">HABER USD</th>'
+    + '<th style="width:40px"></th>'
+    + '</tr></thead><tbody>'
+    + contLineasAsiento.map(function(l, i) {
+        return '<tr>'
+          + '<td style="padding:4px"><select onchange="contLineasAsiento[' + i + '].id_cuenta=parseInt(this.value)" style="width:100%;' + contSelStyle() + ';font-size:11px">' + contBuildCuentaSelect(l.id_cuenta) + '</select></td>'
+          + '<td style="padding:4px"><input type="text" value="' + (l.descripcion||'') + '" onchange="contLineasAsiento[' + i + '].descripcion=this.value" placeholder="Detalle..." style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:11px;padding:6px 8px;border-radius:4px;outline:none"></td>'
+          + '<td style="padding:4px"><input type="number" value="' + (parseFloat(l.debe_usd||0).toFixed(2)) + '" min="0" step="0.01" onchange="contLineasAsiento[' + i + '].debe_usd=parseFloat(this.value)||0;contLineasAsiento[' + i + '].haber_usd=0;this.closest(\'tr\').nextElementSibling;contRenderLineasForm()" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:#22c55e;font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right"></td>'
+          + '<td style="padding:4px"><input type="number" value="' + (parseFloat(l.haber_usd||0).toFixed(2)) + '" min="0" step="0.01" onchange="contLineasAsiento[' + i + '].haber_usd=parseFloat(this.value)||0;contLineasAsiento[' + i + '].debe_usd=0;contRenderLineasForm()" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:#fc8181;font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right"></td>'
+          + '<td style="padding:4px;text-align:center"><button onclick="contLineasAsiento.splice(' + i + ',1);contRenderLineasForm()" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px">✕</button></td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">'
+    + '<button onclick="contLineasAsiento.push({id_cuenta:null,descripcion:\'\',debe_usd:0,haber_usd:0});contRenderLineasForm()" style="background:none;border:1px dashed var(--borde);color:var(--suave);padding:7px 14px;border-radius:5px;cursor:pointer;font-size:12px">+ Agregar línea</button>'
+    + '<div style="display:flex;gap:20px;align-items:center">'
+    + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave)">DEBE</div><div style="font-family:var(--font-mono);font-size:14px;color:#22c55e">$ ' + fmtUSD(totalDebe) + '</div></div>'
+    + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave)">HABER</div><div style="font-family:var(--font-mono);font-size:14px;color:#fc8181">$ ' + fmtUSD(totalHaber) + '</div></div>'
+    + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave)">DIFERENCIA</div>'
+    + '<div style="font-family:var(--font-mono);font-size:14px;color:' + (cuadra?'#22c55e':'#fc8181') + '">' + (cuadra ? '✓ Cuadrado' : '$ ' + fmtUSD(Math.abs(diff))) + '</div></div>'
+    + '</div></div>';
+}
+
+async function contGuardarAsiento() {
+  const id      = document.getElementById('cont-form-id').value;
+  const fecha   = document.getElementById('cont-form-fecha').value;
+  const desc    = document.getElementById('cont-form-desc').value.trim();
+  const ref     = document.getElementById('cont-form-ref').value.trim();
+  const tipo    = document.getElementById('cont-form-tipo').value;
+  const moneda  = document.getElementById('cont-form-moneda').value;
+  const tasa    = parseFloat(document.getElementById('cont-form-tasa').value) || 1;
+  const periodo = parseInt(document.getElementById('cont-form-periodo').value) || null;
+  const okEl    = document.getElementById('alerta-cont-form-ok');
+  const errEl   = document.getElementById('alerta-cont-form-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  if (!fecha) { errEl.textContent = 'La fecha es obligatoria.'; errEl.style.display='block'; return; }
+  if (!desc)  { errEl.textContent = 'La descripción es obligatoria.'; errEl.style.display='block'; return; }
+  if (contLineasAsiento.length < 2) { errEl.textContent = 'Debe tener al menos 2 líneas.'; errEl.style.display='block'; return; }
+
+  const totalDebe  = contLineasAsiento.reduce(function(s,l){ return s+parseFloat(l.debe_usd||0); },0);
+  const totalHaber = contLineasAsiento.reduce(function(s,l){ return s+parseFloat(l.haber_usd||0); },0);
+  if (Math.abs(totalDebe - totalHaber) > 0.01) {
+    errEl.textContent = 'El asiento no cuadra. Debe = $ ' + fmtUSD(totalDebe) + ' | Haber = $ ' + fmtUSD(totalHaber);
+    errEl.style.display='block'; return;
+  }
+  if (contLineasAsiento.some(function(l){ return !l.id_cuenta; })) {
+    errEl.textContent = 'Todas las líneas deben tener una cuenta seleccionada.'; errEl.style.display='block'; return;
+  }
+
+  try {
+    let asientoId = id;
+    const datos = { fecha, descripcion: desc, referencia: ref||null, tipo, moneda_base: moneda, tasa_bcv: tasa, id_periodo: periodo, estado:'BORRADOR', id_usuario: sesionActual.correo_usuario };
+
+    if (id) {
+      await api('cont_asientos','PATCH',datos,'?id_asiento=eq.' + id);
+      await api('cont_asiento_lineas','DELETE',null,'?id_asiento=eq.' + id);
+    } else {
+      // Generar número
+      const anio = new Date().getFullYear();
+      const exist = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-' + anio + '-*&order=numero_asiento.desc&limit=1&select=numero_asiento');
+      let seq = 1;
+      if (exist.length) { const p = exist[0].numero_asiento.split('-'); seq = parseInt(p[p.length-1]) + 1; }
+      datos.numero_asiento = 'AST-' + anio + '-' + String(seq).padStart(4,'0');
+      const res = await api('cont_asientos','POST',datos);
+      if (res && res[0]) asientoId = res[0].id_asiento;
+    }
+
+    // Insertar líneas
+    for (let i = 0; i < contLineasAsiento.length; i++) {
+      const l = contLineasAsiento[i];
+      await api('cont_asiento_lineas','POST',{
+        id_asiento: parseInt(asientoId), id_cuenta: l.id_cuenta,
+        descripcion: l.descripcion||null, orden: i+1,
+        debe_usd:  parseFloat(l.debe_usd||0),  haber_usd: parseFloat(l.haber_usd||0),
+        debe_ves:  parseFloat(l.debe_usd||0)*tasa, haber_ves: parseFloat(l.haber_usd||0)*tasa,
+      });
+    }
+
+    okEl.textContent = '✓ Asiento guardado como borrador.';
+    okEl.style.display='block';
+    setTimeout(function(){ cerrarModal('modal-cont-asiento-form'); contRenderDiario(); }, 900);
+  } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display='block'; }
+}
+
+async function contAprobarAsiento(id) {
+  if (!confirm('¿Aprobar este asiento? Una vez aprobado no podrá editarse.')) return;
+  try {
+    await api('cont_asientos','PATCH',{ estado:'APROBADO', aprobado_por: sesionActual.correo_usuario, fecha_aprobacion: new Date().toISOString() },'?id_asiento=eq.' + id);
+    contRenderDiario();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function contAnularAsiento(id) {
+  if (!confirm('¿Anular este asiento? Esta acción no puede deshacerse.')) return;
+  try {
+    await api('cont_asientos','PATCH',{ estado:'ANULADO' },'?id_asiento=eq.' + id);
+    contRenderDiario();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  LIBRO MAYOR
+// ══════════════════════════════════════════════════════════════
+async function contRenderMayor() {
+  const cont = document.getElementById('cont-vista-cont');
+  if (!cont) return;
+
+  cont.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
+    + '<h3 style="margin:0">Libro Mayor</h3>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+    + '<select id="cont-mayor-cuenta" style="' + contSelStyle() + ';width:300px">' + contBuildCuentaSelect(null) + '</select>'
+    + '<input type="date" id="cont-mayor-desde" style="' + contSelStyle() + '">'
+    + '<input type="date" id="cont-mayor-hasta" style="' + contSelStyle() + '">'
+    + '<button class="btn-primario" onclick="contCargarMayor()">Consultar</button>'
+    + '</div></div>'
+    + '<div id="cont-mayor-resultado"><div style="text-align:center;color:var(--suave);padding:40px">Selecciona una cuenta y rango de fechas para consultar el libro mayor.</div></div>';
+}
+
+async function contCargarMayor() {
+  const idCuenta = document.getElementById('cont-mayor-cuenta').value;
+  const desde    = document.getElementById('cont-mayor-desde').value;
+  const hasta    = document.getElementById('cont-mayor-hasta').value;
+  const res      = document.getElementById('cont-mayor-resultado');
+  if (!idCuenta) { res.innerHTML = '<div class="alerta alerta-error" style="display:block">Selecciona una cuenta.</div>'; return; }
+
+  res.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+  try {
+    const cuenta = contCuentasCache.find(function(c){ return c.id_cuenta == idCuenta; });
+    let q = '?id_asiento=in.(select id_asiento from cont_asientos where estado=eq.APROBADO)&id_cuenta=eq.' + idCuenta + '&order=id_linea.asc&select=*,cont_asientos(fecha,numero_asiento,descripcion)';
+
+    // Usar mayor si existe, sino calcular desde líneas
+    const lineas = await api('cont_asiento_lineas','GET',null,
+      '?id_cuenta=eq.' + idCuenta + '&select=*,cont_asientos!inner(fecha,numero_asiento,descripcion,estado)'
+      + (desde ? '&cont_asientos.fecha=gte.' + desde : '')
+      + (hasta ? '&cont_asientos.fecha=lte.' + hasta : '')
+      + '&cont_asientos.estado=eq.APROBADO&order=cont_asientos.fecha.asc,id_linea.asc');
+
+    let saldo = 0;
+    const esDeudora = cuenta && cuenta.naturaleza === 'DEUDORA';
+    const filas = lineas.map(function(l) {
+      const debe  = parseFloat(l.debe_usd||0);
+      const haber = parseFloat(l.haber_usd||0);
+      saldo += esDeudora ? (debe - haber) : (haber - debe);
+      return '<tr>'
+        + '<td style="padding:7px;font-size:12px">' + (l.cont_asientos ? l.cont_asientos.fecha : '—') + '</td>'
+        + '<td style="padding:7px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">' + (l.cont_asientos ? l.cont_asientos.numero_asiento : '—') + '</td>'
+        + '<td style="padding:7px;font-size:12px">' + (l.descripcion || (l.cont_asientos ? l.cont_asientos.descripcion : '')) + '</td>'
+        + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#22c55e">' + (debe>0?'$ '+fmtUSD(debe):'—') + '</td>'
+        + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#fc8181">' + (haber>0?'$ '+fmtUSD(haber):'—') + '</td>'
+        + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-weight:700;color:' + (saldo>=0?'var(--naranja)':'#fc8181') + '">$ ' + fmtUSD(Math.abs(saldo)) + (saldo<0?' Cr':'') + '</td>'
+        + '</tr>';
+    });
+
+    res.innerHTML =
+      '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
+      + '<div style="font-size:10px;color:var(--suave)">CUENTA</div>'
+      + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + (cuenta ? cuenta.codigo + ' — ' + cuenta.nombre : '') + '</div>'
+      + '<div style="font-size:11px;color:var(--suave);margin-top:4px">Naturaleza: ' + (cuenta ? cuenta.naturaleza : '') + ' · Tipo: ' + (cuenta ? cuenta.tipo : '') + '</div>'
+      + '</div>'
+      + '<div class="tabla-container"><table><thead><tr>'
+      + '<th>Fecha</th><th>Asiento</th><th>Descripción</th>'
+      + '<th style="text-align:right">Debe USD</th><th style="text-align:right">Haber USD</th><th style="text-align:right">Saldo USD</th>'
+      + '</tr></thead><tbody>'
+      + (filas.length ? filas.join('') : '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--suave)">Sin movimientos para esta cuenta en el período seleccionado.</td></tr>')
+      + '</tbody></table></div>';
+  } catch(e) { res.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>'; }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  BALANCE GENERAL Y ESTADO DE RESULTADOS
+// ══════════════════════════════════════════════════════════════
+async function contRenderBalance() {
+  const cont = document.getElementById('cont-vista-cont');
+  if (!cont) return;
+  cont.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
+    + '<h3 style="margin:0">Estados Financieros</h3>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+    + '<input type="date" id="cont-bal-hasta" value="' + getHoyVzla() + '" style="' + contSelStyle() + '">'
+    + '<select id="cont-bal-tipo" style="' + contSelStyle() + '">'
+    + '<option value="balance">Balance General</option>'
+    + '<option value="resultados">Estado de Resultados</option>'
+    + '</select>'
+    + '<button class="btn-primario" onclick="contGenerarBalance()">Generar</button>'
+    + '</div></div>'
+    + '<div id="cont-bal-resultado"><div style="text-align:center;color:var(--suave);padding:40px">Selecciona el tipo de reporte y la fecha de corte.</div></div>';
+}
+
+async function contGenerarBalance() {
+  const hasta = document.getElementById('cont-bal-hasta').value;
+  const tipo  = document.getElementById('cont-bal-tipo').value;
+  const res   = document.getElementById('cont-bal-resultado');
+  res.innerHTML = '<div class="loading"><div class="spinner"></div> Calculando...</div>';
+  try {
+    // Obtener saldos de todas las cuentas con movimientos aprobados hasta la fecha
+    const lineas = await api('cont_asiento_lineas','GET',null,
+      '?select=id_cuenta,debe_usd,haber_usd,cont_asientos!inner(fecha,estado)'
+      + '&cont_asientos.estado=eq.APROBADO'
+      + (hasta ? '&cont_asientos.fecha=lte.' + hasta : ''));
+
+    const saldos = {};
+    lineas.forEach(function(l) {
+      if (!saldos[l.id_cuenta]) saldos[l.id_cuenta] = 0;
+      const cta = contCuentasCache.find(function(c){ return c.id_cuenta == l.id_cuenta; });
+      if (!cta) return;
+      const debe  = parseFloat(l.debe_usd||0);
+      const haber = parseFloat(l.haber_usd||0);
+      saldos[l.id_cuenta] += cta.naturaleza === 'DEUDORA' ? (debe - haber) : (haber - debe);
+    });
+
+    if (tipo === 'balance') {
+      res.innerHTML = contRenderBalanceHTML(saldos, hasta);
+    } else {
+      res.innerHTML = contRenderResultadosHTML(saldos, hasta);
+    }
+  } catch(e) { res.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>'; }
+}
+
+function contSaldoGrupo(saldos, tipoCuenta, desde, hasta) {
+  return contCuentasCache
+    .filter(function(c){ return c.tipo === tipoCuenta && c.permite_movimiento; })
+    .reduce(function(s, c) { return s + (saldos[c.id_cuenta] || 0); }, 0);
+}
+
+function contRenderGrupoBalance(saldos, tipo, titulo, color) {
+  const cuentas = contCuentasCache.filter(function(c){ return c.tipo === tipo && c.nivel <= 3 && !c.permite_movimiento; });
+  let html = '<div style="margin-bottom:20px">'
+    + '<div style="font-size:11px;color:' + color + ';letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px;border-bottom:1px solid ' + color + '44;padding-bottom:4px">' + titulo + '</div>';
+  let total = 0;
+  cuentas.forEach(function(grp) {
+    const subctas = contCuentasCache.filter(function(c){ return c.permite_movimiento && c.codigo.startsWith(grp.codigo + '.'); });
+    const subtotal = subctas.reduce(function(s,c){ return s + (saldos[c.id_cuenta]||0); },0);
+    if (Math.abs(subtotal) < 0.01) return;
+    total += subtotal;
+    html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px">'
+      + '<span style="color:var(--suave)">' + grp.nombre + '</span>'
+      + '<span style="font-family:var(--font-mono)">$ ' + fmtUSD(subtotal) + '</span></div>';
+  });
+  html += '<div style="display:flex;justify-content:space-between;padding:6px 0;font-weight:700;border-top:1px solid var(--borde);margin-top:4px">'
+    + '<span>TOTAL ' + titulo + '</span>'
+    + '<span style="font-family:var(--font-mono);color:' + color + '">$ ' + fmtUSD(total) + '</span></div></div>';
+  return { html, total };
+}
+
+function contRenderBalanceHTML(saldos, hasta) {
+  const activo   = contRenderGrupoBalance(saldos,'ACTIVO','ACTIVO','#22c55e');
+  const pasivo   = contRenderGrupoBalance(saldos,'PASIVO','PASIVO','#fc8181');
+  const patrim   = contRenderGrupoBalance(saldos,'PATRIMONIO','PATRIMONIO','#60a5fa');
+  const totalPasPatrim = pasivo.total + patrim.total;
+
+  return '<div style="max-width:700px;margin:0 auto">'
+    + '<div style="text-align:center;margin-bottom:20px">'
+    + '<div style="font-family:var(--font-display);font-size:20px;color:var(--naranja)">BALANCE GENERAL</div>'
+    + '<div style="font-size:12px;color:var(--suave)">Al ' + hasta + '</div>'
+    + (Math.abs(activo.total - totalPasPatrim) < 1
+        ? '<span style="font-size:11px;color:#22c55e;font-weight:600">✓ Balance cuadrado</span>'
+        : '<span style="font-size:11px;color:#fc8181;font-weight:600">✗ Diferencia: $ ' + fmtUSD(Math.abs(activo.total - totalPasPatrim)) + '</span>')
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">'
+    + '<div>' + activo.html + '</div>'
+    + '<div>' + pasivo.html + patrim.html
+    + '<div style="display:flex;justify-content:space-between;padding:8px 0;font-weight:700;font-size:14px;border-top:2px solid var(--borde)">'
+    + '<span>TOTAL PAS + PAT</span><span style="font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(totalPasPatrim) + '</span></div>'
+    + '</div></div></div>';
+}
+
+function contRenderResultadosHTML(saldos, hasta) {
+  const ingresos = contRenderGrupoBalance(saldos,'INGRESO','INGRESOS','#22c55e');
+  const costos   = contRenderGrupoBalance(saldos,'EGRESO','COSTOS Y GASTOS','#fc8181');
+  const utilidad = ingresos.total - costos.total;
+
+  return '<div style="max-width:500px;margin:0 auto">'
+    + '<div style="text-align:center;margin-bottom:20px">'
+    + '<div style="font-family:var(--font-display);font-size:20px;color:var(--naranja)">ESTADO DE RESULTADOS</div>'
+    + '<div style="font-size:12px;color:var(--suave)">Al ' + hasta + '</div></div>'
+    + ingresos.html + costos.html
+    + '<div style="display:flex;justify-content:space-between;padding:10px 0;font-weight:700;font-size:15px;border-top:2px solid var(--borde);margin-top:8px">'
+    + '<span>' + (utilidad >= 0 ? 'UTILIDAD DEL EJERCICIO' : 'PÉRDIDA DEL EJERCICIO') + '</span>'
+    + '<span style="font-family:var(--font-mono);color:' + (utilidad>=0?'#22c55e':'#fc8181') + '">$ ' + fmtUSD(Math.abs(utilidad)) + '</span></div>'
+    + '</div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CUENTAS POR COBRAR
+// ══════════════════════════════════════════════════════════════
+async function contRenderCxc() {
+  const cont = document.getElementById('cont-vista-cont');
+  if (!cont) return;
+  try {
+    const cxcs = await api('cont_cxc','GET',null,'?order=fecha_emision.desc&select=*,propietarios(nombre_completo)');
+    contCxcCache = cxcs;
+    const totPend = cxcs.filter(function(c){ return c.estado!=='PAGADA'&&c.estado!=='ANULADA'; }).reduce(function(s,c){ return s+parseFloat(c.saldo_usd||0); },0);
+
+    cont.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
+      + '<div><h3 style="margin:0">Cuentas por Cobrar</h3>'
+      + '<div style="font-size:12px;color:var(--suave);margin-top:4px">Saldo pendiente total: <span style="color:var(--naranja);font-family:var(--font-mono);font-weight:700">$ ' + fmtUSD(totPend) + '</span></div></div>'
+      + '<button class="btn-primario" onclick="contAbrirCxc(null)">+ Nueva CxC</button>'
+      + '</div>'
+      + '<div class="tabla-container"><table><thead><tr>'
+      + '<th>Cliente</th><th>Documento</th><th>Emisión</th><th>Vencimiento</th><th>Monto USD</th><th>Saldo USD</th><th>Estado</th><th>Acciones</th>'
+      + '</tr></thead><tbody>'
+      + (cxcs.length ? cxcs.map(function(c) {
+          const est = {PENDIENTE:{clase:'badge-naranja'},PARCIAL:{clase:'badge-naranja'},PAGADA:{clase:'badge-verde'},VENCIDA:{clase:'badge-rojo'},ANULADA:{clase:'badge-gris'}};
+          const hoy = getHoyVzla();
+          const vencida = c.fecha_vencimiento && c.fecha_vencimiento < hoy && c.estado === 'PENDIENTE';
+          return '<tr>'
+            + '<td style="font-size:13px">' + (c.propietarios ? c.propietarios.nombre_completo : '—') + '</td>'
+            + '<td style="font-size:12px;font-family:var(--font-mono)">' + (c.numero_doc||c.tipo) + '</td>'
+            + '<td style="font-size:12px">' + c.fecha_emision + '</td>'
+            + '<td style="font-size:12px;color:' + (vencida?'#fc8181':'inherit') + '">' + (c.fecha_vencimiento||'—') + (vencida?' ⚠':'') + '</td>'
+            + '<td style="font-family:var(--font-mono);text-align:right">$ ' + fmtUSD(c.monto_usd) + '</td>'
+            + '<td style="font-family:var(--font-mono);text-align:right;color:var(--naranja);font-weight:700">$ ' + fmtUSD(c.saldo_usd) + '</td>'
+            + '<td><span class="badge ' + ((est[c.estado]||{clase:'badge-gris'}).clase) + '">' + c.estado + '</span></td>'
+            + '<td><div style="display:flex;gap:4px">'
+            + (c.estado!=='PAGADA'&&c.estado!=='ANULADA' ? '<button class="btn-primario" style="font-size:11px;padding:4px 8px" onclick="contRegistrarPagoCxc(' + c.id_cxc + ')">💰 Pagar</button>' : '')
+            + '</div></td></tr>';
+        }).join('') : '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--suave)">Sin cuentas por cobrar registradas</td></tr>')
+      + '</tbody></table></div>';
+  } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>'; }
+}
+
+async function contAbrirCxc(id) {
+  const propietarios = await api('propietarios','GET',null,'?select=id_propietario,nombre_completo&order=nombre_completo.asc');
+  const opts = propietarios.map(function(p){ return '<option value="' + p.id_propietario + '">' + p.nombre_completo + '</option>'; }).join('');
+  document.getElementById('cont-cxc-prop').innerHTML = '<option value="">— Seleccionar cliente —</option>' + opts;
+  document.getElementById('cont-cxc-id').value = '';
+  document.getElementById('cont-cxc-fecha').value = getHoyVzla();
+  document.getElementById('cont-cxc-vence').value = '';
+  document.getElementById('cont-cxc-monto').value = '0.00';
+  document.getElementById('cont-cxc-doc').value = '';
+  document.getElementById('cont-cxc-obs').value = '';
+  document.getElementById('alerta-cxc-ok').style.display = 'none';
+  document.getElementById('alerta-cxc-err').style.display = 'none';
+  abrirModal('modal-cont-cxc');
+}
+
+async function contGuardarCxc() {
+  const idProp  = parseInt(document.getElementById('cont-cxc-prop').value)||null;
+  const fecha   = document.getElementById('cont-cxc-fecha').value;
+  const vence   = document.getElementById('cont-cxc-vence').value;
+  const monto   = parseFloat(document.getElementById('cont-cxc-monto').value)||0;
+  const doc     = document.getElementById('cont-cxc-doc').value.trim();
+  const obs     = document.getElementById('cont-cxc-obs').value.trim();
+  const okEl    = document.getElementById('alerta-cxc-ok');
+  const errEl   = document.getElementById('alerta-cxc-err');
+  okEl.style.display='none'; errEl.style.display='none';
+  if (!idProp) { errEl.textContent='Seleccione el cliente.'; errEl.style.display='block'; return; }
+  if (!fecha)  { errEl.textContent='La fecha es obligatoria.'; errEl.style.display='block'; return; }
+  if (monto<=0){ errEl.textContent='El monto debe ser mayor a cero.'; errEl.style.display='block'; return; }
+  try {
+    const tasas = await api('tasas','GET',null,'?order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    const tasa  = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
+    await api('cont_cxc','POST',{
+      id_propietario: idProp, numero_doc: doc||null, fecha_emision: fecha,
+      fecha_vencimiento: vence||null, monto_usd: monto, monto_ves: monto*tasa,
+      tasa_bcv: tasa, saldo_usd: monto, estado:'PENDIENTE',
+      moneda_cobro:'USD', observaciones: obs||null, id_usuario: sesionActual.correo_usuario
+    });
+    okEl.textContent='✓ CxC registrada correctamente.'; okEl.style.display='block';
+    setTimeout(function(){ cerrarModal('modal-cont-cxc'); contRenderCxc(); }, 900);
+  } catch(e) { errEl.textContent='Error: ' + e.message; errEl.style.display='block'; }
+}
+
+async function contRegistrarPagoCxc(idCxc) {
+  const cxc = contCxcCache.find(function(c){ return c.id_cxc===idCxc; });
+  if (!cxc) return;
+  document.getElementById('cont-pago-cxc-id').value     = idCxc;
+  document.getElementById('cont-pago-cxc-monto').value  = parseFloat(cxc.saldo_usd).toFixed(2);
+  document.getElementById('cont-pago-cxc-fecha').value  = getHoyVzla();
+  document.getElementById('cont-pago-cxc-ref').value    = '';
+  document.getElementById('alerta-pago-cxc-ok').style.display  = 'none';
+  document.getElementById('alerta-pago-cxc-err').style.display = 'none';
+  abrirModal('modal-cont-pago-cxc');
+}
+
+async function contGuardarPagoCxc() {
+  const idCxc  = parseInt(document.getElementById('cont-pago-cxc-id').value);
+  const monto  = parseFloat(document.getElementById('cont-pago-cxc-monto').value)||0;
+  const fecha  = document.getElementById('cont-pago-cxc-fecha').value;
+  const metodo = document.getElementById('cont-pago-cxc-metodo').value;
+  const ref    = document.getElementById('cont-pago-cxc-ref').value.trim();
+  const okEl   = document.getElementById('alerta-pago-cxc-ok');
+  const errEl  = document.getElementById('alerta-pago-cxc-err');
+  okEl.style.display='none'; errEl.style.display='none';
+  if (!monto||monto<=0) { errEl.textContent='El monto debe ser mayor a cero.'; errEl.style.display='block'; return; }
+  try {
+    const cxc  = contCxcCache.find(function(c){ return c.id_cxc===idCxc; });
+    const tasas = await api('tasas','GET',null,'?order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    const tasa  = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
+    await api('cont_cxc_pagos','POST',{ id_cxc: idCxc, fecha, monto_usd: monto, monto_ves: monto*tasa, tasa_bcv: tasa, metodo, referencia: ref||null, id_usuario: sesionActual.correo_usuario });
+    const nuevoSaldo = Math.max(0, parseFloat(cxc.saldo_usd) - monto);
+    const nuevoEstado = nuevoSaldo <= 0.01 ? 'PAGADA' : 'PARCIAL';
+    const nuevoPagado = parseFloat(cxc.pagado_usd||0) + monto;
+    await api('cont_cxc','PATCH',{ saldo_usd: nuevoSaldo, pagado_usd: nuevoPagado, estado: nuevoEstado },'?id_cxc=eq.' + idCxc);
+    okEl.textContent='✓ Pago registrado correctamente.'; okEl.style.display='block';
+    setTimeout(function(){ cerrarModal('modal-cont-pago-cxc'); contRenderCxc(); }, 900);
+  } catch(e) { errEl.textContent='Error: ' + e.message; errEl.style.display='block'; }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CUENTAS POR PAGAR
+// ══════════════════════════════════════════════════════════════
+async function contRenderCxp() {
+  const cont = document.getElementById('cont-vista-cont');
+  if (!cont) return;
+  try {
+    const cxps = await api('cont_cxp','GET',null,'?order=fecha_emision.desc&select=*,proveedores(nombre)');
+    contCxpCache = cxps;
+    const totPend = cxps.filter(function(c){ return c.estado!=='PAGADA'&&c.estado!=='ANULADA'; }).reduce(function(s,c){ return s+parseFloat(c.saldo_usd||0); },0);
+
+    cont.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
+      + '<div><h3 style="margin:0">Cuentas por Pagar</h3>'
+      + '<div style="font-size:12px;color:var(--suave);margin-top:4px">Saldo pendiente total: <span style="color:#fc8181;font-family:var(--font-mono);font-weight:700">$ ' + fmtUSD(totPend) + '</span></div></div>'
+      + '<button class="btn-primario" onclick="contAbrirCxp(null)">+ Nueva CxP</button>'
+      + '</div>'
+      + '<div class="tabla-container"><table><thead><tr>'
+      + '<th>Proveedor</th><th>Documento</th><th>Emisión</th><th>Vencimiento</th><th>Monto USD</th><th>Saldo USD</th><th>Estado</th><th>Acciones</th>'
+      + '</tr></thead><tbody>'
+      + (cxps.length ? cxps.map(function(c) {
+          const hoy = getHoyVzla();
+          const vencida = c.fecha_vencimiento && c.fecha_vencimiento < hoy && c.estado==='PENDIENTE';
+          const claseEst = {PENDIENTE:'badge-naranja',PARCIAL:'badge-naranja',PAGADA:'badge-verde',VENCIDA:'badge-rojo',ANULADA:'badge-gris'};
+          return '<tr>'
+            + '<td>' + (c.proveedores ? c.proveedores.nombre : '—') + '</td>'
+            + '<td style="font-size:12px;font-family:var(--font-mono)">' + (c.numero_doc||c.tipo) + '</td>'
+            + '<td style="font-size:12px">' + c.fecha_emision + '</td>'
+            + '<td style="font-size:12px;color:' + (vencida?'#fc8181':'inherit') + '">' + (c.fecha_vencimiento||'—') + (vencida?' ⚠':'') + '</td>'
+            + '<td style="font-family:var(--font-mono);text-align:right">$ ' + fmtUSD(c.monto_usd) + '</td>'
+            + '<td style="font-family:var(--font-mono);text-align:right;color:#fc8181;font-weight:700">$ ' + fmtUSD(c.saldo_usd) + '</td>'
+            + '<td><span class="badge ' + (claseEst[c.estado]||'badge-gris') + '">' + c.estado + '</span></td>'
+            + '<td>' + (c.estado!=='PAGADA'&&c.estado!=='ANULADA' ? '<button class="btn-primario" style="font-size:11px;padding:4px 8px" onclick="contRegistrarPagoCxp(' + c.id_cxp + ')">💸 Pagar</button>' : '') + '</td>'
+            + '</tr>';
+        }).join('') : '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--suave)">Sin cuentas por pagar registradas</td></tr>')
+      + '</tbody></table></div>';
+  } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>'; }
+}
+
+async function contAbrirCxp(id) {
+  const proveedores = await api('proveedores','GET',null,'?estado=eq.ACTIVO&select=id_proveedor,nombre&order=nombre.asc');
+  document.getElementById('cont-cxp-prov').innerHTML = '<option value="">— Seleccionar proveedor —</option>'
+    + proveedores.map(function(p){ return '<option value="' + p.id_proveedor + '">' + p.nombre + '</option>'; }).join('');
+  document.getElementById('cont-cxp-id').value = '';
+  document.getElementById('cont-cxp-fecha').value = getHoyVzla();
+  document.getElementById('cont-cxp-vence').value = '';
+  document.getElementById('cont-cxp-monto').value = '0.00';
+  document.getElementById('cont-cxp-doc').value = '';
+  document.getElementById('cont-cxp-obs').value = '';
+  document.getElementById('alerta-cxp-ok').style.display = 'none';
+  document.getElementById('alerta-cxp-err').style.display = 'none';
+  abrirModal('modal-cont-cxp');
+}
+
+async function contGuardarCxp() {
+  const idProv = parseInt(document.getElementById('cont-cxp-prov').value)||null;
+  const fecha  = document.getElementById('cont-cxp-fecha').value;
+  const vence  = document.getElementById('cont-cxp-vence').value;
+  const monto  = parseFloat(document.getElementById('cont-cxp-monto').value)||0;
+  const doc    = document.getElementById('cont-cxp-doc').value.trim();
+  const obs    = document.getElementById('cont-cxp-obs').value.trim();
+  const okEl   = document.getElementById('alerta-cxp-ok');
+  const errEl  = document.getElementById('alerta-cxp-err');
+  okEl.style.display='none'; errEl.style.display='none';
+  if (!idProv) { errEl.textContent='Seleccione el proveedor.'; errEl.style.display='block'; return; }
+  if (!fecha)  { errEl.textContent='La fecha es obligatoria.'; errEl.style.display='block'; return; }
+  if (monto<=0){ errEl.textContent='El monto debe ser mayor a cero.'; errEl.style.display='block'; return; }
+  try {
+    const tasas = await api('tasas','GET',null,'?order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    const tasa  = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
+    await api('cont_cxp','POST',{ id_proveedor: idProv, numero_doc: doc||null, fecha_emision: fecha, fecha_vencimiento: vence||null, monto_usd: monto, monto_ves: monto*tasa, tasa_bcv: tasa, saldo_usd: monto, estado:'PENDIENTE', moneda_pago:'USD', observaciones: obs||null, id_usuario: sesionActual.correo_usuario });
+    okEl.textContent='✓ CxP registrada.'; okEl.style.display='block';
+    setTimeout(function(){ cerrarModal('modal-cont-cxp'); contRenderCxp(); }, 900);
+  } catch(e) { errEl.textContent='Error: ' + e.message; errEl.style.display='block'; }
+}
+
+async function contRegistrarPagoCxp(idCxp) {
+  const cxp = contCxpCache.find(function(c){ return c.id_cxp===idCxp; });
+  if (!cxp) return;
+  document.getElementById('cont-pago-cxp-id').value    = idCxp;
+  document.getElementById('cont-pago-cxp-monto').value = parseFloat(cxp.saldo_usd).toFixed(2);
+  document.getElementById('cont-pago-cxp-fecha').value = getHoyVzla();
+  document.getElementById('cont-pago-cxp-ref').value   = '';
+  document.getElementById('alerta-pago-cxp-ok').style.display  = 'none';
+  document.getElementById('alerta-pago-cxp-err').style.display = 'none';
+  abrirModal('modal-cont-pago-cxp');
+}
+
+async function contGuardarPagoCxp() {
+  const idCxp  = parseInt(document.getElementById('cont-pago-cxp-id').value);
+  const monto  = parseFloat(document.getElementById('cont-pago-cxp-monto').value)||0;
+  const fecha  = document.getElementById('cont-pago-cxp-fecha').value;
+  const metodo = document.getElementById('cont-pago-cxp-metodo').value;
+  const ref    = document.getElementById('cont-pago-cxp-ref').value.trim();
+  const okEl   = document.getElementById('alerta-pago-cxp-ok');
+  const errEl  = document.getElementById('alerta-pago-cxp-err');
+  okEl.style.display='none'; errEl.style.display='none';
+  if (!monto||monto<=0) { errEl.textContent='El monto debe ser mayor a cero.'; errEl.style.display='block'; return; }
+  try {
+    const cxp   = contCxpCache.find(function(c){ return c.id_cxp===idCxp; });
+    const tasas = await api('tasas','GET',null,'?order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    const tasa  = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
+    await api('cont_cxp_pagos','POST',{ id_cxp: idCxp, fecha, monto_usd: monto, monto_ves: monto*tasa, tasa_bcv: tasa, metodo, referencia: ref||null, id_usuario: sesionActual.correo_usuario });
+    const nuevoSaldo  = Math.max(0, parseFloat(cxp.saldo_usd) - monto);
+    const nuevoEstado = nuevoSaldo <= 0.01 ? 'PAGADA' : 'PARCIAL';
+    const nuevoPagado = parseFloat(cxp.pagado_usd||0) + monto;
+    await api('cont_cxp','PATCH',{ saldo_usd: nuevoSaldo, pagado_usd: nuevoPagado, estado: nuevoEstado },'?id_cxp=eq.' + idCxp);
+    okEl.textContent='✓ Pago registrado.'; okEl.style.display='block';
+    setTimeout(function(){ cerrarModal('modal-cont-pago-cxp'); contRenderCxp(); }, 900);
+  } catch(e) { errEl.textContent='Error: ' + e.message; errEl.style.display='block'; }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CONCILIACIÓN BANCARIA
+// ══════════════════════════════════════════════════════════════
+async function contRenderConciliacion() {
+  const cont = document.getElementById('cont-vista-cont');
+  if (!cont) return;
+  const cuentasBanco = contCuentasCache.filter(function(c){ return c.permite_movimiento && (c.codigo.startsWith('1.1.01') ); });
+  cont.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
+    + '<h3 style="margin:0">Conciliación Bancaria</h3>'
+    + '<button class="btn-primario" onclick="contNuevaConciliacion()">+ Nueva Conciliación</button>'
+    + '</div>'
+    + '<div style="background:var(--gris2);border-radius:8px;padding:20px;text-align:center;color:var(--suave)">'
+    + '<div style="font-size:32px;margin-bottom:8px">🏦</div>'
+    + '<div>Selecciona una cuenta bancaria y período para iniciar la conciliación.</div>'
+    + '<div style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">'
+    + '<select id="cont-conc-cuenta" style="' + contSelStyle() + ';width:280px">'
+    + '<option value="">— Cuenta Bancaria —</option>'
+    + cuentasBanco.map(function(c){ return '<option value="' + c.id_cuenta + '">' + c.codigo + ' — ' + c.nombre + '</option>'; }).join('')
+    + '</select>'
+    + '<input type="month" id="cont-conc-mes" value="' + getHoyVzla().substring(0,7) + '" style="' + contSelStyle() + '">'
+    + '<button class="btn-primario" onclick="contIniciarConciliacion()">Iniciar</button>'
+    + '</div></div>';
+}
+
+async function contIniciarConciliacion() {
+  const idCuenta = document.getElementById('cont-conc-cuenta').value;
+  const mes      = document.getElementById('cont-conc-mes').value;
+  if (!idCuenta || !mes) { alert('Selecciona cuenta y período.'); return; }
+  const cuenta   = contCuentasCache.find(function(c){ return c.id_cuenta == idCuenta; });
+  const desde    = mes + '-01';
+  const hasta    = new Date(mes + '-01');
+  hasta.setMonth(hasta.getMonth()+1); hasta.setDate(0);
+  const hastaStr = hasta.toISOString().split('T')[0];
+
+  const lineas = await api('cont_asiento_lineas','GET',null,
+    '?id_cuenta=eq.' + idCuenta
+    + '&select=*,cont_asientos!inner(fecha,numero_asiento,descripcion,estado)'
+    + '&cont_asientos.estado=eq.APROBADO'
+    + '&cont_asientos.fecha=gte.' + desde
+    + '&cont_asientos.fecha=lte.' + hastaStr
+    + '&order=cont_asientos.fecha.asc');
+
+  const cont = document.getElementById('cont-vista-cont');
+  let saldoLibros = 0;
+  const filas = lineas.map(function(l) {
+    const d = parseFloat(l.debe_usd||0); const h = parseFloat(l.haber_usd||0);
+    saldoLibros += cuenta && cuenta.naturaleza==='DEUDORA' ? (d-h) : (h-d);
+    return '<tr>'
+      + '<td style="padding:6px;font-size:12px">' + (l.cont_asientos ? l.cont_asientos.fecha : '') + '</td>'
+      + '<td style="padding:6px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">' + (l.cont_asientos ? l.cont_asientos.numero_asiento : '') + '</td>'
+      + '<td style="padding:6px;font-size:12px">' + (l.descripcion || (l.cont_asientos ? l.cont_asientos.descripcion : '')) + '</td>'
+      + '<td style="text-align:right;padding:6px;font-family:var(--font-mono);color:#22c55e">' + (l.debe_usd>0?'$ '+fmtUSD(l.debe_usd):'—') + '</td>'
+      + '<td style="text-align:right;padding:6px;font-family:var(--font-mono);color:#fc8181">' + (l.haber_usd>0?'$ '+fmtUSD(l.haber_usd):'—') + '</td>'
+      + '<td style="text-align:right;padding:6px;font-family:var(--font-mono)">' + (saldoLibros>=0?'':'- ') + '$ ' + fmtUSD(Math.abs(saldoLibros)) + '</td>'
+      + '</tr>';
+  });
+
+  cont.querySelector('#cont-conc-cuenta') && (cont.innerHTML = cont.innerHTML); // refresh
+
+  cont.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h3 style="margin:0">Conciliación: ' + (cuenta ? cuenta.nombre : '') + ' · ' + mes + '</h3>'
+    + '<button class="btn-secundario" onclick="contRenderConciliacion()">← Volver</button></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">'
+    + '<div style="background:var(--gris2);border-radius:8px;padding:16px">'
+    + '<div style="font-size:10px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Saldo en Libros</div>'
+    + '<div style="font-family:var(--font-display);font-size:24px;color:var(--naranja)">$ ' + fmtUSD(saldoLibros) + '</div></div>'
+    + '<div style="background:var(--gris2);border-radius:8px;padding:16px">'
+    + '<div style="font-size:10px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Saldo Banco (ingresa manualmente)</div>'
+    + '<input type="number" id="cont-conc-saldo-banco" placeholder="0.00" step="0.01" style="width:100%;background:var(--gris3);border:1px solid var(--naranja);color:var(--naranja);font-family:var(--font-display);font-size:22px;padding:8px 12px;border-radius:5px;outline:none;font-weight:700" onchange="contActualizarDiferencia(' + saldoLibros + ')">'
+    + '<div id="cont-conc-dif" style="margin-top:6px;font-size:12px;color:var(--suave)">Diferencia: —</div>'
+    + '</div></div>'
+    + '<div class="tabla-container"><table><thead><tr>'
+    + '<th>Fecha</th><th>Asiento</th><th>Descripción</th><th style="text-align:right">Debe</th><th style="text-align:right">Haber</th><th style="text-align:right">Saldo Acum.</th>'
+    + '</tr></thead><tbody>'
+    + (filas.length ? filas.join('') : '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--suave)">Sin movimientos en este período.</td></tr>')
+    + '</tbody></table></div>';
+}
+
+function contActualizarDiferencia(saldoLibros) {
+  const banco = parseFloat(document.getElementById('cont-conc-saldo-banco').value)||0;
+  const diff  = banco - saldoLibros;
+  const el    = document.getElementById('cont-conc-dif');
+  if (el) el.innerHTML = 'Diferencia: <span style="font-family:var(--font-mono);color:' + (Math.abs(diff)<0.01?'#22c55e':'#fc8181') + ';font-weight:700">'
+    + (Math.abs(diff)<0.01 ? '✓ Conciliado' : '$ ' + fmtUSD(Math.abs(diff)) + (diff<0?' (déficit)':' (superávit)')) + '</span>';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PLAN DE CUENTAS
+// ══════════════════════════════════════════════════════════════
+async function contRenderCuentas(filtro) {
+  const cont = document.getElementById('cont-vista-cont');
+  if (!cont) return;
+  await contCargarCuentas();
+  const items = filtro ? contCuentasCache.filter(function(c){ return c.nombre.toLowerCase().includes(filtro.toLowerCase()) || c.codigo.includes(filtro); }) : contCuentasCache;
+
+  cont.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
+    + '<h3 style="margin:0">Plan de Cuentas VEN-NIF</h3>'
+    + '<div style="display:flex;gap:8px">'
+    + '<input type="text" placeholder="Buscar código o nombre..." oninput="contRenderCuentas(this.value)" style="' + contSelStyle() + ';width:220px">'
+    + (puedo('CONTABILIDAD','PLAN_CUENTAS') ? '<button class="btn-primario" onclick="contAbrirCuenta(null)">+ Nueva Cuenta</button>' : '')
+    + '</div></div>'
+    + '<div class="tabla-container"><table><thead><tr>'
+    + '<th>Código</th><th>Nombre</th><th>Tipo</th><th>Naturaleza</th><th>Nivel</th><th>Movimiento</th>'
+    + (puedo('CONTABILIDAD','PLAN_CUENTAS') ? '<th>Acciones</th>' : '')
+    + '</tr></thead><tbody>'
+    + items.map(function(c) {
+        const indent = (c.nivel - 1) * 12;
+        return '<tr style="opacity:' + (c.permite_movimiento?'1':'0.7') + '">'
+          + '<td style="font-family:var(--font-mono);font-size:12px;padding-left:' + (8+indent) + 'px;color:' + (c.nivel<=2?'var(--naranja)':'inherit') + ';font-weight:' + (c.nivel<=2?'700':'400') + '">' + c.codigo + '</td>'
+          + '<td style="padding-left:' + indent + 'px;font-weight:' + (c.nivel<=2?'600':'400') + '">' + c.nombre + '</td>'
+          + '<td><span class="badge ' + ({ACTIVO:'badge-verde',PASIVO:'badge-rojo',PATRIMONIO:'badge-naranja',INGRESO:'badge-verde',EGRESO:'badge-rojo'}[c.tipo]||'badge-gris') + '" style="font-size:10px">' + c.tipo + '</span></td>'
+          + '<td style="font-size:11px;color:var(--suave)">' + c.naturaleza + '</td>'
+          + '<td style="text-align:center;font-size:11px">' + c.nivel + '</td>'
+          + '<td style="text-align:center">' + (c.permite_movimiento ? '<span style="color:#22c55e;font-size:12px">✓</span>' : '<span style="color:var(--suave);font-size:12px">—</span>') + '</td>'
+          + (puedo('CONTABILIDAD','PLAN_CUENTAS') ? '<td><button class="btn-secundario" style="font-size:11px;padding:3px 8px" onclick="contAbrirCuenta(' + c.id_cuenta + ')">✏</button></td>' : '')
+          + '</tr>';
+      }).join('')
+    + '</tbody></table></div>';
+}
+
+async function contAbrirCuenta(id) {
+  const c = id ? contCuentasCache.find(function(x){ return x.id_cuenta===id; }) : null;
+  const padres = contCuentasCache.filter(function(x){ return !x.permite_movimiento; });
+  document.getElementById('cont-cuenta-id').value     = c ? c.id_cuenta : '';
+  document.getElementById('cont-cuenta-codigo').value = c ? c.codigo    : '';
+  document.getElementById('cont-cuenta-nombre').value = c ? c.nombre    : '';
+  document.getElementById('cont-cuenta-tipo').value   = c ? c.tipo      : 'ACTIVO';
+  document.getElementById('cont-cuenta-nat').value    = c ? c.naturaleza: 'DEUDORA';
+  document.getElementById('cont-cuenta-nivel').value  = c ? c.nivel     : '4';
+  document.getElementById('cont-cuenta-mov').checked  = c ? c.permite_movimiento : true;
+  document.getElementById('cont-cuenta-padre').innerHTML =
+    '<option value="">— Sin cuenta padre —</option>'
+    + padres.map(function(p){ return '<option value="' + p.id_cuenta + '"' + (c && c.id_cuenta_padre===p.id_cuenta?' selected':'') + '>' + p.codigo + ' — ' + p.nombre + '</option>'; }).join('');
+  document.getElementById('alerta-cuenta-ok').style.display  = 'none';
+  document.getElementById('alerta-cuenta-err').style.display = 'none';
+  abrirModal('modal-cont-cuenta');
+}
+
+async function contGuardarCuenta() {
+  const id     = document.getElementById('cont-cuenta-id').value;
+  const codigo = document.getElementById('cont-cuenta-codigo').value.trim();
+  const nombre = document.getElementById('cont-cuenta-nombre').value.trim();
+  const tipo   = document.getElementById('cont-cuenta-tipo').value;
+  const nat    = document.getElementById('cont-cuenta-nat').value;
+  const nivel  = parseInt(document.getElementById('cont-cuenta-nivel').value)||4;
+  const mov    = document.getElementById('cont-cuenta-mov').checked;
+  const padre  = parseInt(document.getElementById('cont-cuenta-padre').value)||null;
+  const okEl   = document.getElementById('alerta-cuenta-ok');
+  const errEl  = document.getElementById('alerta-cuenta-err');
+  okEl.style.display='none'; errEl.style.display='none';
+  if (!codigo || !nombre) { errEl.textContent='Código y nombre son obligatorios.'; errEl.style.display='block'; return; }
+  try {
+    const datos = { codigo, nombre, tipo, naturaleza: nat, nivel, permite_movimiento: mov, id_cuenta_padre: padre, id_usuario: sesionActual.correo_usuario };
+    if (id) { await api('cont_cuentas','PATCH',datos,'?id_cuenta=eq.'+id); }
+    else    { await api('cont_cuentas','POST',datos); }
+    okEl.textContent='✓ Cuenta guardada.'; okEl.style.display='block';
+    setTimeout(function(){ cerrarModal('modal-cont-cuenta'); contRenderCuentas(); }, 900);
+  } catch(e) { errEl.textContent='Error: ' + e.message; errEl.style.display='block'; }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PERÍODOS CONTABLES
+// ══════════════════════════════════════════════════════════════
+async function contRenderPeriodos() {
+  const cont = document.getElementById('cont-vista-cont');
+  if (!cont) return;
+  await contCargarPeriodos();
+  cont.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    + '<h3 style="margin:0">Períodos Contables</h3>'
+    + '<button class="btn-primario" onclick="contAbrirPeriodo(null)">+ Nuevo Período</button>'
+    + '</div>'
+    + '<div class="tabla-container"><table><thead><tr>'
+    + '<th>Período</th><th>Fecha Inicio</th><th>Fecha Fin</th><th>Estado</th><th>Acciones</th>'
+    + '</tr></thead><tbody>'
+    + contPeriodosCache.map(function(p) {
+        return '<tr>'
+          + '<td style="font-weight:600">' + p.nombre + '</td>'
+          + '<td style="font-size:12px">' + p.fecha_inicio + '</td>'
+          + '<td style="font-size:12px">' + p.fecha_fin + '</td>'
+          + '<td><span class="badge ' + (p.estado==='ABIERTO'?'badge-verde':'badge-gris') + '">' + p.estado + '</span></td>'
+          + '<td><div style="display:flex;gap:6px">'
+          + (p.estado==='ABIERTO' ? '<button class="btn-secundario" style="font-size:11px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="contCerrarPeriodo(' + p.id_periodo + ',\'' + p.nombre + '\')">🔒 Cerrar</button>' : '')
+          + '<button class="btn-secundario" style="font-size:11px" onclick="contAbrirPeriodo(' + p.id_periodo + ')">✏</button>'
+          + '</div></td></tr>';
+      }).join('')
+    + '</tbody></table></div>';
+}
+
+async function contAbrirPeriodo(id) {
+  const p = id ? contPeriodosCache.find(function(x){ return x.id_periodo===id; }) : null;
+  document.getElementById('cont-per-id').value     = p ? p.id_periodo   : '';
+  document.getElementById('cont-per-nombre').value = p ? p.nombre       : '';
+  document.getElementById('cont-per-desde').value  = p ? p.fecha_inicio : '';
+  document.getElementById('cont-per-hasta').value  = p ? p.fecha_fin    : '';
+  document.getElementById('alerta-per-ok').style.display  = 'none';
+  document.getElementById('alerta-per-err').style.display = 'none';
+  abrirModal('modal-cont-periodo');
+}
+
+async function contGuardarPeriodo() {
+  const id     = document.getElementById('cont-per-id').value;
+  const nombre = document.getElementById('cont-per-nombre').value.trim();
+  const desde  = document.getElementById('cont-per-desde').value;
+  const hasta  = document.getElementById('cont-per-hasta').value;
+  const okEl   = document.getElementById('alerta-per-ok');
+  const errEl  = document.getElementById('alerta-per-err');
+  okEl.style.display='none'; errEl.style.display='none';
+  if (!nombre||!desde||!hasta) { errEl.textContent='Todos los campos son obligatorios.'; errEl.style.display='block'; return; }
+  try {
+    const datos = { nombre, fecha_inicio: desde, fecha_fin: hasta, estado:'ABIERTO', id_usuario: sesionActual.correo_usuario };
+    if (id) { await api('cont_periodos','PATCH',datos,'?id_periodo=eq.'+id); }
+    else    { await api('cont_periodos','POST',datos); }
+    okEl.textContent='✓ Período guardado.'; okEl.style.display='block';
+    setTimeout(function(){ cerrarModal('modal-cont-periodo'); contRenderPeriodos(); }, 900);
+  } catch(e) { errEl.textContent='Error: ' + e.message; errEl.style.display='block'; }
+}
+
+async function contCerrarPeriodo(id, nombre) {
+  if (!confirm('¿Cerrar el período "' + nombre + '"?\nNo se podrán crear asientos en este período una vez cerrado.')) return;
+  try {
+    await api('cont_periodos','PATCH',{ estado:'CERRADO' },'?id_periodo=eq.'+id);
+    contRenderPeriodos();
+  } catch(e) { alert('Error: ' + e.message); }
+}
 
 // ─── PRÓXIMO MÓDULO ───
 function renderProximo(icono, nombre) {
@@ -9474,6 +10554,352 @@ window.addEventListener('load', async () => {
     </div>
   </div>
 </div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--    MODALES CONTABILIDAD                                -->
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<!-- VER ASIENTO -->
+<div class="modal-overlay" id="modal-cont-asiento-ver">
+  <div class="modal" style="max-width:780px">
+    <div class="modal-header"><h3>ASIENTO CONTABLE</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-cont-asiento-ver')">✕</button>
+    </div>
+    <div class="modal-body"><div id="cont-asiento-contenido"></div></div>
+    <div class="modal-footer"><button class="btn-secundario" onclick="cerrarModal('modal-cont-asiento-ver')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- FORM ASIENTO -->
+<div class="modal-overlay" id="modal-cont-asiento-form">
+  <div class="modal" style="max-width:860px">
+    <div class="modal-header">
+      <h3 id="modal-cont-form-titulo">NUEVO ASIENTO CONTABLE</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-cont-asiento-form')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr 1fr;margin-bottom:16px">
+        <div class="form-campo">
+          <label>Fecha *</label>
+          <input type="date" id="cont-form-fecha">
+        </div>
+        <div class="form-campo">
+          <label>Tipo</label>
+          <select id="cont-form-tipo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="MANUAL">Manual</option>
+            <option value="APERTURA">Apertura</option>
+            <option value="AJUSTE">Ajuste</option>
+            <option value="CIERRE">Cierre</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Moneda Base</label>
+          <select id="cont-form-moneda" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="USD">USD — Dólar</option>
+            <option value="VES">VES — Bolívar</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Tasa BCV</label>
+          <input type="number" id="cont-form-tasa" step="0.01" placeholder="0.00" style="font-family:var(--font-mono)">
+        </div>
+        <div class="form-campo form-full" style="grid-column:1/-1">
+          <label>Descripción *</label>
+          <input type="text" id="cont-form-desc" placeholder="Descripción del asiento contable">
+        </div>
+        <div class="form-campo">
+          <label>Referencia</label>
+          <input type="text" id="cont-form-ref" placeholder="N° Factura, OS, etc.">
+        </div>
+        <div class="form-campo">
+          <label>Período</label>
+          <select id="cont-form-periodo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"></select>
+        </div>
+      </div>
+      <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Líneas del Asiento</div>
+      <div id="cont-lineas-form"></div>
+      <div id="alerta-cont-form-ok"  class="alerta alerta-exito"  style="display:none;margin-top:10px"></div>
+      <div id="alerta-cont-form-err" class="alerta alerta-error"  style="display:none;margin-top:10px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-cont-asiento-form')">Cancelar</button>
+      <button class="btn-primario"   onclick="contGuardarAsiento()">💾 Guardar Borrador</button>
+    </div>
+    <input type="hidden" id="cont-form-id">
+  </div>
+</div>
+
+<!-- NUEVA CxC -->
+<div class="modal-overlay" id="modal-cont-cxc">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-header"><h3>NUEVA CUENTA POR COBRAR</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-cont-cxc')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="form-campo form-full">
+          <label>Cliente *</label>
+          <select id="cont-cxc-prop" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"></select>
+        </div>
+        <div class="form-campo">
+          <label>N° Documento</label>
+          <input type="text" id="cont-cxc-doc" placeholder="Fact-001">
+        </div>
+        <div class="form-campo">
+          <label>Monto USD *</label>
+          <input type="number" id="cont-cxc-monto" step="0.01" min="0" placeholder="0.00" style="font-family:var(--font-mono)">
+        </div>
+        <div class="form-campo">
+          <label>Fecha Emisión *</label>
+          <input type="date" id="cont-cxc-fecha">
+        </div>
+        <div class="form-campo">
+          <label>Fecha Vencimiento</label>
+          <input type="date" id="cont-cxc-vence">
+        </div>
+        <div class="form-campo form-full">
+          <label>Observaciones</label>
+          <textarea id="cont-cxc-obs" rows="2" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;width:100%"></textarea>
+        </div>
+      </div>
+      <div id="alerta-cxc-ok"  class="alerta alerta-exito" style="display:none;margin-top:8px"></div>
+      <div id="alerta-cxc-err" class="alerta alerta-error" style="display:none;margin-top:8px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-cont-cxc')">Cancelar</button>
+      <button class="btn-primario"   onclick="contGuardarCxc()">Guardar</button>
+    </div>
+    <input type="hidden" id="cont-cxc-id">
+  </div>
+</div>
+
+<!-- PAGO CxC -->
+<div class="modal-overlay" id="modal-cont-pago-cxc">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header"><h3>REGISTRAR COBRO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-cont-pago-cxc')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="form-campo">
+          <label>Monto USD *</label>
+          <input type="number" id="cont-pago-cxc-monto" step="0.01" min="0" style="font-family:var(--font-mono)">
+        </div>
+        <div class="form-campo">
+          <label>Fecha *</label>
+          <input type="date" id="cont-pago-cxc-fecha">
+        </div>
+        <div class="form-campo form-full">
+          <label>Método de Pago</label>
+          <select id="cont-pago-cxc-metodo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="EFECTIVO_VES">Efectivo VES</option>
+            <option value="EFECTIVO_USD">Efectivo USD</option>
+            <option value="TRANSFERENCIA_VES">Transferencia VES</option>
+            <option value="TRANSFERENCIA_USD">Transferencia USD</option>
+            <option value="ZELLE">Zelle</option>
+            <option value="PAGO_MOVIL">Pago Móvil</option>
+            <option value="DIVISAS">Divisas</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Referencia</label>
+          <input type="text" id="cont-pago-cxc-ref" placeholder="N° referencia bancaria">
+        </div>
+      </div>
+      <div id="alerta-pago-cxc-ok"  class="alerta alerta-exito" style="display:none;margin-top:8px"></div>
+      <div id="alerta-pago-cxc-err" class="alerta alerta-error" style="display:none;margin-top:8px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-cont-pago-cxc')">Cancelar</button>
+      <button class="btn-primario"   onclick="contGuardarPagoCxc()">💰 Registrar Cobro</button>
+    </div>
+    <input type="hidden" id="cont-pago-cxc-id">
+  </div>
+</div>
+
+<!-- NUEVA CxP -->
+<div class="modal-overlay" id="modal-cont-cxp">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-header"><h3>NUEVA CUENTA POR PAGAR</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-cont-cxp')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="form-campo form-full">
+          <label>Proveedor *</label>
+          <select id="cont-cxp-prov" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"></select>
+        </div>
+        <div class="form-campo">
+          <label>N° Documento</label>
+          <input type="text" id="cont-cxp-doc" placeholder="Fact-001">
+        </div>
+        <div class="form-campo">
+          <label>Monto USD *</label>
+          <input type="number" id="cont-cxp-monto" step="0.01" min="0" placeholder="0.00" style="font-family:var(--font-mono)">
+        </div>
+        <div class="form-campo">
+          <label>Fecha Emisión *</label>
+          <input type="date" id="cont-cxp-fecha">
+        </div>
+        <div class="form-campo">
+          <label>Fecha Vencimiento</label>
+          <input type="date" id="cont-cxp-vence">
+        </div>
+        <div class="form-campo form-full">
+          <label>Observaciones</label>
+          <textarea id="cont-cxp-obs" rows="2" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;width:100%"></textarea>
+        </div>
+      </div>
+      <div id="alerta-cxp-ok"  class="alerta alerta-exito" style="display:none;margin-top:8px"></div>
+      <div id="alerta-cxp-err" class="alerta alerta-error" style="display:none;margin-top:8px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-cont-cxp')">Cancelar</button>
+      <button class="btn-primario"   onclick="contGuardarCxp()">Guardar</button>
+    </div>
+    <input type="hidden" id="cont-cxp-id">
+  </div>
+</div>
+
+<!-- PAGO CxP -->
+<div class="modal-overlay" id="modal-cont-pago-cxp">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header"><h3>REGISTRAR PAGO A PROVEEDOR</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-cont-pago-cxp')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="form-campo">
+          <label>Monto USD *</label>
+          <input type="number" id="cont-pago-cxp-monto" step="0.01" min="0" style="font-family:var(--font-mono)">
+        </div>
+        <div class="form-campo">
+          <label>Fecha *</label>
+          <input type="date" id="cont-pago-cxp-fecha">
+        </div>
+        <div class="form-campo form-full">
+          <label>Método de Pago</label>
+          <select id="cont-pago-cxp-metodo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="EFECTIVO_VES">Efectivo VES</option>
+            <option value="EFECTIVO_USD">Efectivo USD</option>
+            <option value="TRANSFERENCIA_VES">Transferencia VES</option>
+            <option value="TRANSFERENCIA_USD">Transferencia USD</option>
+            <option value="ZELLE">Zelle</option>
+            <option value="PAGO_MOVIL">Pago Móvil</option>
+            <option value="DIVISAS">Divisas</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Referencia</label>
+          <input type="text" id="cont-pago-cxp-ref" placeholder="N° referencia bancaria">
+        </div>
+      </div>
+      <div id="alerta-pago-cxp-ok"  class="alerta alerta-exito" style="display:none;margin-top:8px"></div>
+      <div id="alerta-pago-cxp-err" class="alerta alerta-error" style="display:none;margin-top:8px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-cont-pago-cxp')">Cancelar</button>
+      <button class="btn-primario"   onclick="contGuardarPagoCxp()">💸 Registrar Pago</button>
+    </div>
+    <input type="hidden" id="cont-pago-cxp-id">
+  </div>
+</div>
+
+<!-- NUEVA CUENTA CONTABLE -->
+<div class="modal-overlay" id="modal-cont-cuenta">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header"><h3>CUENTA CONTABLE</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-cont-cuenta')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="form-campo">
+          <label>Código *</label>
+          <input type="text" id="cont-cuenta-codigo" placeholder="Ej: 1.1.01.010" style="font-family:var(--font-mono)">
+        </div>
+        <div class="form-campo">
+          <label>Nivel</label>
+          <select id="cont-cuenta-nivel" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="1">1 — Clase</option>
+            <option value="2">2 — Grupo</option>
+            <option value="3">3 — Subgrupo</option>
+            <option value="4" selected>4 — Cuenta</option>
+            <option value="5">5 — Subcuenta</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Nombre *</label>
+          <input type="text" id="cont-cuenta-nombre" placeholder="Nombre de la cuenta">
+        </div>
+        <div class="form-campo">
+          <label>Tipo</label>
+          <select id="cont-cuenta-tipo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="ACTIVO">ACTIVO</option>
+            <option value="PASIVO">PASIVO</option>
+            <option value="PATRIMONIO">PATRIMONIO</option>
+            <option value="INGRESO">INGRESO</option>
+            <option value="EGRESO">EGRESO</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Naturaleza</label>
+          <select id="cont-cuenta-nat" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="DEUDORA">DEUDORA</option>
+            <option value="ACREEDORA">ACREEDORA</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Cuenta Padre</label>
+          <select id="cont-cuenta-padre" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"></select>
+        </div>
+        <div class="form-campo form-full" style="display:flex;align-items:center;gap:10px">
+          <input type="checkbox" id="cont-cuenta-mov" style="width:18px;height:18px;accent-color:var(--naranja)">
+          <label for="cont-cuenta-mov" style="margin:0;cursor:pointer">Permite movimiento (cuenta de último nivel)</label>
+        </div>
+      </div>
+      <div id="alerta-cuenta-ok"  class="alerta alerta-exito" style="display:none;margin-top:8px"></div>
+      <div id="alerta-cuenta-err" class="alerta alerta-error" style="display:none;margin-top:8px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-cont-cuenta')">Cancelar</button>
+      <button class="btn-primario"   onclick="contGuardarCuenta()">Guardar</button>
+    </div>
+    <input type="hidden" id="cont-cuenta-id">
+  </div>
+</div>
+
+<!-- PERÍODO CONTABLE -->
+<div class="modal-overlay" id="modal-cont-periodo">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header"><h3>PERÍODO CONTABLE</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-cont-periodo')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="form-campo form-full">
+          <label>Nombre del Período *</label>
+          <input type="text" id="cont-per-nombre" placeholder="Ej: Enero 2025">
+        </div>
+        <div class="form-campo">
+          <label>Fecha Inicio *</label>
+          <input type="date" id="cont-per-desde">
+        </div>
+        <div class="form-campo">
+          <label>Fecha Fin *</label>
+          <input type="date" id="cont-per-hasta">
+        </div>
+      </div>
+      <div id="alerta-per-ok"  class="alerta alerta-exito" style="display:none;margin-top:8px"></div>
+      <div id="alerta-per-err" class="alerta alerta-error" style="display:none;margin-top:8px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-cont-periodo')">Cancelar</button>
+      <button class="btn-primario"   onclick="contGuardarPeriodo()">Guardar</button>
+    </div>
+    <input type="hidden" id="cont-per-id">
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL STOCK ARTÍCULO               -->
 <!-- ═══════════════════════════════════════ -->
