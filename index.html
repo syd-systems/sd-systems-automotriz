@@ -1476,13 +1476,16 @@ async function getJWT() {
       })
     });
     const data = await res.json();
+    console.log('Auth response:', JSON.stringify(data).substring(0, 100));
     if (data.access_token) {
       _sessionJWT       = data.access_token;
       _sessionJWTExpiry = Date.now() + (data.expires_in * 1000);
+      console.log('✓ JWT obtenido correctamente, expira en:', data.expires_in, 'segundos');
       return _sessionJWT;
     }
   } catch(e) { console.warn('JWT refresh failed:', e); }
   // Fallback al anon key si falla
+  console.warn('JWT no obtenido — usando anon key como fallback');
   return SUPABASE_KEY;
 }
 
