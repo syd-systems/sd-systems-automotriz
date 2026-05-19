@@ -9,18 +9,20 @@
 <style>
   /* ─── VARIABLES ─── */
   :root {
-    --negro:    #0a0a0a;
-    --gris1:    #111111;
-    --gris2:    #1a1a1a;
-    --gris3:    #242424;
-    --gris4:    #2e2e2e;
-    --borde:    #333333;
-    --texto:    #e8e8e8;
-    --suave:    #888888;
-    --naranja:  #FF6B00;
-    --naranja2: #FF8C00;
-    --rojo:     #e53e3e;
-    --verde:    #38a169;
+    --negro:    #ffffff;
+    --gris1:    #f8f9fa;
+    --gris2:    #f1f3f5;
+    --gris3:    #e9ecef;
+    --gris4:    #dee2e6;
+    --borde:    #ced4da;
+    --texto:    #1a1a2e;
+    --suave:    #6c757d;
+    --naranja:  #E85D04;
+    --naranja2: #F48C06;
+    --rojo:     #d32f2f;
+    --verde:    #2e7d32;
+    --azul:     #1565C0;
+    --morado:   #6A0DAD;
     --font-display: 'Bebas Neue', sans-serif;
     --font-body:    'DM Sans', sans-serif;
     --font-mono:    'JetBrains Mono', monospace;
@@ -48,7 +50,7 @@
   .login-izquierda {
     flex: 1;
     min-width: 380px;
-    background: var(--gris1);
+    background: #1a1a2e;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -256,8 +258,8 @@
     position: fixed;
     left: 0; top: 0; bottom: 0;
     width: 240px;
-    background: var(--gris1);
-    border-right: 1px solid var(--borde);
+    background: #1a1a2e;
+    border-right: none;
     display: flex;
     flex-direction: column;
     z-index: 100;
@@ -291,13 +293,13 @@
   }
 
   .nav-seccion {
+  .nav-seccion {
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 3px;
     text-transform: uppercase;
-    color: #777;
+    color: rgba(255,255,255,0.4);
     padding: 16px 20px 6px;
-  }
 
   .nav-item {
     display: flex;
@@ -307,21 +309,21 @@
     cursor: pointer;
     font-size: 13px;
     font-weight: 400;
-    color: var(--suave);
-    transition: all 0.15s;
+    font-weight: 400;
+    color: rgba(255,255,255,0.65);
     border-left: 3px solid transparent;
-    text-decoration: none;
+    border-left: 3px solid transparent;
   }
 
   .nav-item:hover {
-    background: var(--gris2);
-    color: var(--texto);
+    background: rgba(255,255,255,0.08);
+    color: #ffffff;
   }
 
   .nav-item.activo {
-    color: var(--naranja);
-    background: rgba(255,107,0,0.06);
-    border-left-color: var(--naranja);
+    background: var(--naranja);
+    color: #ffffff;
+    border-left: 3px solid #ffffff;
     font-weight: 500;
   }
 
@@ -389,8 +391,9 @@
   }
 
   .topbar {
-    background: var(--gris1);
+    background: #ffffff;
     border-bottom: 1px solid var(--borde);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     padding: 16px 32px;
     display: flex;
     align-items: center;
@@ -487,13 +490,13 @@
 
   /* ─── MÓDULO USUARIOS ─── */
   .panel {
-    background: var(--gris1);
+  .panel {
+    background: #ffffff;
     border: 1px solid var(--borde);
     border-radius: 8px;
     overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
   }
-
-  .panel-header {
     padding: 20px 24px;
     border-bottom: 1px solid var(--borde);
     display: flex;
@@ -510,8 +513,8 @@
 
   .btn-primario {
     background: var(--naranja);
+    background: linear-gradient(135deg, #E85D04, #F48C06);
     color: #fff;
-    border: none;
     font-family: var(--font-body);
     font-size: 12px;
     font-weight: 600;
@@ -559,25 +562,25 @@
 
   table { width: 100%; border-collapse: collapse; }
 
-  thead th {
+    thead th {
     text-align: left;
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 2px;
     text-transform: uppercase;
-    color: var(--suave);
+    color: #ffffff;
+    background: #1a1a2e;
     padding: 14px 20px;
-    border-bottom: 1px solid var(--borde);
-    background: var(--gris2);
+    border-bottom: none;
   }
 
   tbody tr {
-    border-bottom: 1px solid rgba(255,255,255,0.04);
+    border-bottom: 1px solid #f0f0f0;
     transition: background 0.15s;
   }
 
   tbody tr:hover { background: rgba(255,107,0,0.03); }
-  tbody tr:last-child { border-bottom: none; }
+    background: #f0f4ff;
 
   tbody td {
     padding: 14px 20px;
@@ -596,10 +599,10 @@
     text-transform: uppercase;
   }
 
-  .badge-verde { background: rgba(56,161,105,0.15); color: #68d391; border: 1px solid rgba(56,161,105,0.3); }
-  .badge-rojo  { background: rgba(229,62,62,0.15);  color: #fc8181; border: 1px solid rgba(229,62,62,0.3); }
-  .badge-naranja { background: rgba(255,107,0,0.15); color: var(--naranja); border: 1px solid rgba(255,107,0,0.3); }
-  .badge-gris  { background: rgba(100,100,100,0.15); color: var(--suave); border: 1px solid var(--borde); }
+  .badge-verde   { background: #e8f5e9; color: #2e7d32; font-weight:600; }
+  .badge-rojo    { background: #ffebee; color: #c62828; font-weight:600; }
+  .badge-naranja { background: #fff3e0; color: #e65100; font-weight:600; }
+  .badge-gris    { background: #f5f5f5; color: #616161; font-weight:600; }
 
   /* MODAL */
   .modal-overlay {
@@ -631,27 +634,27 @@
   }
 
   .modal-header {
-    padding: 24px 28px 20px;
-    border-bottom: 1px solid var(--borde);
+  .modal-header {
+    padding: 20px 28px;
+    border-bottom: none;
     display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(135deg, #1a1a2e 0%, #E85D04 100%);
+    border-radius: 8px 8px 0 0;
   }
 
   .modal-header h3 {
     font-family: var(--font-display);
     font-size: 22px;
     letter-spacing: 1px;
-    color: var(--naranja);
+    color: #ffffff;
   }
 
   .modal-cerrar {
-    background: none; border: none;
-    color: var(--suave); font-size: 20px;
+    background: rgba(255,255,255,0.15); border: none;
+    color: #ffffff; font-size: 20px;
     cursor: pointer; padding: 4px 8px; border-radius: 4px;
-    transition: color 0.2s;
+    transition: all 0.2s;
   }
-
-  .modal-cerrar:hover { color: var(--texto); }
-
   .modal-body { padding: 24px 28px; }
 
   .modal-footer {
