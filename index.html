@@ -5466,25 +5466,36 @@ function contCuentasMovimiento() {
   return contCuentasCache.filter(function(c){ return c.permite_movimiento; });
 }
 function contBuildCuentaSelect(selectedId) {
-  const grupos = {};
-  contCuentasCache.filter(function(c){ return c.nivel <= 3; }).forEach(function(c){
-    grupos[c.codigo] = c;
-  });
   const ctas = contCuentasMovimiento();
+  // Agrupar por nivel 1 (clase) y nivel 2 (grupo)
   let opts = '<option value="">— Seleccionar cuenta —</option>';
-  let lastGrp = '';
+  let lastClase = ''; let lastGrupo = '';
   ctas.forEach(function(c) {
     const partes = c.codigo.split('.');
-    const grp = partes.slice(0,2).join('.');
-    if (grp !== lastGrp) {
-      const g = contCuentasCache.find(function(x){ return x.codigo === grp; });
-      if (g) { if (lastGrp) opts += '</optgroup>'; opts += '<optgroup label="' + g.nombre + '">'; }
-      lastGrp = grp;
+    const clase  = partes[0];
+    const grupo  = partes.slice(0,2).join('.');
+
+    // Separador de clase
+    if (clase !== lastClase) {
+      const cl = contCuentasCache.find(function(x){ return x.codigo === clase; });
+      if (cl) {
+        if (lastGrupo) opts += '</optgroup>';
+        opts += '<optgroup label="━━ ' + cl.nombre + ' ━━" disabled style="color:var(--naranja)">';
+        opts += '</optgroup>';
+      }
+      lastClase = clase; lastGrupo = '';
+    }
+    // Separador de grupo
+    if (grupo !== lastGrupo) {
+      const gr = contCuentasCache.find(function(x){ return x.codigo === grupo; });
+      if (lastGrupo) opts += '</optgroup>';
+      if (gr) opts += '<optgroup label="  ' + gr.codigo + ' — ' + gr.nombre + '">';
+      lastGrupo = grupo;
     }
     opts += '<option value="' + c.id_cuenta + '"' + (c.id_cuenta == selectedId ? ' selected' : '') + '>'
       + c.codigo + ' — ' + c.nombre + '</option>';
   });
-  if (lastGrp) opts += '</optgroup>';
+  if (lastGrupo) opts += '</optgroup>';
   return opts;
 }
 function contFmtMoneda(val, moneda) {
@@ -6290,29 +6301,51 @@ async function contRenderCuentas(filtro) {
   const cont = document.getElementById('cont-vista-cont');
   if (!cont) return;
   await contCargarCuentas();
-  const items = filtro ? contCuentasCache.filter(function(c){ return c.nombre.toLowerCase().includes(filtro.toLowerCase()) || c.codigo.includes(filtro); }) : contCuentasCache;
+  const hayFiltro = filtro && filtro.trim().length > 0;
+  const items = hayFiltro
+    ? contCuentasCache.filter(function(c){ return c.nombre.toLowerCase().includes(filtro.toLowerCase()) || c.codigo.includes(filtro); })
+    : contCuentasCache;
+
+  const tipoBadge = { ACTIVO:'badge-verde', PASIVO:'badge-rojo', PATRIMONIO:'badge-naranja', INGRESO:'badge-verde', EGRESO:'badge-rojo' };
 
   cont.innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<h3 style="margin:0">Plan de Cuentas VEN-NIF</h3>'
-    + '<div style="display:flex;gap:8px">'
-    + '<input type="text" placeholder="Buscar código o nombre..." oninput="contRenderCuentas(this.value)" style="' + contSelStyle() + ';width:220px">'
+    + '<div style="display:flex;gap:8px;align-items:center">'
+    + '<input type="text" placeholder="Buscar código o nombre..." value="' + (filtro||'') + '" oninput="contRenderCuentas(this.value)" style="' + contSelStyle() + ';width:240px">'
     + (puedo('CONTABILIDAD','PLAN_CUENTAS') ? '<button class="btn-primario" onclick="contAbrirCuenta(null)">+ Nueva Cuenta</button>' : '')
     + '</div></div>'
-    + '<div class="tabla-container"><table><thead><tr>'
-    + '<th>Código</th><th>Nombre</th><th>Tipo</th><th>Naturaleza</th><th>Nivel</th><th>Movimiento</th>'
-    + (puedo('CONTABILIDAD','PLAN_CUENTAS') ? '<th>Acciones</th>' : '')
+    + '<div class="tabla-container"><table style="width:100%"><thead><tr>'
+    + '<th style="width:160px">Código</th><th>Nombre</th><th style="width:110px">Tipo</th>'
+    + '<th style="width:100px">Naturaleza</th><th style="width:60px;text-align:center">Nivel</th>'
+    + '<th style="width:80px;text-align:center">Mov.</th>'
+    + (puedo('CONTABILIDAD','PLAN_CUENTAS') ? '<th style="width:60px"></th>' : '')
     + '</tr></thead><tbody>'
     + items.map(function(c) {
-        const indent = (c.nivel - 1) * 12;
-        return '<tr style="opacity:' + (c.permite_movimiento?'1':'0.7') + '">'
-          + '<td style="font-family:var(--font-mono);font-size:12px;padding-left:' + (8+indent) + 'px;color:' + (c.nivel<=2?'var(--naranja)':'inherit') + ';font-weight:' + (c.nivel<=2?'700':'400') + '">' + c.codigo + '</td>'
-          + '<td style="padding-left:' + indent + 'px;font-weight:' + (c.nivel<=2?'600':'400') + '">' + c.nombre + '</td>'
-          + '<td><span class="badge ' + ({ACTIVO:'badge-verde',PASIVO:'badge-rojo',PATRIMONIO:'badge-naranja',INGRESO:'badge-verde',EGRESO:'badge-rojo'}[c.tipo]||'badge-gris') + '" style="font-size:10px">' + c.tipo + '</span></td>'
-          + '<td style="font-size:11px;color:var(--suave)">' + c.naturaleza + '</td>'
-          + '<td style="text-align:center;font-size:11px">' + c.nivel + '</td>'
-          + '<td style="text-align:center">' + (c.permite_movimiento ? '<span style="color:#22c55e;font-size:12px">✓</span>' : '<span style="color:var(--suave);font-size:12px">—</span>') + '</td>'
-          + (puedo('CONTABILIDAD','PLAN_CUENTAS') ? '<td><button class="btn-secundario" style="font-size:11px;padding:3px 8px" onclick="contAbrirCuenta(' + c.id_cuenta + ')">✏</button></td>' : '')
+        const indent   = (c.nivel - 1) * 16;
+        const esGrupo  = c.nivel <= 2;
+        const esSubGrp = c.nivel === 3;
+        const bgRow    = esGrupo ? 'background:rgba(255,107,0,0.06);' : (esSubGrp ? 'background:rgba(255,255,255,0.02);' : '');
+        return '<tr style="' + bgRow + '">'
+          + '<td style="font-family:var(--font-mono);font-size:12px;padding:6px 8px;'
+          + 'color:' + (esGrupo ? 'var(--naranja)' : esSubGrp ? 'var(--texto)' : 'var(--suave)') + ';'
+          + 'font-weight:' + (esGrupo ? '700' : esSubGrp ? '600' : '400') + '">'
+          + c.codigo + '</td>'
+          + '<td style="padding:6px 8px;padding-left:' + (8 + indent) + 'px;'
+          + 'font-weight:' + (esGrupo ? '700' : esSubGrp ? '600' : '400') + ';'
+          + 'font-size:' + (esGrupo ? '13px' : '12px') + '">'
+          + (esGrupo ? '▌ ' : esSubGrp ? '├ ' : '  └ ') + c.nombre + '</td>'
+          + '<td style="padding:6px 8px">'
+          + (esGrupo ? '<span class="badge ' + (tipoBadge[c.tipo]||'badge-gris') + '" style="font-size:10px">' + c.tipo + '</span>' : '')
+          + '</td>'
+          + '<td style="padding:6px 8px;font-size:11px;color:var(--suave)">' + (c.nivel >= 3 ? c.naturaleza : '') + '</td>'
+          + '<td style="text-align:center;padding:6px 8px;font-size:11px;color:var(--suave)">' + c.nivel + '</td>'
+          + '<td style="text-align:center;padding:6px 8px">'
+          + (c.permite_movimiento ? '<span style="color:#22c55e;font-size:13px">✓</span>' : '<span style="color:var(--suave);font-size:11px">—</span>')
+          + '</td>'
+          + (puedo('CONTABILIDAD','PLAN_CUENTAS')
+              ? '<td style="padding:4px 8px"><button class="btn-secundario" style="font-size:11px;padding:3px 8px" onclick="contAbrirCuenta(' + c.id_cuenta + ')">✏</button></td>'
+              : '')
           + '</tr>';
       }).join('')
     + '</tbody></table></div>';
@@ -6320,7 +6353,15 @@ async function contRenderCuentas(filtro) {
 
 async function contAbrirCuenta(id) {
   const c = id ? contCuentasCache.find(function(x){ return x.id_cuenta===id; }) : null;
+  // Padres organizados jerárquicamente
   const padres = contCuentasCache.filter(function(x){ return !x.permite_movimiento; });
+  let optsP = '<option value="">— Sin cuenta padre —</option>';
+  padres.forEach(function(p) {
+    const indent = '  '.repeat(p.nivel - 1);
+    optsP += '<option value="' + p.id_cuenta + '"' + (c && c.id_cuenta_padre===p.id_cuenta?' selected':'') + '>'
+      + indent + p.codigo + ' — ' + p.nombre + '</option>';
+  });
+  document.getElementById('cont-cuenta-padre').innerHTML = optsP;
   document.getElementById('cont-cuenta-id').value     = c ? c.id_cuenta : '';
   document.getElementById('cont-cuenta-codigo').value = c ? c.codigo    : '';
   document.getElementById('cont-cuenta-nombre').value = c ? c.nombre    : '';
@@ -6328,12 +6369,37 @@ async function contAbrirCuenta(id) {
   document.getElementById('cont-cuenta-nat').value    = c ? c.naturaleza: 'DEUDORA';
   document.getElementById('cont-cuenta-nivel').value  = c ? c.nivel     : '4';
   document.getElementById('cont-cuenta-mov').checked  = c ? c.permite_movimiento : true;
-  document.getElementById('cont-cuenta-padre').innerHTML =
-    '<option value="">— Sin cuenta padre —</option>'
-    + padres.map(function(p){ return '<option value="' + p.id_cuenta + '"' + (c && c.id_cuenta_padre===p.id_cuenta?' selected':'') + '>' + p.codigo + ' — ' + p.nombre + '</option>'; }).join('');
   document.getElementById('alerta-cuenta-ok').style.display  = 'none';
   document.getElementById('alerta-cuenta-err').style.display = 'none';
   abrirModal('modal-cont-cuenta');
+}
+
+// Sugerir código automático al seleccionar padre
+function contSugerirCodigo() {
+  const idPadre = parseInt(document.getElementById('cont-cuenta-padre').value)||null;
+  if (!idPadre) return;
+  const padre = contCuentasCache.find(function(x){ return x.id_cuenta===idPadre; });
+  if (!padre) return;
+
+  // Actualizar tipo y naturaleza según el padre
+  document.getElementById('cont-cuenta-tipo').value  = padre.tipo;
+  document.getElementById('cont-cuenta-nat').value   = padre.naturaleza;
+  document.getElementById('cont-cuenta-nivel').value = (padre.nivel + 1);
+
+  // Buscar hijos del padre para sugerir siguiente código
+  const hijos = contCuentasCache.filter(function(x){ return x.id_cuenta_padre === idPadre; });
+  if (hijos.length === 0) {
+    // Primer hijo: codigo_padre.001
+    document.getElementById('cont-cuenta-codigo').value = padre.codigo + '.001';
+  } else {
+    // Encontrar el mayor número y sumar 1
+    const ultimos = hijos.map(function(h){
+      const partes = h.codigo.split('.');
+      return parseInt(partes[partes.length-1]) || 0;
+    });
+    const siguiente = Math.max.apply(null, ultimos) + 1;
+    document.getElementById('cont-cuenta-codigo').value = padre.codigo + '.' + String(siguiente).padStart(3,'0');
+  }
 }
 
 async function contGuardarCuenta() {
@@ -10849,7 +10915,8 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo form-full">
           <label>Cuenta Padre</label>
-          <select id="cont-cuenta-padre" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"></select>
+          <select id="cont-cuenta-padre" onchange="contSugerirCodigo()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"></select>
+          <div style="font-size:10px;color:var(--suave);margin-top:4px">Al seleccionar el padre se sugiere el código, tipo y naturaleza automáticamente.</div>
         </div>
         <div class="form-campo form-full" style="display:flex;align-items:center;gap:10px">
           <input type="checkbox" id="cont-cuenta-mov" style="width:18px;height:18px;accent-color:var(--naranja)">
