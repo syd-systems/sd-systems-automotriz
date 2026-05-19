@@ -2470,9 +2470,10 @@ async function guardarUsuario() {
   try {
     if (!idEdit) {
       // NUEVO USUARIO
+      const claveHash = await hashearClave(clave);
       await api('usuarios', 'POST', {
         correo_usuario: correo,
-        nombre, contrasena: clave,
+        nombre, contrasena: claveHash,
         estado_usuario: estado,
         administrador: esAdmin
       });
@@ -4665,6 +4666,24 @@ async function regresarAFichaInv() {
   abrirStockArticulo(_fichaInvActual.id, _fichaInvActual.nombre);
 }
 
+// ─── HASHEAR CONTRASEÑA VIA RPC ───
+async function hashearClave(clave) {
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/rpc/hashear_clave', {
+      method: 'POST',
+      headers: {
+        'apikey':        SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type':  'application/json'
+      },
+      body: JSON.stringify({ p_clave: clave })
+    });
+    return await res.json();
+  } catch(e) {
+    throw new Error('Error hasheando contraseña: ' + e.message);
+  }
+}
+
 // ─── VERIFICAR CONTRASEÑA BCRYPT VIA SUPABASE ───
 // Usa pgcrypto: crypt(clave_ingresada, hash_guardado) == hash_guardado
 async function verificarContrasena(correoUsu, claveIngresada) {
@@ -6690,7 +6709,8 @@ async function claveYaUsada(correo, nuevaClave) {
 // Guardar nueva clave en historial
 async function guardarEnHistorial(correo, clave) {
   try {
-    await api('historial_claves', 'POST', { correo_usuario: correo, contrasena: clave });
+    const claveHash = await hashearClave(clave);
+    await api('historial_claves', 'POST', { correo_usuario: correo, contrasena: claveHash });
   } catch(e) { console.error('Error guardando historial:', e); }
 }
 
@@ -6762,9 +6782,10 @@ async function procesarCambioClave() {
   }
 
   try {
-    // Actualizar contraseña y fecha
+    // Actualizar contraseña y fecha (hasheada)
+    const nuevaHash = await hashearClave(nueva);
     await api('usuarios', 'PATCH', {
-      contrasena: nueva,
+      contrasena: nuevaHash,
       fecha_clave: new Date().toISOString().split('T')[0]
     }, `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`);
 
@@ -7096,9 +7117,10 @@ async function guardarNuevaClave() {
       return;
     }
 
-    // Actualizar contraseña y fecha
+    // Actualizar contraseña y fecha (hasheada)
+    const clave1Hash = await hashearClave(clave1);
     await api('usuarios', 'PATCH', {
-      contrasena: clave1,
+      contrasena: clave1Hash,
       fecha_clave: new Date().toISOString().split('T')[0]
     }, `?correo_usuario=eq.${encodeURIComponent(datos.correo)}`);
 
