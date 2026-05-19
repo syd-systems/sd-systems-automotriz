@@ -5746,6 +5746,9 @@ let contLineasAsiento = [];
 async function contAbrirAsiento(id) {
   if (!puedo('CONTABILIDAD', id ? 'EDITAR' : 'CREAR')) { alert('Sin permiso.'); return; }
   contLineasAsiento = [];
+  // Asegurar cache actualizado
+  if (!contCuentasCache.length)  await contCargarCuentas();
+  if (!contPeriodosCache.length) await contCargarPeriodos();
   const periodoActivo = contGetPeriodoActivo();
 
   if (id) {
@@ -5914,6 +5917,7 @@ async function contAnularAsiento(id) {
 async function contRenderMayor() {
   const cont = document.getElementById('cont-vista-cont');
   if (!cont) return;
+  if (!contCuentasCache.length) await contCargarCuentas();
 
   cont.innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
@@ -6466,6 +6470,8 @@ async function contRenderCuentas(filtro) {
 }
 
 async function contAbrirCuenta(id) {
+  // Asegurar cache actualizado
+  if (!contCuentasCache.length) await contCargarCuentas();
   const c = id ? contCuentasCache.find(function(x){ return x.id_cuenta===id; }) : null;
   // Padres organizados jerárquicamente
   const padres = contCuentasCache.filter(function(x){ return !x.permite_movimiento; });
