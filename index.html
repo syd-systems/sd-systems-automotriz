@@ -4723,11 +4723,11 @@ async function regresarAFichaInv() {
 // ─── HASHEAR CONTRASEÑA VIA RPC ───
 async function hashearClave(clave) {
   try {
-    const res = await fetch(SUPA_URL + '/rest/v1/rpc/hashear_clave', {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/hashear_clave', {
       method: 'POST',
       headers: {
-        'apikey':        SUPA_KEY,
-        'Authorization': 'Bearer ' + SUPA_KEY,
+        'apikey':        SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
         'Content-Type':  'application/json'
       },
       body: JSON.stringify({ p_clave: clave })
@@ -4743,12 +4743,12 @@ async function hashearClave(clave) {
 async function verificarContrasena(correoUsu, claveIngresada) {
   try {
     // Consulta que usa crypt() de pgcrypto directamente en Supabase
-    const res = await fetch(SUPA_URL + '/rest/v1/usuarios?correo_usuario=eq.' 
+    const res = await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' 
       + encodeURIComponent(correoUsu) 
       + '&select=correo_usuario,contrasena,estado_usuario', {
       headers: {
-        'apikey':        SUPA_KEY,
-        'Authorization': 'Bearer ' + SUPA_KEY,
+        'apikey':        SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
         'Content-Type':  'application/json'
       }
     });
@@ -4758,11 +4758,11 @@ async function verificarContrasena(correoUsu, claveIngresada) {
     if (usu.estado_usuario === 'INACTIVO') return { ok: false, msg: 'Usuario inactivo.' };
 
     // Verificar bcrypt: crypt(claveIngresada, hashGuardado) debe ser igual al hash
-    const resVerif = await fetch(SUPA_URL + '/rest/v1/rpc/verificar_clave', {
+    const resVerif = await fetch(SUPABASE_URL + '/rest/v1/rpc/verificar_clave', {
       method: 'POST',
       headers: {
-        'apikey':        SUPA_KEY,
-        'Authorization': 'Bearer ' + SUPA_KEY,
+        'apikey':        SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
         'Content-Type':  'application/json'
       },
       body: JSON.stringify({ p_clave: claveIngresada, p_hash: usu.contrasena })
@@ -6749,9 +6749,9 @@ async function claveYaUsada(correo, nuevaClave) {
       `?correo_usuario=eq.${encodeURIComponent(correo)}&select=contrasena`);
     // Con bcrypt no se puede comparar directamente — verificar cada hash
     for (const h of historial) {
-      const r = await fetch(SUPA_URL + '/rest/v1/rpc/verificar_clave', {
+      const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/verificar_clave', {
         method: 'POST',
-        headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
         body: JSON.stringify({ p_clave: nuevaClave, p_hash: h.contrasena })
       });
       if (await r.json()) return true;
