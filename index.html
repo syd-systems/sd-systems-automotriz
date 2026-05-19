@@ -1453,8 +1453,10 @@ function puedo(modulo, accion) {
 
 // ─── API SUPABASE ───
 // JWT de sesión — se actualiza al hacer login con Supabase Auth
-let _sessionJWT = null;
-let _sessionJWTExpiry = null;
+let _sessionJWT        = null;
+let _sessionJWTExpiry  = null;
+let _sessionEmail      = null;
+let _sessionPassword   = null;
 
 // Obtener JWT válido (refresca si expiró)
 async function getJWT() {
@@ -1462,7 +1464,8 @@ async function getJWT() {
   if (_sessionJWT && _sessionJWTExpiry && ((_sessionJWTExpiry - Date.now()) > 300000)) {
     return _sessionJWT;
   }
-  // Refrescar JWT via Supabase Auth
+  // Solo refrescar si tenemos credenciales del usuario actual
+  if (!_sessionEmail || !_sessionPassword) return SUPABASE_KEY;
   try {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
       method: 'POST',
@@ -1471,22 +1474,28 @@ async function getJWT() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        email:    'sistema@sdsystems.com',
-        password: 'SdS@2024#Sistema!'
+        email:    _sessionEmail,
+        password: _sessionPassword
       })
     });
     const data = await res.json();
-    console.log('Auth response:', JSON.stringify(data).substring(0, 100));
     if (data.access_token) {
       _sessionJWT       = data.access_token;
       _sessionJWTExpiry = Date.now() + (data.expires_in * 1000);
-      console.log('✓ JWT obtenido correctamente, expira en:', data.expires_in, 'segundos');
       return _sessionJWT;
     }
+    console.warn('JWT no obtenido:', data.error || data.msg);
   } catch(e) { console.warn('JWT refresh failed:', e); }
-  // Fallback al anon key si falla
-  console.warn('JWT no obtenido — usando anon key como fallback');
   return SUPABASE_KEY;
+}
+
+// Obtener JWT inicial con credenciales del usuario
+async function iniciarJWT(email, passwordPlano) {
+  _sessionEmail    = email;
+  _sessionPassword = passwordPlano;
+  _sessionJWT      = null;
+  _sessionJWTExpiry = null;
+  return await getJWT();
 }
 
 async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '') {
@@ -1779,6 +1788,8 @@ async function iniciarSesion() {
       mostrarError(verifLogin.msg);
       return;
     }
+    // Obtener JWT de Supabase Auth con credenciales del usuario
+    await iniciarJWT(correo, clave);
 
     // Obtener accesos del usuario
     const accesos = await api('usuarios_accesos', 'GET', null,
@@ -1883,6 +1894,11 @@ function iniciarApp() {
 
 // ─── LIMPIEZA COMPLETA DE SESIÓN ───
 function limpiarSesionLocal() {
+  // Limpiar JWT
+  _sessionJWT       = null;
+  _sessionJWTExpiry = null;
+  _sessionEmail     = null;
+  _sessionPassword  = null;
   cerrarTodosLosModales();
   detenerTimerInactividad();
   sesionActual     = null;
