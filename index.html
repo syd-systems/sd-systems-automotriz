@@ -1452,15 +1452,50 @@ function puedo(modulo, accion) {
 }
 
 // ─── API SUPABASE ───
+async // JWT de sesión — se actualiza al hacer login con Supabase Auth
+let _sessionJWT = null;
+let _sessionJWTExpiry = null;
+
+// Obtener JWT válido (refresca si expiró)
+async function getJWT() {
+  // Si hay JWT válido con más de 5 min de vida, usarlo
+  if (_sessionJWT && _sessionJWTExpiry && ((_sessionJWTExpiry - Date.now()) > 300000)) {
+    return _sessionJWT;
+  }
+  // Refrescar JWT via Supabase Auth
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: {
+        'apikey':       SUPABASE_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email:    'sistema@sdsystems.com',
+        password: 'SdS@2024#Sistema!'
+      })
+    });
+    const data = await res.json();
+    if (data.access_token) {
+      _sessionJWT       = data.access_token;
+      _sessionJWTExpiry = Date.now() + (data.expires_in * 1000);
+      return _sessionJWT;
+    }
+  } catch(e) { console.warn('JWT refresh failed:', e); }
+  // Fallback al anon key si falla
+  return SUPABASE_KEY;
+}
+
 async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '') {
+  const jwt = await getJWT();
   const url = `${SUPABASE_URL}/rest/v1/${tabla}${filtro}`;
   const ops = {
     method: metodo,
     headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      'Prefer': metodo === 'POST' ? 'return=representation' : 'return=minimal'
+      'apikey':        SUPABASE_KEY,
+      'Authorization': `Bearer ${jwt}`,
+      'Content-Type':  'application/json',
+      'Prefer':        metodo === 'POST' ? 'return=representation' : 'return=minimal'
     }
   };
   if (cuerpo) ops.body = JSON.stringify(cuerpo);
