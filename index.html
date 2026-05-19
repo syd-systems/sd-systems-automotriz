@@ -1735,8 +1735,10 @@ async function iniciarSesion() {
       return;
     }
 
-    if (u.contrasena !== clave) {
-      mostrarError('Contraseña incorrecta.');
+    // Verificar bcrypt
+    const verifLogin = await verificarContrasena(correo, clave);
+    if (!verifLogin.ok) {
+      mostrarError(verifLogin.msg);
       return;
     }
 
@@ -4663,6 +4665,43 @@ async function regresarAFichaInv() {
   abrirStockArticulo(_fichaInvActual.id, _fichaInvActual.nombre);
 }
 
+// ─── VERIFICAR CONTRASEÑA BCRYPT VIA SUPABASE ───
+// Usa pgcrypto: crypt(clave_ingresada, hash_guardado) == hash_guardado
+async function verificarContrasena(correoUsu, claveIngresada) {
+  try {
+    // Consulta que usa crypt() de pgcrypto directamente en Supabase
+    const res = await fetch(SUPA_URL + '/rest/v1/usuarios?correo_usuario=eq.' 
+      + encodeURIComponent(correoUsu) 
+      + '&select=correo_usuario,contrasena,estado_usuario', {
+      headers: {
+        'apikey':        SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type':  'application/json'
+      }
+    });
+    const data = await res.json();
+    if (!data || !data.length) return { ok: false, msg: 'Usuario no encontrado.' };
+    const usu = data[0];
+    if (usu.estado_usuario === 'INACTIVO') return { ok: false, msg: 'Usuario inactivo.' };
+
+    // Verificar bcrypt: crypt(claveIngresada, hashGuardado) debe ser igual al hash
+    const resVerif = await fetch(SUPA_URL + '/rest/v1/rpc/verificar_clave', {
+      method: 'POST',
+      headers: {
+        'apikey':        SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type':  'application/json'
+      },
+      body: JSON.stringify({ p_clave: claveIngresada, p_hash: usu.contrasena })
+    });
+    const valido = await resVerif.json();
+    if (!valido) return { ok: false, msg: 'Contraseña incorrecta.' };
+    return { ok: true, usuario: usu };
+  } catch(e) {
+    return { ok: false, msg: 'Error verificando contraseña: ' + e.message };
+  }
+}
+
 // ─── VALIDAR CONTRASEÑA RECEPTOR ───
 async function validarClaveReceptor(idEmpleado, clave) {
   if (!idEmpleado || !clave) return { ok: false, msg: 'Debe seleccionar un empleado receptor e ingresar su contraseña.' };
@@ -4678,7 +4717,8 @@ async function validarClaveReceptor(idEmpleado, clave) {
       '?correo_usuario=ilike.' + encodeURIComponent(emp.correo) + '&estado_usuario=eq.ACTIVO&select=correo_usuario,contrasena,nombre');
     const usu = usuArr[0];
     if (!usu) return { ok: false, msg: 'El empleado "' + emp.nombre_completo + '" no tiene usuario activo en el sistema.' };
-    if (usu.contrasena !== clave) return { ok: false, msg: 'Contraseña incorrecta para el receptor "' + emp.nombre_completo + '".' };
+    const verifRec = await verificarContrasena(usu.correo_usuario, clave);
+    if (!verifRec.ok) return { ok: false, msg: 'Contraseña incorrecta para el receptor "' + emp.nombre_completo + '".' };
 
     return { ok: true, nombre: emp.nombre_completo };
   } catch(err) {
@@ -5070,7 +5110,8 @@ async function guardarEdicionMovimiento() {
   try {
     const usuArr = await api('usuarios', 'GET', null,
       '?correo_usuario=eq.' + encodeURIComponent(sesionActual.correo_usuario) + '&select=contrasena');
-    if (!usuArr || !usuArr.length || usuArr[0].contrasena !== clave) {
+    const verifEdit = await verificarContrasena(sesionActual.correo_usuario, clave);
+    if (!verifEdit.ok) {
       errEl.textContent = 'Contraseña incorrecta. No se puede autorizar la modificación.';
       errEl.style.display = 'block';
       document.getElementById('edit-mov-clave')?.focus(); return;
@@ -6633,7 +6674,16 @@ async function claveYaUsada(correo, nuevaClave) {
   try {
     const historial = await api('historial_claves', 'GET', null,
       `?correo_usuario=eq.${encodeURIComponent(correo)}&select=contrasena`);
-    return historial.some(h => h.contrasena === nuevaClave);
+    // Con bcrypt no se puede comparar directamente — verificar cada hash
+    for (const h of historial) {
+      const r = await fetch(SUPA_URL + '/rest/v1/rpc/verificar_clave', {
+        method: 'POST',
+        headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_clave: nuevaClave, p_hash: h.contrasena })
+      });
+      if (await r.json()) return true;
+    }
+    return false;
   } catch(e) { return false; }
 }
 
