@@ -11250,14 +11250,6 @@ window.addEventListener('load', async () => {
             <option value="">— Seleccionar área de origen —</option>
           </select>
         </div>
-        <div class="form-campo form-full" style="grid-column:1/-1;background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
-          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🔐 Validación del Receptor</div>
-          <label style="font-size:12px">Contraseña del empleado receptor *</label>
-          <input type="password" id="es-clave-receptor" placeholder="Ingrese la contraseña del receptor"
-            style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">
-          <div style="font-size:11px;color:var(--suave);margin-top:4px">El empleado receptor debe ingresar su contraseña para confirmar la recepción.</div>
-        </div>
-      </div>
       <div class="form-campo">
         <label>Referencia / N° Factura (opcional)</label>
         <input type="text" id="es-referencia" placeholder="Ej: FAC-2026-001">
@@ -11274,9 +11266,17 @@ window.addEventListener('load', async () => {
           <option value="">— Seleccionar área primero —</option>
         </select>
       </div>
+        <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
+          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🔐 Validación del Receptor</div>
+          <label style="font-size:12px">Contraseña del empleado receptor *</label>
+          <input type="password" id="es-clave-receptor" placeholder="Ingrese la contraseña del receptor"
+            style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">
+          <div style="font-size:11px;color:var(--suave);margin-top:4px">El empleado receptor debe ingresar su contraseña para confirmar la recepción.</div>
+        </div>
       <div class="form-campo form-full">
         <label>Observaciones</label>
         <textarea id="es-observaciones" placeholder="Observaciones opcionales..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%"></textarea>
+      </div>
       </div>
     </div>
     <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
