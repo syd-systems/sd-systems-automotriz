@@ -4925,11 +4925,18 @@ async function abrirSalidaStock(id, nombre) {
         return '<option value="' + a.id + '">'
           + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
       }).join('');
-  // Resetear campos
+  // Llenar también área que entrega
+  const optsAreas = '<option value="">— Seleccionar área —</option>'
+    + areas.map(function(a) {
+        return '<option value="' + a.id + '">'
+          + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
+      }).join('');
+  document.getElementById('salida-area-entrega').innerHTML = optsAreas;
   document.getElementById('salida-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
   document.getElementById('salida-empleado-entrega').innerHTML = '<option value="">— Seleccionar área primero —</option>';
-  document.getElementById('salida-area-entrega').value = '';
-  if (document.getElementById('salida-clave-entrega')) document.getElementById('salida-clave-entrega').value = '';
+
+
+
 
   // Mostrar stock actual
   const art = inventarioCache.find(function(x) { return x.id_articulo === id; });
