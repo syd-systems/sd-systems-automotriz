@@ -486,13 +486,15 @@
   .tarjeta-nombre { font-size: 11px; color: var(--suave); letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
 
   /* ─── MÓDULO USUARIOS ─── */
+  /* ─── PANEL ─── */
   .panel {
-  .panel {
-    background: #ffffff;
+    background: var(--gris1);
     border: 1px solid var(--borde);
     border-radius: 8px;
     overflow: hidden;
   }
+
+  .panel-header {
     padding: 20px 24px;
     border-bottom: 1px solid var(--borde);
     display: flex;
@@ -509,8 +511,6 @@
 
   .btn-primario {
     background: var(--naranja);
-    background: var(--naranja);
-    color: #fff;
     font-family: var(--font-body);
     font-size: 12px;
     font-weight: 600;
@@ -575,7 +575,7 @@
   }
 
   tbody tr:hover { background: rgba(255,107,0,0.03); }
-    background: rgba(255,107,0,0.05);
+  tbody tr:hover { background: rgba(255,107,0,0.05); }
 
   tbody td {
     padding: 14px 20px;
