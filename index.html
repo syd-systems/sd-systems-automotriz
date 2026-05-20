@@ -290,7 +290,7 @@
     padding: 12px 0;
   }
 
-  .nav-seccion {
+
   .nav-seccion {
     font-size: 9px;
     font-weight: 700;
@@ -298,6 +298,7 @@
     text-transform: uppercase;
     color: var(--suave);
     padding: 16px 20px 6px;
+  }
 
   .nav-item {
     display: flex;
@@ -307,10 +308,10 @@
     cursor: pointer;
     font-size: 13px;
     font-weight: 400;
-    font-weight: 400;
     color: var(--suave);
     border-left: 3px solid transparent;
-    border-left: 3px solid transparent;
+    transition: all 0.15s;
+    text-decoration: none;
   }
 
   .nav-item:hover {
@@ -321,10 +322,9 @@
   .nav-item.activo {
     background: var(--naranja);
     color: white;
-    border-left: 3px solid transparent;
+    border-left: 3px solid white;
     font-weight: 500;
   }
-
   .nav-item .nav-icono { font-size: 15px; width: 20px; text-align: center; }
 
   .sidebar-footer {
