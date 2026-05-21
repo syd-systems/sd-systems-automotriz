@@ -2690,7 +2690,7 @@ async function renderTasas() {
       fetch('https://ve.dolarapi.com/v1/historicos/euros/oficial').then(r => r.json()),
       fetch('https://ve.dolarapi.com/v1/historicos/dolares/paralelo').then(r => r.json()),
       fetch(SUPABASE_URL + '/rest/v1/tasas?select=*&order=fecha_valor.desc&limit=30', {
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY) }
       }).then(r => r.json())
     ]);
 
@@ -4727,7 +4727,7 @@ async function hashearClave(clave) {
       method: 'POST',
       headers: {
         'apikey':        SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
         'Content-Type':  'application/json'
       },
       body: JSON.stringify({ p_clave: clave })
@@ -4748,7 +4748,7 @@ async function verificarContrasena(correoUsu, claveIngresada) {
       + '&select=correo_usuario,contrasena,estado_usuario', {
       headers: {
         'apikey':        SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
         'Content-Type':  'application/json'
       }
     });
@@ -4762,7 +4762,7 @@ async function verificarContrasena(correoUsu, claveIngresada) {
       method: 'POST',
       headers: {
         'apikey':        SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
         'Content-Type':  'application/json'
       },
       body: JSON.stringify({ p_clave: claveIngresada, p_hash: usu.contrasena })
@@ -6764,7 +6764,7 @@ async function claveYaUsada(correo, nuevaClave) {
     for (const h of historial) {
       const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/verificar_clave', {
         method: 'POST',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY), 'Content-Type': 'application/json' },
         body: JSON.stringify({ p_clave: nuevaClave, p_hash: h.contrasena })
       });
       if (await r.json()) return true;
@@ -6896,13 +6896,13 @@ async function guardarTasaBCVManual() {
     await Promise.all([
       fetch(SUPABASE_URL + '/rest/v1/tasas', {
         method: 'POST',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
           'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
         body: JSON.stringify({ moneda_origen: 'USD', moneda_destino: 'VES', tipo_cambio: usd, fecha_registro: fecha })
       }),
       fetch(SUPABASE_URL + '/rest/v1/tasas', {
         method: 'POST',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
           'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
         body: JSON.stringify({ moneda_origen: 'EUR', moneda_destino: 'VES', tipo_cambio: eur, fecha_registro: fecha })
       })
@@ -6950,7 +6950,7 @@ async function sincronizarTasasBCV(btn) {
       method: 'POST',
       headers: {
         'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({})
@@ -7290,7 +7290,7 @@ async function consultarCedula(tipDoc, numDoc) {
       method: 'POST',
       headers: {
         'apikey':        SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
         'Content-Type':  'application/json'
       },
       body: JSON.stringify({ p_tipo: tipDoc, p_cedula: numDocPadded })
@@ -7346,7 +7346,7 @@ async function subirFoto(archivo, carpeta) {
     method: 'POST',
     headers: {
       'apikey':        SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
       'Content-Type':  archivo.type,
       'x-upsert':      'true'
     },
