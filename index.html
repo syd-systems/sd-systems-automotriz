@@ -1928,6 +1928,8 @@ async function cerrarSesion() {
       ultima_desconexion: new Date().toISOString()
     }, `?correo_usuario=eq.${encodeURIComponent(correo)}`);
   } catch(e) { console.error('Error cerrando sesión:', e); }
+  // Redirigir a landing page
+  window.location.href = 'landing.html';
 }
 
 // ─── NAVEGACIÓN ───
