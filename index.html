@@ -9076,6 +9076,12 @@ async function guardarEntradaStock() {
     // Validar empleado receptor y contraseña — OBLIGATORIO
     const idEmpEntVal  = parseInt(document.getElementById('es-empleado')?.value) || null;
     const claveEnt     = document.getElementById('es-clave-receptor')?.value || '';
+    const idAreaEntVal = document.getElementById('es-area')?.value;
+    if (!idAreaEntVal) {
+      errEl.textContent = 'Debe seleccionar el Área Receptora.';
+      errEl.style.display = 'block';
+      document.getElementById('es-area')?.focus(); return;
+    }
     if (!idEmpEntVal) {
       errEl.textContent = 'Debe seleccionar el empleado receptor.';
       errEl.style.display = 'block';
