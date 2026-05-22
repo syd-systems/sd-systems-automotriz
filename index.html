@@ -1457,6 +1457,7 @@ let _sessionJWT        = null;
 let _sessionJWTExpiry  = null;
 let _sessionEmail      = null;
 let _sessionPassword   = null;
+let _jwtBackoff        = null;
 
 // Obtener JWT válido (refresca si expiró)
 async function getJWT() {
@@ -1466,26 +1467,24 @@ async function getJWT() {
   }
   // Solo refrescar si tenemos credenciales del usuario actual
   if (!_sessionEmail || !_sessionPassword) return SUPABASE_KEY;
+  // Si ya falló antes, no reintentar hasta que expire el backoff
+  if (_jwtBackoff && Date.now() < _jwtBackoff) return SUPABASE_KEY;
   try {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
       method: 'POST',
-      headers: {
-        'apikey':       SUPABASE_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        email:    _sessionEmail,
-        password: _sessionPassword
-      })
+      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: _sessionEmail, password: _sessionPassword })
     });
     const data = await res.json();
     if (data.access_token) {
       _sessionJWT       = data.access_token;
       _sessionJWTExpiry = Date.now() + (data.expires_in * 1000);
+      _jwtBackoff       = null;
       return _sessionJWT;
     }
-    console.warn('JWT no obtenido:', data.error || data.msg);
-  } catch(e) { console.warn('JWT refresh failed:', e); }
+    // Si falla, esperar 5 minutos antes de reintentar
+    _jwtBackoff = Date.now() + 300000;
+  } catch(e) {}
   return SUPABASE_KEY;
 }
 
@@ -10359,7 +10358,7 @@ window.addEventListener('load', async () => {
     // Buscar todos los campos navegables dentro del modal activo
     const modal = el.closest('.modal') || el.closest('.modal-body') || document.body;
     const campos = Array.from(modal.querySelectorAll(
-      'input:not([type="hidden"]):not([disabled]):not([readonly"]):not([type="button"]):not([type="submit"]), select:not([disabled]), textarea:not([disabled])'
+      'input:not([type="hidden"]):not([disabled]):not([readonly]):not([type="button"]):not([type="submit"]), select:not([disabled]), textarea:not([disabled])'
     )).filter(function(c) { return c.offsetParent !== null; }); // solo visibles
     const idx = campos.indexOf(el);
     if (idx !== -1 && idx < campos.length - 1) {
