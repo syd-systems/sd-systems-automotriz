@@ -967,7 +967,7 @@
       <div class="campo">
         <label>Contraseña</label>
         <div class="campo-pass">
-          <input type="password" id="login-clave" placeholder="••••••••" autocomplete="current-password">
+          <input type="password" id="login-clave" placeholder="••••••••" autocomplete="current-password"" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
           <button type="button" class="ojo-btn" onclick="togglePass('login-clave',this)">👁</button>
         </div>
       </div>
@@ -988,7 +988,7 @@
       <p style="font-size:13px;color:var(--suave);margin-bottom:24px">Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.</p>
       <div class="campo">
         <label>Correo Electrónico</label>
-        <input type="email" id="rec-correo" placeholder="usuario@correo.com">
+        <input type="email" id="rec-correo" placeholder="usuario@correo.com"" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
       </div>
       <button class="btn-login" onclick="enviarRecuperacion()">ENVIAR ENLACE</button>
       <div class="login-error" id="rec-error" style="display:none"></div>
@@ -1006,7 +1006,7 @@
         <label>Nueva Contraseña</label>
         <div class="campo-pass">
           <input type="password" id="nueva-clave" placeholder="Mínimo 8 caracteres"
-                 oninput="validarFortalezaRec(this.value)">
+                 oninput="validarFortalezaRec(this.value)"" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
           <button type="button" class="ojo-btn" onclick="togglePass('nueva-clave',this)" tabindex="-1">👁</button>
         </div>
         <div id="fortaleza-rec" style="margin-top:10px">
@@ -1037,7 +1037,7 @@
       <div class="campo">
         <label>Confirmar Contraseña</label>
         <div class="campo-pass">
-          <input type="password" id="confirmar-clave" placeholder="Repite la contraseña">
+          <input type="password" id="confirmar-clave" placeholder="Repite la contraseña"" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
           <button type="button" class="ojo-btn" onclick="togglePass('confirmar-clave',this)" tabindex="-1">👁</button>
         </div>
       </div>
@@ -1185,16 +1185,16 @@
         </div>
         <div class="form-campo form-full">
           <label>Nombre Completo</label>
-          <input type="text" id="u-nombre" placeholder="Ej: María García">
+          <input type="text" id="u-nombre" placeholder="Ej: María García"" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
         </div>
         <div class="form-campo form-full">
           <label>Correo Electrónico *</label>
-          <input type="email" id="u-correo" placeholder="correo@ejemplo.com">
+          <input type="email" id="u-correo" placeholder="correo@ejemplo.com"" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
         </div>
         <div class="form-campo form-full">
           <label>Contraseña</label>
           <div class="campo-pass">
-            <input type="password" id="u-clave" placeholder="Mínimo 8 caracteres" oninput="validarFortalezaUsuario(this.value)" onfocus="document.getElementById('fortaleza-usuario').style.display='block'">
+            <input type="password" id="u-clave" placeholder="Mínimo 8 caracteres" oninput="validarFortalezaUsuario(this.value)" onfocus="document.getElementById('fortaleza-usuario').style.display='block'"" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
             <button type="button" class="ojo-btn" onclick="togglePass('u-clave',this)" tabindex="-1">👁</button>
           </div>
           <div id="fortaleza-usuario" style="display:none;margin-top:10px">
@@ -1285,7 +1285,7 @@
         </div>
         <div class="form-campo form-full">
           <label>Valor de la Tasa</label>
-          <input type="number" id="t-valor" placeholder="Ej: 36.50" step="0.01" min="0">
+          <input type="number" id="t-valor" placeholder="Ej: 36.50" step="0.01" min="0"" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
         </div>
         <div class="form-campo form-full">
           <label>Fecha de Vigencia</label>
@@ -2292,6 +2292,7 @@ async function verFichaUsuario(id) {
   }
 
   abrirModal('modal-ficha-usu');
+  focusFirstField('modal-ficha-usu');
 }
 
 async function onSelEmpleadoUsuario() {
@@ -2343,6 +2344,7 @@ async function abrirNuevoUsuario() {
   }
 
   abrirModal('modal-usuario');
+  focusFirstField('modal-usuario');
 }
 
 async function abrirEditarUsuario(id) {
@@ -2384,6 +2386,7 @@ async function abrirEditarUsuario(id) {
   renderAccesosModal(accesosTemp, permisosUsuario);
 
   abrirModal('modal-usuario');
+  focusFirstField('modal-usuario');
 }
 
 // Estado JS de permisos — se actualiza con cada clic
@@ -2966,11 +2969,11 @@ async function renderTasas() {
       + '</div>'
       + '<div class="form-campo" style="margin:0">'
       + '<label>🇺🇸 USD / Bs</label>'
-      + '<input type="number" id="bcv-usd" placeholder="Ej: 493.37650000" step="0.00000001" min="0" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:14px;padding:10px 14px;border-radius:5px;outline:none;width:100%">'
+      + '<input type="number" id="bcv-usd" placeholder="Ej: 493.37650000" step="0.00000001" min="0" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:14px;padding:10px 14px;border-radius:5px;outline:none;width:100%"">'
       + '</div>'
       + '<div class="form-campo" style="margin:0">'
       + '<label>🇪🇺 EUR / Bs</label>'
-      + '<input type="number" id="bcv-eur" placeholder="Ej: 577.52186207" step="0.00000001" min="0" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:14px;padding:10px 14px;border-radius:5px;outline:none;width:100%">'
+      + '<input type="number" id="bcv-eur" placeholder="Ej: 577.52186207" step="0.00000001" min="0" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:14px;padding:10px 14px;border-radius:5px;outline:none;width:100%"">'
       + '</div>'
       + '<div style="padding-bottom:1px">'
       + '<button class="btn-primario" style="width:100%;padding:11px" onclick="guardarTasaBCVManual()">💾 GUARDAR TASAS BCV</button>'
@@ -3294,8 +3297,8 @@ async function abrirParamItem(key, id) {
 
   // Área: código + nombre + área padre
   if (key === 'areas') {
-    camposHTML += '<div class="form-campo"><label>Código Jerárquico</label><input type="text" id="param-item-codigo" value="' + (item ? (item.codigo||'') : '') + '" placeholder="Ej: 01 / 01.01 / 01.01.01" style="font-family:var(--font-mono)"></div>';
-    camposHTML += '<div class="form-campo form-full"><label>Nombre del Área</label><input type="text" id="param-item-nombre" value="' + (item ? item.nombre : '') + '" placeholder="Nombre del área"></div>';
+    camposHTML += '<div class="form-campo"><label>Código Jerárquico</label><input type="text" id="param-item-codigo" value="' + (item ? (item.codigo||'') : '') + '" placeholder="Ej: 01 / 01.01 / 01.01.01" style="font-family:var(--font-mono)""></div>';
+    camposHTML += '<div class="form-campo form-full"><label>Nombre del Área</label><input type="text" id="param-item-nombre" value="' + (item ? item.nombre : '') + '" placeholder="Nombre del área""></div>';
     var opcPadre = todasAreas.filter(function(a) { return !item || a.id !== item.id; }).map(function(a) {
       return '<option value="' + a.id + '"' + (item && item.id_area_padre === a.id ? ' selected' : '') + '>'
         + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
@@ -3305,9 +3308,9 @@ async function abrirParamItem(key, id) {
       + '<option value="">— Sin área padre (nivel raíz) —</option>' + opcPadre + '</select></div>';
   } else {
     if (def.tieneCodigo) {
-      camposHTML += '<div class="form-campo form-full"><label>Código</label><input type="text" id="param-item-codigo" value="' + (item ? (item.codigo||'') : '') + '" placeholder="Ej: 0102" style="text-transform:uppercase"></div>';
+      camposHTML += '<div class="form-campo form-full"><label>Código</label><input type="text" id="param-item-codigo" value="' + (item ? (item.codigo||'') : '') + '" placeholder="Ej: 0102" style="text-transform:uppercase""></div>';
     }
-    camposHTML += '<div class="form-campo form-full"><label>Nombre</label><input type="text" id="param-item-nombre" value="' + (item ? item.nombre : '') + '" placeholder="Nombre del registro"></div>';
+    camposHTML += '<div class="form-campo form-full"><label>Nombre</label><input type="text" id="param-item-nombre" value="' + (item ? item.nombre : '') + '" placeholder="Nombre del registro""></div>';
     if (def.tieneDescripcion) {
       camposHTML += '<div class="form-campo form-full"><label>Descripción</label><textarea id="param-item-descripcion" placeholder="Descripción opcional..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%">' + (item ? (item.descripcion||'') : '') + '</textarea></div>';
     }
@@ -3340,6 +3343,7 @@ async function abrirParamItem(key, id) {
 
   document.getElementById('modal-param-guardar').onclick = function() { guardarParamItem(); };
   abrirModal('modal-param');
+  focusFirstField('modal-param');
   setTimeout(function() {
     var primerCampo = (def.tieneCodigo || key === 'areas')
       ? document.getElementById('param-item-codigo')
@@ -3508,7 +3512,7 @@ async function renderEmpleados() {
       + '<option value="">Todos los estatus</option>'
       + Object.entries(ESTATUS_EMP).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('')
       + '</select>'
-      + '<input type="text" id="emp-buscar" placeholder="Buscar nombre o cédula..." oninput="filtrarTablaEmpleados()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
+      + '<input type="text" id="emp-buscar" placeholder="Buscar nombre o cédula..." oninput="filtrarTablaEmpleados()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px"">'
       + (puedo('EMPLEADOS','CREAR') ? '<button class="btn-primario" onclick="abrirEmpleado(null)">+ Nuevo Empleado</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container"><table id="emp-tabla"><thead><tr>'
@@ -3684,6 +3688,7 @@ async function abrirEmpleado(id) {
   if (avisoEl) avisoEl.style.display = tienePerm ? 'none' : 'block';
 
   abrirModal('modal-empleado');
+  focusFirstField('modal-empleado');
   setTimeout(function() { document.getElementById('emp-numero-doc')?.focus(); }, 100);
 }
 
@@ -4001,6 +4006,7 @@ async function verFichaEmpleado(id) {
   }
 
   abrirModal('modal-ficha-emp');
+  focusFirstField('modal-ficha-emp');
   } catch(eFicha) { alert('Error en ficha: ' + eFicha.message); console.error(eFicha); }
 }
 
@@ -4143,6 +4149,7 @@ async function verFichaEmisor(id) {
   if (btnEditar)  { btnEditar._id = e.id_emisor; btnEditar.onclick = function() { cerrarModal('modal-ficha-emisor'); abrirEmisor(this._id); }; btnEditar.style.display = puedo('EMISORES','EDITAR') ? '' : 'none'; }
   if (btnEliminar){ btnEliminar._id = e.id_emisor; btnEliminar._nombre = e.nombre; btnEliminar.onclick = function() { cerrarModal('modal-ficha-emisor'); eliminarEmisor(this._id, this._nombre); }; btnEliminar.style.display = puedo('EMISORES','ELIMINAR') ? '' : 'none'; }
   abrirModal('modal-ficha-emisor');
+  focusFirstField('modal-ficha-emisor');
 }
 
 async function abrirEmisor(id) {
@@ -4163,6 +4170,7 @@ async function abrirEmisor(id) {
   document.getElementById('alerta-emisor-ok').style.display  = 'none';
   document.getElementById('alerta-emisor-err').style.display = 'none';
   abrirModal('modal-emisor');
+  focusFirstField('modal-emisor');
 }
 
 async function guardarEmisor() {
@@ -4267,7 +4275,7 @@ async function renderFacturas() {
       + '<option value="">Todos los estados</option>'
       + Object.entries(ESTADOS_FAC).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('')
       + '</select>'
-      + '<input type="text" id="fac-buscar" placeholder="Buscar N° factura, cliente..." oninput="filtrarTablaFacturas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
+      + '<input type="text" id="fac-buscar" placeholder="Buscar N° factura, cliente..." oninput="filtrarTablaFacturas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px"">'
       + '<span style="font-size:11px;color:var(--suave);white-space:nowrap">Tasa: $ 1 = ' + tasaActual.toFixed(2) + ' Bs</span>'
       + (puedo('FACTURAS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevaFactura()">+ Nueva Factura</button>' : '')
       + '</div></div>'
@@ -4354,6 +4362,7 @@ async function abrirNuevaFactura() {
 
   calcularTotalesFactura();
   abrirModal('modal-factura');
+  focusFirstField('modal-factura');
   setTimeout(function() { document.querySelector('#modal-factura .modal-body')?.scrollTo(0,0); }, 80);
 }
 
@@ -4616,6 +4625,7 @@ async function verFichaFactura(id) {
     if (btnAnular)  { btnAnular._id=f.id_factura;  btnAnular._num=f.numero_factura; btnAnular.onclick=function(){anularFactura(this._id,this._num);}; btnAnular.style.display=puedo('FACTURAS','ANULAR')&&(f.estado==='EMITIDA'||f.estado==='PAGADA')?'':'none'; }
     if (btnEliminar){ btnEliminar._id=f.id_factura; btnEliminar._num=f.numero_factura; btnEliminar.onclick=function(){eliminarFactura(this._id,this._num);}; btnEliminar.style.display=puedo('FACTURAS','ELIMINAR')&&f.estado==='ANULADA'?'':'none'; }
     abrirModal('modal-ficha-fac');
+  focusFirstField('modal-ficha-fac');
   } catch(err) { alert('Error: '+err.message); console.error(err); }
 }
 
@@ -4702,6 +4712,7 @@ function abrirStockArticulo(id, nombre) {
   document.getElementById('stock-btn-historial').style.display = puedo('INVENTARIO','VER')          ? '' : 'none';
 
   abrirModal('modal-stock-articulo');
+  focusFirstField('modal-stock-articulo');
 }
 
 async function regresarAFichaInv() {
@@ -4950,6 +4961,7 @@ async function abrirSalidaStock(id, nombre) {
     ? art.stock_actual + ' ' + (art.unidad || 'UND') : '—';
 
   abrirModal('modal-salida-stock');
+  focusFirstField('modal-salida-stock');
   setTimeout(function() { document.getElementById('salida-cantidad')?.focus(); }, 100);
 }
 
@@ -5041,6 +5053,7 @@ async function verHistorialStock(idRepuesto, nombreArt) {
   document.getElementById('historial-id-repuesto').value = idRepuesto;
 
   abrirModal('modal-historial-stock');
+  focusFirstField('modal-historial-stock');
   await recargarHistorial(idRepuesto);
 }
 
@@ -5163,6 +5176,7 @@ async function editarMovimiento(tipo, idMovimiento, idRepuesto) {
   cerrarModal('modal-historial-stock');
   if (document.getElementById('edit-mov-clave')) document.getElementById('edit-mov-clave').value = '';
   abrirModal('modal-edit-movimiento');
+  focusFirstField('modal-edit-movimiento');
 }
 
 async function guardarEdicionMovimiento() {
@@ -5354,7 +5368,7 @@ async function renderProveedores() {
       + '<option value="ACTIVO">Activo</option>'
       + '<option value="INACTIVO">Inactivo</option>'
       + '</select>'
-      + '<input type="text" id="prov-buscar" placeholder="Buscar nombre o RIF..." oninput="filtrarTablaProveedores()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
+      + '<input type="text" id="prov-buscar" placeholder="Buscar nombre o RIF..." oninput="filtrarTablaProveedores()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px"">'
       + (puedo('PROVEEDORES','CREAR') ? '<button class="btn-primario" onclick="abrirProveedor(null)">+ Nuevo Proveedor</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container"><table><thead><tr>'
@@ -5414,6 +5428,7 @@ async function verFichaProveedor(id) {
   if (btnEliminar){ btnEliminar._id = p.id_proveedor; btnEliminar._nombre = p.nombre; btnEliminar.onclick = function() { cerrarModal('modal-ficha-prov'); eliminarProveedor(this._id, this._nombre); }; btnEliminar.style.display = puedo('PROVEEDORES','ELIMINAR') ? '' : 'none'; }
 
   abrirModal('modal-ficha-prov');
+  focusFirstField('modal-ficha-prov');
 }
 
 async function abrirProveedor(id) {
@@ -5439,6 +5454,7 @@ async function abrirProveedor(id) {
   document.getElementById('alerta-prov-ok').style.display    = 'none';
   document.getElementById('alerta-prov-err').style.display   = 'none';
   abrirModal('modal-proveedor');
+  focusFirstField('modal-proveedor');
   setTimeout(function() { document.getElementById('prov-nombre')?.focus(); }, 100);
 }
 
@@ -5747,6 +5763,7 @@ async function contVerAsiento(id) {
       + '</tfoot></table>';
 
     abrirModal('modal-cont-asiento-ver');
+  focusFirstField('modal-cont-asiento-ver');
   } catch(e) { alert('Error: ' + e.message); }
 }
 
@@ -5803,6 +5820,7 @@ async function contAbrirAsiento(id) {
   document.getElementById('alerta-cont-form-err').style.display = 'none';
   contRenderLineasForm();
   abrirModal('modal-cont-asiento-form');
+  focusFirstField('modal-cont-asiento-form');
 }
 
 function contRenderLineasForm() {
@@ -5826,9 +5844,9 @@ function contRenderLineasForm() {
     + contLineasAsiento.map(function(l, i) {
         return '<tr>'
           + '<td style="padding:4px"><select onchange="contLineasAsiento[' + i + '].id_cuenta=parseInt(this.value)" style="width:100%;' + contSelStyle() + ';font-size:11px">' + contBuildCuentaSelect(l.id_cuenta) + '</select></td>'
-          + '<td style="padding:4px"><input type="text" value="' + (l.descripcion||'') + '" onchange="contLineasAsiento[' + i + '].descripcion=this.value" placeholder="Detalle..." style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:11px;padding:6px 8px;border-radius:4px;outline:none"></td>'
-          + '<td style="padding:4px"><input type="number" value="' + (parseFloat(l.debe_usd||0).toFixed(2)) + '" min="0" step="0.01" onchange="contLineasAsiento[' + i + '].debe_usd=parseFloat(this.value)||0;contLineasAsiento[' + i + '].haber_usd=0;this.closest(\'tr\').nextElementSibling;contRenderLineasForm()" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:#22c55e;font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right"></td>'
-          + '<td style="padding:4px"><input type="number" value="' + (parseFloat(l.haber_usd||0).toFixed(2)) + '" min="0" step="0.01" onchange="contLineasAsiento[' + i + '].haber_usd=parseFloat(this.value)||0;contLineasAsiento[' + i + '].debe_usd=0;contRenderLineasForm()" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:#fc8181;font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right"></td>'
+          + '<td style="padding:4px"><input type="text" value="' + (l.descripcion||'') + '" onchange="contLineasAsiento[' + i + '].descripcion=this.value" placeholder="Detalle..." style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:11px;padding:6px 8px;border-radius:4px;outline:none""></td>'
+          + '<td style="padding:4px"><input type="number" value="' + (parseFloat(l.debe_usd||0).toFixed(2)) + '" min="0" step="0.01" onchange="contLineasAsiento[' + i + '].debe_usd=parseFloat(this.value)||0;contLineasAsiento[' + i + '].haber_usd=0;this.closest(\'tr\').nextElementSibling;contRenderLineasForm()" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:#22c55e;font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right""></td>'
+          + '<td style="padding:4px"><input type="number" value="' + (parseFloat(l.haber_usd||0).toFixed(2)) + '" min="0" step="0.01" onchange="contLineasAsiento[' + i + '].haber_usd=parseFloat(this.value)||0;contLineasAsiento[' + i + '].debe_usd=0;contRenderLineasForm()" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:#fc8181;font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right""></td>'
           + '<td style="padding:4px;text-align:center"><button onclick="contLineasAsiento.splice(' + i + ',1);contRenderLineasForm()" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px">✕</button></td>'
           + '</tr>';
       }).join('')
@@ -6158,6 +6176,7 @@ async function contAbrirCxc(id) {
   document.getElementById('alerta-cxc-ok').style.display = 'none';
   document.getElementById('alerta-cxc-err').style.display = 'none';
   abrirModal('modal-cont-cxc');
+  focusFirstField('modal-cont-cxc');
 }
 
 async function contGuardarCxc() {
@@ -6197,6 +6216,7 @@ async function contRegistrarPagoCxc(idCxc) {
   document.getElementById('alerta-pago-cxc-ok').style.display  = 'none';
   document.getElementById('alerta-pago-cxc-err').style.display = 'none';
   abrirModal('modal-cont-pago-cxc');
+  focusFirstField('modal-cont-pago-cxc');
 }
 
 async function contGuardarPagoCxc() {
@@ -6275,6 +6295,7 @@ async function contAbrirCxp(id) {
   document.getElementById('alerta-cxp-ok').style.display = 'none';
   document.getElementById('alerta-cxp-err').style.display = 'none';
   abrirModal('modal-cont-cxp');
+  focusFirstField('modal-cont-cxp');
 }
 
 async function contGuardarCxp() {
@@ -6309,6 +6330,7 @@ async function contRegistrarPagoCxp(idCxp) {
   document.getElementById('alerta-pago-cxp-ok').style.display  = 'none';
   document.getElementById('alerta-pago-cxp-err').style.display = 'none';
   abrirModal('modal-cont-pago-cxp');
+  focusFirstField('modal-cont-pago-cxp');
 }
 
 async function contGuardarPagoCxp() {
@@ -6355,7 +6377,7 @@ async function contRenderConciliacion() {
     + '<option value="">— Cuenta Bancaria —</option>'
     + cuentasBanco.map(function(c){ return '<option value="' + c.id_cuenta + '">' + c.codigo + ' — ' + c.nombre + '</option>'; }).join('')
     + '</select>'
-    + '<input type="month" id="cont-conc-mes" value="' + getHoyVzla().substring(0,7) + '" style="' + contSelStyle() + '">'
+    + '<input type="month" id="cont-conc-mes" value="' + getHoyVzla().substring(0,7) + '" style="' + contSelStyle() + '"">'
     + '<button class="btn-primario" onclick="contIniciarConciliacion()">Iniciar</button>'
     + '</div></div>';
 }
@@ -6404,7 +6426,7 @@ async function contIniciarConciliacion() {
     + '<div style="font-family:var(--font-display);font-size:24px;color:var(--naranja)">$ ' + fmtUSD(saldoLibros) + '</div></div>'
     + '<div style="background:var(--gris2);border-radius:8px;padding:16px">'
     + '<div style="font-size:10px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Saldo Banco (ingresa manualmente)</div>'
-    + '<input type="number" id="cont-conc-saldo-banco" placeholder="0.00" step="0.01" style="width:100%;background:var(--gris3);border:1px solid var(--naranja);color:var(--naranja);font-family:var(--font-display);font-size:22px;padding:8px 12px;border-radius:5px;outline:none;font-weight:700" onchange="contActualizarDiferencia(' + saldoLibros + ')">'
+    + '<input type="number" id="cont-conc-saldo-banco" placeholder="0.00" step="0.01" style="width:100%;background:var(--gris3);border:1px solid var(--naranja);color:var(--naranja);font-family:var(--font-display);font-size:22px;padding:8px 12px;border-radius:5px;outline:none;font-weight:700" onchange="contActualizarDiferencia(' + saldoLibros + ')"">'
     + '<div id="cont-conc-dif" style="margin-top:6px;font-size:12px;color:var(--suave)">Diferencia: —</div>'
     + '</div></div>'
     + '<div class="tabla-container"><table><thead><tr>'
@@ -6440,7 +6462,7 @@ async function contRenderCuentas(filtro) {
     '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<h3 style="margin:0">Plan de Cuentas VEN-NIF</h3>'
     + '<div style="display:flex;gap:8px;align-items:center">'
-    + '<input type="text" placeholder="Buscar código o nombre..." value="' + (filtro||'') + '" oninput="contRenderCuentas(this.value)" style="' + contSelStyle() + ';width:240px">'
+    + '<input type="text" placeholder="Buscar código o nombre..." value="' + (filtro||'') + '" oninput="contRenderCuentas(this.value)" style="' + contSelStyle() + ';width:240px"">'
     + (puedo('CONTABILIDAD','PLAN_CUENTAS') ? '<button class="btn-primario" onclick="contAbrirCuenta(null)">+ Nueva Cuenta</button>' : '')
     + '</div></div>'
     + '<div class="tabla-container"><table style="width:100%"><thead><tr>'
@@ -6502,6 +6524,7 @@ async function contAbrirCuenta(id) {
   document.getElementById('alerta-cuenta-ok').style.display  = 'none';
   document.getElementById('alerta-cuenta-err').style.display = 'none';
   abrirModal('modal-cont-cuenta');
+  focusFirstField('modal-cont-cuenta');
 }
 
 // Sugerir código automático al seleccionar padre
@@ -6592,6 +6615,7 @@ async function contAbrirPeriodo(id) {
   document.getElementById('alerta-per-ok').style.display  = 'none';
   document.getElementById('alerta-per-err').style.display = 'none';
   abrirModal('modal-cont-periodo');
+  focusFirstField('modal-cont-periodo');
 }
 
 async function contGuardarPeriodo() {
@@ -7496,6 +7520,7 @@ function abrirPropietario(id) {
   const infoEl = document.getElementById('prop-cedula-info');
   if (infoEl) infoEl.style.display = 'none';
   abrirModal('modal-propietario');
+  focusFirstField('modal-propietario');
 }
 
 async function guardarPropietario() {
@@ -7611,6 +7636,7 @@ async function verFichaPropietario(id) {
     + vehsHTML;
 
   abrirModal('modal-ficha-prop');
+  focusFirstField('modal-ficha-prop');
 }
 
 function verVehiculosPropietario(id) {
@@ -7830,6 +7856,7 @@ async function abrirVehiculo(id) {
       }).join('');
 
   abrirModal('modal-vehiculo');
+  focusFirstField('modal-vehiculo');
 }
 
 async function guardarVehiculo() {
@@ -7998,6 +8025,7 @@ async function verFichaVehiculo(id) {
     + '</div>';
 
   abrirModal('modal-ficha-veh');
+  focusFirstField('modal-ficha-veh');
   } catch(e) { alert('Error abriendo ficha: ' + e.message); console.error(e); }
 }
 
@@ -8030,6 +8058,7 @@ async function verFotosVehiculo(id) {
   document.getElementById('alerta-gal-ok').style.display  = 'none';
   document.getElementById('alerta-gal-err').style.display = 'none';
   abrirModal('modal-galeria');
+  focusFirstField('modal-galeria');
 }
 
 async function subirMasFotos() {
@@ -8253,6 +8282,7 @@ function verFichaCatalogo(id) {
   if (btnEliminar){ btnEliminar._id = s.id_servicio; btnEliminar._nombre = s.nombre; btnEliminar.onclick = function() { cerrarModal('modal-ficha-cat'); eliminarCatalogo(this._id, this._nombre); }; btnEliminar.style.display = puedo('CATALOGO','ELIMINAR') ? '' : 'none'; }
 
   abrirModal('modal-ficha-cat');
+  focusFirstField('modal-ficha-cat');
 }
 
 function abrirNuevoCatalogo() {
@@ -8269,6 +8299,7 @@ function abrirNuevoCatalogo() {
   document.getElementById('alerta-cat-err').style.display = 'none';
   cargarGruposSelect();
   abrirModal('modal-catalogo');
+  focusFirstField('modal-catalogo');
 }
 
 function abrirEditarCatalogo(id) {
@@ -8286,6 +8317,7 @@ function abrirEditarCatalogo(id) {
   cargarGruposSelect(s.grupo || '');
   cargarServiciosSelect(s.grupo || '', s.nombre);
   abrirModal('modal-catalogo');
+  focusFirstField('modal-catalogo');
 }
 
 async function guardarCatalogo() {
@@ -8360,6 +8392,7 @@ async function gestionarServiciosCatalogo() {
   document.getElementById('msg-nuevo-servicio').style.display = 'none';
   await renderListaServicios(grupo);
   abrirModal('modal-servicios-cat');
+  focusFirstField('modal-servicios-cat');
 }
 
 async function renderListaServicios(grupo) {
@@ -8445,7 +8478,7 @@ function editarServicioEnLinea(id) {
   if (!row) return;
 
   row.innerHTML = '<div style="flex:1;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-    + '<input type="text" id="edit-nombre-' + id + '" value="' + s.nombre + '" style="flex:1;min-width:140px;background:var(--gris3);border:1px solid var(--naranja);color:var(--texto);font-family:var(--font-body);font-size:13px;font-weight:600;padding:7px 10px;border-radius:5px;outline:none">'
+    + '<input type="text" id="edit-nombre-' + id + '" value="' + s.nombre + '" style="flex:1;min-width:140px;background:var(--gris3);border:1px solid var(--naranja);color:var(--texto);font-family:var(--font-body);font-size:13px;font-weight:600;padding:7px 10px;border-radius:5px;outline:none"">'
     + '</div>'
     + '<div style="display:flex;gap:6px;flex-shrink:0">'
     + '<button class="btn-primario" onclick="guardarServicioEnLinea(' + id + ')" style="font-size:11px;padding:5px 10px">💾 Guardar</button>'
@@ -8544,6 +8577,7 @@ async function cargarServiciosSelect(grupo, valorActual) {
 function gestionarGruposCatalogo() {
   renderListaGrupos();
   abrirModal('modal-grupos-cat');
+  focusFirstField('modal-grupos-cat');
 }
 
 function renderListaGrupos() {
@@ -8949,6 +8983,7 @@ function verFichaInventario(id) {
   if (btnEliminar){ btnEliminar._id = r.id_articulo; btnEliminar._nombre = r.nombre; btnEliminar.onclick = function() { cerrarModal('modal-ficha-inv'); eliminarInventario(this._id, this._nombre); }; btnEliminar.style.display = puedo('INVENTARIO','ELIMINAR') ? '' : 'none'; }
 
   abrirModal('modal-ficha-inv');
+  focusFirstField('modal-ficha-inv');
 }
 
 function abrirEntradaStock(id) {
@@ -9007,6 +9042,7 @@ function abrirEntradaStock(id) {
     onCambiarMotivoEntrada();
   }).catch(function(){});
   abrirModal('modal-entrada-stock');
+  focusFirstField('modal-entrada-stock');
   setTimeout(function() { document.getElementById('es-cantidad').focus(); }, 100);
 }
 
@@ -9163,6 +9199,7 @@ function abrirNuevoInventario() {
   document.getElementById('alerta-inv-ok').style.display = 'none';
   document.getElementById('alerta-inv-err').style.display = 'none';
   abrirModal('modal-inventario');
+  focusFirstField('modal-inventario');
 }
 
 function abrirEditarInventario(id) {
@@ -9195,6 +9232,7 @@ function abrirEditarInventario(id) {
     document.getElementById('inv-info-costo-val').textContent = '$ ' + parseFloat(r.precio_costo_usd || 0).toFixed(2) + ' (CPP)';
   }
   abrirModal('modal-inventario');
+  focusFirstField('modal-inventario');
   setTimeout(function() {
     const body = document.querySelector('#modal-inventario .modal-body');
     if (body) body.scrollTop = 0;
@@ -9356,7 +9394,7 @@ async function renderOrdenes() {
       + '<input type="text" id="os-buscar" placeholder="Buscar N° OS, vehículo, propietario..." '
       + 'value="' + (window._osBuscar || '') + '" '
       + 'oninput="window._osBuscar=this.value;filtrarTablaOS()" '
-      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:220px">'
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:220px"">'
       + '<select id="os-filtro-estado" onchange="window._osEstadoFiltro=this.value;filtrarTablaOS()" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todos los estados</option>'
@@ -9544,6 +9582,7 @@ async function abrirNuevaOS() {
   const grpSel = document.getElementById('os-sel-grupo-cat');
   if (grpSel) grpSel.value = '';
   abrirModal('modal-os');
+  focusFirstField('modal-os');
 }
 
 // ─── ABRIR EDITAR OS ───
@@ -9616,6 +9655,7 @@ async function abrirEditarOS(id) {
   calcularTotalesOS();
   await cargarSelectsOS();
   abrirModal('modal-os');
+  focusFirstField('modal-os');
 }
 
 // ─── BUSCAR VEHÍCULO EN OS ───
@@ -9669,8 +9709,8 @@ function renderLineasOS() {
     const mon = l.moneda || 'USD';
     return '<div style="display:grid;grid-template-columns:1fr 70px 110px 60px auto;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
       + '<div style="font-size:13px;font-weight:500">' + l.descripcion + '</div>'
-      + '<input type="number" value="' + l.cantidad + '" min="0.01" step="0.01" onchange="osServiciosLineas[' + i + '].cantidad=parseFloat(this.value)||1;calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:center">'
-      + '<input type="number" value="' + (parseFloat(l.precio_original !== undefined ? l.precio_original : (l.precio_usd || 0)).toFixed(2)) + '" min="0" step="0.01" onchange="osServiciosLineas[' + i + '].precio_original=parseFloat(this.value)||0;osServiciosLineas[' + i + '].precio_usd=convertirAUSD(parseFloat(this.value)||0,osServiciosLineas[' + i + '].moneda||\'USD\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
+      + '<input type="number" value="' + l.cantidad + '" min="0.01" step="0.01" onchange="osServiciosLineas[' + i + '].cantidad=parseFloat(this.value)||1;calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:center"">'
+      + '<input type="number" value="' + (parseFloat(l.precio_original !== undefined ? l.precio_original : (l.precio_usd || 0)).toFixed(2)) + '" min="0" step="0.01" onchange="osServiciosLineas[' + i + '].precio_original=parseFloat(this.value)||0;osServiciosLineas[' + i + '].precio_usd=convertirAUSD(parseFloat(this.value)||0,osServiciosLineas[' + i + '].moneda||\'USD\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right"">'
       + '<div style="font-size:10px;font-weight:600;color:var(--suave);text-align:center">' + (monedaLabels[mon] || mon) + '</div>'
       + '<button onclick="quitarLineaServ(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px;padding:0 4px">✕</button>'
       + '</div>';
@@ -9696,8 +9736,8 @@ function renderLineasRep() {
     const mon = l.moneda || 'USD';
     return '<div style="display:grid;grid-template-columns:1fr 70px 110px 60px auto;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
       + '<div style="font-size:13px;font-weight:500">' + l.descripcion + '</div>'
-      + '<input type="number" value="' + l.cantidad + '" min="0.01" step="0.01" onchange="osRepuestosLineas[' + i + '].cantidad=parseFloat(this.value)||1;calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:center">'
-      + '<input type="number" value="' + (parseFloat(l.precio_original !== undefined ? l.precio_original : (l.precio_usd || 0)).toFixed(2)) + '" min="0" step="0.01" onchange="osRepuestosLineas[' + i + '].precio_original=parseFloat(this.value)||0;osRepuestosLineas[' + i + '].precio_usd=convertirAUSD(parseFloat(this.value)||0,osRepuestosLineas[' + i + '].moneda||\'USD\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
+      + '<input type="number" value="' + l.cantidad + '" min="0.01" step="0.01" onchange="osRepuestosLineas[' + i + '].cantidad=parseFloat(this.value)||1;calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:center"">'
+      + '<input type="number" value="' + (parseFloat(l.precio_original !== undefined ? l.precio_original : (l.precio_usd || 0)).toFixed(2)) + '" min="0" step="0.01" onchange="osRepuestosLineas[' + i + '].precio_original=parseFloat(this.value)||0;osRepuestosLineas[' + i + '].precio_usd=convertirAUSD(parseFloat(this.value)||0,osRepuestosLineas[' + i + '].moneda||\'USD\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right"">'
       + '<div style="font-size:10px;font-weight:600;color:var(--suave);text-align:center">' + (monedaLabels[mon] || mon) + '</div>'
       + '<button onclick="quitarLineaRep(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px;padding:0 4px">✕</button>'
       + '</div>';
@@ -10211,6 +10251,7 @@ async function verFichaOS(id) {
       btnReabrir.style.display = 'none';
     }
     abrirModal('modal-ficha-os');
+  focusFirstField('modal-ficha-os');
   } catch(e) { alert('Error: ' + e.message); }
 }
 
@@ -10313,6 +10354,44 @@ window.addEventListener('load', async () => {
     }
   }
 });
+  // ─── NAVEGACIÓN ENTRE CAMPOS CON ENTER ───
+  function nextField(el) {
+    // Buscar todos los campos navegables dentro del modal activo
+    const modal = el.closest('.modal') || el.closest('.modal-body') || document.body;
+    const campos = Array.from(modal.querySelectorAll(
+      'input:not([type="hidden"]):not([disabled]):not([readonly]), select:not([disabled]), textarea:not([disabled])'
+    )).filter(function(c) { return c.offsetParent !== null; }); // solo visibles
+    const idx = campos.indexOf(el);
+    if (idx !== -1 && idx < campos.length - 1) {
+      campos[idx + 1].focus();
+    }
+  }
+
+  function focusFirstField(modalId) {
+    setTimeout(function() {
+      const modal = document.getElementById(modalId);
+      if (!modal) return;
+      // Agregar navegación Enter a todos los campos del modal
+      const campos = modal.querySelectorAll(
+        'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="date"]):not([type="file"]):not([disabled]), select:not([disabled]), textarea:not([disabled])'
+      );
+      campos.forEach(function(campo) {
+        if (!campo._enterNavSet) {
+          campo._enterNavSet = true;
+          campo.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && campo.tagName !== 'TEXTAREA') {
+              e.preventDefault();
+              nextField(campo);
+            }
+          });
+        }
+      });
+      // Focus en el primer campo visible
+      const primer = Array.from(campos).find(function(c) { return c.offsetParent !== null; });
+      if (primer) primer.focus();
+    }, 200);
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
     setTimeout(function() { document.getElementById('login-correo')?.focus(); }, 300);
   });
@@ -10337,7 +10416,7 @@ window.addEventListener('load', async () => {
         <div class="form-campo form-full">
           <label>Nueva Contraseña</label>
           <div class="campo-pass">
-            <input type="password" id="cambio-nueva" placeholder="Mínimo 8 caracteres" oninput="validarFortaleza(this.value)" onfocus="mostrarRequisitos()">
+            <input type="password" id="cambio-nueva" placeholder="Mínimo 8 caracteres" oninput="validarFortaleza(this.value)" onfocus="mostrarRequisitos()"">
             <button type="button" class="ojo-btn" onclick="togglePass('cambio-nueva',this)" tabindex="-1">👁</button>
           </div>
           <!-- Indicador de fortaleza -->
@@ -10369,7 +10448,7 @@ window.addEventListener('load', async () => {
         <div class="form-campo form-full">
           <label>Confirmar Nueva Contraseña</label>
           <div class="campo-pass">
-            <input type="password" id="cambio-confirmar" placeholder="Repite la contraseña">
+            <input type="password" id="cambio-confirmar" placeholder="Repite la contraseña"">
             <button type="button" class="ojo-btn" onclick="togglePass('cambio-confirmar',this)" tabindex="-1">👁</button>
           </div>
         </div>
@@ -10426,32 +10505,32 @@ window.addEventListener('load', async () => {
         <div class="form-campo">
           <label>Número de Documento</label>
           <input type="text" id="prop-num-doc" placeholder="Ej: 12345678"
-            oninput="if(this.value.length>=6) consultarCedula(document.getElementById('prop-tipo-doc').value, this.value)">
+            oninput="if(this.value.length">=6) consultarCedula(document.getElementById('prop-tipo-doc').value, this.value)">
         </div>
         <div style="grid-column:1/-1" id="prop-cedula-info" style="display:none"></div>
         <div class="form-campo form-full">
           <label>Nombre Completo</label>
-          <input type="text" id="prop-nombre" placeholder="Nombre completo del propietario" onblur="this.value=capitalizarNombre(this.value)">
+          <input type="text" id="prop-nombre" placeholder="Nombre completo del propietario" onblur="this.value=capitalizarNombre(this.value)"">
         </div>
         <div class="form-campo">
           <label>RIF</label>
-          <input type="text" id="prop-rif-civil" placeholder="Ej: V-04284968" style="text-transform:uppercase">
+          <input type="text" id="prop-rif-civil" placeholder="Ej: V-04284968" style="text-transform:uppercase"">
         </div>
         <div class="form-campo">
           <label>Teléfono</label>
-          <input type="text" id="prop-telefono" placeholder="0414-0000000">
+          <input type="text" id="prop-telefono" placeholder="0414-0000000"">
         </div>
         <div class="form-campo">
           <label>Correo Electrónico *</label>
-          <input type="email" id="prop-correo" placeholder="correo@ejemplo.com">
+          <input type="email" id="prop-correo" placeholder="correo@ejemplo.com"">
         </div>
         <div class="form-campo form-full">
           <label>Dirección *</label>
-          <input type="text" id="prop-direccion" placeholder="Dirección completa">
+          <input type="text" id="prop-direccion" placeholder="Dirección completa"">
         </div>
         <div class="form-campo form-full">
           <label>Empresa u Organización</label>
-          <input type="text" id="prop-empresa" placeholder="Opcional">
+          <input type="text" id="prop-empresa" placeholder="Opcional"">
         </div>
         <div class="form-campo form-full">
           <label>Tipo de Contribuyente</label>
@@ -10514,23 +10593,23 @@ window.addEventListener('load', async () => {
       <div class="form-grid">
         <div class="form-campo">
           <label>Placa</label>
-          <input type="text" id="veh-placa" placeholder="Ej: ABC123" style="text-transform:uppercase">
+          <input type="text" id="veh-placa" placeholder="Ej: ABC123" style="text-transform:uppercase"">
         </div>
         <div class="form-campo">
           <label>Año</label>
-          <input type="number" id="veh-anio" min="1950" max="2030">
+          <input type="number" id="veh-anio" min="1950" max="2030"">
         </div>
         <div class="form-campo">
           <label>Marca</label>
-          <input type="text" id="veh-marca" placeholder="Ej: Toyota">
+          <input type="text" id="veh-marca" placeholder="Ej: Toyota"">
         </div>
         <div class="form-campo">
           <label>Modelo</label>
-          <input type="text" id="veh-modelo" placeholder="Ej: Corolla">
+          <input type="text" id="veh-modelo" placeholder="Ej: Corolla"">
         </div>
         <div class="form-campo">
           <label>Color</label>
-          <input type="text" id="veh-color" placeholder="Ej: Blanco">
+          <input type="text" id="veh-color" placeholder="Ej: Blanco"">
         </div>
         <div class="form-campo">
           <label>Tipo de Carrocería</label>
@@ -10543,15 +10622,15 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo">
           <label>Número de Motor</label>
-          <input type="text" id="veh-motor" placeholder="Número de motor">
+          <input type="text" id="veh-motor" placeholder="Número de motor"">
         </div>
         <div class="form-campo">
           <label>Número de Chasis</label>
-          <input type="text" id="veh-chasis" placeholder="VIN / Chasis">
+          <input type="text" id="veh-chasis" placeholder="VIN / Chasis"">
         </div>
         <div class="form-campo">
           <label>Kilometraje</label>
-          <input type="number" id="veh-km" min="0" placeholder="0">
+          <input type="number" id="veh-km" min="0" placeholder="0"">
         </div>
         <div class="form-campo">
           <label>Estado</label>
@@ -10669,7 +10748,7 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo form-full">
           <label style="font-size:13px;font-weight:600;color:var(--texto)">Descripción</label>
-          <input type="text" id="cat-descripcion" placeholder="Descripción opcional" style="font-size:13px">
+          <input type="text" id="cat-descripcion" placeholder="Descripción opcional" style="font-size:13px"">
         </div>
         <div class="form-campo">
           <label style="font-size:13px;font-weight:600;color:var(--texto)">Categoría</label>
@@ -10698,7 +10777,7 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo">
           <label style="font-size:13px;font-weight:600;color:var(--texto)">Precio USD</label>
-          <input type="number" id="cat-precio" placeholder="0.00" step="0.01" min="0" style="font-size:14px;font-weight:600">
+          <input type="number" id="cat-precio" placeholder="0.00" step="0.01" min="0" style="font-size:14px;font-weight:600"">
         </div>
         <div class="form-campo">
           <label style="font-size:13px;font-weight:600;color:var(--texto)">Estado</label>
@@ -10732,7 +10811,7 @@ window.addEventListener('load', async () => {
     </div>
     <div class="modal-body">
       <div style="display:flex;gap:8px;margin-bottom:16px">
-        <input type="text" id="nuevo-grupo-cat" placeholder="Nombre del grupo..." oninput="this.value=this.value.toUpperCase()" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
+        <input type="text" id="nuevo-grupo-cat" placeholder="Nombre del grupo..." oninput="this.value=this.value.toUpperCase()" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none"">
         <button class="btn-primario" onclick="agregarGrupoCatalogo()" style="white-space:nowrap">+ Agregar</button>
       </div>
       <div id="lista-grupos-cat" style="max-height:300px;overflow-y:auto"></div>
@@ -10757,7 +10836,7 @@ window.addEventListener('load', async () => {
       <div style="background:var(--gris2);border-radius:6px;padding:14px 16px;margin-bottom:16px">
         <div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Agregar nuevo servicio</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <input type="text" id="nuevo-servicio-nombre" placeholder="Nombre del servicio..." style="flex:1;min-width:180px;background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:9px 12px;border-radius:5px;outline:none">
+          <input type="text" id="nuevo-servicio-nombre" placeholder="Nombre del servicio..." style="flex:1;min-width:180px;background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:9px 12px;border-radius:5px;outline:none"">
           <button class="btn-primario" onclick="agregarServicioDesdeGestion()" style="white-space:nowrap">+ Agregar</button>
         </div>
         <div id="msg-nuevo-servicio" style="display:none;margin-top:8px;font-size:12px"></div>
@@ -10817,15 +10896,15 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo">
           <label>Tasa BCV</label>
-          <input type="number" id="cont-form-tasa" step="0.01" placeholder="0.00" style="font-family:var(--font-mono)">
+          <input type="number" id="cont-form-tasa" step="0.01" placeholder="0.00" style="font-family:var(--font-mono)"">
         </div>
         <div class="form-campo form-full" style="grid-column:1/-1">
           <label>Descripción *</label>
-          <input type="text" id="cont-form-desc" placeholder="Descripción del asiento contable">
+          <input type="text" id="cont-form-desc" placeholder="Descripción del asiento contable"">
         </div>
         <div class="form-campo">
           <label>Referencia</label>
-          <input type="text" id="cont-form-ref" placeholder="N° Factura, OS, etc.">
+          <input type="text" id="cont-form-ref" placeholder="N° Factura, OS, etc."">
         </div>
         <div class="form-campo">
           <label>Período</label>
@@ -10859,11 +10938,11 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo">
           <label>N° Documento</label>
-          <input type="text" id="cont-cxc-doc" placeholder="Fact-001">
+          <input type="text" id="cont-cxc-doc" placeholder="Fact-001"">
         </div>
         <div class="form-campo">
           <label>Monto USD *</label>
-          <input type="number" id="cont-cxc-monto" step="0.01" min="0" placeholder="0.00" style="font-family:var(--font-mono)">
+          <input type="number" id="cont-cxc-monto" step="0.01" min="0" placeholder="0.00" style="font-family:var(--font-mono)"">
         </div>
         <div class="form-campo">
           <label>Fecha Emisión *</label>
@@ -10899,7 +10978,7 @@ window.addEventListener('load', async () => {
       <div class="form-grid" style="grid-template-columns:1fr 1fr">
         <div class="form-campo">
           <label>Monto USD *</label>
-          <input type="number" id="cont-pago-cxc-monto" step="0.01" min="0" style="font-family:var(--font-mono)">
+          <input type="number" id="cont-pago-cxc-monto" step="0.01" min="0" style="font-family:var(--font-mono)"">
         </div>
         <div class="form-campo">
           <label>Fecha *</label>
@@ -10919,7 +10998,7 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo form-full">
           <label>Referencia</label>
-          <input type="text" id="cont-pago-cxc-ref" placeholder="N° referencia bancaria">
+          <input type="text" id="cont-pago-cxc-ref" placeholder="N° referencia bancaria"">
         </div>
       </div>
       <div id="alerta-pago-cxc-ok"  class="alerta alerta-exito" style="display:none;margin-top:8px"></div>
@@ -10947,11 +11026,11 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo">
           <label>N° Documento</label>
-          <input type="text" id="cont-cxp-doc" placeholder="Fact-001">
+          <input type="text" id="cont-cxp-doc" placeholder="Fact-001"">
         </div>
         <div class="form-campo">
           <label>Monto USD *</label>
-          <input type="number" id="cont-cxp-monto" step="0.01" min="0" placeholder="0.00" style="font-family:var(--font-mono)">
+          <input type="number" id="cont-cxp-monto" step="0.01" min="0" placeholder="0.00" style="font-family:var(--font-mono)"">
         </div>
         <div class="form-campo">
           <label>Fecha Emisión *</label>
@@ -10987,7 +11066,7 @@ window.addEventListener('load', async () => {
       <div class="form-grid" style="grid-template-columns:1fr 1fr">
         <div class="form-campo">
           <label>Monto USD *</label>
-          <input type="number" id="cont-pago-cxp-monto" step="0.01" min="0" style="font-family:var(--font-mono)">
+          <input type="number" id="cont-pago-cxp-monto" step="0.01" min="0" style="font-family:var(--font-mono)"">
         </div>
         <div class="form-campo">
           <label>Fecha *</label>
@@ -11007,7 +11086,7 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo form-full">
           <label>Referencia</label>
-          <input type="text" id="cont-pago-cxp-ref" placeholder="N° referencia bancaria">
+          <input type="text" id="cont-pago-cxp-ref" placeholder="N° referencia bancaria"">
         </div>
       </div>
       <div id="alerta-pago-cxp-ok"  class="alerta alerta-exito" style="display:none;margin-top:8px"></div>
@@ -11031,7 +11110,7 @@ window.addEventListener('load', async () => {
       <div class="form-grid" style="grid-template-columns:1fr 1fr">
         <div class="form-campo">
           <label>Código *</label>
-          <input type="text" id="cont-cuenta-codigo" placeholder="Ej: 1.1.01.010" style="font-family:var(--font-mono)">
+          <input type="text" id="cont-cuenta-codigo" placeholder="Ej: 1.1.01.010" style="font-family:var(--font-mono)"">
         </div>
         <div class="form-campo">
           <label>Nivel</label>
@@ -11045,7 +11124,7 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo form-full">
           <label>Nombre *</label>
-          <input type="text" id="cont-cuenta-nombre" placeholder="Nombre de la cuenta">
+          <input type="text" id="cont-cuenta-nombre" placeholder="Nombre de la cuenta"">
         </div>
         <div class="form-campo">
           <label>Tipo</label>
@@ -11095,7 +11174,7 @@ window.addEventListener('load', async () => {
       <div class="form-grid" style="grid-template-columns:1fr 1fr">
         <div class="form-campo form-full">
           <label>Nombre del Período *</label>
-          <input type="text" id="cont-per-nombre" placeholder="Ej: Enero 2025">
+          <input type="text" id="cont-per-nombre" placeholder="Ej: Enero 2025"">
         </div>
         <div class="form-campo">
           <label>Fecha Inicio *</label>
@@ -11218,7 +11297,7 @@ window.addEventListener('load', async () => {
         <div class="form-campo" id="es-precio-venta-cont">
           <label>Precio Venta USD</label>
           <input type="number" id="es-precio-venta" placeholder="0.00" min="0" step="0.01"
-            style="font-family:var(--font-mono)">
+            style="font-family:var(--font-mono)"">
           <div style="font-size:10px;color:var(--suave);margin-top:4px">Blanco = mantiene precio actual</div>
         </div>
         <div class="form-campo form-full" id="es-tasa-cont" style="display:none;grid-column:1/-1">
@@ -11226,13 +11305,13 @@ window.addEventListener('load', async () => {
             <div>
               <label>Tasa BCV del día</label>
               <input type="number" id="es-tasa-bcv" placeholder="0.00" min="0" step="0.01"
-                style="font-family:var(--font-mono);background:var(--gris1);width:100%" readonly>
+                style="font-family:var(--font-mono);background:var(--gris1);width:100%" readonly">
               <div style="font-size:10px;color:var(--suave);margin-top:4px">Tasa del día de la entrada</div>
             </div>
             <div id="es-precio-usd-cont">
               <label>Precio en USD (calculado)</label>
               <input type="number" id="es-precio-usd-calc" placeholder="0.00"
-                style="font-family:var(--font-mono);background:var(--gris1);color:var(--naranja);width:100%" readonly>
+                style="font-family:var(--font-mono);background:var(--gris1);color:var(--naranja);width:100%" readonly">
               <div style="font-size:10px;color:var(--suave);margin-top:4px">Precio / Tasa BCV</div>
             </div>
           </div>
@@ -11257,7 +11336,7 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo form-full" id="es-campo-cliente-cont" style="grid-column:1/-1;display:none">
           <label>Nombre del Cliente *</label>
-          <input type="text" id="es-cliente-nombre" placeholder="Nombre completo del cliente">
+          <input type="text" id="es-cliente-nombre" placeholder="Nombre completo del cliente"">
         </div>
         <div class="form-campo form-full" id="es-campo-transferencia-cont" style="grid-column:1/-1;display:none">
           <label>Área de Origen *</label>
@@ -11267,7 +11346,7 @@ window.addEventListener('load', async () => {
         </div>
       <div class="form-campo">
         <label>Referencia / N° Factura (opcional)</label>
-        <input type="text" id="es-referencia" placeholder="Ej: FAC-2026-001">
+        <input type="text" id="es-referencia" placeholder="Ej: FAC-2026-001"">
       </div>
       <div class="form-campo form-full" style="margin-top:8px">
         <label>Área Receptora</label>
@@ -11285,7 +11364,7 @@ window.addEventListener('load', async () => {
           <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🔐 Validación del Receptor</div>
           <label style="font-size:12px">Contraseña del empleado receptor *</label>
           <input type="password" id="es-clave-receptor" placeholder="Ingrese la contraseña del receptor"
-            style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">
+            style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px"">
           <div style="font-size:11px;color:var(--suave);margin-top:4px">El empleado receptor debe ingresar su contraseña para confirmar la recepción.</div>
         </div>
       <div class="form-campo form-full">
@@ -11316,11 +11395,11 @@ window.addEventListener('load', async () => {
       <div class="form-grid">
         <div class="form-campo">
           <label>Código</label>
-          <input type="text" id="inv-codigo" placeholder="Ej: REP-001" style="text-transform:uppercase">
+          <input type="text" id="inv-codigo" placeholder="Ej: REP-001" style="text-transform:uppercase"">
         </div>
         <div class="form-campo form-full">
           <label>Nombre del Artículo *</label>
-          <input type="text" id="inv-nombre" placeholder="Ej: Filtro de aceite Bosch">
+          <input type="text" id="inv-nombre" placeholder="Ej: Filtro de aceite Bosch"">
         </div>
         <div class="form-campo">
           <label>Selección Categoría</label>
@@ -11345,15 +11424,15 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo form-full">
           <label>Descripción</label>
-          <input type="text" id="inv-descripcion" placeholder="Descripción opcional">
+          <input type="text" id="inv-descripcion" placeholder="Descripción opcional"">
         </div>
         <div class="form-campo">
           <label>Stock Mínimo</label>
-          <input type="number" id="inv-stock-min" placeholder="0" min="0">
+          <input type="number" id="inv-stock-min" placeholder="0" min="0"">
         </div>
         <div class="form-campo" id="inv-venta-cont">
           <label>Precio Venta USD</label>
-          <input type="number" id="inv-venta" placeholder="0.00" step="0.01" min="0">
+          <input type="number" id="inv-venta" placeholder="0.00" step="0.01" min="0"">
         </div>
         <!-- Campos ocultos para compatibilidad con guardarInventario -->
         <input type="hidden" id="inv-stock" value="0">
@@ -11379,19 +11458,19 @@ window.addEventListener('load', async () => {
         <div class="form-grid">
           <div class="form-campo">
             <label>Demanda Anual (unidades)</label>
-            <input type="number" id="inv-demanda-anual" placeholder="Ej: 120" min="0" step="1">
+            <input type="number" id="inv-demanda-anual" placeholder="Ej: 120" min="0" step="1"">
           </div>
           <div class="form-campo">
             <label>Lead Time (días)</label>
-            <input type="number" id="inv-lead-time" placeholder="7" min="1" step="1">
+            <input type="number" id="inv-lead-time" placeholder="7" min="1" step="1"">
           </div>
           <div class="form-campo">
             <label>Costos Operativos del Producto</label>
-            <input type="number" id="inv-costo-pedido" placeholder="25.00" step="0.01" min="0">
+            <input type="number" id="inv-costo-pedido" placeholder="25.00" step="0.01" min="0"">
           </div>
           <div class="form-campo">
             <label>Stock de Seguridad</label>
-            <input type="number" id="inv-stock-seg" placeholder="0" min="0" step="1">
+            <input type="number" id="inv-stock-seg" placeholder="0" min="0" step="1"">
           </div>
         </div>
       </div>
@@ -11446,7 +11525,7 @@ window.addEventListener('load', async () => {
       <div class="form-grid">
         <div class="form-campo">
           <label>Km de Entrada</label>
-          <input type="number" id="os-km" placeholder="0" min="0">
+          <input type="number" id="os-km" placeholder="0" min="0"">
         </div>
         <div class="form-campo">
           <label>Estado</label>
@@ -11501,15 +11580,15 @@ window.addEventListener('load', async () => {
           <div style="display:grid;grid-template-columns:1fr 70px 80px 80px auto;gap:8px;align-items:end">
             <div class="form-campo" style="margin:0">
               <label style="font-size:9px">O descripción libre</label>
-              <input type="text" id="os-desc-libre" placeholder="Escribe descripción libre..." style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+              <input type="text" id="os-desc-libre" placeholder="Escribe descripción libre..." style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%"">
             </div>
             <div class="form-campo" style="margin:0">
               <label style="font-size:9px">Cant.</label>
-              <input type="number" id="os-cant-cat" value="1" min="0.01" step="0.01" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+              <input type="number" id="os-cant-cat" value="1" min="0.01" step="0.01" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%"">
             </div>
             <div class="form-campo" style="margin:0">
               <label style="font-size:9px">Precio</label>
-              <input type="number" id="os-precio-cat" placeholder="0.00" step="0.01" min="0" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+              <input type="number" id="os-precio-cat" placeholder="0.00" step="0.01" min="0" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%"">
             </div>
             <div class="form-campo" style="margin:0">
               <label style="font-size:9px">Moneda</label>
@@ -11533,15 +11612,15 @@ window.addEventListener('load', async () => {
           <div class="form-campo" style="margin:0">
             <label style="font-size:9px">Del inventario o libre</label>
             <select id="os-sel-inv" onchange="onSelInventarioChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%"></select>
-            <input type="text" id="os-desc-rep-libre" placeholder="O escribe descripción libre..." style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%;margin-top:4px">
+            <input type="text" id="os-desc-rep-libre" placeholder="O escribe descripción libre..." style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%;margin-top:4px"">
           </div>
           <div class="form-campo" style="margin:0">
             <label style="font-size:9px">Cant.</label>
-            <input type="number" id="os-cant-inv" value="1" min="0.01" step="0.01" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+            <input type="number" id="os-cant-inv" value="1" min="0.01" step="0.01" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%"">
           </div>
           <div class="form-campo" style="margin:0">
             <label style="font-size:9px">Precio</label>
-            <input type="number" id="os-precio-inv" placeholder="0.00" step="0.01" min="0" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+            <input type="number" id="os-precio-inv" placeholder="0.00" step="0.01" min="0" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%"">
           </div>
           <div class="form-campo" style="margin:0">
             <label style="font-size:9px">Moneda</label>
@@ -11643,15 +11722,15 @@ window.addEventListener('load', async () => {
         <div class="form-grid">
           <div class="form-campo form-full">
             <label>Nombre / Razón Social</label>
-            <input type="text" id="fac-receptor-nombre" placeholder="Nombre completo del receptor">
+            <input type="text" id="fac-receptor-nombre" placeholder="Nombre completo del receptor"">
           </div>
           <div class="form-campo">
             <label>RIF / Cédula</label>
-            <input type="text" id="fac-receptor-rif" placeholder="J-XXXXXXXX-X">
+            <input type="text" id="fac-receptor-rif" placeholder="J-XXXXXXXX-X"">
           </div>
           <div class="form-campo">
             <label>Dirección *</label>
-            <input type="text" id="fac-receptor-dir" placeholder="Dirección fiscal">
+            <input type="text" id="fac-receptor-dir" placeholder="Dirección fiscal"">
           </div>
           <div class="form-campo form-full">
             <label>Tipo de Contribuyente</label>
@@ -11699,7 +11778,7 @@ window.addEventListener('load', async () => {
         <div id="fac-tasa-cont" style="margin-top:12px;display:none">
           <div class="form-campo" style="margin:0;max-width:220px">
             <label style="font-size:9px">Tasa USD / Bs</label>
-            <input type="number" id="fac-tasa" step="0.0001" min="0" oninput="actualizarSubtotalOSLabel();if(document.getElementById('fac-os-id')?.value)onSelOSFactura();else calcularTotalesFactura();" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:8px 10px;border-radius:4px;outline:none;width:100%">
+            <input type="number" id="fac-tasa" step="0.0001" min="0" oninput="actualizarSubtotalOSLabel();if(document.getElementById('fac-os-id')?.value)onSelOSFactura();else calcularTotalesFactura();" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:8px 10px;border-radius:4px;outline:none;width:100%"">
           </div>
         </div>
       </div>
@@ -11794,11 +11873,11 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo">
           <label>N° Documento *</label>
-          <input type="text" id="emp-numero-doc" placeholder="Ej: 12345678">
+          <input type="text" id="emp-numero-doc" placeholder="Ej: 12345678"">
         </div>
         <div class="form-campo form-full">
           <label>Nombre Completo *</label>
-          <input type="text" id="emp-nombre" placeholder="Apellidos y Nombres">
+          <input type="text" id="emp-nombre" placeholder="Apellidos y Nombres"">
         </div>
         <div class="form-campo">
           <label>Fecha de Nacimiento *</label>
@@ -11818,19 +11897,19 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo form-full">
           <label>Correo Electrónico *</label>
-          <input type="email" id="emp-correo" placeholder="correo@ejemplo.com">
+          <input type="email" id="emp-correo" placeholder="correo@ejemplo.com"">
         </div>
         <div class="form-campo">
           <label>Teléfono Móvil *</label>
-          <input type="text" id="emp-tel-movil" placeholder="0414-0000000">
+          <input type="text" id="emp-tel-movil" placeholder="0414-0000000"">
         </div>
         <div class="form-campo">
           <label>Teléfono Fijo</label>
-          <input type="text" id="emp-tel-fijo" placeholder="0212-0000000">
+          <input type="text" id="emp-tel-fijo" placeholder="0212-0000000"">
         </div>
         <div class="form-campo form-full">
           <label>Dirección *</label>
-          <input type="text" id="emp-direccion" placeholder="Dirección completa">
+          <input type="text" id="emp-direccion" placeholder="Dirección completa"">
         </div>
         <div class="form-campo form-full">
           <label>Foto Documento de Identidad <span style="font-weight:400;color:var(--suave);font-size:11px">(Opcional)</span></label>
@@ -11849,11 +11928,11 @@ window.addEventListener('load', async () => {
       <div class="form-grid">
         <div class="form-campo form-full">
           <label>Nombre *</label>
-          <input type="text" id="emp-emerg-nombre" placeholder="Nombre del contacto">
+          <input type="text" id="emp-emerg-nombre" placeholder="Nombre del contacto"">
         </div>
         <div class="form-campo">
           <label>Teléfono Móvil *</label>
-          <input type="text" id="emp-emerg-tel" placeholder="0414-0000000">
+          <input type="text" id="emp-emerg-tel" placeholder="0414-0000000"">
         </div>
       </div>
 
@@ -11886,7 +11965,7 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo">
           <label>Monto Salario *</label>
-          <input type="number" id="emp-monto-sal" placeholder="0.00" step="0.01" min="0">
+          <input type="number" id="emp-monto-sal" placeholder="0.00" step="0.01" min="0"">
         </div>
         <div class="form-campo">
           <label>Moneda de Cálculo</label>
@@ -11906,19 +11985,19 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo">
           <label>Bono Alimentación</label>
-          <input type="number" id="emp-bono-ali" placeholder="0.00" step="0.01" min="0">
+          <input type="number" id="emp-bono-ali" placeholder="0.00" step="0.01" min="0"">
         </div>
         <div class="form-campo">
           <label>Bono Transporte</label>
-          <input type="number" id="emp-bono-trans" placeholder="0.00" step="0.01" min="0">
+          <input type="number" id="emp-bono-trans" placeholder="0.00" step="0.01" min="0"">
         </div>
         <div class="form-campo">
           <label>Bono Productividad</label>
-          <input type="number" id="emp-bono-prod" placeholder="0.00" step="0.01" min="0">
+          <input type="number" id="emp-bono-prod" placeholder="0.00" step="0.01" min="0"">
         </div>
         <div class="form-campo">
           <label>Comisión %</label>
-          <input type="number" id="emp-comision" placeholder="0.00" step="0.01" min="0" max="100">
+          <input type="number" id="emp-comision" placeholder="0.00" step="0.01" min="0" max="100"">
         </div>
         <div class="form-campo">
           <label>Fecha de Ingreso *</label>
@@ -11959,11 +12038,11 @@ window.addEventListener('load', async () => {
           <label>Número de Cuenta *</label>
           <div style="display:flex;align-items:center;gap:0">
             <input type="text" id="emp-cod-banco" maxlength="4" readonly
-              style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--naranja);background:var(--gris3);border:1px solid var(--borde);border-right:none;padding:11px 10px;border-radius:5px 0 0 5px;width:60px;outline:none;cursor:not-allowed;text-align:center">
+              style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--naranja);background:var(--gris3);border:1px solid var(--borde);border-right:none;padding:11px 10px;border-radius:5px 0 0 5px;width:60px;outline:none;cursor:not-allowed;text-align:center"">
             <input type="text" id="emp-num-cuenta-resto" maxlength="16" placeholder="0000 0000 0000 0000"
               oninput="this.value=this.value.replace(/[^0-9]/g,'');sincronizarNumeroCuenta()"
               maxlength="16"
-              style="font-family:var(--font-mono);font-size:13px;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:11px 10px;border-radius:0 5px 5px 0;flex:1;outline:none">
+              style="font-family:var(--font-mono);font-size:13px;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:11px 10px;border-radius:0 5px 5px 0;flex:1;outline:none"">
           </div>
           <input type="hidden" id="emp-num-cuenta">
         </div>
@@ -12013,11 +12092,11 @@ window.addEventListener('load', async () => {
       <div class="form-grid">
         <div class="form-campo form-full">
           <label>Nombre / Razón Social *</label>
-          <input type="text" id="prov-nombre" placeholder="Nombre completo del proveedor">
+          <input type="text" id="prov-nombre" placeholder="Nombre completo del proveedor"">
         </div>
         <div class="form-campo">
           <label>RIF</label>
-          <input type="text" id="prov-rif" placeholder="J-XXXXXXXX-X" style="text-transform:uppercase">
+          <input type="text" id="prov-rif" placeholder="J-XXXXXXXX-X" style="text-transform:uppercase"">
         </div>
         <div class="form-campo">
           <label>Tipo de Contribuyente</label>
@@ -12037,15 +12116,15 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo">
           <label>Teléfono</label>
-          <input type="text" id="prov-telefono" placeholder="0212-XXXXXXX">
+          <input type="text" id="prov-telefono" placeholder="0212-XXXXXXX"">
         </div>
         <div class="form-campo">
           <label>Correo Electrónico</label>
-          <input type="email" id="prov-correo" placeholder="proveedor@correo.com">
+          <input type="email" id="prov-correo" placeholder="proveedor@correo.com"">
         </div>
         <div class="form-campo form-full">
           <label>Dirección</label>
-          <input type="text" id="prov-direccion" placeholder="Dirección completa">
+          <input type="text" id="prov-direccion" placeholder="Dirección completa"">
         </div>
         <div class="form-campo">
           <label>Moneda de Facturación</label>
@@ -12057,11 +12136,11 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo">
           <label>Días de Crédito</label>
-          <input type="number" id="prov-dias-credito" placeholder="0" min="0" style="font-family:var(--font-mono)">
+          <input type="number" id="prov-dias-credito" placeholder="0" min="0" style="font-family:var(--font-mono)"">
         </div>
         <div class="form-campo">
           <label>Límite de Crédito (USD)</label>
-          <input type="number" id="prov-limite-credito" placeholder="0.00" min="0" step="0.01" style="font-family:var(--font-mono)">
+          <input type="number" id="prov-limite-credito" placeholder="0.00" min="0" step="0.01" style="font-family:var(--font-mono)"">
         </div>
         <div class="form-campo">
           <label>Estado</label>
@@ -12121,13 +12200,13 @@ window.addEventListener('load', async () => {
           <label>Cantidad *</label>
           <input type="number" id="edit-mov-cantidad" min="0.01" step="0.01" placeholder="0.00"
             style="font-size:18px;font-family:var(--font-mono);text-align:center;color:var(--naranja);flex:1"
-            onblur="this.value=parseFloat(this.value||0).toFixed(2)">
+            onblur="this.value=parseFloat(this.value||0).toFixed(2)"">
         </div>
         <div class="form-campo" id="edit-mov-precio-cont" style="display:flex;flex-direction:column">
           <label>Precio Compra</label>
           <input type="number" id="edit-mov-precio" min="0" step="0.01" placeholder="0.00"
             style="font-family:var(--font-mono);flex:1"
-            onblur="this.value=parseFloat(this.value||0).toFixed(2)">
+            onblur="this.value=parseFloat(this.value||0).toFixed(2)"">
         </div>
         <div class="form-campo" id="edit-mov-moneda-cont" style="display:none;flex-direction:column">
           <label>Moneda de Compra</label>
@@ -12160,7 +12239,7 @@ window.addEventListener('load', async () => {
           <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🔐 Autorización</div>
           <label style="font-size:12px">Su contraseña para confirmar la modificación *</label>
           <input type="password" id="edit-mov-clave" placeholder="Ingrese su contraseña"
-            style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">
+            style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px"">
         </div>
       <input type="hidden" id="edit-mov-tipo">
       <input type="hidden" id="edit-mov-id">
@@ -12221,7 +12300,7 @@ window.addEventListener('load', async () => {
         <!-- Cantidad y Fecha -->
         <div class="form-campo">
           <label>Cantidad *</label>
-          <input type="number" id="salida-cantidad" min="0.01" step="0.01" placeholder="0">
+          <input type="number" id="salida-cantidad" min="0.01" step="0.01" placeholder="0"">
         </div>
         <div class="form-campo">
           <label>Fecha *</label>
@@ -12248,7 +12327,7 @@ window.addEventListener('load', async () => {
           <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🔐 Validación de quien Entrega</div>
           <label style="font-size:12px">Contraseña del empleado que entrega *</label>
           <input type="password" id="salida-clave-entrega" placeholder="Ingrese su contraseña para confirmar"
-            style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">
+            style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px"">
           <div style="font-size:11px;color:var(--suave);margin-top:4px">El empleado que entrega debe ingresar su contraseña para autorizar la salida.</div>
         </div>
 
@@ -12374,24 +12453,24 @@ window.addEventListener('load', async () => {
       <div class="form-grid">
         <div class="form-campo form-full">
           <label>Nombre / Razón Social</label>
-          <input type="text" id="em-nombre" placeholder="Nombre completo de la empresa">
+          <input type="text" id="em-nombre" placeholder="Nombre completo de la empresa"">
         </div>
 
         <div class="form-campo">
           <label>RIF</label>
-          <input type="text" id="em-rif" placeholder="J-XXXXXXXX-X" style="text-transform:uppercase">
+          <input type="text" id="em-rif" placeholder="J-XXXXXXXX-X" style="text-transform:uppercase"">
         </div>
         <div class="form-campo">
           <label>Teléfono</label>
-          <input type="text" id="em-telefono" placeholder="0212-XXXXXXX">
+          <input type="text" id="em-telefono" placeholder="0212-XXXXXXX"">
         </div>
         <div class="form-campo form-full">
           <label>Correo Electrónico *</label>
-          <input type="email" id="em-correo" placeholder="empresa@correo.com">
+          <input type="email" id="em-correo" placeholder="empresa@correo.com"">
         </div>
         <div class="form-campo form-full">
           <label>Dirección Fiscal</label>
-          <input type="text" id="em-direccion" placeholder="Dirección fiscal completa">
+          <input type="text" id="em-direccion" placeholder="Dirección fiscal completa"">
         </div>
         <div class="form-campo form-full">
           <label>Tipo de Contribuyente</label>
