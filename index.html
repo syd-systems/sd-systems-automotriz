@@ -1910,6 +1910,7 @@ function limpiarSesionLocal() {
   document.getElementById('pantalla-login').style.display = 'flex';
   document.getElementById('login-correo').value = '';
   resetCampoPass('login-clave');
+  setTimeout(function() { document.getElementById('login-correo').focus(); }, 100);
   // Ocultar sidebar nav items
   document.querySelectorAll('.nav-item[id^="nav-"]').forEach(function(n) {
     n.style.display = 'none';
@@ -10312,6 +10313,9 @@ window.addEventListener('load', async () => {
     }
   }
 });
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() { document.getElementById('login-correo')?.focus(); }, 300);
+  });
 </script>
 
 <!-- ═══════════════════════════════════════ -->
