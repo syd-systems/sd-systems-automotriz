@@ -2310,8 +2310,6 @@ async function onSelEmpleadoUsuario() {
 }
 
 async function abrirNuevoUsuario() {
-  console.log('abrirNuevoUsuario INICIADA');
-  alert('abrirNuevoUsuario llamada');
   document.getElementById('modal-titulo').textContent = 'NUEVO USUARIO';
   document.getElementById('u-nombre').value = '';
   document.getElementById('u-correo').value = '';
@@ -2345,10 +2343,8 @@ async function abrirNuevoUsuario() {
     if (empCont) empCont.style.display = 'none';
   }
 
-  console.log('Intentando abrir modal-usuario');
   abrirModal('modal-usuario');
   focusFirstField('modal-usuario');
-  console.log('modal-usuario abierto');
 }
 
 async function abrirEditarUsuario(id) {
@@ -10363,7 +10359,7 @@ window.addEventListener('load', async () => {
     // Buscar todos los campos navegables dentro del modal activo
     const modal = el.closest('.modal') || el.closest('.modal-body') || document.body;
     const campos = Array.from(modal.querySelectorAll(
-      'input:not([type="hidden"]):not([disabled]):not([readonly]), select:not([disabled]), textarea:not([disabled])'
+      'input:not([type="hidden"]):not([disabled]):not([readonly"]):not([type="button"]):not([type="submit"]), select:not([disabled]), textarea:not([disabled])'
     )).filter(function(c) { return c.offsetParent !== null; }); // solo visibles
     const idx = campos.indexOf(el);
     if (idx !== -1 && idx < campos.length - 1) {
@@ -10377,7 +10373,7 @@ window.addEventListener('load', async () => {
       if (!modal) return;
       // Agregar navegación Enter a todos los campos del modal
       const campos = modal.querySelectorAll(
-        'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="date"]):not([type="file"]):not([disabled]), select:not([disabled]), textarea:not([disabled])'
+        'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="date"]):not([type="file"]):not([disabled]):not([type="button"]):not([type="submit"]), select:not([disabled]), textarea:not([disabled])'
       );
       campos.forEach(function(campo) {
         if (!campo._enterNavSet) {
