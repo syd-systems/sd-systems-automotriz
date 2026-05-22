@@ -1180,7 +1180,7 @@
         <div class="form-campo form-full" id="u-emp-selector-cont">
           <label>Importar desde Empleados <span style="font-size:11px;color:var(--suave);font-weight:400">(Opcional)</span></label>
           <select id="u-emp-selector" onchange="onSelEmpleadoUsuario()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value=">— Seleccionar empleado —</option>
+            <option value="">— Seleccionar empleado —</option>
           </select>
         </div>
         <div class="form-campo form-full">
@@ -1244,7 +1244,7 @@
         <div class="accesos-grid" id="accesos-grid"></div>
       </div>
 
-      <input type="hidden" id="u-id-editando" value=">
+      <input type="hidden" id="u-id-editando" value="">
     </div>
     <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
       <div class="alerta alerta-exito" id="alerta-modal-ok" style="margin:0;width:100%"></div>
@@ -2329,7 +2329,7 @@ async function abrirNuevoUsuario() {
     const emps = await api('empleados', 'GET', null, '?estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo,correo');
     const selEmp = document.getElementById('u-emp-selector');
     if (selEmp) {
-      selEmp.innerHTML = '<option value=">— Seleccionar empleado —</option>'
+      selEmp.innerHTML = '<option value="">— Seleccionar empleado —</option>'
         + emps.map(function(e) {
             return '<option value="' + e.id_empleado + '" data-nombre="' + (e.nombre_completo||'') + '" data-correo="' + (e.correo||'') + '">'
               + e.nombre_completo + (e.correo ? ' · ' + e.correo : '') + '</option>';
@@ -3305,7 +3305,7 @@ async function abrirParamItem(key, id) {
     }).join('');
     camposHTML += '<div class="form-campo form-full"><label>Nivel Superior</label>'
       + '<select id="param-item-area-padre" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
-      + '<option value=">— Sin área padre (nivel raíz) —</option>' + opcPadre + '</select></div>';
+      + '<option value="">— Sin área padre (nivel raíz) —</option>' + opcPadre + '</select></div>';
   } else {
     if (def.tieneCodigo) {
       camposHTML += '<div class="form-campo form-full"><label>Código</label><input type="text" id="param-item-codigo" value="' + (item ? (item.codigo||'') : '') + '" placeholder="Ej: 0102" style="text-transform:uppercase"></div>';
@@ -3316,7 +3316,7 @@ async function abrirParamItem(key, id) {
     }
     if (def.tieneTipoSector) {
       camposHTML += '<div class="form-campo form-full"><label>Tipo / Sector</label><select id="param-item-tipo-sector" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
-        + '<option value=">— Seleccionar —</option>'
+        + '<option value="">— Seleccionar —</option>'
         + '<option value="PÚBLICO"'    + (item && item.tipo_sector === 'PÚBLICO'    ? ' selected' : '') + '>Público</option>'
         + '<option value="PRIVADO"'    + (item && item.tipo_sector === 'PRIVADO'    ? ' selected' : '') + '>Privado</option>'
         + '<option value="MICROFINANCIERO"' + (item && item.tipo_sector === 'MICROFINANCIERO' ? ' selected' : '') + '>Microfinanciero</option>'
@@ -3327,7 +3327,7 @@ async function abrirParamItem(key, id) {
       const opcAreas = _paramAreasCache.map(function(a) {
         return '<option value="' + a.id + '"' + (item && item.id_area === a.id ? ' selected' : '') + '>' + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
       }).join('');
-      camposHTML += '<div class="form-campo form-full"><label>Área</label><select id="param-item-area" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value=">— Sin área —</option>' + opcAreas + '</select></div>';
+      camposHTML += '<div class="form-campo form-full"><label>Área</label><select id="param-item-area" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="">— Sin área —</option>' + opcAreas + '</select></div>';
     }
   }
   camposHTML += '<div class="form-campo form-full"><label>Estado</label><select id="param-item-estado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="ACTIVO"' + (!item || item.estado==='ACTIVO' ? ' selected' : '') + '>Activo</option><option value="INACTIVO"' + (item && item.estado==='INACTIVO' ? ' selected' : '') + '>Inactivo</option></select></div>';
@@ -3509,7 +3509,7 @@ async function renderEmpleados() {
       + '<h3 style="white-space:nowrap">Empleados</h3>'
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end">'
       + '<select id="emp-filtro-estatus" onchange="filtrarTablaEmpleados()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
-      + '<option value=">Todos los estatus</option>'
+      + '<option value="">Todos los estatus</option>'
       + Object.entries(ESTATUS_EMP).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('')
       + '</select>'
       + '<input type="text" id="emp-buscar" placeholder="Buscar nombre o cédula..." oninput="filtrarTablaEmpleados()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
@@ -3564,7 +3564,7 @@ async function cargarParamEmpleados() {
 
 function selOpts(lista, valorActual, campoNombre) {
   campoNombre = campoNombre || 'nombre';
-  return '<option value=">— Seleccionar —</option>'
+  return '<option value="">— Seleccionar —</option>'
     + (lista||[]).map(function(item) {
         return '<option value="' + item.id + '"' + (valorActual && valorActual == item.id ? ' selected' : '') + '>'
           + (item.codigo ? item.codigo + ' — ' : '') + item[campoNombre] + '</option>';
@@ -4272,7 +4272,7 @@ async function renderFacturas() {
       + '<h3 style="white-space:nowrap">Facturas</h3>'
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end">'
       + '<select id="fac-filtro-estado" onchange="filtrarTablaFacturas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
-      + '<option value=">Todos los estados</option>'
+      + '<option value="">Todos los estados</option>'
       + Object.entries(ESTADOS_FAC).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('')
       + '</select>'
       + '<input type="text" id="fac-buscar" placeholder="Buscar N° factura, cliente..." oninput="filtrarTablaFacturas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
@@ -4347,11 +4347,11 @@ async function abrirNuevaFactura() {
   document.getElementById('fac-subtotal-os').textContent = '$ 0.00';
 
   const selEm = document.getElementById('fac-emisor');
-  selEm.innerHTML = '<option value=">— Seleccionar empresa —</option>'
+  selEm.innerHTML = '<option value="">— Seleccionar empresa —</option>'
     + emisoresList.map(function(e) { return '<option value="' + e.id_emisor + '">' + e.nombre + ' (' + (e.rif||'') + ')</option>'; }).join('');
 
   const selOS = document.getElementById('fac-os-sel');
-  selOS.innerHTML = '<option value=">— Seleccionar OS —</option>'
+  selOS.innerHTML = '<option value="">— Seleccionar OS —</option>'
     + osDisponibles.map(function(o) {
         const veh = o.vehiculos, prop = o.propietarios;
         return '<option value="' + o.id_orden + '">'
@@ -4818,18 +4818,18 @@ async function cargarEmpleadosPorArea(idArea, selectId) {
   const sel = document.getElementById(selectId);
   if (!sel) return;
   if (!idArea) {
-    sel.innerHTML = '<option value=">— Seleccionar área primero —</option>';
+    sel.innerHTML = '<option value="">— Seleccionar área primero —</option>';
     return;
   }
-  sel.innerHTML = '<option value=">Cargando...</option>';
+  sel.innerHTML = '<option value="">Cargando...</option>';
   try {
     const emps = await api('empleados', 'GET', null,
       '?id_area=eq.' + idArea + '&estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo,id_cargo,param_cargos(nombre)');
     if (!emps.length) {
-      sel.innerHTML = '<option value=">— Sin empleados en esta área —</option>';
+      sel.innerHTML = '<option value="">— Sin empleados en esta área —</option>';
       return;
     }
-    sel.innerHTML = '<option value=">— Seleccionar empleado —</option>'
+    sel.innerHTML = '<option value="">— Seleccionar empleado —</option>'
       + emps.map(function(e) {
           return '<option value="' + e.id_empleado + '">'
             + e.nombre_completo
@@ -4837,7 +4837,7 @@ async function cargarEmpleadosPorArea(idArea, selectId) {
             + '</option>';
         }).join('');
   } catch(err) {
-    sel.innerHTML = '<option value=">— Error cargando empleados —</option>';
+    sel.innerHTML = '<option value="">— Error cargando empleados —</option>';
   }
 }
 
@@ -4937,20 +4937,20 @@ async function abrirSalidaStock(id, nombre) {
 
   // Llenar áreas
   const selArea = document.getElementById('salida-area');
-  selArea.innerHTML = '<option value=">— Seleccionar área —</option>'
+  selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
     + areas.map(function(a) {
         return '<option value="' + a.id + '">'
           + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
       }).join('');
   // Llenar también área que entrega
-  const optsAreas = '<option value=">— Seleccionar área —</option>'
+  const optsAreas = '<option value="">— Seleccionar área —</option>'
     + areas.map(function(a) {
         return '<option value="' + a.id + '">'
           + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
       }).join('');
   document.getElementById('salida-area-entrega').innerHTML = optsAreas;
-  document.getElementById('salida-empleado').innerHTML = '<option value=">— Seleccionar área primero —</option>';
-  document.getElementById('salida-empleado-entrega').innerHTML = '<option value=">— Seleccionar área primero —</option>';
+  document.getElementById('salida-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
+  document.getElementById('salida-empleado-entrega').innerHTML = '<option value="">— Seleccionar área primero —</option>';
 
 
 
@@ -5159,7 +5159,7 @@ async function editarMovimiento(tipo, idMovimiento, idRepuesto) {
 
   // Cargar áreas en selector
   const selArea = document.getElementById('edit-mov-area');
-  selArea.innerHTML = '<option value=">— Seleccionar área —</option>'
+  selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
     + areas.map(function(a) {
         return '<option value="' + a.id + '"' + (m.id_area === a.id ? ' selected' : '') + '>'
           + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
@@ -5170,7 +5170,7 @@ async function editarMovimiento(tipo, idMovimiento, idRepuesto) {
     await cargarEmpleadosPorArea(m.id_area, 'edit-mov-empleado');
     document.getElementById('edit-mov-empleado').value = m.id_empleado || '';
   } else {
-    document.getElementById('edit-mov-empleado').innerHTML = '<option value=">— Seleccionar área primero —</option>';
+    document.getElementById('edit-mov-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
   }
 
   cerrarModal('modal-historial-stock');
@@ -5364,7 +5364,7 @@ async function renderProveedores() {
       + '<h3 style="white-space:nowrap">Proveedores</h3>'
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end">'
       + '<select id="prov-filtro-estado" onchange="filtrarTablaProveedores()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
-      + '<option value=">Todos los estados</option>'
+      + '<option value="">Todos los estados</option>'
       + '<option value="ACTIVO">Activo</option>'
       + '<option value="INACTIVO">Inactivo</option>'
       + '</select>'
@@ -5608,7 +5608,7 @@ function contCuentasMovimiento() {
 function contBuildCuentaSelect(selectedId) {
   const ctas = contCuentasMovimiento();
   // Agrupar por nivel 1 (clase) y nivel 2 (grupo)
-  let opts = '<option value=">— Seleccionar cuenta —</option>';
+  let opts = '<option value="">— Seleccionar cuenta —</option>';
   let lastClase = ''; let lastGrupo = '';
   ctas.forEach(function(c) {
     const partes = c.codigo.split('.');
@@ -5667,9 +5667,9 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
       + '<h3 style="margin:0">Libro Diario</h3>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
       + '<select onchange="contRenderDiario(document.getElementById(\'cont-filtro-estado\').value, this.value)" style="' + contSelStyle() + '">'
-      + '<option value=">Todos los períodos</option>' + perSelect + '</select>'
+      + '<option value="">Todos los períodos</option>' + perSelect + '</select>'
       + '<select id="cont-filtro-estado" onchange="contRenderDiario(this.value, document.querySelector(\'[onchange*=contRenderDiario]\').value)" style="' + contSelStyle() + '">'
-      + '<option value=">Todos los estados</option>'
+      + '<option value="">Todos los estados</option>'
       + '<option value="BORRADOR"' + (filtroEstado==='BORRADOR'?' selected':'') + '>Borrador</option>'
       + '<option value="APROBADO"' + (filtroEstado==='APROBADO'?' selected':'') + '>Aprobado</option>'
       + '<option value="ANULADO"'  + (filtroEstado==='ANULADO'?' selected':'')  + '>Anulado</option>'
@@ -6166,7 +6166,7 @@ async function contRenderCxc() {
 async function contAbrirCxc(id) {
   const propietarios = await api('propietarios','GET',null,'?select=id_propietario,nombre_completo&order=nombre_completo.asc');
   const opts = propietarios.map(function(p){ return '<option value="' + p.id_propietario + '">' + p.nombre_completo + '</option>'; }).join('');
-  document.getElementById('cont-cxc-prop').innerHTML = '<option value=">— Seleccionar cliente —</option>' + opts;
+  document.getElementById('cont-cxc-prop').innerHTML = '<option value="">— Seleccionar cliente —</option>' + opts;
   document.getElementById('cont-cxc-id').value = '';
   document.getElementById('cont-cxc-fecha').value = getHoyVzla();
   document.getElementById('cont-cxc-vence').value = '';
@@ -6284,7 +6284,7 @@ async function contRenderCxp() {
 
 async function contAbrirCxp(id) {
   const proveedores = await api('proveedores','GET',null,'?estado=eq.ACTIVO&select=id_proveedor,nombre&order=nombre.asc');
-  document.getElementById('cont-cxp-prov').innerHTML = '<option value=">— Seleccionar proveedor —</option>'
+  document.getElementById('cont-cxp-prov').innerHTML = '<option value="">— Seleccionar proveedor —</option>'
     + proveedores.map(function(p){ return '<option value="' + p.id_proveedor + '">' + p.nombre + '</option>'; }).join('');
   document.getElementById('cont-cxp-id').value = '';
   document.getElementById('cont-cxp-fecha').value = getHoyVzla();
@@ -6374,7 +6374,7 @@ async function contRenderConciliacion() {
     + '<div>Selecciona una cuenta bancaria y período para iniciar la conciliación.</div>'
     + '<div style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">'
     + '<select id="cont-conc-cuenta" style="' + contSelStyle() + ';width:280px">'
-    + '<option value=">— Cuenta Bancaria —</option>'
+    + '<option value="">— Cuenta Bancaria —</option>'
     + cuentasBanco.map(function(c){ return '<option value="' + c.id_cuenta + '">' + c.codigo + ' — ' + c.nombre + '</option>'; }).join('')
     + '</select>'
     + '<input type="month" id="cont-conc-mes" value="' + getHoyVzla().substring(0,7) + '" style="' + contSelStyle() + '">'
@@ -6507,7 +6507,7 @@ async function contAbrirCuenta(id) {
   const c = id ? contCuentasCache.find(function(x){ return x.id_cuenta===id; }) : null;
   // Padres organizados jerárquicamente
   const padres = contCuentasCache.filter(function(x){ return !x.permite_movimiento; });
-  let optsP = '<option value=">— Sin cuenta padre —</option>';
+  let optsP = '<option value="">— Sin cuenta padre —</option>';
   padres.forEach(function(p) {
     const indent = '  '.repeat(p.nivel - 1);
     optsP += '<option value="' + p.id_cuenta + '"' + (c && c.id_cuenta_padre===p.id_cuenta?' selected':'') + '>'
@@ -7685,7 +7685,7 @@ async function cargarVehiculos(filtro, propId) {
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:240px">'
       + '<select id="filtro-prop-veh" onchange="filtrarVehiculosPorPropietario(this.value || null)" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none">'
-      + '<option value=">Todos los propietarios</option>'
+      + '<option value="">Todos los propietarios</option>'
       + propietariosSimple.map(function(p) { return '<option value="' + p.id_propietario + '">' + p.nombre_completo + '</option>'; }).join('')
       + '</select>'
       + (puedo('VEHICULOS','CREAR') ? '<button class="btn-primario" onclick="abrirVehiculo(null)">+ Nuevo Vehículo</button>' : '')
@@ -7849,7 +7849,7 @@ async function abrirVehiculo(id) {
 
   // Populate propietarios dropdown
   const sel = document.getElementById('veh-propietario');
-  sel.innerHTML = '<option value=">Sin propietario</option>'
+  sel.innerHTML = '<option value="">Sin propietario</option>'
     + propietariosSimple.map(function(p) {
         return '<option value="' + p.id_propietario + '" ' + (v && v.id_propietario == p.id_propietario ? 'selected' : '') + '>'
           + p.tipo_doc + '-' + p.numero_doc + ' · ' + p.nombre_completo + '</option>';
@@ -8196,7 +8196,7 @@ async function renderCatalogo(filtro, categoria) {
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:200px">'
       + '<select id="filtro-cat-cat" onchange="renderCatalogo(document.getElementById(\'buscar-cat\').value||null,this.value||null)" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none">'
-      + '<option value=">Todas las categorías</option>'
+      + '<option value="">Todas las categorías</option>'
       + ['MECÁNICA','ELÉCTRICA','CARROCERÍA','FRENOS','SUSPENSIÓN','AIRES','TRANSMISIÓN','DIAGNÓSTICO','OTROS'].map(function(cat) { return '<option value="' + cat + '">' + cat + '</option>'; }).join('')
       + '</select>'
       + (puedo('CATALOGO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoCatalogo()">+ Nuevo Servicio</button>' : '')
@@ -8288,7 +8288,7 @@ function verFichaCatalogo(id) {
 function abrirNuevoCatalogo() {
   document.getElementById('cat-id').value = '';
   document.getElementById('cat-grupo').value = '';
-  document.getElementById('cat-nombre').innerHTML = '<option value=">— Seleccionar servicio —</option>';
+  document.getElementById('cat-nombre').innerHTML = '<option value="">— Seleccionar servicio —</option>';
   document.getElementById('cat-descripcion').value = '';
   document.getElementById('cat-categoria').value = '';
   document.getElementById('cat-carroceria').value = '';
@@ -8522,7 +8522,7 @@ async function cargarGruposSelect(valorActual) {
     gruposCatalogo = unicos;
     const sel = document.getElementById('cat-grupo');
     if (!sel) return;
-    sel.innerHTML = '<option value=">— Sin grupo —</option>'
+    sel.innerHTML = '<option value="">— Sin grupo —</option>'
       + unicos.map(function(g) {
           return '<option value="' + g + '"' + (g === valorActual ? ' selected' : '') + '>' + g + '</option>';
         }).join('');
@@ -8556,7 +8556,7 @@ function cargarDatosServicioSeleccionado(nombre) {
 async function cargarServiciosSelect(grupo, valorActual) {
   const sel = document.getElementById('cat-nombre');
   if (!sel) return;
-  sel.innerHTML = '<option value=">— Seleccionar servicio —</option>';
+  sel.innerHTML = '<option value="">— Seleccionar servicio —</option>';
 
   if (!grupo) return;
 
@@ -8717,7 +8717,7 @@ async function renderInventario(filtro) {
       + (puedo('INVENTARIO','VER_EOQ_ABC') ? '<button id="inv-tab-eoq"     onclick="invCambiarVista(\'eoq\')"     class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">EOQ</button>' : '')
       + '</div>'
       + '<select id="inv-filtro-cat" onchange="invFiltrarCategoria()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
-      + '<option value=">Todas las categorías</option>'
+      + '<option value="">Todas las categorías</option>'
       + '<option value="limpieza">🧹 Limpieza</option>'
       + '<option value="oficina">📎 Oficina</option>'
       + '<option value="otro">📦 Otro</option>'
@@ -9018,8 +9018,8 @@ function abrirEntradaStock(id) {
   if (document.getElementById('es-precio-usd-cont'))document.getElementById('es-precio-usd-cont').style.display = 'none';
   if (document.getElementById('es-tasa-bcv'))       document.getElementById('es-tasa-bcv').value = '';
   if (document.getElementById('es-precio-usd-calc'))document.getElementById('es-precio-usd-calc').value = '';
-  document.getElementById('es-empleado').innerHTML = '<option value=">— Seleccionar área primero —</option>';
-  document.getElementById('es-proveedor').innerHTML = '<option value=">— Seleccionar proveedor (opcional) —</option>';
+  document.getElementById('es-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
+  document.getElementById('es-proveedor').innerHTML = '<option value="">— Seleccionar proveedor (opcional) —</option>';
   // Cargar áreas y proveedores en paralelo
   Promise.all([
     api('param_areas',  'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
@@ -9027,15 +9027,15 @@ function abrirEntradaStock(id) {
   ]).then(function(res) {
     var areas = res[0], provs = res[1];
     var selArea = document.getElementById('es-area');
-    selArea.innerHTML = '<option value=">— Seleccionar área —</option>'
+    selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
       + areas.map(function(a) { return '<option value="' + a.id + '">' + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>'; }).join('');
     var selProv = document.getElementById('es-proveedor');
-    selProv.innerHTML = '<option value=">— Seleccionar proveedor —</option>'
+    selProv.innerHTML = '<option value="">— Seleccionar proveedor —</option>'
       + provs.map(function(p) { return '<option value="' + p.id_proveedor + '">' + p.nombre + (p.rif ? ' (' + p.rif + ')' : '') + '</option>'; }).join('');
     // Cargar áreas para transferencia
     var selOrigen = document.getElementById('es-area-origen');
     if (selOrigen) {
-      selOrigen.innerHTML = '<option value=">— Seleccionar área de origen —</option>'
+      selOrigen.innerHTML = '<option value="">— Seleccionar área de origen —</option>'
         + areas.map(function(a) { return '<option value="' + a.id + '">' + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>'; }).join('');
     }
     // Inicializar vista según motivo actual
@@ -9397,7 +9397,7 @@ async function renderOrdenes() {
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:220px">'
       + '<select id="os-filtro-estado" onchange="window._osEstadoFiltro=this.value;filtrarTablaOS()" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
-      + '<option value=">Todos los estados</option>'
+      + '<option value="">Todos los estados</option>'
       + Object.entries(ESTADOS_OS).map(function(e) {
           return '<option value="' + e[0] + '"' + (window._osEstadoFiltro === e[0] ? ' selected' : '') + '>' + e[1].label + '</option>';
         }).join('')
@@ -10286,14 +10286,14 @@ async function cargarSelectsOS() {
   const selGrupo = document.getElementById('os-sel-grupo-cat');
   if (selGrupo) {
     const grupos = [...new Set(catalogoCache.map(function(s) { return s.grupo; }).filter(Boolean))].sort();
-    selGrupo.innerHTML = '<option value=">— Todos los grupos —</option>'
+    selGrupo.innerHTML = '<option value="">— Todos los grupos —</option>'
       + grupos.map(function(g) { return '<option value="' + g + '">' + g + '</option>'; }).join('');
   }
 
   // ── Cargar selector de SERVICIOS (todos por defecto, sin corchetes) ──
   const selCat = document.getElementById('os-sel-cat');
   if (selCat) {
-    selCat.innerHTML = '<option value=">— Seleccionar servicio —</option>'
+    selCat.innerHTML = '<option value="">— Seleccionar servicio —</option>'
       + catalogoCache.map(function(s) {
           return '<option value="' + s.id_servicio + '" data-grupo="' + (s.grupo || '') + '">'
             + s.nombre + ' — $' + parseFloat(s.precio_usd || 0).toFixed(2) + '</option>';
@@ -10303,7 +10303,7 @@ async function cargarSelectsOS() {
   // ── Cargar selector de INVENTARIO ──
   const selInv = document.getElementById('os-sel-inv');
   if (selInv) {
-    selInv.innerHTML = '<option value=">— Descripción libre —</option>'
+    selInv.innerHTML = '<option value="">— Descripción libre —</option>'
       + inventarioCache.map(function(r) {
           return '<option value="' + r.id_articulo + '">' + r.nombre + ' (Stock: ' + r.stock_actual + ') — $' + parseFloat(r.precio_venta_usd || 0).toFixed(2) + '</option>';
         }).join('');
@@ -10535,7 +10535,7 @@ window.addEventListener('load', async () => {
         <div class="form-campo form-full">
           <label>Tipo de Contribuyente</label>
           <select id="prop-tipo-contribuyente">
-            <option value=">— No aplica / No especificado —</option>
+            <option value="">— No aplica / No especificado —</option>
             <option value="ORDINARIO">Contribuyente Ordinario</option>
             <option value="ESPECIAL">Contribuyente Especial</option>
             <option value="FORMAL">Contribuyente Formal</option>
@@ -10614,7 +10614,7 @@ window.addEventListener('load', async () => {
         <div class="form-campo">
           <label>Tipo de Carrocería</label>
           <select id="veh-carroceria">
-            <option value=">Seleccionar...</option>
+            <option value="">Seleccionar...</option>
             <option>SEDAN</option><option>SUV</option><option>PICKUP</option>
             <option>HATCHBACK</option><option>COUPE</option><option>VAN</option>
             <option>BUS</option><option>CAMIÓN</option><option>MOTO</option>
@@ -10732,7 +10732,7 @@ window.addEventListener('load', async () => {
           <label style="font-size:13px;font-weight:700;color:var(--texto);letter-spacing:1px">Grupo de Servicio</label>
           <div style="display:flex;gap:8px">
             <select id="cat-grupo" onchange="cargarServiciosSelect(this.value)" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
-              <option value=">— Seleccionar grupo —</option>
+              <option value="">— Seleccionar grupo —</option>
             </select>
             <button type="button" class="btn-secundario" onclick="event.stopPropagation();gestionarGruposCatalogo()" style="white-space:nowrap;font-size:12px">✏️ Gestionar</button>
           </div>
@@ -10741,7 +10741,7 @@ window.addEventListener('load', async () => {
           <label style="font-size:13px;font-weight:700;color:var(--texto);letter-spacing:1px">Nombre del Servicio</label>
           <div style="display:flex;gap:8px">
             <select id="cat-nombre" onchange="cargarDatosServicioSeleccionado(this.value)" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
-              <option value=">— Seleccionar servicio —</option>
+              <option value="">— Seleccionar servicio —</option>
             </select>
             <button type="button" class="btn-secundario" onclick="event.stopPropagation();gestionarServiciosCatalogo()" style="white-space:nowrap;font-size:12px">✏️ Gestionar</button>
           </div>
@@ -10753,7 +10753,7 @@ window.addEventListener('load', async () => {
         <div class="form-campo">
           <label style="font-size:13px;font-weight:600;color:var(--texto)">Categoría</label>
           <select id="cat-categoria" style="font-size:13px;font-weight:500">
-            <option value=">Sin categoría</option>
+            <option value="">Sin categoría</option>
             <option>MECÁNICA</option>
             <option>ELÉCTRICA</option>
             <option>CARROCERÍA</option>
@@ -10768,7 +10768,7 @@ window.addEventListener('load', async () => {
         <div class="form-campo">
           <label style="font-size:13px;font-weight:600;color:var(--texto)">Tipo de Carrocería</label>
           <select id="cat-carroceria" style="font-size:13px;font-weight:500">
-            <option value=">Todas las carrocerías</option>
+            <option value="">Todas las carrocerías</option>
             <option>SEDAN</option><option>SUV</option><option>PICKUP</option>
             <option>HATCHBACK</option><option>COUPE</option><option>VAN</option>
             <option>BUS</option><option>CAMIÓN</option><option>MOTO</option>
@@ -11331,7 +11331,7 @@ window.addEventListener('load', async () => {
         <div class="form-campo form-full" id="es-campo-proveedor-cont" style="grid-column:1/-1">
           <label>Proveedor *</label>
           <select id="es-proveedor" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value=">— Seleccionar proveedor —</option>
+            <option value="">— Seleccionar proveedor —</option>
           </select>
         </div>
         <div class="form-campo form-full" id="es-campo-cliente-cont" style="grid-column:1/-1;display:none">
@@ -11341,7 +11341,7 @@ window.addEventListener('load', async () => {
         <div class="form-campo form-full" id="es-campo-transferencia-cont" style="grid-column:1/-1;display:none">
           <label>Área de Origen *</label>
           <select id="es-area-origen" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value=">— Seleccionar área de origen —</option>
+            <option value="">— Seleccionar área de origen —</option>
           </select>
         </div>
       <div class="form-campo">
@@ -11351,13 +11351,13 @@ window.addEventListener('load', async () => {
       <div class="form-campo form-full" style="margin-top:8px">
         <label>Área Receptora</label>
         <select id="es-area" onchange="onSelAreaEntrada()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-          <option value=">— Seleccionar área —</option>
+          <option value="">— Seleccionar área —</option>
         </select>
       </div>
       <div class="form-campo form-full">
         <label>Empleado que Recibe</label>
         <select id="es-empleado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-          <option value=">— Seleccionar área primero —</option>
+          <option value="">— Seleccionar área primero —</option>
         </select>
       </div>
         <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
@@ -11566,13 +11566,13 @@ window.addEventListener('load', async () => {
             <div class="form-campo" style="margin:0">
               <label style="font-size:9px">Grupo de Servicio</label>
               <select id="os-sel-grupo-cat" onchange="onSelGrupoCatChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
-                <option value=">— Todos los grupos —</option>
+                <option value="">— Todos los grupos —</option>
               </select>
             </div>
             <div class="form-campo" style="margin:0">
               <label style="font-size:9px">Nombre del Servicio</label>
               <select id="os-sel-cat" onchange="onSelCatalogoChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
-                <option value=">— Seleccionar servicio —</option>
+                <option value="">— Seleccionar servicio —</option>
               </select>
             </div>
           </div>
@@ -11702,7 +11702,7 @@ window.addEventListener('load', async () => {
       <div class="form-campo form-full" style="margin-bottom:16px">
         <label>Empresa</label>
         <select id="fac-emisor" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-          <option value=">— Seleccionar empresa —</option>
+          <option value="">— Seleccionar empresa —</option>
         </select>
       </div>
 
@@ -11710,7 +11710,7 @@ window.addEventListener('load', async () => {
       <div style="margin-bottom:16px">
         <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:8px">Orden de Servicio</div>
         <select id="fac-os-sel" onchange="onSelOSFactura()" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none">
-          <option value=">— Seleccionar OS —</option>
+          <option value="">— Seleccionar OS —</option>
         </select>
         <div id="fac-os-info"></div>
         <input type="hidden" id="fac-os-id">
@@ -11735,7 +11735,7 @@ window.addEventListener('load', async () => {
           <div class="form-campo form-full">
             <label>Tipo de Contribuyente</label>
             <select id="fac-receptor-tipo-contrib">
-              <option value=">— No aplica / No especificado —</option>
+              <option value="">— No aplica / No especificado —</option>
               <option value="ORDINARIO">Contribuyente Ordinario</option>
               <option value="ESPECIAL">Contribuyente Especial</option>
               <option value="FORMAL">Contribuyente Formal</option>
@@ -12029,7 +12029,7 @@ window.addEventListener('load', async () => {
         <div class="form-campo">
           <label>Tipo de Cuenta *</label>
           <select id="emp-tipo-cuenta">
-            <option value=">— Seleccionar —</option>
+            <option value="">— Seleccionar —</option>
             <option value="CORRIENTE">Corriente</option>
             <option value="AHORRO">Ahorro</option>
           </select>
@@ -12101,7 +12101,7 @@ window.addEventListener('load', async () => {
         <div class="form-campo">
           <label>Tipo de Contribuyente</label>
           <select id="prov-tipo-contrib" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value=">— Seleccionar —</option>
+            <option value="">— Seleccionar —</option>
             <option value="ORDINARIO">Contribuyente Ordinario</option>
             <option value="ESPECIAL">Contribuyente Especial</option>
             <option value="FORMAL">Contribuyente Formal</option>
@@ -12220,14 +12220,14 @@ window.addEventListener('load', async () => {
           <label>Área Receptora</label>
           <select id="edit-mov-area" onchange="cargarEmpleadosPorArea(parseInt(this.value)||null,'edit-mov-empleado')"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value=">— Seleccionar área —</option>
+            <option value="">— Seleccionar área —</option>
           </select>
         </div>
         <div class="form-campo form-full">
           <label>Empleado que Recibe</label>
           <select id="edit-mov-empleado"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value=">— Seleccionar área primero —</option>
+            <option value="">— Seleccionar área primero —</option>
           </select>
         </div>
         <div class="form-campo form-full">
@@ -12314,13 +12314,13 @@ window.addEventListener('load', async () => {
         <div class="form-campo form-full">
           <label>Área que Entrega *</label>
           <select id="salida-area-entrega" onchange="onSelAreaEntrega()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value=">— Seleccionar área —</option>
+            <option value="">— Seleccionar área —</option>
           </select>
         </div>
         <div class="form-campo form-full">
           <label>Empleado que Entrega *</label>
           <select id="salida-empleado-entrega" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value=">— Seleccionar área primero —</option>
+            <option value="">— Seleccionar área primero —</option>
           </select>
         </div>
         <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
@@ -12338,13 +12338,13 @@ window.addEventListener('load', async () => {
         <div class="form-campo form-full">
           <label>Área Receptora *</label>
           <select id="salida-area" onchange="onSelAreaSalida()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value=">— Seleccionar área —</option>
+            <option value="">— Seleccionar área —</option>
           </select>
         </div>
         <div class="form-campo form-full">
           <label>Empleado que Recibe</label>
           <select id="salida-empleado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value=">— Seleccionar área primero —</option>
+            <option value="">— Seleccionar área primero —</option>
           </select>
         </div>
 
@@ -12475,7 +12475,7 @@ window.addEventListener('load', async () => {
         <div class="form-campo form-full">
           <label>Tipo de Contribuyente</label>
           <select id="em-tipo-contribuyente">
-            <option value=">— Seleccionar —</option>
+            <option value="">— Seleccionar —</option>
             <option value="ORDINARIO">Contribuyente Ordinario</option>
             <option value="ESPECIAL">Contribuyente Especial</option>
             <option value="FORMAL">Contribuyente Formal</option>
