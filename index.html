@@ -967,7 +967,7 @@
       <div class="campo">
         <label>Contraseña</label>
         <div class="campo-pass">
-          <input type="password" id="login-clave" placeholder="••••••••" autocomplete="current-password"" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
+          <input type="password" id="login-clave" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
           <button type="button" class="ojo-btn" onclick="togglePass('login-clave',this)">👁</button>
         </div>
       </div>
@@ -988,7 +988,7 @@
       <p style="font-size:13px;color:var(--suave);margin-bottom:24px">Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.</p>
       <div class="campo">
         <label>Correo Electrónico</label>
-        <input type="email" id="rec-correo" placeholder="usuario@correo.com"" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
+        <input type="email" id="rec-correo" placeholder="usuario@correo.com" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
       </div>
       <button class="btn-login" onclick="enviarRecuperacion()">ENVIAR ENLACE</button>
       <div class="login-error" id="rec-error" style="display:none"></div>
@@ -1006,7 +1006,7 @@
         <label>Nueva Contraseña</label>
         <div class="campo-pass">
           <input type="password" id="nueva-clave" placeholder="Mínimo 8 caracteres"
-                 oninput="validarFortalezaRec(this.value)"" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
+                 oninput="validarFortalezaRec(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
           <button type="button" class="ojo-btn" onclick="togglePass('nueva-clave',this)" tabindex="-1">👁</button>
         </div>
         <div id="fortaleza-rec" style="margin-top:10px">
@@ -1037,7 +1037,7 @@
       <div class="campo">
         <label>Confirmar Contraseña</label>
         <div class="campo-pass">
-          <input type="password" id="confirmar-clave" placeholder="Repite la contraseña"" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
+          <input type="password" id="confirmar-clave" placeholder="Repite la contraseña" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
           <button type="button" class="ojo-btn" onclick="togglePass('confirmar-clave',this)" tabindex="-1">👁</button>
         </div>
       </div>
@@ -1180,21 +1180,21 @@
         <div class="form-campo form-full" id="u-emp-selector-cont">
           <label>Importar desde Empleados <span style="font-size:11px;color:var(--suave);font-weight:400">(Opcional)</span></label>
           <select id="u-emp-selector" onchange="onSelEmpleadoUsuario()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar empleado —</option>
+            <option value=">— Seleccionar empleado —</option>
           </select>
         </div>
         <div class="form-campo form-full">
           <label>Nombre Completo</label>
-          <input type="text" id="u-nombre" placeholder="Ej: María García"" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
+          <input type="text" id="u-nombre" placeholder="Ej: María García" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
         </div>
         <div class="form-campo form-full">
           <label>Correo Electrónico *</label>
-          <input type="email" id="u-correo" placeholder="correo@ejemplo.com"" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
+          <input type="email" id="u-correo" placeholder="correo@ejemplo.com" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
         </div>
         <div class="form-campo form-full">
           <label>Contraseña</label>
           <div class="campo-pass">
-            <input type="password" id="u-clave" placeholder="Mínimo 8 caracteres" oninput="validarFortalezaUsuario(this.value)" onfocus="document.getElementById('fortaleza-usuario').style.display='block'"" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
+            <input type="password" id="u-clave" placeholder="Mínimo 8 caracteres" oninput="validarFortalezaUsuario(this.value)" onfocus="document.getElementById('fortaleza-usuario').style.display='block'" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
             <button type="button" class="ojo-btn" onclick="togglePass('u-clave',this)" tabindex="-1">👁</button>
           </div>
           <div id="fortaleza-usuario" style="display:none;margin-top:10px">
@@ -1244,7 +1244,7 @@
         <div class="accesos-grid" id="accesos-grid"></div>
       </div>
 
-      <input type="hidden" id="u-id-editando" value="">
+      <input type="hidden" id="u-id-editando" value=">
     </div>
     <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
       <div class="alerta alerta-exito" id="alerta-modal-ok" style="margin:0;width:100%"></div>
@@ -1285,7 +1285,7 @@
         </div>
         <div class="form-campo form-full">
           <label>Valor de la Tasa</label>
-          <input type="number" id="t-valor" placeholder="Ej: 36.50" step="0.01" min="0"" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
+          <input type="number" id="t-valor" placeholder="Ej: 36.50" step="0.01" min="0" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
         </div>
         <div class="form-campo form-full">
           <label>Fecha de Vigencia</label>
@@ -11661,7 +11661,7 @@ window.addEventListener('load', async () => {
     <div class="modal-body" id="ficha-os-contenido"></div>
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-os')">Cerrar</button>
-      <button class="btn-primario" id="ficha-os-editar-btn" onclick=">Editar OS</button>
+      <button class="btn-primario" id="ficha-os-editar-btn" onclick="">Editar OS</button>
     </div>
   </div>
 </div>
