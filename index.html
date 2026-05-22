@@ -2343,8 +2343,10 @@ async function abrirNuevoUsuario() {
     if (empCont) empCont.style.display = 'none';
   }
 
+  console.log('Intentando abrir modal-usuario');
   abrirModal('modal-usuario');
   focusFirstField('modal-usuario');
+  console.log('modal-usuario abierto');
 }
 
 async function abrirEditarUsuario(id) {
