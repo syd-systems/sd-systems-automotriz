@@ -967,7 +967,7 @@
       <div class="campo">
         <label>Contraseña</label>
         <div class="campo-pass">
-          <input type="password" id="login-clave" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
+          <input type="password" id="login-clave" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter'){iniciarSesion()}">
           <button type="button" class="ojo-btn" onclick="togglePass('login-clave',this)">👁</button>
         </div>
       </div>
@@ -988,7 +988,7 @@
       <p style="font-size:13px;color:var(--suave);margin-bottom:24px">Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.</p>
       <div class="campo">
         <label>Correo Electrónico</label>
-        <input type="email" id="rec-correo" placeholder="usuario@correo.com" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
+        <input type="email" id="rec-correo" placeholder="usuario@correo.com" onkeydown="if(event.key==='Enter'){document.getElementById('btn-enviar-rec')?.click()}">
       </div>
       <button class="btn-login" onclick="enviarRecuperacion()">ENVIAR ENLACE</button>
       <div class="login-error" id="rec-error" style="display:none"></div>
@@ -1006,7 +1006,7 @@
         <label>Nueva Contraseña</label>
         <div class="campo-pass">
           <input type="password" id="nueva-clave" placeholder="Mínimo 8 caracteres"
-                 oninput="validarFortalezaRec(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
+                 oninput="validarFortalezaRec(this.value)" onkeydown="if(event.key==='Enter'){document.getElementById('confirmar-clave')?.focus()}">
           <button type="button" class="ojo-btn" onclick="togglePass('nueva-clave',this)" tabindex="-1">👁</button>
         </div>
         <div id="fortaleza-rec" style="margin-top:10px">
@@ -1037,7 +1037,7 @@
       <div class="campo">
         <label>Confirmar Contraseña</label>
         <div class="campo-pass">
-          <input type="password" id="confirmar-clave" placeholder="Repite la contraseña" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
+          <input type="password" id="confirmar-clave" placeholder="Repite la contraseña" onkeydown="if(event.key==='Enter'){document.getElementById('btn-cambiar-clave')?.click()}">
           <button type="button" class="ojo-btn" onclick="togglePass('confirmar-clave',this)" tabindex="-1">👁</button>
         </div>
       </div>
