@@ -10507,7 +10507,7 @@ window.addEventListener('load', async () => {
           <input type="text" id="prop-num-doc" placeholder="Ej: 12345678"
             oninput="if(this.value.length>=6) consultarCedula(document.getElementById('prop-tipo-doc').value, this.value)"
             onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
-        <div style="grid-column:1/-1" id="prop-cedula-info" style="display:none"></div>
+          <div id="prop-cedula-info" style="grid-column:1/-1;display:none"></div>
         <div class="form-campo form-full">
           <label>Nombre Completo</label>
           <input type="text" id="prop-nombre" placeholder="Nombre completo del propietario" onblur="this.value=capitalizarNombre(this.value)">
