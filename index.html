@@ -6925,14 +6925,27 @@ async function procesarCambioClave() {
     if (!correoActivo) { errEl.textContent = 'Error: no se pudo identificar el usuario.'; errEl.style.display='block'; return; }
 
     const nuevaHash = await hashearClave(nueva);
-    await api('usuarios', 'PATCH', {
-      contrasena:    nuevaHash,
-      fecha_clave:   new Date().toISOString().split('T')[0],
-      cambiar_clave: false
-    }, `?correo_usuario=eq.${encodeURIComponent(correoActivo)}`);
 
-    // Guardar en historial
-    await guardarEnHistorial(correoActivo, nueva);
+    // Usar fetch directo para no depender de JWT (aún no hay sesión)
+    const hdrs = {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    };
+    const patchRes = await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correoActivo), {
+      method: 'PATCH',
+      headers: hdrs,
+      body: JSON.stringify({
+        contrasena:    nuevaHash,
+        fecha_clave:   new Date().toISOString().split('T')[0],
+        cambiar_clave: false
+      })
+    });
+    if (!patchRes.ok) throw new Error('Error al actualizar la contraseña.');
+
+    // Guardar en historial (solo si hay sesión activa)
+    if (sesionActual) await guardarEnHistorial(correoActivo, nueva);
 
     // Si viene del login, completar el acceso al sistema
     if (!sesionActual && window._cambioClaveCorreo) {
