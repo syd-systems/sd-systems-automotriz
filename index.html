@@ -1823,6 +1823,13 @@ async function iniciarSesion() {
       return;
     }
 
+    // Invalidar sesiones previas en otros dispositivos
+    await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correo), {
+      method: 'PATCH',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ sesion_activa: true, sesion_invalidada: false, ultimo_acceso: new Date().toISOString(), token_sesion: Math.random().toString(36).substr(2) + Date.now() })
+    });
+
     // Obtener accesos del usuario
     const accesos = await api('usuarios_accesos', 'GET', null,
       `?correo_usuario=eq.${encodeURIComponent(correo)}&activo=eq.true&select=acceso_tipo`);
@@ -2570,6 +2577,7 @@ async function guardarUsuario() {
       if (clave !== claveConfNuevo) {
         errEl.textContent = 'Las contraseñas no coinciden.';
         errEl.style.display = 'block';
+        document.getElementById('u-clave-confirmar')?.focus();
         return;
       }
       const claveHash = await hashearClave(clave);
@@ -2608,6 +2616,7 @@ async function guardarUsuario() {
         if (clave !== claveConf) {
           errEl.textContent = 'Las contraseñas no coinciden.';
           errEl.style.display = 'block';
+          document.getElementById('u-clave-confirmar')?.focus();
           return;
         }
         const claveHashEdit = await hashearClave(clave);
@@ -3539,7 +3548,7 @@ async function renderEmpleados() {
         + '<td style="font-size:12px">' + (e.param_areas ? e.param_areas.nombre : '—') + '</td>'
         + '<td style="font-size:12px">' + (e.param_cargos ? e.param_cargos.nombre : '—') + '</td>'
         + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
-        + '<td style="font-size:11px;color:var(--suave)">' + (e.fecha_ingreso || '—') + '</td>'
+        + '<td style="font-size:11px;color:var(--suave)">' + (e.fecha_ingreso ? fmtFecha(e.fecha_ingreso) : '—') + '</td>'
         + '<td><button class="btn-secundario" onclick="verFichaEmpleado(' + e.id_empleado + ')">Ficha</button></td>'
         + '</tr>';
     }).join('');
@@ -4034,7 +4043,7 @@ async function verFichaEmpleado(id) {
     + (verDatos && e.bono_productividad? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Bono Productividad</div><div style="font-family:var(--font-mono)">' + fmtUSD(e.bono_productividad) + '</div></div>' : '')
     + (verDatos && e.comision_pct      ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Comisión</div><div style="font-family:var(--font-mono)">' + e.comision_pct + '%</div></div>' : '')
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">F. Ingreso</div><div style="font-size:13px">' + (e.fecha_ingreso||'—') + '</div></div>'
-    + (e.fecha_egreso ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">F. Egreso</div><div style="font-size:13px">' + e.fecha_egreso + '</div></div>' : '')
+    + (e.fecha_egreso ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">F. Egreso</div><div style="font-size:13px">' + fmtFecha(e.fecha_egreso) + '</div></div>' : '')
     + '</div>'
 
     // Cuenta Nómina
@@ -4798,6 +4807,15 @@ async function regresarAFichaInv() {
   }
   // Regresar al modal de stock
   abrirStockArticulo(_fichaInvActual.id, _fichaInvActual.nombre);
+}
+
+// ─── FORMATO DE FECHA DD-MM-YYYY ───
+function fmtFecha(fecha) {
+  if (!fecha) return '—';
+  const f = fecha.substring(0, 10); // YYYY-MM-DD
+  const partes = f.split('-');
+  if (partes.length !== 3) return fecha;
+  return partes[2] + '-' + partes[1] + '-' + partes[0];
 }
 
 // ─── HASHEAR CONTRASEÑA VIA RPC ───
@@ -6219,7 +6237,7 @@ async function contRenderCxc() {
           return '<tr>'
             + '<td style="font-size:13px">' + (c.propietarios ? c.propietarios.nombre_completo : '—') + '</td>'
             + '<td style="font-size:12px;font-family:var(--font-mono)">' + (c.numero_doc||c.tipo) + '</td>'
-            + '<td style="font-size:12px">' + c.fecha_emision + '</td>'
+            + '<td style="font-size:12px">' + fmtFecha(c.fecha_emision) + '</td>'
             + '<td style="font-size:12px;color:' + (vencida?'#fc8181':'inherit') + '">' + (c.fecha_vencimiento||'—') + (vencida?' ⚠':'') + '</td>'
             + '<td style="font-family:var(--font-mono);text-align:right">$ ' + fmtUSD(c.monto_usd) + '</td>'
             + '<td style="font-family:var(--font-mono);text-align:right;color:var(--naranja);font-weight:700">$ ' + fmtUSD(c.saldo_usd) + '</td>'
@@ -6339,7 +6357,7 @@ async function contRenderCxp() {
           return '<tr>'
             + '<td>' + (c.proveedores ? c.proveedores.nombre : '—') + '</td>'
             + '<td style="font-size:12px;font-family:var(--font-mono)">' + (c.numero_doc||c.tipo) + '</td>'
-            + '<td style="font-size:12px">' + c.fecha_emision + '</td>'
+            + '<td style="font-size:12px">' + fmtFecha(c.fecha_emision) + '</td>'
             + '<td style="font-size:12px;color:' + (vencida?'#fc8181':'inherit') + '">' + (c.fecha_vencimiento||'—') + (vencida?' ⚠':'') + '</td>'
             + '<td style="font-family:var(--font-mono);text-align:right">$ ' + fmtUSD(c.monto_usd) + '</td>'
             + '<td style="font-family:var(--font-mono);text-align:right;color:#fc8181;font-weight:700">$ ' + fmtUSD(c.saldo_usd) + '</td>'
@@ -6664,8 +6682,8 @@ async function contRenderPeriodos() {
     + contPeriodosCache.map(function(p) {
         return '<tr>'
           + '<td style="font-weight:600">' + p.nombre + '</td>'
-          + '<td style="font-size:12px">' + p.fecha_inicio + '</td>'
-          + '<td style="font-size:12px">' + p.fecha_fin + '</td>'
+          + '<td style="font-size:12px">' + fmtFecha(p.fecha_inicio) + '</td>'
+          + '<td style="font-size:12px">' + fmtFecha(p.fecha_fin) + '</td>'
           + '<td><span class="badge ' + (p.estado==='ABIERTO'?'badge-verde':'badge-gris') + '">' + p.estado + '</span></td>'
           + '<td><div style="display:flex;gap:6px">'
           + (p.estado==='ABIERTO' ? '<button class="btn-secundario" style="font-size:11px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="contCerrarPeriodo(' + p.id_periodo + ',\'' + p.nombre + '\')">🔒 Cerrar</button>' : '')
@@ -9460,11 +9478,11 @@ async function renderOrdenes() {
       const prop = o.propietarios;
       return '<tr data-id="' + o.id_orden + '" data-estado="' + (o.estado||'') + '" data-fecha="' + (o.fecha_entrada ? o.fecha_entrada.substring(0,10) : '') + '">'
         + '<td><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + (o.numero_os || '—') + '</div>'
-        + '<div style="font-size:11px;color:var(--suave)">' + o.fecha_entrada + '</div></td>'
+        + '<div style="font-size:11px;color:var(--suave)">' + fmtFecha(o.fecha_entrada) + '</div></td>'
         + '<td>' + (veh ? '<div style="font-weight:500">' + veh.placa + '</div><div style="font-size:11px;color:var(--suave)">' + veh.marca + ' ' + veh.modelo + '</div>' : '—') + '</td>'
         + '<td>' + (prop ? prop.nombre_completo : '—') + '</td>'
         + '<td><span class="badge ' + est.clase + '">' + est.label + '</span>'
-        + (o.fecha_estado ? '<div style="font-size:10px;color:var(--suave);margin-top:3px">' + o.fecha_estado + '</div>' : '')
+        + (o.fecha_estado ? '<div style="font-size:10px;color:var(--suave);margin-top:3px">' + fmtFecha(o.fecha_estado) + '</div>' : '')
         + '</td>'
         + (puedo('SERVICIOS','VER_TOTALES')
             ? '<td style="font-family:var(--font-mono)"><span style="color:var(--naranja)">$ ' + fmtUSD(o.total_usd) + '</span>'
@@ -10334,7 +10352,7 @@ async function verFichaOS(id) {
     const est = ESTADOS_OS[o.estado] || { clase: 'badge-gris', label: o.estado };
     const tdEstado = fila.cells[3];
     if (tdEstado) tdEstado.innerHTML = '<span class="badge ' + est.clase + '">' + est.label + '</span>'
-      + (o.fecha_estado ? '<div style="font-size:10px;color:var(--suave);margin-top:3px">' + o.fecha_estado + '</div>' : '');
+      + (o.fecha_estado ? '<div style="font-size:10px;color:var(--suave);margin-top:3px">' + fmtFecha(o.fecha_estado) + '</div>' : '');
   }
   try {
     const [linServ, linRep, tasasActuales] = await Promise.all([
@@ -10387,7 +10405,7 @@ async function verFichaOS(id) {
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:20px;flex-wrap:wrap">'
       + '<div><div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + (o.numero_os || '—') + '</div>'
       + '<span class="badge ' + est.clase + '">' + est.label + '</span>'
-      + (o.fecha_estado ? '<span style="font-size:10px;color:var(--suave);margin-left:8px">desde ' + o.fecha_estado + (o.usuario_estado ? ' · ' + o.usuario_estado : '') + '</span>' : '')
+      + (o.fecha_estado ? '<span style="font-size:10px;color:var(--suave);margin-left:8px">desde ' + fmtFecha(o.fecha_estado) + (o.usuario_estado ? ' · ' + o.usuario_estado : '') + '</span>' : '')
       + '</div>'
       + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL</div>'
       + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">$ ' + fmtUSD(o.total_usd) + '</div>'
@@ -10400,9 +10418,9 @@ async function verFichaOS(id) {
       + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Propietario</div>'
       + '<div>' + (prop ? prop.nombre_completo : '—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Fecha Entrada</div>'
-      + '<div>' + (o.fecha_entrada || '—') + '</div></div>'
+      + '<div>' + (o.fecha_entrada ? fmtFecha(o.fecha_entrada) : '—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Fecha Prometida</div>'
-      + '<div>' + (o.fecha_prometida || '—') + '</div></div>'
+      + '<div>' + (o.fecha_prometida ? fmtFecha(o.fecha_prometida) : '—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Km Entrada</div>'
       + '<div>' + (o.kilometraje_entrada ? o.kilometraje_entrada.toLocaleString() + ' km' : '—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">'
