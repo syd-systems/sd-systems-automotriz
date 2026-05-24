@@ -9435,6 +9435,28 @@ function limpiarBuscarOS() {
   if (sb) sb.value = '';
 }
 
+function limpiarFiltrosOS() {
+  window._osBuscar       = '';
+  window._osFechaDesde   = '';
+  window._osFechaHasta   = '';
+  window._osEstadoFiltro = '';
+  var sb = document.getElementById('os-buscar');      if (sb) sb.value = '';
+  var fd = document.getElementById('os-fecha-desde'); if (fd) fd.value = '';
+  var fh = document.getElementById('os-fecha-hasta'); if (fh) fh.value = '';
+  var fe = document.getElementById('os-filtro-estado'); if (fe) fe.value = '';
+  filtrarTablaOS();
+}
+
+// Limpiar filtros OS con Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    // Solo si el módulo OS está activo
+    if (document.getElementById('os-buscar')) {
+      limpiarFiltrosOS();
+    }
+  }
+});
+
 function buscarOS(valor) {
   // Al buscar por texto, limpiar fechas y estado
   window._osBuscar       = valor;
