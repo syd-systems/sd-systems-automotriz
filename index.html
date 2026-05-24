@@ -9398,15 +9398,15 @@ async function renderOrdenes() {
       + 'value="' + (window._osBuscar || '') + '" '
       + 'oninput="window._osBuscar=this.value;filtrarTablaOS()" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:220px">'
-      + '<span style="font-size:11px;color:var(--suave)">Desde:</span>'
-      + '<input type="date" id="os-fecha-desde" value="' + (window._osFechaDesde || '') + '" '
-      + 'onchange="window._osFechaDesde=this.value;filtrarTablaOS()" '
-      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
-      + '<span style="font-size:11px;color:var(--suave)">Hasta:</span>'
-      + '<input type="date" id="os-fecha-hasta" value="' + (window._osFechaHasta || '') + '" '
-      + 'onchange="window._osFechaHasta=this.value;filtrarTablaOS()" '
-      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
-      + '<select id="os-filtro-estado" onchange="window._osEstadoFiltro=this.value;filtrarTablaOS()" '
+      + '<div style="display:flex;align-items:center;gap:6px;white-space:nowrap">'
+      + '<span style="font-size:11px;color:var(--suave)">Desde</span>'
+      + '<input type="date" id="os-fecha-desde" value="' + (window._osFechaDesde||'') + '" onchange="window._osFechaDesde=this.value;filtrarTablaOS()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:7px 10px;border-radius:5px;outline:none">'
+      + '<span style="font-size:11px;color:var(--suave)">Hasta</span>'
+      + '<input type="date" id="os-fecha-hasta" value="' + (window._osFechaHasta||'') + '" onchange="window._osFechaHasta=this.value;filtrarTablaOS()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:7px 10px;border-radius:5px;outline:none">'
+      + '</div>'
+
+
+
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todos los estados</option>'
       + Object.entries(ESTADOS_OS).map(function(e) {
