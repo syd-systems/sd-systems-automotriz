@@ -4403,12 +4403,19 @@ async function abrirNuevaFactura() {
   let osDisponibles = [], emisoresList = [], tasaActual = 1;
   try {
     const [os, em, ta] = await Promise.all([
-      api('ordenes_servicio','GET',null,'?estado=neq.ANULADA&select=id_orden,numero_os,fecha_entrada,total_usd,total_ves,estado,id_vehiculo,id_propietario,vehiculos(placa,marca,modelo),propietarios(nombre_completo,tipo_doc,numero_doc,tipo_contribuyente,direccion)&order=fecha_entrada.desc'),
+      api('ordenes_servicio','GET',null,'?estado=eq.CERRADA&select=id_orden,numero_os,fecha_entrada,total_usd,total_ves,estado,id_vehiculo,id_propietario,vehiculos(placa,marca,modelo),propietarios(nombre_completo,tipo_doc,numero_doc,tipo_contribuyente,direccion)&order=fecha_entrada.desc'),
       api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*'),
       api('tasas','GET',null,'?order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
-    osDisponibles = os; emisoresList = em;
+    emisoresList = em;
     tasaActual = ta.length ? parseFloat(ta[0].tipo_cambio) : 1;
+
+    // Excluir OS que ya tienen factura
+    try {
+      const facturadas = await api('facturas','GET',null,'?id_orden=not.is.null&select=id_orden');
+      const idsFacturadas = new Set(facturadas.map(function(f){ return f.id_orden; }));
+      osDisponibles = os.filter(function(o){ return !idsFacturadas.has(o.id_orden); });
+    } catch(e) { osDisponibles = os; }
   } catch(e) {}
 
   window._facSubtotalOS = 0;
