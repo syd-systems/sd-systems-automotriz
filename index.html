@@ -9398,7 +9398,7 @@ async function renderOrdenes() {
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end">'
       + '<input type="text" id="os-buscar" placeholder="Buscar N° OS, vehículo, propietario..." '
       + 'value="' + (window._osBuscar || '') + '" '
-      + 'oninput="window._osBuscar=this.value;filtrarTablaOS()" '
+      + 'oninput="buscarOS(this.value)" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:220px">'
       + '<div style="display:flex;align-items:center;gap:6px;white-space:nowrap">'
       + '<span style="font-size:11px;color:var(--suave)">Desde</span>'
@@ -9429,6 +9429,22 @@ async function renderOrdenes() {
 }
 
 // ─── FILTRO EN TIEMPO REAL DE TABLA OS ───
+function buscarOS(valor) {
+  // Al buscar por texto, limpiar fechas y estado
+  window._osBuscar       = valor;
+  window._osFechaDesde   = '';
+  window._osFechaHasta   = '';
+  window._osEstadoFiltro = '';
+  // Limpiar los controles visuales
+  var fd = document.getElementById('os-fecha-desde');
+  var fh = document.getElementById('os-fecha-hasta');
+  var fe = document.getElementById('os-filtro-estado');
+  if (fd) fd.value = '';
+  if (fh) fh.value = '';
+  if (fe) fe.value = '';
+  filtrarTablaOS();
+}
+
 function filtrarTablaOS() {
   const estado  = (window._osEstadoFiltro || '').toUpperCase();
   const buscar  = (window._osBuscar || '').toLowerCase().trim();
