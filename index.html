@@ -6913,8 +6913,14 @@ async function procesarCambioClave() {
     return;
   }
 
+  // Usar correo de sesión activa o del login temporal
+  const correoActivo = (sesionActual && sesionActual.correo_usuario)
+    ? sesionActual.correo_usuario
+    : (window._cambioClaveCorreo || '');
+  if (!correoActivo) { errEl.textContent = 'Error: no se pudo identificar el usuario.'; errEl.style.display = 'block'; return; }
+
   // Verificar que no sea igual a la anterior
-  const yaUsada = await claveYaUsada(sesionActual.correo_usuario, nueva);
+  const yaUsada = await claveYaUsada(correoActivo, nueva);
   if (yaUsada) {
     errEl.textContent = 'La nueva contraseña no puede ser igual a una contraseña anterior.';
     errEl.style.display = 'block';
@@ -6923,12 +6929,6 @@ async function procesarCambioClave() {
 
   try {
     // Actualizar contraseña, fecha y limpiar flag cambio obligatorio
-    // Usar correo de sesión activa o del login temporal
-    const correoActivo = (sesionActual && sesionActual.correo_usuario)
-      ? sesionActual.correo_usuario
-      : (window._cambioClaveCorreo || '');
-    if (!correoActivo) { errEl.textContent = 'Error: no se pudo identificar el usuario.'; errEl.style.display='block'; return; }
-
     const nuevaHash = await hashearClave(nueva);
 
     // Usar fetch directo para no depender de JWT (aún no hay sesión)
@@ -6967,8 +6967,8 @@ async function procesarCambioClave() {
 
     // Actualizar sesión local
     if (sesionActual) sesionActual.contrasena = nueva;
-    sesionActual.fecha_clave = new Date().toISOString().split('T')[0];
-    sessionStorage.setItem('sd_sesion', JSON.stringify({ usuario: sesionActual, accesos: modulosAcceso }));
+    if (sesionActual) sesionActual.fecha_clave = new Date().toISOString().split('T')[0];
+    if (sesionActual) sessionStorage.setItem('sd_sesion', JSON.stringify({ usuario: sesionActual, accesos: modulosAcceso }));
 
     okEl.textContent = '✓ Contraseña actualizada correctamente.';
     okEl.style.display = 'block';
