@@ -4285,7 +4285,6 @@ async function renderFacturas() {
       + Object.entries(ESTADOS_FAC).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('')
       + '</select>'
       + '<input type="text" id="fac-buscar" placeholder="Buscar N° factura, cliente..." oninput="buscarFac(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
-      + '<span style="font-size:11px;color:var(--suave);white-space:nowrap">Tasa: $ 1 = ' + tasaActual.toFixed(2) + ' Bs</span>'
       + (puedo('FACTURAS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevaFactura()">+ Nueva Factura</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container"><table id="fac-tabla"><thead><tr>'
@@ -9426,12 +9425,11 @@ async function renderOrdenes() {
           return '<option value="' + e[0] + '"' + (window._osEstadoFiltro === e[0] ? ' selected' : '') + '>' + e[1].label + '</option>';
         }).join('')
       + '</select>'
-      + '<span style="font-size:11px;color:var(--suave);white-space:nowrap">Tasa: $ 1 = ' + tasaActualOS.toFixed(2) + ' Bs</span>'
-      + (puedo('SERVICIOS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevaOS()">+ Nueva OS</button>' : '')
       + '<input type="text" id="os-buscar" placeholder="Buscar N° OS, vehículo, propietario..." '
       + 'value="' + (window._osBuscar || '') + '" '
       + 'oninput="buscarOS(this.value)" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:220px">'
+      + (puedo('SERVICIOS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevaOS()">+ Nueva OS</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container"><table id="os-tabla"><thead><tr>'
       + '<th>N° OS / Fecha</th><th>Vehículo</th><th>Propietario</th><th>Estado</th><th>Total</th><th>Acciones</th>'
