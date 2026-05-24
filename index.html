@@ -9407,7 +9407,7 @@ async function renderOrdenes() {
 
 
 
-      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
+      + '<select id="os-filtro-estado" onchange="window._osEstadoFiltro=this.value;filtrarTablaOS()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:7px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todos los estados</option>'
       + Object.entries(ESTADOS_OS).map(function(e) {
           return '<option value="' + e[0] + '"' + (window._osEstadoFiltro === e[0] ? ' selected' : '') + '>' + e[1].label + '</option>';
