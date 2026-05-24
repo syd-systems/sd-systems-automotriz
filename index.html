@@ -1803,11 +1803,10 @@ async function iniciarSesion() {
         avisoEl.style.display = 'block';
       }
       document.getElementById('cambio-titulo').textContent = 'CAMBIO DE CONTRASEÑA OBLIGATORIO';
-      document.getElementById('cambio-actual').value  = '';
-      document.getElementById('confirmar-clave').value = '';
-      document.getElementById('nueva-clave').value    = '';
-      document.getElementById('cambio-error').style.display = 'none';
-      document.getElementById('cambio-ok').style.display    = 'none';
+      if (document.getElementById('cambio-nueva'))     document.getElementById('cambio-nueva').value     = '';
+      if (document.getElementById('cambio-confirmar')) document.getElementById('cambio-confirmar').value = '';
+      if (document.getElementById('cambio-error'))     document.getElementById('cambio-error').style.display  = 'none';
+      if (document.getElementById('cambio-exito'))     document.getElementById('cambio-exito').style.display  = 'none';
       // Guardar correo temporalmente para el cambio
       window._cambioClaveCorreo = correo;
       window._cambioClaveActual = clave;
