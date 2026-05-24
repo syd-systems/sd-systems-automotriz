@@ -9334,9 +9334,11 @@ async function renderOrdenes() {
     ordenesCache = ordenes;
     if (tasas.length) tasaActualOS = parseFloat(tasas[0].tipo_cambio);
 
-    // Inicializar filtros si no existen
-    if (window._osFechaDesde === undefined) window._osFechaDesde = '';
-    if (window._osFechaHasta === undefined) window._osFechaHasta = '';
+    // Resetear filtros al cargar el módulo
+    window._osFechaDesde   = '';
+    window._osFechaHasta   = '';
+    window._osEstadoFiltro = '';
+    window._osBuscar       = '';
 
     // Filtros
     const filtroEstado = (window._osEstadoFiltro || '');
@@ -9349,7 +9351,7 @@ async function renderOrdenes() {
       const est = ESTADOS_OS[o.estado] || { clase: 'badge-gris', label: o.estado };
       const veh = o.vehiculos;
       const prop = o.propietarios;
-      return '<tr data-id="' + o.id_orden + '" data-estado="' + o.estado + '" data-fecha="' + (o.fecha_entrada||'') + '">'
+      return '<tr data-id="' + o.id_orden + '" data-estado="' + (o.estado||'') + '" data-fecha="' + (o.fecha_entrada ? o.fecha_entrada.substring(0,10) : '') + '">'
         + '<td><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + (o.numero_os || '—') + '</div>'
         + '<div style="font-size:11px;color:var(--suave)">' + o.fecha_entrada + '</div></td>'
         + '<td>' + (veh ? '<div style="font-weight:500">' + veh.placa + '</div><div style="font-size:11px;color:var(--suave)">' + veh.marca + ' ' + veh.modelo + '</div>' : '—') + '</td>'
@@ -9441,7 +9443,13 @@ function filtrarTablaOS() {
     const o      = ordenesCache.find(function(x) { return x.id_orden === oId; });
     if (!o) { tr.style.display = 'none'; return; }
 
+    const desde = window._osFechaDesde || '';
+    const hasta  = window._osFechaHasta || '';
+    const fechaOS = (o.fecha_entrada || '').substring(0,10);
+
     const matchEstado = !estado || o.estado === estado;
+    const matchDesde  = !desde  || fechaOS >= desde;
+    const matchHasta  = !hasta  || fechaOS <= hasta;
     const hayBusqueda = buscar.length > 0;
     const matchBuscar = !hayBusqueda || [
       o.numero_os || '',
@@ -9449,7 +9457,7 @@ function filtrarTablaOS() {
       (o.propietarios ? o.propietarios.nombre_completo : ''),
     ].some(function(s) { return s.toLowerCase().includes(buscar); });
 
-    const visible = matchEstado && matchBuscar;
+    const visible = matchEstado && matchDesde && matchHasta && matchBuscar;
     tr.style.display = visible ? '' : 'none';
     if (visible) visibles++;
   });
