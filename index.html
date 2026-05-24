@@ -9691,6 +9691,16 @@ function getHoyVzla() {
   return _vzla.toISOString().split('T')[0];
 }
 
+function onCambioEstadoOS(estado) {
+  const cierreCont   = document.getElementById('os-fecha-cierre-cont');
+  const anulaCont    = document.getElementById('os-fecha-anulacion-cont');
+  if (cierreCont)  cierreCont.style.display  = (estado === 'CERRADA')  ? '' : 'none';
+  if (anulaCont)   anulaCont.style.display   = (estado === 'ANULADA')  ? '' : 'none';
+  // Si cambia a otro estado, limpiar fechas
+  if (estado !== 'CERRADA')  { var fc = document.getElementById('os-fecha-cierre');   if (fc) fc.value = ''; }
+  if (estado !== 'ANULADA')  { var fa = document.getElementById('os-fecha-anulacion'); if (fa) fa.value = ''; }
+}
+
 function validarFechaEntradaOS(input) {
   const hoy = getHoyVzla();
   const esAdmin = sesionActual && sesionActual.administrador;
@@ -9793,6 +9803,9 @@ async function abrirNuevaOS() {
   document.getElementById('os-fecha-entrada').value = hoyOS;
   document.getElementById('os-fecha-entrada').max = sesionActual.administrador ? '' : hoyOS;
   document.getElementById('os-fecha-prometida').value = '';
+  document.getElementById('os-fecha-cierre').value    = '';
+  document.getElementById('os-fecha-anulacion').value = '';
+  onCambioEstadoOS('ABIERTA');
   document.getElementById('os-fecha-prometida').min = sesionActual.administrador ? '' : hoyOS;
   document.getElementById('os-estado').value = 'ABIERTA';
   document.getElementById('os-diagnostico').value = '';
@@ -9858,6 +9871,11 @@ async function abrirEditarOS(id) {
   document.getElementById('os-km').value = o.kilometraje_entrada || '';
   document.getElementById('os-fecha-entrada').value = o.fecha_entrada || '';
   document.getElementById('os-fecha-prometida').value = o.fecha_prometida || '';
+  // Cargar fechas cierre/anulación
+  document.getElementById('os-fecha-cierre').value   = o.fecha_cierre    || '';
+  document.getElementById('os-fecha-anulacion').value = o.fecha_anulacion || '';
+  // Mostrar/ocultar según estado
+  onCambioEstadoOS(o.estado || '');
   document.getElementById('os-estado').value = o.estado;
   document.getElementById('os-diagnostico').value = o.diagnostico || '';
   document.getElementById('os-observaciones').value = o.observaciones || '';
@@ -10130,12 +10148,26 @@ async function guardarOS() {
   const km          = parseInt(document.getElementById('os-km').value) || null;
   const fechaEnt    = document.getElementById('os-fecha-entrada').value;
   const fechaProm   = document.getElementById('os-fecha-prometida').value;
-  const estado      = document.getElementById('os-estado').value;
-  const diagnostico = document.getElementById('os-diagnostico').value.trim();
+  const estado        = document.getElementById('os-estado').value;
+  const fechaCierre   = document.getElementById('os-fecha-cierre')?.value   || null;
+  const fechaAnulacion= document.getElementById('os-fecha-anulacion')?.value || null;
+  const diagnostico   = document.getElementById('os-diagnostico').value.trim();
   const obs         = document.getElementById('os-observaciones').value.trim();
   const okEl        = document.getElementById('alerta-os-ok');
   const errEl       = document.getElementById('alerta-os-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  // Validar fechas obligatorias según estado
+  if (estado === 'CERRADA' && !fechaCierre) {
+    errEl.textContent = 'Debe ingresar la Fecha de Cierre para cerrar la OS.';
+    errEl.style.display = 'block';
+    document.getElementById('os-fecha-cierre')?.focus(); return;
+  }
+  if (estado === 'ANULADA' && !fechaAnulacion) {
+    errEl.textContent = 'Debe ingresar la Fecha de Anulación para anular la OS.';
+    errEl.style.display = 'block';
+    document.getElementById('os-fecha-anulacion')?.focus(); return;
+  }
 
   if (!vehId) { errEl.textContent = 'Debe buscar y seleccionar un vehículo.'; errEl.style.display = 'block'; return; }
   if (!fechaEnt) { errEl.textContent = 'La fecha de entrada es obligatoria.'; errEl.style.display = 'block'; return; }
@@ -10163,8 +10195,10 @@ async function guardarOS() {
       id_vehiculo: parseInt(vehId),
       id_propietario: idPropietario,
       kilometraje_entrada: km,
-      fecha_entrada: fechaEnt,
-      fecha_prometida: fechaProm || null,
+      fecha_entrada:   fechaEnt,
+      fecha_prometida: fechaProm    || null,
+      fecha_cierre:    fechaCierre   || null,
+      fecha_anulacion: fechaAnulacion || null,
       estado,
       diagnostico: diagnostico || null,
       observaciones: obs || null,
@@ -11762,7 +11796,7 @@ window.addEventListener('load', async () => {
         </div>
         <div class="form-campo">
           <label>Estado</label>
-          <select id="os-estado">
+           <select id="os-estado" onchange="onCambioEstadoOS(this.value)">
             <option value="ABIERTA">Abierta</option>
             <option value="EN_PROCESO">En Proceso</option>
             <option value="ESPERA_REPUESTO">Espera Repuesto</option>
@@ -11777,6 +11811,14 @@ window.addEventListener('load', async () => {
         <div class="form-campo">
           <label>Fecha Prometida</label>
           <input type="date" id="os-fecha-prometida" onchange="validarFechaPrometidaOS(this)">
+        </div>
+        <div class="form-campo" id="os-fecha-cierre-cont" style="display:none">
+          <label>Fecha de Cierre <span style="color:var(--rojo)">*</span></label>
+          <input type="date" id="os-fecha-cierre">
+        </div>
+        <div class="form-campo" id="os-fecha-anulacion-cont" style="display:none">
+          <label>Fecha de Anulación <span style="color:var(--rojo)">*</span></label>
+          <input type="date" id="os-fecha-anulacion">
         </div>
         <div class="form-campo form-full">
           <label>Diagnóstico</label>
