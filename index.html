@@ -2586,7 +2586,11 @@ async function guardarUsuario() {
     } else {
       // EDITAR USUARIO
       const datos = { nombre, estado_usuario: estado, administrador: esAdmin };
-      if (clave) datos.contrasena = clave;
+      if (clave) {
+        const claveHashEdit = await hashearClave(clave);
+        datos.contrasena    = claveHashEdit;
+        datos.cambiar_clave = false;
+      }
       await api('usuarios', 'PATCH', datos, `?id_usuario=eq.${idEdit}`);
 
       // Actualizar accesos: borrar y reinsertar
