@@ -1689,9 +1689,23 @@ async function verificarSesionActiva() {
   if (!sesionActual) return;
   try {
     const res = await api('usuarios', 'GET', null,
-      `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}&select=sesion_activa,sesion_invalidada,estado_usuario`);
+      `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}&select=sesion_activa,sesion_invalidada,estado_usuario,token_sesion`);
     if (!res || !res.length) return;
     const u = res[0];
+
+    // ── CASO 0: Sesión desplazada — otro dispositivo inició sesión ──
+    if (window._miTokenSesion && u.token_sesion && u.token_sesion !== window._miTokenSesion) {
+      limpiarSesionLocal();
+      const errEl = document.getElementById('login-error');
+      if (errEl) {
+        errEl.textContent = '⚠️ Tu sesión fue cerrada porque iniciaste sesión en otro dispositivo.';
+        errEl.style.display = 'block';
+      }
+      document.getElementById('pantalla-login').style.display = 'flex';
+      document.getElementById('pantalla-app').style.display   = 'none';
+      setTimeout(function() { document.getElementById('login-correo')?.focus(); }, 200);
+      return;
+    }
 
     // ── CASO 1: Usuario desactivado → expulsar ──
     if (u.estado_usuario === 'INACTIVO') {
@@ -1823,11 +1837,13 @@ async function iniciarSesion() {
       return;
     }
 
-    // Invalidar sesiones previas en otros dispositivos
+    // Generar token único para esta sesión e invalidar sesiones previas
+    const miToken = Math.random().toString(36).substr(2) + Date.now().toString(36);
+    window._miTokenSesion = miToken;
     await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correo), {
       method: 'PATCH',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ sesion_activa: true, sesion_invalidada: false, ultimo_acceso: new Date().toISOString(), token_sesion: Math.random().toString(36).substr(2) + Date.now() })
+      body: JSON.stringify({ sesion_activa: true, sesion_invalidada: false, ultimo_acceso: new Date().toISOString(), token_sesion: miToken })
     });
 
     // Obtener accesos del usuario
