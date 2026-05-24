@@ -1194,7 +1194,7 @@
         <div class="form-campo form-full">
           <label>Contraseña</label>
           <div class="campo-pass">
-            <input type="password" id="u-clave" placeholder="Mínimo 8 caracteres" oninput="validarFortalezaUsuario(this.value)" onfocus="document.getElementById('fortaleza-usuario').style.display='block'" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
+            <input type="password" id="u-clave" placeholder="Mínimo 8 caracteres" oninput="validarFortalezaUsuario(this.value);document.getElementById('u-clave-confirmar-cont').style.display=this.value?'block':'none'" onfocus="document.getElementById('fortaleza-usuario').style.display='block'" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
             <button type="button" class="ojo-btn" onclick="togglePass('u-clave',this)" tabindex="-1">👁</button>
           </div>
           <div id="fortaleza-usuario" style="display:none;margin-top:10px">
@@ -1220,6 +1220,13 @@
                 <span id="u-req-especial"      style="font-size:12px;color:#444">Al menos un carácter especial (!@#$%...)</span>
               </div>
             </div>
+          </div>
+        </div>
+        <div class="form-campo form-full" id="u-clave-confirmar-cont" style="display:none">
+          <label>Confirmar Contraseña</label>
+          <div class="campo-pass">
+            <input type="password" id="u-clave-confirmar" placeholder="Repite la contraseña">
+            <button type="button" class="ojo-btn" onclick="togglePass('u-clave-confirmar',this)" tabindex="-1">👁</button>
           </div>
         </div>
         <div class="form-campo">
@@ -2339,6 +2346,8 @@ async function abrirNuevoUsuario() {
   document.getElementById('u-nombre').value = '';
   document.getElementById('u-correo').value = '';
   document.getElementById('u-clave').value = '';
+  document.getElementById('u-clave-confirmar').value = '';
+  document.getElementById('u-clave-confirmar-cont').style.display = 'none';
   document.getElementById('u-estado').value = 'ACTIVO';
   document.getElementById('u-admin').value = 'false';
   document.getElementById('u-id-editando').value = '';
@@ -2401,6 +2410,8 @@ async function abrirEditarUsuario(id) {
   var empCont = document.getElementById('u-emp-selector-cont');
   if (empCont) empCont.style.display = 'none';
   document.getElementById('u-clave').value = '';
+  document.getElementById('u-clave-confirmar').value = '';
+  document.getElementById('u-clave-confirmar-cont').style.display = 'none';
   document.getElementById('u-estado').value = u.estado_usuario;
   document.getElementById('u-admin').value = u.administrador ? 'true' : 'false';
   document.getElementById('u-id-editando').value = id;
@@ -2555,6 +2566,12 @@ async function guardarUsuario() {
   try {
     if (!idEdit) {
       // NUEVO USUARIO
+      const claveConfNuevo = document.getElementById('u-clave-confirmar')?.value || '';
+      if (clave !== claveConfNuevo) {
+        errEl.textContent = 'Las contraseñas no coinciden.';
+        errEl.style.display = 'block';
+        return;
+      }
       const claveHash = await hashearClave(clave);
       await api('usuarios', 'POST', {
         correo_usuario: correo,
@@ -2587,6 +2604,12 @@ async function guardarUsuario() {
       // EDITAR USUARIO
       const datos = { nombre, estado_usuario: estado, administrador: esAdmin };
       if (clave) {
+        const claveConf = document.getElementById('u-clave-confirmar')?.value || '';
+        if (clave !== claveConf) {
+          errEl.textContent = 'Las contraseñas no coinciden.';
+          errEl.style.display = 'block';
+          return;
+        }
         const claveHashEdit = await hashearClave(clave);
         datos.contrasena    = claveHashEdit;
         datos.cambiar_clave = false;
