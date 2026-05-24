@@ -1790,6 +1790,31 @@ async function iniciarSesion() {
     // Obtener JWT de Supabase Auth con credenciales del usuario
     await iniciarJWT(correo, clave);
 
+    // Verificar si debe cambiar contraseña
+    const usuInfo = await api('usuarios', 'GET', null,
+      `?correo_usuario=eq.${encodeURIComponent(correo)}&select=cambiar_clave`);
+    if (usuInfo && usuInfo[0] && usuInfo[0].cambiar_clave) {
+      // Mostrar modal de cambio obligatorio
+      const avisoEl = document.getElementById('cambio-aviso');
+      if (avisoEl) {
+        avisoEl.textContent = '⚠️ Por seguridad debes cambiar tu contraseña antes de continuar.';
+        avisoEl.style.display = 'block';
+      }
+      document.getElementById('cambio-titulo').textContent = 'CAMBIO DE CONTRASEÑA OBLIGATORIO';
+      document.getElementById('cambio-actual').value  = '';
+      document.getElementById('confirmar-clave').value = '';
+      document.getElementById('nueva-clave').value    = '';
+      document.getElementById('cambio-error').style.display = 'none';
+      document.getElementById('cambio-ok').style.display    = 'none';
+      // Guardar correo temporalmente para el cambio
+      window._cambioClaveCorreo = correo;
+      window._cambioClaveActual = clave;
+      document.getElementById('modal-cambio-clave').style.display = 'flex';
+      btn.textContent = 'INGRESAR';
+      btn.disabled = false;
+      return;
+    }
+
     // Obtener accesos del usuario
     const accesos = await api('usuarios_accesos', 'GET', null,
       `?correo_usuario=eq.${encodeURIComponent(correo)}&activo=eq.true&select=acceso_tipo`);
@@ -4769,31 +4794,34 @@ async function hashearClave(clave) {
 // Usa pgcrypto: crypt(clave_ingresada, hash_guardado) == hash_guardado
 async function verificarContrasena(correoUsu, claveIngresada) {
   try {
-    // Consulta que usa crypt() de pgcrypto directamente en Supabase
+    // Usar siempre anon key para login — JWT no disponible aún
+    const headers = {
+      'apikey':        SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type':  'application/json'
+    };
+    // Buscar usuario
     const res = await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' 
       + encodeURIComponent(correoUsu) 
-      + '&select=correo_usuario,contrasena,estado_usuario', {
-      headers: {
-        'apikey':        SUPABASE_KEY,
-        'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
-        'Content-Type':  'application/json'
-      }
-    });
+      + '&select=correo_usuario,contrasena,estado_usuario,nombre,administrador', { headers });
     const data = await res.json();
     if (!data || !data.length) return { ok: false, msg: 'Usuario no encontrado.' };
     const usu = data[0];
     if (usu.estado_usuario === 'INACTIVO') return { ok: false, msg: 'Usuario inactivo.' };
 
-    // Verificar bcrypt: crypt(claveIngresada, hashGuardado) debe ser igual al hash
+    // Verificar bcrypt via RPC
     const resVerif = await fetch(SUPABASE_URL + '/rest/v1/rpc/verificar_clave', {
       method: 'POST',
-      headers: {
-        'apikey':        SUPABASE_KEY,
-        'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
-        'Content-Type':  'application/json'
-      },
+      headers: headers,
       body: JSON.stringify({ p_clave: claveIngresada, p_hash: usu.contrasena })
     });
+    
+    if (!resVerif.ok) {
+      // Fallback: si RPC falla, intentar comparación directa (compatibilidad)
+      console.warn('RPC verificar_clave falló, usando fallback');
+      return { ok: false, msg: 'Error de autenticación. Contacte al administrador.' };
+    }
+    
     const valido = await resVerif.json();
     if (!valido) return { ok: false, msg: 'Contraseña incorrecta.' };
     return { ok: true, usuario: usu };
@@ -6889,18 +6917,38 @@ async function procesarCambioClave() {
   }
 
   try {
-    // Actualizar contraseña y fecha (hasheada)
+    // Actualizar contraseña, fecha y limpiar flag cambio obligatorio
+    // Usar correo de sesión activa o del login temporal
+    const correoActivo = (sesionActual && sesionActual.correo_usuario)
+      ? sesionActual.correo_usuario
+      : (window._cambioClaveCorreo || '');
+    if (!correoActivo) { errEl.textContent = 'Error: no se pudo identificar el usuario.'; errEl.style.display='block'; return; }
+
     const nuevaHash = await hashearClave(nueva);
     await api('usuarios', 'PATCH', {
-      contrasena: nuevaHash,
-      fecha_clave: new Date().toISOString().split('T')[0]
-    }, `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`);
+      contrasena:    nuevaHash,
+      fecha_clave:   new Date().toISOString().split('T')[0],
+      cambiar_clave: false
+    }, `?correo_usuario=eq.${encodeURIComponent(correoActivo)}`);
 
     // Guardar en historial
-    await guardarEnHistorial(sesionActual.correo_usuario, nueva);
+    await guardarEnHistorial(correoActivo, nueva);
+
+    // Si viene del login, completar el acceso al sistema
+    if (!sesionActual && window._cambioClaveCorreo) {
+      okEl.textContent = '✓ Contraseña actualizada. Ingresando al sistema...';
+      okEl.style.display = 'block';
+      setTimeout(async function() {
+        document.getElementById('modal-cambio-clave').style.display = 'none';
+        // Continuar con el login normal
+        document.getElementById('login-clave').value = nueva;
+        await iniciarSesion();
+      }, 1200);
+      return;
+    }
 
     // Actualizar sesión local
-    sesionActual.contrasena = nueva;
+    if (sesionActual) sesionActual.contrasena = nueva;
     sesionActual.fecha_clave = new Date().toISOString().split('T')[0];
     sessionStorage.setItem('sd_sesion', JSON.stringify({ usuario: sesionActual, accesos: modulosAcceso }));
 
