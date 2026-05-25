@@ -4649,6 +4649,92 @@ async function guardarFactura(emitir) {
       datos.numero_factura='FAC-'+anio+'-'+String(seq).padStart(4,'0');
       await api('facturas','POST',datos);
     }
+    // ── Si se emite: crear CxC y asiento contable automáticamente ──
+    if (emitir) {
+      const facGuardada = await api('facturas','GET',null,
+        '?id_propietario=eq.'+(idProp||0)+'&estado=eq.EMITIDA&order=fecha_emision.desc&limit=1&select=*');
+      const fac = facGuardada[0];
+      if (fac) {
+        // 1. Crear registro CxC
+        try {
+          await api('cont_cxc','POST',{
+            tipo:           'FACTURA',
+            id_propietario: idProp,
+            id_factura:     fac.id_factura,
+            numero_doc:     fac.numero_factura,
+            fecha_emision:  fac.fecha_emision,
+            monto_usd:      fac.total_usd,
+            monto_ves:      fac.total_ves || 0,
+            tasa_bcv:       fac.tasa_cambio || 1,
+            saldo_usd:      fac.total_usd,
+            estado:         'PENDIENTE',
+            moneda_cobro:   fac.moneda_cobro || 'USD',
+            id_usuario:     sesionActual.correo_usuario
+          });
+        } catch(eCxc) { console.warn('Error creando CxC:', eCxc); }
+
+        // 2. Crear asiento contable
+        try {
+          const anioAst = new Date().getFullYear();
+          const existAst = await api('cont_asientos','GET',null,
+            '?numero_asiento=like.AST-'+anioAst+'-*&order=numero_asiento.desc&limit=1&select=numero_asiento');
+          let seqAst = 1;
+          if (existAst.length) { const pa = existAst[0].numero_asiento.split('-'); seqAst = parseInt(pa[pa.length-1]) + 1; }
+          const numAst = 'AST-'+anioAst+'-'+String(seqAst).padStart(4,'0');
+          const tasa = fac.tasa_cambio || 1;
+
+          const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo');
+          const idPeriodo = periodos.length ? periodos[0].id_periodo : null;
+
+          const asiento = await api('cont_asientos','POST',{
+            numero_asiento: numAst,
+            fecha:          fac.fecha_emision,
+            descripcion:    'Factura '+fac.numero_factura+' — '+recNom,
+            tipo:           'AUTOMATICO',
+            referencia:     fac.numero_factura,
+            moneda_base:    'USD',
+            tasa_bcv:       tasa,
+            id_periodo:     idPeriodo,
+            estado:         'APROBADO',
+            id_usuario:     sesionActual.correo_usuario
+          });
+
+          if (asiento && asiento[0]) {
+            const idAst = asiento[0].id_asiento;
+            // Buscar cuentas contables
+            const cuentas = await api('cont_cuentas','GET',null,
+              '?codigo=in.(1.1.02.001,4.1.01.001,4.1.02.001,2.1.03.001)&select=id_cuenta,codigo');
+            const cCxC     = cuentas.find(function(c){ return c.codigo==='1.1.02.001'; });
+            const cIngServ = cuentas.find(function(c){ return c.codigo==='4.1.01.001'; });
+            const cIngRep  = cuentas.find(function(c){ return c.codigo==='4.1.02.001'; });
+            const cIVA     = cuentas.find(function(c){ return c.codigo==='2.1.03.001'; });
+
+            // Línea 1: Débito CxC por el total
+            if (cCxC) await api('cont_asiento_lineas','POST',{
+              id_asiento: idAst, id_cuenta: cCxC.id_cuenta, orden: 1,
+              descripcion: 'CxC '+fac.numero_factura,
+              debe_usd: fac.total_usd, haber_usd: 0,
+              debe_ves: fac.total_usd*tasa, haber_ves: 0
+            });
+            // Línea 2: Crédito Ingresos por subtotal
+            if (cIngServ) await api('cont_asiento_lineas','POST',{
+              id_asiento: idAst, id_cuenta: cIngServ.id_cuenta, orden: 2,
+              descripcion: 'Ingreso '+fac.numero_factura,
+              debe_usd: 0, haber_usd: fac.subtotal_usd,
+              debe_ves: 0, haber_ves: fac.subtotal_usd*tasa
+            });
+            // Línea 3: Crédito IVA por pagar
+            if (cIVA && fac.iva_usd > 0) await api('cont_asiento_lineas','POST',{
+              id_asiento: idAst, id_cuenta: cIVA.id_cuenta, orden: 3,
+              descripcion: 'IVA '+fac.numero_factura,
+              debe_usd: 0, haber_usd: fac.iva_usd,
+              debe_ves: 0, haber_ves: fac.iva_usd*tasa
+            });
+          }
+        } catch(eAst) { console.warn('Error creando asiento:', eAst); }
+      }
+    }
+
     okEl.textContent = emitir ? '✓ Factura emitida correctamente.' : '✓ Factura guardada como borrador.';
     okEl.style.display='block';
     setTimeout(function() { cerrarModal('modal-factura'); renderFacturas(); }, 1200);
@@ -4737,7 +4823,23 @@ async function verFichaFactura(id) {
     var btnEditar   = document.getElementById('ficha-fac-btn-editar');
     var btnEmitir   = document.getElementById('ficha-fac-btn-emitir');
     var btnAnular   = document.getElementById('ficha-fac-btn-anular');
+    var btnPago     = document.getElementById('ficha-fac-btn-pago');
     var btnEliminar = document.getElementById('ficha-fac-btn-eliminar');
+    if (btnPago) {
+      btnPago._id = f.id_factura;
+      btnPago.style.display = (f.estado==='EMITIDA'||f.estado==='PARCIAL') ? '' : 'none';
+      btnPago.onclick = function() {
+        // Buscar CxC asociada y abrir modal de pago
+        api('cont_cxc','GET',null,'?id_factura=eq.'+f.id_factura+'&select=*').then(function(cxcs) {
+          if (cxcs && cxcs.length) {
+            contCxcCache = cxcs;
+            contRegistrarPagoCxc(cxcs[0].id_cxc);
+          } else {
+            alert('No se encontró la cuenta por cobrar asociada a esta factura.');
+          }
+        });
+      };
+    }
     if (btnEditar)  { btnEditar._id=f.id_factura;  btnEditar.onclick=function(){cerrarModal('modal-ficha-fac');abrirEditarFactura(this._id);}; btnEditar.style.display=puedo('FACTURAS','EDITAR')&&f.estado==='BORRADOR'?'':'none'; }
     if (btnEmitir)  { btnEmitir._id=f.id_factura;  btnEmitir.onclick=function(){emitirFactura(this._id);};   btnEmitir.style.display=puedo('FACTURAS','CREAR')&&f.estado==='BORRADOR'?'':'none'; }
     if (btnAnular)  { btnAnular._id=f.id_factura;  btnAnular._num=f.numero_factura; btnAnular.onclick=function(){anularFactura(this._id,this._num);}; btnAnular.style.display=puedo('FACTURAS','ANULAR')&&(f.estado==='EMITIDA'||f.estado==='PAGADA')?'':'none'; }
@@ -4789,6 +4891,10 @@ async function anularFactura(id, numero) {
     if (facData && facData[0] && facData[0].id_orden) {
       await api('facturas','PATCH',{id_orden:null},'?id_factura=eq.'+id);
     }
+    // Anular CxC asociada
+    try {
+      await api('cont_cxc','PATCH',{estado:'ANULADA'},'?id_factura=eq.'+id);
+    } catch(eCxc) { console.warn('Error anulando CxC:', eCxc); }
     cerrarModal('modal-ficha-fac');
     renderFacturas();
   }
@@ -6378,8 +6484,65 @@ async function contGuardarPagoCxc() {
     const nuevoEstado = nuevoSaldo <= 0.01 ? 'PAGADA' : 'PARCIAL';
     const nuevoPagado = parseFloat(cxc.pagado_usd||0) + monto;
     await api('cont_cxc','PATCH',{ saldo_usd: nuevoSaldo, pagado_usd: nuevoPagado, estado: nuevoEstado },'?id_cxc=eq.' + idCxc);
+
+    // ── Actualizar estado de la Factura ──
+    if (cxc.id_factura) {
+      await api('facturas','PATCH',{ estado: nuevoEstado },'?id_factura=eq.'+cxc.id_factura);
+    }
+
+    // ── Generar Asiento Contable del Cobro ──
+    try {
+      const anioAst = new Date().getFullYear();
+      const existAst = await api('cont_asientos','GET',null,
+        '?numero_asiento=like.AST-'+anioAst+'-*&order=numero_asiento.desc&limit=1&select=numero_asiento');
+      let seqAst = 1;
+      if (existAst.length) { const pa = existAst[0].numero_asiento.split('-'); seqAst = parseInt(pa[pa.length-1])+1; }
+      const numAst = 'AST-'+anioAst+'-'+String(seqAst).padStart(4,'0');
+      const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo');
+      const idPeriodo = periodos.length ? periodos[0].id_periodo : null;
+
+      const asiento = await api('cont_asientos','POST',{
+        numero_asiento: numAst, fecha,
+        descripcion: 'Cobro ' + (cxc.numero_doc||'') + ' — ' + metodo,
+        tipo: 'AUTOMATICO', referencia: cxc.numero_doc||null,
+        moneda_base: 'USD', tasa_bcv: tasa,
+        id_periodo: idPeriodo, estado: 'APROBADO',
+        id_usuario: sesionActual.correo_usuario
+      });
+
+      if (asiento && asiento[0]) {
+        const idAst = asiento[0].id_asiento;
+        // Buscar cuentas: Banco/Caja según método y CxC Clientes
+        const esBs  = metodo.includes('VES') || metodo === 'PAGO_MOVIL';
+        const codBanco = esBs ? '1.1.01.003' : '1.1.01.004'; // Banco VES o USD
+        const cuentas = await api('cont_cuentas','GET',null,
+          '?codigo=in.('+codBanco+',1.1.01.001,1.1.02.001)&select=id_cuenta,codigo');
+        const cBanco = cuentas.find(function(c){ return c.codigo===codBanco; })
+                    || cuentas.find(function(c){ return c.codigo==='1.1.01.001'; });
+        const cCxC   = cuentas.find(function(c){ return c.codigo==='1.1.02.001'; });
+
+        // Débito: Banco/Caja
+        if (cBanco) await api('cont_asiento_lineas','POST',{
+          id_asiento: idAst, id_cuenta: cBanco.id_cuenta, orden: 1,
+          descripcion: 'Cobro '+metodo, debe_usd: monto, haber_usd: 0,
+          debe_ves: monto*tasa, haber_ves: 0
+        });
+        // Crédito: CxC Clientes
+        if (cCxC) await api('cont_asiento_lineas','POST',{
+          id_asiento: idAst, id_cuenta: cCxC.id_cuenta, orden: 2,
+          descripcion: 'Cancelación CxC', debe_usd: 0, haber_usd: monto,
+          debe_ves: 0, haber_ves: monto*tasa
+        });
+      }
+    } catch(eAst) { console.warn('Error asiento cobro:', eAst); }
+
     okEl.textContent='✓ Pago registrado correctamente.'; okEl.style.display='block';
-    setTimeout(function(){ cerrarModal('modal-cont-pago-cxc'); contRenderCxc(); }, 900);
+    setTimeout(function(){
+      cerrarModal('modal-cont-pago-cxc');
+      // Refrescar según módulo activo
+      if (document.getElementById('fac-tbody')) renderFacturas();
+      else contRenderCxc();
+    }, 900);
   } catch(e) { errEl.textContent='Error: ' + e.message; errEl.style.display='block'; }
 }
 
@@ -12439,6 +12602,7 @@ window.addEventListener('load', async () => {
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-fac')">Cerrar</button>
       <button class="btn-secundario" id="ficha-fac-btn-editar"  style="display:none">Editar</button>
       <button class="btn-primario"   id="ficha-fac-btn-emitir"  style="display:none">✓ Emitir</button>
+      <button class="btn-primario"   id="ficha-fac-btn-pago"    style="display:none">💰 Registrar Pago</button>
       <button class="btn-peligro"    id="ficha-fac-btn-anular"  style="display:none">Anular</button>
       <button class="btn-peligro"    id="ficha-fac-btn-eliminar" style="display:none">Eliminar</button>
     </div>
