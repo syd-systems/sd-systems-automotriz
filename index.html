@@ -6821,9 +6821,9 @@ function renderTablaTributos(filtro) {
     + tributosAlerta()
     + '<div class="tabla-container"><table><thead><tr>'
     + '<th>Código</th><th>Nombre</th><th>Nivel</th><th>Tipo</th>'
-    + '<th style="font-size:9px;font-weight:700;letter-spacing:1px">ORGANISMO</th>'
+    + '<th style="font-size:8px;font-weight:700;letter-spacing:0px">ORGANISMO</th>'
     + '<th style="text-align:right">Alícuota %</th>'
-    + '<th style="font-size:9px;font-weight:700;letter-spacing:1px">PERIODICIDAD</th>'
+    + '<th style="font-size:8px;font-weight:700;letter-spacing:0px">PERIODICIDAD</th>'
     + '<th>Última Revisión</th><th>Estado</th><th>Acciones</th>'
     + '</tr></thead><tbody>'
     + (items.length ? items.map(function(t) {
@@ -6837,9 +6837,9 @@ function renderTablaTributos(filtro) {
           + '</td>'
           + '<td><span class="badge ' + (nivColores[t.nivel_gobierno]||'badge-gris') + '" style="font-size:10px">' + t.nivel_gobierno + '</span></td>'
           + '<td><span class="badge ' + (tipColores[t.tipo]||'badge-gris') + '" style="font-size:10px">' + t.tipo + '</span></td>'
-          + '<td style="font-size:9px;font-weight:700;letter-spacing:1px">' + t.organismo + '</td>'
+          + '<td style="font-size:8px;font-weight:600">' + t.organismo + '</td>'
           + '<td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">' + alicuotaStr + '</td>'
-          + '<td style="font-size:9px;font-weight:700;letter-spacing:1px">' + (t.periodicidad||'—') + '</td>'
+          + '<td style="font-size:8px;font-weight:600">' + (t.periodicidad||'—') + '</td>'
           + '<td style="font-size:11px">'
           + (function(fecha) {
               if (!fecha) return '<span style="color:#fc8181">Sin revisar</span>';
