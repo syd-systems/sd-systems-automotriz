@@ -3343,7 +3343,7 @@ async function mostrarTablaParam(key) {
       + '<div style="font-family:var(--font-display);font-size:20px;letter-spacing:1px">' + def.icono + ' ' + def.nombre + ' <span style="font-size:14px;color:var(--suave)">(' + items.length + ')</span></div>'
       + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-primario" onclick="abrirParamItem(\'' + key + '\',null)" style="font-size:12px">+ Nuevo</button>' : '')
       + '</div>'
-      + '<div class="tabla-container"><table><thead><tr>' + thead + '</tr></thead><tbody>'
+      + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>' + thead + '</tr></thead><tbody>'
       + (filas || '<tr><td colspan="' + colspan + '" style="text-align:center;padding:32px;color:var(--suave)">Sin registros</td></tr>')
       + '</tbody></table></div>';
 
@@ -5483,7 +5483,7 @@ async function renderProveedores() {
       + '<input type="text" id="prov-buscar" placeholder="Buscar nombre o RIF..." oninput="filtrarTablaProveedores()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
       + (puedo('PROVEEDORES','CREAR') ? '<button class="btn-primario" onclick="abrirProveedor(null)">+ Nuevo Proveedor</button>' : '')
       + '</div></div>'
-      + '<div class="tabla-container"><table><thead><tr>'
+      + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
       + '<th>Nombre / RIF</th><th>Tipo</th><th>Teléfono</th><th>Correo</th><th>Moneda / Crédito</th><th>Estado</th><th>Acciones</th>'
       + '</tr></thead><tbody id="prov-tbody">'
       + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">No hay proveedores registrados</td></tr>')
@@ -5788,7 +5788,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
       + '</select>'
       + (puedo('CONTABILIDAD','CREAR') ? '<button class="btn-primario" onclick="contAbrirAsiento(null)">+ Nuevo Asiento</button>' : '')
       + '</div></div>'
-      + '<div class="tabla-container"><table><thead><tr>'
+      + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
       + '<th>N° Asiento</th><th>Fecha</th><th>Descripción</th><th>Período</th><th>Moneda</th><th>Estado</th><th>Acciones</th>'
       + '</tr></thead><tbody>'
       + (asientos.length ? asientos.map(function(a) {
@@ -6112,7 +6112,7 @@ async function contCargarMayor() {
       + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + (cuenta ? cuenta.codigo + ' — ' + cuenta.nombre : '') + '</div>'
       + '<div style="font-size:11px;color:var(--suave);margin-top:4px">Naturaleza: ' + (cuenta ? cuenta.naturaleza : '') + ' · Tipo: ' + (cuenta ? cuenta.tipo : '') + '</div>'
       + '</div>'
-      + '<div class="tabla-container"><table><thead><tr>'
+      + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
       + '<th>Fecha</th><th>Asiento</th><th>Descripción</th>'
       + '<th style="text-align:right">Debe USD</th><th style="text-align:right">Haber USD</th><th style="text-align:right">Saldo USD</th>'
       + '</tr></thead><tbody>'
@@ -6252,7 +6252,7 @@ async function contRenderCxc() {
       + '<div style="font-size:12px;color:var(--suave);margin-top:4px">Saldo pendiente total: <span style="color:var(--naranja);font-family:var(--font-mono);font-weight:700">$ ' + fmtUSD(totPend) + '</span></div></div>'
       + '<button class="btn-primario" onclick="contAbrirCxc(null)">+ Nueva CxC</button>'
       + '</div>'
-      + '<div class="tabla-container"><table><thead><tr>'
+      + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
       + '<th>Cliente</th><th>Documento</th><th>Emisión</th><th>Vencimiento</th><th>Monto USD</th><th>Saldo USD</th><th>Estado</th><th>Acciones</th>'
       + '</tr></thead><tbody>'
       + (cxcs.length ? cxcs.map(function(c) {
@@ -6372,7 +6372,7 @@ async function contRenderCxp() {
       + '<div style="font-size:12px;color:var(--suave);margin-top:4px">Saldo pendiente total: <span style="color:#fc8181;font-family:var(--font-mono);font-weight:700">$ ' + fmtUSD(totPend) + '</span></div></div>'
       + '<button class="btn-primario" onclick="contAbrirCxp(null)">+ Nueva CxP</button>'
       + '</div>'
-      + '<div class="tabla-container"><table><thead><tr>'
+      + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
       + '<th>Proveedor</th><th>Documento</th><th>Emisión</th><th>Vencimiento</th><th>Monto USD</th><th>Saldo USD</th><th>Estado</th><th>Acciones</th>'
       + '</tr></thead><tbody>'
       + (cxps.length ? cxps.map(function(c) {
@@ -6541,7 +6541,7 @@ async function contIniciarConciliacion() {
     + '<input type="number" id="cont-conc-saldo-banco" placeholder="0.00" step="0.01" style="width:100%;background:var(--gris3);border:1px solid var(--naranja);color:var(--naranja);font-family:var(--font-display);font-size:22px;padding:8px 12px;border-radius:5px;outline:none;font-weight:700" onchange="contActualizarDiferencia(' + saldoLibros + ')">'
     + '<div id="cont-conc-dif" style="margin-top:6px;font-size:12px;color:var(--suave)">Diferencia: —</div>'
     + '</div></div>'
-    + '<div class="tabla-container"><table><thead><tr>'
+    + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
     + '<th>Fecha</th><th>Asiento</th><th>Descripción</th><th style="text-align:right">Debe</th><th style="text-align:right">Haber</th><th style="text-align:right">Saldo Acum.</th>'
     + '</tr></thead><tbody>'
     + (filas.length ? filas.join('') : '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--suave)">Sin movimientos en este período.</td></tr>')
@@ -6701,7 +6701,7 @@ async function contRenderPeriodos() {
     + '<h3 style="margin:0">Períodos Contables</h3>'
     + '<button class="btn-primario" onclick="contAbrirPeriodo(null)">+ Nuevo Período</button>'
     + '</div>'
-    + '<div class="tabla-container"><table><thead><tr>'
+    + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
     + '<th>Período</th><th>Fecha Inicio</th><th>Fecha Fin</th><th>Estado</th><th>Acciones</th>'
     + '</tr></thead><tbody>'
     + contPeriodosCache.map(function(p) {
@@ -6820,12 +6820,15 @@ function renderTablaTributos(filtro) {
     + '<button class="btn-primario" onclick="abrirFormTributo(null)" style="font-size:12px">+ Nuevo Tributo</button>'
     + '</div></div>'
     + tributosAlerta()
-    + '<div class="tabla-container"><table><thead><tr>'
-    + '<th>Código</th><th>Nombre</th><th>Nivel</th><th>Tipo</th>'
-    + '<th>Org.</th>'
-    + '<th style="text-align:right">Alícuota %</th>'
-    + '<th>Periodo</th>'
-    + '<th>Última Revisión</th><th>Estado</th><th>Acciones</th>'
+    + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
+    + '<th style="width:90px">Código</th>'
+    + '<th>Nombre / Organismo</th>'
+    + '<th style="width:80px">Nivel</th>'
+    + '<th style="width:70px">Tipo</th>'
+    + '<th style="width:80px;text-align:right">Alícuota</th>'
+    + '<th style="width:80px">Revisión</th>'
+    + '<th style="width:70px">Estado</th>'
+    + '<th style="width:60px">Acc.</th>'
     + '</tr></thead><tbody>'
     + (items.length ? items.map(function(t) {
         const alicuotaStr = t.alicuota_min && t.alicuota_max && t.alicuota_min !== t.alicuota_max
@@ -6834,13 +6837,12 @@ function renderTablaTributos(filtro) {
         return '<tr>'
           + '<td style="font-family:var(--font-mono);font-size:13px!important;font-weight:600;color:var(--naranja)">' + t.codigo + '</td>'
           + '<td><div style="font-weight:600;font-size:13px">' + t.nombre + '</div>'
+          + '<div style="font-size:10px;color:var(--suave)">' + t.organismo + ' · ' + (t.periodicidad||'') + '</div>'
           + (t.base_legal ? '<div style="font-size:9px;color:var(--suave)">' + t.base_legal + '</div>' : '')
           + '</td>'
           + '<td><span class="badge ' + (nivColores[t.nivel_gobierno]||'badge-gris') + '" style="font-size:10px">' + t.nivel_gobierno + '</span></td>'
           + '<td><span class="badge ' + (tipColores[t.tipo]||'badge-gris') + '" style="font-size:10px">' + t.tipo + '</span></td>'
-          + '<td style="font-size:13px!important;font-weight:600">' + t.organismo + '</td>'
           + '<td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">' + alicuotaStr + '</td>'
-          + '<td style="font-size:13px!important;font-weight:600">' + (t.periodicidad||'—') + '</td>'
           + '<td style="font-size:13px!important">'
           + (function(fecha) {
               if (!fecha) return '<span style="color:#fc8181">Sin revisar</span>';
@@ -9246,7 +9248,7 @@ function invRenderReorden(items, cont) {
   cont.innerHTML = '<div style="padding:8px 14px;background:rgba(255,107,0,0.08);border-left:3px solid var(--naranja);border-radius:4px;margin-bottom:10px;font-size:11px;color:var(--suave)">'
     + '<b style="color:var(--naranja)">Punto de Reorden = (Demanda Diaria × Lead Time) + Stock de Seguridad.</b> '
     + 'JIT: Pedir solo lo necesario al alcanzar el punto de reorden. Configura Demanda Anual y Lead Time en cada repuesto.</div>'
-    + '<div class="tabla-container"><table><thead><tr>'
+    + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
     + '<th>Artículo</th><th style="text-align:center">Stock</th><th style="text-align:center">Mínimo</th><th style="text-align:center">Dem./Día</th><th style="text-align:center">Lead Time</th><th style="text-align:center">Punto Reorden</th><th style="text-align:center">Estado</th>'
     + '</tr></thead><tbody>'
     + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos</td></tr>')
@@ -9273,7 +9275,7 @@ function invRenderEOQ(items, cont) {
   cont.innerHTML = '<div style="padding:8px 14px;background:var(--gris2);border-radius:6px;margin-bottom:10px;font-size:11px;color:var(--suave)">'
     + '<b style="color:var(--naranja)">EOQ = √(2 × D × S / H)</b> donde D = demanda anual, S = costos operativos ($25 default), H = costo de mantenimiento (20% del precio costo). '
     + 'Configura <b>Demanda Anual</b> y <b>Costos Operativos</b> en la edición de cada artículo.</div>'
-    + '<div class="tabla-container"><table><thead><tr>'
+    + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
     + '<th>Artículo</th><th style="text-align:center">Demanda Anual</th><th style="text-align:center">Costos Operativos</th><th style="text-align:center">Costo Mant.</th><th style="text-align:center">EOQ Óptimo</th><th style="text-align:center">Pedidos/Año</th><th style="text-align:center">Frecuencia</th>'
     + '</tr></thead><tbody>'
     + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos</td></tr>')
