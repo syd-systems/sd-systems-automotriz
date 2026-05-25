@@ -6788,13 +6788,16 @@ function renderTablaTributos(filtro) {
   const cont = document.getElementById('param-tabla-cont');
   if (!cont) return;
 
+  window._tributosTextoFiltro = filtro || '';
+  const nivel = window._tributosNivelFiltro || '';
+  let base = nivel ? _tributosCache.filter(function(t){ return t.nivel_gobierno === nivel; }) : _tributosCache;
   const items = filtro
-    ? _tributosCache.filter(function(t) {
+    ? base.filter(function(t) {
         return t.nombre.toLowerCase().includes(filtro.toLowerCase())
             || t.codigo.toLowerCase().includes(filtro.toLowerCase())
             || t.organismo.toLowerCase().includes(filtro.toLowerCase());
       })
-    : _tributosCache;
+    : base;
 
   const nivColores = { NACIONAL:'badge-naranja', ESTADAL:'badge-azul', MUNICIPAL:'badge-verde' };
   const tipColores = { DEBITO:'badge-rojo', RETENCION:'badge-naranja', CONTRIBUCION:'badge-verde', TIMBRE:'badge-gris' };
@@ -6869,41 +6872,11 @@ function tributosAlerta() {
 }
 
 function renderTablaTributosNivel(nivel) {
-  const items = nivel ? _tributosCache.filter(function(t){ return t.nivel_gobierno === nivel; }) : _tributosCache;
-  const cont = document.getElementById('param-tabla-cont');
-  // Re-render con filtro de nivel
-  const inputBuscar = cont?.querySelector('input[type=text]');
-  const filtroTexto = inputBuscar?.value || '';
-  const filtrados = filtroTexto
-    ? items.filter(function(t) { return t.nombre.toLowerCase().includes(filtroTexto.toLowerCase()) || t.codigo.toLowerCase().includes(filtroTexto.toLowerCase()); })
-    : items;
-  // Actualizar solo el tbody
-  const tbody = cont?.querySelector('tbody');
-  if (!tbody) return;
-  const nivColores = { NACIONAL:'badge-naranja', ESTADAL:'badge-azul', MUNICIPAL:'badge-verde' };
-  const tipColores = { DEBITO:'badge-rojo', RETENCION:'badge-naranja', CONTRIBUCION:'badge-verde', TIMBRE:'badge-gris' };
-  tbody.innerHTML = filtrados.map(function(t) {
-    const alicuotaStr = t.alicuota_min && t.alicuota_max && t.alicuota_min !== t.alicuota_max
-      ? t.alicuota_min + '% — ' + t.alicuota_max + '%'
-      : (parseFloat(t.alicuota) > 0 ? parseFloat(t.alicuota).toFixed(2) + '%' : 'Variable');
-    return '<tr>'
-      + '<td style="font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--naranja)">' + t.codigo + '</td>'
-      + '<td><div style="font-weight:600;font-size:13px">' + t.nombre + '</div>'
-      + (t.descripcion ? '<div style="font-size:10px;color:var(--suave)">' + t.descripcion + '</div>' : '') + '</td>'
-      + '<td><span class="badge ' + (nivColores[t.nivel_gobierno]||'badge-gris') + '" style="font-size:10px">' + t.nivel_gobierno + '</span></td>'
-      + '<td><span class="badge ' + (tipColores[t.tipo]||'badge-gris') + '" style="font-size:10px">' + t.tipo + '</span></td>'
-      + '<td style="font-size:12px">' + t.organismo + '</td>'
-      + '<td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">' + alicuotaStr + '</td>'
-      + '<td style="font-size:11px;color:var(--suave)">' + (t.base_legal||'—') + '</td>'
-      + '<td style="font-size:11px">' + (t.periodicidad||'—') + '</td>'
-      + '<td><span class="badge ' + (t.estado==='ACTIVO'?'badge-verde':'badge-gris') + '" style="font-size:10px">' + (t.estado||'ACTIVO') + '</span></td>'
-      + '<td><div style="display:flex;gap:4px">'
-      + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="abrirFormTributo(' + t.id_tributo + ')">✏</button>'
-          + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="toggleEstadoTributo(' + t.id_tributo + ',\'' + t.estado + '\')">' + (t.estado==='ACTIVO' ? '⛔ Desact.' : '✓ Activar') + '</button>'
-      + (t.estado==='ACTIVO' ? 'Desactivar' : 'Activar') + '</button>'
-      + '</div></td></tr>';
-  }).join('') || '<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--suave)">Sin resultados</td></tr>';
+  window._tributosNivelFiltro = nivel;
+  renderTablaTributos(window._tributosTextoFiltro || '');
 }
+
+
 
 async function toggleEstadoTributo(id, estadoActual) {
   const nuevoEstado = estadoActual === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
