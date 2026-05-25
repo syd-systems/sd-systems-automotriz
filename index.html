@@ -6812,12 +6812,14 @@ function renderTablaTributos(filtro) {
     + '<option value="ESTADAL">Estadal</option>'
     + '<option value="MUNICIPAL">Municipal</option>'
     + '</select>'
+    + '<button class="btn-secundario" onclick="mostrarTablaParamTributos()" style="font-size:12px">🔄 Actualizar</button>'
     + '<button class="btn-primario" onclick="abrirFormTributo(null)" style="font-size:12px">+ Nuevo Tributo</button>'
     + '</div></div>'
+    + tributosAlerta()
     + '<div class="tabla-container"><table><thead><tr>'
     + '<th>Código</th><th>Nombre</th><th>Nivel</th><th>Tipo</th><th>Organismo</th>'
     + '<th style="text-align:right">Alícuota %</th><th>Base Legal</th><th>Periodicidad</th>'
-    + '<th>Estado</th><th>Acciones</th>'
+    + '<th>Última Revisión</th><th>Estado</th><th>Acciones</th>'
     + '</tr></thead><tbody>'
     + (items.length ? items.map(function(t) {
         const alicuotaStr = t.alicuota_min && t.alicuota_max && t.alicuota_min !== t.alicuota_max
@@ -6834,6 +6836,14 @@ function renderTablaTributos(filtro) {
           + '<td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">' + alicuotaStr + '</td>'
           + '<td style="font-size:11px;color:var(--suave)">' + (t.base_legal||'—') + '</td>'
           + '<td style="font-size:11px">' + (t.periodicidad||'—') + '</td>'
+          + '<td style="font-size:11px">'
+          + (function(fecha) {
+              if (!fecha) return '<span style="color:#fc8181">Sin revisar</span>';
+              const diff = (new Date() - new Date(fecha)) / (1000*60*60*24);
+              const color = diff > 180 ? '#fc8181' : diff > 90 ? '#F48C06' : '#22c55e';
+              return '<span style="color:' + color + '">' + fmtFecha(fecha) + '</span>';
+            })(t.fecha_revision)
+          + '</td>'
           + '<td><span class="badge ' + (t.estado==='ACTIVO'?'badge-verde':'badge-gris') + '" style="font-size:10px">' + (t.estado||'ACTIVO') + '</span></td>'
           + '<td><div style="display:flex;gap:4px">'
           + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="abrirFormTributo(' + t.id_tributo + ')">✏</button>'
@@ -6843,6 +6853,19 @@ function renderTablaTributos(filtro) {
       }).join('')
     : '<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--suave)">Sin tributos registrados</td></tr>')
     + '</tbody></table></div>';
+}
+
+function tributosAlerta() {
+  const hoy = new Date();
+  const viejos = _tributosCache.filter(function(t) {
+    if (!t.fecha_revision) return true;
+    return (hoy - new Date(t.fecha_revision)) / (1000*60*60*24) > 180;
+  });
+  if (!viejos.length) return '';
+  return '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.3);border-radius:6px;padding:10px 16px;margin-bottom:12px;font-size:12px;display:flex;align-items:center;gap:10px">'
+    + '<span style="font-size:18px">⚠️</span>'
+    + '<div><strong>' + viejos.length + ' tributo(s)</strong> con más de 6 meses sin revisar. '
+    + 'Verifique en la <strong>Gaceta Oficial</strong> si hay cambios en alícuotas.</div></div>';
 }
 
 function renderTablaTributosNivel(nivel) {
@@ -6943,7 +6966,9 @@ async function guardarTributo() {
     const datos = { codigo, nombre, descripcion: descripcion||null, nivel_gobierno: nivel, tipo,
       organismo, alicuota, alicuota_min: alicuotaMin, alicuota_max: alicuotaMax,
       base_legal: baseLegal||null, periodicidad, es_retencion: esRet,
-      porcentaje_retencion: porcRet, aplica_servicios: apServ, aplica_bienes: apBien };
+      porcentaje_retencion: porcRet, aplica_servicios: apServ, aplica_bienes: apBien,
+      fecha_revision: new Date().toISOString().split('T')[0],
+      revisado_por: sesionActual?.correo_usuario || '' };
     if (id) { await api('param_tributos','PATCH',datos,'?id_tributo=eq.'+id); }
     else    { await api('param_tributos','POST',datos); }
     okEl.textContent = '✓ Tributo guardado correctamente.';
