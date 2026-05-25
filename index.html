@@ -6837,9 +6837,9 @@ function renderTablaTributos(filtro) {
           + '</td>'
           + '<td><span class="badge ' + (nivColores[t.nivel_gobierno]||'badge-gris') + '" style="font-size:10px">' + t.nivel_gobierno + '</span></td>'
           + '<td><span class="badge ' + (tipColores[t.tipo]||'badge-gris') + '" style="font-size:10px">' + t.tipo + '</span></td>'
-          + '<td style="font-size:9px;color:var(--suave)">' + t.organismo + '</td>'
+          + '<td style="font-size:9px;font-weight:700;letter-spacing:1px">' + t.organismo + '</td>'
           + '<td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">' + alicuotaStr + '</td>'
-          + '<td style="font-size:9px;color:var(--suave)">' + (t.periodicidad||'—') + '</td>'
+          + '<td style="font-size:9px;font-weight:700;letter-spacing:1px">' + (t.periodicidad||'—') + '</td>'
           + '<td style="font-size:11px">'
           + (function(fecha) {
               if (!fecha) return '<span style="color:#fc8181">Sin revisar</span>';
