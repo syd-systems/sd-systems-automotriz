@@ -4310,6 +4310,14 @@ async function renderFacturas() {
   window._facFechaDesde   = '';
   window._facFechaHasta   = '';
   window._facEstadoFiltro = '';
+  // Cargar alícuotas de tributos
+  try {
+    const tributos = await api('param_tributos','GET',null,'?estado=eq.ACTIVO&select=codigo,alicuota');
+    const ivaT  = tributos.find(function(t){ return t.codigo === 'IVA-GEN'; });
+    const igtfT = tributos.find(function(t){ return t.codigo === 'IGTF-3'; });
+    window._facAlicuotaIVA  = ivaT  ? parseFloat(ivaT.alicuota)  : 16;
+    window._facAlicuotaIGTF = igtfT ? parseFloat(igtfT.alicuota) : 3;
+  } catch(e) { window._facAlicuotaIVA = 16; window._facAlicuotaIGTF = 3; }
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando facturas...</div>';
   try {
     const [facturas, tasas] = await Promise.all([
@@ -4402,6 +4410,16 @@ function filtrarTablaFacturas() {
 
 async function abrirNuevaFactura() {
   if (!puedo('FACTURAS','CREAR')) { alert('No tiene permiso para crear facturas.'); return; }
+  // Cargar alícuotas desde tributos si no están en cache
+  if (!window._facAlicuotaIVA) {
+    try {
+      const tributos = await api('param_tributos','GET',null,'?estado=eq.ACTIVO&select=codigo,alicuota');
+      const ivaT  = tributos.find(function(t){ return t.codigo === 'IVA-GEN'; });
+      const igtfT = tributos.find(function(t){ return t.codigo === 'IGTF-3'; });
+      window._facAlicuotaIVA  = ivaT  ? parseFloat(ivaT.alicuota)  : 16;
+      window._facAlicuotaIGTF = igtfT ? parseFloat(igtfT.alicuota) : 3;
+    } catch(e) { window._facAlicuotaIVA = 16; window._facAlicuotaIGTF = 3; }
+  }
   let osDisponibles = [], emisoresList = [], tasaActual = 1;
   try {
     const [os, em, ta] = await Promise.all([
@@ -4763,7 +4781,17 @@ async function emitirFactura(id) {
 
 async function anularFactura(id, numero) {
   if (!confirm('¿Anular la factura '+numero+'? Esta acción no se puede deshacer.')) return;
-  try { await api('facturas','PATCH',{estado:'ANULADA'},'?id_factura=eq.'+id); cerrarModal('modal-ficha-fac'); renderFacturas(); }
+  try {
+    // Obtener la OS asociada antes de anular
+    const facData = await api('facturas','GET',null,'?id_factura=eq.'+id+'&select=id_orden');
+    await api('facturas','PATCH',{estado:'ANULADA'},'?id_factura=eq.'+id);
+    // Liberar la OS para que pueda usarse en otra factura
+    if (facData && facData[0] && facData[0].id_orden) {
+      await api('facturas','PATCH',{id_orden:null},'?id_factura=eq.'+id);
+    }
+    cerrarModal('modal-ficha-fac');
+    renderFacturas();
+  }
   catch(err) { alert('Error: '+err.message); }
 }
 
@@ -12358,11 +12386,11 @@ window.addEventListener('load', async () => {
           </div>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
             <input type="checkbox" id="fac-aplica-iva" onchange="calcularTotalesFactura()" style="accent-color:var(--naranja);width:16px;height:16px">
-            IVA (16%)
+            <span id="fac-iva-label">IVA (16%)</span>
           </label>
           <label id="fac-igtf-cont" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
             <input type="checkbox" id="fac-aplica-igtf" onchange="calcularTotalesFactura()" style="accent-color:var(--naranja);width:16px;height:16px">
-            IGTF (3%)
+            <span id="fac-igtf-label">IGTF (3%)</span>
           </label>
         </div>
         <!-- Tasa solo visible cuando moneda = VES -->
