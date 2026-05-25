@@ -6821,14 +6821,14 @@ function renderTablaTributos(filtro) {
     + '</div></div>'
     + tributosAlerta()
     + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
-    + '<th style="width:90px">Código</th>'
-    + '<th>Nombre / Organismo</th>'
-    + '<th style="width:80px">Nivel</th>'
-    + '<th style="width:70px">Tipo</th>'
-    + '<th style="width:80px;text-align:right">Alícuota</th>'
-    + '<th style="width:80px">Revisión</th>'
-    + '<th style="width:70px">Estado</th>'
-    + '<th style="width:60px">Acc.</th>'
+    + '<th style="width:10%">Código</th>'
+    + '<th style="width:22%">Nombre</th>'
+    + '<th style="width:10%">Nivel</th>'
+    + '<th style="width:10%">Tipo</th>'
+    + '<th style="width:12%;text-align:right">Alícuota %</th>'
+    + '<th style="width:14%">Última Revisión</th>'
+    + '<th style="width:12%">Estado</th>'
+    + '<th style="width:10%">Acciones</th>'
     + '</tr></thead><tbody>'
     + (items.length ? items.map(function(t) {
         const alicuotaStr = t.alicuota_min && t.alicuota_max && t.alicuota_min !== t.alicuota_max
