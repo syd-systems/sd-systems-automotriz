@@ -6851,7 +6851,7 @@ function renderTablaTributos(filtro) {
           + '</td>'
           + '<td><span class="badge ' + (t.estado==='ACTIVO'?'badge-verde':'badge-gris') + '" style="font-size:10px">' + (t.estado||'ACTIVO') + '</span></td>'
           + '<td><div style="display:flex;gap:4px">'
-          + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="abrirFormTributo(' + t.id_tributo + ')">✏</button>'
+          + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="abrirFormTributo(' + t.id_tributo + ')">Ficha</button>'
           + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="toggleEstadoTributo(' + t.id_tributo + ',\'' + t.estado + '\')">' + (t.estado==='ACTIVO' ? '⛔ Desact.' : '✓ Activar') + '</button>'
           + '</div></td></tr>';
       }).join('')
@@ -6906,6 +6906,7 @@ async function abrirFormTributo(id) {
   document.getElementById('trib-porc-ret').value    = t ? parseFloat(t.porcentaje_retencion||0).toFixed(2) : '0.00';
   document.getElementById('trib-aplica-serv').checked = t ? t.aplica_servicios : true;
   document.getElementById('trib-aplica-bien').checked = t ? t.aplica_bienes    : true;
+  document.getElementById('trib-estado').value         = t ? (t.estado||'ACTIVO') : 'ACTIVO';
   document.getElementById('alerta-trib-ok').style.display  = 'none';
   document.getElementById('alerta-trib-err').style.display = 'none';
   abrirModal('modal-tributo');
@@ -6941,6 +6942,7 @@ async function guardarTributo() {
       organismo, alicuota, alicuota_min: alicuotaMin, alicuota_max: alicuotaMax,
       base_legal: baseLegal||null, periodicidad, es_retencion: esRet,
       porcentaje_retencion: porcRet, aplica_servicios: apServ, aplica_bienes: apBien,
+      estado: document.getElementById('trib-estado').value,
       fecha_revision: new Date().toISOString().split('T')[0],
       revisado_por: sesionActual?.correo_usuario || '' };
     if (id) { await api('param_tributos','PATCH',datos,'?id_tributo=eq.'+id); }
@@ -11755,6 +11757,15 @@ window.addEventListener('load', async () => {
         <div class="form-campo">
           <label>% de Retención</label>
           <input type="number" id="trib-porc-ret" step="0.01" min="0" max="100" placeholder="0.00" style="font-family:var(--font-mono)">
+        </div>
+      </div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;margin-top:8px">
+        <div class="form-campo">
+          <label>Estado</label>
+          <select id="trib-estado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="ACTIVO">Activo</option>
+            <option value="INACTIVO">Inactivo</option>
+          </select>
         </div>
       </div>
       <div id="alerta-trib-ok"  class="alerta alerta-exito" style="display:none;margin-top:8px"></div>
