@@ -6820,8 +6820,10 @@ function renderTablaTributos(filtro) {
     + '</div></div>'
     + tributosAlerta()
     + '<div class="tabla-container"><table><thead><tr>'
-    + '<th>Código</th><th>Nombre</th><th>Nivel</th><th>Tipo</th><th>Organismo</th>'
-    + '<th style="text-align:right">Alícuota %</th><th>Base Legal</th><th>Periodicidad</th>'
+    + '<th>Código</th><th>Nombre</th><th>Nivel</th><th>Tipo</th>'
+    + '<th style="font-size:10px">Organismo</th>'
+    + '<th style="text-align:right">Alícuota %</th>'
+    + '<th style="font-size:10px">Periodicidad</th>'
     + '<th>Última Revisión</th><th>Estado</th><th>Acciones</th>'
     + '</tr></thead><tbody>'
     + (items.length ? items.map(function(t) {
@@ -6831,14 +6833,13 @@ function renderTablaTributos(filtro) {
         return '<tr>'
           + '<td style="font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--naranja)">' + t.codigo + '</td>'
           + '<td><div style="font-weight:600;font-size:13px">' + t.nombre + '</div>'
-          + (t.descripcion ? '<div style="font-size:10px;color:var(--suave)">' + t.descripcion + '</div>' : '')
+          + (t.base_legal ? '<div style="font-size:9px;color:var(--suave)">' + t.base_legal + '</div>' : '')
           + '</td>'
           + '<td><span class="badge ' + (nivColores[t.nivel_gobierno]||'badge-gris') + '" style="font-size:10px">' + t.nivel_gobierno + '</span></td>'
           + '<td><span class="badge ' + (tipColores[t.tipo]||'badge-gris') + '" style="font-size:10px">' + t.tipo + '</span></td>'
-          + '<td style="font-size:12px">' + t.organismo + '</td>'
+          + '<td style="font-size:10px">' + t.organismo + '</td>'
           + '<td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">' + alicuotaStr + '</td>'
-          + '<td style="font-size:11px;color:var(--suave)">' + (t.base_legal||'—') + '</td>'
-          + '<td style="font-size:11px">' + (t.periodicidad||'—') + '</td>'
+          + '<td style="font-size:10px">' + (t.periodicidad||'—') + '</td>'
           + '<td style="font-size:11px">'
           + (function(fecha) {
               if (!fecha) return '<span style="color:#fc8181">Sin revisar</span>';
