@@ -6852,7 +6852,6 @@ function renderTablaTributos(filtro) {
           + '<td><span class="badge ' + (t.estado==='ACTIVO'?'badge-verde':'badge-gris') + '" style="font-size:10px">' + (t.estado||'ACTIVO') + '</span></td>'
           + '<td><div style="display:flex;gap:4px">'
           + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="abrirFormTributo(' + t.id_tributo + ')">Ficha</button>'
-          + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="toggleEstadoTributo(' + t.id_tributo + ',\'' + t.estado + '\')">' + (t.estado==='ACTIVO' ? '⛔ Desact.' : '✓ Activar') + '</button>'
           + '</div></td></tr>';
       }).join('')
     : '<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--suave)">Sin tributos registrados</td></tr>')
@@ -11674,7 +11673,7 @@ window.addEventListener('load', async () => {
 <!--    MODAL TRIBUTO                       -->
 <!-- ═══════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-tributo">
-  <div class="modal" style="max-width:680px">
+  <div class="modal" style="max-width:820px">
     <div class="modal-header">
       <h3>TRIBUTO / IMPUESTO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-tributo')">✕</button>
@@ -12673,7 +12672,7 @@ window.addEventListener('load', async () => {
 <!--    MODAL PROVEEDOR                     -->
 <!-- ═══════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-proveedor">
-  <div class="modal" style="max-width:680px">
+  <div class="modal" style="max-width:820px">
     <div class="modal-header">
       <h3 id="prov-modal-titulo">NUEVO PROVEEDOR</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-proveedor')">✕</button>
@@ -12779,7 +12778,7 @@ window.addEventListener('load', async () => {
 <!--    MODAL EDITAR MOVIMIENTO STOCK       -->
 <!-- ═══════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-edit-movimiento">
-  <div class="modal" style="max-width:680px">
+  <div class="modal" style="max-width:820px">
     <div class="modal-header">
       <h3 id="edit-mov-titulo">✏ EDITAR MOVIMIENTO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-edit-movimiento'); regresarAFichaInv()">✕</button>
@@ -12850,7 +12849,7 @@ window.addEventListener('load', async () => {
 <!--    MODAL HISTORIAL DE STOCK            -->
 <!-- ═══════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-historial-stock">
-  <div class="modal" style="max-width:680px">
+  <div class="modal" style="max-width:820px">
     <div class="modal-header">
       <h3>HISTORIAL DE MOVIMIENTOS</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-historial-stock'); regresarAFichaInv()">✕</button>
