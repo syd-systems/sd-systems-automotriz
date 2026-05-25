@@ -6853,7 +6853,6 @@ function renderTablaTributos(filtro) {
           + '<td><div style="display:flex;gap:4px">'
           + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="abrirFormTributo(' + t.id_tributo + ')">✏</button>'
           + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="toggleEstadoTributo(' + t.id_tributo + ',\'' + t.estado + '\')">' + (t.estado==='ACTIVO' ? '⛔ Desact.' : '✓ Activar') + '</button>'
-          + (t.estado==='ACTIVO' ? 'Desactivar' : 'Activar') + '</button>'
           + '</div></td></tr>';
       }).join('')
     : '<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--suave)">Sin tributos registrados</td></tr>')
