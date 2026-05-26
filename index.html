@@ -6011,10 +6011,10 @@ async function contVerAsiento(id) {
             + '<div>' + (l.cont_cuentas ? l.cont_cuentas.nombre : '') + '</div>'
             + (l.descripcion ? '<div style="font-size:10px;color:var(--suave)">' + l.descripcion + '</div>' : '')
             + '</td>'
-            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);color:' + (l.debe_usd>0?'#22c55e':'var(--suave)') + '">' + (l.debe_usd>0?'$ '+fmtUSD(l.debe_usd):'—') + '</td>'
-            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);color:' + (l.haber_usd>0?'#fc8181':'var(--suave)') + '">' + (l.haber_usd>0?'$ '+fmtUSD(l.haber_usd):'—') + '</td>'
-            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:11px;color:var(--suave)">' + (l.debe_ves>0?fmtBs(l.debe_ves)+' Bs':'—') + '</td>'
-            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:11px;color:var(--suave)">' + (l.haber_ves>0?fmtBs(l.haber_ves)+' Bs':'—') + '</td>'
+            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:14px!important;color:' + (l.debe_usd>0?'#22c55e':'var(--suave)') + '">' + (l.debe_usd>0?'<div style="font-size:11px;color:var(--suave)">$ '+fmtUSD(l.debe_usd)+'</div>':'—') + '</td>'
+            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:14px!important;color:' + (l.haber_usd>0?'#fc8181':'var(--suave)') + '">' + (l.haber_usd>0?'<div style="font-size:11px;color:var(--suave)">$ '+fmtUSD(l.haber_usd)+'</div>':'—') + '</td>'
+            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:16px!important;font-weight:600;color:' + (l.debe_ves>0?'#22c55e':'var(--suave)') + '">' + (l.debe_ves>0?fmtBs(l.debe_ves)+' Bs':'—') + '</td>'
+            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:16px!important;font-weight:600;color:' + (l.haber_ves>0?'#fc8181':'var(--suave)') + '">' + (l.haber_ves>0?fmtBs(l.haber_ves)+' Bs':'—') + '</td>'
             + '</tr>';
         }).join('')
       + '</tbody><tfoot>'
