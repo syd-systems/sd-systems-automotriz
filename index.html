@@ -1860,40 +1860,6 @@ async function iniciarSesion() {
     sesionActual = u;
     modulosAcceso = accesos.map(a => a.acceso_tipo);
 
-    // Cargar empresas del usuario
-    try {
-      const todasEmisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*');
-      if (u.administrador) {
-        _empresasUsuario = todasEmisores;
-      } else {
-        const ues = await api('usuarios_empresas','GET',null,
-          '?correo_usuario=eq.'+encodeURIComponent(correo)+'&activo=eq.true&select=id_emisor');
-        const idsPermitidos = new Set(ues.map(function(x){ return x.id_emisor; }));
-        _empresasUsuario = todasEmisores.filter(function(e){ return idsPermitidos.has(e.id_emisor); });
-      }
-    } catch(e) { _empresasUsuario = []; }
-
-    // Si falla carga de empresas, continuar igual (fallback)
-    if (!_empresasUsuario.length) {
-      _empresasUsuario = [];
-      _empresaActiva = null;
-      iniciarApp();
-      btn.textContent = 'INGRESAR';
-      btn.disabled = false;
-      return;
-    }
-
-    // Si tiene una sola empresa, seleccionarla automáticamente
-    if (_empresasUsuario.length === 1) {
-      _empresaActiva = _empresasUsuario[0];
-      iniciarApp();
-    } else {
-      // Mostrar pantalla de selección de empresa
-      mostrarSeleccionEmpresa();
-    }
-    btn.textContent = 'INGRESAR';
-    btn.disabled = false;
-    return;
     // Cargar permisos granulares
     try {
       const perms = await api('usuarios_permisos', 'GET', null, '?correo_usuario=eq.' + encodeURIComponent(u.correo_usuario));
@@ -1916,6 +1882,53 @@ async function iniciarSesion() {
 
     resetCampoPass('login-clave');
     iniciarApp();
+
+    // Determinar empresa activa
+    try {
+      const todasEmisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*');
+      _empresasUsuario = todasEmisores;
+      if (u.administrador) {
+        if (todasEmisores.length === 1) _empresaActiva = todasEmisores[0];
+      } else {
+        const empData = await api('empleados','GET',null,
+          '?correo_empleado=eq.'+encodeURIComponent(correo)+'&select=id_emisor&limit=1');
+        if (empData && empData.length && empData[0].id_emisor) {
+          _empresaActiva = todasEmisores.find(function(e){ return e.id_emisor === empData[0].id_emisor; }) || null;
+        }
+        if (!_empresaActiva) {
+          mostrarError('No tiene empresa asignada. Contacte al administrador.');
+          limpiarSesionLocal();
+          btn.textContent = 'INGRESAR';
+          btn.disabled = false;
+          return;
+        }
+      }
+    } catch(e) { console.warn(e); }
+
+    // Entrar al sistema
+    if (u.administrador && _empresasUsuario.length > 1 && !_empresaActiva) {
+      mostrarSeleccionEmpresa();
+    } else {
+      iniciarApp();
+    }
+    btn.textContent = 'INGRESAR';
+    btn.disabled = false;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     iniciarTimerInactividad();
 
     // Verificar vencimiento de clave DESPUÉS de iniciar app
@@ -3805,6 +3818,17 @@ async function abrirEmpleado(id) {
   document.getElementById('emp-monto-sal').value     = e ? (e.monto_salario||'') : '';
   document.getElementById('emp-moneda-calc').value   = e ? (e.moneda_calculo||'USD') : 'USD';
   document.getElementById('emp-moneda-pago').value   = e ? (e.moneda_pago||'VES') : 'VES';
+
+  // Cargar selector de empresa
+  try {
+    const emisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id_emisor,nombre');
+    const selEmisor = document.getElementById('emp-emisor');
+    if (selEmisor) {
+      selEmisor.innerHTML = '<option value="">— Seleccionar empresa —</option>'
+        + emisores.map(function(em){ return '<option value="'+em.id_emisor+'">'+ em.nombre+'</option>'; }).join('');
+      if (e && e.id_emisor) selEmisor.value = e.id_emisor;
+    }
+  } catch(eEm) {}
   document.getElementById('emp-bono-ali').value      = e ? (e.bono_alimentacion||'') : '';
   document.getElementById('emp-bono-trans').value    = e ? (e.bono_transporte||'') : '';
   document.getElementById('emp-bono-prod').value     = e ? (e.bono_productividad||'') : '';
@@ -3873,6 +3897,8 @@ async function guardarEmpleado() {
 
   if (!numDoc) { errEl.textContent = 'El número de documento es obligatorio.'; errEl.style.display = 'block'; return; }
   if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
+  const idEmisorEmp = parseInt(document.getElementById('emp-emisor')?.value) || null;
+  if (!idEmisorEmp) { errEl.textContent = 'Debe seleccionar la empresa del empleado.'; errEl.style.display = 'block'; document.getElementById('emp-emisor')?.focus(); return; }
 
   // ── Validaciones de campos obligatorios ──
   var validaciones = [
@@ -4008,6 +4034,7 @@ async function guardarEmpleado() {
     id_institucion:     parseInt(document.getElementById('emp-banco').value) || null,
     tipo_cuenta:        document.getElementById('emp-tipo-cuenta').value || null,
     numero_cuenta:      document.getElementById('emp-num-cuenta').value.trim() || null,
+    id_emisor:          parseInt(document.getElementById('emp-emisor')?.value) || null,
     id_usuario:         sesionActual.correo_usuario,
   };
 
@@ -12930,6 +12957,10 @@ window.addEventListener('load', async () => {
       <!-- DATOS LABORALES -->
       <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--naranja);margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--borde)">💼 Datos Laborales</div>
       <div class="form-grid">
+        <div class="form-campo form-full">
+          <label>Empresa <span style="color:var(--rojo)">*</span></label>
+          <select id="emp-emisor" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"></select>
+        </div>
         <div class="form-campo">
           <label>Área</label>
           <select id="emp-area"></select>
