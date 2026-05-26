@@ -6023,11 +6023,17 @@ async function renderContabilidad() {
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando módulo contable...</div>';
   try {
+    // Cargar empresas para el selector
+    const emisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*');
+    window._contEmisoresList = emisores;
+    if (_empresaActiva) window._contEmisorActivo = _empresaActiva.id_emisor;
+    else if (!window._contEmisorActivo && emisores.length) window._contEmisorActivo = emisores[0].id_emisor;
+
     await Promise.all([
       contCargarCuentas(),
       contCargarPeriodos(),
     ]);
-  } catch(e) {}
+  } catch(e) { console.warn('Error cargando contabilidad:', e); }
   contRenderShell();
   contCambiarVista(_contVista);
 }
