@@ -6507,12 +6507,29 @@ async function contGuardarCxc() {
 async function contRegistrarPagoCxc(idCxc) {
   const cxc = contCxcCache.find(function(c){ return c.id_cxc===idCxc; });
   if (!cxc) return;
-  document.getElementById('cont-pago-cxc-id').value     = idCxc;
-  document.getElementById('cont-pago-cxc-monto').value  = parseFloat(cxc.saldo_usd).toFixed(2);
-  document.getElementById('cont-pago-cxc-fecha').value  = getHoyVzla();
-  document.getElementById('cont-pago-cxc-ref').value    = '';
+  document.getElementById('cont-pago-cxc-id').value    = idCxc;
+  document.getElementById('cont-pago-cxc-fecha').value = getHoyVzla();
+  document.getElementById('cont-pago-cxc-ref').value   = '';
   document.getElementById('alerta-pago-cxc-ok').style.display  = 'none';
   document.getElementById('alerta-pago-cxc-err').style.display = 'none';
+
+  // Monto según moneda de cobro de la factura
+  const moneda = cxc.moneda_cobro || 'USD';
+  const lblMonto = document.getElementById('cont-pago-cxc-monto-label');
+  if (lblMonto) lblMonto.textContent = 'Monto ' + moneda + ' *';
+  if (moneda === 'VES' || moneda === 'BS') {
+    // Convertir saldo a Bs usando tasa actual
+    api('tasas','GET',null,'?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio').then(function(tasas) {
+      const tasa = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
+      document.getElementById('cont-pago-cxc-monto').value = (parseFloat(cxc.saldo_usd) * tasa).toFixed(2);
+      const tasaEl = document.getElementById('cont-pago-cxc-tasa-info');
+      if (tasaEl) tasaEl.textContent = 'Tasa BCV: ' + tasa.toFixed(4) + ' Bs/$';
+    });
+  } else {
+    document.getElementById('cont-pago-cxc-monto').value = parseFloat(cxc.saldo_usd).toFixed(2);
+    const tasaEl = document.getElementById('cont-pago-cxc-tasa-info');
+    if (tasaEl) tasaEl.textContent = '';
+  }
   abrirModal('modal-cont-pago-cxc');
   focusFirstField('modal-cont-pago-cxc');
 }
@@ -11687,19 +11704,20 @@ window.addEventListener('load', async () => {
 
 <!-- PAGO CxC -->
 <div class="modal-overlay" style="z-index:2000" id="modal-cont-pago-cxc">
-  <div class="modal" style="max-width:460px">
+  <div class="modal" style="max-width:580px">
     <div class="modal-header"><h3>REGISTRAR COBRO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-cont-pago-cxc')">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-grid" style="grid-template-columns:1fr 1fr">
         <div class="form-campo">
-          <label>Monto USD *</label>
+          <label id="cont-pago-cxc-monto-label">Monto USD *</label>
           <input type="number" id="cont-pago-cxc-monto" step="0.01" min="0" style="font-family:var(--font-mono)">
+          <div id="cont-pago-cxc-tasa-info" style="font-size:11px;color:var(--suave);margin-top:4px"></div>
         </div>
         <div class="form-campo">
           <label>Fecha *</label>
-          <input type="date" id="cont-pago-cxc-fecha">
+          <input type="date" id="cont-pago-cxc-fecha" style="width:100%">
         </div>
         <div class="form-campo form-full">
           <label>Método de Pago</label>
