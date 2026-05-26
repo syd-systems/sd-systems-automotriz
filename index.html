@@ -1254,6 +1254,12 @@
         <div class="accesos-grid" id="accesos-grid"></div>
       </div>
 
+      <!-- EMPRESAS CON ACCESO -->
+      <div id="seccion-empresas-acceso" style="margin-top:20px">
+        <label style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);display:block;margin-bottom:10px">Empresas con Acceso</label>
+        <div id="empresas-acceso-grid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      </div>
+
       <input type="hidden" id="u-id-editando" value=">
     </div>
     <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
@@ -2482,6 +2488,7 @@ async function abrirNuevoUsuario() {
   document.getElementById('fortaleza-usuario').style.display = 'none';
   document.getElementById('fortaleza-fill-u').style.width = '0%';
   renderAccesosModal([]);
+  await cargarEmpresasAccesoModal(null);
 
   // Cargar empleados para el selector (solo en nuevo usuario)
   try {
@@ -2545,6 +2552,7 @@ async function abrirEditarUsuario(id) {
 
   // Usar accesosTemp ya cargado arriba (evita doble llamada a la API)
   renderAccesosModal(accesosTemp, permisosUsuario);
+  await cargarEmpresasAccesoModal(correoEditar);
 
   abrirModal('modal-usuario');
   focusFirstField('modal-usuario');
@@ -2725,6 +2733,16 @@ async function guardarUsuario() {
       if (newPermsLote.length > 0) {
         try { await api('usuarios_permisos', 'POST', newPermsLote); } catch(eNP) {}
       }
+      // Guardar empresas con acceso
+      try {
+        await api('usuarios_empresas','DELETE',null,'?correo_usuario=eq.'+encodeURIComponent(correo));
+        const empIds = getEmpresasAccesoSeleccionadas();
+        if (empIds.length) {
+          for (const eid of empIds) {
+            await api('usuarios_empresas','POST',{ correo_usuario: correo, id_emisor: eid, activo: true });
+          }
+        }
+      } catch(eUE) { console.warn('Error guardando empresas:', eUE); }
       okEl.textContent = '✓ Usuario creado exitosamente.';
     } else {
       // EDITAR USUARIO
@@ -2769,6 +2787,17 @@ async function guardarUsuario() {
           try { await api('usuarios_permisos', 'POST', permsLote); } catch(eP) {}
         }
       }
+      // Guardar empresas con acceso
+      try {
+        const correoEdit = usuariosCache.find(function(u){ return u.id_usuario==idEdit; })?.correo_usuario || correo;
+        await api('usuarios_empresas','DELETE',null,'?correo_usuario=eq.'+encodeURIComponent(correoEdit));
+        const empIds2 = getEmpresasAccesoSeleccionadas();
+        if (empIds2.length) {
+          for (const eid of empIds2) {
+            await api('usuarios_empresas','POST',{ correo_usuario: correoEdit, id_emisor: eid, activo: true });
+          }
+        }
+      } catch(eUE2) { console.warn('Error guardando empresas:', eUE2); }
       okEl.textContent = '✓ Usuario actualizado exitosamente.';
 
       // Marcar sesion_invalidada para que el usuario recargue permisos en su próxima verificación
@@ -4099,7 +4128,7 @@ async function verFichaEmpleado(id) {
   }
   var e = null;
   try {
-    const res = await api('empleados', 'GET', null, '?id_empleado=eq.' + id + '&select=*,param_areas(nombre),param_cargos(nombre)');
+    const res = await api('empleados', 'GET', null, '?id_empleado=eq.' + id + '&select=*,param_areas(nombre),param_cargos(nombre),emisores(id_emisor,nombre)');
     if (res && res[0]) e = res[0];
   } catch(eBusc) { alert('ERROR buscando empleado: ' + eBusc.message); return; }
   if (!e) { alert('No se encontró el empleado.'); return; }
@@ -4162,7 +4191,7 @@ async function verFichaEmpleado(id) {
     // Datos Laborales
     + '<div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;border-bottom:1px solid var(--borde);padding-bottom:6px">Datos Laborales</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
-    + '<div style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Empresa</div><div style="font-size:13px;font-weight:600;color:var(--naranja)">' + (e.id_emisor && window._contEmisoresList ? (window._contEmisoresList.find(function(em){return em.id_emisor===e.id_emisor;})||{}).nombre||'—' : (e.emisores ? e.emisores.nombre : '—')) + '</div></div>'
+    + '<div style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Empresa</div><div style="font-size:13px;font-weight:600;color:var(--naranja)">' + (e.emisores ? e.emisores.nombre : '—') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Área</div><div style="font-size:13px">' + getNombre(p.areas, e.id_area) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Cargo</div><div style="font-size:13px">' + getNombre(p.cargos, e.id_cargo) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Tipo Contrato</div><div style="font-size:13px">' + getNombre(p.contratos, e.id_tipo_contrato) + '</div></div>'
@@ -5153,6 +5182,36 @@ function fmtFecha(fecha) {
   const partes = f.split('-');
   if (partes.length !== 3) return fecha;
   return partes[2] + '-' + partes[1] + '-' + partes[0];
+}
+
+// ─── EMPRESAS CON ACCESO EN MODAL USUARIO ───
+async function cargarEmpresasAccesoModal(correo) {
+  const grid = document.getElementById('empresas-acceso-grid');
+  if (!grid) return;
+  try {
+    const todasEmisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id_emisor,nombre,rif');
+    let asignadas = new Set();
+    if (correo) {
+      const ues = await api('usuarios_empresas','GET',null,
+        '?correo_usuario=eq.'+encodeURIComponent(correo)+'&activo=eq.true&select=id_emisor');
+      ues.forEach(function(u){ asignadas.add(u.id_emisor); });
+    }
+    grid.innerHTML = todasEmisores.map(function(e) {
+      const checked = (!correo || asignadas.has(e.id_emisor)) ? 'checked' : '';
+      return '<label style="display:flex;align-items:center;gap:8px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:8px 12px;cursor:pointer;font-size:12px">'
+        + '<input type="checkbox" value="'+e.id_emisor+'" '+checked+' class="emp-acceso-check" style="accent-color:var(--naranja);width:15px;height:15px">'
+        + '<div><div style="font-weight:600">'+e.nombre+'</div>'
+        + (e.rif ? '<div style="font-size:10px;color:var(--suave)">'+e.rif+'</div>' : '')
+        + '</div></label>';
+    }).join('');
+  } catch(e) {
+    grid.innerHTML = '<div style="color:var(--suave);font-size:12px">Error cargando empresas</div>';
+  }
+}
+
+function getEmpresasAccesoSeleccionadas() {
+  const checks = document.querySelectorAll('.emp-acceso-check:checked');
+  return Array.from(checks).map(function(c){ return parseInt(c.value); });
 }
 
 // ─── HASHEAR CONTRASEÑA VIA RPC ───
