@@ -6042,7 +6042,7 @@ function contRenderShell() {
   const c = document.getElementById('contenido-principal');
   const emisores = window._contEmisoresList || [];
   const selectorEmpresa = emisores.length > 1
-    ? '<select onchange="window._contEmisorActivo=parseInt(this.value);contCambiarVista(_contVista)" '
+    ? '<select onchange="window._contEmisorActivo=parseInt(this.value);contCambiarVista(_contVista,true)" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:6px 10px;border-radius:5px;outline:none">'
       + emisores.map(function(e){ return '<option value="'+e.id_emisor+'"'+(window._contEmisorActivo===e.id_emisor?' selected':'')+'>🏢 '+e.nombre+'</option>'; }).join('')
       + '</select>'
@@ -6074,7 +6074,7 @@ function contTabBtn(vista, label, permiso) {
     + label + '</button>';
 }
 
-function contCambiarVista(vista) {
+function contCambiarVista(vista, forzar) {
   _contVista = vista;
   // Actualizar tabs
   const shell = document.getElementById('contenido-principal');
@@ -6086,8 +6086,9 @@ function contCambiarVista(vista) {
       btn.style.color      = v === vista ? '#fff' : 'var(--suave)';
     });
   }
+  // Re-renderizar shell si no existe cont-vista-cont
   const cont = document.getElementById('cont-vista-cont');
-  if (!cont) return;
+  if (!cont) { contRenderShell(); setTimeout(function(){ contCambiarVista(vista); }, 100); return; }
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   if      (vista === 'diario')       contRenderDiario();
   else if (vista === 'mayor')        contRenderMayor();
@@ -6161,8 +6162,9 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
     const periodoActivo = contGetPeriodoActivo();
     const qPeriodo = filtroPeriodo ? '&id_periodo=eq.' + filtroPeriodo : '';
     const qEstado  = filtroEstado  ? '&estado=eq.' + filtroEstado : '';
+    const emisorFiltro = window._contEmisorActivo ? '&id_emisor=eq.'+window._contEmisorActivo : '';
     const asientos = await api('cont_asientos','GET',null,
-      '?order=fecha.desc,numero_asiento.desc&select=*,cont_periodos(nombre)' + qPeriodo + qEstado);
+      '?order=fecha.desc,numero_asiento.desc&select=*,cont_periodos(nombre)' + qPeriodo + qEstado + emisorFiltro);
     contAsientosCache = asientos;
 
     const perSelect = contPeriodosCache.map(function(p){
@@ -6207,7 +6209,8 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
         }).join('') : '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--suave)">Sin asientos registrados</td></tr>')
       + '</tbody></table></div>';
   } catch(e) {
-    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+    console.error('Error contRenderDiario:', e);
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error cargando Libro Diario: ' + e.message + '</div>';
   }
 }
 
@@ -6344,7 +6347,7 @@ async function contAbrirAsiento(id) {
   focusFirstField('modal-cont-asiento-form');
 }
 
-function contRenderLineasForm() {
+async function contRenderLineasForm() {
   const cont = document.getElementById('cont-lineas-form');
   if (!cont) return;
 
