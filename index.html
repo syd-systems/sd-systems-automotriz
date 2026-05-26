@@ -6505,8 +6505,11 @@ async function contGuardarCxc() {
 }
 
 async function contRegistrarPagoCxc(idCxc) {
+  console.log('contRegistrarPagoCxc llamada con id:', idCxc);
+  console.log('contCxcCache:', contCxcCache ? contCxcCache.length : 'null');
   const cxc = contCxcCache.find(function(c){ return c.id_cxc===idCxc; });
-  if (!cxc) return;
+  console.log('cxc encontrada:', cxc ? cxc.id_cxc : 'NO ENCONTRADA');
+  if (!cxc) { alert('Error: CxC no encontrada en cache. id='+idCxc); return; }
   document.getElementById('cont-pago-cxc-id').value     = idCxc;
   document.getElementById('cont-pago-cxc-monto').value  = parseFloat(cxc.saldo_usd).toFixed(2);
   document.getElementById('cont-pago-cxc-fecha').value  = getHoyVzla();
