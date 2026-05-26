@@ -4686,6 +4686,9 @@ async function guardarFactura(emitir) {
           const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo');
           const idPeriodo = periodos.length ? periodos[0].id_periodo : null;
 
+          // Obtener tasa BCV real
+          const tasaReal = tot.tasa || tasa || 1;
+
           const asiento = await api('cont_asientos','POST',{
             numero_asiento: numAst,
             fecha:          fac.fecha_emision,
@@ -4693,7 +4696,7 @@ async function guardarFactura(emitir) {
             tipo:           'AUTOMATICO',
             referencia:     fac.numero_factura,
             moneda_base:    'USD',
-            tasa_bcv:       tasa,
+            tasa_bcv:       tasaReal,
             id_periodo:     idPeriodo,
             estado:         'APROBADO',
             id_usuario:     sesionActual.correo_usuario
@@ -4710,25 +4713,39 @@ async function guardarFactura(emitir) {
             const cIVA     = cuentas.find(function(c){ return c.codigo==='2.1.03.001'; });
 
             // Línea 1: Débito CxC por el total
+            // Buscar cuenta IGTF por pagar
+            const cuentasIGTF = fac.igtf_usd > 0
+              ? await api('cont_cuentas','GET',null,'?codigo=eq.2.1.04.001&select=id_cuenta,codigo')
+              : [];
+            const cIGTF = cuentasIGTF[0] || null;
+
+            // Línea 1: Débito CxC por el total
             if (cCxC) await api('cont_asiento_lineas','POST',{
               id_asiento: idAst, id_cuenta: cCxC.id_cuenta, orden: 1,
               descripcion: 'CxC '+fac.numero_factura,
               debe_usd: fac.total_usd, haber_usd: 0,
-              debe_ves: fac.total_usd*tasa, haber_ves: 0
+              debe_ves: fac.total_usd*tasaReal, haber_ves: 0
             });
             // Línea 2: Crédito Ingresos por subtotal
             if (cIngServ) await api('cont_asiento_lineas','POST',{
               id_asiento: idAst, id_cuenta: cIngServ.id_cuenta, orden: 2,
               descripcion: 'Ingreso '+fac.numero_factura,
               debe_usd: 0, haber_usd: fac.subtotal_usd,
-              debe_ves: 0, haber_ves: fac.subtotal_usd*tasa
+              debe_ves: 0, haber_ves: fac.subtotal_usd*tasaReal
             });
             // Línea 3: Crédito IVA por pagar
             if (cIVA && fac.iva_usd > 0) await api('cont_asiento_lineas','POST',{
               id_asiento: idAst, id_cuenta: cIVA.id_cuenta, orden: 3,
               descripcion: 'IVA '+fac.numero_factura,
               debe_usd: 0, haber_usd: fac.iva_usd,
-              debe_ves: 0, haber_ves: fac.iva_usd*tasa
+              debe_ves: 0, haber_ves: fac.iva_usd*tasaReal
+            });
+            // Línea 4: Crédito IGTF por pagar
+            if (cIGTF && fac.igtf_usd > 0) await api('cont_asiento_lineas','POST',{
+              id_asiento: idAst, id_cuenta: cIGTF.id_cuenta, orden: 4,
+              descripcion: 'IGTF '+fac.numero_factura,
+              debe_usd: 0, haber_usd: fac.igtf_usd,
+              debe_ves: 0, haber_ves: fac.igtf_usd*tasaReal
             });
           }
         } catch(eAst) { console.warn('Error creando asiento:', eAst); }
