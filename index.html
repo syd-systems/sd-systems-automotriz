@@ -1862,20 +1862,24 @@ async function iniciarSesion() {
 
     // Cargar empresas del usuario
     try {
+      const todasEmisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*');
       if (u.administrador) {
-        // Admin ve todas las empresas
-        _empresasUsuario = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*');
+        _empresasUsuario = todasEmisores;
       } else {
         const ues = await api('usuarios_empresas','GET',null,
-          '?correo_usuario=eq.'+encodeURIComponent(correo)+'&activo=eq.true&select=id_emisor,emisores(*)');
-        _empresasUsuario = ues.map(function(x){ return x.emisores; }).filter(Boolean);
+          '?correo_usuario=eq.'+encodeURIComponent(correo)+'&activo=eq.true&select=id_emisor');
+        const idsPermitidos = new Set(ues.map(function(x){ return x.id_emisor; }));
+        _empresasUsuario = todasEmisores.filter(function(e){ return idsPermitidos.has(e.id_emisor); });
       }
     } catch(e) { _empresasUsuario = []; }
 
-    // Si no tiene empresas asignadas
+    // Si falla carga de empresas, continuar igual (fallback)
     if (!_empresasUsuario.length) {
-      mostrarError('No tiene empresas asignadas. Contacte al administrador.');
-      limpiarSesionLocal();
+      _empresasUsuario = [];
+      _empresaActiva = null;
+      iniciarApp();
+      btn.textContent = 'INGRESAR';
+      btn.disabled = false;
       return;
     }
 
@@ -1889,7 +1893,7 @@ async function iniciarSesion() {
     }
     btn.textContent = 'INGRESAR';
     btn.disabled = false;
-    return; // iniciarApp se llama desde selección de empresa
+    return;
     // Cargar permisos granulares
     try {
       const perms = await api('usuarios_permisos', 'GET', null, '?correo_usuario=eq.' + encodeURIComponent(u.correo_usuario));
