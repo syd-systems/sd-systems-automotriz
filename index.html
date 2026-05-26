@@ -6033,7 +6033,6 @@ async function renderContabilidad() {
 }
 
 function contRenderShell() {
-function contRenderShell() {
   const c = document.getElementById('contenido-principal');
   const emisores = window._contEmisoresList || [];
   const selectorEmpresa = emisores.length > 1
@@ -6060,8 +6059,12 @@ function contRenderShell() {
     + '<div id="cont-vista-cont" style="padding:16px"></div>'
     + '</div>';
 }
-
-    + 'color:' + (activo ? '#fff' : 'var(--suave)') + '">'
+function contTabBtn(vista, label, permiso) {
+  if (!sesionActual?.administrador && !puedo('CONTABILIDAD', permiso)) return '';
+  const activo = _contVista === vista;
+  return '<button onclick="contCambiarVista(\''+vista+'\')" '
+    + 'style="font-size:12px;padding:7px 14px;border-radius:5px;border:none;cursor:pointer;font-family:var(--font-body);'
+    + 'background:' + (activo ? 'var(--naranja)' : 'transparent') + ';'
     + label + '</button>';
 }
 
