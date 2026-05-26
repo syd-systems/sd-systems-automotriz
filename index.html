@@ -4760,6 +4760,8 @@ async function guardarFactura(emitir) {
 
     okEl.textContent = emitir ? '✓ Factura emitida correctamente.' : '✓ Factura guardada como borrador.';
     okEl.style.display='block';
+    // Deshabilitar botones para evitar doble procesamiento
+    document.querySelectorAll('#modal-factura .btn-primario').forEach(function(b){ b.disabled=true; });
     setTimeout(function() { cerrarModal('modal-factura'); renderFacturas(); }, 1200);
   } catch(err) { errEl.textContent='Error: '+err.message; errEl.style.display='block'; }
 }
@@ -4900,8 +4902,16 @@ async function abrirEditarFactura(id) {
 
 async function emitirFactura(id) {
   if (!confirm('¿Emitir esta factura? Una vez emitida no podrá editarse.')) return;
+  // Verificar que no esté ya emitida
+  const facCheck = await api('facturas','GET',null,'?id_factura=eq.'+id+'&select=estado');
+  if (facCheck && facCheck[0] && facCheck[0].estado !== 'BORRADOR') {
+    alert('Esta factura ya fue procesada.'); return;
+  }
+  // Deshabilitar botón para evitar doble clic
+  const btnEmitir = document.getElementById('ficha-fac-btn-emitir');
+  if (btnEmitir) { btnEmitir.disabled = true; btnEmitir.textContent = '⏳ Procesando...'; }
   try { await api('facturas','PATCH',{estado:'EMITIDA'},'?id_factura=eq.'+id); cerrarModal('modal-ficha-fac'); renderFacturas(); }
-  catch(err) { alert('Error: '+err.message); }
+  catch(err) { alert('Error: '+err.message); if (btnEmitir) { btnEmitir.disabled=false; btnEmitir.textContent='✓ Emitir'; } }
 }
 
 async function anularFactura(id, numero) {
@@ -6019,10 +6029,10 @@ async function contVerAsiento(id) {
             + '<div>' + (l.cont_cuentas ? l.cont_cuentas.nombre : '') + '</div>'
             + (l.descripcion ? '<div style="font-size:10px;color:var(--suave)">' + l.descripcion + '</div>' : '')
             + '</td>'
-            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:14px!important;color:' + (l.debe_usd>0?'#22c55e':'var(--suave)') + '">' + (l.debe_usd>0?'<div style="font-size:11px;color:var(--suave)">$ '+fmtUSD(l.debe_usd)+'</div>':'—') + '</td>'
-            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:14px!important;color:' + (l.haber_usd>0?'#fc8181':'var(--suave)') + '">' + (l.haber_usd>0?'<div style="font-size:11px;color:var(--suave)">$ '+fmtUSD(l.haber_usd)+'</div>':'—') + '</td>'
-            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:16px!important;font-weight:600;color:' + (l.debe_ves>0?'#22c55e':'var(--suave)') + '">' + (l.debe_ves>0?fmtBs(l.debe_ves)+' Bs':'—') + '</td>'
-            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:16px!important;font-weight:600;color:' + (l.haber_ves>0?'#fc8181':'var(--suave)') + '">' + (l.haber_ves>0?fmtBs(l.haber_ves)+' Bs':'—') + '</td>'
+            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:15px!important;font-weight:600;color:' + (l.debe_usd>0?'#22c55e':'var(--suave)') + '">' + (l.debe_usd>0?'$ '+fmtUSD(l.debe_usd):'—') + '</td>'
+            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:15px!important;font-weight:600;color:' + (l.haber_usd>0?'#fc8181':'var(--suave)') + '">' + (l.haber_usd>0?'$ '+fmtUSD(l.haber_usd):'—') + '</td>'
+            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:15px!important;font-weight:600;color:' + (l.debe_ves>0?'#22c55e':'var(--suave)') + '">' + (l.debe_ves>0?fmtBs(l.debe_ves)+' Bs':'—') + '</td>'
+            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:15px!important;font-weight:600;color:' + (l.haber_ves>0?'#fc8181':'var(--suave)') + '">' + (l.haber_ves>0?fmtBs(l.haber_ves)+' Bs':'—') + '</td>'
             + '</tr>';
         }).join('')
       + '</tbody><tfoot>'
