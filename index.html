@@ -4828,7 +4828,7 @@ async function verFichaFactura(id) {
                   + (f.aplica_iva  ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">IVA (16%)</span><span style="font-family:var(--font-mono)">'+fmtF(f.iva_usd)+'</span></div>' : '')
                   + (f.aplica_igtf ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">IGTF (3%)</span><span style="font-family:var(--font-mono)">'+fmtF(f.igtf_usd)+'</span></div>' : '')
                   + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:6px;font-weight:600"><span>Total</span><span style="font-family:var(--font-mono);color:var(--naranja)">'+fmtF(f.total_usd)+'</span></div>'
-                  + (esVES ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">Tasa</span><span style="font-family:var(--font-mono)">'+t.toFixed(2)+' Bs/$</span></div>' : '')
+
                   + '</div>';
               })()
             + '</div>'
@@ -4853,16 +4853,21 @@ async function verFichaFactura(id) {
     if (btnPago) {
       btnPago._id = f.id_factura;
       btnPago.style.display = (f.estado==='EMITIDA'||f.estado==='PARCIAL') ? '' : 'none';
-      btnPago.onclick = function() {
-        // Buscar CxC asociada y abrir modal de pago
-        api('cont_cxc','GET',null,'?id_factura=eq.'+f.id_factura+'&select=*').then(function(cxcs) {
+      btnPago._facId = f.id_factura;
+      btnPago.onclick = async function() {
+        try {
+          const cxcs = await api('cont_cxc','GET',null,'?id_factura=eq.'+this._facId+'&estado=neq.ANULADA&select=*');
           if (cxcs && cxcs.length) {
-            contCxcCache = cxcs;
+            if (!contCxcCache) contCxcCache = [];
+            cxcs.forEach(function(c) {
+              const i = contCxcCache.findIndex(function(x){ return x.id_cxc===c.id_cxc; });
+              if (i >= 0) contCxcCache[i] = c; else contCxcCache.push(c);
+            });
             contRegistrarPagoCxc(cxcs[0].id_cxc);
           } else {
-            alert('No se encontró la cuenta por cobrar asociada a esta factura.');
+            alert('No se encontró la CxC asociada a esta factura.');
           }
-        });
+        } catch(e) { alert('Error: ' + e.message); }
       };
     }
     if (btnEditar)  { btnEditar._id=f.id_factura;  btnEditar.onclick=function(){cerrarModal('modal-ficha-fac');abrirEditarFactura(this._id);}; btnEditar.style.display=puedo('FACTURAS','EDITAR')&&f.estado==='BORRADOR'?'':'none'; }
