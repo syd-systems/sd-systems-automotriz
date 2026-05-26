@@ -2552,6 +2552,7 @@ async function abrirEditarUsuario(id) {
 
   // Usar accesosTemp ya cargado arriba (evita doble llamada a la API)
   renderAccesosModal(accesosTemp, permisosUsuario);
+  const correoEditar = u.correo_usuario;
   await cargarEmpresasAccesoModal(correoEditar);
 
   abrirModal('modal-usuario');
@@ -4128,8 +4129,17 @@ async function verFichaEmpleado(id) {
   }
   var e = null;
   try {
-    const res = await api('empleados', 'GET', null, '?id_empleado=eq.' + id + '&select=*,param_areas(nombre),param_cargos(nombre),emisores(id_emisor,nombre)');
-    if (res && res[0]) e = res[0];
+    const res = await api('empleados', 'GET', null, '?id_empleado=eq.' + id + '&select=*,param_areas(nombre),param_cargos(nombre)');
+    if (res && res[0]) {
+      e = res[0];
+      // Cargar empresa por separado
+      if (e.id_emisor) {
+        try {
+          const emRes = await api('emisores','GET',null,'?id_emisor=eq.'+e.id_emisor+'&select=id_emisor,nombre&limit=1');
+          if (emRes && emRes[0]) e.emisores = emRes[0];
+        } catch(eEm) {}
+      }
+    }
   } catch(eBusc) { alert('ERROR buscando empleado: ' + eBusc.message); return; }
   if (!e) { alert('No se encontró el empleado.'); return; }
   await cargarParamEmpleados();
