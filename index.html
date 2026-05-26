@@ -4601,7 +4601,7 @@ async function abrirNuevaFactura() {
   let osDisponibles = [], emisoresList = [], tasaActual = 1;
   try {
     const [os, em, ta] = await Promise.all([
-      api('ordenes_servicio','GET',null,'?estado=eq.CERRADA&select=id_orden,numero_os,fecha_entrada,total_usd,total_ves,estado,id_vehiculo,id_propietario,vehiculos(placa,marca,modelo),propietarios(nombre_completo,tipo_doc,numero_doc,tipo_contribuyente,direccion)&order=fecha_entrada.desc'),
+      api('ordenes_servicio','GET',null,'?estado=eq.CERRADA&select=id_orden,numero_os,fecha_entrada,total_usd,total_ves,estado,id_vehiculo,id_propietario,vehiculos(placa,marca,modelo),propietarios(nombre_completo,tipo_doc,numero_doc,tipo_contribuyente,direccion)&order=fecha_entrada.desc'+emisorQ()),
       api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*'),
       api('tasas','GET',null,'?order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
@@ -5208,6 +5208,14 @@ async function regresarAFichaInv() {
   abrirStockArticulo(_fichaInvActual.id, _fichaInvActual.nombre);
 }
 
+
+// ─── FILTRO DE EMPRESA ACTIVA ───
+function emisorQ() {
+  return _empresaActiva ? '&id_emisor=eq.' + _empresaActiva.id_emisor : '';
+}
+function emisorQStart() {
+  return _empresaActiva ? '?id_emisor=eq.' + _empresaActiva.id_emisor : '?';
+}
 // ─── FORMATO DE FECHA DD-MM-YYYY ───
 function fmtFecha(fecha) {
   if (!fecha) return '—';
@@ -6724,7 +6732,7 @@ async function contRenderCxc() {
 }
 
 async function contAbrirCxc(id) {
-  const propietarios = await api('propietarios','GET',null,'?select=id_propietario,nombre_completo&order=nombre_completo.asc');
+  const propietarios = await api('propietarios','GET',null,'?select=id_propietario,nombre_completo&order=nombre_completo.asc'+emisorQ());
   const opts = propietarios.map(function(p){ return '<option value="' + p.id_propietario + '">' + p.nombre_completo + '</option>'; }).join('');
   document.getElementById('cont-cxc-prop').innerHTML = '<option value="">— Seleccionar cliente —</option>' + opts;
   document.getElementById('cont-cxc-id').value = '';
@@ -8329,7 +8337,7 @@ async function cargarPropietarios(filtro) {
     const props = await api('propietarios', 'GET', null, query);
     propietariosCache = props;
 
-    const vehs = await api('vehiculos', 'GET', null, '?select=id_vehiculo,placa,marca,modelo,id_propietario');
+    const vehs = await api('vehiculos', 'GET', null, '?select=id_vehiculo,placa,marca,modelo,id_propietario'+emisorQ());
     props.forEach(function(p) {
       p.vehiculos = vehs.filter(function(v) { return v.id_propietario === p.id_propietario; });
     });
@@ -8448,7 +8456,8 @@ async function guardarPropietario() {
       rif: rif || null, telefono: tel || null, correo: correo || null,
       direccion: dir || null, empresa: emp || null,
       tipo_contribuyente: tipoContrib || null,
-      foto_documento: fotoUrl, id_usuario: sesionActual.correo_usuario
+      foto_documento: fotoUrl, id_usuario: sesionActual.correo_usuario,
+      id_emisor: _empresaActiva ? _empresaActiva.id_emisor : null
     };
 
     if (id) {
@@ -9103,7 +9112,7 @@ async function renderCatalogo(filtro, categoria) {
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
 
   try {
-    const items = await api('servicios_catalogo', 'GET', null, '?order=grupo.asc,nombre.asc&select=*');
+    const items = await api('servicios_catalogo', 'GET', null, '?order=grupo.asc,nombre.asc&select=*'+emisorQ());
     catalogoCache = items;
 
     const itemsFiltrados = items.filter(function(s) {
@@ -9271,7 +9280,7 @@ async function guardarCatalogo() {
 // ─── GESTIÓN DE SERVICIOS DEL CATÁLOGO ───
 async function gestionarServiciosCatalogo() {
   try {
-    catalogoCache = await api('servicios_catalogo', 'GET', null, '?order=grupo.asc,nombre.asc&select=*');
+    catalogoCache = await api('servicios_catalogo', 'GET', null, '?order=grupo.asc,nombre.asc&select=*'+emisorQ());
   } catch(e) {}
 
   const grupoEl = document.getElementById('cat-grupo');
@@ -9349,7 +9358,7 @@ async function agregarServicioDesdeGestion() {
     msg.style.display = 'block';
     document.getElementById('nuevo-servicio-nombre').value = '';
 
-    const nuevos = await api('servicios_catalogo', 'GET', null, '?order=grupo.asc,nombre.asc&select=*');
+    const nuevos = await api('servicios_catalogo', 'GET', null, '?order=grupo.asc,nombre.asc&select=*'+emisorQ());
     catalogoCache = nuevos;
     await renderListaServicios(grupo);
     await cargarServiciosSelect(grupo, nombre);
@@ -9386,7 +9395,7 @@ async function guardarServicioEnLinea(id) {
   try {
     await api('servicios_catalogo', 'PATCH', { nombre }, '?id_servicio=eq.' + id);
     const grupo = document.getElementById('cat-grupo') ? document.getElementById('cat-grupo').value || null : null;
-    const nuevos = await api('servicios_catalogo', 'GET', null, '?order=grupo.asc,nombre.asc&select=*');
+    const nuevos = await api('servicios_catalogo', 'GET', null, '?order=grupo.asc,nombre.asc&select=*'+emisorQ());
     catalogoCache = nuevos;
     await renderListaServicios(grupo);
   } catch(e) { alert('Error: ' + e.message); }
@@ -9627,7 +9636,7 @@ async function renderInventario(filtro) {
   const tablaCont = document.getElementById('tabla-inv-cont');
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const items = await api('inventario', 'GET', null, '?order=nombre.asc&select=*');
+    const items = await api('inventario', 'GET', null, '?order=nombre.asc&select=*' + emisorQ());
     inventarioCache = items;
     const catFiltro = document.getElementById('inv-filtro-cat') ? document.getElementById('inv-filtro-cat').value : '';
   var itemsFiltrados = catFiltro
@@ -10155,7 +10164,8 @@ async function guardarInventario() {
     const categoria = document.getElementById('inv-categoria').value || 'repuesto';
     const ventaFinal = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? venta : undefined;
     const datos = { nombre, descripcion: desc || null, codigo: codigo || null, stock_actual: stock,
-      stock_minimo: stockMin, precio_costo_usd: costo, ...(ventaFinal !== undefined ? { precio_venta_usd: ventaFinal } : {}), unidad, categoria,
+      stock_minimo: stockMin, precio_costo_usd: costo,
+      id_emisor: _empresaActiva ? _empresaActiva.id_emisor : null, ...(ventaFinal !== undefined ? { precio_venta_usd: ventaFinal } : {}), unidad, categoria,
       demanda_anual: demandaAnual, lead_time_dias: leadTime, costo_pedido_usd: costoPedido, stock_seguridad: stockSeg,
       id_usuario: sesionActual.correo_usuario };
     if (id) {
