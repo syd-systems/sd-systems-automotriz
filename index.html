@@ -4739,9 +4739,13 @@ async function guardarFactura(emitir) {
             // Buscar cuenta IGTF por pagar
             // Buscar cuenta IGTF por nombre
             const cuentasIGTF = fac.igtf_usd > 0
-              ? await api('cont_cuentas','GET',null,'?nombre=ilike.*IGTF*por*Pagar*&estado=eq.ACTIVO&select=id_cuenta,codigo&limit=1')
+              ? await api('cont_cuentas','GET',null,'?nombre=ilike.%25IGTF%25por%25Pagar%25&estado=eq.ACTIVO&select=id_cuenta,codigo&limit=1')
               : [];
-            const cIGTF = cuentasIGTF[0] || null;
+            let cIGTF = cuentasIGTF[0] || null;
+            if (!cIGTF && fac.igtf_usd > 0) {
+              const igtfPorCodigo = await api('cont_cuentas','GET',null,'?codigo=eq.2.1.03.004&select=id_cuenta,codigo');
+              cIGTF = igtfPorCodigo[0] || null;
+            }
 
             // Línea 1: Débito CxC por el total
             if (cCxC) await api('cont_asiento_lineas','POST',{
