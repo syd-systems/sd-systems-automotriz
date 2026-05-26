@@ -6581,13 +6581,21 @@ async function contGuardarPagoCxc() {
 
       if (asiento && asiento[0]) {
         const idAst = asiento[0].id_asiento;
-        // Buscar cuentas: Banco/Caja según método y CxC Clientes
-        const esBs  = metodo.includes('VES') || metodo === 'PAGO_MOVIL';
-        const codBanco = esBs ? '1.1.01.003' : '1.1.01.004'; // Banco VES o USD
+        // Mapeo de método de pago a cuenta contable
+        const mapCuentas = {
+          'EFECTIVO_USD':       '1.1.01.001', // Caja General
+          'EFECTIVO_VES':       '1.1.01.002', // Caja General VES
+          'TRANSFERENCIA_USD':  '1.1.01.004', // Banco Cta Cte USD
+          'TRANSFERENCIA_VES':  '1.1.01.003', // Banco Cta Cte VES
+          'ZELLE':              '1.1.01.004', // Banco USD
+          'PAGO_MOVIL':         '1.1.01.003', // Banco VES
+          'DIVISAS':            '1.1.01.005', // Banco - Cuenta en Divisas
+        };
+        const codCobro = mapCuentas[metodo] || '1.1.01.001';
+        const codigos = [codCobro, '1.1.02.001'].filter(function(c,i,a){ return a.indexOf(c)===i; });
         const cuentas = await api('cont_cuentas','GET',null,
-          '?codigo=in.('+codBanco+',1.1.01.001,1.1.02.001)&select=id_cuenta,codigo');
-        const cBanco = cuentas.find(function(c){ return c.codigo===codBanco; })
-                    || cuentas.find(function(c){ return c.codigo==='1.1.01.001'; });
+          '?codigo=in.('+codigos.join(',')+')&select=id_cuenta,codigo,nombre');
+        const cBanco = cuentas.find(function(c){ return c.codigo===codCobro; });
         const cCxC   = cuentas.find(function(c){ return c.codigo==='1.1.02.001'; });
 
         // Débito: Banco/Caja
