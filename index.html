@@ -4687,6 +4687,7 @@ async function guardarFactura(emitir) {
             saldo_usd:      fac.total_usd,
             estado:         'PENDIENTE',
             moneda_cobro:   fac.moneda_cobro || 'USD',
+            id_emisor:      fac.id_emisor || null,
             id_usuario:     sesionActual.correo_usuario
           });
         } catch(eCxc) { console.warn('Error creando CxC:', eCxc); }
@@ -4721,6 +4722,7 @@ async function guardarFactura(emitir) {
             moneda_base:    'USD',
             tasa_bcv:       tasaReal,
             id_periodo:     idPeriodo,
+            id_emisor:      fac.id_emisor || null,
             estado:         'APROBADO',
             id_usuario:     sesionActual.correo_usuario
           });
@@ -5844,16 +5846,27 @@ async function renderContabilidad() {
 }
 
 function contRenderShell() {
+function contRenderShell() {
   const c = document.getElementById('contenido-principal');
+  const emisores = window._contEmisoresList || [];
+  const selectorEmpresa = emisores.length > 1
+    ? '<select onchange="window._contEmisorActivo=parseInt(this.value);contCambiarVista(_contVista)" '
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:6px 10px;border-radius:5px;outline:none">'
+      + emisores.map(function(e){ return '<option value="'+e.id_emisor+'"'+(window._contEmisorActivo===e.id_emisor?' selected':'')+'>🏢 '+e.nombre+'</option>'; }).join('')
+      + '</select>'
+    : (emisores.length===1 ? '<span style="font-size:12px;color:var(--suave)">🏢 '+emisores[0].nombre+'</span>' : '');
+
   c.innerHTML =
     '<div class="panel" style="padding:0">'
-    + '<div style="display:flex;gap:3px;background:var(--gris2);border-bottom:1px solid var(--borde);padding:10px 16px;flex-wrap:wrap;gap:6px">'
+    + '<div style="display:flex;gap:3px;align-items:center;background:var(--gris2);border-bottom:1px solid var(--borde);padding:10px 16px;flex-wrap:wrap;gap:6px">'
+    + selectorEmpresa
     + contTabBtn('diario',       '📓 Libro Diario',   'VER')
     + contTabBtn('mayor',        '📊 Libro Mayor',    'VER_MAYOR')
     + contTabBtn('balance',      '⚖ Balance',         'VER_BALANCE')
-    + contTabBtn('cxc',          '💰 Cob.',           'CXC')
+    + contTabBtn('cxc',          '💰 Cobrar',         'CXC')
     + contTabBtn('cxp',          '💸 Pagar',          'CXP')
-    + contTabBtn('conciliacion', '🏦 Conc.',          'CONCILIACION')
+    + contTabBtn('conciliacion', '🔄 Conciliación',   'CONCILIACION')
+    + contTabBtn('asientos',     '📝 Asientos',       'CREAR')
     + contTabBtn('cuentas',      '📋 Cuentas',        'PLAN_CUENTAS')
     + contTabBtn('periodos',     '📅 Períodos',       'PERIODOS')
     + '</div>'
@@ -5861,12 +5874,6 @@ function contRenderShell() {
     + '</div>';
 }
 
-function contTabBtn(vista, label, permiso) {
-  if (!sesionActual?.administrador && !puedo('CONTABILIDAD', permiso)) return '';
-  const activo = _contVista === vista;
-  return '<button onclick="contCambiarVista(\'' + vista + '\')" '
-    + 'style="font-size:12px;padding:7px 14px;border-radius:5px;border:none;cursor:pointer;font-family:var(--font-body);'
-    + 'background:' + (activo ? 'var(--naranja)' : 'var(--gris3)') + ';'
     + 'color:' + (activo ? '#fff' : 'var(--suave)') + '">'
     + label + '</button>';
 }
@@ -6596,6 +6603,7 @@ async function contGuardarPagoCxc() {
         tipo: 'AUTOMATICO', referencia: cxc.numero_doc||null,
         moneda_base: 'USD', tasa_bcv: tasa,
         id_periodo: idPeriodo, estado: 'APROBADO',
+        id_emisor: cxc.id_emisor || null,
         id_usuario: sesionActual.correo_usuario
       });
 
