@@ -6035,8 +6035,12 @@ async function renderContabilidad() {
     ]);
   } catch(e) { console.warn('Error cargando contabilidad:', e); }
   contRenderShell();
-  // Esperar al siguiente tick para que el DOM procese el innerHTML
-  setTimeout(function(){ contCambiarVista(_contVista); }, 50);
+  // Esperar a que el DOM procese el innerHTML antes de buscar cont-vista-cont
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      contCambiarVista(_contVista);
+    });
+  });
 }
 
 function contRenderShell() {
