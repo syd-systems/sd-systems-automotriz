@@ -3772,7 +3772,7 @@ async function abrirEmpleado(id) {
   var e = null;
   if (id) {
     try {
-      const resE = await api('empleados', 'GET', null, '?id_empleado=eq.' + id + '&select=*');
+      const resE = await api('empleados', 'GET', null, '?id_empleado=eq.' + id + '&select=*,emisores(id_emisor,nombre)');
       if (resE && resE[0]) e = resE[0];
     } catch(eEmp) {}
     if (!e) e = empleadosCache.find(function(x) { return x.id_empleado === id || x.id_empleado === parseInt(id); });
@@ -4162,6 +4162,7 @@ async function verFichaEmpleado(id) {
     // Datos Laborales
     + '<div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;border-bottom:1px solid var(--borde);padding-bottom:6px">Datos Laborales</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
+    + '<div style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Empresa</div><div style="font-size:13px;font-weight:600;color:var(--naranja)">' + (e.id_emisor && window._contEmisoresList ? (window._contEmisoresList.find(function(em){return em.id_emisor===e.id_emisor;})||{}).nombre||'—' : (e.emisores ? e.emisores.nombre : '—')) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Área</div><div style="font-size:13px">' + getNombre(p.areas, e.id_area) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Cargo</div><div style="font-size:13px">' + getNombre(p.cargos, e.id_cargo) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Tipo Contrato</div><div style="font-size:13px">' + getNombre(p.contratos, e.id_tipo_contrato) + '</div></div>'
