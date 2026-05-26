@@ -4605,6 +4605,12 @@ function calcularTotalesFactura() {
 }
 
 async function guardarFactura(emitir) {
+  // Protección contra doble clic
+  if (window._facturaProcesando) return;
+  window._facturaProcesando = true;
+  const btnGuardar = document.querySelector('#modal-factura .btn-primario');
+  if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = '⏳ Procesando...'; }
+
   const id       = document.getElementById('fac-id').value;
   const idOS     = parseInt(document.getElementById('fac-os-id').value)||null;
   const idEmisor = parseInt(document.getElementById('fac-emisor').value)||null;
@@ -4642,6 +4648,18 @@ async function guardarFactura(emitir) {
     if (id) {
       await api('facturas','PATCH',datos,'?id_factura=eq.'+id);
     } else {
+      // Verificar que la OS no tenga ya una factura activa
+      if (idOS) {
+        const osFacturada = await api('facturas','GET',null,
+          '?id_orden=eq.'+idOS+'&estado=neq.ANULADA&select=id_factura,numero_factura');
+        if (osFacturada && osFacturada.length) {
+          errEl.textContent = 'Esta OS ya tiene una factura activa: ' + osFacturada[0].numero_factura;
+          errEl.style.display = 'block';
+          window._facturaProcesando = false;
+          if (btnGuardar) { btnGuardar.disabled=false; btnGuardar.textContent = emitir ? '✓ Emitir' : 'Guardar'; }
+          return;
+        }
+      }
       const anio=new Date().getFullYear();
       const existentes=await api('facturas','GET',null,'?select=numero_factura&numero_factura=like.FAC-'+anio+'-*&order=numero_factura.desc&limit=1');
       let seq=1;
@@ -4760,8 +4778,6 @@ async function guardarFactura(emitir) {
 
     okEl.textContent = emitir ? '✓ Factura emitida correctamente.' : '✓ Factura guardada como borrador.';
     okEl.style.display='block';
-    // Deshabilitar botones para evitar doble procesamiento
-    document.querySelectorAll('#modal-factura .btn-primario').forEach(function(b){ b.disabled=true; });
     setTimeout(function() { cerrarModal('modal-factura'); renderFacturas(); }, 1200);
   } catch(err) { errEl.textContent='Error: '+err.message; errEl.style.display='block'; }
 }
@@ -6598,17 +6614,29 @@ async function contGuardarPagoCxc() {
         const cBanco = cuentas.find(function(c){ return c.codigo===codCobro; });
         const cCxC   = cuentas.find(function(c){ return c.codigo==='1.1.02.001'; });
 
-        // Débito: Banco/Caja
+        // Determinar monto en Bs (moneda funcional)
+        const esMonedaExt = ['EFECTIVO_USD','TRANSFERENCIA_USD','ZELLE','DIVISAS'].includes(metodo);
+        const montoUSD = esMonedaExt ? monto : monto / tasa;
+        const montoBs  = montoUSD * tasa;
+        const auxDesc  = esMonedaExt ? 'Cobro '+metodo+' USD '+montoUSD.toFixed(2)+' × '+tasa.toFixed(4) : 'Cobro '+metodo;
+
+        // Débito: Caja/Banco (siempre en Bs como moneda funcional)
         if (cBanco) await api('cont_asiento_lineas','POST',{
           id_asiento: idAst, id_cuenta: cBanco.id_cuenta, orden: 1,
-          descripcion: 'Cobro '+metodo, debe_usd: monto, haber_usd: 0,
-          debe_ves: monto*tasa, haber_ves: 0
+          descripcion: auxDesc,
+          debe_usd: esMonedaExt ? montoUSD : 0,
+          haber_usd: 0,
+          debe_ves: montoBs,
+          haber_ves: 0
         });
         // Crédito: CxC Clientes
         if (cCxC) await api('cont_asiento_lineas','POST',{
           id_asiento: idAst, id_cuenta: cCxC.id_cuenta, orden: 2,
-          descripcion: 'Cancelación CxC', debe_usd: 0, haber_usd: monto,
-          debe_ves: 0, haber_ves: monto*tasa
+          descripcion: 'Cancelación CxC '+cxc.numero_doc,
+          debe_usd: 0,
+          haber_usd: esMonedaExt ? montoUSD : 0,
+          debe_ves: 0,
+          haber_ves: montoBs
         });
       }
     } catch(eAst) { console.warn('Error asiento cobro:', eAst); }
