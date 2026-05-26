@@ -6035,7 +6035,8 @@ async function renderContabilidad() {
     ]);
   } catch(e) { console.warn('Error cargando contabilidad:', e); }
   contRenderShell();
-  contCambiarVista(_contVista);
+  // Esperar al siguiente tick para que el DOM procese el innerHTML
+  setTimeout(function(){ contCambiarVista(_contVista); }, 50);
 }
 
 function contRenderShell() {
@@ -6075,7 +6076,6 @@ function contTabBtn(vista, label, permiso) {
 }
 
 function contCambiarVista(vista, forzar) {
-  console.log('contCambiarVista:', vista, 'cont-vista-cont:', !!document.getElementById('cont-vista-cont'));
   _contVista = vista;
   // Actualizar tabs
   const shell = document.getElementById('contenido-principal');
@@ -6087,12 +6087,9 @@ function contCambiarVista(vista, forzar) {
       btn.style.color      = v === vista ? '#fff' : 'var(--suave)';
     });
   }
-  // Re-renderizar shell si no existe cont-vista-cont
   const cont = document.getElementById('cont-vista-cont');
-  console.log('cont-vista-cont element:', cont);
-  if (!cont) { console.log('No cont, re-rendering shell'); contRenderShell(); setTimeout(function(){ contCambiarVista(vista); }, 100); return; }
+  if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
-  console.log('Calling contRender for:', vista);
   if      (vista === 'diario')       contRenderDiario();
   else if (vista === 'mayor')        contRenderMayor();
   else if (vista === 'balance')      contRenderBalance();
