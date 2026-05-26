@@ -1892,10 +1892,21 @@ async function iniciarSesion() {
     // Determinar empresa activa
     try {
       const todasEmisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*');
-      _empresasUsuario = todasEmisores;
+
       if (u.administrador) {
+        // Admin ve todas las empresas
+        _empresasUsuario = todasEmisores;
         if (todasEmisores.length === 1) _empresaActiva = todasEmisores[0];
       } else {
+        // Usuario normal: filtrar por usuarios_empresas
+        try {
+          const ues = await api('usuarios_empresas','GET',null,
+            '?correo_usuario=eq.'+encodeURIComponent(correo)+'&activo=eq.true&select=id_emisor');
+          const idsPermitidos = new Set(ues.map(function(x){ return x.id_emisor; }));
+          _empresasUsuario = todasEmisores.filter(function(e){ return idsPermitidos.has(e.id_emisor); });
+        } catch(eUE) { _empresasUsuario = []; }
+
+        // Empresa activa = empresa de la ficha de empleado
         const empData = await api('empleados','GET',null,
           '?correo_empleado=eq.'+encodeURIComponent(correo)+'&select=id_emisor&limit=1');
         if (empData && empData.length && empData[0].id_emisor) {
@@ -1912,8 +1923,16 @@ async function iniciarSesion() {
     } catch(e) { console.warn(e); }
 
     // Entrar al sistema
-    if (u.administrador && _empresasUsuario.length > 1 && !_empresaActiva) {
-      mostrarSeleccionEmpresa();
+    if (u.administrador && !_empresaActiva) {
+      if (_empresasUsuario.length === 1) {
+        _empresaActiva = _empresasUsuario[0];
+        iniciarApp();
+      } else if (_empresasUsuario.length > 1) {
+        mostrarSeleccionEmpresa();
+      } else {
+        // Admin sin empresas — entra igual
+        iniciarApp();
+      }
     } else {
       iniciarApp();
     }
@@ -2017,15 +2036,17 @@ function iniciarApp() {
 // ─── LIMPIEZA COMPLETA DE SESIÓN ───
 // ─── SELECCIÓN DE EMPRESA ───
 function mostrarSeleccionEmpresa() {
-  const panel = document.getElementById('pantalla-login');
-  panel.style.display = 'flex';
-  document.getElementById('pantalla-app').style.display = 'none';
-
-  const loginPanel = document.querySelector('.login-panel');
-  if (!loginPanel) return;
-
-  loginPanel.innerHTML =
-    '<div style="display:flex;flex-direction:column;justify-content:center;height:100%;padding:48px 40px;max-width:480px;margin:0 auto">'
+  // Mostrar modal de selección sobre la app (no reusar pantalla-login)
+  let selModal = document.getElementById('modal-seleccion-empresa');
+  if (!selModal) {
+    selModal = document.createElement('div');
+    selModal.id = 'modal-seleccion-empresa';
+    selModal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center';
+    document.body.appendChild(selModal);
+  }
+  selModal.style.display = 'flex';
+  selModal.innerHTML =
+    '<div style="background:var(--fondo);border-radius:12px;padding:48px 40px;max-width:480px;width:90%;max-height:90vh;overflow-y:auto">'
     + '<div style="font-family:var(--font-display);font-size:32px;letter-spacing:2px;color:var(--naranja);margin-bottom:8px">SELECCIONAR EMPRESA</div>'
     + '<div style="color:var(--suave);font-size:13px;margin-bottom:32px">Selecciona la empresa con la que deseas operar</div>'
     + _empresasUsuario.map(function(e) {
@@ -2038,14 +2059,16 @@ function mostrarSeleccionEmpresa() {
           + '<div style="font-size:11px;color:var(--suave);margin-top:4px">' + (e.rif||'') + '</div>'
           + '</button>';
       }).join('')
-    + '<button onclick="cerrarSesion()" style="background:none;border:none;color:var(--suave);font-size:12px;cursor:pointer;margin-top:16px">← Cerrar sesión</button>'
+    + '<button onclick="cerrarSesion()" style="background:none;border:none;color:var(--suave);font-size:12px;cursor:pointer;margin-top:16px;display:block">← Cerrar sesión</button>'
     + '</div>';
 }
 
 function seleccionarEmpresa(idEmisor) {
   _empresaActiva = _empresasUsuario.find(function(e){ return e.id_emisor === idEmisor; });
   if (!_empresaActiva) return;
-  // Restaurar panel de login para próxima vez
+  // Cerrar modal de selección
+  const selModal = document.getElementById('modal-seleccion-empresa');
+  if (selModal) selModal.style.display = 'none';
   iniciarApp();
 }
 
