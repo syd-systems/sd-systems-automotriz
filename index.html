@@ -1146,6 +1146,8 @@
           <div class="nombre" id="nombre-usuario">Administrador</div>
           <div class="rol" id="rol-usuario">Admin</div>
           <div id="dias-clave" style="font-size:9px;margin-top:2px;color:#555"></div>
+          <div id="empresa-activa-nombre" style="font-size:10px;color:var(--naranja);margin-top:3px;font-weight:600"></div>
+          <button id="btn-cambiar-empresa" onclick="cambiarEmpresa()" style="font-size:9px;color:var(--suave);background:none;border:none;cursor:pointer;padding:0;margin-top:2px;display:none">↔ Cambiar empresa</button>
         </div>
       </div>
       <button class="btn-salir" onclick="cerrarSesion()">Cerrar Sesión</button>
@@ -1460,6 +1462,10 @@ function puedo(modulo, accion) {
 }
 
 // ─── API SUPABASE ───
+// ─── EMPRESA ACTIVA ───
+let _empresaActiva     = null; // { id_emisor, nombre, rif, ... }
+let _empresasUsuario   = [];   // lista de empresas del usuario
+
 // JWT de sesión — se actualiza al hacer login con Supabase Auth
 let _sessionJWT        = null;
 let _sessionJWTExpiry  = null;
@@ -1853,6 +1859,37 @@ async function iniciarSesion() {
 
     sesionActual = u;
     modulosAcceso = accesos.map(a => a.acceso_tipo);
+
+    // Cargar empresas del usuario
+    try {
+      if (u.administrador) {
+        // Admin ve todas las empresas
+        _empresasUsuario = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*');
+      } else {
+        const ues = await api('usuarios_empresas','GET',null,
+          '?correo_usuario=eq.'+encodeURIComponent(correo)+'&activo=eq.true&select=id_emisor,emisores(*)');
+        _empresasUsuario = ues.map(function(x){ return x.emisores; }).filter(Boolean);
+      }
+    } catch(e) { _empresasUsuario = []; }
+
+    // Si no tiene empresas asignadas
+    if (!_empresasUsuario.length) {
+      mostrarError('No tiene empresas asignadas. Contacte al administrador.');
+      limpiarSesionLocal();
+      return;
+    }
+
+    // Si tiene una sola empresa, seleccionarla automáticamente
+    if (_empresasUsuario.length === 1) {
+      _empresaActiva = _empresasUsuario[0];
+      iniciarApp();
+    } else {
+      // Mostrar pantalla de selección de empresa
+      mostrarSeleccionEmpresa();
+    }
+    btn.textContent = 'INGRESAR';
+    btn.disabled = false;
+    return; // iniciarApp se llama desde selección de empresa
     // Cargar permisos granulares
     try {
       const perms = await api('usuarios_permisos', 'GET', null, '?correo_usuario=eq.' + encodeURIComponent(u.correo_usuario));
@@ -1915,6 +1952,12 @@ function iniciarApp() {
   // Actualizar datos del usuario en sidebar
   const nombre = sesionActual.nombre || sesionActual.correo_usuario;
   document.getElementById('nombre-usuario').textContent = nombre;
+  // Mostrar empresa activa
+  const empEl = document.getElementById('empresa-activa-nombre');
+  if (empEl && _empresaActiva) empEl.textContent = '🏢 ' + _empresaActiva.nombre;
+  // Mostrar botón cambiar empresa si hay más de una
+  const btnCambiar = document.getElementById('btn-cambiar-empresa');
+  if (btnCambiar) btnCambiar.style.display = _empresasUsuario.length > 1 ? '' : 'none';
   document.getElementById('rol-usuario').textContent = sesionActual.administrador ? 'Administrador' : 'Operador';
   document.getElementById('avatar-inicial').textContent = nombre.charAt(0).toUpperCase();
 
@@ -1949,12 +1992,53 @@ function iniciarApp() {
 }
 
 // ─── LIMPIEZA COMPLETA DE SESIÓN ───
+// ─── SELECCIÓN DE EMPRESA ───
+function mostrarSeleccionEmpresa() {
+  const panel = document.getElementById('pantalla-login');
+  panel.style.display = 'flex';
+  document.getElementById('pantalla-app').style.display = 'none';
+
+  const loginPanel = document.querySelector('.login-panel');
+  if (!loginPanel) return;
+
+  loginPanel.innerHTML =
+    '<div style="display:flex;flex-direction:column;justify-content:center;height:100%;padding:48px 40px;max-width:480px;margin:0 auto">'
+    + '<div style="font-family:var(--font-display);font-size:32px;letter-spacing:2px;color:var(--naranja);margin-bottom:8px">SELECCIONAR EMPRESA</div>'
+    + '<div style="color:var(--suave);font-size:13px;margin-bottom:32px">Selecciona la empresa con la que deseas operar</div>'
+    + _empresasUsuario.map(function(e) {
+        return '<button onclick="seleccionarEmpresa('+e.id_emisor+')" '
+          + 'style="background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:16px 20px;'
+          + 'text-align:left;cursor:pointer;margin-bottom:10px;width:100%;transition:all 0.15s;font-family:var(--font-body)"'
+          + ' >'
+          + '<div style="font-family:var(--font-display);font-size:18px;letter-spacing:1px;color:var(--texto)">'
+          + '🏢 ' + e.nombre + '</div>'
+          + '<div style="font-size:11px;color:var(--suave);margin-top:4px">' + (e.rif||'') + '</div>'
+          + '</button>';
+      }).join('')
+    + '<button onclick="cerrarSesion()" style="background:none;border:none;color:var(--suave);font-size:12px;cursor:pointer;margin-top:16px">← Cerrar sesión</button>'
+    + '</div>';
+}
+
+function seleccionarEmpresa(idEmisor) {
+  _empresaActiva = _empresasUsuario.find(function(e){ return e.id_emisor === idEmisor; });
+  if (!_empresaActiva) return;
+  // Restaurar panel de login para próxima vez
+  iniciarApp();
+}
+
+function cambiarEmpresa() {
+  if (_empresasUsuario.length <= 1) return;
+  mostrarSeleccionEmpresa();
+}
+
 function limpiarSesionLocal() {
-  // Limpiar JWT
+  // Limpiar JWT y empresa
   _sessionJWT       = null;
   _sessionJWTExpiry = null;
   _sessionEmail     = null;
   _sessionPassword  = null;
+  _empresaActiva    = null;
+  _empresasUsuario  = [];
   cerrarTodosLosModales();
   detenerTimerInactividad();
   sesionActual     = null;
@@ -4467,6 +4551,8 @@ async function abrirNuevaFactura() {
   const selEm = document.getElementById('fac-emisor');
   selEm.innerHTML = '<option value="">— Seleccionar empresa —</option>'
     + emisoresList.map(function(e) { return '<option value="' + e.id_emisor + '">' + e.nombre + ' (' + (e.rif||'') + ')</option>'; }).join('');
+  // Preseleccionar empresa activa
+  if (_empresaActiva) selEm.value = _empresaActiva.id_emisor;
 
   const selOS = document.getElementById('fac-os-sel');
   selOS.innerHTML = '<option value="">— Seleccionar OS —</option>'
