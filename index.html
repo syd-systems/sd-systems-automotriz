@@ -2215,9 +2215,9 @@ async function renderDashboard() {
     const [usuarios, tasas, vehiculos, propietarios, ordenes] = await Promise.all([
       api('usuarios', 'GET', null, '?select=id_usuario'),
       api('tasas', 'GET', null, '?select=id_tasa&order=fecha_registro.desc&limit=1'),
-      api('vehiculos', 'GET', null, '?select=id_vehiculo'),
-      api('propietarios', 'GET', null, '?select=id_propietario'),
-      api('ordenes_servicio', 'GET', null, '?select=id_orden&estado=neq.CERRADA&estado=neq.ANULADA'),
+      api('vehiculos', 'GET', null, '?select=id_vehiculo'+emisorQ()),
+      api('propietarios', 'GET', null, '?select=id_propietario'+emisorQ()),
+      api('ordenes_servicio', 'GET', null, '?select=id_orden&estado=neq.CERRADA&estado=neq.ANULADA'+emisorQ()),
     ]);
 
     const ultimaTasa = tasas.length > 0 ? tasas[0] : null;
@@ -2253,21 +2253,24 @@ async function renderDashboard() {
           <div class="tarjeta-valor">${tasaValor}</div>
           <div class="tarjeta-nombre">Última Tasa USD</div>
         </div>` : ''}
+        ${puedo('VEHICULOS','VER') ? `
         <div class="tarjeta-stat" onclick="mostrarModulo('vehiculos', document.getElementById('nav-VEHICULOS'))">
           <div class="tarjeta-icono">🚗</div>
           <div class="tarjeta-valor">${vehiculos.length}</div>
           <div class="tarjeta-nombre">Vehículos</div>
-        </div>
+        </div>` : ''}
+        ${puedo('PROPIETARIOS','VER') ? `
         <div class="tarjeta-stat" onclick="mostrarModulo('propietarios', document.getElementById('nav-PROPIETARIOS'))">
           <div class="tarjeta-icono">👤</div>
           <div class="tarjeta-valor">${propietarios.length}</div>
           <div class="tarjeta-nombre">Propietarios</div>
-        </div>
+        </div>` : ''}
+        ${puedo('SERVICIOS','VER') ? `
         <div class="tarjeta-stat" onclick="mostrarModulo('ordenes', document.getElementById('nav-SERVICIOS'))">
           <div class="tarjeta-icono">🔧</div>
           <div class="tarjeta-valor">${ordenes.length}</div>
           <div class="tarjeta-nombre">OS Abiertas</div>
-        </div>
+        </div>` : ''}
         ${esAdmin ? `
         <div class="tarjeta-stat" style="cursor:default">
           <div class="tarjeta-icono">🧾</div>
