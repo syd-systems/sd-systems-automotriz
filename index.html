@@ -1908,7 +1908,7 @@ async function iniciarSesion() {
 
         // Empresa activa = empresa de la ficha de empleado
         const empData = await api('empleados','GET',null,
-          '?correo_empleado=eq.'+encodeURIComponent(correo)+'&select=id_emisor&limit=1');
+          '?correo=eq.'+encodeURIComponent(correo)+'&select=id_emisor&limit=1');
         if (empData && empData.length && empData[0].id_emisor) {
           _empresaActiva = todasEmisores.find(function(e){ return e.id_emisor === empData[0].id_emisor; }) || null;
         }
