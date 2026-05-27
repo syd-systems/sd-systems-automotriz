@@ -2069,7 +2069,25 @@ function seleccionarEmpresa(idEmisor) {
   // Cerrar modal de selección
   const selModal = document.getElementById('modal-seleccion-empresa');
   if (selModal) selModal.style.display = 'none';
-  iniciarApp();
+  // Actualizar sidebar
+  const empEl = document.getElementById('empresa-activa-nombre');
+  if (empEl) empEl.textContent = '🏢 ' + _empresaActiva.nombre;
+  const btnCambiar = document.getElementById('btn-cambiar-empresa');
+  if (btnCambiar) btnCambiar.style.display = _empresasUsuario.length > 1 ? '' : 'none';
+  // Si ya estaba en la app, solo recargar el módulo actual
+  const app = document.getElementById('pantalla-app');
+  if (app && app.style.display !== 'none') {
+    renderModuloActual();
+  } else {
+    iniciarApp();
+  }
+}
+
+function renderModuloActual() {
+  // Recargar el módulo activo con la nueva empresa
+  const moduloActivo = document.querySelector('.nav-item.activo');
+  if (moduloActivo) moduloActivo.click();
+  else renderDashboard();
 }
 
 function cambiarEmpresa() {
