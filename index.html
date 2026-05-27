@@ -5598,6 +5598,22 @@ async function guardarSalidaStock() {
     // Actualizar cache
     if (art) art.stock_actual = nuevoStock;
 
+    // ── Generar asiento contable de salida ──
+    try {
+      const areaNombreSal = document.getElementById('salida-area')?.selectedOptions[0]?.text || 'Área';
+      const areaIdSal     = parseInt(document.getElementById('salida-area')?.value) || null;
+      const art = inventarioCache.find(function(x){ return x.id_articulo === idRep; });
+      const costoUnit = art ? parseFloat(art.precio_costo_usd || 0) : 0;
+      await generarAsientoInventario('SALIDA_AREA', {
+        articulo:   art ? (art.nombre || art.codigo) : ('Art#'+idRep),
+        cantidad:   cantidad,
+        montoUSD:   costoUnit * cantidad,
+        areaId:     areaIdSal,
+        areaNombre: areaNombreSal,
+        referencia: 'SAL-INV-' + idRep
+      });
+    } catch(eAstSal) { console.warn('Error asiento salida inventario:', eAstSal); }
+
     okEl.textContent = '✓ Salida de ' + cantidad + ' unidades registrada correctamente.';
     okEl.style.display = 'block';
     setTimeout(function() { cerrarModal('modal-salida-stock'); regresarAFichaInv(); }, 1500);
@@ -7547,6 +7563,113 @@ async function guardarTributo() {
     okEl.style.display = 'block';
     setTimeout(function(){ cerrarModal('modal-tributo'); mostrarTablaParamTributos(); }, 900);
   } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ASIENTOS CONTABLES DE INVENTARIO
+// ══════════════════════════════════════════════════════════════
+
+async function generarAsientoInventario(tipo, datos) {
+  // tipo: 'ENTRADA_COMPRA' | 'ENTRADA_DEVOLUCION' | 'ENTRADA_AJUSTE'
+  //       'SALIDA_AREA' | 'SALIDA_AJUSTE'
+  // datos: { articulo, cantidad, montoUSD, areaId, areaNombre, proveedor, referencia }
+  try {
+    const tasas = await api('tasas','GET',null,'?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    const tasa  = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
+
+    const anio = new Date().getFullYear();
+    const existAst = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-'+anio+'-*&order=numero_asiento.desc&limit=1&select=numero_asiento');
+    let seq = 1;
+    if (existAst.length) { const p = existAst[0].numero_asiento.split('-'); seq = parseInt(p[p.length-1])+1; }
+    const numAst = 'AST-'+anio+'-'+String(seq).padStart(4,'0');
+
+    const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo');
+    const idPeriodo = periodos.length ? periodos[0].id_periodo : null;
+
+    // Descripción del asiento
+    const descripciones = {
+      'ENTRADA_COMPRA':     'Compra Inventario: ' + datos.articulo,
+      'ENTRADA_DEVOLUCION': 'Devolución a Inventario: ' + datos.articulo,
+      'ENTRADA_AJUSTE':     'Ajuste Entrada Inventario: ' + datos.articulo,
+      'SALIDA_AREA':        'Salida Inventario → ' + (datos.areaNombre||'Área') + ': ' + datos.articulo,
+      'SALIDA_AJUSTE':      'Ajuste Salida Inventario: ' + datos.articulo,
+    };
+
+    const asiento = await api('cont_asientos','POST',{
+      numero_asiento: numAst,
+      fecha:          getHoyVzla(),
+      descripcion:    descripciones[tipo] || 'Movimiento Inventario',
+      tipo:           'AUTOMATICO',
+      referencia:     datos.referencia || null,
+      moneda_base:    'USD',
+      tasa_bcv:       tasa,
+      id_periodo:     idPeriodo,
+      id_emisor:      _empresaActiva ? _empresaActiva.id_emisor : null,
+      estado:         'APROBADO',
+      id_usuario:     sesionActual.correo_usuario
+    });
+
+    if (!asiento || !asiento[0]) return;
+    const idAst = asiento[0].id_asiento;
+    const monto = datos.montoUSD || 0;
+
+    // Buscar cuenta de inventario
+    const cInv = await api('cont_cuentas','GET',null,'?codigo=eq.1.1.03.001&select=id_cuenta');
+    const idInv = cInv.length ? cInv[0].id_cuenta : null;
+
+    // Buscar o crear cuenta auxiliar de área
+    let idAreaCuenta = null;
+    if (datos.areaId && datos.areaNombre) {
+      const codigoArea = '6.1.01.' + String(datos.areaId).padStart(3,'0');
+      let cArea = await api('cont_cuentas','GET',null,'?codigo=eq.'+codigoArea+'&select=id_cuenta');
+      if (!cArea.length) {
+        // Crear cuenta del área automáticamente
+        const nuevaCuenta = await api('cont_cuentas','POST',{
+          codigo: codigoArea,
+          nombre: 'Costo Área — ' + datos.areaNombre,
+          tipo: 'EGRESO', naturaleza: 'DEUDOR',
+          nivel: 3, permite_movimiento: true, estado: 'ACTIVO'
+        });
+        cArea = nuevaCuenta || [];
+        if (cArea.length) idAreaCuenta = cArea[0].id_cuenta;
+        else {
+          const reCheck = await api('cont_cuentas','GET',null,'?codigo=eq.'+codigoArea+'&select=id_cuenta');
+          if (reCheck.length) idAreaCuenta = reCheck[0].id_cuenta;
+        }
+      } else {
+        idAreaCuenta = cArea[0].id_cuenta;
+      }
+    }
+
+    // Buscar cuenta de proveedores
+    const cProv = await api('cont_cuentas','GET',null,'?codigo=eq.2.1.01.001&select=id_cuenta');
+    const idProv = cProv.length ? cProv[0].id_cuenta : null;
+
+    // ── Líneas según tipo ──
+    if (tipo === 'ENTRADA_COMPRA') {
+      // Débito: Inventario / Crédito: CxP Proveedores
+      if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:1,
+        descripcion:'Entrada compra '+datos.articulo, debe_usd:monto, haber_usd:0, debe_ves:monto*tasa, haber_ves:0 });
+      if (idProv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idProv, orden:2,
+        descripcion:'CxP '+datos.articulo, debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:monto*tasa });
+
+    } else if (tipo === 'ENTRADA_DEVOLUCION' || tipo === 'ENTRADA_AJUSTE') {
+      // Débito: Inventario / Crédito: Costo Área
+      if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:1,
+        descripcion:'Entrada '+datos.articulo, debe_usd:monto, haber_usd:0, debe_ves:monto*tasa, haber_ves:0 });
+      if (idAreaCuenta) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idAreaCuenta, orden:2,
+        descripcion:'Crédito área '+datos.areaNombre, debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:monto*tasa });
+
+    } else if (tipo === 'SALIDA_AREA' || tipo === 'SALIDA_AJUSTE') {
+      // Débito: Costo Área / Crédito: Inventario
+      if (idAreaCuenta) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idAreaCuenta, orden:1,
+        descripcion:'Costo '+datos.areaNombre+' '+datos.articulo, debe_usd:monto, haber_usd:0, debe_ves:monto*tasa, haber_ves:0 });
+      if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:2,
+        descripcion:'Salida inventario '+datos.articulo, debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:monto*tasa });
+    }
+
+    console.log('✓ Asiento inventario creado:', numAst, tipo);
+  } catch(eAst) { console.warn('Error asiento inventario:', eAst); }
 }
 
 // ─── PRÓXIMO MÓDULO ───
@@ -10109,6 +10232,25 @@ async function guardarEntradaStock() {
         id_usuario:              sesionActual.correo_usuario
       });
     } catch(eH) { console.warn('Error registrando historial entrada:', eH); }
+
+    // ── Generar asiento contable de entrada ──
+    try {
+      const areaNombreEnt = document.getElementById('es-area')?.selectedOptions[0]?.text || 'Área';
+      const areaIdEnt     = parseInt(document.getElementById('es-area')?.value) || null;
+      const motivoAst     = document.getElementById('es-motivo')?.value || 'compra';
+      const tipoAst       = motivoAst === 'compra' ? 'ENTRADA_COMPRA'
+                          : motivoAst === 'devolucion' ? 'ENTRADA_DEVOLUCION'
+                          : 'ENTRADA_AJUSTE';
+      await generarAsientoInventario(tipoAst, {
+        articulo:    r.nombre || r.codigo || ('Art#'+id),
+        cantidad:    cantidad,
+        montoUSD:    nuevoPrecioCosto * cantidad,
+        areaId:      areaIdEnt,
+        areaNombre:  areaNombreEnt,
+        referencia:  'ENT-INV-' + id
+      });
+    } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
+
     okEl.textContent = 'Stock actualizado: ' + r.stock_actual + ' → ' + nuevoStock + ' ' + (r.unidad || 'UND');
     okEl.style.display = 'block';
     r.stock_actual = nuevoStock;
