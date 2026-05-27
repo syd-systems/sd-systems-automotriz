@@ -1922,20 +1922,11 @@ async function iniciarSesion() {
       }
     } catch(e) { console.warn(e); }
 
-    // Entrar al sistema
-    if (u.administrador && !_empresaActiva) {
-      if (_empresasUsuario.length === 1) {
-        _empresaActiva = _empresasUsuario[0];
-        iniciarApp();
-      } else if (_empresasUsuario.length > 1) {
-        mostrarSeleccionEmpresa();
-      } else {
-        // Admin sin empresas — entra igual
-        iniciarApp();
-      }
-    } else {
-      iniciarApp();
+    // Entrar al sistema — siempre directo, cambio de empresa desde sidebar
+    if (!_empresaActiva && _empresasUsuario.length > 0) {
+      _empresaActiva = _empresasUsuario[0];
     }
+    iniciarApp();
     btn.textContent = 'INGRESAR';
     btn.disabled = false;
 
@@ -2084,7 +2075,12 @@ function seleccionarEmpresa(idEmisor) {
 }
 
 function renderModuloActual() {
-  // Recargar el módulo activo con la nueva empresa
+  // Limpiar cachés para forzar recarga con nueva empresa
+  ordenesCache      = [];
+  facturasCache     = [];
+  vehiculosCache    = [];
+  propietariosCache = [];
+  // Recargar el módulo activo
   const moduloActivo = document.querySelector('.nav-item.activo');
   if (moduloActivo) moduloActivo.click();
   else renderDashboard();
