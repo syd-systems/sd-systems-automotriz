@@ -3440,7 +3440,7 @@ async function mostrarTablaParam(key) {
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
 
-    var query = key === 'areas' ? '?order=codigo.asc,nombre.asc&select=*' : '?order=nombre.asc&select=*';
+    var query = key === 'areas' ? '?order=codigo.asc,nombre.asc&select=*' : '?order=nombre.asc&select=*'+emisorQ();
     var items = await api(def.tabla, 'GET', null, query);
 
     // Para Cargos: ordenar por código jerárquico del área
@@ -3719,7 +3719,7 @@ async function renderEmpleados() {
 
   try {
     const empleados = await api('empleados', 'GET', null,
-      '?order=nombre_completo.asc&select=*,param_areas(nombre),param_cargos(nombre)');
+      '?order=nombre_completo.asc&select=*,param_areas(nombre),param_cargos(nombre)'+emisorQ());
     empleadosCache = empleados;
 
     const resumen = { ACTIVO:0, INACTIVO:0, SUSPENDIDO:0, RETIRADO:0, RENUNCIA:0 };
@@ -4382,7 +4382,7 @@ async function renderEmisores() {
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const emisores = await api('emisores', 'GET', null, '?order=nombre.asc&select=*');
+    const emisores = await api('emisores', 'GET', null, '?order=nombre.asc&select=*'+emisorQ());
     emisoresCache = emisores;
     const tipoLabel = { 'ORDINARIO':'Contribuyente Ordinario','ESPECIAL':'Contribuyente Especial','FORMAL':'Contribuyente Formal' };
     const tipoColor = { 'ORDINARIO':'badge-naranja','ESPECIAL':'badge-verde','FORMAL':'badge-gris' };
@@ -4521,7 +4521,7 @@ async function renderFacturas() {
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando facturas...</div>';
   try {
     const [facturas, tasas] = await Promise.all([
-      api('facturas','GET',null,'?order=fecha_emision.desc&select=*,emisores(nombre,rif),propietarios(nombre_completo)'),
+      api('facturas','GET',null,'?order=fecha_emision.desc&select=*,emisores(nombre,rif),propietarios(nombre_completo)'+emisorQ()),
       api('tasas','GET',null,'?order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
     facturasCache = facturas;
@@ -5869,7 +5869,7 @@ async function renderProveedores() {
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando proveedores...</div>';
   try {
-    const proveedores = await api('proveedores', 'GET', null, '?order=nombre.asc&select=*');
+    const proveedores = await api('proveedores', 'GET', null, '?order=nombre.asc&select=*'+emisorQ());
     proveedoresCache = proveedores;
 
     const activos   = proveedores.filter(function(p) { return p.estado === 'ACTIVO'; }).length;
@@ -9323,7 +9323,7 @@ async function renderListaServicios(grupo) {
 
   try {
     // Recargar desde Supabase para tener datos frescos
-    let query = '?order=nombre.asc&select=*';
+    let query = '?order=nombre.asc&select=*'+emisorQ();
     if (grupo) query += '&grupo=eq.' + encodeURIComponent(grupo);
     const servicios = await api('servicios_catalogo', 'GET', null, query);
     // Actualizar cache
@@ -9658,7 +9658,7 @@ async function renderInventario(filtro) {
   const tablaCont = document.getElementById('tabla-inv-cont');
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const items = await api('inventario', 'GET', null, '?order=nombre.asc&select=*' + emisorQ());
+    const items = await api('inventario', 'GET', null, '?order=nombre.asc&select=*'+emisorQ() + emisorQ());
     inventarioCache = items;
     const catFiltro = document.getElementById('inv-filtro-cat') ? document.getElementById('inv-filtro-cat').value : '';
   var itemsFiltrados = catFiltro
