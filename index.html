@@ -2075,11 +2075,19 @@ function seleccionarEmpresa(idEmisor) {
 }
 
 function renderModuloActual() {
-  // Limpiar cachés para forzar recarga con nueva empresa
+  // Limpiar TODOS los cachés para forzar recarga con nueva empresa
   ordenesCache      = [];
   facturasCache     = [];
   vehiculosCache    = [];
   propietariosCache = [];
+  empleadosCache    = [];
+  inventarioCache   = [];
+  catalogoCache     = [];
+  proveedoresCache  = [];
+  usuariosCache     = [];
+  contAsientosCache = [];
+  contCxcCache      = [];
+  contCxpCache      = [];
   // Recargar el módulo activo
   const moduloActivo = document.querySelector('.nav-item.activo');
   if (moduloActivo) moduloActivo.click();
