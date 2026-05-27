@@ -1923,7 +1923,6 @@ async function iniciarSesion() {
     } catch(e) { console.warn(e); }
 
     // Entrar al sistema
-    console.log('Entrando al sistema - admin:', u.administrador, 'empresas:', _empresasUsuario.length, 'activa:', _empresaActiva?.nombre);
     if (u.administrador && !_empresaActiva) {
       if (_empresasUsuario.length === 1) {
         _empresaActiva = _empresasUsuario[0];
@@ -1989,7 +1988,6 @@ function mostrarError(msg) {
 
 // ─── INICIAR APP ───
 function iniciarApp() {
-  console.log('iniciarApp - _empresasUsuario:', _empresasUsuario.length, '_empresaActiva:', _empresaActiva?.nombre);
   document.getElementById('pantalla-login').style.display = 'none';
   document.getElementById('pantalla-app').style.display = 'block';
 
@@ -2001,8 +1999,7 @@ function iniciarApp() {
   if (empEl && _empresaActiva) empEl.textContent = '🏢 ' + _empresaActiva.nombre;
   // Mostrar botón cambiar empresa si hay más de una
   const btnCambiar = document.getElementById('btn-cambiar-empresa');
-  const puedesCambiar = sesionActual?.administrador ? _empresasUsuario.length > 1 : _empresasUsuario.length > 1;
-  if (btnCambiar) btnCambiar.style.display = puedesCambiar ? '' : 'none';
+  if (btnCambiar) btnCambiar.style.display = _empresasUsuario.length > 1 ? '' : 'none';
   document.getElementById('rol-usuario').textContent = sesionActual.administrador ? 'Administrador' : 'Operador';
   document.getElementById('avatar-inicial').textContent = nombre.charAt(0).toUpperCase();
 
@@ -2072,11 +2069,11 @@ function seleccionarEmpresa(idEmisor) {
   // Cerrar modal de selección
   const selModal = document.getElementById('modal-seleccion-empresa');
   if (selModal) selModal.style.display = 'none';
-  // Actualizar sidebar
+  // Actualizar sidebar — forzar visible para admin con varias empresas
   const empEl = document.getElementById('empresa-activa-nombre');
   if (empEl) empEl.textContent = '🏢 ' + _empresaActiva.nombre;
-  const btnCambiar = document.getElementById('btn-cambiar-empresa');
-  if (btnCambiar) btnCambiar.style.display = _empresasUsuario.length > 1 ? '' : 'none';
+  const btnCambiar2 = document.getElementById('btn-cambiar-empresa');
+  if (btnCambiar2) btnCambiar2.style.display = _empresasUsuario.length > 1 ? '' : 'none';
   // Si ya estaba en la app, solo recargar el módulo actual
   const app = document.getElementById('pantalla-app');
   if (app && app.style.display !== 'none') {
