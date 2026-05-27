@@ -1988,6 +1988,7 @@ function mostrarError(msg) {
 
 // ─── INICIAR APP ───
 function iniciarApp() {
+  console.log('iniciarApp - _empresasUsuario:', _empresasUsuario.length, '_empresaActiva:', _empresaActiva?.nombre);
   document.getElementById('pantalla-login').style.display = 'none';
   document.getElementById('pantalla-app').style.display = 'block';
 
@@ -1999,7 +2000,8 @@ function iniciarApp() {
   if (empEl && _empresaActiva) empEl.textContent = '🏢 ' + _empresaActiva.nombre;
   // Mostrar botón cambiar empresa si hay más de una
   const btnCambiar = document.getElementById('btn-cambiar-empresa');
-  if (btnCambiar) btnCambiar.style.display = _empresasUsuario.length > 1 ? '' : 'none';
+  const puedesCambiar = sesionActual?.administrador ? _empresasUsuario.length > 1 : _empresasUsuario.length > 1;
+  if (btnCambiar) btnCambiar.style.display = puedesCambiar ? '' : 'none';
   document.getElementById('rol-usuario').textContent = sesionActual.administrador ? 'Administrador' : 'Operador';
   document.getElementById('avatar-inicial').textContent = nombre.charAt(0).toUpperCase();
 
