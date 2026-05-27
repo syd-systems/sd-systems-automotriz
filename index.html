@@ -2351,6 +2351,14 @@ async function renderUsuarios(filtro) {
     const usuarios = await api('usuarios', 'GET', null, '?select=*&order=fecha_registro.asc');
     usuariosCache = usuarios;
 
+    // Cargar empresas de cada usuario (de la ficha de empleado)
+    try {
+      const empleadosMap = await api('empleados','GET',null,'?select=correo,id_emisor,emisores(nombre)');
+      const mapaEmpleados = {};
+      empleadosMap.forEach(function(e){ mapaEmpleados[e.correo] = e.emisores ? e.emisores.nombre : null; });
+      usuarios.forEach(function(u){ u._empresaEmpleado = mapaEmpleados[u.correo_usuario] || null; });
+    } catch(eEmp) {}
+
     const usuariosFiltrados = (filtro && filtro.trim())
       ? usuarios.filter(u => u.nombre.toLowerCase().includes(filtro.toLowerCase()) || u.correo_usuario.toLowerCase().includes(filtro.toLowerCase()))
       : usuarios;
@@ -2379,6 +2387,7 @@ async function renderUsuarios(filtro) {
             <div>
               <div style="font-weight:500">${u.nombre}</div>
               <div style="font-size:11px;color:var(--suave)">${u.correo_usuario}</div>
+              ${u._empresaEmpleado ? `<div style="font-size:10px;color:var(--naranja);font-weight:600">🏢 ${u._empresaEmpleado}</div>` : ''}
             </div>
           </div>
         </td>
