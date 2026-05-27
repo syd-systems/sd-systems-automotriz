@@ -3271,15 +3271,15 @@ async function renderTasas() {
       + '<div class="panel">'
       + '<div class="panel-header"><h3>Consultar Tasa por Fecha</h3></div>'
       + '<div style="padding:20px 24px">'
-      + '<div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">'
-      + '<div class="form-campo" style="margin:0;flex:1;min-width:180px">'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;align-items:end">'
+      + '<div class="form-campo" style="margin:0">'
       + '<label>Fecha a consultar</label>'
       + '<input type="date" id="fecha-consulta" max="' + hoy + '" value="' + ayer + '" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;width:100%">'
       + '</div>'
-      + '<button class="btn-primario" style="padding:11px 20px;white-space:nowrap" onclick="consultarTasaPorFecha()">CONSULTAR</button>'
+      + '<div style="padding-bottom:1px">'
+      + '<button class="btn-primario" style="width:100%;padding:11px" onclick="consultarTasaPorFecha()">CONSULTAR</button>'
       + '</div>'
-      + '<div id="resultado-fecha" style="margin-top:16px"></div>'
-      + '</div></div>';
+      + '</div>'
       + '</div></div>';
   } catch(e) {
     console.error(e);
