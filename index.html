@@ -2060,6 +2060,7 @@ function mostrarSeleccionEmpresa() {
 }
 
 function seleccionarEmpresa(idEmisor) {
+  idEmisor = parseInt(idEmisor);
   _empresaActiva = _empresasUsuario.find(function(e){ return e.id_emisor === idEmisor; });
   if (!_empresaActiva) return;
   // Cerrar modal de selección
