@@ -5869,7 +5869,7 @@ async function renderProveedores() {
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando proveedores...</div>';
   try {
-    const proveedores = await api('proveedores', 'GET', null, '?order=nombre.asc&select=*'+emisorQ());
+    const proveedores = await api('proveedores', 'GET', null, '?order=nombre.asc&select=*');
     proveedoresCache = proveedores;
 
     const activos   = proveedores.filter(function(p) { return p.estado === 'ACTIVO'; }).length;
@@ -8354,7 +8354,7 @@ async function cargarPropietarios(filtro) {
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
 
   try {
-    let query = '?select=*&order=fecha_registro.desc';
+    let query = '?select=*&order=fecha_registro.desc' + emisorQ();
     if (filtro && filtro.trim()) query += '&or=(nombre_completo.ilike.*' + encodeURIComponent(filtro.trim()) + '*,numero_doc.ilike.*' + encodeURIComponent(filtro.trim()) + '*)';
     const props = await api('propietarios', 'GET', null, query);
     propietariosCache = props;
@@ -8583,7 +8583,7 @@ async function renderVehiculos() {
 
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando vehículos...</div>';
-  propietariosSimple = await api('propietarios', 'GET', null, '?select=id_propietario,tipo_doc,numero_doc,nombre_completo&order=nombre_completo.asc');
+  propietariosSimple = await api('propietarios', 'GET', null, '?select=id_propietario,tipo_doc,numero_doc,nombre_completo&order=nombre_completo.asc'+emisorQ());
   await cargarVehiculos(null, null); // Sin filtros al cargar
 }
 
@@ -8625,7 +8625,7 @@ async function cargarVehiculos(filtro, propId) {
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
 
   try {
-    let query = '?select=*&order=fecha_registro.desc';
+    let query = '?select=*&order=fecha_registro.desc' + emisorQ();
     if (filtro && filtro.trim()) {
       const f = encodeURIComponent(filtro.trim());
       query += '&or=(placa.ilike.*' + f + '*,marca.ilike.*' + f + '*,modelo.ilike.*' + f + '*)';
@@ -8634,7 +8634,7 @@ async function cargarVehiculos(filtro, propId) {
 
     const [vehs, todosProp, todasFotos] = await Promise.all([
       api('vehiculos', 'GET', null, query),
-      api('propietarios', 'GET', null, '?select=id_propietario,tipo_doc,numero_doc,nombre_completo'),
+      api('propietarios', 'GET', null, '?select=id_propietario,tipo_doc,numero_doc,nombre_completo'+emisorQ()),
       api('vehiculos_fotos', 'GET', null, '?select=id_vehiculo,url_foto,orden&order=orden.asc')
     ]);
 
@@ -10251,7 +10251,7 @@ async function renderOrdenes() {
   try {
     const [ordenes, tasas] = await Promise.all([
       api('ordenes_servicio', 'GET', null,
-        '?order=fecha_registro.desc&select=*,vehiculos(placa,marca,modelo),propietarios(nombre_completo)'),
+        '?order=fecha_registro.desc&select=*,vehiculos(placa,marca,modelo),propietarios(nombre_completo)'+emisorQ()),
       api('tasas', 'GET', null, '?order=fecha_registro.desc&limit=1&select=tipo_cambio'),
     ]);
     ordenesCache = ordenes;
