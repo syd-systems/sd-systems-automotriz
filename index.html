@@ -1923,6 +1923,7 @@ async function iniciarSesion() {
     } catch(e) { console.warn(e); }
 
     // Entrar al sistema
+    console.log('Entrando al sistema - admin:', u.administrador, 'empresas:', _empresasUsuario.length, 'activa:', _empresaActiva?.nombre);
     if (u.administrador && !_empresaActiva) {
       if (_empresasUsuario.length === 1) {
         _empresaActiva = _empresasUsuario[0];
