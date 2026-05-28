@@ -12633,13 +12633,13 @@ window.addEventListener('load', async () => {
       <!-- Botones de acción -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
         <button id="stock-btn-entrada" class="btn-primario" style="padding:16px 8px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px"
-          onclick="cerrarModal('modal-stock-articulo');abrirEntradaStock(_fichaInvActual.id)">
-          <span style="font-size:22px">▲</span>
+        <button id="stock-btn-entrada" class="btn-primario" style="padding:16px 8px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px"
+          onclick="abrirEntradaStock(_fichaInvActual.id)">
           <span>Entrada</span>
         </button>
         <button id="stock-btn-salida" class="btn-secundario" style="padding:16px 8px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;border-color:rgba(252,129,129,0.4);color:#fc8181"
-          onclick="cerrarModal('modal-stock-articulo');abrirSalidaStock(_fichaInvActual.id,_fichaInvActual.nombre)">
-          <span style="font-size:22px">▼</span>
+        <button id="stock-btn-salida" class="btn-secundario" style="padding:16px 8px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;border-color:rgba(252,129,129,0.4);color:#fc8181"
+          onclick="abrirSalidaStock(_fichaInvActual.id,_fichaInvActual.nombre)">
           <span>Salida</span>
         </button>
         <button id="stock-btn-historial" class="btn-secundario" style="padding:16px 8px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px"
@@ -12655,7 +12655,7 @@ window.addEventListener('load', async () => {
   </div>
 </div>
 
-<div class="modal-overlay" id="modal-entrada-stock">
+<div class="modal-overlay" id="modal-entrada-stock" style="z-index:2000">
   <div class="modal" style="max-width:780px">
     <div class="modal-header">
       <h3>ENTRADA DE STOCK</h3>
@@ -13700,7 +13700,7 @@ window.addEventListener('load', async () => {
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL SALIDA DE STOCK               -->
 <!-- ═══════════════════════════════════════ -->
-<div class="modal-overlay" id="modal-salida-stock">
+<div class="modal-overlay" id="modal-salida-stock" style="z-index:2000">
   <div class="modal" style="max-width:640px">
     <div class="modal-header">
       <h3>SALIDA DE STOCK</h3>
