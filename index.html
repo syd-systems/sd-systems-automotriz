@@ -6206,7 +6206,12 @@ function contCambiarVista(vista, forzar) {
 
 // ─── HELPERS ───
 async function contCargarCuentas() {
-  contCuentasCache = await api('cont_cuentas','GET',null,'?estado=eq.ACTIVA&order=codigo.asc&select=*');
+  // Cargar cuentas del sistema (id_emisor NULL) + cuentas de la empresa activa
+  const emisorFiltro = window._contEmisorActivo
+    ? '&or=(id_emisor.eq.'+window._contEmisorActivo+',id_emisor.is.null)'
+    : '';
+  contCuentasCache = await api('cont_cuentas','GET',null,
+    '?estado=eq.ACTIVO&order=codigo.asc&select=*' + emisorFiltro);
 }
 async function contCargarPeriodos() {
   contPeriodosCache = await api('cont_periodos','GET',null,'?order=fecha_inicio.desc&select=*');
