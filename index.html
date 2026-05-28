@@ -6584,7 +6584,21 @@ async function contRenderMayor() {
     + '<input type="date" id="cont-mayor-hasta" style="' + contSelStyle() + '">'
     + '<button class="btn-primario" onclick="contCargarMayor()">Consultar</button>'
     + '</div></div>'
-    + '<div id="cont-mayor-resultado"><div style="text-align:center;color:var(--suave);padding:40px">Selecciona una cuenta y rango de fechas para consultar el libro mayor.</div></div>';
+    + '<div id="cont-mayor-resultado"><div style="text-align:center;color:var(--suave);padding:40px">Cargando...</div></div>';
+
+  // Cargar automáticamente el mayor del mes actual
+  const hoy = new Date();
+  const primerDia = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-01';
+  const ultimoDia = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-' + String(new Date(hoy.getFullYear(), hoy.getMonth()+1, 0).getDate()).padStart(2,'0');
+  document.getElementById('cont-mayor-desde').value = primerDia;
+  document.getElementById('cont-mayor-hasta').value = ultimoDia;
+  // Si hay cuenta seleccionada cargar directo
+  const selCuenta = document.getElementById('cont-mayor-cuenta');
+  if (selCuenta && selCuenta.value) {
+    contCargarMayor();
+  } else {
+    document.getElementById('cont-mayor-resultado').innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">Selecciona una cuenta para consultar el libro mayor.</div>';
+  }
 }
 
 async function contCargarMayor() {
@@ -6604,7 +6618,7 @@ async function contCargarMayor() {
       '?id_cuenta=eq.' + idCuenta + '&select=*,cont_asientos!inner(fecha,numero_asiento,descripcion,estado)'
       + (desde ? '&cont_asientos.fecha=gte.' + desde : '')
       + (hasta ? '&cont_asientos.fecha=lte.' + hasta : '')
-      + '&cont_asientos.estado=eq.APROBADO&order=cont_asientos.fecha.asc,id_linea.asc');
+      + '&cont_asientos.estado=eq.APROBADO&order=id_linea.asc');
 
     let saldo = 0;
     const esDeudora = cuenta && cuenta.naturaleza === 'DEUDORA';
@@ -7121,7 +7135,7 @@ async function contIniciarConciliacion() {
     + '&cont_asientos.estado=eq.APROBADO'
     + '&cont_asientos.fecha=gte.' + desde
     + '&cont_asientos.fecha=lte.' + hastaStr
-    + '&order=cont_asientos.fecha.asc');
+    + '&order=id_linea.asc');
 
   const cont = document.getElementById('cont-vista-cont');
   let saldoLibros = 0;
