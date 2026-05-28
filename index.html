@@ -6271,7 +6271,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
     const periodoActivo = contGetPeriodoActivo();
     const qPeriodo = filtroPeriodo ? '&id_periodo=eq.' + filtroPeriodo : '';
     const qEstado  = filtroEstado  ? '&estado=eq.' + filtroEstado : '';
-    const emisorFiltro = window._contEmisorActivo ? '&id_emisor=eq.'+window._contEmisorActivo : '';
+    const emisorFiltro = window._contEmisorActivo ? '&or=(id_emisor.eq.'+window._contEmisorActivo+',id_emisor.is.null)' : '';
     const asientos = await api('cont_asientos','GET',null,
       '?order=fecha.desc,numero_asiento.desc&select=*,cont_periodos(nombre)' + qPeriodo + qEstado + emisorFiltro);
     contAsientosCache = asientos;
@@ -6623,7 +6623,7 @@ async function contCargarMayor() {
     let qAsientos = '?estado=eq.APROBADO&select=id_asiento';
     if (desde) qAsientos += '&fecha=gte.' + desde;
     if (hasta) qAsientos += '&fecha=lte.' + hasta;
-    if (window._contEmisorActivo) qAsientos += '&id_emisor=eq.' + window._contEmisorActivo;
+    if (window._contEmisorActivo) qAsientos += '&or=(id_emisor.eq.'+window._contEmisorActivo+',id_emisor.is.null)';
     const asientosRango = await api('cont_asientos','GET',null, qAsientos);
     const idsAsientos = asientosRango.map(function(a){ return a.id_asiento; });
 
