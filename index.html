@@ -6627,7 +6627,6 @@ async function contCargarMayor() {
     if (window._contEmisorActivo) qAsientos += '&id_emisor=eq.' + window._contEmisorActivo;
     const asientosRango = await api('cont_asientos','GET',null, qAsientos);
     const idsAsientos = asientosRango.map(function(a){ return a.id_asiento; });
-    console.log('Mayor - cuenta:', idCuenta, 'desde:', desde, 'hasta:', hasta, 'asientos:', idsAsientos);
 
     let lineas = [];
     if (idsAsientos.length) {
@@ -6636,9 +6635,6 @@ async function contCargarMayor() {
         + '&id_asiento=in.(' + idsAsientos.join(',') + ')'
         + '&select=*,cont_asientos(fecha,numero_asiento,descripcion)'
         + '&order=id_linea.asc');
-      console.log('Mayor - lineas encontradas:', lineas.length);
-    } else {
-      console.log('Mayor - sin asientos en el rango');
     }
 
     let saldo = 0;
