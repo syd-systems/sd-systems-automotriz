@@ -10135,8 +10135,13 @@ function verFichaInventario(id) {
 }
 
 function abrirEntradaStock(id) {
-  const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
-  if (!r) return;
+  let r = inventarioCache.find(function(x) { return x.id_articulo === id; });
+  // Si no está en caché, usar _fichaInvActual
+  if (!r && _fichaInvActual && _fichaInvActual.id === id) {
+    r = _fichaInvActual;
+    r.id_articulo = id;
+  }
+  if (!r) { alert('Error: artículo no encontrado. Intente recargar el inventario.'); return; }
   document.getElementById('es-id').value = id;
   document.getElementById('es-nombre').textContent = r.nombre;
   document.getElementById('es-stock-actual').textContent = r.stock_actual + ' ' + (r.unidad || 'UND');
