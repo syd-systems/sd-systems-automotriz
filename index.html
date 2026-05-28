@@ -6624,7 +6624,9 @@ async function contCargarMayor() {
     if (desde) qAsientos += '&fecha=gte.' + desde;
     if (hasta) qAsientos += '&fecha=lte.' + hasta;
     if (window._contEmisorActivo) qAsientos += '&or=(id_emisor.eq.'+window._contEmisorActivo+',id_emisor.is.null)';
+    console.log('qAsientos:', qAsientos);
     const asientosRango = await api('cont_asientos','GET',null, qAsientos);
+    console.log('asientosRango:', asientosRango.length, asientosRango);
     const idsAsientos = asientosRango.map(function(a){ return a.id_asiento; });
 
     let lineas = [];
