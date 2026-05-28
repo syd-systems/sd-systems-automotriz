@@ -6598,12 +6598,7 @@ async function contRenderMayor() {
   document.getElementById('cont-mayor-desde').value = primerDia;
   document.getElementById('cont-mayor-hasta').value = ultimoDia;
 
-  // Preseleccionar la primera cuenta que permite movimientos
-  const selCuenta = document.getElementById('cont-mayor-cuenta');
-  if (selCuenta) {
-    const primeraOpcion = selCuenta.querySelector('option[value]:not([value=""])');
-    if (primeraOpcion) selCuenta.value = primeraOpcion.value;
-  }
+  // No preseleccionar cuenta — mostrar todos los movimientos
   contCargarMayor();
 }
 
@@ -6624,11 +6619,8 @@ async function contCargarMayor() {
     if (desde) qAsientos += '&fecha=gte.' + desde;
     if (hasta) qAsientos += '&fecha=lte.' + hasta;
     if (window._contEmisorActivo) qAsientos += '&or=(id_emisor.eq.'+window._contEmisorActivo+',id_emisor.is.null)';
-    console.log('qAsientos:', qAsientos);
     const asientosRango = await api('cont_asientos','GET',null, qAsientos);
-    console.log('asientosRango:', asientosRango.length, asientosRango);
     const idsAsientos = asientosRango.map(function(a){ return a.id_asiento; });
-    console.log('idsAsientos:', idsAsientos);
 
     let lineas = [];
     if (idsAsientos.length) {
@@ -6639,9 +6631,7 @@ async function contCargarMayor() {
         + '&id_asiento=in.(' + idsAsientos.join(',') + ')'
         + '&select=*,cont_asientos(fecha,numero_asiento,descripcion)'
         + '&order=id_linea.asc';
-      console.log('qLineas:', qLineas);
       lineas = await api('cont_asiento_lineas','GET',null, qLineas);
-      console.log('lineas:', lineas.length);
     }
 
     if (!lineas.length) {
