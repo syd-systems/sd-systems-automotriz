@@ -5428,6 +5428,11 @@ function onSelAreaEntrada() {
 
 async function onCambiarMonedaEntrada() {
   const moneda   = document.getElementById('es-moneda-compra')?.value || 'USD';
+  // Actualizar labels de moneda
+  const lblCompra = document.getElementById('es-label-moneda-compra');
+  const lblVenta  = document.getElementById('es-label-moneda-venta');
+  if (lblCompra) lblCompra.textContent = '(' + moneda + ')';
+  if (lblVenta)  lblVenta.textContent  = '(' + moneda + ')';
   const tasaCont = document.getElementById('es-tasa-cont');
   const usdCont  = document.getElementById('es-precio-usd-cont');
   const esVES    = moneda === 'VES';
@@ -12678,7 +12683,7 @@ window.addEventListener('load', async () => {
             onkeydown="if(event.key==='Enter'){document.getElementById('es-precio-costo').focus()}">
         </div>
         <div class="form-campo">
-          <label>Precio Compra <span style="font-size:10px;color:var(--suave);font-weight:400">/ unidad</span></label>
+          <label>Precio Compra <span style="font-size:10px;color:var(--suave);font-weight:400">/ unidad</span> <span id="es-label-moneda-compra" style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span></label>
           <input type="number" id="es-precio-costo" placeholder="0.00" min="0" step="0.01" value="0.00"
             style="font-family:var(--font-mono)"
             oninput="onCambiarPrecioEntrada()"
@@ -12695,8 +12700,8 @@ window.addEventListener('load', async () => {
           </select>
         </div>
         <div class="form-campo" id="es-precio-venta-cont">
-          <label>Precio Venta USD</label>
-          <input type="number" id="es-precio-venta" placeholder="0.00" min="0" step="0.01"
+        <div class="form-campo" id="es-precio-venta-cont">
+          <label>Precio Venta <span id="es-label-moneda-venta" style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span></label>
             style="font-family:var(--font-mono)">
           <div style="font-size:10px;color:var(--suave);margin-top:4px">Blanco = mantiene precio actual</div>
         </div>
