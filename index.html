@@ -11016,6 +11016,10 @@ function fmtUSD(valor) {
   // Formato estándar USD: coma miles, punto decimales → 822.00
   return parseFloat(valor || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+function fmtVES(valor) {
+  // Formato Bolívares: punto miles, coma decimales → 1.234.567,89
+  return parseFloat(valor || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
 let tasaActualOS = 1;        // tasa USD→VES al crear/editar OS
 
