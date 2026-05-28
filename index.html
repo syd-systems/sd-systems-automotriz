@@ -6615,11 +6615,22 @@ async function contCargarMayor() {
     let q = '?id_asiento=in.(select id_asiento from cont_asientos where estado=eq.APROBADO)&id_cuenta=eq.' + idCuenta + '&order=id_linea.asc&select=*,cont_asientos(fecha,numero_asiento,descripcion)';
 
     // Usar mayor si existe, sino calcular desde líneas
-    const lineas = await api('cont_asiento_lineas','GET',null,
-      '?id_cuenta=eq.' + idCuenta + '&select=*,cont_asientos!inner(fecha,numero_asiento,descripcion,estado)'
-      + (desde ? '&cont_asientos.fecha=gte.' + desde : '')
-      + (hasta ? '&cont_asientos.fecha=lte.' + hasta : '')
-      + '&cont_asientos.estado=eq.APROBADO&order=id_linea.asc');
+    // Obtener asientos aprobados en el rango de fechas
+    let qAsientos = '?estado=eq.APROBADO&select=id_asiento';
+    if (desde) qAsientos += '&fecha=gte.' + desde;
+    if (hasta) qAsientos += '&fecha=lte.' + hasta;
+    if (window._contEmisorActivo) qAsientos += '&id_emisor=eq.' + window._contEmisorActivo;
+    const asientosRango = await api('cont_asientos','GET',null, qAsientos);
+    const idsAsientos = asientosRango.map(function(a){ return a.id_asiento; });
+
+    let lineas = [];
+    if (idsAsientos.length) {
+      lineas = await api('cont_asiento_lineas','GET',null,
+        '?id_cuenta=eq.' + idCuenta
+        + '&id_asiento=in.(' + idsAsientos.join(',') + ')'
+        + '&select=*,cont_asientos(fecha,numero_asiento,descripcion)'
+        + '&order=id_linea.asc');
+    }
 
     let saldo = 0;
     const esDeudora = cuenta && cuenta.naturaleza === 'DEUDORA';
