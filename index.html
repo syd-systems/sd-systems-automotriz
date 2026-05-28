@@ -2204,6 +2204,7 @@ async function mostrarModulo(modulo, navEl) {
     case 'catalogo':     renderCatalogo();     break;
     case 'emisores':     renderEmisores();     break;
     case 'facturas':     renderFacturas();     break;
+    case 'pagos':        renderPagos();        break;
     case 'empleados':    renderEmpleados();    break;
     case 'proveedores':  renderProveedores();  break;
     case 'contabilidad': renderContabilidad(); break;
@@ -7754,6 +7755,540 @@ async function generarAsientoInventario(tipo, datos) {
   } catch(eAst) { console.warn('Error asiento inventario:', eAst); }
 }
 
+
+// ══════════════════════════════════════════════════════════════
+//  MÓDULO DE PAGOS
+// ══════════════════════════════════════════════════════════════
+
+var pagosCache = [];
+var _pagoEditando = null;
+
+const TIPOS_PAGO = [
+  { value: 'NOMINA',          label: '👷 Nómina',          cuentaGasto: '6.1.01.001' },
+  { value: 'PROVEEDOR',       label: '🏭 Proveedor',        cuentaGasto: '2.1.01.001' },
+  { value: 'SERVICIO_BASICO', label: '💡 Servicio Básico',  cuentaGasto: '6.1.02.002' },
+  { value: 'ALQUILER',        label: '🏠 Alquiler',         cuentaGasto: '6.1.02.001' },
+  { value: 'SUSCRIPCION',     label: '📱 Suscripción',      cuentaGasto: '6.1.02.003' },
+  { value: 'IMPUESTO',        label: '📋 Impuesto/Tributo', cuentaGasto: '6.1.04.001' },
+  { value: 'OTRO',            label: '💰 Otro',             cuentaGasto: null },
+];
+
+const METODOS_PAGO_PAGOS = [
+  { value: 'EFECTIVO_VES',      label: 'Efectivo Bs',        cuenta: '1.1.01.001' },
+  { value: 'EFECTIVO_USD',      label: 'Efectivo USD',       cuenta: '1.1.01.002' },
+  { value: 'TRANSFERENCIA_VES', label: 'Transferencia Bs',   cuenta: '1.1.01.003' },
+  { value: 'TRANSFERENCIA_USD', label: 'Transferencia USD',  cuenta: '1.1.01.004' },
+  { value: 'PAGO_MOVIL',        label: 'Pago Móvil',         cuenta: '1.1.01.003' },
+  { value: 'ZELLE',             label: 'Zelle',              cuenta: '1.1.01.004' },
+  { value: 'DIVISAS',           label: 'Divisas',            cuenta: '1.1.01.005' },
+];
+
+async function renderPagos() {
+  if (!sesionActual?.administrador && !modulosAcceso.includes('PAGOS')) {
+    document.getElementById('contenido-principal').innerHTML =
+      '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
+    return;
+  }
+  const c = document.getElementById('contenido-principal');
+  c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando pagos...</div>';
+  try {
+    await cargarPagos();
+  } catch(e) {
+    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+  }
+}
+
+async function cargarPagos(filtroEstado, filtroTipo, busqueda) {
+  const c = document.getElementById('contenido-principal');
+  const panelExiste = !!document.getElementById('panel-pagos');
+
+  if (!panelExiste) {
+    c.innerHTML =
+      '<div class="panel" id="panel-pagos">' +
+      '<div class="panel-header">' +
+      '<h3 id="pagos-contador">Pagos</h3>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+      (puedo('PAGOS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoPago()">+ Nuevo Pago</button>' : '') +
+      '</div></div>' +
+      '<div style="padding:12px 24px;display:flex;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--borde)">' +
+      '<input id="pagos-buscar" placeholder="🔍 Buscar..." style="' + inputStyle() + ';flex:1;min-width:160px" oninput="cargarPagosDesdeUI()">' +
+      '<select id="pagos-tipo" style="' + inputStyle() + '" onchange="cargarPagosDesdeUI()">' +
+      '<option value="">Todos los estados</option>' +
+      '<option value="BORRADOR">Borrador</option>' +
+      '<option value="APROBADO">Aprobado</option>' +
+      '<option value="PAGADO">Pagado</option>' +
+      '<option value="ANULADO">Anulado</option>' +
+      '</select>' +
+      '<select id="pagos-tipo" style="' + inputStyle() + '" onchange="cargarPagosDesdeUI()">' +
+      '<option value="">Todos los tipos</option>' +
+      TIPOS_PAGO.map(function(t){ return '<option value="'+t.value+'">'+t.label+'</option>'; }).join('') +
+      '</select>' +
+      '</div>' +
+      '<div id="pagos-tabla-cont" style="padding:0"></div>' +
+      '</div>';
+  }
+
+  // Restaurar filtros
+  if (filtroEstado !== undefined) document.getElementById('pagos-estado').value = filtroEstado || '';
+  if (filtroTipo !== undefined) document.getElementById('pagos-tipo').value = filtroTipo || '';
+
+  const fEstado = document.getElementById('pagos-estado')?.value || '';
+  const fTipo   = document.getElementById('pagos-tipo')?.value || '';
+  const fBuscar = busqueda || document.getElementById('pagos-buscar')?.value || '';
+
+  let q = '?order=fecha_registro.desc&select=*' + emisorQ();
+  if (fEstado) q += '&estado=eq.' + fEstado;
+  if (fTipo)   q += '&tipo_pago=eq.' + fTipo;
+
+  const pagos = await api('pagos','GET',null,q);
+  pagosCache = pagos;
+
+  const filtrados = fBuscar
+    ? pagos.filter(function(p){
+        const s = fBuscar.toLowerCase();
+        return (p.numero_pago||'').toLowerCase().includes(s)
+            || (p.descripcion||'').toLowerCase().includes(s)
+            || (p.nombre_beneficiario||'').toLowerCase().includes(s);
+      })
+    : pagos;
+
+  document.getElementById('pagos-contador').textContent = 'Pagos (' + filtrados.length + ')';
+
+  // Alertas de recurrentes próximos a vencer
+  const hoy = new Date();
+  const en7dias = new Date(hoy); en7dias.setDate(en7dias.getDate()+7);
+  const proximos = pagos.filter(function(p){
+    if (!p.es_recurrente || !p.fecha_proxima || p.estado === 'ANULADO') return false;
+    const fp = new Date(p.fecha_proxima);
+    return fp <= en7dias;
+  });
+
+  const cont = document.getElementById('pagos-tabla-cont');
+
+  let alertaHtml = '';
+  if (proximos.length) {
+    alertaHtml = '<div class="alerta" style="display:block;margin:12px 24px;background:rgba(255,107,0,0.1);border:1px solid rgba(255,107,0,0.3);border-radius:6px;padding:10px 14px">' +
+      '⚠️ <strong>' + proximos.length + ' pago(s) recurrente(s)</strong> próximos a vencer: ' +
+      proximos.map(function(p){ return '<span style="color:var(--naranja)">' + p.descripcion + ' (' + fmtFecha(p.fecha_proxima) + ')</span>'; }).join(', ') +
+      '</div>';
+  }
+
+  if (!filtrados.length) {
+    cont.innerHTML = alertaHtml + '<div style="text-align:center;padding:40px;color:var(--suave)">Sin pagos registrados.</div>';
+    return;
+  }
+
+  const estadoBadge = {
+    'BORRADOR': '<span class="badge badge-gris">Borrador</span>',
+    'APROBADO': '<span class="badge badge-naranja">Aprobado</span>',
+    'PAGADO':   '<span class="badge" style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3)">Pagado</span>',
+    'ANULADO':  '<span class="badge" style="background:rgba(252,129,129,0.15);color:#fc8181;border:1px solid rgba(252,129,129,0.3)">Anulado</span>',
+  };
+
+  const filas = filtrados.map(function(p) {
+    const tipo = TIPOS_PAGO.find(function(t){ return t.value === p.tipo_pago; });
+    const metodo = METODOS_PAGO_PAGOS.find(function(m){ return m.value === p.metodo_pago; });
+    return '<tr style="cursor:pointer" onclick="abrirFichaPago('+p.id_pago+')">' +
+      '<td style="padding:10px 14px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">' + (p.numero_pago||'—') + '</td>' +
+      '<td style="padding:10px 14px;font-size:12px">' + (tipo ? tipo.label : p.tipo_pago) + '</td>' +
+      '<td style="padding:10px 14px;font-size:13px;font-weight:500">' + (p.descripcion||'—') + '<br><span style="font-size:11px;color:var(--suave)">' + (p.nombre_beneficiario||'') + '</span></td>' +
+      '<td style="padding:10px 14px;font-size:12px;font-family:var(--font-mono);text-align:right">' +
+        (p.monto_usd ? '$ '+fmtUSD(p.monto_usd) : '—') +
+        (p.monto_ves ? '<br><span style="font-size:10px;color:var(--suave)">Bs '+fmtVES(p.monto_ves)+'</span>' : '') +
+      '</td>' +
+      '<td style="padding:10px 14px;font-size:12px">' + (metodo ? metodo.label : (p.metodo_pago||'—')) + '</td>' +
+      '<td style="padding:10px 14px;font-size:12px">' + fmtFecha(p.fecha_pago||p.fecha_vencimiento) + (p.es_recurrente ? ' <span style="font-size:10px;color:var(--naranja)">🔄</span>' : '') + '</td>' +
+      '<td style="padding:10px 14px">' + (estadoBadge[p.estado]||p.estado) + '</td>' +
+      '<td style="padding:10px 14px">' +
+        '<div style="display:flex;gap:4px;flex-wrap:wrap">' +
+        (p.estado==='BORRADOR' && puedo('PAGOS','EDITAR') ? '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="event.stopPropagation();abrirEditarPago('+p.id_pago+')">✏</button>' : '') +
+        (p.estado==='BORRADOR' && puedo('PAGOS','APROBAR') ? '<button class="btn-primario" style="font-size:11px;padding:4px 8px" onclick="event.stopPropagation();aprobarPago('+p.id_pago+')">✓ Aprobar</button>' : '') +
+        (p.estado==='APROBADO' && puedo('PAGOS','PAGAR') ? '<button class="btn-primario" style="font-size:11px;padding:4px 8px;background:#22c55e;border-color:#22c55e" onclick="event.stopPropagation();ejecutarPago('+p.id_pago+')">💳 Pagar</button>' : '') +
+        (p.estado!=='ANULADO' && p.estado!=='PAGADO' && puedo('PAGOS','ANULAR') ? '<button class="btn-secundario" style="font-size:11px;padding:4px 8px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="event.stopPropagation();anularPago('+p.id_pago+')">Anular</button>' : '') +
+        '</div>' +
+      '</td>' +
+      '</tr>';
+  }).join('');
+
+  cont.innerHTML = alertaHtml +
+    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">' +
+    '<thead><tr style="border-bottom:2px solid var(--borde)">' +
+    '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">N°</th>' +
+    '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">Tipo</th>' +
+    '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">Descripción</th>' +
+    '<th style="padding:10px 14px;text-align:right;font-size:11px;color:var(--suave)">Monto</th>' +
+    '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">Método</th>' +
+    '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">Fecha</th>' +
+    '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">Estado</th>' +
+    '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">Acciones</th>' +
+    '</tr></thead><tbody>' + filas + '</tbody></table></div>';
+}
+
+// ── Abrir nuevo pago ──
+async function abrirNuevoPago() {
+  _pagoEditando = null;
+  await poblarFormPago(null);
+  document.getElementById('pago-modal-titulo').textContent = 'NUEVO PAGO';
+  document.getElementById('alerta-pago-ok').style.display = 'none';
+  document.getElementById('alerta-pago-err').style.display = 'none';
+  abrirModal('modal-pago');
+}
+
+async function abrirEditarPago(id) {
+  _pagoEditando = pagosCache.find(function(p){ return p.id_pago === id; });
+  if (!_pagoEditando) return;
+  await poblarFormPago(_pagoEditando);
+  document.getElementById('pago-modal-titulo').textContent = 'EDITAR PAGO';
+  abrirModal('modal-pago');
+}
+
+async function poblarFormPago(p) {
+  // Cargar tasas
+  const tasas = await api('tasas','GET',null,'?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+  const tasa = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
+  document.getElementById('pago-tasa').value = tasa.toFixed(4);
+
+  // Cargar proveedores
+  const provs = await api('proveedores','GET',null,'?order=nombre.asc&select=id_proveedor,nombre');
+  const selProv = document.getElementById('pago-proveedor');
+  selProv.innerHTML = '<option value="">— Sin proveedor —</option>' +
+    provs.map(function(pr){ return '<option value="'+pr.id_proveedor+'">' + pr.nombre + '</option>'; }).join('');
+
+  // Cargar empleados
+  const emps = await api('empleados','GET',null,'?order=nombre_completo.asc&select=id_empleado,nombre_completo'+emisorQ());
+  const selEmp = document.getElementById('pago-empleado');
+  selEmp.innerHTML = '<option value="">— Sin empleado —</option>' +
+    emps.map(function(e){ return '<option value="'+e.id_empleado+'">'+e.nombre_completo+'</option>'; }).join('');
+
+  // Cargar cuentas de gasto
+  await contCargarCuentas();
+  const cuentasGasto = contCuentasCache.filter(function(c){ return c.permite_movimiento && (c.codigo.startsWith('5') || c.codigo.startsWith('6')); });
+  const selGasto = document.getElementById('pago-cuenta-gasto');
+  selGasto.innerHTML = '<option value="">— Seleccionar cuenta —</option>' +
+    cuentasGasto.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join('');
+
+  // Llenar campos si editando
+  // Poblar select de tipos
+  const selTipo = document.getElementById('pago-tipo');
+  selTipo.innerHTML = '<option value="">— Seleccionar —</option>' +
+    TIPOS_PAGO.map(function(t){ return '<option value="'+t.value+'">'+t.label+'</option>'; }).join('');
+  document.getElementById('pago-tipo').value          = p ? p.tipo_pago : 'OTRO';
+  document.getElementById('pago-descripcion').value   = p ? p.descripcion : '';
+  document.getElementById('pago-beneficiario').value  = p ? (p.nombre_beneficiario||'') : '';
+  document.getElementById('pago-monto-usd').value     = p ? (p.monto_usd||'') : '';
+  document.getElementById('pago-monto-ves').value     = p ? (p.monto_ves||'') : '';
+  document.getElementById('pago-moneda').value        = p ? (p.moneda_pago||'USD') : 'USD';
+  document.getElementById('pago-fecha-venc').value    = p ? (p.fecha_vencimiento||'') : '';
+  document.getElementById('pago-referencia').value    = p ? (p.referencia||'') : '';
+  document.getElementById('pago-observaciones').value = p ? (p.observaciones||'') : '';
+  document.getElementById('pago-recurrente').checked  = p ? !!p.es_recurrente : false;
+  document.getElementById('pago-frecuencia').value    = p ? (p.frecuencia||'MENSUAL') : 'MENSUAL';
+  if (p && p.id_beneficiario) selProv.value = p.id_beneficiario;
+  if (p && p.id_empleado)     selEmp.value  = p.id_empleado;
+  if (p && p.id_cuenta_gasto) selGasto.value = p.id_cuenta_gasto;
+  onCambiarTipoPago();
+  onToggleRecurrente();
+  onCambiarMontoPago();
+}
+
+function cargarPagosDesdeUI() {
+  const est  = document.getElementById('pagos-estado')?.value || '';
+  const tipo = document.getElementById('pagos-tipo')?.value || '';
+  const bus  = document.getElementById('pagos-buscar')?.value || '';
+  cargarPagos(est, tipo, bus);
+}
+
+function onCambiarTipoPago() {
+  const tipo = document.getElementById('pago-tipo').value;
+  const provRow  = document.getElementById('pago-row-proveedor');
+  const empRow   = document.getElementById('pago-row-empleado');
+  const cuentaRow = document.getElementById('pago-row-cuenta-gasto');
+  if (provRow)   provRow.style.display   = tipo === 'PROVEEDOR' ? '' : 'none';
+  if (empRow)    empRow.style.display    = tipo === 'NOMINA' ? '' : 'none';
+  if (cuentaRow) cuentaRow.style.display = '';
+
+  // Preseleccionar cuenta de gasto según tipo
+  const tipoDef = TIPOS_PAGO.find(function(t){ return t.value === tipo; });
+  if (tipoDef && tipoDef.cuentaGasto) {
+    const cta = contCuentasCache.find(function(c){ return c.codigo === tipoDef.cuentaGasto; });
+    if (cta) document.getElementById('pago-cuenta-gasto').value = cta.id_cuenta;
+  }
+}
+
+function onCambiarMontoPago() {
+  const tasa    = parseFloat(document.getElementById('pago-tasa').value) || 1;
+  const moneda  = document.getElementById('pago-moneda').value;
+  const montoUSD = parseFloat(document.getElementById('pago-monto-usd').value) || 0;
+  if (moneda === 'USD' && montoUSD > 0) {
+    document.getElementById('pago-monto-ves').value = (montoUSD * tasa).toFixed(2);
+  }
+}
+
+function onToggleRecurrente() {
+  const es = document.getElementById('pago-recurrente').checked;
+  const row = document.getElementById('pago-row-recurrente');
+  if (row) row.style.display = es ? '' : 'none';
+}
+
+async function guardarPago() {
+  const errEl = document.getElementById('alerta-pago-err');
+  const okEl  = document.getElementById('alerta-pago-ok');
+  errEl.style.display = 'none';
+
+  const tipo        = document.getElementById('pago-tipo').value;
+  const descripcion = document.getElementById('pago-descripcion').value.trim();
+  const montoUSD    = parseFloat(document.getElementById('pago-monto-usd').value) || 0;
+  const montoVES    = parseFloat(document.getElementById('pago-monto-ves').value) || 0;
+  const moneda      = document.getElementById('pago-moneda').value;
+  const fechaVenc   = document.getElementById('pago-fecha-venc').value;
+  const tasa        = parseFloat(document.getElementById('pago-tasa').value) || 1;
+  const esRec       = document.getElementById('pago-recurrente').checked;
+  const frecuencia  = document.getElementById('pago-frecuencia').value;
+  const idProv      = parseInt(document.getElementById('pago-proveedor').value) || null;
+  const idEmp       = parseInt(document.getElementById('pago-empleado').value) || null;
+  const idCtaGasto  = parseInt(document.getElementById('pago-cuenta-gasto').value) || null;
+  const beneficiario = document.getElementById('pago-beneficiario').value.trim();
+
+  if (!tipo)        { errEl.textContent = 'Selecciona el tipo de pago.';    errEl.style.display='block'; return; }
+  if (!descripcion) { errEl.textContent = 'Ingresa una descripción.';       errEl.style.display='block'; return; }
+  if (!montoUSD && !montoVES) { errEl.textContent = 'Ingresa el monto.';   errEl.style.display='block'; return; }
+  if (!fechaVenc)   { errEl.textContent = 'Ingresa la fecha de vencimiento.'; errEl.style.display='block'; return; }
+
+  // Calcular próxima fecha si recurrente
+  let fechaProxima = null;
+  if (esRec && fechaVenc) {
+    const fp = new Date(fechaVenc);
+    if (frecuencia === 'MENSUAL')     fp.setMonth(fp.getMonth()+1);
+    else if (frecuencia === 'TRIMESTRAL') fp.setMonth(fp.getMonth()+3);
+    else if (frecuencia === 'ANUAL')  fp.setFullYear(fp.getFullYear()+1);
+    fechaProxima = fp.toISOString().split('T')[0];
+  }
+
+  // Generar número de pago
+  let numeroPago = _pagoEditando ? _pagoEditando.numero_pago : null;
+  if (!numeroPago) {
+    const anio = new Date().getFullYear();
+    const ultPago = await api('pagos','GET',null,'?numero_pago=like.PAG-'+anio+'-*&order=numero_pago.desc&limit=1&select=numero_pago');
+    let seq = 1;
+    if (ultPago.length) { const p = ultPago[0].numero_pago.split('-'); seq = parseInt(p[p.length-1])+1; }
+    numeroPago = 'PAG-'+anio+'-'+String(seq).padStart(4,'0');
+  }
+
+  const datos = {
+    numero_pago:       numeroPago,
+    tipo_pago:         tipo,
+    descripcion:       descripcion,
+    nombre_beneficiario: beneficiario || null,
+    id_beneficiario:   idProv,
+    id_empleado:       idEmp,
+    monto_usd:         montoUSD || null,
+    monto_ves:         montoVES || null,
+    moneda_pago:       moneda,
+    tasa_bcv:          tasa,
+    id_cuenta_gasto:   idCtaGasto,
+    fecha_vencimiento: fechaVenc,
+    referencia:        document.getElementById('pago-referencia').value.trim() || null,
+    observaciones:     document.getElementById('pago-observaciones').value.trim() || null,
+    es_recurrente:     esRec,
+    frecuencia:        esRec ? frecuencia : null,
+    fecha_proxima:     fechaProxima,
+    estado:            'BORRADOR',
+    id_emisor:         _empresaActiva ? _empresaActiva.id_emisor : null,
+    id_usuario:        sesionActual.correo_usuario
+  };
+
+  try {
+    if (_pagoEditando) {
+      await api('pagos','PATCH',datos,'?id_pago=eq.'+_pagoEditando.id_pago);
+    } else {
+      await api('pagos','POST',datos);
+    }
+    okEl.textContent = _pagoEditando ? 'Pago actualizado.' : 'Pago registrado como borrador.';
+    okEl.style.display = 'block';
+    setTimeout(function(){ cerrarModal('modal-pago'); cargarPagos(); }, 1200);
+  } catch(e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+// ── Aprobar pago ──
+async function aprobarPago(id) {
+  if (!confirm('¿Aprobar este pago?')) return;
+  try {
+    await api('pagos','PATCH',{
+      estado: 'APROBADO',
+      aprobado_por: sesionActual.correo_usuario,
+      fecha_aprobacion: new Date().toISOString()
+    },'?id_pago=eq.'+id);
+    cargarPagos();
+  } catch(e) { alert('Error: '+e.message); }
+}
+
+// ── Ejecutar pago (pagar) ──
+async function ejecutarPago(id) {
+  const p = pagosCache.find(function(x){ return x.id_pago === id; });
+  if (!p) return;
+  // Mostrar modal de confirmación de pago
+  _pagoEditando = p;
+  document.getElementById('exec-pago-desc').textContent    = p.descripcion;
+  document.getElementById('exec-pago-monto').textContent   = p.monto_usd ? '$ '+fmtUSD(p.monto_usd) : 'Bs '+fmtVES(p.monto_ves);
+  document.getElementById('exec-pago-fecha').value         = getHoyVzla();
+  document.getElementById('exec-pago-metodo').value        = p.metodo_pago || 'TRANSFERENCIA_VES';
+  document.getElementById('alerta-exec-err').style.display = 'none';
+  abrirModal('modal-ejecutar-pago');
+}
+
+async function confirmarEjecucionPago() {
+  const p      = _pagoEditando;
+  const fecha  = document.getElementById('exec-pago-fecha').value;
+  const metodo = document.getElementById('exec-pago-metodo').value;
+  const errEl  = document.getElementById('alerta-exec-err');
+  errEl.style.display = 'none';
+
+  if (!fecha)  { errEl.textContent = 'Selecciona la fecha de pago.'; errEl.style.display='block'; return; }
+  if (!metodo) { errEl.textContent = 'Selecciona el método de pago.'; errEl.style.display='block'; return; }
+
+  try {
+    // Generar asiento contable
+    await generarAsientoPago(p, fecha, metodo);
+
+    // Calcular próxima fecha si recurrente
+    let fechaProxima = null;
+    if (p.es_recurrente && p.frecuencia) {
+      const fp = new Date(fecha);
+      if (p.frecuencia === 'MENSUAL')     fp.setMonth(fp.getMonth()+1);
+      else if (p.frecuencia === 'TRIMESTRAL') fp.setMonth(fp.getMonth()+3);
+      else if (p.frecuencia === 'ANUAL')  fp.setFullYear(fp.getFullYear()+1);
+      fechaProxima = fp.toISOString().split('T')[0];
+    }
+
+    await api('pagos','PATCH',{
+      estado:       'PAGADO',
+      fecha_pago:   fecha,
+      metodo_pago:  metodo,
+      fecha_proxima: fechaProxima
+    },'?id_pago=eq.'+p.id_pago);
+
+    cerrarModal('modal-ejecutar-pago');
+    cargarPagos();
+  } catch(e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+// ── Generar asiento contable del pago ──
+async function generarAsientoPago(p, fecha, metodo) {
+  const tasa = parseFloat(p.tasa_bcv) || 1;
+  const montoUSD = parseFloat(p.monto_usd) || 0;
+  const montoVES = parseFloat(p.monto_ves) || (montoUSD * tasa);
+
+  // Número de asiento
+  const anio = new Date().getFullYear();
+  const exist = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-'+anio+'-*&order=numero_asiento.desc&limit=1&select=numero_asiento');
+  let seq = 1;
+  if (exist.length) { const parts = exist[0].numero_asiento.split('-'); seq = parseInt(parts[parts.length-1])+1; }
+  const numAst = 'AST-'+anio+'-'+String(seq).padStart(4,'0');
+
+  const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo');
+  const idPeriodo = periodos.length ? periodos[0].id_periodo : null;
+
+  const auxDesc = montoUSD > 0 ? ' (USD '+fmtUSD(montoUSD)+' × '+tasa.toFixed(4)+')' : '';
+
+  const asiento = await api('cont_asientos','POST',{
+    numero_asiento: numAst,
+    fecha:          fecha,
+    descripcion:    'Pago '+p.tipo_pago+': '+p.descripcion,
+    tipo:           'AUTOMATICO',
+    referencia:     p.numero_pago,
+    moneda_base:    'VES',
+    tasa_bcv:       tasa,
+    id_periodo:     idPeriodo,
+    id_emisor:      _empresaActiva ? _empresaActiva.id_emisor : null,
+    estado:         'APROBADO',
+    id_usuario:     sesionActual.correo_usuario
+  });
+  if (!asiento || !asiento[0]) return;
+  const idAst = asiento[0].id_asiento;
+
+  // Cuenta de origen (banco/caja)
+  const metodoDef = METODOS_PAGO_PAGOS.find(function(m){ return m.value === metodo; });
+  let idCtaOrigen = null;
+  if (metodoDef) {
+    const cOrig = await api('cont_cuentas','GET',null,'?codigo=eq.'+metodoDef.cuenta+'&select=id_cuenta');
+    if (cOrig.length) idCtaOrigen = cOrig[0].id_cuenta;
+  }
+
+  // Cuenta de gasto
+  const idCtaGasto = p.id_cuenta_gasto;
+
+  // Línea 1: Débito Cuenta de Gasto (en Bs, auxiliar USD)
+  if (idCtaGasto) await api('cont_asiento_lineas','POST',{
+    id_asiento: idAst, id_cuenta: idCtaGasto, orden: 1,
+    descripcion: p.descripcion + auxDesc,
+    debe_usd: montoUSD, haber_usd: 0,
+    debe_ves: montoVES, haber_ves: 0
+  });
+
+  // Línea 2: Crédito Banco/Caja (en Bs, auxiliar USD)
+  if (idCtaOrigen) await api('cont_asiento_lineas','POST',{
+    id_asiento: idAst, id_cuenta: idCtaOrigen, orden: 2,
+    descripcion: 'Pago vía '+metodo+auxDesc,
+    debe_usd: 0, haber_usd: montoUSD,
+    debe_ves: 0, haber_ves: montoVES
+  });
+
+  // Actualizar id_asiento en el pago
+  await api('pagos','PATCH',{ id_asiento: idAst },'?id_pago=eq.'+p.id_pago);
+}
+
+// ── Anular pago ──
+async function anularPago(id) {
+  if (!confirm('¿Anular este pago?')) return;
+  try {
+    await api('pagos','PATCH',{ estado: 'ANULADO' },'?id_pago=eq.'+id);
+    cargarPagos();
+  } catch(e) { alert('Error: '+e.message); }
+}
+
+// ── Ficha del pago ──
+function abrirFichaPago(id) {
+  const p = pagosCache.find(function(x){ return x.id_pago === id; });
+  if (!p) return;
+  const tipo = TIPOS_PAGO.find(function(t){ return t.value === p.tipo_pago; });
+  const metodo = METODOS_PAGO_PAGOS.find(function(m){ return m.value === p.metodo_pago; });
+  const estadoColor = { BORRADOR:'var(--suave)', APROBADO:'var(--naranja)', PAGADO:'#22c55e', ANULADO:'#fc8181' };
+
+  document.getElementById('ficha-pago-cont').innerHTML =
+    '<div style="padding:24px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">' +
+    '<div>' +
+    '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + (p.numero_pago||'—') + '</div>' +
+    '<div style="font-size:13px;color:var(--suave);margin-top:4px">' + (tipo ? tipo.label : p.tipo_pago) + '</div>' +
+    '</div>' +
+    '<span style="font-size:14px;font-weight:700;color:'+estadoColor[p.estado]+'">● '+p.estado+'</span>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px">' +
+    '<div><div style="font-size:10px;color:var(--suave)">DESCRIPCIÓN</div><div>'+p.descripcion+'</div></div>' +
+    '<div><div style="font-size:10px;color:var(--suave)">BENEFICIARIO</div><div>'+(p.nombre_beneficiario||'—')+'</div></div>' +
+    '<div><div style="font-size:10px;color:var(--suave)">MONTO USD</div><div style="font-family:var(--font-mono);color:var(--naranja)">'+(p.monto_usd?'$ '+fmtUSD(p.monto_usd):'—')+'</div></div>' +
+    '<div><div style="font-size:10px;color:var(--suave)">MONTO BS</div><div style="font-family:var(--font-mono)">'+(p.monto_ves?'Bs '+fmtVES(p.monto_ves):'—')+'</div></div>' +
+    '<div><div style="font-size:10px;color:var(--suave)">MÉTODO</div><div>'+(metodo?metodo.label:(p.metodo_pago||'—'))+'</div></div>' +
+    '<div><div style="font-size:10px;color:var(--suave)">FECHA PAGO</div><div>'+(p.fecha_pago?fmtFecha(p.fecha_pago):'Pendiente')+'</div></div>' +
+    '<div><div style="font-size:10px;color:var(--suave)">VENCIMIENTO</div><div>'+(p.fecha_vencimiento?fmtFecha(p.fecha_vencimiento):'—')+'</div></div>' +
+    '<div><div style="font-size:10px;color:var(--suave)">RECURRENTE</div><div>'+(p.es_recurrente?'Sí — '+p.frecuencia+(p.fecha_proxima?' (próximo: '+fmtFecha(p.fecha_proxima)+')':''):'No')+'</div></div>' +
+    (p.referencia ? '<div><div style="font-size:10px;color:var(--suave)">REFERENCIA</div><div>'+p.referencia+'</div></div>' : '') +
+    (p.observaciones ? '<div style="grid-column:1/-1"><div style="font-size:10px;color:var(--suave)">OBSERVACIONES</div><div>'+p.observaciones+'</div></div>' : '') +
+    (p.aprobado_por ? '<div><div style="font-size:10px;color:var(--suave)">APROBADO POR</div><div>'+p.aprobado_por+'</div></div>' : '') +
+    '</div></div>';
+
+  abrirModal('modal-ficha-pago');
+}
+
+function inputStyle() {
+  return 'background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none';
+}
 // ─── PRÓXIMO MÓDULO ───
 function renderProximo(icono, nombre) {
   document.getElementById('contenido-principal').innerHTML = `
@@ -13946,5 +14481,150 @@ window.addEventListener('load', async () => {
   <img id="visor-imagen-src" src="" style="max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px;box-shadow:0 8px 48px rgba(0,0,0,0.8)" onclick="event.stopPropagation()">
 </div>
 
+
+<!-- ══ MODAL NUEVO/EDITAR PAGO ══ -->
+<div class="modal-overlay" id="modal-pago">
+  <div class="modal" style="max-width:640px;width:95%">
+    <div class="modal-header">
+      <h2 class="modal-titulo" id="pago-modal-titulo">NUEVO PAGO</h2>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-pago')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-campo">
+          <label>Tipo de Pago *</label>
+          <select id="pago-tipo" onchange="onCambiarTipoPago()">
+            <option value="">— Seleccionar —</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Moneda</label>
+          <select id="pago-moneda" onchange="onCambiarMontoPago()">
+            <option value="USD">USD — Dólares</option>
+            <option value="VES">VES — Bolívares</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Descripción *</label>
+          <input type="text" id="pago-descripcion" placeholder="Ej: Alquiler local enero 2026">
+        </div>
+        <div class="form-campo">
+          <label>Beneficiario</label>
+          <input type="text" id="pago-beneficiario" placeholder="Nombre del beneficiario">
+        </div>
+        <div class="form-campo" id="pago-row-proveedor" style="display:none">
+          <label>Proveedor</label>
+          <select id="pago-proveedor"><option value="">— Seleccionar —</option></select>
+        </div>
+        <div class="form-campo" id="pago-row-empleado" style="display:none">
+          <label>Empleado</label>
+          <select id="pago-empleado"><option value="">— Seleccionar —</option></select>
+        </div>
+        <div class="form-campo">
+          <label>Monto USD</label>
+          <input type="number" id="pago-monto-usd" placeholder="0.00" min="0" step="0.01" style="font-family:var(--font-mono)" oninput="onCambiarMontoPago()">
+        </div>
+        <div class="form-campo">
+          <label>Monto Bs</label>
+          <input type="number" id="pago-monto-ves" placeholder="0.00" min="0" step="0.01" style="font-family:var(--font-mono)">
+        </div>
+        <div class="form-campo">
+          <label>Tasa BCV</label>
+          <input type="number" id="pago-tasa" placeholder="0.00" step="0.0001" style="font-family:var(--font-mono)" oninput="onCambiarMontoPago()">
+        </div>
+        <div class="form-campo">
+          <label>Fecha Vencimiento *</label>
+          <input type="date" id="pago-fecha-venc">
+        </div>
+        <div class="form-campo" id="pago-row-cuenta-gasto">
+          <label>Cuenta de Gasto</label>
+          <select id="pago-cuenta-gasto"><option value="">— Seleccionar —</option></select>
+        </div>
+        <div class="form-campo">
+          <label>Referencia</label>
+          <input type="text" id="pago-referencia" placeholder="N° de referencia">
+        </div>
+        <div class="form-campo form-full">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="pago-recurrente" onchange="onToggleRecurrente()">
+            Pago Recurrente
+          </label>
+        </div>
+        <div class="form-campo form-full" id="pago-row-recurrente" style="display:none">
+          <label>Frecuencia</label>
+          <select id="pago-frecuencia">
+            <option value="MENSUAL">Mensual</option>
+            <option value="TRIMESTRAL">Trimestral</option>
+            <option value="ANUAL">Anual</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Observaciones</label>
+          <textarea id="pago-observaciones" rows="2" placeholder="Observaciones adicionales..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;width:100%;resize:vertical"></textarea>
+        </div>
+      </div>
+      <div class="alerta alerta-error" id="alerta-pago-err" style="display:none;margin-top:12px"></div>
+      <div class="alerta alerta-ok" id="alerta-pago-ok" style="display:none;margin-top:12px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-pago')">Cancelar</button>
+      <button class="btn-primario" onclick="guardarPago()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL EJECUTAR PAGO ══ -->
+<div class="modal-overlay" id="modal-ejecutar-pago">
+  <div class="modal" style="max-width:420px;width:95%">
+    <div class="modal-header">
+      <h2 class="modal-titulo">EJECUTAR PAGO</h2>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-ejecutar-pago')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:12px 16px;margin-bottom:16px">
+        <div style="font-size:11px;color:var(--suave)">PAGO A EJECUTAR</div>
+        <div style="font-weight:600;margin-top:4px" id="exec-pago-desc"></div>
+        <div style="font-family:var(--font-mono);color:var(--naranja);font-size:18px;margin-top:4px" id="exec-pago-monto"></div>
+      </div>
+      <div class="form-grid">
+        <div class="form-campo form-full">
+          <label>Fecha de Pago *</label>
+          <input type="date" id="exec-pago-fecha">
+        </div>
+        <div class="form-campo form-full">
+          <label>Método de Pago *</label>
+          <select id="exec-pago-metodo">
+            <option value="EFECTIVO_VES">Efectivo Bs</option>
+            <option value="EFECTIVO_USD">Efectivo USD</option>
+            <option value="TRANSFERENCIA_VES">Transferencia Bs</option>
+            <option value="TRANSFERENCIA_USD">Transferencia USD</option>
+            <option value="PAGO_MOVIL">Pago Móvil</option>
+            <option value="ZELLE">Zelle</option>
+            <option value="DIVISAS">Divisas</option>
+          </select>
+        </div>
+      </div>
+      <div class="alerta alerta-error" id="alerta-exec-err" style="display:none;margin-top:12px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-ejecutar-pago')">Cancelar</button>
+      <button class="btn-primario" style="background:#22c55e;border-color:#22c55e" onclick="confirmarEjecucionPago()">💳 Confirmar Pago</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL FICHA PAGO ══ -->
+<div class="modal-overlay" id="modal-ficha-pago">
+  <div class="modal" style="max-width:600px;width:95%">
+    <div class="modal-header">
+      <h2 class="modal-titulo">DETALLE DE PAGO</h2>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-pago')">✕</button>
+    </div>
+    <div class="modal-body" id="ficha-pago-cont"></div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-pago')">Cerrar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
