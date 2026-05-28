@@ -6628,6 +6628,7 @@ async function contCargarMayor() {
     const asientosRango = await api('cont_asientos','GET',null, qAsientos);
     console.log('asientosRango:', asientosRango.length, asientosRango);
     const idsAsientos = asientosRango.map(function(a){ return a.id_asiento; });
+    console.log('idsAsientos:', idsAsientos);
 
     let lineas = [];
     if (idsAsientos.length) {
