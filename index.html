@@ -6612,7 +6612,6 @@ async function contCargarMayor() {
   const desde    = document.getElementById('cont-mayor-desde').value;
   const hasta    = document.getElementById('cont-mayor-hasta').value;
   const res      = document.getElementById('cont-mayor-resultado');
-  if (!idCuenta) { res.innerHTML = '<div class="alerta alerta-error" style="display:block">Selecciona una cuenta.</div>'; return; }
 
   res.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
@@ -6630,11 +6629,14 @@ async function contCargarMayor() {
 
     let lineas = [];
     if (idsAsientos.length) {
-      lineas = await api('cont_asiento_lineas','GET',null,
-        '?id_cuenta=eq.' + idCuenta
+      let qLineas = '?id_asiento=in.(' + idsAsientos.join(',') + ')'
+        + '&select=*,cont_asientos(fecha,numero_asiento,descripcion)'
+        + '&order=id_linea.asc';
+      if (idCuenta) qLineas = '?id_cuenta=eq.' + idCuenta
         + '&id_asiento=in.(' + idsAsientos.join(',') + ')'
         + '&select=*,cont_asientos(fecha,numero_asiento,descripcion)'
-        + '&order=id_linea.asc');
+        + '&order=id_linea.asc';
+      lineas = await api('cont_asiento_lineas','GET',null, qLineas);
     }
 
     let saldo = 0;
