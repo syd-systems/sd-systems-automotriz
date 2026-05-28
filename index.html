@@ -6638,7 +6638,9 @@ async function contCargarMayor() {
         + '&id_asiento=in.(' + idsAsientos.join(',') + ')'
         + '&select=*,cont_asientos(fecha,numero_asiento,descripcion)'
         + '&order=id_linea.asc';
+      console.log('qLineas:', qLineas);
       lineas = await api('cont_asiento_lineas','GET',null, qLineas);
+      console.log('lineas:', lineas.length);
     }
 
     if (!lineas.length) {
