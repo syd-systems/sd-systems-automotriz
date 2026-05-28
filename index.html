@@ -6592,13 +6592,14 @@ async function contRenderMayor() {
   const ultimoDia = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-' + String(new Date(hoy.getFullYear(), hoy.getMonth()+1, 0).getDate()).padStart(2,'0');
   document.getElementById('cont-mayor-desde').value = primerDia;
   document.getElementById('cont-mayor-hasta').value = ultimoDia;
-  // Si hay cuenta seleccionada cargar directo
+
+  // Preseleccionar la primera cuenta que permite movimientos
   const selCuenta = document.getElementById('cont-mayor-cuenta');
-  if (selCuenta && selCuenta.value) {
-    contCargarMayor();
-  } else {
-    document.getElementById('cont-mayor-resultado').innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">Selecciona una cuenta para consultar el libro mayor.</div>';
+  if (selCuenta) {
+    const primeraOpcion = selCuenta.querySelector('option[value]:not([value=""])');
+    if (primeraOpcion) selCuenta.value = primeraOpcion.value;
   }
+  contCargarMayor();
 }
 
 async function contCargarMayor() {
