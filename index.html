@@ -1108,10 +1108,10 @@
         <span class="nav-icono">📒</span> Contabilidad
       </div>
       <div class="nav-item" id="nav-FACTURAS" onclick="mostrarModulo('facturas', this); cerrarMenuMovil()" style="display:none">
-        <span class="nav-icono">🧾</span> Facturas
+        <span class="nav-icono">🧾</span> Cuentas por Cobrar
       </div>
       <div class="nav-item" id="nav-PAGOS" onclick="mostrarModulo('pagos', this); cerrarMenuMovil()">
-        <span class="nav-icono">💳</span> Pagos
+        <span class="nav-icono">💳</span> Cuentas por Pagar
       </div>
       <div class="nav-item" id="nav-TASAS" onclick="mostrarModulo('tasas', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">💱</span> Tipo de Cambio
@@ -1341,8 +1341,8 @@ const TODOS_LOS_MODULOS = [
   { sigla: 'CATALOGO',     nombre: 'Catálogo Servicios', icono: '🗂️' },
   { sigla: 'INVENTARIO',   nombre: 'Inventario',         icono: '📦' },
   { sigla: 'CONTABILIDAD', nombre: 'Contabilidad',       icono: '📒' },
-  { sigla: 'FACTURAS',     nombre: 'Facturas',           icono: '🧾' },
-  { sigla: 'PAGOS',        nombre: 'Pagos',              icono: '💳' },
+  { sigla: 'FACTURAS',     nombre: 'Cuentas por Cobrar', icono: '🧾' },
+  { sigla: 'PAGOS',        nombre: 'Cuentas por Pagar',  icono: '💳' },
   { sigla: 'TASAS',        nombre: 'Tipo de Cambio',     icono: '💱' },
   { sigla: 'EMISORES',     nombre: 'Datos de Empresas',  icono: '🏢' },
   { sigla: 'EMPLEADOS',    nombre: 'Empleados',          icono: '👷' },
@@ -2184,7 +2184,8 @@ async function mostrarModulo(modulo, navEl) {
     inventario:   'INVENTARIO GENERAL',
     catalogo:     'CATÁLOGO DE SERVICIOS',
     emisores:     'DATOS DE EMPRESAS',
-    facturas:     'FACTURAS',
+    facturas:     'CUENTAS POR COBRAR',
+    pagos:        'CUENTAS POR PAGAR',
     empleados:    'EMPLEADOS',
     proveedores:  'PROVEEDORES',
     proximo:      'PRÓXIMAMENTE'
@@ -7808,7 +7809,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda) {
       '<div class="panel-header">' +
       '<h3 id="pagos-contador">Pagos</h3>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
-      (puedo('PAGOS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoPago()">+ Nuevo Pago</button>' : '') +
+      (puedo('PAGOS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoPago()">+ Nueva CxP</button>' : '') +
       '</div></div>' +
       '<div style="padding:12px 24px;display:flex;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--borde)">' +
       '<input id="pagos-buscar" placeholder="🔍 Buscar..." style="' + inputStyle() + ';flex:1;min-width:160px" oninput="cargarPagosDesdeUI()">' +
@@ -7928,7 +7929,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda) {
 async function abrirNuevoPago() {
   _pagoEditando = null;
   await poblarFormPago(null);
-  document.getElementById('pago-modal-titulo').textContent = 'NUEVO PAGO';
+  document.getElementById('pago-modal-titulo').textContent = 'NUEVA CUENTA POR PAGAR';
   document.getElementById('alerta-pago-ok').style.display = 'none';
   document.getElementById('alerta-pago-err').style.display = 'none';
   abrirModal('modal-pago');
@@ -7938,7 +7939,7 @@ async function abrirEditarPago(id) {
   _pagoEditando = pagosCache.find(function(p){ return p.id_pago === id; });
   if (!_pagoEditando) return;
   await poblarFormPago(_pagoEditando);
-  document.getElementById('pago-modal-titulo').textContent = 'EDITAR PAGO';
+  document.getElementById('pago-modal-titulo').textContent = 'EDITAR CUENTA POR PAGAR';
   abrirModal('modal-pago');
 }
 
@@ -14486,7 +14487,7 @@ window.addEventListener('load', async () => {
 <div class="modal-overlay" id="modal-pago">
   <div class="modal" style="max-width:900px;width:95%">
     <div class="modal-header">
-      <h2 class="modal-titulo" id="pago-modal-titulo">NUEVO PAGO</h2>
+      <h2 class="modal-titulo" id="pago-modal-titulo">NUEVA CUENTA POR PAGAR</h2>
       <button class="modal-cerrar" onclick="cerrarModal('modal-pago')">✕</button>
     </div>
     <div class="modal-body">
