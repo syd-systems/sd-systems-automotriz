@@ -14484,13 +14484,13 @@ window.addEventListener('load', async () => {
 
 <!-- ══ MODAL NUEVO/EDITAR PAGO ══ -->
 <div class="modal-overlay" id="modal-pago">
-  <div class="modal" style="max-width:640px;width:95%">
+  <div class="modal" style="max-width:900px;width:95%">
     <div class="modal-header">
       <h2 class="modal-titulo" id="pago-modal-titulo">NUEVO PAGO</h2>
       <button class="modal-cerrar" onclick="cerrarModal('modal-pago')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="form-grid">
+      <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">
         <div class="form-campo">
           <label>Tipo de Pago *</label>
           <select id="pago-tipo" onchange="onCambiarTipoPago()">
