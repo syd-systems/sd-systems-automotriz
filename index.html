@@ -4973,31 +4973,33 @@ async function guardarFactura(emitir) {
               cIGTF = igtfPorCodigo[0] || null;
             }
 
-            // Línea 1: Débito CxC por el total
+            // VEN-NIF: Moneda funcional = Bs. USD como auxiliar
+          const auxFac = ' (USD × '+tasaReal.toFixed(4)+')';
+          // Línea 1: Débito CxC — en Bs, auxiliar USD
             if (cCxC) await api('cont_asiento_lineas','POST',{
               id_asiento: idAst, id_cuenta: cCxC.id_cuenta, orden: 1,
-              descripcion: 'CxC '+fac.numero_factura,
+              descripcion: 'CxC '+fac.numero_factura+auxFac,
               debe_usd: fac.total_usd, haber_usd: 0,
               debe_ves: fac.total_usd * tasaReal, haber_ves: 0
             });
-            // Línea 2: Crédito Ingresos por subtotal
+            // Línea 2: Crédito Ingresos — en Bs, auxiliar USD
             if (cIngServ) await api('cont_asiento_lineas','POST',{
               id_asiento: idAst, id_cuenta: cIngServ.id_cuenta, orden: 2,
-              descripcion: 'Ingreso '+fac.numero_factura,
+              descripcion: 'Ingreso '+fac.numero_factura+auxFac,
               debe_usd: 0, haber_usd: fac.subtotal_usd,
               debe_ves: 0, haber_ves: fac.subtotal_usd * tasaReal
             });
-            // Línea 3: Crédito IVA por pagar
+            // Línea 3: Crédito IVA — en Bs
             if (cIVA && fac.iva_usd > 0) await api('cont_asiento_lineas','POST',{
               id_asiento: idAst, id_cuenta: cIVA.id_cuenta, orden: 3,
-              descripcion: 'IVA '+fac.numero_factura,
+              descripcion: 'IVA '+fac.numero_factura+auxFac,
               debe_usd: 0, haber_usd: fac.iva_usd,
               debe_ves: 0, haber_ves: fac.iva_usd * tasaReal
             });
-            // Línea 4: Crédito IGTF por pagar
+            // Línea 4: Crédito IGTF — en Bs
             if (cIGTF && fac.igtf_usd > 0) await api('cont_asiento_lineas','POST',{
               id_asiento: idAst, id_cuenta: cIGTF.id_cuenta, orden: 4,
-              descripcion: 'IGTF '+fac.numero_factura,
+              descripcion: 'IGTF '+fac.numero_factura+auxFac,
               debe_usd: 0, haber_usd: fac.igtf_usd,
               debe_ves: 0, haber_ves: fac.igtf_usd * tasaReal
             });
@@ -7711,26 +7713,36 @@ async function generarAsientoInventario(tipo, datos) {
     const idProv = cProv.length ? cProv[0].id_cuenta : null;
 
     // ── Líneas según tipo ──
+    // VEN-NIF: Moneda funcional = Bs. USD es auxiliar de referencia
+    const montoBs  = monto * tasa;
+    const auxDesc  = monto > 0 ? ' (USD '+fmtUSD(monto)+' × '+tasa.toFixed(4)+')' : '';
+
     if (tipo === 'ENTRADA_COMPRA') {
-      // Débito: Inventario / Crédito: CxP Proveedores
+      // Débito: Inventario Bs / Crédito: CxP Proveedores Bs
       if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:1,
-        descripcion:'Entrada compra '+datos.articulo, debe_usd:monto, haber_usd:0, debe_ves:monto*tasa, haber_ves:0 });
+        descripcion:'Entrada compra '+datos.articulo+auxDesc,
+        debe_usd:monto, haber_usd:0, debe_ves:montoBs, haber_ves:0 });
       if (idProv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idProv, orden:2,
-        descripcion:'CxP '+datos.articulo, debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:monto*tasa });
+        descripcion:'CxP '+datos.articulo+auxDesc,
+        debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:montoBs });
 
     } else if (tipo === 'ENTRADA_DEVOLUCION' || tipo === 'ENTRADA_AJUSTE') {
-      // Débito: Inventario / Crédito: Costo Área
+      // Débito: Inventario Bs / Crédito: Costo Área Bs
       if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:1,
-        descripcion:'Entrada '+datos.articulo, debe_usd:monto, haber_usd:0, debe_ves:monto*tasa, haber_ves:0 });
+        descripcion:'Entrada '+datos.articulo+auxDesc,
+        debe_usd:monto, haber_usd:0, debe_ves:montoBs, haber_ves:0 });
       if (idAreaCuenta) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idAreaCuenta, orden:2,
-        descripcion:'Crédito área '+datos.areaNombre, debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:monto*tasa });
+        descripcion:'Crédito área '+datos.areaNombre+auxDesc,
+        debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:montoBs });
 
     } else if (tipo === 'SALIDA_AREA' || tipo === 'SALIDA_AJUSTE') {
-      // Débito: Costo Área / Crédito: Inventario
+      // Débito: Costo Área Bs / Crédito: Inventario Bs
       if (idAreaCuenta) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idAreaCuenta, orden:1,
-        descripcion:'Costo '+datos.areaNombre+' '+datos.articulo, debe_usd:monto, haber_usd:0, debe_ves:monto*tasa, haber_ves:0 });
+        descripcion:'Costo '+datos.areaNombre+' '+datos.articulo+auxDesc,
+        debe_usd:monto, haber_usd:0, debe_ves:montoBs, haber_ves:0 });
       if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:2,
-        descripcion:'Salida inventario '+datos.articulo, debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:monto*tasa });
+        descripcion:'Salida inventario '+datos.articulo+auxDesc,
+        debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:montoBs });
     }
 
     console.log('✓ Asiento inventario creado:', numAst, tipo);
@@ -12818,11 +12830,11 @@ window.addEventListener('load', async () => {
           <label>Stock Mínimo</label>
           <input type="number" id="inv-stock-min" placeholder="0" min="0">
         </div>
-        <div class="form-campo" id="inv-venta-cont">
-          <label>Precio Venta USD</label>
-          <input type="number" id="inv-venta" placeholder="0.00" step="0.01" min="0">
-        </div>
-        <!-- Campos ocultos para compatibilidad con guardarInventario -->
+        <!-- Precio Venta se gestiona desde Entrada de Inventario -->
+        <input type="hidden" id="inv-venta" value="">
+
+
+
         <input type="hidden" id="inv-stock" value="0">
         <input type="hidden" id="inv-costo" value="0">
       </div>
