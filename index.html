@@ -6837,46 +6837,66 @@ async function contRenderCxc() {
     const facturas = await api('facturas','GET',null,'?estado=neq.ANULADA&order=fecha_emision.desc&select=*,propietarios(nombre_completo)'+emisorQ());
     const pendientes = facturas.filter(function(f){ return f.estado!=='PAGADA'&&f.estado!=='ANULADA'; });
     const cobradas   = facturas.filter(function(f){ return f.estado==='PAGADA'; });
-    const totPend    = pendientes.reduce(function(s,f){ return s+parseFloat(f.total_usd||0); },0);
-    const totCobrado = cobradas.reduce(function(s,f){ return s+parseFloat(f.total_usd||0); },0);
-    const estadoBadge = {
+
+    const totPendUSD = pendientes.reduce(function(s,f){ return s+parseFloat(f.total_usd||0); },0);
+    const totPendVES = pendientes.reduce(function(s,f){ return s+parseFloat(f.total_ves||0); },0);
+    const totCobUSD  = cobradas.reduce(function(s,f){ return s+parseFloat(f.total_usd||0); },0);
+    const totCobVES  = cobradas.reduce(function(s,f){ return s+parseFloat(f.total_ves||0); },0);
+
+    const eb = {
       EMITIDA:'<span class="badge badge-naranja">Emitida</span>',
       PAGADA:'<span class="badge" style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3)">Pagada</span>',
-      ANULADA:'<span class="badge" style="background:rgba(252,129,129,0.15);color:#fc8181;border:1px solid rgba(252,129,129,0.3)">Anulada</span>',
+      PARCIAL:'<span class="badge badge-gris">Parcial</span>',
     };
+
     const filas = facturas.map(function(f) {
+      const tusd = parseFloat(f.total_usd||0);
+      const tves = parseFloat(f.total_ves||0);
+      const cobUSD = parseFloat(f.monto_cobrado||0);
+      const saldoUSD = tusd - cobUSD;
       const cliente = f.propietarios ? f.propietarios.nombre_completo : '--';
       return '<tr>'
         +'<td style="padding:8px 12px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">'+(f.numero_factura||'--')+'</td>'
         +'<td style="padding:8px 12px;font-size:12px">'+fmtFecha(f.fecha_emision)+'</td>'
         +'<td style="padding:8px 12px;font-size:12px">'+cliente+'</td>'
-        +'<td style="padding:8px 12px;font-size:12px;text-align:right;font-family:var(--font-mono)">$ '+fmtUSD(f.total_usd||0)+'</td>'
-        +'<td style="padding:8px 12px;font-size:12px;text-align:right;font-family:var(--font-mono)">'+(f.monto_cobrado?'$ '+fmtUSD(f.monto_cobrado):'--')+'</td>'
-        +'<td style="padding:8px 12px;font-size:12px;text-align:right;font-family:var(--font-mono);color:#fc8181">$ '+fmtUSD((f.total_usd||0)-(f.monto_cobrado||0))+'</td>'
-        +'<td style="padding:8px 12px">'+(estadoBadge[f.estado]||f.estado)+'</td>'
+        +'<td style="padding:8px 12px;text-align:right;font-family:var(--font-mono)">'+(tusd>0?'$ '+fmtUSD(tusd):'--')+'</td>'
+        +'<td style="padding:8px 12px;text-align:right;font-family:var(--font-mono)">'+(tves>0?'Bs '+fmtVES(tves):'--')+'</td>'
+        +'<td style="padding:8px 12px;text-align:right;font-family:var(--font-mono)">'+(cobUSD>0?'$ '+fmtUSD(cobUSD):'--')+'</td>'
+        +'<td style="padding:8px 12px;text-align:right;font-family:var(--font-mono);color:'+(saldoUSD>0?'#fc8181':'#22c55e')+'">'+(tusd>0?'$ '+fmtUSD(saldoUSD):'--')+'</td>'
+        +'<td style="padding:8px 12px">'+(eb[f.estado]||f.estado)+'</td>'
         +'</tr>';
     }).join('');
+
     cont.innerHTML =
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px">'
       +'<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">'
-      +'<div style="font-size:10px;color:var(--suave)">TOTAL PENDIENTE</div>'
-      +'<div style="font-family:var(--font-mono);font-size:20px;color:var(--naranja);font-weight:700">$ '+fmtUSD(totPend)+'</div>'
+      +'<div style="font-size:10px;color:var(--suave)">PENDIENTE USD</div>'
+      +'<div style="font-size:18px;color:var(--naranja);font-weight:700;font-family:var(--font-mono)">$ '+fmtUSD(totPendUSD)+'</div>'
+      +'<div style="font-size:11px;color:var(--suave)">'+pendientes.length+' facturas</div></div>'
+      +'<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">'
+      +'<div style="font-size:10px;color:var(--suave)">PENDIENTE Bs</div>'
+      +'<div style="font-size:18px;color:var(--naranja);font-weight:700;font-family:var(--font-mono)">Bs '+fmtVES(totPendVES)+'</div>'
       +'<div style="font-size:11px;color:var(--suave)">'+pendientes.length+' facturas</div></div>'
       +'<div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:14px">'
-      +'<div style="font-size:10px;color:var(--suave)">TOTAL COBRADO</div>'
-      +'<div style="font-family:var(--font-mono);font-size:20px;color:#22c55e;font-weight:700">$ '+fmtUSD(totCobrado)+'</div>'
+      +'<div style="font-size:10px;color:var(--suave)">COBRADO USD</div>'
+      +'<div style="font-size:18px;color:#22c55e;font-weight:700;font-family:var(--font-mono)">$ '+fmtUSD(totCobUSD)+'</div>'
+      +'<div style="font-size:11px;color:var(--suave)">'+cobradas.length+' facturas</div></div>'
+      +'<div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:14px">'
+      +'<div style="font-size:10px;color:var(--suave)">COBRADO Bs</div>'
+      +'<div style="font-size:18px;color:#22c55e;font-weight:700;font-family:var(--font-mono)">Bs '+fmtVES(totCobVES)+'</div>'
       +'<div style="font-size:11px;color:var(--suave)">'+cobradas.length+' facturas</div></div></div>'
       +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
       +'<thead><tr style="border-bottom:2px solid var(--borde)">'
-      +'<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--suave)">N Factura</th>'
-      +'<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--suave)">Fecha</th>'
-      +'<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--suave)">Cliente</th>'
-      +'<th style="padding:8px 12px;text-align:right;font-size:11px;color:var(--suave)">Total</th>'
-      +'<th style="padding:8px 12px;text-align:right;font-size:11px;color:var(--suave)">Cobrado</th>'
-      +'<th style="padding:8px 12px;text-align:right;font-size:11px;color:var(--suave)">Saldo</th>'
-      +'<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--suave)">Estado</th>'
+      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">N° Factura</th>'
+      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Fecha</th>'
+      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Cliente</th>'
+      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:right">Total USD</th>'
+      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:right">Total Bs</th>'
+      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:right">Cobrado</th>'
+      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:right">Saldo</th>'
+      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Estado</th>'
       +'</tr></thead><tbody>'
-      +(filas||'<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--suave)">Sin facturas registradas.</td></tr>')
+      +(filas||'<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--suave)">Sin facturas registradas.</td></tr>')
       +'</tbody></table></div>';
   } catch(e) {
     cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>';
@@ -12046,49 +12066,67 @@ async function contRenderCxp() {
     const pagos = await api('pagos','GET',null,'?order=fecha_vencimiento.asc&select=*'+emisorQ());
     const pendientes = pagos.filter(function(p){ return p.estado==='BORRADOR'||p.estado==='APROBADO'; });
     const pagados    = pagos.filter(function(p){ return p.estado==='PAGADO'; });
-    const totPend    = pendientes.reduce(function(s,p){ return s+parseFloat(p.monto_usd||0); },0);
-    const totPagado  = pagados.reduce(function(s,p){ return s+parseFloat(p.monto_usd||0); },0);
+    const totPendUSD = pendientes.reduce(function(s,p){ return s+parseFloat(p.monto_usd||0); },0);
+    const totPendVES = pendientes.reduce(function(s,p){ return s+parseFloat(p.monto_ves||0); },0);
+    const totPagUSD  = pagados.reduce(function(s,p){ return s+parseFloat(p.monto_usd||0); },0);
+    const totPagVES  = pagados.reduce(function(s,p){ return s+parseFloat(p.monto_ves||0); },0);
     const eb = {
       BORRADOR:'<span class="badge badge-gris">Borrador</span>',
       APROBADO:'<span class="badge badge-naranja">Aprobado</span>',
-      PAGADO:'<span class="badge" style="background:rgba(34,197,94,0.15);color:#22c55e">Pagado</span>',
-      ANULADO:'<span class="badge" style="background:rgba(252,129,129,0.15);color:#fc8181">Anulado</span>',
+      PAGADO:'<span class="badge" style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3)">Pagado</span>',
+      ANULADO:'<span class="badge" style="background:rgba(252,129,129,0.15);color:#fc8181;border:1px solid rgba(252,129,129,0.3)">Anulado</span>',
     };
     const TP = {NOMINA:'Nomina',PROVEEDOR:'Proveedor',SERVICIO_BASICO:'Serv.Basico',ALQUILER:'Alquiler',SUSCRIPCION:'Suscripcion',IMPUESTO:'Impuesto',OTRO:'Otro'};
     const filas = pagos.map(function(p) {
+      const musd = parseFloat(p.monto_usd||0);
+      const mves = parseFloat(p.monto_ves||0);
       return '<tr>'
-        +'<td style="padding:8px 12px;font-size:12px;color:var(--naranja)">'+(p.numero_pago||'--')+'</td>'
+        +'<td style="padding:8px 12px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">'+(p.numero_pago||'--')+'</td>'
         +'<td style="padding:8px 12px;font-size:12px">'+(TP[p.tipo_pago]||p.tipo_pago||'--')+'</td>'
         +'<td style="padding:8px 12px;font-size:13px">'+(p.descripcion||'--')+(p.nombre_beneficiario?'<br><span style="font-size:11px;color:var(--suave)">'+p.nombre_beneficiario+'</span>':'')+'</td>'
-        +'<td style="padding:8px 12px;text-align:right">'+(p.monto_usd?'$ '+fmtUSD(p.monto_usd):'Bs '+fmtVES(p.monto_ves||0))+'</td>'
+        +'<td style="padding:8px 12px;text-align:right;font-family:var(--font-mono)">'+(musd>0?'$ '+fmtUSD(musd):'--')+'</td>'
+        +'<td style="padding:8px 12px;text-align:right;font-family:var(--font-mono)">'+(mves>0?'Bs '+fmtVES(mves):'--')+'</td>'
         +'<td style="padding:8px 12px">'+fmtFecha(p.fecha_vencimiento||'')+'</td>'
         +'<td style="padding:8px 12px">'+(eb[p.estado]||p.estado)+'</td>'
+        +'<td style="padding:8px 12px;font-size:11px;color:var(--naranja)">'+(p.es_recurrente?p.frecuencia:'')+'</td>'
         +'</tr>';
     }).join('');
     cont.innerHTML =
-      '<div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">'
-      +'<div style="background:rgba(252,129,129,0.08);border:1px solid rgba(252,129,129,0.2);border-radius:8px;padding:14px;flex:1;min-width:140px">'
-      +'<div style="font-size:10px;color:var(--suave)">PENDIENTE</div>'
-      +'<div style="font-size:18px;color:#fc8181;font-weight:700">$ '+fmtUSD(totPend)+'</div>'
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px">'
+      +'<div style="background:rgba(252,129,129,0.08);border:1px solid rgba(252,129,129,0.2);border-radius:8px;padding:14px">'
+      +'<div style="font-size:10px;color:var(--suave)">PENDIENTE USD</div>'
+      +'<div style="font-size:18px;color:#fc8181;font-weight:700;font-family:var(--font-mono)">$ '+fmtUSD(totPendUSD)+'</div>'
       +'<div style="font-size:11px;color:var(--suave)">'+pendientes.length+' pagos</div></div>'
-      +'<div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:14px;flex:1;min-width:140px">'
-      +'<div style="font-size:10px;color:var(--suave)">PAGADO</div>'
-      +'<div style="font-size:18px;color:#22c55e;font-weight:700">$ '+fmtUSD(totPagado)+'</div>'
+      +'<div style="background:rgba(252,129,129,0.08);border:1px solid rgba(252,129,129,0.2);border-radius:8px;padding:14px">'
+      +'<div style="font-size:10px;color:var(--suave)">PENDIENTE Bs</div>'
+      +'<div style="font-size:18px;color:#fc8181;font-weight:700;font-family:var(--font-mono)">Bs '+fmtVES(totPendVES)+'</div>'
+      +'<div style="font-size:11px;color:var(--suave)">'+pendientes.length+' pagos</div></div>'
+      +'<div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:14px">'
+      +'<div style="font-size:10px;color:var(--suave)">PAGADO USD</div>'
+      +'<div style="font-size:18px;color:#22c55e;font-weight:700;font-family:var(--font-mono)">$ '+fmtUSD(totPagUSD)+'</div>'
+      +'<div style="font-size:11px;color:var(--suave)">'+pagados.length+' realizados</div></div>'
+      +'<div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:14px">'
+      +'<div style="font-size:10px;color:var(--suave)">PAGADO Bs</div>'
+      +'<div style="font-size:18px;color:#22c55e;font-weight:700;font-family:var(--font-mono)">Bs '+fmtVES(totPagVES)+'</div>'
       +'<div style="font-size:11px;color:var(--suave)">'+pagados.length+' realizados</div></div></div>'
       +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
       +'<thead><tr style="border-bottom:2px solid var(--borde)">'
       +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">N Pago</th>'
       +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Tipo</th>'
       +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Descripcion</th>'
-      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:right">Monto</th>'
+      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:right">Monto USD</th>'
+      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:right">Monto Bs</th>'
       +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Vencimiento</th>'
       +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Estado</th>'
-      +'</tr></thead><tbody>'+(filas||'<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--suave)">Sin pagos.</td></tr>')
+      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Rec.</th>'
+      +'</tr></thead><tbody>'
+      +(filas||'<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--suave)">Sin pagos registrados.</td></tr>')
       +'</tbody></table></div>';
   } catch(e) {
     cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>';
   }
 }
+
 </script>
 
 <!-- ═══════════════════════════════════════ -->
