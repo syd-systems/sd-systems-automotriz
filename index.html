@@ -6659,15 +6659,15 @@ async function contCargarMayor() {
         const esDeud = cInfo && cInfo.naturaleza === 'DEUDORA';
         let saldoCta = 0;
         const filasCta = lineasCuenta.map(function(l) {
-          const d = parseFloat(l.debe_usd||0), h = parseFloat(l.haber_usd||0);
+          const d = parseFloat(l.debe_ves||l.debe_usd||0), h = parseFloat(l.haber_ves||l.haber_usd||0);
           saldoCta += esDeud ? (d-h) : (h-d);
           return '<tr>'
             + '<td style="padding:7px;font-size:12px">' + fmtFecha(l.cont_asientos ? l.cont_asientos.fecha : '') + '</td>'
             + '<td style="padding:7px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">' + (l.cont_asientos ? l.cont_asientos.numero_asiento : '—') + '</td>'
             + '<td style="padding:7px;font-size:12px">' + (l.descripcion || '') + '</td>'
-            + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#22c55e">' + (d>0?'$ '+fmtUSD(d):'—') + '</td>'
-            + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#fc8181">' + (h>0?'$ '+fmtUSD(h):'—') + '</td>'
-            + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-weight:700;color:' + (saldoCta>=0?'var(--naranja)':'#fc8181') + '">$ ' + fmtUSD(Math.abs(saldoCta)) + (saldoCta<0?' Cr':'') + '</td>'
+            + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#22c55e">' + (d>0?'Bs '+fmtVES(d):'—') + '</td>'
+            + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#fc8181">' + (h>0?'Bs '+fmtVES(h):'—') + '</td>'
+            + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-weight:700;color:' + (saldoCta>=0?'var(--naranja)':'#fc8181') + '">Bs ' + fmtVES(Math.abs(saldoCta)) + (saldoCta<0?' Cr':'') + '</td>'
             + '</tr>';
         });
         html += '<div style="margin-bottom:24px">'
@@ -6679,9 +6679,9 @@ async function contCargarMayor() {
           + '<th style="padding:7px;text-align:left;border-bottom:1px solid var(--borde);font-size:11px">Fecha</th>'
           + '<th style="padding:7px;text-align:left;border-bottom:1px solid var(--borde);font-size:11px">Asiento</th>'
           + '<th style="padding:7px;text-align:left;border-bottom:1px solid var(--borde);font-size:11px">Descripción</th>'
-          + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Debe USD</th>'
-          + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Haber USD</th>'
-          + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Saldo USD</th>'
+          + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Debe Bs</th>'
+          + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Haber Bs</th>'
+          + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Saldo Bs</th>'
           + '</tr></thead><tbody>' + filasCta.join('') + '</tbody></table></div>';
       });
       res.innerHTML = html;
@@ -6692,15 +6692,15 @@ async function contCargarMayor() {
     let saldo = 0;
     const esDeudora = cuenta && cuenta.naturaleza === 'DEUDORA';
     const filas = lineas.map(function(l) {
-      const debe = parseFloat(l.debe_usd||0), haber = parseFloat(l.haber_usd||0);
+      const debe = parseFloat(l.debe_ves||l.debe_usd||0), haber = parseFloat(l.haber_ves||l.haber_usd||0);
       saldo += esDeudora ? (debe-haber) : (haber-debe);
       return '<tr>'
         + '<td style="padding:7px;font-size:12px">' + fmtFecha(l.cont_asientos ? l.cont_asientos.fecha : '') + '</td>'
         + '<td style="padding:7px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">' + (l.cont_asientos ? l.cont_asientos.numero_asiento : '—') + '</td>'
         + '<td style="padding:7px;font-size:12px">' + (l.descripcion || '') + '</td>'
-        + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#22c55e">' + (debe>0?'$ '+fmtUSD(debe):'—') + '</td>'
-        + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#fc8181">' + (haber>0?'$ '+fmtUSD(haber):'—') + '</td>'
-        + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-weight:700;color:' + (saldo>=0?'var(--naranja)':'#fc8181') + '">$ ' + fmtUSD(Math.abs(saldo)) + (saldo<0?' Cr':'') + '</td>'
+        + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#22c55e">' + (debe>0?'Bs '+fmtVES(debe):'—') + '</td>'
+        + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#fc8181">' + (haber>0?'Bs '+fmtVES(haber):'—') + '</td>'
+        + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-weight:700;color:' + (saldo>=0?'var(--naranja)':'#fc8181') + '">Bs ' + fmtVES(Math.abs(saldo)) + (saldo<0?' Cr':'') + '</td>'
         + '</tr>';
     });
 
