@@ -7902,12 +7902,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda) {
       '<td style="padding:10px 14px;font-size:12px">' + fmtFecha(p.fecha_pago||p.fecha_vencimiento) + (p.es_recurrente ? ' <span style="font-size:10px;color:var(--naranja)">🔄</span>' : '') + '</td>' +
       '<td style="padding:10px 14px">' + (estadoBadge[p.estado]||p.estado) + '</td>' +
       '<td style="padding:10px 14px">' +
-        '<div style="display:flex;gap:4px;flex-wrap:wrap">' +
-        (p.estado==='BORRADOR' && puedo('PAGOS','EDITAR') ? '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="event.stopPropagation();abrirEditarPago('+p.id_pago+')">✏</button>' : '') +
-        (p.estado==='BORRADOR' && puedo('PAGOS','APROBAR') ? '<button class="btn-primario" style="font-size:11px;padding:4px 8px" onclick="event.stopPropagation();aprobarPago('+p.id_pago+')">✓ Aprobar</button>' : '') +
-        (p.estado==='APROBADO' && puedo('PAGOS','PAGAR') ? '<button class="btn-primario" style="font-size:11px;padding:4px 8px;background:#22c55e;border-color:#22c55e" onclick="event.stopPropagation();ejecutarPago('+p.id_pago+')">💳 Pagar</button>' : '') +
-        (p.estado!=='ANULADO' && p.estado!=='PAGADO' && puedo('PAGOS','ANULAR') ? '<button class="btn-secundario" style="font-size:11px;padding:4px 8px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="event.stopPropagation();anularPago('+p.id_pago+')">Anular</button>' : '') +
-        '</div>' +
+        '<button class="btn-secundario" style="font-size:11px;padding:4px 12px" onclick="event.stopPropagation();abrirFichaPago('+p.id_pago+')">Ver</button>' +
       '</td>' +
       '</tr>';
   }).join('');
@@ -8312,6 +8307,18 @@ function abrirFichaPago(id) {
   const tipo = TIPOS_PAGO.find(function(t){ return t.value === p.tipo_pago; });
   const metodo = METODOS_PAGO_PAGOS.find(function(m){ return m.value === p.metodo_pago; });
   const estadoColor = { BORRADOR:'var(--suave)', APROBADO:'var(--naranja)', PAGADO:'#22c55e', ANULADO:'#fc8181' };
+
+  // Botones de acción según estado
+  const idp = p.id_pago;
+  const btnEditar  = (p.estado==='BORRADOR' && puedo('PAGOS','EDITAR'))
+    ? '<button class="btn-secundario" onclick="cerrarModal(\"modal-ficha-pago\");abrirEditarPago('+idp+')">✏ Editar</button>' : '';
+  const btnAprobar = (p.estado==='BORRADOR' && puedo('PAGOS','APROBAR'))
+    ? '<button class="btn-primario" onclick="aprobarPagoFicha('+idp+')">✓ Aprobar</button>' : '';
+  const btnPagar   = (p.estado==='APROBADO' && puedo('PAGOS','PAGAR'))
+    ? '<button class="btn-primario" style="background:#22c55e;border-color:#22c55e" onclick="cerrarModal(\"modal-ficha-pago\");ejecutarPago('+idp+')">💳 Pagar</button>' : '';
+  const btnAnular  = (p.estado!=='ANULADO' && p.estado!=='PAGADO' && puedo('PAGOS','ANULAR'))
+    ? '<button class="btn-secundario" style="color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="anularPagoFicha('+idp+')">Anular</button>' : '';
+  const botonesAccion = btnEditar + btnAprobar + btnPagar + btnAnular;
 
   document.getElementById('ficha-pago-cont').innerHTML =
     '<div style="padding:24px">' +
