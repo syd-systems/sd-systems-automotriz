@@ -7991,6 +7991,50 @@ async function poblarFormPago(p) {
   onCambiarTipoPago();
   onToggleRecurrente();
   onCambiarMontoPago();
+
+  // Al cambiar empleado en nómina, cargar su salario
+  selEmp.onchange = async function() {
+    if (document.getElementById('pago-tipo').value !== 'NOMINA') return;
+    const idEmp = parseInt(this.value);
+    if (!idEmp) return;
+    try {
+      const empData = await api('empleados','GET',null,'?id_empleado=eq.'+idEmp+'&select=monto_salario,moneda_calculo,moneda_pago,nombre_completo,id_calculo_salario,id_frecuencia_pago');
+      if (empData.length) {
+        const emp = empData[0];
+        if (emp.monto_salario) {
+          const moneda    = emp.moneda_calculo || 'USD';
+          const salBase   = parseFloat(emp.monto_salario) || 0;
+          const idCalc    = emp.id_calculo_salario;  // 3=hora,4=día,5=mes,7=semana
+          const idFreq    = emp.id_frecuencia_pago;  // 1=semanal,2=quincenal,3=diario,4=mensual,5=por hora
+
+          // Cargar nombres de frecuencia y cálculo para mostrar en descripción
+          let montoAPagar = salBase;
+
+          // Paso 1: convertir salario base a mensual según unidad de cálculo
+          // id_calculo: 3=hora, 4=día, 5=mes, 7=semana
+          const aMonthly = { 3: 160, 4: 30, 5: 1, 7: 4.33 };
+          const salMensual = idCalc && aMonthly[idCalc]
+            ? salBase * aMonthly[idCalc]
+            : salBase;
+
+          // Paso 2: dividir según frecuencia de pago
+          // id_frecuencia: 1=semanal, 2=quincenal, 3=diario, 4=mensual, 5=por hora
+          const divisorFreq = { 1: 4.33, 2: 2, 3: 30, 4: 1, 5: 240 }; // 5=hora: 30días×8hrs
+          const divisor = idFreq && divisorFreq[idFreq] ? divisorFreq[idFreq] : 1;
+          montoAPagar = salMensual / divisor;
+
+          document.getElementById('pago-moneda').value = moneda;
+          if (moneda === 'USD') {
+            document.getElementById('pago-monto-usd').value = montoAPagar.toFixed(4);
+          } else {
+            document.getElementById('pago-monto-ves').value = montoAPagar.toFixed(2);
+          }
+          document.getElementById('pago-beneficiario').value = emp.nombre_completo || '';
+          onCambiarMontoPago();
+        }
+      }
+    } catch(e) {}
+  };
 }
 
 function cargarPagosDesdeUI() {
