@@ -8343,6 +8343,10 @@ function abrirFichaPago(id) {
     (p.aprobado_por ? '<div><div style="font-size:10px;color:var(--suave)">APROBADO POR</div><div>'+p.aprobado_por+'</div></div>' : '') +
     '</div></div>';
 
+  // Actualizar footer con botones de acción
+  const footer = document.querySelector('#modal-ficha-pago .modal-footer');
+  if (footer) footer.innerHTML = botonesAccion + '<button class="btn-secundario" onclick="cerrarModal(\"modal-ficha-pago\")">Cerrar</button>';
+
   abrirModal('modal-ficha-pago');
 }
 
