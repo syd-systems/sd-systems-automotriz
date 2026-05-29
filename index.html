@@ -6349,7 +6349,7 @@ async function contVerAsiento(id) {
     const totalHaber    = lineas.reduce(function(s,l){ return s+parseFloat(l.haber_usd||0); }, 0);
     const totalDebeVes  = lineas.reduce(function(s,l){ return s+parseFloat(l.debe_ves||0); }, 0);
     const totalHaberVes = lineas.reduce(function(s,l){ return s+parseFloat(l.haber_ves||0); }, 0);
-    const cuadra = Math.abs(totalDebe - totalHaber) < 0.01;
+    const cuadra = Math.abs(totalDebeVes - totalHaberVes) < 0.01 || Math.abs(totalDebe - totalHaber) < 0.01;
 
     document.getElementById('cont-asiento-contenido').innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px">'
@@ -6399,6 +6399,7 @@ async function contVerAsiento(id) {
       + '<td style="padding:8px">TOTALES</td>'
       + '<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-size:15px!important;font-weight:600;color:var(--naranja)">' + fmtUSD(totalDebe) + '</td>'
       + '<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-size:15px!important;font-weight:600;color:var(--naranja)">' + fmtUSD(totalHaber) + '</td>'
+
       + '<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-size:' + (fmtBs(totalDebeVes).length>12?'12px':'15px') + '!important;font-weight:600;white-space:nowrap;color:var(--naranja)">' + fmtBs(totalDebeVes) + '</td>'
       + '<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-size:' + (fmtBs(totalHaberVes).length>12?'12px':'15px') + '!important;font-weight:600;white-space:nowrap;color:var(--naranja)">' + fmtBs(totalHaberVes) + '</td>'
       + '</tr>'
@@ -8221,8 +8222,15 @@ async function generarAsientoPago(p, fecha, metodo) {
     if (cOrig.length) idCtaOrigen = cOrig[0].id_cuenta;
   }
 
-  // Cuenta de gasto
-  const idCtaGasto = p.id_cuenta_gasto;
+  // Cuenta de gasto — buscar por tipo si no está definida
+  let idCtaGasto = p.id_cuenta_gasto;
+  if (!idCtaGasto) {
+    const tipoDef = TIPOS_PAGO.find(function(t){ return t.value === p.tipo_pago; });
+    if (tipoDef && tipoDef.cuentaGasto) {
+      const cGasto = await api('cont_cuentas','GET',null,'?codigo=eq.'+tipoDef.cuentaGasto+'&select=id_cuenta');
+      if (cGasto.length) idCtaGasto = cGasto[0].id_cuenta;
+    }
+  }
 
   // Línea 1: Débito Cuenta de Gasto (en Bs, auxiliar USD)
   if (idCtaGasto) await api('cont_asiento_lineas','POST',{
