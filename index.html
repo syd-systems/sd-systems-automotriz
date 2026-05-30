@@ -6338,6 +6338,10 @@ function contSelStyle() {
 
 // ─── VER ASIENTO ───
 async function contVerAsiento(id) {
+  // Mostrar spinner mientras carga
+  const contEl = document.getElementById('cont-asiento-contenido');
+  if (contEl) contEl.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando asiento...</div>';
+  abrirModal('modal-cont-asiento-ver');
   try {
     const [a, lineas] = await Promise.all([
       api('cont_asientos','GET',null,'?id_asiento=eq.' + id + '&select=*,cont_periodos(nombre)'),
@@ -6407,7 +6411,10 @@ async function contVerAsiento(id) {
 
     abrirModal('modal-cont-asiento-ver');
   focusFirstField('modal-cont-asiento-ver');
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) {
+    if (contEl) contEl.innerHTML = '<div class="alerta alerta-error" style="display:block">Error cargando asiento: ' + e.message + '</div>';
+    else alert('Error: ' + e.message);
+  }
 }
 
 // ─── ABRIR / EDITAR ASIENTO ───
