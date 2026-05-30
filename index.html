@@ -6223,7 +6223,8 @@ async function contCargarCuentas() {
     '?estado=eq.ACTIVA&order=codigo.asc&select=*' + emisorFiltro);
 }
 async function contCargarPeriodos() {
-  contPeriodosCache = await api('cont_periodos','GET',null,'?order=fecha_inicio.desc&select=*');
+  const epFilter = window._contEmisorActivo ? '&or=(id_emisor.eq.'+window._contEmisorActivo+',id_emisor.is.null)' : '';
+  contPeriodosCache = await api('cont_periodos','GET',null,'?order=fecha_inicio.desc&select=*'+epFilter);
 }
 function contGetPeriodoActivo() {
   return contPeriodosCache.find(function(p){ return p.estado === 'ABIERTO'; }) || contPeriodosCache[0];
@@ -6310,7 +6311,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
           const est = ESTADOS_ASIENTO[a.estado] || {clase:'badge-gris',label:a.estado};
           return '<tr>'
             + '<td style="font-family:var(--font-mono);font-weight:600;color:var(--naranja)">' + a.numero_asiento + '</td>'
-            + '<td style="font-size:12px">' + a.fecha + '</td>'
+            + '<td style="font-size:12px">' + fmtFecha(a.fecha) + '</td>'
             + '<td style="font-size:13px">' + a.descripcion
             + (a.referencia ? '<div style="font-size:10px;color:var(--suave)">Ref: ' + a.referencia + '</div>' : '')
             + '</td>'
@@ -6359,7 +6360,7 @@ async function contVerAsiento(id) {
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px">'
       + '<div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + ast.numero_asiento + '</div>'
       + '<span class="badge ' + est.clase + '">' + est.label + '</span>'
-      + '<div style="font-size:12px;color:var(--suave);margin-top:4px">Fecha: ' + ast.fecha + ' · ' + (ast.cont_periodos ? ast.cont_periodos.nombre : '') + '</div>'
+      + '<div style="font-size:12px;color:var(--suave);margin-top:4px">Fecha: ' + fmtFecha(ast.fecha) + '</div>'
       + (ast.referencia ? '<div style="font-size:11px;color:var(--suave)">Ref: ' + ast.referencia + '</div>' : '')
       + '</div>'
       + '<div style="text-align:right">'
@@ -6870,7 +6871,7 @@ async function contRenderCxc() {
         +'<td style="padding:8px 12px;text-align:right;font-family:var(--font-mono)">'+(tves>0?'Bs '+fmtVES(tves):'--')+'</td>'
         +'<td style="padding:8px 12px;text-align:right;font-family:var(--font-mono)">'+(cobUSD>0?'$ '+fmtUSD(cobUSD):'--')+'</td>'
         +'<td style="padding:8px 12px;text-align:right;font-family:var(--font-mono);color:'+(saldoUSD>0?'#fc8181':'#22c55e')+'">'+(tusd>0?'$ '+fmtUSD(saldoUSD):'--')+'</td>'
-        +'<td style="padding:8px 12px">'+(eb[f.estado]||f.estado)+'</td>'
+        +'<td style="padding:8px 12px">'+(f.fecha_pago?fmtFecha(f.fecha_pago):'--')+'</td>'+'<td style="padding:8px 12px">'+(eb[f.estado]||f.estado)+'</td>'
         +'</tr>';
     }).join('');
 
@@ -6901,7 +6902,7 @@ async function contRenderCxc() {
       +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:right">Total Bs</th>'
       +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:right">Cobrado</th>'
       +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:right">Saldo</th>'
-      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Estado</th>'
+      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">F. Cancelación</th>'+'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Estado</th>'
       +'</tr></thead><tbody>'
       +(filas||'<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--suave)">Sin facturas registradas.</td></tr>')
       +'</tbody></table></div>';
@@ -9489,7 +9490,7 @@ async function verFichaVehiculo(id) {
         const p = h.propietarios;
         return '<div style="padding:8px 0;border-bottom:1px solid var(--borde)">'
           + '<div style="font-size:12px;font-weight:500">' + (p ? p.nombre_completo : '—') + '</div>'
-          + '<div style="font-size:11px;color:var(--suave);margin-top:3px">' + h.fecha_desde + ' → ' + (h.fecha_hasta || 'Desconocido') + '</div>'
+          + '<div style="font-size:11px;color:var(--suave);margin-top:3px">' + fmtFecha(h.fecha_desde) + ' → ' + (h.fecha_hasta || 'Desconocido') + '</div>'
           + '</div>';
       }).join('')
     : '<div style="color:var(--suave);font-size:12px">Sin propietarios anteriores</div>';
@@ -12093,7 +12094,7 @@ async function contRenderCxp() {
         +'<td style="padding:8px 12px;font-size:13px">'+(p.descripcion||'--')+(p.nombre_beneficiario?'<br><span style="font-size:11px;color:var(--suave)">'+p.nombre_beneficiario+'</span>':'')+'</td>'
         +'<td style="padding:8px 12px;text-align:right;font-family:var(--font-mono)">'+(musd>0?'$ '+fmtUSD(musd):'--')+'</td>'
         +'<td style="padding:8px 12px;text-align:right;font-family:var(--font-mono)">'+(mves>0?'Bs '+fmtVES(mves):'--')+'</td>'
-        +'<td style="padding:8px 12px">'+fmtFecha(p.fecha_vencimiento||'')+'</td>'
+        +'<td style="padding:8px 12px">'+fmtFecha(p.fecha_vencimiento||'')+'</td>'+'<td style="padding:8px 12px">'+(p.fecha_pago?fmtFecha(p.fecha_pago):'--')+'</td>'
         +'<td style="padding:8px 12px">'+(eb[p.estado]||p.estado)+'</td>'
         +'<td style="padding:8px 12px;font-size:11px;color:var(--naranja)">'+(p.es_recurrente?p.frecuencia:'')+'</td>'
         +'</tr>';
@@ -12123,8 +12124,8 @@ async function contRenderCxp() {
       +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Descripcion</th>'
       +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:right">Monto USD</th>'
       +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:right">Monto Bs</th>'
-      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Vencimiento</th>'
-      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Estado</th>'
+      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Vencimiento</th>'+'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Fecha Pago</th>'
+      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">F. Cancelación</th>'+'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Estado</th>'
       +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Rec.</th>'
       +'</tr></thead><tbody>'
       +(filas||'<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--suave)">Sin pagos registrados.</td></tr>')
