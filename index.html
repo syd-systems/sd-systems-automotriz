@@ -6319,7 +6319,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
             + '<div style="font-size:10px;color:var(--suave)">Tasa: ' + parseFloat(a.tasa_bcv||1).toFixed(2) + '</div></td>'
             + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
             + '<td><div style="display:flex;gap:4px;flex-wrap:wrap">'
-            + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="contVerAsiento(" + a.id_asiento + ")">Ver</button>'
+            + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" data-ast="' + a.id_asiento + '" onclick="contVerAsiento(this.dataset.ast)">Ver</button>'
             + (puedo('CONTABILIDAD','EDITAR') && a.estado==='BORRADOR' ? '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="contAbrirAsiento(' + a.id_asiento + ')">✏</button>' : '')
             + (puedo('CONTABILIDAD','APROBAR') && a.estado==='BORRADOR' ? '<button class="btn-primario" style="font-size:11px;padding:4px 8px" onclick="contAprobarAsiento(' + a.id_asiento + ')">✓ Aprobar</button>' : '')
             + (puedo('CONTABILIDAD','ANULAR') && a.estado!=='ANULADO' ? '<button class="btn-secundario" style="font-size:11px;padding:4px 8px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="contAnularAsiento(' + a.id_asiento + ')">Anular</button>' : '')
