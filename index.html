@@ -12089,14 +12089,14 @@ async function contRenderCxp() {
       const musd = parseFloat(p.monto_usd||0);
       const mves = parseFloat(p.monto_ves||0);
       return '<tr>'
-        +'<td style="padding:4px 8px;font-size:10px;font-family:var(--font-mono);color:var(--naranja)">'+(p.numero_pago||'--')+'</td>'
-        +'<td style="padding:4px 8px;font-size:11px">'+(TP[p.tipo_pago]||p.tipo_pago||'--')+'</td>'
-        +'<td style="padding:4px 8px;font-size:11px">'+(p.descripcion||'--')+(p.nombre_beneficiario?'<br><span style="font-size:11px;color:var(--suave)">'+p.nombre_beneficiario+'</span>':'')+'</td>'
-        +'<td style="padding:4px 8px;text-align:right;font-size:10px;font-family:var(--font-mono)">'+(musd>0?'$ '+fmtUSD(musd):'--')+'</td>'
-        +'<td style="padding:4px 8px;text-align:right;font-size:10px;font-family:var(--font-mono)">'+(mves>0?'Bs '+fmtVES(mves):'--')+'</td>'
-        +'<td style="padding:4px 8px">'+fmtFecha(p.fecha_vencimiento||'')+'</td>'+'<td style="padding:4px 8px">'+(p.fecha_pago?fmtFecha(p.fecha_pago):'--')+'</td>'
-        +'<td style="padding:4px 8px">'+(eb[p.estado]||p.estado)+'</td>'
-        +'<td style="padding:4px 8px;font-size:11px;color:var(--naranja)">'+(p.es_recurrente?p.frecuencia:'')+'</td>'
+        +'<td style="padding:5px 8px;font-size:13px;font-family:var(--font-mono);color:var(--naranja)">'+(p.numero_pago||'--')+'</td>'
+        +'<td style="padding:5px 8px;font-size:13px">'+(TP[p.tipo_pago]||p.tipo_pago||'--')+'</td>'
+        +'<td style="padding:5px 8px;font-size:13px">'+(p.descripcion||'--')+(p.nombre_beneficiario?'<br><span style="font-size:11px;color:var(--suave)">'+p.nombre_beneficiario+'</span>':'')+'</td>'
+        +'<td style="padding:5px 8px;text-align:right;font-size:13px;font-family:var(--font-mono)">'+(musd>0?'$ '+fmtUSD(musd):'--')+'</td>'
+        +'<td style="padding:5px 8px;text-align:right;font-size:13px;font-family:var(--font-mono)">'+(mves>0?'Bs '+fmtVES(mves):'--')+'</td>'
+        +'<td style="padding:5px 8px">'+fmtFecha(p.fecha_vencimiento||'')+'</td>'+'<td style="padding:5px 8px">'+(p.fecha_pago?fmtFecha(p.fecha_pago):'--')+'</td>'
+        +'<td style="padding:5px 8px">'+(eb[p.estado]||p.estado)+'</td>'
+        +'<td style="padding:5px 8px;font-size:13px;color:var(--naranja)">'+(p.es_recurrente?p.frecuencia:'')+'</td>'
         +'</tr>';
     }).join('');
     cont.innerHTML =
@@ -12119,14 +12119,13 @@ async function contRenderCxp() {
       +'<div style="font-size:11px;color:var(--suave)">'+pagados.length+' realizados</div></div></div>'
       +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
       +'<thead><tr style="border-bottom:2px solid var(--borde)">'
-      +'<th style="padding:4px 8px;font-size:11px;color:var(--suave);text-align:left">N Pago</th>'
-      +'<th style="padding:4px 8px;font-size:11px;color:var(--suave);text-align:left">Tipo</th>'
-      +'<th style="padding:4px 8px;font-size:11px;color:var(--suave);text-align:left">Descripcion</th>'
-      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:right">Monto USD</th>'
-      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:right">Monto Bs</th>'
-      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Vencimiento</th>'+'<th style="padding:6px 8px;font-size:10px;color:var(--suave);text-align:left">Cancelado</th>'
-      +'<th style="padding:6px 8px;font-size:10px;color:var(--suave);text-align:left">Cancelado</th>'+'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Estado</th>'
-      +'<th style="padding:8px 12px;font-size:11px;color:var(--suave);text-align:left">Rec.</th>'
+      +'<th style="padding:5px 8px;font-size:13px;color:var(--suave);text-align:left">N Pago</th>'
+      +'<th style="padding:5px 8px;font-size:13px;color:var(--suave);text-align:left">Tipo</th>'
+      +'<th style="padding:5px 8px;font-size:13px;color:var(--suave);text-align:left">Descripcion</th>'
+      +'<th style="padding:5px 8px;font-size:13px;color:var(--suave);text-align:right">Monto USD</th>'
+      +'<th style="padding:5px 8px;font-size:13px;color:var(--suave);text-align:right">Monto Bs</th>'
+      +'<th style="padding:5px 8px;font-size:13px;color:var(--suave);text-align:left">Vencimiento</th>'+'<th style="padding:5px 8px;font-size:13px;color:var(--suave);text-align:left">Cancelado</th>'+'<th style="padding:5px 8px;font-size:13px;color:var(--suave);text-align:left">Estado</th>'
+      +'<th style="padding:5px 8px;font-size:13px;color:var(--suave);text-align:left">Rec.</th>'
       +'</tr></thead><tbody>'
       +(filas||'<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--suave)">Sin pagos registrados.</td></tr>')
       +'</tbody></table></div>';
