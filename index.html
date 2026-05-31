@@ -8108,8 +8108,8 @@ async function abrirFichaPago(id) {
   if (!window._nombresUsuarios) {
     window._nombresUsuarios = {};
     try {
-      const users = await api('usuarios','GET',null,'?select=correo_usuario,nombre_completo');
-      users.forEach(function(u){ _nombresUsuarios[u.correo_usuario] = u.nombre_completo; });
+      const users = await api('usuarios','GET',null,'?select=correo_usuario,nombre');
+      users.forEach(function(u){ _nombresUsuarios[u.correo_usuario] = u.nombre; });
     } catch(e) {}
   }
   const tipo = TIPOS_PAGO.find(function(t){ return t.value === p.tipo_pago; });
