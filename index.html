@@ -1283,7 +1283,21 @@
 
       <input type="hidden" id="u-id-editando" value=">
     </div>
-    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+    <div style="padding:16px 24px;border-top:1px solid var(--borde)">
+        <div style="font-size:12px;font-weight:700;color:var(--naranja);letter-spacing:1px;margin-bottom:12px">FACULTAD DE APROBACIÓN</div>
+        <div style="display:flex;flex-wrap:wrap;gap:16px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="usr-aprueba-pagos"> CxP — Aprobar Pagos
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="usr-aprueba-facturas"> Facturas — Aprobar Facturas
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="usr-aprueba-contabilidad"> Contabilidad — Aprobar Asientos
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
       <div class="alerta alerta-exito" id="alerta-modal-ok" style="margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-modal-error" style="margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
@@ -2472,8 +2486,6 @@ async function renderUsuarios(filtro) {
 
 async function verFichaUsuario(id) {
   const u = usuariosCache.find(function(x) { return x.id_usuario === id; });
-  if (!u) return;
-
   // Cargar permisos del usuario
   let permisosU = {};
   try {
@@ -2911,6 +2923,15 @@ async function guardarUsuario() {
       } catch(eInv) { console.warn('Error actualizando sesión:', eInv); }
     }
 
+    // Guardar facultades de aprobación
+    const idUsrFac = parseInt(document.getElementById('usr-id')?.value||'0');
+    if (idUsrFac) {
+      for (const mod of ['PAGOS','FACTURAS','CONTABILIDAD']) {
+        const checked = document.getElementById('usr-aprueba-'+mod.toLowerCase())?.checked || false;
+        try { await api('usuario_aprobaciones','DELETE',null,'?id_usuario=eq.'+idUsrFac+'&modulo=eq.'+mod); } catch(e) {}
+        try { await api('usuario_aprobaciones','POST',{ id_usuario: idUsrFac, modulo: mod, puede_aprobar: checked }); } catch(e) {}
+      }
+    }
     okEl.style.display = 'block';
     setTimeout(() => {
       cerrarModal('modal-usuario');
@@ -4480,7 +4501,9 @@ async function renderEmisores() {
         + '<td style="font-size:12px">' + (e.telefono||'—') + '</td>'
         + '<td style="font-size:12px">' + (e.correo||'—') + '</td>'
         + '<td><span class="badge ' + (e.estado==='ACTIVO'?'badge-verde':'badge-rojo') + '">' + (e.estado||'ACTIVO') + '</span></td>'
-        + '<td><button class="btn-secundario" onclick="verFichaEmisor(' + e.id_emisor + ')">Ficha</button></td>'
+        + '<td><button class="btn-secundario" onclick="verFichaEmisor(' + e.id_emisor + ')">Ficha</button>'
+        + (f.estado==='BORRADOR' && puedeAprobar('FACTURAS') ? '<button class="btn-primario" style="font-size:11px;padding:4px 8px;margin-left:4px" data-fid="' + f.id_factura + '" onclick="aprobarFactura(this.dataset.fid)">✓ Aprobar</button>' : '')
+        + '</td>'
         + '</tr>';
     }).join('');
     c.innerHTML = '<div class="panel">'
@@ -4651,7 +4674,8 @@ async function renderFacturas() {
                   : '<span style="color:var(--naranja)">$ ' + fmtUSD(f.total_usd) + '</span>')
               + '</td>'
             : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
-        + '<td><button class="btn-secundario" onclick="verFichaFactura(' + f.id_factura + ')">Ficha</button></td>'
+        + '<td><button class="btn-secundario" onclick="verFichaFactura(' + f.id_factura + ')">Ficha</button>'
+        + '</td>'
         + '</tr>';
     }).join('');
     c.innerHTML =
@@ -4926,6 +4950,15 @@ async function guardarFactura(emitir) {
   const recDir   = document.getElementById('fac-receptor-dir').value.trim();
   const tasa     = parseFloat(document.getElementById('fac-tasa').value)||1;
   const fecha    = document.getElementById('fac-fecha').value;
+  const estadoActual = document.getElementById('fac-estado').value;
+  if (emitir && estadoActual === 'BORRADOR' && !puedeAprobar('FACTURAS')) {
+    const errEl = document.getElementById('alerta-fac-err');
+    errEl.textContent = 'Esta factura requiere aprobación antes de emitirse.';
+    errEl.style.display = 'block';
+    window._facturaProcesando = false;
+    if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = '✓ Emitir Factura'; }
+    return;
+  }
   const estado   = emitir ? 'EMITIDA' : document.getElementById('fac-estado').value;
   const obs      = document.getElementById('fac-observaciones').value.trim();
   const aplIVA   = document.getElementById('fac-aplica-iva').checked;
@@ -6044,7 +6077,8 @@ async function renderProveedores() {
         + (p.dias_credito ? '<div style="font-size:10px;color:var(--suave)">' + p.dias_credito + ' días crédito</div>' : '')
         + '</td>'
         + '<td><span class="badge ' + (p.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (p.estado||'ACTIVO') + '</span></td>'
-        + '<td><button class="btn-secundario" onclick="verFichaProveedor(' + p.id_proveedor + ')">Ficha</button></td>'
+        + '<td><button class="btn-secundario" onclick="verFichaProveedor(' + p.id_proveedor + ')">Ficha</button>'
+        + '</td>'
         + '</tr>';
     }).join('');
 
