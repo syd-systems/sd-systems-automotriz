@@ -1283,21 +1283,7 @@
 
       <input type="hidden" id="u-id-editando" value=">
     </div>
-    <div style="padding:16px 24px;border-top:1px solid var(--borde)">
-        <div style="font-size:12px;font-weight:700;color:var(--naranja);letter-spacing:1px;margin-bottom:12px">FACULTAD DE APROBACIÓN</div>
-        <div style="display:flex;flex-wrap:wrap;gap:16px">
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-            <input type="checkbox" id="usr-aprueba-pagos"> CxP — Aprobar Pagos
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-            <input type="checkbox" id="usr-aprueba-facturas"> Facturas — Aprobar Facturas
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-            <input type="checkbox" id="usr-aprueba-contabilidad"> Contabilidad — Aprobar Asientos
-          </label>
-        </div>
-      </div>
-      <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
       <div class="alerta alerta-exito" id="alerta-modal-ok" style="margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-modal-error" style="margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
@@ -2927,7 +2913,7 @@ async function guardarUsuario() {
     const idUsrFac = parseInt(document.getElementById('usr-id')?.value||'0');
     if (idUsrFac) {
       for (const mod of ['PAGOS','FACTURAS','CONTABILIDAD']) {
-        const checked = document.getElementById('usr-aprueba-'+mod.toLowerCase())?.checked || false;
+        const checked = document.getElementById('u-aprueba-'+mod.toLowerCase())?.checked || false;
         try { await api('usuario_aprobaciones','DELETE',null,'?id_usuario=eq.'+idUsrFac+'&modulo=eq.'+mod); } catch(e) {}
         try { await api('usuario_aprobaciones','POST',{ id_usuario: idUsrFac, modulo: mod, puede_aprobar: checked }); } catch(e) {}
       }
