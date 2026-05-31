@@ -7557,7 +7557,7 @@ async function renderPagos() {
   }
 }
 
-async function cargarPagos(filtroEstado, filtroTipo, busqueda) {
+async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtroDesde, filtroHasta) {
   const c = document.getElementById('contenido-principal');
   const panelExiste = !!document.getElementById('panel-pagos');
 
@@ -7570,7 +7570,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda) {
       (puedo('PAGOS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoPago()">+ Nueva CxP</button>' : '') +
       '</div></div>' +
       '<div style="padding:12px 24px;display:flex;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--borde)">' +
-      '<input id="pagos-buscar" placeholder="🔍 Buscar..." style="' + inputStyle() + ';flex:1;min-width:160px" oninput="cargarPagosDesdeUI()">' +
+      '<input id="pagos-buscar" placeholder="🔍 Buscar..." style="' + inputStyle() + ';flex:1;min-width:160px" oninput="cargarPagosDesdeUI()">' +'<input id="pagos-referencia" placeholder="🔍 N° Referencia" style="' + inputStyle() + ';min-width:140px" oninput="cargarPagosDesdeUI()">' +'<div style="display:flex;align-items:center;gap:4px"><span style="font-size:11px;color:var(--suave)">Desde</span>' +'<input type="date" id="pagos-fecha-desde" style="' + inputStyle() + '" onchange="cargarPagosDesdeUI()"></div>' +'<div style="display:flex;align-items:center;gap:4px"><span style="font-size:11px;color:var(--suave)">Hasta</span>' +'<input type="date" id="pagos-fecha-hasta" style="' + inputStyle() + '" onchange="cargarPagosDesdeUI()"></div>' +
       '<select id="pagos-tipo" style="' + inputStyle() + '" onchange="cargarPagosDesdeUI()">' +
       '<option value="">Todos los estados</option>' +
       '<option value="BORRADOR">Borrador</option>' +
@@ -7602,14 +7602,22 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda) {
   const pagos = await api('pagos','GET',null,q);
   pagosCache = pagos;
 
-  const filtrados = fBuscar
-    ? pagos.filter(function(p){
-        const s = fBuscar.toLowerCase();
-        return (p.numero_pago||'').toLowerCase().includes(s)
-            || (p.descripcion||'').toLowerCase().includes(s)
-            || (p.nombre_beneficiario||'').toLowerCase().includes(s);
-      })
-    : pagos;
+  const fRef   = (filtroRef   || document.getElementById('pagos-referencia')?.value  || '').toLowerCase();
+  const fDesde = filtroDesde || document.getElementById('pagos-fecha-desde')?.value  || '';
+  const fHasta = filtroHasta || document.getElementById('pagos-fecha-hasta')?.value  || '';
+
+  const filtrados = pagos.filter(function(p){
+    if (fBuscar) {
+      const s = fBuscar.toLowerCase();
+      if (!(p.numero_pago||'').toLowerCase().includes(s)
+        && !(p.descripcion||'').toLowerCase().includes(s)
+        && !(p.nombre_beneficiario||'').toLowerCase().includes(s)) return false;
+    }
+    if (fRef    && !(p.referencia||'').toLowerCase().includes(fRef)) return false;
+    if (fDesde  && (p.fecha_pago||'').substring(0,10) < fDesde) return false;
+    if (fHasta  && (p.fecha_pago||'').substring(0,10) > fHasta) return false;
+    return true;
+  });
 
   document.getElementById('pagos-contador').textContent = 'Pagos (' + filtrados.length + ')';
 
@@ -7790,10 +7798,13 @@ async function poblarFormPago(p) {
 }
 
 function cargarPagosDesdeUI() {
-  const est  = document.getElementById('pagos-estado')?.value || '';
-  const tipo = document.getElementById('pagos-tipo')?.value || '';
-  const bus  = document.getElementById('pagos-buscar')?.value || '';
-  cargarPagos(est, tipo, bus);
+  const est   = document.getElementById('pagos-estado')?.value || '';
+  const tipo  = document.getElementById('pagos-tipo')?.value || '';
+  const bus   = document.getElementById('pagos-buscar')?.value || '';
+  const ref   = document.getElementById('pagos-referencia')?.value || '';
+  const desde = document.getElementById('pagos-fecha-desde')?.value || '';
+  const hasta = document.getElementById('pagos-fecha-hasta')?.value || '';
+  cargarPagos(est, tipo, bus, ref, desde, hasta);
 }
 
 function onCambiarTipoPago() {
