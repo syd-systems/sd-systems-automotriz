@@ -7660,7 +7660,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       '<td style="padding:10px 14px;font-size:12px">' + (tipo ? tipo.label : p.tipo_pago) + '</td>' +
       '<td style="padding:10px 14px;font-size:13px;font-weight:500">' + (p.descripcion||'—') + '<br><span style="font-size:11px;color:var(--suave)">' + (p.nombre_beneficiario||'') + '</span></td>' +
       '<td style="padding:10px 14px;font-size:13px;font-family:var(--font-mono);text-align:right">' +
-        (p.monto_ves ? '<strong>Bs '+fmtVES(p.monto_ves)+'</strong>' : '—') +
+        (p.monto_ves ? '<strong>Bs '+fmtVES(p.monto_ves)+'</strong>' : (p.monto_usd ? '<strong>Bs '+fmtVES(parseFloat(p.monto_usd)*(parseFloat(p.tasa_bcv)||1))+'</strong>' : '—')) +
         (p.monto_usd ? '<br><span style="font-size:11px;color:var(--suave)">$ '+fmtUSD(p.monto_usd)+'</span>' : '') +
       '</td>' +
       '<td style="padding:10px 14px;font-size:12px">' + (metodo ? metodo.label : (p.metodo_pago||'—')) + '</td>' +
@@ -7984,11 +7984,25 @@ async function confirmarEjecucionPago() {
       fechaProxima = fp.toISOString().split('T')[0];
     }
 
+    // Obtener tasa de cambio del día del pago
+    let tasaPago = parseFloat(p.tasa_bcv) || 1;
+    try {
+      const tasas = await api('tasas_cambio','GET',null,
+        '?fecha=lte.'+fecha+'&order=fecha.desc&limit=1&select=tipo_cambio');
+      if (tasas.length) tasaPago = parseFloat(tasas[0].tipo_cambio) || tasaPago;
+    } catch(e) {}
+
+    // Si pago en USD, calcular contavalor en Bs
+    const montoUSDp  = parseFloat(p.monto_usd) || 0;
+    const montoVESp  = montoUSDp > 0 ? montoUSDp * tasaPago : (parseFloat(p.monto_ves) || 0);
+
     await api('pagos','PATCH',{
       estado:       'PAGADO',
       fecha_pago:   fecha,
       metodo_pago:  metodo,
-      fecha_proxima: fechaProxima
+      fecha_proxima: fechaProxima,
+      tasa_bcv:     tasaPago,
+      monto_ves:    montoVESp
     },'?id_pago=eq.'+p.id_pago);
 
     cerrarModal('modal-ejecutar-pago');
@@ -8001,9 +8015,16 @@ async function confirmarEjecucionPago() {
 
 // ── Generar asiento contable del pago ──
 async function generarAsientoPago(p, fecha, metodo) {
-  const tasa = parseFloat(p.tasa_bcv) || 1;
+  // Usar tasa del día del pago (ya calculada) o consultar
+  let tasa = parseFloat(p.tasa_bcv) || 1;
+  try {
+    const tasasDia = await api('tasas_cambio','GET',null,
+      '?fecha=lte.'+fecha+'&order=fecha.desc&limit=1&select=tipo_cambio');
+    if (tasasDia.length) tasa = parseFloat(tasasDia[0].tipo_cambio) || tasa;
+  } catch(e) {}
   const montoUSD = parseFloat(p.monto_usd) || 0;
-  const montoVES = parseFloat(p.monto_ves) || (montoUSD * tasa);
+  // Si pago en USD: contavalor Bs = USD × tasa. Si pago en Bs: usar monto_ves directo
+  const montoVES = montoUSD > 0 ? (montoUSD * tasa) : (parseFloat(p.monto_ves) || 0);
 
   // Número de asiento
   const anio = new Date().getFullYear();
