@@ -1250,6 +1250,25 @@
         </div>
       </div>
 
+      <!-- FACULTAD DE APROBACIÓN -->
+      <div id="seccion-aprobaciones" style="margin-top:20px">
+        <label style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);display:block;margin-bottom:10px">Facultad de Aprobación</label>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px" id="u-aprobaciones-grid">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="u-aprueba-facturas" style="width:15px;height:15px">
+            Facturas
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="u-aprueba-pagos" style="width:15px;height:15px">
+            Cuentas por Pagar (CxP)
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="u-aprueba-contabilidad" style="width:15px;height:15px">
+            Asientos Contables
+          </label>
+        </div>
+      </div>
+
       <!-- ACCESOS POR MÓDULO -->
       <div id="seccion-accesos" style="margin-top:20px">
         <label style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);display:block;margin-bottom:10px">Módulos con acceso</label>
@@ -2621,6 +2640,7 @@ async function abrirEditarUsuario(id) {
   renderAccesosModal(accesosTemp, permisosUsuario);
   const correoEditar = u.correo_usuario;
   await cargarEmpresasAccesoModal(correoEditar);
+  await cargarFacultadesEnModal(id);
 
   abrirModal('modal-usuario');
   focusFirstField('modal-usuario');
@@ -2812,6 +2832,8 @@ async function guardarUsuario() {
         }
       } catch(eUE) { console.warn('Error guardando empresas:', eUE); }
       okEl.textContent = '✓ Usuario creado exitosamente.';
+      const nuevoU = await api('usuarios','GET',null,'?correo_usuario=eq.'+encodeURIComponent(correo)+'&select=id_usuario');
+      if (nuevoU.length) await guardarFacultadesAprobacion(nuevoU[0].id_usuario);
     } else {
       // EDITAR USUARIO
       const datos = { nombre, estado_usuario: estado, administrador: esAdmin };
@@ -2867,6 +2889,7 @@ async function guardarUsuario() {
         }
       } catch(eUE2) { console.warn('Error guardando empresas:', eUE2); }
       okEl.textContent = '✓ Usuario actualizado exitosamente.';
+      await guardarFacultadesAprobacion(parseInt(idEdit));
 
       // Marcar sesion_invalidada para que el usuario recargue permisos en su próxima verificación
       // Solo desactivar sesión si el usuario fue marcado como INACTIVO
@@ -2899,6 +2922,46 @@ async function guardarUsuario() {
     errEl.textContent = `Error: ${e.message}`;
     errEl.style.display = 'block';
   }
+}
+
+// ─── GUARDAR/CARGAR FACULTADES DE APROBACIÓN ───
+async function guardarFacultadesAprobacion(idUsuario) {
+  const modulos = [
+    { id: 'u-aprueba-facturas',     modulo: 'FACTURAS' },
+    { id: 'u-aprueba-pagos',        modulo: 'PAGOS' },
+    { id: 'u-aprueba-contabilidad', modulo: 'CONTABILIDAD' },
+  ];
+  // Borrar facultades existentes
+  await api('usuario_aprobaciones','DELETE',null,'?id_usuario=eq.'+idUsuario);
+  // Insertar las seleccionadas
+  const seleccionadas = modulos
+    .filter(function(m){ return document.getElementById(m.id)?.checked; })
+    .map(function(m){ return { id_usuario: idUsuario, modulo: m.modulo, puede_aprobar: true }; });
+  if (seleccionadas.length) {
+    await api('usuario_aprobaciones','POST', seleccionadas);
+  }
+}
+
+async function cargarFacultadesEnModal(idUsuario) {
+  const checks = {
+    'FACTURAS':      'u-aprueba-facturas',
+    'PAGOS':         'u-aprueba-pagos',
+    'CONTABILIDAD':  'u-aprueba-contabilidad',
+  };
+  // Resetear
+  Object.values(checks).forEach(function(id){ 
+    const el = document.getElementById(id); 
+    if (el) el.checked = false; 
+  });
+  if (!idUsuario) return;
+  try {
+    const rows = await api('usuario_aprobaciones','GET',null,
+      '?id_usuario=eq.'+idUsuario+'&puede_aprobar=eq.true&select=modulo');
+    rows.forEach(function(r){
+      const elId = checks[r.modulo];
+      if (elId) { const el = document.getElementById(elId); if (el) el.checked = true; }
+    });
+  } catch(e) {}
 }
 
 // ─── CERRAR SESIÓN DE UN USUARIO ESPECÍFICO ───
@@ -4518,11 +4581,29 @@ async function eliminarEmisor(id, nombre) {
 let facturasCache = [];
 
 const ESTADOS_FAC = {
-  'BORRADOR': { clase: 'badge-gris',    label: 'Borrador' },
-  'EMITIDA':  { clase: 'badge-naranja', label: 'Emitida'  },
-  'PAGADA':   { clase: 'badge-verde',   label: 'Pagada'   },
-  'ANULADA':  { clase: 'badge-rojo',    label: 'Anulada'  },
+  'BORRADOR': { clase: 'badge-gris',    label: 'Borrador'  },
+  'EMITIDA':  { clase: 'badge-naranja', label: 'Emitida'   },
+  'APROBADA': { clase: 'badge-verde',   label: 'Aprobada'  },
+  'PAGADA':   { clase: 'badge-verde',   label: 'Pagada'    },
+  'ANULADA':  { clase: 'badge-rojo',    label: 'Anulada'   },
 };
+
+// ── Verificar facultad de aprobación ──
+let _facultadesAprobacion = null;
+async function cargarFacultades() {
+  if (_facultadesAprobacion) return;
+  _facultadesAprobacion = {};
+  if (!sesionActual) return;
+  try {
+    const rows = await api('usuario_aprobaciones','GET',null,
+      '?id_usuario=eq.'+sesionActual.id_usuario+'&puede_aprobar=eq.true&select=modulo');
+    rows.forEach(function(r){ _facultadesAprobacion[r.modulo] = true; });
+  } catch(e) {}
+}
+function puedeAprobar(modulo) {
+  if (sesionActual?.administrador) return true;
+  return !!((_facultadesAprobacion||{})[modulo]);
+}
 
 async function renderFacturas() {
   if (!sesionActual?.administrador && !modulosAcceso.includes('FACTURAS')) {
@@ -5100,9 +5181,16 @@ async function verFichaFactura(id) {
     var btnAnular   = document.getElementById('ficha-fac-btn-anular');
     var btnPago     = document.getElementById('ficha-fac-btn-pago');
     var btnEliminar = document.getElementById('ficha-fac-btn-eliminar');
+    // Botón Aprobar
+    await cargarFacultades();
+    var btnAprobar = document.getElementById('ficha-fac-btn-aprobar');
+    if (btnAprobar) {
+      btnAprobar.style.display = (f.estado==='EMITIDA' && puedeAprobar('FACTURAS')) ? '' : 'none';
+      btnAprobar.onclick = function() { aprobarFactura(f.id_factura); };
+    }
     if (btnPago) {
       btnPago._id = f.id_factura;
-      btnPago.style.display = (f.estado==='EMITIDA'||f.estado==='PARCIAL') ? '' : 'none';
+      btnPago.style.display = (f.estado==='EMITIDA'||f.estado==='APROBADA'||f.estado==='PARCIAL') ? '' : 'none';
       btnPago._facId = f.id_factura;
       btnPago.onclick = async function() {
         try {
@@ -5187,6 +5275,20 @@ async function anularFactura(id, numero) {
     renderFacturas();
   }
   catch(err) { alert('Error: '+err.message); }
+}
+
+async function aprobarFactura(id) {
+  if (!puedeAprobar('FACTURAS')) { alert('No tiene facultad para aprobar facturas.'); return; }
+  if (!confirm('¿Confirma la aprobación de esta factura?')) return;
+  try {
+    await api('facturas','PATCH',{
+      estado: 'APROBADA',
+      aprobado_por: sesionActual.nombre || sesionActual.correo_usuario,
+      fecha_aprobacion: new Date().toISOString()
+    },'?id_factura=eq.'+id);
+    cerrarModal('modal-ficha-fac');
+    renderFacturas();
+  } catch(e) { alert('Error: '+e.message); }
 }
 
 async function eliminarFactura(id, numero) {
@@ -13720,6 +13822,7 @@ async function contRenderCxp() {
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-fac')">Cerrar</button>
       <button class="btn-secundario" id="ficha-fac-btn-editar"  style="display:none">Editar</button>
       <button class="btn-primario"   id="ficha-fac-btn-emitir"  style="display:none">✓ Emitir</button>
+      <button class="btn-primario"   id="ficha-fac-btn-aprobar" style="display:none;background:#8b5cf6;border-color:#8b5cf6">✓ Aprobar</button>
       <button class="btn-primario"   id="ficha-fac-btn-pago"    style="display:none">💰 Registrar Pago</button>
       <button class="btn-peligro"    id="ficha-fac-btn-anular"  style="display:none">Anular</button>
       <button class="btn-peligro"    id="ficha-fac-btn-eliminar" style="display:none">Eliminar</button>
