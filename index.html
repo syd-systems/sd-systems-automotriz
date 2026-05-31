@@ -3786,7 +3786,7 @@ async function renderEmpleados() {
       + '<div class="panel">'
       + '<div class="panel-header" style="flex-wrap:wrap;gap:10px">'
       + '<h3 style="white-space:nowrap">Empleados</h3>'
-      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end">'
+      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;gap:10px">'
       + '<select id="emp-filtro-estatus" onchange="filtrarTablaEmpleados()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todos los estatus</option>'
       + Object.entries(ESTATUS_EMP).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('')
@@ -4585,7 +4585,7 @@ async function renderFacturas() {
       + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + facturas.length + '</div></div></div>'
       + '<div class="panel"><div class="panel-header" style="flex-wrap:wrap;gap:10px">'
       + '<h3 style="white-space:nowrap">Facturas</h3>'
-      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end">'
+      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;gap:10px">'
       + '<div style="display:flex;align-items:center;gap:6px;white-space:nowrap">'
       + '<span style="font-size:11px;color:var(--suave)">Desde</span>'
       + '<input type="date" id="fac-fecha-desde" onchange="limpiarBuscarFac();window._facFechaDesde=this.value;filtrarTablaFacturas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:7px 10px;border-radius:5px;outline:none">'
@@ -5955,7 +5955,7 @@ async function renderProveedores() {
       + '<div class="panel">'
       + '<div class="panel-header" style="flex-wrap:wrap;gap:10px">'
       + '<h3 style="white-space:nowrap">Proveedores</h3>'
-      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end">'
+      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;gap:10px">'
       + '<select id="prov-filtro-estado" onchange="filtrarTablaProveedores()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todos los estados</option>'
       + '<option value="ACTIVO">Activo</option>'
@@ -6291,7 +6291,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
     }).join('');
 
     cont.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
+      '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
       + '<h3 style="margin:0">Libro Diario</h3>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
       + '<select onchange="contRenderDiario(document.getElementById(\'cont-filtro-estado\').value, this.value)" style="' + contSelStyle() + '">'
@@ -6599,7 +6599,7 @@ async function contRenderMayor() {
   if (!contCuentasCache.length) await contCargarCuentas();
 
   cont.innerHTML =
-    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
+    '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<h3 style="margin:0">Libro Mayor</h3>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
     + '<select id="cont-mayor-cuenta" style="' + contSelStyle() + ';width:300px">' + contBuildCuentaSelect(null) + '</select>'
@@ -6727,7 +6727,7 @@ async function contRenderBalance() {
   const cont = document.getElementById('cont-vista-cont');
   if (!cont) return;
   cont.innerHTML =
-    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
+    '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<h3 style="margin:0">Estados Financieros</h3>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
     + '<input type="date" id="cont-bal-hasta" value="' + getHoyVzla() + '" style="' + contSelStyle() + '">'
@@ -6917,7 +6917,7 @@ async function contRenderConciliacion() {
   if (!cont) return;
   const cuentasBanco = contCuentasCache.filter(function(c){ return c.permite_movimiento && (c.codigo.startsWith('1.1.01') ); });
   cont.innerHTML =
-    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
+    '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<h3 style="margin:0">Conciliación Bancaria</h3>'
     + '<button class="btn-primario" onclick="contNuevaConciliacion()">+ Nueva Conciliación</button>'
     + '</div>'
@@ -7011,7 +7011,7 @@ async function contRenderCuentas(filtro) {
   const tipoBadge = { ACTIVO:'badge-verde', PASIVO:'badge-rojo', PATRIMONIO:'badge-naranja', INGRESO:'badge-verde', EGRESO:'badge-rojo' };
 
   cont.innerHTML =
-    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
+    '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<h3 style="margin:0">Plan de Cuentas VEN-NIF</h3>'
     + '<div style="display:flex;gap:8px;align-items:center">'
     + '<input type="text" placeholder="Buscar código o nombre..." value="' + (filtro||'') + '" oninput="contRenderCuentas(this.value)" style="' + contSelStyle() + ';width:240px">'
@@ -7244,7 +7244,7 @@ function renderTablaTributos(filtro) {
   const tipColores = { DEBITO:'badge-rojo', RETENCION:'badge-naranja', CONTRIBUCION:'badge-verde', TIMBRE:'badge-gris' };
 
   cont.innerHTML =
-    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
+    '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<div style="font-family:var(--font-display);font-size:20px;letter-spacing:1px">🧾 Tributos del Sistema</div>'
     + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
     + '<input type="text" placeholder="Buscar tributo..." oninput="renderTablaTributos(this.value)" '
@@ -10222,7 +10222,7 @@ async function renderInventario(filtro) {
     c.innerHTML = '<div class="panel" id="panel-inventario">'
       + '<div class="panel-header" style="flex-wrap:wrap;gap:10px">'
       + '<h3 id="inv-contador" style="white-space:nowrap">Inventario General</h3>'
-      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end">'
+      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;gap:10px">'
       + '<div style="display:flex;gap:3px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:3px">'
       + '<button id="inv-tab-tabla"   onclick="invCambiarVista(\'tabla\')"   class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:var(--naranja);color:#fff">Inventario</button>'
       + (puedo('INVENTARIO','VER_EOQ_ABC') ? '<button id="inv-tab-abc"     onclick="invCambiarVista(\'abc\')"     class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">Análisis ABC</button>' : '')
@@ -10940,7 +10940,7 @@ async function renderOrdenes() {
       + '<div class="panel">'
       + '<div class="panel-header" style="flex-wrap:wrap;gap:12px">'
       + '<h3 style="white-space:nowrap">Órdenes de Servicio</h3>'
-      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end">'
+      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;gap:10px">'
       + '<div style="display:flex;align-items:center;gap:6px;white-space:nowrap">'
       + '<span style="font-size:11px;color:var(--suave)">Desde</span>'
       + '<input type="date" id="os-fecha-desde" value="' + (window._osFechaDesde||'') + '" onchange="limpiarBuscarOS();window._osFechaDesde=this.value;filtrarTablaOS()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:7px 10px;border-radius:5px;outline:none">'
