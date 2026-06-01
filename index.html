@@ -4862,7 +4862,7 @@ async function onSelOSFactura() {
         + todasLineas.map(function(l) {
             return '<tr>'
               + '<td style="padding:6px 0">' + l.desc + '</td>'
-              + '<td style="text-align:center;padding:6px"><span class="badge ' + (l.tipo==='servicio'?'badge-naranja':'badge-gris') + '" style="font-size:9px">' + (l.tipo==='servicio'?'Serv.':'Rep.') + '</span></td>'
+              + '<td style="text-align:center;padding:6px"><span class="badge ' + (l.tipo==='servicio'?'badge-naranja':'badge-gris') + '" style="font-size:11px">' + (l.tipo==='servicio'?'Serv.':'Rep.') + '</span></td>'
               + '<td style="text-align:center;padding:6px;font-family:var(--font-mono)">' + l.cant + '</td>'
               + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">' + fmtLin(l.precio) + '</td>'
               + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">' + fmtLin(l.subtotal) + '</td>'
@@ -5145,7 +5145,7 @@ async function verFichaFactura(id) {
                          ...linRep.map(function(l) {return{desc:l.descripcion,tipo:'Rep.', cant:l.cantidad,precio:l.precio_usd,sub:l.subtotal_usd};})]
       .map(function(l) {
         return '<tr><td style="padding:6px 0;font-size:12px">'+l.desc+'</td>'
-          + '<td style="text-align:center;padding:6px"><span class="badge badge-gris" style="font-size:9px">'+l.tipo+'</span></td>'
+          + '<td style="text-align:center;padding:6px"><span class="badge badge-gris" style="font-size:11px">'+l.tipo+'</span></td>'
           + '<td style="text-align:center;font-family:var(--font-mono);font-size:12px">'+l.cant+'</td>'
           + '<td style="text-align:right;font-family:var(--font-mono);font-size:12px">'+fmtF(l.precio)+'</td>'
           + '<td style="text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">'+fmtF(l.sub)+'</td></tr>';
@@ -7376,15 +7376,15 @@ async function mostrarTablaParamTributos() {
       + (puedo('TRIBUTOS','CREAR') ? '<button class="btn-primario" onclick="abrirFormTributo(null)" style="font-size:12px">+ Nuevo Tributo</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
-      + '<th style="padding:10px 14px;font-size:9px;color:var(--suave);text-align:left">Código</th>'
-      + '<th style="padding:10px 14px;font-size:9px;color:var(--suave);text-align:left">Nombre / Organismo</th>'
-      + '<th style="padding:10px 14px;font-size:9px;color:var(--suave);text-align:left">Nivel</th>'
-      + '<th style="padding:10px 14px;font-size:9px;color:var(--suave);text-align:left">Tipo</th>'
-      + '<th style="padding:10px 14px;font-size:9px;color:var(--suave);text-align:left">Periodicidad</th>'
-      + '<th style="padding:10px 14px;font-size:9px;color:var(--suave);text-align:right">Alícuota %</th>'
-      + '<th style="padding:10px 14px;font-size:9px;color:var(--suave);text-align:left">Ult. Revisión</th>'
-      + '<th style="padding:10px 14px;font-size:9px;color:var(--suave);text-align:left">Estado</th>'
-      + '<th style="padding:10px 14px;font-size:9px;color:var(--suave);text-align:left">Accs.</th>'
+      + '<th style="padding:10px 14px;font-size:7px;color:var(--suave);text-align:left">Código</th>'
+      + '<th style="padding:10px 14px;font-size:7px;color:var(--suave);text-align:left">Nombre / Organismo</th>'
+      + '<th style="padding:10px 14px;font-size:7px;color:var(--suave);text-align:left">Nivel</th>'
+      + '<th style="padding:10px 14px;font-size:7px;color:var(--suave);text-align:left">Tipo</th>'
+      + '<th style="padding:10px 14px;font-size:7px;color:var(--suave);text-align:left">Periodicidad</th>'
+      + '<th style="padding:10px 14px;font-size:7px;color:var(--suave);text-align:right">Alícuota %</th>'
+      + '<th style="padding:10px 14px;font-size:7px;color:var(--suave);text-align:left">Ult. Revisión</th>'
+      + '<th style="padding:10px 14px;font-size:7px;color:var(--suave);text-align:left">Estado</th>'
+      + '<th style="padding:10px 14px;font-size:7px;color:var(--suave);text-align:left">Accs.</th>'
       + '</tr></thead><tbody id="tributos-tbody"></tbody></table></div>';
 
     window._tributosTextoFiltro = '';
@@ -7427,16 +7427,16 @@ function renderTablaTributos(filtro) {
         ? t.alicuota_min + '% — ' + t.alicuota_max + '%'
         : (parseFloat(t.alicuota) > 0 ? parseFloat(t.alicuota).toFixed(2) + '%' : 'Variable');
       return '<tr>'
-        + '<td style="padding:10px 14px;font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--naranja)">' + t.codigo + '</td>'
-        + '<td style="padding:10px 14px;font-size:11px"><div style="font-weight:600">' + t.nombre + '</div>'
-        + '<div style="font-size:11px;color:var(--suave)">' + (t.organismo||'') + '</div>'
+        + '<td style="padding:10px 14px;font-family:var(--font-mono);font-size:9px;font-weight:600;color:var(--naranja)">' + t.codigo + '</td>'
+        + '<td style="padding:10px 14px;font-size:9px"><div style="font-weight:600">' + t.nombre + '</div>'
+        + '<div style="font-size:9px;color:var(--suave)">' + (t.organismo||'') + '</div>'
         + (t.base_legal ? '<div style="font-size:10px;color:var(--suave)">' + t.base_legal + '</div>' : '')
         + '</td>'
-        + '<td style="padding:10px 14px;font-size:11px"><span class="badge ' + (nivColores[t.nivel_gobierno]||'badge-gris') + '">' + (t.nivel_gobierno||'—') + '</span></td>'
-        + '<td style="padding:10px 14px;font-size:11px"><span class="badge ' + (tipColores[t.tipo]||'badge-gris') + '">' + (t.tipo||'—') + '</span></td>'
-        + '<td style="padding:10px 14px;font-size:11px">' + (t.periodicidad||'—') + '</td>'
-        + '<td style="padding:10px 14px;text-align:right;font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--naranja)">' + alicuotaStr + '</td>'
-        + '<td style="padding:10px 14px;font-size:11px">'
+        + '<td style="padding:10px 14px;font-size:9px"><span class="badge ' + (nivColores[t.nivel_gobierno]||'badge-gris') + '">' + (t.nivel_gobierno||'—') + '</span></td>'
+        + '<td style="padding:10px 14px;font-size:9px"><span class="badge ' + (tipColores[t.tipo]||'badge-gris') + '">' + (t.tipo||'—') + '</span></td>'
+        + '<td style="padding:10px 14px;font-size:9px">' + (t.periodicidad||'—') + '</td>'
+        + '<td style="padding:10px 14px;text-align:right;font-family:var(--font-mono);font-size:9px;font-weight:600;color:var(--naranja)">' + alicuotaStr + '</td>'
+        + '<td style="padding:10px 14px;font-size:9px">'
         + (function(fecha) {
             if (!fecha) return '<span style="color:#fc8181">Sin revisar</span>';
             const diff = (new Date() - new Date(fecha)) / (1000*60*60*24);
@@ -7444,8 +7444,8 @@ function renderTablaTributos(filtro) {
             return '<span style="color:' + color + '">' + fmtFecha(fecha) + '</span>';
           })(t.fecha_revision)
         + '</td>'
-        + '<td style="padding:10px 14px;font-size:11px">' + (t.estado==='ACTIVO' ? '<span class="badge badge-verde">ACTIVO</span>' : '<span class="badge badge-gris">' + (t.estado||'—') + '</span>') + '</td>'
-        + '<td style="padding:10px 14px;text-align:center"><button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="abrirFormTributo(' + t.id_tributo + ')">Ficha</button>'
+        + '<td style="padding:10px 14px;font-size:9px">' + (t.estado==='ACTIVO' ? '<span class="badge badge-verde">ACTIVO</span>' : '<span class="badge badge-gris">' + (t.estado||'—') + '</span>') + '</td>'
+        + '<td style="padding:10px 14px;text-align:center"><button class="btn-secundario" style="font-size:9px;padding:4px 8px" onclick="abrirFormTributo(' + t.id_tributo + ')">Ficha</button>'
         + '</td></tr>';
     }).join('') : '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--suave)">Sin tributos registrados</td></tr>';
     return;
@@ -7480,7 +7480,7 @@ function renderTablaTributos(filtro) {
     + '</div></div>'
     + tributosAlerta()
     + '<div class="tabla-container"><table style="table-layout:fixed;width:100%">'
-    +'<thead><tr>'+'<th style="width:9%;font-size:9px">Código</th>'+'<th style="font-size:9px">Nombre / Organismo</th>'+'<th style="width:10%;font-size:9px">Nivel</th>'+'<th style="width:10%;font-size:9px">Tipo</th>'+'<th style="width:11%;font-size:9px">Periodicidad</th>'+'<th style="width:10%;text-align:right;font-size:9px">Alícuota %</th>'+'<th style="width:10%;font-size:9px">Ult. Revisión</th>'+'<th style="width:8%;font-size:9px">Estado</th>'+'<th style="width:8%;text-align:center;font-size:9px">Accs.</th>'+'</tr></thead>'
+    +'<thead><tr>'+'<th style="width:9%;font-size:7px">Código</th>'+'<th style="font-size:7px">Nombre / Organismo</th>'+'<th style="width:10%;font-size:9px">Nivel</th>'+'<th style="width:10%;font-size:9px">Tipo</th>'+'<th style="width:11%;font-size:9px">Periodicidad</th>'+'<th style="width:10%;text-align:right;font-size:9px">Alícuota %</th>'+'<th style="width:10%;font-size:9px">Ult. Revisión</th>'+'<th style="width:8%;font-size:9px">Estado</th>'+'<th style="width:8%;text-align:center;font-size:9px">Accs.</th>'+'</tr></thead>'
     + '<tbody id="tributos-tbody"></tbody></table></div>';
 
   renderTablaTributos();
@@ -7675,8 +7675,8 @@ async function generarAsientoInventario(tipo, datos) {
       // Débito: Inventario Bs / Crédito: CxP Proveedores Bs
       if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:1,
         descripcion:'Entrada compra '+datos.articulo+auxDesc,
-       
- debe_usd:monto, haber_usd:0, debe_ves:montoBs, haber_ves:0 });
+        debe_us
+d:monto, haber_usd:0, debe_ves:montoBs, haber_ves:0 });
       if (idProv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idProv, orden:2,
         descripcion:'CxP '+datos.articulo+auxDesc,
         debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:montoBs });
@@ -11512,9 +11512,9 @@ async function abrirEditarOS(id) {
   document.getElementById('os-fecha-anulacion').value = o.fecha_anulacion || '';
   // Mostrar/ocultar según estado
   onCambioEstadoOS(o.estado || '');
-  document.getElementById('os-estado').value = o.e
-stado;
-  document.getElementById('os-diagnostico').value = o.diagnostico || '';
+  document.getElementById('os-estado').value = o.estado;
+ 
+ document.getElementById('os-diagnostico').value = o.diagnostico || '';
   document.getElementById('os-observaciones').value = o.observaciones || '';
   const tasaUsdEl2 = document.getElementById('os-tasa-usd');
   const tasaEurEl2 = document.getElementById('os-tasa-eur');
@@ -13655,13 +13655,13 @@ async function contRenderCxp() {
           <!-- Fila 1: Grupo + Nombre del Servicio -->
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div class="form-campo" style="margin:0">
-              <label style="font-size:9px">Grupo de Servicio</label>
+              <label style="font-size:7px">Grupo de Servicio</label>
               <select id="os-sel-grupo-cat" onchange="onSelGrupoCatChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
                 <option value="">— Todos los grupos —</option>
               </select>
             </div>
             <div class="form-campo" style="margin:0">
-              <label style="font-size:9px">Nombre del Servicio</label>
+              <label style="font-size:7px">Nombre del Servicio</label>
               <select id="os-sel-cat" onchange="onSelCatalogoChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
                 <option value="">— Seleccionar servicio —</option>
               </select>
@@ -13670,19 +13670,19 @@ async function contRenderCxp() {
           <!-- Fila 2: Descripción libre + Cant + Precio + Moneda + Botón -->
           <div style="display:grid;grid-template-columns:1fr 70px 80px 80px auto;gap:8px;align-items:end">
             <div class="form-campo" style="margin:0">
-              <label style="font-size:9px">O descripción libre</label>
+              <label style="font-size:7px">O descripción libre</label>
               <input type="text" id="os-desc-libre" placeholder="Escribe descripción libre..." style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
             </div>
             <div class="form-campo" style="margin:0">
-              <label style="font-size:9px">Cant.</label>
+              <label style="font-size:7px">Cant.</label>
               <input type="number" id="os-cant-cat" value="1" min="0.01" step="0.01" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
             </div>
             <div class="form-campo" style="margin:0">
-              <label style="font-size:9px">Precio</label>
+              <label style="font-size:7px">Precio</label>
               <input type="number" id="os-precio-cat" placeholder="0.00" step="0.01" min="0" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
             </div>
             <div class="form-campo" style="margin:0">
-              <label style="font-size:9px">Moneda</label>
+              <label style="font-size:7px">Moneda</label>
               <select id="os-moneda-cat" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 6px;border-radius:5px;outline:none;width:100%">
                 <option value="USD">$ USD</option>
                 <option value="EUR">€ EUR</option>
@@ -13701,20 +13701,20 @@ async function contRenderCxp() {
         <!-- Agregar repuesto -->
         <div style="display:grid;grid-template-columns:1fr 70px 80px 80px auto;gap:8px;align-items:end;padding:10px;background:var(--gris2);border-radius:6px">
           <div class="form-campo" style="margin:0">
-            <label style="font-size:9px">Del inventario o libre</label>
+            <label style="font-size:7px">Del inventario o libre</label>
             <select id="os-sel-inv" onchange="onSelInventarioChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%"></select>
             <input type="text" id="os-desc-rep-libre" placeholder="O escribe descripción libre..." style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%;margin-top:4px">
           </div>
           <div class="form-campo" style="margin:0">
-            <label style="font-size:9px">Cant.</label>
+            <label style="font-size:7px">Cant.</label>
             <input type="number" id="os-cant-inv" value="1" min="0.01" step="0.01" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
           </div>
           <div class="form-campo" style="margin:0">
-            <label style="font-size:9px">Precio</label>
+            <label style="font-size:7px">Precio</label>
             <input type="number" id="os-precio-inv" placeholder="0.00" step="0.01" min="0" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
           </div>
           <div class="form-campo" style="margin:0">
-            <label style="font-size:9px">Moneda</label>
+            <label style="font-size:7px">Moneda</label>
             <select id="os-moneda-inv" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 6px;border-radius:5px;outline:none;width:100%">
               <option value="USD">$ USD</option>
               <option value="EUR">€ EUR</option>
@@ -13777,11 +13777,11 @@ async function contRenderCxp() {
           <div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)" id="fac-numero">Se asignará al emitir</div>
         </div>
         <div class="form-campo" style="margin:0;min-width:160px">
-          <label style="font-size:9px">Fecha</label>
+          <label style="font-size:7px">Fecha</label>
           <input type="date" id="fac-fecha">
         </div>
         <div class="form-campo" style="margin:0">
-          <label style="font-size:9px">Estado</label>
+          <label style="font-size:7px">Estado</label>
           <select id="fac-estado" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:7px 10px;border-radius:4px;outline:none">
             <option value="BORRADOR">Borrador</option>
             <option value="EMITIDA">Emitida</option>
@@ -13850,7 +13850,7 @@ async function contRenderCxp() {
         <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:10px">Moneda e Impuestos</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:center">
           <div class="form-campo" style="margin:0">
-            <label style="font-size:9px">Moneda de Cobro</label>
+            <label style="font-size:7px">Moneda de Cobro</label>
             <select id="fac-moneda" onchange="onCambiarMonedaFactura()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:4px;outline:none;width:100%">
               <option value="USD">USD — Dólar</option>
               <option value="VES">VES — Bolívar</option>
@@ -13868,7 +13868,7 @@ async function contRenderCxp() {
         <!-- Tasa solo visible cuando moneda = VES -->
         <div id="fac-tasa-cont" style="margin-top:12px;display:none">
           <div class="form-campo" style="margin:0;max-width:220px">
-            <label style="font-size:9px">Tasa USD / Bs</label>
+            <label style="font-size:7px">Tasa USD / Bs</label>
             <input type="number" id="fac-tasa" step="0.0001" min="0" oninput="actualizarSubtotalOSLabel();if(document.getElementById('fac-os-id')?.value)onSelOSFactura();else calcularTotalesFactura();" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:8px 10px;border-radius:4px;outline:none;width:100%">
           </div>
         </div>
