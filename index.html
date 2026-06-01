@@ -7390,38 +7390,78 @@ async function mostrarTablaParamTributos() {
 }
 
 function renderTablaTributos(filtro) {
-  const cont = document.getElementById('param-tabla-cont');
-  if (!cont) return;
+  // Actualizar filtro de texto
+  if (filtro !== undefined) window._tributosTextoFiltro = filtro;
+  const txtFiltro = window._tributosTextoFiltro || '';
+  const nivel     = window._tributosNivelFiltro || '';
+  const tipo      = window._tributosTipoFiltro  || '';
 
-  window._tributosTextoFiltro = filtro || '';
-  const nivel = window._tributosNivelFiltro || '';
-  const tipo  = window._tributosTipoFiltro  || '';
+  // Aplicar filtros
   let base = _tributosCache;
   if (nivel) base = base.filter(function(t){ return t.nivel_gobierno === nivel; });
   if (tipo)  base = base.filter(function(t){ return t.tipo === tipo; });
-  const items = filtro
-    ? base.filter(function(t) {
-        return t.nombre.toLowerCase().includes(filtro.toLowerCase())
-            || t.codigo.toLowerCase().includes(filtro.toLowerCase())
-            || t.organismo.toLowerCase().includes(filtro.toLowerCase());
-      })
-    : base;
+  if (txtFiltro) {
+    const q = txtFiltro.toLowerCase();
+    base = base.filter(function(t){
+      return (t.nombre||'').toLowerCase().includes(q)
+          || (t.codigo||'').toLowerCase().includes(q)
+          || (t.organismo||'').toLowerCase().includes(q);
+    });
+  }
 
   const nivColores = { NACIONAL:'badge-naranja', ESTADAL:'badge-azul', MUNICIPAL:'badge-verde' };
   const tipColores = { DEBITO:'badge-rojo', RETENCION:'badge-naranja', CONTRIBUCION:'badge-verde', TIMBRE:'badge-gris' };
+
+  // Si ya existe el tbody, solo actualizarlo
+  const tbody = document.getElementById('tributos-tbody');
+  if (tbody) {
+    tbody.innerHTML = base.length ? base.map(function(t) {
+      const alicuotaStr = t.alicuota_min && t.alicuota_max && t.alicuota_min !== t.alicuota_max
+        ? t.alicuota_min + '% — ' + t.alicuota_max + '%'
+        : (parseFloat(t.alicuota) > 0 ? parseFloat(t.alicuota).toFixed(2) + '%' : 'Variable');
+      return '<tr>'
+        + '<td style="font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--naranja)">' + t.codigo + '</td>'
+        + '<td><div style="font-weight:600;font-size:13px">' + t.nombre + '</div>'
+        + '<div style="font-size:10px;color:var(--suave)">' + (t.organismo||'') + ' · ' + (t.periodicidad||'') + '</div>'
+        + (t.base_legal ? '<div style="font-size:9px;color:var(--suave)">' + t.base_legal + '</div>' : '')
+        + '</td>'
+        + '<td><span class="badge ' + (nivColores[t.nivel_gobierno]||'badge-gris') + '" style="font-size:10px">' + t.nivel_gobierno + '</span></td>'
+        + '<td><span class="badge ' + (tipColores[t.tipo]||'badge-gris') + '" style="font-size:10px">' + t.tipo + '</span></td>'
+        + '<td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">' + alicuotaStr + '</td>'
+        + '<td style="font-size:13px">'
+        + (function(fecha) {
+            if (!fecha) return '<span style="color:#fc8181">Sin revisar</span>';
+            const diff = (new Date() - new Date(fecha)) / (1000*60*60*24);
+            const color = diff > 180 ? '#fc8181' : diff > 90 ? '#F48C06' : '#22c55e';
+            return '<span style="color:' + color + '">' + fmtFecha(fecha) + '</span>';
+          })(t.fecha_revision)
+        + '</td>'
+        + '<td><span class="badge ' + (t.estado==='ACTIVO'?'badge-verde':'badge-gris') + '" style="font-size:10px">' + (t.estado||'ACTIVO') + '</span></td>'
+        + '<td><div style="display:flex;gap:4px">'
+        + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="abrirFormTributo(' + t.id_tributo + ')">Ficha</button>'
+        + '</div></td></tr>';
+    }).join('') : '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--suave)">Sin tributos registrados</td></tr>';
+    return;
+  }
+
+  // Si no existe el tbody, regenerar todo (primera vez)
+  const cont = document.getElementById('param-tabla-cont');
+  if (!cont) return;
+  const tiposUnicos = _tributosCache.map(function(t){ return t.tipo; })
+    .filter(function(v,i,a){ return v && a.indexOf(v)===i; }).sort();
 
   cont.innerHTML =
     '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<div style="font-family:var(--font-display);font-size:20px;letter-spacing:1px">🧾 Tributos del Sistema</div>'
     + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-    + '<input type="text" placeholder="Buscar tributo..." oninput="renderTablaTributos(this.value)" '
+    + '<input type="text" id="tributos-input-buscar" placeholder="Buscar tributo..." oninput="renderTablaTributos(this.value)" '
     + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
     + '<select id="tributos-filtro-tipo" onchange="renderTablaTributosTipo(this.value)" '
     + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
     + '<option value="">Todos los tipos</option>'
-    + _tributosCache.map(function(t){ return t.tipo; }).filter(function(v,i,a){ return v && a.indexOf(v)===i; }).sort().map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')
+    + tiposUnicos.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')
     + '</select>'
-    + '<select onchange="renderTablaTributosNivel(this.value)" '
+    + '<select id="tributos-filtro-nivel" onchange="renderTablaTributosNivel(this.value)" '
     + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
     + '<option value="">Todos los niveles</option>'
     + '<option value="NACIONAL">Nacional</option>'
@@ -7429,48 +7469,20 @@ function renderTablaTributos(filtro) {
     + '<option value="MUNICIPAL">Municipal</option>'
     + '</select>'
     + '<button class="btn-secundario" onclick="mostrarTablaParamTributos()" style="font-size:12px">🔄 Actualizar</button>'
-    + '<button class="btn-primario" onclick="abrirFormTributo(null)" style="font-size:12px">+ Nuevo Tributo</button>'
+    + (puedo('TRIBUTOS','CREAR') ? '<button class="btn-primario" onclick="abrirFormTributo(null)" style="font-size:12px">+ Nuevo Tributo</button>' : '')
     + '</div></div>'
     + tributosAlerta()
     + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
-    + '<th style="width:10%">Código</th>'
-    + '<th style="width:22%">Nombre</th>'
-    + '<th style="width:10%">Nivel</th>'
-    + '<th style="width:10%">Tipo</th>'
+    + '<th style="width:10%">Código</th><th>Nombre</th>'
+    + '<th style="width:10%">Nivel</th><th style="width:10%">Tipo</th>'
     + '<th style="width:12%;text-align:right">Alícuota %</th>'
     + '<th style="width:14%">Última Revisión</th>'
-    + '<th style="width:12%">Estado</th>'
-    + '<th style="width:10%">Acciones</th>'
-    + '</tr></thead><tbody>'
-    + (items.length ? items.map(function(t) {
-        const alicuotaStr = t.alicuota_min && t.alicuota_max && t.alicuota_min !== t.alicuota_max
-          ? t.alicuota_min + '% — ' + t.alicuota_max + '%'
-          : (parseFloat(t.alicuota) > 0 ? parseFloat(t.alicuota).toFixed(2) + '%' : 'Variable');
-        return '<tr>'
-          + '<td style="font-family:var(--font-mono);font-size:13px!important;font-weight:600;color:var(--naranja)">' + t.codigo + '</td>'
-          + '<td><div style="font-weight:600;font-size:13px">' + t.nombre + '</div>'
-          + '<div style="font-size:10px;color:var(--suave)">' + t.organismo + ' · ' + (t.periodicidad||'') + '</div>'
-          + (t.base_legal ? '<div style="font-size:9px;color:var(--suave)">' + t.base_legal + '</div>' : '')
-          + '</td>'
-          + '<td><span class="badge ' + (nivColores[t.nivel_gobierno]||'badge-gris') + '" style="font-size:10px">' + t.nivel_gobierno + '</span></td>'
-          + '<td><span class="badge ' + (tipColores[t.tipo]||'badge-gris') + '" style="font-size:10px">' + t.tipo + '</span></td>'
-          + '<td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">' + alicuotaStr + '</td>'
-          + '<td style="font-size:13px!important">'
-          + (function(fecha) {
-              if (!fecha) return '<span style="color:#fc8181">Sin revisar</span>';
-              const diff = (new Date() - new Date(fecha)) / (1000*60*60*24);
-              const color = diff > 180 ? '#fc8181' : diff > 90 ? '#F48C06' : '#22c55e';
-              return '<span style="color:' + color + '">' + fmtFecha(fecha) + '</span>';
-            })(t.fecha_revision)
-          + '</td>'
-          + '<td><span class="badge ' + (t.estado==='ACTIVO'?'badge-verde':'badge-gris') + '" style="font-size:10px">' + (t.estado||'ACTIVO') + '</span></td>'
-          + '<td><div style="display:flex;gap:4px">'
-          + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="abrirFormTributo(' + t.id_tributo + ')">Ficha</button>'
-          + '</div></td></tr>';
-      }).join('')
-    : '<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--suave)">Sin tributos registrados</td></tr>')
-    + '</tbody></table></div>';
+    + '<th style="width:12%">Estado</th><th style="width:10%">Acciones</th>'
+    + '</tr></thead><tbody id="tributos-tbody"></tbody></table></div>';
+
+  renderTablaTributos();
 }
+
 
 function tributosAlerta() {
   const hoy = new Date();
