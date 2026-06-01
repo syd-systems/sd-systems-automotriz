@@ -7361,7 +7361,10 @@ function renderTablaTributos(filtro) {
 
   window._tributosTextoFiltro = filtro || '';
   const nivel = window._tributosNivelFiltro || '';
-  let base = nivel ? _tributosCache.filter(function(t){ return t.nivel_gobierno === nivel; }) : _tributosCache;
+  const tipo  = window._tributosTipoFiltro  || '';
+  let base = _tributosCache;
+  if (nivel) base = base.filter(function(t){ return t.nivel_gobierno === nivel; });
+  if (tipo)  base = base.filter(function(t){ return t.tipo === tipo; });
   const items = filtro
     ? base.filter(function(t) {
         return t.nombre.toLowerCase().includes(filtro.toLowerCase())
@@ -7379,6 +7382,11 @@ function renderTablaTributos(filtro) {
     + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
     + '<input type="text" placeholder="Buscar tributo..." oninput="renderTablaTributos(this.value)" '
     + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
+    + '<select id="tributos-filtro-tipo" onchange="renderTablaTributosTipo(this.value)" '
+    + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
+    + '<option value="">Todos los tipos</option>'
+    + _tributosCache.map(function(t){ return t.tipo; }).filter(function(v,i,a){ return v && a.indexOf(v)===i; }).sort().map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')
+    + '</select>'
     + '<select onchange="renderTablaTributosNivel(this.value)" '
     + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
     + '<option value="">Todos los niveles</option>'
@@ -7441,6 +7449,11 @@ function tributosAlerta() {
     + '<span style="font-size:18px">⚠️</span>'
     + '<div><strong>' + viejos.length + ' tributo(s)</strong> con más de 6 meses sin revisar. '
     + 'Verifique en la <strong>Gaceta Oficial</strong> si hay cambios en alícuotas.</div></div>';
+}
+
+function renderTablaTributosTipo(tipo) {
+  window._tributosTipoFiltro = tipo;
+  renderTablaTributos(window._tributosTextoFiltro || '');
 }
 
 function renderTablaTributosNivel(nivel) {
