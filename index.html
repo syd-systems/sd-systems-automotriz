@@ -7375,15 +7375,15 @@ async function mostrarTablaParamTributos() {
       + (puedo('TRIBUTOS','CREAR') ? '<button class="btn-primario" onclick="abrirFormTributo(null)" style="font-size:12px">+ Nuevo Tributo</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
-      + '<th style="padding:10px 14px;font-size:10px;color:var(--suave);text-align:left">Código</th>'
-      + '<th style="padding:10px 14px;font-size:10px;color:var(--suave);text-align:left">Nombre / Organismo</th>'
-      + '<th style="padding:10px 14px;font-size:10px;color:var(--suave);text-align:left">Nivel</th>'
-      + '<th style="padding:10px 14px;font-size:10px;color:var(--suave);text-align:left">Tipo</th>'
-      + '<th style="padding:10px 14px;font-size:10px;color:var(--suave);text-align:left">Periodicidad</th>'
-      + '<th style="padding:10px 14px;font-size:10px;color:var(--suave);text-align:right">Alícuota %</th>'
-      + '<th style="padding:10px 14px;font-size:10px;color:var(--suave);text-align:left">Ult. Revisión</th>'
-      + '<th style="padding:10px 14px;font-size:10px;color:var(--suave);text-align:left">Estado</th>'
-      + '<th style="padding:10px 14px;font-size:10px;color:var(--suave);text-align:left">Accs.</th>'
+      + '<th style="padding:10px 14px;font-size:9px;color:var(--suave);text-align:left">Código</th>'
+      + '<th style="padding:10px 14px;font-size:9px;color:var(--suave);text-align:left">Nombre / Organismo</th>'
+      + '<th style="padding:10px 14px;font-size:9px;color:var(--suave);text-align:left">Nivel</th>'
+      + '<th style="padding:10px 14px;font-size:9px;color:var(--suave);text-align:left">Tipo</th>'
+      + '<th style="padding:10px 14px;font-size:9px;color:var(--suave);text-align:left">Periodicidad</th>'
+      + '<th style="padding:10px 14px;font-size:9px;color:var(--suave);text-align:right">Alícuota %</th>'
+      + '<th style="padding:10px 14px;font-size:9px;color:var(--suave);text-align:left">Ult. Revisión</th>'
+      + '<th style="padding:10px 14px;font-size:9px;color:var(--suave);text-align:left">Estado</th>'
+      + '<th style="padding:10px 14px;font-size:9px;color:var(--suave);text-align:left">Accs.</th>'
       + '</tr></thead><tbody id="tributos-tbody"></tbody></table></div>';
 
     window._tributosTextoFiltro = '';
@@ -7426,16 +7426,16 @@ function renderTablaTributos(filtro) {
         ? t.alicuota_min + '% — ' + t.alicuota_max + '%'
         : (parseFloat(t.alicuota) > 0 ? parseFloat(t.alicuota).toFixed(2) + '%' : 'Variable');
       return '<tr>'
-        + '<td style="padding:10px 14px;font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--naranja)">' + t.codigo + '</td>'
-        + '<td style="padding:10px 14px;font-size:12px"><div style="font-weight:600">' + t.nombre + '</div>'
+        + '<td style="padding:10px 14px;font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--naranja)">' + t.codigo + '</td>'
+        + '<td style="padding:10px 14px;font-size:11px"><div style="font-weight:600">' + t.nombre + '</div>'
         + '<div style="font-size:11px;color:var(--suave)">' + (t.organismo||'') + '</div>'
         + (t.base_legal ? '<div style="font-size:10px;color:var(--suave)">' + t.base_legal + '</div>' : '')
         + '</td>'
-        + '<td style="padding:10px 14px;font-size:12px"><span class="badge ' + (nivColores[t.nivel_gobierno]||'badge-gris') + '">' + (t.nivel_gobierno||'—') + '</span></td>'
-        + '<td style="padding:10px 14px;font-size:12px"><span class="badge ' + (tipColores[t.tipo]||'badge-gris') + '">' + (t.tipo||'—') + '</span></td>'
-        + '<td style="padding:10px 14px;font-size:12px">' + (t.periodicidad||'—') + '</td>'
-        + '<td style="padding:10px 14px;text-align:right;font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--naranja)">' + alicuotaStr + '</td>'
-        + '<td style="padding:10px 14px;font-size:12px">'
+        + '<td style="padding:10px 14px;font-size:11px"><span class="badge ' + (nivColores[t.nivel_gobierno]||'badge-gris') + '">' + (t.nivel_gobierno||'—') + '</span></td>'
+        + '<td style="padding:10px 14px;font-size:11px"><span class="badge ' + (tipColores[t.tipo]||'badge-gris') + '">' + (t.tipo||'—') + '</span></td>'
+        + '<td style="padding:10px 14px;font-size:11px">' + (t.periodicidad||'—') + '</td>'
+        + '<td style="padding:10px 14px;text-align:right;font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--naranja)">' + alicuotaStr + '</td>'
+        + '<td style="padding:10px 14px;font-size:11px">'
         + (function(fecha) {
             if (!fecha) return '<span style="color:#fc8181">Sin revisar</span>';
             const diff = (new Date() - new Date(fecha)) / (1000*60*60*24);
@@ -7443,7 +7443,7 @@ function renderTablaTributos(filtro) {
             return '<span style="color:' + color + '">' + fmtFecha(fecha) + '</span>';
           })(t.fecha_revision)
         + '</td>'
-        + '<td style="padding:10px 14px;font-size:12px">' + (t.estado==='ACTIVO' ? '<span class="badge badge-verde">ACTIVO</span>' : '<span class="badge badge-gris">' + (t.estado||'—') + '</span>') + '</td>'
+        + '<td style="padding:10px 14px;font-size:11px">' + (t.estado==='ACTIVO' ? '<span class="badge badge-verde">ACTIVO</span>' : '<span class="badge badge-gris">' + (t.estado||'—') + '</span>') + '</td>'
         + '<td style="padding:10px 14px;text-align:center"><button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="abrirFormTributo(' + t.id_tributo + ')">Ficha</button>'
         + '</td></tr>';
     }).join('') : '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--suave)">Sin tributos registrados</td></tr>';
@@ -7479,7 +7479,7 @@ function renderTablaTributos(filtro) {
     + '</div></div>'
     + tributosAlerta()
     + '<div class="tabla-container"><table style="table-layout:fixed;width:100%">'
-    +'<thead><tr>'+'<th style="width:9%;font-size:12px">Código</th>'+'<th style="font-size:12px">Nombre / Organismo</th>'+'<th style="width:10%;font-size:12px">Nivel</th>'+'<th style="width:10%;font-size:12px">Tipo</th>'+'<th style="width:11%;font-size:12px">Periodicidad</th>'+'<th style="width:10%;text-align:right;font-size:12px">Alícuota %</th>'+'<th style="width:10%;font-size:12px">Ult. Revisión</th>'+'<th style="width:8%;font-size:12px">Estado</th>'+'<th style="width:8%;text-align:center;font-size:12px">Accs.</th>'+'</tr></thead>'
+    +'<thead><tr>'+'<th style="width:9%;font-size:9px">Código</th>'+'<th style="font-size:9px">Nombre / Organismo</th>'+'<th style="width:10%;font-size:9px">Nivel</th>'+'<th style="width:10%;font-size:9px">Tipo</th>'+'<th style="width:11%;font-size:9px">Periodicidad</th>'+'<th style="width:10%;text-align:right;font-size:9px">Alícuota %</th>'+'<th style="width:10%;font-size:9px">Ult. Revisión</th>'+'<th style="width:8%;font-size:9px">Estado</th>'+'<th style="width:8%;text-align:center;font-size:9px">Accs.</th>'+'</tr></thead>'
     + '<tbody id="tributos-tbody"></tbody></table></div>';
 
   renderTablaTributos();
