@@ -2455,7 +2455,13 @@ async function renderUsuarios(filtro) {
 }
 
 async function verFichaUsuario(id) {
-  const u = usuariosCache.find(function(x) { return x.id_usuario === id; });
+  // Asegurar que el caché está cargado
+  if (!usuariosCache || !usuariosCache.length) {
+    const us = await api('usuarios','GET',null,'?select=*&order=fecha_registro.asc');
+    usuariosCache = us;
+  }
+  const u = usuariosCache.find(function(x) { return x.id_usuario === parseInt(id); });
+  if (!u) { console.warn('Usuario no encontrado en caché:', id); return; }
   // Cargar permisos del usuario
   let permisosU = {};
   try {
@@ -2471,7 +2477,16 @@ async function verFichaUsuario(id) {
   const minutosDesde = fechaUltimaCon ? (ahora - fechaUltimaCon) / (1000*60) : 999;
   const enLinea = u.sesion_activa && minutosDesde < 6;
 
+  // Cargar facultades de aprobación del usuario
+  const facMap = {};
+  try {
+    const facs = await api('usuario_aprobaciones','GET',null,
+      '?id_usuario=eq.'+u.id_usuario+'&puede_aprobar=eq.true&select=modulo');
+    facs.forEach(function(f){ facMap[f.modulo] = true; });
+  } catch(e) {}
+
   // Armar lista de módulos y permisos
+  let modulosHTML = '';
   const MODULOS_CON_APROBACION = ['PAGOS','FACTURAS','CONTABILIDAD'];
   modulosHTML = TODOS_LOS_MODULOS.map(function(m) {
     const accs = permisosU[m.sigla];
