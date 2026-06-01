@@ -6439,7 +6439,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
           return '<tr>'
             + '<td style="font-family:var(--font-mono);font-weight:600;color:var(--naranja)">' + a.numero_asiento + '</td>'
             + '<td style="font-size:12px">' + fmtFecha(a.fecha) + '</td>'
-            + '<td style="font-size:13px">' + a.descripcion
+            + '<td style="font-size:12px">' + a.descripcion
             + (a.referencia ? '<div style="font-size:10px;color:var(--suave)">Ref: ' + a.referencia + '</div>' : '')
             + '</td>'
             + '<td style="font-size:11px;color:var(--suave)">' + (a.cont_periodos ? a.cont_periodos.nombre : '—') + '</td>'
@@ -7375,9 +7375,16 @@ async function mostrarTablaParamTributos() {
       + (puedo('TRIBUTOS','CREAR') ? '<button class="btn-primario" onclick="abrirFormTributo(null)" style="font-size:12px">+ Nuevo Tributo</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
-      + '<th style="width:100px">Código</th><th>Nombre</th><th style="width:120px">Tipo</th>'
-      + '<th style="width:110px">Nivel</th><th style="width:90px;text-align:right">%</th>'
-      + '<th style="width:90px">Estado</th><th style="width:90px;text-align:center">Acciones</th>'
+      + '<thead><tr>'
+      + '<th style="width:9%;font-size:12px">Código</th>'
+      + '<th style="font-size:12px">Nombre / Organismo</th>'
+      + '<th style="width:10%;font-size:12px">Nivel</th>'
+      + '<th style="width:10%;font-size:12px">Tipo</th>'
+      + '<th style="width:11%;font-size:12px">Periodicidad</th>'
+      + '<th style="width:10%;text-align:right;font-size:12px">Alícuota %</th>'
+      + '<th style="width:10%;font-size:12px">Ult. Revisión</th>'
+      + '<th style="width:8%;font-size:12px">Estado</th>'
+      + '<th style="width:8%;text-align:center;font-size:12px">Accs.</th>'
       + '</tr></thead><tbody id="tributos-tbody"></tbody></table></div>';
 
     window._tributosTextoFiltro = '';
@@ -7420,15 +7427,16 @@ function renderTablaTributos(filtro) {
         ? t.alicuota_min + '% — ' + t.alicuota_max + '%'
         : (parseFloat(t.alicuota) > 0 ? parseFloat(t.alicuota).toFixed(2) + '%' : 'Variable');
       return '<tr>'
-        + '<td style="font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--naranja)">' + t.codigo + '</td>'
-        + '<td><div style="font-weight:600;font-size:13px">' + t.nombre + '</div>'
-        + '<div style="font-size:10px;color:var(--suave)">' + (t.organismo||'') + ' · ' + (t.periodicidad||'') + '</div>'
-        + (t.base_legal ? '<div style="font-size:9px;color:var(--suave)">' + t.base_legal + '</div>' : '')
+        + '<td style="font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--naranja)">' + t.codigo + '</td>'
+        + '<td style="font-size:12px"><div style="font-weight:600">' + t.nombre + '</div>'
+        + '<div style="font-size:11px;color:var(--suave)">' + (t.organismo||'') + '</div>'
+        + (t.base_legal ? '<div style="font-size:10px;color:var(--suave)">' + t.base_legal + '</div>' : '')
         + '</td>'
-        + '<td><span class="badge ' + (nivColores[t.nivel_gobierno]||'badge-gris') + '" style="font-size:10px">' + t.nivel_gobierno + '</span></td>'
-        + '<td><span class="badge ' + (tipColores[t.tipo]||'badge-gris') + '" style="font-size:10px">' + t.tipo + '</span></td>'
-        + '<td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">' + alicuotaStr + '</td>'
-        + '<td style="font-size:13px">'
+        + '<td style="font-size:12px"><span class="badge ' + (nivColores[t.nivel_gobierno]||'badge-gris') + '">' + (t.nivel_gobierno||'—') + '</span></td>'
+        + '<td style="font-size:12px"><span class="badge ' + (tipColores[t.tipo]||'badge-gris') + '">' + (t.tipo||'—') + '</span></td>'
+        + '<td style="font-size:12px">' + (t.periodicidad||'—') + '</td>'
+        + '<td style="text-align:right;font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--naranja)">' + alicuotaStr + '</td>'
+        + '<td style="font-size:12px">'
         + (function(fecha) {
             if (!fecha) return '<span style="color:#fc8181">Sin revisar</span>';
             const diff = (new Date() - new Date(fecha)) / (1000*60*60*24);
@@ -7436,8 +7444,7 @@ function renderTablaTributos(filtro) {
             return '<span style="color:' + color + '">' + fmtFecha(fecha) + '</span>';
           })(t.fecha_revision)
         + '</td>'
-        + '<td><span class="badge ' + (t.estado==='ACTIVO'?'badge-verde':'badge-gris') + '" style="font-size:10px">' + (t.estado||'ACTIVO') + '</span></td>'
-        + '<td><div style="display:flex;gap:4px">'
+        + '<td style="font-size:12px">' + (t.estado==='ACTIVO' ? '<span class="badge badge-verde">ACTIVO</span>' : '<span class="badge badge-gris">' + (t.estado||'—') + '</span>') + '</td>'
         + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="abrirFormTributo(' + t.id_tributo + ')">Ficha</button>'
         + '</div></td></tr>';
     }).join('') : '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--suave)">Sin tributos registrados</td></tr>';
@@ -7472,13 +7479,9 @@ function renderTablaTributos(filtro) {
     + (puedo('TRIBUTOS','CREAR') ? '<button class="btn-primario" onclick="abrirFormTributo(null)" style="font-size:12px">+ Nuevo Tributo</button>' : '')
     + '</div></div>'
     + tributosAlerta()
-    + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
-    + '<th style="width:10%">Código</th><th>Nombre</th>'
-    + '<th style="width:10%">Nivel</th><th style="width:10%">Tipo</th>'
-    + '<th style="width:12%;text-align:right">Alícuota %</th>'
-    + '<th style="width:14%">Última Revisión</th>'
-    + '<th style="width:12%">Estado</th><th style="width:10%">Acciones</th>'
-    + '</tr></thead><tbody id="tributos-tbody"></tbody></table></div>';
+    + '<div class="tabla-container"><table style="table-layout:fixed;width:100%">'
+    +'<thead><tr>'+'<th style="width:9%;font-size:12px">Código</th>'+'<th style="font-size:12px">Nombre / Organismo</th>'+'<th style="width:10%;font-size:12px">Nivel</th>'+'<th style="width:10%;font-size:12px">Tipo</th>'+'<th style="width:11%;font-size:12px">Periodicidad</th>'+'<th style="width:10%;text-align:right;font-size:12px">Alícuota %</th>'+'<th style="width:10%;font-size:12px">Ult. Revisión</th>'+'<th style="width:8%;font-size:12px">Estado</th>'+'<th style="width:8%;text-align:center;font-size:12px">Accs.</th>'+'</tr></thead>'
+    + '<tbody id="tributos-tbody"></tbody></table></div>';
 
   renderTablaTributos();
 }
@@ -9479,7 +9482,7 @@ async function cargarVehiculos(filtro, propId) {
         + '<div style="font-family:var(--font-mono);font-weight:700;color:var(--naranja);font-size:13px">' + v.placa + '</div>'
         + '<div style="font-size:11px;color:var(--suave)">' + v.marca + ' ' + v.modelo + '</div>'
         + '</div></div></td>'
-        + '<td style="font-size:13px">' + v.anio + '</td>'
+        + '<td style="font-size:12px">' + v.anio + '</td>'
         + '<td style="font-size:12px;color:var(--suave)">' + (v.color || '—') + ' · ' + (v.tipo_carroceria || '—') + '</td>'
         + '<td>'
         + (prop
