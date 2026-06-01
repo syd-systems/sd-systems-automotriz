@@ -2488,10 +2488,13 @@ async function verFichaUsuario(id) {
   const enLinea = u.sesion_activa && minutosDesde < 6;
 
   // Armar lista de módulos y permisos
-  const modulosHTML = TODOS_LOS_MODULOS.map(function(m) {
+  const MODULOS_CON_APROBACION = ['PAGOS','FACTURAS','CONTABILIDAD'];
+  modulosHTML = TODOS_LOS_MODULOS.map(function(m) {
     const accs = permisosU[m.sigla];
     if (!accs || !accs.length) return '';
-    return '<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,107,0,0.1);color:var(--naranja);padding:5px 12px;border-radius:20px;margin:3px;font-size:12px;font-weight:600">' + m.icono + ' ' + m.nombre + '</span>';
+    const puedeAprob = facMap[m.sigla] ? ' <span style="font-size:10px;background:rgba(34,197,94,0.2);color:#22c55e;border-radius:10px;padding:1px 6px">✓ Aprueba</span>' : '';
+    const badgeAprob = MODULOS_CON_APROBACION.includes(m.sigla) ? puedeAprob : '';
+    return '<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,107,0,0.1);color:var(--naranja);padding:5px 12px;border-radius:20px;margin:3px;font-size:12px;font-weight:600">' + m.icono + ' ' + m.nombre + badgeAprob + '</span>';
   }).filter(Boolean).join('');
 
 
