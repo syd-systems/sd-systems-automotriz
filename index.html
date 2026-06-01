@@ -7349,6 +7349,40 @@ async function mostrarTablaParamTributos() {
 
   try {
     _tributosCache = await api('param_tributos','GET',null,'?order=nivel_gobierno.asc,codigo.asc&select=*');
+
+    const tiposUnicos = _tributosCache.map(function(t){ return t.tipo; })
+      .filter(function(v,i,a){ return v && a.indexOf(v)===i; }).sort();
+
+    cont.innerHTML =
+      '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
+      + '<div style="font-family:var(--font-display);font-size:20px;letter-spacing:1px">🧾 Tributos del Sistema</div>'
+      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+      + '<input type="text" id="tributos-input-buscar" placeholder="Buscar tributo..." oninput="renderTablaTributos(this.value)" '
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
+      + '<select id="tributos-filtro-tipo" onchange="renderTablaTributosTipo(this.value)" '
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
+      + '<option value="">Todos los tipos</option>'
+      + tiposUnicos.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')
+      + '</select>'
+      + '<select id="tributos-filtro-nivel" onchange="renderTablaTributosNivel(this.value)" '
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
+      + '<option value="">Todos los niveles</option>'
+      + '<option value="NACIONAL">Nacional</option>'
+      + '<option value="ESTADAL">Estadal</option>'
+      + '<option value="MUNICIPAL">Municipal</option>'
+      + '</select>'
+      + '<button class="btn-secundario" onclick="mostrarTablaParamTributos()" style="font-size:12px">🔄 Actualizar</button>'
+      + (puedo('TRIBUTOS','CREAR') ? '<button class="btn-primario" onclick="abrirFormTributo(null)" style="font-size:12px">+ Nuevo Tributo</button>' : '')
+      + '</div></div>'
+      + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
+      + '<th style="width:100px">Código</th><th>Nombre</th><th style="width:120px">Tipo</th>'
+      + '<th style="width:110px">Nivel</th><th style="width:90px;text-align:right">%</th>'
+      + '<th style="width:90px">Estado</th><th style="width:90px;text-align:center">Acciones</th>'
+      + '</tr></thead><tbody id="tributos-tbody"></tbody></table></div>';
+
+    window._tributosTextoFiltro = '';
+    window._tributosTipoFiltro  = '';
+    window._tributosNivelFiltro = '';
     renderTablaTributos();
   } catch(e) {
     cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
