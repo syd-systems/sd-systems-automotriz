@@ -2206,7 +2206,7 @@ async function mostrarModulo(modulo, navEl) {
     case 'vehiculos':    renderVehiculos();    break;
     case 'propietarios': renderPropietarios(); break;
     case 'parametros':   renderParametros();   break;
-    case 'ordenes':      renderOrdenes();      break;
+    case 'ordenes':      await renderOrdenes();      break;
     case 'inventario':   renderInventario();   break;
     case 'catalogo':     renderCatalogo();     break;
     case 'emisores':     renderEmisores();     break;
