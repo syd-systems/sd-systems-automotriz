@@ -2426,7 +2426,7 @@ async function renderUsuarios(filtro) {
         </td>
         <td>
           <div style="display:flex;gap:8px">
-            <button class="btn-secundario" onclick="verFichaUsuario(${u.id_usuario})">Ficha</button>
+            <button class="btn-secundario" onclick="verFichaUsuario(${u.id_usuario})">Ver</button>
             ${u.correo_usuario === sesionActual.correo_usuario ? '<span style="font-size:11px;color:var(--suave);padding:8px 4px">Tú</span>' : ''}
           </div>
         </td>
@@ -2445,7 +2445,7 @@ async function renderUsuarios(filtro) {
             <th>Tipo</th>
             <th>Estado / Conexión</th>
             <th>Fechas</th>
-            <th>Acciones</th>
+            <th>Acción</th>
           </tr>
         </thead>
         <tbody>${filas || '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--suave)">No hay usuarios que coincidan</td></tr>'}</tbody>
@@ -3609,8 +3609,8 @@ async function mostrarTablaParam(key) {
     }
 
     var thead = key === 'areas'
-      ? '<th style="width:100px">Código</th><th>Nombre</th><th>Nivel Superior</th><th>Estado</th><th>Acciones</th>'
-      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : '<th>Nombre</th>') + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + '<th>Estado</th><th>Acciones</th>';
+      ? '<th style="width:100px">Código</th><th>Nombre</th><th>Nivel Superior</th><th>Estado</th><th>Acción</th>'
+      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : '<th>Nombre</th>') + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + '<th>Estado</th><th>Acción</th>';
     var colspan = key === 'areas' ? 5 : (2 + (def.tieneArea?1:0) + (def.tieneTipoSector?1:0));
 
     cont.innerHTML =
@@ -3842,7 +3842,7 @@ async function renderEmpleados() {
         + '<td style="font-size:12px">' + (e.param_cargos ? e.param_cargos.nombre : '—') + '</td>'
         + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
         + '<td style="font-size:11px;color:var(--suave)">' + (e.fecha_ingreso ? fmtFecha(e.fecha_ingreso) : '—') + '</td>'
-        + '<td><button class="btn-secundario" onclick="verFichaEmpleado(' + e.id_empleado + ')">Ficha</button></td>'
+        + '<td><button class="btn-secundario" onclick="verFichaEmpleado(' + e.id_empleado + ')">Ver</button></td>'
         + '</tr>';
     }).join('');
 
@@ -3870,7 +3870,7 @@ async function renderEmpleados() {
       + (puedo('EMPLEADOS','CREAR') ? '<button class="btn-primario" onclick="abrirEmpleado(null)">+ Nuevo Empleado</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container"><table id="emp-tabla"><thead><tr>'
-      + '<th>Empleado</th><th>Área</th><th>Cargo</th><th>Estatus</th><th>F. Ingreso</th><th>Acciones</th>'
+      + '<th>Empleado</th><th>Área</th><th>Cargo</th><th>Estatus</th><th>F. Ingreso</th><th>Acción</th>'
       + '</tr></thead><tbody id="emp-tbody">'
       + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">No hay empleados registrados</td></tr>')
       + '</tbody></table></div></div>';
@@ -4499,7 +4499,7 @@ async function renderEmisores() {
       + '<div class="panel-header"><h3>Datos de Empresas (' + emisores.length + ')</h3>'
       + (puedo('EMISORES','CREAR') ? '<button class="btn-primario" onclick="abrirEmisor(null)">+ Nueva Empresa</button>' : '')
       + '</div><div class="tabla-container"><table><thead><tr>'
-      + '<th>Nombre / RIF</th><th>Tipo Contribuyente</th><th>Teléfono</th><th>Correo</th><th>Estado</th><th>Acciones</th>'
+      + '<th>Nombre / RIF</th><th>Tipo Contribuyente</th><th>Teléfono</th><th>Correo</th><th>Estado</th><th>Acción</th>'
       + '</tr></thead><tbody>'
       + (filas || '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--suave)">No hay empresas registradas</td></tr>')
       + '</tbody></table></div></div>';
@@ -4663,7 +4663,7 @@ async function renderFacturas() {
                   : '<span style="color:var(--naranja)">$ ' + fmtUSD(f.total_usd) + '</span>')
               + '</td>'
             : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
-        + '<td><button class="btn-secundario" onclick="verFichaFactura(' + f.id_factura + ')">Ficha</button>'
+        + '<td><button class="btn-secundario" onclick="verFichaFactura(' + f.id_factura + ')">Ver</button>'
         + '</td>'
         + '</tr>';
     }).join('');
@@ -4694,7 +4694,7 @@ async function renderFacturas() {
       + (puedo('FACTURAS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevaFactura()">+ Nueva Factura</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container"><table id="fac-tabla"><thead><tr>'
-      + '<th>N° / Fecha</th><th>Empresa</th><th>Cliente</th><th>Estado</th><th>Total</th><th>Acciones</th>'
+      + '<th>N° / Fecha</th><th>Empresa</th><th>Cliente</th><th>Estado</th><th>Total</th><th>Acción</th>'
       + '</tr></thead><tbody id="fac-tbody">'
       + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">No hay facturas registradas</td></tr>')
       + '</tbody></table></div></div>';
@@ -6066,7 +6066,7 @@ async function renderProveedores() {
         + (p.dias_credito ? '<div style="font-size:10px;color:var(--suave)">' + p.dias_credito + ' días crédito</div>' : '')
         + '</td>'
         + '<td><span class="badge ' + (p.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (p.estado||'ACTIVO') + '</span></td>'
-        + '<td><button class="btn-secundario" onclick="verFichaProveedor(' + p.id_proveedor + ')">Ficha</button>'
+        + '<td><button class="btn-secundario" onclick="verFichaProveedor(' + p.id_proveedor + ')">Ver</button>'
         + '</td>'
         + '</tr>';
     }).join('');
@@ -6090,7 +6090,7 @@ async function renderProveedores() {
       + (puedo('PROVEEDORES','CREAR') ? '<button class="btn-primario" onclick="abrirProveedor(null)">+ Nuevo Proveedor</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
-      + '<th>Nombre / RIF</th><th>Tipo</th><th>Teléfono</th><th>Correo</th><th>Moneda / Crédito</th><th>Estado</th><th>Acciones</th>'
+      + '<th>Nombre / RIF</th><th>Tipo</th><th>Teléfono</th><th>Correo</th><th>Moneda / Crédito</th><th>Estado</th><th>Acción</th>'
       + '</tr></thead><tbody id="prov-tbody">'
       + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">No hay proveedores registrados</td></tr>')
       + '</tbody></table></div></div>';
@@ -6430,7 +6430,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
       + (puedo('CONTABILIDAD','CREAR') ? '<button class="btn-primario" onclick="contAbrirAsiento(null)">+ Nuevo Asiento</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
-      + '<th>N° Asiento</th><th>Fecha</th><th>Descripción</th><th>Período</th><th>Moneda</th><th>Estado</th><th>Acciones</th>'
+      + '<th>N° Asiento</th><th>Fecha</th><th>Descripción</th><th>Período</th><th>Moneda</th><th>Estado</th><th>Acción</th>'
       + '</tr></thead><tbody>'
       + (asientos.length ? asientos.map(function(a) {
           const est = ESTADOS_ASIENTO[a.estado] || {clase:'badge-gris',label:a.estado};
@@ -7284,7 +7284,7 @@ async function contRenderPeriodos() {
     + '<button class="btn-primario" onclick="contAbrirPeriodo(null)">+ Nuevo Período</button>'
     + '</div>'
     + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
-    + '<th>Período</th><th>Fecha Inicio</th><th>Fecha Fin</th><th>Estado</th><th>Acciones</th>'
+    + '<th>Período</th><th>Fecha Inicio</th><th>Fecha Fin</th><th>Estado</th><th>Acción</th>'
     + '</tr></thead><tbody>'
     + contPeriodosCache.map(function(p) {
         return '<tr>'
@@ -7456,7 +7456,7 @@ function renderTablaTributos(filtro) {
           })(t.fecha_revision)
         + '</td>'
         + '<td style="padding:10px 14px;font-size:10px">' + (t.estado==='ACTIVO' ? '<span class="badge badge-verde">ACTIVO</span>' : '<span class="badge badge-gris">' + (t.estado||'—') + '</span>') + '</td>'
-        + '<td style="padding:10px 14px;text-align:center"><button class="btn-secundario" style="font-size:9px;padding:4px 8px" onclick="abrirFormTributo(' + t.id_tributo + ')">Ficha</button>'
+        + '<td style="padding:10px 14px;text-align:center"><button class="btn-secundario" style="font-size:9px;padding:4px 8px" onclick="abrirFormTributo(' + t.id_tributo + ')">Ver</button>'
         + '</td></tr>';
     }).join('') : '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--suave)">Sin tributos registrados</td></tr>';
     return;
@@ -7921,7 +7921,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">Método</th>' +
     '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">Cancelado</th>' +
     '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">Estado</th>' +
-    '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">Acciones</th>' +
+    '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">Acción</th>' +
     '</tr></thead><tbody>' + filas + '</tbody></table></div>';
 }
 
@@ -9257,7 +9257,7 @@ async function cargarPropietarios(filtro) {
         + '<td style="font-size:11px;color:var(--suave)">' + (vList.length > 30 ? vList.substring(0,30)+'...' : vList) + '</td>'
         + '<td>'
         + '<div style="display:flex;gap:6px">'
-        + '<button class="btn-secundario" onclick="verFichaPropietario(' + p.id_propietario + ')">Ficha</button>'
+        + '<button class="btn-secundario" onclick="verFichaPropietario(' + p.id_propietario + ')">Ver</button>'
         + '</div></td>'
         + '</tr>';
     }).join('');
@@ -9267,7 +9267,7 @@ async function cargarPropietarios(filtro) {
 
     const tabla = document.getElementById('tabla-prop-cont');
     if (tabla) tabla.innerHTML =
-      '<table><thead><tr><th>Propietario</th><th>Teléfono</th><th>Correo</th><th>Vehículos</th><th>Placas</th><th>Acciones</th></tr></thead>'
+      '<table><thead><tr><th>Propietario</th><th>Teléfono</th><th>Correo</th><th>Vehículos</th><th>Placas</th><th>Acción</th></tr></thead>'
       + '<tbody>' + (filas || '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--suave)">No hay propietarios registrados</td></tr>') + '</tbody>'
       + '</table>';
 
@@ -9544,7 +9544,7 @@ async function cargarVehiculos(filtro, propId) {
         + '<td><span class="badge ' + (v.estado_vehiculo === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + v.estado_vehiculo + '</span></td>'
         + '<td>'
         + '<div style="display:flex;gap:6px">'
-        + '<button class="btn-secundario" onclick="verFichaVehiculo(' + v.id_vehiculo + ')">Ficha</button>'
+        + '<button class="btn-secundario" onclick="verFichaVehiculo(' + v.id_vehiculo + ')">Ver</button>'
         + '</div></td>'
         + '</tr>';
     }).join('');
@@ -9555,7 +9555,7 @@ async function cargarVehiculos(filtro, propId) {
     const tabla = document.getElementById('tabla-vehiculos-cont');
     if (tabla) tabla.innerHTML =
       '<table><thead><tr>'
-      + '<th>Vehículo</th><th>Año</th><th>Color · Tipo</th><th>Propietario</th><th>Fotos</th><th>Estado</th><th>Acciones</th>'
+      + '<th>Vehículo</th><th>Año</th><th>Color · Tipo</th><th>Propietario</th><th>Fotos</th><th>Estado</th><th>Acción</th>'
       + '</tr></thead>'
       + '<tbody>' + (filas || '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--suave)">No hay vehículos registrados</td></tr>') + '</tbody>'
       + '</table>';
@@ -10029,7 +10029,7 @@ async function renderCatalogo(filtro, categoria) {
         + '<td style="font-family:var(--font-mono);color:var(--naranja);font-size:14px;font-weight:700">$ ' + parseFloat(s.precio_usd || 0).toFixed(2) + '</td>'
         + '<td><span class="badge ' + (s.activo ? 'badge-verde' : 'badge-rojo') + '" style="font-size:12px">' + (s.activo ? 'Activo' : 'Inactivo') + '</span></td>'
         + '<td><div style="display:flex;gap:8px">'
-        + '<button class="btn-secundario" onclick="verFichaCatalogo(' + s.id_servicio + ')">Ficha</button>'
+        + '<button class="btn-secundario" onclick="verFichaCatalogo(' + s.id_servicio + ')">Ver</button>'
 
         + '</div></td>'
         + '</tr>';
@@ -10040,7 +10040,7 @@ async function renderCatalogo(filtro, categoria) {
 
     const tabla = document.getElementById('tabla-cat-cont');
     if (tabla) tabla.innerHTML = '<table><thead><tr>'
-      + '<th style="font-size:13px">Grupo</th><th style="font-size:13px">Servicio</th><th style="font-size:13px">Carrocería</th><th style="font-size:13px">Precio USD</th><th style="font-size:13px">Estado</th><th style="font-size:13px">Acciones</th>'
+      + '<th style="font-size:13px">Grupo</th><th style="font-size:13px">Servicio</th><th style="font-size:13px">Carrocería</th><th style="font-size:13px">Precio USD</th><th style="font-size:13px">Estado</th><th style="font-size:13px">Acción</th>'
       + '</tr></thead><tbody>' + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px;font-size:14px">Sin servicios registrados</td></tr>') + '</tbody></table>';
 
   } catch(e) {
@@ -10629,13 +10629,13 @@ function invRenderTabla(items, cont) {
             + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen.toFixed(1) + '%</div></td>'
           : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
       + '<td><div style="display:flex;gap:8px">'
-      + '<button class="btn-secundario" onclick="verFichaInventario(' + r.id_articulo + ')">Ficha</button>'
+      + '<button class="btn-secundario" onclick="verFichaInventario(' + r.id_articulo + ')">Ver</button>'
       + '<button class="btn-secundario" style="border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="abrirStockArticulo(' + r.id_articulo + ',\'' + r.nombre.replace(/'/g,"\\'"  ) + '\')" >Stock</button>'
 
       + '</div></td></tr>';
   }).join('');
   cont.innerHTML = '<div class="tabla-container"><table><thead><tr>'
-    + '<th>Artículo</th><th>Stock</th><th>Precio Costo</th><th>Precio Venta</th><th>Acciones</th>'
+    + '<th>Artículo</th><th>Stock</th><th>Precio Costo</th><th>Precio Venta</th><th>Acción</th>'
     + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin artículos registrados</td></tr>') + '</tbody></table></div>';
 }
 
@@ -11190,7 +11190,7 @@ async function renderOrdenes() {
               + '<div style="font-size:10px;color:var(--suave)">' + fmtBs(o.total_ves) + ' Bs</div></td>'
             : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
         + '<td><div style="display:flex;gap:6px;flex-wrap:wrap">'
-        + '<button class="btn-secundario" onclick="verFichaOS(' + o.id_orden + ')">Ficha</button>'
+        + '<button class="btn-secundario" onclick="verFichaOS(' + o.id_orden + ')">Ver</button>'
         + '</div></td>'
         + '</tr>';
     }).join('');
@@ -11244,7 +11244,7 @@ async function renderOrdenes() {
       + (puedo('SERVICIOS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevaOS()">+ Nueva OS</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container"><table id="os-tabla"><thead><tr>'
-      + '<th>N° OS / Fecha</th><th>Vehículo</th><th>Propietario</th><th>Estado</th><th>Total</th><th>Acciones</th>'
+      + '<th>N° OS / Fecha</th><th>Vehículo</th><th>Propietario</th><th>Estado</th><th>Total</th><th>Acción</th>'
       + '</tr></thead><tbody id="os-tbody">'
       + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">Sin órdenes registradas</td></tr>')
       + '</tbody></table></div></div>';
@@ -12588,7 +12588,7 @@ async function contRenderCxp() {
 <div class="modal-overlay" id="modal-ficha-prop">
   <div class="modal" style="max-width:600px">
     <div class="modal-header">
-      <h3>FICHA DEL PROPIETARIO</h3>
+      <h3>PROPIETARIO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-prop')">✕</button>
     </div>
     <div class="modal-body" id="ficha-prop-contenido"></div>
@@ -12696,7 +12696,7 @@ async function contRenderCxp() {
 <div class="modal-overlay" id="modal-ficha-veh">
   <div class="modal" style="max-width:640px">
     <div class="modal-header">
-      <h3>FICHA DEL VEHÍCULO</h3>
+      <h3>VEHÍCULO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-veh')">✕</button>
     </div>
     <div class="modal-body" id="ficha-veh-contenido"></div>
@@ -14227,7 +14227,7 @@ async function contRenderCxp() {
 <div class="modal-overlay" id="modal-ficha-emp">
   <div class="modal" style="max-width:620px">
     <div class="modal-header">
-      <h3>FICHA DEL EMPLEADO</h3>
+      <h3>EMPLEADO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-emp')">✕</button>
     </div>
     <div class="modal-body" id="ficha-emp-contenido"></div>
@@ -14568,7 +14568,7 @@ async function contRenderCxp() {
 <div class="modal-overlay" id="modal-ficha-usu">
   <div class="modal" style="max-width:560px">
     <div class="modal-header">
-      <h3>FICHA DEL USUARIO</h3>
+      <h3>USUARIO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-usu')">✕</button>
     </div>
     <div class="modal-body" id="ficha-usu-contenido"></div>
