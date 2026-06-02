@@ -7614,7 +7614,8 @@ async function guardarTributo() {
       fecha_revision: new Date().toISOString().split('T')[0],
       revisado_por: sesionActual?.correo_usuario || '',
       fecha_vigencia: document.getElementById('trib-fecha-vigencia').value || null,
-      lapso_pago: document.getElementById('trib-lapso-pago').value.trim() || null };
+      lapso_pago: document.getElementById('trib-lapso-pago').value.trim() || null,
+      id_cuenta_contable: parseInt(document.getElementById('trib-cuenta-contable').value) || null };
     if (id) { await api('param_tributos','PATCH',datos,'?id_tributo=eq.'+id); }
     else    { await api('param_tributos','POST',datos); }
     okEl.textContent = '✓ Tributo guardado correctamente.';
