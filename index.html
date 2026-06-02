@@ -7545,7 +7545,28 @@ async function abrirFormTributo(id) {
   document.getElementById('alerta-trib-err').style.display = 'none';
   const btnElim = document.getElementById('trib-btn-eliminar');
   if (btnElim) btnElim.style.display = id ? '' : 'none';
+  const esRet = t ? t.es_retencion : false;
+  await cargarCuentasTributo(esRet, t ? t.id_cuenta_contable : null);
   abrirModal('modal-tributo');
+}
+
+async function cargarCuentasTributo(esRetencion, idCuentaActual) {
+  const sel = document.getElementById('trib-cuenta-contable');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- Seleccionar cuenta --</option>';
+  try {
+    const grupos = esRetencion ? ['2.1.02','2.1.03'] : ['6.1.04'];
+    const cuentas = await api('cont_cuentas','GET',null,
+      '?or=(' + grupos.map(function(g){ return 'codigo.like.'+g+'%'; }).join(',') + ')' +
+      '&estado=eq.ACTIVA&order=codigo.asc&select=id_cuenta,codigo,nombre');
+    cuentas.forEach(function(c) {
+      const opt = document.createElement('option');
+      opt.value = c.id_cuenta;
+      opt.textContent = c.codigo + ' — ' + c.nombre;
+      if (idCuentaActual && parseInt(idCuentaActual) === c.id_cuenta) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  } catch(e) { console.warn('Error cargando cuentas tributo:', e); }
 }
 
 async function eliminarTributo() {
@@ -13261,6 +13282,12 @@ async function contRenderCxp() {
         <div class="form-campo form-full">
           <label>Lapso de Pago</label>
           <input type="text" id="trib-lapso-pago" placeholder="Ej: Primeros 5 días de cada trimestre">
+        </div>
+        <div class="form-campo form-full">
+          <label>Cuenta Contable</label>
+          <select id="trib-cuenta-contable" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">-- Seleccionar cuenta --</option>
+          </select>
         </div>
         <div class="form-campo form-full" style="display:flex;flex-wrap:wrap;gap:20px;align-items:center">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
