@@ -13292,7 +13292,7 @@ async function contRenderCxp() {
         </div>
         <div class="form-campo form-full" style="display:flex;flex-wrap:wrap;gap:20px;align-items:center">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-            <input type="checkbox" id="trib-es-retencion" style="width:16px;height:16px;accent-color:var(--naranja)">
+            <input type="checkbox" id="trib-es-retencion" style="width:16px;height:16px;accent-color:var(--naranja)" onchange="cargarCuentasTributo(this.checked,null)">
             Es Retención
           </label>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
