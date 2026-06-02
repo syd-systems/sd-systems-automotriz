@@ -11143,7 +11143,7 @@ const ESTADOS_OS = {
   'ANULADA':          { clase: 'badge-rojo',    label: 'Anulada' },
 };
 
-async function renderOrdenes() {
+async async function renderOrdenes() {
   if (!sesionActual?.administrador && !modulosAcceso.includes('SERVICIOS')) {
     document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
     return;
