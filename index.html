@@ -7426,16 +7426,16 @@ function renderTablaTributos(filtro) {
         ? t.alicuota_min + '% — ' + t.alicuota_max + '%'
         : (parseFloat(t.alicuota) > 0 ? parseFloat(t.alicuota).toFixed(2) + '%' : 'Variable');
       return '<tr>'
-        + '<td style="padding:10px 14px;font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--naranja)">' + t.codigo + '</td>'
-        + '<td style="padding:10px 14px;font-size:12px"><div style="font-weight:600">' + t.nombre + '</div>'
+        + '<td style="padding:10px 14px;font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--naranja)">' + t.codigo + '</td>'
+        + '<td style="padding:10px 14px;font-size:10px"><div style="font-weight:600">' + t.nombre + '</div>'
         + '<div style="font-size:9px;color:var(--suave)">' + (t.organismo||'') + '</div>'
         + (t.base_legal ? '<div style="font-size:10px;color:var(--suave)">' + t.base_legal + '</div>' : '')
         + '</td>'
-        + '<td style="padding:10px 14px;font-size:12px"><span class="badge ' + (nivColores[t.nivel_gobierno]||'badge-gris') + '">' + (t.nivel_gobierno||'—') + '</span></td>'
-        + '<td style="padding:10px 14px;font-size:12px"><span class="badge ' + (tipColores[t.tipo]||'badge-gris') + '">' + (t.tipo||'—') + '</span></td>'
-        + '<td style="padding:10px 14px;font-size:12px">' + (t.periodicidad||'—') + '</td>'
-        + '<td style="padding:10px 14px;text-align:right;font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--naranja)">' + alicuotaStr + '</td>'
-        + '<td style="padding:10px 14px;font-size:12px">'
+        + '<td style="padding:10px 14px;font-size:10px"><span class="badge ' + (nivColores[t.nivel_gobierno]||'badge-gris') + '">' + (t.nivel_gobierno||'—') + '</span></td>'
+        + '<td style="padding:10px 14px;font-size:10px"><span class="badge ' + (tipColores[t.tipo]||'badge-gris') + '">' + (t.tipo||'—') + '</span></td>'
+        + '<td style="padding:10px 14px;font-size:10px">' + (t.periodicidad||'—') + '</td>'
+        + '<td style="padding:10px 14px;text-align:right;font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--naranja)">' + alicuotaStr + '</td>'
+        + '<td style="padding:10px 14px;font-size:10px">'
         + (function(fecha) {
             if (!fecha) return '<span style="color:#fc8181">Sin revisar</span>';
             const diff = (new Date() - new Date(fecha)) / (1000*60*60*24);
@@ -7443,7 +7443,7 @@ function renderTablaTributos(filtro) {
             return '<span style="color:' + color + '">' + fmtFecha(fecha) + '</span>';
           })(t.fecha_revision)
         + '</td>'
-        + '<td style="padding:10px 14px;font-size:12px">' + (t.estado==='ACTIVO' ? '<span class="badge badge-verde">ACTIVO</span>' : '<span class="badge badge-gris">' + (t.estado||'—') + '</span>') + '</td>'
+        + '<td style="padding:10px 14px;font-size:10px">' + (t.estado==='ACTIVO' ? '<span class="badge badge-verde">ACTIVO</span>' : '<span class="badge badge-gris">' + (t.estado||'—') + '</span>') + '</td>'
         + '<td style="padding:10px 14px;text-align:center"><button class="btn-secundario" style="font-size:9px;padding:4px 8px" onclick="abrirFormTributo(' + t.id_tributo + ')">Ficha</button>'
         + '</td></tr>';
     }).join('') : '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--suave)">Sin tributos registrados</td></tr>';
@@ -7461,21 +7461,21 @@ function renderTablaTributos(filtro) {
     + '<div style="font-family:var(--font-display);font-size:20px;letter-spacing:1px">🧾 Tributos del Sistema</div>'
     + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
     + '<input type="text" id="tributos-input-buscar" placeholder="Buscar tributo..." oninput="renderTablaTributos(this.value)" '
-    + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
+    + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:10px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
     + '<select id="tributos-filtro-tipo" onchange="renderTablaTributosTipo(this.value)" '
-    + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
+    + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:10px;padding:8px 10px;border-radius:5px;outline:none">'
     + '<option value="">Todos los tipos</option>'
     + tiposUnicos.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')
     + '</select>'
     + '<select id="tributos-filtro-nivel" onchange="renderTablaTributosNivel(this.value)" '
-    + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
+    + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:10px;padding:8px 10px;border-radius:5px;outline:none">'
     + '<option value="">Todos los niveles</option>'
     + '<option value="NACIONAL">Nacional</option>'
     + '<option value="ESTADAL">Estadal</option>'
     + '<option value="MUNICIPAL">Municipal</option>'
     + '</select>'
-    + '<button class="btn-secundario" onclick="mostrarTablaParamTributos()" style="font-size:12px">🔄 Actualizar</button>'
-    + (puedo('TRIBUTOS','CREAR') ? '<button class="btn-primario" onclick="abrirFormTributo(null)" style="font-size:12px">+ Nuevo Tributo</button>' : '')
+    + '<button class="btn-secundario" onclick="mostrarTablaParamTributos()" style="font-size:10px">🔄 Actualizar</button>'
+    + (puedo('TRIBUTOS','CREAR') ? '<button class="btn-primario" onclick="abrirFormTributo(null)" style="font-size:10px">+ Nuevo Tributo</button>' : '')
     + '</div></div>'
     + tributosAlerta()
     + '<div class="tabla-container"><table style="table-layout:fixed;width:100%">'
