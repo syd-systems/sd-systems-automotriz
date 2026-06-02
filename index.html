@@ -7538,6 +7538,8 @@ async function abrirFormTributo(id) {
   document.getElementById('trib-porc-ret').value    = t ? parseFloat(t.porcentaje_retencion||0).toFixed(2) : '0.00';
   document.getElementById('trib-aplica-serv').checked = t ? t.aplica_servicios : true;
   document.getElementById('trib-aplica-bien').checked = t ? t.aplica_bienes    : true;
+  document.getElementById('trib-fecha-vigencia').value  = t ? (t.fecha_vigencia||'') : '';
+  document.getElementById('trib-lapso-pago').value      = t ? (t.lapso_pago||'') : '';
   document.getElementById('trib-estado').value         = t ? (t.estado||'ACTIVO') : 'ACTIVO';
   document.getElementById('alerta-trib-ok').style.display  = 'none';
   document.getElementById('alerta-trib-err').style.display = 'none';
@@ -13174,7 +13176,7 @@ async function contRenderCxp() {
 <div class="modal-overlay" id="modal-tributo">
   <div class="modal" style="max-width:820px">
     <div class="modal-header">
-      <h3>TRIBUTO / IMPUESTO</h3>
+      <h3>TRIBUTO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-tributo')">✕</button>
     </div>
     <div class="modal-body">
@@ -13206,8 +13208,7 @@ async function contRenderCxp() {
         <div class="form-campo">
           <label>Tipo</label>
           <select id="trib-tipo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="DEBITO">Débito Fiscal</option>
-            <option value="RETENCION">Retención</option>
+            <option value="DEBITO">Impuesto</option>
             <option value="CONTRIBUCION">Contribución</option>
             <option value="TIMBRE">Timbre Fiscal</option>
           </select>
