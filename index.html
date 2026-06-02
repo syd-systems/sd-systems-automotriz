@@ -4492,9 +4492,7 @@ async function renderEmisores() {
         + '<td style="font-size:12px">' + (e.telefono||'—') + '</td>'
         + '<td style="font-size:12px">' + (e.correo||'—') + '</td>'
         + '<td><span class="badge ' + (e.estado==='ACTIVO'?'badge-verde':'badge-rojo') + '">' + (e.estado||'ACTIVO') + '</span></td>'
-        + '<td><button class="btn-secundario" onclick="verFichaEmisor(' + e.id_emisor + ')">Ficha</button>'
-        + (f.estado==='BORRADOR' && puedeAprobar('FACTURAS') ? '<button class="btn-primario" style="font-size:11px;padding:4px 8px;margin-left:4px" data-fid="' + f.id_factura + '" onclick="aprobarFactura(this.dataset.fid)">✓ Aprobar</button>' : '')
-        + '</td>'
+        + '<td><button class="btn-secundario" onclick="verFichaEmisor(' + e.id_emisor + ')">Ver</button></td>'
         + '</tr>';
     }).join('');
     c.innerHTML = '<div class="panel">'
