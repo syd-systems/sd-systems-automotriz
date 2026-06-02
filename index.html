@@ -11191,6 +11191,7 @@ async function renderOrdenes() {
             : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
         + '<td><div style="display:flex;gap:6px;flex-wrap:wrap">'
         + '<button class="btn-secundario" onclick="verFichaOS(' + o.id_orden + ')">Ver</button>'
+        + (o.stock_actual === 0 && puedo('SERVICIOS','ELIMINAR') ? '<button class="btn-secundario" style="color:#fc8181;border-color:rgba(252,129,129,0.4);font-size:11px;padding:3px 8px" onclick="eliminarOS(' + o.id_orden + ')">🗑</button>' : '')
         + '</div></td>'
         + '</tr>';
     }).join('');
@@ -12064,6 +12065,14 @@ async function eliminarOS(id, numero) {
 }
 
 // ─── FICHA OS ───
+async function eliminarOS(id) {
+  if (!confirm('¿Eliminar esta Orden de Servicio? Esta acción no se puede deshacer.')) return;
+  try {
+    await api('ordenes_servicio','DELETE',null,'?id_orden=eq.'+id);
+    renderOrdenes();
+  } catch(e) { alert('Error al eliminar: '+e.message); }
+}
+
 async function verFichaOS(id) {
   if (!sesionActual?.administrador && !puedo('SERVICIOS','VER')) {
     alert('No tiene permiso para ver la ficha de la orden de servicio.');
