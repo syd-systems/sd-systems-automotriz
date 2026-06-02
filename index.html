@@ -7569,7 +7569,7 @@ async function cargarCuentasTributo(esRetencion, idCuentaActual) {
   try {
     const grupos = esRetencion ? ['2.1.02','2.1.03'] : ['6.1.04'];
     const cuentas = await api('cont_cuentas','GET',null,
-      '?or=(' + grupos.map(function(g){ return 'codigo.like.'+g+'%'; }).join(',') + ')' +
+      '?or=(' + grupos.map(function(g){ return 'codigo.ilike.'+g+'*'; }).join(',') + ')' +
       '&estado=eq.ACTIVA&order=codigo.asc&select=id_cuenta,codigo,nombre');
     cuentas.forEach(function(c) {
       const opt = document.createElement('option');
