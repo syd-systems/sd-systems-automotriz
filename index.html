@@ -7205,6 +7205,8 @@ async function contAbrirCuenta(id) {
   document.getElementById('cont-cuenta-mov').checked  = c ? c.permite_movimiento : true;
   document.getElementById('alerta-cuenta-ok').style.display  = 'none';
   document.getElementById('alerta-cuenta-err').style.display = 'none';
+  const btnElimCuenta = document.getElementById('cont-cuenta-btn-eliminar');
+  if (btnElimCuenta) btnElimCuenta.style.display = id ? '' : 'none';
   abrirModal('modal-cont-cuenta');
   focusFirstField('modal-cont-cuenta');
 }
