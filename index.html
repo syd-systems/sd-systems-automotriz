@@ -7543,7 +7543,20 @@ async function abrirFormTributo(id) {
   document.getElementById('trib-estado').value         = t ? (t.estado||'ACTIVO') : 'ACTIVO';
   document.getElementById('alerta-trib-ok').style.display  = 'none';
   document.getElementById('alerta-trib-err').style.display = 'none';
+  const btnElim = document.getElementById('trib-btn-eliminar');
+  if (btnElim) btnElim.style.display = id ? '' : 'none';
   abrirModal('modal-tributo');
+}
+
+async function eliminarTributo() {
+  const id = document.getElementById('trib-id').value;
+  if (!id) return;
+  if (!confirm('¿Está seguro que desea ELIMINAR este tributo? Esta acción no se puede deshacer.')) return;
+  try {
+    await api('param_tributos','DELETE',null,'?id_tributo=eq.'+id);
+    cerrarModal('modal-tributo');
+    await mostrarTablaParamTributos();
+  } catch(e) { alert('Error al eliminar: '+e.message); }
 }
 
 async function guardarTributo() {
