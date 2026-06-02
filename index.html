@@ -4374,8 +4374,7 @@ async function verFichaEmpleado(id) {
   // Botones footer
   var btnEditar   = document.getElementById('ficha-emp-btn-editar');
   var btnEliminar = document.getElementById('ficha-emp-btn-eliminar');
-  if (btnEditar)  { btnEditar._id = e.id_empleado;  btnEditar.onclick  = function() { cerrarModal('modal-ficha-emp'); abrirEmpleado(this._id); };       
-  btnEditar.style.display  = puedo('EMPLEADOS','EDITAR') ? '' : 'none'; }
+  if (btnEditar)  { btnEditar._id = e.id_empleado;  btnEditar.onclick  = function() { cerrarModal('modal-ficha-emp'); abrirEmpleado(this._id); };         btnEditar.style.display  = puedo('EMPLEADOS','EDITAR') ? '' : 'none'; }
   if (btnEliminar){
     btnEliminar._id = e.id_empleado;
     btnEliminar._nombre = e.nombre_completo;
@@ -7675,8 +7674,7 @@ async function generarAsientoInventario(tipo, datos) {
       // Débito: Inventario Bs / Crédito: CxP Proveedores Bs
       if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:1,
         descripcion:'Entrada compra '+datos.articulo+auxDesc,
-        debe_us
-d:monto, haber_usd:0, debe_ves:montoBs, haber_ves:0 });
+        debe_usd:monto, haber_usd:0, debe_ves:montoBs, haber_ves:0 });
       if (idProv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idProv, orden:2,
         descripcion:'CxP '+datos.articulo+auxDesc,
         debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:montoBs });
@@ -11513,8 +11511,7 @@ async function abrirEditarOS(id) {
   // Mostrar/ocultar según estado
   onCambioEstadoOS(o.estado || '');
   document.getElementById('os-estado').value = o.estado;
- 
- document.getElementById('os-diagnostico').value = o.diagnostico || '';
+  document.getElementById('os-diagnostico').value = o.diagnostico || '';
   document.getElementById('os-observaciones').value = o.observaciones || '';
   const tasaUsdEl2 = document.getElementById('os-tasa-usd');
   const tasaEurEl2 = document.getElementById('os-tasa-eur');
@@ -14766,4 +14763,4 @@ async function contRenderCxp() {
   </div>
 </div>
 </body>
-</html>
+</html
