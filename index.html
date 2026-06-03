@@ -658,7 +658,15 @@
   .modal-footer {
     padding: 16px 28px;
     border-top: 1px solid var(--borde);
-    display: flex; gap: 10px; justify-content: flex-end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+    align-items: center;
+  }
+  .modal-footer .btn-secundario[onclick*="cerrarModal"] {
+    margin-left: auto;
+    order: 99;
   }
 
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
