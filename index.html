@@ -12624,7 +12624,8 @@ async function contRenderCxp() {
     <div class="modal-body" id="ficha-prop-contenido"></div>
     <div class="modal-footer">
       
-      <button class="btn-secundario" id="ficha-prop-btn-editar" style="display:none">Editar</button>
+      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
+        <button class="btn-secundario" id="ficha-prop-btn-editar" style="display:none">Editar</button>
       <button class="btn-peligro"    id="ficha-prop-btn-eliminar" style="display:none">Eliminar</button>
       </div>
   </div>
@@ -13017,7 +13018,8 @@ async function contRenderCxp() {
       
       <button class="btn-primario"   onclick="contGuardarCxc()">Guardar</button>
         <button class="btn-secundario" onclick="cerrarModal('modal-cont-cxc')">Retornar</button>
-          </div>
+      </div>
+    </div>
     <input type="hidden" id="cont-cxc-id">
   </div>
 </div>
@@ -13060,9 +13062,11 @@ async function contRenderCxp() {
     </div>
     <div class="modal-footer">
       
-      <button class="btn-primario"   onclick="contGuardarPagoCxc()">💰 Registrar Cobro</button>
+      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
+        <button class="btn-primario"   onclick="contGuardarPagoCxc()">💰 Registrar Cobro</button>
         <button class="btn-secundario" onclick="cerrarModal('modal-cont-pago-cxc')">Retornar</button>
-          </div>
+      </div>
+    </div>
     <input type="hidden" id="cont-pago-cxc-id">
   </div>
 </div>
@@ -13104,9 +13108,11 @@ async function contRenderCxp() {
     </div>
     <div class="modal-footer">
       
-      <button class="btn-primario"   onclick="contGuardarCxp()">Guardar</button>
+      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
+        <button class="btn-primario"   onclick="contGuardarCxp()">Guardar</button>
         <button class="btn-secundario" onclick="cerrarModal('modal-cont-cxp')">Retornar</button>
-          </div>
+      </div>
+    </div>
     <input type="hidden" id="cont-cxp-id">
   </div>
 </div>
@@ -13148,9 +13154,11 @@ async function contRenderCxp() {
     </div>
     <div class="modal-footer">
       
-      <button class="btn-primario"   onclick="contGuardarPagoCxp()">💸 Registrar Pago</button>
+      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
+        <button class="btn-primario"   onclick="contGuardarPagoCxp()">💸 Registrar Pago</button>
         <button class="btn-secundario" onclick="cerrarModal('modal-cont-pago-cxp')">Retornar</button>
-          </div>
+      </div>
+    </div>
     <input type="hidden" id="cont-pago-cxp-id">
   </div>
 </div>
@@ -13212,10 +13220,12 @@ async function contRenderCxp() {
     </div>
     <div class="modal-footer">
       
-      <button class="btn-secundario" id="cont-cuenta-btn-eliminar" style="color:#fc8181;border-color:rgba(252,129,129,0.4);display:none" onclick="contEliminarCuenta()">🗑 Eliminar</button>
+      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
+        <button class="btn-secundario" id="cont-cuenta-btn-eliminar" style="color:#fc8181;border-color:rgba(252,129,129,0.4);display:none" onclick="contEliminarCuenta()">🗑 Eliminar</button>
       <button class="btn-primario"   onclick="contGuardarCuenta()">Guardar</button>
         <button class="btn-secundario" onclick="cerrarModal('modal-cont-cuenta')">Retornar</button>
-          </div>
+      </div>
+    </div>
     <input type="hidden" id="cont-cuenta-id">
   </div>
 </div>
@@ -13245,9 +13255,11 @@ async function contRenderCxp() {
     </div>
     <div class="modal-footer">
       
-      <button class="btn-primario"   onclick="contGuardarPeriodo()">Guardar</button>
+      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
+        <button class="btn-primario"   onclick="contGuardarPeriodo()">Guardar</button>
         <button class="btn-secundario" onclick="cerrarModal('modal-cont-periodo')">Retornar</button>
-          </div>
+      </div>
+    </div>
     <input type="hidden" id="cont-per-id">
   </div>
 </div>
@@ -13368,10 +13380,12 @@ async function contRenderCxp() {
     </div>
     <div class="modal-footer">
       
-      <button class="btn-secundario" id="trib-btn-eliminar" style="color:#fc8181;border-color:rgba(252,129,129,0.4);display:none" onclick="eliminarTributo()">🗑 Eliminar</button>
+      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
+        <button class="btn-secundario" id="trib-btn-eliminar" style="color:#fc8181;border-color:rgba(252,129,129,0.4);display:none" onclick="eliminarTributo()">🗑 Eliminar</button>
       <button class="btn-primario"   onclick="guardarTributo()">Guardar</button>
         <button class="btn-secundario" onclick="cerrarModal('modal-tributo')">Retornar</button>
-          </div>
+      </div>
+    </div>
     <input type="hidden" id="trib-id">
   </div>
 </div>
