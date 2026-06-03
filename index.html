@@ -12067,6 +12067,17 @@ async function eliminarOS(id, numero) {
 }
 
 // ─── FICHA OS ───
+async function eliminarOSFicha() {
+  const id = document.getElementById('ficha-os-id')?.value || window._fichaOSId;
+  if (!id) return;
+  if (!confirm('¿Eliminar esta Orden de Servicio? Esta acción no se puede deshacer.')) return;
+  try {
+    await api('ordenes_servicio','DELETE',null,'?id_orden=eq.'+id);
+    cerrarModal('modal-ficha-os');
+    await renderOrdenes();
+  } catch(e) { alert('Error al eliminar: '+e.message); }
+}
+
 async function eliminarOS(id) {
   if (!confirm('¿Eliminar esta Orden de Servicio? Esta acción no se puede deshacer.')) return;
   try {
@@ -12211,7 +12222,14 @@ async function verFichaOS(id) {
     } else {
       btnReabrir.style.display = 'none';
     }
-    abrirModal('modal-ficha-os');
+    // Mostrar botón Eliminar si total = 0
+  const btnElimOS = document.getElementById('ficha-os-eliminar-btn');
+  if (btnElimOS && puedo('SERVICIOS','ELIMINAR')) {
+    const sinTotal = (!o.total_usd || o.total_usd === 0) && (!o.total_ves || o.total_ves === 0);
+    btnElimOS.style.display = sinTotal ? '' : 'none';
+    window._fichaOSId = o.id_orden;
+  }
+  abrirModal('modal-ficha-os');
   focusFirstField('modal-ficha-os');
   } catch(e) { alert('Error: ' + e.message); }
 }
@@ -13847,9 +13865,10 @@ async function contRenderCxp() {
     <div class="modal-body" id="ficha-os-contenido"></div>
     <div class="modal-footer">
       
+      <button class="btn-secundario" id="ficha-os-eliminar-btn" style="color:#fc8181;border-color:rgba(252,129,129,0.4);display:none" onclick="eliminarOSFicha()">🗑 Eliminar</button>
       <button class="btn-primario" id="ficha-os-editar-btn" onclick="">Editar OS</button>
-    </div>
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-os')">Retornar</button>
+    </div>
   </div>
 </div>
 
