@@ -1271,9 +1271,8 @@
       <div class="alerta alerta-exito" id="alerta-modal-ok" style="margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-modal-error" style="margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        
+        <button class="btn-secundario" onclick="cerrarModal('modal-usuario')">Retornar</button>
         <button class="btn-primario" onclick="guardarUsuario()">GUARDAR</button>
-        
       </div>
     </div>
   </div>
@@ -1316,11 +1315,10 @@
       </div>
     </div>
     <div class="modal-footer">
-      
+      <button class="btn-secundario" onclick="cerrarModal('modal-tasa')">Retornar</button>
       <div class="alerta alerta-error" id="alerta-tasa-error" style="display:none;margin:0 0 8px 0"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button class="btn-primario" onclick="guardarTasa()">REGISTRAR</button>
-        
       </div>
     </div>
   </div>
@@ -7397,7 +7395,7 @@ async function mostrarTablaParamTributos() {
       + '<th style="padding:10px 14px;font-size:11px;color:var(--suave);text-align:right">Alícuota %</th>'
       + '<th style="padding:10px 14px;font-size:11px;color:var(--suave);text-align:left">Ult. Revisión</th>'
       + '<th style="padding:10px 14px;font-size:11px;color:var(--suave);text-align:left">Estado</th>'
-      + '<th style="padding:10px 14px;font-size:11px;color:var(--suave);text-align:left">Acción</th>'
+      + '<th style="padding:10px 14px;font-size:11px;color:var(--suave);text-align:left">Accs.</th>'
       + '</tr></thead><tbody id="tributos-tbody"></tbody></table></div>';
 
     window._tributosTextoFiltro = '';
@@ -7493,7 +7491,7 @@ function renderTablaTributos(filtro) {
     + '</div></div>'
     + tributosAlerta()
     + '<div class="tabla-container"><table style="table-layout:fixed;width:100%">'
-    +'<thead><tr>'+'<th style="width:9%;font-size:11px">Código</th>'+'<th style="font-size:7px">Nombre / Organismo</th>'+'<th style="width:10%;font-size:7px">Nivel</th>'+'<th style="width:10%;font-size:7px">Tipo</th>'+'<th style="width:11%;font-size:7px">Periodicidad</th>'+'<th style="width:10%;text-align:right;font-size:7px">Alícuota %</th>'+'<th style="width:10%;font-size:7px">Ult. Revisión</th>'+'<th style="width:8%;font-size:7px">Estado</th>'+'<th style="width:8%;text-align:center;font-size:7px">Acción</th>'+'</tr></thead>'
+    +'<thead><tr>'+'<th style="width:9%;font-size:11px">Código</th>'+'<th style="font-size:7px">Nombre / Organismo</th>'+'<th style="width:10%;font-size:7px">Nivel</th>'+'<th style="width:10%;font-size:7px">Tipo</th>'+'<th style="width:11%;font-size:7px">Periodicidad</th>'+'<th style="width:10%;text-align:right;font-size:7px">Alícuota %</th>'+'<th style="width:10%;font-size:7px">Ult. Revisión</th>'+'<th style="width:8%;font-size:7px">Estado</th>'+'<th style="width:8%;text-align:center;font-size:7px">Accs.</th>'+'</tr></thead>'
     + '<tbody id="tributos-tbody"></tbody></table></div>';
 
   renderTablaTributos();
@@ -10619,7 +10617,7 @@ function invRenderTabla(items, cont) {
       + (puedo('INVENTARIO','VER_COSTOS')
           ? '<td style="font-family:var(--font-mono);font-size:12px">'
             + '<div style="color:var(--suave);font-size:9px;letter-spacing:1px">COSTO PROM. (CPP)</div>'
-            + '<div>$ ' + (parseInt(r.stock_actual) === 0 ? '0.00' : fmtUSD(r.precio_costo_usd)) + '</div>'
+            + '<div>$ ' + fmtUSD(r.precio_costo_usd) + '</div>'
             + (r.precio_costo_ultimo_usd
                 ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Última compra: $ ' + fmtUSD(r.precio_costo_ultimo_usd) + '</div>'
                 : '')
@@ -11193,7 +11191,7 @@ async function renderOrdenes() {
             : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
         + '<td><div style="display:flex;gap:6px;flex-wrap:wrap">'
         + '<button class="btn-secundario" onclick="verFichaOS(' + o.id_orden + ')">Ver</button>'
-
+        + (o.stock_actual === 0 && puedo('SERVICIOS','ELIMINAR') ? '<button class="btn-secundario" style="color:#fc8181;border-color:rgba(252,129,129,0.4);font-size:11px;padding:3px 8px" onclick="eliminarOS(' + o.id_orden + ')">🗑</button>' : '')
         + '</div></td>'
         + '</tr>';
     }).join('');
@@ -12067,17 +12065,6 @@ async function eliminarOS(id, numero) {
 }
 
 // ─── FICHA OS ───
-async function eliminarOSFicha() {
-  const id = document.getElementById('ficha-os-id')?.value || window._fichaOSId;
-  if (!id) return;
-  if (!confirm('¿Eliminar esta Orden de Servicio? Esta acción no se puede deshacer.')) return;
-  try {
-    await api('ordenes_servicio','DELETE',null,'?id_orden=eq.'+id);
-    cerrarModal('modal-ficha-os');
-    await renderOrdenes();
-  } catch(e) { alert('Error al eliminar: '+e.message); }
-}
-
 async function eliminarOS(id) {
   if (!confirm('¿Eliminar esta Orden de Servicio? Esta acción no se puede deshacer.')) return;
   try {
@@ -12222,14 +12209,7 @@ async function verFichaOS(id) {
     } else {
       btnReabrir.style.display = 'none';
     }
-    // Mostrar botón Eliminar si total = 0
-  const btnElimOS = document.getElementById('ficha-os-eliminar-btn');
-  if (btnElimOS && puedo('SERVICIOS','ELIMINAR')) {
-    const sinTotal = (!o.total_usd || o.total_usd === 0) && (!o.total_ves || o.total_ves === 0);
-    btnElimOS.style.display = sinTotal ? '' : 'none';
-    window._fichaOSId = o.id_orden;
-  }
-  abrirModal('modal-ficha-os');
+    abrirModal('modal-ficha-os');
   focusFirstField('modal-ficha-os');
   } catch(e) { alert('Error: ' + e.message); }
 }
@@ -12604,9 +12584,8 @@ async function contRenderCxp() {
       <div class="alerta alerta-exito" id="alerta-prop-ok" style="margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-prop-err" style="margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        
+        <button class="btn-secundario" onclick="cerrarModal('modal-propietario')">Retornar</button>
         <button class="btn-primario" onclick="guardarPropietario()">GUARDAR</button>
-        
       </div>
     </div>
   </div>
@@ -12623,11 +12602,10 @@ async function contRenderCxp() {
     </div>
     <div class="modal-body" id="ficha-prop-contenido"></div>
     <div class="modal-footer">
-      
-      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        <button class="btn-secundario" id="ficha-prop-btn-editar" style="display:none">Editar</button>
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-prop')">Retornar</button>
+      <button class="btn-secundario" id="ficha-prop-btn-editar" style="display:none">Editar</button>
       <button class="btn-peligro"    id="ficha-prop-btn-eliminar" style="display:none">Eliminar</button>
-      </div>
+    </div>
   </div>
 </div>
 
@@ -12714,9 +12692,8 @@ async function contRenderCxp() {
       <div class="alerta alerta-exito" id="alerta-veh-ok" style="margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-veh-err" style="margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        
+        <button class="btn-secundario" onclick="cerrarModal('modal-vehiculo')">Retornar</button>
         <button class="btn-primario" onclick="guardarVehiculo()">GUARDAR</button>
-        
       </div>
     </div>
   </div>
@@ -12733,10 +12710,10 @@ async function contRenderCxp() {
     </div>
     <div class="modal-body" id="ficha-veh-contenido"></div>
     <div class="modal-footer">
-      
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-veh')">Retornar</button>
       <button class="btn-secundario" id="ficha-veh-btn-editar" style="display:none">Editar</button>
       <button class="btn-peligro"    id="ficha-veh-btn-eliminar" style="display:none">Eliminar</button>
-      </div>
+    </div>
   </div>
 </div>
 
@@ -12761,9 +12738,8 @@ async function contRenderCxp() {
       <div class="alerta alerta-exito" id="alerta-gal-ok"  style="display:none;margin:0 0 8px 0"></div>
       <div class="alerta alerta-error"  id="alerta-gal-err" style="display:none;margin:0 0 8px 0"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        
+        <button class="btn-secundario" onclick="cerrarModal('modal-galeria')">Retornar</button>
         <button class="btn-primario" onclick="subirMasFotos()">SUBIR FOTOS</button>
-        
       </div>
     </div>
   </div>
@@ -12847,9 +12823,8 @@ async function contRenderCxp() {
       <div class="alerta alerta-exito" id="alerta-cat-ok" style="margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-cat-err" style="margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        
+        <button class="btn-secundario" onclick="cerrarModal('modal-catalogo')">Retornar</button>
         <button class="btn-primario" onclick="guardarCatalogo()">GUARDAR</button>
-        
       </div>
     </div>
   </div>
@@ -12872,7 +12847,8 @@ async function contRenderCxp() {
       <div id="lista-grupos-cat" style="max-height:300px;overflow-y:auto"></div>
     </div>
     <div class="modal-footer">
-      </div>
+      <button class="btn-secundario" onclick="cerrarModal('modal-grupos-cat')">Retornar</button>
+    </div>
   </div>
 </div>
 
@@ -12899,7 +12875,8 @@ async function contRenderCxp() {
       <div id="lista-servicios-cat" style="max-height:350px;overflow-y:auto"></div>
     </div>
     <div class="modal-footer">
-      </div>
+      <button class="btn-secundario" onclick="cerrarModal('modal-servicios-cat')">Retornar</button>
+    </div>
   </div>
 </div>
 
@@ -12914,8 +12891,7 @@ async function contRenderCxp() {
       <button class="modal-cerrar" onclick="cerrarModal('modal-cont-asiento-ver')">✕</button>
     </div>
     <div class="modal-body"><div id="cont-asiento-contenido"></div></div>
-    <div class="modal-footer"><div style="display:flex;gap:10px;justify-content:flex-end;width:100%"><button class="btn-secundario" onclick="cerrarModal('modal-cont-asiento-ver')">Retornar</button></div>
-      </div>
+    <div class="modal-footer"><button class="btn-secundario" onclick="cerrarModal('modal-cont-asiento-ver')">Retornar</button></div>
   </div>
 </div>
 
@@ -12971,13 +12947,13 @@ async function contRenderCxp() {
       <div id="alerta-cont-form-err" class="alerta alerta-error"  style="display:none;margin-top:10px"></div>
     </div>
     <div class="modal-footer">
-      
+      <button class="btn-secundario" onclick="cerrarModal('modal-cont-asiento-form')">Retornar</button>
       <button class="btn-primario"   onclick="contGuardarAsiento()">💾 Guardar Borrador</button>
-        
-          </div>
+    </div>
     <input type="hidden" id="cont-form-id">
   </div>
 </div>
+
 <!-- NUEVA CxC -->
 <div class="modal-overlay" id="modal-cont-cxc">
   <div class="modal" style="max-width:540px">
@@ -13015,14 +12991,13 @@ async function contRenderCxp() {
       <div id="alerta-cxc-err" class="alerta alerta-error" style="display:none;margin-top:8px"></div>
     </div>
     <div class="modal-footer">
-      
+      <button class="btn-secundario" onclick="cerrarModal('modal-cont-cxc')">Retornar</button>
       <button class="btn-primario"   onclick="contGuardarCxc()">Guardar</button>
-        <button class="btn-secundario" onclick="cerrarModal('modal-cont-cxc')">Retornar</button>
-      </div>
     </div>
     <input type="hidden" id="cont-cxc-id">
   </div>
 </div>
+
 <!-- PAGO CxC -->
 <div class="modal-overlay" style="z-index:2000" id="modal-cont-pago-cxc">
   <div class="modal" style="max-width:580px">
@@ -13061,15 +13036,13 @@ async function contRenderCxp() {
       <div id="alerta-pago-cxc-err" class="alerta alerta-error" style="display:none;margin-top:8px"></div>
     </div>
     <div class="modal-footer">
-      
-      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        <button class="btn-primario"   onclick="contGuardarPagoCxc()">💰 Registrar Cobro</button>
-        <button class="btn-secundario" onclick="cerrarModal('modal-cont-pago-cxc')">Retornar</button>
-      </div>
+      <button class="btn-secundario" onclick="cerrarModal('modal-cont-pago-cxc')">Retornar</button>
+      <button class="btn-primario"   onclick="contGuardarPagoCxc()">💰 Registrar Cobro</button>
     </div>
     <input type="hidden" id="cont-pago-cxc-id">
   </div>
 </div>
+
 <!-- NUEVA CxP -->
 <div class="modal-overlay" id="modal-cont-cxp">
   <div class="modal" style="max-width:540px">
@@ -13107,15 +13080,13 @@ async function contRenderCxp() {
       <div id="alerta-cxp-err" class="alerta alerta-error" style="display:none;margin-top:8px"></div>
     </div>
     <div class="modal-footer">
-      
-      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        <button class="btn-primario"   onclick="contGuardarCxp()">Guardar</button>
-        <button class="btn-secundario" onclick="cerrarModal('modal-cont-cxp')">Retornar</button>
-      </div>
+      <button class="btn-secundario" onclick="cerrarModal('modal-cont-cxp')">Retornar</button>
+      <button class="btn-primario"   onclick="contGuardarCxp()">Guardar</button>
     </div>
     <input type="hidden" id="cont-cxp-id">
   </div>
 </div>
+
 <!-- PAGO CxP -->
 <div class="modal-overlay" id="modal-cont-pago-cxp">
   <div class="modal" style="max-width:460px">
@@ -13153,15 +13124,13 @@ async function contRenderCxp() {
       <div id="alerta-pago-cxp-err" class="alerta alerta-error" style="display:none;margin-top:8px"></div>
     </div>
     <div class="modal-footer">
-      
-      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        <button class="btn-primario"   onclick="contGuardarPagoCxp()">💸 Registrar Pago</button>
-        <button class="btn-secundario" onclick="cerrarModal('modal-cont-pago-cxp')">Retornar</button>
-      </div>
+      <button class="btn-secundario" onclick="cerrarModal('modal-cont-pago-cxp')">Retornar</button>
+      <button class="btn-primario"   onclick="contGuardarPagoCxp()">💸 Registrar Pago</button>
     </div>
     <input type="hidden" id="cont-pago-cxp-id">
   </div>
 </div>
+
 <!-- NUEVA CUENTA CONTABLE -->
 <div class="modal-overlay" id="modal-cont-cuenta">
   <div class="modal" style="max-width:560px">
@@ -13219,16 +13188,14 @@ async function contRenderCxp() {
       <div id="alerta-cuenta-err" class="alerta alerta-error" style="display:none;margin-top:8px"></div>
     </div>
     <div class="modal-footer">
-      
-      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        <button class="btn-secundario" id="cont-cuenta-btn-eliminar" style="color:#fc8181;border-color:rgba(252,129,129,0.4);display:none" onclick="contEliminarCuenta()">🗑 Eliminar</button>
+      <button class="btn-secundario" onclick="cerrarModal('modal-cont-cuenta')">Retornar</button>
+      <button class="btn-secundario" id="cont-cuenta-btn-eliminar" style="color:#fc8181;border-color:rgba(252,129,129,0.4);display:none" onclick="contEliminarCuenta()">🗑 Eliminar</button>
       <button class="btn-primario"   onclick="contGuardarCuenta()">Guardar</button>
-        <button class="btn-secundario" onclick="cerrarModal('modal-cont-cuenta')">Retornar</button>
-      </div>
     </div>
     <input type="hidden" id="cont-cuenta-id">
   </div>
 </div>
+
 <!-- PERÍODO CONTABLE -->
 <div class="modal-overlay" id="modal-cont-periodo">
   <div class="modal" style="max-width:420px">
@@ -13254,15 +13221,13 @@ async function contRenderCxp() {
       <div id="alerta-per-err" class="alerta alerta-error" style="display:none;margin-top:8px"></div>
     </div>
     <div class="modal-footer">
-      
-      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        <button class="btn-primario"   onclick="contGuardarPeriodo()">Guardar</button>
-        <button class="btn-secundario" onclick="cerrarModal('modal-cont-periodo')">Retornar</button>
-      </div>
+      <button class="btn-secundario" onclick="cerrarModal('modal-cont-periodo')">Retornar</button>
+      <button class="btn-primario"   onclick="contGuardarPeriodo()">Guardar</button>
     </div>
     <input type="hidden" id="cont-per-id">
   </div>
 </div>
+
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL TRIBUTO                       -->
@@ -13379,12 +13344,9 @@ async function contRenderCxp() {
       <div id="alerta-trib-err" class="alerta alerta-error" style="display:none;margin-top:8px"></div>
     </div>
     <div class="modal-footer">
-      
-      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        <button class="btn-secundario" id="trib-btn-eliminar" style="color:#fc8181;border-color:rgba(252,129,129,0.4);display:none" onclick="eliminarTributo()">🗑 Eliminar</button>
+      <button class="btn-secundario" onclick="cerrarModal('modal-tributo')">Retornar</button>
+      <button class="btn-secundario" id="trib-btn-eliminar" style="color:#fc8181;border-color:rgba(252,129,129,0.4);display:none" onclick="eliminarTributo()">🗑 Eliminar</button>
       <button class="btn-primario"   onclick="guardarTributo()">Guardar</button>
-        <button class="btn-secundario" onclick="cerrarModal('modal-tributo')">Retornar</button>
-      </div>
     </div>
     <input type="hidden" id="trib-id">
   </div>
@@ -13405,8 +13367,7 @@ async function contRenderCxp() {
         <div style="font-family:var(--font-display);font-size:20px;color:var(--naranja)" id="stock-art-nombre">—</div>
         <div style="display:flex;gap:24px;margin-top:10px;flex-wrap:wrap">
           <div>
-            <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Stock Actual
-      </div>
+            <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Stock Actual</div>
             <div style="font-family:var(--font-mono);font-size:18px;color:var(--naranja)" id="stock-art-stock">—</div>
           </div>
           <div id="stock-art-costo-cont">
@@ -13439,7 +13400,8 @@ async function contRenderCxp() {
       </div>
     </div>
     <div class="modal-footer">
-      </div>
+      <button class="btn-secundario" onclick="cerrarModal('modal-stock-articulo')">Retornar</button>
+    </div>
   </div>
 </div>
 
@@ -13570,9 +13532,8 @@ async function contRenderCxp() {
       <div class="alerta alerta-exito" id="alerta-es-ok" style="display:none;margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-es-err" style="display:none;margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        
+        <button class="btn-secundario" onclick="cerrarModal('modal-entrada-stock'); regresarAFichaInv()">Retornar</button>
         <button class="btn-primario" onclick="guardarEntradaStock()">INGRESAR STOCK</button>
-        
       </div>
     </div>
   </div>
@@ -13674,9 +13635,8 @@ async function contRenderCxp() {
       <div class="alerta alerta-exito" id="alerta-inv-ok" style="margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-inv-err" style="margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        
+        <button class="btn-secundario" onclick="cerrarModal('modal-inventario')">Retornar</button>
         <button class="btn-primario" onclick="guardarInventario()">GUARDAR</button>
-        
       </div>
     </div>
   </div>
@@ -13845,9 +13805,8 @@ async function contRenderCxp() {
       <div class="alerta alerta-exito" id="alerta-os-ok" style="margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-os-err" style="margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        
+        <button class="btn-secundario" onclick="cerrarModal('modal-os')">Retornar</button>
         <button class="btn-primario" onclick="guardarOS()">GUARDAR OS</button>
-        
       </div>
     </div>
   </div>
@@ -13864,8 +13823,7 @@ async function contRenderCxp() {
     </div>
     <div class="modal-body" id="ficha-os-contenido"></div>
     <div class="modal-footer">
-      
-      <button class="btn-secundario" id="ficha-os-eliminar-btn" style="color:#fc8181;border-color:rgba(252,129,129,0.4);display:none" onclick="eliminarOSFicha()">🗑 Eliminar</button>
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-os')">Retornar</button>
       <button class="btn-primario" id="ficha-os-editar-btn" onclick="">Editar OS</button>
     </div>
   </div>
@@ -14003,10 +13961,9 @@ async function contRenderCxp() {
       <div class="alerta alerta-exito" id="alerta-fac-ok" style="margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-fac-err" style="margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        
+        <button class="btn-secundario" onclick="cerrarModal('modal-factura')">Retornar</button>
         <button class="btn-secundario" onclick="guardarFactura(false)">Guardar Borrador</button>
         <button class="btn-primario"   onclick="guardarFactura(true)">✓ Emitir Factura</button>
-        
       </div>
     </div>
   </div>
@@ -14023,14 +13980,14 @@ async function contRenderCxp() {
     </div>
     <div class="modal-body" id="ficha-fac-contenido"></div>
     <div class="modal-footer">
-      
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-fac')">Retornar</button>
       <button class="btn-secundario" id="ficha-fac-btn-editar"  style="display:none">Editar</button>
       <button class="btn-primario"   id="ficha-fac-btn-emitir"  style="display:none">✓ Emitir</button>
       <button class="btn-primario"   id="ficha-fac-btn-aprobar" style="display:none;background:#8b5cf6;border-color:#8b5cf6">✓ Aprobar</button>
       <button class="btn-primario"   id="ficha-fac-btn-pago"    style="display:none">💰 Registrar Pago</button>
       <button class="btn-peligro"    id="ficha-fac-btn-anular"  style="display:none">Anular</button>
       <button class="btn-peligro"    id="ficha-fac-btn-eliminar" style="display:none">Eliminar</button>
-      </div>
+    </div>
   </div>
 </div>
 
@@ -14047,9 +14004,8 @@ async function contRenderCxp() {
     <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
       <div id="modal-param-footer-alertas"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        
+        <button class="btn-secundario" onclick="cerrarModal('modal-param')">Retornar</button>
         <button class="btn-primario" id="modal-param-guardar">GUARDAR</button>
-        
       </div>
     </div>
   </div>
@@ -14267,9 +14223,8 @@ async function contRenderCxp() {
       <div class="alerta alerta-exito" id="alerta-emp-ok" style="margin:0"></div>
       <div class="alerta alerta-error"  id="alerta-emp-err" style="margin:0"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        
+        <button class="btn-secundario" onclick="cerrarModal('modal-empleado')">Retornar</button>
         <button class="btn-primario" onclick="guardarEmpleado()">GUARDAR</button>
-        
       </div>
     </div>
   </div>
@@ -14286,10 +14241,10 @@ async function contRenderCxp() {
     </div>
     <div class="modal-body" id="ficha-emp-contenido"></div>
     <div class="modal-footer">
-      
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-emp')">Retornar</button>
       <button class="btn-secundario" id="ficha-emp-btn-editar"   style="display:none">Editar</button>
       <button class="btn-peligro"    id="ficha-emp-btn-eliminar" style="display:none">Eliminar</button>
-      </div>
+    </div>
   </div>
 </div>
 
@@ -14374,9 +14329,8 @@ async function contRenderCxp() {
       <div class="alerta alerta-exito" id="alerta-prov-ok"  style="margin:0"></div>
       <div class="alerta alerta-error"  id="alerta-prov-err" style="margin:0"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        
+        <button class="btn-secundario" onclick="cerrarModal('modal-proveedor')">Retornar</button>
         <button class="btn-primario"   onclick="guardarProveedor()">GUARDAR</button>
-        
       </div>
     </div>
   </div>
@@ -14393,10 +14347,10 @@ async function contRenderCxp() {
     </div>
     <div class="modal-body" id="ficha-prov-contenido"></div>
     <div class="modal-footer">
-      
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-prov')">Retornar</button>
       <button class="btn-secundario" id="ficha-prov-btn-editar"   style="display:none">Editar</button>
       <button class="btn-peligro"    id="ficha-prov-btn-eliminar" style="display:none">Eliminar</button>
-      </div>
+    </div>
   </div>
 </div>
 
@@ -14464,9 +14418,8 @@ async function contRenderCxp() {
       <div class="alerta alerta-exito" id="alerta-edit-mov-ok" style="margin:0"></div>
       <div class="alerta alerta-error"  id="alerta-edit-mov-err" style="margin:0"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        
+        <button class="btn-secundario" onclick="cerrarModal('modal-edit-movimiento'); regresarAFichaInv()">Retornar</button>
         <button class="btn-primario"   onclick="guardarEdicionMovimiento()">GUARDAR</button>
-        
       </div>
     </div>
   </div>
@@ -14490,7 +14443,8 @@ async function contRenderCxp() {
       <input type="hidden" id="historial-id-repuesto">
     </div>
     <div class="modal-footer">
-      </div>
+      <button class="btn-secundario" onclick="cerrarModal('modal-historial-stock'); regresarAFichaInv()">Retornar</button>
+    </div>
   </div>
 </div>
 
@@ -14575,9 +14529,8 @@ async function contRenderCxp() {
       <div class="alerta alerta-exito" id="alerta-salida-ok" style="margin:0"></div>
       <div class="alerta alerta-error"  id="alerta-salida-err" style="margin:0"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        
+        <button class="btn-secundario" onclick="cerrarModal('modal-salida-stock'); regresarAFichaInv()">Retornar</button>
         <button class="btn-peligro"    onclick="guardarSalidaStock()">Registrar Salida</button>
-        
       </div>
     </div>
   </div>
@@ -14589,14 +14542,14 @@ async function contRenderCxp() {
 <div class="modal-overlay" id="modal-ficha-inv">
   <div class="modal" style="max-width:520px">
     <div class="modal-header">
-      <h3>ARTÍCULO</h3>
+      <h3>FICHA DEL ARTÍCULO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-inv')">✕</button>
     </div>
     <div class="modal-body" id="ficha-inv-contenido"></div>
     <div class="modal-footer">
-      
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-inv')">Retornar</button>
       <button class="btn-secundario" id="ficha-inv-btn-editar">Editar</button>
-      </div>
+    </div>
   </div>
 </div>
 
@@ -14611,10 +14564,10 @@ async function contRenderCxp() {
     </div>
     <div class="modal-body" id="ficha-cat-contenido"></div>
     <div class="modal-footer">
-      
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-cat')">Retornar</button>
       <button class="btn-secundario" id="ficha-cat-btn-editar">Editar</button>
       <button class="btn-peligro"    id="ficha-cat-btn-eliminar">Eliminar</button>
-      </div>
+    </div>
   </div>
 </div>
 
@@ -14629,12 +14582,12 @@ async function contRenderCxp() {
     </div>
     <div class="modal-body" id="ficha-usu-contenido"></div>
     <div class="modal-footer">
-      
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-usu')">Retornar</button>
       <button class="btn-secundario" id="ficha-usu-btn-cerrar-sesion" style="display:none;border-color:rgba(255,107,0,0.4);color:var(--naranja)">⏻ Cerrar Sesión</button>
       <button class="btn-secundario" id="ficha-usu-btn-reset">🔑 Reset Clave</button>
       <button class="btn-secundario" id="ficha-usu-btn-editar">Editar</button>
       <button class="btn-peligro"    id="ficha-usu-btn-eliminar">Eliminar</button>
-      </div>
+    </div>
   </div>
 </div>
 
@@ -14649,9 +14602,9 @@ async function contRenderCxp() {
     </div>
     <div class="modal-body" id="ficha-emisor-contenido"></div>
     <div class="modal-footer">
-      
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-emisor')">Retornar</button>
       <button class="btn-primario" id="ficha-emisor-btn-editar">Editar</button>
-      </div>
+    </div>
   </div>
 </div>
 
@@ -14727,9 +14680,8 @@ async function contRenderCxp() {
       <div class="alerta alerta-exito" id="alerta-emisor-ok" style="margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-emisor-err" style="margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        
+        <button class="btn-secundario" onclick="cerrarModal('modal-emisor')">Retornar</button>
         <button class="btn-primario" onclick="guardarEmisor()">GUARDAR</button>
-        
       </div>
     </div>
   </div>
@@ -14826,9 +14778,9 @@ async function contRenderCxp() {
       <div class="alerta alerta-ok" id="alerta-pago-ok" style="display:none;margin-top:12px"></div>
     </div>
     <div class="modal-footer">
-      
+      <button class="btn-secundario" onclick="cerrarModal('modal-pago')">Retornar</button>
       <button class="btn-primario" onclick="guardarPago()">Guardar</button>
-      </div>
+    </div>
   </div>
 </div>
 
@@ -14866,9 +14818,9 @@ async function contRenderCxp() {
       <div class="alerta alerta-error" id="alerta-exec-err" style="display:none;margin-top:12px"></div>
     </div>
     <div class="modal-footer">
-      
+      <button class="btn-secundario" onclick="cerrarModal('modal-ejecutar-pago')">Retornar</button>
       <button class="btn-primario" style="background:#22c55e;border-color:#22c55e" onclick="confirmarEjecucionPago()">💳 Confirmar Pago</button>
-      </div>
+    </div>
   </div>
 </div>
 
@@ -14881,7 +14833,8 @@ async function contRenderCxp() {
     </div>
     <div class="modal-body" id="ficha-pago-cont"></div>
     <div class="modal-footer">
-      </div>
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-pago')">Retornar</button>
+    </div>
   </div>
 </div>
 </body>
