@@ -3704,6 +3704,13 @@ async function abrirParamItem(key, id) {
     + '<input type="hidden" id="param-item-key" value="' + key + '">';
 
   document.getElementById('modal-param-guardar').onclick = function() { guardarParamItem(); };
+  // Guardar key/id para eliminarParamItem
+  window._paramKey = key;
+  window._paramId  = id;
+  const btnElimP = document.getElementById('modal-param-eliminar');
+  const btnGuardP = document.getElementById('modal-param-guardar');
+  if (btnElimP) btnElimP.style.display = (id && puedo('PARAMETROS','EDITAR')) ? '' : 'none';
+  if (btnGuardP) btnGuardP.style.display = puedo('PARAMETROS','EDITAR') ? '' : 'none';
   abrirModal('modal-param');
   focusFirstField('modal-param');
   setTimeout(function() {
