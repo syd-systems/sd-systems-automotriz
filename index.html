@@ -7395,7 +7395,7 @@ async function mostrarTablaParamTributos() {
       + '<th style="padding:10px 14px;font-size:11px;color:var(--suave);text-align:right">Alícuota %</th>'
       + '<th style="padding:10px 14px;font-size:11px;color:var(--suave);text-align:left">Ult. Revisión</th>'
       + '<th style="padding:10px 14px;font-size:11px;color:var(--suave);text-align:left">Estado</th>'
-      + '<th style="padding:10px 14px;font-size:11px;color:var(--suave);text-align:left">Accs.</th>'
+      + '<th style="padding:10px 14px;font-size:11px;color:var(--suave);text-align:left">Acción</th>'
       + '</tr></thead><tbody id="tributos-tbody"></tbody></table></div>';
 
     window._tributosTextoFiltro = '';
@@ -7491,7 +7491,7 @@ function renderTablaTributos(filtro) {
     + '</div></div>'
     + tributosAlerta()
     + '<div class="tabla-container"><table style="table-layout:fixed;width:100%">'
-    +'<thead><tr>'+'<th style="width:9%;font-size:11px">Código</th>'+'<th style="font-size:7px">Nombre / Organismo</th>'+'<th style="width:10%;font-size:7px">Nivel</th>'+'<th style="width:10%;font-size:7px">Tipo</th>'+'<th style="width:11%;font-size:7px">Periodicidad</th>'+'<th style="width:10%;text-align:right;font-size:7px">Alícuota %</th>'+'<th style="width:10%;font-size:7px">Ult. Revisión</th>'+'<th style="width:8%;font-size:7px">Estado</th>'+'<th style="width:8%;text-align:center;font-size:7px">Accs.</th>'+'</tr></thead>'
+    +'<thead><tr>'+'<th style="width:9%;font-size:11px">Código</th>'+'<th style="font-size:7px">Nombre / Organismo</th>'+'<th style="width:10%;font-size:7px">Nivel</th>'+'<th style="width:10%;font-size:7px">Tipo</th>'+'<th style="width:11%;font-size:7px">Periodicidad</th>'+'<th style="width:10%;text-align:right;font-size:7px">Alícuota %</th>'+'<th style="width:10%;font-size:7px">Ult. Revisión</th>'+'<th style="width:8%;font-size:7px">Estado</th>'+'<th style="width:8%;text-align:center;font-size:7px">Acción</th>'+'</tr></thead>'
     + '<tbody id="tributos-tbody"></tbody></table></div>';
 
   renderTablaTributos();
@@ -11191,7 +11191,7 @@ async function renderOrdenes() {
             : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
         + '<td><div style="display:flex;gap:6px;flex-wrap:wrap">'
         + '<button class="btn-secundario" onclick="verFichaOS(' + o.id_orden + ')">Ver</button>'
-        + (o.stock_actual === 0 && puedo('SERVICIOS','ELIMINAR') ? '<button class="btn-secundario" style="color:#fc8181;border-color:rgba(252,129,129,0.4);font-size:11px;padding:3px 8px" onclick="eliminarOS(' + o.id_orden + ')">🗑</button>' : '')
+        + ((o.total_usd === 0 || o.total_usd === null) && (o.total_ves === 0 || o.total_ves === null) && puedo('SERVICIOS','ELIMINAR') ? '<button class="btn-secundario" style="color:#fc8181;border-color:rgba(252,129,129,0.4);font-size:11px;padding:3px 8px" onclick="eliminarOS(' + o.id_orden + ')">🗑</button>' : '')
         + '</div></td>'
         + '</tr>';
     }).join('');
@@ -14542,7 +14542,7 @@ async function contRenderCxp() {
 <div class="modal-overlay" id="modal-ficha-inv">
   <div class="modal" style="max-width:520px">
     <div class="modal-header">
-      <h3>FICHA DEL ARTÍCULO</h3>
+      <h3>ARTÍCULO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-inv')">✕</button>
     </div>
     <div class="modal-body" id="ficha-inv-contenido"></div>
