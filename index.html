@@ -3596,7 +3596,7 @@ async function mostrarTablaParam(key) {
           + '<td style="font-size:11px;color:var(--suave)">' + (padre ? '<span style="font-family:var(--font-mono);color:var(--suave)">' + padre.codigo + '</span> ' + padre.nombre : '—') + '</td>'
           + '<td><span class="badge ' + (item.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (item.estado || 'ACTIVO') + '</span></td>'
           + '<td><div style="display:flex;gap:6px">'
-          + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-secundario" onclick="abrirParamItem(\'' + key + '\',' + item.id + ')" style="font-size:11px;padding:5px 10px">Editar</button>' : '')
+          + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-secundario" onclick="abrirParamItem(\'' + key + '\',' + item.id + ')" style="font-size:11px;padding:5px 10px">Ver</button>' : '')
           + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-peligro" onclick="eliminarParamItem(\'' + key + '\',' + item.id + ',\'' + item.nombre.replace(/'/g,"\'") + '\')" style="font-size:11px;padding:5px 10px">Eliminar</button>' : '')
           + '</div></td>'
           + '</tr>';
@@ -3609,7 +3609,7 @@ async function mostrarTablaParam(key) {
           + (def.tieneTipoSector ? '<td style="font-size:12px;color:var(--suave)">' + (item.tipo_sector || '—') + '</td>' : '')
           + '<td><span class="badge ' + (item.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (item.estado || 'ACTIVO') + '</span></td>'
           + '<td><div style="display:flex;gap:6px">'
-          + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-secundario" onclick="abrirParamItem(\'' + key + '\',' + item.id + ')" style="font-size:11px;padding:5px 10px">Editar</button>' : '')
+          + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-secundario" onclick="abrirParamItem(\'' + key + '\',' + item.id + ')" style="font-size:11px;padding:5px 10px">Ver</button>' : '')
           + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-peligro" onclick="eliminarParamItem(\'' + key + '\',' + item.id + ',\'' + item.nombre.replace(/'/g,"\'") + '\')" style="font-size:11px;padding:5px 10px">Eliminar</button>' : '')
           + '</div></td>'
           + '</tr>';
