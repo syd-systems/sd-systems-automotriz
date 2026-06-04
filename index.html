@@ -2599,7 +2599,7 @@ async function abrirNuevoUsuario() {
 
   // Cargar empleados para el selector (solo en nuevo usuario)
   try {
-    const emps = await api('empleados', 'GET', null, '?estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo,correo');
+    const emps = await api('empleados', 'GET', null, '?estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo,correo&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
     const selEmp = document.getElementById('u-emp-selector');
     if (selEmp) {
       selEmp.innerHTML = '<option value="">— Seleccionar empleado —</option>'
@@ -4765,7 +4765,7 @@ async function abrirNuevaFactura() {
 
     // Excluir OS que ya tienen factura
     try {
-      const facturadas = await api('facturas','GET',null,'?id_orden=not.is.null&select=id_orden');
+      const facturadas = await api('facturas','GET',null,'?id_orden=not.is.null&select=id_orden&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
       const idsFacturadas = new Set(facturadas.map(function(f){ return f.id_orden; }));
       osDisponibles = os.filter(function(o){ return !idsFacturadas.has(o.id_orden); });
     } catch(e) { osDisponibles = os; }
@@ -5046,7 +5046,7 @@ async function guardarFactura(emitir) {
           const numAst = 'AST-'+anioAst+'-'+String(seqAst).padStart(4,'0');
           const tasa = fac.tasa_cambio || 1;
 
-          const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo');
+          const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
           const idPeriodo = periodos.length ? periodos[0].id_periodo : null;
 
           // Obtener tasa BCV real desde la BD
@@ -6055,7 +6055,7 @@ async function renderProveedores() {
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando proveedores...</div>';
   try {
-    const proveedores = await api('proveedores', 'GET', null, '?order=nombre.asc&select=*');
+    const proveedores = await api('proveedores', 'GET', null, '?order=nombre.asc&select=*&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
     proveedoresCache = proveedores;
 
     const activos   = proveedores.filter(function(p) { return p.estado === 'ACTIVO'; }).length;
@@ -7678,7 +7678,7 @@ async function generarAsientoInventario(tipo, datos) {
     if (existAst.length) { const p = existAst[0].numero_asiento.split('-'); seq = parseInt(p[p.length-1])+1; }
     const numAst = 'AST-'+anio+'-'+String(seq).padStart(4,'0');
 
-    const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo');
+    const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
     const idPeriodo = periodos.length ? periodos[0].id_periodo : null;
 
     // Descripción del asiento
@@ -7974,7 +7974,7 @@ async function poblarFormPago(p) {
   document.getElementById('pago-tasa').value = tasa.toFixed(4);
 
   // Cargar proveedores
-  const provs = await api('proveedores','GET',null,'?order=nombre.asc&select=id_proveedor,nombre');
+  const provs = await api('proveedores','GET',null,'?order=nombre.asc&select=id_proveedor,nombre&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
   const selProv = document.getElementById('pago-proveedor');
   selProv.innerHTML = '<option value="">— Sin proveedor —</option>' +
     provs.map(function(pr){ return '<option value="'+pr.id_proveedor+'">' + pr.nombre + '</option>'; }).join('');
@@ -8296,7 +8296,7 @@ async function generarAsientoPago(p, fecha, metodo) {
   if (exist.length) { const parts = exist[0].numero_asiento.split('-'); seq = parseInt(parts[parts.length-1])+1; }
   const numAst = 'AST-'+anio+'-'+String(seq).padStart(4,'0');
 
-  const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo');
+  const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
   const idPeriodo = periodos.length ? periodos[0].id_periodo : null;
 
   const auxDesc = montoUSD > 0 ? ' (USD '+fmtUSD(montoUSD)+' × '+tasa.toFixed(4)+')' : '';
@@ -10335,7 +10335,7 @@ let gruposCatalogo = [];
 
 async function cargarGruposSelect(valorActual) {
   try {
-    const res = await api('servicios_catalogo', 'GET', null, '?select=grupo&grupo=not.is.null&order=grupo.asc');
+    const res = await api('servicios_catalogo', 'GET', null, '?select=grupo&grupo=not.is.null&order=grupo.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
     const unicos = [...new Set(res.map(function(r) { return r.grupo; }).filter(Boolean))].sort();
     gruposCatalogo = unicos;
     const sel = document.getElementById('cat-grupo');
@@ -11734,7 +11734,7 @@ function calcularTotalesOS() {
 // ─── AGREGAR LÍNEA SERVICIO DESDE CATÁLOGO ───
 async function agregarServicioCatalogo() {
   if (!catalogoCache.length) {
-    try { catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=grupo.asc,nombre.asc'); } catch(e) {}
+    try { catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=grupo.asc,nombre.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+''); } catch(e) {}
   }
   const sel    = document.getElementById('os-sel-cat');
   const precio = document.getElementById('os-precio-cat');
@@ -11804,7 +11804,7 @@ function onSelCatalogoChange() {
 // ─── AGREGAR LÍNEA REPUESTO DESDE INVENTARIO ───
 async function agregarRepuestoInventario() {
   if (!inventarioCache.length) {
-    try { inventarioCache = await api('inventario', 'GET', null, '?order=nombre.asc'); } catch(e) {}
+    try { inventarioCache = await api('inventario', 'GET', null, '?order=nombre.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+''); } catch(e) {}
   }
   const sel    = document.getElementById('os-sel-inv');
   const precio = document.getElementById('os-precio-inv');
@@ -12279,8 +12279,8 @@ async function recalcularTasaOS(id, nuevaTasa) {
 // ─── Cargar catálogo e inventario en selects del modal OS ───
 async function cargarSelectsOS() {
   try {
-    if (!catalogoCache.length) catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=grupo.asc,nombre.asc');
-    if (!inventarioCache.length) inventarioCache = await api('inventario', 'GET', null, '?order=nombre.asc');
+    if (!catalogoCache.length) catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=grupo.asc,nombre.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
+    if (!inventarioCache.length) inventarioCache = await api('inventario', 'GET', null, '?order=nombre.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
   } catch(e) {}
 
   // ── Cargar selector de GRUPOS (sin corchetes, sin categoría) ──
