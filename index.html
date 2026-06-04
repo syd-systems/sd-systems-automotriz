@@ -3654,7 +3654,7 @@ async function abrirParamItem(key, id) {
   let item = null;
   if (id) {
     try {
-      const res = await api(def.tabla, 'GET', null, '?' + def.pk + '=eq.' + id);
+      const res = await api(def.tabla, 'GET', null, '?' + def.pk + '=eq.' + parseInt(id));
       item = res[0] || null;
     } catch(e) {}
   }
