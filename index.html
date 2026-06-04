@@ -7186,7 +7186,7 @@ async function contRenderCuentas(filtro) {
           + (c.permite_movimiento ? '<span style="color:#22c55e;font-size:13px">✓</span>' : '<span style="color:var(--suave);font-size:11px">—</span>')
           + '</td>'
           + (puedo('CONTABILIDAD','PLAN_CUENTAS')
-              ? '<td style="padding:4px 8px"><button class="btn-secundario" style="font-size:11px;padding:3px 8px" onclick="contAbrirCuenta(' + c.id_cuenta + ')">✏</button></td>'
+              ? '<td style="padding:4px 8px"><button class="btn-secundario" style="font-size:11px;padding:3px 8px" onclick="contAbrirCuenta(' + c.id_cuenta + ')">Ver</button></td>'
               : '')
           + '</tr>';
       }).join('')
