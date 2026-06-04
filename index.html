@@ -4541,6 +4541,8 @@ async function verFichaEmisor(id) {
     + '<div style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div>' + (e.direccion||'—') + '</div></div>'
     + '</div>';
   var btnEditar   = document.getElementById('ficha-emisor-btn-editar');
+  window._fichaEmisorId     = e.id_emisor;
+  window._fichaEmisorNombre = e.nombre;
   var btnEliminar = document.getElementById('ficha-emisor-btn-eliminar');
   if (btnEditar)  { btnEditar._id = e.id_emisor; btnEditar.onclick = function() { cerrarModal('modal-ficha-emisor'); abrirEmisor(this._id); }; btnEditar.style.display = puedo('EMISORES','EDITAR') ? '' : 'none'; }
   if (btnEliminar){ btnEliminar._id = e.id_emisor; btnEliminar._nombre = e.nombre; btnEliminar.onclick = function() { cerrarModal('modal-ficha-emisor'); eliminarEmisor(this._id, this._nombre); }; btnEliminar.style.display = puedo('EMISORES','ELIMINAR') ? '' : 'none'; }
@@ -4569,6 +4571,35 @@ async function abrirEmisor(id) {
   if (btnElimEm) btnElimEm.style.display = document.getElementById('em-id').value ? '' : 'none';
   abrirModal('modal-emisor');
   focusFirstField('modal-emisor');
+}
+
+async function eliminarEmisorFicha() {
+  const id = window._fichaEmisorId;
+  if (!id) return;
+  const nombre = window._fichaEmisorNombre || 'esta empresa';
+  try {
+    const [asientos, facturas, pagos, ordenes] = await Promise.all([
+      api('cont_asientos',    'GET', null, '?id_emisor=eq.'+id+'&select=id_asiento&limit=1'),
+      api('facturas',         'GET', null, '?id_emisor=eq.'+id+'&select=id_factura&limit=1'),
+      api('pagos',            'GET', null, '?id_emisor=eq.'+id+'&select=id_pago&limit=1'),
+      api('ordenes_servicio', 'GET', null, '?id_emisor=eq.'+id+'&select=id_orden&limit=1'),
+    ]);
+    const motivos = [];
+    if (asientos.length > 0) motivos.push('asientos contables');
+    if (facturas.length > 0)  motivos.push('facturas');
+    if (pagos.length > 0)     motivos.push('pagos');
+    if (ordenes.length > 0)   motivos.push('órdenes de servicio');
+    if (motivos.length > 0) {
+      alert('No se puede eliminar "' + nombre + '" porque tiene ' + motivos.join(', ') + ' registrados.');
+      return;
+    }
+  } catch(e) {}
+  if (!confirm('¿Eliminar la empresa "' + nombre + '"? Esta acción no se puede deshacer.')) return;
+  try {
+    await api('emisores', 'DELETE', null, '?id_emisor=eq.' + id);
+    cerrarModal('modal-ficha-emisor');
+    renderEmisores();
+  } catch(e) { alert('Error al eliminar: ' + e.message); }
 }
 
 async function eliminarEmisor() {
