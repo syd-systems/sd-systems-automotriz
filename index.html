@@ -7456,7 +7456,7 @@ async function renderTributos() {
       + '<select id="tributos-filtro-tipo" onchange="renderTablaTributosTipo(this.value)" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
       + '<option value="">Todos los tipos</option>'
-      + tiposUnicos.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')
+      + tiposUnicos.map(function(t){ const lbl={'DEBITO':'Impuesto','CONTRIBUCION':'Contribución','TIMBRE':'Timbre Fiscal','RETENCION':'Retención'}; return '<option value="'+t+'">'+(lbl[t]||t)+'</option>'; }).join('')
       + '</select>'
       + (puedo('TRIBUTOS','CREAR') ? '<button class="btn-primario" onclick="abrirFormTributo(null)" style="font-size:12px">+ Nuevo Tributo</button>' : '')
       + '</div></div>'
@@ -7520,7 +7520,7 @@ async function mostrarTablaParamTributos() {
       + '<select id="tributos-filtro-tipo" onchange="renderTablaTributosTipo(this.value)" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
       + '<option value="">Todos los tipos</option>'
-      + tiposUnicos.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')
+      + tiposUnicos.map(function(t){ const lbl={'DEBITO':'Impuesto','CONTRIBUCION':'Contribución','TIMBRE':'Timbre Fiscal','RETENCION':'Retención'}; return '<option value="'+t+'">'+(lbl[t]||t)+'</option>'; }).join('')
       + '</select>'
       + (puedo('TRIBUTOS','CREAR') ? '<button class="btn-primario" onclick="abrirFormTributo(null)" style="font-size:12px">+ Nuevo Tributo</button>' : '')
       + '</div></div>'
@@ -7616,7 +7616,7 @@ function renderTablaTributos(filtro) {
     + '<select id="tributos-filtro-tipo" onchange="renderTablaTributosTipo(this.value)" '
     + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:10px;padding:8px 10px;border-radius:5px;outline:none">'
     + '<option value="">Todos los tipos</option>'
-    + tiposUnicos.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')
+    + tiposUnicos.map(function(t){ const lbl={'DEBITO':'Impuesto','CONTRIBUCION':'Contribución','TIMBRE':'Timbre Fiscal','RETENCION':'Retención'}; return '<option value="'+t+'">'+(lbl[t]||t)+'</option>'; }).join('')
     + '</select>'
     + '<select id="tributos-filtro-nivel" onchange="renderTablaTributosNivel(this.value)" '
     + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:10px;padding:8px 10px;border-radius:5px;outline:none">'
