@@ -7671,7 +7671,7 @@ async function toggleEstadoTributo(id, estadoActual) {
 }
 
 async function abrirFormTributo(id) {
-  const t = id ? _tributosCache.find(function(x){ return x.id_tributo === id; }) : null;
+  const t = id ? _tributosCache.find(function(x){ return x.id_tributo === parseInt(id); }) : null;
   document.getElementById('trib-id').value          = t ? t.id_tributo  : '';
   document.getElementById('trib-codigo').value      = t ? t.codigo      : '';
   document.getElementById('trib-nombre').value      = t ? t.nombre      : '';
@@ -7773,12 +7773,12 @@ async function guardarTributo() {
     else    { await api('param_tributos','POST',datos); }
     okEl.textContent = '✓ Tributo guardado correctamente.';
     okEl.style.display = 'block';
-    const idGuardado = document.getElementById('trib-id').value || null;
+    const idGuardado = parseInt(document.getElementById('trib-id').value) || null;
     setTimeout(async function() {
       _tributosCache = [];
       if (document.getElementById('tributos-tbody')) { await renderTributos(); } else { await mostrarTablaParamTributos(); }
       cerrarModal('modal-tributo');
-      if (idGuardado) setTimeout(function(){ abrirFormTributo(parseInt(idGuardado)); }, 100);
+      if (idGuardado) abrirFormTributo(idGuardado);
     }, 900);
   } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
 }
