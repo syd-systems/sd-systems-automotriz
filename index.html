@@ -4565,6 +4565,8 @@ async function abrirEmisor(id) {
   document.getElementById('em-estado').value                 = e ? (e.estado||'ACTIVO') : 'ACTIVO';
   document.getElementById('alerta-emisor-ok').style.display  = 'none';
   document.getElementById('alerta-emisor-err').style.display = 'none';
+  const btnElimEm = document.getElementById('emisor-btn-eliminar');
+  if (btnElimEm) btnElimEm.style.display = document.getElementById('em-id').value ? '' : 'none';
   abrirModal('modal-emisor');
   focusFirstField('modal-emisor');
 }
