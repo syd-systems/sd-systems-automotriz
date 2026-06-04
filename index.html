@@ -4597,8 +4597,9 @@ async function eliminarEmisorFicha() {
   if (!confirm('¿Eliminar la empresa "' + nombre + '"? Esta acción no se puede deshacer.')) return;
   try {
     await api('emisores', 'DELETE', null, '?id_emisor=eq.' + id);
+    emisoresCache = [];
     cerrarModal('modal-ficha-emisor');
-    renderEmisores();
+    await renderEmisores();
   } catch(e) { alert('Error al eliminar: ' + e.message); }
 }
 
