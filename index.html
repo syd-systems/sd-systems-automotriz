@@ -7407,7 +7407,7 @@ async function mostrarTablaParamTributos() {
       + '<th style="padding:10px 14px;font-size:11px;color:var(--suave);text-align:right">Alícuota %</th>'
       + '<th style="padding:10px 14px;font-size:11px;color:var(--suave);text-align:left">Ult. Revisión</th>'
       + '<th style="padding:10px 14px;font-size:11px;color:var(--suave);text-align:left">Estado</th>'
-      + '<th style="padding:10px 14px;font-size:11px;color:var(--suave);text-align:left">Accs.</th>'
+      + '<th style="padding:10px 14px;font-size:11px;color:var(--suave);text-align:left">Acción</th>'
       + '</tr></thead><tbody id="tributos-tbody"></tbody></table></div>';
 
     window._tributosTextoFiltro = '';
@@ -7503,7 +7503,7 @@ function renderTablaTributos(filtro) {
     + '</div></div>'
     + tributosAlerta()
     + '<div class="tabla-container"><table style="table-layout:fixed;width:100%">'
-    +'<thead><tr>'+'<th style="width:9%;font-size:11px">Código</th>'+'<th style="font-size:7px">Nombre / Organismo</th>'+'<th style="width:10%;font-size:7px">Nivel</th>'+'<th style="width:10%;font-size:7px">Tipo</th>'+'<th style="width:11%;font-size:7px">Periodicidad</th>'+'<th style="width:10%;text-align:right;font-size:7px">Alícuota %</th>'+'<th style="width:10%;font-size:7px">Ult. Revisión</th>'+'<th style="width:8%;font-size:7px">Estado</th>'+'<th style="width:8%;text-align:center;font-size:7px">Accs.</th>'+'</tr></thead>'
+    +'<thead><tr>'+'<th style="width:9%;font-size:11px">Código</th>'+'<th style="font-size:7px">Nombre / Organismo</th>'+'<th style="width:10%;font-size:7px">Nivel</th>'+'<th style="width:10%;font-size:7px">Tipo</th>'+'<th style="width:11%;font-size:7px">Periodicidad</th>'+'<th style="width:10%;text-align:right;font-size:7px">Alícuota %</th>'+'<th style="width:10%;font-size:7px">Ult. Revisión</th>'+'<th style="width:8%;font-size:7px">Estado</th>'+'<th style="width:8%;text-align:center;font-size:7px">Acción</th>'+'</tr></thead>'
     + '<tbody id="tributos-tbody"></tbody></table></div>';
 
   renderTablaTributos();
@@ -10629,7 +10629,7 @@ function invRenderTabla(items, cont) {
       + (puedo('INVENTARIO','VER_COSTOS')
           ? '<td style="font-family:var(--font-mono);font-size:12px">'
             + '<div style="color:var(--suave);font-size:9px;letter-spacing:1px">COSTO PROM. (CPP)</div>'
-            + '<div>$ ' + fmtUSD(r.precio_costo_usd) + '</div>'
+            + '<div>$ ' + (parseInt(r.stock_actual) === 0 ? '0.00' : fmtUSD(r.precio_costo_usd)) + '</div>'
             + (r.precio_costo_ultimo_usd
                 ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Última compra: $ ' + fmtUSD(r.precio_costo_ultimo_usd) + '</div>'
                 : '')
@@ -14574,7 +14574,7 @@ async function contRenderCxp() {
 <div class="modal-overlay" id="modal-ficha-inv">
   <div class="modal" style="max-width:520px">
     <div class="modal-header">
-      <h3>FICHA DEL ARTÍCULO</h3>
+      <h3>ARTÍCULO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-inv')">✕</button>
     </div>
     <div class="modal-body" id="ficha-inv-contenido"></div>
