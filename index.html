@@ -1124,6 +1124,9 @@
       <div class="nav-item" id="nav-TASAS" onclick="mostrarModulo('tasas', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">💱</span> Tipo de Cambio
       </div>
+      <div class="nav-item" id="nav-TRIBUTOS" onclick="mostrarModulo('tributos', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">📋</span> Tributos
+      </div>
 
       <div class="nav-seccion" id="nav-seccion-admin">Administración</div>
       <div class="nav-item" id="nav-EMISORES" onclick="mostrarModulo('emisores', this); cerrarMenuMovil()" style="display:none">
@@ -1134,9 +1137,6 @@
       </div>
       <div class="nav-item" id="nav-PROVEEDORES" onclick="mostrarModulo('proveedores', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">🏭</span> Proveedores
-      </div>
-      <div class="nav-item" id="nav-TRIBUTOS" onclick="mostrarModulo('proximo', this); cerrarMenuMovil()" style="display:none">
-        <span class="nav-icono">📋</span> Tributos
       </div>
       <div class="nav-seccion" id="nav-seccion-soporte">Soporte Técnico</div>
       <div class="nav-item" id="nav-USUARIOS" onclick="mostrarModulo('usuarios', this); cerrarMenuMovil()" style="display:none">
@@ -2220,6 +2220,7 @@ async function mostrarModulo(modulo, navEl) {
     case 'dashboard':    renderDashboard();    break;
     case 'usuarios':     renderUsuarios();     break;
     case 'tasas':        renderTasas();        break;
+    case 'tributos':     await renderTributos();    break;
     case 'vehiculos':    renderVehiculos();    break;
     case 'propietarios': renderPropietarios(); break;
     case 'parametros':   renderParametros();   break;
@@ -7356,6 +7357,15 @@ async function contCerrarPeriodo(id, nombre) {
 //  MÓDULO TRIBUTOS EN PARÁMETROS
 // ══════════════════════════════════════════════════════════════
 let _tributosCache = [];
+
+async function renderTributos() {
+  if (!sesionActual?.administrador && !modulosAcceso.includes('TRIBUTOS')) {
+    document.getElementById('contenido-principal').innerHTML =
+      '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
+    return;
+  }
+  await mostrarTablaParamTributos();
+}
 
 async function mostrarTablaParamTributos() {
   _paramTabActivo = 'tributos';
