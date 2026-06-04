@@ -3939,6 +3939,8 @@ function selOpts(lista, valorActual, campoNombre) {
 
 // ─── ABRIR FORMULARIO EMPLEADO ───
 async function abrirEmpleado(id) {
+  // Cargar parámetros si no están en caché
+  await cargarParamEmpleados();
   // Recargar permisos si es necesario
   if (!sesionActual?.administrador) {
     try {
