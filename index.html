@@ -4569,6 +4569,38 @@ async function abrirEmisor(id) {
   focusFirstField('modal-emisor');
 }
 
+async function eliminarEmisor() {
+  const id = document.getElementById('em-id').value;
+  if (!id) return;
+  const nombre = document.getElementById('em-nombre')?.value || 'esta empresa';
+
+  // Verificar registros asociados antes de preguntar
+  try {
+    const [asientos, facturas, pagos, ordenes] = await Promise.all([
+      api('cont_asientos',    'GET', null, '?id_emisor=eq.'+id+'&select=id_asiento&limit=1'),
+      api('facturas',         'GET', null, '?id_emisor=eq.'+id+'&select=id_factura&limit=1'),
+      api('pagos',            'GET', null, '?id_emisor=eq.'+id+'&select=id_pago&limit=1'),
+      api('ordenes_servicio', 'GET', null, '?id_emisor=eq.'+id+'&select=id_orden&limit=1'),
+    ]);
+    const motivos = [];
+    if (asientos.length > 0) motivos.push('asientos contables');
+    if (facturas.length > 0) motivos.push('facturas');
+    if (pagos.length > 0)    motivos.push('pagos');
+    if (ordenes.length > 0)  motivos.push('órdenes de servicio');
+    if (motivos.length > 0) {
+      alert('No se puede eliminar "' + nombre + '" porque tiene ' + motivos.join(', ') + ' registrados.');
+      return;
+    }
+  } catch(e) {}
+
+  if (!confirm('¿Eliminar la empresa "' + nombre + '"? Esta acción no se puede deshacer.')) return;
+  try {
+    await api('emisores', 'DELETE', null, '?id_emisor=eq.' + id);
+    cerrarModal('modal-emisor');
+    renderEmisores();
+  } catch(e) { alert('Error al eliminar: ' + e.message); }
+}
+
 async function guardarEmisor() {
   const id     = document.getElementById('em-id').value;
   const nombre = document.getElementById('em-nombre').value.trim();
@@ -14774,8 +14806,9 @@ async function contRenderCxp() {
       <div class="alerta alerta-exito" id="alerta-emisor-ok" style="margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-emisor-err" style="margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        <button class="btn-secundario" onclick="cerrarModal('modal-emisor')">Retornar</button>
+        <button class="btn-secundario" id="emisor-btn-eliminar" style="color:#fc8181;border-color:rgba(252,129,129,0.4);display:none" onclick="eliminarEmisor()">🗑 Eliminar</button>
         <button class="btn-primario" onclick="guardarEmisor()">GUARDAR</button>
+        <button class="btn-secundario" onclick="cerrarModal('modal-emisor')">Retornar</button>
       </div>
     </div>
   </div>
