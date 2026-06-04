@@ -7671,7 +7671,16 @@ async function toggleEstadoTributo(id, estadoActual) {
 }
 
 async function abrirFormTributo(id) {
-  const t = id ? _tributosCache.find(function(x){ return x.id_tributo === parseInt(id); }) : null;
+  let t = null;
+  if (id) {
+    t = _tributosCache.find(function(x){ return x.id_tributo === parseInt(id); });
+    if (!t) {
+      try {
+        const res = await api('param_tributos','GET',null,'?id_tributo=eq.'+parseInt(id)+'&select=*');
+        t = res[0] || null;
+      } catch(e) {}
+    }
+  }
   document.getElementById('trib-id').value          = t ? t.id_tributo  : '';
   document.getElementById('trib-codigo').value      = t ? t.codigo      : '';
   document.getElementById('trib-nombre').value      = t ? t.nombre      : '';
