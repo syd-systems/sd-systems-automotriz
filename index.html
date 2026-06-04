@@ -7565,8 +7565,9 @@ function renderTablaTributos(filtro) {
     });
   }
 
-  const nivColores = { NACIONAL:'badge-naranja', ESTADAL:'badge-azul', MUNICIPAL:'badge-verde' };
-  const tipColores = { DEBITO:'badge-rojo', RETENCION:'badge-naranja', CONTRIBUCION:'badge-verde', TIMBRE:'badge-gris' };
+  const nivColores  = { NACIONAL:'badge-naranja', ESTADAL:'badge-azul', MUNICIPAL:'badge-verde' };
+  const tipColores  = { DEBITO:'badge-rojo', RETENCION:'badge-naranja', CONTRIBUCION:'badge-verde', TIMBRE:'badge-gris' };
+  const tipEtiqueta = { DEBITO:'Impuesto', RETENCION:'Retención', CONTRIBUCION:'Contribución', TIMBRE:'Timbre Fiscal' };
 
   // Si ya existe el tbody, solo actualizarlo
   const tbody = document.getElementById('tributos-tbody');
@@ -7582,7 +7583,7 @@ function renderTablaTributos(filtro) {
         + (t.base_legal ? '<div style="font-size:10px;color:var(--suave)">' + t.base_legal + '</div>' : '')
         + '</td>'
         + '<td style="padding:10px 14px;font-size:10px"><span class="badge ' + (nivColores[t.nivel_gobierno]||'badge-gris') + '">' + (t.nivel_gobierno||'—') + '</span></td>'
-        + '<td style="padding:10px 14px;font-size:10px"><span class="badge ' + (tipColores[t.tipo]||'badge-gris') + '">' + (t.tipo||'—') + '</span></td>'
+        + '<td style="padding:10px 14px;font-size:10px"><span class="badge ' + (tipColores[t.tipo]||'badge-gris') + '">' + (tipEtiqueta[t.tipo] || t.tipo || '—') + '</span></td>'
         + '<td style="padding:10px 14px;font-size:10px">' + (t.periodicidad||'—') + '</td>'
         + '<td style="padding:10px 14px;text-align:right;font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--naranja)">' + alicuotaStr + '</td>'
         + '<td style="padding:10px 14px;font-size:10px">'
