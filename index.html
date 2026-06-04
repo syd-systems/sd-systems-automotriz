@@ -3483,16 +3483,16 @@ async function consultarTasaPorFecha() {
 
 // Definición de todas las tablas maestras
 const TABLAS_MAESTRAS = [
-  { key: 'areas',              tabla: 'param_areas',   pk: 'id_area',              nombre: 'Áreas',                  icono: '🏢', tieneCodigo: true,  tieneArea: false, tieneAreaPadre: true },
-  { key: 'cargos',             tabla: 'param_cargos',   pk: 'id_cargo',             nombre: 'Cargos',                 icono: '👔', tieneCodigo: false, tieneArea: true  },
-  { key: 'tipos_contrato',     tabla: 'param_tipos_contrato',   pk: 'id_tipo_contrato',     nombre: 'Tipos de Contrato',      icono: '📄', tieneCodigo: false, tieneArea: false },
-  { key: 'tipos_salario',      tabla: 'param_tipos_salario',   pk: 'id_tipo_salario',      nombre: 'Tipos de Salario',       icono: '💰', tieneCodigo: false, tieneArea: false },
-  { key: 'calculos_salario',   tabla: 'param_calculos_salario',   pk: 'id_calculo_salario',   nombre: 'Cálculo del Salario',    icono: '🧮', tieneCodigo: false, tieneArea: false, tieneDescripcion: true },
-  { key: 'frecuencias_pago',   tabla: 'param_frecuencias_pago',   pk: 'id_frecuencia_pago',   nombre: 'Frecuencias de Pago',    icono: '📅', tieneCodigo: false, tieneArea: false },
-  { key: 'niveles_educativos', tabla: 'param_niveles_educativos',   pk: 'id_nivel_educativo', nombre: 'Niveles Educativos',     icono: '🎓', tieneCodigo: false, tieneArea: false },
-  { key: 'estados_civiles',    tabla: 'param_estados_civiles',   pk: 'id_estado_civil',    nombre: 'Estados Civiles',        icono: '💍', tieneCodigo: false, tieneArea: false },
-  { key: 'sexos',              tabla: 'param_sexos',   pk: 'id_sexo',              nombre: 'Sexos',                  icono: '⚧',  tieneCodigo: false, tieneArea: false },
-  { key: 'bancos',             tabla: 'param_bancos',   pk: 'id_banco',             nombre: 'Instituciones Financieras', icono: '🏦', tieneCodigo: true,  tieneArea: false, tieneTipoSector: true },
+  { key: 'areas',              tabla: 'param_areas',   pk: 'id',              nombre: 'Áreas',                  icono: '🏢', tieneCodigo: true,  tieneArea: false, tieneAreaPadre: true },
+  { key: 'cargos',             tabla: 'param_cargos',   pk: 'id',             nombre: 'Cargos',                 icono: '👔', tieneCodigo: false, tieneArea: true  },
+  { key: 'tipos_contrato',     tabla: 'param_tipos_contrato',   pk: 'id',     nombre: 'Tipos de Contrato',      icono: '📄', tieneCodigo: false, tieneArea: false },
+  { key: 'tipos_salario',      tabla: 'param_tipos_salario',   pk: 'id',      nombre: 'Tipos de Salario',       icono: '💰', tieneCodigo: false, tieneArea: false },
+  { key: 'calculos_salario',   tabla: 'param_calculos_salario',   pk: 'id',   nombre: 'Cálculo del Salario',    icono: '🧮', tieneCodigo: false, tieneArea: false, tieneDescripcion: true },
+  { key: 'frecuencias_pago',   tabla: 'param_frecuencias_pago',   pk: 'id',   nombre: 'Frecuencias de Pago',    icono: '📅', tieneCodigo: false, tieneArea: false },
+  { key: 'niveles_educativos', tabla: 'param_niveles_educativos',   pk: 'id', nombre: 'Niveles Educativos',     icono: '🎓', tieneCodigo: false, tieneArea: false },
+  { key: 'estados_civiles',    tabla: 'param_estados_civiles',   pk: 'id',    nombre: 'Estados Civiles',        icono: '💍', tieneCodigo: false, tieneArea: false },
+  { key: 'sexos',              tabla: 'param_sexos',   pk: 'id',              nombre: 'Sexos',                  icono: '⚧',  tieneCodigo: false, tieneArea: false },
+  { key: 'bancos',             tabla: 'param_bancos',   pk: 'id',             nombre: 'Instituciones Financieras', icono: '🏦', tieneCodigo: true,  tieneArea: false, tieneTipoSector: true },
 ];
 
 // Cache de áreas para el selector de cargos
