@@ -7446,11 +7446,6 @@ async function renderTributos() {
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
       + '<input type="text" id="tributos-input-buscar" placeholder="Buscar tributo..." oninput="renderTablaTributos(this.value)" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
-      + '<select id="tributos-filtro-tipo" onchange="renderTablaTributosTipo(this.value)" '
-      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
-      + '<option value="">Todos los tipos</option>'
-      + tiposUnicos.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')
-      + '</select>'
       + '<select id="tributos-filtro-nivel" onchange="renderTablaTributosNivel(this.value)" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
       + '<option value="">Todos los niveles</option>'
@@ -7458,7 +7453,11 @@ async function renderTributos() {
       + '<option value="ESTADAL">Estadal</option>'
       + '<option value="MUNICIPAL">Municipal</option>'
       + '</select>'
-      + '<button class="btn-secundario" onclick="renderTributos()" style="font-size:12px">🔄 Actualizar</button>'
+      + '<select id="tributos-filtro-tipo" onchange="renderTablaTributosTipo(this.value)" '
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
+      + '<option value="">Todos los tipos</option>'
+      + tiposUnicos.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')
+      + '</select>'
       + (puedo('TRIBUTOS','CREAR') ? '<button class="btn-primario" onclick="abrirFormTributo(null)" style="font-size:12px">+ Nuevo Tributo</button>' : '')
       + '</div></div>'
       + tributosAlerta()
@@ -7511,11 +7510,6 @@ async function mostrarTablaParamTributos() {
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
       + '<input type="text" id="tributos-input-buscar" placeholder="Buscar tributo..." oninput="renderTablaTributos(this.value)" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
-      + '<select id="tributos-filtro-tipo" onchange="renderTablaTributosTipo(this.value)" '
-      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
-      + '<option value="">Todos los tipos</option>'
-      + tiposUnicos.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')
-      + '</select>'
       + '<select id="tributos-filtro-nivel" onchange="renderTablaTributosNivel(this.value)" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
       + '<option value="">Todos los niveles</option>'
@@ -7523,7 +7517,11 @@ async function mostrarTablaParamTributos() {
       + '<option value="ESTADAL">Estadal</option>'
       + '<option value="MUNICIPAL">Municipal</option>'
       + '</select>'
-      + '<button class="btn-secundario" onclick="mostrarTablaParamTributos()" style="font-size:12px">🔄 Actualizar</button>'
+      + '<select id="tributos-filtro-tipo" onchange="renderTablaTributosTipo(this.value)" '
+      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
+      + '<option value="">Todos los tipos</option>'
+      + tiposUnicos.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')
+      + '</select>'
       + (puedo('TRIBUTOS','CREAR') ? '<button class="btn-primario" onclick="abrirFormTributo(null)" style="font-size:12px">+ Nuevo Tributo</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
@@ -7728,7 +7726,8 @@ async function eliminarTributo() {
   try {
     await api('param_tributos','DELETE',null,'?id_tributo=eq.'+id);
     cerrarModal('modal-tributo');
-    await mostrarTablaParamTributos();
+    _tributosCache = [];
+    if (document.getElementById('tributos-tbody')) { await renderTributos(); } else { await mostrarTablaParamTributos(); }
   } catch(e) { alert('Error al eliminar: '+e.message); }
 }
 
