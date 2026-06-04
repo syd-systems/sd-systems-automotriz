@@ -7772,7 +7772,13 @@ async function guardarTributo() {
     else    { await api('param_tributos','POST',datos); }
     okEl.textContent = '✓ Tributo guardado correctamente.';
     okEl.style.display = 'block';
-    setTimeout(function(){ cerrarModal('modal-tributo'); mostrarTablaParamTributos(); }, 900);
+    setTimeout(async function() {
+      const idGuardado = document.getElementById('trib-id').value || null;
+      cerrarModal('modal-tributo');
+      _tributosCache = [];
+      if (document.getElementById('tributos-tbody')) { await renderTributos(); } else { await mostrarTablaParamTributos(); }
+      if (idGuardado) setTimeout(function(){ abrirFormTributo(parseInt(idGuardado)); }, 300);
+    }, 900);
   } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
 }
 
