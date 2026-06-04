@@ -1342,6 +1342,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // ─── ESTADO GLOBAL ───
 let sesionActual = null;  // Usuario logueado
+let _empParamCache    = {};
 let modulosAcceso = [];   // Módulos a los que tiene acceso
 
 // ─── ESTATUS EMPLEADO ───
@@ -3518,7 +3519,6 @@ async function renderParametros() {
           return '<button class="param-tab btn-secundario" id="tab-' + t.key + '" onclick="mostrarTablaParam(\'' + t.key + '\')" style="font-size:12px">'
             + t.icono + ' ' + t.nombre + '</button>';
         }).join('')}
-        <button class="param-tab btn-secundario" id="tab-tributos" onclick="mostrarTablaParamTributos()" style="font-size:12px">🧾 Tributos</button>
       </div>
       <div id="param-tabla-cont" style="padding:24px">
         <div style="color:var(--suave);font-size:13px;text-align:center;padding:32px">
