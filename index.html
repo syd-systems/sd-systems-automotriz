@@ -7724,9 +7724,11 @@ async function eliminarTributo() {
   if (!confirm('¿Está seguro que desea ELIMINAR este tributo? Esta acción no se puede deshacer.')) return;
   try {
     await api('param_tributos','DELETE',null,'?id_tributo=eq.'+id);
+    const idGuardado = id || (await api('param_tributos','GET',null,'?order=id_tributo.desc&select=id_tributo&limit=1'))[0]?.id_tributo;
     cerrarModal('modal-tributo');
     _tributosCache = [];
     if (document.getElementById('tributos-tbody')) { await renderTributos(); } else { await mostrarTablaParamTributos(); }
+    if (idGuardado) setTimeout(function(){ abrirFormTributo(idGuardado); }, 300);
   } catch(e) { alert('Error al eliminar: '+e.message); }
 }
 
