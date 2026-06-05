@@ -6433,7 +6433,7 @@ async function contCargarCuentas() {
 }
 async function contCargarPeriodos() {
   const epFilter = window._contEmisorActivo ? '&or=(id_emisor.eq.'+window._contEmisorActivo+',id_emisor.is.null)' : '';
-  contPeriodosCache = await api('cont_periodos','GET',null,'?order=fecha_inicio.desc&select=*'+epFilter);
+  contPeriodosCache = await api('cont_periodos','GET',null,'?id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=fecha_inicio.desc&select=*');
 }
 function contGetPeriodoActivo() {
   return contPeriodosCache.find(function(p){ return p.estado === 'ABIERTO'; }) || contPeriodosCache[0];
@@ -6492,7 +6492,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
     const qEstado  = filtroEstado  ? '&estado=eq.' + filtroEstado : '';
     const emisorFiltro = window._contEmisorActivo ? '&or=(id_emisor.eq.'+window._contEmisorActivo+',id_emisor.is.null)' : '';
     const asientos = await api('cont_asientos','GET',null,
-      '?order=fecha.desc,numero_asiento.desc&select=*,cont_periodos(nombre)' + qPeriodo + qEstado + emisorFiltro);
+      '?id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=fecha.desc,numero_asiento.desc&select=*,cont_periodos(nombre)' + qPeriodo + qEstado + emisorFiltro);
     contAsientosCache = asientos;
 
     const perSelect = contPeriodosCache.map(function(p){
@@ -6758,7 +6758,7 @@ async function contGuardarAsiento() {
     } else {
       // Generar número
       const anio = new Date().getFullYear();
-      const exist = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-' + anio + '-*&order=numero_asiento.desc&limit=1&select=numero_asiento');
+      const exist = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-'+anio+'-*&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
       let seq = 1;
       if (exist.length) { const p = exist[0].numero_asiento.split('-'); seq = parseInt(p[p.length-1]) + 1; }
       datos.numero_asiento = 'AST-' + anio + '-' + String(seq).padStart(4,'0');
