@@ -12476,6 +12476,27 @@ window.addEventListener('load', async () => {
           permisosActuales[p.modulo].push(p.accion);
         });
       } catch(eP) { console.warn('Error cargando permisos sessionStorage:', eP); }
+      // Recargar empresas del usuario
+      try {
+        const todasEmisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*');
+        if (usuario.administrador) {
+          _empresasUsuario = todasEmisores;
+          if (todasEmisores.length === 1) _empresaActiva = todasEmisores[0];
+        } else {
+          const ues = await api('usuarios_empresas','GET',null,
+            '?correo_usuario=eq.'+encodeURIComponent(usuario.correo_usuario)+'&activo=eq.true&select=id_emisor');
+          const idsPermitidos = new Set(ues.map(function(x){ return x.id_emisor; }));
+          _empresasUsuario = todasEmisores.filter(function(e){ return idsPermitidos.has(e.id_emisor); });
+          if (_empresasUsuario.length === 1) _empresaActiva = _empresasUsuario[0];
+        }
+        // Restaurar empresa activa desde sessionStorage si existe
+        const empGuardada = sessionStorage.getItem('sd_empresa_activa');
+        if (empGuardada) {
+          const emp = JSON.parse(empGuardada);
+          const empEncontrada = _empresasUsuario.find(function(e){ return e.id_emisor === emp.id_emisor; });
+          if (empEncontrada) _empresaActiva = empEncontrada;
+        }
+      } catch(eE) { console.warn('Error cargando empresas al restaurar sesión:', eE); }
       iniciarApp();
       iniciarTimerInactividad();
     } catch(e) {
