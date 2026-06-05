@@ -7566,8 +7566,8 @@ function renderTablaTributos(filtro) {
   }
 
   const nivColores  = { NACIONAL:'badge-naranja', ESTADAL:'badge-azul', MUNICIPAL:'badge-verde' };
-  const tipColores  = { DEBITO:'badge-rojo', RETENCION:'badge-naranja', CONTRIBUCION:'badge-verde', TIMBRE:'badge-gris' };
-  const tipEtiqueta = { DEBITO:'Impuesto', RETENCION:'Retención', CONTRIBUCION:'Contribución', TIMBRE:'Timbre Fiscal' };
+  const tipColores  = { IMPUESTO:'badge-rojo', DEBITO:'badge-rojo', RETENCION:'badge-naranja', CONTRIBUCION:'badge-verde', TIMBRE:'badge-gris' };
+  const tipEtiqueta = { IMPUESTO:'Impuesto', DEBITO:'Impuesto', RETENCION:'Retención', CONTRIBUCION:'Contribución', TIMBRE:'Timbre Fiscal' };
 
   // Si ya existe el tbody, solo actualizarlo
   const tbody = document.getElementById('tributos-tbody');
@@ -7686,7 +7686,7 @@ async function abrirFormTributo(id) {
   document.getElementById('trib-nombre').value      = t ? t.nombre      : '';
   document.getElementById('trib-descripcion').value = t ? (t.descripcion||'') : '';
   document.getElementById('trib-nivel').value       = t ? t.nivel_gobierno : 'NACIONAL';
-  document.getElementById('trib-tipo').value        = t ? t.tipo        : 'DEBITO';
+  document.getElementById('trib-tipo').value        = t ? t.tipo        : 'IMPUESTO';
   document.getElementById('trib-organismo').value   = t ? t.organismo   : '';
   document.getElementById('trib-alicuota').value    = t ? parseFloat(t.alicuota||0).toFixed(4) : '0.0000';
   document.getElementById('trib-alicuota-min').value= t ? parseFloat(t.alicuota_min||0).toFixed(4) : '0.0000';
@@ -13441,7 +13441,7 @@ async function contRenderCxp() {
         <div class="form-campo">
           <label>Tipo</label>
           <select id="trib-tipo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="DEBITO">Impuesto</option>
+            <option value="IMPUESTO">Impuesto</option>
             <option value="CONTRIBUCION">Contribución</option>
             <option value="TIMBRE">Timbre Fiscal</option>
           </select>
