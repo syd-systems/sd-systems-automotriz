@@ -6848,7 +6848,7 @@ async function contCargarMayor() {
     if (desde) qAsientos += '&fecha=gte.' + desde;
     if (hasta) qAsientos += '&fecha=lte.' + hasta;
     if (window._contEmisorActivo) qAsientos += '&or=(id_emisor.eq.'+window._contEmisorActivo+',id_emisor.is.null)';
-    const asientosRango = await api('cont_asientos','GET',null, qAsientos);
+    const asientosRango = await api('cont_asientos','GET',null, qAsientos+'&id_emisor=eq.'+(_empresaActiva?.id_emisor||0));
     const idsAsientos = asientosRango.map(function(a){ return a.id_asiento; });
 
     let lineas = [];
@@ -7801,7 +7801,7 @@ async function generarAsientoInventario(tipo, datos) {
     const tasa  = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
 
     const anio = new Date().getFullYear();
-    const existAst = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-'+anio+'-*&order=numero_asiento.desc&limit=1&select=numero_asiento');
+    const existAst = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-'+anio+'-*&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
     let seq = 1;
     if (existAst.length) { const p = existAst[0].numero_asiento.split('-'); seq = parseInt(p[p.length-1])+1; }
     const numAst = 'AST-'+anio+'-'+String(seq).padStart(4,'0');
@@ -8419,7 +8419,7 @@ async function generarAsientoPago(p, fecha, metodo) {
 
   // Número de asiento
   const anio = new Date().getFullYear();
-  const exist = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-'+anio+'-*&order=numero_asiento.desc&limit=1&select=numero_asiento');
+  const exist = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-'+anio+'-*&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
   let seq = 1;
   if (exist.length) { const parts = exist[0].numero_asiento.split('-'); seq = parseInt(parts[parts.length-1])+1; }
   const numAst = 'AST-'+anio+'-'+String(seq).padStart(4,'0');
