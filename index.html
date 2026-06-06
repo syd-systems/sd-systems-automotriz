@@ -6848,7 +6848,7 @@ async function contAnularAsiento(id) {
 // ══════════════════════════════════════════════════════════════
 //  LIBRO MAYOR
 // ══════════════════════════════════════════════════════════════
-async async function contRenderMayor() {
+async function contRenderMayor() {
   const cont = document.getElementById('cont-vista-cont');
   if (!cont) return;
   if (!_contMoneda) _contMoneda = (_empresaActiva?.moneda_principal) || 'VES';
@@ -6987,7 +6987,7 @@ async function contCargarMayor() {
 // ══════════════════════════════════════════════════════════════
 //  BALANCE GENERAL Y ESTADO DE RESULTADOS
 // ══════════════════════════════════════════════════════════════
-async async function contRenderBalance() {
+async function contRenderBalance() {
   const cont = document.getElementById('cont-vista-cont');
   if (!cont) return;
   if (!_contMoneda) _contMoneda = (_empresaActiva?.moneda_principal) || 'VES';
