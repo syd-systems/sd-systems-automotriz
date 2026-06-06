@@ -6860,7 +6860,6 @@ async function contRenderMayor() {
   const monedaLabel = _contMoneda;
   if (!contCuentasCache.length) await contCargarCuentas();
 
-  cont.innerHTML = contSelectorMoneda(hoy);
   cont.innerHTML =
     '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<h3 style="margin:0">Libro Mayor</h3>'
@@ -7059,7 +7058,7 @@ function contRenderGrupoBalance(saldos, tipo, titulo, color) {
     const subtotal = subctas.reduce(function(s,c){ return s + (saldos[c.id_cuenta]||0); },0);
     if (Math.abs(subtotal) < 0.01) return;
     total += subtotal;
-  html += contSelectorMoneda(hoy);
+  html = contSelectorMoneda(hoy) + html;
     html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px">'
       + '<span style="color:var(--suave)">' + grp.nombre + '</span>'
       + '<span style="font-family:var(--font-mono)">$ ' + fmtUSD(subtotal) + '</span></div>';
