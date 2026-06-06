@@ -6848,9 +6848,16 @@ async function contAnularAsiento(id) {
 // ══════════════════════════════════════════════════════════════
 //  LIBRO MAYOR
 // ══════════════════════════════════════════════════════════════
-async function contRenderMayor() {
+async async function contRenderMayor() {
   const cont = document.getElementById('cont-vista-cont');
   if (!cont) return;
+  if (!_contMoneda) _contMoneda = (_empresaActiva?.moneda_principal) || 'VES';
+  const monedaPrincipal = (_empresaActiva?.moneda_principal) || 'VES';
+  const usandoSecundaria = _contMoneda !== monedaPrincipal;
+  const hoy = new Date().toISOString().split('T')[0];
+  const tasa = usandoSecundaria ? await contGetTasa(hoy) : null;
+  const convertir = function(m) { return usandoSecundaria && tasa ? m / tasa : m; };
+  const monedaLabel = _contMoneda;
   if (!contCuentasCache.length) await contCargarCuentas();
 
   cont.innerHTML =
@@ -6980,9 +6987,16 @@ async function contCargarMayor() {
 // ══════════════════════════════════════════════════════════════
 //  BALANCE GENERAL Y ESTADO DE RESULTADOS
 // ══════════════════════════════════════════════════════════════
-async function contRenderBalance() {
+async async function contRenderBalance() {
   const cont = document.getElementById('cont-vista-cont');
   if (!cont) return;
+  if (!_contMoneda) _contMoneda = (_empresaActiva?.moneda_principal) || 'VES';
+  const monedaPrincipal = (_empresaActiva?.moneda_principal) || 'VES';
+  const usandoSecundaria = _contMoneda !== monedaPrincipal;
+  const hoy = new Date().toISOString().split('T')[0];
+  const tasa = usandoSecundaria ? await contGetTasa(hoy) : null;
+  const convertir = function(m) { return usandoSecundaria && tasa ? m / tasa : m; };
+  const monedaLabel = _contMoneda;
   cont.innerHTML =
     '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<h3 style="margin:0">Estados Financieros</h3>'
