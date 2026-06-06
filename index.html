@@ -10321,6 +10321,8 @@ function abrirNuevoCatalogo() {
     catSel.value = mpC;
   }
   document.getElementById('modal-cat-titulo').textContent = 'NUEVO SERVICIO';
+  const btnElimCat = document.getElementById('cat-btn-eliminar');
+  if (btnElimCat) btnElimCat.style.display = 'none';
   document.getElementById('alerta-cat-ok').style.display = 'none';
   document.getElementById('alerta-cat-err').style.display = 'none';
   cargarGruposSelect();
@@ -10347,12 +10349,34 @@ function abrirEditarCatalogo(id) {
   }
   document.getElementById('cat-activo').value = s.activo ? 'true' : 'false';
   document.getElementById('modal-cat-titulo').textContent = 'EDITAR SERVICIO';
+  const btnElimCatE = document.getElementById('cat-btn-eliminar');
+  if (btnElimCatE) { btnElimCatE.style.display = ''; window._catServicioId = s.id_servicio; }
   document.getElementById('alerta-cat-ok').style.display = 'none';
   document.getElementById('alerta-cat-err').style.display = 'none';
   cargarGruposSelect(s.grupo || '');
   cargarServiciosSelect(s.grupo || '', s.nombre);
   abrirModal('modal-catalogo');
   focusFirstField('modal-catalogo');
+}
+
+async function eliminarServicioCat() {
+  const id = window._catServicioId;
+  if (!id) return;
+  const nombre = document.getElementById('cat-nombre')?.value || 'este servicio';
+  // Verificar si tiene OS asociadas
+  try {
+    const os = await api('os_servicios','GET',null,'?id_servicio=eq.'+id+'&select=id_os_serv&limit=1');
+    if (os.length > 0) {
+      alert('No se puede eliminar "'+nombre+'" porque tiene Órdenes de Servicio asociadas.');
+      return;
+    }
+  } catch(e) {}
+  if (!confirm('¿Eliminar el servicio "'+nombre+'"? Esta acción no se puede deshacer.')) return;
+  try {
+    await api('servicios_catalogo','DELETE',null,'?id_servicio=eq.'+id);
+    cerrarModal('modal-catalogo');
+    renderCatalogo();
+  } catch(e) { alert('Error al eliminar: '+e.message); }
 }
 
 async function guardarCatalogo() {
@@ -10596,6 +10620,8 @@ function cargarDatosServicioSeleccionado(nombre) {
   }
   document.getElementById('cat-activo').value = s.activo ? 'true' : 'false';
   document.getElementById('modal-cat-titulo').textContent = 'EDITAR SERVICIO';
+  const btnElimCatE = document.getElementById('cat-btn-eliminar');
+  if (btnElimCatE) { btnElimCatE.style.display = ''; window._catServicioId = s.id_servicio; }
 }
 
 async function cargarServiciosSelect(grupo, valorActual) {
@@ -13121,8 +13147,9 @@ async function contRenderCxp() {
       <div class="alerta alerta-exito" id="alerta-cat-ok" style="margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-cat-err" style="margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        <button class="btn-secundario" onclick="cerrarModal('modal-catalogo')">Retornar</button>
+        <button class="btn-secundario" id="cat-btn-eliminar" style="color:#fc8181;border-color:rgba(252,129,129,0.4);display:none" onclick="eliminarServicioCat()">🗑 Eliminar</button>
         <button class="btn-primario" onclick="guardarCatalogo()">GUARDAR</button>
+        <button class="btn-secundario" onclick="cerrarModal('modal-catalogo')">Retornar</button>
       </div>
     </div>
   </div>
