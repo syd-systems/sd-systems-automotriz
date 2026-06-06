@@ -6860,7 +6860,7 @@ async function contRenderMayor() {
   const monedaLabel = _contMoneda;
   if (!contCuentasCache.length) await contCargarCuentas();
 
-  cont.innerHTML =
+  cont.innerHTML = contSelectorMoneda(hoy) +
     '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<h3 style="margin:0">Libro Mayor</h3>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
@@ -6997,7 +6997,7 @@ async function contRenderBalance() {
   const tasa = usandoSecundaria ? await contGetTasa(hoy) : null;
   const convertir = function(m) { return usandoSecundaria && tasa ? m / tasa : m; };
   const monedaLabel = _contMoneda;
-  cont.innerHTML =
+  cont.innerHTML = contSelectorMoneda(hoy) +
     '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<h3 style="margin:0">Estados Financieros</h3>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
@@ -7189,7 +7189,7 @@ async function contRenderConciliacion() {
   const cont = document.getElementById('cont-vista-cont');
   if (!cont) return;
   const cuentasBanco = contCuentasCache.filter(function(c){ return c.permite_movimiento && (c.codigo.startsWith('1.1.01') ); });
-  cont.innerHTML =
+  cont.innerHTML = contSelectorMoneda(hoy) +
     '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<h3 style="margin:0">Conciliación Bancaria</h3>'
     + '<button class="btn-primario" onclick="contNuevaConciliacion()">+ Nueva Conciliación</button>'
@@ -7284,7 +7284,7 @@ async function contRenderCuentas(filtro) {
 
   const tipoBadge = { ACTIVO:'badge-verde', PASIVO:'badge-rojo', PATRIMONIO:'badge-naranja', INGRESO:'badge-verde', EGRESO:'badge-rojo' };
 
-  cont.innerHTML =
+  cont.innerHTML = contSelectorMoneda(hoy) +
     '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<h3 style="margin:0">Plan de Cuentas VEN-NIF</h3>'
     + '<div style="display:flex;gap:8px;align-items:center">'
@@ -7669,7 +7669,7 @@ function renderTablaTributos(filtro) {
   const tiposUnicos = _tributosCache.map(function(t){ return t.tipo; })
     .filter(function(v,i,a){ return v && a.indexOf(v)===i; }).sort();
 
-  cont.innerHTML =
+  cont.innerHTML = contSelectorMoneda(hoy) +
     '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<div style="font-family:var(--font-display);font-size:20px;letter-spacing:1px">🧾 Tributos del Sistema</div>'
     + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
