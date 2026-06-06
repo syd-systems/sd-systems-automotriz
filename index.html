@@ -6397,7 +6397,7 @@ function contTabBtn(vista, label, permiso) {
     + label + '</button>';
 }
 
-function contCambiarVista(vista, forzar) {
+async function contCambiarVista(vista, forzar) {
   _contVista = vista;
   // Actualizar tabs
   const shell = document.getElementById('contenido-principal');
@@ -6412,14 +6412,14 @@ function contCambiarVista(vista, forzar) {
   const cont = document.getElementById('cont-vista-cont');
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
-  if      (vista === 'diario')       contRenderDiario();
-  else if (vista === 'mayor')        contRenderMayor();
-  else if (vista === 'balance')      contRenderBalance();
-  else if (vista === 'cxc')          contRenderCxc();
-  else if (vista === 'cxp')          contRenderCxp();
-  else if (vista === 'conciliacion') contRenderConciliacion();
-  else if (vista === 'cuentas')      contRenderCuentas();
-  else if (vista === 'periodos')     contRenderPeriodos();
+  if      (vista === 'diario')       await contRenderDiario();
+  else if (vista === 'mayor')        await contRenderMayor();
+  else if (vista === 'balance')      await contRenderBalance();
+  else if (vista === 'cxc')          await contRenderCxc();
+  else if (vista === 'cxp')          await contRenderCxp();
+  else if (vista === 'conciliacion') await contRenderConciliacion();
+  else if (vista === 'cuentas')      await contRenderCuentas();
+  else if (vista === 'periodos')     await contRenderPeriodos();
 }
 
 // ─── HELPERS ───
