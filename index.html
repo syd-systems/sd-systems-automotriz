@@ -6423,6 +6423,42 @@ function contCambiarVista(vista, forzar) {
 }
 
 // ─── HELPERS ───
+// ─── Moneda seleccionada para reportes contables ───
+let _contMoneda = null; // se inicializa con moneda_principal de la empresa
+
+function contGetMonedaLabel() {
+  return _contMoneda || (_empresaActiva?.moneda_principal) || 'VES';
+}
+
+async function contGetTasa(fecha) {
+  // Obtener tasa vigente para la fecha dada
+  try {
+    const res = await api('tasas','GET',null,
+      '?fecha_valor=lte.'+fecha+'&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    return res.length > 0 ? parseFloat(res[0].tipo_cambio) : null;
+  } catch(e) { return null; }
+}
+
+function contConvertirMonto(monto, tasa) {
+  // Convierte de VES a USD usando la tasa
+  if (!tasa || tasa === 0) return monto;
+  return monto / tasa;
+}
+
+function contSelectorMoneda(fechaConsulta) {
+  const monedaPrincipal = (_empresaActiva?.moneda_principal) || 'VES';
+  const monedaSecundaria = (_empresaActiva?.moneda_secundaria) || 'USD';
+  const selVal = _contMoneda || monedaPrincipal;
+  return '<div style="display:flex;align-items:center;gap:8px">'
+    + '<label style="font-size:11px;color:var(--suave)">Moneda:</label>'
+    + '<select id="cont-selector-moneda" onchange="_contMoneda=this.value;contCambiarVista(_contVista,true)" '
+    + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:4px 8px;border-radius:4px;outline:none">'
+    + '<option value="'+monedaPrincipal+'"'+(selVal===monedaPrincipal?' selected':'')+'>'+monedaPrincipal+'</option>'
+    + '<option value="'+monedaSecundaria+'"'+(selVal===monedaSecundaria?' selected':'')+'>'+monedaSecundaria+' (al cambio)</option>'
+    + '</select>'
+    + '</div>';
+}
+
 async function contCargarCuentas() {
   // Cargar cuentas del sistema (id_emisor NULL) + cuentas de la empresa activa
   const emisorFiltro = window._contEmisorActivo
