@@ -6874,9 +6874,9 @@ async function contRenderMayor() {
     + '<div id="cont-mayor-resultado"><div style="text-align:center;color:var(--suave);padding:40px">Cargando...</div></div>';
 
   // Cargar automáticamente el mayor del mes actual
-  const hoy = new Date();
-  const primerDia = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-01';
-  const ultimoDia = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-' + String(new Date(hoy.getFullYear(), hoy.getMonth()+1, 0).getDate()).padStart(2,'0');
+  const hoyMes = new Date();
+  const primerDia = hoyMes.getFullYear() + '-' + String(hoyMes.getMonth()+1).padStart(2,'0') + '-01';
+  const ultimoDia = hoyMes.getFullYear() + '-' + String(hoyMes.getMonth()+1).padStart(2,'0') + '-' + String(new Date(hoyMes.getFullYear(), hoyMes.getMonth()+1, 0).getDate()).padStart(2,'0');
   document.getElementById('cont-mayor-desde').value = primerDia;
   document.getElementById('cont-mayor-hasta').value = ultimoDia;
 
