@@ -5109,7 +5109,7 @@ async function guardarFactura(emitir) {
         try {
           const anioAst = new Date().getFullYear();
           const existAst = await api('cont_asientos','GET',null,
-            '?numero_asiento=like.AST-'+anioAst+'-*&order=numero_asiento.desc&limit=1&select=numero_asiento');
+            '?numero_asiento=like.AST-'+anioAst+'-*&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
           let seqAst = 1;
           if (existAst.length) { const pa = existAst[0].numero_asiento.split('-'); seqAst = parseInt(pa[pa.length-1]) + 1; }
           const numAst = 'AST-'+anioAst+'-'+String(seqAst).padStart(4,'0');
@@ -6960,7 +6960,7 @@ async function contGenerarBalance() {
   try {
     // Obtener saldos de todas las cuentas con movimientos aprobados hasta la fecha
     const lineas = await api('cont_asiento_lineas','GET',null,
-      '?select=id_cuenta,debe_usd,haber_usd,cont_asientos!inner(fecha,estado)'
+      '?select=id_cuenta,debe_usd,haber_usd,cont_asientos!inner(fecha,estado,id_emisor)&cont_asientos.id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+''
       + '&cont_asientos.estado=eq.APROBADO'
       + (hasta ? '&cont_asientos.fecha=lte.' + hasta : ''));
 
@@ -7158,6 +7158,7 @@ async function contIniciarConciliacion() {
 
   const lineas = await api('cont_asiento_lineas','GET',null,
     '?id_cuenta=eq.' + idCuenta
+    + '&cont_asientos.id_emisor=eq.'+(_empresaActiva?.id_emisor||0)
     + '&select=*,cont_asientos!inner(fecha,numero_asiento,descripcion,estado)'
     + '&cont_asientos.estado=eq.APROBADO'
     + '&cont_asientos.fecha=gte.' + desde
