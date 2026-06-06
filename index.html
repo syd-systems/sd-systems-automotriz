@@ -10330,7 +10330,7 @@ function abrirNuevoCatalogo() {
   focusFirstField('modal-catalogo');
 }
 
-function abrirEditarCatalogo(id) {
+async function abrirEditarCatalogo(id) {
   const s = catalogoCache.find(function(x) { return x.id_servicio === id; });
   if (!s) return;
   document.getElementById('cat-id').value = s.id_servicio;
