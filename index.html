@@ -5132,7 +5132,7 @@ async function guardarFactura(emitir) {
             descripcion:    'Factura '+fac.numero_factura+' — '+recNom,
             tipo:           'AUTOMATICO',
             referencia:     fac.numero_factura,
-            moneda_base:    'USD',
+            moneda_base:    document.getElementById('cont-form-moneda')?.value || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase(),
             tasa_bcv:       tasaReal,
             id_periodo:     idPeriodo,
             id_emisor:      fac.id_emisor || null,
@@ -6695,7 +6695,7 @@ async function contAbrirAsiento(id) {
     document.getElementById('cont-form-desc').value   = '';
     document.getElementById('cont-form-ref').value    = '';
     document.getElementById('cont-form-tipo').value   = 'MANUAL';
-    document.getElementById('cont-form-moneda').value = 'USD';
+    document.getElementById('cont-form-moneda').value = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
     document.getElementById('cont-form-periodo').value = periodoActivo ? periodoActivo.id_periodo : '';
     document.getElementById('modal-cont-form-titulo').textContent = 'NUEVO ASIENTO CONTABLE';
     // Cargar tasa BCV del día
@@ -7894,7 +7894,7 @@ async function generarAsientoInventario(tipo, datos) {
       descripcion:    descripciones[tipo] || 'Movimiento Inventario',
       tipo:           'AUTOMATICO',
       referencia:     datos.referencia || null,
-      moneda_base:    'USD',
+      moneda_base:    ((_empresaActiva?.moneda_principal)||'VES').toUpperCase(),
       tasa_bcv:       tasa,
       id_periodo:     idPeriodo,
       id_emisor:      _empresaActiva ? _empresaActiva.id_emisor : null,
