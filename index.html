@@ -6733,8 +6733,8 @@ async function contRenderLineasForm() {
     + '<thead><tr>'
     + '<th style="text-align:left;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:45%">CUENTA</th>'
     + '<th style="padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:25%">DESCRIPCIÓN</th>'
-    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:12%">DEBE</th>'
-    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:12%">HABER</th>'
+    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:12%">DEBE (' + ((_empresaActiva?.moneda_principal)||'VES') + ')</th>'
+    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:12%">HABER (' + ((_empresaActiva?.moneda_principal)||'VES') + ')</th>'
     + '<th style="width:40px"></th>'
     + '</tr></thead><tbody>'
     + contLineasAsiento.map(function(l, i) {
@@ -6760,10 +6760,10 @@ async function contRenderLineasForm() {
     + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">'
     + '<button onclick="contLineasAsiento.push({id_cuenta:null,descripcion:\'\',debe_usd:0,haber_usd:0});contRenderLineasForm()" style="background:none;border:1px dashed var(--borde);color:var(--suave);padding:7px 14px;border-radius:5px;cursor:pointer;font-size:12px">+ Agregar línea</button>'
     + '<div style="display:flex;gap:20px;align-items:center">'
-    + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave)">DEBE</div><div style="font-family:var(--font-mono);font-size:14px;color:#22c55e">$ ' + fmtUSD(totalDebe) + '</div></div>'
-    + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave)">HABER</div><div style="font-family:var(--font-mono);font-size:14px;color:#fc8181">$ ' + fmtUSD(totalHaber) + '</div></div>'
+    + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave)">DEBE</div><div style="font-family:var(--font-mono);font-size:14px;color:#22c55e">' + fmtUSD(totalDebe) + '</div></div>'
+    + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave)">HABER</div><div style="font-family:var(--font-mono);font-size:14px;color:#fc8181">' + fmtUSD(totalHaber) + '</div></div>'
     + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave)">DIFERENCIA</div>'
-    + '<div style="font-family:var(--font-mono);font-size:14px;color:' + (cuadra?'#22c55e':'#fc8181') + '">' + (cuadra ? '✓ Cuadrado' : '$ ' + fmtUSD(Math.abs(diff))) + '</div></div>'
+    + '<div style="font-family:var(--font-mono);font-size:14px;color:' + (cuadra?'#22c55e':'#fc8181') + '">' + (cuadra ? '✓ Cuadrado' : fmtUSD(Math.abs(diff))) + '</div></div>'
     + '</div></div>';
 }
 
