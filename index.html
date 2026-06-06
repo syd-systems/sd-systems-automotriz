@@ -10336,6 +10336,15 @@ function abrirEditarCatalogo(id) {
   document.getElementById('cat-categoria').value = s.categoria || '';
   document.getElementById('cat-carroceria').value = s.tipo_carroceria || '';
   document.getElementById('cat-precio').value = s.precio_usd || '';
+  const catSelE = document.getElementById('cat-moneda');
+  if (catSelE) {
+    const mpE = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
+    const msE = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
+    const lblE = { VES:'Bolívar', USD:'Dólar', EUR:'Euro' };
+    catSelE.innerHTML = '<option value="'+mpE+'">'+mpE+' — '+(lblE[mpE]||mpE)+'</option>' +
+      (msE !== mpE ? '<option value="'+msE+'">'+msE+' — '+(lblE[msE]||msE)+'</option>' : '');
+    catSelE.value = s.moneda_precio || mpE;
+  }
   document.getElementById('cat-activo').value = s.activo ? 'true' : 'false';
   document.getElementById('modal-cat-titulo').textContent = 'EDITAR SERVICIO';
   document.getElementById('alerta-cat-ok').style.display = 'none';
@@ -10576,6 +10585,15 @@ function cargarDatosServicioSeleccionado(nombre) {
   document.getElementById('cat-categoria').value = s.categoria || '';
   document.getElementById('cat-carroceria').value = s.tipo_carroceria || '';
   document.getElementById('cat-precio').value = s.precio_usd || '';
+  const catSelE = document.getElementById('cat-moneda');
+  if (catSelE) {
+    const mpE = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
+    const msE = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
+    const lblE = { VES:'Bolívar', USD:'Dólar', EUR:'Euro' };
+    catSelE.innerHTML = '<option value="'+mpE+'">'+mpE+' — '+(lblE[mpE]||mpE)+'</option>' +
+      (msE !== mpE ? '<option value="'+msE+'">'+msE+' — '+(lblE[msE]||msE)+'</option>' : '');
+    catSelE.value = s.moneda_precio || mpE;
+  }
   document.getElementById('cat-activo').value = s.activo ? 'true' : 'false';
   document.getElementById('modal-cat-titulo').textContent = 'EDITAR SERVICIO';
 }
