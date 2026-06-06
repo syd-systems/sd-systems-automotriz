@@ -10310,6 +10310,16 @@ function abrirNuevoCatalogo() {
   document.getElementById('cat-carroceria').value = '';
   document.getElementById('cat-precio').value = '';
   document.getElementById('cat-activo').value = 'true';
+  // Poblar selector de moneda
+  const catSel = document.getElementById('cat-moneda');
+  if (catSel) {
+    const mpC = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
+    const msC = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
+    const lblC = { VES:'Bolívar', USD:'Dólar', EUR:'Euro' };
+    catSel.innerHTML = '<option value="'+mpC+'">'+mpC+' — '+(lblC[mpC]||mpC)+'</option>' +
+      (msC !== mpC ? '<option value="'+msC+'">'+msC+' — '+(lblC[msC]||msC)+'</option>' : '');
+    catSel.value = mpC;
+  }
   document.getElementById('modal-cat-titulo').textContent = 'NUEVO SERVICIO';
   document.getElementById('alerta-cat-ok').style.display = 'none';
   document.getElementById('alerta-cat-err').style.display = 'none';
