@@ -10325,7 +10325,7 @@ function abrirNuevoCatalogo() {
   if (btnElimCat) btnElimCat.style.display = 'none';
   document.getElementById('alerta-cat-ok').style.display = 'none';
   document.getElementById('alerta-cat-err').style.display = 'none';
-  cargarGruposSelect();
+  await cargarGruposSelect();
   abrirModal('modal-catalogo');
   focusFirstField('modal-catalogo');
 }
@@ -10353,7 +10353,7 @@ function abrirEditarCatalogo(id) {
   if (btnElimCatE) { btnElimCatE.style.display = ''; window._catServicioId = s.id_servicio; }
   document.getElementById('alerta-cat-ok').style.display = 'none';
   document.getElementById('alerta-cat-err').style.display = 'none';
-  cargarGruposSelect(s.grupo || '');
+  await cargarGruposSelect(s.grupo || '');
   cargarServiciosSelect(s.grupo || '', s.nombre);
   abrirModal('modal-catalogo');
   focusFirstField('modal-catalogo');
