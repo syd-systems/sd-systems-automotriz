@@ -6685,7 +6685,15 @@ async function contAbrirAsiento(id) {
     document.getElementById('cont-form-desc').value        = ast.descripcion;
     document.getElementById('cont-form-ref').value         = ast.referencia || '';
     document.getElementById('cont-form-tipo').value        = ast.tipo;
-    document.getElementById('cont-form-moneda').value      = ast.moneda_base;
+    // Poblar select de moneda con monedas de la empresa
+  const selMoneda = document.getElementById('cont-form-moneda');
+  const mpEmisor = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
+  const msEmisor = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
+  const monedaLabels = { VES:'Bolívar', USD:'Dólar', EUR:'Euro', COP:'Peso Col.' };
+  selMoneda.innerHTML =
+    '<option value="'+mpEmisor+'">'+mpEmisor+' — '+(monedaLabels[mpEmisor]||mpEmisor)+'</option>' +
+    (msEmisor !== mpEmisor ? '<option value="'+msEmisor+'">'+msEmisor+' — '+(monedaLabels[msEmisor]||msEmisor)+'</option>' : '');
+  selMoneda.value = ast ? (ast.moneda_base||mpEmisor) : mpEmisor;
     document.getElementById('cont-form-tasa').value        = parseFloat(ast.tasa_bcv||1).toFixed(2);
     document.getElementById('cont-form-periodo').value     = ast.id_periodo || '';
     document.getElementById('modal-cont-form-titulo').textContent = 'EDITAR ASIENTO — ' + ast.numero_asiento;
@@ -13174,7 +13182,7 @@ async function contRenderCxp() {
           </select>
         </div>
         <div class="form-campo">
-          <label>Moneda Base</label>
+          <label>Moneda Principal</label>
           <select id="cont-form-moneda" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="USD">USD — Dólar</option>
             <option value="VES">VES — Bolívar</option>
