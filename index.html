@@ -6695,10 +6695,10 @@ async function contRenderLineasForm() {
   cont.innerHTML =
     '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px">'
     + '<thead><tr>'
-    + '<th style="text-align:left;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:35%">CUENTA</th>'
-    + '<th style="padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:20%">DESCRIPCIÓN</th>'
-    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:15%">DEBE USD</th>'
-    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:15%">HABER USD</th>'
+    + '<th style="text-align:left;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:45%">CUENTA</th>'
+    + '<th style="padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:25%">DESCRIPCIÓN</th>'
+    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:12%">DEBE USD</th>'
+    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:12%">HABER USD</th>'
     + '<th style="width:40px"></th>'
     + '</tr></thead><tbody>'
     + contLineasAsiento.map(function(l, i) {
@@ -13092,7 +13092,7 @@ async function contRenderCxp() {
 
 <!-- FORM ASIENTO -->
 <div class="modal-overlay" id="modal-cont-asiento-form">
-  <div class="modal" style="max-width:860px">
+  <div class="modal" style="max-width:1100px">
     <div class="modal-header">
       <h3 id="modal-cont-form-titulo">NUEVO ASIENTO CONTABLE</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-cont-asiento-form')">✕</button>
