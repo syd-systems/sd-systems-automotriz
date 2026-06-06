@@ -6581,8 +6581,8 @@ async function contVerAsiento(id) {
       + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'
       + '<thead><tr>'
       + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CUENTA</th>'
-      + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">DEBE USD</th>'
-      + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">HABER USD</th>'
+      + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">DEBE</th>'
+      + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">HABER</th>'
       + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">DEBE Bs</th>'
       + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">HABER Bs</th>'
       + '</tr></thead><tbody>'
@@ -6697,16 +6697,26 @@ async function contRenderLineasForm() {
     + '<thead><tr>'
     + '<th style="text-align:left;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:45%">CUENTA</th>'
     + '<th style="padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:25%">DESCRIPCIÓN</th>'
-    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:12%">DEBE USD</th>'
-    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:12%">HABER USD</th>'
+    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:12%">DEBE</th>'
+    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:12%">HABER</th>'
     + '<th style="width:40px"></th>'
     + '</tr></thead><tbody>'
     + contLineasAsiento.map(function(l, i) {
         return '<tr>'
           + '<td style="padding:4px"><select onchange="contLineasAsiento[' + i + '].id_cuenta=parseInt(this.value)" style="width:100%;' + contSelStyle() + ';font-size:11px">' + contBuildCuentaSelect(l.id_cuenta) + '</select></td>'
           + '<td style="padding:4px"><input type="text" value="' + (l.descripcion||'') + '" onchange="contLineasAsiento[' + i + '].descripcion=this.value" placeholder="Detalle..." style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:11px;padding:6px 8px;border-radius:4px;outline:none"></td>'
-          + '<td style="padding:4px"><input type="number" value="' + (parseFloat(l.debe_usd||0).toFixed(2)) + '" min="0" step="0.01" onchange="contLineasAsiento[' + i + '].debe_usd=parseFloat(this.value)||0;contLineasAsiento[' + i + '].haber_usd=0;this.closest(\'tr\').nextElementSibling;contRenderLineasForm()" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:#22c55e;font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right"></td>'
-          + '<td style="padding:4px"><input type="number" value="' + (parseFloat(l.haber_usd||0).toFixed(2)) + '" min="0" step="0.01" onchange="contLineasAsiento[' + i + '].haber_usd=parseFloat(this.value)||0;contLineasAsiento[' + i + '].debe_usd=0;contRenderLineasForm()" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:#fc8181;font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right"></td>'
+          + (function(){
+              const cInfo = contCuentasCache.find(function(x){ return x.id_cuenta === l.id_cuenta; });
+              const esDeudora = !cInfo || cInfo.naturaleza === 'DEUDORA';
+              if (!esDeudora) return '<td style="padding:4px;text-align:center;color:var(--suave);font-size:11px">—</td>';
+              return '<td style="padding:4px"><input type="number" value="' + (parseFloat(l.debe_usd||0).toFixed(2)) + '" min="0" step="0.01" onchange="contLineasAsiento[' + i + '].debe_usd=parseFloat(this.value)||0;contLineasAsiento[' + i + '].haber_usd=0;contRenderLineasForm()" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:#22c55e;font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right"></td>';
+            })()
+          + (function(){
+              const cInfo2 = contCuentasCache.find(function(x){ return x.id_cuenta === l.id_cuenta; });
+              const esAcreedora = cInfo2 && cInfo2.naturaleza === 'ACREEDORA';
+              if (!esAcreedora) return '<td style="padding:4px;text-align:center;color:var(--suave);font-size:11px">—</td>';
+              return '<td style="padding:4px"><input type="number" value="' + (parseFloat(l.haber_usd||0).toFixed(2)) + '" min="0" step="0.01" onchange="contLineasAsiento[' + i + '].haber_usd=parseFloat(this.value)||0;contLineasAsiento[' + i + '].debe_usd=0;contRenderLineasForm()" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:#f87171;font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right"></td>';
+            })()
           + '<td style="padding:4px;text-align:center"><button onclick="contLineasAsiento.splice(' + i + ',1);contRenderLineasForm()" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px">✕</button></td>'
           + '</tr>';
       }).join('')
