@@ -6427,7 +6427,7 @@ async function contCambiarVista(vista, forzar) {
 let _contMoneda = null; // se inicializa con moneda_principal de la empresa
 
 function contGetMonedaLabel() {
-  return _contMoneda || (_empresaActiva?.moneda_principal) || 'VES';
+  return _contMoneda || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase().toUpperCase();
 }
 
 async function contGetTasa(fecha) {
@@ -6446,8 +6446,8 @@ function contConvertirMonto(monto, tasa) {
 }
 
 function contSelectorMoneda(fechaConsulta) {
-  const monedaPrincipal = (_empresaActiva?.moneda_principal) || 'VES';
-  const monedaSecundaria = (_empresaActiva?.moneda_secundaria) || 'USD';
+  const monedaPrincipal = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase().toUpperCase();
+  const monedaSecundaria = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
   const selVal = _contMoneda || monedaPrincipal;
   return '<div style="display:flex;align-items:center;gap:8px">'
     + '<label style="font-size:11px;color:var(--suave)">Moneda:</label>'
@@ -6733,8 +6733,8 @@ async function contRenderLineasForm() {
     + '<thead><tr>'
     + '<th style="text-align:left;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:45%">CUENTA</th>'
     + '<th style="padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:25%">DESCRIPCIÓN</th>'
-    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:12%">DEBE (' + ((_empresaActiva?.moneda_principal)||'VES') + ')</th>'
-    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:12%">HABER (' + ((_empresaActiva?.moneda_principal)||'VES') + ')</th>'
+    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:12%">DEBE (' + ((_empresaActiva?.moneda_principal)||'VES').toUpperCase() + ')</th>'
+    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:12%">HABER (' + ((_empresaActiva?.moneda_principal)||'VES').toUpperCase() + ')</th>'
     + '<th style="width:40px"></th>'
     + '</tr></thead><tbody>'
     + contLineasAsiento.map(function(l, i) {
@@ -6851,8 +6851,8 @@ async function contAnularAsiento(id) {
 async function contRenderMayor() {
   const cont = document.getElementById('cont-vista-cont');
   if (!cont) return;
-  if (!_contMoneda) _contMoneda = (_empresaActiva?.moneda_principal) || 'VES';
-  const monedaPrincipal = (_empresaActiva?.moneda_principal) || 'VES';
+  if (!_contMoneda) _contMoneda = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase().toUpperCase();
+  const monedaPrincipal = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase().toUpperCase();
   const usandoSecundaria = _contMoneda !== monedaPrincipal;
   const hoy = new Date().toISOString().split('T')[0];
   const tasa = usandoSecundaria ? await contGetTasa(hoy) : null;
@@ -6990,8 +6990,8 @@ async function contCargarMayor() {
 async function contRenderBalance() {
   const cont = document.getElementById('cont-vista-cont');
   if (!cont) return;
-  if (!_contMoneda) _contMoneda = (_empresaActiva?.moneda_principal) || 'VES';
-  const monedaPrincipal = (_empresaActiva?.moneda_principal) || 'VES';
+  if (!_contMoneda) _contMoneda = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase().toUpperCase();
+  const monedaPrincipal = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase().toUpperCase();
   const usandoSecundaria = _contMoneda !== monedaPrincipal;
   const hoy = new Date().toISOString().split('T')[0];
   const tasa = usandoSecundaria ? await contGetTasa(hoy) : null;
