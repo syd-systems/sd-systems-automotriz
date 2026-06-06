@@ -10262,7 +10262,7 @@ async function renderCatalogo(filtro, categoria) {
 
     const tabla = document.getElementById('tabla-cat-cont');
     if (tabla) tabla.innerHTML = '<table><thead><tr>'
-      + '<th style="font-size:13px">Grupo</th><th style="font-size:13px">Servicio</th><th style="font-size:13px">Carrocería</th><th style="font-size:13px">Precio USD</th><th style="font-size:13px">Estado</th><th style="font-size:13px">Acción</th>'
+      + '<th style="font-size:13px">Grupo</th><th style="font-size:13px">Servicio</th><th style="font-size:13px">Carrocería</th><th style="font-size:13px">Precio</th><th style="font-size:13px">Estado</th><th style="font-size:13px">Acción</th>'
       + '</tr></thead><tbody>' + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px;font-size:14px">Sin servicios registrados</td></tr>') + '</tbody></table>';
 
   } catch(e) {
@@ -10346,6 +10346,7 @@ async function guardarCatalogo() {
   const cat        = document.getElementById('cat-categoria').value.trim();
   const carroceria = document.getElementById('cat-carroceria').value.trim();
   const precio     = parseFloat(document.getElementById('cat-precio').value) || 0;
+  const monedaServ = document.getElementById('cat-moneda')?.value || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
   const activo     = document.getElementById('cat-activo').value === 'true';
   const okEl       = document.getElementById('alerta-cat-ok');
   const errEl      = document.getElementById('alerta-cat-err');
