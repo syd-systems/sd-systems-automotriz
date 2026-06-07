@@ -10323,6 +10323,11 @@ async function abrirNuevoCatalogo() {
   document.getElementById('modal-cat-titulo').textContent = 'NUEVO SERVICIO';
   const btnElimCat = document.getElementById('cat-btn-eliminar');
   if (btnElimCat) btnElimCat.style.display = 'none';
+  // Modo crear: input texto visible, select oculto
+  const catNombreSelect = document.getElementById('cat-nombre');
+  const catNombreInput  = document.getElementById('cat-nombre-nuevo');
+  if (catNombreSelect) catNombreSelect.style.display = 'none';
+  if (catNombreInput)  { catNombreInput.style.display = ''; catNombreInput.value = ''; }
   document.getElementById('alerta-cat-ok').style.display = 'none';
   document.getElementById('alerta-cat-err').style.display = 'none';
   await cargarGruposSelect();
@@ -10349,6 +10354,11 @@ async function abrirEditarCatalogo(id) {
   }
   document.getElementById('cat-activo').value = s.activo ? 'true' : 'false';
   document.getElementById('modal-cat-titulo').textContent = 'EDITAR SERVICIO';
+  // Modo editar: select visible, input oculto
+  const catNombreSel2 = document.getElementById('cat-nombre');
+  const catNombreInp2 = document.getElementById('cat-nombre-nuevo');
+  if (catNombreSel2) catNombreSel2.style.display = '';
+  if (catNombreInp2) catNombreInp2.style.display = 'none';
   const btnElimCatE = document.getElementById('cat-btn-eliminar');
   if (btnElimCatE) { btnElimCatE.style.display = ''; window._catServicioId = s.id_servicio; }
   document.getElementById('alerta-cat-ok').style.display = 'none';
@@ -10384,7 +10394,10 @@ async function guardarCatalogo() {
   if (id && !puedo('CATALOGO','EDITAR')) { alert('No tiene permiso para editar servicios.'); return; }
   if (!id && !puedo('CATALOGO','CREAR')) { alert('No tiene permiso para crear servicios.'); return; }
   const grupo      = document.getElementById('cat-grupo').value.trim();
-  const nombre     = document.getElementById('cat-nombre').value.trim();
+  const esNuevo    = document.getElementById('cat-id').value === '';
+  const nombre     = esNuevo
+    ? (document.getElementById('cat-nombre-nuevo')?.value || '').trim()
+    : document.getElementById('cat-nombre').value.trim();
   const desc       = document.getElementById('cat-descripcion').value.trim();
   const cat        = document.getElementById('cat-categoria').value.trim();
   const carroceria = document.getElementById('cat-carroceria').value.trim();
@@ -10642,6 +10655,11 @@ function cargarDatosServicioSeleccionado(nombre) {
   }
   document.getElementById('cat-activo').value = s.activo ? 'true' : 'false';
   document.getElementById('modal-cat-titulo').textContent = 'EDITAR SERVICIO';
+  // Modo editar: select visible, input oculto
+  const catNombreSel2 = document.getElementById('cat-nombre');
+  const catNombreInp2 = document.getElementById('cat-nombre-nuevo');
+  if (catNombreSel2) catNombreSel2.style.display = '';
+  if (catNombreInp2) catNombreInp2.style.display = 'none';
   const btnElimCatE = document.getElementById('cat-btn-eliminar');
   if (btnElimCatE) { btnElimCatE.style.display = ''; window._catServicioId = s.id_servicio; }
 }
@@ -13127,7 +13145,7 @@ async function contRenderCxp() {
             <select id="cat-nombre" onchange="cargarDatosServicioSeleccionado(this.value)" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
               <option value="">— Seleccionar servicio —</option>
             </select>
-            <button type="button"
+            <input type="text" id="cat-nombre-nuevo" placeholder="Nombre del nuevo servicio..." style="flex:1;display:none;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
           </div>
         </div>
         <div class="form-campo form-full">
