@@ -10694,6 +10694,18 @@ async function agregarGrupoCatalogo() {
     return;
   }
 
+  // Guardar en param_grupos_servicio
+  try {
+    await api('param_grupos_servicio','POST',{
+      nombre: nombre,
+      estado: 'ACTIVO',
+      id_emisor: _empresaActiva?.id_emisor
+    });
+  } catch(e) {
+    alert('Error al guardar grupo: ' + e.message);
+    return;
+  }
+
   gruposCatalogo.push(nombre);
   gruposCatalogo.sort();
   input.value = '';
