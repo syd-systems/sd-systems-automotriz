@@ -10436,7 +10436,7 @@ async function guardarCatalogo() {
 
   try {
     const datos = { nombre: nombreFinal, grupo: grupoFinal, descripcion: desc || null, categoria: cat || null,
-      tipo_carroceria: carroceria || null, precio_usd: precio, activo,
+      tipo_carroceria: carroceria || null, precio_usd: precio, moneda_precio: monedaServ, activo,
       id_usuario: sesionActual.correo_usuario };
     if (id) {
       await api('servicios_catalogo', 'PATCH', datos, '?id_servicio=eq.' + id);
