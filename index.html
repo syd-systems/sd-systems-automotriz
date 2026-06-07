@@ -10364,6 +10364,11 @@ async function abrirEditarCatalogo(id) {
   document.getElementById('alerta-cat-ok').style.display = 'none';
   document.getElementById('alerta-cat-err').style.display = 'none';
   await cargarGruposSelect(s.grupo || '');
+  // Asignar grupo explícitamente
+  if (s.grupo) {
+    const selGrupo = document.getElementById('cat-grupo');
+    if (selGrupo) selGrupo.value = s.grupo;
+  }
   cargarServiciosSelect(s.grupo || '', s.nombre);
   abrirModal('modal-catalogo');
   focusFirstField('modal-catalogo');
@@ -10411,7 +10416,7 @@ async function guardarCatalogo() {
   if (!nombre) { errEl.textContent = 'El nombre del servicio es obligatorio.'; errEl.style.display = 'block'; return; }
 
   const nombreFinal = capitalizarNombre(nombre);
-  const grupoFinal  = grupo ? grupo.toUpperCase() : null;
+  const grupoFinal  = (grupo && grupo !== '') ? grupo.toUpperCase() : null;
 
   // Validar duplicado solo si es registro verdaderamente nuevo (sin id y sin match en caché del mismo grupo)
   if (!id) {
