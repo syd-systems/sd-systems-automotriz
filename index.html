@@ -10401,7 +10401,7 @@ async function guardarCatalogo() {
   const desc       = document.getElementById('cat-descripcion').value.trim();
   const cat        = document.getElementById('cat-categoria').value.trim();
   const carroceria = document.getElementById('cat-carroceria').value.trim();
-  const precio     = parseFloat(document.getElementById('cat-precio').value) || 0;
+  const precio     = Math.round(parseFloat(document.getElementById('cat-precio').value) * 100) / 100 || 0;
   const monedaServ = document.getElementById('cat-moneda')?.value || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
   const activo     = document.getElementById('cat-activo').value === 'true';
   const okEl       = document.getElementById('alerta-cat-ok');
@@ -10422,7 +10422,8 @@ async function guardarCatalogo() {
     if (duplicado) {
       // Si ya existe, actualizar ese registro en lugar de crear uno nuevo
       const datos = { descripcion: desc || null, categoria: cat || null,
-        tipo_carroceria: carroceria || null, precio_usd: precio, activo,
+        tipo_carroceria: carroceria || null, precio_usd: precio,
+        moneda_precio: monedaServ, activo,
         id_usuario: sesionActual.correo_usuario };
       try {
         await api('servicios_catalogo', 'PATCH', datos, '?id_servicio=eq.' + duplicado.id_servicio);
