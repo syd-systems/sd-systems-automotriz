@@ -10451,6 +10451,9 @@ async function guardarCatalogo() {
         const grupo = document.getElementById('cat-grupo')?.value || '';
         await renderListaServicios(grupo);
       } else {
+        // Limpiar caché para forzar recarga completa
+        catalogoCache = [];
+        gruposCatalogo = [];
         await renderCatalogo();
       }
     }, 1000);
