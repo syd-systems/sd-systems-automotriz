@@ -10575,6 +10575,21 @@ async function eliminarServicioEnLinea(id, nombre) {
 // ─── GESTIÓN DE GRUPOS DEL CATÁLOGO ───
 let gruposCatalogo = [];
 
+async function crearNuevoGrupo(selectEl) {
+  const nombre = prompt('Nombre del nuevo grupo:');
+  if (!nombre || !nombre.trim()) { selectEl.value = ''; return; }
+  const nombreTrim = nombre.trim().toUpperCase();
+  try {
+    await api('param_grupos_servicio','POST',{
+      nombre: nombreTrim,
+      estado: 'ACTIVO',
+      id_emisor: _empresaActiva?.id_emisor
+    });
+    await cargarGruposSelect(nombreTrim);
+    cargarServiciosSelect(nombreTrim);
+  } catch(e) { alert('Error al crear grupo: '+e.message); selectEl.value = ''; }
+}
+
 async function cargarGruposSelect(valorActual) {
   try {
     const res = await api('param_grupos_servicio', 'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre&id_emisor=eq.'+(_empresaActiva?.id_emisor||0));
@@ -10585,7 +10600,8 @@ async function cargarGruposSelect(valorActual) {
     sel.innerHTML = '<option value="">— Sin grupo —</option>'
       + unicos.map(function(g) {
           return '<option value="' + g + '"' + (g === valorActual ? ' selected' : '') + '>' + g + '</option>';
-        }).join('');
+        }).join('')
+      + '<option value="__nuevo__" style="color:var(--naranja);font-weight:600">+ Nuevo Grupo...</option>';
     if (valorActual) sel.value = valorActual;
   } catch(e) {}
 }
@@ -13080,7 +13096,7 @@ async function contRenderCxp() {
         <div class="form-campo form-full">
           <label style="font-size:13px;font-weight:700;color:var(--texto);letter-spacing:1px">Grupo de Servicio</label>
           <div style="display:flex;gap:8px">
-            <select id="cat-grupo" onchange="cargarServiciosSelect(this.value)" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
+            <select id="cat-grupo" onchange="if(this.value==='__nuevo__'){crearNuevoGrupo(this)}else{cargarServiciosSelect(this.value)}" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
               <option value="">— Seleccionar grupo —</option>
             </select>
             <button type="button" class="btn-secundario" onclick="event.stopPropagation();gestionarGruposCatalogo()" style="white-space:nowrap;font-size:12px">✏️ Gestionar</button>
