@@ -10742,6 +10742,7 @@ async function eliminarGrupoCatalogo(grupo) {
   if (!confirm('¿Eliminar el grupo "' + grupo + '"?' + (count > 0 ? '\n' + count + ' servicio(s) quedarán sin grupo.' : ''))) return;
   try {
     await api('servicios_catalogo', 'PATCH', { grupo: null }, '?grupo=eq.' + encodeURIComponent(grupo));
+    await api('param_grupos_servicio', 'DELETE', null, '?nombre=eq.' + encodeURIComponent(grupo) + '&id_emisor=eq.' + (_empresaActiva?.id_emisor||0));
     gruposCatalogo = gruposCatalogo.filter(function(g) { return g !== grupo; });
     renderListaGrupos();
     await cargarGruposSelect();
