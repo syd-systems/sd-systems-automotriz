@@ -10271,7 +10271,8 @@ async function renderCatalogo(filtro, categoria) {
   }
 }
 
-function verFichaCatalogo(id) {
+async function verFichaCatalogo(id) {
+  if (!catalogoCache.length) await renderCatalogo();
   const s = catalogoCache.find(function(x) { return x.id_servicio === parseInt(id); });
   if (!s) return;
 
