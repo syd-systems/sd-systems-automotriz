@@ -10430,10 +10430,16 @@ async function guardarCatalogo() {
       await api('servicios_catalogo', 'POST', datos);
     }
     okEl.textContent = '✓ Servicio guardado.'; okEl.style.display = 'block';
-    setTimeout(function() {
+    setTimeout(async function() {
       cerrarModal('modal-catalogo');
-      document.getElementById('contenido-principal').innerHTML='';
-      renderCatalogo();
+      // Si venimos de modal-servicios-cat, refrescar esa lista
+      const modalServ = document.getElementById('modal-servicios-cat');
+      if (modalServ && modalServ.classList.contains('activo')) {
+        const grupo = document.getElementById('cat-grupo')?.value || '';
+        await renderListaServicios(grupo);
+      } else {
+        await renderCatalogo();
+      }
     }, 1000);
   } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
 }
