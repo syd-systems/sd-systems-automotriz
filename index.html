@@ -10597,7 +10597,7 @@ async function cargarGruposSelect(valorActual) {
     gruposCatalogo = unicos;
     const sel = document.getElementById('cat-grupo');
     if (!sel) return;
-    sel.innerHTML = '<option value="">— Sin grupo —</option>'
+    sel.innerHTML = '<option value="">— Seleccionar Grupo —</option>'
       + unicos.map(function(g) {
           return '<option value="' + g + '"' + (g === valorActual ? ' selected' : '') + '>' + g + '</option>';
         }).join('')
@@ -13112,7 +13112,7 @@ async function contRenderCxp() {
             <select id="cat-grupo" onchange="cargarServiciosSelect(this.value)" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
               <option value="">— Seleccionar grupo —</option>
             </select>
-            <button type="button" class="btn-secundario" onclick="event.stopPropagation();gestionarGruposCatalogo()" style="white-space:nowrap;font-size:12px">+ Nuevo Grupo</button>
+            <button type="button" class="btn-secundario" onclick="event.stopPropagation();gestionarGruposCatalogo()" class="btn-primario" style="white-space:nowrap;font-size:12px">+ Nuevo Grupo</button>
           </div>
         </div>
         <div class="form-campo form-full">
@@ -13121,7 +13121,7 @@ async function contRenderCxp() {
             <select id="cat-nombre" onchange="cargarDatosServicioSeleccionado(this.value)" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
               <option value="">— Seleccionar servicio —</option>
             </select>
-            <button type="button" class="btn-secundario" onclick="event.stopPropagation();gestionarServiciosCatalogo()" style="white-space:nowrap;font-size:12px">+ Nuevo Grupo</button>
+            <button type="button" class="btn-secundario" onclick="event.stopPropagation();gestionarServiciosCatalogo()" class="btn-primario" style="white-space:nowrap;font-size:12px">+ Nuevo Servicio</button>
           </div>
         </div>
         <div class="form-campo form-full">
