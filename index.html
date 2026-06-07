@@ -10272,7 +10272,7 @@ async function renderCatalogo(filtro, categoria) {
 }
 
 function verFichaCatalogo(id) {
-  const s = catalogoCache.find(function(x) { return x.id_servicio === id; });
+  const s = catalogoCache.find(function(x) { return x.id_servicio === parseInt(id); });
   if (!s) return;
 
   document.getElementById('ficha-cat-contenido').innerHTML =
@@ -10282,8 +10282,8 @@ function verFichaCatalogo(id) {
     + (s.descripcion ? '<div style="font-size:13px;color:var(--suave);margin-top:4px">' + s.descripcion + '</div>' : '')
     + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio USD</div>'
-    + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">$ ' + parseFloat(s.precio_usd||0).toFixed(2) + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio</div>'
+    + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + parseFloat(s.precio_usd||0).toFixed(2) + ' ' + ((s.moneda_precio||((_empresaActiva?.moneda_principal)||'VES')).toUpperCase()) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Estado</div>'
     + '<span class="badge ' + (s.activo ? 'badge-verde' : 'badge-rojo') + '">' + (s.activo ? 'Activo' : 'Inactivo') + '</span></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Categoría</div>'
@@ -10331,7 +10331,7 @@ async function abrirNuevoCatalogo() {
 }
 
 async function abrirEditarCatalogo(id) {
-  const s = catalogoCache.find(function(x) { return x.id_servicio === id; });
+  const s = catalogoCache.find(function(x) { return x.id_servicio === parseInt(id); });
   if (!s) return;
   document.getElementById('cat-id').value = s.id_servicio;
   document.getElementById('cat-descripcion').value = s.descripcion || '';
@@ -10532,7 +10532,7 @@ async function agregarServicioDesdeGestion() {
 }
 
 function editarServicioEnLinea(id) {
-  const s = catalogoCache.find(function(x) { return x.id_servicio === id; });
+  const s = catalogoCache.find(function(x) { return x.id_servicio === parseInt(id); });
   if (!s) return;
   const row = document.getElementById('serv-row-' + id);
   if (!row) return;
