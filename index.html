@@ -10577,8 +10577,8 @@ let gruposCatalogo = [];
 
 async function cargarGruposSelect(valorActual) {
   try {
-    const res = await api('servicios_catalogo', 'GET', null, '?select=grupo&grupo=not.is.null&order=grupo.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
-    const unicos = [...new Set(res.map(function(r) { return r.grupo; }).filter(Boolean))].sort();
+    const res = await api('param_grupos_servicio', 'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre&id_emisor=eq.'+(_empresaActiva?.id_emisor||0));
+    const unicos = res.map(function(r) { return r.nombre; }).sort();
     gruposCatalogo = unicos;
     const sel = document.getElementById('cat-grupo');
     if (!sel) return;
