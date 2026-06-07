@@ -10251,7 +10251,7 @@ async function renderCatalogo(filtro, categoria) {
         + '<td style="font-family:var(--font-mono);color:var(--naranja);font-size:14px;font-weight:700">$ ' + parseFloat(s.precio_usd || 0).toFixed(2) + '</td>'
         + '<td><span class="badge ' + (s.activo ? 'badge-verde' : 'badge-rojo') + '" style="font-size:12px">' + (s.activo ? 'Activo' : 'Inactivo') + '</span></td>'
         + '<td><div style="display:flex;gap:8px">'
-        + '<button class="btn-secundario" onclick="verFichaCatalogo(' + s.id_servicio + ')">Ver</button>'
+        + '<button class="btn-secundario" onclick="verFichaCatalogo(' + s.id_servicio + ').catch(function(){})">Ver</button>'
 
         + '</div></td>'
         + '</tr>';
