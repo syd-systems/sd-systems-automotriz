@@ -10601,7 +10601,7 @@ async function cargarGruposSelect(valorActual) {
       + unicos.map(function(g) {
           return '<option value="' + g + '"' + (g === valorActual ? ' selected' : '') + '>' + g + '</option>';
         }).join('')
-      + '<option value="__nuevo__" style="color:var(--naranja);font-weight:600">+ Nuevo Grupo...</option>';
+;
     if (valorActual) sel.value = valorActual;
   } catch(e) {}
 }
@@ -13096,7 +13096,7 @@ async function contRenderCxp() {
         <div class="form-campo form-full">
           <label style="font-size:13px;font-weight:700;color:var(--texto);letter-spacing:1px">Grupo de Servicio</label>
           <div style="display:flex;gap:8px">
-            <select id="cat-grupo" onchange="if(this.value==='__nuevo__'){crearNuevoGrupo(this)}else{cargarServiciosSelect(this.value)}" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
+            <select id="cat-grupo" onchange="cargarServiciosSelect(this.value)" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;font-weight:500;padding:10px 14px;border-radius:5px;outline:none">
               <option value="">— Seleccionar grupo —</option>
             </select>
             <button type="button" class="btn-secundario" onclick="event.stopPropagation();gestionarGruposCatalogo()" style="white-space:nowrap;font-size:12px">✏️ Gestionar</button>
