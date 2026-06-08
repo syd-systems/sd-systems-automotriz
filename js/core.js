@@ -1,12 +1,20 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-// ─── FORMATO MONETARIO ───
+// ─── FORMATO MONETARIO GLOBAL ───
 function fmtBs(valor) {
   // Formato venezolano: punto miles, coma decimales → 408.394,34
   var n = parseFloat(valor || 0).toFixed(2);
   var partes = n.split('.');
   partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return partes[0] + ',' + partes[1];
+}
+function fmtUSD(valor) {
+  // Formato USD: coma miles, punto decimales → 1,234.56
+  return parseFloat(valor || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtVES(valor) {
+  // Alias de fmtBs — mismo formato venezolano
+  return fmtBs(valor);
 }
 
 
@@ -172,6 +180,7 @@ function puedo(modulo, accion) {
 // ─── EMPRESA ACTIVA ───
 let _empresaActiva     = null; // { id_emisor, nombre, rif, ... }
 let _empresasUsuario   = [];   // lista de empresas del usuario
+let _tasaVigente       = 1;    // tasa USD→VES más reciente (se carga al iniciar)
 
 // JWT de sesión — se actualiza al hacer login con Supabase Auth
 let _sessionJWT        = null;
@@ -725,6 +734,11 @@ function iniciarApp() {
   if (navParam) navParam.style.display = esAdmin ? 'flex' : 'none';
 
   mostrarModulo('dashboard', null);
+
+  // Cargar tasa USD vigente como global para todos los módulos
+  api('tasas', 'GET', null, '?moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio')
+    .then(function(r) { if (r && r[0]) _tasaVigente = parseFloat(r[0].tipo_cambio) || 1; })
+    .catch(function() {});
 }
 
 // ─── LIMPIEZA COMPLETA DE SESIÓN ───
