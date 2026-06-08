@@ -161,6 +161,7 @@ async function abrirNuevoCatalogo() {
 
 async function abrirEditarCatalogo(id) {
   const s = catalogoCache.find(function(x) { return x.id_servicio === parseInt(id); });
+  console.log('[catalogo] abrirEditarCatalogo id:', id, '| s:', JSON.stringify(s));
   if (!s) return;
   document.getElementById('cat-id').value = s.id_servicio;
   document.getElementById('cat-descripcion').value = s.descripcion || '';
