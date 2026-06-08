@@ -409,7 +409,7 @@ async function abrirEditarOS(id) {
       return { id: l.id_os_serv, id_servicio: l.id_servicio, descripcion: l.descripcion, cantidad: l.cantidad, precio_usd: l.precio_usd };
     });
     osRepuestosLineas = linRep.map(function(l) {
-      return { id: l.id_os_rep, id_articulo: l.id_repuesto, descripcion: l.descripcion, cantidad: l.cantidad, precio_usd: l.precio_usd };
+      return { id: l.id_os_rep, id_articulo: l.id_articulo, descripcion: l.descripcion, cantidad: l.cantidad, precio_usd: l.precio_usd };
     });
     tasaActualOS = tasas.length ? parseFloat(tasas[0].tipo_cambio) : (o.tasa_cambio_usd || 1);
   } catch(e) {}
@@ -770,7 +770,7 @@ async function guardarOS() {
       // Guardar líneas de repuestos anteriores para restaurar stock
       var lineasRepuestosAntes = [];
       try {
-        lineasRepuestosAntes = await api('os_repuestos', 'GET', null, '?id_orden=eq.' + id + '&select=id_repuesto,cantidad');
+        lineasRepuestosAntes = await api('os_repuestos', 'GET', null, '?id_orden=eq.' + id + '&select=id_articulo,cantidad');
       } catch(e) {}
       await Promise.all([
         api('os_servicios', 'DELETE', null, '?id_orden=eq.' + id),
@@ -825,7 +825,7 @@ async function guardarOS() {
     for (var j = 0; j < osRepuestosLineas.length; j++) {
       var lr = osRepuestosLineas[j];
       await api('os_repuestos', 'POST', {
-        id_orden: parseInt(osId), id_repuesto: lr.id_articulo || null,
+        id_orden: parseInt(osId), id_articulo: lr.id_articulo || null,
         descripcion: lr.descripcion, cantidad: lr.cantidad,
         precio_usd: lr.precio_usd, subtotal_usd: parseFloat(lr.precio_usd) * parseFloat(lr.cantidad)
       });
@@ -853,22 +853,22 @@ async function guardarOS() {
 async function ajustarStockOS(idOrden, operacion) {
   // operacion: 'restaurar' suma al stock, 'descontar' resta
   try {
-    const lineas = await api('os_repuestos', 'GET', null, '?id_orden=eq.' + idOrden + '&select=id_repuesto,cantidad');
+    const lineas = await api('os_repuestos', 'GET', null, '?id_orden=eq.' + idOrden + '&select=id_articulo,cantidad');
     for (var k = 0; k < lineas.length; k++) {
       var l = lineas[k];
-      if (!l.id_repuesto) continue;  // FIX #2: campo correcto es id_repuesto
+      if (!l.id_articulo) continue;
       try {
-        const inv = await api('inventario', 'GET', null, '?id_articulo=eq.' + l.id_repuesto + '&select=id_articulo,stock_actual');
+        const inv = await api('inventario', 'GET', null, '?id_articulo=eq.' + l.id_articulo + '&select=id_articulo,stock_actual');
         if (!inv.length) continue;
         var cant = parseFloat(l.cantidad || 0);
         var nuevoStock = operacion === 'restaurar'
           ? inv[0].stock_actual + cant
           : Math.max(0, inv[0].stock_actual - cant);
-        await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + l.id_repuesto);
+        await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + l.id_articulo);
         // Actualizar cache local
-        var cached = inventarioCache.find(function(x) { return x.id_articulo == l.id_repuesto; });
+        var cached = inventarioCache.find(function(x) { return x.id_articulo == l.id_articulo; });
         if (cached) cached.stock_actual = nuevoStock;
-      } catch(eInv) { console.warn('Error ajustando stock repuesto', l.id_repuesto, eInv); }
+      } catch(eInv) { console.warn('Error ajustando stock artículo', l.id_articulo, eInv); }
     }
   } catch(e) { console.warn('Error ajustarStockOS:', e); }
 }
