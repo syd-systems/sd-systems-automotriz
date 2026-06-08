@@ -188,12 +188,13 @@ async function abrirEditarCatalogo(id) {
   document.getElementById('alerta-cat-ok').style.display = 'none';
   document.getElementById('alerta-cat-err').style.display = 'none';
   await cargarGruposSelect(s.grupo || '');
-  // Asignar grupo explícitamente
+  // Asignar grupo explícitamente después de cargar las opciones
   if (s.grupo) {
     const selGrupo = document.getElementById('cat-grupo');
     if (selGrupo) selGrupo.value = s.grupo;
   }
-  cargarServiciosSelect(s.grupo || '', s.nombre);
+  // Cargar servicios usando el grupo del servicio directamente (no del select)
+  await cargarServiciosSelect(s.grupo || '', s.nombre);
   abrirModal('modal-catalogo');
   focusFirstField('modal-catalogo');
 }
@@ -459,18 +460,36 @@ async function crearNuevoGrupo(selectEl) {
 
 async function cargarGruposSelect(valorActual) {
   try {
-    const res = await api('param_grupos_servicio', 'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre&id_emisor=eq.'+(_empresaActiva?.id_emisor||0));
-    const unicos = res.map(function(r) { return r.nombre; }).sort();
+    let unicos = [];
+    // Intentar desde param_grupos_servicio (tabla con RLS)
+    try {
+      const res = await api('param_grupos_servicio', 'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre' + emisorQ());
+      unicos = res.map(function(r) { return r.nombre; }).sort();
+    } catch(e) {}
+    // Fallback: grupos distintos del caché de servicios (siempre disponible)
+    if (!unicos.length && catalogoCache.length) {
+      const set = {};
+      catalogoCache.forEach(function(s) { if (s.grupo) set[s.grupo] = true; });
+      unicos = Object.keys(set).sort();
+    }
+    // Fallback 2: si el caché tampoco tiene, cargar servicios frescos
+    if (!unicos.length) {
+      try {
+        const svcs = await api('servicios_catalogo', 'GET', null, '?order=grupo.asc&select=grupo' + emisorQ());
+        const set = {};
+        svcs.forEach(function(s) { if (s.grupo) set[s.grupo] = true; });
+        unicos = Object.keys(set).sort();
+      } catch(e2) {}
+    }
     gruposCatalogo = unicos;
     const sel = document.getElementById('cat-grupo');
     if (!sel) return;
     sel.innerHTML = '<option value="">— Seleccionar Grupo —</option>'
       + unicos.map(function(g) {
           return '<option value="' + g + '"' + (g === valorActual ? ' selected' : '') + '>' + g + '</option>';
-        }).join('')
-;
+        }).join('');
     if (valorActual) sel.value = valorActual;
-  } catch(e) {}
+  } catch(e) { console.warn('cargarGruposSelect error:', e); }
 }
 
 function cargarDatosServicioSeleccionado(nombre) {
