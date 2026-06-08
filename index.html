@@ -2090,6 +2090,8 @@ function seleccionarEmpresa(idEmisor) {
   idEmisor = parseInt(idEmisor);
   _empresaActiva = _empresasUsuario.find(function(e){ return e.id_emisor === idEmisor; });
   if (!_empresaActiva) return;
+  // Guardar empresa activa en sessionStorage
+  sessionStorage.setItem('sd_empresa_activa', JSON.stringify(_empresaActiva));
   // Cerrar modal de selección
   const selModal = document.getElementById('modal-seleccion-empresa');
   if (selModal) selModal.style.display = 'none';
