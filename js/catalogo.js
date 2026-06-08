@@ -324,7 +324,7 @@ async function renderListaServicios(grupo) {
         + '<div style="font-size:11px;color:var(--suave);margin-top:2px">'
         + (s.grupo ? '<span style="color:var(--naranja)">' + s.grupo + '</span> · ' : '')
         + (s.categoria || 'Sin categoría') + ' · '
-        + '<span style="font-family:var(--font-mono);color:var(--naranja)">$ ' + parseFloat(s.precio_usd || 0).toFixed(2) + '</span>'
+        + '<span style="font-family:var(--font-mono);color:var(--naranja)">' + fmtPrecioCat(s.precio_usd, s.moneda_precio) + '</span>'
         + '</div></div>'
         + '<div style="display:flex;gap:6px;flex-shrink:0">'
         + '<button class="btn-secundario" onclick="editarServicioEnLinea(' + s.id_servicio + ')" style="font-size:11px;padding:5px 10px">✏️ Editar</button>'
