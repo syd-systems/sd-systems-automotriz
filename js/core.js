@@ -16,6 +16,11 @@ function fmtVES(valor) {
   // Alias de fmtBs — mismo formato venezolano
   return fmtBs(valor);
 }
+function fmtPrecioCat(precio, moneda) {
+  // Formato precio catálogo: si moneda=VES muestra Bs, si USD muestra $
+  var val = parseFloat(precio || 0);
+  return moneda === 'VES' ? fmtBs(val) + ' Bs' : '$ ' + fmtUSD(val);
+}
 
 
 // ─── CONFIGURACIÓN SUPABASE ───
