@@ -10398,8 +10398,7 @@ async function guardarCatalogo() {
   const id = document.getElementById('cat-id').value;
   if (id && !puedo('CATALOGO','EDITAR')) { alert('No tiene permiso para editar servicios.'); return; }
   if (!id && !puedo('CATALOGO','CREAR')) { alert('No tiene permiso para crear servicios.'); return; }
-  const grupoSelect = document.getElementById('cat-grupo');
-  const grupo       = grupoSelect ? grupoSelect.options[grupoSelect.selectedIndex]?.value?.trim() || '' : '';
+  const grupo       = (document.getElementById('cat-grupo')?.value || '').trim();
   const esNuevo    = document.getElementById('cat-id').value === '';
   const nombre     = esNuevo
     ? (document.getElementById('cat-nombre-nuevo')?.value || '').trim()
