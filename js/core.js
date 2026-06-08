@@ -1,5 +1,15 @@
 // ─── S&D Systems — Módulo: CORE ───
 
+// ─── FORMATO MONETARIO ───
+function fmtBs(valor) {
+  // Formato venezolano: punto miles, coma decimales → 408.394,34
+  var n = parseFloat(valor || 0).toFixed(2);
+  var partes = n.split('.');
+  partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return partes[0] + ',' + partes[1];
+}
+
+
 // ─── CONFIGURACIÓN SUPABASE ───
 const SUPABASE_URL = 'https://fpqvgefclvrhfehtvkbd.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwcXZnZWZjbHZyaGZlaHR2a2JkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTc5NDEsImV4cCI6MjA5MzE3Mzk0MX0.sa4GjyT-RoA_Regzjwqehfsso88bIGHTq73DqW0_1Jo';
