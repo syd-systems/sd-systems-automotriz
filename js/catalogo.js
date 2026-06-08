@@ -94,7 +94,7 @@ function verFichaCatalogo(id) {
     + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio</div>'
-    + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + parseFloat(s.precio_usd||0).toFixed(2) + ' ' + ((s.moneda_precio||((_empresaActiva?.moneda_principal)||'VES')).toUpperCase()) + '</div></div>'
+    + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + fmtPrecioCat(s.precio_usd, s.moneda_precio) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Estado</div>'
     + '<span class="badge ' + (s.activo ? 'badge-verde' : 'badge-rojo') + '">' + (s.activo ? 'Activo' : 'Inactivo') + '</span></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Categoría</div>'
