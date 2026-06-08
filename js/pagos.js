@@ -624,8 +624,8 @@ async function abrirFichaPago(id) {
     '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px">' +
     '<div><div style="font-size:10px;color:var(--suave)">DESCRIPCIÓN</div><div>'+p.descripcion+'</div></div>' +
     '<div><div style="font-size:10px;color:var(--suave)">BENEFICIARIO</div><div>'+(p.nombre_beneficiario||'—')+'</div></div>' +
-    '<div><div style="font-size:10px;color:var(--suave)">MONTO USD</div><div style="font-family:var(--font-mono);color:var(--naranja)">'+(p.monto_usd?'$ '+fmtUSD(p.monto_usd):'—')+'</div></div>' +
-    '<div><div style="font-size:10px;color:var(--suave)">MONTO BS</div><div style="font-family:var(--font-mono)">'+(p.monto_ves?'Bs '+fmtVES(p.monto_ves):'—')+'</div></div>' +
+    '<div><div style="font-size:10px;color:var(--suave)">MONTO BS</div><div style="font-family:var(--font-mono);color:var(--naranja)">'+(p.monto_ves?'Bs '+fmtVES(p.monto_ves):'—')+'</div></div>' +
+    '<div><div style="font-size:10px;color:var(--suave)">MONTO USD</div><div style="font-family:var(--font-mono)">'+(p.monto_usd?'$ '+fmtUSD(p.monto_usd):'—')+'</div></div>' +
     '<div><div style="font-size:10px;color:var(--suave)">MÉTODO</div><div>'+(metodo?metodo.label:(p.metodo_pago||'—'))+'</div></div>' +
     '<div><div style="font-size:10px;color:var(--suave)">CANCELADO</div><div>'+(p.fecha_pago?fmtFecha(p.fecha_pago):'—')+'</div></div>' +
     '<div><div style="font-size:10px;color:var(--suave)">VENCIMIENTO</div><div>'+(p.fecha_vencimiento?fmtFecha(p.fecha_vencimiento):'—')+'</div></div>' +
