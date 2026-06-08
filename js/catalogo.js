@@ -535,21 +535,27 @@ async function cargarServiciosSelect(grupo, valorActual) {
   const sel = document.getElementById('cat-nombre');
   if (!sel) return;
   sel.innerHTML = '<option value="">— Seleccionar servicio —</option>';
-
   if (!grupo) return;
-
   try {
     const servicios = await api('servicios_catalogo', 'GET', null,
-      '?grupo=eq.' + encodeURIComponent(grupo) + '&activo=eq.true&order=nombre.asc&select=id_servicio,nombre');
+      '?grupo=eq.' + encodeURIComponent(grupo) + '&order=nombre.asc&select=id_servicio,nombre,activo' + emisorQ());
     servicios.forEach(function(s) {
       const opt = document.createElement('option');
       opt.value = s.nombre;
-      opt.textContent = s.nombre;
-      if (s.nombre === valorActual) opt.selected = true;
+      opt.textContent = s.nombre + (s.activo ? '' : ' (inactivo)');
       sel.appendChild(opt);
     });
-    if (valorActual) sel.value = valorActual;
-  } catch(e) {}
+    if (valorActual) {
+      sel.value = valorActual;
+      // Fallback: match case-insensitive si no hubo match exacto
+      if (!sel.value) {
+        const match = Array.from(sel.options).find(function(o) {
+          return o.value.trim().toLowerCase() === valorActual.trim().toLowerCase();
+        });
+        if (match) sel.value = match.value;
+      }
+    }
+  } catch(e) { console.warn('cargarServiciosSelect error:', e); }
 }
 
 function gestionarGruposCatalogo() {
