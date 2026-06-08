@@ -410,6 +410,8 @@ actualizarReloj();
 // ─── VERIFICAR SESIÓN INVALIDADA (cada 30 segundos) ───
 async function verificarSesionActiva() {
   if (!sesionActual) return;
+  // No verificar mientras el login aún está en proceso (token no asignado aún)
+  if (!window._miTokenSesion) return;
   try {
     const res = await api('usuarios', 'GET', null,
       `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}&select=sesion_activa,sesion_invalidada,estado_usuario,token_sesion`);
@@ -593,11 +595,7 @@ async function iniciarSesion() {
       ultima_conexion: new Date().toISOString()
     }, `?correo_usuario=eq.${encodeURIComponent(correo)}`);
 
-    // Guardar en sessionStorage
-    sessionStorage.setItem('sd_sesion', JSON.stringify({ usuario: u, accesos: modulosAcceso }));
-
     resetCampoPass('login-clave');
-    iniciarApp();
 
     // Determinar empresa activa
     try {
@@ -636,6 +634,8 @@ async function iniciarSesion() {
     if (!_empresaActiva && _empresasUsuario.length > 0) {
       _empresaActiva = _empresasUsuario[0];
     }
+    // Guardar sesión en sessionStorage solo cuando todo está listo
+    sessionStorage.setItem('sd_sesion', JSON.stringify({ usuario: u, accesos: modulosAcceso }));
     iniciarApp();
     btn.textContent = 'INGRESAR';
     btn.disabled = false;
