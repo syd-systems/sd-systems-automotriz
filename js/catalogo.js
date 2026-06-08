@@ -255,6 +255,7 @@ async function guardarCatalogo() {
       const datos = { descripcion: desc || null, categoria: cat || null,
         tipo_carroceria: carroceria || null, precio_usd: precio,
         moneda_precio: monedaServ, activo,
+        grupo: grupoFinal ?? duplicado.grupo,
         id_emisor: _empresaActiva?.id_emisor,
         id_usuario: sesionActual.correo_usuario };
       try {
@@ -267,7 +268,12 @@ async function guardarCatalogo() {
   }
 
   try {
-    const datos = { nombre: nombreFinal, grupo: grupoFinal, descripcion: desc || null, categoria: cat || null,
+    // Si estamos editando y grupoFinal es null, preservar el grupo que ya tiene en BD
+    const grupoParaGuardar = (id && grupoFinal === null)
+      ? (catalogoCache.find(function(s){ return s.id_servicio === parseInt(id); })?.grupo ?? null)
+      : grupoFinal;
+
+    const datos = { nombre: nombreFinal, grupo: grupoParaGuardar, descripcion: desc || null, categoria: cat || null,
       tipo_carroceria: carroceria || null, precio_usd: precio, moneda_precio: monedaServ, activo,
       id_emisor: _empresaActiva?.id_emisor,
       id_usuario: sesionActual.correo_usuario };
