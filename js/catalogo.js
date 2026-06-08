@@ -59,7 +59,14 @@ async function renderCatalogo(filtro, categoria) {
         + (s.descripcion ? '<div style="font-size:12px;color:var(--suave);margin-top:2px">' + s.descripcion + '</div>' : '')
         + '</td>'
         + '<td><span class="badge badge-gris" style="font-size:12px;font-weight:600">' + (s.tipo_carroceria || 'Todas') + '</span></td>'
-        + '<td style="font-family:var(--font-mono);color:var(--naranja);font-size:14px;font-weight:700">' + fmtPrecioCat(s.precio_usd, s.moneda_precio) + '<div style="font-size:10px;font-weight:400;color:var(--suave)">' + (s.moneda_precio==='VES' ? '' : '$ ' + parseFloat(s.precio_usd||0).toFixed(2) + ' USD') + '</div></td>'
+        + '<td style="font-family:var(--font-mono);font-size:14px;font-weight:700">'
+        + (s.moneda_precio === 'VES'
+            ? '<span style="color:var(--naranja)">' + fmtBs(parseFloat(s.precio_usd||0)) + ' Bs</span>'
+              + '<div style="font-size:10px;font-weight:400;color:var(--suave)">$ ' + fmtUSD(_tasaVigente > 0 ? parseFloat(s.precio_usd||0) / _tasaVigente : 0) + ' USD</div>'
+            : '<span style="color:var(--naranja)">' + fmtBs(parseFloat(s.precio_usd||0) * _tasaVigente) + ' Bs</span>'
+              + '<div style="font-size:10px;font-weight:400;color:var(--suave)">$ ' + fmtUSD(s.precio_usd) + ' USD</div>'
+          )
+        + '</td>'
         + '<td><span class="badge ' + (s.activo ? 'badge-verde' : 'badge-rojo') + '" style="font-size:12px">' + (s.activo ? 'Activo' : 'Inactivo') + '</span></td>'
         + '<td><div style="display:flex;gap:8px">'
         + '<button class="btn-secundario" onclick="(async()=>{if(!catalogoCache.length)await renderCatalogo();verFichaCatalogo(' + s.id_servicio + ');})();">Ver</button>'
@@ -94,7 +101,13 @@ function verFichaCatalogo(id) {
     + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio</div>'
-    + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + fmtPrecioCat(s.precio_usd, s.moneda_precio) + '</div></div>'
+    + (s.moneda_precio === 'VES'
+        ? '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + fmtBs(parseFloat(s.precio_usd||0)) + ' Bs</div>'
+          + '<div style="font-size:12px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(_tasaVigente > 0 ? parseFloat(s.precio_usd||0) / _tasaVigente : 0) + ' USD</div>'
+        : '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + fmtBs(parseFloat(s.precio_usd||0) * _tasaVigente) + ' Bs</div>'
+          + '<div style="font-size:12px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(s.precio_usd) + ' USD</div>'
+      )
+    + '</div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Estado</div>'
     + '<span class="badge ' + (s.activo ? 'badge-verde' : 'badge-rojo') + '">' + (s.activo ? 'Activo' : 'Inactivo') + '</span></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Categoría</div>'
@@ -324,7 +337,12 @@ async function renderListaServicios(grupo) {
         + '<div style="font-size:11px;color:var(--suave);margin-top:2px">'
         + (s.grupo ? '<span style="color:var(--naranja)">' + s.grupo + '</span> · ' : '')
         + (s.categoria || 'Sin categoría') + ' · '
-        + '<span style="font-family:var(--font-mono);color:var(--naranja)">' + fmtPrecioCat(s.precio_usd, s.moneda_precio) + '</span>'
+        + '<span style="font-family:var(--font-mono);color:var(--naranja)">'
+        + (s.moneda_precio === 'VES'
+            ? fmtBs(parseFloat(s.precio_usd||0)) + ' Bs'
+            : fmtBs(parseFloat(s.precio_usd||0) * _tasaVigente) + ' Bs · $ ' + fmtUSD(s.precio_usd)
+          )
+        + '</span>'
         + '</div></div>'
         + '<div style="display:flex;gap:6px;flex-shrink:0">'
         + '<button class="btn-secundario" onclick="editarServicioEnLinea(' + s.id_servicio + ')" style="font-size:11px;padding:5px 10px">✏️ Editar</button>'
