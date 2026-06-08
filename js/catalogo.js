@@ -535,10 +535,12 @@ async function cargarServiciosSelect(grupo, valorActual) {
   const sel = document.getElementById('cat-nombre');
   if (!sel) return;
   sel.innerHTML = '<option value="">— Seleccionar servicio —</option>';
-  if (!grupo) return;
+  if (!grupo) { console.warn('[catalogo] cargarServiciosSelect: grupo vacío'); return; }
   try {
-    const servicios = await api('servicios_catalogo', 'GET', null,
-      '?grupo=eq.' + encodeURIComponent(grupo) + '&order=nombre.asc&select=id_servicio,nombre,activo' + emisorQ());
+    const query = '?grupo=eq.' + encodeURIComponent(grupo) + '&order=nombre.asc&select=id_servicio,nombre,activo' + emisorQ();
+    console.log('[catalogo] cargarServiciosSelect grupo:', grupo, '| valorActual:', valorActual, '| query:', query);
+    const servicios = await api('servicios_catalogo', 'GET', null, query);
+    console.log('[catalogo] servicios retornados:', servicios);
     servicios.forEach(function(s) {
       const opt = document.createElement('option');
       opt.value = s.nombre;
@@ -547,12 +549,13 @@ async function cargarServiciosSelect(grupo, valorActual) {
     });
     if (valorActual) {
       sel.value = valorActual;
-      // Fallback: match case-insensitive si no hubo match exacto
+      console.log('[catalogo] sel.value después de asignar:', sel.value, '| opciones:', Array.from(sel.options).map(o=>o.value));
       if (!sel.value) {
         const match = Array.from(sel.options).find(function(o) {
           return o.value.trim().toLowerCase() === valorActual.trim().toLowerCase();
         });
         if (match) sel.value = match.value;
+        console.log('[catalogo] fallback match:', match?.value);
       }
     }
   } catch(e) { console.warn('cargarServiciosSelect error:', e); }
