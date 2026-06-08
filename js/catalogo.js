@@ -192,9 +192,12 @@ async function abrirEditarCatalogo(id) {
   if (s.grupo) {
     const selGrupo = document.getElementById('cat-grupo');
     if (selGrupo) selGrupo.value = s.grupo;
+    console.log('[catalogo] s.grupo:', JSON.stringify(s.grupo), '| selGrupo.value después:', selGrupo?.value, '| opciones:', Array.from(selGrupo?.options||[]).map(o=>o.value));
   }
   // Cargar servicios usando el grupo del servicio directamente (no del select)
-  await cargarServiciosSelect(s.grupo || '', s.nombre);
+  const grupoParaCargar = s.grupo || document.getElementById('cat-grupo')?.value || '';
+  console.log('[catalogo] grupoParaCargar:', JSON.stringify(grupoParaCargar));
+  await cargarServiciosSelect(grupoParaCargar, s.nombre);
   abrirModal('modal-catalogo');
   focusFirstField('modal-catalogo');
 }
