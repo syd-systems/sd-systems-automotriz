@@ -170,8 +170,8 @@ function invRenderTabla(items, cont) {
           : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
       + (puedo('INVENTARIO','VER_PRECIOS_VENTA')
           ? '<td style="font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:10px">Venta</div>'
-            + '<span style="color:var(--naranja)">$ ' + fmtUSD(r.precio_venta_usd) + '</span>'
-            + '<div style="font-size:10px;color:var(--suave);margin-top:2px">' + fmtBs(parseFloat(r.precio_venta_usd||0) * _tasaVigente) + ' Bs</div>'
+            + '<span style="color:var(--naranja)">' + fmtBs(parseFloat(r.precio_venta_usd||0) * _tasaVigente) + ' Bs</span>'
+            + '<div style="font-size:10px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(r.precio_venta_usd) + '</div>'
             + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen.toFixed(1) + '%</div></td>'
           : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
       + '<td><div style="display:flex;gap:8px">'
@@ -306,16 +306,16 @@ function verFichaInventario(id) {
     + (puedo('INVENTARIO','VER_COSTOS') ? '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Costo Prom. (CPP)</div><div style="font-family:var(--font-mono)">$ ' + fmtUSD(r.precio_costo_usd) + '</div></div>' : '')
     + (puedo('INVENTARIO','VER_PRECIOS_VENTA')
         ? '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
-          + '<div style="font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(r.precio_venta_usd) + '</div>'
-          + '<div style="font-size:11px;color:var(--suave);margin-top:2px">' + fmtBs(parseFloat(r.precio_venta_usd||0) * _tasaVigente) + ' Bs</div>'
+          + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + fmtBs(parseFloat(r.precio_venta_usd||0) * _tasaVigente) + ' Bs</div>'
+          + '<div style="font-size:11px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(r.precio_venta_usd) + '</div>'
           + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen + '%</div></div>'
         : '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
           + '<div style="font-size:13px;color:#555">🔒</div></div>')
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Categoría</div>'
     + '<div style="font-size:13px">' + (({'repuesto':'🔧 Artículo','venta':'🛒 Venta','oficina':'📎 Oficina','limpieza':'🧹 Limpieza','otro':'📦 Otro'}[r.categoria]) || r.categoria || '—') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Valor Inventario</div>'
-    + '<div style="font-family:var(--font-mono)">$ ' + fmtUSD(parseFloat(r.precio_venta_usd||0)*parseFloat(r.stock_actual||0)) + '</div>'
-    + '<div style="font-size:11px;color:var(--suave);margin-top:2px">' + fmtBs(parseFloat(r.precio_venta_usd||0)*parseFloat(r.stock_actual||0)*_tasaVigente) + ' Bs</div></div>'
+    + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + fmtBs(parseFloat(r.precio_venta_usd||0)*parseFloat(r.stock_actual||0)*_tasaVigente) + ' Bs</div>'
+    + '<div style="font-size:11px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(parseFloat(r.precio_venta_usd||0)*parseFloat(r.stock_actual||0)) + '</div></div>'
     + '</div>';
 
   // Botones de acción en el footer
