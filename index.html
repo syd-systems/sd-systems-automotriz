@@ -10398,7 +10398,8 @@ async function guardarCatalogo() {
   const id = document.getElementById('cat-id').value;
   if (id && !puedo('CATALOGO','EDITAR')) { alert('No tiene permiso para editar servicios.'); return; }
   if (!id && !puedo('CATALOGO','CREAR')) { alert('No tiene permiso para crear servicios.'); return; }
-  const grupo      = document.getElementById('cat-grupo').value.trim();
+  const grupoSelect = document.getElementById('cat-grupo');
+  const grupo       = grupoSelect ? grupoSelect.options[grupoSelect.selectedIndex]?.value?.trim() || '' : '';
   const esNuevo    = document.getElementById('cat-id').value === '';
   const nombre     = esNuevo
     ? (document.getElementById('cat-nombre-nuevo')?.value || '').trim()
@@ -10418,7 +10419,7 @@ async function guardarCatalogo() {
   if (!nombre) { errEl.textContent = 'El nombre del servicio es obligatorio.'; errEl.style.display = 'block'; return; }
 
   const nombreFinal = capitalizarNombre(nombre);
-  const grupoFinal  = (grupo && grupo !== '') ? grupo.toUpperCase() : null;
+  const grupoFinal  = (grupo && grupo.trim() !== '') ? grupo.trim() : null;
 
   // Validar duplicado solo si es registro verdaderamente nuevo (sin id y sin match en caché del mismo grupo)
   if (!id) {
