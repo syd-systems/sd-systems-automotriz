@@ -59,7 +59,7 @@ async function renderCatalogo(filtro, categoria) {
         + (s.descripcion ? '<div style="font-size:12px;color:var(--suave);margin-top:2px">' + s.descripcion + '</div>' : '')
         + '</td>'
         + '<td><span class="badge badge-gris" style="font-size:12px;font-weight:600">' + (s.tipo_carroceria || 'Todas') + '</span></td>'
-        + '<td style="font-family:var(--font-mono);color:var(--naranja);font-size:14px;font-weight:700">$ ' + parseFloat(s.precio_usd || 0).toFixed(2) + '</td>'
+        + '<td style="font-family:var(--font-mono);color:var(--naranja);font-size:14px;font-weight:700">' + fmtPrecioCat(s.precio_usd, s.moneda_precio) + '<div style="font-size:10px;font-weight:400;color:var(--suave)">' + (s.moneda_precio==='VES' ? '' : '$ ' + parseFloat(s.precio_usd||0).toFixed(2) + ' USD') + '</div></td>'
         + '<td><span class="badge ' + (s.activo ? 'badge-verde' : 'badge-rojo') + '" style="font-size:12px">' + (s.activo ? 'Activo' : 'Inactivo') + '</span></td>'
         + '<td><div style="display:flex;gap:8px">'
         + '<button class="btn-secundario" onclick="(async()=>{if(!catalogoCache.length)await renderCatalogo();verFichaCatalogo(' + s.id_servicio + ');})();">Ver</button>'
