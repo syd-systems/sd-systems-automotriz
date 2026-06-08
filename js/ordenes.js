@@ -5,24 +5,7 @@
 let ordenesCache = [];
 let osServiciosLineas = [];  // líneas de servicios de la OS activa
 let osRepuestosLineas = [];  // líneas de repuestos de la OS activa
-// ─── FORMATEO MONETARIO GLOBAL ───
-function fmtBs(valor) {
-  // Formato venezolano: punto miles, coma decimales → 408.394,34
-  var n = parseFloat(valor || 0).toFixed(2);
-  var partes = n.split('.');
-  partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return partes[0] + ',' + partes[1];
-}
-function imgError(img) { img.onerror=null; img.style.display='none'; }
-
-function fmtUSD(valor) {
-  // Formato estándar USD: coma miles, punto decimales → 822.00
-  return parseFloat(valor || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-function fmtVES(valor) {
-  // Formato Bolívares: punto miles, coma decimales → 1.234.567,89
-  return parseFloat(valor || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+// ─── fmtBs / fmtUSD / fmtVES definidas globalmente en core.js ───
 
 let tasaActualOS = 1;        // tasa USD→VES al crear/editar OS
 
