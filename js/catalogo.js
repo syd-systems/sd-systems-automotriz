@@ -153,7 +153,7 @@ async function abrirEditarCatalogo(id) {
   document.getElementById('cat-descripcion').value = s.descripcion || '';
   document.getElementById('cat-categoria').value = s.categoria || '';
   document.getElementById('cat-carroceria').value = s.tipo_carroceria || '';
-  document.getElementById('cat-precio').value = s.precio_usd || '';
+  document.getElementById('cat-precio').value = s.precio_usd ? String(parseFloat(s.precio_usd).toFixed(2)).replace('.', ',') : '';
   const catSelE = document.getElementById('cat-moneda');
   if (catSelE) {
     const mpE = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
@@ -467,7 +467,7 @@ function cargarDatosServicioSeleccionado(nombre) {
   document.getElementById('cat-descripcion').value = s.descripcion || '';
   document.getElementById('cat-categoria').value = s.categoria || '';
   document.getElementById('cat-carroceria').value = s.tipo_carroceria || '';
-  document.getElementById('cat-precio').value = s.precio_usd || '';
+  document.getElementById('cat-precio').value = s.precio_usd ? String(parseFloat(s.precio_usd).toFixed(2)).replace('.', ',') : '';
   const catSelE = document.getElementById('cat-moneda');
   if (catSelE) {
     const mpE = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
