@@ -10406,7 +10406,7 @@ async function guardarCatalogo() {
   const desc       = document.getElementById('cat-descripcion').value.trim();
   const cat        = document.getElementById('cat-categoria').value.trim();
   const carroceria = document.getElementById('cat-carroceria').value.trim();
-  const precio     = Math.round(parseFloat(document.getElementById('cat-precio').value) * 100) / 100 || 0;
+  const precio     = parseFloat(parseFloat(document.getElementById('cat-precio').value || 0).toFixed(2)) || 0;
   const monedaServ = document.getElementById('cat-moneda')?.value || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
   const activo     = document.getElementById('cat-activo').value === 'true';
   const okEl       = document.getElementById('alerta-cat-ok');
