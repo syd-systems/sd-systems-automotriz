@@ -60,8 +60,8 @@ async function renderOrdenes() {
         + (o.fecha_estado ? '<div style="font-size:10px;color:var(--suave);margin-top:3px">' + fmtFecha(o.fecha_estado) + '</div>' : '')
         + '</td>'
         + (puedo('SERVICIOS','VER_TOTALES')
-            ? '<td style="font-family:var(--font-mono)"><span style="color:var(--naranja)">$ ' + fmtUSD(o.total_usd) + '</span>'
-              + '<div style="font-size:10px;color:var(--suave)">' + fmtBs(o.total_ves) + ' Bs</div></td>'
+            ? '<td style="font-family:var(--font-mono)"><span style="color:var(--naranja)">' + fmtBs(o.total_ves) + ' Bs</span>'
+              + '<div style="font-size:10px;color:var(--suave)">$ ' + fmtUSD(o.total_usd) + '</div></td>'
             : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
         + '<td><div style="display:flex;gap:6px;flex-wrap:wrap">'
         + '<button class="btn-secundario" onclick="verFichaOS(' + o.id_orden + ')">Ver</button>'
@@ -543,10 +543,10 @@ function calcularTotalesOS() {
   if (el) el.innerHTML = '<div style="display:flex;gap:24px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:12px 0">'
     + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Servicios</div><div style="font-family:var(--font-mono)">$ ' + fmtUSD(totServ) + '</div></div>'
     + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Repuestos</div><div style="font-family:var(--font-mono)">$ ' + fmtUSD(totRep) + '</div></div>'
-    + '<div style="border-left:1px solid var(--borde);padding-left:24px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL USD</div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">$ ' + fmtUSD(total) + '</div></div>'
+    + '<div style="border-left:1px solid var(--borde);padding-left:24px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL</div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + fmtBs(totalVes) + ' Bs</div><div style="font-size:12px;color:var(--suave)">$ ' + fmtUSD(total) + '</div></div>'
     + '<div style="border-left:1px solid var(--borde);padding-left:24px">'
     +   '<div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL Bs</div>'
-    +   '<div style="font-family:var(--font-mono);font-size:14px;color:var(--suave)">' + fmtBs(totalVes) + '</div>'
+    
     +   '<div style="font-size:9px;color:var(--suave);margin-top:2px">Tasa: $ 1 = ' + tasaActualOS.toFixed(2) + ' Bs</div>'
     + '</div>'
     + '</div>';
@@ -1003,8 +1003,8 @@ async function verFichaOS(id) {
       + (o.fecha_estado ? '<span style="font-size:10px;color:var(--suave);margin-left:8px">desde ' + fmtFecha(o.fecha_estado) + (o.usuario_estado ? ' · ' + o.usuario_estado : '') + '</span>' : '')
       + '</div>'
       + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL</div>'
-      + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">$ ' + fmtUSD(o.total_usd) + '</div>'
-      + '<div style="font-size:11px;color:var(--suave)">' + fmtBs(o.total_ves) + ' Bs</div>'
+      + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + fmtBs(o.total_ves) + ' Bs</div>'
+      + '<div style="font-size:12px;color:var(--suave)">$ ' + fmtUSD(o.total_usd) + ' USD</div>'
       + '</div></div>'
 
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
