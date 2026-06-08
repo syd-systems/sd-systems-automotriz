@@ -146,35 +146,6 @@ async function renderOrdenes() {
 }
 
 // ─── FILTRO EN TIEMPO REAL DE TABLA OS ───
-// ─── FILTROS FACTURAS ───
-function limpiarBuscarFac() {
-  window._facBuscar = '';
-  var sb = document.getElementById('fac-buscar');
-  if (sb) sb.value = '';
-}
-
-function buscarFac(valor) {
-  window._facBuscar      = valor;
-  window._facFechaDesde  = '';
-  window._facFechaHasta  = '';
-  window._facEstadoFiltro = '';
-  var fd = document.getElementById('fac-fecha-desde'); if (fd) fd.value = '';
-  var fh = document.getElementById('fac-fecha-hasta'); if (fh) fh.value = '';
-  var fe = document.getElementById('fac-filtro-estado'); if (fe) fe.value = '';
-  filtrarTablaFacturas();
-}
-
-function limpiarFiltrosFac() {
-  window._facBuscar       = '';
-  window._facFechaDesde   = '';
-  window._facFechaHasta   = '';
-  window._facEstadoFiltro = '';
-  var sb = document.getElementById('fac-buscar');       if (sb) sb.value = '';
-  var fd = document.getElementById('fac-fecha-desde');  if (fd) fd.value = '';
-  var fh = document.getElementById('fac-fecha-hasta');  if (fh) fh.value = '';
-  var fe = document.getElementById('fac-filtro-estado'); if (fe) fe.value = '';
-  filtrarTablaFacturas();
-}
 
 function limpiarBuscarOS() {
   window._osBuscar = '';
@@ -806,10 +777,12 @@ async function guardarOS() {
         api('os_repuestos', 'DELETE', null, '?id_orden=eq.' + id),
       ]);
     } else {
-      // Nueva — generar número OS
+      // Nueva — generar número OS por empresa
       const hoy = new Date();
       const anio = hoy.getFullYear();
-      const existentes = await api('ordenes_servicio', 'GET', null, '?select=numero_os&numero_os=like.OS-' + anio + '-*&order=numero_os.desc&limit=1');
+      const idEmisor = _empresaActiva ? _empresaActiva.id_emisor : 0;
+      const existentes = await api('ordenes_servicio', 'GET', null,
+        '?select=numero_os&numero_os=like.OS-' + anio + '-*&id_emisor=eq.' + idEmisor + '&order=numero_os.desc&limit=1');
       let seq = 1;
       if (existentes.length) {
         const partes = existentes[0].numero_os.split('-');
@@ -883,19 +856,19 @@ async function ajustarStockOS(idOrden, operacion) {
     const lineas = await api('os_repuestos', 'GET', null, '?id_orden=eq.' + idOrden + '&select=id_repuesto,cantidad');
     for (var k = 0; k < lineas.length; k++) {
       var l = lineas[k];
-      if (!l.id_articulo) continue;
+      if (!l.id_repuesto) continue;  // FIX #2: campo correcto es id_repuesto
       try {
-        const inv = await api('inventario', 'GET', null, '?id_articulo=eq.' + l.id_articulo + '&select=id_articulo,stock_actual');
+        const inv = await api('inventario', 'GET', null, '?id_articulo=eq.' + l.id_repuesto + '&select=id_articulo,stock_actual');
         if (!inv.length) continue;
         var cant = parseFloat(l.cantidad || 0);
         var nuevoStock = operacion === 'restaurar'
           ? inv[0].stock_actual + cant
           : Math.max(0, inv[0].stock_actual - cant);
-        await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + l.id_articulo);
+        await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + l.id_repuesto);
         // Actualizar cache local
-        var cached = inventarioCache.find(function(x) { return x.id_articulo == l.id_articulo; });
+        var cached = inventarioCache.find(function(x) { return x.id_articulo == l.id_repuesto; });
         if (cached) cached.stock_actual = nuevoStock;
-      } catch(eInv) { console.warn('Error ajustando stock repuesto', l.id_articulo, eInv); }
+      } catch(eInv) { console.warn('Error ajustando stock repuesto', l.id_repuesto, eInv); }
     }
   } catch(e) { console.warn('Error ajustarStockOS:', e); }
 }
@@ -956,13 +929,6 @@ async function eliminarOS(id, numero) {
 }
 
 // ─── FICHA OS ───
-async function eliminarOS(id) {
-  if (!confirm('¿Eliminar esta Orden de Servicio? Esta acción no se puede deshacer.')) return;
-  try {
-    await api('ordenes_servicio','DELETE',null,'?id_orden=eq.'+id);
-    renderOrdenes();
-  } catch(e) { alert('Error al eliminar: '+e.message); }
-}
 
 async function eliminarOSFicha() {
   const id = window._fichaOSId;
@@ -1055,7 +1021,7 @@ async function verFichaOS(id) {
       + '</div>'
       + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL</div>'
       + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">$ ' + fmtUSD(o.total_usd) + '</div>'
-      + '<div style="font-size:11px;color:var(--suave)">' + parseFloat(o.total_ves || 0).toLocaleString('es-VE', {minimumFractionDigits:2}) + ' Bs</div>'
+      + '<div style="font-size:11px;color:var(--suave)">' + fmtBs(o.total_ves) + ' Bs</div>'
       + '</div></div>'
 
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
@@ -1289,71 +1255,6 @@ window.addEventListener('load', async () => {
     setTimeout(function() { document.getElementById('login-correo')?.focus(); }, 300);
   });
 
-async function contRenderCxp() {
-  const cont = document.getElementById('cont-vista-cont');
-  if (!cont) return;
-  cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
-  try {
-    const pagos = await api('pagos','GET',null,'?order=fecha_vencimiento.asc&select=*'+emisorQ());
-    const pendientes = pagos.filter(function(p){ return p.estado==='BORRADOR'||p.estado==='APROBADO'; });
-    const pagados    = pagos.filter(function(p){ return p.estado==='PAGADO'; });
-    const totPendUSD = pendientes.reduce(function(s,p){ return s+parseFloat(p.monto_usd||0); },0);
-    const totPendVES = pendientes.reduce(function(s,p){ return s+parseFloat(p.monto_ves||0); },0);
-    const totPagUSD  = pagados.reduce(function(s,p){ return s+parseFloat(p.monto_usd||0); },0);
-    const totPagVES  = pagados.reduce(function(s,p){ return s+parseFloat(p.monto_ves||0); },0);
-    const eb = {
-      BORRADOR:'<span class="badge badge-gris">Borrador</span>',
-      APROBADO:'<span class="badge badge-naranja">Aprobado</span>',
-      PAGADO:'<span class="badge" style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3)">Pagado</span>',
-      ANULADO:'<span class="badge" style="background:rgba(252,129,129,0.15);color:#fc8181;border:1px solid rgba(252,129,129,0.3)">Anulado</span>',
-    };
-    const TP = {NOMINA:'Nomina',PROVEEDOR:'Proveedor',SERVICIO_BASICO:'Serv.Basico',ALQUILER:'Alquiler',SUSCRIPCION:'Suscripcion',IMPUESTO:'Impuesto',OTRO:'Otro'};
-    const filas = pagos.map(function(p) {
-      const musd = parseFloat(p.monto_usd||0);
-      const mves = parseFloat(p.monto_ves||0);
-      return '<tr>'
-        +'<td style="padding:5px 8px;font-size:13px;font-family:var(--font-mono);color:var(--naranja)">'+(p.numero_pago||'--')+'</td>'
-        +'<td style="padding:5px 8px;font-size:13px">'+(TP[p.tipo_pago]||p.tipo_pago||'--')+'</td>'
-        +'<td style="padding:5px 8px;font-size:13px">'+(p.descripcion||'--')+(p.nombre_beneficiario?'<br><span style="font-size:11px;color:var(--suave)">'+p.nombre_beneficiario+'</span>':'')+'</td>'
-        +'<td style="padding:5px 8px;text-align:right;font-size:14px;font-family:var(--font-mono)">'+(musd>0?fmtUSD(musd):'--')+'</td>'
-        +'<td style="padding:5px 8px;text-align:right;font-size:14px;font-family:var(--font-mono)">'+(mves>0?fmtVES(mves):'--')+'</td>'
-        +'<td style="padding:5px 8px;font-size:13px">'+fmtFecha(p.fecha_vencimiento||'')+'</td>'+'<td style="padding:5px 8px;font-size:13px">'+(p.fecha_pago?fmtFecha(p.fecha_pago):'--')+'</td>'
-        +'<td style="padding:5px 8px">'+(eb[p.estado]||p.estado)+'</td>'
-        +'<td style="padding:5px 8px;font-size:13px;color:var(--naranja)">'+(p.es_recurrente?p.frecuencia:'')+'</td>'
-        +'</tr>';
-    }).join('');
-    cont.innerHTML =
-      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px">'
-      +'<div style="background:rgba(252,129,129,0.08);border:1px solid rgba(252,129,129,0.2);border-radius:8px;padding:14px">'
-      +'<div style="font-size:10px;color:var(--suave)">PENDIENTE USD</div>'
-      +'<div style="font-size:18px;color:#fc8181;font-weight:700;font-family:var(--font-mono)">$ '+fmtUSD(totPendUSD)+'</div>'
-      +'<div style="font-size:11px;color:var(--suave)">'+pendientes.length+' pagos</div></div>'
-      +'<div style="background:rgba(252,129,129,0.08);border:1px solid rgba(252,129,129,0.2);border-radius:8px;padding:14px">'
-      +'<div style="font-size:10px;color:var(--suave)">PENDIENTE Bs</div>'
-      +'<div style="font-size:18px;color:#fc8181;font-weight:700;font-family:var(--font-mono)">Bs '+fmtVES(totPendVES)+'</div>'
-      +'<div style="font-size:11px;color:var(--suave)">'+pendientes.length+' pagos</div></div>'
-      +'<div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:14px">'
-      +'<div style="font-size:10px;color:var(--suave)">PAGADO USD</div>'
-      +'<div style="font-size:18px;color:#22c55e;font-weight:700;font-family:var(--font-mono)">$ '+fmtUSD(totPagUSD)+'</div>'
-      +'<div style="font-size:11px;color:var(--suave)">'+pagados.length+' realizados</div></div>'
-      +'<div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:14px">'
-      +'<div style="font-size:10px;color:var(--suave)">PAGADO Bs</div>'
-      +'<div style="font-size:18px;color:#22c55e;font-weight:700;font-family:var(--font-mono)">Bs '+fmtVES(totPagVES)+'</div>'
-      +'<div style="font-size:11px;color:var(--suave)">'+pagados.length+' realizados</div></div></div>'
-      +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
-      +'<thead><tr style="border-bottom:2px solid var(--borde)">'
-      +'<th style="padding:5px 8px;font-size:13px;color:var(--suave);text-align:left">N Pago</th>'
-      +'<th style="padding:5px 8px;font-size:13px;color:var(--suave);text-align:left">Tipo</th>'
-      +'<th style="padding:5px 8px;font-size:13px;color:var(--suave);text-align:left">Descripcion</th>'
-      +'<th style="padding:5px 8px;font-size:13px;color:var(--suave);text-align:right">Monto USD</th>'
-      +'<th style="padding:5px 8px;font-size:13px;color:var(--suave);text-align:right">Monto Bs</th>'
-      +'<th style="padding:5px 8px;font-size:13px;color:var(--suave);text-align:left">Vencimiento</th>'+'<th style="padding:5px 8px;font-size:13px;color:var(--suave);text-align:left">Cancelado</th>'+'<th style="padding:5px 8px;font-size:13px;color:var(--suave);text-align:left">Estado</th>'
-      +'<th style="padding:5px 8px;font-size:13px;color:var(--suave);text-align:left">Rec.</th>'
-      +'</tr></thead><tbody>'
-      +(filas||'<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--suave)">Sin pagos registrados.</td></tr>')
-      +'</tbody></table></div>';
-  } catch(e) {
-    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>';
-  }
-}
+
+
 
