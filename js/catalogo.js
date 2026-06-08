@@ -161,7 +161,6 @@ async function abrirNuevoCatalogo() {
 
 async function abrirEditarCatalogo(id) {
   const s = catalogoCache.find(function(x) { return x.id_servicio === parseInt(id); });
-  console.log('[catalogo] abrirEditarCatalogo id:', id, '| s:', JSON.stringify(s));
   if (!s) return;
   document.getElementById('cat-id').value = s.id_servicio;
   document.getElementById('cat-descripcion').value = s.descripcion || '';
@@ -189,15 +188,11 @@ async function abrirEditarCatalogo(id) {
   document.getElementById('alerta-cat-ok').style.display = 'none';
   document.getElementById('alerta-cat-err').style.display = 'none';
   await cargarGruposSelect(s.grupo || '');
-  // Asignar grupo explícitamente después de cargar las opciones
   if (s.grupo) {
     const selGrupo = document.getElementById('cat-grupo');
     if (selGrupo) selGrupo.value = s.grupo;
-    console.log('[catalogo] s.grupo:', JSON.stringify(s.grupo), '| selGrupo.value después:', selGrupo?.value, '| opciones:', Array.from(selGrupo?.options||[]).map(o=>o.value));
   }
-  // Cargar servicios usando el grupo del servicio directamente (no del select)
-  const grupoParaCargar = s.grupo || document.getElementById('cat-grupo')?.value || '';
-  console.log('[catalogo] grupoParaCargar:', JSON.stringify(grupoParaCargar));
+  const grupoParaCargar = s.grupo || '';
   await cargarServiciosSelect(grupoParaCargar, s.nombre);
   abrirModal('modal-catalogo');
   focusFirstField('modal-catalogo');
@@ -539,12 +534,12 @@ async function cargarServiciosSelect(grupo, valorActual) {
   const sel = document.getElementById('cat-nombre');
   if (!sel) return;
   sel.innerHTML = '<option value="">— Seleccionar servicio —</option>';
-  if (!grupo) { console.warn('[catalogo] cargarServiciosSelect: grupo vacío'); return; }
   try {
-    const query = '?grupo=eq.' + encodeURIComponent(grupo) + '&order=nombre.asc&select=id_servicio,nombre,activo' + emisorQ();
-    console.log('[catalogo] cargarServiciosSelect grupo:', grupo, '| valorActual:', valorActual, '| query:', query);
+    // Si no hay grupo, cargar todos los servicios del emisor
+    const query = grupo
+      ? '?grupo=eq.' + encodeURIComponent(grupo) + '&order=nombre.asc&select=id_servicio,nombre,activo' + emisorQ()
+      : '?order=nombre.asc&select=id_servicio,nombre,activo' + emisorQ();
     const servicios = await api('servicios_catalogo', 'GET', null, query);
-    console.log('[catalogo] servicios retornados:', servicios);
     servicios.forEach(function(s) {
       const opt = document.createElement('option');
       opt.value = s.nombre;
@@ -553,13 +548,11 @@ async function cargarServiciosSelect(grupo, valorActual) {
     });
     if (valorActual) {
       sel.value = valorActual;
-      console.log('[catalogo] sel.value después de asignar:', sel.value, '| opciones:', Array.from(sel.options).map(o=>o.value));
       if (!sel.value) {
         const match = Array.from(sel.options).find(function(o) {
           return o.value.trim().toLowerCase() === valorActual.trim().toLowerCase();
         });
         if (match) sel.value = match.value;
-        console.log('[catalogo] fallback match:', match?.value);
       }
     }
   } catch(e) { console.warn('cargarServiciosSelect error:', e); }
