@@ -36,8 +36,10 @@ function calcPrecioCat(precio_usd, moneda_precio) {
 function convertirPrecioMoneda(nuevaMoneda) {
   const inputPrecio = document.getElementById('cat-precio');
   if (!inputPrecio) return;
-  const rawValor = (inputPrecio.value || '0').replace(/\./g, '').replace(',', '.');
-  const precioActual = parseFloat(rawValor) || 0;
+  const rawValor = (inputPrecio.value || '0');
+  const precioActual = rawValor.includes(',')
+    ? parseFloat(rawValor.replace(/\./g, '').replace(',', '.')) || 0
+    : parseFloat(rawValor.replace(/,/g, '')) || 0;
   if (!precioActual) return;
   const monedaAnterior = inputPrecio.dataset.monedaAnterior || 'VES';
   if (monedaAnterior === nuevaMoneda) return;
@@ -290,9 +292,16 @@ async function guardarCatalogo() {
   const desc       = document.getElementById('cat-descripcion').value.trim();
   const cat        = document.getElementById('cat-categoria').value.trim();
   const carroceria = document.getElementById('cat-carroceria').value.trim();
-  const precioRaw  = (document.getElementById('cat-precio').value || '0')
-    .replace(/\./g, '').replace(',', '.');  // Limpiar formato venezolano
-  const precio     = parseFloat(parseFloat(precioRaw).toFixed(2)) || 0;
+  const precioRaw  = (document.getElementById('cat-precio').value || '0');
+  // Detectar formato: venezolano (punto miles, coma decimal) vs USD (coma miles, punto decimal)
+  // Si tiene coma → formato venezolano: quitar puntos, coma→punto
+  // Si no tiene coma pero tiene punto → formato USD: usar directo
+  let precio = 0;
+  if (precioRaw.includes(',')) {
+    precio = parseFloat(precioRaw.replace(/\./g, '').replace(',', '.')) || 0;
+  } else {
+    precio = parseFloat(precioRaw.replace(/,/g, '')) || 0;
+  }
   const monedaServ = document.getElementById('cat-moneda')?.value || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
   const activo     = document.getElementById('cat-activo').value === 'true';
   const okEl       = document.getElementById('alerta-cat-ok');
@@ -301,7 +310,7 @@ async function guardarCatalogo() {
 
   if (!nombre) { errEl.textContent = 'El nombre del servicio es obligatorio.'; errEl.style.display = 'block'; return; }
 
-  const nombreFinal = capitalizarNombre(nombre);
+  const nombreFinal = (nombre.charAt(0).toUpperCase() + nombre.slice(1));
   const grupoFinal  = (grupo && grupo.trim() !== '') ? grupo.trim() : null;
 
   // Validar duplicado solo si es registro verdaderamente nuevo (sin id y sin match en caché del mismo grupo)
