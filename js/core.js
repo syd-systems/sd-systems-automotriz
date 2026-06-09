@@ -692,6 +692,17 @@ function mostrarError(msg) {
   el.style.display = 'block';
 }
 
+// ─── ACTUALIZAR UI DE EMPRESA ───
+function actualizarEmpresaUI() {
+  if (!_empresaActiva) return;
+  const empEl = document.getElementById('empresa-activa-nombre');
+  if (empEl) empEl.textContent = '🏢 ' + _empresaActiva.nombre;
+  const topbarEmp = document.getElementById('topbar-empresa');
+  if (topbarEmp) topbarEmp.textContent = '🏢 ' + _empresaActiva.nombre;
+  const btnCambiar = document.getElementById('btn-cambiar-empresa');
+  if (btnCambiar) btnCambiar.style.display = _empresasUsuario.length > 1 ? '' : 'none';
+}
+
 // ─── INICIAR APP ───
 function iniciarApp() {
   document.getElementById('pantalla-login').style.display = 'none';
@@ -701,13 +712,7 @@ function iniciarApp() {
   const nombre = sesionActual.nombre || sesionActual.correo_usuario;
   document.getElementById('nombre-usuario').textContent = nombre;
   // Mostrar empresa activa en sidebar y topbar
-  const empEl = document.getElementById('empresa-activa-nombre');
-  if (empEl && _empresaActiva) empEl.textContent = '🏢 ' + _empresaActiva.nombre;
-  const topbarEmp = document.getElementById('topbar-empresa');
-  if (topbarEmp && _empresaActiva) topbarEmp.textContent = '🏢 ' + _empresaActiva.nombre;
-  // Mostrar botón cambiar empresa si hay más de una
-  const btnCambiar = document.getElementById('btn-cambiar-empresa');
-  if (btnCambiar) btnCambiar.style.display = _empresasUsuario.length > 1 ? '' : 'none';
+  actualizarEmpresaUI();
   document.getElementById('rol-usuario').textContent = sesionActual.administrador ? 'Administrador' : 'Operador';
   document.getElementById('avatar-inicial').textContent = nombre.charAt(0).toUpperCase();
 
