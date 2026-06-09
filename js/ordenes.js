@@ -1186,6 +1186,9 @@ window.addEventListener('load', async () => {
         }
       } catch(eE) { console.warn('Error cargando empresas al restaurar sesión:', eE); }
       iniciarApp();
+      // Garantizar que el nombre de empresa aparece en UI
+      // (iniciarApp puede haber corrido antes de que _empresaActiva estuviera listo)
+      actualizarEmpresaUI();
       // Actualizar botón cambiar empresa después de cargar
       const btnCambiarEmp = document.getElementById('btn-cambiar-empresa');
       if (btnCambiarEmp) btnCambiarEmp.style.display = _empresasUsuario.length > 1 ? '' : 'none';
