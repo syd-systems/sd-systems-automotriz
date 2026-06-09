@@ -21,20 +21,22 @@ async function cargarTasasCat() {
 
 // Devuelve { bs: 'x.xxx,xx Bs', divisa: '$ x.xx USD' } según moneda_precio
 function calcPrecioCat(precio_usd, moneda_precio) {
-  const val     = parseFloat(precio_usd || 0);
-  const moneda  = (moneda_precio || 'USD').toUpperCase();
-  const tasaUSD = _tasasCat['USD'] || _tasaVigente || 1;
-  const simbolo = { USD: '$', EUR: '€', USDT: '₮' };
+  const val      = parseFloat(precio_usd || 0);
+  const moneda   = (moneda_precio || 'USD').toUpperCase();
+  const tasaUSD  = _tasasCat['USD'] || _tasaVigente || 1;
+  const simbolo  = { USD: '$', EUR: '€', USDT: '₮' };
 
   if (moneda === 'VES') {
-    // Precio ya en Bs → secundaria USD = Bs ÷ tasa USD
-    return { bs: fmtBs(val) + ' Bs', divisa: '$ ' + fmtUSD(val / tasaUSD) + ' USD' };
+    // Precio en Bs → secundaria = moneda_secundaria del emisor
+    const monSec  = ((_empresaActiva?.moneda_secundaria) || 'USD').toUpperCase();
+    const tasaSec = _tasasCat[monSec] || tasaUSD;
+    const sim     = simbolo[monSec] || '';
+    return { bs: fmtBs(val) + ' Bs', divisa: sim + ' ' + fmtUSD(val / tasaSec) + ' ' + monSec };
   }
-  // Precio en divisa → Bs = precio × tasa de esa moneda
+  // Precio en divisa (USD, EUR...) → Bs = precio × tasa; secundaria = monto original
   const tasaMoneda = _tasasCat[moneda] || tasaUSD;
   const enBs       = val * tasaMoneda;
-  // Secundaria: mostrar el monto en la moneda original del servicio
-  const sim = simbolo[moneda] || '';
+  const sim        = simbolo[moneda] || '';
   return { bs: fmtBs(enBs) + ' Bs', divisa: sim + ' ' + fmtUSD(val) + ' ' + moneda };
 }
 
