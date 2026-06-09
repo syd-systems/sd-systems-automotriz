@@ -639,8 +639,10 @@ async function iniciarSesion() {
     if (!_empresaActiva && _empresasUsuario.length > 0) {
       _empresaActiva = _empresasUsuario[0];
     }
-    // Guardar sesión en sessionStorage solo cuando todo está listo
-    sessionStorage.setItem('sd_sesion', JSON.stringify({ usuario: u, accesos: modulosAcceso }));
+    // Guardar sesión en sessionStorage Y localStorage (localStorage sobrevive hard reload)
+    const sesionData = JSON.stringify({ usuario: u, accesos: modulosAcceso });
+    sessionStorage.setItem('sd_sesion', sesionData);
+    localStorage.setItem('sd_sesion', sesionData);
     iniciarApp();
     btn.textContent = 'INGRESAR';
     btn.disabled = false;
@@ -785,8 +787,9 @@ function seleccionarEmpresa(idEmisor) {
   idEmisor = parseInt(idEmisor);
   _empresaActiva = _empresasUsuario.find(function(e){ return e.id_emisor === idEmisor; });
   if (!_empresaActiva) return;
-  // Guardar empresa activa en sessionStorage
+  // Guardar empresa activa en sessionStorage y localStorage
   sessionStorage.setItem('sd_empresa_activa', JSON.stringify(_empresaActiva));
+  localStorage.setItem('sd_empresa_activa', JSON.stringify(_empresaActiva));
   // Cerrar modal de selección
   const selModal = document.getElementById('modal-seleccion-empresa');
   if (selModal) selModal.style.display = 'none';
@@ -846,6 +849,8 @@ function limpiarSesionLocal() {
   permisosActuales = {};
   _empParamCache   = {};
   sessionStorage.removeItem('sd_sesion');
+  localStorage.removeItem('sd_sesion');
+  localStorage.removeItem('sd_empresa_activa');
   document.getElementById('pantalla-app').style.display   = 'none';
   document.getElementById('pantalla-login').style.display = 'flex';
   document.getElementById('login-correo').value = '';
@@ -927,7 +932,14 @@ async function mostrarModulo(modulo, navEl) {
     case 'parametros':   renderParametros();   break;
     case 'ordenes':      await renderOrdenes();      break;
     case 'inventario':   renderInventario();   break;
-    case 'catalogo':     renderCatalogo();     break;
+    case 'catalogo':
+      // Resetear filtros al entrar al módulo para mostrar todos los servicios
+      const buscarCat = document.getElementById('buscar-cat');
+      const filtroCat = document.getElementById('filtro-cat-cat');
+      if (buscarCat) buscarCat.value = '';
+      if (filtroCat) filtroCat.value = '';
+      renderCatalogo();
+      break;
     case 'emisores':     renderEmisores();     break;
     case 'facturas':     renderFacturas();     break;
     case 'pagos':        renderPagos();        break;
