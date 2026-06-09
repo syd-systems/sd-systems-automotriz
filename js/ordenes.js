@@ -612,7 +612,7 @@ async function agregarServicioCatalogo() {
       descEl.focus();
       return;
     }
-    const pVal = parseFloat(precio.value) || 0;
+    const pVal = parsePrecio(precio.value, moneda);
     if (pVal <= 0) {
       precio.style.borderColor = 'var(--naranja)';
       precio.style.boxShadow = '0 0 0 3px rgba(255,107,0,0.2)';
@@ -627,7 +627,7 @@ async function agregarServicioCatalogo() {
   } else {
     const s = catalogoCache.find(function(x) { return x.id_servicio == sel.value; });
     if (!s) return;
-    const pVal = parseFloat(precio.value) || parseFloat(s.precio_usd) || 0;
+    const pVal = parsePrecio(precio.value, moneda) || parseFloat(s.precio_usd) || 0;
     osServiciosLineas.push({ id_servicio: s.id_servicio, descripcion: s.nombre,
       cantidad: parseFloat(cant.value) || 1, precio_usd: precioAUSD(pVal, moneda),
       precio_original: pVal, moneda });
