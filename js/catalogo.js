@@ -2,7 +2,39 @@
 // ══════════════════════════════════════════════════════════════
 //  FASE 3 — CATÁLOGO DE SERVICIOS
 // ══════════════════════════════════════════════════════════════
-let catalogoCache = [];
+let catalogoCache  = [];
+let gruposCatalogo = [];
+let _tasasCat      = {}; // { USD: 38000, EUR: 42000, ... }
+
+async function cargarTasasCat() {
+  try {
+    const res = await api('tasas', 'GET', null, '?order=fecha_valor.desc&select=moneda_origen,tipo_cambio');
+    const vistas = {};
+    res.forEach(function(t) {
+      const m = (t.moneda_origen || '').toUpperCase();
+      if (m && !vistas[m]) vistas[m] = parseFloat(t.tipo_cambio) || 1;
+    });
+    _tasasCat = vistas;
+    if (_tasasCat.USD) _tasaVigente = _tasasCat.USD;
+  } catch(e) { console.warn('cargarTasasCat:', e); }
+}
+
+function convertirPrecioMoneda(nuevaMoneda) {
+  const inputPrecio = document.getElementById('cat-precio');
+  if (!inputPrecio) return;
+  const rawValor = (inputPrecio.value || '0').replace(/\./g, '').replace(',', '.');
+  const precioActual = parseFloat(rawValor) || 0;
+  if (!precioActual) return;
+  const monedaAnterior = inputPrecio.dataset.monedaAnterior || 'VES';
+  if (monedaAnterior === nuevaMoneda) return;
+  // Convertir a VES como moneda puente
+  const tasaOrigen  = monedaAnterior === 'VES' ? 1 : (_tasasCat[monedaAnterior] || _tasaVigente || 1);
+  const tasaDestino = nuevaMoneda    === 'VES' ? 1 : (_tasasCat[nuevaMoneda]    || _tasaVigente || 1);
+  const enVES    = precioActual * tasaOrigen;
+  const resultado = enVES / tasaDestino;
+  inputPrecio.value = nuevaMoneda === 'VES' ? fmtBs(resultado) : fmtUSD(resultado);
+  inputPrecio.dataset.monedaAnterior = nuevaMoneda;
+}
 
 async function renderCatalogo(filtro, categoria) {
   if (!sesionActual?.administrador && !modulosAcceso.includes('CATALOGO')) {
@@ -162,8 +194,12 @@ async function abrirNuevoCatalogo() {
   document.getElementById('cat-precio').value = '';
   document.getElementById('cat-activo').value = 'true';
   // Poblar selector de moneda desde tabla tasas
+  await cargarTasasCat();
   const mpC = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
   await cargarSelectMoneda('cat-moneda', mpC);
+  // Marcar moneda inicial en el input para conversión
+  const inputP = document.getElementById('cat-precio');
+  if (inputP) inputP.dataset.monedaAnterior = mpC;
   document.getElementById('modal-cat-titulo').textContent = 'NUEVO SERVICIO';
   const btnElimCat = document.getElementById('cat-btn-eliminar');
   if (btnElimCat) btnElimCat.style.display = 'none';
@@ -187,7 +223,10 @@ async function abrirEditarCatalogo(id) {
   document.getElementById('cat-categoria').value = s.categoria || '';
   document.getElementById('cat-carroceria').value = s.tipo_carroceria || '';
   document.getElementById('cat-precio').value = s.precio_usd ? fmtBs(s.precio_usd) : '';
+  await cargarTasasCat();
   await cargarSelectMoneda('cat-moneda', s.moneda_precio || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase());
+  const inputPE = document.getElementById('cat-precio');
+  if (inputPE) inputPE.dataset.monedaAnterior = s.moneda_precio || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
   document.getElementById('cat-activo').value = s.activo ? 'true' : 'false';
   document.getElementById('modal-cat-titulo').textContent = 'EDITAR SERVICIO';
   // Modo editar: select visible, input oculto
@@ -452,7 +491,6 @@ async function eliminarServicioEnLinea(id, nombre) {
 }
 
 // ─── GESTIÓN DE GRUPOS DEL CATÁLOGO ───
-let gruposCatalogo = [];
 
 async function crearNuevoGrupo(selectEl) {
   const nombre = prompt('Nombre del nuevo grupo:');
@@ -522,7 +560,10 @@ async function cargarDatosServicioSeleccionado(nombre) {
   document.getElementById('cat-categoria').value = s.categoria || '';
   document.getElementById('cat-carroceria').value = s.tipo_carroceria || '';
   document.getElementById('cat-precio').value = s.precio_usd ? fmtBs(s.precio_usd) : '';
+  await cargarTasasCat();
   await cargarSelectMoneda('cat-moneda', s.moneda_precio || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase());
+  const inputPS = document.getElementById('cat-precio');
+  if (inputPS) inputPS.dataset.monedaAnterior = s.moneda_precio || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
   document.getElementById('cat-activo').value = s.activo ? 'true' : 'false';
   document.getElementById('modal-cat-titulo').textContent = 'EDITAR SERVICIO';
   // Modo editar: select visible, input oculto
