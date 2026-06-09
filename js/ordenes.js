@@ -1202,21 +1202,23 @@ async function cargarSelectsOS() {
     if (!inventarioCache.length) inventarioCache = await api('inventario', 'GET', null, '?order=nombre.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
   } catch(e) {}
 
-  // ── Cargar selector de GRUPOS (sin corchetes, sin categoría) ──
+  // ── Cargar selector de GRUPOS ──
   const selGrupo = document.getElementById('os-sel-grupo-cat');
   if (selGrupo) {
     const grupos = [...new Set(catalogoCache.map(function(s) { return s.grupo; }).filter(Boolean))].sort();
-    selGrupo.innerHTML = '<option value="">— Todos los grupos —</option>'
+    selGrupo.innerHTML = '<option value="">— Seleccionar grupo —</option>'
       + grupos.map(function(g) { return '<option value="' + g + '">' + g + '</option>'; }).join('');
   }
 
-  // ── Cargar selector de SERVICIOS (todos por defecto, sin corchetes) ──
+  // ── Cargar selector de SERVICIOS — todos ocultos hasta seleccionar grupo ──
   const selCat = document.getElementById('os-sel-cat');
   if (selCat) {
-    selCat.innerHTML = '<option value="">— Seleccionar servicio —</option>'
+    selCat.innerHTML = '<option value="">— Primero seleccione un grupo —</option>'
       + catalogoCache.map(function(s) {
-          return '<option value="' + s.id_servicio + '" data-grupo="' + (s.grupo || '') + '">'
-            + s.nombre + ' — $' + parseFloat(s.precio_usd || 0).toFixed(2) + '</option>';
+          const mon = (s.moneda_precio || 'USD').toUpperCase();
+          const precioFmt = mon === 'VES' ? fmtBs(parseFloat(s.precio_usd||0)) + ' Bs' : '$ ' + fmtUSD(parseFloat(s.precio_usd||0)) + ' ' + mon;
+          return '<option value="' + s.id_servicio + '" data-grupo="' + (s.grupo || '') + '" style="display:none">'
+            + s.nombre + ' — ' + precioFmt + '</option>';
         }).join('');
   }
 
