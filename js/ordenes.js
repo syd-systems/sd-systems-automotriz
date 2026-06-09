@@ -598,14 +598,19 @@ async function agregarServicioCatalogo() {
       cantidad: parseFloat(cant.value) || 1, precio_usd: precioAUSD(pVal, moneda),
       precio_original: pVal, moneda });
   }
-  // Resetear todos los campos del formulario de agregar
+  // Resetear campos del formulario de agregar — sin borrar las opciones del select
   sel.value = '';
   precio.value = '';
   cant.value = '1';
   const descLibreEl = document.getElementById('os-desc-libre');
   if (descLibreEl) descLibreEl.value = '';
-  const selServEl = document.getElementById('os-sel-cat');
-  if (selServEl) selServEl.innerHTML = '<option value="">— Seleccionar servicio —</option>';
+  // Resetear también el grupo para que el usuario elija de nuevo
+  const grpEl = document.getElementById('os-sel-grupo-cat');
+  if (grpEl) grpEl.value = '';
+  // Ocultar todas las opciones de servicio hasta que se seleccione un grupo
+  if (sel) Array.from(sel.options).forEach(function(opt) {
+    if (opt.value) opt.style.display = 'none';
+  });
   renderLineasOS();
 }
 
