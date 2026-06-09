@@ -21,16 +21,20 @@ async function cargarTasasCat() {
 
 // Devuelve { bs: 'x.xxx,xx Bs', divisa: '$ x.xx USD' } según moneda_precio
 function calcPrecioCat(precio_usd, moneda_precio) {
-  const val    = parseFloat(precio_usd || 0);
-  const moneda = (moneda_precio || 'USD').toUpperCase();
-  const tasa   = _tasasCat[moneda] || _tasaVigente || 1;
+  const val     = parseFloat(precio_usd || 0);
+  const moneda  = (moneda_precio || 'USD').toUpperCase();
+  const tasaUSD = _tasasCat['USD'] || _tasaVigente || 1;
+
   if (moneda === 'VES') {
-    // precio ya está en Bs → divisa = Bs / tasa_USD
-    const tasaUSD = _tasasCat['USD'] || _tasaVigente || 1;
+    // Precio ya en Bs → USD = Bs ÷ tasa USD
     return { bs: fmtBs(val) + ' Bs', divisa: '$ ' + fmtUSD(val / tasaUSD) + ' USD' };
   }
-  // precio en divisa → Bs = precio * tasa
-  return { bs: fmtBs(val * tasa) + ' Bs', divisa: fmtUSD(val) + ' ' + moneda };
+  // Precio en divisa (USD, EUR, USDT...) → Bs = precio × tasa de esa moneda
+  const tasaMoneda = _tasasCat[moneda] || tasaUSD;
+  const enBs       = val * tasaMoneda;
+  // Referencia secundaria siempre en USD
+  const enUSD      = moneda === 'USD' ? val : enBs / tasaUSD;
+  return { bs: fmtBs(enBs) + ' Bs', divisa: '$ ' + fmtUSD(enUSD) + ' USD' };
 }
 
 function convertirPrecioMoneda(nuevaMoneda) {
