@@ -486,11 +486,13 @@ function renderLineasOS() {
     + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px;text-align:center">Mon.</div>'
     + '<div></div></div>'
   + osServiciosLineas.map(function(l, i) {
-    const mon = l.moneda || 'USD';
+    const mon    = (l.moneda || 'USD').toUpperCase();
+    const precio = parseFloat(l.precio_original !== undefined ? l.precio_original : (l.precio_usd || 0));
+    const precioFmt = mon === 'VES' ? fmtBs(precio) : fmtUSD(precio);
     return '<div style="display:grid;grid-template-columns:1fr 70px 110px 60px auto;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
       + '<div style="font-size:13px;font-weight:500">' + l.descripcion + '</div>'
       + '<input type="number" value="' + l.cantidad + '" min="0.01" step="0.01" onchange="osServiciosLineas[' + i + '].cantidad=parseFloat(this.value)||1;calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:center">'
-      + '<input type="number" value="' + (parseFloat(l.precio_original !== undefined ? l.precio_original : (l.precio_usd || 0)).toFixed(2)) + '" min="0" step="0.01" onchange="osServiciosLineas[' + i + '].precio_original=parseFloat(this.value)||0;osServiciosLineas[' + i + '].precio_usd=convertirAUSD(parseFloat(this.value)||0,osServiciosLineas[' + i + '].moneda||\'USD\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
+      + '<input type="text" value="' + precioFmt + '" onchange="osServiciosLineas[' + i + '].precio_original=parsePrecio(this.value,\'' + mon + '\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
       + '<div style="font-size:10px;font-weight:600;color:var(--suave);text-align:center">' + (monedaLabels[mon] || mon) + '</div>'
       + '<button onclick="quitarLineaServ(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px;padding:0 4px">✕</button>'
       + '</div>';
@@ -513,16 +515,28 @@ function renderLineasRep() {
     + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px;text-align:center">Mon.</div>'
     + '<div></div></div>'
   + osRepuestosLineas.map(function(l, i) {
-    const mon = l.moneda || 'USD';
+    const mon    = (l.moneda || 'USD').toUpperCase();
+    const precio = parseFloat(l.precio_original !== undefined ? l.precio_original : (l.precio_usd || 0));
+    const precioFmt = mon === 'VES' ? fmtBs(precio) : fmtUSD(precio);
     return '<div style="display:grid;grid-template-columns:1fr 70px 110px 60px auto;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
       + '<div style="font-size:13px;font-weight:500">' + l.descripcion + '</div>'
       + '<input type="number" value="' + l.cantidad + '" min="0.01" step="0.01" onchange="osRepuestosLineas[' + i + '].cantidad=parseFloat(this.value)||1;calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:center">'
-      + '<input type="number" value="' + (parseFloat(l.precio_original !== undefined ? l.precio_original : (l.precio_usd || 0)).toFixed(2)) + '" min="0" step="0.01" onchange="osRepuestosLineas[' + i + '].precio_original=parseFloat(this.value)||0;osRepuestosLineas[' + i + '].precio_usd=convertirAUSD(parseFloat(this.value)||0,osRepuestosLineas[' + i + '].moneda||\'USD\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
+      + '<input type="text" value="' + precioFmt + '" onchange="osRepuestosLineas[' + i + '].precio_original=parsePrecio(this.value,\'' + mon + '\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
       + '<div style="font-size:10px;font-weight:600;color:var(--suave);text-align:center">' + (monedaLabels[mon] || mon) + '</div>'
       + '<button onclick="quitarLineaRep(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px;padding:0 4px">✕</button>'
       + '</div>';
   }).join('');
   calcularTotalesOS();
+}
+
+function parsePrecio(valor, moneda) {
+  const s = (valor || '0').toString();
+  if ((moneda || 'USD').toUpperCase() === 'VES') {
+    // Formato venezolano: punto=miles, coma=decimal
+    return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
+  }
+  // Formato USD/EUR: coma=miles, punto=decimal
+  return parseFloat(s.replace(/,/g, '')) || 0;
 }
 
 function convertirAUSD(precio, moneda) {
