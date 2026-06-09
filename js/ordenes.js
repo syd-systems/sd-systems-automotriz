@@ -678,6 +678,19 @@ function onSelInventarioChange() {
 
 // ─── GUARDAR OS ───
 async function guardarOS() {
+  if (window._guardandoOS) return;
+  window._guardandoOS = true;
+  const btnGuardar = document.querySelector('#modal-os .btn-primario');
+  if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
+  try {
+    await _guardarOSInterno();
+  } finally {
+    window._guardandoOS = false;
+    if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'GUARDAR OS'; }
+  }
+}
+
+async function _guardarOSInterno() {
   const id = document.getElementById('os-id').value;
   if (id && !puedo('SERVICIOS','EDITAR')) { alert('No tiene permiso para editar órdenes de servicio.'); return; }
   if (!id && !puedo('SERVICIOS','CREAR')) { alert('No tiene permiso para crear órdenes de servicio.'); return; }
