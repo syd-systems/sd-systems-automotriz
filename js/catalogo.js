@@ -353,18 +353,16 @@ async function guardarCatalogo() {
     okEl.textContent = '✓ Servicio guardado.'; okEl.style.display = 'block';
     setTimeout(async function() {
       cerrarModal('modal-catalogo');
-      // Si venimos de modal-servicios-cat, refrescar esa lista
+      // Limpiar caché y recargar siempre desde API
+      catalogoCache = [];
+      gruposCatalogo = [];
       const modalServ = document.getElementById('modal-servicios-cat');
       if (modalServ && modalServ.classList.contains('activo')) {
         const grupo = document.getElementById('cat-grupo')?.value || '';
         await renderListaServicios(grupo);
-      } else {
-        // Limpiar caché para forzar recarga completa
-        catalogoCache = [];
-        gruposCatalogo = [];
-        await renderCatalogo();
       }
-    }, 1000);
+      await renderCatalogo();
+    }, 300);
   } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
 }
 
