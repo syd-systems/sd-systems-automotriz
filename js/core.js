@@ -567,26 +567,7 @@ async function iniciarSesion() {
       return;
     }
 
-    // Verificar si ya tiene una sesión activa en otro dispositivo
-    if (u.sesion_activa && u.token_sesion) {
-      const ultimoAcceso = u.ultimo_acceso ? new Date(u.ultimo_acceso) : null;
-      const minutosDesde = ultimoAcceso ? Math.floor((Date.now() - ultimoAcceso.getTime()) / 60000) : 999;
-      // Solo alertar si la sesión tiene menos de 60 minutos (evitar falsos positivos de cierres bruscos)
-      if (minutosDesde < 60) {
-        const confirmar = confirm(
-          '⚠️ Este usuario ya tiene una sesión activa.\n\n' +
-          'Si continúas, la sesión anterior será cerrada.\n\n' +
-          '¿Deseas continuar?'
-        );
-        if (!confirmar) {
-          btn.textContent = 'INGRESAR';
-          btn.disabled = false;
-          return;
-        }
-      }
-    }
-
-    // Generar token único para esta sesión e invalidar sesiones previas
+    // Si hay sesión activa en otro dispositivo, cerrarla automáticamente y permitir la nueva
     const miToken = Math.random().toString(36).substr(2) + Date.now().toString(36);
     window._miTokenSesion = miToken;
     await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correo), {
