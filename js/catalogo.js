@@ -40,24 +40,8 @@ function calcPrecioCat(precio_usd, moneda_precio) {
   return { bs: fmtBs(enBs) + ' Bs', divisa: sim + ' ' + fmtUSD(val) + ' ' + moneda };
 }
 
-function convertirPrecioMoneda(nuevaMoneda) {
-  const inputPrecio = document.getElementById('cat-precio');
-  if (!inputPrecio) return;
-  const rawValor = (inputPrecio.value || '0');
-  const precioActual = rawValor.includes(',')
-    ? parseFloat(rawValor.replace(/\./g, '').replace(',', '.')) || 0
-    : parseFloat(rawValor.replace(/,/g, '')) || 0;
-  if (!precioActual) return;
-  const monedaAnterior = inputPrecio.dataset.monedaAnterior || 'VES';
-  if (monedaAnterior === nuevaMoneda) return;
-  // Convertir a VES como moneda puente
-  const tasaOrigen  = monedaAnterior === 'VES' ? 1 : (_tasasCat[monedaAnterior] || _tasaVigente || 1);
-  const tasaDestino = nuevaMoneda    === 'VES' ? 1 : (_tasasCat[nuevaMoneda]    || _tasaVigente || 1);
-  const enVES    = precioActual * tasaOrigen;
-  const resultado = enVES / tasaDestino;
-  inputPrecio.value = nuevaMoneda === 'VES' ? fmtBs(resultado) : fmtUSD(resultado);
-  inputPrecio.dataset.monedaAnterior = nuevaMoneda;
-}
+
+
 
 async function renderCatalogo(filtro, categoria) {
   if (!sesionActual?.administrador && !modulosAcceso.includes('CATALOGO')) {
@@ -204,9 +188,6 @@ async function cargarSelectMoneda(selId, valorActual) {
   }
   const monedaFinal = valorActual || mp;
   sel.value = monedaFinal;
-  // Marcar moneda actual en el input de precio para que convertirPrecioMoneda sepa desde dónde convertir
-  const inputPrecio = document.getElementById('cat-precio');
-  if (inputPrecio) inputPrecio.dataset.monedaAnterior = monedaFinal;
 }
 
 async function abrirNuevoCatalogo() {
