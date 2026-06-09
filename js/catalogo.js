@@ -66,6 +66,12 @@ async function renderCatalogo(filtro, categoria) {
   const c = document.getElementById('contenido-principal');
   const panelYaExiste = !!document.getElementById('buscar-cat');
 
+  // Si se llama sin argumentos y el panel ya existe, leer los filtros actuales
+  if (panelYaExiste) {
+    if (filtro === undefined) filtro = document.getElementById('buscar-cat')?.value || null;
+    if (categoria === undefined) categoria = document.getElementById('filtro-cat-cat')?.value || null;
+  }
+
   if (!panelYaExiste) {
     c.innerHTML = '<div class="panel" id="panel-catalogo">'
       + '<div class="panel-header"><h3 id="cat-contador">Catálogo de Servicios</h3>'
@@ -361,6 +367,11 @@ async function guardarCatalogo() {
       // Limpiar caché y recargar siempre desde API
       catalogoCache = [];
       gruposCatalogo = [];
+      // Resetear filtros para mostrar todos los servicios
+      const buscarEl = document.getElementById('buscar-cat');
+      const catEl = document.getElementById('filtro-cat-cat');
+      if (buscarEl) buscarEl.value = '';
+      if (catEl) catEl.value = '';
       const modalServ = document.getElementById('modal-servicios-cat');
       if (modalServ && modalServ.classList.contains('activo')) {
         const grupo = document.getElementById('cat-grupo')?.value || '';
