@@ -19,6 +19,20 @@ async function cargarTasasCat() {
   } catch(e) { console.warn('cargarTasasCat:', e); }
 }
 
+// Devuelve { bs: 'x.xxx,xx Bs', divisa: '$ x.xx USD' } según moneda_precio
+function calcPrecioCat(precio_usd, moneda_precio) {
+  const val    = parseFloat(precio_usd || 0);
+  const moneda = (moneda_precio || 'USD').toUpperCase();
+  const tasa   = _tasasCat[moneda] || _tasaVigente || 1;
+  if (moneda === 'VES') {
+    // precio ya está en Bs → divisa = Bs / tasa_USD
+    const tasaUSD = _tasasCat['USD'] || _tasaVigente || 1;
+    return { bs: fmtBs(val) + ' Bs', divisa: '$ ' + fmtUSD(val / tasaUSD) + ' USD' };
+  }
+  // precio en divisa → Bs = precio * tasa
+  return { bs: fmtBs(val * tasa) + ' Bs', divisa: fmtUSD(val) + ' ' + moneda };
+}
+
 function convertirPrecioMoneda(nuevaMoneda) {
   const inputPrecio = document.getElementById('cat-precio');
   if (!inputPrecio) return;
@@ -72,6 +86,7 @@ async function renderCatalogo(filtro, categoria) {
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
 
   try {
+    await cargarTasasCat();
     const items = await api('servicios_catalogo', 'GET', null, '?order=grupo.asc,nombre.asc&select=*'+emisorQ());
     catalogoCache = items;
 
@@ -92,12 +107,9 @@ async function renderCatalogo(filtro, categoria) {
         + '</td>'
         + '<td><span class="badge badge-gris" style="font-size:12px;font-weight:600">' + (s.tipo_carroceria || 'Todas') + '</span></td>'
         + '<td style="font-family:var(--font-mono);font-size:14px;font-weight:700">'
-        + (s.moneda_precio === 'VES'
-            ? '<span style="color:var(--naranja)">' + fmtBs(parseFloat(s.precio_usd||0)) + ' Bs</span>'
-              + '<div style="font-size:10px;font-weight:400;color:var(--suave)">$ ' + fmtUSD(_tasaVigente > 0 ? parseFloat(s.precio_usd||0) / _tasaVigente : 0) + ' USD</div>'
-            : '<span style="color:var(--naranja)">' + fmtBs(parseFloat(s.precio_usd||0) * _tasaVigente) + ' Bs</span>'
-              + '<div style="font-size:10px;font-weight:400;color:var(--suave)">$ ' + fmtUSD(s.precio_usd) + ' USD</div>'
-          )
+        + (function(){ var p=calcPrecioCat(s.precio_usd,s.moneda_precio);
+            return '<span style="color:var(--naranja)">' + p.bs + '</span>'
+              + '<div style="font-size:10px;font-weight:400;color:var(--suave)">' + p.divisa + '</div>'; })()
         + '</td>'
         + '<td><span class="badge ' + (s.activo ? 'badge-verde' : 'badge-rojo') + '" style="font-size:12px">' + (s.activo ? 'Activo' : 'Inactivo') + '</span></td>'
         + '<td><div style="display:flex;gap:8px">'
@@ -133,12 +145,9 @@ function verFichaCatalogo(id) {
     + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio</div>'
-    + (s.moneda_precio === 'VES'
-        ? '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + fmtBs(parseFloat(s.precio_usd||0)) + ' Bs</div>'
-          + '<div style="font-size:12px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(_tasaVigente > 0 ? parseFloat(s.precio_usd||0) / _tasaVigente : 0) + ' USD</div>'
-        : '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + fmtBs(parseFloat(s.precio_usd||0) * _tasaVigente) + ' Bs</div>'
-          + '<div style="font-size:12px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(s.precio_usd) + ' USD</div>'
-      )
+    + (function(){ var p=calcPrecioCat(s.precio_usd,s.moneda_precio);
+        return '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + p.bs + '</div>'
+          + '<div style="font-size:12px;color:var(--suave);margin-top:2px">' + p.divisa + '</div>'; })()
     + '</div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Estado</div>'
     + '<span class="badge ' + (s.activo ? 'badge-verde' : 'badge-rojo') + '">' + (s.activo ? 'Activo' : 'Inactivo') + '</span></div>'
@@ -395,10 +404,7 @@ async function renderListaServicios(grupo) {
         + (s.grupo ? '<span style="color:var(--naranja)">' + s.grupo + '</span> · ' : '')
         + (s.categoria || 'Sin categoría') + ' · '
         + '<span style="font-family:var(--font-mono);color:var(--naranja)">'
-        + (s.moneda_precio === 'VES'
-            ? fmtBs(parseFloat(s.precio_usd||0)) + ' Bs'
-            : fmtBs(parseFloat(s.precio_usd||0) * _tasaVigente) + ' Bs · $ ' + fmtUSD(s.precio_usd)
-          )
+        + (function(){ var p=calcPrecioCat(s.precio_usd,s.moneda_precio); return p.bs + ' · ' + p.divisa; })()
         + '</span>'
         + '</div></div>'
         + '<div style="display:flex;gap:6px;flex-shrink:0">'
