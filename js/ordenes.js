@@ -1189,12 +1189,15 @@ window.addEventListener('load', async () => {
           const empEncontrada = _empresasUsuario.find(function(e){ return e.id_emisor === emp.id_emisor; });
           if (empEncontrada) _empresaActiva = empEncontrada;
         }
+        // Fallback: si no hay empresa guardada, tomar la primera disponible
+        if (!_empresaActiva && _empresasUsuario.length > 0) {
+          _empresaActiva = _empresasUsuario[0];
+        }
       } catch(eE) { console.warn('Error cargando empresas al restaurar sesión:', eE); }
+
+      // iniciarApp DESPUÉS de que _empresaActiva esté asignado
       iniciarApp();
-      // Garantizar que el nombre de empresa aparece en UI
-      // (iniciarApp puede haber corrido antes de que _empresaActiva estuviera listo)
       actualizarEmpresaUI();
-      // Actualizar botón cambiar empresa después de cargar
       const btnCambiarEmp = document.getElementById('btn-cambiar-empresa');
       if (btnCambiarEmp) btnCambiarEmp.style.display = _empresasUsuario.length > 1 ? '' : 'none';
       iniciarTimerInactividad();
