@@ -1149,8 +1149,13 @@ function onSelGrupoCatChange() {
 
 
 window.addEventListener('load', async () => {
-  const guardado = sessionStorage.getItem('sd_sesion');
+  // sessionStorage se limpia con Ctrl+Shift+R — usar localStorage como fallback
+  const guardado = sessionStorage.getItem('sd_sesion') || localStorage.getItem('sd_sesion');
   if (guardado) {
+    // Sincronizar sessionStorage si vino de localStorage
+    if (!sessionStorage.getItem('sd_sesion')) {
+      sessionStorage.setItem('sd_sesion', guardado);
+    }
     try {
       const { usuario, accesos } = JSON.parse(guardado);
       sesionActual = usuario;
@@ -1177,8 +1182,8 @@ window.addEventListener('load', async () => {
           _empresasUsuario = todasEmisores.filter(function(e){ return idsPermitidos.has(e.id_emisor); });
           if (_empresasUsuario.length === 1) _empresaActiva = _empresasUsuario[0];
         }
-        // Restaurar empresa activa desde sessionStorage si existe
-        const empGuardada = sessionStorage.getItem('sd_empresa_activa');
+        // Restaurar empresa activa desde sessionStorage o localStorage
+        const empGuardada = sessionStorage.getItem('sd_empresa_activa') || localStorage.getItem('sd_empresa_activa');
         if (empGuardada) {
           const emp = JSON.parse(empGuardada);
           const empEncontrada = _empresasUsuario.find(function(e){ return e.id_emisor === emp.id_emisor; });
