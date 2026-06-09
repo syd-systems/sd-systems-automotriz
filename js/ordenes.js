@@ -671,6 +671,7 @@ function onSelCatalogoChange() {
   if (s) {
     const monedaServ = (s.moneda_precio || 'USD').toUpperCase();
     const monedaSel  = document.getElementById('os-moneda-cat');
+    console.log('[OS] servicio seleccionado:', s.nombre, '| precio_usd:', s.precio_usd, '| moneda_precio:', s.moneda_precio);
     // Mostrar precio en la moneda original del servicio
     if (monedaServ === 'VES') {
       precio.value = fmtBs(parseFloat(s.precio_usd || 0));
