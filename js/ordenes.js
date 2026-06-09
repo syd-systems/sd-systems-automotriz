@@ -535,21 +535,41 @@ function quitarLineaServ(i) { osServiciosLineas.splice(i, 1); renderLineasOS(); 
 function quitarLineaRep(i)  { osRepuestosLineas.splice(i, 1); renderLineasRep(); }
 
 function calcularTotalesOS() {
-  const totServ = osServiciosLineas.reduce(function(acc, l) { return acc + parseFloat(l.precio_usd) * parseFloat(l.cantidad); }, 0);
-  const totRep  = osRepuestosLineas.reduce(function(acc, l) { return acc + parseFloat(l.precio_usd) * parseFloat(l.cantidad); }, 0);
-  const total   = totServ + totRep;
-  const totalVes = total * tasaActualOS;
+  // Calcular total en Bs usando la tasa correspondiente a cada moneda
+  const tasaUSD = _tasasCat['USD'] || _tasaVigente || tasaActualOS || 1;
+
+  function lineaABs(precio, moneda) {
+    const p   = parseFloat(precio) || 0;
+    const mon = (moneda || 'USD').toUpperCase();
+    if (mon === 'VES') return p;
+    const tasa = _tasasCat[mon] || tasaUSD;
+    return p * tasa;
+  }
+
+  const totServBs = osServiciosLineas.reduce(function(acc, l) {
+    return acc + lineaABs(l.precio_original || l.precio_usd, l.moneda) * parseFloat(l.cantidad);
+  }, 0);
+  const totRepBs = osRepuestosLineas.reduce(function(acc, l) {
+    return acc + lineaABs(l.precio_original || l.precio_usd, l.moneda || 'USD') * parseFloat(l.cantidad);
+  }, 0);
+  const totalBs  = totServBs + totRepBs;
+  const totalUSD = tasaUSD > 0 ? totalBs / tasaUSD : 0;
+
   const el = document.getElementById('os-totales');
   if (el) el.innerHTML = '<div style="display:flex;gap:24px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:12px 0">'
-    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Servicios</div><div style="font-family:var(--font-mono)">$ ' + fmtUSD(totServ) + '</div></div>'
-    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Repuestos</div><div style="font-family:var(--font-mono)">$ ' + fmtUSD(totRep) + '</div></div>'
-    + '<div style="border-left:1px solid var(--borde);padding-left:24px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL</div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + fmtBs(totalVes) + ' Bs</div><div style="font-size:12px;color:var(--suave)">$ ' + fmtUSD(total) + '</div></div>'
+    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Servicios</div><div style="font-family:var(--font-mono)">' + fmtBs(totServBs) + ' Bs</div></div>'
+    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Repuestos</div><div style="font-family:var(--font-mono)">' + fmtBs(totRepBs) + ' Bs</div></div>'
     + '<div style="border-left:1px solid var(--borde);padding-left:24px">'
-    +   '<div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL Bs</div>'
-    
-    +   '<div style="font-size:9px;color:var(--suave);margin-top:2px">Tasa: $ 1 = ' + tasaActualOS.toFixed(2) + ' Bs</div>'
+    +   '<div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL</div>'
+    +   '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + fmtBs(totalBs) + ' Bs</div>'
+    +   '<div style="font-size:12px;color:var(--suave)">$ ' + fmtUSD(totalUSD) + ' USD</div>'
+    +   '<div style="font-size:9px;color:var(--suave);margin-top:2px">Tasa: $ 1 = ' + fmtBs(tasaUSD) + ' Bs</div>'
     + '</div>'
     + '</div>';
+
+  // Actualizar totales globales para guardar en BD
+  window._osLastTotalBs  = totalBs;
+  window._osLastTotalUSD = totalUSD;
 }
 
 // ─── AGREGAR LÍNEA SERVICIO DESDE CATÁLOGO ───
@@ -754,9 +774,26 @@ async function _guardarOSInterno() {
   if (!vehId) { errEl.textContent = 'Debe buscar y seleccionar un vehículo.'; errEl.style.display = 'block'; return; }
   if (!fechaEnt) { errEl.textContent = 'La fecha de entrada es obligatoria.'; errEl.style.display = 'block'; return; }
 
-  const totServ = osServiciosLineas.reduce(function(acc, l) { return acc + parseFloat(l.precio_usd) * parseFloat(l.cantidad); }, 0);
-  const totRep  = osRepuestosLineas.reduce(function(acc, l) { return acc + parseFloat(l.precio_usd) * parseFloat(l.cantidad); }, 0);
-  const total   = totServ + totRep;
+  const tasaUSDGuardar = _tasasCat['USD'] || _tasaVigente || tasaActualOS || 1;
+
+  function lineaABsGuardar(precio, moneda) {
+    const p   = parseFloat(precio) || 0;
+    const mon = (moneda || 'USD').toUpperCase();
+    if (mon === 'VES') return p;
+    return p * (_tasasCat[mon] || tasaUSDGuardar);
+  }
+
+  const totServBs = osServiciosLineas.reduce(function(acc, l) {
+    return acc + lineaABsGuardar(l.precio_original || l.precio_usd, l.moneda) * parseFloat(l.cantidad);
+  }, 0);
+  const totRepBs = osRepuestosLineas.reduce(function(acc, l) {
+    return acc + lineaABsGuardar(l.precio_original || l.precio_usd, l.moneda || 'USD') * parseFloat(l.cantidad);
+  }, 0);
+  const totalBsGuardar  = totServBs + totRepBs;
+  const totalUSDGuardar = tasaUSDGuardar > 0 ? totalBsGuardar / tasaUSDGuardar : 0;
+  // Para compatibilidad con campos existentes en BD
+  const totServ = tasaUSDGuardar > 0 ? totServBs / tasaUSDGuardar : 0;
+  const totRep  = tasaUSDGuardar > 0 ? totRepBs  / tasaUSDGuardar : 0;
 
   // Obtener id_propietario del vehículo
   let idPropietario = null;
@@ -784,11 +821,11 @@ async function _guardarOSInterno() {
       estado,
       diagnostico: diagnostico || null,
       observaciones: obs || null,
-      tasa_cambio_usd: tasasDisponiblesOS.USD,
+      tasa_cambio_usd: tasaUSDGuardar,
       total_servicios_usd: totServ,
       total_repuestos_usd: totRep,
-      total_usd: total,
-      total_ves: total * tasaActualOS,
+      total_usd: totalUSDGuardar,
+      total_ves: totalBsGuardar,
       id_usuario: sesionActual.correo_usuario,
       // Actualizar fecha y usuario del estado solo si cambió
       ...(estadoCambio ? {
