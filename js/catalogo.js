@@ -174,25 +174,26 @@ async function cargarSelectMoneda(selId, valorActual) {
   const lbl = { VES: 'Bolívar', USD: 'Dólar', EUR: 'Euro', USDT: 'USDT' };
   const mp = ((_empresaActiva?.moneda_principal) || 'VES').toUpperCase();
   try {
-    // Leer monedas disponibles desde tabla tasas
     const tasas = await api('tasas', 'GET', null, '?select=moneda_origen&order=moneda_origen.asc');
-    const monedas = [mp]; // moneda principal siempre primera
+    const monedas = [mp];
     tasas.forEach(function(t) {
       const m = (t.moneda_origen || '').toUpperCase();
       if (m && !monedas.includes(m)) monedas.push(m);
     });
-    // Agregar VES si no está
     if (!monedas.includes('VES')) monedas.unshift('VES');
     sel.innerHTML = monedas.map(function(m) {
       return '<option value="' + m + '">' + m + ' — ' + (lbl[m] || m) + '</option>';
     }).join('');
   } catch(e) {
-    // Fallback: moneda principal + secundaria del emisor
     const ms = ((_empresaActiva?.moneda_secundaria) || 'USD').toUpperCase();
     sel.innerHTML = '<option value="' + mp + '">' + mp + ' — ' + (lbl[mp] || mp) + '</option>'
       + (ms !== mp ? '<option value="' + ms + '">' + ms + ' — ' + (lbl[ms] || ms) + '</option>' : '');
   }
-  sel.value = valorActual || mp;
+  const monedaFinal = valorActual || mp;
+  sel.value = monedaFinal;
+  // Marcar moneda actual en el input de precio para que convertirPrecioMoneda sepa desde dónde convertir
+  const inputPrecio = document.getElementById('cat-precio');
+  if (inputPrecio) inputPrecio.dataset.monedaAnterior = monedaFinal;
 }
 
 async function abrirNuevoCatalogo() {
@@ -210,7 +211,6 @@ async function abrirNuevoCatalogo() {
   await cargarSelectMoneda('cat-moneda', mpC);
   // Marcar moneda inicial en el input para conversión
   const inputP = document.getElementById('cat-precio');
-  if (inputP) inputP.dataset.monedaAnterior = mpC;
   document.getElementById('modal-cat-titulo').textContent = 'NUEVO SERVICIO';
   const btnElimCat = document.getElementById('cat-btn-eliminar');
   if (btnElimCat) btnElimCat.style.display = 'none';
@@ -237,7 +237,6 @@ async function abrirEditarCatalogo(id) {
   await cargarTasasCat();
   await cargarSelectMoneda('cat-moneda', s.moneda_precio || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase());
   const inputPE = document.getElementById('cat-precio');
-  if (inputPE) inputPE.dataset.monedaAnterior = s.moneda_precio || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
   document.getElementById('cat-activo').value = s.activo ? 'true' : 'false';
   document.getElementById('modal-cat-titulo').textContent = 'EDITAR SERVICIO';
   // Modo editar: select visible, input oculto
@@ -578,7 +577,6 @@ async function cargarDatosServicioSeleccionado(nombre) {
   await cargarTasasCat();
   await cargarSelectMoneda('cat-moneda', s.moneda_precio || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase());
   const inputPS = document.getElementById('cat-precio');
-  if (inputPS) inputPS.dataset.monedaAnterior = s.moneda_precio || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
   document.getElementById('cat-activo').value = s.activo ? 'true' : 'false';
   document.getElementById('modal-cat-titulo').textContent = 'EDITAR SERVICIO';
   // Modo editar: select visible, input oculto
