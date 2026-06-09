@@ -771,7 +771,7 @@ async function guardarOS() {
       const anio = hoy.getFullYear();
       const idEmisor = _empresaActiva ? _empresaActiva.id_emisor : 0;
       const existentes = await api('ordenes_servicio', 'GET', null,
-        '?select=numero_os&numero_os=like.OS-' + anio + '-*&id_emisor=eq.' + idEmisor + '&order=numero_os.desc&limit=1');
+        '?select=numero_os&numero_os=like.OS-' + anio + '-%25&id_emisor=eq.' + idEmisor + '&order=numero_os.desc&limit=1');
       let seq = 1;
       if (existentes.length) {
         const partes = existentes[0].numero_os.split('-');
