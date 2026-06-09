@@ -1195,6 +1195,15 @@ window.addEventListener('load', async () => {
         }
       } catch(eE) { console.warn('Error cargando empresas al restaurar sesión:', eE); }
 
+      // Leer token_sesion actual de BD y asignarlo para que el polling funcione
+      try {
+        const uRes = await api('usuarios', 'GET', null,
+          '?correo_usuario=eq.' + encodeURIComponent(usuario.correo_usuario) + '&select=token_sesion');
+        if (uRes && uRes[0] && uRes[0].token_sesion) {
+          window._miTokenSesion = uRes[0].token_sesion;
+        }
+      } catch(eT) { console.warn('Error leyendo token_sesion:', eT); }
+
       // iniciarApp DESPUÉS de que _empresaActiva esté asignado
       iniciarApp();
       actualizarEmpresaUI();
