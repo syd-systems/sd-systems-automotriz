@@ -567,6 +567,25 @@ async function iniciarSesion() {
       return;
     }
 
+    // Verificar si ya tiene una sesión activa en otro dispositivo
+    if (u.sesion_activa && u.token_sesion) {
+      const ultimoAcceso = u.ultimo_acceso ? new Date(u.ultimo_acceso) : null;
+      const minutosDesde = ultimoAcceso ? Math.floor((Date.now() - ultimoAcceso.getTime()) / 60000) : 999;
+      // Solo alertar si la sesión tiene menos de 60 minutos (evitar falsos positivos de cierres bruscos)
+      if (minutosDesde < 60) {
+        const confirmar = confirm(
+          '⚠️ Este usuario ya tiene una sesión activa.\n\n' +
+          'Si continúas, la sesión anterior será cerrada.\n\n' +
+          '¿Deseas continuar?'
+        );
+        if (!confirmar) {
+          btn.textContent = 'INGRESAR';
+          btn.disabled = false;
+          return;
+        }
+      }
+    }
+
     // Generar token único para esta sesión e invalidar sesiones previas
     const miToken = Math.random().toString(36).substr(2) + Date.now().toString(36);
     window._miTokenSesion = miToken;
@@ -639,10 +658,14 @@ async function iniciarSesion() {
     if (!_empresaActiva && _empresasUsuario.length > 0) {
       _empresaActiva = _empresasUsuario[0];
     }
-    // Guardar sesión en sessionStorage Y localStorage (localStorage sobrevive hard reload)
+    // Guardar sesión y empresa en sessionStorage Y localStorage
     const sesionData = JSON.stringify({ usuario: u, accesos: modulosAcceso });
     sessionStorage.setItem('sd_sesion', sesionData);
     localStorage.setItem('sd_sesion', sesionData);
+    if (_empresaActiva) {
+      sessionStorage.setItem('sd_empresa_activa', JSON.stringify(_empresaActiva));
+      localStorage.setItem('sd_empresa_activa', JSON.stringify(_empresaActiva));
+    }
     iniciarApp();
     btn.textContent = 'INGRESAR';
     btn.disabled = false;
