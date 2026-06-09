@@ -125,6 +125,33 @@ function verFichaCatalogo(id) {
   focusFirstField('modal-ficha-cat');
 }
 
+async function cargarSelectMoneda(selId, valorActual) {
+  const sel = document.getElementById(selId);
+  if (!sel) return;
+  const lbl = { VES: 'Bolívar', USD: 'Dólar', EUR: 'Euro', USDT: 'USDT' };
+  const mp = ((_empresaActiva?.moneda_principal) || 'VES').toUpperCase();
+  try {
+    // Leer monedas disponibles desde tabla tasas
+    const tasas = await api('tasas', 'GET', null, '?select=moneda_origen&order=moneda_origen.asc');
+    const monedas = [mp]; // moneda principal siempre primera
+    tasas.forEach(function(t) {
+      const m = (t.moneda_origen || '').toUpperCase();
+      if (m && !monedas.includes(m)) monedas.push(m);
+    });
+    // Agregar VES si no está
+    if (!monedas.includes('VES')) monedas.unshift('VES');
+    sel.innerHTML = monedas.map(function(m) {
+      return '<option value="' + m + '">' + m + ' — ' + (lbl[m] || m) + '</option>';
+    }).join('');
+  } catch(e) {
+    // Fallback: moneda principal + secundaria del emisor
+    const ms = ((_empresaActiva?.moneda_secundaria) || 'USD').toUpperCase();
+    sel.innerHTML = '<option value="' + mp + '">' + mp + ' — ' + (lbl[mp] || mp) + '</option>'
+      + (ms !== mp ? '<option value="' + ms + '">' + ms + ' — ' + (lbl[ms] || ms) + '</option>' : '');
+  }
+  sel.value = valorActual || mp;
+}
+
 async function abrirNuevoCatalogo() {
   document.getElementById('cat-id').value = '';
   document.getElementById('cat-grupo').value = '';
@@ -134,16 +161,9 @@ async function abrirNuevoCatalogo() {
   document.getElementById('cat-carroceria').value = '';
   document.getElementById('cat-precio').value = '';
   document.getElementById('cat-activo').value = 'true';
-  // Poblar selector de moneda
-  const catSel = document.getElementById('cat-moneda');
-  if (catSel) {
-    const mpC = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
-    const msC = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
-    const lblC = { VES:'Bolívar', USD:'Dólar', EUR:'Euro' };
-    catSel.innerHTML = '<option value="'+mpC+'">'+mpC+' — '+(lblC[mpC]||mpC)+'</option>' +
-      (msC !== mpC ? '<option value="'+msC+'">'+msC+' — '+(lblC[msC]||msC)+'</option>' : '');
-    catSel.value = mpC;
-  }
+  // Poblar selector de moneda desde tabla tasas
+  const mpC = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
+  await cargarSelectMoneda('cat-moneda', mpC);
   document.getElementById('modal-cat-titulo').textContent = 'NUEVO SERVICIO';
   const btnElimCat = document.getElementById('cat-btn-eliminar');
   if (btnElimCat) btnElimCat.style.display = 'none';
@@ -167,15 +187,7 @@ async function abrirEditarCatalogo(id) {
   document.getElementById('cat-categoria').value = s.categoria || '';
   document.getElementById('cat-carroceria').value = s.tipo_carroceria || '';
   document.getElementById('cat-precio').value = s.precio_usd ? fmtBs(s.precio_usd) : '';
-  const catSelE = document.getElementById('cat-moneda');
-  if (catSelE) {
-    const mpE = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
-    const msE = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
-    const lblE = { VES:'Bolívar', USD:'Dólar', EUR:'Euro' };
-    catSelE.innerHTML = '<option value="'+mpE+'">'+mpE+' — '+(lblE[mpE]||mpE)+'</option>' +
-      (msE !== mpE ? '<option value="'+msE+'">'+msE+' — '+(lblE[msE]||msE)+'</option>' : '');
-    catSelE.value = s.moneda_precio || mpE;
-  }
+  await cargarSelectMoneda('cat-moneda', s.moneda_precio || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase());
   document.getElementById('cat-activo').value = s.activo ? 'true' : 'false';
   document.getElementById('modal-cat-titulo').textContent = 'EDITAR SERVICIO';
   // Modo editar: select visible, input oculto
@@ -491,7 +503,7 @@ async function cargarGruposSelect(valorActual) {
   } catch(e) { console.warn('cargarGruposSelect error:', e); }
 }
 
-function cargarDatosServicioSeleccionado(nombre) {
+async function cargarDatosServicioSeleccionado(nombre) {
   if (!nombre) {
     // Limpiar campos
     document.getElementById('cat-id').value = '';
@@ -510,15 +522,7 @@ function cargarDatosServicioSeleccionado(nombre) {
   document.getElementById('cat-categoria').value = s.categoria || '';
   document.getElementById('cat-carroceria').value = s.tipo_carroceria || '';
   document.getElementById('cat-precio').value = s.precio_usd ? fmtBs(s.precio_usd) : '';
-  const catSelE = document.getElementById('cat-moneda');
-  if (catSelE) {
-    const mpE = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
-    const msE = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
-    const lblE = { VES:'Bolívar', USD:'Dólar', EUR:'Euro' };
-    catSelE.innerHTML = '<option value="'+mpE+'">'+mpE+' — '+(lblE[mpE]||mpE)+'</option>' +
-      (msE !== mpE ? '<option value="'+msE+'">'+msE+' — '+(lblE[msE]||msE)+'</option>' : '');
-    catSelE.value = s.moneda_precio || mpE;
-  }
+  await cargarSelectMoneda('cat-moneda', s.moneda_precio || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase());
   document.getElementById('cat-activo').value = s.activo ? 'true' : 'false';
   document.getElementById('modal-cat-titulo').textContent = 'EDITAR SERVICIO';
   // Modo editar: select visible, input oculto
