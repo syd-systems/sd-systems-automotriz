@@ -590,7 +590,6 @@ async function agregarServicioCatalogo() {
     osServiciosLineas.push({ id_servicio: null, descripcion: descEl.value.trim(),
       cantidad: parseFloat(cant.value) || 1, precio_usd: precioAUSD(pVal, moneda),
       precio_original: pVal, moneda });
-    descEl.value = ''; precio.value = ''; cant.value = '1';
   } else {
     const s = catalogoCache.find(function(x) { return x.id_servicio == sel.value; });
     if (!s) return;
@@ -598,8 +597,15 @@ async function agregarServicioCatalogo() {
     osServiciosLineas.push({ id_servicio: s.id_servicio, descripcion: s.nombre,
       cantidad: parseFloat(cant.value) || 1, precio_usd: precioAUSD(pVal, moneda),
       precio_original: pVal, moneda });
-    sel.value = ''; precio.value = ''; cant.value = '1';
   }
+  // Resetear todos los campos del formulario de agregar
+  sel.value = '';
+  precio.value = '';
+  cant.value = '1';
+  const descLibreEl = document.getElementById('os-desc-libre');
+  if (descLibreEl) descLibreEl.value = '';
+  const selServEl = document.getElementById('os-sel-cat');
+  if (selServEl) selServEl.innerHTML = '<option value="">— Seleccionar servicio —</option>';
   renderLineasOS();
 }
 
