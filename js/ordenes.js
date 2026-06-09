@@ -604,6 +604,9 @@ async function agregarServicioCatalogo() {
   cant.value = '1';
   const descLibreEl = document.getElementById('os-desc-libre');
   if (descLibreEl) descLibreEl.value = '';
+  // Desbloquear moneda
+  const monedaSelEl = document.getElementById('os-moneda-cat');
+  if (monedaSelEl) monedaSelEl.disabled = false;
   // Resetear también el grupo para que el usuario elija de nuevo
   const grpEl = document.getElementById('os-sel-grupo-cat');
   if (grpEl) grpEl.value = '';
@@ -621,15 +624,39 @@ function onSelCatalogoChange() {
   const cant = document.getElementById('os-cant-cat');
 
   if (!sel.value) {
-    // Sin servicio seleccionado → posicionar en descripción libre
     precio.value = '';
+    // Desbloquear moneda para descripción libre
+    const monedaSel = document.getElementById('os-moneda-cat');
+    if (monedaSel) monedaSel.disabled = false;
     if (descLibre) setTimeout(function() { descLibre.focus(); }, 50);
     return;
   }
 
-  // Servicio seleccionado → autocompletar precio y posicionar en Cantidad
+  // Servicio seleccionado → autocompletar precio y moneda del catálogo
   const s = catalogoCache.find(function(x) { return x.id_servicio == sel.value; });
-  if (s) precio.value = parseFloat(s.precio_usd || 0).toFixed(2);
+  if (s) {
+    const monedaServ = (s.moneda_precio || 'USD').toUpperCase();
+    const monedaSel  = document.getElementById('os-moneda-cat');
+    // Mostrar precio en la moneda original del servicio
+    if (monedaServ === 'VES') {
+      precio.value = fmtBs(parseFloat(s.precio_usd || 0));
+    } else {
+      precio.value = fmtUSD(parseFloat(s.precio_usd || 0));
+    }
+    // Asignar y bloquear la moneda — no se puede cambiar, viene del catálogo
+    if (monedaSel) {
+      // Asegurar que la opción existe en el select
+      let optExists = Array.from(monedaSel.options).find(function(o) { return o.value === monedaServ; });
+      if (!optExists) {
+        const opt = document.createElement('option');
+        opt.value = monedaServ;
+        opt.textContent = monedaServ;
+        monedaSel.appendChild(opt);
+      }
+      monedaSel.value   = monedaServ;
+      monedaSel.disabled = true; // bloqueado — la moneda la define el catálogo
+    }
+  }
   if (cant) setTimeout(function() { cant.focus(); cant.select(); }, 50);
 }
 
