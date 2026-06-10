@@ -324,8 +324,19 @@ function verFichaInventario(id) {
   if (btnEditar)  { btnEditar._id = r.id_articulo;  btnEditar.onclick = function() { cerrarModal('modal-ficha-inv'); abrirEditarInventario(this._id); }; btnEditar.style.display = puedo('INVENTARIO','EDITAR') ? '' : 'none'; }
   if (btnEliminar){ btnEliminar._id = r.id_articulo; btnEliminar._nombre = r.nombre; btnEliminar.onclick = function() { cerrarModal('modal-ficha-inv'); eliminarInventario(this._id, this._nombre); }; btnEliminar.style.display = puedo('INVENTARIO','ELIMINAR') ? '' : 'none'; }
 
+  // Agregar contenedor de historial si no existe
+  const fichaContenido = document.getElementById('ficha-inv-contenido');
+  if (fichaContenido && !document.getElementById('ficha-inv-historial')) {
+    const histDiv = document.createElement('div');
+    histDiv.id = 'ficha-inv-historial';
+    fichaContenido.parentNode.insertBefore(histDiv, fichaContenido.nextSibling);
+  }
+
   abrirModal('modal-ficha-inv');
   focusFirstField('modal-ficha-inv');
+
+  // Cargar historial de entradas
+  verHistorialEntradas(r.id_articulo);
 }
 
 function abrirEntradaStock(id) {
@@ -496,7 +507,7 @@ async function guardarEntradaStock() {
       const idProvEnt       = (motivoEntH === 'compra') ? (parseInt(document.getElementById('es-proveedor')?.value) || null) : null;
       const clienteNomH     = (motivoEntH === 'devolucion') ? (document.getElementById('es-cliente-nombre')?.value.trim() || null) : null;
       const idAreaOrigenH   = (motivoEntH === 'transferencia') ? (parseInt(document.getElementById('es-area-origen')?.value) || null) : null;
-      await api('stock_entradas', 'POST', {
+      const entradaRes = await api('stock_entradas', 'POST', {
         id_articulo:             id,
         cantidad:                cantidad,
         precio_costo_usd:        nuevoPrecioCosto || null,
@@ -512,6 +523,7 @@ async function guardarEntradaStock() {
         observaciones:           document.getElementById('es-observaciones')?.value.trim() || null,
         id_usuario:              sesionActual.correo_usuario
       });
+      const idEntrada = entradaRes && entradaRes[0] ? entradaRes[0].id_entrada : null;
     } catch(eH) { console.warn('Error registrando historial entrada:', eH); }
 
     // ── Generar asiento contable de entrada ──
@@ -528,7 +540,7 @@ async function guardarEntradaStock() {
         montoUSD:    nuevoPrecioCosto * cantidad,
         areaId:      areaIdEnt,
         areaNombre:  areaNombreEnt,
-        referencia:  'ENT-INV-' + id
+        referencia:  idEntrada ? 'ENT-' + idEntrada : ('ENT-INV-' + id)
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
 
@@ -647,12 +659,107 @@ async function guardarInventario() {
 
 async function eliminarInventario(id, nombre) {
   if (!puedo('INVENTARIO','ELIMINAR')) { alert('No tiene permiso para eliminar artículos.'); return; }
-  if (!confirm('¿Eliminar "' + nombre + '"?')) return;
   try {
+    const [entradas, salidas] = await Promise.all([
+      api('stock_entradas', 'GET', null, '?id_articulo=eq.' + id + '&select=id_entrada&limit=1'),
+      api('os_repuestos',   'GET', null, '?id_articulo=eq.' + id + '&select=id_os_rep&limit=1')
+    ]);
+    if (entradas && entradas.length > 0) {
+      alert('No se puede eliminar "' + nombre + '" porque tiene entradas de stock registradas.');
+      return;
+    }
+    if (salidas && salidas.length > 0) {
+      alert('No se puede eliminar "' + nombre + '" porque tiene salidas en Órdenes de Servicio.');
+      return;
+    }
+    if (!confirm('¿Eliminar "' + nombre + '"?\nEsta acción no se puede deshacer.')) return;
     await api('inventario', 'DELETE', null, '?id_articulo=eq.' + id);
-    document.getElementById('contenido-principal').innerHTML='';
+    document.getElementById('contenido-principal').innerHTML = '';
     renderInventario();
   } catch(e) { alert('Error: ' + e.message); }
 }
 
+// ─── HISTORIAL DE ENTRADAS ───
+async function verHistorialEntradas(idArticulo) {
+  const cont = document.getElementById('ficha-inv-historial');
+  if (!cont) return;
+  cont.innerHTML = '<div style="color:var(--suave);font-size:12px">Cargando...</div>';
+  try {
+    const entradas = await api('stock_entradas', 'GET', null,
+      '?id_articulo=eq.' + idArticulo + '&order=fecha_entrada.desc&select=*');
+    if (!entradas || !entradas.length) {
+      cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:8px 0">Sin entradas registradas.</div>';
+      return;
+    }
+    const motivoLabel = { compra:'Compra', devolucion:'Devolución', transferencia:'Transferencia', ajuste:'Ajuste' };
+    cont.innerHTML = '<div style="margin-top:16px;border-top:1px solid var(--borde);padding-top:12px">'
+      + '<div style="font-size:10px;color:var(--suave);letter-spacing:2px;margin-bottom:8px">HISTORIAL DE ENTRADAS</div>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+      + '<thead><tr style="border-bottom:1px solid var(--borde)">'
+      + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">FECHA</th>'
+      + '<th style="text-align:right;padding:6px 4px;color:var(--suave);font-size:10px">CANT</th>'
+      + '<th style="text-align:right;padding:6px 4px;color:var(--suave);font-size:10px">PRECIO</th>'
+      + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">MOTIVO</th>'
+      + '<th style="text-align:center;padding:6px 4px;color:var(--suave);font-size:10px">ESTADO</th>'
+      + '<th style="padding:6px 4px"></th>'
+      + '</tr></thead><tbody>'
+      + entradas.map(function(e) {
+          const mon  = (e.moneda_compra || 'USD').toUpperCase();
+          const prec = parseFloat(e.precio_compra_original || e.precio_costo_usd || 0);
+          const precFmt = mon === 'VES' ? fmtBs(prec) + ' Bs' : '$ ' + fmtUSD(prec) + ' ' + mon;
+          const estado = e.reversada
+            ? '<span style="color:#fc8181;font-size:10px">Reversada</span>'
+            : '<span style="color:#22c55e;font-size:10px">Activa</span>';
+          const btnRev = !e.reversada && puedo('INVENTARIO','ELIMINAR')
+            ? '<button onclick="reversarEntrada(' + e.id_entrada + ',' + idArticulo + ',' + e.cantidad + ')" '
+              + 'style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;'
+              + 'border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">Reversar</button>'
+            : '';
+          return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
+            + '<td style="padding:6px 4px">' + fmtFecha(e.fecha_entrada) + '</td>'
+            + '<td style="text-align:right;padding:6px 4px;font-family:var(--font-mono)">' + e.cantidad + '</td>'
+            + '<td style="text-align:right;padding:6px 4px;font-family:var(--font-mono)">' + precFmt + '</td>'
+            + '<td style="padding:6px 4px">' + (motivoLabel[e.motivo] || e.motivo || '—') + '</td>'
+            + '<td style="text-align:center;padding:6px 4px">' + estado + '</td>'
+            + '<td style="padding:6px 4px">' + btnRev + '</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table></div>';
+  } catch(e) {
+    cont.innerHTML = '<div style="color:#fc8181;font-size:12px">Error: ' + e.message + '</div>';
+  }
+}
 
+// ─── REVERSAR ENTRADA ───
+async function reversarEntrada(idEntrada, idArticulo, cantidad) {
+  if (!confirm('¿Reversar esta entrada?\n\nSe restarán ' + cantidad + ' unidades del stock y se anulará el asiento contable.\nEsta acción no se puede deshacer.')) return;
+  try {
+    // 1. Stock actual fresco
+    const artFresh = await api('inventario', 'GET', null, '?id_articulo=eq.' + idArticulo + '&select=stock_actual');
+    const stockActual = artFresh && artFresh[0] ? parseFloat(artFresh[0].stock_actual) : 0;
+    const nuevoStock  = Math.max(0, stockActual - parseFloat(cantidad));
+    // 2. Rebajar stock
+    await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + idArticulo);
+    // 3. Marcar entrada como reversada
+    await api('stock_entradas', 'PATCH',
+      { reversada: true, id_usuario_reversa: sesionActual.correo_usuario },
+      '?id_entrada=eq.' + idEntrada);
+    // 4. Anular asiento contable vinculado
+    try {
+      const refBuscar = 'ENT-' + idEntrada;
+      const asientos = await api('cont_asientos', 'GET', null,
+        '?referencia=eq.' + refBuscar + emisorQ() + '&select=id_asiento,numero_asiento');
+      for (var i = 0; i < asientos.length; i++) {
+        await api('cont_asientos', 'PATCH',
+          { estado: 'ANULADO', descripcion: '[REVERSADO] ' + (asientos[i].numero_asiento || '') },
+          '?id_asiento=eq.' + asientos[i].id_asiento);
+      }
+    } catch(eAst) { console.warn('Error anulando asiento:', eAst); }
+    // 5. Actualizar cache
+    const cached = inventarioCache.find(function(x) { return x.id_articulo === idArticulo; });
+    if (cached) cached.stock_actual = nuevoStock;
+    alert('Entrada reversada. Stock: ' + stockActual + ' → ' + nuevoStock);
+    verHistorialEntradas(idArticulo);
+    verFichaInventario(idArticulo);
+  } catch(e) { alert('Error al reversar: ' + e.message); }
+}
