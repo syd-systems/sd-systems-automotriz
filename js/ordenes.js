@@ -815,15 +815,16 @@ async function _guardarOSInterno() {
     if (veh.length) idPropietario = veh[0].id_propietario;
   } catch(e) {}
 
+  if (!_empresaActiva) { alert('No hay empresa activa. Por favor seleccione una empresa.'); return; }
+
   try {
     let osId = id;
-    // Fecha del estado actual (Venezuela UTC-4)
     const hoyEstado = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
-    // Detectar si el estado cambió (en edición) para actualizar fecha_estado
     const osActual = id ? ordenesCache.find(function(x) { return x.id_orden == id; }) : null;
     const estadoCambio = !osActual || osActual.estado !== estado;
 
     const datos = {
+      id_emisor: _empresaActiva.id_emisor,
       id_vehiculo: parseInt(vehId),
       id_propietario: idPropietario,
       kilometraje_entrada: km,
@@ -840,7 +841,6 @@ async function _guardarOSInterno() {
       total_usd: totalUSDGuardar,
       total_ves: totalBsGuardar,
       id_usuario: sesionActual.correo_usuario,
-      // Actualizar fecha y usuario del estado solo si cambió
       ...(estadoCambio ? {
         fecha_estado: hoyEstado,
         usuario_estado: sesionActual.nombre || sesionActual.correo_usuario,
