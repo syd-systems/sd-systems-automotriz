@@ -958,18 +958,22 @@ async function guardarTasaBCVManual() {
   if (!eur || eur <= 0) { msg.innerHTML = '<div class="alerta alerta-error" style="display:block">Ingresa un valor válido para EUR.</div>'; msg.style.display='block'; return; }
 
   try {
+    const hoyISO = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
+    const usuario = sesionActual?.correo_usuario || null;
     await Promise.all([
       fetch(SUPABASE_URL + '/rest/v1/tasas', {
         method: 'POST',
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
           'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
-        body: JSON.stringify({ moneda_origen: 'USD', moneda_destino: 'VES', tipo_cambio: usd, fecha_registro: fecha })
+        body: JSON.stringify({ moneda_origen: 'USD', moneda_destino: 'VES', tipo_cambio: usd,
+          fecha_valor: fecha, fecha_registro: hoyISO, id_usuario: usuario })
       }),
       fetch(SUPABASE_URL + '/rest/v1/tasas', {
         method: 'POST',
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
           'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
-        body: JSON.stringify({ moneda_origen: 'EUR', moneda_destino: 'VES', tipo_cambio: eur, fecha_registro: fecha })
+        body: JSON.stringify({ moneda_origen: 'EUR', moneda_destino: 'VES', tipo_cambio: eur,
+          fecha_valor: fecha, fecha_registro: hoyISO, id_usuario: usuario })
       })
     ]);
 
