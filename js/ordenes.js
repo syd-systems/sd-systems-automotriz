@@ -549,14 +549,13 @@ function quitarLineaServ(i) { osServiciosLineas.splice(i, 1); renderLineasOS(); 
 function quitarLineaRep(i)  { osRepuestosLineas.splice(i, 1); renderLineasRep(); }
 
 function calcularTotalesOS() {
-  // Calcular total en Bs usando la tasa correspondiente a cada moneda
-  const tasaUSD = _tasasCat['USD'] || _tasaVigente || tasaActualOS || 1;
+  const tasaUSD = tasasDisponiblesOS.USD || tasaActualOS || 1;
 
   function lineaABs(precio, moneda) {
     const p   = parseFloat(precio) || 0;
     const mon = (moneda || 'USD').toUpperCase();
     if (mon === 'VES') return p;
-    const tasa = _tasasCat[mon] || tasaUSD;
+    const tasa = tasasDisponiblesOS[mon] || tasaUSD;
     return p * tasa;
   }
 
@@ -788,13 +787,13 @@ async function _guardarOSInterno() {
   if (!vehId) { errEl.textContent = 'Debe buscar y seleccionar un vehículo.'; errEl.style.display = 'block'; return; }
   if (!fechaEnt) { errEl.textContent = 'La fecha de entrada es obligatoria.'; errEl.style.display = 'block'; return; }
 
-  const tasaUSDGuardar = _tasasCat['USD'] || _tasaVigente || tasaActualOS || 1;
+  const tasaUSDGuardar = tasasDisponiblesOS.USD || tasaActualOS || 1;
 
   function lineaABsGuardar(precio, moneda) {
     const p   = parseFloat(precio) || 0;
     const mon = (moneda || 'USD').toUpperCase();
     if (mon === 'VES') return p;
-    return p * (_tasasCat[mon] || tasaUSDGuardar);
+    return p * (tasasDisponiblesOS[mon] || tasaUSDGuardar);
   }
 
   const totServBs = osServiciosLineas.reduce(function(acc, l) {
