@@ -959,7 +959,7 @@ async function guardarTasaBCVManual() {
 
   try {
     const hoyISO = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
-    const usuario = sesionActual?.correo_usuario || null;
+    const usuario = sesionActual?.correo_usuario || 'sistema@bcv.auto';
     await Promise.all([
       fetch(SUPABASE_URL + '/rest/v1/tasas', {
         method: 'POST',
