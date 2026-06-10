@@ -1029,15 +1029,23 @@ async function reabrirOS(id, numero) {
 // ─── ELIMINAR OS ───
 async function eliminarOS(id, numero) {
   if (!puedo('SERVICIOS','ELIMINAR')) { alert('No tiene permiso para eliminar órdenes de servicio.'); return; }
-  const o = ordenesCache.find(function(x) { return x.id_orden === id; });
-  if (o && o.estado !== 'ANULADA') { alert('Solo se pueden eliminar órdenes ANULADAS.'); return; }
-  if (!confirm('¿Eliminar definitivamente la orden ' + numero + '?\nEsta acción no se puede deshacer.')) return;
   try {
+    // 1. Verificar que no tenga facturación asociada
+    const facturas = await api('facturas', 'GET', null, '?id_orden=eq.' + id + '&select=id_factura&limit=1');
+    if (facturas && facturas.length > 0) {
+      alert('No se puede eliminar la orden ' + numero + ' porque tiene una factura asociada.');
+      return;
+    }
+    if (!confirm('¿Eliminar definitivamente la orden ' + numero + '?\n\nSe revertirá el stock de los repuestos asociados.\nEsta acción no se puede deshacer.')) return;
+    // 2. Revertir stock de repuestos
+    await ajustarStockOS(id, 'restaurar');
+    // 3. Borrar líneas y la OS
     await Promise.all([
       api('os_servicios', 'DELETE', null, '?id_orden=eq.' + id),
       api('os_repuestos',  'DELETE', null, '?id_orden=eq.' + id),
     ]);
     await api('ordenes_servicio', 'DELETE', null, '?id_orden=eq.' + id);
+    ordenesCache = ordenesCache.filter(function(x) { return x.id_orden !== id; });
     renderOrdenes();
   } catch(e) { alert('Error al eliminar: ' + e.message); }
 }
@@ -1047,12 +1055,12 @@ async function eliminarOS(id, numero) {
 async function eliminarOSFicha() {
   const id = window._fichaOSId;
   if (!id) return;
-  if (!confirm('¿Eliminar esta Orden de Servicio? Esta acción no se puede deshacer.')) return;
-  try {
-    await api('ordenes_servicio','DELETE',null,'?id_orden=eq.'+id);
+  const o = ordenesCache.find(function(x) { return x.id_orden === id; });
+  const numero = o ? o.numero_os : id;
+  await eliminarOS(id, numero);
+  if (!ordenesCache.find(function(x) { return x.id_orden === id; })) {
     cerrarModal('modal-ficha-os');
-    await renderOrdenes();
-  } catch(e) { alert('Error al eliminar: '+e.message); }
+  }
 }
 
 async function verFichaOS(id) {
@@ -1207,9 +1215,8 @@ async function verFichaOS(id) {
     }
     // Mostrar Eliminar si total USD y Bs = 0
   const btnElimOS = document.getElementById('ficha-os-eliminar-btn');
-  if (btnElimOS && puedo('SERVICIOS','ELIMINAR')) {
-    const sinTotal = (!o.total_usd || parseFloat(o.total_usd) === 0) && (!o.total_ves || parseFloat(o.total_ves) === 0);
-    btnElimOS.style.display = sinTotal ? '' : 'none';
+  if (btnElimOS) {
+    btnElimOS.style.display = puedo('SERVICIOS','ELIMINAR') ? '' : 'none';
     window._fichaOSId = o.id_orden;
   }
   abrirModal('modal-ficha-os');
