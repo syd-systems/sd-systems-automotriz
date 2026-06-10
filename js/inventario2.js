@@ -63,6 +63,7 @@ async function renderInventario(filtro) {
       + '<option value="repuesto">🔧 Artículo</option>'
       + '<option value="venta">🛒 Venta</option>'
       + '</select>'
+      + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--suave);cursor:pointer"><input type="checkbox" id="inv-mostrar-sin-stock" onchange="renderInventario(document.getElementById(\'buscar-inv\')?.value||\'\')"> Mostrar sin stock</label>'
       + '<input type="text" id="buscar-inv" placeholder="Buscar artículo o código..." '
       + 'onkeyup="renderInventario(this.value)" '
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\');}" '
@@ -79,9 +80,9 @@ async function renderInventario(filtro) {
     const items = await api('inventario', 'GET', null, '?order=nombre.asc&select=*'+emisorQ() + emisorQ());
     inventarioCache = items;
     const catFiltro = document.getElementById('inv-filtro-cat') ? document.getElementById('inv-filtro-cat').value : '';
-  var itemsFiltrados = catFiltro
-    ? items.filter(function(r) { return (r.categoria || 'repuesto') === catFiltro; })
-    : items;
+  const mostrarSinStock = document.getElementById('inv-mostrar-sin-stock')?.checked || false;
+  var itemsFiltrados = items.filter(function(r) { return mostrarSinStock || parseFloat(r.stock_actual||0) > 0; });
+  if (catFiltro) itemsFiltrados = itemsFiltrados.filter(function(r) { return (r.categoria || 'repuesto') === catFiltro; });
   if (filtro && filtro.trim()) {
     const t = filtro.toLowerCase();
     itemsFiltrados = itemsFiltrados.filter(function(r) {
@@ -745,16 +746,22 @@ async function reversarEntrada(idEntrada, idArticulo, cantidad) {
     await api('stock_entradas', 'PATCH',
       { reversada: true, id_usuario_reversa: sesionActual.correo_usuario },
       '?id_entrada=eq.' + idEntrada);
-    // 4. Anular asiento contable vinculado
+    // 4. Anular asiento contable vinculado (soporta formato ENT-{id} y ENT-INV-{id_articulo})
     try {
-      const refBuscar = 'ENT-' + idEntrada;
-      const asientos = await api('cont_asientos', 'GET', null,
-        '?referencia=eq.' + refBuscar + emisorQ() + '&select=id_asiento,numero_asiento');
+      // Buscar por formato nuevo ENT-{idEntrada}
+      let asientos = await api('cont_asientos', 'GET', null,
+        '?referencia=eq.ENT-' + idEntrada + emisorQ() + '&select=id_asiento,numero_asiento');
+      // Fallback: formato antiguo ENT-INV-{idArticulo}
+      if (!asientos || !asientos.length) {
+        asientos = await api('cont_asientos', 'GET', null,
+          '?referencia=eq.ENT-INV-' + idArticulo + emisorQ() + '&select=id_asiento,numero_asiento');
+      }
       for (var i = 0; i < asientos.length; i++) {
         await api('cont_asientos', 'PATCH',
           { estado: 'ANULADO', descripcion: '[REVERSADO] ' + (asientos[i].numero_asiento || '') },
           '?id_asiento=eq.' + asientos[i].id_asiento);
       }
+      if (!asientos || !asientos.length) console.warn('No se encontró asiento para reversar. idEntrada:', idEntrada);
     } catch(eAst) { console.warn('Error anulando asiento:', eAst); }
     // 5. Actualizar cache
     const cached = inventarioCache.find(function(x) { return x.id_articulo === idArticulo; });
