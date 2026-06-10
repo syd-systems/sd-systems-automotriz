@@ -389,10 +389,16 @@ async function abrirEditarOS(id) {
       api('tasas', 'GET', null, '?order=fecha_registro.desc&limit=1&select=tipo_cambio'),
     ]);
     osServiciosLineas = linServ.map(function(l) {
-      return { id: l.id_os_serv, id_servicio: l.id_servicio, descripcion: l.descripcion, cantidad: l.cantidad, precio_usd: l.precio_usd };
+      return { id: l.id_os_serv, id_servicio: l.id_servicio, descripcion: l.descripcion,
+        cantidad: l.cantidad, precio_usd: l.precio_usd,
+        moneda: (l.moneda || 'USD').toUpperCase(),
+        precio_original: parseFloat(l.precio_original || l.precio_usd || 0) };
     });
     osRepuestosLineas = linRep.map(function(l) {
-      return { id: l.id_os_rep, id_articulo: l.id_articulo, descripcion: l.descripcion, cantidad: l.cantidad, precio_usd: l.precio_usd };
+      return { id: l.id_os_rep, id_articulo: l.id_articulo, descripcion: l.descripcion,
+        cantidad: l.cantidad, precio_usd: l.precio_usd,
+        moneda: (l.moneda || 'USD').toUpperCase(),
+        precio_original: parseFloat(l.precio_original || l.precio_usd || 0) };
     });
     tasaActualOS = tasas.length ? parseFloat(tasas[0].tipo_cambio) : (o.tasa_cambio_usd || 1);
   } catch(e) {}
@@ -816,7 +822,6 @@ async function _guardarOSInterno() {
   } catch(e) {}
 
   if (!_empresaActiva) { alert('No hay empresa activa. Por favor seleccione una empresa.'); return; }
-  console.log('[OS guardar] _empresaActiva:', JSON.stringify(_empresaActiva));
 
   try {
     let osId = id;
@@ -897,10 +902,14 @@ async function _guardarOSInterno() {
     // Insertar líneas de servicios
     for (var i = 0; i < osServiciosLineas.length; i++) {
       var l = osServiciosLineas[i];
+      const monL   = (l.moneda || 'USD').toUpperCase();
+      const precL  = parseFloat(l.precio_original || l.precio_usd || 0);
+      const subtBs = lineaABsGuardar(precL, monL) * parseFloat(l.cantidad);
       await api('os_servicios', 'POST', {
         id_orden: parseInt(osId), id_servicio: l.id_servicio || null,
         descripcion: l.descripcion, cantidad: l.cantidad,
-        precio_usd: l.precio_usd, subtotal_usd: parseFloat(l.precio_usd) * parseFloat(l.cantidad)
+        moneda: monL, precio_original: precL,
+        precio_usd: l.precio_usd, subtotal_usd: subtBs
       });
     }
 
@@ -925,10 +934,14 @@ async function _guardarOSInterno() {
     // ── Insertar nuevas líneas de repuestos y descontar stock ──
     for (var j = 0; j < osRepuestosLineas.length; j++) {
       var lr = osRepuestosLineas[j];
+      const monR   = (lr.moneda || 'USD').toUpperCase();
+      const precR  = parseFloat(lr.precio_original || lr.precio_usd || 0);
+      const subtBsR = lineaABsGuardar(precR, monR) * parseFloat(lr.cantidad);
       await api('os_repuestos', 'POST', {
         id_orden: parseInt(osId), id_articulo: lr.id_articulo || null,
         descripcion: lr.descripcion, cantidad: lr.cantidad,
-        precio_usd: lr.precio_usd, subtotal_usd: parseFloat(lr.precio_usd) * parseFloat(lr.cantidad)
+        moneda: monR, precio_original: precR,
+        precio_usd: lr.precio_usd, subtotal_usd: subtBsR
       });
       // Descontar stock siempre que haya repuesto de inventario vinculado
       if (lr.id_articulo) {
@@ -1085,14 +1098,21 @@ async function verFichaOS(id) {
         + '<thead><tr>'
         + '<th style="text-align:left;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;letter-spacing:1px">DESCRIPCIÓN</th>'
         + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CANT</th>'
-        + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">P/U USD</th>'
+        + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">P/U</th>'
         + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">SUBTOTAL</th>'
         + '</tr></thead><tbody>'
         + linServ.map(function(l) {
+            const mon  = (l.moneda || 'USD').toUpperCase();
+            const prec = parseFloat(l.precio_original || l.precio_usd || 0);
+            const subt = parseFloat(l.subtotal_usd || 0);
+            const simbolo = { USD: '$', EUR: '€', USDT: '₮' };
+            const sim = simbolo[mon] || '';
+            const precFmt = mon === 'VES' ? fmtBs(prec) + ' Bs' : sim + ' ' + fmtUSD(prec) + ' ' + mon;
+            const subtFmt = mon === 'VES' ? fmtBs(subt) + ' Bs' : sim + ' ' + fmtUSD(subt) + ' ' + mon;
             return '<tr><td style="padding:6px 0">' + l.descripcion + '</td>'
               + '<td style="text-align:right;padding:6px 0">' + l.cantidad + '</td>'
-              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">$ ' + fmtUSD(l.precio_usd) + '</td>'
-              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(l.subtotal_usd) + '</td></tr>';
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">' + precFmt + '</td>'
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">' + subtFmt + '</td></tr>';
           }).join('')
         + '</tbody></table>'
       : '<div style="color:var(--suave);font-size:12px">Sin servicios</div>';
@@ -1102,14 +1122,21 @@ async function verFichaOS(id) {
         + '<thead><tr>'
         + '<th style="text-align:left;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;letter-spacing:1px">REPUESTO</th>'
         + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CANT</th>'
-        + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">P/U USD</th>'
+        + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">P/U</th>'
         + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">SUBTOTAL</th>'
         + '</tr></thead><tbody>'
         + linRep.map(function(l) {
+            const mon  = (l.moneda || 'USD').toUpperCase();
+            const prec = parseFloat(l.precio_original || l.precio_usd || 0);
+            const subt = parseFloat(l.subtotal_usd || 0);
+            const simbolo = { USD: '$', EUR: '€', USDT: '₮' };
+            const sim = simbolo[mon] || '';
+            const precFmt = mon === 'VES' ? fmtBs(prec) + ' Bs' : sim + ' ' + fmtUSD(prec) + ' ' + mon;
+            const subtFmt = mon === 'VES' ? fmtBs(subt) + ' Bs' : sim + ' ' + fmtUSD(subt) + ' ' + mon;
             return '<tr><td style="padding:6px 0">' + l.descripcion + '</td>'
               + '<td style="text-align:right;padding:6px 0">' + l.cantidad + '</td>'
-              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">$ ' + fmtUSD(l.precio_usd) + '</td>'
-              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(l.subtotal_usd) + '</td></tr>';
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">' + precFmt + '</td>'
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">' + subtFmt + '</td></tr>';
           }).join('')
         + '</tbody></table>'
       : '<div style="color:var(--suave);font-size:12px">Sin artículos</div>';
