@@ -816,6 +816,7 @@ async function _guardarOSInterno() {
   } catch(e) {}
 
   if (!_empresaActiva) { alert('No hay empresa activa. Por favor seleccione una empresa.'); return; }
+  console.log('[OS guardar] _empresaActiva:', JSON.stringify(_empresaActiva));
 
   try {
     let osId = id;
