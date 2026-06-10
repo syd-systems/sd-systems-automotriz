@@ -63,7 +63,6 @@ async function renderInventario(filtro) {
       + '<option value="repuesto">🔧 Artículo</option>'
       + '<option value="venta">🛒 Venta</option>'
       + '</select>'
-      + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--suave);cursor:pointer"><input type="checkbox" id="inv-mostrar-sin-stock" onchange="renderInventario(document.getElementById(\'buscar-inv\')?.value||\'\')"> Mostrar sin stock</label>'
       + '<input type="text" id="buscar-inv" placeholder="Buscar artículo o código..." '
       + 'onkeyup="renderInventario(this.value)" '
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\');}" '
@@ -77,12 +76,12 @@ async function renderInventario(filtro) {
   const tablaCont = document.getElementById('tabla-inv-cont');
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const items = await api('inventario', 'GET', null, '?order=nombre.asc&select=*'+emisorQ() + emisorQ());
+    const items = await api('inventario', 'GET', null, '?order=nombre.asc&activo=eq.true&select=*' + emisorQ());
     inventarioCache = items;
     const catFiltro = document.getElementById('inv-filtro-cat') ? document.getElementById('inv-filtro-cat').value : '';
-  const mostrarSinStock = document.getElementById('inv-mostrar-sin-stock')?.checked || false;
-  var itemsFiltrados = items.filter(function(r) { return mostrarSinStock || parseFloat(r.stock_actual||0) > 0; });
-  if (catFiltro) itemsFiltrados = itemsFiltrados.filter(function(r) { return (r.categoria || 'repuesto') === catFiltro; });
+  var itemsFiltrados = catFiltro
+    ? items.filter(function(r) { return (r.categoria || 'repuesto') === catFiltro; })
+    : items;
   if (filtro && filtro.trim()) {
     const t = filtro.toLowerCase();
     itemsFiltrados = itemsFiltrados.filter(function(r) {
@@ -740,8 +739,11 @@ async function reversarEntrada(idEntrada, idArticulo, cantidad) {
     const artFresh = await api('inventario', 'GET', null, '?id_articulo=eq.' + idArticulo + '&select=stock_actual');
     const stockActual = artFresh && artFresh[0] ? parseFloat(artFresh[0].stock_actual) : 0;
     const nuevoStock  = Math.max(0, stockActual - parseFloat(cantidad));
-    // 2. Rebajar stock
+    // 2. Rebajar stock y marcar artículo inactivo si queda en 0
     await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + idArticulo);
+    if (nuevoStock === 0) {
+      await api('inventario', 'PATCH', { activo: false }, '?id_articulo=eq.' + idArticulo);
+    }
     // 3. Marcar entrada como reversada
     await api('stock_entradas', 'PATCH',
       { reversada: true, id_usuario_reversa: sesionActual.correo_usuario },
