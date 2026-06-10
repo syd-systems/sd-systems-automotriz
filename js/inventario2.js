@@ -500,6 +500,7 @@ async function guardarEntradaStock() {
     }
 
     // Registrar en historial de entradas
+    let idEntrada = null;
     try {
       const idAreaEnt    = parseInt(document.getElementById('es-area')?.value) || null;
       const idEmpEnt     = idEmpEntVal;
@@ -523,7 +524,7 @@ async function guardarEntradaStock() {
         observaciones:           document.getElementById('es-observaciones')?.value.trim() || null,
         id_usuario:              sesionActual.correo_usuario
       });
-      const idEntrada = entradaRes && entradaRes[0] ? entradaRes[0].id_entrada : null;
+      idEntrada = entradaRes && entradaRes[0] ? entradaRes[0].id_entrada : null;
     } catch(eH) { console.warn('Error registrando historial entrada:', eH); }
 
     // ── Generar asiento contable de entrada ──
