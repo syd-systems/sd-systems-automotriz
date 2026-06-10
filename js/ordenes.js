@@ -861,7 +861,7 @@ async function _guardarOSInterno() {
         api('os_repuestos', 'DELETE', null, '?id_orden=eq.' + id),
       ]);
     } else {
-      // Nueva — generar número OS por empresa
+      // Nueva — generar número OS por empresa con reintento ante duplicado
       const hoy = new Date();
       const anio = hoy.getFullYear();
       const idEmisor = _empresaActiva ? _empresaActiva.id_emisor : 0;
@@ -869,13 +869,28 @@ async function _guardarOSInterno() {
       const existentes = await api('ordenes_servicio', 'GET', null,
         '?select=numero_os&numero_os=gte.' + prefijo + '0000&numero_os=lte.' + prefijo + '9999&id_emisor=eq.' + idEmisor + '&order=numero_os.desc&limit=1');
       let seq = 1;
-      if (existentes.length) {
+      if (existentes && existentes.length) {
         const partes = existentes[0].numero_os.split('-');
         seq = parseInt(partes[partes.length - 1]) + 1;
       }
-      datos.numero_os = 'OS-' + anio + '-' + String(seq).padStart(4, '0');
-      const res = await api('ordenes_servicio', 'POST', datos);
-      if (res && res[0]) osId = res[0].id_orden;
+      // Reintentar hasta 5 veces en caso de duplicado por concurrencia
+      let intentos = 0;
+      while (intentos < 5) {
+        datos.numero_os = 'OS-' + anio + '-' + String(seq).padStart(4, '0');
+        try {
+          const res = await api('ordenes_servicio', 'POST', datos);
+          if (res && res[0]) osId = res[0].id_orden;
+          break; // éxito
+        } catch(eDup) {
+          if (eDup.message && eDup.message.includes('duplicate key')) {
+            seq++;
+            intentos++;
+          } else {
+            throw eDup; // otro error — propagar
+          }
+        }
+      }
+      if (!osId) throw new Error('No se pudo generar número de OS único después de varios intentos.');
     }
 
     // Insertar líneas de servicios
