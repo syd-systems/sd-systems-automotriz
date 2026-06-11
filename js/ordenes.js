@@ -1355,6 +1355,9 @@ window.addEventListener('load', async () => {
           '?correo_usuario=eq.' + encodeURIComponent(usuario.correo_usuario) + '&select=token_sesion');
         if (uRes && uRes[0] && uRes[0].token_sesion) {
           window._miTokenSesion = uRes[0].token_sesion;
+          // Reiniciar polling para que el primer ciclo sea 30s después de restaurar
+          clearInterval(_pollingInterval);
+          _pollingInterval = setInterval(verificarSesionActiva, 30000);
         }
       } catch(eT) { console.warn('Error leyendo token_sesion:', eT); }
 
