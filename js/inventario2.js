@@ -80,7 +80,7 @@ async function renderInventario(filtro) {
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
     const mostrarTodos = document.getElementById('inv-mostrar-todos')?.checked || false;
-    const items = await api('inventario', 'GET', null, '?order=nombre.asc&activo=eq.true&select=*' + emisorQ());
+    const items = await api('inventario', 'GET', null, '?order=nombre.asc&activo=not.eq.false&select=*' + emisorQ());
     const itemsFiltradosBase = mostrarTodos ? items : items.filter(function(r) { return parseFloat(r.stock_actual||0) > 0; });
     inventarioCache = items;
     const catFiltro = document.getElementById('inv-filtro-cat') ? document.getElementById('inv-filtro-cat').value : '';
@@ -641,7 +641,7 @@ async function guardarInventario() {
     const categoria = document.getElementById('inv-categoria').value || 'repuesto';
     const ventaFinal = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? venta : undefined;
     const datos = { nombre, descripcion: desc || null, codigo: codigo || null, stock_actual: stock,
-      stock_minimo: stockMin, precio_costo_usd: costo,
+      stock_minimo: stockMin, precio_costo_usd: costo, activo: true,
       id_emisor: _empresaActiva ? _empresaActiva.id_emisor : null, ...(ventaFinal !== undefined ? { precio_venta_usd: ventaFinal } : {}), unidad, categoria,
       demanda_anual: demandaAnual, lead_time_dias: leadTime, costo_pedido_usd: costoPedido, stock_seguridad: stockSeg,
       id_usuario: sesionActual.correo_usuario };
