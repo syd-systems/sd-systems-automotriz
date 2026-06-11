@@ -426,7 +426,7 @@ async function verificarSesionActiva() {
     // ── CASO 0: Sesión desplazada — otro dispositivo inició sesión ──
     // Solo expulsar si _miTokenSesion está asignado Y es diferente al de BD
     if (window._miTokenSesion && u.token_sesion && u.token_sesion !== window._miTokenSesion) {
-      console.warn('[polling] EXPULSANDO — token BD:', u.token_sesion, '| token local:', window._miTokenSesion);
+      console.warn('[polling] CASO 0 — token diferente. BD:', u.token_sesion, '| local:', window._miTokenSesion);
       limpiarSesionLocal();
       const errEl = document.getElementById('login-error');
       if (errEl) {
@@ -441,6 +441,7 @@ async function verificarSesionActiva() {
 
     // ── CASO 1: Usuario desactivado → expulsar ──
     if (u.estado_usuario === 'INACTIVO') {
+      console.warn('[polling] CASO 1 — usuario INACTIVO');
       const correoActual = sesionActual.correo_usuario;
       limpiarSesionLocal();
       try { await api('usuarios', 'PATCH', { sesion_invalidada: false }, `?correo_usuario=eq.${encodeURIComponent(correoActual)}`); } catch(e) {}
@@ -456,6 +457,7 @@ async function verificarSesionActiva() {
     // ── CASO 2: Sesión cerrada por admin (sesion_invalidada=true + sesion_activa=false) → expulsar ──
     // Requiere AMBAS condiciones para evitar falsos positivos del beforeunload
     if (u.sesion_activa === false && u.sesion_invalidada === true) {
+      console.warn('[polling] CASO 2 — sesion_activa:', u.sesion_activa, '| sesion_invalidada:', u.sesion_invalidada);
       const correoActual = sesionActual.correo_usuario;
       limpiarSesionLocal();
       try { await api('usuarios', 'PATCH', { sesion_invalidada: false }, `?correo_usuario=eq.${encodeURIComponent(correoActual)}`); } catch(e) {}
@@ -470,6 +472,7 @@ async function verificarSesionActiva() {
 
     // ── CASO 3: Permisos modificados (sesion_invalidada=true pero activo) → recargar sin expulsar ──
     if (u.sesion_invalidada === true) {
+      console.warn('[polling] CASO 3 — permisos modificados');
       try {
         const perms = await api('usuarios_permisos', 'GET', null,
           '?correo_usuario=eq.' + encodeURIComponent(sesionActual.correo_usuario));
