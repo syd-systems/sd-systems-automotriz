@@ -93,7 +93,7 @@ async function renderInventario(filtro) {
       return r.nombre.toLowerCase().includes(t) || (r.codigo || '').toLowerCase().includes(t) || (r.descripcion || '').toLowerCase().includes(t);
     });
   }
-    const stockBajos = items.filter(function(r) { return r.stock_actual <= r.stock_minimo; }).length;
+    const stockBajos = items.filter(function(r) { return parseFloat(r.stock_minimo||0) > 0 && r.stock_actual <= r.stock_minimo; }).length;
     const alertaDiv = document.getElementById('alerta-stock-bajo');
     if (alertaDiv) {
       if (stockBajos > 0) {
@@ -152,7 +152,7 @@ function invRenderTabla(items, cont) {
   clasificarABC(inventarioCache).forEach(function(r) { abcMap[r.id_articulo] = r.clase_abc; });
   const abcColor = { A: '#22c55e', B: '#f59e0b', C: '#94a3b8' };
   const filas = items.map(function(r) {
-    const stockBajo = r.stock_actual <= r.stock_minimo;
+    const stockBajo = parseFloat(r.stock_minimo||0) > 0 && r.stock_actual <= r.stock_minimo;
     const abc = abcMap[r.id_articulo] || '—';
     const margen = calcularMargen(r);
     return '<tr>'
