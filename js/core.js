@@ -415,8 +415,8 @@ actualizarReloj();
 // ─── VERIFICAR SESIÓN INVALIDADA (cada 30 segundos) ───
 async function verificarSesionActiva() {
   if (!sesionActual) return;
-  // No verificar mientras el login aún está en proceso (token no asignado aún)
   if (!window._miTokenSesion) return;
+  if (!window._sesionLista) return; // Esperar hasta que la sesión esté completamente iniciada
   try {
     const res = await api('usuarios', 'GET', null,
       `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}&select=sesion_activa,sesion_invalidada,estado_usuario,token_sesion`);
@@ -578,6 +578,7 @@ async function iniciarSesion() {
     // Reiniciar polling para que el primer ciclo sea 30s después del login
     clearInterval(_pollingInterval);
     _pollingInterval = setInterval(verificarSesionActiva, 30000);
+    window._sesionLista = true; // Habilitar polling
     await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correo), {
       method: 'PATCH',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
