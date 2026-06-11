@@ -424,6 +424,7 @@ async function verificarSesionActiva() {
     const u = res[0];
 
     // ── CASO 0: Sesión desplazada — otro dispositivo inició sesión ──
+    // Solo expulsar si _miTokenSesion está asignado Y es diferente al de BD
     if (window._miTokenSesion && u.token_sesion && u.token_sesion !== window._miTokenSesion) {
       limpiarSesionLocal();
       const errEl = document.getElementById('login-error');
@@ -485,7 +486,7 @@ async function verificarSesionActiva() {
     }
   } catch(e) {}
 }
-setInterval(verificarSesionActiva, 30000);
+let _pollingInterval = setInterval(verificarSesionActiva, 30000);
 
 // ─── LOGIN ───
 document.getElementById('login-clave').addEventListener('keypress', e => {
@@ -570,6 +571,9 @@ async function iniciarSesion() {
     // Si hay sesión activa en otro dispositivo, cerrarla automáticamente y permitir la nueva
     const miToken = Math.random().toString(36).substr(2) + Date.now().toString(36);
     window._miTokenSesion = miToken;
+    // Reiniciar polling para que el primer ciclo sea 30s después del login
+    clearInterval(_pollingInterval);
+    _pollingInterval = setInterval(verificarSesionActiva, 30000);
     await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correo), {
       method: 'PATCH',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
