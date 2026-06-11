@@ -79,7 +79,7 @@ async function renderInventario(filtro) {
   const tablaCont = document.getElementById('tabla-inv-cont');
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const mostrarTodos = document.getElementById('inv-mostrar-todos')?.checked || false;
+    const mostrarTodos = document.getElementById('inv-mostrar-todos')?.checked ?? true;
     const itemsTodos = await api('inventario', 'GET', null, '?order=nombre.asc&select=*' + emisorQ());
     const items = itemsTodos.filter(function(r) { return r.activo !== false; });
     const itemsFiltradosBase = mostrarTodos ? items : items.filter(function(r) { return parseFloat(r.stock_actual||0) > 0; });
