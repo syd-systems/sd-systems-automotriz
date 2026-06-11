@@ -324,14 +324,6 @@ function verFichaInventario(id) {
   if (btnEditar)  { btnEditar._id = r.id_articulo;  btnEditar.onclick = function() { cerrarModal('modal-ficha-inv'); abrirEditarInventario(this._id); }; btnEditar.style.display = puedo('INVENTARIO','EDITAR') ? '' : 'none'; }
   if (btnEliminar){ btnEliminar._id = r.id_articulo; btnEliminar._nombre = r.nombre; btnEliminar.onclick = function() { cerrarModal('modal-ficha-inv'); eliminarInventario(this._id, this._nombre); }; btnEliminar.style.display = puedo('INVENTARIO','ELIMINAR') ? '' : 'none'; }
 
-  // Agregar contenedor de historial si no existe
-  const fichaContenido = document.getElementById('ficha-inv-contenido');
-  if (fichaContenido && !document.getElementById('ficha-inv-historial')) {
-    const histDiv = document.createElement('div');
-    histDiv.id = 'ficha-inv-historial';
-    fichaContenido.parentNode.insertBefore(histDiv, fichaContenido.nextSibling);
-  }
-
   abrirModal('modal-ficha-inv');
   focusFirstField('modal-ficha-inv');
 
