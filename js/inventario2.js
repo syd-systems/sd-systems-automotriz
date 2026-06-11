@@ -675,6 +675,7 @@ async function eliminarInventario(id, nombre) {
 // ─── HISTORIAL DE ENTRADAS ───
 async function verHistorialEntradas(idArticulo) {
   const cont = document.getElementById('ficha-inv-historial');
+  console.log('[historial] idArticulo:', idArticulo, '| cont:', cont);
   if (!cont) return;
   cont.innerHTML = '<div style="color:var(--suave);font-size:12px">Cargando...</div>';
   try {
