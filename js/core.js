@@ -426,6 +426,7 @@ async function verificarSesionActiva() {
     // ── CASO 0: Sesión desplazada — otro dispositivo inició sesión ──
     // Solo expulsar si _miTokenSesion está asignado Y es diferente al de BD
     if (window._miTokenSesion && u.token_sesion && u.token_sesion !== window._miTokenSesion) {
+      console.warn('[polling] EXPULSANDO — token BD:', u.token_sesion, '| token local:', window._miTokenSesion);
       limpiarSesionLocal();
       const errEl = document.getElementById('login-error');
       if (errEl) {
