@@ -287,24 +287,18 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
     if (tipo === 'ENTRADA') {
       const precioOrig = parseFloat(movOrig?.precio_costo_usd || 0);
       const montoUSD   = precioOrig * cantidad;
-      const motivo     = movOrig?.motivo || 'compra';
       const areaNombre = movOrig?.area_receptora?.nombre || 'Área';
       const areaId     = movOrig?.id_area || null;
-      const refOrig    = 'ENT-' + idMovimiento;
 
-      if (montoUSD > 0) {
-        try {
-          await generarAsientoInventario('REVERSO_ENTRADA', {
-            articulo:   art.nombre || art.codigo || ('Art#' + idRepuesto),
-            cantidad:   cantidad,
-            montoUSD:   montoUSD,
-            areaId:     areaId,
-            areaNombre: areaNombre,
-            motivo:     motivo,
-            referencia: 'REV-' + refOrig,
-          });
-        } catch(eAst) { console.warn('Asiento reverso no generado:', eAst); }
-      }
+      // Generar asiento siempre — incluso con monto 0 queda traza contable
+      await generarAsientoInventario('REVERSO_ENTRADA', {
+        articulo:   art.nombre || art.codigo || ('Art#' + idRepuesto),
+        cantidad:   cantidad,
+        montoUSD:   montoUSD,
+        areaId:     areaId,
+        areaNombre: areaNombre,
+        referencia: 'REV-ENT-' + idMovimiento,
+      });
     }
 
     // 6. Actualizar cache
