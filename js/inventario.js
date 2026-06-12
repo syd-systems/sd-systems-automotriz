@@ -232,47 +232,50 @@ async function guardarEdicionMovimiento() {
 }
 
 async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
-  if (!confirm('¿Reversar este movimiento de ' + cantidad + ' unidades?\\nEsto ajustará el stock y generará el asiento contable de reverso.')) return;
+  if (!confirm('¿Reversar este movimiento de ' + cantidad + ' unidades?\\nSe ajustará el stock y se anulará el asiento contable original.')) return;
 
   try {
-    // 1. Obtener artículo y entrada/salida originales
+    // 1. Leer artículo fresco desde BD
     const artArr = await api('inventario', 'GET', null, '?id_articulo=eq.' + idRepuesto + '&select=*');
     const art = artArr[0];
     if (!art) { alert('Artículo no encontrado.'); return; }
 
+    // 2. Verificar que no esté ya reversado
     let movOrig = null;
     if (tipo === 'ENTRADA') {
-      const check = await api('stock_entradas', 'GET', null,
+      const rows = await api('stock_entradas', 'GET', null,
         '?id_entrada=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo)');
-      if (check[0]?.reversada) { alert('Este movimiento ya fue reversado.'); return; }
-      movOrig = check[0];
+      if (!rows || !rows[0]) { alert('Movimiento no encontrado.'); return; }
+      if (rows[0].reversada) { alert('Este movimiento ya fue reversado.'); return; }
+      movOrig = rows[0];
     } else {
-      const check = await api('stock_salidas', 'GET', null,
+      const rows = await api('stock_salidas', 'GET', null,
         '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo)');
-      if (check[0]?.reversada) { alert('Este movimiento ya fue reversado.'); return; }
-      movOrig = check[0];
+      if (!rows || !rows[0]) { alert('Movimiento no encontrado.'); return; }
+      if (rows[0].reversada) { alert('Este movimiento ya fue reversado.'); return; }
+      movOrig = rows[0];
     }
 
-    // 2. Calcular nuevo stock
+    // 3. Calcular nuevo stock
+    const stockActual = parseFloat(art.stock_actual) || 0;
     let nuevoStock;
     if (tipo === 'ENTRADA') {
-      nuevoStock = art.stock_actual - cantidad;
-      if (nuevoStock < 0) { alert('No se puede reversar: el stock resultante sería negativo (' + nuevoStock + ').'); return; }
+      nuevoStock = stockActual - parseFloat(cantidad);
+      if (nuevoStock < 0) { alert('No se puede reversar: stock resultante negativo (' + nuevoStock.toFixed(2) + ').'); return; }
     } else {
-      nuevoStock = art.stock_actual + cantidad;
+      nuevoStock = stockActual + parseFloat(cantidad);
     }
 
-    // 3. Actualizar stock
+    // 4. Actualizar stock + limpiar precios si queda en 0
     const patchInv = { stock_actual: nuevoStock };
-    // Si el stock queda en 0, limpiar precios de costo (CPP, último) y venta
-    if (nuevoStock === 0) {
+    if (nuevoStock <= 0) {
+      patchInv.stock_actual            = 0;
       patchInv.precio_costo_usd        = 0;
       patchInv.precio_costo_ultimo_usd = 0;
-      // No tocamos precio_venta_usd — es un parámetro comercial, no de stock
     }
     await api('inventario', 'PATCH', patchInv, '?id_articulo=eq.' + idRepuesto);
 
-    // 4. Marcar como reversada + usuario
+    // 5. Marcar movimiento como reversado
     if (tipo === 'ENTRADA') {
       await api('stock_entradas', 'PATCH',
         { reversada: true, id_usuario_reversa: sesionActual?.correo_usuario || null },
@@ -283,35 +286,38 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
         '?id_salida=eq.' + idMovimiento);
     }
 
-    // 5. Generar asiento contable de reverso
+    // 6. Anular asiento contable original — buscar por referencia ENT-{id}
     if (tipo === 'ENTRADA') {
-      const precioOrig = parseFloat(movOrig?.precio_costo_usd || 0);
-      const montoUSD   = precioOrig * cantidad;
-      const areaNombre = movOrig?.area_receptora?.nombre || 'Área';
-      const areaId     = movOrig?.id_area || null;
-
-      // Generar asiento siempre — incluso con monto 0 queda traza contable
-      await generarAsientoInventario('REVERSO_ENTRADA', {
-        articulo:   art.nombre || art.codigo || ('Art#' + idRepuesto),
-        cantidad:   cantidad,
-        montoUSD:   montoUSD,
-        areaId:     areaId,
-        areaNombre: areaNombre,
-        referencia: 'REV-ENT-' + idMovimiento,
-      });
+      try {
+        let asientos = await api('cont_asientos', 'GET', null,
+          '?referencia=eq.ENT-' + idMovimiento + emisorQ() + '&select=id_asiento,numero_asiento,descripcion');
+        // Fallback formato antiguo
+        if (!asientos || !asientos.length) {
+          asientos = await api('cont_asientos', 'GET', null,
+            '?referencia=eq.ENT-INV-' + idRepuesto + emisorQ() + '&select=id_asiento,numero_asiento,descripcion');
+        }
+        for (var i = 0; i < asientos.length; i++) {
+          await api('cont_asientos', 'PATCH',
+            { estado: 'ANULADO', descripcion: '[REVERSADO] ' + (asientos[i].descripcion || asientos[i].numero_asiento || '') },
+            '?id_asiento=eq.' + asientos[i].id_asiento);
+        }
+        if (!asientos || !asientos.length) {
+          console.warn('Reverso: no se encontró asiento contable para ENT-' + idMovimiento);
+        }
+      } catch(eAst) { console.warn('Error anulando asiento en reverso:', eAst); }
     }
 
-    // 6. Actualizar cache
+    // 7. Actualizar cache
     const cached = inventarioCache.find(function(x) { return x.id_articulo === idRepuesto; });
     if (cached) {
-      cached.stock_actual          = nuevoStock;
-      if (nuevoStock === 0) {
+      cached.stock_actual = patchInv.stock_actual;
+      if (nuevoStock <= 0) {
         cached.precio_costo_usd        = 0;
         cached.precio_costo_ultimo_usd = 0;
       }
     }
 
-    // 7. Recargar historial y tabla
+    // 8. Recargar vistas
     await recargarHistorial(idRepuesto);
     renderInventario();
 
