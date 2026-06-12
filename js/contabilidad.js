@@ -1577,7 +1577,7 @@ async function generarAsientoInventario(tipo, datos) {
       'ENTRADA_AJUSTE':     'Ajuste Entrada Inventario: ' + datos.articulo,
       'SALIDA_AREA':        'Salida Inventario → ' + (datos.areaNombre||'Área') + ': ' + datos.articulo,
       'SALIDA_AJUSTE':      'Ajuste Salida Inventario: ' + datos.articulo,
-      'REVERSO_ENTRADA':    'Reverso Compra Inventario: ' + datos.articulo,
+
     };
 
     const asiento = await api('cont_asientos','POST',{
@@ -1662,15 +1662,6 @@ async function generarAsientoInventario(tipo, datos) {
         descripcion:'Salida inventario '+datos.articulo+auxDesc,
         debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:montoBs });
 
-    } else if (tipo === 'REVERSO_ENTRADA') {
-      // Reverso de compra: asiento espejo inverso
-      // Débito: CxP Proveedores Bs / Crédito: Inventario Bs
-      if (idProv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idProv, orden:1,
-        descripcion:'Reverso CxP '+datos.articulo+auxDesc,
-        debe_usd:monto, haber_usd:0, debe_ves:montoBs, haber_ves:0 });
-      if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:2,
-        descripcion:'Reverso inventario '+datos.articulo+auxDesc,
-        debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:montoBs });
     }
 
     console.log('✓ Asiento inventario creado:', numAst, tipo);
