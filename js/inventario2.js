@@ -733,6 +733,7 @@ async function verHistorialEntradas(idArticulo) {
 
 // ─── REVERSAR ENTRADA ───
 async function reversarEntrada(idEntrada, idArticulo, cantidad) {
+  console.log('[reversar] idEntrada:', idEntrada, '| idArticulo:', idArticulo, '| cantidad:', cantidad);
   if (!confirm('¿Reversar esta entrada?\n\nSe restarán ' + cantidad + ' unidades del stock y se anulará el asiento contable.\nEsta acción no se puede deshacer.')) return;
   try {
     // 1. Stock actual fresco
