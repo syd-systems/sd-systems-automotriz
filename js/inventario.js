@@ -232,24 +232,28 @@ async function guardarEdicionMovimiento() {
 }
 
 async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
-  if (!confirm('¿Reversar este movimiento de ' + cantidad + ' unidades?\\nEsto ajustará el stock automáticamente.')) return;
+  if (!confirm('¿Reversar este movimiento de ' + cantidad + ' unidades?\\nEsto ajustará el stock y generará el asiento contable de reverso.')) return;
 
   try {
-    // 1. Obtener stock actual
-    const artArr = await api('inventario', 'GET', null, '?id_articulo=eq.' + idRepuesto + '&select=stock_actual,nombre');
+    // 1. Obtener artículo y entrada/salida originales
+    const artArr = await api('inventario', 'GET', null, '?id_articulo=eq.' + idRepuesto + '&select=*');
     const art = artArr[0];
     if (!art) { alert('Artículo no encontrado.'); return; }
 
-    // 2. Verificar que no esté ya reversada
+    let movOrig = null;
     if (tipo === 'ENTRADA') {
-      const check = await api('stock_entradas', 'GET', null, '?id_entrada=eq.' + idMovimiento + '&select=reversada');
+      const check = await api('stock_entradas', 'GET', null,
+        '?id_entrada=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo)');
       if (check[0]?.reversada) { alert('Este movimiento ya fue reversado.'); return; }
+      movOrig = check[0];
     } else {
-      const check = await api('stock_salidas', 'GET', null, '?id_salida=eq.' + idMovimiento + '&select=reversada');
+      const check = await api('stock_salidas', 'GET', null,
+        '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo)');
       if (check[0]?.reversada) { alert('Este movimiento ya fue reversado.'); return; }
+      movOrig = check[0];
     }
 
-    // 3. Calcular nuevo stock
+    // 2. Calcular nuevo stock
     let nuevoStock;
     if (tipo === 'ENTRADA') {
       nuevoStock = art.stock_actual - cantidad;
@@ -258,19 +262,60 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
       nuevoStock = art.stock_actual + cantidad;
     }
 
-    // 4. Actualizar stock primero
-    await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + idRepuesto);
+    // 3. Actualizar stock
+    const patchInv = { stock_actual: nuevoStock };
+    // Si el stock queda en 0, limpiar precios de costo (CPP, último) y venta
+    if (nuevoStock === 0) {
+      patchInv.precio_costo_usd        = 0;
+      patchInv.precio_costo_ultimo_usd = 0;
+      // No tocamos precio_venta_usd — es un parámetro comercial, no de stock
+    }
+    await api('inventario', 'PATCH', patchInv, '?id_articulo=eq.' + idRepuesto);
 
-    // 5. Marcar como reversada SOLO después de confirmar el stock
+    // 4. Marcar como reversada + usuario
     if (tipo === 'ENTRADA') {
-      await api('stock_entradas', 'PATCH', { reversada: true, id_usuario_reversa: sesionActual?.correo_usuario || null }, '?id_entrada=eq.' + idMovimiento);
+      await api('stock_entradas', 'PATCH',
+        { reversada: true, id_usuario_reversa: sesionActual?.correo_usuario || null },
+        '?id_entrada=eq.' + idMovimiento);
     } else {
-      await api('stock_salidas', 'PATCH', { reversada: true }, '?id_salida=eq.' + idMovimiento);
+      await api('stock_salidas', 'PATCH',
+        { reversada: true },
+        '?id_salida=eq.' + idMovimiento);
+    }
+
+    // 5. Generar asiento contable de reverso
+    if (tipo === 'ENTRADA') {
+      const precioOrig = parseFloat(movOrig?.precio_costo_usd || 0);
+      const montoUSD   = precioOrig * cantidad;
+      const motivo     = movOrig?.motivo || 'compra';
+      const areaNombre = movOrig?.area_receptora?.nombre || 'Área';
+      const areaId     = movOrig?.id_area || null;
+      const refOrig    = 'ENT-' + idMovimiento;
+
+      if (montoUSD > 0) {
+        try {
+          await generarAsientoInventario('REVERSO_ENTRADA', {
+            articulo:   art.nombre || art.codigo || ('Art#' + idRepuesto),
+            cantidad:   cantidad,
+            montoUSD:   montoUSD,
+            areaId:     areaId,
+            areaNombre: areaNombre,
+            motivo:     motivo,
+            referencia: 'REV-' + refOrig,
+          });
+        } catch(eAst) { console.warn('Asiento reverso no generado:', eAst); }
+      }
     }
 
     // 6. Actualizar cache
     const cached = inventarioCache.find(function(x) { return x.id_articulo === idRepuesto; });
-    if (cached) cached.stock_actual = nuevoStock;
+    if (cached) {
+      cached.stock_actual          = nuevoStock;
+      if (nuevoStock === 0) {
+        cached.precio_costo_usd        = 0;
+        cached.precio_costo_ultimo_usd = 0;
+      }
+    }
 
     // 7. Recargar historial y tabla
     await recargarHistorial(idRepuesto);
