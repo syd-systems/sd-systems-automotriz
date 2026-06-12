@@ -682,7 +682,6 @@ async function eliminarInventario(id, nombre) {
 // ─── HISTORIAL DE ENTRADAS ───
 async function verHistorialEntradas(idArticulo) {
   const cont = document.getElementById('ficha-inv-historial');
-  console.log('[historial] idArticulo:', idArticulo, '| cont:', cont);
   if (!cont) return;
   cont.innerHTML = '<div style="color:var(--suave);font-size:12px">Cargando...</div>';
   try {
@@ -733,15 +732,19 @@ async function verHistorialEntradas(idArticulo) {
 
 // ─── REVERSAR ENTRADA ───
 async function reversarEntrada(idEntrada, idArticulo, cantidad) {
-  console.log('[reversar] idEntrada:', idEntrada, '| idArticulo:', idArticulo, '| cantidad:', cantidad);
   if (!confirm('¿Reversar esta entrada?\n\nSe restarán ' + cantidad + ' unidades del stock y se anulará el asiento contable.\nEsta acción no se puede deshacer.')) return;
   try {
     // 1. Stock actual fresco
     const artFresh = await api('inventario', 'GET', null, '?id_articulo=eq.' + idArticulo + '&select=stock_actual');
     const stockActual = artFresh && artFresh[0] ? parseFloat(artFresh[0].stock_actual) : 0;
     const nuevoStock  = Math.max(0, stockActual - parseFloat(cantidad));
-    // 2. Rebajar stock
-    await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + idArticulo);
+    // 2. Rebajar stock y limpiar precios si queda en 0
+    const patchDatos = { stock_actual: nuevoStock };
+    if (nuevoStock === 0) {
+      patchDatos.precio_costo_usd  = 0;
+      patchDatos.precio_venta_usd  = 0;
+    }
+    await api('inventario', 'PATCH', patchDatos, '?id_articulo=eq.' + idArticulo);
     // 3. Marcar entrada como reversada
     await api('stock_entradas', 'PATCH',
       { reversada: true, id_usuario_reversa: sesionActual.correo_usuario },
