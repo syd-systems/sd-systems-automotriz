@@ -575,15 +575,15 @@ async function iniciarSesion() {
     // Si hay sesión activa en otro dispositivo, cerrarla automáticamente y permitir la nueva
     const miToken = Math.random().toString(36).substr(2) + Date.now().toString(36);
     window._miTokenSesion = miToken;
-    // Reiniciar polling para que el primer ciclo sea 30s después del login
-    clearInterval(_pollingInterval);
-    _pollingInterval = setInterval(verificarSesionActiva, 30000);
-    window._sesionLista = true; // Habilitar polling
+    // Escribir token en BD ANTES de habilitar el polling
     await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correo), {
       method: 'PATCH',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
       body: JSON.stringify({ sesion_activa: true, sesion_invalidada: false, ultimo_acceso: new Date().toISOString(), token_sesion: miToken })
     });
+    // Reiniciar polling DESPUÉS de confirmar el token en BD
+    clearInterval(_pollingInterval);
+    _pollingInterval = setInterval(verificarSesionActiva, 30000);
 
     // Obtener accesos del usuario
     const accesos = await api('usuarios_accesos', 'GET', null,
@@ -602,12 +602,7 @@ async function iniciarSesion() {
       });
     } catch(eP) { console.warn('Error cargando permisos al login:', eP); }
 
-    // Marcar sesión activa y limpiar flag de invalidación
-    await api('usuarios', 'PATCH', {
-      sesion_activa: true,
-      sesion_invalidada: false,
-      ultima_conexion: new Date().toISOString()
-    }, `?correo_usuario=eq.${encodeURIComponent(correo)}`);
+    // (sesion_activa y token_sesion ya actualizados en el fetch anterior)
 
     resetCampoPass('login-clave');
 
@@ -656,6 +651,7 @@ async function iniciarSesion() {
       sessionStorage.setItem('sd_empresa_activa', JSON.stringify(_empresaActiva));
       localStorage.setItem('sd_empresa_activa', JSON.stringify(_empresaActiva));
     }
+    window._sesionLista = true; // Habilitar polling — token ya confirmado en BD
     iniciarApp();
     btn.textContent = 'INGRESAR';
     btn.disabled = false;
