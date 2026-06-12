@@ -307,15 +307,14 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
       } catch(eAst) { console.warn('Error anulando asiento en reverso:', eAst); }
     }
 
-    // 7. Actualizar cache
-    const cached = inventarioCache.find(function(x) { return x.id_articulo === idRepuesto; });
-    if (cached) {
-      cached.stock_actual = patchInv.stock_actual;
-      if (nuevoStock <= 0) {
-        cached.precio_costo_usd        = 0;
-        cached.precio_costo_ultimo_usd = 0;
+    // 7. Actualizar cache con datos frescos desde BD
+    try {
+      const fresh = await api('inventario', 'GET', null, '?id_articulo=eq.' + idRepuesto + '&select=*');
+      if (fresh && fresh[0]) {
+        const i = inventarioCache.findIndex(function(x) { return x.id_articulo === idRepuesto; });
+        if (i !== -1) inventarioCache[i] = fresh[0];
       }
-    }
+    } catch(e) {}
 
     // 8. Recargar vistas
     await recargarHistorial(idRepuesto);
