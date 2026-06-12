@@ -404,47 +404,86 @@ function abrirEntradaStock(id) {
 }
 
 async function guardarEntradaStock() {
-  if (!puedo('INVENTARIO','ENTRADA_STOCK')) { alert('No tiene permiso para ingresar stock.'); return; }
+  // Protección doble ejecución
+  if (window._guardandoEntrada) return;
+  window._guardandoEntrada = true;
+  const btnGuardar = document.querySelector('#modal-entrada-stock .btn-primario');
+  if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
+
+  if (!puedo('INVENTARIO','ENTRADA_STOCK')) {
+    alert('No tiene permiso para ingresar stock.');
+    window._guardandoEntrada = false;
+    if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'INGRESAR STOCK'; }
+    return;
+  }
   const id       = parseInt(document.getElementById('es-id').value);
   const cantidad = parseFloat(document.getElementById('es-cantidad').value) || 0;
   const okEl     = document.getElementById('alerta-es-ok');
   const errEl    = document.getElementById('alerta-es-err');
+
+  const resetBtn = function() {
+    window._guardandoEntrada = false;
+    if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'INGRESAR STOCK'; }
+  };
+
   if (cantidad <= 0) {
     errEl.textContent = 'Ingresa una cantidad mayor a 0.';
     errEl.style.display = 'block';
-    document.getElementById('es-cantidad')?.focus(); return;
+    document.getElementById('es-cantidad')?.focus();
+    resetBtn(); return;
   }
+
   try {
     const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
     const precioIngresado  = parseFloat(document.getElementById('es-precio-costo').value) || 0;
-  const monedaCompra     = document.getElementById('es-moneda-compra')?.value || 'USD';
-  const tasaBCVVal       = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
-  const nuevoPrecioCosto = monedaCompra === 'VES'
-    ? (tasaBCVVal > 0 ? parseFloat((precioIngresado / tasaBCVVal).toFixed(4)) : (parseFloat(document.getElementById('es-precio-usd-calc')?.value) || 0))
-    : precioIngresado;
-  if (monedaCompra === 'VES' && precioIngresado > 0 && nuevoPrecioCosto <= 0) {
-    errEl.textContent = 'No se encontró tasa BCV para convertir el precio. Verifique que exista una tasa registrada.';
-    errEl.style.display = 'block';
-    document.getElementById('es-precio-costo')?.focus(); return;
-  }
-  const moneda_compra_val = monedaCompra;
-  const precio_compra_original = precioIngresado;
-  const tasa_bcv_usada = monedaCompra === 'VES' ? (parseFloat(document.getElementById('es-tasa-bcv')?.value) || null) : null;
-    const nuevoPrecioVenta = parseFloat(document.getElementById('es-precio-venta').value) || null;
-    // Consultar valores frescos desde Supabase para CPP preciso
-    let stockActual = parseFloat(r.stock_actual || 0);
-    let costoActual = parseFloat(r.precio_costo_usd || 0);
-    try {
-      const artFresh = await api('inventario', 'GET', null, '?id_articulo=eq.' + id + '&select=stock_actual,precio_costo_usd');
-      if (artFresh && artFresh[0]) {
-        stockActual = parseFloat(artFresh[0].stock_actual || 0);
-        costoActual = parseFloat(artFresh[0].precio_costo_usd || 0);
-      }
-    } catch(eFresh) {}
+    const monedaCompra     = document.getElementById('es-moneda-compra')?.value || 'USD';
+    const tasaBCVVal       = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
+    const nuevoPrecioCosto = monedaCompra === 'VES'
+      ? (tasaBCVVal > 0 ? parseFloat((precioIngresado / tasaBCVVal).toFixed(4)) : (parseFloat(document.getElementById('es-precio-usd-calc')?.value) || 0))
+      : precioIngresado;
+    if (monedaCompra === 'VES' && precioIngresado > 0 && nuevoPrecioCosto <= 0) {
+      errEl.textContent = 'No se encontró tasa BCV para convertir el precio.';
+      errEl.style.display = 'block';
+      document.getElementById('es-precio-costo')?.focus();
+      resetBtn(); return;
+    }
+    const moneda_compra_val      = monedaCompra;
+    const precio_compra_original = precioIngresado;
+    const tasa_bcv_usada         = monedaCompra === 'VES' ? (tasaBCVVal || null) : null;
+    const nuevoPrecioVenta       = parseFloat(document.getElementById('es-precio-venta').value) || null;
 
+    // ── FASE 1: Todas las validaciones ANTES de tocar BD ──
+    const motivoEnt = document.getElementById('es-motivo')?.value;
+    if (motivoEnt === 'compra') {
+      const idProvVal = document.getElementById('es-proveedor')?.value;
+      if (!idProvVal) { errEl.textContent = 'Debe seleccionar el proveedor.'; errEl.style.display = 'block'; document.getElementById('es-proveedor')?.focus(); resetBtn(); return; }
+    } else if (motivoEnt === 'devolucion') {
+      const clienteNom = document.getElementById('es-cliente-nombre')?.value.trim();
+      if (!clienteNom) { errEl.textContent = 'Debe ingresar el nombre del cliente.'; errEl.style.display = 'block'; document.getElementById('es-cliente-nombre')?.focus(); resetBtn(); return; }
+    } else if (motivoEnt === 'transferencia') {
+      const idOrigenVal = document.getElementById('es-area-origen')?.value;
+      if (!idOrigenVal) { errEl.textContent = 'Debe seleccionar el área de origen.'; errEl.style.display = 'block'; document.getElementById('es-area-origen')?.focus(); resetBtn(); return; }
+    }
+    const idAreaEntVal = document.getElementById('es-area')?.value;
+    if (!idAreaEntVal) { errEl.textContent = 'Debe seleccionar el Área Receptora.'; errEl.style.display = 'block'; document.getElementById('es-area')?.focus(); resetBtn(); return; }
+    const idEmpEntVal = parseInt(document.getElementById('es-empleado')?.value) || null;
+    if (!idEmpEntVal) { errEl.textContent = 'Debe seleccionar el empleado receptor.'; errEl.style.display = 'block'; document.getElementById('es-empleado')?.focus(); resetBtn(); return; }
+    const claveEnt = document.getElementById('es-clave-receptor')?.value || '';
+    if (!claveEnt) { errEl.textContent = 'El empleado receptor debe ingresar su contraseña.'; errEl.style.display = 'block'; document.getElementById('es-clave-receptor')?.focus(); resetBtn(); return; }
+    const validEnt = await validarClaveReceptor(idEmpEntVal, claveEnt);
+    if (!validEnt.ok) { errEl.textContent = validEnt.msg; errEl.style.display = 'block'; document.getElementById('es-clave-receptor')?.focus(); resetBtn(); return; }
+
+    // ── FASE 2: Leer stock fresco de BD (única fuente de verdad) ──
+    let stockActual = parseFloat(r?.stock_actual || 0);
+    let costoActual = parseFloat(r?.precio_costo_usd || 0);
+    const artFresh = await api('inventario', 'GET', null, '?id_articulo=eq.' + id + '&select=stock_actual,precio_costo_usd');
+    if (artFresh && artFresh[0]) {
+      stockActual = parseFloat(artFresh[0].stock_actual || 0);
+      costoActual = parseFloat(artFresh[0].precio_costo_usd || 0);
+    }
     const nuevoStock = stockActual + cantidad;
 
-    // Costo Promedio Ponderado (CPP)
+    // CPP
     var cpp = costoActual;
     if (nuevoPrecioCosto > 0) {
       cpp = nuevoStock > 0
@@ -452,108 +491,67 @@ async function guardarEntradaStock() {
         : nuevoPrecioCosto;
     }
 
-    const patch = {
-      stock_actual: nuevoStock,
-      precio_costo_usd: parseFloat(cpp.toFixed(4)),
-    };
+    // ── FASE 3: Registrar entrada en historial ──
+    const idAreaEnt  = parseInt(idAreaEntVal) || null;
+    const idProvEnt  = (motivoEnt === 'compra') ? (parseInt(document.getElementById('es-proveedor')?.value) || null) : null;
+    const clienteNomH  = (motivoEnt === 'devolucion') ? (document.getElementById('es-cliente-nombre')?.value.trim() || null) : null;
+    const idAreaOrigenH = (motivoEnt === 'transferencia') ? (parseInt(document.getElementById('es-area-origen')?.value) || null) : null;
+
+    let idEntrada = null;
+    const entradaRes = await api('stock_entradas', 'POST', {
+      id_articulo:            id,
+      cantidad:               cantidad,
+      precio_costo_usd:       nuevoPrecioCosto || null,
+      precio_compra_original: precio_compra_original || null,
+      moneda_compra:          moneda_compra_val,
+      tasa_bcv:               tasa_bcv_usada,
+      fecha_entrada:          getHoyVzla(),
+      id_area:                idAreaEnt,
+      id_empleado:            idEmpEntVal,
+      id_proveedor:           idProvEnt,
+      cliente_nombre:         clienteNomH,
+      id_area_origen:         idAreaOrigenH,
+      observaciones:          document.getElementById('es-observaciones')?.value.trim() || null,
+      id_usuario:             sesionActual.correo_usuario
+    });
+    idEntrada = entradaRes && entradaRes[0] ? entradaRes[0].id_entrada : null;
+
+    // ── FASE 4: Actualizar stock e inventario DESPUÉS del INSERT exitoso ──
+    const patch = { stock_actual: nuevoStock, precio_costo_usd: parseFloat(cpp.toFixed(4)) };
     if (nuevoPrecioCosto > 0) patch.precio_costo_ultimo_usd = nuevoPrecioCosto;
     if (nuevoPrecioVenta && nuevoPrecioVenta > 0 && puedo('INVENTARIO','VER_PRECIOS_VENTA')) patch.precio_venta_usd = nuevoPrecioVenta;
     await api('inventario', 'PATCH', patch, '?id_articulo=eq.' + id);
-    // Validar campo obligatorio según motivo
-    const motivoEnt = document.getElementById('es-motivo')?.value;
-    if (motivoEnt === 'compra') {
-      const idProvVal = document.getElementById('es-proveedor')?.value;
-      if (!idProvVal) { errEl.textContent = 'Debe seleccionar el proveedor.'; errEl.style.display = 'block'; document.getElementById('es-proveedor')?.focus(); return; }
-    } else if (motivoEnt === 'devolucion') {
-      const clienteNom = document.getElementById('es-cliente-nombre')?.value.trim();
-      if (!clienteNom) { errEl.textContent = 'Debe ingresar el nombre del cliente.'; errEl.style.display = 'block'; document.getElementById('es-cliente-nombre')?.focus(); return; }
-    } else if (motivoEnt === 'transferencia') {
-      const idOrigenVal = document.getElementById('es-area-origen')?.value;
-      if (!idOrigenVal) { errEl.textContent = 'Debe seleccionar el área de origen.'; errEl.style.display = 'block'; document.getElementById('es-area-origen')?.focus(); return; }
-    }
 
-    // Validar empleado receptor y contraseña — OBLIGATORIO
-    const idEmpEntVal  = parseInt(document.getElementById('es-empleado')?.value) || null;
-    const claveEnt     = document.getElementById('es-clave-receptor')?.value || '';
-    const idAreaEntVal = document.getElementById('es-area')?.value;
-    if (!idAreaEntVal) {
-      errEl.textContent = 'Debe seleccionar el Área Receptora.';
-      errEl.style.display = 'block';
-      document.getElementById('es-area')?.focus(); return;
-    }
-    if (!idEmpEntVal) {
-      errEl.textContent = 'Debe seleccionar el empleado receptor.';
-      errEl.style.display = 'block';
-      document.getElementById('es-empleado')?.focus(); return;
-    }
-    if (!claveEnt) {
-      errEl.textContent = 'El empleado receptor debe ingresar su contraseña para confirmar la recepción.';
-      errEl.style.display = 'block';
-      document.getElementById('es-clave-receptor')?.focus(); return;
-    }
-    const validEnt = await validarClaveReceptor(idEmpEntVal, claveEnt);
-    if (!validEnt.ok) {
-      errEl.textContent = validEnt.msg;
-      errEl.style.display = 'block';
-      document.getElementById('es-clave-receptor')?.focus(); return;
-    }
-
-    // Registrar en historial de entradas
-    let idEntrada = null;
-    try {
-      const idAreaEnt    = parseInt(document.getElementById('es-area')?.value) || null;
-      const idEmpEnt     = idEmpEntVal;
-      const motivoEntH   = document.getElementById('es-motivo')?.value;
-      const idProvEnt       = (motivoEntH === 'compra') ? (parseInt(document.getElementById('es-proveedor')?.value) || null) : null;
-      const clienteNomH     = (motivoEntH === 'devolucion') ? (document.getElementById('es-cliente-nombre')?.value.trim() || null) : null;
-      const idAreaOrigenH   = (motivoEntH === 'transferencia') ? (parseInt(document.getElementById('es-area-origen')?.value) || null) : null;
-      const entradaRes = await api('stock_entradas', 'POST', {
-        id_articulo:             id,
-        cantidad:                cantidad,
-        precio_costo_usd:        nuevoPrecioCosto || null,
-        precio_compra_original:  precio_compra_original || null,
-        moneda_compra:           moneda_compra_val,
-        tasa_bcv:                tasa_bcv_usada,
-        fecha_entrada:           getHoyVzla(),
-        id_area:                 idAreaEnt,
-        id_empleado:             idEmpEnt,
-        id_proveedor:            idProvEnt,
-        cliente_nombre:          clienteNomH,
-        id_area_origen:          idAreaOrigenH,
-        observaciones:           document.getElementById('es-observaciones')?.value.trim() || null,
-        id_usuario:              sesionActual.correo_usuario
-      });
-      idEntrada = entradaRes && entradaRes[0] ? entradaRes[0].id_entrada : null;
-    } catch(eH) { console.warn('Error registrando historial entrada:', eH); }
-
-    // ── Generar asiento contable de entrada ──
+    // ── FASE 5: Asiento contable ──
     try {
       const areaNombreEnt = document.getElementById('es-area')?.selectedOptions[0]?.text || 'Área';
-      const areaIdEnt     = parseInt(document.getElementById('es-area')?.value) || null;
-      const motivoAst     = document.getElementById('es-motivo')?.value || 'compra';
-      const tipoAst       = motivoAst === 'compra' ? 'ENTRADA_COMPRA'
-                          : motivoAst === 'devolucion' ? 'ENTRADA_DEVOLUCION'
-                          : 'ENTRADA_AJUSTE';
+      const tipoAst = motivoEnt === 'compra' ? 'ENTRADA_COMPRA'
+                    : motivoEnt === 'devolucion' ? 'ENTRADA_DEVOLUCION'
+                    : 'ENTRADA_AJUSTE';
       await generarAsientoInventario(tipoAst, {
-        articulo:    r.nombre || r.codigo || ('Art#'+id),
-        cantidad:    cantidad,
-        montoUSD:    nuevoPrecioCosto * cantidad,
-        areaId:      areaIdEnt,
-        areaNombre:  areaNombreEnt,
-        referencia:  idEntrada ? 'ENT-' + idEntrada : ('ENT-INV-' + id)
+        articulo:   r.nombre || r.codigo || ('Art#' + id),
+        cantidad:   cantidad,
+        montoUSD:   nuevoPrecioCosto * cantidad,
+        areaId:     idAreaEnt,
+        areaNombre: areaNombreEnt,
+        referencia: idEntrada ? 'ENT-' + idEntrada : ('ENT-INV-' + id)
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
 
-    okEl.textContent = 'Stock actualizado: ' + r.stock_actual + ' → ' + nuevoStock + ' ' + (r.unidad || 'UND');
+    // ── FASE 6: Actualizar cache y cerrar ──
+    if (r) r.stock_actual = nuevoStock;
+    okEl.textContent = 'Stock actualizado: ' + stockActual + ' → ' + nuevoStock + ' ' + (r?.unidad || 'UND');
     okEl.style.display = 'block';
-    r.stock_actual = nuevoStock;
     setTimeout(function() {
       cerrarModal('modal-entrada-stock');
       regresarAFichaInv();
+      resetBtn();
     }, 1200);
+
   } catch(e) {
     errEl.textContent = 'Error: ' + e.message;
     errEl.style.display = 'block';
+    resetBtn();
   }
 }
 
