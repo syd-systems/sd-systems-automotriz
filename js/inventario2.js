@@ -730,45 +730,9 @@ async function verHistorialEntradas(idArticulo) {
 
 // ─── REVERSAR ENTRADA ───
 async function reversarEntrada(idEntrada, idArticulo, cantidad) {
-  if (!confirm('¿Reversar esta entrada?\n\nSe restarán ' + cantidad + ' unidades del stock y se anulará el asiento contable.\nEsta acción no se puede deshacer.')) return;
-  try {
-    // 1. Stock actual fresco
-    const artFresh = await api('inventario', 'GET', null, '?id_articulo=eq.' + idArticulo + '&select=stock_actual');
-    const stockActual = artFresh && artFresh[0] ? parseFloat(artFresh[0].stock_actual) : 0;
-    const nuevoStock  = Math.max(0, stockActual - parseFloat(cantidad));
-    // 2. Rebajar stock y limpiar precios si queda en 0
-    const patchDatos = { stock_actual: nuevoStock };
-    if (nuevoStock === 0) {
-      patchDatos.precio_costo_usd  = 0;
-      patchDatos.precio_venta_usd  = 0;
-    }
-    await api('inventario', 'PATCH', patchDatos, '?id_articulo=eq.' + idArticulo);
-    // 3. Marcar entrada como reversada
-    await api('stock_entradas', 'PATCH',
-      { reversada: true, id_usuario_reversa: sesionActual.correo_usuario },
-      '?id_entrada=eq.' + idEntrada);
-    // 4. Anular asiento contable vinculado (soporta formato ENT-{id} y ENT-INV-{id_articulo})
-    try {
-      // Buscar por formato nuevo ENT-{idEntrada}
-      let asientos = await api('cont_asientos', 'GET', null,
-        '?referencia=eq.ENT-' + idEntrada + emisorQ() + '&select=id_asiento,numero_asiento');
-      // Fallback: formato antiguo ENT-INV-{idArticulo}
-      if (!asientos || !asientos.length) {
-        asientos = await api('cont_asientos', 'GET', null,
-          '?referencia=eq.ENT-INV-' + idArticulo + emisorQ() + '&select=id_asiento,numero_asiento');
-      }
-      for (var i = 0; i < asientos.length; i++) {
-        await api('cont_asientos', 'PATCH',
-          { estado: 'ANULADO', descripcion: '[REVERSADO] ' + (asientos[i].numero_asiento || '') },
-          '?id_asiento=eq.' + asientos[i].id_asiento);
-      }
-      if (!asientos || !asientos.length) console.warn('No se encontró asiento para reversar. idEntrada:', idEntrada);
-    } catch(eAst) { console.warn('Error anulando asiento:', eAst); }
-    // 5. Actualizar cache
-    const cached = inventarioCache.find(function(x) { return x.id_articulo === idArticulo; });
-    if (cached) cached.stock_actual = nuevoStock;
-    alert('Entrada reversada. Stock: ' + stockActual + ' → ' + nuevoStock);
-    verHistorialEntradas(idArticulo);
-    verFichaInventario(idArticulo);
-  } catch(e) { alert('Error al reversar: ' + e.message); }
+  // Delegar a reversarMovimiento — función única y completa de reverso
+  await reversarMovimiento('ENTRADA', idEntrada, cantidad, idArticulo);
+  // Recargar ficha después del reverso
+  const cached = inventarioCache.find(function(x) { return x.id_articulo === idArticulo; });
+  if (cached) verFichaInventario(idArticulo);
 }
