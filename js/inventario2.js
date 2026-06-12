@@ -65,7 +65,7 @@ async function renderInventario(filtro) {
       + '</select>'
       + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--suave);cursor:pointer">'
       + '<input type="checkbox" id="inv-mostrar-todos" onchange="renderInventario(document.getElementById(\'buscar-inv\')?.value||\'\')">'
-      + 'Mostrar sin stock</label>'
+      + 'Solo con stock</label>'
       + '<input type="text" id="buscar-inv" placeholder="Buscar artículo o código..." '
       + 'onkeyup="renderInventario(this.value)" '
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\');}" '
@@ -79,10 +79,11 @@ async function renderInventario(filtro) {
   const tablaCont = document.getElementById('tabla-inv-cont');
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const mostrarTodos = document.getElementById('inv-mostrar-todos')?.checked ?? true;
+    // Por defecto muestra todos — el checkbox "Solo con stock" activa el filtro
+    const soloConStock = document.getElementById('inv-mostrar-todos')?.checked || false;
     const itemsTodos = await api('inventario', 'GET', null, '?order=nombre.asc&select=*' + emisorQ());
     const items = itemsTodos.filter(function(r) { return r.activo !== false; });
-    const itemsFiltradosBase = mostrarTodos ? items : items.filter(function(r) { return parseFloat(r.stock_actual||0) > 0; });
+    const itemsFiltradosBase = soloConStock ? items.filter(function(r) { return parseFloat(r.stock_actual||0) > 0; }) : items;
     inventarioCache = items;
     const catFiltro = document.getElementById('inv-filtro-cat') ? document.getElementById('inv-filtro-cat').value : '';
   var itemsFiltrados = catFiltro
