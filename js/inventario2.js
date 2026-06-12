@@ -730,9 +730,6 @@ async function verHistorialEntradas(idArticulo) {
 
 // ─── REVERSAR ENTRADA ───
 async function reversarEntrada(idEntrada, idArticulo, cantidad) {
-  // Delegar a reversarMovimiento — función única y completa de reverso
+  // Delegar completamente a reversarMovimiento (incluye confirm, stock, asiento)
   await reversarMovimiento('ENTRADA', idEntrada, cantidad, idArticulo);
-  // Recargar ficha después del reverso
-  const cached = inventarioCache.find(function(x) { return x.id_articulo === idArticulo; });
-  if (cached) verFichaInventario(idArticulo);
 }
