@@ -730,6 +730,8 @@ async function verHistorialEntradas(idArticulo) {
 
 // ─── REVERSAR ENTRADA ───
 async function reversarEntrada(idEntrada, idArticulo, cantidad) {
-  // Delegar completamente a reversarMovimiento (incluye confirm, stock, asiento)
   await reversarMovimiento('ENTRADA', idEntrada, cantidad, idArticulo);
+  // Retornar a inventario general después del reverso
+  cerrarTodosLosModales();
+  renderInventario();
 }
