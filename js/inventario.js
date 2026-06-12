@@ -235,37 +235,48 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
   if (!confirm('¿Reversar este movimiento de ' + cantidad + ' unidades?\\nEsto ajustará el stock automáticamente.')) return;
 
   try {
-    // Obtener stock actual
+    // 1. Obtener stock actual
     const artArr = await api('inventario', 'GET', null, '?id_articulo=eq.' + idRepuesto + '&select=stock_actual,nombre');
     const art = artArr[0];
     if (!art) { alert('Artículo no encontrado.'); return; }
 
+    // 2. Verificar que no esté ya reversada
+    if (tipo === 'ENTRADA') {
+      const check = await api('stock_entradas', 'GET', null, '?id_entrada=eq.' + idMovimiento + '&select=reversada');
+      if (check[0]?.reversada) { alert('Este movimiento ya fue reversado.'); return; }
+    } else {
+      const check = await api('stock_salidas', 'GET', null, '?id_salida=eq.' + idMovimiento + '&select=reversada');
+      if (check[0]?.reversada) { alert('Este movimiento ya fue reversado.'); return; }
+    }
+
+    // 3. Calcular nuevo stock
     let nuevoStock;
     if (tipo === 'ENTRADA') {
-      // Reversar entrada = descontar del stock
       nuevoStock = art.stock_actual - cantidad;
-      if (nuevoStock < 0) { alert('No se puede reversar: el stock resultante sería negativo.'); return; }
-      await api('stock_entradas', 'PATCH', { reversada: true }, '?id_entrada=eq.' + idMovimiento);
+      if (nuevoStock < 0) { alert('No se puede reversar: el stock resultante sería negativo (' + nuevoStock + ').'); return; }
     } else {
-      // Reversar salida = devolver al stock
       nuevoStock = art.stock_actual + cantidad;
+    }
+
+    // 4. Actualizar stock primero
+    await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + idRepuesto);
+
+    // 5. Marcar como reversada SOLO después de confirmar el stock
+    if (tipo === 'ENTRADA') {
+      await api('stock_entradas', 'PATCH', { reversada: true, id_usuario_reversa: sesionActual?.correo_usuario || null }, '?id_entrada=eq.' + idMovimiento);
+    } else {
       await api('stock_salidas', 'PATCH', { reversada: true }, '?id_salida=eq.' + idMovimiento);
     }
 
-    // Actualizar stock
-    await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + idRepuesto);
-
-    // Actualizar cache
+    // 6. Actualizar cache
     const cached = inventarioCache.find(function(x) { return x.id_articulo === idRepuesto; });
     if (cached) cached.stock_actual = nuevoStock;
 
-    // Recargar historial
+    // 7. Recargar historial y tabla
     await recargarHistorial(idRepuesto);
-
-    // Refrescar inventario en fondo
     renderInventario();
 
-  } catch(err) { alert('Error: ' + err.message); }
+  } catch(err) { alert('Error al reversar: ' + err.message); }
 }
 
 
