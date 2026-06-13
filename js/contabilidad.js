@@ -872,10 +872,54 @@ async function contRenderCxc() {
 }
 
 
+async function contRenderCxp() {
+  const cont = document.getElementById('cont-vista-cont');
+  if (!cont) return;
+  cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+  try {
+    // CxP = asientos con cuentas de tipo Proveedores (2.1.01.xxx) con saldo pendiente
+    const asientos = await api('cont_asientos','GET',null,
+      '?id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&estado=eq.APROBADO&order=fecha.desc&select=*,cont_asiento_lineas(id_cuenta,debe_usd,haber_usd,cont_cuentas(codigo,nombre,tipo))');
+
+    // Filtrar líneas de cuentas de Proveedores (2.1.x)
+    const movsProv = [];
+    asientos.forEach(function(a) {
+      if (!a.cont_asiento_lineas) return;
+      a.cont_asiento_lineas.forEach(function(l) {
+        if (l.cont_cuentas && l.cont_cuentas.codigo && l.cont_cuentas.codigo.startsWith('2.1')) {
+          movsProv.push({ asiento: a, linea: l });
+        }
+      });
+    });
+
+    // Agrupar saldos por cuenta
+    const saldos = {};
+    movsProv.forEach(function(m) {
+      const cod = m.linea.cont_cuentas.codigo;
+      const nom = m.linea.cont_cuentas.nombre;
+      if (!saldos[cod]) saldos[cod] = { nombre: nom, haber: 0, debe: 0 };
+      saldos[cod].haber += parseFloat(m.linea.haber_usd||0);
+      saldos[cod].debe  += parseFloat(m.linea.debe_usd||0);
+    });
+
+    const filas = Object.keys(saldos).sort().map(function(cod) {
+      const s = saldos[cod];
+      const saldo = s.haber - s.debe; // CxP: naturaleza acreedora
+      return '<tr>'        +'<td style="padding:6px 8px;font-family:var(--font-mono);font-size:11px;color:var(--naranja)">'+cod+'</td>'        +'<td style="padding:6px 8px;font-size:12px">'+s.nombre+'</td>'        +'<td style="text-align:right;padding:6px 8px;font-family:var(--font-mono);color:#fc8181">$ '+fmtUSD(s.haber)+'</td>'        +'<td style="text-align:right;padding:6px 8px;font-family:var(--font-mono);color:#22c55e">$ '+fmtUSD(s.debe)+'</td>'        +'<td style="text-align:right;padding:6px 8px;font-family:var(--font-mono);font-weight:700;color:'+(saldo>0?'#fc8181':'#22c55e')+'">$ '+fmtUSD(Math.abs(saldo))+(saldo<=0?' ✓':'')+'</td>'        +'</tr>';
+    }).join('');
+
+    cont.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">'      +'<h3 style="margin:0">Cuentas por Pagar</h3>'      +'<div style="font-size:11px;color:var(--suave)">Saldos de cuentas 2.1.x — asientos aprobados</div>'      +'</div>'      +(filas        ? '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'          +'<th style="padding:6px 8px;font-size:11px;color:var(--suave);text-align:left">Código</th>'          +'<th style="padding:6px 8px;font-size:11px;color:var(--suave);text-align:left">Cuenta</th>'          +'<th style="padding:6px 8px;font-size:11px;color:var(--suave);text-align:right">Crédito (Haber)</th>'          +'<th style="padding:6px 8px;font-size:11px;color:var(--suave);text-align:right">Abono (Debe)</th>'          +'<th style="padding:6px 8px;font-size:11px;color:var(--suave);text-align:right">Saldo</th>'          +'</tr></thead><tbody>'+filas+'</tbody></table></div>'        : '<div style="text-align:center;color:var(--suave);padding:40px">Sin movimientos de proveedores registrados.</div>');
+  } catch(e) {
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>';
+  }
+}
+
 async function contRenderConciliacion() {
   const cont = document.getElementById('cont-vista-cont');
   if (!cont) return;
   const cuentasBanco = contCuentasCache.filter(function(c){ return c.permite_movimiento && (c.codigo.startsWith('1.1.01') ); });
+  const hoy = new Date().toISOString().split('T')[0];
   cont.innerHTML = contSelectorMoneda(hoy) +
     '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<h3 style="margin:0">Conciliación Bancaria</h3>'
