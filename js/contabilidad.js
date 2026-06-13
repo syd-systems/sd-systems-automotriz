@@ -152,12 +152,10 @@ function contSelectorMoneda(fechaConsulta) {
 }
 
 async function contCargarCuentas() {
-  // Cargar cuentas del sistema (id_emisor NULL) + cuentas de la empresa activa
-  const emisorFiltro = window._contEmisorActivo
-    ? '&or=(id_emisor.eq.'+window._contEmisorActivo+',id_emisor.is.null)'
-    : '';
+  // Cuentas globales (id_emisor NULL) + cuentas de la empresa activa
+  const idEmisor = _empresaActiva?.id_emisor || 0;
   contCuentasCache = await api('cont_cuentas','GET',null,
-    '?estado=eq.ACTIVA&order=codigo.asc&select=*' + emisorFiltro);
+    '?estado=eq.ACTIVA&order=codigo.asc&select=*&or=(id_emisor.eq.' + idEmisor + ',id_emisor.is.null)');
 }
 async function contCargarPeriodos() {
   contPeriodosCache = await api('cont_periodos','GET',null,'?id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=fecha_inicio.desc&select=*');
@@ -973,6 +971,7 @@ async function contRenderCuentas(filtro) {
 
   const tipoBadge = { ACTIVO:'badge-verde', PASIVO:'badge-rojo', PATRIMONIO:'badge-naranja', INGRESO:'badge-verde', EGRESO:'badge-rojo' };
 
+  const hoy = new Date().toISOString().split('T')[0];
   cont.innerHTML = contSelectorMoneda(hoy) +
     '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<h3 style="margin:0">Plan de Cuentas VEN-NIF</h3>'
