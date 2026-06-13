@@ -1830,7 +1830,7 @@
   <div class="modal" style="max-width:1100px">
     <div class="modal-header">
       <h3 id="modal-cont-form-titulo">NUEVO ASIENTO CONTABLE</h3>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-cont-asiento-form')">✕</button>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-cont-asiento-form');contCambiarVista('diario')">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr 1fr;margin-bottom:16px">
@@ -1875,7 +1875,7 @@
       <div id="alerta-cont-form-err" class="alerta alerta-error"  style="display:none;margin-top:10px"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secundario" onclick="cerrarModal('modal-cont-asiento-form')">Retornar</button>
+      <button class="btn-secundario" onclick="cerrarModal('modal-cont-asiento-form');contCambiarVista('diario')">Retornar</button>
       <button class="btn-primario"   onclick="contGuardarAsiento()">💾 Guardar Borrador</button>
     </div>
     <input type="hidden" id="cont-form-id">
