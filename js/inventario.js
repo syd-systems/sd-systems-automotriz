@@ -272,6 +272,7 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
       patchInv.stock_actual            = 0;
       patchInv.precio_costo_usd        = 0;
       patchInv.precio_costo_ultimo_usd = 0;
+      patchInv.precio_venta_usd        = 0;
     }
     await api('inventario', 'PATCH', patchInv, '?id_articulo=eq.' + idRepuesto);
 
