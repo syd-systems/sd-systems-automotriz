@@ -1124,7 +1124,7 @@ async function guardarSalidaStock() {
     // Registrar salida
     const idEmpRecibe    = parseInt(document.getElementById('salida-empleado')?.value) || null;
     const idAreaEntrega  = parseInt(document.getElementById('salida-area-entrega')?.value) || null;
-    await api('stock_salidas', 'POST', {
+    const salidaRes = await api('stock_salidas', 'POST', {
       id_articulo:        idRep,
       id_area:            idArea,
       id_empleado:        idEmpRecibe,
@@ -1135,6 +1135,7 @@ async function guardarSalidaStock() {
       observaciones:      obs || null,
       id_usuario:         sesionActual.correo_usuario
     });
+    const idSalida = salidaRes && salidaRes[0] ? salidaRes[0].id_salida : null;
 
     // Descontar del stock_actual
     const nuevoStock = (art ? art.stock_actual : 0) - cantidad;
@@ -1155,7 +1156,7 @@ async function guardarSalidaStock() {
         montoUSD:   costoUnit * cantidad,
         areaId:     areaIdSal,
         areaNombre: areaNombreSal,
-        referencia: 'SAL-INV-' + idRep
+        referencia: idSalida ? 'SAL-' + idSalida : 'SAL-INV-' + idRep
       });
     } catch(eAstSal) { console.warn('Error asiento salida inventario:', eAstSal); }
 
