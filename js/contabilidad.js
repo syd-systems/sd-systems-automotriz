@@ -109,6 +109,7 @@ async function contCambiarVista(vista, forzar) {
   else if (vista === 'cxc')          await contRenderCxc();
   else if (vista === 'cxp')          await contRenderCxp();
   else if (vista === 'conciliacion') await contRenderConciliacion();
+  else if (vista === 'asientos')     { cont.innerHTML = ''; await contAbrirAsiento(null); }
   else if (vista === 'cuentas')      await contRenderCuentas();
   else if (vista === 'periodos')     await contRenderPeriodos();
 }
