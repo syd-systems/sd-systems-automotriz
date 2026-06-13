@@ -232,7 +232,7 @@ async function guardarEdicionMovimiento() {
 }
 
 async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
-  if (!confirm('¿Reversar este movimiento de ' + cantidad + ' unidades?\\nSe ajustará el stock y se anulará el asiento contable original.')) return;
+  if (!confirm('¿Reversar este movimiento de ' + cantidad + ' unidades? Se ajustará el stock y se anulará el asiento contable original.')) return;
 
   try {
     // 1. Leer artículo fresco desde BD
