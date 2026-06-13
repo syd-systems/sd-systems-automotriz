@@ -340,18 +340,28 @@ async function contVerAsiento(id) {
       + '</tfoot></table></div>';
 
     // Botones de acción en el footer según estado
+    // Orden: ELIMINAR/ANULAR | EDITAR | APROBAR | RETORNAR
     const footer = document.querySelector('#modal-cont-asiento-ver .modal-footer');
     if (footer) {
-      let btns = '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-asiento-ver\')">Retornar</button>';
-      if (puedo('CONTABILIDAD','EDITAR') && ast.estado === 'PENDIENTE') {
-        btns += '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-asiento-ver\');contAbrirAsiento(' + ast.id_asiento + ')">✏ Editar</button>';
+      let btns = '';
+      // Eliminar — solo en PENDIENTE (asiento no contabilizado aún)
+      if (puedo('CONTABILIDAD','ELIMINAR') && ast.estado === 'PENDIENTE') {
+        btns += '<button class="btn-secundario" style="color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="contEliminarAsiento(' + ast.id_asiento + ')">🗑 Eliminar</button>';
       }
-      if (puedo('CONTABILIDAD','APROBAR') && ast.estado === 'PENDIENTE') {
-        btns += '<button class="btn-primario" onclick="cerrarModal(\'modal-cont-asiento-ver\');contAprobarAsiento(' + ast.id_asiento + ')">✓ Aprobar</button>';
-      }
+      // Anular — solo en APROBADO y no automático
       if (puedo('CONTABILIDAD','ANULAR') && ast.estado === 'APROBADO' && ast.tipo !== 'AUTOMATICO') {
         btns += '<button class="btn-secundario" style="color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="cerrarModal(\'modal-cont-asiento-ver\');contAnularAsiento(' + ast.id_asiento + ')">Anular</button>';
       }
+      // Editar — solo en PENDIENTE
+      if (puedo('CONTABILIDAD','EDITAR') && ast.estado === 'PENDIENTE') {
+        btns += '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-asiento-ver\');contAbrirAsiento(' + ast.id_asiento + ')">✏ Editar</button>';
+      }
+      // Aprobar — solo en PENDIENTE
+      if (puedo('CONTABILIDAD','APROBAR') && ast.estado === 'PENDIENTE') {
+        btns += '<button class="btn-primario" onclick="cerrarModal(\'modal-cont-asiento-ver\');contAprobarAsiento(' + ast.id_asiento + ')">✓ Aprobar</button>';
+      }
+      // Retornar — siempre al final
+      btns += '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-asiento-ver\')">Retornar</button>';
       footer.innerHTML = btns;
     }
 
@@ -594,6 +604,16 @@ async function contAprobarAsiento(id) {
     await api('cont_asientos','PATCH',{ estado:'APROBADO', aprobado_por: sesionActual.correo_usuario, fecha_aprobacion: new Date().toISOString() },'?id_asiento=eq.' + id);
     contCambiarVista('diario');
   } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function contEliminarAsiento(id) {
+  if (!confirm('¿Eliminar este asiento? Esta acción no se puede deshacer.')) return;
+  try {
+    await api('cont_asiento_lineas', 'DELETE', null, '?id_asiento=eq.' + id);
+    await api('cont_asientos', 'DELETE', null, '?id_asiento=eq.' + id);
+    cerrarModal('modal-cont-asiento-ver');
+    contCambiarVista('diario');
+  } catch(e) { alert('Error al eliminar: ' + e.message); }
 }
 
 async function contAnularAsiento(id) {
