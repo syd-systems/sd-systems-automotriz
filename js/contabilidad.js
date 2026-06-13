@@ -238,7 +238,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
       + '<option value="APROBADO"' + (filtroEstado==='APROBADO'?' selected':'') + '>Aprobado</option>'
       + '<option value="ANULADO"'  + (filtroEstado==='ANULADO'?' selected':'')  + '>Anulado</option>'
       + '</select>'
-      + (puedo('CONTABILIDAD','CREAR') ? '<button class="btn-primario" onclick="contAbrirAsiento(null)">+ Nuevo Asiento</button>' : '')
+      
       + '</div></div>'
       + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
       + '<th>N° Asiento</th><th>Fecha</th><th>Descripción</th><th>Período</th><th>Moneda</th><th>Estado</th><th>Acción</th>'
