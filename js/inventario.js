@@ -68,9 +68,7 @@ async function recargarHistorial(idRepuesto) {
             + (m.observaciones ? '<div style="font-size:11px;color:var(--suave)">' + m.observaciones + '</div>' : '')
             + '</td>'
             + '<td style="text-align:center;padding:8px 0">'
-            + (!reversada && (sesionActual?.administrador || puedo('INVENTARIO', esEntrada ? 'ENTRADA_STOCK' : 'SALIDA_STOCK'))
-                ? '<div style="display:flex;gap:4px;flex-direction:column">'                  + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="editarMovimiento(\'' + m.tipo + '\',' + (esEntrada ? m.id_entrada : m.id_salida) + ',' + idRepuesto + ')">✏ Editar</button>'                  + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="reversarMovimiento(\'' + m.tipo + '\',' + (esEntrada ? m.id_entrada : m.id_salida) + ',' + m.cantidad + ',' + idRepuesto + ')">↩ Reversar</button>'                  + '</div>'
-                : '')
+            + (reversada ? '<span style="font-size:10px;color:#fc8181">—</span>' : '')
             + '</td>'
             + '</tr>';
         }).join('')
