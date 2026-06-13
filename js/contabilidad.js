@@ -42,11 +42,12 @@ async function renderContabilidad() {
       contCargarPeriodos(),
     ]);
   } catch(e) { console.warn('Error cargando contabilidad:', e); }
+  _contVista = 'diario'; // Siempre iniciar en Libro Diario al entrar al módulo
   contRenderShell();
   // Esperar a que el DOM procese el innerHTML antes de buscar cont-vista-cont
   requestAnimationFrame(function() {
     requestAnimationFrame(function() {
-      contCambiarVista(_contVista);
+      contCambiarVista('diario');
     });
   });
 }
