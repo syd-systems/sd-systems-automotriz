@@ -42,7 +42,7 @@ async function recargarHistorial(idRepuesto) {
       + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">TIPO</th>'
       + '<th style="text-align:center;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CANTIDAD</th>'
       + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ÁREA / DETALLE</th>'
-      + '<th style="text-align:center;padding:8px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ACCIÓN</th>'
+      + '<th style="text-align:center;padding:8px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ESTADO</th>'
       + '</tr></thead><tbody>'
       + movimientos.map(function(m) {
           const esEntrada = m.tipo === 'ENTRADA';
@@ -68,7 +68,9 @@ async function recargarHistorial(idRepuesto) {
             + (m.observaciones ? '<div style="font-size:11px;color:var(--suave)">' + m.observaciones + '</div>' : '')
             + '</td>'
             + '<td style="text-align:center;padding:8px 0">'
-            + (reversada ? '<span style="font-size:10px;color:#fc8181">—</span>' : '')
+            + (reversada
+                ? '<span style="font-size:10px;font-weight:600;color:#fc8181">Reversada</span>'
+                : '<span style="font-size:10px;color:#22c55e">Activa</span>')
             + '</td>'
             + '</tr>';
         }).join('')
