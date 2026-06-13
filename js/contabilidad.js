@@ -12,7 +12,7 @@ let _contVista         = 'diario';  // diario | mayor | balance | cxc | cxp | co
 const TIPOS_CUENTA   = ['ACTIVO','PASIVO','PATRIMONIO','INGRESO','EGRESO'];
 const NATURALE_CUENTA = { ACTIVO:'DEUDORA', PASIVO:'ACREEDORA', PATRIMONIO:'ACREEDORA', INGRESO:'ACREEDORA', EGRESO:'DEUDORA' };
 const METODOS_PAGO   = ['EFECTIVO_VES','EFECTIVO_USD','TRANSFERENCIA_VES','TRANSFERENCIA_USD','ZELLE','PAGO_MOVIL','DIVISAS','OTRO'];
-const ESTADOS_ASIENTO = { BORRADOR:{clase:'badge-gris',label:'Borrador'}, APROBADO:{clase:'badge-verde',label:'Aprobado'}, ANULADO:{clase:'badge-rojo',label:'Anulado'} };
+const ESTADOS_ASIENTO = { BORRADOR:{clase:'badge-gris',label:'Pendiente'}, APROBADO:{clase:'badge-verde',label:'Aprobado'}, ANULADO:{clase:'badge-rojo',label:'Anulado'} };
 
 // ─── RENDER PRINCIPAL ───
 async function renderContabilidad() {
@@ -232,7 +232,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
       + '<option value="">Todos los períodos</option>' + perSelect + '</select>'
       + '<select id="cont-filtro-estado" onchange="contRenderDiario(this.value, document.querySelector(\'[onchange*=contRenderDiario]\').value)" style="' + contSelStyle() + '">'
       + '<option value="">Todos los estados</option>'
-      + '<option value="BORRADOR"' + (filtroEstado==='BORRADOR'?' selected':'') + '>Borrador</option>'
+      + '<option value="BORRADOR"' + (filtroEstado==='BORRADOR'?' selected':'') + '>Pendiente</option>'
       + '<option value="APROBADO"' + (filtroEstado==='APROBADO'?' selected':'') + '>Aprobado</option>'
       + '<option value="ANULADO"'  + (filtroEstado==='ANULADO'?' selected':'')  + '>Anulado</option>'
       + '</select>'
@@ -253,12 +253,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
             + '<td style="font-size:11px;font-family:var(--font-mono)">' + a.moneda_base
             + '<div style="font-size:10px;color:var(--suave)">Tasa: ' + parseFloat(a.tasa_bcv||1).toFixed(2) + '</div></td>'
             + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
-            + '<td><div style="display:flex;gap:4px;flex-wrap:wrap">'
-            + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" data-ast="' + a.id_asiento + '" onclick="contVerAsiento(this.dataset.ast)">Ver</button>'
-            + (puedo('CONTABILIDAD','EDITAR') && a.estado==='BORRADOR' ? '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="contAbrirAsiento(' + a.id_asiento + ')">✏</button>' : '')
-            + (puedo('CONTABILIDAD','APROBAR') && a.estado==='BORRADOR' ? '<button class="btn-primario" style="font-size:11px;padding:4px 8px" onclick="contAprobarAsiento(' + a.id_asiento + ')">✓ Aprobar</button>' : '')
-            + (puedo('CONTABILIDAD','ANULAR') && a.estado==='APROBADO' && a.tipo!=='AUTOMATICO' ? '<button class="btn-secundario" style="font-size:11px;padding:4px 8px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="contAnularAsiento(' + a.id_asiento + ')">Anular</button>' : '')
-            + '</div></td></tr>';
+            + '<td style="text-align:center"><button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="contVerAsiento(' + a.id_asiento + ')">Ver</button></td></tr>';
         }).join('') : '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--suave)">Sin asientos registrados</td></tr>')
       + '</tbody></table></div>';
   } catch(e) {
@@ -344,8 +339,24 @@ async function contVerAsiento(id) {
       + '</tr>'
       + '</tfoot></table></div>';
 
+    // Botones de acción en el footer según estado
+    const footer = document.querySelector('#modal-cont-asiento-ver .modal-footer');
+    if (footer) {
+      let btns = '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-asiento-ver\')">Retornar</button>';
+      if (puedo('CONTABILIDAD','EDITAR') && ast.estado === 'BORRADOR') {
+        btns += '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-asiento-ver\');contAbrirAsiento(' + ast.id_asiento + ')">✏ Editar</button>';
+      }
+      if (puedo('CONTABILIDAD','APROBAR') && ast.estado === 'BORRADOR') {
+        btns += '<button class="btn-primario" onclick="cerrarModal(\'modal-cont-asiento-ver\');contAprobarAsiento(' + ast.id_asiento + ')">✓ Aprobar</button>';
+      }
+      if (puedo('CONTABILIDAD','ANULAR') && ast.estado === 'APROBADO' && ast.tipo !== 'AUTOMATICO') {
+        btns += '<button class="btn-secundario" style="color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="cerrarModal(\'modal-cont-asiento-ver\');contAnularAsiento(' + ast.id_asiento + ')">Anular</button>';
+      }
+      footer.innerHTML = btns;
+    }
+
     abrirModal('modal-cont-asiento-ver');
-  focusFirstField('modal-cont-asiento-ver');
+    focusFirstField('modal-cont-asiento-ver');
   } catch(e) {
     if (contEl) contEl.innerHTML = '<div class="alerta alerta-error" style="display:block">Error cargando asiento: ' + e.message + '</div>';
     else alert('Error: ' + e.message);
