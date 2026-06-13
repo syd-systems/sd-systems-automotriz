@@ -233,13 +233,12 @@ async function iniciarJWT(email, passwordPlano) {
 }
 
 async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '') {
-  const jwt = await getJWT();
   const url = `${SUPABASE_URL}/rest/v1/${tabla}${filtro}`;
   const ops = {
     method: metodo,
     headers: {
       'apikey':        SUPABASE_KEY,
-      'Authorization': `Bearer ${jwt}`,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
       'Content-Type':  'application/json',
       'Prefer':        metodo === 'POST' ? 'return=representation' : 'return=minimal'
     }
@@ -542,10 +541,7 @@ async function iniciarSesion() {
       mostrarError(verifLogin.msg);
       return;
     }
-    // Obtener JWT de Supabase Auth con credenciales del usuario
-    await iniciarJWT(correo, clave);
-
-    // Verificar si debe cambiar contraseña (fetch directo, aún no hay JWT)
+    // Verificar si debe cambiar contraseña
     const usuInfoRes = await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correo) + '&select=cambiar_clave', {
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
     });
