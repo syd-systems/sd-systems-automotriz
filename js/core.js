@@ -383,7 +383,7 @@ function mostrarAvisoInactividad() {
   }
 }
 
-async function cerrarSesionInactividad() {
+async async function cerrarSesionInactividad() {
   const correo = sesionActual?.correo_usuario;
   limpiarSesionLocal();
   try {
@@ -392,7 +392,6 @@ async function cerrarSesionInactividad() {
       ultima_desconexion: new Date().toISOString()
     }, `?correo_usuario=eq.${encodeURIComponent(correo)}`);
   } catch(e) { console.error('Error marcando desconexión:', e); }
-  // Mostrar mensaje en login
   const errEl = document.getElementById('login-error');
   errEl.textContent = '⏱ Sesión cerrada por inactividad.';
   errEl.style.display = 'block';
@@ -844,6 +843,10 @@ function cambiarEmpresa() {
 }
 
 function limpiarSesionLocal() {
+  // Detener polling PRIMERO para evitar expulsiones en loop
+  clearInterval(_pollingInterval);
+  window._sesionLista    = false;
+  window._miTokenSesion  = null;
   // Limpiar JWT y empresa
   _sessionJWT       = null;
   _sessionJWTExpiry = null;
@@ -872,7 +875,7 @@ function limpiarSesionLocal() {
 }
 
 // ─── CERRAR SESIÓN ───
-async function cerrarSesion() {
+async async function cerrarSesion() {
   if (!confirm('¿Desea cerrar sesión?')) return;
   const correo = sesionActual?.correo_usuario;
   limpiarSesionLocal();
