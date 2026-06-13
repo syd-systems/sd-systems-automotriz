@@ -334,8 +334,9 @@ function verFichaInventario(id) {
   abrirModal('modal-ficha-inv');
   focusFirstField('modal-ficha-inv');
 
-  // Cargar historial de entradas
+  // Cargar historial de entradas y salidas
   verHistorialEntradas(r.id_articulo);
+  verHistorialSalidas(r.id_articulo);
 }
 
 function abrirEntradaStock(id) {
@@ -735,3 +736,55 @@ async function reversarEntrada(idEntrada, idArticulo, cantidad) {
   cerrarTodosLosModales();
   renderInventario();
 }
+// ─── HISTORIAL DE SALIDAS ───
+async function verHistorialSalidas(idArticulo) {
+  const cont = document.getElementById('ficha-inv-historial-salidas');
+  if (!cont) return;
+  cont.innerHTML = '<div style="color:var(--suave);font-size:12px">Cargando...</div>';
+  try {
+    const salidas = await api('stock_salidas', 'GET', null,
+      '?id_articulo=eq.' + idArticulo + '&order=fecha_salida.desc&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo)');
+    if (!salidas || !salidas.length) {
+      cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:8px 0">Sin salidas registradas.</div>';
+      return;
+    }
+    cont.innerHTML = '<div style="margin-top:16px;border-top:1px solid var(--borde);padding-top:12px">'
+      + '<div style="font-size:10px;color:var(--suave);letter-spacing:2px;margin-bottom:8px">HISTORIAL DE SALIDAS</div>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+      + '<thead><tr style="border-bottom:1px solid var(--borde)">'
+      + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">FECHA</th>'
+      + '<th style="text-align:right;padding:6px 4px;color:var(--suave);font-size:10px">CANT</th>'
+      + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">ÁREA</th>'
+      + '<th style="text-align:center;padding:6px 4px;color:var(--suave);font-size:10px">ESTADO</th>'
+      + '<th style="padding:6px 4px"></th>'
+      + '</tr></thead><tbody>'
+      + salidas.map(function(s) {
+          const area = s.area_receptora ? (s.area_receptora.codigo ? s.area_receptora.codigo + ' — ' : '') + s.area_receptora.nombre : '—';
+          const estado = s.reversada
+            ? '<span style="color:#fc8181;font-size:10px">Reversada</span>'
+            : '<span style="color:#22c55e;font-size:10px">Activa</span>';
+          const btnRev = !s.reversada && puedo('INVENTARIO','ELIMINAR')
+            ? '<button onclick="reversarSalida(' + s.id_salida + ',' + idArticulo + ',' + s.cantidad + ')" '
+              + 'style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;'
+              + 'border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">Reversar</button>'
+            : '';
+          return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
+            + '<td style="padding:6px 4px">' + fmtFecha(s.fecha_salida) + '</td>'
+            + '<td style="text-align:right;padding:6px 4px;font-family:var(--font-mono)">' + s.cantidad + '</td>'
+            + '<td style="padding:6px 4px">' + area + '</td>'
+            + '<td style="text-align:center;padding:6px 4px">' + estado + '</td>'
+            + '<td style="padding:6px 4px">' + btnRev + '</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table></div>';
+  } catch(e) {
+    cont.innerHTML = '<div style="color:#fc8181;font-size:12px">Error: ' + e.message + '</div>';
+  }
+}
+
+// ─── REVERSAR SALIDA ───
+async function reversarSalida(idSalida, idArticulo, cantidad) {
+  await reversarMovimiento('SALIDA', idSalida, cantidad, idArticulo);
+}
+
+
