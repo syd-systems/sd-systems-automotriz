@@ -153,10 +153,10 @@ function contSelectorMoneda(fechaConsulta) {
 }
 
 async function contCargarCuentas() {
-  // Cuentas globales (id_emisor NULL) + cuentas de la empresa activa
+  // Cuentas globales (id_emisor IS NULL) + cuentas de la empresa activa
   const idEmisor = _empresaActiva?.id_emisor || 0;
   contCuentasCache = await api('cont_cuentas','GET',null,
-    '?estado=eq.ACTIVA&order=codigo.asc&select=*&or=(id_emisor.eq.' + idEmisor + ',id_emisor.is.null)');
+    '?estado=eq.ACTIVA&order=codigo.asc&select=*&or=(id_emisor.eq.' + idEmisor + ',id_emisor.is.null)&limit=1000');
 }
 async function contCargarPeriodos() {
   contPeriodosCache = await api('cont_periodos','GET',null,'?id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=fecha_inicio.desc&select=*');
@@ -704,15 +704,79 @@ async function contCargarMayor() {
     const monedaFunc = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
     const monedaRef  = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
     const usandoRef  = _contMoneda && _contMoneda !== monedaFunc;
-    const monedaLabel = usandoRef ? monedaRef : monedaFunc;
-    const simLabel    = usandoRef ? monedaRef : 'Bs';
 
-    // Funciones para leer el campo correcto según moneda seleccionada
-    const getD = function(l) { return parseFloat(usandoRef ? (l.debe_usd||0)  : (l.debe_ves||l.debe_usd||0)); };
-    const getH = function(l) { return parseFloat(usandoRef ? (l.haber_usd||0) : (l.haber_ves||l.haber_usd||0)); };
-    const fmtM = function(v) { return simLabel + ' ' + fmtVES(v); };
+    if (usandoRef) {
+      // ── LIBRO AUXILIAR EN MONEDA DE REFERENCIA ──
+      // Solo líneas con monto original en moneda de referencia (debe_usd > 0 o haber_usd > 0)
+      const lineasRef = lineas.filter(function(l) {
+        return parseFloat(l.debe_usd||0) > 0 || parseFloat(l.haber_usd||0) > 0;
+      });
 
-    // Si no hay cuenta seleccionada, agrupar por cuenta
+      if (!lineasRef.length) {
+        res.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">Sin operaciones en ' + monedaRef + ' en el período seleccionado.</div>';
+        return;
+      }
+
+      const renderGrupo = function(lineasG, cInfo) {
+        const esDeud = cInfo && cInfo.naturaleza === 'DEUDORA';
+        let saldo = 0;
+        const filas = lineasG.map(function(l) {
+          const d = parseFloat(l.debe_usd||0), h = parseFloat(l.haber_usd||0);
+          saldo += esDeud ? (d-h) : (h-d);
+          return '<tr>'
+            + '<td style="padding:7px;font-size:12px">' + fmtFecha(l.cont_asientos?.fecha||'') + '</td>'
+            + '<td style="padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">' + (l.cont_asientos?.numero_asiento||'—') + '</td>'
+            + '<td style="padding:7px;font-size:12px">' + (l.descripcion||'') + '</td>'
+            + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#22c55e">' + (d>0 ? '$ '+fmtUSD(d) : '—') + '</td>'
+            + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#fc8181">' + (h>0 ? '$ '+fmtUSD(h) : '—') + '</td>'
+            + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-weight:700;color:' + (saldo>=0?'var(--naranja)':'#fc8181') + '">$ ' + fmtUSD(Math.abs(saldo)) + (saldo<0?' Cr':' Dr') + '</td>'
+            + '</tr>';
+        });
+        const headers =
+          '<th style="padding:7px;text-align:left;border-bottom:1px solid var(--borde);font-size:11px">Fecha</th>'
+          + '<th style="padding:7px;text-align:left;border-bottom:1px solid var(--borde);font-size:11px">Asiento</th>'
+          + '<th style="padding:7px;text-align:left;border-bottom:1px solid var(--borde);font-size:11px">Descripción</th>'
+          + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Debe ' + monedaRef + '</th>'
+          + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Haber ' + monedaRef + '</th>'
+          + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Saldo ' + monedaRef + '</th>';
+        return '<table style="width:100%;border-collapse:collapse"><thead><tr>' + headers + '</tr></thead>'
+          + '<tbody>' + filas.join('') + '</tbody>'
+          + '<tfoot><tr style="border-top:2px solid var(--borde)">'
+          + '<td colspan="3" style="padding:8px;font-weight:700">SALDO FINAL</td>'
+          + '<td colspan="3" style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:' + (saldo>=0?'var(--naranja)':'#fc8181') + '">$ ' + fmtUSD(Math.abs(saldo)) + (saldo<0?' Cr':' Dr') + '</td>'
+          + '</tr></tfoot></table>';
+      };
+
+      if (!idCuenta) {
+        const cuentaIds = [...new Set(lineasRef.map(function(l){ return l.id_cuenta; }))];
+        let html = '';
+        cuentaIds.forEach(function(cid) {
+          const lineasG = lineasRef.filter(function(l){ return l.id_cuenta === cid; });
+          const cInfo = contCuentasCache.find(function(c){ return c.id_cuenta === cid; });
+          html += '<div style="margin-bottom:24px">'
+            + '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:10px 14px;margin-bottom:8px">'
+            + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + (cInfo ? cInfo.codigo + ' — ' + cInfo.nombre : 'Cuenta #'+cid) + '</div>'
+            + '<div style="font-size:11px;color:var(--suave)">Libro Auxiliar ' + monedaRef + '</div>'
+            + '</div>'
+            + renderGrupo(lineasG, cInfo)
+            + '</div>';
+        });
+        res.innerHTML = html;
+      } else {
+        res.innerHTML = '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
+          + '<div style="font-size:10px;color:var(--suave)">CUENTA · AUXILIAR ' + monedaRef + '</div>'
+          + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + (cuenta ? cuenta.codigo + ' — ' + cuenta.nombre : '') + '</div>'
+          + '</div>'
+          + renderGrupo(lineasRef, cuenta);
+      }
+      return;
+    }
+
+    // ── LIBRO MAYOR EN MONEDA FUNCIONAL ──
+    const getD = function(l) { return parseFloat(l.debe_ves||l.debe_usd||0); };
+    const getH = function(l) { return parseFloat(l.haber_ves||l.haber_usd||0); };
+    const fmtM = function(v) { return 'Bs ' + fmtVES(v); };
+
     if (!idCuenta) {
       const cuentaIds = [...new Set(lineas.map(function(l){ return l.id_cuenta; }))];
       let html = '';
@@ -725,12 +789,12 @@ async function contCargarMayor() {
           const d = getD(l), h = getH(l);
           saldoCta += esDeud ? (d-h) : (h-d);
           return '<tr>'
-            + '<td style="padding:7px;font-size:12px">' + fmtFecha(l.cont_asientos ? l.cont_asientos.fecha : '') + '</td>'
-            + '<td style="padding:7px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">' + (l.cont_asientos ? l.cont_asientos.numero_asiento : '—') + '</td>'
-            + '<td style="padding:7px;font-size:12px">' + (l.descripcion || '') + '</td>'
+            + '<td style="padding:7px;font-size:12px">' + fmtFecha(l.cont_asientos?.fecha||'') + '</td>'
+            + '<td style="padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">' + (l.cont_asientos?.numero_asiento||'—') + '</td>'
+            + '<td style="padding:7px;font-size:12px">' + (l.descripcion||'') + '</td>'
             + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#22c55e">' + (d>0 ? fmtM(d) : '—') + '</td>'
             + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#fc8181">' + (h>0 ? fmtM(h) : '—') + '</td>'
-            + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-weight:700;color:' + (saldoCta>=0?'var(--naranja)':'#fc8181') + '">' + fmtM(Math.abs(saldoCta)) + (saldoCta<0?' Cr':'') + '</td>'
+            + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-weight:700;color:' + (saldoCta>=0?'var(--naranja)':'#fc8181') + '">' + fmtM(Math.abs(saldoCta)) + (saldoCta<0?' Cr':' Dr') + '</td>'
             + '</tr>';
         });
         html += '<div style="margin-bottom:24px">'
@@ -742,46 +806,44 @@ async function contCargarMayor() {
           + '<th style="padding:7px;text-align:left;border-bottom:1px solid var(--borde);font-size:11px">Fecha</th>'
           + '<th style="padding:7px;text-align:left;border-bottom:1px solid var(--borde);font-size:11px">Asiento</th>'
           + '<th style="padding:7px;text-align:left;border-bottom:1px solid var(--borde);font-size:11px">Descripción</th>'
-          + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Debe ' + monedaLabel + '</th>'
-          + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Haber ' + monedaLabel + '</th>'
-          + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Saldo ' + monedaLabel + '</th>'
+          + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Debe Bs</th>'
+          + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Haber Bs</th>'
+          + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Saldo Bs</th>'
           + '</tr></thead><tbody>' + filasCta.join('') + '</tbody></table></div>';
       });
       res.innerHTML = html;
       return;
     }
 
-    // Con cuenta seleccionada — vista individual
     let saldo = 0;
     const esDeudora = cuenta && cuenta.naturaleza === 'DEUDORA';
     const filas = lineas.map(function(l) {
       const debe = getD(l), haber = getH(l);
       saldo += esDeudora ? (debe-haber) : (haber-debe);
       return '<tr>'
-        + '<td style="padding:7px;font-size:12px">' + fmtFecha(l.cont_asientos ? l.cont_asientos.fecha : '') + '</td>'
-        + '<td style="padding:7px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">' + (l.cont_asientos ? l.cont_asientos.numero_asiento : '—') + '</td>'
-        + '<td style="padding:7px;font-size:12px">' + (l.descripcion || '') + '</td>'
+        + '<td style="padding:7px;font-size:12px">' + fmtFecha(l.cont_asientos?.fecha||'') + '</td>'
+        + '<td style="padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">' + (l.cont_asientos?.numero_asiento||'—') + '</td>'
+        + '<td style="padding:7px;font-size:12px">' + (l.descripcion||'') + '</td>'
         + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#22c55e">' + (debe>0 ? fmtM(debe) : '—') + '</td>'
         + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#fc8181">' + (haber>0 ? fmtM(haber) : '—') + '</td>'
-        + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-weight:700;color:' + (saldo>=0?'var(--naranja)':'#fc8181') + '">' + fmtM(Math.abs(saldo)) + (saldo<0?' Cr':'') + '</td>'
+        + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-weight:700;color:' + (saldo>=0?'var(--naranja)':'#fc8181') + '">' + fmtM(Math.abs(saldo)) + (saldo<0?' Cr':' Dr') + '</td>'
         + '</tr>';
     });
-
     res.innerHTML =
       '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
       + '<div style="font-size:10px;color:var(--suave)">CUENTA</div>'
       + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + (cuenta ? cuenta.codigo + ' — ' + cuenta.nombre : '') + '</div>'
-      + '<div style="font-size:11px;color:var(--suave);margin-top:4px">Naturaleza: ' + (cuenta ? cuenta.naturaleza : '') + ' · Tipo: ' + (cuenta ? cuenta.tipo : '') + ' · Moneda: ' + monedaLabel + '</div>'
+      + '<div style="font-size:11px;color:var(--suave);margin-top:4px">Naturaleza: ' + (cuenta?.naturaleza||'') + ' · Tipo: ' + (cuenta?.tipo||'') + '</div>'
       + '</div>'
       + '<table style="width:100%;border-collapse:collapse"><thead><tr>'
       + '<th style="padding:7px;text-align:left;border-bottom:1px solid var(--borde);font-size:11px">Fecha</th>'
       + '<th style="padding:7px;text-align:left;border-bottom:1px solid var(--borde);font-size:11px">Asiento</th>'
       + '<th style="padding:7px;text-align:left;border-bottom:1px solid var(--borde);font-size:11px">Descripción</th>'
-      + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Debe ' + monedaLabel + '</th>'
-      + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Haber ' + monedaLabel + '</th>'
-      + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Saldo ' + monedaLabel + '</th>'
-      + '</tr></thead><tbody>' + filas.join('') + '</tbody><tfoot>'
-      + '<tr style="border-top:2px solid var(--borde)">'
+      + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Debe Bs</th>'
+      + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Haber Bs</th>'
+      + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Saldo Bs</th>'
+      + '</tr></thead><tbody>' + filas.join('') + '</tbody>'
+      + '<tfoot><tr style="border-top:2px solid var(--borde)">'
       + '<td colspan="3" style="padding:8px;font-weight:700">SALDO FINAL</td>'
       + '<td colspan="3" style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:' + (saldo>=0?'var(--naranja)':'#fc8181') + '">' + fmtM(Math.abs(saldo)) + (saldo<0?' Cr':' Dr') + '</td>'
       + '</tr></tfoot></table>';
