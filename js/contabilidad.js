@@ -12,7 +12,7 @@ let _contVista         = 'diario';  // diario | mayor | balance | cxc | cxp | co
 const TIPOS_CUENTA   = ['ACTIVO','PASIVO','PATRIMONIO','INGRESO','EGRESO'];
 const NATURALE_CUENTA = { ACTIVO:'DEUDORA', PASIVO:'ACREEDORA', PATRIMONIO:'ACREEDORA', INGRESO:'ACREEDORA', EGRESO:'DEUDORA' };
 const METODOS_PAGO   = ['EFECTIVO_VES','EFECTIVO_USD','TRANSFERENCIA_VES','TRANSFERENCIA_USD','ZELLE','PAGO_MOVIL','DIVISAS','OTRO'];
-const ESTADOS_ASIENTO = { BORRADOR:{clase:'badge-gris',label:'Pendiente'}, APROBADO:{clase:'badge-verde',label:'Aprobado'}, ANULADO:{clase:'badge-rojo',label:'Anulado'} };
+const ESTADOS_ASIENTO = { PENDIENTE:{clase:'badge-gris',label:'Pendiente'}, APROBADO:{clase:'badge-verde',label:'Aprobado'}, ANULADO:{clase:'badge-rojo',label:'Anulado'} };
 
 // ─── RENDER PRINCIPAL ───
 async function renderContabilidad() {
@@ -232,7 +232,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
       + '<option value="">Todos los períodos</option>' + perSelect + '</select>'
       + '<select id="cont-filtro-estado" onchange="contRenderDiario(this.value, document.querySelector(\'[onchange*=contRenderDiario]\').value)" style="' + contSelStyle() + '">'
       + '<option value="">Todos los estados</option>'
-      + '<option value="BORRADOR"' + (filtroEstado==='BORRADOR'?' selected':'') + '>Pendiente</option>'
+      + '<option value="PENDIENTE"' + (filtroEstado==='PENDIENTE'?' selected':'') + '>Pendiente</option>'
       + '<option value="APROBADO"' + (filtroEstado==='APROBADO'?' selected':'') + '>Aprobado</option>'
       + '<option value="ANULADO"'  + (filtroEstado==='ANULADO'?' selected':'')  + '>Anulado</option>'
       + '</select>'
@@ -343,10 +343,10 @@ async function contVerAsiento(id) {
     const footer = document.querySelector('#modal-cont-asiento-ver .modal-footer');
     if (footer) {
       let btns = '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-asiento-ver\')">Retornar</button>';
-      if (puedo('CONTABILIDAD','EDITAR') && ast.estado === 'BORRADOR') {
+      if (puedo('CONTABILIDAD','EDITAR') && ast.estado === 'PENDIENTE') {
         btns += '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-asiento-ver\');contAbrirAsiento(' + ast.id_asiento + ')">✏ Editar</button>';
       }
-      if (puedo('CONTABILIDAD','APROBAR') && ast.estado === 'BORRADOR') {
+      if (puedo('CONTABILIDAD','APROBAR') && ast.estado === 'PENDIENTE') {
         btns += '<button class="btn-primario" onclick="cerrarModal(\'modal-cont-asiento-ver\');contAprobarAsiento(' + ast.id_asiento + ')">✓ Aprobar</button>';
       }
       if (puedo('CONTABILIDAD','ANULAR') && ast.estado === 'APROBADO' && ast.tipo !== 'AUTOMATICO') {
@@ -549,7 +549,7 @@ async function contGuardarAsiento() {
 
   try {
     let asientoId = id;
-    const datos = { fecha, descripcion: desc, referencia: ref||null, tipo, moneda_base: moneda, tasa_bcv: tasa, id_periodo: periodo || null, estado:'BORRADOR', id_usuario: sesionActual.correo_usuario, id_emisor: _empresaActiva?.id_emisor || null };
+    const datos = { fecha, descripcion: desc, referencia: ref||null, tipo, moneda_base: moneda, tasa_bcv: tasa, id_periodo: periodo || null, estado:'PENDIENTE', id_usuario: sesionActual.correo_usuario, id_emisor: _empresaActiva?.id_emisor || null };
 
     if (id) {
       await api('cont_asientos','PATCH',datos,'?id_asiento=eq.' + id);
@@ -582,7 +582,7 @@ async function contGuardarAsiento() {
       });
     }
 
-    okEl.textContent = '✓ Asiento guardado como borrador.';
+    okEl.textContent = '✓ Asiento guardado como pendiente.';
     okEl.style.display='block';
     setTimeout(function(){ cerrarModal('modal-cont-asiento-form'); contCambiarVista('diario'); }, 900);
   } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display='block'; }
