@@ -444,7 +444,7 @@ function contRenderLineasForm() {
     + '<thead><tr>'
     + '<th style="text-align:left;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:45%">CUENTA</th>'
     + '<th style="padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:25%">DESCRIPCIÓN</th>'
-    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:20%">MONTO Bs</th>'
+    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:20%">MONTO ' + ((_empresaActiva?.moneda_principal)||'VES').toUpperCase() + '</th>'
     + '<th style="width:40px"></th>'
     + '</tr></thead><tbody>'
     + contLineasAsiento.map(function(l, i) {
@@ -457,12 +457,12 @@ function contRenderLineasForm() {
               const tasa = parseFloat(document.getElementById('cont-form-tasa')?.value) || 1;
               if (nat === 'DEUDORA') {
                 const valBs = (parseFloat(l.debe_usd||0) * tasa).toFixed(2);
-                return '<td style="padding:4px"><input type="number" value="' + (parseFloat(valBs) || '') + '" min="0" step="0.01" placeholder="0.00 Bs"'
+                return '<td style="padding:4px"><input type="number" value="' + (parseFloat(valBs) || '') + '" min="0" step="0.01" placeholder="0.00 ' + ((_empresaActiva?.moneda_principal)||'VES').toUpperCase() + '"'
                   + ' onchange="contSetLinea(' + i + ',\'debe\',parseFloat(this.value)||0)"'
                   + ' style="width:100%;background:var(--gris2);border:1px solid rgba(34,197,94,0.4);color:#22c55e;font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right"></td>';
               } else if (nat === 'ACREEDORA') {
                 const valBs = (parseFloat(l.haber_usd||0) * tasa).toFixed(2);
-                return '<td style="padding:4px"><input type="number" value="' + (parseFloat(valBs) || '') + '" min="0" step="0.01" placeholder="0.00 Bs"'
+                return '<td style="padding:4px"><input type="number" value="' + (parseFloat(valBs) || '') + '" min="0" step="0.01" placeholder="0.00 ' + ((_empresaActiva?.moneda_principal)||'VES').toUpperCase() + '"'
                   + ' onchange="contSetLinea(' + i + ',\'haber\',parseFloat(this.value)||0)"'
                   + ' style="width:100%;background:var(--gris2);border:1px solid rgba(248,113,113,0.4);color:#f87171;font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right"></td>';
               } else {
