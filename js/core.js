@@ -383,7 +383,7 @@ function mostrarAvisoInactividad() {
   }
 }
 
-async async function cerrarSesionInactividad() {
+async function cerrarSesionInactividad() {
   const correo = sesionActual?.correo_usuario;
   limpiarSesionLocal();
   try {
@@ -875,7 +875,7 @@ function limpiarSesionLocal() {
 }
 
 // ─── CERRAR SESIÓN ───
-async async function cerrarSesion() {
+async function cerrarSesion() {
   if (!confirm('¿Desea cerrar sesión?')) return;
   const correo = sesionActual?.correo_usuario;
   limpiarSesionLocal();
