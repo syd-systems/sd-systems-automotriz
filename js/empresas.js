@@ -75,8 +75,8 @@ async function abrirEmisor(id) {
   document.getElementById('em-correo').value                 = e ? (e.correo||'') : '';
   document.getElementById('em-direccion').value              = e ? (e.direccion||'') : '';
   document.getElementById('em-tipo-contribuyente').value     = e ? (e.tipo_contribuyente||'') : '';
-  document.getElementById('em-moneda1').value                = e ? (e.moneda_principal||'USD') : 'USD';
-  document.getElementById('em-moneda2').value                = e ? (e.moneda_secundaria||'VES') : 'VES';
+  document.getElementById('em-moneda1').value                = e ? (e.moneda_principal||'VES') : 'VES';
+  document.getElementById('em-moneda2').value                = e ? (e.moneda_secundaria||'USD') : 'USD';
   document.getElementById('em-estado').value                 = e ? (e.estado||'ACTIVO') : 'ACTIVO';
   document.getElementById('alerta-emisor-ok').style.display  = 'none';
   document.getElementById('alerta-emisor-err').style.display = 'none';
