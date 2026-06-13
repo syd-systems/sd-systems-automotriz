@@ -1047,6 +1047,9 @@ async function abrirSalidaStock(id, nombre) {
   document.getElementById('salida-observaciones').value    = '';
   document.getElementById('alerta-salida-ok').style.display  = 'none';
   document.getElementById('alerta-salida-err').style.display = 'none';
+  // Limpiar campos de contraseña
+  var claveEnt = document.getElementById('salida-clave-entrega');
+  if (claveEnt) { claveEnt.value = ''; claveEnt.type = 'password'; }
 
   // Llenar áreas
   const selArea = document.getElementById('salida-area');
