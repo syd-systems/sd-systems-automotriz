@@ -485,7 +485,7 @@ async function contGuardarAsiento() {
 
   try {
     let asientoId = id;
-    const datos = { fecha, descripcion: desc, referencia: ref||null, tipo, moneda_base: moneda, tasa_bcv: tasa, id_periodo: periodo, estado:'BORRADOR', id_usuario: sesionActual.correo_usuario };
+    const datos = { fecha, descripcion: desc, referencia: ref||null, tipo, moneda_base: moneda, tasa_bcv: tasa, id_periodo: periodo || null, estado:'BORRADOR', id_usuario: sesionActual.correo_usuario, id_emisor: _empresaActiva?.id_emisor || null };
 
     if (id) {
       await api('cont_asientos','PATCH',datos,'?id_asiento=eq.' + id);
