@@ -109,7 +109,7 @@ async function contCambiarVista(vista, forzar) {
   else if (vista === 'cxc')          await contRenderCxc();
   else if (vista === 'cxp')          await contRenderCxp();
   else if (vista === 'conciliacion') await contRenderConciliacion();
-  else if (vista === 'asientos')     { cont.innerHTML = ''; await contAbrirAsiento(null); }
+  else if (vista === 'asientos')     { cont.innerHTML = ''; _contVista = 'diario'; await contAbrirAsiento(null); }
   else if (vista === 'cuentas')      await contRenderCuentas();
   else if (vista === 'periodos')     await contRenderPeriodos();
 }
@@ -514,7 +514,7 @@ async function contGuardarAsiento() {
 
     okEl.textContent = '✓ Asiento guardado como borrador.';
     okEl.style.display='block';
-    setTimeout(function(){ cerrarModal('modal-cont-asiento-form'); contRenderDiario(); }, 900);
+    setTimeout(function(){ cerrarModal('modal-cont-asiento-form'); contCambiarVista('diario'); }, 900);
   } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display='block'; }
 }
 
@@ -522,7 +522,7 @@ async function contAprobarAsiento(id) {
   if (!confirm('¿Aprobar este asiento? Una vez aprobado no podrá editarse.')) return;
   try {
     await api('cont_asientos','PATCH',{ estado:'APROBADO', aprobado_por: sesionActual.correo_usuario, fecha_aprobacion: new Date().toISOString() },'?id_asiento=eq.' + id);
-    contRenderDiario();
+    contCambiarVista('diario');
   } catch(e) { alert('Error: ' + e.message); }
 }
 
@@ -530,7 +530,7 @@ async function contAnularAsiento(id) {
   if (!confirm('¿Anular este asiento? Esta acción no puede deshacerse.')) return;
   try {
     await api('cont_asientos','PATCH',{ estado:'ANULADO' },'?id_asiento=eq.' + id);
-    contRenderDiario();
+    contCambiarVista('diario');
   } catch(e) { alert('Error: ' + e.message); }
 }
 
