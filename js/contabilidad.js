@@ -160,7 +160,6 @@ async function contCargarCuentas() {
     '?estado=eq.ACTIVA&order=codigo.asc&select=*' + emisorFiltro);
 }
 async function contCargarPeriodos() {
-  const epFilter = window._contEmisorActivo ? '&or=(id_emisor.eq.'+window._contEmisorActivo+',id_emisor.is.null)' : '';
   contPeriodosCache = await api('cont_periodos','GET',null,'?id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=fecha_inicio.desc&select=*');
 }
 function contGetPeriodoActivo() {
@@ -398,8 +397,9 @@ async function contAbrirAsiento(id) {
 
   // Llenar select de períodos
   document.getElementById('cont-form-periodo').innerHTML =
-    contPeriodosCache.filter(function(p){ return p.estado==='ABIERTO'; }).map(function(p){
-      return '<option value="' + p.id_periodo + '">' + p.nombre + '</option>';
+    '<option value="">— Sin período —</option>'
+    + contPeriodosCache.map(function(p){
+      return '<option value="' + p.id_periodo + '"' + (p.estado==='ABIERTO' ? '':' style="color:#fc8181"')+'>' + p.nombre + (p.estado!=='ABIERTO'?' (Cerrado)':'') + '</option>';
     }).join('');
 
   document.getElementById('alerta-cont-form-ok').style.display  = 'none';
