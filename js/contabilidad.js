@@ -68,8 +68,7 @@ function contRenderShell() {
     + contTabBtn('diario',       '📓 Libro Diario',   'VER')
     + contTabBtn('mayor',        '📊 Libro Mayor',    'VER_MAYOR')
     + contTabBtn('balance',      '⚖ Balance',         'VER_BALANCE')
-    + contTabBtn('cxc',          '💰 CxC',            'CXC')
-    + contTabBtn('cxp',          '💳 CxP',          'CXP')
+
     + contTabBtn('conciliacion', '🔄 Conciliación',   'CONCILIACION')
     + contTabBtn('asientos',     '📝 Asientos',       'CREAR')
     + contTabBtn('cuentas',      '📋 Cuentas',        'PLAN_CUENTAS')
@@ -217,9 +216,8 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
     const periodoActivo = contGetPeriodoActivo();
     const qPeriodo = filtroPeriodo ? '&id_periodo=eq.' + filtroPeriodo : '';
     const qEstado  = filtroEstado  ? '&estado=eq.' + filtroEstado : '';
-    const emisorFiltro = window._contEmisorActivo ? '&or=(id_emisor.eq.'+window._contEmisorActivo+',id_emisor.is.null)' : '';
     const asientos = await api('cont_asientos','GET',null,
-      '?id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=fecha.desc,numero_asiento.desc&select=*,cont_periodos(nombre)' + qPeriodo + qEstado + emisorFiltro);
+      '?id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=fecha.desc,numero_asiento.desc&select=*,cont_periodos(nombre)' + qPeriodo + qEstado);
     contAsientosCache = asientos;
 
     const perSelect = contPeriodosCache.map(function(p){
