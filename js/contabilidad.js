@@ -417,7 +417,20 @@ async function contAbrirAsiento(id) {
   focusFirstField('modal-cont-asiento-form');
 }
 
-async function contRenderLineasForm() {
+async function contSetLinea(idx, tipo, montoBs) {
+  const tasa = parseFloat(document.getElementById('cont-form-tasa')?.value) || 1;
+  const montoUSD = tasa > 0 ? montoBs / tasa : montoBs;
+  if (tipo === 'debe') {
+    contLineasAsiento[idx].debe_usd  = montoUSD;
+    contLineasAsiento[idx].haber_usd = 0;
+  } else {
+    contLineasAsiento[idx].haber_usd = montoUSD;
+    contLineasAsiento[idx].debe_usd  = 0;
+  }
+  contRenderLineasForm();
+}
+
+function contRenderLineasForm() {
   const cont = document.getElementById('cont-lineas-form');
   if (!cont) return;
 
@@ -431,16 +444,31 @@ async function contRenderLineasForm() {
     + '<thead><tr>'
     + '<th style="text-align:left;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:45%">CUENTA</th>'
     + '<th style="padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:25%">DESCRIPCIÓN</th>'
-    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:12%">DEBE (' + ((_empresaActiva?.moneda_principal)||'VES').toUpperCase() + ')</th>'
-    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:12%">HABER (' + ((_empresaActiva?.moneda_principal)||'VES').toUpperCase() + ')</th>'
+    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:20%">MONTO Bs</th>'
     + '<th style="width:40px"></th>'
     + '</tr></thead><tbody>'
     + contLineasAsiento.map(function(l, i) {
         return '<tr>'
           + '<td style="padding:4px"><select onchange="contLineasAsiento[' + i + '].id_cuenta=parseInt(this.value)" style="width:100%;' + contSelStyle() + ';font-size:11px">' + contBuildCuentaSelect(l.id_cuenta) + '</select></td>'
           + '<td style="padding:4px"><input type="text" value="' + (l.descripcion||'') + '" onchange="contLineasAsiento[' + i + '].descripcion=this.value" placeholder="Detalle..." style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:11px;padding:6px 8px;border-radius:4px;outline:none"></td>'
-          + '<td style="padding:4px"><input type="number" value="' + (parseFloat(l.debe_usd||0) || '') + '" min="0" step="0.01" placeholder="0.00" onchange="contLineasAsiento[' + i + '].debe_usd=parseFloat(this.value)||0;contRenderLineasForm()" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:#22c55e;font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right"></td>'
-          + '<td style="padding:4px"><input type="number" value="' + (parseFloat(l.haber_usd||0) || '') + '" min="0" step="0.01" placeholder="0.00" onchange="contLineasAsiento[' + i + '].haber_usd=parseFloat(this.value)||0;contRenderLineasForm()" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:#f87171;font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right"></td>'
+          + (function() {
+              const cInfo = contCuentasCache.find(function(x){ return x.id_cuenta === l.id_cuenta; });
+              const nat = cInfo ? cInfo.naturaleza : null;
+              const tasa = parseFloat(document.getElementById('cont-form-tasa')?.value) || 1;
+              if (nat === 'DEUDORA') {
+                const valBs = (parseFloat(l.debe_usd||0) * tasa).toFixed(2);
+                return '<td style="padding:4px"><input type="number" value="' + (parseFloat(valBs) || '') + '" min="0" step="0.01" placeholder="0.00 Bs"'
+                  + ' onchange="contSetLinea(' + i + ',\'debe\',parseFloat(this.value)||0)"'
+                  + ' style="width:100%;background:var(--gris2);border:1px solid rgba(34,197,94,0.4);color:#22c55e;font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right"></td>';
+              } else if (nat === 'ACREEDORA') {
+                const valBs = (parseFloat(l.haber_usd||0) * tasa).toFixed(2);
+                return '<td style="padding:4px"><input type="number" value="' + (parseFloat(valBs) || '') + '" min="0" step="0.01" placeholder="0.00 Bs"'
+                  + ' onchange="contSetLinea(' + i + ',\'haber\',parseFloat(this.value)||0)"'
+                  + ' style="width:100%;background:var(--gris2);border:1px solid rgba(248,113,113,0.4);color:#f87171;font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right"></td>';
+              } else {
+                return '<td style="padding:4px;text-align:center;color:var(--suave);font-size:11px;font-style:italic">← seleccionar cuenta</td>';
+              }
+            })()
           + '<td style="padding:4px;text-align:center"><button onclick="contLineasAsiento.splice(' + i + ',1);contRenderLineasForm()" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px">✕</button></td>'
           + '</tr>';
       }).join('')
