@@ -259,7 +259,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
             + '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" data-ast="' + a.id_asiento + '" onclick="contVerAsiento(this.dataset.ast)">Ver</button>'
             + (puedo('CONTABILIDAD','EDITAR') && a.estado==='BORRADOR' ? '<button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="contAbrirAsiento(' + a.id_asiento + ')">✏</button>' : '')
             + (puedo('CONTABILIDAD','APROBAR') && a.estado==='BORRADOR' ? '<button class="btn-primario" style="font-size:11px;padding:4px 8px" onclick="contAprobarAsiento(' + a.id_asiento + ')">✓ Aprobar</button>' : '')
-            + (puedo('CONTABILIDAD','ANULAR') && a.estado!=='ANULADO' ? '<button class="btn-secundario" style="font-size:11px;padding:4px 8px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="contAnularAsiento(' + a.id_asiento + ')">Anular</button>' : '')
+            + (puedo('CONTABILIDAD','ANULAR') && a.estado!=='ANULADO' && a.tipo!=='AUTOMATICO' ? '<button class="btn-secundario" style="font-size:11px;padding:4px 8px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="contAnularAsiento(' + a.id_asiento + ')">Anular</button>' : '')
             + '</div></td></tr>';
         }).join('') : '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--suave)">Sin asientos registrados</td></tr>')
       + '</tbody></table></div>';
