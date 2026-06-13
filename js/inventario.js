@@ -287,20 +287,19 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
         '?id_salida=eq.' + idMovimiento);
     }
 
-    // 6. Anular asiento contable original — buscar por referencia ENT-{idEntrada}
-    if (tipo === 'ENTRADA') {
-      try {
-        const asientos = await api('cont_asientos', 'GET', null,
-          '?referencia=eq.ENT-' + idMovimiento + emisorQ() + '&select=id_asiento,descripcion&estado=neq.ANULADO');
-        if (asientos && asientos.length) {
-          await api('cont_asientos', 'PATCH',
-            { estado: 'ANULADO', descripcion: '[REVERSADO] ' + (asientos[0].descripcion || '') },
-            '?id_asiento=eq.' + asientos[0].id_asiento);
-        } else {
-          console.warn('Reverso: no se encontró asiento activo para ENT-' + idMovimiento);
-        }
-      } catch(eAst) { console.warn('Error anulando asiento en reverso:', eAst); }
-    }
+    // 6. Anular asiento contable original
+    const refBuscar = tipo === 'ENTRADA' ? 'ENT-' + idMovimiento : 'SAL-' + idMovimiento;
+    try {
+      const asientos = await api('cont_asientos', 'GET', null,
+        '?referencia=eq.' + refBuscar + emisorQ() + '&select=id_asiento,descripcion&estado=neq.ANULADO');
+      if (asientos && asientos.length) {
+        await api('cont_asientos', 'PATCH',
+          { estado: 'ANULADO', descripcion: '[REVERSADO] ' + (asientos[0].descripcion || '') },
+          '?id_asiento=eq.' + asientos[0].id_asiento);
+      } else {
+        console.warn('Reverso: no se encontró asiento activo para ' + refBuscar);
+      }
+    } catch(eAst) { console.warn('Error anulando asiento en reverso:', eAst); }
 
     // 7. Actualizar cache con datos frescos desde BD
     try {
