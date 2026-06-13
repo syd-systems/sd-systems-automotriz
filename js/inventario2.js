@@ -785,6 +785,8 @@ async function verHistorialSalidas(idArticulo) {
 // ─── REVERSAR SALIDA ───
 async function reversarSalida(idSalida, idArticulo, cantidad) {
   await reversarMovimiento('SALIDA', idSalida, cantidad, idArticulo);
+  cerrarTodosLosModales();
+  renderInventario();
 }
 
 
