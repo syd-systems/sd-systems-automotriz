@@ -15,6 +15,8 @@ const TABLAS_MAESTRAS = [
   { key: 'estados_civiles',    tabla: 'param_estados_civiles',   pk: 'id',    nombre: 'Estados Civiles',        icono: '💍', tieneCodigo: false, tieneArea: false },
   { key: 'sexos',              tabla: 'param_sexos',   pk: 'id',              nombre: 'Sexos',                  icono: '⚧',  tieneCodigo: false, tieneArea: false },
   { key: 'bancos',             tabla: 'param_bancos',   pk: 'id',             nombre: 'Instituciones Financieras', icono: '🏦', tieneCodigo: true,  tieneArea: false, tieneTipoSector: true },
+  { key: 'inv_categorias',     tabla: 'inv_categorias',  pk: 'id',             nombre: 'Categorías de Inventario', icono: '📦', tieneCodigo: true,  tieneArea: false, tieneDescripcion: true, tieneEmisor: true },
+  { key: 'inv_articulos_tipo', tabla: 'inv_articulos_tipo', pk: 'id',          nombre: 'Tipos de Artículo',        icono: '🔩', tieneCodigo: true,  tieneArea: false, tieneDescripcion: true, tieneCategoria: true, tieneEmisor: true },
 ];
 
 // Cache de áreas para el selector de cargos
@@ -136,11 +138,21 @@ async function mostrarTablaParam(key) {
           + '</tr>';
       });
     } else {
+      // Build categorias map for inv_articulos_tipo
+      var catsMap = {};
+      if (def.tieneCategoria) {
+        try {
+          const cats = await api('inv_categorias','GET',null,'?estado=eq.ACTIVO&select=id,nombre,codigo');
+          cats.forEach(function(c){ catsMap[c.id] = c; });
+        } catch(e) {}
+      }
       filas = items.map(function(item) {
+        const cat = def.tieneCategoria && item.id_categoria ? catsMap[item.id_categoria] : null;
         return '<tr>'
           + '<td style="font-size:13px;font-weight:500">' + (item.codigo ? '<span style="font-family:var(--font-mono);color:var(--suave);margin-right:8px">' + item.codigo + '</span>' : '') + item.nombre + '</td>'
           + (def.tieneArea ? '<td style="font-size:12px;color:var(--suave)">' + (areasMap[item.id_area] ? areasMap[item.id_area].nombre : '—') + '</td>' : '')
           + (def.tieneTipoSector ? '<td style="font-size:12px;color:var(--suave)">' + (item.tipo_sector || '—') + '</td>' : '')
+          + (def.tieneCategoria ? '<td style="font-size:12px;color:var(--suave)">' + (cat ? (cat.codigo?cat.codigo+' — ':'')+cat.nombre : '—') + '</td>' : '')
           + '<td><span class="badge ' + (item.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (item.estado || 'ACTIVO') + '</span></td>'
           + '<td><div style="display:flex;gap:6px">'
           + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-secundario" onclick="abrirParamItem(\'' + key + '\',' + item[def.pk] + ')" style="font-size:11px;padding:5px 10px">Ver</button>' : '')
@@ -151,7 +163,7 @@ async function mostrarTablaParam(key) {
 
     var thead = key === 'areas'
       ? '<th style="width:100px">Código</th><th>Nombre</th><th>Nivel Superior</th><th>Estado</th><th>Acción</th>'
-      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : '<th>Nombre</th>') + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + '<th>Estado</th><th>Acción</th>';
+      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : '<th>Nombre</th>') + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + (def.tieneCategoria ? '<th>Categoría</th>' : '') + '<th>Estado</th><th>Acción</th>';
     var colspan = key === 'areas' ? 5 : (2 + (def.tieneArea?1:0) + (def.tieneTipoSector?1:0));
 
     cont.innerHTML =
@@ -223,6 +235,16 @@ async function abrirParamItem(key, id) {
         return '<option value="' + a.id + '"' + (item && item.id_area === a.id ? ' selected' : '') + '>' + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
       }).join('');
       camposHTML += '<div class="form-campo form-full"><label>Área</label><select id="param-item-area" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="">— Sin área —</option>' + opcAreas + '</select></div>';
+    }
+    if (def.tieneCategoria) {
+      var opcCats = [];
+      try {
+        const cats = await api('inv_categorias','GET',null,'?estado=eq.ACTIVO&order=nombre.asc' + (_empresaActiva ? '&id_emisor=eq.'+_empresaActiva.id_emisor : ''));
+        opcCats = cats.map(function(c) {
+          return '<option value="' + c.id + '"' + (item && item.id_categoria === c.id ? ' selected' : '') + '>' + (c.codigo ? c.codigo + ' — ' : '') + c.nombre + '</option>';
+        });
+      } catch(e) {}
+      camposHTML += '<div class="form-campo form-full"><label>Categoría *</label><select id="param-item-categoria" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="">— Seleccionar categoría —</option>' + opcCats.join('') + '</select></div>';
     }
   }
   camposHTML += '<div class="form-campo form-full"><label>Estado</label><select id="param-item-estado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="ACTIVO"' + (!item || item.estado==='ACTIVO' ? ' selected' : '') + '>Activo</option><option value="INACTIVO"' + (item && item.estado==='INACTIVO' ? ' selected' : '') + '>Inactivo</option></select></div>';
@@ -305,10 +327,12 @@ async function guardarParamItem() {
     datos.codigo        = document.getElementById('param-item-codigo')?.value.trim() || null;
     datos.id_area_padre = parseInt(document.getElementById('param-item-area-padre')?.value) || null;
   } else {
-    if (def.tieneCodigo)      datos.codigo      = document.getElementById('param-item-codigo')?.value.trim().toUpperCase() || null;
-    if (def.tieneArea)        datos.id_area     = parseInt(document.getElementById('param-item-area')?.value) || null;
-    if (def.tieneDescripcion)  datos.descripcion  = document.getElementById('param-item-descripcion')?.value.trim() || null;
-    if (def.tieneTipoSector)   datos.tipo_sector  = document.getElementById('param-item-tipo-sector')?.value || null;
+    if (def.tieneCodigo)      datos.codigo        = document.getElementById('param-item-codigo')?.value.trim().toUpperCase() || null;
+    if (def.tieneArea)        datos.id_area       = parseInt(document.getElementById('param-item-area')?.value) || null;
+    if (def.tieneDescripcion) datos.descripcion   = document.getElementById('param-item-descripcion')?.value.trim() || null;
+    if (def.tieneTipoSector)  datos.tipo_sector   = document.getElementById('param-item-tipo-sector')?.value || null;
+    if (def.tieneCategoria)   datos.id_categoria  = parseInt(document.getElementById('param-item-categoria')?.value) || null;
+    if (def.tieneEmisor)      datos.id_emisor     = _empresaActiva?.id_emisor || null;
   }
 
   try {
