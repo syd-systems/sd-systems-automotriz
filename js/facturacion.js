@@ -1010,12 +1010,12 @@ function onCambiarPrecioEntrada() {
 
 function onCambiarMotivoEntrada() {
   const motivo = document.getElementById('es-motivo')?.value;
-  const contProv     = document.getElementById('es-campo-proveedor-cont');
-  const contCliente  = document.getElementById('es-campo-cliente-cont');
-  const contTransf   = document.getElementById('es-campo-transferencia-cont');
+  const contProv    = document.getElementById('es-campo-proveedor-cont');
+  const contCliente = document.getElementById('es-campo-cliente-cont');
+  const contTransf  = document.getElementById('es-campo-transferencia-cont');
   if (!contProv) return;
 
-  // Ocultar todos
+  // Ocultar todos los campos adicionales
   contProv.style.display    = 'none';
   contCliente.style.display = 'none';
   contTransf.style.display  = 'none';
@@ -1029,7 +1029,25 @@ function onCambiarMotivoEntrada() {
   } else if (motivo === 'transferencia') {
     contTransf.style.display = '';
   }
-  // ajuste y otro: ningún campo adicional
+
+  // Restricción de moneda:
+  // Solo compra con proveedor puede ser en moneda distinta a la Funcional.
+  // Transferencias, devoluciones y ajustes = solo Moneda Funcional.
+  const selMoneda = document.getElementById('es-moneda-compra');
+  const monedaFunc = ((_empresaActiva?.moneda_principal) || 'VES').toUpperCase();
+  if (selMoneda) {
+    if (motivo === 'compra') {
+      // Habilitar todas las opciones
+      Array.from(selMoneda.options).forEach(function(o) { o.disabled = false; });
+      selMoneda.disabled = false;
+    } else {
+      // Forzar Moneda Funcional y deshabilitar el select
+      selMoneda.value    = monedaFunc;
+      selMoneda.disabled = true;
+      // Disparar el cambio para actualizar labels de tasa/precio
+      selMoneda.dispatchEvent(new Event('change'));
+    }
+  }
 }
 
 // ─── SALIDA DE STOCK ───
