@@ -75,6 +75,7 @@ async function renderInventario(filtro) {
       + '</div></div>'
       + '<div id="alerta-stock-bajo" style="display:none"></div>'
       + '<div id="tabla-inv-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
+      + '<div id="inv-movimientos-cont" style="display:none"></div>'
       + '</div>';
   }
   const tablaCont = document.getElementById('tabla-inv-cont');
@@ -141,7 +142,17 @@ async function invCambiarVista(vista) {
     btn.style.background = activo ? 'var(--naranja)' : 'transparent';
     btn.style.color = activo ? '#fff' : 'var(--suave)';
   });
-  await invRenderVista(inventarioCache, vista);
+  const contTabla = document.getElementById('tabla-inv-cont');
+  const contMovs  = document.getElementById('inv-movimientos-cont');
+  if (vista === 'movimientos') {
+    if (contTabla) contTabla.style.display = 'none';
+    if (contMovs)  contMovs.style.display  = '';
+    await invRenderMovimientos(contMovs);
+  } else {
+    if (contTabla) contTabla.style.display = '';
+    if (contMovs)  contMovs.style.display  = 'none';
+    await invRenderVista(inventarioCache, vista);
+  }
 }
 
 async function invRenderVista(items, vista) {
@@ -790,8 +801,8 @@ async function verHistorialSalidas(idArticulo) {
 
 // ─── MOVIMIENTOS DE INVENTARIO ───
 async function invRenderMovimientos(cont) {
+  if (!cont) cont = document.getElementById('inv-movimientos-cont');
   if (!cont) cont = document.getElementById('tabla-inv-cont');
-  if (!cont) cont = document.getElementById('contenido-principal');
   if (!cont) return;
 
   const monedaFunc = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
