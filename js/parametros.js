@@ -15,8 +15,6 @@ const TABLAS_MAESTRAS = [
   { key: 'estados_civiles',    tabla: 'param_estados_civiles',   pk: 'id',    nombre: 'Estados Civiles',        icono: '💍', tieneCodigo: false, tieneArea: false },
   { key: 'sexos',              tabla: 'param_sexos',   pk: 'id',              nombre: 'Sexos',                  icono: '⚧',  tieneCodigo: false, tieneArea: false },
   { key: 'bancos',             tabla: 'param_bancos',   pk: 'id',             nombre: 'Instituciones Financieras', icono: '🏦', tieneCodigo: true,  tieneArea: false, tieneTipoSector: true },
-  { key: 'inv_categorias',     tabla: 'inv_categorias',  pk: 'id',             nombre: 'Categorías de Inventario', icono: '📦', tieneCodigo: true,  tieneArea: false, tieneDescripcion: true, tieneEmisor: true },
-  { key: 'inv_articulos_tipo', tabla: 'inv_articulos_tipo', pk: 'id',          nombre: 'Tipos de Artículo',        icono: '🔩', tieneCodigo: true,  tieneArea: false, tieneDescripcion: true, tieneCategoria: true, tieneEmisor: true },
 ];
 
 // Cache de áreas para el selector de cargos
