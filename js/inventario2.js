@@ -73,7 +73,7 @@ async function renderInventario(filtro) {
       + 'onkeyup="renderInventario(this.value)" '
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\');}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:180px">'
-      + (puedo('INVENTARIO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Artículo</button>' : '')
+      + (puedo('INVENTARIO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Consumible</button>' : '')
       + '</div></div>'
       + '<div id="alerta-stock-bajo" style="display:none"></div>'
       + '<div id="tabla-inv-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
@@ -620,7 +620,7 @@ async function abrirNuevoInventario() {
   document.getElementById('inv-unidad').value = 'UND';
   var invVentaContN = document.getElementById('inv-venta-cont');
   if (invVentaContN) invVentaContN.style.display = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? '' : 'none';
-  document.getElementById('modal-inv-titulo').textContent = 'NUEVO ARTÍCULO';
+  document.getElementById('modal-inv-titulo').textContent = 'NUEVO CONSUMIBLE';
   document.getElementById('alerta-inv-ok').style.display = 'none';
   document.getElementById('alerta-inv-err').style.display = 'none';
   _invCategoriasCache = []; // Forzar recarga
@@ -653,7 +653,7 @@ async function abrirEditarInventario(id) {
   document.getElementById('inv-lead-time').value = r.lead_time_dias || '';
   document.getElementById('inv-costo-pedido').value = r.costo_pedido_usd || '';
   document.getElementById('inv-stock-seg').value = r.stock_seguridad || '';
-  document.getElementById('modal-inv-titulo').textContent = 'EDITAR ARTÍCULO';
+  document.getElementById('modal-inv-titulo').textContent = 'EDITAR CONSUMIBLE';
   document.getElementById('alerta-inv-ok').style.display = 'none';
   document.getElementById('alerta-inv-err').style.display = 'none';
   // En edición mostrar stock actual y precio costo como info (solo lectura)
