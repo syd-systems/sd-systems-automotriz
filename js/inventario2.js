@@ -79,6 +79,9 @@ async function renderInventario(filtro) {
   }
   const tablaCont = document.getElementById('tabla-inv-cont');
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+  // Si estamos en vista movimientos, no recargar la tabla
+  if (_invVista === 'movimientos') return;
+
   try {
     // Por defecto muestra todos — el checkbox "Solo con stock" activa el filtro
     const soloConStock = document.getElementById('inv-mostrar-todos')?.checked || false;
