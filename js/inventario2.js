@@ -788,6 +788,7 @@ async function verHistorialSalidas(idArticulo) {
 // ─── MOVIMIENTOS DE INVENTARIO ───
 async function invRenderMovimientos(cont) {
   if (!cont) cont = document.getElementById('tabla-inv-cont');
+  if (!cont) cont = document.getElementById('contenido-principal');
   if (!cont) return;
 
   const monedaFunc = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
@@ -856,13 +857,12 @@ async function invCargarMovimientos() {
     }
 
     const inClause = idsArticulos.join(',');
-    const eQ = '&id_emisor=eq.' + idEmisor;
-
+    // stock_entradas y stock_salidas no tienen id_emisor — el filtro es por id_articulo del cache
     let entradas = [], salidas = [];
 
     if (!tipo || tipo === 'ENTRADA') {
       let qE = '?id_articulo=in.(' + inClause + ')&order=fecha_entrada.desc'
-        + '&select=*,area_receptora:id_area(nombre,codigo),area_origen:id_area_origen(nombre,codigo),proveedor:id_proveedor(nombre)' + eQ;
+        + '&select=*,area_receptora:id_area(nombre,codigo),area_origen:id_area_origen(nombre,codigo),proveedor:id_proveedor(nombre)';
       if (desde) qE += '&fecha_entrada=gte.' + desde;
       if (hasta) qE += '&fecha_entrada=lte.' + hasta;
       entradas = await api('stock_entradas','GET',null,qE);
@@ -870,7 +870,7 @@ async function invCargarMovimientos() {
 
     if (!tipo || tipo === 'SALIDA') {
       let qS = '?id_articulo=in.(' + inClause + ')&order=fecha_salida.desc'
-        + '&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo)' + eQ;
+        + '&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo)';
       if (desde) qS += '&fecha_salida=gte.' + desde;
       if (hasta) qS += '&fecha_salida=lte.' + hasta;
       salidas = await api('stock_salidas','GET',null,qS);
