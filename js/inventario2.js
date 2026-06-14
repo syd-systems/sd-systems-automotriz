@@ -148,6 +148,8 @@ async function invCambiarVista(vista) {
     if (contTabla) contTabla.style.display = 'none';
     if (contMovs)  contMovs.style.display  = '';
     await invRenderMovimientos(contMovs);
+    // Scroll al contenedor de movimientos
+    setTimeout(function() { contMovs?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
   } else {
     if (contTabla) contTabla.style.display = '';
     if (contMovs)  contMovs.style.display  = 'none';
