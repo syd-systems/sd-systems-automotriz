@@ -131,24 +131,24 @@ function invFiltrarCategoria() {
   invRenderVista(items, _invVista);
 }
 
-function invCambiarVista(vista) {
+async function invCambiarVista(vista) {
   _invVista = vista;
   document.querySelectorAll('.inv-tab').forEach(function(btn) {
     var activo = btn.id === 'inv-tab-' + vista;
     btn.style.background = activo ? 'var(--naranja)' : 'transparent';
     btn.style.color = activo ? '#fff' : 'var(--suave)';
   });
-  invRenderVista(inventarioCache, vista);
+  await invRenderVista(inventarioCache, vista);
 }
 
-function invRenderVista(items, vista) {
+async function invRenderVista(items, vista) {
   const cont = document.getElementById('tabla-inv-cont');
   if (!cont) return;
   if (vista === 'tabla') invRenderTabla(items, cont);
   else if (vista === 'abc') invRenderABC(items, cont);
   else if (vista === 'reorden') invRenderReorden(items, cont);
   else if (vista === 'eoq') invRenderEOQ(items, cont);
-  else if (vista === 'movimientos') invRenderMovimientos(cont);
+  else if (vista === 'movimientos') await invRenderMovimientos(cont);
 }
 
 function invRenderTabla(items, cont) {
