@@ -106,7 +106,10 @@ async function renderInventario(filtro) {
     }
     const contador = document.getElementById('inv-contador');
     if (contador) contador.textContent = 'Inventario General (' + itemsFiltrados.length + ')';
-    invRenderVista(itemsFiltrados, _invVista);
+    // No recargar si estamos en la vista de movimientos — es independiente del cache
+    if (_invVista !== 'movimientos') {
+      invRenderVista(itemsFiltrados, _invVista);
+    }
   } catch(e) {
     const tabla = document.getElementById('tabla-inv-cont');
     if (tabla) tabla.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
