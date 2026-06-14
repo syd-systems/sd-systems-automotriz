@@ -802,182 +802,326 @@ async function invRenderMovimientos(cont) {
   if (!cont) cont = document.getElementById('tabla-inv-cont');
   if (!cont) return;
 
-  const monedaFunc = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
-  const monedaRef  = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
+  const hoy = new Date();
+  const primerDia = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-01';
+  const ultimoDia = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-' + String(new Date(hoy.getFullYear(),hoy.getMonth()+1,0).getDate()).padStart(2,'0');
+  const INP = 'background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:7px 10px;border-radius:5px;font-size:12px';
 
-  cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
-  try {
-    // Filtros
-    const hoy = new Date();
-    const primerDia = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-01';
-    const ultimoDia = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-' + String(new Date(hoy.getFullYear(),hoy.getMonth()+1,0).getDate()).padStart(2,'0');
+  cont.innerHTML =
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">'
+    + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Desde</label>'
+    + '<input type="date" id="mov-desde" value="' + primerDia + '" onchange="invCargarMovimientos()" style="' + INP + '"></div>'
+    + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Hasta</label>'
+    + '<input type="date" id="mov-hasta" value="' + ultimoDia + '" onchange="invCargarMovimientos()" style="' + INP + '"></div>'
+    + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Agrupar por</label>'
+    + '<select id="mov-agrup" onchange="invCargarMovimientos()" style="' + INP + '">'
+    + '<option value="movimientos">Movimientos</option>'
+    + '<option value="categoria">Por Categoría</option>'
+    + '<option value="area">Por Área</option>'
+    + '<option value="articulo">Por Artículo</option>'
+    + '<option value="proveedor">Por Proveedor</option>'
+    + '<option value="rotacion">Rotación</option>'
+    + '<option value="saldo_area">Saldo por Área</option>'
+    + '</select></div>'
+    + '<div id="mov-filtro-tipo-cont"><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Tipo</label>'
+    + '<select id="mov-tipo" onchange="invCargarMovimientos()" style="' + INP + '">'
+    + '<option value="">Todos</option><option value="ENTRADA">Entradas</option><option value="SALIDA">Salidas</option>'
+    + '</select></div>'
+    + '<div id="mov-filtro-art-cont"><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Artículo</label>'
+    + '<input type="text" id="mov-articulo" placeholder="Buscar..." onkeyup="invCargarMovimientos()" style="' + INP + ';min-width:160px"></div>'
+    + '</div>'
+    + '<div id="mov-resultado"><div style="text-align:center;color:var(--suave);padding:40px">Cargando...</div></div>';
 
-    cont.innerHTML =
-      '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">'
-      + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Desde</label>'
-      + '<input type="date" id="mov-desde" value="' + primerDia + '" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:7px 10px;border-radius:5px;font-size:12px"></div>'
-      + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Hasta</label>'
-      + '<input type="date" id="mov-hasta" value="' + ultimoDia + '" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:7px 10px;border-radius:5px;font-size:12px"></div>'
-      + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Tipo</label>'
-      + '<select id="mov-tipo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:7px 10px;border-radius:5px;font-size:12px">'
-      + '<option value="">Todos</option><option value="ENTRADA">Entradas</option><option value="SALIDA">Salidas</option>'
-      + '</select></div>'
-      + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Artículo</label>'
-      + '<input type="text" id="mov-articulo" placeholder="Buscar artículo..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:7px 10px;border-radius:5px;font-size:12px;min-width:180px"></div>'
-      + '<button class="btn-primario" onclick="invCargarMovimientos()" style="padding:7px 16px">Consultar</button>'
-      + '</div>'
-      + '<div id="mov-resultado"><div style="text-align:center;color:var(--suave);padding:40px">Selecciona un período y haz clic en Consultar.</div></div>';
-
-  } catch(e) {
-    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
-  }
+  await invCargarMovimientos();
 }
 
 async function invCargarMovimientos() {
   const res   = document.getElementById('mov-resultado');
   const desde = document.getElementById('mov-desde')?.value;
   const hasta = document.getElementById('mov-hasta')?.value;
-  const tipo  = document.getElementById('mov-tipo')?.value;
-  const busq  = document.getElementById('mov-articulo')?.value.trim().toLowerCase();
+  const agrup = document.getElementById('mov-agrup')?.value || 'movimientos';
+  const tipo  = document.getElementById('mov-tipo')?.value || '';
+  const busq  = (document.getElementById('mov-articulo')?.value || '').trim().toLowerCase();
   if (!res) return;
 
   res.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
 
   try {
+    const idEmisor = _empresaActiva?.id_emisor || 0;
     const monedaRef = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
     const simRef    = monedaRef === 'USD' ? '$' : monedaRef;
-    const idEmisor  = _empresaActiva?.id_emisor || 0;
 
-    // Si no hay cache, cargarlo primero
+    // Cargar cache si está vacío
     if (!inventarioCache || !inventarioCache.length) {
-      const arts = await api('inventario','GET',null,'?activo=eq.true&id_emisor=eq.'+idEmisor+'&select=id_articulo,nombre,codigo,categoria&order=nombre.asc');
-      if (arts && arts.length) {
-        arts.forEach(function(a) {
-          if (!inventarioCache.find(function(x){ return x.id_articulo === a.id_articulo; })) {
-            inventarioCache.push(a);
-          }
-        });
-      }
+      const arts = await api('inventario','GET',null,'?activo=eq.true&id_emisor=eq.'+idEmisor+'&select=*&order=nombre.asc');
+      if (arts) inventarioCache = arts;
     }
-
     const idsArticulos = inventarioCache.map(function(x){ return x.id_articulo; });
-
-    if (!idsArticulos.length) {
-      res.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">No hay artículos registrados.</div>';
-      return;
-    }
-
+    if (!idsArticulos.length) { res.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">Sin artículos registrados.</div>'; return; }
     const inClause = idsArticulos.join(',');
-    // stock_entradas y stock_salidas no tienen id_emisor — el filtro es por id_articulo del cache
+
+    // Cargar entradas y salidas según filtro
     let entradas = [], salidas = [];
-
     if (!tipo || tipo === 'ENTRADA') {
-      let qE = '?id_articulo=in.(' + inClause + ')&order=fecha_entrada.desc'
-        + '&select=*,area_receptora:id_area(nombre,codigo),area_origen:id_area_origen(nombre,codigo),proveedor:id_proveedor(nombre)';
-      if (desde) qE += '&fecha_entrada=gte.' + desde;
-      if (hasta) qE += '&fecha_entrada=lte.' + hasta;
-      entradas = await api('stock_entradas','GET',null,qE);
+      let qE = '?id_articulo=in.('+inClause+')&order=fecha_entrada.desc&select=*,area_receptora:id_area(nombre,codigo),area_origen:id_area_origen(nombre,codigo),proveedor:id_proveedor(nombre)';
+      if (desde) qE += '&fecha_entrada=gte.'+desde;
+      if (hasta) qE += '&fecha_entrada=lte.'+hasta;
+      entradas = await api('stock_entradas','GET',null,qE) || [];
     }
-
     if (!tipo || tipo === 'SALIDA') {
-      let qS = '?id_articulo=in.(' + inClause + ')&order=fecha_salida.desc'
-        + '&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo)';
-      if (desde) qS += '&fecha_salida=gte.' + desde;
-      if (hasta) qS += '&fecha_salida=lte.' + hasta;
-      salidas = await api('stock_salidas','GET',null,qS);
+      let qS = '?id_articulo=in.('+inClause+')&order=fecha_salida.desc&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo)';
+      if (desde) qS += '&fecha_salida=gte.'+desde;
+      if (hasta) qS += '&fecha_salida=lte.'+hasta;
+      salidas = await api('stock_salidas','GET',null,qS) || [];
     }
 
-    // Combinar y enriquecer
-    const movs = [];
-    entradas.forEach(function(e) {
-      const art = inventarioCache.find(function(x){ return x.id_articulo === e.id_articulo; });
-      if (busq && !(art?.nombre||'').toLowerCase().includes(busq) && !(art?.codigo||'').toLowerCase().includes(busq)) return;
-      const motivo = e.id_proveedor ? 'Compra' : (e.id_area_origen ? 'Transferencia' : (e.cliente_nombre ? 'Devolución' : 'Ajuste'));
-      movs.push({
-        tipo:        'ENTRADA',
-        fecha:       e.fecha_entrada,
-        articulo:    art ? (art.codigo ? art.codigo + ' — ' : '') + art.nombre : 'Art#' + e.id_articulo,
-        cantidad:    e.cantidad,
-        area_destino: e.area_receptora ? (e.area_receptora.codigo ? e.area_receptora.codigo + ' ' : '') + e.area_receptora.nombre : '—',
-        area_origen:  e.area_origen ? (e.area_origen.codigo ? e.area_origen.codigo + ' ' : '') + e.area_origen.nombre
-                    : (e.proveedor ? e.proveedor.nombre : (e.cliente_nombre || '—')),
-        motivo:      motivo,
-        costo:       e.precio_costo_usd || 0,
-        moneda:      e.moneda_compra || monedaRef,
-        reversada:   e.reversada,
-      });
-    });
-    salidas.forEach(function(s) {
-      const art = inventarioCache.find(function(x){ return x.id_articulo === s.id_articulo; });
-      if (busq && !(art?.nombre||'').toLowerCase().includes(busq) && !(art?.codigo||'').toLowerCase().includes(busq)) return;
-      movs.push({
-        tipo:        'SALIDA',
-        fecha:       s.fecha_salida,
-        articulo:    art ? (art.codigo ? art.codigo + ' — ' : '') + art.nombre : 'Art#' + s.id_articulo,
-        cantidad:    s.cantidad,
-        area_destino: s.area_receptora ? (s.area_receptora.codigo ? s.area_receptora.codigo + ' ' : '') + s.area_receptora.nombre : '—',
-        area_origen:  s.area_entrega ? (s.area_entrega.codigo ? s.area_entrega.codigo + ' ' : '') + s.area_entrega.nombre : '—',
-        motivo:      'Salida interna',
-        costo:       0,
-        moneda:      '',
-        reversada:   s.reversada,
-      });
-    });
+    // Helper para obtener artículo del cache
+    const getArt = function(id) { return inventarioCache.find(function(x){ return x.id_articulo === id; }); };
+    const artNom = function(a)  { return a ? (a.codigo ? a.codigo+' — ':'')+a.nombre : '—'; };
 
-    movs.sort(function(a,b){ return b.fecha > a.fecha ? 1 : b.fecha < a.fecha ? -1 : 0; });
+    // ── VISTAS ────────────────────────────────────────────────
+    if (agrup === 'movimientos') {
+      // Lista cronológica
+      const movs = [];
+      entradas.forEach(function(e) {
+        const art = getArt(e.id_articulo);
+        if (busq && !artNom(art).toLowerCase().includes(busq)) return;
+        const motivo = e.id_proveedor ? 'Compra' : (e.id_area_origen ? 'Transferencia' : (e.cliente_nombre ? 'Devolución' : 'Ajuste'));
+        movs.push({ tipo:'ENTRADA', fecha:e.fecha_entrada, art:artNom(art),
+          origen: e.area_origen ? (e.area_origen.codigo?e.area_origen.codigo+' ':'')+e.area_origen.nombre : (e.proveedor?e.proveedor.nombre:(e.cliente_nombre||'—')),
+          destino: e.area_receptora ? (e.area_receptora.codigo?e.area_receptora.codigo+' ':'')+e.area_receptora.nombre : '—',
+          motivo:motivo, cant:e.cantidad, costo:e.precio_costo_usd||0, moneda:e.moneda_compra||monedaRef, rev:e.reversada });
+      });
+      salidas.forEach(function(s) {
+        const art = getArt(s.id_articulo);
+        if (busq && !artNom(art).toLowerCase().includes(busq)) return;
+        movs.push({ tipo:'SALIDA', fecha:s.fecha_salida, art:artNom(art),
+          origen: s.area_entrega ? (s.area_entrega.codigo?s.area_entrega.codigo+' ':'')+s.area_entrega.nombre : '—',
+          destino: s.area_receptora ? (s.area_receptora.codigo?s.area_receptora.codigo+' ':'')+s.area_receptora.nombre : '—',
+          motivo:'Salida interna', cant:s.cantidad, costo:0, moneda:'', rev:s.reversada });
+      });
+      movs.sort(function(a,b){ return b.fecha>a.fecha?1:b.fecha<a.fecha?-1:0; });
+      if (!movs.length) { res.innerHTML='<div style="text-align:center;color:var(--suave);padding:40px">Sin movimientos en el período.</div>'; return; }
+      const colC = puedo('INVENTARIO','VER_COSTOS') ? '<th style="text-align:right;padding:7px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Costo</th>' : '';
+      res.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-bottom:8px">'+movs.length+' movimientos</div>'
+        + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+        + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Fecha</th>'
+        + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Tipo</th>'
+        + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
+        + '<th style="text-align:right;padding:7px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Cant.</th>'
+        + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Origen</th>'
+        + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Destino</th>'
+        + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Motivo</th>'
+        + colC + '</tr></thead><tbody>'
+        + movs.map(function(m) {
+            const eE=m.tipo==='ENTRADA', c=eE?'#22c55e':'#fc8181';
+            const badge='<span style="background:'+(eE?'rgba(34,197,94,0.1)':'rgba(252,129,129,0.1)')+';color:'+c+';border:1px solid '+c+';border-radius:4px;padding:2px 6px;font-size:10px">'+m.tipo+'</span>'+(m.rev?'<span style="color:#fc8181;font-size:10px;margin-left:4px">REV</span>':'');
+            const costoTd = puedo('INVENTARIO','VER_COSTOS') ? '<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--suave)">'+(eE&&m.costo>0?(m.moneda==='VES'?'Bs ':simRef+' ')+fmtUSD(m.costo):'—')+'</td>' : '';
+            return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)'+(m.rev?';opacity:0.5':'')+'">'
+              +'<td style="padding:7px;font-size:12px">'+fmtFecha(m.fecha)+'</td>'
+              +'<td style="padding:7px">'+badge+'</td>'
+              +'<td style="padding:7px;font-size:12px">'+m.art+'</td>'
+              +'<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-size:12px">'+m.cant+'</td>'
+              +'<td style="padding:7px;font-size:12px">'+m.origen+'</td>'
+              +'<td style="padding:7px;font-size:12px">'+m.destino+'</td>'
+              +'<td style="padding:7px;font-size:11px;color:var(--suave)">'+m.motivo+'</td>'
+              +costoTd+'</tr>';
+          }).join('')
+        + '</tbody></table></div>';
 
-    if (!movs.length) {
-      res.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">Sin movimientos en el período seleccionado.</div>';
-      return;
+    } else if (agrup === 'categoria') {
+      const cats = {};
+      entradas.forEach(function(e) {
+        const art = getArt(e.id_articulo); if (!art) return;
+        const cat = art.categoria || 'Sin categoría';
+        if (!cats[cat]) cats[cat] = { entradas:0, salidas:0, costo:0 };
+        cats[cat].entradas += parseFloat(e.cantidad||0);
+        cats[cat].costo    += parseFloat(e.precio_costo_usd||0) * parseFloat(e.cantidad||0);
+      });
+      salidas.forEach(function(s) {
+        const art = getArt(s.id_articulo); if (!art) return;
+        const cat = art.categoria || 'Sin categoría';
+        if (!cats[cat]) cats[cat] = { entradas:0, salidas:0, costo:0 };
+        cats[cat].salidas += parseFloat(s.cantidad||0);
+      });
+      const filas = Object.keys(cats).sort().map(function(cat) {
+        const c = cats[cat], saldo = c.entradas - c.salidas;
+        const costoTd = puedo('INVENTARIO','VER_COSTOS') ? '<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-size:12px">'+simRef+' '+fmtUSD(c.costo)+'</td>' : '';
+        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+          +'<td style="padding:8px;font-size:12px">'+cat+'</td>'
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#22c55e">'+c.entradas+'</td>'
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#fc8181">'+c.salidas+'</td>'
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:'+(saldo>=0?'var(--naranja)':'#fc8181')+'">'+saldo+'</td>'
+          +costoTd+'</tr>';
+      });
+      const colC2 = puedo('INVENTARIO','VER_COSTOS') ? '<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Costo Total</th>' : '';
+      res.innerHTML = '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+        +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Categoría</th>'
+        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Entradas</th>'
+        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Salidas</th>'
+        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Saldo</th>'
+        +colC2+'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>';
+
+    } else if (agrup === 'area') {
+      const areas = {};
+      entradas.forEach(function(e) {
+        const nom = e.area_receptora ? (e.area_receptora.codigo?e.area_receptora.codigo+' ':'')+e.area_receptora.nombre : 'Sin área';
+        if (!areas[nom]) areas[nom] = { entradas:0, salidas:0 };
+        areas[nom].entradas += parseFloat(e.cantidad||0);
+      });
+      salidas.forEach(function(s) {
+        const nom = s.area_receptora ? (s.area_receptora.codigo?s.area_receptora.codigo+' ':'')+s.area_receptora.nombre : 'Sin área';
+        if (!areas[nom]) areas[nom] = { entradas:0, salidas:0 };
+        areas[nom].salidas += parseFloat(s.cantidad||0);
+      });
+      const filas = Object.keys(areas).sort().map(function(a) {
+        const v=areas[a], saldo=v.entradas-v.salidas;
+        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+          +'<td style="padding:8px;font-size:12px">'+a+'</td>'
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#22c55e">'+v.entradas+'</td>'
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#fc8181">'+v.salidas+'</td>'
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:'+(saldo>=0?'var(--naranja)':'#fc8181')+'">'+saldo+'</td></tr>';
+      });
+      res.innerHTML = '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+        +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Área</th>'
+        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Entradas</th>'
+        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Salidas</th>'
+        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Saldo Neto</th>'
+        +'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>';
+
+    } else if (agrup === 'articulo') {
+      const arts = {};
+      entradas.forEach(function(e) {
+        const art=getArt(e.id_articulo); if(!art) return;
+        const nom=artNom(art);
+        if (!arts[nom]) arts[nom] = { entradas:0, salidas:0, cpp:art.precio_costo_usd||0, stock:art.stock_actual||0, hist:[] };
+        arts[nom].entradas += parseFloat(e.cantidad||0);
+        arts[nom].hist.push({ fecha:e.fecha_entrada, tipo:'E', cant:e.cantidad, cpp:e.precio_costo_usd||0 });
+      });
+      salidas.forEach(function(s) {
+        const art=getArt(s.id_articulo); if(!art) return;
+        const nom=artNom(art);
+        if (!arts[nom]) arts[nom] = { entradas:0, salidas:0, cpp:art.precio_costo_usd||0, stock:art.stock_actual||0, hist:[] };
+        arts[nom].salidas += parseFloat(s.cantidad||0);
+        arts[nom].hist.push({ fecha:s.fecha_salida, tipo:'S', cant:s.cantidad, cpp:0 });
+      });
+      const filas = Object.keys(arts).filter(function(n){ return !busq||n.toLowerCase().includes(busq); }).sort().map(function(nom) {
+        const a=arts[nom], saldo=a.entradas-a.salidas;
+        const costoTds = puedo('INVENTARIO','VER_COSTOS')
+          ? '<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-size:12px">'+simRef+' '+fmtUSD(a.cpp)+'</td>'
+            +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-size:12px">'+a.stock+'</td>'
+          : '';
+        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+          +'<td style="padding:8px;font-size:12px">'+nom+'</td>'
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#22c55e">'+a.entradas+'</td>'
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#fc8181">'+a.salidas+'</td>'
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:'+(saldo>=0?'var(--naranja)':'#fc8181')+'">'+saldo+'</td>'
+          +costoTds+'</tr>';
+      });
+      const costoCols = puedo('INVENTARIO','VER_COSTOS')
+        ? '<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">CPP</th>'
+          +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Stock Actual</th>'
+        : '';
+      res.innerHTML = '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+        +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
+        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Entradas</th>'
+        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Salidas</th>'
+        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Saldo</th>'
+        +costoCols+'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>';
+
+    } else if (agrup === 'proveedor') {
+      const provs = {};
+      entradas.filter(function(e){ return e.id_proveedor; }).forEach(function(e) {
+        const nom = e.proveedor ? e.proveedor.nombre : 'Prov #'+e.id_proveedor;
+        if (!provs[nom]) provs[nom] = { cant:0, monto:0, items:0 };
+        provs[nom].cant   += parseFloat(e.cantidad||0);
+        provs[nom].monto  += (parseFloat(e.precio_costo_usd||0)*parseFloat(e.cantidad||0));
+        provs[nom].items  += 1;
+      });
+      const filas = Object.keys(provs).sort().map(function(nom) {
+        const p=provs[nom];
+        const costoTd = puedo('INVENTARIO','VER_COSTOS') ? '<td style="text-align:right;padding:8px;font-family:var(--font-mono)">'+simRef+' '+fmtUSD(p.monto)+'</td>' : '';
+        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+          +'<td style="padding:8px;font-size:12px">'+nom+'</td>'
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono)">'+p.items+'</td>'
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono)">'+p.cant+'</td>'
+          +costoTd+'</tr>';
+      });
+      const colC3 = puedo('INVENTARIO','VER_COSTOS') ? '<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Monto Total</th>' : '';
+      res.innerHTML = (!filas.length ? '<div style="text-align:center;color:var(--suave);padding:40px">Sin compras a proveedores en el período.</div>'
+        : '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+          +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Proveedor</th>'
+          +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Transacciones</th>'
+          +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Unidades</th>'
+          +colC3+'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>');
+
+    } else if (agrup === 'rotacion') {
+      const rot = {};
+      entradas.forEach(function(e) {
+        const art=getArt(e.id_articulo); if(!art) return;
+        const nom=artNom(art);
+        if (!rot[nom]) rot[nom] = { total:0, movs:0 };
+        rot[nom].total += parseFloat(e.cantidad||0);
+        rot[nom].movs++;
+      });
+      salidas.forEach(function(s) {
+        const art=getArt(s.id_articulo); if(!art) return;
+        const nom=artNom(art);
+        if (!rot[nom]) rot[nom] = { total:0, movs:0 };
+        rot[nom].total += parseFloat(s.cantidad||0);
+        rot[nom].movs++;
+      });
+      const filas = Object.keys(rot).sort(function(a,b){ return rot[b].total-rot[a].total; }).map(function(nom) {
+        const r=rot[nom];
+        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+          +'<td style="padding:8px;font-size:12px">'+nom+'</td>'
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono)">'+r.movs+'</td>'
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">'+r.total+'</td></tr>';
+      });
+      res.innerHTML = '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+        +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
+        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Movimientos</th>'
+        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Unidades Totales</th>'
+        +'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>';
+
+    } else if (agrup === 'saldo_area') {
+      // Saldo actual por área: stock que entró a cada área menos lo que salió
+      const saldos = {};
+      entradas.forEach(function(e) {
+        const nom = e.area_receptora ? (e.area_receptora.codigo?e.area_receptora.codigo+' ':'')+e.area_receptora.nombre : 'Sin área';
+        const art = getArt(e.id_articulo); if(!art) return;
+        if (!saldos[nom]) saldos[nom] = {};
+        if (!saldos[nom][artNom(art)]) saldos[nom][artNom(art)] = 0;
+        saldos[nom][artNom(art)] += parseFloat(e.cantidad||0);
+      });
+      salidas.forEach(function(s) {
+        const nom = s.area_receptora ? (s.area_receptora.codigo?s.area_receptora.codigo+' ':'')+s.area_receptora.nombre : 'Sin área';
+        const art = getArt(s.id_articulo); if(!art) return;
+        if (!saldos[nom]) saldos[nom] = {};
+        if (!saldos[nom][artNom(art)]) saldos[nom][artNom(art)] = 0;
+        saldos[nom][artNom(art)] -= parseFloat(s.cantidad||0);
+      });
+      let html = '';
+      Object.keys(saldos).sort().forEach(function(area) {
+        const filas = Object.keys(saldos[area]).sort().map(function(art) {
+          const s=saldos[area][art];
+          return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+            +'<td style="padding:7px;font-size:12px">'+art+'</td>'
+            +'<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-weight:700;color:'+(s>=0?'var(--naranja)':'#fc8181')+'">'+s+'</td></tr>';
+        });
+        html += '<div style="margin-bottom:20px"><div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:8px 14px;margin-bottom:6px;font-family:var(--font-mono);color:var(--naranja)">'+area+'</div>'
+          +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
+          +'<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
+          +'<th style="text-align:right;padding:7px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Saldo</th>'
+          +'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>';
+      });
+      res.innerHTML = html || '<div style="text-align:center;color:var(--suave);padding:40px">Sin datos en el período.</div>';
     }
-
-    const colCosto = puedo('INVENTARIO','VER_COSTOS')
-      ? '<th style="padding:8px 6px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Costo</th>' : '';
-
-    const filas = movs.map(function(m) {
-      const esEntrada  = m.tipo === 'ENTRADA';
-      const colorTipo  = esEntrada ? '#22c55e' : '#fc8181';
-      const badgeTipo  = '<span style="background:' + (esEntrada?'rgba(34,197,94,0.1)':'rgba(252,129,129,0.1)') + ';color:' + colorTipo + ';border:1px solid ' + colorTipo + ';border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700">' + m.tipo + '</span>';
-      const badgeRev   = m.reversada ? '<span style="color:#fc8181;font-size:10px;margin-left:4px">REV</span>' : '';
-      const costoStr   = (esEntrada && m.costo > 0) ? (m.moneda === 'VES' ? 'Bs ' + fmtVES(m.costo) : simRef + ' ' + fmtUSD(m.costo)) : '—';
-      const costoTd    = puedo('INVENTARIO','VER_COSTOS') ? '<td style="padding:8px 6px;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--suave)">' + costoStr + '</td>' : '';
-      return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)' + (m.reversada?';opacity:0.5':'') + '">'
-        + '<td style="padding:8px 6px;font-size:12px">' + fmtFecha(m.fecha) + '</td>'
-        + '<td style="padding:8px 6px">' + badgeTipo + badgeRev + '</td>'
-        + '<td style="padding:8px 6px;font-size:12px">' + m.articulo + '</td>'
-        + '<td style="padding:8px 6px;text-align:right;font-family:var(--font-mono);font-size:12px">' + m.cantidad + '</td>'
-        + '<td style="padding:8px 6px;font-size:12px">' + m.area_origen + '</td>'
-        + '<td style="padding:8px 6px;font-size:12px">' + m.area_destino + '</td>'
-        + '<td style="padding:8px 6px;font-size:11px;color:var(--suave)">' + m.motivo + '</td>'
-        + costoTd
-        + '</tr>';
-    });
-
-    res.innerHTML =
-      '<div style="font-size:11px;color:var(--suave);margin-bottom:8px">' + movs.length + ' movimientos</div>'
-      + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse">'
-      + '<thead><tr>'
-      + '<th style="padding:8px 6px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Fecha</th>'
-      + '<th style="padding:8px 6px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Tipo</th>'
-      + '<th style="padding:8px 6px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
-      + '<th style="padding:8px 6px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Cant.</th>'
-      + '<th style="padding:8px 6px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Origen</th>'
-      + '<th style="padding:8px 6px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Destino</th>'
-      + '<th style="padding:8px 6px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Motivo</th>'
-      + colCosto
-      + '</tr></thead><tbody>' + filas.join('') + '</tbody></table></div>';
 
   } catch(e) {
-    res.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
-    console.error('invCargarMovimientos error:', e);
+    res.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>';
+    console.error('invCargarMovimientos:', e);
   }
-}
-
-
-async function reversarSalida(idSalida, idArticulo, cantidad) {
-  await reversarMovimiento('SALIDA', idSalida, cantidad, idArticulo);
-  cerrarTodosLosModales();
-  renderInventario();
 }
 
 
