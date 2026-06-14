@@ -570,18 +570,48 @@ async function guardarEntradaStock() {
   }
 }
 
-function abrirNuevoInventario() {
-  document.getElementById('inv-categoria').value = 'repuesto';
+// ─── CATEGORÍAS Y TIPOS DE ARTÍCULO ───
+let _invCategoriasCache = [];
+
+async function invCargarCategorias(selCatId) {
+  const sel = document.getElementById('inv-categoria');
+  if (!sel) return;
+  try {
+    if (!_invCategoriasCache.length) {
+      _invCategoriasCache = await api('inv_categorias','GET',null,
+        '?estado=eq.ACTIVO&order=nombre.asc' + (_empresaActiva ? '&id_emisor=eq.'+_empresaActiva.id_emisor : '')) || [];
+    }
+    sel.innerHTML = '<option value="">— Seleccionar categoría —</option>'
+      + _invCategoriasCache.map(function(c) {
+          return '<option value="'+c.id+'"'+(selCatId && selCatId==c.id?' selected':'')+'>'+
+            (c.codigo?c.codigo+' — ':'')+c.nombre+'</option>';
+        }).join('');
+  } catch(e) { console.warn('invCargarCategorias:', e); }
+  await invCargarTiposArticulo(selCatId ? null : undefined);
+}
+
+async function invCargarTiposArticulo(selTipoId) {
+  const sel = document.getElementById('inv-tipo-articulo');
+  const catId = parseInt(document.getElementById('inv-categoria')?.value) || null;
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Seleccionar tipo —</option>';
+  if (!catId) return;
+  try {
+    const tipos = await api('inv_articulos_tipo','GET',null,
+      '?estado=eq.ACTIVO&id_categoria=eq.'+catId+'&order=nombre.asc') || [];
+    sel.innerHTML = '<option value="">— Seleccionar tipo —</option>'
+      + tipos.map(function(t) {
+          return '<option value="'+t.id+'"'+(selTipoId && selTipoId==t.id?' selected':'')+'>'+
+            (t.codigo?t.codigo+' — ':'')+t.nombre+'</option>';
+        }).join('');
+  } catch(e) { console.warn('invCargarTiposArticulo:', e); }
+}
+
+async function abrirNuevoInventario() {
   var infoEl = document.getElementById('inv-info-stock-costo');
   if (infoEl) infoEl.style.display = 'none';
-  setTimeout(function() {
-    const body = document.querySelector('#modal-inventario .modal-body');
-    if (body) { body.scrollTop = 0; }
-    const overlay = document.getElementById('modal-inventario');
-    if (overlay) overlay.scrollTop = 0;
-  }, 80);
   ['inv-id','inv-codigo','inv-nombre','inv-descripcion','inv-stock','inv-stock-min','inv-costo','inv-venta','inv-demanda-anual','inv-lead-time','inv-costo-pedido','inv-stock-seg'].forEach(function(id) {
-    document.getElementById(id).value = '';
+    var el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('inv-unidad').value = 'UND';
   var invVentaContN = document.getElementById('inv-venta-cont');
@@ -589,11 +619,17 @@ function abrirNuevoInventario() {
   document.getElementById('modal-inv-titulo').textContent = 'NUEVO ARTÍCULO';
   document.getElementById('alerta-inv-ok').style.display = 'none';
   document.getElementById('alerta-inv-err').style.display = 'none';
+  _invCategoriasCache = []; // Forzar recarga
+  await invCargarCategorias(null);
   abrirModal('modal-inventario');
-  focusFirstField('modal-inventario');
+  setTimeout(function() {
+    const body = document.querySelector('#modal-inventario .modal-body');
+    if (body) body.scrollTop = 0;
+    document.getElementById('inv-codigo')?.focus();
+  }, 80);
 }
 
-function abrirEditarInventario(id) {
+async function abrirEditarInventario(id) {
   const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) return;
   document.getElementById('inv-id').value = r.id_articulo;
@@ -607,7 +643,8 @@ function abrirEditarInventario(id) {
   var invVentaCont = document.getElementById('inv-venta-cont');
   if (invVentaCont) invVentaCont.style.display = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? '' : 'none';
   document.getElementById('inv-unidad').value = r.unidad || 'UND';
-  document.getElementById('inv-categoria').value = r.categoria || 'repuesto';
+  await invCargarCategorias(r.id_categoria || null);
+  await invCargarTiposArticulo(r.id_tipo_articulo || null);
   document.getElementById('inv-demanda-anual').value = r.demanda_anual || '';
   document.getElementById('inv-lead-time').value = r.lead_time_dias || '';
   document.getElementById('inv-costo-pedido').value = r.costo_pedido_usd || '';
@@ -653,11 +690,14 @@ async function guardarInventario() {
     const leadTime     = parseInt(document.getElementById('inv-lead-time').value) || null;
     const costoPedido  = parseFloat(document.getElementById('inv-costo-pedido').value) || null;
     const stockSeg     = parseInt(document.getElementById('inv-stock-seg').value) || 0;
-    const categoria = document.getElementById('inv-categoria').value || 'repuesto';
-    const ventaFinal = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? venta : undefined;
+    const idCategoria    = parseInt(document.getElementById('inv-categoria')?.value) || null;
+    const idTipoArticulo = parseInt(document.getElementById('inv-tipo-articulo')?.value) || null;
+    const ventaFinal     = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? venta : undefined;
     const datos = { nombre, descripcion: desc || null, codigo: codigo || null, stock_actual: stock,
       stock_minimo: stockMin, precio_costo_usd: costo, activo: true,
-      id_emisor: _empresaActiva ? _empresaActiva.id_emisor : null, ...(ventaFinal !== undefined ? { precio_venta_usd: ventaFinal } : {}), unidad, categoria,
+      id_emisor: _empresaActiva ? _empresaActiva.id_emisor : null,
+      ...(ventaFinal !== undefined ? { precio_venta_usd: ventaFinal } : {}),
+      unidad, id_categoria: idCategoria, id_tipo_articulo: idTipoArticulo,
       demanda_anual: demandaAnual, lead_time_dias: leadTime, costo_pedido_usd: costoPedido, stock_seguridad: stockSeg,
       id_usuario: sesionActual.correo_usuario };
     if (id) {
