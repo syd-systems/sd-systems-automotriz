@@ -54,6 +54,7 @@ async function renderInventario(filtro) {
       + (puedo('INVENTARIO','VER_EOQ_ABC') ? '<button id="inv-tab-abc"     onclick="invCambiarVista(\'abc\')"     class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">Análisis ABC</button>' : '')
       + (puedo('INVENTARIO','VER_EOQ_ABC') ? '<button id="inv-tab-reorden" onclick="invCambiarVista(\'reorden\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">Reorden</button>' : '')
       + (puedo('INVENTARIO','VER_EOQ_ABC') ? '<button id="inv-tab-eoq"     onclick="invCambiarVista(\'eoq\')"     class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">EOQ</button>' : '')
+      + (puedo('INVENTARIO','VER_MOVIMIENTOS') ? '<button id="inv-tab-movimientos" onclick="invCambiarVista(\\\'movimientos\\\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">📋 Movimientos</button>' : '')
       + '</div>'
       + '<select id="inv-filtro-cat" onchange="invFiltrarCategoria()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todas las categorías</option>'
@@ -147,6 +148,7 @@ function invRenderVista(items, vista) {
   else if (vista === 'abc') invRenderABC(items, cont);
   else if (vista === 'reorden') invRenderReorden(items, cont);
   else if (vista === 'eoq') invRenderEOQ(items, cont);
+  else if (vista === 'movimientos') invRenderMovimientos(cont);
 }
 
 function invRenderTabla(items, cont) {
@@ -779,6 +781,159 @@ async function verHistorialSalidas(idArticulo) {
       + '</tbody></table></div>';
   } catch(e) {
     cont.innerHTML = '<div style="color:#fc8181;font-size:12px">Error: ' + e.message + '</div>';
+  }
+}
+
+
+// ─── MOVIMIENTOS DE INVENTARIO ───
+async function invRenderMovimientos(cont) {
+  if (!cont) cont = document.getElementById('tabla-inv-cont');
+  if (!cont) return;
+
+  const monedaFunc = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
+  const monedaRef  = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
+
+  cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+  try {
+    // Filtros
+    const hoy = new Date();
+    const primerDia = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-01';
+    const ultimoDia = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-' + String(new Date(hoy.getFullYear(),hoy.getMonth()+1,0).getDate()).padStart(2,'0');
+
+    cont.innerHTML =
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">'
+      + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Desde</label>'
+      + '<input type="date" id="mov-desde" value="' + primerDia + '" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:7px 10px;border-radius:5px;font-size:12px"></div>'
+      + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Hasta</label>'
+      + '<input type="date" id="mov-hasta" value="' + ultimoDia + '" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:7px 10px;border-radius:5px;font-size:12px"></div>'
+      + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Tipo</label>'
+      + '<select id="mov-tipo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:7px 10px;border-radius:5px;font-size:12px">'
+      + '<option value="">Todos</option><option value="ENTRADA">Entradas</option><option value="SALIDA">Salidas</option>'
+      + '</select></div>'
+      + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Artículo</label>'
+      + '<input type="text" id="mov-articulo" placeholder="Buscar artículo..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:7px 10px;border-radius:5px;font-size:12px;min-width:180px"></div>'
+      + '<button class="btn-primario" onclick="invCargarMovimientos()" style="padding:7px 16px">Consultar</button>'
+      + '</div>'
+      + '<div id="mov-resultado"><div style="text-align:center;color:var(--suave);padding:40px">Selecciona un período y haz clic en Consultar.</div></div>';
+
+  } catch(e) {
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+  }
+}
+
+async function invCargarMovimientos() {
+  const res    = document.getElementById('mov-resultado');
+  const desde  = document.getElementById('mov-desde')?.value;
+  const hasta  = document.getElementById('mov-hasta')?.value;
+  const tipo   = document.getElementById('mov-tipo')?.value;
+  const busq   = document.getElementById('mov-articulo')?.value.trim().toLowerCase();
+  if (!res) return;
+
+  res.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+
+  try {
+    const monedaRef = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
+    const simRef    = monedaRef === 'USD' ? '$' : monedaRef;
+
+    // Cargar entradas y salidas en paralelo según filtro de tipo
+    let entradas = [], salidas = [];
+
+    if (!tipo || tipo === 'ENTRADA') {
+      let qE = '?id_articulo=in.(' + inventarioCache.map(function(x){ return x.id_articulo; }).join(',') + ')'
+        + '&order=fecha_entrada.desc&select=*,area_receptora:id_area(nombre,codigo),area_origen:id_area_origen(nombre,codigo),proveedor:id_proveedor(nombre)' + emisorQ();
+      if (desde) qE += '&fecha_entrada=gte.' + desde;
+      if (hasta) qE += '&fecha_entrada=lte.' + hasta;
+      entradas = await api('stock_entradas','GET',null,qE);
+    }
+
+    if (!tipo || tipo === 'SALIDA') {
+      let qS = '?id_articulo=in.(' + inventarioCache.map(function(x){ return x.id_articulo; }).join(',') + ')'
+        + '&order=fecha_salida.desc&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo)' + emisorQ();
+      if (desde) qS += '&fecha_salida=gte.' + desde;
+      if (hasta) qS += '&fecha_salida=lte.' + hasta;
+      salidas = await api('stock_salidas','GET',null,qS);
+    }
+
+    // Combinar y enriquecer con nombre de artículo
+    const movs = [];
+    entradas.forEach(function(e) {
+      const art = inventarioCache.find(function(x){ return x.id_articulo === e.id_articulo; });
+      if (busq && !(art?.nombre||'').toLowerCase().includes(busq) && !(art?.codigo||'').toLowerCase().includes(busq)) return;
+      movs.push({
+        tipo:     'ENTRADA',
+        fecha:    e.fecha_entrada,
+        articulo: art ? (art.codigo ? art.codigo + ' — ' : '') + art.nombre : 'Art#' + e.id_articulo,
+        cantidad: e.cantidad,
+        area_destino: e.area_receptora ? (e.area_receptora.codigo ? e.area_receptora.codigo + ' ' : '') + e.area_receptora.nombre : '—',
+        area_origen:  e.area_origen ? (e.area_origen.codigo ? e.area_origen.codigo + ' ' : '') + e.area_origen.nombre : (e.proveedor ? e.proveedor.nombre : '—'),
+        motivo:   e.motivo || e.id_proveedor ? 'Compra' : (e.id_area_origen ? 'Transferencia' : e.cliente_nombre ? 'Devolución' : 'Ajuste'),
+        costo:    e.precio_costo_usd || 0,
+        moneda:   e.moneda_compra || monedaRef,
+        reversada: e.reversada,
+      });
+    });
+    salidas.forEach(function(s) {
+      const art = inventarioCache.find(function(x){ return x.id_articulo === s.id_articulo; });
+      if (busq && !(art?.nombre||'').toLowerCase().includes(busq) && !(art?.codigo||'').toLowerCase().includes(busq)) return;
+      movs.push({
+        tipo:     'SALIDA',
+        fecha:    s.fecha_salida,
+        articulo: art ? (art.codigo ? art.codigo + ' — ' : '') + art.nombre : 'Art#' + s.id_articulo,
+        cantidad: s.cantidad,
+        area_destino: s.area_receptora ? (s.area_receptora.codigo ? s.area_receptora.codigo + ' ' : '') + s.area_receptora.nombre : '—',
+        area_origen:  s.area_entrega ? (s.area_entrega.codigo ? s.area_entrega.codigo + ' ' : '') + s.area_entrega.nombre : '—',
+        motivo:   'Salida interna',
+        costo:    0,
+        moneda:   '',
+        reversada: s.reversada,
+      });
+    });
+
+    // Ordenar por fecha desc
+    movs.sort(function(a,b){ return b.fecha > a.fecha ? 1 : -1; });
+
+    if (!movs.length) {
+      res.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">Sin movimientos en el período seleccionado.</div>';
+      return;
+    }
+
+    const filas = movs.map(function(m) {
+      const esEntrada = m.tipo === 'ENTRADA';
+      const colorTipo = esEntrada ? '#22c55e' : '#fc8181';
+      const badgeTipo = '<span style="background:' + (esEntrada?'rgba(34,197,94,0.1)':'rgba(252,129,129,0.1)') + ';color:' + colorTipo + ';border:1px solid ' + colorTipo + ';border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700">' + m.tipo + '</span>';
+      const badgeRev  = m.reversada ? '<span style="background:rgba(252,129,129,0.08);color:#fc8181;border:1px solid rgba(252,129,129,0.3);border-radius:4px;padding:2px 6px;font-size:10px;margin-left:4px">REV</span>' : '';
+      const costoStr  = (esEntrada && m.costo > 0) ? (m.moneda === 'VES' ? 'Bs ' + fmtVES(m.costo) : simRef + ' ' + fmtUSD(m.costo)) : '—';
+
+      return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);' + (m.reversada?'opacity:0.5':'') + '">'
+        + '<td style="padding:8px 6px;font-size:12px">' + fmtFecha(m.fecha) + '</td>'
+        + '<td style="padding:8px 6px">' + badgeTipo + badgeRev + '</td>'
+        + '<td style="padding:8px 6px;font-size:12px">' + m.articulo + '</td>'
+        + '<td style="padding:8px 6px;text-align:right;font-family:var(--font-mono);font-size:12px">' + m.cantidad + '</td>'
+        + '<td style="padding:8px 6px;font-size:12px">' + m.area_origen + '</td>'
+        + '<td style="padding:8px 6px;font-size:12px">' + m.area_destino + '</td>'
+        + '<td style="padding:8px 6px;font-size:11px;color:var(--suave)">' + m.motivo + '</td>'
+        + (puedo('INVENTARIO','VER_COSTOS') ? '<td style="padding:8px 6px;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--suave)">' + costoStr + '</td>' : '')
+        + '</tr>';
+    });
+
+    const colCosto = puedo('INVENTARIO','VER_COSTOS') ? '<th style="padding:8px 6px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Costo</th>' : '';
+
+    res.innerHTML =
+      '<div style="font-size:11px;color:var(--suave);margin-bottom:8px">' + movs.length + ' movimientos</div>'
+      + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse">'
+      + '<thead><tr>'
+      + '<th style="padding:8px 6px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Fecha</th>'
+      + '<th style="padding:8px 6px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Tipo</th>'
+      + '<th style="padding:8px 6px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
+      + '<th style="padding:8px 6px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Cant.</th>'
+      + '<th style="padding:8px 6px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Origen</th>'
+      + '<th style="padding:8px 6px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Destino</th>'
+      + '<th style="padding:8px 6px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Motivo</th>'
+      + colCosto
+      + '</tr></thead><tbody>' + filas.join('') + '</tbody></table></div>';
+
+  } catch(e) {
+    res.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
   }
 }
 
