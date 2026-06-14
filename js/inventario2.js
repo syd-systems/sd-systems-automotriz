@@ -55,6 +55,8 @@ async function renderInventario(filtro) {
       + (puedo('INVENTARIO','VER_EOQ_ABC') ? '<button id="inv-tab-reorden" onclick="invCambiarVista(\'reorden\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">Reorden</button>' : '')
       + (puedo('INVENTARIO','VER_EOQ_ABC') ? '<button id="inv-tab-eoq"     onclick="invCambiarVista(\'eoq\')"     class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">EOQ</button>' : '')
       + (puedo('INVENTARIO','VER_MOVIMIENTOS') ? '<button id="inv-tab-movimientos" onclick="invCambiarVista(\'movimientos\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">📋 Movimientos</button>' : '')
+      + (sesionActual?.administrador ? '<button id="inv-tab-categorias" onclick="invCambiarVista(\'categorias\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">📦 Categorías</button>' : '')
+      + (sesionActual?.administrador ? '<button id="inv-tab-tipos" onclick="invCambiarVista(\'tipos\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">🔩 Tipos</button>' : '')
       + '</div>'
       + '<select id="inv-filtro-cat" onchange="invFiltrarCategoria()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todas las categorías</option>'
@@ -80,7 +82,7 @@ async function renderInventario(filtro) {
   const tablaCont = document.getElementById('tabla-inv-cont');
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   // Si estamos en vista movimientos, no recargar la tabla
-  if (_invVista === 'movimientos') return;
+  if (_invVista === 'movimientos' || _invVista === 'categorias' || _invVista === 'tipos') return;
 
   try {
     // Por defecto muestra todos — el checkbox "Solo con stock" activa el filtro
@@ -161,6 +163,8 @@ async function invRenderVista(items, vista) {
   else if (vista === 'reorden') invRenderReorden(items, cont);
   else if (vista === 'eoq') invRenderEOQ(items, cont);
   else if (vista === 'movimientos') await invRenderMovimientos(cont);
+  else if (vista === 'categorias') await invRenderCategorias(cont);
+  else if (vista === 'tipos')      await invRenderTipos(cont);
 }
 
 function invRenderTabla(items, cont) {
@@ -781,6 +785,161 @@ async function verHistorialEntradas(idArticulo) {
   } catch(e) {
     cont.innerHTML = '<div style="color:#fc8181;font-size:12px">Error: ' + e.message + '</div>';
   }
+}
+
+// ─── CATEGORÍAS DE INVENTARIO ───
+async function invRenderCategorias(cont) {
+  if (!cont) cont = document.getElementById('tabla-inv-cont');
+  if (!cont) return;
+  cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+  try {
+    const idEmisor = _empresaActiva?.id_emisor || 0;
+    const cats = await api('inv_categorias','GET',null,'?id_emisor=eq.'+idEmisor+'&order=nombre.asc&select=*') || [];
+    const filas = cats.map(function(c) {
+      return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+        +'<td style="padding:8px;font-family:var(--font-mono);color:var(--naranja);font-size:12px">'+(c.codigo||'—')+'</td>'
+        +'<td style="padding:8px;font-size:13px;font-weight:500">'+c.nombre+'</td>'
+        +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(c.descripcion||'')+'</td>'
+        +'<td style="padding:8px"><span class="badge '+(c.estado==='ACTIVO'?'badge-verde':'badge-rojo')+'">'+c.estado+'</span></td>'
+        +'<td style="padding:8px"><button class="btn-secundario" onclick="invAbrirCategoria('+c.id+')" style="font-size:11px;padding:4px 10px">Ver</button></td>'
+        +'</tr>';
+    }).join('');
+    cont.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+      +'<div style="font-size:18px;font-weight:600">📦 Categorías <span style="font-size:13px;color:var(--suave)">('+cats.length+')</span></div>'
+      +'<button class="btn-primario" onclick="invAbrirCategoria(null)" style="font-size:12px">+ Nueva</button>'
+      +'</div>'
+      +'<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Código</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Nombre</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Descripción</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Estado</th>'
+      +'<th style="padding:8px"></th>'
+      +'</tr></thead><tbody>'+(filas||'<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--suave)">Sin categorías registradas</td></tr>')
+      +'</tbody></table></div>';
+  } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>'; }
+}
+
+async function invAbrirCategoria(id) {
+  let item = null;
+  if (id) { const r = await api('inv_categorias','GET',null,'?id=eq.'+id)||[]; item=r[0]||null; }
+  const html = '<div class="form-grid">'
+    +'<div class="form-campo"><label>Código</label><input type="text" id="icat-codigo" value="'+(item?.codigo||'')+'" placeholder="Ej: CAT-01" style="text-transform:uppercase"></div>'
+    +'<div class="form-campo form-full"><label>Nombre *</label><input type="text" id="icat-nombre" value="'+(item?.nombre||'')+'" placeholder="Nombre de la categoría"></div>'
+    +'<div class="form-campo form-full"><label>Descripción</label><textarea id="icat-desc" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%">'+(item?.descripcion||'')+'</textarea></div>'
+    +'<div class="form-campo form-full"><label>Estado</label><select id="icat-estado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="ACTIVO"'+((!item||item.estado==="ACTIVO")?" selected":"")+'>Activo</option><option value="INACTIVO"'+(item?.estado==="INACTIVO"?" selected":"")+'>Inactivo</option></select></div>'
+    +'</div><input type="hidden" id="icat-id" value="'+(id||'')+'">'
+    +'<div class="alerta alerta-exito" id="icat-ok" style="margin-top:12px;display:none"></div>'
+    +'<div class="alerta alerta-error" id="icat-err" style="margin-top:8px;display:none"></div>';
+  document.getElementById('modal-param-titulo').textContent = id ? 'EDITAR CATEGORÍA' : 'NUEVA CATEGORÍA';
+  document.getElementById('modal-param-body').innerHTML = html;
+  document.getElementById('modal-param-footer-alertas').innerHTML = '';
+  document.getElementById('modal-param-guardar').onclick = invGuardarCategoria;
+  document.getElementById('modal-param-guardar').style.display = '';
+  const btnElim = document.getElementById('modal-param-eliminar');
+  if (btnElim) { btnElim.style.display = id ? '' : 'none'; window._paramKey='inv_categorias'; window._paramId=id; }
+  abrirModal('modal-param');
+  setTimeout(function(){ document.getElementById('icat-nombre')?.focus(); }, 100);
+}
+
+async function invGuardarCategoria() {
+  const id=document.getElementById('icat-id').value, nombre=document.getElementById('icat-nombre')?.value.trim();
+  const okEl=document.getElementById('icat-ok'), errEl=document.getElementById('icat-err');
+  if (!nombre) { errEl.textContent='El nombre es obligatorio.'; errEl.style.display='block'; return; }
+  const datos = { nombre, estado:document.getElementById('icat-estado')?.value||'ACTIVO',
+    codigo:document.getElementById('icat-codigo')?.value.trim().toUpperCase()||null,
+    descripcion:document.getElementById('icat-desc')?.value.trim()||null, id_emisor:_empresaActiva?.id_emisor||null };
+  try {
+    if (id) await api('inv_categorias','PATCH',datos,'?id=eq.'+id);
+    else    await api('inv_categorias','POST',datos);
+    _invCategoriasCache=[];
+    okEl.textContent='✓ Categoría '+(id?'actualizada':'creada')+'.'; okEl.style.display='block';
+    setTimeout(function(){ cerrarModal('modal-param'); invRenderCategorias(); }, 900);
+  } catch(e) { errEl.textContent='Error: '+e.message; errEl.style.display='block'; }
+}
+
+// ─── TIPOS DE ARTÍCULO ───
+async function invRenderTipos(cont) {
+  if (!cont) cont = document.getElementById('tabla-inv-cont');
+  if (!cont) return;
+  cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+  try {
+    const idEmisor = _empresaActiva?.id_emisor || 0;
+    const [tipos, cats] = await Promise.all([
+      api('inv_articulos_tipo','GET',null,'?id_emisor=eq.'+idEmisor+'&order=nombre.asc&select=*'),
+      api('inv_categorias','GET',null,'?id_emisor=eq.'+idEmisor+'&select=id,nombre,codigo'),
+    ]);
+    const catsMap = {}; (cats||[]).forEach(function(c){ catsMap[c.id]=c; });
+    const filas = (tipos||[]).map(function(t) {
+      const cat=catsMap[t.id_categoria];
+      return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+        +'<td style="padding:8px;font-family:var(--font-mono);color:var(--naranja);font-size:12px">'+(t.codigo||'—')+'</td>'
+        +'<td style="padding:8px;font-size:13px;font-weight:500">'+t.nombre+'</td>'
+        +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(cat?(cat.codigo?cat.codigo+' — ':'')+cat.nombre:'—')+'</td>'
+        +'<td style="padding:8px"><span class="badge '+(t.estado==='ACTIVO'?'badge-verde':'badge-rojo')+'">'+t.estado+'</span></td>'
+        +'<td style="padding:8px"><button class="btn-secundario" onclick="invAbrirTipo('+t.id+')" style="font-size:11px;padding:4px 10px">Ver</button></td>'
+        +'</tr>';
+    }).join('');
+    cont.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+      +'<div style="font-size:18px;font-weight:600">🔩 Tipos de Artículo <span style="font-size:13px;color:var(--suave)">('+(tipos?.length||0)+')</span></div>'
+      +'<button class="btn-primario" onclick="invAbrirTipo(null)" style="font-size:12px">+ Nuevo</button>'
+      +'</div>'
+      +'<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Código</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Nombre</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Categoría</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Estado</th>'
+      +'<th style="padding:8px"></th>'
+      +'</tr></thead><tbody>'+(filas||'<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--suave)">Sin tipos registrados</td></tr>')
+      +'</tbody></table></div>';
+  } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>'; }
+}
+
+async function invAbrirTipo(id) {
+  const idEmisor = _empresaActiva?.id_emisor || 0;
+  let item = null;
+  if (id) { const r=await api('inv_articulos_tipo','GET',null,'?id=eq.'+id)||[]; item=r[0]||null; }
+  const cats = await api('inv_categorias','GET',null,'?estado=eq.ACTIVO&id_emisor=eq.'+idEmisor+'&order=nombre.asc')||[];
+  const opcCats = cats.map(function(c) {
+    return '<option value="'+c.id+'"'+(item?.id_categoria===c.id?' selected':'')+'>'+
+      (c.codigo?c.codigo+' — ':'')+c.nombre+'</option>';
+  }).join('');
+  const html = '<div class="form-grid">'
+    +'<div class="form-campo"><label>Código</label><input type="text" id="itipo-codigo" value="'+(item?.codigo||'')+'" placeholder="Ej: TIPO-01" style="text-transform:uppercase"></div>'
+    +'<div class="form-campo form-full"><label>Nombre *</label><input type="text" id="itipo-nombre" value="'+(item?.nombre||'')+'" placeholder="Nombre del tipo"></div>'
+    +'<div class="form-campo form-full"><label>Categoría *</label><select id="itipo-categoria" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="">— Seleccionar —</option>'+opcCats+'</select></div>'
+    +'<div class="form-campo form-full"><label>Descripción</label><textarea id="itipo-desc" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%">'+(item?.descripcion||'')+'</textarea></div>'
+    +'<div class="form-campo form-full"><label>Estado</label><select id="itipo-estado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="ACTIVO"'+((!item||item.estado==="ACTIVO")?" selected":"")+'>Activo</option><option value="INACTIVO"'+(item?.estado==="INACTIVO"?" selected":"")+'>Inactivo</option></select></div>'
+    +'</div><input type="hidden" id="itipo-id" value="'+(id||'')+'">'
+    +'<div class="alerta alerta-exito" id="itipo-ok" style="margin-top:12px;display:none"></div>'
+    +'<div class="alerta alerta-error" id="itipo-err" style="margin-top:8px;display:none"></div>';
+  document.getElementById('modal-param-titulo').textContent = id ? 'EDITAR TIPO' : 'NUEVO TIPO';
+  document.getElementById('modal-param-body').innerHTML = html;
+  document.getElementById('modal-param-footer-alertas').innerHTML = '';
+  document.getElementById('modal-param-guardar').onclick = invGuardarTipo;
+  document.getElementById('modal-param-guardar').style.display = '';
+  const btnElim = document.getElementById('modal-param-eliminar');
+  if (btnElim) { btnElim.style.display = id ? '' : 'none'; window._paramKey='inv_articulos_tipo'; window._paramId=id; }
+  abrirModal('modal-param');
+  setTimeout(function(){ document.getElementById('itipo-nombre')?.focus(); }, 100);
+}
+
+async function invGuardarTipo() {
+  const id=document.getElementById('itipo-id').value, nombre=document.getElementById('itipo-nombre')?.value.trim();
+  const catId=parseInt(document.getElementById('itipo-categoria')?.value)||null;
+  const okEl=document.getElementById('itipo-ok'), errEl=document.getElementById('itipo-err');
+  if (!nombre) { errEl.textContent='El nombre es obligatorio.'; errEl.style.display='block'; return; }
+  if (!catId)  { errEl.textContent='Debe seleccionar una categoría.'; errEl.style.display='block'; return; }
+  const datos = { nombre, id_categoria:catId, estado:document.getElementById('itipo-estado')?.value||'ACTIVO',
+    codigo:document.getElementById('itipo-codigo')?.value.trim().toUpperCase()||null,
+    descripcion:document.getElementById('itipo-desc')?.value.trim()||null, id_emisor:_empresaActiva?.id_emisor||null };
+  try {
+    if (id) await api('inv_articulos_tipo','PATCH',datos,'?id=eq.'+id);
+    else    await api('inv_articulos_tipo','POST',datos);
+    okEl.textContent='✓ Tipo '+(id?'actualizado':'creado')+'.'; okEl.style.display='block';
+    setTimeout(function(){ cerrarModal('modal-param'); invRenderTipos(); }, 900);
+  } catch(e) { errEl.textContent='Error: '+e.message; errEl.style.display='block'; }
 }
 
 // ─── REVERSAR ENTRADA ───
