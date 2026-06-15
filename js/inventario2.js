@@ -1186,9 +1186,17 @@ async function invCargarMovimientos() {
         areas[nom].entradas += parseFloat(e.cantidad||0);
       });
       salidas.forEach(function(s) {
-        const nom = s.area_receptora ? (s.area_receptora.codigo?s.area_receptora.codigo+' ':'')+s.area_receptora.nombre : 'Sin área';
-        if (!areas[nom]) areas[nom] = { entradas:0, salidas:0 };
-        areas[nom].salidas += parseFloat(s.cantidad||0);
+        // La salida descuenta del área que entrega, no del área que recibe
+        const nomOrigen  = s.area_entrega   ? (s.area_entrega.codigo?s.area_entrega.codigo+' ':'')+s.area_entrega.nombre   : 'Sin área';
+        const nomDestino = s.area_receptora ? (s.area_receptora.codigo?s.area_receptora.codigo+' ':'')+s.area_receptora.nombre : null;
+        // Resta del área origen
+        if (!areas[nomOrigen]) areas[nomOrigen] = { entradas:0, salidas:0 };
+        areas[nomOrigen].salidas += parseFloat(s.cantidad||0);
+        // Suma al área destino (la recibe como entrada interna)
+        if (nomDestino) {
+          if (!areas[nomDestino]) areas[nomDestino] = { entradas:0, salidas:0 };
+          areas[nomDestino].entradas += parseFloat(s.cantidad||0);
+        }
       });
       const filas = Object.keys(areas).sort().map(function(a) {
         const v=areas[a], saldo=v.entradas-v.salidas;
@@ -1311,11 +1319,20 @@ async function invCargarMovimientos() {
         saldos[nom][artNom(art)] += parseFloat(e.cantidad||0);
       });
       salidas.forEach(function(s) {
-        const nom = s.area_receptora ? (s.area_receptora.codigo?s.area_receptora.codigo+' ':'')+s.area_receptora.nombre : 'Sin área';
         const art = getArt(s.id_articulo); if(!art) return;
-        if (!saldos[nom]) saldos[nom] = {};
-        if (!saldos[nom][artNom(art)]) saldos[nom][artNom(art)] = 0;
-        saldos[nom][artNom(art)] -= parseFloat(s.cantidad||0);
+        const cant = parseFloat(s.cantidad||0);
+        // Descuenta del área que entrega
+        const nomOrigen = s.area_entrega ? (s.area_entrega.codigo?s.area_entrega.codigo+' ':'')+s.area_entrega.nombre : 'Sin área';
+        if (!saldos[nomOrigen]) saldos[nomOrigen] = {};
+        if (!saldos[nomOrigen][artNom(art)]) saldos[nomOrigen][artNom(art)] = 0;
+        saldos[nomOrigen][artNom(art)] -= cant;
+        // Suma al área que recibe
+        if (s.area_receptora) {
+          const nomDestino = (s.area_receptora.codigo?s.area_receptora.codigo+' ':'')+s.area_receptora.nombre;
+          if (!saldos[nomDestino]) saldos[nomDestino] = {};
+          if (!saldos[nomDestino][artNom(art)]) saldos[nomDestino][artNom(art)] = 0;
+          saldos[nomDestino][artNom(art)] += cant;
+        }
       });
       let html = '';
       Object.keys(saldos).sort().forEach(function(area) {
