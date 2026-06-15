@@ -94,7 +94,7 @@ const PERMISOS_POR_MODULO = {
     { accion: 'SALIDA_STOCK',     label: 'Registrar salida de stock' },
     { accion: 'VER_MOVIMIENTOS',  label: 'Ver consulta de movimientos' },
     { accion: 'VER_CATEGORIAS',   label: 'Ver y gestionar Categorías de Inventario' },
-    { accion: 'VER_TIPOS',        label: 'Ver y gestionar Tipos de Artículo' },
+    { accion: 'VER_TIPOS',        label: 'Ver y gestionar Tipos de Consumible' },
     { accion: 'VER_COSTOS',       label: '🔒 Ver precios de costo y CPP' },
     { accion: 'VER_PRECIOS_VENTA',label: '🔒 Ver precios de venta' },
     { accion: 'VER_EOQ_ABC',      label: '🔒 Ver análisis ABC / EOQ / Reorden' },
