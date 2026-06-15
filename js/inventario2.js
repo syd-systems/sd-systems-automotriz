@@ -60,11 +60,7 @@ async function renderInventario(filtro) {
       + '</div>'
       + '<select id="inv-filtro-cat" onchange="invFiltrarCategoria()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todas las categorías</option>'
-      + '<option value="limpieza">🧹 Limpieza</option>'
-      + '<option value="oficina">📎 Oficina</option>'
-      + '<option value="otro">📦 Otro</option>'
-      + '<option value="repuesto">🔧 Artículo</option>'
-      + '<option value="venta">🛒 Venta</option>'
+      + (_invCategoriasCache.map ? _invCategoriasCache.map(function(c){ return '<option value="'+c.id+'">'+c.nombre+'</option>'; }).join('') : '')
       + '</select>'
       + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--suave);cursor:pointer">'
       + '<input type="checkbox" id="inv-mostrar-todos" onchange="renderInventario(document.getElementById(\'buscar-inv\')?.value||\'\')">'
@@ -87,6 +83,23 @@ async function renderInventario(filtro) {
   try {
     // Por defecto muestra todos — el checkbox "Solo con stock" activa el filtro
     const soloConStock = document.getElementById('inv-mostrar-todos')?.checked || false;
+    // Cargar cache de categorías si está vacío (para filtro y tabla)
+    if (!_invCategoriasCache || !_invCategoriasCache.length) {
+      try {
+        _invCategoriasCache = await api('inv_categorias','GET',null,
+          '?estado=eq.ACTIVO&order=nombre.asc' + (_empresaActiva ? '&id_emisor=eq.'+_empresaActiva.id_emisor : '')) || [];
+        // Actualizar opciones del filtro si ya existe
+        const selCat = document.getElementById('inv-filtro-cat');
+        if (selCat && _invCategoriasCache.length) {
+          const optsExtra = _invCategoriasCache.map(function(c){
+            return '<option value="'+c.id+'">'+c.nombre+'</option>';
+          }).join('');
+          if (!selCat.innerHTML.includes(optsExtra)) {
+            selCat.innerHTML = '<option value="">Todas las categorías</option>' + optsExtra;
+          }
+        }
+      } catch(e) {}
+    }
     const itemsTodos = await api('inventario', 'GET', null, '?order=nombre.asc&select=*' + emisorQ());
     const items = itemsTodos.filter(function(r) { return r.activo !== false; });
     const itemsFiltradosBase = soloConStock ? items.filter(function(r) { return parseFloat(r.stock_actual||0) > 0; }) : items;
@@ -122,9 +135,9 @@ async function renderInventario(filtro) {
 }
 
 function invFiltrarCategoria() {
-  var cat = document.getElementById('inv-filtro-cat').value;
-  var items = cat
-    ? inventarioCache.filter(function(r) { return (r.categoria || 'repuesto') === cat; })
+  var catId = document.getElementById('inv-filtro-cat').value;
+  var items = catId
+    ? inventarioCache.filter(function(r) { return String(r.id_categoria) === String(catId); })
     : inventarioCache;
   // Aplicar también filtro de búsqueda si existe
   var buscar = document.getElementById('buscar-inv');
@@ -179,7 +192,8 @@ function invRenderTabla(items, cont) {
       + '<td><div style="display:flex;align-items:center;gap:8px">'
       + '<span style="font-size:10px;font-weight:700;color:' + (abcColor[abc]||'#888') + ';background:' + (abcColor[abc]||'#888') + '22;padding:2px 6px;border-radius:3px">' + abc + '</span>'
       + '<div><div style="font-family:var(--font-mono);font-size:11px;color:var(--suave)">' + (r.codigo || '—')
-      + ' · <span style="color:var(--suave)">' + ({'repuesto':'🔧 Artículo','venta':'🛒 Venta','oficina':'📎 Oficina','limpieza':'🧹 Limpieza','otro':'📦 Otro'}[r.categoria] || r.categoria || '🔧 Artículo') + '</span></div>'
+      + (r.id_categoria ? ' · <span style="color:var(--suave)">' + (_invCategoriasCache.find(function(c){return c.id===r.id_categoria;})?.nombre || '') + '</span>' : '')
+      + '</div>'
       + '<div style="font-weight:500">' + r.nombre + '</div>'
       + (r.descripcion ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion + '</div>' : '') + '</div></div></td>'
       + '<td><span class="badge ' + (stockBajo ? 'badge-rojo' : 'badge-verde') + '">' + r.stock_actual + ' ' + (r.unidad || 'UND') + '</span>'
@@ -199,10 +213,12 @@ function invRenderTabla(items, cont) {
             + '<div style="font-size:10px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(r.precio_venta_usd) + '</div>'
             + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen.toFixed(1) + '%</div></td>'
           : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
-      + '<td><div style="display:flex;gap:8px">'
-      + '<button class="btn-secundario" onclick="verFichaInventario(' + r.id_articulo + ')">Ver</button>'
-      + '<button class="btn-secundario" style="border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="abrirStockArticulo(' + r.id_articulo + ',\'' + r.nombre.replace(/'/g,"\\'"  ) + '\')" >Stock</button>'
-
+      + '<td><div style="display:flex;gap:4px;flex-wrap:wrap">'
+      + '<button class="btn-secundario" onclick="verFichaInventario(' + r.id_articulo + ')" style="font-size:11px;padding:5px 9px">Ver</button>'
+      + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" style="font-size:11px;padding:5px 9px;border-color:rgba(34,197,94,0.4);color:#22c55e" onclick="abrirStockArticulo(' + r.id_articulo + ',\'' + r.nombre.replace(/'/g,"\\'"  ) + '\')" >+ Stock</button>' : '')
+      + (puedo('INVENTARIO','SALIDA_STOCK') ? '<button class="btn-secundario" style="font-size:11px;padding:5px 9px;border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="abrirSalidaStock(' + r.id_articulo + ',\'' + r.nombre.replace(/'/g,"\\'"  ) + '\')" >- Salida</button>' : '')
+      + (puedo('INVENTARIO','EDITAR') ? '<button class="btn-secundario" style="font-size:11px;padding:5px 9px" onclick="abrirEditarInventario(' + r.id_articulo + ')">✏</button>' : '')
+      + (puedo('INVENTARIO','ELIMINAR') ? '<button class="btn-secundario" style="font-size:11px;padding:5px 9px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="eliminarInventario(' + r.id_articulo + ')">🗑</button>' : '')
       + '</div></td></tr>';
   }).join('');
   cont.innerHTML = '<div class="tabla-container"><table><thead><tr>'
