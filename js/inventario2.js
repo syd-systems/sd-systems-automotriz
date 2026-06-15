@@ -591,7 +591,7 @@ async function guardarEntradaStock() {
   }
 }
 
-// ─── CATEGORÍAS Y TIPOS DE ARTÍCULO ───
+// ─── CATEGORÍAS Y TIPOS DE CONSUMIBLE ───
 let _invCategoriasCache = [];
 
 async function invCargarCategorias(selCatId) {
@@ -875,7 +875,7 @@ async function invGuardarCategoria() {
   } catch(e) { errEl.textContent='Error: '+e.message; errEl.style.display='block'; }
 }
 
-// ─── TIPOS DE ARTÍCULO ───
+// ─── TIPOS DE CONSUMIBLE ───
 async function invRenderTipos(cont) {
   if (!cont) cont = document.getElementById('tabla-inv-cont');
   if (!cont) return;
