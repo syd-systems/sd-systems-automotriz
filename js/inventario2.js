@@ -1284,28 +1284,30 @@ async function invCargarMovimientos() {
       entradas.forEach(function(e) {
         const art=getArt(e.id_articulo); if(!art) return;
         const nom=artNom(art);
-        if (!rot[nom]) rot[nom] = { total:0, movs:0 };
-        rot[nom].total += parseFloat(e.cantidad||0);
+        if (!rot[nom]) rot[nom] = { entradas:0, salidas:0, movs:0 };
+        rot[nom].entradas += parseFloat(e.cantidad||0);
         rot[nom].movs++;
       });
       salidas.forEach(function(s) {
         const art=getArt(s.id_articulo); if(!art) return;
         const nom=artNom(art);
-        if (!rot[nom]) rot[nom] = { total:0, movs:0 };
-        rot[nom].total += parseFloat(s.cantidad||0);
+        if (!rot[nom]) rot[nom] = { entradas:0, salidas:0, movs:0 };
+        rot[nom].salidas += parseFloat(s.cantidad||0);
         rot[nom].movs++;
       });
-      const filas = Object.keys(rot).sort(function(a,b){ return rot[b].total-rot[a].total; }).map(function(nom) {
-        const r=rot[nom];
+      const filas = Object.keys(rot).sort(function(a,b){ return (rot[b].entradas+rot[b].salidas)-(rot[a].entradas+rot[a].salidas); }).map(function(nom) {
+        const r=rot[nom], saldo=r.entradas-r.salidas;
         return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
           +'<td style="padding:8px;font-size:12px">'+nom+'</td>'
-          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono)">'+r.movs+'</td>'
-          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">'+r.total+'</td></tr>';
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#22c55e">'+r.entradas+'</td>'
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#fc8181">'+r.salidas+'</td>'
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:'+(saldo>=0?'var(--naranja)':'#fc8181')+'">'+saldo+'</td></tr>';
       });
       res.innerHTML = '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
         +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Consumible</th>'
-        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Movimientos</th>'
-        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Uds. Movidas (E+S)</th>'
+        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Entradas</th>'
+        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Salidas</th>'
+        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Saldo</th>'
         +'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>';
 
     } else if (agrup === 'saldo_area') {
