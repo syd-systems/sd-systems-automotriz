@@ -1145,16 +1145,24 @@ async function invCargarMovimientos() {
 
     } else if (agrup === 'categoria') {
       const cats = {};
+      // Helper para obtener nombre de categoría desde cache
+      const getCatNom = function(art) {
+        if (art.id_categoria) {
+          const c = _invCategoriasCache.find(function(c){ return c.id === art.id_categoria; });
+          if (c) return (c.codigo ? c.codigo + ' — ' : '') + c.nombre.toUpperCase();
+        }
+        return (art.categoria || 'SIN CATEGORÍA').toUpperCase();
+      };
       entradas.forEach(function(e) {
         const art = getArt(e.id_articulo); if (!art) return;
-        const cat = art.categoria || 'Sin categoría';
+        const cat = getCatNom(art);
         if (!cats[cat]) cats[cat] = { entradas:0, salidas:0, costo:0 };
         cats[cat].entradas += parseFloat(e.cantidad||0);
         cats[cat].costo    += parseFloat(e.precio_costo_usd||0) * parseFloat(e.cantidad||0);
       });
       salidas.forEach(function(s) {
         const art = getArt(s.id_articulo); if (!art) return;
-        const cat = art.categoria || 'Sin categoría';
+        const cat = getCatNom(art);
         if (!cats[cat]) cats[cat] = { entradas:0, salidas:0, costo:0 };
         cats[cat].salidas += parseFloat(s.cantidad||0);
       });
@@ -1162,7 +1170,7 @@ async function invCargarMovimientos() {
         const c = cats[cat], saldo = c.entradas - c.salidas;
         const costoTd = puedo('INVENTARIO','VER_COSTOS') ? '<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-size:12px">'+simRef+' '+fmtUSD(c.costo)+'</td>' : '';
         return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
-          +'<td style="padding:8px;font-size:12px">'+cat+'</td>'
+          +'<td style="padding:8px;font-size:12px;font-weight:600;letter-spacing:0.5px">'+cat+'</td>'
           +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#22c55e">'+c.entradas+'</td>'
           +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#fc8181">'+c.salidas+'</td>'
           +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:'+(saldo>=0?'var(--naranja)':'#fc8181')+'">'+saldo+'</td>'
