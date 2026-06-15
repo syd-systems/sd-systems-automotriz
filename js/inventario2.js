@@ -65,7 +65,7 @@ async function renderInventario(filtro) {
       + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--suave);cursor:pointer">'
       + '<input type="checkbox" id="inv-mostrar-todos" onchange="renderInventario(document.getElementById(\'buscar-inv\')?.value||\'\')">'
       + 'Solo con stock</label>'
-      + '<input type="text" id="buscar-inv" placeholder="Buscar artículo o código..." '
+      + '<input type="text" id="buscar-inv" placeholder="Buscar consumible o código..." '
       + 'onkeyup="renderInventario(this.value)" '
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\');}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:180px">'
@@ -222,8 +222,8 @@ function invRenderTabla(items, cont) {
       + '</div></td></tr>';
   }).join('');
   cont.innerHTML = '<div class="tabla-container"><table><thead><tr>'
-    + '<th>Artículo</th><th>Stock</th><th>Precio Costo</th><th>Precio Venta</th><th>Acción</th>'
-    + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin artículos registrados</td></tr>') + '</tbody></table></div>';
+    + '<th>Consumible</th><th>Stock</th><th>Precio Costo</th><th>Precio Venta</th><th>Acción</th>'
+    + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin consumibles registrados</td></tr>') + '</tbody></table></div>';
 }
 
 function invRenderABC(items, cont) {
@@ -256,7 +256,7 @@ function invRenderABC(items, cont) {
     + '</div>'
     + '<div style="padding:8px 14px;background:rgba(255,107,0,0.08);border-left:3px solid var(--naranja);border-radius:4px;margin-bottom:10px;font-size:11px;color:var(--suave)">'
     + '<b style="color:var(--naranja)">FIFO / PEPS:</b> El stock existente (ingresado primero) se consume antes que el nuevo. Los items Clase A deben rotarse con mayor control. Registra la fecha de ingreso al editar cada repuesto.</div>'
-    + '<div class="tabla-container"><table><thead><tr><th>Clase</th><th>Artículo</th><th style="text-align:center">Stock</th><th>P. Venta</th><th>Valor Inventario</th><th>% Total</th></tr></thead><tbody>'
+    + '<div class="tabla-container"><table><thead><tr><th>Clase</th><th>Consumible</th><th style="text-align:center">Stock</th><th>P. Venta</th><th>Valor Inventario</th><th>% Total</th></tr></thead><tbody>'
     + filasHTML + '</tbody></table></div>';
 }
 
@@ -283,7 +283,7 @@ function invRenderReorden(items, cont) {
     + '<b style="color:var(--naranja)">Punto de Reorden = (Demanda Diaria × Lead Time) + Stock de Seguridad.</b> '
     + 'JIT: Pedir solo lo necesario al alcanzar el punto de reorden. Configura Demanda Anual y Lead Time en cada repuesto.</div>'
     + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
-    + '<th>Artículo</th><th style="text-align:center">Stock</th><th style="text-align:center">Mínimo</th><th style="text-align:center">Dem./Día</th><th style="text-align:center">Lead Time</th><th style="text-align:center">Punto Reorden</th><th style="text-align:center">Estado</th>'
+    + '<th>Consumible</th><th style="text-align:center">Stock</th><th style="text-align:center">Mínimo</th><th style="text-align:center">Dem./Día</th><th style="text-align:center">Lead Time</th><th style="text-align:center">Punto Reorden</th><th style="text-align:center">Estado</th>'
     + '</tr></thead><tbody>'
     + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos</td></tr>')
     + '</tbody></table></div>';
@@ -308,9 +308,9 @@ function invRenderEOQ(items, cont) {
   }).join('');
   cont.innerHTML = '<div style="padding:8px 14px;background:var(--gris2);border-radius:6px;margin-bottom:10px;font-size:11px;color:var(--suave)">'
     + '<b style="color:var(--naranja)">EOQ = √(2 × D × S / H)</b> donde D = demanda anual, S = costos operativos ($25 default), H = costo de mantenimiento (20% del precio costo). '
-    + 'Configura <b>Demanda Anual</b> y <b>Costos Operativos</b> en la edición de cada artículo.</div>'
+    + 'Configura <b>Demanda Anual</b> y <b>Costos Operativos</b> en la edición de cada consumible.</div>'
     + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
-    + '<th>Artículo</th><th style="text-align:center">Demanda Anual</th><th style="text-align:center">Costos Operativos</th><th style="text-align:center">Costo Mant.</th><th style="text-align:center">EOQ Óptimo</th><th style="text-align:center">Pedidos/Año</th><th style="text-align:center">Frecuencia</th>'
+    + '<th>Consumible</th><th style="text-align:center">Demanda Anual</th><th style="text-align:center">Costos Operativos</th><th style="text-align:center">Costo Mant.</th><th style="text-align:center">EOQ Óptimo</th><th style="text-align:center">Pedidos/Año</th><th style="text-align:center">Frecuencia</th>'
     + '</tr></thead><tbody>'
     + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos</td></tr>')
     + '</tbody></table></div>';
@@ -353,7 +353,7 @@ function verFichaInventario(id) {
         : '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
           + '<div style="font-size:13px;color:#555">🔒</div></div>')
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Categoría</div>'
-    + '<div style="font-size:13px">' + (({'repuesto':'🔧 Artículo','venta':'🛒 Venta','oficina':'📎 Oficina','limpieza':'🧹 Limpieza','otro':'📦 Otro'}[r.categoria]) || r.categoria || '—') + '</div></div>'
+    + '<div style="font-size:13px">' + (({'repuesto':'🔧 Consumible','venta':'🛒 Venta','oficina':'📎 Oficina','limpieza':'🧹 Limpieza','otro':'📦 Otro'}[r.categoria]) || r.categoria || '—') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Valor Inventario</div>'
     + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + fmtBs(parseFloat(r.precio_venta_usd||0)*parseFloat(r.stock_actual||0)*_tasaVigente) + ' Bs</div>'
     + '<div style="font-size:11px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(parseFloat(r.precio_venta_usd||0)*parseFloat(r.stock_actual||0)) + '</div></div>'
@@ -725,7 +725,7 @@ async function guardarInventario() {
     } else {
       await api('inventario', 'POST', datos);
     }
-    okEl.textContent = '✓ Artículo guardado.'; okEl.style.display = 'block';
+    okEl.textContent = '✓ Consumible guardado.'; okEl.style.display = 'block';
     setTimeout(function() { cerrarModal('modal-inventario'); document.getElementById('contenido-principal').innerHTML=''; renderInventario(); }, 1000);
   } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
 }
@@ -898,7 +898,7 @@ async function invRenderTipos(cont) {
     }).join('');
     cont.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
-      +'<div style="font-size:18px;font-weight:600">🔩 Tipos de Artículo <span style="font-size:13px;color:var(--suave)">('+(tipos?.length||0)+')</span></div>'
+      +'<div style="font-size:18px;font-weight:600">🔩 Tipos de Consumible <span style="font-size:13px;color:var(--suave)">('+(tipos?.length||0)+')</span></div>'
       +'<button class="btn-primario" onclick="invAbrirTipo(null)" style="font-size:12px">+ Nuevo</button>'
       +'</div>'
       +'<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
@@ -1042,7 +1042,7 @@ async function invRenderMovimientos(cont) {
     + '<select id="mov-tipo" onchange="invCargarMovimientos()" style="' + INP + '">'
     + '<option value="">Todos</option><option value="ENTRADA">Entradas</option><option value="SALIDA">Salidas</option>'
     + '</select></div>'
-    + '<div id="mov-filtro-art-cont"><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Artículo</label>'
+    + '<div id="mov-filtro-art-cont"><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Consumible</label>'
     + '<input type="text" id="mov-articulo" placeholder="Buscar..." onkeyup="invCargarMovimientos()" style="' + INP + ';min-width:160px"></div>'
     + '</div>'
     + '<div id="mov-resultado"><div style="text-align:center;color:var(--suave);padding:40px">Cargando...</div></div>';
@@ -1072,7 +1072,7 @@ async function invCargarMovimientos() {
       if (arts) inventarioCache = arts;
     }
     const idsArticulos = inventarioCache.map(function(x){ return x.id_articulo; });
-    if (!idsArticulos.length) { res.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">Sin artículos registrados.</div>'; return; }
+    if (!idsArticulos.length) { res.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">Sin consumibles registrados.</div>'; return; }
     const inClause = idsArticulos.join(',');
 
     // Cargar entradas y salidas según filtro
@@ -1122,7 +1122,7 @@ async function invCargarMovimientos() {
         + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
         + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Fecha</th>'
         + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Tipo</th>'
-        + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
+        + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Consumible</th>'
         + '<th style="text-align:right;padding:7px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Cant.</th>'
         + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Origen</th>'
         + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Destino</th>'
@@ -1238,7 +1238,7 @@ async function invCargarMovimientos() {
           +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Stock Actual</th>'
         : '';
       res.innerHTML = '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
-        +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
+        +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Consumible</th>'
         +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Entradas</th>'
         +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Salidas</th>'
         +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Saldo</th>'
@@ -1294,7 +1294,7 @@ async function invCargarMovimientos() {
           +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">'+r.total+'</td></tr>';
       });
       res.innerHTML = '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
-        +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
+        +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Consumible</th>'
         +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Movimientos</th>'
         +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Unidades Totales</th>'
         +'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>';
@@ -1326,7 +1326,7 @@ async function invCargarMovimientos() {
         });
         html += '<div style="margin-bottom:20px"><div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:8px 14px;margin-bottom:6px;font-family:var(--font-mono);color:var(--naranja)">'+area+'</div>'
           +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
-          +'<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
+          +'<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Consumible</th>'
           +'<th style="text-align:right;padding:7px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Saldo</th>'
           +'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>';
       });
