@@ -159,8 +159,12 @@ async function invCambiarVista(vista) {
     btn.style.background = activo ? 'var(--naranja)' : 'transparent';
     btn.style.color = activo ? '#fff' : 'var(--suave)';
   });
+  // Ocultar "+ Nuevo Consumible" en vistas de administración
+  const btnNuevo = document.querySelector('#panel-inventario .btn-primario[onclick="abrirNuevoInventario()"]');
+  if (btnNuevo) {
+    btnNuevo.style.display = (vista === 'categorias' || vista === 'tipos') ? 'none' : '';
+  }
   const contTabla = document.getElementById('tabla-inv-cont');
-  const contMovs  = document.getElementById('inv-movimientos-cont');
   if (vista === 'movimientos') {
     await invRenderMovimientos(contTabla);
   } else {
