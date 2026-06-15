@@ -354,10 +354,8 @@ function verFichaInventario(id) {
         : '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
           + '<div style="font-size:13px;color:#555">🔒</div></div>')
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Categoría</div>'
-    + '<div style="font-size:13px">' + (({'repuesto':'🔧 Consumible','venta':'🛒 Venta','oficina':'📎 Oficina','limpieza':'🧹 Limpieza','otro':'📦 Otro'}[r.categoria]) || r.categoria || '—') + '</div></div>'
+    + '<div style="font-size:13px">' + (_invCategoriasCache.find(function(c){return c.id===r.id_categoria;})?.nombre || r.categoria || '—') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Valor Inventario</div>'
-    + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + fmtBs(parseFloat(r.precio_venta_usd||0)*parseFloat(r.stock_actual||0)*_tasaVigente) + ' Bs</div>'
-    + '<div style="font-size:11px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(parseFloat(r.precio_venta_usd||0)*parseFloat(r.stock_actual||0)) + '</div></div>'
     + '</div>';
 
   // Botones de acción en el footer
