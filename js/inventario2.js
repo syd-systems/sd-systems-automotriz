@@ -821,7 +821,7 @@ async function invRenderCategorias(cont) {
     }).join('');
     cont.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
-      +'<div style="font-size:18px;font-weight:600">📦 Categorías <span style="font-size:13px;color:var(--suave)">('+cats.length+')</span></div>'
+      +'<div style="font-size:18px;font-weight:600">📦 Categorías de Inventario <span style="font-size:13px;color:var(--suave)">('+cats.length+')</span></div>'
       +'<button class="btn-primario" onclick="invAbrirCategoria(null)" style="font-size:12px">+ Nueva</button>'
       +'</div>'
       +'<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
