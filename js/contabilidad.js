@@ -283,7 +283,8 @@ async function contVerAsiento(id) {
     const totalHaber    = lineas.reduce(function(s,l){ return s+parseFloat(l.haber_usd||0); }, 0);
     const totalDebeVes  = lineas.reduce(function(s,l){ return s+parseFloat(l.debe_ves||0); }, 0);
     const totalHaberVes = lineas.reduce(function(s,l){ return s+parseFloat(l.haber_ves||0); }, 0);
-    const cuadra = Math.abs(totalDebeVes - totalHaberVes) < 0.01 || Math.abs(totalDebe - totalHaber) < 0.01;
+    const cuadra     = Math.abs(totalDebeVes - totalHaberVes) < 0.01 || Math.abs(totalDebe - totalHaber) < 0.01;
+    const monLabelI   = (ast.moneda_base || ((_empresaActiva?.moneda_secundaria)||'USD')).toUpperCase();
 
     document.getElementById('cont-asiento-contenido').innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px">'
