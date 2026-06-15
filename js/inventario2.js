@@ -213,12 +213,9 @@ function invRenderTabla(items, cont) {
             + '<div style="font-size:10px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(r.precio_venta_usd) + '</div>'
             + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen.toFixed(1) + '%</div></td>'
           : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
-      + '<td><div style="display:flex;gap:4px;flex-wrap:wrap">'
-      + '<button class="btn-secundario" onclick="verFichaInventario(' + r.id_articulo + ')" style="font-size:11px;padding:5px 9px">Ver</button>'
-      + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" style="font-size:11px;padding:5px 9px;border-color:rgba(34,197,94,0.4);color:#22c55e" onclick="abrirStockArticulo(' + r.id_articulo + ',\'' + r.nombre.replace(/'/g,"\\'"  ) + '\')" >+ Stock</button>' : '')
-      + (puedo('INVENTARIO','SALIDA_STOCK') ? '<button class="btn-secundario" style="font-size:11px;padding:5px 9px;border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="abrirSalidaStock(' + r.id_articulo + ',\'' + r.nombre.replace(/'/g,"\\'"  ) + '\')" >- Salida</button>' : '')
-      + (puedo('INVENTARIO','EDITAR') ? '<button class="btn-secundario" style="font-size:11px;padding:5px 9px" onclick="abrirEditarInventario(' + r.id_articulo + ')">✏</button>' : '')
-      + (puedo('INVENTARIO','ELIMINAR') ? '<button class="btn-secundario" style="font-size:11px;padding:5px 9px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="eliminarInventario(' + r.id_articulo + ')">🗑</button>' : '')
+      + '<td><div style="display:flex;gap:6px">'
+      + '<button class="btn-secundario" onclick="verFichaInventario(' + r.id_articulo + ')">Ver</button>'
+      + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" style="border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="abrirStockArticulo(' + r.id_articulo + ',\'' + r.nombre.replace(/'/g,"\\'"  ) + '\')" >Stock</button>' : '')
       + '</div></td></tr>';
   }).join('');
   cont.innerHTML = '<div class="tabla-container"><table><thead><tr>'
