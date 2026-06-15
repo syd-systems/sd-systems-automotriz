@@ -1305,7 +1305,7 @@ async function invCargarMovimientos() {
       res.innerHTML = '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
         +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Consumible</th>'
         +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Movimientos</th>'
-        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Unidades Totales</th>'
+        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Uds. Movidas (E+S)</th>'
         +'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>';
 
     } else if (agrup === 'saldo_area') {
