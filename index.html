@@ -1338,17 +1338,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260613071"></script>
-<script src="js/parametros.js?v=20260613071"></script>
-<script src="js/empresas.js?v=20260613071"></script>
-<script src="js/facturacion.js?v=20260613071"></script>
-<script src="js/inventario.js?v=20260613071"></script>
-<script src="js/contabilidad.js?v=20260613071"></script>
-<script src="js/pagos.js?v=20260613071"></script>
-<script src="js/vehiculos.js?v=20260613071"></script>
-<script src="js/catalogo.js?v=20260613071"></script>
-<script src="js/inventario2.js?v=20260613071"></script>
-<script src="js/ordenes.js?v=20260613071"></script>
+<script src="js/core.js?v=20260613072"></script>
+<script src="js/parametros.js?v=20260613072"></script>
+<script src="js/empresas.js?v=20260613072"></script>
+<script src="js/facturacion.js?v=20260613072"></script>
+<script src="js/inventario.js?v=20260613072"></script>
+<script src="js/contabilidad.js?v=20260613072"></script>
+<script src="js/pagos.js?v=20260613072"></script>
+<script src="js/vehiculos.js?v=20260613072"></script>
+<script src="js/catalogo.js?v=20260613072"></script>
+<script src="js/inventario2.js?v=20260613072"></script>
+<script src="js/ordenes.js?v=20260613072"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2477,27 +2477,27 @@
 
       <div class="form-grid">
         <div class="form-campo">
+          <label>Selección Tipo Categoría</label>
+          <select id="inv-categoria" onchange="invCargarTiposArticulo()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar Categoría —</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Selección Tipo Consumible</label>
+          <select id="inv-tipo-articulo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar Tipo —</option>
+          </select>
+        </div>
+        <div class="form-campo">
           <label>Código</label>
           <input type="text" id="inv-codigo" placeholder="Ej: REP-001" style="text-transform:uppercase">
         </div>
         <div class="form-campo form-full">
           <label>Nombre del Consumible *</label>
-          <input type="text" id="inv-nombre" placeholder="Ej: Filtro de aceite Bosch">
+          <input type="text" id="inv-nombre" placeholder="Nombre del consumible">
         </div>
         <div class="form-campo">
-          <label>Categoría</label>
-          <select id="inv-categoria" onchange="invCargarTiposArticulo()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar categoría —</option>
-          </select>
-        </div>
-        <div class="form-campo">
-          <label>Tipo de Consumible</label>
-          <select id="inv-tipo-articulo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar tipo —</option>
-          </select>
-        </div>
-        <div class="form-campo">
-          <label>Selección Unidad</label>
+          <label>Selección Características Físicas</label>
           <select id="inv-unidad" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
             <option value="JGO">JGO — Juego</option>
             <option value="KG">KG — Kilogramo</option>
