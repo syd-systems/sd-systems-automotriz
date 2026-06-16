@@ -324,7 +324,7 @@ function cerrarMenuMovil() {
 // ─── CIERRE POR INACTIVIDAD (solo operadores) ───
 let timerInactividad = null;
 let contadorAviso   = null;
-const MINUTOS_INACTIVIDAD = 5;
+const MINUTOS_INACTIVIDAD = 10;
 
 function iniciarTimerInactividad() {
   // Solo aplica a operadores
