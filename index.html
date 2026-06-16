@@ -1338,17 +1338,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260616008"></script>
-<script src="js/parametros.js?v=20260616008"></script>
-<script src="js/empresas.js?v=20260616008"></script>
-<script src="js/facturacion.js?v=20260616008"></script>
-<script src="js/inventario.js?v=20260616008"></script>
-<script src="js/contabilidad.js?v=20260616008"></script>
-<script src="js/pagos.js?v=20260616008"></script>
-<script src="js/vehiculos.js?v=20260616008"></script>
-<script src="js/catalogo.js?v=20260616008"></script>
-<script src="js/inventario2.js?v=20260616008"></script>
-<script src="js/ordenes.js?v=20260616008"></script>
+<script src="js/core.js?v=20260616009"></script>
+<script src="js/parametros.js?v=20260616009"></script>
+<script src="js/empresas.js?v=20260616009"></script>
+<script src="js/facturacion.js?v=20260616009"></script>
+<script src="js/inventario.js?v=20260616009"></script>
+<script src="js/contabilidad.js?v=20260616009"></script>
+<script src="js/pagos.js?v=20260616009"></script>
+<script src="js/vehiculos.js?v=20260616009"></script>
+<script src="js/catalogo.js?v=20260616009"></script>
+<script src="js/inventario2.js?v=20260616009"></script>
+<script src="js/ordenes.js?v=20260616009"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3415,24 +3415,18 @@
         <div class="form-campo form-full" style="margin-top:4px">
           <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;border-bottom:1px solid rgba(255,107,0,0.2);padding-bottom:4px">📤 Quien Entrega</div>
         </div>
-        <div class="form-campo form-full">
-          <label>Área que Entrega *</label>
-          <select id="salida-area-entrega" onchange="onSelAreaEntrega()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar área —</option>
-          </select>
-        </div>
-        <div class="form-campo form-full">
-          <label>Empleado que Entrega *</label>
-          <select id="salida-empleado-entrega" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar área primero —</option>
-          </select>
-        </div>
         <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
-          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🔐 Validación de quien Entrega</div>
-          <label style="font-size:12px">Contraseña del empleado que entrega *</label>
-          <input type="password" id="salida-clave-entrega" placeholder="Ingrese su contraseña para confirmar"
+          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <div style="font-size:13px;color:var(--texto)">Usuario: <span id="salida-entrega-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
+            <div style="font-size:11px;color:var(--suave)" id="salida-entrega-area">—</div>
+          </div>
+          <input type="hidden" id="salida-area-entrega">
+          <input type="hidden" id="salida-empleado-entrega">
+          <label style="font-size:12px">Contraseña *</label>
+          <input type="password" id="salida-clave-entrega" placeholder="Ingrese su contraseña para autorizar"
             style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">
-          <div style="font-size:11px;color:var(--suave);margin-top:4px">El empleado que entrega debe ingresar su contraseña para autorizar la salida.</div>
+          <div style="font-size:11px;color:var(--suave);margin-top:4px">Confirme con su contraseña para autorizar la salida.</div>
         </div>
 
         <!-- Área y Empleado que RECIBE -->
