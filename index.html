@@ -1338,17 +1338,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260616001"></script>
-<script src="js/parametros.js?v=20260616001"></script>
-<script src="js/empresas.js?v=20260616001"></script>
-<script src="js/facturacion.js?v=20260616001"></script>
-<script src="js/inventario.js?v=20260616001"></script>
-<script src="js/contabilidad.js?v=20260616001"></script>
-<script src="js/pagos.js?v=20260616001"></script>
-<script src="js/vehiculos.js?v=20260616001"></script>
-<script src="js/catalogo.js?v=20260616001"></script>
-<script src="js/inventario2.js?v=20260616001"></script>
-<script src="js/ordenes.js?v=20260616001"></script>
+<script src="js/core.js?v=20260616002"></script>
+<script src="js/parametros.js?v=20260616002"></script>
+<script src="js/empresas.js?v=20260616002"></script>
+<script src="js/facturacion.js?v=20260616002"></script>
+<script src="js/inventario.js?v=20260616002"></script>
+<script src="js/contabilidad.js?v=20260616002"></script>
+<script src="js/pagos.js?v=20260616002"></script>
+<script src="js/vehiculos.js?v=20260616002"></script>
+<script src="js/catalogo.js?v=20260616002"></script>
+<script src="js/inventario2.js?v=20260616002"></script>
+<script src="js/ordenes.js?v=20260616002"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2999,15 +2999,16 @@
         </div>
         <div class="form-campo">
           <label>Teléfono Móvil *</label>
-          <input type="text" id="emp-tel-movil" placeholder="0414-0000000">
+          <input type="text" id="emp-tel-movil" placeholder="0414-0000000" style="width:100%">
         </div>
         <div class="form-campo">
           <label>Teléfono Fijo</label>
-          <input type="text" id="emp-tel-fijo" placeholder="0212-0000000">
+          <input type="text" id="emp-tel-fijo" placeholder="0212-0000000" style="width:100%">
         </div>
         <div class="form-campo form-full">
           <label>Dirección *</label>
-          <input type="text" id="emp-direccion" placeholder="Dirección completa">
+          <textarea id="emp-direccion" placeholder="Dirección completa" rows="2"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;width:100%"></textarea>
         </div>
         <div class="form-campo form-full">
           <label>Foto Documento de Identidad <span style="font-weight:400;color:var(--suave);font-size:11px">(Opcional)</span></label>
@@ -3043,7 +3044,7 @@
         </div>
         <div class="form-campo">
           <label>Área</label>
-          <select id="emp-area"></select>
+          <select id="emp-area" onchange="onSelAreaEmpleado()"></select>
         </div>
         <div class="form-campo">
           <label>Cargo</label>
@@ -3140,7 +3141,7 @@
           <label>Número de Cuenta *</label>
           <div style="display:flex;align-items:center;gap:0">
             <input type="text" id="emp-cod-banco" maxlength="4" readonly
-              style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--naranja);background:var(--gris3);border:1px solid var(--borde);border-right:none;padding:11px 10px;border-radius:5px 0 0 5px;width:60px;outline:none;cursor:not-allowed;text-align:center">
+              style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--naranja);background:var(--gris3);border:1px solid var(--borde);border-right:none;padding:11px 14px;border-radius:5px 0 0 5px;width:90px;outline:none;cursor:not-allowed;text-align:center">
             <input type="text" id="emp-num-cuenta-resto" maxlength="16" placeholder="0000 0000 0000 0000"
               oninput="this.value=this.value.replace(/[^0-9]/g,'');sincronizarNumeroCuenta()"
               maxlength="16"
