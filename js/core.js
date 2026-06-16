@@ -2237,9 +2237,30 @@ async function notifConfirmar() {
   const btn = document.getElementById('btn-notif-confirmar');
   if (btn) { btn.disabled = true; btn.textContent = 'Confirmando...'; }
   try {
+    // 1. Marcar notificación como APROBADO
     await api('notificaciones','PATCH',
       { estado: 'APROBADO', fecha_respuesta: new Date().toISOString() },
       '?id=eq.'+_notifPendienteActual.id);
+
+    // 2. Sumar stock al artículo en el inventario del receptor
+    try {
+      const extras = _notifPendienteActual.datos_extra
+        ? (typeof _notifPendienteActual.datos_extra === 'string'
+            ? JSON.parse(_notifPendienteActual.datos_extra)
+            : _notifPendienteActual.datos_extra)
+        : null;
+      if (extras && extras.id_articulo && extras.cantidad) {
+        const artRes = await api('inventario','GET',null,
+          '?id_articulo=eq.'+extras.id_articulo+'&select=id_articulo,stock_actual');
+        if (artRes && artRes[0]) {
+          const nuevoStock = parseFloat(artRes[0].stock_actual || 0) + parseFloat(extras.cantidad);
+          await api('inventario','PATCH',
+            { stock_actual: nuevoStock },
+            '?id_articulo=eq.'+extras.id_articulo);
+        }
+      }
+    } catch(eStock) { console.warn('Error actualizando stock al confirmar:', eStock); }
+
     document.getElementById('modal-notif-pendiente').style.display = 'none';
     _notifPendienteActual = null;
     if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar Recepción'; }
