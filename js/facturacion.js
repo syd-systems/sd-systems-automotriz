@@ -1207,7 +1207,30 @@ async function guardarSalidaStock() {
       });
     } catch(eAstSal) { console.warn('Error asiento salida inventario:', eAstSal); }
 
-    okEl.textContent = '✓ Salida de ' + cantidad + ' unidades registrada correctamente.';
+    // ── Crear notificación de recepción para el empleado receptor ──
+    if (idEmpRecibe && idSalida) {
+      try {
+        // Obtener correo del empleado receptor
+        const empReceptor = await api('empleados','GET',null,'?id_empleado=eq.'+idEmpRecibe+'&select=correo,nombre_completo');
+        if (empReceptor && empReceptor[0] && empReceptor[0].correo) {
+          const artNom   = art ? art.nombre : 'Consumible #'+idRep;
+          const areaOrig = document.getElementById('salida-area-entrega')?.selectedOptions[0]?.text || 'Almacén';
+          const areaDest = document.getElementById('salida-area')?.selectedOptions[0]?.text || 'Área';
+          await api('notificaciones','POST',{
+            tipo:           'RECEPCION_CONSUMIBLE',
+            id_emisor:      _empresaActiva?.id_emisor || null,
+            correo_destino: empReceptor[0].correo,
+            titulo:         'Solicitud de Recepción de Consumible',
+            mensaje:        cantidad + ' unid. de "' + artNom + '" enviadas desde ' + areaOrig + ' hacia ' + areaDest + '. Por favor confirme la recepción.',
+            estado:         'PENDIENTE',
+            id_salida:      idSalida,
+            datos_extra:    JSON.stringify({ id_articulo: idRep, cantidad: cantidad, id_area_origen: idAreaEntrega, id_area_destino: idArea })
+          });
+        }
+      } catch(eNot) { console.warn('Error creando notificación:', eNot); }
+    }
+
+    okEl.textContent = '✓ Salida de ' + cantidad + ' unidades registrada. Se notificó al receptor.';
     okEl.style.display = 'block';
     setTimeout(function() { cerrarModal('modal-salida-stock'); regresarAFichaInv(); }, 1500);
   } catch(err) {
