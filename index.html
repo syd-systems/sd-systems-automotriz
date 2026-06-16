@@ -1338,17 +1338,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260616002"></script>
-<script src="js/parametros.js?v=20260616002"></script>
-<script src="js/empresas.js?v=20260616002"></script>
-<script src="js/facturacion.js?v=20260616002"></script>
-<script src="js/inventario.js?v=20260616002"></script>
-<script src="js/contabilidad.js?v=20260616002"></script>
-<script src="js/pagos.js?v=20260616002"></script>
-<script src="js/vehiculos.js?v=20260616002"></script>
-<script src="js/catalogo.js?v=20260616002"></script>
-<script src="js/inventario2.js?v=20260616002"></script>
-<script src="js/ordenes.js?v=20260616002"></script>
+<script src="js/core.js?v=20260616003"></script>
+<script src="js/parametros.js?v=20260616003"></script>
+<script src="js/empresas.js?v=20260616003"></script>
+<script src="js/facturacion.js?v=20260616003"></script>
+<script src="js/inventario.js?v=20260616003"></script>
+<script src="js/contabilidad.js?v=20260616003"></script>
+<script src="js/pagos.js?v=20260616003"></script>
+<script src="js/vehiculos.js?v=20260616003"></script>
+<script src="js/catalogo.js?v=20260616003"></script>
+<script src="js/inventario2.js?v=20260616003"></script>
+<script src="js/ordenes.js?v=20260616003"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2997,13 +2997,13 @@
           <label>Correo Electrónico *</label>
           <input type="email" id="emp-correo" placeholder="correo@ejemplo.com">
         </div>
-        <div class="form-campo">
+        <div class="form-campo" style="grid-column:span 1">
           <label>Teléfono Móvil *</label>
-          <input type="text" id="emp-tel-movil" placeholder="0414-0000000" style="width:100%">
+          <input type="text" id="emp-tel-movil" placeholder="0414-0000000" style="width:100%;box-sizing:border-box">
         </div>
-        <div class="form-campo">
+        <div class="form-campo" style="grid-column:span 1">
           <label>Teléfono Fijo</label>
-          <input type="text" id="emp-tel-fijo" placeholder="0212-0000000" style="width:100%">
+          <input type="text" id="emp-tel-fijo" placeholder="0212-0000000" style="width:100%;box-sizing:border-box">
         </div>
         <div class="form-campo form-full">
           <label>Dirección *</label>
@@ -3175,9 +3175,9 @@
     </div>
     <div class="modal-body" id="ficha-emp-contenido"></div>
     <div class="modal-footer">
+      <button class="btn-peligro"    id="ficha-emp-btn-eliminar" style="display:none">🗑 Eliminar</button>
+      <button class="btn-secundario" id="ficha-emp-btn-editar"   style="display:none">✏ Editar</button>
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-emp')">Retornar</button>
-      <button class="btn-secundario" id="ficha-emp-btn-editar"   style="display:none">Editar</button>
-      <button class="btn-peligro"    id="ficha-emp-btn-eliminar" style="display:none">Eliminar</button>
     </div>
   </div>
 </div>
