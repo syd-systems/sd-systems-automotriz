@@ -651,6 +651,7 @@ async function iniciarSesion() {
     }
     window._sesionLista = true; // Habilitar polling — token ya confirmado en BD
     iniciarApp();
+    setTimeout(verificarNotificacionesPendientes, 2000);
     btn.textContent = 'INGRESAR';
     btn.disabled = false;
 
@@ -907,6 +908,8 @@ async function recargarPermisosActuales() {
 }
 
 async function mostrarModulo(modulo, navEl) {
+  // Verificar notificaciones pendientes al navegar
+  verificarNotificacionesPendientes();
   // Quitar activo de todos
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('activo'));
   if (navEl) navEl.classList.add('activo');
@@ -2197,3 +2200,58 @@ async function consultarTasaPorFecha() {
 }
 
 
+
+// ══════════════════════════════════════════════════════════════
+// SISTEMA DE NOTIFICACIONES INTERNAS
+// ══════════════════════════════════════════════════════════════
+let _notifPendienteActual = null;
+
+async function verificarNotificacionesPendientes() {
+  if (!sesionActual?.correo_usuario) return;
+  try {
+    const notifs = await api('notificaciones','GET',null,
+      '?correo_destino=eq.'+encodeURIComponent(sesionActual.correo_usuario)
+      +'&estado=eq.PENDIENTE&order=fecha_creacion.asc&select=*');
+    if (notifs && notifs.length > 0) {
+      mostrarNotifPendiente(notifs[0]);
+    }
+  } catch(e) { console.warn('Error verificando notificaciones:', e); }
+}
+
+function mostrarNotifPendiente(notif) {
+  _notifPendienteActual = notif;
+  const lista = document.getElementById('notif-pendiente-lista');
+  if (!lista) return;
+  lista.innerHTML =
+    '<div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:16px;margin-bottom:12px">'
+    +'<div style="font-size:12px;color:var(--suave);margin-bottom:8px">'+fmtFecha(notif.fecha_creacion)+'</div>'
+    +'<div style="font-size:14px;font-weight:600;margin-bottom:8px">'+notif.titulo+'</div>'
+    +'<div style="font-size:13px;color:var(--texto);line-height:1.6">'+notif.mensaje+'</div>'
+    +'</div>'
+    +'<div style="font-size:12px;color:var(--suave);text-align:center">Al confirmar, valida que recibió el consumible correctamente.</div>';
+  document.getElementById('modal-notif-pendiente').style.display = 'flex';
+}
+
+async function notifConfirmar() {
+  if (!_notifPendienteActual) return;
+  const btn = document.getElementById('btn-notif-confirmar');
+  if (btn) { btn.disabled = true; btn.textContent = 'Confirmando...'; }
+  try {
+    await api('notificaciones','PATCH',
+      { estado: 'APROBADO', fecha_respuesta: new Date().toISOString() },
+      '?id=eq.'+_notifPendienteActual.id);
+    document.getElementById('modal-notif-pendiente').style.display = 'none';
+    _notifPendienteActual = null;
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar Recepción'; }
+    // Verificar si hay más notificaciones pendientes
+    await verificarNotificacionesPendientes();
+  } catch(e) {
+    alert('Error al confirmar: '+e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar Recepción'; }
+  }
+}
+
+function notifVerDespues() {
+  document.getElementById('modal-notif-pendiente').style.display = 'none';
+  // No marca como leída — volverá a aparecer en la próxima navegación
+}
