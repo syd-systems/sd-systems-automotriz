@@ -1234,15 +1234,18 @@ async function guardarSalidaStock() {
     if (idEmpRecibe && idSalida) {
       try {
         // Obtener correo del empleado receptor
-        const empReceptor = await api('empleados','GET',null,'?id_empleado=eq.'+idEmpRecibe+'&select=correo,nombre_completo');
-        if (empReceptor && empReceptor[0] && empReceptor[0].correo) {
+        const empReceptor = await api('empleados','GET',null,'?id_empleado=eq.'+idEmpRecibe+'&select=correo,nombre_completo,id_usuario,usuarios(correo_usuario)');
+        const correoReceptor = empReceptor?.[0]?.correo || empReceptor?.[0]?.usuarios?.correo_usuario || null;
+        if (empReceptor && empReceptor[0] && correoReceptor) {
           const artNom   = art ? art.nombre : 'Consumible #'+idRep;
-          const areaOrig = document.getElementById('salida-area-entrega')?.selectedOptions[0]?.text || 'Almacén';
+          // salida-area-entrega es ahora hidden — obtener nombre del área desde el span
+          const areaOrig = document.getElementById('salida-entrega-area')?.textContent
+            || document.getElementById('salida-area-entrega')?.value || 'Almacén';
           const areaDest = document.getElementById('salida-area')?.selectedOptions[0]?.text || 'Área';
           await api('notificaciones','POST',{
             tipo:           'RECEPCION_CONSUMIBLE',
             id_emisor:      _empresaActiva?.id_emisor || null,
-            correo_destino: empReceptor[0].correo,
+            correo_destino: correoReceptor,
             titulo:         'Solicitud de Recepción de Consumible',
             mensaje:        cantidad + ' unid. de "' + artNom + '" enviadas desde ' + areaOrig + ' hacia ' + areaDest + '. Por favor confirme la recepción.',
             estado:         'PENDIENTE',
