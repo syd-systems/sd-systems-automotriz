@@ -1338,17 +1338,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260613075"></script>
-<script src="js/parametros.js?v=20260613075"></script>
-<script src="js/empresas.js?v=20260613075"></script>
-<script src="js/facturacion.js?v=20260613075"></script>
-<script src="js/inventario.js?v=20260613075"></script>
-<script src="js/contabilidad.js?v=20260613075"></script>
-<script src="js/pagos.js?v=20260613075"></script>
-<script src="js/vehiculos.js?v=20260613075"></script>
-<script src="js/catalogo.js?v=20260613075"></script>
-<script src="js/inventario2.js?v=20260613075"></script>
-<script src="js/ordenes.js?v=20260613075"></script>
+<script src="js/core.js?v=20260613076"></script>
+<script src="js/parametros.js?v=20260613076"></script>
+<script src="js/empresas.js?v=20260613076"></script>
+<script src="js/facturacion.js?v=20260613076"></script>
+<script src="js/inventario.js?v=20260613076"></script>
+<script src="js/contabilidad.js?v=20260613076"></script>
+<script src="js/pagos.js?v=20260613076"></script>
+<script src="js/vehiculos.js?v=20260613076"></script>
+<script src="js/catalogo.js?v=20260613076"></script>
+<script src="js/inventario2.js?v=20260613076"></script>
+<script src="js/ordenes.js?v=20260613076"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2511,10 +2511,7 @@
           <label>Descripción</label>
           <input type="text" id="inv-descripcion" placeholder="Descripción opcional">
         </div>
-        <div class="form-campo">
-          <label>Stock Mínimo</label>
-          <input type="number" id="inv-stock-min" placeholder="0" min="0">
-        </div>
+
         <!-- Precio Venta se gestiona desde Entrada de Inventario -->
         <input type="hidden" id="inv-venta" value="">
 
@@ -2554,8 +2551,12 @@
             <input type="number" id="inv-costo-pedido" placeholder="25.00" step="0.01" min="0">
           </div>
           <div class="form-campo">
-            <label>Stock de Seguridad</label>
-            <input type="number" id="inv-stock-seg" placeholder="0" min="0" step="1">
+            <label>Stock de Seguridad (calculado)</label>
+            <input type="number" id="inv-stock-seg" placeholder="Auto" min="0" step="1" readonly style="background:rgba(255,255,255,0.04);color:var(--suave);cursor:not-allowed">
+          </div>
+          <div class="form-campo">
+            <label>Stock Mínimo (sugerido)</label>
+            <input type="number" id="inv-stock-min" placeholder="0" min="0" step="1">
           </div>
         </div>
       </div>
