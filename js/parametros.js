@@ -485,6 +485,17 @@ function selOpts(lista, valorActual, campoNombre) {
       }).join('');
 }
 
+function onSelAreaEmpleado() {
+  const idArea = parseInt(document.getElementById('emp-area')?.value) || null;
+  const sel = document.getElementById('emp-cargo');
+  if (!sel) return;
+  const p = _empParamCache;
+  const cargosArea = idArea
+    ? (p.cargos||[]).filter(function(c){ return c.id_area === idArea; })
+    : (p.cargos||[]);
+  sel.innerHTML = selOpts(cargosArea, null);
+}
+
 // ─── ABRIR FORMULARIO EMPLEADO ───
 async function abrirEmpleado(id) {
   // Cargar parámetros si no están en caché
@@ -546,7 +557,11 @@ async function abrirEmpleado(id) {
 
   // ── Datos Laborales ──
   document.getElementById('emp-area').innerHTML      = selOpts(p.areas, e?.id_area);
-  document.getElementById('emp-cargo').innerHTML     = selOpts(p.cargos, e?.id_cargo);
+  // Filtrar cargos por área seleccionada
+  const cargosDelArea = e?.id_area
+    ? (p.cargos||[]).filter(function(c){ return c.id_area === e.id_area; })
+    : (p.cargos||[]);
+  document.getElementById('emp-cargo').innerHTML = selOpts(cargosDelArea, e?.id_cargo);
   document.getElementById('emp-contrato').innerHTML  = selOpts(p.contratos, e?.id_tipo_contrato);
   document.getElementById('emp-tipo-sal').innerHTML  = selOpts(p.salarios, e?.id_tipo_salario);
   document.getElementById('emp-calc-sal').innerHTML  = selOpts(p.calculos, e?.id_calculo_salario);
