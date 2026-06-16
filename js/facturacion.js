@@ -1076,6 +1076,35 @@ function onCambiarMotivoEntrada() {
   }
 }
 
+async function cargarUsuarioEntregaSalida() {
+  // El usuario actual ES quien entrega — traer su empleado y área automáticamente
+  try {
+    const correo = sesionActual?.correo_usuario;
+    if (!correo) return;
+    const emps = await api('empleados','GET',null,
+      '?correo=eq.'+encodeURIComponent(correo)+'&select=id_empleado,nombre_completo,id_area,param_areas(nombre,codigo)');
+    const emp = emps && emps[0] ? emps[0] : null;
+
+    const nomEl  = document.getElementById('salida-entrega-nombre');
+    const areaEl = document.getElementById('salida-entrega-area');
+    const hidEmp  = document.getElementById('salida-empleado-entrega');
+    const hidArea = document.getElementById('salida-area-entrega');
+
+    if (emp) {
+      if (nomEl)  nomEl.textContent  = emp.nombre_completo;
+      if (areaEl) areaEl.textContent = emp.param_areas
+        ? (emp.param_areas.codigo ? emp.param_areas.codigo+' — ' : '') + emp.param_areas.nombre
+        : '—';
+      if (hidEmp)  hidEmp.value  = emp.id_empleado;
+      if (hidArea) hidArea.value = emp.id_area || '';
+    } else {
+      // Usuario sin empleado asociado — mostrar correo
+      if (nomEl)  nomEl.textContent  = correo;
+      if (areaEl) areaEl.textContent = '';
+    }
+  } catch(e) { console.warn('cargarUsuarioEntregaSalida:', e); }
+}
+
 // ─── SALIDA DE STOCK ───
 async function abrirSalidaStock(id, nombre) {
   if (!puedo('INVENTARIO','SALIDA_STOCK')) { alert('No tiene permiso para registrar salidas de stock.'); return; }
@@ -1102,15 +1131,9 @@ async function abrirSalidaStock(id, nombre) {
         return '<option value="' + a.id + '">'
           + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
       }).join('');
-  // Llenar también área que entrega
-  const optsAreas = '<option value="">— Seleccionar área —</option>'
-    + areas.map(function(a) {
-        return '<option value="' + a.id + '">'
-          + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
-      }).join('');
-  document.getElementById('salida-area-entrega').innerHTML = optsAreas;
   document.getElementById('salida-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
-  document.getElementById('salida-empleado-entrega').innerHTML = '<option value="">— Seleccionar área primero —</option>';
+  // Auto-cargar datos del usuario actual como quien entrega
+  await cargarUsuarioEntregaSalida();
 
 
 
