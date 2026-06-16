@@ -346,6 +346,7 @@ async function guardarParamItem() {
       }
     }
     okEl.style.display = 'block';
+    _empParamCache = {}; // Invalidar cache empleados
     setTimeout(function() { cerrarModal('modal-param'); mostrarTablaParam(key); }, 900);
   } catch(e) {
     errEl.textContent = 'Error: ' + e.message;
@@ -362,6 +363,7 @@ async function eliminarParamItem() {
   if (!def) return;
   try {
     await api(def.tabla,'DELETE',null,'?'+def.pk+'=eq.'+id);
+    _empParamCache = {}; // Invalidar cache empleados
     cerrarModal('modal-param');
     mostrarTablaParam(key);
   } catch(e) { alert('Error: '+e.message); }
