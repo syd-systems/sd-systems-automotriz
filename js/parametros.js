@@ -636,6 +636,15 @@ async function abrirEmpleado(id) {
   setTimeout(function() { document.getElementById('emp-numero-doc')?.focus(); }, 100);
 }
 
+async function resetClaveEmpleado(idEmpleado, correo) {
+  if (!confirm('¿Resetear la clave del empleado "' + correo + '"? Se le asignará una clave temporal.')) return;
+  const claveTemporal = Math.random().toString(36).slice(-8).toUpperCase();
+  try {
+    await api('usuarios','PATCH',{ clave: claveTemporal },'?correo_usuario=eq.'+encodeURIComponent(correo));
+    alert('✓ Clave reseteada. Clave temporal: ' + claveTemporal + '. Comuníquela al empleado para que la cambie al ingresar.');
+  } catch(e) { alert('Error al resetear clave: '+e.message); }
+}
+
 // ─── GUARDAR EMPLEADO ───
 async function guardarEmpleado() {
   const id     = document.getElementById('emp-id').value;
@@ -951,9 +960,11 @@ async function verFichaEmpleado(id) {
       + '</div>' : '');
 
   // Botones footer
-  var btnEditar   = document.getElementById('ficha-emp-btn-editar');
-  var btnEliminar = document.getElementById('ficha-emp-btn-eliminar');
-  if (btnEditar)  { btnEditar._id = e.id_empleado;  btnEditar.onclick  = function() { cerrarModal('modal-ficha-emp'); abrirEmpleado(this._id); };         btnEditar.style.display  = puedo('EMPLEADOS','EDITAR') ? '' : 'none'; }
+  var btnEditar     = document.getElementById('ficha-emp-btn-editar');
+  var btnEliminar   = document.getElementById('ficha-emp-btn-eliminar');
+  var btnResetClave = document.getElementById('ficha-emp-btn-reset-clave');
+  if (btnEditar)     { btnEditar._id = e.id_empleado;     btnEditar.onclick     = function() { cerrarModal('modal-ficha-emp'); abrirEmpleado(this._id); };        btnEditar.style.display     = puedo('EMPLEADOS','EDITAR') ? '' : 'none'; }
+  if (btnResetClave) { btnResetClave._id = e.id_empleado; btnResetClave._correo = e.correo; btnResetClave.onclick = function() { resetClaveEmpleado(this._id, this._correo); }; btnResetClave.style.display = (sesionActual?.administrador || puedo('EMPLEADOS','EDITAR')) ? '' : 'none'; }
   if (btnEliminar){
     btnEliminar._id = e.id_empleado;
     btnEliminar._nombre = e.nombre_completo;
