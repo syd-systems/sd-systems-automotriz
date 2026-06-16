@@ -19,6 +19,24 @@ function clasificarABC(items) {
     return Object.assign({}, r, { clase_abc: pct <= 80 ? 'A' : pct <= 95 ? 'B' : 'C' });
   });
 }
+
+function invCalcularStockSeguridad() {
+  const demandaAnual = parseFloat(document.getElementById('inv-demanda-anual')?.value) || 0;
+  const leadTime     = parseFloat(document.getElementById('inv-lead-time')?.value) || 0;
+  const segEl        = document.getElementById('inv-stock-seg');
+  const minEl        = document.getElementById('inv-stock-min');
+  if (!segEl) return;
+  if (demandaAnual > 0 && leadTime > 0) {
+    const demandaDiaria = demandaAnual / 365;
+    const stockSeg = Math.ceil(demandaDiaria * leadTime * 0.5);
+    segEl.value = stockSeg;
+    // Precargar Stock Mínimo solo si está vacío
+    if (minEl && !minEl.value) minEl.value = stockSeg;
+  } else {
+    segEl.value = '';
+  }
+}
+
 function calcularEOQ(demandaAnual, costoPedido, costoMantenimiento) {
   if (!demandaAnual || !costoPedido || !costoMantenimiento) return null;
   return Math.sqrt((2 * demandaAnual * costoPedido) / costoMantenimiento);
@@ -655,7 +673,7 @@ async function abrirNuevoInventario() {
   var invVentaContN = document.getElementById('inv-venta-cont');
   if (invVentaContN) invVentaContN.style.display = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? '' : 'none';
   // Asegurar que todos los campos estén habilitados al crear nuevo
-  ['inv-categoria','inv-tipo-articulo','inv-codigo','inv-nombre','inv-descripcion','inv-unidad','inv-stock-min'].forEach(function(id) {
+  ['inv-categoria','inv-tipo-articulo','inv-codigo','inv-nombre','inv-descripcion','inv-unidad'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.disabled = false;
   });
@@ -697,7 +715,7 @@ async function abrirEditarInventario(id) {
   document.getElementById('alerta-inv-err').style.display = 'none';
 
   // Bloquear todos los campos excepto Parámetros de Gestión (EOQ/Reorden/JIT)
-  ['inv-categoria','inv-tipo-articulo','inv-codigo','inv-nombre','inv-descripcion','inv-unidad','inv-stock-min'].forEach(function(id) {
+  ['inv-categoria','inv-tipo-articulo','inv-codigo','inv-nombre','inv-descripcion','inv-unidad'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.disabled = true;
   });
