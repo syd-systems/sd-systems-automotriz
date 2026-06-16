@@ -922,7 +922,8 @@ async function validarClaveReceptor(idEmpleado, clave) {
 }
 
 // ─── CARGAR EMPLEADOS POR ÁREA ───
-async function cargarEmpleadosPorArea(idArea, selectId) {
+async function cargarEmpleadosPorArea(idArea, selectId, soloConPermiso) {
+  // soloConPermiso: si true, filtra solo empleados con permiso INVENTARIO->ENTRADA_STOCK
   const sel = document.getElementById(selectId);
   if (!sel) return;
   if (!idArea) {
@@ -932,13 +933,37 @@ async function cargarEmpleadosPorArea(idArea, selectId) {
   sel.innerHTML = '<option value="">Cargando...</option>';
   try {
     const emps = await api('empleados', 'GET', null,
-      '?id_area=eq.' + idArea + '&estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo,id_cargo,param_cargos(nombre)');
-    if (!emps.length) {
+      '?id_area=eq.' + idArea + '&estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo,id_cargo,correo,param_cargos(nombre)');
+    if (!emps || !emps.length) {
       sel.innerHTML = '<option value="">— Sin empleados en esta área —</option>';
       return;
     }
+
+    let empsFiltrados = emps;
+
+    if (soloConPermiso) {
+      // Obtener correos con permiso INVENTARIO → ENTRADA_STOCK
+      const perms = await api('usuarios_permisos', 'GET', null,
+        '?modulo=eq.INVENTARIO&accion=eq.ENTRADA_STOCK&select=correo_usuario') || [];
+      const correosAutorizados = perms.map(function(p){ return (p.correo_usuario||'').toLowerCase(); });
+
+      // Cruzar por empleados.correo (el vínculo es correo, no id_usuario)
+      if (correosAutorizados.length) {
+        empsFiltrados = emps.filter(function(e){
+          return e.correo && correosAutorizados.includes(e.correo.toLowerCase());
+        });
+      } else {
+        empsFiltrados = [];
+      }
+    }
+
+    if (!empsFiltrados.length) {
+      sel.innerHTML = '<option value="">— Sin empleados autorizados en esta área —</option>';
+      return;
+    }
+
     sel.innerHTML = '<option value="">— Seleccionar empleado —</option>'
-      + emps.map(function(e) {
+      + empsFiltrados.map(function(e) {
           return '<option value="' + e.id_empleado + '">'
             + e.nombre_completo
             + (e.param_cargos ? ' · ' + e.param_cargos.nombre : '')
@@ -946,22 +971,23 @@ async function cargarEmpleadosPorArea(idArea, selectId) {
         }).join('');
   } catch(err) {
     sel.innerHTML = '<option value="">— Error cargando empleados —</option>';
+    console.error('cargarEmpleadosPorArea:', err);
   }
 }
 
 function onSelAreaSalida() {
   const idArea = document.getElementById('salida-area')?.value;
-  cargarEmpleadosPorArea(parseInt(idArea)||null, 'salida-empleado');
+  cargarEmpleadosPorArea(parseInt(idArea)||null, 'salida-empleado', true);
 }
 
 function onSelAreaEntrega() {
   const idArea = document.getElementById('salida-area-entrega')?.value;
-  cargarEmpleadosPorArea(parseInt(idArea)||null, 'salida-empleado-entrega');
+  cargarEmpleadosPorArea(parseInt(idArea)||null, 'salida-empleado-entrega', false);
 }
 
 function onSelAreaEntrada() {
   const idArea = document.getElementById('es-area')?.value;
-  cargarEmpleadosPorArea(parseInt(idArea)||null, 'es-empleado');
+  cargarEmpleadosPorArea(parseInt(idArea)||null, 'es-empleado', true);
 }
 
 async function onCambiarMonedaEntrada() {
