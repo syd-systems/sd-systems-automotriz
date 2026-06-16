@@ -368,8 +368,17 @@ function verFichaInventario(id) {
     btnEliminar.style.display = 'none'; // oculto por defecto, se muestra solo si no tiene entradas
     if (puedo('INVENTARIO','ELIMINAR')) {
       api('stock_entradas','GET',null,'?id_articulo=eq.'+r.id_articulo+'&select=id_entrada&limit=1').then(function(ents) {
-        if (!ents || !ents.length) btnEliminar.style.display = '';
-        else btnEliminar.title = 'No se puede eliminar: el consumible tiene entradas registradas';
+        if (!ents || !ents.length) {
+          btnEliminar.style.display = '';
+          btnEliminar.title = '';
+        } else {
+          // Mostrar mensaje explicativo debajo del historial
+          const msgEl = document.getElementById('ficha-inv-msg-eliminar');
+          if (msgEl) {
+            msgEl.textContent = '⚠ Este consumible no puede eliminarse porque tiene movimientos de stock registrados. Para darlo de baja, márquelo como inactivo desde Editar.';
+            msgEl.style.display = 'block';
+          }
+        }
       });
     }
   }
