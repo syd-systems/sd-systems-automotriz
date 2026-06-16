@@ -362,7 +362,17 @@ function verFichaInventario(id) {
   var btnEditar = document.getElementById('ficha-inv-btn-editar');
   var btnEliminar = document.getElementById('ficha-inv-btn-eliminar');
   if (btnEditar)  { btnEditar._id = r.id_articulo;  btnEditar.onclick = function() { cerrarModal('modal-ficha-inv'); abrirEditarInventario(this._id); }; btnEditar.style.display = puedo('INVENTARIO','EDITAR') ? '' : 'none'; }
-  if (btnEliminar){ btnEliminar._id = r.id_articulo; btnEliminar._nombre = r.nombre; btnEliminar.onclick = function() { cerrarModal('modal-ficha-inv'); eliminarInventario(this._id, this._nombre); }; btnEliminar.style.display = puedo('INVENTARIO','ELIMINAR') ? '' : 'none'; }
+  if (btnEliminar) {
+    btnEliminar._id = r.id_articulo; btnEliminar._nombre = r.nombre;
+    btnEliminar.onclick = function() { cerrarModal('modal-ficha-inv'); eliminarInventario(this._id, this._nombre); };
+    btnEliminar.style.display = 'none'; // oculto por defecto, se muestra solo si no tiene entradas
+    if (puedo('INVENTARIO','ELIMINAR')) {
+      api('stock_entradas','GET',null,'?id_articulo=eq.'+r.id_articulo+'&select=id_entrada&limit=1').then(function(ents) {
+        if (!ents || !ents.length) btnEliminar.style.display = '';
+        else btnEliminar.title = 'No se puede eliminar: el consumible tiene entradas registradas';
+      });
+    }
+  }
 
   abrirModal('modal-ficha-inv');
   focusFirstField('modal-ficha-inv');
