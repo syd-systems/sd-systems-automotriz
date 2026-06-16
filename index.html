@@ -1338,17 +1338,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260613076"></script>
-<script src="js/parametros.js?v=20260613076"></script>
-<script src="js/empresas.js?v=20260613076"></script>
-<script src="js/facturacion.js?v=20260613076"></script>
-<script src="js/inventario.js?v=20260613076"></script>
-<script src="js/contabilidad.js?v=20260613076"></script>
-<script src="js/pagos.js?v=20260613076"></script>
-<script src="js/vehiculos.js?v=20260613076"></script>
-<script src="js/catalogo.js?v=20260613076"></script>
-<script src="js/inventario2.js?v=20260613076"></script>
-<script src="js/ordenes.js?v=20260613076"></script>
+<script src="js/core.js?v=20260613077"></script>
+<script src="js/parametros.js?v=20260613077"></script>
+<script src="js/empresas.js?v=20260613077"></script>
+<script src="js/facturacion.js?v=20260613077"></script>
+<script src="js/inventario.js?v=20260613077"></script>
+<script src="js/contabilidad.js?v=20260613077"></script>
+<script src="js/pagos.js?v=20260613077"></script>
+<script src="js/vehiculos.js?v=20260613077"></script>
+<script src="js/catalogo.js?v=20260613077"></script>
+<script src="js/inventario2.js?v=20260613077"></script>
+<script src="js/ordenes.js?v=20260613077"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2540,11 +2540,11 @@
         <div class="form-grid">
           <div class="form-campo">
             <label>Demanda Anual (unidades)</label>
-            <input type="number" id="inv-demanda-anual" placeholder="Ej: 120" min="0" step="1">
+            <input type="number" id="inv-demanda-anual" placeholder="Ej: 120" min="0" step="1" onchange="invCalcularStockSeguridad()">
           </div>
           <div class="form-campo">
             <label>Lead Time (días)</label>
-            <input type="number" id="inv-lead-time" placeholder="7" min="1" step="1">
+            <input type="number" id="inv-lead-time" placeholder="7" min="1" step="1" onchange="invCalcularStockSeguridad()">
           </div>
           <div class="form-campo">
             <label>Costos Operativos del Producto</label>
