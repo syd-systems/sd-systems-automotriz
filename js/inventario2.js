@@ -705,6 +705,18 @@ async function guardarInventario() {
   if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
 
   try {
+    // Validar código duplicado
+    if (codigo) {
+      let qDup = '?codigo=eq.' + encodeURIComponent(codigo) + emisorQ();
+      if (id) qDup += '&id_articulo=neq.' + id; // excluir el propio al editar
+      const dup = await api('inventario','GET',null,qDup + '&select=id_articulo&limit=1');
+      if (dup && dup.length) {
+        errEl.textContent = 'Ya existe un consumible con el código "' + codigo + '". Usa un código diferente.';
+        errEl.style.display = 'block';
+        document.getElementById('inv-codigo')?.focus();
+        return;
+      }
+    }
     const demandaAnual = parseInt(document.getElementById('inv-demanda-anual').value) || null;
     const leadTime     = parseInt(document.getElementById('inv-lead-time').value) || null;
     const costoPedido  = parseFloat(document.getElementById('inv-costo-pedido').value) || null;
