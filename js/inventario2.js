@@ -654,6 +654,11 @@ async function abrirNuevoInventario() {
   document.getElementById('inv-unidad').value = 'UND';
   var invVentaContN = document.getElementById('inv-venta-cont');
   if (invVentaContN) invVentaContN.style.display = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? '' : 'none';
+  // Asegurar que todos los campos estén habilitados al crear nuevo
+  ['inv-categoria','inv-tipo-articulo','inv-codigo','inv-nombre','inv-descripcion','inv-unidad','inv-stock-min'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.disabled = false;
+  });
   document.getElementById('modal-inv-titulo').textContent = 'NUEVO CONSUMIBLE';
   document.getElementById('alerta-inv-ok').style.display = 'none';
   document.getElementById('alerta-inv-err').style.display = 'none';
@@ -690,6 +695,13 @@ async function abrirEditarInventario(id) {
   document.getElementById('modal-inv-titulo').textContent = 'EDITAR CONSUMIBLE';
   document.getElementById('alerta-inv-ok').style.display = 'none';
   document.getElementById('alerta-inv-err').style.display = 'none';
+
+  // Bloquear todos los campos excepto Parámetros de Gestión (EOQ/Reorden/JIT)
+  ['inv-categoria','inv-tipo-articulo','inv-codigo','inv-nombre','inv-descripcion','inv-unidad','inv-stock-min'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.disabled = true;
+  });
+
   // En edición mostrar stock actual y precio costo como info (solo lectura)
   var infoEl = document.getElementById('inv-info-stock-costo');
   if (infoEl) {
