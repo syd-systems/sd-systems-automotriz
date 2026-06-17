@@ -1180,6 +1180,14 @@ async function abrirSalidaStock(id, nombre) {
 
 async function guardarSalidaStock() {
   if (!puedo('INVENTARIO','SALIDA_STOCK')) { alert('No tiene permiso.'); return; }
+  if (window._guardandoSalida) return;
+  window._guardandoSalida = true;
+  const btnGuardarSal = document.querySelector('#modal-salida-stock .btn-primario');
+  const resetBtnSal = function() {
+    window._guardandoSalida = false;
+    if (btnGuardarSal) { btnGuardarSal.disabled = false; btnGuardarSal.textContent = 'Registrar Salida'; }
+  };
+  if (btnGuardarSal) { btnGuardarSal.disabled = true; btnGuardarSal.textContent = 'Guardando...'; }
 
   const idRep   = parseInt(document.getElementById('salida-id-repuesto').value);
   const idArea  = parseInt(document.getElementById('salida-area').value) || null;
@@ -1288,10 +1296,12 @@ async function guardarSalidaStock() {
 
     okEl.textContent = '✓ Salida de ' + cantidad + ' unidades registrada. Se notificó al receptor.';
     okEl.style.display = 'block';
+    resetBtnSal();
     setTimeout(function() { cerrarModal('modal-salida-stock'); regresarAFichaInv(); }, 1500);
   } catch(err) {
     errEl.textContent = 'Error: ' + err.message;
     errEl.style.display = 'block';
+    resetBtnSal();
   }
 }
 
