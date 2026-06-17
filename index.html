@@ -1338,17 +1338,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260616013"></script>
-<script src="js/parametros.js?v=20260616013"></script>
-<script src="js/empresas.js?v=20260616013"></script>
-<script src="js/facturacion.js?v=20260616013"></script>
-<script src="js/inventario.js?v=20260616013"></script>
-<script src="js/contabilidad.js?v=20260616013"></script>
-<script src="js/pagos.js?v=20260616013"></script>
-<script src="js/vehiculos.js?v=20260616013"></script>
-<script src="js/catalogo.js?v=20260616013"></script>
-<script src="js/inventario2.js?v=20260616013"></script>
-<script src="js/ordenes.js?v=20260616013"></script>
+<script src="js/core.js?v=20260616014"></script>
+<script src="js/parametros.js?v=20260616014"></script>
+<script src="js/empresas.js?v=20260616014"></script>
+<script src="js/facturacion.js?v=20260616014"></script>
+<script src="js/inventario.js?v=20260616014"></script>
+<script src="js/contabilidad.js?v=20260616014"></script>
+<script src="js/pagos.js?v=20260616014"></script>
+<script src="js/vehiculos.js?v=20260616014"></script>
+<script src="js/catalogo.js?v=20260616014"></script>
+<script src="js/inventario2.js?v=20260616014"></script>
+<script src="js/ordenes.js?v=20260616014"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2433,9 +2433,8 @@
       </div>
       <div class="form-campo form-full" style="margin-top:8px">
         <label>Área Receptora</label>
-        <select id="es-area" onchange="onSelAreaEntrada()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-          <option value="">— Seleccionar área —</option>
-        </select>
+        <input type="hidden" id="es-area">
+        <div id="es-area-display" style="background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:11px 14px;font-size:13px;font-weight:600;color:var(--naranja)">—</div>
       </div>
       <input type="hidden" id="es-empleado">
         <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
