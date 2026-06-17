@@ -525,6 +525,39 @@ async function guardarFactura(emitir) {
       }
     }
 
+    // ── Registrar salida automática de inventario al emitir factura ──
+    if (emitir && idOS) {
+      try {
+        const reps = await api('os_repuestos','GET',null,'?id_orden=eq.'+idOS+'&select=id_articulo,cantidad');
+        // Obtener área del usuario que factura
+        const correo = sesionActual?.correo_usuario;
+        const empRes = correo ? await api('empleados','GET',null,
+          '?correo=eq.'+encodeURIComponent(correo)+'&select=id_empleado,id_area&limit=1') : [];
+        const idAreaEmp = empRes?.[0]?.id_area || null;
+        const idEmpEmp  = empRes?.[0]?.id_empleado || null;
+        for (const rep of (reps||[])) {
+          if (!rep.id_articulo || !parseFloat(rep.cantidad)) continue;
+          // Registrar salida en stock_salidas
+          const sal = await api('stock_salidas','POST',{
+            id_articulo:   rep.id_articulo,
+            cantidad:      parseFloat(rep.cantidad),
+            id_area:       null, // destino: cliente externo
+            id_area_entrega: idAreaEmp,
+            id_empleado_entrega: idEmpEmp,
+            fecha_salida:  new Date().toISOString().split('T')[0],
+            observaciones: 'Factura ' + (idFac ? 'FAC-'+idFac : ''),
+            id_usuario:    correo
+          });
+          // Descontar del stock
+          const artRes = await api('inventario','GET',null,'?id_articulo=eq.'+rep.id_articulo+'&select=stock_actual&limit=1');
+          if (artRes?.[0]) {
+            const nuevoStock = parseFloat(artRes[0].stock_actual||0) - parseFloat(rep.cantidad);
+            await api('inventario','PATCH',{ stock_actual: Math.max(0, nuevoStock) },'?id_articulo=eq.'+rep.id_articulo);
+          }
+        }
+      } catch(eSal) { console.warn('Error registrando salida de inventario:', eSal); }
+    }
+
     okEl.textContent = emitir ? '✓ Factura emitida correctamente.' : '✓ Factura guardada como borrador.';
     okEl.style.display='block';
     setTimeout(function() { cerrarModal('modal-factura'); renderFacturas(); }, 1200);
