@@ -1230,17 +1230,32 @@ async function invCargarMovimientos() {
     const inClause = idsArticulos.join(',');
 
     // Cargar entradas y salidas según filtro
+    // Filtrar por área si el usuario no tiene VER_INVENTARIO_GENERAL
+    let idAreaMovs = null;
+    if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
+      try {
+        const correo = sesionActual?.correo_usuario;
+        const empRes = correo ? await api('empleados','GET',null,
+          '?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1') : [];
+        idAreaMovs = empRes?.[0]?.id_area || null;
+      } catch(e) {}
+    }
+
     let entradas = [], salidas = [];
     if (!tipo || tipo === 'ENTRADA') {
       let qE = '?id_articulo=in.('+inClause+')&order=fecha_entrada.desc&select=*,area_receptora:id_area(nombre,codigo),area_origen:id_area_origen(nombre,codigo),proveedor:id_proveedor(nombre)';
       if (desde) qE += '&fecha_entrada=gte.'+desde;
       if (hasta) qE += '&fecha_entrada=lte.'+hasta;
+      // Para operador de área: entradas directas a su área + salidas recibidas
+      if (idAreaMovs) qE += '&id_area=eq.'+idAreaMovs;
       entradas = await api('stock_entradas','GET',null,qE) || [];
     }
     if (!tipo || tipo === 'SALIDA') {
       let qS = '?id_articulo=in.('+inClause+')&order=fecha_salida.desc&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo)';
       if (desde) qS += '&fecha_salida=gte.'+desde;
       if (hasta) qS += '&fecha_salida=lte.'+hasta;
+      // Para operador de área: salidas recibidas O enviadas desde su área
+      if (idAreaMovs) qS += '&or=(id_area.eq.'+idAreaMovs+',id_area_entrega.eq.'+idAreaMovs+')';
       salidas = await api('stock_salidas','GET',null,qS) || [];
     }
 
