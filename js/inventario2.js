@@ -1122,8 +1122,10 @@ async function verHistorialSalidas(idArticulo) {
     const idAreaFiltro = _invSaldoArea && sesionActual?.correo_usuario
       ? await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_area&limit=1').then(function(r){ return r&&r[0]?r[0].id_area:null; }).catch(function(){ return null; })
       : null;
+    // Para operador: solo salidas enviadas DESDE su área (id_area_entrega)
+    // Las recibidas ya se muestran en "Entradas a tu área"
     const qSalidas = '?id_articulo=eq.' + idArticulo + '&order=fecha_salida.desc&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo)'
-      + (idAreaFiltro ? '&or=(id_area.eq.'+idAreaFiltro+',id_area_entrega.eq.'+idAreaFiltro+')' : '');
+      + (idAreaFiltro ? '&id_area_entrega=eq.'+idAreaFiltro : '');
     const salidas = await api('stock_salidas', 'GET', null, qSalidas);
     if (!salidas || !salidas.length) {
       cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:8px 0">Sin salidas registradas.</div>';
