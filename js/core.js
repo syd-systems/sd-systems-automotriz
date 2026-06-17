@@ -1603,6 +1603,14 @@ async function guardarUsuario() {
       // Actualizar accesos: borrar y reinsertar
       const correoEdit = usuariosCache.find(u => u.id_usuario == idEdit)?.correo_usuario;
       if (correoEdit) {
+        // Advertir si se va a guardar sin ningún módulo de acceso
+        if (accesosSelec.length === 0) {
+          if (!confirm('⚠ No hay módulos de acceso seleccionados. El usuario quedará sin acceso a ningún módulo. ¿Desea continuar?')) {
+            const btnG = document.querySelector('#modal-usuario .btn-primario');
+            if (btnG) { btnG.disabled = false; btnG.textContent = 'GUARDAR'; }
+            return;
+          }
+        }
         await api('usuarios_accesos', 'DELETE', null, `?correo_usuario=eq.${encodeURIComponent(correoEdit)}`);
         await api('usuarios_permisos', 'DELETE', null, `?correo_usuario=eq.${encodeURIComponent(correoEdit)}`);
         // Reinsertar accesos en lote
