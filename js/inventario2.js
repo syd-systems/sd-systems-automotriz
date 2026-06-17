@@ -436,7 +436,7 @@ function abrirEntradaStock(id) {
   document.getElementById('alerta-es-ok').style.display = 'none';
   document.getElementById('alerta-es-err').style.display = 'none';
   // Resetear área, empleado, proveedor y contraseña
-  document.getElementById('es-area').value = '';
+  // es-area es hidden — se llena por cargarUsuarioReceptorEntrada
   if (document.getElementById('es-clave-receptor')) document.getElementById('es-clave-receptor').value = '';
   if (document.getElementById('es-cliente-nombre')) document.getElementById('es-cliente-nombre').value = '';
   if (document.getElementById('es-area-origen'))    document.getElementById('es-area-origen').value = '';
@@ -446,7 +446,8 @@ function abrirEntradaStock(id) {
   if (document.getElementById('es-precio-usd-cont'))document.getElementById('es-precio-usd-cont').style.display = 'none';
   if (document.getElementById('es-tasa-bcv'))       document.getElementById('es-tasa-bcv').value = '';
   if (document.getElementById('es-precio-usd-calc'))document.getElementById('es-precio-usd-calc').value = '';
-  document.getElementById('es-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
+  // Auto-cargar usuario actual como receptor
+  if (typeof cargarUsuarioReceptorEntrada === 'function') cargarUsuarioReceptorEntrada();
   document.getElementById('es-proveedor').innerHTML = '<option value="">— Seleccionar proveedor (opcional) —</option>';
   // Cargar áreas y proveedores en paralelo
   Promise.all([
