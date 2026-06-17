@@ -2203,6 +2203,20 @@ async function consultarTasaPorFecha() {
 
 
 
+
+// ── Helper global para estado Guardando en botones ──
+function btnSetGuardando(btn, guardando, textoOriginal) {
+  if (!btn) return;
+  if (guardando) {
+    btn.dataset.textoOriginal = btn.textContent;
+    btn.textContent = 'Guardando...';
+    btn.disabled = true;
+  } else {
+    btn.textContent = btn.dataset.textoOriginal || textoOriginal || 'Guardar';
+    btn.disabled = false;
+  }
+}
+
 // ══════════════════════════════════════════════════════════════
 // SISTEMA DE NOTIFICACIONES INTERNAS
 // ══════════════════════════════════════════════════════════════
