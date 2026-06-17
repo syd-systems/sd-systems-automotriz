@@ -352,7 +352,11 @@ async function guardarParamItem() {
     }
     okEl.style.display = 'block';
     _empParamCache = {}; // Invalidar cache empleados
-    setTimeout(function() { cerrarModal('modal-param'); mostrarTablaParam(key); }, 900);
+    resetBtn();
+    // Esperar que BD confirme el cambio antes de recargar
+    await new Promise(function(r){ setTimeout(r, 300); });
+    cerrarModal('modal-param');
+    await mostrarTablaParam(key);
   } catch(e) {
     errEl.textContent = 'Error: ' + e.message;
     errEl.style.display = 'block';
