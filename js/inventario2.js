@@ -405,7 +405,8 @@ function verFichaInventario(id) {
     + (r.descripcion ? '<div style="background:var(--gris2);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--suave)">' + r.descripcion + '</div>' : '')
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Stock Actual</div>'
-    + '<div style="font-family:var(--font-mono);font-size:18px;color:' + (stockBajo ? '#fc8181' : 'var(--naranja)') + '">' + r.stock_actual + ' ' + (r.unidad||'UND') + '</div>'
+    + '<div style="font-family:var(--font-mono);font-size:18px;color:' + (stockBajo ? '#fc8181' : 'var(--naranja)') + '">' + (_invSaldoArea ? (_invSaldoArea[r.id_articulo]||0) : r.stock_actual) + ' ' + (r.unidad||'UND') + '</div>'
+    + (_invSaldoArea ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Stock en tu área</div>' : '')
     + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo + ')</div>' : '') + '</div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Stock Mínimo</div>'
     + '<div style="font-family:var(--font-mono);font-size:18px">' + r.stock_minimo + ' ' + (r.unidad||'UND') + '</div></div>'
@@ -866,8 +867,13 @@ async function verHistorialEntradas(idArticulo) {
   if (!cont) return;
   cont.innerHTML = '<div style="color:var(--suave);font-size:12px">Cargando...</div>';
   try {
-    const entradas = await api('stock_entradas', 'GET', null,
-      '?id_articulo=eq.' + idArticulo + '&order=fecha_entrada.desc&select=*');
+    // Si el usuario solo ve su área, filtrar historial por área
+    const idAreaFiltro = _invSaldoArea && sesionActual?.correo_usuario
+      ? await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_area&limit=1').then(function(r){ return r&&r[0]?r[0].id_area:null; }).catch(function(){ return null; })
+      : null;
+    const qEntradas = '?id_articulo=eq.' + idArticulo + '&order=fecha_entrada.desc&select=*'
+      + (idAreaFiltro ? '&id_area=eq.'+idAreaFiltro : '');
+    const entradas = await api('stock_entradas', 'GET', null, qEntradas);
     if (!entradas || !entradas.length) {
       cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:8px 0">Sin entradas registradas.</div>';
       return;
@@ -1079,8 +1085,9 @@ async function verHistorialSalidas(idArticulo) {
   if (!cont) return;
   cont.innerHTML = '<div style="color:var(--suave);font-size:12px">Cargando...</div>';
   try {
-    const salidas = await api('stock_salidas', 'GET', null,
-      '?id_articulo=eq.' + idArticulo + '&order=fecha_salida.desc&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo)');
+    const qSalidas = '?id_articulo=eq.' + idArticulo + '&order=fecha_salida.desc&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo)'
+      + (idAreaFiltro ? '&or=(id_area.eq.'+idAreaFiltro+',id_area_entrega.eq.'+idAreaFiltro+')' : '');
+    const salidas = await api('stock_salidas', 'GET', null, qSalidas);
     if (!salidas || !salidas.length) {
       cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:8px 0">Sin salidas registradas.</div>';
       return;
