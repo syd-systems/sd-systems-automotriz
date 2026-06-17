@@ -409,7 +409,7 @@ function verFichaInventario(id) {
   verHistorialSalidas(r.id_articulo);
 }
 
-function abrirEntradaStock(id) {
+async function abrirEntradaStock(id) {
   let r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   // Si no está en caché, usar _fichaInvActual
   if (!r && _fichaInvActual && _fichaInvActual.id === id) {
@@ -596,7 +596,7 @@ async function guardarEntradaStock() {
 
     // ── FASE 5: Asiento contable ──
     try {
-      const areaNombreEnt = document.getElementById('es-area')?.selectedOptions[0]?.text || 'Área';
+      const areaNombreEnt = document.getElementById('es-area-display')?.textContent || 'Área';
       const tipoAst = motivoEnt === 'compra' ? 'ENTRADA_COMPRA'
                     : motivoEnt === 'devolucion' ? 'ENTRADA_DEVOLUCION'
                     : 'ENTRADA_AJUSTE';
