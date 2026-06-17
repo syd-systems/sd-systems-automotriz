@@ -122,10 +122,41 @@ async function renderInventario(filtro) {
     const items = itemsTodos.filter(function(r) { return r.activo !== false; });
     const itemsFiltradosBase = soloConStock ? items.filter(function(r) { return parseFloat(r.stock_actual||0) > 0; }) : items;
     inventarioCache = items;
+
+    // ── Filtro por área si no tiene VER_INVENTARIO_GENERAL ──
+    let itemsFiltradosBase2 = itemsFiltradosBase;
+    if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
+      // Obtener área del usuario actual
+      try {
+        const correo = sesionActual?.correo_usuario;
+        const empRes = correo ? await api('empleados','GET',null,
+          '?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1') : [];
+        const idAreaUsuario = empRes && empRes[0] ? empRes[0].id_area : null;
+        if (idAreaUsuario) {
+          // Calcular saldo positivo por área: entradas - salidas
+          const [ents, sals] = await Promise.all([
+            api('stock_entradas','GET',null,'?id_area=eq.'+idAreaUsuario+'&select=id_articulo,cantidad'),
+            api('stock_salidas','GET',null,'?id_area_entrega=eq.'+idAreaUsuario+'&select=id_articulo,cantidad')
+          ]);
+          const saldoArea = {};
+          (ents||[]).forEach(function(e) {
+            saldoArea[e.id_articulo] = (saldoArea[e.id_articulo]||0) + parseFloat(e.cantidad||0);
+          });
+          (sals||[]).forEach(function(s) {
+            saldoArea[s.id_articulo] = (saldoArea[s.id_articulo]||0) - parseFloat(s.cantidad||0);
+          });
+          // Solo consumibles con saldo positivo en el área
+          itemsFiltradosBase2 = itemsFiltradosBase.filter(function(r) {
+            return (saldoArea[r.id_articulo]||0) > 0;
+          });
+        }
+      } catch(eArea) { console.warn('Error filtro área:', eArea); }
+    }
+
     const catFiltro = document.getElementById('inv-filtro-cat') ? document.getElementById('inv-filtro-cat').value : '';
   var itemsFiltrados = catFiltro
-    ? itemsFiltradosBase.filter(function(r) { return (r.categoria || 'repuesto') === catFiltro; })
-    : itemsFiltradosBase;
+    ? itemsFiltradosBase2.filter(function(r) { return String(r.id_categoria) === String(catFiltro); })
+    : itemsFiltradosBase2;
   if (filtro && filtro.trim()) {
     const t = filtro.toLowerCase();
     itemsFiltrados = itemsFiltrados.filter(function(r) {
