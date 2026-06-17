@@ -276,6 +276,11 @@ async function abrirParamItem(key, id) {
 
 async function guardarParamItem() {
   if (!puedo('PARAMETROS','EDITAR')) { alert('No tiene permiso.'); return; }
+  const btnGuardar = document.getElementById('modal-param-guardar');
+  if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
+  const resetBtn = function() {
+    if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'GUARDAR'; }
+  };
   const id    = document.getElementById('param-item-id').value;
   const key   = document.getElementById('param-item-key').value;
   const nombre = document.getElementById('param-item-nombre')?.value.trim();
@@ -351,6 +356,7 @@ async function guardarParamItem() {
   } catch(e) {
     errEl.textContent = 'Error: ' + e.message;
     errEl.style.display = 'block';
+    resetBtn();
   }
 }
 
