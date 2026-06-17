@@ -2103,6 +2103,7 @@ async function renderTasas() {
       + '<button class="btn-primario" style="width:100%;padding:11px" onclick="consultarTasaPorFecha()">CONSULTAR</button>'
       + '</div>'
       + '</div>'
+      + '<div id="resultado-fecha" style="margin-top:16px"></div>'
       + '</div></div>';
   } catch(e) {
     console.error(e);
