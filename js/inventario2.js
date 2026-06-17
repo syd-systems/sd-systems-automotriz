@@ -125,6 +125,7 @@ async function renderInventario(filtro) {
 
     // ── Filtro por área si no tiene VER_INVENTARIO_GENERAL ──
     let itemsFiltradosBase2 = itemsFiltradosBase;
+    _invSaldoArea = null; // Reset — se llenará si aplica filtro de área
     if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
       // Obtener área del usuario actual
       try {
@@ -152,6 +153,8 @@ async function renderInventario(filtro) {
           (salsEnviadas||[]).forEach(function(s) {
             saldoArea[s.id_articulo] = (saldoArea[s.id_articulo]||0) - parseFloat(s.cantidad||0);
           });
+          // Guardar saldo por área para usar en render
+          _invSaldoArea = saldoArea;
           // Solo consumibles con saldo positivo en el área
           itemsFiltradosBase2 = itemsFiltradosBase.filter(function(r) {
             return (saldoArea[r.id_articulo]||0) > 0;
@@ -256,8 +259,13 @@ function invRenderTabla(items, cont) {
       + '</div>'
       + '<div style="font-weight:500">' + r.nombre + '</div>'
       + (r.descripcion ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion + '</div>' : '') + '</div></div></td>'
-      + '<td><span class="badge ' + (stockBajo ? 'badge-rojo' : 'badge-verde') + '">' + r.stock_actual + ' ' + (r.unidad || 'UND') + '</span>'
-      + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo + ')</div>' : '') + '</td>'
+      + (function() {
+          const stockMostrar = _invSaldoArea ? (_invSaldoArea[r.id_articulo]||0) : r.stock_actual;
+          const stockBajoArea = parseFloat(r.stock_minimo||0) > 0 && stockMostrar <= r.stock_minimo;
+          return '<td><span class="badge ' + (stockBajoArea ? 'badge-rojo' : 'badge-verde') + '">' + stockMostrar + ' ' + (r.unidad || 'UND') + '</span>'
+            + (_invSaldoArea ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Stock área</div>' : '')
+            + (stockBajoArea ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo + ')</div>' : '') + '</td>';
+        })()
       + (puedo('INVENTARIO','VER_COSTOS')
           ? '<td style="font-family:var(--font-mono);font-size:12px">'
             + '<div style="color:var(--suave);font-size:9px;letter-spacing:1px">COSTO PROM. (CPP)</div>'
@@ -667,6 +675,7 @@ async function guardarEntradaStock() {
 
 // ─── CATEGORÍAS Y TIPOS DE CONSUMIBLE ───
 let _invCategoriasCache = [];
+let _invSaldoArea = null; // Saldo por área del usuario — null = mostrar stock global
 
 async function invCargarCategorias(selCatId) {
   const sel = document.getElementById('inv-categoria');
