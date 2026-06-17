@@ -133,16 +133,23 @@ async function renderInventario(filtro) {
           '?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1') : [];
         const idAreaUsuario = empRes && empRes[0] ? empRes[0].id_area : null;
         if (idAreaUsuario) {
-          // Calcular saldo positivo por área: entradas - salidas
-          const [ents, sals] = await Promise.all([
+          // Saldo por área:
+          // (+) entradas directas al área (compras/devoluciones con id_area = área)
+          // (+) salidas de otras áreas recibidas por esta área (stock_salidas.id_area = área)
+          // (-) salidas enviadas desde esta área (stock_salidas.id_area_entrega = área)
+          const [entsDirectas, salsRecibidas, salsEnviadas] = await Promise.all([
             api('stock_entradas','GET',null,'?id_area=eq.'+idAreaUsuario+'&select=id_articulo,cantidad'),
+            api('stock_salidas','GET',null,'?id_area=eq.'+idAreaUsuario+'&select=id_articulo,cantidad'),
             api('stock_salidas','GET',null,'?id_area_entrega=eq.'+idAreaUsuario+'&select=id_articulo,cantidad')
           ]);
           const saldoArea = {};
-          (ents||[]).forEach(function(e) {
+          (entsDirectas||[]).forEach(function(e) {
             saldoArea[e.id_articulo] = (saldoArea[e.id_articulo]||0) + parseFloat(e.cantidad||0);
           });
-          (sals||[]).forEach(function(s) {
+          (salsRecibidas||[]).forEach(function(s) {
+            saldoArea[s.id_articulo] = (saldoArea[s.id_articulo]||0) + parseFloat(s.cantidad||0);
+          });
+          (salsEnviadas||[]).forEach(function(s) {
             saldoArea[s.id_articulo] = (saldoArea[s.id_articulo]||0) - parseFloat(s.cantidad||0);
           });
           // Solo consumibles con saldo positivo en el área
