@@ -1182,7 +1182,7 @@ async function guardarSalidaStock() {
   if (!puedo('INVENTARIO','SALIDA_STOCK')) { alert('No tiene permiso.'); return; }
   if (window._guardandoSalida) return;
   window._guardandoSalida = true;
-  const btnGuardarSal = document.querySelector('#modal-salida-stock .btn-primario');
+  const btnGuardarSal = document.querySelector('#modal-salida-stock .btn-peligro');
   const resetBtnSal = function() {
     window._guardandoSalida = false;
     if (btnGuardarSal) { btnGuardarSal.disabled = false; btnGuardarSal.textContent = 'Registrar Salida'; }
