@@ -1105,6 +1105,36 @@ async function cargarUsuarioEntregaSalida() {
   } catch(e) { console.warn('cargarUsuarioEntregaSalida:', e); }
 }
 
+async function cargarUsuarioReceptorEntrada() {
+  try {
+    const correo = sesionActual?.correo_usuario;
+    if (!correo) return;
+    const emps = await api('empleados','GET',null,
+      '?correo=eq.'+encodeURIComponent(correo)+'&select=id_empleado,nombre_completo,id_area,param_areas(nombre,codigo)');
+    const emp = emps && emps[0] ? emps[0] : null;
+
+    const nomEl    = document.getElementById('es-receptor-nombre');
+    const areaEl   = document.getElementById('es-receptor-area');
+    const hidEmp   = document.getElementById('es-empleado');
+    const hidArea  = document.getElementById('es-area');
+    const areaDisp = document.getElementById('es-area-display');
+
+    if (emp) {
+      const areaNom = emp.param_areas
+        ? (emp.param_areas.codigo ? emp.param_areas.codigo+' — ' : '') + emp.param_areas.nombre
+        : '—';
+      if (nomEl)    nomEl.textContent    = emp.nombre_completo;
+      if (areaEl)   areaEl.textContent   = areaNom;
+      if (areaDisp) areaDisp.textContent = areaNom;
+      if (hidEmp)   hidEmp.value         = emp.id_empleado;
+      if (hidArea)  hidArea.value        = emp.id_area || '';
+    } else {
+      if (nomEl)    nomEl.textContent    = correo;
+      if (areaDisp) areaDisp.textContent = '—';
+    }
+  } catch(e) { console.warn('cargarUsuarioReceptorEntrada:', e); }
+}
+
 // ─── SALIDA DE STOCK ───
 async function abrirSalidaStock(id, nombre) {
   if (!puedo('INVENTARIO','SALIDA_STOCK')) { alert('No tiene permiso para registrar salidas de stock.'); return; }
