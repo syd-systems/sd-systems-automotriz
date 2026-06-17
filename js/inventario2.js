@@ -871,8 +871,42 @@ async function verHistorialEntradas(idArticulo) {
     const idAreaFiltro = _invSaldoArea && sesionActual?.correo_usuario
       ? await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_area&limit=1').then(function(r){ return r&&r[0]?r[0].id_area:null; }).catch(function(){ return null; })
       : null;
-    const qEntradas = '?id_articulo=eq.' + idArticulo + '&order=fecha_entrada.desc&select=*'
-      + (idAreaFiltro ? '&id_area=eq.'+idAreaFiltro : '');
+    let filas = [];
+
+    if (idAreaFiltro) {
+      // Para operador de área: sus "entradas" son las salidas del almacén hacia su área
+      const salsRecibidas = await api('stock_salidas','GET',null,
+        '?id_articulo=eq.'+idArticulo+'&id_area=eq.'+idAreaFiltro+'&order=fecha_salida.desc&select=*,area_origen:id_area_entrega(nombre,codigo)');
+      if (!salsRecibidas || !salsRecibidas.length) {
+        cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:8px 0">Sin entradas en tu área.</div>';
+        return;
+      }
+      filas = salsRecibidas.map(function(s) {
+        const origen = s.area_origen ? (s.area_origen.codigo?s.area_origen.codigo+' — ':'')+s.area_origen.nombre : 'Almacén';
+        const estado = s.reversada
+          ? '<span style="color:#fc8181;font-size:10px">Reversada</span>'
+          : '<span style="color:#22c55e;font-size:10px">Activa</span>';
+        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
+          + '<td style="padding:6px 4px">' + fmtFecha(s.fecha_salida) + '</td>'
+          + '<td style="text-align:right;padding:6px 4px;font-family:var(--font-mono)">' + s.cantidad + '</td>'
+          + '<td style="padding:6px 4px">' + origen + '</td>'
+          + '<td style="text-align:center;padding:6px 4px">' + estado + '</td>'
+          + '</tr>';
+      });
+      cont.innerHTML = '<div style="margin-top:16px;border-top:1px solid var(--borde);padding-top:12px">'
+        + '<div style="font-size:10px;color:var(--suave);letter-spacing:2px;margin-bottom:8px">ENTRADAS A TU ÁREA</div>'
+        + '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+        + '<thead><tr style="border-bottom:1px solid var(--borde)">'
+        + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">FECHA</th>'
+        + '<th style="text-align:right;padding:6px 4px;color:var(--suave);font-size:10px">CANT</th>'
+        + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">ORIGEN</th>'
+        + '<th style="text-align:center;padding:6px 4px;color:var(--suave);font-size:10px">ESTADO</th>'
+        + '</tr></thead><tbody>' + filas.join('') + '</tbody></table></div>';
+      return;
+    }
+
+    // Administrador: ver todas las entradas directas
+    const qEntradas = '?id_articulo=eq.' + idArticulo + '&order=fecha_entrada.desc&select=*';
     const entradas = await api('stock_entradas', 'GET', null, qEntradas);
     if (!entradas || !entradas.length) {
       cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:8px 0">Sin entradas registradas.</div>';
