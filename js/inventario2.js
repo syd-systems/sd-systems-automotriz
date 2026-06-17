@@ -1187,7 +1187,7 @@ async function invRenderMovimientos(cont) {
     + '<option value="movimientos">Movimientos</option>'
     + '<option value="categoria">Por Categoría</option>'
     + '<option value="area">Por Área</option>'
-    + '<option value="articulo">Por Artículo</option>'
+    + '<option value="articulo">Por Consumible</option>'
     + '<option value="proveedor">Por Proveedor</option>'
     + '<option value="rotacion">Rotación</option>'
     + '<option value="saldo_area">Saldo por Área</option>'
@@ -1197,7 +1197,7 @@ async function invRenderMovimientos(cont) {
     + '<option value="">Todos</option><option value="ENTRADA">Entradas</option><option value="SALIDA">Salidas</option>'
     + '</select></div>'
     + '<div id="mov-filtro-art-cont"><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Consumible</label>'
-    + '<input type="text" id="mov-articulo" placeholder="Buscar..." onkeyup="invCargarMovimientos()" style="' + INP + ';min-width:160px"></div>'
+    + '<input type="text" id="mov-articulo" placeholder="Buscar consumible..." onkeyup="invCargarMovimientos()" style="' + INP + ';min-width:160px"></div>'
     + '</div>'
     + '<div id="mov-resultado"><div style="text-align:center;color:var(--suave);padding:40px">Cargando...</div></div>';
 
