@@ -92,6 +92,7 @@ const PERMISOS_POR_MODULO = {
     { accion: 'ELIMINAR',         label: 'Eliminar artículo' },
     { accion: 'ENTRADA_STOCK',    label: 'Registrar entrada de stock' },
     { accion: 'SALIDA_STOCK',     label: 'Registrar salida de stock' },
+    { accion: 'VER_INVENTARIO_GENERAL', label: 'Ver Inventario General completo (sin filtro de área)' },
     { accion: 'VER_MOVIMIENTOS',  label: 'Ver consulta de movimientos' },
     { accion: 'VER_CATEGORIAS',   label: 'Ver y gestionar Categorías de Inventario' },
     { accion: 'VER_TIPOS',        label: 'Ver y gestionar Tipos de Consumible' },
