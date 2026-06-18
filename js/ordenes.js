@@ -757,7 +757,7 @@ function onSelInventarioChange() {
 async function guardarOS() {
   if (window._guardandoOS) return;
   window._guardandoOS = true;
-  const btnGuardar = document.querySelector('#modal-os .btn-primario');
+  const btnGuardar = document.getElementById('btn-guardar-os');
   if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
   try {
     await _guardarOSInterno();
