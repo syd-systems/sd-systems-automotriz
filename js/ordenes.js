@@ -339,6 +339,9 @@ async function abrirNuevaOS() {
   onCambioEstadoOS('ABIERTA');
   document.getElementById('os-fecha-prometida').min = sesionActual.administrador ? '' : hoyOS;
   document.getElementById('os-estado').value = 'ABIERTA';
+  document.getElementById('os-estado').disabled = true;
+  const lblEstado = document.getElementById('lbl-os-estado');
+  if (lblEstado) lblEstado.textContent = 'Estado';
   document.getElementById('os-diagnostico').value = '';
   document.getElementById('os-observaciones').value = '';
   const tasaUsdEl = document.getElementById('os-tasa-usd');
@@ -414,6 +417,9 @@ async function abrirEditarOS(id) {
   // Mostrar/ocultar según estado
   onCambioEstadoOS(o.estado || '');
   document.getElementById('os-estado').value = o.estado;
+  document.getElementById('os-estado').disabled = false;
+  const lblEstadoE = document.getElementById('lbl-os-estado');
+  if (lblEstadoE) lblEstadoE.textContent = 'Selección Estado';
   document.getElementById('os-diagnostico').value = o.diagnostico || '';
   document.getElementById('os-observaciones').value = o.observaciones || '';
   const tasaUsdEl2 = document.getElementById('os-tasa-usd');
