@@ -729,8 +729,9 @@ async function agregarRepuestoInventario() {
   } else {
     const r = inventarioCache.find(function(x) { return x.id_articulo == sel.value; });
     if (!r) return;
-    if (r.stock_actual < cantVal) {
-      if (!confirm('⚠ Stock insuficiente (' + r.stock_actual + ' disponibles). ¿Agregar igual?')) return;
+    const stockDisponible = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual;
+    if (stockDisponible < cantVal) {
+      if (!confirm('⚠ Stock insuficiente (' + stockDisponible + ' disponibles en tu área). ¿Agregar igual?')) return;
     }
     const pVal = parseFloat(precio.value) || parseFloat(r.precio_venta_usd) || 0;
     osRepuestosLineas.push({ id_articulo: r.id_articulo, descripcion: r.nombre,
@@ -1285,9 +1286,17 @@ async function cargarSelectsOS() {
   // ── Cargar selector de INVENTARIO ──
   const selInv = document.getElementById('os-sel-inv');
   if (selInv) {
-    selInv.innerHTML = '<option value="">— Descripción libre —</option>'
-      + inventarioCache.map(function(r) {
-          return '<option value="' + r.id_articulo + '">' + r.nombre + ' (Stock: ' + r.stock_actual + ') — $' + parseFloat(r.precio_venta_usd || 0).toFixed(2) + '</option>';
+    // Filtrar: solo consumibles con saldo positivo en el área del usuario
+    let itemsDisponibles = inventarioCache;
+    if (_invSaldoArea) {
+      itemsDisponibles = inventarioCache.filter(function(r) {
+        return (_invSaldoArea[r.id_articulo] || 0) > 0;
+      });
+    }
+    selInv.innerHTML = '<option value="">— Seleccionar Consumible —</option>'
+      + itemsDisponibles.map(function(r) {
+          const stock = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual;
+          return '<option value="' + r.id_articulo + '">' + r.nombre + ' (Stock: ' + stock + ') — $' + parseFloat(r.precio_venta_usd || 0).toFixed(2) + '</option>';
         }).join('');
   }
 }
