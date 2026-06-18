@@ -1338,17 +1338,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260617021"></script>
-<script src="js/parametros.js?v=20260617021"></script>
-<script src="js/empresas.js?v=20260617021"></script>
-<script src="js/facturacion.js?v=20260617021"></script>
-<script src="js/inventario.js?v=20260617021"></script>
-<script src="js/contabilidad.js?v=20260617021"></script>
-<script src="js/pagos.js?v=20260617021"></script>
-<script src="js/vehiculos.js?v=20260617021"></script>
-<script src="js/catalogo.js?v=20260617021"></script>
-<script src="js/inventario2.js?v=20260617021"></script>
-<script src="js/ordenes.js?v=20260617021"></script>
+<script src="js/core.js?v=20260617020"></script>
+<script src="js/parametros.js?v=20260617020"></script>
+<script src="js/empresas.js?v=20260617020"></script>
+<script src="js/facturacion.js?v=20260617020"></script>
+<script src="js/inventario.js?v=20260617020"></script>
+<script src="js/contabilidad.js?v=20260617020"></script>
+<script src="js/pagos.js?v=20260617020"></script>
+<script src="js/vehiculos.js?v=20260617020"></script>
+<script src="js/catalogo.js?v=20260617020"></script>
+<script src="js/inventario2.js?v=20260617020"></script>
+<script src="js/ordenes.js?v=20260617020"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2703,9 +2703,9 @@
         <!-- Agregar repuesto -->
         <div style="display:grid;grid-template-columns:1fr 70px 80px 80px auto;gap:8px;align-items:end;padding:10px;background:var(--gris2);border-radius:6px">
           <div class="form-campo" style="margin:0">
-            <label style="font-size:7px">Del inventario o libre</label>
+            <label style="font-size:7px">Seleccionar Consumible</label>
             <select id="os-sel-inv" onchange="onSelInventarioChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%"></select>
-            <input type="text" id="os-desc-rep-libre" placeholder="O escribe descripción libre..." style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%;margin-top:4px">
+            <input type="hidden" id="os-desc-rep-libre">
           </div>
           <div class="form-campo" style="margin:0">
             <label style="font-size:7px">Cant.</label>
