@@ -724,12 +724,8 @@ async function agregarRepuestoInventario() {
   }
 
   if (!sel.value) {
-    if (!desc.value.trim()) { alert('Escribe una descripción o selecciona del inventario.'); return; }
-    const pVal = parseFloat(precio.value) || 0;
-    osRepuestosLineas.push({ id_articulo: null, descripcion: desc.value.trim(),
-      cantidad: cantVal, precio_usd: precioAUSD(pVal, moneda),
-      precio_original: pVal, moneda });
-    desc.value = ''; precio.value = ''; cant.value = '1';
+    alert('Debe seleccionar un consumible del inventario.');
+    return;
   } else {
     const r = inventarioCache.find(function(x) { return x.id_articulo == sel.value; });
     if (!r) return;
@@ -783,6 +779,15 @@ async function _guardarOSInterno() {
   const okEl        = document.getElementById('alerta-os-ok');
   const errEl       = document.getElementById('alerta-os-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  // Validar que tenga al menos un servicio o consumible
+  const tieneServicios  = document.querySelectorAll('#os-lista-servicios .os-srv-item').length > 0;
+  const tieneConsumibles = document.querySelectorAll('#os-lista-repuestos .os-rep-item').length > 0;
+  if (!tieneServicios && !tieneConsumibles) {
+    errEl.textContent = 'Debe agregar al menos un Servicio o un Consumible antes de guardar la OS.';
+    errEl.style.display = 'block';
+    return;
+  }
 
   // Validar fechas obligatorias según estado
   if (estado === 'CERRADA' && !fechaCierre) {
