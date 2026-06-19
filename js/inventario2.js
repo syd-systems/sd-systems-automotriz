@@ -675,6 +675,7 @@ async function guardarEntradaStock() {
           id_emisor:       _empresaActiva?.id_emisor || null,
           tipo:            'COMPRA_CONSUMIBLE',
           numero_doc:      idEntrada ? 'ENT-' + idEntrada : ('ENT-INV-' + id),
+          fecha_emision:   new Date().toISOString().split('T')[0],
           moneda_pago:     monedaCompra || 'USD',
           estado:          'PENDIENTE',
           monto_usd:       montoUSD,
