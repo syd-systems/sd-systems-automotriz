@@ -1057,10 +1057,7 @@ async function contRenderCxp() {
       const prov = c.proveedores ? c.proveedores.nombre : '—';
       const est  = c.estado || 'PENDIENTE';
       const badge = '<span style="background:'+( estadoColor[est]||'#888')+'22;color:'+(estadoColor[est]||'#888')+';border:1px solid '+(estadoColor[est]||'#888')+'44;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600">'+est+'</span>';
-      const acciones = est === 'PENDIENTE'
-        ? '<button onclick="contPagarCxP('+c.id_cxp+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>'
-          + ' <button onclick="contAnularCxP('+c.id_cxp+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑 Anular</button>'
-        : '';
+      const acciones = ''; // Gestión de pagos en módulo Pagos
       return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
         +'<td style="padding:8px;font-size:11px;color:var(--naranja);font-family:var(--font-mono)">'+c.numero_doc+'</td>'
         +'<td style="padding:8px;font-size:12px">'+prov+'</td>'
@@ -1070,7 +1067,7 @@ async function contRenderCxp() {
         +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#22c55e">$ '+fmtUSD(c.pagado_usd||0)+'</td>'
         +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700">$ '+fmtUSD(c.saldo_usd||0)+'</td>'
         +'<td style="padding:8px;text-align:center">'+badge+'</td>'
-        +'<td style="padding:8px;text-align:center">'+acciones+'</td>'
+        
         +'</tr>';
     }).join('');
 
@@ -1100,7 +1097,7 @@ async function contRenderCxp() {
           +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:right">Pagado</th>'
           +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:right">Saldo</th>'
           +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:center">Estado</th>'
-          +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:center">Acciones</th>'
+          
           +'</tr></thead><tbody>'+filas+'</tbody></table></div>'
         : '<div style="text-align:center;color:var(--suave);padding:40px">Sin registros de CxP.</div>');
   } catch(e) {
