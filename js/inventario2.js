@@ -127,11 +127,16 @@ async function renderInventario(filtro) {
     let itemsFiltradosBase2 = itemsFiltradosBase;
     _invSaldoArea = null; // Reset — se llenará si aplica filtro de área
     if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
-      // Obtener área del usuario actual
+      // Obtener área del usuario actual — con timeout de 4s para no colgarse
       try {
         const correo = sesionActual?.correo_usuario;
-        const empRes = correo ? await api('empleados','GET',null,
-          '?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1') : [];
+        const timeout = new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('timeout')); }, 4000); });
+        const empRes = correo
+          ? await Promise.race([
+              api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1'),
+              timeout
+            ]).catch(function(){ return []; })
+          : [];
         const idAreaUsuario = empRes && empRes[0] ? empRes[0].id_area : null;
         if (idAreaUsuario && idsArticulos.length > 0) {
           // Saldo por área:
@@ -139,10 +144,11 @@ async function renderInventario(filtro) {
           // (+) salidas de otras áreas recibidas por esta área (stock_salidas.id_area = área)
           // (-) salidas enviadas desde esta área (stock_salidas.id_area_entrega = área)
           const inClauseArea = idsArticulos.join(',');
+          const t4s = function(){ return new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); },4000); }); };
           const [entsDirectas, salsRecibidas, salsEnviadas] = await Promise.all([
-            api('stock_entradas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClauseArea+')&select=id_articulo,cantidad'),
-            api('stock_salidas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClauseArea+')&select=id_articulo,cantidad'),
-            api('stock_salidas','GET',null,'?id_area_entrega=eq.'+idAreaUsuario+'&id_articulo=in.('+inClauseArea+')&select=id_articulo,cantidad')
+            Promise.race([api('stock_entradas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClauseArea+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
+            Promise.race([api('stock_salidas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClauseArea+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
+            Promise.race([api('stock_salidas','GET',null,'?id_area_entrega=eq.'+idAreaUsuario+'&id_articulo=in.('+inClauseArea+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; })
           ]);
           const saldoArea = {};
           (entsDirectas||[]).forEach(function(e) {
