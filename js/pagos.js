@@ -85,7 +85,11 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
   if (fEstado) q += '&estado=eq.' + fEstado;
   if (fTipo)   q += '&tipo_pago=eq.' + fTipo;
 
-  const pagos = await api('pagos','GET',null,q);
+  // Cargar CxP de proveedores (generadas automáticamente) + pagos manuales
+  const [pagos, cxps] = await Promise.all([
+    api('pagos','GET',null,q),
+    api('cont_cxp','GET',null,'?id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=fecha_emision.desc&select=*,proveedores:id_proveedor(nombre,rif)')
+  ]);
   pagosCache = pagos;
 
   const fRef   = (filtroRef   || document.getElementById('pagos-referencia')?.value  || '').toLowerCase();
@@ -116,6 +120,56 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     return fp <= en7dias;
   });
 
+  // ── Renderizar CxP Proveedores ──
+  const cxpFiltradas = (cxps||[]).filter(function(c) {
+    if (fEstado && c.estado !== fEstado) return false;
+    if (fBuscar) {
+      const s = fBuscar.toLowerCase();
+      const prov = c.proveedores?.nombre || '';
+      if (!(c.numero_doc||'').toLowerCase().includes(s) && !prov.toLowerCase().includes(s)) return false;
+    }
+    if (fDesde && (c.fecha_emision||'') < fDesde) return false;
+    if (fHasta && (c.fecha_emision||'') > fHasta) return false;
+    return true;
+  });
+  const estadoColCxP = { PENDIENTE:'#f59e0b', PAGADA:'#22c55e', ANULADA:'#6b7280', PARCIAL:'#60a5fa' };
+  const cxpHtml = cxpFiltradas.length ? (
+    '<div style="margin:12px 24px 0">'
+    +'<div style="font-size:11px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">📋 CxP PROVEEDORES</div>'
+    +'<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">N° Doc</th>'
+    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Proveedor</th>'
+    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Fecha</th>'
+    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Concepto</th>'
+    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:right">Monto</th>'
+    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:right">Pagado</th>'
+    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:right">Saldo</th>'
+    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:center">Estado</th>'
+    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:center">Acción</th>'
+    +'</tr></thead><tbody>'
+    + cxpFiltradas.map(function(c) {
+        const prov  = c.proveedores?.nombre || '—';
+        const est   = c.estado || 'PENDIENTE';
+        const col   = estadoColCxP[est] || '#888';
+        const badge = '<span style="background:'+col+'22;color:'+col+';border:1px solid '+col+'44;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600">'+est+'</span>';
+        const btn   = est === 'PENDIENTE' || est === 'PARCIAL'
+          ? '<button onclick="pagarCxP('+c.id_cxp+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>'
+          : '';
+        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+          +'<td style="padding:8px;font-family:var(--font-mono);font-size:11px;color:var(--naranja)">'+c.numero_doc+'</td>'
+          +'<td style="padding:8px;font-size:12px">'+prov+'</td>'
+          +'<td style="padding:8px;font-size:11px;color:var(--suave)">'+fmtFecha(c.fecha_emision)+'</td>'
+          +'<td style="padding:8px;font-size:11px;color:var(--suave)">'+((c.tipo||'').replace(/_/g,' '))+'</td>'
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono)">$ '+fmtUSD(c.monto_usd)+'</td>'
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#22c55e">$ '+fmtUSD(c.pagado_usd||0)+'</td>'
+          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:#f59e0b">$ '+fmtUSD(c.saldo_usd||0)+'</td>'
+          +'<td style="padding:8px;text-align:center">'+badge+'</td>'
+          +'<td style="padding:8px;text-align:center">'+btn+'</td>'
+          +'</tr>';
+      }).join('')
+    +'</tbody></table></div></div>'
+  ) : '';
+
   const cont = document.getElementById('pagos-tabla-cont');
 
   let alertaHtml = '';
@@ -127,7 +181,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
   }
 
   if (!filtrados.length) {
-    cont.innerHTML = alertaHtml + '<div style="text-align:center;padding:40px;color:var(--suave)">Sin pagos registrados.</div>';
+    cont.innerHTML = cxpHtml + alertaHtml + '<div style="text-align:center;padding:40px;color:var(--suave)">Sin pagos registrados.</div>';
     return;
   }
 
@@ -158,7 +212,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       '</tr>';
   }).join('');
 
-  cont.innerHTML = alertaHtml +
+  cont.innerHTML = cxpHtml + alertaHtml +
     '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">' +
     '<thead><tr style="border-bottom:2px solid var(--borde)">' +
     '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">N°</th>' +
@@ -1330,3 +1384,23 @@ window.addEventListener('beforeunload', async () => {
 });
 
 
+
+
+async function pagarCxP(idCxP) {
+  const montoPago = parseFloat(prompt('Ingrese el monto a pagar en USD:'));
+  if (!montoPago || montoPago <= 0) return;
+  try {
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*');
+    if (!rows || !rows[0]) return;
+    const c = rows[0];
+    const nuevoPagado = parseFloat((parseFloat(c.pagado_usd||0) + montoPago).toFixed(2));
+    const nuevoSaldo  = parseFloat(Math.max(0, parseFloat(c.monto_usd||0) - nuevoPagado).toFixed(2));
+    const nuevoEstado = nuevoSaldo <= 0 ? 'PAGADA' : 'PARCIAL';
+    await api('cont_cxp','PATCH',{
+      pagado_usd: nuevoPagado,
+      saldo_usd:  nuevoSaldo,
+      estado:     nuevoEstado
+    },'?id_cxp=eq.'+idCxP);
+    cargarPagos();
+  } catch(e) { alert('Error al registrar pago: '+e.message); }
+}
