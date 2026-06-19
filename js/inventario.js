@@ -570,6 +570,43 @@ async function guardarProveedor() {
 
   if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
 
+  // ── Validar datos bancarios (solo si se seleccionó banco) ──
+  const idBancoVal    = document.getElementById('prov-banco')?.value;
+  const tipoCuentaVal = document.getElementById('prov-tipo-cuenta')?.value;
+  const numCuentaVal  = document.getElementById('prov-num-cuenta')?.value || '';
+  if (idBancoVal) {
+    if (!tipoCuentaVal) {
+      errEl.textContent = 'Seleccione el Tipo de Cuenta.';
+      errEl.style.display = 'block'; return;
+    }
+    const digitos = numCuentaVal.replace(/\D/g,'');
+    if (digitos.length !== 20) {
+      errEl.textContent = 'El Número de Cuenta debe tener 20 dígitos completos (código banco + 16 dígitos).';
+      errEl.style.display = 'block';
+      document.getElementById('prov-num-cuenta-resto')?.focus();
+      return;
+    }
+  }
+
+  // ── Validar Pago Móvil (solo si se seleccionó banco PM) ──
+  const idBancoPMVal = document.getElementById('prov-pm-banco')?.value;
+  const pmCiVal      = (document.getElementById('prov-pm-ci')?.value || '').trim().toUpperCase();
+  const pmCelVal     = (document.getElementById('prov-pm-celular')?.value || '').replace(/\D/g,'');
+  if (idBancoPMVal) {
+    if (!/^[JGVEPCE]\d{8}$/.test(pmCiVal.replace(/[-]/g,''))) {
+      errEl.textContent = 'C.I./R.I.F debe comenzar con J, G, V, E, P o C seguido de 8 dígitos (ej: J12345678).';
+      errEl.style.display = 'block';
+      document.getElementById('prov-pm-ci')?.focus();
+      return;
+    }
+    if (pmCelVal.length !== 11) {
+      errEl.textContent = 'El N° Celular debe tener 11 dígitos (ej: 04141234567).';
+      errEl.style.display = 'block';
+      document.getElementById('prov-pm-celular')?.focus();
+      return;
+    }
+  }
+
   // Validar duplicado por nombre
   try {
     const existe = await api('proveedores', 'GET', null, '?nombre=ilike.' + encodeURIComponent(nombre) + (id ? '&id_proveedor=neq.' + id : ''));
