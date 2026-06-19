@@ -664,6 +664,30 @@ async function guardarEntradaStock() {
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
 
+    // ── FASE 5B: Crear CxP automática si motivo es compra ──
+    if (motivoEnt === 'compra') {
+      try {
+        const idProveedor = parseInt(document.getElementById('es-proveedor')?.value) || null;
+        const montoUSD    = parseFloat((nuevoPrecioCosto * cantidad).toFixed(2));
+        const montoVES    = parseFloat((montoUSD * _tasaVigente).toFixed(2));
+        await api('cont_cxp','POST',{
+          id_proveedor:    idProveedor,
+          id_emisor:       _empresaActiva?.id_emisor || null,
+          tipo:            'COMPRA_CONSUMIBLE',
+          numero_doc:      idEntrada ? 'ENT-' + idEntrada : ('ENT-INV-' + id),
+          moneda_pago:     monedaCompra || 'USD',
+          estado:          'PENDIENTE',
+          monto_usd:       montoUSD,
+          monto_ves:       montoVES,
+          tasa_bcv:        _tasaVigente || 1,
+          pagado_usd:      0,
+          saldo_usd:       montoUSD,
+          observaciones:   'Compra: ' + (r.nombre || r.codigo || 'Art#'+id) + ' x ' + cantidad + ' uds.',
+          id_usuario:      sesionActual?.correo_usuario || null
+        });
+      } catch(eCxP) { console.warn('Error creando CxP:', eCxP); }
+    }
+
     // ── FASE 6: Actualizar cache y cerrar ──
     if (r) r.stock_actual = nuevoStock;
     okEl.textContent = 'Stock actualizado: ' + stockActual + ' → ' + nuevoStock + ' ' + (r?.unidad || 'UND');
