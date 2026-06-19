@@ -101,7 +101,12 @@ async function contCambiarVista(vista, forzar) {
       btn.style.color      = v === vista ? '#fff' : 'var(--suave)';
     });
   }
-  const cont = document.getElementById('cont-vista-cont');
+  // Esperar a que el DOM procese contRenderShell si es necesario
+  let cont = document.getElementById('cont-vista-cont');
+  if (!cont) {
+    await new Promise(function(r){ setTimeout(r, 50); });
+    cont = document.getElementById('cont-vista-cont');
+  }
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   if      (vista === 'diario')       await contRenderDiario();
