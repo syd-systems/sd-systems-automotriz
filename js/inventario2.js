@@ -569,20 +569,29 @@ function calcularCuotasEntrada() {
   if (montoEl && !montoEl.value && totalUSD > 0) montoEl.value = montoCuota;
 
   // Generar tabla de cuotas
+  // Ajusta fecha al lunes siguiente si cae en fin de semana
+  function ajustarHabilLunes(d) {
+    var dia = d.getDay(); // 0=domingo, 6=sábado
+    if (dia === 6) d.setDate(d.getDate() + 2); // sábado → lunes
+    if (dia === 0) d.setDate(d.getDate() + 1); // domingo → lunes
+    return d;
+  }
+
   const cuotas = [];
-  let fecha = new Date(fechaInicio + 'T00:00:00');
+  let fecha = ajustarHabilLunes(new Date(fechaInicio + 'T00:00:00'));
   for (let i = 0; i < numCuotas; i++) {
-    const f = new Date(fecha);
-    f.setDate(f.getDate() + (i === 0 ? 0 : intervalo));
-    fecha = f;
+    if (i > 0) {
+      fecha = ajustarHabilLunes(new Date(new Date(cuotas[i-1].fecha + 'T00:00:00').setDate(
+        new Date(cuotas[i-1].fecha + 'T00:00:00').getDate() + intervalo
+      )));
+    }
     cuotas.push({
-      num:    i + 1,
-      fecha:  fecha.toISOString().split('T')[0],
-      monto:  i === numCuotas - 1
+      num:   i + 1,
+      fecha: fecha.toISOString().split('T')[0],
+      monto: i === numCuotas - 1
         ? parseFloat((totalUSD - montoCuota * (numCuotas - 1)).toFixed(2))
         : montoCuota
     });
-    if (i > 0) fecha = new Date(cuotas[i].fecha + 'T00:00:00');
   }
 
   const total = cuotas.reduce(function(s,c){ return s + c.monto; }, 0);
