@@ -163,7 +163,8 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     let acciones = '';
     if (canPay) {
       if (item._src === 'cxp') {
-        acciones = '<button onclick="pagarCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>';
+        acciones = '<button onclick="pagarCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>'
+          + ' <button onclick="anularPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑 Anular</button>';
       } else {
         acciones = '<button onclick="abrirFichaPago('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
       }
@@ -1456,4 +1457,29 @@ async function contGuardarPagoCxp() {
     errEl.textContent = 'Error: '+e.message;
     errEl.style.display = 'block';
   }
+}
+
+async function anularPagoCxP(idCxP) {
+  if (!confirm('¿Anular esta CxP? Se revertirán los asientos contables asociados.')) return;
+  try {
+    // 1. Anular la CxP
+    await api('cont_cxp','PATCH',
+      { estado: 'ANULADA', observaciones: '[ANULADA] ' },
+      '?id_cxp=eq.'+idCxP);
+
+    // 2. Reversar asientos contables asociados
+    const numDoc = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=numero_doc');
+    if (numDoc && numDoc[0]) {
+      const ref = numDoc[0].numero_doc;
+      const asientos = await api('cont_asientos','GET',null,
+        '?referencia=eq.'+encodeURIComponent(ref)+emisorQ()+'&estado=neq.ANULADO&select=id_asiento,descripcion');
+      for (const a of (asientos||[])) {
+        await api('cont_asientos','PATCH',
+          { estado: 'ANULADO', descripcion: '[ANULADO] ' + (a.descripcion||'') },
+          '?id_asiento=eq.'+a.id_asiento);
+      }
+    }
+
+    cargarPagos();
+  } catch(e) { alert('Error al anular: '+e.message); }
 }
