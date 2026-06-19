@@ -476,6 +476,20 @@ async function abrirProveedor(id) {
   document.getElementById('prov-observaciones').value        = p ? (p.observaciones||'') : '';
   document.getElementById('alerta-prov-ok').style.display    = 'none';
   document.getElementById('alerta-prov-err').style.display   = 'none';
+
+  // Cargar bancos y datos bancarios
+  await cargarParamEmpleados(); // reutiliza cache que incluye bancos
+  cargarBancosProveedor(p ? (p.id_banco||null) : null, p ? (p.pm_id_banco||null) : null);
+  // Tipo y número de cuenta
+  document.getElementById('prov-tipo-cuenta').value         = p ? (p.tipo_cuenta||'') : '';
+  const numCuenta = p ? (p.numero_cuenta||'') : '';
+  document.getElementById('prov-cod-banco').value           = numCuenta.substring(0,4);
+  document.getElementById('prov-num-cuenta-resto').value    = numCuenta.substring(4);
+  document.getElementById('prov-num-cuenta').value          = numCuenta;
+  // Pago móvil
+  document.getElementById('prov-pm-ci').value               = p ? (p.pm_ci||'') : '';
+  document.getElementById('prov-pm-celular').value          = p ? (p.pm_celular||'') : '';
+
   abrirModal('modal-proveedor');
   focusFirstField('modal-proveedor');
   setTimeout(function() { document.getElementById('prov-nombre')?.focus(); }, 100);
@@ -509,6 +523,14 @@ async function guardarProveedor() {
     limite_credito:     parseFloat(document.getElementById('prov-limite-credito').value) || 0,
     estado:             document.getElementById('prov-estado').value || 'ACTIVO',
     observaciones:      document.getElementById('prov-observaciones').value.trim() || null,
+    // Datos bancarios
+    id_banco:           parseInt(document.getElementById('prov-banco')?.value) || null,
+    tipo_cuenta:        document.getElementById('prov-tipo-cuenta')?.value || null,
+    numero_cuenta:      document.getElementById('prov-num-cuenta')?.value || null,
+    // Pago móvil
+    pm_id_banco:        parseInt(document.getElementById('prov-pm-banco')?.value) || null,
+    pm_ci:              document.getElementById('prov-pm-ci')?.value.trim().toUpperCase() || null,
+    pm_celular:         document.getElementById('prov-pm-celular')?.value.trim() || null,
     id_usuario:         sesionActual.correo_usuario
   };
 
