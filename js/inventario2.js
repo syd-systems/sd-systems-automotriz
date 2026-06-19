@@ -500,6 +500,13 @@ async function abrirEntradaStock(id) {
   if (document.getElementById('es-precio-usd-cont'))document.getElementById('es-precio-usd-cont').style.display = 'none';
   if (document.getElementById('es-tasa-bcv'))       document.getElementById('es-tasa-bcv').value = '';
   if (document.getElementById('es-precio-usd-calc'))document.getElementById('es-precio-usd-calc').value = '';
+  // Resetear esquema de pago
+  const esquemaEl = document.getElementById('es-esquema-pago');
+  if (esquemaEl) esquemaEl.value = 'CONTADO';
+  const creditoCont = document.getElementById('es-credito-cont');
+  if (creditoCont) creditoCont.style.display = 'none';
+  const prevEl = document.getElementById('es-cuotas-preview');
+  if (prevEl) { prevEl.innerHTML = ''; delete prevEl.dataset.cuotas; }
   // Auto-cargar usuario actual como receptor
   if (typeof cargarUsuarioReceptorEntrada === 'function') cargarUsuarioReceptorEntrada();
   document.getElementById('es-proveedor').innerHTML = '<option value="">— Seleccionar proveedor (opcional) —</option>';
@@ -527,6 +534,79 @@ async function abrirEntradaStock(id) {
   abrirModal('modal-entrada-stock');
   focusFirstField('modal-entrada-stock');
   setTimeout(function() { document.getElementById('es-cantidad').focus(); }, 100);
+}
+
+
+// ── Esquema de Pago — Entrada de Stock ──
+function onCambioEsquemaPago() {
+  const esquema = document.getElementById('es-esquema-pago')?.value;
+  const cont    = document.getElementById('es-credito-cont');
+  if (cont) cont.style.display = esquema === 'CREDITO' ? '' : 'none';
+  if (esquema === 'CREDITO') calcularCuotasEntrada();
+}
+
+function calcularCuotasEntrada() {
+  const numCuotas  = parseInt(document.getElementById('es-cuotas-num')?.value) || 0;
+  const fechaInicio = document.getElementById('es-cuotas-fecha-inicio')?.value || '';
+  const intervalo  = parseInt(document.getElementById('es-cuotas-intervalo')?.value) || 30;
+  const montoTotal = parseFloat(document.getElementById('es-precio-costo')?.value || document.getElementById('es-precio-usd-calc')?.value) || 0;
+  const cantidad   = parseFloat(document.getElementById('es-cantidad')?.value) || 0;
+  const totalUSD   = montoTotal * cantidad;
+  const preview    = document.getElementById('es-cuotas-preview');
+  if (!preview) return;
+
+  if (!numCuotas || !fechaInicio) {
+    preview.innerHTML = '';
+    return;
+  }
+
+  // Calcular monto por cuota
+  const montoCuotaInput = parseFloat(document.getElementById('es-cuotas-monto')?.value) || 0;
+  const montoCuota = montoCuotaInput > 0 ? montoCuotaInput : parseFloat((totalUSD / numCuotas).toFixed(2));
+
+  // Auto-llenar monto si está vacío
+  const montoEl = document.getElementById('es-cuotas-monto');
+  if (montoEl && !montoEl.value && totalUSD > 0) montoEl.value = montoCuota;
+
+  // Generar tabla de cuotas
+  const cuotas = [];
+  let fecha = new Date(fechaInicio + 'T00:00:00');
+  for (let i = 0; i < numCuotas; i++) {
+    const f = new Date(fecha);
+    f.setDate(f.getDate() + (i === 0 ? 0 : intervalo));
+    fecha = f;
+    cuotas.push({
+      num:    i + 1,
+      fecha:  fecha.toISOString().split('T')[0],
+      monto:  i === numCuotas - 1
+        ? parseFloat((totalUSD - montoCuota * (numCuotas - 1)).toFixed(2))
+        : montoCuota
+    });
+    if (i > 0) fecha = new Date(cuotas[i].fecha + 'T00:00:00');
+  }
+
+  const total = cuotas.reduce(function(s,c){ return s + c.monto; }, 0);
+  const diff  = parseFloat((totalUSD - total).toFixed(2));
+
+  preview.innerHTML =
+    '<div style="font-size:11px;color:var(--suave);margin-bottom:8px">Vista previa de cuotas — Total: $ '+fmtUSD(total)
+    +(diff !== 0 ? ' <span style="color:#fc8181">(diferencia: $ '+fmtUSD(Math.abs(diff))+')</span>' : ' <span style="color:#22c55e">✓</span>')+'</div>'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'
+    +'<th style="padding:6px 8px;text-align:left;color:var(--suave);font-size:10px">Cuota</th>'
+    +'<th style="padding:6px 8px;text-align:left;color:var(--suave);font-size:10px">Fecha Vencimiento</th>'
+    +'<th style="padding:6px 8px;text-align:right;color:var(--suave);font-size:10px">Monto USD</th>'
+    +'</tr></thead><tbody>'
+    + cuotas.map(function(c) {
+        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+          +'<td style="padding:6px 8px;font-weight:600">Cuota '+c.num+'</td>'
+          +'<td style="padding:6px 8px;font-family:var(--font-mono)">'+fmtFecha(c.fecha)+'</td>'
+          +'<td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);color:var(--naranja)">$ '+fmtUSD(c.monto)+'</td>'
+          +'</tr>';
+      }).join('')
+    +'</tbody></table></div>';
+
+  // Guardar cuotas en dataset para usarlas al guardar
+  preview.dataset.cuotas = JSON.stringify(cuotas);
 }
 
 async function guardarEntradaStock() {
@@ -664,29 +744,63 @@ async function guardarEntradaStock() {
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
 
-    // ── FASE 5B: Crear CxP automática si motivo es compra ──
+    // ── FASE 5B: Crear CxP según esquema de pago ──
     if (motivoEnt === 'compra') {
       try {
         const idProveedor = parseInt(document.getElementById('es-proveedor')?.value) || null;
         const montoUSD    = parseFloat((nuevoPrecioCosto * cantidad).toFixed(2));
         const montoVES    = parseFloat((montoUSD * _tasaVigente).toFixed(2));
-        await api('cont_cxp','POST',{
-          id_proveedor:    idProveedor,
-          id_emisor:       _empresaActiva?.id_emisor || null,
-          tipo:            'COMPRA_CONSUMIBLE',
-          numero_doc:      idEntrada ? 'ENT-' + idEntrada : ('ENT-INV-' + id),
-          fecha_emision:   new Date().toISOString().split('T')[0],
-          moneda_pago:     monedaCompra || 'USD',
-          estado:          'PENDIENTE',
-          monto_usd:       montoUSD,
-          monto_ves:       montoVES,
-          tasa_bcv:        _tasaVigente || 1,
-          pagado_usd:      0,
-          saldo_usd:       montoUSD,
-          observaciones:   'Compra: ' + (r.nombre || r.codigo || 'Art#'+id) + ' x ' + cantidad + ' uds.',
-          id_usuario:      sesionActual?.correo_usuario || null
-        });
-      } catch(eCxP) { console.warn('Error creando CxP:', eCxP); }
+        const esquema     = document.getElementById('es-esquema-pago')?.value || 'CONTADO';
+        const numDocBase  = idEntrada ? 'ENT-' + idEntrada : ('ENT-INV-' + id);
+        const artNomCxP   = r.nombre || r.codigo || 'Art#'+id;
+        const hoy         = new Date().toISOString().split('T')[0];
+
+        if (esquema === 'CONTADO') {
+          // Una sola CxP — contado
+          await api('cont_cxp','POST',{
+            id_proveedor:  idProveedor,
+            id_emisor:     _empresaActiva?.id_emisor || null,
+            tipo:          'COMPRA_CONSUMIBLE',
+            numero_doc:    numDocBase,
+            fecha_emision: hoy,
+            fecha_vencimiento: hoy,
+            moneda_pago:   monedaCompra || 'USD',
+            estado:        'PENDIENTE',
+            monto_usd:     montoUSD,
+            monto_ves:     montoVES,
+            tasa_bcv:      _tasaVigente || 1,
+            pagado_usd:    0,
+            saldo_usd:     montoUSD,
+            observaciones: 'Contado — ' + artNomCxP + ' x ' + cantidad + ' uds.',
+            id_usuario:    sesionActual?.correo_usuario || null
+          });
+        } else {
+          // Crédito — múltiples CxP, una por cuota
+          const preview = document.getElementById('es-cuotas-preview');
+          const cuotas  = preview?.dataset.cuotas ? JSON.parse(preview.dataset.cuotas) : [];
+          if (!cuotas.length) throw new Error('No se calcularon las cuotas. Complete los campos de crédito.');
+          for (let i = 0; i < cuotas.length; i++) {
+            const c = cuotas[i];
+            await api('cont_cxp','POST',{
+              id_proveedor:     idProveedor,
+              id_emisor:        _empresaActiva?.id_emisor || null,
+              tipo:             'COMPRA_CONSUMIBLE_CREDITO',
+              numero_doc:       numDocBase + '-C' + c.num,
+              fecha_emision:    hoy,
+              fecha_vencimiento: c.fecha,
+              moneda_pago:      monedaCompra || 'USD',
+              estado:           'PENDIENTE',
+              monto_usd:        parseFloat(c.monto.toFixed(2)),
+              monto_ves:        parseFloat((c.monto * _tasaVigente).toFixed(2)),
+              tasa_bcv:         _tasaVigente || 1,
+              pagado_usd:       0,
+              saldo_usd:        parseFloat(c.monto.toFixed(2)),
+              observaciones:    'Cuota ' + c.num + '/' + cuotas.length + ' — ' + artNomCxP + ' x ' + cantidad + ' uds.',
+              id_usuario:       sesionActual?.correo_usuario || null
+            });
+          }
+        }
+      } catch(eCxP) { console.warn('Error creando CxP:', eCxP.message); }
     }
 
     // ── FASE 6: Actualizar cache y cerrar ──
