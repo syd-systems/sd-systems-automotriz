@@ -1363,36 +1363,82 @@ window.addEventListener('beforeunload', async () => {
 
 async function pagarCxP(idCxP) {
   try {
-    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*,proveedores:id_proveedor(nombre)');
+    // Cargar CxP y proveedor
+    const rows = await api('cont_cxp','GET',null,
+      '?id_cxp=eq.'+idCxP+'&select=*,proveedores:id_proveedor(nombre,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,param_bancos:id_banco(nombre),pm_banco:pm_id_banco(nombre))');
     if (!rows || !rows[0]) return;
     const c = rows[0];
-    // Llenar modal
+    const prov = c.proveedores || {};
+    const esCuota = (c.tipo||'').includes('CREDITO');
+
+    // Llenar campos básicos
     document.getElementById('cont-pago-cxp-id').value    = idCxP;
-    document.getElementById('cont-pago-cxp-monto').value  = '';
-    document.getElementById('cont-pago-cxp-moneda').value = _empresaActiva?.moneda_principal || 'VES';
-    document.getElementById('cont-pago-cxp-tasa').value   = _tasaVigente || '';
-    document.getElementById('cont-pago-cxp-equiv-usd').value = '';
-    document.getElementById('cont-pago-cxp-fecha').value  = new Date().toISOString().split('T')[0];
-    document.getElementById('cont-pago-cxp-ref').value    = '';
+    document.getElementById('cont-pago-cxp-fecha').value = new Date().toISOString().split('T')[0];
+    document.getElementById('cont-pago-cxp-ref').value   = '';
     document.getElementById('alerta-pago-cxp-ok').style.display  = 'none';
     document.getElementById('alerta-pago-cxp-err').style.display = 'none';
-    // Mostrar info del saldo
+
+    // Monto a cancelar — cuota o total
+    const montoMostrar = esCuota ? c.saldo_usd : c.monto_usd;
+    const labelMonto = esCuota ? c.saldo_usd + ' USD (cuota)' : c.monto_usd + ' USD';
     const saldoEl = document.getElementById('cont-pago-cxp-saldo');
-    if (saldoEl) saldoEl.textContent = '$ ' + fmtUSD(c.saldo_usd) + ' USD';
+    if (saldoEl) saldoEl.textContent = '$ ' + fmtUSD(montoMostrar) + ' USD';
+
+    // Moneda y tasa
+    document.getElementById('cont-pago-cxp-moneda').value     = _empresaActiva?.moneda_principal || 'VES';
+    document.getElementById('cont-pago-cxp-moneda-ref').value = 'USD';
+    document.getElementById('cont-pago-cxp-tasa').value       = _tasaVigente || '';
+    document.getElementById('cont-pago-cxp-monto').value      = '';
+
+    // Cargar métodos de pago
+    const metodos = await api('param_metodos_pago','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*') || [];
+    const selMet = document.getElementById('cont-pago-cxp-metodo');
+    if (selMet) {
+      selMet.innerHTML = '<option value="">— Seleccionar —</option>'
+        + metodos.map(function(m){ return '<option value="'+m.id+'">'+m.nombre+'</option>'; }).join('');
+    }
+
+    // Datos bancarios del proveedor (readonly)
+    const bancoInfo = document.getElementById('cont-pago-banco-info');
+    const bancoDatos = document.getElementById('cont-pago-banco-datos');
+    const pmInfo  = document.getElementById('cont-pago-pm-info');
+    const pmDatos = document.getElementById('cont-pago-pm-datos');
+
+    if (prov.id_banco && bancoDatos) {
+      bancoDatos.innerHTML =
+        dato('Institución', prov.param_bancos?.nombre || '—')
+        + dato('Tipo Cuenta', prov.tipo_cuenta || '—')
+        + dato('N° Cuenta', prov.numero_cuenta || '—');
+      if (bancoInfo) bancoInfo.style.display = '';
+    } else if (bancoInfo) bancoInfo.style.display = 'none';
+
+    if (prov.pm_id_banco && pmDatos) {
+      pmDatos.innerHTML =
+        dato('Banco', prov.pm_banco?.nombre || '—')
+        + dato('C.I./R.I.F', prov.pm_ci || '—')
+        + dato('Celular', prov.pm_celular || '—');
+      if (pmInfo) pmInfo.style.display = '';
+    } else if (pmInfo) pmInfo.style.display = 'none';
+
     onCambioPagoMoneda();
     abrirModal('modal-cont-pago-cxp');
   } catch(e) { alert('Error: '+e.message); }
 }
 
+function dato(label, val) {
+  return '<div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">'+label+'</div>'
+    +'<div style="font-size:13px;font-family:var(--font-mono)">'+val+'</div></div>';
+}
+
+function onCambioMetodoPago() {
+  // Mostrar/ocultar info bancaria según método seleccionado
+  // (ya está visible si el proveedor tiene datos)
+}
+
 function onCambioPagoMoneda() {
-  const moneda = document.getElementById('cont-pago-cxp-moneda')?.value || 'VES';
+  const moneda  = document.getElementById('cont-pago-cxp-moneda')?.value || 'VES';
   const tasaCont = document.getElementById('cont-pago-cxp-tasa-cont');
   if (tasaCont) tasaCont.style.display = moneda === 'USD' ? 'none' : '';
-  if (moneda === 'USD') {
-    const monto = parseFloat(document.getElementById('cont-pago-cxp-monto')?.value) || 0;
-    const equivEl = document.getElementById('cont-pago-cxp-equiv-usd');
-    if (equivEl) equivEl.value = monto ? fmtUSD(monto) : '';
-  }
   onCambioPagoMonto();
 }
 
@@ -1400,17 +1446,64 @@ function onCambioPagoMonto() {
   const moneda = document.getElementById('cont-pago-cxp-moneda')?.value || 'VES';
   const monto  = parseFloat(document.getElementById('cont-pago-cxp-monto')?.value) || 0;
   const tasa   = parseFloat(document.getElementById('cont-pago-cxp-tasa')?.value) || _tasaVigente || 1;
-  const equivEl = document.getElementById('cont-pago-cxp-equiv-usd');
-  if (!equivEl) return;
+  const label  = document.getElementById('cont-pago-cxp-equiv-label');
+  if (!label) return;
   if (moneda === 'USD') {
-    equivEl.value = monto ? fmtUSD(monto) : '';
+    label.textContent = monto ? '= $ ' + fmtUSD(monto) + ' USD' : '';
   } else if (moneda === 'VES') {
-    equivEl.value = monto && tasa ? fmtUSD(monto / tasa) : '';
+    label.textContent = monto && tasa ? '= $ ' + fmtUSD(monto / tasa) + ' USD' : '';
   } else {
-    // EUR u otras divisas — tratamos como USD por ahora
-    equivEl.value = monto ? fmtUSD(monto) : '';
+    label.textContent = monto ? '= $ ' + fmtUSD(monto) + ' USD' : '';
   }
 }
+
+async function contGuardarPagoCxp() {
+  const idCxP   = parseInt(document.getElementById('cont-pago-cxp-id')?.value) || null;
+  const moneda  = document.getElementById('cont-pago-cxp-moneda')?.value || 'VES';
+  const monto   = parseFloat(document.getElementById('cont-pago-cxp-monto')?.value) || 0;
+  const tasa    = parseFloat(document.getElementById('cont-pago-cxp-tasa')?.value) || _tasaVigente || 1;
+  const fecha   = document.getElementById('cont-pago-cxp-fecha')?.value || '';
+  const metodo  = document.getElementById('cont-pago-cxp-metodo')?.value || '';
+  const ref     = document.getElementById('cont-pago-cxp-ref')?.value || '';
+  const okEl    = document.getElementById('alerta-pago-cxp-ok');
+  const errEl   = document.getElementById('alerta-pago-cxp-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  if (!idCxP || !monto || !fecha || !metodo) {
+    errEl.textContent = 'Complete monto, fecha y método de pago.';
+    errEl.style.display = 'block'; return;
+  }
+
+  // Calcular equivalente en USD
+  let montoUSD = monto;
+  if (moneda === 'VES') montoUSD = parseFloat((monto / tasa).toFixed(4));
+
+  try {
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*');
+    if (!rows || !rows[0]) return;
+    const c = rows[0];
+    const nuevoPagado = parseFloat((parseFloat(c.pagado_usd||0) + montoUSD).toFixed(4));
+    const nuevoSaldo  = parseFloat(Math.max(0, parseFloat(c.monto_usd||0) - nuevoPagado).toFixed(4));
+    const nuevoEstado = nuevoSaldo <= 0 ? 'PAGADA' : 'PARCIAL';
+
+    await api('cont_cxp','PATCH',{
+      pagado_usd: nuevoPagado,
+      saldo_usd:  nuevoSaldo,
+      estado:     nuevoEstado
+    },'?id_cxp=eq.'+idCxP);
+
+    okEl.textContent = '✓ Pago registrado correctamente.';
+    okEl.style.display = 'block';
+    setTimeout(function() {
+      cerrarModal('modal-cont-pago-cxp');
+      cargarPagos();
+    }, 1000);
+  } catch(e) {
+    errEl.textContent = 'Error: '+e.message;
+    errEl.style.display = 'block';
+  }
+}
+
 
 async function contGuardarPagoCxp() {
   const idCxP    = parseInt(document.getElementById('cont-pago-cxp-id')?.value) || null;
