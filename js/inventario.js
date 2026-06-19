@@ -477,8 +477,13 @@ async function abrirProveedor(id) {
   document.getElementById('alerta-prov-ok').style.display    = 'none';
   document.getElementById('alerta-prov-err').style.display   = 'none';
 
-  // Cargar bancos y datos bancarios
-  await cargarParamEmpleados(); // reutiliza cache que incluye bancos
+  // Cargar bancos si no están en cache
+  if (!_empParamCache.bancos || !_empParamCache.bancos.length) {
+    try {
+      const bancos = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo');
+      _empParamCache.bancos = bancos || [];
+    } catch(e) { _empParamCache.bancos = []; }
+  }
   cargarBancosProveedor(p ? (p.id_banco||null) : null, p ? (p.pm_id_banco||null) : null);
   // Tipo y número de cuenta
   document.getElementById('prov-tipo-cuenta').value         = p ? (p.tipo_cuenta||'') : '';
