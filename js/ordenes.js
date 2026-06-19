@@ -1286,9 +1286,33 @@ async function cargarSelectsOS() {
   // ── Cargar selector de INVENTARIO ──
   const selInv = document.getElementById('os-sel-inv');
   if (selInv) {
+    // Calcular saldo por área si no está disponible y el usuario no tiene permiso general
+    if (!_invSaldoArea && !sesionActual?.administrador && !puedo('INVENTARIO','VER_INVENTARIO_GENERAL') && inventarioCache.length > 0) {
+      try {
+        const correo = sesionActual?.correo_usuario;
+        const empRes = correo ? await api('empleados','GET',null,
+          '?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1') : [];
+        const idAreaUsuario = empRes?.[0]?.id_area || null;
+        if (idAreaUsuario) {
+          const inClause = inventarioCache.map(function(r){ return r.id_articulo; }).join(',');
+          const t4s = function(){ return new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); },4000); }); };
+          const [entsDirectas, salsRecibidas, salsEnviadas] = await Promise.all([
+            Promise.race([api('stock_entradas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
+            Promise.race([api('stock_salidas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
+            Promise.race([api('stock_salidas','GET',null,'?id_area_entrega=eq.'+idAreaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; })
+          ]);
+          const saldo = {};
+          (entsDirectas||[]).forEach(function(e){ saldo[e.id_articulo] = (saldo[e.id_articulo]||0) + parseFloat(e.cantidad||0); });
+          (salsRecibidas||[]).forEach(function(s){ saldo[s.id_articulo] = (saldo[s.id_articulo]||0) + parseFloat(s.cantidad||0); });
+          (salsEnviadas||[]).forEach(function(s){ saldo[s.id_articulo] = (saldo[s.id_articulo]||0) - parseFloat(s.cantidad||0); });
+          _invSaldoArea = saldo;
+        }
+      } catch(eS) { console.warn('Error calculando saldo área OS:', eS); }
+    }
+
     // Filtrar: solo consumibles con saldo positivo en el área del usuario
     let itemsDisponibles = inventarioCache;
-    if (_invSaldoArea) {
+    if (_invSaldoArea && !sesionActual?.administrador && !puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
       itemsDisponibles = inventarioCache.filter(function(r) {
         return (_invSaldoArea[r.id_articulo] || 0) > 0;
       });
