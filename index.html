@@ -1338,17 +1338,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260618011"></script>
-<script src="js/parametros.js?v=20260618011"></script>
-<script src="js/empresas.js?v=20260618011"></script>
-<script src="js/facturacion.js?v=20260618011"></script>
-<script src="js/inventario.js?v=20260618011"></script>
-<script src="js/contabilidad.js?v=20260618011"></script>
-<script src="js/pagos.js?v=20260618011"></script>
-<script src="js/vehiculos.js?v=20260618011"></script>
-<script src="js/catalogo.js?v=20260618011"></script>
-<script src="js/inventario2.js?v=20260618011"></script>
-<script src="js/ordenes.js?v=20260618011"></script>
+<script src="js/core.js?v=20260618012"></script>
+<script src="js/parametros.js?v=20260618012"></script>
+<script src="js/empresas.js?v=20260618012"></script>
+<script src="js/facturacion.js?v=20260618012"></script>
+<script src="js/inventario.js?v=20260618012"></script>
+<script src="js/contabilidad.js?v=20260618012"></script>
+<script src="js/pagos.js?v=20260618012"></script>
+<script src="js/vehiculos.js?v=20260618012"></script>
+<script src="js/catalogo.js?v=20260618012"></script>
+<script src="js/inventario2.js?v=20260618012"></script>
+<script src="js/ordenes.js?v=20260618012"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3276,6 +3276,59 @@
           <textarea id="prov-observaciones" placeholder="Observaciones adicionales..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%"></textarea>
         </div>
       </div>
+      <!-- ── Datos Bancarios ── -->
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--borde)">
+        <div style="font-size:11px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;font-weight:600">🏦 Datos Bancarios</div>
+        <div class="form-grid">
+          <div class="form-campo form-full">
+            <label>Institución Financiera</label>
+            <select id="prov-banco" onchange="onSelBancoProveedor()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+              <option value="">— Seleccionar —</option>
+            </select>
+          </div>
+          <div class="form-campo">
+            <label>Tipo de Cuenta</label>
+            <select id="prov-tipo-cuenta" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+              <option value="">— Seleccionar —</option>
+              <option value="CORRIENTE">Corriente</option>
+              <option value="AHORRO">Ahorro</option>
+            </select>
+          </div>
+          <div class="form-campo">
+            <label>Número de Cuenta</label>
+            <div style="display:flex;align-items:center;gap:0">
+              <input type="text" id="prov-cod-banco" maxlength="4" readonly
+                style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--naranja);background:var(--gris3);border:1px solid var(--borde);border-right:none;padding:11px 14px;border-radius:5px 0 0 5px;width:90px;outline:none;cursor:not-allowed;text-align:center">
+              <input type="text" id="prov-num-cuenta-resto" maxlength="16" placeholder="0000 0000 0000 0000"
+                oninput="this.value=this.value.replace(/[^0-9]/g,'');sincronizarNumCuentaProv()"
+                style="font-family:var(--font-mono);font-size:13px;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:11px 10px;border-radius:0 5px 5px 0;flex:1;outline:none">
+            </div>
+            <input type="hidden" id="prov-num-cuenta">
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Pago Móvil ── -->
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--borde)">
+        <div style="font-size:11px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;font-weight:600">📱 Pago Móvil</div>
+        <div class="form-grid">
+          <div class="form-campo">
+            <label>Banco Pago Móvil</label>
+            <select id="prov-pm-banco" onchange="onSelBancoPMProv()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+              <option value="">— Seleccionar —</option>
+            </select>
+          </div>
+          <div class="form-campo">
+            <label>C.I. / R.I.F</label>
+            <input type="text" id="prov-pm-ci" placeholder="V-XXXXXXXX" style="text-transform:uppercase">
+          </div>
+          <div class="form-campo">
+            <label>N° Celular</label>
+            <input type="text" id="prov-pm-celular" placeholder="0414-XXXXXXX">
+          </div>
+        </div>
+      </div>
+
       <input type="hidden" id="prov-id">
     </div>
     <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
@@ -3283,7 +3336,7 @@
       <div class="alerta alerta-error"  id="alerta-prov-err" style="margin:0"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button class="btn-secundario" onclick="cerrarModal('modal-proveedor')">Retornar</button>
-        <button class="btn-primario"   onclick="guardarProveedor()">GUARDAR</button>
+        <button class="btn-primario"   onclick="btnSetGuardando(this,true);guardarProveedor().finally(()=>btnSetGuardando(this,false))">GUARDAR</button>
       </div>
     </div>
   </div>
