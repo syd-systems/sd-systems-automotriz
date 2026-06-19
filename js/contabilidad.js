@@ -23,33 +23,22 @@ async function renderContabilidad() {
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando módulo contable...</div>';
   try {
-    // Cargar empresas del usuario para el selector
     let emisores = [];
     if (sesionActual?.administrador) {
-      // Admin ve todas las empresas
       emisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*');
     } else {
-      // Usuario normal: solo las empresas de su tabla usuarios_empresas
       emisores = _empresasUsuario.length ? _empresasUsuario : [];
     }
     window._contEmisoresList = emisores;
-    // Empresa activa por defecto
     if (_empresaActiva) window._contEmisorActivo = _empresaActiva.id_emisor;
     else if (emisores.length) window._contEmisorActivo = emisores[0].id_emisor;
-
-    await Promise.all([
-      contCargarCuentas(),
-      contCargarPeriodos(),
-    ]);
+    await Promise.all([contCargarCuentas(), contCargarPeriodos()]);
   } catch(e) { console.warn('Error cargando contabilidad:', e); }
-  _contVista = 'diario'; // Siempre iniciar en Libro Diario al entrar al módulo
+  _contVista = 'diario';
   contRenderShell();
-  // Esperar a que el DOM procese el innerHTML antes de buscar cont-vista-cont
-  requestAnimationFrame(function() {
-    requestAnimationFrame(function() {
-      contCambiarVista('diario');
-    });
-  });
+  // Esperar un frame para que el DOM procese el innerHTML
+  await new Promise(function(r){ requestAnimationFrame(r); });
+  await contCambiarVista('diario');
 }
 
 function contRenderShell() {
@@ -101,13 +90,8 @@ async function contCambiarVista(vista, forzar) {
       btn.style.color      = v === vista ? '#fff' : 'var(--suave)';
     });
   }
-  // Esperar a que el DOM procese contRenderShell si es necesario
-  let cont = document.getElementById('cont-vista-cont');
-  if (!cont) {
-    await new Promise(function(r){ setTimeout(r, 50); });
-    cont = document.getElementById('cont-vista-cont');
-  }
-  if (!cont) return;
+  const cont = document.getElementById('cont-vista-cont');
+  if (!cont) { console.warn('cont-vista-cont no encontrado'); return; }
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   if      (vista === 'diario')       await contRenderDiario();
   else if (vista === 'mayor')        await contRenderMayor();
