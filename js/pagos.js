@@ -1361,20 +1361,99 @@ window.addEventListener('beforeunload', async () => {
 
 
 async function pagarCxP(idCxP) {
-  const montoPago = parseFloat(prompt('Ingrese el monto a pagar en USD:'));
-  if (!montoPago || montoPago <= 0) return;
+  try {
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*,proveedores:id_proveedor(nombre)');
+    if (!rows || !rows[0]) return;
+    const c = rows[0];
+    // Llenar modal
+    document.getElementById('cont-pago-cxp-id').value    = idCxP;
+    document.getElementById('cont-pago-cxp-monto').value  = '';
+    document.getElementById('cont-pago-cxp-moneda').value = _empresaActiva?.moneda_principal || 'VES';
+    document.getElementById('cont-pago-cxp-tasa').value   = _tasaVigente || '';
+    document.getElementById('cont-pago-cxp-equiv-usd').value = '';
+    document.getElementById('cont-pago-cxp-fecha').value  = new Date().toISOString().split('T')[0];
+    document.getElementById('cont-pago-cxp-ref').value    = '';
+    document.getElementById('alerta-pago-cxp-ok').style.display  = 'none';
+    document.getElementById('alerta-pago-cxp-err').style.display = 'none';
+    // Mostrar info del saldo
+    const saldoEl = document.getElementById('cont-pago-cxp-saldo');
+    if (saldoEl) saldoEl.textContent = '$ ' + fmtUSD(c.saldo_usd) + ' USD';
+    onCambioPagoMoneda();
+    abrirModal('modal-cont-pago-cxp');
+  } catch(e) { alert('Error: '+e.message); }
+}
+
+function onCambioPagoMoneda() {
+  const moneda = document.getElementById('cont-pago-cxp-moneda')?.value || 'VES';
+  const tasaCont = document.getElementById('cont-pago-cxp-tasa-cont');
+  if (tasaCont) tasaCont.style.display = moneda === 'USD' ? 'none' : '';
+  if (moneda === 'USD') {
+    const monto = parseFloat(document.getElementById('cont-pago-cxp-monto')?.value) || 0;
+    const equivEl = document.getElementById('cont-pago-cxp-equiv-usd');
+    if (equivEl) equivEl.value = monto ? fmtUSD(monto) : '';
+  }
+  onCambioPagoMonto();
+}
+
+function onCambioPagoMonto() {
+  const moneda = document.getElementById('cont-pago-cxp-moneda')?.value || 'VES';
+  const monto  = parseFloat(document.getElementById('cont-pago-cxp-monto')?.value) || 0;
+  const tasa   = parseFloat(document.getElementById('cont-pago-cxp-tasa')?.value) || _tasaVigente || 1;
+  const equivEl = document.getElementById('cont-pago-cxp-equiv-usd');
+  if (!equivEl) return;
+  if (moneda === 'USD') {
+    equivEl.value = monto ? fmtUSD(monto) : '';
+  } else if (moneda === 'VES') {
+    equivEl.value = monto && tasa ? fmtUSD(monto / tasa) : '';
+  } else {
+    // EUR u otras divisas — tratamos como USD por ahora
+    equivEl.value = monto ? fmtUSD(monto) : '';
+  }
+}
+
+async function contGuardarPagoCxp() {
+  const idCxP    = parseInt(document.getElementById('cont-pago-cxp-id')?.value) || null;
+  const moneda   = document.getElementById('cont-pago-cxp-moneda')?.value || 'VES';
+  const monto    = parseFloat(document.getElementById('cont-pago-cxp-monto')?.value) || 0;
+  const tasa     = parseFloat(document.getElementById('cont-pago-cxp-tasa')?.value) || _tasaVigente || 1;
+  const fecha    = document.getElementById('cont-pago-cxp-fecha')?.value || '';
+  const metodo   = document.getElementById('cont-pago-cxp-metodo')?.value || '';
+  const ref      = document.getElementById('cont-pago-cxp-ref')?.value || '';
+  const okEl     = document.getElementById('alerta-pago-cxp-ok');
+  const errEl    = document.getElementById('alerta-pago-cxp-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  if (!idCxP || !monto || !fecha) {
+    errEl.textContent = 'Complete monto y fecha.';
+    errEl.style.display = 'block'; return;
+  }
+
+  // Calcular equivalente en USD
+  let montoUSD = monto;
+  if (moneda === 'VES') montoUSD = parseFloat((monto / tasa).toFixed(4));
+
   try {
     const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*');
     if (!rows || !rows[0]) return;
     const c = rows[0];
-    const nuevoPagado = parseFloat((parseFloat(c.pagado_usd||0) + montoPago).toFixed(2));
-    const nuevoSaldo  = parseFloat(Math.max(0, parseFloat(c.monto_usd||0) - nuevoPagado).toFixed(2));
+    const nuevoPagado = parseFloat((parseFloat(c.pagado_usd||0) + montoUSD).toFixed(4));
+    const nuevoSaldo  = parseFloat(Math.max(0, parseFloat(c.monto_usd||0) - nuevoPagado).toFixed(4));
     const nuevoEstado = nuevoSaldo <= 0 ? 'PAGADA' : 'PARCIAL';
+
     await api('cont_cxp','PATCH',{
-      pagado_usd: nuevoPagado,
-      saldo_usd:  nuevoSaldo,
-      estado:     nuevoEstado
+      pagado_usd:  nuevoPagado,
+      saldo_usd:   nuevoSaldo,
+      estado:      nuevoEstado
     },'?id_cxp=eq.'+idCxP);
-    cargarPagos();
-  } catch(e) { alert('Error al registrar pago: '+e.message); }
+
+    okEl.textContent = '✓ Pago registrado correctamente.';
+    okEl.style.display = 'block';
+    setTimeout(function() {
+      cerrarModal('modal-cont-pago-cxp');
+      cargarPagos();
+    }, 1000);
+  } catch(e) {
+    errEl.textContent = 'Error: '+e.message;
+    errEl.style.display = 'block';
+  }
 }
