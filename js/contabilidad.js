@@ -1056,42 +1056,94 @@ async function contRenderCxp() {
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    // CxP = asientos con cuentas de tipo Proveedores (2.1.01.xxx) con saldo pendiente
-    const asientos = await api('cont_asientos','GET',null,
-      '?id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&estado=eq.APROBADO&order=fecha.desc&select=*,cont_asiento_lineas(id_cuenta,debe_usd,haber_usd,cont_cuentas(codigo,nombre,tipo))');
+    const idEmisor = _empresaActiva?.id_emisor || 0;
+    // Filtro estado
+    const filtroEstado = document.getElementById('cxp-filtro-estado')?.value || '';
+    let q = '?id_emisor=eq.'+idEmisor+'&order=fecha_emision.desc&select=*,proveedores:id_proveedor(nombre,rif)';
+    if (filtroEstado) q += '&estado=eq.'+filtroEstado;
+    const cxps = await api('cont_cxp','GET',null,q) || [];
 
-    // Filtrar líneas de cuentas de Proveedores (2.1.x)
-    const movsProv = [];
-    asientos.forEach(function(a) {
-      if (!a.cont_asiento_lineas) return;
-      a.cont_asiento_lineas.forEach(function(l) {
-        if (l.cont_cuentas && l.cont_cuentas.codigo && l.cont_cuentas.codigo.startsWith('2.1')) {
-          movsProv.push({ asiento: a, linea: l });
-        }
-      });
-    });
-
-    // Agrupar saldos por cuenta
-    const saldos = {};
-    movsProv.forEach(function(m) {
-      const cod = m.linea.cont_cuentas.codigo;
-      const nom = m.linea.cont_cuentas.nombre;
-      if (!saldos[cod]) saldos[cod] = { nombre: nom, haber: 0, debe: 0 };
-      saldos[cod].haber += parseFloat(m.linea.haber_usd||0);
-      saldos[cod].debe  += parseFloat(m.linea.debe_usd||0);
-    });
-
-    const filas = Object.keys(saldos).sort().map(function(cod) {
-      const s = saldos[cod];
-      const saldo = s.haber - s.debe; // CxP: naturaleza acreedora
-      return '<tr>'        +'<td style="padding:6px 8px;font-family:var(--font-mono);font-size:11px;color:var(--naranja)">'+cod+'</td>'        +'<td style="padding:6px 8px;font-size:12px">'+s.nombre+'</td>'        +'<td style="text-align:right;padding:6px 8px;font-family:var(--font-mono);color:#fc8181">$ '+fmtUSD(s.haber)+'</td>'        +'<td style="text-align:right;padding:6px 8px;font-family:var(--font-mono);color:#22c55e">$ '+fmtUSD(s.debe)+'</td>'        +'<td style="text-align:right;padding:6px 8px;font-family:var(--font-mono);font-weight:700;color:'+(saldo>0?'#fc8181':'#22c55e')+'">$ '+fmtUSD(Math.abs(saldo))+(saldo<=0?' ✓':'')+'</td>'        +'</tr>';
+    const estadoColor = { PENDIENTE:'#f59e0b', PAGADA:'#22c55e', ANULADA:'#6b7280', PARCIAL:'#60a5fa' };
+    const filas = cxps.map(function(c) {
+      const prov = c.proveedores ? c.proveedores.nombre : '—';
+      const est  = c.estado || 'PENDIENTE';
+      const badge = '<span style="background:'+( estadoColor[est]||'#888')+'22;color:'+(estadoColor[est]||'#888')+';border:1px solid '+(estadoColor[est]||'#888')+'44;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600">'+est+'</span>';
+      const acciones = est === 'PENDIENTE'
+        ? '<button onclick="contPagarCxP('+c.id_cxp+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>'
+          + ' <button onclick="contAnularCxP('+c.id_cxp+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑 Anular</button>'
+        : '';
+      return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+        +'<td style="padding:8px;font-size:11px;color:var(--naranja);font-family:var(--font-mono)">'+c.numero_doc+'</td>'
+        +'<td style="padding:8px;font-size:12px">'+prov+'</td>'
+        +'<td style="padding:8px;font-size:11px;color:var(--suave)">'+fmtFecha(c.fecha_emision)+'</td>'
+        +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+( c.tipo||'').replace('_',' ')+'</td>'
+        +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#fc8181">$ '+fmtUSD(c.monto_usd)+'</td>'
+        +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#22c55e">$ '+fmtUSD(c.pagado_usd||0)+'</td>'
+        +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700">$ '+fmtUSD(c.saldo_usd||0)+'</td>'
+        +'<td style="padding:8px;text-align:center">'+badge+'</td>'
+        +'<td style="padding:8px;text-align:center">'+acciones+'</td>'
+        +'</tr>';
     }).join('');
 
+    const totalPendiente = cxps.filter(function(c){ return c.estado==='PENDIENTE'; })
+      .reduce(function(s,c){ return s + parseFloat(c.saldo_usd||0); }, 0);
+
     cont.innerHTML =
-      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">'      +'<h3 style="margin:0">Cuentas por Pagar</h3>'      +'<div style="font-size:11px;color:var(--suave)">Saldos de cuentas 2.1.x — asientos aprobados</div>'      +'</div>'      +(filas        ? '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'          +'<th style="padding:6px 8px;font-size:11px;color:var(--suave);text-align:left">Código</th>'          +'<th style="padding:6px 8px;font-size:11px;color:var(--suave);text-align:left">Cuenta</th>'          +'<th style="padding:6px 8px;font-size:11px;color:var(--suave);text-align:right">Crédito (Haber)</th>'          +'<th style="padding:6px 8px;font-size:11px;color:var(--suave);text-align:right">Abono (Debe)</th>'          +'<th style="padding:6px 8px;font-size:11px;color:var(--suave);text-align:right">Saldo</th>'          +'</tr></thead><tbody>'+filas+'</tbody></table></div>'        : '<div style="text-align:center;color:var(--suave);padding:40px">Sin movimientos de proveedores registrados.</div>');
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
+      +'<h3 style="margin:0">Cuentas por Pagar</h3>'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+      +'<select id="cxp-filtro-estado" onchange="contRenderCxp()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:6px 10px;border-radius:5px;outline:none">'
+      +'<option value="">Todos</option>'
+      +'<option value="PENDIENTE"'+(filtroEstado==='PENDIENTE'?' selected':'')+'>Pendiente</option>'
+      +'<option value="PAGADA"'+(filtroEstado==='PAGADA'?' selected':'')+'>Pagada</option>'
+      +'<option value="PARCIAL"'+(filtroEstado==='PARCIAL'?' selected':'')+'>Parcial</option>'
+      +'<option value="ANULADA"'+(filtroEstado==='ANULADA'?' selected':'')+'>Anulada</option>'
+      +'</select>'
+      +'<div style="font-size:12px;color:#f59e0b;font-weight:600">Saldo Pendiente: $ '+fmtUSD(totalPendiente)+'</div>'
+      +'</div></div>'
+      +(filas
+        ? '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+          +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">N° Doc</th>'
+          +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Proveedor</th>'
+          +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Fecha</th>'
+          +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Tipo</th>'
+          +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:right">Monto</th>'
+          +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:right">Pagado</th>'
+          +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:right">Saldo</th>'
+          +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:center">Estado</th>'
+          +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:center">Acciones</th>'
+          +'</tr></thead><tbody>'+filas+'</tbody></table></div>'
+        : '<div style="text-align:center;color:var(--suave);padding:40px">Sin registros de CxP.</div>');
   } catch(e) {
     cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>';
   }
+}
+
+async function contAnularCxP(idCxP) {
+  if (!confirm('¿Anular esta Cuenta por Pagar?')) return;
+  try {
+    await api('cont_cxp','PATCH',{ estado: 'ANULADA' },'?id_cxp=eq.'+idCxP);
+    contRenderCxp();
+  } catch(e) { alert('Error: '+e.message); }
+}
+
+async function contPagarCxP(idCxP) {
+  const montoPago = parseFloat(prompt('Ingrese el monto a pagar en USD:'));
+  if (!montoPago || montoPago <= 0) return;
+  try {
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*');
+    if (!rows || !rows[0]) return;
+    const c = rows[0];
+    const nuevoPagado = parseFloat(c.pagado_usd||0) + montoPago;
+    const nuevoSaldo  = parseFloat(c.monto_usd||0) - nuevoPagado;
+    const nuevoEstado = nuevoSaldo <= 0 ? 'PAGADA' : 'PARCIAL';
+    await api('cont_cxp','PATCH',{
+      pagado_usd: parseFloat(nuevoPagado.toFixed(2)),
+      saldo_usd:  parseFloat(Math.max(0, nuevoSaldo).toFixed(2)),
+      estado:     nuevoEstado
+    },'?id_cxp=eq.'+idCxP);
+    contRenderCxp();
+  } catch(e) { alert('Error: '+e.message); }
 }
 
 async function contRenderConciliacion() {
