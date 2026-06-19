@@ -1338,17 +1338,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260619006"></script>
-<script src="js/parametros.js?v=20260619006"></script>
-<script src="js/empresas.js?v=20260619006"></script>
-<script src="js/facturacion.js?v=20260619006"></script>
-<script src="js/inventario.js?v=20260619006"></script>
-<script src="js/contabilidad.js?v=20260619006"></script>
-<script src="js/pagos.js?v=20260619006"></script>
-<script src="js/vehiculos.js?v=20260619006"></script>
-<script src="js/catalogo.js?v=20260619006"></script>
-<script src="js/inventario2.js?v=20260619006"></script>
-<script src="js/ordenes.js?v=20260619006"></script>
+<script src="js/core.js?v=20260619007"></script>
+<script src="js/parametros.js?v=20260619007"></script>
+<script src="js/empresas.js?v=20260619007"></script>
+<script src="js/facturacion.js?v=20260619007"></script>
+<script src="js/inventario.js?v=20260619007"></script>
+<script src="js/contabilidad.js?v=20260619007"></script>
+<script src="js/pagos.js?v=20260619007"></script>
+<script src="js/vehiculos.js?v=20260619007"></script>
+<script src="js/catalogo.js?v=20260619007"></script>
+<script src="js/inventario2.js?v=20260619007"></script>
+<script src="js/ordenes.js?v=20260619007"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2057,9 +2057,9 @@
 
         <!-- Monto a Pagar -->
         <div class="form-campo">
-          <label>Monto a Pagar *</label>
-          <input type="number" id="cont-pago-cxp-monto" step="0.01" min="0" oninput="onCambioPagoMonto()"
-            style="font-family:var(--font-mono);font-size:15px;font-weight:600">
+          <label>Monto a Pagar (calculado)</label>
+          <input type="number" id="cont-pago-cxp-monto" readonly
+            style="font-family:var(--font-mono);font-size:15px;font-weight:600;background:rgba(255,255,255,0.04);color:var(--naranja);cursor:not-allowed">
           <div id="cont-pago-cxp-equiv-label" style="font-size:11px;color:var(--suave);margin-top:4px"></div>
         </div>
 
@@ -2087,6 +2087,36 @@
         <div class="form-campo form-full" id="cont-pago-pm-info" style="display:none;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:6px;padding:12px 16px">
           <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">📱 Datos de Pago Móvil del Proveedor</div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="cont-pago-pm-datos"></div>
+        </div>
+
+        <!-- Campos manuales si proveedor no tiene datos bancarios -->
+        <div class="form-campo form-full" id="cont-pago-manual-info" style="display:none;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:6px;padding:12px 16px">
+          <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🏦 Datos Bancarios (ingreso manual)</div>
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-campo" style="margin:0">
+              <label style="font-size:12px">Institución Financiera</label>
+              <select id="cont-pago-manual-banco" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:9px 12px;border-radius:5px;outline:none;width:100%">
+                <option value="">— Seleccionar —</option>
+              </select>
+            </div>
+            <div class="form-campo" style="margin:0">
+              <label style="font-size:12px">Tipo de Pago</label>
+              <select id="cont-pago-manual-tipo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:9px 12px;border-radius:5px;outline:none;width:100%">
+                <option value="TRANSFERENCIA">Transferencia</option>
+                <option value="PAGO_MOVIL">Pago Móvil</option>
+                <option value="EFECTIVO">Efectivo</option>
+                <option value="CHEQUE">Cheque</option>
+              </select>
+            </div>
+            <div class="form-campo" style="margin:0">
+              <label style="font-size:12px">N° Cuenta / Teléfono</label>
+              <input type="text" id="cont-pago-manual-cuenta" placeholder="Número de cuenta o celular" style="font-family:var(--font-mono)">
+            </div>
+            <div class="form-campo" style="margin:0">
+              <label style="font-size:12px">C.I. / R.I.F (Pago Móvil)</label>
+              <input type="text" id="cont-pago-manual-ci" placeholder="V-XXXXXXXX">
+            </div>
+          </div>
         </div>
 
         <!-- Referencia -->
