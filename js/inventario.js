@@ -426,6 +426,14 @@ async function verFichaProveedor(id) {
   const p = proveedoresCache.find(function(x) { return x.id_proveedor === id; });
   if (!p) return;
 
+  // Asegurar bancos en cache para mostrar nombres
+  if (!_empParamCache.bancos || !_empParamCache.bancos.length) {
+    try {
+      const bancos = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo');
+      _empParamCache.bancos = bancos || [];
+    } catch(e) { _empParamCache.bancos = []; }
+  }
+
   const tipoLabel = { 'ORDINARIO':'Contribuyente Ordinario','ESPECIAL':'Contribuyente Especial','FORMAL':'Contribuyente Formal' };
   const tipoColor = { 'ORDINARIO':'badge-naranja','ESPECIAL':'badge-verde','FORMAL':'badge-gris' };
 
@@ -443,6 +451,20 @@ async function verFichaProveedor(id) {
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Límite de Crédito</div><div style="font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(p.limite_credito||0) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Estado</div><div><span class="badge ' + (p.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (p.estado||'ACTIVO') + '</span></div></div>'
     + (p.observaciones ? '<div style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Observaciones</div><div style="background:var(--gris2);border-radius:6px;padding:10px 14px;font-size:13px">' + p.observaciones + '</div></div>' : '')
+    // ── Datos Bancarios ──
+    + (p.id_banco || p.numero_cuenta ? '<div style="grid-column:1/-1;margin-top:12px;padding-top:12px;border-top:1px solid var(--borde)"><div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🏦 Datos Bancarios</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Institución Financiera</div><div>' + ((_empParamCache.bancos||[]).find(function(b){return b.id===p.id_banco;})?.nombre || '—') + '</div></div>'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Tipo de Cuenta</div><div>' + (p.tipo_cuenta||'—') + '</div></div>'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Número de Cuenta</div><div style="font-family:var(--font-mono)">' + (p.numero_cuenta||'—') + '</div></div>'
+      + '</div></div>' : '')
+    // ── Pago Móvil ──
+    + (p.pm_id_banco || p.pm_celular ? '<div style="grid-column:1/-1;margin-top:12px;padding-top:12px;border-top:1px solid var(--borde)"><div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">📱 Pago Móvil</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Banco</div><div>' + ((_empParamCache.bancos||[]).find(function(b){return b.id===p.pm_id_banco;})?.nombre || '—') + '</div></div>'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">C.I. / R.I.F</div><div style="font-family:var(--font-mono)">' + (p.pm_ci||'—') + '</div></div>'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">N° Celular</div><div style="font-family:var(--font-mono)">' + (p.pm_celular||'—') + '</div></div>'
+      + '</div></div>' : '')
     + '</div>';
 
   var btnEditar   = document.getElementById('ficha-prov-btn-editar');
