@@ -49,22 +49,22 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     c.innerHTML =
       '<div class="panel" id="panel-pagos">' +
       '<div class="panel-header">' +
-      '<h3 id="pagos-contador">Pagos</h3>' +
+      '<h3 id="pagos-contador">Obligaciones de Pago (0)</h3>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
-      (puedo('PAGOS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoPago()">+ Nueva CxP</button>' : '') +
+      (puedo('PAGOS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoPago()">+ Nuevo Pago</button>' : '') +
       '</div></div>' +
       '<div style="padding:12px 24px;display:flex;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--borde)">' +
-      '<input id="pagos-buscar" placeholder="🔍 Buscar..." style="' + inputStyle() + ';flex:1;min-width:160px" oninput="cargarPagosDesdeUI()">' +'<input id="pagos-referencia" placeholder="🔍 N° Referencia" style="' + inputStyle() + ';min-width:140px" oninput="cargarPagosDesdeUI()">' +'<div style="display:flex;align-items:center;gap:4px"><span style="font-size:11px;color:var(--suave)">Desde</span>' +'<input type="date" id="pagos-fecha-desde" style="' + inputStyle() + '" onchange="cargarPagosDesdeUI()"></div>' +'<div style="display:flex;align-items:center;gap:4px"><span style="font-size:11px;color:var(--suave)">Hasta</span>' +'<input type="date" id="pagos-fecha-hasta" style="' + inputStyle() + '" onchange="cargarPagosDesdeUI()"></div>' +
-      '<select id="pagos-tipo" style="' + inputStyle() + '" onchange="cargarPagosDesdeUI()">' +
+      '<input id="pagos-buscar" placeholder="🔍 Buscar beneficiario o N° doc..." style="' + inputStyle() + ';flex:1;min-width:160px" oninput="cargarPagosDesdeUI()">' +
+      '<div style="display:flex;align-items:center;gap:4px"><span style="font-size:11px;color:var(--suave)">Desde</span>' +
+      '<input type="date" id="pagos-fecha-desde" style="' + inputStyle() + '" onchange="cargarPagosDesdeUI()"></div>' +
+      '<div style="display:flex;align-items:center;gap:4px"><span style="font-size:11px;color:var(--suave)">Hasta</span>' +
+      '<input type="date" id="pagos-fecha-hasta" style="' + inputStyle() + '" onchange="cargarPagosDesdeUI()"></div>' +
+      '<select id="pagos-estado" style="' + inputStyle() + '" onchange="cargarPagosDesdeUI()">' +
       '<option value="">Todos los estados</option>' +
-      '<option value="BORRADOR">Borrador</option>' +
-      '<option value="APROBADO">Aprobado</option>' +
-      '<option value="PAGADO">Pagado</option>' +
-      '<option value="ANULADO">Anulado</option>' +
-      '</select>' +
-      '<select id="pagos-tipo" style="' + inputStyle() + '" onchange="cargarPagosDesdeUI()">' +
-      '<option value="">Todos los tipos</option>' +
-      TIPOS_PAGO.map(function(t){ return '<option value="'+t.value+'">'+t.label+'</option>'; }).join('') +
+      '<option value="PENDIENTE">Pendiente</option>' +
+      '<option value="PARCIAL">Parcial</option>' +
+      '<option value="PAGADA">Pagado</option>' +
+      '<option value="ANULADA">Anulado</option>' +
       '</select>' +
       '</div>' +
       '<div id="pagos-tabla-cont" style="padding:0"></div>' +
@@ -73,160 +73,134 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
 
   // Restaurar filtros
   const elEstado = document.getElementById('pagos-estado');
-  const elTipo   = document.getElementById('pagos-tipo');
   if (filtroEstado !== undefined && elEstado) elEstado.value = filtroEstado || '';
-  if (filtroTipo   !== undefined && elTipo)   elTipo.value   = filtroTipo   || '';
 
   const fEstado = document.getElementById('pagos-estado')?.value || '';
-  const fTipo   = document.getElementById('pagos-tipo')?.value || '';
-  const fBuscar = busqueda || document.getElementById('pagos-buscar')?.value || '';
+  const fBuscar = (busqueda || document.getElementById('pagos-buscar')?.value || '').toLowerCase();
+  const fDesde  = filtroDesde || document.getElementById('pagos-fecha-desde')?.value || '';
+  const fHasta  = filtroHasta || document.getElementById('pagos-fecha-hasta')?.value || '';
 
-  let q = '?order=fecha_registro.desc&select=*' + emisorQ();
-  if (fEstado) q += '&estado=eq.' + fEstado;
-  if (fTipo)   q += '&tipo_pago=eq.' + fTipo;
+  const idEmisor = _empresaActiva?.id_emisor || 0;
 
-  // Cargar CxP de proveedores (generadas automáticamente) + pagos manuales
+  // ── Cargar todas las fuentes de obligaciones ──
   const [pagos, cxps] = await Promise.all([
-    api('pagos','GET',null,q),
-    api('cont_cxp','GET',null,'?id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=fecha_emision.desc&select=*,proveedores:id_proveedor(nombre,rif)')
+    api('pagos','GET',null,'?order=fecha_registro.desc&select=*' + emisorQ()),
+    api('cont_cxp','GET',null,'?id_emisor=eq.'+idEmisor+'&order=fecha_emision.desc&select=*,proveedores:id_proveedor(nombre)')
   ]);
-  pagosCache = pagos;
+  pagosCache = pagos || [];
 
-  const fRef   = (filtroRef   || document.getElementById('pagos-referencia')?.value  || '').toLowerCase();
-  const fDesde = filtroDesde || document.getElementById('pagos-fecha-desde')?.value  || '';
-  const fHasta = filtroHasta || document.getElementById('pagos-fecha-hasta')?.value  || '';
+  // ── Normalizar en un solo formato unificado ──
+  const estadoMapPagos = { BORRADOR:'PENDIENTE', APROBADO:'PENDIENTE', PAGADO:'PAGADA', ANULADO:'ANULADA', EJECUTADO:'PAGADA' };
 
-  const filtrados = pagos.filter(function(p){
+  const itemsPagos = (pagos||[]).map(function(p) {
+    return {
+      _src:        'pago',
+      _id:         p.id_pago,
+      numero:      p.numero_pago || '—',
+      beneficiario: p.nombre_beneficiario || '—',
+      fecha:       p.fecha_pago || p.fecha_registro || '',
+      tipo:        (p.tipo_pago || '').replace(/_/g,' '),
+      origen:      'Manual',
+      monto_usd:   parseFloat(p.monto_usd || 0),
+      pagado_usd:  parseFloat(p.monto_pagado_usd || 0),
+      saldo_usd:   parseFloat(p.saldo_usd || p.monto_usd || 0),
+      estado:      estadoMapPagos[p.estado] || p.estado || 'PENDIENTE',
+      _raw:        p
+    };
+  });
+
+  const itemsCxP = (cxps||[]).map(function(c) {
+    return {
+      _src:        'cxp',
+      _id:         c.id_cxp,
+      numero:      c.numero_doc || '—',
+      beneficiario: c.proveedores?.nombre || '—',
+      fecha:       c.fecha_emision || '',
+      tipo:        (c.tipo || '').replace(/_/g,' '),
+      origen:      'Automático',
+      monto_usd:   parseFloat(c.monto_usd || 0),
+      pagado_usd:  parseFloat(c.pagado_usd || 0),
+      saldo_usd:   parseFloat(c.saldo_usd || 0),
+      estado:      c.estado || 'PENDIENTE',
+      _raw:        c
+    };
+  });
+
+  // ── Unificar y ordenar por fecha desc ──
+  let todos = itemsPagos.concat(itemsCxP);
+  todos.sort(function(a,b){ return (b.fecha||'').localeCompare(a.fecha||''); });
+
+  // ── Filtrar ──
+  todos = todos.filter(function(item) {
+    if (fEstado && item.estado !== fEstado) return false;
     if (fBuscar) {
-      const s = fBuscar.toLowerCase();
-      if (!(p.numero_pago||'').toLowerCase().includes(s)
-        && !(p.descripcion||'').toLowerCase().includes(s)
-        && !(p.nombre_beneficiario||'').toLowerCase().includes(s)) return false;
+      if (!item.beneficiario.toLowerCase().includes(fBuscar)
+        && !item.numero.toLowerCase().includes(fBuscar)
+        && !item.tipo.toLowerCase().includes(fBuscar)) return false;
     }
-    if (fRef    && !(p.referencia||'').toLowerCase().includes(fRef)) return false;
-    if (fDesde  && (p.fecha_pago||'').substring(0,10) < fDesde) return false;
-    if (fHasta  && (p.fecha_pago||'').substring(0,10) > fHasta) return false;
+    if (fDesde && item.fecha.substring(0,10) < fDesde) return false;
+    if (fHasta && item.fecha.substring(0,10) > fHasta) return false;
     return true;
   });
 
-  document.getElementById('pagos-contador').textContent = 'Pagos (' + filtrados.length + ')';
+  document.getElementById('pagos-contador').textContent = 'Obligaciones de Pago (' + todos.length + ')';
 
-  // Alertas de recurrentes próximos a vencer
-  const hoy = new Date();
-  const en7dias = new Date(hoy); en7dias.setDate(en7dias.getDate()+7);
-  const proximos = pagos.filter(function(p){
-    if (!p.es_recurrente || !p.fecha_proxima || p.estado === 'ANULADO') return false;
-    const fp = new Date(p.fecha_proxima);
-    return fp <= en7dias;
-  });
+  const cont = document.getElementById('pagos-tabla-cont');
+  if (!cont) return;
 
-  // ── Renderizar CxP Proveedores ──
-  const cxpFiltradas = (cxps||[]).filter(function(c) {
-    if (fEstado && c.estado !== fEstado) return false;
-    if (fBuscar) {
-      const s = fBuscar.toLowerCase();
-      const prov = c.proveedores?.nombre || '';
-      if (!(c.numero_doc||'').toLowerCase().includes(s) && !prov.toLowerCase().includes(s)) return false;
+  const estCol = { PENDIENTE:'#f59e0b', PARCIAL:'#60a5fa', PAGADA:'#22c55e', ANULADA:'#6b7280' };
+
+  if (!todos.length) {
+    cont.innerHTML = '<div style="text-align:center;padding:40px;color:var(--suave)">Sin obligaciones de pago registradas.</div>';
+    return;
+  }
+
+  const filas = todos.map(function(item) {
+    const est   = item.estado;
+    const col   = estCol[est] || '#888';
+    const badge = '<span style="background:'+col+'22;color:'+col+';border:1px solid '+col+'44;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600">'+est+'</span>';
+    const canPay = est === 'PENDIENTE' || est === 'PARCIAL';
+    let acciones = '';
+    if (canPay) {
+      if (item._src === 'cxp') {
+        acciones = '<button onclick="pagarCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>';
+      } else {
+        acciones = '<button onclick="abrirFichaPago('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
+      }
     }
-    if (fDesde && (c.fecha_emision||'') < fDesde) return false;
-    if (fHasta && (c.fecha_emision||'') > fHasta) return false;
-    return true;
-  });
-  const estadoColCxP = { PENDIENTE:'#f59e0b', PAGADA:'#22c55e', ANULADA:'#6b7280', PARCIAL:'#60a5fa' };
-  const cxpHtml = cxpFiltradas.length ? (
-    '<div style="margin:12px 24px 0">'
-    +'<div style="font-size:11px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">📋 CxP PROVEEDORES</div>'
-    +'<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+    const origenBadge = item.origen === 'Automático'
+      ? '<span style="background:rgba(96,165,250,0.15);color:#60a5fa;border-radius:4px;padding:1px 6px;font-size:10px">Auto</span>'
+      : '<span style="background:rgba(255,255,255,0.06);color:var(--suave);border-radius:4px;padding:1px 6px;font-size:10px">Manual</span>';
+    return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+      +'<td style="padding:8px;font-family:var(--font-mono);font-size:11px;color:var(--naranja)">'+item.numero+'</td>'
+      +'<td style="padding:8px;font-size:12px">'+item.beneficiario+'</td>'
+      +'<td style="padding:8px;font-size:11px;color:var(--suave)">'+fmtFecha(item.fecha)+'</td>'
+      +'<td style="padding:8px;font-size:11px;color:var(--suave)">'+item.tipo+'</td>'
+      +'<td style="padding:8px;text-align:center">'+origenBadge+'</td>'
+      +'<td style="text-align:right;padding:8px;font-family:var(--font-mono)">$ '+fmtUSD(item.monto_usd)+'</td>'
+      +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#22c55e">$ '+fmtUSD(item.pagado_usd)+'</td>'
+      +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:'+col+'">$ '+fmtUSD(item.saldo_usd)+'</td>'
+      +'<td style="padding:8px;text-align:center">'+badge+'</td>'
+      +'<td style="padding:8px;text-align:center">'+acciones+'</td>'
+      +'</tr>';
+  }).join('');
+
+  cont.innerHTML =
+    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>'
     +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">N° Doc</th>'
-    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Proveedor</th>'
+    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Beneficiario</th>'
     +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Fecha</th>'
-    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Concepto</th>'
+    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Tipo</th>'
+    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:center">Origen</th>'
     +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:right">Monto</th>'
     +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:right">Pagado</th>'
     +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:right">Saldo</th>'
     +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:center">Estado</th>'
     +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:center">Acción</th>'
-    +'</tr></thead><tbody>'
-    + cxpFiltradas.map(function(c) {
-        const prov  = c.proveedores?.nombre || '—';
-        const est   = c.estado || 'PENDIENTE';
-        const col   = estadoColCxP[est] || '#888';
-        const badge = '<span style="background:'+col+'22;color:'+col+';border:1px solid '+col+'44;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600">'+est+'</span>';
-        const btn   = est === 'PENDIENTE' || est === 'PARCIAL'
-          ? '<button onclick="pagarCxP('+c.id_cxp+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>'
-          : '';
-        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
-          +'<td style="padding:8px;font-family:var(--font-mono);font-size:11px;color:var(--naranja)">'+c.numero_doc+'</td>'
-          +'<td style="padding:8px;font-size:12px">'+prov+'</td>'
-          +'<td style="padding:8px;font-size:11px;color:var(--suave)">'+fmtFecha(c.fecha_emision)+'</td>'
-          +'<td style="padding:8px;font-size:11px;color:var(--suave)">'+((c.tipo||'').replace(/_/g,' '))+'</td>'
-          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono)">$ '+fmtUSD(c.monto_usd)+'</td>'
-          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#22c55e">$ '+fmtUSD(c.pagado_usd||0)+'</td>'
-          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:#f59e0b">$ '+fmtUSD(c.saldo_usd||0)+'</td>'
-          +'<td style="padding:8px;text-align:center">'+badge+'</td>'
-          +'<td style="padding:8px;text-align:center">'+btn+'</td>'
-          +'</tr>';
-      }).join('')
-    +'</tbody></table></div></div>'
-  ) : '';
-
-  const cont = document.getElementById('pagos-tabla-cont');
-
-  let alertaHtml = '';
-  if (proximos.length) {
-    alertaHtml = '<div class="alerta" style="display:block;margin:12px 24px;background:rgba(255,107,0,0.1);border:1px solid rgba(255,107,0,0.3);border-radius:6px;padding:10px 14px">' +
-      '⚠️ <strong>' + proximos.length + ' pago(s) recurrente(s)</strong> próximos a vencer: ' +
-      proximos.map(function(p){ return '<span style="color:var(--naranja)">' + p.descripcion + ' (' + fmtFecha(p.fecha_proxima) + ')</span>'; }).join(', ') +
-      '</div>';
-  }
-
-  if (!filtrados.length) {
-    cont.innerHTML = cxpHtml + alertaHtml + '<div style="text-align:center;padding:40px;color:var(--suave)">Sin pagos registrados.</div>';
-    return;
-  }
-
-  const estadoBadge = {
-    'BORRADOR': '<span class="badge badge-gris">Borrador</span>',
-    'APROBADO': '<span class="badge badge-naranja">Aprobado</span>',
-    'PAGADO':   '<span class="badge" style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3)">Pagado</span>',
-    'ANULADO':  '<span class="badge" style="background:rgba(252,129,129,0.15);color:#fc8181;border:1px solid rgba(252,129,129,0.3)">Anulado</span>',
-  };
-
-  const filas = filtrados.map(function(p) {
-    const tipo = TIPOS_PAGO.find(function(t){ return t.value === p.tipo_pago; });
-    const metodo = METODOS_PAGO_PAGOS.find(function(m){ return m.value === p.metodo_pago; });
-    return '<tr style="cursor:pointer" onclick="abrirFichaPago('+p.id_pago+')">' +
-      '<td style="padding:10px 14px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">' + (p.numero_pago||'—') + '</td>' +
-      '<td style="padding:10px 14px;font-size:12px">' + (tipo ? tipo.label : p.tipo_pago) + '</td>' +
-      '<td style="padding:10px 14px;font-size:13px;font-weight:500">' + (p.descripcion||'—') + '<br><span style="font-size:11px;color:var(--suave)">' + (p.nombre_beneficiario||'') + '</span></td>' +
-      '<td style="padding:10px 14px;font-size:13px;font-family:var(--font-mono);text-align:right">' +
-        (p.monto_ves ? '<strong>Bs '+fmtVES(p.monto_ves)+'</strong>' : (p.monto_usd ? '<strong>Bs '+fmtVES(parseFloat(p.monto_usd)*(parseFloat(p.tasa_bcv)||1))+'</strong>' : '—')) +
-        (p.monto_usd ? '<br><span style="font-size:11px;color:var(--suave)">$ '+fmtUSD(p.monto_usd)+'</span>' : '') +
-      '</td>' +
-      '<td style="padding:10px 14px;font-size:12px">' + (metodo ? metodo.label : (p.metodo_pago||'—')) + '</td>' +
-      '<td style="padding:10px 14px;font-size:12px">' + (p.fecha_pago ? fmtFecha(p.fecha_pago) : '—') + (p.es_recurrente ? ' <span style="font-size:10px;color:var(--naranja)">🔄</span>' : '') + '</td>' +
-      '<td style="padding:10px 14px">' + (estadoBadge[p.estado]||p.estado) + '</td>' +
-      '<td style="padding:10px 14px">' +
-        '<button class="btn-secundario" style="font-size:11px;padding:4px 12px" onclick="event.stopPropagation();abrirFichaPago('+p.id_pago+')">Ver</button>' +
-      '</td>' +
-      '</tr>';
-  }).join('');
-
-  cont.innerHTML = cxpHtml + alertaHtml +
-    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">' +
-    '<thead><tr style="border-bottom:2px solid var(--borde)">' +
-    '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">N°</th>' +
-    '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">Tipo</th>' +
-    '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">Descripción</th>' +
-    '<th style="padding:10px 14px;text-align:right;font-size:11px;color:var(--suave)">Monto</th>' +
-    '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">Método</th>' +
-    '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">Cancelado</th>' +
-    '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">Estado</th>' +
-    '<th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--suave)">Acción</th>' +
-    '</tr></thead><tbody>' + filas + '</tbody></table></div>';
+    +'</tr></thead><tbody>'+filas+'</tbody></table></div>';
 }
 
-// ── Abrir nuevo pago ──
+
 async function abrirNuevoPago() {
   _pagoEditando = null;
   await poblarFormPago(null);
