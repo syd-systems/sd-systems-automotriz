@@ -118,7 +118,7 @@ async function renderInventario(filtro) {
         }
       } catch(e) {}
     }
-    const itemsTodos = await api('inventario', 'GET', null, '?order=nombre.asc&select=*' + emisorQ());
+    const itemsTodos = await api('inventario', 'GET', null, '?order=nombre.asc&select=*' + emisorQ()) || [];
     const items = itemsTodos.filter(function(r) { return r.activo !== false; });
     const itemsFiltradosBase = soloConStock ? items.filter(function(r) { return parseFloat(r.stock_actual||0) > 0; }) : items;
     inventarioCache = items;
@@ -133,15 +133,16 @@ async function renderInventario(filtro) {
         const empRes = correo ? await api('empleados','GET',null,
           '?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1') : [];
         const idAreaUsuario = empRes && empRes[0] ? empRes[0].id_area : null;
-        if (idAreaUsuario) {
+        if (idAreaUsuario && idsArticulos.length > 0) {
           // Saldo por área:
           // (+) entradas directas al área (compras/devoluciones con id_area = área)
           // (+) salidas de otras áreas recibidas por esta área (stock_salidas.id_area = área)
           // (-) salidas enviadas desde esta área (stock_salidas.id_area_entrega = área)
+          const inClauseArea = idsArticulos.join(',');
           const [entsDirectas, salsRecibidas, salsEnviadas] = await Promise.all([
-            api('stock_entradas','GET',null,'?id_area=eq.'+idAreaUsuario+'&select=id_articulo,cantidad'),
-            api('stock_salidas','GET',null,'?id_area=eq.'+idAreaUsuario+'&select=id_articulo,cantidad'),
-            api('stock_salidas','GET',null,'?id_area_entrega=eq.'+idAreaUsuario+'&select=id_articulo,cantidad')
+            api('stock_entradas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClauseArea+')&select=id_articulo,cantidad'),
+            api('stock_salidas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClauseArea+')&select=id_articulo,cantidad'),
+            api('stock_salidas','GET',null,'?id_area_entrega=eq.'+idAreaUsuario+'&id_articulo=in.('+inClauseArea+')&select=id_articulo,cantidad')
           ]);
           const saldoArea = {};
           (entsDirectas||[]).forEach(function(e) {
