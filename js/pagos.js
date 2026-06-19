@@ -72,8 +72,10 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
   }
 
   // Restaurar filtros
-  if (filtroEstado !== undefined) document.getElementById('pagos-estado').value = filtroEstado || '';
-  if (filtroTipo !== undefined) document.getElementById('pagos-tipo').value = filtroTipo || '';
+  const elEstado = document.getElementById('pagos-estado');
+  const elTipo   = document.getElementById('pagos-tipo');
+  if (filtroEstado !== undefined && elEstado) elEstado.value = filtroEstado || '';
+  if (filtroTipo   !== undefined && elTipo)   elTipo.value   = filtroTipo   || '';
 
   const fEstado = document.getElementById('pagos-estado')?.value || '';
   const fTipo   = document.getElementById('pagos-tipo')?.value || '';
