@@ -454,6 +454,45 @@ async function verFichaProveedor(id) {
   focusFirstField('modal-ficha-prov');
 }
 
+
+// ── Helpers banco proveedor ──
+function onSelBancoProveedor() {
+  var sel     = document.getElementById('prov-banco');
+  var codEl   = document.getElementById('prov-cod-banco');
+  var restoEl = document.getElementById('prov-num-cuenta-resto');
+  if (!sel || !codEl) return;
+  var idBanco = parseInt(sel.value);
+  var banco   = (_empParamCache.bancos || []).find(function(b){ return b.id === idBanco; });
+  var codigo  = banco && banco.codigo ? banco.codigo.replace(/\D/g,'').substring(0,4) : '';
+  codEl.value = codigo;
+  if (restoEl) { restoEl.value = ''; restoEl.focus(); }
+  sincronizarNumCuentaProv();
+}
+
+function sincronizarNumCuentaProv() {
+  var codEl   = document.getElementById('prov-cod-banco');
+  var restoEl = document.getElementById('prov-num-cuenta-resto');
+  var hidEl   = document.getElementById('prov-num-cuenta');
+  if (!hidEl) return;
+  hidEl.value = (codEl?.value || '') + (restoEl?.value || '');
+}
+
+function cargarBancosProveedor(idBancoSel, idBancoPMSel) {
+  var bancos = _empParamCache.bancos || [];
+  var opts = '<option value="">— Seleccionar —</option>'
+    + bancos.map(function(b){
+        return '<option value="'+b.id+'"'+(b.id===idBancoSel?' selected':'')+'>'+b.nombre+'</option>';
+      }).join('');
+  var el = document.getElementById('prov-banco');
+  if (el) { el.innerHTML = opts; if (idBancoSel) onSelBancoProveedor(); }
+  var opts2 = '<option value="">— Seleccionar —</option>'
+    + bancos.map(function(b){
+        return '<option value="'+b.id+'"'+(b.id===idBancoPMSel?' selected':'')+'>'+b.nombre+'</option>';
+      }).join('');
+  var el2 = document.getElementById('prov-pm-banco');
+  if (el2) el2.innerHTML = opts2;
+}
+
 async function abrirProveedor(id) {
   if (id && !puedo('PROVEEDORES','EDITAR'))  { alert('No tiene permiso para editar proveedores.'); return; }
   if (!id && !puedo('PROVEEDORES','CREAR'))  { alert('No tiene permiso para registrar proveedores.'); return; }
