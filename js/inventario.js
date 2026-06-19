@@ -301,6 +301,20 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
       }
     } catch(eAst) { console.warn('Error anulando asiento en reverso:', eAst); }
 
+    // 6B. Anular CxP asociada si es reverso de entrada por compra
+    if (tipo === 'ENTRADA') {
+      try {
+        const numDoc = 'ENT-' + idMovimiento;
+        const cxps = await api('cont_cxp','GET',null,
+          '?numero_doc=eq.'+encodeURIComponent(numDoc)+emisorQ()+'&estado=eq.PENDIENTE&select=id_cxp');
+        if (cxps && cxps.length) {
+          await api('cont_cxp','PATCH',
+            { estado: 'ANULADA', observaciones: '[REVERSADO] ' },
+            '?id_cxp=eq.' + cxps[0].id_cxp);
+        }
+      } catch(eCxP) { console.warn('Error anulando CxP en reverso:', eCxP); }
+    }
+
     // 7. Actualizar cache con datos frescos desde BD
     try {
       const fresh = await api('inventario', 'GET', null, '?id_articulo=eq.' + idRepuesto + '&select=*');
