@@ -1338,17 +1338,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260618009"></script>
-<script src="js/parametros.js?v=20260618009"></script>
-<script src="js/empresas.js?v=20260618009"></script>
-<script src="js/facturacion.js?v=20260618009"></script>
-<script src="js/inventario.js?v=20260618009"></script>
-<script src="js/contabilidad.js?v=20260618009"></script>
-<script src="js/pagos.js?v=20260618009"></script>
-<script src="js/vehiculos.js?v=20260618009"></script>
-<script src="js/catalogo.js?v=20260618009"></script>
-<script src="js/inventario2.js?v=20260618009"></script>
-<script src="js/ordenes.js?v=20260618009"></script>
+<script src="js/core.js?v=20260618010"></script>
+<script src="js/parametros.js?v=20260618010"></script>
+<script src="js/empresas.js?v=20260618010"></script>
+<script src="js/facturacion.js?v=20260618010"></script>
+<script src="js/inventario.js?v=20260618010"></script>
+<script src="js/contabilidad.js?v=20260618010"></script>
+<script src="js/pagos.js?v=20260618010"></script>
+<script src="js/vehiculos.js?v=20260618010"></script>
+<script src="js/catalogo.js?v=20260618010"></script>
+<script src="js/inventario2.js?v=20260618010"></script>
+<script src="js/ordenes.js?v=20260618010"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2023,9 +2023,28 @@
     </div>
     <div class="modal-body">
       <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="form-campo form-full" id="cont-pago-cxp-info" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:10px 14px">
+          <div style="font-size:11px;color:var(--suave)">Saldo pendiente: <span id="cont-pago-cxp-saldo" style="font-weight:700;color:var(--naranja)">—</span></div>
+        </div>
         <div class="form-campo">
-          <label>Monto USD *</label>
-          <input type="number" id="cont-pago-cxp-monto" step="0.01" min="0" style="font-family:var(--font-mono)">
+          <label>Moneda de Pago *</label>
+          <select id="cont-pago-cxp-moneda" onchange="onCambioPagoMoneda()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="VES">VES — Bolívares (Funcional)</option>
+            <option value="USD">USD — Dólares</option>
+            <option value="EUR">EUR — Euros</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Monto a Pagar *</label>
+          <input type="number" id="cont-pago-cxp-monto" step="0.01" min="0" oninput="onCambioPagoMonto()" style="font-family:var(--font-mono)">
+        </div>
+        <div class="form-campo" id="cont-pago-cxp-tasa-cont">
+          <label>Tasa de Cambio</label>
+          <input type="number" id="cont-pago-cxp-tasa" step="0.0001" min="0" oninput="onCambioPagoMonto()" style="font-family:var(--font-mono)" placeholder="Auto">
+        </div>
+        <div class="form-campo">
+          <label>Equivalente USD</label>
+          <input type="number" id="cont-pago-cxp-equiv-usd" readonly style="font-family:var(--font-mono);background:rgba(255,255,255,0.04);color:var(--suave);cursor:not-allowed">
         </div>
         <div class="form-campo">
           <label>Fecha *</label>
