@@ -163,8 +163,9 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     let acciones = '';
     if (canPay) {
       if (item._src === 'cxp') {
+        const esAutomatica = item._raw && (item._raw.tipo||'').includes('COMPRA_CONSUMIBLE');
         acciones = '<button onclick="pagarCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>'
-          + ' <button onclick="anularPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑 Anular</button>';
+          + (!esAutomatica ? ' <button onclick="anularPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑 Anular</button>' : '');
       } else {
         acciones = '<button onclick="abrirFichaPago('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
       }
