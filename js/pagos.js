@@ -208,11 +208,12 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     let acciones = '';
     if (item._src === 'cxp') {
       const esManual = item.origen !== 'Automático';
-      const btnVer   = '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
-      const btnPagar = '<button onclick="pagarCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>';
-      const btnAnular = esManual && est === 'PENDIENTE' ? ' <button onclick="anularPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑 Anular</button>' : '';
-      if (est === 'PENDIENTE') acciones = btnVer + ' ' + btnPagar + btnAnular;
-      else acciones = btnVer;
+      const btnVerPend = '<button onclick="verCxPPendiente('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
+      const btnVerPag  = '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
+      const btnPagar   = '<button onclick="pagarCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>';
+      const btnAnular  = esManual && est === 'PENDIENTE' ? ' <button onclick="anularPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑 Anular</button>' : '';
+      if (est === 'PENDIENTE') acciones = btnVerPend + ' ' + btnPagar + btnAnular;
+      else acciones = btnVerPag;
     }
 
     const origenBadge = item.origen === 'Automático'
@@ -256,6 +257,17 @@ async function abrirNuevoPago() {
   if (errEl) errEl.style.display = 'none';
   if (okEl)  okEl.style.display  = 'none';
   document.getElementById('pago-modal-titulo').textContent = 'NUEVA CUENTA POR PAGAR';
+  // Restaurar campos (pueden estar disabled del modo VER)
+  ['pago-categoria-prov','pago-moneda','pago-descripcion','pago-cuenta-gasto',
+   'pago-monto','pago-vencimiento','pago-proveedor','pago-observaciones'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.disabled = false;
+  });
+  // Restaurar botón Guardar
+  const footerNuevo = document.querySelector('#modal-pago .modal-footer');
+  if (footerNuevo) footerNuevo.innerHTML =
+    '<button class="btn-secundario" onclick="cerrarModal(\'modal-pago\')">Retornar</button>'
+    + '<button class="btn-primario" onclick="guardarPago()">Guardar</button>';
 
   // Reset campos
   ['pago-descripcion','pago-monto','pago-vencimiento','pago-rif','pago-observaciones','pago-manual-cuenta','pago-referencia'].forEach(function(id){
@@ -2074,4 +2086,87 @@ async function pagarCxP(idCxP) {
 // verPagoCxP now delegates to verDetalleCxP
 async function verPagoCxP(idCxP) {
   await verDetalleCxP(idCxP, 'ver');
+}
+
+async function verCxPPendiente(idCxP) {
+  try {
+    const rows = await api('cont_cxp','GET',null,
+      '?id_cxp=eq.'+idCxP+'&select=*,proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre),id_categoria)');
+    if (!rows || !rows[0]) return;
+    const c    = rows[0];
+    const prov = c.proveedores || {};
+
+    // Cargar categorías
+    const cats = await api('param_categorias_proveedor','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre') || [];
+    const selCat = document.getElementById('pago-categoria-prov');
+    if (selCat) {
+      selCat.innerHTML = '<option value="">— Seleccionar —</option>'
+        + cats.map(function(ct){ return '<option value="'+ct.id+'"'+(ct.id===prov.id_categoria?' selected':'')+'>'+ct.nombre+'</option>'; }).join('');
+    }
+
+    // Cargar proveedores filtrados por categoría
+    if (prov.id_categoria) {
+      const provs = await api('proveedores','GET',null,
+        '?estado=eq.ACTIVO&id_categoria=eq.'+prov.id_categoria+'&order=nombre.asc&select=id_proveedor,nombre') || [];
+      window._pagoProveedores = provs;
+      const selProv = document.getElementById('pago-proveedor');
+      if (selProv) {
+        selProv.innerHTML = '<option value="">— Seleccionar —</option>'
+          + provs.map(function(p){ return '<option value="'+p.id_proveedor+'"'+(p.id_proveedor===c.id_proveedor?' selected':'')+'>'+p.nombre+'</option>'; }).join('');
+      }
+    }
+
+    // Cargar cuentas de gasto
+    const cuentas = await api('cont_cuentas','GET',null,'?tipo=eq.EGRESO&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
+    const selC = document.getElementById('pago-cuenta-gasto');
+    if (selC) {
+      selC.innerHTML = '<option value="">— Seleccionar cuenta —</option>'
+        + cuentas.map(function(ct){ return '<option value="'+ct.id_cuenta+'"'+(ct.id_cuenta===c.id_cuenta_gasto?' selected':'')+'>'+ct.codigo+' — '+ct.nombre+'</option>'; }).join('');
+    }
+
+    // Cargar tasas
+    try {
+      const hoy = new Date(new Date().getTime()-4*60*60*1000).toISOString().split('T')[0];
+      const tasas = await api('tasas','GET',null,'?order=fecha_valor.desc&limit=20&select=*') || [];
+      const getTasa = function(mon) {
+        const reg = tasas.filter(function(t){ return t.moneda_origen===mon && String(t.fecha_valor||'').substring(0,10)<=hoy; })
+          .sort(function(a,b){ return String(b.fecha_valor||'').localeCompare(String(a.fecha_valor||'')); });
+        return reg.length ? parseFloat(reg[0].tipo_cambio) : 1;
+      };
+      window._pagoTasaUSD = getTasa('USD');
+      window._pagoTasaEUR = getTasa('EUR');
+    } catch(e) {}
+
+    // Llenar campos del formulario
+    document.getElementById('pago-moneda').value      = c.moneda_pago || 'VES';
+    document.getElementById('pago-descripcion').value = c.observaciones || '';
+    document.getElementById('pago-monto').value       = c.moneda_pago === 'VES' ? (c.monto_ves || c.monto_usd) : c.monto_usd;
+    document.getElementById('pago-vencimiento').value = c.fecha_vencimiento || '';
+    document.getElementById('pago-rif').value         = prov.rif || '';
+    document.getElementById('pago-observaciones').value = '';
+
+    // Datos bancarios
+    onSelProveedorPago();
+
+    // Poner todo en readonly
+    ['pago-categoria-prov','pago-moneda','pago-descripcion','pago-cuenta-gasto',
+     'pago-monto','pago-vencimiento','pago-proveedor','pago-observaciones'].forEach(function(id) {
+      const el = document.getElementById(id);
+      if (el) el.disabled = true;
+    });
+
+    // Cambiar título y footer
+    document.getElementById('pago-modal-titulo').textContent = 'DETALLE DE OBLIGACIÓN';
+    const errEl = document.getElementById('alerta-pago-err');
+    const okEl  = document.getElementById('alerta-pago-ok');
+    if (errEl) errEl.style.display = 'none';
+    if (okEl)  okEl.style.display  = 'none';
+
+    // Reemplazar botón Guardar por solo Retornar
+    const footer = document.querySelector('#modal-pago .modal-footer');
+    if (footer) footer.innerHTML = '<button class="btn-primario" onclick="cerrarModal(\'modal-pago\')">Retornar</button>';
+
+    onCambioMonedaPago();
+    abrirModal('modal-pago');
+  } catch(e) { alert('Error: '+e.message); console.error(e); }
 }
