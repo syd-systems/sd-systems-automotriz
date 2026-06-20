@@ -546,6 +546,17 @@ async function abrirProveedor(id) {
     } catch(e) { _empParamCache.bancos = []; }
   }
   cargarBancosProveedor(p ? (p.id_banco||null) : null, p ? (p.pm_id_banco||null) : null);
+  // Cargar categorías de proveedor
+  try {
+    const cats = await api('param_categorias_proveedor','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo');
+    const selCat = document.getElementById('prov-categoria');
+    if (selCat) {
+      selCat.innerHTML = '<option value="">— Seleccionar —</option>'
+        + (cats||[]).map(function(c){
+            return '<option value="'+c.id+'"'+(c.id===(p?.id_categoria)?' selected':'')+'>'+c.nombre+'</option>';
+          }).join('');
+    }
+  } catch(e) {}
   // Tipo y número de cuenta
   document.getElementById('prov-tipo-cuenta').value         = p ? (p.tipo_cuenta||'') : '';
   const numCuenta = p ? (p.numero_cuenta||'') : '';
@@ -634,6 +645,7 @@ async function guardarProveedor() {
     pm_id_banco:        parseInt(document.getElementById('prov-pm-banco')?.value) || null,
     pm_ci:              document.getElementById('prov-pm-ci')?.value.trim().toUpperCase() || null,
     pm_celular:         document.getElementById('prov-pm-celular')?.value.trim() || null,
+    id_categoria:       parseInt(document.getElementById('prov-categoria')?.value) || null,
     id_usuario:         sesionActual.correo_usuario
   };
 
