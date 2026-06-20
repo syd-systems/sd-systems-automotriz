@@ -146,7 +146,8 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       const total  = cxpMap[prefix] || 1;
       tipoDisplay  = 'Crédito ' + num + '/' + total;
     }
-    const montoVES = parseFloat(c.monto_usd || 0) * parseFloat(c.tasa_bcv || 1);
+    // Usar monto_ves guardado en BD, no calcularlo
+    const montoVES = parseFloat(c.monto_ves || 0) || parseFloat(c.monto_usd || 0) * parseFloat(c.tasa_bcv || 1);
     return {
       _src:        'cxp',
       _id:         c.id_cxp,
