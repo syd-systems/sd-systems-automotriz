@@ -383,7 +383,7 @@ async function guardarFactura(emitir) {
       fecha_emision:fecha, estado,
       aplica_iva:aplIVA, aplica_igtf:aplIGTF,
       subtotal_usd:tot.subtotal, iva_usd:tot.iva, igtf_usd:tot.igtf,
-      total_usd:tot.total, total_ves:tot.totVes, tasa_cambio:tot.tasa||tasa,
+      total_usd:tot.total, total_ves:tot.totVes, tasa_bcv:tot.tasa||tasa,
       observaciones:obs||null, id_usuario:sesionActual.correo_usuario
     };
     if (id) {
@@ -424,7 +424,7 @@ async function guardarFactura(emitir) {
             fecha_emision:  fac.fecha_emision,
             monto_usd:      fac.total_usd,
             monto_ves:      fac.total_ves || 0,
-            tasa_bcv:       fac.tasa_cambio || 1,
+            tasa_bcv:       fac.tasa_bcv || 1,
             saldo_usd:      fac.total_usd,
             estado:         'PENDIENTE',
             moneda_cobro:   fac.moneda_cobro || 'USD',
@@ -441,7 +441,7 @@ async function guardarFactura(emitir) {
           let seqAst = 1;
           if (existAst.length) { const pa = existAst[0].numero_asiento.split('-'); seqAst = parseInt(pa[pa.length-1]) + 1; }
           const numAst = 'AST-'+anioAst+'-'+String(seqAst).padStart(4,'0');
-          const tasa = fac.tasa_cambio || 1;
+          const tasa = fac.tasa_bcv || 1;
 
           const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
           const idPeriodo = periodos.length ? periodos[0].id_periodo : null;
@@ -580,7 +580,7 @@ async function verFichaFactura(id) {
     const est    = ESTADOS_FAC[f.estado]||{clase:'badge-gris',label:f.estado};
     const emisor = f.emisores;
     const esVES  = f.moneda_cobro==='VES';
-    const t      = parseFloat(f.tasa_cambio||1);
+    const t      = parseFloat(f.tasa_bcv||1);
     function fmtF(usd) { return esVES ? fmtBs(usd*t)+' Bs' : '$ '+fmtUSD(usd); }
 
     const tablaLineas = [...linServ.map(function(l){return{desc:l.descripcion,tipo:'Serv.',cant:l.cantidad,precio:l.precio_usd,sub:l.subtotal_usd};}),
@@ -695,7 +695,7 @@ async function abrirEditarFactura(id) {
     document.getElementById('fac-fecha').value=f.fecha_emision||getHoyVzla();
     document.getElementById('fac-estado').value=f.estado;
     document.getElementById('fac-moneda').value=f.moneda_cobro||'USD';
-    document.getElementById('fac-tasa').value=parseFloat(f.tasa_cambio||1).toFixed(4);
+    document.getElementById('fac-tasa').value=parseFloat(f.tasa_bcv||1).toFixed(4);
     document.getElementById('fac-receptor-nombre').value=f.receptor_nombre||'';
     document.getElementById('fac-receptor-rif').value=f.receptor_rif||'';
     document.getElementById('fac-receptor-dir').value=f.receptor_direccion||'';
