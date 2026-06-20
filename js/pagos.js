@@ -1824,3 +1824,44 @@ async function onSelProveedorCxP() {
     }
   } catch(e) { console.warn('onSelProveedorCxP:', e); }
 }
+
+async function onSelProveedorPago() {
+  const idProv     = parseInt(document.getElementById('pago-proveedor')?.value) || null;
+  const bancoInfo  = document.getElementById('pago-banco-info');
+  const bancoDatos = document.getElementById('pago-banco-datos');
+  const pmInfo     = document.getElementById('pago-pm-info');
+  const pmDatos    = document.getElementById('pago-pm-datos');
+  const manualInfo = document.getElementById('pago-manual-info');
+
+  // Reset
+  [bancoInfo, pmInfo, manualInfo].forEach(function(el){ if (el) el.style.display = 'none'; });
+
+  if (!idProv) return;
+
+  try {
+    const rows = await api('proveedores','GET',null,
+      '?id_proveedor=eq.'+idProv+'&select=id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre)');
+    if (!rows || !rows[0]) { if (manualInfo) manualInfo.style.display = ''; return; }
+    const p = rows[0];
+    const tieneBanco = !!p.id_banco;
+    const tienePM    = !!p.pm_id_banco;
+
+    if (tieneBanco && bancoDatos) {
+      bancoDatos.innerHTML =
+        dato('Institución', p.banco_prov?.nombre || '—')
+        + dato('Tipo Cuenta', p.tipo_cuenta || '—')
+        + dato('N° Cuenta', p.numero_cuenta || '—');
+      if (bancoInfo) bancoInfo.style.display = '';
+    }
+    if (tienePM && pmDatos) {
+      pmDatos.innerHTML =
+        dato('Banco', p.banco_pm?.nombre || '—')
+        + dato('C.I./R.I.F', p.pm_ci || '—')
+        + dato('Celular', p.pm_celular || '—');
+      if (pmInfo) pmInfo.style.display = '';
+    }
+    if (!tieneBanco && !tienePM) {
+      if (manualInfo) manualInfo.style.display = '';
+    }
+  } catch(e) { console.warn('onSelProveedorPago:', e); }
+}
