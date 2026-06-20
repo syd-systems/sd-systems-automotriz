@@ -1142,9 +1142,14 @@ async function pagarCxP(idCxP) {
     document.getElementById('cont-pago-cxp-fecha').value = new Date().toISOString().split('T')[0];
     document.getElementById('cont-pago-cxp-ref').value   = ''; // siempre vacío — usuario debe ingresar referencia
     const archivoInput = document.getElementById('cont-pago-cxp-archivo');
-    if (archivoInput) archivoInput.value = '';
+    if (archivoInput) {
+      archivoInput.value = '';
+      // Restaurar visibilidad del input (puede haberse ocultado en modo VER)
+      const archivoCampo = archivoInput.closest('.form-campo');
+      if (archivoCampo) archivoCampo.style.display = '';
+    }
     const previewEl = document.getElementById('cont-pago-cxp-archivo-preview');
-    if (previewEl) previewEl.textContent = '';
+    if (previewEl) previewEl.innerHTML = '';
     document.getElementById('alerta-pago-cxp-ok').style.display  = 'none';
     document.getElementById('alerta-pago-cxp-err').style.display = 'none';
 
@@ -1683,6 +1688,28 @@ async function verPagoCxP(idCxP) {
       pmDatos.innerHTML = dato('Banco', prov.banco_pm?.nombre||'—') + dato('C.I./R.I.F', prov.pm_ci||'—') + dato('Celular', prov.pm_celular||'—');
       if (pmInfo) pmInfo.style.display = '';
     }
+
+    // Mostrar comprobante si existe
+    const previewEl2 = document.getElementById('cont-pago-cxp-archivo-preview');
+    if (previewEl2) {
+      if (c.url_comprobante) {
+        const url = c.url_comprobante;
+        const esImg = url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+        let html = '<div style="margin-top:8px"><div style="font-size:10px;color:var(--suave);margin-bottom:4px">Comprobante:</div>';
+        if (esImg) {
+          html += '<a href="' + url + '" target="_blank"><img src="' + url + '" style="max-width:100%;max-height:200px;border-radius:6px;border:1px solid var(--borde);cursor:pointer"></a>';
+        } else {
+          html += '<a href="' + url + '" target="_blank" style="color:var(--naranja);font-size:12px">&#x1F4C4; Ver comprobante PDF</a>';
+        }
+        html += '</div>';
+        previewEl2.innerHTML = html;
+      } else {
+        previewEl2.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-top:4px">Sin comprobante adjunto</div>';
+      }
+    }
+    // Ocultar input de archivo en modo VER
+    const archivoInput2 = document.getElementById('cont-pago-cxp-archivo');
+    if (archivoInput2) archivoInput2.closest('.form-campo').style.display = 'none';
 
     // Cambiar botones del modal — solo Anular (si manual) y Retornar
     const footer = document.querySelector('#modal-cont-pago-cxp .modal-footer');
