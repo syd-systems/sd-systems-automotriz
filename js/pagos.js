@@ -1376,11 +1376,12 @@ async function contGuardarPagoCxp() {
 
   // Calcular equivalente en USD usando tasa del día de pago
   const modal2   = document.getElementById('modal-cont-pago-cxp');
-  const tasaDia  = parseFloat(modal2?.dataset.tasaUSD) || tasa || _tasaVigente || 1;
+  const tasaDia  = parseFloat(modal2?.dataset.tasaUSD) || parseFloat(tasa) || _tasaVigente || 1;
   const tasaEurD = parseFloat(modal2?.dataset.tasaEUR) || 1;
   let montoUSD   = monto;
   if (moneda === 'VES')      montoUSD = parseFloat((monto / tasaDia).toFixed(4));
   else if (moneda === 'EUR') montoUSD = parseFloat((monto * tasaEurD / tasaDia).toFixed(4));
+  console.log('[PAGO] moneda:', moneda, 'monto:', monto, 'tasaDia:', tasaDia, 'montoUSD:', montoUSD);
 
   try {
     const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*');
@@ -1454,7 +1455,7 @@ async function contGuardarPagoCxp() {
             haber_usd:   0,
             debe_ves:    montoAstVES,
             haber_ves:   0,
-            tasa_bcv:        tasaVig
+            tasa_bcv:    tasaDia
           });
           // Línea 2: CRÉDITO a Banco
           await api('cont_asiento_lineas','POST',{
@@ -1466,7 +1467,7 @@ async function contGuardarPagoCxp() {
             haber_usd:   montoAstUSD,
             debe_ves:    0,
             haber_ves:   montoAstVES,
-            tasa_bcv:        tasaVig
+            tasa_bcv:    tasaDia
           });
         }
       }
