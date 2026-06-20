@@ -126,18 +126,37 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     };
   });
 
+  // Calcular total cuotas por prefijo para display
+  const cxpMap = {};
+  (cxps||[]).forEach(function(c) {
+    const m = (c.numero_doc||'').match(/^(.*)-C(\d+)$/);
+    if (m) {
+      const prefix = m[1];
+      if (!cxpMap[prefix]) cxpMap[prefix] = 0;
+      cxpMap[prefix]++;
+    }
+  });
+
   const itemsCxP = (cxps||[]).map(function(c) {
+    const m = (c.numero_doc||'').match(/^(.*)-C(\d+)$/);
+    let tipoDisplay = 'CONTADO';
+    if (m) {
+      const prefix = m[1];
+      const num    = parseInt(m[2]);
+      const total  = cxpMap[prefix] || 1;
+      tipoDisplay  = 'Crédito ' + num + '/' + total;
+    }
+    const montoVES = parseFloat(c.monto_usd || 0) * parseFloat(c.tasa_bcv || 1);
     return {
       _src:        'cxp',
       _id:         c.id_cxp,
       numero:      c.numero_doc || '—',
       beneficiario: c.proveedores?.nombre || '—',
       fecha:       c.fecha_emision || '',
-      tipo:        (c.tipo || '').replace(/_/g,' '),
+      tipo:        tipoDisplay,
       origen:      'Automático',
       monto_usd:   parseFloat(c.monto_usd || 0),
-      pagado_usd:  parseFloat(c.pagado_usd || 0),
-      saldo_usd:   parseFloat(c.saldo_usd || 0),
+      monto_ves:   montoVES,
       estado:      c.estado || 'PENDIENTE',
       _raw:        c
     };
@@ -178,24 +197,28 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     return;
   }
 
+  const estCol2 = { PENDIENTE:'#f59e0b', PAGADA:'#22c55e', ANULADA:'#6b7280' };
   const filas = todos.map(function(item) {
-    const est   = item.estado;
-    const col   = estCol[est] || '#888';
+    // Normalizar estado — eliminar PARCIAL
+    const est = item.estado === 'PARCIAL' ? 'PAGADA' : (item.estado || 'PENDIENTE');
+    const col = estCol2[est] || '#888';
     const badge = '<span style="background:'+col+'22;color:'+col+';border:1px solid '+col+'44;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600">'+est+'</span>';
-    const canPay = est === 'PENDIENTE' || est === 'PARCIAL';
+
     let acciones = '';
-    if (canPay) {
-      if (item._src === 'cxp') {
-        const esAutomatica = item.tipo && item.tipo.toUpperCase().includes('COMPRA CONSUMIBLE');
-        acciones = '<button onclick="pagarCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>'
-          + (!esAutomatica ? ' <button onclick="anularPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑 Anular</button>' : '');
-      } else {
-        acciones = '<button onclick="abrirFichaPago('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
-      }
+    if (est === 'PENDIENTE' && item._src === 'cxp') {
+      const esManual = !item.tipo.toUpperCase().includes('CREDITO') && !item.tipo.toUpperCase().includes('CONTADO') && item.origen !== 'Automático';
+      acciones = '<button onclick="pagarCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>';
+      if (esManual) acciones += ' <button onclick="anularPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑 Anular</button>';
+    } else if (est === 'PAGADA' && item._src === 'cxp') {
+      acciones = '<button onclick="verPagoCxP('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
     }
+
     const origenBadge = item.origen === 'Automático'
       ? '<span style="background:rgba(96,165,250,0.15);color:#60a5fa;border-radius:4px;padding:1px 6px;font-size:10px">Auto</span>'
       : '<span style="background:rgba(255,255,255,0.06);color:var(--suave);border-radius:4px;padding:1px 6px;font-size:10px">Manual</span>';
+
+    const montoVES = item.monto_ves ? fmtBs(item.monto_ves) : (item.monto_usd ? fmtBs(item.monto_usd) : '—');
+
     return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
       +'<td style="padding:8px;font-family:var(--font-mono);font-size:11px;color:var(--naranja)">'+item.numero+'</td>'
       +'<td style="padding:8px;font-size:12px">'+item.beneficiario+'</td>'
@@ -203,8 +226,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       +'<td style="padding:8px;font-size:11px;color:var(--suave)">'+item.tipo+'</td>'
       +'<td style="padding:8px;text-align:center">'+origenBadge+'</td>'
       +'<td style="text-align:right;padding:8px;font-family:var(--font-mono)">$ '+fmtUSD(item.monto_usd)+'</td>'
-      +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#22c55e">$ '+fmtUSD(item.pagado_usd)+'</td>'
-      +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:'+col+'">$ '+fmtUSD(item.saldo_usd)+'</td>'
+      +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:var(--suave)">'+montoVES+'</td>'
       +'<td style="padding:8px;text-align:center">'+badge+'</td>'
       +'<td style="padding:8px;text-align:center">'+acciones+'</td>'
       +'</tr>';
@@ -217,9 +239,8 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Fecha</th>'
     +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Tipo</th>'
     +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:center">Origen</th>'
-    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:right">Monto</th>'
-    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:right">Pagado</th>'
-    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:right">Saldo</th>'
+    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:right">Monto USD</th>'
+    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:right">Monto Bs</th>'
     +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:center">Estado</th>'
     +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:center">Acción</th>'
     +'</tr></thead><tbody>'+filas+'</tbody></table></div>';
@@ -1319,7 +1340,7 @@ async function contGuardarPagoCxp() {
   const idCxP   = parseInt(document.getElementById('cont-pago-cxp-id')?.value) || null;
   const moneda  = document.getElementById('cont-pago-cxp-moneda')?.value || 'VES';
   const montoEl2 = document.getElementById('cont-pago-cxp-monto');
-  const monto   = parseFloat(montoEl2?.dataset.valor || montoEl2?.value) || 0;
+  const monto   = parseFloat(montoEl2?.dataset.valor) || 0; // usar valor numérico exacto sin formato
   const tasa    = parseFloat(document.getElementById('cont-pago-cxp-tasa')?.value) || _tasaVigente || 1;
   const fecha   = document.getElementById('cont-pago-cxp-fecha')?.value || '';
   const metodo  = document.getElementById('cont-pago-cxp-metodo')?.value || '';
@@ -1339,9 +1360,13 @@ async function contGuardarPagoCxp() {
     return;
   }
 
-  // Calcular equivalente en USD
-  let montoUSD = monto;
-  if (moneda === 'VES') montoUSD = parseFloat((monto / tasa).toFixed(4));
+  // Calcular equivalente en USD usando tasa del día de pago
+  const modal2   = document.getElementById('modal-cont-pago-cxp');
+  const tasaDia  = parseFloat(modal2?.dataset.tasaUSD) || tasa || _tasaVigente || 1;
+  const tasaEurD = parseFloat(modal2?.dataset.tasaEUR) || 1;
+  let montoUSD   = monto;
+  if (moneda === 'VES')      montoUSD = parseFloat((monto / tasaDia).toFixed(4));
+  else if (moneda === 'EUR') montoUSD = parseFloat((monto * tasaEurD / tasaDia).toFixed(4));
 
   try {
     const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*');
@@ -1376,8 +1401,8 @@ async function contGuardarPagoCxp() {
       if (cCxP && cBanco) {
         // Monto en USD para el asiento
         let montoAstUSD = montoUSD;
-        // Monto en VES
-        let montoAstVES = moneda === 'VES' ? monto : parseFloat((montoUSD * tasaVig).toFixed(2));
+        // Monto en VES — si pagó en VES usar el monto directo, si no calcular
+        let montoAstVES = moneda === 'VES' ? monto : parseFloat((montoUSD * tasaDia).toFixed(2));
 
         // Crear asiento
         const ast = await api('cont_asientos','POST',{
@@ -1451,9 +1476,13 @@ async function contGuardarPagoCxp() {
     errEl.style.display = 'block'; return;
   }
 
-  // Calcular equivalente en USD
-  let montoUSD = monto;
-  if (moneda === 'VES') montoUSD = parseFloat((monto / tasa).toFixed(4));
+  // Calcular equivalente en USD usando tasa del día de pago
+  const modal2   = document.getElementById('modal-cont-pago-cxp');
+  const tasaDia  = parseFloat(modal2?.dataset.tasaUSD) || tasa || _tasaVigente || 1;
+  const tasaEurD = parseFloat(modal2?.dataset.tasaEUR) || 1;
+  let montoUSD   = monto;
+  if (moneda === 'VES')      montoUSD = parseFloat((monto / tasaDia).toFixed(4));
+  else if (moneda === 'EUR') montoUSD = parseFloat((monto * tasaEurD / tasaDia).toFixed(4));
 
   try {
     const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*');
@@ -1617,4 +1646,59 @@ async function onSelProveedorPago() {
   } else {
     if (manualInfo) manualInfo.style.display = '';
   }
+}
+
+async function verPagoCxP(idCxP) {
+  try {
+    const rows = await api('cont_cxp','GET',null,
+      '?id_cxp=eq.'+idCxP+'&select=*,proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre))');
+    if (!rows || !rows[0]) return;
+    const c    = rows[0];
+    const prov = c.proveedores || {};
+    const esManual = !(c.tipo||'').includes('COMPRA_CONSUMIBLE');
+
+    // Llenar modal en modo solo lectura
+    document.getElementById('cont-pago-cxp-id').value    = idCxP;
+    document.getElementById('cont-pago-cxp-fecha').value = c.fecha_emision || '';
+    document.getElementById('cont-pago-cxp-ref').value   = c.observaciones || '';
+    document.getElementById('alerta-pago-cxp-ok').style.display  = 'none';
+    document.getElementById('alerta-pago-cxp-err').style.display = 'none';
+
+    const saldoEl = document.getElementById('cont-pago-cxp-saldo');
+    if (saldoEl) saldoEl.textContent = fmtUSD(c.monto_usd) + ' ' + (c.moneda_pago||'USD');
+
+    // Ocultar campos de pago — modo VER
+    const tasaCont = document.getElementById('cont-pago-cxp-tasa-cont');
+    if (tasaCont) tasaCont.style.display = 'none';
+    const monedaEl = document.getElementById('cont-pago-cxp-moneda');
+    if (monedaEl) monedaEl.disabled = true;
+    const montoEl = document.getElementById('cont-pago-cxp-monto');
+    if (montoEl) { montoEl.value = fmtBs(c.monto_ves || c.monto_usd); montoEl.readOnly = true; }
+
+    // Datos bancarios
+    const bancoInfo  = document.getElementById('cont-pago-banco-info');
+    const bancoDatos = document.getElementById('cont-pago-banco-datos');
+    const pmInfo     = document.getElementById('cont-pago-pm-info');
+    const pmDatos    = document.getElementById('cont-pago-pm-datos');
+    const manualInfo = document.getElementById('cont-pago-manual-info');
+    [bancoInfo, pmInfo, manualInfo].forEach(function(el){ if (el) el.style.display = 'none'; });
+    if (prov.id_banco && bancoDatos) {
+      bancoDatos.innerHTML = dato('Institución', prov.banco_prov?.nombre||'—') + dato('Tipo', prov.tipo_cuenta||'—') + dato('N° Cuenta', prov.numero_cuenta||'—');
+      if (bancoInfo) bancoInfo.style.display = '';
+    }
+    if (prov.pm_id_banco && pmDatos) {
+      pmDatos.innerHTML = dato('Banco', prov.banco_pm?.nombre||'—') + dato('C.I./R.I.F', prov.pm_ci||'—') + dato('Celular', prov.pm_celular||'—');
+      if (pmInfo) pmInfo.style.display = '';
+    }
+
+    // Cambiar botones del modal — solo Anular (si manual) y Retornar
+    const footer = document.querySelector('#modal-cont-pago-cxp .modal-footer');
+    if (footer) {
+      footer.innerHTML =
+        (esManual ? '<button class="btn-peligro" onclick="anularPagoCxP('+idCxP+');cerrarModal(&quot;modal-cont-pago-cxp&quot;)">&#x1F5D1; Anular</button>' : '')
+        + '<button class="btn-secundario" onclick="cerrarModal(&quot;modal-cont-pago-cxp&quot;);cargarPagos()">Retornar</button>';
+    }
+
+    abrirModal('modal-cont-pago-cxp');
+  } catch(e) { alert('Error: '+e.message); }
 }
