@@ -1338,17 +1338,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260619022"></script>
-<script src="js/parametros.js?v=20260619022"></script>
-<script src="js/empresas.js?v=20260619022"></script>
-<script src="js/facturacion.js?v=20260619022"></script>
-<script src="js/inventario.js?v=20260619022"></script>
-<script src="js/contabilidad.js?v=20260619022"></script>
-<script src="js/pagos.js?v=20260619022"></script>
-<script src="js/vehiculos.js?v=20260619022"></script>
-<script src="js/catalogo.js?v=20260619022"></script>
-<script src="js/inventario2.js?v=20260619022"></script>
-<script src="js/ordenes.js?v=20260619022"></script>
+<script src="js/core.js?v=20260619023"></script>
+<script src="js/parametros.js?v=20260619023"></script>
+<script src="js/empresas.js?v=20260619023"></script>
+<script src="js/facturacion.js?v=20260619023"></script>
+<script src="js/inventario.js?v=20260619023"></script>
+<script src="js/contabilidad.js?v=20260619023"></script>
+<script src="js/pagos.js?v=20260619023"></script>
+<script src="js/vehiculos.js?v=20260619023"></script>
+<script src="js/catalogo.js?v=20260619023"></script>
+<script src="js/inventario2.js?v=20260619023"></script>
+<script src="js/ordenes.js?v=20260619023"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2002,6 +2002,33 @@
         <div class="form-campo form-full">
           <label>Observaciones</label>
           <textarea id="cont-cxp-obs" rows="2" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;width:100%"></textarea>
+        </div>
+
+        <!-- Datos bancarios del proveedor (readonly si tiene, manual si no) -->
+        <div class="form-campo form-full" id="cxp-banco-info" style="display:none;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:6px;padding:12px 16px">
+          <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🏦 Datos Bancarios del Proveedor</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="cxp-banco-datos"></div>
+        </div>
+        <div class="form-campo form-full" id="cxp-pm-info" style="display:none;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:6px;padding:12px 16px">
+          <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">📱 Datos de Pago Móvil del Proveedor</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="cxp-pm-datos"></div>
+        </div>
+        <div class="form-campo form-full" id="cxp-manual-info" style="display:none;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:6px;padding:12px 16px">
+          <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🏦 Datos Bancarios (ingreso manual)</div>
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-campo" style="margin:0">
+              <label style="font-size:12px">Tipo de Pago</label>
+              <select id="cxp-manual-tipo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:9px 12px;border-radius:5px;outline:none;width:100%">
+                <option value="TRANSFERENCIA">Transferencia</option>
+                <option value="PAGO_MOVIL">Pago Móvil</option>
+                <option value="EFECTIVO">Efectivo</option>
+              </select>
+            </div>
+            <div class="form-campo" style="margin:0">
+              <label style="font-size:12px">N° Cuenta / Teléfono</label>
+              <input type="text" id="cxp-manual-cuenta" placeholder="Número de cuenta o celular" style="font-family:var(--font-mono)">
+            </div>
+          </div>
         </div>
       </div>
       <div id="alerta-cxp-ok"  class="alerta alerta-exito" style="display:none;margin-top:8px"></div>
