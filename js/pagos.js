@@ -1140,7 +1140,9 @@ async function pagarCxP(idCxP) {
     // 3. Llenar datos básicos
     document.getElementById('cont-pago-cxp-id').value    = idCxP;
     document.getElementById('cont-pago-cxp-fecha').value = new Date().toISOString().split('T')[0];
-    document.getElementById('cont-pago-cxp-ref').value   = ''; // siempre vacío — usuario debe ingresar referencia
+    document.getElementById('cont-pago-cxp-ref').value   = '';
+    const refInputEl = document.getElementById('cont-pago-cxp-ref');
+    if (refInputEl) refInputEl.readOnly = false;
     const archivoInput = document.getElementById('cont-pago-cxp-archivo');
     if (archivoInput) {
       archivoInput.value = '';
@@ -1410,9 +1412,10 @@ async function contGuardarPagoCxp() {
     }
 
     const patchData = {
-      pagado_usd: nuevoPagado,
-      saldo_usd:  nuevoSaldo,
-      estado:     nuevoEstado
+      pagado_usd:  nuevoPagado,
+      saldo_usd:   nuevoSaldo,
+      estado:      nuevoEstado,
+      referencia:  ref
     };
     if (urlComprobante) patchData.url_comprobante = urlComprobante;
 
@@ -1658,7 +1661,7 @@ async function verPagoCxP(idCxP) {
     // Llenar modal en modo solo lectura
     document.getElementById('cont-pago-cxp-id').value    = idCxP;
     document.getElementById('cont-pago-cxp-fecha').value = c.fecha_emision || '';
-    document.getElementById('cont-pago-cxp-ref').value   = ''; // ref vacío en VER — no es la referencia de pago
+    document.getElementById('cont-pago-cxp-ref').value   = c.referencia || '';
     document.getElementById('alerta-pago-cxp-ok').style.display  = 'none';
     document.getElementById('alerta-pago-cxp-err').style.display = 'none';
 
@@ -1707,6 +1710,9 @@ async function verPagoCxP(idCxP) {
         previewEl2.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-top:4px">Sin comprobante adjunto</div>';
       }
     }
+    // Hacer referencia readonly en modo VER
+    const refEl = document.getElementById('cont-pago-cxp-ref');
+    if (refEl) refEl.readOnly = true;
     // Ocultar input de archivo en modo VER
     const archivoInput2 = document.getElementById('cont-pago-cxp-archivo');
     if (archivoInput2) archivoInput2.closest('.form-campo').style.display = 'none';
