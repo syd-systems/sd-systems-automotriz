@@ -1606,6 +1606,12 @@ async function contGuardarPagoCxp() {
     errEl.textContent = 'Complete monto, fecha y método de pago.';
     errEl.style.display = 'block'; return;
   }
+  if (!ref.trim()) {
+    errEl.textContent = 'Debe ingresar el número de referencia o comprobante.';
+    errEl.style.display = 'block';
+    document.getElementById('cont-pago-cxp-ref')?.focus();
+    return;
+  }
 
   // Calcular equivalente en USD
   let montoUSD = monto;
