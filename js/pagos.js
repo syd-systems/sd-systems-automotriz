@@ -1403,8 +1403,16 @@ async function pagarCxP(idCxP) {
     const saldoEl  = document.getElementById('cont-pago-cxp-saldo');
     if (saldoEl) saldoEl.textContent = '$ ' + fmtUSD(saldoUSD) + ' USD';
 
-    // Guardar saldo para cálculos
-    if (modal) modal.dataset.saldoUSD = saldoUSD;
+    // Guardar datos para cálculos de conversión
+    const monedaCxP  = c.moneda_pago || 'USD'; // moneda en que se pactó la CxP
+    const saldoOrig  = parseFloat(esCuota ? c.saldo_usd : c.monto_usd) || 0;
+    if (modal) {
+      modal.dataset.saldoUSD  = saldoOrig; // mantener por compatibilidad
+      modal.dataset.saldoOrig = saldoOrig;
+      modal.dataset.monedaCxP = monedaCxP;
+    }
+    // Actualizar texto Monto a Cancelar con moneda correcta
+    if (saldoEl) saldoEl.textContent = fmtUSD(saldoOrig) + ' ' + monedaCxP;
 
     // 4. Cargar métodos de pago
     const metodos = await api('param_metodos_pago','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*') || [];
@@ -1464,57 +1472,72 @@ function onCambioMetodoPago() {
 }
 
 function onCambioPagoMoneda() {
-  const moneda   = document.getElementById('cont-pago-cxp-moneda')?.value || 'VES';
-  const modal    = document.getElementById('modal-cont-pago-cxp');
-  const tasaUSD  = parseFloat(modal?.dataset.tasaUSD) || _tasaVigente || 1; // Bs por 1 USD
-  const tasaEUR  = parseFloat(modal?.dataset.tasaEUR) || 1;                 // Bs por 1 EUR
-  const saldoUSD = parseFloat(modal?.dataset.saldoUSD) || 0;
-  const tasaEl   = document.getElementById('cont-pago-cxp-tasa');
-  const monRefEl = document.getElementById('cont-pago-cxp-moneda-ref');
-  const montoEl  = document.getElementById('cont-pago-cxp-monto');
+  const monedaPago = document.getElementById('cont-pago-cxp-moneda')?.value || 'VES';
+  const modal      = document.getElementById('modal-cont-pago-cxp');
+  const tasaUSD    = parseFloat(modal?.dataset.tasaUSD) || _tasaVigente || 1; // Bs/USD
+  const tasaEUR    = parseFloat(modal?.dataset.tasaEUR) || 1;                 // Bs/EUR
+  const monedaCxP  = modal?.dataset.monedaCxP || 'USD';
+  const saldoOrig  = parseFloat(modal?.dataset.saldoOrig) || 0; // en moneda de la CxP
+  const tasaEl     = document.getElementById('cont-pago-cxp-tasa');
+  const monRefEl   = document.getElementById('cont-pago-cxp-moneda-ref');
+  const montoEl    = document.getElementById('cont-pago-cxp-monto');
+  const tasaCont   = document.getElementById('cont-pago-cxp-tasa-cont');
 
-  let montoPago = saldoUSD;
-  let tasaMostrar = tasaUSD;
-  let monRef = 'USD';
+  // Determinar tasa a mostrar y monto a pagar
+  // Regla: tasa de la moneda de la CxP hacia la moneda de pago
+  let montoPago   = saldoOrig;
+  let tasaMostrar = null;
+  let monRef      = '';
 
-  if (moneda === 'VES') {
-    // VES: saldo × tasa_USD (Bs por USD)
-    montoPago   = parseFloat((saldoUSD * tasaUSD).toFixed(2));
-    tasaMostrar = tasaUSD;
-    monRef      = 'USD';
-  } else if (moneda === 'EUR') {
-    // EUR: cruce — saldo_USD × tasa_USD / tasa_EUR = EUR
-    montoPago   = parseFloat((saldoUSD * tasaUSD / tasaEUR).toFixed(4));
-    tasaMostrar = parseFloat((tasaUSD / tasaEUR).toFixed(6)); // USD/EUR
-    monRef      = 'EUR';
-  } else {
-    // USD: igual al saldo
-    montoPago   = saldoUSD;
-    tasaMostrar = tasaUSD;
-    monRef      = 'USD';
+  if (monedaCxP === monedaPago) {
+    // Misma moneda — sin conversión
+    montoPago   = saldoOrig;
+    tasaMostrar = null;
+  } else if (monedaCxP === 'USD' && monedaPago === 'VES') {
+    tasaMostrar = tasaUSD; monRef = 'USD/VES';
+    montoPago   = parseFloat((saldoOrig * tasaUSD).toFixed(2));
+  } else if (monedaCxP === 'EUR' && monedaPago === 'VES') {
+    tasaMostrar = tasaEUR; monRef = 'EUR/VES';
+    montoPago   = parseFloat((saldoOrig * tasaEUR).toFixed(2));
+  } else if (monedaCxP === 'VES' && monedaPago === 'USD') {
+    tasaMostrar = tasaUSD; monRef = 'USD/VES';
+    montoPago   = parseFloat((saldoOrig / tasaUSD).toFixed(4));
+  } else if (monedaCxP === 'VES' && monedaPago === 'EUR') {
+    tasaMostrar = tasaEUR; monRef = 'EUR/VES';
+    montoPago   = parseFloat((saldoOrig / tasaEUR).toFixed(4));
+  } else if (monedaCxP === 'USD' && monedaPago === 'EUR') {
+    const cruce = parseFloat((tasaUSD / tasaEUR).toFixed(6));
+    tasaMostrar = cruce; monRef = 'USD/EUR';
+    montoPago   = parseFloat((saldoOrig * cruce).toFixed(4));
+  } else if (monedaCxP === 'EUR' && monedaPago === 'USD') {
+    const cruce = parseFloat((tasaEUR / tasaUSD).toFixed(6));
+    tasaMostrar = cruce; monRef = 'EUR/USD';
+    montoPago   = parseFloat((saldoOrig * cruce).toFixed(4));
   }
 
-  if (tasaEl)   tasaEl.value   = tasaMostrar;
+  if (tasaCont) tasaCont.style.display = tasaMostrar !== null ? '' : 'none';
+  if (tasaEl)   tasaEl.value   = tasaMostrar !== null ? tasaMostrar : '';
   if (monRefEl) monRefEl.value = monRef;
   if (montoEl)  montoEl.value  = montoPago;
   onCambioPagoMonto();
 }
 
 function onCambioPagoMonto() {
-  const moneda   = document.getElementById('cont-pago-cxp-moneda')?.value || 'VES';
-  const monto    = parseFloat(document.getElementById('cont-pago-cxp-monto')?.value) || 0;
-  const modal    = document.getElementById('modal-cont-pago-cxp');
-  const tasaUSD  = parseFloat(modal?.dataset.tasaUSD) || _tasaVigente || 1;
-  const tasaEUR  = parseFloat(modal?.dataset.tasaEUR) || 1;
-  const label    = document.getElementById('cont-pago-cxp-equiv-label');
+  // Monto es calculado (readonly) — solo actualiza la etiqueta informativa
+  const monedaPago = document.getElementById('cont-pago-cxp-moneda')?.value || 'VES';
+  const monto      = parseFloat(document.getElementById('cont-pago-cxp-monto')?.value) || 0;
+  const modal      = document.getElementById('modal-cont-pago-cxp');
+  const tasaUSD    = parseFloat(modal?.dataset.tasaUSD) || _tasaVigente || 1;
+  const tasaEUR    = parseFloat(modal?.dataset.tasaEUR) || 1;
+  const monedaCxP  = modal?.dataset.monedaCxP || 'USD';
+  const saldoOrig  = parseFloat(modal?.dataset.saldoOrig) || 0;
+  const label      = document.getElementById('cont-pago-cxp-equiv-label');
   if (!label) return;
-  if (moneda === 'VES') {
-    label.textContent = monto && tasaUSD ? '≈ $ ' + fmtUSD(monto / tasaUSD) + ' USD' : '';
-  } else if (moneda === 'EUR') {
-    // EUR → USD: monto_EUR × tasa_EUR / tasa_USD
-    label.textContent = monto ? '≈ $ ' + fmtUSD(monto * tasaEUR / tasaUSD) + ' USD' : '';
+  // Mostrar equivalente en la moneda de la CxP
+  if (monedaCxP === monedaPago) {
+    label.textContent = '';
   } else {
-    label.textContent = monto ? '= $ ' + fmtUSD(monto) + ' USD' : '';
+    label.textContent = '≡ ' + fmtUSD(saldoOrig) + ' ' + monedaCxP;
   }
 }
 
