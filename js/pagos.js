@@ -1558,7 +1558,15 @@ function onCambioPagoMoneda() {
   // Los spans muestran el par y el valor
   if (monRefEl) monRefEl.textContent = monRef;
   if (tasaEl)   tasaEl.textContent   = tasaMostrar !== null ? fmtUSD(tasaMostrar) : '';
-  if (montoEl)  montoEl.value        = montoPago;
+  // Formatear según moneda de pago
+  if (montoEl) {
+    if (monedaPago === 'VES') {
+      montoEl.value = fmtBs(montoPago);
+    } else {
+      montoEl.value = fmtUSD(montoPago) + ' ' + monedaPago;
+    }
+    montoEl.dataset.valor = montoPago; // guardar valor numérico para cálculos
+  }
   onCambioPagoMonto();
 }
 
@@ -1584,7 +1592,8 @@ function onCambioPagoMonto() {
 async function contGuardarPagoCxp() {
   const idCxP   = parseInt(document.getElementById('cont-pago-cxp-id')?.value) || null;
   const moneda  = document.getElementById('cont-pago-cxp-moneda')?.value || 'VES';
-  const monto   = parseFloat(document.getElementById('cont-pago-cxp-monto')?.value) || 0;
+  const montoEl2 = document.getElementById('cont-pago-cxp-monto');
+  const monto   = parseFloat(montoEl2?.dataset.valor || montoEl2?.value) || 0;
   const tasa    = parseFloat(document.getElementById('cont-pago-cxp-tasa')?.value) || _tasaVigente || 1;
   const fecha   = document.getElementById('cont-pago-cxp-fecha')?.value || '';
   const metodo  = document.getElementById('cont-pago-cxp-metodo')?.value || '';
