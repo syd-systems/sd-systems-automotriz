@@ -1144,11 +1144,11 @@ async function pagarCxP(idCxP) {
     const refInputEl = document.getElementById('cont-pago-cxp-ref');
     if (refInputEl) refInputEl.readOnly = false;
     const archivoInput = document.getElementById('cont-pago-cxp-archivo');
-    if (archivoInput) {
-      archivoInput.value = '';
-      // Restaurar visibilidad del input (puede haberse ocultado en modo VER)
-      archivoInput.style.display = '';
-    }
+    if (archivoInput) archivoInput.value = '';
+    const archivoCampoEl = document.getElementById('cont-pago-cxp-archivo-campo');
+    if (archivoCampoEl) archivoCampoEl.style.display = '';
+    const previewContEl = document.getElementById('cont-pago-cxp-archivo-preview-cont');
+    if (previewContEl) previewContEl.style.display = 'none';
     const previewEl = document.getElementById('cont-pago-cxp-archivo-preview');
     if (previewEl) previewEl.innerHTML = '';
     document.getElementById('alerta-pago-cxp-ok').style.display  = 'none';
@@ -1692,7 +1692,10 @@ async function verPagoCxP(idCxP) {
     }
 
     // Mostrar comprobante si existe
-    const previewEl2 = document.getElementById('cont-pago-cxp-archivo-preview');
+    const archivoCampo2 = document.getElementById('cont-pago-cxp-archivo-campo');
+    if (archivoCampo2) archivoCampo2.style.display = 'none';
+    const previewCont2 = document.getElementById('cont-pago-cxp-archivo-preview-cont');
+    const previewEl2   = document.getElementById('cont-pago-cxp-archivo-preview');
     if (previewEl2) {
       if (c.url_comprobante) {
         const url = c.url_comprobante;
@@ -1708,6 +1711,7 @@ async function verPagoCxP(idCxP) {
       } else {
         previewEl2.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-top:4px">Sin comprobante adjunto</div>';
       }
+      if (previewCont2) previewCont2.style.display = '';
     }
     // Hacer referencia readonly en modo VER
     const refEl = document.getElementById('cont-pago-cxp-ref');
