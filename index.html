@@ -1338,17 +1338,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260620019"></script>
-<script src="js/parametros.js?v=20260620019"></script>
-<script src="js/empresas.js?v=20260620019"></script>
-<script src="js/facturacion.js?v=20260620019"></script>
-<script src="js/inventario.js?v=20260620019"></script>
-<script src="js/contabilidad.js?v=20260620019"></script>
-<script src="js/pagos.js?v=20260620019"></script>
-<script src="js/vehiculos.js?v=20260620019"></script>
-<script src="js/catalogo.js?v=20260620019"></script>
-<script src="js/inventario2.js?v=20260620019"></script>
-<script src="js/ordenes.js?v=20260620019"></script>
+<script src="js/core.js?v=20260620020"></script>
+<script src="js/parametros.js?v=20260620020"></script>
+<script src="js/empresas.js?v=20260620020"></script>
+<script src="js/facturacion.js?v=20260620020"></script>
+<script src="js/inventario.js?v=20260620020"></script>
+<script src="js/contabilidad.js?v=20260620020"></script>
+<script src="js/pagos.js?v=20260620020"></script>
+<script src="js/vehiculos.js?v=20260620020"></script>
+<script src="js/catalogo.js?v=20260620020"></script>
+<script src="js/inventario2.js?v=20260620020"></script>
+<script src="js/ordenes.js?v=20260620020"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2146,11 +2146,13 @@
           <label>Referencia *</label>
           <input type="text" id="cont-pago-cxp-ref" placeholder="N° referencia bancaria o comprobante">
         </div>
-        <div class="form-campo">
+        <div class="form-campo" id="cont-pago-cxp-archivo-campo">
           <label>Comprobante (opcional)</label>
           <input type="file" id="cont-pago-cxp-archivo" accept="image/*,application/pdf"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
-          <div id="cont-pago-cxp-archivo-preview" style="margin-top:6px;font-size:11px;color:var(--suave)"></div>
+        </div>
+        <div class="form-campo form-full" id="cont-pago-cxp-archivo-preview-cont" style="display:none">
+          <div id="cont-pago-cxp-archivo-preview"></div>
         </div>
 
       </div>
