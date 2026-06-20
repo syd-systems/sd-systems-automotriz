@@ -54,6 +54,50 @@ function calcularMargen(r) {
 }
 var _invVista = 'tabla';
 
+
+// ── Calcular saldo por área del usuario actual ──
+async function calcularInvSaldoArea() {
+  if (sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
+    _invSaldoArea = null; // Admins ven todo
+    return;
+  }
+  try {
+    const correo = sesionActual?.correo_usuario;
+    if (!correo) { _invSaldoArea = null; return; }
+
+    const empRes = await Promise.race([
+      api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1'),
+      new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); }, 4000); })
+    ]).catch(function(){ return []; });
+
+    const idAreaUsuario = empRes?.[0]?.id_area || null;
+    if (!idAreaUsuario) { _invSaldoArea = {}; return; }
+
+    // Obtener todos los artículos del emisor
+    const arts = inventarioCache.length > 0 ? inventarioCache
+      : await api('inventario','GET',null,'?order=nombre.asc&select=id_articulo' + emisorQ()) || [];
+    if (!arts.length) { _invSaldoArea = {}; return; }
+
+    const inClause = arts.map(function(r){ return r.id_articulo; }).join(',');
+    const t4s = function(){ return new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); },4000); }); };
+
+    const [entsDirectas, salsRecibidas, salsEnviadas] = await Promise.all([
+      Promise.race([api('stock_entradas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
+      Promise.race([api('stock_salidas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
+      Promise.race([api('stock_salidas','GET',null,'?id_area_entrega=eq.'+idAreaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; })
+    ]);
+
+    const saldo = {};
+    (entsDirectas||[]).forEach(function(e){ saldo[e.id_articulo] = (saldo[e.id_articulo]||0) + parseFloat(e.cantidad||0); });
+    (salsRecibidas||[]).forEach(function(s){ saldo[s.id_articulo] = (saldo[s.id_articulo]||0) + parseFloat(s.cantidad||0); });
+    (salsEnviadas||[]).forEach(function(s){ saldo[s.id_articulo] = (saldo[s.id_articulo]||0) - parseFloat(s.cantidad||0); });
+    _invSaldoArea = saldo;
+  } catch(e) {
+    console.warn('calcularInvSaldoArea error:', e);
+    _invSaldoArea = null;
+  }
+}
+
 async function renderInventario(filtro) {
   if (!sesionActual?.administrador && !modulosAcceso.includes('INVENTARIO')) {
     document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
@@ -125,49 +169,12 @@ async function renderInventario(filtro) {
 
     // ── Filtro por área si no tiene VER_INVENTARIO_GENERAL ──
     let itemsFiltradosBase2 = itemsFiltradosBase;
-    _invSaldoArea = null; // Reset — se llenará si aplica filtro de área
-    if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
-      // Obtener área del usuario actual — con timeout de 4s para no colgarse
-      try {
-        const correo = sesionActual?.correo_usuario;
-        const timeout = new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('timeout')); }, 4000); });
-        const empRes = correo
-          ? await Promise.race([
-              api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1'),
-              timeout
-            ]).catch(function(){ return []; })
-          : [];
-        const idAreaUsuario = empRes && empRes[0] ? empRes[0].id_area : null;
-        if (idAreaUsuario && idsArticulos.length > 0) {
-          // Saldo por área:
-          // (+) entradas directas al área (compras/devoluciones con id_area = área)
-          // (+) salidas de otras áreas recibidas por esta área (stock_salidas.id_area = área)
-          // (-) salidas enviadas desde esta área (stock_salidas.id_area_entrega = área)
-          const inClauseArea = idsArticulos.join(',');
-          const t4s = function(){ return new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); },4000); }); };
-          const [entsDirectas, salsRecibidas, salsEnviadas] = await Promise.all([
-            Promise.race([api('stock_entradas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClauseArea+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
-            Promise.race([api('stock_salidas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClauseArea+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
-            Promise.race([api('stock_salidas','GET',null,'?id_area_entrega=eq.'+idAreaUsuario+'&id_articulo=in.('+inClauseArea+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; })
-          ]);
-          const saldoArea = {};
-          (entsDirectas||[]).forEach(function(e) {
-            saldoArea[e.id_articulo] = (saldoArea[e.id_articulo]||0) + parseFloat(e.cantidad||0);
-          });
-          (salsRecibidas||[]).forEach(function(s) {
-            saldoArea[s.id_articulo] = (saldoArea[s.id_articulo]||0) + parseFloat(s.cantidad||0);
-          });
-          (salsEnviadas||[]).forEach(function(s) {
-            saldoArea[s.id_articulo] = (saldoArea[s.id_articulo]||0) - parseFloat(s.cantidad||0);
-          });
-          // Guardar saldo por área para usar en render
-          _invSaldoArea = saldoArea;
-          // Solo consumibles con saldo positivo en el área
-          itemsFiltradosBase2 = itemsFiltradosBase.filter(function(r) {
-            return (saldoArea[r.id_articulo]||0) > 0;
-          });
-        }
-      } catch(eArea) { console.warn('Error filtro área:', eArea); }
+    // Calcular saldo por área (función centralizada)
+    await calcularInvSaldoArea();
+    if (_invSaldoArea) {
+      itemsFiltradosBase2 = itemsFiltradosBase.filter(function(r) {
+        return (_invSaldoArea[r.id_articulo]||0) > 0;
+      });
     }
 
     const catFiltro = document.getElementById('inv-filtro-cat') ? document.getElementById('inv-filtro-cat').value : '';
