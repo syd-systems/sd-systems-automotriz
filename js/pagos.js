@@ -1447,9 +1447,16 @@ async function contGuardarPagoCxp() {
 
       if (cCxP && cBanco) {
         // Monto en USD para el asiento
-        let montoAstUSD = montoUSD;
-        // Monto en VES — si pagó en VES usar el monto directo, si no calcular
-        let montoAstVES = moneda === 'VES' ? monto : parseFloat((montoUSD * tasaDia).toFixed(2));
+        // Si pago en VES: solo monto en Bs, USD = 0
+        // Si pago en USD/EUR: monto en USD y equivalente en Bs
+        let montoAstUSD, montoAstVES;
+        if (moneda === 'VES') {
+          montoAstUSD = 0;
+          montoAstVES = monto;
+        } else {
+          montoAstUSD = montoUSD;
+          montoAstVES = parseFloat((montoUSD * tasaDia).toFixed(2));
+        }
 
         // Crear asiento
         // Generar numero_asiento correlativo
