@@ -1151,6 +1151,8 @@ async function pagarCxP(idCxP) {
     document.getElementById('cont-pago-cxp-ref').value   = '';
     const refInputEl = document.getElementById('cont-pago-cxp-ref');
     if (refInputEl) refInputEl.readOnly = false;
+    const conceptoEl = document.getElementById('cont-pago-cxp-concepto');
+    if (conceptoEl) conceptoEl.value = c.observaciones || '';
     const archivoInput = document.getElementById('cont-pago-cxp-archivo');
     if (archivoInput) archivoInput.value = '';
     const archivoCampoEl = document.getElementById('cont-pago-cxp-archivo-campo');
@@ -1713,6 +1715,8 @@ async function verPagoCxP(idCxP) {
     document.getElementById('cont-pago-cxp-id').value    = idCxP;
     document.getElementById('cont-pago-cxp-fecha').value = c.fecha_emision || '';
     document.getElementById('cont-pago-cxp-ref').value   = c.referencia || '';
+    const conceptoVer = document.getElementById('cont-pago-cxp-concepto');
+    if (conceptoVer) conceptoVer.value = c.observaciones || '';
     document.getElementById('alerta-pago-cxp-ok').style.display  = 'none';
     document.getElementById('alerta-pago-cxp-err').style.display = 'none';
 
