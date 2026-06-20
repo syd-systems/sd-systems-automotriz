@@ -212,8 +212,9 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       const btnVerPag  = '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
       const btnPagar   = '<button onclick="pagarCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>';
       const btnAnular  = esManual && est === 'PENDIENTE' ? ' <button onclick="anularPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑 Anular</button>' : '';
-      const btnEliminar = '<button onclick="eliminarCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑 Eliminar</button>';
-      if (est === 'PENDIENTE') acciones = btnVerPend + ' ' + btnPagar + ' ' + btnEliminar;
+      const esManualCxP  = (item._raw?.tipo || '') === 'PAGO_MANUAL';
+      const btnEliminar   = esManualCxP ? '<button onclick="eliminarCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑 Eliminar</button> ' : '';
+      if (est === 'PENDIENTE') acciones = btnEliminar + btnVerPend + ' ' + btnPagar;
       else acciones = btnVerPag;
     }
 
@@ -2163,11 +2164,12 @@ async function verCxPPendiente(idCxP) {
     if (errEl) errEl.style.display = 'none';
     if (okEl)  okEl.style.display  = 'none';
 
-    // Footer con Retornar y Editar
+    // Footer — Editar solo para CxP manuales
     const footer = document.querySelector('#modal-pago .modal-footer');
+    const esManualVer = (c.tipo || '') === 'PAGO_MANUAL';
     if (footer) footer.innerHTML =
       '<button class="btn-secundario" onclick="cerrarModal(\'modal-pago\')">Retornar</button>'
-      + '<button class="btn-secundario" onclick="editarCxPPendiente(' + idCxP + ')">✏ Editar</button>';
+      + (esManualVer ? '<button class="btn-secundario" onclick="editarCxPPendiente(' + idCxP + ')">✏ Editar</button>' : '');
 
     onCambioMonedaPago();
     abrirModal('modal-pago');
