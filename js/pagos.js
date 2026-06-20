@@ -1731,3 +1731,83 @@ async function verPagoCxP(idCxP) {
     abrirModal('modal-cont-pago-cxp');
   } catch(e) { alert('Error: '+e.message); }
 }
+
+async function guardarPago() {
+  const errEl = document.getElementById('alerta-pago-err');
+  const okEl  = document.getElementById('alerta-pago-ok');
+  if (errEl) errEl.style.display = 'none';
+  if (okEl)  okEl.style.display  = 'none';
+
+  const mostrarErr = function(msg) {
+    if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+    else alert(msg);
+  };
+
+  // Leer campos
+  const idCategoria  = document.getElementById('pago-categoria-prov')?.value || '';
+  const moneda       = document.getElementById('pago-moneda')?.value || 'VES';
+  const descripcion  = document.getElementById('pago-descripcion')?.value.trim() || '';
+  const idCuentaGasto= document.getElementById('pago-cuenta-gasto')?.value || '';
+  const monto        = parseFloat(document.getElementById('pago-monto')?.value) || 0;
+  const vencimiento  = document.getElementById('pago-vencimiento')?.value || '';
+  const idProveedor  = parseInt(document.getElementById('pago-proveedor')?.value) || null;
+  const observaciones= document.getElementById('pago-observaciones')?.value.trim() || '';
+
+  // Validaciones
+  if (!descripcion)  { mostrarErr('La descripción es obligatoria.'); return; }
+  if (!monto)        { mostrarErr('El monto es obligatorio.'); return; }
+  if (!vencimiento)  { mostrarErr('La fecha de vencimiento es obligatoria.'); return; }
+  if (!idProveedor)  { mostrarErr('Debe seleccionar un proveedor.'); return; }
+
+  // Calcular montos
+  const tasaUSD = window._pagoTasaUSD || _tasaVigente || 1;
+  const tasaEUR = window._pagoTasaEUR || 1;
+  let montoUSD = monto;
+  let montoVES = monto;
+  if (moneda === 'VES') {
+    montoVES = monto;
+    montoUSD = parseFloat((monto / tasaUSD).toFixed(4));
+  } else if (moneda === 'USD') {
+    montoUSD = monto;
+    montoVES = parseFloat((monto * tasaUSD).toFixed(2));
+  } else if (moneda === 'EUR') {
+    montoUSD = parseFloat((monto * tasaEUR / tasaUSD).toFixed(4));
+    montoVES = parseFloat((monto * tasaEUR).toFixed(2));
+  }
+
+  const idEmisor = _empresaActiva?.id_emisor || 0;
+  const hoy = new Date().toISOString().split('T')[0];
+
+  try {
+    const btnGuardar = document.querySelector('#modal-pago .btn-primario');
+    if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
+
+    await api('cont_cxp','POST',{
+      id_emisor:        idEmisor,
+      id_proveedor:     idProveedor,
+      tipo:             'PAGO_MANUAL',
+      numero_doc:       'MAN-' + Date.now(),
+      fecha_emision:    hoy,
+      fecha_vencimiento: vencimiento,
+      moneda_pago:      moneda,
+      monto_usd:        montoUSD,
+      monto_ves:        montoVES,
+      tasa_bcv:         tasaUSD,
+      pagado_usd:       0,
+      saldo_usd:        montoUSD,
+      estado:           'PENDIENTE',
+      observaciones:    descripcion + (observaciones ? ' — ' + observaciones : ''),
+      id_usuario:       sesionActual?.correo_usuario || null
+    });
+
+    if (okEl) { okEl.textContent = '✓ CxP registrada correctamente.'; okEl.style.display = 'block'; }
+    setTimeout(function() {
+      cerrarModal('modal-pago');
+      cargarPagos();
+    }, 1000);
+  } catch(e) {
+    mostrarErr('Error: ' + e.message);
+    const btnGuardar = document.querySelector('#modal-pago .btn-primario');
+    if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar'; }
+  }
+}
