@@ -782,8 +782,8 @@ async function _guardarOSInterno() {
   okEl.style.display = 'none'; errEl.style.display = 'none';
 
   // Validar que tenga al menos un servicio o consumible
-  const tieneServicios  = document.querySelectorAll('#os-lista-servicios .os-srv-item').length > 0;
-  const tieneConsumibles = document.querySelectorAll('#os-lista-repuestos .os-rep-item').length > 0;
+  const tieneServicios   = osServiciosLineas && osServiciosLineas.length > 0;
+  const tieneConsumibles = osRepuestosLineas && osRepuestosLineas.length > 0;
   if (!tieneServicios && !tieneConsumibles) {
     errEl.textContent = 'Debe agregar al menos un Servicio o un Consumible antes de guardar la OS.';
     errEl.style.display = 'block';
