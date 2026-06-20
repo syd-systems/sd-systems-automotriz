@@ -1709,7 +1709,12 @@ async function verPagoCxP(idCxP) {
     document.getElementById('alerta-pago-cxp-err').style.display = 'none';
 
     const saldoEl = document.getElementById('cont-pago-cxp-saldo');
-    if (saldoEl) saldoEl.textContent = fmtUSD(c.monto_usd) + ' ' + (c.moneda_pago||'USD');
+    if (saldoEl) {
+      const monedaV = c.moneda_pago || 'USD';
+      if (monedaV === 'VES') saldoEl.textContent = fmtBs(c.monto_ves || c.monto_usd) + ' Bs';
+      else if (monedaV === 'EUR') saldoEl.textContent = fmtUSD(c.monto_usd) + ' EUR';
+      else saldoEl.textContent = '$ ' + fmtUSD(c.monto_usd) + ' USD';
+    }
 
     // Ocultar campos de pago — modo VER
     const tasaCont = document.getElementById('cont-pago-cxp-tasa-cont');
