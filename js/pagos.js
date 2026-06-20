@@ -1448,10 +1448,42 @@ async function pagarCxP(idCxP) {
       if (pmInfo) pmInfo.style.display = '';
     } else if (pmInfo) pmInfo.style.display = 'none';
 
+    // 6. Establecer Método de Pago automáticamente
+    const metodoDisplay = document.getElementById('cont-pago-metodo-display');
+    const metodoHidden  = document.getElementById('cont-pago-cxp-metodo');
+    const metodoCont    = document.getElementById('cont-pago-metodo-cont');
+
+    if (tieneBanco && tienePM) {
+      // Tiene ambos — selector entre Transferencia y Pago Móvil
+      if (metodoCont) metodoCont.innerHTML =
+        '<label>Método de Pago</label>'
+        +'<select id="cont-pago-cxp-metodo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
+        +'<option value="TRANSFERENCIA">🏦 Transferencia Bancaria</option>'
+        +'<option value="PAGO_MOVIL">📱 Pago Móvil</option>'
+        +'</select>';
+    } else if (tieneBanco) {
+      if (metodoDisplay) metodoDisplay.textContent = '🏦 Transferencia Bancaria';
+      if (metodoHidden)  metodoHidden.value = 'TRANSFERENCIA';
+    } else if (tienePM) {
+      if (metodoDisplay) metodoDisplay.textContent = '📱 Pago Móvil';
+      if (metodoHidden)  metodoHidden.value = 'PAGO_MOVIL';
+    } else {
+      // Sin datos — selector manual
+      if (metodoCont) metodoCont.innerHTML =
+        '<label>Método de Pago *</label>'
+        +'<select id="cont-pago-cxp-metodo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
+        +'<option value="">— Seleccionar —</option>'
+        +'<option value="TRANSFERENCIA">Transferencia Bancaria</option>'
+        +'<option value="PAGO_MOVIL">Pago Móvil</option>'
+        +'<option value="EFECTIVO">Efectivo</option>'
+        +'<option value="CHEQUE">Cheque</option>'
+        +'</select>';
+    }
+
     // Mostrar campos manuales si no tiene ninguno
     if (manualInfo) manualInfo.style.display = (!tieneBanco && !tienePM) ? '' : 'none';
 
-    // 6. Moneda por defecto y calcular
+    // 7. Moneda por defecto y calcular
     const monedaEl = document.getElementById('cont-pago-cxp-moneda');
     if (monedaEl) monedaEl.value = _empresaActiva?.moneda_principal || 'VES';
     onCambioPagoMoneda();
