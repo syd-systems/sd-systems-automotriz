@@ -1444,10 +1444,11 @@ async function contGuardarPagoCxp() {
           id_usuario:     sesionActual?.correo_usuario || null
         });
 
-        if (ast && ast.id_asiento) {
+        const astRec = Array.isArray(ast) ? ast[0] : ast;
+        if (astRec && astRec.id_asiento) {
           // Línea 1: DÉBITO a CxP Proveedores
           await api('cont_asiento_lineas','POST',{
-            id_asiento:  ast.id_asiento,
+            id_asiento:  astRec.id_asiento,
             id_cuenta:   cCxP.id_cuenta,
             orden:       1,
             descripcion: 'Cancelación CxP — ' + (c.numero_doc||''),
@@ -1459,7 +1460,7 @@ async function contGuardarPagoCxp() {
           });
           // Línea 2: CRÉDITO a Banco
           await api('cont_asiento_lineas','POST',{
-            id_asiento:  ast.id_asiento,
+            id_asiento:  astRec.id_asiento,
             id_cuenta:   cBanco.id_cuenta,
             orden:       2,
             descripcion: 'Salida banco — ' + ref,
