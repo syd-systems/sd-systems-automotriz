@@ -1411,7 +1411,7 @@ async function contGuardarPagoCxp() {
   else if (moneda === 'EUR') montoUSD = parseFloat((monto * tasaEurD / tasaDia).toFixed(4));
 
   try {
-    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*');
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*,proveedores:id_proveedor(nombre)');
     if (!rows || !rows[0]) return;
     const c = rows[0];
     const nuevoPagado = parseFloat((parseFloat(c.pagado_usd||0) + montoUSD).toFixed(4));
@@ -1483,7 +1483,7 @@ async function contGuardarPagoCxp() {
           numero_asiento: numAst,
           tipo:           'PAGO_PROVEEDOR',
           fecha:          hoy,
-          descripcion:    'Pago proveedor — ' + (c.numero_doc||'') + ' — ' + ref,
+          descripcion:    'Pago ' + (c.proveedores?.nombre||'Proveedor') + ' — ' + (c.observaciones||c.numero_doc||'') + ' | Ref: ' + ref,
           referencia:     c.numero_doc || ('CXP-'+idCxP),
           estado:         'APROBADO',
           moneda_base:    moneda,
