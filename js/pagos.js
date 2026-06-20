@@ -2162,11 +2162,78 @@ async function verCxPPendiente(idCxP) {
     if (errEl) errEl.style.display = 'none';
     if (okEl)  okEl.style.display  = 'none';
 
-    // Reemplazar botón Guardar por solo Retornar
+    // Footer con Retornar y Editar
     const footer = document.querySelector('#modal-pago .modal-footer');
-    if (footer) footer.innerHTML = '<button class="btn-primario" onclick="cerrarModal(\'modal-pago\')">Retornar</button>';
+    if (footer) footer.innerHTML =
+      '<button class="btn-secundario" onclick="cerrarModal(\'modal-pago\')">Retornar</button>'
+      + '<button class="btn-secundario" onclick="editarCxPPendiente(' + idCxP + ')">✏ Editar</button>';
 
     onCambioMonedaPago();
     abrirModal('modal-pago');
   } catch(e) { alert('Error: '+e.message); console.error(e); }
+}
+
+function editarCxPPendiente(idCxP) {
+  // Habilitar todos los campos
+  ['pago-categoria-prov','pago-moneda','pago-descripcion','pago-cuenta-gasto',
+   'pago-monto','pago-vencimiento','pago-proveedor','pago-observaciones'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.disabled = false;
+  });
+  // Cambiar título
+  document.getElementById('pago-modal-titulo').textContent = 'EDITAR OBLIGACIÓN';
+  // Cambiar footer
+  const footer = document.querySelector('#modal-pago .modal-footer');
+  if (footer) footer.innerHTML =
+    '<button class="btn-secundario" onclick="cerrarModal(\'modal-pago\')">Retornar</button>'
+    + '<button class="btn-primario" onclick="guardarEdicionCxP(' + idCxP + ')">💾 Guardar Cambios</button>';
+}
+
+async function guardarEdicionCxP(idCxP) {
+  const errEl = document.getElementById('alerta-pago-err');
+  const okEl  = document.getElementById('alerta-pago-ok');
+  if (errEl) errEl.style.display = 'none';
+  if (okEl)  okEl.style.display  = 'none';
+
+  const mostrarErr = function(msg) {
+    if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+    else alert(msg);
+  };
+
+  const moneda      = document.getElementById('pago-moneda')?.value || 'VES';
+  const descripcion = document.getElementById('pago-descripcion')?.value.trim() || '';
+  const idCuenta    = parseInt(document.getElementById('pago-cuenta-gasto')?.value) || null;
+  const monto       = parseFloat(document.getElementById('pago-monto')?.value) || 0;
+  const vencimiento = document.getElementById('pago-vencimiento')?.value || '';
+  const idProveedor = parseInt(document.getElementById('pago-proveedor')?.value) || null;
+  const observ      = document.getElementById('pago-observaciones')?.value.trim() || '';
+
+  if (!descripcion) { mostrarErr('La descripción es obligatoria.'); return; }
+  if (!monto)       { mostrarErr('El monto es obligatorio.'); return; }
+  if (!vencimiento) { mostrarErr('La fecha de vencimiento es obligatoria.'); return; }
+  if (!idProveedor) { mostrarErr('Debe seleccionar un proveedor.'); return; }
+
+  const tasaUSD = window._pagoTasaUSD || _tasaVigente || 1;
+  const tasaEUR = window._pagoTasaEUR || 1;
+  let montoUSD = monto, montoVES = monto;
+  if (moneda === 'VES')      { montoVES = monto; montoUSD = parseFloat((monto / tasaUSD).toFixed(4)); }
+  else if (moneda === 'USD') { montoUSD = monto; montoVES = parseFloat((monto * tasaUSD).toFixed(2)); }
+  else if (moneda === 'EUR') { montoUSD = parseFloat((monto * tasaEUR / tasaUSD).toFixed(4)); montoVES = parseFloat((monto * tasaEUR).toFixed(2)); }
+
+  try {
+    await api('cont_cxp','PATCH',{
+      moneda_pago:      moneda,
+      monto_usd:        montoUSD,
+      monto_ves:        montoVES,
+      saldo_usd:        montoUSD,
+      tasa_bcv:         tasaUSD,
+      fecha_vencimiento: vencimiento,
+      id_proveedor:     idProveedor,
+      id_cuenta_gasto:  idCuenta,
+      observaciones:    descripcion + (observ ? ' — ' + observ : '')
+    },'?id_cxp=eq.'+idCxP);
+
+    if (okEl) { okEl.textContent = '✓ Obligación actualizada correctamente.'; okEl.style.display = 'block'; }
+    setTimeout(function() { cerrarModal('modal-pago'); cargarPagos(); }, 1000);
+  } catch(e) { mostrarErr('Error: ' + e.message); }
 }
