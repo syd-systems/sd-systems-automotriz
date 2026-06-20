@@ -339,7 +339,7 @@ async function contVerAsiento(id) {
         btns += '<button class="btn-secundario" style="color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="contEliminarAsiento(' + ast.id_asiento + ')">🗑 Eliminar</button>';
       }
       // Anular — solo en APROBADO y no automático
-      if (puedo('CONTABILIDAD','ANULAR') && ast.estado === 'APROBADO' && ast.tipo !== 'AUTOMATICO') {
+      if (puedo('CONTABILIDAD','ANULAR') && ast.estado === 'APROBADO' && ast.tipo === 'MANUAL') {
         btns += '<button class="btn-secundario" style="color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="cerrarModal(\'modal-cont-asiento-ver\');contAnularAsiento(' + ast.id_asiento + ')">Anular</button>';
       }
       // Editar — solo en PENDIENTE
