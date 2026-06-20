@@ -520,9 +520,15 @@ async function abrirEntradaStock(id) {
   // Cargar áreas y proveedores en paralelo
   Promise.all([
     api('param_areas',  'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
-    api('proveedores',  'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif'),
+    api('proveedores',  'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif,id_categoria,param_categorias_proveedor:id_categoria(nombre)'),
+    api('param_categorias_proveedor','GET',null,'?nombre=ilike.*Consumible*&select=id&limit=1'),
   ]).then(function(res) {
     var areas = res[0], provs = res[1];
+    var catConsumible = res[2] && res[2][0] ? res[2][0].id : null;
+    // Filtrar solo proveedores con categoría Consumibles
+    if (catConsumible) {
+      provs = provs.filter(function(p){ return p.id_categoria === catConsumible; });
+    }
     var selArea = document.getElementById('es-area');
     selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
       + areas.map(function(a) { return '<option value="' + a.id + '">' + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>'; }).join('');
