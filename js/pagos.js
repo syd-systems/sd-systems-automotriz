@@ -1427,7 +1427,7 @@ async function contGuardarPagoCxp() {
           referencia:  c.numero_doc || ('CXP-'+idCxP),
           estado:      'APROBADO',
           moneda_base: moneda,
-          tasa_cambio: tasaVig,
+          tasa_bcv:    tasaDia,
           id_usuario:  sesionActual?.correo_usuario || null
         });
 
