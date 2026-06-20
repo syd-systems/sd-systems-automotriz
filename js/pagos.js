@@ -1136,9 +1136,14 @@ async function pagarCxP(idCxP) {
       tasaEUR = getTasa('EUR');
     } catch(e) {}
 
-    // Guardar tasas en el modal para uso en cálculos
+    // Limpiar y guardar tasas en el modal
     const modal = document.getElementById('modal-cont-pago-cxp');
-    if (modal) { modal.dataset.tasaUSD = tasaUSD; modal.dataset.tasaEUR = tasaEUR; }
+    if (modal) {
+      // Limpiar dataset anterior
+      Object.keys(modal.dataset).forEach(function(k){ delete modal.dataset[k]; });
+      modal.dataset.tasaUSD = tasaUSD;
+      modal.dataset.tasaEUR = tasaEUR;
+    }
 
     // 3. Llenar datos básicos
     document.getElementById('cont-pago-cxp-id').value    = idCxP;
