@@ -102,7 +102,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
 
   const [pagos, cxps] = await Promise.all([
     api('pagos','GET',null,'?order=fecha_registro.desc&select=*' + emisorQ()),
-    api('cont_cxp','GET',null,'?id_emisor=eq.'+idEmisor+'&order=fecha_emision.desc&select=*,proveedores:id_proveedor(nombre,id_categoria)')
+    api('cont_cxp','GET',null,'?id_emisor=eq.'+idEmisor+'&order=numero_doc.asc&select=*,proveedores:id_proveedor(nombre,id_categoria)')
   ]);
   pagosCache = pagos || [];
 
