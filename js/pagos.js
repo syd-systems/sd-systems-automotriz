@@ -2001,7 +2001,7 @@ async function verDetalleCxP(idCxP, modoInicial) {
           + '<button class="btn-primario" onclick="contGuardarPagoCxp()">&#x1F4B8; Registrar Pago</button>';
       } else {
         footer.innerHTML =
-          (esManualF ? '<button class="btn-peligro" onclick="anularPagoCxP('+idCxP+');cerrarModal(\'modal-cont-pago-cxp\')">&#x1F5D1; Anular</button>' : '')
+          ((esManualF && est !== 'ANULADA') ? '<button class="btn-peligro" onclick="anularPagoCxP('+idCxP+');cerrarModal(\'modal-cont-pago-cxp\')">&#x1F5D1; Anular</button>' : '')
           + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\');cargarPagos()">Retornar</button>';
       }
     }
