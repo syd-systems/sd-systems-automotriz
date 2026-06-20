@@ -207,12 +207,10 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
 
     let acciones = '';
     if (item._src === 'cxp') {
-      const esManual = item.origen !== 'Automático';
-      const btnVerPend = '<button onclick="verCxPPendiente('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
-      const btnVerPag  = '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
-      const btnPagar   = '<button onclick="pagarCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>';
-      const btnAnular  = esManual && est === 'PENDIENTE' ? ' <button onclick="anularPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑 Anular</button>' : '';
-      if (est === 'PENDIENTE') acciones = btnVerPend + ' ' + btnPagar;
+      const btnVerPend = puedo('PAGOS','VER') ? '<button onclick="verCxPPendiente('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>' : '';
+      const btnVerPag  = puedo('PAGOS','VER') ? '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>' : '';
+      const btnPagar   = puedo('PAGOS','PAGAR') ? '<button onclick="pagarCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>' : '';
+      if (est === 'PENDIENTE') acciones = btnVerPend + (btnPagar ? ' '+btnPagar : '');
       else acciones = btnVerPag;
     }
 
@@ -1811,6 +1809,7 @@ async function verPagoCxP(idCxP) {
 }
 
 async function guardarPago() {
+  if (!puedo('PAGOS','CREAR')) { alert('No tiene permiso para registrar obligaciones de pago.'); return; }
   const errEl = document.getElementById('alerta-pago-err');
   const okEl  = document.getElementById('alerta-pago-ok');
   if (errEl) errEl.style.display = 'none';
@@ -2176,6 +2175,7 @@ async function verCxPPendiente(idCxP) {
 }
 
 function editarCxPPendiente(idCxP) {
+  if (!puedo('PAGOS','EDITAR')) { alert('No tiene permiso para editar obligaciones de pago.'); return; }
   // Habilitar todos los campos
   ['pago-categoria-prov','pago-moneda','pago-descripcion','pago-cuenta-gasto',
    'pago-monto','pago-vencimiento','pago-proveedor','pago-observaciones'].forEach(function(id) {
@@ -2192,6 +2192,7 @@ function editarCxPPendiente(idCxP) {
 }
 
 async function guardarEdicionCxP(idCxP) {
+  if (!puedo('PAGOS','EDITAR')) { alert('No tiene permiso para editar obligaciones de pago.'); return; }
   const errEl = document.getElementById('alerta-pago-err');
   const okEl  = document.getElementById('alerta-pago-ok');
   if (errEl) errEl.style.display = 'none';
@@ -2241,6 +2242,7 @@ async function guardarEdicionCxP(idCxP) {
 }
 
 async function eliminarCxP(idCxP) {
+  if (!puedo('PAGOS','ELIMINAR')) { alert('No tiene permiso para eliminar obligaciones de pago.'); return; }
   if (!confirm('¿Eliminar esta obligación de pago? Esta acción no se puede deshacer.')) return;
   try {
     await api('cont_cxp','DELETE',null,'?id_cxp=eq.'+idCxP+'&estado=eq.PENDIENTE');
