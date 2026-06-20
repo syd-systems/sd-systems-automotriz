@@ -1338,17 +1338,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260620041"></script>
-<script src="js/parametros.js?v=20260620041"></script>
-<script src="js/empresas.js?v=20260620041"></script>
-<script src="js/facturacion.js?v=20260620041"></script>
-<script src="js/inventario.js?v=20260620041"></script>
-<script src="js/contabilidad.js?v=20260620041"></script>
-<script src="js/pagos.js?v=20260620041"></script>
-<script src="js/vehiculos.js?v=20260620041"></script>
-<script src="js/catalogo.js?v=20260620041"></script>
-<script src="js/inventario2.js?v=20260620041"></script>
-<script src="js/ordenes.js?v=20260620041"></script>
+<script src="js/core.js?v=20260620042"></script>
+<script src="js/parametros.js?v=20260620042"></script>
+<script src="js/empresas.js?v=20260620042"></script>
+<script src="js/facturacion.js?v=20260620042"></script>
+<script src="js/inventario.js?v=20260620042"></script>
+<script src="js/contabilidad.js?v=20260620042"></script>
+<script src="js/pagos.js?v=20260620042"></script>
+<script src="js/vehiculos.js?v=20260620042"></script>
+<script src="js/catalogo.js?v=20260620042"></script>
+<script src="js/inventario2.js?v=20260620042"></script>
+<script src="js/ordenes.js?v=20260620042"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2044,131 +2044,131 @@
 
 <!-- PAGO CxP -->
 <div class="modal-overlay" id="modal-cont-pago-cxp">
-  <div class="modal" style="max-width:560px">
-    <div class="modal-header"><h3 id="cont-pago-cxp-titulo">REGISTRAR PAGO A PROVEEDOR</h3>
+  <div class="modal" style="max-width:620px">
+    <div class="modal-header">
+      <h3 id="cont-pago-cxp-titulo">DETALLE DE PAGO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-cont-pago-cxp')">✕</button>
     </div>
     <div class="modal-body">
 
-      <!-- Monto a Cancelar -->
-      <div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.25);border-radius:8px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">
-        <div style="font-size:12px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;font-weight:600">Monto a Cancelar</div>
-        <div id="cont-pago-cxp-saldo" style="font-family:var(--font-display);font-size:30px;font-weight:700;color:var(--naranja)">—</div>
+      <!-- ── SECCIÓN 1: Datos de la Obligación ── -->
+      <div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px 18px;margin-bottom:16px">
+        <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;font-weight:600;margin-bottom:12px">📋 Datos de la Obligación</div>
+        <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Monto</div>
+            <div id="cont-pago-cxp-saldo" style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--naranja)">—</div></div>
+          <div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Proveedor</div>
+            <div id="cont-pago-cxp-prov-nombre" style="font-size:13px;font-weight:600">—</div></div>
+          <div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Vencimiento</div>
+            <div id="cont-pago-cxp-vencimiento" style="font-size:13px;font-family:var(--font-mono)">—</div></div>
+          <div style="grid-column:1/-1"><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Concepto</div>
+            <div id="cont-pago-cxp-concepto" style="font-size:13px;color:var(--texto)">—</div></div>
+        </div>
       </div>
 
-      <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
-
-        <!-- 1. Moneda de Pago — PRIMERO -->
-        <div class="form-campo form-full">
-          <label>Moneda de Pago *</label>
-          <select id="cont-pago-cxp-moneda" onchange="onCambioPagoMoneda()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="VES">VES — Bolívares (Funcional)</option>
-            <option value="USD">USD — Dólares</option>
-            <option value="EUR">EUR — Euros</option>
-          </select>
-        </div>
-
-        <!-- Concepto (readonly) -->
-        <div class="form-campo form-full">
-          <label>Concepto</label>
-          <input type="text" id="cont-pago-cxp-concepto" readonly
-            style="background:rgba(255,255,255,0.04);color:var(--suave);cursor:not-allowed">
-        </div>
-
-        <!-- 2. Tipo de Cambio — derivado automáticamente -->
-        <div class="form-campo form-full" id="cont-pago-cxp-tasa-cont" style="display:none">
-          <label id="cont-pago-cxp-tasa-label">Tipo de Cambio</label>
-          <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:5px;padding:10px 14px">
-            <span id="cont-pago-cxp-moneda-ref" style="font-size:13px;color:var(--naranja);font-weight:600;white-space:nowrap;min-width:80px"></span>
-            <span style="font-size:12px;color:var(--suave)">Tasa:</span>
-            <span id="cont-pago-cxp-tasa" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--texto)"></span>
+      <!-- ── SECCIÓN 2: Datos del Pago (visible solo si PAGADA) ── -->
+      <div id="cont-pago-cxp-seccion-pago" style="display:none;margin-bottom:16px">
+        <div style="font-size:10px;color:#22c55e;letter-spacing:1px;text-transform:uppercase;font-weight:600;margin-bottom:12px">✓ Datos del Pago Realizado</div>
+        <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px">
+          <div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Fecha de Pago</div>
+            <div id="cont-pago-det-fecha" style="font-size:13px;font-family:var(--font-mono)">—</div></div>
+          <div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Referencia</div>
+            <div id="cont-pago-det-ref" style="font-size:13px;font-family:var(--font-mono)">—</div></div>
+          <div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Método de Pago</div>
+            <div id="cont-pago-det-metodo" style="font-size:13px">—</div></div>
+          <div id="cont-pago-det-comprobante-cont" style="display:none">
+            <div style="font-size:10px;color:var(--suave);margin-bottom:3px">Comprobante</div>
+            <div id="cont-pago-det-comprobante"></div>
           </div>
         </div>
-
-        <!-- 3. Monto a Pagar calculado -->
-        <div class="form-campo">
-          <label>Monto a Pagar (calculado)</label>
-          <input type="text" id="cont-pago-cxp-monto" readonly
-            style="font-family:var(--font-mono);font-size:16px;font-weight:700;background:rgba(255,255,255,0.04);color:var(--naranja);cursor:not-allowed">
-          <div id="cont-pago-cxp-equiv-label" style="font-size:11px;color:var(--suave);margin-top:4px"></div>
-        </div>
-
-        <!-- 4. Fecha -->
-        <div class="form-campo">
-          <label>Fecha de Pago *</label>
-          <input type="date" id="cont-pago-cxp-fecha">
-        </div>
-
-        <!-- 5. Método de Pago — dinámico según datos del proveedor -->
-        <div class="form-campo form-full" id="cont-pago-metodo-cont">
-          <label>Método de Pago</label>
-          <div id="cont-pago-metodo-display" style="font-size:13px;color:var(--texto);background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:5px;padding:11px 14px">—</div>
-          <input type="hidden" id="cont-pago-cxp-metodo">
-        </div>
-
-        <!-- Datos bancarios (readonly si proveedor los tiene) -->
-        <div class="form-campo form-full" id="cont-pago-banco-info" style="display:none;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:6px;padding:12px 16px">
-          <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🏦 Datos Bancarios del Proveedor</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="cont-pago-banco-datos"></div>
-        </div>
-
-        <!-- Pago Móvil (readonly si proveedor los tiene) -->
-        <div class="form-campo form-full" id="cont-pago-pm-info" style="display:none;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:6px;padding:12px 16px">
-          <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">📱 Datos de Pago Móvil del Proveedor</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="cont-pago-pm-datos"></div>
-        </div>
-
-        <!-- Campos manuales si no tiene datos bancarios -->
-        <div class="form-campo form-full" id="cont-pago-manual-info" style="display:none;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:6px;padding:12px 16px">
-          <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🏦 Datos Bancarios (ingreso manual)</div>
-          <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px">
-            <div class="form-campo" style="margin:0">
-              <label style="font-size:12px">Institución Financiera</label>
-              <select id="cont-pago-manual-banco" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:9px 12px;border-radius:5px;outline:none;width:100%">
-                <option value="">— Seleccionar —</option>
-              </select>
-            </div>
-            <div class="form-campo" style="margin:0">
-              <label style="font-size:12px">Tipo de Pago</label>
-              <select id="cont-pago-manual-tipo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:9px 12px;border-radius:5px;outline:none;width:100%">
-                <option value="TRANSFERENCIA">Transferencia</option>
-                <option value="PAGO_MOVIL">Pago Móvil</option>
-                <option value="EFECTIVO">Efectivo</option>
-                <option value="CHEQUE">Cheque</option>
-              </select>
-            </div>
-            <div class="form-campo" style="margin:0">
-              <label style="font-size:12px">N° Cuenta / Teléfono</label>
-              <input type="text" id="cont-pago-manual-cuenta" placeholder="Número de cuenta o celular" style="font-family:var(--font-mono)">
-            </div>
-            <div class="form-campo" style="margin:0">
-              <label style="font-size:12px">C.I. / R.I.F (Pago Móvil)</label>
-              <input type="text" id="cont-pago-manual-ci" placeholder="V-XXXXXXXX">
-            </div>
-          </div>
-        </div>
-
-        <!-- Referencia y Comprobante -->
-        <div class="form-campo">
-          <label>Referencia *</label>
-          <input type="text" id="cont-pago-cxp-ref" placeholder="N° referencia bancaria o comprobante">
-        </div>
-        <div class="form-campo" id="cont-pago-cxp-archivo-campo">
-          <label>Comprobante (opcional)</label>
-          <input type="file" id="cont-pago-cxp-archivo" accept="image/*,application/pdf"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
-        </div>
-        <div class="form-campo form-full" id="cont-pago-cxp-archivo-preview-cont" style="display:none">
-          <div id="cont-pago-cxp-archivo-preview"></div>
-        </div>
-
       </div>
+
+      <!-- ── SECCIÓN 3: Datos bancarios del proveedor ── -->
+      <div class="form-campo form-full" id="cont-pago-banco-info" style="display:none;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:6px;padding:12px 16px">
+        <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🏦 Datos Bancarios del Proveedor</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="cont-pago-banco-datos"></div>
+      </div>
+      <div class="form-campo form-full" id="cont-pago-pm-info" style="display:none;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:6px;padding:12px 16px">
+        <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">📱 Datos de Pago Móvil del Proveedor</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="cont-pago-pm-datos"></div>
+      </div>
+      <div class="form-campo form-full" id="cont-pago-manual-info" style="display:none;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:6px;padding:12px 16px">
+        <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🏦 Datos Bancarios (ingreso manual)</div>
+        <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-campo" style="margin:0">
+            <label style="font-size:12px">Tipo de Pago</label>
+            <select id="cont-pago-manual-tipo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:9px 12px;border-radius:5px;outline:none;width:100%">
+              <option value="TRANSFERENCIA">Transferencia</option>
+              <option value="PAGO_MOVIL">Pago Móvil</option>
+              <option value="EFECTIVO">Efectivo</option>
+              <option value="CHEQUE">Cheque</option>
+            </select>
+          </div>
+          <div class="form-campo" style="margin:0">
+            <label style="font-size:12px">N° Cuenta / Teléfono</label>
+            <input type="text" id="cont-pago-manual-cuenta" placeholder="Número de cuenta o celular" style="font-family:var(--font-mono)">
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SECCIÓN 4: Formulario de Pago (visible solo en modo PAGAR) ── -->
+      <div id="cont-pago-cxp-form-pago" style="display:none">
+        <div style="border-top:1px solid var(--borde);margin:16px 0 14px"></div>
+        <div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;font-weight:600;margin-bottom:12px">💸 Datos del Pago</div>
+        <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
+          <div class="form-campo form-full">
+            <label>Moneda de Pago *</label>
+            <select id="cont-pago-cxp-moneda" onchange="onCambioPagoMoneda()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+              <option value="VES">VES — Bolívares (Funcional)</option>
+              <option value="USD">USD — Dólares</option>
+              <option value="EUR">EUR — Euros</option>
+            </select>
+          </div>
+          <div class="form-campo form-full" id="cont-pago-cxp-tasa-cont" style="display:none">
+            <label id="cont-pago-cxp-tasa-label">Tipo de Cambio</label>
+            <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:5px;padding:10px 14px">
+              <span id="cont-pago-cxp-moneda-ref" style="font-size:13px;color:var(--naranja);font-weight:600;white-space:nowrap;min-width:80px"></span>
+              <span style="font-size:12px;color:var(--suave)">Tasa:</span>
+              <span id="cont-pago-cxp-tasa" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--texto)"></span>
+            </div>
+          </div>
+          <div class="form-campo">
+            <label>Monto a Pagar (calculado)</label>
+            <input type="text" id="cont-pago-cxp-monto" readonly
+              style="font-family:var(--font-mono);font-size:16px;font-weight:700;background:rgba(255,255,255,0.04);color:var(--naranja);cursor:not-allowed">
+            <div id="cont-pago-cxp-equiv-label" style="font-size:11px;color:var(--suave);margin-top:4px"></div>
+          </div>
+          <div class="form-campo">
+            <label>Fecha de Pago *</label>
+            <input type="date" id="cont-pago-cxp-fecha">
+          </div>
+          <div class="form-campo form-full">
+            <label>Método de Pago *</label>
+            <div id="cont-pago-metodo-cont">
+              <div id="cont-pago-metodo-display" style="font-size:13px;color:var(--texto);background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:5px;padding:11px 14px">—</div>
+              <input type="hidden" id="cont-pago-cxp-metodo">
+            </div>
+          </div>
+          <div class="form-campo">
+            <label>Referencia *</label>
+            <input type="text" id="cont-pago-cxp-ref" placeholder="N° referencia bancaria o comprobante">
+          </div>
+          <div class="form-campo" id="cont-pago-cxp-archivo-campo">
+            <label>Comprobante (opcional)</label>
+            <input type="file" id="cont-pago-cxp-archivo" accept="image/*,application/pdf"
+              style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+          </div>
+          <div class="form-campo form-full" id="cont-pago-cxp-archivo-preview-cont" style="display:none">
+            <div id="cont-pago-cxp-archivo-preview"></div>
+          </div>
+        </div>
+      </div>
+
       <div id="alerta-pago-cxp-ok"  class="alerta alerta-exito" style="display:none;margin-top:8px"></div>
       <div id="alerta-pago-cxp-err" class="alerta alerta-error" style="display:none;margin-top:8px"></div>
     </div>
-    <div class="modal-footer">
+    <div class="modal-footer" id="cont-pago-cxp-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-cont-pago-cxp')">Retornar</button>
-      <button class="btn-primario"   onclick="contGuardarPagoCxp()">💸 Registrar Pago</button>
     </div>
     <input type="hidden" id="cont-pago-cxp-id">
   </div>
