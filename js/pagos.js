@@ -1262,6 +1262,10 @@ async function pagarCxP(idCxP) {
     if (monedaEl) monedaEl.value = _empresaActiva?.moneda_principal || 'VES';
     if (monedaEl) monedaEl.disabled = false;
 
+    // Título modo PAGAR
+    const tituloEl = document.getElementById('cont-pago-cxp-titulo');
+    if (tituloEl) tituloEl.textContent = 'REGISTRAR PAGO A PROVEEDOR';
+
     // Restaurar footer con botones de pago
     const footerPago = document.querySelector('#modal-cont-pago-cxp .modal-footer');
     if (footerPago) {
@@ -1759,6 +1763,10 @@ async function verPagoCxP(idCxP) {
     // Ocultar solo el input de archivo en modo VER (no el contenedor)
     const archivoInput2 = document.getElementById('cont-pago-cxp-archivo');
     if (archivoInput2) archivoInput2.style.display = 'none';
+
+    // Título modo VER
+    const tituloVer = document.getElementById('cont-pago-cxp-titulo');
+    if (tituloVer) tituloVer.textContent = 'DETALLE DE PAGO';
 
     // Cambiar botones del modal — solo Anular (si manual) y Retornar
     const footer = document.querySelector('#modal-cont-pago-cxp .modal-footer');
