@@ -1431,7 +1431,7 @@ async function contGuardarPagoCxp() {
   else if (moneda === 'EUR') montoUSD = parseFloat((monto * tasaEurD / tasaDia).toFixed(4));
 
   try {
-    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*,proveedores:id_proveedor(nombre)');
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*,proveedores:id_proveedor(nombre),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre)');
     if (!rows || !rows[0]) return;
     const c = rows[0];
     const nuevoPagado = parseFloat((parseFloat(c.pagado_usd||0) + montoUSD).toFixed(4));
@@ -1473,7 +1473,15 @@ async function contGuardarPagoCxp() {
       // Cuenta banco según moneda de pago
       const cBanco = (moneda === 'USD') ? cBanUSD : cBanVES;
 
-      if (cCxP && cBanco) {
+      // Para CxP manual: débito a cuenta de gasto seleccionada, no a CxP Proveedores
+      const esManualAst = (c.tipo || '') === 'PAGO_MANUAL';
+      let cDebito = cCxP; // por defecto CxP Proveedores
+      if (esManualAst && c.id_cuenta_gasto) {
+        const cGasto = await api('cont_cuentas','GET',null,'?id_cuenta=eq.'+c.id_cuenta_gasto+'&select=id_cuenta,codigo,nombre');
+        if (cGasto && cGasto[0]) cDebito = cGasto[0];
+      }
+
+      if (cDebito && cBanco) {
         // Monto en USD para el asiento
         // Si pago en VES: solo monto en Bs, USD = 0
         // Si pago en USD/EUR: monto en USD y equivalente en Bs
@@ -1516,9 +1524,9 @@ async function contGuardarPagoCxp() {
           // Línea 1: DÉBITO a CxP Proveedores
           await api('cont_asiento_lineas','POST',{
             id_asiento:  astRec.id_asiento,
-            id_cuenta:   cCxP.id_cuenta,
+            id_cuenta:   cDebito.id_cuenta,
             orden:       1,
-            descripcion: 'Cancelación CxP — ' + (c.numero_doc||''),
+            descripcion: (esManualAst ? 'Pago gasto — ' : 'Cancelación CxP — ') + (c.numero_doc||''),
             debe_usd:    montoAstUSD,
             haber_usd:   0,
             debe_ves:    montoAstVES,
@@ -1859,6 +1867,7 @@ async function guardarPago() {
       estado:           'PENDIENTE',
       referencia:       referenciaNueva || null,
       url_comprobante:  urlComp || null,
+      id_cuenta_gasto:  parseInt(document.getElementById('pago-cuenta-gasto')?.value) || null,
       observaciones:    descripcion + (observaciones ? ' — ' + observaciones : ''),
       id_usuario:       sesionActual?.correo_usuario || null
     });
