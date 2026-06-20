@@ -1162,7 +1162,13 @@ async function pagarCxP(idCxP) {
     const saldoEl  = document.getElementById('cont-pago-cxp-saldo');
     // Guardar datos para cálculos de conversión
     const monedaCxP  = c.moneda_pago || 'USD'; // moneda en que se pactó la CxP
-    const saldoOrig  = parseFloat(esCuota ? c.saldo_usd : c.monto_usd) || 0;
+    // saldoOrig en la moneda de la CxP
+    let saldoOrig;
+    if (monedaCxP === 'VES') {
+      saldoOrig = parseFloat(esCuota ? c.saldo_usd : c.monto_ves) || 0;
+    } else {
+      saldoOrig = parseFloat(esCuota ? c.saldo_usd : c.monto_usd) || 0;
+    }
 
     if (saldoEl) {
       if (monedaCxP === 'VES') saldoEl.textContent = fmtBs(saldoOrig) + ' Bs';
@@ -1295,7 +1301,7 @@ function onCambioPagoMoneda() {
   let labelTasa   = 'Tipo de Cambio';
 
   if (monedaCxP === monedaPago) {
-    // Misma moneda — sin conversión
+    // Misma moneda — sin conversión, monto directo
     montoPago = saldoOrig;
     if (tasaCont) tasaCont.style.display = 'none';
   } else if (monedaCxP === 'USD' && monedaPago === 'VES') {
@@ -1395,13 +1401,14 @@ async function contGuardarPagoCxp() {
   }
 
   // Calcular equivalente en USD usando tasa del día de pago
-  const modal2   = document.getElementById('modal-cont-pago-cxp');
-  const tasaDia  = parseFloat(modal2?.dataset.tasaUSD) || parseFloat(tasa) || _tasaVigente || 1;
-  const tasaEurD = parseFloat(modal2?.dataset.tasaEUR) || 1;
-  let montoUSD   = monto;
+  const modal2    = document.getElementById('modal-cont-pago-cxp');
+  const tasaDia   = parseFloat(modal2?.dataset.tasaUSD) || parseFloat(tasa) || _tasaVigente || 1;
+  const tasaEurD  = parseFloat(modal2?.dataset.tasaEUR) || 1;
+  const monedaCxP2 = modal2?.dataset.monedaCxP || 'USD';
+  let montoUSD = monto;
+  // Si la CxP es en VES y se paga en VES — monto ya está en Bs, convertir a USD para el registro
   if (moneda === 'VES')      montoUSD = parseFloat((monto / tasaDia).toFixed(4));
   else if (moneda === 'EUR') montoUSD = parseFloat((monto * tasaEurD / tasaDia).toFixed(4));
-  console.log('[PAGO] moneda:', moneda, 'monto:', monto, 'tasaDia:', tasaDia, 'montoUSD:', montoUSD);
 
   try {
     const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*');
