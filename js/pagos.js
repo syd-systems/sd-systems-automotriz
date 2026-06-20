@@ -1616,6 +1616,70 @@ async function contGuardarPagoCxp() {
       estado:     nuevoEstado
     },'?id_cxp=eq.'+idCxP);
 
+    // ── Generar asiento contable del pago ──
+    try {
+      const idEmisor = _empresaActiva?.id_emisor || 0;
+      const tasaVig  = _tasaVigente || 1;
+      const hoy      = fecha;
+
+      // Buscar cuentas
+      const cuentas = await api('cont_cuentas','GET',null,
+        '?codigo=in.(2.1.01.001,1.1.01.003,1.1.01.004)&select=id_cuenta,codigo');
+      const cCxP    = cuentas?.find(function(c){ return c.codigo==='2.1.01.001'; });
+      const cBanVES = cuentas?.find(function(c){ return c.codigo==='1.1.01.003'; });
+      const cBanUSD = cuentas?.find(function(c){ return c.codigo==='1.1.01.004'; });
+
+      // Cuenta banco según moneda de pago
+      const cBanco = (moneda === 'USD') ? cBanUSD : cBanVES;
+
+      if (cCxP && cBanco) {
+        // Monto en USD para el asiento
+        let montoAstUSD = montoUSD;
+        // Monto en VES
+        let montoAstVES = moneda === 'VES' ? monto : parseFloat((montoUSD * tasaVig).toFixed(2));
+
+        // Crear asiento
+        const ast = await api('cont_asientos','POST',{
+          id_emisor:   idEmisor,
+          tipo:        'PAGO_PROVEEDOR',
+          fecha:       hoy,
+          descripcion: 'Pago proveedor — ' + (c.numero_doc||'') + ' — ' + ref,
+          referencia:  c.numero_doc || ('CXP-'+idCxP),
+          estado:      'APROBADO',
+          moneda_base: moneda,
+          tasa_cambio: tasaVig,
+          id_usuario:  sesionActual?.correo_usuario || null
+        });
+
+        if (ast && ast.id_asiento) {
+          // Línea 1: DÉBITO a CxP Proveedores
+          await api('cont_asiento_lineas','POST',{
+            id_asiento:  ast.id_asiento,
+            id_cuenta:   cCxP.id_cuenta,
+            orden:       1,
+            descripcion: 'Cancelación CxP — ' + (c.numero_doc||''),
+            debe_usd:    montoAstUSD,
+            haber_usd:   0,
+            debe_ves:    montoAstVES,
+            haber_ves:   0,
+            tasa:        tasaVig
+          });
+          // Línea 2: CRÉDITO a Banco
+          await api('cont_asiento_lineas','POST',{
+            id_asiento:  ast.id_asiento,
+            id_cuenta:   cBanco.id_cuenta,
+            orden:       2,
+            descripcion: 'Salida banco — ' + ref,
+            debe_usd:    0,
+            haber_usd:   montoAstUSD,
+            debe_ves:    0,
+            haber_ves:   montoAstVES,
+            tasa:        tasaVig
+          });
+        }
+      }
+    } catch(eAst) { console.warn('Error generando asiento pago:', eAst); }
+
     okEl.textContent = '✓ Pago registrado correctamente.';
     okEl.style.display = 'block';
     setTimeout(function() {
