@@ -1803,7 +1803,7 @@ async function verPagoCxP(idCxP) {
     if (footer) {
       footer.innerHTML =
         (esManual ? '<button class="btn-peligro" onclick="anularPagoCxP('+idCxP+');cerrarModal("modal-cont-pago-cxp")">&#x1F5D1; Anular</button>' : '')
-        + '<button class="btn-secundario" onclick="cerrarModal("modal-cont-pago-cxp");cargarPagos()">Retornar</button>';
+        + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\');cargarPagos()">Retornar</button>';
     }
 
     abrirModal('modal-cont-pago-cxp');
