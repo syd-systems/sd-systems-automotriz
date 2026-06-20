@@ -1221,6 +1221,16 @@ async function guardarSalidaStock() {
     if (btnGuardarSal) { btnGuardarSal.disabled = false; btnGuardarSal.textContent = 'Registrar Salida'; }
   };
   if (btnGuardarSal) { btnGuardarSal.disabled = true; btnGuardarSal.textContent = 'Guardando...'; }
+  try {
+    await _guardarSalidaStockInterno();
+  } finally {
+    resetBtnSal();
+  }
+}
+
+async function _guardarSalidaStockInterno() {
+  const btnGuardarSal = null; // no needed here
+  const resetBtnSal = function() {}; // no-op — handled by wrapper
 
   const idRep   = parseInt(document.getElementById('salida-id-repuesto').value);
   const idArea  = parseInt(document.getElementById('salida-area').value) || null;
@@ -1334,7 +1344,6 @@ async function guardarSalidaStock() {
   } catch(err) {
     errEl.textContent = 'Error: ' + err.message;
     errEl.style.display = 'block';
-    resetBtnSal();
   }
 }
 
