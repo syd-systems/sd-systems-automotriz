@@ -1419,16 +1419,28 @@ async function contGuardarPagoCxp() {
         let montoAstVES = moneda === 'VES' ? monto : parseFloat((montoUSD * tasaDia).toFixed(2));
 
         // Crear asiento
+        // Generar numero_asiento correlativo
+        const anioAst  = new Date(hoy).getFullYear();
+        const ultAsts  = await api('cont_asientos','GET',null,
+          '?id_emisor=eq.'+idEmisor+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
+        let ultNum = 0;
+        if (ultAsts[0]?.numero_asiento) {
+          const m = ultAsts[0].numero_asiento.match(/(\d+)$/);
+          if (m) ultNum = parseInt(m[1]);
+        }
+        const numAst = 'AST-' + anioAst + '-' + String(ultNum + 1).padStart(4,'0');
+
         const ast = await api('cont_asientos','POST',{
-          id_emisor:   idEmisor,
-          tipo:        'PAGO_PROVEEDOR',
-          fecha:       hoy,
-          descripcion: 'Pago proveedor — ' + (c.numero_doc||'') + ' — ' + ref,
-          referencia:  c.numero_doc || ('CXP-'+idCxP),
-          estado:      'APROBADO',
-          moneda_base: moneda,
-          tasa_bcv:    tasaDia,
-          id_usuario:  sesionActual?.correo_usuario || null
+          id_emisor:      idEmisor,
+          numero_asiento: numAst,
+          tipo:           'PAGO_PROVEEDOR',
+          fecha:          hoy,
+          descripcion:    'Pago proveedor — ' + (c.numero_doc||'') + ' — ' + ref,
+          referencia:     c.numero_doc || ('CXP-'+idCxP),
+          estado:         'APROBADO',
+          moneda_base:    moneda,
+          tasa_bcv:       tasaDia,
+          id_usuario:     sesionActual?.correo_usuario || null
         });
 
         if (ast && ast.id_asiento) {
