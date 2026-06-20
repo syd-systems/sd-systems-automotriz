@@ -1266,8 +1266,19 @@ async function pagarCxP(idCxP) {
     }
 
     abrirModal('modal-cont-pago-cxp');
-    // Calcular monto DESPUÉS de abrir el modal para que el DOM esté listo
-    setTimeout(onCambioPagoMoneda, 50);
+    // Actualizar saldo y calcular monto DESPUÉS de que el DOM esté listo
+    setTimeout(function() {
+      const saldoEl2 = document.getElementById('cont-pago-cxp-saldo');
+      const modal3   = document.getElementById('modal-cont-pago-cxp');
+      const mCxP     = modal3?.dataset.monedaCxP || 'USD';
+      const sOrig    = parseFloat(modal3?.dataset.saldoOrig) || 0;
+      if (saldoEl2) {
+        if (mCxP === 'VES')      saldoEl2.textContent = fmtBs(sOrig) + ' Bs';
+        else if (mCxP === 'EUR') saldoEl2.textContent = fmtUSD(sOrig) + ' EUR';
+        else                     saldoEl2.textContent = '$ ' + fmtUSD(sOrig) + ' USD';
+      }
+      onCambioPagoMoneda();
+    }, 50);
   } catch(e) { alert('Error: '+e.message); console.error(e); }
 }
 
