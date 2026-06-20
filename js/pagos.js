@@ -2107,7 +2107,7 @@ async function verCxPPendiente(idCxP) {
     // Cargar proveedores filtrados por categoría
     if (prov.id_categoria) {
       const provs = await api('proveedores','GET',null,
-        '?estado=eq.ACTIVO&id_categoria=eq.'+prov.id_categoria+'&order=nombre.asc&select=id_proveedor,nombre') || [];
+        '?estado=eq.ACTIVO&id_categoria=eq.'+prov.id_categoria+'&order=nombre.asc&select=id_proveedor,nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre)') || [];
       window._pagoProveedores = provs;
       const selProv = document.getElementById('pago-proveedor');
       if (selProv) {
