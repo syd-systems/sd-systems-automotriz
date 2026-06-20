@@ -66,6 +66,9 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       '<option value="PAGADA">Pagado</option>' +
       '<option value="ANULADA">Anulado</option>' +
       '</select>' +
+      '<select id="pagos-categoria" style="' + inputStyle() + '" onchange="cargarPagosDesdeUI()">' +
+      '<option value="">Todas las categorías</option>' +
+      '</select>' +
       '</div>' +
       '<div id="pagos-tabla-cont" style="padding:0"></div>' +
       '</div>';
@@ -83,9 +86,23 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
   const idEmisor = _empresaActiva?.id_emisor || 0;
 
   // ── Cargar todas las fuentes de obligaciones ──
+  // Cargar categorías para el filtro
+  try {
+    const cats = await api('param_categorias_proveedor','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre') || [];
+    const selCat = document.getElementById('pagos-categoria');
+    if (selCat && selCat.options.length <= 1) {
+      cats.forEach(function(c){
+        const opt = document.createElement('option');
+        opt.value = c.id; opt.textContent = c.nombre;
+        selCat.appendChild(opt);
+      });
+    }
+  } catch(e) {}
+  const fCategoria = document.getElementById('pagos-categoria')?.value || '';
+
   const [pagos, cxps] = await Promise.all([
     api('pagos','GET',null,'?order=fecha_registro.desc&select=*' + emisorQ()),
-    api('cont_cxp','GET',null,'?id_emisor=eq.'+idEmisor+'&order=fecha_emision.desc&select=*,proveedores:id_proveedor(nombre)')
+    api('cont_cxp','GET',null,'?id_emisor=eq.'+idEmisor+'&order=fecha_emision.desc&select=*,proveedores:id_proveedor(nombre,id_categoria)')
   ]);
   pagosCache = pagos || [];
 
@@ -127,7 +144,13 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
   });
 
   // ── Unificar y ordenar por fecha desc ──
-  let todos = itemsPagos.concat(itemsCxP);
+  let todos = itemsPagos.concat(
+    fCategoria
+      ? itemsCxP.filter(function(item){
+          return String(item._raw?.proveedores?.id_categoria||'') === String(fCategoria);
+        })
+      : itemsCxP
+  );
   todos.sort(function(a,b){ return (b.fecha||'').localeCompare(a.fecha||''); });
 
   // ── Filtrar ──
