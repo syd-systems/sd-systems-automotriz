@@ -206,12 +206,13 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     const badge = '<span style="background:'+col+'22;color:'+col+';border:1px solid '+col+'44;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600">'+est+'</span>';
 
     let acciones = '';
-    if (est === 'PENDIENTE' && item._src === 'cxp') {
-      const esManual = !item.tipo.toUpperCase().includes('CREDITO') && !item.tipo.toUpperCase().includes('CONTADO') && item.origen !== 'Automático';
-      acciones = '<button onclick="pagarCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>';
-      if (esManual) acciones += ' <button onclick="anularPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑 Anular</button>';
-    } else if (est === 'PAGADA' && item._src === 'cxp') {
-      acciones = '<button onclick="verPagoCxP('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
+    if (item._src === 'cxp') {
+      const esManual = item.origen !== 'Automático';
+      const btnVer   = '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
+      const btnPagar = '<button onclick="pagarCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>';
+      const btnAnular = esManual && est === 'PENDIENTE' ? ' <button onclick="anularPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑 Anular</button>' : '';
+      if (est === 'PENDIENTE') acciones = btnVer + ' ' + btnPagar + btnAnular;
+      else acciones = btnVer;
     }
 
     const origenBadge = item.origen === 'Automático'
@@ -1272,7 +1273,7 @@ async function pagarCxP(idCxP) {
     const footerPago = document.querySelector('#modal-cont-pago-cxp .modal-footer');
     if (footerPago) {
       footerPago.innerHTML =
-        '<button class="btn-secundario" onclick="cerrarModal(&quot;modal-cont-pago-cxp&quot;)">Retornar</button>'
+        '<button class="btn-secundario" onclick="cerrarModal("modal-cont-pago-cxp")">Retornar</button>'
         + '<button class="btn-primario" onclick="contGuardarPagoCxp()">&#x1F4B8; Registrar Pago</button>';
     }
 
@@ -1554,7 +1555,7 @@ async function contGuardarPagoCxp() {
     okEl.textContent = '✓ Pago registrado correctamente.';
     okEl.style.display = 'block';
     setTimeout(function() {
-      cerrarModal('modal-cont-pago-cxp');
+      cerrarModal("modal-cont-pago-cxp");
       cargarPagos();
     }, 1000);
   } catch(e) {
@@ -1789,8 +1790,8 @@ async function verPagoCxP(idCxP) {
     const footer = document.querySelector('#modal-cont-pago-cxp .modal-footer');
     if (footer) {
       footer.innerHTML =
-        (esManual ? '<button class="btn-peligro" onclick="anularPagoCxP('+idCxP+');cerrarModal(&quot;modal-cont-pago-cxp&quot;)">&#x1F5D1; Anular</button>' : '')
-        + '<button class="btn-secundario" onclick="cerrarModal(&quot;modal-cont-pago-cxp&quot;);cargarPagos()">Retornar</button>';
+        (esManual ? '<button class="btn-peligro" onclick="anularPagoCxP('+idCxP+');cerrarModal("modal-cont-pago-cxp")">&#x1F5D1; Anular</button>' : '')
+        + '<button class="btn-secundario" onclick="cerrarModal("modal-cont-pago-cxp");cargarPagos()">Retornar</button>';
     }
 
     abrirModal('modal-cont-pago-cxp');
@@ -1886,4 +1887,191 @@ async function guardarPago() {
     const btnGuardar = document.querySelector('#modal-pago .btn-primario');
     if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar'; }
   }
+}
+
+// ── Función centralizada para abrir detalle/pago de CxP ──
+async function verDetalleCxP(idCxP, modoInicial) {
+  try {
+    const rows = await api('cont_cxp','GET',null,
+      '?id_cxp=eq.'+idCxP+'&select=*,proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre))');
+    if (!rows || !rows[0]) return;
+    const c    = rows[0];
+    const prov = c.proveedores || {};
+    const est  = c.estado || 'PENDIENTE';
+
+    // Limpiar dataset
+    const modal = document.getElementById('modal-cont-pago-cxp');
+    if (modal) Object.keys(modal.dataset).forEach(function(k){ delete modal.dataset[k]; });
+
+    // ── Sección 1: Datos de la obligación ──
+    const tituloEl = document.getElementById('cont-pago-cxp-titulo');
+    if (tituloEl) tituloEl.textContent = 'DETALLE DE OBLIGACIÓN';
+
+    document.getElementById('cont-pago-cxp-id').value = idCxP;
+
+    const saldoEl = document.getElementById('cont-pago-cxp-saldo');
+    if (saldoEl) {
+      const monedaCxP = c.moneda_pago || 'USD';
+      if (monedaCxP === 'VES') saldoEl.textContent = fmtBs(c.monto_ves || c.monto_usd) + ' Bs';
+      else if (monedaCxP === 'EUR') saldoEl.textContent = fmtUSD(c.monto_usd) + ' EUR';
+      else saldoEl.textContent = '$ ' + fmtUSD(c.monto_usd) + ' USD';
+    }
+
+    const provNomEl = document.getElementById('cont-pago-cxp-prov-nombre');
+    if (provNomEl) provNomEl.textContent = prov.nombre || '—';
+
+    const vencEl = document.getElementById('cont-pago-cxp-vencimiento');
+    if (vencEl) vencEl.textContent = c.fecha_vencimiento ? fmtFecha(c.fecha_vencimiento) : '—';
+
+    const conceptoEl = document.getElementById('cont-pago-cxp-concepto');
+    if (conceptoEl) conceptoEl.textContent = c.observaciones || '—';
+
+    // ── Sección 2: Datos del pago (si PAGADA) ──
+    const secPago = document.getElementById('cont-pago-cxp-seccion-pago');
+    if (secPago) secPago.style.display = est === 'PAGADA' ? '' : 'none';
+    if (est === 'PAGADA') {
+      const detFecha = document.getElementById('cont-pago-det-fecha');
+      if (detFecha) detFecha.textContent = c.fecha_emision ? fmtFecha(c.fecha_emision) : '—';
+      const detRef = document.getElementById('cont-pago-det-ref');
+      if (detRef) detRef.textContent = c.referencia || '—';
+      const detMetodo = document.getElementById('cont-pago-det-metodo');
+      if (detMetodo) detMetodo.textContent = c.metodo_pago || '—';
+      // Comprobante
+      const detCompCont = document.getElementById('cont-pago-det-comprobante-cont');
+      const detComp = document.getElementById('cont-pago-det-comprobante');
+      if (c.url_comprobante && detComp) {
+        const url = c.url_comprobante;
+        const esImg = url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+        detComp.innerHTML = esImg
+          ? '<a href="'+url+'" target="_blank"><img src="'+url+'" style="max-width:100%;max-height:150px;border-radius:6px;border:1px solid var(--borde)"></a>'
+          : '<a href="'+url+'" target="_blank" style="color:var(--naranja);font-size:12px">&#x1F4C4; Ver comprobante</a>';
+        if (detCompCont) detCompCont.style.display = '';
+      } else if (detCompCont) detCompCont.style.display = 'none';
+    }
+
+    // ── Sección 3: Datos bancarios del proveedor ──
+    const bancoInfo  = document.getElementById('cont-pago-banco-info');
+    const bancoDatos = document.getElementById('cont-pago-banco-datos');
+    const pmInfo     = document.getElementById('cont-pago-pm-info');
+    const pmDatos    = document.getElementById('cont-pago-pm-datos');
+    const manualInfo = document.getElementById('cont-pago-manual-info');
+    [bancoInfo, pmInfo, manualInfo].forEach(function(el){ if (el) el.style.display = 'none'; });
+
+    if (prov.id_banco && bancoDatos) {
+      bancoDatos.innerHTML = dato('Institución', prov.banco_prov?.nombre||'—') + dato('Tipo', prov.tipo_cuenta||'—') + dato('N° Cuenta', prov.numero_cuenta||'—');
+      if (bancoInfo) bancoInfo.style.display = '';
+    }
+    if (prov.pm_id_banco && pmDatos) {
+      pmDatos.innerHTML = dato('Banco', prov.banco_pm?.nombre||'—') + dato('C.I./R.I.F', prov.pm_ci||'—') + dato('Celular', prov.pm_celular||'—');
+      if (pmInfo) pmInfo.style.display = '';
+    }
+    if (!prov.id_banco && !prov.pm_id_banco && est === 'PENDIENTE') {
+      if (manualInfo) manualInfo.style.display = '';
+    }
+
+    // ── Sección 4: Formulario de pago (solo PENDIENTE) ──
+    const formPago = document.getElementById('cont-pago-cxp-form-pago');
+    if (formPago) formPago.style.display = est === 'PENDIENTE' ? '' : 'none';
+
+    // ── Alertas ──
+    const okEl  = document.getElementById('alerta-pago-cxp-ok');
+    const errEl = document.getElementById('alerta-pago-cxp-err');
+    if (okEl)  okEl.style.display  = 'none';
+    if (errEl) errEl.style.display = 'none';
+
+    // ── Footer según estado ──
+    const footer = document.getElementById('cont-pago-cxp-footer');
+    const esManualF = !(c.tipo||'').includes('COMPRA_CONSUMIBLE');
+    if (footer) {
+      if (est === 'PENDIENTE') {
+        footer.innerHTML =
+          '<button class="btn-secundario" onclick="cerrarModal("modal-cont-pago-cxp")">Retornar</button>'
+          + '<button class="btn-primario" onclick="contGuardarPagoCxp()">&#x1F4B8; Registrar Pago</button>';
+      } else {
+        footer.innerHTML =
+          (esManualF ? '<button class="btn-peligro" onclick="anularPagoCxP('+idCxP+');cerrarModal("modal-cont-pago-cxp")">&#x1F5D1; Anular</button>' : '')
+          + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\');cargarPagos()">Retornar</button>';
+      }
+    }
+
+    // ── Si es PENDIENTE cargar tasas y preparar formulario de pago ──
+    if (est === 'PENDIENTE') {
+      try {
+        const hoy2 = new Date(new Date().getTime()-4*60*60*1000).toISOString().split('T')[0];
+        const tasas2 = await api('tasas','GET',null,'?order=fecha_valor.desc&limit=20&select=*') || [];
+        const getTasa2 = function(mon) {
+          const reg = tasas2.filter(function(t){ return t.moneda_origen===mon && String(t.fecha_valor||'').substring(0,10)<=hoy2; })
+            .sort(function(a,b){ return String(b.fecha_valor||'').localeCompare(String(a.fecha_valor||'')); });
+          return reg.length ? parseFloat(reg[0].tipo_cambio) : 1;
+        };
+        const tasaUSD2 = getTasa2('USD');
+        const tasaEUR2 = getTasa2('EUR');
+        if (modal) {
+          modal.dataset.tasaUSD  = tasaUSD2;
+          modal.dataset.tasaEUR  = tasaEUR2;
+          modal.dataset.monedaCxP = c.moneda_pago || 'USD';
+          modal.dataset.saldoOrig = c.moneda_pago === 'VES' ? (c.monto_ves || c.monto_usd) : c.monto_usd;
+          modal.dataset.saldoUSD  = c.monto_usd;
+        }
+      } catch(e) {}
+
+      // Reset campos pago
+      document.getElementById('cont-pago-cxp-ref').value   = '';
+      document.getElementById('cont-pago-cxp-fecha').value = new Date().toISOString().split('T')[0];
+      const archivoEl2 = document.getElementById('cont-pago-cxp-archivo');
+      if (archivoEl2) { archivoEl2.value = ''; archivoEl2.style.display = ''; }
+      const archivoCampoEl = document.getElementById('cont-pago-cxp-archivo-campo');
+      if (archivoCampoEl) archivoCampoEl.style.display = '';
+      const previewContEl = document.getElementById('cont-pago-cxp-archivo-preview-cont');
+      if (previewContEl) previewContEl.style.display = 'none';
+
+      // Método de pago
+      const metodoCont = document.getElementById('cont-pago-metodo-cont');
+      const metodoDisp = document.getElementById('cont-pago-metodo-display');
+      const metodoHid  = document.getElementById('cont-pago-cxp-metodo');
+      if (prov.id_banco && prov.pm_id_banco) {
+        if (metodoCont) metodoCont.innerHTML =
+          '<select id="cont-pago-cxp-metodo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
+          +'<option value="TRANSFERENCIA">🏦 Transferencia Bancaria</option>'
+          +'<option value="PAGO_MOVIL">📱 Pago Móvil</option>'+'</select>';
+      } else if (prov.id_banco) {
+        if (metodoDisp) metodoDisp.textContent = '🏦 Transferencia Bancaria';
+        if (metodoHid)  metodoHid.value = 'TRANSFERENCIA';
+      } else if (prov.pm_id_banco) {
+        if (metodoDisp) metodoDisp.textContent = '📱 Pago Móvil';
+        if (metodoHid)  metodoHid.value = 'PAGO_MOVIL';
+      } else {
+        if (metodoDisp) metodoDisp.textContent = '—';
+      }
+
+      // Moneda por defecto y calcular
+      const monedaEl3 = document.getElementById('cont-pago-cxp-moneda');
+      if (monedaEl3) { monedaEl3.value = _empresaActiva?.moneda_principal || 'VES'; monedaEl3.disabled = false; }
+
+      setTimeout(function() {
+        const saldoEl3 = document.getElementById('cont-pago-cxp-saldo');
+        const modal4   = document.getElementById('modal-cont-pago-cxp');
+        const mCxP2    = modal4?.dataset.monedaCxP || 'USD';
+        const sOrig2   = parseFloat(modal4?.dataset.saldoOrig) || 0;
+        if (saldoEl3) {
+          if (mCxP2 === 'VES')      saldoEl3.textContent = fmtBs(sOrig2) + ' Bs';
+          else if (mCxP2 === 'EUR') saldoEl3.textContent = fmtUSD(sOrig2) + ' EUR';
+          else                      saldoEl3.textContent = '$ ' + fmtUSD(sOrig2) + ' USD';
+        }
+        onCambioPagoMoneda();
+      }, 50);
+    }
+
+    abrirModal('modal-cont-pago-cxp');
+  } catch(e) { alert('Error: '+e.message); console.error(e); }
+}
+
+// pagarCxP now delegates to verDetalleCxP
+async function pagarCxP(idCxP) {
+  await verDetalleCxP(idCxP, 'pagar');
+}
+
+// verPagoCxP now delegates to verDetalleCxP
+async function verPagoCxP(idCxP) {
+  await verDetalleCxP(idCxP, 'ver');
 }
