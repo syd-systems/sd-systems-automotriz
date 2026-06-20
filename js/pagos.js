@@ -256,10 +256,12 @@ async function abrirNuevoPago() {
   document.getElementById('pago-modal-titulo').textContent = 'NUEVA CUENTA POR PAGAR';
 
   // Reset campos
-  ['pago-descripcion','pago-monto','pago-vencimiento','pago-rif','pago-observaciones','pago-manual-cuenta'].forEach(function(id){
+  ['pago-descripcion','pago-monto','pago-vencimiento','pago-rif','pago-observaciones','pago-manual-cuenta','pago-referencia'].forEach(function(id){
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('pago-moneda').value = 'VES';
+  const pagoArchivo = document.getElementById('pago-archivo');
+  if (pagoArchivo) pagoArchivo.value = '';
   document.getElementById('pago-id').value = '';
   document.getElementById('pago-monto-equiv').textContent = '';
   document.getElementById('pago-tasa-cont').style.display = 'none';
@@ -1782,7 +1784,15 @@ async function guardarPago() {
     const btnGuardar = document.querySelector('#modal-pago .btn-primario');
     if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
 
-    await api('cont_cxp','POST',{
+    // Subir comprobante si se adjuntó
+    let urlComp = null;
+    const archivoNuevo = document.getElementById('pago-archivo');
+    if (archivoNuevo && archivoNuevo.files && archivoNuevo.files[0]) {
+      try { urlComp = await subirFoto(archivoNuevo.files[0], 'comprobantes/manual'); } catch(e) {}
+    }
+    const referenciaNueva = document.getElementById('pago-referencia')?.value.trim() || '';
+
+    const nuevaCxP = await api('cont_cxp','POST',{
       id_emisor:        idEmisor,
       id_proveedor:     idProveedor,
       tipo:             'PAGO_MANUAL',
@@ -1796,6 +1806,8 @@ async function guardarPago() {
       pagado_usd:       0,
       saldo_usd:        montoUSD,
       estado:           'PENDIENTE',
+      referencia:       referenciaNueva || null,
+      url_comprobante:  urlComp || null,
       observaciones:    descripcion + (observaciones ? ' — ' + observaciones : ''),
       id_usuario:       sesionActual?.correo_usuario || null
     });
