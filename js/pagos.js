@@ -1141,6 +1141,10 @@ async function pagarCxP(idCxP) {
     document.getElementById('cont-pago-cxp-id').value    = idCxP;
     document.getElementById('cont-pago-cxp-fecha').value = new Date().toISOString().split('T')[0];
     document.getElementById('cont-pago-cxp-ref').value   = ''; // siempre vacío — usuario debe ingresar referencia
+    const archivoInput = document.getElementById('cont-pago-cxp-archivo');
+    if (archivoInput) archivoInput.value = '';
+    const previewEl = document.getElementById('cont-pago-cxp-archivo-preview');
+    if (previewEl) previewEl.textContent = '';
     document.getElementById('alerta-pago-cxp-ok').style.display  = 'none';
     document.getElementById('alerta-pago-cxp-err').style.display = 'none';
 
@@ -1391,11 +1395,23 @@ async function contGuardarPagoCxp() {
     const nuevoSaldo  = parseFloat(Math.max(0, parseFloat(c.monto_usd||0) - nuevoPagado).toFixed(4));
     const nuevoEstado = nuevoSaldo <= 0 ? 'PAGADA' : 'PARCIAL';
 
-    await api('cont_cxp','PATCH',{
+    // Subir comprobante si se adjuntó archivo
+    let urlComprobante = null;
+    const archivoEl = document.getElementById('cont-pago-cxp-archivo');
+    if (archivoEl && archivoEl.files && archivoEl.files[0]) {
+      try {
+        urlComprobante = await subirFoto(archivoEl.files[0], 'comprobantes/' + idCxP);
+      } catch(eFile) { console.warn('Error subiendo comprobante:', eFile); }
+    }
+
+    const patchData = {
       pagado_usd: nuevoPagado,
       saldo_usd:  nuevoSaldo,
       estado:     nuevoEstado
-    },'?id_cxp=eq.'+idCxP);
+    };
+    if (urlComprobante) patchData.url_comprobante = urlComprobante;
+
+    await api('cont_cxp','PATCH', patchData, '?id_cxp=eq.'+idCxP);
 
     // ── Generar asiento contable del pago ──
     try {
