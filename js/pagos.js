@@ -1159,15 +1159,15 @@ async function pagarCxP(idCxP) {
     // Monto a cancelar — cuota o saldo total
     const saldoUSD = parseFloat(esCuota ? c.saldo_usd : c.monto_usd) || 0;
     const saldoEl  = document.getElementById('cont-pago-cxp-saldo');
+    // Guardar datos para cálculos de conversión
+    const monedaCxP  = c.moneda_pago || 'USD'; // moneda en que se pactó la CxP
+    const saldoOrig  = parseFloat(esCuota ? c.saldo_usd : c.monto_usd) || 0;
+
     if (saldoEl) {
       if (monedaCxP === 'VES') saldoEl.textContent = fmtBs(saldoOrig) + ' Bs';
       else if (monedaCxP === 'EUR') saldoEl.textContent = fmtUSD(saldoOrig) + ' EUR';
       else saldoEl.textContent = '$ ' + fmtUSD(saldoOrig) + ' USD';
     }
-
-    // Guardar datos para cálculos de conversión
-    const monedaCxP  = c.moneda_pago || 'USD'; // moneda en que se pactó la CxP
-    const saldoOrig  = parseFloat(esCuota ? c.saldo_usd : c.monto_usd) || 0;
     if (modal) {
       modal.dataset.saldoUSD  = saldoOrig; // mantener por compatibilidad
       modal.dataset.saldoOrig = saldoOrig;
