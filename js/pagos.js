@@ -1354,17 +1354,22 @@ async function contGuardarPagoCxp() {
   const fecha   = document.getElementById('cont-pago-cxp-fecha')?.value || '';
   const metodo  = document.getElementById('cont-pago-cxp-metodo')?.value || '';
   const ref     = document.getElementById('cont-pago-cxp-ref')?.value || '';
-  const okEl    = document.getElementById('alerta-pago-cxp-ok');
-  const errEl   = document.getElementById('alerta-pago-cxp-err');
-  okEl.style.display = 'none'; errEl.style.display = 'none';
+  const okEl  = document.getElementById('alerta-pago-cxp-ok');
+  const errEl = document.getElementById('alerta-pago-cxp-err');
+  if (okEl)  okEl.style.display  = 'none';
+  if (errEl) errEl.style.display = 'none';
+
+  const mostrarError = function(msg) {
+    if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+    else { alert(msg); }
+  };
 
   if (!idCxP || !monto || !fecha || !metodo) {
-    errEl.textContent = 'Complete monto, fecha y método de pago.';
-    errEl.style.display = 'block'; return;
+    mostrarError('Complete monto, fecha y método de pago.');
+    return;
   }
   if (!ref.trim()) {
-    errEl.textContent = 'Debe ingresar el número de referencia o comprobante.';
-    errEl.style.display = 'block';
+    mostrarError('Debe ingresar el número de referencia o comprobante.');
     document.getElementById('cont-pago-cxp-ref')?.focus();
     return;
   }
