@@ -574,7 +574,7 @@ async function contGuardarAsiento() {
         id_cuenta:   l.id_cuenta,
         descripcion: l.descripcion||null,
         orden:       i+1,
-        tasa:        tasaL,
+        tasa_bcv:        tasaL,
         debe_usd:    parseFloat(l.debe_usd||0),
         haber_usd:   parseFloat(l.haber_usd||0),
         debe_ves:    parseFloat(l.debe_ves||0) || parseFloat(l.debe_usd||0) * tasaL,
