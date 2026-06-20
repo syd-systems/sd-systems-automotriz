@@ -1,4 +1,3 @@
-// pagos v20260620007
 // ─── S&D Systems — Módulo: PAGOS ───
 // ══════════════════════════════════════════════════════════════
 //  MÓDULO DE PAGOS
@@ -1473,57 +1472,6 @@ async function contGuardarPagoCxp() {
   }
 }
 
-
-async function contGuardarPagoCxp() {
-  const idCxP    = parseInt(document.getElementById('cont-pago-cxp-id')?.value) || null;
-  const moneda   = document.getElementById('cont-pago-cxp-moneda')?.value || 'VES';
-  const monto    = parseFloat(document.getElementById('cont-pago-cxp-monto')?.value) || 0;
-  const tasa     = parseFloat(document.getElementById('cont-pago-cxp-tasa')?.value) || _tasaVigente || 1;
-  const fecha    = document.getElementById('cont-pago-cxp-fecha')?.value || '';
-  const metodo   = document.getElementById('cont-pago-cxp-metodo')?.value || '';
-  const ref      = document.getElementById('cont-pago-cxp-ref')?.value || '';
-  const okEl     = document.getElementById('alerta-pago-cxp-ok');
-  const errEl    = document.getElementById('alerta-pago-cxp-err');
-  okEl.style.display = 'none'; errEl.style.display = 'none';
-
-  if (!idCxP || !monto || !fecha) {
-    errEl.textContent = 'Complete monto y fecha.';
-    errEl.style.display = 'block'; return;
-  }
-
-  // Calcular equivalente en USD usando tasa del día de pago
-  const modal2   = document.getElementById('modal-cont-pago-cxp');
-  const tasaDia  = parseFloat(modal2?.dataset.tasaUSD) || tasa || _tasaVigente || 1;
-  const tasaEurD = parseFloat(modal2?.dataset.tasaEUR) || 1;
-  let montoUSD   = monto;
-  if (moneda === 'VES')      montoUSD = parseFloat((monto / tasaDia).toFixed(4));
-  else if (moneda === 'EUR') montoUSD = parseFloat((monto * tasaEurD / tasaDia).toFixed(4));
-
-  try {
-    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*');
-    if (!rows || !rows[0]) return;
-    const c = rows[0];
-    const nuevoPagado = parseFloat((parseFloat(c.pagado_usd||0) + montoUSD).toFixed(4));
-    const nuevoSaldo  = parseFloat(Math.max(0, parseFloat(c.monto_usd||0) - nuevoPagado).toFixed(4));
-    const nuevoEstado = nuevoSaldo <= 0 ? 'PAGADA' : 'PARCIAL';
-
-    await api('cont_cxp','PATCH',{
-      pagado_usd:  nuevoPagado,
-      saldo_usd:   nuevoSaldo,
-      estado:      nuevoEstado
-    },'?id_cxp=eq.'+idCxP);
-
-    okEl.textContent = '✓ Pago registrado correctamente.';
-    okEl.style.display = 'block';
-    setTimeout(function() {
-      cerrarModal('modal-cont-pago-cxp');
-      cargarPagos();
-    }, 1000);
-  } catch(e) {
-    errEl.textContent = 'Error: '+e.message;
-    errEl.style.display = 'block';
-  }
-}
 
 async function anularPagoCxP(idCxP) {
   if (!confirm('¿Anular esta CxP? Se revertirán los asientos contables asociados.')) return;
