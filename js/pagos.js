@@ -293,7 +293,7 @@ async function abrirNuevoPago() {
 
   // Cargar cuentas de gasto
   try {
-    const cuentas = await api('cont_cuentas','GET',null,'?tipo=eq.GASTO&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
+    const cuentas = await api('cont_cuentas','GET',null,'?tipo=eq.EGRESO&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
     const selC = document.getElementById('pago-cuenta-gasto');
     if (selC) {
       selC.innerHTML = '<option value="">— Seleccionar cuenta —</option>'
