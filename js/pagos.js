@@ -1159,7 +1159,11 @@ async function pagarCxP(idCxP) {
     // Monto a cancelar — cuota o saldo total
     const saldoUSD = parseFloat(esCuota ? c.saldo_usd : c.monto_usd) || 0;
     const saldoEl  = document.getElementById('cont-pago-cxp-saldo');
-    if (saldoEl) saldoEl.textContent = '$ ' + fmtUSD(saldoUSD) + ' USD';
+    if (saldoEl) {
+      if (monedaCxP === 'VES') saldoEl.textContent = fmtBs(saldoOrig) + ' Bs';
+      else if (monedaCxP === 'EUR') saldoEl.textContent = fmtUSD(saldoOrig) + ' EUR';
+      else saldoEl.textContent = '$ ' + fmtUSD(saldoOrig) + ' USD';
+    }
 
     // Guardar datos para cálculos de conversión
     const monedaCxP  = c.moneda_pago || 'USD'; // moneda en que se pactó la CxP
@@ -1292,6 +1296,7 @@ function onCambioPagoMoneda() {
   if (monedaCxP === monedaPago) {
     // Misma moneda — sin conversión
     montoPago = saldoOrig;
+    if (tasaCont) tasaCont.style.display = 'none';
   } else if (monedaCxP === 'USD' && monedaPago === 'VES') {
     tasaMostrar = tasaUSD; monRef = 'USD/VES';
     labelTasa   = '1 USD = ' + fmtUSD(tasaUSD) + ' Bs';
@@ -1330,8 +1335,10 @@ function onCambioPagoMoneda() {
   if (montoEl) {
     if (monedaPago === 'VES') {
       montoEl.value = fmtBs(montoPago);
+    } else if (monedaPago === 'EUR') {
+      montoEl.value = fmtUSD(montoPago) + ' EUR';
     } else {
-      montoEl.value = fmtUSD(montoPago) + ' ' + monedaPago;
+      montoEl.value = '$ ' + fmtUSD(montoPago) + ' USD';
     }
     montoEl.dataset.valor = montoPago; // guardar valor numérico para cálculos
   }
