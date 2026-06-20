@@ -1487,9 +1487,10 @@ async function pagarCxP(idCxP) {
     // 7. Moneda por defecto y calcular
     const monedaEl = document.getElementById('cont-pago-cxp-moneda');
     if (monedaEl) monedaEl.value = _empresaActiva?.moneda_principal || 'VES';
-    onCambioPagoMoneda();
 
     abrirModal('modal-cont-pago-cxp');
+    // Calcular monto DESPUÉS de abrir el modal para que el DOM esté listo
+    setTimeout(onCambioPagoMoneda, 50);
   } catch(e) { alert('Error: '+e.message); console.error(e); }
 }
 
@@ -1779,4 +1780,47 @@ async function anularPagoCxP(idCxP) {
 
     cargarPagos();
   } catch(e) { alert('Error al anular: '+e.message); }
+}
+
+async function onSelProveedorCxP() {
+  const idProv = parseInt(document.getElementById('cont-cxp-prov')?.value) || null;
+  const bancoInfo  = document.getElementById('cxp-banco-info');
+  const bancoDatos = document.getElementById('cxp-banco-datos');
+  const pmInfo     = document.getElementById('cxp-pm-info');
+  const pmDatos    = document.getElementById('cxp-pm-datos');
+  const manualInfo = document.getElementById('cxp-manual-info');
+
+  // Reset
+  if (bancoInfo)  bancoInfo.style.display  = 'none';
+  if (pmInfo)     pmInfo.style.display     = 'none';
+  if (manualInfo) manualInfo.style.display = 'none';
+
+  if (!idProv) return;
+
+  try {
+    const rows = await api('proveedores','GET',null,
+      '?id_proveedor=eq.'+idProv+'&select=id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre)');
+    if (!rows || !rows[0]) { if (manualInfo) manualInfo.style.display = ''; return; }
+    const p = rows[0];
+    const tieneBanco = !!p.id_banco;
+    const tienePM    = !!p.pm_id_banco;
+
+    if (tieneBanco && bancoDatos) {
+      bancoDatos.innerHTML =
+        dato('Institución', p.banco_prov?.nombre || '—')
+        + dato('Tipo Cuenta', p.tipo_cuenta || '—')
+        + dato('N° Cuenta', p.numero_cuenta || '—');
+      if (bancoInfo) bancoInfo.style.display = '';
+    }
+    if (tienePM && pmDatos) {
+      pmDatos.innerHTML =
+        dato('Banco', p.banco_pm?.nombre || '—')
+        + dato('C.I./R.I.F', p.pm_ci || '—')
+        + dato('Celular', p.pm_celular || '—');
+      if (pmInfo) pmInfo.style.display = '';
+    }
+    if (!tieneBanco && !tienePM) {
+      if (manualInfo) manualInfo.style.display = '';
+    }
+  } catch(e) { console.warn('onSelProveedorCxP:', e); }
 }
