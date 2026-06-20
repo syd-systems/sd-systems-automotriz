@@ -14,6 +14,7 @@ const TABLAS_MAESTRAS = [
   { key: 'niveles_educativos', tabla: 'param_niveles_educativos',   pk: 'id', nombre: 'Niveles Educativos',     icono: '🎓', tieneCodigo: false, tieneArea: false },
   { key: 'estados_civiles',    tabla: 'param_estados_civiles',   pk: 'id',    nombre: 'Estados Civiles',        icono: '💍', tieneCodigo: false, tieneArea: false },
   { key: 'sexos',              tabla: 'param_sexos',   pk: 'id',              nombre: 'Sexos',                  icono: '⚧',  tieneCodigo: false, tieneArea: false },
+  { key: 'cat_prov', tabla: 'param_categorias_proveedor', pk: 'id', nombre: 'Categorías de Proveedores', icono: '🏷', tieneCodigo: true, tieneEstado: true },
   { key: 'bancos',             tabla: 'param_bancos',   pk: 'id',             nombre: 'Instituciones Financieras', icono: '🏦', tieneCodigo: true,  tieneArea: false, tieneTipoSector: true },
 ];
 
