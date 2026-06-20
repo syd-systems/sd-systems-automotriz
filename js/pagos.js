@@ -1147,8 +1147,7 @@ async function pagarCxP(idCxP) {
     if (archivoInput) {
       archivoInput.value = '';
       // Restaurar visibilidad del input (puede haberse ocultado en modo VER)
-      const archivoCampo = archivoInput.closest('.form-campo');
-      if (archivoCampo) archivoCampo.style.display = '';
+      archivoInput.style.display = '';
     }
     const previewEl = document.getElementById('cont-pago-cxp-archivo-preview');
     if (previewEl) previewEl.innerHTML = '';
@@ -1713,9 +1712,9 @@ async function verPagoCxP(idCxP) {
     // Hacer referencia readonly en modo VER
     const refEl = document.getElementById('cont-pago-cxp-ref');
     if (refEl) refEl.readOnly = true;
-    // Ocultar input de archivo en modo VER
+    // Ocultar solo el input de archivo en modo VER (no el contenedor)
     const archivoInput2 = document.getElementById('cont-pago-cxp-archivo');
-    if (archivoInput2) archivoInput2.closest('.form-campo').style.display = 'none';
+    if (archivoInput2) archivoInput2.style.display = 'none';
 
     // Cambiar botones del modal — solo Anular (si manual) y Retornar
     const footer = document.querySelector('#modal-cont-pago-cxp .modal-footer');
