@@ -1140,7 +1140,7 @@ async function pagarCxP(idCxP) {
     // 3. Llenar datos básicos
     document.getElementById('cont-pago-cxp-id').value    = idCxP;
     document.getElementById('cont-pago-cxp-fecha').value = new Date().toISOString().split('T')[0];
-    document.getElementById('cont-pago-cxp-ref').value   = '';
+    document.getElementById('cont-pago-cxp-ref').value   = ''; // siempre vacío — usuario debe ingresar referencia
     document.getElementById('alerta-pago-cxp-ok').style.display  = 'none';
     document.getElementById('alerta-pago-cxp-err').style.display = 'none';
 
@@ -1669,7 +1669,7 @@ async function verPagoCxP(idCxP) {
     // Llenar modal en modo solo lectura
     document.getElementById('cont-pago-cxp-id').value    = idCxP;
     document.getElementById('cont-pago-cxp-fecha').value = c.fecha_emision || '';
-    document.getElementById('cont-pago-cxp-ref').value   = c.observaciones || '';
+    document.getElementById('cont-pago-cxp-ref').value   = ''; // ref vacío en VER — no es la referencia de pago
     document.getElementById('alerta-pago-cxp-ok').style.display  = 'none';
     document.getElementById('alerta-pago-cxp-err').style.display = 'none';
 
