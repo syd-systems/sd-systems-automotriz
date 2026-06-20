@@ -1232,6 +1232,15 @@ async function pagarCxP(idCxP) {
     // 7. Moneda por defecto y calcular
     const monedaEl = document.getElementById('cont-pago-cxp-moneda');
     if (monedaEl) monedaEl.value = _empresaActiva?.moneda_principal || 'VES';
+    if (monedaEl) monedaEl.disabled = false;
+
+    // Restaurar footer con botones de pago
+    const footerPago = document.querySelector('#modal-cont-pago-cxp .modal-footer');
+    if (footerPago) {
+      footerPago.innerHTML =
+        '<button class="btn-secundario" onclick="cerrarModal(&quot;modal-cont-pago-cxp&quot;)">Retornar</button>'
+        + '<button class="btn-primario" onclick="contGuardarPagoCxp()">&#x1F4B8; Registrar Pago</button>';
+    }
 
     abrirModal('modal-cont-pago-cxp');
     // Calcular monto DESPUÉS de abrir el modal para que el DOM esté listo
