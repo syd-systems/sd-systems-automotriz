@@ -403,7 +403,7 @@ async function abrirEditarOS(id) {
         moneda: (l.moneda || 'USD').toUpperCase(),
         precio_original: parseFloat(l.precio_original || l.precio_usd || 0) };
     });
-    tasaActualOS = tasas.length ? parseFloat(tasas[0].tipo_cambio) : (o.tasa_cambio_usd || 1);
+    tasaActualOS = tasas.length ? parseFloat(tasas[0].tipo_cambio) : (o.tasa_bcv || 1);
   } catch(e) {}
 
   document.getElementById('os-id').value = o.id_orden;
@@ -853,7 +853,7 @@ async function _guardarOSInterno() {
       estado,
       diagnostico: diagnostico || null,
       observaciones: obs || null,
-      tasa_cambio_usd: tasaUSDGuardar,
+      tasa_bcv: tasaUSDGuardar,
       total_servicios_usd: totServ,
       total_repuestos_usd: totRep,
       total_usd: totalUSDGuardar,
@@ -1107,7 +1107,7 @@ async function verFichaOS(id) {
       api('tasas', 'GET', null, '?moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
     const tasaActualFicha = tasasActuales.length ? parseFloat(tasasActuales[0].tipo_cambio) : null;
-    const tasaHistorica = parseFloat(o.tasa_cambio_usd || 1);
+    const tasaHistorica = parseFloat(o.tasa_bcv || 1);
     const tasaDiferente = tasaActualFicha && Math.abs(tasaActualFicha - tasaHistorica) > 0.01;
     const est = ESTADOS_OS[o.estado] || { clase: 'badge-gris', label: o.estado };
     const veh = o.vehiculos;
@@ -1245,11 +1245,11 @@ async function recalcularTasaOS(id, nuevaTasa) {
     if (!o) return;
     const nuevoTotalVes = parseFloat(o.total_usd || 0) * nuevaTasa;
     await api('ordenes_servicio', 'PATCH', {
-      tasa_cambio_usd: nuevaTasa,
+      tasa_bcv: nuevaTasa,
       total_ves: nuevoTotalVes,
     }, '?id_orden=eq.' + id);
     // Actualizar cache local
-    o.tasa_cambio_usd = nuevaTasa;
+    o.tasa_bcv = nuevaTasa;
     o.total_ves = nuevoTotalVes;
     cerrarModal('modal-ficha-os');
     renderOrdenes();
