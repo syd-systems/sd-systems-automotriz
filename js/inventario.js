@@ -646,7 +646,8 @@ async function guardarProveedor() {
     pm_ci:              document.getElementById('prov-pm-ci')?.value.trim().toUpperCase() || null,
     pm_celular:         document.getElementById('prov-pm-celular')?.value.trim() || null,
     id_categoria:       parseInt(document.getElementById('prov-categoria')?.value) || null,
-    id_usuario:         sesionActual.correo_usuario
+    id_usuario:         sesionActual.correo_usuario,
+    id_emisor:          _empresaActiva?.id_emisor || null
   };
 
   try {
