@@ -1338,17 +1338,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260619012"></script>
-<script src="js/parametros.js?v=20260619012"></script>
-<script src="js/empresas.js?v=20260619012"></script>
-<script src="js/facturacion.js?v=20260619012"></script>
-<script src="js/inventario.js?v=20260619012"></script>
-<script src="js/contabilidad.js?v=20260619012"></script>
-<script src="js/pagos.js?v=20260619012"></script>
-<script src="js/vehiculos.js?v=20260619012"></script>
-<script src="js/catalogo.js?v=20260619012"></script>
-<script src="js/inventario2.js?v=20260619012"></script>
-<script src="js/ordenes.js?v=20260619012"></script>
+<script src="js/core.js?v=20260619013"></script>
+<script src="js/parametros.js?v=20260619013"></script>
+<script src="js/empresas.js?v=20260619013"></script>
+<script src="js/facturacion.js?v=20260619013"></script>
+<script src="js/inventario.js?v=20260619013"></script>
+<script src="js/contabilidad.js?v=20260619013"></script>
+<script src="js/pagos.js?v=20260619013"></script>
+<script src="js/vehiculos.js?v=20260619013"></script>
+<script src="js/catalogo.js?v=20260619013"></script>
+<script src="js/inventario2.js?v=20260619013"></script>
+<script src="js/ordenes.js?v=20260619013"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2065,12 +2065,11 @@
           <input type="date" id="cont-pago-cxp-fecha">
         </div>
 
-        <!-- 5. Método de Pago -->
-        <div class="form-campo form-full">
-          <label>Método de Pago *</label>
-          <select id="cont-pago-cxp-metodo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar —</option>
-          </select>
+        <!-- 5. Método de Pago — dinámico según datos del proveedor -->
+        <div class="form-campo form-full" id="cont-pago-metodo-cont">
+          <label>Método de Pago</label>
+          <div id="cont-pago-metodo-display" style="font-size:13px;color:var(--texto);background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:5px;padding:11px 14px">—</div>
+          <input type="hidden" id="cont-pago-cxp-metodo">
         </div>
 
         <!-- Datos bancarios (readonly si proveedor los tiene) -->
