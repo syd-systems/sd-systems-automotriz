@@ -1442,7 +1442,7 @@ async function contGuardarPagoCxp() {
             haber_usd:   0,
             debe_ves:    montoAstVES,
             haber_ves:   0,
-            tasa:        tasaVig
+            tasa_bcv:        tasaVig
           });
           // Línea 2: CRÉDITO a Banco
           await api('cont_asiento_lineas','POST',{
@@ -1454,7 +1454,7 @@ async function contGuardarPagoCxp() {
             haber_usd:   montoAstUSD,
             debe_ves:    0,
             haber_ves:   montoAstVES,
-            tasa:        tasaVig
+            tasa_bcv:        tasaVig
           });
         }
       }
