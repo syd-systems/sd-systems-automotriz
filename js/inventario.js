@@ -20,9 +20,17 @@ async function recargarHistorial(idRepuesto) {
   if (!idRepuesto) idRepuesto = document.getElementById('historial-id-repuesto').value;
   const cont = document.getElementById('historial-contenido');
   try {
+    // Filtrar por área si usuario no es admin
+    let idAreaH = null;
+    if (_invSaldoArea !== null) {
+      const empH = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_area&limit=1').catch(function(){ return []; });
+      idAreaH = empH?.[0]?.id_area || null;
+    }
+    const qEnt = '?id_articulo=eq.' + idRepuesto + (idAreaH ? '&id_area=eq.'+idAreaH : '') + '&order=fecha_registro.desc&select=*,area_receptora:id_area(nombre,codigo),area_origen:id_area_origen(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),proveedores(nombre)';
+    const qSal = '?id_articulo=eq.' + idRepuesto + (idAreaH ? '&or=(id_area.eq.'+idAreaH+',id_area_entrega.eq.'+idAreaH+')' : '') + '&order=fecha_registro.desc&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),empleado_entrega:id_empleado_entrega(nombre_completo)';
     const [entradas, salidas] = await Promise.all([
-      api('stock_entradas', 'GET', null, '?id_articulo=eq.' + idRepuesto + '&order=fecha_registro.desc&select=*,area_receptora:id_area(nombre,codigo),area_origen:id_area_origen(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),proveedores(nombre)'),
-      api('stock_salidas',  'GET', null, '?id_articulo=eq.' + idRepuesto + '&order=fecha_registro.desc&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),empleado_entrega:id_empleado_entrega(nombre_completo)'),
+      api('stock_entradas', 'GET', null, qEnt),
+      api('stock_salidas',  'GET', null, qSal),
     ]);
 
     // Combinar y ordenar por fecha_registro desc
