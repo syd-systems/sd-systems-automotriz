@@ -91,16 +91,15 @@ async function eliminarEmisorFicha() {
   if (!id) return;
   const nombre = window._fichaEmisorNombre || 'esta empresa';
   try {
-    const [asientos, facturas, pagos, ordenes] = await Promise.all([
+    const [asientos, facturas, ordenes] = await Promise.all([
       api('cont_asientos',    'GET', null, '?id_emisor=eq.'+id+'&select=id_asiento&limit=1'),
       api('facturas',         'GET', null, '?id_emisor=eq.'+id+'&select=id_factura&limit=1'),
-      api('pagos',            'GET', null, '?id_emisor=eq.'+id+'&select=id_pago&limit=1'),
       api('ordenes_servicio', 'GET', null, '?id_emisor=eq.'+id+'&select=id_orden&limit=1'),
     ]);
     const motivos = [];
     if (asientos.length > 0) motivos.push('asientos contables');
     if (facturas.length > 0)  motivos.push('facturas');
-    if (pagos.length > 0)     motivos.push('pagos');
+    if (false)     motivos.push('pagos');
     if (ordenes.length > 0)   motivos.push('órdenes de servicio');
     if (motivos.length > 0) {
       alert('No se puede eliminar "' + nombre + '" porque tiene ' + motivos.join(', ') + ' registrados.');
@@ -123,16 +122,15 @@ async function eliminarEmisor() {
 
   // Verificar registros asociados antes de preguntar
   try {
-    const [asientos, facturas, pagos, ordenes] = await Promise.all([
+    const [asientos, facturas, ordenes] = await Promise.all([
       api('cont_asientos',    'GET', null, '?id_emisor=eq.'+id+'&select=id_asiento&limit=1'),
       api('facturas',         'GET', null, '?id_emisor=eq.'+id+'&select=id_factura&limit=1'),
-      api('pagos',            'GET', null, '?id_emisor=eq.'+id+'&select=id_pago&limit=1'),
       api('ordenes_servicio', 'GET', null, '?id_emisor=eq.'+id+'&select=id_orden&limit=1'),
     ]);
     const motivos = [];
     if (asientos.length > 0) motivos.push('asientos contables');
     if (facturas.length > 0) motivos.push('facturas');
-    if (pagos.length > 0)    motivos.push('pagos');
+    if (false)    motivos.push('pagos');
     if (ordenes.length > 0)  motivos.push('órdenes de servicio');
     if (motivos.length > 0) {
       alert('No se puede eliminar "' + nombre + '" porque tiene ' + motivos.join(', ') + ' registrados.');
