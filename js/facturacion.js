@@ -1203,12 +1203,13 @@ async function abrirSalidaStock(id, nombre) {
 
 
 
-  // Mostrar stock actual
+  // Mostrar stock por area
+  await calcularInvSaldoArea();
   const art = inventarioCache.find(function(x) { return x.id_articulo === id; });
-  document.getElementById('salida-stock-actual').textContent = art
-    ? art.stock_actual + ' ' + (art.unidad || 'UND') : '—';
+  const stockSalida = art ? (_invSaldoArea ? (_invSaldoArea[art.id_articulo]||0) : art.stock_actual) : 0;
+  document.getElementById('salida-stock-actual').textContent = art ? stockSalida + ' ' + (art.unidad || 'UND') : '—';
 
-  abrirModal('modal-salida-stock');
+    abrirModal('modal-salida-stock');
   focusFirstField('modal-salida-stock');
   setTimeout(function() { document.getElementById('salida-cantidad')?.focus(); }, 100);
 }
