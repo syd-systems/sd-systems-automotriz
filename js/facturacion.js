@@ -770,16 +770,18 @@ async function eliminarFactura(id, numero) {
 // ─── ARTÍCULO ACTIVO EN FICHA ───
 var _fichaInvActual = { id: null, nombre: '' };
 
-function abrirStockArticulo(id, nombre) {
+async function abrirStockArticulo(id, nombre) {
   if (!sesionActual?.administrador && !puedo('INVENTARIO','VER')) {
     alert('No tiene permiso.'); return;
   }
+  await calcularInvSaldoArea();
   const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) return;
   _fichaInvActual = { id: r.id_articulo, nombre: r.nombre };
 
   document.getElementById('stock-art-nombre').textContent = r.nombre;
-  document.getElementById('stock-art-stock').textContent  = r.stock_actual + ' ' + (r.unidad || 'UND');
+  const stockFicha2 = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual;
+  document.getElementById('stock-art-stock').textContent = stockFicha2 + ' ' + (r.unidad || 'UND');
   const ventaCont = document.getElementById('stock-art-venta-cont');
   if (puedo('INVENTARIO','VER_PRECIOS_VENTA')) {
     document.getElementById('stock-art-venta').textContent = '$ ' + fmtUSD(r.precio_venta_usd);
