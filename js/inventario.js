@@ -36,7 +36,11 @@ async function recargarHistorial(idRepuesto) {
     // Combinar y ordenar por fecha_registro desc
     const movimientos = [
       ...entradas.map(function(e) { return { ...e, tipo: 'ENTRADA', fecha: e.fecha_entrada, fecha_reg: e.fecha_registro }; }),
-      ...salidas.map(function(s)  { return { ...s, tipo: 'SALIDA',  fecha: s.fecha_salida,  fecha_reg: s.fecha_registro }; }),
+      ...salidas.map(function(s)  {
+        // Si el area del usuario es el DESTINO (id_area), es una ENTRADA para él
+        const tipoMov = idAreaH && s.id_area === idAreaH ? 'ENTRADA' : 'SALIDA';
+        return { ...s, tipo: tipoMov, fecha: s.fecha_salida, fecha_reg: s.fecha_registro };
+      }),
     ].sort(function(a, b) { return new Date(b.fecha_reg) - new Date(a.fecha_reg); });
 
     if (!movimientos.length) {
