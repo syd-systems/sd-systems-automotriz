@@ -1044,7 +1044,7 @@ async function verHistorialEntradas(idArticulo) {
     if (idAreaFiltro) {
       // Para operador de área: sus "entradas" son las salidas del almacén hacia su área
       const salsRecibidas = await api('stock_salidas','GET',null,
-        '?id_articulo=eq.'+idArticulo+'&id_area_entrega=eq.'+idAreaFiltro+'&order=fecha_salida.desc&select=*,area_origen:id_area(nombre,codigo)');
+        '?id_articulo=eq.'+idArticulo+'&id_area=eq.'+idAreaFiltro+'&order=fecha_salida.desc&select=*,area_origen:id_area_entrega(nombre,codigo)');
       if (!salsRecibidas || !salsRecibidas.length) {
         cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:8px 0">Sin entradas en tu área.</div>';
         return;
