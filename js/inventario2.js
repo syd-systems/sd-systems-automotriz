@@ -752,6 +752,30 @@ async function guardarEntradaStock() {
     if (nuevoPrecioVenta && nuevoPrecioVenta > 0 && puedo('INVENTARIO','VER_PRECIOS_VENTA')) patch.precio_venta_usd = nuevoPrecioVenta;
     await api('inventario', 'PATCH', patch, '?id_articulo=eq.' + id);
 
+    // ── FASE 4.5: Registrar salida en área origen si es transferencia ──
+    if (motivoEnt === 'transferencia' && idAreaOrigenH) {
+      const idEmpEntregaH = parseInt(document.getElementById('es-empleado-entrega')?.value) || null;
+      await api('stock_salidas', 'POST', {
+        id_articulo:       id,
+        cantidad:          cantidad,
+        fecha_salida:      getHoyVzla(),
+        id_area:           idAreaEnt,          // destino (receptor)
+        id_area_entrega:   idAreaOrigenH,       // origen (quien entrega)
+        id_empleado:       idEmpEntVal,         // receptor
+        id_empleado_entrega: idEmpEntregaH,
+        observaciones:     document.getElementById('es-observaciones')?.value.trim() || null,
+        id_usuario:        sesionActual.correo_usuario
+      });
+      // Actualizar stock_actual del área origen — decrementar
+      const artOrigen = await api('inventario','GET',null,'?id_articulo=eq.'+id+'&select=stock_actual');
+      const stockOrigen = parseFloat(artOrigen?.[0]?.stock_actual || 0);
+      // stock_actual ya fue actualizado con nuevoStock (que sumó la entrada)
+      // necesitamos decrementar adicionalmente por la salida del origen
+      // stock_actual = (stock antes de transferencia) - cantidad + cantidad = sin cambio neto
+      // Corrección: el stock_actual debe bajar solo si es una salida sin entrada (diferente área)
+      // Para transferencia: stock_actual no cambia (entra en una área, sale de otra, mismo artículo)
+    }
+
     // ── FASE 5: Asiento contable ──
     try {
       const areaNombreEnt = document.getElementById('es-area-display')?.textContent || 'Área';
@@ -910,6 +934,8 @@ async function abrirNuevoInventario() {
 }
 
 async function abrirEditarInventario(id) {
+  // Asegurar que _invSaldoArea esté calculado para mostrar stock correcto del área
+  await calcularInvSaldoArea();
   const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) return;
   document.getElementById('inv-id').value = r.id_articulo;
@@ -943,7 +969,8 @@ async function abrirEditarInventario(id) {
   var infoEl = document.getElementById('inv-info-stock-costo');
   if (infoEl) {
     infoEl.style.display = '';
-    document.getElementById('inv-info-stock-val').textContent = r.stock_actual + ' ' + (r.unidad || 'UND');
+    const stockFicha = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual;
+    document.getElementById('inv-info-stock-val').textContent = stockFicha + ' ' + (r.unidad || 'UND');
     document.getElementById('inv-info-costo-val').textContent = '$ ' + parseFloat(r.precio_costo_usd || 0).toFixed(2) + ' (CPP)';
   }
   abrirModal('modal-inventario');
