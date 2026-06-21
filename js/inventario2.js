@@ -83,14 +83,16 @@ async function calcularInvSaldoArea() {
 
     const [entsDirectas, salsRecibidas, salsEnviadas] = await Promise.all([
       Promise.race([api('stock_entradas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
-      Promise.race([api('stock_salidas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
-      Promise.race([api('stock_salidas','GET',null,'?id_area_entrega=eq.'+idAreaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; })
+      Promise.race([api('stock_salidas','GET',null,'?id_area_entrega=eq.'+idAreaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
+      Promise.race([api('stock_salidas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; })
     ]);
 
     const saldo = {};
     (entsDirectas||[]).forEach(function(e){ saldo[e.id_articulo] = (saldo[e.id_articulo]||0) + parseFloat(e.cantidad||0); });
-    (salsRecibidas||[]).forEach(function(s){ saldo[s.id_articulo] = (saldo[s.id_articulo]||0) + parseFloat(s.cantidad||0); });
-    (salsEnviadas||[]).forEach(function(s){ saldo[s.id_articulo] = (saldo[s.id_articulo]||0) - parseFloat(s.cantidad||0); });
+    // salsRecibidas: transferencias donde mi área es el ORIGEN (id_area_entrega=yo) → son salidas de mi stock
+    (salsRecibidas||[]).forEach(function(s){ saldo[s.id_articulo] = (saldo[s.id_articulo]||0) - parseFloat(s.cantidad||0); });
+    // salsEnviadas: transferencias donde mi área es el DESTINO (id_area=yo) → son entradas a mi stock
+    (salsEnviadas||[]).forEach(function(s){ saldo[s.id_articulo] = (saldo[s.id_articulo]||0) + parseFloat(s.cantidad||0); });
     _invSaldoArea = saldo;
   } catch(e) {
     console.warn('calcularInvSaldoArea error:', e);
