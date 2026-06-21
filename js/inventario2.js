@@ -482,7 +482,9 @@ async function abrirEntradaStock(id) {
   if (!r) { alert('Error: artículo no encontrado. Intente recargar el inventario.'); return; }
   document.getElementById('es-id').value = id;
   document.getElementById('es-nombre').textContent = r.nombre;
-  document.getElementById('es-stock-actual').textContent = r.stock_actual + ' ' + (r.unidad || 'UND');
+  await calcularInvSaldoArea();
+  const stockEntrada = _invSaldoArea ? (_invSaldoArea[r.id_articulo]||0) : r.stock_actual;
+  document.getElementById('es-stock-actual').textContent = stockEntrada + ' ' + (r.unidad || 'UND');
   document.getElementById('es-cantidad').value = '';
   document.getElementById('es-precio-costo').value = '0.00';
   document.getElementById('es-motivo').value = 'compra';
