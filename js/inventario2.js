@@ -336,7 +336,7 @@ function invRenderABC(items, cont) {
     + '<div><span style="color:#94a3b8;font-weight:700">● Clase C</span> — Revisión mensual · Pedidos consolidados</div>'
     + '</div>'
     + '<div style="padding:8px 14px;background:rgba(255,107,0,0.08);border-left:3px solid var(--naranja);border-radius:4px;margin-bottom:10px;font-size:11px;color:var(--suave)">'
-    + '<b style="color:var(--naranja)">FIFO / PEPS:</b> El stock existente (ingresado primero) se consume antes que el nuevo. Los items Clase A deben rotarse con mayor control. Registra la fecha de ingreso al editar cada repuesto.</div>'
+    + '<b style="color:var(--naranja)">FIFO / PEPS:</b> El stock existente (ingresado primero) se consume antes que el nuevo. Los items Clase A deben rotarse con mayor control. Registra la fecha de ingreso al editar cada artículo.</div>'
     + '<div class="tabla-container"><table><thead><tr><th>Clase</th><th>Artículo</th><th style="text-align:center">Stock</th><th>P. Venta</th><th>Valor Inventario</th><th>% Total</th></tr></thead><tbody>'
     + filasHTML + '</tbody></table></div>';
 }
@@ -362,11 +362,11 @@ function invRenderReorden(items, cont) {
   }).join('');
   cont.innerHTML = '<div style="padding:8px 14px;background:rgba(255,107,0,0.08);border-left:3px solid var(--naranja);border-radius:4px;margin-bottom:10px;font-size:11px;color:var(--suave)">'
     + '<b style="color:var(--naranja)">Punto de Reorden = (Demanda Diaria × Lead Time) + Stock de Seguridad.</b> '
-    + 'JIT: Pedir solo lo necesario al alcanzar el punto de reorden. Configura Demanda Anual y Lead Time en cada repuesto.</div>'
+    + 'JIT: Pedir solo lo necesario al alcanzar el punto de reorden. Configura Demanda Anual y Lead Time en cada artículo.</div>'
     + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
     + '<th>Artículo</th><th style="text-align:center">Stock</th><th style="text-align:center">Mínimo</th><th style="text-align:center">Dem./Día</th><th style="text-align:center">Lead Time</th><th style="text-align:center">Punto Reorden</th><th style="text-align:center">Estado</th>'
     + '</tr></thead><tbody>'
-    + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos</td></tr>')
+    + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Sin artículos</td></tr>')
     + '</tbody></table></div>';
 }
 
@@ -393,7 +393,7 @@ function invRenderEOQ(items, cont) {
     + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
     + '<th>Artículo</th><th style="text-align:center">Demanda Anual</th><th style="text-align:center">Costos Operativos</th><th style="text-align:center">Costo Mant.</th><th style="text-align:center">EOQ Óptimo</th><th style="text-align:center">Pedidos/Año</th><th style="text-align:center">Frecuencia</th>'
     + '</tr></thead><tbody>'
-    + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos</td></tr>')
+    + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Sin artículos</td></tr>')
     + '</tbody></table></div>';
 }
 
