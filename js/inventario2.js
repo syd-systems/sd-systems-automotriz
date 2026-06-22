@@ -948,10 +948,13 @@ async function abrirEditarInventario(id) {
   try {
     const ctas113e = await api('cont_cuentas','GET',null,'?codigo=like.1.1.03*&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
     const selCtaE = document.getElementById('inv-cuenta-contable');
-    if (selCtaE) { selCtaE.innerHTML = '<option value="">— Seleccionar —</option>' + ctas113e.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join(''); selCtaE.value = r.id_cuenta_contable || ''; }
+    if (selCtaE) { selCtaE.innerHTML = '<option value="">— Seleccionar —</option>' + ctas113e.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join(''); }
   } catch(e3) {}
   const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) return;
+  // Preseleccionar cuenta contable
+  const selCtaFinal = document.getElementById('inv-cuenta-contable');
+  if (selCtaFinal && r.id_cuenta_contable) selCtaFinal.value = r.id_cuenta_contable;
   document.getElementById('inv-id').value = r.id_articulo;
   document.getElementById('inv-codigo').value = r.codigo || '';
   document.getElementById('inv-nombre').value = r.nombre;
