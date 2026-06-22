@@ -938,7 +938,7 @@ async function abrirNuevoInventario() {
   setTimeout(function() {
     const body = document.querySelector('#modal-inventario .modal-body');
     if (body) body.scrollTop = 0;
-    document.getElementById('inv-codigo')?.focus();
+    document.getElementById('inv-categoria')?.focus();
   }, 80);
 }
 
@@ -1022,7 +1022,7 @@ async function guardarInventario() {
       if (dup && dup.length) {
         errEl.textContent = 'Ya existe un artículo con el código "' + codigo + '". Usa un código diferente.';
         errEl.style.display = 'block';
-        document.getElementById('inv-codigo')?.focus();
+        document.getElementById('inv-categoria')?.focus();
         return;
       }
     }
