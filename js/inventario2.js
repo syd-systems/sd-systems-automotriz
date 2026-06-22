@@ -129,11 +129,11 @@ async function renderInventario(filtro) {
       + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--suave);cursor:pointer">'
       + '<input type="checkbox" id="inv-mostrar-todos" onchange="renderInventario(document.getElementById(\'buscar-inv\')?.value||\'\')">'
       + 'Solo con stock</label>'
-      + '<input type="text" id="buscar-inv" placeholder="Buscar consumible o código..." '
+      + '<input type="text" id="buscar-inv" placeholder="Buscar artículo o código..." '
       + 'onkeyup="renderInventario(this.value)" '
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\');}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:180px">'
-      + (puedo('INVENTARIO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Consumible</button>' : '')
+      + (puedo('INVENTARIO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Artículo</button>' : '')
       + '</div></div>'
       + '<div id="alerta-stock-bajo" style="display:none"></div>'
       + '<div id="tabla-inv-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
@@ -234,7 +234,7 @@ async function invCambiarVista(vista) {
     btn.style.background = activo ? 'var(--naranja)' : 'transparent';
     btn.style.color = activo ? '#fff' : 'var(--suave)';
   });
-  // Ocultar "+ Nuevo Consumible" en vistas de administración
+  // Ocultar "+ Nuevo Artículo" en vistas de administración
   const btnNuevo = document.querySelector('#panel-inventario .btn-primario[onclick="abrirNuevoInventario()"]');
   if (btnNuevo) {
     btnNuevo.style.display = (vista === 'categorias' || vista === 'tipos') ? 'none' : '';
@@ -303,8 +303,8 @@ function invRenderTabla(items, cont) {
       + '</div></td></tr>';
   }).join('');
   cont.innerHTML = '<div class="tabla-container"><table><thead><tr>'
-    + '<th>Consumible</th><th>Stock</th><th>Precio Costo</th><th>Precio Venta</th><th>Acción</th>'
-    + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin consumibles registrados</td></tr>') + '</tbody></table></div>';
+    + '<th>Artículo</th><th>Stock</th><th>Precio Costo</th><th>Precio Venta</th><th>Acción</th>'
+    + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin artículos registrados</td></tr>') + '</tbody></table></div>';
 }
 
 function invRenderABC(items, cont) {
@@ -337,7 +337,7 @@ function invRenderABC(items, cont) {
     + '</div>'
     + '<div style="padding:8px 14px;background:rgba(255,107,0,0.08);border-left:3px solid var(--naranja);border-radius:4px;margin-bottom:10px;font-size:11px;color:var(--suave)">'
     + '<b style="color:var(--naranja)">FIFO / PEPS:</b> El stock existente (ingresado primero) se consume antes que el nuevo. Los items Clase A deben rotarse con mayor control. Registra la fecha de ingreso al editar cada repuesto.</div>'
-    + '<div class="tabla-container"><table><thead><tr><th>Clase</th><th>Consumible</th><th style="text-align:center">Stock</th><th>P. Venta</th><th>Valor Inventario</th><th>% Total</th></tr></thead><tbody>'
+    + '<div class="tabla-container"><table><thead><tr><th>Clase</th><th>Artículo</th><th style="text-align:center">Stock</th><th>P. Venta</th><th>Valor Inventario</th><th>% Total</th></tr></thead><tbody>'
     + filasHTML + '</tbody></table></div>';
 }
 
@@ -364,7 +364,7 @@ function invRenderReorden(items, cont) {
     + '<b style="color:var(--naranja)">Punto de Reorden = (Demanda Diaria × Lead Time) + Stock de Seguridad.</b> '
     + 'JIT: Pedir solo lo necesario al alcanzar el punto de reorden. Configura Demanda Anual y Lead Time en cada repuesto.</div>'
     + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
-    + '<th>Consumible</th><th style="text-align:center">Stock</th><th style="text-align:center">Mínimo</th><th style="text-align:center">Dem./Día</th><th style="text-align:center">Lead Time</th><th style="text-align:center">Punto Reorden</th><th style="text-align:center">Estado</th>'
+    + '<th>Artículo</th><th style="text-align:center">Stock</th><th style="text-align:center">Mínimo</th><th style="text-align:center">Dem./Día</th><th style="text-align:center">Lead Time</th><th style="text-align:center">Punto Reorden</th><th style="text-align:center">Estado</th>'
     + '</tr></thead><tbody>'
     + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos</td></tr>')
     + '</tbody></table></div>';
@@ -389,9 +389,9 @@ function invRenderEOQ(items, cont) {
   }).join('');
   cont.innerHTML = '<div style="padding:8px 14px;background:var(--gris2);border-radius:6px;margin-bottom:10px;font-size:11px;color:var(--suave)">'
     + '<b style="color:var(--naranja)">EOQ = √(2 × D × S / H)</b> donde D = demanda anual, S = costos operativos ($25 default), H = costo de mantenimiento (20% del precio costo). '
-    + 'Configura <b>Demanda Anual</b> y <b>Costos Operativos</b> en la edición de cada consumible.</div>'
+    + 'Configura <b>Demanda Anual</b> y <b>Costos Operativos</b> en la edición de cada artículo.</div>'
     + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
-    + '<th>Consumible</th><th style="text-align:center">Demanda Anual</th><th style="text-align:center">Costos Operativos</th><th style="text-align:center">Costo Mant.</th><th style="text-align:center">EOQ Óptimo</th><th style="text-align:center">Pedidos/Año</th><th style="text-align:center">Frecuencia</th>'
+    + '<th>Artículo</th><th style="text-align:center">Demanda Anual</th><th style="text-align:center">Costos Operativos</th><th style="text-align:center">Costo Mant.</th><th style="text-align:center">EOQ Óptimo</th><th style="text-align:center">Pedidos/Año</th><th style="text-align:center">Frecuencia</th>'
     + '</tr></thead><tbody>'
     + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Sin repuestos</td></tr>')
     + '</tbody></table></div>';
@@ -456,7 +456,7 @@ function verFichaInventario(id) {
           // Mostrar mensaje explicativo debajo del historial
           const msgEl = document.getElementById('ficha-inv-msg-eliminar');
           if (msgEl) {
-            msgEl.textContent = '⚠ Este consumible no puede eliminarse porque tiene movimientos de stock registrados. Para darlo de baja, márquelo como inactivo desde Editar.';
+            msgEl.textContent = '⚠ Este artículo no puede eliminarse porque tiene movimientos de stock registrados. Para darlo de baja, márquelo como inactivo desde Editar.';
             msgEl.style.display = 'block';
           }
         }
@@ -525,13 +525,13 @@ async function abrirEntradaStock(id) {
   Promise.all([
     api('param_areas',  'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
     api('proveedores',  'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif,id_categoria,param_categorias_proveedor:id_categoria(nombre)'),
-    api('param_categorias_proveedor','GET',null,'?nombre=ilike.*Consumible*&select=id&limit=1'),
+    api('param_categorias_proveedor','GET',null,'?nombre=ilike.*Artículo*&select=id&limit=1'),
   ]).then(function(res) {
     var areas = res[0], provs = res[1];
-    var catConsumible = res[2] && res[2][0] ? res[2][0].id : null;
-    // Filtrar solo proveedores con categoría Consumibles
-    if (catConsumible) {
-      provs = provs.filter(function(p){ return p.id_categoria === catConsumible; });
+    var catArtículo = res[2] && res[2][0] ? res[2][0].id : null;
+    // Filtrar solo proveedores con categoría Artículos
+    if (catArtículo) {
+      provs = provs.filter(function(p){ return p.id_categoria === catArtículo; });
     }
     var selArea = document.getElementById('es-area');
     selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
@@ -811,7 +811,7 @@ async function guardarEntradaStock() {
           await api('cont_cxp','POST',{
             id_proveedor:  idProveedor,
             id_emisor:     _empresaActiva?.id_emisor || null,
-            tipo:          'COMPRA_CONSUMIBLE',
+            tipo:          'COMPRA_ARTICULO',
             numero_doc:    numDocBase,
             fecha_emision: hoy,
             fecha_vencimiento: hoy,
@@ -835,7 +835,7 @@ async function guardarEntradaStock() {
             await api('cont_cxp','POST',{
               id_proveedor:     idProveedor,
               id_emisor:        _empresaActiva?.id_emisor || null,
-              tipo:             'COMPRA_CONSUMIBLE_CREDITO',
+              tipo:             'COMPRA_ARTICULO_CREDITO',
               numero_doc:       numDocBase + '-C' + c.num,
               fecha_emision:    hoy,
               fecha_vencimiento: c.fecha,
@@ -871,7 +871,7 @@ async function guardarEntradaStock() {
   }
 }
 
-// ─── CATEGORÍAS Y TIPOS DE CONSUMIBLE ───
+// ─── CATEGORÍAS Y TIPOS DE ARTICULO ───
 let _invCategoriasCache = [];
 let _invSaldoArea = null; // Saldo por área del usuario — null = mostrar stock global
 
@@ -923,7 +923,7 @@ async function abrirNuevoInventario() {
     var el = document.getElementById(id);
     if (el) el.disabled = false;
   });
-  document.getElementById('modal-inv-titulo').textContent = 'NUEVO CONSUMIBLE';
+  document.getElementById('modal-inv-titulo').textContent = 'NUEVO ARTICULO';
   document.getElementById('alerta-inv-ok').style.display = 'none';
   document.getElementById('alerta-inv-err').style.display = 'none';
   _invCategoriasCache = []; // Forzar recarga
@@ -958,7 +958,7 @@ async function abrirEditarInventario(id) {
   document.getElementById('inv-lead-time').value = r.lead_time_dias || '';
   document.getElementById('inv-costo-pedido').value = r.costo_pedido_usd || '';
   document.getElementById('inv-stock-seg').value = r.stock_seguridad || '';
-  document.getElementById('modal-inv-titulo').textContent = 'EDITAR CONSUMIBLE';
+  document.getElementById('modal-inv-titulo').textContent = 'EDITAR ARTICULO';
   document.getElementById('alerta-inv-ok').style.display = 'none';
   document.getElementById('alerta-inv-err').style.display = 'none';
 
@@ -1009,7 +1009,7 @@ async function guardarInventario() {
       if (id) qDup += '&id_articulo=neq.' + id; // excluir el propio al editar
       const dup = await api('inventario','GET',null,qDup + '&select=id_articulo&limit=1');
       if (dup && dup.length) {
-        errEl.textContent = 'Ya existe un consumible con el código "' + codigo + '". Usa un código diferente.';
+        errEl.textContent = 'Ya existe un artículo con el código "' + codigo + '". Usa un código diferente.';
         errEl.style.display = 'block';
         document.getElementById('inv-codigo')?.focus();
         return;
@@ -1034,7 +1034,7 @@ async function guardarInventario() {
     } else {
       await api('inventario', 'POST', datos);
     }
-    okEl.textContent = '✓ Consumible guardado.'; okEl.style.display = 'block';
+    okEl.textContent = '✓ Artículo guardado.'; okEl.style.display = 'block';
     setTimeout(function() { cerrarModal('modal-inventario'); document.getElementById('contenido-principal').innerHTML=''; renderInventario(); }, 1000);
   } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
 }
@@ -1222,7 +1222,7 @@ async function invGuardarCategoria() {
   } catch(e) { errEl.textContent='Error: '+e.message; errEl.style.display='block'; }
 }
 
-// ─── TIPOS DE CONSUMIBLE ───
+// ─── TIPOS DE ARTICULO ───
 async function invRenderTipos(cont) {
   if (!cont) cont = document.getElementById('tabla-inv-cont');
   if (!cont) return;
@@ -1246,7 +1246,7 @@ async function invRenderTipos(cont) {
     }).join('');
     cont.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
-      +'<div style="font-size:18px;font-weight:600">🔩 Tipos de Consumible <span style="font-size:13px;color:var(--suave)">('+(tipos?.length||0)+')</span></div>'
+      +'<div style="font-size:18px;font-weight:600">🔩 Tipos de Artículo <span style="font-size:13px;color:var(--suave)">('+(tipos?.length||0)+')</span></div>'
       +'<button class="btn-primario" onclick="invAbrirTipo(null)" style="font-size:12px">+ Nuevo</button>'
       +'</div>'
       +'<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
@@ -1387,7 +1387,7 @@ async function invRenderMovimientos(cont) {
     + '<option value="movimientos">Movimientos</option>'
     + '<option value="categoria">Por Categoría</option>'
     + '<option value="area">Por Área</option>'
-    + '<option value="articulo">Por Consumible</option>'
+    + '<option value="articulo">Por Artículo</option>'
     + '<option value="proveedor">Por Proveedor</option>'
     + '<option value="rotacion">Rotación</option>'
     + '<option value="saldo_area">Saldo por Área</option>'
@@ -1396,8 +1396,8 @@ async function invRenderMovimientos(cont) {
     + '<select id="mov-tipo" onchange="invCargarMovimientos()" style="' + INP + '">'
     + '<option value="">Todos</option><option value="ENTRADA">Entradas</option><option value="SALIDA">Salidas</option>'
     + '</select></div>'
-    + '<div id="mov-filtro-art-cont"><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Consumible</label>'
-    + '<input type="text" id="mov-articulo" placeholder="Buscar consumible..." onkeyup="invCargarMovimientos()" style="' + INP + ';min-width:160px"></div>'
+    + '<div id="mov-filtro-art-cont"><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Artículo</label>'
+    + '<input type="text" id="mov-articulo" placeholder="Buscar artículo..." onkeyup="invCargarMovimientos()" style="' + INP + ';min-width:160px"></div>'
     + '</div>'
     + '<div id="mov-resultado"><div style="text-align:center;color:var(--suave);padding:40px">Cargando...</div></div>';
 
@@ -1426,7 +1426,7 @@ async function invCargarMovimientos() {
       if (arts) inventarioCache = arts;
     }
     const idsArticulos = inventarioCache.map(function(x){ return x.id_articulo; });
-    if (!idsArticulos.length) { res.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">Sin consumibles registrados.</div>'; return; }
+    if (!idsArticulos.length) { res.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">Sin artículos registrados.</div>'; return; }
     const inClause = idsArticulos.join(',');
 
     // Cargar entradas y salidas según filtro
@@ -1491,7 +1491,7 @@ async function invCargarMovimientos() {
         + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
         + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Fecha</th>'
         + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Tipo</th>'
-        + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Consumible</th>'
+        + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
         + '<th style="text-align:right;padding:7px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Cant.</th>'
         + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Origen</th>'
         + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Destino</th>'
@@ -1623,7 +1623,7 @@ async function invCargarMovimientos() {
           +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Stock Actual</th>'
         : '';
       res.innerHTML = '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
-        +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Consumible</th>'
+        +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
         +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Entradas</th>'
         +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Salidas</th>'
         +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Saldo</th>'
@@ -1680,7 +1680,7 @@ async function invCargarMovimientos() {
           +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:'+(saldo>=0?'var(--naranja)':'#fc8181')+'">'+saldo+'</td></tr>';
       });
       res.innerHTML = '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
-        +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Consumible</th>'
+        +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
         +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Entradas</th>'
         +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Salidas</th>'
         +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Saldo</th>'
@@ -1722,7 +1722,7 @@ async function invCargarMovimientos() {
         });
         html += '<div style="margin-bottom:20px"><div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:8px 14px;margin-bottom:6px;font-family:var(--font-mono);color:var(--naranja)">'+area+'</div>'
           +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
-          +'<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Consumible</th>'
+          +'<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
           +'<th style="text-align:right;padding:7px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Saldo</th>'
           +'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>';
       });
