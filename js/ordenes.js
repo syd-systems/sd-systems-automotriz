@@ -4,7 +4,7 @@
 // ══════════════════════════════════════════════════════════════
 let ordenesCache = [];
 let osServiciosLineas = [];  // líneas de servicios de la OS activa
-let osRepuestosLineas = [];  // líneas de repuestos de la OS activa
+let osRepuestosLineas = [];  // líneas de artículos de la OS activa
 // ─── fmtBs / fmtUSD / fmtVES definidas globalmente en core.js ───
 
 let tasaActualOS = 1;        // tasa USD→VES al crear/editar OS
@@ -12,7 +12,7 @@ let tasaActualOS = 1;        // tasa USD→VES al crear/editar OS
 const ESTADOS_OS = {
   'ABIERTA':          { clase: 'badge-naranja', label: 'Abierta' },
   'EN_PROCESO':       { clase: 'badge-verde',   label: 'En Proceso' },
-  'ESPERA_REPUESTO':  { clase: 'badge-rojo',    label: 'Espera Repuesto' },
+  'ESPERA_REPUESTO':  { clase: 'badge-rojo',    label: 'Espera Artículo' },
   'CERRADA':          { clase: 'badge-gris',    label: 'Cerrada' },
   'ANULADA':          { clase: 'badge-rojo',    label: 'Anulada' },
 };
@@ -516,7 +516,7 @@ function renderLineasRep() {
   const cont = document.getElementById('os-lineas-rep');
   if (!cont) return;
   if (!osRepuestosLineas.length) {
-    cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Sin repuestos / materiales agregados</div>';
+    cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Sin artículos agregados</div>';
     return;
   }
   const monedaLabels = { USD: '$ USD', EUR: '€ EUR', VES: 'Bs VES' };
@@ -583,7 +583,7 @@ function calcularTotalesOS() {
   const el = document.getElementById('os-totales');
   if (el) el.innerHTML = '<div style="display:flex;gap:24px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:12px 0">'
     + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Servicios</div><div style="font-family:var(--font-mono)">' + fmtBs(totServBs) + ' Bs</div></div>'
-    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Repuestos</div><div style="font-family:var(--font-mono)">' + fmtBs(totRepBs) + ' Bs</div></div>'
+    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Artículos</div><div style="font-family:var(--font-mono)">' + fmtBs(totRepBs) + ' Bs</div></div>'
     + '<div style="border-left:1px solid var(--borde);padding-left:24px">'
     +   '<div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL</div>'
     +   '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + fmtBs(totalBs) + ' Bs</div>'
@@ -855,7 +855,7 @@ async function _guardarOSInterno() {
       observaciones: obs || null,
       tasa_bcv: tasaUSDGuardar,
       total_servicios_usd: totServ,
-      total_repuestos_usd: totRep,
+      total_artículos_usd: totRep,
       total_usd: totalUSDGuardar,
       total_ves: totalBsGuardar,
       id_usuario: sesionActual.correo_usuario,
@@ -869,7 +869,7 @@ async function _guardarOSInterno() {
       // Editar
       await api('ordenes_servicio', 'PATCH', datos, '?id_orden=eq.' + id);
       // Borrar líneas anteriores y reinsertar
-      // Guardar líneas de repuestos anteriores para restaurar stock
+      // Guardar líneas de artículos anteriores para restaurar stock
       var lineasRepuestosAntes = [];
       try {
         lineasRepuestosAntes = await api('os_repuestos', 'GET', null, '?id_orden=eq.' + id + '&select=id_articulo,cantidad');
@@ -925,7 +925,7 @@ async function _guardarOSInterno() {
       });
     }
 
-    // ── Restaurar stock de repuestos anteriores (solo en edición) ──
+    // ── Restaurar stock de artículos anteriores (solo en edición) ──
     // Si es edición, las líneas anteriores ya fueron borradas arriba.
     // Necesitamos restaurar el stock que consumieron antes de descontar el nuevo.
     if (id && lineasRepuestosAntes && lineasRepuestosAntes.length) {
@@ -943,7 +943,7 @@ async function _guardarOSInterno() {
       }
     }
 
-    // ── Insertar nuevas líneas de repuestos y descontar stock ──
+    // ── Insertar nuevas líneas de artículos y descontar stock ──
     for (var j = 0; j < osRepuestosLineas.length; j++) {
       var lr = osRepuestosLineas[j];
       const monR   = (lr.moneda || 'USD').toUpperCase();
@@ -955,7 +955,7 @@ async function _guardarOSInterno() {
         moneda: monR, precio_original: precR,
         precio_usd: lr.precio_usd, subtotal_usd: subtBsR
       });
-      // Descontar stock siempre que haya repuesto de inventario vinculado
+      // Descontar stock siempre que haya artículo de inventario vinculado
       if (lr.id_articulo) {
         try {
           const invItem = inventarioCache.find(function(x) { return x.id_articulo == lr.id_articulo; });
@@ -975,7 +975,7 @@ async function _guardarOSInterno() {
 }
 
 // ─── ANULAR OS ───
-// ─── HELPER: restaurar o descontar stock de repuestos de una OS ───
+// ─── HELPER: restaurar o descontar stock de artículos de una OS ───
 async function ajustarStockOS(idOrden, operacion) {
   // operacion: 'restaurar' suma al stock, 'descontar' resta
   try {
@@ -1004,7 +1004,7 @@ async function anularOS(id, numero) {
     alert('No tiene permiso para anular órdenes de servicio.');
     return;
   }
-  if (!confirm('¿Anular la orden ' + numero + '? Se restaurará el stock de los repuestos utilizados.')) return;
+  if (!confirm('¿Anular la orden ' + numero + '? Se restaurará el stock de los artículos utilizados.')) return;
   try {
     const hoyAnul = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
     // Restaurar stock ANTES de anular
@@ -1024,7 +1024,7 @@ async function reabrirOS(id, numero) {
     alert('No tiene permiso para reabrir órdenes de servicio.');
     return;
   }
-  if (!confirm('¿Reabrir la orden ' + numero + '? Se descontará nuevamente el stock de los repuestos.')) return;
+  if (!confirm('¿Reabrir la orden ' + numero + '? Se descontará nuevamente el stock de los artículos.')) return;
   try {
     const hoyReab = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
     // Descontar stock nuevamente al reabrir
@@ -1048,8 +1048,8 @@ async function eliminarOS(id, numero) {
       alert('No se puede eliminar la orden ' + numero + ' porque tiene una factura asociada.');
       return;
     }
-    if (!confirm('¿Eliminar definitivamente la orden ' + numero + '?\n\nSe revertirá el stock de los repuestos asociados.\nEsta acción no se puede deshacer.')) return;
-    // 2. Revertir stock de repuestos
+    if (!confirm('¿Eliminar definitivamente la orden ' + numero + '?\n\nSe revertirá el stock de los artículos asociados.\nEsta acción no se puede deshacer.')) return;
+    // 2. Revertir stock de artículos
     await ajustarStockOS(id, 'restaurar');
     // 3. Borrar líneas y la OS
     await Promise.all([
@@ -1204,7 +1204,7 @@ async function verFichaOS(id) {
           : '')
       + '<div style="margin-bottom:16px"><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">🔧 Servicios Realizados</div>'
       + tablaServ + '</div>'
-      + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">📦 Repuestos Utilizados</div>'
+      + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">📦 Artículos Utilizados</div>'
       + tablaRep + '</div>';
 
     document.getElementById('ficha-os-editar-btn').setAttribute('onclick', 'cerrarModal(\'modal-ficha-os\');abrirEditarOS(' + id + ')');
