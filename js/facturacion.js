@@ -1321,16 +1321,16 @@ async function _guardarSalidaStockInterno() {
         const empReceptor = await api('empleados','GET',null,'?id_empleado=eq.'+idEmpRecibe+'&select=correo,nombre_completo,id_usuario,usuarios(correo_usuario)');
         const correoReceptor = empReceptor?.[0]?.correo || empReceptor?.[0]?.usuarios?.correo_usuario || null;
         if (empReceptor && empReceptor[0] && correoReceptor) {
-          const artNom   = art ? art.nombre : 'Consumible #'+idRep;
+          const artNom   = art ? art.nombre : 'Artículo #'+idRep;
           // salida-area-entrega es ahora hidden — obtener nombre del área desde el span
           const areaOrig = document.getElementById('salida-entrega-area')?.textContent
             || document.getElementById('salida-area-entrega')?.value || 'Almacén';
           const areaDest = document.getElementById('salida-area')?.selectedOptions[0]?.text || 'Área';
           await api('notificaciones','POST',{
-            tipo:           'RECEPCION_CONSUMIBLE',
+            tipo:           'RECEPCION_ARTICULO',
             id_emisor:      _empresaActiva?.id_emisor || null,
             correo_destino: correoReceptor,
-            titulo:         'Solicitud de Recepción de Consumible',
+            titulo:         'Solicitud de Recepción de Artículo',
             mensaje:        cantidad + ' unid. de "' + artNom + '" enviadas desde ' + areaOrig + ' hacia ' + areaDest + '. Por favor confirme la recepción.',
             estado:         'PENDIENTE',
             id_salida:      idSalida,
