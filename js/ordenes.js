@@ -4,7 +4,7 @@
 // ══════════════════════════════════════════════════════════════
 let ordenesCache = [];
 let osServiciosLineas = [];  // líneas de servicios de la OS activa
-let osRepuestosLineas = [];  // líneas de artículos de la OS activa
+let osArtículosLineas = [];  // líneas de artículos de la OS activa
 // ─── fmtBs / fmtUSD / fmtVES definidas globalmente en core.js ───
 
 let tasaActualOS = 1;        // tasa USD→VES al crear/editar OS
@@ -299,7 +299,7 @@ async function abrirNuevaOS() {
     if (body) body.scrollTop = 0;
   }, 80);
   osServiciosLineas = [];
-  osRepuestosLineas = [];
+  osArtículosLineas = [];
 
   // Obtener tasas vigentes (USD y EUR)
   try {
@@ -383,7 +383,7 @@ async function abrirEditarOS(id) {
   if (!o) return;
 
   osServiciosLineas = [];
-  osRepuestosLineas = [];
+  osArtículosLineas = [];
 
   try {
     const [linServ, linRep, tasas] = await Promise.all([
@@ -397,7 +397,7 @@ async function abrirEditarOS(id) {
         moneda: (l.moneda || 'USD').toUpperCase(),
         precio_original: parseFloat(l.precio_original || l.precio_usd || 0) };
     });
-    osRepuestosLineas = linRep.map(function(l) {
+    osArtículosLineas = linRep.map(function(l) {
       return { id: l.id_os_rep, id_articulo: l.id_articulo, descripcion: l.descripcion,
         cantidad: l.cantidad, precio_usd: l.precio_usd,
         moneda: (l.moneda || 'USD').toUpperCase(),
@@ -515,7 +515,7 @@ function renderLineasOS() {
 function renderLineasRep() {
   const cont = document.getElementById('os-lineas-rep');
   if (!cont) return;
-  if (!osRepuestosLineas.length) {
+  if (!osArtículosLineas.length) {
     cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Sin artículos agregados</div>';
     return;
   }
@@ -526,14 +526,14 @@ function renderLineasRep() {
     + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px;text-align:right">Precio</div>'
     + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px;text-align:center">Mon.</div>'
     + '<div></div></div>'
-  + osRepuestosLineas.map(function(l, i) {
+  + osArtículosLineas.map(function(l, i) {
     const mon    = (l.moneda || 'USD').toUpperCase();
     const precio = parseFloat(l.precio_original !== undefined ? l.precio_original : (l.precio_usd || 0));
     const precioFmt = mon === 'VES' ? fmtBs(precio) : fmtUSD(precio);
     return '<div style="display:grid;grid-template-columns:1fr 70px 110px 60px auto;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
       + '<div style="font-size:13px;font-weight:500">' + l.descripcion + '</div>'
-      + '<input type="number" value="' + l.cantidad + '" min="0.01" step="0.01" onchange="osRepuestosLineas[' + i + '].cantidad=parseFloat(this.value)||1;calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:center">'
-      + '<input type="text" value="' + precioFmt + '" onchange="osRepuestosLineas[' + i + '].precio_original=parsePrecio(this.value,\'' + mon + '\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
+      + '<input type="number" value="' + l.cantidad + '" min="0.01" step="0.01" onchange="osArtículosLineas[' + i + '].cantidad=parseFloat(this.value)||1;calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:center">'
+      + '<input type="text" value="' + precioFmt + '" onchange="osArtículosLineas[' + i + '].precio_original=parsePrecio(this.value,\'' + mon + '\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
       + '<div style="font-size:10px;font-weight:600;color:var(--suave);text-align:center">' + (monedaLabels[mon] || mon) + '</div>'
       + '<button onclick="quitarLineaRep(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px;padding:0 4px">✕</button>'
       + '</div>';
@@ -558,7 +558,7 @@ function convertirAUSD(precio, moneda) {
 }
 
 function quitarLineaServ(i) { osServiciosLineas.splice(i, 1); renderLineasOS(); }
-function quitarLineaRep(i)  { osRepuestosLineas.splice(i, 1); renderLineasRep(); }
+function quitarLineaRep(i)  { osArtículosLineas.splice(i, 1); renderLineasRep(); }
 
 function calcularTotalesOS() {
   const tasaUSD = tasasDisponiblesOS.USD || tasaActualOS || 1;
@@ -574,7 +574,7 @@ function calcularTotalesOS() {
   const totServBs = osServiciosLineas.reduce(function(acc, l) {
     return acc + lineaABs(l.precio_original || l.precio_usd, l.moneda) * parseFloat(l.cantidad);
   }, 0);
-  const totRepBs = osRepuestosLineas.reduce(function(acc, l) {
+  const totRepBs = osArtículosLineas.reduce(function(acc, l) {
     return acc + lineaABs(l.precio_original || l.precio_usd, l.moneda || 'USD') * parseFloat(l.cantidad);
   }, 0);
   const totalBs  = totServBs + totRepBs;
@@ -705,7 +705,7 @@ function onSelCatalogoChange() {
   if (cant) setTimeout(function() { cant.focus(); cant.select(); }, 50);
 }
 
-// ─── AGREGAR LÍNEA REPUESTO DESDE INVENTARIO ───
+// ─── AGREGAR LÍNEA ARTÍCULO DESDE INVENTARIO ───
 async function agregarRepuestoInventario() {
   if (!inventarioCache.length) {
     try { inventarioCache = await api('inventario', 'GET', null, '?order=nombre.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+''); } catch(e) {}
@@ -734,7 +734,7 @@ async function agregarRepuestoInventario() {
       if (!confirm('⚠ Stock insuficiente (' + stockDisponible + ' disponibles en tu área). ¿Agregar igual?')) return;
     }
     const pVal = parseFloat(precio.value) || parseFloat(r.precio_venta_usd) || 0;
-    osRepuestosLineas.push({ id_articulo: r.id_articulo, descripcion: r.nombre,
+    osArtículosLineas.push({ id_articulo: r.id_articulo, descripcion: r.nombre,
       cantidad: cantVal, precio_usd: precioAUSD(pVal, moneda),
       precio_original: pVal, moneda });
     sel.value = ''; precio.value = ''; cant.value = '1';
@@ -783,7 +783,7 @@ async function _guardarOSInterno() {
 
   // Validar que tenga al menos un servicio o consumible
   const tieneServicios   = osServiciosLineas && osServiciosLineas.length > 0;
-  const tieneConsumibles = osRepuestosLineas && osRepuestosLineas.length > 0;
+  const tieneConsumibles = osArtículosLineas && osArtículosLineas.length > 0;
   if (!tieneServicios && !tieneConsumibles) {
     errEl.textContent = 'Debe agregar al menos un Servicio o un Consumible antes de guardar la OS.';
     errEl.style.display = 'block';
@@ -817,7 +817,7 @@ async function _guardarOSInterno() {
   const totServBs = osServiciosLineas.reduce(function(acc, l) {
     return acc + lineaABsGuardar(l.precio_original || l.precio_usd, l.moneda) * parseFloat(l.cantidad);
   }, 0);
-  const totRepBs = osRepuestosLineas.reduce(function(acc, l) {
+  const totRepBs = osArtículosLineas.reduce(function(acc, l) {
     return acc + lineaABsGuardar(l.precio_original || l.precio_usd, l.moneda || 'USD') * parseFloat(l.cantidad);
   }, 0);
   const totalBsGuardar  = totServBs + totRepBs;
@@ -870,9 +870,9 @@ async function _guardarOSInterno() {
       await api('ordenes_servicio', 'PATCH', datos, '?id_orden=eq.' + id);
       // Borrar líneas anteriores y reinsertar
       // Guardar líneas de artículos anteriores para restaurar stock
-      var lineasRepuestosAntes = [];
+      var lineasArtículosAntes = [];
       try {
-        lineasRepuestosAntes = await api('os_repuestos', 'GET', null, '?id_orden=eq.' + id + '&select=id_articulo,cantidad');
+        lineasArtículosAntes = await api('os_repuestos', 'GET', null, '?id_orden=eq.' + id + '&select=id_articulo,cantidad');
       } catch(e) {}
       await Promise.all([
         api('os_servicios', 'DELETE', null, '?id_orden=eq.' + id),
@@ -928,9 +928,9 @@ async function _guardarOSInterno() {
     // ── Restaurar stock de artículos anteriores (solo en edición) ──
     // Si es edición, las líneas anteriores ya fueron borradas arriba.
     // Necesitamos restaurar el stock que consumieron antes de descontar el nuevo.
-    if (id && lineasRepuestosAntes && lineasRepuestosAntes.length) {
-      for (var k = 0; k < lineasRepuestosAntes.length; k++) {
-        var la = lineasRepuestosAntes[k];
+    if (id && lineasArtículosAntes && lineasArtículosAntes.length) {
+      for (var k = 0; k < lineasArtículosAntes.length; k++) {
+        var la = lineasArtículosAntes[k];
         if (!la.id_articulo) continue;
         try {
           const invAntes = inventarioCache.find(function(x) { return x.id_articulo == la.id_articulo; });
@@ -944,8 +944,8 @@ async function _guardarOSInterno() {
     }
 
     // ── Insertar nuevas líneas de artículos y descontar stock ──
-    for (var j = 0; j < osRepuestosLineas.length; j++) {
-      var lr = osRepuestosLineas[j];
+    for (var j = 0; j < osArtículosLineas.length; j++) {
+      var lr = osArtículosLineas[j];
       const monR   = (lr.moneda || 'USD').toUpperCase();
       const precR  = parseFloat(lr.precio_original || lr.precio_usd || 0);
       const subtBsR = lineaABsGuardar(precR, monR) * parseFloat(lr.cantidad);
@@ -1140,7 +1140,7 @@ async function verFichaOS(id) {
     const tablaRep = linRep.length
       ? '<table style="width:100%;border-collapse:collapse;font-size:12px">'
         + '<thead><tr>'
-        + '<th style="text-align:left;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;letter-spacing:1px">REPUESTO</th>'
+        + '<th style="text-align:left;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;letter-spacing:1px">ARTÍCULO</th>'
         + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CANT</th>'
         + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">P/U</th>'
         + '<th style="text-align:right;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">SUBTOTAL</th>'
