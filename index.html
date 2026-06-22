@@ -2401,13 +2401,13 @@
 <div class="modal-overlay" id="modal-stock-articulo">
   <div class="modal" style="max-width:520px">
     <div class="modal-header">
-      <h3>STOCK DEL CONSUMIBLE</h3>
+      <h3>STOCK DEL ARTICULO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-stock-articulo')">✕</button>
     </div>
     <div class="modal-body">
       <!-- Info artículo -->
       <div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:16px 20px;margin-bottom:24px">
-        <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Consumible</div>
+        <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Artículo</div>
         <div style="font-family:var(--font-display);font-size:20px;color:var(--naranja)" id="stock-art-nombre">—</div>
         <div style="display:flex;gap:24px;margin-top:10px;flex-wrap:wrap">
           <div>
@@ -2461,7 +2461,7 @@
       <!-- Info repuesto -->
       <div style="padding:12px 16px;background:var(--gris2);border-radius:6px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">Consumible</div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">Artículo</div>
           <div style="font-weight:600;font-size:15px" id="es-nombre">—</div>
         </div>
         <div style="text-align:right">
@@ -2616,7 +2616,7 @@
 <div class="modal-overlay" id="modal-inventario">
   <div class="modal" style="max-width:560px">
     <div class="modal-header">
-      <h3 id="modal-inv-titulo">NUEVO CONSUMIBLE</h3>
+      <h3 id="modal-inv-titulo">NUEVO ARTICULO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-inventario')">✕</button>
     </div>
     <div class="modal-body">
@@ -2629,7 +2629,7 @@
           </select>
         </div>
         <div class="form-campo form-full">
-          <label>Selección Tipo Consumible</label>
+          <label>Selección Tipo Artículo</label>
           <select id="inv-tipo-articulo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar Tipo —</option>
           </select>
@@ -2639,8 +2639,8 @@
           <input type="text" id="inv-codigo" placeholder="Ej: REP-001" style="text-transform:uppercase">
         </div>
         <div class="form-campo form-full">
-          <label>Nombre del Consumible *</label>
-          <input type="text" id="inv-nombre" placeholder="Nombre del consumible">
+          <label>Nombre del Artículo *</label>
+          <input type="text" id="inv-nombre" placeholder="Nombre del artículo">
         </div>
         <div class="form-campo">
           <label>Selección Características Físicas</label>
@@ -2851,7 +2851,7 @@
         <!-- Agregar repuesto -->
         <div style="display:grid;grid-template-columns:1fr 70px 80px 80px auto;gap:8px;align-items:end;padding:10px;background:var(--gris2);border-radius:6px">
           <div class="form-campo" style="margin:0">
-            <label style="font-size:7px">Seleccionar Consumible</label>
+            <label style="font-size:7px">Seleccionar Artículo</label>
             <select id="os-sel-inv" onchange="onSelInventarioChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%"></select>
             <input type="hidden" id="os-desc-rep-libre">
           </div>
@@ -3577,7 +3577,7 @@
     </div>
     <div class="modal-body">
       <div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:10px 16px;margin-bottom:16px">
-        <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Consumible</div>
+        <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Artículo</div>
         <div style="font-weight:600;font-size:15px" id="historial-art-nombre">—</div>
       </div>
       <div id="historial-contenido"></div>
@@ -3599,9 +3599,9 @@
       <button class="modal-cerrar" onclick="cerrarModal('modal-salida-stock'); regresarAFichaInv()">✕</button>
     </div>
     <div class="modal-body">
-      <!-- Consumible -->
+      <!-- Artículo -->
       <div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:12px 16px;margin-bottom:16px">
-        <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Consumible</div>
+        <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Artículo</div>
         <div style="font-weight:600;font-size:15px" id="salida-art-nombre">—</div>
         <div style="font-size:12px;color:var(--suave);margin-top:4px">Stock disponible: <span id="salida-stock-actual" style="color:var(--naranja);font-family:var(--font-mono)">—</span></div>
       </div>
@@ -3677,7 +3677,7 @@
 <div class="modal-overlay" id="modal-ficha-inv">
   <div class="modal" style="max-width:520px">
     <div class="modal-header">
-      <h3>CONSUMIBLE</h3>
+      <h3>ARTICULO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-inv')">✕</button>
     </div>
     <div class="modal-body" id="ficha-inv-contenido"></div>
