@@ -948,7 +948,7 @@ async function mostrarModulo(modulo, navEl) {
     case 'propietarios': renderPropietarios(); break;
     case 'parametros':   renderParametros();   break;
     case 'ordenes':      await renderOrdenes();      break;
-    case 'inventario':   renderInventario();   break;
+    case 'inventario':   _invVista = 'tabla'; renderInventario();   break;
     case 'catalogo':
       // Resetear filtros al entrar al módulo para mostrar todos los servicios
       const buscarCat = document.getElementById('buscar-cat');
