@@ -912,6 +912,12 @@ async function invCargarTiposArticulo(selTipoId) {
 async function abrirNuevoInventario() {
   var infoEl = document.getElementById('inv-info-stock-costo');
   if (infoEl) infoEl.style.display = 'none';
+  // Cargar cuentas del grupo 1.1.03 para nuevo artículo
+  try {
+    const ctas113 = await api('cont_cuentas','GET',null,'?codigo=like.1.1.03*&estado=eq.ACTIVA&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
+    const selCta = document.getElementById('inv-cuenta-contable');
+    if (selCta) selCta.innerHTML = '<option value="">— Seleccionar cuenta 1.1.03.xxx —</option>' + ctas113.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join('');
+  } catch(e2) {}
   ['inv-id','inv-codigo','inv-nombre','inv-descripcion','inv-stock','inv-stock-min','inv-costo','inv-venta','inv-demanda-anual','inv-lead-time','inv-costo-pedido','inv-stock-seg'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.value = '';
   });
@@ -939,6 +945,11 @@ async function abrirNuevoInventario() {
 async function abrirEditarInventario(id) {
   // Asegurar que _invSaldoArea esté calculado para mostrar stock correcto del área
   await calcularInvSaldoArea();
+  try {
+    const ctas113e = await api('cont_cuentas','GET',null,'?codigo=like.1.1.03*&estado=eq.ACTIVA&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
+    const selCtaE = document.getElementById('inv-cuenta-contable');
+    if (selCtaE) { selCtaE.innerHTML = '<option value="">— Seleccionar —</option>' + ctas113e.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join(''); selCtaE.value = r.id_cuenta_contable || ''; }
+  } catch(e3) {}
   const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) return;
   document.getElementById('inv-id').value = r.id_articulo;
@@ -1027,6 +1038,7 @@ async function guardarInventario() {
       id_emisor: _empresaActiva ? _empresaActiva.id_emisor : null,
       ...(ventaFinal !== undefined ? { precio_venta_usd: ventaFinal } : {}),
       unidad, id_categoria: idCategoria, id_tipo_articulo: idTipoArticulo,
+      id_cuenta_contable: parseInt(document.getElementById('inv-cuenta-contable')?.value) || null,
       demanda_anual: demandaAnual, lead_time_dias: leadTime, costo_pedido_usd: costoPedido, stock_seguridad: stockSeg,
       id_usuario: sesionActual.correo_usuario };
     if (id) {
