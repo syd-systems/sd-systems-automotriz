@@ -255,7 +255,7 @@ async function onSelOSFactura() {
 
     const todasLineas = [
       ...linServ.map(function(l) { return {tipo:'servicio',desc:l.descripcion,cant:l.cantidad,precio:l.precio_usd,subtotal:l.subtotal_usd}; }),
-      ...linRep.map(function(l)  { return {tipo:'repuesto', desc:l.descripcion,cant:l.cantidad,precio:l.precio_usd,subtotal:l.subtotal_usd}; }),
+      ...linRep.map(function(l)  { return {tipo:'artículo', desc:l.descripcion,cant:l.cantidad,precio:l.precio_usd,subtotal:l.subtotal_usd}; }),
     ];
 
     if (!todasLineas.length) {
