@@ -1863,7 +1863,7 @@ async function generarAsientoInventario(tipo, datos) {
           codigo: codigoArea,
           nombre: 'Costo Área — ' + datos.areaNombre,
           tipo: 'EGRESO', naturaleza: 'DEUDOR',
-          nivel: 3, permite_movimiento: true, estado: 'ACTIVO'
+          nivel: 3, permite_movimiento: true, estado: 'ACTIVA'
         });
         cArea = nuevaCuenta || [];
         if (cArea.length) idAreaCuenta = cArea[0].id_cuenta;
