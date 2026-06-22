@@ -779,7 +779,8 @@ async function guardarEntradaStock() {
     }
 
     // ── FASE 5: Asiento contable ──
-    try {
+    // Transferencias internas NO generan asiento
+    if (motivoEnt !== "transferencia") try {
       const areaNombreEnt = document.getElementById('es-area-display')?.textContent || 'Área';
       const tipoAst = motivoEnt === 'compra' ? 'ENTRADA_COMPRA'
                     : motivoEnt === 'devolucion' ? 'ENTRADA_DEVOLUCION'
