@@ -1849,8 +1849,8 @@ async function generarAsientoInventario(tipo, datos) {
     const monto = datos.montoUSD || 0;
 
     // Buscar cuenta de inventario
-    const cInv = await api('cont_cuentas','GET',null,'?codigo=eq.1.1.03.001&select=id_cuenta');
-    const idInv = cInv.length ? cInv[0].id_cuenta : null;
+    let idInv = datos.idCuentaInventario || null;
+    if (!idInv) { const cInv = await api('cont_cuentas','GET',null,'?codigo=eq.1.1.03.001&select=id_cuenta'); idInv = cInv.length ? cInv[0].id_cuenta : null; }
 
     // Buscar o crear cuenta auxiliar de área
     let idAreaCuenta = null;
