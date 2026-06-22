@@ -196,7 +196,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     return;
   }
 
-  const estCol2 = { PENDIENTE:'#f59e0b', PAGADA:'#22c55e', ANULADA:'#6b7280' };
+  const estCol2 = { PENDIENTE:'#f59e0b', POR_APROBAR:'#60a5fa', PAGADA:'#22c55e', ANULADA:'#6b7280', RECHAZADA:'#fc8181' };
   const filas = todos.map(function(item) {
     // Normalizar estado — eliminar PARCIAL
     const est = item.estado === 'PARCIAL' ? 'PAGADA' : (item.estado || 'PENDIENTE');
@@ -208,8 +208,10 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       const btnVerPend = puedo('PAGOS','VER') ? '<button onclick="verCxPPendiente('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>' : '';
       const btnVerPag  = puedo('PAGOS','VER') ? '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>' : '';
       const btnPagar   = puedo('PAGOS','PAGAR') ? '<button onclick="pagarCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>' : '';
+      const btnAprobar  = puedo('PAGOS','APROBAR') ? '<button onclick="aprobarPagoCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">✅ Aprobar</button>' : '';
+      const btnRechazar = puedo('PAGOS','APROBAR') ? '<button onclick="rechazarPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">❌ Rechazar</button>' : '';
       if (est === 'PENDIENTE') acciones = btnVerPend + (btnPagar ? ' '+btnPagar : '');
-      else acciones = btnVerPag;
+      else if (est === 'POR_APROBAR') acciones = btnVerPag + (btnAprobar ? ' '+btnAprobar : '') + (btnRechazar ? ' '+btnRechazar : '');
     }
 
     const origenBadge = item.origen === 'Automático'
@@ -1458,18 +1460,20 @@ async function contGuardarPagoCxp() {
       } catch(eFile) { console.warn('Error subiendo comprobante:', eFile); }
     }
 
+    // Guardar datos del pago — estado POR_APROBAR (pendiente de aprobacion)
     const patchData = {
-      pagado_usd:  nuevoPagado,
-      saldo_usd:   nuevoSaldo,
-      estado:      nuevoEstado,
-      referencia:  ref
+      estado:          'POR_APROBAR',
+      referencia:      ref,
+      fecha_pago:      fecha,
+      metodo_pago:     metodo
     };
     if (urlComprobante) patchData.url_comprobante = urlComprobante;
 
     await api('cont_cxp','PATCH', patchData, '?id_cxp=eq.'+idCxP);
 
+    // ── Asiento contable se genera al APROBAR, no aqui
     // ── Generar asiento contable del pago ──
-    try {
+    if (false) try { // Asiento se genera en aprobarPagoCxP() — no aqui
       const idEmisor = _empresaActiva?.id_emisor || 0;
       const tasaVig  = _tasaVigente || 1;
       const hoy      = fecha;
@@ -1560,7 +1564,7 @@ async function contGuardarPagoCxp() {
       }
     } catch(eAst) { console.warn('Error generando asiento pago:', eAst); }
 
-    okEl.textContent = '✓ Pago registrado correctamente.';
+    okEl.textContent = '✓ Pago registrado. Pendiente de aprobación por supervisor.';
     okEl.style.display = 'block';
     setTimeout(function() {
       cerrarModal('modal-cont-pago-cxp');
@@ -2246,4 +2250,68 @@ async function eliminarCxP(idCxP) {
     await api('cont_cxp','DELETE',null,'?id_cxp=eq.'+idCxP+'&estado=eq.PENDIENTE');
     cargarPagos();
   } catch(e) { alert('Error al eliminar: '+e.message); }
+}
+
+async function aprobarPagoCxP(idCxP) {
+  if (!puedo('PAGOS','APROBAR')) { alert('Sin permiso para aprobar.'); return; }
+  if (!confirm('Aprobar este pago y generar el asiento contable?')) return;
+  try {
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*,proveedores:id_proveedor(nombre)');
+    if (!rows || !rows[0]) return;
+    const c = rows[0];
+    const idEmisor = _empresaActiva?.id_emisor || 0;
+    const fechaPago = c.fecha_pago || new Date().toISOString().split('T')[0];
+    const tasas = await api('tasas','GET',null,'?order=fecha_valor.desc&limit=20&select=*') || [];
+    const getTasa = function(mon) {
+      const reg = tasas.filter(function(t){ return t.moneda_origen===mon && String(t.fecha_valor||'').substring(0,10)<=fechaPago; }).sort(function(a,b){ return String(b.fecha_valor).localeCompare(String(a.fecha_valor)); });
+      return reg.length ? parseFloat(reg[0].tipo_cambio) : 1;
+    };
+    const tasaDia  = getTasa('USD');
+    const moneda   = c.moneda_pago || 'VES';
+    const montoVES = parseFloat(c.monto_ves || c.monto_usd || 0);
+    const montoUSD = parseFloat(c.monto_usd || 0);
+    let montoAstUSD = 0, montoAstVES = 0;
+    if (moneda === 'VES') { montoAstVES = montoVES; } else { montoAstUSD = montoUSD; montoAstVES = parseFloat((montoUSD * tasaDia).toFixed(2)); }
+    const cuentas = await api('cont_cuentas','GET',null,'?codigo=in.(2.1.01.001,1.1.01.003,1.1.01.004)&select=id_cuenta,codigo');
+    const cCxP    = cuentas?.find(function(x){ return x.codigo==='2.1.01.001'; });
+    const cBanVES = cuentas?.find(function(x){ return x.codigo==='1.1.01.003'; });
+    const cBanUSD = cuentas?.find(function(x){ return x.codigo==='1.1.01.004'; });
+    const cBanco  = moneda === 'USD' ? cBanUSD : cBanVES;
+    const esManual = (c.tipo||'') === 'PAGO_MANUAL';
+    let cDebito = cCxP;
+    if (esManual && c.id_cuenta_gasto) {
+      const cg = await api('cont_cuentas','GET',null,'?id_cuenta=eq.'+c.id_cuenta_gasto+'&select=id_cuenta,codigo,nombre');
+      if (cg && cg[0]) cDebito = cg[0];
+    }
+    if (cDebito && cBanco) {
+      const anio  = new Date(fechaPago).getFullYear();
+      const ults  = await api('cont_asientos','GET',null,'?id_emisor=eq.'+idEmisor+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
+      let ultNum  = 0;
+      if (ults[0]?.numero_asiento) { const mm = ults[0].numero_asiento.match(/(\d+)$/); if (mm) ultNum = parseInt(mm[1]); }
+      const numAst = 'AST-' + anio + '-' + String(ultNum + 1).padStart(4,'0');
+      const ast = await api('cont_asientos','POST',{ id_emisor: idEmisor, numero_asiento: numAst, tipo: 'PAGO_PROVEEDOR', fecha: fechaPago,
+        descripcion: 'Pago ' + (c.proveedores?.nombre||'Proveedor') + ' | Ref: ' + (c.referencia||''),
+        referencia: c.numero_doc || ('CXP-'+idCxP), estado: 'APROBADO', moneda_base: moneda, tasa_bcv: tasaDia,
+        id_usuario: sesionActual?.correo_usuario || null });
+      const ar = Array.isArray(ast) ? ast[0] : ast;
+      if (ar?.id_asiento) {
+        await api('cont_asiento_lineas','POST',{ id_asiento: ar.id_asiento, id_cuenta: cDebito.id_cuenta, orden: 1, descripcion: 'Pago gasto', debe_usd: montoAstUSD, haber_usd: 0, debe_ves: montoAstVES, haber_ves: 0, tasa_bcv: tasaDia });
+        await api('cont_asiento_lineas','POST',{ id_asiento: ar.id_asiento, id_cuenta: cBanco.id_cuenta,  orden: 2, descripcion: 'Salida banco', debe_usd: 0, haber_usd: montoAstUSD, debe_ves: 0, haber_ves: montoAstVES, tasa_bcv: tasaDia });
+      }
+    }
+    await api('cont_cxp','PATCH',{ estado: 'PAGADA', pagado_usd: montoUSD, saldo_usd: 0 },'?id_cxp=eq.'+idCxP);
+    alert('Pago aprobado. Asiento contable generado.');
+    cargarPagos();
+  } catch(e) { alert('Error: '+e.message); console.error(e); }
+}
+
+async function rechazarPagoCxP(idCxP) {
+  if (!puedo('PAGOS','APROBAR')) { alert('Sin permiso para rechazar.'); return; }
+  const motivo = prompt('Motivo del rechazo:');
+  if (!motivo || !motivo.trim()) return;
+  try {
+    await api('cont_cxp','PATCH',{ estado: 'PENDIENTE', motivo_rechazo: motivo.trim(), fecha_pago: null, metodo_pago: null, referencia: null },'?id_cxp=eq.'+idCxP);
+    alert('Pago rechazado. Vuelve a PENDIENTE.');
+    cargarPagos();
+  } catch(e) { alert('Error: '+e.message); }
 }
