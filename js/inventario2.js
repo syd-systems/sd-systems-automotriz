@@ -791,7 +791,8 @@ async function guardarEntradaStock() {
         montoUSD:   nuevoPrecioCosto * cantidad,
         areaId:     idAreaEnt,
         areaNombre: areaNombreEnt,
-        referencia: idEntrada ? 'ENT-' + idEntrada : ('ENT-INV-' + id)
+        referencia: idEntrada ? 'ENT-' + idEntrada : ('ENT-INV-' + id),
+        idCuentaInventario: r.id_cuenta_contable || null
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
 
