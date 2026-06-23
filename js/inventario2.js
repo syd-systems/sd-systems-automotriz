@@ -535,7 +535,7 @@ async function abrirEntradaStock(id) {
     }
     var selArea = document.getElementById('es-area');
     selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
-      + areas.map(function(a) { return '<option value="' + a.id + '">' + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>'; }).join('');
+      + areas.map(function(a) { return '<option value="' + a.id + '">' + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>'; }).join('');
     var selProv = document.getElementById('es-proveedor');
     selProv.innerHTML = '<option value="">— Seleccionar proveedor —</option>'
       + provs.map(function(p) { return '<option value="' + p.id_proveedor + '">' + p.nombre + (p.rif ? ' (' + p.rif + ')' : '') + '</option>'; }).join('');
@@ -543,7 +543,7 @@ async function abrirEntradaStock(id) {
     var selOrigen = document.getElementById('es-area-origen');
     if (selOrigen) {
       selOrigen.innerHTML = '<option value="">— Seleccionar área de origen —</option>'
-        + areas.map(function(a) { return '<option value="' + a.id + '">' + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>'; }).join('');
+        + areas.map(function(a) { return '<option value="' + a.id + '">' + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>'; }).join('');
     }
     // Inicializar vista según motivo actual
     onCambiarMotivoEntrada();
