@@ -371,7 +371,16 @@ async function eliminarParamItem() {
   if (!key || !id) return;
   if (!confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) return;
   if (key === 'inv_categorias') {
-    try { await api('inv_categorias','DELETE',null,'?id=eq.'+id); _invCategoriasCache=[]; cerrarModal('modal-param'); if(typeof invRenderCategorias==='function') invRenderCategorias(); } catch(e) { alert('Error: '+e.message); } return;
+    try {
+      const tipos = await api('inv_articulos_tipo','GET',null,'?id_categoria=eq.'+id+'&select=id&limit=1') || [];
+      if (tipos.length) { alert('No se puede eliminar: esta categoría tiene tipos de artículo asociados. Elimine primero los tipos.'); return; }
+      const arts = await api('inventario','GET',null,'?id_categoria=eq.'+id+'&select=id_articulo&limit=1') || [];
+      if (arts.length) { alert('No se puede eliminar: tiene artículos asociados. Reasigne o elímine los artículos primero.'); return; }
+      await api('inv_categorias','DELETE',null,'?id=eq.'+id);
+      _invCategoriasCache=[];
+      cerrarModal('modal-param');
+      if(typeof invRenderCategorias==='function') invRenderCategorias();
+    } catch(e) { alert('Error: '+e.message); } return;
   }
   if (key === 'inv_articulos_tipo') {
     try { await api('inv_articulos_tipo','DELETE',null,'?id=eq.'+id); cerrarModal('modal-param'); if(typeof invRenderTipos==='function') invRenderTipos(); } catch(e) { alert('Error: '+e.message); } return;
