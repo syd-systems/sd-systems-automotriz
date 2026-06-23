@@ -265,6 +265,7 @@ async function abrirParamItem(key, id) {
   const btnGuardP = document.getElementById('modal-param-guardar');
   if (btnElimP) btnElimP.style.display = (id && puedo('PARAMETROS','EDITAR')) ? '' : 'none';
   if (btnGuardP) btnGuardP.style.display = puedo('PARAMETROS','EDITAR') ? '' : 'none';
+  const btnGR = document.getElementById('modal-param-guardar'); if (btnGR) { btnGR.disabled = false; btnGR.textContent = 'GUARDAR'; }
   abrirModal('modal-param');
   focusFirstField('modal-param');
   setTimeout(function() {
