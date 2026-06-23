@@ -306,6 +306,7 @@ async function guardarParamItem() {
       if (id) await api(tabla,'PATCH',datos2,'?id=eq.'+id);
       else    await api(tabla,'POST',datos2);
       okEl.style.display = 'block'; okEl.textContent = id ? '✓ Actualizado.' : '✓ Creado.';
+      _empParamCache = {}; _paramAreasCache = [];
       resetBtn();
       await new Promise(function(r){ setTimeout(r,300); });
       cerrarModal('modal-param');
@@ -371,6 +372,7 @@ async function guardarParamItem() {
     }
     okEl.style.display = 'block';
     _empParamCache = {}; // Invalidar cache empleados
+    _paramAreasCache = []; // Invalidar cache areas
     resetBtn();
     // Esperar que BD confirme el cambio antes de recargar
     await new Promise(function(r){ setTimeout(r, 300); });
@@ -414,6 +416,7 @@ async function eliminarParamItem() {
   try {
     await api(def.tabla,'DELETE',null,'?'+def.pk+'=eq.'+id);
     _empParamCache = {}; // Invalidar cache empleados
+    _paramAreasCache = []; // Invalidar cache areas
     cerrarModal('modal-param');
     mostrarTablaParam(key);
   } catch(e) { alert('Error: '+e.message); }
