@@ -712,7 +712,7 @@ function actualizarEmpresaUI() {
   if (empEl) empEl.textContent = '🏢 ' + _empresaActiva.nombre;
   const topbarEmp = document.getElementById('topbar-empresa');
   if (topbarEmp) topbarEmp.textContent = '🏢 ' + _empresaActiva.nombre;
-  try { var _taEl=document.getElementById('topbar-area'); if(_taEl && sesionActual && !sesionActual.administrador){ api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=areas:id_area(nombre,codigo)&limit=1').then(function(ea){ var ar=ea&&ea[0]?ea[0].areas:null; if(_taEl) _taEl.textContent=ar?ar.nombre+' ('+(ar.codigo||'')+')':''; }); } else if(_taEl){ _taEl.textContent=''; } } catch(eA){}
+  try { var _taEl=document.getElementById('topbar-area'); if(_taEl && sesionActual && sesionActual.correo_usuario){ api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=areas:id_area(nombre,codigo)&limit=1').then(function(ea){ var ar=ea&&ea[0]?ea[0].areas:null; if(_taEl) _taEl.textContent=ar?ar.nombre+' ('+(ar.codigo||'')+')':''; }); } else if(_taEl){ _taEl.textContent=''; } } catch(eA){}
   const btnCambiar = document.getElementById('btn-cambiar-empresa');
   if (btnCambiar) btnCambiar.style.display = _empresasUsuario.length > 1 ? '' : 'none';
 }
@@ -810,7 +810,7 @@ function seleccionarEmpresa(idEmisor) {
   if (empEl) empEl.textContent = '🏢 ' + _empresaActiva.nombre;
   const topbarEmp2 = document.getElementById('topbar-empresa');
   if (topbarEmp2) topbarEmp2.textContent = '🏢 ' + _empresaActiva.nombre;
-  try { var _taEl=document.getElementById('topbar-area'); if(_taEl && sesionActual && !sesionActual.administrador){ api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=areas:id_area(nombre,codigo)&limit=1').then(function(ea){ var ar=ea&&ea[0]?ea[0].areas:null; if(_taEl) _taEl.textContent=ar?ar.nombre+' ('+(ar.codigo||'')+')':''; }); } else if(_taEl){ _taEl.textContent=''; } } catch(eA){}
+  try { var _taEl=document.getElementById('topbar-area'); if(_taEl && sesionActual && sesionActual.correo_usuario){ api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=areas:id_area(nombre,codigo)&limit=1').then(function(ea){ var ar=ea&&ea[0]?ea[0].areas:null; if(_taEl) _taEl.textContent=ar?ar.nombre+' ('+(ar.codigo||'')+')':''; }); } else if(_taEl){ _taEl.textContent=''; } } catch(eA){}
   const btnCambiar2 = document.getElementById('btn-cambiar-empresa');
   if (btnCambiar2) btnCambiar2.style.display = _empresasUsuario.length > 1 ? '' : 'none';
   // Si ya estaba en la app, solo recargar el módulo actual
