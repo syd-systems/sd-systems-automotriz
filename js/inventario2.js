@@ -1098,7 +1098,7 @@ async function verHistorialEntradas(idArticulo) {
         return;
       }
       filas = salsRecibidas.map(function(s) {
-        const origen = s.area_origen ? (s.area_origen.codigo?s.area_origen.codigo+' — ':'')+s.area_origen.nombre : 'Almacén';
+        const origen = s.area_origen ? s.area_origen.nombre+(s.area_origen.codigo?' ('+s.area_origen.codigo+')':'') : 'Almacén';
         const estado = s.reversada
           ? '<span style="color:#fc8181;font-size:10px">Reversada</span>'
           : '<span style="color:#22c55e;font-size:10px">Activa</span>';
@@ -1358,7 +1358,7 @@ async function verHistorialSalidas(idArticulo) {
       + '<th style="padding:6px 4px"></th>'
       + '</tr></thead><tbody>'
       + salidas.map(function(s) {
-          const area = s.area_receptora ? (s.area_receptora.codigo ? s.area_receptora.codigo + ' — ' : '') + s.area_receptora.nombre : '—';
+          const area = s.area_receptora ? s.area_receptora.nombre + (s.area_receptora.codigo ? ' (' + s.area_receptora.codigo + ')' : '') : '—';
           const estado = s.reversada
             ? '<span style="color:#fc8181;font-size:10px">Reversada</span>'
             : '<span style="color:#22c55e;font-size:10px">Activa</span>';
@@ -1477,7 +1477,7 @@ async function invCargarMovimientos() {
 
     // Helper para obtener artículo del cache
     const getArt = function(id) { return inventarioCache.find(function(x){ return x.id_articulo === id; }); };
-    const artNom = function(a)  { return a ? (a.codigo ? a.codigo+' — ':'')+a.nombre : '—'; };
+    const artNom = function(a)  { return a ? a.nombre+(a.codigo?' ('+a.codigo+')':'') : '—'; };
 
     // ── VISTAS ────────────────────────────────────────────────
     if (agrup === 'movimientos') {
@@ -1488,16 +1488,16 @@ async function invCargarMovimientos() {
         if (busq && !artNom(art).toLowerCase().includes(busq)) return;
         const motivo = e.id_proveedor ? 'Compra' : (e.id_area_origen ? 'Transferencia' : (e.cliente_nombre ? 'Devolución' : 'Ajuste'));
         movs.push({ tipo:'ENTRADA', fecha:e.fecha_entrada, art:artNom(art),
-          origen: e.area_origen ? (e.area_origen.codigo?e.area_origen.codigo+' ':'')+e.area_origen.nombre : (e.proveedor?e.proveedor.nombre:(e.cliente_nombre||'—')),
-          destino: e.area_receptora ? (e.area_receptora.codigo?e.area_receptora.codigo+' ':'')+e.area_receptora.nombre : '—',
+          origen: e.area_origen ? e.area_origen.nombre+(e.area_origen.codigo?' ('+e.area_origen.codigo+')':'') : (e.proveedor?e.proveedor.nombre:(e.cliente_nombre||'—')),
+          destino: e.area_receptora ? e.area_receptora.nombre+(e.area_receptora.codigo?' ('+e.area_receptora.codigo+')':'') : '—',
           motivo:motivo, cant:e.cantidad, costo:e.precio_costo_usd||0, moneda:e.moneda_compra||monedaRef, rev:e.reversada });
       });
       salidas.forEach(function(s) {
         const art = getArt(s.id_articulo);
         if (busq && !artNom(art).toLowerCase().includes(busq)) return;
         movs.push({ tipo:'SALIDA', fecha:s.fecha_salida, art:artNom(art),
-          origen: s.area_entrega ? (s.area_entrega.codigo?s.area_entrega.codigo+' ':'')+s.area_entrega.nombre : '—',
-          destino: s.area_receptora ? (s.area_receptora.codigo?s.area_receptora.codigo+' ':'')+s.area_receptora.nombre : '—',
+          origen: s.area_entrega ? s.area_entrega.nombre+(s.area_entrega.codigo?' ('+s.area_entrega.codigo+')':'') : '—',
+          destino: s.area_receptora ? s.area_receptora.nombre+(s.area_receptora.codigo?' ('+s.area_receptora.codigo+')':'') : '—',
           motivo:'Salida interna', cant:s.cantidad, costo:0, moneda:'', rev:s.reversada });
       });
       movs.sort(function(a,b){ return b.fecha>a.fecha?1:b.fecha<a.fecha?-1:0; });
@@ -1573,14 +1573,14 @@ async function invCargarMovimientos() {
     } else if (agrup === 'area') {
       const areas = {};
       entradas.forEach(function(e) {
-        const nom = e.area_receptora ? (e.area_receptora.codigo?e.area_receptora.codigo+' ':'')+e.area_receptora.nombre : 'Sin área';
+        const nom = e.area_receptora ? e.area_receptora.nombre+(e.area_receptora.codigo?' ('+e.area_receptora.codigo+')':'') : 'Sin área';
         if (!areas[nom]) areas[nom] = { entradas:0, salidas:0 };
         areas[nom].entradas += parseFloat(e.cantidad||0);
       });
       salidas.forEach(function(s) {
         // La salida descuenta del área que entrega, no del área que recibe
-        const nomOrigen  = s.area_entrega   ? (s.area_entrega.codigo?s.area_entrega.codigo+' ':'')+s.area_entrega.nombre   : 'Sin área';
-        const nomDestino = s.area_receptora ? (s.area_receptora.codigo?s.area_receptora.codigo+' ':'')+s.area_receptora.nombre : null;
+        const nomOrigen  = s.area_entrega   ? s.area_entrega.nombre+(s.area_entrega.codigo?' ('+s.area_entrega.codigo+')':'')   : 'Sin área';
+        const nomDestino = s.area_receptora ? s.area_receptora.nombre+(s.area_receptora.codigo?' ('+s.area_receptora.codigo+')':'') : null;
         // Resta del área origen
         if (!areas[nomOrigen]) areas[nomOrigen] = { entradas:0, salidas:0 };
         areas[nomOrigen].salidas += parseFloat(s.cantidad||0);
@@ -1706,7 +1706,7 @@ async function invCargarMovimientos() {
       // Saldo actual por área: stock que entró a cada área menos lo que salió
       const saldos = {};
       entradas.forEach(function(e) {
-        const nom = e.area_receptora ? (e.area_receptora.codigo?e.area_receptora.codigo+' ':'')+e.area_receptora.nombre : 'Sin área';
+        const nom = e.area_receptora ? e.area_receptora.nombre+(e.area_receptora.codigo?' ('+e.area_receptora.codigo+')':'') : 'Sin área';
         const art = getArt(e.id_articulo); if(!art) return;
         if (!saldos[nom]) saldos[nom] = {};
         if (!saldos[nom][artNom(art)]) saldos[nom][artNom(art)] = 0;
@@ -1716,13 +1716,13 @@ async function invCargarMovimientos() {
         const art = getArt(s.id_articulo); if(!art) return;
         const cant = parseFloat(s.cantidad||0);
         // Descuenta del área que entrega
-        const nomOrigen = s.area_entrega ? (s.area_entrega.codigo?s.area_entrega.codigo+' ':'')+s.area_entrega.nombre : 'Sin área';
+        const nomOrigen = s.area_entrega ? s.area_entrega.nombre+(s.area_entrega.codigo?' ('+s.area_entrega.codigo+')':'') : 'Sin área';
         if (!saldos[nomOrigen]) saldos[nomOrigen] = {};
         if (!saldos[nomOrigen][artNom(art)]) saldos[nomOrigen][artNom(art)] = 0;
         saldos[nomOrigen][artNom(art)] -= cant;
         // Suma al área que recibe
         if (s.area_receptora) {
-          const nomDestino = (s.area_receptora.codigo?s.area_receptora.codigo+' ':'')+s.area_receptora.nombre;
+          const nomDestino = s.area_receptora.nombre+(s.area_receptora.codigo?' ('+s.area_receptora.codigo+')':'');
           if (!saldos[nomDestino]) saldos[nomDestino] = {};
           if (!saldos[nomDestino][artNom(art)]) saldos[nomDestino][artNom(art)] = 0;
           saldos[nomDestino][artNom(art)] += cant;
