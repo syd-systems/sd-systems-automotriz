@@ -428,6 +428,25 @@ async function eliminarParamItem() {
       if (emps2.length) { alert('No se puede eliminar: este cargo tiene empleados asignados. Reasigne los empleados primero.'); return; }
     } catch(eValC) { alert('Error al validar: '+eValC.message); return; }
   }
+  var _empCampos = { 'tipos_contrato':'id_tipo_contrato','tipos_salario':'id_tipo_salario','calculos_salario':'id_calculo_salario','frecuencias_pago':'id_frecuencia_pago','niveles_educativos':'id_nivel_educativo','estados_civiles':'id_estado_civil','sexos':'id_sexo' };
+  if (_empCampos[key]) {
+    try {
+      var empsD = await api('empleados','GET',null,'?'+_empCampos[key]+'=eq.'+id+'&select=id_empleado&limit=1') || [];
+      if (empsD.length) { alert('No se puede eliminar: este registro está siendo usado por uno o más empleados. Reasigne los empleados primero.'); return; }
+    } catch(eValD) { alert('Error al validar: '+eValD.message); return; }
+  }
+  if (key === 'cat_prov') {
+    try {
+      var provs = await api('proveedores','GET',null,'?id_categoria=eq.'+id+'&select=id_proveedor&limit=1') || [];
+      if (provs.length) { alert('No se puede eliminar: esta categoría tiene proveedores asociados.'); return; }
+    } catch(eValP) { alert('Error al validar: '+eValP.message); return; }
+  }
+  if (key === 'bancos') {
+    try {
+      var ctsB = await api('empleados_cuentas_bancarias','GET',null,'?id_banco=eq.'+id+'&select=id&limit=1') || [];
+      if (ctsB.length) { alert('No se puede eliminar: este banco está siendo usado en cuentas bancarias.'); return; }
+    } catch(eValB) { alert('Error al validar: '+eValB.message); return; }
+  }
   const def = TABLAS_MAESTRAS.find(function(t){ return t.key === key; });
   if (!def) return;
   try {
