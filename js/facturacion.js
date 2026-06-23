@@ -1128,7 +1128,7 @@ async function cargarUsuarioEntregaSalida() {
     if (emp) {
       if (nomEl)  nomEl.textContent  = emp.nombre_completo;
       if (areaEl) areaEl.textContent = emp.param_areas
-        ? (emp.param_areas.codigo ? emp.param_areas.codigo+' — ' : '') + emp.param_areas.nombre
+        ? emp.param_areas.nombre + (emp.param_areas.codigo ? ' (' + emp.param_areas.codigo + ')' : '')
         : '—';
       if (hidEmp)  hidEmp.value  = emp.id_empleado;
       if (hidArea) hidArea.value = emp.id_area || '';
@@ -1156,7 +1156,7 @@ async function cargarUsuarioReceptorEntrada() {
 
     if (emp) {
       const areaNom = emp.param_areas
-        ? (emp.param_areas.codigo ? emp.param_areas.codigo+' — ' : '') + emp.param_areas.nombre
+        ? emp.param_areas.nombre + (emp.param_areas.codigo ? ' (' + emp.param_areas.codigo + ')' : '')
         : '—';
       if (nomEl)    nomEl.textContent    = emp.nombre_completo;
       if (areaEl)   areaEl.textContent   = areaNom;
