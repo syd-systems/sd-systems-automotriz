@@ -572,7 +572,7 @@ function selOpts(lista, valorActual, campoNombre) {
   return '<option value="">— Seleccionar —</option>'
     + (lista||[]).map(function(item) {
         return '<option value="' + item.id + '"' + (valorActual && valorActual == item.id ? ' selected' : '') + '>'
-          + (item.codigo ? item.codigo + ' — ' : '') + item[campoNombre] + '</option>';
+          + item[campoNombre] + (item.codigo ? ' (' + item.codigo + ')' : '') + '</option>';
       }).join('');
 }
 
