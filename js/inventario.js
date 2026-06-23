@@ -133,7 +133,7 @@ async function editarMovimiento(tipo, idMovimiento, idRepuesto) {
   selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
     + areas.map(function(a) {
         return '<option value="' + a.id + '"' + (m.id_area === a.id ? ' selected' : '') + '>'
-          + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
+          + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>';
       }).join('');
 
   // Cargar empleados del área actual
