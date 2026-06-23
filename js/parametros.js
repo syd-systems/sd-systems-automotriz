@@ -411,6 +411,17 @@ async function eliminarParamItem() {
       if(typeof invRenderTipos==='function') invRenderTipos();
     } catch(e) { alert('Error: '+e.message); } return;
   }
+  // Validar dependencias antes de eliminar
+  if (key === 'areas') {
+    try {
+      const cargos = await api('param_cargos','GET',null,'?id_area=eq.'+id+'&select=id&limit=1') || [];
+      if (cargos.length) { alert('No se puede eliminar: esta área tiene cargos asociados. Elimine o reasigne los cargos primero.'); return; }
+      const emps = await api('empleados','GET',null,'?id_area=eq.'+id+'&select=id_empleado&limit=1') || [];
+      if (emps.length) { alert('No se puede eliminar: esta área tiene empleados asignados. Reasigne los empleados primero.'); return; }
+      const subAreas = await api('param_areas','GET',null,'?id_area_padre=eq.'+id+'&select=id&limit=1') || [];
+      if (subAreas.length) { alert('No se puede eliminar: esta área tiene subáreas dependientes. Elimine primero las subáreas.'); return; }
+    } catch(eVal) { alert('Error al validar: '+eVal.message); return; }
+  }
   const def = TABLAS_MAESTRAS.find(function(t){ return t.key === key; });
   if (!def) return;
   try {
