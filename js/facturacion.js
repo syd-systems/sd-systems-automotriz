@@ -1298,21 +1298,7 @@ async function _guardarSalidaStockInterno() {
     // Actualizar cache
     if (art) art.stock_actual = nuevoStock;
 
-    // ── Generar asiento contable de salida ──
-    try {
-      const areaNombreSal = document.getElementById('salida-area')?.selectedOptions[0]?.text || 'Área';
-      const areaIdSal     = parseInt(document.getElementById('salida-area')?.value) || null;
-      const art = inventarioCache.find(function(x){ return x.id_articulo === idRep; });
-      const costoUnit = art ? parseFloat(art.precio_costo_usd || 0) : 0;
-      await generarAsientoInventario('SALIDA_AREA', {
-        articulo:   art ? (art.nombre || art.codigo) : ('Art#'+idRep),
-        cantidad:   cantidad,
-        montoUSD:   costoUnit * cantidad,
-        areaId:     areaIdSal,
-        areaNombre: areaNombreSal,
-        referencia: idSalida ? 'SAL-' + idSalida : 'SAL-INV-' + idRep
-      });
-    } catch(eAstSal) { console.warn('Error asiento salida inventario:', eAstSal); }
+    // Transferencias internas entre areas NO generan asiento contable
 
     // ── Crear notificación de recepción para el empleado receptor ──
     if (idEmpRecibe && idSalida) {
