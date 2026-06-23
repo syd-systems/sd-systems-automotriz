@@ -292,6 +292,27 @@ async function guardarParamItem() {
 
   if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
 
+  // Categorias e inv_articulos_tipo no estan en TABLAS_MAESTRAS
+  if (key === 'inv_categorias' || key === 'inv_articulos_tipo') {
+    const tabla = key === 'inv_categorias' ? 'inv_categorias' : 'inv_articulos_tipo';
+    const datos2 = { nombre, estado };
+    const descEl = document.getElementById('param-item-descripcion');
+    if (descEl) datos2.descripcion = descEl.value.trim() || null;
+    const codEl = document.getElementById('param-item-codigo');
+    if (codEl) datos2.codigo = codEl.value.trim().toUpperCase() || null;
+    if (!id) datos2.id_emisor = _empresaActiva?.id_emisor || null;
+    try {
+      if (id) await api(tabla,'PATCH',datos2,'?id=eq.'+id);
+      else    await api(tabla,'POST',datos2);
+      okEl.style.display = 'block'; okEl.textContent = id ? '✓ Actualizado.' : '✓ Creado.';
+      resetBtn();
+      await new Promise(function(r){ setTimeout(r,300); });
+      cerrarModal('modal-param');
+      if (key === 'inv_categorias' && typeof invRenderCategorias === 'function') invRenderCategorias();
+      if (key === 'inv_articulos_tipo' && typeof invRenderTipos === 'function') invRenderTipos();
+    } catch(e2) { errEl.textContent = 'Error: '+e2.message; errEl.style.display='block'; resetBtn(); }
+    return;
+  }
   const def = TABLAS_MAESTRAS.find(function(t) { return t.key === key; });
 
   // ── Validar código obligatorio y único para áreas ──
