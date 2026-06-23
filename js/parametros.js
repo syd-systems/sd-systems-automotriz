@@ -383,7 +383,13 @@ async function eliminarParamItem() {
     } catch(e) { alert('Error: '+e.message); } return;
   }
   if (key === 'inv_articulos_tipo') {
-    try { await api('inv_articulos_tipo','DELETE',null,'?id=eq.'+id); cerrarModal('modal-param'); if(typeof invRenderTipos==='function') invRenderTipos(); } catch(e) { alert('Error: '+e.message); } return;
+    try {
+      const arts2 = await api('inventario','GET',null,'?id_tipo_articulo=eq.'+id+'&select=id_articulo&limit=1') || [];
+      if (arts2.length) { alert('No se puede eliminar: este tipo tiene artículos asociados. Reasigne o elimine los artículos primero.'); return; }
+      await api('inv_articulos_tipo','DELETE',null,'?id=eq.'+id);
+      cerrarModal('modal-param');
+      if(typeof invRenderTipos==='function') invRenderTipos();
+    } catch(e) { alert('Error: '+e.message); } return;
   }
   const def = TABLAS_MAESTRAS.find(function(t){ return t.key === key; });
   if (!def) return;
