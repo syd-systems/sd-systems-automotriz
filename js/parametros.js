@@ -422,6 +422,12 @@ async function eliminarParamItem() {
       if (subAreas.length) { alert('No se puede eliminar: esta área tiene subáreas dependientes. Elimine primero las subáreas.'); return; }
     } catch(eVal) { alert('Error al validar: '+eVal.message); return; }
   }
+  if (key === 'cargos') {
+    try {
+      const emps2 = await api('empleados','GET',null,'?id_cargo=eq.'+id+'&select=id_empleado&limit=1') || [];
+      if (emps2.length) { alert('No se puede eliminar: este cargo tiene empleados asignados. Reasigne los empleados primero.'); return; }
+    } catch(eValC) { alert('Error al validar: '+eValC.message); return; }
+  }
   const def = TABLAS_MAESTRAS.find(function(t){ return t.key === key; });
   if (!def) return;
   try {
