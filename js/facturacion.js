@@ -1194,7 +1194,7 @@ async function abrirSalidaStock(id, nombre) {
   selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
     + areas.map(function(a) {
         return '<option value="' + a.id + '">'
-          + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
+          + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>';
       }).join('');
   document.getElementById('salida-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
   // Auto-cargar datos del usuario actual como quien entrega
