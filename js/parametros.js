@@ -324,10 +324,6 @@ async function guardarParamItem() {
   // Validar que se seleccione el Nivel Superior para áreas
   if (key === 'areas') {
     const idPadre = parseInt(document.getElementById('param-item-area-padre')?.value) || null;
-    if (!idPadre) {
-      errEl.textContent = 'Debe seleccionar el Nivel Superior del área.';
-      errEl.style.display = 'block'; return;
-    }
   }
 
   // ── Validar duplicados ──
