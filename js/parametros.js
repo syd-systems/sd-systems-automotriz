@@ -207,7 +207,7 @@ async function abrirParamItem(key, id) {
     camposHTML += '<div class="form-campo form-full"><label>Nombre del Área</label><input type="text" id="param-item-nombre" value="' + (item ? item.nombre : '') + '" placeholder="Nombre del área"></div>';
     var opcPadre = todasAreas.filter(function(a) { return !item || a.id !== item.id; }).map(function(a) {
       return '<option value="' + a.id + '"' + (item && item.id_area_padre === a.id ? ' selected' : '') + '>'
-        + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
+        + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>';
     }).join('');
     camposHTML += '<div class="form-campo form-full"><label>Nivel Superior</label>'
       + '<select id="param-item-area-padre" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
@@ -231,7 +231,7 @@ async function abrirParamItem(key, id) {
     }
     if (def.tieneArea) {
       const opcAreas = _paramAreasCache.map(function(a) {
-        return '<option value="' + a.id + '"' + (item && item.id_area === a.id ? ' selected' : '') + '>' + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>';
+        return '<option value="' + a.id + '"' + (item && item.id_area === a.id ? ' selected' : '') + '>' + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>';
       }).join('');
       camposHTML += '<div class="form-campo form-full"><label>Área</label><select id="param-item-area" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="">— Sin área —</option>' + opcAreas + '</select></div>';
     }
