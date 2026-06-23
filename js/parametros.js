@@ -469,7 +469,7 @@ async function renderEmpleados() {
 
   try {
     const empleados = await api('empleados', 'GET', null,
-      '?order=nombre_completo.asc&select=*,param_areas(nombre),param_cargos(nombre)'+emisorQ());
+      '?order=nombre_completo.asc&select=*,param_areas(nombre,codigo),param_cargos(nombre)'+emisorQ());
     empleadosCache = empleados;
 
     const resumen = { ACTIVO:0, INACTIVO:0, SUSPENDIDO:0, RETIRADO:0, RENUNCIA:0 };
@@ -489,7 +489,7 @@ async function renderEmpleados() {
         + '<div style="font-weight:500">' + e.nombre_completo + '</div>'
         + (verDatosEmp ? '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (e.tipo_doc||'V') + '-' + e.numero_doc + '</div>' : '')
         + '</div></div></td>'
-        + '<td style="font-size:12px">' + (e.param_areas ? e.param_areas.nombre : '—') + '</td>'
+        + '<td style="font-size:12px">' + (e.param_areas ? e.param_areas.nombre + (e.param_areas.codigo ? ' (' + e.param_areas.codigo + ')' : '') : '—') + '</td>'
         + '<td style="font-size:12px">' + (e.param_cargos ? e.param_cargos.nombre : '—') + '</td>'
         + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
         + '<td style="font-size:11px;color:var(--suave)">' + (e.fecha_ingreso ? fmtFecha(e.fecha_ingreso) : '—') + '</td>'
@@ -950,7 +950,7 @@ async function verFichaEmpleado(id) {
   }
   var e = null;
   try {
-    const res = await api('empleados', 'GET', null, '?id_empleado=eq.' + id + '&select=*,param_areas(nombre),param_cargos(nombre)');
+    const res = await api('empleados', 'GET', null, '?id_empleado=eq.' + id + '&select=*,param_areas(nombre,codigo),param_cargos(nombre)');
     if (res && res[0]) {
       e = res[0];
       // Cargar empresa por separado
@@ -976,6 +976,10 @@ async function verFichaEmpleado(id) {
   function getNombre(lista, idVal) {
     var item = (lista||[]).find(function(x) { return x.id === idVal; });
     return item ? item.nombre : '—';
+  }
+  function getNombreCodigo(lista, idVal) {
+    var item = (lista||[]).find(function(x) { return x.id === idVal; });
+    return item ? item.nombre + (item.codigo ? ' (' + item.codigo + ')' : '') : '—';
   }
 
   const est = ESTATUS_EMP[e.estatus] || { clase: 'badge-gris', label: e.estatus };
@@ -1023,7 +1027,7 @@ async function verFichaEmpleado(id) {
     + '<div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;border-bottom:1px solid var(--borde);padding-bottom:6px">Datos Laborales</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
     + '<div style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Empresa</div><div style="font-size:13px;font-weight:600;color:var(--naranja)">' + (e.emisores ? e.emisores.nombre : '—') + '</div></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Área</div><div style="font-size:13px">' + getNombre(p.areas, e.id_area) + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Área</div><div style="font-size:13px">' + getNombreCodigo(p.areas, e.id_area) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Cargo</div><div style="font-size:13px">' + getNombre(p.cargos, e.id_cargo) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Tipo Contrato</div><div style="font-size:13px">' + getNombre(p.contratos, e.id_tipo_contrato) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Tipo Salario</div><div style="font-size:13px">' + getNombre(p.salarios, e.id_tipo_salario) + '</div></div>'
