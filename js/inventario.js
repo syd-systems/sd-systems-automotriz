@@ -70,8 +70,8 @@ async function recargarHistorial(idRepuesto) {
             + (esEntrada ? '+' : '-') + m.cantidad + '</td>'
             + '<td style="padding:8px;font-size:12px">'
             + (esEntrada
-              ? '<div>' + (m.area_receptora ? (m.area_receptora.codigo ? m.area_receptora.codigo + ' — ' : '') + m.area_receptora.nombre : '—') + '</div>'
-                + (m.area_origen ? '<div style="font-size:11px;color:#60a5fa">↩ Origen: ' + (m.area_origen.codigo ? m.area_origen.codigo + ' — ' : '') + m.area_origen.nombre + '</div>' : '')
+              ? '<div>' + (m.area_receptora ? m.area_receptora.nombre + (m.area_receptora.codigo ? ' (' + m.area_receptora.codigo + ')' : '') : '—') + '</div>'
+                + (m.area_origen ? '<div style="font-size:11px;color:#60a5fa">↩ Origen: ' + m.area_origen.nombre + (m.area_origen.codigo ? ' (' + m.area_origen.codigo + ')' : '') + '</div>' : '')
                 + (m.proveedores ? '<div style="font-size:11px;color:#a78bfa">🏭 ' + m.proveedores.nombre + '</div>' : '')
                 + (m.precio_costo_usd ? '<div style="font-size:11px;color:var(--suave)">$ ' + fmtUSD(m.precio_costo_usd) + ' / u</div>' : '')
               : '<div>' + area + '</div>')
