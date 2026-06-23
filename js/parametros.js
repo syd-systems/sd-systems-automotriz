@@ -370,6 +370,12 @@ async function eliminarParamItem() {
   const id  = window._paramId;
   if (!key || !id) return;
   if (!confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) return;
+  if (key === 'inv_categorias') {
+    try { await api('inv_categorias','DELETE',null,'?id=eq.'+id); _invCategoriasCache=[]; cerrarModal('modal-param'); if(typeof invRenderCategorias==='function') invRenderCategorias(); } catch(e) { alert('Error: '+e.message); } return;
+  }
+  if (key === 'inv_articulos_tipo') {
+    try { await api('inv_articulos_tipo','DELETE',null,'?id=eq.'+id); cerrarModal('modal-param'); if(typeof invRenderTipos==='function') invRenderTipos(); } catch(e) { alert('Error: '+e.message); } return;
+  }
   const def = TABLAS_MAESTRAS.find(function(t){ return t.key === key; });
   if (!def) return;
   try {
