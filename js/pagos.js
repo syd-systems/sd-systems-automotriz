@@ -2275,7 +2275,7 @@ async function aprobarPagoCxP(idCxP) {
     const tasaCompra = parseFloat(c.tasa_bcv_compra || c.tasa_bcv || getTasaEn(String(c.fecha_emision||'').substring(0,10)));
     const tasaPago   = getTasaEn(fechaPago);
 
-    const codigos = moneda === 'USD' ? '2.1.01.001,1.1.01.004,6.2.01.003,4.2.01.003,6.1.04.003' : '2.1.01.001,1.1.01.003';
+    const codigos = moneda === 'USD' ? '2.1.01.001,1.1.01.004,6.2.01.003,4.2.01.003,6.1.04.003,2.1.03.004' : '2.1.01.001,1.1.01.003';
     const cuentas   = await api('cont_cuentas','GET',null,'?codigo=in.('+codigos+')&select=id_cuenta,codigo') || [];
     const getCta    = function(cod){ return cuentas.find(function(x){ return x.codigo===cod; }); };
     const cCxP      = getCta('2.1.01.001');
@@ -2284,6 +2284,7 @@ async function aprobarPagoCxP(idCxP) {
     const cDifGasto = getCta('6.2.01.003');
     const cDifIngr  = getCta('4.2.01.003');
     const cIGTF     = getCta('6.1.04.003');
+    const cIGTFPagar = getCta('2.1.03.004');
 
     let pctIGTF = 0.03;
     try {
@@ -2341,14 +2342,22 @@ async function aprobarPagoCxP(idCxP) {
       }
 
       if (cIGTF) {
+        // DEBE: Gasto IGTF (solo en VES - es gasto en moneda funcional)
         await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cIGTF.id_cuenta, orden:orden++,
-          descripcion:'IGTF '+(pctIGTF*100).toFixed(0)+'% pago en divisas',
-          debe_usd:montoIGTF_USD, haber_usd:0, debe_ves:montoIGTF_VES, haber_ves:0, tasa_bcv:tasaPago });
+          descripcion:'IGTF '+(pctIGTF*100).toFixed(0)+'% sobre pago en divisas',
+          debe_usd:0, haber_usd:0, debe_ves:montoIGTF_VES, haber_ves:0, tasa_bcv:tasaPago });
+      }
+      if (cIGTFPagar) {
+        // HABER: IGTF por Pagar (se entera al fisco primeros 12 dias del mes)
+        await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cIGTFPagar.id_cuenta, orden:orden++,
+          descripcion:'IGTF por Pagar (enterar primeros 12 dias del mes)',
+          debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoIGTF_VES, tasa_bcv:tasaPago });
       }
 
+      // HABER: Banco USD - solo el monto del pago (IGTF va a cuenta de pasivo)
       await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cBanUSD.id_cuenta, orden:orden++,
-        descripcion:'Salida banco USD (pago + IGTF)',
-        debe_usd:0, haber_usd:totalSalidaUSD, debe_ves:0, haber_ves:totalSalidaVES, tasa_bcv:tasaPago });
+        descripcion:'Salida banco USD',
+        debe_usd:0, haber_usd:montoUSD, debe_ves:0, haber_ves:montoVESPago, tasa_bcv:tasaPago });
     }
 
     await api('cont_cxp','PATCH',{
