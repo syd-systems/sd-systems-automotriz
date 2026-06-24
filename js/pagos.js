@@ -2259,51 +2259,108 @@ async function aprobarPagoCxP(idCxP) {
     const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*,proveedores:id_proveedor(nombre)');
     if (!rows || !rows[0]) return;
     const c = rows[0];
-    const idEmisor = _empresaActiva?.id_emisor || 0;
+    const idEmisor  = _empresaActiva?.id_emisor || 0;
     const fechaPago = c.fecha_pago || new Date().toISOString().split('T')[0];
-    const tasas = await api('tasas','GET',null,'?order=fecha_valor.desc&limit=20&select=*') || [];
-    const getTasa = function(mon) {
-      const reg = tasas.filter(function(t){ return t.moneda_origen===mon && String(t.fecha_valor||'').substring(0,10)<=fechaPago; }).sort(function(a,b){ return String(b.fecha_valor).localeCompare(String(a.fecha_valor)); });
+    const moneda    = c.moneda_pago || 'VES';
+    const montoUSD  = parseFloat(c.monto_usd || 0);
+    const montoVES  = parseFloat(c.monto_ves || 0);
+
+    const tasas = await api('tasas','GET',null,'?order=fecha_valor.desc&limit=30&select=*') || [];
+    const getTasaEn = function(fecha) {
+      const reg = tasas.filter(function(t){
+        return t.moneda_origen==='USD' && String(t.fecha_valor||'').substring(0,10) <= fecha;
+      }).sort(function(a,b){ return String(b.fecha_valor).localeCompare(String(a.fecha_valor)); });
       return reg.length ? parseFloat(reg[0].tipo_cambio) : 1;
     };
-    const tasaDia  = getTasa('USD');
-    const moneda   = c.moneda_pago || 'VES';
-    const montoVES = parseFloat(c.monto_ves || c.monto_usd || 0);
-    const montoUSD = parseFloat(c.monto_usd || 0);
-    let montoAstUSD = 0, montoAstVES = 0;
-    if (moneda === 'VES') { montoAstVES = montoVES; } else { montoAstUSD = montoUSD; montoAstVES = parseFloat((montoUSD * tasaDia).toFixed(2)); }
-    const cuentas = await api('cont_cuentas','GET',null,'?codigo=in.(2.1.01.001,1.1.01.003,1.1.01.004)&select=id_cuenta,codigo');
-    const cCxP    = cuentas?.find(function(x){ return x.codigo==='2.1.01.001'; });
-    const cBanVES = cuentas?.find(function(x){ return x.codigo==='1.1.01.003'; });
-    const cBanUSD = cuentas?.find(function(x){ return x.codigo==='1.1.01.004'; });
-    const cBanco  = moneda === 'USD' ? cBanUSD : cBanVES;
-    const esManual = (c.tipo||'') === 'PAGO_MANUAL';
-    let cDebito = cCxP;
-    if (esManual && c.id_cuenta_gasto) {
-      const cg = await api('cont_cuentas','GET',null,'?id_cuenta=eq.'+c.id_cuenta_gasto+'&select=id_cuenta,codigo,nombre');
-      if (cg && cg[0]) cDebito = cg[0];
-    }
-    if (cDebito && cBanco) {
-      const anio  = new Date(fechaPago).getFullYear();
-      const ults  = await api('cont_asientos','GET',null,'?id_emisor=eq.'+idEmisor+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
-      let ultNum  = 0;
-      if (ults[0]?.numero_asiento) { const mm = ults[0].numero_asiento.match(/(\d+)$/); if (mm) ultNum = parseInt(mm[1]); }
-      const numAst = 'AST-' + anio + '-' + String(ultNum + 1).padStart(4,'0');
-      const ast = await api('cont_asientos','POST',{ id_emisor: idEmisor, numero_asiento: numAst, tipo: 'PAGO_PROVEEDOR', fecha: fechaPago,
-        descripcion: 'Pago ' + (c.proveedores?.nombre||'Proveedor') + ' | Ref: ' + (c.referencia||''),
-        referencia: c.numero_doc || ('CXP-'+idCxP), estado: 'APROBADO', moneda_base: moneda, tasa_bcv: tasaDia,
-        id_usuario: sesionActual?.correo_usuario || null });
-      const ar = Array.isArray(ast) ? ast[0] : ast;
-      if (ar?.id_asiento) {
-        await api('cont_asiento_lineas','POST',{ id_asiento: ar.id_asiento, id_cuenta: cDebito.id_cuenta, orden: 1, descripcion: 'Pago gasto', debe_usd: montoAstUSD, haber_usd: 0, debe_ves: montoAstVES, haber_ves: 0, tasa_bcv: tasaDia });
-        await api('cont_asiento_lineas','POST',{ id_asiento: ar.id_asiento, id_cuenta: cBanco.id_cuenta,  orden: 2, descripcion: 'Salida banco', debe_usd: 0, haber_usd: montoAstUSD, debe_ves: 0, haber_ves: montoAstVES, tasa_bcv: tasaDia });
+    const tasaCompra = parseFloat(c.tasa_bcv_compra || c.tasa_bcv || getTasaEn(String(c.fecha_emision||'').substring(0,10)));
+    const tasaPago   = getTasaEn(fechaPago);
+
+    const codigos = moneda === 'USD' ? '2.1.01.001,1.1.01.004,6.2.01.003,4.2.01.003,6.1.04.003' : '2.1.01.001,1.1.01.003';
+    const cuentas   = await api('cont_cuentas','GET',null,'?codigo=in.('+codigos+')&select=id_cuenta,codigo') || [];
+    const getCta    = function(cod){ return cuentas.find(function(x){ return x.codigo===cod; }); };
+    const cCxP      = getCta('2.1.01.001');
+    const cBanVES   = getCta('1.1.01.003');
+    const cBanUSD   = getCta('1.1.01.004');
+    const cDifGasto = getCta('6.2.01.003');
+    const cDifIngr  = getCta('4.2.01.003');
+    const cIGTF     = getCta('6.1.04.003');
+
+    let pctIGTF = 0.03;
+    try {
+      const trib = await api('param_tributos','GET',null,'?codigo=eq.IGTF&select=alicuota&limit=1');
+      if (trib && trib[0]) pctIGTF = parseFloat(trib[0].alicuota) / 100;
+    } catch(e2) {}
+
+    const anio = new Date(fechaPago).getFullYear();
+    const ults = await api('cont_asientos','GET',null,'?id_emisor=eq.'+idEmisor+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
+    let seq = 1;
+    if (ults[0]?.numero_asiento) { const mm = ults[0].numero_asiento.match(/(\d+)$/); if (mm) seq = parseInt(mm[1])+1; }
+    const numAst = 'AST-' + anio + '-' + String(seq).padStart(4,'0');
+
+    const ast = await api('cont_asientos','POST',{
+      id_emisor: idEmisor, numero_asiento: numAst, tipo: 'PAGO_PROVEEDOR', fecha: fechaPago,
+      descripcion: 'Pago ' + (c.proveedores?.nombre||'Proveedor') + ' | Doc: ' + (c.numero_doc||'') + ' | Ref: ' + (c.referencia||''),
+      referencia: c.numero_doc || ('CXP-'+idCxP),
+      estado: 'APROBADO', moneda_base: moneda, tasa_bcv: tasaPago,
+      id_usuario: sesionActual?.correo_usuario || null
+    });
+    const ar = Array.isArray(ast) ? ast[0] : ast;
+    if (!ar?.id_asiento) throw new Error('No se pudo crear el asiento.');
+    const idAst = ar.id_asiento;
+    let orden = 1;
+
+    if (moneda === 'VES') {
+      await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cCxP.id_cuenta, orden:orden++,
+        descripcion:'Cancelacion CxP '+(c.proveedores?.nombre||''),
+        debe_usd:0, haber_usd:0, debe_ves:montoVES, haber_ves:0, tasa_bcv:tasaPago });
+      await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cBanVES.id_cuenta, orden:orden++,
+        descripcion:'Salida banco VES',
+        debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoVES, tasa_bcv:tasaPago });
+    } else {
+      const montoVESCompra = parseFloat((montoUSD * tasaCompra).toFixed(2));
+      const montoVESPago   = parseFloat((montoUSD * tasaPago).toFixed(2));
+      const difCambio      = parseFloat((montoVESPago - montoVESCompra).toFixed(2));
+      const montoIGTF_USD  = parseFloat((montoUSD * pctIGTF).toFixed(2));
+      const montoIGTF_VES  = parseFloat((montoIGTF_USD * tasaPago).toFixed(2));
+      const totalSalidaUSD = parseFloat((montoUSD + montoIGTF_USD).toFixed(2));
+      const totalSalidaVES = parseFloat((montoVESPago + montoIGTF_VES).toFixed(2));
+
+      // DEBE: CxP a tasa compra
+      await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cCxP.id_cuenta, orden:orden++,
+        descripcion:'Cancelacion CxP '+(c.proveedores?.nombre||''),
+        debe_usd:0, haber_usd:0, debe_ves:montoVESCompra, haber_ves:0, tasa_bcv:tasaCompra });
+
+      if (difCambio > 0 && cDifGasto) {
+        await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDifGasto.id_cuenta, orden:orden++,
+          descripcion:'Perdida por diferencia cambiaria ('+tasaCompra+' -> '+tasaPago+')',
+          debe_usd:0, haber_usd:0, debe_ves:difCambio, haber_ves:0, tasa_bcv:tasaPago });
+      } else if (difCambio < 0 && cDifIngr) {
+        await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDifIngr.id_cuenta, orden:orden++,
+          descripcion:'Ganancia por diferencia cambiaria ('+tasaCompra+' -> '+tasaPago+')',
+          debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:Math.abs(difCambio), tasa_bcv:tasaPago });
       }
+
+      if (cIGTF) {
+        await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cIGTF.id_cuenta, orden:orden++,
+          descripcion:'IGTF '+(pctIGTF*100).toFixed(0)+'% pago en divisas',
+          debe_usd:montoIGTF_USD, haber_usd:0, debe_ves:montoIGTF_VES, haber_ves:0, tasa_bcv:tasaPago });
+      }
+
+      await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cBanUSD.id_cuenta, orden:orden++,
+        descripcion:'Salida banco USD (pago + IGTF)',
+        debe_usd:0, haber_usd:totalSalidaUSD, debe_ves:0, haber_ves:totalSalidaVES, tasa_bcv:tasaPago });
     }
-    await api('cont_cxp','PATCH',{ estado: 'PAGADA', pagado_usd: montoUSD, saldo_usd: 0 },'?id_cxp=eq.'+idCxP);
-    alert('Pago aprobado. Asiento contable generado.');
+
+    await api('cont_cxp','PATCH',{
+      estado: 'PAGADA', pagado_usd: montoUSD, saldo_usd: 0,
+      aprobado_por: sesionActual?.correo_usuario || null
+    },'?id_cxp=eq.'+idCxP);
+
+    alert('Pago aprobado. Asiento contable generado correctamente.');
     cargarPagos();
-  } catch(e) { alert('Error: '+e.message); console.error(e); }
+  } catch(e) { alert('Error al aprobar: '+e.message); console.error(e); }
 }
+
 
 async function rechazarPagoCxP(idCxP) {
   if (!puedo('PAGOS','APROBAR')) { alert('Sin permiso para rechazar.'); return; }
