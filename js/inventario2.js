@@ -147,6 +147,8 @@ async function renderInventario(filtro) {
   try {
     // Por defecto muestra todos — el checkbox "Solo con stock" activa el filtro
     const soloConStock = document.getElementById('inv-mostrar-todos')?.checked || false;
+    // Siempre limpiar cache para forzar recarga desde BD
+    inventarioCache = [];
     // Cargar cache de categorías si está vacío (para filtro y tabla)
     if (!_invCategoriasCache || !_invCategoriasCache.length) {
       try {
