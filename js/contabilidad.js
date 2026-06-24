@@ -1340,6 +1340,7 @@ async function contEliminarCuenta() {
     await api('cont_cuentas','DELETE',null,'?id_cuenta=eq.'+id);
     cerrarModal('modal-cont-cuenta');
     await contCargarCuentas();
+    contCuentasCache = [];
     contRenderCuentas();
   } catch(e) { alert('Error al eliminar: '+e.message); }
 }
@@ -1362,6 +1363,7 @@ async function contGuardarCuenta() {
     if (id) { await api('cont_cuentas','PATCH',datos,'?id_cuenta=eq.'+id); }
     else    { await api('cont_cuentas','POST',datos); }
     okEl.textContent='✓ Cuenta guardada.'; okEl.style.display='block';
+    contCuentasCache = [];
     setTimeout(function(){ cerrarModal('modal-cont-cuenta'); contRenderCuentas(); }, 900);
   } catch(e) { errEl.textContent='Error: ' + e.message; errEl.style.display='block'; }
 }
