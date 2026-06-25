@@ -1465,7 +1465,8 @@ async function contGuardarPagoCxp() {
       estado:          'POR_APROBAR',
       referencia:      ref,
       fecha_pago:      fecha,
-      metodo_pago:     metodo
+      metodo_pago:     metodo,
+      moneda_pago:     moneda
     };
     if (urlComprobante) patchData.url_comprobante = urlComprobante;
 
