@@ -1945,7 +1945,13 @@ async function verDetalleCxP(idCxP, modoInicial) {
     if (secPago) secPago.style.display = est === 'PAGADA' ? '' : 'none';
     if (est === 'PAGADA') {
       const detFecha = document.getElementById('cont-pago-det-fecha');
-      if (detFecha) detFecha.textContent = c.fecha_emision ? fmtFecha(c.fecha_emision) : '—';
+      if (detFecha) detFecha.textContent = c.fecha_pago ? fmtFecha(c.fecha_pago) : '—';
+      const detMoneda = document.getElementById('cont-pago-det-moneda');
+      if (detMoneda) detMoneda.textContent = c.moneda_pago || '—';
+      const detMonto = document.getElementById('cont-pago-det-monto');
+      if (detMonto) { var _mon = c.moneda_pago||'VES'; detMonto.textContent = _mon==='VES' ? fmtBs(c.monto_ves||0)+' Bs' : '$ '+fmtUSD(c.monto_usd||0)+' '+_mon; }
+      const detAprobado = document.getElementById('cont-pago-det-aprobado');
+      if (detAprobado) detAprobado.textContent = c.aprobado_por || '—';
       const detRef = document.getElementById('cont-pago-det-ref');
       if (detRef) detRef.textContent = c.referencia || '—';
       const detMetodo = document.getElementById('cont-pago-det-metodo');
