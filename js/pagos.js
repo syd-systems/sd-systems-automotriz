@@ -212,6 +212,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       const btnRechazar = puedo('PAGOS','APROBAR') ? '<button onclick="rechazarPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">❌ Rechazar</button>' : '';
       if (est === 'PENDIENTE') acciones = btnVerPend + (btnPagar ? ' '+btnPagar : '');
       else if (est === 'POR_APROBAR') acciones = btnVerPag + (btnAprobar ? ' '+btnAprobar : '') + (btnRechazar ? ' '+btnRechazar : '');
+      else acciones = btnVerPag;
     }
 
     const origenBadge = item.origen === 'Automático'
