@@ -1580,7 +1580,9 @@ async function contGuardarPagoCxp() {
 
 
 async function anularPagoCxP(idCxP) {
-  if (!confirm('¿Anular esta CxP? Se revertirán los asientos contables asociados.')) return;
+  if (!confirm('¿Anular esta CxP? Solo se revertirán asientos de pago, NO los de inventario.')) return;
+  const _chkPag = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=estado');
+  if (_chkPag && _chkPag[0] && _chkPag[0].estado === 'PAGADA') { alert('Un pago aprobado no puede anularse desde CxP.'); return; }
   try {
     // 1. Anular la CxP
     await api('cont_cxp','PATCH',
@@ -1591,8 +1593,9 @@ async function anularPagoCxP(idCxP) {
     const numDoc = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=numero_doc');
     if (numDoc && numDoc[0]) {
       const ref = numDoc[0].numero_doc;
+      // Solo anular asientos de PAGO_PROVEEDOR - NO los de entrada de inventario
       const asientos = await api('cont_asientos','GET',null,
-        '?referencia=eq.'+encodeURIComponent(ref)+emisorQ()+'&estado=neq.ANULADO&select=id_asiento,descripcion');
+        '?referencia=eq.'+encodeURIComponent(ref)+emisorQ()+'&tipo=eq.PAGO_PROVEEDOR&estado=neq.ANULADO&select=id_asiento,descripcion');
       for (const a of (asientos||[])) {
         await api('cont_asientos','PATCH',
           { estado: 'ANULADO', descripcion: '[ANULADO] ' + (a.descripcion||'') },
@@ -1804,7 +1807,7 @@ async function verPagoCxP(idCxP) {
     const footer = document.querySelector('#modal-cont-pago-cxp .modal-footer');
     if (footer) {
       footer.innerHTML =
-        (esManual ? '<button class="btn-peligro" onclick="anularPagoCxP('+idCxP+');cerrarModal(\'modal-cont-pago-cxp\')">&#x1F5D1; Anular</button>' : '')
+        ((esManual && est !== 'PAGADA') ? '<button class="btn-peligro" onclick="anularPagoCxP('+idCxP+');cerrarModal(\'modal-cont-pago-cxp\')">&#x1F5D1; Anular</button>' : '')
         + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\');cargarPagos()">Retornar</button>';
     }
 
@@ -2010,7 +2013,7 @@ async function verDetalleCxP(idCxP, modoInicial) {
           + '<button class="btn-primario" onclick="contGuardarPagoCxp()">&#x1F4B8; Registrar Pago</button>';
       } else {
         footer.innerHTML =
-          ((esManualF && est !== 'ANULADA') ? '<button class="btn-peligro" onclick="anularPagoCxP('+idCxP+');cerrarModal(\'modal-cont-pago-cxp\')">&#x1F5D1; Anular</button>' : '')
+          ((esManualF && est !== 'ANULADA' && est !== 'PAGADA') ? '<button class="btn-peligro" onclick="anularPagoCxP('+idCxP+');cerrarModal(\'modal-cont-pago-cxp\')">&#x1F5D1; Anular</button>' : '')
           + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\');cargarPagos()">Retornar</button>';
       }
     }
