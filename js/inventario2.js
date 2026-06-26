@@ -1698,7 +1698,11 @@ async function invCargarMovimientos() {
       // Filtrar por area del operador si no tiene VER_INVENTARIO_GENERAL
       var areaKeys = Object.keys(areas).sort();
       if (idAreaMovs && idAreaMovsNombre) {
-        areaKeys = areaKeys.filter(function(k){ return areas[k].area === idAreaMovsNombre; });
+        // Los movimientos ya vienen filtrados por id_area desde el query.
+        // Solo mostramos filas de su propia area.
+        areaKeys = areaKeys.filter(function(k) {
+          return areas[k].area === idAreaMovsNombre;
+        });
       }
       var filas = areaKeys.map(function(k) {
         var v = areas[k], saldo = v.entradas - v.salidas;
