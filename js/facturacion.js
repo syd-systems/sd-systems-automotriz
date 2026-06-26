@@ -1298,7 +1298,48 @@ async function _guardarSalidaStockInterno() {
     // Actualizar cache
     if (art) art.stock_actual = nuevoStock;
 
-    // Transferencias internas entre areas NO generan asiento contable
+    // Transferencias de CONSUMIBLES generan asiento: DEBE gasto / HABER inventario
+    if (art && art.id_cuenta_contable && art.id_cuenta_costo_gasto) {
+      try {
+        // CPP en USD ya esta en art.precio_costo_usd
+        // Calcular tasa BCV promedio ponderada de entradas en USD
+        const entradasC = await api('stock_entradas','GET',null,'?id_articulo=eq.'+idRep+'&select=cantidad,tasa_bcv,moneda_compra') || [];
+        var sumQT = 0; var sumQ2 = 0;
+        entradasC.forEach(function(e) {
+          var q = parseFloat(e.cantidad||0);
+          var t = parseFloat(e.tasa_bcv||0);
+          if (q > 0 && t > 0 && (e.moneda_compra||'USD') === 'USD') { sumQT += q*t; sumQ2 += q; }
+        });
+        var tasaProm = sumQ2 > 0 ? sumQT/sumQ2 : (_tasaVigente||1);
+        var cppUSD   = parseFloat(art.precio_costo_usd||0);
+        var montoVES = parseFloat((cantidad * cppUSD * tasaProm).toFixed(2));
+
+        var anioS = new Date().getFullYear();
+        var ultsS = await api('cont_asientos','GET',null,'?id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
+        var seqS = 1;
+        if (ultsS[0]?.numero_asiento) { var mmS = ultsS[0].numero_asiento.match(/(\d+)$/); if (mmS) seqS = parseInt(mmS[1])+1; }
+        var numAstS = 'AST-' + anioS + '-' + String(seqS).padStart(4,'0');
+        var areaDest = document.getElementById('salida-area')?.selectedOptions[0]?.text || 'Area';
+
+        var astS = await api('cont_asientos','POST',{
+          id_emisor: _empresaActiva?.id_emisor||0, numero_asiento: numAstS,
+          tipo: 'CONSUMO_INVENTARIO', fecha: fecha,
+          descripcion: 'Consumo: '+(art.nombre||'')+ ' x'+cantidad+' -> '+areaDest,
+          referencia: idSalida ? 'SAL-'+idSalida : 'SAL-INV-'+idRep,
+          estado: 'APROBADO', moneda_base: 'VES', tasa_bcv: tasaProm,
+          id_usuario: sesionActual?.correo_usuario||null
+        });
+        var arS = Array.isArray(astS) ? astS[0] : astS;
+        if (arS?.id_asiento) {
+          await api('cont_asiento_lineas','POST',{ id_asiento:arS.id_asiento, id_cuenta:art.id_cuenta_costo_gasto, orden:1,
+            descripcion:'Consumo: '+(art.nombre||'')+' x'+cantidad+' (CPP $'+cppUSD.toFixed(2)+' x T/C '+tasaProm.toFixed(2)+')',
+            debe_usd:0, haber_usd:0, debe_ves:montoVES, haber_ves:0, tasa_bcv:tasaProm });
+          await api('cont_asiento_lineas','POST',{ id_asiento:arS.id_asiento, id_cuenta:art.id_cuenta_contable, orden:2,
+            descripcion:'Salida inventario consumible: '+(art.nombre||'')+' x'+cantidad,
+            debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoVES, tasa_bcv:tasaProm });
+        }
+      } catch(eAstSal) { console.warn('Error asiento salida consumible:', eAstSal); }
+    }
 
     // ── Crear notificación de recepción para el empleado receptor ──
     if (idEmpRecibe && idSalida) {
