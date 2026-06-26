@@ -1662,41 +1662,37 @@ async function invCargarMovimientos() {
         +colC2+'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>';
 
     } else if (agrup === 'area') {
-      const areas = {};
+      const areas = {}; // key: areaNom||artNom
       entradas.forEach(function(e) {
-        const nom = e.area_receptora ? e.area_receptora.nombre+(e.area_receptora.codigo?' ('+e.area_receptora.codigo+')':'') : 'Sin área';
-        if (!areas[nom]) areas[nom] = { entradas:0, salidas:0 };
-        areas[nom].entradas += parseFloat(e.cantidad||0);
+        const art = getArt(e.id_articulo);
+        const areaNom = e.area_receptora ? e.area_receptora.nombre+(e.area_receptora.codigo?' ('+e.area_receptora.codigo+')':'') : 'Sin área';
+        const artNom  = art ? art.nombre : ('Art #'+e.id_articulo);
+        const key = areaNom+'||'+artNom;
+        if (!areas[key]) areas[key] = { area:areaNom, art:artNom, entradas:0, salidas:0 };
+        areas[key].entradas += parseFloat(e.cantidad||0);
       });
       salidas.forEach(function(s) {
-        // La salida descuenta del área que entrega, no del área que recibe
-        const nomOrigen  = s.area_entrega   ? s.area_entrega.nombre+(s.area_entrega.codigo?' ('+s.area_entrega.codigo+')':'')   : 'Sin área';
-        const nomDestino = s.area_receptora ? s.area_receptora.nombre+(s.area_receptora.codigo?' ('+s.area_receptora.codigo+')':'') : null;
-        // Resta del área origen
-        if (!areas[nomOrigen]) areas[nomOrigen] = { entradas:0, salidas:0 };
-        areas[nomOrigen].salidas += parseFloat(s.cantidad||0);
-        // Suma al área destino (la recibe como entrada interna)
-        if (nomDestino) {
-          if (!areas[nomDestino]) areas[nomDestino] = { entradas:0, salidas:0 };
-          areas[nomDestino].entradas += parseFloat(s.cantidad||0);
+        const art = getArt(s.id_articulo);
+        const artNom    = art ? art.nombre : ('Art #'+s.id_articulo);
+        const nomOrigen = s.area_entrega   ? s.area_entrega.nombre+(s.area_entrega.codigo?' ('+s.area_entrega.codigo+')':'')   : 'Sin área';
+        const nomDest   = s.area_receptora ? s.area_receptora.nombre+(s.area_receptora.codigo?' ('+s.area_receptora.codigo+')':'') : null;
+        var kO = nomOrigen+'||'+artNom;
+        if (!areas[kO]) areas[kO] = { area:nomOrigen, art:artNom, entradas:0, salidas:0 };
+        areas[kO].salidas += parseFloat(s.cantidad||0);
+        if (nomDest) {
+          var kD = nomDest+'||'+artNom;
+          if (!areas[kD]) areas[kD] = { area:nomDest, art:artNom, entradas:0, salidas:0 };
+          areas[kD].entradas += parseFloat(s.cantidad||0);
         }
       });
-      const filas = Object.keys(areas).sort().map(function(a) {
-        const v=areas[a], saldo=v.entradas-v.salidas;
-        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
-          +'<td style="padding:8px;font-size:12px">'+a+'</td>'
-          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#22c55e">'+v.entradas+'</td>'
-          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#fc8181">'+v.salidas+'</td>'
-          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:'+(saldo>=0?'var(--naranja)':'#fc8181')+'">'+saldo+'</td></tr>';
+      var thStyle = 'padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)';
+      var filas = Object.keys(areas).sort().map(function(k) {
+        var v = areas[k], saldo = v.entradas - v.salidas;
+        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'          +'<td style="padding:8px;font-size:12px">'+v.area+'</td>'          +'<td style="padding:8px;font-size:12px">'+v.art+'</td>'          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#22c55e">'+v.entradas+'</td>'          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#fc8181">'+v.salidas+'</td>'          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:'+(saldo>=0?'var(--naranja)':'#fc8181')+'">'+saldo+'</td></tr>';
       });
-      res.innerHTML = '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
-        +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Área</th>'
-        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Entradas</th>'
-        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Salidas</th>'
-        +'<th style="text-align:right;padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Saldo Neto</th>'
-        +'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>';
+      res.innerHTML = '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'        +'<th style="'+thStyle+';text-align:left">Área</th>'        +'<th style="'+thStyle+';text-align:left">Artículo</th>'        +'<th style="'+thStyle+';text-align:right">Entradas</th>'        +'<th style="'+thStyle+';text-align:right">Salidas</th>'        +'<th style="'+thStyle+';text-align:right">Saldo</th>'        +'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>';
 
-    } else if (agrup === 'articulo') {
+} else if (agrup === 'articulo') {
       const arts = {};
       entradas.forEach(function(e) {
         const art=getArt(e.id_articulo); if(!art) return;
