@@ -441,12 +441,12 @@ function verFichaInventario(id) {
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Valor Inventario</div>'
     + '</div>'
     + '</div>'
-    + (r.id_cuenta_contable || r.id_cuenta_costo_gasto ? '<div style="background:var(--gris2);border-radius:6px;padding:12px 14px;margin-top:4px;display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-      + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Cuenta Contable Inventario</div>'
-      + '<div id="ficha-inv-cta-inventario" style="font-size:12px;font-family:var(--font-mono);color:var(--suave)">—</div></div>'
-      + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Cuenta Costo / Gasto</div>'
-      + '<div id="ficha-inv-cta-costo" style="font-size:12px;font-family:var(--font-mono);color:var(--suave)">—</div></div>'
-      + '</div>' : '')
+    + '<div style="background:var(--gris2);border-radius:6px;padding:12px 14px;margin-top:4px;display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Cuenta Contable Inventario</div>'
+    + '<div id="ficha-inv-cta-inventario" style="font-size:12px;font-family:var(--font-mono);color:var(--suave)">—</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Cuenta Costo / Gasto</div>'
+    + '<div id="ficha-inv-cta-costo" style="font-size:12px;font-family:var(--font-mono);color:var(--suave)">—</div></div>'
+    + '</div>'
 
   // Botones de acción en el footer
   var btnEditar = document.getElementById('ficha-inv-btn-editar');
@@ -477,8 +477,8 @@ function verFichaInventario(id) {
   focusFirstField('modal-ficha-inv');
 
   // Cargar nombres de cuentas contables
-  if (r.id_cuenta_contable || r.id_cuenta_costo_gasto) {
-    var _idsC = [r.id_cuenta_contable, r.id_cuenta_costo_gasto].filter(Boolean).join(',');
+  var _idsC = [r.id_cuenta_contable, r.id_cuenta_costo_gasto].filter(Boolean).join(',');
+  if (_idsC) {
     api('cont_cuentas','GET',null,'?id_cuenta=in.('+_idsC+')&select=id_cuenta,codigo,nombre').then(function(ctas) {
       var ctaInv = ctas ? ctas.find(function(c){ return c.id_cuenta === r.id_cuenta_contable; }) : null;
       var ctaCG  = ctas ? ctas.find(function(c){ return c.id_cuenta === r.id_cuenta_costo_gasto; }) : null;
