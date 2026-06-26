@@ -801,7 +801,55 @@ async function guardarEntradaStock() {
     }
 
     // ── FASE 5: Asiento contable ──
-    // Transferencias internas NO generan asiento
+    // Transferencias de CONSUMIBLES generan asiento: DEBE gasto / HABER inventario
+    if (motivoEnt === 'transferencia' && r.id_cuenta_contable && r.id_cuenta_costo_gasto) {
+      try {
+        // Calcular CPP_VES promedio ponderado (solo entradas en USD)
+        const entradasArt = await api('stock_entradas','GET',null,'?id_articulo=eq.'+id+'&select=cantidad,precio_costo_usd,tasa_bcv,moneda_compra&order=fecha_entrada.asc') || [];
+        var sumQxTasa = 0; var sumQ = 0;
+        entradasArt.forEach(function(e) {
+          var q = parseFloat(e.cantidad||0);
+          var t = parseFloat(e.tasa_bcv||0);
+          if (q > 0 && t > 0 && (e.moneda_compra||'USD') === 'USD') {
+            sumQxTasa += q * t;
+            sumQ += q;
+          }
+        });
+        var tasaPromedio = sumQ > 0 ? sumQxTasa / sumQ : (_tasaVigente || 1);
+        var cppUSD = parseFloat(r.precio_costo_usd || 0);
+        var montoVESTransf = parseFloat((cantidad * cppUSD * tasaPromedio).toFixed(2));
+
+        // Numero asiento
+        var anioT = new Date().getFullYear();
+        var ultsT = await api('cont_asientos','GET',null,'?id_emisor=eq.'+(sesionActual?.id_emisor||_empresaActiva?.id_emisor||0)+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
+        var seqT = 1;
+        if (ultsT[0]?.numero_asiento) { var mmT = ultsT[0].numero_asiento.match(/(\d+)$/); if (mmT) seqT = parseInt(mmT[1])+1; }
+        var numAstT = 'AST-' + anioT + '-' + String(seqT).padStart(4,'0');
+
+        var astT = await api('cont_asientos','POST',{
+          id_emisor: sesionActual?.id_emisor||_empresaActiva?.id_emisor||0,
+          numero_asiento: numAstT, tipo: 'CONSUMO_INVENTARIO',
+          fecha: getHoyVzla(),
+          descripcion: 'Consumo inventario: ' + (r.nombre||'') + ' x' + cantidad + ' — Transfer a: ' + (document.getElementById('es-area-display')?.textContent||''),
+          referencia: idEntrada ? 'ENT-' + idEntrada : 'TRANSF-'+id,
+          estado: 'APROBADO', moneda_base: 'VES', tasa_bcv: tasaPromedio,
+          id_usuario: sesionActual?.correo_usuario || null
+        });
+        var arT = Array.isArray(astT) ? astT[0] : astT;
+        if (arT?.id_asiento) {
+          // DEBE: Cuenta Costo/Gasto (6.1.02.004)
+          await api('cont_asiento_lineas','POST',{ id_asiento:arT.id_asiento, id_cuenta:r.id_cuenta_costo_gasto, orden:1,
+            descripcion:'Consumo: '+(r.nombre||'')+' x'+cantidad+' (CPP $'+cppUSD.toFixed(2)+' x T/C '+tasaPromedio.toFixed(2)+')',
+            debe_usd:0, haber_usd:0, debe_ves:montoVESTransf, haber_ves:0, tasa_bcv:tasaPromedio });
+          // HABER: Cuenta Inventario (1.1.03.xxx)
+          await api('cont_asiento_lineas','POST',{ id_asiento:arT.id_asiento, id_cuenta:r.id_cuenta_contable, orden:2,
+            descripcion:'Salida inventario consumible: '+(r.nombre||'')+' x'+cantidad,
+            debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoVESTransf, tasa_bcv:tasaPromedio });
+        }
+      } catch(eAstTransf) { console.warn('Error asiento transferencia consumible:', eAstTransf); }
+    }
+
+    // Transferencias de otros articulos (Repuestos/Mercancias) NO generan asiento aqui
     if (motivoEnt !== "transferencia") try {
       const areaNombreEnt = document.getElementById('es-area-display')?.textContent || 'Área';
       const tipoAst = motivoEnt === 'compra' ? 'ENTRADA_COMPRA'
