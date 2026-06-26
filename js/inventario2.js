@@ -1686,13 +1686,24 @@ async function invCargarMovimientos() {
         }
       });
       var thStyle = 'padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)';
-      var filas = Object.keys(areas).sort().map(function(k) {
+      // Filtrar por area del operador si no tiene VER_INVENTARIO_GENERAL
+      var areaKeys = Object.keys(areas).sort();
+      if (idAreaMovs) {
+        // Obtener nombre del area del operador para filtrar
+        var areaOps = entradas.length > 0
+          ? entradas.filter(function(e){ return e.id_area === idAreaMovs; }).map(function(e){ return e.area_receptora ? e.area_receptora.nombre+(e.area_receptora.codigo?' ('+e.area_receptora.codigo+')':'') : null; }).filter(Boolean)
+          : [];
+        if (areaOps.length > 0) {
+          areaKeys = areaKeys.filter(function(k){ return areas[k].area === areaOps[0]; });
+        }
+      }
+      var filas = areaKeys.map(function(k) {
         var v = areas[k], saldo = v.entradas - v.salidas;
         return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'          +'<td style="padding:8px;font-size:12px">'+v.area+'</td>'          +'<td style="padding:8px;font-size:12px">'+v.art+'</td>'          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#22c55e">'+v.entradas+'</td>'          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#fc8181">'+v.salidas+'</td>'          +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:'+(saldo>=0?'var(--naranja)':'#fc8181')+'">'+saldo+'</td></tr>';
       });
       res.innerHTML = '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'        +'<th style="'+thStyle+';text-align:left">Área</th>'        +'<th style="'+thStyle+';text-align:left">Artículo</th>'        +'<th style="'+thStyle+';text-align:right">Entradas</th>'        +'<th style="'+thStyle+';text-align:right">Salidas</th>'        +'<th style="'+thStyle+';text-align:right">Saldo</th>'        +'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>';
 
-} else if (agrup === 'articulo') {
+      } else if (agrup === 'articulo') {
       const arts = {};
       entradas.forEach(function(e) {
         const art=getArt(e.id_articulo); if(!art) return;
