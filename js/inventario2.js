@@ -1663,7 +1663,9 @@ async function invCargarMovimientos() {
 
     } else if (agrup === 'area') {
       const areas = {}; // key: areaNom||artNom
+      // ENTRADAS directas (compras, ajustes) - excluir transferencias para no contar doble
       entradas.forEach(function(e) {
+        if (e.motivo === 'transferencia') return; // Las transferencias se manejan desde salidas
         const art = getArt(e.id_articulo);
         const areaNom = e.area_receptora ? e.area_receptora.nombre+(e.area_receptora.codigo?' ('+e.area_receptora.codigo+')':'') : 'Sin área';
         const artNom  = art ? art.nombre : ('Art #'+e.id_articulo);
@@ -1671,14 +1673,17 @@ async function invCargarMovimientos() {
         if (!areas[key]) areas[key] = { area:areaNom, art:artNom, entradas:0, salidas:0 };
         areas[key].entradas += parseFloat(e.cantidad||0);
       });
+      // SALIDAS = SALIDA del area origen + ENTRADA del area receptora
       salidas.forEach(function(s) {
         const art = getArt(s.id_articulo);
         const artNom    = art ? art.nombre : ('Art #'+s.id_articulo);
-        const nomOrigen = s.area_entrega   ? s.area_entrega.nombre+(s.area_entrega.codigo?' ('+s.area_entrega.codigo+')':'')   : 'Sin área';
-        const nomDest   = s.area_receptora ? s.area_receptora.nombre+(s.area_receptora.codigo?' ('+s.area_receptora.codigo+')':'') : null;
+        // Area origen: quien entrega -> SALIDA
+        const nomOrigen = s.area_entrega   ? s.area_entrega.nombre+(s.area_entrega.codigo?' ('+s.area_entrega.codigo+')':'') : 'Sin área';
         var kO = nomOrigen+'||'+artNom;
         if (!areas[kO]) areas[kO] = { area:nomOrigen, art:artNom, entradas:0, salidas:0 };
         areas[kO].salidas += parseFloat(s.cantidad||0);
+        // Area receptora: quien recibe -> ENTRADA
+        const nomDest = s.area_receptora ? s.area_receptora.nombre+(s.area_receptora.codigo?' ('+s.area_receptora.codigo+')':'') : null;
         if (nomDest) {
           var kD = nomDest+'||'+artNom;
           if (!areas[kD]) areas[kD] = { area:nomDest, art:artNom, entradas:0, salidas:0 };
