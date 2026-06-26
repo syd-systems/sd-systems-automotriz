@@ -922,6 +922,9 @@ async function abrirNuevoInventario() {
     const ctas113 = await api('cont_cuentas','GET',null,'?codigo=like.1.1.03*&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
     const selCta = document.getElementById('inv-cuenta-contable');
     if (selCta) selCta.innerHTML = '<option value="">— Seleccionar cuenta 1.1.03.xxx —</option>' + ctas113.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join('');
+    const ctasCGn = await api('cont_cuentas','GET',null,'?codigo=in.(5.1.02.001,6.1.02.004)&estado=eq.ACTIVA&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
+    const selCGn = document.getElementById('inv-cuenta-costo-gasto');
+    if (selCGn) { selCGn.innerHTML = '<option value="">— Seleccionar cuenta —</option>' + ctasCGn.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join(''); selCGn.value = ''; }
   } catch(e2) {}
   ['inv-id','inv-codigo','inv-nombre','inv-descripcion','inv-stock','inv-stock-min','inv-costo','inv-venta','inv-demanda-anual','inv-lead-time','inv-costo-pedido','inv-stock-seg'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.value = '';
@@ -954,12 +957,17 @@ async function abrirEditarInventario(id) {
     const ctas113e = await api('cont_cuentas','GET',null,'?codigo=like.1.1.03*&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
     const selCtaE = document.getElementById('inv-cuenta-contable');
     if (selCtaE) { selCtaE.innerHTML = '<option value="">— Seleccionar —</option>' + ctas113e.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join(''); }
+    const ctasCGe = await api('cont_cuentas','GET',null,'?codigo=in.(5.1.02.001,6.1.02.004)&estado=eq.ACTIVA&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
+    const selCGe = document.getElementById('inv-cuenta-costo-gasto');
+    if (selCGe) selCGe.innerHTML = '<option value="">— Seleccionar cuenta —</option>' + ctasCGe.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join('');
   } catch(e3) {}
   const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) return;
   // Preseleccionar cuenta contable
   const selCtaFinal = document.getElementById('inv-cuenta-contable');
   if (selCtaFinal && r.id_cuenta_contable) selCtaFinal.value = r.id_cuenta_contable;
+  const selCGFinal = document.getElementById('inv-cuenta-costo-gasto');
+  if (selCGFinal && r.id_cuenta_costo_gasto) selCGFinal.value = r.id_cuenta_costo_gasto;
   document.getElementById('inv-id').value = r.id_articulo;
   document.getElementById('inv-codigo').value = r.codigo || '';
   document.getElementById('inv-nombre').value = r.nombre;
@@ -1027,7 +1035,9 @@ async function guardarInventario() {
   if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; document.getElementById('inv-nombre')?.focus(); return; }
   if (!unidad) { errEl.textContent = 'La unidad de medida es obligatoria.'; errEl.style.display = 'block'; document.getElementById('inv-unidad')?.focus(); return; }
   const idCtaContable2 = parseInt(document.getElementById('inv-cuenta-contable')?.value) || 0;
-  if (!idCtaContable2) { errEl.textContent = 'Debe seleccionar la Cuenta Contable de Inventario (1.1.03.xxx).'; errEl.style.display = 'block'; document.getElementById('inv-cuenta-contable')?.focus(); return; }
+  if (!idCtaContable2) { errEl.textContent = 'Debe seleccionar la Cuenta Contable Inventario (1.1.03.xxx).'; errEl.style.display = 'block'; document.getElementById('inv-cuenta-contable')?.focus(); return; }
+  const idCtaCG2 = parseInt(document.getElementById('inv-cuenta-costo-gasto')?.value) || 0;
+  if (!idCtaCG2) { errEl.textContent = 'Debe seleccionar la Cuenta Costo / Gasto de Inventario.'; errEl.style.display = 'block'; document.getElementById('inv-cuenta-costo-gasto')?.focus(); return; }
 
   try {
     // Validar código duplicado
@@ -1055,6 +1065,7 @@ async function guardarInventario() {
       ...(ventaFinal !== undefined ? { precio_venta_usd: ventaFinal } : {}),
       unidad, id_categoria: idCategoria, id_tipo_articulo: idTipoArticulo,
       id_cuenta_contable: parseInt(document.getElementById('inv-cuenta-contable')?.value) || null,
+      id_cuenta_costo_gasto: parseInt(document.getElementById('inv-cuenta-costo-gasto')?.value) || null,
       demanda_anual: demandaAnual, lead_time_dias: leadTime, costo_pedido_usd: costoPedido, stock_seguridad: stockSeg,
       id_usuario: sesionActual.correo_usuario };
     if (id) {
