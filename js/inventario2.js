@@ -1539,12 +1539,16 @@ async function invCargarMovimientos() {
     // Cargar entradas y salidas según filtro
     // Filtrar por área si el usuario no tiene VER_INVENTARIO_GENERAL
     let idAreaMovs = null;
+    let idAreaMovsNombre = null;
     if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
       try {
         const correo = sesionActual?.correo_usuario;
         const empRes = correo ? await api('empleados','GET',null,
-          '?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1') : [];
+          '?correo=eq.'+encodeURIComponent(correo)+'&select=id_area,param_areas(nombre,codigo)&limit=1') : [];
         idAreaMovs = empRes?.[0]?.id_area || null;
+        idAreaMovsNombre = empRes?.[0]?.param_areas
+          ? empRes[0].param_areas.nombre + (empRes[0].param_areas.codigo ? ' (' + empRes[0].param_areas.codigo + ')' : '')
+          : null;
       } catch(e) {}
     }
 
@@ -1693,14 +1697,8 @@ async function invCargarMovimientos() {
       var thStyle = 'padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)';
       // Filtrar por area del operador si no tiene VER_INVENTARIO_GENERAL
       var areaKeys = Object.keys(areas).sort();
-      if (idAreaMovs) {
-        // Obtener nombre del area del operador para filtrar
-        var areaOps = entradas.length > 0
-          ? entradas.filter(function(e){ return e.id_area === idAreaMovs; }).map(function(e){ return e.area_receptora ? e.area_receptora.nombre+(e.area_receptora.codigo?' ('+e.area_receptora.codigo+')':'') : null; }).filter(Boolean)
-          : [];
-        if (areaOps.length > 0) {
-          areaKeys = areaKeys.filter(function(k){ return areas[k].area === areaOps[0]; });
-        }
+      if (idAreaMovs && idAreaMovsNombre) {
+        areaKeys = areaKeys.filter(function(k){ return areas[k].area === idAreaMovsNombre; });
       }
       var filas = areaKeys.map(function(k) {
         var v = areas[k], saldo = v.entradas - v.salidas;
