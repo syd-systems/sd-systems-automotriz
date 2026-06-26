@@ -1019,12 +1019,12 @@ async function guardarInventario() {
   const errEl    = document.getElementById('alerta-inv-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
 
-  if (!codigo) { errEl.textContent = 'El código del artículo es obligatorio.'; errEl.style.display = 'block'; document.getElementById('inv-codigo')?.focus(); return; }
-  if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; document.getElementById('inv-nombre')?.focus(); return; }
   const idCategoria2 = parseInt(document.getElementById('inv-categoria')?.value) || 0;
   if (!idCategoria2) { errEl.textContent = 'Debe seleccionar una Categoría.'; errEl.style.display = 'block'; document.getElementById('inv-categoria')?.focus(); return; }
   const idTipoArt2 = parseInt(document.getElementById('inv-tipo-articulo')?.value) || 0;
   if (!idTipoArt2) { errEl.textContent = 'Debe seleccionar un Tipo de Artículo.'; errEl.style.display = 'block'; document.getElementById('inv-tipo-articulo')?.focus(); return; }
+  if (!codigo) { errEl.textContent = 'El código del artículo es obligatorio.'; errEl.style.display = 'block'; document.getElementById('inv-codigo')?.focus(); return; }
+  if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; document.getElementById('inv-nombre')?.focus(); return; }
   if (!unidad) { errEl.textContent = 'La unidad de medida es obligatoria.'; errEl.style.display = 'block'; document.getElementById('inv-unidad')?.focus(); return; }
   const idCtaContable2 = parseInt(document.getElementById('inv-cuenta-contable')?.value) || 0;
   if (!idCtaContable2) { errEl.textContent = 'Debe seleccionar la Cuenta Contable de Inventario (1.1.03.xxx).'; errEl.style.display = 'block'; document.getElementById('inv-cuenta-contable')?.focus(); return; }
