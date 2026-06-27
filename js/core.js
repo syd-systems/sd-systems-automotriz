@@ -812,9 +812,9 @@ function mostrarSeleccionEmpresa() {
     + '</div>';
 }
 
-function seleccionarEmpresa(idEmisor) {
-  idEmisor = parseInt(idEmisor);
-  _empresaActiva = _empresasUsuario.find(function(e){ return e.id_empresa === idEmisor; });
+function seleccionarEmpresa(id_emisor) {
+  id_emisor = parseInt(id_emisor);
+  _empresaActiva = _empresasUsuario.find(function(e){ return e.id_empresa === id_emisor; });
   if (!_empresaActiva) return;
   // Guardar empresa activa en sessionStorage y localStorage
   sessionStorage.setItem('sd_empresa_activa', JSON.stringify(_empresaActiva));
@@ -1712,24 +1712,24 @@ async function guardarUsuario() {
 }
 
 // ─── GUARDAR/CARGAR FACULTADES DE APROBACIÓN ───
-async function guardarFacultadesAprobacion(idUsuario) {
+async function guardarFacultadesAprobacion(id_usuario) {
   const modulos = [
     { id: 'u-aprueba-facturas',     modulo: 'FACTURAS' },
     { id: 'u-aprueba-pagos',        modulo: 'PAGOS' },
     { id: 'u-aprueba-contabilidad', modulo: 'CONTABILIDAD' },
   ];
   // Borrar facultades existentes
-  await api('usuario_aprobaciones','DELETE',null,'?id_usuario=eq.'+idUsuario);
+  await api('usuario_aprobaciones','DELETE',null,'?id_usuario=eq.'+id_usuario);
   // Insertar las seleccionadas
   const seleccionadas = modulos
     .filter(function(m){ return document.getElementById(m.id)?.checked; })
-    .map(function(m){ return { id_usuario: idUsuario, modulo: m.modulo, puede_aprobar: true }; });
+    .map(function(m){ return { id_usuario: id_usuario, modulo: m.modulo, puede_aprobar: true }; });
   if (seleccionadas.length) {
     await api('usuario_aprobaciones','POST', seleccionadas);
   }
 }
 
-async function cargarFacultadesEnModal(idUsuario) {
+async function cargarFacultadesEnModal(id_usuario) {
   const checks = {
     'FACTURAS':      'u-aprueba-facturas',
     'PAGOS':         'u-aprueba-pagos',
@@ -1740,10 +1740,10 @@ async function cargarFacultadesEnModal(idUsuario) {
     const el = document.getElementById(id); 
     if (el) el.checked = false; 
   });
-  if (!idUsuario) return;
+  if (!id_usuario) return;
   try {
     const rows = await api('usuario_aprobaciones','GET',null,
-      '?id_usuario=eq.'+idUsuario+'&puede_aprobar=eq.true&select=modulo');
+      '?id_usuario=eq.'+id_usuario+'&puede_aprobar=eq.true&select=modulo');
     rows.forEach(function(r){
       const elId = checks[r.modulo];
       if (elId) { const el = document.getElementById(elId); if (el) el.checked = true; }
