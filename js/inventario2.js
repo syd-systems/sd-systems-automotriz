@@ -1110,7 +1110,7 @@ async function guardarInventario() {
   try {
     // Validar código duplicado
     if (codigo) {
-      let qDup = '?codigo=eq.' + encodeURIComponent(codigo) + emisorQ();
+      let qDup = '?codigo_articulo=eq.' + encodeURIComponent(codigo) + emisorQ();
       if (id) qDup += '&id_articulo=neq.' + id; // excluir el propio al editar
       const dup = await api('inventario_almacen','GET',null,qDup + '&select=id_articulo&limit=1');
       if (dup && dup.length) {
@@ -1127,11 +1127,11 @@ async function guardarInventario() {
     const idCategoria    = parseInt(document.getElementById('inv-categoria')?.value) || null;
     const idTipoArticulo = parseInt(document.getElementById('inv-tipo-articulo')?.value) || null;
     const ventaFinal     = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? venta : undefined;
-    const datos = { nombre, descripcion: desc || null, codigo: codigo || null, stock_actual: stock,
-      stock_minimo: stockMin, precio_costo_moneda: costo,
-      id_emisor: _empresaActiva ? _empresaActiva.id_emisor : null,
+    const datos = { nombre_articulo: nombre, descripcion_articulo: desc || null, codigo_articulo: codigo || null, stock_actual_articulo: stock,
+      stock_minimo_articulo: stockMin, precio_costo_moneda: costo,
+      id_empresa: _empresaActiva ? _empresaActiva.id_emisor : null,
       ...(ventaFinal !== undefined ? { precio_venta_moneda: ventaFinal } : {}),
-      unidad, id_categoria: idCategoria, id_tipo_articulo: idTipoArticulo,
+      unidad, id_categoria_articulo: idCategoria, id_tipo_articulo: idTipoArticulo,
       id_cuenta_contable: parseInt(document.getElementById('inv-cuenta-contable')?.value) || null,
       id_cuenta_costo_gasto: parseInt(document.getElementById('inv-cuenta-costo-gasto')?.value) || null,
       demanda_anual: demandaAnual, lead_time_dias: leadTime, costo_pedido_usd: costoPedido, stock_seguridad: stockSeg,
