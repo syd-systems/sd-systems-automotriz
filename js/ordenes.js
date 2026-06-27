@@ -600,7 +600,7 @@ function calcularTotalesOS() {
 // ─── AGREGAR LÍNEA SERVICIO DESDE CATÁLOGO ───
 async function agregarServicioCatalogo() {
   if (!catalogoCache.length) {
-    try { catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=grupo.asc,nombre.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+''); } catch(e) {}
+    try { catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=grupo.asc,nombre.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+''); } catch(e) {}
   }
   const sel    = document.getElementById('os-sel-cat');
   const precio = document.getElementById('os-precio-cat');
@@ -708,7 +708,7 @@ function onSelCatalogoChange() {
 // ─── AGREGAR LÍNEA ARTÍCULO DESDE INVENTARIO ───
 async function agregarRepuestoInventario() {
   if (!inventarioCache.length) {
-    try { inventarioCache = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+''); } catch(e) {}
+    try { inventarioCache = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+''); } catch(e) {}
   }
   const sel    = document.getElementById('os-sel-inv');
   const precio = document.getElementById('os-precio-inv');
@@ -842,7 +842,7 @@ async function _guardarOSInterno() {
     const estadoCambio = !osActual || osActual.estado !== estado;
 
     const datos = {
-      id_emisor: _empresaActiva.id_emisor,
+      id_empresa: _empresaActiva.id_empresa,
       id_vehiculo: parseInt(vehId),
       id_propietario: idPropietario,
       kilometraje_entrada: km,
@@ -882,10 +882,10 @@ async function _guardarOSInterno() {
       // Nueva — generar número OS por empresa con reintento ante duplicado
       const hoy = new Date();
       const anio = hoy.getFullYear();
-      const idEmisor = _empresaActiva ? _empresaActiva.id_emisor : 0;
+      const idEmisor = _empresaActiva ? _empresaActiva.id_empresa : 0;
       const prefijo = 'OS-' + anio + '-';
       const existentes = await api('ordenes_servicio', 'GET', null,
-        '?select=numero_os&numero_os=gte.' + prefijo + '0000&numero_os=lte.' + prefijo + '9999&id_emisor=eq.' + idEmisor + '&order=numero_os.desc&limit=1');
+        '?select=numero_os&numero_os=gte.' + prefijo + '0000&numero_os=lte.' + prefijo + '9999&id_empresa=eq.' + idEmisor + '&order=numero_os.desc&limit=1');
       let seq = 1;
       if (existentes && existentes.length) {
         const partes = existentes[0].numero_os.split('-');
@@ -1259,8 +1259,8 @@ async function recalcularTasaOS(id, nuevaTasa) {
 // ─── Cargar catálogo e inventario en selects del modal OS ───
 async function cargarSelectsOS() {
   try {
-    if (!catalogoCache.length) catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=grupo.asc,nombre.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
-    if (!inventarioCache.length) inventarioCache = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
+    if (!catalogoCache.length) catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=grupo.asc,nombre.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
+    if (!inventarioCache.length) inventarioCache = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
   } catch(e) {}
 
   // ── Cargar selector de GRUPOS ──
@@ -1375,16 +1375,16 @@ window.addEventListener('load', async () => {
           if (todasEmisores.length === 1) _empresaActiva = todasEmisores[0];
         } else {
           const ues = await api('usuarios_empresas','GET',null,
-            '?correo_usuario=eq.'+encodeURIComponent(usuario.correo_usuario)+'&activo=eq.true&select=id_emisor');
+            '?correo_usuario=eq.'+encodeURIComponent(usuario.correo_usuario)+'&activo=eq.true&select=id_empresa');
           const idsPermitidos = new Set(ues.map(function(x){ return x.id_empresa; }));
-          _empresasUsuario = todasEmisores.filter(function(e){ return idsPermitidos.has(e.id_emisor); });
+          _empresasUsuario = todasEmisores.filter(function(e){ return idsPermitidos.has(e.id_empresa); });
           if (_empresasUsuario.length === 1) _empresaActiva = _empresasUsuario[0];
         }
         // Restaurar empresa activa desde sessionStorage o localStorage
         const empGuardada = sessionStorage.getItem('sd_empresa_activa') || localStorage.getItem('sd_empresa_activa');
         if (empGuardada) {
           const emp = JSON.parse(empGuardada);
-          const empEncontrada = _empresasUsuario.find(function(e){ return e.id_emisor === emp.id_emisor; });
+          const empEncontrada = _empresasUsuario.find(function(e){ return e.id_empresa === emp.id_empresa; });
           if (empEncontrada) _empresaActiva = empEncontrada;
         }
         // Fallback: si no hay empresa guardada, tomar la primera disponible
