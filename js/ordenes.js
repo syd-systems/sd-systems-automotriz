@@ -388,7 +388,7 @@ async function abrirEditarOS(id) {
   try {
     const [linServ, linRep, tasas] = await Promise.all([
       api('os_servicios', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
-      api('os_repuestos', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
+      api('os_mercancias', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
       api('tasas', 'GET', null, '?order=fecha_registro.desc&limit=1&select=tipo_cambio'),
     ]);
     osServiciosLineas = linServ.map(function(l) {
@@ -872,11 +872,11 @@ async function _guardarOSInterno() {
       // Guardar líneas de artículos anteriores para restaurar stock
       var lineasArtículosAntes = [];
       try {
-        lineasArtículosAntes = await api('os_repuestos', 'GET', null, '?id_orden=eq.' + id + '&select=id_articulo,cantidad');
+        lineasArtículosAntes = await api('os_mercancias', 'GET', null, '?id_orden=eq.' + id + '&select=id_articulo,cantidad');
       } catch(e) {}
       await Promise.all([
         api('os_servicios', 'DELETE', null, '?id_orden=eq.' + id),
-        api('os_repuestos', 'DELETE', null, '?id_orden=eq.' + id),
+        api('os_mercancias', 'DELETE', null, '?id_orden=eq.' + id),
       ]);
     } else {
       // Nueva — generar número OS por empresa con reintento ante duplicado
@@ -949,7 +949,7 @@ async function _guardarOSInterno() {
       const monR   = (lr.moneda || 'USD').toUpperCase();
       const precR  = parseFloat(lr.precio_original || lr.precio_usd || 0);
       const subtBsR = lineaABsGuardar(precR, monR) * parseFloat(lr.cantidad);
-      await api('os_repuestos', 'POST', {
+      await api('os_mercancias', 'POST', {
         id_orden: parseInt(osId), id_articulo: lr.id_articulo || null,
         descripcion: lr.descripcion, cantidad: lr.cantidad,
         moneda: monR, precio_original: precR,
@@ -979,7 +979,7 @@ async function _guardarOSInterno() {
 async function ajustarStockOS(id_orden, operacion) {
   // operacion: 'restaurar' suma al stock, 'descontar' resta
   try {
-    const lineas = await api('os_repuestos', 'GET', null, '?id_orden=eq.' + id_orden + '&select=id_articulo,cantidad');
+    const lineas = await api('os_mercancias', 'GET', null, '?id_orden=eq.' + id_orden + '&select=id_articulo,cantidad');
     for (var k = 0; k < lineas.length; k++) {
       var l = lineas[k];
       if (!l.id_articulo) continue;
@@ -1054,7 +1054,7 @@ async function eliminarOS(id, numero) {
     // 3. Borrar líneas y la OS
     await Promise.all([
       api('os_servicios', 'DELETE', null, '?id_orden=eq.' + id),
-      api('os_repuestos',  'DELETE', null, '?id_orden=eq.' + id),
+      api('os_mercancias',  'DELETE', null, '?id_orden=eq.' + id),
     ]);
     await api('ordenes_servicio', 'DELETE', null, '?id_orden=eq.' + id);
     ordenesCache = ordenesCache.filter(function(x) { return x.id_orden !== id; });
@@ -1103,7 +1103,7 @@ async function verFichaOS(id) {
   try {
     const [linServ, linRep, tasasActuales] = await Promise.all([
       api('os_servicios', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
-      api('os_repuestos', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
+      api('os_mercancias', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
       api('tasas', 'GET', null, '?moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
     const tasaActualFicha = tasasActuales.length ? parseFloat(tasasActuales[0].tipo_cambio) : null;
