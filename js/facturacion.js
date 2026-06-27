@@ -231,7 +231,7 @@ async function onSelOSFactura() {
   try {
     const [linServ, linRep, osData] = await Promise.all([
       api('os_servicios','GET',null,'?id_orden=eq.'+id_os+'&select=*'),
-      api('os_repuestos','GET',null,'?id_orden=eq.'+id_os+'&select=*'),
+      api('os_mercancias','GET',null,'?id_orden=eq.'+id_os+'&select=*'),
       api('ordenes_servicio','GET',null,'?id_orden=eq.'+id_os+'&select=*,vehiculos(placa,marca,modelo),propietarios(nombre_completo,tipo_doc,numero_doc,correo,telefono,direccion,tipo_contribuyente)'),
     ]);
     const o = osData[0]||{}, prop = o.propietarios, veh = o.vehiculos;
@@ -528,7 +528,7 @@ async function guardarFactura(emitir) {
     // ── Registrar salida automática de inventario al emitir factura ──
     if (emitir && id_os) {
       try {
-        const reps = await api('os_repuestos','GET',null,'?id_orden=eq.'+id_os+'&select=id_articulo,cantidad');
+        const reps = await api('os_mercancias','GET',null,'?id_orden=eq.'+id_os+'&select=id_articulo,cantidad');
         // Obtener área del usuario que factura
         const correo = sesionActual?.correo_usuario;
         const empRes = correo ? await api('empleados','GET',null,
@@ -574,7 +574,7 @@ async function verFichaFactura(id) {
     if (f.id_orden) {
       [linServ,linRep] = await Promise.all([
         api('os_servicios','GET',null,'?id_orden=eq.'+f.id_orden+'&select=*'),
-        api('os_repuestos','GET',null,'?id_orden=eq.'+f.id_orden+'&select=*'),
+        api('os_mercancias','GET',null,'?id_orden=eq.'+f.id_orden+'&select=*'),
       ]);
     }
     const est    = ESTADOS_FAC[f.estado]||{clase:'badge-gris',label:f.estado};
