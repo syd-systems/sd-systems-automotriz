@@ -357,7 +357,7 @@ async function renderProveedores() {
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando proveedores...</div>';
   try {
-    const proveedores = await api('proveedores', 'GET', null, '?order=nombre_articulo.asc&select=*&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
+    const proveedores = await api('proveedores', 'GET', null, '?order=nombre_articulo.asc&select=*&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
     proveedoresCache = proveedores;
 
     const activos   = proveedores.filter(function(p) { return p.estado === 'ACTIVO'; }).length;
@@ -659,7 +659,7 @@ async function guardarProveedor() {
     pm_celular:         document.getElementById('prov-pm-celular')?.value.trim() || null,
     id_categoria:       parseInt(document.getElementById('prov-categoria')?.value) || null,
     id_usuario:         sesionActual.correo_usuario,
-    id_emisor:          _empresaActiva?.id_emisor || null
+    id_empresa:          _empresaActiva?.id_empresa || null
   };
 
   try {
