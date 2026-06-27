@@ -272,7 +272,7 @@ async function guardarPropietario() {
       direccion: dir || null, empresa: emp || null,
       tipo_contribuyente: tipoContrib || null,
       foto_documento: fotoUrl, id_usuario: sesionActual.correo_usuario,
-      id_emisor: _empresaActiva ? _empresaActiva.id_emisor : null
+      id_empresa: _empresaActiva ? _empresaActiva.id_empresa : null
     };
 
     if (id) {
