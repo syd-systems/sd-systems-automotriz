@@ -83,7 +83,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
   const fDesde  = filtroDesde || document.getElementById('pagos-fecha-desde')?.value || '';
   const fHasta  = filtroHasta || document.getElementById('pagos-fecha-hasta')?.value || '';
 
-  const idEmisor = _empresaActiva?.id_emisor || 0;
+  const idEmisor = _empresaActiva?.id_empresa || 0;
 
   // ── Cargar todas las fuentes de obligaciones ──
   // Cargar categorías para el filtro
@@ -101,7 +101,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
   const fCategoria = document.getElementById('pagos-categoria')?.value || '';
 
   const pagos = [];
-  const cxps = await api('cont_cxp','GET',null,'?id_emisor=eq.'+idEmisor+'&order=numero_doc.asc&select=*,proveedores:id_proveedor(nombre,id_categoria)');
+  const cxps = await api('cont_cxp','GET',null,'?id_empresa=eq.'+idEmisor+'&order=numero_doc.asc&select=*,proveedores:id_proveedor(nombre,id_categoria)');
   pagosCache = pagos || [];
 
   // ── Normalizar en un solo formato unificado ──
@@ -1476,7 +1476,7 @@ async function contGuardarPagoCxp() {
     // ── Asiento contable se genera al APROBAR, no aqui
     // ── Generar asiento contable del pago ──
     if (false) try { // Asiento se genera en aprobarPagoCxP() — no aqui
-      const idEmisor = _empresaActiva?.id_emisor || 0;
+      const idEmisor = _empresaActiva?.id_empresa || 0;
       const tasaVig  = _tasaVigente || 1;
       const hoy      = fecha;
 
@@ -1515,7 +1515,7 @@ async function contGuardarPagoCxp() {
         // Generar numero_asiento correlativo
         const anioAst  = new Date(hoy).getFullYear();
         const ultAsts  = await api('cont_asientos','GET',null,
-          '?id_emisor=eq.'+idEmisor+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
+          '?id_empresa=eq.'+idEmisor+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
         let ultNum = 0;
         if (ultAsts[0]?.numero_asiento) {
           const m = ultAsts[0].numero_asiento.match(/(\d+)$/);
@@ -1524,7 +1524,7 @@ async function contGuardarPagoCxp() {
         const numAst = 'AST-' + anioAst + '-' + String(ultNum + 1).padStart(4,'0');
 
         const ast = await api('cont_asientos','POST',{
-          id_emisor:      idEmisor,
+          id_empresa:      idEmisor,
           numero_asiento: numAst,
           tipo:           'PAGO_PROVEEDOR',
           fecha:          hoy,
@@ -1859,7 +1859,7 @@ async function guardarPago() {
     montoVES = parseFloat((monto * tasaEUR).toFixed(2));
   }
 
-  const idEmisor = _empresaActiva?.id_emisor || 0;
+  const idEmisor = _empresaActiva?.id_empresa || 0;
   const hoy = new Date().toISOString().split('T')[0];
 
   try {
@@ -1875,7 +1875,7 @@ async function guardarPago() {
     const referenciaNueva = document.getElementById('pago-referencia')?.value.trim() || '';
 
     const nuevaCxP = await api('cont_cxp','POST',{
-      id_emisor:        idEmisor,
+      id_empresa:        idEmisor,
       id_proveedor:     idProveedor,
       tipo:             'PAGO_MANUAL',
       numero_doc:       'MAN-' + Date.now(),
@@ -2270,7 +2270,7 @@ async function aprobarPagoCxP(idCxP) {
     const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*,proveedores:id_proveedor(nombre)');
     if (!rows || !rows[0]) return;
     const c = rows[0];
-    const idEmisor  = _empresaActiva?.id_emisor || 0;
+    const idEmisor  = _empresaActiva?.id_empresa || 0;
     const fechaPago = c.fecha_pago || new Date().toISOString().split('T')[0];
     const moneda    = c.moneda_pago || 'VES';
     const montoUSD  = parseFloat(c.monto_usd || 0);
@@ -2304,13 +2304,13 @@ async function aprobarPagoCxP(idCxP) {
     } catch(e2) {}
 
     const anio = new Date(fechaPago).getFullYear();
-    const ults = await api('cont_asientos','GET',null,'?id_emisor=eq.'+idEmisor+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
+    const ults = await api('cont_asientos','GET',null,'?id_empresa=eq.'+idEmisor+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
     let seq = 1;
     if (ults[0]?.numero_asiento) { const mm = ults[0].numero_asiento.match(/(\d+)$/); if (mm) seq = parseInt(mm[1])+1; }
     const numAst = 'AST-' + anio + '-' + String(seq).padStart(4,'0');
 
     const ast = await api('cont_asientos','POST',{
-      id_emisor: idEmisor, numero_asiento: numAst, tipo: 'PAGO_PROVEEDOR', fecha: fechaPago,
+      id_empresa: idEmisor, numero_asiento: numAst, tipo: 'PAGO_PROVEEDOR', fecha: fechaPago,
       descripcion: 'Pago ' + (c.proveedores?.nombre||'Proveedor') + ' | Doc: ' + (c.numero_doc||'') + ' | Ref: ' + (c.referencia||''),
       referencia: c.numero_doc || ('CXP-'+idCxP),
       estado: 'APROBADO', moneda_base: moneda, tasa_bcv: tasaPago,
