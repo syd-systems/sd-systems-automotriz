@@ -2278,11 +2278,11 @@ async function notifConfirmar() {
             : _notifPendienteActual.datos_extra)
         : null;
       if (extras && extras.id_articulo && extras.cantidad) {
-        const artRes = await api('inventario','GET',null,
+        const artRes = await api('inventario_almacen','GET',null,
           '?id_articulo=eq.'+extras.id_articulo+'&select=id_articulo,stock_actual');
         if (artRes && artRes[0]) {
           const nuevoStock = parseFloat(artRes[0].stock_actual || 0) + parseFloat(extras.cantidad);
-          await api('inventario','PATCH',
+          await api('inventario_almacen','PATCH',
             { stock_actual: nuevoStock },
             '?id_articulo=eq.'+extras.id_articulo);
         }
