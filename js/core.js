@@ -2279,11 +2279,11 @@ async function notifConfirmar() {
         : null;
       if (extras && extras.id_articulo && extras.cantidad) {
         const artRes = await api('inventario_almacen','GET',null,
-          '?id_articulo=eq.'+extras.id_articulo+'&select=id_articulo,stock_actual');
+          '?id_articulo=eq.'+extras.id_articulo+'&select=id_articulo,stock_actual_articulo');
         if (artRes && artRes[0]) {
-          const nuevoStock = parseFloat(artRes[0].stock_actual || 0) + parseFloat(extras.cantidad);
+          const nuevoStock = parseFloat(artRes[0].stock_actual_articulo_articulo || 0) + parseFloat(extras.cantidad);
           await api('inventario_almacen','PATCH',
-            { stock_actual: nuevoStock },
+            { stock_actual_articulo: nuevoStock },
             '?id_articulo=eq.'+extras.id_articulo);
         }
       }
