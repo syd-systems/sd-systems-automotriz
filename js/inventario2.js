@@ -728,11 +728,11 @@ async function guardarEntradaStock() {
     if (!validEnt.ok) { errEl.textContent = validEnt.msg; errEl.style.display = 'block'; document.getElementById('es-clave-receptor')?.focus(); resetBtn(); return; }
 
     // ── FASE 2: Leer stock fresco de BD (única fuente de verdad) ──
-    let stockActual = parseFloat(r?.stock_actual || 0);
+    let stockActual = parseFloat(r?.stock_actual_articulo || 0);
     let costoActual = parseFloat(r?.precio_costo_moneda || 0);
-    const artFresh = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id + '&select=stock_actual,precio_costo_usd');
+    const artFresh = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id + '&select=stock_actual_articulo,precio_costo_moneda');
     if (artFresh && artFresh[0]) {
-      stockActual = parseFloat(artFresh[0].stock_actual || 0);
+      stockActual = parseFloat(artFresh[0].stock_actual_articulo || 0);
       costoActual = parseFloat(artFresh[0].precio_costo_moneda || 0);
     }
     const nuevoStock = stockActual + cantidad;
@@ -791,8 +791,8 @@ async function guardarEntradaStock() {
         id_usuario:        sesionActual.correo_usuario
       });
       // Actualizar stock_actual del área origen — decrementar
-      const artOrigen = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id+'&select=stock_actual');
-      const stockOrigen = parseFloat(artOrigen?.[0]?.stock_actual || 0);
+      const artOrigen = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id+'&select=stock_actual_articulo');
+      const stockOrigen = parseFloat(artOrigen?.[0]?.stock_actual_articulo || 0);
       // stock_actual ya fue actualizado con nuevoStock (que sumó la entrada)
       // necesitamos decrementar adicionalmente por la salida del origen
       // stock_actual = (stock antes de transferencia) - cantidad + cantidad = sin cambio neto
