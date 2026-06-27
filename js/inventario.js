@@ -206,7 +206,7 @@ async function guardarEdicionMovimiento() {
 
       // ── Recalcular CPP si cambió el precio o la cantidad ──
       if (precio !== null) {
-        const artArr = await api('inventario', 'GET', null,
+        const artArr = await api('inventario_almacen', 'GET', null,
           '?id_articulo=eq.' + idRepuesto + '&select=stock_actual,precio_costo_usd');
         const art = artArr[0];
         if (art) {
@@ -223,7 +223,7 @@ async function guardarEdicionMovimiento() {
           const cpp = nuevoStock > 0
             ? (valorSinEstaEntrada + cantidad * precio) / nuevoStock
             : precio;
-          await api('inventario', 'PATCH',
+          await api('inventario_almacen', 'PATCH',
             { precio_costo_moneda: parseFloat(cpp.toFixed(4)), precio_costo_ultimo_moneda: precio },
             '?id_articulo=eq.' + idRepuesto);
         }
@@ -248,7 +248,7 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
 
   try {
     // 1. Leer artículo fresco desde BD
-    const artArr = await api('inventario', 'GET', null, '?id_articulo=eq.' + idRepuesto + '&select=*');
+    const artArr = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + idRepuesto + '&select=*');
     const art = artArr[0];
     if (!art) { alert('Artículo no encontrado.'); return; }
 
@@ -286,7 +286,7 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
       patchInv.precio_costo_ultimo_moneda = 0;
       patchInv.precio_venta_moneda        = 0;
     }
-    await api('inventario', 'PATCH', patchInv, '?id_articulo=eq.' + idRepuesto);
+    await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + idRepuesto);
 
     // 5. Marcar movimiento como reversado
     if (tipo === 'ENTRADA') {
@@ -329,7 +329,7 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
 
     // 7. Actualizar cache con datos frescos desde BD
     try {
-      const fresh = await api('inventario', 'GET', null, '?id_articulo=eq.' + idRepuesto + '&select=*');
+      const fresh = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + idRepuesto + '&select=*');
       if (fresh && fresh[0]) {
         const i = inventarioCache.findIndex(function(x) { return x.id_articulo === idRepuesto; });
         if (i !== -1) inventarioCache[i] = fresh[0];
