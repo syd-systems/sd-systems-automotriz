@@ -189,7 +189,7 @@ function puedo(modulo, accion) {
 
 // ─── API SUPABASE ───
 // ─── EMPRESA ACTIVA ───
-let _empresaActiva     = null; // { id_emisor, nombre, rif, ... }
+let _empresaActiva     = null; // { id_empresa, nombre, rif, ... }
 let _empresasUsuario   = [];   // lista de empresas del usuario
 let _tasaVigente       = 1;    // tasa USD→VES más reciente (se carga al iniciar)
 
@@ -619,16 +619,16 @@ async function iniciarSesion() {
         // Usuario normal: filtrar por usuarios_empresas
         try {
           const ues = await api('usuarios_empresas','GET',null,
-            '?correo_usuario=eq.'+encodeURIComponent(correo)+'&activo=eq.true&select=id_emisor');
-          const idsPermitidos = new Set(ues.map(function(x){ return x.id_emisor; }));
-          _empresasUsuario = todasEmisores.filter(function(e){ return idsPermitidos.has(e.id_emisor); });
+            '?correo_usuario=eq.'+encodeURIComponent(correo)+'&activo=eq.true&select=id_empresa');
+          const idsPermitidos = new Set(ues.map(function(x){ return x.id_empresa; }));
+          _empresasUsuario = todasEmisores.filter(function(e){ return idsPermitidos.has(e.id_empresa); });
         } catch(eUE) { _empresasUsuario = []; }
 
         // Empresa activa = empresa de la ficha de empleado
         const empData = await api('empleados','GET',null,
-          '?correo=eq.'+encodeURIComponent(correo)+'&select=id_emisor&limit=1');
-        if (empData && empData.length && empData[0].id_emisor) {
-          _empresaActiva = todasEmisores.find(function(e){ return e.id_emisor === empData[0].id_emisor; }) || null;
+          '?correo=eq.'+encodeURIComponent(correo)+'&select=id_empresa&limit=1');
+        if (empData && empData.length && empData[0].id_empresa) {
+          _empresaActiva = todasEmisores.find(function(e){ return e.id_empresa === empData[0].id_empresa; }) || null;
         }
         if (!_empresaActiva) {
           mostrarError('No tiene empresa asignada. Contacte al administrador.');
@@ -799,7 +799,7 @@ function mostrarSeleccionEmpresa() {
     + '<div style="font-family:var(--font-display);font-size:32px;letter-spacing:2px;color:var(--naranja);margin-bottom:8px">SELECCIONAR EMPRESA</div>'
     + '<div style="color:var(--suave);font-size:13px;margin-bottom:32px">Selecciona la empresa con la que deseas operar</div>'
     + _empresasUsuario.map(function(e) {
-        return '<button onclick="seleccionarEmpresa('+e.id_emisor+')" '
+        return '<button onclick="seleccionarEmpresa('+e.id_empresa+')" '
           + 'style="background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:16px 20px;'
           + 'text-align:left;cursor:pointer;margin-bottom:10px;width:100%;transition:all 0.15s;font-family:var(--font-body)"'
           + ' >'
@@ -814,7 +814,7 @@ function mostrarSeleccionEmpresa() {
 
 function seleccionarEmpresa(idEmisor) {
   idEmisor = parseInt(idEmisor);
-  _empresaActiva = _empresasUsuario.find(function(e){ return e.id_emisor === idEmisor; });
+  _empresaActiva = _empresasUsuario.find(function(e){ return e.id_empresa === idEmisor; });
   if (!_empresaActiva) return;
   // Guardar empresa activa en sessionStorage y localStorage
   sessionStorage.setItem('sd_empresa_activa', JSON.stringify(_empresaActiva));
@@ -1139,7 +1139,7 @@ async function renderUsuarios(filtro) {
 
     // Cargar empresas de cada usuario (de la ficha de empleado)
     try {
-      const empleadosMap = await api('empleados','GET',null,'?select=correo,id_emisor,emisores(nombre)');
+      const empleadosMap = await api('empleados','GET',null,'?select=correo,id_empresa,emisores(nombre)');
       const mapaEmpleados = {};
       empleadosMap.forEach(function(e){ mapaEmpleados[e.correo] = e.emisores ? e.emisores.nombre : null; });
       usuarios.forEach(function(u){ u._empresaEmpleado = mapaEmpleados[u.correo_usuario] || null; });
@@ -1348,7 +1348,7 @@ async function abrirNuevoUsuario() {
 
   // Cargar empleados para el selector (solo en nuevo usuario)
   try {
-    const emps = await api('empleados', 'GET', null, '?estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo,correo&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
+    const emps = await api('empleados', 'GET', null, '?estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo,correo&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
     const selEmp = document.getElementById('u-emp-selector');
     if (selEmp) {
       selEmp.innerHTML = '<option value="">— Seleccionar empleado —</option>'
@@ -1597,7 +1597,7 @@ async function guardarUsuario() {
         const empIds = getEmpresasAccesoSeleccionadas();
         if (empIds.length) {
           for (const eid of empIds) {
-            await api('usuarios_empresas','POST',{ correo_usuario: correo, id_emisor: eid, activo: true });
+            await api('usuarios_empresas','POST',{ correo_usuario: correo, id_empresa: eid, activo: true });
           }
         }
       } catch(eUE) { console.warn('Error guardando empresas:', eUE); }
@@ -1662,7 +1662,7 @@ async function guardarUsuario() {
         const empIds2 = getEmpresasAccesoSeleccionadas();
         if (empIds2.length) {
           for (const eid of empIds2) {
-            await api('usuarios_empresas','POST',{ correo_usuario: correoEdit, id_emisor: eid, activo: true });
+            await api('usuarios_empresas','POST',{ correo_usuario: correoEdit, id_empresa: eid, activo: true });
           }
         }
       } catch(eUE2) { console.warn('Error guardando empresas:', eUE2); }
