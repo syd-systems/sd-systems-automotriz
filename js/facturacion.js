@@ -154,7 +154,7 @@ async function abrirNuevaFactura() {
   try {
     const [os, em, ta] = await Promise.all([
       api('ordenes_servicio','GET',null,'?estado=eq.CERRADA&select=id_orden,numero_os,fecha_entrada,total_usd,total_ves,estado,id_vehiculo,id_propietario,vehiculos(placa,marca,modelo),propietarios(nombre_completo,tipo_doc,numero_doc,tipo_contribuyente,direccion)&order=fecha_entrada.desc'+emisorQ()),
-      api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*'),
+      api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre_articulo.asc&select=*'),
       api('tasas','GET',null,'?order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
     emisoresList = em;
@@ -549,10 +549,10 @@ async function guardarFactura(emitir) {
             id_usuario:    correo
           });
           // Descontar del stock
-          const artRes = await api('inventario','GET',null,'?id_articulo=eq.'+rep.id_articulo+'&select=stock_actual&limit=1');
+          const artRes = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+rep.id_articulo+'&select=stock_actual&limit=1');
           if (artRes?.[0]) {
             const nuevoStock = parseFloat(artRes[0].stock_actual||0) - parseFloat(rep.cantidad);
-            await api('inventario','PATCH',{ stock_actual: Math.max(0, nuevoStock) },'?id_articulo=eq.'+rep.id_articulo);
+            await api('inventario_almacen','PATCH',{ stock_actual: Math.max(0, nuevoStock) },'?id_articulo=eq.'+rep.id_articulo);
           }
         }
       } catch(eSal) { console.warn('Error registrando salida de inventario:', eSal); }
@@ -777,14 +777,14 @@ async function abrirStockArticulo(id, nombre) {
   await calcularInvSaldoArea();
   const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) return;
-  _fichaInvActual = { id: r.id_articulo, nombre: r.nombre };
+  _fichaInvActual = { id: r.id_articulo, nombre: r.nombre_articulo };
 
-  document.getElementById('stock-art-nombre').textContent = r.nombre;
-  const stockFicha2 = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual;
+  document.getElementById('stock-art-nombre').textContent = r.nombre_articulo;
+  const stockFicha2 = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual_articulo;
   document.getElementById('stock-art-stock').textContent = stockFicha2 + ' ' + (r.unidad || 'UND');
   const ventaCont = document.getElementById('stock-art-venta-cont');
   if (puedo('INVENTARIO','VER_PRECIOS_VENTA')) {
-    document.getElementById('stock-art-venta').textContent = '$ ' + fmtUSD(r.precio_venta_usd);
+    document.getElementById('stock-art-venta').textContent = '$ ' + fmtUSD(r.precio_venta_moneda);
     if (ventaCont) ventaCont.style.display = '';
   } else {
     if (ventaCont) ventaCont.style.display = 'none';
@@ -793,7 +793,7 @@ async function abrirStockArticulo(id, nombre) {
   const costoCont = document.getElementById('stock-art-costo-cont');
   const costoEl   = document.getElementById('stock-art-costo');
   if (puedo('INVENTARIO','VER_COSTOS')) {
-    costoEl.textContent = '$ ' + fmtUSD(r.precio_costo_usd);
+    costoEl.textContent = '$ ' + fmtUSD(r.precio_costo_moneda);
     costoCont.style.display = '';
   } else {
     costoCont.style.display = 'none';
@@ -849,7 +849,7 @@ async function cargarEmpresasAccesoModal(correo) {
   const grid = document.getElementById('empresas-acceso-grid');
   if (!grid) return;
   try {
-    const todasEmisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id_emisor,nombre,rif');
+    const todasEmisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre_articulo.asc&select=id_emisor,nombre,rif');
     let asignadas = new Set();
     if (correo) {
       const ues = await api('usuarios_empresas','GET',null,
@@ -1206,7 +1206,7 @@ async function abrirSalidaStock(id, nombre) {
   // Mostrar stock por area
   await calcularInvSaldoArea();
   const art = inventarioCache.find(function(x) { return x.id_articulo === id; });
-  const stockSalida = art ? (_invSaldoArea ? (_invSaldoArea[art.id_articulo]||0) : art.stock_actual) : 0;
+  const stockSalida = art ? (_invSaldoArea ? (_invSaldoArea[art.id_articulo]||0) : art.stock_actual_articulo) : 0;
   document.getElementById('salida-stock-actual').textContent = art ? stockSalida + ' ' + (art.unidad || 'UND') : '—';
 
     abrirModal('modal-salida-stock');
@@ -1269,8 +1269,8 @@ async function _guardarSalidaStockInterno() {
 
   // Validar stock disponible
   const art = inventarioCache.find(function(x) { return x.id_articulo === idRep; });
-  if (art && cantidad > art.stock_actual) {
-    errEl.textContent = 'La cantidad supera el stock disponible (' + art.stock_actual + ' ' + (art.unidad||'UND') + ').';
+  if (art && cantidad > art.stock_actual_articulo) {
+    errEl.textContent = 'La cantidad supera el stock disponible (' + art.stock_actual_articulo + ' ' + (art.unidad||'UND') + ').';
     errEl.style.display = 'block'; return;
   }
 
@@ -1292,16 +1292,16 @@ async function _guardarSalidaStockInterno() {
     const idSalida = salidaRes && salidaRes[0] ? salidaRes[0].id_salida : null;
 
     // Descontar del stock_actual
-    const nuevoStock = (art ? art.stock_actual : 0) - cantidad;
+    const nuevoStock = (art ? art.stock_actual_articulo : 0) - cantidad;
     await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + idRep);
 
     // Actualizar cache
-    if (art) art.stock_actual = nuevoStock;
+    if (art) art.stock_actual_articulo = nuevoStock;
 
     // Transferencias de CONSUMIBLES generan asiento: DEBE gasto / HABER inventario
     if (art && art.id_cuenta_contable && art.id_cuenta_costo_gasto) {
       try {
-        // CPP en USD ya esta en art.precio_costo_usd
+        // CPP en USD ya esta en art.precio_costo_moneda
         // Calcular tasa BCV promedio ponderada de entradas en USD
         const entradasC = await api('stock_entradas','GET',null,'?id_articulo=eq.'+idRep+'&select=cantidad,tasa_bcv,moneda_compra') || [];
         var sumQT = 0; var sumQ2 = 0;
@@ -1311,7 +1311,7 @@ async function _guardarSalidaStockInterno() {
           if (q > 0 && t > 0 && (e.moneda_compra||'USD') === 'USD') { sumQT += q*t; sumQ2 += q; }
         });
         var tasaProm = sumQ2 > 0 ? sumQT/sumQ2 : (_tasaVigente||1);
-        var cppUSD   = parseFloat(art.precio_costo_usd||0);
+        var cppUSD   = parseFloat(art.precio_costo_moneda||0);
         var montoVES = parseFloat((cantidad * cppUSD * tasaProm).toFixed(2));
 
         var anioS = new Date().getFullYear();
@@ -1324,7 +1324,7 @@ async function _guardarSalidaStockInterno() {
         var astS = await api('cont_asientos','POST',{
           id_emisor: _empresaActiva?.id_emisor||0, numero_asiento: numAstS,
           tipo: 'CONSUMO_INVENTARIO', fecha: fecha,
-          descripcion: 'Consumo: '+(art.nombre||'')+ ' x'+cantidad+' -> '+areaDest,
+          descripcion: 'Consumo: '+(art.nombre_articulo||'')+ ' x'+cantidad+' -> '+areaDest,
           referencia: idSalida ? 'SAL-'+idSalida : 'SAL-INV-'+idRep,
           estado: 'APROBADO', moneda_base: 'VES', tasa_bcv: tasaProm,
           id_usuario: sesionActual?.correo_usuario||null
@@ -1332,10 +1332,10 @@ async function _guardarSalidaStockInterno() {
         var arS = Array.isArray(astS) ? astS[0] : astS;
         if (arS?.id_asiento) {
           await api('cont_asiento_lineas','POST',{ id_asiento:arS.id_asiento, id_cuenta:art.id_cuenta_costo_gasto, orden:1,
-            descripcion:'Consumo: '+(art.nombre||'')+' x'+cantidad+' (CPP $'+cppUSD.toFixed(2)+' x T/C '+tasaProm.toFixed(2)+')',
+            descripcion:'Consumo: '+(art.nombre_articulo||'')+' x'+cantidad+' (CPP $'+cppUSD.toFixed(2)+' x T/C '+tasaProm.toFixed(2)+')',
             debe_usd:0, haber_usd:0, debe_ves:montoVES, haber_ves:0, tasa_bcv:tasaProm });
           await api('cont_asiento_lineas','POST',{ id_asiento:arS.id_asiento, id_cuenta:art.id_cuenta_contable, orden:2,
-            descripcion:'Salida inventario consumible: '+(art.nombre||'')+' x'+cantidad,
+            descripcion:'Salida inventario consumible: '+(art.nombre_articulo||'')+' x'+cantidad,
             debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoVES, tasa_bcv:tasaProm });
         }
       } catch(eAstSal) { console.warn('Error asiento salida consumible:', eAstSal); }
@@ -1348,7 +1348,7 @@ async function _guardarSalidaStockInterno() {
         const empReceptor = await api('empleados','GET',null,'?id_empleado=eq.'+idEmpRecibe+'&select=correo,nombre_completo,id_usuario,usuarios(correo_usuario)');
         const correoReceptor = empReceptor?.[0]?.correo || empReceptor?.[0]?.usuarios?.correo_usuario || null;
         if (empReceptor && empReceptor[0] && correoReceptor) {
-          const artNom   = art ? art.nombre : 'Artículo #'+idRep;
+          const artNom   = art ? art.nombre_articulo : 'Artículo #'+idRep;
           // salida-area-entrega es ahora hidden — obtener nombre del área desde el span
           const areaOrig = document.getElementById('salida-entrega-area')?.textContent
             || document.getElementById('salida-area-entrega')?.value || 'Almacén';
