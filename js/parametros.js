@@ -394,7 +394,7 @@ async function eliminarParamItem() {
     try {
       const tipos = await api('inv_articulos_tipo','GET',null,'?id_categoria=eq.'+id+'&select=id&limit=1') || [];
       if (tipos.length) { alert('No se puede eliminar: esta categoría tiene tipos de artículo asociados. Elimine primero los tipos.'); return; }
-      const arts = await api('inventario','GET',null,'?id_categoria=eq.'+id+'&select=id_articulo&limit=1') || [];
+      const arts = await api('inventario_almacen','GET',null,'?id_categoria=eq.'+id+'&select=id_articulo&limit=1') || [];
       if (arts.length) { alert('No se puede eliminar: tiene artículos asociados. Reasigne o elímine los artículos primero.'); return; }
       await api('inv_categorias','DELETE',null,'?id=eq.'+id);
       _invCategoriasCache=[];
@@ -404,7 +404,7 @@ async function eliminarParamItem() {
   }
   if (key === 'inv_articulos_tipo') {
     try {
-      const arts2 = await api('inventario','GET',null,'?id_tipo_articulo=eq.'+id+'&select=id_articulo&limit=1') || [];
+      const arts2 = await api('inventario_almacen','GET',null,'?id_tipo_articulo=eq.'+id+'&select=id_articulo&limit=1') || [];
       if (arts2.length) { alert('No se puede eliminar: este tipo tiene artículos asociados. Reasigne o elimine los artículos primero.'); return; }
       await api('inv_articulos_tipo','DELETE',null,'?id=eq.'+id);
       cerrarModal('modal-param');
