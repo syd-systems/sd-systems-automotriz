@@ -73,7 +73,7 @@ async function recargarHistorial(idRepuesto) {
               ? '<div>' + (m.area_receptora ? m.area_receptora.nombre + (m.area_receptora.codigo ? ' (' + m.area_receptora.codigo + ')' : '') : '—') + '</div>'
                 + (m.area_origen ? '<div style="font-size:11px;color:#60a5fa">↩ Origen: ' + m.area_origen.nombre + (m.area_origen.codigo ? ' (' + m.area_origen.codigo + ')' : '') + '</div>' : '')
                 + (m.proveedores ? '<div style="font-size:11px;color:#a78bfa">🏭 ' + m.proveedores.nombre + '</div>' : '')
-                + (m.precio_costo_usd ? '<div style="font-size:11px;color:var(--suave)">$ ' + fmtUSD(m.precio_costo_usd) + ' / u</div>' : '')
+                + (m.precio_costo_moneda ? '<div style="font-size:11px;color:var(--suave)">$ ' + fmtUSD(m.precio_costo_moneda) + ' / u</div>' : '')
               : '<div>' + area + '</div>')
             + ((esEntrada ? m.empleado_recibe : m.empleado_recibe) ? '<div style="font-size:11px;color:#60a5fa">👤 Recibe: ' + (m.empleado_recibe?.nombre_completo||'') + '</div>' : '')
             + ((!esEntrada && m.empleado_entrega) ? '<div style="font-size:11px;color:#fb923c">👤 Entrega: ' + m.empleado_entrega.nombre_completo + '</div>' : '')
@@ -123,7 +123,7 @@ async function editarMovimiento(tipo, idMovimiento, idRepuesto) {
   const precioCont = document.getElementById('edit-mov-precio-cont');
   if (precioCont) precioCont.style.display = tipo === 'ENTRADA' ? 'block' : 'none';
   if (tipo === 'ENTRADA') {
-    document.getElementById('edit-mov-precio').value = m.precio_costo_usd ? parseFloat(m.precio_costo_usd).toFixed(2) : '0.00';
+    document.getElementById('edit-mov-precio').value = m.precio_costo_moneda ? parseFloat(m.precio_costo_moneda).toFixed(2) : '0.00';
     document.getElementById('edit-mov-moneda-cont') && (document.getElementById('edit-mov-moneda-cont').style.display = '');
     if (document.getElementById('edit-mov-moneda')) document.getElementById('edit-mov-moneda').value = m.moneda_compra || 'USD';
   }
@@ -199,7 +199,7 @@ async function guardarEdicionMovimiento() {
 
     if (tipo === 'ENTRADA') {
       const precio = parseFloat(document.getElementById('edit-mov-precio').value) || null;
-      if (precio !== null) datos.precio_costo_usd = precio;
+      if (precio !== null) datos.precio_costo_moneda = precio;
       const monedaEdit = document.getElementById('edit-mov-moneda')?.value || 'USD';
       datos.moneda_compra = monedaEdit;
       await api('stock_entradas', 'PATCH', datos, '?id_entrada=eq.' + id);
@@ -215,16 +215,16 @@ async function guardarEdicionMovimiento() {
             '?id_entrada=eq.' + id + '&select=cantidad');
           const cantOriginal = movArr[0]?.cantidad || cantidad;
           // Recalcular: quitar el efecto de la entrada original y aplicar la nueva
-          const stockSinEstaEntrada = art.stock_actual - cantOriginal;
+          const stockSinEstaEntrada = art.stock_actual_articulo - cantOriginal;
           const valorSinEstaEntrada = (stockSinEstaEntrada > 0)
-            ? stockSinEstaEntrada * art.precio_costo_usd
+            ? stockSinEstaEntrada * art.precio_costo_moneda
             : 0;
           const nuevoStock = stockSinEstaEntrada + cantidad;
           const cpp = nuevoStock > 0
             ? (valorSinEstaEntrada + cantidad * precio) / nuevoStock
             : precio;
           await api('inventario', 'PATCH',
-            { precio_costo_usd: parseFloat(cpp.toFixed(4)), precio_costo_ultimo_usd: precio },
+            { precio_costo_moneda: parseFloat(cpp.toFixed(4)), precio_costo_ultimo_moneda: precio },
             '?id_articulo=eq.' + idRepuesto);
         }
       }
@@ -269,7 +269,7 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
     }
 
     // 3. Calcular nuevo stock
-    const stockActual = parseFloat(art.stock_actual) || 0;
+    const stockActual = parseFloat(art.stock_actual_articulo) || 0;
     let nuevoStock;
     if (tipo === 'ENTRADA') {
       nuevoStock = stockActual - parseFloat(cantidad);
@@ -282,9 +282,9 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
     const patchInv = { stock_actual: nuevoStock };
     if (nuevoStock <= 0) {
       patchInv.stock_actual            = 0;
-      patchInv.precio_costo_usd        = 0;
-      patchInv.precio_costo_ultimo_usd = 0;
-      patchInv.precio_venta_usd        = 0;
+      patchInv.precio_costo_moneda        = 0;
+      patchInv.precio_costo_ultimo_moneda = 0;
+      patchInv.precio_venta_moneda        = 0;
     }
     await api('inventario', 'PATCH', patchInv, '?id_articulo=eq.' + idRepuesto);
 
@@ -357,7 +357,7 @@ async function renderProveedores() {
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando proveedores...</div>';
   try {
-    const proveedores = await api('proveedores', 'GET', null, '?order=nombre.asc&select=*&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
+    const proveedores = await api('proveedores', 'GET', null, '?order=nombre_articulo.asc&select=*&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
     proveedoresCache = proveedores;
 
     const activos   = proveedores.filter(function(p) { return p.estado === 'ACTIVO'; }).length;
@@ -441,7 +441,7 @@ async function verFichaProveedor(id) {
   // Asegurar bancos en cache para mostrar nombres
   if (!_empParamCache.bancos || !_empParamCache.bancos.length) {
     try {
-      const bancos = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo');
+      const bancos = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre_articulo.asc&select=id,nombre,codigo');
       _empParamCache.bancos = bancos || [];
     } catch(e) { _empParamCache.bancos = []; }
   }
@@ -553,14 +553,14 @@ async function abrirProveedor(id) {
   // Cargar bancos si no están en cache
   if (!_empParamCache.bancos || !_empParamCache.bancos.length) {
     try {
-      const bancos = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo');
+      const bancos = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre_articulo.asc&select=id,nombre,codigo');
       _empParamCache.bancos = bancos || [];
     } catch(e) { _empParamCache.bancos = []; }
   }
   cargarBancosProveedor(p ? (p.id_banco||null) : null, p ? (p.pm_id_banco||null) : null);
   // Cargar categorías de proveedor
   try {
-    const cats = await api('param_categorias_proveedor','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo');
+    const cats = await api('param_categorias_proveedor','GET',null,'?estado=eq.ACTIVO&order=nombre_articulo.asc&select=id,nombre,codigo');
     const selCat = document.getElementById('prov-categoria');
     if (selCat) {
       selCat.innerHTML = '<option value="">— Seleccionar —</option>'
