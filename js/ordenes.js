@@ -708,7 +708,7 @@ function onSelCatalogoChange() {
 // ─── AGREGAR LÍNEA ARTÍCULO DESDE INVENTARIO ───
 async function agregarRepuestoInventario() {
   if (!inventarioCache.length) {
-    try { inventarioCache = await api('inventario', 'GET', null, '?order=nombre_articulo.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+''); } catch(e) {}
+    try { inventarioCache = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+''); } catch(e) {}
   }
   const sel    = document.getElementById('os-sel-inv');
   const precio = document.getElementById('os-precio-inv');
@@ -936,7 +936,7 @@ async function _guardarOSInterno() {
           const invAntes = inventarioCache.find(function(x) { return x.id_articulo == la.id_articulo; });
           if (invAntes) {
             const stockRestaurado = invAntes.stock_actual + parseFloat(la.cantidad || 0);
-            await api('inventario', 'PATCH', { stock_actual: stockRestaurado }, '?id_articulo=eq.' + la.id_articulo);
+            await api('inventario_almacen', 'PATCH', { stock_actual: stockRestaurado }, '?id_articulo=eq.' + la.id_articulo);
             invAntes.stock_actual = stockRestaurado; // actualizar cache local
           }
         } catch(eRest) { console.warn('Error restaurando stock:', eRest); }
@@ -961,7 +961,7 @@ async function _guardarOSInterno() {
           const invItem = inventarioCache.find(function(x) { return x.id_articulo == lr.id_articulo; });
           if (invItem) {
             const nuevoStock = Math.max(0, invItem.stock_actual - parseFloat(lr.cantidad));
-            await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + lr.id_articulo);
+            await api('inventario_almacen', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + lr.id_articulo);
             invItem.stock_actual = nuevoStock; // actualizar cache local
           }
         } catch(eStock) { console.warn('Error descontando stock:', eStock); }
@@ -984,13 +984,13 @@ async function ajustarStockOS(idOrden, operacion) {
       var l = lineas[k];
       if (!l.id_articulo) continue;
       try {
-        const inv = await api('inventario', 'GET', null, '?id_articulo=eq.' + l.id_articulo + '&select=id_articulo,stock_actual');
+        const inv = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + l.id_articulo + '&select=id_articulo,stock_actual');
         if (!inv.length) continue;
         var cant = parseFloat(l.cantidad || 0);
         var nuevoStock = operacion === 'restaurar'
           ? inv[0].stock_actual + cant
           : Math.max(0, inv[0].stock_actual - cant);
-        await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + l.id_articulo);
+        await api('inventario_almacen', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + l.id_articulo);
         // Actualizar cache local
         var cached = inventarioCache.find(function(x) { return x.id_articulo == l.id_articulo; });
         if (cached) cached.stock_actual = nuevoStock;
@@ -1260,7 +1260,7 @@ async function recalcularTasaOS(id, nuevaTasa) {
 async function cargarSelectsOS() {
   try {
     if (!catalogoCache.length) catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=grupo.asc,nombre.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
-    if (!inventarioCache.length) inventarioCache = await api('inventario', 'GET', null, '?order=nombre_articulo.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
+    if (!inventarioCache.length) inventarioCache = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
   } catch(e) {}
 
   // ── Cargar selector de GRUPOS ──
