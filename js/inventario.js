@@ -3,31 +3,31 @@
 //  HISTORIAL DE MOVIMIENTOS DE STOCK (ENTRADAS Y SALIDAS)
 // ══════════════════════════════════════════════════════════════
 
-async function verHistorialStock(idArticulo, nombreArt) {
+async function verHistorialStock(id_articulo, nombreArt) {
   if (!puedo('INVENTARIO','VER')) { alert('No tiene permiso.'); return; }
 
   document.getElementById('historial-art-nombre').textContent = nombreArt;
   document.getElementById('historial-contenido').innerHTML =
     '<div class="loading"><div class="spinner"></div> Cargando historial...</div>';
-  document.getElementById('historial-id-articulo').value = idArticulo;
+  document.getElementById('historial-id-articulo').value = id_articulo;
 
   abrirModal('modal-historial-stock');
   focusFirstField('modal-historial-stock');
-  await recargarHistorial(idArticulo);
+  await recargarHistorial(id_articulo);
 }
 
-async function recargarHistorial(idArticulo) {
-  if (!idArticulo) idArticulo = document.getElementById('historial-id-articulo').value;
+async function recargarHistorial(id_articulo) {
+  if (!id_articulo) id_articulo = document.getElementById('historial-id-articulo').value;
   const cont = document.getElementById('historial-contenido');
   try {
     // Filtrar por área si usuario no es admin
-    let idAreaH = null;
+    let id_areaH = null;
     if (_invSaldoArea !== null) {
       const empH = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_area&limit=1').catch(function(){ return []; });
-      idAreaH = empH?.[0]?.id_area || null;
+      id_areaH = empH?.[0]?.id_area || null;
     }
-    const qEnt = '?id_articulo=eq.' + idArticulo + (idAreaH ? '&id_area=eq.'+idAreaH : '') + '&order=fecha_registro.desc&select=*,area_receptora:id_area(nombre,codigo),area_origen:id_area_origen(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),proveedores(nombre)';
-    const qSal = '?id_articulo=eq.' + idArticulo + (idAreaH ? '&or=(id_area.eq.'+idAreaH+',id_area_entrega.eq.'+idAreaH+')' : '') + '&order=fecha_registro.desc&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),empleado_entrega:id_empleado_entrega(nombre_completo)';
+    const qEnt = '?id_articulo=eq.' + id_articulo + (id_areaH ? '&id_area=eq.'+id_areaH : '') + '&order=fecha_registro.desc&select=*,area_receptora:id_area(nombre,codigo),area_origen:id_area_origen(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),proveedores(nombre)';
+    const qSal = '?id_articulo=eq.' + id_articulo + (id_areaH ? '&or=(id_area.eq.'+id_areaH+',id_area_entrega.eq.'+id_areaH+')' : '') + '&order=fecha_registro.desc&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),empleado_entrega:id_empleado_entrega(nombre_completo)';
     const [entradas, salidas] = await Promise.all([
       api('stock_entradas', 'GET', null, qEnt),
       api('stock_salidas',  'GET', null, qSal),
@@ -38,7 +38,7 @@ async function recargarHistorial(idArticulo) {
       ...entradas.map(function(e) { return { ...e, tipo: 'ENTRADA', fecha: e.fecha_entrada, fecha_reg: e.fecha_registro }; }),
       ...salidas.map(function(s)  {
         // Si el area del usuario es el DESTINO (id_area), es una ENTRADA para él
-        const tipoMov = idAreaH && s.id_area === idAreaH ? 'ENTRADA' : 'SALIDA';
+        const tipoMov = id_areaH && s.id_area === id_areaH ? 'ENTRADA' : 'SALIDA';
         return { ...s, tipo: tipoMov, fecha: s.fecha_salida, fecha_reg: s.fecha_registro };
       }),
     ].sort(function(a, b) { return new Date(b.fecha_reg) - new Date(a.fecha_reg); });
@@ -92,7 +92,7 @@ async function recargarHistorial(idArticulo) {
   }
 }
 
-async function editarMovimiento(tipo, idMovimiento, idArticulo) {
+async function editarMovimiento(tipo, idMovimiento, id_articulo) {
   // Cargar datos del movimiento
   let m = null;
   try {
@@ -112,7 +112,7 @@ async function editarMovimiento(tipo, idMovimiento, idArticulo) {
 
   document.getElementById('edit-mov-tipo').value        = tipo;
   document.getElementById('edit-mov-id').value          = idMovimiento;
-  document.getElementById('edit-mov-id-articulo').value = idArticulo;
+  document.getElementById('edit-mov-id-articulo').value = id_articulo;
   document.getElementById('edit-mov-cantidad').value    = m.cantidad;
   document.getElementById('edit-mov-obs').value         = m.observaciones || '';
   document.getElementById('edit-mov-titulo').textContent = (tipo === 'ENTRADA' ? '✏ EDITAR ENTRADA' : '✏ EDITAR SALIDA') + ' DE STOCK';
@@ -153,9 +153,9 @@ async function editarMovimiento(tipo, idMovimiento, idArticulo) {
 async function guardarEdicionMovimiento() {
   const tipo       = document.getElementById('edit-mov-tipo').value;
   const id         = document.getElementById('edit-mov-id').value;
-  const idArticulo = parseInt(document.getElementById('edit-mov-id-articulo').value);
+  const id_articulo = parseInt(document.getElementById('edit-mov-id-articulo').value);
   const cantidad   = parseFloat(document.getElementById('edit-mov-cantidad').value);
-  const idArea     = parseInt(document.getElementById('edit-mov-area').value) || null;
+  const id_area     = parseInt(document.getElementById('edit-mov-area').value) || null;
   const idEmp      = parseInt(document.getElementById('edit-mov-empleado').value) || null;
   const obs        = document.getElementById('edit-mov-obs').value.trim();
   const clave      = document.getElementById('edit-mov-clave')?.value || '';
@@ -192,7 +192,7 @@ async function guardarEdicionMovimiento() {
   try {
     const datos = {
       cantidad:      cantidad,
-      id_area:       idArea,
+      id_area:       id_area,
       id_empleado:   idEmp,
       observaciones: obs || null,
     };
@@ -207,7 +207,7 @@ async function guardarEdicionMovimiento() {
       // ── Recalcular CPP si cambió el precio o la cantidad ──
       if (precio !== null) {
         const artArr = await api('inventario_almacen', 'GET', null,
-          '?id_articulo=eq.' + idArticulo + '&select=stock_actual,precio_costo_usd');
+          '?id_articulo=eq.' + id_articulo + '&select=stock_actual,precio_costo_usd');
         const art = artArr[0];
         if (art) {
           // Obtener cantidad original del movimiento antes de editar
@@ -225,7 +225,7 @@ async function guardarEdicionMovimiento() {
             : precio;
           await api('inventario_almacen', 'PATCH',
             { precio_costo_moneda: parseFloat(cpp.toFixed(4)), precio_costo_ultimo_moneda: precio },
-            '?id_articulo=eq.' + idArticulo);
+            '?id_articulo=eq.' + id_articulo);
         }
       }
     } else {
@@ -243,12 +243,12 @@ async function guardarEdicionMovimiento() {
   } catch(err) { errEl.textContent = 'Error: ' + err.message; errEl.style.display = 'block'; }
 }
 
-async function reversarMovimiento(tipo, idMovimiento, cantidad, idArticulo) {
+async function reversarMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
   if (!confirm('¿Reversar este movimiento de ' + cantidad + ' unidades? Se ajustará el stock y se anulará el asiento contable original.')) return;
 
   try {
     // 1. Leer artículo fresco desde BD
-    const artArr = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + idArticulo + '&select=*');
+    const artArr = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id_articulo + '&select=*');
     const art = artArr[0];
     if (!art) { alert('Artículo no encontrado.'); return; }
 
@@ -286,7 +286,7 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idArticulo) {
       patchInv.precio_costo_ultimo_moneda = 0;
       patchInv.precio_venta_moneda        = 0;
     }
-    await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + idArticulo);
+    await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + id_articulo);
 
     // 5. Marcar movimiento como reversado
     if (tipo === 'ENTRADA') {
@@ -329,15 +329,15 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idArticulo) {
 
     // 7. Actualizar cache con datos frescos desde BD
     try {
-      const fresh = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + idArticulo + '&select=*');
+      const fresh = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id_articulo + '&select=*');
       if (fresh && fresh[0]) {
-        const i = inventarioCache.findIndex(function(x) { return x.id_articulo === idArticulo; });
+        const i = inventarioCache.findIndex(function(x) { return x.id_articulo === id_articulo; });
         if (i !== -1) inventarioCache[i] = fresh[0];
       }
     } catch(e) {}
 
     // 8. Recargar vistas
-    await recargarHistorial(idArticulo);
+    await recargarHistorial(id_articulo);
     renderInventario();
 
   } catch(err) { alert('Error al reversar: ' + err.message); }
@@ -495,8 +495,8 @@ function onSelBancoProveedor() {
   var codEl   = document.getElementById('prov-cod-banco');
   var restoEl = document.getElementById('prov-num-cuenta-resto');
   if (!sel || !codEl) return;
-  var idBanco = parseInt(sel.value);
-  var banco   = (_empParamCache.bancos || []).find(function(b){ return b.id === idBanco; });
+  var id_banco = parseInt(sel.value);
+  var banco   = (_empParamCache.bancos || []).find(function(b){ return b.id === id_banco; });
   var codigo  = banco && banco.codigo ? banco.codigo.replace(/\D/g,'').substring(0,4) : '';
   codEl.value = codigo;
   if (restoEl) { restoEl.value = ''; restoEl.focus(); }
@@ -511,17 +511,17 @@ function sincronizarNumCuentaProv() {
   hidEl.value = (codEl?.value || '') + (restoEl?.value || '');
 }
 
-function cargarBancosProveedor(idBancoSel, idBancoPMSel) {
+function cargarBancosProveedor(id_bancoSel, id_bancoPMSel) {
   var bancos = _empParamCache.bancos || [];
   var opts = '<option value="">— Seleccionar —</option>'
     + bancos.map(function(b){
-        return '<option value="'+b.id+'"'+(b.id===idBancoSel?' selected':'')+'>'+b.nombre+'</option>';
+        return '<option value="'+b.id+'"'+(b.id===id_bancoSel?' selected':'')+'>'+b.nombre+'</option>';
       }).join('');
   var el = document.getElementById('prov-banco');
-  if (el) { el.innerHTML = opts; if (idBancoSel) onSelBancoProveedor(); }
+  if (el) { el.innerHTML = opts; if (id_bancoSel) onSelBancoProveedor(); }
   var opts2 = '<option value="">— Seleccionar —</option>'
     + bancos.map(function(b){
-        return '<option value="'+b.id+'"'+(b.id===idBancoPMSel?' selected':'')+'>'+b.nombre+'</option>';
+        return '<option value="'+b.id+'"'+(b.id===id_bancoPMSel?' selected':'')+'>'+b.nombre+'</option>';
       }).join('');
   var el2 = document.getElementById('prov-pm-banco');
   if (el2) el2.innerHTML = opts2;
@@ -594,10 +594,10 @@ async function guardarProveedor() {
   if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
 
   // ── Validar datos bancarios (solo si se seleccionó banco) ──
-  const idBancoVal    = document.getElementById('prov-banco')?.value;
+  const id_bancoVal    = document.getElementById('prov-banco')?.value;
   const tipoCuentaVal = document.getElementById('prov-tipo-cuenta')?.value;
   const numCuentaVal  = document.getElementById('prov-num-cuenta')?.value || '';
-  if (idBancoVal) {
+  if (id_bancoVal) {
     if (!tipoCuentaVal) {
       errEl.textContent = 'Seleccione el Tipo de Cuenta.';
       errEl.style.display = 'block'; return;
@@ -612,10 +612,10 @@ async function guardarProveedor() {
   }
 
   // ── Validar Pago Móvil (solo si se seleccionó banco PM) ──
-  const idBancoPMVal = document.getElementById('prov-pm-banco')?.value;
+  const id_bancoPMVal = document.getElementById('prov-pm-banco')?.value;
   const pmCiVal      = (document.getElementById('prov-pm-ci')?.value || '').trim().toUpperCase();
   const pmCelVal     = (document.getElementById('prov-pm-celular')?.value || '').replace(/\D/g,'');
-  if (idBancoPMVal) {
+  if (id_bancoPMVal) {
     if (!/^[JGVEPCE]\d{8}$/.test(pmCiVal.replace(/[-]/g,''))) {
       errEl.textContent = 'C.I./R.I.F debe comenzar con J, G, V, E, P o C seguido de 8 dígitos (ej: J12345678).';
       errEl.style.display = 'block';
