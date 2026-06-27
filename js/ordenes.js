@@ -708,7 +708,7 @@ function onSelCatalogoChange() {
 // ─── AGREGAR LÍNEA ARTÍCULO DESDE INVENTARIO ───
 async function agregarRepuestoInventario() {
   if (!inventarioCache.length) {
-    try { inventarioCache = await api('inventario', 'GET', null, '?order=nombre.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+''); } catch(e) {}
+    try { inventarioCache = await api('inventario', 'GET', null, '?order=nombre_articulo.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+''); } catch(e) {}
   }
   const sel    = document.getElementById('os-sel-inv');
   const precio = document.getElementById('os-precio-inv');
@@ -729,12 +729,12 @@ async function agregarRepuestoInventario() {
   } else {
     const r = inventarioCache.find(function(x) { return x.id_articulo == sel.value; });
     if (!r) return;
-    const stockDisponible = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual;
+    const stockDisponible = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual_articulo;
     if (stockDisponible < cantVal) {
       if (!confirm('⚠ Stock insuficiente (' + stockDisponible + ' disponibles en tu área). ¿Agregar igual?')) return;
     }
-    const pVal = parseFloat(precio.value) || parseFloat(r.precio_venta_usd) || 0;
-    osArtículosLineas.push({ id_articulo: r.id_articulo, descripcion: r.nombre,
+    const pVal = parseFloat(precio.value) || parseFloat(r.precio_venta_moneda) || 0;
+    osArtículosLineas.push({ id_articulo: r.id_articulo, descripcion: r.nombre_articulo,
       cantidad: cantVal, precio_usd: precioAUSD(pVal, moneda),
       precio_original: pVal, moneda });
     sel.value = ''; precio.value = ''; cant.value = '1';
@@ -747,7 +747,7 @@ function onSelInventarioChange() {
   const precio = document.getElementById('os-precio-inv');
   if (!sel.value) { precio.value = ''; return; }
   const r = inventarioCache.find(function(x) { return x.id_articulo == sel.value; });
-  if (r) precio.value = parseFloat(r.precio_venta_usd || 0).toFixed(2);
+  if (r) precio.value = parseFloat(r.precio_venta_moneda || 0).toFixed(2);
 }
 
 // ─── GUARDAR OS ───
@@ -1260,7 +1260,7 @@ async function recalcularTasaOS(id, nuevaTasa) {
 async function cargarSelectsOS() {
   try {
     if (!catalogoCache.length) catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=grupo.asc,nombre.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
-    if (!inventarioCache.length) inventarioCache = await api('inventario', 'GET', null, '?order=nombre.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
+    if (!inventarioCache.length) inventarioCache = await api('inventario', 'GET', null, '?order=nombre_articulo.asc&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
   } catch(e) {}
 
   // ── Cargar selector de GRUPOS ──
@@ -1319,8 +1319,8 @@ async function cargarSelectsOS() {
     }
     selInv.innerHTML = '<option value="">— Seleccionar Consumible —</option>'
       + itemsDisponibles.map(function(r) {
-          const stock = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual;
-          return '<option value="' + r.id_articulo + '">' + r.nombre + ' (Stock: ' + stock + ') — $' + parseFloat(r.precio_venta_usd || 0).toFixed(2) + '</option>';
+          const stock = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual_articulo;
+          return '<option value="' + r.id_articulo + '">' + r.nombre_articulo + ' (Stock: ' + stock + ') — $' + parseFloat(r.precio_venta_moneda || 0).toFixed(2) + '</option>';
         }).join('');
   }
 }
@@ -1369,14 +1369,14 @@ window.addEventListener('load', async () => {
       } catch(eP) { console.warn('Error cargando permisos sessionStorage:', eP); }
       // Recargar empresas del usuario
       try {
-        const todasEmisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*');
+        const todasEmisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre_articulo.asc&select=*');
         if (usuario.administrador) {
           _empresasUsuario = todasEmisores;
           if (todasEmisores.length === 1) _empresaActiva = todasEmisores[0];
         } else {
           const ues = await api('usuarios_empresas','GET',null,
             '?correo_usuario=eq.'+encodeURIComponent(usuario.correo_usuario)+'&activo=eq.true&select=id_emisor');
-          const idsPermitidos = new Set(ues.map(function(x){ return x.id_emisor; }));
+          const idsPermitidos = new Set(ues.map(function(x){ return x.id_empresa; }));
           _empresasUsuario = todasEmisores.filter(function(e){ return idsPermitidos.has(e.id_emisor); });
           if (_empresasUsuario.length === 1) _empresaActiva = _empresasUsuario[0];
         }
