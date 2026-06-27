@@ -812,7 +812,7 @@ async function regresarAFichaInv() {
   if (!_fichaInvActual.id) { renderInventario(); return; }
   try {
     // Actualizar cache con datos frescos
-    const res = await api('inventario', 'GET', null, '?id_articulo=eq.' + _fichaInvActual.id + '&select=*');
+    const res = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + _fichaInvActual.id + '&select=*');
     if (res && res[0]) {
       const i = inventarioCache.findIndex(function(x) { return x.id_articulo === _fichaInvActual.id; });
       if (i !== -1) inventarioCache[i] = res[0];
@@ -1293,7 +1293,7 @@ async function _guardarSalidaStockInterno() {
 
     // Descontar del stock_actual
     const nuevoStock = (art ? art.stock_actual_articulo : 0) - cantidad;
-    await api('inventario', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + idRep);
+    await api('inventario_almacen', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + idRep);
 
     // Actualizar cache
     if (art) art.stock_actual_articulo = nuevoStock;
