@@ -30,8 +30,8 @@ async function renderContabilidad() {
       emisores = _empresasUsuario.length ? _empresasUsuario : [];
     }
     window._contEmisoresList = emisores;
-    if (_empresaActiva) window._contEmisorActivo = _empresaActiva.id_emisor;
-    else if (emisores.length) window._contEmisorActivo = emisores[0].id_emisor;
+    if (_empresaActiva) window._contEmisorActivo = _empresaActiva.id_empresa;
+    else if (emisores.length) window._contEmisorActivo = emisores[0].id_empresa;
     await Promise.all([contCargarCuentas(), contCargarPeriodos()]);
   } catch(e) { console.warn('Error cargando contabilidad:', e); }
   _contVista = 'diario';
@@ -47,7 +47,7 @@ function contRenderShell() {
   const selectorEmpresa = emisores.length > 1
     ? '<select onchange="window._contEmisorActivo=parseInt(this.value);contCambiarVista(_contVista,true)" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:6px 10px;border-radius:5px;outline:none">'
-      + emisores.map(function(e){ return '<option value="'+e.id_emisor+'"'+(window._contEmisorActivo===e.id_emisor?' selected':'')+'>🏢 '+e.nombre+'</option>'; }).join('')
+      + emisores.map(function(e){ return '<option value="'+e.id_empresa+'"'+(window._contEmisorActivo===e.id_empresa?' selected':'')+'>🏢 '+e.nombre+'</option>'; }).join('')
       + '</select>'
     : (emisores.length===1 ? '<span style="font-size:12px;color:var(--suave)">🏢 '+emisores[0].nombre+'</span>' : '');
 
@@ -142,13 +142,13 @@ function contSelectorMoneda(fechaConsulta) {
 }
 
 async function contCargarCuentas() {
-  // Cuentas globales (id_emisor IS NULL) + cuentas de la empresa activa
-  const idEmisor = _empresaActiva?.id_emisor || 0;
+  // Cuentas globales (id_empresa IS NULL) + cuentas de la empresa activa
+  const idEmisor = _empresaActiva?.id_empresa || 0;
   contCuentasCache = await api('cont_cuentas','GET',null,
-    '?estado=eq.ACTIVA&order=codigo.asc&select=*&or=(id_emisor.eq.' + idEmisor + ',id_emisor.is.null)&limit=1000');
+    '?estado=eq.ACTIVA&order=codigo.asc&select=*&or=(id_empresa.eq.' + idEmisor + ',id_empresa.is.null)&limit=1000');
 }
 async function contCargarPeriodos() {
-  contPeriodosCache = await api('cont_periodos','GET',null,'?id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=fecha_inicio.desc&select=*');
+  contPeriodosCache = await api('cont_periodos','GET',null,'?id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=fecha_inicio.desc&select=*');
 }
 function contGetPeriodoActivo() {
   return contPeriodosCache.find(function(p){ return p.estado === 'ABIERTO'; }) || contPeriodosCache[0];
@@ -206,7 +206,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
     const qPeriodo = filtroPeriodo ? '&id_periodo=eq.' + filtroPeriodo : '';
     const qEstado  = filtroEstado  ? '&estado=eq.' + filtroEstado : '';
     const asientos = await api('cont_asientos','GET',null,
-      '?id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=fecha.desc,numero_asiento.desc&select=*,cont_periodos(nombre)' + qPeriodo + qEstado);
+      '?id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=fecha.desc,numero_asiento.desc&select=*,cont_periodos(nombre)' + qPeriodo + qEstado);
     contAsientosCache = asientos;
 
     const perSelect = contPeriodosCache.map(function(p){
@@ -549,7 +549,7 @@ async function contGuardarAsiento() {
 
   try {
     let asientoId = id;
-    const datos = { fecha, descripcion: desc, referencia: ref||null, tipo, moneda_base: moneda, tasa_bcv: tasa, id_periodo: periodo || null, estado:'PENDIENTE', id_usuario: sesionActual.correo_usuario, id_emisor: _empresaActiva?.id_emisor || null };
+    const datos = { fecha, descripcion: desc, referencia: ref||null, tipo, moneda_base: moneda, tasa_bcv: tasa, id_periodo: periodo || null, estado:'PENDIENTE', id_usuario: sesionActual.correo_usuario, id_empresa: _empresaActiva?.id_empresa || null };
 
     if (id) {
       await api('cont_asientos','PATCH',datos,'?id_asiento=eq.' + id);
@@ -557,7 +557,7 @@ async function contGuardarAsiento() {
     } else {
       // Generar número
       const anio = new Date().getFullYear();
-      const exist = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-'+anio+'-*&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
+      const exist = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-'+anio+'-*&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
       let seq = 1;
       if (exist.length) { const p = exist[0].numero_asiento.split('-'); seq = parseInt(p[p.length-1]) + 1; }
       datos.numero_asiento = 'AST-' + anio + '-' + String(seq).padStart(4,'0');
@@ -669,8 +669,8 @@ async function contCargarMayor() {
     let qAsientos = '?estado=eq.APROBADO&select=id_asiento';
     if (desde) qAsientos += '&fecha=gte.' + desde;
     if (hasta) qAsientos += '&fecha=lte.' + hasta;
-    if (window._contEmisorActivo) qAsientos += '&or=(id_emisor.eq.'+window._contEmisorActivo+',id_emisor.is.null)';
-    const asientosRango = await api('cont_asientos','GET',null, qAsientos+'&id_emisor=eq.'+(_empresaActiva?.id_emisor||0));
+    if (window._contEmisorActivo) qAsientos += '&or=(id_empresa.eq.'+window._contEmisorActivo+',id_empresa.is.null)';
+    const asientosRango = await api('cont_asientos','GET',null, qAsientos+'&id_empresa=eq.'+(_empresaActiva?.id_empresa||0));
     const idsAsientos = asientosRango.map(function(a){ return a.id_asiento; });
 
     let lineas = [];
@@ -875,7 +875,7 @@ async function contGenerarBalance() {
   try {
     // Obtener saldos de todas las cuentas con movimientos aprobados hasta la fecha
     const lineas = await api('cont_asiento_lineas','GET',null,
-      '?select=id_cuenta,debe_usd,haber_usd,cont_asientos!inner(fecha,estado,id_emisor)&cont_asientos.id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+''
+      '?select=id_cuenta,debe_usd,haber_usd,cont_asientos!inner(fecha,estado,id_empresa)&cont_asientos.id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+''
       + '&cont_asientos.estado=eq.APROBADO'
       + (hasta ? '&cont_asientos.fecha=lte.' + hasta : ''));
 
@@ -1045,10 +1045,10 @@ async function contRenderCxp() {
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const idEmisor = _empresaActiva?.id_emisor || 0;
+    const idEmisor = _empresaActiva?.id_empresa || 0;
     // Filtro estado
     const filtroEstado = document.getElementById('cxp-filtro-estado')?.value || '';
-    let q = '?id_emisor=eq.'+idEmisor+'&order=fecha_emision.desc&select=*,proveedores:id_proveedor(nombre,rif)';
+    let q = '?id_empresa=eq.'+idEmisor+'&order=fecha_emision.desc&select=*,proveedores:id_proveedor(nombre,rif)';
     if (filtroEstado) q += '&estado=eq.'+filtroEstado;
     const cxps = await api('cont_cxp','GET',null,q) || [];
 
@@ -1167,7 +1167,7 @@ async function contIniciarConciliacion() {
 
   const lineas = await api('cont_asiento_lineas','GET',null,
     '?id_cuenta=eq.' + idCuenta
-    + '&cont_asientos.id_emisor=eq.'+(_empresaActiva?.id_emisor||0)
+    + '&cont_asientos.id_empresa=eq.'+(_empresaActiva?.id_empresa||0)
     + '&select=*,cont_asientos!inner(fecha,numero_asiento,descripcion,estado)'
     + '&cont_asientos.estado=eq.APROBADO'
     + '&cont_asientos.fecha=gte.' + desde
@@ -1814,12 +1814,12 @@ async function generarAsientoInventario(tipo, datos) {
     const tasa  = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
 
     const anio = new Date().getFullYear();
-    const existAst = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-'+anio+'-*&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
+    const existAst = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-'+anio+'-*&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
     let seq = 1;
     if (existAst.length) { const p = existAst[0].numero_asiento.split('-'); seq = parseInt(p[p.length-1])+1; }
     const numAst = 'AST-'+anio+'-'+String(seq).padStart(4,'0');
 
-    const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
+    const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
     const idPeriodo = periodos.length ? periodos[0].id_periodo : null;
 
     // Descripción del asiento
@@ -1841,7 +1841,7 @@ async function generarAsientoInventario(tipo, datos) {
       moneda_base:    ((_empresaActiva?.moneda_principal)||'VES').toUpperCase(),
       tasa_bcv:       tasa,
       id_periodo:     idPeriodo,
-      id_emisor:      _empresaActiva ? _empresaActiva.id_emisor : null,
+      id_empresa:      _empresaActiva ? _empresaActiva.id_empresa : null,
       estado:         'APROBADO',
       id_usuario:     sesionActual.correo_usuario
     });
