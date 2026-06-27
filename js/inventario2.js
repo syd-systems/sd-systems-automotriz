@@ -124,7 +124,7 @@ async function renderInventario(filtro) {
       + '</div>'
       + '<select id="inv-filtro-cat" onchange="invFiltrarCategoria()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todas las categorías</option>'
-      + (_invCategoriasCache.map ? _invCategoriasCache.map(function(c){ return '<option value="'+c.id+'">'+c.nombre+'</option>'; }).join('') : '')
+      + (_invCategoriasCache.map ? _invCategoriasCache.map(function(c){ return '<option value="'+c.id_categoria+'">'+c.nombre+'</option>'; }).join('') : '')
       + '</select>'
       + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--suave);cursor:pointer">'
       + '<input type="checkbox" id="inv-mostrar-todos" onchange="renderInventario(document.getElementById(\'buscar-inv\')?.value||\'\')">'
@@ -158,7 +158,7 @@ async function renderInventario(filtro) {
         const selCat = document.getElementById('inv-filtro-cat');
         if (selCat && _invCategoriasCache.length) {
           const optsExtra = _invCategoriasCache.map(function(c){
-            return '<option value="'+c.id+'">'+c.nombre+'</option>';
+            return '<option value="'+c.id_categoria+'">'+c.nombre+'</option>';
           }).join('');
           if (!selCat.innerHTML.includes(optsExtra)) {
             selCat.innerHTML = '<option value="">Todas las categorías</option>' + optsExtra;
@@ -273,7 +273,7 @@ function invRenderTabla(items, cont) {
       + '<td><div style="display:flex;align-items:center;gap:8px">'
       + '<span style="font-size:10px;font-weight:700;color:' + (abcColor[abc]||'#888') + ';background:' + (abcColor[abc]||'#888') + '22;padding:2px 6px;border-radius:3px">' + abc + '</span>'
       + '<div><div style="font-family:var(--font-mono);font-size:11px;color:var(--suave)">' + (r.codigo_articulo || '—')
-      + (r.id_categoria_articulo ? ' · <span style="color:var(--suave)">' + (_invCategoriasCache.find(function(c){return c.id===r.id_categoria_articulo;})?.nombre || '') + '</span>' : '')
+      + (r.id_categoria_articulo ? ' · <span style="color:var(--suave)">' + (_invCategoriasCache.find(function(c){return c.id_categoria===r.id_categoria_articulo;})?.nombre || '') + '</span>' : '')
       + '</div>'
       + '<div style="font-weight:500">' + r.nombre_articulo + '</div>'
       + (r.descripcion ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion + '</div>' : '') + '</div></div></td>'
@@ -437,7 +437,7 @@ function verFichaInventario(id) {
         : '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
           + '<div style="font-size:13px;color:#555">🔒</div></div>')
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Categoría</div>'
-    + '<div style="font-size:13px">' + (_invCategoriasCache.find(function(c){return c.id===r.id_categoria_articulo;})?.nombre || '—') + '</div></div>'
+    + '<div style="font-size:13px">' + (_invCategoriasCache.find(function(c){return c.id_categoria===r.id_categoria_articulo;})?.nombre || '—') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Valor Inventario</div>'
     + '</div>'
     + '</div>'
@@ -958,7 +958,7 @@ async function invCargarCategorias(selCatId) {
     }
     sel.innerHTML = '<option value="">— Seleccionar categoría —</option>'
       + _invCategoriasCache.map(function(c) {
-          return '<option value="'+c.id+'"'+(selCatId && selCatId==c.id?' selected':'')+'>'+
+          return '<option value="'+c.id_categoria+'"'+(selCatId && selCatId==c.id_categoria?' selected':'')+'>'+
             (c.codigo?c.codigo+' — ':'')+c.nombre+'</option>';
         }).join('');
   } catch(e) { console.warn('invCargarCategorias:', e); }
@@ -976,7 +976,7 @@ async function invCargarTiposArticulo(selTipoId) {
       '?estado=eq.ACTIVO&id_categoria=eq.'+catId+'&order=nombre.asc') || [];
     sel.innerHTML = '<option value="">— Seleccionar tipo —</option>'
       + tipos.map(function(t) {
-          return '<option value="'+t.id+'"'+(selTipoId && selTipoId==t.id?' selected':'')+'>'+
+          return '<option value="'+t.id_tipo+'"'+(selTipoId && selTipoId==t.id_tipo?' selected':'')+'>'+
             (t.codigo?t.codigo+' — ':'')+t.nombre+'</option>';
         }).join('');
   } catch(e) { console.warn('invCargarTiposArticulo:', e); }
@@ -1272,7 +1272,7 @@ async function invRenderCategorias(cont) {
         +'<td style="padding:8px;font-size:13px;font-weight:500">'+c.nombre+'</td>'
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(c.descripcion||'')+'</td>'
         +'<td style="padding:8px"><span class="badge '+(c.estado==='ACTIVO'?'badge-verde':'badge-rojo')+'">'+c.estado+'</span></td>'
-        +'<td style="padding:8px"><button class="btn-secundario" onclick="invAbrirCategoria('+c.id+')" style="font-size:11px;padding:4px 10px">Ver</button></td>'
+        +'<td style="padding:8px"><button class="btn-secundario" onclick="invAbrirCategoria('+c.id_categoria+')" style="font-size:11px;padding:4px 10px">Ver</button></td>'
         +'</tr>';
     }).join('');
     cont.innerHTML =
@@ -1348,7 +1348,7 @@ async function invRenderTipos(cont) {
         +'<td style="padding:8px;font-size:13px;font-weight:500">'+t.nombre+'</td>'
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(cat?(cat.codigo?cat.codigo+' — ':'')+cat.nombre:'—')+'</td>'
         +'<td style="padding:8px"><span class="badge '+(t.estado==='ACTIVO'?'badge-verde':'badge-rojo')+'">'+t.estado+'</span></td>'
-        +'<td style="padding:8px"><button class="btn-secundario" onclick="invAbrirTipo('+t.id+')" style="font-size:11px;padding:4px 10px">Ver</button></td>'
+        +'<td style="padding:8px"><button class="btn-secundario" onclick="invAbrirTipo('+t.id_tipo+')" style="font-size:11px;padding:4px 10px">Ver</button></td>'
         +'</tr>';
     }).join('');
     cont.innerHTML =
@@ -1373,7 +1373,7 @@ async function invAbrirTipo(id) {
   if (id) { const r=await api('inv_articulos_tipo','GET',null,'?id=eq.'+id)||[]; item=r[0]||null; }
   const cats = await api('inv_categorias','GET',null,'?estado=eq.ACTIVO&id_empresa=eq.'+idEmisor+'&order=nombre.asc')||[];
   const opcCats = cats.map(function(c) {
-    return '<option value="'+c.id+'"'+(item?.id_categoria===c.id?' selected':'')+'>'+
+    return '<option value="'+c.id_categoria+'"'+(item?.id_categoria===c.id_categoria?' selected':'')+'>'+
       (c.codigo?c.codigo+' — ':'')+c.nombre+'</option>';
   }).join('');
   const html = '<div class="form-grid">'
@@ -1629,10 +1629,10 @@ async function invCargarMovimientos() {
       // Helper para obtener nombre de categoría desde cache
       const getCatNom = function(art) {
         if (art.id_categoria_articulo) {
-          const c = _invCategoriasCache.find(function(c){ return c.id === art.id_categoria_articulo; });
+          const c = _invCategoriasCache.find(function(c){ return c.id_categoria === art.id_categoria_articulo; });
           if (c) return (c.codigo ? c.codigo + ' — ' : '') + c.nombre.toUpperCase();
         }
-        var _catG = _invCategoriasCache.find(function(c){ return c.id === art.id_categoria_articulo; }); return (_catG ? _catG.nombre : 'SIN CATEGORÍA').toUpperCase();
+        var _catG = _invCategoriasCache.find(function(c){ return c.id_categoria === art.id_categoria_articulo; }); return (_catG ? _catG.nombre : 'SIN CATEGORÍA').toUpperCase();
       };
       entradas.forEach(function(e) {
         const art = getArt(e.id_articulo); if (!art) return;
