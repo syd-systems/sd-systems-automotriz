@@ -143,9 +143,9 @@ function contSelectorMoneda(fechaConsulta) {
 
 async function contCargarCuentas() {
   // Cuentas globales (id_empresa IS NULL) + cuentas de la empresa activa
-  const idEmisor = _empresaActiva?.id_empresa || 0;
+  const id_emisor = _empresaActiva?.id_empresa || 0;
   contCuentasCache = await api('cont_cuentas','GET',null,
-    '?estado=eq.ACTIVA&order=codigo.asc&select=*&or=(id_empresa.eq.' + idEmisor + ',id_empresa.is.null)&limit=1000');
+    '?estado=eq.ACTIVA&order=codigo.asc&select=*&or=(id_empresa.eq.' + id_emisor + ',id_empresa.is.null)&limit=1000');
 }
 async function contCargarPeriodos() {
   contPeriodosCache = await api('cont_periodos','GET',null,'?id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=fecha_inicio.desc&select=*');
@@ -654,15 +654,15 @@ async function contRenderMayor() {
 }
 
 async function contCargarMayor() {
-  const idCuenta = document.getElementById('cont-mayor-cuenta').value;
+  const id_cuenta = document.getElementById('cont-mayor-cuenta').value;
   const desde    = document.getElementById('cont-mayor-desde').value;
   const hasta    = document.getElementById('cont-mayor-hasta').value;
   const res      = document.getElementById('cont-mayor-resultado');
 
   res.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const cuenta = contCuentasCache.find(function(c){ return c.id_cuenta == idCuenta; });
-    let q = '?id_asiento=in.(select id_asiento from cont_asientos where estado=eq.APROBADO)&id_cuenta=eq.' + idCuenta + '&order=id_linea.asc&select=*,cont_asientos(fecha,numero_asiento,descripcion)';
+    const cuenta = contCuentasCache.find(function(c){ return c.id_cuenta == id_cuenta; });
+    let q = '?id_asiento=in.(select id_asiento from cont_asientos where estado=eq.APROBADO)&id_cuenta=eq.' + id_cuenta + '&order=id_linea.asc&select=*,cont_asientos(fecha,numero_asiento,descripcion)';
 
     // Usar mayor si existe, sino calcular desde líneas
     // Obtener asientos aprobados en el rango de fechas
@@ -678,7 +678,7 @@ async function contCargarMayor() {
       let qLineas = '?id_asiento=in.(' + idsAsientos.join(',') + ')'
         + '&select=*,cont_asientos(fecha,numero_asiento,descripcion)'
         + '&order=id_linea.asc';
-      if (idCuenta) qLineas = '?id_cuenta=eq.' + idCuenta
+      if (id_cuenta) qLineas = '?id_cuenta=eq.' + id_cuenta
         + '&id_asiento=in.(' + idsAsientos.join(',') + ')'
         + '&select=*,cont_asientos(fecha,numero_asiento,descripcion)'
         + '&order=id_linea.asc';
@@ -737,7 +737,7 @@ async function contCargarMayor() {
           + '</tr></tfoot></table>';
       };
 
-      if (!idCuenta) {
+      if (!id_cuenta) {
         const cuentaIds = [...new Set(lineasRef.map(function(l){ return l.id_cuenta; }))];
         let html = '';
         cuentaIds.forEach(function(cid) {
@@ -767,7 +767,7 @@ async function contCargarMayor() {
     const getH = function(l) { return parseFloat(l.haber_ves||l.haber_usd||0); };
     const fmtM = function(v) { return 'Bs ' + fmtVES(v); };
 
-    if (!idCuenta) {
+    if (!id_cuenta) {
       const cuentaIds = [...new Set(lineas.map(function(l){ return l.id_cuenta; }))];
       let html = '';
       cuentaIds.forEach(function(cid) {
@@ -1045,10 +1045,10 @@ async function contRenderCxp() {
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const idEmisor = _empresaActiva?.id_empresa || 0;
+    const id_emisor = _empresaActiva?.id_empresa || 0;
     // Filtro estado
     const filtroEstado = document.getElementById('cxp-filtro-estado')?.value || '';
-    let q = '?id_empresa=eq.'+idEmisor+'&order=fecha_emision.desc&select=*,proveedores:id_proveedor(nombre,rif)';
+    let q = '?id_empresa=eq.'+id_emisor+'&order=fecha_emision.desc&select=*,proveedores:id_proveedor(nombre,rif)';
     if (filtroEstado) q += '&estado=eq.'+filtroEstado;
     const cxps = await api('cont_cxp','GET',null,q) || [];
 
@@ -1105,19 +1105,19 @@ async function contRenderCxp() {
   }
 }
 
-async function contAnularCxP(idCxP) {
+async function contAnularCxP(id_cxp) {
   if (!confirm('¿Anular esta Cuenta por Pagar?')) return;
   try {
-    await api('cont_cxp','PATCH',{ estado: 'ANULADA' },'?id_cxp=eq.'+idCxP);
+    await api('cont_cxp','PATCH',{ estado: 'ANULADA' },'?id_cxp=eq.'+id_cxp);
     contRenderCxp();
   } catch(e) { alert('Error: '+e.message); }
 }
 
-async function contPagarCxP(idCxP) {
+async function contPagarCxP(id_cxp) {
   const montoPago = parseFloat(prompt('Ingrese el monto a pagar en USD:'));
   if (!montoPago || montoPago <= 0) return;
   try {
-    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+idCxP+'&select=*');
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=*');
     if (!rows || !rows[0]) return;
     const c = rows[0];
     const nuevoPagado = parseFloat(c.pagado_usd||0) + montoPago;
@@ -1127,7 +1127,7 @@ async function contPagarCxP(idCxP) {
       pagado_usd: parseFloat(nuevoPagado.toFixed(2)),
       saldo_usd:  parseFloat(Math.max(0, nuevoSaldo).toFixed(2)),
       estado:     nuevoEstado
-    },'?id_cxp=eq.'+idCxP);
+    },'?id_cxp=eq.'+id_cxp);
     contRenderCxp();
   } catch(e) { alert('Error: '+e.message); }
 }
@@ -1156,17 +1156,17 @@ async function contRenderConciliacion() {
 }
 
 async function contIniciarConciliacion() {
-  const idCuenta = document.getElementById('cont-conc-cuenta').value;
+  const id_cuenta = document.getElementById('cont-conc-cuenta').value;
   const mes      = document.getElementById('cont-conc-mes').value;
-  if (!idCuenta || !mes) { alert('Selecciona cuenta y período.'); return; }
-  const cuenta   = contCuentasCache.find(function(c){ return c.id_cuenta == idCuenta; });
+  if (!id_cuenta || !mes) { alert('Selecciona cuenta y período.'); return; }
+  const cuenta   = contCuentasCache.find(function(c){ return c.id_cuenta == id_cuenta; });
   const desde    = mes + '-01';
   const hasta    = new Date(mes + '-01');
   hasta.setMonth(hasta.getMonth()+1); hasta.setDate(0);
   const hastaStr = hasta.toISOString().split('T')[0];
 
   const lineas = await api('cont_asiento_lineas','GET',null,
-    '?id_cuenta=eq.' + idCuenta
+    '?id_cuenta=eq.' + id_cuenta
     + '&cont_asientos.id_empresa=eq.'+(_empresaActiva?.id_empresa||0)
     + '&select=*,cont_asientos!inner(fecha,numero_asiento,descripcion,estado)'
     + '&cont_asientos.estado=eq.APROBADO'
@@ -1722,7 +1722,7 @@ async function abrirFormTributo(id) {
   abrirModal('modal-tributo');
 }
 
-async function cargarCuentasTributo(esRetencion, idCuentaActual) {
+async function cargarCuentasTributo(esRetencion, id_cuentaActual) {
   const sel = document.getElementById('trib-cuenta-contable');
   if (!sel) return;
   sel.innerHTML = '<option value="">-- Seleccionar cuenta --</option>';
@@ -1735,7 +1735,7 @@ async function cargarCuentasTributo(esRetencion, idCuentaActual) {
       const opt = document.createElement('option');
       opt.value = c.id_cuenta;
       opt.textContent = c.codigo + ' — ' + c.nombre;
-      if (idCuentaActual && parseInt(idCuentaActual) === c.id_cuenta) opt.selected = true;
+      if (id_cuentaActual && parseInt(id_cuentaActual) === c.id_cuenta) opt.selected = true;
       sel.appendChild(opt);
     });
   } catch(e) { console.warn('Error cargando cuentas tributo:', e); }
@@ -1820,7 +1820,7 @@ async function generarAsientoInventario(tipo, datos) {
     const numAst = 'AST-'+anio+'-'+String(seq).padStart(4,'0');
 
     const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
-    const idPeriodo = periodos.length ? periodos[0].id_periodo : null;
+    const id_periodo = periodos.length ? periodos[0].id_periodo : null;
 
     // Descripción del asiento
     const descripciones = {
@@ -1840,7 +1840,7 @@ async function generarAsientoInventario(tipo, datos) {
       referencia:     datos.referencia || null,
       moneda_base:    ((_empresaActiva?.moneda_principal)||'VES').toUpperCase(),
       tasa_bcv:       tasa,
-      id_periodo:     idPeriodo,
+      id_periodo:     id_periodo,
       id_empresa:      _empresaActiva ? _empresaActiva.id_empresa : null,
       estado:         'APROBADO',
       id_usuario:     sesionActual.correo_usuario
@@ -1851,11 +1851,11 @@ async function generarAsientoInventario(tipo, datos) {
     const monto = datos.montoUSD || 0;
 
     // Buscar cuenta de inventario
-    let idInv = datos.idCuentaInventario || null;
+    let idInv = datos.id_cuentaInventario || null;
     if (!idInv) { const cInv = await api('cont_cuentas','GET',null,'?codigo=eq.1.1.03.001&select=id_cuenta'); idInv = cInv.length ? cInv[0].id_cuenta : null; }
 
     // Buscar o crear cuenta auxiliar de área
-    let idAreaCuenta = null;
+    let id_areaCuenta = null;
     if (datos.areaId && datos.areaNombre) {
       const codigoArea = '6.1.01.' + String(datos.areaId).padStart(3,'0');
       let cArea = await api('cont_cuentas','GET',null,'?codigo=eq.'+codigoArea+'&select=id_cuenta');
@@ -1868,13 +1868,13 @@ async function generarAsientoInventario(tipo, datos) {
           nivel: 3, permite_movimiento: true, estado: 'ACTIVA'
         });
         cArea = nuevaCuenta || [];
-        if (cArea.length) idAreaCuenta = cArea[0].id_cuenta;
+        if (cArea.length) id_areaCuenta = cArea[0].id_cuenta;
         else {
           const reCheck = await api('cont_cuentas','GET',null,'?codigo=eq.'+codigoArea+'&select=id_cuenta');
-          if (reCheck.length) idAreaCuenta = reCheck[0].id_cuenta;
+          if (reCheck.length) id_areaCuenta = reCheck[0].id_cuenta;
         }
       } else {
-        idAreaCuenta = cArea[0].id_cuenta;
+        id_areaCuenta = cArea[0].id_cuenta;
       }
     }
 
@@ -1901,13 +1901,13 @@ async function generarAsientoInventario(tipo, datos) {
       if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:1,
         descripcion:'Entrada '+datos.articulo+auxDesc,
         debe_usd:monto, haber_usd:0, debe_ves:montoBs, haber_ves:0 });
-      if (idAreaCuenta) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idAreaCuenta, orden:2,
+      if (id_areaCuenta) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:id_areaCuenta, orden:2,
         descripcion:'Crédito área '+datos.areaNombre+auxDesc,
         debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:montoBs });
 
     } else if (tipo === 'SALIDA_AREA' || tipo === 'SALIDA_AJUSTE') {
       // Débito: Costo Área Bs / Crédito: Inventario Bs
-      if (idAreaCuenta) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idAreaCuenta, orden:1,
+      if (id_areaCuenta) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:id_areaCuenta, orden:1,
         descripcion:'Costo '+datos.areaNombre+' '+datos.articulo+auxDesc,
         debe_usd:monto, haber_usd:0, debe_ves:montoBs, haber_ves:0 });
       if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:2,
