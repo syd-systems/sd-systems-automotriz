@@ -75,7 +75,7 @@ async function calcularInvSaldoArea() {
 
     // Obtener todos los artículos del emisor
     const arts = inventarioCache.length > 0 ? inventarioCache
-      : await api('inventario_almacen','GET',null,'?order=nombre_articulo.asc&select=id_articulo' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_emisor : '')) || [];
+      : await api('inventario_almacen','GET',null,'?order=nombre_articulo.asc&select=id_articulo' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')) || [];
     if (!arts.length) { _invSaldoArea = {}; return; }
 
     const inClause = arts.map(function(r){ return r.id_articulo; }).join(',');
@@ -153,7 +153,7 @@ async function renderInventario(filtro) {
     if (!_invCategoriasCache || !_invCategoriasCache.length) {
       try {
         _invCategoriasCache = await api('inv_categorias','GET',null,
-          '?estado=eq.ACTIVO&order=nombre.asc' + (_empresaActiva ? '&id_emisor=eq.'+_empresaActiva.id_emisor : '')) || [];
+          '?estado=eq.ACTIVO&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')) || [];
         // Actualizar opciones del filtro si ya existe
         const selCat = document.getElementById('inv-filtro-cat');
         if (selCat && _invCategoriasCache.length) {
@@ -166,7 +166,7 @@ async function renderInventario(filtro) {
         }
       } catch(e) {}
     }
-    const itemsTodos = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&select=*' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_emisor : '')) || [];
+    const itemsTodos = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&select=*' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')) || [];
     const items = itemsTodos.filter(function(r) { return r.estado !== 'INACTIVO'; });
     const itemsFiltradosBase = soloConStock ? items.filter(function(r) { return parseFloat(r.stock_actual_articulo||0) > 0; }) : items;
     inventarioCache = items;
@@ -821,13 +821,13 @@ async function guardarEntradaStock() {
 
         // Numero asiento
         var anioT = new Date().getFullYear();
-        var ultsT = await api('cont_asientos','GET',null,'?id_emisor=eq.'+(sesionActual?.id_emisor||_empresaActiva?.id_emisor||0)+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
+        var ultsT = await api('cont_asientos','GET',null,'?id_empresa=eq.'+(sesionActual?.id_empresa||_empresaActiva?.id_empresa||0)+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
         var seqT = 1;
         if (ultsT[0]?.numero_asiento) { var mmT = ultsT[0].numero_asiento.match(/(\d+)$/); if (mmT) seqT = parseInt(mmT[1])+1; }
         var numAstT = 'AST-' + anioT + '-' + String(seqT).padStart(4,'0');
 
         var astT = await api('cont_asientos','POST',{
-          id_emisor: sesionActual?.id_emisor||_empresaActiva?.id_emisor||0,
+          id_empresa: sesionActual?.id_empresa||_empresaActiva?.id_empresa||0,
           numero_asiento: numAstT, tipo: 'CONSUMO_INVENTARIO',
           fecha: getHoyVzla(),
           descripcion: 'Consumo inventario: ' + (r.nombre_articulo||'') + ' x' + cantidad + ' — Transfer a: ' + (document.getElementById('es-area-display')?.textContent||''),
@@ -881,7 +881,7 @@ async function guardarEntradaStock() {
           // Una sola CxP — contado
           await api('cont_cxp','POST',{
             id_proveedor:  idProveedor,
-            id_emisor:     _empresaActiva?.id_emisor || null,
+            id_empresa:     _empresaActiva?.id_empresa || null,
             tipo:          'COMPRA_ARTICULO',
             numero_doc:    numDocBase,
             fecha_emision: hoy,
@@ -906,7 +906,7 @@ async function guardarEntradaStock() {
             const c = cuotas[i];
             await api('cont_cxp','POST',{
               id_proveedor:     idProveedor,
-              id_emisor:        _empresaActiva?.id_emisor || null,
+              id_empresa:        _empresaActiva?.id_empresa || null,
               tipo:             'COMPRA_ARTICULO_CREDITO',
               numero_doc:       numDocBase + '-C' + c.num,
               fecha_emision:    hoy,
@@ -954,7 +954,7 @@ async function invCargarCategorias(selCatId) {
   try {
     if (!_invCategoriasCache.length) {
       _invCategoriasCache = await api('inv_categorias','GET',null,
-        '?estado=eq.ACTIVO&order=nombre.asc' + (_empresaActiva ? '&id_emisor=eq.'+_empresaActiva.id_emisor : '')) || [];
+        '?estado=eq.ACTIVO&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')) || [];
     }
     sel.innerHTML = '<option value="">— Seleccionar categoría —</option>'
       + _invCategoriasCache.map(function(c) {
@@ -1110,7 +1110,7 @@ async function guardarInventario() {
   try {
     // Validar código duplicado
     if (codigo) {
-      let qDup = '?codigo_articulo=eq.' + encodeURIComponent(codigo) + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_emisor : '');
+      let qDup = '?codigo_articulo=eq.' + encodeURIComponent(codigo) + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '');
       if (id) qDup += '&id_articulo=neq.' + id; // excluir el propio al editar
       const dup = await api('inventario_almacen','GET',null,qDup + '&select=id_articulo&limit=1');
       if (dup && dup.length) {
@@ -1129,7 +1129,7 @@ async function guardarInventario() {
     const ventaFinal     = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? venta : undefined;
     const datos = { nombre_articulo: nombre, descripcion_articulo: desc || null, codigo_articulo: codigo || null, stock_actual_articulo: stock,
       stock_minimo_articulo: stockMin, precio_costo_moneda: costo,
-      id_empresa: _empresaActiva ? _empresaActiva.id_emisor : null,
+      id_empresa: _empresaActiva ? _empresaActiva.id_empresa : null,
       ...(ventaFinal !== undefined ? { precio_venta_moneda: ventaFinal } : {}),
       unidad, id_categoria_articulo: idCategoria, id_tipo_articulo: idTipoArticulo,
       id_cuenta_contable: parseInt(document.getElementById('inv-cuenta-contable')?.value) || null,
@@ -1264,8 +1264,8 @@ async function invRenderCategorias(cont) {
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const idEmisor = _empresaActiva?.id_emisor || 0;
-    const cats = await api('inv_categorias','GET',null,'?id_emisor=eq.'+idEmisor+'&order=nombre.asc&select=*') || [];
+    const idEmisor = _empresaActiva?.id_empresa || 0;
+    const cats = await api('inv_categorias','GET',null,'?id_empresa=eq.'+idEmisor+'&order=nombre.asc&select=*') || [];
     const filas = cats.map(function(c) {
       return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
         +'<td style="padding:8px;font-family:var(--font-mono);color:var(--naranja);font-size:12px">'+(c.codigo||'—')+'</td>'
@@ -1319,7 +1319,7 @@ async function invGuardarCategoria() {
   if (!nombre) { errEl.textContent='El nombre es obligatorio.'; errEl.style.display='block'; return; }
   const datos = { nombre, estado:document.getElementById('icat-estado')?.value||'ACTIVO',
     codigo:document.getElementById('icat-codigo')?.value.trim().toUpperCase()||null,
-    descripcion:document.getElementById('icat-desc')?.value.trim()||null, id_emisor:_empresaActiva?.id_emisor||null };
+    descripcion:document.getElementById('icat-desc')?.value.trim()||null, id_empresa:_empresaActiva?.id_empresa||null };
   try {
     if (id) await api('inv_categorias','PATCH',datos,'?id=eq.'+id);
     else    await api('inv_categorias','POST',datos);
@@ -1335,10 +1335,10 @@ async function invRenderTipos(cont) {
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const idEmisor = _empresaActiva?.id_emisor || 0;
+    const idEmisor = _empresaActiva?.id_empresa || 0;
     const [tipos, cats] = await Promise.all([
-      api('inv_articulos_tipo','GET',null,'?id_emisor=eq.'+idEmisor+'&order=nombre.asc&select=*'),
-      api('inv_categorias','GET',null,'?id_emisor=eq.'+idEmisor+'&select=id,nombre,codigo'),
+      api('inv_articulos_tipo','GET',null,'?id_empresa=eq.'+idEmisor+'&order=nombre.asc&select=*'),
+      api('inv_categorias','GET',null,'?id_empresa=eq.'+idEmisor+'&select=id,nombre,codigo'),
     ]);
     const catsMap = {}; (cats||[]).forEach(function(c){ catsMap[c.id]=c; });
     const filas = (tipos||[]).map(function(t) {
@@ -1368,10 +1368,10 @@ async function invRenderTipos(cont) {
 }
 
 async function invAbrirTipo(id) {
-  const idEmisor = _empresaActiva?.id_emisor || 0;
+  const idEmisor = _empresaActiva?.id_empresa || 0;
   let item = null;
   if (id) { const r=await api('inv_articulos_tipo','GET',null,'?id=eq.'+id)||[]; item=r[0]||null; }
-  const cats = await api('inv_categorias','GET',null,'?estado=eq.ACTIVO&id_emisor=eq.'+idEmisor+'&order=nombre.asc')||[];
+  const cats = await api('inv_categorias','GET',null,'?estado=eq.ACTIVO&id_empresa=eq.'+idEmisor+'&order=nombre.asc')||[];
   const opcCats = cats.map(function(c) {
     return '<option value="'+c.id+'"'+(item?.id_categoria===c.id?' selected':'')+'>'+
       (c.codigo?c.codigo+' — ':'')+c.nombre+'</option>';
@@ -1404,7 +1404,7 @@ async function invGuardarTipo() {
   if (!catId)  { errEl.textContent='Debe seleccionar una categoría.'; errEl.style.display='block'; return; }
   const datos = { nombre, id_categoria:catId, estado:document.getElementById('itipo-estado')?.value||'ACTIVO',
     codigo:document.getElementById('itipo-codigo')?.value.trim().toUpperCase()||null,
-    descripcion:document.getElementById('itipo-desc')?.value.trim()||null, id_emisor:_empresaActiva?.id_emisor||null };
+    descripcion:document.getElementById('itipo-desc')?.value.trim()||null, id_empresa:_empresaActiva?.id_empresa||null };
   try {
     if (id) await api('inv_articulos_tipo','PATCH',datos,'?id=eq.'+id);
     else    await api('inv_articulos_tipo','POST',datos);
@@ -1523,7 +1523,7 @@ async function invCargarMovimientos() {
   res.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
 
   try {
-    const idEmisor = _empresaActiva?.id_emisor || 0;
+    const idEmisor = _empresaActiva?.id_empresa || 0;
     const monedaRef = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
     const simRef    = monedaRef === 'USD' ? '$' : monedaRef;
 
