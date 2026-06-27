@@ -75,7 +75,7 @@ async function calcularInvSaldoArea() {
 
     // Obtener todos los artículos del emisor
     const arts = inventarioCache.length > 0 ? inventarioCache
-      : await api('inventario_almacen','GET',null,'?order=nombre_articulo.asc&select=id_articulo' + emisorQ()) || [];
+      : await api('inventario_almacen','GET',null,'?order=nombre_articulo.asc&select=id_articulo' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_emisor : '')) || [];
     if (!arts.length) { _invSaldoArea = {}; return; }
 
     const inClause = arts.map(function(r){ return r.id_articulo; }).join(',');
@@ -166,7 +166,7 @@ async function renderInventario(filtro) {
         }
       } catch(e) {}
     }
-    const itemsTodos = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&select=*' + emisorQ()) || [];
+    const itemsTodos = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&select=*' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_emisor : '')) || [];
     const items = itemsTodos.filter(function(r) { return r.estado !== 'INACTIVO'; });
     const itemsFiltradosBase = soloConStock ? items.filter(function(r) { return parseFloat(r.stock_actual_articulo||0) > 0; }) : items;
     inventarioCache = items;
@@ -1110,7 +1110,7 @@ async function guardarInventario() {
   try {
     // Validar código duplicado
     if (codigo) {
-      let qDup = '?codigo_articulo=eq.' + encodeURIComponent(codigo) + emisorQ();
+      let qDup = '?codigo_articulo=eq.' + encodeURIComponent(codigo) + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_emisor : '');
       if (id) qDup += '&id_articulo=neq.' + id; // excluir el propio al editar
       const dup = await api('inventario_almacen','GET',null,qDup + '&select=id_articulo&limit=1');
       if (dup && dup.length) {
