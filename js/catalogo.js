@@ -318,7 +318,7 @@ async function guardarCatalogo() {
         tipo_carroceria: carroceria || null, precio_usd: precio,
         moneda_precio: monedaServ, activo,
         grupo: grupoFinal ?? duplicado.grupo,
-        id_emisor: _empresaActiva?.id_emisor,
+        id_empresa: _empresaActiva?.id_empresa,
         id_usuario: sesionActual.correo_usuario };
       try {
         await api('servicios_catalogo', 'PATCH', datos, '?id_servicio=eq.' + duplicado.id_servicio);
@@ -337,7 +337,7 @@ async function guardarCatalogo() {
 
     const datos = { nombre: nombreFinal, grupo: grupoParaGuardar, descripcion: desc || null, categoria: cat || null,
       tipo_carroceria: carroceria || null, precio_usd: precio, moneda_precio: monedaServ, activo,
-      id_emisor: _empresaActiva?.id_emisor,
+      id_empresa: _empresaActiva?.id_empresa,
       id_usuario: sesionActual.correo_usuario };
     if (id) {
       await api('servicios_catalogo', 'PATCH', datos, '?id_servicio=eq.' + id);
@@ -511,7 +511,7 @@ async function crearNuevoGrupo(selectEl) {
     await api('param_grupos_servicio','POST',{
       nombre: nombreTrim,
       estado: 'ACTIVO',
-      id_emisor: _empresaActiva?.id_emisor
+      id_empresa: _empresaActiva?.id_empresa
     });
     await cargarGruposSelect(nombreTrim);
     cargarServiciosSelect(nombreTrim);
@@ -651,7 +651,7 @@ async function agregarGrupoCatalogo() {
     await api('param_grupos_servicio','POST',{
       nombre: nombre,
       estado: 'ACTIVO',
-      id_emisor: _empresaActiva?.id_emisor
+      id_empresa: _empresaActiva?.id_empresa
     });
   } catch(e) {
     alert('Error al guardar grupo: ' + e.message);
@@ -694,7 +694,7 @@ async function eliminarGrupoCatalogo(grupo) {
   if (!confirm('¿Eliminar el grupo "' + grupo + '"?' + (count > 0 ? '\n' + count + ' servicio(s) quedarán sin grupo.' : ''))) return;
   try {
     await api('servicios_catalogo', 'PATCH', { grupo: null }, '?grupo=eq.' + encodeURIComponent(grupo));
-    await api('param_grupos_servicio', 'DELETE', null, '?nombre=eq.' + encodeURIComponent(grupo) + '&id_emisor=eq.' + (_empresaActiva?.id_emisor||0));
+    await api('param_grupos_servicio', 'DELETE', null, '?nombre=eq.' + encodeURIComponent(grupo) + '&id_empresa=eq.' + (_empresaActiva?.id_empresa||0));
     gruposCatalogo = gruposCatalogo.filter(function(g) { return g !== grupo; });
     renderListaGrupos();
     await cargarGruposSelect();
