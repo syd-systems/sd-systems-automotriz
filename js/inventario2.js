@@ -437,7 +437,7 @@ function verFichaInventario(id) {
         : '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
           + '<div style="font-size:13px;color:#555">🔒</div></div>')
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Categoría</div>'
-    + '<div style="font-size:13px">' + (_invCategoriasCache.find(function(c){return c.id===r.id_categoria_articulo;})?.nombre || r.categoria || '—') + '</div></div>'
+    + '<div style="font-size:13px">' + (_invCategoriasCache.find(function(c){return c.id===r.id_categoria_articulo;})?.nombre || '—') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Valor Inventario</div>'
     + '</div>'
     + '</div>'
@@ -1632,7 +1632,7 @@ async function invCargarMovimientos() {
           const c = _invCategoriasCache.find(function(c){ return c.id === art.id_categoria_articulo; });
           if (c) return (c.codigo ? c.codigo + ' — ' : '') + c.nombre.toUpperCase();
         }
-        return (art.categoria || 'SIN CATEGORÍA').toUpperCase();
+        var _catG = _invCategoriasCache.find(function(c){ return c.id === art.id_categoria_articulo; }); return (_catG ? _catG.nombre : 'SIN CATEGORÍA').toUpperCase();
       };
       entradas.forEach(function(e) {
         const art = getArt(e.id_articulo); if (!art) return;
