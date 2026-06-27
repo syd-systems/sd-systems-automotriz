@@ -827,10 +827,10 @@ async function _guardarOSInterno() {
   const totRep  = tasaUSDGuardar > 0 ? totRepBs  / tasaUSDGuardar : 0;
 
   // Obtener id_propietario del vehículo
-  let idPropietario = null;
+  let id_propietario = null;
   try {
     const veh = await api('vehiculos', 'GET', null, '?id_vehiculo=eq.' + vehId + '&select=id_propietario');
-    if (veh.length) idPropietario = veh[0].id_propietario;
+    if (veh.length) id_propietario = veh[0].id_propietario;
   } catch(e) {}
 
   if (!_empresaActiva) { alert('No hay empresa activa. Por favor seleccione una empresa.'); return; }
@@ -844,7 +844,7 @@ async function _guardarOSInterno() {
     const datos = {
       id_empresa: _empresaActiva.id_empresa,
       id_vehiculo: parseInt(vehId),
-      id_propietario: idPropietario,
+      id_propietario: id_propietario,
       kilometraje_entrada: km,
       fecha_entrada:   fechaEnt,
       fecha_prometida: fechaProm    || null,
@@ -882,10 +882,10 @@ async function _guardarOSInterno() {
       // Nueva — generar número OS por empresa con reintento ante duplicado
       const hoy = new Date();
       const anio = hoy.getFullYear();
-      const idEmisor = _empresaActiva ? _empresaActiva.id_empresa : 0;
+      const id_emisor = _empresaActiva ? _empresaActiva.id_empresa : 0;
       const prefijo = 'OS-' + anio + '-';
       const existentes = await api('ordenes_servicio', 'GET', null,
-        '?select=numero_os&numero_os=gte.' + prefijo + '0000&numero_os=lte.' + prefijo + '9999&id_empresa=eq.' + idEmisor + '&order=numero_os.desc&limit=1');
+        '?select=numero_os&numero_os=gte.' + prefijo + '0000&numero_os=lte.' + prefijo + '9999&id_empresa=eq.' + id_emisor + '&order=numero_os.desc&limit=1');
       let seq = 1;
       if (existentes && existentes.length) {
         const partes = existentes[0].numero_os.split('-');
@@ -976,10 +976,10 @@ async function _guardarOSInterno() {
 
 // ─── ANULAR OS ───
 // ─── HELPER: restaurar o descontar stock de artículos de una OS ───
-async function ajustarStockOS(idOrden, operacion) {
+async function ajustarStockOS(id_orden, operacion) {
   // operacion: 'restaurar' suma al stock, 'descontar' resta
   try {
-    const lineas = await api('os_repuestos', 'GET', null, '?id_orden=eq.' + idOrden + '&select=id_articulo,cantidad');
+    const lineas = await api('os_repuestos', 'GET', null, '?id_orden=eq.' + id_orden + '&select=id_articulo,cantidad');
     for (var k = 0; k < lineas.length; k++) {
       var l = lineas[k];
       if (!l.id_articulo) continue;
@@ -1292,14 +1292,14 @@ async function cargarSelectsOS() {
         const correo = sesionActual?.correo_usuario;
         const empRes = correo ? await api('empleados','GET',null,
           '?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1') : [];
-        const idAreaUsuario = empRes?.[0]?.id_area || null;
-        if (idAreaUsuario) {
+        const id_areaUsuario = empRes?.[0]?.id_area || null;
+        if (id_areaUsuario) {
           const inClause = inventarioCache.map(function(r){ return r.id_articulo; }).join(',');
           const t4s = function(){ return new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); },4000); }); };
           const [entsDirectas, salsRecibidas, salsEnviadas] = await Promise.all([
-            Promise.race([api('stock_entradas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
-            Promise.race([api('stock_salidas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
-            Promise.race([api('stock_salidas','GET',null,'?id_area_entrega=eq.'+idAreaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; })
+            Promise.race([api('stock_entradas','GET',null,'?id_area=eq.'+id_areaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
+            Promise.race([api('stock_salidas','GET',null,'?id_area=eq.'+id_areaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
+            Promise.race([api('stock_salidas','GET',null,'?id_area_entrega=eq.'+id_areaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; })
           ]);
           const saldo = {};
           (entsDirectas||[]).forEach(function(e){ saldo[e.id_articulo] = (saldo[e.id_articulo]||0) + parseFloat(e.cantidad||0); });
