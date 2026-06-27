@@ -505,7 +505,7 @@ async function abrirEntradaStock(id) {
   document.getElementById('es-id').value = id;
   document.getElementById('es-nombre').textContent = r.nombre_articulo;
   await calcularInvSaldoArea();
-  const stockEntrada = _invSaldoArea ? (_invSaldoArea[r.id_articulo]||0) : r.stock_actual_articulo;
+  const stockEntrada = _invSaldoArea ? (_invSaldoArea[r.id_articulo]||0) : (r.stock_actual_articulo||0);
   document.getElementById('es-stock-actual').textContent = stockEntrada + ' ' + (r.unidad || 'UND');
   document.getElementById('es-cantidad').value = '';
   document.getElementById('es-precio-costo').value = '0.00';
