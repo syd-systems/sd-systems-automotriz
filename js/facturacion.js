@@ -218,21 +218,21 @@ async function abrirNuevaFactura() {
 
 async function onSelOSFactura() {
   const sel    = document.getElementById('fac-os-sel');
-  const idOS   = parseInt(sel.value);
+  const id_os   = parseInt(sel.value);
   const infoDiv = document.getElementById('fac-os-info');
   const linDiv  = document.getElementById('fac-lineas-cont');
-  if (!idOS) {
+  if (!id_os) {
     infoDiv.innerHTML = ''; linDiv.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Selecciona una OS para cargar las líneas</div>';
     document.getElementById('fac-os-id').value = '';
     window._facSubtotalOS = 0; actualizarSubtotalOSLabel(); calcularTotalesFactura(); return;
   }
-  document.getElementById('fac-os-id').value = idOS;
+  document.getElementById('fac-os-id').value = id_os;
   linDiv.innerHTML = '<div class="loading" style="padding:16px"><div class="spinner"></div> Cargando líneas...</div>';
   try {
     const [linServ, linRep, osData] = await Promise.all([
-      api('os_servicios','GET',null,'?id_orden=eq.'+idOS+'&select=*'),
-      api('os_repuestos','GET',null,'?id_orden=eq.'+idOS+'&select=*'),
-      api('ordenes_servicio','GET',null,'?id_orden=eq.'+idOS+'&select=*,vehiculos(placa,marca,modelo),propietarios(nombre_completo,tipo_doc,numero_doc,correo,telefono,direccion,tipo_contribuyente)'),
+      api('os_servicios','GET',null,'?id_orden=eq.'+id_os+'&select=*'),
+      api('os_repuestos','GET',null,'?id_orden=eq.'+id_os+'&select=*'),
+      api('ordenes_servicio','GET',null,'?id_orden=eq.'+id_os+'&select=*,vehiculos(placa,marca,modelo),propietarios(nombre_completo,tipo_doc,numero_doc,correo,telefono,direccion,tipo_contribuyente)'),
     ]);
     const o = osData[0]||{}, prop = o.propietarios, veh = o.vehiculos;
     if (prop) {
@@ -305,8 +305,8 @@ function onCambiarMonedaFactura() {
   if (igtfCont) igtfCont.style.display = esVES ? 'none' : 'flex';
   if (igtfChk && esVES) igtfChk.checked = false;
   actualizarSubtotalOSLabel();
-  var idOS = document.getElementById('fac-os-id')?.value;
-  if (idOS) onSelOSFactura(); else calcularTotalesFactura();
+  var id_os = document.getElementById('fac-os-id')?.value;
+  if (id_os) onSelOSFactura(); else calcularTotalesFactura();
 }
 
 function calcularTotalesFactura() {
@@ -344,8 +344,8 @@ async function guardarFactura(emitir) {
   if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = '⏳ Procesando...'; }
 
   const id       = document.getElementById('fac-id').value;
-  const idOS     = parseInt(document.getElementById('fac-os-id').value)||null;
-  const idEmisor = parseInt(document.getElementById('fac-emisor').value)||null;
+  const id_os     = parseInt(document.getElementById('fac-os-id').value)||null;
+  const id_emisor = parseInt(document.getElementById('fac-emisor').value)||null;
   const recNom   = document.getElementById('fac-receptor-nombre').value.trim();
   const recRif   = document.getElementById('fac-receptor-rif').value.trim();
   const recDir   = document.getElementById('fac-receptor-dir').value.trim();
@@ -367,16 +367,16 @@ async function guardarFactura(emitir) {
   const okEl     = document.getElementById('alerta-fac-ok');
   const errEl    = document.getElementById('alerta-fac-err');
   okEl.style.display='none'; errEl.style.display='none';
-  if (!idOS)     { errEl.textContent='Debe seleccionar una Orden de Servicio.'; errEl.style.display='block'; return; }
-  if (!idEmisor) { errEl.textContent='Debe seleccionar una Empresa.';           errEl.style.display='block'; return; }
+  if (!id_os)     { errEl.textContent='Debe seleccionar una Orden de Servicio.'; errEl.style.display='block'; return; }
+  if (!id_emisor) { errEl.textContent='Debe seleccionar una Empresa.';           errEl.style.display='block'; return; }
   if (!recNom)   { errEl.textContent='El nombre del cliente es obligatorio.';   errEl.style.display='block'; return; }
   if (!fecha)    { errEl.textContent='La fecha es obligatoria.';                errEl.style.display='block'; return; }
   const tot = window._facTotales||{subtotal:0,iva:0,igtf:0,total:0,totVes:0};
   let idProp = null;
-  try { const os=await api('ordenes_servicio','GET',null,'?id_orden=eq.'+idOS+'&select=id_propietario'); if(os.length) idProp=os[0].id_propietario; } catch(e) {}
+  try { const os=await api('ordenes_servicio','GET',null,'?id_orden=eq.'+id_os+'&select=id_propietario'); if(os.length) idProp=os[0].id_propietario; } catch(e) {}
   try {
     const datos = {
-      id_orden:idOS, id_empresa:idEmisor, id_propietario:idProp,
+      id_orden:id_os, id_empresa:id_emisor, id_propietario:idProp,
       receptor_nombre:recNom, receptor_rif:recRif||null, receptor_direccion:recDir||null,
       receptor_tipo_contribuyente:document.getElementById('fac-receptor-tipo-contrib')?.value||null,
       moneda_cobro:document.getElementById('fac-moneda')?.value||'USD',
@@ -390,9 +390,9 @@ async function guardarFactura(emitir) {
       await api('facturas','PATCH',datos,'?id_factura=eq.'+id);
     } else {
       // Verificar que la OS no tenga ya una factura activa
-      if (idOS) {
+      if (id_os) {
         const osFacturada = await api('facturas','GET',null,
-          '?id_orden=eq.'+idOS+'&estado=neq.ANULADA&select=id_factura,numero_factura');
+          '?id_orden=eq.'+id_os+'&estado=neq.ANULADA&select=id_factura,numero_factura');
         if (osFacturada && osFacturada.length) {
           errEl.textContent = 'Esta OS ya tiene una factura activa: ' + osFacturada[0].numero_factura;
           errEl.style.display = 'block';
@@ -444,7 +444,7 @@ async function guardarFactura(emitir) {
           const tasa = fac.tasa_bcv || 1;
 
           const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
-          const idPeriodo = periodos.length ? periodos[0].id_periodo : null;
+          const id_periodo = periodos.length ? periodos[0].id_periodo : null;
 
           // Obtener tasa BCV real desde la BD
           let tasaReal = 1;
@@ -462,7 +462,7 @@ async function guardarFactura(emitir) {
             referencia:     fac.numero_factura,
             moneda_base:    document.getElementById('cont-form-moneda')?.value || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase(),
             tasa_bcv:       tasaReal,
-            id_periodo:     idPeriodo,
+            id_periodo:     id_periodo,
             id_empresa:      fac.id_empresa || null,
             estado:         'APROBADO',
             id_usuario:     sesionActual.correo_usuario
@@ -526,14 +526,14 @@ async function guardarFactura(emitir) {
     }
 
     // ── Registrar salida automática de inventario al emitir factura ──
-    if (emitir && idOS) {
+    if (emitir && id_os) {
       try {
-        const reps = await api('os_repuestos','GET',null,'?id_orden=eq.'+idOS+'&select=id_articulo,cantidad');
+        const reps = await api('os_repuestos','GET',null,'?id_orden=eq.'+id_os+'&select=id_articulo,cantidad');
         // Obtener área del usuario que factura
         const correo = sesionActual?.correo_usuario;
         const empRes = correo ? await api('empleados','GET',null,
           '?correo=eq.'+encodeURIComponent(correo)+'&select=id_empleado,id_area&limit=1') : [];
-        const idAreaEmp = empRes?.[0]?.id_area || null;
+        const id_areaEmp = empRes?.[0]?.id_area || null;
         const idEmpEmp  = empRes?.[0]?.id_empleado || null;
         for (const rep of (reps||[])) {
           if (!rep.id_articulo || !parseFloat(rep.cantidad)) continue;
@@ -542,7 +542,7 @@ async function guardarFactura(emitir) {
             id_articulo:   rep.id_articulo,
             cantidad:      parseFloat(rep.cantidad),
             id_area:       null, // destino: cliente externo
-            id_area_entrega: idAreaEmp,
+            id_area_entrega: id_areaEmp,
             id_empleado_entrega: idEmpEmp,
             fecha_salida:  new Date().toISOString().split('T')[0],
             observaciones: 'Factura ' + (idFac ? 'FAC-'+idFac : ''),
@@ -933,11 +933,11 @@ async function verificarContrasena(correoUsu, claveIngresada) {
 }
 
 // ─── VALIDAR CONTRASEÑA RECEPTOR ───
-async function validarClaveReceptor(idEmpleado, clave) {
-  if (!idEmpleado || !clave) return { ok: false, msg: 'Debe seleccionar un empleado receptor e ingresar su contraseña.' };
+async function validarClaveReceptor(id_empleado, clave) {
+  if (!id_empleado || !clave) return { ok: false, msg: 'Debe seleccionar un empleado receptor e ingresar su contraseña.' };
   try {
     // Buscar el correo del empleado
-    const empArr = await api('empleados', 'GET', null, '?id_empleado=eq.' + idEmpleado + '&select=id_empleado,nombre_completo,correo');
+    const empArr = await api('empleados', 'GET', null, '?id_empleado=eq.' + id_empleado + '&select=id_empleado,nombre_completo,correo');
     const emp = empArr[0];
     if (!emp) return { ok: false, msg: 'Empleado no encontrado.' };
     if (!emp.correo) return { ok: false, msg: 'El empleado receptor no tiene correo registrado en el sistema.' };
@@ -957,18 +957,18 @@ async function validarClaveReceptor(idEmpleado, clave) {
 }
 
 // ─── CARGAR EMPLEADOS POR ÁREA ───
-async function cargarEmpleadosPorArea(idArea, selectId, soloConPermiso) {
+async function cargarEmpleadosPorArea(id_area, selectId, soloConPermiso) {
   // soloConPermiso: si true, filtra solo empleados con permiso INVENTARIO->ENTRADA_STOCK
   const sel = document.getElementById(selectId);
   if (!sel) return;
-  if (!idArea) {
+  if (!id_area) {
     sel.innerHTML = '<option value="">— Seleccionar área primero —</option>';
     return;
   }
   sel.innerHTML = '<option value="">Cargando...</option>';
   try {
     const emps = await api('empleados', 'GET', null,
-      '?id_area=eq.' + idArea + '&estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo,id_cargo,correo,param_cargos(nombre)');
+      '?id_area=eq.' + id_area + '&estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo,id_cargo,correo,param_cargos(nombre)');
     if (!emps || !emps.length) {
       sel.innerHTML = '<option value="">— Sin empleados en esta área —</option>';
       return;
@@ -1011,18 +1011,18 @@ async function cargarEmpleadosPorArea(idArea, selectId, soloConPermiso) {
 }
 
 function onSelAreaSalida() {
-  const idArea = document.getElementById('salida-area')?.value;
-  cargarEmpleadosPorArea(parseInt(idArea)||null, 'salida-empleado', true);
+  const id_area = document.getElementById('salida-area')?.value;
+  cargarEmpleadosPorArea(parseInt(id_area)||null, 'salida-empleado', true);
 }
 
 function onSelAreaEntrega() {
-  const idArea = document.getElementById('salida-area-entrega')?.value;
-  cargarEmpleadosPorArea(parseInt(idArea)||null, 'salida-empleado-entrega', false);
+  const id_area = document.getElementById('salida-area-entrega')?.value;
+  cargarEmpleadosPorArea(parseInt(id_area)||null, 'salida-empleado-entrega', false);
 }
 
 function onSelAreaEntrada() {
-  const idArea = document.getElementById('es-area')?.value;
-  cargarEmpleadosPorArea(parseInt(idArea)||null, 'es-empleado', true);
+  const id_area = document.getElementById('es-area')?.value;
+  cargarEmpleadosPorArea(parseInt(id_area)||null, 'es-empleado', true);
 }
 
 async function onCambiarMonedaEntrada() {
@@ -1123,7 +1123,7 @@ async function cargarUsuarioEntregaSalida() {
     const nomEl  = document.getElementById('salida-entrega-nombre');
     const areaEl = document.getElementById('salida-entrega-area');
     const hidEmp  = document.getElementById('salida-empleado-entrega');
-    const hidArea = document.getElementById('salida-area-entrega');
+    const hid_area = document.getElementById('salida-area-entrega');
 
     if (emp) {
       if (nomEl)  nomEl.textContent  = emp.nombre_completo;
@@ -1131,7 +1131,7 @@ async function cargarUsuarioEntregaSalida() {
         ? emp.param_areas.nombre + (emp.param_areas.codigo ? ' (' + emp.param_areas.codigo + ')' : '')
         : '—';
       if (hidEmp)  hidEmp.value  = emp.id_empleado;
-      if (hidArea) hidArea.value = emp.id_area || '';
+      if (hid_area) hid_area.value = emp.id_area || '';
     } else {
       // Usuario sin empleado asociado — mostrar correo
       if (nomEl)  nomEl.textContent  = correo;
@@ -1151,7 +1151,7 @@ async function cargarUsuarioReceptorEntrada() {
     const nomEl    = document.getElementById('es-receptor-nombre');
     const areaEl   = document.getElementById('es-receptor-area');
     const hidEmp   = document.getElementById('es-empleado');
-    const hidArea  = document.getElementById('es-area');
+    const hid_area  = document.getElementById('es-area');
     const areaDisp = document.getElementById('es-area-display');
 
     if (emp) {
@@ -1162,7 +1162,7 @@ async function cargarUsuarioReceptorEntrada() {
       if (areaEl)   areaEl.textContent   = areaNom;
       if (areaDisp) areaDisp.textContent = areaNom;
       if (hidEmp)   hidEmp.value         = emp.id_empleado;
-      if (hidArea)  hidArea.value        = emp.id_area || '';
+      if (hid_area)  hid_area.value        = emp.id_area || '';
     } else {
       if (nomEl)    nomEl.textContent    = correo;
       if (areaDisp) areaDisp.textContent = '—';
@@ -1236,7 +1236,7 @@ async function _guardarSalidaStockInterno() {
   const resetBtnSal = function() {}; // no-op — handled by wrapper
 
   const idRep   = parseInt(document.getElementById('salida-id-articulo').value);
-  const idArea  = parseInt(document.getElementById('salida-area').value) || null;
+  const id_area  = parseInt(document.getElementById('salida-area').value) || null;
   const cantidad = parseFloat(document.getElementById('salida-cantidad').value);
   const fecha   = document.getElementById('salida-fecha').value;
   const obs     = document.getElementById('salida-observaciones').value.trim();
@@ -1244,7 +1244,7 @@ async function _guardarSalidaStockInterno() {
   const errEl   = document.getElementById('alerta-salida-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
 
-  if (!idArea)          { errEl.textContent = 'Debe seleccionar el Área receptora.'; errEl.style.display = 'block'; return; }
+  if (!id_area)          { errEl.textContent = 'Debe seleccionar el Área receptora.'; errEl.style.display = 'block'; return; }
   if (!cantidad || cantidad <= 0) { errEl.textContent = 'La cantidad debe ser mayor a cero.'; errEl.style.display = 'block'; return; }
   if (!fecha)           { errEl.textContent = 'La fecha es obligatoria.'; errEl.style.display = 'block'; return; }
 
@@ -1277,19 +1277,19 @@ async function _guardarSalidaStockInterno() {
   try {
     // Registrar salida
     const idEmpRecibe    = parseInt(document.getElementById('salida-empleado')?.value) || null;
-    const idAreaEntrega  = parseInt(document.getElementById('salida-area-entrega')?.value) || null;
+    const id_areaEntrega  = parseInt(document.getElementById('salida-area-entrega')?.value) || null;
     const salidaRes = await api('stock_salidas', 'POST', {
       id_articulo:        idRep,
-      id_area:            idArea,
+      id_area:            id_area,
       id_empleado:        idEmpRecibe,
-      id_area_entrega:    idAreaEntrega,
+      id_area_entrega:    id_areaEntrega,
       id_empleado_entrega: idEmpEntrega,
       cantidad:           cantidad,
       fecha_salida:       fecha,
       observaciones:      obs || null,
       id_usuario:         sesionActual.correo_usuario
     });
-    const idSalida = salidaRes && salidaRes[0] ? salidaRes[0].id_salida : null;
+    const id_salida = salidaRes && salidaRes[0] ? salidaRes[0].id_salida : null;
 
     // Descontar del stock_actual
     const nuevoStock = (art ? art.stock_actual_articulo : 0) - cantidad;
@@ -1325,7 +1325,7 @@ async function _guardarSalidaStockInterno() {
           id_empresa: _empresaActiva?.id_empresa||0, numero_asiento: numAstS,
           tipo: 'CONSUMO_INVENTARIO', fecha: fecha,
           descripcion: 'Consumo: '+(art.nombre_articulo||'')+ ' x'+cantidad+' -> '+areaDest,
-          referencia: idSalida ? 'SAL-'+idSalida : 'SAL-INV-'+idRep,
+          referencia: id_salida ? 'SAL-'+id_salida : 'SAL-INV-'+idRep,
           estado: 'APROBADO', moneda_base: 'VES', tasa_bcv: tasaProm,
           id_usuario: sesionActual?.correo_usuario||null
         });
@@ -1342,7 +1342,7 @@ async function _guardarSalidaStockInterno() {
     }
 
     // ── Crear notificación de recepción para el empleado receptor ──
-    if (idEmpRecibe && idSalida) {
+    if (idEmpRecibe && id_salida) {
       try {
         // Obtener correo del empleado receptor
         const empReceptor = await api('empleados','GET',null,'?id_empleado=eq.'+idEmpRecibe+'&select=correo,nombre_completo,id_usuario,usuarios(correo_usuario)');
@@ -1360,8 +1360,8 @@ async function _guardarSalidaStockInterno() {
             titulo:         'Solicitud de Recepción de Artículo',
             mensaje:        cantidad + ' unid. de "' + artNom + '" enviadas desde ' + areaOrig + ' hacia ' + areaDest + '. Por favor confirme la recepción.',
             estado:         'PENDIENTE',
-            id_salida:      idSalida,
-            datos_extra:    JSON.stringify({ id_articulo: idRep, cantidad: cantidad, id_area_origen: idAreaEntrega, id_area_destino: idArea })
+            id_salida:      id_salida,
+            datos_extra:    JSON.stringify({ id_articulo: idRep, cantidad: cantidad, id_area_origen: id_areaEntrega, id_area_destino: id_area })
           });
         }
       } catch(eNot) { console.warn('Error creando notificación:', eNot); }
