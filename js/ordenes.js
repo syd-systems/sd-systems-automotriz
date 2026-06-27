@@ -65,7 +65,7 @@ async function renderOrdenes() {
             : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
         + '<td><div style="display:flex;gap:6px;flex-wrap:wrap">'
         + '<button class="btn-secundario" onclick="verFichaOS(' + o.id_orden + ')">Ver</button>'
-        + (o.stock_actual === 0 && puedo('SERVICIOS','ELIMINAR') ? '<button class="btn-secundario" style="color:#fc8181;border-color:rgba(252,129,129,0.4);font-size:11px;padding:3px 8px" onclick="eliminarOS(' + o.id_orden + ')">🗑</button>' : '')
+        + (o.stock_actual_articulo === 0 && puedo('SERVICIOS','ELIMINAR') ? '<button class="btn-secundario" style="color:#fc8181;border-color:rgba(252,129,129,0.4);font-size:11px;padding:3px 8px" onclick="eliminarOS(' + o.id_orden + ')">🗑</button>' : '')
         + '</div></td>'
         + '</tr>';
     }).join('');
@@ -729,7 +729,7 @@ async function agregarRepuestoInventario() {
   } else {
     const r = inventarioCache.find(function(x) { return x.id_articulo == sel.value; });
     if (!r) return;
-    const stockDisponible = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual_articulo;
+    const stockDisponible = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual_articulo_articulo;
     if (stockDisponible < cantVal) {
       if (!confirm('⚠ Stock insuficiente (' + stockDisponible + ' disponibles en tu área). ¿Agregar igual?')) return;
     }
@@ -935,9 +935,9 @@ async function _guardarOSInterno() {
         try {
           const invAntes = inventarioCache.find(function(x) { return x.id_articulo == la.id_articulo; });
           if (invAntes) {
-            const stockRestaurado = invAntes.stock_actual + parseFloat(la.cantidad || 0);
-            await api('inventario_almacen', 'PATCH', { stock_actual: stockRestaurado }, '?id_articulo=eq.' + la.id_articulo);
-            invAntes.stock_actual = stockRestaurado; // actualizar cache local
+            const stockRestaurado = invAntes.stock_actual_articulo + parseFloat(la.cantidad || 0);
+            await api('inventario_almacen', 'PATCH', { stock_actual_articulo: stockRestaurado }, '?id_articulo=eq.' + la.id_articulo);
+            invAntes.stock_actual_articulo = stockRestaurado; // actualizar cache local
           }
         } catch(eRest) { console.warn('Error restaurando stock:', eRest); }
       }
@@ -960,9 +960,9 @@ async function _guardarOSInterno() {
         try {
           const invItem = inventarioCache.find(function(x) { return x.id_articulo == lr.id_articulo; });
           if (invItem) {
-            const nuevoStock = Math.max(0, invItem.stock_actual - parseFloat(lr.cantidad));
-            await api('inventario_almacen', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + lr.id_articulo);
-            invItem.stock_actual = nuevoStock; // actualizar cache local
+            const nuevoStock = Math.max(0, invItem.stock_actual_articulo - parseFloat(lr.cantidad));
+            await api('inventario_almacen', 'PATCH', { stock_actual_articulo: nuevoStock }, '?id_articulo=eq.' + lr.id_articulo);
+            invItem.stock_actual_articulo = nuevoStock; // actualizar cache local
           }
         } catch(eStock) { console.warn('Error descontando stock:', eStock); }
       }
@@ -988,12 +988,12 @@ async function ajustarStockOS(idOrden, operacion) {
         if (!inv.length) continue;
         var cant = parseFloat(l.cantidad || 0);
         var nuevoStock = operacion === 'restaurar'
-          ? inv[0].stock_actual + cant
-          : Math.max(0, inv[0].stock_actual - cant);
-        await api('inventario_almacen', 'PATCH', { stock_actual: nuevoStock }, '?id_articulo=eq.' + l.id_articulo);
+          ? inv[0].stock_actual_articulo + cant
+          : Math.max(0, inv[0].stock_actual_articulo - cant);
+        await api('inventario_almacen', 'PATCH', { stock_actual_articulo: nuevoStock }, '?id_articulo=eq.' + l.id_articulo);
         // Actualizar cache local
         var cached = inventarioCache.find(function(x) { return x.id_articulo == l.id_articulo; });
-        if (cached) cached.stock_actual = nuevoStock;
+        if (cached) cached.stock_actual_articulo = nuevoStock;
       } catch(eInv) { console.warn('Error ajustando stock artículo', l.id_articulo, eInv); }
     }
   } catch(e) { console.warn('Error ajustarStockOS:', e); }
@@ -1319,7 +1319,7 @@ async function cargarSelectsOS() {
     }
     selInv.innerHTML = '<option value="">— Seleccionar Consumible —</option>'
       + itemsDisponibles.map(function(r) {
-          const stock = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual_articulo;
+          const stock = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual_articulo_articulo;
           return '<option value="' + r.id_articulo + '">' + r.nombre_articulo + ' (Stock: ' + stock + ') — $' + parseFloat(r.precio_venta_moneda || 0).toFixed(2) + '</option>';
         }).join('');
   }
