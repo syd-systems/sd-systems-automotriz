@@ -215,7 +215,7 @@ async function guardarEdicionMovimiento() {
             '?id_entrada=eq.' + id + '&select=cantidad');
           const cantOriginal = movArr[0]?.cantidad || cantidad;
           // Recalcular: quitar el efecto de la entrada original y aplicar la nueva
-          const stockSinEstaEntrada = art.stock_actual_articulo_articulo - cantOriginal;
+          const stockSinEstaEntrada = art.stock_actual_articulo - cantOriginal;
           const valorSinEstaEntrada = (stockSinEstaEntrada > 0)
             ? stockSinEstaEntrada * art.precio_costo_moneda
             : 0;
@@ -269,7 +269,7 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
     }
 
     // 3. Calcular nuevo stock
-    const stockActual = parseFloat(art.stock_actual_articulo_articulo) || 0;
+    const stockActual = parseFloat(art.stock_actual_articulo) || 0;
     let nuevoStock;
     if (tipo === 'ENTRADA') {
       nuevoStock = stockActual - parseFloat(cantidad);
