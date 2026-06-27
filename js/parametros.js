@@ -238,7 +238,7 @@ async function abrirParamItem(key, id) {
     if (def.tieneCategoria) {
       var opcCats = [];
       try {
-        const cats = await api('inv_categorias','GET',null,'?estado=eq.ACTIVO&order=nombre.asc' + (_empresaActiva ? '&id_emisor=eq.'+_empresaActiva.id_emisor : ''));
+        const cats = await api('inv_categorias','GET',null,'?estado=eq.ACTIVO&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
         opcCats = cats.map(function(c) {
           return '<option value="' + c.id + '"' + (item && item.id_categoria === c.id ? ' selected' : '') + '>' + (c.codigo ? c.codigo + ' — ' : '') + c.nombre + '</option>';
         });
@@ -301,7 +301,7 @@ async function guardarParamItem() {
     if (descEl) datos2.descripcion = descEl.value.trim() || null;
     const codEl = document.getElementById('param-item-codigo');
     if (codEl) datos2.codigo = codEl.value.trim().toUpperCase() || null;
-    if (!id) datos2.id_emisor = _empresaActiva?.id_emisor || null;
+    if (!id) datos2.id_empresa = _empresaActiva?.id_empresa || null;
     try {
       if (id) await api(tabla,'PATCH',datos2,'?id=eq.'+id);
       else    await api(tabla,'POST',datos2);
@@ -355,7 +355,7 @@ async function guardarParamItem() {
     if (def.tieneDescripcion) datos.descripcion   = document.getElementById('param-item-descripcion')?.value.trim() || null;
     if (def.tieneTipoSector)  datos.tipo_sector   = document.getElementById('param-item-tipo-sector')?.value || null;
     if (def.tieneCategoria)   datos.id_categoria  = parseInt(document.getElementById('param-item-categoria')?.value) || null;
-    if (def.tieneEmisor)      datos.id_emisor     = _empresaActiva?.id_emisor || null;
+    if (def.tieneEmisor)      datos.id_empresa     = _empresaActiva?.id_empresa || null;
   }
 
   try {
@@ -610,7 +610,7 @@ async function abrirEmpleado(id) {
   var e = null;
   if (id) {
     try {
-      const resE = await api('empleados', 'GET', null, '?id_empleado=eq.' + id + '&select=*,emisores(id_emisor,nombre)');
+      const resE = await api('empleados', 'GET', null, '?id_empleado=eq.' + id + '&select=*,emisores(id_empresa,nombre)');
       if (resE && resE[0]) e = resE[0];
     } catch(eEmp) {}
     if (!e) e = empleadosCache.find(function(x) { return x.id_empleado === id || x.id_empleado === parseInt(id); });
@@ -663,12 +663,12 @@ async function abrirEmpleado(id) {
 
   // Cargar selector de empresa
   try {
-    const emisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id_emisor,nombre');
+    const emisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id_empresa,nombre');
     const selEmisor = document.getElementById('emp-emisor');
     if (selEmisor) {
       selEmisor.innerHTML = '<option value="">— Seleccionar empresa —</option>'
-        + emisores.map(function(em){ return '<option value="'+em.id_emisor+'">'+ em.nombre+'</option>'; }).join('');
-      if (e && e.id_emisor) selEmisor.value = e.id_emisor;
+        + emisores.map(function(em){ return '<option value="'+em.id_empresa+'">'+ em.nombre+'</option>'; }).join('');
+      if (e && e.id_empresa) selEmisor.value = e.id_empresa;
     }
   } catch(eEm) {}
   document.getElementById('emp-bono-ali').value      = e ? (e.bono_alimentacion||'') : '';
@@ -885,7 +885,7 @@ async function guardarEmpleado() {
     id_institucion:     parseInt(document.getElementById('emp-banco').value) || null,
     tipo_cuenta:        document.getElementById('emp-tipo-cuenta').value || null,
     numero_cuenta:      document.getElementById('emp-num-cuenta').value.trim() || null,
-    id_emisor:          parseInt(document.getElementById('emp-emisor')?.value) || null,
+    id_empresa:          parseInt(document.getElementById('emp-emisor')?.value) || null,
     id_usuario:         sesionActual.correo_usuario,
   };
 
@@ -954,9 +954,9 @@ async function verFichaEmpleado(id) {
     if (res && res[0]) {
       e = res[0];
       // Cargar empresa por separado
-      if (e.id_emisor) {
+      if (e.id_empresa) {
         try {
-          const emRes = await api('emisores','GET',null,'?id_emisor=eq.'+e.id_emisor+'&select=id_emisor,nombre&limit=1');
+          const emRes = await api('emisores','GET',null,'?id_empresa=eq.'+e.id_empresa+'&select=id_empresa,nombre&limit=1');
           if (emRes && emRes[0]) e.emisores = emRes[0];
         } catch(eEm) {}
       }
