@@ -812,18 +812,18 @@ async function eliminarFoto(idFoto) {
 
 
 // ─── ELIMINAR FOTOS ───
-async function eliminarFotoEditar(idFoto, idVehiculo) {
+async function eliminarFotoEditar(idFoto, id_vehiculo) {
   if (!confirm('¿Eliminar esta foto?')) return;
   try {
     await api('vehiculos_fotos', 'DELETE', null, '?id_foto=eq.' + idFoto);
     // Refresh fotos in edit modal
-    const fotos = await api('vehiculos_fotos', 'GET', null, '?id_vehiculo=eq.' + idVehiculo + '&order=orden.asc');
+    const fotos = await api('vehiculos_fotos', 'GET', null, '?id_vehiculo=eq.' + id_vehiculo + '&order=orden.asc');
     const fotosDiv = document.getElementById('veh-fotos-actuales');
     if (fotos.length) {
       fotosDiv.innerHTML = fotos.map(function(f) {
         return '<div style="position:relative">'
           + '<img src="' + f.url_foto + '" onerror="imgError(this)" style="width:100%;height:70px;object-fit:cover;border-radius:6px;border:1px solid var(--borde)">'
-          + '<button onclick="eliminarFotoEditar(' + f.id_foto + ',' + idVehiculo + ')" style="position:absolute;top:-5px;right:-5px;background:rgba(229,62,62,0.85);border:none;color:#fff;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center">✕</button>'
+          + '<button onclick="eliminarFotoEditar(' + f.id_foto + ',' + id_vehiculo + ')" style="position:absolute;top:-5px;right:-5px;background:rgba(229,62,62,0.85);border:none;color:#fff;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center">✕</button>'
           + '</div>';
       }).join('');
     } else {
@@ -833,20 +833,20 @@ async function eliminarFotoEditar(idFoto, idVehiculo) {
 }
 
 
-async function eliminarFotoFicha(idFoto, idVehiculo) {
+async function eliminarFotoFicha(idFoto, id_vehiculo) {
   if (!confirm('¿Eliminar esta foto?')) return;
   try {
     await api('vehiculos_fotos', 'DELETE', null, '?id_foto=eq.' + idFoto);
-    verFichaVehiculo(idVehiculo);
+    verFichaVehiculo(id_vehiculo);
   } catch(e) { alert('Error: ' + e.message); }
 }
 
 
-async function eliminarCarnet(idVehiculo, desdeEditar) {
+async function eliminarCarnet(id_vehiculo, desdeEditar) {
   if (!confirm('¿Eliminar el carnet de circulación?')) return;
   try {
-    await api('vehiculos', 'PATCH', { foto_carnet: null }, '?id_vehiculo=eq.' + idVehiculo);
-    const v = vehiculosCache.find(function(x) { return x.id_vehiculo == idVehiculo; });
+    await api('vehiculos', 'PATCH', { foto_carnet: null }, '?id_vehiculo=eq.' + id_vehiculo);
+    const v = vehiculosCache.find(function(x) { return x.id_vehiculo == id_vehiculo; });
     if (v) v.foto_carnet = null;
     if (desdeEditar) {
       document.getElementById('veh-carnet-actual').innerHTML = '';
@@ -854,11 +854,11 @@ async function eliminarCarnet(idVehiculo, desdeEditar) {
   } catch(e) { alert('Error: ' + e.message); }
 }
 
-async function eliminarDocPropietario(idPropietario, desdeEditar) {
+async function eliminarDocPropietario(id_propietario, desdeEditar) {
   if (!confirm('¿Eliminar la foto del documento de identidad?')) return;
   try {
-    await api('propietarios', 'PATCH', { foto_documento: null }, '?id_propietario=eq.' + idPropietario);
-    const p = propietariosCache.find(function(x) { return x.id_propietario == idPropietario; });
+    await api('propietarios', 'PATCH', { foto_documento: null }, '?id_propietario=eq.' + id_propietario);
+    const p = propietariosCache.find(function(x) { return x.id_propietario == id_propietario; });
     if (p) p.foto_documento = null;
     if (desdeEditar) {
       const div = document.getElementById('prop-foto-actual');
