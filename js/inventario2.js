@@ -8,7 +8,7 @@ let inventarioCache = [];
 function clasificarABC(items) {
   if (!items.length) return items;
   const conValor = items.map(function(r) {
-    return Object.assign({}, r, { valor_inventario: parseFloat(r.precio_venta_usd || 0) * parseFloat(r.stock_actual || 0) });
+    return Object.assign({}, r, { valor_inventario: parseFloat(r.precio_venta_moneda || 0) * parseFloat(r.stock_actual_articulo || 0) });
   });
   conValor.sort(function(a, b) { return b.valor_inventario - a.valor_inventario; });
   const totalValor = conValor.reduce(function(s, r) { return s + r.valor_inventario; }, 0);
@@ -44,13 +44,13 @@ function calcularEOQ(demandaAnual, costoPedido, costoMantenimiento) {
 function calcularPuntoReorden(r) {
   var lead = parseFloat(r.lead_time_dias || 7);
   var demanda = parseFloat(r.demanda_diaria || (r.demanda_anual ? r.demanda_anual / 365 : 0));
-  var stockSeg = parseFloat(r.stock_seguridad || r.stock_minimo || 0);
+  var stockSeg = parseFloat(r.stock_seguridad || r.stock_minimo_articulo || 0);
   return Math.ceil(demanda * lead + stockSeg);
 }
 function calcularMargen(r) {
-  var venta = parseFloat(r.precio_venta_usd || 0);
+  var venta = parseFloat(r.precio_venta_moneda || 0);
   if (!venta) return 0;
-  return ((venta - parseFloat(r.precio_costo_usd || 0)) / venta * 100);
+  return ((venta - parseFloat(r.precio_costo_moneda || 0)) / venta * 100);
 }
 var _invVista = 'tabla';
 
@@ -75,7 +75,7 @@ async function calcularInvSaldoArea() {
 
     // Obtener todos los artículos del emisor
     const arts = inventarioCache.length > 0 ? inventarioCache
-      : await api('inventario','GET',null,'?order=nombre.asc&select=id_articulo' + emisorQ()) || [];
+      : await api('inventario_almacen','GET',null,'?order=nombre_articulo.asc&select=id_articulo' + emisorQ()) || [];
     if (!arts.length) { _invSaldoArea = {}; return; }
 
     const inClause = arts.map(function(r){ return r.id_articulo; }).join(',');
@@ -153,7 +153,7 @@ async function renderInventario(filtro) {
     if (!_invCategoriasCache || !_invCategoriasCache.length) {
       try {
         _invCategoriasCache = await api('inv_categorias','GET',null,
-          '?estado=eq.ACTIVO&order=nombre.asc' + (_empresaActiva ? '&id_emisor=eq.'+_empresaActiva.id_emisor : '')) || [];
+          '?estado=eq.ACTIVO&order=nombre_articulo.asc' + (_empresaActiva ? '&id_emisor=eq.'+_empresaActiva.id_emisor : '')) || [];
         // Actualizar opciones del filtro si ya existe
         const selCat = document.getElementById('inv-filtro-cat');
         if (selCat && _invCategoriasCache.length) {
@@ -166,9 +166,9 @@ async function renderInventario(filtro) {
         }
       } catch(e) {}
     }
-    const itemsTodos = await api('inventario', 'GET', null, '?order=nombre.asc&select=*' + emisorQ()) || [];
+    const itemsTodos = await api('inventario', 'GET', null, '?order=nombre_articulo.asc&select=*' + emisorQ()) || [];
     const items = itemsTodos.filter(function(r) { return r.activo !== false; });
-    const itemsFiltradosBase = soloConStock ? items.filter(function(r) { return parseFloat(r.stock_actual||0) > 0; }) : items;
+    const itemsFiltradosBase = soloConStock ? items.filter(function(r) { return parseFloat(r.stock_actual_articulo||0) > 0; }) : items;
     inventarioCache = items;
 
     // ── Filtro por área si no tiene VER_INVENTARIO_GENERAL ──
@@ -183,15 +183,15 @@ async function renderInventario(filtro) {
 
     const catFiltro = document.getElementById('inv-filtro-cat') ? document.getElementById('inv-filtro-cat').value : '';
   var itemsFiltrados = catFiltro
-    ? itemsFiltradosBase2.filter(function(r) { return String(r.id_categoria) === String(catFiltro); })
+    ? itemsFiltradosBase2.filter(function(r) { return String(r.id_categoria_articulo) === String(catFiltro); })
     : itemsFiltradosBase2;
   if (filtro && filtro.trim()) {
     const t = filtro.toLowerCase();
     itemsFiltrados = itemsFiltrados.filter(function(r) {
-      return r.nombre.toLowerCase().includes(t) || (r.codigo || '').toLowerCase().includes(t) || (r.descripcion || '').toLowerCase().includes(t);
+      return r.nombre_articulo.toLowerCase().includes(t) || (r.codigo_articulo || '').toLowerCase().includes(t) || (r.descripcion || '').toLowerCase().includes(t);
     });
   }
-    const stockBajos = items.filter(function(r) { return parseFloat(r.stock_minimo||0) > 0 && r.stock_actual <= r.stock_minimo; }).length;
+    const stockBajos = items.filter(function(r) { return parseFloat(r.stock_minimo_articulo||0) > 0 && r.stock_actual_articulo <= r.stock_minimo_articulo; }).length;
     const alertaDiv = document.getElementById('alerta-stock-bajo');
     if (alertaDiv) {
       if (stockBajos > 0) {
@@ -214,14 +214,14 @@ async function renderInventario(filtro) {
 function invFiltrarCategoria() {
   var catId = document.getElementById('inv-filtro-cat').value;
   var items = catId
-    ? inventarioCache.filter(function(r) { return String(r.id_categoria) === String(catId); })
+    ? inventarioCache.filter(function(r) { return String(r.id_categoria_articulo) === String(catId); })
     : inventarioCache;
   // Aplicar también filtro de búsqueda si existe
   var buscar = document.getElementById('buscar-inv');
   if (buscar && buscar.value.trim()) {
     var t = buscar.value.toLowerCase();
     items = items.filter(function(r) {
-      return r.nombre.toLowerCase().includes(t) || (r.codigo || '').toLowerCase().includes(t);
+      return r.nombre_articulo.toLowerCase().includes(t) || (r.codigo_articulo || '').toLowerCase().includes(t);
     });
   }
   var contador = document.getElementById('inv-contador');
@@ -266,42 +266,42 @@ function invRenderTabla(items, cont) {
   clasificarABC(inventarioCache).forEach(function(r) { abcMap[r.id_articulo] = r.clase_abc; });
   const abcColor = { A: '#22c55e', B: '#f59e0b', C: '#94a3b8' };
   const filas = items.map(function(r) {
-    const stockBajo = parseFloat(r.stock_minimo||0) > 0 && r.stock_actual <= r.stock_minimo;
+    const stockBajo = parseFloat(r.stock_minimo_articulo||0) > 0 && r.stock_actual_articulo <= r.stock_minimo_articulo;
     const abc = abcMap[r.id_articulo] || '—';
     const margen = calcularMargen(r);
     return '<tr>'
       + '<td><div style="display:flex;align-items:center;gap:8px">'
       + '<span style="font-size:10px;font-weight:700;color:' + (abcColor[abc]||'#888') + ';background:' + (abcColor[abc]||'#888') + '22;padding:2px 6px;border-radius:3px">' + abc + '</span>'
-      + '<div><div style="font-family:var(--font-mono);font-size:11px;color:var(--suave)">' + (r.codigo || '—')
-      + (r.id_categoria ? ' · <span style="color:var(--suave)">' + (_invCategoriasCache.find(function(c){return c.id===r.id_categoria;})?.nombre || '') + '</span>' : '')
+      + '<div><div style="font-family:var(--font-mono);font-size:11px;color:var(--suave)">' + (r.codigo_articulo || '—')
+      + (r.id_categoria_articulo ? ' · <span style="color:var(--suave)">' + (_invCategoriasCache.find(function(c){return c.id===r.id_categoria_articulo;})?.nombre || '') + '</span>' : '')
       + '</div>'
-      + '<div style="font-weight:500">' + r.nombre + '</div>'
+      + '<div style="font-weight:500">' + r.nombre_articulo + '</div>'
       + (r.descripcion ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion + '</div>' : '') + '</div></div></td>'
       + (function() {
-          const stockMostrar = _invSaldoArea ? (_invSaldoArea[r.id_articulo]||0) : r.stock_actual;
-          const stockBajoArea = parseFloat(r.stock_minimo||0) > 0 && stockMostrar <= r.stock_minimo;
+          const stockMostrar = _invSaldoArea ? (_invSaldoArea[r.id_articulo]||0) : r.stock_actual_articulo;
+          const stockBajoArea = parseFloat(r.stock_minimo_articulo||0) > 0 && stockMostrar <= r.stock_minimo_articulo;
           return '<td><span class="badge ' + (stockBajoArea ? 'badge-rojo' : 'badge-verde') + '">' + stockMostrar + ' ' + (r.unidad || 'UND') + '</span>'
             + (_invSaldoArea ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Stock área</div>' : '')
-            + (stockBajoArea ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo + ')</div>' : '') + '</td>';
+            + (stockBajoArea ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo_articulo + ')</div>' : '') + '</td>';
         })()
       + (puedo('INVENTARIO','VER_COSTOS')
           ? '<td style="font-family:var(--font-mono);font-size:12px">'
             + '<div style="color:var(--suave);font-size:9px;letter-spacing:1px">COSTO PROM. (CPP)</div>'
-            + '<div>$ ' + (parseInt(r.stock_actual) === 0 ? '0.00' : fmtUSD(r.precio_costo_usd)) + '</div>'
-            + (r.precio_costo_ultimo_usd
-                ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Última compra: $ ' + fmtUSD(r.precio_costo_ultimo_usd) + '</div>'
+            + '<div>$ ' + (parseInt(r.stock_actual_articulo) === 0 ? '0.00' : fmtUSD(r.precio_costo_moneda)) + '</div>'
+            + (r.precio_costo_ultimo_moneda
+                ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Última compra: $ ' + fmtUSD(r.precio_costo_ultimo_moneda) + '</div>'
                 : '')
             + '</td>'
           : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
       + (puedo('INVENTARIO','VER_PRECIOS_VENTA')
           ? '<td style="font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:10px">Venta</div>'
-            + '<span style="color:var(--naranja)">' + fmtBs(parseFloat(r.precio_venta_usd||0) * _tasaVigente) + ' Bs</span>'
-            + '<div style="font-size:10px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(r.precio_venta_usd) + '</div>'
+            + '<span style="color:var(--naranja)">' + fmtBs(parseFloat(r.precio_venta_moneda||0) * _tasaVigente) + ' Bs</span>'
+            + '<div style="font-size:10px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(r.precio_venta_moneda) + '</div>'
             + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen.toFixed(1) + '%</div></td>'
           : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
       + '<td><div style="display:flex;gap:6px">'
       + '<button class="btn-secundario" onclick="verFichaInventario(' + r.id_articulo + ')">Ver</button>'
-      + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" style="border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="abrirStockArticulo(' + r.id_articulo + ',\'' + r.nombre.replace(/'/g,"\\'"  ) + '\')" >Stock</button>' : '')
+      + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" style="border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="abrirStockArticulo(' + r.id_articulo + ',\'' + r.nombre_articulo.replace(/'/g,"\\'"  ) + '\')" >Stock</button>' : '')
       + '</div></td></tr>';
   }).join('');
   cont.innerHTML = '<div class="tabla-container"><table><thead><tr>'
@@ -325,9 +325,9 @@ function invRenderABC(items, cont) {
     gs.forEach(function(r) {
       filasHTML += '<tr>'
         + '<td><span style="font-size:10px;font-weight:700;color:' + abcColor[g] + ';background:' + abcColor[g] + '22;padding:2px 7px;border-radius:3px">' + g + '</span></td>'
-        + '<td style="font-weight:500">' + r.nombre + '</td>'
-        + '<td style="font-family:var(--font-mono);text-align:center">' + r.stock_actual + ' ' + (r.unidad||'UND') + '</td>'
-        + '<td style="font-family:var(--font-mono)">$ ' + fmtUSD(r.precio_venta_usd) + '</td>'
+        + '<td style="font-weight:500">' + r.nombre_articulo + '</td>'
+        + '<td style="font-family:var(--font-mono);text-align:center">' + r.stock_actual_articulo + ' ' + (r.unidad||'UND') + '</td>'
+        + '<td style="font-family:var(--font-mono)">$ ' + fmtUSD(r.precio_venta_moneda) + '</td>'
         + '<td style="font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(r.valor_inventario) + '</td>'
         + '<td style="font-size:11px;color:var(--suave)">' + pct + '%</td></tr>';
     });
@@ -346,13 +346,13 @@ function invRenderABC(items, cont) {
 function invRenderReorden(items, cont) {
   const filas = items.map(function(r) {
     const pr = calcularPuntoReorden(r);
-    const critico = r.stock_actual <= r.stock_minimo;
-    const enReorden = !critico && r.stock_actual <= pr;
+    const critico = r.stock_actual_articulo <= r.stock_minimo_articulo;
+    const enReorden = !critico && r.stock_actual_articulo <= pr;
     const demanda = r.demanda_diaria || (r.demanda_anual ? (r.demanda_anual/365).toFixed(2) : null);
     return '<tr>'
-      + '<td><div style="font-weight:500">' + r.nombre + '</div><div style="font-size:10px;color:var(--suave)">' + (r.codigo||'') + '</div></td>'
-      + '<td style="font-family:var(--font-mono);text-align:center">' + r.stock_actual + '</td>'
-      + '<td style="font-family:var(--font-mono);text-align:center">' + r.stock_minimo + '</td>'
+      + '<td><div style="font-weight:500">' + r.nombre_articulo + '</div><div style="font-size:10px;color:var(--suave)">' + (r.codigo_articulo||'') + '</div></td>'
+      + '<td style="font-family:var(--font-mono);text-align:center">' + r.stock_actual_articulo + '</td>'
+      + '<td style="font-family:var(--font-mono);text-align:center">' + r.stock_minimo_articulo + '</td>'
       + '<td style="font-family:var(--font-mono);text-align:center">' + (demanda !== null ? demanda : '<span style="color:var(--suave);font-size:10px">—</span>') + '</td>'
       + '<td style="font-family:var(--font-mono);text-align:center">' + (r.lead_time_dias || 7) + ' días</td>'
       + '<td style="text-align:center;font-family:var(--font-mono);font-weight:700;color:' + (critico ? '#ef4444' : enReorden ? '#f59e0b' : '#22c55e') + '">' + pr + '</td>'
@@ -376,12 +376,12 @@ function invRenderEOQ(items, cont) {
   const filas = items.map(function(r) {
     var D = parseFloat(r.demanda_anual || 0);
     var S = parseFloat(r.costo_pedido_usd || 25);
-    var H = parseFloat(r.precio_costo_usd || 0) * 0.20;
+    var H = parseFloat(r.precio_costo_moneda || 0) * 0.20;
     var eoq = (D && H) ? Math.round(calcularEOQ(D, S, H)) : null;
     var nPed = (eoq && D) ? Math.ceil(D / eoq) : null;
     var ciclo = (nPed && nPed > 0) ? Math.round(365 / nPed) : null;
     return '<tr>'
-      + '<td><div style="font-weight:500">' + r.nombre + '</div></td>'
+      + '<td><div style="font-weight:500">' + r.nombre_articulo + '</div></td>'
       + '<td style="font-family:var(--font-mono);text-align:center">' + (D || '<span style="color:var(--suave);font-size:10px">No configurado</span>') + '</td>'
       + '<td style="font-family:var(--font-mono);text-align:center">$ ' + fmtUSD(S) + '</td>'
       + '<td style="font-family:var(--font-mono);text-align:center">$ ' + fmtUSD(H) + '</td>'
@@ -405,39 +405,39 @@ function verFichaInventario(id) {
   }
   const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) return;
-  _fichaInvActual = { id: r.id_articulo, nombre: r.nombre };
+  _fichaInvActual = { id: r.id_articulo, nombre: r.nombre_articulo };
 
   const abcMap = {};
   clasificarABC(inventarioCache).forEach(function(x) { abcMap[x.id_articulo] = x.clase_abc; });
   const abc = abcMap[r.id_articulo] || '—';
   const abcColor = { A: '#22c55e', B: '#f59e0b', C: '#94a3b8' };
-  const margen = ((parseFloat(r.precio_venta_usd||0) - parseFloat(r.precio_costo_usd||0)) / (parseFloat(r.precio_venta_usd||0)||1) * 100).toFixed(1);
-  const stockBajo = r.stock_actual <= r.stock_minimo;
+  const margen = ((parseFloat(r.precio_venta_moneda||0) - parseFloat(r.precio_costo_moneda||0)) / (parseFloat(r.precio_venta_moneda||0)||1) * 100).toFixed(1);
+  const stockBajo = r.stock_actual_articulo <= r.stock_minimo_articulo;
 
   document.getElementById('ficha-inv-contenido').innerHTML =
     '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">'
     + '<span style="font-size:11px;font-weight:700;color:' + (abcColor[abc]||'#888') + ';background:' + (abcColor[abc]||'#888') + '22;padding:4px 10px;border-radius:4px">Clase ' + abc + '</span>'
-    + '<div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + r.nombre + '</div>'
-    + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (r.codigo || 'Sin código') + ' · ' + (r.unidad || 'UND') + '</div>'
+    + '<div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + r.nombre_articulo + '</div>'
+    + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (r.codigo_articulo || 'Sin código') + ' · ' + (r.unidad || 'UND') + '</div>'
     + '</div></div>'
     + (r.descripcion ? '<div style="background:var(--gris2);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--suave)">' + r.descripcion + '</div>' : '')
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Stock Actual</div>'
-    + '<div style="font-family:var(--font-mono);font-size:18px;color:' + (stockBajo ? '#fc8181' : 'var(--naranja)') + '">' + (_invSaldoArea ? (_invSaldoArea[r.id_articulo]||0) : r.stock_actual) + ' ' + (r.unidad||'UND') + '</div>'
+    + '<div style="font-family:var(--font-mono);font-size:18px;color:' + (stockBajo ? '#fc8181' : 'var(--naranja)') + '">' + (_invSaldoArea ? (_invSaldoArea[r.id_articulo]||0) : r.stock_actual_articulo) + ' ' + (r.unidad||'UND') + '</div>'
     + (_invSaldoArea ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Stock en tu área</div>' : '')
-    + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo + ')</div>' : '') + '</div>'
+    + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo_articulo + ')</div>' : '') + '</div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Stock Mínimo</div>'
-    + '<div style="font-family:var(--font-mono);font-size:18px">' + r.stock_minimo + ' ' + (r.unidad||'UND') + '</div></div>'
-    + (puedo('INVENTARIO','VER_COSTOS') ? '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Costo Prom. (CPP)</div><div style="font-family:var(--font-mono)">$ ' + fmtUSD(r.precio_costo_usd) + '</div></div>' : '')
+    + '<div style="font-family:var(--font-mono);font-size:18px">' + r.stock_minimo_articulo + ' ' + (r.unidad||'UND') + '</div></div>'
+    + (puedo('INVENTARIO','VER_COSTOS') ? '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Costo Prom. (CPP)</div><div style="font-family:var(--font-mono)">$ ' + fmtUSD(r.precio_costo_moneda) + '</div></div>' : '')
     + (puedo('INVENTARIO','VER_PRECIOS_VENTA')
         ? '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
-          + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + fmtBs(parseFloat(r.precio_venta_usd||0) * _tasaVigente) + ' Bs</div>'
-          + '<div style="font-size:11px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(r.precio_venta_usd) + '</div>'
+          + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + fmtBs(parseFloat(r.precio_venta_moneda||0) * _tasaVigente) + ' Bs</div>'
+          + '<div style="font-size:11px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(r.precio_venta_moneda) + '</div>'
           + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen + '%</div></div>'
         : '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
           + '<div style="font-size:13px;color:#555">🔒</div></div>')
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Categoría</div>'
-    + '<div style="font-size:13px">' + (_invCategoriasCache.find(function(c){return c.id===r.id_categoria;})?.nombre || r.categoria || '—') + '</div></div>'
+    + '<div style="font-size:13px">' + (_invCategoriasCache.find(function(c){return c.id===r.id_categoria_articulo;})?.nombre || r.categoria || '—') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Valor Inventario</div>'
     + '</div>'
     + '</div>'
@@ -453,7 +453,7 @@ function verFichaInventario(id) {
   var btnEliminar = document.getElementById('ficha-inv-btn-eliminar');
   if (btnEditar)  { btnEditar._id = r.id_articulo;  btnEditar.onclick = function() { cerrarModal('modal-ficha-inv'); abrirEditarInventario(this._id); }; btnEditar.style.display = puedo('INVENTARIO','EDITAR') ? '' : 'none'; }
   if (btnEliminar) {
-    btnEliminar._id = r.id_articulo; btnEliminar._nombre = r.nombre;
+    btnEliminar._id = r.id_articulo; btnEliminar._nombre = r.nombre_articulo;
     btnEliminar.onclick = function() { cerrarModal('modal-ficha-inv'); eliminarInventario(this._id, this._nombre); };
     btnEliminar.style.display = 'none'; // oculto por defecto, se muestra solo si no tiene entradas
     if (puedo('INVENTARIO','ELIMINAR')) {
@@ -503,9 +503,9 @@ async function abrirEntradaStock(id) {
   }
   if (!r) { alert('Error: artículo no encontrado. Intente recargar el inventario.'); return; }
   document.getElementById('es-id').value = id;
-  document.getElementById('es-nombre').textContent = r.nombre;
+  document.getElementById('es-nombre').textContent = r.nombre_articulo;
   await calcularInvSaldoArea();
-  const stockEntrada = _invSaldoArea ? (_invSaldoArea[r.id_articulo]||0) : r.stock_actual;
+  const stockEntrada = _invSaldoArea ? (_invSaldoArea[r.id_articulo]||0) : r.stock_actual_articulo;
   document.getElementById('es-stock-actual').textContent = stockEntrada + ' ' + (r.unidad || 'UND');
   document.getElementById('es-cantidad').value = '';
   document.getElementById('es-precio-costo').value = '0.00';
@@ -513,13 +513,13 @@ async function abrirEntradaStock(id) {
   document.getElementById('es-referencia').value = '';
   // Precio Compra siempre inicia en 0
   document.getElementById('es-precio-costo').value = '0.00';
-  document.getElementById('es-precio-venta').value = r.precio_venta_usd || '';
+  document.getElementById('es-precio-venta').value = r.precio_venta_moneda || '';
   // Ocultar precio venta si no tiene permiso
   var esVentaCont = document.getElementById('es-precio-venta-cont');
   if (esVentaCont) esVentaCont.style.display = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? '' : 'none';
   // Mostrar CPP actual como referencia
   const refCPP = document.getElementById('es-ref-cpp');
-  if (refCPP) refCPP.textContent = '$ ' + fmtUSD(r.precio_costo_usd) + ' (CPP actual)';
+  if (refCPP) refCPP.textContent = '$ ' + fmtUSD(r.precio_costo_moneda) + ' (CPP actual)';
   document.getElementById('alerta-es-ok').style.display = 'none';
   document.getElementById('alerta-es-err').style.display = 'none';
   // Resetear área, empleado, proveedor y contraseña
@@ -546,7 +546,7 @@ async function abrirEntradaStock(id) {
   // Cargar áreas y proveedores en paralelo
   Promise.all([
     api('param_areas',  'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
-    api('proveedores',  'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif,id_categoria,param_categorias_proveedor:id_categoria(nombre)'),
+    api('proveedores',  'GET', null, '?estado=eq.ACTIVO&order=nombre_articulo.asc&select=id_proveedor,nombre,rif,id_categoria,param_categorias_proveedor:id_categoria(nombre)'),
     api('param_categorias_proveedor','GET',null,'?nombre=ilike.*Artículo*&select=id&limit=1'),
   ]).then(function(res) {
     var areas = res[0], provs = res[1];
@@ -729,11 +729,11 @@ async function guardarEntradaStock() {
 
     // ── FASE 2: Leer stock fresco de BD (única fuente de verdad) ──
     let stockActual = parseFloat(r?.stock_actual || 0);
-    let costoActual = parseFloat(r?.precio_costo_usd || 0);
+    let costoActual = parseFloat(r?.precio_costo_moneda || 0);
     const artFresh = await api('inventario', 'GET', null, '?id_articulo=eq.' + id + '&select=stock_actual,precio_costo_usd');
     if (artFresh && artFresh[0]) {
       stockActual = parseFloat(artFresh[0].stock_actual || 0);
-      costoActual = parseFloat(artFresh[0].precio_costo_usd || 0);
+      costoActual = parseFloat(artFresh[0].precio_costo_moneda || 0);
     }
     const nuevoStock = stockActual + cantidad;
 
@@ -755,7 +755,7 @@ async function guardarEntradaStock() {
     const entradaRes = await api('stock_entradas', 'POST', {
       id_articulo:            id,
       cantidad:               cantidad,
-      precio_costo_usd:       nuevoPrecioCosto || null,
+      precio_costo_moneda:       nuevoPrecioCosto || null,
       precio_compra_original: precio_compra_original || null,
       moneda_compra:          moneda_compra_val,
       tasa_bcv:               tasa_bcv_usada,
@@ -771,9 +771,9 @@ async function guardarEntradaStock() {
     idEntrada = entradaRes && entradaRes[0] ? entradaRes[0].id_entrada : null;
 
     // ── FASE 4: Actualizar stock e inventario DESPUÉS del INSERT exitoso ──
-    const patch = { stock_actual: nuevoStock, precio_costo_usd: parseFloat(cpp.toFixed(4)) };
-    if (nuevoPrecioCosto > 0) patch.precio_costo_ultimo_usd = nuevoPrecioCosto;
-    if (nuevoPrecioVenta && nuevoPrecioVenta > 0 && puedo('INVENTARIO','VER_PRECIOS_VENTA')) patch.precio_venta_usd = nuevoPrecioVenta;
+    const patch = { stock_actual: nuevoStock, precio_costo_moneda: parseFloat(cpp.toFixed(4)) };
+    if (nuevoPrecioCosto > 0) patch.precio_costo_ultimo_moneda = nuevoPrecioCosto;
+    if (nuevoPrecioVenta && nuevoPrecioVenta > 0 && puedo('INVENTARIO','VER_PRECIOS_VENTA')) patch.precio_venta_moneda = nuevoPrecioVenta;
     await api('inventario', 'PATCH', patch, '?id_articulo=eq.' + id);
 
     // ── FASE 4.5: Registrar salida en área origen si es transferencia ──
@@ -791,7 +791,7 @@ async function guardarEntradaStock() {
         id_usuario:        sesionActual.correo_usuario
       });
       // Actualizar stock_actual del área origen — decrementar
-      const artOrigen = await api('inventario','GET',null,'?id_articulo=eq.'+id+'&select=stock_actual');
+      const artOrigen = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id+'&select=stock_actual');
       const stockOrigen = parseFloat(artOrigen?.[0]?.stock_actual || 0);
       // stock_actual ya fue actualizado con nuevoStock (que sumó la entrada)
       // necesitamos decrementar adicionalmente por la salida del origen
@@ -816,7 +816,7 @@ async function guardarEntradaStock() {
           }
         });
         var tasaPromedio = sumQ > 0 ? sumQxTasa / sumQ : (_tasaVigente || 1);
-        var cppUSD = parseFloat(r.precio_costo_usd || 0);
+        var cppUSD = parseFloat(r.precio_costo_moneda || 0);
         var montoVESTransf = parseFloat((cantidad * cppUSD * tasaPromedio).toFixed(2));
 
         // Numero asiento
@@ -830,7 +830,7 @@ async function guardarEntradaStock() {
           id_emisor: sesionActual?.id_emisor||_empresaActiva?.id_emisor||0,
           numero_asiento: numAstT, tipo: 'CONSUMO_INVENTARIO',
           fecha: getHoyVzla(),
-          descripcion: 'Consumo inventario: ' + (r.nombre||'') + ' x' + cantidad + ' — Transfer a: ' + (document.getElementById('es-area-display')?.textContent||''),
+          descripcion: 'Consumo inventario: ' + (r.nombre_articulo||'') + ' x' + cantidad + ' — Transfer a: ' + (document.getElementById('es-area-display')?.textContent||''),
           referencia: idEntrada ? 'ENT-' + idEntrada : 'TRANSF-'+id,
           estado: 'APROBADO', moneda_base: 'VES', tasa_bcv: tasaPromedio,
           id_usuario: sesionActual?.correo_usuario || null
@@ -839,11 +839,11 @@ async function guardarEntradaStock() {
         if (arT?.id_asiento) {
           // DEBE: Cuenta Costo/Gasto (6.1.02.004)
           await api('cont_asiento_lineas','POST',{ id_asiento:arT.id_asiento, id_cuenta:r.id_cuenta_costo_gasto, orden:1,
-            descripcion:'Consumo: '+(r.nombre||'')+' x'+cantidad+' (CPP $'+cppUSD.toFixed(2)+' x T/C '+tasaPromedio.toFixed(2)+')',
+            descripcion:'Consumo: '+(r.nombre_articulo||'')+' x'+cantidad+' (CPP $'+cppUSD.toFixed(2)+' x T/C '+tasaPromedio.toFixed(2)+')',
             debe_usd:0, haber_usd:0, debe_ves:montoVESTransf, haber_ves:0, tasa_bcv:tasaPromedio });
           // HABER: Cuenta Inventario (1.1.03.xxx)
           await api('cont_asiento_lineas','POST',{ id_asiento:arT.id_asiento, id_cuenta:r.id_cuenta_contable, orden:2,
-            descripcion:'Salida inventario consumible: '+(r.nombre||'')+' x'+cantidad,
+            descripcion:'Salida inventario consumible: '+(r.nombre_articulo||'')+' x'+cantidad,
             debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoVESTransf, tasa_bcv:tasaPromedio });
         }
       } catch(eAstTransf) { console.warn('Error asiento transferencia consumible:', eAstTransf); }
@@ -856,7 +856,7 @@ async function guardarEntradaStock() {
                     : motivoEnt === 'devolucion' ? 'ENTRADA_DEVOLUCION'
                     : 'ENTRADA_AJUSTE';
       await generarAsientoInventario(tipoAst, {
-        articulo:   r.nombre || r.codigo || ('Art#' + id),
+        articulo:   r.nombre_articulo || r.codigo_articulo || ('Art#' + id),
         cantidad:   cantidad,
         montoUSD:   nuevoPrecioCosto * cantidad,
         areaId:     idAreaEnt,
@@ -874,7 +874,7 @@ async function guardarEntradaStock() {
         const montoVES    = parseFloat((montoUSD * _tasaVigente).toFixed(2));
         const esquema     = document.getElementById('es-esquema-pago')?.value || 'CONTADO';
         const numDocBase  = idEntrada ? 'ENT-' + idEntrada : ('ENT-INV-' + id);
-        const artNomCxP   = r.nombre || r.codigo || 'Art#'+id;
+        const artNomCxP   = r.nombre_articulo || r.codigo_articulo || 'Art#'+id;
         const hoy         = new Date().toISOString().split('T')[0];
 
         if (esquema === 'CONTADO') {
@@ -928,7 +928,7 @@ async function guardarEntradaStock() {
     }
 
     // ── FASE 6: Actualizar cache y cerrar ──
-    if (r) r.stock_actual = nuevoStock;
+    if (r) r.stock_actual_articulo = nuevoStock;
     okEl.textContent = 'Stock actualizado: ' + stockActual + ' → ' + nuevoStock + ' ' + (r?.unidad || 'UND');
     okEl.style.display = 'block';
     setTimeout(function() {
@@ -954,7 +954,7 @@ async function invCargarCategorias(selCatId) {
   try {
     if (!_invCategoriasCache.length) {
       _invCategoriasCache = await api('inv_categorias','GET',null,
-        '?estado=eq.ACTIVO&order=nombre.asc' + (_empresaActiva ? '&id_emisor=eq.'+_empresaActiva.id_emisor : '')) || [];
+        '?estado=eq.ACTIVO&order=nombre_articulo.asc' + (_empresaActiva ? '&id_emisor=eq.'+_empresaActiva.id_emisor : '')) || [];
     }
     sel.innerHTML = '<option value="">— Seleccionar categoría —</option>'
       + _invCategoriasCache.map(function(c) {
@@ -973,7 +973,7 @@ async function invCargarTiposArticulo(selTipoId) {
   if (!catId) return;
   try {
     const tipos = await api('inv_articulos_tipo','GET',null,
-      '?estado=eq.ACTIVO&id_categoria=eq.'+catId+'&order=nombre.asc') || [];
+      '?estado=eq.ACTIVO&id_categoria=eq.'+catId+'&order=nombre_articulo.asc') || [];
     sel.innerHTML = '<option value="">— Seleccionar tipo —</option>'
       + tipos.map(function(t) {
           return '<option value="'+t.id+'"'+(selTipoId && selTipoId==t.id?' selected':'')+'>'+
@@ -1037,17 +1037,17 @@ async function abrirEditarInventario(id) {
   const selCGFinal = document.getElementById('inv-cuenta-costo-gasto');
   if (selCGFinal && r.id_cuenta_costo_gasto) selCGFinal.value = r.id_cuenta_costo_gasto;
   document.getElementById('inv-id').value = r.id_articulo;
-  document.getElementById('inv-codigo').value = r.codigo || '';
-  document.getElementById('inv-nombre').value = r.nombre;
+  document.getElementById('inv-codigo').value = r.codigo_articulo || '';
+  document.getElementById('inv-nombre').value = r.nombre_articulo;
   document.getElementById('inv-descripcion').value = r.descripcion || '';
-  document.getElementById('inv-stock').value = r.stock_actual;
-  document.getElementById('inv-stock-min').value = r.stock_minimo;
-  document.getElementById('inv-costo').value = r.precio_costo_usd || '';
-  document.getElementById('inv-venta').value = r.precio_venta_usd || '';
+  document.getElementById('inv-stock').value = r.stock_actual_articulo;
+  document.getElementById('inv-stock-min').value = r.stock_minimo_articulo;
+  document.getElementById('inv-costo').value = r.precio_costo_moneda || '';
+  document.getElementById('inv-venta').value = r.precio_venta_moneda || '';
   var invVentaCont = document.getElementById('inv-venta-cont');
   if (invVentaCont) invVentaCont.style.display = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? '' : 'none';
   document.getElementById('inv-unidad').value = r.unidad || 'UND';
-  await invCargarCategorias(r.id_categoria || null);
+  await invCargarCategorias(r.id_categoria_articulo || null);
   await invCargarTiposArticulo(r.id_tipo_articulo || null);
   document.getElementById('inv-demanda-anual').value = r.demanda_anual || '';
   document.getElementById('inv-lead-time').value = r.lead_time_dias || '';
@@ -1067,9 +1067,9 @@ async function abrirEditarInventario(id) {
   var infoEl = document.getElementById('inv-info-stock-costo');
   if (infoEl) {
     infoEl.style.display = '';
-    const stockFicha = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual;
+    const stockFicha = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual_articulo;
     document.getElementById('inv-info-stock-val').textContent = stockFicha + ' ' + (r.unidad || 'UND');
-    document.getElementById('inv-info-costo-val').textContent = '$ ' + parseFloat(r.precio_costo_usd || 0).toFixed(2) + ' (CPP)';
+    document.getElementById('inv-info-costo-val').textContent = '$ ' + parseFloat(r.precio_costo_moneda || 0).toFixed(2) + ' (CPP)';
   }
   abrirModal('modal-inventario');
   focusFirstField('modal-inventario');
@@ -1112,7 +1112,7 @@ async function guardarInventario() {
     if (codigo) {
       let qDup = '?codigo=eq.' + encodeURIComponent(codigo) + emisorQ();
       if (id) qDup += '&id_articulo=neq.' + id; // excluir el propio al editar
-      const dup = await api('inventario','GET',null,qDup + '&select=id_articulo&limit=1');
+      const dup = await api('inventario_almacen','GET',null,qDup + '&select=id_articulo&limit=1');
       if (dup && dup.length) {
         errEl.textContent = 'Ya existe un artículo con el código "' + codigo + '". Usa un código diferente.';
         errEl.style.display = 'block';
@@ -1128,9 +1128,9 @@ async function guardarInventario() {
     const idTipoArticulo = parseInt(document.getElementById('inv-tipo-articulo')?.value) || null;
     const ventaFinal     = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? venta : undefined;
     const datos = { nombre, descripcion: desc || null, codigo: codigo || null, stock_actual: stock,
-      stock_minimo: stockMin, precio_costo_usd: costo, activo: true,
+      stock_minimo: stockMin, precio_costo_moneda: costo, activo: true,
       id_emisor: _empresaActiva ? _empresaActiva.id_emisor : null,
-      ...(ventaFinal !== undefined ? { precio_venta_usd: ventaFinal } : {}),
+      ...(ventaFinal !== undefined ? { precio_venta_moneda: ventaFinal } : {}),
       unidad, id_categoria: idCategoria, id_tipo_articulo: idTipoArticulo,
       id_cuenta_contable: parseInt(document.getElementById('inv-cuenta-contable')?.value) || null,
       id_cuenta_costo_gasto: parseInt(document.getElementById('inv-cuenta-costo-gasto')?.value) || null,
@@ -1233,7 +1233,7 @@ async function verHistorialEntradas(idArticulo) {
       + '</tr></thead><tbody>'
       + entradas.map(function(e) {
           const mon  = (e.moneda_compra || 'USD').toUpperCase();
-          const prec = parseFloat(e.precio_compra_original || e.precio_costo_usd || 0);
+          const prec = parseFloat(e.precio_compra_original || e.precio_costo_moneda || 0);
           const precFmt = mon === 'VES' ? fmtBs(prec) + ' Bs' : '$ ' + fmtUSD(prec) + ' ' + mon;
           const estado = e.reversada
             ? '<span style="color:#fc8181;font-size:10px">Reversada</span>'
@@ -1265,7 +1265,7 @@ async function invRenderCategorias(cont) {
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
     const idEmisor = _empresaActiva?.id_emisor || 0;
-    const cats = await api('inv_categorias','GET',null,'?id_emisor=eq.'+idEmisor+'&order=nombre.asc&select=*') || [];
+    const cats = await api('inv_categorias','GET',null,'?id_emisor=eq.'+idEmisor+'&order=nombre_articulo.asc&select=*') || [];
     const filas = cats.map(function(c) {
       return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
         +'<td style="padding:8px;font-family:var(--font-mono);color:var(--naranja);font-size:12px">'+(c.codigo||'—')+'</td>'
@@ -1337,7 +1337,7 @@ async function invRenderTipos(cont) {
   try {
     const idEmisor = _empresaActiva?.id_emisor || 0;
     const [tipos, cats] = await Promise.all([
-      api('inv_articulos_tipo','GET',null,'?id_emisor=eq.'+idEmisor+'&order=nombre.asc&select=*'),
+      api('inv_articulos_tipo','GET',null,'?id_emisor=eq.'+idEmisor+'&order=nombre_articulo.asc&select=*'),
       api('inv_categorias','GET',null,'?id_emisor=eq.'+idEmisor+'&select=id,nombre,codigo'),
     ]);
     const catsMap = {}; (cats||[]).forEach(function(c){ catsMap[c.id]=c; });
@@ -1371,7 +1371,7 @@ async function invAbrirTipo(id) {
   const idEmisor = _empresaActiva?.id_emisor || 0;
   let item = null;
   if (id) { const r=await api('inv_articulos_tipo','GET',null,'?id=eq.'+id)||[]; item=r[0]||null; }
-  const cats = await api('inv_categorias','GET',null,'?estado=eq.ACTIVO&id_emisor=eq.'+idEmisor+'&order=nombre.asc')||[];
+  const cats = await api('inv_categorias','GET',null,'?estado=eq.ACTIVO&id_emisor=eq.'+idEmisor+'&order=nombre_articulo.asc')||[];
   const opcCats = cats.map(function(c) {
     return '<option value="'+c.id+'"'+(item?.id_categoria===c.id?' selected':'')+'>'+
       (c.codigo?c.codigo+' — ':'')+c.nombre+'</option>';
@@ -1529,7 +1529,7 @@ async function invCargarMovimientos() {
 
     // Cargar cache si está vacío
     if (!inventarioCache || !inventarioCache.length) {
-      const arts = await api('inventario','GET',null,'?activo=eq.true&id_emisor=eq.'+idEmisor+'&select=*&order=nombre.asc');
+      const arts = await api('inventario_almacen','GET',null,'?activo=eq.true&id_emisor=eq.'+idEmisor+'&select=*&order=nombre_articulo.asc');
       if (arts) inventarioCache = arts;
     }
     const idsArticulos = inventarioCache.map(function(x){ return x.id_articulo; });
@@ -1585,7 +1585,7 @@ async function invCargarMovimientos() {
         movs.push({ tipo:'ENTRADA', fecha:e.fecha_entrada, art:artNom(art),
           origen: e.area_origen ? e.area_origen.nombre+(e.area_origen.codigo?' ('+e.area_origen.codigo+')':'') : (e.proveedor?e.proveedor.nombre:(e.cliente_nombre||'—')),
           destino: e.area_receptora ? e.area_receptora.nombre+(e.area_receptora.codigo?' ('+e.area_receptora.codigo+')':'') : '—',
-          motivo:motivo, cant:e.cantidad, costo:e.precio_costo_usd||0, moneda:e.moneda_compra||monedaRef, rev:e.reversada });
+          motivo:motivo, cant:e.cantidad, costo:e.precio_costo_moneda||0, moneda:e.moneda_compra||monedaRef, rev:e.reversada });
       });
       salidas.forEach(function(s) {
         const art = getArt(s.id_articulo);
@@ -1628,8 +1628,8 @@ async function invCargarMovimientos() {
       const cats = {};
       // Helper para obtener nombre de categoría desde cache
       const getCatNom = function(art) {
-        if (art.id_categoria) {
-          const c = _invCategoriasCache.find(function(c){ return c.id === art.id_categoria; });
+        if (art.id_categoria_articulo) {
+          const c = _invCategoriasCache.find(function(c){ return c.id === art.id_categoria_articulo; });
           if (c) return (c.codigo ? c.codigo + ' — ' : '') + c.nombre.toUpperCase();
         }
         return (art.categoria || 'SIN CATEGORÍA').toUpperCase();
@@ -1639,7 +1639,7 @@ async function invCargarMovimientos() {
         const cat = getCatNom(art);
         if (!cats[cat]) cats[cat] = { entradas:0, salidas:0, costo:0 };
         cats[cat].entradas += parseFloat(e.cantidad||0);
-        cats[cat].costo    += parseFloat(e.precio_costo_usd||0) * parseFloat(e.cantidad||0);
+        cats[cat].costo    += parseFloat(e.precio_costo_moneda||0) * parseFloat(e.cantidad||0);
       });
       salidas.forEach(function(s) {
         const art = getArt(s.id_articulo); if (!art) return;
@@ -1672,7 +1672,7 @@ async function invCargarMovimientos() {
         if (e.motivo === 'transferencia') return; // Las transferencias se manejan desde salidas
         const art = getArt(e.id_articulo);
         const areaNom = e.area_receptora ? e.area_receptora.nombre+(e.area_receptora.codigo?' ('+e.area_receptora.codigo+')':'') : 'Sin área';
-        const artNom  = art ? art.nombre : ('Art #'+e.id_articulo);
+        const artNom  = art ? art.nombre_articulo : ('Art #'+e.id_articulo);
         const key = areaNom+'||'+artNom;
         if (!areas[key]) areas[key] = { area:areaNom, art:artNom, entradas:0, salidas:0 };
         areas[key].entradas += parseFloat(e.cantidad||0);
@@ -1680,7 +1680,7 @@ async function invCargarMovimientos() {
       // SALIDAS = SALIDA del area origen + ENTRADA del area receptora
       salidas.forEach(function(s) {
         const art = getArt(s.id_articulo);
-        const artNom    = art ? art.nombre : ('Art #'+s.id_articulo);
+        const artNom    = art ? art.nombre_articulo : ('Art #'+s.id_articulo);
         // Area origen: quien entrega -> SALIDA
         const nomOrigen = s.area_entrega   ? s.area_entrega.nombre+(s.area_entrega.codigo?' ('+s.area_entrega.codigo+')':'') : 'Sin área';
         var kO = nomOrigen+'||'+artNom;
@@ -1715,14 +1715,14 @@ async function invCargarMovimientos() {
       entradas.forEach(function(e) {
         const art=getArt(e.id_articulo); if(!art) return;
         const nom=artNom(art);
-        if (!arts[nom]) arts[nom] = { entradas:0, salidas:0, cpp:art.precio_costo_usd||0, stock:art.stock_actual||0, hist:[] };
+        if (!arts[nom]) arts[nom] = { entradas:0, salidas:0, cpp:art.precio_costo_moneda||0, stock:art.stock_actual_articulo||0, hist:[] };
         arts[nom].entradas += parseFloat(e.cantidad||0);
-        arts[nom].hist.push({ fecha:e.fecha_entrada, tipo:'E', cant:e.cantidad, cpp:e.precio_costo_usd||0 });
+        arts[nom].hist.push({ fecha:e.fecha_entrada, tipo:'E', cant:e.cantidad, cpp:e.precio_costo_moneda||0 });
       });
       salidas.forEach(function(s) {
         const art=getArt(s.id_articulo); if(!art) return;
         const nom=artNom(art);
-        if (!arts[nom]) arts[nom] = { entradas:0, salidas:0, cpp:art.precio_costo_usd||0, stock:art.stock_actual||0, hist:[] };
+        if (!arts[nom]) arts[nom] = { entradas:0, salidas:0, cpp:art.precio_costo_moneda||0, stock:art.stock_actual_articulo||0, hist:[] };
         arts[nom].salidas += parseFloat(s.cantidad||0);
         arts[nom].hist.push({ fecha:s.fecha_salida, tipo:'S', cant:s.cantidad, cpp:0 });
       });
@@ -1756,7 +1756,7 @@ async function invCargarMovimientos() {
         const nom = e.proveedor ? e.proveedor.nombre : 'Prov #'+e.id_proveedor;
         if (!provs[nom]) provs[nom] = { cant:0, monto:0, items:0 };
         provs[nom].cant   += parseFloat(e.cantidad||0);
-        provs[nom].monto  += (parseFloat(e.precio_costo_usd||0)*parseFloat(e.cantidad||0));
+        provs[nom].monto  += (parseFloat(e.precio_costo_moneda||0)*parseFloat(e.cantidad||0));
         provs[nom].items  += 1;
       });
       const filas = Object.keys(provs).sort().map(function(nom) {
