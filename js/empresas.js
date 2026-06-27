@@ -23,7 +23,7 @@ async function renderEmisores() {
         + '<td style="font-size:12px">' + (e.telefono||'—') + '</td>'
         + '<td style="font-size:12px">' + (e.correo||'—') + '</td>'
         + '<td><span class="badge ' + (e.estado==='ACTIVO'?'badge-verde':'badge-rojo') + '">' + (e.estado||'ACTIVO') + '</span></td>'
-        + '<td><button class="btn-secundario" onclick="verFichaEmisor(' + e.id_emisor + ')">Ver</button></td>'
+        + '<td><button class="btn-secundario" onclick="verFichaEmisor(' + e.id_empresa + ')">Ver</button></td>'
         + '</tr>';
     }).join('');
     c.innerHTML = '<div class="panel">'
@@ -40,7 +40,7 @@ async function renderEmisores() {
 }
 
 async function verFichaEmisor(id) {
-  const e = emisoresCache.find(function(x) { return x.id_emisor === id; });
+  const e = emisoresCache.find(function(x) { return x.id_empresa === id; });
   if (!e) return;
   const tipoLabel = { 'ORDINARIO':'Contribuyente Ordinario','ESPECIAL':'Contribuyente Especial','FORMAL':'Contribuyente Formal' };
   document.getElementById('ficha-emisor-contenido').innerHTML =
@@ -54,11 +54,11 @@ async function verFichaEmisor(id) {
     + '<div style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div>' + (e.direccion||'—') + '</div></div>'
     + '</div>';
   var btnEditar   = document.getElementById('ficha-emisor-btn-editar');
-  window._fichaEmisorId     = e.id_emisor;
+  window._fichaEmisorId     = e.id_empresa;
   window._fichaEmisorNombre = e.nombre;
   var btnEliminar = document.getElementById('ficha-emisor-btn-eliminar');
-  if (btnEditar)  { btnEditar._id = e.id_emisor; btnEditar.onclick = function() { cerrarModal('modal-ficha-emisor'); abrirEmisor(this._id); }; btnEditar.style.display = puedo('EMISORES','EDITAR') ? '' : 'none'; }
-  if (btnEliminar){ btnEliminar._id = e.id_emisor; btnEliminar._nombre = e.nombre; btnEliminar.onclick = function() { cerrarModal('modal-ficha-emisor'); eliminarEmisor(this._id, this._nombre); }; btnEliminar.style.display = puedo('EMISORES','ELIMINAR') ? '' : 'none'; }
+  if (btnEditar)  { btnEditar._id = e.id_empresa; btnEditar.onclick = function() { cerrarModal('modal-ficha-emisor'); abrirEmisor(this._id); }; btnEditar.style.display = puedo('EMISORES','EDITAR') ? '' : 'none'; }
+  if (btnEliminar){ btnEliminar._id = e.id_empresa; btnEliminar._nombre = e.nombre; btnEliminar.onclick = function() { cerrarModal('modal-ficha-emisor'); eliminarEmisor(this._id, this._nombre); }; btnEliminar.style.display = puedo('EMISORES','ELIMINAR') ? '' : 'none'; }
   abrirModal('modal-ficha-emisor');
   focusFirstField('modal-ficha-emisor');
 }
@@ -66,9 +66,9 @@ async function verFichaEmisor(id) {
 async function abrirEmisor(id) {
   if (id && !puedo('EMISORES','EDITAR'))  { alert('No tiene permiso para editar empresas.'); return; }
   if (!id && !puedo('EMISORES','CREAR'))  { alert('No tiene permiso para registrar empresas.'); return; }
-  const e = id ? emisoresCache.find(function(x) { return x.id_emisor === id; }) : null;
+  const e = id ? emisoresCache.find(function(x) { return x.id_empresa === id; }) : null;
   document.getElementById('modal-emisor-titulo').textContent  = e ? 'EDITAR EMPRESA' : 'NUEVA EMPRESA';
-  document.getElementById('em-id').value                     = e ? e.id_emisor : '';
+  document.getElementById('em-id').value                     = e ? e.id_empresa : '';
   document.getElementById('em-nombre').value                 = e ? (e.nombre||'') : '';
   document.getElementById('em-rif').value                    = e ? (e.rif||'') : '';
   document.getElementById('em-telefono').value               = e ? (e.telefono||'') : '';
@@ -92,9 +92,9 @@ async function eliminarEmisorFicha() {
   const nombre = window._fichaEmisorNombre || 'esta empresa';
   try {
     const [asientos, facturas, ordenes] = await Promise.all([
-      api('cont_asientos',    'GET', null, '?id_emisor=eq.'+id+'&select=id_asiento&limit=1'),
-      api('facturas',         'GET', null, '?id_emisor=eq.'+id+'&select=id_factura&limit=1'),
-      api('ordenes_servicio', 'GET', null, '?id_emisor=eq.'+id+'&select=id_orden&limit=1'),
+      api('cont_asientos',    'GET', null, '?id_empresa=eq.'+id+'&select=id_asiento&limit=1'),
+      api('facturas',         'GET', null, '?id_empresa=eq.'+id+'&select=id_factura&limit=1'),
+      api('ordenes_servicio', 'GET', null, '?id_empresa=eq.'+id+'&select=id_orden&limit=1'),
     ]);
     const motivos = [];
     if (asientos.length > 0) motivos.push('asientos contables');
@@ -108,7 +108,7 @@ async function eliminarEmisorFicha() {
   } catch(e) {}
   if (!confirm('¿Eliminar la empresa "' + nombre + '"? Esta acción no se puede deshacer.')) return;
   try {
-    await api('emisores', 'DELETE', null, '?id_emisor=eq.' + id);
+    await api('emisores', 'DELETE', null, '?id_empresa=eq.' + id);
     emisoresCache = [];
     cerrarModal('modal-ficha-emisor');
     await renderEmisores();
@@ -123,9 +123,9 @@ async function eliminarEmisor() {
   // Verificar registros asociados antes de preguntar
   try {
     const [asientos, facturas, ordenes] = await Promise.all([
-      api('cont_asientos',    'GET', null, '?id_emisor=eq.'+id+'&select=id_asiento&limit=1'),
-      api('facturas',         'GET', null, '?id_emisor=eq.'+id+'&select=id_factura&limit=1'),
-      api('ordenes_servicio', 'GET', null, '?id_emisor=eq.'+id+'&select=id_orden&limit=1'),
+      api('cont_asientos',    'GET', null, '?id_empresa=eq.'+id+'&select=id_asiento&limit=1'),
+      api('facturas',         'GET', null, '?id_empresa=eq.'+id+'&select=id_factura&limit=1'),
+      api('ordenes_servicio', 'GET', null, '?id_empresa=eq.'+id+'&select=id_orden&limit=1'),
     ]);
     const motivos = [];
     if (asientos.length > 0) motivos.push('asientos contables');
@@ -140,7 +140,7 @@ async function eliminarEmisor() {
 
   if (!confirm('¿Eliminar la empresa "' + nombre + '"? Esta acción no se puede deshacer.')) return;
   try {
-    await api('emisores', 'DELETE', null, '?id_emisor=eq.' + id);
+    await api('emisores', 'DELETE', null, '?id_empresa=eq.' + id);
     cerrarModal('modal-emisor');
     renderEmisores();
   } catch(e) { alert('Error al eliminar: ' + e.message); }
@@ -167,7 +167,7 @@ async function guardarEmisor() {
     id_usuario:         sesionActual.correo_usuario
   };
   try {
-    if (id) { await api('emisores','PATCH',datos,'?id_emisor=eq.'+id); okEl.textContent='✓ Empresa actualizada correctamente.'; }
+    if (id) { await api('emisores','PATCH',datos,'?id_empresa=eq.'+id); okEl.textContent='✓ Empresa actualizada correctamente.'; }
     else    { await api('emisores','POST',datos);                       okEl.textContent='✓ Empresa registrada correctamente.'; }
     okEl.style.display = 'block';
     setTimeout(function() { cerrarModal('modal-emisor'); renderEmisores(); }, 1200);
@@ -177,7 +177,7 @@ async function guardarEmisor() {
 async function eliminarEmisor(id, nombre) {
   if (!puedo('EMISORES','ELIMINAR')) { alert('No tiene permiso para eliminar empresas.'); return; }
   if (!confirm('¿Eliminar la empresa "' + nombre + '"?')) return;
-  try { await api('emisores','DELETE',null,'?id_emisor=eq.'+id); renderEmisores(); }
+  try { await api('emisores','DELETE',null,'?id_empresa=eq.'+id); renderEmisores(); }
   catch(err) { alert('Error: '+err.message); }
 }
 
