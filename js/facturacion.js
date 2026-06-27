@@ -162,7 +162,7 @@ async function abrirNuevaFactura() {
 
     // Excluir OS que ya tienen factura
     try {
-      const facturadas = await api('facturas','GET',null,'?id_orden=not.is.null&select=id_orden&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
+      const facturadas = await api('facturas','GET',null,'?id_orden=not.is.null&select=id_orden&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
       const idsFacturadas = new Set(facturadas.map(function(f){ return f.id_orden; }));
       osDisponibles = os.filter(function(o){ return !idsFacturadas.has(o.id_orden); });
     } catch(e) { osDisponibles = os; }
@@ -196,9 +196,9 @@ async function abrirNuevaFactura() {
 
   const selEm = document.getElementById('fac-emisor');
   selEm.innerHTML = '<option value="">— Seleccionar empresa —</option>'
-    + emisoresList.map(function(e) { return '<option value="' + e.id_emisor + '">' + e.nombre + ' (' + (e.rif||'') + ')</option>'; }).join('');
+    + emisoresList.map(function(e) { return '<option value="' + e.id_empresa + '">' + e.nombre + ' (' + (e.rif||'') + ')</option>'; }).join('');
   // Preseleccionar empresa activa
-  if (_empresaActiva) selEm.value = _empresaActiva.id_emisor;
+  if (_empresaActiva) selEm.value = _empresaActiva.id_empresa;
 
   const selOS = document.getElementById('fac-os-sel');
   selOS.innerHTML = '<option value="">— Seleccionar OS —</option>'
@@ -376,7 +376,7 @@ async function guardarFactura(emitir) {
   try { const os=await api('ordenes_servicio','GET',null,'?id_orden=eq.'+idOS+'&select=id_propietario'); if(os.length) idProp=os[0].id_propietario; } catch(e) {}
   try {
     const datos = {
-      id_orden:idOS, id_emisor:idEmisor, id_propietario:idProp,
+      id_orden:idOS, id_empresa:idEmisor, id_propietario:idProp,
       receptor_nombre:recNom, receptor_rif:recRif||null, receptor_direccion:recDir||null,
       receptor_tipo_contribuyente:document.getElementById('fac-receptor-tipo-contrib')?.value||null,
       moneda_cobro:document.getElementById('fac-moneda')?.value||'USD',
@@ -428,7 +428,7 @@ async function guardarFactura(emitir) {
             saldo_usd:      fac.total_usd,
             estado:         'PENDIENTE',
             moneda_cobro:   fac.moneda_cobro || 'USD',
-            id_emisor:      fac.id_emisor || null,
+            id_empresa:      fac.id_empresa || null,
             id_usuario:     sesionActual.correo_usuario
           });
         } catch(eCxc) { console.warn('Error creando CxC:', eCxc); }
@@ -437,13 +437,13 @@ async function guardarFactura(emitir) {
         try {
           const anioAst = new Date().getFullYear();
           const existAst = await api('cont_asientos','GET',null,
-            '?numero_asiento=like.AST-'+anioAst+'-*&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
+            '?numero_asiento=like.AST-'+anioAst+'-*&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
           let seqAst = 1;
           if (existAst.length) { const pa = existAst[0].numero_asiento.split('-'); seqAst = parseInt(pa[pa.length-1]) + 1; }
           const numAst = 'AST-'+anioAst+'-'+String(seqAst).padStart(4,'0');
           const tasa = fac.tasa_bcv || 1;
 
-          const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo&id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'');
+          const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
           const idPeriodo = periodos.length ? periodos[0].id_periodo : null;
 
           // Obtener tasa BCV real desde la BD
@@ -463,7 +463,7 @@ async function guardarFactura(emitir) {
             moneda_base:    document.getElementById('cont-form-moneda')?.value || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase(),
             tasa_bcv:       tasaReal,
             id_periodo:     idPeriodo,
-            id_emisor:      fac.id_emisor || null,
+            id_empresa:      fac.id_empresa || null,
             estado:         'APROBADO',
             id_usuario:     sesionActual.correo_usuario
           });
@@ -691,7 +691,7 @@ async function abrirEditarFactura(id) {
   setTimeout(async function() {
     document.getElementById('fac-id').value=''+f.id_factura;
     document.getElementById('fac-numero').textContent=f.numero_factura||'Borrador';
-    document.getElementById('fac-emisor').value=f.id_emisor||'';
+    document.getElementById('fac-emisor').value=f.id_empresa||'';
     document.getElementById('fac-fecha').value=f.fecha_emision||getHoyVzla();
     document.getElementById('fac-estado').value=f.estado;
     document.getElementById('fac-moneda').value=f.moneda_cobro||'USD';
@@ -830,10 +830,10 @@ async function regresarAFichaInv() {
 
 // ─── FILTRO DE EMPRESA ACTIVA ───
 function emisorQ() {
-  return _empresaActiva ? '&id_emisor=eq.' + _empresaActiva.id_emisor : '';
+  return _empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : '';
 }
 function emisorQStart() {
-  return _empresaActiva ? '?id_emisor=eq.' + _empresaActiva.id_emisor : '?';
+  return _empresaActiva ? '?id_empresa=eq.' + _empresaActiva.id_empresa : '?';
 }
 // ─── FORMATO DE FECHA DD-MM-YYYY ───
 function fmtFecha(fecha) {
@@ -849,17 +849,17 @@ async function cargarEmpresasAccesoModal(correo) {
   const grid = document.getElementById('empresas-acceso-grid');
   if (!grid) return;
   try {
-    const todasEmisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre_articulo.asc&select=id_emisor,nombre,rif');
+    const todasEmisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre_articulo.asc&select=id_empresa,nombre,rif');
     let asignadas = new Set();
     if (correo) {
       const ues = await api('usuarios_empresas','GET',null,
-        '?correo_usuario=eq.'+encodeURIComponent(correo)+'&activo=eq.true&select=id_emisor');
-      ues.forEach(function(u){ asignadas.add(u.id_emisor); });
+        '?correo_usuario=eq.'+encodeURIComponent(correo)+'&activo=eq.true&select=id_empresa');
+      ues.forEach(function(u){ asignadas.add(u.id_empresa); });
     }
     grid.innerHTML = todasEmisores.map(function(e) {
-      const checked = (!correo || asignadas.has(e.id_emisor)) ? 'checked' : '';
+      const checked = (!correo || asignadas.has(e.id_empresa)) ? 'checked' : '';
       return '<label style="display:flex;align-items:center;gap:8px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:8px 12px;cursor:pointer;font-size:12px">'
-        + '<input type="checkbox" value="'+e.id_emisor+'" '+checked+' class="emp-acceso-check" style="accent-color:var(--naranja);width:15px;height:15px">'
+        + '<input type="checkbox" value="'+e.id_empresa+'" '+checked+' class="emp-acceso-check" style="accent-color:var(--naranja);width:15px;height:15px">'
         + '<div><div style="font-weight:600">'+e.nombre+'</div>'
         + (e.rif ? '<div style="font-size:10px;color:var(--suave)">'+e.rif+'</div>' : '')
         + '</div></label>';
@@ -1315,14 +1315,14 @@ async function _guardarSalidaStockInterno() {
         var montoVES = parseFloat((cantidad * cppUSD * tasaProm).toFixed(2));
 
         var anioS = new Date().getFullYear();
-        var ultsS = await api('cont_asientos','GET',null,'?id_emisor=eq.'+(_empresaActiva?.id_emisor||0)+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
+        var ultsS = await api('cont_asientos','GET',null,'?id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
         var seqS = 1;
         if (ultsS[0]?.numero_asiento) { var mmS = ultsS[0].numero_asiento.match(/(\d+)$/); if (mmS) seqS = parseInt(mmS[1])+1; }
         var numAstS = 'AST-' + anioS + '-' + String(seqS).padStart(4,'0');
         var areaDest = document.getElementById('salida-area')?.selectedOptions[0]?.text || 'Area';
 
         var astS = await api('cont_asientos','POST',{
-          id_emisor: _empresaActiva?.id_emisor||0, numero_asiento: numAstS,
+          id_empresa: _empresaActiva?.id_empresa||0, numero_asiento: numAstS,
           tipo: 'CONSUMO_INVENTARIO', fecha: fecha,
           descripcion: 'Consumo: '+(art.nombre_articulo||'')+ ' x'+cantidad+' -> '+areaDest,
           referencia: idSalida ? 'SAL-'+idSalida : 'SAL-INV-'+idRep,
@@ -1355,7 +1355,7 @@ async function _guardarSalidaStockInterno() {
           const areaDest = document.getElementById('salida-area')?.selectedOptions[0]?.text || 'Área';
           await api('notificaciones','POST',{
             tipo:           'RECEPCION_ARTICULO',
-            id_emisor:      _empresaActiva?.id_emisor || null,
+            id_empresa:      _empresaActiva?.id_empresa || null,
             correo_destino: correoReceptor,
             titulo:         'Solicitud de Recepción de Artículo',
             mensaje:        cantidad + ' unid. de "' + artNom + '" enviadas desde ' + areaOrig + ' hacia ' + areaDest + '. Por favor confirme la recepción.',
