@@ -166,7 +166,7 @@ async function renderInventario(filtro) {
         }
       } catch(e) {}
     }
-    const itemsTodos = await api('inventario', 'GET', null, '?order=nombre_articulo.asc&select=*' + emisorQ()) || [];
+    const itemsTodos = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&select=*' + emisorQ()) || [];
     const items = itemsTodos.filter(function(r) { return r.activo !== false; });
     const itemsFiltradosBase = soloConStock ? items.filter(function(r) { return parseFloat(r.stock_actual_articulo||0) > 0; }) : items;
     inventarioCache = items;
@@ -730,7 +730,7 @@ async function guardarEntradaStock() {
     // ── FASE 2: Leer stock fresco de BD (única fuente de verdad) ──
     let stockActual = parseFloat(r?.stock_actual || 0);
     let costoActual = parseFloat(r?.precio_costo_moneda || 0);
-    const artFresh = await api('inventario', 'GET', null, '?id_articulo=eq.' + id + '&select=stock_actual,precio_costo_usd');
+    const artFresh = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id + '&select=stock_actual,precio_costo_usd');
     if (artFresh && artFresh[0]) {
       stockActual = parseFloat(artFresh[0].stock_actual || 0);
       costoActual = parseFloat(artFresh[0].precio_costo_moneda || 0);
@@ -774,7 +774,7 @@ async function guardarEntradaStock() {
     const patch = { stock_actual: nuevoStock, precio_costo_moneda: parseFloat(cpp.toFixed(4)) };
     if (nuevoPrecioCosto > 0) patch.precio_costo_ultimo_moneda = nuevoPrecioCosto;
     if (nuevoPrecioVenta && nuevoPrecioVenta > 0 && puedo('INVENTARIO','VER_PRECIOS_VENTA')) patch.precio_venta_moneda = nuevoPrecioVenta;
-    await api('inventario', 'PATCH', patch, '?id_articulo=eq.' + id);
+    await api('inventario_almacen', 'PATCH', patch, '?id_articulo=eq.' + id);
 
     // ── FASE 4.5: Registrar salida en área origen si es transferencia ──
     if (motivoEnt === 'transferencia' && idAreaOrigenH) {
@@ -1137,9 +1137,9 @@ async function guardarInventario() {
       demanda_anual: demandaAnual, lead_time_dias: leadTime, costo_pedido_usd: costoPedido, stock_seguridad: stockSeg,
       id_usuario: sesionActual.correo_usuario };
     if (id) {
-      await api('inventario', 'PATCH', datos, '?id_articulo=eq.' + id);
+      await api('inventario_almacen', 'PATCH', datos, '?id_articulo=eq.' + id);
     } else {
-      await api('inventario', 'POST', datos);
+      await api('inventario_almacen', 'POST', datos);
     }
     okEl.textContent = '✓ Artículo guardado.'; okEl.style.display = 'block';
     setTimeout(function() { cerrarModal('modal-inventario'); document.getElementById('contenido-principal').innerHTML=''; renderInventario(); }, 1000);
@@ -1162,7 +1162,7 @@ async function eliminarInventario(id, nombre) {
       return;
     }
     if (!confirm('¿Eliminar "' + nombre + '"?\nEsta acción no se puede deshacer.')) return;
-    await api('inventario', 'DELETE', null, '?id_articulo=eq.' + id);
+    await api('inventario_almacen', 'DELETE', null, '?id_articulo=eq.' + id);
     document.getElementById('contenido-principal').innerHTML = '';
     renderInventario();
   } catch(e) { alert('Error: ' + e.message); }
