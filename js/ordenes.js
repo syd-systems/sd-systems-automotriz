@@ -706,7 +706,7 @@ function onSelCatalogoChange() {
 }
 
 // ─── AGREGAR LÍNEA ARTÍCULO DESDE INVENTARIO ───
-async function agregarRepuestoInventario() {
+async function agregarMercanciaInventario() {
   if (!inventarioCache.length) {
     try { inventarioCache = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+''); } catch(e) {}
   }
