@@ -849,7 +849,7 @@ async function guardarEntradaStock() {
       } catch(eAstTransf) { console.warn('Error asiento transferencia consumible:', eAstTransf); }
     }
 
-    // Transferencias de otros articulos (Repuestos/Mercancias) NO generan asiento aqui
+    // Transferencias de otros articulos (Mercancias) NO generan asiento aqui
     if (motivoEnt !== "transferencia") try {
       const areaNombreEnt = document.getElementById('es-area-display')?.textContent || 'Área';
       const tipoAst = motivoEnt === 'compra' ? 'ENTRADA_COMPRA'
