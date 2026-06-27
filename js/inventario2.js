@@ -771,7 +771,7 @@ async function guardarEntradaStock() {
     idEntrada = entradaRes && entradaRes[0] ? entradaRes[0].id_entrada : null;
 
     // ── FASE 4: Actualizar stock e inventario DESPUÉS del INSERT exitoso ──
-    const patch = { stock_actual: nuevoStock, precio_costo_moneda: parseFloat(cpp.toFixed(4)) };
+    const patch = { stock_actual_articulo: nuevoStock, precio_costo_moneda: parseFloat(cpp.toFixed(4)) };
     if (nuevoPrecioCosto > 0) patch.precio_costo_ultimo_moneda = nuevoPrecioCosto;
     if (nuevoPrecioVenta && nuevoPrecioVenta > 0 && puedo('INVENTARIO','VER_PRECIOS_VENTA')) patch.precio_venta_moneda = nuevoPrecioVenta;
     await api('inventario_almacen', 'PATCH', patch, '?id_articulo=eq.' + id);
