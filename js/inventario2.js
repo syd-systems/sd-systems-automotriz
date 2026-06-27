@@ -167,7 +167,7 @@ async function renderInventario(filtro) {
       } catch(e) {}
     }
     const itemsTodos = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&select=*' + emisorQ()) || [];
-    const items = itemsTodos.filter(function(r) { return r.activo !== false; });
+    const items = itemsTodos.filter(function(r) { return r.estado !== 'INACTIVO'; });
     const itemsFiltradosBase = soloConStock ? items.filter(function(r) { return parseFloat(r.stock_actual_articulo||0) > 0; }) : items;
     inventarioCache = items;
 
@@ -1128,7 +1128,7 @@ async function guardarInventario() {
     const idTipoArticulo = parseInt(document.getElementById('inv-tipo-articulo')?.value) || null;
     const ventaFinal     = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? venta : undefined;
     const datos = { nombre, descripcion: desc || null, codigo: codigo || null, stock_actual: stock,
-      stock_minimo: stockMin, precio_costo_moneda: costo, activo: true,
+      stock_minimo: stockMin, precio_costo_moneda: costo,
       id_emisor: _empresaActiva ? _empresaActiva.id_emisor : null,
       ...(ventaFinal !== undefined ? { precio_venta_moneda: ventaFinal } : {}),
       unidad, id_categoria: idCategoria, id_tipo_articulo: idTipoArticulo,
@@ -1371,7 +1371,7 @@ async function invAbrirTipo(id) {
   const idEmisor = _empresaActiva?.id_emisor || 0;
   let item = null;
   if (id) { const r=await api('inv_articulos_tipo','GET',null,'?id=eq.'+id)||[]; item=r[0]||null; }
-  const cats = await api('inv_categorias','GET',null,'?estado=eq.ACTIVO&id_emisor=eq.'+idEmisor+'&order=nombre_articulo.asc')||[];
+  const cats = await api('inv_categorias','GET',null,'?estado=eq.ACTIVO&id_emisor=eq.'+idEmisor+'&order=nombre.asc')||[];
   const opcCats = cats.map(function(c) {
     return '<option value="'+c.id+'"'+(item?.id_categoria===c.id?' selected':'')+'>'+
       (c.codigo?c.codigo+' — ':'')+c.nombre+'</option>';
@@ -1529,7 +1529,7 @@ async function invCargarMovimientos() {
 
     // Cargar cache si está vacío
     if (!inventarioCache || !inventarioCache.length) {
-      const arts = await api('inventario_almacen','GET',null,'?activo=eq.true&id_emisor=eq.'+idEmisor+'&select=*&order=nombre_articulo.asc');
+      const arts = await api('inventario_almacen','GET',null,'?estado=eq.ACTIVO&id_empresa=eq.'+idEmisor+'&select=*&order=nombre_articulo.asc');
       if (arts) inventarioCache = arts;
     }
     const idsArticulos = inventarioCache.map(function(x){ return x.id_articulo; });
