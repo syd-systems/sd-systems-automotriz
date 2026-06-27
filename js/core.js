@@ -722,6 +722,23 @@ function iniciarApp() {
   document.getElementById('pantalla-login').style.display = 'none';
   document.getElementById('pantalla-app').style.display = 'block';
 
+  // Restaurar empresa activa desde localStorage si no esta cargada
+  if (!_empresaActiva) {
+    try {
+      var _empGuardada = localStorage.getItem('sd_empresa_activa');
+      if (_empGuardada) _empresaActiva = JSON.parse(_empGuardada);
+    } catch(e) {}
+  }
+  if (!_empresasUsuario || !_empresasUsuario.length) {
+    api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*').then(function(r) {
+      if (r && r.length) {
+        _empresasUsuario = r;
+        if (!_empresaActiva) _empresaActiva = r[0];
+        if (typeof actualizarEmpresaUI === 'function') actualizarEmpresaUI();
+      }
+    }).catch(function(){});
+  }
+
   // Actualizar datos del usuario en sidebar
   const nombre = sesionActual.nombre || sesionActual.correo_usuario;
   document.getElementById('nombre-usuario').textContent = nombre;
