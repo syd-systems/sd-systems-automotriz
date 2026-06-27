@@ -577,12 +577,12 @@ function selOpts(lista, valorActual, campoNombre) {
 }
 
 function onSelAreaEmpleado() {
-  const idArea = parseInt(document.getElementById('emp-area')?.value) || null;
+  const id_area = parseInt(document.getElementById('emp-area')?.value) || null;
   const sel = document.getElementById('emp-cargo');
   if (!sel) return;
   const p = _empParamCache;
-  const cargosArea = idArea
-    ? (p.cargos||[]).filter(function(c){ return c.id_area === idArea; })
+  const cargosArea = id_area
+    ? (p.cargos||[]).filter(function(c){ return c.id_area === id_area; })
     : (p.cargos||[]);
   sel.innerHTML = selOpts(cargosArea, null);
 }
@@ -725,7 +725,7 @@ async function abrirEmpleado(id) {
   setTimeout(function() { document.getElementById('emp-numero-doc')?.focus(); }, 100);
 }
 
-async function resetClaveEmpleado(idEmpleado, correo) {
+async function resetClaveEmpleado(id_empleado, correo) {
   if (!confirm('¿Resetear la clave del empleado "' + correo + '"? Se le asignará una clave temporal.')) return;
   const claveTemporal = Math.random().toString(36).slice(-8).toUpperCase();
   try {
@@ -748,8 +748,8 @@ async function guardarEmpleado() {
 
   if (!numDoc) { errEl.textContent = 'El número de documento es obligatorio.'; errEl.style.display = 'block'; return; }
   if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
-  const idEmisorEmp = parseInt(document.getElementById('emp-emisor')?.value) || null;
-  if (!idEmisorEmp) { errEl.textContent = 'Debe seleccionar la empresa del empleado.'; errEl.style.display = 'block'; document.getElementById('emp-emisor')?.focus(); return; }
+  const id_emisorEmp = parseInt(document.getElementById('emp-emisor')?.value) || null;
+  if (!id_emisorEmp) { errEl.textContent = 'Debe seleccionar la empresa del empleado.'; errEl.style.display = 'block'; document.getElementById('emp-emisor')?.focus(); return; }
 
   // ── Validaciones de campos obligatorios ──
   var validaciones = [
@@ -803,11 +803,11 @@ async function guardarEmpleado() {
   }
 
   // Validar Cuenta Nómina — todos los campos son obligatorios
-  var idBancoVal   = document.getElementById('emp-banco')?.value;
+  var id_bancoVal   = document.getElementById('emp-banco')?.value;
   var tipoCuentaVal = document.getElementById('emp-tipo-cuenta')?.value;
   var restoVal     = (document.getElementById('emp-num-cuenta-resto')?.value || '').replace(/\s/g,'');
 
-  if (!idBancoVal) {
+  if (!id_bancoVal) {
     errEl.textContent = 'La Institución Financiera de la Cuenta Nómina es obligatoria.';
     errEl.style.display = 'block';
     document.getElementById('emp-banco')?.focus();
@@ -1098,8 +1098,8 @@ function onSelBancoEmpleado() {
   var restoEl = document.getElementById('emp-num-cuenta-resto');
   if (!sel || !codEl) return;
 
-  var idBanco = parseInt(sel.value);
-  var banco   = (_empParamCache.bancos || []).find(function(b) { return b.id === idBanco; });
+  var id_banco = parseInt(sel.value);
+  var banco   = (_empParamCache.bancos || []).find(function(b) { return b.id === id_banco; });
   var codigo  = banco && banco.codigo ? banco.codigo.replace(/\D/g,'').substring(0,4) : '';
 
   codEl.value = codigo;
@@ -1116,19 +1116,19 @@ function sincronizarNumeroCuenta() {
 }
 
 // ─── ELIMINAR FOTO PERFIL EMPLEADO ───
-async function eliminarFotoPerfilEmp(idFoto, idEmpleado) {
+async function eliminarFotoPerfilEmp(idFoto, id_empleado) {
   if (!confirm('¿Eliminar esta foto?')) return;
   try {
     await api('emp_fotos', 'DELETE', null, '?id_foto=eq.' + idFoto);
     // Refrescar fotos
-    const fotos = await api('emp_fotos', 'GET', null, '?id_empleado=eq.' + idEmpleado + '&order=fecha_registro.asc');
+    const fotos = await api('emp_fotos', 'GET', null, '?id_empleado=eq.' + id_empleado + '&order=fecha_registro.asc');
     const div = document.getElementById('emp-foto-perfil-actual');
     if (div) {
       if (fotos && fotos.length) {
         div.innerHTML = fotos.map(function(f) {
           return '<div style="position:relative">'
             + '<img src="' + f.url_foto + '" onerror="imgError(this)" style="width:70px;height:70px;object-fit:cover;border-radius:6px;border:1px solid var(--borde);cursor:pointer" onclick=\"abrirVisor(\'" + f.url_foto + "\')">'
-            + '<button onclick="eliminarFotoPerfilEmp(' + f.id_foto + ',' + idEmpleado + ')" style="position:absolute;top:-5px;right:-5px;background:rgba(229,62,62,0.85);border:none;color:#fff;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center">✕</button>'
+            + '<button onclick="eliminarFotoPerfilEmp(' + f.id_foto + ',' + id_empleado + ')" style="position:absolute;top:-5px;right:-5px;background:rgba(229,62,62,0.85);border:none;color:#fff;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center">✕</button>'
             + '</div>';
         }).join('');
       } else {
