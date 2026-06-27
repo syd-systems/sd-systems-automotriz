@@ -780,7 +780,7 @@ async function abrirStockArticulo(id, nombre) {
   _fichaInvActual = { id: r.id_articulo, nombre: r.nombre_articulo };
 
   document.getElementById('stock-art-nombre').textContent = r.nombre_articulo;
-  const stockFicha2 = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual_articulo_articulo;
+  const stockFicha2 = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual_articulo;
   document.getElementById('stock-art-stock').textContent = stockFicha2 + ' ' + (r.unidad || 'UND');
   const ventaCont = document.getElementById('stock-art-venta-cont');
   if (puedo('INVENTARIO','VER_PRECIOS_VENTA')) {
@@ -1206,7 +1206,7 @@ async function abrirSalidaStock(id, nombre) {
   // Mostrar stock por area
   await calcularInvSaldoArea();
   const art = inventarioCache.find(function(x) { return x.id_articulo === id; });
-  const stockSalida = art ? (_invSaldoArea ? (_invSaldoArea[art.id_articulo]||0) : art.stock_actual_articulo_articulo) : 0;
+  const stockSalida = art ? (_invSaldoArea ? (_invSaldoArea[art.id_articulo]||0) : art.stock_actual_articulo) : 0;
   document.getElementById('salida-stock-actual').textContent = art ? stockSalida + ' ' + (art.unidad || 'UND') : '—';
 
     abrirModal('modal-salida-stock');
@@ -1269,8 +1269,8 @@ async function _guardarSalidaStockInterno() {
 
   // Validar stock disponible
   const art = inventarioCache.find(function(x) { return x.id_articulo === idRep; });
-  if (art && cantidad > art.stock_actual_articulo_articulo) {
-    errEl.textContent = 'La cantidad supera el stock disponible (' + art.stock_actual_articulo_articulo + ' ' + (art.unidad||'UND') + ').';
+  if (art && cantidad > art.stock_actual_articulo) {
+    errEl.textContent = 'La cantidad supera el stock disponible (' + art.stock_actual_articulo + ' ' + (art.unidad||'UND') + ').';
     errEl.style.display = 'block'; return;
   }
 
@@ -1292,11 +1292,11 @@ async function _guardarSalidaStockInterno() {
     const idSalida = salidaRes && salidaRes[0] ? salidaRes[0].id_salida : null;
 
     // Descontar del stock_actual
-    const nuevoStock = (art ? art.stock_actual_articulo_articulo : 0) - cantidad;
+    const nuevoStock = (art ? art.stock_actual_articulo : 0) - cantidad;
     await api('inventario_almacen', 'PATCH', { stock_actual_articulo: nuevoStock }, '?id_articulo=eq.' + idRep);
 
     // Actualizar cache
-    if (art) art.stock_actual_articulo_articulo = nuevoStock;
+    if (art) art.stock_actual_articulo = nuevoStock;
 
     // Transferencias de CONSUMIBLES generan asiento: DEBE gasto / HABER inventario
     if (art && art.id_cuenta_contable && art.id_cuenta_costo_gasto) {
