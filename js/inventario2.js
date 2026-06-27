@@ -153,7 +153,7 @@ async function renderInventario(filtro) {
     if (!_invCategoriasCache || !_invCategoriasCache.length) {
       try {
         _invCategoriasCache = await api('inv_categorias','GET',null,
-          '?estado=eq.ACTIVO&order=nombre_articulo.asc' + (_empresaActiva ? '&id_emisor=eq.'+_empresaActiva.id_emisor : '')) || [];
+          '?estado=eq.ACTIVO&order=nombre.asc' + (_empresaActiva ? '&id_emisor=eq.'+_empresaActiva.id_emisor : '')) || [];
         // Actualizar opciones del filtro si ya existe
         const selCat = document.getElementById('inv-filtro-cat');
         if (selCat && _invCategoriasCache.length) {
@@ -546,7 +546,7 @@ async function abrirEntradaStock(id) {
   // Cargar áreas y proveedores en paralelo
   Promise.all([
     api('param_areas',  'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
-    api('proveedores',  'GET', null, '?estado=eq.ACTIVO&order=nombre_articulo.asc&select=id_proveedor,nombre,rif,id_categoria,param_categorias_proveedor:id_categoria(nombre)'),
+    api('proveedores',  'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif,id_categoria,param_categorias_proveedor:id_categoria(nombre)'),
     api('param_categorias_proveedor','GET',null,'?nombre=ilike.*Artículo*&select=id&limit=1'),
   ]).then(function(res) {
     var areas = res[0], provs = res[1];
@@ -954,7 +954,7 @@ async function invCargarCategorias(selCatId) {
   try {
     if (!_invCategoriasCache.length) {
       _invCategoriasCache = await api('inv_categorias','GET',null,
-        '?estado=eq.ACTIVO&order=nombre_articulo.asc' + (_empresaActiva ? '&id_emisor=eq.'+_empresaActiva.id_emisor : '')) || [];
+        '?estado=eq.ACTIVO&order=nombre.asc' + (_empresaActiva ? '&id_emisor=eq.'+_empresaActiva.id_emisor : '')) || [];
     }
     sel.innerHTML = '<option value="">— Seleccionar categoría —</option>'
       + _invCategoriasCache.map(function(c) {
@@ -973,7 +973,7 @@ async function invCargarTiposArticulo(selTipoId) {
   if (!catId) return;
   try {
     const tipos = await api('inv_articulos_tipo','GET',null,
-      '?estado=eq.ACTIVO&id_categoria=eq.'+catId+'&order=nombre_articulo.asc') || [];
+      '?estado=eq.ACTIVO&id_categoria=eq.'+catId+'&order=nombre.asc') || [];
     sel.innerHTML = '<option value="">— Seleccionar tipo —</option>'
       + tipos.map(function(t) {
           return '<option value="'+t.id+'"'+(selTipoId && selTipoId==t.id?' selected':'')+'>'+
@@ -1265,7 +1265,7 @@ async function invRenderCategorias(cont) {
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
     const idEmisor = _empresaActiva?.id_emisor || 0;
-    const cats = await api('inv_categorias','GET',null,'?id_emisor=eq.'+idEmisor+'&order=nombre_articulo.asc&select=*') || [];
+    const cats = await api('inv_categorias','GET',null,'?id_emisor=eq.'+idEmisor+'&order=nombre.asc&select=*') || [];
     const filas = cats.map(function(c) {
       return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
         +'<td style="padding:8px;font-family:var(--font-mono);color:var(--naranja);font-size:12px">'+(c.codigo||'—')+'</td>'
@@ -1337,7 +1337,7 @@ async function invRenderTipos(cont) {
   try {
     const idEmisor = _empresaActiva?.id_emisor || 0;
     const [tipos, cats] = await Promise.all([
-      api('inv_articulos_tipo','GET',null,'?id_emisor=eq.'+idEmisor+'&order=nombre_articulo.asc&select=*'),
+      api('inv_articulos_tipo','GET',null,'?id_emisor=eq.'+idEmisor+'&order=nombre.asc&select=*'),
       api('inv_categorias','GET',null,'?id_emisor=eq.'+idEmisor+'&select=id,nombre,codigo'),
     ]);
     const catsMap = {}; (cats||[]).forEach(function(c){ catsMap[c.id]=c; });
@@ -1572,7 +1572,7 @@ async function invCargarMovimientos() {
 
     // Helper para obtener artículo del cache
     const getArt = function(id) { return inventarioCache.find(function(x){ return x.id_articulo === id; }); };
-    const artNom = function(a)  { return a ? a.nombre+(a.codigo?' ('+a.codigo+')':'') : '—'; };
+    const artNom = function(a)  { return a ? a.nombre_articulo+(a.codigo_articulo?' ('+a.codigo_articulo+')':'') : '—'; };
 
     // ── VISTAS ────────────────────────────────────────────────
     if (agrup === 'movimientos') {
