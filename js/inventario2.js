@@ -70,8 +70,8 @@ async function calcularInvSaldoArea() {
       new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); }, 4000); })
     ]).catch(function(){ return []; });
 
-    const idAreaUsuario = empRes?.[0]?.id_area || null;
-    if (!idAreaUsuario) { _invSaldoArea = {}; return; }
+    const id_areaUsuario = empRes?.[0]?.id_area || null;
+    if (!id_areaUsuario) { _invSaldoArea = {}; return; }
 
     // Obtener todos los artículos del emisor
     const arts = inventarioCache.length > 0 ? inventarioCache
@@ -82,9 +82,9 @@ async function calcularInvSaldoArea() {
     const t4s = function(){ return new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); },4000); }); };
 
     const [entsDirectas, salsRecibidas, salsEnviadas] = await Promise.all([
-      Promise.race([api('stock_entradas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
-      Promise.race([api('stock_salidas','GET',null,'?id_area_entrega=eq.'+idAreaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
-      Promise.race([api('stock_salidas','GET',null,'?id_area=eq.'+idAreaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; })
+      Promise.race([api('stock_entradas','GET',null,'?id_area=eq.'+id_areaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
+      Promise.race([api('stock_salidas','GET',null,'?id_area_entrega=eq.'+id_areaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
+      Promise.race([api('stock_salidas','GET',null,'?id_area=eq.'+id_areaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; })
     ]);
 
     const saldo = {};
@@ -718,8 +718,8 @@ async function guardarEntradaStock() {
       const idOrigenVal = document.getElementById('es-area-origen')?.value;
       if (!idOrigenVal) { errEl.textContent = 'Debe seleccionar el área de origen.'; errEl.style.display = 'block'; document.getElementById('es-area-origen')?.focus(); resetBtn(); return; }
     }
-    const idAreaEntVal = document.getElementById('es-area')?.value;
-    if (!idAreaEntVal) { errEl.textContent = 'Debe seleccionar el Área Receptora.'; errEl.style.display = 'block'; document.getElementById('es-area')?.focus(); resetBtn(); return; }
+    const id_areaEntVal = document.getElementById('es-area')?.value;
+    if (!id_areaEntVal) { errEl.textContent = 'Debe seleccionar el Área Receptora.'; errEl.style.display = 'block'; document.getElementById('es-area')?.focus(); resetBtn(); return; }
     const idEmpEntVal = parseInt(document.getElementById('es-empleado')?.value) || null;
     if (!idEmpEntVal) { errEl.textContent = 'Debe seleccionar el empleado receptor.'; errEl.style.display = 'block'; document.getElementById('es-empleado')?.focus(); resetBtn(); return; }
     const claveEnt = document.getElementById('es-clave-receptor')?.value || '';
@@ -746,12 +746,12 @@ async function guardarEntradaStock() {
     }
 
     // ── FASE 3: Registrar entrada en historial ──
-    const idAreaEnt  = parseInt(idAreaEntVal) || null;
+    const id_areaEnt  = parseInt(id_areaEntVal) || null;
     const idProvEnt  = (motivoEnt === 'compra') ? (parseInt(document.getElementById('es-proveedor')?.value) || null) : null;
     const clienteNomH  = (motivoEnt === 'devolucion') ? (document.getElementById('es-cliente-nombre')?.value.trim() || null) : null;
-    const idAreaOrigenH = (motivoEnt === 'transferencia') ? (parseInt(document.getElementById('es-area-origen')?.value) || null) : null;
+    const id_areaOrigenH = (motivoEnt === 'transferencia') ? (parseInt(document.getElementById('es-area-origen')?.value) || null) : null;
 
-    let idEntrada = null;
+    let id_entrada = null;
     const entradaRes = await api('stock_entradas', 'POST', {
       id_articulo:            id,
       cantidad:               cantidad,
@@ -760,15 +760,15 @@ async function guardarEntradaStock() {
       moneda_compra:          moneda_compra_val,
       tasa_bcv:               tasa_bcv_usada,
       fecha_entrada:          getHoyVzla(),
-      id_area:                idAreaEnt,
+      id_area:                id_areaEnt,
       id_empleado:            idEmpEntVal,
       id_proveedor:           idProvEnt,
       cliente_nombre:         clienteNomH,
-      id_area_origen:         idAreaOrigenH,
+      id_area_origen:         id_areaOrigenH,
       observaciones:          document.getElementById('es-observaciones')?.value.trim() || null,
       id_usuario:             sesionActual.correo_usuario
     });
-    idEntrada = entradaRes && entradaRes[0] ? entradaRes[0].id_entrada : null;
+    id_entrada = entradaRes && entradaRes[0] ? entradaRes[0].id_entrada : null;
 
     // ── FASE 4: Actualizar stock e inventario DESPUÉS del INSERT exitoso ──
     const patch = { stock_actual_articulo: nuevoStock, precio_costo_moneda: parseFloat(cpp.toFixed(4)) };
@@ -777,14 +777,14 @@ async function guardarEntradaStock() {
     await api('inventario_almacen', 'PATCH', patch, '?id_articulo=eq.' + id);
 
     // ── FASE 4.5: Registrar salida en área origen si es transferencia ──
-    if (motivoEnt === 'transferencia' && idAreaOrigenH) {
+    if (motivoEnt === 'transferencia' && id_areaOrigenH) {
       const idEmpEntregaH = parseInt(document.getElementById('es-empleado-entrega')?.value) || null;
       await api('stock_salidas', 'POST', {
         id_articulo:       id,
         cantidad:          cantidad,
         fecha_salida:      getHoyVzla(),
-        id_area:           idAreaEnt,          // destino (receptor)
-        id_area_entrega:   idAreaOrigenH,       // origen (quien entrega)
+        id_area:           id_areaEnt,          // destino (receptor)
+        id_area_entrega:   id_areaOrigenH,       // origen (quien entrega)
         id_empleado:       idEmpEntVal,         // receptor
         id_empleado_entrega: idEmpEntregaH,
         observaciones:     document.getElementById('es-observaciones')?.value.trim() || null,
@@ -831,7 +831,7 @@ async function guardarEntradaStock() {
           numero_asiento: numAstT, tipo: 'CONSUMO_INVENTARIO',
           fecha: getHoyVzla(),
           descripcion: 'Consumo inventario: ' + (r.nombre_articulo||'') + ' x' + cantidad + ' — Transfer a: ' + (document.getElementById('es-area-display')?.textContent||''),
-          referencia: idEntrada ? 'ENT-' + idEntrada : 'TRANSF-'+id,
+          referencia: id_entrada ? 'ENT-' + id_entrada : 'TRANSF-'+id,
           estado: 'APROBADO', moneda_base: 'VES', tasa_bcv: tasaPromedio,
           id_usuario: sesionActual?.correo_usuario || null
         });
@@ -859,28 +859,28 @@ async function guardarEntradaStock() {
         articulo:   r.nombre_articulo || r.codigo_articulo || ('Art#' + id),
         cantidad:   cantidad,
         montoUSD:   nuevoPrecioCosto * cantidad,
-        areaId:     idAreaEnt,
+        areaId:     id_areaEnt,
         areaNombre: areaNombreEnt,
-        referencia: idEntrada ? 'ENT-' + idEntrada : ('ENT-INV-' + id),
-        idCuentaInventario: r.id_cuenta_contable || null
+        referencia: id_entrada ? 'ENT-' + id_entrada : ('ENT-INV-' + id),
+        id_cuentaInventario: r.id_cuenta_contable || null
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
 
     // ── FASE 5B: Crear CxP según esquema de pago ──
     if (motivoEnt === 'compra') {
       try {
-        const idProveedor = parseInt(document.getElementById('es-proveedor')?.value) || null;
+        const id_proveedor = parseInt(document.getElementById('es-proveedor')?.value) || null;
         const montoUSD    = parseFloat((nuevoPrecioCosto * cantidad).toFixed(2));
         const montoVES    = parseFloat((montoUSD * _tasaVigente).toFixed(2));
         const esquema     = document.getElementById('es-esquema-pago')?.value || 'CONTADO';
-        const numDocBase  = idEntrada ? 'ENT-' + idEntrada : ('ENT-INV-' + id);
+        const numDocBase  = id_entrada ? 'ENT-' + id_entrada : ('ENT-INV-' + id);
         const artNomCxP   = r.nombre_articulo || r.codigo_articulo || 'Art#'+id;
         const hoy         = new Date().toISOString().split('T')[0];
 
         if (esquema === 'CONTADO') {
           // Una sola CxP — contado
           await api('cont_cxp','POST',{
-            id_proveedor:  idProveedor,
+            id_proveedor:  id_proveedor,
             id_empresa:     _empresaActiva?.id_empresa || null,
             tipo:          'COMPRA_ARTICULO',
             numero_doc:    numDocBase,
@@ -905,7 +905,7 @@ async function guardarEntradaStock() {
           for (let i = 0; i < cuotas.length; i++) {
             const c = cuotas[i];
             await api('cont_cxp','POST',{
-              id_proveedor:     idProveedor,
+              id_proveedor:     id_proveedor,
               id_empresa:        _empresaActiva?.id_empresa || null,
               tipo:             'COMPRA_ARTICULO_CREDITO',
               numero_doc:       numDocBase + '-C' + c.num,
@@ -1095,8 +1095,8 @@ async function guardarInventario() {
   const errEl    = document.getElementById('alerta-inv-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
 
-  const idCategoria2 = parseInt(document.getElementById('inv-categoria')?.value) || 0;
-  if (!idCategoria2) { errEl.textContent = 'Debe seleccionar una Categoría.'; errEl.style.display = 'block'; document.getElementById('inv-categoria')?.focus(); return; }
+  const id_categoria2 = parseInt(document.getElementById('inv-categoria')?.value) || 0;
+  if (!id_categoria2) { errEl.textContent = 'Debe seleccionar una Categoría.'; errEl.style.display = 'block'; document.getElementById('inv-categoria')?.focus(); return; }
   const idTipoArt2 = parseInt(document.getElementById('inv-tipo-articulo')?.value) || 0;
   if (!idTipoArt2) { errEl.textContent = 'Debe seleccionar un Tipo de Artículo.'; errEl.style.display = 'block'; document.getElementById('inv-tipo-articulo')?.focus(); return; }
   if (!codigo) { errEl.textContent = 'El código del artículo es obligatorio.'; errEl.style.display = 'block'; document.getElementById('inv-codigo')?.focus(); return; }
@@ -1124,14 +1124,14 @@ async function guardarInventario() {
     const leadTime     = parseInt(document.getElementById('inv-lead-time').value) || null;
     const costoPedido  = parseFloat(document.getElementById('inv-costo-pedido').value) || null;
     const stockSeg     = parseInt(document.getElementById('inv-stock-seg').value) || 0;
-    const idCategoria    = parseInt(document.getElementById('inv-categoria')?.value) || null;
-    const idTipoArticulo = parseInt(document.getElementById('inv-tipo-articulo')?.value) || null;
+    const id_categoria    = parseInt(document.getElementById('inv-categoria')?.value) || null;
+    const id_tipo_articulo = parseInt(document.getElementById('inv-tipo-articulo')?.value) || null;
     const ventaFinal     = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? venta : undefined;
     const datos = { nombre_articulo: nombre, descripcion_articulo: desc || null, codigo_articulo: codigo || null, stock_actual_articulo: stock,
       stock_minimo_articulo: stockMin, precio_costo_moneda: costo,
       id_empresa: _empresaActiva ? _empresaActiva.id_empresa : null,
       ...(ventaFinal !== undefined ? { precio_venta_moneda: ventaFinal } : {}),
-      unidad, id_categoria_articulo: idCategoria, id_tipo_articulo: idTipoArticulo,
+      unidad, id_categoria_articulo: id_categoria, id_tipo_articulo: id_tipo_articulo,
       id_cuenta_contable: parseInt(document.getElementById('inv-cuenta-contable')?.value) || null,
       id_cuenta_costo_gasto: parseInt(document.getElementById('inv-cuenta-costo-gasto')?.value) || null,
       demanda_anual: demandaAnual, lead_time_dias: leadTime, costo_pedido_usd: costoPedido, stock_seguridad: stockSeg,
@@ -1169,21 +1169,21 @@ async function eliminarInventario(id, nombre) {
 }
 
 // ─── HISTORIAL DE ENTRADAS ───
-async function verHistorialEntradas(idArticulo) {
+async function verHistorialEntradas(id_articulo) {
   const cont = document.getElementById('ficha-inv-historial');
   if (!cont) return;
   cont.innerHTML = '<div style="color:var(--suave);font-size:12px">Cargando...</div>';
   try {
     // Si el usuario solo ve su área, filtrar historial por área
-    const idAreaFiltro = _invSaldoArea && sesionActual?.correo_usuario
+    const id_areaFiltro = _invSaldoArea && sesionActual?.correo_usuario
       ? await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_area&limit=1').then(function(r){ return r&&r[0]?r[0].id_area:null; }).catch(function(){ return null; })
       : null;
     let filas = [];
 
-    if (idAreaFiltro) {
+    if (id_areaFiltro) {
       // Para operador de área: sus "entradas" son las salidas del almacén hacia su área
       const salsRecibidas = await api('stock_salidas','GET',null,
-        '?id_articulo=eq.'+idArticulo+'&id_area=eq.'+idAreaFiltro+'&order=fecha_salida.desc&select=*,area_origen:id_area_entrega(nombre,codigo)');
+        '?id_articulo=eq.'+id_articulo+'&id_area=eq.'+id_areaFiltro+'&order=fecha_salida.desc&select=*,area_origen:id_area_entrega(nombre,codigo)');
       if (!salsRecibidas || !salsRecibidas.length) {
         cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:8px 0">Sin entradas en tu área.</div>';
         return;
@@ -1213,7 +1213,7 @@ async function verHistorialEntradas(idArticulo) {
     }
 
     // Administrador: ver todas las entradas directas
-    const qEntradas = '?id_articulo=eq.' + idArticulo + '&order=fecha_entrada.desc&select=*';
+    const qEntradas = '?id_articulo=eq.' + id_articulo + '&order=fecha_entrada.desc&select=*';
     const entradas = await api('stock_entradas', 'GET', null, qEntradas);
     if (!entradas || !entradas.length) {
       cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:8px 0">Sin entradas registradas.</div>';
@@ -1239,7 +1239,7 @@ async function verHistorialEntradas(idArticulo) {
             ? '<span style="color:#fc8181;font-size:10px">Reversada</span>'
             : '<span style="color:#22c55e;font-size:10px">Activa</span>';
           const btnRev = !e.reversada && puedo('INVENTARIO','ELIMINAR')
-            ? '<button onclick="reversarEntrada(' + e.id_entrada + ',' + idArticulo + ',' + e.cantidad + ')" '
+            ? '<button onclick="reversarEntrada(' + e.id_entrada + ',' + id_articulo + ',' + e.cantidad + ')" '
               + 'style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;'
               + 'border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">Reversar</button>'
             : '';
@@ -1264,8 +1264,8 @@ async function invRenderCategorias(cont) {
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const idEmisor = _empresaActiva?.id_empresa || 0;
-    const cats = await api('inv_categorias','GET',null,'?id_empresa=eq.'+idEmisor+'&order=nombre.asc&select=*') || [];
+    const id_emisor = _empresaActiva?.id_empresa || 0;
+    const cats = await api('inv_categorias','GET',null,'?id_empresa=eq.'+id_emisor+'&order=nombre.asc&select=*') || [];
     const filas = cats.map(function(c) {
       return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
         +'<td style="padding:8px;font-family:var(--font-mono);color:var(--naranja);font-size:12px">'+(c.codigo||'—')+'</td>'
@@ -1335,10 +1335,10 @@ async function invRenderTipos(cont) {
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const idEmisor = _empresaActiva?.id_empresa || 0;
+    const id_emisor = _empresaActiva?.id_empresa || 0;
     const [tipos, cats] = await Promise.all([
-      api('inv_articulos_tipo','GET',null,'?id_empresa=eq.'+idEmisor+'&order=nombre.asc&select=*'),
-      api('inv_categorias','GET',null,'?id_empresa=eq.'+idEmisor+'&select=id,nombre,codigo'),
+      api('inv_articulos_tipo','GET',null,'?id_empresa=eq.'+id_emisor+'&order=nombre.asc&select=*'),
+      api('inv_categorias','GET',null,'?id_empresa=eq.'+id_emisor+'&select=id,nombre,codigo'),
     ]);
     const catsMap = {}; (cats||[]).forEach(function(c){ catsMap[c.id]=c; });
     const filas = (tipos||[]).map(function(t) {
@@ -1368,10 +1368,10 @@ async function invRenderTipos(cont) {
 }
 
 async function invAbrirTipo(id) {
-  const idEmisor = _empresaActiva?.id_empresa || 0;
+  const id_emisor = _empresaActiva?.id_empresa || 0;
   let item = null;
   if (id) { const r=await api('inv_articulos_tipo','GET',null,'?id=eq.'+id)||[]; item=r[0]||null; }
-  const cats = await api('inv_categorias','GET',null,'?estado=eq.ACTIVO&id_empresa=eq.'+idEmisor+'&order=nombre.asc')||[];
+  const cats = await api('inv_categorias','GET',null,'?estado=eq.ACTIVO&id_empresa=eq.'+id_emisor+'&order=nombre.asc')||[];
   const opcCats = cats.map(function(c) {
     return '<option value="'+c.id_categoria+'"'+(item?.id_categoria===c.id_categoria?' selected':'')+'>'+
       (c.codigo?c.codigo+' — ':'')+c.nombre+'</option>';
@@ -1414,25 +1414,25 @@ async function invGuardarTipo() {
 }
 
 // ─── REVERSAR ENTRADA ───
-async function reversarEntrada(idEntrada, idArticulo, cantidad) {
-  await reversarMovimiento('ENTRADA', idEntrada, cantidad, idArticulo);
+async function reversarEntrada(id_entrada, id_articulo, cantidad) {
+  await reversarMovimiento('ENTRADA', id_entrada, cantidad, id_articulo);
   // Retornar a inventario general después del reverso
   cerrarTodosLosModales();
   renderInventario();
 }
 // ─── HISTORIAL DE SALIDAS ───
-async function verHistorialSalidas(idArticulo) {
+async function verHistorialSalidas(id_articulo) {
   const cont = document.getElementById('ficha-inv-historial-salidas');
   if (!cont) return;
   cont.innerHTML = '<div style="color:var(--suave);font-size:12px">Cargando...</div>';
   try {
-    const idAreaFiltro = _invSaldoArea && sesionActual?.correo_usuario
+    const id_areaFiltro = _invSaldoArea && sesionActual?.correo_usuario
       ? await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_area&limit=1').then(function(r){ return r&&r[0]?r[0].id_area:null; }).catch(function(){ return null; })
       : null;
     // Para operador: solo salidas enviadas DESDE su área (id_area_entrega)
     // Las recibidas ya se muestran en "Entradas a tu área"
-    const qSalidas = '?id_articulo=eq.' + idArticulo + '&order=fecha_salida.desc&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo)'
-      + (idAreaFiltro ? '&id_area_entrega=eq.'+idAreaFiltro : '');
+    const qSalidas = '?id_articulo=eq.' + id_articulo + '&order=fecha_salida.desc&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo)'
+      + (id_areaFiltro ? '&id_area_entrega=eq.'+id_areaFiltro : '');
     const salidas = await api('stock_salidas', 'GET', null, qSalidas);
     if (!salidas || !salidas.length) {
       cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:8px 0">Sin salidas registradas.</div>';
@@ -1454,7 +1454,7 @@ async function verHistorialSalidas(idArticulo) {
             ? '<span style="color:#fc8181;font-size:10px">Reversada</span>'
             : '<span style="color:#22c55e;font-size:10px">Activa</span>';
           const btnRev = !s.reversada && puedo('INVENTARIO','ELIMINAR')
-            ? '<button onclick="reversarSalida(' + s.id_salida + ',' + idArticulo + ',' + s.cantidad + ')" '
+            ? '<button onclick="reversarSalida(' + s.id_salida + ',' + id_articulo + ',' + s.cantidad + ')" '
               + 'style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;'
               + 'border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">Reversar</button>'
             : '';
@@ -1523,13 +1523,13 @@ async function invCargarMovimientos() {
   res.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
 
   try {
-    const idEmisor = _empresaActiva?.id_empresa || 0;
+    const id_emisor = _empresaActiva?.id_empresa || 0;
     const monedaRef = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
     const simRef    = monedaRef === 'USD' ? '$' : monedaRef;
 
     // Cargar cache si está vacío
     if (!inventarioCache || !inventarioCache.length) {
-      const arts = await api('inventario_almacen','GET',null,'?estado=eq.ACTIVO&id_empresa=eq.'+idEmisor+'&select=*&order=nombre_articulo.asc');
+      const arts = await api('inventario_almacen','GET',null,'?estado=eq.ACTIVO&id_empresa=eq.'+id_emisor+'&select=*&order=nombre_articulo.asc');
       if (arts) inventarioCache = arts;
     }
     const idsArticulos = inventarioCache.map(function(x){ return x.id_articulo; });
@@ -1538,15 +1538,15 @@ async function invCargarMovimientos() {
 
     // Cargar entradas y salidas según filtro
     // Filtrar por área si el usuario no tiene VER_INVENTARIO_GENERAL
-    let idAreaMovs = null;
-    let idAreaMovsNombre = null;
+    let id_areaMovs = null;
+    let id_areaMovsNombre = null;
     if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
       try {
         const correo = sesionActual?.correo_usuario;
         const empRes = correo ? await api('empleados','GET',null,
           '?correo=eq.'+encodeURIComponent(correo)+'&select=id_area,param_areas(nombre,codigo)&limit=1') : [];
-        idAreaMovs = empRes?.[0]?.id_area || null;
-        idAreaMovsNombre = empRes?.[0]?.param_areas
+        id_areaMovs = empRes?.[0]?.id_area || null;
+        id_areaMovsNombre = empRes?.[0]?.param_areas
           ? empRes[0].param_areas.nombre + (empRes[0].param_areas.codigo ? ' (' + empRes[0].param_areas.codigo + ')' : '')
           : null;
       } catch(e) {}
@@ -1558,7 +1558,7 @@ async function invCargarMovimientos() {
       if (desde) qE += '&fecha_entrada=gte.'+desde;
       if (hasta) qE += '&fecha_entrada=lte.'+hasta;
       // Para operador de área: entradas directas a su área + salidas recibidas
-      if (idAreaMovs) qE += '&id_area=eq.'+idAreaMovs;
+      if (id_areaMovs) qE += '&id_area=eq.'+id_areaMovs;
       entradas = await api('stock_entradas','GET',null,qE) || [];
     }
     if (!tipo || tipo === 'SALIDA') {
@@ -1566,7 +1566,7 @@ async function invCargarMovimientos() {
       if (desde) qS += '&fecha_salida=gte.'+desde;
       if (hasta) qS += '&fecha_salida=lte.'+hasta;
       // Para operador de área: salidas recibidas O enviadas desde su área
-      if (idAreaMovs) qS += '&or=(id_area.eq.'+idAreaMovs+',id_area_entrega.eq.'+idAreaMovs+')';
+      if (id_areaMovs) qS += '&or=(id_area.eq.'+id_areaMovs+',id_area_entrega.eq.'+id_areaMovs+')';
       salidas = await api('stock_salidas','GET',null,qS) || [];
     }
 
@@ -1697,11 +1697,11 @@ async function invCargarMovimientos() {
       var thStyle = 'padding:8px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)';
       // Filtrar por area del operador si no tiene VER_INVENTARIO_GENERAL
       var areaKeys = Object.keys(areas).sort();
-      if (idAreaMovs && idAreaMovsNombre) {
+      if (id_areaMovs && id_areaMovsNombre) {
         // Los movimientos ya vienen filtrados por id_area desde el query.
         // Solo mostramos filas de su propia area.
         areaKeys = areaKeys.filter(function(k) {
-          return areas[k].area === idAreaMovsNombre;
+          return areas[k].area === id_areaMovsNombre;
         });
       }
       var filas = areaKeys.map(function(k) {
