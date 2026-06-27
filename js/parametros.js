@@ -392,7 +392,7 @@ async function eliminarParamItem() {
   if (!confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) return;
   if (key === 'inv_categorias') {
     try {
-      const tipos = await api('inv_articulos_tipo','GET',null,'?id_categoria=eq.'+id+'&select=id&limit=1') || [];
+      const tipos = await api('inv_articulos_tipo','GET',null,'?id_categoria=eq.'+id+'&select=id_tipo&limit=1') || [];
       if (tipos.length) { alert('No se puede eliminar: esta categoría tiene tipos de artículo asociados. Elimine primero los tipos.'); return; }
       const arts = await api('inventario_almacen','GET',null,'?id_categoria=eq.'+id+'&select=id_articulo&limit=1') || [];
       if (arts.length) { alert('No se puede eliminar: tiene artículos asociados. Reasigne o elímine los artículos primero.'); return; }
