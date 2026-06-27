@@ -1151,7 +1151,7 @@ async function eliminarInventario(id, nombre) {
   try {
     const [entradas, salidas] = await Promise.all([
       api('stock_entradas', 'GET', null, '?id_articulo=eq.' + id + '&select=id_entrada&limit=1'),
-      api('os_repuestos',   'GET', null, '?id_articulo=eq.' + id + '&select=id_os_rep&limit=1')
+      api('os_mercancias',   'GET', null, '?id_articulo=eq.' + id + '&select=id_os_rep&limit=1')
     ]);
     if (entradas && entradas.length > 0) {
       alert('No se puede eliminar "' + nombre + '" porque tiene entradas de stock registradas.');
