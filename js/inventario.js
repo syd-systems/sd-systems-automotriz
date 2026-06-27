@@ -215,7 +215,7 @@ async function guardarEdicionMovimiento() {
             '?id_entrada=eq.' + id + '&select=cantidad');
           const cantOriginal = movArr[0]?.cantidad || cantidad;
           // Recalcular: quitar el efecto de la entrada original y aplicar la nueva
-          const stockSinEstaEntrada = art.stock_actual_articulo - cantOriginal;
+          const stockSinEstaEntrada = art.stock_actual_articulo_articulo - cantOriginal;
           const valorSinEstaEntrada = (stockSinEstaEntrada > 0)
             ? stockSinEstaEntrada * art.precio_costo_moneda
             : 0;
@@ -269,7 +269,7 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
     }
 
     // 3. Calcular nuevo stock
-    const stockActual = parseFloat(art.stock_actual_articulo) || 0;
+    const stockActual = parseFloat(art.stock_actual_articulo_articulo) || 0;
     let nuevoStock;
     if (tipo === 'ENTRADA') {
       nuevoStock = stockActual - parseFloat(cantidad);
@@ -279,9 +279,9 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, idRepuesto) {
     }
 
     // 4. Actualizar stock + limpiar precios si queda en 0
-    const patchInv = { stock_actual: nuevoStock };
+    const patchInv = { stock_actual_articulo: nuevoStock };
     if (nuevoStock <= 0) {
-      patchInv.stock_actual            = 0;
+      patchInv.stock_actual_articulo            = 0;
       patchInv.precio_costo_moneda        = 0;
       patchInv.precio_costo_ultimo_moneda = 0;
       patchInv.precio_venta_moneda        = 0;
@@ -565,7 +565,7 @@ async function abrirProveedor(id) {
     if (selCat) {
       selCat.innerHTML = '<option value="">— Seleccionar —</option>'
         + (cats||[]).map(function(c){
-            return '<option value="'+c.id+'"'+(c.id===(p?.id_categoria)?' selected':'')+'>'+c.nombre+'</option>';
+            return '<option value="'+c.id+'"'+(c.id===(p?.id_categoria_articulo)?' selected':'')+'>'+c.nombre+'</option>';
           }).join('');
     }
   } catch(e) {}
