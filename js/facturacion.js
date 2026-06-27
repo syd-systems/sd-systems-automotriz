@@ -1179,7 +1179,7 @@ async function abrirSalidaStock(id, nombre) {
   try { areas = await api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'); } catch(e) {}
 
   document.getElementById('salida-art-nombre').textContent = nombre;
-  document.getElementById('salida-id-repuesto').value      = id;
+  document.getElementById('salida-id-articulo').value      = id;
   document.getElementById('salida-cantidad').value         = '';
   document.getElementById('salida-fecha').value            = getHoyVzla();
   document.getElementById('salida-observaciones').value    = '';
@@ -1235,7 +1235,7 @@ async function _guardarSalidaStockInterno() {
   const btnGuardarSal = null; // no needed here
   const resetBtnSal = function() {}; // no-op — handled by wrapper
 
-  const idRep   = parseInt(document.getElementById('salida-id-repuesto').value);
+  const idRep   = parseInt(document.getElementById('salida-id-articulo').value);
   const idArea  = parseInt(document.getElementById('salida-area').value) || null;
   const cantidad = parseFloat(document.getElementById('salida-cantidad').value);
   const fecha   = document.getElementById('salida-fecha').value;
