@@ -941,8 +941,13 @@ async function guardarEntradaStock() {
     if (r) r.stock_actual_articulo = nuevoStock;
     okEl.textContent = 'Stock actualizado: ' + stockActual + ' → ' + nuevoStock + ' ' + (r?.unidad || 'UND');
     okEl.style.display = 'block';
-    setTimeout(function() {
+    setTimeout(async function() {
       cerrarModal('modal-entrada-stock');
+      // Refrescar saldo de área y tabla principal
+      await calcularInvSaldoArea();
+      if (document.getElementById('tabla-inv-cont')) {
+        invRenderVista(inventarioCache, _invVista);
+      }
       regresarAFichaInv();
       resetBtn();
     }, 1200);
