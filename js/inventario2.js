@@ -504,6 +504,37 @@ function regresarAFichaInv() {
   }
 }
 
+async function abrirStockArticulo(id, nombre) {
+  const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
+  if (!r) { alert('Artículo no encontrado. Recargue el inventario.'); return; }
+
+  // Setear _fichaInvActual para que los botones del modal funcionen
+  _fichaInvActual = { id: r.id_articulo, nombre: r.nombre_articulo };
+
+  // Recalcular saldo de área para mostrar stock correcto
+  await calcularInvSaldoArea();
+  const stockMostrar = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : (r.stock_actual_articulo || 0);
+
+  document.getElementById('stock-art-nombre').textContent = r.nombre_articulo;
+  document.getElementById('stock-art-stock').textContent  = stockMostrar + ' ' + (r.unidad || 'UND');
+
+  const costoCont = document.getElementById('stock-art-costo-cont');
+  const costoEl   = document.getElementById('stock-art-costo');
+  if (costoCont) costoCont.style.display = puedo('INVENTARIO','VER_COSTOS') ? '' : 'none';
+  if (costoEl)   costoEl.textContent = '$ ' + fmtUSD(r.precio_costo_moneda);
+
+  const ventaCont = document.getElementById('stock-art-venta-cont');
+  const ventaEl   = document.getElementById('stock-art-venta');
+  if (ventaCont) ventaCont.style.display = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? '' : 'none';
+  if (ventaEl)   ventaEl.textContent = '$ ' + fmtUSD(r.precio_venta_moneda);
+
+  // Ocultar botón Entrada si no tiene permiso
+  const btnEnt = document.getElementById('stock-btn-entrada');
+  if (btnEnt) btnEnt.style.display = puedo('INVENTARIO','ENTRADA_STOCK') ? '' : 'none';
+
+  abrirModal('modal-stock-articulo');
+}
+
 async function abrirEntradaStock(id) {
   let r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   // Si no está en caché, usar _fichaInvActual
@@ -938,7 +969,12 @@ async function guardarEntradaStock() {
     }
 
     // ── FASE 6: Actualizar cache y cerrar ──
-    if (r) r.stock_actual_articulo = nuevoStock;
+    if (r) {
+      r.stock_actual_articulo     = nuevoStock;
+      r.precio_costo_moneda       = parseFloat(cpp.toFixed(4));
+      if (nuevoPrecioCosto > 0) r.precio_costo_ultimo_moneda = nuevoPrecioCosto;
+      if (nuevoPrecioVenta && nuevoPrecioVenta > 0) r.precio_venta_moneda = nuevoPrecioVenta;
+    }
     okEl.textContent = 'Stock actualizado: ' + stockActual + ' → ' + nuevoStock + ' ' + (r?.unidad || 'UND');
     okEl.style.display = 'block';
     setTimeout(async function() {
