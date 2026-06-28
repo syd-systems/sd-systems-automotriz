@@ -399,13 +399,26 @@ function invRenderEOQ(items, cont) {
     + '</tbody></table></div>';
 }
 
-function verFichaInventario(id) {
+async function verFichaInventario(id) {
   if (!sesionActual?.administrador && !puedo('INVENTARIO','VER')) {
     alert('No tiene permiso para ver la ficha del artículo.'); return;
   }
   const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) return;
   _fichaInvActual = { id: r.id_articulo, nombre: r.nombre_articulo };
+
+  // ── GET fresco de BD para stock y costos actualizados ──
+  try {
+    var qs = '?id_articulo=eq.' + id + '&select=stock_actual_articulo,precio_costo_moneda,precio_costo_ultimo_moneda,precio_venta_moneda';
+    if (_empresaActiva && _empresaActiva.id_empresa) qs += '&id_empresa=eq.' + _empresaActiva.id_empresa;
+    var fresh = await api('inventario_almacen', 'GET', null, qs);
+    if (fresh && fresh[0]) {
+      r.stock_actual_articulo      = parseFloat(fresh[0].stock_actual_articulo)      || 0;
+      r.precio_costo_moneda        = parseFloat(fresh[0].precio_costo_moneda)        || 0;
+      r.precio_costo_ultimo_moneda = parseFloat(fresh[0].precio_costo_ultimo_moneda) || 0;
+      r.precio_venta_moneda        = parseFloat(fresh[0].precio_venta_moneda)        || 0;
+    }
+  } catch(e) { console.warn('verFichaInventario GET fresco:', e.message); }
 
   const abcMap = {};
   clasificarABC(inventarioCache).forEach(function(x) { abcMap[x.id_articulo] = x.clase_abc; });
