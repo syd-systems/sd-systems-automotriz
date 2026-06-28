@@ -249,31 +249,33 @@ async function guardarEdicionMovimiento() {
       if (precio !== null) datos.precio_costo_moneda = precio;
       const monedaEdit = document.getElementById('edit-mov-moneda')?.value || 'USD';
       datos.moneda_compra = monedaEdit;
+
+      // ── Leer cantidad original y stock ANTES de parchear ──
+      const [movOrigArr, artArr] = await Promise.all([
+        api('stock_entradas', 'GET', null, '?id_entrada=eq.' + id + '&select=cantidad'),
+        api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id_articulo + '&select=stock_actual_articulo,precio_costo_moneda'),
+      ]);
+      const cantOriginal = parseFloat(movOrigArr[0]?.cantidad || cantidad);
+      const art = artArr[0];
+
+      // ── Aplicar PATCH a stock_entradas ──
       await api('stock_entradas', 'PATCH', datos, '?id_entrada=eq.' + id);
 
-      // ── Recalcular CPP si cambió el precio o la cantidad ──
-      if (precio !== null) {
-        const artArr = await api('inventario_almacen', 'GET', null,
-          '?id_articulo=eq.' + id_articulo + '&select=stock_actual_articulo,precio_costo_moneda');
-        const art = artArr[0];
-        if (art) {
-          // Obtener cantidad original del movimiento antes de editar
-          const movArr = await api('stock_entradas', 'GET', null,
-            '?id_entrada=eq.' + id + '&select=cantidad');
-          const cantOriginal = movArr[0]?.cantidad || cantidad;
-          // Recalcular: quitar el efecto de la entrada original y aplicar la nueva
-          const stockSinEstaEntrada = art.stock_actual_articulo - cantOriginal;
-          const valorSinEstaEntrada = (stockSinEstaEntrada > 0)
-            ? stockSinEstaEntrada * art.precio_costo_moneda
-            : 0;
-          const nuevoStock = stockSinEstaEntrada + cantidad;
-          const cpp = nuevoStock > 0
-            ? (valorSinEstaEntrada + cantidad * precio) / nuevoStock
-            : precio;
-          await api('inventario_almacen', 'PATCH',
-            { precio_costo_moneda: parseFloat(cpp.toFixed(4)), precio_costo_ultimo_moneda: precio },
-            '?id_articulo=eq.' + id_articulo);
+      // ── Recalcular stock y CPP ──
+      if (art) {
+        const stockActual = parseFloat(art.stock_actual_articulo) || 0;
+        const nuevoStock  = stockActual - cantOriginal + cantidad;
+        const patchInv    = { stock_actual_articulo: Math.max(0, parseFloat(nuevoStock.toFixed(4))) };
+
+        if (precio !== null) {
+          const stockSinEstaEntrada = stockActual - cantOriginal;
+          const valorSinEstaEntrada = stockSinEstaEntrada > 0 ? stockSinEstaEntrada * art.precio_costo_moneda : 0;
+          const cpp = nuevoStock > 0 ? (valorSinEstaEntrada + cantidad * precio) / nuevoStock : precio;
+          patchInv.precio_costo_moneda        = parseFloat(cpp.toFixed(4));
+          patchInv.precio_costo_ultimo_moneda = precio;
         }
+
+        await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + id_articulo);
       }
     } else {
       await api('stock_salidas', 'PATCH', datos, '?id_salida=eq.' + id);
