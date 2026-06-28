@@ -505,11 +505,22 @@ function regresarAFichaInv() {
 }
 
 async function abrirStockArticulo(id, nombre) {
-  const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
+  let r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) { alert('Artículo no encontrado. Recargue el inventario.'); return; }
 
   // Setear _fichaInvActual para que los botones del modal funcionen
   _fichaInvActual = { id: r.id_articulo, nombre: r.nombre_articulo };
+
+  // ── Leer datos frescos de BD y actualizar cache ──
+  try {
+    const fresh = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id + '&select=stock_actual_articulo,precio_costo_moneda,precio_costo_ultimo_moneda,precio_venta_moneda,unidad');
+    if (fresh && fresh[0]) {
+      r.stock_actual_articulo     = fresh[0].stock_actual_articulo;
+      r.precio_costo_moneda       = fresh[0].precio_costo_moneda;
+      r.precio_costo_ultimo_moneda = fresh[0].precio_costo_ultimo_moneda;
+      r.precio_venta_moneda       = fresh[0].precio_venta_moneda;
+    }
+  } catch(e) { console.warn('abrirStockArticulo GET fresco:', e.message); }
 
   // Recalcular saldo de área para mostrar stock correcto
   await calcularInvSaldoArea();
