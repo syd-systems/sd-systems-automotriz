@@ -789,14 +789,19 @@ async function guardarSalidaStock() {
     };
     await api('stock_salidas', 'POST', salidaData);
 
-    // Actualizar stock en inventario_almacen
+    // Actualizar stock en inventario_almacen y esperar confirmación
     await api('inventario_almacen', 'PATCH',
       { stock_actual_articulo: nuevoStock },
       '?id_articulo=eq.' + id_articulo);
 
-    // Actualizar cache
+    // Verificar que el PATCH se aplicó correctamente
+    var confirm = await api('inventario_almacen', 'GET', null,
+      '?id_articulo=eq.' + id_articulo + '&select=stock_actual_articulo');
+    var stockConfirmado = confirm && confirm[0] ? parseFloat(confirm[0].stock_actual_articulo) : nuevoStock;
+
+    // Actualizar cache con valor confirmado de BD
     var r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
-    if (r) r.stock_actual_articulo = nuevoStock;
+    if (r) r.stock_actual_articulo = stockConfirmado;
 
     okEl.textContent = 'Salida registrada: ' + stockActual + ' → ' + nuevoStock + ' ' + (r?.unidad || 'UND');
     okEl.style.display = 'block';
