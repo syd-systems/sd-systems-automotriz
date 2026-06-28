@@ -534,16 +534,17 @@ async function abrirStockArticulo(id, nombre) {
     var qs = '?id_articulo=eq.' + id + '&select=stock_actual_articulo,precio_costo_moneda,precio_venta_moneda,unidad';
     if (_empresaActiva && _empresaActiva.id_empresa) qs += '&id_empresa=eq.' + _empresaActiva.id_empresa;
     var fresh = await api('inventario_almacen', 'GET', null, qs);
+    console.log('[SYD] abrirStockArticulo GET fresco:', JSON.stringify(fresh));
     if (fresh && fresh[0]) {
-      stockActual = parseFloat(fresh[0].stock_actual_articulo) || 0;
-      cppActual   = parseFloat(fresh[0].precio_costo_moneda)   || 0;
-      ventaActual = parseFloat(fresh[0].precio_venta_moneda)   || 0;
-      unidad      = fresh[0].unidad || unidad;
+      if (fresh[0].stock_actual_articulo != null) stockActual = parseFloat(fresh[0].stock_actual_articulo) ?? 0;
+      if (fresh[0].precio_costo_moneda   != null) cppActual   = parseFloat(fresh[0].precio_costo_moneda)   ?? 0;
+      if (fresh[0].precio_venta_moneda   != null) ventaActual = parseFloat(fresh[0].precio_venta_moneda)   ?? 0;
+      if (fresh[0].unidad)                        unidad      = fresh[0].unidad;
       r.stock_actual_articulo = stockActual;
       r.precio_costo_moneda   = cppActual;
       r.precio_venta_moneda   = ventaActual;
     }
-  } catch(e) { console.warn('abrirStockArticulo GET fresco:', e.message); }
+  } catch(e) { console.warn('abrirStockArticulo GET fresco error:', e.message); }
 
   document.getElementById('stock-art-nombre').textContent = r.nombre_articulo;
   document.getElementById('stock-art-stock').textContent  = stockActual + ' ' + unidad;
