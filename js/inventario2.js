@@ -549,17 +549,26 @@ async function abrirStockArticulo(id, nombre) {
 
 async function abrirEntradaStock(id) {
   let r = inventarioCache.find(function(x) { return x.id_articulo === id; });
-  // Si no está en caché, usar _fichaInvActual
   if (!r && _fichaInvActual && _fichaInvActual.id === id) {
     r = _fichaInvActual;
     r.id_articulo = id;
   }
   if (!r) { alert('Error: artículo no encontrado. Intente recargar el inventario.'); return; }
+
+  // ── Leer datos frescos de BD ──
+  try {
+    const fresh = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id + '&select=stock_actual_articulo,precio_costo_moneda,precio_venta_moneda,unidad');
+    if (fresh && fresh[0]) {
+      r.stock_actual_articulo = fresh[0].stock_actual_articulo;
+      r.precio_costo_moneda   = fresh[0].precio_costo_moneda;
+      r.precio_venta_moneda   = fresh[0].precio_venta_moneda;
+    }
+  } catch(e) { console.warn('abrirEntradaStock GET fresco:', e.message); }
+
   document.getElementById('es-id').value = id;
   document.getElementById('es-nombre').textContent = r.nombre_articulo;
-  await calcularInvSaldoArea();
-  const stockEntrada = _invSaldoArea ? (_invSaldoArea[r.id_articulo]||0) : (r.stock_actual_articulo||0);
-  document.getElementById('es-stock-actual').textContent = stockEntrada + ' ' + (r.unidad || 'UND');
+  // Mostrar stock global (igual que ficha)
+  document.getElementById('es-stock-actual').textContent = (r.stock_actual_articulo || 0) + ' ' + (r.unidad || 'UND');
   document.getElementById('es-cantidad').value = '';
   document.getElementById('es-precio-costo').value = '0.00';
   document.getElementById('es-motivo').value = 'compra';
