@@ -721,11 +721,33 @@ function onSelAreaSalida() {
   var idArea = document.getElementById('salida-area').value;
   var sel = document.getElementById('salida-empleado');
   if (!idArea) { sel.innerHTML = '<option value="">— Seleccionar área primero —</option>'; return; }
-  api('empleados', 'GET', null, '?id_area=eq.' + idArea + '&estado=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo')
+  sel.innerHTML = '<option value="">Cargando...</option>';
+  api('empleados', 'GET', null, '?id_area=eq.' + idArea + '&order=nombre_completo.asc&select=id_empleado,nombre_completo'
+    + (_empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : ''))
     .then(function(emps) {
       sel.innerHTML = '<option value="">— Seleccionar empleado (opcional) —</option>'
         + (emps || []).map(function(e) { return '<option value="' + e.id_empleado + '">' + e.nombre_completo + '</option>'; }).join('');
-    }).catch(function() {});
+    }).catch(function(e) {
+      console.warn('onSelAreaSalida:', e.message);
+      sel.innerHTML = '<option value="">— Error cargando empleados —</option>';
+    });
+}
+
+async function cargarEmpleadosPorArea(idArea, selectId) {
+  var sel = document.getElementById(selectId);
+  if (!sel) return;
+  if (!idArea) { sel.innerHTML = '<option value="">— Seleccionar área primero —</option>'; return; }
+  sel.innerHTML = '<option value="">Cargando...</option>';
+  try {
+    var emps = await api('empleados', 'GET', null,
+      '?id_area=eq.' + idArea + '&order=nombre_completo.asc&select=id_empleado,nombre_completo'
+      + (_empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : ''));
+    sel.innerHTML = '<option value="">— Seleccionar empleado (opcional) —</option>'
+      + (emps || []).map(function(e) { return '<option value="' + e.id_empleado + '">' + e.nombre_completo + '</option>'; }).join('');
+  } catch(e) {
+    console.warn('cargarEmpleadosPorArea:', e.message);
+    sel.innerHTML = '<option value="">— Error cargando empleados —</option>';
+  }
 }
 
 async function guardarSalidaStock() {
