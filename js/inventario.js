@@ -245,7 +245,8 @@ async function guardarEdicionMovimiento() {
     };
 
     if (tipo === 'ENTRADA') {
-      const precio = parseFloat(document.getElementById('edit-mov-precio').value) || null;
+      const precioRaw = document.getElementById('edit-mov-precio').value;
+      const precio = precioRaw !== '' && !isNaN(precioRaw) ? parseFloat(precioRaw) : null;
       if (precio !== null) datos.precio_costo_moneda = precio;
       const monedaEdit = document.getElementById('edit-mov-moneda')?.value || 'USD';
       datos.moneda_compra = monedaEdit;
