@@ -774,17 +774,34 @@ async function abrirStockArticulo(id, nombre) {
   if (!sesionActual?.administrador && !puedo('INVENTARIO','VER')) {
     alert('No tiene permiso.'); return;
   }
-  await calcularInvSaldoArea();
   const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) return;
   _fichaInvActual = { id: r.id_articulo, nombre: r.nombre_articulo };
 
+  // GET fresco de BD
+  var stockActual = parseFloat(r.stock_actual_articulo) || 0;
+  var cppActual   = parseFloat(r.precio_costo_moneda)   || 0;
+  var ventaActual = parseFloat(r.precio_venta_moneda)   || 0;
+  try {
+    var qs = '?id_articulo=eq.' + id + '&select=stock_actual_articulo,precio_costo_moneda,precio_venta_moneda,unidad';
+    if (_empresaActiva && _empresaActiva.id_empresa) qs += '&id_empresa=eq.' + _empresaActiva.id_empresa;
+    var fresh = await api('inventario_almacen', 'GET', null, qs);
+    if (fresh && fresh[0]) {
+      if (fresh[0].stock_actual_articulo != null) stockActual = parseFloat(fresh[0].stock_actual_articulo);
+      if (fresh[0].precio_costo_moneda   != null) cppActual   = parseFloat(fresh[0].precio_costo_moneda);
+      if (fresh[0].precio_venta_moneda   != null) ventaActual = parseFloat(fresh[0].precio_venta_moneda);
+      r.stock_actual_articulo = stockActual;
+      r.precio_costo_moneda   = cppActual;
+      r.precio_venta_moneda   = ventaActual;
+    }
+  } catch(e) { console.warn('abrirStockArticulo GET fresco:', e.message); }
+
   document.getElementById('stock-art-nombre').textContent = r.nombre_articulo;
-  const stockFicha2 = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual_articulo;
-  document.getElementById('stock-art-stock').textContent = stockFicha2 + ' ' + (r.unidad || 'UND');
+  document.getElementById('stock-art-stock').textContent  = stockActual + ' ' + (r.unidad || 'UND');
+
   const ventaCont = document.getElementById('stock-art-venta-cont');
   if (puedo('INVENTARIO','VER_PRECIOS_VENTA')) {
-    document.getElementById('stock-art-venta').textContent = '$ ' + fmtUSD(r.precio_venta_moneda);
+    document.getElementById('stock-art-venta').textContent = '$ ' + fmtUSD(ventaActual);
     if (ventaCont) ventaCont.style.display = '';
   } else {
     if (ventaCont) ventaCont.style.display = 'none';
@@ -793,13 +810,12 @@ async function abrirStockArticulo(id, nombre) {
   const costoCont = document.getElementById('stock-art-costo-cont');
   const costoEl   = document.getElementById('stock-art-costo');
   if (puedo('INVENTARIO','VER_COSTOS')) {
-    costoEl.textContent = '$ ' + fmtUSD(r.precio_costo_moneda);
-    costoCont.style.display = '';
+    if (costoEl)   costoEl.textContent = '$ ' + fmtUSD(cppActual);
+    if (costoCont) costoCont.style.display = '';
   } else {
-    costoCont.style.display = 'none';
+    if (costoCont) costoCont.style.display = 'none';
   }
 
-  // Permisos de botones
   document.getElementById('stock-btn-entrada').style.display  = puedo('INVENTARIO','ENTRADA_STOCK') ? '' : 'none';
   document.getElementById('stock-btn-salida').style.display   = puedo('INVENTARIO','SALIDA_STOCK')  ? '' : 'none';
   document.getElementById('stock-btn-historial').style.display = puedo('INVENTARIO','VER')          ? '' : 'none';
@@ -809,22 +825,20 @@ async function abrirStockArticulo(id, nombre) {
 }
 
 async function regresarAFichaInv() {
-  if (!_fichaInvActual.id_articulo) { renderInventario(); return; }
+  // Cerrar modales y volver a tabla principal con cache actualizado
+  cerrarModal('modal-stock-articulo');
+  cerrarModal('modal-ficha-inv');
   try {
-    // Actualizar cache con datos frescos
-    const res = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + _fichaInvActual.id_articulo + '&select=*');
-    if (res && res[0]) {
-      const i = inventarioCache.findIndex(function(x) { return x.id_articulo === _fichaInvActual.id_articulo; });
-      if (i !== -1) inventarioCache[i] = res[0];
-      else inventarioCache.push(res[0]);
+    if (_fichaInvActual && _fichaInvActual.id) {
+      const res = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + _fichaInvActual.id + '&select=*');
+      if (res && res[0]) {
+        const i = inventarioCache.findIndex(function(x) { return x.id_articulo === _fichaInvActual.id; });
+        if (i !== -1) inventarioCache[i] = res[0];
+      }
     }
   } catch(e) {}
-  // Recargar tabla del inventario general si está visible
-  if (document.getElementById('tabla-inv-cont')) {
-    invRenderVista(inventarioCache, _invVista);
-  }
-  // Regresar al modal de stock
-  abrirStockArticulo(_fichaInvActual.id_articulo, _fichaInvActual.nombre);
+  if (typeof calcularInvSaldoArea === 'function') await calcularInvSaldoArea();
+  if (document.getElementById('tabla-inv-cont')) invRenderVista(inventarioCache, _invVista);
 }
 
 
@@ -1370,7 +1384,15 @@ async function _guardarSalidaStockInterno() {
     okEl.textContent = '✓ Salida de ' + cantidad + ' unidades registrada. Se notificó al receptor.';
     okEl.style.display = 'block';
     resetBtnSal();
-    setTimeout(function() { cerrarModal('modal-salida-stock'); regresarAFichaInv(); }, 1500);
+    setTimeout(async function() {
+      cerrarModal('modal-salida-stock');
+      cerrarModal('modal-stock-articulo');
+      cerrarModal('modal-ficha-inv');
+      if (typeof calcularInvSaldoArea === 'function') await calcularInvSaldoArea();
+      if (typeof invRenderVista === 'function' && document.getElementById('tabla-inv-cont')) {
+        invRenderVista(inventarioCache, _invVista);
+      }
+    }, 1500);
   } catch(err) {
     errEl.textContent = 'Error: ' + err.message;
     errEl.style.display = 'block';
