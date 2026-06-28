@@ -254,7 +254,7 @@ async function guardarEdicionMovimiento() {
       // ── Recalcular CPP si cambió el precio o la cantidad ──
       if (precio !== null) {
         const artArr = await api('inventario_almacen', 'GET', null,
-          '?id_articulo=eq.' + id_articulo + '&select=stock_actual,precio_costo_usd');
+          '?id_articulo=eq.' + id_articulo + '&select=stock_actual_articulo,precio_costo_moneda');
         const art = artArr[0];
         if (art) {
           // Obtener cantidad original del movimiento antes de editar
