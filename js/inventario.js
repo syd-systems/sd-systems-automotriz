@@ -302,9 +302,21 @@ async function guardarEdicionMovimiento() {
 
     okEl.textContent = '✓ Movimiento actualizado correctamente.';
     okEl.style.display = 'block';
-    // Limpiar contraseña
     if (document.getElementById('edit-mov-clave')) document.getElementById('edit-mov-clave').value = '';
     setTimeout(async function() {
+      // Refrescar cache del artículo desde BD
+      try {
+        const fresh = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id_articulo + '&select=*');
+        if (fresh && fresh[0]) {
+          const i = inventarioCache.findIndex(function(x) { return x.id_articulo === id_articulo; });
+          if (i !== -1) inventarioCache[i] = fresh[0];
+        }
+      } catch(e) {}
+      // Refrescar saldo de área y tabla principal
+      await calcularInvSaldoArea();
+      if (document.getElementById('tabla-inv-cont')) {
+        invRenderVista(inventarioCache, _invVista);
+      }
       cerrarModal('modal-edit-movimiento');
       regresarAFichaInv();
     }, 900);
