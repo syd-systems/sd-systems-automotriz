@@ -278,7 +278,24 @@ async function guardarEdicionMovimiento() {
         await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + id_articulo);
       }
     } else {
+      // ── Leer cantidad original y stock ANTES de parchear ──
+      const [movOrigArr, artArr] = await Promise.all([
+        api('stock_salidas',     'GET', null, '?id_salida=eq.'   + id          + '&select=cantidad'),
+        api('inventario_almacen','GET', null, '?id_articulo=eq.' + id_articulo + '&select=stock_actual_articulo'),
+      ]);
+      const cantOriginal = parseFloat(movOrigArr[0]?.cantidad || cantidad);
+      const art = artArr[0];
+
       await api('stock_salidas', 'PATCH', datos, '?id_salida=eq.' + id);
+
+      if (art) {
+        const stockActual = parseFloat(art.stock_actual_articulo) || 0;
+        // Salida: devolver la original y descontar la nueva
+        const nuevoStock = stockActual + cantOriginal - cantidad;
+        await api('inventario_almacen', 'PATCH',
+          { stock_actual_articulo: Math.max(0, parseFloat(nuevoStock.toFixed(4))) },
+          '?id_articulo=eq.' + id_articulo);
+      }
     }
 
     okEl.textContent = '✓ Movimiento actualizado correctamente.';
