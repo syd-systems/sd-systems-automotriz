@@ -60,7 +60,7 @@ async function recargarHistorial(id_articulo) {
           const esEntrada = m.tipo === 'ENTRADA';
           const reversada = !!m.reversada;
           const areaRec = m.area_receptora || m.param_areas;
-          const area = areaRec ? (areaRec.codigo ? areaRec.codigo + ' — ' : '') + areaRec.nombre : '—';
+          const area = areaRec ? areaRec.nombre + (areaRec.codigo ? ' (' + areaRec.codigo + ')' : '') : '—';
           return '<tr style="opacity:' + (reversada ? '0.5' : '1') + '">'
             + '<td style="padding:8px 0;font-size:12px;color:var(--suave)">' + (m.fecha||'—') + '</td>'
             + '<td style="padding:8px"><span class="badge ' + (esEntrada ? 'badge-verde' : 'badge-rojo') + '">'
