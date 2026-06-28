@@ -357,7 +357,7 @@ async function renderProveedores() {
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando proveedores...</div>';
   try {
-    const proveedores = await api('proveedores', 'GET', null, '?order=nombre_articulo.asc&select=*&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
+    const proveedores = await api('proveedores', 'GET', null, '?order=nombre.asc&select=*&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
     proveedoresCache = proveedores;
 
     const activos   = proveedores.filter(function(p) { return p.estado === 'ACTIVO'; }).length;
@@ -441,7 +441,7 @@ async function verFichaProveedor(id) {
   // Asegurar bancos en cache para mostrar nombres
   if (!_empParamCache.bancos || !_empParamCache.bancos.length) {
     try {
-      const bancos = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre_articulo.asc&select=id,nombre,codigo');
+      const bancos = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo');
       _empParamCache.bancos = bancos || [];
     } catch(e) { _empParamCache.bancos = []; }
   }
@@ -553,14 +553,14 @@ async function abrirProveedor(id) {
   // Cargar bancos si no están en cache
   if (!_empParamCache.bancos || !_empParamCache.bancos.length) {
     try {
-      const bancos = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre_articulo.asc&select=id,nombre,codigo');
+      const bancos = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo');
       _empParamCache.bancos = bancos || [];
     } catch(e) { _empParamCache.bancos = []; }
   }
   cargarBancosProveedor(p ? (p.id_banco||null) : null, p ? (p.pm_id_banco||null) : null);
   // Cargar categorías de proveedor
   try {
-    const cats = await api('param_categorias_proveedor','GET',null,'?estado=eq.ACTIVO&order=nombre_articulo.asc&select=id,nombre,codigo');
+    const cats = await api('param_categorias_proveedor','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo');
     const selCat = document.getElementById('prov-categoria');
     if (selCat) {
       selCat.innerHTML = '<option value="">— Seleccionar —</option>'
