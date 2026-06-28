@@ -522,9 +522,10 @@ async function abrirStockArticulo(id, nombre) {
     }
   } catch(e) { console.warn('abrirStockArticulo GET fresco:', e.message); }
 
-  // Recalcular saldo de área para mostrar stock correcto
+  // Recalcular saldo de área para la tabla (no para este modal)
   await calcularInvSaldoArea();
-  const stockMostrar = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : (r.stock_actual_articulo || 0);
+  // El modal siempre muestra el stock global (igual que la ficha)
+  const stockMostrar = r.stock_actual_articulo || 0;
 
   document.getElementById('stock-art-nombre').textContent = r.nombre_articulo;
   document.getElementById('stock-art-stock').textContent  = stockMostrar + ' ' + (r.unidad || 'UND');
