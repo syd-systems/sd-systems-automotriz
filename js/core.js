@@ -1,17 +1,9 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-// ── DEBUG TEMPORAL: capturar stack de errores silenciosos ──
-window.addEventListener('error', function(e) {
-  if (e.message && e.message.includes('textContent')) {
-    console.error('[SYD DEBUG] textContent error en:', e.filename, 'línea:', e.lineno, 'col:', e.colno);
-    console.error('[SYD DEBUG] Stack:', e.error?.stack || 'sin stack');
-  }
-});
-window.addEventListener('unhandledrejection', function(e) {
-  if (e.reason?.message && e.reason.message.includes('textContent')) {
-    console.error('[SYD DEBUG] Unhandled rejection textContent:', e.reason.stack || e.reason.message);
-  }
-});
+const SYD_VERSION = '20260628023';
+console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
+  'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
+  'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
 
 // ─── FORMATO MONETARIO GLOBAL ───
 function fmtBs(valor) {
