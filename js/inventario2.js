@@ -494,6 +494,16 @@ function verFichaInventario(id) {
   verHistorialSalidas(r.id_articulo);
 }
 
+function regresarAFichaInv() {
+  // Cierra cualquier modal secundario (historial, edición) y reabre la ficha del artículo actual
+  cerrarModal('modal-historial-stock');
+  cerrarModal('modal-edit-movimiento');
+  cerrarModal('modal-entrada-stock');
+  if (_fichaInvActual && _fichaInvActual.id) {
+    verFichaInventario(_fichaInvActual.id);
+  }
+}
+
 async function abrirEntradaStock(id) {
   let r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   // Si no está en caché, usar _fichaInvActual
