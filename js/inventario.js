@@ -55,6 +55,7 @@ async function recargarHistorial(id_articulo) {
       + '<th style="text-align:center;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CANTIDAD</th>'
       + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ÁREA / DETALLE</th>'
       + '<th style="text-align:center;padding:8px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ESTADO</th>'
+      + '<th style="text-align:center;padding:8px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ACCIÓN</th>'
       + '</tr></thead><tbody>'
       + movimientos.map(function(m) {
           const esEntrada = m.tipo === 'ENTRADA';
@@ -84,6 +85,11 @@ async function recargarHistorial(id_articulo) {
                 ? '<span style="font-size:10px;font-weight:600;color:#fc8181">Reversada</span>'
                 : '<span style="font-size:10px;color:#22c55e">Activa</span>')
             + '</td>'
+            + '<td style="text-align:center;padding:8px 0">'
+            + (esEntrada && !reversada
+                ? '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verFichaEntradaStock(' + m.id_entrada + ',' + (document.getElementById('historial-id-articulo')?.value||0) + ')">👁 Ver</button>'
+                : '<span style="color:var(--suave);font-size:11px">—</span>')
+            + '</td>'
             + '</tr>';
         }).join('')
       + '</tbody></table>';
@@ -92,7 +98,25 @@ async function recargarHistorial(id_articulo) {
   }
 }
 
-async function editarMovimiento(tipo, idMovimiento, id_articulo) {
+async function verFichaEntradaStock(id_entrada, id_articulo) {
+  // Verificar si existe CxP asociada y su estado de pago
+  let estaPagado = false;
+  try {
+    const numDoc = 'ENT-' + id_entrada;
+    const cxps = await api('cont_cxp', 'GET', null,
+      '?numero_doc=like.' + encodeURIComponent(numDoc) + '%' + emisorQ() + '&select=id_cxp,estado,saldo_usd');
+    if (cxps && cxps.length > 0) {
+      // Pagado si TODAS las cuotas están PAGADA o saldo = 0
+      estaPagado = cxps.every(function(c) {
+        return c.estado === 'PAGADA' || parseFloat(c.saldo_usd || 0) <= 0;
+      });
+    }
+  } catch(e) { console.warn('verFichaEntradaStock CxP check:', e.message); }
+
+  await editarMovimiento('ENTRADA', id_entrada, id_articulo, estaPagado);
+}
+
+async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   // Cargar datos del movimiento
   let m = null;
   try {
@@ -115,7 +139,10 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo) {
   document.getElementById('edit-mov-id-articulo').value = id_articulo;
   document.getElementById('edit-mov-cantidad').value    = m.cantidad;
   document.getElementById('edit-mov-obs').value         = m.observaciones || '';
-  document.getElementById('edit-mov-titulo').textContent = (tipo === 'ENTRADA' ? '✏ EDITAR ENTRADA' : '✏ EDITAR SALIDA') + ' DE STOCK';
+
+  // Título según modo
+  const modoLabel = soloLectura ? '👁 FICHA ENTRADA' : (tipo === 'ENTRADA' ? '✏ EDITAR ENTRADA' : '✏ EDITAR SALIDA');
+  document.getElementById('edit-mov-titulo').textContent = modoLabel + ' DE STOCK';
   document.getElementById('alerta-edit-mov-ok').style.display  = 'none';
   document.getElementById('alerta-edit-mov-err').style.display = 'none';
 
@@ -144,8 +171,28 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo) {
     document.getElementById('edit-mov-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
   }
 
+  // ── Modo solo lectura: deshabilitar campos y ocultar contraseña/guardar ──
+  const camposEditables = ['edit-mov-cantidad','edit-mov-precio','edit-mov-moneda','edit-mov-area','edit-mov-empleado','edit-mov-obs'];
+  camposEditables.forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !!soloLectura;
+  });
+  const claveBox  = document.getElementById('edit-mov-clave')?.closest('.form-campo') || document.getElementById('edit-mov-clave')?.parentElement;
+  const btnGuardar = document.querySelector('#modal-edit-movimiento .btn-primario');
+  const badgePago  = document.getElementById('edit-mov-badge-pago');
+
+  if (soloLectura) {
+    if (claveBox)  claveBox.style.display  = 'none';
+    if (btnGuardar) btnGuardar.style.display = 'none';
+    if (badgePago) { badgePago.textContent = '✅ PAGADO'; badgePago.style.display = 'inline-block'; badgePago.style.color = '#22c55e'; badgePago.style.background = 'rgba(34,197,94,0.12)'; badgePago.style.borderRadius = '4px'; badgePago.style.padding = '3px 10px'; badgePago.style.fontSize = '11px'; badgePago.style.fontWeight = '700'; }
+  } else {
+    if (claveBox)  claveBox.style.display  = '';
+    if (btnGuardar) btnGuardar.style.display = '';
+    if (badgePago) badgePago.style.display = 'none';
+    if (document.getElementById('edit-mov-clave')) document.getElementById('edit-mov-clave').value = '';
+  }
+
   cerrarModal('modal-historial-stock');
-  if (document.getElementById('edit-mov-clave')) document.getElementById('edit-mov-clave').value = '';
   abrirModal('modal-edit-movimiento');
   focusFirstField('modal-edit-movimiento');
 }
