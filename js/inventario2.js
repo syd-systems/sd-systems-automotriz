@@ -641,6 +641,170 @@ async function abrirEntradaStock(id) {
   setTimeout(function() { document.getElementById('es-cantidad').focus(); }, 100);
 }
 
+// ══════════════════════════════════════════════════════════════
+//  SALIDA DE STOCK
+// ══════════════════════════════════════════════════════════════
+async function abrirSalidaStock(id, nombre) {
+  var r = inventarioCache.find(function(x) { return x.id_articulo === id; });
+  if (!r) { alert('Artículo no encontrado. Recargue el inventario.'); return; }
+  _fichaInvActual = { id: r.id_articulo, nombre: r.nombre_articulo };
+
+  // GET fresco de BD
+  var stockActual = parseFloat(r.stock_actual_articulo) || 0;
+  try {
+    var qs = '?id_articulo=eq.' + id + '&select=stock_actual_articulo,unidad';
+    if (_empresaActiva && _empresaActiva.id_empresa) qs += '&id_empresa=eq.' + _empresaActiva.id_empresa;
+    var fresh = await api('inventario_almacen', 'GET', null, qs);
+    if (fresh && fresh[0]) {
+      stockActual = parseFloat(fresh[0].stock_actual_articulo) || 0;
+      r.stock_actual_articulo = stockActual;
+    }
+  } catch(e) { console.warn('abrirSalidaStock GET fresco:', e.message); }
+
+  document.getElementById('salida-art-nombre').textContent  = r.nombre_articulo;
+  document.getElementById('salida-stock-actual').textContent = stockActual + ' ' + (r.unidad || 'UND');
+  document.getElementById('salida-id-articulo').value = id;
+  document.getElementById('salida-cantidad').value    = '';
+  document.getElementById('salida-fecha').value       = new Date().toISOString().slice(0, 10);
+  document.getElementById('salida-observaciones').value = '';
+  document.getElementById('salida-clave-entrega').value = '';
+  document.getElementById('alerta-salida-ok').style.display  = 'none';
+  document.getElementById('alerta-salida-err').style.display = 'none';
+
+  // Cargar usuario actual como quien entrega
+  try {
+    var correo = sesionActual?.correo_usuario;
+    if (correo) {
+      var empArr = await api('empleados', 'GET', null,
+        '?correo=eq.' + encodeURIComponent(correo) + '&select=id_empleado,nombre_completo,id_area,param_areas:id_area(nombre,codigo)&limit=1');
+      var emp = empArr && empArr[0];
+      if (emp) {
+        document.getElementById('salida-entrega-nombre').textContent = emp.nombre_completo || correo;
+        var areaEmp = emp.param_areas;
+        document.getElementById('salida-entrega-area').textContent   = areaEmp ? areaEmp.nombre + (areaEmp.codigo ? ' (' + areaEmp.codigo + ')' : '') : '—';
+        document.getElementById('salida-area-entrega').value    = emp.id_area || '';
+        document.getElementById('salida-empleado-entrega').value = emp.id_empleado || '';
+      }
+    }
+  } catch(e) {}
+
+  // Cargar áreas receptoras
+  try {
+    var areas = await api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc');
+    var selArea = document.getElementById('salida-area');
+    selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
+      + areas.map(function(a) {
+          return '<option value="' + a.id + '">' + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>';
+        }).join('');
+    document.getElementById('salida-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
+  } catch(e) {}
+
+  abrirModal('modal-salida-stock');
+  setTimeout(function() { document.getElementById('salida-cantidad').focus(); }, 100);
+}
+
+function onSelAreaSalida() {
+  var idArea = document.getElementById('salida-area').value;
+  var sel = document.getElementById('salida-empleado');
+  if (!idArea) { sel.innerHTML = '<option value="">— Seleccionar área primero —</option>'; return; }
+  api('empleados', 'GET', null, '?id_area=eq.' + idArea + '&estado=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo')
+    .then(function(emps) {
+      sel.innerHTML = '<option value="">— Seleccionar empleado (opcional) —</option>'
+        + (emps || []).map(function(e) { return '<option value="' + e.id_empleado + '">' + e.nombre_completo + '</option>'; }).join('');
+    }).catch(function() {});
+}
+
+async function guardarSalidaStock() {
+  var okEl  = document.getElementById('alerta-salida-ok');
+  var errEl = document.getElementById('alerta-salida-err');
+  okEl.style.display = errEl.style.display = 'none';
+
+  var id_articulo = parseInt(document.getElementById('salida-id-articulo').value);
+  var cantidad    = parseFloat(document.getElementById('salida-cantidad').value);
+  var fecha       = document.getElementById('salida-fecha').value;
+  var id_area     = document.getElementById('salida-area').value;
+  var id_empleado = document.getElementById('salida-empleado').value || null;
+  var id_area_entrega    = document.getElementById('salida-area-entrega').value    || null;
+  var id_empleado_entrega = document.getElementById('salida-empleado-entrega').value || null;
+  var clave       = document.getElementById('salida-clave-entrega').value;
+  var obs         = document.getElementById('salida-observaciones').value.trim();
+
+  if (!id_articulo) { errEl.textContent = 'Artículo no identificado.'; errEl.style.display = 'block'; return; }
+  if (!cantidad || cantidad <= 0) { errEl.textContent = 'Ingrese una cantidad válida.'; errEl.style.display = 'block'; return; }
+  if (!fecha)    { errEl.textContent = 'Seleccione una fecha.'; errEl.style.display = 'block'; return; }
+  if (!id_area)  { errEl.textContent = 'Seleccione el área receptora.'; errEl.style.display = 'block'; return; }
+  if (!clave)    { errEl.textContent = 'Ingrese su contraseña para autorizar.'; errEl.style.display = 'block'; return; }
+
+  var btnGuardar = document.querySelector('#modal-salida-stock .btn-peligro');
+  var resetBtn = function() { if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Registrar Salida'; } };
+  if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
+
+  try {
+    // Verificar contraseña
+    var correo = sesionActual?.correo_usuario;
+    if (!correo) throw new Error('Sesión no activa.');
+    var authRes = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+      body: JSON.stringify({ email: correo, password: clave })
+    });
+    if (!authRes.ok) throw new Error('Contraseña incorrecta.');
+
+    // Leer stock actual antes de modificar
+    var artArr = await api('inventario_almacen', 'GET', null,
+      '?id_articulo=eq.' + id_articulo + '&select=stock_actual_articulo,precio_costo_moneda');
+    var art = artArr && artArr[0];
+    if (!art) throw new Error('Artículo no encontrado en inventario.');
+    var stockActual = parseFloat(art.stock_actual_articulo) || 0;
+    if (cantidad > stockActual) throw new Error('Stock insuficiente. Disponible: ' + stockActual);
+
+    var nuevoStock = parseFloat((stockActual - cantidad).toFixed(4));
+
+    // Registrar salida
+    var salidaData = {
+      id_articulo:      id_articulo,
+      id_empresa:       _empresaActiva?.id_empresa,
+      cantidad:         cantidad,
+      fecha_salida:     fecha,
+      id_area:          id_area,
+      id_empleado:      id_empleado,
+      id_area_entrega:  id_area_entrega,
+      id_empleado_entrega: id_empleado_entrega,
+      observaciones:    obs || null,
+      tipo_salida:      'TRANSFERENCIA',
+      id_usuario:       sesionActual?.id_usuario || null
+    };
+    await api('stock_salidas', 'POST', salidaData);
+
+    // Actualizar stock en inventario_almacen
+    await api('inventario_almacen', 'PATCH',
+      { stock_actual_articulo: nuevoStock },
+      '?id_articulo=eq.' + id_articulo);
+
+    // Actualizar cache
+    var r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
+    if (r) r.stock_actual_articulo = nuevoStock;
+
+    okEl.textContent = 'Salida registrada: ' + stockActual + ' → ' + nuevoStock + ' ' + (r?.unidad || 'UND');
+    okEl.style.display = 'block';
+    document.getElementById('salida-clave-entrega').value = '';
+
+    setTimeout(async function() {
+      // Refrescar tabla e invSaldoArea
+      await calcularInvSaldoArea();
+      if (document.getElementById('tabla-inv-cont')) invRenderVista(inventarioCache, _invVista);
+      cerrarModal('modal-salida-stock');
+      regresarAFichaInv();
+      resetBtn();
+    }, 1200);
+
+  } catch(e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+    resetBtn();
+  }
+}
+
 
 // ── Esquema de Pago — Entrada de Stock ──
 function onCambioEsquemaPago() {
