@@ -55,6 +55,31 @@ function calcularMargen(r) {
 var _invVista = 'tabla';
 
 
+// ── Validar contraseña de un empleado por su id ──
+async function validarClaveReceptor(id_empleado, clave) {
+  try {
+    // Obtener correo del empleado
+    var empArr = await api('empleados', 'GET', null,
+      '?id_empleado=eq.' + id_empleado + '&select=correo,nombre_completo&limit=1');
+    var emp = empArr && empArr[0];
+    if (!emp || !emp.correo) return { ok: false, msg: 'No se encontró correo del empleado.' };
+
+    // Autenticar contra Supabase con ese correo
+    var res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emp.correo, password: clave })
+    });
+    if (res.ok) {
+      var data = await res.json();
+      if (data.access_token) return { ok: true, nombre: emp.nombre_completo };
+    }
+    return { ok: false, msg: 'Contraseña incorrecta para ' + (emp.nombre_completo || emp.correo) + '.' };
+  } catch(e) {
+    return { ok: false, msg: 'Error validando contraseña: ' + e.message };
+  }
+}
+
 // ── Calcular saldo por área del usuario actual ──
 async function calcularInvSaldoArea() {
   if (sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
@@ -777,9 +802,9 @@ async function guardarSalidaStock() {
 
   try {
     // Verificar contraseña del empleado que entrega
-    var idEmpEntrega = document.getElementById('salida-empleado-entrega').value;
-    if (!idEmpEntrega) throw new Error('No se identificó al empleado que entrega. Recargue el módulo.');
-    var validacion = await validarClaveReceptor(parseInt(idEmpEntrega), clave);
+    var idEmpEntrega = parseInt(document.getElementById('salida-empleado-entrega').value);
+    if (!idEmpEntrega) throw new Error('No se identificó al empleado que entrega.');
+    var validacion = await validarClaveReceptor(idEmpEntrega, clave);
     if (!validacion.ok) throw new Error(validacion.msg);
 
     // Leer stock actual antes de modificar
