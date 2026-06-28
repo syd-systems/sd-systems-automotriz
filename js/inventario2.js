@@ -809,11 +809,12 @@ async function guardarSalidaStock() {
     document.getElementById('salida-clave-entrega').value = '';
 
     setTimeout(async function() {
-      // Refrescar tabla e invSaldoArea
+      // Cerrar todos los modales y volver a pantalla principal
+      cerrarModal('modal-salida-stock');
+      cerrarModal('modal-stock-articulo');
+      cerrarModal('modal-ficha-inv');
       await calcularInvSaldoArea();
       if (document.getElementById('tabla-inv-cont')) invRenderVista(inventarioCache, _invVista);
-      cerrarModal('modal-salida-stock');
-      regresarAFichaInv();
       resetBtn();
     }, 1200);
 
@@ -1186,13 +1187,13 @@ async function guardarEntradaStock() {
     okEl.textContent = 'Stock actualizado: ' + stockActual + ' → ' + nuevoStock + ' ' + (r?.unidad || 'UND');
     okEl.style.display = 'block';
     setTimeout(async function() {
+      // Cerrar todos los modales abiertos
       cerrarModal('modal-entrada-stock');
-      // Refrescar saldo de área y tabla principal
+      cerrarModal('modal-stock-articulo');
+      cerrarModal('modal-ficha-inv');
+      // Refrescar tabla principal
       await calcularInvSaldoArea();
-      if (document.getElementById('tabla-inv-cont')) {
-        invRenderVista(inventarioCache, _invVista);
-      }
-      regresarAFichaInv();
+      if (document.getElementById('tabla-inv-cont')) invRenderVista(inventarioCache, _invVista);
       resetBtn();
     }, 1200);
 
