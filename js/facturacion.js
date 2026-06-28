@@ -809,12 +809,12 @@ async function abrirStockArticulo(id, nombre) {
 }
 
 async function regresarAFichaInv() {
-  if (!_fichaInvActual.id) { renderInventario(); return; }
+  if (!_fichaInvActual.id_articulo) { renderInventario(); return; }
   try {
     // Actualizar cache con datos frescos
-    const res = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + _fichaInvActual.id + '&select=*');
+    const res = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + _fichaInvActual.id_articulo + '&select=*');
     if (res && res[0]) {
-      const i = inventarioCache.findIndex(function(x) { return x.id_articulo === _fichaInvActual.id; });
+      const i = inventarioCache.findIndex(function(x) { return x.id_articulo === _fichaInvActual.id_articulo; });
       if (i !== -1) inventarioCache[i] = res[0];
       else inventarioCache.push(res[0]);
     }
@@ -824,7 +824,7 @@ async function regresarAFichaInv() {
     invRenderVista(inventarioCache, _invVista);
   }
   // Regresar al modal de stock
-  abrirStockArticulo(_fichaInvActual.id, _fichaInvActual.nombre);
+  abrirStockArticulo(_fichaInvActual.id_articulo, _fichaInvActual.nombre);
 }
 
 
