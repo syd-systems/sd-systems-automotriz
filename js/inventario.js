@@ -87,7 +87,7 @@ async function recargarHistorial(id_articulo) {
             + '</td>'
             + '<td style="text-align:center;padding:8px 0">'
             + (esEntrada && !reversada
-                ? '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verFichaEntradaStock(' + m.id_entrada + ',' + (document.getElementById('historial-id-articulo')?.value||0) + ')">👁 Ver</button>'
+                ? '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verFichaEntradaStock(' + m.id_entrada + ',' + m.id_articulo + ')">👁 Ver</button>'
                 : '<span style="color:var(--suave);font-size:11px">—</span>')
             + '</td>'
             + '</tr>';
@@ -264,13 +264,15 @@ async function guardarEdicionMovimiento() {
       // ── Recalcular stock y CPP ──
       if (art) {
         const stockActual = parseFloat(art.stock_actual_articulo) || 0;
-        const nuevoStock  = stockActual - cantOriginal + cantidad;
-        const patchInv    = { stock_actual_articulo: Math.max(0, parseFloat(nuevoStock.toFixed(4))) };
+        // stockActual en BD ya incluye cantOriginal — revertir y aplicar nueva cantidad
+        const nuevoStock  = Math.max(0, parseFloat((stockActual - cantOriginal + cantidad).toFixed(4)));
+        const patchInv    = { stock_actual_articulo: nuevoStock };
 
-        if (precio !== null) {
-          const stockSinEstaEntrada = stockActual - cantOriginal;
-          const valorSinEstaEntrada = stockSinEstaEntrada > 0 ? stockSinEstaEntrada * art.precio_costo_moneda : 0;
-          const cpp = nuevoStock > 0 ? (valorSinEstaEntrada + cantidad * precio) / nuevoStock : precio;
+        if (precio !== null && !isNaN(precio)) {
+          // Stock previo a esta entrada (sin contar cantOriginal)
+          const stockPrevio     = Math.max(0, stockActual - cantOriginal);
+          const valorPrevio     = stockPrevio > 0 ? stockPrevio * (parseFloat(art.precio_costo_moneda) || 0) : 0;
+          const cpp             = nuevoStock > 0 ? (valorPrevio + cantidad * precio) / nuevoStock : precio;
           patchInv.precio_costo_moneda        = parseFloat(cpp.toFixed(4));
           patchInv.precio_costo_ultimo_moneda = precio;
         }
