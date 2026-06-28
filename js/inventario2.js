@@ -1232,7 +1232,8 @@ async function verHistorialEntradas(id_articulo) {
     const motivoLabel = { compra:'Compra', devolucion:'Devolución', transferencia:'Transferencia', ajuste:'Ajuste' };
     cont.innerHTML = '<div style="margin-top:16px;border-top:1px solid var(--borde);padding-top:12px">'
       + '<div style="font-size:10px;color:var(--suave);letter-spacing:2px;margin-bottom:8px">HISTORIAL DE ENTRADAS</div>'
-      + '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+      + '<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">'
+      + '<colgroup><col style="width:88px"><col style="width:52px"><col style="width:108px"><col style="width:80px"><col style="width:65px"><col style="width:75px"></colgroup>'
       + '<thead><tr style="border-bottom:1px solid var(--borde)">'
       + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">FECHA</th>'
       + '<th style="text-align:right;padding:6px 4px;color:var(--suave);font-size:10px">CANT</th>'
