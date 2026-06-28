@@ -3571,12 +3571,13 @@
         </div>
       <input type="hidden" id="edit-mov-tipo">
       <input type="hidden" id="edit-mov-id">
-      <input type="hidden" id="edit-mov-id-repuesto">
+      <input type="hidden" id="edit-mov-id-articulo">
     </div>
     <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
       <div class="alerta alerta-exito" id="alerta-edit-mov-ok" style="margin:0"></div>
       <div class="alerta alerta-error"  id="alerta-edit-mov-err" style="margin:0"></div>
-      <div style="display:flex;gap:10px;justify-content:flex-end">
+      <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center">
+        <span id="edit-mov-badge-pago" style="display:none"></span>
         <button class="btn-secundario" onclick="cerrarModal('modal-edit-movimiento'); regresarAFichaInv()">Retornar</button>
         <button class="btn-primario"   onclick="guardarEdicionMovimiento()">GUARDAR</button>
       </div>
