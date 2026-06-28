@@ -508,40 +508,44 @@ async function abrirStockArticulo(id, nombre) {
   let r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) { alert('Artículo no encontrado. Recargue el inventario.'); return; }
 
-  // Setear _fichaInvActual para que los botones del modal funcionen
   _fichaInvActual = { id: r.id_articulo, nombre: r.nombre_articulo };
 
-  // ── Leer datos frescos de BD y actualizar cache ──
+  // Variables locales con fallback al cache
+  var stockActual = parseFloat(r.stock_actual_articulo) || 0;
+  var cppActual   = parseFloat(r.precio_costo_moneda)   || 0;
+  var ventaActual = parseFloat(r.precio_venta_moneda)   || 0;
+  var unidad      = r.unidad || 'UND';
+
+  // ── GET fresco de BD con filtro de empresa ──
   try {
-    const fresh = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id + '&select=stock_actual_articulo,precio_costo_moneda,precio_costo_ultimo_moneda,precio_venta_moneda,unidad');
+    var qs = '?id_articulo=eq.' + id + '&select=stock_actual_articulo,precio_costo_moneda,precio_venta_moneda,unidad';
+    if (_empresaActiva && _empresaActiva.id_empresa) qs += '&id_empresa=eq.' + _empresaActiva.id_empresa;
+    var fresh = await api('inventario_almacen', 'GET', null, qs);
     if (fresh && fresh[0]) {
-      r.stock_actual_articulo     = fresh[0].stock_actual_articulo;
-      r.precio_costo_moneda       = fresh[0].precio_costo_moneda;
-      r.precio_costo_ultimo_moneda = fresh[0].precio_costo_ultimo_moneda;
-      r.precio_venta_moneda       = fresh[0].precio_venta_moneda;
+      stockActual = parseFloat(fresh[0].stock_actual_articulo) || 0;
+      cppActual   = parseFloat(fresh[0].precio_costo_moneda)   || 0;
+      ventaActual = parseFloat(fresh[0].precio_venta_moneda)   || 0;
+      unidad      = fresh[0].unidad || unidad;
+      r.stock_actual_articulo = stockActual;
+      r.precio_costo_moneda   = cppActual;
+      r.precio_venta_moneda   = ventaActual;
     }
   } catch(e) { console.warn('abrirStockArticulo GET fresco:', e.message); }
 
-  // Recalcular saldo de área para la tabla (no para este modal)
-  await calcularInvSaldoArea();
-  // El modal siempre muestra el stock global (igual que la ficha)
-  const stockMostrar = r.stock_actual_articulo || 0;
-
   document.getElementById('stock-art-nombre').textContent = r.nombre_articulo;
-  document.getElementById('stock-art-stock').textContent  = stockMostrar + ' ' + (r.unidad || 'UND');
+  document.getElementById('stock-art-stock').textContent  = stockActual + ' ' + unidad;
 
-  const costoCont = document.getElementById('stock-art-costo-cont');
-  const costoEl   = document.getElementById('stock-art-costo');
+  var costoCont = document.getElementById('stock-art-costo-cont');
+  var costoEl   = document.getElementById('stock-art-costo');
   if (costoCont) costoCont.style.display = puedo('INVENTARIO','VER_COSTOS') ? '' : 'none';
-  if (costoEl)   costoEl.textContent = '$ ' + fmtUSD(r.precio_costo_moneda);
+  if (costoEl)   costoEl.textContent = '$ ' + fmtUSD(cppActual);
 
-  const ventaCont = document.getElementById('stock-art-venta-cont');
-  const ventaEl   = document.getElementById('stock-art-venta');
+  var ventaCont = document.getElementById('stock-art-venta-cont');
+  var ventaEl   = document.getElementById('stock-art-venta');
   if (ventaCont) ventaCont.style.display = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? '' : 'none';
-  if (ventaEl)   ventaEl.textContent = '$ ' + fmtUSD(r.precio_venta_moneda);
+  if (ventaEl)   ventaEl.textContent = '$ ' + fmtUSD(ventaActual);
 
-  // Ocultar botón Entrada si no tiene permiso
-  const btnEnt = document.getElementById('stock-btn-entrada');
+  var btnEnt = document.getElementById('stock-btn-entrada');
   if (btnEnt) btnEnt.style.display = puedo('INVENTARIO','ENTRADA_STOCK') ? '' : 'none';
 
   abrirModal('modal-stock-articulo');
