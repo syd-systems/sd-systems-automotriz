@@ -1338,7 +1338,7 @@ async function invRenderTipos(cont) {
     const id_emisor = _empresaActiva?.id_empresa || 0;
     const [tipos, cats] = await Promise.all([
       api('inv_articulos_tipo','GET',null,'?id_empresa=eq.'+id_emisor+'&order=nombre.asc&select=*'),
-      api('inv_categorias','GET',null,'?id_empresa=eq.'+id_emisor+'&select=id,nombre,codigo'),
+      api('inv_categorias','GET',null,'?id_empresa=eq.'+id_emisor+'&select=id_categoria,nombre,codigo'),
     ]);
     const catsMap = {}; (cats||[]).forEach(function(c){ catsMap[c.id]=c; });
     const filas = (tipos||[]).map(function(t) {
