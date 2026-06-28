@@ -776,15 +776,11 @@ async function guardarSalidaStock() {
   if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
 
   try {
-    // Verificar contraseña
-    var correo = sesionActual?.correo_usuario;
-    if (!correo) throw new Error('Sesión no activa.');
-    var authRes = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
-      body: JSON.stringify({ email: correo, password: clave })
-    });
-    if (!authRes.ok) throw new Error('Contraseña incorrecta.');
+    // Verificar contraseña del empleado que entrega
+    var idEmpEntrega = document.getElementById('salida-empleado-entrega').value;
+    if (!idEmpEntrega) throw new Error('No se identificó al empleado que entrega. Recargue el módulo.');
+    var validacion = await validarClaveReceptor(parseInt(idEmpEntrega), clave);
+    if (!validacion.ok) throw new Error(validacion.msg);
 
     // Leer stock actual antes de modificar
     var artArr = await api('inventario_almacen', 'GET', null,
