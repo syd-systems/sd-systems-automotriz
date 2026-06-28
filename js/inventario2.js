@@ -517,6 +517,83 @@ function regresarAFichaInv() {
     verFichaInventario(_fichaInvActual.id);
   }
 }
+
+async function abrirEntradaStock(id) {
+  let r = inventarioCache.find(function(x) { return x.id_articulo === id; });
+  if (!r && _fichaInvActual && _fichaInvActual.id === id) {
+    r = _fichaInvActual;
+    r.id_articulo = id;
+  }
+  if (!r) { alert('Error: artículo no encontrado. Intente recargar el inventario.'); return; }
+
+  // GET fresco de BD
+  try {
+    var qs = '?id_articulo=eq.' + id + '&select=stock_actual_articulo,precio_costo_moneda,precio_venta_moneda,unidad';
+    if (_empresaActiva && _empresaActiva.id_empresa) qs += '&id_empresa=eq.' + _empresaActiva.id_empresa;
+    const fresh = await api('inventario_almacen', 'GET', null, qs);
+    if (fresh && fresh[0]) {
+      if (fresh[0].stock_actual_articulo != null) r.stock_actual_articulo = parseFloat(fresh[0].stock_actual_articulo);
+      if (fresh[0].precio_costo_moneda   != null) r.precio_costo_moneda   = parseFloat(fresh[0].precio_costo_moneda);
+      if (fresh[0].precio_venta_moneda   != null) r.precio_venta_moneda   = parseFloat(fresh[0].precio_venta_moneda);
+    }
+  } catch(e) { console.warn('abrirEntradaStock GET fresco:', e.message); }
+
+  document.getElementById('es-id').value = id;
+  document.getElementById('es-nombre').textContent = r.nombre_articulo;
+  document.getElementById('es-stock-actual').textContent = (r.stock_actual_articulo || 0) + ' ' + (r.unidad || 'UND');
+  document.getElementById('es-cantidad').value = '';
+  document.getElementById('es-precio-costo').value = '0.00';
+  document.getElementById('es-motivo').value = 'compra';
+  if (document.getElementById('es-referencia')) document.getElementById('es-referencia').value = '';
+  document.getElementById('es-precio-venta').value = r.precio_venta_moneda || '';
+  var esVentaCont = document.getElementById('es-precio-venta-cont');
+  if (esVentaCont) esVentaCont.style.display = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? '' : 'none';
+  const refCPP = document.getElementById('es-ref-cpp');
+  if (refCPP) refCPP.textContent = '$ ' + fmtUSD(r.precio_costo_moneda) + ' (CPP actual)';
+  document.getElementById('alerta-es-ok').style.display = 'none';
+  document.getElementById('alerta-es-err').style.display = 'none';
+  if (document.getElementById('es-clave-receptor'))  document.getElementById('es-clave-receptor').value = '';
+  if (document.getElementById('es-cliente-nombre')) document.getElementById('es-cliente-nombre').value = '';
+  if (document.getElementById('es-area-origen'))    document.getElementById('es-area-origen').value = '';
+  if (document.getElementById('es-moneda-compra'))  document.getElementById('es-moneda-compra').value = 'USD';
+  if (document.getElementById('es-tasa-cont'))      document.getElementById('es-tasa-cont').style.display = 'none';
+  if (document.getElementById('es-precio-usd-cont'))document.getElementById('es-precio-usd-cont').style.display = 'none';
+  if (document.getElementById('es-tasa-bcv'))       document.getElementById('es-tasa-bcv').value = '';
+  if (document.getElementById('es-precio-usd-calc'))document.getElementById('es-precio-usd-calc').value = '';
+  const esquemaEl = document.getElementById('es-esquema-pago');
+  if (esquemaEl) esquemaEl.value = 'CONTADO';
+  const creditoCont = document.getElementById('es-credito-cont');
+  if (creditoCont) creditoCont.style.display = 'none';
+  const prevEl = document.getElementById('es-cuotas-preview');
+  if (prevEl) { prevEl.innerHTML = ''; delete prevEl.dataset.cuotas; }
+  if (typeof cargarUsuarioReceptorEntrada === 'function') cargarUsuarioReceptorEntrada();
+  document.getElementById('es-proveedor').innerHTML = '<option value="">— Seleccionar proveedor (opcional) —</option>';
+  Promise.all([
+    api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
+    api('proveedores', 'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif,id_categoria,param_categorias_proveedor:id_categoria(nombre)'),
+    api('param_categorias_proveedor','GET',null,'?nombre=ilike.*Artículo*&select=id&limit=1'),
+  ]).then(function(res) {
+    var areas = res[0], provs = res[1];
+    var catArticulo = res[2] && res[2][0] ? res[2][0].id : null;
+    if (catArticulo) provs = provs.filter(function(p){ return p.id_categoria === catArticulo; });
+    var selArea = document.getElementById('es-area');
+    selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
+      + areas.map(function(a) { return '<option value="' + a.id + '">' + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>'; }).join('');
+    var selProv = document.getElementById('es-proveedor');
+    selProv.innerHTML = '<option value="">— Seleccionar proveedor —</option>'
+      + provs.map(function(p) { return '<option value="' + p.id_proveedor + '">' + p.nombre + (p.rif ? ' (' + p.rif + ')' : '') + '</option>'; }).join('');
+    var selOrigen = document.getElementById('es-area-origen');
+    if (selOrigen) {
+      selOrigen.innerHTML = '<option value="">— Seleccionar área de origen —</option>'
+        + areas.map(function(a) { return '<option value="' + a.id + '">' + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>'; }).join('');
+    }
+    onCambiarMotivoEntrada();
+  }).catch(function(){});
+  abrirModal('modal-entrada-stock');
+  focusFirstField('modal-entrada-stock');
+  setTimeout(function() { document.getElementById('es-cantidad').focus(); }, 100);
+}
+
 // ── Esquema de Pago — Entrada de Stock ──
 function onCambioEsquemaPago() {
   const esquema = document.getElementById('es-esquema-pago')?.value;
