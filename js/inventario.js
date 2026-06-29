@@ -4,7 +4,11 @@
 // ══════════════════════════════════════════════════════════════
 
 async function verHistorialStock(id_articulo, nombreArt) {
-  if (!puedo('INVENTARIO','VER')) { alert('No tiene permiso.'); return; }
+  const tieneAcceso = sesionActual?.administrador
+    || puedo('INVENTARIO','VER')
+    || puedo('INVENTARIO','ENTRADA_STOCK')
+    || puedo('INVENTARIO','SALIDA_STOCK');
+  if (!tieneAcceso) { alert('No tiene permiso.'); return; }
 
   document.getElementById('historial-art-nombre').textContent = nombreArt;
   document.getElementById('historial-contenido').innerHTML =
