@@ -1026,7 +1026,7 @@ async function cargarEmpleadosPorArea(id_area, selectId, soloConPermiso) {
 
 function onSelAreaSalida() {
   const id_area = document.getElementById('salida-area')?.value;
-  cargarEmpleadosPorArea(parseInt(id_area)||null, 'salida-empleado', true);
+  cargarEmpleadosPorArea(parseInt(id_area)||null, 'salida-empleado', false);
 }
 
 function onSelAreaEntrega() {
