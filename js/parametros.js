@@ -16,6 +16,7 @@ const TABLAS_MAESTRAS = [
   { key: 'sexos',              tabla: 'param_sexos',   pk: 'id',              nombre: 'Sexos',                  icono: '⚧',  tieneCodigo: false, tieneArea: false },
   { key: 'cat_prov', tabla: 'param_categorias_proveedor', pk: 'id', nombre: 'Categorías de Proveedores', icono: '🏷', tieneCodigo: true, tieneEstado: true },
   { key: 'bancos',             tabla: 'param_bancos',   pk: 'id',             nombre: 'Instituciones Financieras', icono: '🏦', tieneCodigo: true,  tieneArea: false, tieneTipoSector: true },
+  { key: 'niveles_jerarquicos', tabla: 'param_niveles_jerarquicos', pk: 'id_jerarquicos', nombre: 'Niveles Jerárquicos', icono: '🏅', tieneCodigo: false, tieneArea: false, tieneDescripcion: true, campoNombre: 'nivel_jerarquicos', campoDescripcion: 'descripcion_jerarquicos' },
 ];
 
 // Cache de áreas para el selector de cargos
@@ -147,8 +148,10 @@ async function mostrarTablaParam(key) {
       }
       filas = items.map(function(item) {
         const cat = def.tieneCategoria && item.id_categoria ? catsMap[item.id_categoria] : null;
+        const nombreMostrar = item[def.campoNombre || 'nombre'] || item.nombre || '—';
+        const descMostrar   = def.tieneDescripcion ? (item[def.campoDescripcion || 'descripcion'] || item.descripcion || '') : '';
         return '<tr>'
-          + '<td style="font-size:13px;font-weight:500">' + (item.codigo ? '<span style="font-family:var(--font-mono);color:var(--suave);margin-right:8px">' + item.codigo + '</span>' : '') + item.nombre + '</td>'
+          + '<td style="font-size:13px;font-weight:500">' + (item.codigo ? '<span style="font-family:var(--font-mono);color:var(--suave);margin-right:8px">' + item.codigo + '</span>' : '') + nombreMostrar + (descMostrar ? '<div style="font-size:11px;color:var(--suave);margin-top:2px">' + descMostrar + '</div>' : '') + '</td>'
           + (def.tieneArea ? '<td style="font-size:12px;color:var(--suave)">' + (areasMap[item.id_area] ? areasMap[item.id_area].nombre : '—') + '</td>' : '')
           + (def.tieneTipoSector ? '<td style="font-size:12px;color:var(--suave)">' + (item.tipo_sector || '—') + '</td>' : '')
           + (def.tieneCategoria ? '<td style="font-size:12px;color:var(--suave)">' + (cat ? (cat.codigo?cat.codigo+' — ':'')+cat.nombre : '—') + '</td>' : '')
@@ -216,9 +219,9 @@ async function abrirParamItem(key, id) {
     if (def.tieneCodigo) {
       camposHTML += '<div class="form-campo form-full"><label>Código</label><input type="text" id="param-item-codigo" value="' + (item ? (item.codigo||'') : '') + '" placeholder="Ej: 0102" style="text-transform:uppercase"></div>';
     }
-    camposHTML += '<div class="form-campo form-full"><label>Nombre</label><input type="text" id="param-item-nombre" value="' + (item ? item.nombre : '') + '" placeholder="Nombre del registro"></div>';
+    camposHTML += '<div class="form-campo form-full"><label>' + (def.campoNombre ? 'Nivel' : 'Nombre') + '</label><input type="text" id="param-item-nombre" value="' + (item ? (item[def.campoNombre||'nombre']||'') : '') + '" placeholder="' + (def.campoNombre ? 'Nombre del nivel jerárquico' : 'Nombre del registro') + '"></div>';
     if (def.tieneDescripcion) {
-      camposHTML += '<div class="form-campo form-full"><label>Descripción</label><textarea id="param-item-descripcion" placeholder="Descripción opcional..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%">' + (item ? (item.descripcion||'') : '') + '</textarea></div>';
+      camposHTML += '<div class="form-campo form-full"><label>Descripción</label><textarea id="param-item-descripcion" placeholder="Descripción opcional..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%">' + (item ? (item[def.campoDescripcion||'descripcion']||'') : '') + '</textarea></div>';
     }
     if (def.tieneTipoSector) {
       camposHTML += '<div class="form-campo form-full"><label>Tipo / Sector</label><select id="param-item-tipo-sector" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
@@ -345,22 +348,26 @@ async function guardarParamItem() {
       }
     }
   } catch(eDup) { console.warn('Error validando duplicado:', eDup); }
-  const datos = { nombre, estado };
+  const datos = {};
+  // Usar campo nombre correcto según la definición
+  datos[def.campoNombre || 'nombre'] = nombre;
+  datos.estado = estado;
   if (key === 'areas') {
     datos.codigo        = document.getElementById('param-item-codigo')?.value.trim() || null;
     datos.id_area_padre = parseInt(document.getElementById('param-item-area-padre')?.value) || null;
   } else {
     if (def.tieneCodigo)      datos.codigo        = document.getElementById('param-item-codigo')?.value.trim().toUpperCase() || null;
     if (def.tieneArea)        datos.id_area       = parseInt(document.getElementById('param-item-area')?.value) || null;
-    if (def.tieneDescripcion) datos.descripcion   = document.getElementById('param-item-descripcion')?.value.trim() || null;
+    if (def.tieneDescripcion) datos[def.campoDescripcion || 'descripcion'] = document.getElementById('param-item-descripcion')?.value.trim() || null;
     if (def.tieneTipoSector)  datos.tipo_sector   = document.getElementById('param-item-tipo-sector')?.value || null;
     if (def.tieneCategoria)   datos.id_categoria  = parseInt(document.getElementById('param-item-categoria')?.value) || null;
-    if (def.tieneEmisor)      datos.id_empresa     = _empresaActiva?.id_empresa || null;
+    if (def.tieneEmisor)      datos.id_empresa    = _empresaActiva?.id_empresa || null;
+    if (!id)                  datos.id_empresa    = datos.id_empresa || _empresaActiva?.id_empresa || null;
   }
 
   try {
     if (id) {
-      await api(def.tabla, 'PATCH', datos, '?id=eq.' + id);
+      await api(def.tabla, 'PATCH', datos, '?' + def.pk + '=eq.' + id);
       okEl.textContent = '✓ Registro actualizado.';
     } else {
       await api(def.tabla, 'POST', datos);
@@ -551,7 +558,7 @@ async function cargarParamEmpleados() {
   if (Object.keys(_empParamCache).length > 0) return; // ya cargado
   try {
     const [areas, cargos, contratos, salarios, calculos, frecuencias,
-           niveles, civiles, sexos, bancos] = await Promise.all([
+           niveles, civiles, sexos, bancos, nivelesJer] = await Promise.all([
       api('param_areas',              'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
       api('param_cargos',             'GET', null, '?estado=eq.ACTIVO&order=nombre.asc'),
       api('param_tipos_contrato',     'GET', null, '?estado=eq.ACTIVO&order=nombre.asc'),
@@ -562,8 +569,9 @@ async function cargarParamEmpleados() {
       api('param_estados_civiles',    'GET', null, '?estado=eq.ACTIVO&order=nombre.asc'),
       api('param_sexos',              'GET', null, '?estado=eq.ACTIVO&order=nombre.asc'),
       api('param_bancos',             'GET', null, '?estado=eq.ACTIVO&order=nombre.asc'),
+      api('param_niveles_jerarquicos','GET', null, '?estado=eq.ACTIVO&order=nivel_jerarquicos.asc'),
     ]);
-    _empParamCache = { areas, cargos, contratos, salarios, calculos, frecuencias, niveles, civiles, sexos, bancos };
+    _empParamCache = { areas, cargos, contratos, salarios, calculos, frecuencias, niveles, civiles, sexos, bancos, nivelesJer };
   } catch(e) { console.error('Error cargando parámetros empleados:', e); }
 }
 
@@ -653,6 +661,15 @@ async function abrirEmpleado(id) {
     ? (p.cargos||[]).filter(function(c){ return c.id_area === e.id_area; })
     : (p.cargos||[]);
   document.getElementById('emp-cargo').innerHTML = selOpts(cargosDelArea, e?.id_cargo);
+  // Nivel Jerárquico
+  const selNivJer = document.getElementById('emp-nivel-jerarquico');
+  if (selNivJer) {
+    selNivJer.innerHTML = '<option value="">— Sin nivel asignado —</option>'
+      + (p.nivelesJer||[]).map(function(n) {
+          const label = n.nivel_jerarquicos + (n.descripcion_jerarquicos ? ' — ' + n.descripcion_jerarquicos : '');
+          return '<option value="' + n.id_jerarquicos + '"' + (e && e.id_nivel_jerarquico == n.id_jerarquicos ? ' selected' : '') + '>' + label + '</option>';
+        }).join('');
+  }
   document.getElementById('emp-contrato').innerHTML  = selOpts(p.contratos, e?.id_tipo_contrato);
   document.getElementById('emp-tipo-sal').innerHTML  = selOpts(p.salarios, e?.id_tipo_salario);
   document.getElementById('emp-calc-sal').innerHTML  = selOpts(p.calculos, e?.id_calculo_salario);
@@ -868,6 +885,7 @@ async function guardarEmpleado() {
     emergencia_telefono:document.getElementById('emp-emerg-tel').value.trim() || null,
     id_area:            parseInt(document.getElementById('emp-area').value) || null,
     id_cargo:           parseInt(document.getElementById('emp-cargo').value) || null,
+    id_nivel_jerarquico: parseInt(document.getElementById('emp-nivel-jerarquico')?.value) || null,
     id_tipo_contrato:   parseInt(document.getElementById('emp-contrato').value) || null,
     id_tipo_salario:    parseInt(document.getElementById('emp-tipo-sal').value) || null,
     id_calculo_salario: parseInt(document.getElementById('emp-calc-sal').value) || null,
@@ -1029,6 +1047,7 @@ async function verFichaEmpleado(id) {
     + '<div style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Empresa</div><div style="font-size:13px;font-weight:600;color:var(--naranja)">' + (e.emisores ? e.emisores.nombre : '—') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Área</div><div style="font-size:13px">' + getNombreCodigo(p.areas, e.id_area) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Cargo</div><div style="font-size:13px">' + getNombre(p.cargos, e.id_cargo) + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Nivel Jerárquico</div><div style="font-size:13px">' + (function() { var n = (p.nivelesJer||[]).find(function(x){ return x.id_jerarquicos == e.id_nivel_jerarquico; }); return n ? n.nivel_jerarquicos + (n.descripcion_jerarquicos ? ' — ' + n.descripcion_jerarquicos : '') : '—'; })() + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Tipo Contrato</div><div style="font-size:13px">' + getNombre(p.contratos, e.id_tipo_contrato) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Tipo Salario</div><div style="font-size:13px">' + getNombre(p.salarios, e.id_tipo_salario) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Cálculo Salario</div><div style="font-size:13px">' + getNombre(p.calculos, e.id_calculo_salario) + '</div></div>'
