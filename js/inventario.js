@@ -463,6 +463,12 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
 }
 
 
+// ── Alias para el botón Reversar en Historial de Salidas ──
+async function reversarSalida(id_salida, id_articulo, cantidad) {
+  await reversarMovimiento('SALIDA', id_salida, cantidad, id_articulo);
+}
+
+
 // ══════════════════════════════════════════════════════════════
 //  MÓDULO PROVEEDORES
 // ══════════════════════════════════════════════════════════════
