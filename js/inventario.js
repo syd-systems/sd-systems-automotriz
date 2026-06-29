@@ -87,7 +87,7 @@ async function recargarHistorial(id_articulo) {
             + '</td>'
             + '<td style="text-align:center;padding:8px 0">'
             + (!reversada
-                ? (esEntrada
+                ? (m.id_entrada
                     ? '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verFichaEntradaStock(' + m.id_entrada + ',' + m.id_articulo + ')">👁 Ver</button>'
                     : '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="editarMovimiento(\'SALIDA\',' + m.id_salida + ',' + m.id_articulo + ')">👁 Ver</button>')
                 : '<span style="color:var(--suave);font-size:11px">—</span>')
