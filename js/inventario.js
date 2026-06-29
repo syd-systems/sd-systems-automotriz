@@ -100,6 +100,16 @@ async function recargarHistorial(id_articulo) {
   }
 }
 
+function retornarDesdeEditMovimiento() {
+  const tipo = document.getElementById('edit-mov-tipo')?.value;
+  cerrarModal('modal-edit-movimiento');
+  if (tipo === 'ENTRADA' && _fichaInvActual && _fichaInvActual.id) {
+    // Entradas: volver al historial
+    verHistorialStock(_fichaInvActual.id, _fichaInvActual.nombre);
+  }
+  // Salidas y cualquier otro: quedar en Inventario General (no hace nada más)
+}
+
 async function verFichaEntradaStock(id_entrada, id_articulo) {
   // Verificar si existe CxP asociada y su estado de pago
   let estaPagado = false;
