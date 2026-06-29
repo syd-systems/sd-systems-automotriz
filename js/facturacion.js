@@ -1387,11 +1387,12 @@ async function _guardarSalidaStockInterno() {
     setTimeout(async function() {
       cerrarModal('modal-salida-stock');
       cerrarModal('modal-stock-articulo');
-      cerrarModal('modal-ficha-inv');
       if (typeof calcularInvSaldoArea === 'function') await calcularInvSaldoArea();
       if (typeof invRenderVista === 'function' && document.getElementById('tabla-inv-cont')) {
         invRenderVista(inventarioCache, _invVista);
       }
+      // Flujo 1: ir a Ficha ARTÍCULO
+      if (_fichaInvActual && _fichaInvActual.id) verFichaInventario(_fichaInvActual.id);
     }, 1500);
   } catch(err) {
     errEl.textContent = 'Error: ' + err.message;
