@@ -86,10 +86,10 @@ async function recargarHistorial(id_articulo) {
                 : '<span style="font-size:10px;color:#22c55e">Activa</span>')
             + '</td>'
             + '<td style="text-align:center;padding:8px 0">'
-            + (!reversada && (sesionActual?.administrador || puedo('INVENTARIO','EDITAR_STOCK'))
+            + (!reversada
                 ? (m.id_entrada
                     ? '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verFichaEntradaStock(' + m.id_entrada + ',' + m.id_articulo + ')">👁 Ver</button>'
-                    : '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="editarMovimiento(\'SALIDA\',' + m.id_salida + ',' + m.id_articulo + ')">👁 Ver</button>')
+                    : '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="editarMovimiento(\'SALIDA\',' + m.id_salida + ',' + m.id_articulo + ',' + (!sesionActual?.administrador && !puedo(\'INVENTARIO\',\'EDITAR_STOCK\') ? 'true' : 'false') + ')">👁 Ver</button>')
                 : '<span style="color:var(--suave);font-size:11px">—</span>')
             + '</td>'
             + '</tr>';
@@ -125,7 +125,8 @@ async function verFichaEntradaStock(id_entrada, id_articulo) {
     }
   } catch(e) { console.warn('verFichaEntradaStock CxP check:', e.message); }
 
-  await editarMovimiento('ENTRADA', id_entrada, id_articulo, estaPagado);
+  await editarMovimiento('ENTRADA', id_entrada, id_articulo,
+    estaPagado || (!sesionActual?.administrador && !puedo('INVENTARIO','EDITAR_STOCK')));
 }
 
 async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
