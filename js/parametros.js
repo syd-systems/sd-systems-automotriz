@@ -84,7 +84,8 @@ async function mostrarTablaParam(key) {
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
 
-    var query = key === 'areas' ? '?order=codigo.asc,nombre.asc&select=*' : '?order=nombre.asc&select=*';
+    var orderCampo = key === 'areas' ? 'codigo.asc,nombre.asc' : ((def.campoNombre || 'nombre') + '.asc');
+    var query = key === 'areas' ? '?order=codigo.asc,nombre.asc&select=*' : '?order=' + orderCampo + '&select=*';
     var items = await api(def.tabla, 'GET', null, query);
 
     // Para Cargos: ordenar por código jerárquico del área
