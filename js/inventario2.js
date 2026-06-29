@@ -408,6 +408,12 @@ async function verFichaInventario(id) {
   if (!r) return;
   _fichaInvActual = { id: r.id_articulo, nombre: r.nombre_articulo };
 
+  // Cerrar modales secundarios que puedan estar abiertos
+  ['modal-entrada-stock','modal-salida-stock','modal-historial-stock',
+   'modal-edit-movimiento','modal-stock-articulo'].forEach(function(m) {
+    cerrarModal(m);
+  });
+
   // ── GET fresco de BD para stock y costos actualizados ──
   try {
     var qs = '?id_articulo=eq.' + id + '&select=stock_actual_articulo,precio_costo_moneda,precio_costo_ultimo_moneda,precio_venta_moneda';
