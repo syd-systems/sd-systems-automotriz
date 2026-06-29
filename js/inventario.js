@@ -25,6 +25,11 @@ async function verHistorialStock(id_articulo, nombreArt) {
   elCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando historial...</div>';
   elId.value = id_articulo;
 
+  // Asegurar que _fichaInvActual esté seteado para el Retornar
+  if (!_fichaInvActual || !_fichaInvActual.id) {
+    _fichaInvActual = { id: id_articulo, nombre: nombreArt || '' };
+  }
+
   abrirModal('modal-historial-stock');
   focusFirstField('modal-historial-stock');
 
