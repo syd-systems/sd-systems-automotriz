@@ -1339,17 +1339,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260628037"></script>
-<script src="js/parametros.js?v=20260628037"></script>
-<script src="js/empresas.js?v=20260628037"></script>
-<script src="js/facturacion.js?v=20260628037"></script>
-<script src="js/inventario.js?v=20260628037"></script>
-<script src="js/contabilidad.js?v=20260628037"></script>
-<script src="js/pagos.js?v=20260628037"></script>
-<script src="js/vehiculos.js?v=20260628037"></script>
-<script src="js/catalogo.js?v=20260628037"></script>
-<script src="js/inventario2.js?v=20260628037"></script>
-<script src="js/ordenes.js?v=20260628037"></script>
+<script src="js/core.js?v=20260628038"></script>
+<script src="js/parametros.js?v=20260628038"></script>
+<script src="js/empresas.js?v=20260628038"></script>
+<script src="js/facturacion.js?v=20260628038"></script>
+<script src="js/inventario.js?v=20260628038"></script>
+<script src="js/contabilidad.js?v=20260628038"></script>
+<script src="js/pagos.js?v=20260628038"></script>
+<script src="js/vehiculos.js?v=20260628038"></script>
+<script src="js/catalogo.js?v=20260628038"></script>
+<script src="js/inventario2.js?v=20260628038"></script>
+<script src="js/ordenes.js?v=20260628038"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2441,14 +2441,14 @@
           <span>Salida</span>
         </button>
         <button id="stock-btn-historial" class="btn-secundario" style="padding:16px 8px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px"
-          onclick="verHistorialStock(_fichaInvActual.id,_fichaInvActual.nombre)">
+          onclick="cerrarModal('modal-stock-articulo'); verHistorialStock(_fichaInvActual.id,_fichaInvActual.nombre)">
           <span style="font-size:22px">📋</span>
           <span>Historial</span>
         </button>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secundario" onclick="cerrarModal('modal-stock-articulo')">Retornar</button>
+      <button class="btn-secundario" onclick="cerrarModal('modal-stock-articulo'); if(_fichaInvActual&&_fichaInvActual.id) verFichaInventario(_fichaInvActual.id)">Retornar</button>
     </div>
   </div>
 </div>
