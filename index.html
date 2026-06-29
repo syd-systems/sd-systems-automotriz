@@ -1339,17 +1339,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260628036"></script>
-<script src="js/parametros.js?v=20260628036"></script>
-<script src="js/empresas.js?v=20260628036"></script>
-<script src="js/facturacion.js?v=20260628036"></script>
-<script src="js/inventario.js?v=20260628036"></script>
-<script src="js/contabilidad.js?v=20260628036"></script>
-<script src="js/pagos.js?v=20260628036"></script>
-<script src="js/vehiculos.js?v=20260628036"></script>
-<script src="js/catalogo.js?v=20260628036"></script>
-<script src="js/inventario2.js?v=20260628036"></script>
-<script src="js/ordenes.js?v=20260628036"></script>
+<script src="js/core.js?v=20260628037"></script>
+<script src="js/parametros.js?v=20260628037"></script>
+<script src="js/empresas.js?v=20260628037"></script>
+<script src="js/facturacion.js?v=20260628037"></script>
+<script src="js/inventario.js?v=20260628037"></script>
+<script src="js/contabilidad.js?v=20260628037"></script>
+<script src="js/pagos.js?v=20260628037"></script>
+<script src="js/vehiculos.js?v=20260628037"></script>
+<script src="js/catalogo.js?v=20260628037"></script>
+<script src="js/inventario2.js?v=20260628037"></script>
+<script src="js/ordenes.js?v=20260628037"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2621,7 +2621,7 @@
   <div class="modal" style="max-width:560px">
     <div class="modal-header">
       <h3 id="modal-inv-titulo">NUEVO ARTICULO</h3>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-inventario')">✕</button>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-inventario'); renderInventario()">✕</button>
     </div>
     <div class="modal-body">
 
@@ -2730,7 +2730,7 @@
       <div class="alerta alerta-exito" id="alerta-inv-ok" style="margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-inv-err" style="margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        <button class="btn-secundario" onclick="cerrarModal('modal-inventario')">Retornar</button>
+        <button class="btn-secundario" onclick="cerrarModal('modal-inventario'); renderInventario()">Retornar</button>
         <button class="btn-primario" onclick="guardarInventario()">GUARDAR</button>
       </div>
     </div>
@@ -3697,7 +3697,7 @@
   <div class="modal" style="max-width:520px">
     <div class="modal-header">
       <h3>ARTICULO</h3>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-inv')">✕</button>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-inv'); renderInventario()">✕</button>
     </div>
     <div class="modal-body" id="ficha-inv-contenido"></div>
     <div id="ficha-inv-historial" style="padding:0 24px 8px"></div>
@@ -3706,7 +3706,7 @@
     <div class="modal-footer">
       <button class="btn-secundario" id="ficha-inv-btn-eliminar" style="display:none;color:#fc8181;border-color:rgba(252,129,129,0.4)">🗑 Eliminar</button>
       <button class="btn-secundario" id="ficha-inv-btn-editar">✏ Editar</button>
-      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-inv')">Retornar</button>
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-inv'); renderInventario()">Retornar</button>
     </div>
   </div>
 </div>
