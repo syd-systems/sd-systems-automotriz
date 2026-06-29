@@ -313,13 +313,14 @@ async function guardarEdicionMovimiento() {
           if (i !== -1) inventarioCache[i] = fresh[0];
         }
       } catch(e) {}
-      // Refrescar saldo de área y tabla principal
+      // Refrescar tabla principal en background
       await calcularInvSaldoArea();
-      if (document.getElementById('tabla-inv-cont')) {
-        invRenderVista(inventarioCache, _invVista);
-      }
+      if (document.getElementById('tabla-inv-cont')) invRenderVista(inventarioCache, _invVista);
+      // Regresar al historial del artículo
       cerrarModal('modal-edit-movimiento');
-      regresarAFichaInv();
+      if (_fichaInvActual && _fichaInvActual.id) {
+        verHistorialStock(_fichaInvActual.id, _fichaInvActual.nombre);
+      }
     }, 900);
   } catch(err) { errEl.textContent = 'Error: ' + err.message; errEl.style.display = 'block'; }
 }
