@@ -1339,17 +1339,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260628033"></script>
-<script src="js/parametros.js?v=20260628033"></script>
-<script src="js/empresas.js?v=20260628033"></script>
-<script src="js/facturacion.js?v=20260628033"></script>
-<script src="js/inventario.js?v=20260628033"></script>
-<script src="js/contabilidad.js?v=20260628033"></script>
-<script src="js/pagos.js?v=20260628033"></script>
-<script src="js/vehiculos.js?v=20260628033"></script>
-<script src="js/catalogo.js?v=20260628033"></script>
-<script src="js/inventario2.js?v=20260628033"></script>
-<script src="js/ordenes.js?v=20260628033"></script>
+<script src="js/core.js?v=20260628034"></script>
+<script src="js/parametros.js?v=20260628034"></script>
+<script src="js/empresas.js?v=20260628034"></script>
+<script src="js/facturacion.js?v=20260628034"></script>
+<script src="js/inventario.js?v=20260628034"></script>
+<script src="js/contabilidad.js?v=20260628034"></script>
+<script src="js/pagos.js?v=20260628034"></script>
+<script src="js/vehiculos.js?v=20260628034"></script>
+<script src="js/catalogo.js?v=20260628034"></script>
+<script src="js/inventario2.js?v=20260628034"></script>
+<script src="js/ordenes.js?v=20260628034"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2457,7 +2457,7 @@
   <div class="modal" style="max-width:780px">
     <div class="modal-header">
       <h3>ENTRADA DE STOCK</h3>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-entrada-stock'); regresarAFichaInv()">✕</button>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-entrada-stock'); if(_fichaInvActual&&_fichaInvActual.id) abrirModal('modal-stock-articulo')">✕</button>
     </div>
     <div class="modal-body">
 
@@ -2610,7 +2610,7 @@
       <div class="alerta alerta-exito" id="alerta-es-ok" style="display:none;margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-es-err" style="display:none;margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        <button class="btn-secundario" onclick="cerrarModal('modal-entrada-stock'); regresarAFichaInv()">Retornar</button>
+        <button class="btn-secundario" onclick="cerrarModal('modal-entrada-stock'); if(_fichaInvActual&&_fichaInvActual.id) abrirModal('modal-stock-articulo')">Retornar</button>
         <button class="btn-primario" onclick="guardarEntradaStock()">INGRESAR STOCK</button>
       </div>
     </div>
@@ -3615,7 +3615,7 @@
   <div class="modal" style="max-width:640px">
     <div class="modal-header">
       <h3>SALIDA DE STOCK</h3>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-salida-stock'); regresarAFichaInv()">✕</button>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-salida-stock'); if(_fichaInvActual&&_fichaInvActual.id) abrirModal('modal-stock-articulo')">✕</button>
     </div>
     <div class="modal-body">
       <!-- Artículo -->
@@ -3683,7 +3683,7 @@
       <div class="alerta alerta-exito" id="alerta-salida-ok" style="margin:0"></div>
       <div class="alerta alerta-error"  id="alerta-salida-err" style="margin:0"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button class="btn-secundario" onclick="cerrarModal('modal-salida-stock'); regresarAFichaInv()">Retornar</button>
+        <button class="btn-secundario" onclick="cerrarModal('modal-salida-stock'); if(_fichaInvActual&&_fichaInvActual.id) abrirModal('modal-stock-articulo')">Retornar</button>
         <button class="btn-peligro"    onclick="guardarSalidaStock()">Registrar Salida</button>
       </div>
     </div>
