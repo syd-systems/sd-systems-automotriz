@@ -106,11 +106,12 @@ async function recargarHistorial(id_articulo) {
                 : '<span style="font-size:10px;color:#22c55e">Activa</span>')
             + '</td>'
             + '<td style="text-align:center;padding:8px 0">'
-            + (!reversada
-                ? (m.id_entrada
-                    ? '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verFichaEntradaStock(' + m.id_entrada + ',' + m.id_articulo + ')">👁 Ver</button>'
-                    : '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="editarMovimiento(\'SALIDA\',' + m.id_salida + ',' + m.id_articulo + ',' + (!sesionActual?.administrador && !puedo(\'INVENTARIO\',\'EDITAR_STOCK\') ? 'true' : 'false') + ')">👁 Ver</button>')
-                : '<span style="color:var(--suave);font-size:11px">—</span>')
+            + (function() {
+                if (reversada) return '<span style="color:var(--suave);font-size:11px">—</span>';
+                const soloLec = (!sesionActual?.administrador && !puedo('INVENTARIO','EDITAR_STOCK')) ? 'true' : 'false';
+                if (m.id_entrada) return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verFichaEntradaStock(' + m.id_entrada + ',' + m.id_articulo + ')">👁 Ver</button>';
+                return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="editarMovimiento(\'SALIDA\',' + m.id_salida + ',' + m.id_articulo + ',' + soloLec + ')">👁 Ver</button>';
+              })()
             + '</td>'
             + '</tr>';
         }).join('')
