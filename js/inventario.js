@@ -127,13 +127,11 @@ async function recargarHistorial(id_articulo) {
 }
 
 function retornarDesdeEditMovimiento() {
-  const tipo = document.getElementById('edit-mov-tipo')?.value;
   cerrarModal('modal-edit-movimiento');
-  if (tipo === 'ENTRADA' && _fichaInvActual && _fichaInvActual.id) {
-    // Entradas: volver al historial
+  // Flujo 3: siempre volver al Historial de Movimientos
+  if (_fichaInvActual && _fichaInvActual.id) {
     verHistorialStock(_fichaInvActual.id, _fichaInvActual.nombre);
   }
-  // Salidas y cualquier otro: quedar en Inventario General (no hace nada más)
 }
 
 async function verFichaEntradaStock(id_entrada, id_articulo) {
