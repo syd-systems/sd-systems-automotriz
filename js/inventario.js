@@ -10,14 +10,30 @@ async function verHistorialStock(id_articulo, nombreArt) {
     || puedo('INVENTARIO','SALIDA_STOCK');
   if (!tieneAcceso) { alert('No tiene permiso.'); return; }
 
-  document.getElementById('historial-art-nombre').textContent = nombreArt;
-  document.getElementById('historial-contenido').innerHTML =
-    '<div class="loading"><div class="spinner"></div> Cargando historial...</div>';
-  document.getElementById('historial-id-articulo').value = id_articulo;
+  console.log('[SYD] verHistorialStock id:', id_articulo, 'nombre:', nombreArt);
+
+  const elNombre = document.getElementById('historial-art-nombre');
+  const elCont   = document.getElementById('historial-contenido');
+  const elId     = document.getElementById('historial-id-articulo');
+
+  if (!elNombre || !elCont || !elId) {
+    console.error('[SYD] verHistorialStock: elementos del modal no encontrados');
+    return;
+  }
+
+  elNombre.textContent = nombreArt || '—';
+  elCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando historial...</div>';
+  elId.value = id_articulo;
 
   abrirModal('modal-historial-stock');
   focusFirstField('modal-historial-stock');
-  await recargarHistorial(id_articulo);
+
+  try {
+    await recargarHistorial(id_articulo);
+  } catch(e) {
+    console.error('[SYD] recargarHistorial error:', e.message);
+    elCont.innerHTML = '<div style="color:#fc8181;padding:16px">Error: ' + e.message + '</div>';
+  }
 }
 
 async function recargarHistorial(id_articulo) {
