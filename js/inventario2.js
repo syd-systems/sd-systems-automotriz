@@ -549,9 +549,9 @@ async function abrirEntradaStock(id) {
   document.getElementById('es-stock-actual').textContent = (r.stock_actual_articulo || 0) + ' ' + (r.unidad || 'UND');
   document.getElementById('es-cantidad').value = '';
   document.getElementById('es-precio-costo').value = '0.00';
-  document.getElementById('es-motivo').value = 'compra';
+  document.getElementById('es-motivo').value = '';
+  if (document.getElementById('es-esquema-pago')) document.getElementById('es-esquema-pago').value = '';
   if (document.getElementById('es-fecha-negociacion')) document.getElementById('es-fecha-negociacion').value = getHoyVzla();
-  if (document.getElementById('es-referencia')) document.getElementById('es-referencia').value = '';
   document.getElementById('es-precio-venta').value = r.precio_venta_moneda || '';
   var esVentaCont = document.getElementById('es-precio-venta-cont');
   if (esVentaCont) esVentaCont.style.display = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? '' : 'none';
@@ -599,7 +599,7 @@ async function abrirEntradaStock(id) {
   }).catch(function(){});
   abrirModal('modal-entrada-stock');
   focusFirstField('modal-entrada-stock');
-  setTimeout(function() { document.getElementById('es-fecha-negociacion').focus(); }, 100);
+  setTimeout(function() { document.getElementById('es-cantidad').focus(); }, 100);
 }
 
 // ── Esquema de Pago — Entrada de Stock ──
