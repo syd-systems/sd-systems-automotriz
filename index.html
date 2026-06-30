@@ -1341,17 +1341,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260628067"></script>
-<script src="js/parametros.js?v=20260628067"></script>
-<script src="js/empresas.js?v=20260628067"></script>
-<script src="js/facturacion.js?v=20260628067"></script>
-<script src="js/inventario.js?v=20260628067"></script>
-<script src="js/contabilidad.js?v=20260628067"></script>
-<script src="js/pagos.js?v=20260628067"></script>
-<script src="js/vehiculos.js?v=20260628067"></script>
-<script src="js/catalogo.js?v=20260628067"></script>
-<script src="js/inventario2.js?v=20260628067"></script>
-<script src="js/ordenes.js?v=20260628067"></script>
+<script src="js/core.js?v=20260628068"></script>
+<script src="js/parametros.js?v=20260628068"></script>
+<script src="js/empresas.js?v=20260628068"></script>
+<script src="js/facturacion.js?v=20260628068"></script>
+<script src="js/inventario.js?v=20260628068"></script>
+<script src="js/contabilidad.js?v=20260628068"></script>
+<script src="js/pagos.js?v=20260628068"></script>
+<script src="js/vehiculos.js?v=20260628068"></script>
+<script src="js/catalogo.js?v=20260628068"></script>
+<script src="js/inventario2.js?v=20260628068"></script>
+<script src="js/ordenes.js?v=20260628068"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2478,27 +2478,27 @@
       <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
         <div class="form-campo">
           <label>Fecha Negociación</label>
-          <input type="date" id="es-fecha-negociacion" onchange="onCambiarFechaNegociacionEntrada()" tabindex="1"
+          <input type="date" id="es-fecha-negociacion" onchange="onCambiarFechaNegociacionEntrada()"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 10px;border-radius:5px;outline:none;width:100%;color-scheme:dark">
         </div>
         <div class="form-campo">
           <label>Moneda Negociación</label>
-          <select id="es-moneda-compra" onchange="onCambiarMonedaEntrada()" tabindex="2"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;white-space:nowrap">
-            <option value="" style="color:var(--suave)">— Seleccione moneda —</option>
+          <select id="es-moneda-compra" onchange="onCambiarMonedaEntrada()"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccione moneda —</option>
             <option value="USD">USD — Dólar</option>
             <option value="VES">VES — Bolívar</option>
           </select>
         </div>
         <div class="form-campo">
           <label>Cantidad</label>
-          <input type="number" id="es-cantidad" placeholder="0" min="0.01" step="0.01" tabindex="3"
+          <input type="number" id="es-cantidad" placeholder="0" min="0.01" step="0.01"
             style="font-size:15px;font-family:var(--font-mono);text-align:center;color:var(--naranja)"
             onkeydown="if(event.key==='Enter'){document.getElementById('es-precio-costo').focus()}">
         </div>
         <div class="form-campo">
           <label>Precio Negociación <span id="es-label-moneda-compra" style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span></label>
-          <input type="number" id="es-precio-costo" placeholder="0.00" min="0" step="0.01" value="0.00" tabindex="4"
+          <input type="number" id="es-precio-costo" placeholder="0.00" min="0" step="0.01" value="0.00"
             style="font-family:var(--font-mono)"
             oninput="onCambiarPrecioEntrada()"
             onblur="this.value=parseFloat(this.value||0).toFixed(2)"
@@ -2507,7 +2507,7 @@
         </div>
         <div class="form-campo" id="es-precio-venta-cont">
           <label>Precio Venta <span id="es-label-moneda-venta" style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span></label>
-          <input type="number" id="es-precio-venta" placeholder="0.00" min="0" step="0.01" tabindex="5"
+          <input type="number" id="es-precio-venta" placeholder="0.00" min="0" step="0.01"
             style="font-family:var(--font-mono)">
           <div style="font-size:10px;color:var(--suave);margin-top:4px">Blanco = mantiene precio actual</div>
         </div>
