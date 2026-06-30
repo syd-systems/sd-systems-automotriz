@@ -1341,17 +1341,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260628066"></script>
-<script src="js/parametros.js?v=20260628066"></script>
-<script src="js/empresas.js?v=20260628066"></script>
-<script src="js/facturacion.js?v=20260628066"></script>
-<script src="js/inventario.js?v=20260628066"></script>
-<script src="js/contabilidad.js?v=20260628066"></script>
-<script src="js/pagos.js?v=20260628066"></script>
-<script src="js/vehiculos.js?v=20260628066"></script>
-<script src="js/catalogo.js?v=20260628066"></script>
-<script src="js/inventario2.js?v=20260628066"></script>
-<script src="js/ordenes.js?v=20260628066"></script>
+<script src="js/core.js?v=20260628067"></script>
+<script src="js/parametros.js?v=20260628067"></script>
+<script src="js/empresas.js?v=20260628067"></script>
+<script src="js/facturacion.js?v=20260628067"></script>
+<script src="js/inventario.js?v=20260628067"></script>
+<script src="js/contabilidad.js?v=20260628067"></script>
+<script src="js/pagos.js?v=20260628067"></script>
+<script src="js/vehiculos.js?v=20260628067"></script>
+<script src="js/catalogo.js?v=20260628067"></script>
+<script src="js/inventario2.js?v=20260628067"></script>
+<script src="js/ordenes.js?v=20260628067"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2485,7 +2485,7 @@
           <label>Moneda Negociación</label>
           <select id="es-moneda-compra" onchange="onCambiarMonedaEntrada()" tabindex="2"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;white-space:nowrap">
-            <option value="" disabled selected>Seleccione moneda</option>
+            <option value="" style="color:var(--suave)">— Seleccione moneda —</option>
             <option value="USD">USD — Dólar</option>
             <option value="VES">VES — Bolívar</option>
           </select>
@@ -2530,7 +2530,7 @@
         <div class="form-campo form-full" style="grid-column:1/-1">
           <label>Transacción</label>
           <select id="es-motivo" onchange="onCambiarMotivoEntrada()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
-            <option value="" disabled selected>Seleccione transacción</option>
+            <option value="" style="color:var(--suave)">— Seleccione transacción —</option>
             <option value="compra">Compra a proveedor</option>
             <option value="devolucion">Devolución de cliente</option>
             <option value="ajuste">Ajuste de inventario</option>
@@ -2559,7 +2559,7 @@
       <div class="form-campo">
         <label>Modalidad de Pago *</label>
         <select id="es-esquema-pago" onchange="onCambioEsquemaPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-          <option value="" disabled selected>Seleccione pago</option>
+          <option value="" style="color:var(--suave)">— Seleccione pago —</option>
           <option value="CONTADO">Contado</option>
           <option value="CREDITO">Crédito</option>
         </select>
