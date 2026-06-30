@@ -317,6 +317,52 @@ async function guardarEdicionMovimiento() {
 
         await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + id_articulo);
       }
+
+      // ── Corregir asiento contable si cambió el precio o la cantidad ──
+      try {
+        const ref = 'ENT-' + id;
+        const asientos = await api('cont_asientos', 'GET', null,
+          '?referencia=eq.' + ref + emisorQ() + '&estado=neq.ANULADO&select=id_asiento,tasa_bcv');
+        if (asientos && asientos.length) {
+          const idAst    = asientos[0].id_asiento;
+          const tasaAst  = parseFloat(asientos[0].tasa_bcv) || 1;
+          const nuevoPrecioFinal = precio !== null && !isNaN(precio) ? precio : parseFloat(art?.precio_costo_moneda || 0);
+          const montoUSD = parseFloat((cantidad * nuevoPrecioFinal).toFixed(2));
+          const montoVES = parseFloat((montoUSD * tasaAst).toFixed(2));
+
+          const lineas = await api('cont_asiento_lineas', 'GET', null,
+            '?id_asiento=eq.' + idAst + '&order=orden.asc&select=id_linea,debe_usd,haber_usd,debe_ves,haber_ves,orden');
+
+          for (const linea of (lineas || [])) {
+            const patchLinea = {};
+            if (parseFloat(linea.debe_usd)  > 0) patchLinea.debe_usd  = montoUSD;
+            if (parseFloat(linea.haber_usd) > 0) patchLinea.haber_usd = montoUSD;
+            if (parseFloat(linea.debe_ves)  > 0) patchLinea.debe_ves  = montoVES;
+            if (parseFloat(linea.haber_ves) > 0) patchLinea.haber_ves = montoVES;
+            if (Object.keys(patchLinea).length) {
+              await api('cont_asiento_lineas', 'PATCH', patchLinea, '?id_linea=eq.' + linea.id_linea);
+            }
+          }
+          await api('cont_asientos', 'PATCH',
+            { descripcion: 'Compra Inventario (editado): ' + (r?.nombre_articulo || '') },
+            '?id_asiento=eq.' + idAst);
+        }
+      } catch(eAstEdit) { console.warn('Error corrigiendo asiento al editar entrada:', eAstEdit); }
+
+      // ── Corregir CxP asociada si cambió el monto ──
+      try {
+        const numDoc = 'ENT-' + id;
+        const cxps = await api('cont_cxp', 'GET', null,
+          '?numero_doc=like.' + encodeURIComponent(numDoc) + '%' + emisorQ() + '&estado=eq.PENDIENTE&select=id_cxp,monto_usd,saldo_usd,monto_pagado_usd');
+        if (cxps && cxps.length === 1) {
+          const nuevoPrecioFinal2 = precio !== null && !isNaN(precio) ? precio : parseFloat(art?.precio_costo_moneda || 0);
+          const nuevoMontoUSD = parseFloat((cantidad * nuevoPrecioFinal2).toFixed(2));
+          const pagadoUSD     = parseFloat(cxps[0].monto_pagado_usd || 0);
+          await api('cont_cxp', 'PATCH',
+            { monto_usd: nuevoMontoUSD, saldo_usd: parseFloat((nuevoMontoUSD - pagadoUSD).toFixed(2)) },
+            '?id_cxp=eq.' + cxps[0].id_cxp);
+        }
+      } catch(eCxPEdit) { console.warn('Error corrigiendo CxP al editar entrada:', eCxPEdit); }
     } else {
       // ── Leer cantidad original y stock ANTES de parchear ──
       const [movOrigArr, artArr] = await Promise.all([
