@@ -890,7 +890,7 @@ async function guardarEntradaStock() {
         var astT = await api('cont_asientos','POST',{
           id_empresa: sesionActual?.id_empresa||_empresaActiva?.id_empresa||0,
           numero_asiento: numAstT, tipo: 'CONSUMO_INVENTARIO',
-          fecha: getHoyVzla(),
+          fecha: document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
           descripcion: 'Consumo inventario: ' + (r.nombre_articulo||'') + ' x' + cantidad + ' — Transfer a: ' + (document.getElementById('es-area-display')?.textContent||''),
           referencia: id_entrada ? 'ENT-' + id_entrada : 'TRANSF-'+id,
           estado: 'APROBADO', moneda_base: 'VES', tasa_bcv: tasaPromedio,
@@ -923,7 +923,8 @@ async function guardarEntradaStock() {
         areaId:     id_areaEnt,
         areaNombre: areaNombreEnt,
         referencia: id_entrada ? 'ENT-' + id_entrada : ('ENT-INV-' + id),
-        id_cuentaInventario: r.id_cuenta_contable || null
+        id_cuentaInventario: r.id_cuenta_contable || null,
+        fecha:      document.getElementById('es-fecha-negociacion')?.value || getHoyVzla()
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
 
@@ -936,7 +937,7 @@ async function guardarEntradaStock() {
         const esquema     = document.getElementById('es-esquema-pago')?.value || 'CONTADO';
         const numDocBase  = id_entrada ? 'ENT-' + id_entrada : ('ENT-INV-' + id);
         const artNomCxP   = r.nombre_articulo || r.codigo_articulo || 'Art#'+id;
-        const hoy         = new Date().toISOString().split('T')[0];
+        const fechaNegCxP = document.getElementById('es-fecha-negociacion')?.value || getHoyVzla();
 
         if (esquema === 'CONTADO') {
           // Una sola CxP — contado
@@ -945,8 +946,8 @@ async function guardarEntradaStock() {
             id_empresa:     _empresaActiva?.id_empresa || null,
             tipo:          'COMPRA_ARTICULO',
             numero_doc:    numDocBase,
-            fecha_emision: hoy,
-            fecha_vencimiento: hoy,
+            fecha_emision: fechaNegCxP,
+            fecha_vencimiento: fechaNegCxP,
             moneda_pago:   monedaCompra || 'USD',
             estado:        'PENDIENTE',
             monto_usd:     montoUSD,
