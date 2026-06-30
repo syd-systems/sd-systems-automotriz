@@ -548,10 +548,13 @@ async function abrirEntradaStock(id) {
   document.getElementById('es-nombre').textContent = r.nombre_articulo;
   document.getElementById('es-stock-actual').textContent = (r.stock_actual_articulo || 0) + ' ' + (r.unidad || 'UND');
   document.getElementById('es-cantidad').value = '';
-  if (document.getElementById('es-moneda-compra'))  document.getElementById('es-moneda-compra').value  = '';
+  var selMoneda = document.getElementById('es-moneda-compra');
+  if (selMoneda) selMoneda.selectedIndex = 0;
   document.getElementById('es-precio-costo').value = '0.00';
-  document.getElementById('es-motivo').value = '';
-  if (document.getElementById('es-esquema-pago')) document.getElementById('es-esquema-pago').value = '';
+  var selMotivo = document.getElementById('es-motivo');
+  if (selMotivo) selMotivo.selectedIndex = 0;
+  var selPago = document.getElementById('es-esquema-pago');
+  if (selPago) selPago.selectedIndex = 0;
   if (document.getElementById('es-fecha-negociacion')) document.getElementById('es-fecha-negociacion').value = getHoyVzla();
   document.getElementById('es-precio-venta').value = r.precio_venta_moneda || '';
   var esVentaCont = document.getElementById('es-precio-venta-cont');
