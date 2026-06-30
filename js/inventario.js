@@ -262,7 +262,27 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     }
     const selPago = document.getElementById('edit-mov-esquema-pago');
     if (selPago) selPago.value = esquemaPago;
-  }
+
+    // Mostrar Condiciones de Crédito si aplica
+    const creditoCont = document.getElementById('edit-mov-credito-cont');
+    if (creditoCont) creditoCont.style.display = esquemaPago === 'CREDITO' ? '' : 'none';
+    if (esquemaPago === 'CREDITO') {
+      try {
+        const cuotasExist = await api('cont_cxp', 'GET', null,
+          '?numero_doc=like.' + encodeURIComponent('ENT-' + idMovimiento) + '%' + emisorQ()
+          + '&order=fecha_vencimiento.asc&select=monto_usd,fecha_vencimiento');
+        if (cuotasExist && cuotasExist.length > 0) {
+          const numEl   = document.getElementById('edit-mov-cuotas-num');
+          const fechaEl = document.getElementById('edit-mov-cuotas-fecha');
+          const montoEl = document.getElementById('edit-mov-cuotas-monto');
+          if (numEl)   numEl.value   = cuotasExist.length;
+          if (fechaEl) fechaEl.value = cuotasExist[0].fecha_vencimiento?.slice(0,10) || '';
+          if (montoEl) montoEl.value = parseFloat(cuotasExist[0].monto_usd || 0).toFixed(2);
+          calcularCuotasEdit();
+        }
+      } catch(e) {}
+    }
+  }  // fin if (esEntrada)
 
   // Área receptora
   const selArea = document.getElementById('edit-mov-area');
@@ -509,6 +529,79 @@ async function guardarEdicionMovimiento() {
   }
 }
 
+
+function onCambioEsquemaPagoEdit() {
+  const esquema = document.getElementById('edit-mov-esquema-pago')?.value;
+  const cont    = document.getElementById('edit-mov-credito-cont');
+  if (cont) cont.style.display = esquema === 'CREDITO' ? '' : 'none';
+  if (esquema === 'CREDITO') calcularCuotasEdit();
+}
+
+function calcularCuotasEdit() {
+  const numCuotas   = parseInt(document.getElementById('edit-mov-cuotas-num')?.value) || 0;
+  const fechaInicio = document.getElementById('edit-mov-cuotas-fecha')?.value || '';
+  const intervalo   = parseInt(document.getElementById('edit-mov-cuotas-intervalo')?.value) || 30;
+  const precio      = parseFloat(document.getElementById('edit-mov-precio')?.value) || 0;
+  const cantidad    = parseFloat(document.getElementById('edit-mov-cantidad')?.value) || 0;
+  const totalUSD    = parseFloat((precio * cantidad).toFixed(2));
+  const preview     = document.getElementById('edit-mov-cuotas-preview');
+  if (!preview) return;
+
+  if (!numCuotas || !fechaInicio) { preview.innerHTML = ''; return; }
+
+  const montoCuotaInput = parseFloat(document.getElementById('edit-mov-cuotas-monto')?.value) || 0;
+  const montoCuota = montoCuotaInput > 0 ? montoCuotaInput : parseFloat((totalUSD / numCuotas).toFixed(2));
+
+  const montoEl = document.getElementById('edit-mov-cuotas-monto');
+  if (montoEl && !montoEl.value && totalUSD > 0) montoEl.value = montoCuota;
+
+  function ajustarHabilLunes(d) {
+    var dia = d.getDay();
+    if (dia === 6) d.setDate(d.getDate() + 2);
+    if (dia === 0) d.setDate(d.getDate() + 1);
+    return d;
+  }
+
+  const cuotas = [];
+  let fecha = ajustarHabilLunes(new Date(fechaInicio + 'T00:00:00'));
+  for (let i = 0; i < numCuotas; i++) {
+    if (i > 0) {
+      fecha = ajustarHabilLunes(new Date(new Date(cuotas[i-1].fecha + 'T00:00:00').setDate(
+        new Date(cuotas[i-1].fecha + 'T00:00:00').getDate() + intervalo
+      )));
+    }
+    cuotas.push({
+      num:   i + 1,
+      fecha: fecha.toISOString().split('T')[0],
+      monto: i === numCuotas - 1
+        ? parseFloat((totalUSD - montoCuota * (numCuotas - 1)).toFixed(2))
+        : montoCuota
+    });
+  }
+
+  const total = cuotas.reduce(function(s,c){ return s + c.monto; }, 0);
+  const diff  = parseFloat((totalUSD - total).toFixed(2));
+
+  preview.innerHTML =
+    '<div style="font-size:11px;color:var(--suave);margin-bottom:8px">Vista previa — Total: $ '+fmtUSD(total)
+    +(diff !== 0 ? ' <span style="color:#fc8181">(diferencia: $ '+fmtUSD(Math.abs(diff))+')</span>' : ' <span style="color:#22c55e">✓</span>')+'</div>'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'
+    +'<th style="padding:6px 8px;text-align:left;color:var(--suave);font-size:10px">Cuota</th>'
+    +'<th style="padding:6px 8px;text-align:left;color:var(--suave);font-size:10px">Fecha Vencimiento</th>'
+    +'<th style="padding:6px 8px;text-align:right;color:var(--suave);font-size:10px">Monto USD</th>'
+    +'</tr></thead><tbody>'
+    + cuotas.map(function(c) {
+        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+          +'<td style="padding:6px 8px;font-weight:600">Cuota '+c.num+'</td>'
+          +'<td style="padding:6px 8px;font-family:var(--font-mono)">'+c.fecha+'</td>'
+          +'<td style="padding:6px 8px;text-align:right;font-family:var(--font-mono)">$ '+fmtUSD(c.monto)+'</td>'
+          +'</tr>';
+      }).join('')
+    +'</tbody></table></div>';
+
+  // Guardar cuotas en dataset para usarlas al guardar
+  preview.dataset.cuotas = JSON.stringify(cuotas);
+}
 
 // ── Abre el modal de reverso con datos del movimiento ──
 async function reversarMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
