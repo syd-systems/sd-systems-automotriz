@@ -1327,7 +1327,7 @@ async function invRenderCategorias(cont) {
 
 async function invAbrirCategoria(id) {
   let item = null;
-  if (id) { const r = await api('inv_categorias','GET',null,'?id=eq.'+id)||[]; item=r[0]||null; }
+  if (id) { const r = await api('inv_categorias','GET',null,'?id_categoria=eq.'+id)||[]; item=r[0]||null; }
   const html = '<div class="form-grid">'
     +'<div class="form-campo"><label>Código</label><input type="text" id="icat-codigo" value="'+(item?.codigo||'')+'" placeholder="Ej: CAT-01" style="text-transform:uppercase"></div>'
     +'<div class="form-campo form-full"><label>Nombre *</label><input type="text" id="icat-nombre" value="'+(item?.nombre||'')+'" placeholder="Nombre de la categoría"></div>'
@@ -1355,7 +1355,7 @@ async function invGuardarCategoria() {
     codigo:document.getElementById('icat-codigo')?.value.trim().toUpperCase()||null,
     descripcion:document.getElementById('icat-desc')?.value.trim()||null, id_empresa:_empresaActiva?.id_empresa||null };
   try {
-    if (id) await api('inv_categorias','PATCH',datos,'?id=eq.'+id);
+    if (id) await api('inv_categorias','PATCH',datos,'?id_categoria=eq.'+id);
     else    await api('inv_categorias','POST',datos);
     _invCategoriasCache=[];
     okEl.textContent='✓ Categoría '+(id?'actualizada':'creada')+'.'; okEl.style.display='block';
@@ -1404,7 +1404,7 @@ async function invRenderTipos(cont) {
 async function invAbrirTipo(id) {
   const id_emisor = _empresaActiva?.id_empresa || 0;
   let item = null;
-  if (id) { const r=await api('inv_articulos_tipo','GET',null,'?id=eq.'+id)||[]; item=r[0]||null; }
+  if (id) { const r=await api('inv_articulos_tipo','GET',null,'?id_tipo=eq.'+id)||[]; item=r[0]||null; }
   const cats = await api('inv_categorias','GET',null,'?estado=eq.ACTIVO&id_empresa=eq.'+id_emisor+'&order=nombre.asc')||[];
   const opcCats = cats.map(function(c) {
     return '<option value="'+c.id_categoria+'"'+(item?.id_categoria===c.id_categoria?' selected':'')+'>'+
@@ -1440,7 +1440,7 @@ async function invGuardarTipo() {
     codigo:document.getElementById('itipo-codigo')?.value.trim().toUpperCase()||null,
     descripcion:document.getElementById('itipo-desc')?.value.trim()||null, id_empresa:_empresaActiva?.id_empresa||null };
   try {
-    if (id) await api('inv_articulos_tipo','PATCH',datos,'?id=eq.'+id);
+    if (id) await api('inv_articulos_tipo','PATCH',datos,'?id_tipo=eq.'+id);
     else    await api('inv_articulos_tipo','POST',datos);
     okEl.textContent='✓ Tipo '+(id?'actualizado':'creado')+'.'; okEl.style.display='block';
     setTimeout(function(){ cerrarModal('modal-param'); invRenderTipos(); }, 900);
