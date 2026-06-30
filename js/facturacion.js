@@ -1040,12 +1040,15 @@ function onSelAreaEntrada() {
 }
 
 async function buscarTasaBCVNegociacion() {
+  console.log('[SYD] buscarTasaBCVNegociacion llamada');
   const moneda = document.getElementById('es-moneda-compra')?.value || 'USD';
   const esVES  = moneda === 'VES';
   const fecha  = document.getElementById('es-fecha-negociacion')?.value || getHoyVzla();
+  console.log('[SYD] fecha:', fecha, 'moneda:', moneda);
   try {
     const tasas = await api('tasas', 'GET', null,
       '?fecha_valor=lte.' + fecha + '&order=fecha_valor.desc&limit=1&select=tipo_cambio,fecha_valor');
+    console.log('[SYD] tasas resultado:', JSON.stringify(tasas));
     if (tasas && tasas.length) {
       document.getElementById('es-tasa-bcv').value = parseFloat(tasas[0].tipo_cambio).toFixed(4);
       if (esVES) {
@@ -1055,15 +1058,17 @@ async function buscarTasaBCVNegociacion() {
       document.getElementById('es-tasa-bcv').value = '';
       document.getElementById('es-ref-cpp').textContent = 'No se encontró tasa BCV para esta fecha';
     }
-  } catch(e) {}
+  } catch(e) { console.error('[SYD] buscarTasaBCVNegociacion error:', e.message); }
   if (esVES) onCambiarPrecioEntrada();
 }
 
 async function onCambiarFechaNegociacionEntrada() {
+  console.log('[SYD] onCambiarFechaNegociacionEntrada llamada');
   await buscarTasaBCVNegociacion();
 }
 
 async function onCambiarMonedaEntrada() {
+  console.log('[SYD] onCambiarMonedaEntrada llamada, valor:', document.getElementById('es-moneda-compra')?.value);
   const moneda   = document.getElementById('es-moneda-compra')?.value || 'USD';
   // Actualizar labels de moneda
   const lblCompra = document.getElementById('es-label-moneda-compra');
