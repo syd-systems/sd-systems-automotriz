@@ -1126,7 +1126,12 @@ function onCambiarMotivoEntrada() {
   const selMoneda = document.getElementById('es-moneda-compra');
   const monedaFunc = ((_empresaActiva?.moneda_principal) || 'VES').toUpperCase();
   if (selMoneda) {
-    if (motivo === 'compra') {
+    if (!motivo) {
+      // Sin transacción seleccionada — habilitar moneda y mostrar placeholder
+      Array.from(selMoneda.options).forEach(function(o) { o.disabled = false; });
+      selMoneda.disabled = false;
+      selMoneda.selectedIndex = 0;
+    } else if (motivo === 'compra') {
       // Habilitar todas las opciones
       Array.from(selMoneda.options).forEach(function(o) { o.disabled = false; });
       selMoneda.disabled = false;
