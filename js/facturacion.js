@@ -1053,21 +1053,24 @@ async function onCambiarMonedaEntrada() {
   if (tasaCont) tasaCont.style.display  = esVES ? '' : 'none';
   if (usdCont)  usdCont.style.display   = esVES ? '' : 'none';
 
-  if (esVES) {
-    // Buscar tasa BCV del día de la entrada
-    const fecha = document.getElementById('es-fecha-entrada')?.value || getHoyVzla();
-    try {
-      // Buscar tasa del mismo día o la más reciente anterior
-      const tasas = await api('tasas', 'GET', null,
-        '?fecha_valor=lte.' + fecha + '&order=fecha_valor.desc&limit=1&select=tipo_cambio,fecha_valor');
-      if (tasas && tasas.length) {
-        document.getElementById('es-tasa-bcv').value = parseFloat(tasas[0].tipo_cambio).toFixed(2);
+  // Buscar tasa BCV del día — SIEMPRE, sin importar la moneda de la compra.
+  // Se necesita para poder calcular correctamente el costo en VES de las salidas (promedio ponderado).
+  const fecha = document.getElementById('es-fecha-entrada')?.value || getHoyVzla();
+  try {
+    const tasas = await api('tasas', 'GET', null,
+      '?fecha_valor=lte.' + fecha + '&order=fecha_valor.desc&limit=1&select=tipo_cambio,fecha_valor');
+    if (tasas && tasas.length) {
+      document.getElementById('es-tasa-bcv').value = parseFloat(tasas[0].tipo_cambio).toFixed(2);
+      if (esVES) {
         document.getElementById('es-ref-cpp').textContent = 'Tasa BCV: ' + parseFloat(tasas[0].tipo_cambio).toFixed(2) + ' Bs/$ (' + tasas[0].fecha_valor + ')';
-      } else {
-        document.getElementById('es-tasa-bcv').value = '';
-        document.getElementById('es-ref-cpp').textContent = 'No se encontró tasa BCV para esta fecha';
       }
-    } catch(e) {}
+    } else if (esVES) {
+      document.getElementById('es-tasa-bcv').value = '';
+      document.getElementById('es-ref-cpp').textContent = 'No se encontró tasa BCV para esta fecha';
+    }
+  } catch(e) {}
+
+  if (esVES) {
     onCambiarPrecioEntrada();
   }
 }
@@ -1316,13 +1319,13 @@ async function _guardarSalidaStockInterno() {
     if (art && art.id_cuenta_contable && art.id_cuenta_costo_gasto) {
       try {
         // CPP en USD ya esta en art.precio_costo_moneda
-        // Calcular tasa BCV promedio ponderada de entradas en USD
+        // Calcular tasa BCV promedio ponderada de TODAS las entradas con tasa registrada
         const entradasC = await api('stock_entradas','GET',null,'?id_articulo=eq.'+idRep+'&select=cantidad,tasa_bcv,moneda_compra') || [];
         var sumQT = 0; var sumQ2 = 0;
         entradasC.forEach(function(e) {
           var q = parseFloat(e.cantidad||0);
           var t = parseFloat(e.tasa_bcv||0);
-          if (q > 0 && t > 0 && (e.moneda_compra||'USD') === 'USD') { sumQT += q*t; sumQ2 += q; }
+          if (q > 0 && t > 0) { sumQT += q*t; sumQ2 += q; }
         });
         var tasaProm = sumQ2 > 0 ? sumQT/sumQ2 : (_tasaVigente||1);
         var cppUSD   = parseFloat(art.precio_costo_moneda||0);
