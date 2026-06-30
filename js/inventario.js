@@ -251,9 +251,17 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
           }).join('');
     }
     // Precio Venta
-    // Modalidad de Pago
+    // Modalidad de Pago — inferir desde CxP si es null
+    let esquemaPago = m.esquema_pago || '';
+    if (!esquemaPago) {
+      try {
+        const cxps = await api('cont_cxp', 'GET', null,
+          '?numero_doc=like.' + encodeURIComponent('ENT-' + idMovimiento) + '%' + emisorQ() + '&select=id_cxp&limit=2');
+        esquemaPago = (cxps && cxps.length > 1) ? 'CREDITO' : (cxps && cxps.length === 1 ? 'CONTADO' : '');
+      } catch(e) {}
+    }
     const selPago = document.getElementById('edit-mov-esquema-pago');
-    if (selPago) selPago.value = m.esquema_pago || '';
+    if (selPago) selPago.value = esquemaPago;
   }
 
   // Área receptora
