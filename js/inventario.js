@@ -213,12 +213,18 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     const pvEl = document.getElementById('edit-mov-precio-venta');
     if (pvEl) pvEl.value = m.precio_venta_moneda ? parseFloat(m.precio_venta_moneda).toFixed(2) : '';
 
-    // Transacción (motivo)
+    // Transacción (motivo) — inferir si es null en registros anteriores
+    let motivoInferido = m.motivo || '';
+    if (!motivoInferido) {
+      if (m.id_proveedor)   motivoInferido = 'compra';
+      else if (m.cliente_nombre) motivoInferido = 'devolucion';
+      else if (m.id_area_origen) motivoInferido = 'transferencia';
+    }
     const selMotivo = document.getElementById('edit-mov-motivo');
-    if (selMotivo) selMotivo.value = m.motivo || '';
+    if (selMotivo) selMotivo.value = motivoInferido;
 
     // Mostrar campo dinámico según motivo
-    const motivo = m.motivo || '';
+    const motivo = motivoInferido;
     document.getElementById('edit-mov-proveedor-cont').style.display    = motivo === 'compra'        ? '' : 'none';
     document.getElementById('edit-mov-cliente-cont').style.display      = motivo === 'devolucion'    ? '' : 'none';
     document.getElementById('edit-mov-area-origen-cont').style.display  = motivo === 'transferencia' ? '' : 'none';
