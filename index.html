@@ -1341,17 +1341,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260628063"></script>
-<script src="js/parametros.js?v=20260628063"></script>
-<script src="js/empresas.js?v=20260628063"></script>
-<script src="js/facturacion.js?v=20260628063"></script>
-<script src="js/inventario.js?v=20260628063"></script>
-<script src="js/contabilidad.js?v=20260628063"></script>
-<script src="js/pagos.js?v=20260628063"></script>
-<script src="js/vehiculos.js?v=20260628063"></script>
-<script src="js/catalogo.js?v=20260628063"></script>
-<script src="js/inventario2.js?v=20260628063"></script>
-<script src="js/ordenes.js?v=20260628063"></script>
+<script src="js/core.js?v=20260628064"></script>
+<script src="js/parametros.js?v=20260628064"></script>
+<script src="js/empresas.js?v=20260628064"></script>
+<script src="js/facturacion.js?v=20260628064"></script>
+<script src="js/inventario.js?v=20260628064"></script>
+<script src="js/contabilidad.js?v=20260628064"></script>
+<script src="js/pagos.js?v=20260628064"></script>
+<script src="js/vehiculos.js?v=20260628064"></script>
+<script src="js/catalogo.js?v=20260628064"></script>
+<script src="js/inventario2.js?v=20260628064"></script>
+<script src="js/ordenes.js?v=20260628064"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2521,14 +2521,15 @@
             <div id="es-precio-usd-cont">
               <label>Precio en USD (calculado)</label>
               <input type="number" id="es-precio-usd-calc" placeholder="0.00"
-                style="font-family:var(--font-mono);background:var(--gris1);color:var(--naranja);width:100%" readonly">
+                style="font-family:var(--font-mono);background:var(--gris1);color:var(--naranja);width:100%;cursor:not-allowed;opacity:0.7" readonly tabindex="-1">
               <div style="font-size:10px;color:var(--suave);margin-top:4px">Precio / Tasa BCV</div>
             </div>
           </div>
         </div>
         <div class="form-campo form-full" style="grid-column:1/-1">
-          <label>Motivo</label>
+          <label>Transacción</label>
           <select id="es-motivo" onchange="onCambiarMotivoEntrada()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
+            <option value="" disabled selected>Seleccione transacción</option>
             <option value="compra">Compra a proveedor</option>
             <option value="devolucion">Devolución de cliente</option>
             <option value="ajuste">Ajuste de inventario</option>
@@ -2555,12 +2556,9 @@
           </select>
         </div>
       <div class="form-campo">
-        <label>Referencia / N° Factura (opcional)</label>
-        <input type="text" id="es-referencia" placeholder="Ej: FAC-2026-001">
-      </div>
-      <div class="form-campo">
-        <label>Esquema de Pago *</label>
+        <label>Modalidad de Pago *</label>
         <select id="es-esquema-pago" onchange="onCambioEsquemaPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <option value="" disabled selected>Seleccione pago</option>
           <option value="CONTADO">Contado</option>
           <option value="CREDITO">Crédito</option>
         </select>
