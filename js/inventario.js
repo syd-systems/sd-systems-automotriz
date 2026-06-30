@@ -215,7 +215,13 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
 
     // Transacción (motivo)
     const selMotivo = document.getElementById('edit-mov-motivo');
-    if (selMotivo) selMotivo.value = m.motivo || m.tipo_entrada || '';
+    if (selMotivo) selMotivo.value = m.motivo || '';
+
+    // Mostrar campo dinámico según motivo
+    const motivo = m.motivo || '';
+    document.getElementById('edit-mov-proveedor-cont').style.display    = motivo === 'compra'        ? '' : 'none';
+    document.getElementById('edit-mov-cliente-cont').style.display      = motivo === 'devolucion'    ? '' : 'none';
+    document.getElementById('edit-mov-area-origen-cont').style.display  = motivo === 'transferencia' ? '' : 'none';
 
     // Proveedor
     const selProv = document.getElementById('edit-mov-proveedor');
@@ -228,7 +234,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     }
     // Cliente
     const clienteEl = document.getElementById('edit-mov-cliente');
-    if (clienteEl) clienteEl.value = m.nombre_cliente || '';
+    if (clienteEl) clienteEl.value = m.cliente_nombre || '';
     // Área origen
     const selOrig = document.getElementById('edit-mov-area-origen');
     if (selOrig) {
@@ -238,15 +244,10 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
               + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>';
           }).join('');
     }
-    // Mostrar campo dinámico según motivo
-    const motivo = m.motivo || m.tipo_entrada || '';
-    document.getElementById('edit-mov-proveedor-cont').style.display    = motivo === 'compra'         ? '' : 'none';
-    document.getElementById('edit-mov-cliente-cont').style.display      = motivo === 'devolucion'     ? '' : 'none';
-    document.getElementById('edit-mov-area-origen-cont').style.display  = motivo === 'transferencia'  ? '' : 'none';
-
+    // Precio Venta
     // Modalidad de Pago
     const selPago = document.getElementById('edit-mov-esquema-pago');
-    if (selPago) selPago.value = m.esquema_pago || m.modalidad_pago || '';
+    if (selPago) selPago.value = m.esquema_pago || '';
   }
 
   // Área receptora
@@ -376,7 +377,7 @@ async function guardarEdicionMovimiento() {
       datos.fecha_negociacion   = fechaNeg;
       datos.motivo              = motivoEdit;
       datos.id_proveedor        = provEdit;
-      datos.nombre_cliente      = clienteEdit;
+      datos.cliente_nombre      = clienteEdit;
       datos.id_area_origen      = areaOrig;
       datos.esquema_pago        = pagoEdit;
       if (pvEdit) datos.precio_venta_moneda = pvEdit;
