@@ -924,7 +924,8 @@ async function guardarEntradaStock() {
         areaNombre: areaNombreEnt,
         referencia: id_entrada ? 'ENT-' + id_entrada : ('ENT-INV-' + id),
         id_cuentaInventario: r.id_cuenta_contable || null,
-        fecha:      document.getElementById('es-fecha-negociacion')?.value || getHoyVzla()
+        fecha:      document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
+        tasa:       tasa_bcv_usada || null
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
 
