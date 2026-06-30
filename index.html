@@ -1344,17 +1344,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260628079"></script>
-<script src="js/parametros.js?v=20260628079"></script>
-<script src="js/empresas.js?v=20260628079"></script>
-<script src="js/facturacion.js?v=20260628079"></script>
-<script src="js/inventario.js?v=20260628079"></script>
-<script src="js/contabilidad.js?v=20260628079"></script>
-<script src="js/pagos.js?v=20260628079"></script>
-<script src="js/vehiculos.js?v=20260628079"></script>
-<script src="js/catalogo.js?v=20260628079"></script>
-<script src="js/inventario2.js?v=20260628079"></script>
-<script src="js/ordenes.js?v=20260628079"></script>
+<script src="js/core.js?v=20260628080"></script>
+<script src="js/parametros.js?v=20260628080"></script>
+<script src="js/empresas.js?v=20260628080"></script>
+<script src="js/facturacion.js?v=20260628080"></script>
+<script src="js/inventario.js?v=20260628080"></script>
+<script src="js/contabilidad.js?v=20260628080"></script>
+<script src="js/pagos.js?v=20260628080"></script>
+<script src="js/vehiculos.js?v=20260628080"></script>
+<script src="js/catalogo.js?v=20260628080"></script>
+<script src="js/inventario2.js?v=20260628080"></script>
+<script src="js/ordenes.js?v=20260628080"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3530,65 +3530,139 @@
 <!--    MODAL EDITAR MOVIMIENTO STOCK       -->
 <!-- ═══════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-edit-movimiento">
-  <div class="modal" style="max-width:820px">
+  <div class="modal" style="max-width:860px">
     <div class="modal-header">
       <h3 id="edit-mov-titulo">✏ EDITAR MOVIMIENTO</h3>
       <button class="modal-cerrar" onclick="retornarDesdeEditMovimiento()">✕</button>
     </div>
     <div class="modal-body">
-      <div class="form-grid" style="grid-template-columns:130px 1fr 1fr">
-        <div class="form-campo" style="display:flex;flex-direction:column">
-          <label>Cantidad *</label>
-          <input type="number" id="edit-mov-cantidad" min="0.01" step="0.01" placeholder="0.00"
-            style="font-size:18px;font-family:var(--font-mono);text-align:center;color:var(--naranja);flex:1"
-            onblur="this.value=parseFloat(this.value||0).toFixed(2)">
+      <input type="hidden" id="edit-mov-tipo">
+      <input type="hidden" id="edit-mov-id">
+      <input type="hidden" id="edit-mov-id-articulo">
+
+      <!-- FILA 1: Fecha Negociación | Moneda | Cantidad -->
+      <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:0">
+        <div class="form-campo">
+          <label>Fecha Negociación *</label>
+          <input type="date" id="edit-mov-fecha-negociacion"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 10px;border-radius:5px;outline:none;width:100%;box-sizing:border-box;color-scheme:dark">
         </div>
-        <div class="form-campo" id="edit-mov-precio-cont" style="display:flex;flex-direction:column">
-          <label>Precio Compra</label>
-          <input type="number" id="edit-mov-precio" min="0" step="0.01" placeholder="0.00"
-            style="font-family:var(--font-mono);flex:1"
-            onblur="this.value=parseFloat(this.value||0).toFixed(2)">
-        </div>
-        <div class="form-campo" id="edit-mov-moneda-cont" style="display:none;flex-direction:column">
-          <label>Moneda de Negociación</label>
+        <div class="form-campo" id="edit-mov-moneda-cont">
+          <label>Moneda Negociación *</label>
           <select id="edit-mov-moneda"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
+            <option value="">— Seleccione moneda —</option>
             <option value="USD">USD — Dólar</option>
             <option value="VES">VES — Bolívar</option>
           </select>
         </div>
-        <div class="form-campo form-full">
+        <div class="form-campo">
+          <label>Cantidad *</label>
+          <input type="number" id="edit-mov-cantidad" min="0.01" step="0.01" placeholder="0.00"
+            style="font-size:16px;font-family:var(--font-mono);text-align:center;color:var(--naranja);width:100%;box-sizing:border-box"
+            onblur="this.value=parseFloat(this.value||0).toFixed(2)">
+        </div>
+      </div>
+
+      <!-- FILA 2: Precio Negociación | Precio Venta -->
+      <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:0" id="edit-mov-precios-cont">
+        <div class="form-campo" id="edit-mov-precio-cont">
+          <label>Precio Negociación <span id="edit-mov-label-moneda" style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span></label>
+          <input type="number" id="edit-mov-precio" min="0" step="0.01" placeholder="0.00"
+            style="font-family:var(--font-mono);width:100%;box-sizing:border-box"
+            onblur="this.value=parseFloat(this.value||0).toFixed(2)">
+          <div id="edit-mov-ref-cpp" style="font-size:10px;color:var(--naranja);margin-top:4px"></div>
+        </div>
+        <div class="form-campo">
+          <label>Precio Venta <span style="font-size:10px;color:var(--suave)">(opcional)</span></label>
+          <input type="number" id="edit-mov-precio-venta" min="0" step="0.01" placeholder="0.00"
+            style="font-family:var(--font-mono);width:100%;box-sizing:border-box"
+            onblur="this.value=this.value?parseFloat(this.value).toFixed(2):''">
+        </div>
+      </div>
+
+      <!-- Transacción -->
+      <div class="form-campo form-full" style="margin-bottom:0">
+        <label>Transacción *</label>
+        <select id="edit-mov-motivo"
+          style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
+          <option value="">— Seleccione transacción —</option>
+          <option value="compra">Compra a proveedor</option>
+          <option value="devolucion">Devolución de cliente</option>
+          <option value="ajuste">Ajuste de inventario</option>
+          <option value="transferencia">Transferencia</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+
+      <!-- Campo dinámico según transacción -->
+      <div class="form-campo form-full" id="edit-mov-proveedor-cont" style="display:none">
+        <label>Proveedor *</label>
+        <select id="edit-mov-proveedor"
+          style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <option value="">— Seleccionar proveedor —</option>
+        </select>
+      </div>
+      <div class="form-campo form-full" id="edit-mov-cliente-cont" style="display:none">
+        <label>Nombre del Cliente *</label>
+        <input type="text" id="edit-mov-cliente" placeholder="Nombre completo del cliente"
+          style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
+      </div>
+      <div class="form-campo form-full" id="edit-mov-area-origen-cont" style="display:none">
+        <label>Área de Origen *</label>
+        <select id="edit-mov-area-origen"
+          style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <option value="">— Seleccionar área —</option>
+        </select>
+      </div>
+
+      <!-- Área receptora y empleado -->
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;margin-bottom:0">
+        <div class="form-campo">
           <label>Área Receptora</label>
           <select id="edit-mov-area" onchange="cargarEmpleadosPorArea(parseInt(this.value)||null,'edit-mov-empleado')"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar área —</option>
           </select>
         </div>
-        <div class="form-campo form-full">
+        <div class="form-campo">
           <label>Empleado que Recibe</label>
           <select id="edit-mov-empleado"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar área primero —</option>
           </select>
         </div>
-        <div class="form-campo form-full">
-          <label>Observaciones</label>
-          <textarea id="edit-mov-obs" placeholder="Observaciones..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%"></textarea>
-        </div>
       </div>
-        <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-top:8px">
-          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🔐 Autorización</div>
-          <label style="font-size:12px">Su contraseña para confirmar la modificación *</label>
-          <input type="password" id="edit-mov-clave" placeholder="Ingrese su contraseña"
-            style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">
-        </div>
-      <input type="hidden" id="edit-mov-tipo">
-      <input type="hidden" id="edit-mov-id">
-      <input type="hidden" id="edit-mov-id-articulo">
+
+      <!-- Modalidad de Pago -->
+      <div class="form-campo form-full" id="edit-mov-pago-cont">
+        <label>Modalidad de Pago *</label>
+        <select id="edit-mov-esquema-pago"
+          style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
+          <option value="">— Seleccione pago —</option>
+          <option value="CONTADO">Contado</option>
+          <option value="CREDITO">Crédito</option>
+        </select>
+      </div>
+
+      <!-- Observaciones -->
+      <div class="form-campo form-full">
+        <label>Observaciones <span style="font-size:10px;color:var(--suave)">(opcional)</span></label>
+        <textarea id="edit-mov-obs" placeholder="Observaciones opcionales..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%;box-sizing:border-box"></textarea>
+      </div>
+
+      <!-- Autorización -->
+      <div class="form-campo form-full" id="edit-mov-clave-cont" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-top:4px">
+        <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🔐 Autorización</div>
+        <label style="font-size:12px">Su contraseña para confirmar la modificación *</label>
+        <input type="password" id="edit-mov-clave" placeholder="Ingrese su contraseña"
+          style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px;box-sizing:border-box">
+      </div>
+
+      <div class="alerta alerta-exito" id="alerta-edit-mov-ok"  style="display:none;margin-top:8px"></div>
+      <div class="alerta alerta-error"  id="alerta-edit-mov-err" style="display:none;margin-top:8px"></div>
     </div>
-    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
-      <div class="alerta alerta-exito" id="alerta-edit-mov-ok" style="margin:0"></div>
-      <div class="alerta alerta-error"  id="alerta-edit-mov-err" style="margin:0"></div>
+    <div class="modal-footer">
       <div style="display:flex;gap:10px;justify-content:space-between;align-items:center">
         <span id="edit-mov-badge-pago" style="display:none"></span>
         <button class="btn-primario"   onclick="guardarEdicionMovimiento()">GUARDAR</button>
