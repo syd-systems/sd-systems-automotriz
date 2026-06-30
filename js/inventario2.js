@@ -1272,8 +1272,8 @@ async function verHistorialEntradas(id_articulo) {
           const estado = e.reversada
             ? '<span style="color:#fc8181;font-size:10px">Reversada</span>'
             : '<span style="color:#22c55e;font-size:10px">Activa</span>';
-          const btnRev = !e.reversada && puedo('INVENTARIO','ELIMINAR')
-            ? '<button onclick="reversarEntrada(' + e.id_entrada + ',' + id_articulo + ',' + e.cantidad + ')" '
+          const btnRev = !e.reversada && (sesionActual?.administrador || puedo('INVENTARIO','REVERSAR_ENTRADA'))
+            ? '<button onclick="reversarMovimiento(\'ENTRADA\',' + e.id_entrada + ',' + e.cantidad + ',' + id_articulo + ')" '
               + 'style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;'
               + 'border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">Reversar</button>'
             : '';
@@ -1487,7 +1487,7 @@ async function verHistorialSalidas(id_articulo) {
           const estado = s.reversada
             ? '<span style="color:#fc8181;font-size:10px">Reversada</span>'
             : '<span style="color:#22c55e;font-size:10px">Activa</span>';
-          const btnRev = !s.reversada && puedo('INVENTARIO','ELIMINAR')
+          const btnRev = !s.reversada && (sesionActual?.administrador || puedo('INVENTARIO','REVERSAR_SALIDA'))
             ? '<button onclick="reversarSalida(' + s.id_salida + ',' + id_articulo + ',' + s.cantidad + ')" '
               + 'style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;'
               + 'border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">Reversar</button>'
