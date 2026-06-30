@@ -1834,7 +1834,7 @@ async function generarAsientoInventario(tipo, datos) {
 
     const asiento = await api('cont_asientos','POST',{
       numero_asiento: numAst,
-      fecha:          getHoyVzla(),
+      fecha:          datos.fecha || getHoyVzla(),
       descripcion:    descripciones[tipo] || 'Movimiento Inventario',
       tipo:           'AUTOMATICO',
       referencia:     datos.referencia || null,
