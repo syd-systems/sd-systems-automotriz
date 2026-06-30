@@ -1206,7 +1206,6 @@ async function abrirSalidaStock(id, nombre) {
   document.getElementById('salida-id-articulo').value      = id;
   document.getElementById('salida-cantidad').value         = '';
   document.getElementById('salida-fecha').value            = getHoyVzla();
-  if (document.getElementById('salida-fecha-negociacion')) document.getElementById('salida-fecha-negociacion').value = getHoyVzla();
   document.getElementById('salida-observaciones').value    = '';
   document.getElementById('alerta-salida-ok').style.display  = 'none';
   document.getElementById('alerta-salida-err').style.display = 'none';
@@ -1311,7 +1310,6 @@ async function _guardarSalidaStockInterno() {
       id_empleado_entrega: idEmpEntrega,
       cantidad:           cantidad,
       fecha_salida:       fecha,
-      fecha_negociacion:  document.getElementById('salida-fecha-negociacion')?.value || fecha,
       observaciones:      obs || null,
       id_usuario:         sesionActual.correo_usuario
     });
