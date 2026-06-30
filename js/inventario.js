@@ -362,17 +362,18 @@ async function guardarEdicionMovimiento() {
   } catch(err) { errEl.textContent = 'Error: ' + err.message; errEl.style.display = 'block'; }
 }
 
+// ── Abre el modal de reverso con datos del movimiento ──
 async function reversarMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
-  if (!confirm('¿Reversar este movimiento de ' + cantidad + ' unidades? Se ajustará el stock y se anulará el asiento contable original.')) return;
+  // Verificar permiso
+  const permiso = tipo === 'ENTRADA' ? 'REVERSAR_ENTRADA' : 'REVERSAR_SALIDA';
+  if (!sesionActual?.administrador && !puedo('INVENTARIO', permiso)) {
+    alert('No tiene permiso para reversar ' + (tipo === 'ENTRADA' ? 'entradas' : 'salidas') + ' de stock.');
+    return;
+  }
 
+  // Cargar datos del movimiento para mostrar en el modal
+  let movOrig = null;
   try {
-    // 1. Leer artículo fresco desde BD
-    const artArr = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id_articulo + '&select=*');
-    const art = artArr[0];
-    if (!art) { alert('Artículo no encontrado.'); return; }
-
-    // 2. Verificar que no esté ya reversado
-    let movOrig = null;
     if (tipo === 'ENTRADA') {
       const rows = await api('stock_entradas', 'GET', null,
         '?id_entrada=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo)');
@@ -386,67 +387,185 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
       if (rows[0].reversada) { alert('Este movimiento ya fue reversado.'); return; }
       movOrig = rows[0];
     }
+  } catch(e) { alert('Error cargando movimiento: ' + e.message); return; }
 
-    // 3. Calcular nuevo stock
+  // Rellenar modal
+  const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
+  document.getElementById('reverso-tipo').value          = tipo;
+  document.getElementById('reverso-id-movimiento').value = idMovimiento;
+  document.getElementById('reverso-id-articulo').value   = id_articulo;
+  document.getElementById('reverso-cantidad').value      = cantidad;
+  document.getElementById('reverso-titulo').textContent  = '⚠ REVERSAR ' + tipo + ' DE STOCK';
+  document.getElementById('reverso-info-tipo').textContent     = tipo;
+  document.getElementById('reverso-info-cantidad').textContent = cantidad + ' ' + (r?.unidad || 'UND');
+  document.getElementById('reverso-info-articulo').textContent = r?.nombre_articulo || '—';
+  const areaInfo = movOrig.area_receptora
+    ? movOrig.area_receptora.nombre + (movOrig.area_receptora.codigo ? ' (' + movOrig.area_receptora.codigo + ')' : '')
+    : '—';
+  document.getElementById('reverso-info-area').textContent  = areaInfo;
+  const fecha = tipo === 'ENTRADA' ? (movOrig.fecha_entrada || movOrig.fecha_registro) : (movOrig.fecha_salida || movOrig.fecha_registro);
+  document.getElementById('reverso-info-fecha').textContent = fecha ? fecha.slice(0,10) : '—';
+  document.getElementById('reverso-clave').value = '';
+  document.getElementById('alerta-reverso-ok').style.display  = 'none';
+  document.getElementById('alerta-reverso-err').style.display = 'none';
+
+  abrirModal('modal-reverso-stock');
+}
+
+// ── Ejecuta el reverso tras validar contraseña ──
+async function confirmarReverso() {
+  const okEl   = document.getElementById('alerta-reverso-ok');
+  const errEl  = document.getElementById('alerta-reverso-err');
+  okEl.style.display = errEl.style.display = 'none';
+
+  const tipo          = document.getElementById('reverso-tipo').value;
+  const idMovimiento  = parseInt(document.getElementById('reverso-id-movimiento').value);
+  const id_articulo   = parseInt(document.getElementById('reverso-id-articulo').value);
+  const cantidad      = parseFloat(document.getElementById('reverso-cantidad').value);
+  const clave         = document.getElementById('reverso-clave').value;
+
+  if (!clave) { errEl.textContent = 'Ingrese su contraseña para autorizar.'; errEl.style.display = 'block'; return; }
+
+  const btnConfirmar = document.querySelector('#modal-reverso-stock .btn-peligro');
+  const resetBtn = function() { if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.textContent = '⚠ CONFIRMAR REVERSO'; } };
+  if (btnConfirmar) { btnConfirmar.disabled = true; btnConfirmar.textContent = 'Procesando...'; }
+
+  try {
+    // 1. Validar contraseña del usuario logueado
+    const authRes = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: sesionActual.correo_usuario, password: clave })
+    });
+    if (!authRes.ok) throw new Error('Contraseña incorrecta.');
+
+    // 2. Leer artículo fresco
+    const artArr = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id_articulo + '&select=*');
+    const art = artArr[0];
+    if (!art) throw new Error('Artículo no encontrado.');
+
+    // 3. Leer movimiento original (para notificaciones en salida)
+    let movOrig = null;
+    if (tipo === 'ENTRADA') {
+      const rows = await api('stock_entradas', 'GET', null, '?id_entrada=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo)');
+      if (!rows || !rows[0]) throw new Error('Movimiento no encontrado.');
+      if (rows[0].reversada) throw new Error('Este movimiento ya fue reversado.');
+      movOrig = rows[0];
+    } else {
+      const rows = await api('stock_salidas', 'GET', null, '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),empleado_recibe:id_empleado(nombre_completo,correo,id_area,param_areas:id_area(nombre))');
+      if (!rows || !rows[0]) throw new Error('Movimiento no encontrado.');
+      if (rows[0].reversada) throw new Error('Este movimiento ya fue reversado.');
+      movOrig = rows[0];
+    }
+
+    // 4. Calcular nuevo stock
     const stockActual = parseFloat(art.stock_actual_articulo) || 0;
     let nuevoStock;
     if (tipo === 'ENTRADA') {
-      nuevoStock = stockActual - parseFloat(cantidad);
-      if (nuevoStock < 0) { alert('No se puede reversar: stock resultante negativo (' + nuevoStock.toFixed(2) + ').'); return; }
+      nuevoStock = stockActual - cantidad;
+      if (nuevoStock < 0) throw new Error('Stock resultante negativo (' + nuevoStock.toFixed(2) + '). No se puede reversar.');
     } else {
-      nuevoStock = stockActual + parseFloat(cantidad);
+      nuevoStock = stockActual + cantidad;
     }
 
-    // 4. Actualizar stock + limpiar precios si queda en 0
-    const patchInv = { stock_actual_articulo: nuevoStock };
+    // 5. Actualizar stock
+    const patchInv = { stock_actual_articulo: Math.max(0, nuevoStock) };
     if (nuevoStock <= 0) {
-      patchInv.stock_actual_articulo            = 0;
       patchInv.precio_costo_moneda        = 0;
       patchInv.precio_costo_ultimo_moneda = 0;
-      patchInv.precio_venta_moneda        = 0;
     }
     await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + id_articulo);
 
-    // 5. Marcar movimiento como reversado
+    // 6. Marcar movimiento como reversado
     if (tipo === 'ENTRADA') {
       await api('stock_entradas', 'PATCH',
-        { reversada: true, id_usuario_reversa: sesionActual?.correo_usuario || null },
+        { reversada: true, id_usuario_reversa: sesionActual.correo_usuario },
         '?id_entrada=eq.' + idMovimiento);
     } else {
       await api('stock_salidas', 'PATCH',
-        { reversada: true },
+        { reversada: true, id_usuario_reversa: sesionActual.correo_usuario },
         '?id_salida=eq.' + idMovimiento);
     }
 
-    // 6. Anular asiento contable original
-    const refBuscar = tipo === 'ENTRADA' ? 'ENT-' + idMovimiento : 'SAL-' + idMovimiento;
+    // 7. Anular asiento contable original
     try {
+      const ref = tipo === 'ENTRADA' ? 'ENT-' + idMovimiento : 'SAL-' + idMovimiento;
       const asientos = await api('cont_asientos', 'GET', null,
-        '?referencia=eq.' + refBuscar + emisorQ() + '&select=id_asiento,descripcion&estado=neq.ANULADO');
+        '?referencia=eq.' + ref + emisorQ() + '&select=id_asiento,descripcion&estado=neq.ANULADO');
       if (asientos && asientos.length) {
         await api('cont_asientos', 'PATCH',
           { estado: 'ANULADO', descripcion: '[REVERSADO] ' + (asientos[0].descripcion || '') },
           '?id_asiento=eq.' + asientos[0].id_asiento);
-      } else {
-        console.warn('Reverso: no se encontró asiento activo para ' + refBuscar);
       }
-    } catch(eAst) { console.warn('Error anulando asiento en reverso:', eAst); }
+    } catch(eAst) { console.warn('Error anulando asiento:', eAst); }
 
-    // 6B. Anular CxP asociada si es reverso de entrada por compra
+    // 8. Anular CxP si es entrada por compra
     if (tipo === 'ENTRADA') {
       try {
-        const numDoc = 'ENT-' + idMovimiento;
-        const cxps = await api('cont_cxp','GET',null,
-          '?numero_doc=eq.'+encodeURIComponent(numDoc)+emisorQ()+'&estado=eq.PENDIENTE&select=id_cxp');
+        const cxps = await api('cont_cxp', 'GET', null,
+          '?numero_doc=eq.' + encodeURIComponent('ENT-' + idMovimiento) + emisorQ() + '&estado=eq.PENDIENTE&select=id_cxp');
         if (cxps && cxps.length) {
-          await api('cont_cxp','PATCH',
-            { estado: 'ANULADA', observaciones: '[REVERSADO] ' },
+          await api('cont_cxp', 'PATCH',
+            { estado: 'ANULADA', observaciones: '[REVERSADO] Entrada de stock reversada.' },
             '?id_cxp=eq.' + cxps[0].id_cxp);
         }
-      } catch(eCxP) { console.warn('Error anulando CxP en reverso:', eCxP); }
+      } catch(eCxP) { console.warn('Error anulando CxP:', eCxP); }
     }
 
-    // 7. Actualizar cache con datos frescos desde BD
+    // 9. Notificaciones para SALIDAS
+    if (tipo === 'SALIDA') {
+      const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
+      const nomArt = r ? r.nombre_articulo : 'Artículo #' + id_articulo;
+
+      // 9a. Notificación interna al empleado que recibió
+      if (movOrig.id_empleado) {
+        try {
+          await api('notificaciones', 'POST', {
+            id_empresa:   _empresaActiva?.id_empresa,
+            id_empleado:  movOrig.id_empleado,
+            tipo:         'REVERSO_SALIDA',
+            titulo:       '⚠ Reverso de Salida de Inventario',
+            mensaje:      'La salida de ' + cantidad + ' unidades de "' + nomArt + '" registrada a su nombre ha sido reversada. El inventario debe retornar al almacén.',
+            leida:        false,
+            id_usuario:   sesionActual.correo_usuario,
+            fecha_registro: new Date().toISOString()
+          });
+        } catch(eNot) { console.warn('Error creando notificación interna:', eNot); }
+      }
+
+      // 9b. Correo al responsable del área receptora
+      if (movOrig.id_area) {
+        try {
+          // Buscar responsable del área (empleado con nivel jerárquico más alto del área)
+          const responsables = await api('empleados', 'GET', null,
+            '?id_area=eq.' + movOrig.id_area + '&id_nivel_jerarquico=not.is.null&order=id_nivel_jerarquico.asc&select=correo,nombre_completo&limit=1'
+            + (_empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : ''));
+          if (responsables && responsables[0] && responsables[0].correo) {
+            const resp = responsables[0];
+            const areaName = movOrig.area_receptora ? movOrig.area_receptora.nombre : 'Área #' + movOrig.id_area;
+            await fetch(SUPABASE_URL + '/functions/v1/send-email', {
+              method: 'POST',
+              headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                to:      resp.correo,
+                subject: '⚠ Reverso de Salida de Inventario — ' + areaName,
+                html:    '<p>Estimado/a <strong>' + resp.nombre_completo + '</strong>,</p>'
+                       + '<p>Se ha reversado una salida de inventario registrada para su área.</p>'
+                       + '<table style="border-collapse:collapse;width:100%">'
+                       + '<tr><td style="padding:6px;border:1px solid #ddd"><strong>Artículo</strong></td><td style="padding:6px;border:1px solid #ddd">' + nomArt + '</td></tr>'
+                       + '<tr><td style="padding:6px;border:1px solid #ddd"><strong>Cantidad</strong></td><td style="padding:6px;border:1px solid #ddd">' + cantidad + '</td></tr>'
+                       + '<tr><td style="padding:6px;border:1px solid #ddd"><strong>Área</strong></td><td style="padding:6px;border:1px solid #ddd">' + areaName + '</td></tr>'
+                       + '<tr><td style="padding:6px;border:1px solid #ddd"><strong>Reversado por</strong></td><td style="padding:6px;border:1px solid #ddd">' + sesionActual.correo_usuario + '</td></tr>'
+                       + '</table>'
+                       + '<p>El inventario debe retornar al almacén. Por favor coordine la devolución.</p>'
+              })
+            });
+          }
+        } catch(eEmail) { console.warn('Error enviando correo responsable:', eEmail); }
+      }
+    }
+
+    // 10. Actualizar cache y vistas
     try {
       const fresh = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id_articulo + '&select=*');
       if (fresh && fresh[0]) {
@@ -455,13 +574,25 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
       }
     } catch(e) {}
 
-    // 8. Recargar vistas
-    await recargarHistorial(id_articulo);
-    renderInventario();
+    okEl.textContent = '✓ Movimiento reversado correctamente. Stock actualizado.';
+    okEl.style.display = 'block';
+    resetBtn();
 
-  } catch(err) { alert('Error al reversar: ' + err.message); }
+    setTimeout(async function() {
+      cerrarModal('modal-reverso-stock');
+      await calcularInvSaldoArea();
+      if (document.getElementById('tabla-inv-cont')) invRenderVista(inventarioCache, _invVista);
+      if (_fichaInvActual && _fichaInvActual.id) {
+        await recargarHistorial(id_articulo);
+      }
+    }, 1500);
+
+  } catch(err) {
+    errEl.textContent = 'Error: ' + err.message;
+    errEl.style.display = 'block';
+    resetBtn();
+  }
 }
-
 
 // ── Alias para el botón Reversar en Historial de Salidas ──
 async function reversarSalida(id_salida, id_articulo, cantidad) {
