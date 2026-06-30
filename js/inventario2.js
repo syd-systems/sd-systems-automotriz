@@ -704,18 +704,35 @@ async function guardarEntradaStock() {
   const cantidad = parseFloat(document.getElementById('es-cantidad').value) || 0;
   const okEl     = document.getElementById('alerta-es-ok');
   const errEl    = document.getElementById('alerta-es-err');
+  okEl.style.display = 'none';
+  errEl.style.display = 'none';
 
   const resetBtn = function() {
     window._guardandoEntrada = false;
     if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'INGRESAR STOCK'; }
   };
 
-  if (cantidad <= 0) {
-    errEl.textContent = 'Ingresa una cantidad mayor a 0.';
+  const mostrarError = function(msg, focusId) {
+    errEl.textContent = msg;
     errEl.style.display = 'block';
-    document.getElementById('es-cantidad')?.focus();
-    resetBtn(); return;
-  }
+    if (focusId) { const el = document.getElementById(focusId); if (el) el.focus(); }
+    resetBtn();
+  };
+
+  // ── Validaciones ──
+  const fechaNeg  = document.getElementById('es-fecha-negociacion')?.value;
+  const hoy       = getHoyVzla();
+  if (!fechaNeg)                    return mostrarError('Seleccione la Fecha Negociación.', 'es-fecha-negociacion');
+  if (fechaNeg > hoy)               return mostrarError('La Fecha Negociación no puede ser mayor al día de hoy.', 'es-fecha-negociacion');
+  const monedaSel = document.getElementById('es-moneda-compra')?.value;
+  if (!monedaSel)                   return mostrarError('Seleccione la Moneda Negociación.', 'es-moneda-compra');
+  if (cantidad <= 0)                return mostrarError('Ingrese una cantidad mayor a 0.', 'es-cantidad');
+  const precioVal = parseFloat(document.getElementById('es-precio-costo')?.value) || 0;
+  if (precioVal <= 0)               return mostrarError('Ingrese el Precio Negociación.', 'es-precio-costo');
+  const motivoSel = document.getElementById('es-motivo')?.value;
+  if (!motivoSel)                   return mostrarError('Seleccione la Transacción.', 'es-motivo');
+  const pagoDSel  = document.getElementById('es-esquema-pago')?.value;
+  if (!pagoDSel)                    return mostrarError('Seleccione la Modalidad de Pago.', 'es-esquema-pago');
 
   try {
     const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
