@@ -719,7 +719,7 @@ async function guardarEntradaStock() {
     resetBtn();
   };
 
-  // ── Validaciones ──
+  // ── Validaciones en orden de aparición en pantalla ──
   const fechaNeg  = document.getElementById('es-fecha-negociacion')?.value;
   const hoy       = getHoyVzla();
   if (!fechaNeg)                    return mostrarError('Seleccione la Fecha Negociación.', 'es-fecha-negociacion');
@@ -729,10 +729,23 @@ async function guardarEntradaStock() {
   if (cantidad <= 0)                return mostrarError('Ingrese una cantidad mayor a 0.', 'es-cantidad');
   const precioVal = parseFloat(document.getElementById('es-precio-costo')?.value) || 0;
   if (precioVal <= 0)               return mostrarError('Ingrese el Precio Negociación.', 'es-precio-costo');
+  // Precio Venta — opcional, no se valida
   const motivoSel = document.getElementById('es-motivo')?.value;
   if (!motivoSel)                   return mostrarError('Seleccione la Transacción.', 'es-motivo');
+  // Proveedor o área origen — obligatorio según motivo
+  if (motivoSel === 'compra') {
+    const provSel = document.getElementById('es-proveedor')?.value;
+    if (!provSel)                   return mostrarError('Seleccione el Proveedor.', 'es-proveedor');
+  } else if (motivoSel === 'transferencia') {
+    const areaOrig = document.getElementById('es-area-origen')?.value;
+    if (!areaOrig)                  return mostrarError('Seleccione el Área de Origen.', 'es-area-origen');
+  } else if (motivoSel === 'devolucion') {
+    const clienteNom = document.getElementById('es-cliente-nombre')?.value?.trim();
+    if (!clienteNom)                return mostrarError('Ingrese el nombre del cliente.', 'es-cliente-nombre');
+  }
   const pagoDSel  = document.getElementById('es-esquema-pago')?.value;
   if (!pagoDSel)                    return mostrarError('Seleccione la Modalidad de Pago.', 'es-esquema-pago');
+  // Observaciones — opcional, no se valida
 
   try {
     const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
