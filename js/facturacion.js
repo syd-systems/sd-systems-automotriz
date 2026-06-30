@@ -1039,6 +1039,30 @@ function onSelAreaEntrada() {
   cargarEmpleadosPorArea(parseInt(id_area)||null, 'es-empleado', true);
 }
 
+async function buscarTasaBCVNegociacion() {
+  const moneda = document.getElementById('es-moneda-compra')?.value || 'USD';
+  const esVES  = moneda === 'VES';
+  const fecha  = document.getElementById('es-fecha-negociacion')?.value || getHoyVzla();
+  try {
+    const tasas = await api('tasas', 'GET', null,
+      '?fecha_valor=lte.' + fecha + '&order=fecha_valor.desc&limit=1&select=tipo_cambio,fecha_valor');
+    if (tasas && tasas.length) {
+      document.getElementById('es-tasa-bcv').value = parseFloat(tasas[0].tipo_cambio).toFixed(4);
+      if (esVES) {
+        document.getElementById('es-ref-cpp').textContent = 'Tasa BCV: ' + parseFloat(tasas[0].tipo_cambio).toFixed(4) + ' Bs/$ (' + tasas[0].fecha_valor + ')';
+      }
+    } else if (esVES) {
+      document.getElementById('es-tasa-bcv').value = '';
+      document.getElementById('es-ref-cpp').textContent = 'No se encontró tasa BCV para esta fecha';
+    }
+  } catch(e) {}
+  if (esVES) onCambiarPrecioEntrada();
+}
+
+async function onCambiarFechaNegociacionEntrada() {
+  await buscarTasaBCVNegociacion();
+}
+
 async function onCambiarMonedaEntrada() {
   const moneda   = document.getElementById('es-moneda-compra')?.value || 'USD';
   // Actualizar labels de moneda
@@ -1053,26 +1077,9 @@ async function onCambiarMonedaEntrada() {
   if (tasaCont) tasaCont.style.display  = esVES ? '' : 'none';
   if (usdCont)  usdCont.style.display   = esVES ? '' : 'none';
 
-  // Buscar tasa BCV del día — SIEMPRE, sin importar la moneda de la compra.
+  // Buscar tasa BCV de la fecha de negociación — SIEMPRE, sin importar la moneda.
   // Se necesita para poder calcular correctamente el costo en VES de las salidas (promedio ponderado).
-  const fecha = document.getElementById('es-fecha-entrada')?.value || getHoyVzla();
-  try {
-    const tasas = await api('tasas', 'GET', null,
-      '?fecha_valor=lte.' + fecha + '&order=fecha_valor.desc&limit=1&select=tipo_cambio,fecha_valor');
-    if (tasas && tasas.length) {
-      document.getElementById('es-tasa-bcv').value = parseFloat(tasas[0].tipo_cambio).toFixed(4);
-      if (esVES) {
-        document.getElementById('es-ref-cpp').textContent = 'Tasa BCV: ' + parseFloat(tasas[0].tipo_cambio).toFixed(4) + ' Bs/$ (' + tasas[0].fecha_valor + ')';
-      }
-    } else if (esVES) {
-      document.getElementById('es-tasa-bcv').value = '';
-      document.getElementById('es-ref-cpp').textContent = 'No se encontró tasa BCV para esta fecha';
-    }
-  } catch(e) {}
-
-  if (esVES) {
-    onCambiarPrecioEntrada();
-  }
+  await buscarTasaBCVNegociacion();
 }
 
 function onCambiarPrecioEntrada() {
@@ -1199,6 +1206,7 @@ async function abrirSalidaStock(id, nombre) {
   document.getElementById('salida-id-articulo').value      = id;
   document.getElementById('salida-cantidad').value         = '';
   document.getElementById('salida-fecha').value            = getHoyVzla();
+  if (document.getElementById('salida-fecha-negociacion')) document.getElementById('salida-fecha-negociacion').value = getHoyVzla();
   document.getElementById('salida-observaciones').value    = '';
   document.getElementById('alerta-salida-ok').style.display  = 'none';
   document.getElementById('alerta-salida-err').style.display = 'none';
@@ -1303,6 +1311,7 @@ async function _guardarSalidaStockInterno() {
       id_empleado_entrega: idEmpEntrega,
       cantidad:           cantidad,
       fecha_salida:       fecha,
+      fecha_negociacion:  document.getElementById('salida-fecha-negociacion')?.value || fecha,
       observaciones:      obs || null,
       id_usuario:         sesionActual.correo_usuario
     });
