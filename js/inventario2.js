@@ -815,8 +815,9 @@ async function guardarEntradaStock() {
     const entradaRes = await api('stock_entradas', 'POST', {
       id_articulo:            id,
       cantidad:               cantidad,
-      precio_costo_moneda:       nuevoPrecioCosto || null,
+      precio_costo_moneda:    nuevoPrecioCosto || null,
       precio_compra_original: precio_compra_original || null,
+      precio_venta_moneda:    nuevoPrecioVenta || null,
       moneda_compra:          moneda_compra_val,
       tasa_bcv:               tasa_bcv_usada,
       fecha_entrada:          getHoyVzla(),
@@ -826,6 +827,8 @@ async function guardarEntradaStock() {
       id_proveedor:           idProvEnt,
       cliente_nombre:         clienteNomH,
       id_area_origen:         id_areaOrigenH,
+      motivo:                 motivoEnt || null,
+      esquema_pago:           document.getElementById('es-esquema-pago')?.value || null,
       observaciones:          document.getElementById('es-observaciones')?.value.trim() || null,
       id_usuario:             sesionActual.correo_usuario
     });
