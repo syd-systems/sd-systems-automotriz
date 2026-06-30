@@ -599,7 +599,7 @@ async function abrirEntradaStock(id) {
   }).catch(function(){});
   abrirModal('modal-entrada-stock');
   focusFirstField('modal-entrada-stock');
-  setTimeout(function() { document.getElementById('es-cantidad').focus(); }, 100);
+  setTimeout(function() { document.getElementById('es-fecha-negociacion').focus(); }, 100);
 }
 
 // ── Esquema de Pago — Entrada de Stock ──
