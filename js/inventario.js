@@ -154,53 +154,110 @@ async function verFichaEntradaStock(id_entrada, id_articulo) {
 }
 
 async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
-  // Cargar datos del movimiento
   let m = null;
   try {
     if (tipo === 'ENTRADA') {
-      const res = await api('stock_entradas', 'GET', null, '?id_entrada=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),area_origen:id_area_origen(nombre,codigo),empleado_recibe:id_empleado(nombre_completo)');
+      const res = await api('stock_entradas', 'GET', null,
+        '?id_entrada=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),empleado_recibe:id_empleado(nombre_completo)');
       m = res[0];
     } else {
-      const res = await api('stock_salidas', 'GET', null, '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),empleado_entrega:id_empleado_entrega(nombre_completo)');
+      const res = await api('stock_salidas', 'GET', null,
+        '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),empleado_recibe:id_empleado(nombre_completo)');
       m = res[0];
     }
   } catch(err) { alert('Error cargando movimiento: ' + err.message); return; }
   if (!m) return;
 
-  // Cargar áreas
-  let areas = [];
-  try { areas = await api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'); } catch(e) {}
+  // Cargar áreas y proveedores en paralelo
+  let areas = [], proveedores = [];
+  try {
+    [areas, proveedores] = await Promise.all([
+      api('param_areas',    'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
+      api('proveedores',    'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif')
+    ]);
+  } catch(e) {}
 
+  // Campos básicos
   document.getElementById('edit-mov-tipo').value        = tipo;
   document.getElementById('edit-mov-id').value          = idMovimiento;
   document.getElementById('edit-mov-id-articulo').value = id_articulo;
-  document.getElementById('edit-mov-cantidad').value    = m.cantidad;
+  document.getElementById('edit-mov-cantidad').value    = parseFloat(m.cantidad || 0).toFixed(2);
   document.getElementById('edit-mov-obs').value         = m.observaciones || '';
-
-  // Título según modo
-  const modoLabel = soloLectura ? '👁 FICHA ENTRADA' : (tipo === 'ENTRADA' ? '✏ EDITAR ENTRADA' : '✏ EDITAR SALIDA');
-  document.getElementById('edit-mov-titulo').textContent = modoLabel + ' DE STOCK';
   document.getElementById('alerta-edit-mov-ok').style.display  = 'none';
   document.getElementById('alerta-edit-mov-err').style.display = 'none';
 
-  // Precio costo solo para entradas
-  const precioCont = document.getElementById('edit-mov-precio-cont');
-  if (precioCont) precioCont.style.display = tipo === 'ENTRADA' ? 'block' : 'none';
-  if (tipo === 'ENTRADA') {
-    document.getElementById('edit-mov-precio').value = m.precio_costo_moneda ? parseFloat(m.precio_costo_moneda).toFixed(2) : '0.00';
-    document.getElementById('edit-mov-moneda-cont') && (document.getElementById('edit-mov-moneda-cont').style.display = '');
-    if (document.getElementById('edit-mov-moneda')) document.getElementById('edit-mov-moneda').value = m.moneda_compra || 'USD';
+  // Título
+  const modoLabel = soloLectura ? '👁 FICHA ENTRADA' : (tipo === 'ENTRADA' ? '✏ EDITAR ENTRADA' : '✏ EDITAR SALIDA');
+  document.getElementById('edit-mov-titulo').textContent = modoLabel + ' DE STOCK';
+
+  // Campos solo para ENTRADA
+  const esEntrada = tipo === 'ENTRADA';
+  document.getElementById('edit-mov-precios-cont').style.display   = esEntrada ? '' : 'none';
+  document.getElementById('edit-mov-pago-cont').style.display      = esEntrada ? '' : 'none';
+
+  if (esEntrada) {
+    // Fecha Negociación
+    const fechaNeg = document.getElementById('edit-mov-fecha-negociacion');
+    if (fechaNeg) fechaNeg.value = m.fecha_negociacion || m.fecha_entrada?.slice(0,10) || getHoyVzla();
+
+    // Moneda
+    const selMoneda = document.getElementById('edit-mov-moneda');
+    if (selMoneda) selMoneda.value = m.moneda_compra || 'USD';
+    const lblMoneda = document.getElementById('edit-mov-label-moneda');
+    if (lblMoneda) lblMoneda.textContent = '(' + (m.moneda_compra || 'USD') + ')';
+
+    // Precio
+    document.getElementById('edit-mov-precio').value = m.precio_costo_moneda
+      ? parseFloat(m.precio_costo_moneda).toFixed(2) : '0.00';
+    // Precio Venta
+    const pvEl = document.getElementById('edit-mov-precio-venta');
+    if (pvEl) pvEl.value = m.precio_venta_moneda ? parseFloat(m.precio_venta_moneda).toFixed(2) : '';
+
+    // Transacción (motivo)
+    const selMotivo = document.getElementById('edit-mov-motivo');
+    if (selMotivo) selMotivo.value = m.motivo || m.tipo_entrada || '';
+
+    // Proveedor
+    const selProv = document.getElementById('edit-mov-proveedor');
+    if (selProv) {
+      selProv.innerHTML = '<option value="">— Seleccionar proveedor —</option>'
+        + proveedores.map(function(p) {
+            return '<option value="' + p.id_proveedor + '"' + (m.id_proveedor == p.id_proveedor ? ' selected' : '') + '>'
+              + p.nombre + (p.rif ? ' (' + p.rif + ')' : '') + '</option>';
+          }).join('');
+    }
+    // Cliente
+    const clienteEl = document.getElementById('edit-mov-cliente');
+    if (clienteEl) clienteEl.value = m.nombre_cliente || '';
+    // Área origen
+    const selOrig = document.getElementById('edit-mov-area-origen');
+    if (selOrig) {
+      selOrig.innerHTML = '<option value="">— Seleccionar área —</option>'
+        + areas.map(function(a) {
+            return '<option value="' + a.id + '"' + (m.id_area_origen == a.id ? ' selected' : '') + '>'
+              + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>';
+          }).join('');
+    }
+    // Mostrar campo dinámico según motivo
+    const motivo = m.motivo || m.tipo_entrada || '';
+    document.getElementById('edit-mov-proveedor-cont').style.display    = motivo === 'compra'         ? '' : 'none';
+    document.getElementById('edit-mov-cliente-cont').style.display      = motivo === 'devolucion'     ? '' : 'none';
+    document.getElementById('edit-mov-area-origen-cont').style.display  = motivo === 'transferencia'  ? '' : 'none';
+
+    // Modalidad de Pago
+    const selPago = document.getElementById('edit-mov-esquema-pago');
+    if (selPago) selPago.value = m.esquema_pago || m.modalidad_pago || '';
   }
 
-  // Cargar áreas en selector
+  // Área receptora
   const selArea = document.getElementById('edit-mov-area');
   selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
     + areas.map(function(a) {
-        return '<option value="' + a.id + '"' + (m.id_area === a.id ? ' selected' : '') + '>'
+        return '<option value="' + a.id + '"' + (m.id_area == a.id ? ' selected' : '') + '>'
           + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>';
       }).join('');
 
-  // Cargar empleados del área actual
+  // Empleado receptor
   if (m.id_area) {
     await cargarEmpleadosPorArea(m.id_area, 'edit-mov-empleado');
     document.getElementById('edit-mov-empleado').value = m.id_empleado || '';
@@ -208,25 +265,33 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     document.getElementById('edit-mov-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
   }
 
-  // ── Modo solo lectura: deshabilitar campos y ocultar contraseña/guardar ──
-  const camposEditables = ['edit-mov-cantidad','edit-mov-precio','edit-mov-moneda','edit-mov-area','edit-mov-empleado','edit-mov-obs'];
-  camposEditables.forEach(function(id) {
+  // ── Modo solo lectura ──
+  const campos = ['edit-mov-fecha-negociacion','edit-mov-moneda','edit-mov-cantidad',
+    'edit-mov-precio','edit-mov-precio-venta','edit-mov-motivo','edit-mov-proveedor',
+    'edit-mov-cliente','edit-mov-area-origen','edit-mov-area','edit-mov-empleado',
+    'edit-mov-esquema-pago','edit-mov-obs'];
+  campos.forEach(function(id) {
     const el = document.getElementById(id);
     if (el) el.disabled = !!soloLectura;
   });
-  const claveBox  = document.getElementById('edit-mov-clave')?.closest('.form-campo') || document.getElementById('edit-mov-clave')?.parentElement;
+
+  const claveBox   = document.getElementById('edit-mov-clave-cont');
   const btnGuardar = document.querySelector('#modal-edit-movimiento .btn-primario');
   const badgePago  = document.getElementById('edit-mov-badge-pago');
 
   if (soloLectura) {
-    if (claveBox)  claveBox.style.display  = 'none';
+    if (claveBox)   claveBox.style.display   = 'none';
     if (btnGuardar) btnGuardar.style.display = 'none';
-    if (badgePago) { badgePago.textContent = '✅ PAGADO'; badgePago.style.display = 'inline-block'; badgePago.style.color = '#22c55e'; badgePago.style.background = 'rgba(34,197,94,0.12)'; badgePago.style.borderRadius = '4px'; badgePago.style.padding = '3px 10px'; badgePago.style.fontSize = '11px'; badgePago.style.fontWeight = '700'; }
+    if (badgePago) {
+      badgePago.textContent = '✅ PAGADO';
+      badgePago.style.cssText = 'display:inline-block;color:#22c55e;background:rgba(34,197,94,0.12);border-radius:4px;padding:3px 10px;font-size:11px;font-weight:700';
+    }
   } else {
-    if (claveBox)  claveBox.style.display  = '';
+    if (claveBox)   claveBox.style.display   = '';
     if (btnGuardar) btnGuardar.style.display = '';
-    if (badgePago) badgePago.style.display = 'none';
-    if (document.getElementById('edit-mov-clave')) document.getElementById('edit-mov-clave').value = '';
+    if (badgePago)  badgePago.style.display  = 'none';
+    const claveEl = document.getElementById('edit-mov-clave');
+    if (claveEl) claveEl.value = '';
   }
 
   cerrarModal('modal-historial-stock');
@@ -235,45 +300,58 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
 }
 
 async function guardarEdicionMovimiento() {
-  const tipo       = document.getElementById('edit-mov-tipo').value;
-  const id         = document.getElementById('edit-mov-id').value;
+  const tipo        = document.getElementById('edit-mov-tipo').value;
+  const id          = document.getElementById('edit-mov-id').value;
   const id_articulo = parseInt(document.getElementById('edit-mov-id-articulo').value);
-  const cantidad   = parseFloat(document.getElementById('edit-mov-cantidad').value);
+  const cantidad    = parseFloat(document.getElementById('edit-mov-cantidad').value);
   const id_area     = parseInt(document.getElementById('edit-mov-area').value) || null;
-  const idEmp      = parseInt(document.getElementById('edit-mov-empleado').value) || null;
-  const obs        = document.getElementById('edit-mov-obs').value.trim();
-  const clave      = document.getElementById('edit-mov-clave')?.value || '';
-  const okEl       = document.getElementById('alerta-edit-mov-ok');
-  const errEl      = document.getElementById('alerta-edit-mov-err');
+  const idEmp       = parseInt(document.getElementById('edit-mov-empleado').value) || null;
+  const obs         = document.getElementById('edit-mov-obs').value.trim();
+  const clave       = document.getElementById('edit-mov-clave')?.value || '';
+  const okEl        = document.getElementById('alerta-edit-mov-ok');
+  const errEl       = document.getElementById('alerta-edit-mov-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
 
-  if (!cantidad || cantidad <= 0) {
-    errEl.textContent = 'La cantidad debe ser mayor a cero.';
-    errEl.style.display = 'block';
-    document.getElementById('edit-mov-cantidad')?.focus(); return;
-  }
+  const mostrarError = function(msg, focusId) {
+    errEl.textContent = msg; errEl.style.display = 'block';
+    if (focusId) { const el = document.getElementById(focusId); if (el) el.focus(); }
+  };
 
-  // ── Validar contraseña del usuario que edita ──
-  if (!clave) {
-    errEl.textContent = 'Debe ingresar su contraseña para autorizar la modificación.';
-    errEl.style.display = 'block';
-    document.getElementById('edit-mov-clave')?.focus(); return;
+  // ── Validaciones en orden de pantalla ──
+  if (tipo === 'ENTRADA') {
+    const fechaNeg = document.getElementById('edit-mov-fecha-negociacion')?.value;
+    const hoy      = getHoyVzla();
+    if (!fechaNeg)         return mostrarError('Seleccione la Fecha Negociación.', 'edit-mov-fecha-negociacion');
+    if (fechaNeg > hoy)    return mostrarError('La Fecha Negociación no puede ser mayor al día de hoy.', 'edit-mov-fecha-negociacion');
+    const monedaSel = document.getElementById('edit-mov-moneda')?.value;
+    if (!monedaSel)        return mostrarError('Seleccione la Moneda Negociación.', 'edit-mov-moneda');
   }
+  if (!cantidad || cantidad <= 0) return mostrarError('La cantidad debe ser mayor a cero.', 'edit-mov-cantidad');
+  if (tipo === 'ENTRADA') {
+    const precioVal = parseFloat(document.getElementById('edit-mov-precio')?.value) || 0;
+    if (precioVal <= 0)    return mostrarError('Ingrese el Precio Negociación.', 'edit-mov-precio');
+    const motivoSel = document.getElementById('edit-mov-motivo')?.value;
+    if (!motivoSel)        return mostrarError('Seleccione la Transacción.', 'edit-mov-motivo');
+    if (motivoSel === 'compra' && !document.getElementById('edit-mov-proveedor')?.value)
+                           return mostrarError('Seleccione el Proveedor.', 'edit-mov-proveedor');
+    if (motivoSel === 'devolucion' && !document.getElementById('edit-mov-cliente')?.value?.trim())
+                           return mostrarError('Ingrese el nombre del cliente.', 'edit-mov-cliente');
+    if (motivoSel === 'transferencia' && !document.getElementById('edit-mov-area-origen')?.value)
+                           return mostrarError('Seleccione el Área de Origen.', 'edit-mov-area-origen');
+    const pagoSel = document.getElementById('edit-mov-esquema-pago')?.value;
+    if (!pagoSel)          return mostrarError('Seleccione la Modalidad de Pago.', 'edit-mov-esquema-pago');
+  }
+  if (!clave) return mostrarError('Ingrese su contraseña para autorizar.', 'edit-mov-clave');
+
+  // ── Verificar contraseña ──
   try {
-    const usuArr = await api('usuarios', 'GET', null,
-      '?correo_usuario=eq.' + encodeURIComponent(sesionActual.correo_usuario) + '&select=contrasena');
     const verifEdit = await verificarContrasena(sesionActual.correo_usuario, clave);
-    if (!verifEdit.ok) {
-      errEl.textContent = 'Contraseña incorrecta. No se puede autorizar la modificación.';
-      errEl.style.display = 'block';
-      document.getElementById('edit-mov-clave')?.focus(); return;
-    }
-  } catch(eV) {
-    errEl.textContent = 'Error verificando contraseña: ' + eV.message;
-    errEl.style.display = 'block'; return;
-  }
+    if (!verifEdit.ok) return mostrarError('Contraseña incorrecta.', 'edit-mov-clave');
+  } catch(eV) { return mostrarError('Error verificando contraseña: ' + eV.message); }
 
   try {
+    const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
+
     const datos = {
       cantidad:      cantidad,
       id_area:       id_area,
@@ -282,11 +360,26 @@ async function guardarEdicionMovimiento() {
     };
 
     if (tipo === 'ENTRADA') {
-      const precioRaw = document.getElementById('edit-mov-precio').value;
-      const precio = precioRaw !== '' && !isNaN(precioRaw) ? parseFloat(precioRaw) : null;
-      if (precio !== null) datos.precio_costo_moneda = precio;
+      const precioRaw  = document.getElementById('edit-mov-precio').value;
+      const precio     = precioRaw !== '' && !isNaN(precioRaw) ? parseFloat(precioRaw) : null;
       const monedaEdit = document.getElementById('edit-mov-moneda')?.value || 'USD';
-      datos.moneda_compra = monedaEdit;
+      const fechaNeg   = document.getElementById('edit-mov-fecha-negociacion')?.value || getHoyVzla();
+      const motivoEdit = document.getElementById('edit-mov-motivo')?.value || '';
+      const provEdit   = parseInt(document.getElementById('edit-mov-proveedor')?.value) || null;
+      const clienteEdit = document.getElementById('edit-mov-cliente')?.value?.trim() || null;
+      const areaOrig   = parseInt(document.getElementById('edit-mov-area-origen')?.value) || null;
+      const pagoEdit   = document.getElementById('edit-mov-esquema-pago')?.value || '';
+      const pvEdit     = parseFloat(document.getElementById('edit-mov-precio-venta')?.value) || null;
+
+      if (precio !== null) datos.precio_costo_moneda = precio;
+      datos.moneda_compra       = monedaEdit;
+      datos.fecha_negociacion   = fechaNeg;
+      datos.motivo              = motivoEdit;
+      datos.id_proveedor        = provEdit;
+      datos.nombre_cliente      = clienteEdit;
+      datos.id_area_origen      = areaOrig;
+      datos.esquema_pago        = pagoEdit;
+      if (pvEdit) datos.precio_venta_moneda = pvEdit;
 
       // ── Leer cantidad original y stock ANTES de parchear ──
       const [movOrigArr, artArr] = await Promise.all([
@@ -296,117 +389,111 @@ async function guardarEdicionMovimiento() {
       const cantOriginal = parseFloat(movOrigArr[0]?.cantidad || cantidad);
       const art = artArr[0];
 
-      // ── Aplicar PATCH a stock_entradas ──
+      // ── PATCH a stock_entradas ──
       await api('stock_entradas', 'PATCH', datos, '?id_entrada=eq.' + id);
 
-      // ── Recalcular stock y CPP ──
+      // ── Recalcular stock y CPP en inventario_almacen ──
       if (art) {
         const stockActual = parseFloat(art.stock_actual_articulo) || 0;
-        // stockActual en BD ya incluye cantOriginal — revertir y aplicar nueva cantidad
         const nuevoStock  = Math.max(0, parseFloat((stockActual - cantOriginal + cantidad).toFixed(4)));
         const patchInv    = { stock_actual_articulo: nuevoStock };
+        if (pvEdit) patchInv.precio_venta_moneda = pvEdit;
 
         if (precio !== null && !isNaN(precio)) {
-          // Stock previo a esta entrada (sin contar cantOriginal)
-          const stockPrevio     = Math.max(0, stockActual - cantOriginal);
-          const valorPrevio     = stockPrevio > 0 ? stockPrevio * (parseFloat(art.precio_costo_moneda) || 0) : 0;
-          const cpp             = nuevoStock > 0 ? (valorPrevio + cantidad * precio) / nuevoStock : precio;
+          const stockPrevio = Math.max(0, stockActual - cantOriginal);
+          const valorPrevio = stockPrevio > 0 ? stockPrevio * (parseFloat(art.precio_costo_moneda) || 0) : 0;
+          const cpp         = nuevoStock > 0 ? (valorPrevio + cantidad * precio) / nuevoStock : precio;
           patchInv.precio_costo_moneda        = parseFloat(cpp.toFixed(4));
           patchInv.precio_costo_ultimo_moneda = precio;
         }
-
         await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + id_articulo);
       }
 
-      // ── Corregir asiento contable si cambió el precio o la cantidad ──
+      // ── Corregir asiento contable ──
       try {
         const ref = 'ENT-' + id;
         const asientos = await api('cont_asientos', 'GET', null,
           '?referencia=eq.' + ref + emisorQ() + '&estado=neq.ANULADO&select=id_asiento,tasa_bcv');
         if (asientos && asientos.length) {
-          const idAst    = asientos[0].id_asiento;
-          const tasaAst  = parseFloat(asientos[0].tasa_bcv) || 1;
-          const nuevoPrecioFinal = precio !== null && !isNaN(precio) ? precio : parseFloat(art?.precio_costo_moneda || 0);
-          const montoUSD = parseFloat((cantidad * nuevoPrecioFinal).toFixed(2));
+          const idAst   = asientos[0].id_asiento;
+          const tasaAst = parseFloat(asientos[0].tasa_bcv) || 1;
+          const precioFinal = precio !== null ? precio : parseFloat(art?.precio_costo_moneda || 0);
+          const montoUSD = parseFloat((cantidad * precioFinal).toFixed(2));
           const montoVES = parseFloat((montoUSD * tasaAst).toFixed(2));
-
           const lineas = await api('cont_asiento_lineas', 'GET', null,
-            '?id_asiento=eq.' + idAst + '&order=orden.asc&select=id_linea,debe_usd,haber_usd,debe_ves,haber_ves,orden');
-
+            '?id_asiento=eq.' + idAst + '&order=orden.asc&select=id_linea,debe_usd,haber_usd,debe_ves,haber_ves');
           for (const linea of (lineas || [])) {
-            const patchLinea = {};
-            if (parseFloat(linea.debe_usd)  > 0) patchLinea.debe_usd  = montoUSD;
-            if (parseFloat(linea.haber_usd) > 0) patchLinea.haber_usd = montoUSD;
-            if (parseFloat(linea.debe_ves)  > 0) patchLinea.debe_ves  = montoVES;
-            if (parseFloat(linea.haber_ves) > 0) patchLinea.haber_ves = montoVES;
-            if (Object.keys(patchLinea).length) {
-              await api('cont_asiento_lineas', 'PATCH', patchLinea, '?id_linea=eq.' + linea.id_linea);
-            }
+            const pl = {};
+            if (parseFloat(linea.debe_usd)  > 0) pl.debe_usd  = montoUSD;
+            if (parseFloat(linea.haber_usd) > 0) pl.haber_usd = montoUSD;
+            if (parseFloat(linea.debe_ves)  > 0) pl.debe_ves  = montoVES;
+            if (parseFloat(linea.haber_ves) > 0) pl.haber_ves = montoVES;
+            if (Object.keys(pl).length) await api('cont_asiento_lineas', 'PATCH', pl, '?id_linea=eq.' + linea.id_linea);
           }
           await api('cont_asientos', 'PATCH',
-            { descripcion: 'Compra Inventario (editado): ' + (r?.nombre_articulo || '') },
+            { fecha: fechaNeg, descripcion: 'Compra Inventario (editado): ' + (r?.nombre_articulo || '') },
             '?id_asiento=eq.' + idAst);
         }
-      } catch(eAstEdit) { console.warn('Error corrigiendo asiento al editar entrada:', eAstEdit); }
+      } catch(eAstEdit) { console.warn('Error corrigiendo asiento:', eAstEdit); }
 
-      // ── Corregir CxP asociada si cambió el monto ──
+      // ── Corregir CxP asociada ──
       try {
-        const numDoc = 'ENT-' + id;
         const cxps = await api('cont_cxp', 'GET', null,
-          '?numero_doc=like.' + encodeURIComponent(numDoc) + '%' + emisorQ() + '&estado=eq.PENDIENTE&select=id_cxp,monto_usd,saldo_usd,monto_pagado_usd');
+          '?numero_doc=like.' + encodeURIComponent('ENT-' + id) + '%' + emisorQ() + '&estado=eq.PENDIENTE&select=id_cxp,monto_pagado_usd');
         if (cxps && cxps.length === 1) {
-          const nuevoPrecioFinal2 = precio !== null && !isNaN(precio) ? precio : parseFloat(art?.precio_costo_moneda || 0);
-          const nuevoMontoUSD = parseFloat((cantidad * nuevoPrecioFinal2).toFixed(2));
+          const precioFinal2 = precio !== null ? precio : parseFloat(art?.precio_costo_moneda || 0);
+          const nuevoMontoUSD = parseFloat((cantidad * precioFinal2).toFixed(2));
           const pagadoUSD     = parseFloat(cxps[0].monto_pagado_usd || 0);
           await api('cont_cxp', 'PATCH',
-            { monto_usd: nuevoMontoUSD, saldo_usd: parseFloat((nuevoMontoUSD - pagadoUSD).toFixed(2)) },
+            { monto_usd: nuevoMontoUSD, saldo_usd: parseFloat((nuevoMontoUSD - pagadoUSD).toFixed(2)),
+              fecha_emision: fechaNeg },
             '?id_cxp=eq.' + cxps[0].id_cxp);
         }
-      } catch(eCxPEdit) { console.warn('Error corrigiendo CxP al editar entrada:', eCxPEdit); }
+      } catch(eCxPEdit) { console.warn('Error corrigiendo CxP:', eCxPEdit); }
+
     } else {
-      // ── Leer cantidad original y stock ANTES de parchear ──
+      // ── SALIDA ──
       const [movOrigArr, artArr] = await Promise.all([
-        api('stock_salidas',     'GET', null, '?id_salida=eq.'   + id          + '&select=cantidad'),
-        api('inventario_almacen','GET', null, '?id_articulo=eq.' + id_articulo + '&select=stock_actual_articulo'),
+        api('stock_salidas',     'GET', null, '?id_salida=eq.'    + id          + '&select=cantidad'),
+        api('inventario_almacen','GET', null, '?id_articulo=eq.'  + id_articulo + '&select=stock_actual_articulo'),
       ]);
       const cantOriginal = parseFloat(movOrigArr[0]?.cantidad || cantidad);
       const art = artArr[0];
-
       await api('stock_salidas', 'PATCH', datos, '?id_salida=eq.' + id);
-
       if (art) {
         const stockActual = parseFloat(art.stock_actual_articulo) || 0;
-        // Salida: devolver la original y descontar la nueva
-        const nuevoStock = stockActual + cantOriginal - cantidad;
+        const nuevoStock  = Math.max(0, parseFloat((stockActual + cantOriginal - cantidad).toFixed(4)));
         await api('inventario_almacen', 'PATCH',
-          { stock_actual_articulo: Math.max(0, parseFloat(nuevoStock.toFixed(4))) },
-          '?id_articulo=eq.' + id_articulo);
+          { stock_actual_articulo: nuevoStock }, '?id_articulo=eq.' + id_articulo);
       }
     }
+
+    // ── Actualizar cache ──
+    try {
+      const fresh = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id_articulo + '&select=*');
+      if (fresh && fresh[0]) {
+        const i = inventarioCache.findIndex(function(x) { return x.id_articulo === id_articulo; });
+        if (i !== -1) inventarioCache[i] = fresh[0];
+      }
+    } catch(e) {}
 
     okEl.textContent = '✓ Movimiento actualizado correctamente.';
     okEl.style.display = 'block';
     if (document.getElementById('edit-mov-clave')) document.getElementById('edit-mov-clave').value = '';
+
     setTimeout(async function() {
-      // Refrescar cache del artículo desde BD
-      try {
-        const fresh = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id_articulo + '&select=*');
-        if (fresh && fresh[0]) {
-          const i = inventarioCache.findIndex(function(x) { return x.id_articulo === id_articulo; });
-          if (i !== -1) inventarioCache[i] = fresh[0];
-        }
-      } catch(e) {}
-      // Refrescar tabla principal en background
       await calcularInvSaldoArea();
       if (document.getElementById('tabla-inv-cont')) invRenderVista(inventarioCache, _invVista);
-      // Regresar al historial del artículo
       cerrarModal('modal-edit-movimiento');
-      if (_fichaInvActual && _fichaInvActual.id) {
-        verHistorialStock(_fichaInvActual.id, _fichaInvActual.nombre);
-      }
+      if (_fichaInvActual && _fichaInvActual.id) verHistorialStock(_fichaInvActual.id, _fichaInvActual.nombre);
     }, 900);
-  } catch(err) { errEl.textContent = 'Error: ' + err.message; errEl.style.display = 'block'; }
+
+  } catch(err) {
+    errEl.textContent = 'Error: ' + err.message;
+    errEl.style.display = 'block';
+  }
 }
+
 
 // ── Abre el modal de reverso con datos del movimiento ──
 async function reversarMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
