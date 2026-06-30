@@ -675,7 +675,7 @@
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .form-full  { grid-column: 1 / -1; }
 
-  .form-campo { display: flex; flex-direction: column; gap: 6px; }
+  .form-campo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
   .form-campo label {
     font-size: 14px; font-weight: 600; letter-spacing: 2px;
     text-transform: uppercase; color: var(--suave);
@@ -693,6 +693,8 @@
     outline: none;
     transition: border-color 0.2s;
     appearance: none;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .form-campo input:focus,
@@ -1339,17 +1341,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260628059"></script>
-<script src="js/parametros.js?v=20260628059"></script>
-<script src="js/empresas.js?v=20260628059"></script>
-<script src="js/facturacion.js?v=20260628059"></script>
-<script src="js/inventario.js?v=20260628059"></script>
-<script src="js/contabilidad.js?v=20260628059"></script>
-<script src="js/pagos.js?v=20260628059"></script>
-<script src="js/vehiculos.js?v=20260628059"></script>
-<script src="js/catalogo.js?v=20260628059"></script>
-<script src="js/inventario2.js?v=20260628059"></script>
-<script src="js/ordenes.js?v=20260628059"></script>
+<script src="js/core.js?v=20260628060"></script>
+<script src="js/parametros.js?v=20260628060"></script>
+<script src="js/empresas.js?v=20260628060"></script>
+<script src="js/facturacion.js?v=20260628060"></script>
+<script src="js/inventario.js?v=20260628060"></script>
+<script src="js/contabilidad.js?v=20260628060"></script>
+<script src="js/pagos.js?v=20260628060"></script>
+<script src="js/vehiculos.js?v=20260628060"></script>
+<script src="js/catalogo.js?v=20260628060"></script>
+<script src="js/inventario2.js?v=20260628060"></script>
+<script src="js/ordenes.js?v=20260628060"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
