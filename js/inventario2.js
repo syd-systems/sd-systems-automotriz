@@ -566,13 +566,13 @@ async function abrirEntradaStock(id) {
   if (document.getElementById('es-clave-receptor'))  document.getElementById('es-clave-receptor').value = '';
   if (document.getElementById('es-cliente-nombre')) document.getElementById('es-cliente-nombre').value = '';
   if (document.getElementById('es-area-origen'))    document.getElementById('es-area-origen').value = '';
-  if (document.getElementById('es-moneda-compra'))  document.getElementById('es-moneda-compra').value = '';
+  if (document.getElementById('es-moneda-compra'))  { var sm = document.getElementById('es-moneda-compra'); sm.selectedIndex = 0; }
   if (document.getElementById('es-tasa-cont'))      document.getElementById('es-tasa-cont').style.display = 'none';
   if (document.getElementById('es-precio-usd-cont'))document.getElementById('es-precio-usd-cont').style.display = 'none';
   if (document.getElementById('es-tasa-bcv'))       document.getElementById('es-tasa-bcv').value = '';
   if (document.getElementById('es-precio-usd-calc'))document.getElementById('es-precio-usd-calc').value = '';
   const esquemaEl = document.getElementById('es-esquema-pago');
-  if (esquemaEl) esquemaEl.value = '';
+  if (esquemaEl) esquemaEl.selectedIndex = 0;
   const creditoCont = document.getElementById('es-credito-cont');
   if (creditoCont) creditoCont.style.display = 'none';
   const prevEl = document.getElementById('es-cuotas-preview');
