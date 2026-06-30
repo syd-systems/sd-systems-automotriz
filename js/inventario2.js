@@ -548,6 +548,7 @@ async function abrirEntradaStock(id) {
   document.getElementById('es-nombre').textContent = r.nombre_articulo;
   document.getElementById('es-stock-actual').textContent = (r.stock_actual_articulo || 0) + ' ' + (r.unidad || 'UND');
   document.getElementById('es-cantidad').value = '';
+  if (document.getElementById('es-moneda-compra'))  document.getElementById('es-moneda-compra').value  = '';
   document.getElementById('es-precio-costo').value = '0.00';
   document.getElementById('es-motivo').value = '';
   if (document.getElementById('es-esquema-pago')) document.getElementById('es-esquema-pago').value = '';
