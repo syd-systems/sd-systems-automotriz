@@ -1810,8 +1810,13 @@ async function generarAsientoInventario(tipo, datos) {
   //       'SALIDA_AREA' | 'SALIDA_AJUSTE'
   // datos: { articulo, cantidad, montoUSD, areaId, areaNombre, proveedor, referencia }
   try {
-    const tasas = await api('tasas','GET',null,'?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio');
-    const tasa  = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
+    // Usar tasa proporcionada, o buscar la de la fecha de negociación
+    let tasa = datos.tasa ? parseFloat(datos.tasa) : 0;
+    if (!tasa) {
+      const fechaBuscar = datos.fecha || getHoyVzla();
+      const tasas = await api('tasas','GET',null,'?fecha_valor=lte.' + fechaBuscar + '&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+      tasa = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
+    }
 
     const anio = new Date().getFullYear();
     const existAst = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-'+anio+'-*&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
