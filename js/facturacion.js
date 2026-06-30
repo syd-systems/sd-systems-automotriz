@@ -1060,9 +1060,9 @@ async function onCambiarMonedaEntrada() {
     const tasas = await api('tasas', 'GET', null,
       '?fecha_valor=lte.' + fecha + '&order=fecha_valor.desc&limit=1&select=tipo_cambio,fecha_valor');
     if (tasas && tasas.length) {
-      document.getElementById('es-tasa-bcv').value = parseFloat(tasas[0].tipo_cambio).toFixed(2);
+      document.getElementById('es-tasa-bcv').value = parseFloat(tasas[0].tipo_cambio).toFixed(4);
       if (esVES) {
-        document.getElementById('es-ref-cpp').textContent = 'Tasa BCV: ' + parseFloat(tasas[0].tipo_cambio).toFixed(2) + ' Bs/$ (' + tasas[0].fecha_valor + ')';
+        document.getElementById('es-ref-cpp').textContent = 'Tasa BCV: ' + parseFloat(tasas[0].tipo_cambio).toFixed(4) + ' Bs/$ (' + tasas[0].fecha_valor + ')';
       }
     } else if (esVES) {
       document.getElementById('es-tasa-bcv').value = '';
