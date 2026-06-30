@@ -1344,17 +1344,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260628082"></script>
-<script src="js/parametros.js?v=20260628082"></script>
-<script src="js/empresas.js?v=20260628082"></script>
-<script src="js/facturacion.js?v=20260628082"></script>
-<script src="js/inventario.js?v=20260628082"></script>
-<script src="js/contabilidad.js?v=20260628082"></script>
-<script src="js/pagos.js?v=20260628082"></script>
-<script src="js/vehiculos.js?v=20260628082"></script>
-<script src="js/catalogo.js?v=20260628082"></script>
-<script src="js/inventario2.js?v=20260628082"></script>
-<script src="js/ordenes.js?v=20260628082"></script>
+<script src="js/core.js?v=20260628083"></script>
+<script src="js/parametros.js?v=20260628083"></script>
+<script src="js/empresas.js?v=20260628083"></script>
+<script src="js/facturacion.js?v=20260628083"></script>
+<script src="js/inventario.js?v=20260628083"></script>
+<script src="js/contabilidad.js?v=20260628083"></script>
+<script src="js/pagos.js?v=20260628083"></script>
+<script src="js/vehiculos.js?v=20260628083"></script>
+<script src="js/catalogo.js?v=20260628083"></script>
+<script src="js/inventario2.js?v=20260628083"></script>
+<script src="js/ordenes.js?v=20260628083"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3616,6 +3616,17 @@
         </select>
       </div>
 
+      <!-- Modalidad de Pago — debajo de Proveedor/Cliente/Área Origen -->
+      <div class="form-campo form-full" id="edit-mov-pago-cont">
+        <label>Modalidad de Pago *</label>
+        <select id="edit-mov-esquema-pago"
+          style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
+          <option value="">— Seleccione pago —</option>
+          <option value="CONTADO">Contado</option>
+          <option value="CREDITO">Crédito</option>
+        </select>
+      </div>
+
       <!-- Área receptora y empleado -->
       <div class="form-grid" style="grid-template-columns:1fr 1fr;margin-bottom:0">
         <div class="form-campo">
@@ -3632,17 +3643,6 @@
             <option value="">— Seleccionar área primero —</option>
           </select>
         </div>
-      </div>
-
-      <!-- Modalidad de Pago -->
-      <div class="form-campo form-full" id="edit-mov-pago-cont">
-        <label>Modalidad de Pago *</label>
-        <select id="edit-mov-esquema-pago"
-          style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
-          <option value="">— Seleccione pago —</option>
-          <option value="CONTADO">Contado</option>
-          <option value="CREDITO">Crédito</option>
-        </select>
       </div>
 
       <!-- Observaciones -->
