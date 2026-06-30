@@ -550,6 +550,7 @@ async function abrirEntradaStock(id) {
   document.getElementById('es-cantidad').value = '';
   document.getElementById('es-precio-costo').value = '0.00';
   document.getElementById('es-motivo').value = 'compra';
+  if (document.getElementById('es-fecha-negociacion')) document.getElementById('es-fecha-negociacion').value = getHoyVzla();
   if (document.getElementById('es-referencia')) document.getElementById('es-referencia').value = '';
   document.getElementById('es-precio-venta').value = r.precio_venta_moneda || '';
   var esVentaCont = document.getElementById('es-precio-venta-cont');
@@ -594,6 +595,7 @@ async function abrirEntradaStock(id) {
         + areas.map(function(a) { return '<option value="' + a.id + '">' + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>'; }).join('');
     }
     onCambiarMotivoEntrada();
+    if (typeof buscarTasaBCVNegociacion === 'function') buscarTasaBCVNegociacion();
   }).catch(function(){});
   abrirModal('modal-entrada-stock');
   focusFirstField('modal-entrada-stock');
@@ -784,6 +786,7 @@ async function guardarEntradaStock() {
       moneda_compra:          moneda_compra_val,
       tasa_bcv:               tasa_bcv_usada,
       fecha_entrada:          getHoyVzla(),
+      fecha_negociacion:      document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
       id_area:                id_areaEnt,
       id_empleado:            idEmpEntVal,
       id_proveedor:           idProvEnt,
