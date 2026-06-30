@@ -727,7 +727,7 @@ async function guardarEntradaStock() {
     }
     const moneda_compra_val      = monedaCompra;
     const precio_compra_original = precioIngresado;
-    const tasa_bcv_usada         = monedaCompra === 'VES' ? (tasaBCVVal || null) : null;
+    const tasa_bcv_usada         = tasaBCVVal > 0 ? tasaBCVVal : null;
     const nuevoPrecioVenta       = parseFloat(document.getElementById('es-precio-venta').value) || null;
 
     // ── FASE 1: Todas las validaciones ANTES de tocar BD ──
