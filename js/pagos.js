@@ -1,4 +1,4 @@
-// v20260628099
+// v20260701002
 // v20260628084
 // ─── S&D Systems — Módulo: PAGOS ───
 // ══════════════════════════════════════════════════════════════
@@ -1913,9 +1913,18 @@ async function guardarPago() {
 async function verDetalleCxP(id_cxp, modoInicial) {
   try {
     const rows = await api('cont_cxp','GET',null,
-      '?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre))');
+      '?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre)),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre)');
     if (!rows || !rows[0]) return;
-    const c    = rows[0];
+    const c = rows[0];
+
+    // ── Detectar si es CxP automática de Inventario ──
+    const esAutomatica = c.esquema_pago === 'CONTADO' || c.esquema_pago === 'CREDITO'
+      || /^ENT-/.test(c.numero_doc || '');
+    if (esAutomatica) {
+      await _verCxPAutomatica(c, id_cxp);
+      return;
+    }
+
     const prov = c.proveedores || {};
     const est  = c.estado || 'PENDIENTE';
 
