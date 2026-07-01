@@ -2091,9 +2091,9 @@ async function verDetalleCxP(id_cxp, modoInicial) {
   } catch(e) { alert('Error: '+e.message); console.error(e); }
 }
 
-// pagarCxP now delegates to verDetalleCxP
+// pagarCxP now delegates to verCxPPendiente to detect automatic CxP
 async function pagarCxP(id_cxp) {
-  await verDetalleCxP(id_cxp, 'pagar');
+  await verCxPPendiente(id_cxp);
 }
 
 // verPagoCxP now delegates to verDetalleCxP
