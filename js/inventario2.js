@@ -946,22 +946,24 @@ async function guardarEntradaStock() {
         if (esquema === 'CONTADO') {
           // Una sola CxP — contado
           await api('cont_cxp','POST',{
-            id_proveedor:  id_proveedor,
-            id_empresa:     _empresaActiva?.id_empresa || null,
-            tipo:          'COMPRA_ARTICULO',
-            numero_doc:    numDocBase,
-            fecha_emision: fechaNegCxP,
+            id_proveedor:    id_proveedor,
+            id_empresa:      _empresaActiva?.id_empresa || null,
+            id_cuenta_gasto: r.id_cuenta_costo_gasto || null,
+            tipo:            'COMPRA_ARTICULO',
+            numero_doc:      numDocBase,
+            fecha_emision:   fechaNegCxP,
             fecha_vencimiento: fechaNegCxP,
-            moneda_pago:   monedaCompra || 'USD',
-            estado:        'PENDIENTE',
-            monto_usd:     montoUSD,
-            monto_ves:     montoVES,
-            tasa_bcv:      _tasaVigente || 1,
+            moneda_pago:     monedaCompra || 'USD',
+            estado:          'PENDIENTE',
+            monto_usd:       montoUSD,
+            monto_ves:       montoVES,
+            tasa_bcv:        _tasaVigente || 1,
             tasa_bcv_compra: _tasaVigente || 1,
-            pagado_usd:    0,
-            saldo_usd:     montoUSD,
-            observaciones: 'Contado — ' + artNomCxP + ' x ' + cantidad + ' uds.',
-            id_usuario:    sesionActual?.correo_usuario || null
+            pagado_usd:      0,
+            saldo_usd:       montoUSD,
+            observaciones:   artNomCxP + ' x ' + cantidad + ' uds.',
+            esquema_pago:    'CONTADO',
+            id_usuario:      sesionActual?.correo_usuario || null
           });
         } else {
           // Crédito — múltiples CxP, una por cuota
@@ -972,20 +974,22 @@ async function guardarEntradaStock() {
             const c = cuotas[i];
             await api('cont_cxp','POST',{
               id_proveedor:     id_proveedor,
-              id_empresa:        _empresaActiva?.id_empresa || null,
+              id_empresa:       _empresaActiva?.id_empresa || null,
+              id_cuenta_gasto:  r.id_cuenta_costo_gasto || null,
               tipo:             'COMPRA_ARTICULO_CREDITO',
               numero_doc:       numDocBase + '-C' + c.num,
-              fecha_emision:    hoy,
+              fecha_emision:    fechaNegCxP,
               fecha_vencimiento: c.fecha,
               moneda_pago:      monedaCompra || 'USD',
               estado:           'PENDIENTE',
               monto_usd:        parseFloat(c.monto.toFixed(2)),
               monto_ves:        parseFloat((c.monto * _tasaVigente).toFixed(2)),
               tasa_bcv:         _tasaVigente || 1,
-              tasa_bcv_compra: _tasaVigente || 1,
+              tasa_bcv_compra:  _tasaVigente || 1,
               pagado_usd:       0,
               saldo_usd:        parseFloat(c.monto.toFixed(2)),
-              observaciones:    'Cuota ' + c.num + '/' + cuotas.length + ' — ' + artNomCxP + ' x ' + cantidad + ' uds.',
+              observaciones:    artNomCxP + ' x ' + cantidad + ' uds.',
+              esquema_pago:     'CREDITO',
               id_usuario:       sesionActual?.correo_usuario || null
             });
           }
