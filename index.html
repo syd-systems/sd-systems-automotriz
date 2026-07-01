@@ -1344,17 +1344,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260628092"></script>
-<script src="js/parametros.js?v=20260628092"></script>
-<script src="js/empresas.js?v=20260628092"></script>
-<script src="js/facturacion.js?v=20260628092"></script>
-<script src="js/inventario.js?v=20260628092"></script>
-<script src="js/contabilidad.js?v=20260628092"></script>
-<script src="js/pagos.js?v=20260628092"></script>
-<script src="js/vehiculos.js?v=20260628092"></script>
-<script src="js/catalogo.js?v=20260628092"></script>
-<script src="js/inventario2.js?v=20260628092"></script>
-<script src="js/ordenes.js?v=20260628092"></script>
+<script src="js/core.js?v=20260628093"></script>
+<script src="js/parametros.js?v=20260628093"></script>
+<script src="js/empresas.js?v=20260628093"></script>
+<script src="js/facturacion.js?v=20260628093"></script>
+<script src="js/inventario.js?v=20260628093"></script>
+<script src="js/contabilidad.js?v=20260628093"></script>
+<script src="js/pagos.js?v=20260628093"></script>
+<script src="js/vehiculos.js?v=20260628093"></script>
+<script src="js/catalogo.js?v=20260628093"></script>
+<script src="js/inventario2.js?v=20260628093"></script>
+<script src="js/ordenes.js?v=20260628093"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4063,8 +4063,12 @@
           <div id="cxp-auto-monto" style="font-size:16px;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">—</div>
         </div>
         <div>
-          <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Saldo USD</div>
-          <div id="cxp-auto-saldo" style="font-size:16px;font-family:var(--font-mono);font-weight:700">—</div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Monto VES</div>
+          <div id="cxp-auto-monto-ves" style="font-size:16px;font-family:var(--font-mono);font-weight:700">—</div>
+        </div>
+        <div style="grid-column:1/-1">
+          <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Tasa BCV (día de pago)</div>
+          <div id="cxp-auto-tasa" style="font-size:13px;font-family:var(--font-mono)">—</div>
         </div>
       </div>
 
@@ -4090,7 +4094,7 @@
       <div id="cxp-auto-credito-cont" style="display:none">
         <div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
           <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">📅 Condiciones de Crédito</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px">
             <div>
               <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">N° de Cuotas</div>
               <div id="cxp-auto-cuotas-num" style="font-size:14px;font-family:var(--font-mono);font-weight:600">—</div>
@@ -4098,6 +4102,10 @@
             <div>
               <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Primera Cuota</div>
               <div id="cxp-auto-cuotas-fecha" style="font-size:13px;font-family:var(--font-mono)">—</div>
+            </div>
+            <div>
+              <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Intervalo</div>
+              <div id="cxp-auto-cuotas-intervalo" style="font-size:13px;font-family:var(--font-mono)">—</div>
             </div>
             <div>
               <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Monto por Cuota</div>
