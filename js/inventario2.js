@@ -1069,7 +1069,7 @@ async function abrirNuevoInventario() {
     const ctas113 = await api('cont_cuentas','GET',null,'?codigo=like.1.1.03*&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
     const selCta = document.getElementById('inv-cuenta-contable');
     if (selCta) selCta.innerHTML = '<option value="">— Seleccionar cuenta 1.1.03.xxx —</option>' + ctas113.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join('');
-    const ctasCGn = await api('cont_cuentas','GET',null,'?codigo=in.(5.1.02.001,6.1.02.004,6.1.02.006,6.1.02.009,6.1.02.010)&estado=eq.ACTIVA&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
+    const ctasCGn = await api('cont_cuentas','GET',null,'?tipo=in.(EGRESO,COSTO)&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
     const selCGn = document.getElementById('inv-cuenta-costo-gasto');
     if (selCGn) { selCGn.innerHTML = '<option value="">— Seleccionar cuenta —</option>' + ctasCGn.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join(''); selCGn.value = ''; }
   } catch(e2) {}
@@ -1104,7 +1104,7 @@ async function abrirEditarInventario(id) {
     const ctas113e = await api('cont_cuentas','GET',null,'?codigo=like.1.1.03*&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
     const selCtaE = document.getElementById('inv-cuenta-contable');
     if (selCtaE) { selCtaE.innerHTML = '<option value="">— Seleccionar —</option>' + ctas113e.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join(''); }
-    const ctasCGe = await api('cont_cuentas','GET',null,'?codigo=in.(5.1.02.001,6.1.02.004,6.1.02.006,6.1.02.009,6.1.02.010)&estado=eq.ACTIVA&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
+    const ctasCGe = await api('cont_cuentas','GET',null,'?tipo=in.(EGRESO,COSTO)&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
     const selCGe = document.getElementById('inv-cuenta-costo-gasto');
     if (selCGe) selCGe.innerHTML = '<option value="">— Seleccionar cuenta —</option>' + ctasCGe.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join('');
   } catch(e3) {}
