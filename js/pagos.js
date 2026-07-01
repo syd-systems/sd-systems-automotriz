@@ -2124,8 +2124,8 @@ async function _verCxPAutomatica(c, id_cxp) {
   // Descripción
   document.getElementById('cxp-auto-descripcion').textContent = c.observaciones || c.descripcion || '—';
 
-  // Cuenta de Gasto — desde cuenta_gasto join o desde artículo
-  const cuentaGasto = c.cuenta_gasto || c.articulo?.cuenta_costo;
+  // Cuenta de Gasto — desde cuenta_gasto join
+  const cuentaGasto = c.cuenta_gasto;
   document.getElementById('cxp-auto-cuenta').textContent = cuentaGasto
     ? (cuentaGasto.codigo ? cuentaGasto.codigo + ' — ' : '') + (cuentaGasto.nombre || '—')
     : '—';
@@ -2181,7 +2181,7 @@ async function _verCxPAutomatica(c, id_cxp) {
 async function verCxPPendiente(id_cxp) {
   try {
     const rows = await api('cont_cxp','GET',null,
-      '?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre),id_categoria),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre),articulo:id_articulo(nombre_articulo,id_cuenta_costo_gasto,cuenta_costo:id_cuenta_costo_gasto(codigo,nombre))');
+      '?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre),id_categoria),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre)');
     if (!rows || !rows[0]) return;
     const c = rows[0];
 
