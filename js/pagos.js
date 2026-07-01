@@ -2186,7 +2186,11 @@ async function verCxPPendiente(id_cxp) {
     const c = rows[0];
 
     // ── Detectar si es CxP automática de Inventario ──
-    const esAutomatica = c.esquema_pago === 'CONTADO' || c.esquema_pago === 'CREDITO';
+    // Por esquema_pago o por numero_doc que empiece con ENT-
+    const esAutomatica = c.esquema_pago === 'CONTADO' || c.esquema_pago === 'CREDITO'
+      || /^ENT-/.test(c.numero_doc || '');
+
+    console.log('[SYD] verCxPPendiente id:', id_cxp, 'esquema_pago:', c.esquema_pago, 'numero_doc:', c.numero_doc, 'esAutomatica:', esAutomatica);
 
     if (esAutomatica) {
       await _verCxPAutomatica(c, id_cxp);
