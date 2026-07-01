@@ -2530,7 +2530,7 @@ async function ejecutarPagoCxP(id_cxp) {
 
   // Cargar datos de la CxP
   const rows = await api('cont_cxp','GET',null,
-    '?id_cxp=eq.'+id_cxp+'&select=*,cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre),cuenta_inventario:id_cuenta_contable_inv(id_cuenta,codigo,nombre)');
+    '?id_cxp=eq.'+id_cxp+'&select=*,cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre)');
   const c = rows && rows[0];
   if (!c) { alert('CxP no encontrada.'); return; }
 
@@ -2687,7 +2687,21 @@ async function confirmarEjecucionPago() {
     const idCtaGanCambio  = ctaGanCambio  && ctaGanCambio[0]  ? ctaGanCambio[0].id_cuenta  : null;
     const idCtaCxP        = ctaCxP        && ctaCxP[0]         ? ctaCxP[0].id_cuenta        : null;
     const idCtaGasto      = c.id_cuenta_gasto || (c.cuenta_gasto?.id_cuenta) || null;
-    const idCtaInventario = c.id_cuenta_contable_inv || null;
+    // Buscar cuenta de inventario desde la entrada relacionada
+    let idCtaInventario = null;
+    try {
+      const numBase = (c.numero_doc || '').replace(/-C\d+$/, '');
+      const entMatch = numBase.match(/ENT-(\d+)/);
+      if (entMatch) {
+        const entRows = await api('stock_entradas','GET',null,
+          '?id_entrada=eq.'+entMatch[1]+'&select=id_articulo');
+        if (entRows && entRows[0]) {
+          const artRows = await api('inventario_almacen','GET',null,
+            '?id_articulo=eq.'+entRows[0].id_articulo+'&select=id_cuenta_contable');
+          if (artRows && artRows[0]) idCtaInventario = artRows[0].id_cuenta_contable || null;
+        }
+      }
+    } catch(e) { console.warn('Error buscando cuenta inventario:', e); }
 
     // 5. Calcular diferencial cambiario
     const montoVESCompra = parseFloat((montoUSD * tasaCompra).toFixed(2));
