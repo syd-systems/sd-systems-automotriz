@@ -256,7 +256,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     if (!esquemaPago) {
       try {
         const cxps = await api('cont_cxp', 'GET', null,
-          '?numero_doc=like.' + encodeURIComponent('ENT-' + idMovimiento) + '%' + emisorQ() + '&select=id_cxp&limit=2');
+          '?numero_doc=ilike.' + encodeURIComponent('ENT-' + idMovimiento + '*') + emisorQ() + '&select=id_cxp&limit=2');
         esquemaPago = (cxps && cxps.length > 1) ? 'CREDITO' : (cxps && cxps.length === 1 ? 'CONTADO' : '');
       } catch(e) {}
     }
@@ -268,7 +268,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     if (creditoCont) creditoCont.style.display = esquemaPago === 'CREDITO' ? '' : 'none';
     if (esquemaPago === 'CREDITO') {
       try {
-        const _urlCuotas = '?numero_doc=like.' + encodeURIComponent('ENT-' + idMovimiento) + '%' + emisorQ() + '&order=fecha_vencimiento.asc&select=monto_usd,fecha_vencimiento';
+        const _urlCuotas = '?numero_doc=ilike.' + encodeURIComponent('ENT-' + idMovimiento + '*') + emisorQ() + '&order=fecha_vencimiento.asc&select=monto_usd,fecha_vencimiento';
         console.log('[SYD] buscando cuotas URL:', _urlCuotas);
         const cuotasExist = await api('cont_cxp', 'GET', null, _urlCuotas);
         console.log('[SYD] cuotasExist:', JSON.stringify(cuotasExist));
@@ -483,7 +483,7 @@ async function guardarEdicionMovimiento() {
       // ── Corregir CxP asociada ──
       try {
         const cxps = await api('cont_cxp', 'GET', null,
-          '?numero_doc=like.' + encodeURIComponent('ENT-' + id) + '%' + emisorQ() + '&estado=eq.PENDIENTE&select=id_cxp,monto_pagado_usd');
+          '?numero_doc=ilike.' + encodeURIComponent('ENT-' + id + '*') + emisorQ() + '&estado=eq.PENDIENTE&select=id_cxp,monto_pagado_usd');
         if (cxps && cxps.length === 1) {
           const precioFinal2 = precio !== null ? precio : parseFloat(art?.precio_costo_moneda || 0);
           const nuevoMontoUSD = parseFloat((cantidad * precioFinal2).toFixed(2));
