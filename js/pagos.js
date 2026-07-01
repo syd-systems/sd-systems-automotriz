@@ -2131,10 +2131,14 @@ async function _verCxPAutomatica(c, id_cxp) {
   document.getElementById('cxp-auto-tasa').textContent    = tasaHoy.toLocaleString('es-VE', {minimumFractionDigits:4, maximumFractionDigits:4});
   document.getElementById('cxp-auto-monto-ves').textContent = 'Bs. ' + montoVES.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2});
 
-  // Descripción — eliminar prefijo "Cuota X/Y — "
+  // Descripción — eliminar prefijos automáticos
   const descRaw = c.observaciones || c.descripcion || '—';
-  const desc = descRaw.replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i, '');
-  document.getElementById('cxp-auto-descripcion').textContent = desc;
+  const desc = descRaw
+    .replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i, '')
+    .replace(/^Contado\s*[—\-]\s*/i, '')
+    .replace(/^Crédito\s*[—\-]\s*/i, '')
+    .trim();
+  document.getElementById('cxp-auto-descripcion').textContent = desc || '—';
 
   // Cuenta de Gasto
   const cg = c.cuenta_gasto;
