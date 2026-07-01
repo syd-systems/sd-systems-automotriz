@@ -1,3 +1,4 @@
+// v20260628099
 // v20260628084
 // ─── S&D Systems — Módulo: PAGOS ───
 // ══════════════════════════════════════════════════════════════
@@ -2091,9 +2092,9 @@ async function verDetalleCxP(id_cxp, modoInicial) {
   } catch(e) { alert('Error: '+e.message); console.error(e); }
 }
 
-// pagarCxP now delegates to verCxPPendiente to detect automatic CxP
+// pagarCxP now delegates to verDetalleCxP
 async function pagarCxP(id_cxp) {
-  await verCxPPendiente(id_cxp);
+  await verDetalleCxP(id_cxp, 'pagar');
 }
 
 // verPagoCxP now delegates to verDetalleCxP
