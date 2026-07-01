@@ -1344,17 +1344,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260628089"></script>
-<script src="js/parametros.js?v=20260628089"></script>
-<script src="js/empresas.js?v=20260628089"></script>
-<script src="js/facturacion.js?v=20260628089"></script>
-<script src="js/inventario.js?v=20260628089"></script>
-<script src="js/contabilidad.js?v=20260628089"></script>
-<script src="js/pagos.js?v=20260628089"></script>
-<script src="js/vehiculos.js?v=20260628089"></script>
-<script src="js/catalogo.js?v=20260628089"></script>
-<script src="js/inventario2.js?v=20260628089"></script>
-<script src="js/ordenes.js?v=20260628089"></script>
+<script src="js/core.js?v=20260628090"></script>
+<script src="js/parametros.js?v=20260628090"></script>
+<script src="js/empresas.js?v=20260628090"></script>
+<script src="js/facturacion.js?v=20260628090"></script>
+<script src="js/inventario.js?v=20260628090"></script>
+<script src="js/contabilidad.js?v=20260628090"></script>
+<script src="js/pagos.js?v=20260628090"></script>
+<script src="js/vehiculos.js?v=20260628090"></script>
+<script src="js/catalogo.js?v=20260628090"></script>
+<script src="js/inventario2.js?v=20260628090"></script>
+<script src="js/ordenes.js?v=20260628090"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4029,6 +4029,93 @@
 
 
 <!-- ══ MODAL NUEVO/EDITAR PAGO ══ -->
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL VER CxP AUTOMÁTICA            -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-ver-cxp-auto">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <h3 id="cxp-auto-titulo">📋 OBLIGACIÓN DE PAGO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-ver-cxp-auto')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Datos principales -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">N° Documento</div>
+          <div id="cxp-auto-numero" style="font-size:13px;font-family:var(--font-mono);font-weight:600;color:var(--naranja)">—</div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Estado</div>
+          <div id="cxp-auto-estado" style="font-size:13px;font-weight:600">—</div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Fecha Emisión</div>
+          <div id="cxp-auto-fecha-emision" style="font-size:13px;font-family:var(--font-mono)">—</div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Fecha Vencimiento</div>
+          <div id="cxp-auto-fecha-venc" style="font-size:13px;font-family:var(--font-mono)">—</div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Monto USD</div>
+          <div id="cxp-auto-monto" style="font-size:16px;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">—</div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Saldo USD</div>
+          <div id="cxp-auto-saldo" style="font-size:16px;font-family:var(--font-mono);font-weight:700">—</div>
+        </div>
+      </div>
+
+      <!-- Descripción -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Descripción</div>
+        <div id="cxp-auto-descripcion" style="font-size:13px;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:10px 14px">—</div>
+      </div>
+
+      <!-- Cuenta de Gasto -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Cuenta de Gasto</div>
+        <div id="cxp-auto-cuenta" style="font-size:13px;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:10px 14px">—</div>
+      </div>
+
+      <!-- Modalidad de Pago -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Modalidad de Pago</div>
+        <div id="cxp-auto-modalidad" style="font-size:13px;font-weight:600;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:10px 14px">—</div>
+      </div>
+
+      <!-- Condiciones de Crédito — solo lectura -->
+      <div id="cxp-auto-credito-cont" style="display:none">
+        <div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
+          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">📅 Condiciones de Crédito</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+            <div>
+              <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">N° de Cuotas</div>
+              <div id="cxp-auto-cuotas-num" style="font-size:14px;font-family:var(--font-mono);font-weight:600">—</div>
+            </div>
+            <div>
+              <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Primera Cuota</div>
+              <div id="cxp-auto-cuotas-fecha" style="font-size:13px;font-family:var(--font-mono)">—</div>
+            </div>
+            <div>
+              <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Monto por Cuota</div>
+              <div id="cxp-auto-cuotas-monto" style="font-size:13px;font-family:var(--font-mono);color:var(--naranja)">—</div>
+            </div>
+          </div>
+          <!-- Tabla de cuotas -->
+          <div id="cxp-auto-cuotas-tabla"></div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-ver-cxp-auto')">Retornar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-pago">
   <div class="modal" style="max-width:860px;width:95%">
     <div class="modal-header">
