@@ -1344,17 +1344,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260628096"></script>
-<script src="js/parametros.js?v=20260628096"></script>
-<script src="js/empresas.js?v=20260628096"></script>
-<script src="js/facturacion.js?v=20260628096"></script>
-<script src="js/inventario.js?v=20260628096"></script>
-<script src="js/contabilidad.js?v=20260628096"></script>
-<script src="js/pagos.js?v=20260628096"></script>
-<script src="js/vehiculos.js?v=20260628096"></script>
-<script src="js/catalogo.js?v=20260628096"></script>
-<script src="js/inventario2.js?v=20260628096"></script>
-<script src="js/ordenes.js?v=20260628096"></script>
+<script src="js/core.js?v=20260628097"></script>
+<script src="js/parametros.js?v=20260628097"></script>
+<script src="js/empresas.js?v=20260628097"></script>
+<script src="js/facturacion.js?v=20260628097"></script>
+<script src="js/inventario.js?v=20260628097"></script>
+<script src="js/contabilidad.js?v=20260628097"></script>
+<script src="js/pagos.js?v=20260628097"></script>
+<script src="js/vehiculos.js?v=20260628097"></script>
+<script src="js/catalogo.js?v=20260628097"></script>
+<script src="js/inventario2.js?v=20260628097"></script>
+<script src="js/ordenes.js?v=20260628097"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4119,7 +4119,10 @@
 
     </div>
     <div class="modal-footer">
-      <button class="btn-secundario" onclick="cerrarModal('modal-ver-cxp-auto')">Retornar</button>
+      <div style="display:flex;gap:10px;justify-content:space-between;align-items:center">
+        <button class="btn-primario" id="cxp-auto-btn-pagar" style="background:#22c55e;border-color:#22c55e;display:none" onclick="ejecutarPagoCxP(_cxpAutoIdActual)">💳 Pagar</button>
+        <button class="btn-secundario" onclick="cerrarModal('modal-ver-cxp-auto')">Retornar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -4271,6 +4274,44 @@
             <option value="ZELLE">Zelle</option>
             <option value="DIVISAS">Divisas</option>
           </select>
+        </div>
+
+        <!-- Banco que paga -->
+        <div class="form-campo form-full">
+          <label>Cuenta Bancaria que Paga *</label>
+          <select id="exec-pago-cuenta-banco" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar cuenta —</option>
+          </select>
+        </div>
+
+        <!-- Pregunta 1: ¿El monto incluye IVA e IGTF? -->
+        <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
+          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">⚖ Tributos</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <label style="font-size:13px;font-weight:500">¿El monto de la CxP incluye IVA e IGTF?</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+              <input type="radio" name="exec-pago-incluye-iva" id="exec-pago-incluye-iva-si" value="SI" onchange="onCambioIncluyeIvaPago()"> Sí
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+              <input type="radio" name="exec-pago-incluye-iva" id="exec-pago-incluye-iva-no" value="NO" onchange="onCambioIncluyeIvaPago()" checked> No
+            </label>
+          </div>
+
+          <!-- Pregunta 2: ¿Incluye IGTF? — solo si USD -->
+          <div id="exec-pago-incluye-igtf-cont" style="display:none;margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <label style="font-size:13px;font-weight:500">¿El monto incluye IGTF?</label>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="radio" name="exec-pago-incluye-igtf" id="exec-pago-incluye-igtf-si" value="SI" onchange="onCambioIncluyeIvaPago()"> Sí
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="radio" name="exec-pago-incluye-igtf" id="exec-pago-incluye-igtf-no" value="NO" onchange="onCambioIncluyeIvaPago()" checked> No
+              </label>
+            </div>
+          </div>
+
+          <!-- Preview del desglose -->
+          <div id="exec-pago-tributos-preview" style="display:none;margin-top:8px"></div>
         </div>
       </div>
       <div class="alerta alerta-error" id="alerta-exec-err" style="display:none;margin-top:12px"></div>
