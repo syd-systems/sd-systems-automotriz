@@ -2204,8 +2204,10 @@ async function _verCxPAutomatica(c, id_cxp) {
   // Mostrar botón PAGAR solo si está PENDIENTE o PARCIAL y tiene permiso
   const btnPagar = document.getElementById('cxp-auto-btn-pagar');
   if (btnPagar) {
-    const puedePagar = (c.estado === 'PENDIENTE' || c.estado === 'PARCIAL')
-      && (sesionActual?.administrador || puedo('PAGOS','PAGAR'));
+    const tienePerm = sesionActual?.administrador || puedo('PAGOS','PAGAR');
+    const estadoOK  = c.estado === 'PENDIENTE' || c.estado === 'PARCIAL';
+    console.log('[SYD] btn PAGAR — estado:', c.estado, 'estadoOK:', estadoOK, 'tienePerm:', tienePerm, 'admin:', sesionActual?.administrador);
+    const puedePagar = estadoOK && tienePerm;
     btnPagar.style.display = puedePagar ? '' : 'none';
   }
 
