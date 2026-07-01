@@ -708,7 +708,7 @@ function onSelCatalogoChange() {
 // ─── AGREGAR LÍNEA ARTÍCULO DESDE INVENTARIO ───
 async function agregarMercanciaInventario() {
   if (!inventarioCache.length) {
-    try { inventarioCache = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+''); } catch(e) {}
+    try { inventarioCache = await api('inventario_almacen', 'GET', null, '?order=nombre.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+''); } catch(e) {}
   }
   const sel    = document.getElementById('os-sel-inv');
   const precio = document.getElementById('os-precio-inv');
@@ -1260,7 +1260,7 @@ async function recalcularTasaOS(id, nuevaTasa) {
 async function cargarSelectsOS() {
   try {
     if (!catalogoCache.length) catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=grupo.asc,nombre.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
-    if (!inventarioCache.length) inventarioCache = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
+    if (!inventarioCache.length) inventarioCache = await api('inventario_almacen', 'GET', null, '?order=nombre.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
   } catch(e) {}
 
   // ── Cargar selector de GRUPOS ──
@@ -1369,7 +1369,7 @@ window.addEventListener('load', async () => {
       } catch(eP) { console.warn('Error cargando permisos sessionStorage:', eP); }
       // Recargar empresas del usuario
       try {
-        const todasEmisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre_articulo.asc&select=*');
+        const todasEmisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*');
         if (usuario.administrador) {
           _empresasUsuario = todasEmisores;
           if (todasEmisores.length === 1) _empresaActiva = todasEmisores[0];
