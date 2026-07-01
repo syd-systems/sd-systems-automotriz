@@ -278,7 +278,15 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
           if (numEl)   numEl.value   = cuotasExist.length;
           if (fechaEl) fechaEl.value = cuotasExist[0].fecha_vencimiento?.slice(0,10) || '';
           if (montoEl) montoEl.value = parseFloat(cuotasExist[0].monto_usd || 0).toFixed(2);
-          calcularCuotasEdit();
+          // Intervalo: calcular desde fechas si hay más de una cuota
+          if (cuotasExist.length > 1) {
+            const f1 = new Date(cuotasExist[0].fecha_vencimiento + 'T00:00:00');
+            const f2 = new Date(cuotasExist[1].fecha_vencimiento + 'T00:00:00');
+            const diff = Math.round((f2 - f1) / (1000*60*60*24));
+            const intEl = document.getElementById('edit-mov-cuotas-intervalo');
+            if (intEl && diff > 0) intEl.value = diff;
+          }
+          setTimeout(calcularCuotasEdit, 150);
         }
       } catch(e) {}
     }
@@ -543,13 +551,15 @@ function calcularCuotasEdit() {
   const intervalo   = parseInt(document.getElementById('edit-mov-cuotas-intervalo')?.value) || 30;
   const precio      = parseFloat(document.getElementById('edit-mov-precio')?.value) || 0;
   const cantidad    = parseFloat(document.getElementById('edit-mov-cantidad')?.value) || 0;
-  const totalUSD    = parseFloat((precio * cantidad).toFixed(2));
-  const preview     = document.getElementById('edit-mov-cuotas-preview');
+  const montoCuotaInput = parseFloat(document.getElementById('edit-mov-cuotas-monto')?.value) || 0;
+  // Calcular total: precio*cantidad si disponible, o monto cuota * num cuotas como fallback
+  let totalUSD = parseFloat((precio * cantidad).toFixed(2));
+  if (!totalUSD && montoCuotaInput && numCuotas) totalUSD = parseFloat((montoCuotaInput * numCuotas).toFixed(2));
+  const preview = document.getElementById('edit-mov-cuotas-preview');
   if (!preview) return;
 
   if (!numCuotas || !fechaInicio) { preview.innerHTML = ''; return; }
 
-  const montoCuotaInput = parseFloat(document.getElementById('edit-mov-cuotas-monto')?.value) || 0;
   const montoCuota = montoCuotaInput > 0 ? montoCuotaInput : parseFloat((totalUSD / numCuotas).toFixed(2));
 
   const montoEl = document.getElementById('edit-mov-cuotas-monto');
