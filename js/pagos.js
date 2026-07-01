@@ -2101,12 +2101,98 @@ async function verPagoCxP(id_cxp) {
   await verDetalleCxP(id_cxp, 'ver');
 }
 
+async function _verCxPAutomatica(c, id_cxp) {
+  // N° Documento
+  document.getElementById('cxp-auto-numero').textContent      = c.numero_doc || '—';
+
+  // Estado con color
+  const estadoEl = document.getElementById('cxp-auto-estado');
+  estadoEl.textContent = c.estado || '—';
+  estadoEl.style.color = c.estado === 'PAGADA' ? '#22c55e' : c.estado === 'PARCIAL' ? '#f59e0b' : 'var(--naranja)';
+
+  // Fechas
+  document.getElementById('cxp-auto-fecha-emision').textContent = c.fecha_emision ? c.fecha_emision.slice(0,10) : '—';
+  document.getElementById('cxp-auto-fecha-venc').textContent    = c.fecha_vencimiento ? c.fecha_vencimiento.slice(0,10) : '—';
+
+  // Montos
+  document.getElementById('cxp-auto-monto').textContent  = '$ ' + parseFloat(c.monto_usd || 0).toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const saldo = parseFloat(c.saldo_usd || 0);
+  const saldoEl = document.getElementById('cxp-auto-saldo');
+  saldoEl.textContent  = '$ ' + saldo.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2});
+  saldoEl.style.color  = saldo <= 0 ? '#22c55e' : 'var(--texto)';
+
+  // Descripción
+  document.getElementById('cxp-auto-descripcion').textContent = c.observaciones || c.descripcion || '—';
+
+  // Cuenta de Gasto — desde cuenta_gasto join o desde artículo
+  const cuentaGasto = c.cuenta_gasto || c.articulo?.cuenta_costo;
+  document.getElementById('cxp-auto-cuenta').textContent = cuentaGasto
+    ? (cuentaGasto.codigo ? cuentaGasto.codigo + ' — ' : '') + (cuentaGasto.nombre || '—')
+    : '—';
+
+  // Modalidad de Pago
+  const modalidadEl = document.getElementById('cxp-auto-modalidad');
+  modalidadEl.textContent = c.esquema_pago === 'CREDITO' ? 'Crédito' : 'Contado';
+
+  // Condiciones de Crédito
+  const creditoCont = document.getElementById('cxp-auto-credito-cont');
+  if (c.esquema_pago === 'CREDITO') {
+    creditoCont.style.display = '';
+    // Buscar todas las cuotas del mismo grupo (numero_doc base)
+    try {
+      const base = (c.numero_doc || '').replace(/-C\d+$/, '');
+      const cuotas = await api('cont_cxp', 'GET', null,
+        '?numero_doc=ilike.' + encodeURIComponent(base + '*') + emisorQ()
+        + '&order=fecha_vencimiento.asc&select=numero_doc,monto_usd,fecha_vencimiento,estado,saldo_usd');
+      if (cuotas && cuotas.length) {
+        document.getElementById('cxp-auto-cuotas-num').textContent   = cuotas.length;
+        document.getElementById('cxp-auto-cuotas-fecha').textContent = cuotas[0].fecha_vencimiento?.slice(0,10) || '—';
+        document.getElementById('cxp-auto-cuotas-monto').textContent = '$ ' + parseFloat(cuotas[0].monto_usd || 0).toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+        const total = cuotas.reduce(function(s,q){ return s + parseFloat(q.monto_usd||0); }, 0);
+        document.getElementById('cxp-auto-cuotas-tabla').innerHTML =
+          '<div style="font-size:11px;color:var(--suave);margin-bottom:8px">Total: $ '+total.toLocaleString('es-VE',{minimumFractionDigits:2})+'</div>'
+          +'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'
+          +'<th style="padding:6px 8px;text-align:left;color:var(--suave);font-size:10px">Cuota</th>'
+          +'<th style="padding:6px 8px;text-align:left;color:var(--suave);font-size:10px">Vencimiento</th>'
+          +'<th style="padding:6px 8px;text-align:right;color:var(--suave);font-size:10px">Monto USD</th>'
+          +'<th style="padding:6px 8px;text-align:center;color:var(--suave);font-size:10px">Estado</th>'
+          +'</tr></thead><tbody>'
+          + cuotas.map(function(q,i) {
+              const color = q.estado === 'PAGADA' ? '#22c55e' : q.estado === 'PARCIAL' ? '#f59e0b' : 'var(--suave)';
+              return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+                +'<td style="padding:6px 8px;font-weight:600">Cuota '+(i+1)+'</td>'
+                +'<td style="padding:6px 8px;font-family:var(--font-mono)">'+(q.fecha_vencimiento?.slice(0,10)||'—')+'</td>'
+                +'<td style="padding:6px 8px;text-align:right;font-family:var(--font-mono)">$ '+parseFloat(q.monto_usd||0).toLocaleString('es-VE',{minimumFractionDigits:2})+'</td>'
+                +'<td style="padding:6px 8px;text-align:center;color:'+color+';font-weight:600">'+(q.estado||'—')+'</td>'
+                +'</tr>';
+            }).join('')
+          +'</tbody></table>';
+      }
+    } catch(e) { console.warn('Error cargando cuotas:', e); }
+  } else {
+    creditoCont.style.display = 'none';
+  }
+
+  abrirModal('modal-ver-cxp-auto');
+}
+
+
 async function verCxPPendiente(id_cxp) {
   try {
     const rows = await api('cont_cxp','GET',null,
-      '?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre),id_categoria)');
+      '?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre),id_categoria),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre),articulo:id_articulo(nombre_articulo,id_cuenta_costo_gasto,cuenta_costo:id_cuenta_costo_gasto(codigo,nombre))');
     if (!rows || !rows[0]) return;
-    const c    = rows[0];
+    const c = rows[0];
+
+    // ── Detectar si es CxP automática de Inventario ──
+    const esAutomatica = c.esquema_pago === 'CONTADO' || c.esquema_pago === 'CREDITO';
+
+    if (esAutomatica) {
+      await _verCxPAutomatica(c, id_cxp);
+      return;
+    }
+
     const prov = c.proveedores || {};
 
     // Cargar categorías
