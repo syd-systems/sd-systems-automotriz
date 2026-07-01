@@ -2142,9 +2142,14 @@ async function _verCxPAutomatica(c, id_cxp) {
 
   // Cuenta de Gasto
   const cg = c.cuenta_gasto;
-  document.getElementById('cxp-auto-cuenta').textContent = cg
-    ? (cg.codigo ? cg.codigo + ' — ' : '') + (cg.nombre || '—')
-    : '—';
+  const cgEl = document.getElementById('cxp-auto-cuenta');
+  if (cg) {
+    cgEl.textContent = (cg.codigo ? cg.codigo + ' — ' : '') + (cg.nombre || '—');
+    cgEl.style.color = '';
+  } else {
+    cgEl.innerHTML = '⚠ No asignada — edite el artículo y asigne la Cuenta Costo/Gasto';
+    cgEl.style.color = '#fc8181';
+  }
 
   // Modalidad de Pago
   document.getElementById('cxp-auto-modalidad').textContent = esCredito ? 'Crédito' : 'Contado';
