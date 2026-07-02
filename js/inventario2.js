@@ -1321,7 +1321,7 @@ async function verHistorialEntradas(id_articulo) {
           const btnRev = !e.anulada && (sesionActual?.administrador || puedo('INVENTARIO','ANULAR_ENTRADA'))
             ? '<button onclick="reversarMovimiento(\'ENTRADA\',' + e.id_entrada + ',' + e.cantidad + ',' + id_articulo + ')" '
               + 'style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;'
-              + 'border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">Reversar</button>'
+              + 'border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">Anular</button>'
             : '';
           return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
             + '<td style="padding:6px 4px">' + fmtFecha(e.fecha_entrada) + '</td>'
@@ -1493,7 +1493,7 @@ async function invGuardarTipo() {
   } catch(e) { errEl.textContent='Error: '+e.message; errEl.style.display='block'; }
 }
 
-// ─── REVERSAR ENTRADA ───
+// ─── ANULAR ENTRADA ───
 async function reversarEntrada(id_entrada, id_articulo, cantidad) {
   await reversarMovimiento('ENTRADA', id_entrada, cantidad, id_articulo);
   // Retornar a inventario general después del reverso
@@ -1536,7 +1536,7 @@ async function verHistorialSalidas(id_articulo) {
           const btnRev = !s.anulada && (sesionActual?.administrador || puedo('INVENTARIO','ANULAR_SALIDA'))
             ? '<button onclick="reversarSalida(' + s.id_salida + ',' + id_articulo + ',' + s.cantidad + ')" '
               + 'style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;'
-              + 'border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">Reversar</button>'
+              + 'border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">Anular</button>'
             : '';
           return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
             + '<td style="padding:6px 4px">' + fmtFecha(s.fecha_salida) + '</td>'
