@@ -84,14 +84,14 @@ async function recargarHistorial(id_articulo) {
       + '</tr></thead><tbody>'
       + movimientos.map(function(m) {
           const esEntrada = m.tipo === 'ENTRADA';
-          const reversada = !!m.reversada;
+          const anulada = !!m.anulada;
           const areaRec = m.area_receptora || m.param_areas;
           const area = areaRec ? areaRec.nombre + (areaRec.codigo ? ' (' + areaRec.codigo + ')' : '') : '—';
-          return '<tr style="opacity:' + (reversada ? '0.5' : '1') + '">'
+          return '<tr style="opacity:' + (anulada ? '0.5' : '1') + '">'
             + '<td style="padding:8px 0;font-size:12px;color:var(--suave)">' + (m.fecha||'—') + '</td>'
             + '<td style="padding:8px"><span class="badge ' + (esEntrada ? 'badge-verde' : 'badge-rojo') + '">'
             + (esEntrada ? '▲ Entrada' : '▼ Salida') + '</span>'
-            + (reversada ? '<div style="font-size:10px;color:#fc8181;margin-top:2px">Reversada</div>' : '') + '</td>'
+            + (anulada ? '<div style="font-size:10px;color:#fc8181;margin-top:2px">Reversada</div>' : '') + '</td>'
             + '<td style="text-align:center;padding:8px;font-family:var(--font-mono);font-weight:600;color:' + (esEntrada ? '#22c55e' : '#fc8181') + '">'
             + (esEntrada ? '+' : '-') + m.cantidad + '</td>'
             + '<td style="padding:8px;font-size:12px">'
@@ -106,13 +106,13 @@ async function recargarHistorial(id_articulo) {
             + (m.observaciones ? '<div style="font-size:11px;color:var(--suave)">' + m.observaciones + '</div>' : '')
             + '</td>'
             + '<td style="text-align:center;padding:8px 0">'
-            + (reversada
+            + (anulada
                 ? '<span style="font-size:10px;font-weight:600;color:#fc8181">Reversada</span>'
                 : '<span style="font-size:10px;color:#22c55e">Activa</span>')
             + '</td>'
             + '<td style="text-align:center;padding:8px 0">'
             + (function() {
-                if (reversada) return '<span style="color:var(--suave);font-size:11px">—</span>';
+                if (anulada) return '<span style="color:var(--suave);font-size:11px">—</span>';
                 const soloLec = (!sesionActual?.administrador && !puedo('INVENTARIO','EDITAR_STOCK')) ? 'true' : 'false';
                 if (m.id_entrada) return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verFichaEntradaStock(' + m.id_entrada + ',' + m.id_articulo + ')">👁 Ver</button>';
                 return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="editarMovimiento(\'SALIDA\',' + m.id_salida + ',' + m.id_articulo + ',' + soloLec + ')">👁 Ver</button>';
@@ -630,55 +630,55 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
       const rows = await api('stock_entradas', 'GET', null,
         '?id_entrada=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo)');
       if (!rows || !rows[0]) { alert('Movimiento no encontrado.'); return; }
-      if (rows[0].reversada) { alert('Este movimiento ya fue reversado.'); return; }
+      if (rows[0].anulada) { alert('Este movimiento ya fue anulado.'); return; }
       movOrig = rows[0];
     } else {
       const rows = await api('stock_salidas', 'GET', null,
         '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo)');
       if (!rows || !rows[0]) { alert('Movimiento no encontrado.'); return; }
-      if (rows[0].reversada) { alert('Este movimiento ya fue reversado.'); return; }
+      if (rows[0].anulada) { alert('Este movimiento ya fue anulado.'); return; }
       movOrig = rows[0];
     }
   } catch(e) { alert('Error cargando movimiento: ' + e.message); return; }
 
   // Rellenar modal
   const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
-  document.getElementById('reverso-tipo').value          = tipo;
-  document.getElementById('reverso-id-movimiento').value = idMovimiento;
-  document.getElementById('reverso-id-articulo').value   = id_articulo;
-  document.getElementById('reverso-cantidad').value      = cantidad;
-  document.getElementById('reverso-titulo').textContent  = '⚠ REVERSAR ' + tipo + ' DE STOCK';
-  document.getElementById('reverso-info-tipo').textContent     = tipo;
-  document.getElementById('reverso-info-cantidad').textContent = cantidad + ' ' + (r?.unidad || 'UND');
-  document.getElementById('reverso-info-articulo').textContent = r?.nombre_articulo || '—';
+  document.getElementById('anulacion-tipo').value          = tipo;
+  document.getElementById('anulacion-id-movimiento').value = idMovimiento;
+  document.getElementById('anulacion-id-articulo').value   = id_articulo;
+  document.getElementById('anulacion-cantidad').value      = cantidad;
+  document.getElementById('anulacion-titulo').textContent  = '⚠ ANULAR ' + tipo + ' DE STOCK';
+  document.getElementById('anulacion-info-tipo').textContent     = tipo;
+  document.getElementById('anulacion-info-cantidad').textContent = cantidad + ' ' + (r?.unidad || 'UND');
+  document.getElementById('anulacion-info-articulo').textContent = r?.nombre_articulo || '—';
   const areaInfo = movOrig.area_receptora
     ? movOrig.area_receptora.nombre + (movOrig.area_receptora.codigo ? ' (' + movOrig.area_receptora.codigo + ')' : '')
     : '—';
-  document.getElementById('reverso-info-area').textContent  = areaInfo;
+  document.getElementById('anulacion-info-area').textContent  = areaInfo;
   const fecha = tipo === 'ENTRADA' ? (movOrig.fecha_entrada || movOrig.fecha_registro) : (movOrig.fecha_salida || movOrig.fecha_registro);
-  document.getElementById('reverso-info-fecha').textContent = fecha ? fecha.slice(0,10) : '—';
-  document.getElementById('reverso-clave').value = '';
-  document.getElementById('alerta-reverso-ok').style.display  = 'none';
-  document.getElementById('alerta-reverso-err').style.display = 'none';
+  document.getElementById('anulacion-info-fecha').textContent = fecha ? fecha.slice(0,10) : '—';
+  document.getElementById('anulacion-clave').value = '';
+  document.getElementById('alerta-anulacion-ok').style.display  = 'none';
+  document.getElementById('alerta-anulacion-err').style.display = 'none';
 
-  abrirModal('modal-reverso-stock');
+  abrirModal('modal-anulacion-stock');
 }
 
 // ── Ejecuta el reverso tras validar contraseña ──
 async function confirmarReverso() {
-  const okEl   = document.getElementById('alerta-reverso-ok');
-  const errEl  = document.getElementById('alerta-reverso-err');
+  const okEl   = document.getElementById('alerta-anulacion-ok');
+  const errEl  = document.getElementById('alerta-anulacion-err');
   okEl.style.display = errEl.style.display = 'none';
 
-  const tipo          = document.getElementById('reverso-tipo').value;
-  const idMovimiento  = parseInt(document.getElementById('reverso-id-movimiento').value);
-  const id_articulo   = parseInt(document.getElementById('reverso-id-articulo').value);
-  const cantidad      = parseFloat(document.getElementById('reverso-cantidad').value);
-  const clave         = document.getElementById('reverso-clave').value;
+  const tipo          = document.getElementById('anulacion-tipo').value;
+  const idMovimiento  = parseInt(document.getElementById('anulacion-id-movimiento').value);
+  const id_articulo   = parseInt(document.getElementById('anulacion-id-articulo').value);
+  const cantidad      = parseFloat(document.getElementById('anulacion-cantidad').value);
+  const clave         = document.getElementById('anulacion-clave').value;
 
   if (!clave) { errEl.textContent = 'Ingrese su contraseña para autorizar.'; errEl.style.display = 'block'; return; }
 
-  const btnConfirmar = document.querySelector('#modal-reverso-stock .btn-peligro');
+  const btnConfirmar = document.querySelector('#modal-anulacion-stock .btn-peligro');
   const resetBtn = function() { if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.textContent = '⚠ CONFIRMAR REVERSO'; } };
   if (btnConfirmar) { btnConfirmar.disabled = true; btnConfirmar.textContent = 'Procesando...'; }
 
@@ -697,12 +697,12 @@ async function confirmarReverso() {
     if (tipo === 'ENTRADA') {
       const rows = await api('stock_entradas', 'GET', null, '?id_entrada=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo)');
       if (!rows || !rows[0]) throw new Error('Movimiento no encontrado.');
-      if (rows[0].reversada) throw new Error('Este movimiento ya fue reversado.');
+      if (rows[0].anulada) throw new Error('Este movimiento ya fue anulado.');
       movOrig = rows[0];
     } else {
       const rows = await api('stock_salidas', 'GET', null, '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),empleado_recibe:id_empleado(nombre_completo,correo,id_area,param_areas:id_area(nombre))');
       if (!rows || !rows[0]) throw new Error('Movimiento no encontrado.');
-      if (rows[0].reversada) throw new Error('Este movimiento ya fue reversado.');
+      if (rows[0].anulada) throw new Error('Este movimiento ya fue anulado.');
       movOrig = rows[0];
     }
 
@@ -727,11 +727,11 @@ async function confirmarReverso() {
     // 6. Marcar movimiento como reversado
     if (tipo === 'ENTRADA') {
       await api('stock_entradas', 'PATCH',
-        { reversada: true, id_usuario_reversa: sesionActual.correo_usuario },
+        { anulada: true, id_usuario_reversa: sesionActual.correo_usuario },
         '?id_entrada=eq.' + idMovimiento);
     } else {
       await api('stock_salidas', 'PATCH',
-        { reversada: true, id_usuario_reversa: sesionActual.correo_usuario },
+        { anulada: true, id_usuario_reversa: sesionActual.correo_usuario },
         '?id_salida=eq.' + idMovimiento);
     }
 
@@ -742,7 +742,7 @@ async function confirmarReverso() {
         '?referencia=eq.' + ref + emisorQ() + '&select=id_asiento,descripcion&estado=neq.ANULADO');
       if (asientos && asientos.length) {
         await api('cont_asientos', 'PATCH',
-          { estado: 'ANULADO', descripcion: '[REVERSADO] ' + (asientos[0].descripcion || '') },
+          { estado: 'ANULADO', descripcion: '[ANULADO] ' + (asientos[0].descripcion || '') },
           '?id_asiento=eq.' + asientos[0].id_asiento);
       }
     } catch(eAst) { console.warn('Error anulando asiento:', eAst); }
@@ -754,7 +754,7 @@ async function confirmarReverso() {
           '?numero_doc=eq.' + encodeURIComponent('ENT-' + idMovimiento) + emisorQ() + '&estado=eq.PENDIENTE&select=id_cxp');
         if (cxps && cxps.length) {
           await api('cont_cxp', 'PATCH',
-            { estado: 'ANULADA', observaciones: '[REVERSADO] Entrada de stock reversada.' },
+            { estado: 'ANULADA', observaciones: '[ANULADO] Entrada de stock anulada.' },
             '?id_cxp=eq.' + cxps[0].id_cxp);
         }
       } catch(eCxP) { console.warn('Error anulando CxP:', eCxP); }
@@ -773,7 +773,7 @@ async function confirmarReverso() {
             id_empleado:  movOrig.id_empleado,
             tipo:         'REVERSO_SALIDA',
             titulo:       '⚠ Reverso de Salida de Inventario',
-            mensaje:      'La salida de ' + cantidad + ' unidades de "' + nomArt + '" registrada a su nombre ha sido reversada. El inventario debe retornar al almacén.',
+            mensaje:      'La salida de ' + cantidad + ' unidades de "' + nomArt + '" registrada a su nombre ha sido anulada. El inventario debe retornar al almacén.',
             leida:        false,
             id_usuario:   sesionActual.correo_usuario,
             fecha_registro: new Date().toISOString()
@@ -827,7 +827,7 @@ async function confirmarReverso() {
     resetBtn();
 
     setTimeout(async function() {
-      cerrarModal('modal-reverso-stock');
+      cerrarModal('modal-anulacion-stock');
       await calcularInvSaldoArea();
       if (document.getElementById('tabla-inv-cont')) invRenderVista(inventarioCache, _invVista);
       if (_fichaInvActual && _fichaInvActual.id) {

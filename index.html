@@ -1344,17 +1344,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260701006"></script>
-<script src="js/parametros.js?v=20260701006"></script>
-<script src="js/empresas.js?v=20260701006"></script>
-<script src="js/facturacion.js?v=20260701006"></script>
-<script src="js/inventario.js?v=20260701006"></script>
-<script src="js/contabilidad.js?v=20260701006"></script>
-<script src="js/pagos.js?v=20260701006"></script>
-<script src="js/vehiculos.js?v=20260701006"></script>
-<script src="js/catalogo.js?v=20260701006"></script>
-<script src="js/inventario2.js?v=20260701006"></script>
-<script src="js/ordenes.js?v=20260701006"></script>
+<script src="js/core.js?v=20260701007"></script>
+<script src="js/parametros.js?v=20260701007"></script>
+<script src="js/empresas.js?v=20260701007"></script>
+<script src="js/facturacion.js?v=20260701007"></script>
+<script src="js/inventario.js?v=20260701007"></script>
+<script src="js/contabilidad.js?v=20260701007"></script>
+<script src="js/pagos.js?v=20260701007"></script>
+<script src="js/vehiculos.js?v=20260701007"></script>
+<script src="js/catalogo.js?v=20260701007"></script>
+<script src="js/inventario2.js?v=20260701007"></script>
+<script src="js/ordenes.js?v=20260701007"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3704,40 +3704,40 @@
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL REVERSO DE MOVIMIENTO STOCK   -->
 <!-- ═══════════════════════════════════════ -->
-<div class="modal-overlay" id="modal-reverso-stock">
+<div class="modal-overlay" id="modal-anulacion-stock">
   <div class="modal" style="max-width:500px">
     <div class="modal-header">
-      <h3 id="reverso-titulo">⚠ REVERSAR MOVIMIENTO</h3>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-reverso-stock')">✕</button>
+      <h3 id="anulacion-titulo">⚠ ANULAR MOVIMIENTO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-anulacion-stock')">✕</button>
     </div>
     <div class="modal-body">
-      <input type="hidden" id="reverso-tipo">
-      <input type="hidden" id="reverso-id-movimiento">
-      <input type="hidden" id="reverso-id-articulo">
-      <input type="hidden" id="reverso-cantidad">
+      <input type="hidden" id="anulacion-tipo">
+      <input type="hidden" id="anulacion-id-movimiento">
+      <input type="hidden" id="anulacion-id-articulo">
+      <input type="hidden" id="anulacion-cantidad">
 
       <!-- Datos del movimiento -->
       <div style="background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:16px;margin-bottom:16px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div>
             <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Tipo</div>
-            <div id="reverso-info-tipo" style="font-size:13px;font-weight:600;color:var(--naranja)">—</div>
+            <div id="anulacion-info-tipo" style="font-size:13px;font-weight:600;color:var(--naranja)">—</div>
           </div>
           <div>
             <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Cantidad</div>
-            <div id="reverso-info-cantidad" style="font-size:13px;font-family:var(--font-mono)">—</div>
+            <div id="anulacion-info-cantidad" style="font-size:13px;font-family:var(--font-mono)">—</div>
           </div>
           <div>
             <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Artículo</div>
-            <div id="reverso-info-articulo" style="font-size:13px">—</div>
+            <div id="anulacion-info-articulo" style="font-size:13px">—</div>
           </div>
           <div>
             <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Fecha</div>
-            <div id="reverso-info-fecha" style="font-size:13px;font-family:var(--font-mono)">—</div>
+            <div id="anulacion-info-fecha" style="font-size:13px;font-family:var(--font-mono)">—</div>
           </div>
           <div class="form-full">
             <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Área</div>
-            <div id="reverso-info-area" style="font-size:13px">—</div>
+            <div id="anulacion-info-area" style="font-size:13px">—</div>
           </div>
         </div>
       </div>
@@ -3748,17 +3748,17 @@
 
       <div class="form-campo form-full">
         <label>Contraseña de Autorización *</label>
-        <input type="password" id="reverso-clave" placeholder="Ingrese su contraseña para confirmar"
+        <input type="password" id="anulacion-clave" placeholder="Ingrese su contraseña para confirmar"
           style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
       </div>
 
-      <div class="alerta alerta-exito" id="alerta-reverso-ok"  style="display:none;margin-top:8px"></div>
-      <div class="alerta alerta-error"  id="alerta-reverso-err" style="display:none;margin-top:8px"></div>
+      <div class="alerta alerta-exito" id="alerta-anulacion-ok"  style="display:none;margin-top:8px"></div>
+      <div class="alerta alerta-error"  id="alerta-anulacion-err" style="display:none;margin-top:8px"></div>
     </div>
     <div class="modal-footer">
       <div style="display:flex;gap:10px;justify-content:space-between">
-        <button class="btn-peligro" onclick="confirmarReverso()">⚠ CONFIRMAR REVERSO</button>
-        <button class="btn-secundario" onclick="cerrarModal('modal-reverso-stock')">Cancelar</button>
+        <button class="btn-peligro" onclick="confirmarReverso()">⚠ CONFIRMAR ANULACIÓN</button>
+        <button class="btn-secundario" onclick="cerrarModal('modal-anulacion-stock')">Cancelar</button>
       </div>
     </div>
   </div>

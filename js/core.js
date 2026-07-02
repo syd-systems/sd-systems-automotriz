@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260701006';;;
+const SYD_VERSION = '20260701007';;;
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -98,8 +98,8 @@ const PERMISOS_POR_MODULO = {
     { accion: 'ENTRADA_STOCK',    label: 'Registrar entrada de stock' },
     { accion: 'SALIDA_STOCK',     label: 'Registrar salida de stock' },
     { accion: 'EDITAR_STOCK',     label: 'Editar movimientos de stock (entradas/salidas)' },
-    { accion: 'REVERSAR_ENTRADA', label: 'Reversar entradas de stock' },
-    { accion: 'REVERSAR_SALIDA',  label: 'Reversar salidas de stock' },
+    { accion: 'ANULAR_ENTRADA', label: 'Reversar entradas de stock' },
+    { accion: 'ANULAR_SALIDA',  label: 'Reversar salidas de stock' },
     { accion: 'VER_INVENTARIO_GENERAL', label: 'Ver Inventario General completo (sin filtro de área)' },
     { accion: 'VER_MOVIMIENTOS',  label: 'Ver consulta de movimientos' },
     { accion: 'VER_CATEGORIAS',   label: 'Ver y gestionar Categorías de Inventario' },

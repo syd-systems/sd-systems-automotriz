@@ -1269,7 +1269,7 @@ async function verHistorialEntradas(id_articulo) {
       }
       filas = salsRecibidas.map(function(s) {
         const origen = s.area_origen ? s.area_origen.nombre+(s.area_origen.codigo?' ('+s.area_origen.codigo+')':'') : 'Almacén';
-        const estado = s.reversada
+        const estado = s.anulada
           ? '<span style="color:#fc8181;font-size:10px">Reversada</span>'
           : '<span style="color:#22c55e;font-size:10px">Activa</span>';
         return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
@@ -1315,10 +1315,10 @@ async function verHistorialEntradas(id_articulo) {
           const mon  = (e.moneda_compra || 'USD').toUpperCase();
           const prec = parseFloat(e.precio_compra_original || e.precio_costo_moneda || 0);
           const precFmt = mon === 'VES' ? fmtBs(prec) + ' Bs' : '$ ' + fmtUSD(prec) + ' ' + mon;
-          const estado = e.reversada
+          const estado = e.anulada
             ? '<span style="color:#fc8181;font-size:10px">Reversada</span>'
             : '<span style="color:#22c55e;font-size:10px">Activa</span>';
-          const btnRev = !e.reversada && (sesionActual?.administrador || puedo('INVENTARIO','REVERSAR_ENTRADA'))
+          const btnRev = !e.anulada && (sesionActual?.administrador || puedo('INVENTARIO','ANULAR_ENTRADA'))
             ? '<button onclick="reversarMovimiento(\'ENTRADA\',' + e.id_entrada + ',' + e.cantidad + ',' + id_articulo + ')" '
               + 'style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;'
               + 'border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">Reversar</button>'
@@ -1530,10 +1530,10 @@ async function verHistorialSalidas(id_articulo) {
       + '</tr></thead><tbody>'
       + salidas.map(function(s) {
           const area = s.area_receptora ? s.area_receptora.nombre + (s.area_receptora.codigo ? ' (' + s.area_receptora.codigo + ')' : '') : '—';
-          const estado = s.reversada
+          const estado = s.anulada
             ? '<span style="color:#fc8181;font-size:10px">Reversada</span>'
             : '<span style="color:#22c55e;font-size:10px">Activa</span>';
-          const btnRev = !s.reversada && (sesionActual?.administrador || puedo('INVENTARIO','REVERSAR_SALIDA'))
+          const btnRev = !s.anulada && (sesionActual?.administrador || puedo('INVENTARIO','ANULAR_SALIDA'))
             ? '<button onclick="reversarSalida(' + s.id_salida + ',' + id_articulo + ',' + s.cantidad + ')" '
               + 'style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;'
               + 'border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">Reversar</button>'
@@ -1665,7 +1665,7 @@ async function invCargarMovimientos() {
         movs.push({ tipo:'ENTRADA', fecha:e.fecha_entrada, art:artNom(art),
           origen: e.area_origen ? e.area_origen.nombre+(e.area_origen.codigo?' ('+e.area_origen.codigo+')':'') : (e.proveedor?e.proveedor.nombre:(e.cliente_nombre||'—')),
           destino: e.area_receptora ? e.area_receptora.nombre+(e.area_receptora.codigo?' ('+e.area_receptora.codigo+')':'') : '—',
-          motivo:motivo, cant:e.cantidad, costo:e.precio_costo_moneda||0, moneda:e.moneda_compra||monedaRef, rev:e.reversada });
+          motivo:motivo, cant:e.cantidad, costo:e.precio_costo_moneda||0, moneda:e.moneda_compra||monedaRef, rev:e.anulada });
       });
       salidas.forEach(function(s) {
         const art = getArt(s.id_articulo);
@@ -1673,7 +1673,7 @@ async function invCargarMovimientos() {
         movs.push({ tipo:'SALIDA', fecha:s.fecha_salida, art:artNom(art),
           origen: s.area_entrega ? s.area_entrega.nombre+(s.area_entrega.codigo?' ('+s.area_entrega.codigo+')':'') : '—',
           destino: s.area_receptora ? s.area_receptora.nombre+(s.area_receptora.codigo?' ('+s.area_receptora.codigo+')':'') : '—',
-          motivo:'Salida interna', cant:s.cantidad, costo:0, moneda:'', rev:s.reversada });
+          motivo:'Salida interna', cant:s.cantidad, costo:0, moneda:'', rev:s.anulada });
       });
       movs.sort(function(a,b){ return b.fecha>a.fecha?1:b.fecha<a.fecha?-1:0; });
       if (!movs.length) { res.innerHTML='<div style="text-align:center;color:var(--suave);padding:40px">Sin movimientos en el período.</div>'; return; }
