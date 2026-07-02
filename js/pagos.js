@@ -2721,7 +2721,7 @@ async function confirmarEjecucionPago() {
 
     // 6. Crear asiento contable
     const numAst = await _siguienteNumeroAsiento();
-    const asiento = await api('cont_asientos','POST',{
+    await api('cont_asientos','POST',{
       id_empresa:     _empresaActiva?.id_empresa || null,
       numero_asiento: numAst,
       tipo:           'PAGO_CXP',
@@ -2730,10 +2730,13 @@ async function confirmarEjecucionPago() {
       moneda_base:    'VES',
       tasa_bcv:       tasaPago,
       referencia:     c.numero_doc,
-      descripcion:    'Pago CxP: ' + c.numero_doc + ' — ' + (c.observaciones||''),
+      descripcion:    'Pago CxP: ' + c.numero_doc + ' — ' + (c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim(),
       id_usuario:     sesionActual?.correo_usuario
     });
-    const idAst = asiento?.id_asiento;
+    // Obtener id_asiento recién creado
+    const astRows = await api('cont_asientos','GET',null,
+      '?numero_asiento=eq.'+encodeURIComponent(numAst)+emisorQ()+'&select=id_asiento&limit=1');
+    const idAst = astRows && astRows[0] ? astRows[0].id_asiento : null;
 
     if (idAst) {
       let orden = 1;
