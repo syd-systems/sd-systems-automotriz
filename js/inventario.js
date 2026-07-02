@@ -683,13 +683,9 @@ async function confirmarReverso() {
   if (btnConfirmar) { btnConfirmar.disabled = true; btnConfirmar.textContent = 'Procesando...'; }
 
   try {
-    // 1. Validar contraseña del usuario logueado
-    const authRes = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
-      method: 'POST',
-      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: sesionActual.correo_usuario, password: clave })
-    });
-    if (!authRes.ok) throw new Error('Contraseña incorrecta.');
+    // 1. Validar contraseña usando bcrypt via RPC (no depende de Supabase Auth)
+    const verifReverso = await verificarContrasena(sesionActual.correo_usuario, clave);
+    if (!verifReverso.ok) throw new Error('Contraseña incorrecta.');
 
     // 2. Leer artículo fresco
     const artArr = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id_articulo + '&select=*');
