@@ -679,11 +679,11 @@ async function confirmarReverso() {
   if (!clave) { errEl.textContent = 'Ingrese su contraseña para autorizar.'; errEl.style.display = 'block'; return; }
 
   const btnConfirmar = document.querySelector('#modal-anulacion-stock .btn-peligro');
-  const resetBtn = function() { if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.textContent = '⚠ CONFIRMAR REVERSO'; } };
+  const resetBtn = function() { if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.textContent = '⚠ CONFIRMAR ANULACIÓN'; } };
   if (btnConfirmar) { btnConfirmar.disabled = true; btnConfirmar.textContent = 'Procesando...'; }
 
   try {
-    // 1. Validar contraseña usando bcrypt via RPC (no depende de Supabase Auth)
+    // 1. Validar contraseña usando bcrypt via RPC
     const verifReverso = await verificarContrasena(sesionActual.correo_usuario, clave);
     if (!verifReverso.ok) throw new Error('Contraseña incorrecta.');
 
@@ -692,13 +692,28 @@ async function confirmarReverso() {
     const art = artArr[0];
     if (!art) throw new Error('Artículo no encontrado.');
 
-    // 3. Leer movimiento original (para notificaciones en salida)
+    // 3. Leer movimiento original
     let movOrig = null;
     if (tipo === 'ENTRADA') {
       const rows = await api('stock_entradas', 'GET', null, '?id_entrada=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo)');
       if (!rows || !rows[0]) throw new Error('Movimiento no encontrado.');
       if (rows[0].anulada) throw new Error('Este movimiento ya fue anulado.');
       movOrig = rows[0];
+
+      // ── Validar que la CxP no esté pagada ──
+      try {
+        const cxps = await api('cont_cxp', 'GET', null,
+          '?numero_doc=ilike.' + encodeURIComponent('ENT-' + idMovimiento + '*') + emisorQ() + '&select=id_cxp,estado,numero_doc');
+        if (cxps && cxps.length) {
+          const pagadas = cxps.filter(function(c) { return c.estado === 'PAGADA' || c.estado === 'PARCIAL'; });
+          if (pagadas.length > 0) {
+            throw new Error('No se puede anular esta entrada porque la CxP "' + pagadas[0].numero_doc + '" tiene estado ' + pagadas[0].estado + '. Debe reversar el pago primero.');
+          }
+        }
+      } catch(eCxPCheck) {
+        if (eCxPCheck.message.includes('No se puede anular')) throw eCxPCheck;
+        console.warn('Error verificando CxP:', eCxPCheck);
+      }
     } else {
       const rows = await api('stock_salidas', 'GET', null, '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),empleado_recibe:id_empleado(nombre_completo,correo,id_area,param_areas:id_area(nombre))');
       if (!rows || !rows[0]) throw new Error('Movimiento no encontrado.');
@@ -711,7 +726,7 @@ async function confirmarReverso() {
     let nuevoStock;
     if (tipo === 'ENTRADA') {
       nuevoStock = stockActual - cantidad;
-      if (nuevoStock < 0) throw new Error('Stock resultante negativo (' + nuevoStock.toFixed(2) + '). No se puede reversar.');
+      if (nuevoStock < 0) throw new Error('Stock resultante negativo (' + nuevoStock.toFixed(2) + '). No se puede anular porque ya se realizaron salidas de este inventario.');
     } else {
       nuevoStock = stockActual + cantidad;
     }
