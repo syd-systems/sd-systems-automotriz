@@ -2778,10 +2778,10 @@ async function confirmarEjecucionPago() {
       const diferencialUSD = diferencial > 0 ? parseFloat((diferencial / tasaPago).toFixed(4)) : 0;
       const totalBanco = parseFloat((total + diferencialUSD).toFixed(4));
       await linea(idCtaBanco, 0, totalBanco);
-      // DEBE: Cuenta Gasto/Costo del artículo
-      if (idCtaGasto)     await linea(idCtaGasto,     base, 0);
-      // HABER: Cuenta Inventario del artículo
-      if (idCtaInventario) await linea(idCtaInventario, 0, base);
+      // DEBE: Cuenta Gasto/Costo del artículo — monto completo de la CxP
+      if (idCtaGasto)      await linea(idCtaGasto,      montoUSD, 0);
+      // HABER: Cuenta Inventario del artículo — monto completo de la CxP
+      if (idCtaInventario) await linea(idCtaInventario, 0, montoUSD);
     }
 
     // 7. Actualizar CxP
