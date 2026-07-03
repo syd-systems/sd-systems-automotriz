@@ -577,19 +577,17 @@ async function abrirEntradaStock(id) {
   if (creditoCont) creditoCont.style.display = 'none';
   const prevEl = document.getElementById('es-cuotas-preview');
   if (prevEl) { prevEl.innerHTML = ''; delete prevEl.dataset.cuotas; }
+  // Setear área y empleado desde el usuario logueado (hidden fields)
   if (typeof cargarUsuarioReceptorEntrada === 'function') cargarUsuarioReceptorEntrada();
   document.getElementById('es-proveedor').innerHTML = '<option value="">— Seleccionar proveedor (opcional) —</option>';
   Promise.all([
-    api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
     api('proveedores', 'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif,id_categoria,param_categorias_proveedor:id_categoria(nombre)'),
     api('param_categorias_proveedor','GET',null,'?nombre=ilike.*Artículo*&select=id&limit=1'),
+    api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
   ]).then(function(res) {
-    var areas = res[0], provs = res[1];
-    var catArticulo = res[2] && res[2][0] ? res[2][0].id : null;
+    var provs = res[0], areas = res[2];
+    var catArticulo = res[1] && res[1][0] ? res[1][0].id : null;
     if (catArticulo) provs = provs.filter(function(p){ return p.id_categoria === catArticulo; });
-    var selArea = document.getElementById('es-area');
-    selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
-      + areas.map(function(a) { return '<option value="' + a.id + '">' + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>'; }).join('');
     var selProv = document.getElementById('es-proveedor');
     selProv.innerHTML = '<option value="">— Seleccionar proveedor —</option>'
       + provs.map(function(p) { return '<option value="' + p.id_proveedor + '">' + p.nombre + (p.rif ? ' (' + p.rif + ')' : '') + '</option>'; }).join('');
@@ -779,9 +777,7 @@ async function guardarEntradaStock() {
       if (!idOrigenVal) { errEl.textContent = 'Debe seleccionar el área de origen.'; errEl.style.display = 'block'; document.getElementById('es-area-origen')?.focus(); resetBtn(); return; }
     }
     const id_areaEntVal = document.getElementById('es-area')?.value;
-    if (!id_areaEntVal) { errEl.textContent = 'Debe seleccionar el Área Receptora.'; errEl.style.display = 'block'; document.getElementById('es-area')?.focus(); resetBtn(); return; }
     const idEmpEntVal = parseInt(document.getElementById('es-empleado')?.value) || null;
-    if (!idEmpEntVal) { errEl.textContent = 'Debe seleccionar el empleado receptor.'; errEl.style.display = 'block'; document.getElementById('es-empleado')?.focus(); resetBtn(); return; }
     const claveEnt = document.getElementById('es-clave-receptor')?.value || '';
     if (!claveEnt) { errEl.textContent = 'El empleado receptor debe ingresar su contraseña.'; errEl.style.display = 'block'; document.getElementById('es-clave-receptor')?.focus(); resetBtn(); return; }
     const validEnt = await validarClaveReceptor(idEmpEntVal, claveEnt);

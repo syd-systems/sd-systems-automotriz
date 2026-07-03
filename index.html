@@ -1344,17 +1344,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260701011"></script>
-<script src="js/parametros.js?v=20260701011"></script>
-<script src="js/empresas.js?v=20260701011"></script>
-<script src="js/facturacion.js?v=20260701011"></script>
-<script src="js/inventario.js?v=20260701011"></script>
-<script src="js/contabilidad.js?v=20260701011"></script>
-<script src="js/pagos.js?v=20260701011"></script>
-<script src="js/vehiculos.js?v=20260701011"></script>
-<script src="js/catalogo.js?v=20260701011"></script>
-<script src="js/inventario2.js?v=20260701011"></script>
-<script src="js/ordenes.js?v=20260701011"></script>
+<script src="js/core.js?v=20260701012"></script>
+<script src="js/parametros.js?v=20260701012"></script>
+<script src="js/empresas.js?v=20260701012"></script>
+<script src="js/facturacion.js?v=20260701012"></script>
+<script src="js/inventario.js?v=20260701012"></script>
+<script src="js/contabilidad.js?v=20260701012"></script>
+<script src="js/pagos.js?v=20260701012"></script>
+<script src="js/vehiculos.js?v=20260701012"></script>
+<script src="js/catalogo.js?v=20260701012"></script>
+<script src="js/inventario2.js?v=20260701012"></script>
+<script src="js/ordenes.js?v=20260701012"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2592,22 +2592,8 @@
           <div id="es-cuotas-preview" style="margin-top:12px"></div>
         </div>
       </div>
-      <div class="form-grid" style="grid-template-columns:1fr 1fr">
-        <div class="form-campo">
-          <label>Área Receptora *</label>
-          <select id="es-area" onchange="onSelAreaEntrada()"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar área —</option>
-          </select>
-        </div>
-        <div class="form-campo">
-          <label>Empleado que Recibe *</label>
-          <select id="es-empleado"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar área primero —</option>
-          </select>
-        </div>
-      </div>
+      <input type="hidden" id="es-area">
+      <input type="hidden" id="es-empleado">
         <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
           <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
