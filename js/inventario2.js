@@ -578,7 +578,7 @@ async function abrirEntradaStock(id) {
   const prevEl = document.getElementById('es-cuotas-preview');
   if (prevEl) { prevEl.innerHTML = ''; delete prevEl.dataset.cuotas; }
   // Setear área y empleado desde el usuario logueado (hidden fields)
-  if (typeof cargarUsuarioReceptorEntrada === 'function') cargarUsuarioReceptorEntrada();
+  await cargarUsuarioReceptorEntrada();
   document.getElementById('es-proveedor').innerHTML = '<option value="">— Seleccionar proveedor (opcional) —</option>';
   Promise.all([
     api('proveedores', 'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif,id_categoria,param_categorias_proveedor:id_categoria(nombre)'),
@@ -776,7 +776,8 @@ async function guardarEntradaStock() {
       const idOrigenVal = document.getElementById('es-area-origen')?.value;
       if (!idOrigenVal) { errEl.textContent = 'Debe seleccionar el área de origen.'; errEl.style.display = 'block'; document.getElementById('es-area-origen')?.focus(); resetBtn(); return; }
     }
-    const id_areaEntVal = document.getElementById('es-area')?.value;
+    const id_areaEntVal = document.getElementById('es-area')?.value || 
+      (_empresaActiva?.id_area_principal || null);
     const idEmpEntVal = parseInt(document.getElementById('es-empleado')?.value) || null;
     const claveEnt = document.getElementById('es-clave-receptor')?.value || '';
     if (!claveEnt) { errEl.textContent = 'El empleado receptor debe ingresar su contraseña.'; errEl.style.display = 'block'; document.getElementById('es-clave-receptor')?.focus(); resetBtn(); return; }
