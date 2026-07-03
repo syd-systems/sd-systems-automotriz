@@ -1344,17 +1344,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260701015"></script>
-<script src="js/parametros.js?v=20260701015"></script>
-<script src="js/empresas.js?v=20260701015"></script>
-<script src="js/facturacion.js?v=20260701015"></script>
-<script src="js/inventario.js?v=20260701015"></script>
-<script src="js/contabilidad.js?v=20260701015"></script>
-<script src="js/pagos.js?v=20260701015"></script>
-<script src="js/vehiculos.js?v=20260701015"></script>
-<script src="js/catalogo.js?v=20260701015"></script>
-<script src="js/inventario2.js?v=20260701015"></script>
-<script src="js/ordenes.js?v=20260701015"></script>
+<script src="js/core.js?v=20260701016"></script>
+<script src="js/parametros.js?v=20260701016"></script>
+<script src="js/empresas.js?v=20260701016"></script>
+<script src="js/facturacion.js?v=20260701016"></script>
+<script src="js/inventario.js?v=20260701016"></script>
+<script src="js/contabilidad.js?v=20260701016"></script>
+<script src="js/pagos.js?v=20260701016"></script>
+<script src="js/vehiculos.js?v=20260701016"></script>
+<script src="js/catalogo.js?v=20260701016"></script>
+<script src="js/inventario2.js?v=20260701016"></script>
+<script src="js/ordenes.js?v=20260701016"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4314,7 +4314,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-ejecutar-pago')">Retornar</button>
-      <button class="btn-primario" style="background:#22c55e;border-color:#22c55e" onclick="confirmarEjecucionPago()">💳 Confirmar Pago</button>
+      <button class="btn-primario" id="btn-confirmar-pago" style="background:#22c55e;border-color:#22c55e" onclick="this.disabled=true;this.textContent='⏳ Procesando...';confirmarEjecucionPago()">💳 Confirmar Pago</button>
     </div>
   </div>
 </div>

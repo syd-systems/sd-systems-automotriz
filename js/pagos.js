@@ -2805,6 +2805,8 @@ async function confirmarEjecucionPago() {
   } catch(err) {
     errEl.textContent = 'Error: ' + err.message;
     errEl.style.display = 'block';
+    const btnConf = document.getElementById('btn-confirmar-pago');
+    if (btnConf) { btnConf.disabled = false; btnConf.textContent = '💳 Confirmar Pago'; }
   }
 }
 
