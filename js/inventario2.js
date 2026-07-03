@@ -934,7 +934,6 @@ async function guardarEntradaStock() {
 
     // ── FASE 5B: Crear CxP según esquema de pago ──
     if (motivoEnt === 'compra') {
-      console.log('[SYD] FASE 5B — motivoEnt:', motivoEnt, 'id_entrada:', id_entrada, 'esquema:', document.getElementById('es-esquema-pago')?.value);
       try {
         const id_proveedor = parseInt(document.getElementById('es-proveedor')?.value) || null;
         const montoUSD    = parseFloat((nuevoPrecioCosto * cantidad).toFixed(2));
