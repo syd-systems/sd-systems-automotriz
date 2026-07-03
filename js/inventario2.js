@@ -929,6 +929,7 @@ async function guardarEntradaStock() {
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
 
     // ── FASE 5B: Crear CxP según esquema de pago ──
+    console.log('[SYD] FASE 5B — motivoEnt:', motivoEnt, 'id_entrada:', id_entrada, 'esquema:', document.getElementById('es-esquema-pago')?.value, 'proveedor:', document.getElementById('es-proveedor')?.value);
     if (motivoEnt === 'compra') {
       try {
         const id_proveedor = parseInt(document.getElementById('es-proveedor')?.value) || null;
