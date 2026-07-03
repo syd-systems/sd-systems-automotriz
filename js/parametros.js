@@ -402,8 +402,13 @@ async function eliminarParamItem() {
     try {
       const tipos = await api('inv_articulos_tipo','GET',null,'?id_categoria=eq.'+id+'&select=id_tipo&limit=1') || [];
       if (tipos.length) { alert('No se puede eliminar: esta categoría tiene tipos de artículo asociados. Elimine primero los tipos.'); return; }
-      const arts = await api('inventario_almacen','GET',null,'?id_categoria=eq.'+id+'&select=id_articulo&limit=1') || [];
-      if (arts.length) { alert('No se puede eliminar: tiene artículos asociados. Reasigne o elímine los artículos primero.'); return; }
+      // Verificar artículos a través de los tipos de esta categoría
+      const tiposTodos = await api('inv_articulos_tipo','GET',null,'?id_categoria=eq.'+id+'&select=id_tipo') || [];
+      if (tiposTodos.length) {
+        const idsStr = tiposTodos.map(function(t){ return t.id_tipo; }).join(',');
+        const arts = await api('inventario_almacen','GET',null,'?id_tipo_articulo=in.('+idsStr+')&select=id_articulo&limit=1') || [];
+        if (arts.length) { alert('No se puede eliminar: tiene artículos asociados a sus tipos. Reasigne o elimine los artículos primero.'); return; }
+      }
       await api('inv_categorias','DELETE',null,'?id_categoria=eq.'+id);
       _invCategoriasCache=[];
       cerrarModal('modal-param');
