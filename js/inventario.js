@@ -401,7 +401,7 @@ async function guardarEdicionMovimiento() {
       const fechaCuotaVal = document.getElementById('edit-mov-cuotas-fecha')?.value || '';
       if (!numCuotasVal || numCuotasVal < 1) return mostrarError('Ingrese el número de cuotas.', 'edit-mov-cuotas-num');
       if (!fechaCuotaVal) return mostrarError('Ingrese la Fecha de la Primera Cuota.', 'edit-mov-cuotas-fecha');
-      if (fechaCuotaVal <= getHoyVzla()) return mostrarError('La Fecha de la Primera Cuota no puede ser menor al día de hoy.', 'edit-mov-cuotas-fecha');
+      if (fechaCuotaVal <= getHoyVzla()) return mostrarError('La Fecha de la Primera Cuota tiene que ser mayor que el día de hoy.', 'edit-mov-cuotas-fecha');
     }
   }
   if (!clave) return mostrarError('Ingrese su contraseña para autorizar.', 'edit-mov-clave');
