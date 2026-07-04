@@ -2733,9 +2733,11 @@ async function confirmarEjecucionPago() {
   const idMetodo    = document.getElementById('exec-pago-metodo')?.value;
   const idCtaBanco  = parseInt(document.getElementById('exec-pago-cuenta-banco')?.value) || 0;
   const incluyeIva  = document.getElementById('exec-pago-incluye-iva-si')?.checked;
-  const esUSD       = moneda === 'USD';
+  const esUSD       = moneda !== '' && moneda !== 'VES';
   const incluyeIgtf = esUSD && document.getElementById('exec-pago-incluye-igtf-si')?.checked;
   const errEl = document.getElementById('alerta-exec-err');
+  const btnConf = document.getElementById('btn-confirmar-pago');
+  const resetBtn = function() { if (btnConf) { btnConf.disabled = false; btnConf.textContent = '💳 Confirmar Pago'; } };
   errEl.style.display = 'none';
 
   if (!fechaPago)   { errEl.textContent = 'Seleccione la fecha de pago.';           errEl.style.display = 'block'; resetBtn(); return; }
@@ -2885,8 +2887,7 @@ async function confirmarEjecucionPago() {
   } catch(err) {
     errEl.textContent = 'Error: ' + err.message;
     errEl.style.display = 'block';
-    const btnConf = document.getElementById('btn-confirmar-pago');
-    if (btnConf) { btnConf.disabled = false; btnConf.textContent = '💳 Confirmar Pago'; }
+    resetBtn();
   }
 }
 
