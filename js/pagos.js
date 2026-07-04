@@ -2911,7 +2911,7 @@ async function confirmarEjecucionPago() {
       pagado_usd:  nuevoPagado,
       saldo_usd:   nuevoSaldo,
       fecha_pago:  fechaPago,
-      metodo_pago: metodo,
+      metodo_pago: idMetodo,
       tasa_bcv:    tasaPago
     },'?id_cxp=eq.'+id_cxp);
 
