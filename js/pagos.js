@@ -2558,13 +2558,22 @@ async function ejecutarPagoCxP(id_cxp) {
 
   // Resetear campos
   document.getElementById('exec-pago-fecha').value = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
-  document.getElementById('exec-pago-metodo').value = 'TRANSFERENCIA_USD';
+  const selMoneda = document.getElementById('exec-pago-moneda-sel');
+  if (selMoneda) selMoneda.value = '';
+  const selMetodo = document.getElementById('exec-pago-metodo');
+  if (selMetodo) selMetodo.innerHTML = '<option value="">— Seleccione moneda primero —</option>';
+  const cuentaCont = document.getElementById('exec-pago-cuenta-cont');
+  if (cuentaCont) cuentaCont.style.display = 'none';
+  const cuentaHidden = document.getElementById('exec-pago-cuenta-banco');
+  if (cuentaHidden) cuentaHidden.value = '';
   document.getElementById('exec-pago-incluye-iva-no').checked = true;
   document.getElementById('exec-pago-incluye-igtf-no').checked = true;
+  document.getElementById('exec-pago-incluye-igtf-cont').style.display = 'none';
+  document.getElementById('exec-pago-tributos-preview').style.display = 'none';
   document.getElementById('alerta-exec-err').style.display = 'none';
 
   // Título con monto
-  document.getElementById('exec-pago-desc').textContent  = c.numero_doc + ' — ' + (c.observaciones||'');
+  document.getElementById('exec-pago-desc').textContent  = c.numero_doc + ' — ' + (c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim();
   document.getElementById('exec-pago-monto').textContent = '$ ' + parseFloat(c.monto_usd||0).toLocaleString('es-VE',{minimumFractionDigits:2});
 
   // Mostrar/ocultar IGTF según moneda
@@ -2579,8 +2588,8 @@ async function ejecutarPagoCxP(id_cxp) {
 function onCambioIncluyeIvaPago() {
   const incluyeIva  = document.getElementById('exec-pago-incluye-iva-si')?.checked;
   const incluyeIgtf = document.getElementById('exec-pago-incluye-igtf-si')?.checked;
-  const metodo      = document.getElementById('exec-pago-metodo')?.value || '';
-  const esUSD       = metodo.includes('USD') || metodo === 'ZELLE' || metodo === 'DIVISAS';
+  const moneda      = document.getElementById('exec-pago-moneda-sel')?.value || '';
+  const esUSD       = moneda === 'USD';
 
   document.getElementById('exec-pago-incluye-igtf-cont').style.display = esUSD ? '' : 'none';
 
@@ -2593,6 +2602,60 @@ function onCambioIncluyeIvaPago() {
       const monto = parseFloat(rows[0].saldo_usd || rows[0].monto_usd || 0);
       _mostrarDesgloseTributos(monto, incluyeIva, esUSD && incluyeIgtf, esUSD);
     }).catch(function(){});
+}
+
+async function onCambioMonedaEjecucionPago() {
+  const moneda = document.getElementById('exec-pago-moneda-sel')?.value;
+  const selMetodo = document.getElementById('exec-pago-metodo');
+  const cuentaCont = document.getElementById('exec-pago-cuenta-cont');
+  const cuentaDisplay = document.getElementById('exec-pago-cuenta-display');
+  const cuentaHidden = document.getElementById('exec-pago-cuenta-banco');
+
+  if (!moneda) {
+    selMetodo.innerHTML = '<option value="">— Seleccione moneda primero —</option>';
+    if (cuentaCont) cuentaCont.style.display = 'none';
+    return;
+  }
+
+  selMetodo.innerHTML = '<option value="">⏳ Cargando...</option>';
+  try {
+    const metodos = await api('param_metodos_pago','GET',null,
+      '?codigo=eq.'+moneda+'&estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,id_cuenta_contable,cont_cuentas:id_cuenta_contable(id_cuenta,codigo,nombre)' + emisorQ());
+    selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
+      + (metodos||[]).map(function(m) {
+          return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-cuenta-nombre="'+(m.cont_cuentas ? m.cont_cuentas.codigo+' — '+m.cont_cuentas.nombre : '')+'">'+m.nombre+'</option>';
+        }).join('');
+  } catch(e) {
+    selMetodo.innerHTML = '<option value="">— Sin métodos disponibles —</option>';
+  }
+  if (cuentaCont) cuentaCont.style.display = 'none';
+  if (cuentaDisplay) cuentaDisplay.textContent = '—';
+  if (cuentaHidden) cuentaHidden.value = '';
+
+  // Actualizar visibilidad IGTF
+  const esUSD = moneda === 'USD';
+  const igtfCont = document.getElementById('exec-pago-incluye-igtf-cont');
+  if (igtfCont) igtfCont.style.display = esUSD ? '' : 'none';
+  onCambioIncluyeIvaPago();
+}
+
+function onCambioMetodoEjecucionPago() {
+  const selMetodo = document.getElementById('exec-pago-metodo');
+  const opt = selMetodo?.selectedOptions[0];
+  const cuentaId = opt?.getAttribute('data-cuenta-id') || '';
+  const cuentaNombre = opt?.getAttribute('data-cuenta-nombre') || '—';
+  const cuentaCont = document.getElementById('exec-pago-cuenta-cont');
+  const cuentaDisplay = document.getElementById('exec-pago-cuenta-display');
+  const cuentaHidden = document.getElementById('exec-pago-cuenta-banco');
+
+  if (cuentaId) {
+    if (cuentaCont) cuentaCont.style.display = '';
+    if (cuentaDisplay) cuentaDisplay.textContent = cuentaNombre;
+    if (cuentaHidden) cuentaHidden.value = cuentaId;
+  } else {
+    if (cuentaCont) cuentaCont.style.display = 'none';
+    if (cuentaHidden) cuentaHidden.value = '';
+  }
 }
 
 async function _obtenerTributos() {
@@ -2653,18 +2716,20 @@ async function _mostrarDesgloseTributos(monto, incluyeIva, incluyeIgtf, esUSD) {
 
 async function confirmarEjecucionPago() {
   const id_cxp   = _ejecutarPagoCxPId;
-  const fechaPago = document.getElementById('exec-pago-fecha')?.value;
-  const metodo    = document.getElementById('exec-pago-metodo')?.value;
-  const idCtaBanco = parseInt(document.getElementById('exec-pago-cuenta-banco')?.value) || 0;
+  const fechaPago   = document.getElementById('exec-pago-fecha')?.value;
+  const moneda      = document.getElementById('exec-pago-moneda-sel')?.value || '';
+  const idMetodo    = document.getElementById('exec-pago-metodo')?.value;
+  const idCtaBanco  = parseInt(document.getElementById('exec-pago-cuenta-banco')?.value) || 0;
   const incluyeIva  = document.getElementById('exec-pago-incluye-iva-si')?.checked;
-  const esUSD       = metodo?.includes('USD') || metodo === 'ZELLE' || metodo === 'DIVISAS';
+  const esUSD       = moneda === 'USD';
   const incluyeIgtf = esUSD && document.getElementById('exec-pago-incluye-igtf-si')?.checked;
   const errEl = document.getElementById('alerta-exec-err');
   errEl.style.display = 'none';
 
-  if (!fechaPago)   { errEl.textContent = 'Seleccione la fecha de pago.';          errEl.style.display = 'block'; return; }
-  if (!metodo)      { errEl.textContent = 'Seleccione el método de pago.';         errEl.style.display = 'block'; return; }
-  if (!idCtaBanco)  { errEl.textContent = 'Seleccione la cuenta bancaria de pago.'; errEl.style.display = 'block'; return; }
+  if (!fechaPago)   { errEl.textContent = 'Seleccione la fecha de pago.';           errEl.style.display = 'block'; resetBtn(); return; }
+  if (!moneda)      { errEl.textContent = 'Seleccione la moneda de pago.';          errEl.style.display = 'block'; resetBtn(); return; }
+  if (!idMetodo)    { errEl.textContent = 'Seleccione el método de pago.';          errEl.style.display = 'block'; resetBtn(); return; }
+  if (!idCtaBanco)  { errEl.textContent = 'El método seleccionado no tiene cuenta contable asignada.'; errEl.style.display = 'block'; resetBtn(); return; }
 
   try {
     // 1. Cargar CxP con join de cuentas

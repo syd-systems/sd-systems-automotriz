@@ -1344,17 +1344,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260703013"></script>
-<script src="js/parametros.js?v=20260703013"></script>
-<script src="js/empresas.js?v=20260703013"></script>
-<script src="js/facturacion.js?v=20260703013"></script>
-<script src="js/inventario.js?v=20260703013"></script>
-<script src="js/contabilidad.js?v=20260703013"></script>
-<script src="js/pagos.js?v=20260703013"></script>
-<script src="js/vehiculos.js?v=20260703013"></script>
-<script src="js/catalogo.js?v=20260703013"></script>
-<script src="js/inventario2.js?v=20260703013"></script>
-<script src="js/ordenes.js?v=20260703013"></script>
+<script src="js/core.js?v=20260703014"></script>
+<script src="js/parametros.js?v=20260703014"></script>
+<script src="js/empresas.js?v=20260703014"></script>
+<script src="js/facturacion.js?v=20260703014"></script>
+<script src="js/inventario.js?v=20260703014"></script>
+<script src="js/contabilidad.js?v=20260703014"></script>
+<script src="js/pagos.js?v=20260703014"></script>
+<script src="js/vehiculos.js?v=20260703014"></script>
+<script src="js/catalogo.js?v=20260703014"></script>
+<script src="js/inventario2.js?v=20260703014"></script>
+<script src="js/ordenes.js?v=20260703014"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4259,25 +4259,33 @@
           <label>Fecha de Pago *</label>
           <input type="date" id="exec-pago-fecha">
         </div>
+
+        <!-- Moneda de Pago -->
         <div class="form-campo form-full">
-          <label>Método de Pago *</label>
-          <select id="exec-pago-metodo">
-            <option value="EFECTIVO_VES">Efectivo Bs</option>
-            <option value="EFECTIVO_USD">Efectivo USD</option>
-            <option value="TRANSFERENCIA_VES">Transferencia Bs</option>
-            <option value="TRANSFERENCIA_USD">Transferencia USD</option>
-            <option value="PAGO_MOVIL">Pago Móvil</option>
-            <option value="ZELLE">Zelle</option>
-            <option value="DIVISAS">Divisas</option>
+          <label>Moneda de Pago *</label>
+          <select id="exec-pago-moneda-sel" onchange="onCambioMonedaEjecucionPago()"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccione Moneda —</option>
+            <option value="USD">USD — Dólar</option>
+            <option value="VES">VES — Bolívar</option>
+            <option value="EUR">EUR — Euro</option>
           </select>
         </div>
 
-        <!-- Banco que paga -->
+        <!-- Método de Pago — cargado dinámicamente según moneda -->
         <div class="form-campo form-full">
-          <label>Cuenta Bancaria que Paga *</label>
-          <select id="exec-pago-cuenta-banco" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar cuenta —</option>
+          <label>Método de Pago *</label>
+          <select id="exec-pago-metodo" onchange="onCambioMetodoEjecucionPago()"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccione moneda primero —</option>
           </select>
+        </div>
+
+        <!-- Cuenta Bancaria — se asigna automáticamente del método -->
+        <div class="form-campo form-full" id="exec-pago-cuenta-cont" style="display:none">
+          <label>Cuenta Bancaria</label>
+          <div id="exec-pago-cuenta-display" style="background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:11px 14px;font-size:13px;color:var(--naranja);font-weight:600">—</div>
+          <input type="hidden" id="exec-pago-cuenta-banco">
         </div>
 
         <!-- Pregunta 1: ¿El monto incluye IVA e IGTF? -->
