@@ -2791,7 +2791,15 @@ async function confirmarEjecucionPago() {
     if (!c) throw new Error('CxP no encontrada.');
 
     const montoUSD   = parseFloat(c.saldo_usd || c.monto_usd || 0);
-    const tasaCompra = parseFloat(c.tasa_bcv_compra || c.tasa_bcv || 1);
+    // Buscar tasa de compra desde BD usando fecha_emision de la CxP
+    let tasaCompra = parseFloat(c.tasa_bcv_compra || c.tasa_bcv || 0);
+    if (!tasaCompra || tasaCompra === 1) {
+      try {
+        const fechaEmision = c.fecha_emision?.slice(0,10) || fechaPago;
+        const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaEmision+'&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+        if (tasaRows && tasaRows[0]) tasaCompra = parseFloat(tasaRows[0].tipo_cambio);
+      } catch(e) {}
+    }
 
     // Verificar si aplica IGTF
     let esContribuyenteEspecial = false;
