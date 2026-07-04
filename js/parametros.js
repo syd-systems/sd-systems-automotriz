@@ -153,10 +153,11 @@ async function mostrarTablaParam(key) {
         const nombreMostrar = item[def.campoNombre || 'nombre'] || item.nombre || '—';
         const descMostrar   = def.tieneDescripcion ? (item[def.campoDescripcion || 'descripcion'] || item.descripcion || '') : '';
         return '<tr>'
-          + '<td style="font-size:13px;font-weight:500">' + (item.codigo ? '<span style="font-family:var(--font-mono);color:var(--suave);margin-right:8px">' + item.codigo + '</span>' : '') + nombreMostrar + (descMostrar ? '<div style="font-size:11px;color:var(--suave);margin-top:2px">' + descMostrar + '</div>' : '') + '</td>'
+          + '<td style="font-size:13px;font-weight:500">' + (item.codigo ? '<span style="font-family:var(--font-mono);color:var(--naranja);margin-right:8px">' + item.codigo + '</span>' : '') + nombreMostrar + (descMostrar ? '<div style="font-size:11px;color:var(--suave);margin-top:2px">' + descMostrar + '</div>' : '') + '</td>'
           + (def.tieneArea ? '<td style="font-size:12px;color:var(--suave)">' + (areasMap[item.id_area] ? areasMap[item.id_area].nombre : '—') + '</td>' : '')
           + (def.tieneTipoSector ? '<td style="font-size:12px;color:var(--suave)">' + (item.tipo_sector || '—') + '</td>' : '')
           + (def.tieneCategoria ? '<td style="font-size:12px;color:var(--suave)">' + (cat ? (cat.codigo?cat.codigo+' — ':'')+cat.nombre : '—') + '</td>' : '')
+          + (def.tieneCuentaContable ? '<td style="font-size:12px;color:var(--suave)">' + (item.id_cuenta_contable ? '— cuenta asignada —' : '—') + '</td>' : '')
           + '<td><span class="badge ' + (item.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (item.estado || 'ACTIVO') + '</span></td>'
           + '<td><div style="display:flex;gap:6px">'
           + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-secundario" onclick="abrirParamItem(\'' + key + '\',' + item[def.pk] + ')" style="font-size:11px;padding:5px 10px">Ver</button>' : '')
@@ -167,7 +168,7 @@ async function mostrarTablaParam(key) {
 
     var thead = key === 'areas'
       ? '<th style="width:100px">Código</th><th>Nombre</th><th>Nivel Superior</th><th>Estado</th><th>Acción</th>'
-      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : '<th>Nombre</th>') + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + (def.tieneCategoria ? '<th>Categoría</th>' : '') + '<th>Estado</th><th>Acción</th>';
+      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : (def.tieneMoneda ? '<th>Moneda · Nombre</th>' : '<th>Nombre</th>')) + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + (def.tieneCategoria ? '<th>Categoría</th>' : '') + (def.tieneCuentaContable ? '<th>Cuenta Contable</th>' : '') + '<th>Estado</th><th>Acción</th>';
     var colspan = key === 'areas' ? 5 : (2 + (def.tieneArea?1:0) + (def.tieneTipoSector?1:0));
 
     cont.innerHTML =
