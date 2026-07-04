@@ -383,7 +383,14 @@ async function guardarEdicionMovimiento() {
     if (motivoSel === 'transferencia' && !document.getElementById('edit-mov-area-origen')?.value)
                            return mostrarError('Seleccione el Área de Origen.', 'edit-mov-area-origen');
     const pagoSel = document.getElementById('edit-mov-esquema-pago')?.value;
-    if (!pagoSel)          return mostrarError('Seleccione la Modalidad de Pago.', 'edit-mov-esquema-pago');
+    if (!pagoSel) return mostrarError('Seleccione la Modalidad de Pago.', 'edit-mov-esquema-pago');
+    if (pagoSel === 'CREDITO') {
+      const numCuotasVal  = parseInt(document.getElementById('edit-mov-cuotas-num')?.value) || 0;
+      const fechaCuotaVal = document.getElementById('edit-mov-cuotas-fecha')?.value || '';
+      if (!numCuotasVal || numCuotasVal < 1) return mostrarError('Ingrese el número de cuotas.', 'edit-mov-cuotas-num');
+      if (!fechaCuotaVal) return mostrarError('Ingrese la Fecha de la Primera Cuota.', 'edit-mov-cuotas-fecha');
+      if (fechaCuotaVal < getHoyVzla()) return mostrarError('La Fecha de la Primera Cuota no puede ser menor al día de hoy.', 'edit-mov-cuotas-fecha');
+    }
   }
   if (!clave) return mostrarError('Ingrese su contraseña para autorizar.', 'edit-mov-clave');
 

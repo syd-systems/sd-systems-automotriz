@@ -742,7 +742,14 @@ async function guardarEntradaStock() {
     if (!clienteNom)                return mostrarError('Ingrese el nombre del cliente.', 'es-cliente-nombre');
   }
   const pagoDSel  = document.getElementById('es-esquema-pago')?.value;
-  if (!pagoDSel)                    return mostrarError('Seleccione la Modalidad de Pago.', 'es-esquema-pago');
+  if (!pagoDSel) return mostrarError('Seleccione la Modalidad de Pago.', 'es-esquema-pago');
+  if (pagoDSel === 'CREDITO') {
+    const numCuotasVal  = parseInt(document.getElementById('es-cuotas-num')?.value) || 0;
+    const fechaCuotaVal = document.getElementById('es-cuotas-fecha-inicio')?.value || '';
+    if (!numCuotasVal || numCuotasVal < 1) return mostrarError('Ingrese el número de cuotas.', 'es-cuotas-num');
+    if (!fechaCuotaVal) return mostrarError('Ingrese la Fecha de la Primera Cuota.', 'es-cuotas-fecha-inicio');
+    if (fechaCuotaVal < getHoyVzla()) return mostrarError('La Fecha de la Primera Cuota no puede ser menor al día de hoy.', 'es-cuotas-fecha-inicio');
+  }
   // Observaciones — opcional, no se valida
 
   try {
