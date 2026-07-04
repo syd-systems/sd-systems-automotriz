@@ -2884,58 +2884,56 @@ async function confirmarEjecucionPago() {
 
     if (idAst) {
       let orden = 1;
-      const linea = async function(id_cta, debeUSD, haberUSD) {
-        const debeVES  = parseFloat((debeUSD  * tasaPago).toFixed(2));
-        const haberVES = parseFloat((haberUSD * tasaPago).toFixed(2));
+
+      // Pre-calcular todos los montos en BS con redondeo a 2 decimales
+      const r2 = function(v) { return parseFloat(v.toFixed(2)); };
+      const cxpVES    = r2(montoUSD  * tasaPago);
+      const ivaVES    = r2(iva       * tasaPago);
+      const igtfVES   = r2(igtf      * tasaPago);
+      const bancoUSD  = total;
+      const bancoVES  = r2(total * tasaPago + (diferencial > 0 ? diferencial : 0));
+      const gastoUSD  = incluyeIva ? base : montoUSD;
+      const gastoVES  = r2(gastoUSD  * tasaPago);
+      const invUSD    = montoUSD;
+
+      // Calcular HABER Inventario BS para cuadrar exactamente
+      // DEBE BS total = cxpVES + ivaVES + igtfVES + diferencial(si>0) + gastoVES
+      // HABER BS total = bancoVES + invVES → invVES = DEBE BS - bancoVES
+      let debeVESTotal = cxpVES + ivaVES + igtfVES + gastoVES;
+      if (diferencial > 0) debeVESTotal = r2(debeVESTotal + Math.abs(diferencial));
+      if (diferencial < 0) debeVESTotal = r2(debeVESTotal); // ganancia suma en HABER
+      const haberVESsinInv = diferencial < 0
+        ? r2(bancoVES + Math.abs(diferencial))
+        : bancoVES;
+      const invVES = r2(debeVESTotal - haberVESsinInv);
+
+      const linea = async function(id_cta, debeUSD, haberUSD, debeVES, haberVES) {
         await api('cont_asiento_lineas','POST',{
           id_asiento: idAst, id_cuenta: id_cta, orden: orden++,
-          debe_usd: debeUSD, haber_usd: haberUSD,
-          debe_ves: debeVES, haber_ves: haberVES, tasa_bcv: tasaPago
+          debe_usd: r2(debeUSD), haber_usd: r2(haberUSD),
+          debe_ves: r2(debeVES), haber_ves: r2(haberVES), tasa_bcv: tasaPago
         });
       };
 
       // DEBE: 2.1.01.001 CxP Proveedores
-      if (idCtaCxP)        await linea(idCtaCxP,        montoUSD, 0);
+      if (idCtaCxP)             await linea(idCtaCxP,        montoUSD, 0, cxpVES,  0);
       // DEBE: 1.1.04.001 Crédito Fiscal IVA
-      if (idCtaIVA && iva > 0) await linea(idCtaIVA,   iva, 0);
-      // DEBE: 6.1.04.003 IGTF (solo USD)
-      if (idCtaIGTF && igtf > 0) await linea(idCtaIGTF, igtf, 0);
-      // DEBE/HABER: Diferencial Cambiario — solo en BS, sin USD
+      if (idCtaIVA && iva > 0)  await linea(idCtaIVA,        iva,      0, ivaVES,  0);
+      // DEBE: 6.1.04.003 IGTF
+      if (idCtaIGTF && igtf > 0) await linea(idCtaIGTF,      igtf,     0, igtfVES, 0);
+      // Diferencial Cambiario — solo en BS
       if (Math.abs(diferencial) > 0.01) {
-        if (diferencial > 0 && idCtaPerdCambio) {
-          // Pérdida: tasa subió — DEBE diferencial en BS
-          await api('cont_asiento_lineas','POST',{
-            id_asiento: idAst, id_cuenta: idCtaPerdCambio, orden: orden++,
-            debe_usd: 0, haber_usd: 0,
-            debe_ves: Math.abs(diferencial), haber_ves: 0, tasa_bcv: tasaPago
-          });
-        } else if (diferencial < 0 && idCtaGanCambio) {
-          // Ganancia: tasa bajó — HABER diferencial en BS
-          await api('cont_asiento_lineas','POST',{
-            id_asiento: idAst, id_cuenta: idCtaGanCambio, orden: orden++,
-            debe_usd: 0, haber_usd: 0,
-            debe_ves: 0, haber_ves: Math.abs(diferencial), tasa_bcv: tasaPago
-          });
-        }
+        if (diferencial > 0 && idCtaPerdCambio)
+          await linea(idCtaPerdCambio, 0, 0, Math.abs(diferencial), 0);
+        else if (diferencial < 0 && idCtaGanCambio)
+          await linea(idCtaGanCambio,  0, 0, 0, Math.abs(diferencial));
       }
       // HABER: Banco
-      // total ya contempla si IVA/IGTF están incluidos o no en el monto
-      const ivaVES   = parseFloat((iva   * tasaPago).toFixed(2));
-      const igtfVES  = parseFloat((igtf  * tasaPago).toFixed(2));
-      const bancoUSD = total;
-      const bancoVES = parseFloat((total * tasaPago + (diferencial > 0 ? diferencial : 0)).toFixed(2));
-      await api('cont_asiento_lineas','POST',{
-        id_asiento: idAst, id_cuenta: idCtaBanco, orden: orden++,
-        debe_usd: 0, haber_usd: bancoUSD,
-        debe_ves: 0, haber_ves: bancoVES, tasa_bcv: tasaPago
-      });
-      // DEBE: Cuenta Gasto/Costo
-      // Si el monto incluye IVA → Gasto = base (sin IVA)
-      // Si el monto NO incluye IVA → Gasto = montoUSD completo
-      const montoGasto = incluyeIva ? base : montoUSD;
-      if (idCtaGasto)      await linea(idCtaGasto,      montoGasto, 0);
-      // HABER: Cuenta Inventario — siempre el monto completo de la CxP
-      if (idCtaInventario) await linea(idCtaInventario, 0, montoUSD);
+      if (idCtaBanco)           await linea(idCtaBanco,       0, bancoUSD, 0, bancoVES);
+      // DEBE: Gasto/Costo
+      if (idCtaGasto)           await linea(idCtaGasto,       gastoUSD, 0, gastoVES, 0);
+      // HABER: Inventario — ajustado para cuadrar exactamente
+      if (idCtaInventario)      await linea(idCtaInventario,  0, invUSD,  0, invVES);
     }
 
     // 7. Actualizar CxP
