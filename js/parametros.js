@@ -262,7 +262,7 @@ async function abrirParamItem(key, id) {
     if (def.tieneCuentaContable) {
       var opcCuentas = [];
       try {
-        const ctas = await api('cont_cuentas','GET',null,'?codigo=ilike.1.1.01*&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+        const ctas = await api('cont_cuentas','GET',null,'?codigo=ilike.1.1.01%25&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
         opcCuentas = ctas.map(function(c) {
           return '<option value="' + c.id_cuenta + '"' + (item && item.id_cuenta_contable == c.id_cuenta ? ' selected' : '') + '>' + c.codigo + ' — ' + c.nombre + '</option>';
         });
