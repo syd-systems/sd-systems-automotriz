@@ -2662,6 +2662,12 @@ async function onCambioMonedaEjecucionPago() {
   if (cuentaDisplay) cuentaDisplay.textContent = '—';
   if (cuentaHidden) cuentaHidden.value = '';
 
+  // Resetear tributos y reverificar
+  document.getElementById('exec-pago-incluye-iva-si').checked  = true;
+  document.getElementById('exec-pago-incluye-igtf-si').checked = true;
+  document.getElementById('exec-pago-incluye-igtf-cont').style.display = 'none';
+  document.getElementById('exec-pago-tributos-preview').style.display  = 'none';
+
   // Mostrar IGTF si moneda ≠ VES
   const esVES = moneda === 'VES';
   const igtfCont = document.getElementById('exec-pago-incluye-igtf-cont');
@@ -2686,6 +2692,11 @@ function onCambioMetodoEjecucionPago() {
     if (cuentaCont) cuentaCont.style.display = 'none';
     if (cuentaHidden) cuentaHidden.value = '';
   }
+
+  // Resetear y reverificar IVA/IGTF al cambiar método
+  document.getElementById('exec-pago-incluye-iva-si').checked  = true;
+  document.getElementById('exec-pago-incluye-igtf-si').checked = true;
+  onCambioIncluyeIvaPago();
 }
 
 async function _obtenerTributos() {
