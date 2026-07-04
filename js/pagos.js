@@ -2919,12 +2919,11 @@ async function confirmarEjecucionPago() {
         }
       }
       // HABER: Banco
-      // USD: montoUSD (cancela la obligación) + IVA + IGTF
-      // BS: (montoUSD × tasaPago) + ivaVES + igtfVES + diferencial (si pérdida)
+      // total ya contempla si IVA/IGTF están incluidos o no en el monto
       const ivaVES   = parseFloat((iva   * tasaPago).toFixed(2));
       const igtfVES  = parseFloat((igtf  * tasaPago).toFixed(2));
-      const bancoUSD = parseFloat((montoUSD + iva + igtf).toFixed(4));
-      const bancoVES = parseFloat((montoVESPago + ivaVES + igtfVES + (diferencial > 0 ? diferencial : 0)).toFixed(2));
+      const bancoUSD = total;
+      const bancoVES = parseFloat((total * tasaPago + (diferencial > 0 ? diferencial : 0)).toFixed(2));
       await api('cont_asiento_lineas','POST',{
         id_asiento: idAst, id_cuenta: idCtaBanco, orden: orden++,
         debe_usd: 0, haber_usd: bancoUSD,
