@@ -2850,8 +2850,9 @@ async function confirmarEjecucionPago() {
     } catch(e) { console.warn('Error buscando cuenta inventario:', e); }
 
     // 5. Calcular diferencial cambiario
+    // Diferencial = (tasaPago - tasaCompra) × montoUSD — solo en BS
     const montoVESCompra = parseFloat((montoUSD * tasaCompra).toFixed(2));
-    const montoVESPago   = parseFloat((total * tasaPago).toFixed(2));
+    const montoVESPago   = parseFloat((montoUSD * tasaPago).toFixed(2));
     const diferencial    = parseFloat((montoVESPago - montoVESCompra).toFixed(2));
 
     // 6. Crear asiento contable
@@ -2891,17 +2892,17 @@ async function confirmarEjecucionPago() {
       if (idCtaIVA && iva > 0) await linea(idCtaIVA,   iva, 0);
       // DEBE: 6.1.04.003 IGTF (solo USD)
       if (idCtaIGTF && igtf > 0) await linea(idCtaIGTF, igtf, 0);
-      // DEBE/HABER: Diferencial Cambiario
+      // DEBE/HABER: Diferencial Cambiario — solo en BS, sin USD
       if (Math.abs(diferencial) > 0.01) {
         if (diferencial > 0 && idCtaPerdCambio) {
-          // Pérdida: tasa subió
+          // Pérdida: tasa subió — DEBE diferencial en BS
           await api('cont_asiento_lineas','POST',{
             id_asiento: idAst, id_cuenta: idCtaPerdCambio, orden: orden++,
             debe_usd: 0, haber_usd: 0,
             debe_ves: Math.abs(diferencial), haber_ves: 0, tasa_bcv: tasaPago
           });
         } else if (diferencial < 0 && idCtaGanCambio) {
-          // Ganancia: tasa bajó
+          // Ganancia: tasa bajó — HABER diferencial en BS
           await api('cont_asiento_lineas','POST',{
             id_asiento: idAst, id_cuenta: idCtaGanCambio, orden: orden++,
             debe_usd: 0, haber_usd: 0,
@@ -2909,10 +2910,18 @@ async function confirmarEjecucionPago() {
           });
         }
       }
-      // HABER: Banco — total pagado incluyendo diferencial si es pérdida
-      const diferencialUSD = diferencial > 0 ? parseFloat((diferencial / tasaPago).toFixed(4)) : 0;
-      const totalBanco = parseFloat((total + diferencialUSD).toFixed(4));
-      await linea(idCtaBanco, 0, totalBanco);
+      // HABER: Banco
+      // USD: montoUSD (cancela la obligación) + IVA + IGTF
+      // BS: (montoUSD × tasaPago) + ivaVES + igtfVES + diferencial (si pérdida)
+      const ivaVES   = parseFloat((iva   * tasaPago).toFixed(2));
+      const igtfVES  = parseFloat((igtf  * tasaPago).toFixed(2));
+      const bancoUSD = parseFloat((montoUSD + iva + igtf).toFixed(4));
+      const bancoVES = parseFloat((montoVESPago + ivaVES + igtfVES + (diferencial > 0 ? diferencial : 0)).toFixed(2));
+      await api('cont_asiento_lineas','POST',{
+        id_asiento: idAst, id_cuenta: idCtaBanco, orden: orden++,
+        debe_usd: 0, haber_usd: bancoUSD,
+        debe_ves: 0, haber_ves: bancoVES, tasa_bcv: tasaPago
+      });
       // DEBE: Cuenta Gasto/Costo
       // Si el monto incluye IVA → Gasto = base (sin IVA)
       // Si el monto NO incluye IVA → Gasto = montoUSD completo
