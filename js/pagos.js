@@ -2683,21 +2683,20 @@ async function _obtenerTributos() {
 
 function _calcularTributos(montoTotal, incluyeIva, incluyeIgtf, tasaIVA, tasaIGTF, esUSD) {
   let base, iva, igtf;
-  if (incluyeIva && esUSD && incluyeIgtf) {
-    // Monto incluye IVA + IGTF → extraer: base = monto / (1 + IVA + IGTF)
-    base = parseFloat((montoTotal / (1 + tasaIVA + tasaIGTF)).toFixed(4));
+  if (incluyeIva) {
+    // Base = Monto / (1 + IVA + IVA*IGTF) si incluye IGTF
+    // Base = Monto / (1 + IVA) si solo incluye IVA
+    const divisor = (esUSD && incluyeIgtf)
+      ? (1 + tasaIVA + (1 + tasaIVA) * tasaIGTF)
+      : (1 + tasaIVA);
+    base = parseFloat((montoTotal / divisor).toFixed(4));
     iva  = parseFloat((base * tasaIVA).toFixed(4));
-    igtf = parseFloat((base * tasaIGTF).toFixed(4));
-  } else if (incluyeIva && !incluyeIgtf) {
-    // Solo incluye IVA → extraer: base = monto / (1 + IVA)
-    base = parseFloat((montoTotal / (1 + tasaIVA)).toFixed(4));
-    iva  = parseFloat((base * tasaIVA).toFixed(4));
-    igtf = esUSD ? parseFloat((base * tasaIGTF).toFixed(4)) : 0;
+    igtf = (esUSD && incluyeIgtf) ? parseFloat(((base + iva) * tasaIGTF).toFixed(4)) : 0;
   } else {
-    // No incluye → calcular sobre el monto
+    // No incluye IVA → calcular sobre el monto completo
     base = montoTotal;
     iva  = parseFloat((base * tasaIVA).toFixed(4));
-    igtf = esUSD ? parseFloat((base * tasaIGTF).toFixed(4)) : 0;
+    igtf = esUSD ? parseFloat(((base + iva) * tasaIGTF).toFixed(4)) : 0;
   }
   return { base, iva, igtf, total: parseFloat((base + iva + igtf).toFixed(4)) };
 }
