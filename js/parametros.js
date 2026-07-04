@@ -363,18 +363,23 @@ async function guardarParamItem() {
 
   // ── Validar duplicados ──
   try {
-    // Duplicado por nombre
-    const existe = await api(def.tabla, 'GET', null, '?nombre=ilike.' + encodeURIComponent(nombre) + (id ? '&id=neq.' + id : ''));
+    const monedaVal = def.tieneMoneda ? (document.getElementById('param-item-moneda')?.value || '') : '';
+    const pkNeq     = id ? ('&' + def.pk + '=neq.' + id) : '';
+    const empFiltro = _empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : '';
+    // Para metodos_pago: duplicado es nombre + moneda + empresa
+    let existeQuery = '?nombre=ilike.' + encodeURIComponent(nombre) + pkNeq + empFiltro;
+    if (def.tieneMoneda && monedaVal) existeQuery += '&codigo=eq.' + monedaVal;
+    const existe = await api(def.tabla, 'GET', null, existeQuery);
     if (existe && existe.length > 0) {
-      errEl.textContent = 'Ya existe un área con el nombre "' + nombre + '".';
-      errEl.style.display = 'block'; return;
+      errEl.textContent = 'Ya existe un registro con el nombre "' + nombre + '"' + (monedaVal ? ' en moneda ' + monedaVal : '') + '.';
+      errEl.style.display = 'block'; resetBtn(); return;
     }
-    // Duplicado por código
-    if (codigo) {
-      const existeCod = await api(def.tabla, 'GET', null, '?codigo=ilike.' + encodeURIComponent(codigo) + (id ? '&id=neq.' + id : ''));
+    // Duplicado por código (solo si tieneCodigo, no tieneMoneda)
+    if (def.tieneCodigo && codigo) {
+      const existeCod = await api(def.tabla, 'GET', null, '?codigo=ilike.' + encodeURIComponent(codigo) + pkNeq + empFiltro);
       if (existeCod && existeCod.length > 0) {
-        errEl.textContent = 'Ya existe un área con el código "' + codigo + '". Verifique e ingrese un código único.';
-        errEl.style.display = 'block'; return;
+        errEl.textContent = 'Ya existe un registro con el código "' + codigo + '".';
+        errEl.style.display = 'block'; resetBtn(); return;
       }
     }
   } catch(eDup) { console.warn('Error validando duplicado:', eDup); }
