@@ -17,6 +17,7 @@ const TABLAS_MAESTRAS = [
   { key: 'cat_prov', tabla: 'param_categorias_proveedor', pk: 'id', nombre: 'Categorías de Proveedores', icono: '🏷', tieneCodigo: true, tieneEstado: true },
   { key: 'bancos',             tabla: 'param_bancos',   pk: 'id',             nombre: 'Instituciones Financieras', icono: '🏦', tieneCodigo: true,  tieneArea: false, tieneTipoSector: true },
   { key: 'niveles_jerarquicos', tabla: 'param_niveles_jerarquicos', pk: 'id_jerarquicos', nombre: 'Niveles Jerárquicos', icono: '🏅', tieneCodigo: false, tieneArea: false, tieneDescripcion: true, campoNombre: 'nivel_jerarquicos', campoDescripcion: 'descripcion_jerarquicos' },
+  { key: 'metodos_pago', tabla: 'param_metodos_pago', pk: 'id_metodo', nombre: 'Métodos de Pago', icono: '💳', tieneCodigo: true, tieneCuentaContable: true },
 ];
 
 // Cache de áreas para el selector de cargos
@@ -249,6 +250,16 @@ async function abrirParamItem(key, id) {
       } catch(e) {}
       camposHTML += '<div class="form-campo form-full"><label>Categoría *</label><select id="param-item-categoria" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="">— Seleccionar categoría —</option>' + opcCats.join('') + '</select></div>';
     }
+    if (def.tieneCuentaContable) {
+      var opcCuentas = [];
+      try {
+        const ctas = await api('cont_cuentas','GET',null,'?permite_movimiento=eq.true&estado=eq.ACTIVA&order=codigo.asc&select=id_cuenta,codigo,nombre' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+        opcCuentas = ctas.map(function(c) {
+          return '<option value="' + c.id_cuenta + '"' + (item && item.id_cuenta_contable == c.id_cuenta ? ' selected' : '') + '>' + c.codigo + ' — ' + c.nombre + '</option>';
+        });
+      } catch(e) {}
+      camposHTML += '<div class="form-campo form-full"><label>Cuenta Contable *</label><select id="param-item-cuenta-contable" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="">— Seleccionar cuenta —</option>' + opcCuentas.join('') + '</select></div>';
+    }
   }
   camposHTML += '<div class="form-campo form-full"><label>Estado</label><select id="param-item-estado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="ACTIVO"' + (!item || item.estado==='ACTIVO' ? ' selected' : '') + '>Activo</option><option value="INACTIVO"' + (item && item.estado==='INACTIVO' ? ' selected' : '') + '>Inactivo</option></select></div>';
 
@@ -296,6 +307,12 @@ async function guardarParamItem() {
   okEl.style.display = 'none'; errEl.style.display = 'none';
 
   if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
+
+  // Validar cuenta contable si aplica
+  const defCheck = TABLAS_MAESTRAS.find(function(t) { return t.key === key; });
+  if (defCheck?.tieneCuentaContable && !document.getElementById('param-item-cuenta-contable')?.value) {
+    errEl.textContent = 'La Cuenta Contable es obligatoria.'; errEl.style.display = 'block'; resetBtn(); return;
+  }
 
   // Categorias e inv_articulos_tipo no estan en TABLAS_MAESTRAS
   if (key === 'inv_categorias' || key === 'inv_articulos_tipo') {
@@ -357,13 +374,14 @@ async function guardarParamItem() {
     datos.codigo        = document.getElementById('param-item-codigo')?.value.trim() || null;
     datos.id_area_padre = parseInt(document.getElementById('param-item-area-padre')?.value) || null;
   } else {
-    if (def.tieneCodigo)      datos.codigo        = document.getElementById('param-item-codigo')?.value.trim().toUpperCase() || null;
-    if (def.tieneArea)        datos.id_area       = parseInt(document.getElementById('param-item-area')?.value) || null;
-    if (def.tieneDescripcion) datos[def.campoDescripcion || 'descripcion'] = document.getElementById('param-item-descripcion')?.value.trim() || null;
-    if (def.tieneTipoSector)  datos.tipo_sector   = document.getElementById('param-item-tipo-sector')?.value || null;
-    if (def.tieneCategoria)   datos.id_categoria  = parseInt(document.getElementById('param-item-categoria')?.value) || null;
-    if (def.tieneEmisor)      datos.id_empresa    = _empresaActiva?.id_empresa || null;
-    if (!id)                  datos.id_empresa    = datos.id_empresa || _empresaActiva?.id_empresa || null;
+    if (def.tieneCodigo)          datos.codigo             = document.getElementById('param-item-codigo')?.value.trim().toUpperCase() || null;
+    if (def.tieneArea)            datos.id_area            = parseInt(document.getElementById('param-item-area')?.value) || null;
+    if (def.tieneDescripcion)     datos[def.campoDescripcion || 'descripcion'] = document.getElementById('param-item-descripcion')?.value.trim() || null;
+    if (def.tieneTipoSector)      datos.tipo_sector        = document.getElementById('param-item-tipo-sector')?.value || null;
+    if (def.tieneCategoria)       datos.id_categoria       = parseInt(document.getElementById('param-item-categoria')?.value) || null;
+    if (def.tieneCuentaContable)  datos.id_cuenta_contable = parseInt(document.getElementById('param-item-cuenta-contable')?.value) || null;
+    if (def.tieneEmisor)          datos.id_empresa         = _empresaActiva?.id_empresa || null;
+    if (!id)                      datos.id_empresa         = datos.id_empresa || _empresaActiva?.id_empresa || null;
   }
 
   try {
