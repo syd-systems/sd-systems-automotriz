@@ -761,7 +761,15 @@ async function guardarEntradaStock() {
     }
     const moneda_compra_val      = monedaCompra;
     const precio_compra_original = precioIngresado;
-    const tasa_bcv_usada         = tasaBCVVal > 0 ? tasaBCVVal : null;
+    let tasa_bcv_usada           = tasaBCVVal > 0 ? tasaBCVVal : null;
+    // Si no hay tasa, buscarla de la fecha de negociación
+    if (!tasa_bcv_usada) {
+      const fechaNeg = document.getElementById('es-fecha-negociacion')?.value || getHoyVzla();
+      try {
+        const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaNeg+'&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+        if (tasaRows && tasaRows[0]) tasa_bcv_usada = parseFloat(tasaRows[0].tipo_cambio);
+      } catch(e) {}
+    }
     const nuevoPrecioVenta       = parseFloat(document.getElementById('es-precio-venta').value) || null;
 
     // ── FASE 1: Todas las validaciones ANTES de tocar BD ──
