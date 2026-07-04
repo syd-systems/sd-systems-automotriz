@@ -265,6 +265,18 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
 
     // Mostrar Condiciones de Crédito si aplica
     const creditoCont = document.getElementById('edit-mov-credito-cont');
+    // Limpiar siempre los campos de crédito antes de cargar
+    const numElC  = document.getElementById('edit-mov-cuotas-num');
+    const fechaElC = document.getElementById('edit-mov-cuotas-fecha');
+    const montoElC = document.getElementById('edit-mov-cuotas-monto');
+    const intElC  = document.getElementById('edit-mov-cuotas-intervalo');
+    const prevElC = document.getElementById('edit-mov-cuotas-preview');
+    if (numElC)   numElC.value   = '';
+    if (fechaElC) fechaElC.value = '';
+    if (montoElC) montoElC.value = '';
+    if (intElC)   intElC.value   = '30';
+    if (prevElC)  prevElC.innerHTML = '';
+
     if (creditoCont) creditoCont.style.display = esquemaPago === 'CREDITO' ? '' : 'none';
     if (esquemaPago === 'CREDITO') {
       try {
@@ -389,7 +401,7 @@ async function guardarEdicionMovimiento() {
       const fechaCuotaVal = document.getElementById('edit-mov-cuotas-fecha')?.value || '';
       if (!numCuotasVal || numCuotasVal < 1) return mostrarError('Ingrese el número de cuotas.', 'edit-mov-cuotas-num');
       if (!fechaCuotaVal) return mostrarError('Ingrese la Fecha de la Primera Cuota.', 'edit-mov-cuotas-fecha');
-      if (fechaCuotaVal < getHoyVzla()) return mostrarError('La Fecha de la Primera Cuota no puede ser menor al día de hoy.', 'edit-mov-cuotas-fecha');
+      if (fechaCuotaVal <= getHoyVzla()) return mostrarError('La Fecha de la Primera Cuota no puede ser menor al día de hoy.', 'edit-mov-cuotas-fecha');
     }
   }
   if (!clave) return mostrarError('Ingrese su contraseña para autorizar.', 'edit-mov-clave');

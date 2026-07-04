@@ -748,7 +748,7 @@ async function guardarEntradaStock() {
     const fechaCuotaVal = document.getElementById('es-cuotas-fecha-inicio')?.value || '';
     if (!numCuotasVal || numCuotasVal < 1) return mostrarError('Ingrese el número de cuotas.', 'es-cuotas-num');
     if (!fechaCuotaVal) return mostrarError('Ingrese la Fecha de la Primera Cuota.', 'es-cuotas-fecha-inicio');
-    if (fechaCuotaVal < getHoyVzla()) return mostrarError('La Fecha de la Primera Cuota no puede ser menor al día de hoy.', 'es-cuotas-fecha-inicio');
+    if (fechaCuotaVal <= getHoyVzla()) return mostrarError('La Fecha de la Primera Cuota no puede ser menor al día de hoy.', 'es-cuotas-fecha-inicio');
   }
   // Observaciones — opcional, no se valida
 
