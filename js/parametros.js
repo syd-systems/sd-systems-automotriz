@@ -363,15 +363,16 @@ async function guardarParamItem() {
 
   // ── Validar duplicados ──
   try {
-    const monedaVal = def.tieneMoneda ? (document.getElementById('param-item-moneda')?.value || '') : '';
-    const pkNeq     = id ? ('&' + def.pk + '=neq.' + id) : '';
-    const empFiltro = _empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : '';
-    // Para metodos_pago: duplicado es nombre + moneda + empresa
-    let existeQuery = '?nombre=ilike.' + encodeURIComponent(nombre) + pkNeq + empFiltro;
-    if (def.tieneMoneda && monedaVal) existeQuery += '&codigo=eq.' + monedaVal;
+    const monedaVal  = def.tieneMoneda ? (document.getElementById('param-item-moneda')?.value || '') : '';
+    const cuentaVal  = def.tieneCuentaContable ? (document.getElementById('param-item-cuenta-contable')?.value || '') : '';
+    const pkNeq      = id ? ('&' + def.pk + '=neq.' + id) : '';
+    const empFiltro  = _empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : '';
+    let existeQuery  = '?nombre=ilike.' + encodeURIComponent(nombre) + pkNeq + empFiltro;
+    if (def.tieneMoneda && monedaVal)          existeQuery += '&codigo=eq.' + monedaVal;
+    if (def.tieneCuentaContable && cuentaVal)  existeQuery += '&id_cuenta_contable=eq.' + cuentaVal;
     const existe = await api(def.tabla, 'GET', null, existeQuery);
     if (existe && existe.length > 0) {
-      errEl.textContent = 'Ya existe un registro con el nombre "' + nombre + '"' + (monedaVal ? ' en moneda ' + monedaVal : '') + '.';
+      errEl.textContent = 'Ya existe un método de pago con el mismo nombre, moneda y cuenta contable.';
       errEl.style.display = 'block'; resetBtn(); return;
     }
     // Duplicado por código (solo si tieneCodigo, no tieneMoneda)
