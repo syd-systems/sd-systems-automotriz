@@ -2620,10 +2620,22 @@ async function onCambioMonedaEjecucionPago() {
   selMetodo.innerHTML = '<option value="">⏳ Cargando...</option>';
   try {
     const metodos = await api('param_metodos_pago','GET',null,
-      '?codigo=eq.'+moneda+'&estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,id_cuenta_contable,cont_cuentas:id_cuenta_contable(id_cuenta,codigo,nombre)' + emisorQ());
+      '?codigo=eq.'+moneda+'&estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,id_cuenta_contable' + emisorQ());
+
+    // Obtener nombres de cuentas
+    const idsCtaStr = (metodos||[]).map(function(m){ return m.id_cuenta_contable; }).filter(Boolean).join(',');
+    var cuentasMap = {};
+    if (idsCtaStr) {
+      try {
+        const ctas = await api('cont_cuentas','GET',null,'?id_cuenta=in.('+idsCtaStr+')&select=id_cuenta,codigo,nombre');
+        (ctas||[]).forEach(function(c){ cuentasMap[c.id_cuenta] = c; });
+      } catch(e) {}
+    }
+
     selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
       + (metodos||[]).map(function(m) {
-          return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-cuenta-nombre="'+(m.cont_cuentas ? m.cont_cuentas.codigo+' — '+m.cont_cuentas.nombre : '')+'">'+m.nombre+'</option>';
+          const cta = cuentasMap[m.id_cuenta_contable];
+          return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-cuenta-nombre="'+(cta ? cta.codigo+' — '+cta.nombre : '')+'">'+m.nombre+'</option>';
         }).join('');
   } catch(e) {
     selMetodo.innerHTML = '<option value="">— Sin métodos disponibles —</option>';
