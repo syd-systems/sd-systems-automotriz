@@ -17,7 +17,7 @@ const TABLAS_MAESTRAS = [
   { key: 'cat_prov', tabla: 'param_categorias_proveedor', pk: 'id', nombre: 'Categorías de Proveedores', icono: '🏷', tieneCodigo: true, tieneEstado: true },
   { key: 'bancos',             tabla: 'param_bancos',   pk: 'id',             nombre: 'Instituciones Financieras', icono: '🏦', tieneCodigo: true,  tieneArea: false, tieneTipoSector: true },
   { key: 'niveles_jerarquicos', tabla: 'param_niveles_jerarquicos', pk: 'id_jerarquicos', nombre: 'Niveles Jerárquicos', icono: '🏅', tieneCodigo: false, tieneArea: false, tieneDescripcion: true, campoNombre: 'nivel_jerarquicos', campoDescripcion: 'descripcion_jerarquicos' },
-  { key: 'metodos_pago', tabla: 'param_metodos_pago', pk: 'id_metodo', nombre: 'Métodos de Pago', icono: '💳', tieneCodigo: true, tieneCuentaContable: true },
+  { key: 'metodos_pago', tabla: 'param_metodos_pago', pk: 'id_metodo', nombre: 'Métodos de Pago', icono: '💳', tieneMoneda: true, tieneCuentaContable: true },
 ];
 
 // Cache de áreas para el selector de cargos
@@ -221,6 +221,14 @@ async function abrirParamItem(key, id) {
     if (def.tieneCodigo) {
       camposHTML += '<div class="form-campo form-full"><label>Código</label><input type="text" id="param-item-codigo" value="' + (item ? (item.codigo||'') : '') + '" placeholder="Ej: 0102" style="text-transform:uppercase"></div>';
     }
+    if (def.tieneMoneda) {
+      camposHTML += '<div class="form-campo form-full"><label>Moneda *</label><select id="param-item-moneda" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
+        + '<option value="">— Seleccione Moneda —</option>'
+        + '<option value="USD"' + (item && item.codigo === 'USD' ? ' selected' : '') + '>USD — Dólar</option>'
+        + '<option value="VES"' + (item && item.codigo === 'VES' ? ' selected' : '') + '>VES — Bolívar</option>'
+        + '<option value="EUR"' + (item && item.codigo === 'EUR' ? ' selected' : '') + '>EUR — Euro</option>'
+        + '</select></div>';
+    }
     camposHTML += '<div class="form-campo form-full"><label>' + (def.campoNombre ? 'Nivel' : 'Nombre') + '</label><input type="text" id="param-item-nombre" value="' + (item ? (item[def.campoNombre||'nombre']||'') : '') + '" placeholder="' + (def.campoNombre ? 'Nombre del nivel jerárquico' : 'Nombre del registro') + '"></div>';
     if (def.tieneDescripcion) {
       camposHTML += '<div class="form-campo form-full"><label>Descripción</label><textarea id="param-item-descripcion" placeholder="Descripción opcional..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%">' + (item ? (item[def.campoDescripcion||'descripcion']||'') : '') + '</textarea></div>';
@@ -313,6 +321,9 @@ async function guardarParamItem() {
   if (defCheck?.tieneCuentaContable && !document.getElementById('param-item-cuenta-contable')?.value) {
     errEl.textContent = 'La Cuenta Contable es obligatoria.'; errEl.style.display = 'block'; resetBtn(); return;
   }
+  if (defCheck?.tieneMoneda && !document.getElementById('param-item-moneda')?.value) {
+    errEl.textContent = 'La Moneda es obligatoria.'; errEl.style.display = 'block'; resetBtn(); return;
+  }
 
   // Categorias e inv_articulos_tipo no estan en TABLAS_MAESTRAS
   if (key === 'inv_categorias' || key === 'inv_articulos_tipo') {
@@ -375,6 +386,7 @@ async function guardarParamItem() {
     datos.id_area_padre = parseInt(document.getElementById('param-item-area-padre')?.value) || null;
   } else {
     if (def.tieneCodigo)          datos.codigo             = document.getElementById('param-item-codigo')?.value.trim().toUpperCase() || null;
+    if (def.tieneMoneda)          datos.codigo             = document.getElementById('param-item-moneda')?.value || null;
     if (def.tieneArea)            datos.id_area            = parseInt(document.getElementById('param-item-area')?.value) || null;
     if (def.tieneDescripcion)     datos[def.campoDescripcion || 'descripcion'] = document.getElementById('param-item-descripcion')?.value.trim() || null;
     if (def.tieneTipoSector)      datos.tipo_sector        = document.getElementById('param-item-tipo-sector')?.value || null;
