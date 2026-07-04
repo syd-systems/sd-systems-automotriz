@@ -2570,6 +2570,8 @@ async function ejecutarPagoCxP(id_cxp) {
   document.getElementById('exec-pago-incluye-igtf-si').checked = true;
   document.getElementById('exec-pago-incluye-igtf-cont').style.display = 'none';
   document.getElementById('exec-pago-tributos-preview').style.display = 'none';
+  const btnConf = document.getElementById('btn-confirmar-pago');
+  if (btnConf) { btnConf.disabled = false; btnConf.textContent = '💳 Confirmar Pago'; }
   document.getElementById('alerta-exec-err').style.display = 'none';
 
   // Título con monto
