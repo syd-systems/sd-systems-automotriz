@@ -2591,16 +2591,25 @@ function onCambioIncluyeIvaPago() {
   const moneda      = document.getElementById('exec-pago-moneda-sel')?.value || '';
   const esUSD       = moneda !== 'VES' && moneda !== '';
 
-  document.getElementById('exec-pago-incluye-igtf-cont').style.display = esUSD ? '' : 'none';
-
   if (!_ejecutarPagoCxPId) return;
 
-  // Cargar monto de la CxP del cache o recalcular
-  api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=monto_usd,saldo_usd')
-    .then(function(rows) {
+  api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=monto_usd,saldo_usd,id_proveedor')
+    .then(async function(rows) {
       if (!rows || !rows[0]) return;
       const monto = parseFloat(rows[0].saldo_usd || rows[0].monto_usd || 0);
-      _mostrarDesgloseTributos(monto, incluyeIva, esUSD && incluyeIgtf, esUSD);
+      // Verificar si aplica IGTF — proveedor Contribuyente Especial
+      let aplicaIGTF = false;
+      if (esUSD && rows[0].id_proveedor) {
+        try {
+          const provRows = await api('proveedores','GET',null,
+            '?id_proveedor=eq.'+rows[0].id_proveedor+'&select=tipo_contribuyente&limit=1');
+          aplicaIGTF = provRows && provRows[0] && provRows[0].tipo_contribuyente === 'ESPECIAL';
+        } catch(e) {}
+      }
+      // Mostrar pregunta IGTF solo si aplica
+      const igtfCont = document.getElementById('exec-pago-incluye-igtf-cont');
+      if (igtfCont) igtfCont.style.display = aplicaIGTF ? '' : 'none';
+      _mostrarDesgloseTributos(monto, incluyeIva, incluyeIgtf, aplicaIGTF);
     }).catch(function(){});
 }
 
@@ -2684,14 +2693,15 @@ async function _obtenerTributos() {
 function _calcularTributos(montoTotal, incluyeIva, incluyeIgtf, tasaIVA, tasaIGTF, esUSD) {
   let base, iva, igtf;
   if (incluyeIva) {
-    // Base = Monto / (1 + IVA + IVA*IGTF) si incluye IGTF
+    // Base = Monto / (1 + IVA + (1+IVA)*IGTF) si incluye IGTF
     // Base = Monto / (1 + IVA) si solo incluye IVA
     const divisor = (esUSD && incluyeIgtf)
       ? (1 + tasaIVA + (1 + tasaIVA) * tasaIGTF)
       : (1 + tasaIVA);
     base = parseFloat((montoTotal / divisor).toFixed(4));
     iva  = parseFloat((base * tasaIVA).toFixed(4));
-    igtf = (esUSD && incluyeIgtf) ? parseFloat(((base + iva) * tasaIGTF).toFixed(4)) : 0;
+    // IGTF siempre se calcula si esUSD, incluyeIgtf solo indica si ya estaba en el monto
+    igtf = esUSD ? parseFloat(((base + iva) * tasaIGTF).toFixed(4)) : 0;
   } else {
     // No incluye IVA → calcular sobre el monto completo
     base = montoTotal;
@@ -2754,13 +2764,25 @@ async function confirmarEjecucionPago() {
     const montoUSD   = parseFloat(c.saldo_usd || c.monto_usd || 0);
     const tasaCompra = parseFloat(c.tasa_bcv_compra || c.tasa_bcv || 1);
 
+    // Verificar si el proveedor es Contribuyente Especial (IGTF solo aplica en ese caso)
+    let esContribuyenteEspecial = false;
+    if (esUSD && c.id_proveedor) {
+      try {
+        const provRows = await api('proveedores','GET',null,
+          '?id_proveedor=eq.'+c.id_proveedor+'&select=tipo_contribuyente&limit=1');
+        esContribuyenteEspecial = provRows && provRows[0] && provRows[0].tipo_contribuyente === 'ESPECIAL';
+      } catch(e) {}
+    }
+    // Si no es Contribuyente Especial, no aplica IGTF
+    const aplicaIGTF = esUSD && esContribuyenteEspecial;
+
     // 2. Obtener tasa BCV del día de pago
     const tasasHoy = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaPago+'&order=fecha_valor.desc&limit=1&select=tipo_cambio');
     const tasaPago = parseFloat(tasasHoy && tasasHoy[0] ? tasasHoy[0].tipo_cambio : tasaCompra);
 
     // 3. Obtener tributos
     const { tasaIVA, tasaIGTF } = await _obtenerTributos();
-    const { base, iva, igtf, total } = _calcularTributos(montoUSD, incluyeIva, incluyeIgtf, tasaIVA, tasaIGTF, esUSD);
+    const { base, iva, igtf, total } = _calcularTributos(montoUSD, incluyeIva, incluyeIgtf, tasaIVA, tasaIGTF, aplicaIGTF);
 
     // 4. Obtener cuentas contables por código
     const [ctaIVA, ctaIGTF, ctaPerdCambio, ctaGanCambio, ctaCxP] = await Promise.all([
