@@ -2566,8 +2566,8 @@ async function ejecutarPagoCxP(id_cxp) {
   if (cuentaCont) cuentaCont.style.display = 'none';
   const cuentaHidden = document.getElementById('exec-pago-cuenta-banco');
   if (cuentaHidden) cuentaHidden.value = '';
-  document.getElementById('exec-pago-incluye-iva-no').checked = true;
-  document.getElementById('exec-pago-incluye-igtf-no').checked = true;
+  document.getElementById('exec-pago-incluye-iva-si').checked  = true;
+  document.getElementById('exec-pago-incluye-igtf-si').checked = true;
   document.getElementById('exec-pago-incluye-igtf-cont').style.display = 'none';
   document.getElementById('exec-pago-tributos-preview').style.display = 'none';
   document.getElementById('alerta-exec-err').style.display = 'none';
@@ -2589,7 +2589,7 @@ function onCambioIncluyeIvaPago() {
   const incluyeIva  = document.getElementById('exec-pago-incluye-iva-si')?.checked;
   const incluyeIgtf = document.getElementById('exec-pago-incluye-igtf-si')?.checked;
   const moneda      = document.getElementById('exec-pago-moneda-sel')?.value || '';
-  const esUSD       = moneda === 'USD';
+  const esUSD       = moneda !== 'VES' && moneda !== '';
 
   document.getElementById('exec-pago-incluye-igtf-cont').style.display = esUSD ? '' : 'none';
 
@@ -2644,10 +2644,10 @@ async function onCambioMonedaEjecucionPago() {
   if (cuentaDisplay) cuentaDisplay.textContent = '—';
   if (cuentaHidden) cuentaHidden.value = '';
 
-  // Actualizar visibilidad IGTF
-  const esUSD = moneda === 'USD';
+  // Mostrar IGTF si moneda ≠ VES
+  const esVES = moneda === 'VES';
   const igtfCont = document.getElementById('exec-pago-incluye-igtf-cont');
-  if (igtfCont) igtfCont.style.display = esUSD ? '' : 'none';
+  if (igtfCont) igtfCont.style.display = esVES ? 'none' : '';
   onCambioIncluyeIvaPago();
 }
 

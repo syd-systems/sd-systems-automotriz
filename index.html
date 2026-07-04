@@ -1344,17 +1344,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260703015"></script>
-<script src="js/parametros.js?v=20260703015"></script>
-<script src="js/empresas.js?v=20260703015"></script>
-<script src="js/facturacion.js?v=20260703015"></script>
-<script src="js/inventario.js?v=20260703015"></script>
-<script src="js/contabilidad.js?v=20260703015"></script>
-<script src="js/pagos.js?v=20260703015"></script>
-<script src="js/vehiculos.js?v=20260703015"></script>
-<script src="js/catalogo.js?v=20260703015"></script>
-<script src="js/inventario2.js?v=20260703015"></script>
-<script src="js/ordenes.js?v=20260703015"></script>
+<script src="js/core.js?v=20260703016"></script>
+<script src="js/parametros.js?v=20260703016"></script>
+<script src="js/empresas.js?v=20260703016"></script>
+<script src="js/facturacion.js?v=20260703016"></script>
+<script src="js/inventario.js?v=20260703016"></script>
+<script src="js/contabilidad.js?v=20260703016"></script>
+<script src="js/pagos.js?v=20260703016"></script>
+<script src="js/vehiculos.js?v=20260703016"></script>
+<script src="js/catalogo.js?v=20260703016"></script>
+<script src="js/inventario2.js?v=20260703016"></script>
+<script src="js/ordenes.js?v=20260703016"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4288,28 +4288,28 @@
           <input type="hidden" id="exec-pago-cuenta-banco">
         </div>
 
-        <!-- Pregunta 1: ¿El monto incluye IVA e IGTF? -->
+        <!-- Pregunta 1: ¿El monto incluye IVA? -->
         <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
           <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">⚖ Tributos</div>
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-            <label style="font-size:13px;font-weight:500">¿El monto de la CxP incluye IVA e IGTF?</label>
+            <label style="font-size:13px;font-weight:500">Monto Facturado ya Incluye IVA</label>
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
-              <input type="radio" name="exec-pago-incluye-iva" id="exec-pago-incluye-iva-si" value="SI" onchange="onCambioIncluyeIvaPago()"> Sí
+              <input type="radio" name="exec-pago-incluye-iva" id="exec-pago-incluye-iva-si" value="SI" onchange="onCambioIncluyeIvaPago()" checked> Sí
             </label>
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
-              <input type="radio" name="exec-pago-incluye-iva" id="exec-pago-incluye-iva-no" value="NO" onchange="onCambioIncluyeIvaPago()" checked> No
+              <input type="radio" name="exec-pago-incluye-iva" id="exec-pago-incluye-iva-no" value="NO" onchange="onCambioIncluyeIvaPago()"> No
             </label>
           </div>
 
-          <!-- Pregunta 2: ¿Incluye IGTF? — solo si USD -->
+          <!-- Pregunta 2: ¿Incluye IGTF? — solo si moneda ≠ VES -->
           <div id="exec-pago-incluye-igtf-cont" style="display:none;margin-bottom:10px">
             <div style="display:flex;align-items:center;gap:12px">
-              <label style="font-size:13px;font-weight:500">¿El monto incluye IGTF?</label>
+              <label style="font-size:13px;font-weight:500">Monto Facturado ya Incluye IGTF</label>
               <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
-                <input type="radio" name="exec-pago-incluye-igtf" id="exec-pago-incluye-igtf-si" value="SI" onchange="onCambioIncluyeIvaPago()"> Sí
+                <input type="radio" name="exec-pago-incluye-igtf" id="exec-pago-incluye-igtf-si" value="SI" onchange="onCambioIncluyeIvaPago()" checked> Sí
               </label>
               <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
-                <input type="radio" name="exec-pago-incluye-igtf" id="exec-pago-incluye-igtf-no" value="NO" onchange="onCambioIncluyeIvaPago()" checked> No
+                <input type="radio" name="exec-pago-incluye-igtf" id="exec-pago-incluye-igtf-no" value="NO" onchange="onCambioIncluyeIvaPago()"> No
               </label>
             </div>
           </div>
