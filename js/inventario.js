@@ -499,20 +499,75 @@ async function guardarEdicionMovimiento() {
         }
       } catch(eAstEdit) { console.warn('Error corrigiendo asiento:', eAstEdit); }
 
-      // ── Corregir CxP asociada ──
+      // ── Actualizar CxP asociada ──
       try {
-        const cxps = await api('cont_cxp', 'GET', null,
-          '?numero_doc=ilike.' + encodeURIComponent('ENT-' + id + '*') + emisorQ() + '&estado=eq.PENDIENTE&select=id_cxp,monto_pagado_usd');
-        if (cxps && cxps.length === 1) {
-          const precioFinal2 = precio !== null ? precio : parseFloat(art?.precio_costo_moneda || 0);
-          const nuevoMontoUSD = parseFloat((cantidad * precioFinal2).toFixed(2));
-          const pagadoUSD     = parseFloat(cxps[0].monto_pagado_usd || 0);
-          await api('cont_cxp', 'PATCH',
-            { monto_usd: nuevoMontoUSD, saldo_usd: parseFloat((nuevoMontoUSD - pagadoUSD).toFixed(2)),
-              fecha_emision: fechaNeg },
-            '?id_cxp=eq.' + cxps[0].id_cxp);
+        const numDocBase = 'ENT-' + id;
+        const artNom = r?.nombre_articulo || ('Art#' + id_articulo);
+        const precioFinal2 = precio !== null ? precio : parseFloat(art?.precio_costo_moneda || 0);
+        const nuevoMontoUSD = parseFloat((cantidad * precioFinal2).toFixed(2));
+
+        // Eliminar CxP existentes PENDIENTES para esta entrada
+        const cxpsExist = await api('cont_cxp', 'GET', null,
+          '?numero_doc=ilike.' + encodeURIComponent(numDocBase + '*') + emisorQ() + '&estado=eq.PENDIENTE&select=id_cxp');
+        for (const cx of (cxpsExist || [])) {
+          await api('cont_cxp', 'DELETE', null, '?id_cxp=eq.' + cx.id_cxp);
         }
-      } catch(eCxPEdit) { console.warn('Error corrigiendo CxP:', eCxPEdit); }
+
+        const idProvEdit = provEdit || null;
+        const tasaEdit = parseFloat(art?.tasa_bcv || 1);
+
+        if (pagoEdit === 'CREDITO') {
+          // Crear cuotas desde el preview
+          const prevEl = document.getElementById('edit-mov-cuotas-preview');
+          const cuotasData = prevEl?.dataset?.cuotas ? JSON.parse(prevEl.dataset.cuotas) : [];
+          if (cuotasData.length) {
+            for (const c of cuotasData) {
+              await api('cont_cxp', 'POST', {
+                id_proveedor:    idProvEdit,
+                id_empresa:      _empresaActiva?.id_empresa || null,
+                id_cuenta_gasto: r?.id_cuenta_costo_gasto || null,
+                tipo:            'COMPRA_ARTICULO_CREDITO',
+                numero_doc:      numDocBase + '-C' + c.num,
+                fecha_emision:   fechaNeg,
+                fecha_vencimiento: c.fecha,
+                moneda_pago:     monedaEdit || 'USD',
+                estado:          'PENDIENTE',
+                monto_usd:       parseFloat(c.monto.toFixed(2)),
+                monto_ves:       parseFloat((c.monto * tasaEdit).toFixed(2)),
+                tasa_bcv:        tasaEdit,
+                tasa_bcv_compra: tasaEdit,
+                pagado_usd:      0,
+                saldo_usd:       parseFloat(c.monto.toFixed(2)),
+                observaciones:   artNom + ' x ' + cantidad + ' uds.',
+                esquema_pago:    'CREDITO',
+                id_usuario:      sesionActual?.correo_usuario || null
+              });
+            }
+          }
+        } else {
+          // CONTADO — una sola CxP
+          await api('cont_cxp', 'POST', {
+            id_proveedor:    idProvEdit,
+            id_empresa:      _empresaActiva?.id_empresa || null,
+            id_cuenta_gasto: r?.id_cuenta_costo_gasto || null,
+            tipo:            'COMPRA_ARTICULO',
+            numero_doc:      numDocBase,
+            fecha_emision:   fechaNeg,
+            fecha_vencimiento: fechaNeg,
+            moneda_pago:     monedaEdit || 'USD',
+            estado:          'PENDIENTE',
+            monto_usd:       nuevoMontoUSD,
+            monto_ves:       parseFloat((nuevoMontoUSD * tasaEdit).toFixed(2)),
+            tasa_bcv:        tasaEdit,
+            tasa_bcv_compra: tasaEdit,
+            pagado_usd:      0,
+            saldo_usd:       nuevoMontoUSD,
+            observaciones:   artNom + ' x ' + cantidad + ' uds.',
+            esquema_pago:    'CONTADO',
+            id_usuario:      sesionActual?.correo_usuario || null
+          });
+        }
+      } catch(eCxPEdit) { console.warn('Error actualizando CxP:', eCxPEdit); }
 
     } else {
       // ── SALIDA ──
