@@ -2597,14 +2597,23 @@ function onCambioIncluyeIvaPago() {
     .then(async function(rows) {
       if (!rows || !rows[0]) return;
       const monto = parseFloat(rows[0].saldo_usd || rows[0].monto_usd || 0);
-      // Verificar si aplica IGTF — proveedor Contribuyente Especial
+      // Verificar si aplica IGTF
       let aplicaIGTF = false;
-      if (esUSD && rows[0].id_proveedor) {
-        try {
-          const provRows = await api('proveedores','GET',null,
-            '?id_proveedor=eq.'+rows[0].id_proveedor+'&select=tipo_contribuyente&limit=1');
-          aplicaIGTF = provRows && provRows[0] && provRows[0].tipo_contribuyente === 'ESPECIAL';
-        } catch(e) {}
+      if (esUSD) {
+        const selMetodo = document.getElementById('exec-pago-metodo');
+        const nombreMetodo = selMetodo?.selectedOptions[0]?.text || '';
+        const esEfectivo = nombreMetodo.toLowerCase().includes('efectivo');
+        if (esEfectivo) {
+          // Efectivo → aplica a todos
+          aplicaIGTF = true;
+        } else if (rows[0].id_proveedor) {
+          // Transferencia → solo Contribuyente Especial
+          try {
+            const provRows = await api('proveedores','GET',null,
+              '?id_proveedor=eq.'+rows[0].id_proveedor+'&select=tipo_contribuyente&limit=1');
+            aplicaIGTF = provRows && provRows[0] && provRows[0].tipo_contribuyente === 'ESPECIAL';
+          } catch(e) {}
+        }
       }
       // Mostrar pregunta IGTF solo si aplica
       const igtfCont = document.getElementById('exec-pago-incluye-igtf-cont');
@@ -2764,17 +2773,23 @@ async function confirmarEjecucionPago() {
     const montoUSD   = parseFloat(c.saldo_usd || c.monto_usd || 0);
     const tasaCompra = parseFloat(c.tasa_bcv_compra || c.tasa_bcv || 1);
 
-    // Verificar si el proveedor es Contribuyente Especial (IGTF solo aplica en ese caso)
+    // Verificar si aplica IGTF
     let esContribuyenteEspecial = false;
-    if (esUSD && c.id_proveedor) {
-      try {
-        const provRows = await api('proveedores','GET',null,
-          '?id_proveedor=eq.'+c.id_proveedor+'&select=tipo_contribuyente&limit=1');
-        esContribuyenteEspecial = provRows && provRows[0] && provRows[0].tipo_contribuyente === 'ESPECIAL';
-      } catch(e) {}
+    let aplicaIGTF = false;
+    if (esUSD) {
+      const selMetodo = document.getElementById('exec-pago-metodo');
+      const nombreMetodo = selMetodo?.selectedOptions[0]?.text || '';
+      const esEfectivo = nombreMetodo.toLowerCase().includes('efectivo');
+      if (esEfectivo) {
+        aplicaIGTF = true;
+      } else if (c.id_proveedor) {
+        try {
+          const provRows = await api('proveedores','GET',null,
+            '?id_proveedor=eq.'+c.id_proveedor+'&select=tipo_contribuyente&limit=1');
+          aplicaIGTF = provRows && provRows[0] && provRows[0].tipo_contribuyente === 'ESPECIAL';
+        } catch(e) {}
+      }
     }
-    // Si no es Contribuyente Especial, no aplica IGTF
-    const aplicaIGTF = esUSD && esContribuyenteEspecial;
 
     // 2. Obtener tasa BCV del día de pago
     const tasasHoy = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaPago+'&order=fecha_valor.desc&limit=1&select=tipo_cambio');
