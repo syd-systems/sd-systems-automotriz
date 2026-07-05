@@ -1158,7 +1158,7 @@ async function abrirProveedor(id) {
     if (selCat) {
       selCat.innerHTML = '<option value="">— Seleccionar —</option>'
         + (cats||[]).map(function(c){
-            return '<option value="'+c.id+'"'+(c.id===(p?.id_categoria_articulo)?' selected':'')+'>'+c.nombre+'</option>';
+            return '<option value="'+c.id+'"'+(c.id===(p?.id_categoria)?' selected':'')+'>'+c.nombre+'</option>';
           }).join('');
     }
   } catch(e) {}
