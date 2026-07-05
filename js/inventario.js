@@ -1042,12 +1042,21 @@ async function verFichaProveedor(id) {
   const tipoLabel = { 'ORDINARIO':'Contribuyente Ordinario','ESPECIAL':'Contribuyente Especial','FORMAL':'Contribuyente Formal' };
   const tipoColor = { 'ORDINARIO':'badge-naranja','ESPECIAL':'badge-verde','FORMAL':'badge-gris' };
 
+  // Buscar nombre de categoría
+  if (p.id_categoria && !p._catNombre) {
+    try {
+      const cats = await api('param_categorias_proveedor','GET',null,'?id=eq.'+p.id_categoria+'&select=nombre&limit=1');
+      if (cats && cats[0]) p._catNombre = cats[0].nombre;
+    } catch(e) {}
+  }
+
   document.getElementById('ficha-prov-contenido').innerHTML =
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Nombre</div><div style="font-weight:600;font-size:15px">' + p.nombre + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">RIF</div><div style="font-family:var(--font-mono)">' + (p.rif||'—') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Tipo Contribuyente</div><div>' + (p.tipo_contribuyente ? '<span class="badge ' + (tipoColor[p.tipo_contribuyente]||'badge-gris') + '">' + (tipoLabel[p.tipo_contribuyente]||p.tipo_contribuyente) + '</span>' : '—') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Tipo Proveedor</div><div><span class="badge ' + (p.tipo_proveedor === 'NACIONAL' ? 'badge-naranja' : 'badge-gris') + '">' + (p.tipo_proveedor||'NACIONAL') + '</span></div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Categoría</div><div>' + (p._catNombre || '—') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div>' + (p.telefono||'—') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Correo</div><div>' + (p.correo||'—') + '</div></div>'
     + '<div style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div>' + (p.direccion||'—') + '</div></div>'
