@@ -1043,11 +1043,11 @@ async function contRenderCxc() {
 async function contRenderCxp() {
   const cont = document.getElementById('cont-vista-cont');
   if (!cont) return;
+  // Leer filtro ANTES de destruir el DOM
+  const filtroEstado = document.getElementById('cxp-filtro-estado')?.value || '';
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
     const id_emisor = _empresaActiva?.id_empresa || 0;
-    // Filtro estado
-    const filtroEstado = document.getElementById('cxp-filtro-estado')?.value || '';
     let q = '?id_empresa=eq.'+id_emisor+'&order=fecha_emision.desc&select=*,proveedores:id_proveedor(nombre,rif)';
     if (filtroEstado) q += '&estado=eq.'+filtroEstado;
     const cxps = await api('cont_cxp','GET',null,q) || [];
