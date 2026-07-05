@@ -48,10 +48,11 @@ function cargarPagosDesdeUI() {
   const busqueda  = document.getElementById('pagos-buscar')?.value    || '';
   const desde     = document.getElementById('pagos-fecha-desde')?.value || '';
   const hasta     = document.getElementById('pagos-fecha-hasta')?.value || '';
-  cargarPagos(estado, null, busqueda, null, desde, hasta);
+  const categoria = document.getElementById('pagos-categoria')?.value  || '';
+  cargarPagos(estado, null, busqueda, null, desde, hasta, categoria);
 }
 
-async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtroDesde, filtroHasta) {
+async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtroDesde, filtroHasta, filtroCategoria) {
   const c = document.getElementById('contenido-principal');
   const panelExiste = !!document.getElementById('panel-pagos');
 
@@ -88,10 +89,15 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
   const elEstado = document.getElementById('pagos-estado');
   if (filtroEstado !== undefined && elEstado) elEstado.value = filtroEstado || '';
 
-  const fEstado = document.getElementById('pagos-estado')?.value || '';
-  const fBuscar = (busqueda || document.getElementById('pagos-buscar')?.value || '').toLowerCase();
-  const fDesde  = filtroDesde || document.getElementById('pagos-fecha-desde')?.value || '';
-  const fHasta  = filtroHasta || document.getElementById('pagos-fecha-hasta')?.value || '';
+  // Restaurar categoría si se pasó como parámetro
+  const elCat = document.getElementById('pagos-categoria');
+  if (filtroCategoria !== undefined && elCat) elCat.value = filtroCategoria || '';
+
+  const fEstado    = document.getElementById('pagos-estado')?.value    || '';
+  const fBuscar    = (busqueda || document.getElementById('pagos-buscar')?.value || '').toLowerCase();
+  const fDesde     = filtroDesde    || document.getElementById('pagos-fecha-desde')?.value || '';
+  const fHasta     = filtroHasta    || document.getElementById('pagos-fecha-hasta')?.value || '';
+  const fCategoria = filtroCategoria !== undefined ? (filtroCategoria || '') : (document.getElementById('pagos-categoria')?.value || '');
 
   const id_emisor = _empresaActiva?.id_empresa || 0;
 
@@ -108,7 +114,6 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       });
     }
   } catch(e) {}
-  const fCategoria = document.getElementById('pagos-categoria')?.value || '';
 
   const pagos = [];
   const cxps = await api('cont_cxp','GET',null,'?id_empresa=eq.'+id_emisor+'&order=numero_doc.asc&select=*,proveedores:id_proveedor(nombre,id_categoria)');
