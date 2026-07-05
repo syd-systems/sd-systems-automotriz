@@ -2897,15 +2897,13 @@ async function confirmarEjecucionPago() {
       const invUSD    = montoUSD;
 
       // Calcular HABER Inventario BS para cuadrar exactamente
-      // DEBE BS total = cxpVES + ivaVES + igtfVES + diferencial(si>0) + gastoVES
-      // HABER BS total = bancoVES + invVES → invVES = DEBE BS - bancoVES
-      let debeVESTotal = cxpVES + ivaVES + igtfVES + gastoVES;
-      if (diferencial > 0) debeVESTotal = r2(debeVESTotal + Math.abs(diferencial));
-      if (diferencial < 0) debeVESTotal = r2(debeVESTotal); // ganancia suma en HABER
-      const haberVESsinInv = diferencial < 0
-        ? r2(bancoVES + Math.abs(diferencial))
-        : bancoVES;
-      const invVES = r2(debeVESTotal - haberVESsinInv);
+      // DEBE BS = cxpVES + ivaVES + igtfVES + diferencial(si pérdida) + gastoVES
+      // HABER BS = bancoVES + ganancia(si aplica) + invVES
+      // invVES = DEBE BS - HABER BS sin inv
+      const debeVESTotal   = cxpVES + ivaVES + igtfVES + gastoVES + (diferencial > 0 ? r2(Math.abs(diferencial)) : 0);
+      const haberVESsinInv = bancoVES + (diferencial < 0 ? r2(Math.abs(diferencial)) : 0);
+      // Usar Math.round para evitar floating point y asegurar cuadre exacto
+      const invVES = Math.round((debeVESTotal - haberVESsinInv) * 100) / 100;
 
       const linea = async function(id_cta, debeUSD, haberUSD, debeVES, haberVES) {
         await api('cont_asiento_lineas','POST',{
