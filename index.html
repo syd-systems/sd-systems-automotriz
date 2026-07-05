@@ -1344,17 +1344,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260705021"></script>
-<script src="js/parametros.js?v=20260705021"></script>
-<script src="js/empresas.js?v=20260705021"></script>
-<script src="js/facturacion.js?v=20260705021"></script>
-<script src="js/inventario.js?v=20260705021"></script>
-<script src="js/contabilidad.js?v=20260705021"></script>
-<script src="js/pagos.js?v=20260705021"></script>
-<script src="js/vehiculos.js?v=20260705021"></script>
-<script src="js/catalogo.js?v=20260705021"></script>
-<script src="js/inventario2.js?v=20260705021"></script>
-<script src="js/ordenes.js?v=20260705021"></script>
+<script src="js/core.js?v=20260705022"></script>
+<script src="js/parametros.js?v=20260705022"></script>
+<script src="js/empresas.js?v=20260705022"></script>
+<script src="js/facturacion.js?v=20260705022"></script>
+<script src="js/inventario.js?v=20260705022"></script>
+<script src="js/contabilidad.js?v=20260705022"></script>
+<script src="js/pagos.js?v=20260705022"></script>
+<script src="js/vehiculos.js?v=20260705022"></script>
+<script src="js/catalogo.js?v=20260705022"></script>
+<script src="js/inventario2.js?v=20260705022"></script>
+<script src="js/ordenes.js?v=20260705022"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2106,16 +2106,18 @@
         <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px">
           <div class="form-campo" style="margin:0">
             <label style="font-size:12px">Tipo de Pago</label>
-            <select id="cont-pago-manual-tipo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:9px 12px;border-radius:5px;outline:none;width:100%">
-              <option value="TRANSFERENCIA">Transferencia</option>
-              <option value="PAGO_MOVIL">Pago Móvil</option>
-              <option value="EFECTIVO">Efectivo</option>
-              <option value="CHEQUE">Cheque</option>
+            <select id="cont-pago-manual-tipo" onchange="onCambioMetodoPagoManual()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:9px 12px;border-radius:5px;outline:none;width:100%">
+              <option value="">— Seleccione moneda primero —</option>
             </select>
           </div>
           <div class="form-campo" style="margin:0">
             <label style="font-size:12px">N° Cuenta / Teléfono</label>
             <input type="text" id="cont-pago-manual-cuenta" placeholder="Número de cuenta o celular" style="font-family:var(--font-mono)">
+          </div>
+          <div class="form-campo form-full" id="cont-pago-manual-cuenta-cont" style="display:none;margin:0">
+            <label style="font-size:12px">Cuenta Contable</label>
+            <div id="cont-pago-manual-cuenta-display" style="font-size:13px;color:var(--naranja);font-weight:600;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:9px 12px">—</div>
+            <input type="hidden" id="cont-pago-manual-cuenta-id">
           </div>
         </div>
       </div>

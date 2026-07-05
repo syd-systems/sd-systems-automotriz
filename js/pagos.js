@@ -1399,6 +1399,54 @@ function onCambioPagoMoneda() {
     montoEl.dataset.valor = montoPago; // guardar valor numérico para cálculos
   }
   onCambioPagoMonto();
+
+  // Cargar métodos de pago dinámicos según moneda seleccionada
+  const selMetodoManual = document.getElementById('cont-pago-manual-tipo');
+  if (selMetodoManual && monedaPago) {
+    selMetodoManual.innerHTML = '<option value="">⏳ Cargando...</option>';
+    api('param_metodos_pago','GET',null,
+      '?codigo=eq.'+monedaPago+'&estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,id_cuenta_contable' + emisorQ())
+    .then(async function(metodos) {
+      var cuentasMap = {};
+      const ids = (metodos||[]).map(function(m){ return m.id_cuenta_contable; }).filter(Boolean).join(',');
+      if (ids) {
+        try {
+          const ctas = await api('cont_cuentas','GET',null,'?id_cuenta=in.('+ids+')&select=id_cuenta,codigo,nombre');
+          (ctas||[]).forEach(function(c){ cuentasMap[c.id_cuenta] = c; });
+        } catch(e) {}
+      }
+      selMetodoManual.innerHTML = '<option value="">— Seleccione método —</option>'
+        + (metodos||[]).map(function(m) {
+            const cta = cuentasMap[m.id_cuenta_contable];
+            return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-cuenta-nombre="'+(cta ? cta.codigo+' — '+cta.nombre : '')+'">'+m.nombre+'</option>';
+          }).join('');
+    }).catch(function() {
+      selMetodoManual.innerHTML = '<option value="">— Sin métodos disponibles —</option>';
+    });
+    // Limpiar cuenta contable
+    const ctaCont = document.getElementById('cont-pago-manual-cuenta-cont');
+    if (ctaCont) ctaCont.style.display = 'none';
+    const ctaId = document.getElementById('cont-pago-manual-cuenta-id');
+    if (ctaId) ctaId.value = '';
+  }
+}
+
+function onCambioMetodoPagoManual() {
+  const sel = document.getElementById('cont-pago-manual-tipo');
+  const opt = sel?.selectedOptions[0];
+  const cuentaId     = opt?.getAttribute('data-cuenta-id')   || '';
+  const cuentaNombre = opt?.getAttribute('data-cuenta-nombre') || '—';
+  const ctaCont    = document.getElementById('cont-pago-manual-cuenta-cont');
+  const ctaDisplay = document.getElementById('cont-pago-manual-cuenta-display');
+  const ctaId      = document.getElementById('cont-pago-manual-cuenta-id');
+  if (cuentaId) {
+    if (ctaCont)    ctaCont.style.display   = '';
+    if (ctaDisplay) ctaDisplay.textContent  = cuentaNombre;
+    if (ctaId)      ctaId.value             = cuentaId;
+  } else {
+    if (ctaCont)    ctaCont.style.display   = 'none';
+    if (ctaId)      ctaId.value             = '';
+  }
 }
 
 function onCambioPagoMonto() {
