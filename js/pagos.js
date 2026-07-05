@@ -43,6 +43,14 @@ async function renderPagos() {
   }
 }
 
+function cargarPagosDesdeUI() {
+  const estado    = document.getElementById('pagos-estado')?.value    || '';
+  const busqueda  = document.getElementById('pagos-buscar')?.value    || '';
+  const desde     = document.getElementById('pagos-fecha-desde')?.value || '';
+  const hasta     = document.getElementById('pagos-fecha-hasta')?.value || '';
+  cargarPagos(estado, null, busqueda, null, desde, hasta);
+}
+
 async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtroDesde, filtroHasta) {
   const c = document.getElementById('contenido-principal');
   const panelExiste = !!document.getElementById('panel-pagos');
