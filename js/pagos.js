@@ -1467,6 +1467,7 @@ async function contGuardarPagoCxp() {
 
 async function anularPagoCxP(id_cxp) {
   if (!confirm('¿Anular esta CxP? Solo se revertirán asientos de pago, NO los de inventario.')) return;
+  console.log('[SYD] anular modal clase abierto:', document.getElementById('modal-cont-pago-cxp')?.classList.contains('abierto'));
   const _chkPag = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=estado');
   if (_chkPag && _chkPag[0] && _chkPag[0].estado === 'PAGADA') { alert('Un pago aprobado no puede anularse desde CxP.'); return; }
   try {
