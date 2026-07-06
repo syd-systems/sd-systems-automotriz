@@ -480,7 +480,10 @@ function abrirModal(id) {
 }
 
 function cerrarModal(id) {
-  document.getElementById(id).classList.remove('abierto');
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('abierto');
+  el.style.display = 'none';
 }
 
 // Cerrar modal al hacer clic fuera
