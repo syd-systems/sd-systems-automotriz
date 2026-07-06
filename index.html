@@ -1344,17 +1344,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260705050"></script>
-<script src="js/parametros.js?v=20260705050"></script>
-<script src="js/empresas.js?v=20260705050"></script>
-<script src="js/facturacion.js?v=20260705050"></script>
-<script src="js/inventario.js?v=20260705050"></script>
-<script src="js/contabilidad.js?v=20260705050"></script>
-<script src="js/pagos.js?v=20260705050"></script>
-<script src="js/vehiculos.js?v=20260705050"></script>
-<script src="js/catalogo.js?v=20260705050"></script>
-<script src="js/inventario2.js?v=20260705050"></script>
-<script src="js/ordenes.js?v=20260705050"></script>
+<script src="js/core.js?v=20260705051"></script>
+<script src="js/parametros.js?v=20260705051"></script>
+<script src="js/empresas.js?v=20260705051"></script>
+<script src="js/facturacion.js?v=20260705051"></script>
+<script src="js/inventario.js?v=20260705051"></script>
+<script src="js/contabilidad.js?v=20260705051"></script>
+<script src="js/pagos.js?v=20260705051"></script>
+<script src="js/vehiculos.js?v=20260705051"></script>
+<script src="js/catalogo.js?v=20260705051"></script>
+<script src="js/inventario2.js?v=20260705051"></script>
+<script src="js/ordenes.js?v=20260705051"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4135,6 +4135,10 @@
             <option value="">— Seleccionar cuenta —</option>
           </select>
         </div>
+        <div class="form-campo form-full">
+          <label>Descripción *</label>
+          <input type="text" id="pago-descripcion" placeholder="Descripción del pago" style="font-size:13px">
+        </div>
         <div class="form-campo">
           <label>Monto *</label>
           <input type="number" id="pago-monto" step="0.01" min="0" style="font-family:var(--font-mono);font-size:15px;font-weight:600" onblur="this.value=this.value?parseFloat(this.value).toFixed(2):''">
@@ -4157,7 +4161,6 @@
         <input type="hidden" id="pago-id">
         <input type="hidden" id="pago-moneda" value="USD">
         <input type="hidden" id="pago-metodo-hidden">
-        <input type="hidden" id="pago-descripcion" value="">
         <input type="hidden" id="pago-rif" value="">
 
       </div>
