@@ -1757,7 +1757,7 @@ async function guardarPago() {
 
   // Leer campos
   const id_categoria  = document.getElementById('pago-categoria-prov')?.value || '';
-  const moneda       = document.getElementById('pago-moneda')?.value || 'VES';
+  const moneda       = document.getElementById('pago-moneda')?.value || '';
   const descripcion  = document.getElementById('pago-descripcion')?.value.trim() || '';
   const id_cuentaGasto= document.getElementById('pago-cuenta-gasto')?.value || '';
   const monto        = parseFloat(document.getElementById('pago-monto')?.value) || 0;
