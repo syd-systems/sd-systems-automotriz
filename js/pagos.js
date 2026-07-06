@@ -1257,13 +1257,8 @@ async function pagarCxP(id_cxp) {
     const metodoCont    = document.getElementById('cont-pago-metodo-cont');
 
     if (tieneBanco && tienePM) {
-      // Tiene ambos — selector entre Transferencia y Pago Móvil
-      if (metodoCont) metodoCont.innerHTML =
-        '<label>Método de Pago</label>'
-        +'<select id="cont-pago-cxp-metodo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
-        +'<option value="TRANSFERENCIA">🏦 Transferencia Bancaria</option>'
-        +'<option value="PAGO_MOVIL">📱 Pago Móvil</option>'
-        +'</select>';
+      if (metodoDisplay) metodoDisplay.textContent = '🏦 Transferencia / 📱 Pago Móvil';
+      if (metodoHidden)  metodoHidden.value = 'TRANSFERENCIA';
     } else if (tieneBanco) {
       if (metodoDisplay) metodoDisplay.textContent = '🏦 Transferencia Bancaria';
       if (metodoHidden)  metodoHidden.value = 'TRANSFERENCIA';
@@ -1271,25 +1266,20 @@ async function pagarCxP(id_cxp) {
       if (metodoDisplay) metodoDisplay.textContent = '📱 Pago Móvil';
       if (metodoHidden)  metodoHidden.value = 'PAGO_MOVIL';
     } else {
-      // Sin datos — selector manual
-      if (metodoCont) metodoCont.innerHTML =
-        '<label>Método de Pago *</label>'
-        +'<select id="cont-pago-cxp-metodo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
-        +'<option value="">— Seleccionar —</option>'
-        +'<option value="TRANSFERENCIA">Transferencia Bancaria</option>'
-        +'<option value="PAGO_MOVIL">Pago Móvil</option>'
-        +'<option value="EFECTIVO">Efectivo</option>'
-        +'<option value="CHEQUE">Cheque</option>'
-        +'</select>';
+      if (metodoDisplay) metodoDisplay.textContent = '—';
+      if (metodoHidden)  metodoHidden.value = '';
     }
 
-    // Mostrar campos manuales si no tiene ninguno
-    if (manualInfo) manualInfo.style.display = (!tieneBanco && !tienePM) ? '' : 'none';
+    // Mostrar siempre el selector dinámico de método de pago
+    if (manualInfo) manualInfo.style.display = '';
 
     // 7. Moneda por defecto y calcular
     const monedaEl = document.getElementById('cont-pago-cxp-moneda');
     if (monedaEl) monedaEl.value = _empresaActiva?.moneda_principal || 'VES';
     if (monedaEl) monedaEl.disabled = false;
+
+    // Cargar métodos de pago según moneda
+    onCambioPagoMoneda();
 
     // Título modo PAGAR
     const tituloEl = document.getElementById('cont-pago-cxp-titulo');
@@ -1475,7 +1465,7 @@ async function contGuardarPagoCxp() {
   const monto   = parseFloat(montoEl2?.dataset.valor) || 0; // usar valor numérico exacto sin formato
   const tasa    = parseFloat(document.getElementById('cont-pago-cxp-tasa')?.value) || _tasaVigente || 1;
   const fecha   = document.getElementById('cont-pago-cxp-fecha')?.value || '';
-  const metodo  = document.getElementById('cont-pago-cxp-metodo')?.value || '';
+  const metodo  = document.getElementById('cont-pago-manual-tipo')?.value || document.getElementById('cont-pago-cxp-metodo')?.value || '';
   const ref     = document.getElementById('cont-pago-cxp-ref')?.value || '';
   const okEl  = document.getElementById('alerta-pago-cxp-ok');
   const errEl = document.getElementById('alerta-pago-cxp-err');
