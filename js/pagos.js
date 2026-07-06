@@ -2460,16 +2460,21 @@ async function ejecutarPagoCxP(id_cxp) {
   if (btnConf) { btnConf.disabled = false; btnConf.textContent = '💳 Confirmar Pago'; }
   document.getElementById('alerta-exec-err').style.display = 'none';
 
-  // Título con monto
+  // Título con monto — según moneda de la CxP
+  const monedaCxP = c.moneda_pago || 'USD';
+  const montoCxP  = monedaCxP === 'VES'
+    ? parseFloat(c.monto_ves || c.saldo_ves || 0)
+    : parseFloat(c.monto_usd || c.saldo_usd || 0);
+  const simbolo   = monedaCxP === 'VES' ? 'Bs.' : (monedaCxP === 'EUR' ? '€' : '$');
   document.getElementById('exec-pago-desc').textContent  = c.numero_doc + ' — ' + (c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim();
-  document.getElementById('exec-pago-monto').textContent = '$ ' + parseFloat(c.monto_usd||0).toLocaleString('es-VE',{minimumFractionDigits:2});
+  document.getElementById('exec-pago-monto').textContent = simbolo + ' ' + montoCxP.toLocaleString('es-VE',{minimumFractionDigits:2});
 
-  // Mostrar/ocultar IGTF según moneda
-  const metodo = document.getElementById('exec-pago-metodo').value;
-  const esUSD  = metodo.includes('USD') || metodo === 'ZELLE' || metodo === 'DIVISAS';
-  document.getElementById('exec-pago-incluye-igtf-cont').style.display = esUSD ? '' : 'none';
-
-  onCambioIncluyeIvaPago();
+  // Preseleccionar moneda según la CxP
+  const selMoneda2 = document.getElementById('exec-pago-moneda-sel');
+  if (selMoneda2 && monedaCxP) {
+    selMoneda2.value = monedaCxP;
+    await onCambioMonedaEjecucionPago();
+  }
   abrirModal('modal-ejecutar-pago');
 }
 
@@ -2481,10 +2486,13 @@ function onCambioIncluyeIvaPago() {
 
   if (!_ejecutarPagoCxPId) return;
 
-  api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=monto_usd,saldo_usd,id_proveedor')
+  api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=monto_usd,saldo_usd,monto_ves,saldo_ves,moneda_pago,id_proveedor')
     .then(async function(rows) {
       if (!rows || !rows[0]) return;
-      const monto = parseFloat(rows[0].saldo_usd || rows[0].monto_usd || 0);
+      const monedaCxP = rows[0].moneda_pago || 'USD';
+      const monto = monedaCxP === 'VES'
+        ? parseFloat(rows[0].saldo_ves || rows[0].monto_ves || 0)
+        : parseFloat(rows[0].saldo_usd || rows[0].monto_usd || 0);
       // Verificar si aplica IGTF
       let aplicaIGTF = false;
       if (esUSD) {
@@ -2676,7 +2684,10 @@ async function confirmarEjecucionPago() {
     const c = rows && rows[0];
     if (!c) throw new Error('CxP no encontrada.');
 
-    const montoUSD   = parseFloat(c.saldo_usd || c.monto_usd || 0);
+    const monedaCxP = c.moneda_pago || 'USD';
+    const montoUSD  = monedaCxP === 'VES'
+      ? parseFloat(c.saldo_ves || c.monto_ves || 0)
+      : parseFloat(c.saldo_usd || c.monto_usd || 0);
     // Buscar tasa de compra desde BD usando fecha_emision de la CxP
     let tasaCompra = parseFloat(c.tasa_bcv_compra || c.tasa_bcv || 0);
     if (!tasaCompra || tasaCompra === 1) {
