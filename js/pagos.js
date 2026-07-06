@@ -1805,6 +1805,12 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       return;
     }
 
+    // Si modo es pagar → usar modal-ejecutar-pago directamente
+    if (modoInicial === 'pagar') {
+      await ejecutarPagoCxP(id_cxp);
+      return;
+    }
+
     const prov = c.proveedores || {};
     const est  = c.estado || 'PENDIENTE';
 
