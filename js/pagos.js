@@ -168,7 +168,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       beneficiario: c.proveedores?.nombre || '—',
       fecha:       c.fecha_emision || '',
       tipo:        tipoDisplay,
-      origen:      'Automático',
+      origen:      c.tipo === 'PAGO_MANUAL' ? 'Manual' : 'Automático',
       monto_usd:   parseFloat(c.monto_usd || 0),
       monto_ves:   montoVES,
       estado:      c.estado || 'PENDIENTE',
