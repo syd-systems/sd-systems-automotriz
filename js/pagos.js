@@ -1769,14 +1769,19 @@ async function guardarPago() {
   if (!id_cuentaGasto) { mostrarErr('Debe seleccionar la Cuenta de Gasto.');    document.getElementById('pago-cuenta-gasto')?.focus(); return; }
   if (!descripcion)    { mostrarErr('La Descripción es obligatoria.');           document.getElementById('pago-descripcion')?.focus(); return; }
   if (!monto)          { mostrarErr('El Monto es obligatorio.');                 document.getElementById('pago-monto')?.focus(); return; }
+  if (!moneda)         { mostrarErr('Debe seleccionar la Moneda.');              document.getElementById('pago-moneda')?.focus(); return; }
   if (!vencimiento)    { mostrarErr('La Fecha de Pago es obligatoria.');         document.getElementById('pago-vencimiento')?.focus(); return; }
   if (!id_proveedor)   { mostrarErr('Debe seleccionar un Proveedor.');           document.getElementById('pago-proveedor')?.focus(); return; }
   const exentoIVASel = document.querySelector('input[name="pago-exento-iva"]:checked');
   if (!exentoIVASel)   { mostrarErr('Debe indicar si el Gasto está Exento de IVA.'); return; }
 
-  // Calcular montos
-  const tasaUSD = window._pagoTasaUSD || _tasaVigente || 1;
-  const tasaEUR = window._pagoTasaEUR || 1;
+  // Buscar tasa BCV del día
+  let tasaUSD = _tasaVigente || 1;
+  try {
+    const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+getHoyVzla()+'&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    if (tasaRows && tasaRows[0]) tasaUSD = parseFloat(tasaRows[0].tipo_cambio);
+  } catch(e) {}
+  const tasaEUR = window._pagoTasaEUR || tasaUSD;
   let montoUSD = monto;
   let montoVES = monto;
   if (moneda === 'VES') {

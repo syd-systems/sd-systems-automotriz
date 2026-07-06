@@ -1344,17 +1344,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707016"></script>
-<script src="js/parametros.js?v=20260707016"></script>
-<script src="js/empresas.js?v=20260707016"></script>
-<script src="js/facturacion.js?v=20260707016"></script>
-<script src="js/inventario.js?v=20260707016"></script>
-<script src="js/contabilidad.js?v=20260707016"></script>
-<script src="js/pagos.js?v=20260707016"></script>
-<script src="js/vehiculos.js?v=20260707016"></script>
-<script src="js/catalogo.js?v=20260707016"></script>
-<script src="js/inventario2.js?v=20260707016"></script>
-<script src="js/ordenes.js?v=20260707016"></script>
+<script src="js/core.js?v=20260707017"></script>
+<script src="js/parametros.js?v=20260707017"></script>
+<script src="js/empresas.js?v=20260707017"></script>
+<script src="js/facturacion.js?v=20260707017"></script>
+<script src="js/inventario.js?v=20260707017"></script>
+<script src="js/contabilidad.js?v=20260707017"></script>
+<script src="js/pagos.js?v=20260707017"></script>
+<script src="js/vehiculos.js?v=20260707017"></script>
+<script src="js/catalogo.js?v=20260707017"></script>
+<script src="js/inventario2.js?v=20260707017"></script>
+<script src="js/ordenes.js?v=20260707017"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4145,6 +4145,15 @@
           <input type="number" id="pago-monto" step="0.01" min="0" style="font-family:var(--font-mono);font-size:15px;font-weight:600" onblur="this.value=this.value?parseFloat(this.value).toFixed(2):''">
         </div>
         <div class="form-campo">
+          <label>Moneda *</label>
+          <select id="pago-moneda" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar —</option>
+            <option value="VES">VES — Bolívares</option>
+            <option value="USD">USD — Dólares</option>
+            <option value="EUR">EUR — Euros</option>
+          </select>
+        </div>
+        <div class="form-campo">
           <label>Fecha de Pago *</label>
           <input type="date" id="pago-vencimiento">
         </div>
@@ -4173,7 +4182,6 @@
         </div>
 
         <input type="hidden" id="pago-id">
-        <input type="hidden" id="pago-moneda" value="USD">
         <input type="hidden" id="pago-metodo-hidden">
         <input type="hidden" id="pago-rif" value="">
 
