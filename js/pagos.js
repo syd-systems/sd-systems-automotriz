@@ -293,7 +293,8 @@ async function abrirNuevoPago() {
   if (pagoArchivo) pagoArchivo.value = '';
   document.getElementById('pago-id').value = '';
   document.getElementById('pago-modal-titulo').textContent = 'NUEVA CUENTA POR PAGAR';
-  document.getElementById('pago-exento-iva-no').checked = true;
+  // Limpiar selección exento IVA
+  document.querySelectorAll('input[name="pago-exento-iva"]').forEach(function(r){ r.checked = false; });
   const _me = document.getElementById('pago-monto-equiv'); if (_me) _me.textContent = '';
   const _tc = document.getElementById('pago-tasa-cont'); if (_tc) _tc.style.display = 'none';
   ['pago-banco-info','pago-pm-info','pago-manual-info'].forEach(function(id){
@@ -1770,6 +1771,8 @@ async function guardarPago() {
   if (!monto)          { mostrarErr('El Monto es obligatorio.');                 document.getElementById('pago-monto')?.focus(); return; }
   if (!vencimiento)    { mostrarErr('La Fecha de Pago es obligatoria.');         document.getElementById('pago-vencimiento')?.focus(); return; }
   if (!id_proveedor)   { mostrarErr('Debe seleccionar un Proveedor.');           document.getElementById('pago-proveedor')?.focus(); return; }
+  const exentoIVASel = document.querySelector('input[name="pago-exento-iva"]:checked');
+  if (!exentoIVASel)   { mostrarErr('Debe indicar si el Gasto está Exento de IVA.'); return; }
 
   // Calcular montos
   const tasaUSD = window._pagoTasaUSD || _tasaVigente || 1;
