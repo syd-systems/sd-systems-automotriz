@@ -287,10 +287,13 @@ async function abrirNuevoPago() {
   ['pago-descripcion','pago-monto','pago-vencimiento','pago-rif','pago-observaciones','pago-manual-cuenta','pago-referencia'].forEach(function(id){
     const el = document.getElementById(id); if (el) el.value = '';
   });
-  document.getElementById('pago-moneda').value = 'VES';
+  const pagoMonedaEl2 = document.getElementById('pago-moneda');
+  if (pagoMonedaEl2) pagoMonedaEl2.value = 'USD';
   const pagoArchivo = document.getElementById('pago-archivo');
   if (pagoArchivo) pagoArchivo.value = '';
   document.getElementById('pago-id').value = '';
+  document.getElementById('pago-modal-titulo').textContent = 'NUEVA CUENTA POR PAGAR';
+  document.getElementById('pago-exento-iva-no').checked = true;
   const _me = document.getElementById('pago-monto-equiv'); if (_me) _me.textContent = '';
   const _tc = document.getElementById('pago-tasa-cont'); if (_tc) _tc.style.display = 'none';
   ['pago-banco-info','pago-pm-info','pago-manual-info'].forEach(function(id){
