@@ -1344,17 +1344,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707028"></script>
-<script src="js/parametros.js?v=20260707028"></script>
-<script src="js/empresas.js?v=20260707028"></script>
-<script src="js/facturacion.js?v=20260707028"></script>
-<script src="js/inventario.js?v=20260707028"></script>
-<script src="js/contabilidad.js?v=20260707028"></script>
-<script src="js/pagos.js?v=20260707028"></script>
-<script src="js/vehiculos.js?v=20260707028"></script>
-<script src="js/catalogo.js?v=20260707028"></script>
-<script src="js/inventario2.js?v=20260707028"></script>
-<script src="js/ordenes.js?v=20260707028"></script>
+<script src="js/core.js?v=20260707029"></script>
+<script src="js/parametros.js?v=20260707029"></script>
+<script src="js/empresas.js?v=20260707029"></script>
+<script src="js/facturacion.js?v=20260707029"></script>
+<script src="js/inventario.js?v=20260707029"></script>
+<script src="js/contabilidad.js?v=20260707029"></script>
+<script src="js/pagos.js?v=20260707029"></script>
+<script src="js/vehiculos.js?v=20260707029"></script>
+<script src="js/catalogo.js?v=20260707029"></script>
+<script src="js/inventario2.js?v=20260707029"></script>
+<script src="js/ordenes.js?v=20260707029"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4143,6 +4143,9 @@
         <div class="form-campo">
           <label>Monto *</label>
           <input type="text" id="pago-monto" inputmode="decimal" style="font-family:var(--font-mono);font-size:15px;font-weight:600" placeholder="0,00" onblur="if(this.value){var v=parseFloat(this.value.replace(/\./g,'').replace(',','.'));if(!isNaN(v)){var p=v.toFixed(2).split('.');this.value=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.')+','+p[1];}}">
+        </div>
+        <div class="form-campo">
+          <label>Moneda *</label>
           <select id="pago-moneda" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar —</option>
             <option value="VES">VES — Bolívares</option>
