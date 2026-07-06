@@ -1761,11 +1761,12 @@ async function guardarPago() {
   const observaciones= document.getElementById('pago-observaciones')?.value.trim() || '';
 
   // Validaciones en orden de los campos
-  if (!id_categoria)  { mostrarErr('Debe seleccionar la Categoría de Pago.');  document.getElementById('pago-categoria-prov')?.focus(); return; }
-  if (!descripcion)   { mostrarErr('La Descripción es obligatoria.');           document.getElementById('pago-descripcion')?.focus(); return; }
-  if (!monto)         { mostrarErr('El Monto es obligatorio.');                 document.getElementById('pago-monto')?.focus(); return; }
-  if (!vencimiento)   { mostrarErr('La Fecha de Pago es obligatoria.');         document.getElementById('pago-vencimiento')?.focus(); return; }
-  if (!id_proveedor)  { mostrarErr('Debe seleccionar un Proveedor.');           document.getElementById('pago-proveedor')?.focus(); return; }
+  if (!id_categoria)   { mostrarErr('Debe seleccionar la Categoría de Pago.');  document.getElementById('pago-categoria-prov')?.focus(); return; }
+  if (!id_cuentaGasto) { mostrarErr('Debe seleccionar la Cuenta de Gasto.');    document.getElementById('pago-cuenta-gasto')?.focus(); return; }
+  if (!descripcion)    { mostrarErr('La Descripción es obligatoria.');           document.getElementById('pago-descripcion')?.focus(); return; }
+  if (!monto)          { mostrarErr('El Monto es obligatorio.');                 document.getElementById('pago-monto')?.focus(); return; }
+  if (!vencimiento)    { mostrarErr('La Fecha de Pago es obligatoria.');         document.getElementById('pago-vencimiento')?.focus(); return; }
+  if (!id_proveedor)   { mostrarErr('Debe seleccionar un Proveedor.');           document.getElementById('pago-proveedor')?.focus(); return; }
 
   // Calcular montos
   const tasaUSD = window._pagoTasaUSD || _tasaVigente || 1;
