@@ -1688,8 +1688,11 @@ async function verPagoCxP(id_cxp) {
     // Cambiar botones del modal — solo Anular (si manual) y Retornar
     const footer = document.querySelector('#modal-cont-pago-cxp .modal-footer');
     if (footer) {
-      footer.innerHTML =
-        ((esManual && est !== 'PAGADA') ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+');cerrarModal(\'modal-cont-pago-cxp\')">&#x1F5D1; Anular</button>' : '')
+      const btnEditar = (esManual && est === 'PENDIENTE' && puedo('PAGOS','EDITAR'))
+        ? '<button class="btn-secundario" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
+      const btnAnular = (esManual && est !== 'PAGADA')
+        ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+');cerrarModal(\'modal-cont-pago-cxp\')">🗑 Anular</button>' : '';
+      footer.innerHTML = btnEditar + btnAnular
         + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\');cargarPagos()">Retornar</button>';
     }
 
@@ -1697,8 +1700,46 @@ async function verPagoCxP(id_cxp) {
   } catch(e) { alert('Error: '+e.message); }
 }
 
+async function editarCxPManual(id_cxp) {
+  cerrarModal('modal-cont-pago-cxp');
+  try {
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=*');
+    if (!rows || !rows[0]) return;
+    const c = rows[0];
+
+    // Abrir modal-pago con datos cargados
+    await abrirNuevoPago();
+
+    // Cargar valores
+    document.getElementById('pago-id').value          = c.id_cxp;
+    document.getElementById('pago-descripcion').value = c.observaciones || '';
+    document.getElementById('pago-monto').value       = c.moneda_pago === 'VES'
+      ? parseFloat(c.monto_ves || 0).toFixed(2)
+      : parseFloat(c.monto_usd || 0).toFixed(2);
+    document.getElementById('pago-vencimiento').value = c.fecha_vencimiento?.slice(0,10) || '';
+    if (c.exento_iva) document.getElementById('pago-exento-iva-si').checked = true;
+    else document.getElementById('pago-exento-iva-no').checked = true;
+
+    // Preseleccionar proveedor
+    if (c.id_proveedor) {
+      const selProv = document.getElementById('pago-proveedor');
+      if (selProv) selProv.value = c.id_proveedor;
+    }
+
+    // Preseleccionar cuenta de gasto
+    if (c.id_cuenta_gasto) {
+      const selCta = document.getElementById('pago-cuenta-gasto');
+      if (selCta) selCta.value = c.id_cuenta_gasto;
+    }
+
+    document.getElementById('pago-modal-titulo').textContent = 'EDITAR OBLIGACIÓN DE PAGO';
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+
 async function guardarPago() {
-  if (!puedo('PAGOS','CREAR')) { alert('No tiene permiso para registrar obligaciones de pago.'); return; }
+  const id_cxp_edit = document.getElementById('pago-id')?.value || '';
+  if (!puedo('PAGOS','CREAR') && !id_cxp_edit) { alert('No tiene permiso para registrar obligaciones de pago.'); return; }
   const errEl = document.getElementById('alerta-pago-err');
   const okEl  = document.getElementById('alerta-pago-ok');
   if (errEl) errEl.style.display = 'none';
@@ -1747,6 +1788,23 @@ async function guardarPago() {
   try {
     const btnGuardar = document.querySelector('#modal-pago .btn-primario');
     if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
+
+    // Si es edición → PATCH
+    if (id_cxp_edit) {
+      await api('cont_cxp','PATCH',{
+        id_proveedor:      id_proveedor,
+        fecha_vencimiento: vencimiento,
+        monto_usd:         montoUSD,
+        monto_ves:         montoVES,
+        saldo_usd:         montoUSD,
+        id_cuenta_gasto:   parseInt(document.getElementById('pago-cuenta-gasto')?.value) || null,
+        observaciones:     descripcion + (observaciones ? ' — ' + observaciones : ''),
+        exento_iva:        document.getElementById('pago-exento-iva-si')?.checked || false,
+      }, '?id_cxp=eq.'+id_cxp_edit);
+      if (okEl) { okEl.textContent = '✓ Obligación actualizada correctamente.'; okEl.style.display = 'block'; }
+      setTimeout(function() { cerrarModal('modal-pago'); cargarPagos(); }, 1000);
+      return;
+    }
 
     // Subir comprobante si se adjuntó
     let urlComp = null;
