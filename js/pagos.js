@@ -2072,6 +2072,19 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     }
 
     abrirModal('modal-cont-pago-cxp');
+
+    // Footer dinámico con botón Anular y Editar
+    const footerPend = document.querySelector('#modal-cont-pago-cxp .modal-footer');
+    if (footerPend) {
+      const est = c.estado || '';
+      const btnEditar = (est === 'PENDIENTE' && puedo('PAGOS','EDITAR'))
+        ? '<button class="btn-secundario" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
+      const btnAnular = (est === 'PENDIENTE' && puedo('PAGOS','EDITAR'))
+        ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 Anular</button>' : '';
+      footerPend.innerHTML = btnEditar + btnAnular
+        + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\')">Retornar</button>';
+    }
+
   } catch(e) { alert('Error: '+e.message); console.error(e); }
 }
 
