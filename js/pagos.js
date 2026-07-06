@@ -1466,8 +1466,21 @@ async function contGuardarPagoCxp() {
 
 
 async function anularPagoCxP(id_cxp) {
-  if (!confirm('¿Anular esta CxP? Solo se revertirán asientos de pago, NO los de inventario.')) return;
-  console.log('[SYD] anular modal clase abierto:', document.getElementById('modal-cont-pago-cxp')?.classList.contains('abierto'));
+  // Reemplazar confirm() por diálogo propio — confirm() bloqueado en algunos browsers
+  const confirmado = await new Promise(function(resolve) {
+    const div = document.createElement('div');
+    div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center';
+    div.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:24px;max-width:380px;text-align:center">'
+      + '<div style="font-size:15px;margin-bottom:20px;color:#e8e8e8">¿Anular esta CxP?<br><span style="font-size:12px;color:#666">Solo se revertirán asientos de pago, NO los de inventario.</span></div>'
+      + '<div style="display:flex;gap:12px;justify-content:center">'
+      + '<button id="btn-confirm-si" style="background:#ef4444;border:none;color:#fff;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">Sí, Anular</button>'
+      + '<button id="btn-confirm-no" style="background:#333;border:1px solid #555;color:#e8e8e8;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">Cancelar</button>'
+      + '</div></div>';
+    document.body.appendChild(div);
+    div.querySelector('#btn-confirm-si').onclick = function() { document.body.removeChild(div); resolve(true); };
+    div.querySelector('#btn-confirm-no').onclick = function() { document.body.removeChild(div); resolve(false); };
+  });
+  if (!confirmado) return;
   const _chkPag = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=estado');
   if (_chkPag && _chkPag[0] && _chkPag[0].estado === 'PAGADA') { alert('Un pago aprobado no puede anularse desde CxP.'); return; }
   try {
