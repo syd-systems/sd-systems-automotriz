@@ -321,9 +321,10 @@ async function abrirNuevoPago() {
     }
   } catch(e) {}
 
-  // Cargar cuentas de gasto
+  // Cargar cuentas de gasto — solo grupos 6.1.02, 6.1.04, 6.2.01, 6.2.02
   try {
-    const cuentas = await api('cont_cuentas','GET',null,'?tipo=eq.EGRESO&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
+    const cuentas = await api('cont_cuentas','GET',null,
+      '?or=(codigo.ilike.6.1.02%25,codigo.ilike.6.1.04%25,codigo.ilike.6.2.01%25,codigo.ilike.6.2.02%25)&permite_movimiento=eq.true&estado=eq.ACTIVA&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
     const selC = document.getElementById('pago-cuenta-gasto');
     if (selC) {
       selC.innerHTML = '<option value="">— Seleccionar cuenta —</option>'
