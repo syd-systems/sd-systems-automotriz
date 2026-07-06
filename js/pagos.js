@@ -1489,6 +1489,7 @@ async function anularPagoCxP(id_cxp) {
       }
     }
 
+    cerrarModal('modal-cont-pago-cxp');
     cargarPagos();
   } catch(e) { alert('Error al anular: '+e.message); }
 }
