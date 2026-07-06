@@ -291,12 +291,12 @@ async function abrirNuevoPago() {
   const pagoArchivo = document.getElementById('pago-archivo');
   if (pagoArchivo) pagoArchivo.value = '';
   document.getElementById('pago-id').value = '';
-  document.getElementById('pago-monto-equiv').textContent = '';
-  document.getElementById('pago-tasa-cont').style.display = 'none';
+  const _me = document.getElementById('pago-monto-equiv'); if (_me) _me.textContent = '';
+  const _tc = document.getElementById('pago-tasa-cont'); if (_tc) _tc.style.display = 'none';
   ['pago-banco-info','pago-pm-info','pago-manual-info'].forEach(function(id){
     const el = document.getElementById(id); if (el) el.style.display = 'none';
   });
-  document.getElementById('pago-metodo-display').textContent = '—';
+  const _md = document.getElementById('pago-metodo-display'); if (_md) _md.textContent = '—';
 
   // Cargar tasas
   try {
