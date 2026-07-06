@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260707021';
+const SYD_VERSION = '20260707022';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -14,8 +14,8 @@ function fmtBs(valor) {
   return partes[0] + ',' + partes[1];
 }
 function fmtUSD(valor) {
-  // Formato USD: coma miles, punto decimales → 1,234.56
-  return parseFloat(valor || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  // Formato venezolano: punto miles, coma decimales → 999.999,99
+  return fmtBs(valor);
 }
 function fmtVES(valor) {
   // Alias de fmtBs — mismo formato venezolano
