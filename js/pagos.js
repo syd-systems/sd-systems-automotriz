@@ -2079,7 +2079,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       const est = c.estado || '';
       const btnEditar = (est === 'PENDIENTE' && puedo('PAGOS','EDITAR'))
         ? '<button class="btn-secundario" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
-      const btnAnular = (est === 'PENDIENTE' && puedo('PAGOS','EDITAR'))
+      const btnAnular = (est === 'PENDIENTE' && (puedo('PAGOS','ELIMINAR') || puedo('PAGOS','EDITAR') || sesionActual?.administrador))
         ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 Anular</button>' : '';
       footerPend.innerHTML = btnEditar + btnAnular
         + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\')">Retornar</button>';
