@@ -1344,17 +1344,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260705025"></script>
-<script src="js/parametros.js?v=20260705025"></script>
-<script src="js/empresas.js?v=20260705025"></script>
-<script src="js/facturacion.js?v=20260705025"></script>
-<script src="js/inventario.js?v=20260705025"></script>
-<script src="js/contabilidad.js?v=20260705025"></script>
-<script src="js/pagos.js?v=20260705025"></script>
-<script src="js/vehiculos.js?v=20260705025"></script>
-<script src="js/catalogo.js?v=20260705025"></script>
-<script src="js/inventario2.js?v=20260705025"></script>
-<script src="js/ordenes.js?v=20260705025"></script>
+<script src="js/core.js?v=20260705026"></script>
+<script src="js/parametros.js?v=20260705026"></script>
+<script src="js/empresas.js?v=20260705026"></script>
+<script src="js/facturacion.js?v=20260705026"></script>
+<script src="js/inventario.js?v=20260705026"></script>
+<script src="js/contabilidad.js?v=20260705026"></script>
+<script src="js/pagos.js?v=20260705026"></script>
+<script src="js/vehiculos.js?v=20260705026"></script>
+<script src="js/catalogo.js?v=20260705026"></script>
+<script src="js/inventario2.js?v=20260705026"></script>
+<script src="js/ordenes.js?v=20260705026"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4115,45 +4115,20 @@
 </div>
 
 <div class="modal-overlay" id="modal-pago">
-  <div class="modal" style="max-width:860px;width:95%">
+  <div class="modal" style="max-width:680px;width:95%">
     <div class="modal-header">
       <h2 class="modal-titulo" id="pago-modal-titulo">NUEVA CUENTA POR PAGAR</h2>
       <button class="modal-cerrar" onclick="cerrarModal('modal-pago')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;gap:14px">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
 
-        <!-- LÍNEA 1: Categoría | Tipo de Cambio | Moneda de Pago -->
         <div class="form-campo">
-          <label>Categoría de Proveedor *</label>
+          <label>Categoría de Pago *</label>
           <select id="pago-categoria-prov" onchange="onCambioCategoriaPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar —</option>
           </select>
         </div>
-        <div class="form-campo" id="pago-tasa-cont" style="display:none">
-          <label id="pago-tasa-label">Tipo de Cambio</label>
-          <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:5px;padding:10px 14px">
-            <span id="pago-tasa-par" style="font-size:12px;color:var(--naranja);font-weight:600;white-space:nowrap"></span>
-            <span style="font-size:11px;color:var(--suave)">Tasa:</span>
-            <span id="pago-tasa-val" style="font-family:var(--font-mono);font-size:14px;font-weight:700"></span>
-          </div>
-        </div>
-        <div class="form-campo">
-          <label>Moneda de Pago *</label>
-          <select id="pago-moneda" onchange="onCambioMonedaPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="VES" selected>VES — Bolívares (Funcional)</option>
-            <option value="USD">USD — Dólares</option>
-            <option value="EUR">EUR — Euros</option>
-          </select>
-        </div>
-
-        <!-- LÍNEA 2: Descripción -->
-        <div class="form-campo form-full">
-          <label>Descripción *</label>
-          <input type="text" id="pago-descripcion" placeholder="Descripción del pago">
-        </div>
-
-        <!-- LÍNEA 3: Cuenta de Gasto | Monto | Fecha Vencimiento -->
         <div class="form-campo">
           <label>Cuenta de Gasto</label>
           <select id="pago-cuenta-gasto" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
@@ -4161,64 +4136,29 @@
           </select>
         </div>
         <div class="form-campo">
-          <label id="pago-monto-label">Monto *</label>
-          <input type="number" id="pago-monto" step="0.01" min="0" oninput="onCambioMontoPago()" style="font-family:var(--font-mono);font-size:15px;font-weight:600">
-          <div id="pago-monto-equiv" style="font-size:11px;color:var(--suave);margin-top:4px"></div>
+          <label>Monto *</label>
+          <input type="number" id="pago-monto" step="0.01" min="0" style="font-family:var(--font-mono);font-size:15px;font-weight:600">
         </div>
         <div class="form-campo">
-          <label>Fecha Vencimiento *</label>
+          <label>Fecha de Pago *</label>
           <input type="date" id="pago-vencimiento">
         </div>
-
-        <!-- LÍNEA 4: Proveedor | RIF | Datos pago -->
-        <div class="form-campo">
+        <div class="form-campo form-full">
           <label>Proveedor *</label>
-          <select id="pago-proveedor" onchange="onSelProveedorPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <select id="pago-proveedor" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar —</option>
           </select>
         </div>
-        <div class="form-campo">
-          <label>R.I.F</label>
-          <input type="text" id="pago-rif" readonly style="background:rgba(255,255,255,0.04);color:var(--suave);cursor:not-allowed;font-family:var(--font-mono)">
-        </div>
-        <div class="form-campo" id="pago-metodo-cont">
-          <label>Método de Pago</label>
-          <div id="pago-metodo-display" style="font-size:13px;color:var(--texto);background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:5px;padding:11px 14px">—</div>
-          <input type="hidden" id="pago-metodo-hidden">
-        </div>
-
-        <!-- Datos bancarios del proveedor -->
-        <div class="form-campo form-full" id="pago-banco-info" style="display:none;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:6px;padding:12px 16px">
-          <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🏦 Datos Bancarios</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="pago-banco-datos"></div>
-        </div>
-        <div class="form-campo form-full" id="pago-pm-info" style="display:none;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:6px;padding:12px 16px">
-          <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">📱 Pago Móvil</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="pago-pm-datos"></div>
-        </div>
-        <div class="form-campo form-full" id="pago-manual-info" style="display:none;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:6px;padding:12px 16px">
-          <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🏦 Datos Bancarios (manual)</div>
-          <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px">
-            <div class="form-campo" style="margin:0">
-              <label style="font-size:12px">Tipo de Pago</label>
-              <select id="pago-manual-tipo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:9px 12px;border-radius:5px;outline:none;width:100%">
-                <option value="TRANSFERENCIA">Transferencia</option>
-                <option value="PAGO_MOVIL">Pago Móvil</option>
-                <option value="EFECTIVO">Efectivo</option>
-              </select>
-            </div>
-            <div class="form-campo" style="margin:0">
-              <label style="font-size:12px">N° Cuenta / Teléfono</label>
-              <input type="text" id="pago-manual-cuenta" placeholder="Número de cuenta o celular" style="font-family:var(--font-mono)">
-            </div>
-          </div>
-        </div>
-
-        <!-- LÍNEA 5: Observaciones -->
         <div class="form-campo form-full">
           <label>Observaciones</label>
           <textarea id="pago-observaciones" rows="2" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;width:100%"></textarea>
         </div>
+
+        <input type="hidden" id="pago-id">
+        <input type="hidden" id="pago-moneda" value="USD">
+        <input type="hidden" id="pago-metodo-hidden">
+        <input type="hidden" id="pago-descripcion" value="">
+        <input type="hidden" id="pago-rif" value="">
 
       </div>
       <div class="alerta alerta-error" id="alerta-pago-err" style="display:none;margin-top:12px"></div>
@@ -4226,9 +4166,8 @@
     </div>
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-pago')">Retornar</button>
-      <button class="btn-primario"   onclick="guardarPago()">Guardar</button>
+      <button class="btn-primario"   onclick="guardarPago()">💾 Guardar</button>
     </div>
-    <input type="hidden" id="pago-id">
   </div>
 </div>
 
