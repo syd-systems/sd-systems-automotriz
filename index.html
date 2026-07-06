@@ -1344,17 +1344,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707010"></script>
-<script src="js/parametros.js?v=20260707010"></script>
-<script src="js/empresas.js?v=20260707010"></script>
-<script src="js/facturacion.js?v=20260707010"></script>
-<script src="js/inventario.js?v=20260707010"></script>
-<script src="js/contabilidad.js?v=20260707010"></script>
-<script src="js/pagos.js?v=20260707010"></script>
-<script src="js/vehiculos.js?v=20260707010"></script>
-<script src="js/catalogo.js?v=20260707010"></script>
-<script src="js/inventario2.js?v=20260707010"></script>
-<script src="js/ordenes.js?v=20260707010"></script>
+<script src="js/core.js?v=20260707011"></script>
+<script src="js/parametros.js?v=20260707011"></script>
+<script src="js/empresas.js?v=20260707011"></script>
+<script src="js/facturacion.js?v=20260707011"></script>
+<script src="js/inventario.js?v=20260707011"></script>
+<script src="js/contabilidad.js?v=20260707011"></script>
+<script src="js/pagos.js?v=20260707011"></script>
+<script src="js/vehiculos.js?v=20260707011"></script>
+<script src="js/catalogo.js?v=20260707011"></script>
+<script src="js/inventario2.js?v=20260707011"></script>
+<script src="js/ordenes.js?v=20260707011"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4158,6 +4158,19 @@
           <textarea id="pago-observaciones" rows="2" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;width:100%"></textarea>
         </div>
 
+        <!-- Exento de IVA -->
+        <div class="form-campo form-full" style="background:rgba(255,107,0,0.05);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:12px 14px">
+          <div style="display:flex;align-items:center;gap:16px">
+            <label style="font-size:13px;font-weight:500;margin:0">¿Gasto Exento de IVA?</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
+              <input type="radio" name="pago-exento-iva" id="pago-exento-iva-si" value="SI"> Sí
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
+              <input type="radio" name="pago-exento-iva" id="pago-exento-iva-no" value="NO" checked> No
+            </label>
+          </div>
+        </div>
+
         <input type="hidden" id="pago-id">
         <input type="hidden" id="pago-moneda" value="USD">
         <input type="hidden" id="pago-metodo-hidden">
@@ -4224,14 +4237,17 @@
         <!-- Pregunta 1: ¿El monto incluye IVA? -->
         <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
           <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">⚖ Tributos</div>
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-            <label style="font-size:13px;font-weight:500">Monto Facturado ya Incluye IVA</label>
-            <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
-              <input type="radio" name="exec-pago-incluye-iva" id="exec-pago-incluye-iva-si" value="SI" onchange="onCambioIncluyeIvaPago()" checked> Sí
-            </label>
-            <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
-              <input type="radio" name="exec-pago-incluye-iva" id="exec-pago-incluye-iva-no" value="NO" onchange="onCambioIncluyeIvaPago()"> No
-            </label>
+          <!-- Pregunta 1: ¿El monto incluye IVA? -->
+          <div id="exec-pago-incluye-iva-cont" style="margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <label style="font-size:13px;font-weight:500">Monto Facturado ya Incluye IVA</label>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="radio" name="exec-pago-incluye-iva" id="exec-pago-incluye-iva-si" value="SI" onchange="onCambioIncluyeIvaPago()" checked> Sí
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="radio" name="exec-pago-incluye-iva" id="exec-pago-incluye-iva-no" value="NO" onchange="onCambioIncluyeIvaPago()"> No
+              </label>
+            </div>
           </div>
 
           <!-- Pregunta 2: ¿Incluye IGTF? — solo si moneda ≠ VES -->

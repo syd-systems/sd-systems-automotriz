@@ -1774,6 +1774,7 @@ async function guardarPago() {
       url_comprobante:  urlComp || null,
       id_cuenta_gasto:  parseInt(document.getElementById('pago-cuenta-gasto')?.value) || null,
       observaciones:    descripcion + (observaciones ? ' — ' + observaciones : ''),
+      exento_iva:       document.getElementById('pago-exento-iva-si')?.checked || false,
       id_usuario:       sesionActual?.correo_usuario || null
     });
 
@@ -2468,6 +2469,12 @@ async function ejecutarPagoCxP(id_cxp) {
   const simbolo   = monedaCxP === 'VES' ? 'Bs.' : (monedaCxP === 'EUR' ? '€' : '$');
   document.getElementById('exec-pago-desc').textContent  = c.numero_doc + ' — ' + (c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim();
   document.getElementById('exec-pago-monto').textContent = simbolo + ' ' + montoCxP.toLocaleString('es-VE',{minimumFractionDigits:2});
+
+  // Si exento de IVA — ocultar pregunta IVA y marcar NO
+  const exentoIVA = c.exento_iva === true;
+  const ivaContEl = document.getElementById('exec-pago-incluye-iva-cont');
+  if (ivaContEl) ivaContEl.style.display = exentoIVA ? 'none' : '';
+  if (exentoIVA) document.getElementById('exec-pago-incluye-iva-no').checked = true;
 
   // Preseleccionar moneda según la CxP
   const selMoneda2 = document.getElementById('exec-pago-moneda-sel');
