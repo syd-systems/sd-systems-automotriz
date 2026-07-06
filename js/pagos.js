@@ -1713,9 +1713,9 @@ async function verPagoCxP(id_cxp) {
       const btnEditar = (esManual && est === 'PENDIENTE' && puedo('PAGOS','EDITAR'))
         ? '<button class="btn-secundario" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
       const btnAnular = (esManual && est !== 'PAGADA')
-        ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 Anular</button>' : '';
+        ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 ELIMINAR</button>' : '';
       footer.innerHTML = btnEditar + btnAnular
-        + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\');cargarPagos()">Retornar</button>';
+        + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\');cargarPagos()">RETORNAR</button>';
     }
 
     abrirModal('modal-cont-pago-cxp');
@@ -2083,9 +2083,9 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       const btnEditar = (est === 'PENDIENTE' && puedo('PAGOS','EDITAR'))
         ? '<button class="btn-secundario" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
       const btnAnular = (est === 'PENDIENTE' && (puedo('PAGOS','ELIMINAR') || puedo('PAGOS','EDITAR') || sesionActual?.administrador))
-        ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 Anular</button>' : '';
+        ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 ELIMINAR</button>' : '';
       footerPend.innerHTML = btnEditar + btnAnular
-        + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\')">Retornar</button>';
+        + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\')">RETORNAR</button>';
     }
 
   } catch(e) { alert('Error: '+e.message); console.error(e); }
