@@ -288,7 +288,7 @@ async function abrirNuevoPago() {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   const pagoMonedaEl2 = document.getElementById('pago-moneda');
-  if (pagoMonedaEl2) pagoMonedaEl2.value = 'USD';
+  if (pagoMonedaEl2) pagoMonedaEl2.value = '';
   const pagoArchivo = document.getElementById('pago-archivo');
   if (pagoArchivo) pagoArchivo.value = '';
   document.getElementById('pago-id').value = '';
