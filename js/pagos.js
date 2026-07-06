@@ -1696,7 +1696,7 @@ async function verPagoCxP(id_cxp) {
       const btnEditar = (esManual && est === 'PENDIENTE' && puedo('PAGOS','EDITAR'))
         ? '<button class="btn-secundario" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
       const btnAnular = (esManual && est !== 'PAGADA')
-        ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+');cerrarModal(\'modal-cont-pago-cxp\')">🗑 Anular</button>' : '';
+        ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 Anular</button>' : '';
       footer.innerHTML = btnEditar + btnAnular
         + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\');cargarPagos()">Retornar</button>';
     }
@@ -1760,7 +1760,8 @@ async function guardarPago() {
   const moneda       = document.getElementById('pago-moneda')?.value || '';
   const descripcion  = document.getElementById('pago-descripcion')?.value.trim() || '';
   const id_cuentaGasto= document.getElementById('pago-cuenta-gasto')?.value || '';
-  const monto        = parseFloat(document.getElementById('pago-monto')?.value) || 0;
+  const montoRaw    = (document.getElementById('pago-monto')?.value || '').replace(/\./g,'').replace(',','.');
+  const monto       = parseFloat(montoRaw) || 0;
   const vencimiento  = document.getElementById('pago-vencimiento')?.value || '';
   const id_proveedor  = parseInt(document.getElementById('pago-proveedor')?.value) || null;
   const observaciones= document.getElementById('pago-observaciones')?.value.trim() || '';
