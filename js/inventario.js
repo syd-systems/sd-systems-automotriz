@@ -190,6 +190,15 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   const modoLabel = soloLectura ? '👁 FICHA ENTRADA' : (tipo === 'ENTRADA' ? '✏ EDITAR ENTRADA' : '✏ EDITAR SALIDA');
   document.getElementById('edit-mov-titulo').textContent = modoLabel + ' DE STOCK';
 
+  // Botón Anular — visible si no está anulada y tiene permiso
+  const btnAnular = document.getElementById('btn-anular-movimiento');
+  if (btnAnular) {
+    const permAnular = tipo === 'ENTRADA'
+      ? (sesionActual?.administrador || puedo('INVENTARIO','ANULAR_ENTRADA'))
+      : (sesionActual?.administrador || puedo('INVENTARIO','ANULAR_SALIDA'));
+    btnAnular.style.display = (!m.anulada && permAnular) ? '' : 'none';
+  }
+
   // Campos solo para ENTRADA
   const esEntrada = tipo === 'ENTRADA';
   document.getElementById('edit-mov-precios-cont').style.display   = esEntrada ? '' : 'none';
@@ -355,11 +364,25 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   focusFirstField('modal-edit-movimiento');
 }
 
+async function anularDesdeEdicion() {
+  const tipo        = document.getElementById('edit-mov-tipo').value;
+  const id          = parseInt(document.getElementById('edit-mov-id').value);
+  const id_articulo = parseInt(document.getElementById('edit-mov-id-articulo').value);
+  const cantidad    = parseFloat(document.getElementById('edit-mov-cantidad').value) || 0;
+
+  if (!confirm('¿Anular este movimiento? Esta acción revertirá el stock y los asientos contables.')) return;
+
+  if (tipo === 'ENTRADA') {
+    await reversarMovimiento('ENTRADA', id, cantidad, id_articulo);
+  } else {
+    await reversarSalida(id, id_articulo, cantidad);
+  }
+  retornarDesdeEditMovimiento();
+}
+
+
 async function guardarEdicionMovimiento() {
   const tipo        = document.getElementById('edit-mov-tipo').value;
-  const id          = document.getElementById('edit-mov-id').value;
-  const id_articulo = parseInt(document.getElementById('edit-mov-id-articulo').value);
-  const cantidad    = parseFloat(document.getElementById('edit-mov-cantidad').value);
   const id_area     = parseInt(document.getElementById('edit-mov-area').value) || null;
   const idEmp       = parseInt(document.getElementById('edit-mov-empleado').value) || null;
   const obs         = document.getElementById('edit-mov-obs').value.trim();

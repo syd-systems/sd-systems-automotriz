@@ -1344,17 +1344,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707041"></script>
-<script src="js/parametros.js?v=20260707041"></script>
-<script src="js/empresas.js?v=20260707041"></script>
-<script src="js/facturacion.js?v=20260707041"></script>
-<script src="js/inventario.js?v=20260707041"></script>
-<script src="js/contabilidad.js?v=20260707041"></script>
-<script src="js/pagos.js?v=20260707041"></script>
-<script src="js/vehiculos.js?v=20260707041"></script>
-<script src="js/catalogo.js?v=20260707041"></script>
-<script src="js/inventario2.js?v=20260707041"></script>
-<script src="js/ordenes.js?v=20260707041"></script>
+<script src="js/core.js?v=20260707042"></script>
+<script src="js/parametros.js?v=20260707042"></script>
+<script src="js/empresas.js?v=20260707042"></script>
+<script src="js/facturacion.js?v=20260707042"></script>
+<script src="js/inventario.js?v=20260707042"></script>
+<script src="js/contabilidad.js?v=20260707042"></script>
+<script src="js/pagos.js?v=20260707042"></script>
+<script src="js/vehiculos.js?v=20260707042"></script>
+<script src="js/catalogo.js?v=20260707042"></script>
+<script src="js/inventario2.js?v=20260707042"></script>
+<script src="js/ordenes.js?v=20260707042"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3678,9 +3678,13 @@
     </div>
     <div class="modal-footer">
       <div style="display:flex;gap:10px;justify-content:space-between;align-items:center">
-        <span id="edit-mov-badge-pago" style="display:none"></span>
-        <button class="btn-primario"   onclick="guardarEdicionMovimiento()">GUARDAR</button>
-        <button class="btn-secundario" onclick="retornarDesdeEditMovimiento()">Retornar</button>
+        <div style="display:flex;gap:8px">
+          <button id="btn-anular-movimiento" class="btn-peligro" style="display:none" onclick="anularDesdeEdicion()">🗑 Anular</button>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-primario"   onclick="guardarEdicionMovimiento()">GUARDAR</button>
+          <button class="btn-secundario" onclick="retornarDesdeEditMovimiento()">Retornar</button>
+        </div>
       </div>
     </div>
   </div>

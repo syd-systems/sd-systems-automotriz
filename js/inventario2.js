@@ -1331,18 +1331,12 @@ async function verHistorialEntradas(id_articulo) {
           const estado = e.anulada
             ? '<span style="color:#fc8181;font-size:10px">Reversada</span>'
             : '<span style="color:#22c55e;font-size:10px">Activa</span>';
-          const btnRev = !e.anulada && (sesionActual?.administrador || puedo('INVENTARIO','ANULAR_ENTRADA'))
-            ? '<button onclick="reversarMovimiento(\'ENTRADA\',' + e.id_entrada + ',' + e.cantidad + ',' + id_articulo + ')" '
-              + 'style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;'
-              + 'border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">Anular</button>'
-            : '';
           return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
             + '<td style="padding:6px 4px">' + fmtFecha(e.fecha_entrada) + '</td>'
             + '<td style="text-align:right;padding:6px 4px;font-family:var(--font-mono)">' + e.cantidad + '</td>'
             + '<td style="text-align:right;padding:6px 4px;font-family:var(--font-mono)">' + precFmt + '</td>'
             + '<td style="padding:6px 4px">' + (motivoLabel[e.motivo] || e.motivo || '—') + '</td>'
             + '<td style="text-align:center;padding:6px 4px">' + estado + '</td>'
-            + '<td style="padding:6px 4px">' + btnRev + '</td>'
             + '</tr>';
         }).join('')
       + '</tbody></table></div>';
@@ -1546,17 +1540,11 @@ async function verHistorialSalidas(id_articulo) {
           const estado = s.anulada
             ? '<span style="color:#fc8181;font-size:10px">Reversada</span>'
             : '<span style="color:#22c55e;font-size:10px">Activa</span>';
-          const btnRev = !s.anulada && (sesionActual?.administrador || puedo('INVENTARIO','ANULAR_SALIDA'))
-            ? '<button onclick="reversarSalida(' + s.id_salida + ',' + id_articulo + ',' + s.cantidad + ')" '
-              + 'style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;'
-              + 'border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">Anular</button>'
-            : '';
           return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
             + '<td style="padding:6px 4px">' + fmtFecha(s.fecha_salida) + '</td>'
             + '<td style="text-align:right;padding:6px 4px;font-family:var(--font-mono)">' + s.cantidad + '</td>'
             + '<td style="padding:6px 4px">' + area + '</td>'
             + '<td style="text-align:center;padding:6px 4px">' + estado + '</td>'
-            + '<td style="padding:6px 4px">' + btnRev + '</td>'
             + '</tr>';
         }).join('')
       + '</tbody></table></div>';
