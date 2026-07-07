@@ -824,8 +824,8 @@ async function confirmarReverso() {
     let nuevoStock = 0;
     try {
       const [entradas, salidas] = await Promise.all([
-        api('stock_entradas','GET',null,'?id_articulo=eq.'+id_articulo+'&anulada=eq.false&select=cantidad'),
-        api('stock_salidas','GET',null,'?id_articulo=eq.'+id_articulo+'&anulada=eq.false&select=cantidad')
+        api('stock_entradas','GET',null,'?id_articulo=eq.'+id_articulo+'&anulada=eq.false&select=id_entrada,cantidad'),
+        api('stock_salidas','GET',null,'?id_articulo=eq.'+id_articulo+'&anulada=eq.false&select=id_salida,cantidad')
       ]);
       // Sumar entradas activas (excluyendo la que se está anulando si es ENTRADA)
       const totalEntradas = (entradas||[]).reduce(function(s,e){
