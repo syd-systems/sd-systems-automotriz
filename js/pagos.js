@@ -775,22 +775,25 @@ async function guardarTasaBCVManual() {
   try {
     const hoyISO = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
     const usuario = sesionActual?.correo_usuario || 'sistema@bcv.auto';
-    await Promise.all([
-      fetch(SUPABASE_URL + '/rest/v1/tasas', {
-        method: 'POST',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
-          'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
-        body: JSON.stringify({ moneda_origen: 'USD', moneda_destino: 'VES', tipo_cambio: usd,
-          fecha_valor: fecha, fecha_registro: hoyISO, id_usuario: usuario })
-      }),
-      fetch(SUPABASE_URL + '/rest/v1/tasas', {
-        method: 'POST',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
-          'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
-        body: JSON.stringify({ moneda_origen: 'EUR', moneda_destino: 'VES', tipo_cambio: eur,
-          fecha_valor: fecha, fecha_registro: hoyISO, id_usuario: usuario })
-      })
-    ]);
+
+    // Upsert: verificar si ya existe tasa para esa fecha y moneda
+    async function upsertTasa(moneda, valor) {
+      const existe = await api('tasas','GET',null,
+        '?moneda_origen=eq.'+moneda+'&fecha_valor=eq.'+fecha+'&select=id_tasa&limit=1');
+      if (existe && existe[0]) {
+        // Actualizar existente
+        await api('tasas','PATCH',
+          { tipo_cambio: valor, fecha_registro: hoyISO, id_usuario: usuario },
+          '?id_tasa=eq.'+existe[0].id_tasa);
+      } else {
+        // Insertar nuevo
+        await api('tasas','POST',
+          { moneda_origen: moneda, moneda_destino: 'VES', tipo_cambio: valor,
+            fecha_valor: fecha, fecha_registro: hoyISO, id_usuario: usuario });
+      }
+    }
+
+    await Promise.all([upsertTasa('USD', usd), upsertTasa('EUR', eur)]);
 
     const pFmt = new Date(fecha + 'T12:00:00').toLocaleDateString('es-VE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
     const pCap = pFmt.charAt(0).toUpperCase() + pFmt.slice(1);
