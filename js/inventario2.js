@@ -1283,7 +1283,7 @@ async function verHistorialEntradas(id_articulo) {
       filas = salsRecibidas.map(function(s) {
         const origen = s.area_origen ? s.area_origen.nombre+(s.area_origen.codigo?' ('+s.area_origen.codigo+')':'') : 'Almacén';
         const estado = s.anulada
-          ? '<span style="color:#fc8181;font-size:10px">Reversada</span>'
+          ? '<span style="color:#fc8181;font-size:10px">Anulada</span>'
           : '<span style="color:#22c55e;font-size:10px">Activa</span>';
         return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
           + '<td style="padding:6px 4px">' + fmtFecha(s.fecha_salida) + '</td>'
@@ -1329,7 +1329,7 @@ async function verHistorialEntradas(id_articulo) {
           const prec = parseFloat(e.precio_compra_original || e.precio_costo_moneda || 0);
           const precFmt = mon === 'VES' ? fmtBs(prec) + ' Bs' : '$ ' + fmtUSD(prec) + ' ' + mon;
           const estado = e.anulada
-            ? '<span style="color:#fc8181;font-size:10px">Reversada</span>'
+            ? '<span style="color:#fc8181;font-size:10px">Anulada</span>'
             : '<span style="color:#22c55e;font-size:10px">Activa</span>';
           return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
             + '<td style="padding:6px 4px">' + fmtFecha(e.fecha_entrada) + '</td>'
@@ -1538,7 +1538,7 @@ async function verHistorialSalidas(id_articulo) {
       + salidas.map(function(s) {
           const area = s.area_receptora ? s.area_receptora.nombre + (s.area_receptora.codigo ? ' (' + s.area_receptora.codigo + ')' : '') : '—';
           const estado = s.anulada
-            ? '<span style="color:#fc8181;font-size:10px">Reversada</span>'
+            ? '<span style="color:#fc8181;font-size:10px">Anulada</span>'
             : '<span style="color:#22c55e;font-size:10px">Activa</span>';
           return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
             + '<td style="padding:6px 4px">' + fmtFecha(s.fecha_salida) + '</td>'

@@ -91,7 +91,7 @@ async function recargarHistorial(id_articulo) {
             + '<td style="padding:8px 0;font-size:12px;color:var(--suave)">' + (m.fecha||'—') + '</td>'
             + '<td style="padding:8px"><span class="badge ' + (esEntrada ? 'badge-verde' : 'badge-rojo') + '">'
             + (esEntrada ? '▲ Entrada' : '▼ Salida') + '</span>'
-            + (anulada ? '<div style="font-size:10px;color:#fc8181;margin-top:2px">Reversada</div>' : '') + '</td>'
+            + (anulada ? '<div style="font-size:10px;color:#fc8181;margin-top:2px">Anulada</div>' : '') + '</td>'
             + '<td style="text-align:center;padding:8px;font-family:var(--font-mono);font-weight:600;color:' + (esEntrada ? '#22c55e' : '#fc8181') + '">'
             + (esEntrada ? '+' : '-') + m.cantidad + '</td>'
             + '<td style="padding:8px;font-size:12px">'
@@ -107,7 +107,7 @@ async function recargarHistorial(id_articulo) {
             + '</td>'
             + '<td style="text-align:center;padding:8px 0">'
             + (anulada
-                ? '<span style="font-size:10px;font-weight:600;color:#fc8181">Reversada</span>'
+                ? '<span style="font-size:10px;font-weight:600;color:#fc8181">Anulada</span>'
                 : '<span style="font-size:10px;color:#22c55e">Activa</span>')
             + '</td>'
             + '<td style="text-align:center;padding:8px 0">'
