@@ -372,12 +372,14 @@ async function anularDesdeEdicion() {
 
   if (!confirm('¿Anular este movimiento? Esta acción revertirá el stock y los asientos contables.')) return;
 
+  // Cerrar modal de edición antes de abrir modal de anulación
+  cerrarModal('modal-edit-movimiento');
+
   if (tipo === 'ENTRADA') {
     await reversarMovimiento('ENTRADA', id, cantidad, id_articulo);
   } else {
     await reversarSalida(id, id_articulo, cantidad);
   }
-  retornarDesdeEditMovimiento();
 }
 
 
