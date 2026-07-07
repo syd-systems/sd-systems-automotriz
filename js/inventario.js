@@ -961,6 +961,7 @@ async function confirmarReverso() {
       if (document.getElementById('tabla-inv-cont')) invRenderVista(inventarioCache, _invVista);
       if (_fichaInvActual && _fichaInvActual.id) {
         await recargarHistorial(id_articulo);
+        verHistorialStock(_fichaInvActual.id, _fichaInvActual.nombre);
       }
     }, 1500);
 
