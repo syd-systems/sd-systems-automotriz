@@ -845,11 +845,32 @@ async function confirmarReverso() {
       throw new Error('Stock resultante negativo (' + nuevoStock.toFixed(2) + '). No se puede anular porque ya se realizaron salidas de este inventario.');
     }
 
-    // 5. Actualizar stock
+    // 5. Actualizar stock y recalcular CPP
     const patchInv = { stock_actual_articulo: Math.max(0, nuevoStock) };
+
+    // Recalcular CPP desde entradas activas
     if (nuevoStock <= 0) {
       patchInv.precio_costo_moneda        = 0;
       patchInv.precio_costo_ultimo_moneda = 0;
+    } else {
+      // CPP = Σ(cantidad × precio) entradas activas / Σ(cantidad) entradas activas
+      try {
+        const entradasActivas = await api('stock_entradas','GET',null,
+          '?id_articulo=eq.'+id_articulo+'&anulada=eq.false&select=cantidad,precio_costo_moneda');
+        let sumaCantidad = 0;
+        let sumaValor    = 0;
+        (entradasActivas||[]).forEach(function(e) {
+          const cant  = parseFloat(e.cantidad || 0);
+          const precio = parseFloat(e.precio_costo_moneda || 0);
+          sumaCantidad += cant;
+          sumaValor    += cant * precio;
+        });
+        if (sumaCantidad > 0) {
+          patchInv.precio_costo_moneda = parseFloat((sumaValor / sumaCantidad).toFixed(4));
+        } else {
+          patchInv.precio_costo_moneda = 0;
+        }
+      } catch(eCPP) { console.warn('Error recalculando CPP:', eCPP); }
     }
     await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + id_articulo);
 
