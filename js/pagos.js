@@ -2315,11 +2315,12 @@ async function verCxPPendiente(id_cxp) {
     // Footer — Editar solo para CxP manuales
     const footer = document.querySelector('#modal-pago .modal-footer');
     const esManualVer = (c.tipo || '') === 'PAGO_MANUAL';
-    if (footer) footer.innerHTML =
-      footerPend.style.justifyContent = 'space-between';
-      const btnElimEditar = (esManualVer ? '<button class="btn-peligro" onclick="eliminarCxP(' + id_cxp + ')">🗑 ELIMINAR</button><button class="btn-secundario" onclick="editarCxPPendiente(' + id_cxp + ')">✏ Editar</button>' : '');
-      footerPend.innerHTML = '<div style="display:flex;gap:8px">' + btnElimEditar + '</div>'
+    if (footer) {
+      footer.style.justifyContent = 'space-between';
+      const btnElimEditar = esManualVer ? '<button class="btn-peligro" onclick="eliminarCxP(' + id_cxp + ')">🗑 ELIMINAR</button><button class="btn-secundario" onclick="editarCxPPendiente(' + id_cxp + ')">✏ Editar</button>' : '';
+      footer.innerHTML = '<div style="display:flex;gap:8px">' + btnElimEditar + '</div>'
         + '<button class="btn-secundario" onclick="document.getElementById(\'modal-pago\').classList.remove(\'abierto\');document.getElementById(\'modal-pago\').style.display=\'none\';cargarPagos()">RETORNAR</button>';
+    }
 
     onCambioMonedaPago();
     abrirModal('modal-pago');
