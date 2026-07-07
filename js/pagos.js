@@ -2893,7 +2893,15 @@ async function confirmarEjecucionPago() {
       moneda_base:    'VES',
       tasa_bcv:       tasaPago,
       referencia:     c.numero_doc,
-      descripcion:    'Pago CxP: ' + c.numero_doc + ' — ' + (c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim(),
+      descripcion:    (function() {
+        const numDoc = c.numero_doc || '';
+        const obs    = (c.observaciones || '').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim();
+        const cuotaM = numDoc.match(/ENT-(\d+)-C(\d+)/);
+        const entM   = numDoc.match(/^ENT-(\d+)$/);
+        if (cuotaM) return 'Cuota ' + cuotaM[2] + ' — Pago compra Inventario ENT-' + cuotaM[1];
+        if (entM)   return 'Pago contado Inventario ENT-' + entM[1];
+        return obs || ('Pago ' + (c.proveedores?.nombre || numDoc));
+      })(),
       id_usuario:     sesionActual?.correo_usuario
     });
     // Obtener id_asiento recién creado
@@ -2924,33 +2932,41 @@ async function confirmarEjecucionPago() {
       // Usar Math.round para evitar floating point y asegurar cuadre exacto
       const invVES = Math.round((debeVESTotal - haberVESsinInv) * 100) / 100;
 
-      const linea = async function(id_cta, debeUSD, haberUSD, debeVES, haberVES) {
+      const numDoc2 = c.numero_doc || '';
+      const cuotaM2 = numDoc2.match(/ENT-(\d+)-C(\d+)/);
+      const entM2   = numDoc2.match(/^ENT-(\d+)$/);
+      const descBase = cuotaM2 ? ('Cuota ' + cuotaM2[2] + ' — Inventario ENT-' + cuotaM2[1])
+                     : entM2   ? ('Contado — Inventario ENT-' + entM2[1])
+                     : ((c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim() || numDoc2);
+
+      const linea = async function(id_cta, debeUSD, haberUSD, debeVES, haberVES, desc) {
         await api('cont_asiento_lineas','POST',{
           id_asiento: idAst, id_cuenta: id_cta, orden: orden++,
           debe_usd: r2(debeUSD), haber_usd: r2(haberUSD),
-          debe_ves: r2(debeVES), haber_ves: r2(haberVES), tasa_bcv: tasaPago
+          debe_ves: r2(debeVES), haber_ves: r2(haberVES), tasa_bcv: tasaPago,
+          descripcion: desc || null
         });
       };
 
       // DEBE: 2.1.01.001 CxP Proveedores
-      if (idCtaCxP)             await linea(idCtaCxP,        montoUSD, 0, cxpVES,  0);
+      if (idCtaCxP)             await linea(idCtaCxP,        montoUSD, 0, cxpVES,  0, 'Cancelación CxP — ' + descBase);
       // DEBE: 1.1.04.001 Crédito Fiscal IVA
-      if (idCtaIVA && iva > 0)  await linea(idCtaIVA,        iva,      0, ivaVES,  0);
+      if (idCtaIVA && iva > 0)  await linea(idCtaIVA,        iva,      0, ivaVES,  0, 'IVA — ' + descBase);
       // DEBE: 6.1.04.003 IGTF
-      if (idCtaIGTF && igtf > 0) await linea(idCtaIGTF,      igtf,     0, igtfVES, 0);
+      if (idCtaIGTF && igtf > 0) await linea(idCtaIGTF,      igtf,     0, igtfVES, 0, 'IGTF — ' + descBase);
       // Diferencial Cambiario — solo en BS
       if (Math.abs(diferencial) > 0.01) {
         if (diferencial > 0 && idCtaPerdCambio)
-          await linea(idCtaPerdCambio, 0, 0, Math.abs(diferencial), 0);
+          await linea(idCtaPerdCambio, 0, 0, Math.abs(diferencial), 0, 'Pérdida cambiaria — ' + descBase);
         else if (diferencial < 0 && idCtaGanCambio)
-          await linea(idCtaGanCambio,  0, 0, 0, Math.abs(diferencial));
+          await linea(idCtaGanCambio,  0, 0, 0, Math.abs(diferencial), 'Ganancia cambiaria — ' + descBase);
       }
       // HABER: Banco
-      if (idCtaBanco)           await linea(idCtaBanco,       0, bancoUSD, 0, bancoVES);
+      if (idCtaBanco)           await linea(idCtaBanco,       0, bancoUSD, 0, bancoVES, 'Salida banco — ' + descBase);
       // DEBE: Gasto/Costo
-      if (idCtaGasto)           await linea(idCtaGasto,       gastoUSD, 0, gastoVES, 0);
+      if (idCtaGasto)           await linea(idCtaGasto,       gastoUSD, 0, gastoVES, 0, 'Gasto/Costo — ' + descBase);
       // HABER: Inventario — ajustado para cuadrar exactamente
-      if (idCtaInventario)      await linea(idCtaInventario,  0, invUSD,  0, invVES);
+      if (idCtaInventario)      await linea(idCtaInventario,  0, invUSD,  0, invVES, 'Salida inventario — ' + descBase);
     }
 
     // 7. Actualizar CxP
