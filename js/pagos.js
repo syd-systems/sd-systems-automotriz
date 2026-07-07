@@ -2802,10 +2802,13 @@ async function confirmarEjecucionPago() {
     const c = rows && rows[0];
     if (!c) throw new Error('CxP no encontrada.');
 
-    const monedaCxP = c.moneda_pago || 'USD';
-    const montoUSD  = monedaCxP === 'VES'
-      ? parseFloat(c.saldo_ves || c.monto_ves || 0)
-      : parseFloat(c.saldo_usd || c.monto_usd || 0);
+    const monedaCxP  = c.moneda_pago || 'USD';
+    const montoVESCxP = parseFloat(c.monto_ves || 0);
+    const montoUSDCxP = parseFloat(c.saldo_usd || c.monto_usd || 0);
+    // Para CxP en VES: montoUSD = monto_ves / tasaPago
+    const montoUSD = monedaCxP === 'VES'
+      ? parseFloat((montoVESCxP / (tasaPago || 1)).toFixed(4))
+      : montoUSDCxP;
     // Buscar tasa de compra desde BD usando fecha_emision de la CxP
     let tasaCompra = parseFloat(c.tasa_bcv_compra || c.tasa_bcv || 0);
     if (!tasaCompra || tasaCompra === 1) {
@@ -2873,10 +2876,10 @@ async function confirmarEjecucionPago() {
     } catch(e) { console.warn('Error buscando cuenta inventario:', e); }
 
     // 5. Calcular diferencial cambiario
-    // Diferencial = (tasaPago - tasaCompra) × montoUSD — solo en BS
-    const montoVESCompra = parseFloat((montoUSD * tasaCompra).toFixed(2));
-    const montoVESPago   = parseFloat((montoUSD * tasaPago).toFixed(2));
-    const diferencial    = parseFloat((montoVESPago - montoVESCompra).toFixed(2));
+    // Para CxP en VES no hay diferencial — todo es en bolívares
+    const montoVESCompra = monedaCxP === 'VES' ? montoVESCxP : parseFloat((montoUSD * tasaCompra).toFixed(2));
+    const montoVESPago   = monedaCxP === 'VES' ? montoVESCxP : parseFloat((montoUSD * tasaPago).toFixed(2));
+    const diferencial    = monedaCxP === 'VES' ? 0 : parseFloat((montoVESPago - montoVESCompra).toFixed(2));
 
     // 6. Crear asiento contable
     const numAst = await _siguienteNumeroAsiento();
