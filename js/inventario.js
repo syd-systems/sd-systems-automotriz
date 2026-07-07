@@ -824,8 +824,8 @@ async function confirmarReverso() {
     let nuevoStock = 0;
     try {
       const [entradas, salidas] = await Promise.all([
-        api('stock_entradas','GET',null,'?id_articulo=eq.'+id_articulo+'&anulada=eq.false&select=id_entrada,cantidad'),
-        api('stock_salidas','GET',null,'?id_articulo=eq.'+id_articulo+'&anulada=eq.false&select=id_salida,cantidad')
+        api('stock_entradas','GET',null,'?id_articulo=eq.'+id_articulo+'&or=(anulada.eq.false,anulada.is.null)&select=id_entrada,cantidad'),
+        api('stock_salidas','GET',null,'?id_articulo=eq.'+id_articulo+'&or=(anulada.eq.false,anulada.is.null)&select=id_salida,cantidad')
       ]);
       // Sumar entradas activas (excluyendo la que se está anulando si es ENTRADA)
       const totalEntradas = (entradas||[]).reduce(function(s,e){
@@ -856,11 +856,13 @@ async function confirmarReverso() {
       // CPP = Σ(cantidad × precio) entradas activas / Σ(cantidad) entradas activas
       try {
         const entradasActivas = await api('stock_entradas','GET',null,
-          '?id_articulo=eq.'+id_articulo+'&anulada=eq.false&select=cantidad,precio_costo_moneda');
+          '?id_articulo=eq.'+id_articulo+'&or=(anulada.eq.false,anulada.is.null)&select=id_entrada,cantidad,precio_costo_moneda');
         let sumaCantidad = 0;
         let sumaValor    = 0;
         (entradasActivas||[]).forEach(function(e) {
-          const cant  = parseFloat(e.cantidad || 0);
+          // Excluir la entrada que se está anulando
+          if (tipo === 'ENTRADA' && parseInt(e.id_entrada||0) === idMovimiento) return;
+          const cant   = parseFloat(e.cantidad || 0);
           const precio = parseFloat(e.precio_costo_moneda || 0);
           sumaCantidad += cant;
           sumaValor    += cant * precio;
