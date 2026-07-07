@@ -2397,6 +2397,8 @@ async function eliminarCxP(id_cxp) {
   if (!confirm('¿Eliminar esta obligación de pago? Esta acción no se puede deshacer.')) return;
   try {
     await api('cont_cxp','DELETE',null,'?id_cxp=eq.'+id_cxp+'&estado=eq.PENDIENTE');
+    const modalPago = document.getElementById('modal-pago');
+    if (modalPago) { modalPago.classList.remove('abierto'); modalPago.style.display = 'none'; }
     cargarPagos();
   } catch(e) { alert('Error al eliminar: '+e.message); }
 }
