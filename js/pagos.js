@@ -2316,9 +2316,9 @@ async function verCxPPendiente(id_cxp) {
     const footer = document.querySelector('#modal-pago .modal-footer');
     const esManualVer = (c.tipo || '') === 'PAGO_MANUAL';
     if (footer) footer.innerHTML =
-      '<button class="btn-secundario" onclick="document.getElementById(\'modal-pago\').classList.remove(\'abierto\');document.getElementById(\'modal-pago\').style.display=\'none\';cargarPagos()">RETORNAR</button>'
-      + (esManualVer ? '<button class="btn-peligro" onclick="eliminarCxP(' + id_cxp + ')">🗑 ELIMINAR</button>' : '')
-      + (esManualVer ? '<button class="btn-secundario" onclick="editarCxPPendiente(' + id_cxp + ')">✏ Editar</button>' : '');
+      '<button class="btn-peligro" onclick="eliminarCxP(' + id_cxp + ')">🗑 ELIMINAR</button>'
+      + (esManualVer ? '<button class="btn-secundario" onclick="editarCxPPendiente(' + id_cxp + ')">✏ Editar</button>' : '')
+      + '<button class="btn-secundario" onclick="document.getElementById(\'modal-pago\').classList.remove(\'abierto\');document.getElementById(\'modal-pago\').style.display=\'none\';cargarPagos()">RETORNAR</button>';
 
     onCambioMonedaPago();
     abrirModal('modal-pago');
