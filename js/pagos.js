@@ -2805,10 +2805,7 @@ async function confirmarEjecucionPago() {
     const monedaCxP  = c.moneda_pago || 'USD';
     const montoVESCxP = parseFloat(c.monto_ves || 0);
     const montoUSDCxP = parseFloat(c.saldo_usd || c.monto_usd || 0);
-    // Para CxP en VES: montoUSD = monto_ves / tasaPago
-    const montoUSD = monedaCxP === 'VES'
-      ? parseFloat((montoVESCxP / (tasaPago || 1)).toFixed(4))
-      : montoUSDCxP;
+
     // Buscar tasa de compra desde BD usando fecha_emision de la CxP
     let tasaCompra = parseFloat(c.tasa_bcv_compra || c.tasa_bcv || 0);
     if (!tasaCompra || tasaCompra === 1) {
@@ -2820,7 +2817,6 @@ async function confirmarEjecucionPago() {
     }
 
     // Verificar si aplica IGTF
-    let esContribuyenteEspecial = false;
     let aplicaIGTF = false;
     if (esUSD) {
       const selMetodo = document.getElementById('exec-pago-metodo');
@@ -2840,6 +2836,11 @@ async function confirmarEjecucionPago() {
     // 2. Obtener tasa BCV del día de pago
     const tasasHoy = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaPago+'&order=fecha_valor.desc&limit=1&select=tipo_cambio');
     const tasaPago = parseFloat(tasasHoy && tasasHoy[0] ? tasasHoy[0].tipo_cambio : tasaCompra);
+
+    // Para CxP en VES: montoUSD = monto_ves / tasaPago
+    const montoUSD = monedaCxP === 'VES'
+      ? parseFloat((montoVESCxP / (tasaPago || 1)).toFixed(4))
+      : montoUSDCxP;
 
     // 3. Obtener tributos
     const { tasaIVA, tasaIGTF } = await _obtenerTributos();
