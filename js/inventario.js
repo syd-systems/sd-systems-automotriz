@@ -820,14 +820,29 @@ async function confirmarReverso() {
       movOrig = rows[0];
     }
 
-    // 4. Calcular nuevo stock
-    const stockActual = parseFloat(art.stock_actual_articulo) || 0;
-    let nuevoStock;
-    if (tipo === 'ENTRADA') {
-      nuevoStock = stockActual - cantidad;
-      if (nuevoStock < 0) throw new Error('Stock resultante negativo (' + nuevoStock.toFixed(2) + '). No se puede anular porque ya se realizaron salidas de este inventario.');
-    } else {
-      nuevoStock = stockActual + cantidad;
+    // 4. Recalcular stock desde cero contando movimientos activos
+    let nuevoStock = 0;
+    try {
+      const [entradas, salidas] = await Promise.all([
+        api('stock_entradas','GET',null,'?id_articulo=eq.'+id_articulo+'&anulada=eq.false&select=cantidad'),
+        api('stock_salidas','GET',null,'?id_articulo=eq.'+id_articulo+'&anulada=eq.false&select=cantidad')
+      ]);
+      // Sumar entradas activas (excluyendo la que se está anulando si es ENTRADA)
+      const totalEntradas = (entradas||[]).reduce(function(s,e){
+        return s + (tipo === 'ENTRADA' && parseInt(e.id_entrada||0) === idMovimiento ? 0 : parseFloat(e.cantidad||0));
+      }, 0);
+      // Restar salidas activas (excluyendo la que se está anulando si es SALIDA)
+      const totalSalidas = (salidas||[]).reduce(function(s,e){
+        return s + (tipo === 'SALIDA' && parseInt(e.id_salida||0) === idMovimiento ? 0 : parseFloat(e.cantidad||0));
+      }, 0);
+      nuevoStock = totalEntradas - totalSalidas;
+    } catch(eStock) {
+      // Fallback al método anterior si falla
+      const stockActual = parseFloat(art.stock_actual_articulo) || 0;
+      nuevoStock = tipo === 'ENTRADA' ? stockActual - cantidad : stockActual + cantidad;
+    }
+    if (tipo === 'ENTRADA' && nuevoStock < 0) {
+      throw new Error('Stock resultante negativo (' + nuevoStock.toFixed(2) + '). No se puede anular porque ya se realizaron salidas de este inventario.');
     }
 
     // 5. Actualizar stock
