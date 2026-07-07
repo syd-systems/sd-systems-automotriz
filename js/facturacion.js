@@ -75,7 +75,7 @@ async function renderFacturas() {
                   : '<span style="color:var(--naranja)">$ ' + fmtUSD(f.total_usd) + '</span>')
               + '</td>'
             : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
-        + '<td><button class="btn-secundario" onclick="verFichaFactura(' + f.id_factura + ')">Ver</button>'
+        + '<td><button class="btn-naranja" onclick="verFichaFactura(' + f.id_factura + ')">Ver</button>'
         + '</td>'
         + '</tr>';
     }).join('');

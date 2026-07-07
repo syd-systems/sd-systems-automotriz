@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707048"></script>
-<script src="js/parametros.js?v=20260707048"></script>
-<script src="js/empresas.js?v=20260707048"></script>
-<script src="js/facturacion.js?v=20260707048"></script>
-<script src="js/inventario.js?v=20260707048"></script>
-<script src="js/contabilidad.js?v=20260707048"></script>
-<script src="js/pagos.js?v=20260707048"></script>
-<script src="js/vehiculos.js?v=20260707048"></script>
-<script src="js/catalogo.js?v=20260707048"></script>
-<script src="js/inventario2.js?v=20260707048"></script>
-<script src="js/ordenes.js?v=20260707048"></script>
+<script src="js/core.js?v=20260707049"></script>
+<script src="js/parametros.js?v=20260707049"></script>
+<script src="js/empresas.js?v=20260707049"></script>
+<script src="js/facturacion.js?v=20260707049"></script>
+<script src="js/inventario.js?v=20260707049"></script>
+<script src="js/contabilidad.js?v=20260707049"></script>
+<script src="js/pagos.js?v=20260707049"></script>
+<script src="js/vehiculos.js?v=20260707049"></script>
+<script src="js/catalogo.js?v=20260707049"></script>
+<script src="js/inventario2.js?v=20260707049"></script>
+<script src="js/ordenes.js?v=20260707049"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -1536,7 +1536,7 @@
     <div class="modal-body" id="ficha-prop-contenido"></div>
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-prop')">Retornar</button>
-      <button class="btn-secundario" id="ficha-prop-btn-editar" style="display:none">Editar</button>
+      <button class="btn-naranja" id="ficha-prop-btn-editar" style="display:none">Editar</button>
       <button class="btn-peligro"    id="ficha-prop-btn-eliminar" style="display:none">Eliminar</button>
     </div>
   </div>
@@ -1644,7 +1644,7 @@
     <div class="modal-body" id="ficha-veh-contenido"></div>
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-veh')">Retornar</button>
-      <button class="btn-secundario" id="ficha-veh-btn-editar" style="display:none">Editar</button>
+      <button class="btn-naranja" id="ficha-veh-btn-editar" style="display:none">Editar</button>
       <button class="btn-peligro"    id="ficha-veh-btn-eliminar" style="display:none">Eliminar</button>
     </div>
   </div>
@@ -2171,7 +2171,7 @@
       <div id="alerta-pago-cxp-err" class="alerta alerta-error" style="display:none;margin-top:8px"></div>
     </div>
     <div class="modal-footer" id="cont-pago-cxp-footer">
-      <button id="btn-editar-cxp-manual" class="btn-secundario" style="display:none" onclick="editarCxPManual()">✏️ Editar</button>
+      <button id="btn-editar-cxp-manual" class="btn-naranja" style="display:none" onclick="editarCxPManual()">✏️ Editar</button>
       <button class="btn-secundario" onclick="cerrarModal('modal-cont-pago-cxp')">RETORNAR</button>
     </div>
     <input type="hidden" id="cont-pago-cxp-id">
@@ -3078,7 +3078,7 @@
     <div class="modal-body" id="ficha-fac-contenido"></div>
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-fac')">Retornar</button>
-      <button class="btn-secundario" id="ficha-fac-btn-editar"  style="display:none">Editar</button>
+      <button class="btn-naranja" id="ficha-fac-btn-editar"  style="display:none">Editar</button>
       <button class="btn-primario"   id="ficha-fac-btn-emitir"  style="display:none">✓ Emitir</button>
       <button class="btn-primario"   id="ficha-fac-btn-aprobar" style="display:none;background:#8b5cf6;border-color:#8b5cf6">✓ Aprobar</button>
       <button class="btn-primario"   id="ficha-fac-btn-pago"    style="display:none">💰 Registrar Pago</button>
@@ -3346,7 +3346,7 @@
     <div class="modal-footer">
       <button class="btn-peligro"    id="ficha-emp-btn-eliminar"   style="display:none">🗑 Eliminar</button>
       <button class="btn-secundario" id="ficha-emp-btn-reset-clave" style="display:none">🔑 Reset Clave</button>
-      <button class="btn-secundario" id="ficha-emp-btn-editar"      style="display:none">✏ Editar</button>
+      <button class="btn-naranja" id="ficha-emp-btn-editar"      style="display:none">✏ Editar</button>
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-emp')">Retornar</button>
     </div>
   </div>
@@ -3511,7 +3511,7 @@
     <div class="modal-body" id="ficha-prov-contenido"></div>
     <div class="modal-footer">
       <button class="btn-peligro"    id="ficha-prov-btn-eliminar" style="display:none">🗑 Eliminar</button>
-      <button class="btn-secundario" id="ficha-prov-btn-editar"   style="display:none">✏ Editar</button>
+      <button class="btn-naranja" id="ficha-prov-btn-editar"   style="display:none">✏ Editar</button>
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-prov')">Retornar</button>
     </div>
   </div>
@@ -3874,7 +3874,7 @@
     <div id="ficha-inv-msg-eliminar" style="display:none;margin:0 24px 12px;padding:10px 14px;background:rgba(252,129,129,0.08);border:1px solid rgba(252,129,129,0.3);border-radius:6px;color:#fc8181;font-size:12px;line-height:1.5"></div>
     <div class="modal-footer">
       <button class="btn-secundario" id="ficha-inv-btn-eliminar" style="display:none;color:#fc8181;border-color:rgba(252,129,129,0.4)">🗑 Eliminar</button>
-      <button class="btn-secundario" id="ficha-inv-btn-editar">✏ Editar</button>
+      <button class="btn-naranja" id="ficha-inv-btn-editar">✏ Editar</button>
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-inv'); renderInventario()">Retornar</button>
     </div>
   </div>
@@ -3892,7 +3892,7 @@
     <div class="modal-body" id="ficha-cat-contenido"></div>
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-cat')">Retornar</button>
-      <button class="btn-secundario" id="ficha-cat-btn-editar">Editar</button>
+      <button class="btn-naranja" id="ficha-cat-btn-editar">Editar</button>
     </div>
   </div>
 </div>
@@ -3911,7 +3911,7 @@
       <button class="btn-peligro"    id="ficha-usu-btn-eliminar">🗑 Eliminar</button>
       <button class="btn-secundario" id="ficha-usu-btn-cerrar-sesion" style="display:none;border-color:rgba(255,107,0,0.4);color:var(--naranja)">⏻ Cerrar Sesión</button>
       <button class="btn-secundario" id="ficha-usu-btn-reset">🔑 Reset Clave</button>
-      <button class="btn-secundario" id="ficha-usu-btn-editar">✏ Editar</button>
+      <button class="btn-naranja" id="ficha-usu-btn-editar">✏ Editar</button>
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-usu')">Retornar</button>
     </div>
   </div>
@@ -4316,7 +4316,7 @@
       <div id="notif-pendiente-lista"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secundario" onclick="notifVerDespues()" style="font-size:12px;color:var(--suave)">Ver después</button>
+      <button class="btn-naranja" onclick="notifVerDespues()" style="font-size:12px;color:var(--suave)">Ver después</button>
       <button class="btn-primario"   onclick="notifConfirmar()" id="btn-notif-confirmar">✓ Confirmar Recepción</button>
     </div>
   </div>

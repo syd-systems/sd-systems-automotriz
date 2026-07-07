@@ -1714,7 +1714,7 @@ async function verPagoCxP(id_cxp) {
     const footer = document.querySelector('#modal-cont-pago-cxp .modal-footer');
     if (footer) {
       const btnEditar = (esManual && est === 'PENDIENTE' && puedo('PAGOS','EDITAR'))
-        ? '<button class="btn-secundario" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
+        ? '<button class="btn-naranja" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
       const btnAnular = (esManual && est !== 'PAGADA')
         ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 ELIMINAR</button>' : '';
       footer.innerHTML = btnEditar + btnAnular
@@ -2084,7 +2084,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     if (footerPend) {
       const est = c.estado || '';
       const btnEditar = (est === 'PENDIENTE' && puedo('PAGOS','EDITAR'))
-        ? '<button class="btn-secundario" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
+        ? '<button class="btn-naranja" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
       const btnAnular = (est === 'PENDIENTE' && (puedo('PAGOS','ELIMINAR') || puedo('PAGOS','EDITAR') || sesionActual?.administrador))
         ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 ELIMINAR</button>' : '';
       footerPend.innerHTML = btnEditar + btnAnular
@@ -2318,7 +2318,7 @@ async function verCxPPendiente(id_cxp) {
     const esManualVer = (c.tipo || '') === 'PAGO_MANUAL';
     if (footer) {
       footer.style.justifyContent = 'space-between';
-      const btnElimEditar = esManualVer ? '<button class="btn-peligro" onclick="eliminarCxP(' + id_cxp + ')">🗑 ELIMINAR</button><button class="btn-secundario" onclick="editarCxPPendiente(' + id_cxp + ')">✏ Editar</button>' : '';
+      const btnElimEditar = esManualVer ? '<button class="btn-peligro" onclick="eliminarCxP(' + id_cxp + ')">🗑 ELIMINAR</button><button class="btn-naranja" onclick="editarCxPPendiente(' + id_cxp + ')">✏ Editar</button>' : '';
       footer.innerHTML = '<div style="display:flex;gap:8px">' + btnElimEditar + '</div>'
         + '<button class="btn-secundario" onclick="document.getElementById(\'modal-pago\').classList.remove(\'abierto\');document.getElementById(\'modal-pago\').style.display=\'none\';cargarPagos()">RETORNAR</button>';
     }

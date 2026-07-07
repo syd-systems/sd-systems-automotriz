@@ -301,7 +301,7 @@ function invRenderTabla(items, cont) {
             + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen.toFixed(1) + '%</div></td>'
           : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
       + '<td><div style="display:flex;gap:6px">'
-      + '<button class="btn-secundario" onclick="verFichaInventario(' + r.id_articulo + ')">Ver</button>'
+      + '<button class="btn-naranja" onclick="verFichaInventario(' + r.id_articulo + ')">Ver</button>'
       + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" style="border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="abrirStockArticulo(' + r.id_articulo + ',\'' + r.nombre_articulo.replace(/'/g,"\\'"  ) + '\')" >Stock</button>' : '')
       + '</div></td></tr>';
   }).join('');
@@ -1359,7 +1359,7 @@ async function invRenderCategorias(cont) {
         +'<td style="padding:8px;font-size:13px;font-weight:500">'+c.nombre+'</td>'
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(c.descripcion||'')+'</td>'
         +'<td style="padding:8px"><span class="badge '+(c.estado==='ACTIVO'?'badge-verde':'badge-rojo')+'">'+c.estado+'</span></td>'
-        +'<td style="padding:8px"><button class="btn-secundario" onclick="invAbrirCategoria('+c.id_categoria+')" style="font-size:11px;padding:4px 10px">Ver</button></td>'
+        +'<td style="padding:8px"><button class="btn-naranja" onclick="invAbrirCategoria('+c.id_categoria+')" style="font-size:11px;padding:4px 10px">Ver</button></td>'
         +'</tr>';
     }).join('');
     cont.innerHTML =
@@ -1435,7 +1435,7 @@ async function invRenderTipos(cont) {
         +'<td style="padding:8px;font-size:13px;font-weight:500">'+t.nombre+'</td>'
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(cat?(cat.codigo?cat.codigo+' — ':'')+cat.nombre:'—')+'</td>'
         +'<td style="padding:8px"><span class="badge '+(t.estado==='ACTIVO'?'badge-verde':'badge-rojo')+'">'+t.estado+'</span></td>'
-        +'<td style="padding:8px"><button class="btn-secundario" onclick="invAbrirTipo('+t.id_tipo+')" style="font-size:11px;padding:4px 10px">Ver</button></td>'
+        +'<td style="padding:8px"><button class="btn-naranja" onclick="invAbrirTipo('+t.id_tipo+')" style="font-size:11px;padding:4px 10px">Ver</button></td>'
         +'</tr>';
     }).join('');
     cont.innerHTML =

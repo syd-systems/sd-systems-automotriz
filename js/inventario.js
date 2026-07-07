@@ -999,7 +999,7 @@ async function renderProveedores() {
         + (p.dias_credito ? '<div style="font-size:10px;color:var(--suave)">' + p.dias_credito + ' días crédito</div>' : '')
         + '</td>'
         + '<td><span class="badge ' + (p.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (p.estado||'ACTIVO') + '</span></td>'
-        + '<td><button class="btn-secundario" onclick="verFichaProveedor(' + p.id_proveedor + ')">Ver</button>'
+        + '<td><button class="btn-naranja" onclick="verFichaProveedor(' + p.id_proveedor + ')">Ver</button>'
         + '</td>'
         + '</tr>';
     }).join('');

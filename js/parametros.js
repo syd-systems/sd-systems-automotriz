@@ -135,7 +135,7 @@ async function mostrarTablaParam(key) {
           + '<td style="font-size:11px;color:var(--suave)">' + (padre ? '<span style="font-family:var(--font-mono);color:var(--suave)">' + padre.codigo + '</span> ' + padre.nombre : '—') + '</td>'
           + '<td><span class="badge ' + (item.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (item.estado || 'ACTIVO') + '</span></td>'
           + '<td><div style="display:flex;gap:6px">'
-          + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-secundario" onclick="abrirParamItem(\'' + key + '\',' + item[def.pk] + ')" style="font-size:11px;padding:5px 10px">Ver</button>' : '')
+          + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-naranja" onclick="abrirParamItem(\'' + key + '\',' + item[def.pk] + ')" style="font-size:11px;padding:5px 10px">Ver</button>' : '')
           + '</div></td>'
           + '</tr>';
       });
@@ -160,7 +160,7 @@ async function mostrarTablaParam(key) {
           + (def.tieneCuentaContable ? '<td style="font-size:12px;color:var(--suave)">' + (item.id_cuenta_contable ? '— cuenta asignada —' : '—') + '</td>' : '')
           + '<td><span class="badge ' + (item.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (item.estado || 'ACTIVO') + '</span></td>'
           + '<td><div style="display:flex;gap:6px">'
-          + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-secundario" onclick="abrirParamItem(\'' + key + '\',' + item[def.pk] + ')" style="font-size:11px;padding:5px 10px">Ver</button>' : '')
+          + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-naranja" onclick="abrirParamItem(\'' + key + '\',' + item[def.pk] + ')" style="font-size:11px;padding:5px 10px">Ver</button>' : '')
           + '</div></td>'
           + '</tr>';
       }).join('');
@@ -543,7 +543,7 @@ async function renderEmpleados() {
         + '<td style="font-size:12px">' + (e.param_cargos ? e.param_cargos.nombre : '—') + '</td>'
         + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
         + '<td style="font-size:11px;color:var(--suave)">' + (e.fecha_ingreso ? fmtFecha(e.fecha_ingreso) : '—') + '</td>'
-        + '<td><button class="btn-secundario" onclick="verFichaEmpleado(' + e.id_empleado + ')">Ver</button></td>'
+        + '<td><button class="btn-naranja" onclick="verFichaEmpleado(' + e.id_empleado + ')">Ver</button></td>'
         + '</tr>';
     }).join('');
 
