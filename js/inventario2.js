@@ -795,7 +795,7 @@ async function guardarEntradaStock() {
       (_empresaActiva?.id_area_principal || null);
     const idEmpEntVal = parseInt(document.getElementById('es-empleado')?.value) || null;
     const claveEnt = document.getElementById('es-clave-receptor')?.value || '';
-    if (!claveEnt) { errEl.textContent = 'El empleado receptor debe ingresar su contraseña.'; errEl.style.display = 'block'; document.getElementById('es-clave-receptor')?.focus(); resetBtn(); return; }
+    if (!claveEnt) { errEl.textContent = 'El empleado remitente debe ingresar su contraseña.'; errEl.style.display = 'block'; document.getElementById('es-clave-receptor')?.focus(); resetBtn(); return; }
     const validEnt = await validarClaveReceptor(idEmpEntVal, claveEnt);
     if (!validEnt.ok) { errEl.textContent = validEnt.msg; errEl.style.display = 'block'; document.getElementById('es-clave-receptor')?.focus(); resetBtn(); return; }
 

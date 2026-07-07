@@ -948,13 +948,13 @@ async function verificarContrasena(correoUsu, claveIngresada) {
 
 // ─── VALIDAR CONTRASEÑA RECEPTOR ───
 async function validarClaveReceptor(id_empleado, clave) {
-  if (!id_empleado || !clave) return { ok: false, msg: 'Debe seleccionar un empleado receptor e ingresar su contraseña.' };
+  if (!id_empleado || !clave) return { ok: false, msg: 'Debe seleccionar un empleado remitente e ingresar su contraseña.' };
   try {
     // Buscar el correo del empleado
     const empArr = await api('empleados', 'GET', null, '?id_empleado=eq.' + id_empleado + '&select=id_empleado,nombre_completo,correo');
     const emp = empArr[0];
     if (!emp) return { ok: false, msg: 'Empleado no encontrado.' };
-    if (!emp.correo) return { ok: false, msg: 'El empleado receptor no tiene correo registrado en el sistema.' };
+    if (!emp.correo) return { ok: false, msg: 'El empleado remitente no tiene correo registrado en el sistema.' };
 
     // Buscar usuario por correo y validar contraseña
     const usuArr = await api('usuarios', 'GET', null,
@@ -962,7 +962,7 @@ async function validarClaveReceptor(id_empleado, clave) {
     const usu = usuArr[0];
     if (!usu) return { ok: false, msg: 'El empleado "' + emp.nombre_completo + '" no tiene usuario activo en el sistema.' };
     const verifRec = await verificarContrasena(usu.correo_usuario, clave);
-    if (!verifRec.ok) return { ok: false, msg: 'Contraseña incorrecta para el receptor "' + emp.nombre_completo + '".' };
+    if (!verifRec.ok) return { ok: false, msg: 'Contraseña incorrecta para el remitente "' + emp.nombre_completo + '".' };
 
     return { ok: true, nombre: emp.nombre_completo };
   } catch(err) {
@@ -1375,10 +1375,10 @@ async function _guardarSalidaStockInterno() {
       } catch(eAstSal) { console.warn('Error asiento salida consumible:', eAstSal); }
     }
 
-    // ── Crear notificación de recepción para el empleado receptor ──
+    // ── Crear notificación de recepción para el empleado remitente ──
     if (idEmpRecibe && id_salida) {
       try {
-        // Obtener correo del empleado receptor
+        // Obtener correo del empleado remitente
         const empReceptor = await api('empleados','GET',null,'?id_empleado=eq.'+idEmpRecibe+'&select=correo,nombre_completo,id_usuario,usuarios(correo_usuario)');
         const correoReceptor = empReceptor?.[0]?.correo || empReceptor?.[0]?.usuarios?.correo_usuario || null;
         if (empReceptor && empReceptor[0] && correoReceptor) {
