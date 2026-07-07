@@ -2796,11 +2796,6 @@ async function confirmarEjecucionPago() {
   if (!moneda)      { errEl.textContent = 'Seleccione la moneda de pago.';          errEl.style.display = 'block'; resetBtn(); return; }
   if (!idMetodo)    { errEl.textContent = 'Seleccione el método de pago.';          errEl.style.display = 'block'; resetBtn(); return; }
   if (!idCtaBanco)  { errEl.textContent = 'El método seleccionado no tiene cuenta contable asignada.'; errEl.style.display = 'block'; resetBtn(); return; }
-  const preview = document.getElementById('exec-pago-tributos-preview');
-  if (!preview || preview.style.display === 'none') {
-    errEl.textContent = 'Espere a que se calcule el desglose de tributos.';
-    errEl.style.display = 'block'; resetBtn(); return;
-  }
 
   try {
     // 1. Cargar CxP con join de cuentas
