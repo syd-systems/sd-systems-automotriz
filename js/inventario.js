@@ -838,7 +838,7 @@ async function confirmarReverso() {
     }
     await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + id_articulo);
 
-    // 6. Marcar movimiento como reversado
+    // 6. Marcar movimiento como anulado
     if (tipo === 'ENTRADA') {
       await api('stock_entradas', 'PATCH',
         { anulada: true, id_usuario_reversa: sesionActual.correo_usuario },
@@ -912,12 +912,12 @@ async function confirmarReverso() {
                 to:      resp.correo,
                 subject: '⚠ Reverso de Salida de Inventario — ' + areaName,
                 html:    '<p>Estimado/a <strong>' + resp.nombre_completo + '</strong>,</p>'
-                       + '<p>Se ha reversado una salida de inventario registrada para su área.</p>'
+                       + '<p>Se ha anulado una salida de inventario registrada para su área.</p>'
                        + '<table style="border-collapse:collapse;width:100%">'
                        + '<tr><td style="padding:6px;border:1px solid #ddd"><strong>Artículo</strong></td><td style="padding:6px;border:1px solid #ddd">' + nomArt + '</td></tr>'
                        + '<tr><td style="padding:6px;border:1px solid #ddd"><strong>Cantidad</strong></td><td style="padding:6px;border:1px solid #ddd">' + cantidad + '</td></tr>'
                        + '<tr><td style="padding:6px;border:1px solid #ddd"><strong>Área</strong></td><td style="padding:6px;border:1px solid #ddd">' + areaName + '</td></tr>'
-                       + '<tr><td style="padding:6px;border:1px solid #ddd"><strong>Reversado por</strong></td><td style="padding:6px;border:1px solid #ddd">' + sesionActual.correo_usuario + '</td></tr>'
+                       + '<tr><td style="padding:6px;border:1px solid #ddd"><strong>Anulado por</strong></td><td style="padding:6px;border:1px solid #ddd">' + sesionActual.correo_usuario + '</td></tr>'
                        + '</table>'
                        + '<p>El inventario debe retornar al almacén. Por favor coordine la devolución.</p>'
               })
@@ -936,7 +936,7 @@ async function confirmarReverso() {
       }
     } catch(e) {}
 
-    okEl.textContent = '✓ Movimiento reversado correctamente. Stock actualizado.';
+    okEl.textContent = '✓ Movimiento anulado correctamente. Stock actualizado.';
     okEl.style.display = 'block';
     resetBtn();
 
