@@ -2205,7 +2205,6 @@ async function _verCxPAutomatica(c, id_cxp) {
   if (btnPagar) {
     const tienePerm = sesionActual?.administrador || puedo('PAGOS','PAGAR');
     const estadoOK  = c.estado === 'PENDIENTE' || c.estado === 'PARCIAL';
-    console.log('[SYD] btn PAGAR — estado:', c.estado, 'estadoOK:', estadoOK, 'tienePerm:', tienePerm, 'admin:', sesionActual?.administrador);
     const puedePagar = estadoOK && tienePerm;
     btnPagar.style.display = puedePagar ? '' : 'none';
   }
@@ -2226,7 +2225,6 @@ async function verCxPPendiente(id_cxp) {
     const esAutomatica = c.esquema_pago === 'CONTADO' || c.esquema_pago === 'CREDITO'
       || /^ENT-/.test(c.numero_doc || '');
 
-    console.log('[SYD] verCxPPendiente id:', id_cxp, 'esquema_pago:', c.esquema_pago, 'numero_doc:', c.numero_doc, 'esAutomatica:', esAutomatica);
 
     if (esAutomatica) {
       await _verCxPAutomatica(c, id_cxp);
@@ -2611,7 +2609,7 @@ function onCambioIncluyeIvaPago() {
 
   if (!_ejecutarPagoCxPId) return;
 
-  api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=monto_usd,saldo_usd,monto_ves,saldo_ves,moneda_pago,id_proveedor')
+  api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=monto_usd,saldo_usd,monto_ves,moneda_pago,id_proveedor')
     .then(async function(rows) {
       if (!rows || !rows[0]) return;
       const monedaCxP = rows[0].moneda_pago || 'USD';
