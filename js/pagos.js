@@ -2279,10 +2279,21 @@ async function verCxPPendiente(id_cxp) {
     // Llenar campos del formulario
     document.getElementById('pago-moneda').value      = c.moneda_pago || 'VES';
     document.getElementById('pago-descripcion').value = c.observaciones || '';
-    document.getElementById('pago-monto').value       = c.moneda_pago === 'VES' ? (c.monto_ves || c.monto_usd) : c.monto_usd;
+    // Formatear monto con separador de miles
+    const montoVerVal = parseFloat(c.moneda_pago === 'VES' ? (c.monto_ves || c.monto_usd || 0) : (c.monto_usd || 0));
+    const montoVerStr = (function(v){ var p=v.toFixed(2).split('.'); return p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.')+','+p[1]; })(montoVerVal);
+    document.getElementById('pago-monto').value       = montoVerStr;
     document.getElementById('pago-vencimiento').value = c.fecha_vencimiento || '';
     document.getElementById('pago-rif').value         = prov.rif || '';
     document.getElementById('pago-observaciones').value = '';
+    // Setear exento_iva
+    if (c.exento_iva === true) {
+      document.getElementById('pago-exento-iva-si').checked = true;
+    } else if (c.exento_iva === false) {
+      document.getElementById('pago-exento-iva-no').checked = true;
+    } else {
+      document.querySelectorAll('input[name="pago-exento-iva"]').forEach(function(r){ r.checked = false; });
+    }
 
     // Datos bancarios
     onSelProveedorPago();
