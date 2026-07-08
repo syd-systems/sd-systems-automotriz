@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707102"></script>
-<script src="js/parametros.js?v=20260707102"></script>
-<script src="js/empresas.js?v=20260707102"></script>
-<script src="js/facturacion.js?v=20260707102"></script>
-<script src="js/inventario.js?v=20260707102"></script>
-<script src="js/contabilidad.js?v=20260707102"></script>
-<script src="js/pagos.js?v=20260707102"></script>
-<script src="js/vehiculos.js?v=20260707102"></script>
-<script src="js/catalogo.js?v=20260707102"></script>
-<script src="js/inventario2.js?v=20260707102"></script>
-<script src="js/ordenes.js?v=20260707102"></script>
+<script src="js/core.js?v=20260707103"></script>
+<script src="js/parametros.js?v=20260707103"></script>
+<script src="js/empresas.js?v=20260707103"></script>
+<script src="js/facturacion.js?v=20260707103"></script>
+<script src="js/inventario.js?v=20260707103"></script>
+<script src="js/contabilidad.js?v=20260707103"></script>
+<script src="js/pagos.js?v=20260707103"></script>
+<script src="js/vehiculos.js?v=20260707103"></script>
+<script src="js/catalogo.js?v=20260707103"></script>
+<script src="js/inventario2.js?v=20260707103"></script>
+<script src="js/ordenes.js?v=20260707103"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2626,7 +2626,7 @@
           <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;gap:12px">
             <div class="form-campo" style="margin:0">
               <label style="font-size:12px">N° de Cuotas *</label>
-              <input type="number" id="es-cuotas-num" min="1" max="60" placeholder="Ej: 3" oninput="calcularCuotasEntrada()" style="font-family:var(--font-mono)">
+              <input type="number" id="es-cuotas-num" min="1" max="60" placeholder="Ej: 3" oninput="document.getElementById('es-cuotas-monto').value='';calcularCuotasEntrada()" style="font-family:var(--font-mono)">
             </div>
             <div class="form-campo" style="margin:0">
               <label style="font-size:12px">Fecha Primera Cuota *</label>
@@ -2634,7 +2634,7 @@
             </div>
             <div class="form-campo" style="margin:0">
               <label style="font-size:12px">Intervalo (días)</label>
-              <input type="number" id="es-cuotas-intervalo" min="1" value="30" oninput="calcularCuotasEntrada()" style="font-family:var(--font-mono)">
+              <input type="number" id="es-cuotas-intervalo" min="1" value="30" oninput="document.getElementById('es-cuotas-monto').value='';calcularCuotasEntrada()" style="font-family:var(--font-mono)">
             </div>
             <div class="form-campo" style="margin:0">
               <label style="font-size:12px">Monto por Cuota (USD)</label>
