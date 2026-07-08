@@ -762,9 +762,15 @@ async function guardarEntradaStock() {
     const precioIngresado  = parseFloat(document.getElementById('es-precio-costo').value) || 0;
     const monedaCompra     = document.getElementById('es-moneda-compra')?.value || 'USD';
     const tasaBCVVal       = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
-    const nuevoPrecioCosto = monedaCompra === 'VES'
+    const incluyeIVA_ent = document.getElementById('es-incluye-iva-si')?.checked || false;
+    const IVA_RATE_ENT   = 0.16;
+    const nuevoPrecioCostoRaw = monedaCompra === 'VES'
       ? (tasaBCVVal > 0 ? parseFloat((precioIngresado / tasaBCVVal).toFixed(4)) : (parseFloat(document.getElementById('es-precio-usd-calc')?.value) || 0))
       : precioIngresado;
+    // Si incluye IVA — precio costo = base sin IVA
+    const nuevoPrecioCosto = incluyeIVA_ent
+      ? parseFloat((nuevoPrecioCostoRaw / (1 + IVA_RATE_ENT)).toFixed(4))
+      : nuevoPrecioCostoRaw;
     if (monedaCompra === 'VES' && precioIngresado > 0 && nuevoPrecioCosto <= 0) {
       errEl.textContent = 'No se encontró tasa BCV para convertir el precio.';
       errEl.style.display = 'block';
