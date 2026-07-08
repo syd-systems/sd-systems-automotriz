@@ -1035,9 +1035,7 @@ async function guardarEntradaStock() {
       cerrarModal('modal-entrada-stock');
       cerrarModal('modal-stock-articulo');
       await calcularInvSaldoArea();
-      if (document.getElementById('tabla-inv-cont')) invRenderVista(inventarioCache, _invVista);
-      // Flujo 1: ir a Ficha ARTÍCULO
-      if (_fichaInvActual && _fichaInvActual.id) verFichaInventario(_fichaInvActual.id);
+      renderInventario();
       resetBtn();
     }, 1200);
 
