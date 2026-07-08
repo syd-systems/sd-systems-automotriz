@@ -2951,10 +2951,13 @@ async function confirmarEjecucionPago() {
         });
       };
 
+      // Detectar si es CxP de inventario — solo DEBE CxP / HABER Banco
+      const esInventario = /^ENT-/.test(numDoc2);
+
       // DEBE: 2.1.01.001 CxP Proveedores
       if (idCtaCxP)             await linea(idCtaCxP,        montoUSD, 0, cxpVES,  0, 'Cancelación CxP — ' + descBase);
-      // DEBE: 1.1.04.001 Crédito Fiscal IVA
-      if (idCtaIVA && iva > 0)  await linea(idCtaIVA,        iva,      0, ivaVES,  0, 'IVA — ' + descBase);
+      // DEBE: 1.1.04.001 Crédito Fiscal IVA — solo para CxP manuales
+      if (!esInventario && idCtaIVA && iva > 0)  await linea(idCtaIVA, iva, 0, ivaVES, 0, 'IVA — ' + descBase);
       // DEBE: 6.1.04.003 IGTF
       if (idCtaIGTF && igtf > 0) await linea(idCtaIGTF,      igtf,     0, igtfVES, 0, 'IGTF — ' + descBase);
       // Diferencial Cambiario — solo en BS
@@ -2966,10 +2969,10 @@ async function confirmarEjecucionPago() {
       }
       // HABER: Banco
       if (idCtaBanco)           await linea(idCtaBanco,       0, bancoUSD, 0, bancoVES, 'Salida banco — ' + descBase);
-      // DEBE: Gasto/Costo
-      if (idCtaGasto)           await linea(idCtaGasto,       gastoUSD, 0, gastoVES, 0, 'Gasto/Costo — ' + descBase);
-      // HABER: Inventario — ajustado para cuadrar exactamente
-      if (idCtaInventario)      await linea(idCtaInventario,  0, invUSD,  0, invVES, 'Salida inventario — ' + descBase);
+      // DEBE: Gasto/Costo — solo para CxP manuales
+      if (!esInventario && idCtaGasto) await linea(idCtaGasto, gastoUSD, 0, gastoVES, 0, 'Gasto/Costo — ' + descBase);
+      // HABER: Inventario — solo para CxP manuales
+      if (!esInventario && idCtaInventario) await linea(idCtaInventario, 0, invUSD, 0, invVES, 'Salida inventario — ' + descBase);
     }
 
     // 7. Actualizar CxP
