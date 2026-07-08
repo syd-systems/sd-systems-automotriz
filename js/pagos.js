@@ -2613,12 +2613,9 @@ async function ejecutarPagoCxP(id_cxp) {
   const igtfContEl = document.getElementById('exec-pago-incluye-igtf-cont');
   if (esInventarioCxP && igtfContEl) igtfContEl.style.display = 'none';
 
-  // Preseleccionar moneda según la CxP
+  // Limpiar moneda — forzar al usuario a seleccionar
   const selMoneda2 = document.getElementById('exec-pago-moneda-sel');
-  if (selMoneda2 && monedaCxP) {
-    selMoneda2.value = monedaCxP;
-    await onCambioMonedaEjecucionPago();
-  }
+  if (selMoneda2) { selMoneda2.value = ''; }
   abrirModal('modal-ejecutar-pago');
 }
 
