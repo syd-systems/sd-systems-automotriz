@@ -1091,13 +1091,14 @@ function onCambiarPrecioEntrada() {
   const moneda    = document.getElementById('es-moneda-compra')?.value || 'USD';
   const precioRaw = (document.getElementById('es-precio-costo')?.value || '').replace(/\./g,'').replace(',','.');
   const precio    = parseFloat(precioRaw) || 0;
+  const cantidad  = parseFloat(document.getElementById('es-cantidad')?.value) || 0;
   const tasa      = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
   const elCalc    = document.getElementById('es-precio-usd-calc');
   if (!elCalc || !tasa) return;
   if (moneda === 'VES') {
-    elCalc.value = tasa > 0 ? (precio / tasa).toFixed(2) : '';
+    elCalc.value = tasa > 0 ? (precio * cantidad / tasa).toFixed(2) : '';
   } else {
-    elCalc.value = fmtBs(precio * tasa);
+    elCalc.value = fmtBs(precio * cantidad * tasa);
   }
 }
 
