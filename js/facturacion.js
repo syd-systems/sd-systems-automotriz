@@ -1087,12 +1087,34 @@ async function onCambiarMonedaEntrada() {
   onCambiarPrecioEntrada();
 }
 
+function calcularTributosEntrada() {
+  const incluyeIVA = document.getElementById('es-incluye-iva-si')?.checked;
+  const montoTotal = parseFloat(document.getElementById('es-precio-costo')?.value || 0)
+                   * parseFloat(document.getElementById('es-cantidad')?.value || 0);
+  const prev = document.getElementById('es-tributos-preview');
+  if (!montoTotal) { if (prev) prev.style.display = 'none'; return; }
+
+  const IVA_RATE = 0.16;
+  let base, iva;
+  if (incluyeIVA) {
+    base = parseFloat((montoTotal / (1 + IVA_RATE)).toFixed(4));
+    iva  = parseFloat((montoTotal - base).toFixed(4));
+  } else {
+    base = montoTotal;
+    iva  = 0;
+  }
+
+  const moneda = document.getElementById('es-moneda-compra')?.value || 'USD';
+  const sim = moneda === 'VES' ? 'Bs.' : '$';
+  document.getElementById('es-trib-base').textContent  = sim + ' ' + fmtBs(base);
+  document.getElementById('es-trib-iva').textContent   = iva > 0 ? sim + ' ' + fmtBs(iva) : '—';
+  document.getElementById('es-trib-total').textContent = sim + ' ' + fmtBs(montoTotal);
+  if (prev) prev.style.display = '';
+}
+
+
 function onCambiarPrecioEntrada() {
   const moneda   = document.getElementById('es-moneda-compra')?.value || 'USD';
-  const precio   = parseFloat(document.getElementById('es-precio-costo')?.value) || 0;
-  const cantidad = parseFloat(document.getElementById('es-cantidad')?.value) || 0;
-  const tasa     = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
-  const elCalc   = document.getElementById('es-precio-usd-calc');
   const elMonto  = document.getElementById('es-monto-total');
   const lblMonto = document.getElementById('es-label-monto-total');
 
@@ -1102,16 +1124,26 @@ function onCambiarPrecioEntrada() {
   if (lblMonto) lblMonto.innerHTML = 'Monto en ' + moneda;
 
   // Precio VES calculado
-  if (!elCalc || !tasa) return;
+  if (!elCalc || !tasa) { calcularTributosEntrada(); return; }
   if (moneda === 'VES') {
     elCalc.value = tasa > 0 ? fmtBs(montoTotal / tasa) : '';
   } else {
     elCalc.value = fmtBs(montoTotal * tasa);
   }
+  calcularTributosEntrada();
 }
 
 function onCambiarMotivoEntrada() {
   const motivo = document.getElementById('es-motivo')?.value;
+  const esCompra = motivo === 'compra';
+  // Mostrar/ocultar sección tributos
+  const tribuCont = document.getElementById('es-tributos-cont');
+  if (tribuCont) tribuCont.style.display = esCompra ? '' : 'none';
+  // Resetear IVA
+  const ivaNo = document.getElementById('es-incluye-iva-no');
+  if (ivaNo) ivaNo.checked = true;
+  const prev = document.getElementById('es-tributos-preview');
+  if (prev) prev.style.display = 'none';
   const contProv    = document.getElementById('es-campo-proveedor-cont');
   const contCliente = document.getElementById('es-campo-cliente-cont');
   const contTransf  = document.getElementById('es-campo-transferencia-cont');

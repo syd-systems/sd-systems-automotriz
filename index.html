@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707072"></script>
-<script src="js/parametros.js?v=20260707072"></script>
-<script src="js/empresas.js?v=20260707072"></script>
-<script src="js/facturacion.js?v=20260707072"></script>
-<script src="js/inventario.js?v=20260707072"></script>
-<script src="js/contabilidad.js?v=20260707072"></script>
-<script src="js/pagos.js?v=20260707072"></script>
-<script src="js/vehiculos.js?v=20260707072"></script>
-<script src="js/catalogo.js?v=20260707072"></script>
-<script src="js/inventario2.js?v=20260707072"></script>
-<script src="js/ordenes.js?v=20260707072"></script>
+<script src="js/core.js?v=20260707073"></script>
+<script src="js/parametros.js?v=20260707073"></script>
+<script src="js/empresas.js?v=20260707073"></script>
+<script src="js/facturacion.js?v=20260707073"></script>
+<script src="js/inventario.js?v=20260707073"></script>
+<script src="js/contabilidad.js?v=20260707073"></script>
+<script src="js/pagos.js?v=20260707073"></script>
+<script src="js/vehiculos.js?v=20260707073"></script>
+<script src="js/catalogo.js?v=20260707073"></script>
+<script src="js/inventario2.js?v=20260707073"></script>
+<script src="js/ordenes.js?v=20260707073"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2569,6 +2569,36 @@
           <option value="CREDITO">Crédito</option>
         </select>
       </div>
+      <!-- ── TRIBUTOS ── -->
+      <div class="form-campo form-full" id="es-tributos-cont" style="display:none;grid-column:1/-1">
+        <div style="background:rgba(255,107,0,0.05);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
+          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">🧾 Tributos</div>
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
+            <label style="font-size:13px;font-weight:500">Monto Facturado incluye IVA (16%)</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
+              <input type="radio" name="es-incluye-iva" id="es-incluye-iva-si" value="SI" onchange="calcularTributosEntrada()"> Sí
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
+              <input type="radio" name="es-incluye-iva" id="es-incluye-iva-no" value="NO" onchange="calcularTributosEntrada()" checked> No
+            </label>
+          </div>
+          <div id="es-tributos-preview" style="display:none;background:rgba(0,0,0,0.2);border-radius:6px;padding:10px;font-size:12px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="color:var(--suave)">Base (Inventario/Costo)</span>
+              <span id="es-trib-base" style="font-family:var(--font-mono)">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="color:var(--suave)">IVA (16%) — 1.1.04.001</span>
+              <span id="es-trib-iva" style="font-family:var(--font-mono);color:#60a5fa">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">
+              <span style="color:var(--naranja);font-weight:600">Total Facturado</span>
+              <span id="es-trib-total" style="font-family:var(--font-mono);color:var(--naranja);font-weight:600">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Campos crédito — ocultos por defecto -->
       <div id="es-credito-cont" style="display:none;grid-column:1/-1">
         <div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-top:4px">
