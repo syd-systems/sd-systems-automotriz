@@ -1101,29 +1101,46 @@ function onCambioExentoIVAEntrada() {
 
 function calcularTributosEntrada() {
   const exento     = document.getElementById('es-exento-iva-val')?.value === 'SI';
-  const incluyeIVA = !exento && document.getElementById('es-incluye-iva-val')?.value === 'SI';
-  const montoTotal = parseFloat(document.getElementById('es-precio-costo')?.value || 0)
-                   * parseFloat(document.getElementById('es-cantidad')?.value || 0);
+  const ivaVal     = document.getElementById('es-incluye-iva-val')?.value;
   const prev = document.getElementById('es-tributos-preview');
-  if (!montoTotal) { if (prev) prev.style.display = 'none'; return; }
+
+  // Si exento — no hay IVA, mostrar solo base
+  if (exento) {
+    const montoTotal = parseFloat(document.getElementById('es-precio-costo')?.value || 0)
+                     * parseFloat(document.getElementById('es-cantidad')?.value || 0);
+    if (!montoTotal) { if (prev) prev.style.display = 'none'; return; }
+    const moneda = document.getElementById('es-moneda-compra')?.value || 'USD';
+    const tasa   = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
+    const sim    = moneda === 'VES' ? 'Bs.' : '$';
+    document.getElementById('es-trib-base').textContent  = sim + ' ' + fmtBs(montoTotal);
+    document.getElementById('es-trib-iva').textContent   = '—';
+    document.getElementById('es-trib-total').textContent = sim + ' ' + fmtBs(montoTotal);
+    document.getElementById('es-trib-base-ves').textContent  = tasa > 0 && moneda !== 'VES' ? 'Bs. ' + fmtBs(montoTotal * tasa) : '—';
+    document.getElementById('es-trib-iva-ves').textContent   = '—';
+    document.getElementById('es-trib-total-ves').textContent = tasa > 0 && moneda !== 'VES' ? 'Bs. ' + fmtBs(montoTotal * tasa) : '—';
+    if (prev) prev.style.display = '';
+    return;
+  }
+
+  // Si no ha seleccionado IVA — no calcular
+  if (!ivaVal) { if (prev) prev.style.display = 'none'; return; }
+
+  const incluyeIVA = ivaVal === 'SI';
+  const montoTotal2 = parseFloat(document.getElementById('es-precio-costo')?.value || 0)
+                   * parseFloat(document.getElementById('es-cantidad')?.value || 0);
+  if (!montoTotal2) { if (prev) prev.style.display = 'none'; return; }
 
   const IVA_RATE = 0.16;
   let base, iva, total;
-  if (exento) {
-    // Exento — sin IVA
-    base  = montoTotal;
-    iva   = 0;
-    total = montoTotal;
+  if (false) { // exento ya manejado arriba
   } else if (incluyeIVA) {
-    // Monto incluye IVA — desglozar
-    base  = parseFloat((montoTotal / (1 + IVA_RATE)).toFixed(4));
-    iva   = parseFloat((montoTotal - base).toFixed(4));
-    total = montoTotal;
+    base  = parseFloat((montoTotal2 / (1 + IVA_RATE)).toFixed(4));
+    iva   = parseFloat((montoTotal2 - base).toFixed(4));
+    total = montoTotal2;
   } else {
-    // Monto NO incluye IVA — calcular y sumar
-    base  = montoTotal;
-    iva   = parseFloat((montoTotal * IVA_RATE).toFixed(4));
-    total = parseFloat((montoTotal + iva).toFixed(4));
+    base  = montoTotal2;
+    iva   = parseFloat((montoTotal2 * IVA_RATE).toFixed(4));
+    total = parseFloat((montoTotal2 + iva).toFixed(4));
   }
 
   const moneda = document.getElementById('es-moneda-compra')?.value || 'USD';
