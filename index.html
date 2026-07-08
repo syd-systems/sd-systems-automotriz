@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707088"></script>
-<script src="js/parametros.js?v=20260707088"></script>
-<script src="js/empresas.js?v=20260707088"></script>
-<script src="js/facturacion.js?v=20260707088"></script>
-<script src="js/inventario.js?v=20260707088"></script>
-<script src="js/contabilidad.js?v=20260707088"></script>
-<script src="js/pagos.js?v=20260707088"></script>
-<script src="js/vehiculos.js?v=20260707088"></script>
-<script src="js/catalogo.js?v=20260707088"></script>
-<script src="js/inventario2.js?v=20260707088"></script>
-<script src="js/ordenes.js?v=20260707088"></script>
+<script src="js/core.js?v=20260707089"></script>
+<script src="js/parametros.js?v=20260707089"></script>
+<script src="js/empresas.js?v=20260707089"></script>
+<script src="js/facturacion.js?v=20260707089"></script>
+<script src="js/inventario.js?v=20260707089"></script>
+<script src="js/contabilidad.js?v=20260707089"></script>
+<script src="js/pagos.js?v=20260707089"></script>
+<script src="js/vehiculos.js?v=20260707089"></script>
+<script src="js/catalogo.js?v=20260707089"></script>
+<script src="js/inventario2.js?v=20260707089"></script>
+<script src="js/ordenes.js?v=20260707089"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2648,7 +2648,7 @@
       <div class="alerta alerta-exito" id="alerta-es-ok" style="display:none;margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-es-err" style="display:none;margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        <button class="btn-secundario" onclick="cerrarModal('modal-entrada-stock'); cerrarModal('modal-stock-articulo'); renderInventario()">Retornar</button>
+        <button class="btn-secundario" onclick="cerrarModal('modal-entrada-stock'); cerrarModal('modal-stock-articulo'); cerrarModal('modal-ficha-inventario'); renderInventario()">RETORNAR</button>
         <button class="btn-primario" onclick="guardarEntradaStock()">INGRESAR STOCK</button>
       </div>
     </div>
@@ -3843,24 +3843,6 @@
           <input type="date" id="salida-fecha">
         </div>
 
-        <!-- Área y Empleado que ENTREGA (con validación de contraseña) -->
-        <div class="form-campo form-full" style="margin-top:4px">
-          <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;border-bottom:1px solid rgba(255,107,0,0.2);padding-bottom:4px">📤 Quien Entrega</div>
-        </div>
-        <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
-          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-            <div style="font-size:13px;color:var(--texto)">Usuario: <span id="salida-entrega-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
-            <div style="font-size:11px;color:var(--suave)" id="salida-entrega-area">—</div>
-          </div>
-          <input type="hidden" id="salida-area-entrega">
-          <input type="hidden" id="salida-empleado-entrega">
-          <label style="font-size:12px">Contraseña *</label>
-          <input type="password" id="salida-clave-entrega" placeholder="Ingrese su contraseña para autorizar"
-            style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">
-          <div style="font-size:11px;color:var(--suave);margin-top:4px">Confirme con su contraseña para autorizar la salida.</div>
-        </div>
-
         <!-- Área y Empleado que RECIBE -->
         <div class="form-campo form-full" style="margin-top:4px">
           <div style="font-size:10px;color:#60a5fa;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;border-bottom:1px solid rgba(96,165,250,0.2);padding-bottom:4px">📥 Quien Recibe</div>
@@ -3878,6 +3860,25 @@
           </select>
         </div>
 
+        <!-- Área y Empleado que ENTREGA (con validación de contraseña) -->
+        <div class="form-campo form-full" style="margin-top:4px">
+          <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;border-bottom:1px solid rgba(255,107,0,0.2);padding-bottom:4px">📤 Quien Entrega</div>
+        </div>
+        <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
+          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <div style="font-size:13px;color:var(--texto)">Usuario: <span id="salida-entrega-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
+            <div style="font-size:11px;color:var(--suave)" id="salida-entrega-area">—</div>
+          </div>
+          <input type="hidden" id="salida-area-entrega">
+          <input type="hidden" id="salida-empleado-entrega">
+          <label style="font-size:12px">Contraseña *</label>
+          <input type="password" id="salida-clave-entrega" placeholder="Ingrese su contraseña para autorizar"
+            style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px"
+            onkeydown="if(event.key==='Enter'){guardarSalidaStock()}">
+          <div style="font-size:11px;color:var(--suave);margin-top:4px">Confirme con su contraseña para autorizar la salida.</div>
+        </div>
+
         <!-- Observaciones -->
         <div class="form-campo form-full">
           <label>Observaciones</label>
@@ -3890,7 +3891,7 @@
       <div class="alerta alerta-exito" id="alerta-salida-ok" style="margin:0"></div>
       <div class="alerta alerta-error"  id="alerta-salida-err" style="margin:0"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button class="btn-secundario" onclick="cerrarModal('modal-salida-stock'); cerrarModal('modal-stock-articulo'); renderInventario()">Retornar</button>
+        <button class="btn-secundario" onclick="cerrarModal('modal-salida-stock'); cerrarModal('modal-stock-articulo'); cerrarModal('modal-ficha-inventario'); renderInventario()">RETORNAR</button>
         <button class="btn-peligro"    onclick="guardarSalidaStock()">Registrar Salida</button>
       </div>
     </div>
