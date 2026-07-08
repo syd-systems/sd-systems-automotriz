@@ -1088,16 +1088,25 @@ async function onCambiarMonedaEntrada() {
 }
 
 function onCambiarPrecioEntrada() {
-  const moneda    = document.getElementById('es-moneda-compra')?.value || 'USD';
-  const precio    = parseFloat(document.getElementById('es-precio-costo')?.value) || 0;
-  const cantidad  = parseFloat(document.getElementById('es-cantidad')?.value) || 0;
-  const tasa      = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
-  const elCalc    = document.getElementById('es-precio-usd-calc');
+  const moneda   = document.getElementById('es-moneda-compra')?.value || 'USD';
+  const precio   = parseFloat(document.getElementById('es-precio-costo')?.value) || 0;
+  const cantidad = parseFloat(document.getElementById('es-cantidad')?.value) || 0;
+  const tasa     = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
+  const elCalc   = document.getElementById('es-precio-usd-calc');
+  const elMonto  = document.getElementById('es-monto-total');
+  const lblMonto = document.getElementById('es-label-monto-total');
+
+  // Monto = Cantidad × Precio (en la moneda de negociación)
+  const montoTotal = precio * cantidad;
+  if (elMonto) elMonto.value = fmtBs(montoTotal);
+  if (lblMonto) lblMonto.innerHTML = 'Monto en ' + moneda + ' <span style="font-size:10px;color:var(--suave)">(lectura)</span>';
+
+  // Precio VES calculado
   if (!elCalc || !tasa) return;
   if (moneda === 'VES') {
-    elCalc.value = tasa > 0 ? (precio * cantidad / tasa).toFixed(2) : '';
+    elCalc.value = tasa > 0 ? fmtBs(montoTotal / tasa) : '';
   } else {
-    elCalc.value = fmtBs(precio * cantidad * tasa);
+    elCalc.value = fmtBs(montoTotal * tasa);
   }
 }
 

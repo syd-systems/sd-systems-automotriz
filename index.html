@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707070"></script>
-<script src="js/parametros.js?v=20260707070"></script>
-<script src="js/empresas.js?v=20260707070"></script>
-<script src="js/facturacion.js?v=20260707070"></script>
-<script src="js/inventario.js?v=20260707070"></script>
-<script src="js/contabilidad.js?v=20260707070"></script>
-<script src="js/pagos.js?v=20260707070"></script>
-<script src="js/vehiculos.js?v=20260707070"></script>
-<script src="js/catalogo.js?v=20260707070"></script>
-<script src="js/inventario2.js?v=20260707070"></script>
-<script src="js/ordenes.js?v=20260707070"></script>
+<script src="js/core.js?v=20260707071"></script>
+<script src="js/parametros.js?v=20260707071"></script>
+<script src="js/empresas.js?v=20260707071"></script>
+<script src="js/facturacion.js?v=20260707071"></script>
+<script src="js/inventario.js?v=20260707071"></script>
+<script src="js/contabilidad.js?v=20260707071"></script>
+<script src="js/pagos.js?v=20260707071"></script>
+<script src="js/vehiculos.js?v=20260707071"></script>
+<script src="js/catalogo.js?v=20260707071"></script>
+<script src="js/inventario2.js?v=20260707071"></script>
+<script src="js/ordenes.js?v=20260707071"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2503,6 +2503,12 @@
             onblur="this.value=parseFloat(this.value||0).toFixed(2)"
             onkeydown="if(event.key==='Enter'){guardarEntradaStock()}">
           <div id="es-ref-cpp" style="font-size:10px;color:var(--naranja);margin-top:4px"></div>
+        </div>
+        <div class="form-campo">
+          <label id="es-label-monto-total">Monto en USD <span style="font-size:10px;color:var(--suave)">(lectura)</span></label>
+          <input type="text" id="es-monto-total" readonly placeholder="0,00"
+            style="font-family:var(--font-mono);background:var(--gris1);color:var(--naranja);cursor:not-allowed;opacity:0.8">
+          <div style="font-size:10px;color:var(--suave);margin-top:4px">Cantidad × Precio</div>
         </div>
         <div class="form-campo" id="es-precio-venta-cont">
           <label>Precio Venta <span id="es-label-moneda-venta" style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span></label>
