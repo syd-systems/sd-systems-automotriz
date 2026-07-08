@@ -643,6 +643,7 @@ function calcularCuotasEntrada() {
   }
 
   // Validar que monto por cuota no exceda el total
+  const montoCuotaInput = parseFloat(document.getElementById('es-cuotas-monto')?.value) || 0;
   const montoMaxCuota = parseFloat((totalUSD / numCuotas).toFixed(2));
   const montoCuotaFinal = montoCuotaInput > 0 ? montoCuotaInput : montoMaxCuota;
 
