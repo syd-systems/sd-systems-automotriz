@@ -2589,11 +2589,15 @@ async function ejecutarPagoCxP(id_cxp) {
   document.getElementById('exec-pago-desc').textContent  = c.numero_doc + ' — ' + (c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim();
   document.getElementById('exec-pago-monto').textContent = simbolo + ' ' + montoCxP.toLocaleString('es-VE',{minimumFractionDigits:2});
 
-  // Si exento de IVA — ocultar pregunta IVA y marcar NO
-  const exentoIVA = c.exento_iva === true;
+  // Si es CxP de inventario — ocultar IVA e IGTF (ya contabilizados en la entrada)
+  const esInventarioCxP = /^ENT-/.test(c.numero_doc || '');
+  const exentoIVA = c.exento_iva === true || esInventarioCxP;
   const ivaContEl = document.getElementById('exec-pago-incluye-iva-cont');
   if (ivaContEl) ivaContEl.style.display = exentoIVA ? 'none' : '';
   if (exentoIVA) document.getElementById('exec-pago-incluye-iva-no').checked = true;
+  // Ocultar IGTF también para inventario
+  const igtfContEl = document.getElementById('exec-pago-incluye-igtf-cont');
+  if (esInventarioCxP && igtfContEl) igtfContEl.style.display = 'none';
 
   // Preseleccionar moneda según la CxP
   const selMoneda2 = document.getElementById('exec-pago-moneda-sel');
