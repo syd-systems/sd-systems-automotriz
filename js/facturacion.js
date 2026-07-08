@@ -1081,7 +1081,7 @@ async function onCambiarMonedaEntrada() {
 
   // Actualizar label del campo de precio VES calculado
   const lblUSD = document.getElementById('es-label-precio-usd');
-  if (lblUSD) lblUSD.textContent = esVES ? 'PRECIO EN USD (CALCULADO)' : 'PRECIO EN VES (CALCULADO)';
+  if (lblUSD) lblUSD.textContent = esVES ? 'Monto en USD' : 'Monto en VES';
 
   await buscarTasaBCVNegociacion();
   onCambiarPrecioEntrada();
@@ -1099,7 +1099,7 @@ function onCambiarPrecioEntrada() {
   // Monto = Cantidad × Precio (en la moneda de negociación)
   const montoTotal = precio * cantidad;
   if (elMonto) elMonto.value = fmtBs(montoTotal);
-  if (lblMonto) lblMonto.innerHTML = 'Monto en ' + moneda + ' <span style="font-size:10px;color:var(--suave)">(lectura)</span>';
+  if (lblMonto) lblMonto.innerHTML = 'Monto en ' + moneda;
 
   // Precio VES calculado
   if (!elCalc || !tasa) return;
