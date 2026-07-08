@@ -2882,9 +2882,13 @@ async function confirmarEjecucionPago() {
       ? parseFloat((montoVESCxP / (tasaPago || 1)).toFixed(4))
       : montoUSDCxP;
 
-    // 3. Obtener tributos
+    // 3. Obtener tributos — solo para CxP manuales, no inventario
+    const esInventarioPago = /^ENT-/.test(c.numero_doc || '');
     const { tasaIVA, tasaIGTF } = await _obtenerTributos();
-    const { base, iva, igtf, total } = _calcularTributos(montoUSD, incluyeIva, incluyeIgtf, tasaIVA, tasaIGTF, aplicaIGTF);
+    const tributosCalc = esInventarioPago
+      ? { base: montoUSD, iva: 0, igtf: 0, total: montoUSD }
+      : _calcularTributos(montoUSD, incluyeIva, incluyeIgtf, tasaIVA, tasaIGTF, aplicaIGTF);
+    const { base, iva, igtf, total } = tributosCalc;
 
     // 4. Obtener cuentas contables por código
     const [ctaIVA, ctaIGTF, ctaPerdCambio, ctaGanCambio, ctaCxP] = await Promise.all([
