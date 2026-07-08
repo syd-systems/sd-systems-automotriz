@@ -1940,13 +1940,14 @@ async function generarAsientoInventario(tipo, datos) {
         debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:montoBs });
 
     } else if (tipo === 'SALIDA_AREA' || tipo === 'SALIDA_AJUSTE') {
-      // Débito: Costo Área Bs / Crédito: Inventario Bs
+      // Solo en VES — sin montos USD
+      const montoBsSal = parseFloat((monto * tasa).toFixed(2));
       if (id_areaCuenta) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:id_areaCuenta, orden:1,
         descripcion:'Costo '+datos.areaNombre+' '+datos.articulo+auxDesc,
-        debe_usd:monto, haber_usd:0, debe_ves:montoBs, haber_ves:0 });
+        debe_usd:0, haber_usd:0, debe_ves:montoBsSal, haber_ves:0 });
       if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:2,
         descripcion:'Salida inventario '+datos.articulo+auxDesc,
-        debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:montoBs });
+        debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoBsSal });
 
     }
 
