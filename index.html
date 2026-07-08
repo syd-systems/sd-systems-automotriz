@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707106"></script>
-<script src="js/parametros.js?v=20260707106"></script>
-<script src="js/empresas.js?v=20260707106"></script>
-<script src="js/facturacion.js?v=20260707106"></script>
-<script src="js/inventario.js?v=20260707106"></script>
-<script src="js/contabilidad.js?v=20260707106"></script>
-<script src="js/pagos.js?v=20260707106"></script>
-<script src="js/vehiculos.js?v=20260707106"></script>
-<script src="js/catalogo.js?v=20260707106"></script>
-<script src="js/inventario2.js?v=20260707106"></script>
-<script src="js/ordenes.js?v=20260707106"></script>
+<script src="js/core.js?v=20260707107"></script>
+<script src="js/parametros.js?v=20260707107"></script>
+<script src="js/empresas.js?v=20260707107"></script>
+<script src="js/facturacion.js?v=20260707107"></script>
+<script src="js/inventario.js?v=20260707107"></script>
+<script src="js/contabilidad.js?v=20260707107"></script>
+<script src="js/pagos.js?v=20260707107"></script>
+<script src="js/vehiculos.js?v=20260707107"></script>
+<script src="js/catalogo.js?v=20260707107"></script>
+<script src="js/inventario2.js?v=20260707107"></script>
+<script src="js/ordenes.js?v=20260707107"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3863,6 +3863,7 @@
               if(cant > 0 && stock >= 0 && cant > stock){
                 errEl.textContent = 'La cantidad supera el stock disponible ('+stock+' UND).';
                 errEl.style.display='block';
+                errEl.scrollIntoView({behavior:'smooth',block:'center'});
               } else {
                 errEl.style.display='none';
               }
