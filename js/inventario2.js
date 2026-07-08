@@ -642,13 +642,20 @@ function calcularCuotasEntrada() {
     return;
   }
 
-  // Calcular monto por cuota
-  const montoCuotaInput = parseFloat(document.getElementById('es-cuotas-monto')?.value) || 0;
-  const montoCuota = montoCuotaInput > 0 ? montoCuotaInput : parseFloat((totalUSD / numCuotas).toFixed(2));
+  // Validar que monto por cuota no exceda el total
+  const montoMaxCuota = parseFloat((totalUSD / numCuotas).toFixed(2));
+  const montoCuotaFinal = montoCuotaInput > 0 ? montoCuotaInput : montoMaxCuota;
 
   // Auto-llenar monto si está vacío
   const montoEl = document.getElementById('es-cuotas-monto');
-  if (montoEl && !montoEl.value && totalUSD > 0) montoEl.value = montoCuota;
+  if (montoEl && !montoEl.value && totalUSD > 0) montoEl.value = montoMaxCuota;
+
+  // Validar que las cuotas no excedan el total
+  const totalCuotas = parseFloat((montoCuotaFinal * numCuotas).toFixed(2));
+  if (totalCuotas > totalUSD + 0.01) {
+    preview.innerHTML = '<div style="color:#fc8181;font-size:12px">⚠ El monto por cuota ($ '+fmtUSD(montoCuotaFinal)+' × '+numCuotas+' = $ '+fmtUSD(totalCuotas)+') excede el total ($ '+fmtUSD(totalUSD)+'). Reduzca el monto por cuota.</div>';
+    return;
+  }
 
   // Generar tabla de cuotas
   // Ajusta fecha al lunes siguiente si cae en fin de semana
@@ -671,8 +678,8 @@ function calcularCuotasEntrada() {
       num:   i + 1,
       fecha: fecha.toISOString().split('T')[0],
       monto: i === numCuotas - 1
-        ? parseFloat((totalUSD - montoCuota * (numCuotas - 1)).toFixed(2))
-        : montoCuota
+        ? parseFloat((totalUSD - montoCuotaFinal * (numCuotas - 1)).toFixed(2))
+        : montoCuotaFinal
     });
   }
 
