@@ -1170,9 +1170,13 @@ function onCambiarPrecioEntrada() {
 function onCambiarMotivoEntrada() {
   const motivo = document.getElementById('es-motivo')?.value;
   const esCompra = motivo === 'compra';
-  // Mostrar/ocultar sección tributos
+  // Mostrar/ocultar sección tributos usando visibility para que los radios funcionen
   const tribuCont = document.getElementById('es-tributos-cont');
-  if (tribuCont) tribuCont.style.display = esCompra ? '' : 'none';
+  if (tribuCont) {
+    tribuCont.style.visibility = esCompra ? 'visible' : 'hidden';
+    tribuCont.style.height     = esCompra ? ''        : '0';
+    tribuCont.style.overflow   = esCompra ? ''        : 'hidden';
+  }
   // Resetear IVA — sin preselección
   document.querySelectorAll('input[name="es-entrada-incluye-iva"]').forEach(function(r){ r.checked = false; });
   const prev = document.getElementById('es-tributos-preview');
