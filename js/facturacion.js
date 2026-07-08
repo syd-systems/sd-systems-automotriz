@@ -1084,6 +1084,7 @@ async function onCambiarMonedaEntrada() {
   if (lblUSD) lblUSD.textContent = esVES ? 'PRECIO EN USD (CALCULADO)' : 'PRECIO EN VES (CALCULADO)';
 
   await buscarTasaBCVNegociacion();
+  onCambiarPrecioEntrada();
 }
 
 function onCambiarPrecioEntrada() {
