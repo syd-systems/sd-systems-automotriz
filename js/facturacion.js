@@ -1099,7 +1099,8 @@ function onCambioExentoIVAEntrada() {
 }
 
 function calcularTributosEntrada() {
-  const incluyeIVA = document.getElementById('es-incluye-iva-si')?.checked;
+  const exento     = document.getElementById('es-exento-iva-si')?.checked || false;
+  const incluyeIVA = !exento && document.querySelector('input[name="es-entrada-incluye-iva"][value="SI"]')?.checked;
   const montoTotal = parseFloat(document.getElementById('es-precio-costo')?.value || 0)
                    * parseFloat(document.getElementById('es-cantidad')?.value || 0);
   const prev = document.getElementById('es-tributos-preview');

@@ -770,7 +770,7 @@ async function guardarEntradaStock() {
     const precioIngresado  = parseFloat(document.getElementById('es-precio-costo').value) || 0;
     const monedaCompra     = document.getElementById('es-moneda-compra')?.value || 'USD';
     const tasaBCVVal       = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
-    const incluyeIVA_ent = document.getElementById('es-incluye-iva-si')?.checked || false;
+    const incluyeIVA_ent = document.querySelector('input[name="es-entrada-incluye-iva"][value="SI"]')?.checked || false;
     const IVA_RATE_ENT   = 0.16;
     const nuevoPrecioCostoRaw = monedaCompra === 'VES'
       ? (tasaBCVVal > 0 ? parseFloat((precioIngresado / tasaBCVVal).toFixed(4)) : (parseFloat(document.getElementById('es-precio-usd-calc')?.value) || 0))
@@ -961,7 +961,7 @@ async function guardarEntradaStock() {
         fecha:      document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
         tasa:       tasa_bcv_usada || null,
         incluyeIVA: document.getElementById('es-exento-iva-si')?.checked ? false
-                  : (document.getElementById('es-incluye-iva-si')?.checked || false)
+                  : (document.querySelector('input[name="es-entrada-incluye-iva"][value="SI"]')?.checked || false)
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
 
