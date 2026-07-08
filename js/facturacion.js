@@ -1040,7 +1040,6 @@ function onSelAreaEntrada() {
 }
 
 async function buscarTasaBCVNegociacion() {
-  console.log('[SYD] buscarTasaBCVNegociacion llamada');
   const moneda = document.getElementById('es-moneda-compra')?.value || 'USD';
   const esVES  = moneda === 'VES';
   const fecha  = document.getElementById('es-fecha-negociacion')?.value || getHoyVzla();
@@ -1048,7 +1047,6 @@ async function buscarTasaBCVNegociacion() {
   try {
     const tasas = await api('tasas', 'GET', null,
       '?fecha_valor=lte.' + fecha + '&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio,fecha_valor');
-    console.log('[SYD] tasas resultado:', JSON.stringify(tasas));
     if (tasas && tasas.length) {
       document.getElementById('es-tasa-bcv').value = parseFloat(tasas[0].tipo_cambio).toFixed(4);
       if (esVES) {
@@ -1068,7 +1066,6 @@ async function onCambiarFechaNegociacionEntrada() {
 }
 
 async function onCambiarMonedaEntrada() {
-  console.log('[SYD] onCambiarMonedaEntrada llamada, valor:', document.getElementById('es-moneda-compra')?.value);
   const moneda   = document.getElementById('es-moneda-compra')?.value || 'USD';
   // Actualizar labels de moneda
   const lblCompra = document.getElementById('es-label-moneda-compra');
@@ -1079,8 +1076,8 @@ async function onCambiarMonedaEntrada() {
   const usdCont  = document.getElementById('es-precio-usd-cont');
   const esVES    = moneda === 'VES';
 
-  if (tasaCont) tasaCont.style.display  = esVES ? '' : 'none';
-  if (usdCont)  usdCont.style.display   = esVES ? '' : 'none';
+  if (tasaCont) tasaCont.style.display  = ''; // Siempre visible como referencia
+  if (usdCont)  usdCont.style.display   = esVES ? '' : 'none'; // Solo visible si moneda es VES
 
   // Buscar tasa BCV de la fecha de negociación — SIEMPRE, sin importar la moneda.
   // Se necesita para poder calcular correctamente el costo en VES de las salidas (promedio ponderado).
