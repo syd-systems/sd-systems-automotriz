@@ -1143,9 +1143,8 @@ function onCambiarMotivoEntrada() {
   // Mostrar/ocultar sección tributos
   const tribuCont = document.getElementById('es-tributos-cont');
   if (tribuCont) tribuCont.style.display = esCompra ? '' : 'none';
-  // Resetear IVA
-  const ivaNo = document.getElementById('es-incluye-iva-no');
-  if (ivaNo) ivaNo.checked = true;
+  // Resetear IVA — sin preselección
+  document.querySelectorAll('input[name="es-incluye-iva"]').forEach(function(r){ r.checked = false; });
   const prev = document.getElementById('es-tributos-preview');
   if (prev) prev.style.display = 'none';
   const contProv    = document.getElementById('es-campo-proveedor-cont');
