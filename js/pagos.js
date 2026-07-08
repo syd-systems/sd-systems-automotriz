@@ -2598,10 +2598,10 @@ async function ejecutarPagoCxP(id_cxp) {
   const montoVESShow = monedaCxP === 'VES' ? montoCxP : montoCxP * tasaVigente;
 
   document.getElementById('exec-pago-desc').textContent  = c.numero_doc + ' — ' + (c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim();
-  document.getElementById('exec-pago-monto').textContent = '$ ' + fmtBs(montoUSDShow);
+  document.getElementById('exec-pago-monto').textContent = 'Bs. ' + fmtBs(montoVESShow);
 
   const elMontoVES = document.getElementById('exec-pago-monto-ves');
-  if (elMontoVES) elMontoVES.textContent = 'Bs. ' + fmtBs(montoVESShow);
+  if (elMontoVES) elMontoVES.textContent = '$ ' + fmtBs(montoUSDShow);
 
   // Si es CxP de inventario — ocultar IVA e IGTF (ya contabilizados en la entrada)
   const esInventarioCxP = /^ENT-/.test(c.numero_doc || '');
@@ -2630,9 +2630,15 @@ function onCambioIncluyeIvaPago() {
 
   if (!_ejecutarPagoCxPId) return;
 
-  api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=monto_usd,saldo_usd,monto_ves,moneda_pago,id_proveedor')
+  api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=numero_doc,monto_usd,saldo_usd,monto_ves,moneda_pago,id_proveedor')
     .then(async function(rows) {
       if (!rows || !rows[0]) return;
+      // Si es CxP de inventario — no mostrar tributos
+      const esInv = /^ENT-/.test(rows[0].numero_doc || '');
+      if (esInv) {
+        document.getElementById('exec-pago-tributos-preview').style.display = 'none';
+        return;
+      }
       const monedaCxP = rows[0].moneda_pago || 'USD';
       const monto = monedaCxP === 'VES'
         ? parseFloat(rows[0].saldo_ves || rows[0].monto_ves || 0)
