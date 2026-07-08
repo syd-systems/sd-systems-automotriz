@@ -978,8 +978,8 @@ async function guardarEntradaStock() {
         id_cuentaInventario: r.id_cuenta_contable || null,
         fecha:      document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
         tasa:       tasa_bcv_usada || null,
-        incluyeIVA: document.getElementById('es-exento-iva-si')?.checked ? false
-                  : (document.getElementById('es-incluye-iva-val')?.value === 'SI' || false)
+        incluyeIVA:  document.getElementById('es-incluye-iva-val')?.value === 'SI',
+        exentoIVA:   document.getElementById('es-exento-iva-val')?.value === 'SI'
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
 

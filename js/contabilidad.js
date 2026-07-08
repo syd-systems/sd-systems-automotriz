@@ -1893,22 +1893,34 @@ async function generarAsientoInventario(tipo, datos) {
     const auxDesc  = monto > 0 ? ' (USD '+fmtUSD(monto)+' × '+tasa.toFixed(4)+')' : '';
 
     if (tipo === 'ENTRADA_COMPRA') {
-      const IVA_RATE  = 0.16;
+      const IVA_RATE   = 0.16;
+      const exentoIVA  = datos.exentoIVA  || false;
       const incluyeIVA = datos.incluyeIVA || false;
       const montoTotalUSD = monto;
       const montoTotalBs  = montoBs;
 
-      let baseUSD, ivaUSD, baseBs, ivaBs;
-      if (incluyeIVA) {
+      let baseUSD, ivaUSD, baseBs, ivaBs, totalUSD, totalBs;
+
+      if (exentoIVA) {
+        // Sin IVA
+        baseUSD = montoTotalUSD; ivaUSD = 0;
+        baseBs  = montoTotalBs;  ivaBs  = 0;
+        totalUSD = montoTotalUSD; totalBs = montoTotalBs;
+      } else if (incluyeIVA) {
+        // Monto incluye IVA — desglozar
         baseUSD = parseFloat((montoTotalUSD / (1 + IVA_RATE)).toFixed(4));
         ivaUSD  = parseFloat((montoTotalUSD - baseUSD).toFixed(4));
         baseBs  = parseFloat((montoTotalBs  / (1 + IVA_RATE)).toFixed(2));
         ivaBs   = parseFloat((montoTotalBs  - baseBs).toFixed(2));
+        totalUSD = montoTotalUSD; totalBs = montoTotalBs;
       } else {
-        baseUSD = montoTotalUSD;
-        ivaUSD  = 0;
-        baseBs  = montoTotalBs;
-        ivaBs   = 0;
+        // Monto NO incluye IVA — calcular y sumar
+        baseUSD  = montoTotalUSD;
+        ivaUSD   = parseFloat((montoTotalUSD * IVA_RATE).toFixed(4));
+        baseBs   = montoTotalBs;
+        ivaBs    = parseFloat((montoTotalBs  * IVA_RATE).toFixed(2));
+        totalUSD = parseFloat((montoTotalUSD + ivaUSD).toFixed(4));
+        totalBs  = parseFloat((montoTotalBs  + ivaBs).toFixed(2));
       }
 
       // Buscar cuenta IVA Crédito Fiscal
@@ -1921,14 +1933,14 @@ async function generarAsientoInventario(tipo, datos) {
         debe_usd: baseUSD, haber_usd: 0, debe_ves: baseBs, haber_ves: 0 });
 
       // DEBE: Crédito Fiscal IVA (solo si aplica)
-      if (incluyeIVA && idIVA && ivaUSD > 0) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idIVA, orden:2,
+      if (!exentoIVA && idIVA && ivaUSD > 0) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idIVA, orden:2,
         descripcion: 'IVA (16%) compra ' + datos.articulo,
         debe_usd: ivaUSD, haber_usd: 0, debe_ves: ivaBs, haber_ves: 0 });
 
-      // HABER: CxP Proveedores (monto total)
+      // HABER: CxP Proveedores (monto total con IVA)
       if (idProv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idProv, orden:3,
         descripcion: 'CxP ' + datos.articulo + auxDesc,
-        debe_usd: 0, haber_usd: montoTotalUSD, debe_ves: 0, haber_ves: montoTotalBs });
+        debe_usd: 0, haber_usd: totalUSD, debe_ves: 0, haber_ves: totalBs });
 
     } else if (tipo === 'ENTRADA_DEVOLUCION' || tipo === 'ENTRADA_AJUSTE') {
       // Débito: Inventario Bs / Crédito: Costo Área Bs
