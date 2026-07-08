@@ -1077,21 +1077,27 @@ async function onCambiarMonedaEntrada() {
   const esVES    = moneda === 'VES';
 
   if (tasaCont) tasaCont.style.display  = ''; // Siempre visible como referencia
-  if (usdCont)  usdCont.style.display   = esVES ? '' : 'none'; // Solo visible si moneda es VES
+  if (usdCont)  usdCont.style.display   = ''; // Siempre visible — VES si moneda VES, VES calculado si USD
 
-  // Buscar tasa BCV de la fecha de negociación — SIEMPRE, sin importar la moneda.
-  // Se necesita para poder calcular correctamente el costo en VES de las salidas (promedio ponderado).
+  // Actualizar label del campo de precio VES calculado
+  const lblUSD = document.getElementById('es-label-precio-usd');
+  if (lblUSD) lblUSD.textContent = esVES ? 'PRECIO EN USD (CALCULADO)' : 'PRECIO EN VES (CALCULADO)';
+
   await buscarTasaBCVNegociacion();
 }
 
 function onCambiarPrecioEntrada() {
   const moneda = document.getElementById('es-moneda-compra')?.value || 'USD';
-  if (moneda !== 'VES') return;
-  const precioVES = parseFloat(document.getElementById('es-precio-costo')?.value) || 0;
-  const tasa      = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
-  const elUSD     = document.getElementById('es-precio-usd-calc');
-  if (elUSD) {
-    elUSD.value = tasa > 0 ? (precioVES / tasa).toFixed(2) : '';
+  const precio = parseFloat(document.getElementById('es-precio-costo')?.value) || 0;
+  const tasa   = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
+  const elCalc = document.getElementById('es-precio-usd-calc');
+  if (!elCalc || !tasa) return;
+  if (moneda === 'VES') {
+    // Precio VES → calcular USD
+    elCalc.value = tasa > 0 ? (precio / tasa).toFixed(2) : '';
+  } else {
+    // Precio USD → calcular VES
+    elCalc.value = (precio * tasa).toFixed(2);
   }
 }
 
