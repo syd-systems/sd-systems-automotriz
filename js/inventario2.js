@@ -988,8 +988,22 @@ async function guardarEntradaStock() {
     if (motivoEnt === 'compra') {
       try {
         const id_proveedor = parseInt(document.getElementById('es-proveedor')?.value) || null;
-        const montoUSD    = parseFloat((nuevoPrecioCosto * cantidad).toFixed(2));
-        const montoVES    = parseFloat((montoUSD * _tasaVigente).toFixed(2));
+        // Monto CxP = total con IVA (base + IVA si aplica)
+        const exentoIVACxP  = document.getElementById('es-exento-iva-val')?.value === 'SI';
+        const incluyeIVACxP = document.getElementById('es-incluye-iva-val')?.value === 'SI';
+        const montoBaseUSD  = parseFloat((nuevoPrecioCosto * cantidad).toFixed(2));
+        const IVA_RATE_CXP  = 0.16;
+        let montoUSD;
+        if (exentoIVACxP) {
+          montoUSD = montoBaseUSD; // sin IVA
+        } else if (incluyeIVACxP) {
+          // IVA ya incluido en el precio ingresado — reconstruir total
+          montoUSD = parseFloat((montoBaseUSD * (1 + IVA_RATE_CXP)).toFixed(2));
+        } else {
+          // IVA no incluido — sumar
+          montoUSD = parseFloat((montoBaseUSD * (1 + IVA_RATE_CXP)).toFixed(2));
+        }
+        const montoVES    = parseFloat((montoUSD * (tasa_bcv_usada || _tasaVigente || 1)).toFixed(2));
         const esquema     = document.getElementById('es-esquema-pago')?.value || 'CONTADO';
         const numDocBase  = id_entrada ? 'ENT-' + id_entrada : ('ENT-INV-' + id);
         const artNomCxP   = r.nombre_articulo || r.codigo_articulo || 'Art#'+id;
