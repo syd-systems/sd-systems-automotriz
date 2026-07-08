@@ -1088,15 +1088,11 @@ async function onCambiarMonedaEntrada() {
 }
 
 function onCambioExentoIVAEntrada() {
-  const exento = document.getElementById('es-exento-iva-si')?.checked;
+  const exento = document.getElementById('es-exento-iva-val')?.value === 'SI';
   const ivaContEl = document.getElementById('es-incluye-iva-cont');
-  if (ivaContEl) {
-    ivaContEl.style.visibility = exento ? 'hidden' : 'visible';
-    ivaContEl.style.height     = exento ? '0'       : '';
-    ivaContEl.style.overflow   = exento ? 'hidden'  : '';
-    ivaContEl.style.marginBottom = exento ? '0' : '12px';
-  }
+  if (ivaContEl) ivaContEl.style.display = exento ? 'none' : '';
   // Limpiar selección de incluye IVA al cambiar
+  document.getElementById('es-incluye-iva-val').value = '';
   document.querySelectorAll('input[name="es-entrada-incluye-iva"]').forEach(function(r){ r.checked = false; });
   const prev = document.getElementById('es-tributos-preview');
   if (prev) prev.style.display = 'none';
@@ -1104,8 +1100,8 @@ function onCambioExentoIVAEntrada() {
 }
 
 function calcularTributosEntrada() {
-  const exento     = document.getElementById('es-exento-iva-si')?.checked || false;
-  const incluyeIVA = !exento && document.querySelector('input[name="es-entrada-incluye-iva"][value="SI"]')?.checked;
+  const exento     = document.getElementById('es-exento-iva-val')?.value === 'SI';
+  const incluyeIVA = !exento && document.getElementById('es-incluye-iva-val')?.value === 'SI';
   const montoTotal = parseFloat(document.getElementById('es-precio-costo')?.value || 0)
                    * parseFloat(document.getElementById('es-cantidad')?.value || 0);
   const prev = document.getElementById('es-tributos-preview');
@@ -1170,13 +1166,8 @@ function onCambiarPrecioEntrada() {
 function onCambiarMotivoEntrada() {
   const motivo = document.getElementById('es-motivo')?.value;
   const esCompra = motivo === 'compra';
-  // Mostrar/ocultar sección tributos usando visibility para que los radios funcionen
   const tribuCont = document.getElementById('es-tributos-cont');
-  if (tribuCont) {
-    tribuCont.style.visibility = esCompra ? 'visible' : 'hidden';
-    tribuCont.style.height     = esCompra ? ''        : '0';
-    tribuCont.style.overflow   = esCompra ? ''        : 'hidden';
-  }
+  if (tribuCont) tribuCont.style.display = esCompra ? '' : 'none';
   // Resetear IVA — sin preselección
   document.querySelectorAll('input[name="es-entrada-incluye-iva"]').forEach(function(r){ r.checked = false; });
   const prev = document.getElementById('es-tributos-preview');

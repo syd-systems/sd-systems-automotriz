@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707096"></script>
-<script src="js/parametros.js?v=20260707096"></script>
-<script src="js/empresas.js?v=20260707096"></script>
-<script src="js/facturacion.js?v=20260707096"></script>
-<script src="js/inventario.js?v=20260707096"></script>
-<script src="js/contabilidad.js?v=20260707096"></script>
-<script src="js/pagos.js?v=20260707096"></script>
-<script src="js/vehiculos.js?v=20260707096"></script>
-<script src="js/catalogo.js?v=20260707096"></script>
-<script src="js/inventario2.js?v=20260707096"></script>
-<script src="js/ordenes.js?v=20260707096"></script>
+<script src="js/core.js?v=20260707097"></script>
+<script src="js/parametros.js?v=20260707097"></script>
+<script src="js/empresas.js?v=20260707097"></script>
+<script src="js/facturacion.js?v=20260707097"></script>
+<script src="js/inventario.js?v=20260707097"></script>
+<script src="js/contabilidad.js?v=20260707097"></script>
+<script src="js/pagos.js?v=20260707097"></script>
+<script src="js/vehiculos.js?v=20260707097"></script>
+<script src="js/catalogo.js?v=20260707097"></script>
+<script src="js/inventario2.js?v=20260707097"></script>
+<script src="js/ordenes.js?v=20260707097"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2570,30 +2570,34 @@
         </select>
       </div>
       <!-- ── TRIBUTOS ── -->
-      <div class="form-campo form-full" id="es-tributos-cont" style="grid-column:1/-1;visibility:hidden;height:0;overflow:hidden">
+      <div class="form-campo form-full" id="es-tributos-cont" style="display:none;grid-column:1/-1">
         <div style="background:rgba(255,107,0,0.05);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
           <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">🧾 Tributos</div>
+
+          <!-- Inputs hidden que guardan los valores seleccionados -->
+          <input type="hidden" id="es-exento-iva-val" value="">
+          <input type="hidden" id="es-incluye-iva-val" value="">
 
           <!-- Pregunta 1: ¿Gasto Exento de IVA? -->
           <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
             <label style="font-size:13px;font-weight:500">¿Gasto Exento de IVA?</label>
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
-              <input type="radio" name="es-exento-iva" id="es-exento-iva-si" value="SI" onchange="onCambioExentoIVAEntrada()"> Sí
+              <input type="radio" name="es-exento-iva" id="es-exento-iva-si" value="SI" onchange="document.getElementById('es-exento-iva-val').value='SI';onCambioExentoIVAEntrada()"> Sí
             </label>
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
-              <input type="radio" name="es-exento-iva" id="es-exento-iva-no" value="NO" onchange="onCambioExentoIVAEntrada()"> No
+              <input type="radio" name="es-exento-iva" id="es-exento-iva-no" value="NO" onchange="document.getElementById('es-exento-iva-val').value='NO';onCambioExentoIVAEntrada()"> No
             </label>
           </div>
 
           <!-- Pregunta 2: ¿Monto incluye IVA? — visible solo si NO exento -->
-          <div id="es-incluye-iva-cont" style="margin-bottom:12px">
+          <div id="es-incluye-iva-cont" style="display:none;margin-bottom:12px">
             <div style="display:flex;align-items:center;gap:16px">
               <label style="font-size:13px;font-weight:500">Monto Facturado incluye IVA (16%)</label>
               <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
-                <input type="radio" name="es-entrada-incluye-iva" id="es-incluye-iva-si" value="SI" onchange="calcularTributosEntrada()"> Sí
+                <input type="radio" name="es-entrada-incluye-iva" id="es-incluye-iva-si" value="SI" onchange="document.getElementById('es-incluye-iva-val').value='SI';calcularTributosEntrada()"> Sí
               </label>
               <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
-                <input type="radio" name="es-entrada-incluye-iva" id="es-incluye-iva-no" value="NO" onchange="calcularTributosEntrada()"> No
+                <input type="radio" name="es-entrada-incluye-iva" id="es-incluye-iva-no" value="NO" onchange="document.getElementById('es-incluye-iva-val').value='NO';calcularTributosEntrada()"> No
               </label>
             </div>
           </div>

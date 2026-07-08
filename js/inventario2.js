@@ -570,6 +570,10 @@ async function abrirEntradaStock(id) {
   if (document.getElementById('es-tributos-cont'))  document.getElementById('es-tributos-cont').style.display = 'none';
   document.querySelectorAll('input[name="es-entrada-incluye-iva"]').forEach(function(r){ r.checked = false; });
   document.querySelectorAll('input[name="es-exento-iva"]').forEach(function(r){ r.checked = false; });
+  const exentoVal = document.getElementById('es-exento-iva-val');
+  if (exentoVal) exentoVal.value = '';
+  const ivaVal = document.getElementById('es-incluye-iva-val');
+  if (ivaVal) ivaVal.value = '';
   const incluyeIVACont = document.getElementById('es-incluye-iva-cont');
   if (incluyeIVACont) incluyeIVACont.style.display = 'none';
   if (document.getElementById('es-tributos-preview')) document.getElementById('es-tributos-preview').style.display = 'none';
@@ -744,7 +748,7 @@ async function guardarEntradaStock() {
     if (!exentoSel) return mostrarError('Debe indicar si el Gasto está Exento de IVA.', 'es-exento-iva-si');
     // Si NO exento, IVA obligatorio
     if (exentoSel.value === 'NO') {
-      const ivaSeleccionado = document.querySelector('input[name="es-entrada-incluye-iva"]:checked');
+      const ivaSeleccionado = document.getElementById('es-incluye-iva-val')?.value ? {value: document.getElementById('es-incluye-iva-val').value} : null;
       if (!ivaSeleccionado) return mostrarError('Debe indicar si el monto facturado incluye IVA.', 'es-incluye-iva-si');
     }
   } else if (motivoSel === 'transferencia') {
@@ -770,7 +774,7 @@ async function guardarEntradaStock() {
     const precioIngresado  = parseFloat(document.getElementById('es-precio-costo').value) || 0;
     const monedaCompra     = document.getElementById('es-moneda-compra')?.value || 'USD';
     const tasaBCVVal       = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
-    const incluyeIVA_ent = document.querySelector('input[name="es-entrada-incluye-iva"][value="SI"]')?.checked || false;
+    const incluyeIVA_ent = document.getElementById('es-incluye-iva-val')?.value === 'SI' || false;
     const IVA_RATE_ENT   = 0.16;
     const nuevoPrecioCostoRaw = monedaCompra === 'VES'
       ? (tasaBCVVal > 0 ? parseFloat((precioIngresado / tasaBCVVal).toFixed(4)) : (parseFloat(document.getElementById('es-precio-usd-calc')?.value) || 0))
@@ -961,7 +965,7 @@ async function guardarEntradaStock() {
         fecha:      document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
         tasa:       tasa_bcv_usada || null,
         incluyeIVA: document.getElementById('es-exento-iva-si')?.checked ? false
-                  : (document.querySelector('input[name="es-entrada-incluye-iva"][value="SI"]')?.checked || false)
+                  : (document.getElementById('es-incluye-iva-val')?.value === 'SI' || false)
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
 
