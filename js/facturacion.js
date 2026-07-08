@@ -962,7 +962,7 @@ async function validarClaveReceptor(id_empleado, clave) {
     const usu = usuArr[0];
     if (!usu) return { ok: false, msg: 'El empleado "' + emp.nombre_completo + '" no tiene usuario activo en el sistema.' };
     const verifRec = await verificarContrasena(usu.correo_usuario, clave);
-    if (!verifRec.ok) return { ok: false, msg: 'Contraseña incorrecta para el remitente "' + emp.nombre_completo + '".' };
+    if (!verifRec.ok) return { ok: false, msg: '' + emp.nombre_completo + ' Contraseña incorrecta.' };
 
     return { ok: true, nombre: emp.nombre_completo };
   } catch(err) {
