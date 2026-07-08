@@ -1115,6 +1115,10 @@ function calcularTributosEntrada() {
 
 function onCambiarPrecioEntrada() {
   const moneda   = document.getElementById('es-moneda-compra')?.value || 'USD';
+  const precio   = parseFloat(document.getElementById('es-precio-costo')?.value) || 0;
+  const cantidad = parseFloat(document.getElementById('es-cantidad')?.value) || 0;
+  const tasa     = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
+  const elCalc   = document.getElementById('es-precio-usd-calc');
   const elMonto  = document.getElementById('es-monto-total');
   const lblMonto = document.getElementById('es-label-monto-total');
 
