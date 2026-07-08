@@ -1313,6 +1313,14 @@ async function abrirSalidaStock(id, nombre) {
   document.getElementById('salida-art-nombre').textContent = nombre;
   document.getElementById('salida-id-articulo').value      = id;
   document.getElementById('salida-cantidad').value         = '';
+  // Cargar stock disponible para validación en tiempo real
+  const stockDisp = document.getElementById('salida-stock-disp');
+  if (stockDisp) {
+    try {
+      const artStock = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id+'&select=stock_actual_articulo&limit=1');
+      stockDisp.dataset.stock = artStock && artStock[0] ? parseFloat(artStock[0].stock_actual_articulo||0) : 0;
+    } catch(e) { stockDisp.dataset.stock = 0; }
+  }
   document.getElementById('salida-fecha').value            = getHoyVzla();
   document.getElementById('salida-observaciones').value    = '';
   document.getElementById('alerta-salida-ok').style.display  = 'none';

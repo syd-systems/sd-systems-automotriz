@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707105"></script>
-<script src="js/parametros.js?v=20260707105"></script>
-<script src="js/empresas.js?v=20260707105"></script>
-<script src="js/facturacion.js?v=20260707105"></script>
-<script src="js/inventario.js?v=20260707105"></script>
-<script src="js/contabilidad.js?v=20260707105"></script>
-<script src="js/pagos.js?v=20260707105"></script>
-<script src="js/vehiculos.js?v=20260707105"></script>
-<script src="js/catalogo.js?v=20260707105"></script>
-<script src="js/inventario2.js?v=20260707105"></script>
-<script src="js/ordenes.js?v=20260707105"></script>
+<script src="js/core.js?v=20260707106"></script>
+<script src="js/parametros.js?v=20260707106"></script>
+<script src="js/empresas.js?v=20260707106"></script>
+<script src="js/facturacion.js?v=20260707106"></script>
+<script src="js/inventario.js?v=20260707106"></script>
+<script src="js/contabilidad.js?v=20260707106"></script>
+<script src="js/pagos.js?v=20260707106"></script>
+<script src="js/vehiculos.js?v=20260707106"></script>
+<script src="js/catalogo.js?v=20260707106"></script>
+<script src="js/inventario2.js?v=20260707106"></script>
+<script src="js/ordenes.js?v=20260707106"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3855,7 +3855,18 @@
         <!-- Cantidad y Fecha -->
         <div class="form-campo">
           <label>Cantidad *</label>
-          <input type="number" id="salida-cantidad" min="0.01" step="0.01" placeholder="0">
+          <input type="number" id="salida-cantidad" min="0.01" step="0.01" placeholder="0"
+            oninput="(function(){
+              var cant = parseFloat(this.value)||0;
+              var stock = parseFloat(document.getElementById('salida-stock-disp')?.dataset.stock||0);
+              var errEl = document.getElementById('alerta-salida-err');
+              if(cant > 0 && stock >= 0 && cant > stock){
+                errEl.textContent = 'La cantidad supera el stock disponible ('+stock+' UND).';
+                errEl.style.display='block';
+              } else {
+                errEl.style.display='none';
+              }
+            }).call(this)">
         </div>
         <div class="form-campo">
           <label>Fecha de Salida *</label>
@@ -3905,6 +3916,7 @@
         </div>
       </div>
       <input type="hidden" id="salida-id-articulo">
+      <span id="salida-stock-disp" data-stock="0" style="display:none"></span>
     </div>
     <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
       <div class="alerta alerta-exito" id="alerta-salida-ok" style="margin:0"></div>
