@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707085"></script>
-<script src="js/parametros.js?v=20260707085"></script>
-<script src="js/empresas.js?v=20260707085"></script>
-<script src="js/facturacion.js?v=20260707085"></script>
-<script src="js/inventario.js?v=20260707085"></script>
-<script src="js/contabilidad.js?v=20260707085"></script>
-<script src="js/pagos.js?v=20260707085"></script>
-<script src="js/vehiculos.js?v=20260707085"></script>
-<script src="js/catalogo.js?v=20260707085"></script>
-<script src="js/inventario2.js?v=20260707085"></script>
-<script src="js/ordenes.js?v=20260707085"></script>
+<script src="js/core.js?v=20260707086"></script>
+<script src="js/parametros.js?v=20260707086"></script>
+<script src="js/empresas.js?v=20260707086"></script>
+<script src="js/facturacion.js?v=20260707086"></script>
+<script src="js/inventario.js?v=20260707086"></script>
+<script src="js/contabilidad.js?v=20260707086"></script>
+<script src="js/pagos.js?v=20260707086"></script>
+<script src="js/vehiculos.js?v=20260707086"></script>
+<script src="js/catalogo.js?v=20260707086"></script>
+<script src="js/inventario2.js?v=20260707086"></script>
+<script src="js/ordenes.js?v=20260707086"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2583,17 +2583,18 @@
             </label>
           </div>
           <div id="es-tributos-preview" style="display:none;background:rgba(0,0,0,0.2);border-radius:6px;padding:10px;font-size:12px">
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <div style="display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;align-items:center">
               <span style="color:var(--suave)">Base (Inventario/Costo)</span>
-              <span id="es-trib-base" style="font-family:var(--font-mono)">—</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span id="es-trib-base" style="font-family:var(--font-mono);text-align:right">—</span>
+              <span id="es-trib-base-ves" style="font-family:var(--font-mono);text-align:right;color:var(--suave);font-size:11px">—</span>
+
               <span style="color:var(--suave)">IVA (16%) — 1.1.04.001</span>
-              <span id="es-trib-iva" style="font-family:var(--font-mono);color:#60a5fa">—</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">
-              <span style="color:var(--naranja);font-weight:600">Total Facturado</span>
-              <span id="es-trib-total" style="font-family:var(--font-mono);color:var(--naranja);font-weight:600">—</span>
+              <span id="es-trib-iva" style="font-family:var(--font-mono);text-align:right;color:#60a5fa">—</span>
+              <span id="es-trib-iva-ves" style="font-family:var(--font-mono);text-align:right;color:#60a5fa;font-size:11px">—</span>
+
+              <span style="color:var(--naranja);font-weight:600;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">Total Facturado</span>
+              <span id="es-trib-total" style="font-family:var(--font-mono);color:var(--naranja);font-weight:600;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
+              <span id="es-trib-total-ves" style="font-family:var(--font-mono);color:var(--naranja);font-size:11px;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
             </div>
           </div>
         </div>

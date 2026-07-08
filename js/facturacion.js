@@ -1105,10 +1105,23 @@ function calcularTributosEntrada() {
   }
 
   const moneda = document.getElementById('es-moneda-compra')?.value || 'USD';
-  const sim = moneda === 'VES' ? 'Bs.' : '$';
+  const tasa   = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
+  const sim    = moneda === 'VES' ? 'Bs.' : '$';
+
   document.getElementById('es-trib-base').textContent  = sim + ' ' + fmtBs(base);
   document.getElementById('es-trib-iva').textContent   = iva > 0 ? sim + ' ' + fmtBs(iva) : '—';
   document.getElementById('es-trib-total').textContent = sim + ' ' + fmtBs(montoTotal);
+
+  // Columna VES
+  if (tasa > 0 && moneda !== 'VES') {
+    document.getElementById('es-trib-base-ves').textContent  = 'Bs. ' + fmtBs(base * tasa);
+    document.getElementById('es-trib-iva-ves').textContent   = iva > 0 ? 'Bs. ' + fmtBs(iva * tasa) : '—';
+    document.getElementById('es-trib-total-ves').textContent = 'Bs. ' + fmtBs(montoTotal * tasa);
+  } else {
+    document.getElementById('es-trib-base-ves').textContent  = moneda === 'VES' && tasa > 0 ? '$ ' + fmtBs(base / tasa) : '—';
+    document.getElementById('es-trib-iva-ves').textContent   = moneda === 'VES' && iva > 0 && tasa > 0 ? '$ ' + fmtBs(iva / tasa) : '—';
+    document.getElementById('es-trib-total-ves').textContent = moneda === 'VES' && tasa > 0 ? '$ ' + fmtBs(montoTotal / tasa) : '—';
+  }
   if (prev) prev.style.display = '';
 }
 
