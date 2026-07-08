@@ -1092,8 +1092,7 @@ function onCambiarPrecioEntrada() {
   const precioRaw = (document.getElementById('es-precio-costo')?.value || '').replace(/\./g,'').replace(',','.');
   const precio    = parseFloat(precioRaw) || 0;
   const cantidad  = parseFloat(document.getElementById('es-cantidad')?.value) || 0;
-  const tasaRaw   = (document.getElementById('es-tasa-bcv')?.value || '').replace(/\./g,'').replace(',','.');
-  const tasa      = parseFloat(tasaRaw) || 0;
+  const tasa      = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
   const elCalc    = document.getElementById('es-precio-usd-calc');
   if (!elCalc || !tasa) return;
   if (moneda === 'VES') {
