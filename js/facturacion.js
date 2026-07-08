@@ -1470,13 +1470,14 @@ async function _guardarSalidaStockInterno() {
           id_usuario: sesionActual?.correo_usuario||null
         });
         var arS = Array.isArray(astS) ? astS[0] : astS;
+        var montoUSD_sal = parseFloat((cantidad * cppUSD).toFixed(4));
         if (arS?.id_asiento) {
           await api('cont_asiento_lineas','POST',{ id_asiento:arS.id_asiento, id_cuenta:art.id_cuenta_costo_gasto, orden:1,
             descripcion:'Consumo: '+(art.nombre_articulo||'')+' x'+cantidad+' (CPP $'+cppUSD.toFixed(2)+' x T/C '+tasaProm.toFixed(2)+')',
-            debe_usd:0, haber_usd:0, debe_ves:montoVES, haber_ves:0, tasa_bcv:tasaProm });
+            debe_usd:montoUSD_sal, haber_usd:0, debe_ves:montoVES, haber_ves:0, tasa_bcv:tasaProm });
           await api('cont_asiento_lineas','POST',{ id_asiento:arS.id_asiento, id_cuenta:art.id_cuenta_contable, orden:2,
             descripcion:'Salida inventario consumible: '+(art.nombre_articulo||'')+' x'+cantidad,
-            debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoVES, tasa_bcv:tasaProm });
+            debe_usd:0, haber_usd:montoUSD_sal, debe_ves:0, haber_ves:montoVES, tasa_bcv:tasaProm });
         }
       } catch(eAstSal) { console.warn('Error asiento salida consumible:', eAstSal); }
     }
