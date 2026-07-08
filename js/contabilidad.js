@@ -1893,13 +1893,42 @@ async function generarAsientoInventario(tipo, datos) {
     const auxDesc  = monto > 0 ? ' (USD '+fmtUSD(monto)+' × '+tasa.toFixed(4)+')' : '';
 
     if (tipo === 'ENTRADA_COMPRA') {
-      // Débito: Inventario Bs / Crédito: CxP Proveedores Bs
+      const IVA_RATE  = 0.16;
+      const incluyeIVA = datos.incluyeIVA || false;
+      const montoTotalUSD = monto;
+      const montoTotalBs  = montoBs;
+
+      let baseUSD, ivaUSD, baseBs, ivaBs;
+      if (incluyeIVA) {
+        baseUSD = parseFloat((montoTotalUSD / (1 + IVA_RATE)).toFixed(4));
+        ivaUSD  = parseFloat((montoTotalUSD - baseUSD).toFixed(4));
+        baseBs  = parseFloat((montoTotalBs  / (1 + IVA_RATE)).toFixed(2));
+        ivaBs   = parseFloat((montoTotalBs  - baseBs).toFixed(2));
+      } else {
+        baseUSD = montoTotalUSD;
+        ivaUSD  = 0;
+        baseBs  = montoTotalBs;
+        ivaBs   = 0;
+      }
+
+      // Buscar cuenta IVA Crédito Fiscal
+      const cIVA = await api('cont_cuentas','GET',null,'?codigo=eq.1.1.04.001&select=id_cuenta&limit=1');
+      const idIVA = cIVA.length ? cIVA[0].id_cuenta : null;
+
+      // DEBE: Inventario (base sin IVA)
       if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:1,
-        descripcion:'Entrada compra '+datos.articulo+auxDesc,
-        debe_usd:monto, haber_usd:0, debe_ves:montoBs, haber_ves:0 });
-      if (idProv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idProv, orden:2,
-        descripcion:'CxP '+datos.articulo+auxDesc,
-        debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:montoBs });
+        descripcion: 'Entrada compra ' + datos.articulo + auxDesc,
+        debe_usd: baseUSD, haber_usd: 0, debe_ves: baseBs, haber_ves: 0 });
+
+      // DEBE: Crédito Fiscal IVA (solo si aplica)
+      if (incluyeIVA && idIVA && ivaUSD > 0) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idIVA, orden:2,
+        descripcion: 'IVA (16%) compra ' + datos.articulo,
+        debe_usd: ivaUSD, haber_usd: 0, debe_ves: ivaBs, haber_ves: 0 });
+
+      // HABER: CxP Proveedores (monto total)
+      if (idProv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idProv, orden:3,
+        descripcion: 'CxP ' + datos.articulo + auxDesc,
+        debe_usd: 0, haber_usd: montoTotalUSD, debe_ves: 0, haber_ves: montoTotalBs });
 
     } else if (tipo === 'ENTRADA_DEVOLUCION' || tipo === 'ENTRADA_AJUSTE') {
       // Débito: Inventario Bs / Crédito: Costo Área Bs

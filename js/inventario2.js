@@ -940,7 +940,8 @@ async function guardarEntradaStock() {
         referencia: id_entrada ? 'ENT-' + id_entrada : ('ENT-INV-' + id),
         id_cuentaInventario: r.id_cuenta_contable || null,
         fecha:      document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
-        tasa:       tasa_bcv_usada || null
+        tasa:       tasa_bcv_usada || null,
+        incluyeIVA: document.getElementById('es-incluye-iva-si')?.checked || false
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
 
