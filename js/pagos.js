@@ -2572,8 +2572,9 @@ async function ejecutarPagoCxP(id_cxp) {
   if (cuentaCont) cuentaCont.style.display = 'none';
   const cuentaHidden = document.getElementById('exec-pago-cuenta-banco');
   if (cuentaHidden) cuentaHidden.value = '';
-  document.getElementById('exec-pago-incluye-iva-si').checked  = true;
-  document.getElementById('exec-pago-incluye-igtf-si').checked = true;
+  // Limpiar selección IVA e IGTF — forzar al usuario a seleccionar
+  document.querySelectorAll('input[name="exec-pago-incluye-iva"]').forEach(function(r){ r.checked = false; });
+  document.querySelectorAll('input[name="exec-pago-incluye-igtf"]').forEach(function(r){ r.checked = false; });
   document.getElementById('exec-pago-incluye-igtf-cont').style.display = 'none';
   document.getElementById('exec-pago-tributos-preview').style.display = 'none';
   const btnConf = document.getElementById('btn-confirmar-pago');
@@ -2801,6 +2802,19 @@ async function confirmarEjecucionPago() {
   if (!moneda)      { errEl.textContent = 'Seleccione la moneda de pago.';          errEl.style.display = 'block'; resetBtn(); return; }
   if (!idMetodo)    { errEl.textContent = 'Seleccione el método de pago.';          errEl.style.display = 'block'; resetBtn(); return; }
   if (!idCtaBanco)  { errEl.textContent = 'El método seleccionado no tiene cuenta contable asignada.'; errEl.style.display = 'block'; resetBtn(); return; }
+
+  // Validar IVA obligatorio si está visible
+  const ivaContVis = document.getElementById('exec-pago-incluye-iva-cont');
+  if (ivaContVis && ivaContVis.style.display !== 'none') {
+    const ivaSeleccionado = document.querySelector('input[name="exec-pago-incluye-iva"]:checked');
+    if (!ivaSeleccionado) { errEl.textContent = 'Debe indicar si el monto incluye IVA.'; errEl.style.display = 'block'; resetBtn(); return; }
+  }
+  // Validar IGTF obligatorio si está visible
+  const igtfContVis = document.getElementById('exec-pago-incluye-igtf-cont');
+  if (igtfContVis && igtfContVis.style.display !== 'none') {
+    const igtfSeleccionado = document.querySelector('input[name="exec-pago-incluye-igtf"]:checked');
+    if (!igtfSeleccionado) { errEl.textContent = 'Debe indicar si el monto incluye IGTF.'; errEl.style.display = 'block'; resetBtn(); return; }
+  }
 
   try {
     // 1. Cargar CxP con join de cuentas
