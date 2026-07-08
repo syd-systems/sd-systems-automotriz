@@ -116,7 +116,7 @@ async function contGetTasa(fecha) {
   // Obtener tasa vigente para la fecha dada
   try {
     const res = await api('tasas','GET',null,
-      '?fecha_valor=lte.'+fecha+'&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+      '?fecha_valor=lte.'+fecha+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
     return res.length > 0 ? parseFloat(res[0].tipo_cambio) : null;
   } catch(e) { return null; }
 }
@@ -1814,7 +1814,7 @@ async function generarAsientoInventario(tipo, datos) {
     let tasa = datos.tasa ? parseFloat(datos.tasa) : 0;
     if (!tasa) {
       const fechaBuscar = datos.fecha || getHoyVzla();
-      const tasas = await api('tasas','GET',null,'?fecha_valor=lte.' + fechaBuscar + '&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+      const tasas = await api('tasas','GET',null,'?fecha_valor=lte.' + fechaBuscar + '&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
       tasa = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
     }
 

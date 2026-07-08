@@ -1800,7 +1800,7 @@ async function guardarPago() {
   // Buscar tasa BCV del día
   let tasaUSD = _tasaVigente || 1;
   try {
-    const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+getHoyVzla()+'&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+getHoyVzla()+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
     if (tasaRows && tasaRows[0]) tasaUSD = parseFloat(tasaRows[0].tipo_cambio);
   } catch(e) {}
   const tasaEUR = window._pagoTasaEUR || tasaUSD;
@@ -2128,7 +2128,7 @@ async function _verCxPAutomatica(c, id_cxp) {
   let tasaHoy = 1;
   try {
     const hoy = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
-    const tasas = await api('tasas', 'GET', null, '?fecha_valor=lte.' + hoy + '&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    const tasas = await api('tasas', 'GET', null, '?fecha_valor=lte.' + hoy + '&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
     if (tasas && tasas.length) tasaHoy = parseFloat(tasas[0].tipo_cambio) || 1;
   } catch(e) {}
   const montoVES = parseFloat((parseFloat(c.monto_usd || 0) * tasaHoy).toFixed(2));
@@ -2814,7 +2814,7 @@ async function confirmarEjecucionPago() {
     if (!tasaCompra || tasaCompra === 1) {
       try {
         const fechaEmision = c.fecha_emision?.slice(0,10) || fechaPago;
-        const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaEmision+'&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+        const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaEmision+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
         if (tasaRows && tasaRows[0]) tasaCompra = parseFloat(tasaRows[0].tipo_cambio);
       } catch(e) {}
     }
@@ -2837,7 +2837,7 @@ async function confirmarEjecucionPago() {
     }
 
     // 2. Obtener tasa BCV del día de pago
-    const tasasHoy = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaPago+'&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    const tasasHoy = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaPago+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
     const tasaPago = parseFloat(tasasHoy && tasasHoy[0] ? tasasHoy[0].tipo_cambio : tasaCompra);
 
     // Para CxP en VES: montoUSD = monto_ves / tasaPago

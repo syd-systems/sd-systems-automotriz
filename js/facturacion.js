@@ -51,7 +51,7 @@ async function renderFacturas() {
   try {
     const [facturas, tasas] = await Promise.all([
       api('facturas','GET',null,'?order=fecha_emision.desc&select=*,emisores(nombre,rif),propietarios(nombre_completo)'+emisorQ()),
-      api('tasas','GET',null,'?order=fecha_valor.desc&limit=1&select=tipo_cambio'),
+      api('tasas','GET',null,'?moneda_origen=eq.USD&?order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
     facturasCache = facturas;
     const tasaActual = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
@@ -155,7 +155,7 @@ async function abrirNuevaFactura() {
     const [os, em, ta] = await Promise.all([
       api('ordenes_servicio','GET',null,'?estado=eq.CERRADA&select=id_orden,numero_os,fecha_entrada,total_usd,total_ves,estado,id_vehiculo,id_propietario,vehiculos(placa,marca,modelo),propietarios(nombre_completo,tipo_doc,numero_doc,tipo_contribuyente,direccion)&order=fecha_entrada.desc'+emisorQ()),
       api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre_articulo.asc&select=*'),
-      api('tasas','GET',null,'?order=fecha_valor.desc&limit=1&select=tipo_cambio'),
+      api('tasas','GET',null,'?moneda_origen=eq.USD&?order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
     emisoresList = em;
     tasaActual = ta.length ? parseFloat(ta[0].tipo_cambio) : 1;

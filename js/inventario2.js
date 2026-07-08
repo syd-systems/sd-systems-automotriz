@@ -773,7 +773,7 @@ async function guardarEntradaStock() {
     if (!tasa_bcv_usada) {
       const fechaNeg = document.getElementById('es-fecha-negociacion')?.value || getHoyVzla();
       try {
-        const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaNeg+'&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+        const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaNeg+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
         if (tasaRows && tasaRows[0]) tasa_bcv_usada = parseFloat(tasaRows[0].tipo_cambio);
       } catch(e) {}
     }
