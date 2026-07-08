@@ -2689,9 +2689,9 @@ async function onCambioMonedaEjecucionPago() {
   if (cuentaDisplay) cuentaDisplay.textContent = '—';
   if (cuentaHidden) cuentaHidden.value = '';
 
-  // Resetear tributos y reverificar
-  document.getElementById('exec-pago-incluye-iva-si').checked  = true;
-  document.getElementById('exec-pago-incluye-igtf-si').checked = true;
+  // Resetear tributos — sin preselección
+  document.querySelectorAll('input[name="exec-pago-incluye-iva"]').forEach(function(r){ r.checked = false; });
+  document.querySelectorAll('input[name="exec-pago-incluye-igtf"]').forEach(function(r){ r.checked = false; });
   document.getElementById('exec-pago-incluye-igtf-cont').style.display = 'none';
   document.getElementById('exec-pago-tributos-preview').style.display  = 'none';
 
@@ -2721,9 +2721,9 @@ function onCambioMetodoEjecucionPago() {
     if (cuentaHidden) cuentaHidden.value = '';
   }
 
-  // Resetear y reverificar IVA/IGTF al cambiar método
-  document.getElementById('exec-pago-incluye-iva-si').checked  = true;
-  document.getElementById('exec-pago-incluye-igtf-si').checked = true;
+  // Resetear IVA/IGTF — sin preselección
+  document.querySelectorAll('input[name="exec-pago-incluye-iva"]').forEach(function(r){ r.checked = false; });
+  document.querySelectorAll('input[name="exec-pago-incluye-igtf"]').forEach(function(r){ r.checked = false; });
   document.getElementById('exec-pago-tributos-preview').style.display = 'none';
   onCambioIncluyeIvaPago();
 }
