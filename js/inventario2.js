@@ -569,6 +569,9 @@ async function abrirEntradaStock(id) {
   if (document.getElementById('es-moneda-compra'))  { var sm = document.getElementById('es-moneda-compra'); sm.selectedIndex = 0; }
   if (document.getElementById('es-tributos-cont'))  document.getElementById('es-tributos-cont').style.display = 'none';
   document.querySelectorAll('input[name="es-incluye-iva"]').forEach(function(r){ r.checked = false; });
+  document.querySelectorAll('input[name="es-exento-iva"]').forEach(function(r){ r.checked = false; });
+  const incluyeIVACont = document.getElementById('es-incluye-iva-cont');
+  if (incluyeIVACont) incluyeIVACont.style.display = 'none';
   if (document.getElementById('es-tributos-preview')) document.getElementById('es-tributos-preview').style.display = 'none';
   if (document.getElementById('es-precio-usd-cont'))document.getElementById('es-precio-usd-cont').style.display = 'none';
   if (document.getElementById('es-tasa-bcv'))       document.getElementById('es-tasa-bcv').value = '';
@@ -736,9 +739,14 @@ async function guardarEntradaStock() {
   if (motivoSel === 'compra') {
     const provSel = document.getElementById('es-proveedor')?.value;
     if (!provSel) return mostrarError('Seleccione el Proveedor.', 'es-proveedor');
-    // IVA obligatorio para compras
-    const ivaSeleccionado = document.querySelector('input[name="es-incluye-iva"]:checked');
-    if (!ivaSeleccionado) return mostrarError('Debe indicar si el monto facturado incluye IVA.', 'es-incluye-iva-si');
+    // Exento IVA obligatorio
+    const exentoSel = document.querySelector('input[name="es-exento-iva"]:checked');
+    if (!exentoSel) return mostrarError('Debe indicar si el Gasto está Exento de IVA.', 'es-exento-iva-si');
+    // Si NO exento, IVA obligatorio
+    if (exentoSel.value === 'NO') {
+      const ivaSeleccionado = document.querySelector('input[name="es-incluye-iva"]:checked');
+      if (!ivaSeleccionado) return mostrarError('Debe indicar si el monto facturado incluye IVA.', 'es-incluye-iva-si');
+    }
   } else if (motivoSel === 'transferencia') {
     const areaOrig = document.getElementById('es-area-origen')?.value;
     if (!areaOrig)                  return mostrarError('Seleccione el Área de Origen.', 'es-area-origen');
@@ -952,7 +960,8 @@ async function guardarEntradaStock() {
         id_cuentaInventario: r.id_cuenta_contable || null,
         fecha:      document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
         tasa:       tasa_bcv_usada || null,
-        incluyeIVA: document.getElementById('es-incluye-iva-si')?.checked || false
+        incluyeIVA: document.getElementById('es-exento-iva-si')?.checked ? false
+                  : (document.getElementById('es-incluye-iva-si')?.checked || false)
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
 

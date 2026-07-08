@@ -1087,6 +1087,17 @@ async function onCambiarMonedaEntrada() {
   onCambiarPrecioEntrada();
 }
 
+function onCambioExentoIVAEntrada() {
+  const exento = document.getElementById('es-exento-iva-si')?.checked;
+  const ivaContEl = document.getElementById('es-incluye-iva-cont');
+  if (ivaContEl) ivaContEl.style.display = exento ? 'none' : '';
+  // Limpiar selección de incluye IVA al cambiar
+  document.querySelectorAll('input[name="es-incluye-iva"]').forEach(function(r){ r.checked = false; });
+  const prev = document.getElementById('es-tributos-preview');
+  if (prev) prev.style.display = 'none';
+  calcularTributosEntrada();
+}
+
 function calcularTributosEntrada() {
   const incluyeIVA = document.getElementById('es-incluye-iva-si')?.checked;
   const montoTotal = parseFloat(document.getElementById('es-precio-costo')?.value || 0)
