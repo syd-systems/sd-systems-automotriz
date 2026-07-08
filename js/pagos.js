@@ -2590,6 +2590,23 @@ async function ejecutarPagoCxP(id_cxp) {
   document.getElementById('exec-pago-desc').textContent  = c.numero_doc + ' — ' + (c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim();
   document.getElementById('exec-pago-monto').textContent = simbolo + ' ' + montoCxP.toLocaleString('es-VE',{minimumFractionDigits:2});
 
+  // Mostrar equivalente en VES si la moneda no es VES
+  const elMontoVES = document.getElementById('exec-pago-monto-ves');
+  if (elMontoVES) {
+    if (monedaCxP !== 'VES') {
+      // Buscar tasa para calcular equivalente
+      try {
+        const tasaHoy = await api('tasas','GET',null,'?moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio,fecha_valor');
+        if (tasaHoy && tasaHoy[0]) {
+          const tasa = parseFloat(tasaHoy[0].tipo_cambio);
+          elMontoVES.textContent = '≈ Bs. ' + fmtBs(montoCxP * tasa);
+        }
+      } catch(e) { elMontoVES.textContent = ''; }
+    } else {
+      elMontoVES.textContent = '';
+    }
+  }
+
   // Si es CxP de inventario — ocultar IVA e IGTF (ya contabilizados en la entrada)
   const esInventarioCxP = /^ENT-/.test(c.numero_doc || '');
   const exentoIVA = c.exento_iva === true || esInventarioCxP;
