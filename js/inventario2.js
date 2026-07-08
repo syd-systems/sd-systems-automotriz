@@ -586,6 +586,12 @@ async function abrirEntradaStock(id) {
   if (creditoCont) creditoCont.style.display = 'none';
   const prevEl = document.getElementById('es-cuotas-preview');
   if (prevEl) { prevEl.innerHTML = ''; delete prevEl.dataset.cuotas; }
+  const montoCuotaEl = document.getElementById('es-cuotas-monto');
+  if (montoCuotaEl) montoCuotaEl.value = '';
+  const numCuotasEl = document.getElementById('es-cuotas-num');
+  if (numCuotasEl) numCuotasEl.value = '';
+  const fechaCuotaEl = document.getElementById('es-cuotas-fecha-inicio');
+  if (fechaCuotaEl) fechaCuotaEl.value = '';
   // Setear área y empleado desde el usuario logueado (hidden fields)
   await cargarUsuarioReceptorEntrada();
   document.getElementById('es-proveedor').innerHTML = '<option value="">— Seleccionar proveedor (opcional) —</option>';
