@@ -1087,17 +1087,17 @@ async function onCambiarMonedaEntrada() {
 }
 
 function onCambiarPrecioEntrada() {
-  const moneda = document.getElementById('es-moneda-compra')?.value || 'USD';
-  const precio = parseFloat(document.getElementById('es-precio-costo')?.value) || 0;
-  const tasa   = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
-  const elCalc = document.getElementById('es-precio-usd-calc');
+  const moneda    = document.getElementById('es-moneda-compra')?.value || 'USD';
+  const precioRaw = (document.getElementById('es-precio-costo')?.value || '').replace(/\./g,'').replace(',','.');
+  const tasaRaw   = (document.getElementById('es-tasa-bcv')?.value || '').replace(/\./g,'').replace(',','.');
+  const precio    = parseFloat(precioRaw) || 0;
+  const tasa      = parseFloat(tasaRaw)   || 0;
+  const elCalc    = document.getElementById('es-precio-usd-calc');
   if (!elCalc || !tasa) return;
   if (moneda === 'VES') {
-    // Precio VES → calcular USD
     elCalc.value = tasa > 0 ? (precio / tasa).toFixed(2) : '';
   } else {
-    // Precio USD → calcular VES
-    elCalc.value = (precio * tasa).toFixed(2);
+    elCalc.value = fmtBs(precio * tasa);
   }
 }
 
