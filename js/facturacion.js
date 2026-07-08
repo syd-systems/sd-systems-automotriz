@@ -1092,7 +1092,7 @@ function onCambioExentoIVAEntrada() {
   const ivaContEl = document.getElementById('es-incluye-iva-cont');
   if (ivaContEl) ivaContEl.style.display = exento ? 'none' : '';
   // Limpiar selección de incluye IVA al cambiar
-  document.querySelectorAll('input[name="es-incluye-iva"]').forEach(function(r){ r.checked = false; });
+  document.querySelectorAll('input[name="es-entrada-incluye-iva"]').forEach(function(r){ r.checked = false; });
   const prev = document.getElementById('es-tributos-preview');
   if (prev) prev.style.display = 'none';
   calcularTributosEntrada();
@@ -1168,7 +1168,7 @@ function onCambiarMotivoEntrada() {
   const tribuCont = document.getElementById('es-tributos-cont');
   if (tribuCont) tribuCont.style.display = esCompra ? '' : 'none';
   // Resetear IVA — sin preselección
-  document.querySelectorAll('input[name="es-incluye-iva"]').forEach(function(r){ r.checked = false; });
+  document.querySelectorAll('input[name="es-entrada-incluye-iva"]').forEach(function(r){ r.checked = false; });
   const prev = document.getElementById('es-tributos-preview');
   if (prev) prev.style.display = 'none';
   const contProv    = document.getElementById('es-campo-proveedor-cont');

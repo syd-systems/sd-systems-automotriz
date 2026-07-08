@@ -568,7 +568,7 @@ async function abrirEntradaStock(id) {
   if (document.getElementById('es-area-origen'))    document.getElementById('es-area-origen').value = '';
   if (document.getElementById('es-moneda-compra'))  { var sm = document.getElementById('es-moneda-compra'); sm.selectedIndex = 0; }
   if (document.getElementById('es-tributos-cont'))  document.getElementById('es-tributos-cont').style.display = 'none';
-  document.querySelectorAll('input[name="es-incluye-iva"]').forEach(function(r){ r.checked = false; });
+  document.querySelectorAll('input[name="es-entrada-incluye-iva"]').forEach(function(r){ r.checked = false; });
   document.querySelectorAll('input[name="es-exento-iva"]').forEach(function(r){ r.checked = false; });
   const incluyeIVACont = document.getElementById('es-incluye-iva-cont');
   if (incluyeIVACont) incluyeIVACont.style.display = 'none';
@@ -744,7 +744,7 @@ async function guardarEntradaStock() {
     if (!exentoSel) return mostrarError('Debe indicar si el Gasto está Exento de IVA.', 'es-exento-iva-si');
     // Si NO exento, IVA obligatorio
     if (exentoSel.value === 'NO') {
-      const ivaSeleccionado = document.querySelector('input[name="es-incluye-iva"]:checked');
+      const ivaSeleccionado = document.querySelector('input[name="es-entrada-incluye-iva"]:checked');
       if (!ivaSeleccionado) return mostrarError('Debe indicar si el monto facturado incluye IVA.', 'es-incluye-iva-si');
     }
   } else if (motivoSel === 'transferencia') {
