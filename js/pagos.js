@@ -2587,25 +2587,21 @@ async function ejecutarPagoCxP(id_cxp) {
     ? parseFloat(c.monto_ves || c.saldo_ves || 0)
     : parseFloat(c.monto_usd || c.saldo_usd || 0);
   const simbolo   = monedaCxP === 'VES' ? 'Bs.' : (monedaCxP === 'EUR' ? '€' : '$');
-  document.getElementById('exec-pago-desc').textContent  = c.numero_doc + ' — ' + (c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim();
-  document.getElementById('exec-pago-monto').textContent = simbolo + ' ' + montoCxP.toLocaleString('es-VE',{minimumFractionDigits:2});
+  // Buscar tasa vigente para mostrar equivalente
+  let tasaVigente = _tasaVigente || 1;
+  try {
+    const tasaHoy = await api('tasas','GET',null,'?moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    if (tasaHoy && tasaHoy[0]) tasaVigente = parseFloat(tasaHoy[0].tipo_cambio);
+  } catch(e) {}
 
-  // Mostrar equivalente en VES si la moneda no es VES
+  const montoUSDShow = monedaCxP === 'VES' ? montoCxP / tasaVigente : montoCxP;
+  const montoVESShow = monedaCxP === 'VES' ? montoCxP : montoCxP * tasaVigente;
+
+  document.getElementById('exec-pago-desc').textContent  = c.numero_doc + ' — ' + (c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim();
+  document.getElementById('exec-pago-monto').textContent = '$ ' + fmtBs(montoUSDShow);
+
   const elMontoVES = document.getElementById('exec-pago-monto-ves');
-  if (elMontoVES) {
-    if (monedaCxP !== 'VES') {
-      // Buscar tasa para calcular equivalente
-      try {
-        const tasaHoy = await api('tasas','GET',null,'?moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio,fecha_valor');
-        if (tasaHoy && tasaHoy[0]) {
-          const tasa = parseFloat(tasaHoy[0].tipo_cambio);
-          elMontoVES.textContent = '≈ Bs. ' + fmtBs(montoCxP * tasa);
-        }
-      } catch(e) { elMontoVES.textContent = ''; }
-    } else {
-      elMontoVES.textContent = '';
-    }
-  }
+  if (elMontoVES) elMontoVES.textContent = 'Bs. ' + fmtBs(montoVESShow);
 
   // Si es CxP de inventario — ocultar IVA e IGTF (ya contabilizados en la entrada)
   const esInventarioCxP = /^ENT-/.test(c.numero_doc || '');
