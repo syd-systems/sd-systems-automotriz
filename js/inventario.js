@@ -178,7 +178,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
 
   // Mostrar/ocultar secciones ANTES de cargar datos
   const salidaCont   = document.getElementById('edit-sal-cont');
-  const entradaCont2 = document.getElementById('edit-ent-cont');
+  const entradaCont2 = document.getElementById('edit-mov-ent-cont');
   if (salidaCont)   salidaCont.style.display   = esEntrada ? 'none' : '';
   if (entradaCont2) entradaCont2.style.display  = esEntrada ? '' : 'none';
 
