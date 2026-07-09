@@ -177,13 +177,10 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   const esEntrada = tipo === 'ENTRADA';
 
   // Mostrar/ocultar secciones ANTES de cargar datos
-  const salidaCont  = document.getElementById('edit-sal-cont');
+  const salidaCont   = document.getElementById('edit-sal-cont');
   const entradaCont2 = document.getElementById('edit-ent-cont');
-  // Info artículo de ENTRADA (el div de arriba del form-grid)
-  const entInfoArt  = document.querySelector('#modal-edit-movimiento .modal-body > div:not(#edit-sal-cont):not(#edit-ent-cont)');
   if (salidaCont)   salidaCont.style.display   = esEntrada ? 'none' : '';
   if (entradaCont2) entradaCont2.style.display  = esEntrada ? '' : 'none';
-  if (entInfoArt)   entInfoArt.style.display    = esEntrada ? '' : 'none';
 
   if (!esEntrada) {
     // SALIDA
