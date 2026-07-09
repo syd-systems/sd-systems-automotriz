@@ -168,14 +168,10 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   } catch(err) { alert('Error cargando movimiento: ' + err.message); return; }
   if (!m) return;
 
-  // Cargar áreas y proveedores en paralelo
+  // Cargar áreas y proveedores
   let areas = [], proveedores = [];
-  try {
-    [areas, proveedores] = await Promise.all([
-      api('param_areas',    'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
-      api('proveedores',    'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif')
-    ]);
-  } catch(e) {}
+  try { areas      = await api('param_areas', 'GET', null, '?order=codigo.asc,nombre.asc'); } catch(e) {}
+  try { proveedores = await api('proveedores', 'GET', null, '?order=nombre.asc&select=id_proveedor,nombre,rif'); } catch(e) {}
 
   // Cargar datos según tipo
   const esEntrada = tipo === 'ENTRADA';
