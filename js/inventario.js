@@ -182,9 +182,12 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   document.getElementById('edit-mov-id').value          = idMovimiento;
   document.getElementById('edit-mov-id-articulo').value = id_articulo;
   document.getElementById('edit-mov-cantidad').value    = parseFloat(m.cantidad || 0).toFixed(2);
-  document.getElementById('edit-mov-obs').value         = m.observaciones || '';
-  document.getElementById('alerta-edit-mov-ok').style.display  = 'none';
-  document.getElementById('alerta-edit-mov-err').style.display = 'none';
+  const obsEl = document.getElementById('edit-mov-observaciones') || document.getElementById('edit-mov-obs');
+  if (obsEl) obsEl.value = m.observaciones || '';
+  const okEl  = document.getElementById('alerta-edit-mov-ok')  || document.getElementById('alerta-es-ok');
+  const errEl = document.getElementById('alerta-edit-mov-err') || document.getElementById('alerta-es-err');
+  if (okEl)  okEl.style.display  = 'none';
+  if (errEl) errEl.style.display = 'none';
 
   // Reset completo de campos dinámicos antes de cargar
   ['edit-mov-proveedor-cont','edit-mov-cliente-cont','edit-mov-area-origen-cont',
