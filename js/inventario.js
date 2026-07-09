@@ -178,6 +178,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   } catch(e) {}
 
   // Cargar datos según tipo
+  const esEntrada = tipo === 'ENTRADA';
   if (!esEntrada) {
     // SALIDA
     const artNomEl2 = document.getElementById('edit-sal-art-nombre');
@@ -280,7 +281,6 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   // Mostrar sección correcta según tipo
   const entradaCont = document.querySelector('#modal-edit-movimiento .form-grid');
   const salidaCont  = document.getElementById('edit-sal-cont');
-  const esEntrada   = tipo === 'ENTRADA';
 
   // Ocultar/mostrar secciones
   if (salidaCont) salidaCont.style.display = esEntrada ? 'none' : '';
