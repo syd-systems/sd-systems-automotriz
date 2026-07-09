@@ -229,6 +229,11 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     // Limpiar clave
     const salClaveEl = document.getElementById('edit-sal-clave');
     if (salClaveEl) salClaveEl.value = '';
+
+    // Abrir modal
+    const modalHist2 = document.getElementById('modal-historial-stock');
+    if (modalHist2) { modalHist2.classList.remove('abierto'); modalHist2.style.display = 'none'; }
+    abrirModal('modal-edit-movimiento');
     return; // No continuar con la lógica de ENTRADA
   }
   document.getElementById('edit-mov-id').value          = idMovimiento;
