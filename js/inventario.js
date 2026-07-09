@@ -236,11 +236,12 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     const salClaveEl = document.getElementById('edit-sal-clave');
     if (salClaveEl) salClaveEl.value = '';
 
-    // Abrir modal
+    // Abrir modal — al final después de cargar todos los datos
     const modalHist2 = document.getElementById('modal-historial-stock');
     if (modalHist2) { modalHist2.classList.remove('abierto'); modalHist2.style.display = 'none'; }
+    console.log('[SYD] abriendo modal SALIDA');
     abrirModal('modal-edit-movimiento');
-    return; // No continuar con la lógica de ENTRADA
+    return;
   }
   document.getElementById('edit-mov-id').value          = idMovimiento;
   document.getElementById('edit-mov-id-articulo').value = id_articulo;
@@ -515,9 +516,8 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
 
   const modalHist = document.getElementById('modal-historial-stock');
   if (modalHist) { modalHist.classList.remove('abierto'); modalHist.style.display = 'none'; }
-  console.log('[SYD] abriendo modal-edit-movimiento tipo='+tipo);
+  console.log('[SYD] abriendo modal ENTRADA');
   abrirModal('modal-edit-movimiento');
-  focusFirstField('modal-edit-movimiento');
 }
 
 async function anularDesdeEdicion() {
