@@ -177,8 +177,59 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     ]);
   } catch(e) {}
 
-  // Campos básicos
-  document.getElementById('edit-mov-tipo').value        = tipo;
+  // Cargar datos según tipo
+  if (!esEntrada) {
+    // SALIDA
+    const artNomEl2 = document.getElementById('edit-sal-art-nombre');
+    const artStEl2  = document.getElementById('edit-sal-stock');
+    try {
+      const artData2 = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id_articulo+'&select=nombre_articulo,stock_actual_articulo&limit=1');
+      if (artData2 && artData2[0]) {
+        if (artNomEl2) artNomEl2.textContent = artData2[0].nombre_articulo || '—';
+        if (artStEl2)  artStEl2.textContent  = parseFloat(artData2[0].stock_actual_articulo||0).toFixed(2) + ' UND';
+      }
+    } catch(e) {}
+
+    // Fecha y cantidad
+    const salFechaEl = document.getElementById('edit-sal-fecha');
+    const salCantEl  = document.getElementById('edit-sal-cantidad');
+    const salObsEl   = document.getElementById('edit-sal-observaciones');
+    if (salFechaEl) salFechaEl.value = m.fecha_salida?.slice(0,10) || getHoyVzla();
+    if (salCantEl)  salCantEl.value  = parseFloat(m.cantidad || 0).toFixed(2);
+    if (salObsEl)   salObsEl.value   = m.observaciones || '';
+
+    // Área receptora
+    const areas2 = await api('param_areas','GET',null,'?estado=eq.ACTIVO&order=nombre.asc');
+    const selArea2 = document.getElementById('edit-sal-area');
+    if (selArea2) {
+      selArea2.innerHTML = '<option value="">— Seleccionar área —</option>'
+        + (areas2||[]).map(function(a) {
+          return '<option value="'+a.id+'"'+(m.id_area==a.id?' selected':'')+'>'+a.nombre+' ('+(a.codigo||'')+')</option>';
+        }).join('');
+      if (m.id_area) {
+        // Cargar empleados
+        const emps2 = await api('empleados','GET',null,'?id_area=eq.'+m.id_area+'&estado=eq.ACTIVO&select=id_empleado,nombre_completo&order=nombre_completo.asc');
+        const selEmp2 = document.getElementById('edit-sal-empleado');
+        if (selEmp2) {
+          selEmp2.innerHTML = '<option value="">— Seleccionar empleado —</option>'
+            + (emps2||[]).map(function(e) {
+              return '<option value="'+e.id_empleado+'"'+(m.id_empleado==e.id_empleado?' selected':'')+'>'+e.nombre_completo+'</option>';
+            }).join('');
+        }
+      }
+    }
+
+    // Usuario entrega
+    const entNomEl = document.getElementById('edit-sal-entrega-nombre');
+    const entAreaEl = document.getElementById('edit-sal-entrega-area');
+    if (entNomEl)  entNomEl.textContent  = sesionActual?.nombre || '—';
+    if (entAreaEl) entAreaEl.textContent = sesionActual?.nombre_area || '';
+
+    // Limpiar clave
+    const salClaveEl = document.getElementById('edit-sal-clave');
+    if (salClaveEl) salClaveEl.value = '';
+    return; // No continuar con la lógica de ENTRADA
+  }
   document.getElementById('edit-mov-id').value          = idMovimiento;
   document.getElementById('edit-mov-id-articulo').value = id_articulo;
   document.getElementById('edit-mov-cantidad').value    = parseFloat(m.cantidad || 0).toFixed(2);
@@ -226,13 +277,25 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   if (recNombreEl) recNombreEl.textContent = sesionActual?.nombre || sesionActual?.correo_usuario || '—';
   if (recAreaEl)   recAreaEl.textContent   = sesionActual?.nombre_area || '';
 
-  // Reset completo de campos dinámicos antes de cargar
-  ['edit-mov-proveedor-cont','edit-mov-cliente-cont','edit-mov-area-origen-cont',
-   'edit-mov-pago-cont','edit-mov-precios-cont','edit-mov-moneda-cont',
-   'edit-mov-motivo-cont','edit-mov-precio-cont'].forEach(function(id) {
+  // Mostrar sección correcta según tipo
+  const entradaCont = document.querySelector('#modal-edit-movimiento .form-grid');
+  const salidaCont  = document.getElementById('edit-sal-cont');
+  const esEntrada   = tipo === 'ENTRADA';
+
+  // Ocultar/mostrar secciones
+  if (salidaCont) salidaCont.style.display = esEntrada ? 'none' : '';
+
+  // Ocultar campos de entrada si es SALIDA
+  ['edit-mov-moneda-cont','edit-mov-motivo-cont','edit-mov-precios-cont',
+   'edit-mov-precio-cont','edit-mov-tasa-cont','edit-mov-pago-cont',
+   'edit-mov-tributos-cont','edit-mov-credito-cont','edit-mov-clave-cont'].forEach(function(id) {
     const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
+    if (el) el.style.display = esEntrada ? '' : 'none';
   });
+
+  // Ocultar campo cantidad/fecha/observaciones de ENTRADA si es SALIDA
+  const entradaGrid = document.querySelector('#modal-edit-movimiento > div.modal > div.modal-body > div.form-grid');
+  if (entradaGrid) entradaGrid.style.display = esEntrada ? '' : 'none';
 
   // Título
   const modoLabel = soloLectura ? '👁 FICHA ENTRADA' : (tipo === 'ENTRADA' ? '✏ EDITAR ENTRADA' : '✏ EDITAR SALIDA');
@@ -267,7 +330,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   }
 
   // Campos solo para ENTRADA
-  const esEntrada = tipo === 'ENTRADA';
+  // esEntrada ya declarado arriba === 'ENTRADA';
   document.getElementById('edit-mov-precios-cont').style.display   = esEntrada ? '' : 'none';
   document.getElementById('edit-mov-pago-cont').style.display      = esEntrada ? '' : 'none';
 
@@ -1552,4 +1615,19 @@ function calcularTributosEdit() {
     document.getElementById('edit-trib-total-ves').textContent = 'Bs. ' + fmtBs(total * tasa);
   }
   if (prev) prev.style.display = '';
+}
+
+// ── Área en modal EDITAR SALIDA ──
+async function onSelAreaEditSalida() {
+  const idArea = document.getElementById('edit-sal-area')?.value;
+  const selEmp = document.getElementById('edit-sal-empleado');
+  if (!selEmp) return;
+  if (!idArea) { selEmp.innerHTML = '<option value="">— Seleccionar área primero —</option>'; return; }
+  try {
+    const emps = await api('empleados','GET',null,'?id_area=eq.'+idArea+'&estado=eq.ACTIVO&select=id_empleado,nombre_completo&order=nombre_completo.asc');
+    selEmp.innerHTML = '<option value="">— Seleccionar empleado —</option>'
+      + (emps||[]).map(function(e){
+        return '<option value="'+e.id_empleado+'">'+e.nombre_completo+'</option>';
+      }).join('');
+  } catch(e) {}
 }

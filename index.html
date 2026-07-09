@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707128"></script>
-<script src="js/parametros.js?v=20260707128"></script>
-<script src="js/empresas.js?v=20260707128"></script>
-<script src="js/facturacion.js?v=20260707128"></script>
-<script src="js/inventario.js?v=20260707128"></script>
-<script src="js/contabilidad.js?v=20260707128"></script>
-<script src="js/pagos.js?v=20260707128"></script>
-<script src="js/vehiculos.js?v=20260707128"></script>
-<script src="js/catalogo.js?v=20260707128"></script>
-<script src="js/inventario2.js?v=20260707128"></script>
-<script src="js/ordenes.js?v=20260707128"></script>
+<script src="js/core.js?v=20260707129"></script>
+<script src="js/parametros.js?v=20260707129"></script>
+<script src="js/empresas.js?v=20260707129"></script>
+<script src="js/facturacion.js?v=20260707129"></script>
+<script src="js/inventario.js?v=20260707129"></script>
+<script src="js/contabilidad.js?v=20260707129"></script>
+<script src="js/pagos.js?v=20260707129"></script>
+<script src="js/vehiculos.js?v=20260707129"></script>
+<script src="js/catalogo.js?v=20260707129"></script>
+<script src="js/inventario2.js?v=20260707129"></script>
+<script src="js/ordenes.js?v=20260707129"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3795,6 +3795,71 @@
 
         <div class="alerta alerta-exito" id="alerta-edit-mov-ok" style="display:none;grid-column:1/-1;margin:0"></div>
         <div class="alerta alerta-error"  id="alerta-edit-mov-err" style="display:none;grid-column:1/-1;margin:0"></div>
+      </div>
+
+      <!-- ══ SECCIÓN SALIDA — visible solo cuando tipo=SALIDA ══ -->
+      <div id="edit-sal-cont" style="display:none">
+        <!-- Info artículo -->
+        <div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:12px 16px;margin-bottom:16px">
+          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Artículo</div>
+          <div style="font-weight:600;font-size:15px" id="edit-sal-art-nombre">—</div>
+          <div style="font-size:12px;color:var(--suave);margin-top:4px">Stock disponible: <span id="edit-sal-stock" style="color:var(--naranja);font-family:var(--font-mono)">—</span></div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-campo">
+            <label>Cantidad *</label>
+            <input type="number" id="edit-sal-cantidad" min="0.01" step="0.01" placeholder="0"
+              style="font-size:15px;font-family:var(--font-mono);text-align:center;color:var(--naranja)">
+          </div>
+          <div class="form-campo">
+            <label>Fecha de Salida *</label>
+            <input type="date" id="edit-sal-fecha" style="color-scheme:dark">
+          </div>
+
+          <!-- Quien Recibe -->
+          <div class="form-campo form-full" style="margin-top:4px">
+            <div style="font-size:10px;color:#60a5fa;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;border-bottom:1px solid rgba(96,165,250,0.2);padding-bottom:4px">📥 Quien Recibe</div>
+          </div>
+          <div class="form-campo form-full">
+            <label>Área Receptora *</label>
+            <select id="edit-sal-area" onchange="onSelAreaEditSalida()"
+              style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+              <option value="">— Seleccionar área —</option>
+            </select>
+          </div>
+          <div class="form-campo form-full">
+            <label>Empleado que Recibe</label>
+            <select id="edit-sal-empleado"
+              style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+              <option value="">— Seleccionar área primero —</option>
+            </select>
+          </div>
+
+          <!-- Quien Entrega -->
+          <div class="form-campo form-full" style="margin-top:4px">
+            <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;border-bottom:1px solid rgba(255,107,0,0.2);padding-bottom:4px">📤 Quien Entrega</div>
+          </div>
+          <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
+            <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+              <div style="font-size:13px;color:var(--texto)">Usuario: <span id="edit-sal-entrega-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
+              <div style="font-size:11px;color:var(--suave)" id="edit-sal-entrega-area">—</div>
+            </div>
+            <label style="font-size:12px">Contraseña *</label>
+            <input type="password" id="edit-sal-clave" placeholder="Ingrese su contraseña para autorizar"
+              style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px"
+              onkeydown="if(event.key==='Enter'){guardarEdicionMovimiento()}">
+            <div style="font-size:11px;color:var(--suave);margin-top:4px">Confirme con su contraseña para guardar los cambios.</div>
+          </div>
+
+          <!-- Observaciones -->
+          <div class="form-campo form-full">
+            <label>Observaciones</label>
+            <textarea id="edit-sal-observaciones" placeholder="Motivo de la salida..."
+              style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%"></textarea>
+          </div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
