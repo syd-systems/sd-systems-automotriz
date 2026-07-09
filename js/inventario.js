@@ -205,6 +205,8 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     if (salFechaEl) salFechaEl.value = m.fecha_salida?.slice(0,10) || getHoyVzla();
     if (salCantEl)  salCantEl.value  = parseFloat(m.cantidad || 0) % 1 === 0 ? parseInt(m.cantidad || 0) : parseFloat(m.cantidad || 0).toFixed(2);
     if (salObsEl)   salObsEl.value   = m.observaciones || '';
+    const salPvEl = document.getElementById('edit-sal-precio-venta');
+    if (salPvEl) salPvEl.value = m.precio_venta_moneda ? parseFloat(m.precio_venta_moneda).toFixed(2) : '';
 
     // Área receptora
     const areas2 = await api('param_areas','GET',null,'?estado=eq.ACTIVO&order=nombre.asc');
@@ -543,10 +545,12 @@ async function anularDesdeEdicion() {
 
 async function guardarEdicionMovimiento() {
   const tipo        = document.getElementById('edit-mov-tipo').value;
-  const id_area     = parseInt(document.getElementById('edit-mov-area').value) || null;
-  const idEmp       = parseInt(document.getElementById('edit-mov-empleado').value) || null;
-  const obs         = document.getElementById('edit-mov-obs').value.trim();
-  const clave       = document.getElementById('edit-mov-clave')?.value || '';
+  const esSalida    = tipo === 'SALIDA';
+  const id_area     = parseInt((esSalida ? document.getElementById('edit-sal-area') : document.getElementById('edit-mov-area'))?.value) || null;
+  const idEmp       = parseInt((esSalida ? document.getElementById('edit-sal-empleado') : document.getElementById('edit-mov-empleado'))?.value) || null;
+  const obs         = (esSalida ? document.getElementById('edit-sal-observaciones') : (document.getElementById('edit-mov-observaciones') || document.getElementById('edit-mov-obs')))?.value?.trim() || '';
+  const clave       = (esSalida ? document.getElementById('edit-sal-clave') : document.getElementById('edit-mov-clave'))?.value || '';
+  const cantidad    = parseFloat((esSalida ? document.getElementById('edit-sal-cantidad') : document.getElementById('edit-mov-cantidad'))?.value) || 0;
   const okEl        = document.getElementById('alerta-edit-mov-ok');
   const errEl       = document.getElementById('alerta-edit-mov-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
@@ -557,6 +561,11 @@ async function guardarEdicionMovimiento() {
   };
 
   // ── Validaciones en orden de pantalla ──
+  if (tipo === 'SALIDA') {
+    const salFecha = document.getElementById('edit-sal-fecha')?.value;
+    if (!salFecha) return mostrarError('Seleccione la Fecha de Salida.', 'edit-sal-fecha');
+    if (!id_area)  return mostrarError('Seleccione el Área Receptora.', 'edit-sal-area');
+  }
   if (tipo === 'ENTRADA') {
     const fechaNeg = document.getElementById('edit-mov-fecha-negociacion')?.value;
     const hoy      = getHoyVzla();
@@ -565,7 +574,7 @@ async function guardarEdicionMovimiento() {
     const monedaSel = document.getElementById('edit-mov-moneda')?.value;
     if (!monedaSel)        return mostrarError('Seleccione la Moneda Negociación.', 'edit-mov-moneda');
   }
-  if (!cantidad || cantidad <= 0) return mostrarError('La cantidad debe ser mayor a cero.', 'edit-mov-cantidad');
+  if (!cantidad || cantidad <= 0) return mostrarError('La cantidad debe ser mayor a cero.', esSalida ? 'edit-sal-cantidad' : 'edit-mov-cantidad');
   if (tipo === 'ENTRADA') {
     const precioVal = parseFloat(document.getElementById('edit-mov-precio')?.value) || 0;
     if (precioVal <= 0)    return mostrarError('Ingrese el Precio Negociación.', 'edit-mov-precio');
@@ -599,11 +608,23 @@ async function guardarEdicionMovimiento() {
     const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
 
     const datos = {
-      cantidad:      cantidad,
-      id_area:       id_area,
-      id_empleado:   idEmp,
-      observaciones: obs || null,
+      cantidad:             cantidad,
+      id_area:              id_area,
+      id_empleado:          idEmp,
+      observaciones:        obs || null,
     };
+
+    // Campos específicos de SALIDA
+    if (tipo === 'SALIDA') {
+      const salFechaVal = document.getElementById('edit-sal-fecha')?.value;
+      if (salFechaVal) datos.fecha_salida = salFechaVal;
+      const pvSalEl = document.getElementById('edit-sal-precio-venta');
+      const pvSal   = pvSalEl?.value ? parseFloat(pvSalEl.value) : null;
+      if (pvSal) {
+        datos.precio_venta_moneda = pvSal;
+        try { await api('inventario_almacen','PATCH',{ precio_venta_moneda: pvSal },'?id_articulo=eq.'+id_articulo); } catch(e) {}
+      }
+    }
 
     if (tipo === 'ENTRADA') {
       const precioRaw  = document.getElementById('edit-mov-precio').value;
