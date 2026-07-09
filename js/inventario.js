@@ -221,9 +221,14 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
 
   if (esEntrada) {
     const fechaNeg = document.getElementById('edit-mov-fecha-negociacion');
-    if (fechaNeg) fechaNeg.value = tipo === 'ENTRADA'
-      ? (m.fecha_negociacion || m.fecha_entrada?.slice(0,10) || getHoyVzla())
-      : (m.fecha_salida?.slice(0,10) || getHoyVzla());
+    const fechaLbl = document.getElementById('edit-mov-fecha-label');
+    if (tipo === 'ENTRADA') {
+      if (fechaLbl) fechaLbl.textContent = 'Fecha Negociación *';
+      if (fechaNeg) fechaNeg.value = m.fecha_negociacion || m.fecha_entrada?.slice(0,10) || getHoyVzla();
+    } else {
+      if (fechaLbl) fechaLbl.textContent = 'Fecha de Salida *';
+      if (fechaNeg) fechaNeg.value = m.fecha_salida?.slice(0,10) || getHoyVzla();
+    }
 
     // Moneda
     const selMoneda = document.getElementById('edit-mov-moneda');
