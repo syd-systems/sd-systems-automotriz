@@ -515,6 +515,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
 
   const modalHist = document.getElementById('modal-historial-stock');
   if (modalHist) { modalHist.classList.remove('abierto'); modalHist.style.display = 'none'; }
+  console.log('[SYD] abriendo modal-edit-movimiento tipo='+tipo);
   abrirModal('modal-edit-movimiento');
   focusFirstField('modal-edit-movimiento');
 }
