@@ -203,7 +203,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     const salCantEl  = document.getElementById('edit-sal-cantidad');
     const salObsEl   = document.getElementById('edit-sal-observaciones');
     if (salFechaEl) salFechaEl.value = m.fecha_salida?.slice(0,10) || getHoyVzla();
-    if (salCantEl)  salCantEl.value  = parseFloat(m.cantidad || 0).toFixed(2);
+    if (salCantEl)  salCantEl.value  = parseFloat(m.cantidad || 0) % 1 === 0 ? parseInt(m.cantidad || 0) : parseFloat(m.cantidad || 0).toFixed(2);
     if (salObsEl)   salObsEl.value   = m.observaciones || '';
 
     // Área receptora
@@ -246,7 +246,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   }
   document.getElementById('edit-mov-id').value          = idMovimiento;
   document.getElementById('edit-mov-id-articulo').value = id_articulo;
-  document.getElementById('edit-mov-cantidad').value    = parseFloat(m.cantidad || 0).toFixed(2);
+  document.getElementById('edit-mov-cantidad').value    = parseFloat(m.cantidad || 0) % 1 === 0 ? parseInt(m.cantidad || 0) : parseFloat(m.cantidad || 0).toFixed(2);
   const obsEl = document.getElementById('edit-mov-observaciones') || document.getElementById('edit-mov-obs');
   if (obsEl) obsEl.value = m.observaciones || '';
   const okEl  = document.getElementById('alerta-edit-mov-ok')  || document.getElementById('alerta-es-ok');
