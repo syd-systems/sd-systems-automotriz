@@ -1369,3 +1369,113 @@ async function eliminarProveedor(id, nombre) {
 
 
 
+
+// ── Funciones para EDITAR ENTRADA DE STOCK ──
+async function onCambiarFechaNegEdit() {
+  const fecha  = document.getElementById('edit-mov-fecha-negociacion')?.value;
+  const moneda = document.getElementById('edit-mov-moneda')?.value || 'USD';
+  if (!fecha || moneda === 'VES') return;
+  try {
+    const tasas = await api('tasas','GET',null,'?fecha_valor=lte.'+fecha+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio,fecha_valor');
+    if (tasas && tasas[0]) {
+      document.getElementById('edit-mov-tasa-bcv').value = parseFloat(tasas[0].tipo_cambio).toFixed(4);
+      onCambiarPrecioEdit();
+    }
+  } catch(e) {}
+}
+
+async function onCambiarMonedaEdit() {
+  const moneda = document.getElementById('edit-mov-moneda')?.value || 'USD';
+  const lblMoneda = document.getElementById('edit-mov-label-moneda');
+  if (lblMoneda) lblMoneda.textContent = '(' + moneda + ')';
+  const lblMonto = document.getElementById('edit-mov-label-monto-total');
+  if (lblMonto) lblMonto.textContent = 'Monto en ' + moneda;
+  const lblUSD = document.getElementById('edit-mov-label-precio-usd');
+  if (lblUSD) lblUSD.textContent = moneda === 'VES' ? 'Monto en USD' : 'Monto en VES';
+  await onCambiarFechaNegEdit();
+  onCambiarPrecioEdit();
+}
+
+function onCambiarPrecioEdit() {
+  const moneda   = document.getElementById('edit-mov-moneda')?.value || 'USD';
+  const precio   = parseFloat(document.getElementById('edit-mov-precio')?.value) || 0;
+  const cantidad = parseFloat(document.getElementById('edit-mov-cantidad')?.value) || 0;
+  const tasa     = parseFloat(document.getElementById('edit-mov-tasa-bcv')?.value) || 0;
+  const elMonto  = document.getElementById('edit-mov-monto-total');
+  const elCalc   = document.getElementById('edit-mov-precio-usd-calc');
+  const montoTotal = precio * cantidad;
+  if (elMonto) elMonto.value = fmtBs(montoTotal);
+  if (elCalc && tasa > 0) {
+    elCalc.value = moneda === 'VES' ? fmtBs(montoTotal / tasa) : fmtBs(montoTotal * tasa);
+  }
+  calcularTributosEdit();
+}
+
+function onCambiarMotivoEdit() {
+  const motivo = document.getElementById('edit-mov-motivo')?.value;
+  const esCompra = motivo === 'compra';
+  const tribuCont = document.getElementById('edit-mov-tributos-cont');
+  if (tribuCont) tribuCont.style.display = esCompra ? '' : 'none';
+  document.querySelectorAll('input[name="edit-exento-iva"]').forEach(function(r){ r.checked = false; });
+  document.querySelectorAll('input[name="edit-incluye-iva"]').forEach(function(r){ r.checked = false; });
+  document.getElementById('edit-mov-exento-iva-val').value = '';
+  document.getElementById('edit-mov-incluye-iva-val').value = '';
+  const ivaContEl = document.getElementById('edit-mov-incluye-iva-cont');
+  if (ivaContEl) ivaContEl.style.display = 'none';
+  const prev = document.getElementById('edit-mov-tributos-preview');
+  if (prev) prev.style.display = 'none';
+  // Mostrar/ocultar proveedor
+  const provCont = document.getElementById('edit-mov-proveedor-cont');
+  if (provCont) provCont.style.display = esCompra ? '' : 'none';
+}
+
+function onCambioExentoIVAEdit() {
+  const exento = document.getElementById('edit-mov-exento-iva-val')?.value === 'SI';
+  const ivaContEl = document.getElementById('edit-mov-incluye-iva-cont');
+  if (ivaContEl) ivaContEl.style.display = exento ? 'none' : '';
+  document.getElementById('edit-mov-incluye-iva-val').value = '';
+  document.querySelectorAll('input[name="edit-incluye-iva"]').forEach(function(r){ r.checked = false; });
+  const prev = document.getElementById('edit-mov-tributos-preview');
+  if (prev) prev.style.display = 'none';
+  calcularTributosEdit();
+}
+
+function calcularTributosEdit() {
+  const exento    = document.getElementById('edit-mov-exento-iva-val')?.value === 'SI';
+  const ivaVal    = document.getElementById('edit-mov-incluye-iva-val')?.value;
+  const prev      = document.getElementById('edit-mov-tributos-preview');
+  const moneda    = document.getElementById('edit-mov-moneda')?.value || 'USD';
+  const tasa      = parseFloat(document.getElementById('edit-mov-tasa-bcv')?.value) || 0;
+  const precio    = parseFloat(document.getElementById('edit-mov-precio')?.value) || 0;
+  const cantidad  = parseFloat(document.getElementById('edit-mov-cantidad')?.value) || 0;
+  const montoTotal = precio * cantidad;
+  const sim = moneda === 'VES' ? 'Bs.' : '$';
+  const IVA_RATE = 0.16;
+
+  if (!montoTotal) { if (prev) prev.style.display = 'none'; return; }
+
+  let base, iva, total;
+  if (exento) {
+    base = montoTotal; iva = 0; total = montoTotal;
+  } else if (!ivaVal) {
+    if (prev) prev.style.display = 'none'; return;
+  } else if (ivaVal === 'SI') {
+    base  = parseFloat((montoTotal / (1 + IVA_RATE)).toFixed(4));
+    iva   = parseFloat((montoTotal - base).toFixed(4));
+    total = montoTotal;
+  } else {
+    base  = montoTotal;
+    iva   = parseFloat((montoTotal * IVA_RATE).toFixed(4));
+    total = parseFloat((montoTotal + iva).toFixed(4));
+  }
+
+  document.getElementById('edit-trib-base').textContent  = sim + ' ' + fmtBs(base);
+  document.getElementById('edit-trib-iva').textContent   = iva > 0 ? sim + ' ' + fmtBs(iva) : '—';
+  document.getElementById('edit-trib-total').textContent = sim + ' ' + fmtBs(total);
+  if (tasa > 0 && moneda !== 'VES') {
+    document.getElementById('edit-trib-base-ves').textContent  = 'Bs. ' + fmtBs(base * tasa);
+    document.getElementById('edit-trib-iva-ves').textContent   = iva > 0 ? 'Bs. ' + fmtBs(iva * tasa) : '—';
+    document.getElementById('edit-trib-total-ves').textContent = 'Bs. ' + fmtBs(total * tasa);
+  }
+  if (prev) prev.style.display = '';
+}

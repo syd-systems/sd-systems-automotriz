@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707120"></script>
-<script src="js/parametros.js?v=20260707120"></script>
-<script src="js/empresas.js?v=20260707120"></script>
-<script src="js/facturacion.js?v=20260707120"></script>
-<script src="js/inventario.js?v=20260707120"></script>
-<script src="js/contabilidad.js?v=20260707120"></script>
-<script src="js/pagos.js?v=20260707120"></script>
-<script src="js/vehiculos.js?v=20260707120"></script>
-<script src="js/catalogo.js?v=20260707120"></script>
-<script src="js/inventario2.js?v=20260707120"></script>
-<script src="js/ordenes.js?v=20260707120"></script>
+<script src="js/core.js?v=20260707121"></script>
+<script src="js/parametros.js?v=20260707121"></script>
+<script src="js/empresas.js?v=20260707121"></script>
+<script src="js/facturacion.js?v=20260707121"></script>
+<script src="js/inventario.js?v=20260707121"></script>
+<script src="js/contabilidad.js?v=20260707121"></script>
+<script src="js/pagos.js?v=20260707121"></script>
+<script src="js/vehiculos.js?v=20260707121"></script>
+<script src="js/catalogo.js?v=20260707121"></script>
+<script src="js/inventario2.js?v=20260707121"></script>
+<script src="js/ordenes.js?v=20260707121"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3588,17 +3588,29 @@
       <input type="hidden" id="edit-mov-id">
       <input type="hidden" id="edit-mov-id-articulo">
 
-      <!-- FILA 1: Fecha Negociación | Moneda | Cantidad -->
-      <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:0">
+      <!-- Info artículo -->
+      <div style="padding:12px 16px;background:var(--gris2);border-radius:6px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">Artículo</div>
+          <div style="font-weight:600;font-size:15px" id="edit-mov-art-nombre">—</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">Stock Actual</div>
+          <div style="font-family:var(--font-mono);font-size:16px;color:var(--naranja)" id="edit-mov-stock-actual">—</div>
+        </div>
+      </div>
+
+      <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
         <div class="form-campo">
           <label id="edit-mov-fecha-label">Fecha Negociación *</label>
           <input type="date" id="edit-mov-fecha-negociacion"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 10px;border-radius:5px;outline:none;width:100%;box-sizing:border-box;color-scheme:dark">
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 10px;border-radius:5px;outline:none;width:100%;color-scheme:dark"
+            onchange="onCambiarFechaNegEdit()">
         </div>
         <div class="form-campo" id="edit-mov-moneda-cont">
-          <label>Moneda Negociación *</label>
-          <select id="edit-mov-moneda"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
+          <label>Moneda Negociación</label>
+          <select id="edit-mov-moneda" onchange="onCambiarMonedaEdit()"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccione moneda —</option>
             <option value="USD">USD — Dólar</option>
             <option value="VES">VES — Bolívar</option>
@@ -3607,19 +3619,24 @@
         <div class="form-campo">
           <label>Cantidad *</label>
           <input type="number" id="edit-mov-cantidad" min="0.01" step="0.01" placeholder="0.00"
-            style="font-size:16px;font-family:var(--font-mono);text-align:center;color:var(--naranja);width:100%;box-sizing:border-box"
+            style="font-size:15px;font-family:var(--font-mono);text-align:center;color:var(--naranja);width:100%;box-sizing:border-box"
+            oninput="onCambiarPrecioEdit()"
             onblur="this.value=parseFloat(this.value||0).toFixed(2)">
         </div>
-      </div>
 
-      <!-- FILA 2: Precio Negociación | Precio Venta -->
-      <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:0" id="edit-mov-precios-cont">
         <div class="form-campo" id="edit-mov-precio-cont">
           <label>Precio Negociación <span id="edit-mov-label-moneda" style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span></label>
           <input type="number" id="edit-mov-precio" min="0" step="0.01" placeholder="0.00"
             style="font-family:var(--font-mono);width:100%;box-sizing:border-box"
+            oninput="onCambiarPrecioEdit()"
             onblur="this.value=parseFloat(this.value||0).toFixed(2)">
           <div id="edit-mov-ref-cpp" style="font-size:10px;color:var(--naranja);margin-top:4px"></div>
+        </div>
+        <div class="form-campo" id="edit-mov-precios-cont">
+          <label id="edit-mov-label-monto-total">Monto en USD</label>
+          <input type="text" id="edit-mov-monto-total" readonly placeholder="0,00" value="0,00"
+            style="font-family:var(--font-mono);background:var(--gris1);color:var(--naranja);cursor:not-allowed;opacity:0.8">
+          <div style="font-size:10px;color:var(--suave);margin-top:4px">Cantidad × Precio</div>
         </div>
         <div class="form-campo">
           <label>Precio Venta <span style="font-size:10px;color:var(--suave)">(opcional)</span></label>
@@ -3627,114 +3644,158 @@
             style="font-family:var(--font-mono);width:100%;box-sizing:border-box"
             onblur="this.value=this.value?parseFloat(this.value).toFixed(2):''">
         </div>
-      </div>
 
-      <!-- Transacción -->
-      <div class="form-campo form-full" id="edit-mov-motivo-cont" style="margin-bottom:0">
-        <label>Transacción *</label>
-        <select id="edit-mov-motivo"
-          style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
-          <option value="">— Seleccione transacción —</option>
-          <option value="compra">Compra a proveedor</option>
-          <option value="devolucion">Devolución de cliente</option>
-          <option value="ajuste">Ajuste de inventario</option>
-          <option value="transferencia">Transferencia</option>
-          <option value="otro">Otro</option>
-        </select>
-      </div>
-
-      <!-- Campo dinámico según transacción -->
-      <div class="form-campo form-full" id="edit-mov-proveedor-cont" style="display:none">
-        <label>Proveedor *</label>
-        <select id="edit-mov-proveedor"
-          style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-          <option value="">— Seleccionar proveedor —</option>
-        </select>
-      </div>
-      <div class="form-campo form-full" id="edit-mov-cliente-cont" style="display:none">
-        <label>Nombre del Cliente *</label>
-        <input type="text" id="edit-mov-cliente" placeholder="Nombre completo del cliente"
-          style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
-      </div>
-      <div class="form-campo form-full" id="edit-mov-area-origen-cont" style="display:none">
-        <label>Área de Origen *</label>
-        <select id="edit-mov-area-origen"
-          style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-          <option value="">— Seleccionar área —</option>
-        </select>
-      </div>
-
-      <!-- Modalidad de Pago — debajo de Proveedor/Cliente/Área Origen -->
-      <div class="form-campo form-full" id="edit-mov-pago-cont">
-        <label>Modalidad de Pago *</label>
-        <select id="edit-mov-esquema-pago" onchange="onCambioEsquemaPagoEdit()"
-          style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
-          <option value="">— Seleccione pago —</option>
-          <option value="CONTADO">Contado</option>
-          <option value="CREDITO">Crédito</option>
-        </select>
-      </div>
-
-      <!-- Condiciones de Crédito -->
-      <div id="edit-mov-credito-cont" style="display:none">
-        <div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-top:4px">
-          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">📅 Condiciones de Crédito</div>
-          <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;gap:12px">
-            <div class="form-campo" style="margin:0">
-              <label style="font-size:12px">N° de Cuotas *</label>
-              <input type="number" id="edit-mov-cuotas-num" min="1" max="60" placeholder="Ej: 3" oninput="calcularCuotasEdit()" style="font-family:var(--font-mono)">
+        <div class="form-campo form-full" id="edit-mov-tasa-cont" style="grid-column:1/-1">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label>Tasa BCV (Fecha Negociación)</label>
+              <input type="number" id="edit-mov-tasa-bcv" placeholder="0.00" min="0" step="0.0001"
+                style="font-family:var(--font-mono);background:var(--gris1);width:100%" readonly>
+              <div style="font-size:10px;color:var(--suave);margin-top:4px">Tasa BCV de la fecha de negociación</div>
             </div>
-            <div class="form-campo" style="margin:0">
-              <label style="font-size:12px">Fecha Primera Cuota *</label>
-              <input type="date" id="edit-mov-cuotas-fecha" oninput="calcularCuotasEdit()">
-            </div>
-            <div class="form-campo" style="margin:0">
-              <label style="font-size:12px">Intervalo (días)</label>
-              <input type="number" id="edit-mov-cuotas-intervalo" min="1" value="30" oninput="calcularCuotasEdit()" style="font-family:var(--font-mono)">
-            </div>
-            <div class="form-campo" style="margin:0">
-              <label style="font-size:12px">Monto por Cuota (USD)</label>
-              <input type="number" id="edit-mov-cuotas-monto" step="0.01" min="0" placeholder="Auto" oninput="calcularCuotasEdit()" style="font-family:var(--font-mono)">
+            <div>
+              <label id="edit-mov-label-precio-usd">Monto en VES</label>
+              <input type="text" id="edit-mov-precio-usd-calc" placeholder="0,00"
+                style="font-family:var(--font-mono);background:var(--gris1);color:var(--naranja);width:100%;cursor:not-allowed;opacity:0.7" readonly>
+              <div style="font-size:10px;color:var(--suave);margin-top:4px">Precio × Cantidad × Tasa BCV</div>
             </div>
           </div>
-          <div id="edit-mov-cuotas-preview" style="margin-top:12px"></div>
         </div>
-      </div>
 
-      <!-- Área receptora y empleado -->
-      <div class="form-grid" style="grid-template-columns:1fr 1fr;margin-bottom:0">
-        <div class="form-campo">
-          <label>Área Receptora</label>
-          <select id="edit-mov-area" onchange="cargarEmpleadosPorArea(parseInt(this.value)||null,'edit-mov-empleado')"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar área —</option>
+        <div class="form-campo form-full" id="edit-mov-motivo-cont" style="grid-column:1/-1">
+          <label>Transacción</label>
+          <select id="edit-mov-motivo" onchange="onCambiarMotivoEdit()"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccione transacción —</option>
+            <option value="compra">Compra a proveedor</option>
+            <option value="devolucion">Devolución de cliente</option>
+            <option value="ajuste">Ajuste de inventario</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="otro">Otro</option>
           </select>
         </div>
-        <div class="form-campo">
-          <label>Empleado que Recibe</label>
-          <select id="edit-mov-empleado"
+
+        <div class="form-campo form-full" id="edit-mov-proveedor-cont" style="display:none;grid-column:1/-1">
+          <label>Proveedor *</label>
+          <select id="edit-mov-proveedor"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar área primero —</option>
+            <option value="">— Seleccionar proveedor —</option>
           </select>
         </div>
-      </div>
+        <div class="form-campo form-full" id="edit-mov-cliente-cont" style="display:none;grid-column:1/-1">
+          <label>Nombre del Cliente *</label>
+          <input type="text" id="edit-mov-cliente" placeholder="Nombre completo del cliente"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
+        </div>
+        <div class="form-campo form-full" id="edit-mov-area-origen-cont" style="display:none;grid-column:1/-1">
+          <label>Área de Origen *</label>
+          <select id="edit-mov-area-origen"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar área de origen —</option>
+          </select>
+        </div>
 
-      <!-- Observaciones -->
-      <div class="form-campo form-full">
-        <label>Observaciones <span style="font-size:10px;color:var(--suave)">(opcional)</span></label>
-        <textarea id="edit-mov-obs" placeholder="Observaciones opcionales..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%;box-sizing:border-box"></textarea>
-      </div>
+        <div class="form-campo" id="edit-mov-pago-cont" style="grid-column:1/-1">
+          <label>Modalidad de Pago *</label>
+          <select id="edit-mov-esquema-pago" onchange="onCambioEsquemaPagoEdit()"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
+            <option value="">— Seleccione pago —</option>
+            <option value="CONTADO">Contado</option>
+            <option value="CREDITO">Crédito</option>
+          </select>
+        </div>
 
-      <!-- Autorización -->
-      <div class="form-campo form-full" id="edit-mov-clave-cont" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-top:4px">
-        <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🔐 Autorización</div>
-        <label style="font-size:12px">Su contraseña para confirmar la modificación *</label>
-        <input type="password" id="edit-mov-clave" placeholder="Ingrese su contraseña"
-          style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px;box-sizing:border-box">
-      </div>
+        <!-- Tributos -->
+        <div class="form-campo form-full" id="edit-mov-tributos-cont" style="display:none;grid-column:1/-1">
+          <div style="background:rgba(255,107,0,0.05);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
+            <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">🧾 Tributos</div>
+            <input type="hidden" id="edit-mov-exento-iva-val" value="">
+            <input type="hidden" id="edit-mov-incluye-iva-val" value="">
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
+              <label style="font-size:13px;font-weight:500">¿Gasto Exento de IVA?</label>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
+                <input type="radio" name="edit-exento-iva" id="edit-exento-iva-si" value="SI" onchange="document.getElementById('edit-mov-exento-iva-val').value='SI';onCambioExentoIVAEdit()"> Sí
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
+                <input type="radio" name="edit-exento-iva" id="edit-exento-iva-no" value="NO" onchange="document.getElementById('edit-mov-exento-iva-val').value='NO';onCambioExentoIVAEdit()"> No
+              </label>
+            </div>
+            <div id="edit-mov-incluye-iva-cont" style="display:none;margin-bottom:12px">
+              <div style="display:flex;align-items:center;gap:16px">
+                <label style="font-size:13px;font-weight:500">Monto Facturado incluye IVA (16%)</label>
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
+                  <input type="radio" name="edit-incluye-iva" id="edit-incluye-iva-si" value="SI" onchange="document.getElementById('edit-mov-incluye-iva-val').value='SI';calcularTributosEdit()"> Sí
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
+                  <input type="radio" name="edit-incluye-iva" id="edit-incluye-iva-no" value="NO" onchange="document.getElementById('edit-mov-incluye-iva-val').value='NO';calcularTributosEdit()"> No
+                </label>
+              </div>
+            </div>
+            <div id="edit-mov-tributos-preview" style="display:none;background:rgba(0,0,0,0.2);border-radius:6px;padding:10px;font-size:12px">
+              <div style="display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;align-items:center">
+                <span style="color:var(--suave)">Base (Inventario/Costo)</span>
+                <span id="edit-trib-base" style="font-family:var(--font-mono);text-align:right">—</span>
+                <span id="edit-trib-base-ves" style="font-family:var(--font-mono);text-align:right;color:var(--suave);font-size:11px">—</span>
+                <span style="color:var(--suave)">IVA (16%) — 1.1.04.001</span>
+                <span id="edit-trib-iva" style="font-family:var(--font-mono);text-align:right;color:#60a5fa">—</span>
+                <span id="edit-trib-iva-ves" style="font-family:var(--font-mono);text-align:right;color:#60a5fa;font-size:11px">—</span>
+                <span style="color:var(--naranja);font-weight:600;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">Total Facturado</span>
+                <span id="edit-trib-total" style="font-family:var(--font-mono);color:var(--naranja);font-weight:600;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
+                <span id="edit-trib-total-ves" style="font-family:var(--font-mono);color:var(--naranja);font-size:11px;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      <div class="alerta alerta-exito" id="alerta-edit-mov-ok"  style="display:none;margin-top:8px"></div>
-      <div class="alerta alerta-error"  id="alerta-edit-mov-err" style="display:none;margin-top:8px"></div>
+        <!-- Condiciones de Crédito -->
+        <div id="edit-mov-credito-cont" style="display:none;grid-column:1/-1">
+          <div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-top:4px">
+            <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">📅 Condiciones de Crédito</div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;gap:12px">
+              <div class="form-campo" style="margin:0">
+                <label style="font-size:12px">N° de Cuotas *</label>
+                <input type="number" id="edit-mov-cuotas-num" min="1" max="60" placeholder="Ej: 3" oninput="document.getElementById('edit-mov-cuotas-monto').value='';calcularCuotasEdit()" style="font-family:var(--font-mono)">
+              </div>
+              <div class="form-campo" style="margin:0">
+                <label style="font-size:12px">Fecha Primera Cuota *</label>
+                <input type="date" id="edit-mov-cuotas-fecha" oninput="calcularCuotasEdit()">
+              </div>
+              <div class="form-campo" style="margin:0">
+                <label style="font-size:12px">Intervalo (días)</label>
+                <input type="number" id="edit-mov-cuotas-intervalo" min="1" value="30" oninput="document.getElementById('edit-mov-cuotas-monto').value='';calcularCuotasEdit()" style="font-family:var(--font-mono)">
+              </div>
+              <div class="form-campo" style="margin:0">
+                <label style="font-size:12px">Monto por Cuota (USD)</label>
+                <input type="number" id="edit-mov-cuotas-monto" step="0.01" min="0" placeholder="Auto" oninput="calcularCuotasEdit()" style="font-family:var(--font-mono)">
+              </div>
+            </div>
+            <div id="edit-mov-cuotas-preview" style="margin-top:12px"></div>
+          </div>
+        </div>
+
+        <!-- Confirmación -->
+        <div class="form-campo form-full" id="edit-mov-clave-cont" style="grid-column:1/-1;background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
+          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <div style="font-size:13px;color:var(--texto)">Usuario: <span id="edit-mov-receptor-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
+            <div style="font-size:11px;color:var(--suave)" id="edit-mov-receptor-area">—</div>
+          </div>
+          <label style="font-size:12px">Contraseña *</label>
+          <input type="password" id="edit-mov-clave"
+            style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px"
+            onkeydown="if(event.key==='Enter'){guardarEdicionMovimiento()}">
+          <div style="font-size:11px;color:var(--suave);margin-top:4px">Confirme con su contraseña para guardar los cambios.</div>
+        </div>
+
+        <div class="form-campo form-full" style="grid-column:1/-1">
+          <label>Observaciones</label>
+          <textarea id="edit-mov-observaciones" placeholder="Observaciones opcionales..."
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%"></textarea>
+        </div>
+
+        <div class="alerta alerta-exito" id="alerta-edit-mov-ok" style="display:none;grid-column:1/-1;margin:0"></div>
+        <div class="alerta alerta-error"  id="alerta-edit-mov-err" style="display:none;grid-column:1/-1;margin:0"></div>
+      </div>
     </div>
     <div class="modal-footer">
       <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
