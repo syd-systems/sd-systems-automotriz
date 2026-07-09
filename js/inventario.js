@@ -190,6 +190,13 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   const modoLabel = soloLectura ? '👁 FICHA ENTRADA' : (tipo === 'ENTRADA' ? '✏ EDITAR ENTRADA' : '✏ EDITAR SALIDA');
   document.getElementById('edit-mov-titulo').textContent = modoLabel + ' DE STOCK';
 
+  // Mostrar/ocultar campos según tipo
+  const camposEntrada = ['edit-mov-moneda-cont','edit-mov-motivo-cont','edit-mov-precios-cont'];
+  camposEntrada.forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = tipo === 'ENTRADA' ? '' : 'none';
+  });
+
   // Botón Anular — visible si no está anulada y tiene permiso
   const btnAnular = document.getElementById('btn-anular-movimiento');
   if (btnAnular) {
