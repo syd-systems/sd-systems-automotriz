@@ -220,9 +220,10 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   document.getElementById('edit-mov-pago-cont').style.display      = esEntrada ? '' : 'none';
 
   if (esEntrada) {
-    // Fecha Negociación
     const fechaNeg = document.getElementById('edit-mov-fecha-negociacion');
-    if (fechaNeg) fechaNeg.value = m.fecha_negociacion || m.fecha_entrada?.slice(0,10) || getHoyVzla();
+    if (fechaNeg) fechaNeg.value = tipo === 'ENTRADA'
+      ? (m.fecha_negociacion || m.fecha_entrada?.slice(0,10) || getHoyVzla())
+      : (m.fecha_salida?.slice(0,10) || getHoyVzla());
 
     // Moneda
     const selMoneda = document.getElementById('edit-mov-moneda');
