@@ -1418,22 +1418,26 @@ async function _guardarSalidaStockInterno() {
     // Registrar salida
     const idEmpRecibe    = parseInt(document.getElementById('salida-empleado')?.value) || null;
     const id_areaEntrega  = parseInt(document.getElementById('salida-area-entrega')?.value) || null;
+    const pvSalida = parseFloat(document.getElementById('salida-precio-venta')?.value) || null;
     const salidaRes = await api('stock_salidas', 'POST', {
-      id_articulo:        idRep,
-      id_area:            id_area,
-      id_empleado:        idEmpRecibe,
-      id_area_entrega:    id_areaEntrega,
-      id_empleado_entrega: idEmpEntrega,
-      cantidad:           cantidad,
-      fecha_salida:       fecha,
-      observaciones:      obs || null,
-      id_usuario:         sesionActual.correo_usuario
+      id_articulo:          idRep,
+      id_area:              id_area,
+      id_empleado:          idEmpRecibe,
+      id_area_entrega:      id_areaEntrega,
+      id_empleado_entrega:  idEmpEntrega,
+      cantidad:             cantidad,
+      fecha_salida:         fecha,
+      observaciones:        obs || null,
+      precio_venta_moneda:  pvSalida || null,
+      id_usuario:           sesionActual.correo_usuario
     });
     const id_salida = salidaRes && salidaRes[0] ? salidaRes[0].id_salida : null;
 
-    // Descontar del stock_actual
+    // Descontar del stock_actual y actualizar precio venta si se ingresó
     const nuevoStock = (art ? art.stock_actual_articulo : 0) - cantidad;
-    await api('inventario_almacen', 'PATCH', { stock_actual_articulo: nuevoStock }, '?id_articulo=eq.' + idRep);
+    const patchInv = { stock_actual_articulo: nuevoStock };
+    if (pvSalida) patchInv.precio_venta_moneda = pvSalida;
+    await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + idRep);
 
     // Actualizar cache
     if (art) art.stock_actual_articulo = nuevoStock;

@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707148"></script>
-<script src="js/parametros.js?v=20260707148"></script>
-<script src="js/empresas.js?v=20260707148"></script>
-<script src="js/facturacion.js?v=20260707148"></script>
-<script src="js/inventario.js?v=20260707148"></script>
-<script src="js/contabilidad.js?v=20260707148"></script>
-<script src="js/pagos.js?v=20260707148"></script>
-<script src="js/vehiculos.js?v=20260707148"></script>
-<script src="js/catalogo.js?v=20260707148"></script>
-<script src="js/inventario2.js?v=20260707148"></script>
-<script src="js/ordenes.js?v=20260707148"></script>
+<script src="js/core.js?v=20260707149"></script>
+<script src="js/parametros.js?v=20260707149"></script>
+<script src="js/empresas.js?v=20260707149"></script>
+<script src="js/facturacion.js?v=20260707149"></script>
+<script src="js/inventario.js?v=20260707149"></script>
+<script src="js/contabilidad.js?v=20260707149"></script>
+<script src="js/pagos.js?v=20260707149"></script>
+<script src="js/vehiculos.js?v=20260707149"></script>
+<script src="js/catalogo.js?v=20260707149"></script>
+<script src="js/inventario2.js?v=20260707149"></script>
+<script src="js/ordenes.js?v=20260707149"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2510,12 +2510,6 @@
           <input type="text" id="es-monto-total" readonly placeholder="0,00" value="0,00"
             style="font-family:var(--font-mono);background:var(--gris1);color:var(--naranja);cursor:not-allowed;opacity:0.8">
           <div style="font-size:10px;color:var(--suave);margin-top:4px">Cantidad × Precio</div>
-        </div>
-        <div class="form-campo" id="es-precio-venta-cont">
-          <label>Precio Venta <span id="es-label-moneda-venta" style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span></label>
-          <input type="number" id="es-precio-venta" placeholder="0.00" min="0" step="0.01"
-            style="font-family:var(--font-mono)">
-          <div style="font-size:10px;color:var(--suave);margin-top:4px">Blanco = mantiene precio actual</div>
         </div>
         <div class="form-campo form-full" id="es-tasa-cont" style="display:none;grid-column:1/-1">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -3679,8 +3673,15 @@
         <div style="font-size:12px;color:var(--suave);margin-top:4px">Stock disponible: <span id="salida-stock-actual" style="color:var(--naranja);font-family:var(--font-mono)">—</span></div>
       </div>
 
-      <div class="form-grid">
-        <!-- Cantidad y Fecha -->
+      <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
+        <!-- Fila 1: Fecha sola -->
+        <div class="form-campo">
+          <label>Fecha de Salida *</label>
+          <input type="date" id="salida-fecha" style="color-scheme:dark">
+        </div>
+        <div></div><div></div>
+
+        <!-- Fila 2: Cantidad y Precio Venta -->
         <div class="form-campo">
           <label>Cantidad *</label>
           <input type="number" id="salida-cantidad" min="0.01" step="0.01" placeholder="0"
@@ -3698,9 +3699,12 @@
             }).call(this)">
         </div>
         <div class="form-campo">
-          <label>Fecha de Salida *</label>
-          <input type="date" id="salida-fecha">
+          <label>Precio de Venta <span style="font-size:10px;color:var(--suave)">(opcional)</span></label>
+          <input type="number" id="salida-precio-venta" min="0" step="0.01" placeholder="0.00"
+            style="font-family:var(--font-mono)"
+            onblur="this.value=this.value?parseFloat(this.value).toFixed(2):''">
         </div>
+        <div></div>
 
         <!-- Área y Empleado que RECIBE -->
         <div class="form-campo form-full" style="margin-top:4px">
@@ -4454,16 +4458,27 @@
           <div style="font-size:12px;color:var(--suave);margin-top:4px">Stock disponible: <span id="edit-sal-stock" style="color:var(--naranja);font-family:var(--font-mono)">—</span></div>
         </div>
 
-        <div class="form-grid">
+        <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
+          <!-- Fila 1: Fecha sola -->
+          <div class="form-campo">
+            <label>Fecha de Salida *</label>
+            <input type="date" id="edit-sal-fecha" style="color-scheme:dark">
+          </div>
+          <div></div><div></div>
+
+          <!-- Fila 2: Cantidad y Precio Venta -->
           <div class="form-campo">
             <label>Cantidad *</label>
             <input type="number" id="edit-sal-cantidad" min="0.01" step="0.01" placeholder="0"
               style="font-size:15px;font-family:var(--font-mono);text-align:center;color:var(--naranja)">
           </div>
           <div class="form-campo">
-            <label>Fecha de Salida *</label>
-            <input type="date" id="edit-sal-fecha" style="color-scheme:dark">
+            <label>Precio de Venta <span style="font-size:10px;color:var(--suave)">(opcional)</span></label>
+            <input type="number" id="edit-sal-precio-venta" min="0" step="0.01" placeholder="0.00"
+              style="font-family:var(--font-mono)"
+              onblur="this.value=this.value?parseFloat(this.value).toFixed(2):''">
           </div>
+          <div></div>
 
           <!-- Quien Recibe -->
           <div class="form-campo form-full" style="margin-top:4px">
