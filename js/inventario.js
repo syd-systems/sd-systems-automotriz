@@ -188,7 +188,8 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
 
   // Reset completo de campos dinámicos antes de cargar
   ['edit-mov-proveedor-cont','edit-mov-cliente-cont','edit-mov-area-origen-cont',
-   'edit-mov-pago-cont','edit-mov-precios-cont'].forEach(function(id) {
+   'edit-mov-pago-cont','edit-mov-precios-cont','edit-mov-moneda-cont',
+   'edit-mov-motivo-cont','edit-mov-precio-cont'].forEach(function(id) {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
