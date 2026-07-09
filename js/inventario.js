@@ -186,6 +186,13 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   document.getElementById('alerta-edit-mov-ok').style.display  = 'none';
   document.getElementById('alerta-edit-mov-err').style.display = 'none';
 
+  // Reset completo de campos dinámicos antes de cargar
+  ['edit-mov-proveedor-cont','edit-mov-cliente-cont','edit-mov-area-origen-cont',
+   'edit-mov-pago-cont','edit-mov-precios-cont'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
   // Título
   const modoLabel = soloLectura ? '👁 FICHA ENTRADA' : (tipo === 'ENTRADA' ? '✏ EDITAR ENTRADA' : '✏ EDITAR SALIDA');
   document.getElementById('edit-mov-titulo').textContent = modoLabel + ' DE STOCK';
