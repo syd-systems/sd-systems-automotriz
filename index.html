@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707154"></script>
-<script src="js/parametros.js?v=20260707154"></script>
-<script src="js/empresas.js?v=20260707154"></script>
-<script src="js/facturacion.js?v=20260707154"></script>
-<script src="js/inventario.js?v=20260707154"></script>
-<script src="js/contabilidad.js?v=20260707154"></script>
-<script src="js/pagos.js?v=20260707154"></script>
-<script src="js/vehiculos.js?v=20260707154"></script>
-<script src="js/catalogo.js?v=20260707154"></script>
-<script src="js/inventario2.js?v=20260707154"></script>
-<script src="js/ordenes.js?v=20260707154"></script>
+<script src="js/core.js?v=20260707155"></script>
+<script src="js/parametros.js?v=20260707155"></script>
+<script src="js/empresas.js?v=20260707155"></script>
+<script src="js/facturacion.js?v=20260707155"></script>
+<script src="js/inventario.js?v=20260707155"></script>
+<script src="js/contabilidad.js?v=20260707155"></script>
+<script src="js/pagos.js?v=20260707155"></script>
+<script src="js/vehiculos.js?v=20260707155"></script>
+<script src="js/catalogo.js?v=20260707155"></script>
+<script src="js/inventario2.js?v=20260707155"></script>
+<script src="js/ordenes.js?v=20260707155"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3756,9 +3756,9 @@
       <div class="alerta alerta-error"  id="alerta-salida-err" style="margin:0;grid-column:1/-1"></div>
     </div>
     <div class="modal-footer">
-      <div style="display:flex;gap:10px;justify-content:flex-end">
+      <div style="display:flex;gap:10px;justify-content:space-between;width:100%">
+        <button class="btn-primario" onclick="guardarSalidaStock()">Registrar Salida</button>
         <button class="btn-secundario" onclick="cerrarModal('modal-salida-stock'); cerrarModal('modal-stock-articulo'); cerrarModal('modal-ficha-inventario'); renderInventario()">RETORNAR</button>
-        <button class="btn-peligro"    onclick="guardarSalidaStock()">Registrar Salida</button>
       </div>
     </div>
   </div>
@@ -4539,8 +4539,8 @@
     <div class="modal-footer">
       <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
         <div style="display:flex;gap:8px">
-          <button id="btn-anular-movimiento" class="btn-secundario" style="display:none;color:#fc8181;border-color:#fc8181" onclick="anularDesdeEdicion()">🗑 ANULAR</button>
-          <button class="btn-secundario" onclick="guardarEdicionMovimiento()">GUARDAR</button>
+          <button id="btn-anular-movimiento" class="btn-peligro" style="display:none" onclick="anularDesdeEdicion()">🗑 ANULAR</button>
+          <button class="btn-primario" onclick="guardarEdicionMovimiento()">GUARDAR</button>
         </div>
         <button class="btn-secundario" onclick="retornarDesdeEditMovimiento()">RETORNAR</button>
       </div>
