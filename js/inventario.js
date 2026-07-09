@@ -179,6 +179,19 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
 
   // Cargar datos según tipo
   const esEntrada = tipo === 'ENTRADA';
+
+  // Mostrar/ocultar secciones ANTES de cargar datos
+  const salidaCont  = document.getElementById('edit-sal-cont');
+  if (salidaCont) salidaCont.style.display = esEntrada ? 'none' : '';
+  const entradaGrid = document.querySelector('#modal-edit-movimiento .modal-body > .form-grid');
+  if (entradaGrid) entradaGrid.style.display = esEntrada ? '' : 'none';
+  ['edit-mov-moneda-cont','edit-mov-motivo-cont','edit-mov-precios-cont',
+   'edit-mov-precio-cont','edit-mov-tasa-cont','edit-mov-pago-cont',
+   'edit-mov-tributos-cont','edit-mov-credito-cont','edit-mov-clave-cont'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = esEntrada ? '' : 'none';
+  });
+
   if (!esEntrada) {
     // SALIDA
     const artNomEl2 = document.getElementById('edit-sal-art-nombre');
@@ -283,24 +296,8 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   if (recNombreEl) recNombreEl.textContent = sesionActual?.nombre || sesionActual?.correo_usuario || '—';
   if (recAreaEl)   recAreaEl.textContent   = sesionActual?.nombre_area || '';
 
-  // Mostrar sección correcta según tipo
+  // Mostrar sección correcta según tipo — ya aplicado arriba
   const entradaCont = document.querySelector('#modal-edit-movimiento .form-grid');
-  const salidaCont  = document.getElementById('edit-sal-cont');
-
-  // Ocultar/mostrar secciones
-  if (salidaCont) salidaCont.style.display = esEntrada ? 'none' : '';
-
-  // Ocultar campos de entrada si es SALIDA
-  ['edit-mov-moneda-cont','edit-mov-motivo-cont','edit-mov-precios-cont',
-   'edit-mov-precio-cont','edit-mov-tasa-cont','edit-mov-pago-cont',
-   'edit-mov-tributos-cont','edit-mov-credito-cont','edit-mov-clave-cont'].forEach(function(id) {
-    const el = document.getElementById(id);
-    if (el) el.style.display = esEntrada ? '' : 'none';
-  });
-
-  // Ocultar campo cantidad/fecha/observaciones de ENTRADA si es SALIDA
-  const entradaGrid = document.querySelector('#modal-edit-movimiento > div.modal > div.modal-body > div.form-grid');
-  if (entradaGrid) entradaGrid.style.display = esEntrada ? '' : 'none';
 
   // Título
   const modoLabel = soloLectura ? '👁 FICHA ENTRADA' : (tipo === 'ENTRADA' ? '✏ EDITAR ENTRADA' : '✏ EDITAR SALIDA');
