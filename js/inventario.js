@@ -189,6 +189,43 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   if (okEl)  okEl.style.display  = 'none';
   if (errEl) errEl.style.display = 'none';
 
+  // Artículo y Stock
+  const artNombreEl = document.getElementById('edit-mov-art-nombre');
+  const artStockEl  = document.getElementById('edit-mov-stock-actual');
+  try {
+    const artData = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id_articulo+'&select=nombre_articulo,stock_actual_articulo&limit=1');
+    if (artData && artData[0]) {
+      if (artNombreEl) artNombreEl.textContent = artData[0].nombre_articulo || '—';
+      if (artStockEl)  artStockEl.textContent  = parseFloat(artData[0].stock_actual_articulo||0).toFixed(2) + ' UND';
+    }
+  } catch(e) {}
+
+  // Tasa BCV y montos calculados (solo para ENTRADA)
+  if (tipo === 'ENTRADA') {
+    const tasaEl = document.getElementById('edit-mov-tasa-bcv');
+    const tasa   = parseFloat(m.tasa_bcv_usada || m.tasa_bcv || 0);
+    if (tasaEl) tasaEl.value = tasa > 0 ? tasa.toFixed(4) : '';
+    const precio   = parseFloat(m.precio_costo_moneda || 0);
+    const cantidad = parseFloat(m.cantidad || 0);
+    const montoTotal = precio * cantidad;
+    const montoTotalEl = document.getElementById('edit-mov-monto-total');
+    if (montoTotalEl) montoTotalEl.value = fmtBs(montoTotal);
+    const moneda = m.moneda_compra || 'USD';
+    const calcEl = document.getElementById('edit-mov-precio-usd-calc');
+    if (calcEl && tasa > 0) {
+      calcEl.value = moneda === 'VES' ? fmtBs(montoTotal / tasa) : fmtBs(montoTotal * tasa);
+    }
+    // Tasa cont y tributos
+    const tasaCont = document.getElementById('edit-mov-tasa-cont');
+    if (tasaCont) tasaCont.style.display = '';
+  }
+
+  // Usuario confirmación
+  const recNombreEl = document.getElementById('edit-mov-receptor-nombre');
+  const recAreaEl   = document.getElementById('edit-mov-receptor-area');
+  if (recNombreEl) recNombreEl.textContent = sesionActual?.nombre_completo || sesionActual?.correo_usuario || '—';
+  if (recAreaEl)   recAreaEl.textContent   = sesionActual?.nombre_area || '';
+
   // Reset completo de campos dinámicos antes de cargar
   ['edit-mov-proveedor-cont','edit-mov-cliente-cont','edit-mov-area-origen-cont',
    'edit-mov-pago-cont','edit-mov-precios-cont','edit-mov-moneda-cont',
