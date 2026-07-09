@@ -182,6 +182,10 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   if (salidaCont)   salidaCont.style.display   = esEntrada ? 'none' : '';
   if (entradaCont2) entradaCont2.style.display  = esEntrada ? '' : 'none';
 
+  // Título del modal
+  const modoLbl = soloLectura ? '👁 FICHA ENTRADA' : (esEntrada ? '✏ EDITAR ENTRADA' : '✏ EDITAR SALIDA');
+  document.getElementById('edit-mov-titulo').textContent = modoLbl + ' DE STOCK';
+
   if (!esEntrada) {
     // SALIDA
     const artNomEl2 = document.getElementById('edit-sal-art-nombre');
