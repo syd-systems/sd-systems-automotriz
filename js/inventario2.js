@@ -879,6 +879,8 @@ async function guardarEntradaStock() {
       motivo:                 motivoEnt || null,
       esquema_pago:           document.getElementById('es-esquema-pago')?.value || null,
       observaciones:          document.getElementById('es-observaciones')?.value.trim() || null,
+      exento_iva:             document.getElementById('edit-mov-exento-iva-val')?.value === 'SI' ? true : (document.getElementById('es-exento-iva-val')?.value === 'SI' ? true : (document.getElementById('es-exento-iva-val')?.value === 'NO' ? false : null)),
+      incluye_iva:            document.getElementById('es-incluye-iva-val')?.value === 'SI' ? true : (document.getElementById('es-incluye-iva-val')?.value === 'NO' ? false : null),
       id_usuario:             sesionActual.correo_usuario
     });
     id_entrada = entradaRes && entradaRes[0] ? entradaRes[0].id_entrada : null;

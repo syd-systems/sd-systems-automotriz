@@ -278,7 +278,8 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     if (lblMoneda) lblMoneda.textContent = '(' + (m.moneda_compra || 'USD') + ')';
 
     // Precio
-    document.getElementById('edit-mov-precio').value = m.precio_costo_moneda
+    const precioEl = document.getElementById('edit-mov-precio');
+    if (precioEl) precioEl.value = m.precio_costo_moneda
       ? parseFloat(m.precio_costo_moneda).toFixed(2) : '0.00';
     // Precio Venta
     const pvEl = document.getElementById('edit-mov-precio-venta');
@@ -296,13 +297,39 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
 
     // Mostrar campo dinámico según motivo
     const motivo = motivoInferido;
-    document.getElementById('edit-mov-proveedor-cont').style.display    = motivo === 'compra'        ? '' : 'none';
-    document.getElementById('edit-mov-cliente-cont').style.display      = motivo === 'devolucion'    ? '' : 'none';
-    document.getElementById('edit-mov-area-origen-cont').style.display  = motivo === 'transferencia' ? '' : 'none';
+    const provContEl = document.getElementById('edit-mov-proveedor-cont');
+    const cliContEl  = document.getElementById('edit-mov-cliente-cont');
+    const aoContEl   = document.getElementById('edit-mov-area-origen-cont');
+    if (provContEl) provContEl.style.display = motivo === 'compra'        ? '' : 'none';
+    if (cliContEl)  cliContEl.style.display  = motivo === 'devolucion'    ? '' : 'none';
+    if (aoContEl)   aoContEl.style.display   = motivo === 'transferencia' ? '' : 'none';
 
-    // Mostrar tributos IVA si es compra
+    // Tributos IVA — cargar valores guardados
     const tribuCont = document.getElementById('edit-mov-tributos-cont');
     if (tribuCont) tribuCont.style.display = motivo === 'compra' ? '' : 'none';
+    if (motivo === 'compra') {
+      const exentoVal   = document.getElementById('edit-mov-exento-iva-val');
+      const incluyeVal  = document.getElementById('edit-mov-incluye-iva-val');
+      const ivaContEl2  = document.getElementById('edit-mov-incluye-iva-cont');
+      const exentoSi    = document.getElementById('edit-exento-iva-si');
+      const exentoNo    = document.getElementById('edit-exento-iva-no');
+      const incluyeSi   = document.getElementById('edit-incluye-iva-si');
+      const incluyeNo   = document.getElementById('edit-incluye-iva-no');
+
+      const exento  = m.exento_iva  === true;
+      const incluye = m.incluye_iva === true;
+
+      if (exentoVal)  exentoVal.value  = exento  ? 'SI' : (m.exento_iva === false ? 'NO' : '');
+      if (incluyeVal) incluyeVal.value = incluye ? 'SI' : (m.incluye_iva === false ? 'NO' : '');
+
+      if (exentoSi)  exentoSi.checked  = exento;
+      if (exentoNo)  exentoNo.checked  = m.exento_iva === false;
+      if (ivaContEl2) ivaContEl2.style.display = exento ? 'none' : '';
+      if (incluyeSi) incluyeSi.checked = incluye;
+      if (incluyeNo) incluyeNo.checked = m.incluye_iva === false;
+
+      calcularTributosEdit();
+    }
 
     // Proveedor
     const selProv = document.getElementById('edit-mov-proveedor');
