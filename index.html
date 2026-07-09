@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707151"></script>
-<script src="js/parametros.js?v=20260707151"></script>
-<script src="js/empresas.js?v=20260707151"></script>
-<script src="js/facturacion.js?v=20260707151"></script>
-<script src="js/inventario.js?v=20260707151"></script>
-<script src="js/contabilidad.js?v=20260707151"></script>
-<script src="js/pagos.js?v=20260707151"></script>
-<script src="js/vehiculos.js?v=20260707151"></script>
-<script src="js/catalogo.js?v=20260707151"></script>
-<script src="js/inventario2.js?v=20260707151"></script>
-<script src="js/ordenes.js?v=20260707151"></script>
+<script src="js/core.js?v=20260707152"></script>
+<script src="js/parametros.js?v=20260707152"></script>
+<script src="js/empresas.js?v=20260707152"></script>
+<script src="js/facturacion.js?v=20260707152"></script>
+<script src="js/inventario.js?v=20260707152"></script>
+<script src="js/contabilidad.js?v=20260707152"></script>
+<script src="js/pagos.js?v=20260707152"></script>
+<script src="js/vehiculos.js?v=20260707152"></script>
+<script src="js/catalogo.js?v=20260707152"></script>
+<script src="js/inventario2.js?v=20260707152"></script>
+<script src="js/ordenes.js?v=20260707152"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2490,7 +2490,7 @@
           </select>
         </div>
         <div class="form-campo">
-          <label>Cantidad</label>
+          <label>Cantidad <span id="es-label-unidad" style="font-size:10px;color:var(--suave);font-weight:400"></span></label>
           <input type="number" id="es-cantidad" placeholder="0" min="0.01" step="0.01"
             style="font-size:15px;font-family:var(--font-mono);text-align:center;color:var(--naranja)"
             oninput="onCambiarPrecioEntrada()"
@@ -3683,7 +3683,7 @@
 
         <!-- Fila 2: Cantidad y Precio Venta -->
         <div class="form-campo">
-          <label>Cantidad *</label>
+          <label>Cantidad * <span id="salida-label-unidad" style="font-size:10px;color:var(--suave);font-weight:400"></span></label>
           <input type="number" id="salida-cantidad" min="0.01" step="0.01" placeholder="0"
             oninput="(function(){
               var cant = parseFloat(this.value)||0;
@@ -4273,7 +4273,7 @@
           </select>
         </div>
         <div class="form-campo">
-          <label>Cantidad *</label>
+          <label>Cantidad * <span id="edit-mov-label-unidad" style="font-size:10px;color:var(--suave);font-weight:400"></span></label>
           <input type="number" id="edit-mov-cantidad" min="0.01" step="0.01" placeholder="0.00"
             style="font-size:15px;font-family:var(--font-mono);text-align:center;color:var(--naranja);width:100%;box-sizing:border-box"
             oninput="onCambiarPrecioEdit()"
@@ -4468,7 +4468,7 @@
 
           <!-- Fila 2: Cantidad y Precio Venta -->
           <div class="form-campo">
-            <label>Cantidad *</label>
+            <label>Cantidad * <span id="edit-sal-label-unidad" style="font-size:10px;color:var(--suave);font-weight:400"></span></label>
             <input type="number" id="edit-sal-cantidad" min="0.01" step="0.01" placeholder="0"
               style="font-size:15px;font-family:var(--font-mono);text-align:center;color:var(--naranja)">
           </div>

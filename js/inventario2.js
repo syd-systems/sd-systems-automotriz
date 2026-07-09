@@ -547,6 +547,8 @@ async function abrirEntradaStock(id) {
   document.getElementById('es-id').value = id;
   document.getElementById('es-nombre').textContent = r.nombre_articulo;
   document.getElementById('es-stock-actual').textContent = (r.stock_actual_articulo || 0) + ' ' + (r.unidad || 'UND');
+  const esLblUnidad = document.getElementById('es-label-unidad');
+  if (esLblUnidad) esLblUnidad.textContent = r.unidad || 'UND';
   document.getElementById('es-cantidad').value = '';
   var selMoneda = document.getElementById('es-moneda-compra');
   if (selMoneda) selMoneda.selectedIndex = 0;

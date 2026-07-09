@@ -195,10 +195,13 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     const artNomEl2 = document.getElementById('edit-sal-art-nombre');
     const artStEl2  = document.getElementById('edit-sal-stock');
     try {
-      const artData2 = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id_articulo+'&select=nombre_articulo,stock_actual_articulo&limit=1');
+      const artData2 = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id_articulo+'&select=nombre_articulo,stock_actual_articulo,unidad&limit=1');
       if (artData2 && artData2[0]) {
         if (artNomEl2) artNomEl2.textContent = artData2[0].nombre_articulo || '—';
         if (artStEl2)  artStEl2.textContent  = (function(v){ return v % 1 === 0 ? parseInt(v) : v.toFixed(2); })(parseFloat(artData2[0].stock_actual_articulo||0)) + ' UND';
+        const unidadSal = artData2[0].unidad || 'UND';
+        const lblUnidSal = document.getElementById('edit-sal-label-unidad');
+        if (lblUnidSal) lblUnidSal.textContent = unidadSal;
       }
     } catch(e) {}
 
@@ -264,10 +267,13 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   const artNombreEl = document.getElementById('edit-mov-art-nombre');
   const artStockEl  = document.getElementById('edit-mov-stock-actual');
   try {
-    const artData = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id_articulo+'&select=nombre_articulo,stock_actual_articulo&limit=1');
+    const artData = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id_articulo+'&select=nombre_articulo,stock_actual_articulo,unidad&limit=1');
     if (artData && artData[0]) {
       if (artNombreEl) artNombreEl.textContent = artData[0].nombre_articulo || '—';
       if (artStockEl)  artStockEl.textContent  = (function(v){ return v % 1 === 0 ? parseInt(v) : v.toFixed(2); })(parseFloat(artData[0].stock_actual_articulo||0)) + ' UND';
+      const unidadArt = artData[0].unidad || 'UND';
+      const lblUnidEnt = document.getElementById('edit-mov-label-unidad');
+      if (lblUnidEnt) lblUnidEnt.textContent = unidadArt;
     }
   } catch(e) {}
 

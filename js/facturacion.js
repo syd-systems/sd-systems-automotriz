@@ -1348,6 +1348,8 @@ async function abrirSalidaStock(id, nombre) {
   const art = inventarioCache.find(function(x) { return x.id_articulo === id; });
   const stockSalida = art ? (_invSaldoArea ? (_invSaldoArea[art.id_articulo]||0) : art.stock_actual_articulo) : 0;
   document.getElementById('salida-stock-actual').textContent = art ? stockSalida + ' ' + (art.unidad || 'UND') : '—';
+  const salLblUnidad = document.getElementById('salida-label-unidad');
+  if (salLblUnidad) salLblUnidad.textContent = art?.unidad || 'UND';
 
     abrirModal('modal-salida-stock');
   focusFirstField('modal-salida-stock');
