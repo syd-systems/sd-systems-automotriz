@@ -154,7 +154,7 @@ async function verFichaEntradaStock(id_entrada, id_articulo) {
 }
 
 async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
-  let m = null;
+  try {
   try {
     if (tipo === 'ENTRADA') {
       const res = await api('stock_entradas', 'GET', null,
@@ -518,6 +518,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   if (modalHist) { modalHist.classList.remove('abierto'); modalHist.style.display = 'none'; }
   console.log('[SYD] abriendo modal ENTRADA');
   abrirModal('modal-edit-movimiento');
+  } catch(e) { console.error('[SYD] editarMovimiento ERROR:', e.message, e.stack); }
 }
 
 async function anularDesdeEdicion() {
