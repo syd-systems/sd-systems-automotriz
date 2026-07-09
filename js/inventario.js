@@ -341,18 +341,20 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
 
   // Área receptora
   const selArea = document.getElementById('edit-mov-area');
-  selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
-    + areas.map(function(a) {
-        return '<option value="' + a.id + '"' + (m.id_area == a.id ? ' selected' : '') + '>'
-          + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>';
-      }).join('');
+  if (selArea) {
+    selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
+      + areas.map(function(a) {
+          return '<option value="' + a.id + '"' + (m.id_area == a.id ? ' selected' : '') + '>'
+            + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>';
+        }).join('');
+  }
 
   // Empleado receptor
   if (m.id_area) {
     await cargarEmpleadosPorArea(m.id_area, 'edit-mov-empleado');
-    document.getElementById('edit-mov-empleado').value = m.id_empleado || '';
+    const empEl = document.getElementById('edit-mov-empleado'); if (empEl) empEl.value = m.id_empleado || '';
   } else {
-    document.getElementById('edit-mov-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
+    const empEl2 = document.getElementById('edit-mov-empleado'); if (empEl2) empEl2.innerHTML = '<option value="">— Seleccionar área primero —</option>';
   }
 
   // ── Modo solo lectura ──
