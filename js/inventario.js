@@ -223,8 +223,15 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   // Usuario confirmación
   const recNombreEl = document.getElementById('edit-mov-receptor-nombre');
   const recAreaEl   = document.getElementById('edit-mov-receptor-area');
-  if (recNombreEl) recNombreEl.textContent = sesionActual?.nombre_completo || sesionActual?.correo_usuario || '—';
+  if (recNombreEl) recNombreEl.textContent = sesionActual?.nombre || sesionActual?.correo_usuario || '—';
   if (recAreaEl)   recAreaEl.textContent   = sesionActual?.nombre_area || '';
+
+  // Mostrar tributos si la transacción es compra (entrada)
+  if (tipo === 'ENTRADA') {
+    const tribuCont = document.getElementById('edit-mov-tributos-cont');
+    const motivo = document.getElementById('edit-mov-motivo')?.value || '';
+    if (tribuCont) tribuCont.style.display = motivo === 'compra' ? '' : 'none';
+  }
 
   // Reset completo de campos dinámicos antes de cargar
   ['edit-mov-proveedor-cont','edit-mov-cliente-cont','edit-mov-area-origen-cont',
