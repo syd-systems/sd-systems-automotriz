@@ -239,7 +239,8 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   document.getElementById('edit-mov-titulo').textContent = modoLabel + ' DE STOCK';
 
   // Mostrar/ocultar campos según tipo
-  const camposEntrada = ['edit-mov-moneda-cont','edit-mov-motivo-cont','edit-mov-precios-cont'];
+  const camposEntrada = ['edit-mov-moneda-cont','edit-mov-motivo-cont','edit-mov-precios-cont',
+                         'edit-mov-precio-cont','edit-mov-tasa-cont','edit-mov-pago-cont'];
   camposEntrada.forEach(function(id) {
     const el = document.getElementById(id);
     if (el) el.style.display = tipo === 'ENTRADA' ? '' : 'none';
