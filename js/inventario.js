@@ -209,7 +209,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
         }).join('');
       if (m.id_area) {
         // Cargar empleados
-        const emps2 = await api('empleados','GET',null,'?id_area=eq.'+m.id_area+'&estado=eq.ACTIVO&select=id_empleado,nombre_completo&order=nombre_completo.asc');
+        const emps2 = await api('empleados','GET',null,'?id_area=eq.'+m.id_area+'&select=id_empleado,nombre_completo&order=nombre_completo.asc');
         const selEmp2 = document.getElementById('edit-sal-empleado');
         if (selEmp2) {
           selEmp2.innerHTML = '<option value="">— Seleccionar empleado —</option>'
@@ -1624,7 +1624,7 @@ async function onSelAreaEditSalida() {
   if (!selEmp) return;
   if (!idArea) { selEmp.innerHTML = '<option value="">— Seleccionar área primero —</option>'; return; }
   try {
-    const emps = await api('empleados','GET',null,'?id_area=eq.'+idArea+'&estado=eq.ACTIVO&select=id_empleado,nombre_completo&order=nombre_completo.asc');
+    const emps = await api('empleados','GET',null,'?id_area=eq.'+idArea+'&select=id_empleado,nombre_completo&order=nombre_completo.asc');
     selEmp.innerHTML = '<option value="">— Seleccionar empleado —</option>'
       + (emps||[]).map(function(e){
         return '<option value="'+e.id_empleado+'">'+e.nombre_completo+'</option>';
