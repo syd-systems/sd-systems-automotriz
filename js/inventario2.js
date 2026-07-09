@@ -556,9 +556,6 @@ async function abrirEntradaStock(id) {
   var selPago = document.getElementById('es-esquema-pago');
   if (selPago) selPago.selectedIndex = 0;
   if (document.getElementById('es-fecha-negociacion')) document.getElementById('es-fecha-negociacion').value = getHoyVzla();
-  document.getElementById('es-precio-venta').value = r.precio_venta_moneda || '';
-  var esVentaCont = document.getElementById('es-precio-venta-cont');
-  if (esVentaCont) esVentaCont.style.display = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? '' : 'none';
   const refCPP = document.getElementById('es-ref-cpp');
   if (refCPP) refCPP.textContent = '$ ' + fmtUSD(r.precio_costo_moneda) + ' (CPP actual)';
   document.getElementById('alerta-es-ok').style.display = 'none';
@@ -814,7 +811,7 @@ async function guardarEntradaStock() {
         if (tasaRows && tasaRows[0]) tasa_bcv_usada = parseFloat(tasaRows[0].tipo_cambio);
       } catch(e) {}
     }
-    const nuevoPrecioVenta       = parseFloat(document.getElementById('es-precio-venta').value) || null;
+    const nuevoPrecioVenta       = null; // precio venta se gestiona desde SALIDA
 
     // ── FASE 1: Todas las validaciones ANTES de tocar BD ──
     const motivoEnt = document.getElementById('es-motivo')?.value;
@@ -866,7 +863,6 @@ async function guardarEntradaStock() {
       cantidad:               cantidad,
       precio_costo_moneda:    nuevoPrecioCosto || null,
       precio_compra_original: precio_compra_original || null,
-      precio_venta_moneda:    nuevoPrecioVenta || null,
       moneda_compra:          moneda_compra_val,
       tasa_bcv:               tasa_bcv_usada,
       fecha_entrada:          getHoyVzla(),
@@ -888,7 +884,6 @@ async function guardarEntradaStock() {
     // ── FASE 4: Actualizar stock e inventario DESPUÉS del INSERT exitoso ──
     const patch = { stock_actual_articulo: nuevoStock, precio_costo_moneda: parseFloat(cpp.toFixed(4)) };
     if (nuevoPrecioCosto > 0) patch.precio_costo_ultimo_moneda = nuevoPrecioCosto;
-    if (nuevoPrecioVenta && nuevoPrecioVenta > 0 && puedo('INVENTARIO','VER_PRECIOS_VENTA')) patch.precio_venta_moneda = nuevoPrecioVenta;
     await api('inventario_almacen', 'PATCH', patch, '?id_articulo=eq.' + id);
 
     // ── FASE 4.5: Registrar salida en área origen si es transferencia ──
@@ -1070,7 +1065,6 @@ async function guardarEntradaStock() {
       r.stock_actual_articulo     = nuevoStock;
       r.precio_costo_moneda       = parseFloat(cpp.toFixed(4));
       if (nuevoPrecioCosto > 0) r.precio_costo_ultimo_moneda = nuevoPrecioCosto;
-      if (nuevoPrecioVenta && nuevoPrecioVenta > 0) r.precio_venta_moneda = nuevoPrecioVenta;
     }
     okEl.textContent = 'Stock actualizado: ' + stockActual + ' → ' + nuevoStock + ' ' + (r?.unidad || 'UND');
     okEl.style.display = 'block';

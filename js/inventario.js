@@ -345,8 +345,6 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     if (precioEl) precioEl.value = m.precio_costo_moneda
       ? parseFloat(m.precio_costo_moneda).toFixed(2) : '0.00';
     // Precio Venta
-    const pvEl = document.getElementById('edit-mov-precio-venta');
-    if (pvEl) pvEl.value = m.precio_venta_moneda ? parseFloat(m.precio_venta_moneda).toFixed(2) : '';
 
     // Transacción (motivo) — inferir si es null en registros anteriores
     let motivoInferido = m.motivo || '';
@@ -646,7 +644,6 @@ async function guardarEdicionMovimiento() {
       datos.cliente_nombre      = clienteEdit;
       datos.id_area_origen      = areaOrig;
       datos.esquema_pago        = pagoEdit;
-      if (pvEdit) datos.precio_venta_moneda = pvEdit;
 
       // ── Leer cantidad original y stock ANTES de parchear ──
       const [movOrigArr, artArr] = await Promise.all([
@@ -664,7 +661,6 @@ async function guardarEdicionMovimiento() {
         const stockActual = parseFloat(art.stock_actual_articulo) || 0;
         const nuevoStock  = Math.max(0, parseFloat((stockActual - cantOriginal + cantidad).toFixed(4)));
         const patchInv    = { stock_actual_articulo: nuevoStock };
-        if (pvEdit) patchInv.precio_venta_moneda = pvEdit;
 
         if (precio !== null && !isNaN(precio)) {
           const stockPrevio = Math.max(0, stockActual - cantOriginal);
