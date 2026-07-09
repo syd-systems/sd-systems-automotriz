@@ -194,7 +194,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
       const artData2 = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id_articulo+'&select=nombre_articulo,stock_actual_articulo&limit=1');
       if (artData2 && artData2[0]) {
         if (artNomEl2) artNomEl2.textContent = artData2[0].nombre_articulo || '—';
-        if (artStEl2)  artStEl2.textContent  = parseFloat(artData2[0].stock_actual_articulo||0).toFixed(2) + ' UND';
+        if (artStEl2)  artStEl2.textContent  = (function(v){ return v % 1 === 0 ? parseInt(v) : v.toFixed(2); })(parseFloat(artData2[0].stock_actual_articulo||0)) + ' UND';
       }
     } catch(e) {}
 
@@ -261,7 +261,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     const artData = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id_articulo+'&select=nombre_articulo,stock_actual_articulo&limit=1');
     if (artData && artData[0]) {
       if (artNombreEl) artNombreEl.textContent = artData[0].nombre_articulo || '—';
-      if (artStockEl)  artStockEl.textContent  = parseFloat(artData[0].stock_actual_articulo||0).toFixed(2) + ' UND';
+      if (artStockEl)  artStockEl.textContent  = (function(v){ return v % 1 === 0 ? parseInt(v) : v.toFixed(2); })(parseFloat(artData[0].stock_actual_articulo||0)) + ' UND';
     }
   } catch(e) {}
 
