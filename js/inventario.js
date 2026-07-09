@@ -226,13 +226,6 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   if (recNombreEl) recNombreEl.textContent = sesionActual?.nombre || sesionActual?.correo_usuario || '—';
   if (recAreaEl)   recAreaEl.textContent   = sesionActual?.nombre_area || '';
 
-  // Mostrar tributos si la transacción es compra (entrada)
-  if (tipo === 'ENTRADA') {
-    const tribuCont = document.getElementById('edit-mov-tributos-cont');
-    const motivo = document.getElementById('edit-mov-motivo')?.value || '';
-    if (tribuCont) tribuCont.style.display = motivo === 'compra' ? '' : 'none';
-  }
-
   // Reset completo de campos dinámicos antes de cargar
   ['edit-mov-proveedor-cont','edit-mov-cliente-cont','edit-mov-area-origen-cont',
    'edit-mov-pago-cont','edit-mov-precios-cont','edit-mov-moneda-cont',
@@ -306,6 +299,10 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     document.getElementById('edit-mov-proveedor-cont').style.display    = motivo === 'compra'        ? '' : 'none';
     document.getElementById('edit-mov-cliente-cont').style.display      = motivo === 'devolucion'    ? '' : 'none';
     document.getElementById('edit-mov-area-origen-cont').style.display  = motivo === 'transferencia' ? '' : 'none';
+
+    // Mostrar tributos IVA si es compra
+    const tribuCont = document.getElementById('edit-mov-tributos-cont');
+    if (tribuCont) tribuCont.style.display = motivo === 'compra' ? '' : 'none';
 
     // Proveedor
     const selProv = document.getElementById('edit-mov-proveedor');
