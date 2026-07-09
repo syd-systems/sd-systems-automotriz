@@ -214,22 +214,23 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     btnAnular.style.display = (!m.anulada && permAnular) ? '' : 'none';
   }
 
+  // Fecha — siempre visible para ENTRADA y SALIDA
+  const fechaNeg = document.getElementById('edit-mov-fecha-negociacion');
+  const fechaLbl = document.getElementById('edit-mov-fecha-label');
+  if (tipo === 'ENTRADA') {
+    if (fechaLbl) fechaLbl.textContent = 'Fecha Negociación *';
+    if (fechaNeg) fechaNeg.value = m.fecha_negociacion || m.fecha_entrada?.slice(0,10) || getHoyVzla();
+  } else {
+    if (fechaLbl) fechaLbl.textContent = 'Fecha de Salida *';
+    if (fechaNeg) fechaNeg.value = m.fecha_salida?.slice(0,10) || getHoyVzla();
+  }
+
   // Campos solo para ENTRADA
   const esEntrada = tipo === 'ENTRADA';
   document.getElementById('edit-mov-precios-cont').style.display   = esEntrada ? '' : 'none';
   document.getElementById('edit-mov-pago-cont').style.display      = esEntrada ? '' : 'none';
 
   if (esEntrada) {
-    const fechaNeg = document.getElementById('edit-mov-fecha-negociacion');
-    const fechaLbl = document.getElementById('edit-mov-fecha-label');
-    if (tipo === 'ENTRADA') {
-      if (fechaLbl) fechaLbl.textContent = 'Fecha Negociación *';
-      if (fechaNeg) fechaNeg.value = m.fecha_negociacion || m.fecha_entrada?.slice(0,10) || getHoyVzla();
-    } else {
-      if (fechaLbl) fechaLbl.textContent = 'Fecha de Salida *';
-      if (fechaNeg) fechaNeg.value = m.fecha_salida?.slice(0,10) || getHoyVzla();
-    }
-
     // Moneda
     const selMoneda = document.getElementById('edit-mov-moneda');
     if (selMoneda) selMoneda.value = m.moneda_compra || 'USD';
