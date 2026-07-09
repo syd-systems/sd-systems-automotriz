@@ -186,6 +186,10 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   const modoLbl = soloLectura ? '👁 FICHA ENTRADA' : (esEntrada ? '✏ EDITAR ENTRADA' : '✏ EDITAR SALIDA');
   document.getElementById('edit-mov-titulo').textContent = modoLbl + ' DE STOCK';
 
+  // Ancho del modal: ENTRADA = 780px, SALIDA = 580px
+  const modalDiv = document.querySelector('#modal-edit-movimiento .modal');
+  if (modalDiv) modalDiv.style.maxWidth = esEntrada ? '780px' : '580px';
+
   if (!esEntrada) {
     // SALIDA
     const artNomEl2 = document.getElementById('edit-sal-art-nombre');
