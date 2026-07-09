@@ -366,7 +366,8 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     if (claveEl) claveEl.value = '';
   }
 
-  cerrarModal('modal-historial-stock');
+  const modalHist = document.getElementById('modal-historial-stock');
+  if (modalHist) { modalHist.classList.remove('abierto'); modalHist.style.display = 'none'; }
   abrirModal('modal-edit-movimiento');
   focusFirstField('modal-edit-movimiento');
 }
