@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260710157';
+const SYD_VERSION = '20260710158';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -248,11 +248,15 @@ async function iniciarJWT(email, passwordPlano) {
 
 async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '') {
   const url = `${SUPABASE_URL}/rest/v1/${tabla}${filtro}`;
+  // Usar el JWT firmado de la sesión (con permisos embebidos) si está vigente;
+  // si no hay sesión o expiró, cae de vuelta a la anon key (solo lectura pública
+  // según las políticas RLS de cada tabla — nunca acceso administrativo)
+  const token = (_sessionJWT && _sessionJWTExpiry && Date.now() < _sessionJWTExpiry) ? _sessionJWT : SUPABASE_KEY;
   const ops = {
     method: metodo,
     headers: {
       'apikey':        SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type':  'application/json',
       'Prefer':        metodo === 'POST' ? 'return=representation' : 'return=minimal'
     }
@@ -549,12 +553,19 @@ async function iniciarSesion() {
       return;
     }
 
-    // Verificar bcrypt
-    const verifLogin = await verificarContrasena(correo, clave);
-    if (!verifLogin.ok) {
-      mostrarError(verifLogin.msg);
+    // Verificar contraseña Y obtener JWT firmado con permisos embebidos (RPC login_firmado)
+    const loginRes = await fetch(SUPABASE_URL + '/rest/v1/rpc/login_firmado', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_correo: correo, p_clave: clave })
+    });
+    const loginData = await loginRes.json().catch(function() { return null; });
+    if (!loginData || !loginData.ok) {
+      mostrarError((loginData && loginData.msg) || 'Contraseña incorrecta.');
       return;
     }
+    _sessionJWT       = loginData.token;
+    _sessionJWTExpiry = loginData.exp * 1000;
     // Verificar si debe cambiar contraseña
     const usuInfoRes = await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correo) + '&select=cambiar_clave', {
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
@@ -652,8 +663,8 @@ async function iniciarSesion() {
     if (!_empresaActiva && _empresasUsuario.length > 0) {
       _empresaActiva = _empresasUsuario[0];
     }
-    // Guardar sesión y empresa en sessionStorage Y localStorage
-    const sesionData = JSON.stringify({ usuario: u, accesos: modulosAcceso });
+    // Guardar sesión, empresa y JWT firmado en sessionStorage Y localStorage
+    const sesionData = JSON.stringify({ usuario: u, accesos: modulosAcceso, jwt: _sessionJWT, jwtExpiry: _sessionJWTExpiry });
     sessionStorage.setItem('sd_sesion', sesionData);
     localStorage.setItem('sd_sesion', sesionData);
     if (_empresaActiva) {

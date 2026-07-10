@@ -742,7 +742,7 @@ async function procesarCambioClave() {
     // Actualizar sesión local
     if (sesionActual) sesionActual.contrasena = nueva;
     if (sesionActual) sesionActual.fecha_clave = new Date().toISOString().split('T')[0];
-    if (sesionActual) sessionStorage.setItem('sd_sesion', JSON.stringify({ usuario: sesionActual, accesos: modulosAcceso }));
+    if (sesionActual) sessionStorage.setItem('sd_sesion', JSON.stringify({ usuario: sesionActual, accesos: modulosAcceso, jwt: _sessionJWT, jwtExpiry: _sessionJWTExpiry }));
 
     okEl.textContent = '✓ Contraseña actualizada correctamente.';
     okEl.style.display = 'block';

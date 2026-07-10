@@ -1355,7 +1355,19 @@ window.addEventListener('load', async () => {
       sessionStorage.setItem('sd_sesion', guardado);
     }
     try {
-      const { usuario, accesos } = JSON.parse(guardado);
+      const { usuario, accesos, jwt, jwtExpiry } = JSON.parse(guardado);
+
+      // Si el JWT firmado expiró o no existe, la sesión ya no es válida para
+      // operar sobre tablas con RLS granular (ej. inventario) — forzar re-login
+      // en vez de continuar silenciosamente con la anon key.
+      if (!jwt || !jwtExpiry || Date.now() >= jwtExpiry) {
+        sessionStorage.removeItem('sd_sesion');
+        localStorage.removeItem('sd_sesion');
+        throw new Error('Sesión expirada, se requiere iniciar sesión de nuevo.');
+      }
+      _sessionJWT       = jwt;
+      _sessionJWTExpiry = jwtExpiry;
+
       sesionActual = usuario;
       modulosAcceso = accesos;
       // Recargar permisos granulares desde Supabase al restaurar sesión
@@ -1414,6 +1426,7 @@ window.addEventListener('load', async () => {
       iniciarTimerInactividad();
     } catch(e) {
       sessionStorage.removeItem('sd_sesion');
+      localStorage.removeItem('sd_sesion');
     }
   }
 });
