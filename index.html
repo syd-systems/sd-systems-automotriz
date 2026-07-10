@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260707155"></script>
-<script src="js/parametros.js?v=20260707155"></script>
-<script src="js/empresas.js?v=20260707155"></script>
-<script src="js/facturacion.js?v=20260707155"></script>
-<script src="js/inventario.js?v=20260707155"></script>
-<script src="js/contabilidad.js?v=20260707155"></script>
-<script src="js/pagos.js?v=20260707155"></script>
-<script src="js/vehiculos.js?v=20260707155"></script>
-<script src="js/catalogo.js?v=20260707155"></script>
-<script src="js/inventario2.js?v=20260707155"></script>
-<script src="js/ordenes.js?v=20260707155"></script>
+<script src="js/core.js?v=20260710156"></script>
+<script src="js/parametros.js?v=20260710156"></script>
+<script src="js/empresas.js?v=20260710156"></script>
+<script src="js/facturacion.js?v=20260710156"></script>
+<script src="js/inventario.js?v=20260710156"></script>
+<script src="js/contabilidad.js?v=20260710156"></script>
+<script src="js/pagos.js?v=20260710156"></script>
+<script src="js/vehiculos.js?v=20260710156"></script>
+<script src="js/catalogo.js?v=20260710156"></script>
+<script src="js/inventario2.js?v=20260710156"></script>
+<script src="js/ordenes.js?v=20260710156"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4506,7 +4506,7 @@
           <div class="form-campo form-full" style="margin-top:4px">
             <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;border-bottom:1px solid rgba(255,107,0,0.2);padding-bottom:4px">📤 Quien Entrega</div>
           </div>
-          <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
+          <div class="form-campo form-full" id="edit-sal-clave-cont" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
             <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
               <div style="font-size:13px;color:var(--texto)">Usuario: <span id="edit-sal-entrega-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
@@ -4540,7 +4540,8 @@
       <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
         <div style="display:flex;gap:8px">
           <button id="btn-anular-movimiento" class="btn-peligro" style="display:none" onclick="anularDesdeEdicion()">🗑 ANULAR</button>
-          <button class="btn-primario" onclick="guardarEdicionMovimiento()">GUARDAR</button>
+          <button id="btn-editar-movimiento" class="btn-naranja" style="display:none" onclick="habilitarEdicionMovimiento()">✏ EDITAR</button>
+          <button id="btn-guardar-movimiento" class="btn-primario" style="display:none" onclick="guardarEdicionMovimiento()">GUARDAR</button>
         </div>
         <button class="btn-secundario" onclick="retornarDesdeEditMovimiento()">RETORNAR</button>
       </div>

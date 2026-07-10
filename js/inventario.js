@@ -149,8 +149,58 @@ async function verFichaEntradaStock(id_entrada, id_articulo) {
     }
   } catch(e) { console.warn('verFichaEntradaStock CxP check:', e.message); }
 
+  _editMovEstaPagado = estaPagado;
   await editarMovimiento('ENTRADA', id_entrada, id_articulo,
     estaPagado || (!sesionActual?.administrador && !puedo('INVENTARIO','EDITAR_STOCK')));
+}
+
+// Campos editables por tipo de movimiento (usados para deshabilitar/habilitar)
+const CAMPOS_EDIT_ENTRADA = ['edit-mov-fecha-negociacion','edit-mov-moneda','edit-mov-cantidad',
+  'edit-mov-precio','edit-mov-precio-venta','edit-mov-motivo','edit-mov-proveedor',
+  'edit-mov-cliente','edit-mov-area-origen','edit-mov-area','edit-mov-empleado',
+  'edit-mov-esquema-pago','edit-mov-obs'];
+const CAMPOS_EDIT_SALIDA = ['edit-sal-fecha','edit-sal-cantidad','edit-sal-precio-venta',
+  'edit-sal-area','edit-sal-empleado','edit-sal-observaciones'];
+
+// Estado del modal de edición (para que habilitarEdicionMovimiento() sepa qué habilitar)
+let _editMovTipoActual   = null;
+let _editMovPuedeEditar  = false;
+let _editMovEstaPagado   = false;
+
+function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
+  const campos = tipo === 'ENTRADA' ? CAMPOS_EDIT_ENTRADA : CAMPOS_EDIT_SALIDA;
+  campos.forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !!soloLectura;
+  });
+  const claveBox   = tipo === 'ENTRADA' ? document.getElementById('edit-mov-clave-cont') : document.getElementById('edit-sal-clave-cont');
+  const btnGuardar  = document.getElementById('btn-guardar-movimiento');
+  const btnEditar   = document.getElementById('btn-editar-movimiento');
+  const badgePago   = document.getElementById('edit-mov-badge-pago');
+  if (soloLectura) {
+    if (claveBox)   claveBox.style.display   = 'none';
+    if (btnGuardar) btnGuardar.style.display = 'none';
+    if (btnEditar)  btnEditar.style.display  = _editMovPuedeEditar ? '' : 'none';
+  } else {
+    if (claveBox)   claveBox.style.display   = '';
+    if (btnGuardar) btnGuardar.style.display = '';
+    if (btnEditar)  btnEditar.style.display  = 'none';
+    const claveEl = tipo === 'ENTRADA' ? document.getElementById('edit-mov-clave') : document.getElementById('edit-sal-clave');
+    if (claveEl) claveEl.value = '';
+  }
+  const modoLbl = document.getElementById('edit-mov-titulo');
+  if (modoLbl) modoLbl.textContent = (soloLectura ? '👁 FICHA ' : '✏ EDITAR ') + (tipo === 'ENTRADA' ? 'ENTRADA' : 'SALIDA') + ' DE STOCK';
+}
+
+// Botón "✏ EDITAR" explícito — el modal siempre abre en modo lectura;
+// solo al presionar este botón (y re-validar el permiso) se habilitan los campos.
+function habilitarEdicionMovimiento() {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','EDITAR_STOCK')) {
+    alert('No tiene permiso para editar movimientos de stock.');
+    return;
+  }
+  if (!_editMovPuedeEditar || !_editMovTipoActual) return;
+  _aplicarSoloLecturaMovimiento(_editMovTipoActual, false);
 }
 
 async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
@@ -175,6 +225,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
 
   // Cargar datos según tipo
   const esEntrada = tipo === 'ENTRADA';
+  if (!esEntrada) _editMovEstaPagado = false; // el concepto "pagado" no aplica a salidas
 
   // Mostrar/ocultar secciones ANTES de cargar datos
   const salidaCont   = document.getElementById('edit-sal-cont');
@@ -182,9 +233,10 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   if (salidaCont)   salidaCont.style.display   = esEntrada ? 'none' : '';
   if (entradaCont2) entradaCont2.style.display  = esEntrada ? '' : 'none';
 
-  // Título del modal
-  const modoLbl = soloLectura ? '👁 FICHA ENTRADA' : (esEntrada ? '✏ EDITAR ENTRADA' : '✏ EDITAR SALIDA');
-  document.getElementById('edit-mov-titulo').textContent = modoLbl + ' DE STOCK';
+  // El modal SIEMPRE abre en modo lectura; solo se habilita si el usuario
+  // presiona el botón "✏ EDITAR" explícito (ver habilitarEdicionMovimiento()).
+  _editMovTipoActual  = tipo;
+  _editMovPuedeEditar = !soloLectura;
 
   // Ancho del modal: ENTRADA = 780px, SALIDA = 580px
   const modalDiv = document.querySelector('#modal-edit-movimiento .modal');
@@ -245,6 +297,10 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     // Limpiar clave
     const salClaveEl = document.getElementById('edit-sal-clave');
     if (salClaveEl) salClaveEl.value = '';
+
+    // Siempre abre en modo lectura (bloquea campos, oculta clave y GUARDAR;
+    // muestra el botón EDITAR solo si el usuario tiene permiso y no está pagado/anulado)
+    _aplicarSoloLecturaMovimiento('SALIDA', true);
 
     // Abrir modal — al final después de cargar todos los datos
     const modalHist2 = document.getElementById('modal-historial-stock');
@@ -496,34 +552,21 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     const empEl2 = document.getElementById('edit-mov-empleado'); if (empEl2) empEl2.innerHTML = '<option value="">— Seleccionar área primero —</option>';
   }
 
-  // ── Modo solo lectura ──
-  const campos = ['edit-mov-fecha-negociacion','edit-mov-moneda','edit-mov-cantidad',
-    'edit-mov-precio','edit-mov-precio-venta','edit-mov-motivo','edit-mov-proveedor',
-    'edit-mov-cliente','edit-mov-area-origen','edit-mov-area','edit-mov-empleado',
-    'edit-mov-esquema-pago','edit-mov-obs'];
-  campos.forEach(function(id) {
-    const el = document.getElementById(id);
-    if (el) el.disabled = !!soloLectura;
-  });
+  // Siempre abre en modo lectura; solo se habilita con el botón EDITAR explícito
+  _aplicarSoloLecturaMovimiento('ENTRADA', true);
 
-  const claveBox   = document.getElementById('edit-mov-clave-cont');
-  const btnGuardar = document.querySelector('#modal-edit-movimiento .btn-primario');
-  const badgePago  = document.getElementById('edit-mov-badge-pago');
-
-  if (soloLectura) {
-    if (claveBox)   claveBox.style.display   = 'none';
-    if (btnGuardar) btnGuardar.style.display = 'none';
-    if (badgePago) {
+  // Badge "PAGADO" — solo informativo, independiente del permiso de edición
+  const badgePago = document.getElementById('edit-mov-badge-pago');
+  if (badgePago) {
+    if (soloLectura && _editMovEstaPagado) {
       badgePago.textContent = '✅ PAGADO';
       badgePago.style.cssText = 'display:inline-block;color:#22c55e;background:rgba(34,197,94,0.12);border-radius:4px;padding:3px 10px;font-size:11px;font-weight:700';
+    } else {
+      badgePago.style.display = 'none';
     }
-  } else {
-    if (claveBox)   claveBox.style.display   = '';
-    if (btnGuardar) btnGuardar.style.display = '';
-    if (badgePago)  badgePago.style.display  = 'none';
-    const claveEl = document.getElementById('edit-mov-clave');
-    if (claveEl) claveEl.value = '';
   }
+  const claveEl = document.getElementById('edit-mov-clave');
+  if (claveEl) claveEl.value = '';
 
   const modalHist = document.getElementById('modal-historial-stock');
   if (modalHist) { modalHist.classList.remove('abierto'); modalHist.style.display = 'none'; }
@@ -552,6 +595,13 @@ async function anularDesdeEdicion() {
 
 
 async function guardarEdicionMovimiento() {
+  // Guardia de permiso — independiente de que la UI oculte/deshabilite los campos.
+  // Evita que se pueda invocar esta función directamente (p.ej. desde la consola
+  // del navegador) sin tener el permiso EDITAR_STOCK.
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','EDITAR_STOCK')) {
+    alert('No tiene permiso para editar movimientos de stock.');
+    return;
+  }
   const tipo        = document.getElementById('edit-mov-tipo').value;
   const esSalida    = tipo === 'SALIDA';
   const id_area     = parseInt((esSalida ? document.getElementById('edit-sal-area') : document.getElementById('edit-mov-area'))?.value) || null;
@@ -901,7 +951,7 @@ function calcularCuotasEdit() {
 // ── Abre el modal de reverso con datos del movimiento ──
 async function reversarMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
   // Verificar permiso
-  const permiso = tipo === 'ENTRADA' ? 'REVERSAR_ENTRADA' : 'REVERSAR_SALIDA';
+  const permiso = tipo === 'ENTRADA' ? 'ANULAR_ENTRADA' : 'ANULAR_SALIDA';
   if (!sesionActual?.administrador && !puedo('INVENTARIO', permiso)) {
     alert('No tiene permiso para reversar ' + (tipo === 'ENTRADA' ? 'entradas' : 'salidas') + ' de stock.');
     return;
