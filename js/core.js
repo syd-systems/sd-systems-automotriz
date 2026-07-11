@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260710159';
+const SYD_VERSION = '20260710160';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -251,18 +251,28 @@ async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '') {
   // Usar el JWT firmado de la sesión (con permisos embebidos) si está vigente;
   // si no hay sesión o expiró, cae de vuelta a la anon key (solo lectura pública
   // según las políticas RLS de cada tabla — nunca acceso administrativo)
-  const token = (_sessionJWT && _sessionJWTExpiry && Date.now() < _sessionJWTExpiry) ? _sessionJWT : SUPABASE_KEY;
-  const ops = {
-    method: metodo,
-    headers: {
-      'apikey':        SUPABASE_KEY,
-      'Authorization': `Bearer ${token}`,
-      'Content-Type':  'application/json',
-      'Prefer':        metodo === 'POST' ? 'return=representation' : 'return=minimal'
-    }
+  const usarJWT = !!(_sessionJWT && _sessionJWTExpiry && Date.now() < _sessionJWTExpiry);
+  const token = usarJWT ? _sessionJWT : SUPABASE_KEY;
+  const construirOps = function(tok) {
+    return {
+      method: metodo,
+      headers: {
+        'apikey':        SUPABASE_KEY,
+        'Authorization': `Bearer ${tok}`,
+        'Content-Type':  'application/json',
+        'Prefer':        metodo === 'POST' ? 'return=representation' : 'return=minimal'
+      },
+      body: cuerpo ? JSON.stringify(cuerpo) : undefined
+    };
   };
-  if (cuerpo) ops.body = JSON.stringify(cuerpo);
-  const r = await fetch(url, ops);
+  let r = await fetch(url, construirOps(token));
+  // RESPALDO TEMPORAL: mientras se termina de validar el JWT propio contra
+  // Supabase, si da 401 con el JWT, reintentar con la anon key para no
+  // romper toda la app. Quitar esto en cuanto el JWT quede confirmado.
+  if (r.status === 401 && usarJWT) {
+    console.warn('[api] JWT propio rechazado (401), reintentando con anon key:', tabla);
+    r = await fetch(url, construirOps(SUPABASE_KEY));
+  }
   if (!r.ok) {
     const err = await r.json().catch(() => ({}));
     throw new Error(err.message || `Error ${r.status}`);
@@ -553,12 +563,23 @@ async function iniciarSesion() {
     _sessionJWT       = loginData.token;
     _sessionJWTExpiry = loginData.exp * 1000;
 
-    // Traer el perfil completo — ahora SIEMPRE con el JWT propio (nunca con la
-    // anon key), así que solo puede devolver la fila del usuario ya autenticado
-    const usuInfoRes = await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correo) + '&select=*', {
+    // Traer el perfil completo con el JWT propio
+    let usuInfoRes = await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correo) + '&select=*', {
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT }
     });
-    const usuInfo = await usuInfoRes.json().catch(function() { return null; });
+    let usuInfo = usuInfoRes.ok ? await usuInfoRes.json().catch(function() { return null; }) : null;
+
+    // RESPALDO TEMPORAL: mientras se termina de validar el JWT propio contra
+    // Supabase, si esa llamada falla (401), reintentar con la anon key para
+    // no dejar a nadie sin poder iniciar sesión. Quitar esto en cuanto el
+    // JWT quede confirmado funcionando.
+    if (!usuInfo || !usuInfo.length) {
+      usuInfoRes = await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correo) + '&select=*', {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+      });
+      usuInfo = await usuInfoRes.json().catch(function() { return null; });
+    }
+
     const u = usuInfo && usuInfo[0];
     if (!u) {
       mostrarError('Error obteniendo datos de usuario. Intente de nuevo.');
