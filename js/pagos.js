@@ -705,8 +705,8 @@ async function procesarCambioClave() {
     // Actualizar contraseña, fecha y limpiar flag cambio obligatorio
     const nuevaHash = await hashearClave(nueva);
 
-    // login_firmado ya corrió antes de llegar aquí (incluso en cambio obligatorio),
-    // así que _sessionJWT ya está disponible — usarlo en vez de la anon key fija
+    // El login real de Supabase Auth ya corrió antes de llegar aquí (incluso en
+    // cambio obligatorio), así que _sessionJWT ya está disponible — usarlo en vez de la anon key fija
     const hdrs = {
       'apikey': SUPABASE_KEY,
       'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
@@ -743,7 +743,7 @@ async function procesarCambioClave() {
     // Actualizar sesión local
     if (sesionActual) sesionActual.contrasena = nueva;
     if (sesionActual) sesionActual.fecha_clave = new Date().toISOString().split('T')[0];
-    if (sesionActual) sessionStorage.setItem('sd_sesion', JSON.stringify({ usuario: sesionActual, accesos: modulosAcceso, jwt: _sessionJWT, jwtExpiry: _sessionJWTExpiry }));
+    if (sesionActual) sessionStorage.setItem('sd_sesion', JSON.stringify({ usuario: sesionActual, accesos: modulosAcceso, jwt: _sessionJWT, jwtExpiry: _sessionJWTExpiry, refreshToken: _sessionRefreshToken }));
 
     okEl.textContent = '✓ Contraseña actualizada correctamente.';
     okEl.style.display = 'block';

@@ -1355,18 +1355,45 @@ window.addEventListener('load', async () => {
       sessionStorage.setItem('sd_sesion', guardado);
     }
     try {
-      const { usuario, accesos, jwt, jwtExpiry } = JSON.parse(guardado);
+      const { usuario, accesos, jwt, jwtExpiry, refreshToken } = JSON.parse(guardado);
 
-      // Si el JWT firmado expiró o no existe, la sesión ya no es válida para
-      // operar sobre tablas con RLS granular (ej. inventario) — forzar re-login
-      // en vez de continuar silenciosamente con la anon key.
-      if (!jwt || !jwtExpiry || Date.now() >= jwtExpiry) {
+      let jwtVigente       = jwt;
+      let jwtExpiryVigente = jwtExpiry;
+
+      // Si el access_token expiró (dura 1 hora), intentar renovarlo en
+      // silencio con el refresh_token antes de forzar un nuevo login
+      if ((!jwtVigente || !jwtExpiryVigente || Date.now() >= jwtExpiryVigente) && refreshToken) {
+        try {
+          const refRes = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+            method: 'POST',
+            headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: refreshToken })
+          });
+          const refData = await refRes.json().catch(function() { return null; });
+          if (refData && refData.access_token) {
+            jwtVigente       = refData.access_token;
+            jwtExpiryVigente = refData.expires_at * 1000;
+            _sessionRefreshToken = refData.refresh_token;
+          }
+        } catch (eRef) { /* si falla, cae al chequeo de abajo */ }
+      } else {
+        _sessionRefreshToken = refreshToken || null;
+      }
+
+      // Si sigue sin haber un token vigente, la sesión ya no es válida —
+      // forzar re-login en vez de continuar silenciosamente con la anon key.
+      if (!jwtVigente || !jwtExpiryVigente || Date.now() >= jwtExpiryVigente) {
         sessionStorage.removeItem('sd_sesion');
         localStorage.removeItem('sd_sesion');
         throw new Error('Sesión expirada, se requiere iniciar sesión de nuevo.');
       }
-      _sessionJWT       = jwt;
-      _sessionJWTExpiry = jwtExpiry;
+      _sessionJWT       = jwtVigente;
+      _sessionJWTExpiry = jwtExpiryVigente;
+
+      // Refrescar el storage con el token renovado (si cambió)
+      const sesionActualizada = JSON.stringify({ usuario, accesos, jwt: jwtVigente, jwtExpiry: jwtExpiryVigente, refreshToken: _sessionRefreshToken });
+      sessionStorage.setItem('sd_sesion', sesionActualizada);
+      localStorage.setItem('sd_sesion', sesionActualizada);
 
       sesionActual = usuario;
       modulosAcceso = accesos;

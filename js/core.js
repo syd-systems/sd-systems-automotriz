@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260710160';
+const SYD_VERSION = '20260710161';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -202,8 +202,9 @@ let _empresasUsuario   = [];   // lista de empresas del usuario
 let _tasaVigente       = 1;    // tasa USD→VES más reciente (se carga al iniciar)
 
 // JWT de sesión — se actualiza al hacer login con Supabase Auth
-let _sessionJWT        = null;
-let _sessionJWTExpiry  = null;
+let _sessionJWT          = null;
+let _sessionJWTExpiry    = null;
+let _sessionRefreshToken = null;
 let _sessionEmail      = null;
 let _sessionPassword   = null;
 let _jwtBackoff        = null;
@@ -547,32 +548,32 @@ async function iniciarSesion() {
   btn.disabled = true;
 
   try {
-    // Verificar contraseña Y obtener JWT firmado con permisos embebidos (RPC login_firmado)
-    // login_firmado ya valida existencia del correo, estado ACTIVO y contraseña —
-    // ya no se hace un SELECT previo sobre usuarios (evita exponer el hash bcrypt al navegador)
-    const loginRes = await fetch(SUPABASE_URL + '/rest/v1/rpc/login_firmado', {
+    // Login REAL de Supabase Auth (auth.users) — el hook custom_access_token_hook
+    // ya inyecta administrador/permisos/correo_usuario en el access_token, firmado
+    // por Supabase con sus propias llaves (ya no firmamos nosotros el JWT)
+    const loginRes = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
       method: 'POST',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ p_correo: correo, p_clave: clave })
+      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: correo, password: clave })
     });
     const loginData = await loginRes.json().catch(function() { return null; });
-    if (!loginData || !loginData.ok) {
-      mostrarError((loginData && loginData.msg) || 'Contraseña incorrecta.');
+    if (!loginData || !loginData.access_token) {
+      mostrarError((loginData && (loginData.msg || loginData.error_description)) || 'Correo o contraseña incorrectos.');
       return;
     }
-    _sessionJWT       = loginData.token;
-    _sessionJWTExpiry = loginData.exp * 1000;
+    _sessionJWT          = loginData.access_token;
+    _sessionJWTExpiry    = loginData.expires_at * 1000;
+    _sessionRefreshToken = loginData.refresh_token;
 
-    // Traer el perfil completo con el JWT propio
+    // Traer el perfil completo con el JWT propio (ya autenticado, solo puede
+    // devolver su propia fila una vez apliquemos RLS granular sobre usuarios)
     let usuInfoRes = await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correo) + '&select=*', {
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT }
     });
     let usuInfo = usuInfoRes.ok ? await usuInfoRes.json().catch(function() { return null; }) : null;
 
-    // RESPALDO TEMPORAL: mientras se termina de validar el JWT propio contra
-    // Supabase, si esa llamada falla (401), reintentar con la anon key para
-    // no dejar a nadie sin poder iniciar sesión. Quitar esto en cuanto el
-    // JWT quede confirmado funcionando.
+    // RESPALDO: por si algún día el token real fallara por cualquier motivo,
+    // no dejar a nadie sin poder iniciar sesión.
     if (!usuInfo || !usuInfo.length) {
       usuInfoRes = await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correo) + '&select=*', {
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
@@ -679,7 +680,7 @@ async function iniciarSesion() {
       _empresaActiva = _empresasUsuario[0];
     }
     // Guardar sesión, empresa y JWT firmado en sessionStorage Y localStorage
-    const sesionData = JSON.stringify({ usuario: u, accesos: modulosAcceso, jwt: _sessionJWT, jwtExpiry: _sessionJWTExpiry });
+    const sesionData = JSON.stringify({ usuario: u, accesos: modulosAcceso, jwt: _sessionJWT, jwtExpiry: _sessionJWTExpiry, refreshToken: _sessionRefreshToken });
     sessionStorage.setItem('sd_sesion', sesionData);
     localStorage.setItem('sd_sesion', sesionData);
     if (_empresaActiva) {
@@ -904,8 +905,9 @@ function limpiarSesionLocal() {
   window._sesionLista    = false;
   window._miTokenSesion  = null;
   // Limpiar JWT y empresa
-  _sessionJWT       = null;
-  _sessionJWTExpiry = null;
+  _sessionJWT          = null;
+  _sessionJWTExpiry    = null;
+  _sessionRefreshToken = null;
   _sessionEmail     = null;
   _sessionPassword  = null;
   _empresaActiva    = null;
