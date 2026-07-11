@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260710158';
+const SYD_VERSION = '20260710159';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -537,23 +537,9 @@ async function iniciarSesion() {
   btn.disabled = true;
 
   try {
-    // Buscar usuario en Supabase
-    const usuarios = await api('usuarios', 'GET', null,
-      `?correo_usuario=eq.${encodeURIComponent(correo)}&select=*`);
-
-    if (!usuarios || usuarios.length === 0) {
-      mostrarError('Correo no registrado en el sistema.');
-      return;
-    }
-
-    const u = usuarios[0];
-
-    if (u.estado_usuario !== 'ACTIVO') {
-      mostrarError('Usuario inactivo. Contacte al Administrador.');
-      return;
-    }
-
     // Verificar contraseña Y obtener JWT firmado con permisos embebidos (RPC login_firmado)
+    // login_firmado ya valida existencia del correo, estado ACTIVO y contraseña —
+    // ya no se hace un SELECT previo sobre usuarios (evita exponer el hash bcrypt al navegador)
     const loginRes = await fetch(SUPABASE_URL + '/rest/v1/rpc/login_firmado', {
       method: 'POST',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
@@ -566,12 +552,20 @@ async function iniciarSesion() {
     }
     _sessionJWT       = loginData.token;
     _sessionJWTExpiry = loginData.exp * 1000;
-    // Verificar si debe cambiar contraseña
-    const usuInfoRes = await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correo) + '&select=cambiar_clave', {
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+
+    // Traer el perfil completo — ahora SIEMPRE con el JWT propio (nunca con la
+    // anon key), así que solo puede devolver la fila del usuario ya autenticado
+    const usuInfoRes = await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correo) + '&select=*', {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT }
     });
-    const usuInfo = await usuInfoRes.json();
-    if (usuInfo && usuInfo[0] && usuInfo[0].cambiar_clave) {
+    const usuInfo = await usuInfoRes.json().catch(function() { return null; });
+    const u = usuInfo && usuInfo[0];
+    if (!u) {
+      mostrarError('Error obteniendo datos de usuario. Intente de nuevo.');
+      return;
+    }
+
+    if (u.cambiar_clave) {
       // Mostrar modal de cambio obligatorio
       const avisoEl = document.getElementById('cambio-aviso');
       if (avisoEl) {
@@ -598,7 +592,7 @@ async function iniciarSesion() {
     // Escribir token en BD ANTES de habilitar el polling
     await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correo), {
       method: 'PATCH',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
       body: JSON.stringify({ sesion_activa: true, sesion_invalidada: false, ultimo_acceso: new Date().toISOString(), token_sesion: miToken })
     });
     // Reiniciar polling DESPUÉS de confirmar el token en BD

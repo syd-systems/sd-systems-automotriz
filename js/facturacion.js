@@ -910,10 +910,11 @@ async function hashearClave(clave) {
 // Usa pgcrypto: crypt(clave_ingresada, hash_guardado) == hash_guardado
 async function verificarContrasena(correoUsu, claveIngresada) {
   try {
-    // Usar siempre anon key para login — JWT no disponible aún
+    // Usa el JWT de sesión si existe (todos los llamadores actuales son
+    // re-confirmaciones a mitad de sesión); cae a la anon key solo si no hay sesión
     const headers = {
       'apikey':        SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
       'Content-Type':  'application/json'
     };
     // Buscar usuario

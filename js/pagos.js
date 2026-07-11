@@ -705,10 +705,11 @@ async function procesarCambioClave() {
     // Actualizar contraseña, fecha y limpiar flag cambio obligatorio
     const nuevaHash = await hashearClave(nueva);
 
-    // Usar fetch directo para no depender de JWT (aún no hay sesión)
+    // login_firmado ya corrió antes de llegar aquí (incluso en cambio obligatorio),
+    // así que _sessionJWT ya está disponible — usarlo en vez de la anon key fija
     const hdrs = {
       'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
       'Content-Type': 'application/json',
       'Prefer': 'return=minimal'
     };
@@ -970,37 +971,21 @@ async function enviarRecuperacion() {
   }
 
   try {
-    // Verificar que el correo existe
-    const usuarios = await api('usuarios', 'GET', null,
-      `?correo_usuario=eq.${encodeURIComponent(correo)}&select=correo_usuario,nombre,estado_usuario`);
-
-    if (!usuarios || usuarios.length === 0) {
-      errEl.textContent = 'No existe ningún usuario con ese correo.';
+    const solicitudRes = await fetch(SUPABASE_URL + '/rest/v1/rpc/solicitar_recuperacion', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_correo: correo })
+    });
+    const solicitud = await solicitudRes.json().catch(function() { return null; });
+    if (!solicitud || !solicitud.ok) {
+      errEl.textContent = (solicitud && solicitud.msg) || 'Error al enviar el correo. Intente nuevamente.';
       errEl.style.display = 'block';
       return;
     }
 
-    if (usuarios[0].estado_usuario !== 'ACTIVO') {
-      errEl.textContent = 'Usuario inactivo. Contacte al administrador.';
-      errEl.style.display = 'block';
-      return;
-    }
+    const enlace = `${window.location.origin}${window.location.pathname}?reset=${solicitud.token}`;
 
-    const nombre = usuarios[0].nombre;
-
-    // Invalidar tokens anteriores del mismo correo
-    await api('tokens_recuperacion', 'PATCH', { usado: true },
-      `?correo=eq.${encodeURIComponent(correo)}&usado=eq.false`);
-
-    // Generar y guardar token en Supabase
-    const token = generarToken();
-    const expira = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-
-    await api('tokens_recuperacion', 'POST', { token, correo, expira, usado: false });
-
-    const enlace = `${window.location.origin}${window.location.pathname}?reset=${token}`;
-
-    await enviarCorreoRecuperacion(correo, nombre, enlace, false);
+    await enviarCorreoRecuperacion(correo, solicitud.nombre, enlace, false);
 
     okEl.textContent = `✓ Enlace enviado a ${correo}. Revisa tu bandeja de entrada.`;
     okEl.style.display = 'block';
@@ -1044,45 +1029,17 @@ async function guardarNuevaClave() {
   }
 
   try {
-    // Verificar token en Supabase
-    const tokens = await api('tokens_recuperacion', 'GET', null,
-      `?token=eq.${token}&usado=eq.false&select=*`);
-
-    if (!tokens || tokens.length === 0) {
-      errEl.textContent = 'Enlace inválido o ya fue usado. Solicita uno nuevo.';
+    const resetRes = await fetch(SUPABASE_URL + '/rest/v1/rpc/resetear_clave_token', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_token: token, p_clave_nueva: clave1 })
+    });
+    const resultado = await resetRes.json().catch(function() { return null; });
+    if (!resultado || !resultado.ok) {
+      errEl.textContent = (resultado && resultado.msg) || 'Error al actualizar la contraseña. Intente nuevamente.';
       errEl.style.display = 'block';
       return;
     }
-
-    const datos = tokens[0];
-
-    if (new Date() > new Date(datos.expira)) {
-      errEl.textContent = 'El enlace ha expirado. Solicita uno nuevo.';
-      errEl.style.display = 'block';
-      await api('tokens_recuperacion', 'PATCH', { usado: true }, `?token=eq.${token}`);
-      return;
-    }
-
-    // Verificar que no sea igual a una anterior
-    const yaUsada = await claveYaUsada(datos.correo, clave1);
-    if (yaUsada) {
-      errEl.textContent = 'La nueva contraseña no puede ser igual a una contraseña anterior.';
-      errEl.style.display = 'block';
-      return;
-    }
-
-    // Actualizar contraseña y fecha (hasheada)
-    const clave1Hash = await hashearClave(clave1);
-    await api('usuarios', 'PATCH', {
-      contrasena: clave1Hash,
-      fecha_clave: new Date().toISOString().split('T')[0]
-    }, `?correo_usuario=eq.${encodeURIComponent(datos.correo)}`);
-
-    // Guardar en historial
-    await guardarEnHistorial(datos.correo, clave1);
-
-    // Marcar token como usado
-    await api('tokens_recuperacion', 'PATCH', { usado: true }, `?token=eq.${token}`);
 
     okEl.textContent = '✓ Contraseña actualizada. Puedes iniciar sesión.';
     okEl.style.display = 'block';
