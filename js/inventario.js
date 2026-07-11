@@ -665,14 +665,19 @@ async function guardarEdicionMovimiento() {
   }
   if (!clave) return mostrarError('Ingrese su contraseña para autorizar.', 'edit-mov-clave');
 
-  // ── Verificar contraseña ──
-  try {
-    const verifEdit = await verificarContrasena(sesionActual.correo_usuario, clave);
-    if (!verifEdit.ok) return mostrarError('Contraseña incorrecta.', 'edit-mov-clave');
-  } catch(eV) { return mostrarError('Error verificando contraseña: ' + eV.message); }
+  const btnGuardar = document.getElementById('btn-guardar-movimiento');
+  const textoOriginalBtn = btnGuardar ? btnGuardar.textContent : 'GUARDAR';
+  if (btnGuardar) { btnGuardar.textContent = 'GUARDANDO...'; btnGuardar.disabled = true; }
 
   try {
-    const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
+    // ── Verificar contraseña ──
+    try {
+      const verifEdit = await verificarContrasena(sesionActual.correo_usuario, clave);
+      if (!verifEdit.ok) return mostrarError('Contraseña incorrecta.', 'edit-mov-clave');
+    } catch(eV) { return mostrarError('Error verificando contraseña: ' + eV.message); }
+
+    try {
+      const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
 
     const datos = {
       cantidad:             cantidad,
@@ -878,6 +883,10 @@ async function guardarEdicionMovimiento() {
   } catch(err) {
     errEl.textContent = 'Error: ' + err.message;
     errEl.style.display = 'block';
+  }
+
+  } finally {
+    if (btnGuardar) { btnGuardar.textContent = textoOriginalBtn; btnGuardar.disabled = false; }
   }
 }
 
