@@ -298,6 +298,12 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     const salClaveEl = document.getElementById('edit-sal-clave');
     if (salClaveEl) salClaveEl.value = '';
 
+    // Guardar id del movimiento, tipo y del artículo en los campos ocultos
+    // compartidos (los mismos que usa guardarEdicionMovimiento/anularDesdeEdicion)
+    document.getElementById('edit-mov-tipo').value        = 'SALIDA';
+    document.getElementById('edit-mov-id').value          = idMovimiento;
+    document.getElementById('edit-mov-id-articulo').value = id_articulo;
+
     // Siempre abre en modo lectura (bloquea campos, oculta clave y GUARDAR;
     // muestra el botón EDITAR solo si el usuario tiene permiso y no está pagado/anulado)
     _aplicarSoloLecturaMovimiento('SALIDA', true);
@@ -309,6 +315,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     abrirModal('modal-edit-movimiento');
     return;
   }
+  document.getElementById('edit-mov-tipo').value        = 'ENTRADA';
   document.getElementById('edit-mov-id').value          = idMovimiento;
   document.getElementById('edit-mov-id-articulo').value = id_articulo;
   document.getElementById('edit-mov-cantidad').value    = parseFloat(m.cantidad || 0) % 1 === 0 ? parseInt(m.cantidad || 0) : parseFloat(m.cantidad || 0).toFixed(2);
@@ -579,7 +586,7 @@ async function anularDesdeEdicion() {
   const tipo        = document.getElementById('edit-mov-tipo').value;
   const id          = parseInt(document.getElementById('edit-mov-id').value);
   const id_articulo = parseInt(document.getElementById('edit-mov-id-articulo').value);
-  const cantidad    = parseFloat(document.getElementById('edit-mov-cantidad').value) || 0;
+  const cantidad    = parseFloat(document.getElementById(tipo === 'SALIDA' ? 'edit-sal-cantidad' : 'edit-mov-cantidad').value) || 0;
 
   if (!confirm('¿Anular este movimiento? Esta acción revertirá el stock y los asientos contables.')) return;
 
@@ -603,6 +610,8 @@ async function guardarEdicionMovimiento() {
     return;
   }
   const tipo        = document.getElementById('edit-mov-tipo').value;
+  const id          = parseInt(document.getElementById('edit-mov-id').value);
+  const id_articulo = parseInt(document.getElementById('edit-mov-id-articulo').value);
   const esSalida    = tipo === 'SALIDA';
   const id_area     = parseInt((esSalida ? document.getElementById('edit-sal-area') : document.getElementById('edit-mov-area'))?.value) || null;
   const idEmp       = parseInt((esSalida ? document.getElementById('edit-sal-empleado') : document.getElementById('edit-mov-empleado'))?.value) || null;
