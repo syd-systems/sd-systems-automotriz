@@ -632,7 +632,12 @@ function calcularCuotasEntrada() {
   const intervalo  = parseInt(document.getElementById('es-cuotas-intervalo')?.value) || 30;
   const montoTotal = parseFloat(document.getElementById('es-precio-costo')?.value || document.getElementById('es-precio-usd-calc')?.value) || 0;
   const cantidad   = parseFloat(document.getElementById('es-cantidad')?.value) || 0;
-  const totalUSD   = montoTotal * cantidad;
+  // montoTotal es el precio NEGOCIADO (puede traer IVA incluido o no) —
+  // reconstruir el TOTAL con IVA correctamente antes de repartir en cuotas
+  const exentoCuotasEnt  = document.getElementById('es-exento-iva-val')?.value === 'SI';
+  const incluyeCuotasEnt = document.getElementById('es-incluye-iva-val')?.value === 'SI';
+  const montoBaseEnt = montoTotal * cantidad;
+  const totalUSD   = parseFloat((exentoCuotasEnt || incluyeCuotasEnt ? montoBaseEnt : montoBaseEnt * 1.16).toFixed(2));
   const preview    = document.getElementById('es-cuotas-preview');
   if (!preview) return;
 
@@ -961,6 +966,14 @@ async function guardarEntradaStock() {
       } catch(eAstTransf) { console.warn('Error asiento transferencia consumible:', eAstTransf); }
     }
 
+    // ── Monto TOTAL (con IVA si aplica) — se calcula UNA sola vez aquí y se
+    // usa igual tanto para el asiento contable como para la CxP, para que
+    // nunca queden descuadrados entre sí por redondeos en momentos distintos.
+    const exentoIVAEnt2   = document.getElementById('es-exento-iva-val')?.value === 'SI';
+    const montoTotalConIVA = exentoIVAEnt2
+      ? parseFloat((nuevoPrecioCostoRaw * cantidad).toFixed(2))
+      : parseFloat((nuevoPrecioCostoRaw * cantidad * (incluyeIVA_ent ? 1 : (1 + IVA_RATE_ENT))).toFixed(2));
+
     // Transferencias de otros articulos (Mercancias) NO generan asiento aqui
     if (motivoEnt !== "transferencia") try {
       const areaNombreEnt = document.getElementById('es-area-display')?.textContent || 'Área';
@@ -970,20 +983,17 @@ async function guardarEntradaStock() {
       await generarAsientoInventario(tipoAst, {
         articulo:   r.nombre_articulo || r.codigo_articulo || ('Art#' + id),
         cantidad:   cantidad,
-        montoUSD:   nuevoPrecioCosto * cantidad,
+        montoUSD:   montoTotalConIVA,
         areaId:     id_areaEnt,
         areaNombre: areaNombreEnt,
         referencia: id_entrada ? 'ENT-' + id_entrada : ('ENT-INV-' + id),
         id_cuentaInventario: r.id_cuenta_contable || null,
         fecha:      document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
         tasa:       tasa_bcv_usada || null,
-        // nuevoPrecioCosto YA es la base sin IVA (se calculó al validar el
-        // formulario, líneas 796-798) — decirle a generarAsientoInventario
-        // que sume el IVA sobre esta base, no que la desgloce de nuevo
-        // (si se le manda incluyeIVA:true aquí, el monto se le resta el IVA
-        // por segunda vez, dando cifras equivocadas en el asiento y en la CxP)
-        incluyeIVA:  false,
-        exentoIVA:   document.getElementById('es-exento-iva-val')?.value === 'SI'
+        // montoTotalConIVA ya es el TOTAL (con IVA incluido si no es exento);
+        // se le pide a generarAsientoInventario que lo desgloce (base = total/1.16)
+        incluyeIVA:  true,
+        exentoIVA:   exentoIVAEnt2
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
 
@@ -992,21 +1002,9 @@ async function guardarEntradaStock() {
     if (motivoEnt === 'compra') {
       try {
         const id_proveedor = parseInt(document.getElementById('es-proveedor')?.value) || null;
-        // Monto CxP = total con IVA (base + IVA si aplica)
-        const exentoIVACxP  = document.getElementById('es-exento-iva-val')?.value === 'SI';
-        const incluyeIVACxP = document.getElementById('es-incluye-iva-val')?.value === 'SI';
-        const montoBaseUSD  = parseFloat((nuevoPrecioCosto * cantidad).toFixed(2));
-        const IVA_RATE_CXP  = 0.16;
-        let montoUSD;
-        if (exentoIVACxP) {
-          montoUSD = montoBaseUSD; // sin IVA
-        } else if (incluyeIVACxP) {
-          // IVA ya incluido en el precio ingresado — reconstruir total
-          montoUSD = parseFloat((montoBaseUSD * (1 + IVA_RATE_CXP)).toFixed(2));
-        } else {
-          // IVA no incluido — sumar
-          montoUSD = parseFloat((montoBaseUSD * (1 + IVA_RATE_CXP)).toFixed(2));
-        }
+        // Monto CxP = el mismo total ya calculado arriba (montoTotalConIVA),
+        // para que siempre coincida exactamente con el asiento contable
+        const montoUSD = montoTotalConIVA;
         const montoVES    = parseFloat((montoUSD * (tasa_bcv_usada || _tasaVigente || 1)).toFixed(2));
         const esquema     = document.getElementById('es-esquema-pago')?.value || 'CONTADO';
         const numDocBase  = id_entrada ? 'ENT-' + id_entrada : ('ENT-INV-' + id);

@@ -797,7 +797,10 @@ async function guardarEdicionMovimiento() {
         const numDocBase = 'ENT-' + id;
         const artNom = r?.nombre_articulo || ('Art#' + id_articulo);
         const precioFinal2 = precio !== null ? precio : parseFloat(art?.precio_costo_moneda || 0);
-        const nuevoMontoUSD = parseFloat((cantidad * precioFinal2).toFixed(2));
+        // precioFinal2 es la BASE sin IVA (por unidad) — reconstruir el TOTAL
+        // con IVA (si no es exento) para que la CxP no pierda el IVA
+        const exentoEdit2  = document.getElementById('edit-mov-exento-iva-val')?.value === 'SI';
+        const nuevoMontoUSD = parseFloat((cantidad * precioFinal2 * (exentoEdit2 ? 1 : 1.16)).toFixed(2));
 
         // Eliminar CxP existentes PENDIENTES para esta entrada
         const cxpsExist = await api('cont_cxp', 'GET', null,
@@ -924,8 +927,12 @@ function calcularCuotasEdit() {
   const precio      = parseFloat(document.getElementById('edit-mov-precio')?.value) || 0;
   const cantidad    = parseFloat(document.getElementById('edit-mov-cantidad')?.value) || 0;
   const montoCuotaInput = parseFloat(document.getElementById('edit-mov-cuotas-monto')?.value) || 0;
-  // Calcular total: precio*cantidad si disponible, o monto cuota * num cuotas como fallback
-  let totalUSD = parseFloat((precio * cantidad).toFixed(2));
+  // precio es el precio NEGOCIADO (puede traer IVA incluido o no, según la
+  // bandera) — reconstruir el TOTAL con IVA correctamente antes de repartir
+  const exentoCuotas  = document.getElementById('edit-mov-exento-iva-val')?.value === 'SI';
+  const incluyeCuotas = document.getElementById('edit-mov-incluye-iva-val')?.value === 'SI';
+  const montoBase = precio * cantidad;
+  let totalUSD = parseFloat((exentoCuotas || incluyeCuotas ? montoBase : montoBase * 1.16).toFixed(2));
   if (!totalUSD && montoCuotaInput && numCuotas) totalUSD = parseFloat((montoCuotaInput * numCuotas).toFixed(2));
   const preview = document.getElementById('edit-mov-cuotas-preview');
   if (!preview) return;
