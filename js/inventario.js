@@ -413,10 +413,15 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     const lblMoneda = document.getElementById('edit-mov-label-moneda');
     if (lblMoneda) lblMoneda.textContent = '(' + (m.moneda_compra || 'USD') + ')';
 
-    // Precio
+    // Precio — usar el precio ORIGINAL negociado (antes de descontar IVA),
+    // no el costo ya neto guardado en precio_costo_moneda. Si el registro es
+    // anterior a que existiera esta columna, se cae al costo neto como antes.
     const precioEl = document.getElementById('edit-mov-precio');
-    if (precioEl) precioEl.value = m.precio_costo_moneda
-      ? parseFloat(m.precio_costo_moneda).toFixed(2) : '0.00';
+    const precioParaMostrar = (m.precio_compra_original !== null && m.precio_compra_original !== undefined)
+      ? m.precio_compra_original
+      : m.precio_costo_moneda;
+    if (precioEl) precioEl.value = precioParaMostrar
+      ? parseFloat(precioParaMostrar).toFixed(2) : '0.00';
     // Precio Venta
 
     // Transacción (motivo) — inferir si es null en registros anteriores
@@ -700,7 +705,15 @@ async function guardarEdicionMovimiento() {
 
     if (tipo === 'ENTRADA') {
       const precioRaw  = document.getElementById('edit-mov-precio').value;
-      const precio     = precioRaw !== '' && !isNaN(precioRaw) ? parseFloat(precioRaw) : null;
+      const precioNegociado = precioRaw !== '' && !isNaN(precioRaw) ? parseFloat(precioRaw) : null;
+      const exentoEdit  = document.getElementById('edit-mov-exento-iva-val')?.value === 'SI';
+      const incluyeEdit = document.getElementById('edit-mov-incluye-iva-val')?.value === 'SI';
+      // precioNegociado es el precio TAL COMO se negoció (puede traer IVA
+      // incluido); precio_costo_moneda debe guardar siempre la BASE sin IVA
+      // — misma conversión que se aplica al crear la entrada (inventario2.js)
+      const precio = (precioNegociado !== null && !exentoEdit && incluyeEdit)
+        ? parseFloat((precioNegociado / 1.16).toFixed(4))
+        : precioNegociado;
       const monedaEdit = document.getElementById('edit-mov-moneda')?.value || 'USD';
       const fechaNeg   = document.getElementById('edit-mov-fecha-negociacion')?.value || getHoyVzla();
       const motivoEdit = document.getElementById('edit-mov-motivo')?.value || '';
@@ -711,6 +724,12 @@ async function guardarEdicionMovimiento() {
       const pvEdit     = parseFloat(document.getElementById('edit-mov-precio-venta')?.value) || null;
 
       if (precio !== null) datos.precio_costo_moneda = precio;
+      if (precioNegociado !== null) datos.precio_compra_original = precioNegociado;
+      datos.exento_iva          = document.getElementById('edit-mov-exento-iva-val')?.value === 'SI' ? true
+                                   : (document.getElementById('edit-mov-exento-iva-val')?.value === 'NO' ? false : null);
+      datos.incluye_iva         = exentoEdit ? null
+                                   : (document.getElementById('edit-mov-incluye-iva-val')?.value === 'SI' ? true
+                                   : (document.getElementById('edit-mov-incluye-iva-val')?.value === 'NO' ? false : null));
       datos.moneda_compra       = monedaEdit;
       datos.fecha_negociacion   = fechaNeg;
       datos.motivo              = motivoEdit;

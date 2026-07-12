@@ -977,7 +977,12 @@ async function guardarEntradaStock() {
         id_cuentaInventario: r.id_cuenta_contable || null,
         fecha:      document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
         tasa:       tasa_bcv_usada || null,
-        incluyeIVA:  document.getElementById('es-incluye-iva-val')?.value === 'SI',
+        // nuevoPrecioCosto YA es la base sin IVA (se calculó al validar el
+        // formulario, líneas 796-798) — decirle a generarAsientoInventario
+        // que sume el IVA sobre esta base, no que la desgloce de nuevo
+        // (si se le manda incluyeIVA:true aquí, el monto se le resta el IVA
+        // por segunda vez, dando cifras equivocadas en el asiento y en la CxP)
+        incluyeIVA:  false,
         exentoIVA:   document.getElementById('es-exento-iva-val')?.value === 'SI'
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
