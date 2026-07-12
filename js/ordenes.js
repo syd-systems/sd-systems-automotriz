@@ -1389,6 +1389,7 @@ window.addEventListener('load', async () => {
       }
       _sessionJWT       = jwtVigente;
       _sessionJWTExpiry = jwtExpiryVigente;
+      iniciarRenovacionJWT();
 
       // Refrescar el storage con el token renovado (si cambió)
       const sesionActualizada = JSON.stringify({ usuario, accesos, jwt: jwtVigente, jwtExpiry: jwtExpiryVigente, refreshToken: _sessionRefreshToken });

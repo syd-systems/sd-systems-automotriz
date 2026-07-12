@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260710165';
+const SYD_VERSION = '20260710166';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -205,6 +205,45 @@ let _tasaVigente       = 1;    // tasa USD→VES más reciente (se carga al inic
 let _sessionJWT          = null;
 let _sessionJWTExpiry    = null;
 let _sessionRefreshToken = null;
+let _intervalRenovacionJWT = null;
+
+// Renueva el access_token en silencio usando el refresh_token, antes de que
+// expire (dura 1h) — evita que operaciones fallen si la pestaña queda abierta
+async function renovarJWTSilencioso() {
+  if (!_sessionRefreshToken) return;
+  try {
+    const refRes = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: _sessionRefreshToken })
+    });
+    const refData = await refRes.json().catch(function() { return null; });
+    if (refData && refData.access_token) {
+      _sessionJWT          = refData.access_token;
+      _sessionJWTExpiry    = refData.expires_at * 1000;
+      _sessionRefreshToken = refData.refresh_token;
+      const guardado = sessionStorage.getItem('sd_sesion') || localStorage.getItem('sd_sesion');
+      if (guardado) {
+        try {
+          const obj = JSON.parse(guardado);
+          obj.jwt = _sessionJWT; obj.jwtExpiry = _sessionJWTExpiry; obj.refreshToken = _sessionRefreshToken;
+          const actualizado = JSON.stringify(obj);
+          sessionStorage.setItem('sd_sesion', actualizado);
+          localStorage.setItem('sd_sesion', actualizado);
+        } catch(eStorage) { /* no crítico */ }
+      }
+    }
+  } catch(eRef) { console.warn('[renovarJWTSilencioso] no se pudo renovar:', eRef); }
+}
+
+function iniciarRenovacionJWT() {
+  if (_intervalRenovacionJWT) clearInterval(_intervalRenovacionJWT);
+  _intervalRenovacionJWT = setInterval(renovarJWTSilencioso, 50 * 60 * 1000); // cada 50 min (expira a la hora)
+}
+
+function detenerRenovacionJWT() {
+  if (_intervalRenovacionJWT) { clearInterval(_intervalRenovacionJWT); _intervalRenovacionJWT = null; }
+}
 let _sessionEmail      = null;
 let _sessionPassword   = null;
 let _jwtBackoff        = null;
@@ -564,6 +603,7 @@ async function iniciarSesion() {
     _sessionJWT          = loginData.access_token;
     _sessionJWTExpiry    = loginData.expires_at * 1000;
     _sessionRefreshToken = loginData.refresh_token;
+    iniciarRenovacionJWT();
 
     // Traer el perfil completo con el JWT propio (ya autenticado, solo puede
     // devolver su propia fila una vez apliquemos RLS granular sobre usuarios)
@@ -902,6 +942,7 @@ function cambiarEmpresa() {
 function limpiarSesionLocal() {
   // Detener polling PRIMERO para evitar expulsiones en loop
   clearInterval(_pollingInterval);
+  detenerRenovacionJWT();
   window._sesionLista    = false;
   window._miTokenSesion  = null;
   // Limpiar JWT y empresa
