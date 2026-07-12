@@ -1248,6 +1248,10 @@ async function guardarInventario() {
   const idCtaCG2 = parseInt(document.getElementById('inv-cuenta-costo-gasto')?.value) || 0;
   if (!idCtaCG2) { errEl.textContent = 'Debe seleccionar la Cuenta Costo / Gasto de Inventario.'; errEl.style.display = 'block'; document.getElementById('inv-cuenta-costo-gasto')?.focus(); return; }
 
+  const btnGuardar = document.getElementById('btn-guardar-inventario');
+  const textoOriginalBtn = btnGuardar ? btnGuardar.textContent : 'GUARDAR';
+  if (btnGuardar) { btnGuardar.textContent = 'GUARDANDO...'; btnGuardar.disabled = true; }
+
   try {
     // Validar código duplicado
     if (codigo) {
@@ -1285,6 +1289,7 @@ async function guardarInventario() {
     okEl.textContent = '✓ Artículo guardado.'; okEl.style.display = 'block';
     setTimeout(function() { cerrarModal('modal-inventario'); document.getElementById('contenido-principal').innerHTML=''; renderInventario(); }, 1000);
   } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+  finally { if (btnGuardar) { btnGuardar.textContent = textoOriginalBtn; btnGuardar.disabled = false; } }
 }
 
 async function eliminarInventario(id, nombre) {
