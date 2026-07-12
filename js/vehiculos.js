@@ -599,6 +599,10 @@ async function guardarVehiculo() {
     errEl.style.display = 'block'; return;
   }
 
+  const btnGuardar = document.getElementById('btn-guardar-vehiculo');
+  const textoOriginalBtn = btnGuardar ? btnGuardar.textContent : 'GUARDAR';
+  if (btnGuardar) { btnGuardar.textContent = 'GUARDANDO...'; btnGuardar.disabled = true; }
+
   try {
     let carnetUrl = id ? (vehiculosCache.find(function(v) { return v.id_vehiculo == id; })?.foto_carnet || null) : null;
     if (carnetF) carnetUrl = await subirFoto(carnetF, 'carnets');
@@ -656,6 +660,8 @@ async function guardarVehiculo() {
   } catch(e) {
     errEl.textContent = 'Error: ' + e.message;
     errEl.style.display = 'block';
+  } finally {
+    if (btnGuardar) { btnGuardar.textContent = textoOriginalBtn; btnGuardar.disabled = false; }
   }
 }
 
