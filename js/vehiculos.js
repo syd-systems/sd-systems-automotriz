@@ -262,6 +262,10 @@ async function guardarPropietario() {
   // Capitalizar nombre correctamente
   const nombreFinal = capitalizarNombre(nombre);
 
+  const btnGuardar = document.getElementById('btn-guardar-propietario');
+  const textoOriginalBtn = btnGuardar ? btnGuardar.textContent : 'GUARDAR';
+  if (btnGuardar) { btnGuardar.textContent = 'GUARDANDO...'; btnGuardar.disabled = true; }
+
   try {
     let fotoUrl = id ? (propietariosCache.find(function(p) { return p.id_propietario == id; })?.foto_documento || null) : null;
     if (fotoFile) fotoUrl = await subirFoto(fotoFile, 'propietarios');
@@ -291,6 +295,8 @@ async function guardarPropietario() {
   } catch(e) {
     errEl.textContent = 'Error: ' + e.message;
     errEl.style.display = 'block';
+  } finally {
+    if (btnGuardar) { btnGuardar.textContent = textoOriginalBtn; btnGuardar.disabled = false; }
   }
 }
 
