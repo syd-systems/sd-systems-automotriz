@@ -817,7 +817,16 @@ async function guardarEdicionMovimiento() {
           const prevEl = document.getElementById('edit-mov-cuotas-preview');
           const cuotasData = prevEl?.dataset?.cuotas ? JSON.parse(prevEl.dataset.cuotas) : [];
           if (cuotasData.length) {
-            for (const c of cuotasData) {
+            const totalVesCuotasEdit = parseFloat((nuevoMontoUSD * tasaEdit).toFixed(2));
+            let acumVesCuotasEdit = 0;
+            for (let iCuota = 0; iCuota < cuotasData.length; iCuota++) {
+              const c = cuotasData[iCuota];
+              const esUltimaCuotaEdit = iCuota === cuotasData.length - 1;
+              // La última cuota absorbe el residuo de redondeo en Bs
+              const montoVesCuotaEdit = esUltimaCuotaEdit
+                ? parseFloat((totalVesCuotasEdit - acumVesCuotasEdit).toFixed(2))
+                : parseFloat((c.monto * tasaEdit).toFixed(2));
+              acumVesCuotasEdit = parseFloat((acumVesCuotasEdit + montoVesCuotaEdit).toFixed(2));
               await api('cont_cxp', 'POST', {
                 id_proveedor:    idProvEdit,
                 id_empresa:      _empresaActiva?.id_empresa || null,
@@ -829,7 +838,7 @@ async function guardarEdicionMovimiento() {
                 moneda_pago:     monedaEdit || 'USD',
                 estado:          'PENDIENTE',
                 monto_usd:       parseFloat(c.monto.toFixed(2)),
-                monto_ves:       parseFloat((c.monto * tasaEdit).toFixed(2)),
+                monto_ves:       montoVesCuotaEdit,
                 tasa_bcv:        tasaEdit,
                 tasa_bcv_compra: tasaEdit,
                 pagado_usd:      0,

@@ -1038,8 +1038,17 @@ async function guardarEntradaStock() {
           const preview = document.getElementById('es-cuotas-preview');
           const cuotas  = preview?.dataset.cuotas ? JSON.parse(preview.dataset.cuotas) : [];
           if (!cuotas.length) throw new Error('No se calcularon las cuotas. Complete los campos de crédito.');
+          const totalVesCuotas = parseFloat((montoTotalConIVA * (tasa_bcv_usada || 1)).toFixed(2));
+          let acumVesCuotas = 0;
           for (let i = 0; i < cuotas.length; i++) {
             const c = cuotas[i];
+            const esUltimaCuota = i === cuotas.length - 1;
+            // La última cuota absorbe el residuo de redondeo en Bs, para que
+            // la suma de las cuotas coincida exactamente con el total del asiento
+            const montoVesCuota = esUltimaCuota
+              ? parseFloat((totalVesCuotas - acumVesCuotas).toFixed(2))
+              : parseFloat((c.monto * (tasa_bcv_usada || 1)).toFixed(2));
+            acumVesCuotas = parseFloat((acumVesCuotas + montoVesCuota).toFixed(2));
             await api('cont_cxp','POST',{
               id_proveedor:     id_proveedor,
               id_empresa:       _empresaActiva?.id_empresa || null,
@@ -1051,7 +1060,7 @@ async function guardarEntradaStock() {
               moneda_pago:      monedaCompra || 'USD',
               estado:           'PENDIENTE',
               monto_usd:        parseFloat(c.monto.toFixed(2)),
-              monto_ves:        parseFloat((c.monto * (tasa_bcv_usada||1)).toFixed(2)),
+              monto_ves:        montoVesCuota,
               tasa_bcv:         tasa_bcv_usada || 1,
               tasa_bcv_compra:  tasa_bcv_usada || 1,
               pagado_usd:       0,
