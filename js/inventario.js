@@ -91,7 +91,7 @@ async function recargarHistorial(id_articulo) {
           return '<tr style="opacity:' + (anulada ? '0.5' : '1') + '">'
             + '<td style="padding:8px 0;font-size:12px;color:var(--suave)">' + (m.fecha||'—') + '</td>'
             + '<td style="padding:8px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">'
-            + (m.id_entrada ? 'ENT-' + m.id_entrada : 'SAL-' + m.id_salida) + '</td>'
+            + 'Ref: ' + (m.id_entrada ? 'ENT-' + m.id_entrada : 'SAL-' + m.id_salida) + '</td>'
             + '<td style="padding:8px"><span class="badge ' + (esEntrada ? 'badge-verde' : 'badge-rojo') + '">'
             + (esEntrada ? '▲ Entrada' : '▼ Salida') + '</span>'
             + (anulada ? '<div style="font-size:10px;color:#fc8181;margin-top:2px">Anulada</div>' : '') + '</td>'
@@ -193,7 +193,7 @@ function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
   }
   const modoLbl = document.getElementById('edit-mov-titulo');
   const idMov = document.getElementById('edit-mov-id')?.value;
-  const refMov = idMov ? ' — ' + (tipo === 'ENTRADA' ? 'ENT-' : 'SAL-') + idMov : '';
+  const refMov = idMov ? ' — Ref: ' + (tipo === 'ENTRADA' ? 'ENT-' : 'SAL-') + idMov : '';
   if (modoLbl) modoLbl.textContent = (soloLectura ? '👁 FICHA ' : '✏ EDITAR ') + (tipo === 'ENTRADA' ? 'ENTRADA' : 'SALIDA') + ' DE STOCK' + refMov;
 }
 
