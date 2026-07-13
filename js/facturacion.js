@@ -1485,6 +1485,65 @@ async function _guardarSalidaStockInterno() {
           await api('cont_asiento_lineas','POST',{ id_asiento:arS.id_asiento, id_cuenta:art.id_cuenta_contable, orden:2,
             descripcion:'Salida inventario consumible: '+(art.nombre_articulo||'')+' x'+cantidad,
             debe_usd:0, haber_usd:montoUSD_sal, debe_ves:0, haber_ves:montoVES, tasa_bcv:tasaProm });
+
+          // ── Si el stock quedó en 0, cerrar cualquier residuo de redondeo ──
+          // (la cuenta de Inventario puede ser compartida por varios artículos
+          // de la misma categoría, así que se aíslan solo los asientos ligados
+          // a las entradas/salidas DE ESTE artículo, vía su referencia)
+          if (Math.abs(nuevoStock) < 0.0001 && art.id_cuenta_contable) try {
+            const [entradasRef, salidasRef] = await Promise.all([
+              api('stock_entradas','GET',null,'?id_articulo=eq.'+idRep+'&or=(anulada.eq.false,anulada.is.null)&select=id_entrada'),
+              api('stock_salidas','GET',null,'?id_articulo=eq.'+idRep+'&or=(anulada.eq.false,anulada.is.null)&select=id_salida'),
+            ]);
+            const refs = []
+              .concat((entradasRef||[]).map(function(e){ return 'ENT-'+e.id_entrada; }))
+              .concat((salidasRef||[]).map(function(s){ return 'SAL-'+s.id_salida; }));
+            if (refs.length) {
+              const asientosArt = await api('cont_asientos','GET',null,
+                '?referencia=in.(' + refs.join(',') + ')&estado=neq.ANULADO&select=id_asiento');
+              const idsAst = (asientosArt||[]).map(function(a){ return a.id_asiento; });
+              if (idsAst.length) {
+                const lineasInv = await api('cont_asiento_lineas','GET',null,
+                  '?id_asiento=in.(' + idsAst.join(',') + ')&id_cuenta=eq.' + art.id_cuenta_contable + '&select=debe_ves,haber_ves');
+                let totalDebe = 0, totalHaber = 0;
+                (lineasInv||[]).forEach(function(l) {
+                  totalDebe  += parseFloat(l.debe_ves  || 0);
+                  totalHaber += parseFloat(l.haber_ves || 0);
+                });
+                const residuo = parseFloat((totalDebe - totalHaber).toFixed(2));
+                if (Math.abs(residuo) >= 0.01) {
+                  const [ctaGastoRes, ctaIngresoRes] = await Promise.all([
+                    api('cont_cuentas','GET',null,'?codigo=eq.6.2.02.001&select=id_cuenta'),
+                    api('cont_cuentas','GET',null,'?codigo=eq.4.2.02.001&select=id_cuenta'),
+                  ]);
+                  const montoAjuste = Math.abs(residuo);
+                  if (residuo > 0) {
+                    // Inventario quedó DEUDOR (sobró valor) -> Gasto (debe) / Inventario (haber)
+                    const idCtaGasto = ctaGastoRes && ctaGastoRes[0] ? ctaGastoRes[0].id_cuenta : null;
+                    if (idCtaGasto) {
+                      await api('cont_asiento_lineas','POST',{ id_asiento:arS.id_asiento, id_cuenta:idCtaGasto, orden:3,
+                        descripcion:'Ajuste por redondeo de inventario: '+(art.nombre_articulo||''),
+                        debe_usd:0, haber_usd:0, debe_ves:montoAjuste, haber_ves:0, tasa_bcv:tasaProm });
+                      await api('cont_asiento_lineas','POST',{ id_asiento:arS.id_asiento, id_cuenta:art.id_cuenta_contable, orden:4,
+                        descripcion:'Ajuste por redondeo de inventario: '+(art.nombre_articulo||''),
+                        debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoAjuste, tasa_bcv:tasaProm });
+                    }
+                  } else {
+                    // Inventario quedó ACREEDOR (faltó valor) -> Inventario (debe) / Ingreso (haber)
+                    const idCtaIngreso = ctaIngresoRes && ctaIngresoRes[0] ? ctaIngresoRes[0].id_cuenta : null;
+                    if (idCtaIngreso) {
+                      await api('cont_asiento_lineas','POST',{ id_asiento:arS.id_asiento, id_cuenta:art.id_cuenta_contable, orden:3,
+                        descripcion:'Ajuste por redondeo de inventario: '+(art.nombre_articulo||''),
+                        debe_usd:0, haber_usd:0, debe_ves:montoAjuste, haber_ves:0, tasa_bcv:tasaProm });
+                      await api('cont_asiento_lineas','POST',{ id_asiento:arS.id_asiento, id_cuenta:idCtaIngreso, orden:4,
+                        descripcion:'Ajuste por redondeo de inventario: '+(art.nombre_articulo||''),
+                        debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoAjuste, tasa_bcv:tasaProm });
+                    }
+                  }
+                }
+              }
+            }
+          } catch(eAjusteRedondeo) { console.warn('Error generando ajuste por redondeo de inventario:', eAjusteRedondeo); }
         }
       } catch(eAstSal) { console.warn('Error asiento salida consumible:', eAstSal); }
     }
