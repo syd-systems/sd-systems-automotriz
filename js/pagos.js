@@ -2922,7 +2922,7 @@ async function confirmarEjecucionPago() {
       const ivaVES    = r2(iva       * tasaPago);
       const igtfVES   = r2(igtf      * tasaPago);
       const bancoUSD  = total;
-      const bancoVES  = r2(total * tasaPago + (diferencial > 0 ? diferencial : 0));
+      const bancoVES  = r2(total * tasaPago);
       const gastoUSD  = incluyeIva ? base : montoUSD;
       const gastoVES  = r2(gastoUSD  * tasaPago);
       const invUSD    = montoUSD;
