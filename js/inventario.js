@@ -1703,6 +1703,8 @@ function onCambiarPrecioEdit() {
     elCalc.value = moneda === 'VES' ? fmtBs(montoTotal / tasa) : fmtBs(montoTotal * tasa);
   }
   calcularTributosEdit();
+  const cuotaMontoEditEl = document.getElementById('edit-mov-cuotas-monto');
+  if (cuotaMontoEditEl) cuotaMontoEditEl.value = '';
   calcularCuotasEdit();
 }
 
@@ -1733,6 +1735,8 @@ function onCambioExentoIVAEdit() {
   const prev = document.getElementById('edit-mov-tributos-preview');
   if (prev) prev.style.display = 'none';
   calcularTributosEdit();
+  const cme3 = document.getElementById('edit-mov-cuotas-monto');
+  if (cme3) cme3.value = '';
   calcularCuotasEdit();
 }
 
