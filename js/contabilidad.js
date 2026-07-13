@@ -1048,9 +1048,16 @@ async function contRenderCxp() {
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
     const id_emisor = _empresaActiva?.id_empresa || 0;
-    let q = '?id_empresa=eq.'+id_emisor+'&order=fecha_emision.asc,numero_doc.desc&select=*,proveedores:id_proveedor(nombre,rif)';
+    let q = '?id_empresa=eq.'+id_emisor+'&order=numero_doc.desc&select=*,proveedores:id_proveedor(nombre,rif)';
     if (filtroEstado) q += '&estado=eq.'+filtroEstado;
     const cxps = await api('cont_cxp','GET',null,q) || [];
+    // Ordenar por la misma fecha que se muestra (vencimiento si pendiente,
+    // pago si ya se pagó), ascendente
+    cxps.sort(function(a,b) {
+      const fa = (a.estado === 'PAGADA' ? a.fecha_pago : a.fecha_vencimiento) || a.fecha_emision || '';
+      const fb = (b.estado === 'PAGADA' ? b.fecha_pago : b.fecha_vencimiento) || b.fecha_emision || '';
+      return String(fa).localeCompare(String(fb));
+    });
 
     const monedaPrincipal = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
     const usandoVES = (_contMoneda || monedaPrincipal) === 'VES';

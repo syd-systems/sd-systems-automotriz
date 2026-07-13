@@ -184,7 +184,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
         })
       : itemsCxP
   );
-  todos.sort(function(a,b){ return (b.fecha||'').localeCompare(a.fecha||''); });
+  todos.sort(function(a,b){ return (a.fecha||'').localeCompare(b.fecha||''); });
 
   // ── Filtrar ──
   todos = todos.filter(function(item) {
