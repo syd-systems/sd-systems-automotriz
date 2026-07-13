@@ -993,7 +993,14 @@ async function guardarEntradaStock() {
         // montoTotalConIVA ya es el TOTAL (con IVA incluido si no es exento);
         // se le pide a generarAsientoInventario que lo desgloce (base = total/1.16)
         incluyeIVA:  true,
-        exentoIVA:   exentoIVAEnt2
+        exentoIVA:   exentoIVAEnt2,
+        // Base EXACTA = el mismo CPP ya redondeado (cpp) que se acaba de
+        // guardar en inventario_almacen.precio_costo_moneda y que usará la
+        // SALIDA más adelante — así Entrada y Salida coinciden centavo a
+        // centavo cuando se agote el stock, sin depender solo del ajuste
+        // automático por redondeo
+        baseExactaUSD: cpp > 0 ? parseFloat((cantidad * cpp).toFixed(4)) : null,
+        baseExactaBs:  (cpp > 0 && tasa_bcv_usada) ? parseFloat((cantidad * cpp * tasa_bcv_usada).toFixed(2)) : null
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
 

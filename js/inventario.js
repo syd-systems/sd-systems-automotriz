@@ -761,6 +761,7 @@ async function guardarEdicionMovimiento() {
       await api('stock_entradas', 'PATCH', datos, '?id_entrada=eq.' + id);
 
       // ── Recalcular stock y CPP en inventario_almacen ──
+      let cppEditado = null;
       if (art) {
         const stockActual = parseFloat(art.stock_actual_articulo) || 0;
         const nuevoStock  = Math.max(0, parseFloat((stockActual - cantOriginal + cantidad).toFixed(4)));
@@ -770,7 +771,8 @@ async function guardarEdicionMovimiento() {
           const stockPrevio = Math.max(0, stockActual - cantOriginal);
           const valorPrevio = stockPrevio > 0 ? stockPrevio * (parseFloat(art.precio_costo_moneda) || 0) : 0;
           const cpp         = nuevoStock > 0 ? (valorPrevio + cantidad * precio) / nuevoStock : precio;
-          patchInv.precio_costo_moneda        = parseFloat(cpp.toFixed(4));
+          cppEditado = parseFloat(cpp.toFixed(4));
+          patchInv.precio_costo_moneda        = cppEditado;
           patchInv.precio_costo_ultimo_moneda = precio;
         }
         await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + id_articulo);
@@ -810,7 +812,12 @@ async function guardarEdicionMovimiento() {
             fecha:      fechaNeg,
             tasa:       tasaParaAsiento,
             incluyeIVA: true,
-            exentoIVA:  exentoEdit
+            exentoIVA:  exentoEdit,
+            // Base EXACTA = el mismo CPP ya recalculado y guardado en
+            // inventario_almacen, para que coincida con lo que la SALIDA
+            // usará después
+            baseExactaUSD: cppEditado > 0 ? parseFloat((cantidad * cppEditado).toFixed(4)) : null,
+            baseExactaBs:  (cppEditado > 0 && tasaParaAsiento) ? parseFloat((cantidad * cppEditado * tasaParaAsiento).toFixed(2)) : null
           });
         }
       } catch(eAstEdit) { console.warn('Error reconstruyendo asiento:', eAstEdit); }

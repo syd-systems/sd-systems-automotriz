@@ -1898,29 +1898,38 @@ async function generarAsientoInventario(tipo, datos) {
       const incluyeIVA = datos.incluyeIVA || false;
       const montoTotalUSD = monto;
       const montoTotalBs  = montoBs;
+      // baseExactaUSD/Bs: el mismo costo YA REDONDEADO que se guarda en
+      // inventario_almacen.precio_costo_moneda y que usará después la SALIDA
+      // para valorar el consumo. Si se provee, la línea de Inventario usa
+      // este valor EXACTO (no el derivado del monto total sin redondear),
+      // para que Entrada y Salida coincidan centavo a centavo cuando se
+      // agote el stock — el IVA/Total se ajustan para seguir cuadrando
+      // contra el monto real de la factura.
+      const baseExactaUSD = (datos.baseExactaUSD !== undefined && datos.baseExactaUSD !== null) ? datos.baseExactaUSD : null;
+      const baseExactaBs  = (datos.baseExactaBs  !== undefined && datos.baseExactaBs  !== null) ? datos.baseExactaBs  : null;
 
       let baseUSD, ivaUSD, baseBs, ivaBs, totalUSD, totalBs;
 
       if (exentoIVA) {
         // Sin IVA
-        baseUSD = montoTotalUSD; ivaUSD = 0;
-        baseBs  = montoTotalBs;  ivaBs  = 0;
-        totalUSD = montoTotalUSD; totalBs = montoTotalBs;
+        baseUSD = baseExactaUSD !== null ? baseExactaUSD : montoTotalUSD; ivaUSD = 0;
+        baseBs  = baseExactaBs  !== null ? baseExactaBs  : montoTotalBs;  ivaBs  = 0;
+        totalUSD = baseUSD; totalBs = baseBs;
       } else if (incluyeIVA) {
-        // Monto incluye IVA — desglozar
-        baseUSD = parseFloat((montoTotalUSD / (1 + IVA_RATE)).toFixed(4));
+        // Monto incluye IVA — desglozar (o usar la base exacta ya conocida)
+        baseUSD = baseExactaUSD !== null ? baseExactaUSD : parseFloat((montoTotalUSD / (1 + IVA_RATE)).toFixed(4));
         ivaUSD  = parseFloat((montoTotalUSD - baseUSD).toFixed(4));
-        baseBs  = parseFloat((montoTotalBs  / (1 + IVA_RATE)).toFixed(2));
+        baseBs  = baseExactaBs  !== null ? baseExactaBs  : parseFloat((montoTotalBs  / (1 + IVA_RATE)).toFixed(2));
         ivaBs   = parseFloat((montoTotalBs  - baseBs).toFixed(2));
         totalUSD = montoTotalUSD; totalBs = montoTotalBs;
       } else {
-        // Monto NO incluye IVA — calcular y sumar
-        baseUSD  = montoTotalUSD;
-        ivaUSD   = parseFloat((montoTotalUSD * IVA_RATE).toFixed(4));
-        baseBs   = montoTotalBs;
-        ivaBs    = parseFloat((montoTotalBs  * IVA_RATE).toFixed(2));
-        totalUSD = parseFloat((montoTotalUSD + ivaUSD).toFixed(4));
-        totalBs  = parseFloat((montoTotalBs  + ivaBs).toFixed(2));
+        // Monto NO incluye IVA — calcular y sumar (o usar la base exacta)
+        baseUSD  = baseExactaUSD !== null ? baseExactaUSD : montoTotalUSD;
+        ivaUSD   = parseFloat((baseUSD * IVA_RATE).toFixed(4));
+        baseBs   = baseExactaBs  !== null ? baseExactaBs  : montoTotalBs;
+        ivaBs    = parseFloat((baseBs  * IVA_RATE).toFixed(2));
+        totalUSD = parseFloat((baseUSD + ivaUSD).toFixed(4));
+        totalBs  = parseFloat((baseBs  + ivaBs).toFixed(2));
       }
 
       // Buscar cuenta IVA Crédito Fiscal
