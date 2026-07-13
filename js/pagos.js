@@ -2223,6 +2223,13 @@ async function _verCxPAutomatica(c, id_cxp) {
     btnPagar.style.display = puedePagar ? '' : 'none';
   }
 
+  // Mostrar botón ANULAR PAGO EJECUTADO solo si está PAGADA y tiene permiso
+  const btnAnularEj = document.getElementById('cxp-auto-btn-anular-ejecutado');
+  if (btnAnularEj) {
+    const puedeAnular = c.estado === 'PAGADA' && (sesionActual?.administrador || puedo('PAGOS','ANULAR'));
+    btnAnularEj.style.display = puedeAnular ? '' : 'none';
+  }
+
   abrirModal('modal-ver-cxp-auto');
 }
 
