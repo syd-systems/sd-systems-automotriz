@@ -76,6 +76,7 @@ async function recargarHistorial(id_articulo) {
     cont.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px">'
       + '<thead><tr>'
       + '<th style="text-align:left;padding:8px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;letter-spacing:1px">FECHA</th>'
+      + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">REF</th>'
       + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">TIPO</th>'
       + '<th style="text-align:center;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CANTIDAD</th>'
       + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ÁREA / DETALLE</th>'
@@ -89,6 +90,8 @@ async function recargarHistorial(id_articulo) {
           const area = areaRec ? areaRec.nombre + (areaRec.codigo ? ' (' + areaRec.codigo + ')' : '') : '—';
           return '<tr style="opacity:' + (anulada ? '0.5' : '1') + '">'
             + '<td style="padding:8px 0;font-size:12px;color:var(--suave)">' + (m.fecha||'—') + '</td>'
+            + '<td style="padding:8px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">'
+            + (m.id_entrada ? 'ENT-' + m.id_entrada : 'SAL-' + m.id_salida) + '</td>'
             + '<td style="padding:8px"><span class="badge ' + (esEntrada ? 'badge-verde' : 'badge-rojo') + '">'
             + (esEntrada ? '▲ Entrada' : '▼ Salida') + '</span>'
             + (anulada ? '<div style="font-size:10px;color:#fc8181;margin-top:2px">Anulada</div>' : '') + '</td>'
@@ -189,7 +192,9 @@ function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
     if (claveEl) claveEl.value = '';
   }
   const modoLbl = document.getElementById('edit-mov-titulo');
-  if (modoLbl) modoLbl.textContent = (soloLectura ? '👁 FICHA ' : '✏ EDITAR ') + (tipo === 'ENTRADA' ? 'ENTRADA' : 'SALIDA') + ' DE STOCK';
+  const idMov = document.getElementById('edit-mov-id')?.value;
+  const refMov = idMov ? ' — ' + (tipo === 'ENTRADA' ? 'ENT-' : 'SAL-') + idMov : '';
+  if (modoLbl) modoLbl.textContent = (soloLectura ? '👁 FICHA ' : '✏ EDITAR ') + (tipo === 'ENTRADA' ? 'ENTRADA' : 'SALIDA') + ' DE STOCK' + refMov;
 }
 
 // Botón "✏ EDITAR" explícito — el modal siempre abre en modo lectura;

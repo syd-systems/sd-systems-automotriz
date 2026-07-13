@@ -662,7 +662,7 @@ async function contCargarMayor() {
   res.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
     const cuenta = contCuentasCache.find(function(c){ return c.id_cuenta == id_cuenta; });
-    let q = '?id_asiento=in.(select id_asiento from cont_asientos where estado=eq.APROBADO)&id_cuenta=eq.' + id_cuenta + '&order=id_linea.asc&select=*,cont_asientos(fecha,numero_asiento,descripcion)';
+    let q = '?id_asiento=in.(select id_asiento from cont_asientos where estado=eq.APROBADO)&id_cuenta=eq.' + id_cuenta + '&order=id_linea.asc&select=*,cont_asientos(fecha,numero_asiento,descripcion,referencia)';
 
     // Usar mayor si existe, sino calcular desde líneas
     // Obtener asientos aprobados en el rango de fechas
@@ -676,11 +676,11 @@ async function contCargarMayor() {
     let lineas = [];
     if (idsAsientos.length) {
       let qLineas = '?id_asiento=in.(' + idsAsientos.join(',') + ')'
-        + '&select=*,cont_asientos(fecha,numero_asiento,descripcion)'
+        + '&select=*,cont_asientos(fecha,numero_asiento,descripcion,referencia)'
         + '&order=id_linea.asc';
       if (id_cuenta) qLineas = '?id_cuenta=eq.' + id_cuenta
         + '&id_asiento=in.(' + idsAsientos.join(',') + ')'
-        + '&select=*,cont_asientos(fecha,numero_asiento,descripcion)'
+        + '&select=*,cont_asientos(fecha,numero_asiento,descripcion,referencia)'
         + '&order=id_linea.asc';
       lineas = await api('cont_asiento_lineas','GET',null, qLineas);
     }
@@ -715,7 +715,7 @@ async function contCargarMayor() {
           saldo += esDeud ? (d-h) : (h-d);
           return '<tr>'
             + '<td style="padding:7px;font-size:12px">' + fmtFecha(l.cont_asientos?.fecha||'') + '</td>'
-            + '<td style="padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">' + (l.cont_asientos?.numero_asiento||'—') + '</td>'
+            + '<td style="padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">' + (l.cont_asientos?.numero_asiento||'—') + (l.cont_asientos?.referencia ? '<div style="font-size:10px;color:var(--suave)">' + l.cont_asientos.referencia + '</div>' : '') + '</td>'
             + '<td style="padding:7px;font-size:12px">' + (l.descripcion||'') + '</td>'
             + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#22c55e">' + (d>0 ? '$ '+fmtUSD(d) : '—') + '</td>'
             + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#fc8181">' + (h>0 ? '$ '+fmtUSD(h) : '—') + '</td>'
@@ -780,7 +780,7 @@ async function contCargarMayor() {
           saldoCta += esDeud ? (d-h) : (h-d);
           return '<tr>'
             + '<td style="padding:7px;font-size:12px">' + fmtFecha(l.cont_asientos?.fecha||'') + '</td>'
-            + '<td style="padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">' + (l.cont_asientos?.numero_asiento||'—') + '</td>'
+            + '<td style="padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">' + (l.cont_asientos?.numero_asiento||'—') + (l.cont_asientos?.referencia ? '<div style="font-size:10px;color:var(--suave)">' + l.cont_asientos.referencia + '</div>' : '') + '</td>'
             + '<td style="padding:7px;font-size:12px">' + (l.descripcion||'') + '</td>'
             + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#22c55e">' + (d>0 ? fmtM(d) : '—') + '</td>'
             + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#fc8181">' + (h>0 ? fmtM(h) : '—') + '</td>'
@@ -812,7 +812,7 @@ async function contCargarMayor() {
       saldo += esDeudora ? (debe-haber) : (haber-debe);
       return '<tr>'
         + '<td style="padding:7px;font-size:12px">' + fmtFecha(l.cont_asientos?.fecha||'') + '</td>'
-        + '<td style="padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">' + (l.cont_asientos?.numero_asiento||'—') + '</td>'
+        + '<td style="padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">' + (l.cont_asientos?.numero_asiento||'—') + (l.cont_asientos?.referencia ? '<div style="font-size:10px;color:var(--suave)">' + l.cont_asientos.referencia + '</div>' : '') + '</td>'
         + '<td style="padding:7px;font-size:12px">' + (l.descripcion||'') + '</td>'
         + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#22c55e">' + (debe>0 ? fmtM(debe) : '—') + '</td>'
         + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#fc8181">' + (haber>0 ? fmtM(haber) : '—') + '</td>'
