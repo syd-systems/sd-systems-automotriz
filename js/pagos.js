@@ -1436,7 +1436,7 @@ async function anularPagoEjecutado(id_cxp) {
     div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center';
     div.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:24px;max-width:380px;width:90%;text-align:center">'
       + '<div style="font-size:15px;margin-bottom:16px;color:#e8e8e8">Esta acción ANULA un pago YA EJECUTADO y el asiento de pago asociado.<br><span style="font-size:12px;color:#666">La CxP vuelve a PENDIENTE. El asiento de la compra/entrada original NO se toca.</span></div>'
-      + '<input type="password" id="anular-pago-clave" placeholder="Ingrese su contraseña para confirmar" style="width:100%;box-sizing:border-box;padding:10px;border-radius:6px;border:1px solid #444;background:#111;color:#e8e8e8;font-size:14px;margin-bottom:16px">'
+      + '<input type="password" id="anular-pago-clave" autocomplete="new-password" placeholder="Ingrese su contraseña para confirmar" style="width:100%;box-sizing:border-box;padding:10px;border-radius:6px;border:1px solid #444;background:#111;color:#e8e8e8;font-size:14px;margin-bottom:16px">'
       + '<div id="anular-pago-err" style="color:#f87171;font-size:12px;margin-bottom:12px;display:none"></div>'
       + '<div style="display:flex;gap:12px;justify-content:center">'
       + '<button id="btn-rev-si" style="background:#ef4444;border:none;color:#fff;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">Sí, Anular</button>'
@@ -1448,8 +1448,9 @@ async function anularPagoEjecutado(id_cxp) {
     claveEl.focus();
     const cerrar = function(valor) { document.body.removeChild(div); resolve(valor); };
     div.querySelector('#btn-rev-si').onclick = function() {
-      if (!claveEl.value) { errEl.textContent = 'Ingrese su contraseña.'; errEl.style.display = 'block'; return; }
-      cerrar(claveEl.value);
+      const val = claveEl.value.trim();
+      if (!val) { errEl.textContent = 'Ingrese su contraseña.'; errEl.style.display = 'block'; return; }
+      cerrar(val);
     };
     div.querySelector('#btn-rev-no').onclick = function() { cerrar(null); };
     claveEl.addEventListener('keydown', function(ev) { if (ev.key === 'Enter') div.querySelector('#btn-rev-si').click(); });
