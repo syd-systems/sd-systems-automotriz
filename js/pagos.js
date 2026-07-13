@@ -2178,7 +2178,7 @@ async function _verCxPAutomatica(c, id_cxp) {
       const base = (c.numero_doc || '').replace(/-C\d+$/, '');
       const cuotas = await api('cont_cxp', 'GET', null,
         '?numero_doc=ilike.' + encodeURIComponent(base + '*') + emisorQ()
-        + '&order=fecha_vencimiento.asc&select=numero_doc,monto_usd,fecha_vencimiento,estado');
+        + '&order=fecha_vencimiento.asc&select=numero_doc,monto_usd,fecha_vencimiento,estado,fecha_pago');
       if (cuotas && cuotas.length) {
         document.getElementById('cxp-auto-cuotas-num').textContent   = cuotas.length;
         document.getElementById('cxp-auto-cuotas-fecha').textContent = cuotas[0].fecha_vencimiento?.slice(0,10) || '—';
@@ -2198,6 +2198,7 @@ async function _verCxPAutomatica(c, id_cxp) {
           +'<th style="padding:6px 8px;text-align:left;color:var(--suave);font-size:10px">Fecha Vencimiento</th>'
           +'<th style="padding:6px 8px;text-align:right;color:var(--suave);font-size:10px">Monto USD</th>'
           +'<th style="padding:6px 8px;text-align:center;color:var(--suave);font-size:10px">Estado</th>'
+          +'<th style="padding:6px 8px;text-align:center;color:var(--suave);font-size:10px">Fecha de Pago</th>'
           +'</tr></thead><tbody>'
           + cuotas.map(function(q,i) {
               const clr = q.estado === 'PAGADA' ? '#22c55e' : q.estado === 'PARCIAL' ? '#f59e0b' : 'var(--suave)';
@@ -2206,6 +2207,7 @@ async function _verCxPAutomatica(c, id_cxp) {
                 +'<td style="padding:6px 8px;font-family:var(--font-mono)">'+(q.fecha_vencimiento?.slice(0,10)||'—')+'</td>'
                 +'<td style="padding:6px 8px;text-align:right;font-family:var(--font-mono)">$ '+parseFloat(q.monto_usd||0).toLocaleString('es-VE',{minimumFractionDigits:2})+'</td>'
                 +'<td style="padding:6px 8px;text-align:center;color:'+clr+';font-weight:600">'+(q.estado||'PENDIENTE')+'</td>'
+                +'<td style="padding:6px 8px;text-align:center;font-family:var(--font-mono);color:var(--suave)">'+(q.fecha_pago?.slice(0,10)||'—')+'</td>'
                 +'</tr>';
             }).join('')
           +'</tbody></table>';
