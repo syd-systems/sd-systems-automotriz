@@ -714,6 +714,12 @@ async function guardarEdicionMovimiento() {
       const precio = (precioNegociado !== null && !exentoEdit && incluyeEdit)
         ? parseFloat((precioNegociado / 1.16).toFixed(4))
         : precioNegociado;
+      // Monto TOTAL (con IVA si aplica) — se calcula UNA sola vez aquí, a
+      // partir del precio NEGOCIADO original (sin redondeos intermedios),
+      // y se reutiliza tanto para reconstruir el asiento como la CxP
+      const montoTotalConIVAEdit = precioNegociado === null ? null : (exentoEdit
+        ? parseFloat((precioNegociado * cantidad).toFixed(2))
+        : parseFloat((precioNegociado * cantidad * (incluyeEdit ? 1 : 1.16)).toFixed(2)));
       const monedaEdit = document.getElementById('edit-mov-moneda')?.value || 'USD';
       const fechaNeg   = document.getElementById('edit-mov-fecha-negociacion')?.value || getHoyVzla();
       const motivoEdit = document.getElementById('edit-mov-motivo')?.value || '';
@@ -765,42 +771,53 @@ async function guardarEdicionMovimiento() {
         await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + id_articulo);
       }
 
-      // ── Corregir asiento contable ──
-      try {
+      // ── Reconstruir asiento contable desde cero ──
+      // (antes esto "corregía" el asiento sobreescribiendo cualquier línea
+      // con monto > 0 al mismo valor total, sin distinguir Inventario de
+      // IVA — dañaba el asiento en vez de corregirlo. Ahora se borra el
+      // asiento viejo y se regenera con la misma función que se usa al
+      // crear una entrada nueva, ya con los fixes de IVA aplicados)
+      if (true) try {
         const ref = 'ENT-' + id;
-        const asientos = await api('cont_asientos', 'GET', null,
+        const asientosViejos = await api('cont_asientos', 'GET', null,
           '?referencia=eq.' + ref + emisorQ() + '&estado=neq.ANULADO&select=id_asiento,tasa_bcv');
-        if (asientos && asientos.length) {
-          const idAst   = asientos[0].id_asiento;
-          const tasaAst = parseFloat(asientos[0].tasa_bcv) || 1;
-          const precioFinal = precio !== null ? precio : parseFloat(art?.precio_costo_moneda || 0);
-          const montoUSD = parseFloat((cantidad * precioFinal).toFixed(2));
-          const montoVES = parseFloat((montoUSD * tasaAst).toFixed(2));
-          const lineas = await api('cont_asiento_lineas', 'GET', null,
-            '?id_asiento=eq.' + idAst + '&order=orden.asc&select=id_linea,debe_usd,haber_usd,debe_ves,haber_ves');
-          for (const linea of (lineas || [])) {
-            const pl = {};
-            if (parseFloat(linea.debe_usd)  > 0) pl.debe_usd  = montoUSD;
-            if (parseFloat(linea.haber_usd) > 0) pl.haber_usd = montoUSD;
-            if (parseFloat(linea.debe_ves)  > 0) pl.debe_ves  = montoVES;
-            if (parseFloat(linea.haber_ves) > 0) pl.haber_ves = montoVES;
-            if (Object.keys(pl).length) await api('cont_asiento_lineas', 'PATCH', pl, '?id_linea=eq.' + linea.id_linea);
-          }
-          await api('cont_asientos', 'PATCH',
-            { fecha: fechaNeg, descripcion: 'Compra Inventario (editado): ' + (r?.nombre_articulo || '') },
-            '?id_asiento=eq.' + idAst);
+        let tasaParaAsiento = null;
+        if (asientosViejos && asientosViejos.length) {
+          const idAstViejo = asientosViejos[0].id_asiento;
+          tasaParaAsiento = parseFloat(asientosViejos[0].tasa_bcv) || null;
+          await api('cont_asiento_lineas', 'DELETE', null, '?id_asiento=eq.' + idAstViejo);
+          await api('cont_asientos', 'DELETE', null, '?id_asiento=eq.' + idAstViejo);
         }
-      } catch(eAstEdit) { console.warn('Error corrigiendo asiento:', eAstEdit); }
+        if (motivoEdit !== 'transferencia' && montoTotalConIVAEdit !== null) {
+          const tipoAstEdit = motivoEdit === 'compra' ? 'ENTRADA_COMPRA'
+                            : motivoEdit === 'devolucion' ? 'ENTRADA_DEVOLUCION'
+                            : 'ENTRADA_AJUSTE';
+          const areaNombreEdit = document.getElementById('edit-mov-area')?.selectedOptions?.[0]?.textContent
+                                  || document.getElementById('edit-mov-area')?.selectedOptions?.[0]?.text || 'Área';
+          await generarAsientoInventario(tipoAstEdit, {
+            articulo:   r?.nombre_articulo || r?.codigo_articulo || ('Art#' + id_articulo),
+            cantidad:   cantidad,
+            montoUSD:   montoTotalConIVAEdit,
+            areaId:     id_area,
+            areaNombre: areaNombreEdit,
+            referencia: ref,
+            id_cuentaInventario: r?.id_cuenta_contable || null,
+            fecha:      fechaNeg,
+            tasa:       tasaParaAsiento,
+            incluyeIVA: true,
+            exentoIVA:  exentoEdit
+          });
+        }
+      } catch(eAstEdit) { console.warn('Error reconstruyendo asiento:', eAstEdit); }
 
       // ── Actualizar CxP asociada ──
       try {
         const numDocBase = 'ENT-' + id;
         const artNom = r?.nombre_articulo || ('Art#' + id_articulo);
-        const precioFinal2 = precio !== null ? precio : parseFloat(art?.precio_costo_moneda || 0);
-        // precioFinal2 es la BASE sin IVA (por unidad) — reconstruir el TOTAL
-        // con IVA (si no es exento) para que la CxP no pierda el IVA
-        const exentoEdit2  = document.getElementById('edit-mov-exento-iva-val')?.value === 'SI';
-        const nuevoMontoUSD = parseFloat((cantidad * precioFinal2 * (exentoEdit2 ? 1 : 1.16)).toFixed(2));
+        // Reutilizar el mismo total ya calculado arriba (montoTotalConIVAEdit),
+        // para que la CxP siempre coincida exactamente con el asiento
+        const nuevoMontoUSD = montoTotalConIVAEdit !== null ? montoTotalConIVAEdit
+          : parseFloat((cantidad * parseFloat(art?.precio_costo_moneda || 0) * 1.16).toFixed(2));
 
         // Eliminar CxP existentes PENDIENTES para esta entrada
         const cxpsExist = await api('cont_cxp', 'GET', null,
