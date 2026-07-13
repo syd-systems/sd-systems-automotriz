@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260710175"></script>
-<script src="js/parametros.js?v=20260710175"></script>
-<script src="js/empresas.js?v=20260710175"></script>
-<script src="js/facturacion.js?v=20260710175"></script>
-<script src="js/inventario.js?v=20260710175"></script>
-<script src="js/contabilidad.js?v=20260710175"></script>
-<script src="js/pagos.js?v=20260710175"></script>
-<script src="js/vehiculos.js?v=20260710175"></script>
-<script src="js/catalogo.js?v=20260710175"></script>
-<script src="js/inventario2.js?v=20260710175"></script>
-<script src="js/ordenes.js?v=20260710175"></script>
+<script src="js/core.js?v=20260710176"></script>
+<script src="js/parametros.js?v=20260710176"></script>
+<script src="js/empresas.js?v=20260710176"></script>
+<script src="js/facturacion.js?v=20260710176"></script>
+<script src="js/inventario.js?v=20260710176"></script>
+<script src="js/contabilidad.js?v=20260710176"></script>
+<script src="js/pagos.js?v=20260710176"></script>
+<script src="js/vehiculos.js?v=20260710176"></script>
+<script src="js/catalogo.js?v=20260710176"></script>
+<script src="js/inventario2.js?v=20260710176"></script>
+<script src="js/ordenes.js?v=20260710176"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2564,6 +2564,31 @@
           <option value="CREDITO">Crédito</option>
         </select>
       </div>
+      <!-- Campos crédito — ocultos por defecto -->
+      <div id="es-credito-cont" style="display:none;grid-column:1/-1">
+        <div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-top:4px">
+          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">📅 Condiciones de Crédito</div>
+          <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;gap:12px">
+            <div class="form-campo" style="margin:0">
+              <label style="font-size:12px">N° de Cuotas *</label>
+              <input type="number" id="es-cuotas-num" min="1" max="60" placeholder="Ej: 3" oninput="document.getElementById('es-cuotas-monto').value='';calcularCuotasEntrada()" style="font-family:var(--font-mono)">
+            </div>
+            <div class="form-campo" style="margin:0">
+              <label style="font-size:12px">Fecha Primera Cuota *</label>
+              <input type="date" id="es-cuotas-fecha-inicio" oninput="calcularCuotasEntrada()">
+            </div>
+            <div class="form-campo" style="margin:0">
+              <label style="font-size:12px">Intervalo (días)</label>
+              <input type="number" id="es-cuotas-intervalo" min="1" value="30" oninput="document.getElementById('es-cuotas-monto').value='';calcularCuotasEntrada()" style="font-family:var(--font-mono)">
+            </div>
+            <div class="form-campo" style="margin:0">
+              <label style="font-size:12px">Monto por Cuota (USD)</label>
+              <input type="number" id="es-cuotas-monto" step="0.01" min="0" placeholder="Auto" oninput="calcularCuotasEntrada()" style="font-family:var(--font-mono)">
+            </div>
+          </div>
+          <div id="es-cuotas-preview" style="margin-top:12px"></div>
+        </div>
+      </div>
       <!-- ── TRIBUTOS ── -->
       <div class="form-campo form-full" id="es-tributos-cont" style="display:none;grid-column:1/-1">
         <div style="background:rgba(255,107,0,0.05);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
@@ -2611,32 +2636,6 @@
               <span id="es-trib-total-ves" style="font-family:var(--font-mono);color:var(--naranja);font-size:11px;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
             </div>
           </div>
-        </div>
-      </div>
-
-      <!-- Campos crédito — ocultos por defecto -->
-      <div id="es-credito-cont" style="display:none;grid-column:1/-1">
-        <div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-top:4px">
-          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">📅 Condiciones de Crédito</div>
-          <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;gap:12px">
-            <div class="form-campo" style="margin:0">
-              <label style="font-size:12px">N° de Cuotas *</label>
-              <input type="number" id="es-cuotas-num" min="1" max="60" placeholder="Ej: 3" oninput="document.getElementById('es-cuotas-monto').value='';calcularCuotasEntrada()" style="font-family:var(--font-mono)">
-            </div>
-            <div class="form-campo" style="margin:0">
-              <label style="font-size:12px">Fecha Primera Cuota *</label>
-              <input type="date" id="es-cuotas-fecha-inicio" oninput="calcularCuotasEntrada()">
-            </div>
-            <div class="form-campo" style="margin:0">
-              <label style="font-size:12px">Intervalo (días)</label>
-              <input type="number" id="es-cuotas-intervalo" min="1" value="30" oninput="document.getElementById('es-cuotas-monto').value='';calcularCuotasEntrada()" style="font-family:var(--font-mono)">
-            </div>
-            <div class="form-campo" style="margin:0">
-              <label style="font-size:12px">Monto por Cuota (USD)</label>
-              <input type="number" id="es-cuotas-monto" step="0.01" min="0" placeholder="Auto" oninput="calcularCuotasEntrada()" style="font-family:var(--font-mono)">
-            </div>
-          </div>
-          <div id="es-cuotas-preview" style="margin-top:12px"></div>
         </div>
       </div>
       <input type="hidden" id="es-area">
@@ -4357,6 +4356,32 @@
           </select>
         </div>
 
+        <!-- Condiciones de Crédito -->
+        <div id="edit-mov-credito-cont" style="display:none;grid-column:1/-1">
+          <div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-top:4px">
+            <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">📅 Condiciones de Crédito</div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;gap:12px">
+              <div class="form-campo" style="margin:0">
+                <label style="font-size:12px">N° de Cuotas *</label>
+                <input type="number" id="edit-mov-cuotas-num" min="1" max="60" placeholder="Ej: 3" oninput="document.getElementById('edit-mov-cuotas-monto').value='';calcularCuotasEdit()" style="font-family:var(--font-mono)">
+              </div>
+              <div class="form-campo" style="margin:0">
+                <label style="font-size:12px">Fecha Primera Cuota *</label>
+                <input type="date" id="edit-mov-cuotas-fecha" oninput="calcularCuotasEdit()">
+              </div>
+              <div class="form-campo" style="margin:0">
+                <label style="font-size:12px">Intervalo (días)</label>
+                <input type="number" id="edit-mov-cuotas-intervalo" min="1" value="30" oninput="document.getElementById('edit-mov-cuotas-monto').value='';calcularCuotasEdit()" style="font-family:var(--font-mono)">
+              </div>
+              <div class="form-campo" style="margin:0">
+                <label style="font-size:12px">Monto por Cuota (USD)</label>
+                <input type="number" id="edit-mov-cuotas-monto" step="0.01" min="0" placeholder="Auto" oninput="calcularCuotasEdit()" style="font-family:var(--font-mono)">
+              </div>
+            </div>
+            <div id="edit-mov-cuotas-preview" style="margin-top:12px"></div>
+          </div>
+        </div>
+
         <!-- Tributos -->
         <div class="form-campo form-full" id="edit-mov-tributos-cont" style="display:none;grid-column:1/-1">
           <div style="background:rgba(255,107,0,0.05);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
@@ -4396,32 +4421,6 @@
                 <span id="edit-trib-total-ves" style="font-family:var(--font-mono);color:var(--naranja);font-size:11px;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
               </div>
             </div>
-          </div>
-        </div>
-
-        <!-- Condiciones de Crédito -->
-        <div id="edit-mov-credito-cont" style="display:none;grid-column:1/-1">
-          <div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-top:4px">
-            <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">📅 Condiciones de Crédito</div>
-            <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;gap:12px">
-              <div class="form-campo" style="margin:0">
-                <label style="font-size:12px">N° de Cuotas *</label>
-                <input type="number" id="edit-mov-cuotas-num" min="1" max="60" placeholder="Ej: 3" oninput="document.getElementById('edit-mov-cuotas-monto').value='';calcularCuotasEdit()" style="font-family:var(--font-mono)">
-              </div>
-              <div class="form-campo" style="margin:0">
-                <label style="font-size:12px">Fecha Primera Cuota *</label>
-                <input type="date" id="edit-mov-cuotas-fecha" oninput="calcularCuotasEdit()">
-              </div>
-              <div class="form-campo" style="margin:0">
-                <label style="font-size:12px">Intervalo (días)</label>
-                <input type="number" id="edit-mov-cuotas-intervalo" min="1" value="30" oninput="document.getElementById('edit-mov-cuotas-monto').value='';calcularCuotasEdit()" style="font-family:var(--font-mono)">
-              </div>
-              <div class="form-campo" style="margin:0">
-                <label style="font-size:12px">Monto por Cuota (USD)</label>
-                <input type="number" id="edit-mov-cuotas-monto" step="0.01" min="0" placeholder="Auto" oninput="calcularCuotasEdit()" style="font-family:var(--font-mono)">
-              </div>
-            </div>
-            <div id="edit-mov-cuotas-preview" style="margin-top:12px"></div>
           </div>
         </div>
 
