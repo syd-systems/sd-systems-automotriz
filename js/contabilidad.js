@@ -1048,7 +1048,7 @@ async function contRenderCxp() {
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
     const id_emisor = _empresaActiva?.id_empresa || 0;
-    let q = '?id_empresa=eq.'+id_emisor+'&order=fecha_emision.desc&select=*,proveedores:id_proveedor(nombre,rif)';
+    let q = '?id_empresa=eq.'+id_emisor+'&order=fecha_emision.asc,numero_doc.desc&select=*,proveedores:id_proveedor(nombre,rif)';
     if (filtroEstado) q += '&estado=eq.'+filtroEstado;
     const cxps = await api('cont_cxp','GET',null,q) || [];
 
