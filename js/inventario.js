@@ -856,7 +856,7 @@ async function guardarEdicionMovimiento() {
                 ? parseFloat((totalVesCuotasEdit - acumVesCuotasEdit).toFixed(2))
                 : parseFloat((c.monto * tasaEdit).toFixed(2));
               acumVesCuotasEdit = parseFloat((acumVesCuotasEdit + montoVesCuotaEdit).toFixed(2));
-              await api('cont_cxp', 'POST', {
+              const cxpCuotaEditCreada = await api('cont_cxp', 'POST', {
                 id_proveedor:    idProvEdit,
                 id_empresa:      _empresaActiva?.id_empresa || null,
                 id_cuenta_gasto: r?.id_cuenta_costo_gasto || null,
@@ -876,11 +876,15 @@ async function guardarEdicionMovimiento() {
                 esquema_pago:    'CREDITO',
                 id_usuario:      sesionActual?.correo_usuario || null
               });
+              // Agregar el id_cxp real al numero_doc para que nunca se repita
+              if (cxpCuotaEditCreada && cxpCuotaEditCreada[0]) {
+                await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-C' + c.num + '-' + cxpCuotaEditCreada[0].id_cxp }, '?id_cxp=eq.' + cxpCuotaEditCreada[0].id_cxp);
+              }
             }
           }
         } else {
           // CONTADO — una sola CxP
-          await api('cont_cxp', 'POST', {
+          const cxpEditContadoCreada = await api('cont_cxp', 'POST', {
             id_proveedor:    idProvEdit,
             id_empresa:      _empresaActiva?.id_empresa || null,
             id_cuenta_gasto: r?.id_cuenta_costo_gasto || null,
@@ -900,6 +904,10 @@ async function guardarEdicionMovimiento() {
             esquema_pago:    'CONTADO',
             id_usuario:      sesionActual?.correo_usuario || null
           });
+          // Agregar el id_cxp real al numero_doc para que nunca se repita
+          if (cxpEditContadoCreada && cxpEditContadoCreada[0]) {
+            await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-' + cxpEditContadoCreada[0].id_cxp }, '?id_cxp=eq.' + cxpEditContadoCreada[0].id_cxp);
+          }
         }
       } catch(eCxPEdit) { console.warn('Error actualizando CxP:', eCxPEdit); }
 

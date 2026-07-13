@@ -1020,7 +1020,7 @@ async function guardarEntradaStock() {
 
         if (esquema === 'CONTADO') {
           // Una sola CxP — contado
-          await api('cont_cxp','POST',{
+          const cxpCreada = await api('cont_cxp','POST',{
             id_proveedor:    id_proveedor,
             id_empresa:      _empresaActiva?.id_empresa || null,
             id_cuenta_gasto: r.id_cuenta_costo_gasto || null,
@@ -1040,6 +1040,10 @@ async function guardarEntradaStock() {
             esquema_pago:    'CONTADO',
             id_usuario:      sesionActual?.correo_usuario || null
           });
+          // Agregar el id_cxp real al numero_doc para que nunca se repita
+          if (cxpCreada && cxpCreada[0]) {
+            await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-' + cxpCreada[0].id_cxp }, '?id_cxp=eq.' + cxpCreada[0].id_cxp);
+          }
         } else {
           // Crédito — múltiples CxP, una por cuota
           const preview = document.getElementById('es-cuotas-preview');
@@ -1056,7 +1060,7 @@ async function guardarEntradaStock() {
               ? parseFloat((totalVesCuotas - acumVesCuotas).toFixed(2))
               : parseFloat((c.monto * (tasa_bcv_usada || 1)).toFixed(2));
             acumVesCuotas = parseFloat((acumVesCuotas + montoVesCuota).toFixed(2));
-            await api('cont_cxp','POST',{
+            const cxpCuotaCreada = await api('cont_cxp','POST',{
               id_proveedor:     id_proveedor,
               id_empresa:       _empresaActiva?.id_empresa || null,
               id_cuenta_gasto:  r.id_cuenta_costo_gasto || null,
@@ -1076,6 +1080,10 @@ async function guardarEntradaStock() {
               esquema_pago:     'CREDITO',
               id_usuario:       sesionActual?.correo_usuario || null
             });
+            // Agregar el id_cxp real al numero_doc para que nunca se repita
+            if (cxpCuotaCreada && cxpCuotaCreada[0]) {
+              await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-C' + c.num + '-' + cxpCuotaCreada[0].id_cxp }, '?id_cxp=eq.' + cxpCuotaCreada[0].id_cxp);
+            }
           }
         }
       } catch(eCxP) { console.warn('Error creando CxP:', eCxP.message); }
