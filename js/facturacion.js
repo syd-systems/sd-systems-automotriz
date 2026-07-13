@@ -1098,6 +1098,7 @@ function onCambioExentoIVAEntrada() {
   const prev = document.getElementById('es-tributos-preview');
   if (prev) prev.style.display = 'none';
   calcularTributosEntrada();
+  calcularCuotasEntrada();
 }
 
 function calcularTributosEntrada() {
@@ -1181,13 +1182,14 @@ function onCambiarPrecioEntrada() {
   if (lblMonto) lblMonto.innerHTML = 'Monto en ' + moneda;
 
   // Precio VES calculado
-  if (!elCalc || !tasa) { calcularTributosEntrada(); return; }
+  if (!elCalc || !tasa) { calcularTributosEntrada(); calcularCuotasEntrada(); return; }
   if (moneda === 'VES') {
     elCalc.value = tasa > 0 ? fmtBs(montoTotal / tasa) : '';
   } else {
     elCalc.value = fmtBs(montoTotal * tasa);
   }
   calcularTributosEntrada();
+  calcularCuotasEntrada();
 }
 
 function onCambiarMotivoEntrada() {

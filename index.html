@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260710178"></script>
-<script src="js/parametros.js?v=20260710178"></script>
-<script src="js/empresas.js?v=20260710178"></script>
-<script src="js/facturacion.js?v=20260710178"></script>
-<script src="js/inventario.js?v=20260710178"></script>
-<script src="js/contabilidad.js?v=20260710178"></script>
-<script src="js/pagos.js?v=20260710178"></script>
-<script src="js/vehiculos.js?v=20260710178"></script>
-<script src="js/catalogo.js?v=20260710178"></script>
-<script src="js/inventario2.js?v=20260710178"></script>
-<script src="js/ordenes.js?v=20260710178"></script>
+<script src="js/core.js?v=20260710179"></script>
+<script src="js/parametros.js?v=20260710179"></script>
+<script src="js/empresas.js?v=20260710179"></script>
+<script src="js/facturacion.js?v=20260710179"></script>
+<script src="js/inventario.js?v=20260710179"></script>
+<script src="js/contabilidad.js?v=20260710179"></script>
+<script src="js/pagos.js?v=20260710179"></script>
+<script src="js/vehiculos.js?v=20260710179"></script>
+<script src="js/catalogo.js?v=20260710179"></script>
+<script src="js/inventario2.js?v=20260710179"></script>
+<script src="js/ordenes.js?v=20260710179"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2614,10 +2614,10 @@
             <div style="display:flex;align-items:center;gap:16px">
               <label style="font-size:13px;font-weight:500">Monto Facturado incluye IVA (16%)</label>
               <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
-                <input type="radio" name="es-entrada-incluye-iva" id="es-incluye-iva-si" value="SI" onchange="document.getElementById('es-incluye-iva-val').value='SI';calcularTributosEntrada()"> Sí
+                <input type="radio" name="es-entrada-incluye-iva" id="es-incluye-iva-si" value="SI" onchange="document.getElementById('es-incluye-iva-val').value='SI';calcularTributosEntrada();calcularCuotasEntrada()"> Sí
               </label>
               <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
-                <input type="radio" name="es-entrada-incluye-iva" id="es-incluye-iva-no" value="NO" onchange="document.getElementById('es-incluye-iva-val').value='NO';calcularTributosEntrada()"> No
+                <input type="radio" name="es-entrada-incluye-iva" id="es-incluye-iva-no" value="NO" onchange="document.getElementById('es-incluye-iva-val').value='NO';calcularTributosEntrada();calcularCuotasEntrada()"> No
               </label>
             </div>
           </div>
@@ -4401,10 +4401,10 @@
               <div style="display:flex;align-items:center;gap:16px">
                 <label style="font-size:13px;font-weight:500">Monto Facturado incluye IVA (16%)</label>
                 <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
-                  <input type="radio" name="edit-incluye-iva" id="edit-incluye-iva-si" value="SI" onchange="document.getElementById('edit-mov-incluye-iva-val').value='SI';calcularTributosEdit()"> Sí
+                  <input type="radio" name="edit-incluye-iva" id="edit-incluye-iva-si" value="SI" onchange="document.getElementById('edit-mov-incluye-iva-val').value='SI';calcularTributosEdit();calcularCuotasEdit()"> Sí
                 </label>
                 <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
-                  <input type="radio" name="edit-incluye-iva" id="edit-incluye-iva-no" value="NO" onchange="document.getElementById('edit-mov-incluye-iva-val').value='NO';calcularTributosEdit()"> No
+                  <input type="radio" name="edit-incluye-iva" id="edit-incluye-iva-no" value="NO" onchange="document.getElementById('edit-mov-incluye-iva-val').value='NO';calcularTributosEdit();calcularCuotasEdit()"> No
                 </label>
               </div>
             </div>
