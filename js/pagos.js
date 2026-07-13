@@ -1428,10 +1428,10 @@ async function contGuardarPagoCxp() {
 }
 
 
-async function reversarPagoCxP(id_cxp) {
-  if (!puedo('PAGOS','ANULAR')) { alert('No tiene permiso para reversar pagos.'); return; }
+async function anularPagoEjecutado(id_cxp) {
+  if (!puedo('PAGOS','ANULAR')) { alert('No tiene permiso para anular pagos.'); return; }
 
-  const clave = prompt('Esta acción revierte un pago YA EJECUTADO y anula el asiento de pago asociado.\nIngrese su contraseña para confirmar:');
+  const clave = prompt('Esta acción ANULA un pago YA EJECUTADO y el asiento de pago asociado.\nIngrese su contraseña para confirmar:');
   if (!clave) return;
   try {
     const verif = await verificarContrasena(sesionActual.correo_usuario, clave);
@@ -1442,9 +1442,9 @@ async function reversarPagoCxP(id_cxp) {
     const div = document.createElement('div');
     div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center';
     div.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:24px;max-width:380px;text-align:center">'
-      + '<div style="font-size:15px;margin-bottom:20px;color:#e8e8e8">¿Reversar este pago ya ejecutado?<br><span style="font-size:12px;color:#666">La CxP vuelve a PENDIENTE y se anula el asiento de pago. El asiento de la compra/entrada original NO se toca.</span></div>'
+      + '<div style="font-size:15px;margin-bottom:20px;color:#e8e8e8">¿Anular este pago ya ejecutado?<br><span style="font-size:12px;color:#666">La CxP vuelve a PENDIENTE y se anula el asiento de pago. El asiento de la compra/entrada original NO se toca.</span></div>'
       + '<div style="display:flex;gap:12px;justify-content:center">'
-      + '<button id="btn-rev-si" style="background:#ef4444;border:none;color:#fff;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">Sí, Reversar</button>'
+      + '<button id="btn-rev-si" style="background:#ef4444;border:none;color:#fff;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">Sí, Anular</button>'
       + '<button id="btn-rev-no" style="background:#333;border:1px solid #555;color:#e8e8e8;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">Cancelar</button>'
       + '</div></div>';
     document.body.appendChild(div);
@@ -1459,7 +1459,7 @@ async function reversarPagoCxP(id_cxp) {
     const c = rows[0];
     if (c.estado !== 'PAGADA') { alert('Esta CxP no está en estado PAGADA.'); return; }
 
-    // 1. Revertir la CxP a PENDIENTE
+    // 1. Devolver la CxP a PENDIENTE (dejar sin efecto el pago registrado)
     await api('cont_cxp','PATCH',
       { estado: 'PENDIENTE', pagado_usd: 0, saldo_usd: c.monto_usd, fecha_pago: null, metodo_pago: null },
       '?id_cxp=eq.'+id_cxp);
@@ -1469,14 +1469,14 @@ async function reversarPagoCxP(id_cxp) {
       '?referencia=eq.'+encodeURIComponent(c.numero_doc)+emisorQ()+'&tipo=eq.PAGO_PROVEEDOR&estado=neq.ANULADO&select=id_asiento,descripcion');
     for (const a of (asientos||[])) {
       await api('cont_asientos','PATCH',
-        { estado: 'ANULADO', descripcion: '[REVERSADO] ' + (a.descripcion||'') },
+        { estado: 'ANULADO', descripcion: '[ANULADO] ' + (a.descripcion||'') },
         '?id_asiento=eq.'+a.id_asiento);
     }
 
     cerrarModal('modal-cont-pago-cxp');
     cerrarModal('modal-ver-cxp-auto');
     cargarPagos();
-  } catch(e) { alert('Error al reversar el pago: '+e.message); }
+  } catch(e) { alert('Error al anular el pago: '+e.message); }
 }
 
 async function anularPagoCxP(id_cxp) {
@@ -2013,7 +2013,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       } else {
         footer.innerHTML =
           ((esManualF && est !== 'ANULADA' && est !== 'PAGADA') ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+');cerrarModal(\'modal-cont-pago-cxp\')">&#x1F5D1; Anular</button>' : '')
-          + (est === 'PAGADA' && puedo('PAGOS','ANULAR') ? '<button class="btn-peligro" onclick="reversarPagoCxP('+id_cxp+')">&#x21A9; Reversar Pago</button>' : '')
+          + (est === 'PAGADA' && puedo('PAGOS','ANULAR') ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Ejecutado</button>' : '')
           + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\');cargarPagos()">Retornar</button>';
       }
     }
@@ -2097,7 +2097,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       const btnAnular = (est === 'PENDIENTE' && (puedo('PAGOS','ELIMINAR') || puedo('PAGOS','EDITAR') || sesionActual?.administrador))
         ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 ELIMINAR</button>' : '';
       const btnReversar = (est === 'PAGADA' && puedo('PAGOS','ANULAR'))
-        ? '<button class="btn-peligro" onclick="reversarPagoCxP('+id_cxp+')">&#x21A9; Reversar Pago</button>' : '';
+        ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Ejecutado</button>' : '';
       footerPend.innerHTML = btnEditar + btnAnular + btnReversar
         + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\')">RETORNAR</button>';
     }
