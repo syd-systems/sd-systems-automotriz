@@ -2429,7 +2429,9 @@ async function aprobarPagoCxP(id_cxp) {
         descripcion:'Salida banco VES',
         debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoVES, tasa_bcv:tasaPago });
     } else {
-      const montoVESCompra = parseFloat((montoUSD * tasaCompra).toFixed(2));
+      // montoVESCompra = el monto ya guardado/booked en la CxP (respeta el
+      // ajuste de redondeo de la última cuota); no se recalcula con tasaCompra
+      const montoVESCompra = montoVES;
       const montoVESPago   = parseFloat((montoUSD * tasaPago).toFixed(2));
       const difCambio      = parseFloat((montoVESPago - montoVESCompra).toFixed(2));
       const montoIGTF_USD  = parseFloat((montoUSD * pctIGTF).toFixed(2));
@@ -2875,8 +2877,12 @@ async function confirmarEjecucionPago() {
     } catch(e) { console.warn('Error buscando cuenta inventario:', e); }
 
     // 5. Calcular diferencial cambiario
-    // Para CxP en VES no hay diferencial — todo es en bolívares
-    const montoVESCompra = monedaCxP === 'VES' ? montoVESCxP : parseFloat((montoUSD * tasaCompra).toFixed(2));
+    // montoVESCompra = el monto EXACTO ya booked/guardado en la CxP (incluye
+    // el ajuste de redondeo de la última cuota) — NO se recalcula con la
+    // tasa de compra, para no reintroducir residuos de centavo cuando la
+    // tasa no cambió. montoVESPago = lo que se paga hoy, a la tasa de hoy;
+    // la diferencia entre ambos es la diferencia cambiaria real.
+    const montoVESCompra = montoVESCxP;
     const montoVESPago   = monedaCxP === 'VES' ? montoVESCxP : parseFloat((montoUSD * tasaPago).toFixed(2));
     const diferencial    = monedaCxP === 'VES' ? 0 : parseFloat((montoVESPago - montoVESCompra).toFixed(2));
 
@@ -2912,7 +2918,7 @@ async function confirmarEjecucionPago() {
 
       // Pre-calcular todos los montos en BS con redondeo a 2 decimales
       const r2 = function(v) { return parseFloat(v.toFixed(2)); };
-      const cxpVES    = r2(montoUSD  * tasaPago);
+      const cxpVES    = montoVESCompra;
       const ivaVES    = r2(iva       * tasaPago);
       const igtfVES   = r2(igtf      * tasaPago);
       const bancoUSD  = total;
