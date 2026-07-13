@@ -1464,9 +1464,10 @@ async function anularPagoEjecutado(id_cxp) {
       { estado: 'PENDIENTE', pagado_usd: 0, saldo_usd: c.monto_usd, fecha_pago: null, metodo_pago: null },
       '?id_cxp=eq.'+id_cxp);
 
-    // 2. Anular el asiento de PAGO_PROVEEDOR asociado (NO el de la compra/entrada original)
+    // 2. Anular el asiento de pago asociado (NO el de la compra/entrada original)
+    // — se usan varios nombres de "tipo" en distintos flujos de pago
     const asientos = await api('cont_asientos','GET',null,
-      '?referencia=eq.'+encodeURIComponent(c.numero_doc)+emisorQ()+'&tipo=eq.PAGO_PROVEEDOR&estado=neq.ANULADO&select=id_asiento,descripcion');
+      '?referencia=eq.'+encodeURIComponent(c.numero_doc)+emisorQ()+'&tipo=in.(PAGO_PROVEEDOR,PAGO_CXP,PAGO_MANUAL)&estado=neq.ANULADO&select=id_asiento,descripcion');
     for (const a of (asientos||[])) {
       await api('cont_asientos','PATCH',
         { estado: 'ANULADO', descripcion: '[ANULADO] ' + (a.descripcion||'') },
@@ -1509,7 +1510,7 @@ async function anularPagoCxP(id_cxp) {
       const ref = numDoc[0].numero_doc;
       // Solo anular asientos de PAGO_PROVEEDOR - NO los de entrada de inventario
       const asientos = await api('cont_asientos','GET',null,
-        '?referencia=eq.'+encodeURIComponent(ref)+emisorQ()+'&tipo=eq.PAGO_PROVEEDOR&estado=neq.ANULADO&select=id_asiento,descripcion');
+        '?referencia=eq.'+encodeURIComponent(ref)+emisorQ()+'&tipo=in.(PAGO_PROVEEDOR,PAGO_CXP,PAGO_MANUAL)&estado=neq.ANULADO&select=id_asiento,descripcion');
       for (const a of (asientos||[])) {
         await api('cont_asientos','PATCH',
           { estado: 'ANULADO', descripcion: '[ANULADO] ' + (a.descripcion||'') },
