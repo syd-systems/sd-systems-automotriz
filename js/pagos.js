@@ -2478,7 +2478,6 @@ async function aprobarPagoCxP(id_cxp) {
       aprobado_por: sesionActual?.correo_usuario || null
     },'?id_cxp=eq.'+id_cxp);
 
-    alert('Pago aprobado. Asiento contable generado correctamente.');
     cargarPagos();
   } catch(e) { alert('Error al aprobar: '+e.message); console.error(e); }
 }
@@ -2991,7 +2990,6 @@ async function confirmarEjecucionPago() {
 
     cerrarModal('modal-ejecutar-pago');
     cerrarModal('modal-ver-cxp-auto');
-    alert('✓ Pago registrado correctamente. Asiento: ' + numAst);
     if (typeof cargarPagos === 'function') cargarPagos();
 
   } catch(err) {
