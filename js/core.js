@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260710193';
+const SYD_VERSION = '20260710194';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -239,6 +239,15 @@ async function renovarJWTSilencioso() {
 function iniciarRenovacionJWT() {
   if (_intervalRenovacionJWT) clearInterval(_intervalRenovacionJWT);
   _intervalRenovacionJWT = setInterval(renovarJWTSilencioso, 50 * 60 * 1000); // cada 50 min (expira a la hora)
+  if (!window._visibilityRenovacionListener) {
+    window._visibilityRenovacionListener = true;
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible' && _sessionRefreshToken && _sessionJWTExpiry
+          && Date.now() >= (_sessionJWTExpiry - 3 * 60 * 1000)) {
+        renovarJWTSilencioso();
+      }
+    });
+  }
 }
 
 function detenerRenovacionJWT() {
@@ -286,7 +295,16 @@ async function iniciarJWT(email, passwordPlano) {
   return await getJWT();
 }
 
+let _renovacionEnCurso = null;
+
 async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '') {
+  // Si el token está por vencer (o ya venció) y hay refresh_token, renovarlo
+  // ANTES de esta consulta — no depender solo del setInterval en segundo
+  // plano, que los navegadores pueden pausar si la pestaña queda inactiva
+  if (_sessionRefreshToken && _sessionJWTExpiry && Date.now() >= (_sessionJWTExpiry - 3 * 60 * 1000)) {
+    if (!_renovacionEnCurso) _renovacionEnCurso = renovarJWTSilencioso().finally(function() { _renovacionEnCurso = null; });
+    await _renovacionEnCurso;
+  }
   const url = `${SUPABASE_URL}/rest/v1/${tabla}${filtro}`;
   // Usar el JWT firmado de la sesión (con permisos embebidos) si está vigente;
   // si no hay sesión o expiró, cae de vuelta a la anon key (solo lectura pública
@@ -306,9 +324,8 @@ async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '') {
     };
   };
   let r = await fetch(url, construirOps(token));
-  // RESPALDO TEMPORAL: mientras se termina de validar el JWT propio contra
-  // Supabase, si da 401 con el JWT, reintentar con la anon key para no
-  // romper toda la app. Quitar esto en cuanto el JWT quede confirmado.
+  // RESPALDO: si da 401 con el JWT, reintentar con la anon key para no
+  // romper toda la app (defensa adicional; no debería activarse en uso normal).
   if (r.status === 401 && usarJWT) {
     console.warn('[api] JWT propio rechazado (401), reintentando con anon key:', tabla);
     r = await fetch(url, construirOps(SUPABASE_KEY));
