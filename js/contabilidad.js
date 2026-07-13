@@ -1053,7 +1053,7 @@ async function contRenderCxp() {
     const cxps = await api('cont_cxp','GET',null,q) || [];
 
     const monedaPrincipal = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
-    const usandoVES = _contMoneda && _contMoneda !== monedaPrincipal;
+    const usandoVES = (_contMoneda || monedaPrincipal) === 'VES';
     const hoy = new Date().toISOString().split('T')[0];
     const tasaHoy = usandoVES ? await contGetTasa(hoy) : null;
     const fmtMonto = function(usd, ves) {
