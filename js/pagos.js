@@ -142,7 +142,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
   // Calcular total cuotas por prefijo para display
   const cxpMap = {};
   (cxps||[]).forEach(function(c) {
-    const m = (c.numero_doc||'').match(/^(.*)-C(\d+)$/);
+    const m = (c.numero_doc||'').match(/^(.*)-C(\d+)(?:-\d+)?$/);
     if (m) {
       const prefix = m[1];
       if (!cxpMap[prefix]) cxpMap[prefix] = 0;
@@ -151,7 +151,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
   });
 
   const itemsCxP = (cxps||[]).map(function(c) {
-    const m = (c.numero_doc||'').match(/^(.*)-C(\d+)$/);
+    const m = (c.numero_doc||'').match(/^(.*)-C(\d+)(?:-\d+)?$/);
     let tipoDisplay = 'CONTADO';
     if (m) {
       const prefix = m[1];
@@ -166,7 +166,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       _id:         c.id_cxp,
       numero:      c.numero_doc || '—',
       beneficiario: c.proveedores?.nombre || '—',
-      fecha:       c.fecha_emision || '',
+      fecha:       (c.estado === 'PAGADA' ? c.fecha_pago : c.fecha_vencimiento) || c.fecha_emision || '',
       tipo:        tipoDisplay,
       origen:      c.tipo === 'PAGO_MANUAL' ? 'Manual' : 'Automático',
       monto_usd:   parseFloat(c.monto_usd || 0),
@@ -2962,7 +2962,7 @@ async function confirmarEjecucionPago() {
         const numDoc = c.numero_doc || '';
         const obs    = (c.observaciones || '').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim();
         const cuotaM = numDoc.match(/ENT-(\d+)-C(\d+)/);
-        const entM   = numDoc.match(/^ENT-(\d+)$/);
+        const entM   = numDoc.match(/^ENT-(\d+)(?:-\d+)?$/);
         if (cuotaM) return 'Cuota ' + cuotaM[2] + ' — Pago compra Inventario ENT-' + cuotaM[1];
         if (entM)   return 'Pago contado Inventario ENT-' + entM[1];
         return obs || ('Pago ' + (c.proveedores?.nombre || numDoc));
@@ -2999,7 +2999,7 @@ async function confirmarEjecucionPago() {
 
       const numDoc2 = c.numero_doc || '';
       const cuotaM2 = numDoc2.match(/ENT-(\d+)-C(\d+)/);
-      const entM2   = numDoc2.match(/^ENT-(\d+)$/);
+      const entM2   = numDoc2.match(/^ENT-(\d+)(?:-\d+)?$/);
       const descBase = cuotaM2 ? ('Cuota ' + cuotaM2[2] + ' — Inventario ENT-' + cuotaM2[1])
                      : entM2   ? ('Contado — Inventario ENT-' + entM2[1])
                      : ((c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim() || numDoc2);
