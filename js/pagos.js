@@ -1460,7 +1460,7 @@ async function anularPagoEjecutado(id_cxp) {
 
   try {
     const verif = await verificarContrasena(sesionActual.correo_usuario, clave);
-    if (!verif.ok) { alert('Contraseña incorrecta.'); return; }
+    if (!verif.ok) { alert(verif.msg || 'Contraseña incorrecta.'); return; }
   } catch(eV) { alert('Error verificando contraseña: ' + eV.message); return; }
 
   try {
