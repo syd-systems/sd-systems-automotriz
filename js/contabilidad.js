@@ -1052,6 +1052,18 @@ async function contRenderCxp() {
     if (filtroEstado) q += '&estado=eq.'+filtroEstado;
     const cxps = await api('cont_cxp','GET',null,q) || [];
 
+    const monedaPrincipal = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
+    const usandoVES = _contMoneda && _contMoneda !== monedaPrincipal;
+    const hoy = new Date().toISOString().split('T')[0];
+    const tasaHoy = usandoVES ? await contGetTasa(hoy) : null;
+    const fmtMonto = function(usd, ves) {
+      if (!usandoVES) return '$ ' + fmtUSD(usd || 0);
+      // Monto original: usar el VES ya guardado (exacto, a su propia tasa)
+      if (ves !== undefined && ves !== null) return 'Bs ' + fmtBs(ves);
+      // Pagado/Saldo: no se guarda en VES por cuota — aproximar con la tasa de hoy
+      return 'Bs ' + fmtBs((usd || 0) * (tasaHoy || 1));
+    };
+
     const estadoColor = { PENDIENTE:'#f59e0b', PAGADA:'#22c55e', ANULADA:'#6b7280', PARCIAL:'#60a5fa' };
     const filas = cxps.map(function(c) {
       const prov = c.proveedores ? c.proveedores.nombre : '—';
@@ -1063,9 +1075,9 @@ async function contRenderCxp() {
         +'<td style="padding:8px;font-size:12px">'+prov+'</td>'
         +'<td style="padding:8px;font-size:11px;color:var(--suave)">'+fmtFecha(c.fecha_emision)+'</td>'
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+( c.tipo||'').replace('_',' ')+'</td>'
-        +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#fc8181">$ '+fmtUSD(c.monto_usd)+'</td>'
-        +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#22c55e">$ '+fmtUSD(c.pagado_usd||0)+'</td>'
-        +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700">$ '+fmtUSD(c.saldo_usd||0)+'</td>'
+        +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#fc8181">'+fmtMonto(c.monto_usd, c.monto_ves)+'</td>'
+        +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#22c55e">'+fmtMonto(c.pagado_usd||0)+'</td>'
+        +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700">'+fmtMonto(c.saldo_usd||0)+'</td>'
         +'<td style="padding:8px;text-align:center">'+badge+'</td>'
         
         +'</tr>';
@@ -1075,6 +1087,7 @@ async function contRenderCxp() {
       .reduce(function(s,c){ return s + parseFloat(c.saldo_usd||0); }, 0);
 
     cont.innerHTML =
+      contSelectorMoneda(hoy) +
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
       +'<h3 style="margin:0">Cuentas por Pagar</h3>'
       +'<div style="display:flex;align-items:center;gap:10px">'
@@ -1085,7 +1098,7 @@ async function contRenderCxp() {
       +'<option value="PARCIAL"'+(filtroEstado==='PARCIAL'?' selected':'')+'>Parcial</option>'
       +'<option value="ANULADA"'+(filtroEstado==='ANULADA'?' selected':'')+'>Anulada</option>'
       +'</select>'
-      +'<div style="font-size:12px;color:#f59e0b;font-weight:600">Saldo Pendiente: $ '+fmtUSD(totalPendiente)+'</div>'
+      +'<div style="font-size:12px;color:#f59e0b;font-weight:600">Saldo Pendiente: '+fmtMonto(totalPendiente)+'</div>'
       +'</div></div>'
       +(filas
         ? '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
