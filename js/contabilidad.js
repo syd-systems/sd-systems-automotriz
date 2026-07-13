@@ -1073,7 +1073,7 @@ async function contRenderCxp() {
       return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
         +'<td style="padding:8px;font-size:11px;color:var(--naranja);font-family:var(--font-mono)">'+c.numero_doc+'</td>'
         +'<td style="padding:8px;font-size:12px">'+prov+'</td>'
-        +'<td style="padding:8px;font-size:11px;color:var(--suave)">'+fmtFecha(c.fecha_emision)+'</td>'
+        +'<td style="padding:8px;font-size:11px;color:var(--suave)">'+fmtFecha(est === 'PAGADA' ? c.fecha_pago : c.fecha_vencimiento)+'</td>'
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+( c.tipo||'').replace('_',' ')+'</td>'
         +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#fc8181">'+fmtMonto(c.monto_usd, c.monto_ves)+'</td>'
         +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#22c55e">'+fmtMonto(c.pagado_usd||0)+'</td>'
