@@ -1816,6 +1816,11 @@ async function editarCxPManual(id_cxp) {
     if (modoEl) modoEl.value = c.moneda_pago || '';
     if (c.exento_iva) document.getElementById('pago-exento-iva-si').checked = true;
     else document.getElementById('pago-exento-iva-no').checked = true;
+    // Restaurar la modalidad de IVA original (aunque la pregunta se oculte
+    // más abajo) para que guardarPago() recalcule Base/IVA correctamente
+    // si el monto cambia -- sin esto, el cálculo asumía "No incluye IVA"
+    // y sumaba el 16% de nuevo sobre un monto que ya lo incluía.
+    document.getElementById('pago-incluye-iva-val').value = c.exento_iva ? '' : (c.incluye_iva ? 'SI' : 'NO');
 
     // Modalidad de Pago: solo informativa al editar — no se puede cambiar
     // de Contado a Crédito (o viceversa) desde aquí sin recrear las cuotas
@@ -2119,6 +2124,7 @@ async function guardarPago() {
         monto_usd:         montoTotalConIVA,
         monto_ves:         montoTotalVES,
         saldo_usd:         montoTotalConIVA,
+        incluye_iva:       exento ? null : (incluyeIVAVal === 'SI'),
         id_cuenta_gasto:   id_cuentaGasto,
         observaciones:     descripcion + (observaciones ? ' — ' + observaciones : ''),
         exento_iva:        exento,
@@ -2218,6 +2224,7 @@ async function guardarPago() {
           id_cuenta_gasto:   id_cuentaGasto,
           observaciones:     descAsiento,
           exento_iva:        exento,
+          incluye_iva:       exento ? null : (incluyeIVAVal === 'SI'),
           esquema_pago:      'CREDITO',
           id_usuario:        sesionActual?.correo_usuario || null
         });
@@ -2245,6 +2252,7 @@ async function guardarPago() {
         id_cuenta_gasto:   id_cuentaGasto,
         observaciones:     descAsiento,
         exento_iva:        exento,
+        incluye_iva:       exento ? null : (incluyeIVAVal === 'SI'),
         esquema_pago:      'CONTADO',
         id_usuario:        sesionActual?.correo_usuario || null
       });
