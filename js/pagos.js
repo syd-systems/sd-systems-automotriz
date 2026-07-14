@@ -1792,8 +1792,8 @@ async function editarCxPManual(id_cxp) {
     document.getElementById('pago-id').value          = c.id_cxp;
     document.getElementById('pago-descripcion').value = c.observaciones || '';
     document.getElementById('pago-monto').value       = c.moneda_pago === 'VES'
-      ? parseFloat(c.monto_ves || 0).toFixed(2)
-      : parseFloat(c.monto_usd || 0).toFixed(2);
+      ? fmtBs(c.monto_ves || 0)
+      : fmtBs(c.monto_usd || 0);
     const modoEl = document.getElementById('pago-moneda');
     if (modoEl) modoEl.value = c.moneda_pago || '';
     if (c.exento_iva) document.getElementById('pago-exento-iva-si').checked = true;
