@@ -2889,7 +2889,7 @@ function onCambioIncluyeIvaPago() {
 
   if (!_ejecutarPagoCxPId) return;
 
-  api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=numero_doc,monto_usd,saldo_usd,monto_ves,moneda_pago,id_proveedor')
+  api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=numero_doc,monto_usd,saldo_usd,monto_ves,moneda_pago,id_proveedor,exento_iva')
     .then(async function(rows) {
       if (!rows || !rows[0]) return;
       // Si es CxP de inventario — no mostrar tributos
@@ -2923,7 +2923,7 @@ function onCambioIncluyeIvaPago() {
       // Mostrar pregunta IGTF solo si aplica
       const igtfCont = document.getElementById('exec-pago-incluye-igtf-cont');
       if (igtfCont) igtfCont.style.display = aplicaIGTF ? '' : 'none';
-      _mostrarDesgloseTributos(monto, incluyeIva, incluyeIgtf, aplicaIGTF);
+      _mostrarDesgloseTributos(monto, incluyeIva, incluyeIgtf, aplicaIGTF, rows[0].exento_iva === true);
     }).catch(function(){});
 }
 
@@ -3017,8 +3017,15 @@ async function _obtenerTributos() {
   };
 }
 
-function _calcularTributos(montoTotal, incluyeIva, incluyeIgtf, tasaIVA, tasaIGTF, esUSD) {
+function _calcularTributos(montoTotal, incluyeIva, incluyeIgtf, tasaIVA, tasaIGTF, esUSD, exentoIva) {
   let base, iva, igtf;
+  if (exentoIva) {
+    // Exento de IVA — la base es el monto completo, IVA siempre 0
+    base = montoTotal;
+    iva  = 0;
+    igtf = esUSD ? parseFloat((base * tasaIGTF).toFixed(4)) : 0;
+    return { base, iva, igtf, total: parseFloat((base + igtf).toFixed(4)) };
+  }
   if (incluyeIva) {
     // Base = Monto / (1 + IVA + (1+IVA)*IGTF) si incluye IGTF
     // Base = Monto / (1 + IVA) si solo incluye IVA
@@ -3038,12 +3045,12 @@ function _calcularTributos(montoTotal, incluyeIva, incluyeIgtf, tasaIVA, tasaIGT
   return { base, iva, igtf, total: parseFloat((base + iva + igtf).toFixed(4)) };
 }
 
-async function _mostrarDesgloseTributos(monto, incluyeIva, incluyeIgtf, esUSD) {
+async function _mostrarDesgloseTributos(monto, incluyeIva, incluyeIgtf, esUSD, exentoIva) {
   const preview = document.getElementById('exec-pago-tributos-preview');
   if (!preview) return;
   try {
     const { tasaIVA, tasaIGTF } = await _obtenerTributos();
-    const { base, iva, igtf, total } = _calcularTributos(monto, incluyeIva, incluyeIgtf, tasaIVA, tasaIGTF, esUSD);
+    const { base, iva, igtf, total } = _calcularTributos(monto, incluyeIva, incluyeIgtf, tasaIVA, tasaIGTF, esUSD, exentoIva);
     preview.style.display = '';
     preview.innerHTML =
       '<table style="width:100%;font-size:12px;border-collapse:collapse;margin-top:8px">'
@@ -3146,7 +3153,7 @@ async function confirmarEjecucionPago() {
     const { tasaIVA, tasaIGTF } = await _obtenerTributos();
     const tributosCalc = esInventarioPago
       ? { base: montoUSD, iva: 0, igtf: 0, total: montoUSD }
-      : _calcularTributos(montoUSD, incluyeIva, incluyeIgtf, tasaIVA, tasaIGTF, aplicaIGTF);
+      : _calcularTributos(montoUSD, incluyeIva, incluyeIgtf, tasaIVA, tasaIGTF, aplicaIGTF, c.exento_iva === true);
     const { base, iva, igtf, total } = tributosCalc;
 
     // 4. Obtener cuentas contables por código
