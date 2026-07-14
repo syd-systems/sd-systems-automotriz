@@ -2086,7 +2086,11 @@ async function guardarPago() {
   const montoTotalConIVA = exento || incluyeIVAVal === 'SI'
     ? parseFloat(montoIngresadoUSD.toFixed(2))
     : parseFloat((montoIngresadoUSD * 1.16).toFixed(2));
-  const montoTotalVES = parseFloat((montoTotalConIVA * tasaUSD).toFixed(2));
+  // Si se ingresó directamente en VES, usar ese monto TAL CUAL (sin volver
+  // a convertir desde el USD redondeado) para no perder precisión
+  const montoTotalVES = moneda === 'VES'
+    ? (exento || incluyeIVAVal === 'SI' ? parseFloat(monto.toFixed(2)) : parseFloat((monto * 1.16).toFixed(2)))
+    : parseFloat((montoTotalConIVA * tasaUSD).toFixed(2));
 
   const id_emisor = _empresaActiva?.id_empresa || 0;
   const hoy = new Date().toISOString().split('T')[0];
@@ -2134,6 +2138,7 @@ async function guardarPago() {
     await generarAsientoGastoManual({
       descripcion: descAsiento,
       montoUSD:    montoTotalConIVA,
+      montoBsExacto: montoTotalVES,
       referencia:  numDocBase,
       id_cuentaGasto: id_cuentaGasto,
       fecha:       fechaParaTasa,

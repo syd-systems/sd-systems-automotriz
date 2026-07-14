@@ -2036,7 +2036,9 @@ async function generarAsientoGastoManual(datos) {
     const idAst = asiento[0].id_asiento;
 
     const montoTotalUSD = datos.montoUSD || 0;
-    const montoTotalBs  = parseFloat((montoTotalUSD * tasa).toFixed(2));
+    const montoTotalBs  = (datos.montoBsExacto !== undefined && datos.montoBsExacto !== null)
+      ? datos.montoBsExacto
+      : parseFloat((montoTotalUSD * tasa).toFixed(2));
     const IVA_RATE = 0.16;
     let baseUSD, ivaUSD, baseBs, ivaBs;
     if (datos.exentoIVA) {
