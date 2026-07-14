@@ -2023,7 +2023,7 @@ async function generarAsientoGastoManual(datos) {
       numero_asiento: numAst,
       fecha:          datos.fecha || getHoyVzla(),
       descripcion:    datos.descripcion || 'Cuenta por Pagar manual',
-      tipo:           'AUTOMATICO',
+      tipo:           'GASTO_MANUAL',
       referencia:     datos.referencia || null,
       moneda_base:    ((_empresaActiva?.moneda_principal)||'VES').toUpperCase(),
       tasa_bcv:       tasa,

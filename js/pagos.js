@@ -1552,7 +1552,7 @@ async function anularPagoCxP(id_cxp) {
       const ref = numDoc[0].numero_doc;
       // Solo anular asientos de PAGO_PROVEEDOR - NO los de entrada de inventario
       const asientos = await api('cont_asientos','GET',null,
-        '?referencia=eq.'+encodeURIComponent(ref)+emisorQ()+'&tipo=in.(PAGO_PROVEEDOR,PAGO_CXP,PAGO_MANUAL)&estado=neq.ANULADO&select=id_asiento,descripcion');
+        '?referencia=eq.'+encodeURIComponent(ref)+emisorQ()+'&tipo=in.(PAGO_PROVEEDOR,PAGO_CXP,PAGO_MANUAL,GASTO_MANUAL)&estado=neq.ANULADO&select=id_asiento,descripcion');
       for (const a of (asientos||[])) {
         await api('cont_asientos','PATCH',
           { estado: 'ANULADO', descripcion: '[ANULADO] ' + (a.descripcion||'') },
@@ -1780,7 +1780,8 @@ async function editarCxPManual(id_cxp) {
   if (!puedo('PAGOS','EDITAR') && !sesionActual?.administrador) { alert('No tiene permiso para editar obligaciones de pago.'); return; }
   cerrarModal('modal-cont-pago-cxp');
   try {
-    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=*');
+    const rows = await api('cont_cxp','GET',null,
+      '?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(id_categoria)');
     if (!rows || !rows[0]) return;
     const c = rows[0];
 
@@ -1821,10 +1822,17 @@ async function editarCxPManual(id_cxp) {
     const claveElEdit = document.getElementById('pago-clave');
     if (claveElEdit) claveElEdit.value = '';
 
-    // Preseleccionar proveedor
+    // Categoría → cargar proveedores de esa categoría → preseleccionar proveedor
+    const idCategoria = c.proveedores?.id_categoria || '';
+    if (idCategoria) {
+      const selCat = document.getElementById('pago-categoria-prov');
+      if (selCat) selCat.value = idCategoria;
+      await onCambioCategoriaPago();
+    }
     if (c.id_proveedor) {
       const selProv = document.getElementById('pago-proveedor');
       if (selProv) selProv.value = c.id_proveedor;
+      if (typeof onSelProveedorPago === 'function') onSelProveedorPago();
     }
 
     // Preseleccionar cuenta de gasto
@@ -1834,6 +1842,17 @@ async function editarCxPManual(id_cxp) {
     }
 
     document.getElementById('pago-modal-titulo').textContent = 'EDITAR OBLIGACIÓN DE PAGO';
+
+    // Agregar botón Anular al footer (Eliminar solo aplica a CxP PENDIENTE)
+    if (c.estado === 'PENDIENTE') {
+      const footerEdit = document.querySelector('#modal-pago .modal-footer');
+      if (footerEdit) {
+        footerEdit.innerHTML =
+          '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+');cerrarModal(\'modal-pago\')">🗑 Anular</button>'
+          + '<button class="btn-secundario" onclick="cerrarModal(\'modal-pago\')">Retornar</button>'
+          + '<button class="btn-primario" onclick="guardarPago()">Guardar</button>';
+      }
+    }
   } catch(e) { alert('Error: ' + e.message); }
 }
 
