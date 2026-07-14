@@ -1525,21 +1525,37 @@ async function anularPagoEjecutado(id_cxp) {
 }
 
 async function anularPagoCxP(id_cxp) {
-  // Reemplazar confirm() por diálogo propio — confirm() bloqueado en algunos browsers
-  const confirmado = await new Promise(function(resolve) {
+  if (!puedo('PAGOS','ANULAR') && !sesionActual?.administrador) { alert('No tiene permiso para anular obligaciones de pago.'); return; }
+
+  const clave = await new Promise(function(resolve) {
     const div = document.createElement('div');
     div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center';
-    div.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:24px;max-width:380px;text-align:center">'
-      + '<div style="font-size:15px;margin-bottom:20px;color:#e8e8e8">¿Anular esta CxP?<br><span style="font-size:12px;color:#666">Solo se revertirán asientos de pago, NO los de inventario.</span></div>'
+    div.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:24px;max-width:380px;width:90%;text-align:center">'
+      + '<div style="font-size:15px;margin-bottom:16px;color:#e8e8e8">¿Anular esta CxP?<br><span style="font-size:12px;color:#666">Solo se revertirán asientos de pago, NO los de inventario.</span></div>'
+      + '<input type="password" id="anular-cxp-clave" autocomplete="new-password" placeholder="Ingrese su contraseña para confirmar" style="width:100%;box-sizing:border-box;padding:10px;border-radius:6px;border:1px solid #444;background:#111;color:#e8e8e8;font-size:14px;margin-bottom:16px">'
+      + '<div id="anular-cxp-err" style="color:#f87171;font-size:12px;margin-bottom:12px;display:none"></div>'
       + '<div style="display:flex;gap:12px;justify-content:center">'
       + '<button id="btn-confirm-si" style="background:#ef4444;border:none;color:#fff;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">Sí, Anular</button>'
       + '<button id="btn-confirm-no" style="background:#333;border:1px solid #555;color:#e8e8e8;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">Cancelar</button>'
       + '</div></div>';
     document.body.appendChild(div);
-    div.querySelector('#btn-confirm-si').onclick = function() { document.body.removeChild(div); resolve(true); };
-    div.querySelector('#btn-confirm-no').onclick = function() { document.body.removeChild(div); resolve(false); };
+    const claveEl = div.querySelector('#anular-cxp-clave');
+    const errEl   = div.querySelector('#anular-cxp-err');
+    claveEl.focus();
+    const cerrar = function(valor) { document.body.removeChild(div); resolve(valor); };
+    div.querySelector('#btn-confirm-si').onclick = function() {
+      const val = claveEl.value.trim();
+      if (!val) { errEl.textContent = 'Ingrese su contraseña.'; errEl.style.display = 'block'; return; }
+      cerrar(val);
+    };
+    div.querySelector('#btn-confirm-no').onclick = function() { cerrar(null); };
+    claveEl.addEventListener('keydown', function(ev) { if (ev.key === 'Enter') div.querySelector('#btn-confirm-si').click(); });
   });
-  if (!confirmado) return;
+  if (!clave) return;
+
+  const verifAnular = await verificarContrasena(sesionActual.correo_usuario, clave);
+  if (!verifAnular.ok) { alert(verifAnular.msg || 'Contraseña incorrecta.'); return; }
+
   const _chkPag = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=estado');
   if (_chkPag && _chkPag[0] && _chkPag[0].estado === 'PAGADA') { alert('Un pago aprobado no puede anularse desde CxP.'); return; }
   try {
@@ -1818,9 +1834,7 @@ async function editarCxPManual(id_cxp) {
     // ocultarla para no confundir, ya que editar no recalcula tributos
     const incCont = document.getElementById('pago-incluye-iva-cont');
     if (incCont) incCont.style.display = 'none';
-    // Editar no requiere contraseña (solo actualiza datos básicos) — ocultar
-    const confUsuario = document.getElementById('pago-clave')?.closest('.form-campo');
-    if (confUsuario) confUsuario.style.display = 'none';
+    // Confirmación de Usuario: ahora también se exige al editar
     const claveElEdit = document.getElementById('pago-clave');
     if (claveElEdit) claveElEdit.value = '';
 
@@ -2081,8 +2095,12 @@ async function guardarPago() {
     const btnGuardar = document.querySelector('#modal-pago .btn-primario');
     if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
 
-    // Si es edición → PATCH (sin regenerar asiento ni cuotas)
+    // Si es edición → validar contraseña y PATCH (sin regenerar asiento ni cuotas)
     if (id_cxp_edit) {
+      if (!clave) { mostrarErr('Debe ingresar su contraseña para confirmar.'); document.getElementById('pago-clave')?.focus(); if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar'; } return; }
+      const verifEdit = await verificarContrasena(sesionActual.correo_usuario, clave);
+      if (!verifEdit.ok) { mostrarErr(verifEdit.msg || 'Contraseña incorrecta.'); if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar'; } return; }
+
       await api('cont_cxp','PATCH',{
         id_proveedor:      id_proveedor,
         fecha_vencimiento: vencimiento,
