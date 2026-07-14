@@ -350,6 +350,8 @@ async function abrirNuevoPago() {
   if (uaEl) uaEl.textContent = sesionActual?.nombre_area || '';
   const claveEl2 = document.getElementById('pago-clave');
   if (claveEl2) claveEl2.value = '';
+  const confUsuarioReset = document.getElementById('pago-clave')?.closest('.form-campo');
+  if (confUsuarioReset) confUsuarioReset.style.display = '';
 
   // Reset modalidad, tributos y crédito
   const modEl = document.getElementById('pago-modalidad');
