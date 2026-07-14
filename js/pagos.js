@@ -1816,10 +1816,15 @@ async function editarCxPManual(id_cxp) {
     if (modoEl) modoEl.value = c.moneda_pago || '';
     if (c.exento_iva) document.getElementById('pago-exento-iva-si').checked = true;
     else document.getElementById('pago-exento-iva-no').checked = true;
-    // Restaurar la modalidad de IVA original (aunque la pregunta se oculte
-    // más abajo) para que guardarPago() recalcule Base/IVA correctamente
-    // si el monto cambia -- sin esto, el cálculo asumía "No incluye IVA"
-    // y sumaba el 16% de nuevo sobre un monto que ya lo incluía.
+    // Mostrar "Incluye IVA" también al editar, pre-marcada con el valor
+    // original, para que se pueda VER y corregir si hubo un error al
+    // crear -- antes se ocultaba y por eso un valor incorrecto pasaba
+    // desapercibido.
+    document.querySelectorAll('input[name="pago-incluye-iva"]').forEach(function(r){ r.checked = false; });
+    if (!c.exento_iva) {
+      if (c.incluye_iva) document.getElementById('pago-incluye-iva-si').checked = true;
+      else document.getElementById('pago-incluye-iva-no').checked = true;
+    }
     document.getElementById('pago-incluye-iva-val').value = c.exento_iva ? '' : (c.incluye_iva ? 'SI' : 'NO');
 
     // Modalidad de Pago: solo informativa al editar — no se puede cambiar
@@ -1835,10 +1840,10 @@ async function editarCxPManual(id_cxp) {
     // Crédito no se edita desde este modal (implicaría recrear cuotas)
     const credCont = document.getElementById('pago-credito-cont');
     if (credCont) credCont.style.display = 'none';
-    // No se re-pide la pregunta de Incluye IVA (ya quedó fijada al crearla) —
-    // ocultarla para no confundir, ya que editar no recalcula tributos
+    // Incluye IVA: visible y editable también al editar (ver justo arriba,
+    // donde ya se pre-marca con el valor original guardado en incluye_iva)
     const incCont = document.getElementById('pago-incluye-iva-cont');
-    if (incCont) incCont.style.display = 'none';
+    if (incCont) incCont.style.display = c.exento_iva ? 'none' : '';
     // Confirmación de Usuario: ahora también se exige al editar
     const claveElEdit = document.getElementById('pago-clave');
     if (claveElEdit) claveElEdit.value = '';
@@ -1863,6 +1868,7 @@ async function editarCxPManual(id_cxp) {
     }
 
     document.getElementById('pago-modal-titulo').textContent = 'EDITAR OBLIGACIÓN DE PAGO';
+    calcularTributosPago();
 
     // Agregar botón Anular al footer (Eliminar solo aplica a CxP PENDIENTE)
     if (c.estado === 'PENDIENTE') {
