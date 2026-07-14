@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260710200"></script>
-<script src="js/parametros.js?v=20260710200"></script>
-<script src="js/empresas.js?v=20260710200"></script>
-<script src="js/facturacion.js?v=20260710200"></script>
-<script src="js/inventario.js?v=20260710200"></script>
-<script src="js/contabilidad.js?v=20260710200"></script>
-<script src="js/pagos.js?v=20260710200"></script>
-<script src="js/vehiculos.js?v=20260710200"></script>
-<script src="js/catalogo.js?v=20260710200"></script>
-<script src="js/inventario2.js?v=20260710200"></script>
-<script src="js/ordenes.js?v=20260710200"></script>
+<script src="js/core.js?v=20260710201"></script>
+<script src="js/parametros.js?v=20260710201"></script>
+<script src="js/empresas.js?v=20260710201"></script>
+<script src="js/facturacion.js?v=20260710201"></script>
+<script src="js/inventario.js?v=20260710201"></script>
+<script src="js/contabilidad.js?v=20260710201"></script>
+<script src="js/pagos.js?v=20260710201"></script>
+<script src="js/vehiculos.js?v=20260710201"></script>
+<script src="js/catalogo.js?v=20260710201"></script>
+<script src="js/inventario2.js?v=20260710201"></script>
+<script src="js/ordenes.js?v=20260710201"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4079,10 +4079,6 @@
             </div>
           </div>
         </div>
-        <div class="form-campo">
-          <label>Fecha de Pago *</label>
-          <input type="date" id="pago-vencimiento">
-        </div>
         <div class="form-campo form-full">
           <label>Proveedor *</label>
           <select id="pago-proveedor" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
@@ -4094,14 +4090,18 @@
           <textarea id="pago-observaciones" rows="2" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;width:100%"></textarea>
         </div>
 
-        <!-- Modalidad de Pago -->
-        <div class="form-campo form-full">
+        <!-- Modalidad de Pago + Fecha de Pago (solo Contado) -->
+        <div class="form-campo">
           <label>Modalidad de Pago *</label>
           <select id="pago-modalidad" onchange="onCambioModalidadPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccione pago —</option>
             <option value="CONTADO">Contado</option>
             <option value="CREDITO">Crédito</option>
           </select>
+        </div>
+        <div class="form-campo" id="pago-vencimiento-cont" style="display:none">
+          <label>Fecha de Pago *</label>
+          <input type="date" id="pago-vencimiento" onchange="onCambiarFechaPagoContado()">
         </div>
 
         <!-- Tributos -->

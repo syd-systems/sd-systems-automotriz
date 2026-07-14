@@ -356,6 +356,8 @@ async function abrirNuevoPago() {
   if (modEl) modEl.value = '';
   const credCont = document.getElementById('pago-credito-cont');
   if (credCont) credCont.style.display = 'none';
+  const vencContReset = document.getElementById('pago-vencimiento-cont');
+  if (vencContReset) vencContReset.style.display = 'none';
   document.getElementById('pago-incluye-iva-val').value = '';
   const incCont = document.getElementById('pago-incluye-iva-cont');
   if (incCont) incCont.style.display = 'none';
@@ -1846,7 +1848,23 @@ function onCambioModalidadPago() {
   const modalidad = document.getElementById('pago-modalidad')?.value || '';
   const cont = document.getElementById('pago-credito-cont');
   if (cont) cont.style.display = modalidad === 'CREDITO' ? '' : 'none';
+  const vencCont = document.getElementById('pago-vencimiento-cont');
+  if (vencCont) vencCont.style.display = modalidad === 'CONTADO' ? '' : 'none';
   calcularCuotasPago();
+}
+
+// Al elegir la Fecha de Pago (Contado), buscar la tasa BCV de ESA fecha
+// específica y recalcular el monto convertido y los tributos con ella
+async function onCambiarFechaPagoContado() {
+  const fecha = document.getElementById('pago-vencimiento')?.value || '';
+  if (!fecha) return;
+  try {
+    const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fecha+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    if (tasaRows && tasaRows[0]) {
+      window._pagoTasaUSD = parseFloat(tasaRows[0].tipo_cambio);
+    }
+  } catch(e) { console.warn('Error buscando tasa BCV de la fecha:', e); }
+  onCambiarMontoPago();
 }
 
 function onCambioExentoIVAPago() {
