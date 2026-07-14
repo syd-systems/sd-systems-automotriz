@@ -2166,8 +2166,8 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     const c = rows[0];
 
     // ── Detectar si es CxP automática de Inventario ──
-    const esAutomatica = c.esquema_pago === 'CONTADO' || c.esquema_pago === 'CREDITO'
-      || /^ENT-/.test(c.numero_doc || '');
+    const esAutomatica = /^ENT-/.test(c.numero_doc || '')
+      || c.tipo === 'COMPRA_ARTICULO' || c.tipo === 'COMPRA_ARTICULO_CREDITO';
     if (esAutomatica) {
       await _verCxPAutomatica(c, id_cxp);
       return;
@@ -2511,8 +2511,8 @@ async function verCxPPendiente(id_cxp) {
 
     // ── Detectar si es CxP automática de Inventario ──
     // Por esquema_pago o por numero_doc que empiece con ENT-
-    const esAutomatica = c.esquema_pago === 'CONTADO' || c.esquema_pago === 'CREDITO'
-      || /^ENT-/.test(c.numero_doc || '');
+    const esAutomatica = /^ENT-/.test(c.numero_doc || '')
+      || c.tipo === 'COMPRA_ARTICULO' || c.tipo === 'COMPRA_ARTICULO_CREDITO';
 
 
     if (esAutomatica) {
