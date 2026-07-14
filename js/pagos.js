@@ -2105,9 +2105,13 @@ async function guardarPago() {
       const verifEdit = await verificarContrasena(sesionActual.correo_usuario, clave);
       if (!verifEdit.ok) { mostrarErr(verifEdit.msg || 'Contraseña incorrecta.'); if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar'; } return; }
 
-      // Obtener el numero_doc actual para localizar el asiento asociado
+      // Obtener el numero_doc actual para localizar el asiento asociado.
+      // El asiento se creó con la referencia SIN el sufijo "-<id_cxp>" (ese
+      // sufijo se agrega DESPUÉS, solo al numero_doc de la CxP) — hay que
+      // quitarlo antes de buscar, si no nunca coincide con el asiento real
       const cxpActualRows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp_edit+'&select=numero_doc');
-      const numDocActual = cxpActualRows && cxpActualRows[0] ? cxpActualRows[0].numero_doc : null;
+      const numDocConSufijo = cxpActualRows && cxpActualRows[0] ? cxpActualRows[0].numero_doc : null;
+      const numDocActual = numDocConSufijo ? numDocConSufijo.replace(new RegExp('-'+id_cxp_edit+'$'), '') : null;
 
       await api('cont_cxp','PATCH',{
         id_proveedor:      id_proveedor,
