@@ -1817,6 +1817,8 @@ async function editarCxPManual(id_cxp) {
     // Editar no requiere contraseña (solo actualiza datos básicos) — ocultar
     const confUsuario = document.getElementById('pago-clave')?.closest('.form-campo');
     if (confUsuario) confUsuario.style.display = 'none';
+    const claveElEdit = document.getElementById('pago-clave');
+    if (claveElEdit) claveElEdit.value = '';
 
     // Preseleccionar proveedor
     if (c.id_proveedor) {
@@ -2016,9 +2018,9 @@ async function guardarPago() {
   if (!id_proveedor)   { mostrarErr('Debe seleccionar un Proveedor.');           document.getElementById('pago-proveedor')?.focus(); return; }
   const exentoIVASel = document.querySelector('input[name="pago-exento-iva"]:checked');
   if (!exentoIVASel)   { mostrarErr('Debe indicar si el Gasto está Exento de IVA.'); return; }
-  if (!exento && !incluyeIVAVal) { mostrarErr('Debe indicar si el Monto Facturado incluye IVA.'); return; }
 
   if (!id_cxp_edit) {
+    if (!exento && !incluyeIVAVal) { mostrarErr('Debe indicar si el Monto Facturado incluye IVA.'); return; }
     if (!modalidad) { mostrarErr('Debe seleccionar la Modalidad de Pago.'); document.getElementById('pago-modalidad')?.focus(); return; }
     if (modalidad === 'CONTADO' && !vencimiento) { mostrarErr('La Fecha de Pago es obligatoria.'); document.getElementById('pago-vencimiento')?.focus(); return; }
     if (modalidad === 'CREDITO') {
