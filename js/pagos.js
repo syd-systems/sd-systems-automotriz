@@ -2105,6 +2105,10 @@ async function guardarPago() {
       const verifEdit = await verificarContrasena(sesionActual.correo_usuario, clave);
       if (!verifEdit.ok) { mostrarErr(verifEdit.msg || 'Contraseña incorrecta.'); if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar'; } return; }
 
+      // Obtener el numero_doc actual para localizar el asiento asociado
+      const cxpActualRows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp_edit+'&select=numero_doc');
+      const numDocActual = cxpActualRows && cxpActualRows[0] ? cxpActualRows[0].numero_doc : null;
+
       await api('cont_cxp','PATCH',{
         id_proveedor:      id_proveedor,
         fecha_vencimiento: vencimiento,
@@ -2115,6 +2119,32 @@ async function guardarPago() {
         observaciones:     descripcion + (observaciones ? ' — ' + observaciones : ''),
         exento_iva:        exento,
       }, '?id_cxp=eq.'+id_cxp_edit);
+
+      // Borrar el asiento viejo (Gasto+IVA/CxP) y generar uno nuevo con los
+      // valores ya actualizados, en vez de dejarlo desactualizado
+      if (numDocActual) {
+        try {
+          const asientosViejos = await api('cont_asientos','GET',null,
+            '?referencia=eq.'+encodeURIComponent(numDocActual)+'&tipo=eq.GASTO_MANUAL&estado=neq.ANULADO&select=id_asiento');
+          for (const a of (asientosViejos||[])) {
+            await api('cont_asiento_lineas','DELETE',null,'?id_asiento=eq.'+a.id_asiento);
+            await api('cont_asientos','DELETE',null,'?id_asiento=eq.'+a.id_asiento);
+          }
+        } catch(eDelAst) { console.warn('Error borrando asiento anterior:', eDelAst); }
+
+        await generarAsientoGastoManual({
+          descripcion:    descripcion + (observaciones ? ' — ' + observaciones : ''),
+          montoUSD:       montoTotalConIVA,
+          montoBsExacto:  montoTotalVES,
+          referencia:     numDocActual,
+          id_cuentaGasto: id_cuentaGasto,
+          fecha:          fechaParaTasa,
+          tasa:           tasaUSD,
+          incluyeIVA:     incluyeIVAVal === 'SI',
+          exentoIVA:      exento
+        });
+      }
+
       if (okEl) { okEl.textContent = '✓ Obligación actualizada correctamente.'; okEl.style.display = 'block'; }
       setTimeout(function() { cerrarModal('modal-pago'); cargarPagos(); }, 1000);
       return;
