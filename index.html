@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260710198"></script>
-<script src="js/parametros.js?v=20260710198"></script>
-<script src="js/empresas.js?v=20260710198"></script>
-<script src="js/facturacion.js?v=20260710198"></script>
-<script src="js/inventario.js?v=20260710198"></script>
-<script src="js/contabilidad.js?v=20260710198"></script>
-<script src="js/pagos.js?v=20260710198"></script>
-<script src="js/vehiculos.js?v=20260710198"></script>
-<script src="js/catalogo.js?v=20260710198"></script>
-<script src="js/inventario2.js?v=20260710198"></script>
-<script src="js/ordenes.js?v=20260710198"></script>
+<script src="js/core.js?v=20260710199"></script>
+<script src="js/parametros.js?v=20260710199"></script>
+<script src="js/empresas.js?v=20260710199"></script>
+<script src="js/facturacion.js?v=20260710199"></script>
+<script src="js/inventario.js?v=20260710199"></script>
+<script src="js/contabilidad.js?v=20260710199"></script>
+<script src="js/pagos.js?v=20260710199"></script>
+<script src="js/vehiculos.js?v=20260710199"></script>
+<script src="js/catalogo.js?v=20260710199"></script>
+<script src="js/inventario2.js?v=20260710199"></script>
+<script src="js/ordenes.js?v=20260710199"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4078,17 +4078,90 @@
           <textarea id="pago-observaciones" rows="2" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;width:100%"></textarea>
         </div>
 
-        <!-- Exento de IVA -->
+        <!-- Modalidad de Pago -->
+        <div class="form-campo form-full">
+          <label>Modalidad de Pago *</label>
+          <select id="pago-modalidad" onchange="onCambioModalidadPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccione pago —</option>
+            <option value="CONTADO">Contado</option>
+            <option value="CREDITO">Crédito</option>
+          </select>
+        </div>
+
+        <!-- Tributos -->
         <div class="form-campo form-full" style="background:rgba(255,107,0,0.05);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:12px 14px">
-          <div style="display:flex;align-items:center;gap:16px">
+          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">🧾 Tributos</div>
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
             <label style="font-size:13px;font-weight:500;margin:0">¿Gasto Exento de IVA? *</label>
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
-              <input type="radio" name="pago-exento-iva" id="pago-exento-iva-si" value="SI"> Sí
+              <input type="radio" name="pago-exento-iva" id="pago-exento-iva-si" value="SI" onchange="onCambioExentoIVAPago()"> Sí
             </label>
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
-              <input type="radio" name="pago-exento-iva" id="pago-exento-iva-no" value="NO"> No
+              <input type="radio" name="pago-exento-iva" id="pago-exento-iva-no" value="NO" onchange="onCambioExentoIVAPago()"> No
             </label>
           </div>
+          <div id="pago-incluye-iva-cont" style="display:none;margin-bottom:12px">
+            <div style="display:flex;align-items:center;gap:16px">
+              <label style="font-size:13px;font-weight:500">Monto Facturado incluye IVA (16%)</label>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
+                <input type="radio" name="pago-incluye-iva" id="pago-incluye-iva-si" value="SI" onchange="document.getElementById('pago-incluye-iva-val').value='SI';calcularTributosPago();document.getElementById('pago-cuotas-monto')&&(document.getElementById('pago-cuotas-monto').value='');calcularCuotasPago()"> Sí
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
+                <input type="radio" name="pago-incluye-iva" id="pago-incluye-iva-no" value="NO" onchange="document.getElementById('pago-incluye-iva-val').value='NO';calcularTributosPago();document.getElementById('pago-cuotas-monto')&&(document.getElementById('pago-cuotas-monto').value='');calcularCuotasPago()"> No
+              </label>
+            </div>
+          </div>
+          <input type="hidden" id="pago-incluye-iva-val" value="">
+          <div id="pago-tributos-preview" style="display:none;background:rgba(0,0,0,0.2);border-radius:6px;padding:10px;font-size:12px">
+            <div style="display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;align-items:center">
+              <span style="color:var(--suave)">Base (Gasto)</span>
+              <span id="pago-trib-base" style="font-family:var(--font-mono);text-align:right">—</span>
+              <span id="pago-trib-base-ves" style="font-family:var(--font-mono);text-align:right;color:var(--suave);font-size:11px">—</span>
+              <span style="color:var(--suave)">IVA (16%) — 1.1.04.001</span>
+              <span id="pago-trib-iva" style="font-family:var(--font-mono);text-align:right;color:#60a5fa">—</span>
+              <span id="pago-trib-iva-ves" style="font-family:var(--font-mono);text-align:right;color:#60a5fa;font-size:11px">—</span>
+              <span style="color:var(--naranja);font-weight:600;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">Total Facturado</span>
+              <span id="pago-trib-total" style="font-family:var(--font-mono);color:var(--naranja);font-weight:600;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
+              <span id="pago-trib-total-ves" style="font-family:var(--font-mono);color:var(--naranja);font-size:11px;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Condiciones de Crédito -->
+        <div id="pago-credito-cont" style="display:none;grid-column:1/-1">
+          <div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-top:4px">
+            <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">📅 Condiciones de Crédito</div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;gap:12px">
+              <div class="form-campo" style="margin:0">
+                <label style="font-size:12px">N° de Cuotas *</label>
+                <input type="number" id="pago-cuotas-num" min="1" max="60" placeholder="Ej: 3" oninput="document.getElementById('pago-cuotas-monto').value='';calcularCuotasPago()" style="font-family:var(--font-mono)">
+              </div>
+              <div class="form-campo" style="margin:0">
+                <label style="font-size:12px">Fecha Primera Cuota *</label>
+                <input type="date" id="pago-cuotas-fecha-inicio" oninput="calcularCuotasPago()">
+              </div>
+              <div class="form-campo" style="margin:0">
+                <label style="font-size:12px">Intervalo (días)</label>
+                <input type="number" id="pago-cuotas-intervalo" min="1" value="30" oninput="document.getElementById('pago-cuotas-monto').value='';calcularCuotasPago()" style="font-family:var(--font-mono)">
+              </div>
+              <div class="form-campo" style="margin:0">
+                <label style="font-size:12px">Monto por Cuota (USD)</label>
+                <input type="number" id="pago-cuotas-monto" step="0.01" min="0" placeholder="Auto" oninput="calcularCuotasPago()" style="font-family:var(--font-mono)">
+              </div>
+            </div>
+            <div id="pago-cuotas-preview" style="margin-top:12px"></div>
+          </div>
+        </div>
+
+        <!-- Confirmación de Usuario -->
+        <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
+          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <div style="font-size:13px;color:var(--texto)">Usuario: <span id="pago-usuario-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
+            <div style="font-size:11px;color:var(--suave)" id="pago-usuario-area">—</div>
+          </div>
+          <label style="font-size:12px">Contraseña *</label>
+          <input type="password" id="pago-clave" placeholder="Ingrese su contraseña para confirmar" autocomplete="new-password" style="width:100%">
         </div>
 
         <input type="hidden" id="pago-id">

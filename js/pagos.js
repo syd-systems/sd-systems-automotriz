@@ -340,6 +340,33 @@ async function abrirNuevoPago() {
   const selProv = document.getElementById('pago-proveedor');
   if (selProv) selProv.innerHTML = '<option value="">— Seleccionar categoría primero —</option>';
 
+  // Poblar usuario para la confirmación
+  const unEl = document.getElementById('pago-usuario-nombre');
+  if (unEl) unEl.textContent = sesionActual?.nombre || sesionActual?.correo_usuario || '—';
+  const uaEl = document.getElementById('pago-usuario-area');
+  if (uaEl) uaEl.textContent = sesionActual?.nombre_area || '';
+  const claveEl2 = document.getElementById('pago-clave');
+  if (claveEl2) claveEl2.value = '';
+
+  // Reset modalidad, tributos y crédito
+  const modEl = document.getElementById('pago-modalidad');
+  if (modEl) modEl.value = '';
+  const credCont = document.getElementById('pago-credito-cont');
+  if (credCont) credCont.style.display = 'none';
+  document.getElementById('pago-incluye-iva-val').value = '';
+  const incCont = document.getElementById('pago-incluye-iva-cont');
+  if (incCont) incCont.style.display = 'none';
+  document.querySelectorAll('input[name="pago-incluye-iva"]').forEach(function(r){ r.checked = false; });
+  const tribPrev = document.getElementById('pago-tributos-preview');
+  if (tribPrev) tribPrev.style.display = 'none';
+  ['pago-cuotas-num','pago-cuotas-fecha-inicio','pago-cuotas-monto'].forEach(function(id){
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const cuotasIntEl = document.getElementById('pago-cuotas-intervalo');
+  if (cuotasIntEl) cuotasIntEl.value = '30';
+  const cuotasPrevEl = document.getElementById('pago-cuotas-preview');
+  if (cuotasPrevEl) cuotasPrevEl.innerHTML = '';
+
   abrirModal('modal-pago');
 }
 
@@ -1781,6 +1808,103 @@ async function editarCxPManual(id_cxp) {
 }
 
 
+function onCambioModalidadPago() {
+  const modalidad = document.getElementById('pago-modalidad')?.value || '';
+  const cont = document.getElementById('pago-credito-cont');
+  if (cont) cont.style.display = modalidad === 'CREDITO' ? '' : 'none';
+  calcularCuotasPago();
+}
+
+function onCambioExentoIVAPago() {
+  const exento  = document.getElementById('pago-exento-iva-si')?.checked;
+  const incCont = document.getElementById('pago-incluye-iva-cont');
+  if (incCont) incCont.style.display = exento ? 'none' : '';
+  if (exento) {
+    document.getElementById('pago-incluye-iva-val').value = '';
+    document.querySelectorAll('input[name="pago-incluye-iva"]').forEach(function(r){ r.checked = false; });
+  }
+  calcularTributosPago();
+  const cme = document.getElementById('pago-cuotas-monto');
+  if (cme) cme.value = '';
+  calcularCuotasPago();
+}
+
+// Convierte el monto ingresado (en la moneda seleccionada) a USD, usando las
+// tasas ya cargadas al abrir el modal
+function _pagoMontoEnUSD() {
+  const montoRaw = (document.getElementById('pago-monto')?.value || '').replace(/\./g,'').replace(',','.');
+  const monto  = parseFloat(montoRaw) || 0;
+  const moneda = document.getElementById('pago-moneda')?.value || 'USD';
+  const tasaUSD = window._pagoTasaUSD || _tasaVigente || 1;
+  const tasaEUR = window._pagoTasaEUR || tasaUSD;
+  if (moneda === 'VES') return tasaUSD > 0 ? monto / tasaUSD : 0;
+  if (moneda === 'EUR') return tasaUSD > 0 ? (monto * tasaEUR) / tasaUSD : 0;
+  return monto;
+}
+
+function calcularTributosPago() {
+  const montoUSD = _pagoMontoEnUSD();
+  const exento   = document.getElementById('pago-exento-iva-si')?.checked;
+  const incluyeVal = document.getElementById('pago-incluye-iva-val')?.value;
+  const prev = document.getElementById('pago-tributos-preview');
+  if (!prev) return;
+  if (!montoUSD || (!exento && !incluyeVal)) { prev.style.display = 'none'; return; }
+  const incluye = incluyeVal === 'SI';
+  let base, iva, total;
+  if (exento) { base = montoUSD; iva = 0; total = montoUSD; }
+  else if (incluye) { base = parseFloat((montoUSD/1.16).toFixed(4)); iva = parseFloat((montoUSD-base).toFixed(4)); total = montoUSD; }
+  else { base = montoUSD; iva = parseFloat((montoUSD*0.16).toFixed(4)); total = parseFloat((base+iva).toFixed(4)); }
+  const tasa = window._pagoTasaUSD || _tasaVigente || 1;
+  prev.style.display = '';
+  document.getElementById('pago-trib-base').textContent  = '$ ' + base.toFixed(2);
+  document.getElementById('pago-trib-iva').textContent   = '$ ' + iva.toFixed(2);
+  document.getElementById('pago-trib-total').textContent = '$ ' + total.toFixed(2);
+  document.getElementById('pago-trib-base-ves').textContent  = 'Bs ' + (base*tasa).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('pago-trib-iva-ves').textContent   = 'Bs ' + (iva*tasa).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('pago-trib-total-ves').textContent = 'Bs ' + (total*tasa).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function calcularCuotasPago() {
+  const numCuotas   = parseInt(document.getElementById('pago-cuotas-num')?.value) || 0;
+  const fechaInicio = document.getElementById('pago-cuotas-fecha-inicio')?.value || '';
+  const intervalo   = parseInt(document.getElementById('pago-cuotas-intervalo')?.value) || 30;
+  const montoCuotaInput = parseFloat(document.getElementById('pago-cuotas-monto')?.value) || 0;
+  const montoUSD = _pagoMontoEnUSD();
+  const exento   = document.getElementById('pago-exento-iva-si')?.checked;
+  const incluye  = document.getElementById('pago-incluye-iva-val') === null ? false : document.getElementById('pago-incluye-iva-val').value === 'SI';
+  let totalUSD = parseFloat((exento || incluye ? montoUSD : montoUSD * 1.16).toFixed(2));
+  if (!totalUSD && montoCuotaInput && numCuotas) totalUSD = parseFloat((montoCuotaInput * numCuotas).toFixed(2));
+  const preview = document.getElementById('pago-cuotas-preview');
+  if (!preview) return;
+  if (!numCuotas || !fechaInicio || !totalUSD) { preview.innerHTML = ''; preview.dataset.cuotas = ''; return; }
+  const montoCuota = montoCuotaInput || parseFloat((totalUSD / numCuotas).toFixed(2));
+  const cuotas = [];
+  let fecha = new Date(fechaInicio + 'T00:00:00');
+  let acumulado = 0;
+  for (let i = 1; i <= numCuotas; i++) {
+    const esUltima = i === numCuotas;
+    const monto = esUltima ? parseFloat((totalUSD - acumulado).toFixed(2)) : montoCuota;
+    acumulado = parseFloat((acumulado + monto).toFixed(2));
+    cuotas.push({ num: i, fecha: fecha.toISOString().split('T')[0], monto: monto });
+    fecha = new Date(fecha.getTime() + intervalo * 24 * 60 * 60 * 1000);
+  }
+  const sumaCuotas = cuotas.reduce(function(s,c){ return s + c.monto; }, 0);
+  const cuadra = Math.abs(sumaCuotas - totalUSD) < 0.01;
+  preview.dataset.cuotas = JSON.stringify(cuotas);
+  preview.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-bottom:8px">Vista previa — Total: $ '+totalUSD.toLocaleString('es-VE',{minimumFractionDigits:2})+(cuadra?' ✓':' ⚠ revise el monto por cuota')+'</div>'
+    + '<table style="width:100%;font-size:12px"><thead><tr>'
+    + '<th style="padding:6px 8px;text-align:left;color:var(--suave);font-size:10px">Cuota</th>'
+    + '<th style="padding:6px 8px;text-align:left;color:var(--suave);font-size:10px">Fecha Vencimiento</th>'
+    + '<th style="padding:6px 8px;text-align:right;color:var(--suave);font-size:10px">Monto USD</th>'
+    + '</tr></thead><tbody>'
+    + cuotas.map(function(c){ return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+        +'<td style="padding:6px 8px;font-weight:600">Cuota '+c.num+'</td>'
+        +'<td style="padding:6px 8px;font-family:var(--font-mono)">'+c.fecha+'</td>'
+        +'<td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);color:var(--naranja)">$ '+c.monto.toFixed(2)+'</td>'
+        +'</tr>'; }).join('')
+    + '</tbody></table>';
+}
+
 async function guardarPago() {
   const id_cxp_edit = document.getElementById('pago-id')?.value || '';
   if (!puedo('PAGOS','CREAR') && !id_cxp_edit) { alert('No tiene permiso para registrar obligaciones de pago.'); return; }
@@ -1795,15 +1919,19 @@ async function guardarPago() {
   };
 
   // Leer campos
-  const id_categoria  = document.getElementById('pago-categoria-prov')?.value || '';
-  const moneda       = document.getElementById('pago-moneda')?.value || '';
-  const descripcion  = document.getElementById('pago-descripcion')?.value.trim() || '';
-  const id_cuentaGasto= document.getElementById('pago-cuenta-gasto')?.value || '';
-  const montoRaw    = (document.getElementById('pago-monto')?.value || '').replace(/\./g,'').replace(',','.');
-  const monto       = parseFloat(montoRaw) || 0;
-  const vencimiento  = document.getElementById('pago-vencimiento')?.value || '';
-  const id_proveedor  = parseInt(document.getElementById('pago-proveedor')?.value) || null;
-  const observaciones= document.getElementById('pago-observaciones')?.value.trim() || '';
+  const id_categoria   = document.getElementById('pago-categoria-prov')?.value || '';
+  const moneda         = document.getElementById('pago-moneda')?.value || '';
+  const descripcion    = document.getElementById('pago-descripcion')?.value.trim() || '';
+  const id_cuentaGasto = parseInt(document.getElementById('pago-cuenta-gasto')?.value) || null;
+  const montoRaw       = (document.getElementById('pago-monto')?.value || '').replace(/\./g,'').replace(',','.');
+  const monto          = parseFloat(montoRaw) || 0;
+  const vencimiento    = document.getElementById('pago-vencimiento')?.value || '';
+  const id_proveedor   = parseInt(document.getElementById('pago-proveedor')?.value) || null;
+  const observaciones  = document.getElementById('pago-observaciones')?.value.trim() || '';
+  const modalidad      = document.getElementById('pago-modalidad')?.value || '';
+  const exento         = document.getElementById('pago-exento-iva-si')?.checked || false;
+  const incluyeIVAVal  = document.getElementById('pago-incluye-iva-val')?.value || '';
+  const clave          = document.getElementById('pago-clave')?.value || '';
 
   // Validaciones en orden de los campos
   if (!id_categoria)   { mostrarErr('Debe seleccionar la Categoría de Pago.');  document.getElementById('pago-categoria-prov')?.focus(); return; }
@@ -1811,10 +1939,22 @@ async function guardarPago() {
   if (!descripcion)    { mostrarErr('La Descripción es obligatoria.');           document.getElementById('pago-descripcion')?.focus(); return; }
   if (!monto)          { mostrarErr('El Monto es obligatorio.');                 document.getElementById('pago-monto')?.focus(); return; }
   if (!moneda)         { mostrarErr('Debe seleccionar la Moneda.');              document.getElementById('pago-moneda')?.focus(); return; }
-  if (!vencimiento)    { mostrarErr('La Fecha de Pago es obligatoria.');         document.getElementById('pago-vencimiento')?.focus(); return; }
   if (!id_proveedor)   { mostrarErr('Debe seleccionar un Proveedor.');           document.getElementById('pago-proveedor')?.focus(); return; }
   const exentoIVASel = document.querySelector('input[name="pago-exento-iva"]:checked');
   if (!exentoIVASel)   { mostrarErr('Debe indicar si el Gasto está Exento de IVA.'); return; }
+  if (!exento && !incluyeIVAVal) { mostrarErr('Debe indicar si el Monto Facturado incluye IVA.'); return; }
+
+  if (!id_cxp_edit) {
+    if (!modalidad) { mostrarErr('Debe seleccionar la Modalidad de Pago.'); document.getElementById('pago-modalidad')?.focus(); return; }
+    if (modalidad === 'CONTADO' && !vencimiento) { mostrarErr('La Fecha de Pago es obligatoria.'); document.getElementById('pago-vencimiento')?.focus(); return; }
+    if (modalidad === 'CREDITO') {
+      const numCuotas = parseInt(document.getElementById('pago-cuotas-num')?.value) || 0;
+      const fechaIni  = document.getElementById('pago-cuotas-fecha-inicio')?.value || '';
+      if (!numCuotas) { mostrarErr('Debe indicar el N° de Cuotas.'); document.getElementById('pago-cuotas-num')?.focus(); return; }
+      if (!fechaIni)  { mostrarErr('Debe indicar la Fecha de la Primera Cuota.'); document.getElementById('pago-cuotas-fecha-inicio')?.focus(); return; }
+    }
+    if (!clave) { mostrarErr('Debe ingresar su contraseña para confirmar.'); document.getElementById('pago-clave')?.focus(); return; }
+  }
 
   // Buscar tasa BCV del día
   let tasaUSD = _tasaVigente || 1;
@@ -1823,18 +1963,15 @@ async function guardarPago() {
     if (tasaRows && tasaRows[0]) tasaUSD = parseFloat(tasaRows[0].tipo_cambio);
   } catch(e) {}
   const tasaEUR = window._pagoTasaEUR || tasaUSD;
-  let montoUSD = monto;
-  let montoVES = monto;
-  if (moneda === 'VES') {
-    montoVES = monto;
-    montoUSD = parseFloat((monto / tasaUSD).toFixed(4));
-  } else if (moneda === 'USD') {
-    montoUSD = monto;
-    montoVES = parseFloat((monto * tasaUSD).toFixed(2));
-  } else if (moneda === 'EUR') {
-    montoUSD = parseFloat((monto * tasaEUR / tasaUSD).toFixed(4));
-    montoVES = parseFloat((monto * tasaEUR).toFixed(2));
-  }
+  let montoIngresadoUSD = monto;
+  if (moneda === 'VES') montoIngresadoUSD = parseFloat((monto / tasaUSD).toFixed(4));
+  else if (moneda === 'EUR') montoIngresadoUSD = parseFloat((monto * tasaEUR / tasaUSD).toFixed(4));
+
+  // Monto TOTAL con IVA (si aplica) — se calcula UNA sola vez, en USD
+  const montoTotalConIVA = exento || incluyeIVAVal === 'SI'
+    ? parseFloat(montoIngresadoUSD.toFixed(2))
+    : parseFloat((montoIngresadoUSD * 1.16).toFixed(2));
+  const montoTotalVES = parseFloat((montoTotalConIVA * tasaUSD).toFixed(2));
 
   const id_emisor = _empresaActiva?.id_empresa || 0;
   const hoy = new Date().toISOString().split('T')[0];
@@ -1843,22 +1980,26 @@ async function guardarPago() {
     const btnGuardar = document.querySelector('#modal-pago .btn-primario');
     if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
 
-    // Si es edición → PATCH
+    // Si es edición → PATCH (sin regenerar asiento ni cuotas)
     if (id_cxp_edit) {
       await api('cont_cxp','PATCH',{
         id_proveedor:      id_proveedor,
         fecha_vencimiento: vencimiento,
-        monto_usd:         montoUSD,
-        monto_ves:         montoVES,
-        saldo_usd:         montoUSD,
-        id_cuenta_gasto:   parseInt(document.getElementById('pago-cuenta-gasto')?.value) || null,
+        monto_usd:         montoTotalConIVA,
+        monto_ves:         montoTotalVES,
+        saldo_usd:         montoTotalConIVA,
+        id_cuenta_gasto:   id_cuentaGasto,
         observaciones:     descripcion + (observaciones ? ' — ' + observaciones : ''),
-        exento_iva:        document.getElementById('pago-exento-iva-si')?.checked || false,
+        exento_iva:        exento,
       }, '?id_cxp=eq.'+id_cxp_edit);
       if (okEl) { okEl.textContent = '✓ Obligación actualizada correctamente.'; okEl.style.display = 'block'; }
       setTimeout(function() { cerrarModal('modal-pago'); cargarPagos(); }, 1000);
       return;
     }
+
+    // Confirmar contraseña
+    const verif = await verificarContrasena(sesionActual.correo_usuario, clave);
+    if (!verif.ok) { mostrarErr(verif.msg || 'Contraseña incorrecta.'); if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar'; } return; }
 
     // Subir comprobante si se adjuntó
     let urlComp = null;
@@ -1867,28 +2008,88 @@ async function guardarPago() {
       try { urlComp = await subirFoto(archivoNuevo.files[0], 'comprobantes/manual'); } catch(e) {}
     }
     const referenciaNueva = document.getElementById('pago-referencia')?.value.trim() || '';
+    const numDocBase = 'MAN-' + Date.now();
+    const descAsiento = descripcion + (observaciones ? ' — ' + observaciones : '');
 
-    const nuevaCxP = await api('cont_cxp','POST',{
-      id_empresa:        id_emisor,
-      id_proveedor:     id_proveedor,
-      tipo:             'PAGO_MANUAL',
-      numero_doc:       'MAN-' + Date.now(),
-      fecha_emision:    hoy,
-      fecha_vencimiento: vencimiento,
-      moneda_pago:      moneda,
-      monto_usd:        montoUSD,
-      monto_ves:        montoVES,
-      tasa_bcv:         tasaUSD,
-      pagado_usd:       0,
-      saldo_usd:        montoUSD,
-      estado:           'PENDIENTE',
-      referencia:       referenciaNueva || null,
-      url_comprobante:  urlComp || null,
-      id_cuenta_gasto:  parseInt(document.getElementById('pago-cuenta-gasto')?.value) || null,
-      observaciones:    descripcion + (observaciones ? ' — ' + observaciones : ''),
-      exento_iva:       document.getElementById('pago-exento-iva-si')?.checked || false,
-      id_usuario:       sesionActual?.correo_usuario || null
+    // ── Asiento contable: Gasto (+IVA) / CxP ──
+    await generarAsientoGastoManual({
+      descripcion: descAsiento,
+      montoUSD:    montoTotalConIVA,
+      referencia:  numDocBase,
+      id_cuentaGasto: id_cuentaGasto,
+      fecha:       hoy,
+      tasa:        tasaUSD,
+      incluyeIVA:  incluyeIVAVal === 'SI',
+      exentoIVA:   exento
     });
+
+    if (modalidad === 'CREDITO') {
+      const preview = document.getElementById('pago-cuotas-preview');
+      const cuotas  = preview?.dataset.cuotas ? JSON.parse(preview.dataset.cuotas) : [];
+      if (!cuotas.length) throw new Error('No se calcularon las cuotas. Complete los campos de crédito.');
+      const totalVesCuotas = parseFloat((montoTotalConIVA * tasaUSD).toFixed(2));
+      let acumVesCuotas = 0;
+      for (let i = 0; i < cuotas.length; i++) {
+        const c = cuotas[i];
+        const esUltimaCuota = i === cuotas.length - 1;
+        const montoVesCuota = esUltimaCuota
+          ? parseFloat((totalVesCuotas - acumVesCuotas).toFixed(2))
+          : parseFloat((c.monto * tasaUSD).toFixed(2));
+        acumVesCuotas = parseFloat((acumVesCuotas + montoVesCuota).toFixed(2));
+        const cxpCuota = await api('cont_cxp','POST',{
+          id_empresa:        id_emisor,
+          id_proveedor:      id_proveedor,
+          tipo:              'PAGO_MANUAL_CREDITO',
+          numero_doc:        numDocBase + '-C' + c.num,
+          fecha_emision:     hoy,
+          fecha_vencimiento: c.fecha,
+          moneda_pago:       moneda,
+          monto_usd:         c.monto,
+          monto_ves:         montoVesCuota,
+          tasa_bcv:          tasaUSD,
+          tasa_bcv_compra:   tasaUSD,
+          pagado_usd:        0,
+          saldo_usd:         c.monto,
+          estado:            'PENDIENTE',
+          referencia:        referenciaNueva || null,
+          url_comprobante:   urlComp || null,
+          id_cuenta_gasto:   id_cuentaGasto,
+          observaciones:     descAsiento,
+          exento_iva:        exento,
+          esquema_pago:      'CREDITO',
+          id_usuario:        sesionActual?.correo_usuario || null
+        });
+        if (cxpCuota && cxpCuota[0]) {
+          await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-C' + c.num + '-' + cxpCuota[0].id_cxp }, '?id_cxp=eq.' + cxpCuota[0].id_cxp);
+        }
+      }
+    } else {
+      const cxpContado = await api('cont_cxp','POST',{
+        id_empresa:        id_emisor,
+        id_proveedor:      id_proveedor,
+        tipo:              'PAGO_MANUAL',
+        numero_doc:        numDocBase,
+        fecha_emision:     hoy,
+        fecha_vencimiento: vencimiento,
+        moneda_pago:       moneda,
+        monto_usd:         montoTotalConIVA,
+        monto_ves:         montoTotalVES,
+        tasa_bcv:          tasaUSD,
+        pagado_usd:        0,
+        saldo_usd:         montoTotalConIVA,
+        estado:            'PENDIENTE',
+        referencia:        referenciaNueva || null,
+        url_comprobante:   urlComp || null,
+        id_cuenta_gasto:   id_cuentaGasto,
+        observaciones:     descAsiento,
+        exento_iva:        exento,
+        esquema_pago:      'CONTADO',
+        id_usuario:        sesionActual?.correo_usuario || null
+      });
+      if (cxpContado && cxpContado[0]) {
+        await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-' + cxpContado[0].id_cxp }, '?id_cxp=eq.' + cxpContado[0].id_cxp);
+      }
+    }
 
     if (okEl) { okEl.textContent = '✓ CxP registrada correctamente.'; okEl.style.display = 'block'; }
     setTimeout(function() {

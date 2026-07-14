@@ -1996,4 +1996,92 @@ async function generarAsientoInventario(tipo, datos) {
   } catch(eAst) { console.warn('Error asiento inventario:', eAst); }
 }
 
+// ══════════════════════════════════════════════════════════════
+//  ASIENTO CONTABLE — CxP MANUAL (Gasto genérico, no ligado a Inventario)
+// ══════════════════════════════════════════════════════════════
+// datos: { descripcion, montoUSD, referencia, id_cuentaGasto, fecha, tasa,
+//          incluyeIVA, exentoIVA, baseExactaUSD, baseExactaBs }
+async function generarAsientoGastoManual(datos) {
+  try {
+    let tasa = datos.tasa ? parseFloat(datos.tasa) : 0;
+    if (!tasa) {
+      const fechaBuscar = datos.fecha || getHoyVzla();
+      const tasas = await api('tasas','GET',null,'?fecha_valor=lte.' + fechaBuscar + '&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+      tasa = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
+    }
+
+    const anio = new Date().getFullYear();
+    const existAst = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-'+anio+'-*&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
+    let seq = 1;
+    if (existAst.length) { const p = existAst[0].numero_asiento.split('-'); seq = parseInt(p[p.length-1])+1; }
+    const numAst = 'AST-'+anio+'-'+String(seq).padStart(4,'0');
+
+    const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
+    const id_periodo = periodos.length ? periodos[0].id_periodo : null;
+
+    const asiento = await api('cont_asientos','POST',{
+      numero_asiento: numAst,
+      fecha:          datos.fecha || getHoyVzla(),
+      descripcion:    datos.descripcion || 'Cuenta por Pagar manual',
+      tipo:           'AUTOMATICO',
+      referencia:     datos.referencia || null,
+      moneda_base:    ((_empresaActiva?.moneda_principal)||'VES').toUpperCase(),
+      tasa_bcv:       tasa,
+      id_periodo:     id_periodo,
+      id_empresa:     _empresaActiva ? _empresaActiva.id_empresa : null,
+      estado:         'APROBADO',
+      id_usuario:     sesionActual.correo_usuario
+    });
+    if (!asiento || !asiento[0]) return;
+    const idAst = asiento[0].id_asiento;
+
+    const montoTotalUSD = datos.montoUSD || 0;
+    const montoTotalBs  = parseFloat((montoTotalUSD * tasa).toFixed(2));
+    const IVA_RATE = 0.16;
+    let baseUSD, ivaUSD, baseBs, ivaBs;
+    if (datos.exentoIVA) {
+      baseUSD = datos.baseExactaUSD ?? montoTotalUSD; ivaUSD = 0;
+      baseBs  = datos.baseExactaBs  ?? montoTotalBs;  ivaBs  = 0;
+    } else if (datos.incluyeIVA) {
+      baseUSD = datos.baseExactaUSD ?? parseFloat((montoTotalUSD/(1+IVA_RATE)).toFixed(4));
+      ivaUSD  = parseFloat((montoTotalUSD - baseUSD).toFixed(4));
+      baseBs  = datos.baseExactaBs  ?? parseFloat((montoTotalBs/(1+IVA_RATE)).toFixed(2));
+      ivaBs   = parseFloat((montoTotalBs - baseBs).toFixed(2));
+    } else {
+      baseUSD = datos.baseExactaUSD ?? montoTotalUSD;
+      ivaUSD  = parseFloat((baseUSD*IVA_RATE).toFixed(4));
+      baseBs  = datos.baseExactaBs  ?? montoTotalBs;
+      ivaBs   = parseFloat((baseBs*IVA_RATE).toFixed(2));
+    }
+
+    let idCtaIVA = null;
+    if (!datos.exentoIVA) {
+      const cIVA = await api('cont_cuentas','GET',null,'?codigo=eq.1.1.04.001&select=id_cuenta&limit=1');
+      idCtaIVA = cIVA.length ? cIVA[0].id_cuenta : null;
+    }
+    let idCtaCxP = null;
+    { const cProv = await api('cont_cuentas','GET',null,'?codigo=eq.2.1.01.001&select=id_cuenta');
+      idCtaCxP = cProv.length ? cProv[0].id_cuenta : null; }
+
+    let orden = 1;
+    if (datos.id_cuentaGasto) {
+      await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:datos.id_cuentaGasto, orden:orden++,
+        descripcion: datos.descripcion || 'Gasto',
+        debe_usd: baseUSD, haber_usd:0, debe_ves: baseBs, haber_ves:0, tasa_bcv: tasa });
+    }
+    if (idCtaIVA && ivaUSD > 0) {
+      await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idCtaIVA, orden:orden++,
+        descripcion: 'IVA (16%) — ' + (datos.descripcion||''),
+        debe_usd: ivaUSD, haber_usd:0, debe_ves: ivaBs, haber_ves:0, tasa_bcv: tasa });
+    }
+    if (idCtaCxP) {
+      await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idCtaCxP, orden:orden++,
+        descripcion: 'CxP ' + (datos.descripcion||''),
+        debe_usd:0, haber_usd: montoTotalUSD, debe_ves:0, haber_ves: montoTotalBs, tasa_bcv: tasa });
+    }
+
+    console.log('✓ Asiento gasto manual creado:', numAst);
+  } catch(eAstGasto) { console.warn('Error asiento gasto manual:', eAstGasto); }
+}
+
 
