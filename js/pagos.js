@@ -1792,9 +1792,31 @@ async function editarCxPManual(id_cxp) {
     document.getElementById('pago-monto').value       = c.moneda_pago === 'VES'
       ? parseFloat(c.monto_ves || 0).toFixed(2)
       : parseFloat(c.monto_usd || 0).toFixed(2);
-    document.getElementById('pago-vencimiento').value = c.fecha_vencimiento?.slice(0,10) || '';
+    const modoEl = document.getElementById('pago-moneda');
+    if (modoEl) modoEl.value = c.moneda_pago || '';
     if (c.exento_iva) document.getElementById('pago-exento-iva-si').checked = true;
     else document.getElementById('pago-exento-iva-no').checked = true;
+
+    // Modalidad de Pago: solo informativa al editar — no se puede cambiar
+    // de Contado a Crédito (o viceversa) desde aquí sin recrear las cuotas
+    const modalidadSel = document.getElementById('pago-modalidad');
+    if (modalidadSel) {
+      modalidadSel.value = c.esquema_pago || 'CONTADO';
+      modalidadSel.disabled = true;
+    }
+    const vencCont = document.getElementById('pago-vencimiento-cont');
+    if (vencCont) vencCont.style.display = '';
+    document.getElementById('pago-vencimiento').value = c.fecha_vencimiento?.slice(0,10) || '';
+    // Crédito no se edita desde este modal (implicaría recrear cuotas)
+    const credCont = document.getElementById('pago-credito-cont');
+    if (credCont) credCont.style.display = 'none';
+    // No se re-pide la pregunta de Incluye IVA (ya quedó fijada al crearla) —
+    // ocultarla para no confundir, ya que editar no recalcula tributos
+    const incCont = document.getElementById('pago-incluye-iva-cont');
+    if (incCont) incCont.style.display = 'none';
+    // Editar no requiere contraseña (solo actualiza datos básicos) — ocultar
+    const confUsuario = document.getElementById('pago-clave')?.closest('.form-campo');
+    if (confUsuario) confUsuario.style.display = 'none';
 
     // Preseleccionar proveedor
     if (c.id_proveedor) {
