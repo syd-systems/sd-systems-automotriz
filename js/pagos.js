@@ -2008,10 +2008,12 @@ async function guardarPago() {
     if (!clave) { mostrarErr('Debe ingresar su contraseña para confirmar.'); document.getElementById('pago-clave')?.focus(); return; }
   }
 
-  // Buscar tasa BCV del día
+  // Buscar tasa BCV — de la Fecha de Pago si es Contado (esa es la fecha que
+  // importa para valorar la obligación), o de hoy en cualquier otro caso
+  const fechaParaTasa = (modalidad === 'CONTADO' && vencimiento) ? vencimiento : getHoyVzla();
   let tasaUSD = _tasaVigente || 1;
   try {
-    const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+getHoyVzla()+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaParaTasa+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
     if (tasaRows && tasaRows[0]) tasaUSD = parseFloat(tasaRows[0].tipo_cambio);
   } catch(e) {}
   const tasaEUR = window._pagoTasaEUR || tasaUSD;
@@ -2069,7 +2071,7 @@ async function guardarPago() {
       montoUSD:    montoTotalConIVA,
       referencia:  numDocBase,
       id_cuentaGasto: id_cuentaGasto,
-      fecha:       hoy,
+      fecha:       fechaParaTasa,
       tasa:        tasaUSD,
       incluyeIVA:  incluyeIVAVal === 'SI',
       exentoIVA:   exento
