@@ -289,6 +289,9 @@ async function abrirNuevoPago() {
   });
   const pagoMonedaEl2 = document.getElementById('pago-moneda');
   if (pagoMonedaEl2) pagoMonedaEl2.value = '';
+  const tasaContNuevo = document.getElementById('pago-tasa-cont-nuevo');
+  if (tasaContNuevo) tasaContNuevo.style.display = 'none';
+  ['pago-tasa-bcv','pago-monto-calc'].forEach(function(id){ const el = document.getElementById(id); if (el) el.value = ''; });
   const pagoArchivo = document.getElementById('pago-archivo');
   if (pagoArchivo) pagoArchivo.value = '';
   document.getElementById('pago-id').value = '';
@@ -1807,6 +1810,37 @@ async function editarCxPManual(id_cxp) {
   } catch(e) { alert('Error: ' + e.message); }
 }
 
+
+function onCambiarMonedaPago() {
+  const moneda = document.getElementById('pago-moneda')?.value || '';
+  const cont = document.getElementById('pago-tasa-cont-nuevo');
+  if (cont) cont.style.display = moneda ? '' : 'none';
+  const lbl = document.getElementById('pago-label-moneda-calc');
+  if (lbl) lbl.textContent = moneda === 'VES' ? 'Monto en USD' : 'Monto en VES';
+  onCambiarMontoPago();
+}
+
+function onCambiarMontoPago() {
+  const moneda = document.getElementById('pago-moneda')?.value || '';
+  const montoRaw = (document.getElementById('pago-monto')?.value || '').replace(/\./g,'').replace(',','.');
+  const monto = parseFloat(montoRaw) || 0;
+  const tasaUSD = window._pagoTasaUSD || _tasaVigente || 1;
+  const tasaEUR = window._pagoTasaEUR || tasaUSD;
+  const tasaEl = document.getElementById('pago-tasa-bcv');
+  const calcEl = document.getElementById('pago-monto-calc');
+  if (moneda === 'VES') {
+    if (tasaEl) tasaEl.value = tasaUSD.toFixed(4);
+    if (calcEl) calcEl.value = tasaUSD > 0 ? (monto / tasaUSD).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2}) : '';
+  } else if (moneda === 'EUR') {
+    if (tasaEl) tasaEl.value = tasaEUR.toFixed(4);
+    if (calcEl) calcEl.value = (monto * tasaEUR).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
+  } else {
+    if (tasaEl) tasaEl.value = tasaUSD.toFixed(4);
+    if (calcEl) calcEl.value = (monto * tasaUSD).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+  calcularTributosPago();
+  calcularCuotasPago();
+}
 
 function onCambioModalidadPago() {
   const modalidad = document.getElementById('pago-modalidad')?.value || '';
