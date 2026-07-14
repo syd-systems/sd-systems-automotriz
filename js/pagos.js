@@ -353,7 +353,7 @@ async function abrirNuevoPago() {
 
   // Reset modalidad, tributos y crédito
   const modEl = document.getElementById('pago-modalidad');
-  if (modEl) modEl.value = '';
+  if (modEl) { modEl.value = ''; modEl.disabled = false; }
   const credCont = document.getElementById('pago-credito-cont');
   if (credCont) credCont.style.display = 'none';
   const vencContReset = document.getElementById('pago-vencimiento-cont');
