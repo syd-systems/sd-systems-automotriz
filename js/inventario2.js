@@ -583,6 +583,11 @@ async function abrirEntradaStock(id) {
   if (esquemaEl) esquemaEl.selectedIndex = 0;
   const creditoCont = document.getElementById('es-credito-cont');
   if (creditoCont) creditoCont.style.display = 'none';
+  const fechaPagoContReset = document.getElementById('es-fecha-pago-cont');
+  if (fechaPagoContReset) fechaPagoContReset.style.display = 'none';
+  const fechaPagoEl = document.getElementById('es-fecha-pago');
+  if (fechaPagoEl) fechaPagoEl.value = '';
+  window._esTasaPagoContado = null;
   const prevEl = document.getElementById('es-cuotas-preview');
   if (prevEl) { prevEl.innerHTML = ''; delete prevEl.dataset.cuotas; }
   const montoCuotaEl = document.getElementById('es-cuotas-monto');
@@ -623,7 +628,22 @@ function onCambioEsquemaPago() {
   const esquema = document.getElementById('es-esquema-pago')?.value;
   const cont    = document.getElementById('es-credito-cont');
   if (cont) cont.style.display = esquema === 'CREDITO' ? '' : 'none';
+  const fechaPagoCont = document.getElementById('es-fecha-pago-cont');
+  if (fechaPagoCont) fechaPagoCont.style.display = esquema === 'CONTADO' ? '' : 'none';
+  window._esTasaPagoContado = null;
   if (esquema === 'CREDITO') calcularCuotasEntrada();
+}
+
+// Al elegir la Fecha de Pago (Contado), buscar la tasa BCV de ESA fecha
+// específica -- la CxP se valora con esta tasa, no con la de negociación
+async function onCambiarFechaPagoEntradaContado() {
+  const fecha = document.getElementById('es-fecha-pago')?.value || '';
+  window._esTasaPagoContado = null;
+  if (!fecha) return;
+  try {
+    const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fecha+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    if (tasaRows && tasaRows[0]) window._esTasaPagoContado = parseFloat(tasaRows[0].tipo_cambio);
+  } catch(e) { console.warn('Error buscando tasa BCV de la fecha de pago:', e); }
 }
 
 function calcularCuotasEntrada() {
@@ -784,6 +804,9 @@ async function guardarEntradaStock() {
     if (!numCuotasVal || numCuotasVal < 1) return mostrarError('Ingrese el número de cuotas.', 'es-cuotas-num');
     if (!fechaCuotaVal) return mostrarError('Ingrese la Fecha de la Primera Cuota.', 'es-cuotas-fecha-inicio');
     if (fechaCuotaVal <= getHoyVzla()) return mostrarError('La Fecha de la Primera Cuota tiene que ser mayor que el día de hoy.', 'es-cuotas-fecha-inicio');
+  } else if (pagoDSel === 'CONTADO') {
+    const fechaPagoVal = document.getElementById('es-fecha-pago')?.value || '';
+    if (!fechaPagoVal) return mostrarError('Ingrese la Fecha de Pago.', 'es-fecha-pago');
   }
   // Observaciones — opcional, no se valida
 
@@ -1012,7 +1035,12 @@ async function guardarEntradaStock() {
         // Monto CxP = el mismo total ya calculado arriba (montoTotalConIVA),
         // para que siempre coincida exactamente con el asiento contable
         const montoUSD = montoTotalConIVA;
-        const montoVES    = parseFloat((montoUSD * (tasa_bcv_usada || _tasaVigente || 1)).toFixed(2));
+        // Si se especificó Fecha de Pago (Contado), la CxP se valora con la
+        // tasa BCV de ESA fecha, no con la de negociación — así el diferencial
+        // cambiario (si lo hay) queda reflejado desde ya, no oculto
+        const tasaParaCxPContado = window._esTasaPagoContado || tasa_bcv_usada || _tasaVigente || 1;
+        const fechaPagoContado = document.getElementById('es-fecha-pago')?.value || fechaNegCxP;
+        const montoVES    = parseFloat((montoUSD * tasaParaCxPContado).toFixed(2));
         const esquema     = document.getElementById('es-esquema-pago')?.value || 'CONTADO';
         const numDocBase  = id_entrada ? 'ENT-' + id_entrada : ('ENT-INV-' + id);
         const artNomCxP   = r.nombre_articulo || r.codigo_articulo || 'Art#'+id;
@@ -1027,13 +1055,13 @@ async function guardarEntradaStock() {
             tipo:            'COMPRA_ARTICULO',
             numero_doc:      numDocBase,
             fecha_emision:   fechaNegCxP,
-            fecha_vencimiento: fechaNegCxP,
+            fecha_vencimiento: fechaPagoContado,
             moneda_pago:     monedaCompra || 'USD',
             estado:          'PENDIENTE',
             monto_usd:       montoUSD,
             monto_ves:       montoVES,
-            tasa_bcv:        tasa_bcv_usada || 1,
-            tasa_bcv_compra: tasa_bcv_usada || 1,
+            tasa_bcv:        tasaParaCxPContado,
+            tasa_bcv_compra: tasaParaCxPContado,
             pagado_usd:      0,
             saldo_usd:       montoUSD,
             observaciones:   artNomCxP + ' x ' + cantidad + ' uds.',

@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260710201"></script>
-<script src="js/parametros.js?v=20260710201"></script>
-<script src="js/empresas.js?v=20260710201"></script>
-<script src="js/facturacion.js?v=20260710201"></script>
-<script src="js/inventario.js?v=20260710201"></script>
-<script src="js/contabilidad.js?v=20260710201"></script>
-<script src="js/pagos.js?v=20260710201"></script>
-<script src="js/vehiculos.js?v=20260710201"></script>
-<script src="js/catalogo.js?v=20260710201"></script>
-<script src="js/inventario2.js?v=20260710201"></script>
-<script src="js/ordenes.js?v=20260710201"></script>
+<script src="js/core.js?v=20260710202"></script>
+<script src="js/parametros.js?v=20260710202"></script>
+<script src="js/empresas.js?v=20260710202"></script>
+<script src="js/facturacion.js?v=20260710202"></script>
+<script src="js/inventario.js?v=20260710202"></script>
+<script src="js/contabilidad.js?v=20260710202"></script>
+<script src="js/pagos.js?v=20260710202"></script>
+<script src="js/vehiculos.js?v=20260710202"></script>
+<script src="js/catalogo.js?v=20260710202"></script>
+<script src="js/inventario2.js?v=20260710202"></script>
+<script src="js/ordenes.js?v=20260710202"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2563,6 +2563,11 @@
           <option value="CONTADO">Contado</option>
           <option value="CREDITO">Crédito</option>
         </select>
+      </div>
+      <div class="form-campo" id="es-fecha-pago-cont" style="display:none">
+        <label>Fecha de Pago *</label>
+        <input type="date" id="es-fecha-pago" onchange="onCambiarFechaPagoEntradaContado()">
+        <div style="font-size:10px;color:var(--suave);margin-top:4px">La tasa BCV de esta fecha se usa para la CxP (no la de negociación)</div>
       </div>
       <!-- Campos crédito — ocultos por defecto -->
       <div id="es-credito-cont" style="display:none;grid-column:1/-1">
