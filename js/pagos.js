@@ -2144,7 +2144,10 @@ async function guardarPago() {
           id_cuentaGasto: id_cuentaGasto,
           fecha:          fechaParaTasa,
           tasa:           tasaUSD,
-          incluyeIVA:     incluyeIVAVal === 'SI',
+          // montoUSD/montoBsExacto ya son el TOTAL resuelto (con IVA sumado si
+          // aplicaba) -- decirle a generarAsientoGastoManual que lo desglose
+          // (true), sin importar la seleccion original del usuario
+          incluyeIVA:     true,
           exentoIVA:      exento
         });
       }
@@ -2177,7 +2180,8 @@ async function guardarPago() {
       id_cuentaGasto: id_cuentaGasto,
       fecha:       fechaParaTasa,
       tasa:        tasaUSD,
-      incluyeIVA:  incluyeIVAVal === 'SI',
+      // idem: el monto ya es el total resuelto, siempre desglozar
+      incluyeIVA:  true,
       exentoIVA:   exento
     });
 
