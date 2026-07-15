@@ -1638,6 +1638,20 @@ async function guardarProveedor() {
     }
   }
 
+  // ── Validar Métodos de Pago Aceptados ──
+  const metodosMarcados = Array.from(document.querySelectorAll('.prov-metodo-pago-chk:checked')).map(function(el){ return el.value; });
+  if (!metodosMarcados.length) {
+    errEl.textContent = 'Debe marcar al menos un Método de Pago Aceptado.';
+    errEl.style.display = 'block';
+    document.getElementById('prov-metodos-pago-cont')?.scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+  if (metodosMarcados.includes('TRANSFERENCIA') && !document.getElementById('prov-banco')?.value && !document.getElementById('prov-pm-banco')?.value) {
+    errEl.textContent = 'Marcó "Transferencia" -- complete al menos una vía (Datos Bancarios o Pago Móvil).';
+    errEl.style.display = 'block';
+    return;
+  }
+
   // Validar duplicado por nombre
   try {
     const existe = await api('proveedores', 'GET', null, '?nombre=ilike.' + encodeURIComponent(nombre) + (id ? '&id_proveedor=neq.' + id : ''));
