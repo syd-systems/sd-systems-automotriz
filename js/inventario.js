@@ -1571,6 +1571,29 @@ async function abrirProveedor(id) {
   document.getElementById('prov-pm-ci').value               = p ? (p.pm_ci||'') : '';
   document.getElementById('prov-pm-celular').value          = p ? (p.pm_celular||'') : '';
 
+  // Métodos de Pago Aceptados -- checkboxes reales contra el catálogo de la
+  // empresa (param_metodos_pago), sin adivinar nada por el nombre.
+  try {
+    const metodos = await api('param_metodos_pago','GET',null,
+      '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc&select=id_metodo,nombre,codigo' + emisorQ());
+    const seleccionados = (p && Array.isArray(p.metodos_pago_ids)) ? p.metodos_pago_ids : [];
+    const contMetodos = document.getElementById('prov-metodos-pago-cont');
+    if (contMetodos) {
+      contMetodos.innerHTML = (metodos && metodos.length)
+        ? metodos.map(function(m) {
+            const checked = seleccionados.includes(m.id_metodo) ? ' checked' : '';
+            return '<label style="display:flex;align-items:center;gap:6px;cursor:pointer">'
+              + '<input type="checkbox" class="prov-metodo-pago-chk" value="'+m.id_metodo+'"'+checked+'>'
+              + m.nombre + ' <span style="color:var(--suave);font-size:11px">(' + m.codigo + ')</span>'
+              + '</label>';
+          }).join('')
+        : '<div style="color:var(--suave);font-size:12px">No hay métodos de pago configurados en Parámetros.</div>';
+    }
+  } catch(e) {
+    const contMetodos = document.getElementById('prov-metodos-pago-cont');
+    if (contMetodos) contMetodos.innerHTML = '<div style="color:var(--suave);font-size:12px">No se pudieron cargar los métodos de pago.</div>';
+  }
+
   abrirModal('modal-proveedor');
   focusFirstField('modal-proveedor');
   setTimeout(function() { document.getElementById('prov-nombre')?.focus(); }, 100);
@@ -1649,6 +1672,7 @@ async function guardarProveedor() {
     pm_id_banco:        parseInt(document.getElementById('prov-pm-banco')?.value) || null,
     pm_ci:              document.getElementById('prov-pm-ci')?.value.trim().toUpperCase() || null,
     pm_celular:         document.getElementById('prov-pm-celular')?.value.trim() || null,
+    metodos_pago_ids:   Array.from(document.querySelectorAll('.prov-metodo-pago-chk:checked')).map(function(el){ return parseInt(el.value); }),
     id_categoria:       parseInt(document.getElementById('prov-categoria')?.value) || null,
     id_usuario:         sesionActual.correo_usuario,
     id_empresa:          _empresaActiva?.id_empresa || null

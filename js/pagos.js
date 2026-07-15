@@ -2901,7 +2901,7 @@ async function ejecutarPagoCxP(id_cxp) {
   // Cargar datos de la CxP + Proveedor (con datos bancarios de su ficha)
   const rows = await api('cont_cxp','GET',null,
     '?id_cxp=eq.'+id_cxp+'&select=*,cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre),'
-    +'proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre))');
+    +'proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,metodos_pago_ids,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre))');
   const c = rows && rows[0];
   if (!c) { alert('CxP no encontrada.'); return; }
   const prov = c.proveedores || {};
@@ -2993,18 +2993,14 @@ async function _cargarMetodosEjecucionPago(moneda, prov) {
     const metodos = await api('param_metodos_pago','GET',null,
       '?codigo=eq.'+moneda+'&estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,id_cuenta_contable' + emisorQ());
 
-    // Filtrar según lo que el proveedor tenga registrado en su ficha:
-    // Efectivo siempre se ofrece; Transferencia solo si tiene banco;
-    // Pago Móvil solo si tiene pago móvil registrado.
-    const tieneBanco = !!(prov && prov.id_banco);
-    const tienePM    = !!(prov && prov.pm_id_banco);
-    const metodosFiltrados = (metodos||[]).filter(function(m) {
-      const n = (m.nombre||'').toLowerCase();
-      if (n.includes('efectivo')) return true;
-      if (n.includes('transferencia')) return tieneBanco;
-      if (n.includes('móvil') || n.includes('movil')) return tienePM;
-      return true; // método sin clasificar -- no se oculta por si acaso
-    });
+    // Filtrar según lo que el proveedor tenga marcado en su ficha
+    // (metodos_pago_ids) -- exacto, sin adivinar por el texto del nombre.
+    // Si el proveedor todavía no tiene nada configurado (ficha vieja, aún
+    // sin migrar), no se filtra -- se muestran todos para esa moneda.
+    const idsAceptados = (prov && Array.isArray(prov.metodos_pago_ids)) ? prov.metodos_pago_ids : null;
+    const metodosFiltrados = (idsAceptados && idsAceptados.length)
+      ? (metodos||[]).filter(function(m){ return idsAceptados.includes(m.id_metodo); })
+      : (metodos||[]);
 
     // Obtener nombres de cuentas
     const idsCtaStr = metodosFiltrados.map(function(m){ return m.id_cuenta_contable; }).filter(Boolean).join(',');
