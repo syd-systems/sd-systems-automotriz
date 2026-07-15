@@ -213,12 +213,34 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
       '?id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=fecha.desc,numero_asiento.desc&select=*,cont_periodos(nombre)' + qPeriodo + qEstado);
     contAsientosCache = asientos;
 
+    // Totales por asiento (para la columna Monto) -- se toma el total del
+    // Debe, que en un asiento cuadrado es igual al Haber.
+    const idsAst = asientos.map(function(a){ return a.id_asiento; });
+    let totalesPorAsiento = {};
+    if (idsAst.length) {
+      const lineasTot = await api('cont_asiento_lineas','GET',null,
+        '?id_asiento=in.('+idsAst.join(',')+')&select=id_asiento,debe_usd,debe_ves');
+      lineasTot.forEach(function(l) {
+        if (!totalesPorAsiento[l.id_asiento]) totalesPorAsiento[l.id_asiento] = {usd:0, ves:0};
+        totalesPorAsiento[l.id_asiento].usd += parseFloat(l.debe_usd||0);
+        totalesPorAsiento[l.id_asiento].ves += parseFloat(l.debe_ves||0);
+      });
+    }
+    const monedaPrincipal = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
+    const usandoVES = (_contMoneda || monedaPrincipal) === 'VES';
+    const fmtMontoAst = function(id) {
+      const t = totalesPorAsiento[id] || {usd:0, ves:0};
+      return usandoVES ? 'Bs ' + fmtVES(t.ves) : '$ ' + fmtUSD(t.usd);
+    };
+
     const perSelect = contPeriodosCache.map(function(p){
       return '<option value="' + p.id_periodo + '"' + (filtroPeriodo == p.id_periodo ? ' selected':'') + '>' + p.nombre + '</option>';
     }).join('');
 
+    const hoyDiario = new Date().toISOString().split('T')[0];
     cont.innerHTML =
-      '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
+      contSelectorMoneda(hoyDiario) +
+      '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:12px 0 16px">'
       + '<h3 style="margin:0">Libro Diario</h3>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
       + '<select onchange="contRenderDiario(document.getElementById(\'cont-filtro-estado\').value, this.value)" style="' + contSelStyle() + '">'
@@ -232,7 +254,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
       
       + '</div></div>'
       + '<div class="tabla-container"><table style="table-layout:fixed;width:100%"><thead><tr>'
-      + '<th>N° Asiento</th><th>Fecha</th><th>Descripción</th><th>Período</th><th>Moneda</th><th>Estado</th><th>Acción</th>'
+      + '<th>N° Asiento</th><th>Fecha</th><th>Descripción</th><th>Período</th><th style="text-align:right">Monto</th><th>Estado</th><th>Acción</th>'
       + '</tr></thead><tbody>'
       + (asientos.length ? asientos.map(function(a) {
           const est = ESTADOS_ASIENTO[a.estado] || {clase:'badge-gris',label:a.estado};
@@ -243,8 +265,8 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
             + (a.referencia ? '<div style="font-size:10px;color:var(--suave)">Ref: ' + a.referencia + '</div>' : '')
             + '</td>'
             + '<td style="font-size:11px;color:var(--suave)">' + (a.cont_periodos ? a.cont_periodos.nombre : '—') + '</td>'
-            + '<td style="font-size:11px;font-family:var(--font-mono)">' + a.moneda_base
-            + '<div style="font-size:10px;color:var(--suave)">Tasa: ' + parseFloat(a.tasa_bcv||1).toFixed(2) + '</div></td>'
+            + '<td style="text-align:right;font-size:12px;font-family:var(--font-mono);font-weight:600">' + fmtMontoAst(a.id_asiento)
+            + '<div style="font-size:10px;color:var(--suave);font-weight:400">Tasa: ' + parseFloat(a.tasa_bcv||1).toFixed(2) + '</div></td>'
             + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
             + '<td style="text-align:center"><button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="contVerAsiento(' + a.id_asiento + ')">Ver</button></td></tr>';
         }).join('') : '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--suave)">Sin asientos registrados</td></tr>')
@@ -987,10 +1009,15 @@ async function contRenderCxc() {
     const pendientes = facturas.filter(function(f){ return f.estado!=='PAGADA'&&f.estado!=='ANULADA'; });
     const cobradas   = facturas.filter(function(f){ return f.estado==='PAGADA'; });
 
-    const totPendUSD = pendientes.reduce(function(s,f){ return s+parseFloat(f.total_usd||0); },0);
-    const totPendVES = pendientes.reduce(function(s,f){ return s+parseFloat(f.total_ves||0); },0);
-    const totCobUSD  = cobradas.reduce(function(s,f){ return s+parseFloat(f.total_usd||0); },0);
-    const totCobVES  = cobradas.reduce(function(s,f){ return s+parseFloat(f.total_ves||0); },0);
+    const monedaPrincipal = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
+    const usandoVES = (_contMoneda || monedaPrincipal) === 'VES';
+    const fmtMonto = function(usd, ves) {
+      if (!usandoVES) return '$ ' + fmtUSD(usd || 0);
+      return 'Bs ' + fmtVES(ves || 0);
+    };
+
+    const totPend = pendientes.reduce(function(s,f){ return s+parseFloat((usandoVES?f.total_ves:f.total_usd)||0); },0);
+    const totCob  = cobradas.reduce(function(s,f){ return s+parseFloat((usandoVES?f.total_ves:f.total_usd)||0); },0);
 
     const eb = {
       EMITIDA:'<span class="badge badge-naranja">Emitida</span>',
@@ -1003,44 +1030,42 @@ async function contRenderCxc() {
       const tves = parseFloat(f.total_ves||0);
       const cobUSD = parseFloat(f.monto_cobrado||0);
       const saldoUSD = tusd - cobUSD;
+      // El cobrado/saldo no siempre se guarda en VES por separado -- se
+      // aproxima con la misma proporción del total, para no inventar una
+      // tasa de conversión adicional.
+      const propUSD = tusd > 0 ? cobUSD / tusd : 0;
+      const cobVES  = tves * propUSD;
+      const saldoVES = tves - cobVES;
       const cliente = f.propietarios ? f.propietarios.nombre_completo : '--';
       return '<tr>'
         +'<td style="padding:4px 8px;font-size:10px;font-family:var(--font-mono);color:var(--naranja)">'+(f.numero_factura||'--')+'</td>'
         +'<td style="padding:4px 8px;font-size:11px">'+fmtFecha(f.fecha_emision)+'</td>'
         +'<td style="padding:4px 8px;font-size:11px">'+cliente+'</td>'
-        +'<td style="padding:4px 8px;text-align:right;font-size:10px;font-family:var(--font-mono)">'+(tusd>0?fmtUSD(tusd):'--')+'</td>'
-        +'<td style="padding:4px 8px;text-align:right;font-size:10px;font-family:var(--font-mono)">'+(tves>0?fmtVES(tves):'--')+'</td>'
-        +'<td style="padding:4px 8px;text-align:right;font-size:10px;font-family:var(--font-mono)">'+(cobUSD>0?fmtUSD(cobUSD):'--')+'</td>'
-        +'<td style="padding:4px 8px;text-align:right;font-size:10px;font-family:var(--font-mono);color:'+(saldoUSD>0?'#fc8181':'#22c55e')+'">'+(tusd>0?fmtUSD(saldoUSD):'--')+'</td>'
+        +'<td style="padding:4px 8px;text-align:right;font-size:10px;font-family:var(--font-mono)">'+((tusd>0||tves>0)?fmtMonto(tusd,tves):'--')+'</td>'
+        +'<td style="padding:4px 8px;text-align:right;font-size:10px;font-family:var(--font-mono)">'+((cobUSD>0||cobVES>0)?fmtMonto(cobUSD,cobVES):'--')+'</td>'
+        +'<td style="padding:4px 8px;text-align:right;font-size:10px;font-family:var(--font-mono);color:'+(saldoUSD>0?'#fc8181':'#22c55e')+'">'+((tusd>0||tves>0)?fmtMonto(saldoUSD,saldoVES):'--')+'</td>'
         +'<td style="padding:4px 8px">'+(f.fecha_pago?fmtFecha(f.fecha_pago):'--')+'</td>'+'<td style="padding:4px 8px">'+(eb[f.estado]||f.estado)+'</td>'
         +'</tr>';
     }).join('');
 
+    const hoyCxc = new Date().toISOString().split('T')[0];
     cont.innerHTML =
-      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px">'
+      contSelectorMoneda(hoyCxc) +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin:12px 0 20px">'
       +'<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">'
-      +'<div style="font-size:10px;color:var(--suave)">PENDIENTE USD</div>'
-      +'<div style="font-size:18px;color:var(--naranja);font-weight:700;font-family:var(--font-mono)">$ '+fmtUSD(totPendUSD)+'</div>'
-      +'<div style="font-size:11px;color:var(--suave)">'+pendientes.length+' facturas</div></div>'
-      +'<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">'
-      +'<div style="font-size:10px;color:var(--suave)">PENDIENTE Bs</div>'
-      +'<div style="font-size:18px;color:var(--naranja);font-weight:700;font-family:var(--font-mono)">Bs '+fmtVES(totPendVES)+'</div>'
+      +'<div style="font-size:10px;color:var(--suave)">PENDIENTE</div>'
+      +'<div style="font-size:18px;color:var(--naranja);font-weight:700;font-family:var(--font-mono)">'+fmtMonto(totPend,totPend)+'</div>'
       +'<div style="font-size:11px;color:var(--suave)">'+pendientes.length+' facturas</div></div>'
       +'<div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:14px">'
-      +'<div style="font-size:10px;color:var(--suave)">COBRADO USD</div>'
-      +'<div style="font-size:18px;color:#22c55e;font-weight:700;font-family:var(--font-mono)">$ '+fmtUSD(totCobUSD)+'</div>'
-      +'<div style="font-size:11px;color:var(--suave)">'+cobradas.length+' facturas</div></div>'
-      +'<div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:14px">'
-      +'<div style="font-size:10px;color:var(--suave)">COBRADO Bs</div>'
-      +'<div style="font-size:18px;color:#22c55e;font-weight:700;font-family:var(--font-mono)">Bs '+fmtVES(totCobVES)+'</div>'
+      +'<div style="font-size:10px;color:var(--suave)">COBRADO</div>'
+      +'<div style="font-size:18px;color:#22c55e;font-weight:700;font-family:var(--font-mono)">'+fmtMonto(totCob,totCob)+'</div>'
       +'<div style="font-size:11px;color:var(--suave)">'+cobradas.length+' facturas</div></div></div>'
       +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
       +'<thead><tr style="border-bottom:2px solid var(--borde)">'
       +'<th style="padding:4px 8px;font-size:11px;color:var(--suave);text-align:left">N° Factura</th>'
       +'<th style="padding:4px 8px;font-size:11px;color:var(--suave);text-align:left">Fecha</th>'
       +'<th style="padding:4px 8px;font-size:11px;color:var(--suave);text-align:left">Cliente</th>'
-      +'<th style="padding:4px 8px;font-size:11px;color:var(--suave);text-align:right">Total USD</th>'
-      +'<th style="padding:4px 8px;font-size:11px;color:var(--suave);text-align:right">Total Bs</th>'
+      +'<th style="padding:4px 8px;font-size:11px;color:var(--suave);text-align:right">Total</th>'
       +'<th style="padding:4px 8px;font-size:11px;color:var(--suave);text-align:right">Cobrado</th>'
       +'<th style="padding:4px 8px;font-size:11px;color:var(--suave);text-align:right">Saldo</th>'
       +'<th style="padding:6px 8px;font-size:10px;color:var(--suave);text-align:left">Cancelado</th>'+'<th style="padding:4px 8px;font-size:11px;color:var(--suave);text-align:left">Estado</th>'
