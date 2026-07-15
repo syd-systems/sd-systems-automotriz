@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260715009"></script>
-<script src="js/parametros.js?v=20260715009"></script>
-<script src="js/empresas.js?v=20260715009"></script>
-<script src="js/facturacion.js?v=20260715009"></script>
-<script src="js/inventario.js?v=20260715009"></script>
-<script src="js/contabilidad.js?v=20260715009"></script>
-<script src="js/pagos.js?v=20260715009"></script>
-<script src="js/vehiculos.js?v=20260715009"></script>
-<script src="js/catalogo.js?v=20260715009"></script>
-<script src="js/inventario2.js?v=20260715009"></script>
-<script src="js/ordenes.js?v=20260715009"></script>
+<script src="js/core.js?v=20260715010"></script>
+<script src="js/parametros.js?v=20260715010"></script>
+<script src="js/empresas.js?v=20260715010"></script>
+<script src="js/facturacion.js?v=20260715010"></script>
+<script src="js/inventario.js?v=20260715010"></script>
+<script src="js/contabilidad.js?v=20260715010"></script>
+<script src="js/pagos.js?v=20260715010"></script>
+<script src="js/vehiculos.js?v=20260715010"></script>
+<script src="js/catalogo.js?v=20260715010"></script>
+<script src="js/inventario2.js?v=20260715010"></script>
+<script src="js/ordenes.js?v=20260715010"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4257,6 +4257,16 @@
       </div>
 
       <!-- Datos de pago del proveedor -- se muestran según el Método de Pago elegido arriba -->
+      <!-- Datos de pago del proveedor -- se muestran solo si el Método de Pago es tipo Transferencia -->
+      <div class="form-grid" id="exec-pago-via-cont" style="display:none;margin-bottom:16px">
+        <div class="form-campo form-full">
+          <label>Vía de Pago *</label>
+          <select id="exec-pago-via" onchange="_actualizarInfoPagoProveedor()"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccione —</option>
+          </select>
+        </div>
+      </div>
       <div id="exec-pago-banco-info" style="display:none;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:12px 16px;margin-bottom:16px">
         <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🏦 Transferencia Bancaria</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px" id="exec-pago-banco-datos"></div>

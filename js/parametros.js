@@ -17,7 +17,7 @@ const TABLAS_MAESTRAS = [
   { key: 'cat_prov', tabla: 'param_categorias_proveedor', pk: 'id', nombre: 'Categorías de Proveedores', icono: '🏷', tieneCodigo: true, tieneEstado: true },
   { key: 'bancos',             tabla: 'param_bancos',   pk: 'id',             nombre: 'Instituciones Financieras', icono: '🏦', tieneCodigo: true,  tieneArea: false, tieneTipoSector: true },
   { key: 'niveles_jerarquicos', tabla: 'param_niveles_jerarquicos', pk: 'id_jerarquicos', nombre: 'Niveles Jerárquicos', icono: '🏅', tieneCodigo: false, tieneArea: false, tieneDescripcion: true, campoNombre: 'nivel_jerarquicos', campoDescripcion: 'descripcion_jerarquicos' },
-  { key: 'metodos_pago', tabla: 'param_metodos_pago', pk: 'id_metodo', nombre: 'Métodos de Pago', icono: '💳', tieneMoneda: true, tieneCuentaContable: true },
+  { key: 'metodos_pago', tabla: 'param_metodos_pago', pk: 'id_metodo', nombre: 'Métodos de Pago', icono: '💳', tieneMoneda: true, tieneCuentaContable: true, tieneTipoCanal: true },
 ];
 
 // Cache de áreas para el selector de cargos
@@ -156,6 +156,7 @@ async function mostrarTablaParam(key) {
           + '<td style="font-size:13px;font-weight:500">' + (item.codigo ? '<span style="font-family:var(--font-mono);color:var(--naranja);margin-right:8px">' + item.codigo + '</span>' : '') + nombreMostrar + (descMostrar ? '<div style="font-size:11px;color:var(--suave);margin-top:2px">' + descMostrar + '</div>' : '') + '</td>'
           + (def.tieneArea ? '<td style="font-size:12px;color:var(--suave)">' + (areasMap[item.id_area] ? areasMap[item.id_area].nombre : '—') + '</td>' : '')
           + (def.tieneTipoSector ? '<td style="font-size:12px;color:var(--suave)">' + (item.tipo_sector || '—') + '</td>' : '')
+          + (def.tieneTipoCanal ? '<td style="font-size:12px;color:var(--suave)">' + (item.tipo_canal || '—') + '</td>' : '')
           + (def.tieneCategoria ? '<td style="font-size:12px;color:var(--suave)">' + (cat ? (cat.codigo?cat.codigo+' — ':'')+cat.nombre : '—') + '</td>' : '')
           + (def.tieneCuentaContable ? '<td style="font-size:12px;color:var(--suave)">' + (item.id_cuenta_contable ? '— cuenta asignada —' : '—') + '</td>' : '')
           + '<td><span class="badge ' + (item.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (item.estado || 'ACTIVO') + '</span></td>'
@@ -168,7 +169,7 @@ async function mostrarTablaParam(key) {
 
     var thead = key === 'areas'
       ? '<th style="width:100px">Código</th><th>Nombre</th><th>Nivel Superior</th><th>Estado</th><th>Acción</th>'
-      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : (def.tieneMoneda ? '<th>Moneda · Nombre</th>' : '<th>Nombre</th>')) + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + (def.tieneCategoria ? '<th>Categoría</th>' : '') + (def.tieneCuentaContable ? '<th>Cuenta Contable</th>' : '') + '<th>Estado</th><th>Acción</th>';
+      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : (def.tieneMoneda ? '<th>Moneda · Nombre</th>' : '<th>Nombre</th>')) + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + (def.tieneTipoCanal ? '<th>Tipo de Canal</th>' : '') + (def.tieneCategoria ? '<th>Categoría</th>' : '') + (def.tieneCuentaContable ? '<th>Cuenta Contable</th>' : '') + '<th>Estado</th><th>Acción</th>';
     var colspan = key === 'areas' ? 5 : (2 + (def.tieneArea?1:0) + (def.tieneTipoSector?1:0));
 
     cont.innerHTML =
@@ -241,6 +242,14 @@ async function abrirParamItem(key, id) {
         + '<option value="PRIVADO"'    + (item && item.tipo_sector === 'PRIVADO'    ? ' selected' : '') + '>Privado</option>'
         + '<option value="MICROFINANCIERO"' + (item && item.tipo_sector === 'MICROFINANCIERO' ? ' selected' : '') + '>Microfinanciero</option>'
         + '<option value="EXTRANJERO"' + (item && item.tipo_sector === 'EXTRANJERO' ? ' selected' : '') + '>Extranjero</option>'
+        + '</select></div>';
+    }
+    if (def.tieneTipoCanal) {
+      camposHTML += '<div class="form-campo form-full"><label>Tipo de Canal *</label><select id="param-item-tipo-canal" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
+        + '<option value="">— Seleccionar —</option>'
+        + '<option value="EFECTIVO"'     + (item && item.tipo_canal === 'EFECTIVO'     ? ' selected' : '') + '>Efectivo</option>'
+        + '<option value="TRANSFERENCIA"'+ (item && item.tipo_canal === 'TRANSFERENCIA'? ' selected' : '') + '>Transferencia (permite elegir Cuenta Bancaria o Pago Móvil del proveedor)</option>'
+        + '<option value="OTRO"'         + (item && item.tipo_canal === 'OTRO'         ? ' selected' : '') + '>Otro (ej. Afiliación Bancaria — no muestra info del proveedor)</option>'
         + '</select></div>';
     }
     if (def.tieneArea) {
@@ -325,6 +334,9 @@ async function guardarParamItem() {
   if (defCheck?.tieneMoneda && !document.getElementById('param-item-moneda')?.value) {
     errEl.textContent = 'La Moneda es obligatoria.'; errEl.style.display = 'block'; resetBtn(); return;
   }
+  if (defCheck?.tieneTipoCanal && !document.getElementById('param-item-tipo-canal')?.value) {
+    errEl.textContent = 'El Tipo de Canal es obligatorio.'; errEl.style.display = 'block'; resetBtn(); return;
+  }
 
   // Categorias e inv_articulos_tipo no estan en TABLAS_MAESTRAS
   if (key === 'inv_categorias' || key === 'inv_articulos_tipo') {
@@ -397,6 +409,7 @@ async function guardarParamItem() {
     if (def.tieneArea)            datos.id_area            = parseInt(document.getElementById('param-item-area')?.value) || null;
     if (def.tieneDescripcion)     datos[def.campoDescripcion || 'descripcion'] = document.getElementById('param-item-descripcion')?.value.trim() || null;
     if (def.tieneTipoSector)      datos.tipo_sector        = document.getElementById('param-item-tipo-sector')?.value || null;
+    if (def.tieneTipoCanal)       datos.tipo_canal         = document.getElementById('param-item-tipo-canal')?.value || null;
     if (def.tieneCategoria)       datos.id_categoria       = parseInt(document.getElementById('param-item-categoria')?.value) || null;
     if (def.tieneCuentaContable)  datos.id_cuenta_contable = parseInt(document.getElementById('param-item-cuenta-contable')?.value) || null;
     if (def.tieneEmisor)          datos.id_empresa         = _empresaActiva?.id_empresa || null;
