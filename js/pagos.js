@@ -272,7 +272,7 @@ async function abrirNuevoPago() {
   if (okEl)  okEl.style.display  = 'none';
   document.getElementById('pago-modal-titulo').textContent = 'NUEVA CUENTA POR PAGAR';
   // Restaurar campos (pueden estar disabled del modo VER)
-  ['pago-categoria-prov','pago-moneda','pago-descripcion','pago-cuenta-gasto',
+  ['pago-descripcion','pago-cuenta-gasto',
    'pago-monto','pago-vencimiento','pago-proveedor','pago-observaciones'].forEach(function(id) {
     const el = document.getElementById(id);
     if (el) el.disabled = false;
@@ -339,9 +339,18 @@ async function abrirNuevoPago() {
     }
   } catch(e) {}
 
-  // Reset proveedor
-  const selProv = document.getElementById('pago-proveedor');
-  if (selProv) selProv.innerHTML = '<option value="">— Seleccionar categoría primero —</option>';
+  // Cargar TODOS los proveedores activos -- ya no se filtra por Categoría,
+  // porque ahora Proveedor va primero y Categoría se autocompleta de su ficha.
+  try {
+    const provs = await api('proveedores','GET',null,
+      '?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif,id_categoria,moneda_facturacion,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre)') || [];
+    const selProv = document.getElementById('pago-proveedor');
+    if (selProv) {
+      selProv.innerHTML = '<option value="">— Seleccionar proveedor —</option>'
+        + provs.map(function(p){ return '<option value="'+p.id_proveedor+'">'+p.nombre+'</option>'; }).join('');
+    }
+    window._pagoProveedores = provs;
+  } catch(e) { console.warn('Error cargando proveedores:', e); }
 
   // Poblar usuario para la confirmación
   const unEl = document.getElementById('pago-usuario-nombre');
@@ -380,26 +389,6 @@ async function abrirNuevoPago() {
   const modalBodyNuevo = document.querySelector('#modal-pago .modal-body');
   if (modalBodyNuevo) modalBodyNuevo.scrollTop = 0;
   document.getElementById('modal-pago')?.scrollTo?.(0, 0);
-}
-
-async function onCambioCategoriaPago() {
-  const idCat  = document.getElementById('pago-categoria-prov')?.value || '';
-  const selProv = document.getElementById('pago-proveedor');
-  if (!selProv) return;
-
-  if (!idCat) {
-    selProv.innerHTML = '<option value="">— Seleccionar categoría primero —</option>';
-    return;
-  }
-
-  try {
-    const provs = await api('proveedores','GET',null,
-      '?estado=eq.ACTIVO&id_categoria=eq.'+idCat+'&order=nombre.asc&select=id_proveedor,nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre)') || [];
-    selProv.innerHTML = '<option value="">— Seleccionar proveedor —</option>'
-      + provs.map(function(p){ return '<option value="'+p.id_proveedor+'">'+p.nombre+'</option>'; }).join('');
-    // Store proveedor data for quick access
-    window._pagoProveedores = provs;
-  } catch(e) { console.warn('onCambioCategoriaPago:', e); }
 }
 
 function onCambioMonedaPago() {
@@ -1647,11 +1636,15 @@ async function onSelProveedorPago() {
   const metodoCont = document.getElementById('pago-metodo-cont');
   const metodoDisp = document.getElementById('pago-metodo-display');
   const metodoHid  = document.getElementById('pago-metodo-hidden');
+  const selCat     = document.getElementById('pago-categoria-prov');
+  const selMon     = document.getElementById('pago-moneda');
 
   // Reset
   [bancoInfo, pmInfo, manualInfo].forEach(function(el){ if (el) el.style.display = 'none'; });
   if (rifEl)     rifEl.value = '';
   if (metodoDisp) metodoDisp.textContent = '—';
+  if (selCat) selCat.value = '';
+  if (selMon) selMon.value = '';
 
   if (!idProv) return;
 
@@ -1660,11 +1653,15 @@ async function onSelProveedorPago() {
   if (!p) {
     try {
       const rows = await api('proveedores','GET',null,
-        '?id_proveedor=eq.'+idProv+'&select=nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre)');
+        '?id_proveedor=eq.'+idProv+'&select=nombre,rif,id_categoria,moneda_facturacion,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre)');
       p = rows?.[0];
     } catch(e) {}
   }
   if (!p) { if (manualInfo) manualInfo.style.display = ''; return; }
+
+  // Categoría de Pago y Moneda -- de solo lectura, según la ficha del proveedor
+  if (selCat) selCat.value = p.id_categoria || '';
+  if (selMon) { selMon.value = p.moneda_facturacion || 'USD'; onCambiarMonedaPago(); }
 
   // RIF
   if (rifEl) rifEl.value = p.rif || '';
@@ -1871,17 +1868,11 @@ async function editarCxPManual(id_cxp) {
     const claveElEdit = document.getElementById('pago-clave');
     if (claveElEdit) claveElEdit.value = '';
 
-    // Categoría → cargar proveedores de esa categoría → preseleccionar proveedor
-    const idCategoria = c.proveedores?.id_categoria || '';
-    if (idCategoria) {
-      const selCat = document.getElementById('pago-categoria-prov');
-      if (selCat) selCat.value = idCategoria;
-      await onCambioCategoriaPago();
-    }
+    // Proveedor → Categoría y Moneda se autocompletan solas (ficha del proveedor)
     if (c.id_proveedor) {
       const selProv = document.getElementById('pago-proveedor');
       if (selProv) selProv.value = c.id_proveedor;
-      if (typeof onSelProveedorPago === 'function') onSelProveedorPago();
+      if (typeof onSelProveedorPago === 'function') await onSelProveedorPago();
     }
 
     // Preseleccionar cuenta de gasto
@@ -2082,13 +2073,14 @@ async function guardarPago() {
   const incluyeIVAVal  = document.getElementById('pago-incluye-iva-val')?.value || '';
   const clave          = document.getElementById('pago-clave')?.value || '';
 
-  // Validaciones en orden de los campos
-  if (!id_categoria)   { mostrarErr('Debe seleccionar la Categoría de Pago.');  document.getElementById('pago-categoria-prov')?.focus(); return; }
+  // Validaciones en orden de los campos (Proveedor primero -- Categoría y
+  // Moneda se autocompletan de su ficha, no se piden si falta el proveedor)
+  if (!id_proveedor)   { mostrarErr('Debe seleccionar un Proveedor.');           document.getElementById('pago-proveedor')?.focus(); return; }
+  if (!id_categoria)   { mostrarErr('El Proveedor seleccionado no tiene Categoría configurada en su ficha.'); return; }
+  if (!moneda)         { mostrarErr('El Proveedor seleccionado no tiene Moneda de Facturación configurada en su ficha.'); return; }
   if (!id_cuentaGasto) { mostrarErr('Debe seleccionar la Cuenta de Gasto.');    document.getElementById('pago-cuenta-gasto')?.focus(); return; }
   if (!descripcion)    { mostrarErr('La Descripción es obligatoria.');           document.getElementById('pago-descripcion')?.focus(); return; }
   if (!monto)          { mostrarErr('El Monto es obligatorio.');                 document.getElementById('pago-monto')?.focus(); return; }
-  if (!moneda)         { mostrarErr('Debe seleccionar la Moneda.');              document.getElementById('pago-moneda')?.focus(); return; }
-  if (!id_proveedor)   { mostrarErr('Debe seleccionar un Proveedor.');           document.getElementById('pago-proveedor')?.focus(); return; }
   const exentoIVASel = document.querySelector('input[name="pago-exento-iva"]:checked');
   if (!exentoIVASel)   { mostrarErr('Debe indicar si el Gasto está Exento de IVA.'); return; }
   // Se valida siempre (crear Y editar) -- la pregunta es visible/editable en
@@ -2683,7 +2675,7 @@ async function verCxPPendiente(id_cxp) {
 function editarCxPPendiente(id_cxp) {
   if (!puedo('PAGOS','EDITAR')) { alert('No tiene permiso para editar obligaciones de pago.'); return; }
   // Habilitar todos los campos
-  ['pago-categoria-prov','pago-moneda','pago-descripcion','pago-cuenta-gasto',
+  ['pago-descripcion','pago-cuenta-gasto',
    'pago-monto','pago-vencimiento','pago-proveedor','pago-observaciones'].forEach(function(id) {
     const el = document.getElementById(id);
     if (el) el.disabled = false;

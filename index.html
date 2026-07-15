@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260715018"></script>
-<script src="js/parametros.js?v=20260715018"></script>
-<script src="js/empresas.js?v=20260715018"></script>
-<script src="js/facturacion.js?v=20260715018"></script>
-<script src="js/inventario.js?v=20260715018"></script>
-<script src="js/contabilidad.js?v=20260715018"></script>
-<script src="js/pagos.js?v=20260715018"></script>
-<script src="js/vehiculos.js?v=20260715018"></script>
-<script src="js/catalogo.js?v=20260715018"></script>
-<script src="js/inventario2.js?v=20260715018"></script>
-<script src="js/ordenes.js?v=20260715018"></script>
+<script src="js/core.js?v=20260715019"></script>
+<script src="js/parametros.js?v=20260715019"></script>
+<script src="js/empresas.js?v=20260715019"></script>
+<script src="js/facturacion.js?v=20260715019"></script>
+<script src="js/inventario.js?v=20260715019"></script>
+<script src="js/contabilidad.js?v=20260715019"></script>
+<script src="js/pagos.js?v=20260715019"></script>
+<script src="js/vehiculos.js?v=20260715019"></script>
+<script src="js/catalogo.js?v=20260715019"></script>
+<script src="js/inventario2.js?v=20260715019"></script>
+<script src="js/ordenes.js?v=20260715019"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4050,11 +4050,18 @@
     <div class="modal-body">
       <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
 
-        <div class="form-campo">
-          <label>Categoría de Pago *</label>
-          <select id="pago-categoria-prov" onchange="onCambioCategoriaPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+        <div class="form-campo form-full">
+          <label>Proveedor *</label>
+          <select id="pago-proveedor" onchange="onSelProveedorPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar —</option>
           </select>
+        </div>
+        <div class="form-campo">
+          <label>Categoría de Pago *</label>
+          <select id="pago-categoria-prov" disabled style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar —</option>
+          </select>
+          <div style="font-size:10px;color:var(--suave);margin-top:4px">Según ficha del proveedor — no editable</div>
         </div>
         <div class="form-campo">
           <label>Cuenta de Gasto</label>
@@ -4072,12 +4079,13 @@
         </div>
         <div class="form-campo">
           <label>Moneda *</label>
-          <select id="pago-moneda" onchange="onCambiarMonedaPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <select id="pago-moneda" disabled onchange="onCambiarMonedaPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar —</option>
             <option value="VES">VES — Bolívares</option>
             <option value="USD">USD — Dólares</option>
             <option value="EUR">EUR — Euros</option>
           </select>
+          <div id="pago-moneda-nota" style="font-size:10px;color:var(--suave);margin-top:4px">Según Moneda de Facturación del proveedor — no editable</div>
         </div>
         <div class="form-campo form-full" id="pago-tasa-cont-nuevo" style="display:none;grid-column:1/-1">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -4094,12 +4102,6 @@
               <div style="font-size:10px;color:var(--suave);margin-top:4px">Monto × Tasa BCV</div>
             </div>
           </div>
-        </div>
-        <div class="form-campo form-full">
-          <label>Proveedor *</label>
-          <select id="pago-proveedor" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar —</option>
-          </select>
         </div>
         <div class="form-campo form-full">
           <label>Observaciones</label>
