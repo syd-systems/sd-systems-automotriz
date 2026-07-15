@@ -34,6 +34,10 @@ async function renderContabilidad() {
     else if (emisores.length) window._contEmisorActivo = emisores[0].id_empresa;
     await Promise.all([contCargarCuentas(), contCargarPeriodos()]);
   } catch(e) { console.warn('Error cargando contabilidad:', e); }
+  // Volver a tomar la Moneda Principal de la ficha cada vez que se ENTRA al
+  // módulo (no en cada cambio de pestaña interna, para no perder tu
+  // elección si estás comparando en USD mientras navegas Diario/Mayor/CxP).
+  _contMoneda = null;
   _contVista = 'diario';
   contRenderShell();
   // Esperar un frame para que el DOM procese el innerHTML
