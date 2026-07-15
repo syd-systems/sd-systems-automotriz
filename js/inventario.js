@@ -1440,6 +1440,10 @@ async function verFichaProveedor(id) {
     } catch(e) {}
   }
 
+  const metodosLabel = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria' };
+  const metodosProv = Array.isArray(p.metodos_pago_tipos) ? p.metodos_pago_tipos : [];
+  const aceptaTransferenciaActual = metodosProv.includes('TRANSFERENCIA');
+
   document.getElementById('ficha-prov-contenido').innerHTML =
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Nombre</div><div style="font-weight:600;font-size:15px">' + p.nombre + '</div></div>'
@@ -1454,16 +1458,19 @@ async function verFichaProveedor(id) {
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Días de Crédito</div><div>' + (p.dias_credito||0) + ' días</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Límite de Crédito</div><div style="font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(p.limite_credito||0) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Estado</div><div><span class="badge ' + (p.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (p.estado||'ACTIVO') + '</span></div></div>'
+    + '<div style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">💳 Método de Pago</div><div>'
+      + (metodosProv.length ? metodosProv.map(function(m){ return '<span class="badge badge-naranja" style="margin-right:6px">' + (metodosLabel[m]||m) + '</span>'; }).join('') : '<span style="color:var(--suave)">— Sin métodos marcados —</span>')
+      + '</div></div>'
     + (p.observaciones ? '<div style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Observaciones</div><div style="background:var(--gris2);border-radius:6px;padding:10px 14px;font-size:13px">' + p.observaciones + '</div></div>' : '')
-    // ── Datos Bancarios ──
-    + (p.id_banco || p.numero_cuenta ? '<div style="grid-column:1/-1;margin-top:12px;padding-top:12px;border-top:1px solid var(--borde)"><div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🏦 Datos Bancarios</div>'
+    // ── Datos Bancarios (solo si "Transferencia" sigue marcado actualmente) ──
+    + (aceptaTransferenciaActual && (p.id_banco || p.numero_cuenta) ? '<div style="grid-column:1/-1;margin-top:12px;padding-top:12px;border-top:1px solid var(--borde)"><div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🏦 Datos Bancarios</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Institución Financiera</div><div>' + ((_empParamCache.bancos||[]).find(function(b){return b.id===p.id_banco;})?.nombre || '—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Tipo de Cuenta</div><div>' + (p.tipo_cuenta||'—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Número de Cuenta</div><div style="font-family:var(--font-mono)">' + (p.numero_cuenta||'—') + '</div></div>'
       + '</div></div>' : '')
-    // ── Pago Móvil ──
-    + (p.pm_id_banco || p.pm_celular ? '<div style="grid-column:1/-1;margin-top:12px;padding-top:12px;border-top:1px solid var(--borde)"><div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">📱 Pago Móvil</div>'
+    // ── Pago Móvil (solo si "Transferencia" sigue marcado actualmente) ──
+    + (aceptaTransferenciaActual && (p.pm_id_banco || p.pm_celular) ? '<div style="grid-column:1/-1;margin-top:12px;padding-top:12px;border-top:1px solid var(--borde)"><div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">📱 Pago Móvil</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Banco</div><div>' + ((_empParamCache.bancos||[]).find(function(b){return b.id===p.pm_id_banco;})?.nombre || '—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">C.I. / R.I.F</div><div style="font-family:var(--font-mono)">' + (p.pm_ci||'—') + '</div></div>'
