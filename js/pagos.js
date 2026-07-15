@@ -2901,7 +2901,7 @@ async function ejecutarPagoCxP(id_cxp) {
   // Cargar datos de la CxP + Proveedor (con datos bancarios de su ficha)
   const rows = await api('cont_cxp','GET',null,
     '?id_cxp=eq.'+id_cxp+'&select=*,cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre),'
-    +'proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,metodos_pago_ids,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre))');
+    +'proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,metodos_pago_tipos,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre))');
   const c = rows && rows[0];
   if (!c) { alert('CxP no encontrada.'); return; }
   const prov = c.proveedores || {};
@@ -2998,12 +2998,13 @@ async function _cargarMetodosEjecucionPago(moneda, prov) {
       '?codigo=eq.'+moneda+'&estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,id_cuenta_contable,tipo_canal' + emisorQ());
 
     // Filtrar según lo que el proveedor tenga marcado en su ficha
-    // (metodos_pago_ids) -- exacto, sin adivinar por el texto del nombre.
+    // (metodos_pago_tipos: EFECTIVO/TRANSFERENCIA/AFILIACION_BANCARIA) --
+    // se compara contra el tipo_canal del catálogo, no contra el nombre.
     // Si el proveedor todavía no tiene nada configurado (ficha vieja, aún
     // sin migrar), no se filtra -- se muestran todos para esa moneda.
-    const idsAceptados = (prov && Array.isArray(prov.metodos_pago_ids)) ? prov.metodos_pago_ids : null;
-    const metodosFiltrados = (idsAceptados && idsAceptados.length)
-      ? (metodos||[]).filter(function(m){ return idsAceptados.includes(m.id_metodo); })
+    const tiposAceptados = (prov && Array.isArray(prov.metodos_pago_tipos)) ? prov.metodos_pago_tipos : null;
+    const metodosFiltrados = (tiposAceptados && tiposAceptados.length)
+      ? (metodos||[]).filter(function(m){ return tiposAceptados.includes(m.tipo_canal); })
       : (metodos||[]);
 
     // Obtener nombres de cuentas

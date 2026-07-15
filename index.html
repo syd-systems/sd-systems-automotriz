@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260715011"></script>
-<script src="js/parametros.js?v=20260715011"></script>
-<script src="js/empresas.js?v=20260715011"></script>
-<script src="js/facturacion.js?v=20260715011"></script>
-<script src="js/inventario.js?v=20260715011"></script>
-<script src="js/contabilidad.js?v=20260715011"></script>
-<script src="js/pagos.js?v=20260715011"></script>
-<script src="js/vehiculos.js?v=20260715011"></script>
-<script src="js/catalogo.js?v=20260715011"></script>
-<script src="js/inventario2.js?v=20260715011"></script>
-<script src="js/ordenes.js?v=20260715011"></script>
+<script src="js/core.js?v=20260715012"></script>
+<script src="js/parametros.js?v=20260715012"></script>
+<script src="js/empresas.js?v=20260715012"></script>
+<script src="js/facturacion.js?v=20260715012"></script>
+<script src="js/inventario.js?v=20260715012"></script>
+<script src="js/contabilidad.js?v=20260715012"></script>
+<script src="js/pagos.js?v=20260715012"></script>
+<script src="js/vehiculos.js?v=20260715012"></script>
+<script src="js/catalogo.js?v=20260715012"></script>
+<script src="js/inventario2.js?v=20260715012"></script>
+<script src="js/ordenes.js?v=20260715012"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3485,8 +3485,24 @@
           <textarea id="prov-observaciones" placeholder="Observaciones adicionales..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%"></textarea>
         </div>
       </div>
-      <!-- ── Datos Bancarios ── -->
+      <!-- ── Métodos de Pago Aceptados ── -->
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--borde)">
+        <div style="font-size:11px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;font-weight:600">💳 Métodos de Pago Aceptados</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px 20px;font-size:13px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" class="prov-metodo-pago-chk" value="EFECTIVO"> Efectivo
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" class="prov-metodo-pago-chk" value="TRANSFERENCIA" onchange="onCambioMetodoPagoAceptadoProv()"> Transferencia
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" class="prov-metodo-pago-chk" value="AFILIACION_BANCARIA"> Afiliación Bancaria
+          </label>
+        </div>
+      </div>
+
+      <!-- ── Datos Bancarios (solo si acepta Transferencia) ── -->
+      <div id="prov-datos-bancarios-cont" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--borde)">
         <div style="font-size:11px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;font-weight:600">🏦 Datos Bancarios</div>
         <div class="form-grid">
           <div class="form-campo form-full">
@@ -3517,8 +3533,8 @@
         </div>
       </div>
 
-      <!-- ── Pago Móvil ── -->
-      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--borde)">
+      <!-- ── Pago Móvil (solo si acepta Transferencia) ── -->
+      <div id="prov-pago-movil-cont" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--borde)">
         <div style="font-size:11px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;font-weight:600">📱 Pago Móvil</div>
         <div class="form-grid">
           <div class="form-campo">
@@ -3535,14 +3551,6 @@
             <label>N° Celular</label>
             <input type="text" id="prov-pm-celular" placeholder="0414-XXXXXXX">
           </div>
-        </div>
-      </div>
-
-      <!-- ── Métodos de Pago Aceptados ── -->
-      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--borde)">
-        <div style="font-size:11px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;font-weight:600">💳 Métodos de Pago Aceptados</div>
-        <div id="prov-metodos-pago-cont" style="display:flex;flex-wrap:wrap;gap:10px 20px;font-size:13px">
-          <div style="color:var(--suave);font-size:12px">Cargando métodos disponibles...</div>
         </div>
       </div>
 
