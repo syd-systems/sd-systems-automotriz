@@ -2918,17 +2918,12 @@ async function ejecutarPagoCxP(id_cxp) {
   } catch(e) {}
 
   // Resetear campos
-  document.getElementById('exec-pago-fecha').value = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
-  const selMoneda = document.getElementById('exec-pago-moneda-sel');
-  if (selMoneda) selMoneda.value = '';
-  const selMetodo = document.getElementById('exec-pago-metodo');
-  if (selMetodo) selMetodo.innerHTML = '<option value="">— Seleccione moneda primero —</option>';
   const cuentaCont = document.getElementById('exec-pago-cuenta-cont');
   if (cuentaCont) cuentaCont.style.display = 'none';
   const cuentaHidden = document.getElementById('exec-pago-cuenta-banco');
   if (cuentaHidden) cuentaHidden.value = '';
-  // Limpiar selección IVA e IGTF — forzar al usuario a seleccionar
-  document.querySelectorAll('input[name="exec-pago-incluye-iva"]').forEach(function(r){ r.checked = false; });
+  // Limpiar selección IGTF -- el IVA ya no se pregunta aquí, se contabilizó
+  // al crear la Obligación de Pago
   document.querySelectorAll('input[name="exec-pago-incluye-igtf"]').forEach(function(r){ r.checked = false; });
   document.getElementById('exec-pago-incluye-igtf-cont').style.display = 'none';
   document.getElementById('exec-pago-tributos-preview').style.display = 'none';
@@ -2936,12 +2931,14 @@ async function ejecutarPagoCxP(id_cxp) {
   if (btnConf) { btnConf.disabled = false; btnConf.textContent = '💳 Confirmar Pago'; }
   document.getElementById('alerta-exec-err').style.display = 'none';
 
-  // Título con monto — según moneda de la CxP
+  // Moneda de Pago -- de solo lectura, viene de la Obligación de Pago
   const monedaCxP = c.moneda_pago || 'USD';
   const montoCxP  = monedaCxP === 'VES'
     ? parseFloat(c.monto_ves || c.saldo_ves || 0)
     : parseFloat(c.monto_usd || c.saldo_usd || 0);
-  const simbolo   = monedaCxP === 'VES' ? 'Bs.' : (monedaCxP === 'EUR' ? '€' : '$');
+  const monedaDispEl = document.getElementById('exec-pago-moneda-display');
+  if (monedaDispEl) monedaDispEl.textContent = monedaCxP;
+
   // Buscar tasa vigente para mostrar equivalente
   let tasaVigente = _tasaVigente || 1;
   try {
@@ -2987,40 +2984,84 @@ async function ejecutarPagoCxP(id_cxp) {
   const elMontoVES = document.getElementById('exec-pago-monto-ves');
   if (elMontoVES) elMontoVES.textContent = '$ ' + fmtBs(montoUSDShow);
 
-  // Si es CxP de inventario — ocultar IVA e IGTF (ya contabilizados en la entrada)
+  // IGTF -- solo aplica si la moneda de la CxP no es VES. El IVA ya no se
+  // pregunta aquí (se contabilizó al crear la Obligación de Pago).
   const esInventarioCxP = /^ENT-/.test(c.numero_doc || '');
-  const exentoIVA = c.exento_iva === true || esInventarioCxP;
-  const ivaContEl = document.getElementById('exec-pago-incluye-iva-cont');
-  if (ivaContEl) ivaContEl.style.display = exentoIVA ? 'none' : '';
-  if (exentoIVA) document.getElementById('exec-pago-incluye-iva-no').checked = true;
-  // Ocultar IGTF también para inventario
-  const igtfContEl = document.getElementById('exec-pago-incluye-igtf-cont');
-  if (esInventarioCxP && igtfContEl) igtfContEl.style.display = 'none';
+  const igtfWrapEl = document.getElementById('exec-pago-igtf-wrap');
+  const esUSDCxP = monedaCxP !== 'VES';
+  if (igtfWrapEl) igtfWrapEl.style.display = (esUSDCxP && !esInventarioCxP) ? '' : 'none';
 
-  // Limpiar moneda — forzar al usuario a seleccionar
-  const selMoneda2 = document.getElementById('exec-pago-moneda-sel');
-  if (selMoneda2) { selMoneda2.value = ''; }
+  // Cargar Método de Pago -- filtrado según lo que el proveedor tenga
+  // registrado en su ficha (Efectivo siempre disponible; Transferencia solo
+  // si tiene banco; Pago Móvil solo si tiene pago móvil registrado)
+  await _cargarMetodosEjecucionPago(monedaCxP, prov);
+
   abrirModal('modal-ejecutar-pago');
 }
 
+async function _cargarMetodosEjecucionPago(moneda, prov) {
+  const selMetodo = document.getElementById('exec-pago-metodo');
+  if (!selMetodo) return;
+  selMetodo.innerHTML = '<option value="">⏳ Cargando...</option>';
+  try {
+    const metodos = await api('param_metodos_pago','GET',null,
+      '?codigo=eq.'+moneda+'&estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,id_cuenta_contable' + emisorQ());
+
+    // Filtrar según lo que el proveedor tenga registrado en su ficha:
+    // Efectivo siempre se ofrece; Transferencia solo si tiene banco;
+    // Pago Móvil solo si tiene pago móvil registrado.
+    const tieneBanco = !!(prov && prov.id_banco);
+    const tienePM    = !!(prov && prov.pm_id_banco);
+    const metodosFiltrados = (metodos||[]).filter(function(m) {
+      const n = (m.nombre||'').toLowerCase();
+      if (n.includes('efectivo')) return true;
+      if (n.includes('transferencia')) return tieneBanco;
+      if (n.includes('móvil') || n.includes('movil')) return tienePM;
+      return true; // método sin clasificar -- no se oculta por si acaso
+    });
+
+    // Obtener nombres de cuentas
+    const idsCtaStr = metodosFiltrados.map(function(m){ return m.id_cuenta_contable; }).filter(Boolean).join(',');
+    var cuentasMap = {};
+    if (idsCtaStr) {
+      try {
+        const ctas = await api('cont_cuentas','GET',null,'?id_cuenta=in.('+idsCtaStr+')&select=id_cuenta,codigo,nombre');
+        (ctas||[]).forEach(function(c){ cuentasMap[c.id_cuenta] = c; });
+      } catch(e) {}
+    }
+
+    selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
+      + metodosFiltrados.map(function(m) {
+          const cta = cuentasMap[m.id_cuenta_contable];
+          return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-cuenta-nombre="'+(cta ? cta.codigo+' — '+cta.nombre : '')+'">'+m.nombre+'</option>';
+        }).join('');
+  } catch(e) {
+    selMetodo.innerHTML = '<option value="">— Sin métodos disponibles —</option>';
+  }
+  const cuentaCont2 = document.getElementById('exec-pago-cuenta-cont');
+  const cuentaDisplay2 = document.getElementById('exec-pago-cuenta-display');
+  const cuentaHidden2 = document.getElementById('exec-pago-cuenta-banco');
+  if (cuentaCont2) cuentaCont2.style.display = 'none';
+  if (cuentaDisplay2) cuentaDisplay2.textContent = '—';
+  if (cuentaHidden2) cuentaHidden2.value = '';
+}
+
 function onCambioIncluyeIvaPago() {
-  const incluyeIva  = document.getElementById('exec-pago-incluye-iva-si')?.checked;
   const incluyeIgtf = document.getElementById('exec-pago-incluye-igtf-si')?.checked;
-  const moneda      = document.getElementById('exec-pago-moneda-sel')?.value || '';
-  const esUSD       = moneda !== 'VES' && moneda !== '';
 
   if (!_ejecutarPagoCxPId) return;
 
-  api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=numero_doc,monto_usd,saldo_usd,monto_ves,moneda_pago,id_proveedor,exento_iva')
+  api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=numero_doc,monto_usd,saldo_usd,monto_ves,moneda_pago,id_proveedor')
     .then(async function(rows) {
       if (!rows || !rows[0]) return;
-      // Si es CxP de inventario — no mostrar tributos
+      // Si es CxP de inventario — no mostrar IGTF (ya contabilizado en la entrada)
       const esInv = /^ENT-/.test(rows[0].numero_doc || '');
       if (esInv) {
         document.getElementById('exec-pago-tributos-preview').style.display = 'none';
         return;
       }
       const monedaCxP = rows[0].moneda_pago || 'USD';
+      const esUSD = monedaCxP !== 'VES';
       const monto = monedaCxP === 'VES'
         ? parseFloat(rows[0].saldo_ves || rows[0].monto_ves || 0)
         : parseFloat(rows[0].saldo_usd || rows[0].monto_usd || 0);
@@ -3045,62 +3086,8 @@ function onCambioIncluyeIvaPago() {
       // Mostrar pregunta IGTF solo si aplica
       const igtfCont = document.getElementById('exec-pago-incluye-igtf-cont');
       if (igtfCont) igtfCont.style.display = aplicaIGTF ? '' : 'none';
-      _mostrarDesgloseTributos(monto, incluyeIva, incluyeIgtf, aplicaIGTF, rows[0].exento_iva === true);
+      _mostrarDesgloseTributos(monto, incluyeIgtf, aplicaIGTF);
     }).catch(function(){});
-}
-
-async function onCambioMonedaEjecucionPago() {
-  const moneda = document.getElementById('exec-pago-moneda-sel')?.value;
-  const selMetodo = document.getElementById('exec-pago-metodo');
-  const cuentaCont = document.getElementById('exec-pago-cuenta-cont');
-  const cuentaDisplay = document.getElementById('exec-pago-cuenta-display');
-  const cuentaHidden = document.getElementById('exec-pago-cuenta-banco');
-
-  if (!moneda) {
-    selMetodo.innerHTML = '<option value="">— Seleccione moneda primero —</option>';
-    if (cuentaCont) cuentaCont.style.display = 'none';
-    return;
-  }
-
-  selMetodo.innerHTML = '<option value="">⏳ Cargando...</option>';
-  try {
-    const metodos = await api('param_metodos_pago','GET',null,
-      '?codigo=eq.'+moneda+'&estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,id_cuenta_contable' + emisorQ());
-
-    // Obtener nombres de cuentas
-    const idsCtaStr = (metodos||[]).map(function(m){ return m.id_cuenta_contable; }).filter(Boolean).join(',');
-    var cuentasMap = {};
-    if (idsCtaStr) {
-      try {
-        const ctas = await api('cont_cuentas','GET',null,'?id_cuenta=in.('+idsCtaStr+')&select=id_cuenta,codigo,nombre');
-        (ctas||[]).forEach(function(c){ cuentasMap[c.id_cuenta] = c; });
-      } catch(e) {}
-    }
-
-    selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
-      + (metodos||[]).map(function(m) {
-          const cta = cuentasMap[m.id_cuenta_contable];
-          return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-cuenta-nombre="'+(cta ? cta.codigo+' — '+cta.nombre : '')+'">'+m.nombre+'</option>';
-        }).join('');
-  } catch(e) {
-    selMetodo.innerHTML = '<option value="">— Sin métodos disponibles —</option>';
-  }
-  if (cuentaCont) cuentaCont.style.display = 'none';
-  if (cuentaDisplay) cuentaDisplay.textContent = '—';
-  if (cuentaHidden) cuentaHidden.value = '';
-
-  // Resetear tributos — sin preselección
-  document.querySelectorAll('input[name="exec-pago-incluye-iva"]').forEach(function(r){ r.checked = false; });
-  document.querySelectorAll('input[name="exec-pago-incluye-igtf"]').forEach(function(r){ r.checked = false; });
-  document.getElementById('exec-pago-incluye-igtf-cont').style.display = 'none';
-  document.getElementById('exec-pago-tributos-preview').style.display  = 'none';
-
-  // Mostrar IGTF si moneda ≠ VES
-  const esVES = moneda === 'VES';
-  const igtfCont = document.getElementById('exec-pago-incluye-igtf-cont');
-  if (igtfCont) igtfCont.style.display = esVES ? 'none' : '';
-  onCambioIncluyeIvaPago();
-  onCambioIncluyeIvaPago();
 }
 
 function onCambioMetodoEjecucionPago() {
@@ -3121,8 +3108,7 @@ function onCambioMetodoEjecucionPago() {
     if (cuentaHidden) cuentaHidden.value = '';
   }
 
-  // Resetear IVA/IGTF — sin preselección
-  document.querySelectorAll('input[name="exec-pago-incluye-iva"]').forEach(function(r){ r.checked = false; });
+  // Resetear IGTF — sin preselección
   document.querySelectorAll('input[name="exec-pago-incluye-igtf"]').forEach(function(r){ r.checked = false; });
   document.getElementById('exec-pago-tributos-preview').style.display = 'none';
   onCambioIncluyeIvaPago();
@@ -3139,50 +3125,32 @@ async function _obtenerTributos() {
   };
 }
 
-function _calcularTributos(montoTotal, incluyeIva, incluyeIgtf, tasaIVA, tasaIGTF, esUSD, exentoIva) {
-  let base, iva, igtf;
-  if (exentoIva) {
-    // Exento de IVA — la base es el monto completo, IVA siempre 0
-    base = montoTotal;
-    iva  = 0;
-    igtf = esUSD ? parseFloat((base * tasaIGTF).toFixed(4)) : 0;
-    return { base, iva, igtf, total: parseFloat((base + igtf).toFixed(4)) };
-  }
-  if (incluyeIva) {
-    // Base = Monto / (1 + IVA + (1+IVA)*IGTF) si incluye IGTF
-    // Base = Monto / (1 + IVA) si solo incluye IVA
-    const divisor = (esUSD && incluyeIgtf)
-      ? (1 + tasaIVA + (1 + tasaIVA) * tasaIGTF)
-      : (1 + tasaIVA);
-    base = parseFloat((montoTotal / divisor).toFixed(4));
-    iva  = parseFloat((base * tasaIVA).toFixed(4));
-    // IGTF siempre se calcula si esUSD, incluyeIgtf solo indica si ya estaba en el monto
-    igtf = esUSD ? parseFloat(((base + iva) * tasaIGTF).toFixed(4)) : 0;
-  } else {
-    // No incluye IVA → calcular sobre el monto completo
-    base = montoTotal;
-    iva  = parseFloat((base * tasaIVA).toFixed(4));
-    igtf = esUSD ? parseFloat(((base + iva) * tasaIGTF).toFixed(4)) : 0;
-  }
-  return { base, iva, igtf, total: parseFloat((base + iva + igtf).toFixed(4)) };
+function _calcularTributos(montoTotal, incluyeIgtf, tasaIGTF, aplicaIGTF) {
+  // El IGTF siempre se sale ADICIONAL sobre el monto completo de la CxP --
+  // la CxP se debe saldar siempre por su monto íntegro, nunca parcial. Antes
+  // existía una línea de "Gasto" que absorbía cualquier diferencia si se
+  // "extraía" el IGTF de adentro del monto; al quitar esa línea (punto 3),
+  // extraerlo dejaría el asiento descuadrado. Por eso el IGTF calculado es
+  // siempre el mismo sin importar la respuesta de "¿Ya incluye IGTF?" --
+  // esa pregunta queda solo informativa hasta que se decida algo distinto.
+  if (!aplicaIGTF) return { base: montoTotal, igtf: 0, total: montoTotal };
+  const igtf = parseFloat((montoTotal * tasaIGTF).toFixed(4));
+  return { base: montoTotal, igtf, total: parseFloat((montoTotal + igtf).toFixed(4)) };
 }
 
-async function _mostrarDesgloseTributos(monto, incluyeIva, incluyeIgtf, esUSD, exentoIva) {
+async function _mostrarDesgloseTributos(monto, incluyeIgtf, aplicaIGTF) {
   const preview = document.getElementById('exec-pago-tributos-preview');
   if (!preview) return;
   try {
-    const { tasaIVA, tasaIGTF } = await _obtenerTributos();
-    const { base, iva, igtf, total } = _calcularTributos(monto, incluyeIva, incluyeIgtf, tasaIVA, tasaIGTF, esUSD, exentoIva);
+    const { tasaIGTF } = await _obtenerTributos();
+    const { base, igtf, total } = _calcularTributos(monto, incluyeIgtf, tasaIGTF, aplicaIGTF);
     preview.style.display = '';
     preview.innerHTML =
       '<table style="width:100%;font-size:12px;border-collapse:collapse;margin-top:8px">'
       +'<tr style="border-bottom:1px solid rgba(255,255,255,0.06)">'
-      +'<td style="padding:4px 8px;color:var(--suave)">Base (Gasto/Costo)</td>'
+      +'<td style="padding:4px 8px;color:var(--suave)">Monto CxP</td>'
       +'<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono)">$ '+base.toLocaleString('es-VE',{minimumFractionDigits:2})+'</td></tr>'
-      +'<tr style="border-bottom:1px solid rgba(255,255,255,0.06)">'
-      +'<td style="padding:4px 8px;color:var(--suave)">IVA ('+(tasaIVA*100).toFixed(0)+'%) — 1.1.04.001</td>'
-      +'<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono)">$ '+iva.toLocaleString('es-VE',{minimumFractionDigits:2})+'</td></tr>'
-      +(esUSD ? '<tr style="border-bottom:1px solid rgba(255,255,255,0.06)">'
+      +(aplicaIGTF ? '<tr style="border-bottom:1px solid rgba(255,255,255,0.06)">'
         +'<td style="padding:4px 8px;color:var(--suave)">IGTF ('+(tasaIGTF*100).toFixed(0)+'%) — 6.1.04.003</td>'
         +'<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono)">$ '+igtf.toLocaleString('es-VE',{minimumFractionDigits:2})+'</td></tr>' : '')
       +'<tr><td style="padding:4px 8px;font-weight:700;color:var(--naranja)">Total a Pagar</td>'
@@ -3193,30 +3161,17 @@ async function _mostrarDesgloseTributos(monto, incluyeIva, incluyeIgtf, esUSD, e
 
 async function confirmarEjecucionPago() {
   const id_cxp   = _ejecutarPagoCxPId;
-  const fechaPago   = document.getElementById('exec-pago-fecha')?.value;
-  const moneda      = document.getElementById('exec-pago-moneda-sel')?.value || '';
   const idMetodo    = document.getElementById('exec-pago-metodo')?.value;
   const idCtaBanco  = parseInt(document.getElementById('exec-pago-cuenta-banco')?.value) || 0;
-  const incluyeIva  = document.getElementById('exec-pago-incluye-iva-si')?.checked;
-  const esUSD       = moneda !== '' && moneda !== 'VES';
-  const incluyeIgtf = esUSD && document.getElementById('exec-pago-incluye-igtf-si')?.checked;
   const errEl = document.getElementById('alerta-exec-err');
   const btnConf = document.getElementById('btn-confirmar-pago');
   const resetBtn = function() { if (btnConf) { btnConf.disabled = false; btnConf.textContent = '💳 Confirmar Pago'; } };
   errEl.style.display = 'none';
 
-  if (!fechaPago)   { errEl.textContent = 'Seleccione la fecha de pago.';           errEl.style.display = 'block'; resetBtn(); return; }
-  if (!moneda)      { errEl.textContent = 'Seleccione la moneda de pago.';          errEl.style.display = 'block'; resetBtn(); return; }
   if (!idMetodo)    { errEl.textContent = 'Seleccione el método de pago.';          errEl.style.display = 'block'; resetBtn(); return; }
   if (!idCtaBanco)  { errEl.textContent = 'El método seleccionado no tiene cuenta contable asignada.'; errEl.style.display = 'block'; resetBtn(); return; }
 
-  // Validar IVA obligatorio si está visible
-  const ivaContVis = document.getElementById('exec-pago-incluye-iva-cont');
-  if (ivaContVis && ivaContVis.style.display !== 'none') {
-    const ivaSeleccionado = document.querySelector('input[name="exec-pago-incluye-iva"]:checked');
-    if (!ivaSeleccionado) { errEl.textContent = 'Debe indicar si el monto incluye IVA.'; errEl.style.display = 'block'; resetBtn(); return; }
-  }
-  // Validar IGTF obligatorio si está visible
+  // Validar IGTF obligatorio si está visible (el IVA ya no se pregunta aquí)
   const igtfContVis = document.getElementById('exec-pago-incluye-igtf-cont');
   if (igtfContVis && igtfContVis.style.display !== 'none') {
     const igtfSeleccionado = document.querySelector('input[name="exec-pago-incluye-igtf"]:checked');
@@ -3224,13 +3179,16 @@ async function confirmarEjecucionPago() {
   }
 
   try {
-    // 1. Cargar CxP con join de cuentas
+    // 1. Cargar CxP -- Fecha de Pago y Moneda vienen de aquí, de solo lectura
     const rows = await api('cont_cxp','GET',null,
-      '?id_cxp=eq.'+id_cxp+'&select=*,cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre)');
+      '?id_cxp=eq.'+id_cxp+'&select=*,cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre),proveedores:id_proveedor(nombre,tipo_contribuyente)');
     const c = rows && rows[0];
     if (!c) throw new Error('CxP no encontrada.');
 
+    const fechaPago  = c.fecha_vencimiento?.slice(0,10) || (getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10));
     const monedaCxP  = c.moneda_pago || 'USD';
+    const esUSD      = monedaCxP !== 'VES';
+    const incluyeIgtf = esUSD && document.getElementById('exec-pago-incluye-igtf-si')?.checked;
     const montoVESCxP = parseFloat(c.monto_ves || 0);
     const montoUSDCxP = parseFloat(c.saldo_usd || c.monto_usd || 0);
 
@@ -3244,21 +3202,15 @@ async function confirmarEjecucionPago() {
       } catch(e) {}
     }
 
-    // Verificar si aplica IGTF
+    // Verificar si aplica IGTF (Efectivo → siempre; Transferencia → solo Contribuyente Especial)
+    const esInventarioPago = /^ENT-/.test(c.numero_doc || '');
     let aplicaIGTF = false;
-    if (esUSD) {
+    if (esUSD && !esInventarioPago) {
       const selMetodo = document.getElementById('exec-pago-metodo');
       const nombreMetodo = selMetodo?.selectedOptions[0]?.text || '';
       const esEfectivo = nombreMetodo.toLowerCase().includes('efectivo');
-      if (esEfectivo) {
-        aplicaIGTF = true;
-      } else if (c.id_proveedor) {
-        try {
-          const provRows = await api('proveedores','GET',null,
-            '?id_proveedor=eq.'+c.id_proveedor+'&select=tipo_contribuyente&limit=1');
-          aplicaIGTF = provRows && provRows[0] && provRows[0].tipo_contribuyente === 'ESPECIAL';
-        } catch(e) {}
-      }
+      if (esEfectivo) aplicaIGTF = true;
+      else aplicaIGTF = c.proveedores?.tipo_contribuyente === 'ESPECIAL';
     }
 
     // 2. Obtener tasa BCV del día de pago
@@ -3270,43 +3222,23 @@ async function confirmarEjecucionPago() {
       ? parseFloat((montoVESCxP / (tasaPago || 1)).toFixed(4))
       : montoUSDCxP;
 
-    // 3. Obtener tributos — solo para CxP manuales, no inventario
-    const esInventarioPago = /^ENT-/.test(c.numero_doc || '');
-    const { tasaIVA, tasaIGTF } = await _obtenerTributos();
-    const tributosCalc = esInventarioPago
-      ? { base: montoUSD, iva: 0, igtf: 0, total: montoUSD }
-      : _calcularTributos(montoUSD, incluyeIva, incluyeIgtf, tasaIVA, tasaIGTF, aplicaIGTF, c.exento_iva === true);
-    const { base, iva, igtf, total } = tributosCalc;
+    // 3. IGTF -- el IVA ya no se toca aquí, se contabilizó al crear la Obligación de Pago
+    const { tasaIGTF } = await _obtenerTributos();
+    const { igtf, total } = esInventarioPago
+      ? { igtf: 0, total: montoUSD }
+      : _calcularTributos(montoUSD, incluyeIgtf, tasaIGTF, aplicaIGTF);
 
     // 4. Obtener cuentas contables por código
-    const [ctaIVA, ctaIGTF, ctaPerdCambio, ctaGanCambio, ctaCxP] = await Promise.all([
-      api('cont_cuentas','GET',null,'?codigo=eq.1.1.04.001&select=id_cuenta&limit=1'),
+    const [ctaIGTF, ctaPerdCambio, ctaGanCambio, ctaCxP] = await Promise.all([
       api('cont_cuentas','GET',null,'?codigo=eq.6.1.04.003&select=id_cuenta&limit=1'),
       api('cont_cuentas','GET',null,'?codigo=eq.6.2.01.003&select=id_cuenta&limit=1'),
       api('cont_cuentas','GET',null,'?codigo=eq.4.2.01.003&select=id_cuenta&limit=1'),
       api('cont_cuentas','GET',null,'?codigo=eq.2.1.01.001&select=id_cuenta&limit=1')
     ]);
-    const idCtaIVA        = ctaIVA        && ctaIVA[0]        ? ctaIVA[0].id_cuenta        : null;
     const idCtaIGTF       = ctaIGTF       && ctaIGTF[0]       ? ctaIGTF[0].id_cuenta       : null;
     const idCtaPerdCambio = ctaPerdCambio && ctaPerdCambio[0] ? ctaPerdCambio[0].id_cuenta  : null;
     const idCtaGanCambio  = ctaGanCambio  && ctaGanCambio[0]  ? ctaGanCambio[0].id_cuenta  : null;
     const idCtaCxP        = ctaCxP        && ctaCxP[0]         ? ctaCxP[0].id_cuenta        : null;
-    const idCtaGasto      = c.id_cuenta_gasto || (c.cuenta_gasto?.id_cuenta) || null;
-    // Buscar cuenta de inventario desde la entrada relacionada
-    let idCtaInventario = null;
-    try {
-      const numBase = (c.numero_doc || '').replace(/-C\d+$/, '');
-      const entMatch = numBase.match(/ENT-(\d+)/);
-      if (entMatch) {
-        const entRows = await api('stock_entradas','GET',null,
-          '?id_entrada=eq.'+entMatch[1]+'&select=id_articulo');
-        if (entRows && entRows[0]) {
-          const artRows = await api('inventario_almacen','GET',null,
-            '?id_articulo=eq.'+entRows[0].id_articulo+'&select=id_cuenta_contable');
-          if (artRows && artRows[0]) idCtaInventario = artRows[0].id_cuenta_contable || null;
-        }
-      }
-    } catch(e) { console.warn('Error buscando cuenta inventario:', e); }
 
     // 5. Calcular diferencial cambiario
     // montoVESCompra = el monto EXACTO ya booked/guardado en la CxP (incluye
@@ -3351,22 +3283,9 @@ async function confirmarEjecucionPago() {
       // Pre-calcular todos los montos en BS con redondeo a 2 decimales
       const r2 = function(v) { return parseFloat(v.toFixed(2)); };
       const cxpVES    = montoVESCompra;
-      const ivaVES    = r2(iva       * tasaPago);
-      const igtfVES   = r2(igtf      * tasaPago);
+      const igtfVES   = r2(igtf * tasaPago);
       const bancoUSD  = total;
       const bancoVES  = r2(total * tasaPago);
-      const gastoUSD  = incluyeIva ? base : montoUSD;
-      const gastoVES  = r2(gastoUSD  * tasaPago);
-      const invUSD    = montoUSD;
-
-      // Calcular HABER Inventario BS para cuadrar exactamente
-      // DEBE BS = cxpVES + ivaVES + igtfVES + diferencial(si pérdida) + gastoVES
-      // HABER BS = bancoVES + ganancia(si aplica) + invVES
-      // invVES = DEBE BS - HABER BS sin inv
-      const debeVESTotal   = cxpVES + ivaVES + igtfVES + gastoVES + (diferencial > 0 ? r2(Math.abs(diferencial)) : 0);
-      const haberVESsinInv = bancoVES + (diferencial < 0 ? r2(Math.abs(diferencial)) : 0);
-      // Usar Math.round para evitar floating point y asegurar cuadre exacto
-      const invVES = Math.round((debeVESTotal - haberVESsinInv) * 100) / 100;
 
       const numDoc2 = c.numero_doc || '';
       const cuotaM2 = numDoc2.match(/ENT-(\d+)-C(\d+)/);
@@ -3384,15 +3303,12 @@ async function confirmarEjecucionPago() {
         });
       };
 
-      // Detectar si es CxP de inventario — solo DEBE CxP / HABER Banco
-      const esInventario = /^ENT-/.test(numDoc2);
-
+      // Rebajar la CxP contra Banco/Efectivo -- el IVA y el Gasto/Costo ya se
+      // contabilizaron al crear la Obligación de Pago, aquí no se repiten.
       // DEBE: 2.1.01.001 CxP Proveedores
-      if (idCtaCxP)             await linea(idCtaCxP,        montoUSD, 0, cxpVES,  0, 'Cancelación CxP — ' + descBase);
-      // DEBE: 1.1.04.001 Crédito Fiscal IVA — solo para CxP manuales
-      if (!esInventario && idCtaIVA && iva > 0)  await linea(idCtaIVA, iva, 0, ivaVES, 0, 'IVA — ' + descBase);
-      // DEBE: 6.1.04.003 IGTF
-      if (idCtaIGTF && igtf > 0) await linea(idCtaIGTF,      igtf,     0, igtfVES, 0, 'IGTF — ' + descBase);
+      if (idCtaCxP)  await linea(idCtaCxP, montoUSD, 0, cxpVES, 0, 'Cancelación CxP — ' + descBase);
+      // DEBE: 6.1.04.003 IGTF -- se genera en el momento del pago
+      if (idCtaIGTF && igtf > 0) await linea(idCtaIGTF, igtf, 0, igtfVES, 0, 'IGTF — ' + descBase);
       // Diferencial Cambiario — solo en BS
       if (Math.abs(diferencial) > 0.01) {
         if (diferencial > 0 && idCtaPerdCambio)
@@ -3400,12 +3316,8 @@ async function confirmarEjecucionPago() {
         else if (diferencial < 0 && idCtaGanCambio)
           await linea(idCtaGanCambio,  0, 0, 0, Math.abs(diferencial), 'Ganancia cambiaria — ' + descBase);
       }
-      // HABER: Banco
-      if (idCtaBanco)           await linea(idCtaBanco,       0, bancoUSD, 0, bancoVES, 'Salida banco — ' + descBase);
-      // DEBE: Gasto/Costo — solo para CxP manuales
-      if (!esInventario && idCtaGasto) await linea(idCtaGasto, gastoUSD, 0, gastoVES, 0, 'Gasto/Costo — ' + descBase);
-      // HABER: Inventario — solo para CxP manuales
-      if (!esInventario && idCtaInventario) await linea(idCtaInventario, 0, invUSD, 0, invVES, 'Salida inventario — ' + descBase);
+      // HABER: Banco/Efectivo
+      if (idCtaBanco) await linea(idCtaBanco, 0, bancoUSD, 0, bancoVES, 'Salida banco — ' + descBase);
     }
 
     // 7. Actualizar CxP
