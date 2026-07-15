@@ -375,6 +375,11 @@ async function abrirNuevoPago() {
   if (cuotasPrevEl) cuotasPrevEl.innerHTML = '';
 
   abrirModal('modal-pago');
+  // Posicionar el modal al inicio siempre que se abra -- si quedó scrolleado
+  // hacia abajo de un uso anterior, se abría de nuevo en esa misma posición.
+  const modalBodyNuevo = document.querySelector('#modal-pago .modal-body');
+  if (modalBodyNuevo) modalBodyNuevo.scrollTop = 0;
+  document.getElementById('modal-pago')?.scrollTo?.(0, 0);
 }
 
 async function onCambioCategoriaPago() {
@@ -1898,6 +1903,8 @@ async function editarCxPManual(id_cxp) {
           + '<button class="btn-primario" onclick="guardarPago()">Guardar</button>';
       }
     }
+    const modalBodyEdit = document.querySelector('#modal-pago .modal-body');
+    if (modalBodyEdit) modalBodyEdit.scrollTop = 0;
   } catch(e) { alert('Error: ' + e.message); }
 }
 
