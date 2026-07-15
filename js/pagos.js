@@ -312,11 +312,15 @@ async function abrirNuevoPago() {
     const getTasa = function(mon) {
       const reg = tasas.filter(function(t){ return t.moneda_origen===mon && String(t.fecha_valor||'').substring(0,10)<=hoy; })
         .sort(function(a,b){ return String(b.fecha_valor||'').localeCompare(String(a.fecha_valor||'')); });
-      return reg.length ? parseFloat(reg[0].tipo_cambio) : 1;
+      return reg.length ? reg[0] : null;
     };
-    window._pagoTasaUSD = getTasa('USD');
-    window._pagoTasaEUR = getTasa('EUR');
-  } catch(e) { window._pagoTasaUSD = _tasaVigente||1; window._pagoTasaEUR = 1; }
+    const tasaUSDReg = getTasa('USD');
+    const tasaEURReg = getTasa('EUR');
+    window._pagoTasaUSD = tasaUSDReg ? parseFloat(tasaUSDReg.tipo_cambio) : 1;
+    window._pagoTasaEUR = tasaEURReg ? parseFloat(tasaEURReg.tipo_cambio) : 1;
+    window._pagoTasaFechaUSD = tasaUSDReg ? tasaUSDReg.fecha_valor : null;
+    window._pagoTasaFechaEUR = tasaEURReg ? tasaEURReg.fecha_valor : null;
+  } catch(e) { window._pagoTasaUSD = _tasaVigente||1; window._pagoTasaEUR = 1; window._pagoTasaFechaUSD = null; window._pagoTasaFechaEUR = null; }
 
   // Cargar categorías de proveedor
   try {
@@ -1917,15 +1921,19 @@ function onCambiarMontoPago() {
   const tasaEUR = window._pagoTasaEUR || tasaUSD;
   const tasaEl = document.getElementById('pago-tasa-bcv');
   const calcEl = document.getElementById('pago-monto-calc');
+  const fechaEl = document.getElementById('pago-tasa-bcv-fecha');
   if (moneda === 'VES') {
     if (tasaEl) tasaEl.value = tasaUSD.toFixed(4);
     if (calcEl) calcEl.value = tasaUSD > 0 ? (monto / tasaUSD).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2}) : '';
+    if (fechaEl) fechaEl.textContent = window._pagoTasaFechaUSD ? fmtFecha(window._pagoTasaFechaUSD) : 'día';
   } else if (moneda === 'EUR') {
     if (tasaEl) tasaEl.value = tasaEUR.toFixed(4);
     if (calcEl) calcEl.value = (monto * tasaEUR).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
+    if (fechaEl) fechaEl.textContent = window._pagoTasaFechaEUR ? fmtFecha(window._pagoTasaFechaEUR) : 'día';
   } else {
     if (tasaEl) tasaEl.value = tasaUSD.toFixed(4);
     if (calcEl) calcEl.value = (monto * tasaUSD).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
+    if (fechaEl) fechaEl.textContent = window._pagoTasaFechaUSD ? fmtFecha(window._pagoTasaFechaUSD) : 'día';
   }
   calcularTributosPago();
   calcularCuotasPago();
@@ -1946,9 +1954,10 @@ async function onCambiarFechaPagoContado() {
   const fecha = document.getElementById('pago-vencimiento')?.value || '';
   if (!fecha) return;
   try {
-    const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fecha+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fecha+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio,fecha_valor');
     if (tasaRows && tasaRows[0]) {
       window._pagoTasaUSD = parseFloat(tasaRows[0].tipo_cambio);
+      window._pagoTasaFechaUSD = tasaRows[0].fecha_valor;
     }
   } catch(e) { console.warn('Error buscando tasa BCV de la fecha:', e); }
   onCambiarMontoPago();
