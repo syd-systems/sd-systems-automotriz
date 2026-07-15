@@ -1586,11 +1586,11 @@ async function abrirProveedor(id) {
   document.getElementById('prov-pm-ci').value               = p ? (p.pm_ci||'') : '';
   document.getElementById('prov-pm-celular').value          = p ? (p.pm_celular||'') : '';
 
-  // Métodos de Pago Aceptados -- 3 casillas fijas (Efectivo/Transferencia/
-  // Afiliación Bancaria), sin depender del catálogo de Parámetros.
+  // Método de Pago -- selección única (radio), no múltiple.
   const tiposAceptados = (p && Array.isArray(p.metodos_pago_tipos)) ? p.metodos_pago_tipos : [];
+  const metodoActual = tiposAceptados[0] || '';
   document.querySelectorAll('.prov-metodo-pago-chk').forEach(function(chk) {
-    chk.checked = tiposAceptados.includes(chk.value);
+    chk.checked = (chk.value === metodoActual);
   });
   onCambioMetodoPagoAceptadoProv();
 
@@ -1645,16 +1645,15 @@ async function guardarProveedor() {
     }
   }
 
-  // ── Validar Métodos de Pago Aceptados ──
+  // ── Validar Método de Pago (selección única) ──
   const metodosMarcados = Array.from(document.querySelectorAll('.prov-metodo-pago-chk:checked')).map(function(el){ return el.value; });
   if (!metodosMarcados.length) {
-    errEl.textContent = 'Debe marcar al menos un Método de Pago Aceptado.';
+    errEl.textContent = 'Debe seleccionar un Método de Pago.';
     errEl.style.display = 'block';
-    document.getElementById('prov-metodos-pago-cont')?.scrollIntoView({behavior:'smooth', block:'center'});
     return;
   }
   if (metodosMarcados.includes('TRANSFERENCIA') && !document.getElementById('prov-banco')?.value && !document.getElementById('prov-pm-banco')?.value) {
-    errEl.textContent = 'Marcó "Transferencia" -- complete al menos una vía (Datos Bancarios o Pago Móvil).';
+    errEl.textContent = 'Seleccionó "Transferencia" -- complete al menos una vía (Datos Bancarios o Pago Móvil).';
     errEl.style.display = 'block';
     return;
   }

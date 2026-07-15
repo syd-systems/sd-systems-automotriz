@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260715014"></script>
-<script src="js/parametros.js?v=20260715014"></script>
-<script src="js/empresas.js?v=20260715014"></script>
-<script src="js/facturacion.js?v=20260715014"></script>
-<script src="js/inventario.js?v=20260715014"></script>
-<script src="js/contabilidad.js?v=20260715014"></script>
-<script src="js/pagos.js?v=20260715014"></script>
-<script src="js/vehiculos.js?v=20260715014"></script>
-<script src="js/catalogo.js?v=20260715014"></script>
-<script src="js/inventario2.js?v=20260715014"></script>
-<script src="js/ordenes.js?v=20260715014"></script>
+<script src="js/core.js?v=20260715015"></script>
+<script src="js/parametros.js?v=20260715015"></script>
+<script src="js/empresas.js?v=20260715015"></script>
+<script src="js/facturacion.js?v=20260715015"></script>
+<script src="js/inventario.js?v=20260715015"></script>
+<script src="js/contabilidad.js?v=20260715015"></script>
+<script src="js/pagos.js?v=20260715015"></script>
+<script src="js/vehiculos.js?v=20260715015"></script>
+<script src="js/catalogo.js?v=20260715015"></script>
+<script src="js/inventario2.js?v=20260715015"></script>
+<script src="js/ordenes.js?v=20260715015"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3485,18 +3485,18 @@
           <textarea id="prov-observaciones" placeholder="Observaciones adicionales..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%"></textarea>
         </div>
       </div>
-      <!-- ── Métodos de Pago Aceptados ── -->
+      <!-- ── Método de Pago (uno solo) ── -->
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--borde)">
-        <div style="font-size:11px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;font-weight:600">💳 Métodos de Pago Aceptados</div>
+        <div style="font-size:11px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;font-weight:600">💳 Método de Pago</div>
         <div style="display:flex;flex-wrap:wrap;gap:10px 20px;font-size:13px">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-            <input type="checkbox" class="prov-metodo-pago-chk" value="EFECTIVO"> Efectivo
+            <input type="radio" name="prov-metodo-pago-radio" class="prov-metodo-pago-chk" value="EFECTIVO" onchange="onCambioMetodoPagoAceptadoProv()"> Efectivo
           </label>
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-            <input type="checkbox" class="prov-metodo-pago-chk" value="TRANSFERENCIA" onchange="onCambioMetodoPagoAceptadoProv()"> Transferencia
+            <input type="radio" name="prov-metodo-pago-radio" class="prov-metodo-pago-chk" value="TRANSFERENCIA" onchange="onCambioMetodoPagoAceptadoProv()"> Transferencia
           </label>
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-            <input type="checkbox" class="prov-metodo-pago-chk" value="AFILIACION_BANCARIA"> Afiliación Bancaria
+            <input type="radio" name="prov-metodo-pago-radio" class="prov-metodo-pago-chk" value="AFILIACION_BANCARIA" onchange="onCambioMetodoPagoAceptadoProv()"> Afiliación Bancaria
           </label>
         </div>
       </div>
