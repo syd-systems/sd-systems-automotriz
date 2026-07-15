@@ -1842,6 +1842,10 @@ async function editarCxPManual(id_cxp) {
     const vencCont = document.getElementById('pago-vencimiento-cont');
     if (vencCont) vencCont.style.display = '';
     document.getElementById('pago-vencimiento').value = c.fecha_vencimiento?.slice(0,10) || '';
+    // La asignación directa de arriba NO dispara el "onchange" del campo, así
+    // que la tasa BCV de la Fecha de Pago (histórica) nunca se buscaba -- se
+    // quedaba con la tasa de HOY, cargada al abrir el modal. Se fuerza aquí.
+    if (c.fecha_vencimiento) await onCambiarFechaPagoContado();
     // Crédito no se edita desde este modal (implicaría recrear cuotas)
     const credCont = document.getElementById('pago-credito-cont');
     if (credCont) credCont.style.display = 'none';
