@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260715002';
+const SYD_VERSION = '20260715003';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -908,6 +908,10 @@ function seleccionarEmpresa(id_emisor) {
   id_emisor = parseInt(id_emisor);
   _empresaActiva = _empresasUsuario.find(function(e){ return e.id_empresa === id_emisor; });
   if (!_empresaActiva) return;
+  // Al cambiar de empresa, la vista de Contabilidad debe volver a tomar la
+  // Moneda Principal de la ficha de ESTA empresa -- si se dejaba el valor
+  // de la empresa anterior, podía mostrar la moneda equivocada.
+  if (typeof _contMoneda !== 'undefined') _contMoneda = null;
   // Guardar empresa activa en sessionStorage y localStorage
   sessionStorage.setItem('sd_empresa_activa', JSON.stringify(_empresaActiva));
   localStorage.setItem('sd_empresa_activa', JSON.stringify(_empresaActiva));
