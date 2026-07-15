@@ -106,7 +106,7 @@ async function contCambiarVista(vista, forzar) {
 
 // ─── HELPERS ───
 // ─── Moneda seleccionada para reportes contables ───
-let _contMoneda = null; // se inicializa con moneda_principal de la empresa
+let _contMoneda = 'VES'; // Vista por defecto en Bolívares (antes: null -> caía a moneda_principal, normalmente USD)
 
 function contGetMonedaLabel() {
   return _contMoneda || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase().toUpperCase();
@@ -291,10 +291,10 @@ async function contVerAsiento(id) {
       + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'
       + '<thead><tr>'
       + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CUENTA</th>'
-      + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">DEBE USD</th>'
-      + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">HABER USD</th>'
       + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">DEBE Bs</th>'
       + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">HABER Bs</th>'
+      + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">DEBE USD</th>'
+      + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">HABER USD</th>'
       + '</tr></thead><tbody>'
       + lineas.map(function(l){
           return '<tr>'
@@ -302,8 +302,6 @@ async function contVerAsiento(id) {
             + '<div>' + (l.cont_cuentas ? l.cont_cuentas.nombre : '') + '</div>'
             + (l.descripcion ? '<div style="font-size:10px;color:var(--suave)">' + l.descripcion + '</div>' : '')
             + '</td>'
-            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:15px!important;font-weight:600;color:' + (l.debe_usd>0?'#22c55e':'var(--suave)') + '">' + (l.debe_usd>0?fmtUSD(l.debe_usd):'—') + '</td>'
-            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:15px!important;font-weight:600;color:' + (l.haber_usd>0?'#fc8181':'var(--suave)') + '">' + (l.haber_usd>0?fmtUSD(l.haber_usd):'—') + '</td>'
             + (function(){
               const v = l.debe_ves||0;
               const txt = v>0 ? fmtBs(v) : '—';
@@ -316,16 +314,17 @@ async function contVerAsiento(id) {
               const fs  = txt.length > 16 ? '12px' : txt.length > 12 ? '13px' : '15px';
               return '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:'+fs+'!important;font-weight:600;white-space:nowrap;color:' + (v>0?'#fc8181':'var(--suave)') + '">' + txt + '</td>';
             })()
+            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:15px!important;font-weight:600;color:' + (l.debe_usd>0?'#22c55e':'var(--suave)') + '">' + (l.debe_usd>0?fmtUSD(l.debe_usd):'—') + '</td>'
+            + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:15px!important;font-weight:600;color:' + (l.haber_usd>0?'#fc8181':'var(--suave)') + '">' + (l.haber_usd>0?fmtUSD(l.haber_usd):'—') + '</td>'
             + '</tr>';
         }).join('')
       + '</tbody><tfoot>'
       + '<tr style="border-top:2px solid var(--borde);font-weight:700">'
       + '<td style="padding:8px">TOTALES</td>'
-      + '<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-size:15px!important;font-weight:600;color:var(--naranja)">' + fmtUSD(totalDebe) + '</td>'
-      + '<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-size:15px!important;font-weight:600;color:var(--naranja)">' + fmtUSD(totalHaber) + '</td>'
-
       + '<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-size:' + (fmtBs(totalDebeVes).length>12?'12px':'15px') + '!important;font-weight:600;white-space:nowrap;color:var(--naranja)">' + fmtBs(totalDebeVes) + '</td>'
       + '<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-size:' + (fmtBs(totalHaberVes).length>12?'12px':'15px') + '!important;font-weight:600;white-space:nowrap;color:var(--naranja)">' + fmtBs(totalHaberVes) + '</td>'
+      + '<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-size:15px!important;font-weight:600;color:var(--naranja)">' + fmtUSD(totalDebe) + '</td>'
+      + '<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-size:15px!important;font-weight:600;color:var(--naranja)">' + fmtUSD(totalHaber) + '</td>'
       + '</tr>'
       + '</tfoot></table></div>';
 
