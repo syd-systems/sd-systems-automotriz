@@ -2901,7 +2901,7 @@ async function ejecutarPagoCxP(id_cxp) {
   // Cargar datos de la CxP + Proveedor (con datos bancarios de su ficha)
   const rows = await api('cont_cxp','GET',null,
     '?id_cxp=eq.'+id_cxp+'&select=*,cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre),'
-    +'proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,metodos_pago_tipos,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre))');
+    +'proveedores:id_proveedor(nombre,rif,tipo_contribuyente,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,metodos_pago_tipos,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre))');
   const c = rows && rows[0];
   if (!c) { alert('CxP no encontrada.'); return; }
   const prov = c.proveedores || {};
@@ -2961,6 +2961,9 @@ async function ejecutarPagoCxP(id_cxp) {
   if (provEl) provEl.textContent = prov.nombre || '—';
   const rifEl = document.getElementById('exec-pago-rif');
   if (rifEl) rifEl.textContent = prov.rif || '—';
+  const tipoContribLabel = { ORDINARIO: 'Contribuyente Ordinario', ESPECIAL: 'Contribuyente Especial', FORMAL: 'Contribuyente Formal' };
+  const tipoContribEl = document.getElementById('exec-pago-tipo-contrib');
+  if (tipoContribEl) tipoContribEl.textContent = tipoContribLabel[prov.tipo_contribuyente] || '—';
   const fechaObEl = document.getElementById('exec-pago-fecha-obligacion');
   if (fechaObEl) fechaObEl.textContent = c.fecha_vencimiento ? fmtFecha(c.fecha_vencimiento) : '—';
 
