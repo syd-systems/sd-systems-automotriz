@@ -1567,7 +1567,12 @@ async function anularPagoCxP(id_cxp) {
     // 2. Reversar asientos contables asociados
     const numDoc = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=numero_doc');
     if (numDoc && numDoc[0]) {
-      const ref = numDoc[0].numero_doc;
+      // El asiento se creó con referencia = numDocBase, SIN el sufijo
+      // "-<id_cxp>" -- ese sufijo se agrega al numero_doc de la CxP DESPUÉS
+      // de crear el asiento. Hay que quitarlo antes de buscar, si no nunca
+      // coincide con el asiento real (mismo bug del punto 14, sin corregir aquí).
+      const numDocConSufijo = numDoc[0].numero_doc;
+      const ref = numDocConSufijo ? numDocConSufijo.replace(new RegExp('-'+id_cxp+'$'), '') : numDocConSufijo;
       // Solo anular asientos de PAGO_PROVEEDOR - NO los de entrada de inventario
       const asientos = await api('cont_asientos','GET',null,
         '?referencia=eq.'+encodeURIComponent(ref)+emisorQ()+'&tipo=in.(PAGO_PROVEEDOR,PAGO_CXP,PAGO_MANUAL,GASTO_MANUAL)&estado=neq.ANULADO&select=id_asiento,descripcion');
