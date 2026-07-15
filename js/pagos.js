@@ -2898,11 +2898,13 @@ var _ejecutarPagoCxPId = null; // id_cxp actual
 async function ejecutarPagoCxP(id_cxp) {
   _ejecutarPagoCxPId = id_cxp;
 
-  // Cargar datos de la CxP
+  // Cargar datos de la CxP + Proveedor (con datos bancarios de su ficha)
   const rows = await api('cont_cxp','GET',null,
-    '?id_cxp=eq.'+id_cxp+'&select=*,cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre)');
+    '?id_cxp=eq.'+id_cxp+'&select=*,cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre),'
+    +'proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre))');
   const c = rows && rows[0];
   if (!c) { alert('CxP no encontrada.'); return; }
+  const prov = c.proveedores || {};
 
   // Cargar cuentas bancarias
   try {
@@ -2952,6 +2954,35 @@ async function ejecutarPagoCxP(id_cxp) {
 
   document.getElementById('exec-pago-desc').textContent  = c.numero_doc + ' — ' + (c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim();
   document.getElementById('exec-pago-monto').textContent = 'Bs. ' + fmtBs(montoVESShow);
+
+  // Proveedor, RIF y Fecha de Pago -- vienen del Modal Obligación de Pago
+  const provEl = document.getElementById('exec-pago-proveedor');
+  if (provEl) provEl.textContent = prov.nombre || '—';
+  const rifEl = document.getElementById('exec-pago-rif');
+  if (rifEl) rifEl.textContent = prov.rif || '—';
+  const fechaObEl = document.getElementById('exec-pago-fecha-obligacion');
+  if (fechaObEl) fechaObEl.textContent = c.fecha_vencimiento ? fmtFecha(c.fecha_vencimiento) : '—';
+
+  // Datos bancarios del proveedor (informativo, de su ficha) -- a dónde se
+  // le va a realizar el pago (Transferencia, Pago Móvil, o ninguno registrado)
+  const bancoInfoEl  = document.getElementById('exec-pago-banco-info');
+  const bancoDatosEl = document.getElementById('exec-pago-banco-datos');
+  const pmInfoEl     = document.getElementById('exec-pago-pm-info');
+  const pmDatosEl    = document.getElementById('exec-pago-pm-datos');
+  const manualInfoEl = document.getElementById('exec-pago-manual-info');
+  [bancoInfoEl, pmInfoEl, manualInfoEl].forEach(function(el){ if (el) el.style.display = 'none'; });
+  let tieneDatosBancarios = false;
+  if (prov.id_banco && bancoDatosEl) {
+    bancoDatosEl.innerHTML = dato('Institución', prov.banco_prov?.nombre||'—') + dato('Tipo', prov.tipo_cuenta||'—') + dato('N° Cuenta', prov.numero_cuenta||'—');
+    if (bancoInfoEl) bancoInfoEl.style.display = '';
+    tieneDatosBancarios = true;
+  }
+  if (prov.pm_id_banco && pmDatosEl) {
+    pmDatosEl.innerHTML = dato('Banco', prov.banco_pm?.nombre||'—') + dato('C.I./R.I.F', prov.pm_ci||'—') + dato('Celular', prov.pm_celular||'—');
+    if (pmInfoEl) pmInfoEl.style.display = '';
+    tieneDatosBancarios = true;
+  }
+  if (!tieneDatosBancarios && manualInfoEl) manualInfoEl.style.display = '';
 
   const elMontoVES = document.getElementById('exec-pago-monto-ves');
   if (elMontoVES) elMontoVES.textContent = '$ ' + fmtBs(montoUSDShow);

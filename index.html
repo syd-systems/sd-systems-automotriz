@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260715005"></script>
-<script src="js/parametros.js?v=20260715005"></script>
-<script src="js/empresas.js?v=20260715005"></script>
-<script src="js/facturacion.js?v=20260715005"></script>
-<script src="js/inventario.js?v=20260715005"></script>
-<script src="js/contabilidad.js?v=20260715005"></script>
-<script src="js/pagos.js?v=20260715005"></script>
-<script src="js/vehiculos.js?v=20260715005"></script>
-<script src="js/catalogo.js?v=20260715005"></script>
-<script src="js/inventario2.js?v=20260715005"></script>
-<script src="js/ordenes.js?v=20260715005"></script>
+<script src="js/core.js?v=20260715006"></script>
+<script src="js/parametros.js?v=20260715006"></script>
+<script src="js/empresas.js?v=20260715006"></script>
+<script src="js/facturacion.js?v=20260715006"></script>
+<script src="js/inventario.js?v=20260715006"></script>
+<script src="js/contabilidad.js?v=20260715006"></script>
+<script src="js/pagos.js?v=20260715006"></script>
+<script src="js/vehiculos.js?v=20260715006"></script>
+<script src="js/catalogo.js?v=20260715006"></script>
+<script src="js/inventario2.js?v=20260715006"></script>
+<script src="js/ordenes.js?v=20260715006"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4198,19 +4198,48 @@
 
 <!-- ══ MODAL EJECUTAR PAGO ══ -->
 <div class="modal-overlay" id="modal-ejecutar-pago">
-  <div class="modal" style="max-width:420px;width:95%">
+  <div class="modal" style="max-width:460px;width:95%">
     <div class="modal-header">
       <h2 class="modal-titulo">EJECUTAR PAGO</h2>
       <button class="modal-cerrar" onclick="cerrarModal('modal-ejecutar-pago')">✕</button>
     </div>
     <div class="modal-body">
       <div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:12px 16px;margin-bottom:16px">
-        <div style="font-size:11px;color:var(--suave)">PAGO A EJECUTAR</div>
-        <div style="font-weight:600;margin-top:4px" id="exec-pago-desc"></div>
-        <div style="display:flex;gap:16px;align-items:baseline;margin-top:4px;flex-wrap:wrap">
-          <div style="font-family:var(--font-mono);color:var(--naranja);font-size:18px" id="exec-pago-monto"></div>
-          <div style="font-family:var(--font-mono);color:var(--suave);font-size:13px" id="exec-pago-monto-ves"></div>
+        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <div style="font-size:11px;color:var(--suave)">PROVEEDOR</div>
+            <div style="font-weight:600;margin-top:2px" id="exec-pago-proveedor">—</div>
+            <div style="font-size:11px;color:var(--suave);margin-top:2px">RIF: <span id="exec-pago-rif" style="font-family:var(--font-mono)">—</span></div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px;color:var(--suave)">FECHA DE PAGO (Obligación)</div>
+            <div style="font-weight:600;margin-top:2px;font-family:var(--font-mono)" id="exec-pago-fecha-obligacion">—</div>
+          </div>
         </div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,107,0,0.15)">
+          <div style="font-size:11px;color:var(--suave)">DESCRIPCIÓN DEL GASTO</div>
+          <div style="font-weight:600;margin-top:2px" id="exec-pago-desc"></div>
+        </div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,107,0,0.15)">
+          <div style="font-size:11px;color:var(--suave)">PAGO A EJECUTAR</div>
+          <div style="display:flex;gap:16px;align-items:baseline;margin-top:4px;flex-wrap:wrap">
+            <div style="font-family:var(--font-mono);color:var(--naranja);font-size:18px" id="exec-pago-monto"></div>
+            <div style="font-family:var(--font-mono);color:var(--suave);font-size:13px" id="exec-pago-monto-ves"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Datos bancarios del proveedor (informativo, de su ficha) -->
+      <div id="exec-pago-banco-info" style="display:none;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:12px 16px;margin-bottom:16px">
+        <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🏦 Transferencia Bancaria</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px" id="exec-pago-banco-datos"></div>
+      </div>
+      <div id="exec-pago-pm-info" style="display:none;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:12px 16px;margin-bottom:16px">
+        <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">📱 Pago Móvil</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px" id="exec-pago-pm-datos"></div>
+      </div>
+      <div id="exec-pago-manual-info" style="display:none;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--suave)">
+        Este proveedor no tiene datos bancarios ni de Pago Móvil registrados en su ficha.
       </div>
       <div class="form-grid">
         <div class="form-campo form-full">
