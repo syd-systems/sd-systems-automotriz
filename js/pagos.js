@@ -1819,6 +1819,10 @@ async function editarCxPManual(id_cxp) {
       : fmtBs(c.monto_usd || 0);
     const modoEl = document.getElementById('pago-moneda');
     if (modoEl) modoEl.value = c.moneda_pago || '';
+    // La asignación directa de arriba tampoco dispara el "onchange" -- por
+    // eso el contenedor de Tasa BCV (pago-tasa-cont-nuevo) se quedaba oculto
+    // en modo edición. Se muestra aquí explícitamente.
+    onCambiarMonedaPago();
     if (c.exento_iva) document.getElementById('pago-exento-iva-si').checked = true;
     else document.getElementById('pago-exento-iva-no').checked = true;
     // Mostrar "Incluye IVA" también al editar, pre-marcada con el valor
