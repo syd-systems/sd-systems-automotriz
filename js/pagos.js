@@ -1814,9 +1814,14 @@ async function editarCxPManual(id_cxp) {
     // Cargar valores
     document.getElementById('pago-id').value          = c.id_cxp;
     document.getElementById('pago-descripcion').value = c.observaciones || '';
-    document.getElementById('pago-monto').value       = c.moneda_pago === 'VES'
-      ? fmtBs(c.monto_ves || 0)
-      : fmtBs(c.monto_usd || 0);
+    // Se precarga desde monto_facturado (el dato crudo, tal como se
+    // escribió) y NO desde monto_usd/monto_ves (el Total ya resuelto con
+    // IVA) -- si no, cada edición reinterpretaba el Total de la vez
+    // anterior como si fuera el dato original, inflándolo en cascada.
+    // Respaldo para CxP creadas antes de esta columna: usa el resuelto.
+    document.getElementById('pago-monto').value       = (c.monto_facturado !== null && c.monto_facturado !== undefined)
+      ? fmtBs(c.monto_facturado)
+      : (c.moneda_pago === 'VES' ? fmtBs(c.monto_ves || 0) : fmtBs(c.monto_usd || 0));
     const modoEl = document.getElementById('pago-moneda');
     if (modoEl) modoEl.value = c.moneda_pago || '';
     // La asignación directa de arriba tampoco dispara el "onchange" -- por
@@ -2144,6 +2149,11 @@ async function guardarPago() {
         monto_ves:         montoTotalVES,
         saldo_usd:         montoTotalConIVA,
         incluye_iva:       exento ? null : (incluyeIVAVal === 'SI'),
+        // Monto tal como se escribió, SIN resolver -- separado del total ya
+        // calculado (monto_usd/monto_ves). Así, al reabrir para editar, el
+        // campo Monto siempre vuelve a mostrar el dato original de la
+        // factura, no el Total ya inflado/recalculado de la vez anterior.
+        monto_facturado:   monto,
         id_cuenta_gasto:   id_cuentaGasto,
         observaciones:     descripcion + (observaciones ? ' — ' + observaciones : ''),
         exento_iva:        exento,
@@ -2262,6 +2272,7 @@ async function guardarPago() {
         moneda_pago:       moneda,
         monto_usd:         montoTotalConIVA,
         monto_ves:         montoTotalVES,
+        monto_facturado:   monto,
         tasa_bcv:          tasaUSD,
         pagado_usd:        0,
         saldo_usd:         montoTotalConIVA,
