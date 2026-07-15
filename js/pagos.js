@@ -3058,21 +3058,14 @@ function onCambioIncluyeIvaPago() {
       const monto = monedaCxP === 'VES'
         ? parseFloat(rows[0].saldo_ves || rows[0].monto_ves || 0)
         : parseFloat(rows[0].saldo_usd || rows[0].monto_usd || 0);
-      // Verificar si aplica IGTF
+      // Verificar si aplica IGTF -- solo USD + proveedor Contribuyente Especial
       let aplicaIGTF = false;
-      if (esUSD) {
-        const esEfectivo = window._execPagoTipoMetodo === 'EFECTIVO';
-        if (esEfectivo) {
-          // Efectivo → aplica a todos
-          aplicaIGTF = true;
-        } else if (rows[0].id_proveedor) {
-          // Transferencia → solo Contribuyente Especial
-          try {
-            const provRows = await api('proveedores','GET',null,
-              '?id_proveedor=eq.'+rows[0].id_proveedor+'&select=tipo_contribuyente&limit=1');
-            aplicaIGTF = provRows && provRows[0] && provRows[0].tipo_contribuyente === 'ESPECIAL';
-          } catch(e) {}
-        }
+      if (esUSD && rows[0].id_proveedor) {
+        try {
+          const provRows = await api('proveedores','GET',null,
+            '?id_proveedor=eq.'+rows[0].id_proveedor+'&select=tipo_contribuyente&limit=1');
+          aplicaIGTF = provRows && provRows[0] && provRows[0].tipo_contribuyente === 'ESPECIAL';
+        } catch(e) {}
       }
       // Mostrar pregunta IGTF solo si aplica
       const igtfCont = document.getElementById('exec-pago-incluye-igtf-cont');
@@ -3213,15 +3206,9 @@ async function confirmarEjecucionPago() {
       } catch(e) {}
     }
 
-    // Verificar si aplica IGTF (Efectivo → siempre; Transferencia → solo Contribuyente Especial)
+    // Verificar si aplica IGTF -- solo USD + proveedor Contribuyente Especial
     const esInventarioPago = /^ENT-/.test(c.numero_doc || '');
-    let aplicaIGTF = false;
-    if (esUSD && !esInventarioPago) {
-      const tipoMetodoConfirm = (c.proveedores?.metodos_pago_tipos && c.proveedores.metodos_pago_tipos[0]) || '';
-      const esEfectivo = tipoMetodoConfirm === 'EFECTIVO';
-      if (esEfectivo) aplicaIGTF = true;
-      else aplicaIGTF = c.proveedores?.tipo_contribuyente === 'ESPECIAL';
-    }
+    const aplicaIGTF = esUSD && !esInventarioPago && c.proveedores?.tipo_contribuyente === 'ESPECIAL';
 
     // 2. Obtener tasa BCV del día de pago
     const tasasHoy = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaPago+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
