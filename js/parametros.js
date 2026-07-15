@@ -17,7 +17,7 @@ const TABLAS_MAESTRAS = [
   { key: 'cat_prov', tabla: 'param_categorias_proveedor', pk: 'id', nombre: 'Categorías de Proveedores', icono: '🏷', tieneCodigo: true, tieneEstado: true },
   { key: 'bancos',             tabla: 'param_bancos',   pk: 'id',             nombre: 'Instituciones Financieras', icono: '🏦', tieneCodigo: true,  tieneArea: false, tieneTipoSector: true },
   { key: 'niveles_jerarquicos', tabla: 'param_niveles_jerarquicos', pk: 'id_jerarquicos', nombre: 'Niveles Jerárquicos', icono: '🏅', tieneCodigo: false, tieneArea: false, tieneDescripcion: true, campoNombre: 'nivel_jerarquicos', campoDescripcion: 'descripcion_jerarquicos' },
-  { key: 'metodos_pago', tabla: 'param_metodos_pago', pk: 'id_metodo', nombre: 'Métodos de Pago', icono: '💳', tieneMoneda: true, tieneCuentaContable: true, tieneTipoCanal: true },
+  { key: 'metodos_pago', tabla: 'param_metodos_pago', pk: 'id_metodo', nombre: 'Métodos de Pago', icono: '💳', tieneMoneda: true, tieneCuentaContable: true, tieneTipoCanal: true, nombreAutomatico: true },
 ];
 
 // Cache de áreas para el selector de cargos
@@ -156,7 +156,7 @@ async function mostrarTablaParam(key) {
           + '<td style="font-size:13px;font-weight:500">' + (item.codigo ? '<span style="font-family:var(--font-mono);color:var(--naranja);margin-right:8px">' + item.codigo + '</span>' : '') + nombreMostrar + (descMostrar ? '<div style="font-size:11px;color:var(--suave);margin-top:2px">' + descMostrar + '</div>' : '') + '</td>'
           + (def.tieneArea ? '<td style="font-size:12px;color:var(--suave)">' + (areasMap[item.id_area] ? areasMap[item.id_area].nombre : '—') + '</td>' : '')
           + (def.tieneTipoSector ? '<td style="font-size:12px;color:var(--suave)">' + (item.tipo_sector || '—') + '</td>' : '')
-          + (def.tieneTipoCanal ? '<td style="font-size:12px;color:var(--suave)">' + (item.tipo_canal || '—') + '</td>' : '')
+          + (def.tieneTipoCanal ? '<td style="font-size:12px;color:var(--suave)">' + ({EFECTIVO:'Efectivo',TRANSFERENCIA:'Transferencia',AFILIACION_BANCARIA:'Afiliación Bancaria'}[item.tipo_canal] || '—') + '</td>' : '')
           + (def.tieneCategoria ? '<td style="font-size:12px;color:var(--suave)">' + (cat ? (cat.codigo?cat.codigo+' — ':'')+cat.nombre : '—') + '</td>' : '')
           + (def.tieneCuentaContable ? '<td style="font-size:12px;color:var(--suave)">' + (item.id_cuenta_contable ? '— cuenta asignada —' : '—') + '</td>' : '')
           + '<td><span class="badge ' + (item.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (item.estado || 'ACTIVO') + '</span></td>'
@@ -169,7 +169,7 @@ async function mostrarTablaParam(key) {
 
     var thead = key === 'areas'
       ? '<th style="width:100px">Código</th><th>Nombre</th><th>Nivel Superior</th><th>Estado</th><th>Acción</th>'
-      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : (def.tieneMoneda ? '<th>Moneda · Nombre</th>' : '<th>Nombre</th>')) + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + (def.tieneTipoCanal ? '<th>Tipo de Canal</th>' : '') + (def.tieneCategoria ? '<th>Categoría</th>' : '') + (def.tieneCuentaContable ? '<th>Cuenta Contable</th>' : '') + '<th>Estado</th><th>Acción</th>';
+      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : (def.tieneMoneda ? '<th>Moneda · Nombre</th>' : '<th>Nombre</th>')) + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + (def.tieneTipoCanal ? '<th>Modo de Pago</th>' : '') + (def.tieneCategoria ? '<th>Categoría</th>' : '') + (def.tieneCuentaContable ? '<th>Cuenta Contable</th>' : '') + '<th>Estado</th><th>Acción</th>';
     var colspan = key === 'areas' ? 5 : (2 + (def.tieneArea?1:0) + (def.tieneTipoSector?1:0));
 
     cont.innerHTML =
@@ -224,14 +224,19 @@ async function abrirParamItem(key, id) {
       camposHTML += '<div class="form-campo form-full"><label>Código</label><input type="text" id="param-item-codigo" value="' + (item ? (item.codigo||'') : '') + '" placeholder="Ej: 0102" style="text-transform:uppercase"></div>';
     }
     if (def.tieneMoneda) {
-      camposHTML += '<div class="form-campo form-full"><label>Moneda *</label><select id="param-item-moneda" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
+      camposHTML += '<div class="form-campo form-full"><label>Moneda *</label><select id="param-item-moneda" onchange="_actualizarNombreMetodoPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
         + '<option value="">— Seleccione Moneda —</option>'
         + '<option value="USD"' + (item && item.codigo === 'USD' ? ' selected' : '') + '>USD — Dólar</option>'
         + '<option value="VES"' + (item && item.codigo === 'VES' ? ' selected' : '') + '>VES — Bolívar</option>'
         + '<option value="EUR"' + (item && item.codigo === 'EUR' ? ' selected' : '') + '>EUR — Euro</option>'
         + '</select></div>';
     }
-    camposHTML += '<div class="form-campo form-full"><label>' + (def.campoNombre ? 'Nivel' : 'Nombre') + '</label><input type="text" id="param-item-nombre" value="' + (item ? (item[def.campoNombre||'nombre']||'') : '') + '" placeholder="' + (def.campoNombre ? 'Nombre del nivel jerárquico' : 'Nombre del registro') + '"></div>';
+    if (!def.nombreAutomatico) {
+      camposHTML += '<div class="form-campo form-full"><label>' + (def.campoNombre ? 'Nivel' : 'Nombre') + '</label><input type="text" id="param-item-nombre" value="' + (item ? (item[def.campoNombre||'nombre']||'') : '') + '" placeholder="' + (def.campoNombre ? 'Nombre del nivel jerárquico' : 'Nombre del registro') + '"></div>';
+    } else {
+      // El nombre se arma solo a partir de Modo de Pago + Moneda -- no se pide como texto libre
+      camposHTML += '<input type="hidden" id="param-item-nombre" value="' + (item ? (item.nombre||'') : '') + '">';
+    }
     if (def.tieneDescripcion) {
       camposHTML += '<div class="form-campo form-full"><label>Descripción</label><textarea id="param-item-descripcion" placeholder="Descripción opcional..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%">' + (item ? (item[def.campoDescripcion||'descripcion']||'') : '') + '</textarea></div>';
     }
@@ -245,11 +250,11 @@ async function abrirParamItem(key, id) {
         + '</select></div>';
     }
     if (def.tieneTipoCanal) {
-      camposHTML += '<div class="form-campo form-full"><label>Tipo de Canal *</label><select id="param-item-tipo-canal" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
+      camposHTML += '<div class="form-campo form-full"><label>Modo de Pago *</label><select id="param-item-tipo-canal" onchange="_actualizarNombreMetodoPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
         + '<option value="">— Seleccionar —</option>'
-        + '<option value="EFECTIVO"'     + (item && item.tipo_canal === 'EFECTIVO'     ? ' selected' : '') + '>Efectivo</option>'
-        + '<option value="TRANSFERENCIA"'+ (item && item.tipo_canal === 'TRANSFERENCIA'? ' selected' : '') + '>Transferencia (permite elegir Cuenta Bancaria o Pago Móvil del proveedor)</option>'
-        + '<option value="OTRO"'         + (item && item.tipo_canal === 'OTRO'         ? ' selected' : '') + '>Otro (ej. Afiliación Bancaria — no muestra info del proveedor)</option>'
+        + '<option value="EFECTIVO"'            + (item && item.tipo_canal === 'EFECTIVO'            ? ' selected' : '') + '>Efectivo</option>'
+        + '<option value="TRANSFERENCIA"'       + (item && item.tipo_canal === 'TRANSFERENCIA'       ? ' selected' : '') + '>Transferencia</option>'
+        + '<option value="AFILIACION_BANCARIA"' + (item && item.tipo_canal === 'AFILIACION_BANCARIA' ? ' selected' : '') + '>Afiliación Bancaria</option>'
         + '</select></div>';
     }
     if (def.tieneArea) {
@@ -309,6 +314,17 @@ async function abrirParamItem(key, id) {
   }, 100);
 }
 
+function _actualizarNombreMetodoPago() {
+  const tipoEl = document.getElementById('param-item-tipo-canal');
+  const monEl  = document.getElementById('param-item-moneda');
+  const nomEl  = document.getElementById('param-item-nombre');
+  if (!tipoEl || !monEl || !nomEl) return;
+  const labels = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria' };
+  const tipoLabel = labels[tipoEl.value] || '';
+  const moneda = monEl.value || '';
+  nomEl.value = (tipoLabel && moneda) ? (tipoLabel + ' — ' + moneda) : '';
+}
+
 async function guardarParamItem() {
   if (!puedo('PARAMETROS','EDITAR')) { alert('No tiene permiso.'); return; }
   const btnGuardar = document.getElementById('modal-param-guardar');
@@ -324,10 +340,16 @@ async function guardarParamItem() {
   const errEl = document.getElementById('alerta-param-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
 
-  if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
+  const defCheck = TABLAS_MAESTRAS.find(function(t) { return t.key === key; });
+
+  if (!nombre) {
+    errEl.textContent = defCheck?.nombreAutomatico
+      ? 'Debe seleccionar Modo de Pago y Moneda.'
+      : 'El nombre es obligatorio.';
+    errEl.style.display = 'block'; return;
+  }
 
   // Validar cuenta contable si aplica
-  const defCheck = TABLAS_MAESTRAS.find(function(t) { return t.key === key; });
   if (defCheck?.tieneCuentaContable && !document.getElementById('param-item-cuenta-contable')?.value) {
     errEl.textContent = 'La Cuenta Contable es obligatoria.'; errEl.style.display = 'block'; resetBtn(); return;
   }
@@ -335,8 +357,9 @@ async function guardarParamItem() {
     errEl.textContent = 'La Moneda es obligatoria.'; errEl.style.display = 'block'; resetBtn(); return;
   }
   if (defCheck?.tieneTipoCanal && !document.getElementById('param-item-tipo-canal')?.value) {
-    errEl.textContent = 'El Tipo de Canal es obligatorio.'; errEl.style.display = 'block'; resetBtn(); return;
+    errEl.textContent = 'El Modo de Pago es obligatorio.'; errEl.style.display = 'block'; resetBtn(); return;
   }
+
 
   // Categorias e inv_articulos_tipo no estan en TABLAS_MAESTRAS
   if (key === 'inv_categorias' || key === 'inv_articulos_tipo') {
@@ -375,16 +398,25 @@ async function guardarParamItem() {
 
   // ── Validar duplicados ──
   try {
-    const monedaVal  = def.tieneMoneda ? (document.getElementById('param-item-moneda')?.value || '') : '';
-    const cuentaVal  = def.tieneCuentaContable ? (document.getElementById('param-item-cuenta-contable')?.value || '') : '';
+    const monedaVal   = def.tieneMoneda ? (document.getElementById('param-item-moneda')?.value || '') : '';
+    const cuentaVal    = def.tieneCuentaContable ? (document.getElementById('param-item-cuenta-contable')?.value || '') : '';
+    const tipoCanalVal = def.tieneTipoCanal ? (document.getElementById('param-item-tipo-canal')?.value || '') : '';
     const pkNeq      = id ? ('&' + def.pk + '=neq.' + id) : '';
     const empFiltro  = _empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : '';
-    let existeQuery  = '?nombre=ilike.' + encodeURIComponent(nombre) + pkNeq + empFiltro;
-    if (def.tieneMoneda && monedaVal)          existeQuery += '&codigo=eq.' + monedaVal;
-    if (def.tieneCuentaContable && cuentaVal)  existeQuery += '&id_cuenta_contable=eq.' + cuentaVal;
+    let existeQuery;
+    if (def.nombreAutomatico) {
+      // El nombre no es libre -- lo único que puede repetirse es la combinación Modo de Pago + Moneda
+      existeQuery = '?tipo_canal=eq.' + encodeURIComponent(tipoCanalVal) + '&codigo=eq.' + encodeURIComponent(monedaVal) + pkNeq + empFiltro;
+    } else {
+      existeQuery = '?nombre=ilike.' + encodeURIComponent(nombre) + pkNeq + empFiltro;
+      if (def.tieneMoneda && monedaVal)          existeQuery += '&codigo=eq.' + monedaVal;
+      if (def.tieneCuentaContable && cuentaVal)  existeQuery += '&id_cuenta_contable=eq.' + cuentaVal;
+    }
     const existe = await api(def.tabla, 'GET', null, existeQuery);
     if (existe && existe.length > 0) {
-      errEl.textContent = 'Ya existe un método de pago con el mismo nombre, moneda y cuenta contable.';
+      errEl.textContent = def.nombreAutomatico
+        ? 'Ya existe un método con ese Modo de Pago y esa Moneda.'
+        : 'Ya existe un método de pago con el mismo nombre, moneda y cuenta contable.';
       errEl.style.display = 'block'; resetBtn(); return;
     }
     // Duplicado por código (solo si tieneCodigo, no tieneMoneda)
