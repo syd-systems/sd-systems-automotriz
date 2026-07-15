@@ -2960,26 +2960,12 @@ async function ejecutarPagoCxP(id_cxp) {
   const fechaObEl = document.getElementById('exec-pago-fecha-obligacion');
   if (fechaObEl) fechaObEl.textContent = c.fecha_vencimiento ? fmtFecha(c.fecha_vencimiento) : '—';
 
-  // Datos bancarios del proveedor (informativo, de su ficha) -- a dónde se
-  // le va a realizar el pago (Transferencia, Pago Móvil, o ninguno registrado)
-  const bancoInfoEl  = document.getElementById('exec-pago-banco-info');
-  const bancoDatosEl = document.getElementById('exec-pago-banco-datos');
-  const pmInfoEl     = document.getElementById('exec-pago-pm-info');
-  const pmDatosEl    = document.getElementById('exec-pago-pm-datos');
-  const manualInfoEl = document.getElementById('exec-pago-manual-info');
-  [bancoInfoEl, pmInfoEl, manualInfoEl].forEach(function(el){ if (el) el.style.display = 'none'; });
-  let tieneDatosBancarios = false;
-  if (prov.id_banco && bancoDatosEl) {
-    bancoDatosEl.innerHTML = dato('Institución', prov.banco_prov?.nombre||'—') + dato('Tipo', prov.tipo_cuenta||'—') + dato('N° Cuenta', prov.numero_cuenta||'—');
-    if (bancoInfoEl) bancoInfoEl.style.display = '';
-    tieneDatosBancarios = true;
-  }
-  if (prov.pm_id_banco && pmDatosEl) {
-    pmDatosEl.innerHTML = dato('Banco', prov.banco_pm?.nombre||'—') + dato('C.I./R.I.F', prov.pm_ci||'—') + dato('Celular', prov.pm_celular||'—');
-    if (pmInfoEl) pmInfoEl.style.display = '';
-    tieneDatosBancarios = true;
-  }
-  if (!tieneDatosBancarios && manualInfoEl) manualInfoEl.style.display = '';
+  // Se guarda el proveedor para que la info de pago (Transferencia/Pago
+  // Móvil) se muestre según el Método de Pago que se seleccione abajo,
+  // no de forma estática independiente de la selección.
+  window._execPagoProv = prov;
+  [document.getElementById('exec-pago-banco-info'), document.getElementById('exec-pago-pm-info'), document.getElementById('exec-pago-manual-info')]
+    .forEach(function(el){ if (el) el.style.display = 'none'; });
 
   const elMontoVES = document.getElementById('exec-pago-monto-ves');
   if (elMontoVES) elMontoVES.textContent = '$ ' + fmtBs(montoUSDShow);
@@ -3106,6 +3092,27 @@ function onCambioMetodoEjecucionPago() {
   } else {
     if (cuentaCont) cuentaCont.style.display = 'none';
     if (cuentaHidden) cuentaHidden.value = '';
+  }
+
+  // Mostrar la info de pago del proveedor (Transferencia/Pago Móvil) según
+  // lo que diga el Método de Pago elegido -- no ambas a la vez, ni de forma
+  // estática independiente de la selección.
+  const prov = window._execPagoProv || {};
+  const nombreMetodo = (opt?.text || '').toLowerCase();
+  const bancoInfoEl  = document.getElementById('exec-pago-banco-info');
+  const bancoDatosEl = document.getElementById('exec-pago-banco-datos');
+  const pmInfoEl     = document.getElementById('exec-pago-pm-info');
+  const pmDatosEl    = document.getElementById('exec-pago-pm-datos');
+  const manualInfoEl = document.getElementById('exec-pago-manual-info');
+  [bancoInfoEl, pmInfoEl, manualInfoEl].forEach(function(el){ if (el) el.style.display = 'none'; });
+  if (nombreMetodo.includes('transferencia') && prov.id_banco && bancoDatosEl) {
+    bancoDatosEl.innerHTML = dato('Institución', prov.banco_prov?.nombre||'—') + dato('Tipo', prov.tipo_cuenta||'—') + dato('N° Cuenta', prov.numero_cuenta||'—');
+    if (bancoInfoEl) bancoInfoEl.style.display = '';
+  } else if ((nombreMetodo.includes('móvil') || nombreMetodo.includes('movil')) && prov.pm_id_banco && pmDatosEl) {
+    pmDatosEl.innerHTML = dato('Banco', prov.banco_pm?.nombre||'—') + dato('C.I./R.I.F', prov.pm_ci||'—') + dato('Celular', prov.pm_celular||'—');
+    if (pmInfoEl) pmInfoEl.style.display = '';
+  } else if (nombreMetodo && !nombreMetodo.includes('efectivo') && manualInfoEl) {
+    manualInfoEl.style.display = '';
   }
 
   // Resetear IGTF — sin preselección

@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260715007"></script>
-<script src="js/parametros.js?v=20260715007"></script>
-<script src="js/empresas.js?v=20260715007"></script>
-<script src="js/facturacion.js?v=20260715007"></script>
-<script src="js/inventario.js?v=20260715007"></script>
-<script src="js/contabilidad.js?v=20260715007"></script>
-<script src="js/pagos.js?v=20260715007"></script>
-<script src="js/vehiculos.js?v=20260715007"></script>
-<script src="js/catalogo.js?v=20260715007"></script>
-<script src="js/inventario2.js?v=20260715007"></script>
-<script src="js/ordenes.js?v=20260715007"></script>
+<script src="js/core.js?v=20260715008"></script>
+<script src="js/parametros.js?v=20260715008"></script>
+<script src="js/empresas.js?v=20260715008"></script>
+<script src="js/facturacion.js?v=20260715008"></script>
+<script src="js/inventario.js?v=20260715008"></script>
+<script src="js/contabilidad.js?v=20260715008"></script>
+<script src="js/pagos.js?v=20260715008"></script>
+<script src="js/vehiculos.js?v=20260715008"></script>
+<script src="js/catalogo.js?v=20260715008"></script>
+<script src="js/inventario2.js?v=20260715008"></script>
+<script src="js/ordenes.js?v=20260715008"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4230,18 +4230,6 @@
         </div>
       </div>
 
-      <!-- Datos bancarios del proveedor (informativo, de su ficha) -->
-      <div id="exec-pago-banco-info" style="display:none;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:12px 16px;margin-bottom:16px">
-        <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🏦 Transferencia Bancaria</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px" id="exec-pago-banco-datos"></div>
-      </div>
-      <div id="exec-pago-pm-info" style="display:none;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:12px 16px;margin-bottom:16px">
-        <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">📱 Pago Móvil</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px" id="exec-pago-pm-datos"></div>
-      </div>
-      <div id="exec-pago-manual-info" style="display:none;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--suave)">
-        Este proveedor no tiene datos bancarios ni de Pago Móvil registrados en su ficha.
-      </div>
       <div class="form-grid">
         <!-- Método de Pago — filtrado según lo que el proveedor tenga registrado en su ficha -->
         <div class="form-campo form-full">
@@ -4258,7 +4246,21 @@
           <div id="exec-pago-cuenta-display" style="background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:11px 14px;font-size:13px;color:var(--naranja);font-weight:600">—</div>
           <input type="hidden" id="exec-pago-cuenta-banco">
         </div>
+      </div>
 
+      <!-- Datos de pago del proveedor -- se muestran según el Método de Pago elegido arriba -->
+      <div id="exec-pago-banco-info" style="display:none;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:12px 16px;margin-bottom:16px">
+        <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🏦 Transferencia Bancaria</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px" id="exec-pago-banco-datos"></div>
+      </div>
+      <div id="exec-pago-pm-info" style="display:none;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:12px 16px;margin-bottom:16px">
+        <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">📱 Pago Móvil</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px" id="exec-pago-pm-datos"></div>
+      </div>
+      <div id="exec-pago-manual-info" style="display:none;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--suave)">
+        Este proveedor no tiene datos bancarios ni de Pago Móvil registrados en su ficha.
+      </div>
+      <div class="form-grid">
         <!-- IGTF — solo si aplica (pago en USD, efectivo o proveedor Contribuyente Especial). El IVA ya se contabilizó al crear la Obligación de Pago, no se vuelve a tocar aquí. -->
         <div class="form-campo form-full" id="exec-pago-igtf-wrap" style="display:none;background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
           <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">⚖ IGTF</div>
