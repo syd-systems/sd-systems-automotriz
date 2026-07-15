@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260715015"></script>
-<script src="js/parametros.js?v=20260715015"></script>
-<script src="js/empresas.js?v=20260715015"></script>
-<script src="js/facturacion.js?v=20260715015"></script>
-<script src="js/inventario.js?v=20260715015"></script>
-<script src="js/contabilidad.js?v=20260715015"></script>
-<script src="js/pagos.js?v=20260715015"></script>
-<script src="js/vehiculos.js?v=20260715015"></script>
-<script src="js/catalogo.js?v=20260715015"></script>
-<script src="js/inventario2.js?v=20260715015"></script>
-<script src="js/ordenes.js?v=20260715015"></script>
+<script src="js/core.js?v=20260715016"></script>
+<script src="js/parametros.js?v=20260715016"></script>
+<script src="js/empresas.js?v=20260715016"></script>
+<script src="js/facturacion.js?v=20260715016"></script>
+<script src="js/inventario.js?v=20260715016"></script>
+<script src="js/contabilidad.js?v=20260715016"></script>
+<script src="js/pagos.js?v=20260715016"></script>
+<script src="js/vehiculos.js?v=20260715016"></script>
+<script src="js/catalogo.js?v=20260715016"></script>
+<script src="js/inventario2.js?v=20260715016"></script>
+<script src="js/ordenes.js?v=20260715016"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4247,20 +4247,21 @@
       </div>
 
       <div class="form-grid">
-        <!-- Método de Pago — filtrado según lo que el proveedor tenga registrado en su ficha -->
+        <!-- Método de Pago -- de solo lectura, viene fijo de la ficha del Proveedor -->
         <div class="form-campo form-full">
-          <label>Método de Pago *</label>
-          <select id="exec-pago-metodo" onchange="onCambioMetodoEjecucionPago()"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Cargando... —</option>
-          </select>
+          <label>Método de Pago</label>
+          <div id="exec-pago-metodo-display" style="background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:11px 14px;font-size:13px;color:var(--texto);font-weight:600">—</div>
+          <input type="hidden" id="exec-pago-metodo">
         </div>
 
-        <!-- Cuenta Bancaria — se asigna automáticamente del método -->
+        <!-- Cuenta Contable -- resuelta automáticamente (Moneda + Método de Pago) -->
         <div class="form-campo form-full" id="exec-pago-cuenta-cont" style="display:none">
-          <label>Cuenta Bancaria</label>
+          <label>Cuenta Contable</label>
           <div id="exec-pago-cuenta-display" style="background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:11px 14px;font-size:13px;color:var(--naranja);font-weight:600">—</div>
           <input type="hidden" id="exec-pago-cuenta-banco">
+        </div>
+        <div class="form-campo form-full" id="exec-pago-sin-cuenta-cont" style="display:none">
+          <div class="alerta alerta-error" style="display:block">No hay una Cuenta Contable configurada en Parámetros → Métodos de Pago para esta combinación de Moneda + Método de Pago. Configúrela antes de continuar.</div>
         </div>
       </div>
 

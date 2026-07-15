@@ -2981,57 +2981,63 @@ async function ejecutarPagoCxP(id_cxp) {
   const esUSDCxP = monedaCxP !== 'VES';
   if (igtfWrapEl) igtfWrapEl.style.display = (esUSDCxP && !esInventarioCxP) ? '' : 'none';
 
-  // Cargar Método de Pago -- filtrado según lo que el proveedor tenga
-  // registrado en su ficha (Efectivo siempre disponible; Transferencia solo
-  // si tiene banco; Pago Móvil solo si tiene pago móvil registrado)
-  await _cargarMetodosEjecucionPago(monedaCxP, prov);
+  // Resolver Método de Pago y Cuenta Contable automáticamente -- ya no se
+  // pregunta: el Método de Pago viene fijo de la ficha del Proveedor
+  // (metodos_pago_tipos), combinado con la Moneda de la CxP.
+  await _resolverMetodoPagoEjecucion(monedaCxP, prov);
 
   abrirModal('modal-ejecutar-pago');
 }
 
-async function _cargarMetodosEjecucionPago(moneda, prov) {
-  const selMetodo = document.getElementById('exec-pago-metodo');
-  if (!selMetodo) return;
-  selMetodo.innerHTML = '<option value="">⏳ Cargando...</option>';
+const METODO_PAGO_LABELS = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria' };
+
+async function _resolverMetodoPagoEjecucion(moneda, prov) {
+  const metodoDisplay = document.getElementById('exec-pago-metodo-display');
+  const metodoHidden  = document.getElementById('exec-pago-metodo');
+  const cuentaCont    = document.getElementById('exec-pago-cuenta-cont');
+  const cuentaDisplay = document.getElementById('exec-pago-cuenta-display');
+  const cuentaHidden  = document.getElementById('exec-pago-cuenta-banco');
+  const sinCuentaCont = document.getElementById('exec-pago-sin-cuenta-cont');
+
+  const tipoMetodo = (prov && Array.isArray(prov.metodos_pago_tipos) && prov.metodos_pago_tipos[0]) || '';
+  window._execPagoTipoMetodo = tipoMetodo;
+
+  if (metodoDisplay) metodoDisplay.textContent = METODO_PAGO_LABELS[tipoMetodo] || '— El proveedor no tiene Método de Pago configurado en su ficha —';
+  if (metodoHidden) metodoHidden.value = '';
+  if (cuentaCont) cuentaCont.style.display = 'none';
+  if (cuentaHidden) cuentaHidden.value = '';
+  if (sinCuentaCont) sinCuentaCont.style.display = 'none';
+
+  if (!tipoMetodo) {
+    if (sinCuentaCont) {
+      sinCuentaCont.style.display = '';
+      sinCuentaCont.querySelector('.alerta')?.replaceChildren(document.createTextNode('Este proveedor no tiene un Método de Pago configurado en su ficha. Edítelo antes de continuar.'));
+    }
+    _actualizarInfoPagoProveedor();
+    return;
+  }
+
   try {
     const metodos = await api('param_metodos_pago','GET',null,
-      '?codigo=eq.'+moneda+'&estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,id_cuenta_contable,tipo_canal' + emisorQ());
-
-    // Filtrar según lo que el proveedor tenga marcado en su ficha
-    // (metodos_pago_tipos: EFECTIVO/TRANSFERENCIA/AFILIACION_BANCARIA) --
-    // se compara contra el tipo_canal del catálogo, no contra el nombre.
-    // Si el proveedor todavía no tiene nada configurado (ficha vieja, aún
-    // sin migrar), no se filtra -- se muestran todos para esa moneda.
-    const tiposAceptados = (prov && Array.isArray(prov.metodos_pago_tipos)) ? prov.metodos_pago_tipos : null;
-    const metodosFiltrados = (tiposAceptados && tiposAceptados.length)
-      ? (metodos||[]).filter(function(m){ return tiposAceptados.includes(m.tipo_canal); })
-      : (metodos||[]);
-
-    // Obtener nombres de cuentas
-    const idsCtaStr = metodosFiltrados.map(function(m){ return m.id_cuenta_contable; }).filter(Boolean).join(',');
-    var cuentasMap = {};
-    if (idsCtaStr) {
-      try {
-        const ctas = await api('cont_cuentas','GET',null,'?id_cuenta=in.('+idsCtaStr+')&select=id_cuenta,codigo,nombre');
-        (ctas||[]).forEach(function(c){ cuentasMap[c.id_cuenta] = c; });
-      } catch(e) {}
+      '?codigo=eq.'+moneda+'&tipo_canal=eq.'+tipoMetodo+'&estado=eq.ACTIVO&limit=1&select=id_metodo,id_cuenta_contable' + emisorQ());
+    const m = metodos && metodos[0];
+    if (m && m.id_cuenta_contable) {
+      const ctas = await api('cont_cuentas','GET',null,'?id_cuenta=eq.'+m.id_cuenta_contable+'&select=id_cuenta,codigo,nombre&limit=1');
+      const cta = ctas && ctas[0];
+      if (metodoHidden) metodoHidden.value = m.id_metodo;
+      if (cuentaHidden) cuentaHidden.value = m.id_cuenta_contable;
+      if (cuentaDisplay) cuentaDisplay.textContent = cta ? (cta.codigo + ' — ' + cta.nombre) : '—';
+      if (cuentaCont) cuentaCont.style.display = '';
+    } else if (sinCuentaCont) {
+      sinCuentaCont.style.display = '';
     }
-
-    selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
-      + metodosFiltrados.map(function(m) {
-          const cta = cuentasMap[m.id_cuenta_contable];
-          return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-cuenta-nombre="'+(cta ? cta.codigo+' — '+cta.nombre : '')+'" data-tipo-canal="'+(m.tipo_canal||'')+'">'+m.nombre+'</option>';
-        }).join('');
   } catch(e) {
-    selMetodo.innerHTML = '<option value="">— Sin métodos disponibles —</option>';
+    if (sinCuentaCont) sinCuentaCont.style.display = '';
   }
-  const cuentaCont2 = document.getElementById('exec-pago-cuenta-cont');
-  const cuentaDisplay2 = document.getElementById('exec-pago-cuenta-display');
-  const cuentaHidden2 = document.getElementById('exec-pago-cuenta-banco');
-  if (cuentaCont2) cuentaCont2.style.display = 'none';
-  if (cuentaDisplay2) cuentaDisplay2.textContent = '—';
-  if (cuentaHidden2) cuentaHidden2.value = '';
+
+  _actualizarInfoPagoProveedor();
 }
+
 
 function onCambioIncluyeIvaPago() {
   const incluyeIgtf = document.getElementById('exec-pago-incluye-igtf-si')?.checked;
@@ -3055,9 +3061,7 @@ function onCambioIncluyeIvaPago() {
       // Verificar si aplica IGTF
       let aplicaIGTF = false;
       if (esUSD) {
-        const selMetodo = document.getElementById('exec-pago-metodo');
-        const nombreMetodo = selMetodo?.selectedOptions[0]?.text || '';
-        const esEfectivo = nombreMetodo.toLowerCase().includes('efectivo');
+        const esEfectivo = window._execPagoTipoMetodo === 'EFECTIVO';
         if (esEfectivo) {
           // Efectivo → aplica a todos
           aplicaIGTF = true;
@@ -3077,43 +3081,8 @@ function onCambioIncluyeIvaPago() {
     }).catch(function(){});
 }
 
-function onCambioMetodoEjecucionPago() {
-  const selMetodo = document.getElementById('exec-pago-metodo');
-  const opt = selMetodo?.selectedOptions[0];
-  const cuentaId = opt?.getAttribute('data-cuenta-id') || '';
-  const cuentaNombre = opt?.getAttribute('data-cuenta-nombre') || '—';
-  const cuentaCont = document.getElementById('exec-pago-cuenta-cont');
-  const cuentaDisplay = document.getElementById('exec-pago-cuenta-display');
-  const cuentaHidden = document.getElementById('exec-pago-cuenta-banco');
-
-  if (cuentaId) {
-    if (cuentaCont) cuentaCont.style.display = '';
-    if (cuentaDisplay) cuentaDisplay.textContent = cuentaNombre;
-    if (cuentaHidden) cuentaHidden.value = cuentaId;
-  } else {
-    if (cuentaCont) cuentaCont.style.display = 'none';
-    if (cuentaHidden) cuentaHidden.value = '';
-  }
-
-  // Mostrar la info de pago del proveedor según el TIPO DE CANAL del Método
-  // de Pago elegido (no según el texto de su nombre): solo "Transferencia"
-  // muestra los datos del proveedor (Cuenta Bancaria y/o Pago Móvil); si
-  // tiene ambos, se deja elegir la vía. Efectivo y cualquier otro tipo
-  // (ej. Afiliación Bancaria) no muestran nada, según se definió.
-  const viaSelReset = document.getElementById('exec-pago-via');
-  if (viaSelReset) viaSelReset.value = '';
-  _actualizarInfoPagoProveedor();
-
-  // Resetear IGTF — sin preselección
-  document.querySelectorAll('input[name="exec-pago-incluye-igtf"]').forEach(function(r){ r.checked = false; });
-  document.getElementById('exec-pago-tributos-preview').style.display = 'none';
-  onCambioIncluyeIvaPago();
-}
-
 function _actualizarInfoPagoProveedor() {
-  const selMetodo = document.getElementById('exec-pago-metodo');
-  const opt = selMetodo?.selectedOptions[0];
-  const tipoCanal = opt?.getAttribute('data-tipo-canal') || '';
+  const tipoCanal = window._execPagoTipoMetodo || '';
   const prov = window._execPagoProv || {};
   const viaContEl    = document.getElementById('exec-pago-via-cont');
   const viaSelEl     = document.getElementById('exec-pago-via');
@@ -3223,7 +3192,7 @@ async function confirmarEjecucionPago() {
   try {
     // 1. Cargar CxP -- Fecha de Pago y Moneda vienen de aquí, de solo lectura
     const rows = await api('cont_cxp','GET',null,
-      '?id_cxp=eq.'+id_cxp+'&select=*,cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre),proveedores:id_proveedor(nombre,tipo_contribuyente)');
+      '?id_cxp=eq.'+id_cxp+'&select=*,cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre),proveedores:id_proveedor(nombre,tipo_contribuyente,metodos_pago_tipos)');
     const c = rows && rows[0];
     if (!c) throw new Error('CxP no encontrada.');
 
@@ -3248,9 +3217,8 @@ async function confirmarEjecucionPago() {
     const esInventarioPago = /^ENT-/.test(c.numero_doc || '');
     let aplicaIGTF = false;
     if (esUSD && !esInventarioPago) {
-      const selMetodo = document.getElementById('exec-pago-metodo');
-      const nombreMetodo = selMetodo?.selectedOptions[0]?.text || '';
-      const esEfectivo = nombreMetodo.toLowerCase().includes('efectivo');
+      const tipoMetodoConfirm = (c.proveedores?.metodos_pago_tipos && c.proveedores.metodos_pago_tipos[0]) || '';
+      const esEfectivo = tipoMetodoConfirm === 'EFECTIVO';
       if (esEfectivo) aplicaIGTF = true;
       else aplicaIGTF = c.proveedores?.tipo_contribuyente === 'ESPECIAL';
     }
