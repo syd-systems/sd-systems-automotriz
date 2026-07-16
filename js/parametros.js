@@ -222,25 +222,21 @@ async function abrirParamItem(key, id) {
   } else {
     if (def.tieneOrden) {
       let ordenValor = item && item.orden != null ? item.orden : '';
-      let ordenSoloLectura = false;
+      let ordenSoloLectura = true; // siempre de solo lectura -- crear y editar
       if (!item) {
-        // Registro nuevo -- sugerir el siguiente número libre y bloquearlo,
-        // para que nunca se pueda escribir uno que ya existe.
+        // Registro nuevo -- sugerir el siguiente número libre.
         try {
           const empFiltroOrden = _empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : '';
           const existentes = await api(def.tabla, 'GET', null, '?select=orden&order=orden.desc.nullslast&limit=1' + empFiltroOrden);
           const maxOrden = (existentes && existentes[0] && existentes[0].orden != null) ? existentes[0].orden : 0;
           ordenValor = maxOrden + 1;
-          ordenSoloLectura = true;
         } catch(e) { ordenValor = ''; }
       }
       camposHTML += '<div class="form-campo form-full"><label>Orden (jerarquía: 1 = más alto)</label>'
         + '<input type="number" id="param-item-orden" min="1" step="1" value="' + ordenValor + '"'
-        + (ordenSoloLectura ? ' readonly title="Se asigna automáticamente el siguiente número disponible"' : '')
-        + ' style="background:' + (ordenSoloLectura ? 'var(--gris3)' : 'var(--gris2)') + ';border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%' + (ordenSoloLectura ? ';cursor:not-allowed' : '') + '"></div>';
-      if (ordenSoloLectura) {
-        camposHTML += '<div class="form-campo form-full" style="margin-top:-8px"><div style="font-size:10px;color:var(--suave)">Asignado automáticamente — es el siguiente disponible</div></div>';
-      }
+        + ' readonly title="No editable -- se asigna automáticamente"'
+        + ' style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;cursor:not-allowed"></div>';
+      camposHTML += '<div class="form-campo form-full" style="margin-top:-8px"><div style="font-size:10px;color:var(--suave)">No editable -- se asigna automáticamente el siguiente disponible al crear</div></div>';
     }
     if (def.tieneCodigo) {
       camposHTML += '<div class="form-campo form-full"><label>Código</label><input type="text" id="param-item-codigo" value="' + (item ? (item.codigo||'') : '') + '" placeholder="Ej: 0102" style="text-transform:uppercase"></div>';
