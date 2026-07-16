@@ -170,7 +170,7 @@ async function mostrarTablaParam(key) {
 
     var thead = key === 'areas'
       ? '<th style="width:100px">Código</th><th>Nombre</th><th>Nivel Superior</th><th>Estado</th><th>Acción</th>'
-      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : (def.tieneMoneda ? '<th>Moneda · Nombre</th>' : '<th>Nombre</th>')) + (def.tieneOrden ? '<th style="width:70px">Orden</th>' : '') + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + (def.tieneTipoCanal ? '<th>Modo de Pago</th>' : '') + (def.tieneCategoria ? '<th>Categoría</th>' : '') + (def.tieneCuentaContable ? '<th>Cuenta Contable</th>' : '') + '<th>Estado</th><th>Acción</th>';
+      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : (def.tieneMoneda ? '<th>Moneda · Nombre</th>' : '<th>Nombre</th>')) + (def.tieneOrden ? '<th style="width:110px">Nivel Aprobación</th>' : '') + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + (def.tieneTipoCanal ? '<th>Modo de Pago</th>' : '') + (def.tieneCategoria ? '<th>Categoría</th>' : '') + (def.tieneCuentaContable ? '<th>Cuenta Contable</th>' : '') + '<th>Estado</th><th>Acción</th>';
     var colspan = key === 'areas' ? 5 : (2 + (def.tieneArea?1:0) + (def.tieneTipoSector?1:0));
 
     cont.innerHTML =
@@ -233,7 +233,7 @@ async function abrirParamItem(key, id) {
           ordenValor = maxOrden + 1;
         } catch(e) { ordenValor = ''; }
       }
-      camposHTML += '<div class="form-campo form-full"><label>Orden (jerarquía: 1 = más alto)</label>'
+      camposHTML += '<div class="form-campo form-full"><label>Nivel Aprobación (jerarquía: 1 = más alto)</label>'
         + '<input type="number" id="param-item-orden" min="1" step="1" value="' + ordenValor + '"'
         + ' readonly title="No editable -- se asigna automáticamente"'
         + ' style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;cursor:not-allowed"></div>';
@@ -387,7 +387,7 @@ async function guardarParamItem() {
     errEl.textContent = 'El Modo de Pago es obligatorio.'; errEl.style.display = 'block'; resetBtn(); return;
   }
   if (defCheck?.tieneOrden && !document.getElementById('param-item-orden')?.value) {
-    errEl.textContent = 'El Orden es obligatorio.'; errEl.style.display = 'block'; resetBtn(); return;
+    errEl.textContent = 'El Nivel Aprobación es obligatorio.'; errEl.style.display = 'block'; resetBtn(); return;
   }
 
 
@@ -465,7 +465,7 @@ async function guardarParamItem() {
       if (ordenVal) {
         const existeOrden = await api(def.tabla, 'GET', null, '?orden=eq.' + ordenVal + pkNeq + empFiltro);
         if (existeOrden && existeOrden.length > 0) {
-          errEl.textContent = 'Ya existe otro nivel con el Orden "' + ordenVal + '" (' + (existeOrden[0].nivel_jerarquicos || existeOrden[0].nombre || '') + '). Cada nivel debe tener un número distinto.';
+          errEl.textContent = 'Ya existe otro nivel con el Nivel Aprobación "' + ordenVal + '" (' + (existeOrden[0].nivel_jerarquicos || existeOrden[0].nombre || '') + '). Cada nivel debe tener un número distinto.';
           errEl.style.display = 'block'; resetBtn(); return;
         }
       }
@@ -515,7 +515,7 @@ async function guardarParamItem() {
   } catch(e) {
     const msg = e.message || '';
     if (msg.includes('duplicate key') && msg.includes('uq_niveles_jerarquicos_orden_empresa')) {
-      errEl.textContent = 'Ya existe otro Nivel Jerárquico con ese mismo Orden. Cada nivel debe tener un número distinto.';
+      errEl.textContent = 'Ya existe otro Nivel Jerárquico con ese mismo Nivel Aprobación. Cada nivel debe tener un número distinto.';
     } else if (msg.includes('duplicate key')) {
       errEl.textContent = 'Ya existe un registro con esos mismos datos.';
     } else {
@@ -594,7 +594,7 @@ async function eliminarParamItem() {
     } catch(eValB) { alert('Error al validar: '+eValB.message); return; }
   }
   if (key === 'niveles_jerarquicos') {
-    // Solo se puede eliminar el nivel con el Orden MÁS ALTO (el último
+    // Solo se puede eliminar el nivel con el Nivel Aprobación MÁS ALTO (el último
     // ingresado) -- eliminar uno de en medio dejaría un hueco en la
     // secuencia y volvería ambigua la jerarquía. Los demás solo se editan.
     try {
@@ -602,7 +602,7 @@ async function eliminarParamItem() {
       const maxRows = await api('param_niveles_jerarquicos','GET',null,'?select=id_jerarquicos,orden&order=orden.desc.nullslast&limit=1' + empFiltroDel);
       const maxRow = maxRows && maxRows[0];
       if (!maxRow || maxRow.id_jerarquicos !== parseInt(id)) {
-        alert('Solo se puede eliminar el Nivel Jerárquico con el Orden más alto (el último ingresado). Los niveles anteriores solo se pueden editar, para no dejar huecos en la secuencia.');
+        alert('Solo se puede eliminar el Nivel Jerárquico con el Nivel Aprobación más alto (el último ingresado). Los niveles anteriores solo se pueden editar, para no dejar huecos en la secuencia.');
         return;
       }
     } catch(eValN) { alert('Error al validar: '+eValN.message); return; }
