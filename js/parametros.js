@@ -362,6 +362,9 @@ async function guardarParamItem() {
   if (defCheck?.tieneTipoCanal && !document.getElementById('param-item-tipo-canal')?.value) {
     errEl.textContent = 'El Modo de Pago es obligatorio.'; errEl.style.display = 'block'; resetBtn(); return;
   }
+  if (defCheck?.tieneOrden && !document.getElementById('param-item-orden')?.value) {
+    errEl.textContent = 'El Orden es obligatorio.'; errEl.style.display = 'block'; resetBtn(); return;
+  }
 
 
   // Categorias e inv_articulos_tipo no estan en TABLAS_MAESTRAS
@@ -428,6 +431,19 @@ async function guardarParamItem() {
       if (existeCod && existeCod.length > 0) {
         errEl.textContent = 'Ya existe un registro con el código "' + codigo + '".';
         errEl.style.display = 'block'; resetBtn(); return;
+      }
+    }
+    // Duplicado por Orden (ej. Niveles Jerárquicos -- dos niveles no pueden
+    // compartir el mismo número, o los candados de Nivel Jerárquico no
+    // sabrían distinguir cuál es cuál)
+    if (def.tieneOrden) {
+      const ordenVal = parseInt(document.getElementById('param-item-orden')?.value);
+      if (ordenVal) {
+        const existeOrden = await api(def.tabla, 'GET', null, '?orden=eq.' + ordenVal + pkNeq + empFiltro);
+        if (existeOrden && existeOrden.length > 0) {
+          errEl.textContent = 'Ya existe otro nivel con el Orden "' + ordenVal + '" (' + (existeOrden[0].nivel_jerarquicos || existeOrden[0].nombre || '') + '). Cada nivel debe tener un número distinto.';
+          errEl.style.display = 'block'; resetBtn(); return;
+        }
       }
     }
   } catch(eDup) { console.warn('Error validando duplicado:', eDup); }
