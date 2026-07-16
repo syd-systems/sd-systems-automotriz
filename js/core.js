@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260715039';
+const SYD_VERSION = '20260715040';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -668,6 +668,22 @@ async function iniciarSesion() {
     const u = usuInfo && usuInfo[0];
     if (!u) {
       mostrarError('Error obteniendo datos de usuario. Intente de nuevo.');
+      return;
+    }
+
+    if (u.estado_usuario === 'INACTIVO') {
+      mostrarError('Usuario inactivo. Contacte al administrador.');
+      // Revocar el token recién emitido -- no dejar un JWT válido activo
+      // para una cuenta inactiva, aunque la pantalla de login lo bloquee.
+      try {
+        await fetch(SUPABASE_URL + '/auth/v1/logout', {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT }
+        });
+      } catch(eLogoutInactivo) {}
+      _sessionJWT = null; _sessionRefreshToken = null; _sessionJWTExpiry = null;
+      btn.textContent = 'INGRESAR';
+      btn.disabled = false;
       return;
     }
 
