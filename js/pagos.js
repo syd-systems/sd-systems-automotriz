@@ -3327,7 +3327,11 @@ async function confirmarEjecucionPago() {
       const cxpVES    = montoVESCompra;
       const igtfVES   = r2(igtf * tasaPago);
       const bancoUSD  = total;
-      const bancoVES  = r2(total * tasaPago);
+      // Si la CxP ya está en VES, usar el monto exacto directamente -- NO
+      // recalcular convirtiendo VES→USD→VES, porque ese redondeo de ida y
+      // vuelta reintroducía centavos de diferencia contra la CxP (mismo tipo
+      // de bug ya corregido antes en la creación de la CxP).
+      const bancoVES  = (monedaCxP === 'VES' && igtf === 0) ? cxpVES : r2(total * tasaPago);
 
       const numDoc2 = c.numero_doc || '';
       const cuotaM2 = numDoc2.match(/ENT-(\d+)-C(\d+)/);
