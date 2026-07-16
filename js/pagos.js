@@ -220,8 +220,8 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
 
     let acciones = '';
     if (item._src === 'cxp') {
-      const btnVerPend = puedo('PAGOS','VER') ? '<button onclick="verCxPPendiente('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>' : '';
-      const btnVerPag  = puedo('PAGOS','VER') ? '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>' : '';
+      const btnVerPend = '<button onclick="verCxPPendiente('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
+      const btnVerPag  = '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
       const btnPagar   = puedo('PAGOS','PAGAR') ? '<button onclick="ejecutarPagoCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>' : '';
       const btnAprobar  = puedo('PAGOS','APROBAR') ? '<button onclick="aprobarPagoCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">✅ Aprobar</button>' : '';
       const btnRechazar = puedo('PAGOS','APROBAR') ? '<button onclick="rechazarPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">❌ Rechazar</button>' : '';
@@ -2323,6 +2323,10 @@ async function guardarPago() {
 
 // ── Función centralizada para abrir detalle/pago de CxP ──
 async function verDetalleCxP(id_cxp, modoInicial) {
+  if (!sesionActual?.administrador && !puedo('PAGOS','VER')) {
+    alert('No tiene permiso para ver el detalle de la obligación de pago.');
+    return;
+  }
   try {
     const rows = await api('cont_cxp','GET',null,
       '?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,rif,id_categoria,metodos_pago_tipos,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre)),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre)');
@@ -2708,6 +2712,10 @@ async function _verCxPAutomatica(c, id_cxp) {
 
 
 async function verCxPPendiente(id_cxp) {
+  if (!sesionActual?.administrador && !puedo('PAGOS','VER')) {
+    alert('No tiene permiso para ver el detalle de la obligación de pago.');
+    return;
+  }
   try {
     const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=numero_doc,tipo');
     if (!rows || !rows[0]) return;
