@@ -2380,6 +2380,13 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     const modalidadEl = document.getElementById('cont-pago-cxp-modalidad');
     if (modalidadEl) modalidadEl.textContent = c.esquema_pago === 'CREDITO' ? 'Crédito' : (c.esquema_pago === 'CONTADO' ? 'Contado' : '—');
 
+    const metodoLabels = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria' };
+    const metodoDetEl = document.getElementById('cont-pago-cxp-metodo');
+    if (metodoDetEl) {
+      const metodoActualProv = (Array.isArray(prov.metodos_pago_tipos) && prov.metodos_pago_tipos[0]) || '';
+      metodoDetEl.textContent = metodoLabels[metodoActualProv] || '— No configurado en la ficha —';
+    }
+
     const tasaCreacionEl = document.getElementById('cont-pago-cxp-tasa-creacion');
     if (tasaCreacionEl) tasaCreacionEl.textContent = c.tasa_bcv ? parseFloat(c.tasa_bcv).toFixed(4) : '—';
 
