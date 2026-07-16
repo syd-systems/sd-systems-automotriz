@@ -2318,7 +2318,7 @@ async function guardarPago() {
 async function verDetalleCxP(id_cxp, modoInicial) {
   try {
     const rows = await api('cont_cxp','GET',null,
-      '?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre)),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre)');
+      '?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,rif,id_categoria,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre)),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre)');
     if (!rows || !rows[0]) return;
     const c = rows[0];
 
@@ -2359,6 +2359,36 @@ async function verDetalleCxP(id_cxp, modoInicial) {
 
     const provNomEl = document.getElementById('cont-pago-cxp-prov-nombre');
     if (provNomEl) provNomEl.textContent = prov.nombre || '—';
+
+    const rifDetEl = document.getElementById('cont-pago-cxp-rif');
+    if (rifDetEl) rifDetEl.textContent = prov.rif || '—';
+
+    const catDetEl = document.getElementById('cont-pago-cxp-categoria');
+    if (catDetEl) {
+      catDetEl.textContent = '—';
+      if (prov.id_categoria) {
+        try {
+          const catRows = await api('param_categorias_proveedor','GET',null,'?id=eq.'+prov.id_categoria+'&select=nombre&limit=1');
+          if (catRows && catRows[0]) catDetEl.textContent = catRows[0].nombre;
+        } catch(e) {}
+      }
+    }
+
+    const ctaGastoEl = document.getElementById('cont-pago-cxp-cuenta-gasto');
+    if (ctaGastoEl) ctaGastoEl.textContent = c.cuenta_gasto ? (c.cuenta_gasto.codigo + ' — ' + c.cuenta_gasto.nombre) : '—';
+
+    const modalidadEl = document.getElementById('cont-pago-cxp-modalidad');
+    if (modalidadEl) modalidadEl.textContent = c.esquema_pago === 'CREDITO' ? 'Crédito' : (c.esquema_pago === 'CONTADO' ? 'Contado' : '—');
+
+    const tasaCreacionEl = document.getElementById('cont-pago-cxp-tasa-creacion');
+    if (tasaCreacionEl) tasaCreacionEl.textContent = c.tasa_bcv ? parseFloat(c.tasa_bcv).toFixed(4) : '—';
+
+    const ivaInfoEl = document.getElementById('cont-pago-cxp-iva-info');
+    if (ivaInfoEl) {
+      ivaInfoEl.textContent = c.exento_iva
+        ? 'Exento de IVA'
+        : (c.incluye_iva === true ? 'Incluye IVA (16%)' : c.incluye_iva === false ? 'No incluye IVA (se sumó 16%)' : '—');
+    }
 
     const vencEl = document.getElementById('cont-pago-cxp-vencimiento');
     if (vencEl) vencEl.textContent = c.fecha_vencimiento ? fmtFecha(c.fecha_vencimiento) : '—';
