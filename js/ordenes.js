@@ -855,7 +855,7 @@ async function _guardarOSInterno() {
       observaciones: obs || null,
       tasa_bcv: tasaUSDGuardar,
       total_servicios_usd: totServ,
-      total_artículos_usd: totRep,
+      total_repuestos_usd: totRep,
       total_usd: totalUSDGuardar,
       total_ves: totalBsGuardar,
       id_usuario: sesionActual.correo_usuario,
