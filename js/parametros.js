@@ -16,7 +16,7 @@ const TABLAS_MAESTRAS = [
   { key: 'sexos',              tabla: 'param_sexos',   pk: 'id',              nombre: 'Sexos',                  icono: '⚧',  tieneCodigo: false, tieneArea: false },
   { key: 'cat_prov', tabla: 'param_categorias_proveedor', pk: 'id', nombre: 'Categorías de Proveedores', icono: '🏷', tieneCodigo: true, tieneEstado: true },
   { key: 'bancos',             tabla: 'param_bancos',   pk: 'id',             nombre: 'Instituciones Financieras', icono: '🏦', tieneCodigo: true,  tieneArea: false, tieneTipoSector: true },
-  { key: 'niveles_jerarquicos', tabla: 'param_niveles_jerarquicos', pk: 'id_jerarquicos', nombre: 'Niveles Jerárquicos', icono: '🏅', tieneCodigo: false, tieneArea: false, tieneDescripcion: true, campoNombre: 'nivel_jerarquicos', campoDescripcion: 'descripcion_jerarquicos' },
+  { key: 'niveles_jerarquicos', tabla: 'param_niveles_jerarquicos', pk: 'id_jerarquicos', nombre: 'Niveles Jerárquicos', icono: '🏅', tieneCodigo: false, tieneArea: false, tieneDescripcion: true, tieneOrden: true, campoNombre: 'nivel_jerarquicos', campoDescripcion: 'descripcion_jerarquicos' },
   { key: 'metodos_pago', tabla: 'param_metodos_pago', pk: 'id_metodo', nombre: 'Métodos de Pago', icono: '💳', tieneMoneda: true, tieneCuentaContable: true, tieneTipoCanal: true, nombreAutomatico: true },
 ];
 
@@ -257,6 +257,9 @@ async function abrirParamItem(key, id) {
         + '<option value="AFILIACION_BANCARIA"' + (item && item.tipo_canal === 'AFILIACION_BANCARIA' ? ' selected' : '') + '>Afiliación Bancaria</option>'
         + '</select></div>';
     }
+    if (def.tieneOrden) {
+      camposHTML += '<div class="form-campo form-full"><label>Orden (jerarquía: 1 = más alto)</label><input type="number" id="param-item-orden" min="1" step="1" value="' + (item && item.orden != null ? item.orden : '') + '" placeholder="Ej. 1, 2, 3..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"></div>';
+    }
     if (def.tieneArea) {
       const opcAreas = _paramAreasCache.map(function(a) {
         return '<option value="' + a.id + '"' + (item && item.id_area === a.id ? ' selected' : '') + '>' + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>';
@@ -442,6 +445,7 @@ async function guardarParamItem() {
     if (def.tieneDescripcion)     datos[def.campoDescripcion || 'descripcion'] = document.getElementById('param-item-descripcion')?.value.trim() || null;
     if (def.tieneTipoSector)      datos.tipo_sector        = document.getElementById('param-item-tipo-sector')?.value || null;
     if (def.tieneTipoCanal)       datos.tipo_canal         = document.getElementById('param-item-tipo-canal')?.value || null;
+    if (def.tieneOrden)           datos.orden              = parseInt(document.getElementById('param-item-orden')?.value) || null;
     if (def.tieneCategoria)       datos.id_categoria       = parseInt(document.getElementById('param-item-categoria')?.value) || null;
     if (def.tieneCuentaContable)  datos.id_cuenta_contable = parseInt(document.getElementById('param-item-cuenta-contable')?.value) || null;
     if (def.tieneEmisor)          datos.id_empresa         = _empresaActiva?.id_empresa || null;
@@ -657,7 +661,7 @@ async function cargarParamEmpleados() {
       api('param_estados_civiles',    'GET', null, '?estado=eq.ACTIVO&order=nombre.asc'),
       api('param_sexos',              'GET', null, '?estado=eq.ACTIVO&order=nombre.asc'),
       api('param_bancos',             'GET', null, '?estado=eq.ACTIVO&order=nombre.asc'),
-      api('param_niveles_jerarquicos','GET', null, '?estado=eq.ACTIVO&order=nivel_jerarquicos.asc'),
+      api('param_niveles_jerarquicos','GET', null, '?estado=eq.ACTIVO&order=orden.asc.nullslast,nivel_jerarquicos.asc'),
     ]);
     _empParamCache = { areas, cargos, contratos, salarios, calculos, frecuencias, niveles, civiles, sexos, bancos, nivelesJer };
   } catch(e) { console.error('Error cargando parámetros empleados:', e); }

@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260715025';
+const SYD_VERSION = '20260715026';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -149,10 +149,10 @@ const PERMISOS_POR_MODULO = {
   ],
   PAGOS: [
     { accion: 'VER',      label: 'Ver obligaciones de pago' },
+    { accion: 'PAGAR',    label: 'Ejecutar pago a proveedor' },
     { accion: 'CREAR',    label: 'Registrar nueva obligación (CxP manual)' },
     { accion: 'EDITAR',   label: 'Editar obligación pendiente' },
-    { accion: 'ELIMINAR', label: 'Eliminar obligación pendiente' },
-    { accion: 'PAGAR',    label: 'Ejecutar pago a proveedor' },
+    { accion: 'ELIMINAR', label: 'Anular obligación pendiente' },
     { accion: 'APROBAR',  label: '🔒 Aprobar pago' },
     { accion: 'ANULAR',   label: '🔒 Anular pago realizado' },
   ],
@@ -193,6 +193,33 @@ var permisosActuales = {}; // { MODULO: ['ACCION1','ACCION2'] }
 function puedo(modulo, accion) {
   if (sesionActual && sesionActual.administrador) return true;
   return permisosActuales[modulo] && permisosActuales[modulo].includes(accion);
+}
+
+// Cache del "orden" jerárquico del usuario en sesión (1 = más alto, ej.
+// Estratégico). Se resuelve una vez por sesión vía empleados.correo →
+// id_nivel_jerarquico → param_niveles_jerarquicos.orden
+let _ordenNivelSesion = undefined; // undefined = aún no resuelto, null = sin nivel asignado
+
+async function _resolverOrdenNivelSesion() {
+  if (_ordenNivelSesion !== undefined) return _ordenNivelSesion;
+  try {
+    if (sesionActual?.administrador) { _ordenNivelSesion = 0; return _ordenNivelSesion; } // admin siempre pasa
+    const empRows = await api('empleados','GET',null,
+      '?correo=eq.'+encodeURIComponent(sesionActual?.correo_usuario||'')+'&select=id_nivel_jerarquico&limit=1');
+    const idNivel = empRows && empRows[0] ? empRows[0].id_nivel_jerarquico : null;
+    if (!idNivel) { _ordenNivelSesion = null; return null; }
+    const nivRows = await api('param_niveles_jerarquicos','GET',null,'?id_jerarquicos=eq.'+idNivel+'&select=orden&limit=1');
+    _ordenNivelSesion = nivRows && nivRows[0] ? nivRows[0].orden : null;
+  } catch(e) { _ordenNivelSesion = null; }
+  return _ordenNivelSesion;
+}
+
+// true si el usuario tiene el orden requerido O MEJOR (número menor = más alto)
+async function tieneNivelMinimo(ordenRequerido) {
+  if (sesionActual?.administrador) return true;
+  const orden = await _resolverOrdenNivelSesion();
+  if (orden == null) return false;
+  return orden <= ordenRequerido;
 }
 
 // ─── API SUPABASE ───
@@ -974,6 +1001,7 @@ function limpiarSesionLocal() {
   _sessionPassword  = null;
   _empresaActiva    = null;
   _empresasUsuario  = [];
+  _ordenNivelSesion = undefined;
   cerrarTodosLosModales();
   detenerTimerInactividad();
   sesionActual     = null;

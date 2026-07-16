@@ -1468,6 +1468,7 @@ async function contGuardarPagoCxp() {
 
 async function anularPagoEjecutado(id_cxp) {
   if (!puedo('PAGOS','ANULAR')) { alert('No tiene permiso para anular pagos.'); return; }
+  if (!(await tieneNivelMinimo(1))) { alert('Esta acción requiere Nivel Jerárquico Estratégico.'); return; }
 
   const resultado = await new Promise(function(resolve) {
     const div = document.createElement('div');
@@ -1529,7 +1530,7 @@ async function anularPagoEjecutado(id_cxp) {
 }
 
 async function anularPagoCxP(id_cxp) {
-  if (!puedo('PAGOS','ANULAR') && !sesionActual?.administrador) { alert('No tiene permiso para anular obligaciones de pago.'); return; }
+  if (!puedo('PAGOS','ELIMINAR') && !sesionActual?.administrador) { alert('No tiene permiso para anular obligaciones de pago.'); return; }
 
   const clave = await new Promise(function(resolve) {
     const div = document.createElement('div');
@@ -1802,7 +1803,7 @@ async function verPagoCxP(id_cxp) {
       const btnEditar = (esManual && est === 'PENDIENTE' && puedo('PAGOS','EDITAR'))
         ? '<button class="btn-naranja" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
       const btnAnular = (esManual && est !== 'PAGADA')
-        ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 ELIMINAR</button>' : '';
+        ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 Anular</button>' : '';
       footer.innerHTML = btnEditar + btnAnular
         + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\');cargarPagos()">RETORNAR</button>';
     }
@@ -2564,8 +2565,8 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       const est = c.estado || '';
       const btnEditar = (est === 'PENDIENTE' && puedo('PAGOS','EDITAR'))
         ? '<button class="btn-naranja" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
-      const btnAnular = (est === 'PENDIENTE' && (puedo('PAGOS','ELIMINAR') || puedo('PAGOS','EDITAR') || sesionActual?.administrador))
-        ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 ELIMINAR</button>' : '';
+      const btnAnular = (est === 'PENDIENTE' && (puedo('PAGOS','ELIMINAR') || sesionActual?.administrador))
+        ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 Anular</button>' : '';
       const btnReversar = (est === 'PAGADA' && puedo('PAGOS','ANULAR'))
         ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Ejecutado</button>' : '';
       footerPend.innerHTML = btnEditar + btnAnular + btnReversar
@@ -2723,8 +2724,9 @@ async function verCxPPendiente(id_cxp) {
       return;
     }
 
-    // CxP manual — usar el mismo flujo (ya corregido) de crear/editar
-    await editarCxPManual(id_cxp);
+    // CxP manual — abrir primero el Detalle de solo lectura; desde ahí, el
+    // botón "✏️ Editar" (si el usuario tiene permiso) lleva al formulario editable.
+    await verDetalleCxP(id_cxp);
   } catch(e) { alert('Error: '+e.message); console.error(e); }
 }
 
@@ -2808,6 +2810,7 @@ async function eliminarCxP(id_cxp) {
 
 async function aprobarPagoCxP(id_cxp) {
   if (!puedo('PAGOS','APROBAR')) { alert('Sin permiso para aprobar.'); return; }
+  if (!(await tieneNivelMinimo(2))) { alert('Esta acción requiere Nivel Jerárquico Táctico o Estratégico.'); return; }
   if (!confirm('Aprobar este pago y generar el asiento contable?')) return;
   try {
     const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre)');
@@ -2928,6 +2931,7 @@ async function aprobarPagoCxP(id_cxp) {
 
 async function rechazarPagoCxP(id_cxp) {
   if (!puedo('PAGOS','APROBAR')) { alert('Sin permiso para rechazar.'); return; }
+  if (!(await tieneNivelMinimo(2))) { alert('Esta acción requiere Nivel Jerárquico Táctico o Estratégico.'); return; }
   const motivo = prompt('Motivo del rechazo:');
   if (!motivo || !motivo.trim()) return;
   try {
@@ -3222,6 +3226,9 @@ async function confirmarEjecucionPago() {
   const btnConf = document.getElementById('btn-confirmar-pago');
   const resetBtn = function() { if (btnConf) { btnConf.disabled = false; btnConf.textContent = '💳 Confirmar Pago'; } };
   errEl.style.display = 'none';
+
+  if (!puedo('PAGOS','APROBAR')) { errEl.textContent = 'No tiene permiso para aprobar/confirmar pagos.'; errEl.style.display = 'block'; resetBtn(); return; }
+  if (!(await tieneNivelMinimo(2))) { errEl.textContent = 'Esta acción requiere Nivel Jerárquico Táctico o Estratégico.'; errEl.style.display = 'block'; resetBtn(); return; }
 
   if (!idMetodo)    { errEl.textContent = 'Seleccione el método de pago.';          errEl.style.display = 'block'; resetBtn(); return; }
   if (!idCtaBanco)  { errEl.textContent = 'El método seleccionado no tiene cuenta contable asignada.'; errEl.style.display = 'block'; resetBtn(); return; }
