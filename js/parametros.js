@@ -319,7 +319,15 @@ async function abrirParamItem(key, id) {
   window._paramId  = id;
   const btnElimP = document.getElementById('modal-param-eliminar');
   const btnGuardP = document.getElementById('modal-param-guardar');
-  if (btnElimP) btnElimP.style.display = (id && puedo('PARAMETROS','EDITAR')) ? '' : 'none';
+  let puedeEliminarNivel = true;
+  if (id && key === 'niveles_jerarquicos') {
+    try {
+      const empFiltroMax = _empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : '';
+      const maxRowsV = await api('param_niveles_jerarquicos','GET',null,'?select=id_jerarquicos&order=orden.desc.nullslast&limit=1' + empFiltroMax);
+      puedeEliminarNivel = !!(maxRowsV && maxRowsV[0] && maxRowsV[0].id_jerarquicos === parseInt(id));
+    } catch(eMaxV) { puedeEliminarNivel = false; }
+  }
+  if (btnElimP) btnElimP.style.display = (id && puedo('PARAMETROS','EDITAR') && puedeEliminarNivel) ? '' : 'none';
   if (btnGuardP) btnGuardP.style.display = puedo('PARAMETROS','EDITAR') ? '' : 'none';
   const btnGR = document.getElementById('modal-param-guardar'); if (btnGR) { btnGR.disabled = false; btnGR.textContent = 'GUARDAR'; }
   abrirModal('modal-param');
@@ -583,6 +591,20 @@ async function eliminarParamItem() {
       var ctsB = await api('empleados_cuentas_bancarias','GET',null,'?id_banco=eq.'+id+'&select=id&limit=1') || [];
       if (ctsB.length) { alert('No se puede eliminar: este banco está siendo usado en cuentas bancarias.'); return; }
     } catch(eValB) { alert('Error al validar: '+eValB.message); return; }
+  }
+  if (key === 'niveles_jerarquicos') {
+    // Solo se puede eliminar el nivel con el Orden MÁS ALTO (el último
+    // ingresado) -- eliminar uno de en medio dejaría un hueco en la
+    // secuencia y volvería ambigua la jerarquía. Los demás solo se editan.
+    try {
+      const empFiltroDel = _empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : '';
+      const maxRows = await api('param_niveles_jerarquicos','GET',null,'?select=id_jerarquicos,orden&order=orden.desc.nullslast&limit=1' + empFiltroDel);
+      const maxRow = maxRows && maxRows[0];
+      if (!maxRow || maxRow.id_jerarquicos !== parseInt(id)) {
+        alert('Solo se puede eliminar el Nivel Jerárquico con el Orden más alto (el último ingresado). Los niveles anteriores solo se pueden editar, para no dejar huecos en la secuencia.');
+        return;
+      }
+    } catch(eValN) { alert('Error al validar: '+eValN.message); return; }
   }
   const def = TABLAS_MAESTRAS.find(function(t){ return t.key === key; });
   if (!def) return;
