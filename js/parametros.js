@@ -85,7 +85,7 @@ async function mostrarTablaParam(key) {
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
 
-    var orderCampo = key === 'areas' ? 'codigo.asc,nombre.asc' : ((def.campoNombre || 'nombre') + '.asc');
+    var orderCampo = key === 'areas' ? 'codigo.asc,nombre.asc' : (def.tieneOrden ? 'orden.asc.nullslast' : (def.campoNombre || 'nombre') + '.asc');
     var query = key === 'areas' ? '?order=codigo.asc,nombre.asc&select=*' : '?order=' + orderCampo + '&select=*';
     var items = await api(def.tabla, 'GET', null, query);
 
@@ -154,6 +154,7 @@ async function mostrarTablaParam(key) {
         const descMostrar   = def.tieneDescripcion ? (item[def.campoDescripcion || 'descripcion'] || item.descripcion || '') : '';
         return '<tr>'
           + '<td style="font-size:13px;font-weight:500">' + (item.codigo ? '<span style="font-family:var(--font-mono);color:var(--naranja);margin-right:8px">' + item.codigo + '</span>' : '') + nombreMostrar + (descMostrar ? '<div style="font-size:11px;color:var(--suave);margin-top:2px">' + descMostrar + '</div>' : '') + '</td>'
+          + (def.tieneOrden ? '<td style="font-family:var(--font-mono);font-weight:700;color:var(--naranja);text-align:center">' + (item.orden != null ? item.orden : '—') + '</td>' : '')
           + (def.tieneArea ? '<td style="font-size:12px;color:var(--suave)">' + (areasMap[item.id_area] ? areasMap[item.id_area].nombre : '—') + '</td>' : '')
           + (def.tieneTipoSector ? '<td style="font-size:12px;color:var(--suave)">' + (item.tipo_sector || '—') + '</td>' : '')
           + (def.tieneTipoCanal ? '<td style="font-size:12px;color:var(--suave)">' + ({EFECTIVO:'Efectivo',TRANSFERENCIA:'Transferencia',AFILIACION_BANCARIA:'Afiliación Bancaria'}[item.tipo_canal] || '—') + '</td>' : '')
@@ -169,7 +170,7 @@ async function mostrarTablaParam(key) {
 
     var thead = key === 'areas'
       ? '<th style="width:100px">Código</th><th>Nombre</th><th>Nivel Superior</th><th>Estado</th><th>Acción</th>'
-      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : (def.tieneMoneda ? '<th>Moneda · Nombre</th>' : '<th>Nombre</th>')) + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + (def.tieneTipoCanal ? '<th>Modo de Pago</th>' : '') + (def.tieneCategoria ? '<th>Categoría</th>' : '') + (def.tieneCuentaContable ? '<th>Cuenta Contable</th>' : '') + '<th>Estado</th><th>Acción</th>';
+      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : (def.tieneMoneda ? '<th>Moneda · Nombre</th>' : '<th>Nombre</th>')) + (def.tieneOrden ? '<th style="width:70px">Orden</th>' : '') + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + (def.tieneTipoCanal ? '<th>Modo de Pago</th>' : '') + (def.tieneCategoria ? '<th>Categoría</th>' : '') + (def.tieneCuentaContable ? '<th>Cuenta Contable</th>' : '') + '<th>Estado</th><th>Acción</th>';
     var colspan = key === 'areas' ? 5 : (2 + (def.tieneArea?1:0) + (def.tieneTipoSector?1:0));
 
     cont.innerHTML =
