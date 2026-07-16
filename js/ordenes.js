@@ -365,6 +365,10 @@ async function abrirNuevaOS() {
 
 // ─── ABRIR EDITAR OS ───
 async function abrirEditarOS(id) {
+  if (!sesionActual?.administrador && !puedo('SERVICIOS','EDITAR')) {
+    alert('No tiene permiso para editar órdenes de servicio.');
+    return;
+  }
   setTimeout(function() {
     const body = document.querySelector('#modal-os .modal-body');
     if (body) body.scrollTop = 0;
@@ -1224,6 +1228,23 @@ async function verFichaOS(id) {
       btnReabrir.style.display = '';
     } else {
       btnReabrir.style.display = 'none';
+    }
+    // Botón Anular (siempre visible si la OS no está ya anulada; el permiso
+    // se valida dentro de anularOS() al hacer clic, igual que en el resto
+    // de módulos)
+    let btnAnularOS = document.getElementById('ficha-os-anular-btn');
+    if (!btnAnularOS) {
+      btnAnularOS = document.createElement('button');
+      btnAnularOS.id = 'ficha-os-anular-btn';
+      btnAnularOS.className = 'btn-peligro';
+      document.getElementById('ficha-os-editar-btn').parentNode.insertBefore(btnAnularOS, document.getElementById('ficha-os-editar-btn'));
+    }
+    if (o.estado !== 'ANULADA') {
+      btnAnularOS.textContent = '🗑 Anular OS';
+      btnAnularOS.setAttribute('onclick', 'cerrarModal(\'modal-ficha-os\');anularOS(' + id + ',\'' + (o.numero_os || '') + '\')');
+      btnAnularOS.style.display = '';
+    } else {
+      btnAnularOS.style.display = 'none';
     }
     // Mostrar Eliminar si total USD y Bs = 0
   const btnElimOS = document.getElementById('ficha-os-eliminar-btn');
