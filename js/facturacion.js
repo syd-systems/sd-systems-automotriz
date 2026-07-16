@@ -863,7 +863,7 @@ async function cargarEmpresasAccesoModal(correo) {
   const grid = document.getElementById('empresas-acceso-grid');
   if (!grid) return;
   try {
-    const todasEmisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre_articulo.asc&select=id_empresa,nombre,rif');
+    const todasEmisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id_empresa,nombre,rif');
     let asignadas = new Set();
     if (correo) {
       const ues = await api('usuarios_empresas','GET',null,

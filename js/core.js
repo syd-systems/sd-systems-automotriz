@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260715037';
+const SYD_VERSION = '20260715038';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -743,11 +743,26 @@ async function iniciarSesion() {
           _empresasUsuario = todasEmisores.filter(function(e){ return idsPermitidos.has(e.id_empresa); });
         } catch(eUE) { _empresasUsuario = []; }
 
-        // Empresa activa = empresa de la ficha de empleado
-        const empData = await api('empleados','GET',null,
-          '?correo=eq.'+encodeURIComponent(correo)+'&select=id_empresa&limit=1');
-        if (empData && empData.length && empData[0].id_empresa) {
-          _empresaActiva = todasEmisores.find(function(e){ return e.id_empresa === empData[0].id_empresa; }) || null;
+        // Empresa activa = empresa de la ficha de empleado. Se usa una
+        // función RPC dedicada (security definer) en vez de leer la tabla
+        // empleados directamente -- así no depende del permiso del módulo
+        // EMPLEADOS (que no debería aplicar para esto), y sin exponer el
+        // resto de la ficha (salario, evaluaciones, etc.), solo el id_empresa.
+        let idEmpresaEmpleado = null;
+        try {
+          const respEmp = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_mi_empresa', {
+            method: 'POST',
+            headers: {
+              'apikey':        SUPABASE_KEY,
+              'Authorization': 'Bearer ' + _sessionJWT,
+              'Content-Type':  'application/json'
+            },
+            body: JSON.stringify({})
+          });
+          if (respEmp.ok) idEmpresaEmpleado = await respEmp.json();
+        } catch(eRpcEmp) { console.warn('Error obteniendo empresa del empleado:', eRpcEmp); }
+        if (idEmpresaEmpleado) {
+          _empresaActiva = todasEmisores.find(function(e){ return e.id_empresa === idEmpresaEmpleado; }) || null;
         }
         if (!_empresaActiva) {
           mostrarError('No tiene empresa asignada. Contacte al administrador.');
