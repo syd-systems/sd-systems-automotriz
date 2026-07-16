@@ -865,16 +865,27 @@ async function cargarEmpresasAccesoModal(correo) {
   try {
     const todasEmisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id_empresa,nombre,rif');
     let asignadas = new Set();
+    let idEmpresaNomina = null;
     if (correo) {
       const ues = await api('usuarios_empresas','GET',null,
         '?correo_usuario=eq.'+encodeURIComponent(correo)+'&activo=eq.true&select=id_empresa');
       ues.forEach(function(u){ asignadas.add(u.id_empresa); });
+      // La empresa donde está registrado como empleado (nómina) debe verse
+      // marcada por defecto, aunque todavía no tenga fila en usuarios_empresas
+      try {
+        const empRows = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correo)+'&select=id_empresa&limit=1');
+        if (empRows && empRows[0] && empRows[0].id_empresa) {
+          idEmpresaNomina = empRows[0].id_empresa;
+          asignadas.add(idEmpresaNomina);
+        }
+      } catch(eEmpN) { console.warn('Error obteniendo empresa de nómina:', eEmpN); }
     }
     grid.innerHTML = todasEmisores.map(function(e) {
       const checked = (!correo || asignadas.has(e.id_empresa)) ? 'checked' : '';
+      const esNomina = e.id_empresa === idEmpresaNomina;
       return '<label style="display:flex;align-items:center;gap:8px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:8px 12px;cursor:pointer;font-size:12px">'
         + '<input type="checkbox" value="'+e.id_empresa+'" '+checked+' class="emp-acceso-check" style="accent-color:var(--naranja);width:15px;height:15px">'
-        + '<div><div style="font-weight:600">'+e.nombre+'</div>'
+        + '<div><div style="font-weight:600">'+e.nombre+(esNomina ? ' <span style="font-size:10px;color:var(--naranja);font-weight:400">(Empresa de Nómina)</span>' : '')+'</div>'
         + (e.rif ? '<div style="font-size:10px;color:var(--suave)">'+e.rif+'</div>' : '')
         + '</div></label>';
     }).join('');
