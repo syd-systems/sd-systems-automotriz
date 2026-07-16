@@ -2318,7 +2318,7 @@ async function guardarPago() {
 async function verDetalleCxP(id_cxp, modoInicial) {
   try {
     const rows = await api('cont_cxp','GET',null,
-      '?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,rif,id_categoria,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre)),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre)');
+      '?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,rif,id_categoria,metodos_pago_tipos,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre)),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre)');
     if (!rows || !rows[0]) return;
     const c = rows[0];
 
@@ -2425,7 +2425,10 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       } else if (detCompCont) detCompCont.style.display = 'none';
     }
 
-    // ── Sección 3: Datos bancarios del proveedor ──
+    // ── Sección 3: Datos bancarios del proveedor -- solo si "Transferencia"
+    // sigue siendo el Método de Pago ACTUAL del proveedor (no solo porque el
+    // dato exista guardado; el proveedor pudo haber cambiado de método
+    // después de crear esta CxP, y no debe mostrarse info desactualizada) ──
     const bancoInfo  = document.getElementById('cont-pago-banco-info');
     const bancoDatos = document.getElementById('cont-pago-banco-datos');
     const pmInfo     = document.getElementById('cont-pago-pm-info');
@@ -2433,15 +2436,16 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     const manualInfo = document.getElementById('cont-pago-manual-info');
     [bancoInfo, pmInfo, manualInfo].forEach(function(el){ if (el) el.style.display = 'none'; });
 
-    if (prov.id_banco && bancoDatos) {
+    const aceptaTransferenciaHoy = Array.isArray(prov.metodos_pago_tipos) && prov.metodos_pago_tipos.includes('TRANSFERENCIA');
+    if (aceptaTransferenciaHoy && prov.id_banco && bancoDatos) {
       bancoDatos.innerHTML = dato('Institución', prov.banco_prov?.nombre||'—') + dato('Tipo', prov.tipo_cuenta||'—') + dato('N° Cuenta', prov.numero_cuenta||'—');
       if (bancoInfo) bancoInfo.style.display = '';
     }
-    if (prov.pm_id_banco && pmDatos) {
+    if (aceptaTransferenciaHoy && prov.pm_id_banco && pmDatos) {
       pmDatos.innerHTML = dato('Banco', prov.banco_pm?.nombre||'—') + dato('C.I./R.I.F', prov.pm_ci||'—') + dato('Celular', prov.pm_celular||'—');
       if (pmInfo) pmInfo.style.display = '';
     }
-    if (!prov.id_banco && !prov.pm_id_banco && est === 'PENDIENTE') {
+    if (!aceptaTransferenciaHoy && est === 'PENDIENTE') {
       if (manualInfo) manualInfo.style.display = '';
     }
 
