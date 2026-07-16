@@ -489,7 +489,14 @@ async function guardarParamItem() {
     cerrarModal('modal-param');
     await mostrarTablaParam(key);
   } catch(e) {
-    errEl.textContent = 'Error: ' + e.message;
+    const msg = e.message || '';
+    if (msg.includes('duplicate key') && msg.includes('uq_niveles_jerarquicos_orden_empresa')) {
+      errEl.textContent = 'Ya existe otro Nivel Jerárquico con ese mismo Orden. Cada nivel debe tener un número distinto.';
+    } else if (msg.includes('duplicate key')) {
+      errEl.textContent = 'Ya existe un registro con esos mismos datos.';
+    } else {
+      errEl.textContent = 'Error: ' + msg;
+    }
     errEl.style.display = 'block';
     resetBtn();
   }
