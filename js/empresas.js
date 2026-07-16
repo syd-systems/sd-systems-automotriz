@@ -40,6 +40,10 @@ async function renderEmisores() {
 }
 
 async function verFichaEmisor(id) {
+  if (!sesionActual?.administrador && !puedo('EMISORES','VER')) {
+    alert('No tiene permiso para ver la ficha de la empresa.');
+    return;
+  }
   const e = emisoresCache.find(function(x) { return x.id_empresa === id; });
   if (!e) return;
   const tipoLabel = { 'ORDINARIO':'Contribuyente Ordinario','ESPECIAL':'Contribuyente Especial','FORMAL':'Contribuyente Formal' };
