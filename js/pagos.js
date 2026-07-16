@@ -1468,7 +1468,7 @@ async function contGuardarPagoCxp() {
 
 async function anularPagoEjecutado(id_cxp) {
   if (!puedo('PAGOS','ANULAR')) { alert('No tiene permiso para anular pagos.'); return; }
-  if (!(await tieneNivelMinimo(1))) { alert('Esta acción requiere Nivel Jerárquico Estratégico.'); return; }
+  if (!(await tieneNivelMinimo(1))) { alert('Esta acción requiere Firma de Aprobación Nivel 1.'); return; }
 
   const resultado = await new Promise(function(resolve) {
     const div = document.createElement('div');
@@ -2810,7 +2810,7 @@ async function eliminarCxP(id_cxp) {
 
 async function aprobarPagoCxP(id_cxp) {
   if (!puedo('PAGOS','APROBAR')) { alert('Sin permiso para aprobar.'); return; }
-  if (!(await tieneNivelMinimo(2))) { alert('Esta acción requiere Nivel Jerárquico Táctico o Estratégico.'); return; }
+  if (!(await tieneNivelMinimo(2))) { alert('Esta acción requiere Firma de Aprobación Nivel 1 o Nivel 2.'); return; }
   if (!confirm('Aprobar este pago y generar el asiento contable?')) return;
   try {
     const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre)');
@@ -2931,7 +2931,7 @@ async function aprobarPagoCxP(id_cxp) {
 
 async function rechazarPagoCxP(id_cxp) {
   if (!puedo('PAGOS','APROBAR')) { alert('Sin permiso para rechazar.'); return; }
-  if (!(await tieneNivelMinimo(2))) { alert('Esta acción requiere Nivel Jerárquico Táctico o Estratégico.'); return; }
+  if (!(await tieneNivelMinimo(2))) { alert('Esta acción requiere Firma de Aprobación Nivel 1 o Nivel 2.'); return; }
   const motivo = prompt('Motivo del rechazo:');
   if (!motivo || !motivo.trim()) return;
   try {
@@ -3228,7 +3228,7 @@ async function confirmarEjecucionPago() {
   errEl.style.display = 'none';
 
   if (!puedo('PAGOS','APROBAR')) { errEl.textContent = 'No tiene permiso para aprobar/confirmar pagos.'; errEl.style.display = 'block'; resetBtn(); return; }
-  if (!(await tieneNivelMinimo(2))) { errEl.textContent = 'Esta acción requiere Nivel Jerárquico Táctico o Estratégico.'; errEl.style.display = 'block'; resetBtn(); return; }
+  if (!(await tieneNivelMinimo(2))) { errEl.textContent = 'Esta acción requiere Firma de Aprobación Nivel 1 o Nivel 2.'; errEl.style.display = 'block'; resetBtn(); return; }
 
   if (!idMetodo)    { errEl.textContent = 'Seleccione el método de pago.';          errEl.style.display = 'block'; resetBtn(); return; }
   if (!idCtaBanco)  { errEl.textContent = 'El método seleccionado no tiene cuenta contable asignada.'; errEl.style.display = 'block'; resetBtn(); return; }
