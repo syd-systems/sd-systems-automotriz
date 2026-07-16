@@ -133,6 +133,10 @@ async function renderCatalogo(filtro, categoria) {
 }
 
 function verFichaCatalogo(id) {
+  if (!sesionActual?.administrador && !puedo('CATALOGO','VER')) {
+    alert('No tiene permiso para ver la ficha del servicio.');
+    return;
+  }
   const s = catalogoCache.find(function(x) { return x.id_servicio === parseInt(id); });
   if (!s) { console.log('No encontrado id:', id, 'cache:', catalogoCache.length); return; }
 
