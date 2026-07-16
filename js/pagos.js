@@ -34,6 +34,11 @@ async function renderPagos() {
       '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
     return;
   }
+  if (!sesionActual?.administrador && !puedo('PAGOS','VER')) {
+    document.getElementById('contenido-principal').innerHTML =
+      '<div class="alerta alerta-error" style="display:block">No tiene permiso para ver las Obligaciones de Pago. Solicite el acceso "Ver obligaciones de pago" a un administrador.</div>';
+    return;
+  }
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando pagos...</div>';
   try {
