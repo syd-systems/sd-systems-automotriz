@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260715053"></script>
-<script src="js/parametros.js?v=20260715053"></script>
-<script src="js/empresas.js?v=20260715053"></script>
-<script src="js/facturacion.js?v=20260715053"></script>
-<script src="js/inventario.js?v=20260715053"></script>
-<script src="js/contabilidad.js?v=20260715053"></script>
-<script src="js/pagos.js?v=20260715053"></script>
-<script src="js/vehiculos.js?v=20260715053"></script>
-<script src="js/catalogo.js?v=20260715053"></script>
-<script src="js/inventario2.js?v=20260715053"></script>
-<script src="js/ordenes.js?v=20260715053"></script>
+<script src="js/core.js?v=20260715054"></script>
+<script src="js/parametros.js?v=20260715054"></script>
+<script src="js/empresas.js?v=20260715054"></script>
+<script src="js/facturacion.js?v=20260715054"></script>
+<script src="js/inventario.js?v=20260715054"></script>
+<script src="js/contabilidad.js?v=20260715054"></script>
+<script src="js/pagos.js?v=20260715054"></script>
+<script src="js/vehiculos.js?v=20260715054"></script>
+<script src="js/catalogo.js?v=20260715054"></script>
+<script src="js/inventario2.js?v=20260715054"></script>
+<script src="js/ordenes.js?v=20260715054"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2838,7 +2838,7 @@
         <input type="hidden" id="os-veh-id">
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px">
         <div class="form-campo" style="margin:0">
           <label>Km de Entrada</label>
           <input type="number" id="os-km" placeholder="0" min="0">
@@ -2850,6 +2850,12 @@
         <div class="form-campo" style="margin:0">
           <label>Fecha Prometida</label>
           <input type="date" id="os-fecha-prometida" onchange="validarFechaPrometidaOS(this)">
+        </div>
+        <div class="form-campo" style="margin:0">
+          <label>Área que Realiza el Servicio</label>
+          <select id="os-area">
+            <option value="">— Seleccionar —</option>
+          </select>
         </div>
       </div>
 

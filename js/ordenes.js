@@ -332,6 +332,8 @@ async function abrirNuevaOS() {
   document.getElementById('os-veh-id').value = '';
   document.getElementById('os-veh-info').innerHTML = '';
   document.getElementById('os-km').value = '';
+  const areaSelNew = document.getElementById('os-area');
+  if (areaSelNew) areaSelNew.value = '';
   const hoyOS = getHoyVzla();
   document.getElementById('os-fecha-entrada').value = hoyOS;
   document.getElementById('os-fecha-entrada').max = sesionActual.administrador ? '' : hoyOS;
@@ -452,6 +454,8 @@ async function abrirEditarOS(id) {
   renderLineasRep();
   calcularTotalesOS();
   await cargarSelectsOS();
+  const areaSelEdit = document.getElementById('os-area');
+  if (areaSelEdit) areaSelEdit.value = o.id_area || '';
   abrirModal('modal-os');
   focusFirstField('modal-os');
 }
@@ -851,6 +855,7 @@ async function _guardarOSInterno() {
       id_empresa: _empresaActiva.id_empresa,
       id_vehiculo: parseInt(vehId),
       id_propietario: id_propietario,
+      id_area: parseInt(document.getElementById('os-area')?.value) || null,
       kilometraje_entrada: km,
       fecha_entrada:   fechaEnt,
       fecha_prometida: fechaProm    || null,
@@ -1063,7 +1068,7 @@ async function verFichaOS(id) {
   // Refrescar OS desde Supabase antes de mostrar
   try {
     const fresh = await api('ordenes_servicio', 'GET', null,
-      '?id_orden=eq.' + id + '&select=*,vehiculos(placa,marca,modelo),propietarios(nombre_completo)');
+      '?id_orden=eq.' + id + '&select=*,vehiculos(placa,marca,modelo),propietarios(nombre_completo),param_areas(codigo,nombre)');
     if (fresh && fresh[0]) {
       const idx = ordenesCache.findIndex(function(x) { return x.id_orden === id; });
       if (idx >= 0) ordenesCache[idx] = fresh[0];
@@ -1165,11 +1170,13 @@ async function verFichaOS(id) {
       + '<div style="font-size:12px;color:var(--suave)">$ ' + fmtUSD(o.total_usd) + ' USD</div>'
       + '</div></div>'
 
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Vehículo</div>'
       + '<div style="font-weight:500">' + (veh ? veh.placa + ' — ' + veh.marca + ' ' + veh.modelo : '—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Propietario</div>'
       + '<div>' + (prop ? prop.nombre_completo : '—') + '</div></div>'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Área que Realiza el Servicio</div>'
+      + '<div>' + (o.param_areas ? (o.param_areas.codigo ? o.param_areas.codigo + ' — ' : '') + o.param_areas.nombre : '—') + '</div></div>'
       + '</div>'
 
       + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px">'
@@ -1270,6 +1277,16 @@ async function cargarSelectsOS() {
     if (!catalogoCache.length) catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=grupo.asc,nombre.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
     if (!inventarioCache.length) inventarioCache = await api('inventario_almacen', 'GET', null, '?order=nombre.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
   } catch(e) {}
+
+  // ── Cargar selector de ÁREA que realiza el servicio ──
+  const selArea = document.getElementById('os-area');
+  if (selArea) {
+    try {
+      const areasOS = await api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id,codigo,nombre');
+      selArea.innerHTML = '<option value="">— Seleccionar —</option>'
+        + areasOS.map(function(a) { return '<option value="' + a.id + '">' + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>'; }).join('');
+    } catch(eArea) { console.warn('Error cargando áreas:', eArea); }
+  }
 
   // ── Cargar selector de GRUPOS ──
   const selGrupo = document.getElementById('os-sel-grupo-cat');
