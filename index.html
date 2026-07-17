@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260715054"></script>
-<script src="js/parametros.js?v=20260715054"></script>
-<script src="js/empresas.js?v=20260715054"></script>
-<script src="js/facturacion.js?v=20260715054"></script>
-<script src="js/inventario.js?v=20260715054"></script>
-<script src="js/contabilidad.js?v=20260715054"></script>
-<script src="js/pagos.js?v=20260715054"></script>
-<script src="js/vehiculos.js?v=20260715054"></script>
-<script src="js/catalogo.js?v=20260715054"></script>
-<script src="js/inventario2.js?v=20260715054"></script>
-<script src="js/ordenes.js?v=20260715054"></script>
+<script src="js/core.js?v=20260715055"></script>
+<script src="js/parametros.js?v=20260715055"></script>
+<script src="js/empresas.js?v=20260715055"></script>
+<script src="js/facturacion.js?v=20260715055"></script>
+<script src="js/inventario.js?v=20260715055"></script>
+<script src="js/contabilidad.js?v=20260715055"></script>
+<script src="js/pagos.js?v=20260715055"></script>
+<script src="js/vehiculos.js?v=20260715055"></script>
+<script src="js/catalogo.js?v=20260715055"></script>
+<script src="js/inventario2.js?v=20260715055"></script>
+<script src="js/ordenes.js?v=20260715055"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2853,9 +2853,8 @@
         </div>
         <div class="form-campo" style="margin:0">
           <label>Área que Realiza el Servicio</label>
-          <select id="os-area">
-            <option value="">— Seleccionar —</option>
-          </select>
+          <div id="os-area-display" style="background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:11px 14px;font-size:13px;color:var(--texto)">—</div>
+          <input type="hidden" id="os-area">
         </div>
       </div>
 

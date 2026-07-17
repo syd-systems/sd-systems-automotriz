@@ -293,6 +293,28 @@ function cambiarTipoTasaOS(moneda) {
 }
 
 // ─── ABRIR NUEVA OS ───
+// Resuelve el Área que Realiza el Servicio a partir de un usuario (correo) --
+// se busca su ficha de empleado y de ahí su Área asignada. Se usa tanto para
+// una OS nueva (usuario en sesión) como para una existente (su creador).
+async function _resolverAreaOS(correo) {
+  const disp = document.getElementById('os-area-display');
+  const hid  = document.getElementById('os-area');
+  if (disp) disp.textContent = '—';
+  if (hid) hid.value = '';
+  if (!correo) return;
+  try {
+    const empRows = await api('empleados', 'GET', null,
+      '?correo=eq.' + encodeURIComponent(correo) + '&select=id_area,param_areas(id,codigo,nombre)&limit=1');
+    const a = empRows && empRows[0] && empRows[0].param_areas;
+    if (a) {
+      if (disp) disp.textContent = (a.codigo ? a.codigo + ' — ' : '') + a.nombre;
+      if (hid) hid.value = a.id;
+    } else if (disp) {
+      disp.textContent = '— El usuario no tiene Área asignada en su ficha —';
+    }
+  } catch(eResArea) { console.warn('Error resolviendo Área de la OS:', eResArea); }
+}
+
 async function abrirNuevaOS() {
   setTimeout(function() {
     const body = document.querySelector('#modal-os .modal-body');
@@ -332,8 +354,7 @@ async function abrirNuevaOS() {
   document.getElementById('os-veh-id').value = '';
   document.getElementById('os-veh-info').innerHTML = '';
   document.getElementById('os-km').value = '';
-  const areaSelNew = document.getElementById('os-area');
-  if (areaSelNew) areaSelNew.value = '';
+  await _resolverAreaOS(sesionActual?.correo_usuario);
   const hoyOS = getHoyVzla();
   document.getElementById('os-fecha-entrada').value = hoyOS;
   document.getElementById('os-fecha-entrada').max = sesionActual.administrador ? '' : hoyOS;
@@ -454,8 +475,7 @@ async function abrirEditarOS(id) {
   renderLineasRep();
   calcularTotalesOS();
   await cargarSelectsOS();
-  const areaSelEdit = document.getElementById('os-area');
-  if (areaSelEdit) areaSelEdit.value = o.id_area || '';
+  await _resolverAreaOS(o.id_usuario);
   abrirModal('modal-os');
   focusFirstField('modal-os');
 }
@@ -1278,15 +1298,8 @@ async function cargarSelectsOS() {
     if (!inventarioCache.length) inventarioCache = await api('inventario_almacen', 'GET', null, '?order=nombre.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
   } catch(e) {}
 
-  // ── Cargar selector de ÁREA que realiza el servicio ──
-  const selArea = document.getElementById('os-area');
-  if (selArea) {
-    try {
-      const areasOS = await api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id,codigo,nombre');
-      selArea.innerHTML = '<option value="">— Seleccionar —</option>'
-        + areasOS.map(function(a) { return '<option value="' + a.id + '">' + (a.codigo ? a.codigo + ' — ' : '') + a.nombre + '</option>'; }).join('');
-    } catch(eArea) { console.warn('Error cargando áreas:', eArea); }
-  }
+  // ── Área que realiza el servicio: se resuelve sola por el usuario (ver
+  // _resolverAreaOS), no se carga como catálogo aquí. ──
 
   // ── Cargar selector de GRUPOS ──
   const selGrupo = document.getElementById('os-sel-grupo-cat');
