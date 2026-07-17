@@ -1031,7 +1031,7 @@ async function anularOS(id, numero) {
   } catch(e) { alert('Error: ' + e.message); }
 }
 
-// ─── REABRIR OS (solo administradores) ───
+// ─── REABRIR OS (requiere permiso SERVICIOS.REABRIR) ───
 async function reabrirOS(id, numero) {
   if (!puedo('SERVICIOS','REABRIR')) {
     alert('No tiene permiso para reabrir órdenes de servicio.');
@@ -1196,7 +1196,7 @@ async function verFichaOS(id) {
       btnReabrir.style.cssText = 'border-color:rgba(255,107,0,0.4);color:var(--naranja)';
       document.getElementById('ficha-os-editar-btn').parentNode.insertBefore(btnReabrir, document.getElementById('ficha-os-editar-btn'));
     }
-    if (sesionActual && sesionActual.administrador && (o.estado === 'CERRADA' || o.estado === 'ANULADA')) {
+    if (puedo('SERVICIOS','REABRIR') && (o.estado === 'CERRADA' || o.estado === 'ANULADA')) {
       btnReabrir.textContent = '↺ Reabrir OS';
       btnReabrir.setAttribute('onclick', 'cerrarModal(\'modal-ficha-os\');reabrirOS(' + id + ',\'' + (o.numero_os || '') + '\')');
       btnReabrir.style.display = '';
