@@ -65,7 +65,7 @@ async function renderOrdenes() {
             : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
         + '<td><div style="display:flex;gap:6px;flex-wrap:wrap">'
         + '<button class="btn-secundario" onclick="verFichaOS(' + o.id_orden + ')">Ver</button>'
-        + (o.stock_actual_articulo === 0 && puedo('SERVICIOS','ELIMINAR') ? '<button class="btn-secundario" style="color:#fc8181;border-color:rgba(252,129,129,0.4);font-size:11px;padding:3px 8px" onclick="eliminarOS(' + o.id_orden + ')">🗑</button>' : '')
+        
         + '</div></td>'
         + '</tr>';
     }).join('');
@@ -1008,6 +1008,15 @@ async function anularOS(id, numero) {
     alert('No tiene permiso para anular órdenes de servicio.');
     return;
   }
+  // No se puede anular si ya tiene una factura asociada (misma salvedad que
+  // antes tenía Eliminar, ya que Anular pasa a cubrir ambos casos)
+  try {
+    const facturasAnul = await api('facturas', 'GET', null, '?id_orden=eq.' + id + '&select=id_factura&limit=1');
+    if (facturasAnul && facturasAnul.length > 0) {
+      alert('No se puede anular la orden ' + numero + ' porque tiene una factura asociada.');
+      return;
+    }
+  } catch(eFactAnul) { console.warn('Error verificando factura asociada:', eFactAnul); }
   if (!confirm('¿Anular la orden ' + numero + '? Se restaurará el stock de los artículos utilizados.')) return;
   try {
     const hoyAnul = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
@@ -1042,42 +1051,7 @@ async function reabrirOS(id, numero) {
   } catch(e) { alert('Error: ' + e.message); }
 }
 
-// ─── ELIMINAR OS ───
-async function eliminarOS(id, numero) {
-  if (!puedo('SERVICIOS','ELIMINAR')) { alert('No tiene permiso para eliminar órdenes de servicio.'); return; }
-  try {
-    // 1. Verificar que no tenga facturación asociada
-    const facturas = await api('facturas', 'GET', null, '?id_orden=eq.' + id + '&select=id_factura&limit=1');
-    if (facturas && facturas.length > 0) {
-      alert('No se puede eliminar la orden ' + numero + ' porque tiene una factura asociada.');
-      return;
-    }
-    if (!confirm('¿Eliminar definitivamente la orden ' + numero + '?\n\nSe revertirá el stock de los artículos asociados.\nEsta acción no se puede deshacer.')) return;
-    // 2. Revertir stock de artículos
-    await ajustarStockOS(id, 'restaurar');
-    // 3. Borrar líneas y la OS
-    await Promise.all([
-      api('os_servicios', 'DELETE', null, '?id_orden=eq.' + id),
-      api('os_mercancias',  'DELETE', null, '?id_orden=eq.' + id),
-    ]);
-    await api('ordenes_servicio', 'DELETE', null, '?id_orden=eq.' + id);
-    ordenesCache = ordenesCache.filter(function(x) { return x.id_orden !== id; });
-    renderOrdenes();
-  } catch(e) { alert('Error al eliminar: ' + e.message); }
-}
-
 // ─── FICHA OS ───
-
-async function eliminarOSFicha() {
-  const id = window._fichaOSId;
-  if (!id) return;
-  const o = ordenesCache.find(function(x) { return x.id_orden === id; });
-  const numero = o ? o.numero_os : id;
-  await eliminarOS(id, numero);
-  if (!ordenesCache.find(function(x) { return x.id_orden === id; })) {
-    cerrarModal('modal-ficha-os');
-  }
-}
 
 async function verFichaOS(id) {
   if (!sesionActual?.administrador && !puedo('SERVICIOS','VER')) {
@@ -1246,13 +1220,8 @@ async function verFichaOS(id) {
     } else {
       btnAnularOS.style.display = 'none';
     }
-    // Mostrar Eliminar si total USD y Bs = 0
-  const btnElimOS = document.getElementById('ficha-os-eliminar-btn');
-  if (btnElimOS) {
-    btnElimOS.style.display = puedo('SERVICIOS','ELIMINAR') ? '' : 'none';
     window._fichaOSId = o.id_orden;
-  }
-  abrirModal('modal-ficha-os');
+    abrirModal('modal-ficha-os');
   focusFirstField('modal-ficha-os');
   } catch(e) { alert('Error: ' + e.message); }
 }

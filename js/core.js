@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260715044';
+const SYD_VERSION = '20260715045';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -86,7 +86,6 @@ const PERMISOS_POR_MODULO = {
     { accion: 'EDITAR',      label: 'Editar OS abierta' },
     { accion: 'ANULAR',      label: 'Anular OS' },
     { accion: 'REABRIR',     label: 'Reabrir OS cerrada/anulada' },
-    { accion: 'ELIMINAR',    label: 'Eliminar OS (solo anuladas)' },
     { accion: 'VER_TOTALES', label: '🔒 Ver totales y montos' },
     { accion: 'VER_TASA',    label: '🔒 Ver tasa de cambio en OS' },
   ],
