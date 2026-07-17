@@ -307,15 +307,17 @@ async function abrirNuevaOS() {
     const hoy = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
 
     function getTasaOS(moneda) {
-      const reg = tasasDB.filter(function(t) {
-        return t.moneda_origen === moneda &&
-          String(t.fecha_valor || '').substring(0,10) <= hoy;
-      }).sort(function(a,b) {
-        const fa = String(a.fecha_valor||'').substring(0,10);
-        const fb = String(b.fecha_valor||'').substring(0,10);
-        if (fb !== fa) return fb.localeCompare(fa);
-        return (b.id_tasa||0) - (a.id_tasa||0);
-      });
+      // tasasDB ya viene ordenado por fecha_valor.desc desde la consulta --
+      // tomar directamente la más reciente para esta moneda, sin comparar
+      // contra "hoy" (ese cálculo con ajuste de huso horario podía excluir
+      // la tasa del día según la hora exacta del navegador).
+      const reg = tasasDB.filter(function(t) { return t.moneda_origen === moneda; })
+        .sort(function(a,b) {
+          const fa = String(a.fecha_valor||'').substring(0,10);
+          const fb = String(b.fecha_valor||'').substring(0,10);
+          if (fb !== fa) return fb.localeCompare(fa);
+          return (b.id_tasa||0) - (a.id_tasa||0);
+        });
       return reg.length ? parseFloat(reg[0].tipo_cambio) : 1;
     }
 
