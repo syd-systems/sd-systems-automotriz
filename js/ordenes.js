@@ -1118,7 +1118,7 @@ async function verFichaOS(id) {
             const subtFmt = mon === 'VES'
               ? fmtBs(subt * tasaParaLineas) + ' Bs<div style="font-size:10px;color:var(--suave)">≈ $ ' + fmtUSD(subtUsdEq) + '</div>'
               : sim + ' ' + fmtUSD(subt) + ' ' + mon + '<div style="font-size:10px;color:var(--suave)">≈ Bs ' + fmtBs(subt * tasaParaLineas) + '</div>';
-            return '<tr><td style="padding:6px 0">' + l.descripcion + '</td>'
+            return '<tr><td style="padding:6px 0;font-size:14px">' + l.descripcion + '</td>'
               + '<td style="text-align:right;padding:6px 0">' + l.cantidad + '</td>'
               + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">' + precFmt + '</td>'
               + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">' + subtFmt + '</td></tr>';
@@ -1146,7 +1146,7 @@ async function verFichaOS(id) {
             const subtFmt = mon === 'VES'
               ? fmtBs(subt * tasaParaLineas) + ' Bs<div style="font-size:10px;color:var(--suave)">≈ $ ' + fmtUSD(subt) + '</div>'
               : sim + ' ' + fmtUSD(subt) + ' ' + mon + '<div style="font-size:10px;color:var(--suave)">≈ Bs ' + fmtBs(subt * tasaParaLineas) + '</div>';
-            return '<tr><td style="padding:6px 0">' + l.descripcion + '</td>'
+            return '<tr><td style="padding:6px 0;font-size:14px">' + l.descripcion + '</td>'
               + '<td style="text-align:right;padding:6px 0">' + l.cantidad + '</td>'
               + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">' + precFmt + '</td>'
               + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">' + subtFmt + '</td></tr>';
@@ -1174,16 +1174,16 @@ async function verFichaOS(id) {
 
       + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px">'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Fecha Entrada</div>'
-      + '<div>' + (o.fecha_entrada ? fmtFecha(o.fecha_entrada) : '—') + '</div></div>'
+      + '<div style="font-size:12px">' + (o.fecha_entrada ? fmtFecha(o.fecha_entrada) : '—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Fecha Prometida</div>'
-      + '<div>' + (o.fecha_prometida ? fmtFecha(o.fecha_prometida) : '—') + '</div></div>'
+      + '<div style="font-size:12px">' + (o.fecha_prometida ? fmtFecha(o.fecha_prometida) : '—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Km Entrada</div>'
-      + '<div>' + (o.kilometraje_entrada ? o.kilometraje_entrada.toLocaleString() + ' km' : '—') + '</div></div>'
+      + '<div style="font-size:12px">' + (o.kilometraje_entrada ? o.kilometraje_entrada.toLocaleString() + ' km' : '—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">'
       + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' ? 'Tasa USD Actual' : 'Tasa USD al Cerrar')
-      + '</div><div style="font-family:var(--font-mono)">'
+      + '</div><div style="font-family:var(--font-mono);font-size:12px">'
       + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' && tasaActualFicha ? tasaActualFicha : tasaHistorica).toFixed(2) + ' Bs/$'
-      + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' && tasaDiferente ? '<span style="font-size:10px;color:var(--suave);margin-left:6px">(creada: ' + tasaHistorica.toFixed(2) + ')</span>' : '')
+      + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' && tasaDiferente ? '<span style="font-size:9px;color:var(--suave);margin-left:6px">(creada: ' + tasaHistorica.toFixed(2) + ')</span>' : '')
       + '</div></div>'
       + '</div>'
 
