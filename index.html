@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260715050"></script>
-<script src="js/parametros.js?v=20260715050"></script>
-<script src="js/empresas.js?v=20260715050"></script>
-<script src="js/facturacion.js?v=20260715050"></script>
-<script src="js/inventario.js?v=20260715050"></script>
-<script src="js/contabilidad.js?v=20260715050"></script>
-<script src="js/pagos.js?v=20260715050"></script>
-<script src="js/vehiculos.js?v=20260715050"></script>
-<script src="js/catalogo.js?v=20260715050"></script>
-<script src="js/inventario2.js?v=20260715050"></script>
-<script src="js/ordenes.js?v=20260715050"></script>
+<script src="js/core.js?v=20260715051"></script>
+<script src="js/parametros.js?v=20260715051"></script>
+<script src="js/empresas.js?v=20260715051"></script>
+<script src="js/facturacion.js?v=20260715051"></script>
+<script src="js/inventario.js?v=20260715051"></script>
+<script src="js/contabilidad.js?v=20260715051"></script>
+<script src="js/pagos.js?v=20260715051"></script>
+<script src="js/vehiculos.js?v=20260715051"></script>
+<script src="js/catalogo.js?v=20260715051"></script>
+<script src="js/inventario2.js?v=20260715051"></script>
+<script src="js/ordenes.js?v=20260715051"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2838,11 +2838,22 @@
         <input type="hidden" id="os-veh-id">
       </div>
 
-      <div class="form-grid">
-        <div class="form-campo">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+        <div class="form-campo" style="margin:0">
           <label>Km de Entrada</label>
           <input type="number" id="os-km" placeholder="0" min="0">
         </div>
+        <div class="form-campo" style="margin:0">
+          <label>Fecha de Entrada</label>
+          <input type="date" id="os-fecha-entrada" onchange="validarFechaEntradaOS(this)">
+        </div>
+        <div class="form-campo" style="margin:0">
+          <label>Fecha Prometida</label>
+          <input type="date" id="os-fecha-prometida" onchange="validarFechaPrometidaOS(this)">
+        </div>
+      </div>
+
+      <div class="form-grid">
         <div class="form-campo">
           <label id="lbl-os-estado">Estado</label>
            <select id="os-estado" onchange="onCambioEstadoOS(this.value)">
@@ -2853,14 +2864,6 @@
             <option value="CERRADA">Cerrada</option>
             <option value="ANULADA">Anulada</option>
           </select>
-        </div>
-        <div class="form-campo">
-          <label>Fecha de Entrada</label>
-          <input type="date" id="os-fecha-entrada" onchange="validarFechaEntradaOS(this)">
-        </div>
-        <div class="form-campo">
-          <label>Fecha Prometida</label>
-          <input type="date" id="os-fecha-prometida" onchange="validarFechaPrometidaOS(this)">
         </div>
         <div class="form-campo" id="os-fecha-cierre-cont" style="display:none">
           <label>Fecha de Cierre <span style="color:var(--rojo)">*</span></label>
@@ -2904,8 +2907,8 @@
           <!-- Fila 2: Descripción libre + Cant + Precio + Moneda + Botón -->
           <div style="display:grid;grid-template-columns:1fr 70px 80px 80px auto;gap:8px;align-items:end">
             <div class="form-campo" style="margin:0">
-              <label style="font-size:7px">O descripción libre</label>
-              <input type="text" id="os-desc-libre" placeholder="Escribe descripción libre..." style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+              <label style="font-size:10px">O descripción libre</label>
+              <input type="text" id="os-desc-libre" placeholder="Escribe descripción libre..." style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;padding:11px 12px;border-radius:5px;outline:none;width:100%">
             </div>
             <div class="form-campo" style="margin:0">
               <label style="font-size:7px">Cant.</label>
@@ -2935,8 +2938,8 @@
         <!-- Agregar artículo -->
         <div style="display:grid;grid-template-columns:1fr 70px 80px 80px auto;gap:8px;align-items:end;padding:10px;background:var(--gris2);border-radius:6px">
           <div class="form-campo" style="margin:0">
-            <label style="font-size:7px">Seleccionar Artículo</label>
-            <select id="os-sel-inv" onchange="onSelInventarioChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%"></select>
+            <label style="font-size:10px">Seleccionar Artículo</label>
+            <select id="os-sel-inv" onchange="onSelInventarioChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;padding:11px 12px;border-radius:5px;outline:none;width:100%"></select>
             <input type="hidden" id="os-desc-rep-libre">
           </div>
           <div class="form-campo" style="margin:0">
