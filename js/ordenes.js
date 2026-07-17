@@ -1190,7 +1190,7 @@ async function verFichaOS(id) {
       : '<div style="color:var(--suave);font-size:12px">Sin artículos</div>';
 
     document.getElementById('ficha-os-contenido').innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:20px;flex-wrap:wrap">'
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px;flex-wrap:wrap">'
       + '<div><div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + (o.numero_os || '—') + '</div>'
       + '<span class="badge ' + est.clase + '">' + est.label + '</span>'
       + (o.fecha_estado ? '<span style="font-size:10px;color:var(--suave);margin-left:8px">desde ' + fmtFecha(o.fecha_estado) + (o.usuario_estado ? ' · ' + o.usuario_estado : '') + '</span>' : '')
@@ -1199,14 +1199,13 @@ async function verFichaOS(id) {
       + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + fmtBs(o.total_ves) + ' Bs</div>'
       + '<div style="font-size:12px;color:var(--suave)">$ ' + fmtUSD(o.total_usd) + ' USD</div>'
       + '</div></div>'
+      + '<div style="font-size:10px;color:var(--suave);margin-bottom:16px">Área: ' + areaLabelFicha + '</div>'
 
-      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Vehículo</div>'
       + '<div style="font-weight:500">' + (veh ? veh.placa + ' — ' + veh.marca + ' ' + veh.modelo : '—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Propietario</div>'
       + '<div>' + (prop ? prop.nombre_completo : '—') + '</div></div>'
-      + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Área que Realiza el Servicio</div>'
-      + '<div>' + areaLabelFicha + '</div></div>'
       + '</div>'
 
       + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px">'
