@@ -1089,6 +1089,9 @@ async function verFichaOS(id) {
     const tasaActualFicha = tasasActuales.length ? parseFloat(tasasActuales[0].tipo_cambio) : null;
     const tasaHistorica = parseFloat(o.tasa_bcv || 1);
     const tasaDiferente = tasaActualFicha && Math.abs(tasaActualFicha - tasaHistorica) > 0.01;
+    // Tasa para mostrar el equivalente en Bs de cada línea -- la vigente si
+    // la OS sigue abierta, o la que quedó registrada si ya está Cerrada/Anulada
+    const tasaParaLineas = (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' && tasaActualFicha) ? tasaActualFicha : tasaHistorica;
     const est = ESTADOS_OS[o.estado] || { clase: 'badge-gris', label: o.estado };
     const veh = o.vehiculos;
     const prop = o.propietarios;
@@ -1107,8 +1110,14 @@ async function verFichaOS(id) {
             const subt = parseFloat(l.subtotal_usd || 0);
             const simbolo = { USD: '$', EUR: '€', USDT: '₮' };
             const sim = simbolo[mon] || '';
-            const precFmt = mon === 'VES' ? fmtBs(prec) + ' Bs' : sim + ' ' + fmtUSD(prec) + ' ' + mon;
-            const subtFmt = mon === 'VES' ? fmtBs(subt) + ' Bs' : sim + ' ' + fmtUSD(subt) + ' ' + mon;
+            const precUsdEq  = mon === 'VES' ? (tasaParaLineas > 0 ? parseFloat(l.precio_usd || 0) : 0) : prec;
+            const subtUsdEq  = subt;
+            const precFmt = mon === 'VES'
+              ? fmtBs(prec) + ' Bs<div style="font-size:10px;color:var(--suave)">≈ $ ' + fmtUSD(precUsdEq) + '</div>'
+              : sim + ' ' + fmtUSD(prec) + ' ' + mon + '<div style="font-size:10px;color:var(--suave)">≈ Bs ' + fmtBs(prec * tasaParaLineas) + '</div>';
+            const subtFmt = mon === 'VES'
+              ? fmtBs(subt * tasaParaLineas) + ' Bs<div style="font-size:10px;color:var(--suave)">≈ $ ' + fmtUSD(subtUsdEq) + '</div>'
+              : sim + ' ' + fmtUSD(subt) + ' ' + mon + '<div style="font-size:10px;color:var(--suave)">≈ Bs ' + fmtBs(subt * tasaParaLineas) + '</div>';
             return '<tr><td style="padding:6px 0">' + l.descripcion + '</td>'
               + '<td style="text-align:right;padding:6px 0">' + l.cantidad + '</td>'
               + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">' + precFmt + '</td>'
@@ -1131,8 +1140,12 @@ async function verFichaOS(id) {
             const subt = parseFloat(l.subtotal_usd || 0);
             const simbolo = { USD: '$', EUR: '€', USDT: '₮' };
             const sim = simbolo[mon] || '';
-            const precFmt = mon === 'VES' ? fmtBs(prec) + ' Bs' : sim + ' ' + fmtUSD(prec) + ' ' + mon;
-            const subtFmt = mon === 'VES' ? fmtBs(subt) + ' Bs' : sim + ' ' + fmtUSD(subt) + ' ' + mon;
+            const precFmt = mon === 'VES'
+              ? fmtBs(prec) + ' Bs<div style="font-size:10px;color:var(--suave)">≈ $ ' + fmtUSD(parseFloat(l.precio_usd || 0)) + '</div>'
+              : sim + ' ' + fmtUSD(prec) + ' ' + mon + '<div style="font-size:10px;color:var(--suave)">≈ Bs ' + fmtBs(prec * tasaParaLineas) + '</div>';
+            const subtFmt = mon === 'VES'
+              ? fmtBs(subt * tasaParaLineas) + ' Bs<div style="font-size:10px;color:var(--suave)">≈ $ ' + fmtUSD(subt) + '</div>'
+              : sim + ' ' + fmtUSD(subt) + ' ' + mon + '<div style="font-size:10px;color:var(--suave)">≈ Bs ' + fmtBs(subt * tasaParaLineas) + '</div>';
             return '<tr><td style="padding:6px 0">' + l.descripcion + '</td>'
               + '<td style="text-align:right;padding:6px 0">' + l.cantidad + '</td>'
               + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">' + precFmt + '</td>'
