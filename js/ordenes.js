@@ -875,7 +875,6 @@ async function _guardarOSInterno() {
       id_empresa: _empresaActiva.id_empresa,
       id_vehiculo: parseInt(vehId),
       id_propietario: id_propietario,
-      id_area: parseInt(document.getElementById('os-area')?.value) || null,
       kilometraje_entrada: km,
       fecha_entrada:   fechaEnt,
       fecha_prometida: fechaProm    || null,
@@ -1088,7 +1087,7 @@ async function verFichaOS(id) {
   // Refrescar OS desde Supabase antes de mostrar
   try {
     const fresh = await api('ordenes_servicio', 'GET', null,
-      '?id_orden=eq.' + id + '&select=*,vehiculos(placa,marca,modelo),propietarios(nombre_completo),param_areas(codigo,nombre)');
+      '?id_orden=eq.' + id + '&select=*,vehiculos(placa,marca,modelo),propietarios(nombre_completo)');
     if (fresh && fresh[0]) {
       const idx = ordenesCache.findIndex(function(x) { return x.id_orden === id; });
       if (idx >= 0) ordenesCache[idx] = fresh[0];
@@ -1097,6 +1096,17 @@ async function verFichaOS(id) {
   } catch(e) {}
   const o = ordenesCache.find(function(x) { return x.id_orden === id; });
   if (!o) return;
+  // Área que realiza el servicio -- se resuelve por el usuario que creó la
+  // OS (empleados.id_area), ya no se guarda en ordenes_servicio.
+  let areaLabelFicha = '—';
+  try {
+    if (o.id_usuario) {
+      const empAreaRows = await api('empleados', 'GET', null,
+        '?correo=eq.' + encodeURIComponent(o.id_usuario) + '&select=param_areas(codigo,nombre)&limit=1');
+      const a = empAreaRows && empAreaRows[0] && empAreaRows[0].param_areas;
+      if (a) areaLabelFicha = (a.codigo ? a.codigo + ' — ' : '') + a.nombre;
+    }
+  } catch(eAreaFicha) { console.warn('Error resolviendo Área en Ficha OS:', eAreaFicha); }
   // Actualizar fila de la tabla si el estado cambió
   const fila = document.querySelector('tr[data-id="' + id + '"]');
   if (fila && o) {
@@ -1196,7 +1206,7 @@ async function verFichaOS(id) {
       + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Propietario</div>'
       + '<div>' + (prop ? prop.nombre_completo : '—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Área que Realiza el Servicio</div>'
-      + '<div>' + (o.param_areas ? (o.param_areas.codigo ? o.param_areas.codigo + ' — ' : '') + o.param_areas.nombre : '—') + '</div></div>'
+      + '<div>' + areaLabelFicha + '</div></div>'
       + '</div>'
 
       + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px">'
