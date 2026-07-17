@@ -1951,7 +1951,7 @@ async function generarAsientoInventario(tipo, datos) {
     const auxDesc  = monto > 0 ? ' (USD '+fmtUSD(monto)+' × '+tasa.toFixed(4)+')' : '';
 
     if (tipo === 'ENTRADA_COMPRA') {
-      const IVA_RATE   = 0.16;
+      const IVA_RATE   = tasaIVAActual();
       const exentoIVA  = datos.exentoIVA  || false;
       const incluyeIVA = datos.incluyeIVA || false;
       const montoTotalUSD = monto;
@@ -2077,7 +2077,7 @@ async function generarAsientoGastoManual(datos) {
     const montoTotalBs  = (datos.montoBsExacto !== undefined && datos.montoBsExacto !== null)
       ? datos.montoBsExacto
       : parseFloat((montoTotalUSD * tasa).toFixed(2));
-    const IVA_RATE = 0.16;
+    const IVA_RATE = tasaIVAActual();
     let baseUSD, ivaUSD, baseBs, ivaBs;
     if (datos.exentoIVA) {
       baseUSD = datos.baseExactaUSD ?? montoTotalUSD; ivaUSD = 0;

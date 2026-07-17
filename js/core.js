@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260715059';
+const SYD_VERSION = '20260716001';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -36,6 +36,37 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 let sesionActual = null;  // Usuario logueado
 let _empParamCache    = {};
 let modulosAcceso = [];   // Módulos a los que tiene acceso
+window._tasaIVAGlobal  = null; // Alícuota de IVA vigente (decimal, ej. 0.16) -- cacheada desde param_tributos
+window._tasaIGTFGlobal = null; // Alícuota de IGTF vigente (decimal, ej. 0.03) -- cacheada desde param_tributos
+
+// Alícuota de IVA vigente, en decimal (0.16 = 16%). Devuelve el valor
+// cacheado; si aún no se ha cargado, cae a 0.16 solo como último recurso.
+function tasaIVAActual() {
+  return (window._tasaIVAGlobal != null) ? window._tasaIVAGlobal : 0.16;
+}
+// Alícuota de IGTF vigente, en decimal (0.03 = 3%). Mismo criterio que IVA.
+function tasaIGTFActual() {
+  return (window._tasaIGTFGlobal != null) ? window._tasaIGTFGlobal : 0.03;
+}
+
+async function cargarTasaIVAGlobal() {
+  try {
+    const [ivaRows, igtfRows] = await Promise.all([
+      api('param_tributos', 'GET', null, '?codigo=eq.IVA&estado=eq.ACTIVO&order=fecha_registro.desc&limit=1&select=alicuota'),
+      api('param_tributos', 'GET', null, '?codigo=eq.IGTF&estado=eq.ACTIVO&order=fecha_registro.desc&limit=1&select=alicuota')
+    ]);
+    window._tasaIVAGlobal = (ivaRows && ivaRows[0] && ivaRows[0].alicuota != null)
+      ? parseFloat(ivaRows[0].alicuota) / 100
+      : 0.16;
+    window._tasaIGTFGlobal = (igtfRows && igtfRows[0] && igtfRows[0].alicuota != null)
+      ? parseFloat(igtfRows[0].alicuota) / 100
+      : 0.03;
+  } catch(eIVA) {
+    console.warn('Error cargando tasas de IVA/IGTF vigentes, se usan valores por defecto:', eIVA);
+    window._tasaIVAGlobal  = 0.16;
+    window._tasaIGTFGlobal = 0.03;
+  }
+}
 
 // ─── ESTATUS EMPLEADO ───
 const ESTATUS_EMP = {
@@ -593,6 +624,7 @@ async function verificarSesionActiva() {
         const accesos = await api('usuarios_accesos', 'GET', null,
           '?correo_usuario=eq.' + encodeURIComponent(sesionActual.correo_usuario) + '&activo=eq.true&select=acceso_tipo');
         modulosAcceso = accesos.map(a => a.acceso_tipo);
+        cargarTasaIVAGlobal();
         await api('usuarios', 'PATCH', { sesion_invalidada: false },
           `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`);
       } catch(eP) {}
@@ -726,6 +758,7 @@ async function iniciarSesion() {
 
     sesionActual = u;
     modulosAcceso = accesos.map(a => a.acceso_tipo);
+    cargarTasaIVAGlobal(); // no bloqueante -- los cálculos usan tasaIVAActual() con fallback
 
     // Cargar permisos granulares
     try {

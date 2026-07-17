@@ -2007,8 +2007,8 @@ function calcularTributosPago() {
   const incluye = incluyeVal === 'SI';
   let base, iva, total;
   if (exento) { base = montoUSD; iva = 0; total = montoUSD; }
-  else if (incluye) { base = parseFloat((montoUSD/1.16).toFixed(4)); iva = parseFloat((montoUSD-base).toFixed(4)); total = montoUSD; }
-  else { base = montoUSD; iva = parseFloat((montoUSD*0.16).toFixed(4)); total = parseFloat((base+iva).toFixed(4)); }
+  else if (incluye) { base = parseFloat((montoUSD/(1+tasaIVAActual())).toFixed(4)); iva = parseFloat((montoUSD-base).toFixed(4)); total = montoUSD; }
+  else { base = montoUSD; iva = parseFloat((montoUSD*tasaIVAActual()).toFixed(4)); total = parseFloat((base+iva).toFixed(4)); }
   const tasa = window._pagoTasaUSD || _tasaVigente || 1;
   prev.style.display = '';
   document.getElementById('pago-trib-base').textContent  = '$ ' + base.toFixed(2);
@@ -2027,7 +2027,7 @@ function calcularCuotasPago() {
   const montoUSD = _pagoMontoEnUSD();
   const exento   = document.getElementById('pago-exento-iva-si')?.checked;
   const incluye  = document.getElementById('pago-incluye-iva-val') === null ? false : document.getElementById('pago-incluye-iva-val').value === 'SI';
-  let totalUSD = parseFloat((exento || incluye ? montoUSD : montoUSD * 1.16).toFixed(2));
+  let totalUSD = parseFloat((exento || incluye ? montoUSD : montoUSD * (1+tasaIVAActual())).toFixed(2));
   if (!totalUSD && montoCuotaInput && numCuotas) totalUSD = parseFloat((montoCuotaInput * numCuotas).toFixed(2));
   const preview = document.getElementById('pago-cuotas-preview');
   if (!preview) return;
@@ -2132,11 +2132,11 @@ async function guardarPago() {
   // Monto TOTAL con IVA (si aplica) — se calcula UNA sola vez, en USD
   const montoTotalConIVA = exento || incluyeIVAVal === 'SI'
     ? parseFloat(montoIngresadoUSD.toFixed(2))
-    : parseFloat((montoIngresadoUSD * 1.16).toFixed(2));
+    : parseFloat((montoIngresadoUSD * (1+tasaIVAActual())).toFixed(2));
   // Si se ingresó directamente en VES, usar ese monto TAL CUAL (sin volver
   // a convertir desde el USD redondeado) para no perder precisión
   const montoTotalVES = moneda === 'VES'
-    ? (exento || incluyeIVAVal === 'SI' ? parseFloat(monto.toFixed(2)) : parseFloat((monto * 1.16).toFixed(2)))
+    ? (exento || incluyeIVAVal === 'SI' ? parseFloat(monto.toFixed(2)) : parseFloat((monto * (1+tasaIVAActual())).toFixed(2)))
     : parseFloat((montoTotalConIVA * tasaUSD).toFixed(2));
 
   const id_emisor = _empresaActiva?.id_empresa || 0;

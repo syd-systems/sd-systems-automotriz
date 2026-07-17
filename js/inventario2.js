@@ -637,7 +637,7 @@ function calcularCuotasEntrada() {
   const exentoCuotasEnt  = document.getElementById('es-exento-iva-val')?.value === 'SI';
   const incluyeCuotasEnt = document.getElementById('es-incluye-iva-val')?.value === 'SI';
   const montoBaseEnt = montoTotal * cantidad;
-  const totalUSD   = parseFloat((exentoCuotasEnt || incluyeCuotasEnt ? montoBaseEnt : montoBaseEnt * 1.16).toFixed(2));
+  const totalUSD   = parseFloat((exentoCuotasEnt || incluyeCuotasEnt ? montoBaseEnt : montoBaseEnt * (1+tasaIVAActual())).toFixed(2));
   const preview    = document.getElementById('es-cuotas-preview');
   if (!preview) return;
 
@@ -793,7 +793,7 @@ async function guardarEntradaStock() {
     const monedaCompra     = document.getElementById('es-moneda-compra')?.value || 'USD';
     const tasaBCVVal       = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
     const incluyeIVA_ent = document.getElementById('es-incluye-iva-val')?.value === 'SI' || false;
-    const IVA_RATE_ENT   = 0.16;
+    const IVA_RATE_ENT   = tasaIVAActual();
     const nuevoPrecioCostoRaw = monedaCompra === 'VES'
       ? (tasaBCVVal > 0 ? parseFloat((precioIngresado / tasaBCVVal).toFixed(4)) : (parseFloat(document.getElementById('es-precio-usd-calc')?.value) || 0))
       : precioIngresado;

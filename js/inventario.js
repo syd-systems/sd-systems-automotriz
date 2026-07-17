@@ -717,14 +717,14 @@ async function guardarEdicionMovimiento() {
       // incluido); precio_costo_moneda debe guardar siempre la BASE sin IVA
       // — misma conversión que se aplica al crear la entrada (inventario2.js)
       const precio = (precioNegociado !== null && !exentoEdit && incluyeEdit)
-        ? parseFloat((precioNegociado / 1.16).toFixed(4))
+        ? parseFloat((precioNegociado / (1+tasaIVAActual())).toFixed(4))
         : precioNegociado;
       // Monto TOTAL (con IVA si aplica) — se calcula UNA sola vez aquí, a
       // partir del precio NEGOCIADO original (sin redondeos intermedios),
       // y se reutiliza tanto para reconstruir el asiento como la CxP
       const montoTotalConIVAEdit = precioNegociado === null ? null : (exentoEdit
         ? parseFloat((precioNegociado * cantidad).toFixed(2))
-        : parseFloat((precioNegociado * cantidad * (incluyeEdit ? 1 : 1.16)).toFixed(2)));
+        : parseFloat((precioNegociado * cantidad * (incluyeEdit ? 1 : (1+tasaIVAActual()))).toFixed(2)));
       const monedaEdit = document.getElementById('edit-mov-moneda')?.value || 'USD';
       const fechaNeg   = document.getElementById('edit-mov-fecha-negociacion')?.value || getHoyVzla();
       const motivoEdit = document.getElementById('edit-mov-motivo')?.value || '';
@@ -829,7 +829,7 @@ async function guardarEdicionMovimiento() {
         // Reutilizar el mismo total ya calculado arriba (montoTotalConIVAEdit),
         // para que la CxP siempre coincida exactamente con el asiento
         const nuevoMontoUSD = montoTotalConIVAEdit !== null ? montoTotalConIVAEdit
-          : parseFloat((cantidad * parseFloat(art?.precio_costo_moneda || 0) * 1.16).toFixed(2));
+          : parseFloat((cantidad * parseFloat(art?.precio_costo_moneda || 0) * (1+tasaIVAActual())).toFixed(2));
 
         // Eliminar CxP existentes PENDIENTES para esta entrada
         const cxpsExist = await api('cont_cxp', 'GET', null,
@@ -978,7 +978,7 @@ function calcularCuotasEdit() {
   const exentoCuotas  = document.getElementById('edit-mov-exento-iva-val')?.value === 'SI';
   const incluyeCuotas = document.getElementById('edit-mov-incluye-iva-val')?.value === 'SI';
   const montoBase = precio * cantidad;
-  let totalUSD = parseFloat((exentoCuotas || incluyeCuotas ? montoBase : montoBase * 1.16).toFixed(2));
+  let totalUSD = parseFloat((exentoCuotas || incluyeCuotas ? montoBase : montoBase * (1+tasaIVAActual())).toFixed(2));
   if (!totalUSD && montoCuotaInput && numCuotas) totalUSD = parseFloat((montoCuotaInput * numCuotas).toFixed(2));
   const preview = document.getElementById('edit-mov-cuotas-preview');
   if (!preview) return;
@@ -1795,7 +1795,7 @@ function calcularTributosEdit() {
   const cantidad  = parseFloat(document.getElementById('edit-mov-cantidad')?.value) || 0;
   const montoTotal = precio * cantidad;
   const sim = moneda === 'VES' ? 'Bs.' : '$';
-  const IVA_RATE = 0.16;
+  const IVA_RATE = tasaIVAActual();
 
   if (!montoTotal) { if (prev) prev.style.display = 'none'; return; }
 

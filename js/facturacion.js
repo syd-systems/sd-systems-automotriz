@@ -316,9 +316,9 @@ function calcularTotalesFactura() {
   const aplIVA   = document.getElementById('fac-aplica-iva')?.checked;
   const aplIGTF  = document.getElementById('fac-aplica-igtf')?.checked;
   const esVES    = moneda==='VES';
-  const iva    = aplIVA  ? subtotal*0.16 : 0;
+  const iva    = aplIVA  ? subtotal*tasaIVAActual() : 0;
   const base   = subtotal+iva;
-  const igtf   = aplIGTF ? base*0.03 : 0;
+  const igtf   = aplIGTF ? base*tasaIGTFActual() : 0;
   const total  = base+igtf;
   const totVes = total*tasa;
   function fmt(usd) { return esVES ? fmtBs(usd*tasa)+' Bs' : '$ '+fmtUSD(usd); }
@@ -1145,7 +1145,7 @@ function calcularTributosEntrada() {
                    * parseFloat(document.getElementById('es-cantidad')?.value || 0);
   if (!montoTotal2) { if (prev) prev.style.display = 'none'; return; }
 
-  const IVA_RATE = 0.16;
+  const IVA_RATE = tasaIVAActual();
   let base, iva, total;
   if (false) { // exento ya manejado arriba
   } else if (incluyeIVA) {
