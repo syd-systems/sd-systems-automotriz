@@ -415,10 +415,10 @@ async function abrirEditarOS(id) {
   osArtículosLineas = [];
 
   try {
-    const [linServ, linRep, tasas] = await Promise.all([
+    const [linServ, linRep, tasasDB] = await Promise.all([
       api('os_servicios', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
       api('os_mercancias', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
-      api('tasas', 'GET', null, '?order=fecha_registro.desc&limit=1&select=tipo_cambio'),
+      api('tasas', 'GET', null, '?order=fecha_valor.desc&limit=10&select=*'),
     ]);
     osServiciosLineas = linServ.map(function(l) {
       return { id: l.id_os_serv, id_servicio: l.id_servicio, descripcion: l.descripcion,
@@ -432,7 +432,23 @@ async function abrirEditarOS(id) {
         moneda: (l.moneda || 'USD').toUpperCase(),
         precio_original: parseFloat(l.precio_original || l.precio_usd || 0) };
     });
-    tasaActualOS = tasas.length ? parseFloat(tasas[0].tipo_cambio) : (o.tasa_bcv || 1);
+    // Misma lógica robusta que Nueva OS -- tomar directamente la más
+    // reciente por moneda, sin depender de fecha_registro (que dejaba
+    // tasasDisponiblesOS.USD/EUR sin actualizar y calcularTotalesOS()
+    // terminaba usando su valor por defecto de 1).
+    function getTasaEditOS(moneda) {
+      const reg = (tasasDB || []).filter(function(t) { return t.moneda_origen === moneda; })
+        .sort(function(a,b) {
+          const fa = String(a.fecha_valor||'').substring(0,10);
+          const fb = String(b.fecha_valor||'').substring(0,10);
+          if (fb !== fa) return fb.localeCompare(fa);
+          return (b.id_tasa||0) - (a.id_tasa||0);
+        });
+      return reg.length ? parseFloat(reg[0].tipo_cambio) : null;
+    }
+    tasasDisponiblesOS.USD = getTasaEditOS('USD') || (o.tasa_bcv || 1);
+    tasasDisponiblesOS.EUR = getTasaEditOS('EUR') || tasasDisponiblesOS.USD;
+    tasaActualOS = tasasDisponiblesOS.USD;
   } catch(e) {}
 
   document.getElementById('os-id').value = o.id_orden;
