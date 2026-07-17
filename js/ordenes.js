@@ -547,12 +547,12 @@ function renderLineasRep() {
 
 function parsePrecio(valor, moneda) {
   const s = (valor || '0').toString();
-  if ((moneda || 'USD').toUpperCase() === 'VES') {
-    // Formato venezolano: punto=miles, coma=decimal
-    return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
-  }
-  // Formato USD/EUR: coma=miles, punto=decimal
-  return parseFloat(s.replace(/,/g, '')) || 0;
+  // Todo el sistema MUESTRA los precios en formato venezolano (punto=miles,
+  // coma=decimal) sin importar la moneda -- fmtUSD() es solo un alias de
+  // fmtBs(). Por eso aquí también se debe parsear siempre igual; antes se
+  // asumía formato inglés (coma=miles) para USD/EUR, lo que interpretaba
+  // "80,00" como 8000 (inflado 100x).
+  return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
 }
 
 function convertirAUSD(precio, moneda) {
