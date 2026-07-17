@@ -922,12 +922,12 @@ async function _guardarOSInterno() {
       var l = osServiciosLineas[i];
       const monL   = (l.moneda || 'USD').toUpperCase();
       const precL  = parseFloat(l.precio_original || l.precio_usd || 0);
-      const subtBs = lineaABsGuardar(precL, monL) * parseFloat(l.cantidad);
+      const subtUsdL = parseFloat(l.precio_usd || 0) * parseFloat(l.cantidad);
       await api('os_servicios', 'POST', {
         id_orden: parseInt(osId), id_servicio: l.id_servicio || null,
         descripcion: l.descripcion, cantidad: l.cantidad,
         moneda: monL, precio_original: precL,
-        precio_usd: l.precio_usd, subtotal_usd: subtBs
+        precio_usd: l.precio_usd, subtotal_usd: subtUsdL
       });
     }
 
@@ -954,12 +954,12 @@ async function _guardarOSInterno() {
       var lr = osArtículosLineas[j];
       const monR   = (lr.moneda || 'USD').toUpperCase();
       const precR  = parseFloat(lr.precio_original || lr.precio_usd || 0);
-      const subtBsR = lineaABsGuardar(precR, monR) * parseFloat(lr.cantidad);
+      const subtUsdR = parseFloat(lr.precio_usd || 0) * parseFloat(lr.cantidad);
       await api('os_mercancias', 'POST', {
         id_orden: parseInt(osId), id_articulo: lr.id_articulo || null,
         descripcion: lr.descripcion, cantidad: lr.cantidad,
         moneda: monR, precio_original: precR,
-        precio_usd: lr.precio_usd, subtotal_usd: subtBsR
+        precio_usd: lr.precio_usd, subtotal_usd: subtUsdR
       });
       // Descontar stock siempre que haya artículo de inventario vinculado
       if (lr.id_articulo) {
