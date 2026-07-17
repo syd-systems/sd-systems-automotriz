@@ -299,7 +299,7 @@ function cambiarTipoTasaOS(moneda) {
 async function _resolverAreaOS(correo) {
   const disp = document.getElementById('os-area-display');
   const hid  = document.getElementById('os-area');
-  if (disp) disp.textContent = '—';
+  if (disp) disp.textContent = 'Área: —';
   if (hid) hid.value = '';
   if (!correo) return;
   try {
@@ -307,10 +307,10 @@ async function _resolverAreaOS(correo) {
       '?correo=eq.' + encodeURIComponent(correo) + '&select=id_area,param_areas(id,codigo,nombre)&limit=1');
     const a = empRows && empRows[0] && empRows[0].param_areas;
     if (a) {
-      if (disp) disp.textContent = (a.codigo ? a.codigo + ' — ' : '') + a.nombre;
+      if (disp) disp.textContent = 'Área: ' + (a.codigo ? a.codigo + ' — ' : '') + a.nombre;
       if (hid) hid.value = a.id;
     } else if (disp) {
-      disp.textContent = '— El usuario no tiene Área asignada en su ficha —';
+      disp.textContent = 'Área: el usuario no tiene ninguna asignada en su ficha';
     }
   } catch(eResArea) { console.warn('Error resolviendo Área de la OS:', eResArea); }
 }

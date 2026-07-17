@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260715056"></script>
-<script src="js/parametros.js?v=20260715056"></script>
-<script src="js/empresas.js?v=20260715056"></script>
-<script src="js/facturacion.js?v=20260715056"></script>
-<script src="js/inventario.js?v=20260715056"></script>
-<script src="js/contabilidad.js?v=20260715056"></script>
-<script src="js/pagos.js?v=20260715056"></script>
-<script src="js/vehiculos.js?v=20260715056"></script>
-<script src="js/catalogo.js?v=20260715056"></script>
-<script src="js/inventario2.js?v=20260715056"></script>
-<script src="js/ordenes.js?v=20260715056"></script>
+<script src="js/core.js?v=20260715057"></script>
+<script src="js/parametros.js?v=20260715057"></script>
+<script src="js/empresas.js?v=20260715057"></script>
+<script src="js/facturacion.js?v=20260715057"></script>
+<script src="js/inventario.js?v=20260715057"></script>
+<script src="js/contabilidad.js?v=20260715057"></script>
+<script src="js/pagos.js?v=20260715057"></script>
+<script src="js/vehiculos.js?v=20260715057"></script>
+<script src="js/catalogo.js?v=20260715057"></script>
+<script src="js/inventario2.js?v=20260715057"></script>
+<script src="js/ordenes.js?v=20260715057"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2812,6 +2812,8 @@
       <h3 id="modal-os-titulo">NUEVA ORDEN DE SERVICIO</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-os')">✕</button>
     </div>
+    <div id="os-area-display" style="padding:4px 20px 0;font-size:10px;color:var(--suave)">—</div>
+    <input type="hidden" id="os-area">
     <div class="modal-body">
 
 
@@ -2838,7 +2840,7 @@
         <input type="hidden" id="os-veh-id">
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
         <div class="form-campo" style="margin:0">
           <label>Km de Entrada</label>
           <input type="number" id="os-km" placeholder="0" min="0">
@@ -2850,11 +2852,6 @@
         <div class="form-campo" style="margin:0">
           <label>Fecha Prometida</label>
           <input type="date" id="os-fecha-prometida" onchange="validarFechaPrometidaOS(this)">
-        </div>
-        <div class="form-campo" style="margin:0">
-          <label>Área que Realiza el Servicio</label>
-          <div id="os-area-display" style="background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:11px 14px;font-size:13px;color:var(--texto)">—</div>
-          <input type="hidden" id="os-area">
         </div>
       </div>
 
