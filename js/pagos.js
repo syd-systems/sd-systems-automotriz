@@ -1998,6 +1998,11 @@ function _pagoMontoEnUSD() {
 }
 
 function calcularTributosPago() {
+  const pctIVA = Math.round(tasaIVAActual()*100);
+  const pctLbl = document.getElementById('pago-iva-pct-label');
+  if (pctLbl) pctLbl.textContent = 'IVA (' + pctIVA + '%)';
+  const pctSpan = document.getElementById('pago-trib-iva-pct');
+  if (pctSpan) pctSpan.textContent = pctIVA;
   const montoUSD = _pagoMontoEnUSD();
   const exento   = document.getElementById('pago-exento-iva-si')?.checked;
   const incluyeVal = document.getElementById('pago-incluye-iva-val')?.value;
@@ -2403,9 +2408,10 @@ async function verDetalleCxP(id_cxp, modoInicial) {
 
     const ivaInfoEl = document.getElementById('cont-pago-cxp-iva-info');
     if (ivaInfoEl) {
+      const pctIVADet = Math.round(tasaIVAActual()*100);
       ivaInfoEl.textContent = c.exento_iva
         ? 'Exento de IVA'
-        : (c.incluye_iva === true ? 'Incluye IVA (16%)' : c.incluye_iva === false ? 'No incluye IVA (se sumó 16%)' : '—');
+        : (c.incluye_iva === true ? 'Incluye IVA (' + pctIVADet + '%)' : c.incluye_iva === false ? 'No incluye IVA (se sumó ' + pctIVADet + '%)' : '—');
     }
 
     const vencEl = document.getElementById('cont-pago-cxp-vencimiento');

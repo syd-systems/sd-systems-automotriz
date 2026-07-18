@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260716006"></script>
-<script src="js/parametros.js?v=20260716006"></script>
-<script src="js/empresas.js?v=20260716006"></script>
-<script src="js/facturacion.js?v=20260716006"></script>
-<script src="js/inventario.js?v=20260716006"></script>
-<script src="js/contabilidad.js?v=20260716006"></script>
-<script src="js/pagos.js?v=20260716006"></script>
-<script src="js/vehiculos.js?v=20260716006"></script>
-<script src="js/catalogo.js?v=20260716006"></script>
-<script src="js/inventario2.js?v=20260716006"></script>
-<script src="js/ordenes.js?v=20260716006"></script>
+<script src="js/core.js?v=20260716007"></script>
+<script src="js/parametros.js?v=20260716007"></script>
+<script src="js/empresas.js?v=20260716007"></script>
+<script src="js/facturacion.js?v=20260716007"></script>
+<script src="js/inventario.js?v=20260716007"></script>
+<script src="js/contabilidad.js?v=20260716007"></script>
+<script src="js/pagos.js?v=20260716007"></script>
+<script src="js/vehiculos.js?v=20260716007"></script>
+<script src="js/catalogo.js?v=20260716007"></script>
+<script src="js/inventario2.js?v=20260716007"></script>
+<script src="js/ordenes.js?v=20260716007"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2626,7 +2626,7 @@
           <!-- Pregunta 2: ¿Monto incluye IVA? — visible solo si NO exento -->
           <div id="es-incluye-iva-cont" style="display:none;margin-bottom:12px">
             <div style="display:flex;align-items:center;gap:16px">
-              <label style="font-size:13px;font-weight:500">Monto Facturado incluye IVA (16%)</label>
+              <label style="font-size:13px;font-weight:500">Monto Facturado incluye <span id="es-iva-pct-label">IVA</span></label>
               <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
                 <input type="radio" name="es-entrada-incluye-iva" id="es-incluye-iva-si" value="SI" onchange="document.getElementById('es-incluye-iva-val').value='SI';calcularTributosEntrada();document.getElementById('es-cuotas-monto').value='';calcularCuotasEntrada()"> Sí
               </label>
@@ -2641,7 +2641,7 @@
               <span id="es-trib-base" style="font-family:var(--font-mono);text-align:right">—</span>
               <span id="es-trib-base-ves" style="font-family:var(--font-mono);text-align:right;color:var(--suave);font-size:11px">—</span>
 
-              <span style="color:var(--suave)">IVA (16%) — 1.1.04.001</span>
+              <span style="color:var(--suave)">IVA (<span id="es-trib-iva-pct">16</span>%) — 1.1.04.001</span>
               <span id="es-trib-iva" style="font-family:var(--font-mono);text-align:right;color:#60a5fa">—</span>
               <span id="es-trib-iva-ves" style="font-family:var(--font-mono);text-align:right;color:#60a5fa;font-size:11px">—</span>
 
@@ -4154,7 +4154,7 @@
           </div>
           <div id="pago-incluye-iva-cont" style="display:none;margin-bottom:12px">
             <div style="display:flex;align-items:center;gap:16px">
-              <label style="font-size:13px;font-weight:500">Monto Facturado incluye IVA (16%)</label>
+              <label style="font-size:13px;font-weight:500">Monto Facturado incluye <span id="pago-iva-pct-label">IVA</span></label>
               <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
                 <input type="radio" name="pago-incluye-iva" id="pago-incluye-iva-si" value="SI" onchange="document.getElementById('pago-incluye-iva-val').value='SI';calcularTributosPago();document.getElementById('pago-cuotas-monto')&&(document.getElementById('pago-cuotas-monto').value='');calcularCuotasPago()"> Sí
               </label>
@@ -4169,7 +4169,7 @@
               <span style="color:var(--suave)">Base (Gasto)</span>
               <span id="pago-trib-base" style="font-family:var(--font-mono);text-align:right">—</span>
               <span id="pago-trib-base-ves" style="font-family:var(--font-mono);text-align:right;color:var(--suave);font-size:11px">—</span>
-              <span style="color:var(--suave)">IVA (16%) — 1.1.04.001</span>
+              <span style="color:var(--suave)">IVA (<span id="pago-trib-iva-pct">16</span>%) — 1.1.04.001</span>
               <span id="pago-trib-iva" style="font-family:var(--font-mono);text-align:right;color:#60a5fa">—</span>
               <span id="pago-trib-iva-ves" style="font-family:var(--font-mono);text-align:right;color:#60a5fa;font-size:11px">—</span>
               <span style="color:var(--naranja);font-weight:600;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">Total Facturado</span>
@@ -4538,7 +4538,7 @@
             </div>
             <div id="edit-mov-incluye-iva-cont" style="display:none;margin-bottom:12px">
               <div style="display:flex;align-items:center;gap:16px">
-                <label style="font-size:13px;font-weight:500">Monto Facturado incluye IVA (16%)</label>
+                <label style="font-size:13px;font-weight:500">Monto Facturado incluye <span id="edit-iva-pct-label">IVA</span></label>
                 <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
                   <input type="radio" name="edit-incluye-iva" id="edit-incluye-iva-si" value="SI" onchange="document.getElementById('edit-mov-incluye-iva-val').value='SI';calcularTributosEdit();document.getElementById('edit-mov-cuotas-monto').value='';calcularCuotasEdit()"> Sí
                 </label>
@@ -4552,7 +4552,7 @@
                 <span style="color:var(--suave)">Base (Inventario/Costo)</span>
                 <span id="edit-trib-base" style="font-family:var(--font-mono);text-align:right">—</span>
                 <span id="edit-trib-base-ves" style="font-family:var(--font-mono);text-align:right;color:var(--suave);font-size:11px">—</span>
-                <span style="color:var(--suave)">IVA (16%) — 1.1.04.001</span>
+                <span style="color:var(--suave)">IVA (<span id="edit-trib-iva-pct">16</span>%) — 1.1.04.001</span>
                 <span id="edit-trib-iva" style="font-family:var(--font-mono);text-align:right;color:#60a5fa">—</span>
                 <span id="edit-trib-iva-ves" style="font-family:var(--font-mono);text-align:right;color:#60a5fa;font-size:11px">—</span>
                 <span style="color:var(--naranja);font-weight:600;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">Total Facturado</span>

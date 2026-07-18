@@ -2022,7 +2022,7 @@ async function generarAsientoInventario(tipo, datos) {
 
       // DEBE: Crédito Fiscal IVA (solo si aplica)
       if (!exentoIVA && idIVA && ivaUSD > 0) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idIVA, orden:2,
-        descripcion: 'IVA (16%) compra ' + datos.articulo,
+        descripcion: 'IVA (' + Math.round(IVA_RATE*100) + '%) compra ' + datos.articulo,
         debe_usd: ivaUSD, haber_usd: 0, debe_ves: ivaBs, haber_ves: 0 });
 
       // HABER: CxP Proveedores (monto total con IVA)
@@ -2132,7 +2132,7 @@ async function generarAsientoGastoManual(datos) {
     }
     if (idCtaIVA && ivaUSD > 0) {
       await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idCtaIVA, orden:orden++,
-        descripcion: 'IVA (16%) — ' + (datos.descripcion||''),
+        descripcion: 'IVA (' + Math.round(IVA_RATE*100) + '%) — ' + (datos.descripcion||''),
         debe_usd: ivaUSD, haber_usd:0, debe_ves: ivaBs, haber_ves:0, tasa_bcv: tasa });
     }
     if (idCtaCxP) {

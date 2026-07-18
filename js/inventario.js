@@ -1786,6 +1786,11 @@ function onCambioExentoIVAEdit() {
 }
 
 function calcularTributosEdit() {
+  const pctIVAEdit = Math.round(tasaIVAActual()*100);
+  const pctLblEdit = document.getElementById('edit-iva-pct-label');
+  if (pctLblEdit) pctLblEdit.textContent = 'IVA (' + pctIVAEdit + '%)';
+  const pctSpanEdit = document.getElementById('edit-trib-iva-pct');
+  if (pctSpanEdit) pctSpanEdit.textContent = pctIVAEdit;
   const exento    = document.getElementById('edit-mov-exento-iva-val')?.value === 'SI';
   const ivaVal    = document.getElementById('edit-mov-incluye-iva-val')?.value;
   const prev      = document.getElementById('edit-mov-tributos-preview');

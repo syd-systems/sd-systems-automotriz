@@ -310,6 +310,10 @@ function onCambiarMonedaFactura() {
 }
 
 function calcularTotalesFactura() {
+  const ivaLbl = document.getElementById('fac-iva-label');
+  if (ivaLbl) ivaLbl.textContent = 'IVA (' + Math.round(tasaIVAActual()*100) + '%)';
+  const igtfLbl = document.getElementById('fac-igtf-label');
+  if (igtfLbl) igtfLbl.textContent = 'IGTF (' + Math.round(tasaIGTFActual()*100) + '%)';
   const subtotal = window._facSubtotalOS||0;
   const moneda   = document.getElementById('fac-moneda')?.value||'USD';
   const tasa     = moneda==='VES' ? (parseFloat(document.getElementById('fac-tasa')?.value)||1) : 1;
@@ -326,8 +330,8 @@ function calcularTotalesFactura() {
   if (!el) return;
   el.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px;padding:14px 0">'
     + '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">Subtotal</span><span style="font-family:var(--font-mono)">' + fmt(subtotal) + '</span></div>'
-    + (aplIVA  ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IVA (16%)</span><span style="font-family:var(--font-mono)">' + fmt(iva) + '</span></div>' : '')
-    + (aplIGTF ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IGTF (3%)</span><span style="font-family:var(--font-mono)">' + fmt(igtf) + '</span></div>' : '')
+    + (aplIVA  ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IVA (' + Math.round(tasaIVAActual()*100) + '%)</span><span style="font-family:var(--font-mono)">' + fmt(iva) + '</span></div>' : '')
+    + (aplIGTF ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IGTF (' + Math.round(tasaIGTFActual()*100) + '%)</span><span style="font-family:var(--font-mono)">' + fmt(igtf) + '</span></div>' : '')
     + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:8px;margin-top:4px">'
     + '<span style="font-family:var(--font-display);font-size:16px;letter-spacing:1px">TOTAL</span>'
     + '<div style="text-align:right"><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + fmt(total) + '</div>'
@@ -623,8 +627,8 @@ async function verFichaFactura(id) {
             + (function() {
                 return '<div style="display:flex;flex-direction:column;gap:5px;font-size:12px">'
                   + '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">Subtotal</span><span style="font-family:var(--font-mono)">'+fmtF(f.subtotal_usd)+'</span></div>'
-                  + (f.aplica_iva  ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">IVA (16%)</span><span style="font-family:var(--font-mono)">'+fmtF(f.iva_usd)+'</span></div>' : '')
-                  + (f.aplica_igtf ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">IGTF (3%)</span><span style="font-family:var(--font-mono)">'+fmtF(f.igtf_usd)+'</span></div>' : '')
+                  + (f.aplica_iva  ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">IVA (' + (f.subtotal_usd > 0 ? Math.round(f.iva_usd/f.subtotal_usd*100) : Math.round(tasaIVAActual()*100)) + '%)</span><span style="font-family:var(--font-mono)">'+fmtF(f.iva_usd)+'</span></div>' : '')
+                  + (f.aplica_igtf ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">IGTF (' + (f.subtotal_usd > 0 ? Math.round(f.igtf_usd/(f.subtotal_usd+(f.iva_usd||0))*100) : Math.round(tasaIGTFActual()*100)) + '%)</span><span style="font-family:var(--font-mono)">'+fmtF(f.igtf_usd)+'</span></div>' : '')
                   + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:6px;font-weight:600"><span>Total</span><span style="font-family:var(--font-mono);color:var(--naranja)">'+fmtF(f.total_usd)+'</span></div>'
 
                   + '</div>';
@@ -1115,6 +1119,11 @@ function onCambioExentoIVAEntrada() {
 }
 
 function calcularTributosEntrada() {
+  const pctIVAEnt = Math.round(tasaIVAActual()*100);
+  const pctLblEnt = document.getElementById('es-iva-pct-label');
+  if (pctLblEnt) pctLblEnt.textContent = 'IVA (' + pctIVAEnt + '%)';
+  const pctSpanEnt = document.getElementById('es-trib-iva-pct');
+  if (pctSpanEnt) pctSpanEnt.textContent = pctIVAEnt;
   const exento     = document.getElementById('es-exento-iva-val')?.value === 'SI';
   const ivaVal     = document.getElementById('es-incluye-iva-val')?.value;
   const prev = document.getElementById('es-tributos-preview');
