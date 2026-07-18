@@ -525,6 +525,7 @@ function regresarAFichaInv() {
 }
 
 async function abrirEntradaStock(id) {
+  await cargarTasaIVAGlobal(); // refresca IVA vigente cada vez que se abre el formulario
   let r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r && _fichaInvActual && _fichaInvActual.id === id) {
     r = _fichaInvActual;

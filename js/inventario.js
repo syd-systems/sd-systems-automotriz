@@ -209,6 +209,7 @@ function habilitarEdicionMovimiento() {
 }
 
 async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
+  if (tipo === 'ENTRADA') await cargarTasaIVAGlobal(); // refresca IVA vigente -- solo Entrada tiene IVA
   try {
   try {
     if (tipo === 'ENTRADA') {

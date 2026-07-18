@@ -272,6 +272,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
 
 async function abrirNuevoPago() {
   _pagoEditando = null;
+  await cargarTasaIVAGlobal(); // refresca IVA/IGTF vigente cada vez que se abre el formulario
   const errEl = document.getElementById('alerta-pago-err');
   const okEl  = document.getElementById('alerta-pago-ok');
   if (errEl) errEl.style.display = 'none';

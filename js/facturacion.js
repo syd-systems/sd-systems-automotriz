@@ -39,14 +39,11 @@ async function renderFacturas() {
   window._facFechaDesde   = '';
   window._facFechaHasta   = '';
   window._facEstadoFiltro = '';
-  // Cargar alícuotas de tributos
-  try {
-    const tributos = await api('param_tributos','GET',null,'?estado=eq.ACTIVO&select=codigo,alicuota');
-    const ivaT  = tributos.find(function(t){ return t.codigo === 'IVA-GEN'; });
-    const igtfT = tributos.find(function(t){ return t.codigo === 'IGTF-3'; });
-    window._facAlicuotaIVA  = ivaT  ? parseFloat(ivaT.alicuota)  : 16;
-    window._facAlicuotaIGTF = igtfT ? parseFloat(igtfT.alicuota) : 3;
-  } catch(e) { window._facAlicuotaIVA = 16; window._facAlicuotaIGTF = 3; }
+  // Alícuotas de tributos -- usa el cache global (correcto, con los códigos
+  // reales IVA/IGTF), refrescado cada vez que se entra al módulo
+  await cargarTasaIVAGlobal();
+  window._facAlicuotaIVA  = tasaIVAActual()  * 100;
+  window._facAlicuotaIGTF = tasaIGTFActual() * 100;
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando facturas...</div>';
   try {
     const [facturas, tasas] = await Promise.all([
@@ -140,21 +137,15 @@ function filtrarTablaFacturas() {
 
 async function abrirNuevaFactura() {
   if (!puedo('FACTURAS','CREAR')) { alert('No tiene permiso para crear facturas.'); return; }
-  // Cargar alícuotas desde tributos si no están en cache
-  if (!window._facAlicuotaIVA) {
-    try {
-      const tributos = await api('param_tributos','GET',null,'?estado=eq.ACTIVO&select=codigo,alicuota');
-      const ivaT  = tributos.find(function(t){ return t.codigo === 'IVA-GEN'; });
-      const igtfT = tributos.find(function(t){ return t.codigo === 'IGTF-3'; });
-      window._facAlicuotaIVA  = ivaT  ? parseFloat(ivaT.alicuota)  : 16;
-      window._facAlicuotaIGTF = igtfT ? parseFloat(igtfT.alicuota) : 3;
-    } catch(e) { window._facAlicuotaIVA = 16; window._facAlicuotaIGTF = 3; }
-  }
+  // Alícuotas de tributos -- siempre se refrescan al abrir el formulario
+  await cargarTasaIVAGlobal();
+  window._facAlicuotaIVA  = tasaIVAActual()  * 100;
+  window._facAlicuotaIGTF = tasaIGTFActual() * 100;
   let osDisponibles = [], emisoresList = [], tasaActual = 1;
   try {
     const [os, em, ta] = await Promise.all([
       api('ordenes_servicio','GET',null,'?estado=eq.CERRADA&select=id_orden,numero_os,fecha_entrada,total_usd,total_ves,estado,id_vehiculo,id_propietario,vehiculos(placa,marca,modelo),propietarios(nombre_completo,tipo_doc,numero_doc,tipo_contribuyente,direccion)&order=fecha_entrada.desc'+emisorQ()),
-      api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre_articulo.asc&select=*'),
+      api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*'),
       api('tasas','GET',null,'?moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
     emisoresList = em;
