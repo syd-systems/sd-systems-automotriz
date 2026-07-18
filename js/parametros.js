@@ -148,6 +148,14 @@ async function mostrarTablaParam(key) {
           cats.forEach(function(c){ catsMap[c.id] = c; });
         } catch(e) {}
       }
+      // Mapa de cuentas contables (para mostrar código + nombre real, no un texto de relleno)
+      var cuentasContMap = {};
+      if (def.tieneCuentaContable) {
+        try {
+          const ctasList = await api('cont_cuentas','GET',null,'?select=id_cuenta,codigo,nombre');
+          ctasList.forEach(function(c){ cuentasContMap[c.id_cuenta] = c; });
+        } catch(e) {}
+      }
       filas = items.map(function(item) {
         const cat = def.tieneCategoria && item.id_categoria ? catsMap[item.id_categoria] : null;
         const nombreMostrar = item[def.campoNombre || 'nombre'] || item.nombre || '—';
@@ -159,7 +167,7 @@ async function mostrarTablaParam(key) {
           + (def.tieneTipoSector ? '<td style="font-size:12px;color:var(--suave)">' + (item.tipo_sector || '—') + '</td>' : '')
           + (def.tieneTipoCanal ? '<td style="font-size:12px;color:var(--suave)">' + ({EFECTIVO:'Efectivo',TRANSFERENCIA:'Transferencia',AFILIACION_BANCARIA:'Afiliación Bancaria'}[item.tipo_canal] || '—') + '</td>' : '')
           + (def.tieneCategoria ? '<td style="font-size:12px;color:var(--suave)">' + (cat ? (cat.codigo?cat.codigo+' — ':'')+cat.nombre : '—') + '</td>' : '')
-          + (def.tieneCuentaContable ? '<td style="font-size:12px;color:var(--suave)">' + (item.id_cuenta_contable ? '— cuenta asignada —' : '—') + '</td>' : '')
+          + (def.tieneCuentaContable ? '<td style="font-size:12px;color:var(--suave)">' + (cuentasContMap[item.id_cuenta_contable] ? '<span style="font-family:var(--font-mono);color:var(--naranja)">' + cuentasContMap[item.id_cuenta_contable].codigo + '</span> — ' + cuentasContMap[item.id_cuenta_contable].nombre : '—') + '</td>' : '')
           + '<td><span class="badge ' + (item.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (item.estado || 'ACTIVO') + '</span></td>'
           + '<td><div style="display:flex;gap:6px">'
           + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-naranja" onclick="abrirParamItem(\'' + key + '\',' + item[def.pk] + ')" style="font-size:11px;padding:5px 10px">Ver</button>' : '')
