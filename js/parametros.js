@@ -14,10 +14,10 @@ const TABLAS_MAESTRAS = [
   { key: 'niveles_educativos', tabla: 'param_niveles_educativos',   pk: 'id', nombre: 'Niveles Educativos',     icono: '🎓', tieneCodigo: false, tieneArea: false },
   { key: 'estados_civiles',    tabla: 'param_estados_civiles',   pk: 'id',    nombre: 'Estados Civiles',        icono: '💍', tieneCodigo: false, tieneArea: false },
   { key: 'sexos',              tabla: 'param_sexos',   pk: 'id',              nombre: 'Sexos',                  icono: '⚧',  tieneCodigo: false, tieneArea: false },
-  { key: 'cat_prov', tabla: 'param_categorias_proveedor', pk: 'id', nombre: 'Categorías de Servicios', icono: '🏷', tieneCodigo: true, tieneEstado: true },
+  { key: 'cat_prov', tabla: 'param_categorias_proveedor', pk: 'id', nombre: 'Categorías de Servicios', icono: '🏷', tieneCodigo: true, tieneEstado: true, tieneCuentaContable: true, filtroCuentaCodigo: '6.' },
   { key: 'bancos',             tabla: 'param_bancos',   pk: 'id',             nombre: 'Instituciones Financieras', icono: '🏦', tieneCodigo: true,  tieneArea: false, tieneTipoSector: true },
   { key: 'niveles_jerarquicos', tabla: 'param_niveles_jerarquicos', pk: 'id_jerarquicos', nombre: 'Niveles Jerárquicos', icono: '🏅', tieneCodigo: false, tieneArea: false, tieneDescripcion: true, tieneOrden: true, campoNombre: 'nivel_jerarquicos', campoDescripcion: 'descripcion_jerarquicos' },
-  { key: 'metodos_pago', tabla: 'param_metodos_pago', pk: 'id_metodo', nombre: 'Métodos de Pago', icono: '💳', tieneMoneda: true, tieneCuentaContable: true, tieneTipoCanal: true, nombreAutomatico: true },
+  { key: 'metodos_pago', tabla: 'param_metodos_pago', pk: 'id_metodo', nombre: 'Métodos de Pago', icono: '💳', tieneMoneda: true, tieneCuentaContable: true, filtroCuentaCodigo: '1.1.01', tieneTipoCanal: true, nombreAutomatico: true },
 ];
 
 // Cache de áreas para el selector de cargos
@@ -295,7 +295,8 @@ async function abrirParamItem(key, id) {
     if (def.tieneCuentaContable) {
       var opcCuentas = [];
       try {
-        const ctas = await api('cont_cuentas','GET',null,'?codigo=ilike.1.1.01%25&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre');
+        const filtroCod = def.filtroCuentaCodigo || '1.1.01';
+        const ctas = await api('cont_cuentas','GET',null,'?codigo=ilike.' + encodeURIComponent(filtroCod) + '%25&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre');
         opcCuentas = ctas.map(function(c) {
           return '<option value="' + c.id_cuenta + '"' + (item && item.id_cuenta_contable == c.id_cuenta ? ' selected' : '') + '>' + c.codigo + ' — ' + c.nombre + '</option>';
         });
