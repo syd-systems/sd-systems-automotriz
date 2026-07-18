@@ -1849,8 +1849,29 @@ async function guardarTributo() {
       fecha_vigencia: document.getElementById('trib-fecha-vigencia').value || null,
       lapso_pago: document.getElementById('trib-lapso-pago').value.trim() || null,
       id_cuenta_contable: parseInt(document.getElementById('trib-cuenta-contable').value) || null };
-    if (id) { await api('param_tributos','PATCH',datos,'?id_tributo=eq.'+id); }
-    else    { await api('param_tributos','POST',datos); }
+
+    const original = id ? _tributosCache.find(function(t){ return String(t.id_tributo) === String(id); }) : null;
+    const cambioAlicuota = original && (
+      parseFloat(original.alicuota||0)     !== alicuota ||
+      parseFloat(original.alicuota_min||0) !== alicuotaMin ||
+      parseFloat(original.alicuota_max||0) !== alicuotaMax
+    );
+
+    if (id && cambioAlicuota) {
+      // La alícuota cambió -- no se sobrescribe el registro (se perdería el
+      // histórico de "cuánto era antes y hasta cuándo"). Se desactiva el
+      // registro viejo (conserva su alícuota y fecha originales tal cual
+      // estaban) y se crea uno nuevo con el valor actualizado.
+      await api('param_tributos','PATCH', { estado: 'INACTIVO' }, '?id_tributo=eq.'+id);
+      const nuevaFecha = { ...datos, fecha_registro: new Date().toISOString() };
+      await api('param_tributos','POST', nuevaFecha);
+    } else if (id) {
+      // Sin cambio de alícuota -- edición normal (descripción, base legal,
+      // etc.), no hace falta versionar nada.
+      await api('param_tributos','PATCH',datos,'?id_tributo=eq.'+id);
+    } else {
+      await api('param_tributos','POST',datos);
+    }
     okEl.textContent = '✓ Tributo guardado correctamente.';
     okEl.style.display = 'block';
     cerrarModal('modal-tributo');
