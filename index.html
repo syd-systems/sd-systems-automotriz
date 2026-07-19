@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260719004"></script>
-<script src="js/parametros.js?v=20260719004"></script>
-<script src="js/empresas.js?v=20260719004"></script>
-<script src="js/facturacion.js?v=20260719004"></script>
-<script src="js/inventario.js?v=20260719004"></script>
-<script src="js/contabilidad.js?v=20260719004"></script>
-<script src="js/pagos.js?v=20260719004"></script>
-<script src="js/vehiculos.js?v=20260719004"></script>
-<script src="js/catalogo.js?v=20260719004"></script>
-<script src="js/inventario2.js?v=20260719004"></script>
-<script src="js/ordenes.js?v=20260719004"></script>
+<script src="js/core.js?v=20260719005"></script>
+<script src="js/parametros.js?v=20260719005"></script>
+<script src="js/empresas.js?v=20260719005"></script>
+<script src="js/facturacion.js?v=20260719005"></script>
+<script src="js/inventario.js?v=20260719005"></script>
+<script src="js/contabilidad.js?v=20260719005"></script>
+<script src="js/pagos.js?v=20260719005"></script>
+<script src="js/vehiculos.js?v=20260719005"></script>
+<script src="js/catalogo.js?v=20260719005"></script>
+<script src="js/inventario2.js?v=20260719005"></script>
+<script src="js/ordenes.js?v=20260719005"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4251,7 +4251,13 @@
           <div style="text-align:right">
             <div style="font-size:11px;color:var(--suave)">FECHA DE PAGO (Obligación)</div>
             <div style="font-weight:600;margin-top:2px;font-family:var(--font-mono)" id="exec-pago-fecha-obligacion">—</div>
-            <div style="font-size:11px;color:var(--suave);margin-top:6px">MONEDA: <span id="exec-pago-moneda-display" style="font-family:var(--font-mono);font-weight:600;color:var(--texto)">—</span></div>
+            <div style="font-size:11px;color:var(--suave);margin-top:6px">MONEDA DE PAGO:
+              <select id="exec-pago-moneda-display" onchange="onCambiarMonedaExecPago()"
+                style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-weight:600;font-size:11px;padding:2px 6px;border-radius:4px;outline:none">
+                <option value="USD">USD</option>
+                <option value="VES">VES</option>
+              </select>
+            </div>
           </div>
         </div>
         <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,107,0,0.15)">
