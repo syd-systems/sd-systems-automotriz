@@ -1649,6 +1649,7 @@ async function onSelProveedorPago() {
   const metodoDisp = document.getElementById('pago-metodo-display');
   const metodoHid  = document.getElementById('pago-metodo-hidden');
   const selCat     = document.getElementById('pago-categoria-prov');
+  const selCta     = document.getElementById('pago-cuenta-gasto');
   const selMon     = document.getElementById('pago-moneda');
 
   // Reset
@@ -1656,6 +1657,7 @@ async function onSelProveedorPago() {
   if (rifEl)     rifEl.value = '';
   if (metodoDisp) metodoDisp.textContent = '—';
   if (selCat) selCat.value = '';
+  if (selCta) selCta.value = '';
   if (selMon) selMon.value = '';
 
   if (!idProv) return;
@@ -1671,9 +1673,21 @@ async function onSelProveedorPago() {
   }
   if (!p) { if (manualInfo) manualInfo.style.display = ''; return; }
 
-  // Categoría de Pago y Moneda -- de solo lectura, según la ficha del proveedor
+  // Categoría de Servicio -- de solo lectura, según la ficha del proveedor
   if (selCat) selCat.value = p.id_categoria || '';
   if (selMon) { selMon.value = p.moneda_facturacion || 'USD'; onCambiarMonedaPago(); }
+
+  // Cuenta de Gasto -- se autocompleta con la cuenta contable configurada
+  // para esta Categoría de Servicio (Parámetros del Sistema), pero el select
+  // queda editable por si el caso puntual requiere una cuenta distinta.
+  if (selCta && p.id_categoria) {
+    try {
+      const catRows = await api('param_categorias_proveedor','GET',null,
+        '?id=eq.'+p.id_categoria+'&select=id_cuenta_contable&limit=1');
+      const idCuenta = catRows?.[0]?.id_cuenta_contable;
+      if (idCuenta) selCta.value = idCuenta;
+    } catch(e) { console.warn('Error buscando cuenta contable de la categoría:', e); }
+  }
 
   // RIF
   if (rifEl) rifEl.value = p.rif || '';
@@ -2013,6 +2027,9 @@ function calcularTributosPago() {
   if (pctLbl) pctLbl.textContent = 'IVA (' + pctIVA + '%)';
   const pctSpan = document.getElementById('pago-trib-iva-pct');
   if (pctSpan) pctSpan.textContent = pctIVA;
+  const montoRaw = (document.getElementById('pago-monto')?.value || '').replace(/\./g,'').replace(',','.');
+  const montoNativo = parseFloat(montoRaw) || 0;
+  const moneda = document.getElementById('pago-moneda')?.value || 'USD';
   const montoUSD = _pagoMontoEnUSD();
   const exento   = document.getElementById('pago-exento-iva-si')?.checked;
   const incluyeVal = document.getElementById('pago-incluye-iva-val')?.value;
@@ -2024,18 +2041,33 @@ function calcularTributosPago() {
   if (exento) { base = montoUSD; iva = 0; total = montoUSD; }
   else if (incluye) { base = parseFloat((montoUSD/(1+tasaIVA)).toFixed(4)); iva = parseFloat((montoUSD-base).toFixed(4)); total = montoUSD; }
   else { base = montoUSD; iva = parseFloat((montoUSD*tasaIVA).toFixed(4)); total = parseFloat((base+iva).toFixed(4)); }
-  const tasa = window._pagoTasaUSD || _tasaVigente || 1;
   prev.style.display = '';
   document.getElementById('pago-trib-base').textContent  = '$ ' + base.toFixed(2);
   document.getElementById('pago-trib-iva').textContent   = '$ ' + iva.toFixed(2);
   document.getElementById('pago-trib-total').textContent = '$ ' + total.toFixed(2);
-  // Base y Total se convierten a Bs cada uno por su lado; el IVA en Bs se
-  // deriva como el RESTO (total-base), no por una tercera conversión
-  // independiente -- así los tres siempre cuadran exacto, sin residuo de
-  // redondeo (mismo criterio que ya usa el asiento contable real).
-  const baseVes  = parseFloat((base*tasa).toFixed(2));
-  const totalVes = parseFloat((total*tasa).toFixed(2));
-  const ivaVes   = parseFloat((totalVes-baseVes).toFixed(2));
+  // Columna Bs: si se ingresó DIRECTO en VES, calcular el desglose sobre el
+  // monto nativo tal cual (sin pasar por USD e ida y vuelta -- mismo
+  // criterio que ya usa guardarPago() para el monto real). Si la moneda es
+  // USD/EUR, se convierte Base y Total, y el IVA en Bs se deriva como resto
+  // (Total-Base) para que los tres siempre cuadren exacto.
+  let baseVes, ivaVes, totalVes;
+  if (moneda === 'VES') {
+    if (exento) { baseVes = montoNativo; ivaVes = 0; totalVes = montoNativo; }
+    else if (incluye) {
+      baseVes = parseFloat((montoNativo/(1+tasaIVA)).toFixed(2));
+      ivaVes  = parseFloat((montoNativo-baseVes).toFixed(2));
+      totalVes = montoNativo;
+    } else {
+      baseVes = montoNativo;
+      ivaVes  = parseFloat((montoNativo*tasaIVA).toFixed(2));
+      totalVes = parseFloat((baseVes+ivaVes).toFixed(2));
+    }
+  } else {
+    const tasa = window._pagoTasaUSD || _tasaVigente || 1;
+    baseVes  = parseFloat((base*tasa).toFixed(2));
+    totalVes = parseFloat((total*tasa).toFixed(2));
+    ivaVes   = parseFloat((totalVes-baseVes).toFixed(2));
+  }
   document.getElementById('pago-trib-base-ves').textContent  = 'Bs ' + baseVes.toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
   document.getElementById('pago-trib-iva-ves').textContent   = 'Bs ' + ivaVes.toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
   document.getElementById('pago-trib-total-ves').textContent = 'Bs ' + totalVes.toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
