@@ -1146,9 +1146,18 @@ window.addEventListener('beforeunload', async () => {
 
 
 
+// Inserta un guion despues de los primeros 4 digitos (codigo de banco) para
+// que el numero de cuenta tenga un punto de quiebre de linea natural en vez
+// de romper feo a la mitad de un digito (ej. 0172-1111111111111111)
+function fmtNumCuenta(num) {
+  const soloDigitos = String(num || '').replace(/\D/g,'');
+  if (soloDigitos.length <= 4) return num || '—';
+  return soloDigitos.slice(0,4) + '-' + soloDigitos.slice(4);
+}
+
 function dato(label, val) {
   return '<div style="min-width:0"><div style="font-size:10px;color:var(--suave);margin-bottom:3px">'+label+'</div>'
-    +'<div style="font-size:13px;font-family:var(--font-mono);overflow-wrap:break-word;word-break:break-all">'+val+'</div></div>';
+    +'<div style="font-size:13px;font-family:var(--font-mono);overflow-wrap:break-word">'+val+'</div></div>';
 }
 
 function onCambioMetodoPago() {
@@ -1621,7 +1630,7 @@ async function onSelProveedorCxP() {
       bancoDatos.innerHTML =
         dato('Institución', p.banco_prov?.nombre || '—')
         + dato('Tipo Cuenta', p.tipo_cuenta || '—')
-        + dato('N° Cuenta', p.numero_cuenta || '—');
+        + dato('N° Cuenta', fmtNumCuenta(p.numero_cuenta));
       if (bancoInfo) bancoInfo.style.display = '';
     }
     if (tienePM && pmDatos) {
@@ -1699,7 +1708,7 @@ async function onSelProveedorPago() {
     bancoDatos.innerHTML =
       dato('Institución', p.banco_prov?.nombre || '—')
       + dato('Tipo Cuenta', p.tipo_cuenta || '—')
-      + dato('N° Cuenta', p.numero_cuenta || '—');
+      + dato('N° Cuenta', fmtNumCuenta(p.numero_cuenta));
     if (bancoInfo) bancoInfo.style.display = '';
   }
   if (tienePM && pmDatos) {
@@ -1771,7 +1780,7 @@ async function verPagoCxP(id_cxp) {
     const manualInfo = document.getElementById('cont-pago-manual-info');
     [bancoInfo, pmInfo, manualInfo].forEach(function(el){ if (el) el.style.display = 'none'; });
     if (prov.id_banco && bancoDatos) {
-      bancoDatos.innerHTML = dato('Institución', prov.banco_prov?.nombre||'—') + dato('Tipo', prov.tipo_cuenta||'—') + dato('N° Cuenta', prov.numero_cuenta||'—');
+      bancoDatos.innerHTML = dato('Institución', prov.banco_prov?.nombre||'—') + dato('Tipo', prov.tipo_cuenta||'—') + dato('N° Cuenta', fmtNumCuenta(prov.numero_cuenta));
       if (bancoInfo) bancoInfo.style.display = '';
     }
     if (prov.pm_id_banco && pmDatos) {
@@ -2524,7 +2533,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
 
     const aceptaTransferenciaHoy = Array.isArray(prov.metodos_pago_tipos) && prov.metodos_pago_tipos.includes('TRANSFERENCIA');
     if (aceptaTransferenciaHoy && prov.id_banco && bancoDatos) {
-      bancoDatos.innerHTML = dato('Institución', prov.banco_prov?.nombre||'—') + dato('Tipo', prov.tipo_cuenta||'—') + dato('N° Cuenta', prov.numero_cuenta||'—');
+      bancoDatos.innerHTML = dato('Institución', prov.banco_prov?.nombre||'—') + dato('Tipo', prov.tipo_cuenta||'—') + dato('N° Cuenta', fmtNumCuenta(prov.numero_cuenta));
       if (bancoInfo) bancoInfo.style.display = '';
     }
     if (aceptaTransferenciaHoy && prov.pm_id_banco && pmDatos) {
@@ -3277,14 +3286,14 @@ function _actualizarInfoPagoProveedor() {
     }
     const via = viaSelEl?.value || '';
     if (via === 'BANCO' && bancoDatosEl) {
-      bancoDatosEl.innerHTML = dato('Institución', prov.banco_prov?.nombre||'—') + dato('Tipo', prov.tipo_cuenta||'—') + dato('N° Cuenta', prov.numero_cuenta||'—');
+      bancoDatosEl.innerHTML = dato('Institución', prov.banco_prov?.nombre||'—') + dato('Tipo', prov.tipo_cuenta||'—') + dato('N° Cuenta', fmtNumCuenta(prov.numero_cuenta));
       if (bancoInfoEl) bancoInfoEl.style.display = '';
     } else if (via === 'PM' && pmDatosEl) {
       pmDatosEl.innerHTML = dato('Banco', prov.banco_pm?.nombre||'—') + dato('C.I./R.I.F', prov.pm_ci||'—') + dato('Celular', prov.pm_celular||'—');
       if (pmInfoEl) pmInfoEl.style.display = '';
     }
   } else if (tieneBanco && bancoDatosEl) {
-    bancoDatosEl.innerHTML = dato('Institución', prov.banco_prov?.nombre||'—') + dato('Tipo', prov.tipo_cuenta||'—') + dato('N° Cuenta', prov.numero_cuenta||'—');
+    bancoDatosEl.innerHTML = dato('Institución', prov.banco_prov?.nombre||'—') + dato('Tipo', prov.tipo_cuenta||'—') + dato('N° Cuenta', fmtNumCuenta(prov.numero_cuenta));
     if (bancoInfoEl) bancoInfoEl.style.display = '';
   } else if (tienePM && pmDatosEl) {
     pmDatosEl.innerHTML = dato('Banco', prov.banco_pm?.nombre||'—') + dato('C.I./R.I.F', prov.pm_ci||'—') + dato('Celular', prov.pm_celular||'—');
