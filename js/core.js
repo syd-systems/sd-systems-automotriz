@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260716007';
+const SYD_VERSION = '20260719001';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -65,6 +65,23 @@ async function cargarTasaIVAGlobal() {
     console.warn('Error cargando tasas de IVA/IGTF vigentes, se usan valores por defecto:', eIVA);
     window._tasaIVAGlobal  = 0.16;
     window._tasaIGTFGlobal = 0.03;
+  }
+}
+
+// Alícuota de un tributo (IVA/IGTF) VIGENTE EN UNA FECHA ESPECÍFICA —
+// mismo patrón que la búsqueda de Tasa BCV por fecha (fecha_valor.lte).
+// No filtra por estado=ACTIVO: un registro ya INACTIVO hoy (porque cambió
+// la alícuota después) sigue siendo el vigente correcto para una fecha
+// pasada anterior al cambio, gracias al versionado de guardarTributo().
+// Devuelve el decimal (ej. 0.16) o null si no hay ningún registro <= fecha.
+async function tributoVigenteEnFecha(codigo, fecha) {
+  try {
+    const rows = await api('param_tributos','GET',null,
+      '?codigo=eq.'+codigo+'&fecha_registro=lte.'+fecha+'&order=fecha_registro.desc&limit=1&select=alicuota,fecha_registro');
+    return (rows && rows[0] && rows[0].alicuota != null) ? parseFloat(rows[0].alicuota) / 100 : null;
+  } catch(e) {
+    console.warn('Error buscando tributo '+codigo+' vigente en fecha '+fecha+':', e);
+    return null;
   }
 }
 

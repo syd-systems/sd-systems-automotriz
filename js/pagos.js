@@ -1968,6 +1968,11 @@ async function onCambiarFechaPagoContado() {
       window._pagoTasaFechaUSD = tasaRows[0].fecha_valor;
     }
   } catch(e) { console.warn('Error buscando tasa BCV de la fecha:', e); }
+  // IVA vigente EN ESA FECHA (no el más reciente global) -- mismo criterio
+  // que la Tasa BCV justo arriba, para no mezclar alícuota de hoy con una
+  // Fecha de Pago histórica.
+  const tasaIVAFecha = await tributoVigenteEnFecha('IVA', fecha);
+  window._pagoTasaIVAFecha = tasaIVAFecha; // null si no encontró ninguno <= fecha
   onCambiarMontoPago();
 }
 
@@ -1999,7 +2004,11 @@ function _pagoMontoEnUSD() {
 }
 
 function calcularTributosPago() {
-  const pctIVA = Math.round(tasaIVAActual()*100);
+  // Usa el IVA vigente EN LA FECHA DE PAGO ya buscado por
+  // onCambiarFechaPagoContado(); si aún no se ha elegido fecha (o la
+  // búsqueda no encontró nada), cae al global de hoy como antes.
+  const tasaIVA = (window._pagoTasaIVAFecha != null) ? window._pagoTasaIVAFecha : tasaIVAActual();
+  const pctIVA = Math.round(tasaIVA*100);
   const pctLbl = document.getElementById('pago-iva-pct-label');
   if (pctLbl) pctLbl.textContent = 'IVA (' + pctIVA + '%)';
   const pctSpan = document.getElementById('pago-trib-iva-pct');
@@ -2013,8 +2022,8 @@ function calcularTributosPago() {
   const incluye = incluyeVal === 'SI';
   let base, iva, total;
   if (exento) { base = montoUSD; iva = 0; total = montoUSD; }
-  else if (incluye) { base = parseFloat((montoUSD/(1+tasaIVAActual())).toFixed(4)); iva = parseFloat((montoUSD-base).toFixed(4)); total = montoUSD; }
-  else { base = montoUSD; iva = parseFloat((montoUSD*tasaIVAActual()).toFixed(4)); total = parseFloat((base+iva).toFixed(4)); }
+  else if (incluye) { base = parseFloat((montoUSD/(1+tasaIVA)).toFixed(4)); iva = parseFloat((montoUSD-base).toFixed(4)); total = montoUSD; }
+  else { base = montoUSD; iva = parseFloat((montoUSD*tasaIVA).toFixed(4)); total = parseFloat((base+iva).toFixed(4)); }
   const tasa = window._pagoTasaUSD || _tasaVigente || 1;
   prev.style.display = '';
   document.getElementById('pago-trib-base').textContent  = '$ ' + base.toFixed(2);
@@ -2135,14 +2144,20 @@ async function guardarPago() {
   if (moneda === 'VES') montoIngresadoUSD = parseFloat((monto / tasaUSD).toFixed(4));
   else if (moneda === 'EUR') montoIngresadoUSD = parseFloat((monto * tasaEUR / tasaUSD).toFixed(4));
 
+  // IVA vigente EN LA MISMA fechaParaTasa usada arriba para la BCV -- no el
+  // global de "hoy". Se recalcula aquí (no se confía en window._pagoTasaIVAFecha)
+  // para que el monto guardado sea correcto incluso si por algún motivo no se
+  // disparó el evento de cambio de fecha en el formulario.
+  const tasaIVAFinal = (await tributoVigenteEnFecha('IVA', fechaParaTasa)) ?? tasaIVAActual();
+
   // Monto TOTAL con IVA (si aplica) — se calcula UNA sola vez, en USD
   const montoTotalConIVA = exento || incluyeIVAVal === 'SI'
     ? parseFloat(montoIngresadoUSD.toFixed(2))
-    : parseFloat((montoIngresadoUSD * (1+tasaIVAActual())).toFixed(2));
+    : parseFloat((montoIngresadoUSD * (1+tasaIVAFinal)).toFixed(2));
   // Si se ingresó directamente en VES, usar ese monto TAL CUAL (sin volver
   // a convertir desde el USD redondeado) para no perder precisión
   const montoTotalVES = moneda === 'VES'
-    ? (exento || incluyeIVAVal === 'SI' ? parseFloat(monto.toFixed(2)) : parseFloat((monto * (1+tasaIVAActual())).toFixed(2)))
+    ? (exento || incluyeIVAVal === 'SI' ? parseFloat(monto.toFixed(2)) : parseFloat((monto * (1+tasaIVAFinal)).toFixed(2)))
     : parseFloat((montoTotalConIVA * tasaUSD).toFixed(2));
 
   const id_emisor = _empresaActiva?.id_empresa || 0;
@@ -3114,7 +3129,7 @@ function onCambioIncluyeIvaPago() {
 
   if (!_ejecutarPagoCxPId) return;
 
-  api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=numero_doc,monto_usd,saldo_usd,monto_ves,moneda_pago,id_proveedor')
+  api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=numero_doc,monto_usd,saldo_usd,monto_ves,moneda_pago,id_proveedor,fecha_vencimiento')
     .then(async function(rows) {
       if (!rows || !rows[0]) return;
       // Si es CxP de inventario — no mostrar IGTF (ya contabilizado en la entrada)
@@ -3123,6 +3138,7 @@ function onCambioIncluyeIvaPago() {
         document.getElementById('exec-pago-tributos-preview').style.display = 'none';
         return;
       }
+      const fechaPagoPreview = rows[0].fecha_vencimiento?.slice(0,10) || (getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10));
       const monedaCxP = rows[0].moneda_pago || 'USD';
       const esUSD = monedaCxP !== 'VES';
       const monto = monedaCxP === 'VES'
@@ -3140,7 +3156,7 @@ function onCambioIncluyeIvaPago() {
       // Mostrar pregunta IGTF solo si aplica
       const igtfCont = document.getElementById('exec-pago-incluye-igtf-cont');
       if (igtfCont) igtfCont.style.display = aplicaIGTF ? '' : 'none';
-      _mostrarDesgloseTributos(monto, incluyeIgtf, aplicaIGTF);
+      _mostrarDesgloseTributos(monto, incluyeIgtf, aplicaIGTF, fechaPagoPreview);
     }).catch(function(){});
 }
 
@@ -3188,7 +3204,21 @@ function _actualizarInfoPagoProveedor() {
   }
 }
 
-async function _obtenerTributos() {
+async function _obtenerTributos(fecha) {
+  if (fecha) {
+    const [tasaIVAFecha, tasaIGTFFecha] = await Promise.all([
+      tributoVigenteEnFecha('IVA', fecha),
+      tributoVigenteEnFecha('IGTF', fecha)
+    ]);
+    if (tasaIVAFecha != null || tasaIGTFFecha != null) {
+      return {
+        tasaIVA:  tasaIVAFecha  != null ? tasaIVAFecha  : 0.16,
+        tasaIGTF: tasaIGTFFecha != null ? tasaIGTFFecha : 0.03
+      };
+    }
+    // Si no se encontró ningún registro <= fecha, cae al comportamiento
+    // anterior (más reciente ACTIVO) como último recurso.
+  }
   const [ivaRows, igtfRows] = await Promise.all([
     api('param_tributos','GET',null,'?codigo=eq.IVA&estado=eq.ACTIVO&order=fecha_registro.desc&limit=1&select=alicuota'),
     api('param_tributos','GET',null,'?codigo=eq.IGTF&estado=eq.ACTIVO&order=fecha_registro.desc&limit=1&select=alicuota')
@@ -3212,11 +3242,11 @@ function _calcularTributos(montoTotal, incluyeIgtf, tasaIGTF, aplicaIGTF) {
   return { base: montoTotal, igtf, total: parseFloat((montoTotal + igtf).toFixed(4)) };
 }
 
-async function _mostrarDesgloseTributos(monto, incluyeIgtf, aplicaIGTF) {
+async function _mostrarDesgloseTributos(monto, incluyeIgtf, aplicaIGTF, fecha) {
   const preview = document.getElementById('exec-pago-tributos-preview');
   if (!preview) return;
   try {
-    const { tasaIGTF } = await _obtenerTributos();
+    const { tasaIGTF } = await _obtenerTributos(fecha);
     const { base, igtf, total } = _calcularTributos(monto, incluyeIgtf, tasaIGTF, aplicaIGTF);
     preview.style.display = '';
     preview.innerHTML =
@@ -3293,7 +3323,7 @@ async function confirmarEjecucionPago() {
       : montoUSDCxP;
 
     // 3. IGTF -- el IVA ya no se toca aquí, se contabilizó al crear la Obligación de Pago
-    const { tasaIGTF } = await _obtenerTributos();
+    const { tasaIGTF } = await _obtenerTributos(fechaPago);
     const { igtf, total } = esInventarioPago
       ? { igtf: 0, total: montoUSD }
       : _calcularTributos(montoUSD, incluyeIgtf, tasaIGTF, aplicaIGTF);
