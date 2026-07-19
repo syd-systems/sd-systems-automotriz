@@ -1824,9 +1824,12 @@ function calcularTributosEdit() {
   document.getElementById('edit-trib-iva').textContent   = iva > 0 ? sim + ' ' + fmtBs(iva) : '—';
   document.getElementById('edit-trib-total').textContent = sim + ' ' + fmtBs(total);
   if (tasa > 0 && moneda !== 'VES') {
-    document.getElementById('edit-trib-base-ves').textContent  = 'Bs. ' + fmtBs(base * tasa);
-    document.getElementById('edit-trib-iva-ves').textContent   = iva > 0 ? 'Bs. ' + fmtBs(iva * tasa) : '—';
-    document.getElementById('edit-trib-total-ves').textContent = 'Bs. ' + fmtBs(total * tasa);
+    const baseVesEdit  = parseFloat((base * tasa).toFixed(2));
+    const totalVesEdit = parseFloat((total * tasa).toFixed(2));
+    const ivaVesEdit   = parseFloat((totalVesEdit - baseVesEdit).toFixed(2));
+    document.getElementById('edit-trib-base-ves').textContent  = 'Bs. ' + fmtBs(baseVesEdit);
+    document.getElementById('edit-trib-iva-ves').textContent   = iva > 0 ? 'Bs. ' + fmtBs(ivaVesEdit) : '—';
+    document.getElementById('edit-trib-total-ves').textContent = 'Bs. ' + fmtBs(totalVesEdit);
   }
   if (prev) prev.style.display = '';
 }

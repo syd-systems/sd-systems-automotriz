@@ -1168,9 +1168,12 @@ function calcularTributosEntrada() {
 
   // Columna VES
   if (tasa > 0 && moneda !== 'VES') {
-    document.getElementById('es-trib-base-ves').textContent  = 'Bs. ' + fmtBs(base * tasa);
-    document.getElementById('es-trib-iva-ves').textContent   = iva > 0 ? 'Bs. ' + fmtBs(iva * tasa) : '—';
-    document.getElementById('es-trib-total-ves').textContent = 'Bs. ' + fmtBs(total * tasa);
+    const baseVesEnt  = parseFloat((base * tasa).toFixed(2));
+    const totalVesEnt = parseFloat((total * tasa).toFixed(2));
+    const ivaVesEnt   = parseFloat((totalVesEnt - baseVesEnt).toFixed(2));
+    document.getElementById('es-trib-base-ves').textContent  = 'Bs. ' + fmtBs(baseVesEnt);
+    document.getElementById('es-trib-iva-ves').textContent   = iva > 0 ? 'Bs. ' + fmtBs(ivaVesEnt) : '—';
+    document.getElementById('es-trib-total-ves').textContent = 'Bs. ' + fmtBs(totalVesEnt);
   } else {
     document.getElementById('es-trib-base-ves').textContent  = moneda === 'VES' && tasa > 0 ? '$ ' + fmtBs(base / tasa) : '—';
     document.getElementById('es-trib-iva-ves').textContent   = moneda === 'VES' && iva > 0 && tasa > 0 ? '$ ' + fmtBs(iva / tasa) : '—';

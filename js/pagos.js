@@ -2029,9 +2029,16 @@ function calcularTributosPago() {
   document.getElementById('pago-trib-base').textContent  = '$ ' + base.toFixed(2);
   document.getElementById('pago-trib-iva').textContent   = '$ ' + iva.toFixed(2);
   document.getElementById('pago-trib-total').textContent = '$ ' + total.toFixed(2);
-  document.getElementById('pago-trib-base-ves').textContent  = 'Bs ' + (base*tasa).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
-  document.getElementById('pago-trib-iva-ves').textContent   = 'Bs ' + (iva*tasa).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
-  document.getElementById('pago-trib-total-ves').textContent = 'Bs ' + (total*tasa).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
+  // Base y Total se convierten a Bs cada uno por su lado; el IVA en Bs se
+  // deriva como el RESTO (total-base), no por una tercera conversión
+  // independiente -- así los tres siempre cuadran exacto, sin residuo de
+  // redondeo (mismo criterio que ya usa el asiento contable real).
+  const baseVes  = parseFloat((base*tasa).toFixed(2));
+  const totalVes = parseFloat((total*tasa).toFixed(2));
+  const ivaVes   = parseFloat((totalVes-baseVes).toFixed(2));
+  document.getElementById('pago-trib-base-ves').textContent  = 'Bs ' + baseVes.toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('pago-trib-iva-ves').textContent   = 'Bs ' + ivaVes.toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('pago-trib-total-ves').textContent = 'Bs ' + totalVes.toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 
 function calcularCuotasPago() {
@@ -2218,6 +2225,11 @@ async function guardarPago() {
           id_cuentaGasto: id_cuentaGasto,
           fecha:          fechaParaTasa,
           tasa:           tasaUSD,
+          // La misma alícuota vigente en fechaParaTasa que ya se usó para
+          // resolver montoTotalConIVA/montoTotalVES arriba -- si no, el
+          // asiento partiría el Total con el IVA de HOY y no cuadraría con
+          // la obligación real cuando la Fecha de Pago es histórica.
+          tasaIVA:        tasaIVAFinal,
           // montoUSD/montoBsExacto ya son el TOTAL resuelto (con IVA sumado si
           // aplicaba) -- decirle a generarAsientoGastoManual que lo desglose
           // (true), sin importar la seleccion original del usuario
@@ -2254,6 +2266,8 @@ async function guardarPago() {
       id_cuentaGasto: id_cuentaGasto,
       fecha:       fechaParaTasa,
       tasa:        tasaUSD,
+      // idem edición: la misma alícuota vigente en fechaParaTasa, no la de hoy
+      tasaIVA:     tasaIVAFinal,
       // idem: el monto ya es el total resuelto, siempre desglozar
       incluyeIVA:  true,
       exentoIVA:   exento
