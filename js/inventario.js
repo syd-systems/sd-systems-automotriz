@@ -1724,6 +1724,24 @@ async function onCambiarFechaNegEdit() {
   } catch(e) {}
 }
 
+// Al cambiar el Proveedor durante la edición del movimiento, sugerir su
+// Moneda de Facturación como Moneda Negociación -- editable, igual que en
+// Entrada de Stock (onSelProveedorEntrada).
+async function onSelProveedorEditMov() {
+  const idProv = document.getElementById('edit-mov-proveedor')?.value;
+  const selMoneda = document.getElementById('edit-mov-moneda');
+  if (!idProv || !selMoneda) return;
+  try {
+    const rows = await api('proveedores','GET',null,
+      '?id_proveedor=eq.'+idProv+'&select=moneda_facturacion&limit=1');
+    const moneda = rows?.[0]?.moneda_facturacion;
+    if (moneda) {
+      selMoneda.value = moneda;
+      onCambiarMonedaEdit();
+    }
+  } catch(e) { console.warn('Error buscando moneda de facturación del proveedor:', e); }
+}
+
 async function onCambiarMonedaEdit() {
   const moneda = document.getElementById('edit-mov-moneda')?.value || 'USD';
   const lblMoneda = document.getElementById('edit-mov-label-moneda');

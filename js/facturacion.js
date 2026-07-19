@@ -1072,6 +1072,25 @@ async function onCambiarFechaNegociacionEntrada() {
   await buscarTasaBCVNegociacion();
 }
 
+// Al elegir el Proveedor en Entrada de Stock, sugerir su Moneda de
+// Facturacion como Moneda Negociacion -- pero el select queda editable,
+// porque una compra puntual puede negociarse en una moneda distinta a la
+// habitual del proveedor.
+async function onSelProveedorEntrada() {
+  const idProv = document.getElementById('es-proveedor')?.value;
+  const selMoneda = document.getElementById('es-moneda-compra');
+  if (!idProv || !selMoneda) return;
+  try {
+    const rows = await api('proveedores','GET',null,
+      '?id_proveedor=eq.'+idProv+'&select=moneda_facturacion&limit=1');
+    const moneda = rows?.[0]?.moneda_facturacion;
+    if (moneda) {
+      selMoneda.value = moneda;
+      onCambiarMonedaEntrada();
+    }
+  } catch(e) { console.warn('Error buscando moneda de facturación del proveedor:', e); }
+}
+
 async function onCambiarMonedaEntrada() {
   const moneda   = document.getElementById('es-moneda-compra')?.value || 'USD';
   // Actualizar labels de moneda
