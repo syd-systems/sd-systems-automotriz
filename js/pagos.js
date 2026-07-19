@@ -1147,8 +1147,8 @@ window.addEventListener('beforeunload', async () => {
 
 
 function dato(label, val) {
-  return '<div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">'+label+'</div>'
-    +'<div style="font-size:13px;font-family:var(--font-mono)">'+val+'</div></div>';
+  return '<div style="min-width:0"><div style="font-size:10px;color:var(--suave);margin-bottom:3px">'+label+'</div>'
+    +'<div style="font-size:13px;font-family:var(--font-mono);overflow-wrap:break-word;word-break:break-all">'+val+'</div></div>';
 }
 
 function onCambioMetodoPago() {
