@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260719006"></script>
-<script src="js/parametros.js?v=20260719006"></script>
-<script src="js/empresas.js?v=20260719006"></script>
-<script src="js/facturacion.js?v=20260719006"></script>
-<script src="js/inventario.js?v=20260719006"></script>
-<script src="js/contabilidad.js?v=20260719006"></script>
-<script src="js/pagos.js?v=20260719006"></script>
-<script src="js/vehiculos.js?v=20260719006"></script>
-<script src="js/catalogo.js?v=20260719006"></script>
-<script src="js/inventario2.js?v=20260719006"></script>
-<script src="js/ordenes.js?v=20260719006"></script>
+<script src="js/core.js?v=20260719007"></script>
+<script src="js/parametros.js?v=20260719007"></script>
+<script src="js/empresas.js?v=20260719007"></script>
+<script src="js/facturacion.js?v=20260719007"></script>
+<script src="js/inventario.js?v=20260719007"></script>
+<script src="js/contabilidad.js?v=20260719007"></script>
+<script src="js/pagos.js?v=20260719007"></script>
+<script src="js/vehiculos.js?v=20260719007"></script>
+<script src="js/catalogo.js?v=20260719007"></script>
+<script src="js/inventario2.js?v=20260719007"></script>
+<script src="js/ordenes.js?v=20260719007"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4267,9 +4267,10 @@
       </div>
 
       <div class="form-grid">
-        <!-- Moneda de Pago -- viene de la Obligación, pero editable por si
-             quedó mal heredada (ver onCambiarMonedaExecPago) -->
-        <div class="form-campo form-full">
+        <!-- Moneda de Pago -- por defecto la Moneda de Facturación de la
+             ficha del proveedor, pero editable por si el caso puntual
+             requiere otra (ver onCambiarMonedaExecPago) -->
+        <div class="form-campo">
           <label>Moneda de Pago</label>
           <select id="exec-pago-moneda-display" onchange="onCambiarMonedaExecPago()"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
@@ -4279,7 +4280,7 @@
         </div>
 
         <!-- Método de Pago -- de solo lectura, viene fijo de la ficha del Proveedor -->
-        <div class="form-campo form-full">
+        <div class="form-campo">
           <label>Método de Pago</label>
           <div id="exec-pago-metodo-display" style="background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:11px 14px;font-size:13px;color:var(--texto);font-weight:600">—</div>
           <input type="hidden" id="exec-pago-metodo">

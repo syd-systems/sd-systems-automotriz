@@ -3029,7 +3029,7 @@ async function ejecutarPagoCxP(id_cxp) {
   // Cargar datos de la CxP + Proveedor (con datos bancarios de su ficha)
   const rows = await api('cont_cxp','GET',null,
     '?id_cxp=eq.'+id_cxp+'&select=*,cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre),'
-    +'proveedores:id_proveedor(nombre,rif,tipo_contribuyente,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,metodos_pago_tipos,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre))');
+    +'proveedores:id_proveedor(nombre,rif,tipo_contribuyente,moneda_facturacion,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,metodos_pago_tipos,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre))');
   const c = rows && rows[0];
   if (!c) { alert('CxP no encontrada.'); return; }
   const prov = c.proveedores || {};
@@ -3063,10 +3063,12 @@ async function ejecutarPagoCxP(id_cxp) {
   if (btnConf) { btnConf.disabled = false; btnConf.textContent = '💳 Confirmar Pago'; }
   document.getElementById('alerta-exec-err').style.display = 'none';
 
-  // Moneda de Pago -- viene de la Obligación de Pago, pero editable aquí
-  // por si quedó mal heredada (ver onCambiarMonedaExecPago)
+  // Moneda de Pago -- por defecto la Moneda de Facturación de la ficha del
+  // proveedor (la fuente de verdad real), con fallback a la ya guardada en
+  // la CxP si el proveedor no la tiene configurada. Editable de todas
+  // formas (ver onCambiarMonedaExecPago).
   window._execPagoCxP = c;
-  const monedaCxP = c.moneda_pago || 'USD';
+  const monedaCxP = prov.moneda_facturacion || c.moneda_pago || 'USD';
   const montoCxP  = monedaCxP === 'VES'
     ? parseFloat(c.monto_ves || c.saldo_ves || 0)
     : parseFloat(c.monto_usd || c.saldo_usd || 0);
