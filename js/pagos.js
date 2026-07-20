@@ -1477,7 +1477,7 @@ async function contGuardarPagoCxp() {
 
 
 async function anularPagoEjecutado(id_cxp) {
-  if (!puedo('PAGOS','ANULAR')) { alert('No tiene permiso para anular pagos.'); return; }
+  if (!sesionActual?.administrador && !puedo('PAGOS','ANULAR')) { alert('No tiene permiso para anular pagos.'); return; }
   if (!(await tieneNivelMinimo(1))) { alert('Esta acción requiere Firma de Aprobación Nivel 1.'); return; }
 
   const resultado = await new Promise(function(resolve) {
@@ -2565,7 +2565,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       } else {
         footer.innerHTML =
           ((esManualF && est !== 'ANULADA' && est !== 'PAGADA') ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+');cerrarModal(\'modal-cont-pago-cxp\')">&#x1F5D1; Anular</button>' : '')
-          + (est === 'PAGADA' && puedo('PAGOS','ANULAR') ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Ejecutado</button>' : '')
+          + ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR')) ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Ejecutado</button>' : '')
           + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\');cargarPagos()">Retornar</button>';
       }
     }
@@ -2648,7 +2648,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
         ? '<button class="btn-naranja" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
       const btnAnular = (est === 'PENDIENTE' && (puedo('PAGOS','ELIMINAR') || sesionActual?.administrador))
         ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 Anular</button>' : '';
-      const btnReversar = (est === 'PAGADA' && puedo('PAGOS','ANULAR'))
+      const btnReversar = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR')))
         ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Ejecutado</button>' : '';
       footerPend.innerHTML = btnEditar + btnAnular + btnReversar
         + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\')">RETORNAR</button>';
