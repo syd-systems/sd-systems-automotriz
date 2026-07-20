@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260719013"></script>
-<script src="js/parametros.js?v=20260719013"></script>
-<script src="js/empresas.js?v=20260719013"></script>
-<script src="js/facturacion.js?v=20260719013"></script>
-<script src="js/inventario.js?v=20260719013"></script>
-<script src="js/contabilidad.js?v=20260719013"></script>
-<script src="js/pagos.js?v=20260719013"></script>
-<script src="js/vehiculos.js?v=20260719013"></script>
-<script src="js/catalogo.js?v=20260719013"></script>
-<script src="js/inventario2.js?v=20260719013"></script>
-<script src="js/ordenes.js?v=20260719013"></script>
+<script src="js/core.js?v=20260719014"></script>
+<script src="js/parametros.js?v=20260719014"></script>
+<script src="js/empresas.js?v=20260719014"></script>
+<script src="js/facturacion.js?v=20260719014"></script>
+<script src="js/inventario.js?v=20260719014"></script>
+<script src="js/contabilidad.js?v=20260719014"></script>
+<script src="js/pagos.js?v=20260719014"></script>
+<script src="js/vehiculos.js?v=20260719014"></script>
+<script src="js/catalogo.js?v=20260719014"></script>
+<script src="js/inventario2.js?v=20260719014"></script>
+<script src="js/ordenes.js?v=20260719014"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4051,8 +4051,8 @@
     </div>
     <div class="modal-footer">
       <div style="display:flex;gap:10px;justify-content:space-between;align-items:center">
-        <button class="btn-primario" id="cxp-auto-btn-pagar" style="background:#22c55e;border-color:#22c55e;color:#fff;display:none" onclick="if(typeof ejecutarPagoCxP==='function'){ejecutarPagoCxP(window._cxpAutoIdActual);}else{alert('Error: función no cargada');}">💳 Pagar</button>
         <button class="btn-peligro" id="cxp-auto-btn-anular-ejecutado" style="display:none" onclick="if(typeof anularPagoEjecutado==='function'){anularPagoEjecutado(window._cxpAutoIdActual);}">🗑 Anular Pago Ejecutado</button>
+        <button class="btn-primario" id="cxp-auto-btn-pagar" style="background:#22c55e;border-color:#22c55e;color:#fff;display:none" onclick="if(typeof ejecutarPagoCxP==='function'){ejecutarPagoCxP(window._cxpAutoIdActual);}else{alert('Error: función no cargada');}">💳 Pagar</button>
         <button class="btn-secundario" onclick="cerrarModal('modal-ver-cxp-auto')">Retornar</button>
       </div>
     </div>
