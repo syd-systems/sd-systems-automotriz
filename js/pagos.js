@@ -2563,10 +2563,13 @@ async function verDetalleCxP(id_cxp, modoInicial) {
           '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\')">Retornar</button>'
           + '<button class="btn-primario" onclick="contGuardarPagoCxp()">&#x1F4B8; Registrar Pago</button>';
       } else {
+        const btnAnularF    = (esManualF && est !== 'ANULADA' && est !== 'PAGADA') ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+');cerrarModal(\'modal-cont-pago-cxp\')">🗑 Anular</button>' : '';
+        const btnReversarF  = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR'))) ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Ejecutado</button>' : '';
         footer.innerHTML =
-          ((esManualF && est !== 'ANULADA' && est !== 'PAGADA') ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+');cerrarModal(\'modal-cont-pago-cxp\')">&#x1F5D1; Anular</button>' : '')
-          + ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR')) ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Ejecutado</button>' : '')
-          + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\');cargarPagos()">Retornar</button>';
+          '<div style="display:flex;gap:10px;justify-content:space-between;align-items:center;width:100%">'
+          + (btnAnularF || btnReversarF)
+          + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\');cargarPagos()">Retornar</button>'
+          + '</div>';
       }
     }
 
@@ -2650,8 +2653,11 @@ async function verDetalleCxP(id_cxp, modoInicial) {
         ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 Anular</button>' : '';
       const btnReversar = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR')))
         ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Ejecutado</button>' : '';
-      footerPend.innerHTML = btnEditar + btnAnular + btnReversar
-        + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\')">RETORNAR</button>';
+      footerPend.innerHTML =
+        '<div style="display:flex;gap:10px;justify-content:space-between;align-items:center;width:100%">'
+        + (btnEditar + btnAnular + btnReversar)
+        + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\')">RETORNAR</button>'
+        + '</div>';
     }
 
   } catch(e) { alert('Error: '+e.message); console.error(e); }
