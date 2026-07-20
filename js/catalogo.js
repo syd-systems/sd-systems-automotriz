@@ -43,7 +43,7 @@ function calcPrecioCat(precio_usd, moneda_precio) {
 
 
 
-async function renderCatalogo(filtro, categoria) {
+async function renderCatalogo(filtro) {
   if (!sesionActual?.administrador && !modulosAcceso.includes('CATALOGO')) {
     document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
     return;
@@ -55,7 +55,6 @@ async function renderCatalogo(filtro, categoria) {
   // Si se llama sin argumentos y el panel ya existe, leer los filtros actuales
   if (panelYaExiste) {
     if (filtro === undefined) filtro = document.getElementById('buscar-cat')?.value || null;
-    if (categoria === undefined) categoria = document.getElementById('filtro-cat-cat')?.value || null;
   }
 
   if (!panelYaExiste) {
@@ -63,23 +62,14 @@ async function renderCatalogo(filtro, categoria) {
       + '<div class="panel-header"><h3 id="cat-contador">Catálogo de Servicios</h3>'
       + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
       + '<input type="text" id="buscar-cat" placeholder="Buscar por grupo, servicio..." '
-      + 'onkeyup="renderCatalogo(this.value, document.getElementById(\'filtro-cat-cat\').value||null)" '
-      + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderCatalogo(this.value,document.getElementById(\'filtro-cat-cat\').value||null)}else if(event.key===\'Escape\'){this.value=\'\';renderCatalogo(\'\',document.getElementById(\'filtro-cat-cat\').value||null)}" '
+      + 'onkeyup="renderCatalogo(this.value)" '
+      + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderCatalogo(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderCatalogo(\'\')}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:200px">'
-      + '<select id="filtro-cat-cat" onchange="renderCatalogo(document.getElementById(\'buscar-cat\').value||null,this.value||null)" '
-      + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none">'
-      + '<option value="">Todas las categorías</option>'
-      + ['MECÁNICA','ELÉCTRICA','CARROCERÍA','FRENOS','SUSPENSIÓN','AIRES','TRANSMISIÓN','DIAGNÓSTICO','OTROS'].map(function(cat) { return '<option value="' + cat + '">' + cat + '</option>'; }).join('')
-      + '</select>'
       + (puedo('CATALOGO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoCatalogo()">+ Nuevo Servicio</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container" id="tabla-cat-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
       + '</div>';
   }
-
-  // Sync filter values if panel exists
-  const selCat = document.getElementById('filtro-cat-cat');
-  if (selCat && categoria !== undefined) selCat.value = categoria || '';
 
   const tablaCont = document.getElementById('tabla-cat-cont');
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
@@ -94,8 +84,7 @@ async function renderCatalogo(filtro, categoria) {
         s.nombre.toLowerCase().includes(filtro.toLowerCase()) || 
         (s.descripcion || '').toLowerCase().includes(filtro.toLowerCase()) ||
         (s.grupo || '').toLowerCase().includes(filtro.toLowerCase());
-      const matchCat = !categoria || s.categoria === categoria;
-      return matchTexto && matchCat;
+      return matchTexto;
     });
 
     const filas = itemsFiltrados.map(function(s) {
@@ -154,8 +143,6 @@ function verFichaCatalogo(id) {
     + '</div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Estado</div>'
     + '<span class="badge ' + (s.activo ? 'badge-verde' : 'badge-rojo') + '">' + (s.activo ? 'Activo' : 'Inactivo') + '</span></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Categoría</div>'
-    + '<div style="font-size:13px">' + (s.categoria || '—') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Tipo Carrocería</div>'
     + '<div style="font-size:13px">' + (s.tipo_carroceria || 'Todas') + '</div></div>'
     + '</div>';
@@ -199,7 +186,6 @@ async function abrirNuevoCatalogo() {
   document.getElementById('cat-grupo').value = '';
   document.getElementById('cat-nombre').innerHTML = '<option value="">— Seleccionar servicio —</option>';
   document.getElementById('cat-descripcion').value = '';
-  document.getElementById('cat-categoria').value = '';
   document.getElementById('cat-carroceria').value = '';
   document.getElementById('cat-precio').value = '';
   document.getElementById('cat-activo').value = 'true';
@@ -229,7 +215,6 @@ async function abrirEditarCatalogo(id) {
   if (!s) return;
   document.getElementById('cat-id').value = s.id_servicio;
   document.getElementById('cat-descripcion').value = s.descripcion || '';
-  document.getElementById('cat-categoria').value = s.categoria || '';
   document.getElementById('cat-carroceria').value = s.tipo_carroceria || '';
   document.getElementById('cat-precio').value = s.precio_usd ? fmtBs(s.precio_usd) : '';
   await cargarTasasCat();
@@ -287,7 +272,6 @@ async function guardarCatalogo() {
     ? (document.getElementById('cat-nombre-nuevo')?.value || '').trim()
     : document.getElementById('cat-nombre').value.trim();
   const desc       = document.getElementById('cat-descripcion').value.trim();
-  const cat        = document.getElementById('cat-categoria').value.trim();
   const carroceria = document.getElementById('cat-carroceria').value.trim();
   const precioRaw  = (document.getElementById('cat-precio').value || '0');
   // Detectar formato: venezolano (punto miles, coma decimal) vs USD (coma miles, punto decimal)
@@ -318,7 +302,7 @@ async function guardarCatalogo() {
     });
     if (duplicado) {
       // Si ya existe, actualizar ese registro en lugar de crear uno nuevo
-      const datos = { descripcion: desc || null, categoria: cat || null,
+      const datos = { descripcion: desc || null,
         tipo_carroceria: carroceria || null, precio_usd: precio,
         moneda_precio: monedaServ, activo,
         grupo: grupoFinal ?? duplicado.grupo,
@@ -339,7 +323,7 @@ async function guardarCatalogo() {
       ? (catalogoCache.find(function(s){ return s.id_servicio === parseInt(id); })?.grupo ?? null)
       : grupoFinal;
 
-    const datos = { nombre: nombreFinal, grupo: grupoParaGuardar, descripcion: desc || null, categoria: cat || null,
+    const datos = { nombre: nombreFinal, grupo: grupoParaGuardar, descripcion: desc || null,
       tipo_carroceria: carroceria || null, precio_usd: precio, moneda_precio: monedaServ, activo,
       id_empresa: _empresaActiva?.id_empresa,
       id_usuario: sesionActual.correo_usuario };
@@ -411,7 +395,6 @@ async function renderListaServicios(grupo) {
         + '<div style="font-size:14px;font-weight:600;color:var(--texto)">' + s.nombre + '</div>'
         + '<div style="font-size:11px;color:var(--suave);margin-top:2px">'
         + (s.grupo ? '<span style="color:var(--naranja)">' + s.grupo + '</span> · ' : '')
-        + (s.categoria || 'Sin categoría') + ' · '
         + '<span style="font-family:var(--font-mono);color:var(--naranja)">'
         + (function(){ var p=calcPrecioCat(s.precio_usd,s.moneda_precio); return p.bs + ' · ' + p.divisa; })()
         + '</span>'
@@ -561,7 +544,6 @@ async function cargarDatosServicioSeleccionado(nombre) {
     // Limpiar campos
     document.getElementById('cat-id').value = '';
     document.getElementById('cat-descripcion').value = '';
-    document.getElementById('cat-categoria').value = '';
     document.getElementById('cat-carroceria').value = '';
     document.getElementById('cat-precio').value = '';
     document.getElementById('cat-activo').value = 'true';
@@ -572,7 +554,6 @@ async function cargarDatosServicioSeleccionado(nombre) {
   if (!s) return;
   document.getElementById('cat-id').value = s.id_servicio;
   document.getElementById('cat-descripcion').value = s.descripcion || '';
-  document.getElementById('cat-categoria').value = s.categoria || '';
   document.getElementById('cat-carroceria').value = s.tipo_carroceria || '';
   document.getElementById('cat-precio').value = s.precio_usd ? fmtBs(s.precio_usd) : '';
   await cargarTasasCat();
