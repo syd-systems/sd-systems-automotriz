@@ -458,7 +458,7 @@ async function abrirFichaPago(id) {
   const btnAprobar = (p.estado==='BORRADOR' && puedo('PAGOS','APROBAR'))
     ? '<button class="btn-primario" onclick="aprobarPagoFicha('+idp+')">✓ Aprobar</button>' : '';
   const btnPagar   = (p.estado==='APROBADO' && puedo('PAGOS','PAGAR'))
-    ? '<button class="btn-primario" style="background:#22c55e;border-color:#22c55e" onclick="cerrarModal(&#39;modal-ficha-pago&#39;);ejecutarPago('+idp+')">💳 Pagar</button>' : '';
+    ? '<button class="btn-primario" style="background:#22c55e;border-color:#22c55e;color:#fff" onclick="cerrarModal(&#39;modal-ficha-pago&#39;);ejecutarPago('+idp+')">💳 Pagar</button>' : '';
   const btnAnular  = (p.estado!=='ANULADO' && p.estado!=='PAGADO' && puedo('PAGOS','ANULAR'))
     ? '<button class="btn-secundario" style="color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="anularPagoFicha('+idp+')">Anular</button>' : '';
   const botonesAccion = btnEditar + btnAprobar + btnPagar + btnAnular;
