@@ -840,7 +840,22 @@ async function guardarEdicionMovimiento() {
         }
 
         const idProvEdit = provEdit || null;
-        const tasaEdit = parseFloat(art?.tasa_bcv || 1);
+        let tasaEdit = parseFloat(art?.tasa_bcv || 0);
+        if (!tasaEdit) {
+          try {
+            const tasaRowsEdit = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaNeg+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+            if (tasaRowsEdit && tasaRowsEdit[0]) tasaEdit = parseFloat(tasaRowsEdit[0].tipo_cambio);
+          } catch(e) {}
+        }
+        if (!tasaEdit) tasaEdit = _tasaVigente || 0;
+        // Si aun así no hay tasa válida, DETENER -- de lo contrario el
+        // monto_ves quedaría igual al monto_usd (tasa 1:1), como pasó con
+        // una CxP real de $30 USD que se guardó como Bs 30.
+        if (!tasaEdit || tasaEdit <= 1) {
+          errEl.textContent = 'No se encontró una Tasa BCV válida para la Fecha de Negociación. Registre la tasa del día en Parámetros → Tasas de Cambio antes de continuar.';
+          errEl.style.display = 'block';
+          return;
+        }
 
         if (pagoEdit === 'CREDITO') {
           // Crear cuotas desde el preview
@@ -1132,7 +1147,7 @@ async function confirmarReverso() {
         if (cxps && cxps.length) {
           const pagadas = cxps.filter(function(c) { return c.estado === 'PAGADA' || c.estado === 'PARCIAL'; });
           if (pagadas.length > 0) {
-            throw new Error('No se puede anular esta entrada porque la CxP "' + pagadas[0].numero_doc + '" tiene estado ' + pagadas[0].estado + '. Debe reversar el pago primero.');
+            throw new Error('No se puede anular esta entrada porque la CxP "' + pagadas[0].numero_doc + '" tiene estado ' + pagadas[0].estado + '. Reverse el pago primero: vaya a Pagos → abra esa Cuenta por Pagar → botón "🗑 Anular Pago Ejecutado". Luego vuelva aquí a anular la Entrada.');
           }
         }
       } catch(eCxPCheck) {

@@ -819,6 +819,18 @@ async function guardarEntradaStock() {
         if (tasaRows && tasaRows[0]) tasa_bcv_usada = parseFloat(tasaRows[0].tipo_cambio);
       } catch(e) {}
     }
+    // Último recurso: la tasa vigente en caché
+    if (!tasa_bcv_usada) tasa_bcv_usada = _tasaVigente || null;
+    // Si aun así no hay tasa válida, DETENER -- de lo contrario el monto_ves
+    // de la CxP y del asiento contable caerían a "monto_usd * 1" más abajo
+    // (un caso real: $30 USD se registró como Bs 30 exactos, tratando el
+    // dólar 1:1 con el bolívar por falta de una tasa BCV registrada).
+    if (!tasa_bcv_usada || tasa_bcv_usada <= 1) {
+      errEl.textContent = 'No se encontró una Tasa BCV válida para la Fecha de Negociación. Registre la tasa del día en Parámetros → Tasas de Cambio antes de continuar (o ingrésela manualmente en el campo Tasa BCV de este formulario).';
+      errEl.style.display = 'block';
+      document.getElementById('es-tasa-bcv')?.focus();
+      resetBtn(); return;
+    }
     const nuevoPrecioVenta       = null; // precio venta se gestiona desde SALIDA
 
     // ── FASE 1: Todas las validaciones ANTES de tocar BD ──

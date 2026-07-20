@@ -1516,7 +1516,7 @@ async function anularPagoEjecutado(id_cxp) {
     const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=monto_usd,monto_ves,numero_doc,estado');
     if (!rows || !rows[0]) throw new Error('CxP no encontrada.');
     const c = rows[0];
-    if (c.estado !== 'PAGADA') { alert('Esta CxP no está en estado PAGADA.'); return; }
+    if (c.estado !== 'PAGADA' && c.estado !== 'PARCIAL') { alert('Esta CxP no está en estado PAGADA ni PARCIAL.'); return; }
 
     // 1. Devolver la CxP a PENDIENTE (dejar sin efecto el pago registrado)
     await api('cont_cxp','PATCH',
@@ -2777,10 +2777,11 @@ async function _verCxPAutomatica(c, id_cxp) {
     btnPagar.style.display = puedePagar ? '' : 'none';
   }
 
-  // Mostrar botón ANULAR PAGO EJECUTADO solo si está PAGADA y tiene permiso
+  // Mostrar botón ANULAR PAGO EJECUTADO si está PAGADA o PARCIAL (un pago
+  // parcial también puede necesitar reversarse, ej. si quedó mal calculado)
   const btnAnularEj = document.getElementById('cxp-auto-btn-anular-ejecutado');
   if (btnAnularEj) {
-    const puedeAnular = c.estado === 'PAGADA' && (sesionActual?.administrador || puedo('PAGOS','ANULAR'));
+    const puedeAnular = (c.estado === 'PAGADA' || c.estado === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR'));
     btnAnularEj.style.display = puedeAnular ? '' : 'none';
   }
 
