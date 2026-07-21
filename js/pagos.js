@@ -397,18 +397,14 @@ async function abrirNuevoPago() {
   abrirModal('modal-pago');
   // Posicionar el modal al inicio siempre que se abra -- si quedó scrolleado
   // hacia abajo de un uso anterior, se abría de nuevo en esa misma posición.
-  // El reset inmediato no bastaba: el navegador restaura el scroll ANTERIOR
-  // después de que la transición/layout del modal termina, sobrescribiendo
-  // el scrollTop=0 que se puso antes de que el modal fuera visible. Por eso
-  // se repite el reset dentro de un doble requestAnimationFrame (después
-  // de que el navegador ya pintó el modal visible) como red de seguridad.
-  const modalBodyNuevo = document.querySelector('#modal-pago .modal-body');
-  if (modalBodyNuevo) modalBodyNuevo.scrollTop = 0;
-  document.getElementById('modal-pago')?.scrollTo?.(0, 0);
+  // El elemento que realmente scrollea es .modal (overflow-y:auto), NO
+  // .modal-body (ese solo tiene padding, sin overflow) -- por eso el reset
+  // anterior no tenía ningún efecto real.
+  const modalPagoEl = document.querySelector('#modal-pago .modal');
+  if (modalPagoEl) modalPagoEl.scrollTop = 0;
   requestAnimationFrame(function() {
     requestAnimationFrame(function() {
-      if (modalBodyNuevo) modalBodyNuevo.scrollTop = 0;
-      document.getElementById('modal-pago')?.scrollTo?.(0, 0);
+      if (modalPagoEl) modalPagoEl.scrollTop = 0;
     });
   });
 }
