@@ -1579,7 +1579,7 @@ async function anularPagoCxP(id_cxp) {
       { estado: 'ANULADA', observaciones: '[ANULADA] ' },
       '?id_cxp=eq.'+id_cxp);
 
-    // 2. Reversar asientos contables asociados
+    // 2. Anular asientos contables asociados (marcar ANULADO, sin contrapartida)
     const numDoc = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=numero_doc');
     if (numDoc && numDoc[0]) {
       // El asiento se creó con referencia = numDocBase, SIN el sufijo
@@ -1844,6 +1844,15 @@ async function editarCxPManual(id_cxp) {
       '?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(id_categoria)');
     if (!rows || !rows[0]) return;
     const c = rows[0];
+
+    // Defensa adicional -- no confiar solo en que el boton este oculto.
+    // Editar el monto de una CxP ya PAGADA/PARCIAL corrompe el registro:
+    // resetea el saldo pero no el estado, y regenera el asiento contable
+    // con un monto distinto al que realmente salio del banco.
+    if (c.estado !== 'PENDIENTE') {
+      alert('No se puede editar: esta Obligación de Pago ya está en estado ' + c.estado + '. Si necesita corregirla, anule el pago primero (botón "🗑 Anular Pago Ejecutado").');
+      return;
+    }
 
     // Abrir modal-pago con datos cargados
     await abrirNuevoPago();
@@ -2127,6 +2136,19 @@ async function guardarPago() {
   const id_cxp_edit = document.getElementById('pago-id')?.value || '';
   if (!puedo('PAGOS','CREAR') && !id_cxp_edit) { alert('No tiene permiso para registrar obligaciones de pago.'); return; }
   if (id_cxp_edit && !puedo('PAGOS','EDITAR') && !sesionActual?.administrador) { alert('No tiene permiso para editar obligaciones de pago.'); return; }
+  // Defensa adicional -- reconfirmar el estado actual en BD (no confiar en
+  // que editarCxPManual ya lo validó; esta función podría llamarse desde
+  // otro punto en el futuro). Editar el monto de una CxP ya no-PENDIENTE
+  // corrompe el registro (ver nota en editarCxPManual).
+  if (id_cxp_edit) {
+    try {
+      const chkRows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp_edit+'&select=estado');
+      if (chkRows && chkRows[0] && chkRows[0].estado !== 'PENDIENTE') {
+        alert('No se puede guardar: esta Obligación de Pago ya está en estado ' + chkRows[0].estado + '. Anule el pago primero (botón "🗑 Anular Pago Ejecutado").');
+        return;
+      }
+    } catch(eChk) {}
+  }
   const errEl = document.getElementById('alerta-pago-err');
   const okEl  = document.getElementById('alerta-pago-ok');
   if (errEl) errEl.style.display = 'none';
@@ -2564,10 +2586,10 @@ async function verDetalleCxP(id_cxp, modoInicial) {
           + '<button class="btn-primario" onclick="contGuardarPagoCxp()">&#x1F4B8; Registrar Pago</button>';
       } else {
         const btnAnularF    = (esManualF && est !== 'ANULADA' && est !== 'PAGADA') ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+');cerrarModal(\'modal-cont-pago-cxp\')">🗑 Anular</button>' : '';
-        const btnReversarF  = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR'))) ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Ejecutado</button>' : '';
+        const btnAnularEjecF = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR'))) ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Ejecutado</button>' : '';
         footer.innerHTML =
           '<div style="display:flex;gap:10px;justify-content:space-between;align-items:center;width:100%">'
-          + (btnAnularF || btnReversarF)
+          + (btnAnularF || btnAnularEjecF)
           + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\');cargarPagos()">Retornar</button>'
           + '</div>';
       }
@@ -2651,11 +2673,11 @@ async function verDetalleCxP(id_cxp, modoInicial) {
         ? '<button class="btn-naranja" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
       const btnAnular = (est === 'PENDIENTE' && (puedo('PAGOS','ELIMINAR') || sesionActual?.administrador))
         ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 Anular</button>' : '';
-      const btnReversar = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR')))
+      const btnAnularEjec = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR')))
         ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Ejecutado</button>' : '';
       footerPend.innerHTML =
         '<div style="display:flex;gap:10px;justify-content:space-between;align-items:center;width:100%">'
-        + (btnEditar + btnAnular + btnReversar)
+        + (btnEditar + btnAnular + btnAnularEjec)
         + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\')">RETORNAR</button>'
         + '</div>';
     }

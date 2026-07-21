@@ -673,6 +673,16 @@ async function guardarEdicionMovimiento() {
       if (!fechaCuotaVal) return mostrarError('Ingrese la Fecha de la Primera Cuota.', 'edit-mov-cuotas-fecha');
       if (fechaCuotaVal <= getHoyVzla()) return mostrarError('La Fecha de la Primera Cuota tiene que ser mayor que el día de hoy.', 'edit-mov-cuotas-fecha');
     }
+    if (motivoSel === 'compra') {
+      try {
+        const cxpsBloqueo = await api('cont_cxp','GET',null,
+          '?numero_doc=ilike.'+encodeURIComponent('ENT-'+id+'*')+emisorQ()+'&select=numero_doc,estado');
+        const bloqueante = (cxpsBloqueo||[]).find(function(cx){ return cx.estado === 'PAGADA' || cx.estado === 'PARCIAL'; });
+        if (bloqueante) {
+          return mostrarError('No se puede editar: la CxP "'+bloqueante.numero_doc+'" ya está '+bloqueante.estado+'. Anule el pago primero (Pagos → esa CxP → botón "🗑 Anular Pago Ejecutado") antes de corregir este movimiento.');
+        }
+      } catch(eChkCxp) { console.warn('Error verificando estado de CxP:', eChkCxp); }
+    }
   }
   if (!clave) return mostrarError('Ingrese su contraseña para autorizar.', 'edit-mov-clave');
 
@@ -1147,7 +1157,7 @@ async function confirmarReverso() {
         if (cxps && cxps.length) {
           const pagadas = cxps.filter(function(c) { return c.estado === 'PAGADA' || c.estado === 'PARCIAL'; });
           if (pagadas.length > 0) {
-            throw new Error('No se puede anular esta entrada porque la CxP "' + pagadas[0].numero_doc + '" tiene estado ' + pagadas[0].estado + '. Reverse el pago primero: vaya a Pagos → abra esa Cuenta por Pagar → botón "🗑 Anular Pago Ejecutado". Luego vuelva aquí a anular la Entrada.');
+            throw new Error('No se puede anular esta entrada porque la CxP "' + pagadas[0].numero_doc + '" tiene estado ' + pagadas[0].estado + '. Anule el pago primero: vaya a Pagos → abra esa Cuenta por Pagar → botón "🗑 Anular Pago Ejecutado". Luego vuelva aquí a anular la Entrada.');
           }
         }
       } catch(eCxPCheck) {
