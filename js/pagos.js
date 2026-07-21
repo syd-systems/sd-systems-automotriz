@@ -1603,6 +1603,74 @@ async function anularPagoCxP(id_cxp) {
   } catch(e) { alert('Error al anular: '+e.message); }
 }
 
+// Deshace una anulación hecha por error -- SOLO si la CxP nunca tuvo pago
+// (ni completo ni parcial) antes de anularse. Si alguna vez tuvo un pago,
+// este no es el camino: ese caso toca el terreno de "reversar" un pago ya
+// ejecutado, que es un problema distinto (afecta el Estado de Resultados
+// del período en que se pagó) y se resuelve aparte, no aquí.
+async function reactivarPagoCxP(id_cxp) {
+  if (!puedo('PAGOS','ELIMINAR') && !sesionActual?.administrador) { alert('No tiene permiso para reactivar obligaciones de pago.'); return; }
+
+  const chk = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=estado,numero_doc,pagado_usd,fecha_pago,observaciones');
+  if (!chk || !chk[0]) { alert('CxP no encontrada.'); return; }
+  const cxpChk = chk[0];
+  if (cxpChk.estado !== 'ANULADA') { alert('Esta CxP no está en estado ANULADA.'); return; }
+  if (parseFloat(cxpChk.pagado_usd || 0) > 0 || cxpChk.fecha_pago) {
+    alert('Esta CxP tuvo un pago registrado antes de anularse -- no se puede reactivar por esta vía. Consulte para resolverlo caso por caso.');
+    return;
+  }
+
+  const clave = await new Promise(function(resolve) {
+    const div = document.createElement('div');
+    div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center';
+    div.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:24px;max-width:380px;width:90%;text-align:center">'
+      + '<div style="font-size:15px;margin-bottom:16px;color:#e8e8e8">¿Reactivar esta CxP anulada?<br><span style="font-size:12px;color:#666">Volverá a estado PENDIENTE. Solo use esto si se anuló por equivocación.</span></div>'
+      + '<input type="password" id="reactivar-cxp-clave" autocomplete="new-password" placeholder="Ingrese su contraseña para confirmar" style="width:100%;box-sizing:border-box;padding:10px;border-radius:6px;border:1px solid #444;background:#111;color:#e8e8e8;font-size:14px;margin-bottom:16px">'
+      + '<div id="reactivar-cxp-err" style="color:#f87171;font-size:12px;margin-bottom:12px;display:none"></div>'
+      + '<div style="display:flex;gap:12px;justify-content:center">'
+      + '<button id="btn-confirm-si" style="background:#22c55e;border:none;color:#fff;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">Sí, Reactivar</button>'
+      + '<button id="btn-confirm-no" style="background:#333;border:1px solid #555;color:#e8e8e8;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">Cancelar</button>'
+      + '</div></div>';
+    document.body.appendChild(div);
+    const claveEl = div.querySelector('#reactivar-cxp-clave');
+    const errEl   = div.querySelector('#reactivar-cxp-err');
+    claveEl.focus();
+    const cerrar = function(valor) { document.body.removeChild(div); resolve(valor); };
+    div.querySelector('#btn-confirm-si').onclick = function() {
+      const val = claveEl.value.trim();
+      if (!val) { errEl.textContent = 'Ingrese su contraseña.'; errEl.style.display = 'block'; return; }
+      cerrar(val);
+    };
+    div.querySelector('#btn-confirm-no').onclick = function() { cerrar(null); };
+    claveEl.addEventListener('keydown', function(ev) { if (ev.key === 'Enter') div.querySelector('#btn-confirm-si').click(); });
+  });
+  if (!clave) return;
+
+  const verifReactivar = await verificarContrasena(sesionActual.correo_usuario, clave);
+  if (!verifReactivar.ok) { alert(verifReactivar.msg || 'Contraseña incorrecta.'); return; }
+
+  try {
+    // 1. Regresar la CxP a PENDIENTE
+    await api('cont_cxp','PATCH',
+      { estado: 'PENDIENTE', observaciones: (cxpChk.observaciones || '').replace(/^\[ANULADA\]\s*/, '') },
+      '?id_cxp=eq.'+id_cxp);
+
+    // 2. Restaurar (APROBADO) el asiento GASTO_MANUAL que se anuló al cancelarla
+    const numDocConSufijo = cxpChk.numero_doc;
+    const ref = numDocConSufijo ? numDocConSufijo.replace(new RegExp('-'+id_cxp+'$'), '') : numDocConSufijo;
+    const asientos = await api('cont_asientos','GET',null,
+      '?referencia=eq.'+encodeURIComponent(ref)+emisorQ()+'&tipo=eq.GASTO_MANUAL&estado=eq.ANULADO&select=id_asiento,descripcion');
+    for (const a of (asientos||[])) {
+      await api('cont_asientos','PATCH',
+        { estado: 'APROBADO', descripcion: (a.descripcion||'').replace(/^\[ANULADO\]\s*/, '') },
+        '?id_asiento=eq.'+a.id_asiento);
+    }
+
+    cerrarModal('modal-cont-pago-cxp');
+    cargarPagos();
+  } catch(e) { alert('Error al reactivar: '+e.message); }
+}
+
 async function onSelProveedorCxP() {
   const idProv = parseInt(document.getElementById('cont-cxp-prov')?.value) || null;
   const bancoInfo  = document.getElementById('cxp-banco-info');
@@ -2587,9 +2655,10 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       } else {
         const btnAnularF    = (esManualF && est !== 'ANULADA' && est !== 'PAGADA') ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+');cerrarModal(\'modal-cont-pago-cxp\')">🗑 Anular</button>' : '';
         const btnAnularEjecF = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR'))) ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Ejecutado</button>' : '';
+        const btnReactivarF = (est === 'ANULADA' && (sesionActual?.administrador || puedo('PAGOS','ELIMINAR'))) ? '<button class="btn-primario" onclick="reactivarPagoCxP('+id_cxp+')">↩ Reactivar</button>' : '';
         footer.innerHTML =
           '<div style="display:flex;gap:10px;justify-content:space-between;align-items:center;width:100%">'
-          + (btnAnularF || btnAnularEjecF)
+          + (btnAnularF || btnAnularEjecF || btnReactivarF)
           + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\');cargarPagos()">Retornar</button>'
           + '</div>';
       }
@@ -2675,9 +2744,11 @@ async function verDetalleCxP(id_cxp, modoInicial) {
         ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 Anular</button>' : '';
       const btnAnularEjec = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR')))
         ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Ejecutado</button>' : '';
+      const btnReactivar = (est === 'ANULADA' && (sesionActual?.administrador || puedo('PAGOS','ELIMINAR')))
+        ? '<button class="btn-primario" onclick="reactivarPagoCxP('+id_cxp+')">↩ Reactivar</button>' : '';
       footerPend.innerHTML =
         '<div style="display:flex;gap:10px;justify-content:space-between;align-items:center;width:100%">'
-        + (btnEditar + btnAnular + btnAnularEjec)
+        + (btnEditar + btnAnular + btnAnularEjec + btnReactivar)
         + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\')">RETORNAR</button>'
         + '</div>';
     }
