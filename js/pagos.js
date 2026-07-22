@@ -1478,14 +1478,11 @@ async function contGuardarPagoCxp() {
       const cIGTF     = getCta('6.1.04.003');
       const cIGTFPagar = getCta('2.1.03.004');
 
-      // CxP manual con Cuenta de Gasto (categoría "Gasto Manual"): débito
-      // a esa cuenta, no a CxP Proveedores.
-      let cDebito = cCxP;
-      const esManualGasto = !!c.id_cuenta_gasto;
-      if (esManualGasto) {
-        const cGasto = c.cuenta_gasto || (await api('cont_cuentas','GET',null,'?id_cuenta=eq.'+c.id_cuenta_gasto+'&select=id_cuenta,codigo,nombre'))?.[0];
-        if (cGasto) cDebito = cGasto;
-      }
+      // El asiento de PAGO siempre debita CxP Proveedores (cierra el
+      // pasivo) -- la cuenta de Gasto ya se debitó en el asiento de
+      // creación de la Obligación (GASTO_MANUAL). Debitarla otra vez aquí
+      // duplicaría el gasto y nunca cerraría la cuenta por pagar.
+      const cDebito = cCxP;
 
       let pctIGTF = 0.03;
       try {
@@ -1512,7 +1509,7 @@ async function contGuardarPagoCxp() {
         let orden = 1;
         if (moneda === 'VES') {
           if (cDebito) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDebito.id_cuenta, orden:orden++,
-            descripcion:(esManualGasto?'Pago gasto — ':'Cancelación CxP — ')+(c.proveedores?.nombre||''),
+            descripcion:'Cancelación CxP — '+(c.proveedores?.nombre||''),
             debe_usd:0, haber_usd:0, debe_ves:monto, haber_ves:0, tasa_bcv:tasaPago });
           if (cBanVES) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cBanVES.id_cuenta, orden:orden++,
             descripcion:'Salida banco VES',
@@ -1525,7 +1522,7 @@ async function contGuardarPagoCxp() {
           const montoIGTF_VES  = parseFloat((montoIGTF_USD * tasaPago).toFixed(2));
 
           if (cDebito) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDebito.id_cuenta, orden:orden++,
-            descripcion:(esManualGasto?'Pago gasto — ':'Cancelación CxP — ')+(c.proveedores?.nombre||''),
+            descripcion:'Cancelación CxP — '+(c.proveedores?.nombre||''),
             debe_usd:0, haber_usd:0, debe_ves:montoVESCompra, haber_ves:0, tasa_bcv:tasaCompra });
 
           if (difCambio > 0 && cDifGasto) {
