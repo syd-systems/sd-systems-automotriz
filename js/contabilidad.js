@@ -2142,7 +2142,10 @@ async function generarAsientoGastoManual(datos) {
     }
 
     console.log('✓ Asiento gasto manual creado:', numAst);
-  } catch(eAstGasto) { console.warn('Error asiento gasto manual:', eAstGasto); }
+  } catch(eAstGasto) {
+    console.warn('Error asiento gasto manual:', eAstGasto);
+    alert('⚠ DIAGNÓSTICO TEMPORAL — No se generó el asiento contable.\n\nError real: ' + (eAstGasto?.message || JSON.stringify(eAstGasto)) + '\n\nPor favor comparte este mensaje completo.');
+  }
 }
 
 
