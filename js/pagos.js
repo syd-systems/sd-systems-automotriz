@@ -3242,7 +3242,7 @@ async function aprobarPagoCxP(id_cxp) {
   if (!(await tieneNivelMinimo(2))) { alert('Esta acción requiere Firma de Aprobación Nivel 1 o Nivel 2.'); return; }
   if (!confirm('¿Aprobar esta solicitud de pago? El operador que la generó recibirá una notificación para proceder a Registrar el Pago.')) return;
   try {
-    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=id_usuario,numero_doc,observaciones,descripcion');
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=id_usuario,numero_doc,observaciones');
     if (!rows || !rows[0]) return;
     const c = rows[0];
 
@@ -3261,7 +3261,7 @@ async function aprobarPagoCxP(id_cxp) {
         await api('notificaciones','POST',{
           correo_destino: c.id_usuario,
           titulo: 'Solicitud de Pago Aprobada',
-          mensaje: 'Tu solicitud de pago "' + (c.descripcion || c.observaciones || c.numero_doc || '') + '" fue aprobada. Ya puedes proceder a Registrar el Pago.',
+          mensaje: 'Tu solicitud de pago "' + (c.observaciones || c.numero_doc || '') + '" fue aprobada. Ya puedes proceder a Registrar el Pago.',
           estado: 'PENDIENTE',
           fecha_creacion: new Date().toISOString(),
           datos_extra: JSON.stringify({ id_cxp: id_cxp, accion: 'registrar_pago' })
@@ -3305,7 +3305,7 @@ async function rechazarPagoCxP(id_cxp) {
   if (!motivo) return;
 
   try {
-    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=id_usuario,numero_doc,observaciones,descripcion');
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=id_usuario,numero_doc,observaciones');
     if (!rows || !rows[0]) return;
     const c = rows[0];
 
@@ -3335,7 +3335,7 @@ async function rechazarPagoCxP(id_cxp) {
         await api('notificaciones','POST',{
           correo_destino: c.id_usuario,
           titulo: 'Solicitud de Pago Rechazada',
-          mensaje: 'Tu solicitud de pago "' + (c.descripcion || c.observaciones || c.numero_doc || '') + '" fue rechazada. Motivo: ' + motivo,
+          mensaje: 'Tu solicitud de pago "' + (c.observaciones || c.numero_doc || '') + '" fue rechazada. Motivo: ' + motivo,
           estado: 'PENDIENTE',
           fecha_creacion: new Date().toISOString(),
           datos_extra: JSON.stringify({ id_cxp: id_cxp, accion: 'ver_rechazo' })
