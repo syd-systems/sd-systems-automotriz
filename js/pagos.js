@@ -2588,10 +2588,12 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     const conceptoEl = document.getElementById('cont-pago-cxp-concepto');
     if (conceptoEl) conceptoEl.textContent = c.observaciones || '—';
 
-    // ── Sección 2: Datos del pago (si PAGADA) ──
+    // ── Sección 2: Datos del pago (si ya se registró un pago, aunque
+    // esté pendiente de aprobación) ──
     const secPago = document.getElementById('cont-pago-cxp-seccion-pago');
-    if (secPago) secPago.style.display = est === 'PAGADA' ? '' : 'none';
-    if (est === 'PAGADA') {
+    const tienePago = est === 'PAGADA' || est === 'PARCIAL' || est === 'POR_APROBAR';
+    if (secPago) secPago.style.display = tienePago ? '' : 'none';
+    if (tienePago) {
       const detFecha = document.getElementById('cont-pago-det-fecha');
       if (detFecha) detFecha.textContent = c.fecha_pago ? fmtFecha(c.fecha_pago) : '—';
       const detMoneda = document.getElementById('cont-pago-det-moneda');
