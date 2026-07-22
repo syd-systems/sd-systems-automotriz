@@ -2827,6 +2827,28 @@ async function _verCxPAutomatica(c, id_cxp) {
   // Modalidad de Pago
   document.getElementById('cxp-auto-modalidad').textContent = esCredito ? 'Crédito' : 'Contado';
 
+  // Referencia y Comprobante -- solo si ya se ejecutó el pago (PAGADA o PARCIAL)
+  const pagoInfoCont = document.getElementById('cxp-auto-pago-info-cont');
+  if (pagoInfoCont) {
+    if (c.estado === 'PAGADA' || c.estado === 'PARCIAL') {
+      pagoInfoCont.style.display = '';
+      const refAutoEl = document.getElementById('cxp-auto-referencia');
+      if (refAutoEl) refAutoEl.textContent = c.referencia || '—';
+      const compAutoCont = document.getElementById('cxp-auto-comprobante-cont');
+      const compAutoEl   = document.getElementById('cxp-auto-comprobante');
+      if (c.url_comprobante && compAutoEl) {
+        const urlAuto = c.url_comprobante;
+        const esImgAuto = urlAuto.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+        compAutoEl.innerHTML = esImgAuto
+          ? '<a href="'+urlAuto+'" target="_blank"><img src="'+urlAuto+'" style="max-width:100%;max-height:150px;border-radius:6px;border:1px solid var(--borde)"></a>'
+          : '<a href="'+urlAuto+'" target="_blank" style="color:var(--naranja);font-size:12px">&#x1F4C4; Ver comprobante</a>';
+        if (compAutoCont) compAutoCont.style.display = '';
+      } else if (compAutoCont) compAutoCont.style.display = 'none';
+    } else {
+      pagoInfoCont.style.display = 'none';
+    }
+  }
+
   // Condiciones de Crédito — solo si es CRÉDITO
   const creditoCont = document.getElementById('cxp-auto-credito-cont');
   if (esCredito) {

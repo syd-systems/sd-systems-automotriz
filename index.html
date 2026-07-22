@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260720008"></script>
-<script src="js/parametros.js?v=20260720008"></script>
-<script src="js/empresas.js?v=20260720008"></script>
-<script src="js/facturacion.js?v=20260720008"></script>
-<script src="js/inventario.js?v=20260720008"></script>
-<script src="js/contabilidad.js?v=20260720008"></script>
-<script src="js/pagos.js?v=20260720008"></script>
-<script src="js/vehiculos.js?v=20260720008"></script>
-<script src="js/catalogo.js?v=20260720008"></script>
-<script src="js/inventario2.js?v=20260720008"></script>
-<script src="js/ordenes.js?v=20260720008"></script>
+<script src="js/core.js?v=20260720009"></script>
+<script src="js/parametros.js?v=20260720009"></script>
+<script src="js/empresas.js?v=20260720009"></script>
+<script src="js/facturacion.js?v=20260720009"></script>
+<script src="js/inventario.js?v=20260720009"></script>
+<script src="js/contabilidad.js?v=20260720009"></script>
+<script src="js/pagos.js?v=20260720009"></script>
+<script src="js/vehiculos.js?v=20260720009"></script>
+<script src="js/catalogo.js?v=20260720009"></script>
+<script src="js/inventario2.js?v=20260720009"></script>
+<script src="js/ordenes.js?v=20260720009"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4004,6 +4004,16 @@
       <div style="margin-bottom:12px">
         <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Modalidad de Pago</div>
         <div id="cxp-auto-modalidad" style="font-size:13px;font-weight:600;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:10px 14px">—</div>
+      </div>
+
+      <!-- Referencia y Comprobante -- solo si ya se ejecutó el pago -->
+      <div id="cxp-auto-pago-info-cont" style="display:none;margin-bottom:12px">
+        <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Referencia de Pago</div>
+        <div id="cxp-auto-referencia" style="font-size:13px;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:10px 14px;margin-bottom:8px">—</div>
+        <div id="cxp-auto-comprobante-cont" style="display:none">
+          <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Comprobante de Pago</div>
+          <div id="cxp-auto-comprobante"></div>
+        </div>
       </div>
 
       <!-- Condiciones de Crédito — solo lectura -->
