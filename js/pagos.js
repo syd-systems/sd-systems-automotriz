@@ -225,7 +225,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       const btnAprobar  = puedo('PAGOS','APROBAR') ? '<button onclick="aprobarPagoCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">✅ Aprobar</button>' : '';
       const btnRechazar = puedo('PAGOS','APROBAR') ? '<button onclick="rechazarPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">❌ Rechazar</button>' : '';
       const btnRegistrarPagoLista = (puedo('PAGOS','CREAR') || sesionActual?.administrador) ? '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💸 Registrar Pago</button>' : '';
-      if (est === 'PENDIENTE') acciones = btnVerPend + (btnAprobar ? ' '+btnAprobar : '') + (btnRechazar ? ' '+btnRechazar : '');
+      if (est === 'PENDIENTE' || est === 'RECHAZADA') acciones = btnVerPend + (btnAprobar ? ' '+btnAprobar : '') + (btnRechazar ? ' '+btnRechazar : '');
       else if (est === 'APROBADA') acciones = btnVerPag + (btnRegistrarPagoLista ? ' '+btnRegistrarPagoLista : '');
       else if (est === 'POR_APROBAR') acciones = btnVerPag + (btnAprobar ? ' '+btnAprobar : '') + (btnRechazar ? ' '+btnRechazar : '');
       else acciones = btnVerPag;
@@ -2003,7 +2003,7 @@ async function editarCxPManual(id_cxp) {
     // Editar el monto de una CxP ya PAGADA/PARCIAL corrompe el registro:
     // resetea el saldo pero no el estado, y regenera el asiento contable
     // con un monto distinto al que realmente salio del banco.
-    if (c.estado !== 'PENDIENTE') {
+    if (c.estado !== 'PENDIENTE' && c.estado !== 'RECHAZADA') {
       alert('No se puede editar: esta Obligación de Pago ya está en estado ' + c.estado + '. Si necesita corregirla, anule el pago primero (botón "🗑 Anular Pago Ejecutado").');
       return;
     }
@@ -2305,7 +2305,7 @@ async function guardarPago() {
   if (id_cxp_edit) {
     try {
       const chkRows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp_edit+'&select=estado');
-      if (chkRows && chkRows[0] && chkRows[0].estado !== 'PENDIENTE') {
+      if (chkRows && chkRows[0] && chkRows[0].estado !== 'PENDIENTE' && chkRows[0].estado !== 'RECHAZADA') {
         alert('No se puede guardar: esta Obligación de Pago ya está en estado ' + chkRows[0].estado + '. Anule el pago primero (botón "🗑 Anular Pago Ejecutado").');
         return;
       }
@@ -2535,6 +2535,10 @@ async function guardarPago() {
         id_cuenta_gasto:   id_cuentaGasto,
         observaciones:     descripcion + (observaciones ? ' — ' + observaciones : ''),
         exento_iva:        exento,
+        // Si venía de RECHAZADA, esta corrección la reingresa a PENDIENTE
+        // para una nueva revisión (limpiando el motivo anterior).
+        estado:            'PENDIENTE',
+        motivo_rechazo:    null,
       }, '?id_cxp=eq.'+id_cxp_edit);
 
       // Borrar el asiento viejo (Gasto+IVA/CxP) y generar uno nuevo con los
@@ -2958,11 +2962,11 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     const footerPend = document.querySelector('#modal-cont-pago-cxp .modal-footer');
     if (footerPend) {
       const est = c.estado || '';
-      const btnEditar = (est === 'PENDIENTE' && puedo('PAGOS','EDITAR'))
+      const btnEditar = ((est === 'PENDIENTE' || est === 'RECHAZADA') && puedo('PAGOS','EDITAR'))
         ? '<button class="btn-naranja" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
       const btnRegistrarPago = (est === 'APROBADA' && (puedo('PAGOS','CREAR') || sesionActual?.administrador))
         ? '<button class="btn-primario" onclick="abrirDialogoRegistrarPago()">&#x1F4B8; Registrar Pago</button>' : '';
-      const btnAnular = (est === 'PENDIENTE' && (puedo('PAGOS','ELIMINAR') || sesionActual?.administrador))
+      const btnAnular = ((est === 'PENDIENTE' || est === 'RECHAZADA') && (puedo('PAGOS','ELIMINAR') || sesionActual?.administrador))
         ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 Anular</button>' : '';
       const btnAnularEjec = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR')))
         ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Ejecutado</button>' : '';
@@ -3311,10 +3315,11 @@ async function rechazarPagoCxP(id_cxp) {
 
     // NO se anula el asiento GASTO_MANUAL: lo que se rechaza es el
     // intento de pago, no la obligación en sí -- el gasto ya ocurrió y
-    // sigue siendo válido. Vuelve a PENDIENTE (no ANULADA) para que el
-    // operador pueda corregir lo que corresponda y volver a solicitar.
+    // sigue siendo válido. RECHAZADA es solo una etiqueta visible de que
+    // ya se rechazó una vez -- se corrige igual que PENDIENTE (Editar) y
+    // al guardar vuelve a PENDIENTE para una nueva revisión.
     await api('cont_cxp','PATCH',{
-      estado: 'PENDIENTE',
+      estado: 'RECHAZADA',
       motivo_rechazo: motivo,
       aprobado_por: null
     },'?id_cxp=eq.'+id_cxp);
