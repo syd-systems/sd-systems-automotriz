@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260720007"></script>
-<script src="js/parametros.js?v=20260720007"></script>
-<script src="js/empresas.js?v=20260720007"></script>
-<script src="js/facturacion.js?v=20260720007"></script>
-<script src="js/inventario.js?v=20260720007"></script>
-<script src="js/contabilidad.js?v=20260720007"></script>
-<script src="js/pagos.js?v=20260720007"></script>
-<script src="js/vehiculos.js?v=20260720007"></script>
-<script src="js/catalogo.js?v=20260720007"></script>
-<script src="js/inventario2.js?v=20260720007"></script>
-<script src="js/ordenes.js?v=20260720007"></script>
+<script src="js/core.js?v=20260720008"></script>
+<script src="js/parametros.js?v=20260720008"></script>
+<script src="js/empresas.js?v=20260720008"></script>
+<script src="js/facturacion.js?v=20260720008"></script>
+<script src="js/inventario.js?v=20260720008"></script>
+<script src="js/contabilidad.js?v=20260720008"></script>
+<script src="js/pagos.js?v=20260720008"></script>
+<script src="js/vehiculos.js?v=20260720008"></script>
+<script src="js/catalogo.js?v=20260720008"></script>
+<script src="js/inventario2.js?v=20260720008"></script>
+<script src="js/ordenes.js?v=20260720008"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4321,6 +4321,18 @@
           </div>
           <!-- Preview del desglose -->
           <div id="exec-pago-tributos-preview" style="display:none;margin-top:8px"></div>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-campo">
+          <label>Referencia *</label>
+          <input type="text" id="exec-pago-ref" placeholder="N° referencia bancaria o comprobante"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+        </div>
+        <div class="form-campo">
+          <label>Comprobante de Pago (opcional)</label>
+          <input type="file" id="exec-pago-archivo" accept="image/*,application/pdf"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
         </div>
       </div>
       <div class="alerta alerta-error" id="alerta-exec-err" style="display:none;margin-top:12px"></div>

@@ -3142,6 +3142,11 @@ var _ejecutarPagoCxPId = null; // id_cxp actual
 async function ejecutarPagoCxP(id_cxp) {
   _ejecutarPagoCxPId = id_cxp;
 
+  const refExecEl = document.getElementById('exec-pago-ref');
+  if (refExecEl) refExecEl.value = '';
+  const archivoExecReset = document.getElementById('exec-pago-archivo');
+  if (archivoExecReset) archivoExecReset.value = '';
+
   // Cargar datos de la CxP + Proveedor (con datos bancarios de su ficha)
   const rows = await api('cont_cxp','GET',null,
     '?id_cxp=eq.'+id_cxp+'&select=*,cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre),'
@@ -3491,6 +3496,15 @@ async function confirmarEjecucionPago() {
     if (!igtfSeleccionado) { errEl.textContent = 'Debe indicar si el monto incluye IGTF.'; errEl.style.display = 'block'; resetBtn(); return; }
   }
 
+  const refExec = document.getElementById('exec-pago-ref')?.value || '';
+  if (!refExec.trim()) {
+    errEl.textContent = 'Debe ingresar el número de referencia o comprobante.';
+    errEl.style.display = 'block';
+    document.getElementById('exec-pago-ref')?.focus();
+    resetBtn();
+    return;
+  }
+
   try {
     // 1. Cargar CxP -- Fecha de Pago y Moneda vienen de aquí, de solo lectura
     const rows = await api('cont_cxp','GET',null,
@@ -3637,17 +3651,30 @@ async function confirmarEjecucionPago() {
     const nuevoPagado = parseFloat((parseFloat(c.pagado_usd||0) + montoUSD).toFixed(4));
     const nuevoSaldo  = parseFloat(Math.max(0, parseFloat(c.monto_usd||0) - nuevoPagado).toFixed(4));
     const nuevoEstado = nuevoSaldo <= 0 ? 'PAGADA' : 'PARCIAL';
-    await api('cont_cxp','PATCH',{
+
+    // Subir comprobante si se adjuntó archivo (opcional)
+    let urlComprobanteExec = null;
+    const archivoExecEl = document.getElementById('exec-pago-archivo');
+    if (archivoExecEl && archivoExecEl.files && archivoExecEl.files[0]) {
+      try {
+        urlComprobanteExec = await subirFoto(archivoExecEl.files[0], 'comprobantes/' + id_cxp);
+      } catch(eFileExec) { console.warn('Error subiendo comprobante:', eFileExec); }
+    }
+
+    const patchFinalExec = {
       estado:      nuevoEstado,
       pagado_usd:  nuevoPagado,
       saldo_usd:   nuevoSaldo,
       fecha_pago:  fechaPago,
       metodo_pago: idMetodo,
       tasa_bcv:    tasaPago,
+      referencia:  refExec.trim(),
       // Si se corrigió la Moneda de Pago en este modal, persistirla para
       // que el registro quede reflejando la realidad de aquí en adelante
       moneda_pago: monedaCxP
-    },'?id_cxp=eq.'+id_cxp);
+    };
+    if (urlComprobanteExec) patchFinalExec.url_comprobante = urlComprobanteExec;
+    await api('cont_cxp','PATCH', patchFinalExec, '?id_cxp=eq.'+id_cxp);
 
     cerrarModal('modal-ejecutar-pago');
     cerrarModal('modal-ver-cxp-auto');
