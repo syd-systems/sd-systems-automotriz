@@ -1389,16 +1389,10 @@ async function abrirDialogoRegistrarPago() {
 }
 
 async function contGuardarPagoCxp() {
-  const id_cxp   = parseInt(document.getElementById('cont-pago-cxp-id')?.value) || null;
-  const moneda  = document.getElementById('cont-pago-cxp-moneda')?.value || 'VES';
-  const montoEl2 = document.getElementById('cont-pago-cxp-monto');
-  const monto   = parseFloat(montoEl2?.dataset.valor) || 0; // usar valor numérico exacto sin formato
-  const tasa    = parseFloat(document.getElementById('cont-pago-cxp-tasa')?.value) || _tasaVigente || 1;
-  const fecha   = document.getElementById('cont-pago-cxp-fecha')?.value || '';
-  const metodo  = document.getElementById('cont-pago-manual-tipo')?.value || document.getElementById('cont-pago-cxp-metodo')?.value || '';
-  const ref     = document.getElementById('cont-pago-cxp-ref')?.value || '';
-  const okEl  = document.getElementById('alerta-pago-cxp-ok');
-  const errEl = document.getElementById('alerta-pago-cxp-err');
+  const id_cxp = parseInt(document.getElementById('cont-pago-cxp-id')?.value) || null;
+  const ref    = document.getElementById('cont-pago-cxp-ref')?.value || '';
+  const okEl   = document.getElementById('alerta-pago-cxp-ok');
+  const errEl  = document.getElementById('alerta-pago-cxp-err');
   if (okEl)  okEl.style.display  = 'none';
   if (errEl) errEl.style.display = 'none';
 
@@ -1407,30 +1401,38 @@ async function contGuardarPagoCxp() {
     else { alert(msg); }
   };
 
-  if (!id_cxp || !monto || !fecha || !metodo) {
-    mostrarError('Complete monto, fecha y método de pago.');
-    return;
-  }
+  if (!id_cxp) { mostrarError('Obligación no identificada.'); return; }
   if (!ref.trim()) {
     mostrarError('Debe ingresar el número de referencia o comprobante.');
     document.getElementById('cont-pago-cxp-ref')?.focus();
     return;
   }
 
-  // Calcular equivalente en USD usando tasa del día de pago
-  const modal2    = document.getElementById('modal-cont-pago-cxp');
-  const tasaDia   = parseFloat(modal2?.dataset.tasaUSD) || parseFloat(tasa) || _tasaVigente || 1;
-  const tasaEurD  = parseFloat(modal2?.dataset.tasaEUR) || 1;
-  const monedaCxP2 = modal2?.dataset.monedaCxP || 'USD';
-  let montoUSD = monto;
-  // Si la CxP es en VES y se paga en VES — monto ya está en Bs, convertir a USD para el registro
-  if (moneda === 'VES')      montoUSD = parseFloat((monto / tasaDia).toFixed(4));
-  else if (moneda === 'EUR') montoUSD = parseFloat((monto * tasaEurD / tasaDia).toFixed(4));
-
   try {
-    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre)');
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,metodos_pago_tipos),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre)');
     if (!rows || !rows[0]) return;
     const c = rows[0];
+
+    // Monto/Moneda/Tasa ya quedaron definidos al crear la Obligación --
+    // no se vuelven a pedir aquí, solo se usan tal cual.
+    const moneda    = c.moneda_pago || 'VES';
+    const montoUSD  = parseFloat(c.monto_usd || 0);
+    const monto     = moneda === 'VES' ? parseFloat(c.monto_ves || 0) : montoUSD;
+    const tasaDia   = parseFloat(c.tasa_bcv || _tasaVigente || 1);
+    const fecha     = new Date().toISOString().split('T')[0]; // fecha real en que se ejecuta el pago
+
+    // Método de Pago -- se resuelve solo, según lo que permite la ficha
+    // del proveedor (mismo criterio que Ejecutar Pago); si la ficha no
+    // tiene nada configurado, cae a un método activo genérico para esa
+    // moneda.
+    let metodo = (c.proveedores && Array.isArray(c.proveedores.metodos_pago_tipos) && c.proveedores.metodos_pago_tipos[0]) || '';
+    if (!metodo) {
+      try {
+        const metRows = await api('param_metodos_pago','GET',null,'?codigo=eq.'+moneda+'&estado=eq.ACTIVO&order=nombre.asc&limit=1&select=tipo_canal');
+        metodo = metRows?.[0]?.tipo_canal || 'TRANSFERENCIA';
+      } catch(eMet) { metodo = 'TRANSFERENCIA'; }
+    }
+
     const nuevoPagado = parseFloat((parseFloat(c.pagado_usd||0) + montoUSD).toFixed(4));
     const nuevoSaldo  = parseFloat(Math.max(0, parseFloat(c.monto_usd||0) - nuevoPagado).toFixed(4));
     const nuevoEstado = nuevoSaldo <= 0 ? 'PAGADA' : 'PARCIAL';
@@ -1453,8 +1455,7 @@ async function contGuardarPagoCxp() {
       saldo_usd:       nuevoSaldo,
       referencia:      ref,
       fecha_pago:      fecha,
-      metodo_pago:     metodo,
-      moneda_pago:     moneda
+      metodo_pago:     metodo
     };
     if (urlComprobante) patchData.url_comprobante = urlComprobante;
 
@@ -2880,8 +2881,10 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       }
     }
 
-    // ── Si es PENDIENTE cargar tasas y preparar formulario de pago ──
-    if (est === 'PENDIENTE') {
+    // ── Si es PENDIENTE o APROBADA, cargar tasas y preparar formulario de
+    // pago -- Registrar Pago ahora solo se habilita en APROBADA, pero los
+    // campos (ocultos) siguen necesitando este auto-completado igual ──
+    if (est === 'PENDIENTE' || est === 'APROBADA') {
       try {
         const hoy2 = new Date(new Date().getTime()-4*60*60*1000).toISOString().split('T')[0];
         const tasas2 = await api('tasas','GET',null,'?order=fecha_valor.desc&limit=20&select=*') || [];
