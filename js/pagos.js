@@ -211,7 +211,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     return;
   }
 
-  const estCol2 = { PENDIENTE:'#f59e0b', POR_APROBAR:'#60a5fa', PAGADA:'#22c55e', ANULADA:'#6b7280', RECHAZADA:'#fc8181' };
+  const estCol2 = { PENDIENTE:'#f59e0b', APROBADA:'#a78bfa', POR_APROBAR:'#60a5fa', PAGADA:'#22c55e', ANULADA:'#6b7280', RECHAZADA:'#fc8181' };
   const filas = todos.map(function(item) {
     // Normalizar estado — eliminar PARCIAL
     const est = item.estado === 'PARCIAL' ? 'PAGADA' : (item.estado || 'PENDIENTE');
@@ -222,10 +222,11 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     if (item._src === 'cxp') {
       const btnVerPend = '<button onclick="verCxPPendiente('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
       const btnVerPag  = '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
-      const btnPagar   = puedo('PAGOS','PAGAR') ? '<button onclick="ejecutarPagoCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>' : '';
       const btnAprobar  = puedo('PAGOS','APROBAR') ? '<button onclick="aprobarPagoCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">✅ Aprobar</button>' : '';
       const btnRechazar = puedo('PAGOS','APROBAR') ? '<button onclick="rechazarPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">❌ Rechazar</button>' : '';
+      const btnRegistrarPagoLista = (puedo('PAGOS','CREAR') || sesionActual?.administrador) ? '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💸 Registrar Pago</button>' : '';
       if (est === 'PENDIENTE') acciones = btnVerPend + (btnAprobar ? ' '+btnAprobar : '') + (btnRechazar ? ' '+btnRechazar : '');
+      else if (est === 'APROBADA') acciones = btnVerPag + (btnRegistrarPagoLista ? ' '+btnRegistrarPagoLista : '');
       else if (est === 'POR_APROBAR') acciones = btnVerPag + (btnAprobar ? ' '+btnAprobar : '') + (btnRechazar ? ' '+btnRechazar : '');
       else acciones = btnVerPag;
     }
@@ -1443,9 +1444,13 @@ async function contGuardarPagoCxp() {
       } catch(eFile) { console.warn('Error subiendo comprobante:', eFile); }
     }
 
-    // Guardar datos del pago — estado POR_APROBAR (pendiente de aprobacion)
+    // Guardar datos del pago -- la aprobación del superior ya ocurrió
+    // antes de llegar aquí (la CxP estaba en estado APROBADA), así que
+    // este paso va directo a PAGADA/PARCIAL y genera el asiento real.
     const patchData = {
-      estado:          'POR_APROBAR',
+      estado:          nuevoEstado,
+      pagado_usd:      nuevoPagado,
+      saldo_usd:       nuevoSaldo,
       referencia:      ref,
       fecha_pago:      fecha,
       metodo_pago:     metodo,
@@ -1455,100 +1460,98 @@ async function contGuardarPagoCxp() {
 
     await api('cont_cxp','PATCH', patchData, '?id_cxp=eq.'+id_cxp);
 
-    // ── Asiento contable se genera al APROBAR, no aqui
-    // ── Generar asiento contable del pago ──
-    if (false) try { // Asiento se genera en aprobarPagoCxP() — no aqui
-      const id_emisor = _empresaActiva?.id_empresa || 0;
-      const tasaVig  = _tasaVigente || 1;
-      const hoy      = fecha;
+    // ── Generar el asiento contable real del pago ──
+    try {
+      const id_emisor  = _empresaActiva?.id_empresa || 0;
+      const tasaPago   = tasaDia;
+      const tasaCompra = parseFloat(c.tasa_bcv_compra || c.tasa_bcv || tasaPago);
 
-      // Buscar cuentas
-      const cuentas = await api('cont_cuentas','GET',null,
-        '?codigo=in.(2.1.01.001,1.1.01.003,1.1.01.004)&select=id_cuenta,codigo');
-      const cCxP    = cuentas?.find(function(c){ return c.codigo==='2.1.01.001'; });
-      const cBanVES = cuentas?.find(function(c){ return c.codigo==='1.1.01.003'; });
-      const cBanUSD = cuentas?.find(function(c){ return c.codigo==='1.1.01.004'; });
+      const codigos = moneda === 'USD' ? '2.1.01.001,1.1.01.004,6.2.01.003,4.2.01.003,6.1.04.003,2.1.03.004' : '2.1.01.001,1.1.01.003';
+      const cuentasAst = await api('cont_cuentas','GET',null,'?codigo=in.('+codigos+')&select=id_cuenta,codigo') || [];
+      const getCta = function(cod){ return cuentasAst.find(function(x){ return x.codigo===cod; }); };
+      const cCxP      = getCta('2.1.01.001');
+      const cBanVES   = getCta('1.1.01.003');
+      const cBanUSD   = getCta('1.1.01.004');
+      const cDifGasto = getCta('6.2.01.003');
+      const cDifIngr  = getCta('4.2.01.003');
+      const cIGTF     = getCta('6.1.04.003');
+      const cIGTFPagar = getCta('2.1.03.004');
 
-      // Cuenta banco según moneda de pago
-      const cBanco = (moneda === 'USD') ? cBanUSD : cBanVES;
-
-      // Para CxP manual: débito a cuenta de gasto seleccionada, no a CxP Proveedores
-      const esManualAst = (c.tipo || '') === 'PAGO_MANUAL';
-      let cDebito = cCxP; // por defecto CxP Proveedores
-      if (esManualAst && c.id_cuenta_gasto) {
-        const cGasto = await api('cont_cuentas','GET',null,'?id_cuenta=eq.'+c.id_cuenta_gasto+'&select=id_cuenta,codigo,nombre');
-        if (cGasto && cGasto[0]) cDebito = cGasto[0];
+      // CxP manual con Cuenta de Gasto (categoría "Gasto Manual"): débito
+      // a esa cuenta, no a CxP Proveedores.
+      let cDebito = cCxP;
+      const esManualGasto = !!c.id_cuenta_gasto;
+      if (esManualGasto) {
+        const cGasto = c.cuenta_gasto || (await api('cont_cuentas','GET',null,'?id_cuenta=eq.'+c.id_cuenta_gasto+'&select=id_cuenta,codigo,nombre'))?.[0];
+        if (cGasto) cDebito = cGasto;
       }
 
-      if (cDebito && cBanco) {
-        // Monto en USD para el asiento
-        // Si pago en VES: solo monto en Bs, USD = 0
-        // Si pago en USD/EUR: monto en USD y equivalente en Bs
-        let montoAstUSD, montoAstVES;
+      let pctIGTF = 0.03;
+      try {
+        const trib = await api('param_tributos','GET',null,'?codigo=eq.IGTF&select=alicuota&limit=1');
+        if (trib && trib[0]) pctIGTF = parseFloat(trib[0].alicuota) / 100;
+      } catch(e2) {}
+
+      const anio = new Date(fecha).getFullYear();
+      const ults = await api('cont_asientos','GET',null,'?id_empresa=eq.'+id_emisor+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
+      let seq = 1;
+      if (ults[0]?.numero_asiento) { const mm = ults[0].numero_asiento.match(/(\d+)$/); if (mm) seq = parseInt(mm[1])+1; }
+      const numAst = 'AST-' + anio + '-' + String(seq).padStart(4,'0');
+
+      const ast = await api('cont_asientos','POST',{
+        id_empresa: id_emisor, numero_asiento: numAst, tipo: 'PAGO_PROVEEDOR', fecha: fecha,
+        descripcion: 'Pago ' + (c.proveedores?.nombre||'Proveedor') + ' | Doc: ' + (c.numero_doc||'') + ' | Ref: ' + ref,
+        referencia: c.numero_doc || ('CXP-'+id_cxp),
+        estado: 'APROBADO', moneda_base: moneda, tasa_bcv: tasaPago,
+        id_usuario: sesionActual?.correo_usuario || null
+      });
+      const ar = Array.isArray(ast) ? ast[0] : ast;
+      if (ar?.id_asiento) {
+        const idAst = ar.id_asiento;
+        let orden = 1;
         if (moneda === 'VES') {
-          montoAstUSD = 0;
-          montoAstVES = monto;
+          if (cDebito) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDebito.id_cuenta, orden:orden++,
+            descripcion:(esManualGasto?'Pago gasto — ':'Cancelación CxP — ')+(c.proveedores?.nombre||''),
+            debe_usd:0, haber_usd:0, debe_ves:monto, haber_ves:0, tasa_bcv:tasaPago });
+          if (cBanVES) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cBanVES.id_cuenta, orden:orden++,
+            descripcion:'Salida banco VES',
+            debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:monto, tasa_bcv:tasaPago });
         } else {
-          montoAstUSD = montoUSD;
-          montoAstVES = parseFloat((montoUSD * tasaDia).toFixed(2));
-        }
+          const montoVESCompra = parseFloat((montoUSD * tasaCompra).toFixed(2));
+          const montoVESPago   = parseFloat((montoUSD * tasaPago).toFixed(2));
+          const difCambio      = parseFloat((montoVESPago - montoVESCompra).toFixed(2));
+          const montoIGTF_USD  = parseFloat((montoUSD * pctIGTF).toFixed(2));
+          const montoIGTF_VES  = parseFloat((montoIGTF_USD * tasaPago).toFixed(2));
 
-        // Crear asiento
-        // Generar numero_asiento correlativo
-        const anioAst  = new Date(hoy).getFullYear();
-        const ultAsts  = await api('cont_asientos','GET',null,
-          '?id_empresa=eq.'+id_emisor+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
-        let ultNum = 0;
-        if (ultAsts[0]?.numero_asiento) {
-          const m = ultAsts[0].numero_asiento.match(/(\d+)$/);
-          if (m) ultNum = parseInt(m[1]);
-        }
-        const numAst = 'AST-' + anioAst + '-' + String(ultNum + 1).padStart(4,'0');
+          if (cDebito) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDebito.id_cuenta, orden:orden++,
+            descripcion:(esManualGasto?'Pago gasto — ':'Cancelación CxP — ')+(c.proveedores?.nombre||''),
+            debe_usd:0, haber_usd:0, debe_ves:montoVESCompra, haber_ves:0, tasa_bcv:tasaCompra });
 
-        const ast = await api('cont_asientos','POST',{
-          id_empresa:      id_emisor,
-          numero_asiento: numAst,
-          tipo:           'PAGO_PROVEEDOR',
-          fecha:          hoy,
-          descripcion:    'Pago ' + (c.proveedores?.nombre||'Proveedor') + ' — ' + (c.observaciones||c.numero_doc||'') + ' | Ref: ' + ref,
-          referencia:     c.numero_doc || ('CXP-'+id_cxp),
-          estado:         'APROBADO',
-          moneda_base:    moneda,
-          tasa_bcv:       tasaDia,
-          id_usuario:     sesionActual?.correo_usuario || null
-        });
+          if (difCambio > 0 && cDifGasto) {
+            await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDifGasto.id_cuenta, orden:orden++,
+              descripcion:'Pérdida por diferencia cambiaria ('+tasaCompra+' -> '+tasaPago+')',
+              debe_usd:0, haber_usd:0, debe_ves:difCambio, haber_ves:0, tasa_bcv:tasaPago });
+          } else if (difCambio < 0 && cDifIngr) {
+            await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDifIngr.id_cuenta, orden:orden++,
+              descripcion:'Ganancia por diferencia cambiaria ('+tasaCompra+' -> '+tasaPago+')',
+              debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:Math.abs(difCambio), tasa_bcv:tasaPago });
+          }
 
-        const astRec = Array.isArray(ast) ? ast[0] : ast;
-        if (astRec && astRec.id_asiento) {
-          // Línea 1: DÉBITO a CxP Proveedores
-          await api('cont_asiento_lineas','POST',{
-            id_asiento:  astRec.id_asiento,
-            id_cuenta:   cDebito.id_cuenta,
-            orden:       1,
-            descripcion: (esManualAst ? 'Pago gasto — ' : 'Cancelación CxP — ') + (c.numero_doc||''),
-            debe_usd:    montoAstUSD,
-            haber_usd:   0,
-            debe_ves:    montoAstVES,
-            haber_ves:   0,
-            tasa_bcv:    tasaDia
-          });
-          // Línea 2: CRÉDITO a Banco
-          await api('cont_asiento_lineas','POST',{
-            id_asiento:  astRec.id_asiento,
-            id_cuenta:   cBanco.id_cuenta,
-            orden:       2,
-            descripcion: 'Salida banco — ' + ref,
-            debe_usd:    0,
-            haber_usd:   montoAstUSD,
-            debe_ves:    0,
-            haber_ves:   montoAstVES,
-            tasa_bcv:    tasaDia
-          });
+          if (cIGTF) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cIGTF.id_cuenta, orden:orden++,
+            descripcion:'IGTF '+(pctIGTF*100).toFixed(0)+'% sobre pago en divisas',
+            debe_usd:0, haber_usd:0, debe_ves:montoIGTF_VES, haber_ves:0, tasa_bcv:tasaPago });
+          if (cIGTFPagar) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cIGTFPagar.id_cuenta, orden:orden++,
+            descripcion:'IGTF por Pagar (enterar primeros 12 días del mes)',
+            debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoIGTF_VES, tasa_bcv:tasaPago });
+
+          if (cBanUSD) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cBanUSD.id_cuenta, orden:orden++,
+            descripcion:'Salida banco '+moneda,
+            debe_usd:0, haber_usd:montoUSD, debe_ves:0, haber_ves:montoVESPago, tasa_bcv:tasaPago });
         }
       }
-    } catch(eAst) { console.warn('Error generando asiento pago:', eAst); }
+    } catch(eAst) { console.warn('Error generando asiento de pago:', eAst); }
 
-    okEl.textContent = '✓ Pago registrado. Pendiente de aprobación por supervisor.';
+    okEl.textContent = '✓ Pago registrado y contabilizado correctamente.';
     okEl.style.display = 'block';
     setTimeout(function() {
       cerrarModal('modal-cont-pago-cxp');
@@ -2957,7 +2960,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       const est = c.estado || '';
       const btnEditar = (est === 'PENDIENTE' && puedo('PAGOS','EDITAR'))
         ? '<button class="btn-naranja" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
-      const btnRegistrarPago = (est === 'PENDIENTE' && (puedo('PAGOS','CREAR') || sesionActual?.administrador))
+      const btnRegistrarPago = (est === 'APROBADA' && (puedo('PAGOS','CREAR') || sesionActual?.administrador))
         ? '<button class="btn-primario" onclick="abrirDialogoRegistrarPago()">&#x1F4B8; Registrar Pago</button>' : '';
       const btnAnular = (est === 'PENDIENTE' && (puedo('PAGOS','ELIMINAR') || sesionActual?.administrador))
         ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 Anular</button>' : '';
@@ -3237,118 +3240,34 @@ async function eliminarCxP(id_cxp) {
 async function aprobarPagoCxP(id_cxp) {
   if (!puedo('PAGOS','APROBAR')) { alert('Sin permiso para aprobar.'); return; }
   if (!(await tieneNivelMinimo(2))) { alert('Esta acción requiere Firma de Aprobación Nivel 1 o Nivel 2.'); return; }
-  if (!confirm('Aprobar este pago y generar el asiento contable?')) return;
+  if (!confirm('¿Aprobar esta solicitud de pago? El operador que la generó recibirá una notificación para proceder a Registrar el Pago.')) return;
   try {
-    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre)');
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=id_usuario,numero_doc,observaciones,descripcion');
     if (!rows || !rows[0]) return;
     const c = rows[0];
-    const id_emisor  = _empresaActiva?.id_empresa || 0;
-    const fechaPago = c.fecha_pago || new Date().toISOString().split('T')[0];
-    const moneda    = c.moneda_pago || 'VES';
-    const montoUSD  = parseFloat(c.monto_usd || 0);
-    const montoVES  = parseFloat(c.monto_ves || 0);
 
-    const tasas = await api('tasas','GET',null,'?order=fecha_valor.desc&limit=30&select=*') || [];
-    const getTasaEn = function(fecha) {
-      const reg = tasas.filter(function(t){
-        return t.moneda_origen==='USD' && String(t.fecha_valor||'').substring(0,10) <= fecha;
-      }).sort(function(a,b){ return String(b.fecha_valor).localeCompare(String(a.fecha_valor)); });
-      return reg.length ? parseFloat(reg[0].tipo_cambio) : 1;
-    };
-    const tasaCompra = parseFloat(c.tasa_bcv_compra || c.tasa_bcv || getTasaEn(String(c.fecha_emision||'').substring(0,10)));
-    const tasaPago   = getTasaEn(fechaPago);
-
-    const codigos = moneda === 'USD' ? '2.1.01.001,1.1.01.004,6.2.01.003,4.2.01.003,6.1.04.003,2.1.03.004' : '2.1.01.001,1.1.01.003';
-    const cuentas   = await api('cont_cuentas','GET',null,'?codigo=in.('+codigos+')&select=id_cuenta,codigo') || [];
-    const getCta    = function(cod){ return cuentas.find(function(x){ return x.codigo===cod; }); };
-    const cCxP      = getCta('2.1.01.001');
-    const cBanVES   = getCta('1.1.01.003');
-    const cBanUSD   = getCta('1.1.01.004');
-    const cDifGasto = getCta('6.2.01.003');
-    const cDifIngr  = getCta('4.2.01.003');
-    const cIGTF     = getCta('6.1.04.003');
-    const cIGTFPagar = getCta('2.1.03.004');
-
-    let pctIGTF = 0.03;
-    try {
-      const trib = await api('param_tributos','GET',null,'?codigo=eq.IGTF&select=alicuota&limit=1');
-      if (trib && trib[0]) pctIGTF = parseFloat(trib[0].alicuota) / 100;
-    } catch(e2) {}
-
-    const anio = new Date(fechaPago).getFullYear();
-    const ults = await api('cont_asientos','GET',null,'?id_empresa=eq.'+id_emisor+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
-    let seq = 1;
-    if (ults[0]?.numero_asiento) { const mm = ults[0].numero_asiento.match(/(\d+)$/); if (mm) seq = parseInt(mm[1])+1; }
-    const numAst = 'AST-' + anio + '-' + String(seq).padStart(4,'0');
-
-    const ast = await api('cont_asientos','POST',{
-      id_empresa: id_emisor, numero_asiento: numAst, tipo: 'PAGO_PROVEEDOR', fecha: fechaPago,
-      descripcion: 'Pago ' + (c.proveedores?.nombre||'Proveedor') + ' | Doc: ' + (c.numero_doc||'') + ' | Ref: ' + (c.referencia||''),
-      referencia: c.numero_doc || ('CXP-'+id_cxp),
-      estado: 'APROBADO', moneda_base: moneda, tasa_bcv: tasaPago,
-      id_usuario: sesionActual?.correo_usuario || null
-    });
-    const ar = Array.isArray(ast) ? ast[0] : ast;
-    if (!ar?.id_asiento) throw new Error('No se pudo crear el asiento.');
-    const idAst = ar.id_asiento;
-    let orden = 1;
-
-    if (moneda === 'VES') {
-      await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cCxP.id_cuenta, orden:orden++,
-        descripcion:'Cancelacion CxP '+(c.proveedores?.nombre||''),
-        debe_usd:0, haber_usd:0, debe_ves:montoVES, haber_ves:0, tasa_bcv:tasaPago });
-      await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cBanVES.id_cuenta, orden:orden++,
-        descripcion:'Salida banco VES',
-        debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoVES, tasa_bcv:tasaPago });
-    } else {
-      // montoVESCompra = el monto ya guardado/booked en la CxP (respeta el
-      // ajuste de redondeo de la última cuota); no se recalcula con tasaCompra
-      const montoVESCompra = montoVES;
-      const montoVESPago   = parseFloat((montoUSD * tasaPago).toFixed(2));
-      const difCambio      = parseFloat((montoVESPago - montoVESCompra).toFixed(2));
-      const montoIGTF_USD  = parseFloat((montoUSD * pctIGTF).toFixed(2));
-      const montoIGTF_VES  = parseFloat((montoIGTF_USD * tasaPago).toFixed(2));
-      const totalSalidaUSD = parseFloat((montoUSD + montoIGTF_USD).toFixed(2));
-      const totalSalidaVES = parseFloat((montoVESPago + montoIGTF_VES).toFixed(2));
-
-      // DEBE: CxP a tasa compra
-      await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cCxP.id_cuenta, orden:orden++,
-        descripcion:'Cancelacion CxP '+(c.proveedores?.nombre||''),
-        debe_usd:0, haber_usd:0, debe_ves:montoVESCompra, haber_ves:0, tasa_bcv:tasaCompra });
-
-      if (difCambio > 0 && cDifGasto) {
-        await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDifGasto.id_cuenta, orden:orden++,
-          descripcion:'Perdida por diferencia cambiaria ('+tasaCompra+' -> '+tasaPago+')',
-          debe_usd:0, haber_usd:0, debe_ves:difCambio, haber_ves:0, tasa_bcv:tasaPago });
-      } else if (difCambio < 0 && cDifIngr) {
-        await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDifIngr.id_cuenta, orden:orden++,
-          descripcion:'Ganancia por diferencia cambiaria ('+tasaCompra+' -> '+tasaPago+')',
-          debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:Math.abs(difCambio), tasa_bcv:tasaPago });
-      }
-
-      if (cIGTF) {
-        // DEBE: Gasto IGTF (solo en VES - es gasto en moneda funcional)
-        await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cIGTF.id_cuenta, orden:orden++,
-          descripcion:'IGTF '+(pctIGTF*100).toFixed(0)+'% sobre pago en divisas',
-          debe_usd:0, haber_usd:0, debe_ves:montoIGTF_VES, haber_ves:0, tasa_bcv:tasaPago });
-      }
-      if (cIGTFPagar) {
-        // HABER: IGTF por Pagar (se entera al fisco primeros 12 dias del mes)
-        await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cIGTFPagar.id_cuenta, orden:orden++,
-          descripcion:'IGTF por Pagar (enterar primeros 12 dias del mes)',
-          debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoIGTF_VES, tasa_bcv:tasaPago });
-      }
-
-      // HABER: Banco USD - solo el monto del pago (IGTF va a cuenta de pasivo)
-      await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cBanUSD.id_cuenta, orden:orden++,
-        descripcion:'Salida banco USD',
-        debe_usd:0, haber_usd:montoUSD, debe_ves:0, haber_ves:montoVESPago, tasa_bcv:tasaPago });
-    }
-
+    // La aprobación NO genera el asiento contable ni marca PAGADA -- eso
+    // ocurre después, cuando el operador Registra el Pago (ver
+    // contGuardarPagoCxp). Aquí solo se autoriza a seguir adelante.
     await api('cont_cxp','PATCH',{
-      estado: 'PAGADA', pagado_usd: montoUSD, saldo_usd: 0,
-      aprobado_por: sesionActual?.correo_usuario || null
+      estado: 'APROBADA',
+      aprobado_por: sesionActual?.correo_usuario || null,
+      fecha_aprobacion: new Date().toISOString()
     },'?id_cxp=eq.'+id_cxp);
+
+    // Notificar al operador que generó la solicitud
+    if (c.id_usuario) {
+      try {
+        await api('notificaciones','POST',{
+          correo_destino: c.id_usuario,
+          titulo: 'Solicitud de Pago Aprobada',
+          mensaje: 'Tu solicitud de pago "' + (c.descripcion || c.observaciones || c.numero_doc || '') + '" fue aprobada. Ya puedes proceder a Registrar el Pago.',
+          estado: 'PENDIENTE',
+          fecha_creacion: new Date().toISOString(),
+          datos_extra: JSON.stringify({ id_cxp: id_cxp, accion: 'registrar_pago' })
+        });
+      } catch(eNotif) { console.warn('Error enviando notificación de aprobación:', eNotif); }
+    }
 
     cargarPagos();
   } catch(e) { alert('Error al aprobar: '+e.message); console.error(e); }
@@ -3358,11 +3277,72 @@ async function aprobarPagoCxP(id_cxp) {
 async function rechazarPagoCxP(id_cxp) {
   if (!puedo('PAGOS','APROBAR')) { alert('Sin permiso para rechazar.'); return; }
   if (!(await tieneNivelMinimo(2))) { alert('Esta acción requiere Firma de Aprobación Nivel 1 o Nivel 2.'); return; }
-  const motivo = prompt('Motivo del rechazo:');
-  if (!motivo || !motivo.trim()) return;
+
+  const motivo = await new Promise(function(resolve) {
+    const div = document.createElement('div');
+    div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center';
+    div.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:24px;max-width:380px;width:90%">'
+      + '<div style="font-size:15px;margin-bottom:16px;color:#e8e8e8;text-align:center">Rechazar Solicitud de Pago</div>'
+      + '<label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Motivo del rechazo *</label>'
+      + '<textarea id="dlg-rechazo-motivo" rows="3" placeholder="Explique por qué se rechaza esta solicitud..." style="width:100%;box-sizing:border-box;padding:10px;border-radius:6px;border:1px solid #444;background:#111;color:#e8e8e8;font-size:14px;margin-bottom:12px;resize:vertical;font-family:inherit"></textarea>'
+      + '<div id="dlg-rechazo-err" style="color:#f87171;font-size:12px;margin-bottom:12px;display:none"></div>'
+      + '<div style="display:flex;gap:12px;justify-content:center">'
+      + '<button id="btn-confirm-si" style="background:#fc8181;border:none;color:#1a1a1a;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600">Rechazar</button>'
+      + '<button id="btn-confirm-no" style="background:#333;border:1px solid #555;color:#e8e8e8;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">Cancelar</button>'
+      + '</div></div>';
+    document.body.appendChild(div);
+    const motivoEl = div.querySelector('#dlg-rechazo-motivo');
+    const errEl = div.querySelector('#dlg-rechazo-err');
+    motivoEl.focus();
+    const cerrar = function(valor) { document.body.removeChild(div); resolve(valor); };
+    div.querySelector('#btn-confirm-si').onclick = function() {
+      const val = motivoEl.value.trim();
+      if (!val) { errEl.textContent = 'Ingrese el motivo del rechazo.'; errEl.style.display = 'block'; return; }
+      cerrar(val);
+    };
+    div.querySelector('#btn-confirm-no').onclick = function() { cerrar(null); };
+  });
+  if (!motivo) return;
+
   try {
-    await api('cont_cxp','PATCH',{ estado: 'PENDIENTE', motivo_rechazo: motivo.trim(), fecha_pago: null, metodo_pago: null, referencia: null },'?id_cxp=eq.'+id_cxp);
-    alert('Pago rechazado. Vuelve a PENDIENTE.');
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=id_usuario,numero_doc,observaciones,descripcion');
+    if (!rows || !rows[0]) return;
+    const c = rows[0];
+
+    // Anular el asiento GASTO_MANUAL (reconocimiento del gasto) asociado
+    // -- misma referencia base con la que se creó al registrar la
+    // solicitud (sin el sufijo '-<id_cxp>').
+    const numDocBase = (c.numero_doc || '').replace(new RegExp('-'+id_cxp+'$'), '');
+    try {
+      const asientosRech = await api('cont_asientos','GET',null,
+        '?referencia=eq.'+encodeURIComponent(numDocBase)+'&tipo=eq.GASTO_MANUAL&estado=neq.ANULADO&select=id_asiento,descripcion');
+      for (const a of (asientosRech||[])) {
+        await api('cont_asientos','PATCH',
+          { estado: 'ANULADO', descripcion: '[ANULADO] ' + (a.descripcion||'') },
+          '?id_asiento=eq.'+a.id_asiento);
+      }
+    } catch(eAnular) { console.warn('Error anulando asiento al rechazar:', eAnular); }
+
+    await api('cont_cxp','PATCH',{
+      estado: 'ANULADA',
+      motivo_rechazo: motivo,
+      fecha_pago: null, metodo_pago: null, referencia: null
+    },'?id_cxp=eq.'+id_cxp);
+
+    // Notificar al operador que generó la solicitud
+    if (c.id_usuario) {
+      try {
+        await api('notificaciones','POST',{
+          correo_destino: c.id_usuario,
+          titulo: 'Solicitud de Pago Rechazada',
+          mensaje: 'Tu solicitud de pago "' + (c.descripcion || c.observaciones || c.numero_doc || '') + '" fue rechazada. Motivo: ' + motivo,
+          estado: 'PENDIENTE',
+          fecha_creacion: new Date().toISOString(),
+          datos_extra: JSON.stringify({ id_cxp: id_cxp, accion: 'ver_rechazo' })
+        });
+      } catch(eNotif) { console.warn('Error enviando notificación de rechazo:', eNotif); }
+    }
+
     cargarPagos();
   } catch(e) { alert('Error: '+e.message); }
 }
