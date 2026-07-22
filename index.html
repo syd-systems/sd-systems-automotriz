@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260720013"></script>
-<script src="js/parametros.js?v=20260720013"></script>
-<script src="js/empresas.js?v=20260720013"></script>
-<script src="js/facturacion.js?v=20260720013"></script>
-<script src="js/inventario.js?v=20260720013"></script>
-<script src="js/contabilidad.js?v=20260720013"></script>
-<script src="js/pagos.js?v=20260720013"></script>
-<script src="js/vehiculos.js?v=20260720013"></script>
-<script src="js/catalogo.js?v=20260720013"></script>
-<script src="js/inventario2.js?v=20260720013"></script>
-<script src="js/ordenes.js?v=20260720013"></script>
+<script src="js/core.js?v=20260720014"></script>
+<script src="js/parametros.js?v=20260720014"></script>
+<script src="js/empresas.js?v=20260720014"></script>
+<script src="js/facturacion.js?v=20260720014"></script>
+<script src="js/inventario.js?v=20260720014"></script>
+<script src="js/contabilidad.js?v=20260720014"></script>
+<script src="js/pagos.js?v=20260720014"></script>
+<script src="js/vehiculos.js?v=20260720014"></script>
+<script src="js/catalogo.js?v=20260720014"></script>
+<script src="js/inventario2.js?v=20260720014"></script>
+<script src="js/ordenes.js?v=20260720014"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2108,48 +2108,59 @@
       <div id="cont-pago-cxp-form-pago" style="display:none">
         <div style="border-top:1px solid var(--borde);margin:16px 0 14px"></div>
         <div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;font-weight:600;margin-bottom:12px">💸 Datos del Pago</div>
-        <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
-          <div class="form-campo form-full">
-            <label>Moneda de Pago *</label>
-            <select id="cont-pago-cxp-moneda" onchange="onCambioPagoMoneda()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-              <option value="VES">VES — Bolívares (Funcional)</option>
-              <option value="USD">USD — Dólares</option>
-              <option value="EUR">EUR — Euros</option>
-            </select>
-          </div>
+        <!-- Moneda/Método/Cuenta/Tasa/Monto/Fecha ya no se le piden a quien
+             autoriza el pago -- el sistema los resuelve solos (Moneda = la
+             misma de la Obligación, Método = el que permite la ficha del
+             proveedor, Fecha = hoy). Los campos siguen existiendo (ocultos)
+             porque el resto de la lógica (cálculo de monto, cuenta contable,
+             etc.) depende de ellos. -->
+        <div style="display:none">
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
+            <div class="form-campo form-full">
+              <label>Moneda de Pago *</label>
+              <select id="cont-pago-cxp-moneda" onchange="onCambioPagoMoneda()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+                <option value="VES">VES — Bolívares (Funcional)</option>
+                <option value="USD">USD — Dólares</option>
+                <option value="EUR">EUR — Euros</option>
+              </select>
+            </div>
 
-          <!-- Método de Pago dinámico -->
-          <div class="form-campo form-full" id="cont-pago-manual-info">
-            <label>Método de Pago *</label>
-            <select id="cont-pago-manual-tipo" onchange="onCambioMetodoPagoManual()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-              <option value="">— Seleccione moneda primero —</option>
-            </select>
-          </div>
+            <!-- Método de Pago dinámico -->
+            <div class="form-campo form-full" id="cont-pago-manual-info">
+              <label>Método de Pago *</label>
+              <select id="cont-pago-manual-tipo" onchange="onCambioMetodoPagoManual()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+                <option value="">— Seleccione moneda primero —</option>
+              </select>
+            </div>
 
-          <!-- Cuenta Contable automática -->
-          <div class="form-campo form-full" id="cont-pago-manual-cuenta-cont" style="display:none">
-            <label>Cuenta Contable</label>
-            <div id="cont-pago-manual-cuenta-display" style="font-size:13px;color:var(--naranja);font-weight:600;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:11px 14px">—</div>
-            <input type="hidden" id="cont-pago-manual-cuenta-id">
-          </div>
-          <div class="form-campo form-full" id="cont-pago-cxp-tasa-cont" style="display:none">
-            <label id="cont-pago-cxp-tasa-label">Tipo de Cambio</label>
-            <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:5px;padding:10px 14px">
-              <span id="cont-pago-cxp-moneda-ref" style="font-size:13px;color:var(--naranja);font-weight:600;white-space:nowrap;min-width:80px"></span>
-              <span style="font-size:12px;color:var(--suave)">Tasa:</span>
-              <span id="cont-pago-cxp-tasa" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--texto)"></span>
+            <!-- Cuenta Contable automática -->
+            <div class="form-campo form-full" id="cont-pago-manual-cuenta-cont" style="display:none">
+              <label>Cuenta Contable</label>
+              <div id="cont-pago-manual-cuenta-display" style="font-size:13px;color:var(--naranja);font-weight:600;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:11px 14px">—</div>
+              <input type="hidden" id="cont-pago-manual-cuenta-id">
+            </div>
+            <div class="form-campo form-full" id="cont-pago-cxp-tasa-cont" style="display:none">
+              <label id="cont-pago-cxp-tasa-label">Tipo de Cambio</label>
+              <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.03);border:1px solid var(--borde);border-radius:5px;padding:10px 14px">
+                <span id="cont-pago-cxp-moneda-ref" style="font-size:13px;color:var(--naranja);font-weight:600;white-space:nowrap;min-width:80px"></span>
+                <span style="font-size:12px;color:var(--suave)">Tasa:</span>
+                <span id="cont-pago-cxp-tasa" style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--texto)"></span>
+              </div>
+            </div>
+            <div class="form-campo">
+              <label>Monto a Pagar (calculado)</label>
+              <input type="text" id="cont-pago-cxp-monto" readonly
+                style="font-family:var(--font-mono);font-size:16px;font-weight:700;background:rgba(255,255,255,0.04);color:var(--naranja);cursor:not-allowed">
+              <div id="cont-pago-cxp-equiv-label" style="font-size:11px;color:var(--suave);margin-top:4px"></div>
+            </div>
+            <div class="form-campo">
+              <label>Fecha de Pago *</label>
+              <input type="date" id="cont-pago-cxp-fecha">
             </div>
           </div>
-          <div class="form-campo">
-            <label>Monto a Pagar (calculado)</label>
-            <input type="text" id="cont-pago-cxp-monto" readonly
-              style="font-family:var(--font-mono);font-size:16px;font-weight:700;background:rgba(255,255,255,0.04);color:var(--naranja);cursor:not-allowed">
-            <div id="cont-pago-cxp-equiv-label" style="font-size:11px;color:var(--suave);margin-top:4px"></div>
-          </div>
-          <div class="form-campo">
-            <label>Fecha de Pago *</label>
-            <input type="date" id="cont-pago-cxp-fecha">
-          </div>
+        </div>
+
+        <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
           <div class="form-campo">
             <label>Referencia *</label>
             <input type="text" id="cont-pago-cxp-ref" placeholder="N° referencia bancaria o comprobante">

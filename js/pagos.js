@@ -1275,6 +1275,14 @@ function onCambioPagoMoneda() {
             const cta = cuentasMap[m.id_cuenta_contable];
             return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-cuenta-nombre="'+(cta ? cta.codigo+' — '+cta.nombre : '')+'">'+m.nombre+'</option>';
           }).join('');
+      // El campo queda oculto (ver comentario en el HTML) -- ya no lo
+      // elige la persona que autoriza el pago, así que se autoselecciona
+      // el primero disponible (el que la ficha del proveedor permite, o
+      // el primero activo si no hay restricción configurada).
+      if (metodos.length) {
+        selMetodoManual.value = metodos[0].id_metodo;
+        onCambioMetodoPagoManual();
+      }
     }).catch(function() {
       selMetodoManual.innerHTML = '<option value="">— Sin métodos disponibles —</option>';
     });
@@ -2858,7 +2866,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
 
       // Moneda por defecto y calcular
       const monedaEl3 = document.getElementById('cont-pago-cxp-moneda');
-      if (monedaEl3) { monedaEl3.value = _empresaActiva?.moneda_principal || 'VES'; monedaEl3.disabled = false; }
+      if (monedaEl3) { monedaEl3.value = modal?.dataset.monedaCxP || 'VES'; monedaEl3.disabled = false; }
 
       setTimeout(function() {
         const saldoEl3 = document.getElementById('cont-pago-cxp-saldo');
