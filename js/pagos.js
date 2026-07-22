@@ -225,7 +225,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       const btnPagar   = puedo('PAGOS','PAGAR') ? '<button onclick="ejecutarPagoCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💳 Pagar</button>' : '';
       const btnAprobar  = puedo('PAGOS','APROBAR') ? '<button onclick="aprobarPagoCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">✅ Aprobar</button>' : '';
       const btnRechazar = puedo('PAGOS','APROBAR') ? '<button onclick="rechazarPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">❌ Rechazar</button>' : '';
-      if (est === 'PENDIENTE') acciones = btnVerPend + (btnPagar ? ' '+btnPagar : '');
+      if (est === 'PENDIENTE') acciones = btnVerPend + (btnAprobar ? ' '+btnAprobar : '') + (btnRechazar ? ' '+btnRechazar : '');
       else if (est === 'POR_APROBAR') acciones = btnVerPag + (btnAprobar ? ' '+btnAprobar : '') + (btnRechazar ? ' '+btnRechazar : '');
       else acciones = btnVerPag;
     }
@@ -278,6 +278,12 @@ async function abrirNuevoPago() {
   if (errEl) errEl.style.display = 'none';
   if (okEl)  okEl.style.display  = 'none';
   document.getElementById('pago-modal-titulo').textContent = 'NUEVA CUENTA POR PAGAR';
+  const btnGuardarInit = document.getElementById('btn-guardar-pago');
+  if (btnGuardarInit) {
+    btnGuardarInit.disabled = false;
+    btnGuardarInit.textContent = '📨 Solicitar Aprobación de Pago';
+    btnGuardarInit.dataset.textoOriginal = '📨 Solicitar Aprobación de Pago';
+  }
   // Restaurar campos (pueden estar disabled del modo VER)
   ['pago-descripcion','pago-cuenta-gasto',
    'pago-monto','pago-vencimiento','pago-proveedor','pago-observaciones'].forEach(function(id) {
@@ -288,7 +294,7 @@ async function abrirNuevoPago() {
   const footerNuevo = document.querySelector('#modal-pago .modal-footer');
   if (footerNuevo) footerNuevo.innerHTML =
     '<button class="btn-secundario" onclick="cerrarModal(\'modal-pago\')">Retornar</button>'
-    + '<button class="btn-primario" onclick="guardarPago()">Guardar</button>';
+    + '<button class="btn-primario" id="btn-guardar-pago" data-texto-original="📨 Solicitar Aprobación de Pago" onclick="this.disabled=true;this.textContent=\'⏳ Procesando...\';guardarPago()">📨 Solicitar Aprobación de Pago</button>';
 
   // Reset campos
   ['pago-descripcion','pago-monto','pago-vencimiento','pago-rif','pago-observaciones','pago-manual-cuenta','pago-referencia'].forEach(function(id){
@@ -2075,6 +2081,12 @@ async function editarCxPManual(id_cxp) {
     }
 
     document.getElementById('pago-modal-titulo').textContent = 'EDITAR OBLIGACIÓN DE PAGO';
+    const btnGuardarEdit = document.getElementById('btn-guardar-pago');
+    if (btnGuardarEdit) {
+      btnGuardarEdit.disabled = false;
+      btnGuardarEdit.textContent = '💾 Guardar Cambios';
+      btnGuardarEdit.dataset.textoOriginal = '💾 Guardar Cambios';
+    }
     calcularTributosPago();
 
     // Agregar botón Anular al footer (Eliminar solo aplica a CxP PENDIENTE)
@@ -2084,7 +2096,7 @@ async function editarCxPManual(id_cxp) {
         footerEdit.innerHTML =
           '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+');cerrarModal(\'modal-pago\')">🗑 Anular</button>'
           + '<button class="btn-secundario" onclick="cerrarModal(\'modal-pago\')">Retornar</button>'
-          + '<button class="btn-primario" onclick="guardarPago()">Guardar</button>';
+          + '<button class="btn-primario" id="btn-guardar-pago" data-texto-original="💾 Guardar Cambios" onclick="this.disabled=true;this.textContent=\'⏳ Procesando...\';guardarPago()">💾 Guardar Cambios</button>';
       }
     }
     const modalBodyEdit = document.querySelector('#modal-pago .modal-body');
@@ -2303,9 +2315,11 @@ async function guardarPago() {
   if (errEl) errEl.style.display = 'none';
   if (okEl)  okEl.style.display  = 'none';
 
+  const btnGuardarPagoEl = document.getElementById('btn-guardar-pago');
   const mostrarErr = function(msg) {
     if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
     else alert(msg);
+    if (btnGuardarPagoEl) { btnGuardarPagoEl.disabled = false; btnGuardarPagoEl.textContent = btnGuardarPagoEl.dataset.textoOriginal || btnGuardarPagoEl.textContent; }
   };
 
   // Leer campos
@@ -2668,8 +2682,8 @@ async function guardarPago() {
     }, 1000);
   } catch(e) {
     mostrarErr('Error: ' + e.message);
-    const btnGuardar = document.querySelector('#modal-pago .btn-primario');
-    if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar'; }
+    const btnGuardar = document.getElementById('btn-guardar-pago');
+    if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = btnGuardar.dataset.textoOriginal || btnGuardar.textContent; }
   }
 }
 
