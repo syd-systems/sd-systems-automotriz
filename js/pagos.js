@@ -1962,12 +1962,14 @@ async function editarCxPManual(id_cxp) {
     }
     document.getElementById('pago-incluye-iva-val').value = c.exento_iva ? '' : (c.incluye_iva ? 'SI' : 'NO');
 
-    // Modalidad de Pago: solo informativa al editar — no se puede cambiar
-    // de Contado a Crédito (o viceversa) desde aquí sin recrear las cuotas
+    // Modalidad de Pago: editable -- si se cambia (Contado<->Credito), se
+    // detecta comparando contra el valor original guardado aquí, y
+    // guardarPago() recrea toda la estructura de pago (ver mas abajo).
     const modalidadSel = document.getElementById('pago-modalidad');
     if (modalidadSel) {
       modalidadSel.value = c.esquema_pago || 'CONTADO';
-      modalidadSel.disabled = true;
+      modalidadSel.dataset.original = c.esquema_pago || 'CONTADO';
+      modalidadSel.disabled = false;
     }
     const vencCont = document.getElementById('pago-vencimiento-cont');
     if (vencCont) vencCont.style.display = '';
@@ -1976,9 +1978,9 @@ async function editarCxPManual(id_cxp) {
     // que la tasa BCV de la Fecha de Pago (histórica) nunca se buscaba -- se
     // quedaba con la tasa de HOY, cargada al abrir el modal. Se fuerza aquí.
     if (c.fecha_vencimiento) await onCambiarFechaPagoContado();
-    // Crédito no se edita desde este modal (implicaría recrear cuotas)
-    const credCont = document.getElementById('pago-credito-cont');
-    if (credCont) credCont.style.display = 'none';
+    // Mostrar la sección correspondiente (Contado o Crédito) según el
+    // esquema actual -- editable ahora, ver nota arriba en modalidadSel
+    onCambioModalidadPago();
     // Incluye IVA: visible y editable también al editar (ver justo arriba,
     // donde ya se pre-marca con el valor original guardado en incluye_iva)
     const incCont = document.getElementById('pago-incluye-iva-cont');
@@ -2245,6 +2247,11 @@ async function guardarPago() {
   const id_proveedor   = parseInt(document.getElementById('pago-proveedor')?.value) || null;
   const observaciones  = document.getElementById('pago-observaciones')?.value.trim() || '';
   const modalidad      = document.getElementById('pago-modalidad')?.value || '';
+  const modalidadOriginal = document.getElementById('pago-modalidad')?.dataset.original || '';
+  // true solo si se está editando Y la modalidad realmente cambió respecto
+  // a la guardada -- dispara la recreación completa de la estructura de
+  // pago (ver mas abajo). Si no cambió, el PATCH simple de siempre alcanza.
+  const modalidadCambio = !!(id_cxp_edit && modalidadOriginal && modalidad !== modalidadOriginal);
   const exento         = document.getElementById('pago-exento-iva-si')?.checked || false;
   const incluyeIVAVal  = document.getElementById('pago-incluye-iva-val')?.value || '';
   const clave          = document.getElementById('pago-clave')?.value || '';
@@ -2264,7 +2271,7 @@ async function guardarPago() {
   // nunca quedarse con un default silencioso.
   if (!exento && !incluyeIVAVal) { mostrarErr('Debe indicar si el Monto Facturado incluye IVA.'); return; }
 
-  if (!id_cxp_edit) {
+  if (!id_cxp_edit || modalidadCambio) {
     if (!modalidad) { mostrarErr('Debe seleccionar la Modalidad de Pago.'); document.getElementById('pago-modalidad')?.focus(); return; }
     if (modalidad === 'CONTADO' && !vencimiento) { mostrarErr('La Fecha de Pago es obligatoria.'); document.getElementById('pago-vencimiento')?.focus(); return; }
     if (modalidad === 'CREDITO') {
@@ -2312,19 +2319,119 @@ async function guardarPago() {
     const btnGuardar = document.querySelector('#modal-pago .btn-primario');
     if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
 
-    // Si es edición → validar contraseña y PATCH (sin regenerar asiento ni cuotas)
+    // Si es edición → validar contraseña y PATCH (regenera cuotas solo si
+    // la Modalidad de Pago cambió; ver modalidadCambio más abajo)
     if (id_cxp_edit) {
       if (!clave) { mostrarErr('Debe ingresar su contraseña para confirmar.'); document.getElementById('pago-clave')?.focus(); if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar'; } return; }
       const verifEdit = await verificarContrasena(sesionActual.correo_usuario, clave);
       if (!verifEdit.ok) { mostrarErr(verifEdit.msg || 'Contraseña incorrecta.'); if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar'; } return; }
 
       // Obtener el numero_doc actual para localizar el asiento asociado.
-      // El asiento se creó con la referencia SIN el sufijo "-<id_cxp>" (ese
-      // sufijo se agrega DESPUÉS, solo al numero_doc de la CxP) — hay que
-      // quitarlo antes de buscar, si no nunca coincide con el asiento real
+      // El asiento se creó con la referencia SIN ningún sufijo (ni el
+      // "-<id_cxp>" que se agrega después, ni el "-C<n>" de las cuotas de
+      // crédito) -- hay que quitar AMBOS antes de buscar, si no nunca
+      // coincide con el asiento real (referenciado siempre por la base).
       const cxpActualRows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp_edit+'&select=numero_doc');
       const numDocConSufijo = cxpActualRows && cxpActualRows[0] ? cxpActualRows[0].numero_doc : null;
-      const numDocActual = numDocConSufijo ? numDocConSufijo.replace(new RegExp('-'+id_cxp_edit+'$'), '') : null;
+      const numDocActual = numDocConSufijo
+        ? numDocConSufijo.replace(new RegExp('(-C\\d+)?-'+id_cxp_edit+'$'), '')
+        : null;
+
+      // ── Conversión de Modalidad de Pago (Contado<->Crédito): recrear
+      // toda la estructura de pago desde cero, en vez del PATCH simple ──
+      if (modalidadCambio) {
+        if (!numDocActual) throw new Error('No se pudo determinar el documento base para la conversión.');
+
+        // 1. Todas las filas hermanas de esta obligación (todas las cuotas
+        // si era CREDITO, o la única fila si era CONTADO)
+        const hermanas = await api('cont_cxp','GET',null,
+          '?numero_doc=ilike.'+encodeURIComponent(numDocActual+'*')+emisorQ()+'&select=id_cxp,numero_doc,estado');
+        const noPendiente = (hermanas||[]).find(function(h){ return h.estado !== 'PENDIENTE'; });
+        if (noPendiente) {
+          mostrarErr('No se puede cambiar la Modalidad de Pago: "'+noPendiente.numero_doc+'" ya está en estado '+noPendiente.estado+'. Toda la obligación debe estar PENDIENTE para reestructurarla.');
+          if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar'; }
+          return;
+        }
+
+        // 2. Borrar todas las filas hermanas (todas están PENDIENTE, validado arriba)
+        for (const h of (hermanas||[])) {
+          await api('cont_cxp','DELETE',null,'?id_cxp=eq.'+h.id_cxp);
+        }
+
+        // 3. Borrar el asiento GASTO_MANUAL original y generar uno nuevo
+        try {
+          const asientosViejosConv = await api('cont_asientos','GET',null,
+            '?referencia=eq.'+encodeURIComponent(numDocActual)+'&tipo=eq.GASTO_MANUAL&estado=neq.ANULADO&select=id_asiento');
+          for (const a of (asientosViejosConv||[])) {
+            await api('cont_asiento_lineas','DELETE',null,'?id_asiento=eq.'+a.id_asiento);
+            await api('cont_asientos','DELETE',null,'?id_asiento=eq.'+a.id_asiento);
+          }
+        } catch(eDelAstConv) { console.warn('Error borrando asiento anterior:', eDelAstConv); }
+
+        const descAsientoConv = descripcion + (observaciones ? ' — ' + observaciones : '');
+        await generarAsientoGastoManual({
+          descripcion:    descAsientoConv,
+          montoUSD:       montoTotalConIVA,
+          montoBsExacto:  montoTotalVES,
+          referencia:     numDocActual,
+          id_cuentaGasto: id_cuentaGasto,
+          fecha:          fechaParaTasa,
+          tasa:           tasaUSD,
+          tasaIVA:        tasaIVAFinal,
+          incluyeIVA:     true,
+          exentoIVA:      exento
+        });
+
+        // 4. Crear la nueva estructura -- misma lógica que al crear desde cero
+        const id_emisorConv = _empresaActiva?.id_empresa || 0;
+        const hoyConv = new Date().toISOString().split('T')[0];
+        const referenciaConv = document.getElementById('pago-referencia')?.value.trim() || '';
+
+        if (modalidad === 'CREDITO') {
+          const previewConv = document.getElementById('pago-cuotas-preview');
+          const cuotasConv = previewConv?.dataset.cuotas ? JSON.parse(previewConv.dataset.cuotas) : [];
+          if (!cuotasConv.length) throw new Error('No se calcularon las cuotas. Complete los campos de crédito.');
+          const totalVesCuotasConv = parseFloat((montoTotalConIVA * tasaUSD).toFixed(2));
+          let acumVesCuotasConv = 0;
+          for (let i = 0; i < cuotasConv.length; i++) {
+            const cc = cuotasConv[i];
+            const esUltimaConv = i === cuotasConv.length - 1;
+            const montoVesCuotaConv = esUltimaConv
+              ? parseFloat((totalVesCuotasConv - acumVesCuotasConv).toFixed(2))
+              : parseFloat((cc.monto * tasaUSD).toFixed(2));
+            acumVesCuotasConv = parseFloat((acumVesCuotasConv + montoVesCuotaConv).toFixed(2));
+            const cxpCuotaConv = await api('cont_cxp','POST',{
+              id_empresa: id_emisorConv, id_proveedor: id_proveedor, tipo: 'PAGO_MANUAL_CREDITO',
+              numero_doc: numDocActual + '-C' + cc.num, fecha_emision: hoyConv, fecha_vencimiento: cc.fecha,
+              moneda_pago: moneda, monto_usd: cc.monto, monto_ves: montoVesCuotaConv,
+              tasa_bcv: tasaUSD, tasa_bcv_compra: tasaUSD, pagado_usd: 0, saldo_usd: cc.monto,
+              estado: 'PENDIENTE', referencia: referenciaConv || null, id_cuenta_gasto: id_cuentaGasto,
+              observaciones: descAsientoConv, exento_iva: exento, incluye_iva: exento ? null : (incluyeIVAVal === 'SI'),
+              esquema_pago: 'CREDITO', id_usuario: sesionActual?.correo_usuario || null
+            });
+            if (cxpCuotaConv && cxpCuotaConv[0]) {
+              await api('cont_cxp','PATCH',{ numero_doc: numDocActual + '-C' + cc.num + '-' + cxpCuotaConv[0].id_cxp }, '?id_cxp=eq.' + cxpCuotaConv[0].id_cxp);
+            }
+          }
+        } else {
+          const cxpContadoConv = await api('cont_cxp','POST',{
+            id_empresa: id_emisorConv, id_proveedor: id_proveedor, tipo: 'PAGO_MANUAL',
+            numero_doc: numDocActual, fecha_emision: hoyConv, fecha_vencimiento: vencimiento,
+            moneda_pago: moneda, monto_usd: montoTotalConIVA, monto_ves: montoTotalVES, monto_facturado: monto,
+            tasa_bcv: tasaUSD, pagado_usd: 0, saldo_usd: montoTotalConIVA, estado: 'PENDIENTE',
+            referencia: referenciaConv || null, id_cuenta_gasto: id_cuentaGasto, observaciones: descAsientoConv,
+            exento_iva: exento, incluye_iva: exento ? null : (incluyeIVAVal === 'SI'),
+            esquema_pago: 'CONTADO', id_usuario: sesionActual?.correo_usuario || null
+          });
+          if (cxpContadoConv && cxpContadoConv[0]) {
+            await api('cont_cxp','PATCH',{ numero_doc: numDocActual + '-' + cxpContadoConv[0].id_cxp }, '?id_cxp=eq.' + cxpContadoConv[0].id_cxp);
+          }
+        }
+
+        if (okEl) { okEl.textContent = '✓ Obligación actualizada y Modalidad de Pago cambiada correctamente.'; okEl.style.display = 'block'; }
+        setTimeout(function() { cerrarModal('modal-pago'); cargarPagos(); }, 1000);
+        return;
+      }
 
       await api('cont_cxp','PATCH',{
         id_proveedor:      id_proveedor,
