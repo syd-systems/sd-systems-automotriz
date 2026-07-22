@@ -2596,16 +2596,24 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     if (tienePago) {
       const detFecha = document.getElementById('cont-pago-det-fecha');
       if (detFecha) detFecha.textContent = c.fecha_pago ? fmtFecha(c.fecha_pago) : '—';
-      const detMoneda = document.getElementById('cont-pago-det-moneda');
-      if (detMoneda) detMoneda.textContent = c.moneda_pago || '—';
       const detMonto = document.getElementById('cont-pago-det-monto');
       if (detMonto) { var _mon = c.moneda_pago||'VES'; detMonto.textContent = _mon==='VES' ? fmtBs(c.monto_ves||0)+' Bs' : '$ '+fmtUSD(c.monto_usd||0)+' '+_mon; }
       const detAprobado = document.getElementById('cont-pago-det-aprobado');
       if (detAprobado) detAprobado.textContent = c.aprobado_por || '—';
       const detRef = document.getElementById('cont-pago-det-ref');
       if (detRef) detRef.textContent = c.referencia || '—';
-      const detMetodo = document.getElementById('cont-pago-det-metodo');
-      if (detMetodo) detMetodo.textContent = c.metodo_pago || '—';
+      // Forma de Pago -- Contado/Crédito; si es Crédito, indicar la cuota
+      // (numero de cuota va embebido en numero_doc como '-C<N>')
+      const detForma = document.getElementById('cont-pago-det-forma');
+      if (detForma) {
+        const esCreditoDet = c.esquema_pago === 'CREDITO' || /-C\d+(?:-\d+)?$/.test(c.numero_doc || '');
+        if (esCreditoDet) {
+          const mCuotaDet = (c.numero_doc || '').match(/-C(\d+)(?:-\d+)?$/);
+          detForma.textContent = 'Crédito' + (mCuotaDet ? ' — Cuota ' + mCuotaDet[1] : '');
+        } else {
+          detForma.textContent = 'Contado';
+        }
+      }
       // Comprobante
       const detCompCont = document.getElementById('cont-pago-det-comprobante-cont');
       const detComp = document.getElementById('cont-pago-det-comprobante');
