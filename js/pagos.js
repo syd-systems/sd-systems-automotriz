@@ -2366,7 +2366,7 @@ async function guardarPago() {
       if (!numCuotas) { mostrarErr('Debe indicar el N° de Cuotas.'); document.getElementById('pago-cuotas-num')?.focus(); return; }
       if (!fechaIni)  { mostrarErr('Debe indicar la Fecha de la Primera Cuota.'); document.getElementById('pago-cuotas-fecha-inicio')?.focus(); return; }
     }
-    if (!clave) { mostrarErr('Debe ingresar su contraseña para confirmar.'); document.getElementById('pago-clave')?.focus(); return; }
+    if (!clave) { mostrarErr('Ingrese su contraseña de acceso al Sistema.'); document.getElementById('pago-clave')?.focus(); return; }
   }
 
   // Buscar tasa BCV — de la Fecha de Pago si es Contado (esa es la fecha que
@@ -2402,13 +2402,13 @@ async function guardarPago() {
   const hoy = new Date().toISOString().split('T')[0];
 
   try {
-    const btnGuardar = document.querySelector('#modal-pago .btn-primario');
-    if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
+    const btnGuardar = document.getElementById('btn-guardar-pago');
+    if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = '⏳ Procesando...'; }
 
     // Si es edición → validar contraseña y PATCH (regenera cuotas solo si
     // la Modalidad de Pago cambió; ver modalidadCambio más abajo)
     if (id_cxp_edit) {
-      if (!clave) { mostrarErr('Debe ingresar su contraseña para confirmar.'); document.getElementById('pago-clave')?.focus(); if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar'; } return; }
+      if (!clave) { mostrarErr('Ingrese su contraseña de acceso al Sistema.'); document.getElementById('pago-clave')?.focus(); if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = btnGuardar.dataset.textoOriginal || btnGuardar.textContent; } return; }
       const verifEdit = await verificarContrasena(sesionActual.correo_usuario, clave);
       if (!verifEdit.ok) { mostrarErr(verifEdit.msg || 'Contraseña incorrecta.'); if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar'; } return; }
 
