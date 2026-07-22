@@ -1246,8 +1246,18 @@ function onCambioPagoMoneda() {
   if (selMetodoManual && monedaPago) {
     selMetodoManual.innerHTML = '<option value="">⏳ Cargando...</option>';
     api('param_metodos_pago','GET',null,
-      '?codigo=eq.'+monedaPago+'&estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,id_cuenta_contable' + emisorQ())
-    .then(async function(metodos) {
+      '?codigo=eq.'+monedaPago+'&estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,tipo_canal,id_cuenta_contable' + emisorQ())
+    .then(async function(metodosRaw) {
+      // Filtrar según lo que la ficha del proveedor realmente permite
+      // (metodos_pago_tipos) -- si la ficha no tiene ninguno configurado,
+      // no se filtra (se muestran todos, como respaldo).
+      let metodos = metodosRaw || [];
+      try {
+        const permitidos = JSON.parse(modal?.dataset.metodosPagoTipos || '[]');
+        if (Array.isArray(permitidos) && permitidos.length) {
+          metodos = metodos.filter(function(m){ return permitidos.includes(m.tipo_canal); });
+        }
+      } catch(eFiltro) {}
       var cuentasMap = {};
       const ids = (metodos||[]).map(function(m){ return m.id_cuenta_contable; }).filter(Boolean).join(',');
       if (ids) {
@@ -1256,8 +1266,12 @@ function onCambioPagoMoneda() {
           (ctas||[]).forEach(function(c){ cuentasMap[c.id_cuenta] = c; });
         } catch(e) {}
       }
+      if (!metodos || !metodos.length) {
+        selMetodoManual.innerHTML = '<option value="">⚠ Sin métodos de pago configurados para '+monedaPago+' — configure uno en Parámetros, o en la ficha del proveedor</option>';
+        return;
+      }
       selMetodoManual.innerHTML = '<option value="">— Seleccione método —</option>'
-        + (metodos||[]).map(function(m) {
+        + metodos.map(function(m) {
             const cta = cuentasMap[m.id_cuenta_contable];
             return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-cuenta-nombre="'+(cta ? cta.codigo+' — '+cta.nombre : '')+'">'+m.nombre+'</option>';
           }).join('');
@@ -2806,6 +2820,10 @@ async function verDetalleCxP(id_cxp, modoInicial) {
           modal.dataset.monedaCxP = c.moneda_pago || 'USD';
           modal.dataset.saldoOrig = c.moneda_pago === 'VES' ? (c.monto_ves || c.monto_usd) : c.monto_usd;
           modal.dataset.saldoUSD  = c.monto_usd;
+          // Métodos de pago que la ficha del proveedor realmente permite --
+          // se usa para filtrar el select de Método de Pago más abajo, en
+          // vez de mostrar todos los métodos activos sin distinción.
+          modal.dataset.metodosPagoTipos = JSON.stringify((prov && Array.isArray(prov.metodos_pago_tipos)) ? prov.metodos_pago_tipos : []);
         }
       } catch(e) {}
 
