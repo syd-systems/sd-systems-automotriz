@@ -1331,6 +1331,56 @@ function onCambioPagoMonto() {
   }
 }
 
+// Pide Referencia (obligatoria) y Comprobante (opcional) en un diálogo,
+// justo al momento de dar clic en "Registrar Pago" -- ya que la sección
+// "Datos del Pago" permanece oculta mientras la obligación no está pagada
+// (no tiene sentido mostrar campos de un pago que aún no existe).
+async function abrirDialogoRegistrarPago() {
+  const resultado = await new Promise(function(resolve) {
+    const div = document.createElement('div');
+    div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center';
+    div.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:24px;max-width:380px;width:90%">'
+      + '<div style="font-size:15px;margin-bottom:16px;color:#e8e8e8;text-align:center">Registrar Pago</div>'
+      + '<label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Referencia *</label>'
+      + '<input type="text" id="dlg-registrar-ref" placeholder="N° referencia bancaria o comprobante" style="width:100%;box-sizing:border-box;padding:10px;border-radius:6px;border:1px solid #444;background:#111;color:#e8e8e8;font-size:14px;margin-bottom:14px">'
+      + '<label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Comprobante (opcional)</label>'
+      + '<input type="file" id="dlg-registrar-archivo" accept="image/*,application/pdf" style="width:100%;box-sizing:border-box;color:#e8e8e8;font-size:12px;margin-bottom:12px">'
+      + '<div id="dlg-registrar-err" style="color:#f87171;font-size:12px;margin-bottom:12px;display:none"></div>'
+      + '<div style="display:flex;gap:12px;justify-content:center">'
+      + '<button id="btn-confirm-si" style="background:#22c55e;border:none;color:#fff;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">Registrar</button>'
+      + '<button id="btn-confirm-no" style="background:#333;border:1px solid #555;color:#e8e8e8;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">Cancelar</button>'
+      + '</div></div>';
+    document.body.appendChild(div);
+    const refEl = div.querySelector('#dlg-registrar-ref');
+    const errEl = div.querySelector('#dlg-registrar-err');
+    refEl.focus();
+    const cerrar = function(valor) { document.body.removeChild(div); resolve(valor); };
+    div.querySelector('#btn-confirm-si').onclick = function() {
+      const val = refEl.value.trim();
+      if (!val) { errEl.textContent = 'Ingrese la Referencia.'; errEl.style.display = 'block'; return; }
+      const archivoInput = div.querySelector('#dlg-registrar-archivo');
+      cerrar({ ref: val, archivo: (archivoInput.files && archivoInput.files[0]) || null });
+    };
+    div.querySelector('#btn-confirm-no').onclick = function() { cerrar(null); };
+    refEl.addEventListener('keydown', function(ev) { if (ev.key === 'Enter') div.querySelector('#btn-confirm-si').click(); });
+  });
+  if (!resultado) return;
+
+  // Trasladar lo capturado a los campos reales (ocultos) que
+  // contGuardarPagoCxp() ya sabe leer, sin tener que tocar esa función.
+  const refFinal = document.getElementById('cont-pago-cxp-ref');
+  if (refFinal) refFinal.value = resultado.ref;
+  const archivoFinal = document.getElementById('cont-pago-cxp-archivo');
+  if (archivoFinal && resultado.archivo) {
+    try {
+      const dt = new DataTransfer();
+      dt.items.add(resultado.archivo);
+      archivoFinal.files = dt.files;
+    } catch(eDT) { console.warn('No se pudo adjuntar el comprobante:', eDT); }
+  }
+  await contGuardarPagoCxp();
+}
+
 async function contGuardarPagoCxp() {
   const id_cxp   = parseInt(document.getElementById('cont-pago-cxp-id')?.value) || null;
   const moneda  = document.getElementById('cont-pago-cxp-moneda')?.value || 'VES';
@@ -2780,9 +2830,12 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       if (manualInfo) manualInfo.style.display = '';
     }
 
-    // ── Sección 4: Formulario de pago (solo PENDIENTE) ──
+    // ── Sección 4: Formulario de pago -- ya NO se muestra mientras está
+    // PENDIENTE (no tiene sentido mostrar campos de un pago que aún no
+    // existe). Referencia/Comprobante se piden en un diálogo al momento
+    // de darle clic a "Registrar Pago" (ver abrirDialogoRegistrarPago).
     const formPago = document.getElementById('cont-pago-cxp-form-pago');
-    if (formPago) formPago.style.display = est === 'PENDIENTE' ? '' : 'none';
+    if (formPago) formPago.style.display = 'none';
 
     // ── Alertas ──
     const okEl  = document.getElementById('alerta-pago-cxp-ok');
@@ -2797,7 +2850,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       if (est === 'PENDIENTE') {
         footer.innerHTML =
           '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\')">Retornar</button>'
-          + '<button class="btn-primario" onclick="contGuardarPagoCxp()">&#x1F4B8; Registrar Pago</button>';
+          + '<button class="btn-primario" onclick="abrirDialogoRegistrarPago()">&#x1F4B8; Registrar Pago</button>';
       } else {
         const btnAnularF    = (esManualF && est !== 'ANULADA' && est !== 'PAGADA') ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+');cerrarModal(\'modal-cont-pago-cxp\')">🗑 Anular</button>' : '';
         const btnAnularEjecF = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR'))) ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Ejecutado</button>' : '';
@@ -2890,6 +2943,8 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       const est = c.estado || '';
       const btnEditar = (est === 'PENDIENTE' && puedo('PAGOS','EDITAR'))
         ? '<button class="btn-naranja" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
+      const btnRegistrarPago = (est === 'PENDIENTE' && (puedo('PAGOS','CREAR') || sesionActual?.administrador))
+        ? '<button class="btn-primario" onclick="abrirDialogoRegistrarPago()">&#x1F4B8; Registrar Pago</button>' : '';
       const btnAnular = (est === 'PENDIENTE' && (puedo('PAGOS','ELIMINAR') || sesionActual?.administrador))
         ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 Anular</button>' : '';
       const btnAnularEjec = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR')))
@@ -2898,7 +2953,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
         ? '<button class="btn-primario" onclick="reactivarPagoCxP('+id_cxp+')">↩ Reactivar</button>' : '';
       footerPend.innerHTML =
         '<div style="display:flex;gap:10px;justify-content:space-between;align-items:center;width:100%">'
-        + (btnEditar + btnAnular + btnAnularEjec + btnReactivar)
+        + (btnEditar + btnRegistrarPago + btnAnular + btnAnularEjec + btnReactivar)
         + '<button class="btn-secundario" onclick="cerrarModal(\'modal-cont-pago-cxp\')">RETORNAR</button>'
         + '</div>';
     }
