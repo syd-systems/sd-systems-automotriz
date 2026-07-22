@@ -3309,24 +3309,14 @@ async function rechazarPagoCxP(id_cxp) {
     if (!rows || !rows[0]) return;
     const c = rows[0];
 
-    // Anular el asiento GASTO_MANUAL (reconocimiento del gasto) asociado
-    // -- misma referencia base con la que se creó al registrar la
-    // solicitud (sin el sufijo '-<id_cxp>').
-    const numDocBase = (c.numero_doc || '').replace(new RegExp('-'+id_cxp+'$'), '');
-    try {
-      const asientosRech = await api('cont_asientos','GET',null,
-        '?referencia=eq.'+encodeURIComponent(numDocBase)+'&tipo=eq.GASTO_MANUAL&estado=neq.ANULADO&select=id_asiento,descripcion');
-      for (const a of (asientosRech||[])) {
-        await api('cont_asientos','PATCH',
-          { estado: 'ANULADO', descripcion: '[ANULADO] ' + (a.descripcion||'') },
-          '?id_asiento=eq.'+a.id_asiento);
-      }
-    } catch(eAnular) { console.warn('Error anulando asiento al rechazar:', eAnular); }
-
+    // NO se anula el asiento GASTO_MANUAL: lo que se rechaza es el
+    // intento de pago, no la obligación en sí -- el gasto ya ocurrió y
+    // sigue siendo válido. Vuelve a PENDIENTE (no ANULADA) para que el
+    // operador pueda corregir lo que corresponda y volver a solicitar.
     await api('cont_cxp','PATCH',{
-      estado: 'ANULADA',
+      estado: 'PENDIENTE',
       motivo_rechazo: motivo,
-      fecha_pago: null, metodo_pago: null, referencia: null
+      aprobado_por: null
     },'?id_cxp=eq.'+id_cxp);
 
     // Notificar al operador que generó la solicitud
