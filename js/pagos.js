@@ -1455,7 +1455,7 @@ async function contGuardarPagoCxp() {
   }
 
   try {
-    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,metodos_pago_tipos),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre)');
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,id_categoria,metodos_pago_tipos),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre)');
     if (!rows || !rows[0]) return;
     const c = rows[0];
 
@@ -1557,9 +1557,18 @@ async function contGuardarPagoCxp() {
         // línea tenía su propia frase distinta ('Cancelación CxP...' /
         // 'Salida banco...'), lo cual no tenía sentido para un mismo
         // movimiento.
-        // Estándar de descripciones: '[Tipo] — [Concepto de la Obligación]'
-        const descCxP   = 'CxP — ' + (c.concepto || c.numero_doc || '');
-        const descBanco = 'Banco — ' + (c.concepto || c.numero_doc || '');
+        // Mismo texto en todas las líneas del asiento, sin prefijos ni
+        // guiones: Proveedor + Categoría + Concepto de la Obligación.
+        let categoriaNombreLinea = '';
+        if (c.proveedores?.id_categoria) {
+          try {
+            const catRowsLinea = await api('param_categorias_proveedor','GET',null,'?id=eq.'+c.proveedores.id_categoria+'&select=nombre&limit=1');
+            categoriaNombreLinea = catRowsLinea?.[0]?.nombre || '';
+          } catch(eCatLinea) {}
+        }
+        const textoLineaPago = [c.proveedores?.nombre, categoriaNombreLinea, (c.concepto || c.numero_doc || '')].filter(Boolean).join(' ');
+        const descCxP   = textoLineaPago;
+        const descBanco = textoLineaPago;
         if (moneda === 'VES') {
           if (cDebito) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDebito.id_cuenta, orden:orden++,
             descripcion:descCxP,
@@ -2389,6 +2398,11 @@ async function guardarPago() {
   const id_proveedor   = parseInt(document.getElementById('pago-proveedor')?.value) || null;
   const observaciones  = document.getElementById('pago-observaciones')?.value.trim() || '';
   const modalidad      = document.getElementById('pago-modalidad')?.value || '';
+  // Mismo texto para todas las líneas del asiento contable (Gasto/IVA/CxP):
+  // Proveedor + Categoría + Concepto, sin prefijos ni guiones.
+  const nombreProvLinea = document.getElementById('pago-proveedor')?.selectedOptions?.[0]?.text || '';
+  const nombreCatLinea  = document.getElementById('pago-categoria-prov')?.selectedOptions?.[0]?.text || '';
+  const textoLineaAsiento = [nombreProvLinea, nombreCatLinea, descripcion].filter(Boolean).join(' ');
   const modalidadOriginal = document.getElementById('pago-modalidad')?.dataset.original || '';
   // true solo si se está editando Y la modalidad realmente cambió respecto
   // a la guardada -- dispara la recreación completa de la estructura de
@@ -2513,7 +2527,7 @@ async function guardarPago() {
         const descAsientoConv = descripcion + (observaciones ? ' — ' + observaciones : '');
         await generarAsientoGastoManual({
           descripcion:    descAsientoConv,
-          concepto:       descripcion,
+          concepto:       textoLineaAsiento,
           montoUSD:       montoTotalConIVA,
           montoBsExacto:  montoTotalVES,
           referencia:     numDocActual,
@@ -2612,7 +2626,7 @@ async function guardarPago() {
 
         await generarAsientoGastoManual({
           descripcion:    descripcion + (observaciones ? ' — ' + observaciones : ''),
-          concepto:       descripcion,
+          concepto:       textoLineaAsiento,
           montoUSD:       montoTotalConIVA,
           montoBsExacto:  montoTotalVES,
           referencia:     numDocActual,
@@ -2654,7 +2668,7 @@ async function guardarPago() {
     // ── Asiento contable: Gasto (+IVA) / CxP ──
     await generarAsientoGastoManual({
       descripcion: descAsiento,
-      concepto:    descripcion,
+      concepto:    textoLineaAsiento,
       montoUSD:    montoTotalConIVA,
       montoBsExacto: montoTotalVES,
       referencia:  numDocBase,

@@ -2125,19 +2125,20 @@ async function generarAsientoGastoManual(datos) {
       idCtaCxP = cProv.length ? cProv[0].id_cuenta : null; }
 
     let orden = 1;
+    const textoLinea = datos.concepto || datos.descripcion || '';
     if (datos.id_cuentaGasto) {
       await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:datos.id_cuentaGasto, orden:orden++,
-        descripcion: 'Gasto — ' + (datos.concepto || datos.descripcion || ''),
+        descripcion: textoLinea,
         debe_usd: baseUSD, haber_usd:0, debe_ves: baseBs, haber_ves:0, tasa_bcv: tasa });
     }
     if (idCtaIVA && ivaUSD > 0) {
       await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idCtaIVA, orden:orden++,
-        descripcion: 'IVA — ' + (datos.concepto || datos.descripcion || ''),
+        descripcion: textoLinea,
         debe_usd: ivaUSD, haber_usd:0, debe_ves: ivaBs, haber_ves:0, tasa_bcv: tasa });
     }
     if (idCtaCxP) {
       await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idCtaCxP, orden:orden++,
-        descripcion: 'CxP — ' + (datos.concepto || datos.descripcion || ''),
+        descripcion: textoLinea,
         debe_usd:0, haber_usd: montoTotalUSD, debe_ves:0, haber_ves: montoTotalBs, tasa_bcv: tasa });
     }
 
