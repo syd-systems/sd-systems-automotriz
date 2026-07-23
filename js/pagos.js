@@ -2013,7 +2013,9 @@ async function editarCxPManual(id_cxp) {
 
     // Cargar valores
     document.getElementById('pago-id').value          = c.id_cxp;
-    document.getElementById('pago-descripcion').value = c.observaciones || '';
+    document.getElementById('pago-descripcion').value = c.descripcion || '';
+    const obsEditEl = document.getElementById('pago-observaciones');
+    if (obsEditEl) obsEditEl.value = c.observaciones || '';
     // Se precarga desde monto_facturado (el dato crudo, tal como se
     // escribió) y NO desde monto_usd/monto_ves (el Total ya resuelto con
     // IVA) -- si no, cada edición reinterpretaba el Total de la vez
@@ -2493,7 +2495,7 @@ async function guardarPago() {
               moneda_pago: moneda, monto_usd: cc.monto, monto_ves: montoVesCuotaConv,
               tasa_bcv: tasaUSD, tasa_bcv_compra: tasaUSD, pagado_usd: 0, saldo_usd: cc.monto,
               estado: 'PENDIENTE', referencia: referenciaConv || null, id_cuenta_gasto: id_cuentaGasto,
-              observaciones: descAsientoConv, exento_iva: exento, incluye_iva: exento ? null : (incluyeIVAVal === 'SI'),
+              descripcion: descripcion, observaciones: observaciones || null, exento_iva: exento, incluye_iva: exento ? null : (incluyeIVAVal === 'SI'),
               esquema_pago: 'CREDITO', id_usuario: sesionActual?.correo_usuario || null
             });
             if (cxpCuotaConv && cxpCuotaConv[0]) {
@@ -2506,7 +2508,7 @@ async function guardarPago() {
             numero_doc: numDocActual, fecha_emision: hoyConv, fecha_vencimiento: vencimiento,
             moneda_pago: moneda, monto_usd: montoTotalConIVA, monto_ves: montoTotalVES, monto_facturado: monto,
             tasa_bcv: tasaUSD, pagado_usd: 0, saldo_usd: montoTotalConIVA, estado: 'PENDIENTE',
-            referencia: referenciaConv || null, id_cuenta_gasto: id_cuentaGasto, observaciones: descAsientoConv,
+            referencia: referenciaConv || null, id_cuenta_gasto: id_cuentaGasto, descripcion: descripcion, observaciones: observaciones || null,
             exento_iva: exento, incluye_iva: exento ? null : (incluyeIVAVal === 'SI'),
             esquema_pago: 'CONTADO', id_usuario: sesionActual?.correo_usuario || null
           });
@@ -2533,7 +2535,8 @@ async function guardarPago() {
         // factura, no el Total ya inflado/recalculado de la vez anterior.
         monto_facturado:   monto,
         id_cuenta_gasto:   id_cuentaGasto,
-        observaciones:     descripcion + (observaciones ? ' — ' + observaciones : ''),
+        descripcion:       descripcion,
+        observaciones:     observaciones || null,
         exento_iva:        exento,
         // Si venía de RECHAZADA, esta corrección la reingresa a PENDIENTE
         // para una nueva revisión (limpiando el motivo anterior).
@@ -2640,7 +2643,8 @@ async function guardarPago() {
           referencia:        referenciaNueva || null,
           url_comprobante:   urlComp || null,
           id_cuenta_gasto:   id_cuentaGasto,
-          observaciones:     descAsiento,
+          descripcion:       descripcion,
+          observaciones:     observaciones || null,
           exento_iva:        exento,
           incluye_iva:       exento ? null : (incluyeIVAVal === 'SI'),
           esquema_pago:      'CREDITO',
@@ -2669,7 +2673,8 @@ async function guardarPago() {
         referencia:        referenciaNueva || null,
         url_comprobante:   urlComp || null,
         id_cuenta_gasto:   id_cuentaGasto,
-        observaciones:     descAsiento,
+        descripcion:       descripcion,
+        observaciones:     observaciones || null,
         exento_iva:        exento,
         incluye_iva:       exento ? null : (incluyeIVAVal === 'SI'),
         esquema_pago:      'CONTADO',
@@ -2784,7 +2789,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     if (vencEl) vencEl.textContent = c.fecha_vencimiento ? fmtFecha(c.fecha_vencimiento) : '—';
 
     const conceptoEl = document.getElementById('cont-pago-cxp-concepto');
-    if (conceptoEl) conceptoEl.textContent = c.observaciones || '—';
+    if (conceptoEl) conceptoEl.textContent = c.descripcion || '—';
 
     // ── Sección 2: Datos del pago (si ya se registró un pago, aunque
     // esté pendiente de aprobación) ──
@@ -3246,7 +3251,7 @@ async function aprobarPagoCxP(id_cxp) {
   if (!(await tieneNivelMinimo(2))) { alert('Esta acción requiere Firma de Aprobación Nivel 1 o Nivel 2.'); return; }
   if (!confirm('¿Aprobar esta solicitud de pago? El operador que la generó recibirá una notificación para proceder a Registrar el Pago.')) return;
   try {
-    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=id_usuario,numero_doc,observaciones');
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=id_usuario,numero_doc,observaciones,descripcion');
     if (!rows || !rows[0]) return;
     const c = rows[0];
 
@@ -3265,7 +3270,7 @@ async function aprobarPagoCxP(id_cxp) {
         await api('notificaciones','POST',{
           correo_destino: c.id_usuario,
           titulo: 'Solicitud de Pago Aprobada',
-          mensaje: 'Tu solicitud de pago "' + (c.observaciones || c.numero_doc || '') + '" fue aprobada. Ya puedes proceder a Registrar el Pago.',
+          mensaje: 'Tu solicitud de pago "' + (c.descripcion || c.numero_doc || '') + '" fue aprobada. Ya puedes proceder a Registrar el Pago.',
           estado: 'PENDIENTE',
           fecha_creacion: new Date().toISOString(),
           datos_extra: JSON.stringify({ id_cxp: id_cxp, accion: 'registrar_pago' })
@@ -3309,7 +3314,7 @@ async function rechazarPagoCxP(id_cxp) {
   if (!motivo) return;
 
   try {
-    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=id_usuario,numero_doc,observaciones');
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=id_usuario,numero_doc,observaciones,descripcion');
     if (!rows || !rows[0]) return;
     const c = rows[0];
 
@@ -3330,7 +3335,7 @@ async function rechazarPagoCxP(id_cxp) {
         await api('notificaciones','POST',{
           correo_destino: c.id_usuario,
           titulo: 'Solicitud de Pago Rechazada',
-          mensaje: 'Tu solicitud de pago "' + (c.observaciones || c.numero_doc || '') + '" fue rechazada. Motivo: ' + motivo,
+          mensaje: 'Tu solicitud de pago "' + (c.descripcion || c.numero_doc || '') + '" fue rechazada. Motivo: ' + motivo,
           estado: 'PENDIENTE',
           fecha_creacion: new Date().toISOString(),
           datos_extra: JSON.stringify({ id_cxp: id_cxp, accion: 'ver_rechazo' })
