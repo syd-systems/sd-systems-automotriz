@@ -2886,12 +2886,15 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       }
     }
 
-    // Creado por -- Nombre + Código de Área de quien generó la Obligación
+    // Creado por -- Área (código) en una línea, Nombre completo debajo
     const creadorEl = document.getElementById('cont-pago-cxp-creador');
     if (creadorEl) {
       if (c.id_usuario) {
         creadorEl.textContent = '…';
-        resolverCreadorCxP(c.id_usuario).then(function(info){ creadorEl.textContent = fmtCreadorCxP(info); });
+        resolverCreadorCxP(c.id_usuario).then(function(info){
+          const areaLinea = [info.areaNombre, info.areaCodigo ? '(' + info.areaCodigo + ')' : ''].filter(Boolean).join(' ');
+          creadorEl.innerHTML = (areaLinea ? '<div>' + areaLinea + '</div>' : '') + '<div>' + (info.nombre || '—') + '</div>';
+        });
       } else {
         creadorEl.textContent = '—';
       }
@@ -2908,7 +2911,17 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       const detMonto = document.getElementById('cont-pago-det-monto');
       if (detMonto) { var _mon = c.moneda_pago||'VES'; detMonto.textContent = _mon==='VES' ? fmtBs(c.monto_ves||0)+' Bs' : '$ '+fmtUSD(c.monto_usd||0)+' '+_mon; }
       const detAprobado = document.getElementById('cont-pago-det-aprobado');
-      if (detAprobado) detAprobado.textContent = c.aprobado_por || '—';
+      if (detAprobado) {
+        if (c.aprobado_por) {
+          detAprobado.textContent = '…';
+          resolverCreadorCxP(c.aprobado_por).then(function(info){
+            const areaLinea = [info.areaNombre, info.areaCodigo ? '(' + info.areaCodigo + ')' : ''].filter(Boolean).join(' ');
+            detAprobado.innerHTML = (areaLinea ? '<div>' + areaLinea + '</div>' : '') + '<div>' + (info.nombre || '—') + '</div>';
+          });
+        } else {
+          detAprobado.textContent = '—';
+        }
+      }
       const detRef = document.getElementById('cont-pago-det-ref');
       if (detRef) detRef.textContent = c.referencia || '—';
       // Forma de Pago -- Contado/Crédito; si es Crédito, indicar la cuota
