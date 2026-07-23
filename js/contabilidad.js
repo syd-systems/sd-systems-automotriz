@@ -800,7 +800,7 @@ async function contCargarMayor() {
     // ── LIBRO MAYOR EN MONEDA FUNCIONAL ──
     const getD = function(l) { return parseFloat(l.debe_ves||l.debe_usd||0); };
     const getH = function(l) { return parseFloat(l.haber_ves||l.haber_usd||0); };
-    const fmtM = function(v) { return 'Bs ' + fmtVES(v); };
+    const fmtM = function(v) { return fmtVES(v); };
 
     if (!id_cuenta) {
       const cuentaIds = [...new Set(lineas.map(function(l){ return l.id_cuenta; }))];
