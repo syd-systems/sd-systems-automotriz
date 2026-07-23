@@ -2127,17 +2127,17 @@ async function generarAsientoGastoManual(datos) {
     let orden = 1;
     if (datos.id_cuentaGasto) {
       await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:datos.id_cuentaGasto, orden:orden++,
-        descripcion: datos.descripcion || 'Gasto',
+        descripcion: 'Gasto — ' + (datos.concepto || datos.descripcion || ''),
         debe_usd: baseUSD, haber_usd:0, debe_ves: baseBs, haber_ves:0, tasa_bcv: tasa });
     }
     if (idCtaIVA && ivaUSD > 0) {
       await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idCtaIVA, orden:orden++,
-        descripcion: 'IVA (' + Math.round(IVA_RATE*100) + '%) — ' + (datos.descripcion||''),
+        descripcion: 'IVA — ' + (datos.concepto || datos.descripcion || ''),
         debe_usd: ivaUSD, haber_usd:0, debe_ves: ivaBs, haber_ves:0, tasa_bcv: tasa });
     }
     if (idCtaCxP) {
       await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idCtaCxP, orden:orden++,
-        descripcion: 'CxP ' + (datos.descripcion||''),
+        descripcion: 'CxP — ' + (datos.concepto || datos.descripcion || ''),
         debe_usd:0, haber_usd: montoTotalUSD, debe_ves:0, haber_ves: montoTotalBs, tasa_bcv: tasa });
     }
 
