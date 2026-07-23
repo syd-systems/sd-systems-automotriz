@@ -2737,11 +2737,14 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     document.getElementById('cont-pago-cxp-id').value = id_cxp;
 
     const saldoEl = document.getElementById('cont-pago-cxp-saldo');
+    const saldoUsdEl = document.getElementById('cont-pago-cxp-saldo-usd');
     if (saldoEl) {
       const monedaCxP = c.moneda_pago || 'USD';
       if (monedaCxP === 'VES') saldoEl.textContent = fmtBs(c.monto_ves || c.monto_usd) + ' Bs';
       else if (monedaCxP === 'EUR') saldoEl.textContent = fmtUSD(c.monto_usd) + ' EUR';
       else saldoEl.textContent = '$ ' + fmtUSD(c.monto_usd) + ' USD';
+      // Equivalente en USD -- solo si la moneda de la Obligación no es ya USD
+      if (saldoUsdEl) saldoUsdEl.textContent = monedaCxP !== 'USD' ? '≈ $ ' + fmtUSD(c.monto_usd) + ' USD' : '';
     }
 
     const provNomEl = document.getElementById('cont-pago-cxp-prov-nombre');
@@ -2949,14 +2952,18 @@ async function verDetalleCxP(id_cxp, modoInicial) {
 
       setTimeout(function() {
         const saldoEl3 = document.getElementById('cont-pago-cxp-saldo');
+        const saldoUsdEl3 = document.getElementById('cont-pago-cxp-saldo-usd');
         const modal4   = document.getElementById('modal-cont-pago-cxp');
         const mCxP2    = modal4?.dataset.monedaCxP || 'USD';
         const sOrig2   = parseFloat(modal4?.dataset.saldoOrig) || 0;
+        const sUsd2    = parseFloat(modal4?.dataset.saldoUSD) || 0;
         if (saldoEl3) {
           if (mCxP2 === 'VES')      saldoEl3.textContent = fmtBs(sOrig2) + ' Bs';
           else if (mCxP2 === 'EUR') saldoEl3.textContent = fmtUSD(sOrig2) + ' EUR';
           else                      saldoEl3.textContent = '$ ' + fmtUSD(sOrig2) + ' USD';
         }
+        // Equivalente en USD -- solo si la moneda de la Obligación no es ya USD
+        if (saldoUsdEl3) saldoUsdEl3.textContent = mCxP2 !== 'USD' ? '≈ $ ' + fmtUSD(sUsd2) + ' USD' : '';
         onCambioPagoMoneda();
       }, 50);
     }
