@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260722014"></script>
-<script src="js/parametros.js?v=20260722014"></script>
-<script src="js/empresas.js?v=20260722014"></script>
-<script src="js/facturacion.js?v=20260722014"></script>
-<script src="js/inventario.js?v=20260722014"></script>
-<script src="js/contabilidad.js?v=20260722014"></script>
-<script src="js/pagos.js?v=20260722014"></script>
-<script src="js/vehiculos.js?v=20260722014"></script>
-<script src="js/catalogo.js?v=20260722014"></script>
-<script src="js/inventario2.js?v=20260722014"></script>
-<script src="js/ordenes.js?v=20260722014"></script>
+<script src="js/core.js?v=20260722015"></script>
+<script src="js/parametros.js?v=20260722015"></script>
+<script src="js/empresas.js?v=20260722015"></script>
+<script src="js/facturacion.js?v=20260722015"></script>
+<script src="js/inventario.js?v=20260722015"></script>
+<script src="js/contabilidad.js?v=20260722015"></script>
+<script src="js/pagos.js?v=20260722015"></script>
+<script src="js/vehiculos.js?v=20260722015"></script>
+<script src="js/catalogo.js?v=20260722015"></script>
+<script src="js/inventario2.js?v=20260722015"></script>
+<script src="js/ordenes.js?v=20260722015"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2047,7 +2047,10 @@
 
       <!-- ── SECCIÓN 1: Datos de la Obligación ── -->
       <div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px 18px;margin-bottom:16px">
-        <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;font-weight:600;margin-bottom:12px">📋 Datos de la Obligación</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;font-weight:600">📋 Datos de la Obligación</div>
+          <span id="cont-pago-cxp-estado-badge" style="font-size:10px;font-weight:600;border-radius:4px;padding:2px 8px;border:1px solid transparent"></span>
+        </div>
         <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;gap:10px">
           <div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Monto</div>
             <div id="cont-pago-cxp-saldo" style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--naranja)">—</div>
@@ -2072,6 +2075,8 @@
             <div id="cont-pago-cxp-iva-info" style="font-size:13px">—</div></div>
           <div style="grid-column:1/-1"><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Concepto</div>
             <div id="cont-pago-cxp-concepto" style="font-size:13px;color:var(--texto)">—</div></div>
+          <div id="cont-pago-cxp-observacion-cont" style="grid-column:1/-1;display:none"><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Observación</div>
+            <div id="cont-pago-cxp-observacion" style="font-size:13px;color:var(--texto)">—</div></div>
         </div>
       </div>
 

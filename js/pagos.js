@@ -2794,6 +2794,30 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     const conceptoEl = document.getElementById('cont-pago-cxp-concepto');
     if (conceptoEl) conceptoEl.textContent = c.concepto || '—';
 
+    // Badge de Estado, en el extremo derecho del encabezado de la sección
+    const estadoBadgeEl = document.getElementById('cont-pago-cxp-estado-badge');
+    if (estadoBadgeEl) {
+      const coloresEstado = { PENDIENTE:'#f59e0b', RECHAZADA:'#fc8181', APROBADA:'#a78bfa', POR_APROBAR:'#60a5fa', PAGADA:'#22c55e', PARCIAL:'#22c55e', ANULADA:'#6b7280' };
+      const estActual = c.estado || 'PENDIENTE';
+      const colEstado = coloresEstado[estActual] || '#888';
+      estadoBadgeEl.textContent = estActual;
+      estadoBadgeEl.style.color = colEstado;
+      estadoBadgeEl.style.background = colEstado + '22';
+      estadoBadgeEl.style.borderColor = colEstado + '44';
+    }
+
+    // Observación -- solo se muestra si tiene contenido
+    const obsCont = document.getElementById('cont-pago-cxp-observacion-cont');
+    const obsVerEl = document.getElementById('cont-pago-cxp-observacion');
+    if (obsCont) {
+      if (c.observaciones) {
+        obsCont.style.display = '';
+        if (obsVerEl) obsVerEl.textContent = c.observaciones;
+      } else {
+        obsCont.style.display = 'none';
+      }
+    }
+
     // ── Sección 2: Datos del pago (si ya se registró un pago, aunque
     // esté pendiente de aprobación) ──
     const secPago = document.getElementById('cont-pago-cxp-seccion-pago');
