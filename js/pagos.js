@@ -2013,7 +2013,7 @@ async function editarCxPManual(id_cxp) {
 
     // Cargar valores
     document.getElementById('pago-id').value          = c.id_cxp;
-    document.getElementById('pago-descripcion').value = c.descripcion || '';
+    document.getElementById('pago-descripcion').value = c.concepto || '';
     const obsEditEl = document.getElementById('pago-observaciones');
     if (obsEditEl) obsEditEl.value = c.observaciones || '';
     // Se precarga desde monto_facturado (el dato crudo, tal como se
@@ -2351,7 +2351,7 @@ async function guardarPago() {
   if (!id_categoria)   { mostrarErr('El Proveedor seleccionado no tiene Categoría configurada en su ficha.'); return; }
   if (!moneda)         { mostrarErr('El Proveedor seleccionado no tiene Moneda de Facturación configurada en su ficha.'); return; }
   if (!id_cuentaGasto) { mostrarErr('Debe seleccionar la Cuenta de Gasto.');    document.getElementById('pago-cuenta-gasto')?.focus(); return; }
-  if (!descripcion)    { mostrarErr('La Descripción es obligatoria.');           document.getElementById('pago-descripcion')?.focus(); return; }
+  if (!descripcion)    { mostrarErr('El Concepto es obligatorio.');           document.getElementById('pago-descripcion')?.focus(); return; }
   if (!monto)          { mostrarErr('El Monto es obligatorio.');                 document.getElementById('pago-monto')?.focus(); return; }
   const exentoIVASel = document.querySelector('input[name="pago-exento-iva"]:checked');
   if (!exentoIVASel)   { mostrarErr('Debe indicar si el Gasto está Exento de IVA.'); return; }
@@ -2495,7 +2495,7 @@ async function guardarPago() {
               moneda_pago: moneda, monto_usd: cc.monto, monto_ves: montoVesCuotaConv,
               tasa_bcv: tasaUSD, tasa_bcv_compra: tasaUSD, pagado_usd: 0, saldo_usd: cc.monto,
               estado: 'PENDIENTE', referencia: referenciaConv || null, id_cuenta_gasto: id_cuentaGasto,
-              descripcion: descripcion, observaciones: observaciones || null, exento_iva: exento, incluye_iva: exento ? null : (incluyeIVAVal === 'SI'),
+              concepto: descripcion, observaciones: observaciones || null, exento_iva: exento, incluye_iva: exento ? null : (incluyeIVAVal === 'SI'),
               esquema_pago: 'CREDITO', id_usuario: sesionActual?.correo_usuario || null
             });
             if (cxpCuotaConv && cxpCuotaConv[0]) {
@@ -2508,7 +2508,7 @@ async function guardarPago() {
             numero_doc: numDocActual, fecha_emision: hoyConv, fecha_vencimiento: vencimiento,
             moneda_pago: moneda, monto_usd: montoTotalConIVA, monto_ves: montoTotalVES, monto_facturado: monto,
             tasa_bcv: tasaUSD, pagado_usd: 0, saldo_usd: montoTotalConIVA, estado: 'PENDIENTE',
-            referencia: referenciaConv || null, id_cuenta_gasto: id_cuentaGasto, descripcion: descripcion, observaciones: observaciones || null,
+            referencia: referenciaConv || null, id_cuenta_gasto: id_cuentaGasto, concepto: descripcion, observaciones: observaciones || null,
             exento_iva: exento, incluye_iva: exento ? null : (incluyeIVAVal === 'SI'),
             esquema_pago: 'CONTADO', id_usuario: sesionActual?.correo_usuario || null
           });
@@ -2535,7 +2535,7 @@ async function guardarPago() {
         // factura, no el Total ya inflado/recalculado de la vez anterior.
         monto_facturado:   monto,
         id_cuenta_gasto:   id_cuentaGasto,
-        descripcion:       descripcion,
+        concepto:          descripcion,
         observaciones:     observaciones || null,
         exento_iva:        exento,
         // Si venía de RECHAZADA, esta corrección la reingresa a PENDIENTE
@@ -2643,7 +2643,7 @@ async function guardarPago() {
           referencia:        referenciaNueva || null,
           url_comprobante:   urlComp || null,
           id_cuenta_gasto:   id_cuentaGasto,
-          descripcion:       descripcion,
+          concepto:          descripcion,
           observaciones:     observaciones || null,
           exento_iva:        exento,
           incluye_iva:       exento ? null : (incluyeIVAVal === 'SI'),
@@ -2673,7 +2673,7 @@ async function guardarPago() {
         referencia:        referenciaNueva || null,
         url_comprobante:   urlComp || null,
         id_cuenta_gasto:   id_cuentaGasto,
-        descripcion:       descripcion,
+        concepto:          descripcion,
         observaciones:     observaciones || null,
         exento_iva:        exento,
         incluye_iva:       exento ? null : (incluyeIVAVal === 'SI'),
@@ -2789,7 +2789,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     if (vencEl) vencEl.textContent = c.fecha_vencimiento ? fmtFecha(c.fecha_vencimiento) : '—';
 
     const conceptoEl = document.getElementById('cont-pago-cxp-concepto');
-    if (conceptoEl) conceptoEl.textContent = c.descripcion || '—';
+    if (conceptoEl) conceptoEl.textContent = c.concepto || '—';
 
     // ── Sección 2: Datos del pago (si ya se registró un pago, aunque
     // esté pendiente de aprobación) ──
@@ -3251,7 +3251,7 @@ async function aprobarPagoCxP(id_cxp) {
   if (!(await tieneNivelMinimo(2))) { alert('Esta acción requiere Firma de Aprobación Nivel 1 o Nivel 2.'); return; }
   if (!confirm('¿Aprobar esta solicitud de pago? El operador que la generó recibirá una notificación para proceder a Registrar el Pago.')) return;
   try {
-    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=id_usuario,numero_doc,observaciones,descripcion');
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=id_usuario,numero_doc,observaciones,concepto');
     if (!rows || !rows[0]) return;
     const c = rows[0];
 
@@ -3270,7 +3270,7 @@ async function aprobarPagoCxP(id_cxp) {
         await api('notificaciones','POST',{
           correo_destino: c.id_usuario,
           titulo: 'Solicitud de Pago Aprobada',
-          mensaje: 'Tu solicitud de pago "' + (c.descripcion || c.numero_doc || '') + '" fue aprobada. Ya puedes proceder a Registrar el Pago.',
+          mensaje: 'Tu solicitud de pago "' + (c.concepto || c.numero_doc || '') + '" fue aprobada. Ya puedes proceder a Registrar el Pago.',
           estado: 'PENDIENTE',
           fecha_creacion: new Date().toISOString(),
           datos_extra: JSON.stringify({ id_cxp: id_cxp, accion: 'registrar_pago' })
@@ -3314,7 +3314,7 @@ async function rechazarPagoCxP(id_cxp) {
   if (!motivo) return;
 
   try {
-    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=id_usuario,numero_doc,observaciones,descripcion');
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=id_usuario,numero_doc,observaciones,concepto');
     if (!rows || !rows[0]) return;
     const c = rows[0];
 
@@ -3335,7 +3335,7 @@ async function rechazarPagoCxP(id_cxp) {
         await api('notificaciones','POST',{
           correo_destino: c.id_usuario,
           titulo: 'Solicitud de Pago Rechazada',
-          mensaje: 'Tu solicitud de pago "' + (c.descripcion || c.numero_doc || '') + '" fue rechazada. Motivo: ' + motivo,
+          mensaje: 'Tu solicitud de pago "' + (c.concepto || c.numero_doc || '') + '" fue rechazada. Motivo: ' + motivo,
           estado: 'PENDIENTE',
           fecha_creacion: new Date().toISOString(),
           datos_extra: JSON.stringify({ id_cxp: id_cxp, accion: 'ver_rechazo' })
