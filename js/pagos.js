@@ -1553,12 +1553,17 @@ async function contGuardarPagoCxp() {
       if (ar?.id_asiento) {
         const idAst = ar.id_asiento;
         let orden = 1;
+        // Mismo concepto en todas las líneas del asiento -- antes cada
+        // línea tenía su propia frase distinta ('Cancelación CxP...' /
+        // 'Salida banco...'), lo cual no tenía sentido para un mismo
+        // movimiento.
+        const descLinea = 'Pago ' + (c.proveedores?.nombre||'Proveedor') + ' — ' + (c.concepto || c.numero_doc || '');
         if (moneda === 'VES') {
           if (cDebito) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDebito.id_cuenta, orden:orden++,
-            descripcion:'Cancelación CxP — '+(c.proveedores?.nombre||''),
+            descripcion:descLinea,
             debe_usd:0, haber_usd:0, debe_ves:monto, haber_ves:0, tasa_bcv:tasaPago });
           if (cBanVES) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cBanVES.id_cuenta, orden:orden++,
-            descripcion:'Salida banco VES',
+            descripcion:descLinea,
             debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:monto, tasa_bcv:tasaPago });
         } else {
           const montoVESCompra = parseFloat((montoUSD * tasaCompra).toFixed(2));
@@ -1568,7 +1573,7 @@ async function contGuardarPagoCxp() {
           const montoIGTF_VES  = parseFloat((montoIGTF_USD * tasaPago).toFixed(2));
 
           if (cDebito) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDebito.id_cuenta, orden:orden++,
-            descripcion:'Cancelación CxP — '+(c.proveedores?.nombre||''),
+            descripcion:descLinea,
             debe_usd:0, haber_usd:0, debe_ves:montoVESCompra, haber_ves:0, tasa_bcv:tasaCompra });
 
           if (difCambio > 0 && cDifGasto) {
@@ -1589,7 +1594,7 @@ async function contGuardarPagoCxp() {
             debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoIGTF_VES, tasa_bcv:tasaPago });
 
           if (cBanUSD) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cBanUSD.id_cuenta, orden:orden++,
-            descripcion:'Salida banco '+moneda,
+            descripcion:descLinea,
             debe_usd:0, haber_usd:montoUSD, debe_ves:0, haber_ves:montoVESPago, tasa_bcv:tasaPago });
         }
       }
