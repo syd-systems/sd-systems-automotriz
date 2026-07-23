@@ -3359,7 +3359,7 @@ async function aprobarPagoCxP(id_cxp) {
         await api('notificaciones','POST',{
           correo_destino: c.id_usuario,
           titulo: 'Solicitud de Pago Aprobada',
-          mensaje: fmtCreadorCxP(infoCreadorAprob) + ': tu solicitud de pago "' + (c.concepto || c.numero_doc || '') + '" fue aprobada. Ya puedes proceder a Registrar el Pago.',
+          mensaje: fmtCreadorCxP(infoCreadorAprob) + ': tu solicitud de pago "' + (c.concepto || c.numero_doc || '') + '" fue aprobada por ' + (sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor') + '. Ya puedes proceder a Registrar el Pago.',
           estado: 'PENDIENTE',
           fecha_creacion: new Date().toISOString(),
           datos_extra: JSON.stringify({ id_cxp: id_cxp, accion: 'registrar_pago' })
@@ -3425,7 +3425,7 @@ async function rechazarPagoCxP(id_cxp) {
         await api('notificaciones','POST',{
           correo_destino: c.id_usuario,
           titulo: 'Solicitud de Pago Rechazada',
-          mensaje: fmtCreadorCxP(infoCreadorRech) + ': tu solicitud de pago "' + (c.concepto || c.numero_doc || '') + '" fue rechazada. Motivo: ' + motivo,
+          mensaje: fmtCreadorCxP(infoCreadorRech) + ': tu solicitud de pago "' + (c.concepto || c.numero_doc || '') + '" fue rechazada por ' + (sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor') + '. Motivo: ' + motivo,
           estado: 'PENDIENTE',
           fecha_creacion: new Date().toISOString(),
           datos_extra: JSON.stringify({ id_cxp: id_cxp, accion: 'ver_rechazo' })

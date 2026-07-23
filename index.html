@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260723001"></script>
-<script src="js/parametros.js?v=20260723001"></script>
-<script src="js/empresas.js?v=20260723001"></script>
-<script src="js/facturacion.js?v=20260723001"></script>
-<script src="js/inventario.js?v=20260723001"></script>
-<script src="js/contabilidad.js?v=20260723001"></script>
-<script src="js/pagos.js?v=20260723001"></script>
-<script src="js/vehiculos.js?v=20260723001"></script>
-<script src="js/catalogo.js?v=20260723001"></script>
-<script src="js/inventario2.js?v=20260723001"></script>
-<script src="js/ordenes.js?v=20260723001"></script>
+<script src="js/core.js?v=20260723002"></script>
+<script src="js/parametros.js?v=20260723002"></script>
+<script src="js/empresas.js?v=20260723002"></script>
+<script src="js/facturacion.js?v=20260723002"></script>
+<script src="js/inventario.js?v=20260723002"></script>
+<script src="js/contabilidad.js?v=20260723002"></script>
+<script src="js/pagos.js?v=20260723002"></script>
+<script src="js/vehiculos.js?v=20260723002"></script>
+<script src="js/catalogo.js?v=20260723002"></script>
+<script src="js/inventario2.js?v=20260723002"></script>
+<script src="js/ordenes.js?v=20260723002"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4390,10 +4390,11 @@
 <div class="modal-overlay" id="modal-notif-pendiente" style="display:none;z-index:9999">
   <div class="modal" style="max-width:480px">
     <div class="modal-header" style="background:rgba(255,107,0,0.1);border-bottom:1px solid rgba(255,107,0,0.3)">
-      <h3 style="color:var(--naranja)">📦 Solicitud de Recepción</h3>
+      <h3 id="notif-pendiente-titulo" style="color:var(--naranja)">📦 Solicitud de Recepción</h3>
     </div>
     <div class="modal-body">
       <div id="notif-pendiente-lista"></div>
+      <div id="notif-pendiente-instruccion" style="font-size:12px;color:var(--suave);text-align:center;margin-top:12px">Al confirmar, valida que recibió el consumible correctamente.</div>
     </div>
     <div class="modal-footer">
       <button class="btn-naranja" onclick="notifVerDespues()" style="font-size:12px;color:var(--suave)">Ver después</button>

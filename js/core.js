@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723001';
+const SYD_VERSION = '20260723002';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -2478,8 +2478,31 @@ function mostrarNotifPendiente(notif) {
     +'<div style="font-size:12px;color:var(--suave);margin-bottom:8px">'+fmtFecha(notif.fecha_creacion)+'</div>'
     +'<div style="font-size:14px;font-weight:600;margin-bottom:8px">'+notif.titulo+'</div>'
     +'<div style="font-size:13px;color:var(--texto);line-height:1.6">'+notif.mensaje+'</div>'
-    +'</div>'
-    +'<div style="font-size:12px;color:var(--suave);text-align:center">Al confirmar, valida que recibió el consumible correctamente.</div>';
+    +'</div>';
+
+  // Detectar el tipo de notificación por su 'accion' en datos_extra, para
+  // mostrar titulo/instrucción/botón acordes -- no todas son de Inventario.
+  let accionNotif = 'confirmar_recepcion';
+  try {
+    const extrasTipo = notif.datos_extra
+      ? (typeof notif.datos_extra === 'string' ? JSON.parse(notif.datos_extra) : notif.datos_extra)
+      : null;
+    if (extrasTipo && extrasTipo.accion) accionNotif = extrasTipo.accion;
+  } catch(eTipo) {}
+
+  const titEl = document.getElementById('notif-pendiente-titulo');
+  const instrEl = document.getElementById('notif-pendiente-instruccion');
+  const btnConf = document.getElementById('btn-notif-confirmar');
+  const CONFIG_NOTIF = {
+    confirmar_recepcion: { titulo: '📦 Solicitud de Recepción', instruccion: 'Al confirmar, valida que recibió el consumible correctamente.', boton: '✓ Confirmar Recepción' },
+    registrar_pago:       { titulo: '✅ Solicitud de Pago Aprobada', instruccion: 'Puede ir al módulo de Pagos para Registrar el Pago cuando guste.', boton: 'Entendido' },
+    ver_rechazo:          { titulo: '❌ Solicitud de Pago Rechazada', instruccion: 'Revise el motivo y corrija la Obligación en el módulo de Pagos.', boton: 'Entendido' }
+  };
+  const cfgNotif = CONFIG_NOTIF[accionNotif] || CONFIG_NOTIF.confirmar_recepcion;
+  if (titEl) titEl.textContent = cfgNotif.titulo;
+  if (instrEl) instrEl.textContent = cfgNotif.instruccion;
+  if (btnConf) { btnConf.textContent = cfgNotif.boton; btnConf.dataset.textoOriginal = cfgNotif.boton; }
+
   document.getElementById('modal-notif-pendiente').style.display = 'flex';
 }
 
@@ -2514,12 +2537,12 @@ async function notifConfirmar() {
 
     document.getElementById('modal-notif-pendiente').style.display = 'none';
     _notifPendienteActual = null;
-    if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar Recepción'; }
+    if (btn) { btn.disabled = false; btn.textContent = btn.dataset.textoOriginal || '✓ Confirmar Recepción'; }
     // Verificar si hay más notificaciones pendientes
     await verificarNotificacionesPendientes();
   } catch(e) {
     alert('Error al confirmar: '+e.message);
-    if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar Recepción'; }
+    if (btn) { btn.disabled = false; btn.textContent = btn.dataset.textoOriginal || '✓ Confirmar Recepción'; }
   }
 }
 
