@@ -52,6 +52,34 @@ function cargarPagosDesdeUI() {
   cargarPagos(estado, null, busqueda, null, desde, hasta, categoria);
 }
 
+// Cache simple correo -> { nombre, areaCodigo, areaNombre } para no repetir
+// consultas a 'empleados' por cada fila/uso (Detalle de Obligación,
+// listado, notificaciones de Aprobar/Rechazar todas usan esto).
+const _cacheCreadorCxP = {};
+async function resolverCreadorCxP(correo) {
+  if (!correo) return { nombre: '—', areaCodigo: '', areaNombre: '' };
+  if (_cacheCreadorCxP[correo]) return _cacheCreadorCxP[correo];
+  try {
+    const rows = await api('empleados','GET',null,
+      '?correo=eq.'+encodeURIComponent(correo)+'&select=nombre_completo,areas:id_area(nombre,codigo)&limit=1');
+    const emp = rows && rows[0];
+    const info = {
+      nombre:     emp?.nombre_completo || correo,
+      areaCodigo: emp?.areas?.codigo || '',
+      areaNombre: emp?.areas?.nombre || ''
+    };
+    _cacheCreadorCxP[correo] = info;
+    return info;
+  } catch(e) {
+    return { nombre: correo, areaCodigo: '', areaNombre: '' };
+  }
+}
+// Formato corto para mostrar: "Nombre (CÓDIGO)"
+function fmtCreadorCxP(info) {
+  if (!info) return '—';
+  return info.nombre + (info.areaCodigo ? ' (' + info.areaCodigo + ')' : '');
+}
+
 async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtroDesde, filtroHasta, filtroCategoria) {
   const c = document.getElementById('contenido-principal');
   const panelExiste = !!document.getElementById('panel-pagos');
@@ -164,6 +192,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     return {
       _src:        'cxp',
       _id:         c.id_cxp,
+      id_usuario:  c.id_usuario,
       numero:      c.numero_doc || '—',
       beneficiario: c.proveedores?.nombre || '—',
       fecha:       (c.estado === 'PAGADA' ? c.fecha_pago : c.fecha_vencimiento) || c.fecha_emision || '',
@@ -212,6 +241,21 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
   }
 
   const estCol2 = { PENDIENTE:'#f59e0b', APROBADA:'#a78bfa', POR_APROBAR:'#60a5fa', PAGADA:'#22c55e', ANULADA:'#6b7280', RECHAZADA:'#fc8181' };
+
+  // Resolver en bulk (una sola consulta) Nombre + Código de Área de cada
+  // creador, para mostrarlo en el listado sin una consulta por fila.
+  const correosCreadores = [...new Set(todos.map(function(t){ return t.id_usuario; }).filter(Boolean))];
+  const faltantesCreadores = correosCreadores.filter(function(c){ return !_cacheCreadorCxP[c]; });
+  if (faltantesCreadores.length) {
+    try {
+      const empsBulk = await api('empleados','GET',null,
+        '?correo=in.('+faltantesCreadores.map(encodeURIComponent).join(',')+')&select=correo,nombre_completo,areas:id_area(nombre,codigo)');
+      (empsBulk||[]).forEach(function(e){
+        _cacheCreadorCxP[e.correo] = { nombre: e.nombre_completo||e.correo, areaCodigo: e.areas?.codigo||'', areaNombre: e.areas?.nombre||'' };
+      });
+    } catch(eBulk) { console.warn('Error resolviendo creadores:', eBulk); }
+  }
+
   const filas = todos.map(function(item) {
     // Normalizar estado — eliminar PARCIAL
     const est = item.estado === 'PARCIAL' ? 'PAGADA' : (item.estado || 'PENDIENTE');
@@ -246,6 +290,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
       +'<td style="padding:8px;font-family:var(--font-mono);font-size:11px;color:var(--naranja)">'+item.numero+'</td>'
       +'<td style="padding:8px;font-size:12px">'+item.beneficiario+'</td>'
+      +'<td style="padding:8px;font-size:11px;color:var(--suave)">'+(item.id_usuario ? fmtCreadorCxP(_cacheCreadorCxP[item.id_usuario]) : '—')+'</td>'
       +'<td style="padding:8px;font-size:11px;color:var(--suave)">'+fmtFecha(item.fecha)+'</td>'
       +'<td style="padding:8px;font-size:11px;color:var(--suave)">'+item.tipo+'</td>'
       +'<td style="padding:8px;text-align:center">'+origenBadge+'</td>'
@@ -260,6 +305,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>'
     +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">N° Doc</th>'
     +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Beneficiario</th>'
+    +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Creado por</th>'
     +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Fecha</th>'
     +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Tipo</th>'
     +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:center">Origen</th>'
@@ -2818,6 +2864,17 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       }
     }
 
+    // Creado por -- Nombre + Código de Área de quien generó la Obligación
+    const creadorEl = document.getElementById('cont-pago-cxp-creador');
+    if (creadorEl) {
+      if (c.id_usuario) {
+        creadorEl.textContent = '…';
+        resolverCreadorCxP(c.id_usuario).then(function(info){ creadorEl.textContent = fmtCreadorCxP(info); });
+      } else {
+        creadorEl.textContent = '—';
+      }
+    }
+
     // ── Sección 2: Datos del pago (si ya se registró un pago, aunque
     // esté pendiente de aprobación) ──
     const secPago = document.getElementById('cont-pago-cxp-seccion-pago');
@@ -3298,10 +3355,11 @@ async function aprobarPagoCxP(id_cxp) {
     // Notificar al operador que generó la solicitud
     if (c.id_usuario) {
       try {
+        const infoCreadorAprob = await resolverCreadorCxP(c.id_usuario);
         await api('notificaciones','POST',{
           correo_destino: c.id_usuario,
           titulo: 'Solicitud de Pago Aprobada',
-          mensaje: 'Tu solicitud de pago "' + (c.concepto || c.numero_doc || '') + '" fue aprobada. Ya puedes proceder a Registrar el Pago.',
+          mensaje: fmtCreadorCxP(infoCreadorAprob) + ': tu solicitud de pago "' + (c.concepto || c.numero_doc || '') + '" fue aprobada. Ya puedes proceder a Registrar el Pago.',
           estado: 'PENDIENTE',
           fecha_creacion: new Date().toISOString(),
           datos_extra: JSON.stringify({ id_cxp: id_cxp, accion: 'registrar_pago' })
@@ -3363,10 +3421,11 @@ async function rechazarPagoCxP(id_cxp) {
     // Notificar al operador que generó la solicitud
     if (c.id_usuario) {
       try {
+        const infoCreadorRech = await resolverCreadorCxP(c.id_usuario);
         await api('notificaciones','POST',{
           correo_destino: c.id_usuario,
           titulo: 'Solicitud de Pago Rechazada',
-          mensaje: 'Tu solicitud de pago "' + (c.concepto || c.numero_doc || '') + '" fue rechazada. Motivo: ' + motivo,
+          mensaje: fmtCreadorCxP(infoCreadorRech) + ': tu solicitud de pago "' + (c.concepto || c.numero_doc || '') + '" fue rechazada. Motivo: ' + motivo,
           estado: 'PENDIENTE',
           fecha_creacion: new Date().toISOString(),
           datos_extra: JSON.stringify({ id_cxp: id_cxp, accion: 'ver_rechazo' })
