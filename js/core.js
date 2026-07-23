@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723002';
+const SYD_VERSION = '20260723003';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -2476,7 +2476,6 @@ function mostrarNotifPendiente(notif) {
   lista.innerHTML =
     '<div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:16px;margin-bottom:12px">'
     +'<div style="font-size:12px;color:var(--suave);margin-bottom:8px">'+fmtFecha(notif.fecha_creacion)+'</div>'
-    +'<div style="font-size:14px;font-weight:600;margin-bottom:8px">'+notif.titulo+'</div>'
     +'<div style="font-size:13px;color:var(--texto);line-height:1.6">'+notif.mensaje+'</div>'
     +'</div>';
 
