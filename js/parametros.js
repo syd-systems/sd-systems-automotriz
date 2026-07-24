@@ -16,7 +16,7 @@ const TABLAS_MAESTRAS = [
   { key: 'sexos',              tabla: 'param_sexos',   pk: 'id',              nombre: 'Sexos',                  icono: '⚧',  tieneCodigo: false, tieneArea: false },
   { key: 'cat_prov', tabla: 'param_categorias_proveedor', pk: 'id', nombre: 'Categorías de Servicios', icono: '🏷', tieneCodigo: true, tieneEstado: true, tieneCuentaContable: true, filtroCuentaCodigo: '6.' },
   { key: 'bancos',             tabla: 'param_bancos',   pk: 'id',             nombre: 'Instituciones Financieras', icono: '🏦', tieneCodigo: true,  tieneArea: false, tieneTipoSector: true },
-  { key: 'niveles_jerarquicos', tabla: 'param_niveles_jerarquicos', pk: 'id_jerarquicos', nombre: 'Niveles Jerárquicos', icono: '🏅', tieneCodigo: false, tieneArea: false, tieneDescripcion: true, tieneOrden: true, campoNombre: 'nivel_jerarquicos', campoDescripcion: 'descripcion_jerarquicos' },
+  { key: 'niveles_jerarquicos', tabla: 'param_niveles_jerarquicos', pk: 'id_jerarquicos', nombre: 'Niveles Jerárquicos', icono: '🏅', tieneCodigo: false, tieneArea: false, tieneDescripcion: true, tieneOrden: true, tieneMontoMaxAprobacion: true, campoNombre: 'nivel_jerarquicos', campoDescripcion: 'descripcion_jerarquicos' },
   { key: 'metodos_pago', tabla: 'param_metodos_pago', pk: 'id_metodo', nombre: 'Métodos de Pago', icono: '💳', tieneMoneda: true, tieneCuentaContable: true, filtroCuentaCodigo: '1.1.01', tieneTipoCanal: true, nombreAutomatico: true },
 ];
 
@@ -163,6 +163,7 @@ async function mostrarTablaParam(key) {
         return '<tr>'
           + '<td style="font-size:13px;font-weight:500">' + (item.codigo ? '<span style="font-family:var(--font-mono);color:var(--naranja);margin-right:8px">' + item.codigo + '</span>' : '') + nombreMostrar + (descMostrar ? '<div style="font-size:11px;color:var(--suave);margin-top:2px">' + descMostrar + '</div>' : '') + '</td>'
           + (def.tieneOrden ? '<td style="font-family:var(--font-mono);font-weight:700;color:var(--naranja);text-align:center">' + (item.orden != null ? item.orden : '—') + '</td>' : '')
+          + (def.tieneMontoMaxAprobacion ? '<td style="font-family:var(--font-mono);font-size:12px;color:var(--suave);text-align:center">' + (item.monto_maximo_aprobacion != null ? '$' + Number(item.monto_maximo_aprobacion).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : 'Sin límite') + '</td>' : '')
           + (def.tieneArea ? '<td style="font-size:12px;color:var(--suave)">' + (areasMap[item.id_area] ? areasMap[item.id_area].nombre : '—') + '</td>' : '')
           + (def.tieneTipoSector ? '<td style="font-size:12px;color:var(--suave)">' + (item.tipo_sector || '—') + '</td>' : '')
           + (def.tieneTipoCanal ? '<td style="font-size:12px;color:var(--suave)">' + ({EFECTIVO:'Efectivo',TRANSFERENCIA:'Transferencia',AFILIACION_BANCARIA:'Afiliación Bancaria'}[item.tipo_canal] || '—') + '</td>' : '')
@@ -178,7 +179,7 @@ async function mostrarTablaParam(key) {
 
     var thead = key === 'areas'
       ? '<th style="width:100px">Código</th><th>Nombre</th><th>Nivel Superior</th><th>Estado</th><th>Acción</th>'
-      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : (def.tieneMoneda ? '<th>Moneda · Nombre</th>' : '<th>Nombre</th>')) + (def.tieneOrden ? '<th style="width:110px">Nivel Aprobación</th>' : '') + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + (def.tieneTipoCanal ? '<th>Modo de Pago</th>' : '') + (def.tieneCategoria ? '<th>Categoría</th>' : '') + (def.tieneCuentaContable ? '<th>Cuenta Contable</th>' : '') + '<th>Estado</th><th>Acción</th>';
+      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : (def.tieneMoneda ? '<th>Moneda · Nombre</th>' : '<th>Nombre</th>')) + (def.tieneOrden ? '<th style="width:110px">Nivel Aprobación</th>' : '') + (def.tieneMontoMaxAprobacion ? '<th style="width:130px">Monto Máx. Aprob.</th>' : '') + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + (def.tieneTipoCanal ? '<th>Modo de Pago</th>' : '') + (def.tieneCategoria ? '<th>Categoría</th>' : '') + (def.tieneCuentaContable ? '<th>Cuenta Contable</th>' : '') + '<th>Estado</th><th>Acción</th>';
     var colspan = key === 'areas' ? 5 : (2 + (def.tieneArea?1:0) + (def.tieneTipoSector?1:0));
 
     cont.innerHTML =
@@ -246,6 +247,12 @@ async function abrirParamItem(key, id) {
         + ' readonly title="No editable -- se asigna automáticamente"'
         + ' style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;cursor:not-allowed"></div>';
       camposHTML += '<div class="form-campo form-full" style="margin-top:-8px"><div style="font-size:10px;color:var(--suave)">No editable -- se asigna automáticamente el siguiente disponible al crear</div></div>';
+    }
+    if (def.tieneMontoMaxAprobacion) {
+      const montoMaxValor = item && item.monto_maximo_aprobacion != null ? item.monto_maximo_aprobacion : '';
+      camposHTML += '<div class="form-campo form-full"><label>Monto Máximo de Aprobación (USD)</label>'
+        + '<input type="number" id="param-item-monto-max-aprobacion" min="0" step="0.01" value="' + montoMaxValor + '" placeholder="Dejar vacío = sin límite"></div>';
+      camposHTML += '<div class="form-campo form-full" style="margin-top:-8px"><div style="font-size:10px;color:var(--suave)">Monto máximo en USD que un usuario con este Nivel puede aprobar. Vacío = sin límite (aprueba cualquier monto).</div></div>';
     }
     if (def.tieneCodigo) {
       camposHTML += '<div class="form-campo form-full"><label>Código</label><input type="text" id="param-item-codigo" value="' + (item ? (item.codigo||'') : '') + '" placeholder="Ej: 0102" style="text-transform:uppercase"></div>';
@@ -495,6 +502,10 @@ async function guardarParamItem() {
     if (def.tieneTipoSector)      datos.tipo_sector        = document.getElementById('param-item-tipo-sector')?.value || null;
     if (def.tieneTipoCanal)       datos.tipo_canal         = document.getElementById('param-item-tipo-canal')?.value || null;
     if (def.tieneOrden)           datos.orden              = parseInt(document.getElementById('param-item-orden')?.value) || null;
+    if (def.tieneMontoMaxAprobacion) {
+      const montoMaxTxt = document.getElementById('param-item-monto-max-aprobacion')?.value;
+      datos.monto_maximo_aprobacion = (montoMaxTxt !== undefined && montoMaxTxt !== null && montoMaxTxt.trim() !== '') ? parseFloat(montoMaxTxt) : null;
+    }
     if (def.tieneCategoria)       datos.id_categoria       = parseInt(document.getElementById('param-item-categoria')?.value) || null;
     if (def.tieneCuentaContable)  datos.id_cuenta_contable = parseInt(document.getElementById('param-item-cuenta-contable')?.value) || null;
     if (def.tieneEmisor)          datos.id_empresa         = _empresaActiva?.id_empresa || null;
