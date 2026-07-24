@@ -267,8 +267,8 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       const btnVerPend = '<button onclick="verCxPPendiente('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
       const btnVerPag  = '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
       const btnAprobar  = puedo('PAGOS','APROBAR') ? '<button onclick="aprobarPagoCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">✅ Aprobar</button>' : '';
-      const btnRechazar = puedo('PAGOS','APROBAR') ? '<button onclick="rechazarPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">❌ Rechazar</button>' : '';
-      const btnRegistrarPagoLista = (puedo('PAGOS','CREAR') || sesionActual?.administrador) ? '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💸 Registrar Pago</button>' : '';
+      const btnRechazar = puedo('PAGOS','RECHAZAR') ? '<button onclick="rechazarPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">❌ Rechazar</button>' : '';
+      const btnRegistrarPagoLista = (puedo('PAGOS','PAGAR') || sesionActual?.administrador) ? '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💸 Registrar Pago</button>' : '';
       if (est === 'PENDIENTE' || est === 'RECHAZADA') acciones = btnVerPend + (btnAprobar ? ' '+btnAprobar : '') + (btnRechazar ? ' '+btnRechazar : '');
       else if (est === 'APROBADA') acciones = btnVerPag + (btnRegistrarPagoLista ? ' '+btnRegistrarPagoLista : '');
       else if (est === 'POR_APROBAR') acciones = btnVerPag + (btnAprobar ? ' '+btnAprobar : '') + (btnRechazar ? ' '+btnRechazar : '');
@@ -1433,6 +1433,7 @@ async function abrirDialogoRegistrarPago() {
 }
 
 async function contGuardarPagoCxp() {
+  if (!puedo('PAGOS','PAGAR') && !sesionActual?.administrador) { alert('No tiene permiso para procesar pagos.'); return; }
   const id_cxp = parseInt(document.getElementById('cont-pago-cxp-id')?.value) || null;
   const ref    = document.getElementById('cont-pago-cxp-ref')?.value || '';
   const okEl   = document.getElementById('alerta-pago-cxp-ok');
@@ -2065,7 +2066,7 @@ async function editarCxPManual(id_cxp) {
     // resetea el saldo pero no el estado, y regenera el asiento contable
     // con un monto distinto al que realmente salio del banco.
     if (c.estado !== 'PENDIENTE' && c.estado !== 'RECHAZADA') {
-      alert('No se puede editar: esta Obligación de Pago ya está en estado ' + c.estado + '. Si necesita corregirla, anule el pago primero (botón "🗑 Anular Pago Ejecutado").');
+      alert('No se puede editar: esta Obligación de Pago ya está en estado ' + c.estado + '. Si necesita corregirla, anule el pago primero (botón "🗑 Anular Pago Procesado").');
       return;
     }
 
@@ -2369,7 +2370,7 @@ async function guardarPago() {
     try {
       const chkRows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp_edit+'&select=estado');
       if (chkRows && chkRows[0] && chkRows[0].estado !== 'PENDIENTE' && chkRows[0].estado !== 'RECHAZADA') {
-        alert('No se puede guardar: esta Obligación de Pago ya está en estado ' + chkRows[0].estado + '. Anule el pago primero (botón "🗑 Anular Pago Ejecutado").');
+        alert('No se puede guardar: esta Obligación de Pago ya está en estado ' + chkRows[0].estado + '. Anule el pago primero (botón "🗑 Anular Pago Procesado").');
         return;
       }
     } catch(eChk) {}
@@ -3029,7 +3030,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
           + '<button class="btn-primario" onclick="abrirDialogoRegistrarPago()">&#x1F4B8; Registrar Pago</button>';
       } else {
         const btnAnularF    = (esManualF && est !== 'ANULADA' && est !== 'PAGADA') ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+');cerrarModal(\'modal-cont-pago-cxp\')">🗑 Anular</button>' : '';
-        const btnAnularEjecF = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR'))) ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Ejecutado</button>' : '';
+        const btnAnularEjecF = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR'))) ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Procesado</button>' : '';
         const btnReactivarF = (est === 'ANULADA' && (sesionActual?.administrador || puedo('PAGOS','ELIMINAR'))) ? '<button class="btn-primario" onclick="reactivarPagoCxP('+id_cxp+')">↩ Reactivar</button>' : '';
         footer.innerHTML =
           '<div style="display:flex;gap:10px;justify-content:space-between;align-items:center;width:100%">'
@@ -3125,12 +3126,12 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       const est = c.estado || '';
       const btnEditar = ((est === 'PENDIENTE' || est === 'RECHAZADA') && puedo('PAGOS','EDITAR'))
         ? '<button class="btn-naranja" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
-      const btnRegistrarPago = (est === 'APROBADA' && (puedo('PAGOS','CREAR') || sesionActual?.administrador))
+      const btnRegistrarPago = (est === 'APROBADA' && (puedo('PAGOS','PAGAR') || sesionActual?.administrador))
         ? '<button class="btn-primario" onclick="abrirDialogoRegistrarPago()">&#x1F4B8; Registrar Pago</button>' : '';
       const btnAnular = ((est === 'PENDIENTE' || est === 'RECHAZADA') && (puedo('PAGOS','ELIMINAR') || sesionActual?.administrador))
         ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 Anular</button>' : '';
       const btnAnularEjec = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR')))
-        ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Ejecutado</button>' : '';
+        ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Procesado</button>' : '';
       const btnReactivar = (est === 'ANULADA' && (sesionActual?.administrador || puedo('PAGOS','ELIMINAR')))
         ? '<button class="btn-primario" onclick="reactivarPagoCxP('+id_cxp+')">↩ Reactivar</button>' : '';
       footerPend.innerHTML =
@@ -3451,7 +3452,7 @@ async function aprobarPagoCxP(id_cxp) {
 
 
 async function rechazarPagoCxP(id_cxp) {
-  if (!puedo('PAGOS','APROBAR')) { alert('Sin permiso para rechazar.'); return; }
+  if (!puedo('PAGOS','RECHAZAR')) { alert('Sin permiso para rechazar.'); return; }
   if (!(await tieneNivelMinimo(2))) { alert('Esta acción requiere Firma de Aprobación Nivel 1 o Nivel 2.'); return; }
 
   const motivo = await new Promise(function(resolve) {
@@ -3865,8 +3866,7 @@ async function confirmarEjecucionPago() {
   const resetBtn = function() { if (btnConf) { btnConf.disabled = false; btnConf.textContent = '💳 Confirmar Pago'; } };
   errEl.style.display = 'none';
 
-  if (!puedo('PAGOS','APROBAR')) { errEl.textContent = 'No tiene permiso para aprobar/confirmar pagos.'; errEl.style.display = 'block'; resetBtn(); return; }
-  if (!(await tieneNivelMinimo(2))) { errEl.textContent = 'Esta acción requiere Firma de Aprobación Nivel 1 o Nivel 2.'; errEl.style.display = 'block'; resetBtn(); return; }
+  if (!puedo('PAGOS','PAGAR') && !sesionActual?.administrador) { errEl.textContent = 'No tiene permiso para procesar pagos.'; errEl.style.display = 'block'; resetBtn(); return; }
 
   if (!idMetodo)    { errEl.textContent = 'Seleccione el método de pago.';          errEl.style.display = 'block'; resetBtn(); return; }
   if (!idCtaBanco)  { errEl.textContent = 'El método seleccionado no tiene cuenta contable asignada.'; errEl.style.display = 'block'; resetBtn(); return; }

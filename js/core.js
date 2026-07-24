@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723014';
+const SYD_VERSION = '20260723015';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -195,13 +195,14 @@ const PERMISOS_POR_MODULO = {
     { accion: 'VER_TOTALES', label: '🔒 Ver montos y totales' },
   ],
   PAGOS: [
-    { accion: 'VER',      label: 'Ver obligaciones de pago' },
-    { accion: 'PAGAR',    label: 'Ejecutar pago a proveedor' },
-    { accion: 'CREAR',    label: 'Registrar nueva obligación (CxP manual)' },
-    { accion: 'EDITAR',   label: 'Editar obligación pendiente' },
-    { accion: 'ELIMINAR', label: 'Anular obligación pendiente' },
-    { accion: 'APROBAR',  label: '🔒 Aprobar pago' },
-    { accion: 'ANULAR',   label: '🔒 Anular pago realizado' },
+    { accion: 'VER',      label: 'Ver Obligaciones de Pago' },
+    { accion: 'CREAR',    label: 'Registrar Nuevo Pago' },
+    { accion: 'EDITAR',   label: 'Editar Pago Pendiente' },
+    { accion: 'ELIMINAR', label: 'Anular Pago Pendiente' },
+    { accion: 'APROBAR',  label: '🔒 Aprobar Pago Pendiente' },
+    { accion: 'RECHAZAR', label: '🔒 Rechazar Pago Pendiente' },
+    { accion: 'PAGAR',    label: 'Procesar Pago Aprobado' },
+    { accion: 'ANULAR',   label: '🔒 Anular Pago Procesado' },
   ],
   CONTABILIDAD: [
     { accion: 'VER',           label: 'Ver asientos y reportes' },
