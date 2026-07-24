@@ -236,8 +236,7 @@ async function abrirParamItem(key, id) {
       if (!item) {
         // Registro nuevo -- sugerir el siguiente número libre.
         try {
-          const empFiltroOrden = _empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : '';
-          const existentes = await api(def.tabla, 'GET', null, '?select=orden&order=orden.desc.nullslast&limit=1' + empFiltroOrden);
+          const existentes = await api(def.tabla, 'GET', null, '?select=orden&order=orden.desc.nullslast&limit=1');
           const maxOrden = (existentes && existentes[0] && existentes[0].orden != null) ? existentes[0].orden : 0;
           ordenValor = maxOrden + 1;
         } catch(e) { ordenValor = ''; }
@@ -339,8 +338,7 @@ async function abrirParamItem(key, id) {
   let puedeEliminarNivel = true;
   if (id && key === 'niveles_jerarquicos') {
     try {
-      const empFiltroMax = _empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : '';
-      const maxRowsV = await api('param_niveles_jerarquicos','GET',null,'?select=id_jerarquicos&order=orden.desc.nullslast&limit=1' + empFiltroMax);
+      const maxRowsV = await api('param_niveles_jerarquicos','GET',null,'?select=id_jerarquicos&order=orden.desc.nullslast&limit=1');
       puedeEliminarNivel = !!(maxRowsV && maxRowsV[0] && maxRowsV[0].id_jerarquicos === parseInt(id));
     } catch(eMaxV) { puedeEliminarNivel = false; }
   }
@@ -448,13 +446,12 @@ async function guardarParamItem() {
     const cuentaVal    = def.tieneCuentaContable ? (document.getElementById('param-item-cuenta-contable')?.value || '') : '';
     const tipoCanalVal = def.tieneTipoCanal ? (document.getElementById('param-item-tipo-canal')?.value || '') : '';
     const pkNeq      = id ? ('&' + def.pk + '=neq.' + id) : '';
-    const empFiltro  = _empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : '';
     let existeQuery;
     if (def.nombreAutomatico) {
       // El nombre no es libre -- lo único que puede repetirse es la combinación Modo de Pago + Moneda
-      existeQuery = '?tipo_canal=eq.' + encodeURIComponent(tipoCanalVal) + '&codigo=eq.' + encodeURIComponent(monedaVal) + pkNeq + empFiltro;
+      existeQuery = '?tipo_canal=eq.' + encodeURIComponent(tipoCanalVal) + '&codigo=eq.' + encodeURIComponent(monedaVal) + pkNeq;
     } else {
-      existeQuery = '?nombre=ilike.' + encodeURIComponent(nombre) + pkNeq + empFiltro;
+      existeQuery = '?nombre=ilike.' + encodeURIComponent(nombre) + pkNeq;
       if (def.tieneMoneda && monedaVal)          existeQuery += '&codigo=eq.' + monedaVal;
       if (def.tieneCuentaContable && cuentaVal)  existeQuery += '&id_cuenta_contable=eq.' + cuentaVal;
     }
@@ -467,7 +464,7 @@ async function guardarParamItem() {
     }
     // Duplicado por código (solo si tieneCodigo, no tieneMoneda)
     if (def.tieneCodigo && codigo) {
-      const existeCod = await api(def.tabla, 'GET', null, '?codigo=ilike.' + encodeURIComponent(codigo) + pkNeq + empFiltro);
+      const existeCod = await api(def.tabla, 'GET', null, '?codigo=ilike.' + encodeURIComponent(codigo) + pkNeq);
       if (existeCod && existeCod.length > 0) {
         errEl.textContent = 'Ya existe un registro con el código "' + codigo + '".';
         errEl.style.display = 'block'; resetBtn(); return;
@@ -479,7 +476,7 @@ async function guardarParamItem() {
     if (def.tieneOrden) {
       const ordenVal = parseInt(document.getElementById('param-item-orden')?.value);
       if (ordenVal) {
-        const existeOrden = await api(def.tabla, 'GET', null, '?orden=eq.' + ordenVal + pkNeq + empFiltro);
+        const existeOrden = await api(def.tabla, 'GET', null, '?orden=eq.' + ordenVal + pkNeq);
         if (existeOrden && existeOrden.length > 0) {
           errEl.textContent = 'Ya existe otro nivel con el Nivel Aprobación "' + ordenVal + '" (' + (existeOrden[0].nivel_jerarquicos || existeOrden[0].nombre || '') + '). Cada nivel debe tener un número distinto.';
           errEl.style.display = 'block'; resetBtn(); return;
@@ -508,8 +505,6 @@ async function guardarParamItem() {
     }
     if (def.tieneCategoria)       datos.id_categoria       = parseInt(document.getElementById('param-item-categoria')?.value) || null;
     if (def.tieneCuentaContable)  datos.id_cuenta_contable = parseInt(document.getElementById('param-item-cuenta-contable')?.value) || null;
-    if (def.tieneEmisor)          datos.id_empresa         = _empresaActiva?.id_empresa || null;
-    if (!id)                      datos.id_empresa         = datos.id_empresa || _empresaActiva?.id_empresa || null;
   }
 
   try {
