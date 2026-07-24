@@ -3406,6 +3406,15 @@ async function eliminarCxP(id_cxp) {
 async function aprobarPagoCxP(id_cxp) {
   if (!puedo('PAGOS','APROBAR')) { alert('Sin permiso para aprobar.'); return; }
   if (!(await tieneNivelMinimo(2))) { alert('Esta acción requiere Firma de Aprobación Nivel 1 o Nivel 2.'); return; }
+  try {
+    const rowsChk = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=monto_usd');
+    const montoCxP = rowsChk && rowsChk[0] ? Number(rowsChk[0].monto_usd) : null;
+    const montoMax = await _resolverMontoMaxAprobacionSesion();
+    if (montoMax != null && montoCxP != null && montoCxP > montoMax) {
+      alert('Esta Obligación ($' + montoCxP.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ') supera el monto máximo que su Nivel de Firma puede aprobar ($' + montoMax.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '). Debe ser aprobada por un Nivel de Firma superior.');
+      return;
+    }
+  } catch(eChkMonto) { console.warn('Error validando monto máximo de aprobación:', eChkMonto); }
   if (!confirm('¿Aprobar esta solicitud de pago? El operador que la generó recibirá una notificación para proceder a Registrar el Pago.')) return;
   try {
     const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=id_usuario,numero_doc,observaciones,concepto');

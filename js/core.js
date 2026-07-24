@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723013';
+const SYD_VERSION = '20260723014';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -261,6 +261,24 @@ async function _resolverOrdenNivelSesion() {
   return _ordenNivelSesion;
 }
 
+// Monto máximo (USD) que el Nivel Jerárquico del usuario en sesión puede
+// aprobar -- null = sin límite configurado (aprueba cualquier monto).
+// Administrador siempre null (sin límite).
+let _montoMaxAprobSesion; // undefined = aún no resuelto (para cachear, incluso si el valor real es null)
+async function _resolverMontoMaxAprobacionSesion() {
+  if (_montoMaxAprobSesion !== undefined) return _montoMaxAprobSesion;
+  try {
+    if (sesionActual?.administrador) { _montoMaxAprobSesion = null; return null; }
+    const empRows = await api('empleados','GET',null,
+      '?correo=eq.'+encodeURIComponent(sesionActual?.correo_usuario||'')+'&select=id_nivel_jerarquico&limit=1');
+    const idNivel = empRows && empRows[0] ? empRows[0].id_nivel_jerarquico : null;
+    if (!idNivel) { _montoMaxAprobSesion = null; return null; }
+    const nivRows = await api('param_niveles_jerarquicos','GET',null,'?id_jerarquicos=eq.'+idNivel+'&select=monto_maximo_aprobacion&limit=1');
+    _montoMaxAprobSesion = (nivRows && nivRows[0] && nivRows[0].monto_maximo_aprobacion != null) ? Number(nivRows[0].monto_maximo_aprobacion) : null;
+  } catch(e) { _montoMaxAprobSesion = null; }
+  return _montoMaxAprobSesion;
+}
+
 // true si el usuario tiene el orden requerido O MEJOR (número menor = más alto)
 async function tieneNivelMinimo(ordenRequerido) {
   if (sesionActual?.administrador) return true;
@@ -483,6 +501,11 @@ let contadorAviso   = null;
 const MINUTOS_INACTIVIDAD = 10;
 
 function iniciarTimerInactividad() {
+  // ⚠️ DESACTIVADO PROVISIONALMENTE (a pedido del cliente) -- el resto de la
+  // lógica de esta función y las siguientes se deja intacta para reactivar
+  // fácilmente quitando este return.
+  return;
+
   // Solo aplica a operadores
   if (!sesionActual || sesionActual.administrador) return;
 
