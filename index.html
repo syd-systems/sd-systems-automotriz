@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260723011"></script>
-<script src="js/parametros.js?v=20260723011"></script>
-<script src="js/empresas.js?v=20260723011"></script>
-<script src="js/facturacion.js?v=20260723011"></script>
-<script src="js/inventario.js?v=20260723011"></script>
-<script src="js/contabilidad.js?v=20260723011"></script>
-<script src="js/pagos.js?v=20260723011"></script>
-<script src="js/vehiculos.js?v=20260723011"></script>
-<script src="js/catalogo.js?v=20260723011"></script>
-<script src="js/inventario2.js?v=20260723011"></script>
-<script src="js/ordenes.js?v=20260723011"></script>
+<script src="js/core.js?v=20260723012"></script>
+<script src="js/parametros.js?v=20260723012"></script>
+<script src="js/empresas.js?v=20260723012"></script>
+<script src="js/facturacion.js?v=20260723012"></script>
+<script src="js/inventario.js?v=20260723012"></script>
+<script src="js/contabilidad.js?v=20260723012"></script>
+<script src="js/pagos.js?v=20260723012"></script>
+<script src="js/vehiculos.js?v=20260723012"></script>
+<script src="js/catalogo.js?v=20260723012"></script>
+<script src="js/inventario2.js?v=20260723012"></script>
+<script src="js/ordenes.js?v=20260723012"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2079,6 +2079,12 @@
             <div id="cont-pago-cxp-observacion" style="font-size:13px;color:var(--texto)">—</div></div>
           <div style="grid-column:1/-1"><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Creado por</div>
             <div id="cont-pago-cxp-creador" style="font-size:13px;color:var(--texto)">—</div></div>
+          <div id="cont-pago-cxp-modificado-cont" style="grid-column:1/-1;display:none"><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Modificado por (última edición)</div>
+            <div id="cont-pago-cxp-modificado" style="font-size:13px;color:var(--texto)">—</div></div>
+          <div id="cont-pago-cxp-revertido-cont" style="grid-column:1/-1;display:none"><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Revertido por (último pago/anulación revertida)</div>
+            <div id="cont-pago-cxp-revertido" style="font-size:13px;color:var(--texto)">—</div></div>
+          <div id="cont-pago-cxp-anulado-cont" style="grid-column:1/-1;display:none"><div style="font-size:10px;color:#fc8181;margin-bottom:3px">Anulado por</div>
+            <div id="cont-pago-cxp-anulado" style="font-size:13px;color:var(--texto)">—</div></div>
         </div>
       </div>
 
@@ -2094,6 +2100,7 @@
             <div id="cont-pago-det-forma" style="font-size:13px;font-weight:600">—</div></div>
           <div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Monto Pagado</div><div id="cont-pago-det-monto" style="font-size:13px;font-family:var(--font-mono);color:var(--naranja)">—</div></div>
           <div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Aprobado por</div><div id="cont-pago-det-aprobado" style="font-size:13px">—</div></div>
+          <div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Pagado por</div><div id="cont-pago-det-pagado" style="font-size:13px">—</div></div>
           <div id="cont-pago-det-comprobante-cont" style="display:none">
             <div style="font-size:10px;color:var(--suave);margin-bottom:3px">Comprobante</div>
             <div id="cont-pago-det-comprobante"></div>

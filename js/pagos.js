@@ -1499,7 +1499,8 @@ async function contGuardarPagoCxp() {
       saldo_usd:       nuevoSaldo,
       referencia:      ref,
       fecha_pago:      fecha,
-      metodo_pago:     metodo
+      metodo_pago:     metodo,
+      pagado_por:      sesionActual?.correo_usuario || null
     };
     if (urlComprobante) patchData.url_comprobante = urlComprobante;
 
@@ -1666,7 +1667,7 @@ async function anularPagoEjecutado(id_cxp) {
 
     // 1. Devolver la CxP a PENDIENTE (dejar sin efecto el pago registrado)
     await api('cont_cxp','PATCH',
-      { estado: 'PENDIENTE', pagado_usd: 0, saldo_usd: c.monto_usd, fecha_pago: null, metodo_pago: null },
+      { estado: 'PENDIENTE', pagado_usd: 0, saldo_usd: c.monto_usd, fecha_pago: null, metodo_pago: null, revertido_por: sesionActual?.correo_usuario || null },
       '?id_cxp=eq.'+id_cxp);
 
     // 2. Anular el asiento de pago asociado (NO el de la compra/entrada original)
@@ -1722,7 +1723,7 @@ async function anularPagoCxP(id_cxp) {
   try {
     // 1. Anular la CxP
     await api('cont_cxp','PATCH',
-      { estado: 'ANULADA', observaciones: '[ANULADA] ' },
+      { estado: 'ANULADA', observaciones: '[ANULADA] ', anulado_por: sesionActual?.correo_usuario || null },
       '?id_cxp=eq.'+id_cxp);
 
     // 2. Anular asientos contables asociados (marcar ANULADO, sin contrapartida)
@@ -1798,7 +1799,7 @@ async function reactivarPagoCxP(id_cxp) {
   try {
     // 1. Regresar la CxP a PENDIENTE
     await api('cont_cxp','PATCH',
-      { estado: 'PENDIENTE', observaciones: (cxpChk.observaciones || '').replace(/^\[ANULADA\]\s*/, '') },
+      { estado: 'PENDIENTE', observaciones: (cxpChk.observaciones || '').replace(/^\[ANULADA\]\s*/, ''), revertido_por: sesionActual?.correo_usuario || null },
       '?id_cxp=eq.'+id_cxp);
 
     // 2. Restaurar (APROBADO) el asiento GASTO_MANUAL que se anuló al cancelarla
@@ -2608,6 +2609,7 @@ async function guardarPago() {
         // para una nueva revisión (limpiando el motivo anterior).
         estado:            'PENDIENTE',
         motivo_rechazo:    null,
+        modificado_por:    sesionActual?.correo_usuario || null,
       }, '?id_cxp=eq.'+id_cxp_edit);
 
       // Borrar el asiento viejo (Gasto+IVA/CxP) y generar uno nuevo con los
@@ -2900,6 +2902,25 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       }
     }
 
+    // Helper -- pinta Área (código) + Nombre en un contenedor que se muestra
+    // solo si el correo viene con dato (Modificado/Anulado/Revertido por
+    // son opcionales, a diferencia de Creado por que siempre existe)
+    const pintarQuienCxP = function(idCont, idEl, correo) {
+      const cont = document.getElementById(idCont);
+      const el   = document.getElementById(idEl);
+      if (!cont || !el) return;
+      if (!correo) { cont.style.display = 'none'; return; }
+      cont.style.display = '';
+      el.textContent = '…';
+      resolverCreadorCxP(correo).then(function(info){
+        const areaLinea = [info.areaNombre, info.areaCodigo ? '(' + info.areaCodigo + ')' : ''].filter(Boolean).join(' ');
+        el.innerHTML = (areaLinea ? '<div>' + areaLinea + '</div>' : '') + '<div>' + (info.nombre || '—') + '</div>';
+      });
+    };
+    pintarQuienCxP('cont-pago-cxp-modificado-cont', 'cont-pago-cxp-modificado', c.modificado_por);
+    pintarQuienCxP('cont-pago-cxp-anulado-cont',    'cont-pago-cxp-anulado',    c.anulado_por);
+    pintarQuienCxP('cont-pago-cxp-revertido-cont',  'cont-pago-cxp-revertido',  c.revertido_por);
+
     // ── Sección 2: Datos del pago (si ya se registró un pago, aunque
     // esté pendiente de aprobación) ──
     const secPago = document.getElementById('cont-pago-cxp-seccion-pago');
@@ -2920,6 +2941,18 @@ async function verDetalleCxP(id_cxp, modoInicial) {
           });
         } else {
           detAprobado.textContent = '—';
+        }
+      }
+      const detPagado = document.getElementById('cont-pago-det-pagado');
+      if (detPagado) {
+        if (c.pagado_por) {
+          detPagado.textContent = '…';
+          resolverCreadorCxP(c.pagado_por).then(function(info){
+            const areaLinea = [info.areaNombre, info.areaCodigo ? '(' + info.areaCodigo + ')' : ''].filter(Boolean).join(' ');
+            detPagado.innerHTML = (areaLinea ? '<div>' + areaLinea + '</div>' : '') + '<div>' + (info.nombre || '—') + '</div>';
+          });
+        } else {
+          detPagado.textContent = '—';
         }
       }
       const detRef = document.getElementById('cont-pago-det-ref');
@@ -3350,7 +3383,8 @@ async function guardarEdicionCxP(id_cxp) {
       fecha_vencimiento: vencimiento,
       id_proveedor:     id_proveedor,
       id_cuenta_gasto:  id_cuenta,
-      observaciones:    descripcion + (observ ? ' — ' + observ : '')
+      observaciones:    descripcion + (observ ? ' — ' + observ : ''),
+      modificado_por:   sesionActual?.correo_usuario || null
     },'?id_cxp=eq.'+id_cxp);
 
     if (okEl) { okEl.textContent = '✓ Obligación actualizada correctamente.'; okEl.style.display = 'block'; }
@@ -4010,7 +4044,8 @@ async function confirmarEjecucionPago() {
       referencia:  refExec.trim(),
       // Si se corrigió la Moneda de Pago en este modal, persistirla para
       // que el registro quede reflejando la realidad de aquí en adelante
-      moneda_pago: monedaCxP
+      moneda_pago: monedaCxP,
+      pagado_por:  sesionActual?.correo_usuario || null
     };
     if (urlComprobanteExec) patchFinalExec.url_comprobante = urlComprobanteExec;
     await api('cont_cxp','PATCH', patchFinalExec, '?id_cxp=eq.'+id_cxp);
