@@ -1056,6 +1056,7 @@ async function guardarEntradaStock() {
           // Agregar el id_cxp real al numero_doc para que nunca se repita
           if (cxpCreada && cxpCreada[0]) {
             await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-' + cxpCreada[0].id_cxp }, '?id_cxp=eq.' + cxpCreada[0].id_cxp);
+            enrutarAprobacionCxP(cxpCreada[0].id_cxp, numDocBase + '-' + cxpCreada[0].id_cxp, montoUSD);
           }
         } else {
           // Crédito — múltiples CxP, una por cuota
@@ -1096,6 +1097,7 @@ async function guardarEntradaStock() {
             // Agregar el id_cxp real al numero_doc para que nunca se repita
             if (cxpCuotaCreada && cxpCuotaCreada[0]) {
               await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-C' + c.num + '-' + cxpCuotaCreada[0].id_cxp }, '?id_cxp=eq.' + cxpCuotaCreada[0].id_cxp);
+              enrutarAprobacionCxP(cxpCuotaCreada[0].id_cxp, numDocBase + '-C' + c.num + '-' + cxpCuotaCreada[0].id_cxp, c.monto);
             }
           }
         }

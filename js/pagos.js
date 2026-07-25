@@ -80,6 +80,104 @@ function fmtCreadorCxP(info) {
   return info.nombre + (info.areaCodigo ? ' (' + info.areaCodigo + ')' : '');
 }
 
+// ── ENRUTAMIENTO DE APROBACIÓN ──
+// Al crear una Obligación nueva (PENDIENTE), busca automáticamente a quién le
+// corresponde aprobarla y le envía la notificación:
+//   1. Busca Nivel 2 (Firma) EN EL ÁREA del creador. Si lo encuentra Y el
+//      monto está dentro de su monto_maximo_aprobacion (o no tiene límite),
+//      lo notifica y termina.
+//   2. Si no hay Nivel 2 en esa Área, o el monto excede su límite, escala
+//      DIRECTO a Nivel 1 (no sigue buscando otro Nivel 2 en Áreas
+//      superiores) -- busca Nivel 1 en el Área del creador y, si no está,
+//      va subiendo por id_area_padre hasta encontrarlo.
+//   3. Si tampoco hay Nivel 1 en ninguna Área de la cadena (ej. existe en el
+//      organigrama pero no tiene usuario activo en el sistema), notifica a
+//      todos los Administradores como respaldo.
+async function _notificarAprobadorCxP(correoDestino, idCxp, numeroDoc, montoUsd) {
+  try {
+    await api('notificaciones','POST',{
+      correo_destino: correoDestino,
+      titulo: 'Obligación de Pago pendiente de tu aprobación',
+      mensaje: 'La Obligación "' + (numeroDoc || ('#'+idCxp)) + '" por $' + Number(montoUsd||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' quedó pendiente de tu aprobación.',
+      estado: 'PENDIENTE',
+      fecha_creacion: new Date().toISOString(),
+      datos_extra: JSON.stringify({ id_cxp: idCxp, accion: 'aprobar_pago' })
+    }, '', true);
+  } catch(e) { console.warn('Error notificando aprobador:', e); }
+}
+
+async function _notificarFallbackAdmin(idCxp, numeroDoc, montoUsd) {
+  try {
+    const admins = await api('usuarios','GET',null,'?administrador=eq.true&estado_usuario=eq.ACTIVO&select=correo_usuario');
+    for (const a of (admins||[])) {
+      await _notificarAprobadorCxP(a.correo_usuario, idCxp, numeroDoc, montoUsd);
+    }
+  } catch(e) { console.warn('Error notificando fallback Administrador:', e); }
+}
+
+// Busca, dentro de un Área puntual, un empleado ACTIVO con el Nivel Jerárquico
+// dado que además tenga el permiso PAGOS.APROBAR asignado.
+async function _buscarAprobadorEnArea(idArea, idNivelJerarquico) {
+  if (!idArea || !idNivelJerarquico) return null;
+  try {
+    const emps = await api('empleados','GET',null,
+      '?id_area=eq.'+idArea+'&id_nivel_jerarquico=eq.'+idNivelJerarquico+'&estatus=eq.ACTIVO&select=correo,nombre_completo');
+    if (!emps || !emps.length) return null;
+    const correos = emps.map(function(e){ return e.correo; }).filter(Boolean);
+    if (!correos.length) return null;
+    const perms = await api('usuarios_permisos','GET',null,
+      '?correo_usuario=in.('+correos.map(encodeURIComponent).join(',')+')&modulo=eq.PAGOS&accion=eq.APROBAR&select=correo_usuario');
+    const conPermiso = new Set((perms||[]).map(function(p){ return p.correo_usuario; }));
+    return emps.find(function(e){ return conPermiso.has(e.correo); }) || null;
+  } catch(e) { console.warn('Error buscando aprobador en Área '+idArea+':', e); return null; }
+}
+
+async function enrutarAprobacionCxP(idCxp, numeroDoc, montoUsd) {
+  try {
+    const idAreaCreador = await _resolverAreaSesion();
+    if (!idAreaCreador) { await _notificarFallbackAdmin(idCxp, numeroDoc, montoUsd); return; }
+
+    const niveles = await api('param_niveles_jerarquicos','GET',null,'?orden=in.(1,2)&select=id_jerarquicos,orden,monto_maximo_aprobacion');
+    const nivel2 = (niveles||[]).find(function(n){ return n.orden === 2; });
+    const nivel1 = (niveles||[]).find(function(n){ return n.orden === 1; });
+
+    // Paso 1 -- Nivel 2, solo en el Área del creador
+    if (nivel2) {
+      const candNivel2 = await _buscarAprobadorEnArea(idAreaCreador, nivel2.id_jerarquicos);
+      if (candNivel2) {
+        const limite = nivel2.monto_maximo_aprobacion != null ? Number(nivel2.monto_maximo_aprobacion) : null;
+        if (limite == null || Number(montoUsd) <= limite) {
+          await _notificarAprobadorCxP(candNivel2.correo, idCxp, numeroDoc, montoUsd);
+          return;
+        }
+        // Excede su límite -- escala directo a Nivel 1, no busca otro Nivel 2
+      }
+    }
+
+    // Paso 2 -- Nivel 1, subiendo por la cadena de Áreas (id_area_padre)
+    if (nivel1) {
+      const areas = await api('param_areas','GET',null,'?select=id_area,id_area_padre');
+      const mapaPadres = {};
+      (areas||[]).forEach(function(a){ mapaPadres[a.id_area] = a.id_area_padre; });
+
+      let areaActual = idAreaCreador;
+      const visitadas = new Set();
+      while (areaActual && !visitadas.has(areaActual)) {
+        visitadas.add(areaActual);
+        const candNivel1 = await _buscarAprobadorEnArea(areaActual, nivel1.id_jerarquicos);
+        if (candNivel1) {
+          await _notificarAprobadorCxP(candNivel1.correo, idCxp, numeroDoc, montoUsd);
+          return;
+        }
+        areaActual = mapaPadres[areaActual] || null;
+      }
+    }
+
+    // Paso 3 -- nadie encontrado en toda la cadena -- respaldo Administrador
+    await _notificarFallbackAdmin(idCxp, numeroDoc, montoUsd);
+  } catch(e) { console.warn('Error en enrutamiento de aprobación:', e); }
+}
+
 async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtroDesde, filtroHasta, filtroCategoria) {
   const c = document.getElementById('contenido-principal');
   const panelExiste = !!document.getElementById('panel-pagos');
@@ -2568,6 +2666,7 @@ async function guardarPago() {
             });
             if (cxpCuotaConv && cxpCuotaConv[0]) {
               await api('cont_cxp','PATCH',{ numero_doc: numDocActual + '-C' + cc.num + '-' + cxpCuotaConv[0].id_cxp }, '?id_cxp=eq.' + cxpCuotaConv[0].id_cxp);
+              enrutarAprobacionCxP(cxpCuotaConv[0].id_cxp, numDocActual + '-C' + cc.num + '-' + cxpCuotaConv[0].id_cxp, cc.monto);
             }
           }
         } else {
@@ -2582,6 +2681,7 @@ async function guardarPago() {
           });
           if (cxpContadoConv && cxpContadoConv[0]) {
             await api('cont_cxp','PATCH',{ numero_doc: numDocActual + '-' + cxpContadoConv[0].id_cxp }, '?id_cxp=eq.' + cxpContadoConv[0].id_cxp);
+            enrutarAprobacionCxP(cxpContadoConv[0].id_cxp, numDocActual + '-' + cxpContadoConv[0].id_cxp, montoTotalConIVA);
           }
         }
 
@@ -2723,6 +2823,7 @@ async function guardarPago() {
         });
         if (cxpCuota && cxpCuota[0]) {
           await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-C' + c.num + '-' + cxpCuota[0].id_cxp }, '?id_cxp=eq.' + cxpCuota[0].id_cxp);
+          enrutarAprobacionCxP(cxpCuota[0].id_cxp, numDocBase + '-C' + c.num + '-' + cxpCuota[0].id_cxp, c.monto);
         }
       }
     } else {
@@ -2753,6 +2854,7 @@ async function guardarPago() {
       });
       if (cxpContado && cxpContado[0]) {
         await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-' + cxpContado[0].id_cxp }, '?id_cxp=eq.' + cxpContado[0].id_cxp);
+        enrutarAprobacionCxP(cxpContado[0].id_cxp, numDocBase + '-' + cxpContado[0].id_cxp, montoTotalConIVA);
       }
     }
 

@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723019';
+const SYD_VERSION = '20260723020';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -247,6 +247,19 @@ function puedo(modulo, accion) {
 // Estratégico). Se resuelve una vez por sesión vía empleados.correo →
 // id_nivel_jerarquico → param_niveles_jerarquicos.orden
 let _ordenNivelSesion = undefined; // undefined = aún no resuelto, null = sin nivel asignado
+
+// Cache del Área del empleado en sesión (para el algoritmo de enrutamiento
+// de aprobación -- Nivel 2 en su Área, luego Nivel 1 subiendo por Área).
+let _areaSesion = undefined; // undefined = aún no resuelto
+async function _resolverAreaSesion() {
+  if (_areaSesion !== undefined) return _areaSesion;
+  try {
+    const empRows = await api('empleados','GET',null,
+      '?correo=eq.'+encodeURIComponent(sesionActual?.correo_usuario||'')+'&select=id_area&limit=1');
+    _areaSesion = empRows && empRows[0] ? empRows[0].id_area : null;
+  } catch(e) { _areaSesion = null; }
+  return _areaSesion;
+}
 
 async function _resolverOrdenNivelSesion() {
   if (_ordenNivelSesion !== undefined) return _ordenNivelSesion;
