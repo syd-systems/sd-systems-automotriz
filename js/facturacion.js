@@ -1589,7 +1589,7 @@ async function _guardarSalidaStockInterno() {
             estado:         'PENDIENTE',
             id_salida:      id_salida,
             datos_extra:    JSON.stringify({ id_articulo: idRep, cantidad: cantidad, id_area_origen: id_areaEntrega, id_area_destino: id_area })
-          });
+          }, '', true);
         }
       } catch(eNot) { console.warn('Error creando notificación:', eNot); }
     }

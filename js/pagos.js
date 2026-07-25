@@ -3442,7 +3442,7 @@ async function aprobarPagoCxP(id_cxp) {
           estado: 'PENDIENTE',
           fecha_creacion: new Date().toISOString(),
           datos_extra: JSON.stringify({ id_cxp: id_cxp, accion: 'registrar_pago' })
-        });
+        }, '', true);
       } catch(eNotif) { console.warn('Error enviando notificación de aprobación:', eNotif); }
     }
 
@@ -3508,7 +3508,7 @@ async function rechazarPagoCxP(id_cxp) {
           estado: 'PENDIENTE',
           fecha_creacion: new Date().toISOString(),
           datos_extra: JSON.stringify({ id_cxp: id_cxp, accion: 'ver_rechazo' })
-        });
+        }, '', true);
       } catch(eNotif) { console.warn('Error enviando notificación de rechazo:', eNotif); }
     }
 

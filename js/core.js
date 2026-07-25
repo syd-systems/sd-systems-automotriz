@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723015';
+const SYD_VERSION = '20260723016';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -390,7 +390,7 @@ async function iniciarJWT(email, passwordPlano) {
 
 let _renovacionEnCurso = null;
 
-async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '') {
+async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '', sinRepresentacion = false) {
   // Si el token está por vencer (o ya venció) y hay refresh_token, renovarlo
   // ANTES de esta consulta — no depender solo del setInterval en segundo
   // plano, que los navegadores pueden pausar si la pestaña queda inactiva
@@ -411,7 +411,7 @@ async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '') {
         'apikey':        SUPABASE_KEY,
         'Authorization': `Bearer ${tok}`,
         'Content-Type':  'application/json',
-        'Prefer':        metodo === 'POST' ? 'return=representation' : 'return=minimal'
+        'Prefer':        (metodo === 'POST' && !sinRepresentacion) ? 'return=representation' : 'return=minimal'
       },
       body: cuerpo ? JSON.stringify(cuerpo) : undefined
     };
