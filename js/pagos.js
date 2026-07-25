@@ -156,9 +156,9 @@ async function enrutarAprobacionCxP(idCxp, numeroDoc, montoUsd) {
 
     // Paso 2 -- Nivel 1, subiendo por la cadena de Áreas (id_area_padre)
     if (nivel1) {
-      const areas = await api('param_areas','GET',null,'?select=id_area,id_area_padre');
+      const areas = await api('param_areas','GET',null,'?select=id,id_area_padre');
       const mapaPadres = {};
-      (areas||[]).forEach(function(a){ mapaPadres[a.id_area] = a.id_area_padre; });
+      (areas||[]).forEach(function(a){ mapaPadres[a.id] = a.id_area_padre; });
 
       let areaActual = idAreaCreador;
       const visitadas = new Set();
