@@ -81,7 +81,8 @@ function fmtCreadorCxP(info) {
 }
 
 // ── ENRUTAMIENTO DE APROBACIÓN ──
-// Al crear una Obligación nueva (PENDIENTE), busca automáticamente a quién le
+// Al crear una Obligación nueva (PENDIENTE), llama al RPC del servidor
+// (enrutar_aprobacion_cxp, SECURITY DEFINER) que busca a quién le
 // corresponde aprobarla y le envía la notificación:
 //   1. Busca Nivel 2 (Firma) EN EL ÁREA del creador. Si lo encuentra Y el
 //      monto está dentro de su monto_maximo_aprobacion (o no tiene límite),
@@ -90,105 +91,34 @@ function fmtCreadorCxP(info) {
 //      DIRECTO a Nivel 1 (no sigue buscando otro Nivel 2 en Áreas
 //      superiores) -- busca Nivel 1 en el Área del creador y, si no está,
 //      va subiendo por id_area_padre hasta encontrarlo.
-//   3. Si tampoco hay Nivel 1 en ninguna Área de la cadena (ej. existe en el
-//      organigrama pero no tiene usuario activo en el sistema), notifica a
-//      todos los Administradores como respaldo.
-async function _notificarAprobadorCxP(correoDestino, idCxp, numeroDoc, montoUsd) {
-  try {
-    await api('notificaciones','POST',{
-      correo_destino: correoDestino,
-      titulo: 'Obligación de Pago pendiente de tu aprobación',
-      mensaje: 'La Obligación "' + (numeroDoc || ('#'+idCxp)) + '" por $' + Number(montoUsd||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' quedó pendiente de tu aprobación.',
-      estado: 'PENDIENTE',
-      fecha_creacion: new Date().toISOString(),
-      datos_extra: JSON.stringify({ id_cxp: idCxp, accion: 'aprobar_pago' })
-    }, '', true);
-  } catch(e) { console.warn('Error notificando aprobador:', e); }
-}
-
-async function _notificarFallbackAdmin(idCxp, numeroDoc, montoUsd) {
-  try {
-    const admins = await api('usuarios','GET',null,'?administrador=eq.true&estado_usuario=eq.ACTIVO&select=correo_usuario');
-    console.log('[enrutamiento] administradores activos encontrados:', admins);
-    for (const a of (admins||[])) {
-      await _notificarAprobadorCxP(a.correo_usuario, idCxp, numeroDoc, montoUsd);
-    }
-  } catch(e) { console.warn('Error notificando fallback Administrador:', e); }
-}
-
-// Busca, dentro de un Área puntual, un empleado ACTIVO con el Nivel Jerárquico
-// dado que además tenga el permiso PAGOS.APROBAR asignado.
-async function _buscarAprobadorEnArea(idArea, idNivelJerarquico) {
-  if (!idArea || !idNivelJerarquico) return null;
-  try {
-    const emps = await api('empleados','GET',null,
-      '?id_area=eq.'+idArea+'&id_nivel_jerarquico=eq.'+idNivelJerarquico+'&estatus=eq.ACTIVO&select=correo,nombre_completo');
-    if (!emps || !emps.length) return null;
-    const correos = emps.map(function(e){ return e.correo; }).filter(Boolean);
-    if (!correos.length) return null;
-    const perms = await api('usuarios_permisos','GET',null,
-      '?correo_usuario=in.('+correos.map(encodeURIComponent).join(',')+')&modulo=eq.PAGOS&accion=eq.APROBAR&select=correo_usuario');
-    const conPermiso = new Set((perms||[]).map(function(p){ return p.correo_usuario; }));
-    return emps.find(function(e){ return conPermiso.has(e.correo); }) || null;
-  } catch(e) { console.warn('Error buscando aprobador en Área '+idArea+':', e); return null; }
-}
-
+//   3. Si tampoco hay Nivel 1 en ninguna Área de la cadena, notifica a todos
+//      los Administradores como respaldo.
+// Se hace vía RPC (no consultas directas del cliente) porque requiere leer
+// usuarios/usuarios_permisos de OTRAS personas -- datos sensibles que un
+// Operador normal no debe poder consultar libremente por RLS.
 async function enrutarAprobacionCxP(idCxp, numeroDoc, montoUsd) {
   try {
     const idAreaCreador = await _resolverAreaSesion();
-    console.log('[enrutamiento] área del creador:', idAreaCreador);
-    if (!idAreaCreador) { console.log('[enrutamiento] sin área -> fallback Admin'); await _notificarFallbackAdmin(idCxp, numeroDoc, montoUsd); return; }
-
-    const niveles = await api('param_niveles_jerarquicos','GET',null,'?orden=in.(1,2)&select=id_jerarquicos,orden,monto_maximo_aprobacion');
-    console.log('[enrutamiento] niveles 1/2 encontrados:', niveles);
-    const nivel2 = (niveles||[]).find(function(n){ return n.orden === 2; });
-    const nivel1 = (niveles||[]).find(function(n){ return n.orden === 1; });
-
-    // Paso 1 -- Nivel 2, solo en el Área del creador
-    if (nivel2) {
-      const candNivel2 = await _buscarAprobadorEnArea(idAreaCreador, nivel2.id_jerarquicos);
-      console.log('[enrutamiento] candidato Nivel 2 en área '+idAreaCreador+':', candNivel2);
-      if (candNivel2) {
-        const limite = nivel2.monto_maximo_aprobacion != null ? Number(nivel2.monto_maximo_aprobacion) : null;
-        console.log('[enrutamiento] límite Nivel 2:', limite, '| monto CxP:', montoUsd);
-        if (limite == null || Number(montoUsd) <= limite) {
-          await _notificarAprobadorCxP(candNivel2.correo, idCxp, numeroDoc, montoUsd);
-          console.log('[enrutamiento] notificado Nivel 2:', candNivel2.correo);
-          return;
-        }
-        console.log('[enrutamiento] excede límite de Nivel 2 -> escalar a Nivel 1');
-      }
-    } else {
-      console.log('[enrutamiento] no hay Nivel con orden=2 configurado en param_niveles_jerarquicos');
+    const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/enrutar_aprobacion_cxp', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        p_id_area: idAreaCreador,
+        p_monto: montoUsd,
+        p_id_cxp: idCxp,
+        p_numero_doc: numeroDoc
+      })
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(function(){ return {}; });
+      throw new Error(err.message || 'Error ' + resp.status);
     }
-
-    // Paso 2 -- Nivel 1, subiendo por la cadena de Áreas (id_area_padre)
-    if (nivel1) {
-      const areas = await api('param_areas','GET',null,'?select=id,id_area_padre');
-      const mapaPadres = {};
-      (areas||[]).forEach(function(a){ mapaPadres[a.id] = a.id_area_padre; });
-
-      let areaActual = idAreaCreador;
-      const visitadas = new Set();
-      while (areaActual && !visitadas.has(areaActual)) {
-        visitadas.add(areaActual);
-        const candNivel1 = await _buscarAprobadorEnArea(areaActual, nivel1.id_jerarquicos);
-        console.log('[enrutamiento] candidato Nivel 1 en área '+areaActual+':', candNivel1);
-        if (candNivel1) {
-          await _notificarAprobadorCxP(candNivel1.correo, idCxp, numeroDoc, montoUsd);
-          console.log('[enrutamiento] notificado Nivel 1:', candNivel1.correo);
-          return;
-        }
-        areaActual = mapaPadres[areaActual] || null;
-        console.log('[enrutamiento] subiendo a área padre:', areaActual);
-      }
-    } else {
-      console.log('[enrutamiento] no hay Nivel con orden=1 configurado en param_niveles_jerarquicos');
-    }
-
-    // Paso 3 -- nadie encontrado en toda la cadena -- respaldo Administrador
-    console.log('[enrutamiento] nadie encontrado en toda la cadena -> fallback Admin');
-    await _notificarFallbackAdmin(idCxp, numeroDoc, montoUsd);
+    const data = await resp.json();
+    console.log('[enrutamiento de aprobación]', data);
   } catch(e) { console.warn('Error en enrutamiento de aprobación:', e); }
 }
 
