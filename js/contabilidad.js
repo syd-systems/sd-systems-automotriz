@@ -743,6 +743,9 @@ async function contCargarMayor() {
       }
 
       const renderGrupo = function(lineasG, cInfo) {
+        lineasG = lineasG.slice().sort(function(x, y) {
+          return new Date(x.cont_asientos?.fecha || 0) - new Date(y.cont_asientos?.fecha || 0);
+        });
         const esDeud = cInfo && cInfo.naturaleza === 'DEUDORA';
         let saldo = 0;
         const filas = lineasG.map(function(l) {
@@ -774,6 +777,11 @@ async function contCargarMayor() {
 
       if (!id_cuenta) {
         const cuentaIds = [...new Set(lineasRef.map(function(l){ return l.id_cuenta; }))];
+        cuentaIds.sort(function(a, b) {
+          const ca = contCuentasCache.find(function(c){ return c.id_cuenta === a; });
+          const cb = contCuentasCache.find(function(c){ return c.id_cuenta === b; });
+          return (ca?.codigo || '').localeCompare(cb?.codigo || '', undefined, {numeric:true});
+        });
         let html = '';
         cuentaIds.forEach(function(cid) {
           const lineasG = lineasRef.filter(function(l){ return l.id_cuenta === cid; });
@@ -804,9 +812,16 @@ async function contCargarMayor() {
 
     if (!id_cuenta) {
       const cuentaIds = [...new Set(lineas.map(function(l){ return l.id_cuenta; }))];
+      cuentaIds.sort(function(a, b) {
+        const ca = contCuentasCache.find(function(c){ return c.id_cuenta === a; });
+        const cb = contCuentasCache.find(function(c){ return c.id_cuenta === b; });
+        return (ca?.codigo || '').localeCompare(cb?.codigo || '', undefined, {numeric:true});
+      });
       let html = '';
       cuentaIds.forEach(function(cid) {
-        const lineasCuenta = lineas.filter(function(l){ return l.id_cuenta === cid; });
+        const lineasCuenta = lineas.filter(function(l){ return l.id_cuenta === cid; }).sort(function(x, y) {
+          return new Date(x.cont_asientos?.fecha || 0) - new Date(y.cont_asientos?.fecha || 0);
+        });
         const cInfo = contCuentasCache.find(function(c){ return c.id_cuenta === cid; });
         const esDeud = cInfo && cInfo.naturaleza === 'DEUDORA';
         let saldoCta = 0;
@@ -842,7 +857,10 @@ async function contCargarMayor() {
 
     let saldo = 0;
     const esDeudora = cuenta && cuenta.naturaleza === 'DEUDORA';
-    const filas = lineas.map(function(l) {
+    const lineasOrdenadas = lineas.slice().sort(function(x, y) {
+      return new Date(x.cont_asientos?.fecha || 0) - new Date(y.cont_asientos?.fecha || 0);
+    });
+    const filas = lineasOrdenadas.map(function(l) {
       const debe = getD(l), haber = getH(l);
       saldo += esDeudora ? (debe-haber) : (haber-debe);
       return '<tr>'
