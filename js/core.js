@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723018';
+const SYD_VERSION = '20260723019';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -2256,9 +2256,20 @@ async function renderTasas() {
 
     if (proximaFecha) {
       const eHoy    = proximaFecha === hoyStr;
-      // USD y EUR: Supabase primero, dolarapi como respaldo
-      const _dbPUsd = getTasaDB('USD', proximaFecha);
-      const _dbPEur = getTasaDB('EUR', proximaFecha);
+      // USD y EUR: Supabase primero, dolarapi como respaldo -- aquí se exige
+      // coincidencia EXACTA de fecha_valor (a diferencia de getTasaDB, que
+      // cae de vuelta a la fecha anterior más reciente -- correcto para
+      // "vigente hoy", pero incorrecto aquí: si aún no existe la fila real
+      // de la próxima fecha, NO se debe mostrar la de hoy como si ya
+      // estuviera publicada por el BCV).
+      const getTasaDBExacta = function(moneda, fechaExacta) {
+        const reg = tasasDB.find(function(t) {
+          return t.moneda_origen === moneda && String(t.fecha_valor || '').substring(0, 10) === fechaExacta;
+        });
+        return reg || null;
+      };
+      const _dbPUsd = getTasaDBExacta('USD', proximaFecha);
+      const _dbPEur = getTasaDBExacta('EUR', proximaFecha);
       const pUsd    = _dbPUsd ? parseFloat(_dbPUsd.tipo_cambio) : getValorFecha(histUsd,  proximaFecha);
       const pEur    = _dbPEur ? parseFloat(_dbPEur.tipo_cambio) : getValorFecha(histEur,  proximaFecha);
       const pUsdt   = getValorFecha(histUsdt, proximaFecha);
