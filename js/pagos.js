@@ -109,6 +109,7 @@ async function _notificarAprobadorCxP(correoDestino, idCxp, numeroDoc, montoUsd)
 async function _notificarFallbackAdmin(idCxp, numeroDoc, montoUsd) {
   try {
     const admins = await api('usuarios','GET',null,'?administrador=eq.true&estado_usuario=eq.ACTIVO&select=correo_usuario');
+    console.log('[enrutamiento] administradores activos encontrados:', admins);
     for (const a of (admins||[])) {
       await _notificarAprobadorCxP(a.correo_usuario, idCxp, numeroDoc, montoUsd);
     }
@@ -135,23 +136,30 @@ async function _buscarAprobadorEnArea(idArea, idNivelJerarquico) {
 async function enrutarAprobacionCxP(idCxp, numeroDoc, montoUsd) {
   try {
     const idAreaCreador = await _resolverAreaSesion();
-    if (!idAreaCreador) { await _notificarFallbackAdmin(idCxp, numeroDoc, montoUsd); return; }
+    console.log('[enrutamiento] área del creador:', idAreaCreador);
+    if (!idAreaCreador) { console.log('[enrutamiento] sin área -> fallback Admin'); await _notificarFallbackAdmin(idCxp, numeroDoc, montoUsd); return; }
 
     const niveles = await api('param_niveles_jerarquicos','GET',null,'?orden=in.(1,2)&select=id_jerarquicos,orden,monto_maximo_aprobacion');
+    console.log('[enrutamiento] niveles 1/2 encontrados:', niveles);
     const nivel2 = (niveles||[]).find(function(n){ return n.orden === 2; });
     const nivel1 = (niveles||[]).find(function(n){ return n.orden === 1; });
 
     // Paso 1 -- Nivel 2, solo en el Área del creador
     if (nivel2) {
       const candNivel2 = await _buscarAprobadorEnArea(idAreaCreador, nivel2.id_jerarquicos);
+      console.log('[enrutamiento] candidato Nivel 2 en área '+idAreaCreador+':', candNivel2);
       if (candNivel2) {
         const limite = nivel2.monto_maximo_aprobacion != null ? Number(nivel2.monto_maximo_aprobacion) : null;
+        console.log('[enrutamiento] límite Nivel 2:', limite, '| monto CxP:', montoUsd);
         if (limite == null || Number(montoUsd) <= limite) {
           await _notificarAprobadorCxP(candNivel2.correo, idCxp, numeroDoc, montoUsd);
+          console.log('[enrutamiento] notificado Nivel 2:', candNivel2.correo);
           return;
         }
-        // Excede su límite -- escala directo a Nivel 1, no busca otro Nivel 2
+        console.log('[enrutamiento] excede límite de Nivel 2 -> escalar a Nivel 1');
       }
+    } else {
+      console.log('[enrutamiento] no hay Nivel con orden=2 configurado en param_niveles_jerarquicos');
     }
 
     // Paso 2 -- Nivel 1, subiendo por la cadena de Áreas (id_area_padre)
@@ -165,15 +173,21 @@ async function enrutarAprobacionCxP(idCxp, numeroDoc, montoUsd) {
       while (areaActual && !visitadas.has(areaActual)) {
         visitadas.add(areaActual);
         const candNivel1 = await _buscarAprobadorEnArea(areaActual, nivel1.id_jerarquicos);
+        console.log('[enrutamiento] candidato Nivel 1 en área '+areaActual+':', candNivel1);
         if (candNivel1) {
           await _notificarAprobadorCxP(candNivel1.correo, idCxp, numeroDoc, montoUsd);
+          console.log('[enrutamiento] notificado Nivel 1:', candNivel1.correo);
           return;
         }
         areaActual = mapaPadres[areaActual] || null;
+        console.log('[enrutamiento] subiendo a área padre:', areaActual);
       }
+    } else {
+      console.log('[enrutamiento] no hay Nivel con orden=1 configurado en param_niveles_jerarquicos');
     }
 
     // Paso 3 -- nadie encontrado en toda la cadena -- respaldo Administrador
+    console.log('[enrutamiento] nadie encontrado en toda la cadena -> fallback Admin');
     await _notificarFallbackAdmin(idCxp, numeroDoc, montoUsd);
   } catch(e) { console.warn('Error en enrutamiento de aprobación:', e); }
 }
