@@ -426,8 +426,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     const precioParaMostrar = (m.precio_compra_original !== null && m.precio_compra_original !== undefined)
       ? m.precio_compra_original
       : m.precio_costo_moneda;
-    if (precioEl) precioEl.value = precioParaMostrar
-      ? parseFloat(precioParaMostrar).toFixed(2) : '0.00';
+    if (precioEl) precioEl.value = precioParaMostrar ? fmtBs(precioParaMostrar) : '';
     // Precio Venta
 
     // Transacción (motivo) — inferir si es null en registros anteriores
@@ -654,7 +653,7 @@ async function guardarEdicionMovimiento() {
   }
   if (!cantidad || cantidad <= 0) return mostrarError('La cantidad debe ser mayor a cero.', esSalida ? 'edit-sal-cantidad' : 'edit-mov-cantidad');
   if (tipo === 'ENTRADA') {
-    const precioVal = parseFloat(document.getElementById('edit-mov-precio')?.value) || 0;
+    const precioVal = parseMontoVE(document.getElementById('edit-mov-precio')?.value);
     if (precioVal <= 0)    return mostrarError('Ingrese el Precio Negociación.', 'edit-mov-precio');
     const motivoSel = document.getElementById('edit-mov-motivo')?.value;
     if (!motivoSel)        return mostrarError('Seleccione la Transacción.', 'edit-mov-motivo');
@@ -721,7 +720,8 @@ async function guardarEdicionMovimiento() {
 
     if (tipo === 'ENTRADA') {
       const precioRaw  = document.getElementById('edit-mov-precio').value;
-      const precioNegociado = precioRaw !== '' && !isNaN(precioRaw) ? parseFloat(precioRaw) : null;
+      const precioParseado = parseMontoVE(precioRaw);
+      const precioNegociado = precioRaw !== '' && precioParseado > 0 ? precioParseado : null;
       const exentoEdit  = document.getElementById('edit-mov-exento-iva-val')?.value === 'SI';
       const incluyeEdit = document.getElementById('edit-mov-incluye-iva-val')?.value === 'SI';
       // precioNegociado es el precio TAL COMO se negoció (puede traer IVA
@@ -996,7 +996,7 @@ function calcularCuotasEdit() {
   const numCuotas   = parseInt(document.getElementById('edit-mov-cuotas-num')?.value) || 0;
   const fechaInicio = document.getElementById('edit-mov-cuotas-fecha')?.value || '';
   const intervalo   = parseInt(document.getElementById('edit-mov-cuotas-intervalo')?.value) || 30;
-  const precio      = parseFloat(document.getElementById('edit-mov-precio')?.value) || 0;
+  const precio      = parseMontoVE(document.getElementById('edit-mov-precio')?.value);
   const cantidad    = parseFloat(document.getElementById('edit-mov-cantidad')?.value) || 0;
   const montoCuotaInput = parseFloat(document.getElementById('edit-mov-cuotas-monto')?.value) || 0;
   // precio es el precio NEGOCIADO (puede traer IVA incluido o no, según la
@@ -1763,7 +1763,7 @@ async function onCambiarMonedaEdit() {
 
 function onCambiarPrecioEdit() {
   const moneda   = document.getElementById('edit-mov-moneda')?.value || 'USD';
-  const precio   = parseFloat(document.getElementById('edit-mov-precio')?.value) || 0;
+  const precio   = parseMontoVE(document.getElementById('edit-mov-precio')?.value);
   const cantidad = parseFloat(document.getElementById('edit-mov-cantidad')?.value) || 0;
   const tasa     = parseFloat(document.getElementById('edit-mov-tasa-bcv')?.value) || 0;
   const elMonto  = document.getElementById('edit-mov-monto-total');
@@ -1822,7 +1822,7 @@ function calcularTributosEdit() {
   const prev      = document.getElementById('edit-mov-tributos-preview');
   const moneda    = document.getElementById('edit-mov-moneda')?.value || 'USD';
   const tasa      = parseFloat(document.getElementById('edit-mov-tasa-bcv')?.value) || 0;
-  const precio    = parseFloat(document.getElementById('edit-mov-precio')?.value) || 0;
+  const precio    = parseMontoVE(document.getElementById('edit-mov-precio')?.value);
   const cantidad  = parseFloat(document.getElementById('edit-mov-cantidad')?.value) || 0;
   const montoTotal = precio * cantidad;
   const sim = moneda === 'VES' ? 'Bs.' : '$';

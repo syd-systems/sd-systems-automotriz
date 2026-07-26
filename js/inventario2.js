@@ -553,7 +553,7 @@ async function abrirEntradaStock(id) {
   document.getElementById('es-cantidad').value = '';
   var selMoneda = document.getElementById('es-moneda-compra');
   if (selMoneda) selMoneda.selectedIndex = 0;
-  document.getElementById('es-precio-costo').value = '0,00';
+  document.getElementById('es-precio-costo').value = '';
   var selMotivo = document.getElementById('es-motivo');
   if (selMotivo) selMotivo.selectedIndex = 0;
   var selPago = document.getElementById('es-esquema-pago');
