@@ -1521,7 +1521,17 @@ window.addEventListener('load', async () => {
     }
   }
 });
-  // ─── NAVEGACIÓN ENTRE CAMPOS CON ENTER ───
+  // ─── NAVEGACIÓN ENTRE CAMPOS CON ENTER / SELECCIÓN ───
+  // Un campo se considera "vacío" si no tiene valor (input/textarea) o no
+  // tiene nada seleccionado (select) -- los campos ya autocompletados
+  // (ej. Cuenta de Gasto rellenada automáticamente al elegir Proveedor) se
+  // saltan solos, sin necesidad de que el usuario pase por ellos.
+  function campoEstaVacio(campo) {
+    if (campo.tagName === 'SELECT') return !campo.value;
+    if (campo.type === 'checkbox' || campo.type === 'radio') return !campo.checked;
+    return !String(campo.value || '').trim();
+  }
+
   function nextField(el) {
     try {
       const modal = el.closest('.modal') || el.closest('.modal-body') || document.body;
@@ -1529,9 +1539,12 @@ window.addEventListener('load', async () => {
         'input:not([type=hidden]):not([disabled]):not([readonly]):not([type=button]):not([type=submit]), select:not([disabled]), textarea:not([disabled])'
       )).filter(function(c) { return c.offsetParent !== null; });
       const idx = campos.indexOf(el);
-      if (idx !== -1 && idx < campos.length - 1) {
-        campos[idx + 1].focus();
+      if (idx === -1 || idx >= campos.length - 1) return;
+      // Buscar el próximo campo vacío; si ninguno lo está, caer al inmediato siguiente
+      for (let i = idx + 1; i < campos.length; i++) {
+        if (campoEstaVacio(campos[i])) { campos[i].focus(); return; }
       }
+      campos[idx + 1].focus();
     } catch(e) {}
   }
 
@@ -1539,7 +1552,7 @@ window.addEventListener('load', async () => {
     setTimeout(function() {
       const modal = document.getElementById(modalId);
       if (!modal) return;
-      // Agregar navegación Enter a todos los campos del modal
+      // Agregar navegación con Enter y con selección (change) a todos los campos del modal
       const campos = modal.querySelectorAll(
         'input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=date]):not([type=file]):not([disabled]):not([type=button]):not([type=submit]), select:not([disabled]), textarea:not([disabled])'
       );
@@ -1552,6 +1565,15 @@ window.addEventListener('load', async () => {
               nextField(campo);
             }
           });
+          // Al elegir una opción de un <select> (con mouse o teclado), avanzar
+          // solo -- pequeño delay para que primero corra el onchange propio
+          // del campo (ej. autocompletar Cuenta de Gasto) antes de decidir
+          // a cuál campo saltar.
+          if (campo.tagName === 'SELECT') {
+            campo.addEventListener('change', function() {
+              setTimeout(function(){ nextField(campo); }, 150);
+            });
+          }
         }
       });
       // Focus en el primer campo visible

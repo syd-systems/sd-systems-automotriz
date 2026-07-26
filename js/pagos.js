@@ -489,6 +489,7 @@ async function abrirNuevoPago() {
   if (cuotasPrevEl) cuotasPrevEl.innerHTML = '';
 
   abrirModal('modal-pago');
+  focusFirstField('modal-pago');
   // Posicionar el modal al inicio siempre que se abra -- si quedó scrolleado
   // hacia abajo de un uso anterior, se abría de nuevo en esa misma posición.
   // El elemento que realmente scrollea es .modal (overflow-y:auto), NO
