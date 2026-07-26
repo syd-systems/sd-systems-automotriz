@@ -1523,24 +1523,39 @@ window.addEventListener('load', async () => {
 });
   // ─── NAVEGACIÓN ENTRE CAMPOS CON ENTER / SELECCIÓN ───
   // Un campo se considera "vacío" si no tiene valor (input/textarea) o no
-  // tiene nada seleccionado (select) -- los campos ya autocompletados
-  // (ej. Cuenta de Gasto rellenada automáticamente al elegir Proveedor) se
-  // saltan solos, sin necesidad de que el usuario pase por ellos.
+  // tiene nada seleccionado (select). Usado SOLO para el salto tras elegir
+  // una opción de un <select> -- ej. Cuenta de Gasto autocompletada al
+  // elegir Proveedor se salta sola. Con Enter NO se usa esta lógica, porque
+  // varios campos numéricos traen un valor por defecto (ej. "0.00") que
+  // técnicamente no está "vacío" pero sí necesita que el usuario lo edite.
   function campoEstaVacio(campo) {
     if (campo.tagName === 'SELECT') return !campo.value;
     if (campo.type === 'checkbox' || campo.type === 'radio') return !campo.checked;
     return !String(campo.value || '').trim();
   }
 
+  function getCamposNavegables(el) {
+    const modal = el.closest('.modal') || el.closest('.modal-body') || document.body;
+    return Array.from(modal.querySelectorAll(
+      'input:not([type=hidden]):not([disabled]):not([readonly]):not([type=button]):not([type=submit]), select:not([disabled]), textarea:not([disabled])'
+    )).filter(function(c) { return c.offsetParent !== null; });
+  }
+
+  // Enter -- siempre al campo inmediato siguiente, simple y predecible
   function nextField(el) {
     try {
-      const modal = el.closest('.modal') || el.closest('.modal-body') || document.body;
-      const campos = Array.from(modal.querySelectorAll(
-        'input:not([type=hidden]):not([disabled]):not([readonly]):not([type=button]):not([type=submit]), select:not([disabled]), textarea:not([disabled])'
-      )).filter(function(c) { return c.offsetParent !== null; });
+      const campos = getCamposNavegables(el);
+      const idx = campos.indexOf(el);
+      if (idx !== -1 && idx < campos.length - 1) campos[idx + 1].focus();
+    } catch(e) {}
+  }
+
+  // Selección en un <select> -- saltar los campos ya autocompletados
+  function nextEmptyField(el) {
+    try {
+      const campos = getCamposNavegables(el);
       const idx = campos.indexOf(el);
       if (idx === -1 || idx >= campos.length - 1) return;
-      // Buscar el próximo campo vacío; si ninguno lo está, caer al inmediato siguiente
       for (let i = idx + 1; i < campos.length; i++) {
         if (campoEstaVacio(campos[i])) { campos[i].focus(); return; }
       }
@@ -1565,13 +1580,13 @@ window.addEventListener('load', async () => {
               nextField(campo);
             }
           });
-          // Al elegir una opción de un <select> (con mouse o teclado), avanzar
-          // solo -- pequeño delay para que primero corra el onchange propio
-          // del campo (ej. autocompletar Cuenta de Gasto) antes de decidir
-          // a cuál campo saltar.
+          // Al elegir una opción de un <select> (con mouse o teclado), saltar
+          // al próximo campo VACÍO -- pequeño delay para que primero corra
+          // el onchange propio del campo (ej. autocompletar Cuenta de Gasto)
+          // antes de decidir a cuál campo saltar.
           if (campo.tagName === 'SELECT') {
             campo.addEventListener('change', function() {
-              setTimeout(function(){ nextField(campo); }, 150);
+              setTimeout(function(){ nextEmptyField(campo); }, 150);
             });
           }
         }
