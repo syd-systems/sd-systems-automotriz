@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723028';
+const SYD_VERSION = '20260723029';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -823,6 +823,16 @@ async function iniciarSesion() {
         permisosActuales[p.modulo].push(p.accion);
       });
     } catch(eP) { console.warn('Error cargando permisos al login:', eP); }
+
+    // Reintentar (sin bloquear el login) el enrutamiento de Obligaciones que
+    // se quedaron sin nadie disponible para aprobar -- ahora que esta sesión
+    // está activa, puede que esta persona (u otra que también volvió a
+    // conectarse) sea justo quien hacía falta.
+    fetch(SUPABASE_URL + '/rest/v1/rpc/reintentar_enrutamiento_pendientes', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+      body: '{}'
+    }).then(function(r){ return r.json(); }).then(function(d){ console.log('[reintento de enrutamiento]', d); }).catch(function(e){ console.warn('Error en reintento de enrutamiento:', e); });
 
     // (sesion_activa y token_sesion ya actualizados en el fetch anterior)
 
