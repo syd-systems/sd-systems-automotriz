@@ -652,6 +652,7 @@ function calcularCuotasEntrada() {
   const montoCuotaInput = parseFloat(document.getElementById('es-cuotas-monto')?.value) || 0;
   const montoMaxCuota = parseFloat((totalUSD / numCuotas).toFixed(2));
   const montoCuotaFinal = montoCuotaInput > 0 ? montoCuotaInput : montoMaxCuota;
+  console.log('[debug cuotas 2]', { valorCrudoCampo: document.getElementById('es-cuotas-monto')?.value, montoCuotaInput, montoMaxCuota, montoCuotaFinal, numCuotas, totalUSD });
 
   // Auto-llenar monto si está vacío
   const montoEl = document.getElementById('es-cuotas-monto');
