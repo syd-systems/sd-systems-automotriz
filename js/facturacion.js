@@ -876,11 +876,13 @@ async function cargarEmpresasAccesoModal(correo) {
       } catch(eEmpN) { console.warn('Error obteniendo empresa de nómina:', eEmpN); }
     }
     grid.innerHTML = todasEmisores.map(function(e) {
-      const checked = (!correo || asignadas.has(e.id_empresa)) ? 'checked' : '';
       const esNomina = e.id_empresa === idEmpresaNomina;
-      return '<label style="display:flex;align-items:center;gap:8px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:8px 12px;cursor:pointer;font-size:12px">'
-        + '<input type="checkbox" value="'+e.id_empresa+'" '+checked+' class="emp-acceso-check" style="accent-color:var(--naranja);width:15px;height:15px">'
-        + '<div><div style="font-weight:600">'+e.nombre+(esNomina ? ' <span style="font-size:10px;color:var(--naranja);font-weight:400">(Empresa de Nómina)</span>' : '')+'</div>'
+      const marcada  = esNomina || asignadas.has(e.id_empresa);
+      const checked  = marcada ? 'checked' : '';
+      const disabled = esNomina ? 'disabled' : '';
+      return '<label style="display:flex;align-items:center;gap:8px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:8px 12px;cursor:'+(esNomina?'not-allowed':'pointer')+';font-size:12px"'+(esNomina?' title="Empresa de Nómina -- no se puede quitar"':'')+'>'
+        + '<input type="checkbox" value="'+e.id_empresa+'" '+checked+' '+disabled+' class="emp-acceso-check" style="accent-color:var(--naranja);width:15px;height:15px">'
+        + '<div><div style="font-weight:600">'+e.nombre+(esNomina ? ' <span style="font-size:10px;color:var(--naranja);font-weight:400">🔒 (Empresa de Nómina)</span>' : '')+'</div>'
         + (e.rif ? '<div style="font-size:10px;color:var(--suave)">'+e.rif+'</div>' : '')
         + '</div></label>';
     }).join('');

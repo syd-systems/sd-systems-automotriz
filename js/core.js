@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723024';
+const SYD_VERSION = '20260723025';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -1566,6 +1566,7 @@ async function onSelEmpleadoUsuario() {
   if (nombre) document.getElementById('u-nombre').value = nombre;
   if (correo) {
     document.getElementById('u-correo').value = correo;
+    await cargarEmpresasAccesoModal(correo);
   }
   // Resetear selector después de importar
   sel.value = '';
