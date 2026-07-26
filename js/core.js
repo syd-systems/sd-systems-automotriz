@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723029';
+const SYD_VERSION = '20260723030';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -2571,18 +2571,21 @@ async function notifConfirmar() {
   const btn = document.getElementById('btn-notif-confirmar');
   if (btn) { btn.disabled = true; btn.textContent = 'Confirmando...'; }
   try {
+    const extras = _notifPendienteActual.datos_extra
+      ? (typeof _notifPendienteActual.datos_extra === 'string'
+          ? JSON.parse(_notifPendienteActual.datos_extra)
+          : _notifPendienteActual.datos_extra)
+      : null;
+    const accionNotif = extras && extras.accion || null;
+
     // 1. Marcar notificación como APROBADO
     await api('notificaciones','PATCH',
       { estado: 'APROBADO', fecha_respuesta: new Date().toISOString() },
       '?id=eq.'+_notifPendienteActual.id);
 
-    // 2. Sumar stock al artículo en el inventario del receptor
+    // 2. Sumar stock al artículo en el inventario del receptor (solo aplica
+    // a notificaciones de Recepción de Artículo)
     try {
-      const extras = _notifPendienteActual.datos_extra
-        ? (typeof _notifPendienteActual.datos_extra === 'string'
-            ? JSON.parse(_notifPendienteActual.datos_extra)
-            : _notifPendienteActual.datos_extra)
-        : null;
       if (extras && extras.id_articulo && extras.cantidad) {
         const artRes = await api('inventario_almacen','GET',null,
           '?id_articulo=eq.'+extras.id_articulo+'&select=id_articulo,stock_actual_articulo');
@@ -2598,6 +2601,16 @@ async function notifConfirmar() {
     document.getElementById('modal-notif-pendiente').style.display = 'none';
     _notifPendienteActual = null;
     if (btn) { btn.disabled = false; btn.textContent = btn.dataset.textoOriginal || '✓ Confirmar Recepción'; }
+
+    // 3. Llevar directo al Detalle de la Obligación si es una notificación
+    // de aprobación de Pagos, en vez de solo cerrar el popup
+    if (accionNotif === 'aprobar_pago' && extras && extras.id_cxp) {
+      mostrarModulo('pagos', document.getElementById('nav-PAGOS'));
+      await renderPagos();
+      verDetalleCxP(extras.id_cxp);
+      return;
+    }
+
     // Verificar si hay más notificaciones pendientes
     await verificarNotificacionesPendientes();
   } catch(e) {
