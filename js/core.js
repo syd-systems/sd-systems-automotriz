@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723030';
+const SYD_VERSION = '20260723031';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -2602,12 +2602,10 @@ async function notifConfirmar() {
     _notifPendienteActual = null;
     if (btn) { btn.disabled = false; btn.textContent = btn.dataset.textoOriginal || '✓ Confirmar Recepción'; }
 
-    // 3. Llevar directo al Detalle de la Obligación si es una notificación
-    // de aprobación de Pagos, en vez de solo cerrar el popup
+    // 3. Llevar directo al listado de Cuentas por Pagar si es una
+    // notificación de aprobación de Pagos, en vez de solo cerrar el popup
     if (accionNotif === 'aprobar_pago' && extras && extras.id_cxp) {
       mostrarModulo('pagos', document.getElementById('nav-PAGOS'));
-      await renderPagos();
-      verDetalleCxP(extras.id_cxp);
       return;
     }
 
