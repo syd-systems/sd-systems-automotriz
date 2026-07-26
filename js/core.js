@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723026';
+const SYD_VERSION = '20260723027';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -580,13 +580,13 @@ function mostrarAvisoInactividad() {
 
 async function cerrarSesionInactividad() {
   const correo = sesionActual?.correo_usuario;
-  limpiarSesionLocal();
   try {
     if (correo) await api('usuarios', 'PATCH', {
       sesion_activa: false,
       ultima_desconexion: new Date().toISOString()
     }, `?correo_usuario=eq.${encodeURIComponent(correo)}`);
   } catch(e) { console.error('Error marcando desconexión:', e); }
+  limpiarSesionLocal();
   const errEl = document.getElementById('login-error');
   errEl.textContent = '⏱ Sesión cerrada por inactividad.';
   errEl.style.display = 'block';
@@ -1143,7 +1143,6 @@ function limpiarSesionLocal() {
 async function cerrarSesion() {
   if (!confirm('¿Desea cerrar sesión?')) return;
   const correo = sesionActual?.correo_usuario;
-  limpiarSesionLocal();
   try {
     if (correo) await api('usuarios', 'PATCH', {
       sesion_activa: false,
@@ -1151,6 +1150,7 @@ async function cerrarSesion() {
       ultima_desconexion: new Date().toISOString()
     }, `?correo_usuario=eq.${encodeURIComponent(correo)}`);
   } catch(e) { console.error('Error cerrando sesión:', e); }
+  limpiarSesionLocal();
   // Redirigir a landing page
   window.location.href = 'landing.html';
 }
