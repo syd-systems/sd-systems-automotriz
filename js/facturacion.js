@@ -1123,7 +1123,7 @@ function calcularTributosEntrada() {
 
   // Si exento — no hay IVA, mostrar solo base
   if (exento) {
-    const montoTotal = parseFloat(document.getElementById('es-precio-costo')?.value || 0)
+    const montoTotal = parseMontoVE(document.getElementById('es-precio-costo')?.value)
                      * parseFloat(document.getElementById('es-cantidad')?.value || 0);
     if (!montoTotal) { if (prev) prev.style.display = 'none'; return; }
     const moneda = document.getElementById('es-moneda-compra')?.value || 'USD';
@@ -1143,7 +1143,7 @@ function calcularTributosEntrada() {
   if (!ivaVal) { if (prev) prev.style.display = 'none'; return; }
 
   const incluyeIVA = ivaVal === 'SI';
-  const montoTotal2 = parseFloat(document.getElementById('es-precio-costo')?.value || 0)
+  const montoTotal2 = parseMontoVE(document.getElementById('es-precio-costo')?.value)
                    * parseFloat(document.getElementById('es-cantidad')?.value || 0);
   if (!montoTotal2) { if (prev) prev.style.display = 'none'; return; }
 
@@ -1185,9 +1185,16 @@ function calcularTributosEntrada() {
 }
 
 
+// Parsea un texto en formato venezolano (punto de miles, coma decimal, ej.
+// "1.234,56") a un número JS normal. Devuelve 0 si no es un número válido.
+function parseMontoVE(texto) {
+  const raw = String(texto || '').replace(/\./g,'').replace(',','.');
+  return parseFloat(raw) || 0;
+}
+
 function onCambiarPrecioEntrada() {
   const moneda   = document.getElementById('es-moneda-compra')?.value || 'USD';
-  const precio   = parseFloat(document.getElementById('es-precio-costo')?.value) || 0;
+  const precio   = parseMontoVE(document.getElementById('es-precio-costo')?.value);
   const cantidad = parseFloat(document.getElementById('es-cantidad')?.value) || 0;
   const tasa     = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
   const elCalc   = document.getElementById('es-precio-usd-calc');

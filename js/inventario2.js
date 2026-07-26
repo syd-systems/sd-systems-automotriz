@@ -553,7 +553,7 @@ async function abrirEntradaStock(id) {
   document.getElementById('es-cantidad').value = '';
   var selMoneda = document.getElementById('es-moneda-compra');
   if (selMoneda) selMoneda.selectedIndex = 0;
-  document.getElementById('es-precio-costo').value = '0.00';
+  document.getElementById('es-precio-costo').value = '0,00';
   var selMotivo = document.getElementById('es-motivo');
   if (selMotivo) selMotivo.selectedIndex = 0;
   var selPago = document.getElementById('es-esquema-pago');
@@ -631,7 +631,7 @@ function calcularCuotasEntrada() {
   const numCuotas  = parseInt(document.getElementById('es-cuotas-num')?.value) || 0;
   const fechaInicio = document.getElementById('es-cuotas-fecha-inicio')?.value || '';
   const intervalo  = parseInt(document.getElementById('es-cuotas-intervalo')?.value) || 30;
-  const montoTotal = parseFloat(document.getElementById('es-precio-costo')?.value || document.getElementById('es-precio-usd-calc')?.value) || 0;
+  const montoTotal = parseMontoVE(document.getElementById('es-precio-costo')?.value) || parseMontoVE(document.getElementById('es-precio-usd-calc')?.value);
   const cantidad   = parseFloat(document.getElementById('es-cantidad')?.value) || 0;
   // montoTotal es el precio NEGOCIADO (puede traer IVA incluido o no) —
   // reconstruir el TOTAL con IVA correctamente antes de repartir en cuotas
@@ -753,7 +753,7 @@ async function guardarEntradaStock() {
   const monedaSel = document.getElementById('es-moneda-compra')?.value;
   if (!monedaSel)                   return mostrarError('Seleccione la Moneda Negociación.', 'es-moneda-compra');
   if (cantidad <= 0)                return mostrarError('Ingrese una cantidad mayor a 0.', 'es-cantidad');
-  const precioVal = parseFloat(document.getElementById('es-precio-costo')?.value) || 0;
+  const precioVal = parseMontoVE(document.getElementById('es-precio-costo')?.value);
   if (precioVal <= 0)               return mostrarError('Ingrese el Precio Negociación.', 'es-precio-costo');
   // Precio Venta — opcional, no se valida
   const motivoSel = document.getElementById('es-motivo')?.value;
@@ -790,13 +790,13 @@ async function guardarEntradaStock() {
 
   try {
     const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
-    const precioIngresado  = parseFloat(document.getElementById('es-precio-costo').value) || 0;
+    const precioIngresado  = parseMontoVE(document.getElementById('es-precio-costo').value);
     const monedaCompra     = document.getElementById('es-moneda-compra')?.value || 'USD';
     const tasaBCVVal       = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
     const incluyeIVA_ent = document.getElementById('es-incluye-iva-val')?.value === 'SI' || false;
     const IVA_RATE_ENT   = tasaIVAActual();
     const nuevoPrecioCostoRaw = monedaCompra === 'VES'
-      ? (tasaBCVVal > 0 ? parseFloat((precioIngresado / tasaBCVVal).toFixed(4)) : (parseFloat(document.getElementById('es-precio-usd-calc')?.value) || 0))
+      ? (tasaBCVVal > 0 ? parseFloat((precioIngresado / tasaBCVVal).toFixed(4)) : parseMontoVE(document.getElementById('es-precio-usd-calc')?.value))
       : precioIngresado;
     // Si incluye IVA — precio costo = base sin IVA
     const nuevoPrecioCosto = incluyeIVA_ent
