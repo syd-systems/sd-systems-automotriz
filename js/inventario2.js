@@ -639,6 +639,7 @@ function calcularCuotasEntrada() {
   const incluyeCuotasEnt = document.getElementById('es-incluye-iva-val')?.value === 'SI';
   const montoBaseEnt = montoTotal * cantidad;
   const totalUSD   = parseFloat((exentoCuotasEnt || incluyeCuotasEnt ? montoBaseEnt : montoBaseEnt * (1+tasaIVAActual())).toFixed(2));
+  console.log('[debug cuotas]', { montoTotal, cantidad, montoBaseEnt, tasaIVA: tasaIVAActual(), exentoCuotasEnt, incluyeCuotasEnt, totalUSD });
   const preview    = document.getElementById('es-cuotas-preview');
   if (!preview) return;
 
