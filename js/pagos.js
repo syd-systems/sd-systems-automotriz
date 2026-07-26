@@ -110,7 +110,8 @@ async function enrutarAprobacionCxP(idCxp, numeroDoc, montoUsd) {
         p_id_area: idAreaCreador,
         p_monto: montoUsd,
         p_id_cxp: idCxp,
-        p_numero_doc: numeroDoc
+        p_numero_doc: numeroDoc,
+        p_correo_creador: sesionActual?.correo_usuario || null
       })
     });
     if (!resp.ok) {
