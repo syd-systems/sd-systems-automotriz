@@ -5,28 +5,7 @@
 //  MÓDULO DE PAGOS
 // ══════════════════════════════════════════════════════════════
 
-var pagosCache = [];
 var _pagoEditando = null;
-
-const TIPOS_PAGO = [
-  { value: 'NOMINA',          label: '👷 Nómina',          cuentaGasto: '6.1.01.001' },
-  { value: 'PROVEEDOR',       label: '🏭 Proveedor',        cuentaGasto: '2.1.01.001' },
-  { value: 'SERVICIO_BASICO', label: '💡 Servicio Básico',  cuentaGasto: '6.1.02.002' },
-  { value: 'ALQUILER',        label: '🏠 Alquiler',         cuentaGasto: '6.1.02.001' },
-  { value: 'SUSCRIPCION',     label: '📱 Suscripción',      cuentaGasto: '6.1.02.003' },
-  { value: 'IMPUESTO',        label: '📋 Impuesto/Tributo', cuentaGasto: '6.1.04.001' },
-  { value: 'OTRO',            label: '💰 Otro',             cuentaGasto: null },
-];
-
-const METODOS_PAGO_PAGOS = [
-  { value: 'EFECTIVO_VES',      label: 'Efectivo Bs',        cuenta: '1.1.01.001' },
-  { value: 'EFECTIVO_USD',      label: 'Efectivo USD',       cuenta: '1.1.01.002' },
-  { value: 'TRANSFERENCIA_VES', label: 'Transferencia Bs',   cuenta: '1.1.01.003' },
-  { value: 'TRANSFERENCIA_USD', label: 'Transferencia USD',  cuenta: '1.1.01.004' },
-  { value: 'PAGO_MOVIL',        label: 'Pago Móvil',         cuenta: '1.1.01.003' },
-  { value: 'ZELLE',             label: 'Zelle',              cuenta: '1.1.01.004' },
-  { value: 'DIVISAS',           label: 'Divisas',            cuenta: '1.1.01.005' },
-];
 
 async function renderPagos() {
   if (!sesionActual?.administrador && !modulosAcceso.includes('PAGOS')) {
@@ -186,29 +165,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     }
   } catch(e) {}
 
-  const pagos = [];
   const cxps = await api('cont_cxp','GET',null,'?id_empresa=eq.'+id_emisor+'&order=numero_doc.asc&select=*,proveedores:id_proveedor(nombre,id_categoria)');
-  pagosCache = pagos || [];
-
-  // ── Normalizar en un solo formato unificado ──
-  const estadoMapPagos = { BORRADOR:'PENDIENTE', APROBADO:'PENDIENTE', PAGADO:'PAGADA', ANULADO:'ANULADA', EJECUTADO:'PAGADA' };
-
-  const itemsPagos = (pagos||[]).map(function(p) {
-    return {
-      _src:        'pago',
-      _id:         p.id_pago,
-      numero:      p.numero_pago || '—',
-      beneficiario: p.nombre_beneficiario || '—',
-      fecha:       p.fecha_pago || p.fecha_registro || '',
-      tipo:        (p.tipo_pago || '').replace(/_/g,' '),
-      origen:      'Manual',
-      monto_usd:   parseFloat(p.monto_usd || 0),
-      pagado_usd:  parseFloat(p.monto_pagado_usd || 0),
-      saldo_usd:   parseFloat(p.saldo_usd || p.monto_usd || 0),
-      estado:      estadoMapPagos[p.estado] || p.estado || 'PENDIENTE',
-      _raw:        p
-    };
-  });
 
   // Calcular total cuotas por prefijo para display
   const cxpMap = {};
@@ -248,14 +205,12 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     };
   });
 
-  // ── Unificar y ordenar por fecha desc ──
-  let todos = itemsPagos.concat(
-    fCategoria
-      ? itemsCxP.filter(function(item){
-          return String(item._raw?.proveedores?.id_categoria||'') === String(fCategoria);
-        })
-      : itemsCxP
-  );
+  // ── Ordenar por fecha desc ──
+  let todos = fCategoria
+    ? itemsCxP.filter(function(item){
+        return String(item._raw?.proveedores?.id_categoria||'') === String(fCategoria);
+      })
+    : itemsCxP.slice();
   todos.sort(function(a,b){ return (a.fecha||'').localeCompare(b.fecha||''); });
 
   // ── Filtrar ──
@@ -538,62 +493,6 @@ function onCambioMontoPago() {
   equiv.textContent = '≡ ' + fmtBs(monto * tasa) + ' Bs';
 }
 
-
-async function abrirFichaPago(id) {
-  const p = pagosCache.find(function(x){ return x.id_pago === id; });
-  if (!p) return;
-  if (!window._nombresUsuarios) {
-    window._nombresUsuarios = {};
-    try {
-      const users = await api('usuarios','GET',null,'?select=correo_usuario,nombre');
-      users.forEach(function(u){ _nombresUsuarios[u.correo_usuario] = u.nombre; });
-    } catch(e) {}
-  }
-  const tipo = TIPOS_PAGO.find(function(t){ return t.value === p.tipo_pago; });
-  const metodo = METODOS_PAGO_PAGOS.find(function(m){ return m.value === p.metodo_pago; });
-  const estadoColor = { BORRADOR:'var(--suave)', APROBADO:'var(--naranja)', PAGADO:'#22c55e', ANULADO:'#fc8181' };
-
-  // Botones de acción según estado
-  const idp = p.id_pago;
-  const btnEditar  = (p.estado==='BORRADOR' && puedo('PAGOS','EDITAR'))
-    ? '<button class="btn-secundario" onclick="cerrarModal(&#39;modal-ficha-pago&#39;);abrirEditarPago('+idp+')">✏ Editar</button>' : '';
-  const btnAprobar = (p.estado==='BORRADOR' && puedo('PAGOS','APROBAR'))
-    ? '<button class="btn-primario" onclick="aprobarPagoFicha('+idp+')">✓ Aprobar</button>' : '';
-  const btnPagar   = (p.estado==='APROBADO' && puedo('PAGOS','PAGAR'))
-    ? '<button class="btn-primario" style="background:#22c55e;border-color:#22c55e;color:#fff" onclick="cerrarModal(&#39;modal-ficha-pago&#39;);ejecutarPago('+idp+')">💳 Pagar</button>' : '';
-  const btnAnular  = (p.estado!=='ANULADO' && p.estado!=='PAGADO' && puedo('PAGOS','ANULAR'))
-    ? '<button class="btn-secundario" style="color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="anularPagoFicha('+idp+')">Anular</button>' : '';
-  const botonesAccion = btnEditar + btnAprobar + btnPagar + btnAnular;
-
-  document.getElementById('ficha-pago-cont').innerHTML =
-    '<div style="padding:24px">' +
-    '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">' +
-    '<div>' +
-    '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + (p.numero_pago||'—') + '</div>' +
-    '<div style="font-size:13px;color:var(--suave);margin-top:4px">' + (tipo ? tipo.label : p.tipo_pago) + '</div>' +
-    '</div>' +
-    '<span style="font-size:14px;font-weight:700;color:'+estadoColor[p.estado]+'">● '+p.estado+'</span>' +
-    '</div>' +
-    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px">' +
-    '<div><div style="font-size:10px;color:var(--suave)">DESCRIPCIÓN</div><div>'+p.descripcion+'</div></div>' +
-    '<div><div style="font-size:10px;color:var(--suave)">BENEFICIARIO</div><div>'+(p.nombre_beneficiario||'—')+'</div></div>' +
-    '<div><div style="font-size:10px;color:var(--suave)">MONTO BS</div><div style="font-family:var(--font-mono);color:var(--naranja)">'+(p.monto_ves?'Bs '+fmtVES(p.monto_ves):'—')+'</div></div>' +
-    '<div><div style="font-size:10px;color:var(--suave)">MONTO USD</div><div style="font-family:var(--font-mono)">'+(p.monto_usd?'$ '+fmtUSD(p.monto_usd):'—')+'</div></div>' +
-    '<div><div style="font-size:10px;color:var(--suave)">MÉTODO</div><div>'+(metodo?metodo.label:(p.metodo_pago||'—'))+'</div></div>' +
-    '<div><div style="font-size:10px;color:var(--suave)">CANCELADO</div><div>'+(p.fecha_pago?fmtFecha(p.fecha_pago):'—')+'</div></div>' +
-    '<div><div style="font-size:10px;color:var(--suave)">VENCIMIENTO</div><div>'+(p.fecha_vencimiento?fmtFecha(p.fecha_vencimiento):'—')+'</div></div>' +
-    '<div><div style="font-size:10px;color:var(--suave)">RECURRENTE</div><div>'+(p.es_recurrente?'Sí — '+p.frecuencia+(p.fecha_proxima?' (próximo: '+fmtFecha(p.fecha_proxima)+')':''):'No')+'</div></div>' +
-    (p.referencia ? '<div><div style="font-size:10px;color:var(--suave)">REFERENCIA</div><div>'+p.referencia+'</div></div>' : '') +
-    (p.observaciones ? '<div style="grid-column:1/-1"><div style="font-size:10px;color:var(--suave)">OBSERVACIONES</div><div>'+p.observaciones+'</div></div>' : '') +
-    (p.aprobado_por ? '<div><div style="font-size:10px;color:var(--suave)">APROBADO POR</div><div>'+(_nombresUsuarios[p.aprobado_por]||p.aprobado_por)+'</div></div>' : '') +
-    '</div></div>';
-
-  // Actualizar footer con botones de acción
-  const footer = document.querySelector('#modal-ficha-pago .modal-footer');
-  if (footer) footer.innerHTML = botonesAccion + '<button class="btn-secundario" onclick="cerrarModal(&#39;modal-ficha-pago&#39;)">Retornar</button>';
-
-  abrirModal('modal-ficha-pago');
-}
 
 function inputStyle() {
   return 'background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none';
