@@ -264,8 +264,10 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     if (item._src === 'cxp') {
       const btnVerPend = '<button onclick="verCxPPendiente('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
       const btnVerPag  = '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
-      const btnAprobar  = puedo('PAGOS','APROBAR') ? '<button onclick="aprobarPagoCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">✅ Aprobar</button>' : '';
-      const btnRechazar = puedo('PAGOS','RECHAZAR') ? '<button onclick="rechazarPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">❌ Rechazar</button>' : '';
+      const fechaVencAccion = item._raw?.fecha_vencimiento || '';
+      const yaVenceAccion   = !fechaVencAccion || fechaVencAccion <= getHoyVzla();
+      const btnAprobar  = (puedo('PAGOS','APROBAR') && yaVenceAccion) ? '<button onclick="aprobarPagoCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">✅ Aprobar</button>' : '';
+      const btnRechazar = (puedo('PAGOS','RECHAZAR') && yaVenceAccion) ? '<button onclick="rechazarPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">❌ Rechazar</button>' : '';
       const btnRegistrarPagoLista = (puedo('PAGOS','PAGAR') || sesionActual?.administrador) ? '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💸 Registrar Pago</button>' : '';
       if (est === 'PENDIENTE' || est === 'RECHAZADA') acciones = btnVerPend + (btnAprobar ? ' '+btnAprobar : '') + (btnRechazar ? ' '+btnRechazar : '');
       else if (est === 'APROBADA') acciones = btnVerPag + (btnRegistrarPagoLista ? ' '+btnRegistrarPagoLista : '');
@@ -3368,8 +3370,13 @@ async function aprobarPagoCxP(id_cxp) {
   if (!puedo('PAGOS','APROBAR')) { alert('Sin permiso para aprobar.'); return; }
   if (!(await tieneNivelMinimo(2))) { alert('Esta acción requiere Firma de Aprobación Nivel 1 o Nivel 2.'); return; }
   try {
-    const rowsChk = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=monto_usd');
+    const rowsChk = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=monto_usd,fecha_vencimiento');
     const montoCxP = rowsChk && rowsChk[0] ? Number(rowsChk[0].monto_usd) : null;
+    const fechaVencChk = rowsChk && rowsChk[0] ? rowsChk[0].fecha_vencimiento : null;
+    if (fechaVencChk && fechaVencChk > getHoyVzla()) {
+      alert('Esta Obligación vence el ' + fmtFecha(fechaVencChk) + ' -- todavía no se puede aprobar, se habilitará automáticamente en esa fecha.');
+      return;
+    }
     const montoMax = await _resolverMontoMaxAprobacionSesion();
     if (montoMax != null && montoCxP != null && montoCxP > montoMax) {
       alert('Esta Obligación ($' + montoCxP.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ') supera el monto máximo que su Nivel de Firma puede aprobar ($' + montoMax.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '). Debe ser aprobada por un Nivel de Firma superior.');
@@ -3414,6 +3421,14 @@ async function aprobarPagoCxP(id_cxp) {
 async function rechazarPagoCxP(id_cxp) {
   if (!puedo('PAGOS','RECHAZAR')) { alert('Sin permiso para rechazar.'); return; }
   if (!(await tieneNivelMinimo(2))) { alert('Esta acción requiere Firma de Aprobación Nivel 1 o Nivel 2.'); return; }
+  try {
+    const rowsChkR = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=fecha_vencimiento');
+    const fechaVencChkR = rowsChkR && rowsChkR[0] ? rowsChkR[0].fecha_vencimiento : null;
+    if (fechaVencChkR && fechaVencChkR > getHoyVzla()) {
+      alert('Esta Obligación vence el ' + fmtFecha(fechaVencChkR) + ' -- todavía no se puede rechazar, se habilitará automáticamente en esa fecha.');
+      return;
+    }
+  } catch(eChkR) { console.warn('Error validando fecha de vencimiento:', eChkR); }
 
   const motivo = await new Promise(function(resolve) {
     const div = document.createElement('div');

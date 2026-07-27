@@ -806,6 +806,7 @@ async function guardarEntradaStock() {
     const nuevoPrecioCostoRaw = monedaCompra === 'VES'
       ? (tasaBCVVal > 0 ? parseFloat((precioIngresado / tasaBCVVal).toFixed(4)) : parseMontoVE(document.getElementById('es-precio-usd-calc')?.value))
       : precioIngresado;
+    console.log('[debug conversion]', { precioIngresado, monedaCompra, tasaBCVVal, nuevoPrecioCostoRaw, cantidad });
     // Si incluye IVA — precio costo = base sin IVA
     const nuevoPrecioCosto = incluyeIVA_ent
       ? parseFloat((nuevoPrecioCostoRaw / (1 + IVA_RATE_ENT)).toFixed(4))
@@ -994,6 +995,7 @@ async function guardarEntradaStock() {
     const montoTotalConIVA = exentoIVAEnt2
       ? parseFloat((nuevoPrecioCostoRaw * cantidad).toFixed(2))
       : parseFloat((nuevoPrecioCostoRaw * cantidad * (incluyeIVA_ent ? 1 : (1 + IVA_RATE_ENT))).toFixed(2));
+    console.log('[debug montoTotalConIVA]', { nuevoPrecioCostoRaw, cantidad, exentoIVAEnt2, incluyeIVA_ent, IVA_RATE_ENT, montoTotalConIVA, tasa_bcv_usada });
 
     // Transferencias de otros articulos (Mercancias) NO generan asiento aqui
     if (motivoEnt !== "transferencia") try {
@@ -1073,6 +1075,7 @@ async function guardarEntradaStock() {
           const cuotas  = preview?.dataset.cuotas ? JSON.parse(preview.dataset.cuotas) : [];
           if (!cuotas.length) throw new Error('No se calcularon las cuotas. Complete los campos de crédito.');
           const totalVesCuotas = parseFloat((montoTotalConIVA * (tasa_bcv_usada || 1)).toFixed(2));
+          console.log('[debug totalVesCuotas]', { montoTotalConIVA, tasa_bcv_usada, totalVesCuotas, numCuotasArr: cuotas.length, sumaCuotasUSD: cuotas.reduce(function(s,x){return s+x.monto;},0) });
           let acumVesCuotas = 0;
           for (let i = 0; i < cuotas.length; i++) {
             const c = cuotas[i];
@@ -1083,6 +1086,7 @@ async function guardarEntradaStock() {
               ? parseFloat((totalVesCuotas - acumVesCuotas).toFixed(2))
               : parseFloat((c.monto * (tasa_bcv_usada || 1)).toFixed(2));
             acumVesCuotas = parseFloat((acumVesCuotas + montoVesCuota).toFixed(2));
+            console.log('[debug cuota '+i+']', { montoUSD: c.monto, montoVesCuota, acumVesCuotas, esUltimaCuota });
             const cxpCuotaCreada = await api('cont_cxp','POST',{
               id_proveedor:     id_proveedor,
               id_empresa:       _empresaActiva?.id_empresa || null,
