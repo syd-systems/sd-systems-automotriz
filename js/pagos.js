@@ -3224,11 +3224,14 @@ async function _verCxPAutomatica(c, id_cxp) {
     creditoCont.style.display = 'none';
   }
 
-  // Mostrar botón PAGAR solo si está PENDIENTE o PARCIAL y tiene permiso
+  // Mostrar botón PAGAR solo si ya fue APROBADA (o PARCIAL, para completar
+  // un pago ya iniciado) y tiene permiso -- igual que el mundo manual, que
+  // exige aprobación previa antes de poder pagar (PENDIENTE ya NO permite
+  // pagar directo, para no saltarse el control de aprobación)
   const btnPagar = document.getElementById('cxp-auto-btn-pagar');
   if (btnPagar) {
     const tienePerm = sesionActual?.administrador || puedo('PAGOS','PAGAR');
-    const estadoOK  = c.estado === 'PENDIENTE' || c.estado === 'PARCIAL';
+    const estadoOK  = c.estado === 'APROBADA' || c.estado === 'PARCIAL';
     const puedePagar = estadoOK && tienePerm;
     btnPagar.style.display = puedePagar ? '' : 'none';
   }
