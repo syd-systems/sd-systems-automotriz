@@ -102,7 +102,9 @@ async function recargarHistorial(id_articulo) {
               ? '<div>' + (m.area_receptora ? m.area_receptora.nombre + (m.area_receptora.codigo ? ' (' + m.area_receptora.codigo + ')' : '') : '—') + '</div>'
                 + (m.area_origen ? '<div style="font-size:11px;color:#60a5fa">↩ Origen: ' + m.area_origen.nombre + (m.area_origen.codigo ? ' (' + m.area_origen.codigo + ')' : '') + '</div>' : '')
                 + (m.proveedores ? '<div style="font-size:11px;color:#a78bfa">🏭 ' + m.proveedores.nombre + '</div>' : '')
-                + (m.precio_costo_moneda ? '<div style="font-size:11px;color:var(--suave)">$ ' + fmtUSD(m.precio_costo_moneda) + ' / u</div>' : '')
+                + ((m.precio_compra_original ?? m.precio_costo_moneda)
+                    ? '<div style="font-size:11px;color:var(--suave)">' + (m.moneda_compra === 'VES' ? 'Bs. ' + fmtBs(m.precio_compra_original ?? m.precio_costo_moneda) : '$ ' + fmtUSD(m.precio_compra_original ?? m.precio_costo_moneda)) + ' / u</div>'
+                    : '')
               : '<div>' + area + '</div>')
             + ((esEntrada ? m.empleado_recibe : m.empleado_recibe) ? '<div style="font-size:11px;color:#60a5fa">👤 Recibe: ' + (m.empleado_recibe?.nombre_completo||'') + '</div>' : '')
             + ((!esEntrada && m.empleado_entrega) ? '<div style="font-size:11px;color:#fb923c">👤 Entrega: ' + m.empleado_entrega.nombre_completo + '</div>' : '')

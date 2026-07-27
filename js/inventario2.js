@@ -288,7 +288,7 @@ function invRenderTabla(items, cont) {
       + (puedo('INVENTARIO','VER_COSTOS')
           ? '<td style="font-family:var(--font-mono);font-size:12px">'
             + '<div style="color:var(--suave);font-size:9px;letter-spacing:1px">COSTO PROM. (CPP)</div>'
-            + '<div>$ ' + (parseInt(r.stock_actual_articulo) === 0 ? '0.00' : fmtUSD(r.precio_costo_moneda)) + '</div>'
+            + '<div>$ ' + fmtUSD(parseInt(r.stock_actual_articulo) === 0 ? 0 : r.precio_costo_moneda) + '</div>'
             + (r.precio_costo_ultimo_moneda
                 ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Última compra: $ ' + fmtUSD(r.precio_costo_ultimo_moneda) + '</div>'
                 : '')
