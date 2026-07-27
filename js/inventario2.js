@@ -886,6 +886,7 @@ async function guardarEntradaStock() {
         ? ((stockActual * costoActual) + (cantidad * nuevoPrecioCosto)) / nuevoStock
         : nuevoPrecioCosto;
     }
+    console.log('[debug CPP]', { stockActual, costoActual, cantidad, nuevoPrecioCosto, nuevoPrecioCostoRaw, incluyeIVA_ent, IVA_RATE_ENT, nuevoStock, cpp, id_articulo: id });
 
     // ── FASE 3: Registrar entrada en historial ──
     const id_areaEnt  = parseInt(id_areaEntVal) || null;
