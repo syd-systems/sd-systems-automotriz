@@ -1022,14 +1022,15 @@ async function guardarEntradaStock() {
         // montoTotalConIVA ya es el TOTAL (con IVA incluido si no es exento);
         // se le pide a generarAsientoInventario que lo desgloce (base = total/1.16)
         incluyeIVA:  true,
-        exentoIVA:   exentoIVAEnt2,
-        // Base EXACTA = el mismo CPP ya redondeado (cpp) que se acaba de
-        // guardar en inventario_almacen.precio_costo_moneda y que usará la
-        // SALIDA más adelante — así Entrada y Salida coinciden centavo a
-        // centavo cuando se agote el stock, sin depender solo del ajuste
-        // automático por redondeo
-        baseExactaUSD: cpp > 0 ? parseFloat((cantidad * cpp).toFixed(4)) : null,
-        baseExactaBs:  (cpp > 0 && tasa_bcv_usada) ? parseFloat((cantidad * cpp * tasa_bcv_usada).toFixed(2)) : null
+        exentoIVA:   exentoIVAEnt2
+        // NOTA: ya NO se pasa baseExactaUSD/baseExactaBs con el CPP mezclado.
+        // El asiento de la Compra debe reflejar SIEMPRE el monto real de esta
+        // factura (Base/IVA/Total tal como se ve en Tributos) -- la Cuenta
+        // por Pagar y el Crédito Fiscal de IVA deben coincidir exacto con lo
+        // facturado por el proveedor, sin mezclarse con el costo promedio de
+        // compras anteriores. El posible residuo de redondeo que esto genera
+        // en la cuenta de Inventario se resuelve con un asiento de ajuste
+        // automático cuando el stock del artículo llegue a 0.
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
 
