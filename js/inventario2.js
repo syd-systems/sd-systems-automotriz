@@ -559,6 +559,8 @@ async function abrirEntradaStock(id) {
   var selPago = document.getElementById('es-esquema-pago');
   if (selPago) selPago.selectedIndex = 0;
   if (document.getElementById('es-fecha-negociacion')) document.getElementById('es-fecha-negociacion').value = getHoyVzla();
+  if (document.getElementById('es-fecha-pago')) document.getElementById('es-fecha-pago').value = '';
+  if (document.getElementById('es-fecha-pago-cont')) document.getElementById('es-fecha-pago-cont').style.display = 'none';
   const refCPP = document.getElementById('es-ref-cpp');
   if (refCPP) refCPP.textContent = '$ ' + fmtUSD(r.precio_costo_moneda) + ' (CPP actual)';
   document.getElementById('alerta-es-ok').style.display = 'none';
@@ -624,6 +626,8 @@ function onCambioEsquemaPago() {
   const esquema = document.getElementById('es-esquema-pago')?.value;
   const cont    = document.getElementById('es-credito-cont');
   if (cont) cont.style.display = esquema === 'CREDITO' ? '' : 'none';
+  const fechaPagoCont = document.getElementById('es-fecha-pago-cont');
+  if (fechaPagoCont) fechaPagoCont.style.display = esquema === 'CONTADO' ? '' : 'none';
   if (esquema === 'CREDITO') calcularCuotasEntrada();
 }
 
@@ -779,6 +783,10 @@ async function guardarEntradaStock() {
   }
   const pagoDSel  = document.getElementById('es-esquema-pago')?.value;
   if (!pagoDSel) return mostrarError('Seleccione la Modalidad de Pago.', 'es-esquema-pago');
+  if (pagoDSel === 'CONTADO' && motivoSel === 'compra') {
+    const fechaPagoVal = document.getElementById('es-fecha-pago')?.value || '';
+    if (!fechaPagoVal) return mostrarError('Ingrese la Fecha de Pago.', 'es-fecha-pago');
+  }
   if (pagoDSel === 'CREDITO') {
     const numCuotasVal  = parseInt(document.getElementById('es-cuotas-num')?.value) || 0;
     const fechaCuotaVal = document.getElementById('es-cuotas-fecha-inicio')?.value || '';
@@ -1032,6 +1040,7 @@ async function guardarEntradaStock() {
         const fechaNegCxP = document.getElementById('es-fecha-negociacion')?.value || getHoyVzla();
 
         if (esquema === 'CONTADO') {
+          const fechaPagoCxP = document.getElementById('es-fecha-pago')?.value || fechaNegCxP;
           // Una sola CxP — contado
           const cxpCreada = await api('cont_cxp','POST',{
             id_proveedor:    id_proveedor,
@@ -1040,7 +1049,7 @@ async function guardarEntradaStock() {
             tipo:            'COMPRA_ARTICULO',
             numero_doc:      numDocBase,
             fecha_emision:   fechaNegCxP,
-            fecha_vencimiento: fechaNegCxP,
+            fecha_vencimiento: fechaPagoCxP,
             moneda_pago:     monedaCompra || 'USD',
             estado:          'PENDIENTE',
             monto_usd:       montoUSD,
