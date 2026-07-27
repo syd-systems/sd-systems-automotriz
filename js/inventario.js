@@ -775,21 +775,34 @@ async function guardarEdicionMovimiento() {
       // ── PATCH a stock_entradas ──
       await api('stock_entradas', 'PATCH', datos, '?id_entrada=eq.' + id);
 
-      // ── Recalcular stock y CPP en inventario_almacen ──
+      // ── Recalcular el CPP del artículo desde CERO, reproduciendo toda su
+      // historia de Entradas en orden cronológico (con el precio YA
+      // corregido de esta que se acaba de editar). No se puede "restar" la
+      // contribución de esta transacción del CPP actual, porque el CPP
+      // actual YA incluye esa contribución original (posiblemente
+      // equivocada) -- sería una referencia circular. El Stock final sí se
+      // puede calcular directo: total de Entradas menos total de Salidas.
       let cppEditado = null;
       if (art) {
-        const stockActual = parseFloat(art.stock_actual_articulo) || 0;
-        const nuevoStock  = Math.max(0, parseFloat((stockActual - cantOriginal + cantidad).toFixed(4)));
-        const patchInv    = { stock_actual_articulo: nuevoStock };
-
-        if (precio !== null && !isNaN(precio)) {
-          const stockPrevio = Math.max(0, stockActual - cantOriginal);
-          const valorPrevio = stockPrevio > 0 ? stockPrevio * (parseFloat(art.precio_costo_moneda) || 0) : 0;
-          const cpp         = nuevoStock > 0 ? (valorPrevio + cantidad * precio) / nuevoStock : precio;
-          cppEditado = parseFloat(cpp.toFixed(4));
-          patchInv.precio_costo_moneda        = cppEditado;
-          patchInv.precio_costo_ultimo_moneda = precio;
-        }
+        const [entradasHist, salidasAgr] = await Promise.all([
+          api('stock_entradas', 'GET', null,
+            '?id_articulo=eq.' + id_articulo + '&or=(anulada.eq.false,anulada.is.null)&order=fecha_registro.asc&select=cantidad,precio_costo_moneda'),
+          api('stock_salidas', 'GET', null,
+            '?id_articulo=eq.' + id_articulo + '&select=cantidad'),
+        ]);
+        let stockRepro = 0, cppRepro = 0;
+        (entradasHist || []).forEach(function(e) {
+          const cantE = parseFloat(e.cantidad) || 0;
+          const precE = parseFloat(e.precio_costo_moneda) || 0;
+          const nuevoStockRepro = stockRepro + cantE;
+          cppRepro = nuevoStockRepro > 0 ? ((stockRepro * cppRepro) + (cantE * precE)) / nuevoStockRepro : precE;
+          stockRepro = nuevoStockRepro;
+        });
+        const totalSalidas = (salidasAgr || []).reduce(function(s, x){ return s + (parseFloat(x.cantidad) || 0); }, 0);
+        const nuevoStock = Math.max(0, parseFloat((stockRepro - totalSalidas).toFixed(4)));
+        cppEditado = parseFloat(cppRepro.toFixed(4));
+        const patchInv = { stock_actual_articulo: nuevoStock, precio_costo_moneda: cppEditado };
+        if (precio !== null && !isNaN(precio)) patchInv.precio_costo_ultimo_moneda = precio;
         await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + id_articulo);
       }
 
