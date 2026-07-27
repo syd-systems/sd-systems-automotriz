@@ -351,12 +351,14 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     const tasaEl = document.getElementById('edit-mov-tasa-bcv');
     const tasa   = parseFloat(m.tasa_bcv_usada || m.tasa_bcv || 0);
     if (tasaEl) tasaEl.value = tasa > 0 ? tasa.toFixed(4) : '';
-    const precio   = parseFloat(m.precio_costo_moneda || 0);
+    const precio   = parseFloat(m.precio_compra_original ?? m.precio_costo_moneda ?? 0);
     const cantidad = parseFloat(m.cantidad || 0);
     const montoTotal = precio * cantidad;
     const montoTotalEl = document.getElementById('edit-mov-monto-total');
     if (montoTotalEl) montoTotalEl.value = fmtBs(montoTotal);
     const moneda = m.moneda_compra || 'USD';
+    const lblMontoTotal = document.getElementById('edit-mov-label-monto-total');
+    if (lblMontoTotal) lblMontoTotal.textContent = 'Monto en ' + moneda;
     const calcEl = document.getElementById('edit-mov-precio-usd-calc');
     if (calcEl && tasa > 0) {
       calcEl.value = moneda === 'VES' ? fmtBs(montoTotal / tasa) : fmtBs(montoTotal * tasa);
@@ -996,7 +998,15 @@ function calcularCuotasEdit() {
   const numCuotas   = parseInt(document.getElementById('edit-mov-cuotas-num')?.value) || 0;
   const fechaInicio = document.getElementById('edit-mov-cuotas-fecha')?.value || '';
   const intervalo   = parseInt(document.getElementById('edit-mov-cuotas-intervalo')?.value) || 30;
-  const precio      = parseMontoVE(document.getElementById('edit-mov-precio')?.value);
+  const precioRawEdit  = parseMontoVE(document.getElementById('edit-mov-precio')?.value);
+  const monedaEditC    = document.getElementById('edit-mov-moneda')?.value || 'USD';
+  const tasaEditC      = parseFloat(document.getElementById('edit-mov-tasa-bcv')?.value) || 0;
+  // El precio se ingresa en la Moneda Negociación (puede ser VES) -- convertir
+  // siempre a USD antes de calcular, igual que en Entrada de Stock, para que
+  // el total repartido en cuotas coincida con el total realmente guardado
+  const precio = monedaEditC === 'VES'
+    ? (tasaEditC > 0 ? parseFloat((precioRawEdit / tasaEditC).toFixed(4)) : parseMontoVE(document.getElementById('edit-mov-precio-usd-calc')?.value))
+    : precioRawEdit;
   const cantidad    = parseFloat(document.getElementById('edit-mov-cantidad')?.value) || 0;
   const montoCuotaInput = parseFloat(document.getElementById('edit-mov-cuotas-monto')?.value) || 0;
   // precio es el precio NEGOCIADO (puede traer IVA incluido o no, según la
@@ -1768,6 +1778,8 @@ function onCambiarPrecioEdit() {
   const tasa     = parseFloat(document.getElementById('edit-mov-tasa-bcv')?.value) || 0;
   const elMonto  = document.getElementById('edit-mov-monto-total');
   const elCalc   = document.getElementById('edit-mov-precio-usd-calc');
+  const lblMontoTotal = document.getElementById('edit-mov-label-monto-total');
+  if (lblMontoTotal) lblMontoTotal.textContent = 'Monto en ' + moneda;
   const montoTotal = precio * cantidad;
   if (elMonto) elMonto.value = fmtBs(montoTotal);
   if (elCalc && tasa > 0) {
@@ -1855,6 +1867,10 @@ function calcularTributosEdit() {
     document.getElementById('edit-trib-base-ves').textContent  = 'Bs. ' + fmtBs(baseVesEdit);
     document.getElementById('edit-trib-iva-ves').textContent   = iva > 0 ? 'Bs. ' + fmtBs(ivaVesEdit) : '—';
     document.getElementById('edit-trib-total-ves').textContent = 'Bs. ' + fmtBs(totalVesEdit);
+  } else {
+    document.getElementById('edit-trib-base-ves').textContent  = moneda === 'VES' && tasa > 0 ? '$ ' + fmtBs(base / tasa) : '—';
+    document.getElementById('edit-trib-iva-ves').textContent   = moneda === 'VES' && iva > 0 && tasa > 0 ? '$ ' + fmtBs(iva / tasa) : '—';
+    document.getElementById('edit-trib-total-ves').textContent = moneda === 'VES' && tasa > 0 ? '$ ' + fmtBs(total / tasa) : '—';
   }
   if (prev) prev.style.display = '';
 }
