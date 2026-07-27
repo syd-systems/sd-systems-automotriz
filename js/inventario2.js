@@ -1106,7 +1106,13 @@ async function guardarEntradaStock() {
             // Agregar el id_cxp real al numero_doc para que nunca se repita
             if (cxpCuotaCreada && cxpCuotaCreada[0]) {
               await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-C' + c.num + '-' + cxpCuotaCreada[0].id_cxp }, '?id_cxp=eq.' + cxpCuotaCreada[0].id_cxp);
-              enrutarAprobacionCxP(cxpCuotaCreada[0].id_cxp, numDocBase + '-C' + c.num + '-' + cxpCuotaCreada[0].id_cxp, c.monto);
+              if (c.fecha <= getHoyVzla()) {
+                enrutarAprobacionCxP(cxpCuotaCreada[0].id_cxp, numDocBase + '-C' + c.num + '-' + cxpCuotaCreada[0].id_cxp, c.monto);
+              } else {
+                // Cuota con vencimiento futuro -- no notificar todavía; se
+                // enrutará sola cuando llegue su fecha (reintentar_enrutamiento_pendientes al iniciar sesión)
+                api('cont_cxp','PATCH',{ sin_firma_notificado: true }, '?id_cxp=eq.'+cxpCuotaCreada[0].id_cxp).catch(function(){});
+              }
             }
           }
         }
