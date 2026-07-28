@@ -582,6 +582,9 @@ async function abrirEntradaStock(id) {
   if (document.getElementById('es-precio-usd-cont'))document.getElementById('es-precio-usd-cont').style.display = 'none';
   if (document.getElementById('es-tasa-bcv'))       document.getElementById('es-tasa-bcv').value = '';
   if (document.getElementById('es-precio-usd-calc'))document.getElementById('es-precio-usd-calc').value = '';
+  if (document.getElementById('es-monto-total'))    document.getElementById('es-monto-total').value = '0,00';
+  const lblMontoTotalReset = document.getElementById('es-label-monto-total');
+  if (lblMontoTotalReset) lblMontoTotalReset.textContent = 'Monto en USD';
   const esquemaEl = document.getElementById('es-esquema-pago');
   if (esquemaEl) esquemaEl.selectedIndex = 0;
   const creditoCont = document.getElementById('es-credito-cont');
