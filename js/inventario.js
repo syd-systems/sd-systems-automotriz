@@ -316,6 +316,16 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     // muestra el botón EDITAR solo si el usuario tiene permiso y no está pagado/anulado)
     _aplicarSoloLecturaMovimiento('SALIDA', true);
 
+    // Botón Anular — visible si no está anulada y tiene permiso.
+    // (La rama SALIDA retorna antes de llegar al bloque compartido de más
+    // abajo, así que este botón nunca se mostraba para Salidas -- ni
+    // siquiera al Administrador. Se duplica aquí la misma lógica.)
+    const btnAnularSal = document.getElementById('btn-anular-movimiento');
+    if (btnAnularSal) {
+      const permAnularSal = sesionActual?.administrador || puedo('INVENTARIO','ANULAR_SALIDA');
+      btnAnularSal.style.display = (!m.anulada && permAnularSal) ? '' : 'none';
+    }
+
     // Abrir modal — al final después de cargar todos los datos
     const modalHist2 = document.getElementById('modal-historial-stock');
     if (modalHist2) { modalHist2.classList.remove('abierto'); modalHist2.style.display = 'none'; }
