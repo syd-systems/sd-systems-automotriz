@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723056';
+const SYD_VERSION = '20260723057';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -2590,7 +2590,7 @@ async function notifConfirmar() {
         const artRes = await api('inventario_almacen','GET',null,
           '?id_articulo=eq.'+extras.id_articulo+'&select=id_articulo,stock_actual_articulo');
         if (artRes && artRes[0]) {
-          const nuevoStock = parseFloat(artRes[0].stock_actual_articulo_articulo || 0) + parseFloat(extras.cantidad);
+          const nuevoStock = parseFloat(artRes[0].stock_actual_articulo || 0) + parseFloat(extras.cantidad);
           await api('inventario_almacen','PATCH',
             { stock_actual_articulo: nuevoStock },
             '?id_articulo=eq.'+extras.id_articulo);
