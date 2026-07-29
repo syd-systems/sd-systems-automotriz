@@ -1353,6 +1353,8 @@ async function abrirSalidaStock(id, nombre) {
   }
   document.getElementById('salida-fecha').value            = getHoyVzla();
   document.getElementById('salida-observaciones').value    = '';
+  const salPvEl = document.getElementById('salida-precio-venta');
+  if (salPvEl) salPvEl.value = '';
   document.getElementById('alerta-salida-ok').style.display  = 'none';
   document.getElementById('alerta-salida-err').style.display = 'none';
   // Limpiar campos de contraseña
@@ -1617,5 +1619,3 @@ async function _guardarSalidaStockInterno() {
     errEl.style.display = 'block';
   }
 }
-
-
