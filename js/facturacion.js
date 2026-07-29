@@ -1468,7 +1468,17 @@ async function _guardarSalidaStockInterno() {
     const id_salida = salidaRes && salidaRes[0] ? salidaRes[0].id_salida : null;
 
     // Descontar del stock_actual y actualizar precio venta si se ingresó
-    const nuevoStock = (art ? art.stock_actual_articulo : 0) - cantidad;
+    // — leer el stock FRESCO de la BD justo antes de restar, en vez de
+    // confiar en el valor cacheado en el navegador, que puede estar
+    // desactualizado si otro proceso (ej. notifConfirmar) ya lo modificó.
+    let stockFrescoSal = art ? art.stock_actual_articulo : 0;
+    try {
+      const artFrescoSal = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + idRep + '&select=stock_actual_articulo');
+      if (artFrescoSal && artFrescoSal[0] && artFrescoSal[0].stock_actual_articulo != null) {
+        stockFrescoSal = parseFloat(artFrescoSal[0].stock_actual_articulo);
+      }
+    } catch(eFrescoSal) { console.warn('No se pudo leer stock fresco, usando cache:', eFrescoSal); }
+    const nuevoStock = stockFrescoSal - cantidad;
     const patchInv = { stock_actual_articulo: nuevoStock };
     if (pvSalida) patchInv.precio_venta_moneda = pvSalida;
     await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + idRep);
