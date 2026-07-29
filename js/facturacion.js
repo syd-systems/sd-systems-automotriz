@@ -1392,12 +1392,12 @@ async function guardarSalidaStock() {
   if (!puedo('INVENTARIO','SALIDA_STOCK')) { alert('No tiene permiso.'); return; }
   if (window._guardandoSalida) return;
   window._guardandoSalida = true;
-  const btnGuardarSal = document.querySelector('#modal-salida-stock .btn-peligro');
+  const btnGuardarSal = document.querySelector('#modal-salida-stock .btn-primario');
   const resetBtnSal = function() {
     window._guardandoSalida = false;
     if (btnGuardarSal) { btnGuardarSal.disabled = false; btnGuardarSal.textContent = 'Registrar Salida'; }
   };
-  if (btnGuardarSal) { btnGuardarSal.disabled = true; btnGuardarSal.textContent = 'Guardando...'; }
+  if (btnGuardarSal) { btnGuardarSal.disabled = true; btnGuardarSal.textContent = 'Procesando...'; }
   try {
     await _guardarSalidaStockInterno();
   } finally {
@@ -1418,9 +1418,9 @@ async function _guardarSalidaStockInterno() {
   const errEl   = document.getElementById('alerta-salida-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
 
-  if (!id_area)          { errEl.textContent = 'Debe seleccionar el Área receptora.'; errEl.style.display = 'block'; return; }
-  if (!cantidad || cantidad <= 0) { errEl.textContent = 'La cantidad debe ser mayor a cero.'; errEl.style.display = 'block'; return; }
-  if (!fecha)           { errEl.textContent = 'La fecha es obligatoria.'; errEl.style.display = 'block'; return; }
+  if (!fecha)           { errEl.textContent = 'La fecha es obligatoria.'; errEl.style.display = 'block'; document.getElementById('salida-fecha')?.focus(); return; }
+  if (!cantidad || cantidad <= 0) { errEl.textContent = 'La cantidad debe ser mayor a cero.'; errEl.style.display = 'block'; document.getElementById('salida-cantidad')?.focus(); return; }
+  if (!id_area)          { errEl.textContent = 'Debe seleccionar el Área receptora.'; errEl.style.display = 'block'; document.getElementById('salida-area')?.focus(); return; }
 
   // Validar contraseña del empleado que ENTREGA
   const idEmpEntrega  = parseInt(document.getElementById('salida-empleado-entrega')?.value) || null;
