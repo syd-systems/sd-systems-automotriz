@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723060';
+const SYD_VERSION = '20260723062';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -442,6 +442,43 @@ async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '', sinReprese
   }
   return metodo === 'GET' ? r.json() : (r.status === 204 ? null : r.json().catch(() => null));
 }
+
+// ── Stock por Área — suma/resta atómica sobre inventario_stock_area ──
+// delta puede ser positivo (entra/recibe) o negativo (sale/entrega).
+// Si no existe la fila (id_articulo, id_area), la crea con stock_actual = delta.
+// Devuelve el nuevo stock_actual resultante.
+async function upsertStockArea(id_articulo, id_area, delta) {
+  const fila = await api('inventario_stock_area', 'GET', null,
+    '?id_articulo=eq.' + id_articulo + '&id_area=eq.' + id_area + '&select=stock_actual');
+  const actual = (fila && fila[0]) ? parseFloat(fila[0].stock_actual || 0) : null;
+  if (actual === null) {
+    // No existe la fila — crearla directamente con el delta
+    const nuevo = parseFloat(delta) || 0;
+    await api('inventario_stock_area', 'POST', {
+      id_articulo: id_articulo, id_area: id_area, stock_actual: nuevo
+    });
+    return nuevo;
+  }
+  const nuevoStock = parseFloat((actual + parseFloat(delta || 0)).toFixed(4));
+  await api('inventario_stock_area', 'PATCH', { stock_actual: nuevoStock, actualizado_en: new Date().toISOString() },
+    '?id_articulo=eq.' + id_articulo + '&id_area=eq.' + id_area);
+  return nuevoStock;
+}
+
+// ── Consultar el stock actual de un artículo en un área específica ──
+async function obtenerStockArea(id_articulo, id_area) {
+  const fila = await api('inventario_stock_area', 'GET', null,
+    '?id_articulo=eq.' + id_articulo + '&id_area=eq.' + id_area + '&select=stock_actual');
+  return (fila && fila[0]) ? parseFloat(fila[0].stock_actual || 0) : 0;
+}
+
+// ── Consultar el stock CONSOLIDADO (todas las áreas) de un artículo ──
+async function obtenerStockConsolidado(id_articulo) {
+  const filas = await api('inventario_stock_area', 'GET', null,
+    '?id_articulo=eq.' + id_articulo + '&select=stock_actual');
+  return (filas || []).reduce(function(sum, f) { return sum + parseFloat(f.stock_actual || 0); }, 0);
+}
+
 
 
 // ─── CERRAR TODOS LOS MODALES ───

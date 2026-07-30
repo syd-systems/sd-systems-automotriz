@@ -871,6 +871,18 @@ async function guardarEntradaStock() {
     } else if (motivoEnt === 'transferencia') {
       const idOrigenVal = document.getElementById('es-area-origen')?.value;
       if (!idOrigenVal) { errEl.textContent = 'Debe seleccionar el área de origen.'; errEl.style.display = 'block'; document.getElementById('es-area-origen')?.focus(); resetBtn(); return; }
+      // Transferencia solo aplica a Mercancías (cuenta 1.1.03.001) — un Consumible
+      // (1.1.03.002) ya se gastó al salir de Compras y no puede "devolverse" como
+      // inventario; su corrección es ANULAR la Salida original, no Transferencia.
+      if (r.id_cuenta_contable) {
+        const ctaArt = await api('cont_cuentas','GET',null,'?id_cuenta=eq.'+r.id_cuenta_contable+'&select=codigo');
+        const codigoCta = ctaArt && ctaArt[0] ? ctaArt[0].codigo : null;
+        if (codigoCta && codigoCta !== '1.1.03.001') {
+          errEl.textContent = 'Este artículo es un Consumible (cuenta ' + codigoCta + '). Transferencia solo aplica a Mercancías. Si se envió a la área equivocada, anule la Salida original desde su Historial.';
+          errEl.style.display = 'block';
+          resetBtn(); return;
+        }
+      }
     }
     const id_areaEntVal = document.getElementById('es-area')?.value || 
       (_empresaActiva?.id_area_principal || null);
@@ -880,14 +892,27 @@ async function guardarEntradaStock() {
     const validEnt = await validarClaveReceptor(idEmpEntVal, claveEnt);
     if (!validEnt.ok) { errEl.textContent = validEnt.msg; errEl.style.display = 'block'; document.getElementById('es-clave-receptor')?.focus(); resetBtn(); return; }
 
-    // ── FASE 2: Leer stock fresco de BD (única fuente de verdad) ──
-    let stockActual = parseFloat(r?.stock_actual_articulo || 0);
-    let costoActual = parseFloat(r?.precio_costo_moneda || 0);
-    const artFresh = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id + '&select=stock_actual_articulo,precio_costo_moneda');
-    if (artFresh && artFresh[0]) {
-      stockActual = parseFloat(artFresh[0].stock_actual_articulo || 0);
-      costoActual = parseFloat(artFresh[0].precio_costo_moneda || 0);
+    const id_areaEnt      = parseInt(id_areaEntVal) || null;
+    const id_areaOrigenH  = (motivoEnt === 'transferencia') ? (parseInt(document.getElementById('es-area-origen')?.value) || null) : null;
+
+    // ── FASE 1B: Si es Transferencia, validar que el Área de Origen tenga stock suficiente ──
+    // (antes de crear ningún registro — evita dejar una Entrada huérfana si se rechaza)
+    let stockOrigenActual = null;
+    if (motivoEnt === 'transferencia' && id_areaOrigenH) {
+      stockOrigenActual = await obtenerStockArea(id, id_areaOrigenH);
+      if (stockOrigenActual < cantidad) {
+        errEl.textContent = 'El Área de Origen no tiene suficiente stock disponible (' + stockOrigenActual + ' ' + (r.unidad||'UND') + ' disponibles).';
+        errEl.style.display = 'block';
+        document.getElementById('es-area-origen')?.focus();
+        resetBtn(); return;
+      }
     }
+
+    // ── FASE 2: Leer stock de Compras (área receptora) fresco de BD — única fuente de verdad del CPP ──
+    let stockActual = await obtenerStockArea(id, id_areaEnt);
+    let costoActual = parseFloat(r?.precio_costo_moneda || 0);
+    const artFresh = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id + '&select=precio_costo_moneda');
+    if (artFresh && artFresh[0]) costoActual = parseFloat(artFresh[0].precio_costo_moneda || 0);
     const nuevoStock = stockActual + cantidad;
 
     // CPP
@@ -899,10 +924,8 @@ async function guardarEntradaStock() {
     }
 
     // ── FASE 3: Registrar entrada en historial ──
-    const id_areaEnt  = parseInt(id_areaEntVal) || null;
     const idProvEnt  = (motivoEnt === 'compra') ? (parseInt(document.getElementById('es-proveedor')?.value) || null) : null;
     const clienteNomH  = (motivoEnt === 'devolucion') ? (document.getElementById('es-cliente-nombre')?.value.trim() || null) : null;
-    const id_areaOrigenH = (motivoEnt === 'transferencia') ? (parseInt(document.getElementById('es-area-origen')?.value) || null) : null;
 
     let id_entrada = null;
     const entradaRes = await api('stock_entradas', 'POST', {
@@ -928,83 +951,38 @@ async function guardarEntradaStock() {
     });
     id_entrada = entradaRes && entradaRes[0] ? entradaRes[0].id_entrada : null;
 
-    // ── FASE 4: Actualizar stock e inventario DESPUÉS del INSERT exitoso ──
-    const patch = { stock_actual_articulo: nuevoStock, precio_costo_moneda: parseFloat(cpp.toFixed(4)) };
-    if (nuevoPrecioCosto > 0) patch.precio_costo_ultimo_moneda = nuevoPrecioCosto;
-    await api('inventario_almacen', 'PATCH', patch, '?id_articulo=eq.' + id);
+    // ── FASE 4: Actualizar CPP (global, sigue en inventario_almacen) y stock del área receptora (Compras) ──
+    const patchCPP = { precio_costo_moneda: parseFloat(cpp.toFixed(4)) };
+    if (nuevoPrecioCosto > 0) patchCPP.precio_costo_ultimo_moneda = nuevoPrecioCosto;
+    await api('inventario_almacen', 'PATCH', patchCPP, '?id_articulo=eq.' + id);
+    await upsertStockArea(id, id_areaEnt, cantidad);
 
-    // ── FASE 4.5: Registrar salida en área origen si es transferencia ──
+    // ── FASE 4.5: Si es Transferencia, registrar la salida del Área de Origen y descontarle el stock ──
     if (motivoEnt === 'transferencia' && id_areaOrigenH) {
       const idEmpEntregaH = parseInt(document.getElementById('es-empleado-entrega')?.value) || null;
       await api('stock_salidas', 'POST', {
         id_articulo:       id,
         cantidad:          cantidad,
         fecha_salida:      getHoyVzla(),
-        id_area:           id_areaEnt,          // destino (receptor)
+        id_area:           id_areaEnt,          // destino (Compras, receptor)
         id_area_entrega:   id_areaOrigenH,       // origen (quien entrega)
         id_empleado:       idEmpEntVal,         // receptor
         id_empleado_entrega: idEmpEntregaH,
         observaciones:     document.getElementById('es-observaciones')?.value.trim() || null,
         id_usuario:        sesionActual.correo_usuario
       });
-      // Actualizar stock_actual del área origen — decrementar
-      const artOrigen = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id+'&select=stock_actual_articulo');
-      const stockOrigen = parseFloat(artOrigen?.[0]?.stock_actual_articulo || 0);
-      // stock_actual ya fue actualizado con nuevoStock (que sumó la entrada)
-      // necesitamos decrementar adicionalmente por la salida del origen
-      // stock_actual = (stock antes de transferencia) - cantidad + cantidad = sin cambio neto
-      // Corrección: el stock_actual debe bajar solo si es una salida sin entrada (diferente área)
-      // Para transferencia: stock_actual no cambia (entra en una área, sale de otra, mismo artículo)
+      // Descontar del Área de Origen (ya validamos en FASE 1B que tenía suficiente)
+      await upsertStockArea(id, id_areaOrigenH, -cantidad);
     }
 
     // ── FASE 5: Asiento contable ──
-    // Transferencias de CONSUMIBLES generan asiento: DEBE gasto / HABER inventario
-    if (motivoEnt === 'transferencia' && r.id_cuenta_contable && r.id_cuenta_costo_gasto) {
-      try {
-        // Calcular CPP_VES promedio ponderado (solo entradas en USD)
-        const entradasArt = await api('stock_entradas','GET',null,'?id_articulo=eq.'+id+'&select=cantidad,precio_costo_usd,tasa_bcv,moneda_compra&order=fecha_entrada.asc') || [];
-        var sumQxTasa = 0; var sumQ = 0;
-        entradasArt.forEach(function(e) {
-          var q = parseFloat(e.cantidad||0);
-          var t = parseFloat(e.tasa_bcv||0);
-          if (q > 0 && t > 0 && (e.moneda_compra||'USD') === 'USD') {
-            sumQxTasa += q * t;
-            sumQ += q;
-          }
-        });
-        var tasaPromedio = sumQ > 0 ? sumQxTasa / sumQ : (_tasaVigente || 1);
-        var cppUSD = parseFloat(r.precio_costo_moneda || 0);
-        var montoVESTransf = parseFloat((cantidad * cppUSD * tasaPromedio).toFixed(2));
-
-        // Numero asiento
-        var anioT = new Date().getFullYear();
-        var ultsT = await api('cont_asientos','GET',null,'?id_empresa=eq.'+(sesionActual?.id_empresa||_empresaActiva?.id_empresa||0)+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
-        var seqT = 1;
-        if (ultsT[0]?.numero_asiento) { var mmT = ultsT[0].numero_asiento.match(/(\d+)$/); if (mmT) seqT = parseInt(mmT[1])+1; }
-        var numAstT = 'AST-' + anioT + '-' + String(seqT).padStart(4,'0');
-
-        var astT = await api('cont_asientos','POST',{
-          id_empresa: sesionActual?.id_empresa||_empresaActiva?.id_empresa||0,
-          numero_asiento: numAstT, tipo: 'CONSUMO_INVENTARIO',
-          fecha: document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
-          descripcion: 'Consumo inventario: ' + (r.nombre_articulo||'') + ' x' + cantidad + ' — Transfer a: ' + (document.getElementById('es-area-display')?.textContent||''),
-          referencia: id_entrada ? 'ENT-' + id_entrada : 'TRANSF-'+id,
-          estado: 'APROBADO', moneda_base: 'VES', tasa_bcv: tasaPromedio,
-          id_usuario: sesionActual?.correo_usuario || null
-        });
-        var arT = Array.isArray(astT) ? astT[0] : astT;
-        if (arT?.id_asiento) {
-          // DEBE: Cuenta Costo/Gasto (6.1.02.004)
-          await api('cont_asiento_lineas','POST',{ id_asiento:arT.id_asiento, id_cuenta:r.id_cuenta_costo_gasto, orden:1,
-            descripcion:'Consumo: '+(r.nombre_articulo||'')+' x'+cantidad+' (CPP $'+cppUSD.toFixed(2)+' x T/C '+tasaPromedio.toFixed(2)+')',
-            debe_usd:0, haber_usd:0, debe_ves:montoVESTransf, haber_ves:0, tasa_bcv:tasaPromedio });
-          // HABER: Cuenta Inventario (1.1.03.xxx)
-          await api('cont_asiento_lineas','POST',{ id_asiento:arT.id_asiento, id_cuenta:r.id_cuenta_contable, orden:2,
-            descripcion:'Salida inventario consumible: '+(r.nombre_articulo||'')+' x'+cantidad,
-            debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoVESTransf, tasa_bcv:tasaPromedio });
-        }
-      } catch(eAstTransf) { console.warn('Error asiento transferencia consumible:', eAstTransf); }
-    }
+    // NOTA: Transferencia (Área → Compras) NUNCA genera asiento contable.
+    // - Si es Mercancía: nunca se gastó al salir de Compras (sigue como inventario
+    //   en el área), así que al volver solo se mueve el stock, sin asiento.
+    // - Si es un Consumible enviado por error a otra área: la corrección correcta
+    //   es ANULAR la Salida original desde su Historial (no un Reverso/asiento
+    //   nuevo aquí) — anular deja sin efecto el gasto ya registrado, en vez de
+    //   generar un segundo asiento que podría producir ganancias/pérdidas ficticias.
 
     // ── Monto TOTAL (con IVA si aplica) — se calcula UNA sola vez aquí y se
     // usa igual tanto para el asiento contable como para la CxP, para que
@@ -1140,12 +1118,16 @@ async function guardarEntradaStock() {
     }
 
     // ── FASE 6: Actualizar cache y cerrar ──
+    // NOTA: r.stock_actual_articulo queda aquí como bandera de compatibilidad temporal
+    // para no romper pantallas que aún leen ese campo directo del catálogo. Representa el
+    // stock del ÁREA RECEPTORA (id_areaEnt, siempre Compras), no un total global —
+    // pendiente migrar todas las lecturas de pantalla a inventario_stock_area (Fase 2 del diseño).
     if (r) {
       r.stock_actual_articulo     = nuevoStock;
       r.precio_costo_moneda       = parseFloat(cpp.toFixed(4));
       if (nuevoPrecioCosto > 0) r.precio_costo_ultimo_moneda = nuevoPrecioCosto;
     }
-    okEl.textContent = 'Stock actualizado: ' + stockActual + ' → ' + nuevoStock + ' ' + (r?.unidad || 'UND');
+    okEl.textContent = 'Stock de Compras actualizado: ' + stockActual + ' → ' + nuevoStock + ' ' + (r?.unidad || 'UND');
     okEl.style.display = 'block';
     setTimeout(async function() {
       cerrarModal('modal-entrada-stock');
@@ -1631,13 +1613,6 @@ async function invGuardarTipo() {
   } catch(e) { errEl.textContent='Error: '+e.message; errEl.style.display='block'; }
 }
 
-// ─── ANULAR ENTRADA ───
-async function reversarEntrada(id_entrada, id_articulo, cantidad) {
-  await reversarMovimiento('ENTRADA', id_entrada, cantidad, id_articulo);
-  // Retornar a inventario general después del reverso
-  cerrarTodosLosModales();
-  renderInventario();
-}
 // ─── HISTORIAL DE SALIDAS ───
 async function verHistorialSalidas(id_articulo) {
   const cont = document.getElementById('ficha-inv-historial-salidas');

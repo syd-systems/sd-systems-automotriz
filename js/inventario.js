@@ -618,9 +618,9 @@ async function anularDesdeEdicion() {
   cerrarModal('modal-edit-movimiento');
 
   if (tipo === 'ENTRADA') {
-    await reversarMovimiento('ENTRADA', id, cantidad, id_articulo);
+    await anularMovimiento('ENTRADA', id, cantidad, id_articulo);
   } else {
-    await reversarSalida(id, id_articulo, cantidad);
+    await anularSalidaStock(id, id_articulo, cantidad);
   }
 }
 
@@ -1099,12 +1099,12 @@ function calcularCuotasEdit() {
   preview.dataset.cuotas = JSON.stringify(cuotas);
 }
 
-// ── Abre el modal de reverso con datos del movimiento ──
-async function reversarMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
+// ── Abre el modal de anulación con datos del movimiento ──
+async function anularMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
   // Verificar permiso
   const permiso = tipo === 'ENTRADA' ? 'ANULAR_ENTRADA' : 'ANULAR_SALIDA';
   if (!sesionActual?.administrador && !puedo('INVENTARIO', permiso)) {
-    alert('No tiene permiso para reversar ' + (tipo === 'ENTRADA' ? 'entradas' : 'salidas') + ' de stock.');
+    alert('No tiene permiso para anular ' + (tipo === 'ENTRADA' ? 'entradas' : 'salidas') + ' de stock.');
     return;
   }
 
@@ -1149,8 +1149,8 @@ async function reversarMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
   abrirModal('modal-anulacion-stock');
 }
 
-// ── Ejecuta el reverso tras validar contraseña ──
-async function confirmarReverso() {
+// ── Ejecuta la anulación tras validar contraseña ──
+async function confirmarAnulacion() {
   const okEl   = document.getElementById('alerta-anulacion-ok');
   const errEl  = document.getElementById('alerta-anulacion-err');
   okEl.style.display = errEl.style.display = 'none';
@@ -1169,8 +1169,8 @@ async function confirmarReverso() {
 
   try {
     // 1. Validar contraseña usando bcrypt via RPC
-    const verifReverso = await verificarContrasena(sesionActual.correo_usuario, clave);
-    if (!verifReverso.ok) throw new Error('Contraseña incorrecta.');
+    const verifAnulacion = await verificarContrasena(sesionActual.correo_usuario, clave);
+    if (!verifAnulacion.ok) throw new Error('Contraseña incorrecta.');
 
     // 2. Leer artículo fresco
     const artArr = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id_articulo + '&select=*');
@@ -1206,61 +1206,52 @@ async function confirmarReverso() {
       movOrig = rows[0];
     }
 
-    // 4. Recalcular stock desde cero contando movimientos activos
-    let nuevoStock = 0;
-    try {
-      const [entradas, salidas] = await Promise.all([
-        api('stock_entradas','GET',null,'?id_articulo=eq.'+id_articulo+'&or=(anulada.eq.false,anulada.is.null)&select=id_entrada,cantidad'),
-        api('stock_salidas','GET',null,'?id_articulo=eq.'+id_articulo+'&or=(anulada.eq.false,anulada.is.null)&select=id_salida,cantidad')
-      ]);
-      // Sumar entradas activas (excluyendo la que se está anulando si es ENTRADA)
-      const totalEntradas = (entradas||[]).reduce(function(s,e){
-        return s + (tipo === 'ENTRADA' && parseInt(e.id_entrada||0) === idMovimiento ? 0 : parseFloat(e.cantidad||0));
-      }, 0);
-      // Restar salidas activas (excluyendo la que se está anulando si es SALIDA)
-      const totalSalidas = (salidas||[]).reduce(function(s,e){
-        return s + (tipo === 'SALIDA' && parseInt(e.id_salida||0) === idMovimiento ? 0 : parseFloat(e.cantidad||0));
-      }, 0);
-      nuevoStock = totalEntradas - totalSalidas;
-    } catch(eStock) {
-      // Fallback al método anterior si falla
-      const stockActual = parseFloat(art.stock_actual_articulo) || 0;
-      nuevoStock = tipo === 'ENTRADA' ? stockActual - cantidad : stockActual + cantidad;
-    }
-    if (tipo === 'ENTRADA' && nuevoStock < 0) {
-      throw new Error('Stock resultante negativo (' + nuevoStock.toFixed(2) + '). No se puede anular porque ya se realizaron salidas de este inventario.');
+    // 4. Validar que anular no deje el área en negativo
+    if (tipo === 'ENTRADA' && movOrig.id_area) {
+      const stockAreaActual = await obtenerStockArea(id_articulo, movOrig.id_area);
+      if (stockAreaActual - cantidad < 0) {
+        throw new Error('Stock resultante negativo en el área (' + (stockAreaActual - cantidad).toFixed(2) + '). No se puede anular porque ya se realizaron salidas de este inventario.');
+      }
     }
 
-    // 5. Actualizar stock y recalcular CPP
-    const patchInv = { stock_actual_articulo: Math.max(0, nuevoStock) };
+    // 5. Actualizar CPP (global) y el stock del ÁREA correspondiente
+    const patchInv = {};
 
     // Recalcular CPP desde entradas activas
-    if (nuevoStock <= 0) {
+    const entradasActivasCPP = await api('stock_entradas','GET',null,
+      '?id_articulo=eq.'+id_articulo+'&or=(anulada.eq.false,anulada.is.null)&select=id_entrada,cantidad,precio_costo_moneda');
+    let sumaCantidadCPP = 0;
+    let sumaValorCPP    = 0;
+    (entradasActivasCPP||[]).forEach(function(e) {
+      // Excluir la entrada que se está anulando
+      if (tipo === 'ENTRADA' && parseInt(e.id_entrada||0) === idMovimiento) return;
+      const cant   = parseFloat(e.cantidad || 0);
+      const precio = parseFloat(e.precio_costo_moneda || 0);
+      sumaCantidadCPP += cant;
+      sumaValorCPP    += cant * precio;
+    });
+    if (sumaCantidadCPP > 0) {
+      patchInv.precio_costo_moneda = parseFloat((sumaValorCPP / sumaCantidadCPP).toFixed(4));
+    } else {
       patchInv.precio_costo_moneda        = 0;
       patchInv.precio_costo_ultimo_moneda = 0;
-    } else {
-      // CPP = Σ(cantidad × precio) entradas activas / Σ(cantidad) entradas activas
-      try {
-        const entradasActivas = await api('stock_entradas','GET',null,
-          '?id_articulo=eq.'+id_articulo+'&or=(anulada.eq.false,anulada.is.null)&select=id_entrada,cantidad,precio_costo_moneda');
-        let sumaCantidad = 0;
-        let sumaValor    = 0;
-        (entradasActivas||[]).forEach(function(e) {
-          // Excluir la entrada que se está anulando
-          if (tipo === 'ENTRADA' && parseInt(e.id_entrada||0) === idMovimiento) return;
-          const cant   = parseFloat(e.cantidad || 0);
-          const precio = parseFloat(e.precio_costo_moneda || 0);
-          sumaCantidad += cant;
-          sumaValor    += cant * precio;
-        });
-        if (sumaCantidad > 0) {
-          patchInv.precio_costo_moneda = parseFloat((sumaValor / sumaCantidad).toFixed(4));
-        } else {
-          patchInv.precio_costo_moneda = 0;
-        }
-      } catch(eCPP) { console.warn('Error recalculando CPP:', eCPP); }
     }
     await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + id_articulo);
+
+    // Ajustar el stock del área afectada (esquema por área — inventario_stock_area)
+    if (tipo === 'ENTRADA') {
+      // Se anula una Entrada: retirar la cantidad del área que la había recibido
+      // (movOrig.id_area — en la práctica, siempre Compras)
+      if (movOrig.id_area) await upsertStockArea(id_articulo, movOrig.id_area, -cantidad);
+    } else {
+      // Se anula una Salida: devolver la cantidad al área que la entregó
+      // (movOrig.id_area_entrega — en la práctica, siempre Compras)
+      if (movOrig.id_area_entrega) await upsertStockArea(id_articulo, movOrig.id_area_entrega, cantidad);
+      // NOTA: si el artículo es Mercancía y la Salida ya había sumado stock al área
+      // receptora (pendiente de implementar en _guardarSalidaStockInterno), esa resta
+      // también deberá agregarse aquí cuando se complete esa fase.
+    }
+
 
     // 6. Marcar movimiento como anulado
     if (tipo === 'ENTRADA') {
@@ -1309,8 +1300,8 @@ async function confirmarReverso() {
           await api('notificaciones', 'POST', {
             id_empresa:   _empresaActiva?.id_empresa,
             id_empleado:  movOrig.id_empleado,
-            tipo:         'REVERSO_SALIDA',
-            titulo:       '⚠ Reverso de Salida de Inventario',
+            tipo:         'ANULACION_SALIDA',
+            titulo:       '⚠ Anulación de Salida de Inventario',
             mensaje:      'La salida de ' + cantidad + ' unidades de "' + nomArt + '" registrada a su nombre ha sido anulada. El inventario debe retornar al almacén.',
             leida:        false,
             id_usuario:   sesionActual.correo_usuario,
@@ -1334,7 +1325,7 @@ async function confirmarReverso() {
               headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 to:      resp.correo,
-                subject: '⚠ Reverso de Salida de Inventario — ' + areaName,
+                subject: '⚠ Anulación de Salida de Inventario — ' + areaName,
                 html:    '<p>Estimado/a <strong>' + resp.nombre_completo + '</strong>,</p>'
                        + '<p>Se ha anulado una salida de inventario registrada para su área.</p>'
                        + '<table style="border-collapse:collapse;width:100%">'
@@ -1382,8 +1373,8 @@ async function confirmarReverso() {
 }
 
 // ── Alias para el botón Reversar en Historial de Salidas ──
-async function reversarSalida(id_salida, id_articulo, cantidad) {
-  await reversarMovimiento('SALIDA', id_salida, cantidad, id_articulo);
+async function anularSalidaStock(id_salida, id_articulo, cantidad) {
+  await anularMovimiento('SALIDA', id_salida, cantidad, id_articulo);
 }
 
 
