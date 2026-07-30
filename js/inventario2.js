@@ -55,50 +55,46 @@ function calcularMargen(r) {
 var _invVista = 'tabla';
 
 
-// ── Validar contraseña de un empleado por su id ──
-// ── Calcular saldo por área del usuario actual ──
+// ── Calcular saldo por área del usuario actual (y consolidado si aplica) ──
+// Lee directamente de inventario_stock_area, que es la fuente de verdad real
+// del stock por artículo/área (reemplaza el cálculo anterior basado en sumar
+// stock_entradas/stock_salidas, que tenía un bug de doble conteo en Transferencias).
+var _invSaldoConsolidado = null; // { id_articulo: totalTodasLasAreas }
 async function calcularInvSaldoArea() {
-  if (sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
-    _invSaldoArea = null; // Admins ven todo
-    return;
-  }
   try {
+    // Consolidado (todas las áreas) — se calcula siempre, lo usan los
+    // usuarios con VER_INVENTARIO_GENERAL y sirve de referencia general.
+    const todasLasFilas = await api('inventario_stock_area','GET',null,'?select=id_articulo,stock_actual') || [];
+    const consolidado = {};
+    todasLasFilas.forEach(function(f){ consolidado[f.id_articulo] = (consolidado[f.id_articulo]||0) + parseFloat(f.stock_actual||0); });
+    _invSaldoConsolidado = consolidado;
+
+    if (sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
+      _invSaldoArea = null; // Admins/con permiso ven el consolidado
+      return;
+    }
+
     const correo = sesionActual?.correo_usuario;
     if (!correo) { _invSaldoArea = null; return; }
-
-    const empRes = await Promise.race([
-      api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1'),
-      new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); }, 4000); })
-    ]).catch(function(){ return []; });
-
+    const empRes = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1').catch(function(){ return []; });
     const id_areaUsuario = empRes?.[0]?.id_area || null;
     if (!id_areaUsuario) { _invSaldoArea = {}; return; }
 
-    // Obtener todos los artículos del emisor
-    const arts = inventarioCache.length > 0 ? inventarioCache
-      : await api('inventario_almacen','GET',null,'?order=nombre_articulo.asc&select=id_articulo' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')) || [];
-    if (!arts.length) { _invSaldoArea = {}; return; }
-
-    const inClause = arts.map(function(r){ return r.id_articulo; }).join(',');
-    const t4s = function(){ return new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); },4000); }); };
-
-    const [entsDirectas, salsRecibidas, salsEnviadas] = await Promise.all([
-      Promise.race([api('stock_entradas','GET',null,'?id_area=eq.'+id_areaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
-      Promise.race([api('stock_salidas','GET',null,'?id_area_entrega=eq.'+id_areaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
-      Promise.race([api('stock_salidas','GET',null,'?id_area=eq.'+id_areaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; })
-    ]);
-
+    const filas = await api('inventario_stock_area','GET',null,'?id_area=eq.'+id_areaUsuario+'&select=id_articulo,stock_actual') || [];
     const saldo = {};
-    (entsDirectas||[]).forEach(function(e){ saldo[e.id_articulo] = (saldo[e.id_articulo]||0) + parseFloat(e.cantidad||0); });
-    // salsRecibidas: transferencias donde mi área es el ORIGEN (id_area_entrega=yo) → son salidas de mi stock
-    (salsRecibidas||[]).forEach(function(s){ saldo[s.id_articulo] = (saldo[s.id_articulo]||0) - parseFloat(s.cantidad||0); });
-    // salsEnviadas: transferencias donde mi área es el DESTINO (id_area=yo) → son entradas a mi stock
-    (salsEnviadas||[]).forEach(function(s){ saldo[s.id_articulo] = (saldo[s.id_articulo]||0) + parseFloat(s.cantidad||0); });
+    filas.forEach(function(f){ saldo[f.id_articulo] = parseFloat(f.stock_actual||0); });
     _invSaldoArea = saldo;
   } catch(e) {
     console.warn('calcularInvSaldoArea error:', e);
     _invSaldoArea = null;
+    _invSaldoConsolidado = null;
   }
+}
+// ── Helper único: stock a mostrar para un artículo, según permisos ──
+function stockMostrarArticulo(id_articulo) {
+  if (_invSaldoArea) return _invSaldoArea[id_articulo] || 0;
+  if (_invSaldoConsolidado) return _invSaldoConsolidado[id_articulo] || 0;
+  return 0;
 }
 
 async function renderInventario(filtro) {
@@ -192,7 +188,7 @@ async function renderInventario(filtro) {
       return r.nombre_articulo.toLowerCase().includes(t) || (r.codigo_articulo || '').toLowerCase().includes(t) || (r.descripcion || '').toLowerCase().includes(t);
     });
   }
-    const stockBajos = items.filter(function(r) { return parseFloat(r.stock_minimo_articulo||0) > 0 && r.stock_actual_articulo <= r.stock_minimo_articulo; }).length;
+    const stockBajos = items.filter(function(r) { return parseFloat(r.stock_minimo_articulo||0) > 0 && stockMostrarArticulo(r.id_articulo) <= r.stock_minimo_articulo; }).length;
     const alertaDiv = document.getElementById('alerta-stock-bajo');
     if (alertaDiv) {
       if (stockBajos > 0) {
@@ -267,7 +263,8 @@ function invRenderTabla(items, cont) {
   clasificarABC(inventarioCache).forEach(function(r) { abcMap[r.id_articulo] = r.clase_abc; });
   const abcColor = { A: '#22c55e', B: '#f59e0b', C: '#94a3b8' };
   const filas = items.map(function(r) {
-    const stockBajo = parseFloat(r.stock_minimo_articulo||0) > 0 && r.stock_actual_articulo <= r.stock_minimo_articulo;
+    const stockMostrar = stockMostrarArticulo(r.id_articulo);
+    const stockBajo = parseFloat(r.stock_minimo_articulo||0) > 0 && stockMostrar <= r.stock_minimo_articulo;
     const abc = abcMap[r.id_articulo] || '—';
     const margen = calcularMargen(r);
     return '<tr>'
@@ -279,16 +276,14 @@ function invRenderTabla(items, cont) {
       + '<div style="font-weight:500">' + r.nombre_articulo + '</div>'
       + (r.descripcion ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion + '</div>' : '') + '</div></div></td>'
       + (function() {
-          const stockMostrar = _invSaldoArea ? (_invSaldoArea[r.id_articulo]||0) : r.stock_actual_articulo;
-          const stockBajoArea = parseFloat(r.stock_minimo_articulo||0) > 0 && stockMostrar <= r.stock_minimo_articulo;
-          return '<td><span class="badge ' + (stockBajoArea ? 'badge-rojo' : 'badge-verde') + '">' + stockMostrar + ' ' + (r.unidad || 'UND') + '</span>'
+          return '<td><span class="badge ' + (stockBajo ? 'badge-rojo' : 'badge-verde') + '">' + stockMostrar + ' ' + (r.unidad || 'UND') + '</span>'
             + (_invSaldoArea ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Stock área</div>' : '')
-            + (stockBajoArea ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo_articulo + ')</div>' : '') + '</td>';
+            + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo_articulo + ')</div>' : '') + '</td>';
         })()
       + (puedo('INVENTARIO','VER_COSTOS')
           ? '<td style="font-family:var(--font-mono);font-size:12px">'
             + '<div style="color:var(--suave);font-size:9px;letter-spacing:1px">COSTO PROM. (CPP)</div>'
-            + '<div>$ ' + fmtUSD(parseInt(r.stock_actual_articulo) === 0 ? 0 : r.precio_costo_moneda) + ' <span style="color:var(--suave);font-size:11px">(Bs ' + fmtBs((parseInt(r.stock_actual_articulo) === 0 ? 0 : parseFloat(r.precio_costo_moneda||0)) * _tasaVigente) + ')</span></div>'
+            + '<div>$ ' + fmtUSD(stockMostrar === 0 ? 0 : r.precio_costo_moneda) + ' <span style="color:var(--suave);font-size:11px">(Bs ' + fmtBs((stockMostrar === 0 ? 0 : parseFloat(r.precio_costo_moneda||0)) * _tasaVigente) + ')</span></div>'
             + (r.precio_costo_ultimo_moneda
                 ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Última compra: $ ' + fmtUSD(r.precio_costo_ultimo_moneda) + '</div>'
                 : '')
@@ -296,7 +291,7 @@ function invRenderTabla(items, cont) {
           : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
       + (puedo('INVENTARIO','VER_PRECIOS_VENTA')
           ? (function() {
-              const sinStock = parseInt(r.stock_actual_articulo) === 0;
+              const sinStock = stockMostrar === 0;
               const ventaMostrar = sinStock ? 0 : parseFloat(r.precio_venta_moneda||0);
               const margenMostrar = sinStock ? 0 : margen;
               return '<td style="font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:10px">Venta</div>'
@@ -436,11 +431,12 @@ async function verFichaInventario(id) {
   clasificarABC(inventarioCache).forEach(function(x) { abcMap[x.id_articulo] = x.clase_abc; });
   const abc = abcMap[r.id_articulo] || '—';
   const abcColor = { A: '#22c55e', B: '#f59e0b', C: '#94a3b8' };
-  const sinStockFicha = parseInt(r.stock_actual_articulo) === 0;
+  const stockMostrarFicha = stockMostrarArticulo(r.id_articulo);
+  const sinStockFicha = stockMostrarFicha === 0;
   const costoMostrarFicha = sinStockFicha ? 0 : parseFloat(r.precio_costo_moneda||0);
   const ventaMostrarFicha = sinStockFicha ? 0 : parseFloat(r.precio_venta_moneda||0);
   const margen = sinStockFicha ? '0.0' : ((parseFloat(r.precio_venta_moneda||0) - parseFloat(r.precio_costo_moneda||0)) / (parseFloat(r.precio_venta_moneda||0)||1) * 100).toFixed(1);
-  const stockBajo = r.stock_actual_articulo <= r.stock_minimo_articulo;
+  const stockBajo = stockMostrarFicha <= r.stock_minimo_articulo;
 
   document.getElementById('ficha-inv-contenido').innerHTML =
     '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">'
@@ -451,7 +447,7 @@ async function verFichaInventario(id) {
     + (r.descripcion ? '<div style="background:var(--gris2);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--suave)">' + r.descripcion + '</div>' : '')
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Stock Actual</div>'
-    + '<div style="font-family:var(--font-mono);font-size:18px;color:' + (stockBajo ? '#fc8181' : 'var(--naranja)') + '">' + (_invSaldoArea ? (_invSaldoArea[r.id_articulo]||0) : r.stock_actual_articulo) + ' ' + (r.unidad||'UND') + '</div>'
+    + '<div style="font-family:var(--font-mono);font-size:18px;color:' + (stockBajo ? '#fc8181' : 'var(--naranja)') + '">' + stockMostrarFicha + ' ' + (r.unidad||'UND') + '</div>'
     + (_invSaldoArea ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Stock en tu área</div>' : '')
     + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo_articulo + ')</div>' : '') + '</div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Stock Mínimo</div>'
@@ -555,7 +551,8 @@ async function abrirEntradaStock(id) {
 
   document.getElementById('es-id').value = id;
   document.getElementById('es-nombre').textContent = r.nombre_articulo;
-  document.getElementById('es-stock-actual').textContent = (r.stock_actual_articulo || 0) + ' ' + (r.unidad || 'UND');
+  await calcularInvSaldoArea();
+  document.getElementById('es-stock-actual').textContent = stockMostrarArticulo(id) + ' ' + (r.unidad || 'UND');
   const esLblUnidad = document.getElementById('es-label-unidad');
   if (esLblUnidad) esLblUnidad.textContent = r.unidad || 'UND';
   document.getElementById('es-cantidad').value = '';
@@ -1415,7 +1412,7 @@ async function abrirEditarInventario(id) {
   var infoEl = document.getElementById('inv-info-stock-costo');
   if (infoEl) {
     infoEl.style.display = '';
-    const stockFicha = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual_articulo;
+    const stockFicha = stockMostrarArticulo(r.id_articulo);
     document.getElementById('inv-info-stock-val').textContent = stockFicha + ' ' + (r.unidad || 'UND');
     document.getElementById('inv-info-costo-val').textContent = '$ ' + parseFloat(r.precio_costo_moneda || 0).toFixed(2) + ' (CPP)';
   }

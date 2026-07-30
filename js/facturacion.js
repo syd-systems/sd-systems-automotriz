@@ -820,23 +820,23 @@ async function abrirStockArticulo(id, nombre) {
   if (!r) return;
   _fichaInvActual = { id: r.id_articulo, nombre: r.nombre_articulo };
 
-  // GET fresco de BD
-  var stockActual = parseFloat(r.stock_actual_articulo) || 0;
+  // Refrescar el caché de stock por área/consolidado y leer CPP/Venta fresco
+  await calcularInvSaldoArea();
+  var stockActual = stockMostrarArticulo(id);
   var cppActual   = parseFloat(r.precio_costo_moneda)   || 0;
   var ventaActual = parseFloat(r.precio_venta_moneda)   || 0;
   try {
-    var qs = '?id_articulo=eq.' + id + '&select=stock_actual_articulo,precio_costo_moneda,precio_venta_moneda,unidad';
+    var qs = '?id_articulo=eq.' + id + '&select=precio_costo_moneda,precio_venta_moneda,unidad';
     if (_empresaActiva && _empresaActiva.id_empresa) qs += '&id_empresa=eq.' + _empresaActiva.id_empresa;
     var fresh = await api('inventario_almacen', 'GET', null, qs);
     if (fresh && fresh[0]) {
-      if (fresh[0].stock_actual_articulo != null) stockActual = parseFloat(fresh[0].stock_actual_articulo);
       if (fresh[0].precio_costo_moneda   != null) cppActual   = parseFloat(fresh[0].precio_costo_moneda);
       if (fresh[0].precio_venta_moneda   != null) ventaActual = parseFloat(fresh[0].precio_venta_moneda);
-      r.stock_actual_articulo = stockActual;
       r.precio_costo_moneda   = cppActual;
       r.precio_venta_moneda   = ventaActual;
     }
   } catch(e) { console.warn('abrirStockArticulo GET fresco:', e.message); }
+  if (stockActual === 0) { cppActual = 0; ventaActual = 0; } // sin stock, sin costo/venta que mostrar
 
   document.getElementById('stock-art-nombre').textContent = r.nombre_articulo;
   document.getElementById('stock-art-stock').textContent  = stockActual + ' ' + (r.unidad || 'UND');
@@ -1536,12 +1536,13 @@ async function abrirSalidaStock(id, nombre) {
   document.getElementById('salida-art-nombre').textContent = nombre;
   document.getElementById('salida-id-articulo').value      = id;
   document.getElementById('salida-cantidad').value         = '';
-  // Cargar stock disponible para validación en tiempo real
+  // Cargar stock disponible para validación en tiempo real (referencial —
+  // la validación real al guardar usa obtenerStockArea contra el área que entrega)
   const stockDisp = document.getElementById('salida-stock-disp');
   if (stockDisp) {
     try {
-      const artStock = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id+'&select=stock_actual_articulo&limit=1');
-      stockDisp.dataset.stock = artStock && artStock[0] ? parseFloat(artStock[0].stock_actual_articulo||0) : 0;
+      await calcularInvSaldoArea();
+      stockDisp.dataset.stock = stockMostrarArticulo(id);
     } catch(e) { stockDisp.dataset.stock = 0; }
   }
   document.getElementById('salida-fecha').value            = getHoyVzla();
@@ -1571,7 +1572,7 @@ async function abrirSalidaStock(id, nombre) {
   // Mostrar stock por area
   await calcularInvSaldoArea();
   const art = inventarioCache.find(function(x) { return x.id_articulo === id; });
-  const stockSalida = art ? (_invSaldoArea ? (_invSaldoArea[art.id_articulo]||0) : art.stock_actual_articulo) : 0;
+  const stockSalida = art ? stockMostrarArticulo(art.id_articulo) : 0;
   document.getElementById('salida-stock-actual').textContent = art ? stockSalida + ' ' + (art.unidad || 'UND') : '—';
   const salLblUnidad = document.getElementById('salida-label-unidad');
   if (salLblUnidad) salLblUnidad.textContent = art?.unidad || 'UND';

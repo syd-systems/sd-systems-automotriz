@@ -775,7 +775,7 @@ async function agregarMercanciaInventario() {
   } else {
     const r = inventarioCache.find(function(x) { return x.id_articulo == sel.value; });
     if (!r) return;
-    const stockDisponible = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual_articulo;
+    const stockDisponible = stockMostrarArticulo(r.id_articulo);
     if (stockDisponible < cantVal) {
       if (!confirm('⚠ Stock insuficiente (' + stockDisponible + ' disponibles en tu área). ¿Agregar igual?')) return;
     }
@@ -1382,7 +1382,7 @@ async function cargarSelectsOS() {
     }
     selInv.innerHTML = '<option value="">— Seleccionar Consumible —</option>'
       + itemsDisponibles.map(function(r) {
-          const stock = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual_articulo;
+          const stock = stockMostrarArticulo(r.id_articulo);
           return '<option value="' + r.id_articulo + '">' + r.nombre_articulo + ' (Stock: ' + stock + ') — $' + parseFloat(r.precio_venta_moneda || 0).toFixed(2) + '</option>';
         }).join('');
   }
