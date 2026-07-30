@@ -645,11 +645,6 @@ async function abrirEntradaStock(id) {
     if (typeof buscarTasaBCVNegociacion === 'function') buscarTasaBCVNegociacion();
   }).catch(function(){});
   abrirModal('modal-entrada-stock');
-  // La opción "Ajuste de Inventario" (sobrante) requiere el permiso especial
-  // AJUSTE_INCIDENCIA — visibilidad controlada desde Usuario, no todos deben
-  // poder registrar sobrantes/faltantes sin autorización.
-  const optAjuste = document.querySelector('#es-motivo option[value="ajuste"]');
-  if (optAjuste) optAjuste.style.display = puedo('INVENTARIO','AJUSTE_INCIDENCIA') ? '' : 'none';
   focusFirstField('modal-entrada-stock');
   setTimeout(function() { document.getElementById('es-cantidad').focus(); }, 100);
 }

@@ -868,43 +868,63 @@ async function abrirStockArticulo(id, nombre) {
   focusFirstField('modal-stock-articulo');
 }
 
-// ─── FALTANTE DE INVENTARIO (Ajuste — pérdida) ───
+// ─── AJUSTE POR DIFERENCIA EN INVENTARIO (Faltante o Sobrante) ───
 async function abrirFaltanteInventario(id) {
-  if (!puedo('INVENTARIO','AJUSTE_INCIDENCIA')) { alert('No tiene permiso para registrar incidencias de Ajuste.'); return; }
+  if (!puedo('INVENTARIO','AJUSTE_INCIDENCIA')) { alert('No tiene permiso para realizar Ajustes por diferencia en Inventario.'); return; }
   const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) return;
   document.getElementById('falt-id-articulo').value = id;
   document.getElementById('falt-cantidad').value = '';
   document.getElementById('falt-observaciones').value = '';
   document.getElementById('falt-clave').value = '';
+  document.getElementById('falt-tipo').value = 'faltante';
+  document.getElementById('falt-stock-disponible').textContent = '';
   document.getElementById('alerta-falt-ok').style.display = 'none';
   document.getElementById('alerta-falt-err').style.display = 'none';
+  onCambiarTipoFaltante();
 
-  let areas = [], empleados = [];
-  try {
-    [areas, empleados] = await Promise.all([
-      api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
-      api('empleados', 'GET', null, '?estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo')
-    ]);
-  } catch(e) {}
+  let areas = [];
+  try { areas = await api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'); } catch(e) {}
   const selArea = document.getElementById('falt-area');
   selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
     + areas.map(function(a) { return '<option value="'+a.id+'">'+a.nombre+(a.codigo?' ('+a.codigo+')':'')+'</option>'; }).join('');
-  const selEmp = document.getElementById('falt-empleado');
-  selEmp.innerHTML = '<option value="">— Seleccionar empleado —</option>'
-    + empleados.map(function(e) { return '<option value="'+e.id_empleado+'">'+e.nombre_completo+'</option>'; }).join('');
-
-  selArea.onchange = async function() {
-    const infoEl = document.getElementById('falt-stock-disponible');
-    if (!this.value) { infoEl.textContent = ''; return; }
-    const stockDisp = await obtenerStockArea(id, parseInt(this.value));
-    infoEl.textContent = 'Stock disponible en esta área: ' + stockDisp + ' ' + (r.unidad || 'UND');
-  };
-  document.getElementById('falt-stock-disponible').textContent = '';
+  document.getElementById('falt-empleado').innerHTML = '<option value="">— Seleccione primero el área —</option>';
 
   cerrarModal('modal-stock-articulo');
   abrirModal('modal-faltante-inventario');
   focusFirstField('modal-faltante-inventario');
+}
+
+// Al elegir el Área afectada: cargar solo los empleados de esa área y mostrar el stock disponible
+async function onCambiarAreaFaltante() {
+  const id_articulo = parseInt(document.getElementById('falt-id-articulo').value);
+  const id_area = parseInt(document.getElementById('falt-area').value) || null;
+  const selEmp = document.getElementById('falt-empleado');
+  const infoEl = document.getElementById('falt-stock-disponible');
+  if (!id_area) {
+    selEmp.innerHTML = '<option value="">— Seleccione primero el área —</option>';
+    infoEl.textContent = '';
+    return;
+  }
+  const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
+  const [empleados, stockDisp] = await Promise.all([
+    api('empleados', 'GET', null, '?estatus=eq.ACTIVO&id_area=eq.'+id_area+'&order=nombre_completo.asc&select=id_empleado,nombre_completo').catch(function(){ return []; }),
+    obtenerStockArea(id_articulo, id_area)
+  ]);
+  selEmp.innerHTML = empleados.length
+    ? '<option value="">— Seleccionar empleado —</option>' + empleados.map(function(e) { return '<option value="'+e.id_empleado+'">'+e.nombre_completo+'</option>'; }).join('')
+    : '<option value="">— Esta área no tiene empleados activos —</option>';
+  infoEl.textContent = 'Stock disponible en esta área: ' + stockDisp + ' ' + (r?.unidad || 'UND');
+}
+
+// Alternar textos según sea Faltante o Sobrante
+function onCambiarTipoFaltante() {
+  const tipo = document.getElementById('falt-tipo').value;
+  const esFaltante = tipo === 'faltante';
+  document.getElementById('falt-label-cantidad').textContent = esFaltante ? 'Cantidad Faltante *' : 'Cantidad Sobrante *';
+  document.getElementById('falt-descripcion').innerHTML = esFaltante
+    ? 'Usa esto cuando un conteo físico encontró <b>menos</b> unidades de las que el sistema tiene registradas. No es un reverso de ninguna operación — genera una <b>Pérdida por Ajuste de Inventario</b> y descuenta el stock del área seleccionada.'
+    : 'Usa esto cuando un conteo físico encontró <b>más</b> unidades de las que el sistema tiene registradas. No es un reverso de ninguna operación — genera una <b>Ganancia por Ajuste de Inventario</b> y suma el stock al área seleccionada.';
 }
 
 async function guardarFaltanteInventario() {
@@ -915,6 +935,8 @@ async function guardarFaltanteInventario() {
 
   const id_articulo = parseInt(document.getElementById('falt-id-articulo').value);
   const id_area      = parseInt(document.getElementById('falt-area').value) || null;
+  const tipo         = document.getElementById('falt-tipo').value; // 'faltante' | 'sobrante'
+  const esFaltante   = tipo === 'faltante';
   const cantidad     = parseFloat(document.getElementById('falt-cantidad').value);
   const idEmpleado   = parseInt(document.getElementById('falt-empleado').value) || null;
   const clave        = document.getElementById('falt-clave').value || '';
@@ -927,45 +949,62 @@ async function guardarFaltanteInventario() {
   const valid = await validarClaveReceptor(idEmpleado, clave);
   if (!valid.ok)             { errEl.textContent = valid.msg; errEl.style.display = 'block'; return; }
 
-  const stockDisponible = await obtenerStockArea(id_articulo, id_area);
-  if (cantidad > stockDisponible) {
-    errEl.textContent = 'La cantidad supera el stock disponible en esa área (' + stockDisponible + ').';
-    errEl.style.display = 'block'; return;
+  if (esFaltante) {
+    const stockDisponible = await obtenerStockArea(id_articulo, id_area);
+    if (cantidad > stockDisponible) {
+      errEl.textContent = 'La cantidad supera el stock disponible en esa área (' + stockDisponible + ').';
+      errEl.style.display = 'block'; return;
+    }
   }
 
   try {
     const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
     const cpp = parseFloat(r?.precio_costo_moneda || 0);
     const montoUSD = parseFloat((cantidad * cpp).toFixed(4));
-
-    // Descontar del área afectada
-    await upsertStockArea(id_articulo, id_area, -cantidad);
-
-    // Registrar como salida (historial/trazabilidad)
     const areaNombre = document.getElementById('falt-area')?.selectedOptions[0]?.text || 'Área';
-    const sal = await api('stock_salidas','POST',{
-      id_articulo: id_articulo, id_area: id_area, cantidad: cantidad,
-      id_empleado_entrega: idEmpleado, fecha_salida: getHoyVzla(),
-      observaciones: 'FALTANTE (Ajuste de Inventario): ' + (obs || 'Conteo físico'),
-      id_usuario: sesionActual.correo_usuario
-    });
-    const id_salida = sal && sal[0] ? sal[0].id_salida : null;
 
-    // Asiento: Pérdida por Ajuste de Inventario (cuenta 6.2.02.001, reutilizada de redondeo)
-    if (montoUSD > 0 && r) {
-      await generarAsientoInventario('SALIDA_AJUSTE', {
-        articulo:   r.nombre_articulo || r.codigo_articulo || ('Art#' + id_articulo),
-        cantidad:   cantidad,
-        montoUSD:   montoUSD,
-        areaNombre: areaNombre,
-        referencia: id_salida ? 'SAL-' + id_salida : 'FALT-' + id_articulo,
-        id_cuentaInventario: r.id_cuenta_contable || null,
-        fecha: getHoyVzla(),
-        tasa: _tasaVigente || null
+    if (esFaltante) {
+      // ── FALTANTE: descuenta stock + Pérdida por Ajuste ──
+      await upsertStockArea(id_articulo, id_area, -cantidad);
+      const sal = await api('stock_salidas','POST',{
+        id_articulo: id_articulo, id_area: id_area, cantidad: cantidad,
+        id_empleado_entrega: idEmpleado, fecha_salida: getHoyVzla(),
+        observaciones: 'FALTANTE (Ajuste de Inventario): ' + (obs || 'Conteo físico'),
+        id_usuario: sesionActual.correo_usuario
       });
+      const id_salida = sal && sal[0] ? sal[0].id_salida : null;
+      if (montoUSD > 0 && r) {
+        await generarAsientoInventario('SALIDA_AJUSTE', {
+          articulo: r.nombre_articulo || r.codigo_articulo || ('Art#' + id_articulo),
+          cantidad: cantidad, montoUSD: montoUSD, areaNombre: areaNombre,
+          referencia: id_salida ? 'SAL-' + id_salida : 'FALT-' + id_articulo,
+          id_cuentaInventario: r.id_cuenta_contable || null,
+          fecha: getHoyVzla(), tasa: _tasaVigente || null
+        });
+      }
+    } else {
+      // ── SOBRANTE: suma stock + Ganancia por Ajuste ──
+      await upsertStockArea(id_articulo, id_area, cantidad);
+      const ent = await api('stock_entradas','POST',{
+        id_articulo: id_articulo, cantidad: cantidad, precio_costo_moneda: cpp,
+        fecha_entrada: getHoyVzla(), fecha_negociacion: getHoyVzla(),
+        id_area: id_area, id_empleado: idEmpleado, motivo: 'ajuste',
+        observaciones: 'SOBRANTE (Ajuste de Inventario): ' + (obs || 'Conteo físico'),
+        id_usuario: sesionActual.correo_usuario
+      });
+      const id_entrada = ent && ent[0] ? ent[0].id_entrada : null;
+      if (montoUSD > 0 && r) {
+        await generarAsientoInventario('ENTRADA_AJUSTE', {
+          articulo: r.nombre_articulo || r.codigo_articulo || ('Art#' + id_articulo),
+          cantidad: cantidad, montoUSD: montoUSD, areaId: id_area, areaNombre: areaNombre,
+          referencia: id_entrada ? 'ENT-' + id_entrada : 'SOBR-' + id_articulo,
+          id_cuentaInventario: r.id_cuenta_contable || null,
+          fecha: getHoyVzla(), tasa: _tasaVigente || null
+        });
+      }
     }
 
-    okEl.textContent = '✓ Ajuste realizado: -' + cantidad + ' ' + (r?.unidad || 'UND') + ' en ' + areaNombre + '.';
+    okEl.textContent = '✓ Ajuste realizado: ' + (esFaltante ? '-' : '+') + cantidad + ' ' + (r?.unidad || 'UND') + ' en ' + areaNombre + '.';
     okEl.style.display = 'block';
     setTimeout(function() {
       cerrarModal('modal-faltante-inventario');
