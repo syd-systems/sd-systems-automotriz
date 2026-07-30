@@ -2048,8 +2048,10 @@ async function generarAsientoInventario(tipo, datos) {
         descripcion: 'CxP ' + datos.articulo + auxDesc,
         debe_usd: 0, haber_usd: totalUSD, debe_ves: 0, haber_ves: totalBs });
 
-    } else if (tipo === 'ENTRADA_DEVOLUCION' || tipo === 'ENTRADA_AJUSTE') {
+    } else if (tipo === 'ENTRADA_DEVOLUCION') {
       // Débito: Inventario Bs / Crédito: Costo Área Bs
+      // (uso legado — hoy Devolución de Cliente genera su propio reverso de
+      // Ingreso/Costo de Venta vinculado a la factura, ver guardarEntradaStock)
       if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:1,
         descripcion:'Entrada '+datos.articulo+auxDesc,
         debe_usd:monto, haber_usd:0, debe_ves:montoBs, haber_ves:0 });
@@ -2057,7 +2059,34 @@ async function generarAsientoInventario(tipo, datos) {
         descripcion:'Crédito área '+datos.areaNombre+auxDesc,
         debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:montoBs });
 
-    } else if (tipo === 'SALIDA_AREA' || tipo === 'SALIDA_AJUSTE') {
+    } else if (tipo === 'ENTRADA_AJUSTE') {
+      // Sobrante de inventario (conteo físico encontró MÁS de lo que dice el sistema).
+      // No es reverso de nada — es un evento contable propio: Ganancia por Ajuste.
+      // Reutiliza la misma cuenta que ya existe para el residuo de redondeo (4.2.02.001).
+      const cIngresoAjuste = await api('cont_cuentas','GET',null,'?codigo=eq.4.2.02.001&select=id_cuenta');
+      const idIngresoAjuste = cIngresoAjuste.length ? cIngresoAjuste[0].id_cuenta : null;
+      if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:1,
+        descripcion:'Sobrante de Inventario (Ajuste): '+datos.articulo+auxDesc,
+        debe_usd:monto, haber_usd:0, debe_ves:montoBs, haber_ves:0 });
+      if (idIngresoAjuste) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idIngresoAjuste, orden:2,
+        descripcion:'Ganancia por Ajuste de Inventario: '+datos.articulo+auxDesc,
+        debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:montoBs });
+
+    } else if (tipo === 'SALIDA_AJUSTE') {
+      // Faltante de inventario (conteo físico encontró MENOS de lo que dice el sistema).
+      // Tampoco es reverso de nada — evento contable propio: Pérdida por Ajuste.
+      // Reutiliza la cuenta que ya existe para el residuo de redondeo (6.2.02.001).
+      const cGastoAjuste = await api('cont_cuentas','GET',null,'?codigo=eq.6.2.02.001&select=id_cuenta');
+      const idGastoAjuste = cGastoAjuste.length ? cGastoAjuste[0].id_cuenta : null;
+      const montoBsSalAj = parseFloat((monto * tasa).toFixed(2));
+      if (idGastoAjuste) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idGastoAjuste, orden:1,
+        descripcion:'Pérdida por Ajuste de Inventario: '+datos.articulo+auxDesc,
+        debe_usd:monto, haber_usd:0, debe_ves:montoBsSalAj, haber_ves:0 });
+      if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:2,
+        descripcion:'Faltante de Inventario (Ajuste): '+datos.articulo+auxDesc,
+        debe_usd:0, haber_usd:monto, debe_ves:0, haber_ves:montoBsSalAj });
+
+    } else if (tipo === 'SALIDA_AREA') {
       // Débito: Costo Área / Crédito: Inventario — en USD y VES
       const montoBsSal = parseFloat((monto * tasa).toFixed(2));
       if (id_areaCuenta) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:id_areaCuenta, orden:1,

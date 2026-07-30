@@ -524,18 +524,30 @@ async function guardarFactura(emitir) {
     if (emitir && id_os) {
       try {
         const reps = await api('os_mercancias','GET',null,'?id_orden=eq.'+id_os+'&select=id_articulo,cantidad');
-        // Obtener área del usuario que factura
+        // Obtener área del usuario que factura — es el área que hoy tiene la Mercancía
+        // en inventario_stock_area (se la transfirió Compras vía Salida de Stock)
         const correo = sesionActual?.correo_usuario;
         const empRes = correo ? await api('empleados','GET',null,
           '?correo=eq.'+encodeURIComponent(correo)+'&select=id_empleado,id_area&limit=1') : [];
         const id_areaEmp = empRes?.[0]?.id_area || null;
         const idEmpEmp  = empRes?.[0]?.id_empleado || null;
+
+        // Tasa BCV vigente para el asiento de Costo de Venta
+        let tasaCOGS = _tasaVigente || 1;
+        try {
+          const tasasCOGS = await api('tasas','GET',null,
+            '?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+          if (tasasCOGS && tasasCOGS[0]) tasaCOGS = parseFloat(tasasCOGS[0].tipo_cambio) || tasaCOGS;
+        } catch(eTasaCOGS) {}
+
         for (const rep of (reps||[])) {
           if (!rep.id_articulo || !parseFloat(rep.cantidad)) continue;
+          const cantidadRep = parseFloat(rep.cantidad);
+
           // Registrar salida en stock_salidas
           const sal = await api('stock_salidas','POST',{
             id_articulo:   rep.id_articulo,
-            cantidad:      parseFloat(rep.cantidad),
+            cantidad:      cantidadRep,
             id_area:       null, // destino: cliente externo
             id_area_entrega: id_areaEmp,
             id_empleado_entrega: idEmpEmp,
@@ -543,12 +555,47 @@ async function guardarFactura(emitir) {
             observaciones: 'Factura ' + (idFac ? 'FAC-'+idFac : ''),
             id_usuario:    correo
           });
-          // Descontar del stock
-          const artRes = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+rep.id_articulo+'&select=stock_actual&limit=1');
-          if (artRes?.[0]) {
-            const nuevoStock = parseFloat(artRes[0].stock_actual_articulo||0) - parseFloat(rep.cantidad);
-            await api('inventario_almacen','PATCH',{ stock_actual_articulo: Math.max(0, nuevoStock) },'?id_articulo=eq.'+rep.id_articulo);
-          }
+          const id_salidaFac = sal && sal[0] ? sal[0].id_salida : null;
+
+          // Descontar del stock del ÁREA que tenía la Mercancía (esquema por área)
+          if (id_areaEmp) await upsertStockArea(rep.id_articulo, id_areaEmp, -cantidadRep);
+
+          // ── Asiento de Costo de Venta (faltaba por completo) ──
+          // DEBE Costo de Venta/Repuestos (id_cuenta_costo_gasto) / HABER Inventario de Mercancías (id_cuenta_contable)
+          try {
+            const artCOGS = await api('inventario_almacen','GET',null,
+              '?id_articulo=eq.'+rep.id_articulo+'&select=nombre_articulo,precio_costo_moneda,id_cuenta_contable,id_cuenta_costo_gasto');
+            const aC = artCOGS && artCOGS[0] ? artCOGS[0] : null;
+            if (aC && aC.id_cuenta_contable && aC.id_cuenta_costo_gasto) {
+              const cppCOGS   = parseFloat(aC.precio_costo_moneda || 0);
+              const montoUSDCOGS = parseFloat((cantidadRep * cppCOGS).toFixed(4));
+              const montoVESCOGS = parseFloat((montoUSDCOGS * tasaCOGS).toFixed(2));
+              if (montoUSDCOGS > 0) {
+                const anioCOGS = new Date().getFullYear();
+                const ultsCOGS = await api('cont_asientos','GET',null,'?id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
+                let seqCOGS = 1;
+                if (ultsCOGS[0]?.numero_asiento) { const mmC = ultsCOGS[0].numero_asiento.match(/(\d+)$/); if (mmC) seqCOGS = parseInt(mmC[1])+1; }
+                const numAstCOGS = 'AST-' + anioCOGS + '-' + String(seqCOGS).padStart(4,'0');
+                const astCOGS = await api('cont_asientos','POST',{
+                  id_empresa: _empresaActiva?.id_empresa||0, numero_asiento: numAstCOGS,
+                  tipo: 'COSTO_VENTA', fecha: new Date().toISOString().split('T')[0],
+                  descripcion: 'Costo de Venta: ' + (aC.nombre_articulo||'') + ' x' + cantidadRep + ' — Factura ' + (idFac ? 'FAC-'+idFac : ''),
+                  referencia: id_salidaFac ? 'SAL-'+id_salidaFac : 'FAC-'+idFac,
+                  estado: 'APROBADO', moneda_base: 'VES', tasa_bcv: tasaCOGS,
+                  id_usuario: correo || null
+                });
+                const arCOGS = Array.isArray(astCOGS) ? astCOGS[0] : astCOGS;
+                if (arCOGS?.id_asiento) {
+                  await api('cont_asiento_lineas','POST',{ id_asiento:arCOGS.id_asiento, id_cuenta:aC.id_cuenta_costo_gasto, orden:1,
+                    descripcion:'Costo de Venta: '+(aC.nombre_articulo||'')+' x'+cantidadRep+' (CPP $'+cppCOGS.toFixed(2)+' x T/C '+tasaCOGS.toFixed(2)+')',
+                    debe_usd:montoUSDCOGS, haber_usd:0, debe_ves:montoVESCOGS, haber_ves:0, tasa_bcv:tasaCOGS });
+                  await api('cont_asiento_lineas','POST',{ id_asiento:arCOGS.id_asiento, id_cuenta:aC.id_cuenta_contable, orden:2,
+                    descripcion:'Salida inventario por venta: '+(aC.nombre_articulo||'')+' x'+cantidadRep,
+                    debe_usd:0, haber_usd:montoUSDCOGS, debe_ves:0, haber_ves:montoVESCOGS, tasa_bcv:tasaCOGS });
+                }
+              }
+            }
+          } catch(eCOGS) { console.warn('Error creando asiento de Costo de Venta:', eCOGS); }
         }
       } catch(eSal) { console.warn('Error registrando salida de inventario:', eSal); }
     }
@@ -814,10 +861,122 @@ async function abrirStockArticulo(id, nombre) {
   document.getElementById('stock-btn-entrada').style.display  = puedo('INVENTARIO','ENTRADA_STOCK') ? '' : 'none';
   document.getElementById('stock-btn-salida').style.display   = puedo('INVENTARIO','SALIDA_STOCK')  ? '' : 'none';
   document.getElementById('stock-btn-historial').style.display = puedo('INVENTARIO','VER')          ? '' : 'none';
+  const faltanteCont = document.getElementById('stock-btn-faltante-cont');
+  if (faltanteCont) faltanteCont.style.display = puedo('INVENTARIO','AJUSTE_INCIDENCIA') ? '' : 'none';
 
   abrirModal('modal-stock-articulo');
   focusFirstField('modal-stock-articulo');
 }
+
+// ─── FALTANTE DE INVENTARIO (Ajuste — pérdida) ───
+async function abrirFaltanteInventario(id) {
+  if (!puedo('INVENTARIO','AJUSTE_INCIDENCIA')) { alert('No tiene permiso para registrar incidencias de Ajuste.'); return; }
+  const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
+  if (!r) return;
+  document.getElementById('falt-id-articulo').value = id;
+  document.getElementById('falt-cantidad').value = '';
+  document.getElementById('falt-observaciones').value = '';
+  document.getElementById('falt-clave').value = '';
+  document.getElementById('alerta-falt-ok').style.display = 'none';
+  document.getElementById('alerta-falt-err').style.display = 'none';
+
+  let areas = [], empleados = [];
+  try {
+    [areas, empleados] = await Promise.all([
+      api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
+      api('empleados', 'GET', null, '?estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo')
+    ]);
+  } catch(e) {}
+  const selArea = document.getElementById('falt-area');
+  selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
+    + areas.map(function(a) { return '<option value="'+a.id+'">'+a.nombre+(a.codigo?' ('+a.codigo+')':'')+'</option>'; }).join('');
+  const selEmp = document.getElementById('falt-empleado');
+  selEmp.innerHTML = '<option value="">— Seleccionar empleado —</option>'
+    + empleados.map(function(e) { return '<option value="'+e.id_empleado+'">'+e.nombre_completo+'</option>'; }).join('');
+
+  selArea.onchange = async function() {
+    const infoEl = document.getElementById('falt-stock-disponible');
+    if (!this.value) { infoEl.textContent = ''; return; }
+    const stockDisp = await obtenerStockArea(id, parseInt(this.value));
+    infoEl.textContent = 'Stock disponible en esta área: ' + stockDisp + ' ' + (r.unidad || 'UND');
+  };
+  document.getElementById('falt-stock-disponible').textContent = '';
+
+  cerrarModal('modal-stock-articulo');
+  abrirModal('modal-faltante-inventario');
+  focusFirstField('modal-faltante-inventario');
+}
+
+async function guardarFaltanteInventario() {
+  if (!puedo('INVENTARIO','AJUSTE_INCIDENCIA')) { alert('No tiene permiso.'); return; }
+  const errEl = document.getElementById('alerta-falt-err');
+  const okEl  = document.getElementById('alerta-falt-ok');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+
+  const id_articulo = parseInt(document.getElementById('falt-id-articulo').value);
+  const id_area      = parseInt(document.getElementById('falt-area').value) || null;
+  const cantidad     = parseFloat(document.getElementById('falt-cantidad').value);
+  const idEmpleado   = parseInt(document.getElementById('falt-empleado').value) || null;
+  const clave        = document.getElementById('falt-clave').value || '';
+  const obs          = document.getElementById('falt-observaciones').value.trim();
+
+  if (!id_area)              { errEl.textContent = 'Debe seleccionar el área afectada.'; errEl.style.display = 'block'; return; }
+  if (!cantidad || cantidad <= 0) { errEl.textContent = 'La cantidad debe ser mayor a cero.'; errEl.style.display = 'block'; return; }
+  if (!idEmpleado)           { errEl.textContent = 'Debe seleccionar el empleado que reporta.'; errEl.style.display = 'block'; return; }
+  if (!clave)                { errEl.textContent = 'Debe ingresar la contraseña del empleado.'; errEl.style.display = 'block'; return; }
+  const valid = await validarClaveReceptor(idEmpleado, clave);
+  if (!valid.ok)             { errEl.textContent = valid.msg; errEl.style.display = 'block'; return; }
+
+  const stockDisponible = await obtenerStockArea(id_articulo, id_area);
+  if (cantidad > stockDisponible) {
+    errEl.textContent = 'La cantidad supera el stock disponible en esa área (' + stockDisponible + ').';
+    errEl.style.display = 'block'; return;
+  }
+
+  try {
+    const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
+    const cpp = parseFloat(r?.precio_costo_moneda || 0);
+    const montoUSD = parseFloat((cantidad * cpp).toFixed(4));
+
+    // Descontar del área afectada
+    await upsertStockArea(id_articulo, id_area, -cantidad);
+
+    // Registrar como salida (historial/trazabilidad)
+    const areaNombre = document.getElementById('falt-area')?.selectedOptions[0]?.text || 'Área';
+    const sal = await api('stock_salidas','POST',{
+      id_articulo: id_articulo, id_area: id_area, cantidad: cantidad,
+      id_empleado_entrega: idEmpleado, fecha_salida: getHoyVzla(),
+      observaciones: 'FALTANTE (Ajuste de Inventario): ' + (obs || 'Conteo físico'),
+      id_usuario: sesionActual.correo_usuario
+    });
+    const id_salida = sal && sal[0] ? sal[0].id_salida : null;
+
+    // Asiento: Pérdida por Ajuste de Inventario (cuenta 6.2.02.001, reutilizada de redondeo)
+    if (montoUSD > 0 && r) {
+      await generarAsientoInventario('SALIDA_AJUSTE', {
+        articulo:   r.nombre_articulo || r.codigo_articulo || ('Art#' + id_articulo),
+        cantidad:   cantidad,
+        montoUSD:   montoUSD,
+        areaNombre: areaNombre,
+        referencia: id_salida ? 'SAL-' + id_salida : 'FALT-' + id_articulo,
+        id_cuentaInventario: r.id_cuenta_contable || null,
+        fecha: getHoyVzla(),
+        tasa: _tasaVigente || null
+      });
+    }
+
+    okEl.textContent = '✓ Faltante registrado: -' + cantidad + ' ' + (r?.unidad || 'UND') + ' en ' + areaNombre + '.';
+    okEl.style.display = 'block';
+    setTimeout(function() {
+      cerrarModal('modal-faltante-inventario');
+      renderInventario();
+    }, 1200);
+  } catch(e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
 
 async function regresarAFichaInv() {
   // Cerrar modales y volver a tabla principal con cache actualizado
@@ -1219,6 +1378,20 @@ function onCambiarPrecioEntrada() {
   calcularCuotasEntrada();
 }
 
+function onCambiarFacturaDevolucion() {
+  const idFact = document.getElementById('es-factura-devolucion')?.value;
+  const infoEl = document.getElementById('es-factura-devolucion-info');
+  const cantEl = document.getElementById('es-cantidad');
+  if (!idFact || !infoEl) { if (infoEl) infoEl.style.display = 'none'; return; }
+  const f = (window._facturasDevolucionArt || []).find(function(x) { return String(x.id_factura) === String(idFact); });
+  if (!f) { infoEl.style.display = 'none'; return; }
+  infoEl.innerHTML = 'Facturado: <b>' + f.cantidad_facturada + ' unid.</b> — Subtotal línea: $' + f.subtotal_usd_linea.toFixed(2)
+    + (f.aplica_iva ? ' — Factura con IVA' : '') + (f.aplica_igtf ? ' — Factura con IGTF' : '')
+    + '<br>La cantidad que ingreses abajo se prorrateará sobre este monto para reversar el asiento de venta y de costo.';
+  infoEl.style.display = 'block';
+  if (cantEl) cantEl.max = f.cantidad_facturada;
+}
+
 function onCambiarMotivoEntrada() {
   const motivo = document.getElementById('es-motivo')?.value;
   const esCompra = motivo === 'compra';
@@ -1441,11 +1614,15 @@ async function _guardarSalidaStockInterno() {
     document.getElementById('salida-clave-entrega')?.focus(); return;
   }
 
-  // Validar stock disponible
+  // Validar stock disponible — contra el ÁREA QUE ENTREGA (Compras), no el global
   const art = inventarioCache.find(function(x) { return x.id_articulo === idRep; });
-  if (art && cantidad > art.stock_actual_articulo) {
-    errEl.textContent = 'La cantidad supera el stock disponible (' + art.stock_actual_articulo + ' ' + (art.unidad||'UND') + ').';
-    errEl.style.display = 'block'; return;
+  const id_areaEntregaVal = parseInt(document.getElementById('salida-area-entrega')?.value) || null;
+  if (id_areaEntregaVal) {
+    const stockDisponibleArea = await obtenerStockArea(idRep, id_areaEntregaVal);
+    if (cantidad > stockDisponibleArea) {
+      errEl.textContent = 'La cantidad supera el stock disponible en Compras (' + stockDisponibleArea + ' ' + (art?.unidad||'UND') + ').';
+      errEl.style.display = 'block'; return;
+    }
   }
 
   try {
@@ -1467,6 +1644,23 @@ async function _guardarSalidaStockInterno() {
     });
     const id_salida = salidaRes && salidaRes[0] ? salidaRes[0].id_salida : null;
 
+    // ── Clasificar el artículo por su cuenta contable de Inventario ──
+    // 1.1.03.001 = Mercancías (sigue como inventario en el área destino, se gasta al facturar)
+    // 1.1.03.002 = Consumibles (se gasta de inmediato al salir de Compras)
+    let esMercancia = false;
+    if (art && art.id_cuenta_contable) {
+      const ctaArtSal = await api('cont_cuentas','GET',null,'?id_cuenta=eq.'+art.id_cuenta_contable+'&select=codigo');
+      esMercancia = !!(ctaArtSal && ctaArtSal[0] && ctaArtSal[0].codigo === '1.1.03.001');
+    }
+
+    if (esMercancia) {
+      // ── MERCANCÍA: solo se mueve el stock por área, SIN gasto ──
+      // (el costo se reconocerá contablemente cuando se facture al cliente)
+      if (id_areaEntrega) await upsertStockArea(idRep, id_areaEntrega, -cantidad);
+      await upsertStockArea(idRep, id_area, cantidad);
+      if (pvSalida) await api('inventario_almacen', 'PATCH', { precio_venta_moneda: pvSalida }, '?id_articulo=eq.' + idRep);
+      if (art) art.precio_venta_moneda = pvSalida || art.precio_venta_moneda;
+    } else {
     // Descontar del stock_actual y actualizar precio venta si se ingresó
     // — leer el stock FRESCO de la BD justo antes de restar, en vez de
     // confiar en el valor cacheado en el navegador, que puede estar
@@ -1482,11 +1676,12 @@ async function _guardarSalidaStockInterno() {
     const patchInv = { stock_actual_articulo: nuevoStock };
     if (pvSalida) patchInv.precio_venta_moneda = pvSalida;
     await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + idRep);
+    if (id_areaEntrega) await upsertStockArea(idRep, id_areaEntrega, -cantidad);
 
     // Actualizar cache
     if (art) art.stock_actual_articulo = nuevoStock;
 
-    // Transferencias de CONSUMIBLES generan asiento: DEBE gasto / HABER inventario
+    // Salidas de CONSUMIBLES generan asiento: DEBE gasto / HABER inventario
     if (art && art.id_cuenta_contable && art.id_cuenta_costo_gasto) {
       try {
         // CPP en USD ya esta en art.precio_costo_moneda
@@ -1588,6 +1783,7 @@ async function _guardarSalidaStockInterno() {
         }
       } catch(eAstSal) { console.warn('Error asiento salida consumible:', eAstSal); }
     }
+    } // fin rama Consumible
 
     // ── Crear notificación de recepción para el empleado remitente ──
     if (idEmpRecibe && id_salida) {

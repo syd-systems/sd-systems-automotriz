@@ -574,7 +574,7 @@ async function abrirEntradaStock(id) {
   document.getElementById('alerta-es-ok').style.display = 'none';
   document.getElementById('alerta-es-err').style.display = 'none';
   if (document.getElementById('es-clave-receptor'))  document.getElementById('es-clave-receptor').value = '';
-  if (document.getElementById('es-cliente-nombre')) document.getElementById('es-cliente-nombre').value = '';
+  if (document.getElementById('es-factura-devolucion')) { document.getElementById('es-factura-devolucion').value = ''; document.getElementById('es-factura-devolucion-info').style.display = 'none'; }
   if (document.getElementById('es-area-origen'))    document.getElementById('es-area-origen').value = '';
   if (document.getElementById('es-moneda-compra'))  { var sm = document.getElementById('es-moneda-compra'); sm.selectedIndex = 0; }
   if (document.getElementById('es-tributos-cont'))  document.getElementById('es-tributos-cont').style.display = 'none';
@@ -612,8 +612,9 @@ async function abrirEntradaStock(id) {
     api('proveedores', 'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif,id_categoria,param_categorias_proveedor:id_categoria(nombre)'),
     api('param_categorias_proveedor','GET',null,'?nombre=ilike.*Artículo*&select=id&limit=1'),
     api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
+    api('os_mercancias', 'GET', null, '?id_articulo=eq.'+id+'&select=id_orden,cantidad,subtotal_usd'),
   ]).then(function(res) {
-    var provs = res[0], areas = res[2];
+    var provs = res[0], areas = res[2], repsArt = res[3] || [];
     var catArticulo = res[1] && res[1][0] ? res[1][0].id : null;
     if (catArticulo) provs = provs.filter(function(p){ return p.id_categoria === catArticulo; });
     var selProv = document.getElementById('es-proveedor');
@@ -624,10 +625,34 @@ async function abrirEntradaStock(id) {
       selOrigen.innerHTML = '<option value="">— Seleccionar área de origen —</option>'
         + areas.map(function(a) { return '<option value="' + a.id + '">' + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>'; }).join('');
     }
+    // Cargar facturas elegibles para Devolución (solo las que facturaron ESTE artículo)
+    var selFact = document.getElementById('es-factura-devolucion');
+    if (selFact && repsArt.length) {
+      var idsOrden = repsArt.map(function(r){ return r.id_orden; }).filter(function(v,i,a){ return v && a.indexOf(v)===i; });
+      if (idsOrden.length) {
+        api('facturas','GET',null,'?id_orden=in.('+idsOrden.join(',')+')&estado=eq.EMITIDA&select=id_factura,numero_factura,id_orden,receptor_nombre,subtotal_usd,iva_usd,igtf_usd,total_usd,tasa_bcv,aplica_iva,aplica_igtf').then(function(facs) {
+          window._facturasDevolucionArt = (facs||[]).map(function(f) {
+            var lineaOS = repsArt.find(function(r){ return r.id_orden === f.id_orden; });
+            return Object.assign({}, f, { cantidad_facturada: lineaOS ? parseFloat(lineaOS.cantidad) : 0, subtotal_usd_linea: lineaOS ? parseFloat(lineaOS.subtotal_usd) : 0 });
+          });
+          selFact.innerHTML = '<option value="">— Seleccionar factura —</option>'
+            + window._facturasDevolucionArt.map(function(f) { return '<option value="'+f.id_factura+'">'+f.numero_factura+' — '+(f.receptor_nombre||'')+' ('+f.cantidad_facturada+' unid.)</option>'; }).join('');
+        }).catch(function(){});
+      } else {
+        selFact.innerHTML = '<option value="">— Este artículo no tiene facturas emitidas —</option>';
+      }
+    } else if (selFact) {
+      selFact.innerHTML = '<option value="">— Este artículo no tiene facturas emitidas —</option>';
+    }
     onCambiarMotivoEntrada();
     if (typeof buscarTasaBCVNegociacion === 'function') buscarTasaBCVNegociacion();
   }).catch(function(){});
   abrirModal('modal-entrada-stock');
+  // La opción "Ajuste de Inventario" (sobrante) requiere el permiso especial
+  // AJUSTE_INCIDENCIA — visibilidad controlada desde Usuario, no todos deben
+  // poder registrar sobrantes/faltantes sin autorización.
+  const optAjuste = document.querySelector('#es-motivo option[value="ajuste"]');
+  if (optAjuste) optAjuste.style.display = puedo('INVENTARIO','AJUSTE_INCIDENCIA') ? '' : 'none';
   focusFirstField('modal-entrada-stock');
   setTimeout(function() { document.getElementById('es-cantidad').focus(); }, 100);
 }
@@ -797,8 +822,8 @@ async function guardarEntradaStock() {
     const areaOrig = document.getElementById('es-area-origen')?.value;
     if (!areaOrig)                  return mostrarError('Seleccione el Área de Origen.', 'es-area-origen');
   } else if (motivoSel === 'devolucion') {
-    const clienteNom = document.getElementById('es-cliente-nombre')?.value?.trim();
-    if (!clienteNom)                return mostrarError('Ingrese el nombre del cliente.', 'es-cliente-nombre');
+    const facturaSel = document.getElementById('es-factura-devolucion')?.value;
+    if (!facturaSel)                return mostrarError('Seleccione la Factura a la que corresponde esta devolución.', 'es-factura-devolucion');
   }
   const pagoDSel  = document.getElementById('es-esquema-pago')?.value;
   if (!pagoDSel) return mostrarError('Seleccione la Modalidad de Pago.', 'es-esquema-pago');
@@ -866,8 +891,13 @@ async function guardarEntradaStock() {
       const idProvVal = document.getElementById('es-proveedor')?.value;
       if (!idProvVal) { errEl.textContent = 'Debe seleccionar el proveedor.'; errEl.style.display = 'block'; document.getElementById('es-proveedor')?.focus(); resetBtn(); return; }
     } else if (motivoEnt === 'devolucion') {
-      const clienteNom = document.getElementById('es-cliente-nombre')?.value.trim();
-      if (!clienteNom) { errEl.textContent = 'Debe ingresar el nombre del cliente.'; errEl.style.display = 'block'; document.getElementById('es-cliente-nombre')?.focus(); resetBtn(); return; }
+      const facturaDevVal = document.getElementById('es-factura-devolucion')?.value;
+      if (!facturaDevVal) { errEl.textContent = 'Debe seleccionar la Factura a la que corresponde esta devolución.'; errEl.style.display = 'block'; document.getElementById('es-factura-devolucion')?.focus(); resetBtn(); return; }
+      const facSel = (window._facturasDevolucionArt || []).find(function(f){ return String(f.id_factura) === String(facturaDevVal); });
+      if (facSel && cantidad > facSel.cantidad_facturada) {
+        errEl.textContent = 'La cantidad a devolver (' + cantidad + ') no puede superar lo facturado en esta factura (' + facSel.cantidad_facturada + ').';
+        errEl.style.display = 'block'; document.getElementById('es-cantidad')?.focus(); resetBtn(); return;
+      }
     } else if (motivoEnt === 'transferencia') {
       const idOrigenVal = document.getElementById('es-area-origen')?.value;
       if (!idOrigenVal) { errEl.textContent = 'Debe seleccionar el área de origen.'; errEl.style.display = 'block'; document.getElementById('es-area-origen')?.focus(); resetBtn(); return; }
@@ -925,7 +955,8 @@ async function guardarEntradaStock() {
 
     // ── FASE 3: Registrar entrada en historial ──
     const idProvEnt  = (motivoEnt === 'compra') ? (parseInt(document.getElementById('es-proveedor')?.value) || null) : null;
-    const clienteNomH  = (motivoEnt === 'devolucion') ? (document.getElementById('es-cliente-nombre')?.value.trim() || null) : null;
+    const clienteNomH  = (motivoEnt === 'devolucion') ? ((window._facturasDevolucionArt || []).find(function(f){ return String(f.id_factura) === String(document.getElementById('es-factura-devolucion')?.value); })?.receptor_nombre || null) : null;
+    const idFacturaH   = (motivoEnt === 'devolucion') ? (parseInt(document.getElementById('es-factura-devolucion')?.value) || null) : null;
 
     let id_entrada = null;
     const entradaRes = await api('stock_entradas', 'POST', {
@@ -941,6 +972,7 @@ async function guardarEntradaStock() {
       id_empleado:            idEmpEntVal,
       id_proveedor:           idProvEnt,
       cliente_nombre:         clienteNomH,
+      id_factura:             idFacturaH,
       id_area_origen:         id_areaOrigenH,
       motivo:                 motivoEnt || null,
       esquema_pago:           document.getElementById('es-esquema-pago')?.value || null,
@@ -992,12 +1024,12 @@ async function guardarEntradaStock() {
       ? parseFloat((nuevoPrecioCostoRaw * cantidad).toFixed(2))
       : parseFloat((nuevoPrecioCostoRaw * cantidad * (incluyeIVA_ent ? 1 : (1 + IVA_RATE_ENT))).toFixed(2));
 
-    // Transferencias de otros articulos (Mercancias) NO generan asiento aqui
-    if (motivoEnt !== "transferencia") try {
+    // Transferencias de otros articulos (Mercancias) NO generan asiento aqui.
+    // Devolución de Cliente tampoco usa el asiento genérico — usa su propio
+    // reverso de Ingreso + Costo de Venta más abajo (ver bloque siguiente).
+    if (motivoEnt !== "transferencia" && motivoEnt !== "devolucion") try {
       const areaNombreEnt = document.getElementById('es-area-display')?.textContent || 'Área';
-      const tipoAst = motivoEnt === 'compra' ? 'ENTRADA_COMPRA'
-                    : motivoEnt === 'devolucion' ? 'ENTRADA_DEVOLUCION'
-                    : 'ENTRADA_AJUSTE';
+      const tipoAst = motivoEnt === 'compra' ? 'ENTRADA_COMPRA' : 'ENTRADA_AJUSTE';
       await generarAsientoInventario(tipoAst, {
         articulo:   r.nombre_articulo || r.codigo_articulo || ('Art#' + id),
         cantidad:   cantidad,
@@ -1022,6 +1054,95 @@ async function guardarEntradaStock() {
         // automático cuando el stock del artículo llegue a 0.
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
+
+    // ── Devolución de Cliente: reverso de Ingreso + reverso de Costo de Venta ──
+    // (prorrateado según cuánto de lo facturado se está devolviendo)
+    if (motivoEnt === 'devolucion') try {
+      const idFacturaDev = parseInt(document.getElementById('es-factura-devolucion')?.value) || null;
+      if (idFacturaDev) {
+        const facRes = await api('facturas','GET',null,'?id_factura=eq.'+idFacturaDev+
+          '&select=id_factura,numero_factura,id_orden,receptor_nombre,subtotal_usd,iva_usd,igtf_usd,total_usd,tasa_bcv,aplica_iva,aplica_igtf');
+        const facDev = facRes && facRes[0] ? facRes[0] : null;
+        const lineaOS = facDev ? (await api('os_mercancias','GET',null,'?id_orden=eq.'+facDev.id_orden+'&id_articulo=eq.'+id+'&select=cantidad,subtotal_usd'))?.[0] : null;
+
+        if (facDev && lineaOS && parseFloat(lineaOS.cantidad) > 0) {
+          const cantFacturada   = parseFloat(lineaOS.cantidad);
+          const proporcion      = Math.min(1, cantidad / cantFacturada);
+          const subtotalLineaUS = parseFloat(lineaOS.subtotal_usd || 0);
+          const subtotalDevUSD  = parseFloat((subtotalLineaUS * proporcion).toFixed(2));
+          // IVA/IGTF prorrateados según la participación de esta línea en la factura total
+          const participacion   = facDev.subtotal_usd > 0 ? (subtotalLineaUS / facDev.subtotal_usd) : 0;
+          const ivaDevUSD  = facDev.aplica_iva  ? parseFloat((facDev.iva_usd  * participacion * proporcion).toFixed(2)) : 0;
+          const igtfDevUSD = facDev.aplica_igtf ? parseFloat((facDev.igtf_usd * participacion * proporcion).toFixed(2)) : 0;
+          const totalDevUSD = parseFloat((subtotalDevUSD + ivaDevUSD + igtfDevUSD).toFixed(2));
+          const tasaDev = parseFloat(facDev.tasa_bcv) || tasa_bcv_usada || 1;
+
+          const cuentasDev = await api('cont_cuentas','GET',null,'?codigo=in.(1.1.02.001,4.1.02.001,2.1.03.001)&select=id_cuenta,codigo');
+          const cCxCDev    = cuentasDev.find(function(c){ return c.codigo==='1.1.02.001'; });
+          const cIngRepDev = cuentasDev.find(function(c){ return c.codigo==='4.1.02.001'; });
+          const cIVADev    = cuentasDev.find(function(c){ return c.codigo==='2.1.03.001'; });
+          let cIGTFDev = null;
+          if (igtfDevUSD > 0) {
+            const igtfBuscado = await api('cont_cuentas','GET',null,'?nombre=ilike.%25IGTF%25por%25Pagar%25&estado=eq.ACTIVO&select=id_cuenta&limit=1');
+            cIGTFDev = igtfBuscado && igtfBuscado[0] ? igtfBuscado[0] : (await api('cont_cuentas','GET',null,'?codigo=eq.2.1.03.004&select=id_cuenta'))?.[0] || null;
+          }
+
+          const anioDev = new Date().getFullYear();
+          const seqBase = await api('cont_asientos','GET',null,'?id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
+          let seqDev = 1;
+          if (seqBase[0]?.numero_asiento) { const mmD = seqBase[0].numero_asiento.match(/(\d+)$/); if (mmD) seqDev = parseInt(mmD[1])+1; }
+
+          // Asiento 1: Reverso del Ingreso (nota de crédito)
+          const numAstDev1 = 'AST-'+anioDev+'-'+String(seqDev).padStart(4,'0');
+          const astDev1 = await api('cont_asientos','POST',{
+            id_empresa: _empresaActiva?.id_empresa||0, numero_asiento: numAstDev1,
+            tipo: 'DEVOLUCION_VENTA', fecha: document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
+            descripcion: 'Devolución de Cliente — Factura '+facDev.numero_factura+' — '+(r.nombre_articulo||'')+' x'+cantidad,
+            referencia: id_entrada ? 'ENT-'+id_entrada : 'DEV-'+id,
+            estado: 'APROBADO', moneda_base: 'VES', tasa_bcv: tasaDev,
+            id_usuario: sesionActual?.correo_usuario||null
+          });
+          const arDev1 = Array.isArray(astDev1) ? astDev1[0] : astDev1;
+          if (arDev1?.id_asiento) {
+            let ordenDev = 1;
+            if (cIngRepDev) await api('cont_asiento_lineas','POST',{ id_asiento:arDev1.id_asiento, id_cuenta:cIngRepDev.id_cuenta, orden:ordenDev++,
+              descripcion:'Reverso Ingreso — Devolución Fact. '+facDev.numero_factura, debe_usd:subtotalDevUSD, haber_usd:0, debe_ves:parseFloat((subtotalDevUSD*tasaDev).toFixed(2)), haber_ves:0, tasa_bcv:tasaDev });
+            if (cIVADev && ivaDevUSD > 0) await api('cont_asiento_lineas','POST',{ id_asiento:arDev1.id_asiento, id_cuenta:cIVADev.id_cuenta, orden:ordenDev++,
+              descripcion:'Reverso IVA — Devolución Fact. '+facDev.numero_factura, debe_usd:ivaDevUSD, haber_usd:0, debe_ves:parseFloat((ivaDevUSD*tasaDev).toFixed(2)), haber_ves:0, tasa_bcv:tasaDev });
+            if (cIGTFDev && igtfDevUSD > 0) await api('cont_asiento_lineas','POST',{ id_asiento:arDev1.id_asiento, id_cuenta:cIGTFDev.id_cuenta, orden:ordenDev++,
+              descripcion:'Reverso IGTF — Devolución Fact. '+facDev.numero_factura, debe_usd:igtfDevUSD, haber_usd:0, debe_ves:parseFloat((igtfDevUSD*tasaDev).toFixed(2)), haber_ves:0, tasa_bcv:tasaDev });
+            if (cCxCDev) await api('cont_asiento_lineas','POST',{ id_asiento:arDev1.id_asiento, id_cuenta:cCxCDev.id_cuenta, orden:ordenDev++,
+              descripcion:'Reverso CxC — Devolución Fact. '+facDev.numero_factura, debe_usd:0, haber_usd:totalDevUSD, debe_ves:0, haber_ves:parseFloat((totalDevUSD*tasaDev).toFixed(2)), tasa_bcv:tasaDev });
+          }
+
+          // Asiento 2: Reverso del Costo de Venta (al CPP vigente del artículo)
+          if (r.id_cuenta_contable && r.id_cuenta_costo_gasto) {
+            const cppDevUSD = parseFloat((cantidad * parseFloat(r.precio_costo_moneda||0)).toFixed(4));
+            if (cppDevUSD > 0) {
+              const numAstDev2 = 'AST-'+anioDev+'-'+String(seqDev+1).padStart(4,'0');
+              const astDev2 = await api('cont_asientos','POST',{
+                id_empresa: _empresaActiva?.id_empresa||0, numero_asiento: numAstDev2,
+                tipo: 'DEVOLUCION_VENTA', fecha: document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
+                descripcion: 'Reverso Costo de Venta — Devolución Fact. '+facDev.numero_factura+' — '+(r.nombre_articulo||'')+' x'+cantidad,
+                referencia: id_entrada ? 'ENT-'+id_entrada : 'DEV-'+id,
+                estado: 'APROBADO', moneda_base: 'VES', tasa_bcv: tasaDev,
+                id_usuario: sesionActual?.correo_usuario||null
+              });
+              const arDev2 = Array.isArray(astDev2) ? astDev2[0] : astDev2;
+              const montoVESDev2 = parseFloat((cppDevUSD*tasaDev).toFixed(2));
+              if (arDev2?.id_asiento) {
+                await api('cont_asiento_lineas','POST',{ id_asiento:arDev2.id_asiento, id_cuenta:r.id_cuenta_contable, orden:1,
+                  descripcion:'Reingreso a Inventario — Devolución: '+(r.nombre_articulo||'')+' x'+cantidad,
+                  debe_usd:cppDevUSD, haber_usd:0, debe_ves:montoVESDev2, haber_ves:0, tasa_bcv:tasaDev });
+                await api('cont_asiento_lineas','POST',{ id_asiento:arDev2.id_asiento, id_cuenta:r.id_cuenta_costo_gasto, orden:2,
+                  descripcion:'Reverso Costo de Venta: '+(r.nombre_articulo||'')+' x'+cantidad,
+                  debe_usd:0, haber_usd:cppDevUSD, debe_ves:0, haber_ves:montoVESDev2, tasa_bcv:tasaDev });
+              }
+            }
+          }
+        }
+      }
+    } catch(eDevAst) { console.warn('Error generando asientos de Devolución de Cliente:', eDevAst); }
 
     // ── FASE 5B: Crear CxP según esquema de pago ──
     console.log('[SYD] fase5b motivo=' + motivoEnt + ' id_entrada=' + id_entrada + ' esquema=' + document.getElementById('es-esquema-pago')?.value);
