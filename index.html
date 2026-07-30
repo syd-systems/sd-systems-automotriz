@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260723069"></script>
-<script src="js/parametros.js?v=20260723069"></script>
-<script src="js/empresas.js?v=20260723069"></script>
-<script src="js/facturacion.js?v=20260723069"></script>
-<script src="js/inventario.js?v=20260723069"></script>
-<script src="js/contabilidad.js?v=20260723069"></script>
-<script src="js/pagos.js?v=20260723069"></script>
-<script src="js/vehiculos.js?v=20260723069"></script>
-<script src="js/catalogo.js?v=20260723069"></script>
-<script src="js/inventario2.js?v=20260723069"></script>
-<script src="js/ordenes.js?v=20260723069"></script>
+<script src="js/core.js?v=20260723070"></script>
+<script src="js/parametros.js?v=20260723070"></script>
+<script src="js/empresas.js?v=20260723070"></script>
+<script src="js/facturacion.js?v=20260723070"></script>
+<script src="js/inventario.js?v=20260723070"></script>
+<script src="js/contabilidad.js?v=20260723070"></script>
+<script src="js/pagos.js?v=20260723070"></script>
+<script src="js/vehiculos.js?v=20260723070"></script>
+<script src="js/catalogo.js?v=20260723070"></script>
+<script src="js/inventario2.js?v=20260723070"></script>
+<script src="js/ordenes.js?v=20260723070"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2495,6 +2495,7 @@
         No es un reverso de ninguna operación — genera un asiento de Ganancia o Pérdida por Ajuste, según corresponda.
       </div>
       <input type="hidden" id="falt-id-articulo">
+      <input type="hidden" id="falt-id-empleado-usuario">
       <div class="form-campo">
         <label>Área afectada *</label>
         <select id="falt-area" onchange="onCambiarAreaFaltante()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
@@ -2506,25 +2507,26 @@
         <div class="form-campo" style="margin:0">
           <label>Tipo de Ajuste *</label>
           <select id="falt-tipo" onchange="onCambiarTipoFaltante()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar —</option>
             <option value="faltante">Faltante (encontré menos)</option>
             <option value="sobrante">Sobrante (encontré más)</option>
           </select>
         </div>
         <div class="form-campo" style="margin:0">
-          <label id="falt-label-cantidad">Cantidad Faltante *</label>
+          <label id="falt-label-cantidad">Cantidad *</label>
           <input type="number" id="falt-cantidad" min="0" step="any" placeholder="0">
         </div>
       </div>
       <div class="form-campo">
-        <label>Empleado que reporta <span style="font-size:10px;color:var(--suave);font-weight:400">(del área afectada)</span> *</label>
-        <select id="falt-empleado" onchange="onCambiarEmpleadoFaltante()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+        <label>Empleado que reporta <span style="font-size:10px;color:var(--suave);font-weight:400">(del área afectada — informativo)</span> *</label>
+        <select id="falt-empleado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
           <option value="">— Seleccione primero el área —</option>
         </select>
       </div>
       <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
         <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-          <div style="font-size:13px;color:var(--texto)">Usuario: <span id="falt-empleado-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
+          <div style="font-size:13px;color:var(--texto)">Usuario: <span id="falt-usuario-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
         </div>
         <label style="font-size:12px">Contraseña *</label>
         <input type="password" id="falt-clave" placeholder="Ingrese su contraseña para confirmar"

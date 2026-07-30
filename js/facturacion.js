@@ -877,26 +877,47 @@ async function abrirFaltanteInventario(id) {
   document.getElementById('falt-cantidad').value = '';
   document.getElementById('falt-observaciones').value = '';
   document.getElementById('falt-clave').value = '';
-  document.getElementById('falt-empleado-nombre').textContent = '—';
-  document.getElementById('falt-tipo').value = 'faltante';
   document.getElementById('falt-stock-disponible').textContent = '';
   document.getElementById('alerta-falt-ok').style.display = 'none';
   document.getElementById('alerta-falt-err').style.display = 'none';
-  onCambiarTipoFaltante();
 
+  const selArea = document.getElementById('falt-area');
+  const selTipo = document.getElementById('falt-tipo');
   let areas = [];
   try { areas = await api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'); } catch(e) {}
-  const selArea = document.getElementById('falt-area');
   selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
     + areas.map(function(a) { return '<option value="'+a.id+'">'+a.nombre+(a.codigo?' ('+a.codigo+')':'')+'</option>'; }).join('');
+  selArea.value = '';   // sin preselección — es una decisión del usuario
+  selTipo.value = '';   // sin preselección — es una decisión del usuario
+  onCambiarTipoFaltante();
   document.getElementById('falt-empleado').innerHTML = '<option value="">— Seleccione primero el área —</option>';
+
+  // Confirmación de Usuario — SIEMPRE el usuario logueado (igual que Entrada de Stock),
+  // no el "Empleado que reporta" (que es solo informativo, filtrado por área).
+  await cargarUsuarioConfirmacionFaltante();
 
   cerrarModal('modal-stock-articulo');
   abrirModal('modal-faltante-inventario');
   focusFirstField('modal-faltante-inventario');
 }
 
-// Al elegir el Área afectada: cargar solo los empleados de esa área y mostrar el stock disponible
+// Carga el usuario de la sesión actual en el recuadro de Confirmación de Usuario
+async function cargarUsuarioConfirmacionFaltante() {
+  const nomEl = document.getElementById('falt-usuario-nombre');
+  const hidEl = document.getElementById('falt-id-empleado-usuario');
+  try {
+    const correo = sesionActual?.correo_usuario;
+    if (!correo) { if (nomEl) nomEl.textContent = '—'; return; }
+    const emps = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correo)+'&select=id_empleado,nombre_completo');
+    const emp = emps && emps[0] ? emps[0] : null;
+    if (nomEl) nomEl.textContent = emp ? emp.nombre_completo : correo;
+    if (hidEl) hidEl.value = emp ? emp.id_empleado : '';
+  } catch(e) {
+    if (nomEl) nomEl.textContent = sesionActual?.correo_usuario || '—';
+  }
+}
+
+// Al elegir el Área afectada: cargar solo los empleados de esa área (informativo) y mostrar el stock disponible
 async function onCambiarAreaFaltante() {
   const id_articulo = parseInt(document.getElementById('falt-id-articulo').value);
   const id_area = parseInt(document.getElementById('falt-area').value) || null;
@@ -905,8 +926,6 @@ async function onCambiarAreaFaltante() {
   if (!id_area) {
     selEmp.innerHTML = '<option value="">— Seleccione primero el área —</option>';
     infoEl.textContent = '';
-    document.getElementById('falt-empleado-nombre').textContent = '—';
-    document.getElementById('falt-clave').value = '';
     return;
   }
   const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
@@ -917,28 +936,23 @@ async function onCambiarAreaFaltante() {
   selEmp.innerHTML = empleados.length
     ? '<option value="">— Seleccionar empleado —</option>' + empleados.map(function(e) { return '<option value="'+e.id_empleado+'">'+e.nombre_completo+'</option>'; }).join('')
     : '<option value="">— Esta área no tiene empleados activos —</option>';
-  document.getElementById('falt-empleado-nombre').textContent = '—';
-  document.getElementById('falt-clave').value = '';
   infoEl.textContent = 'Stock disponible en esta área: ' + stockDisp + ' ' + (r?.unidad || 'UND');
 }
 
 // Alternar textos según sea Faltante o Sobrante
 function onCambiarTipoFaltante() {
   const tipo = document.getElementById('falt-tipo').value;
+  const descEl = document.getElementById('falt-descripcion');
+  if (!tipo) {
+    document.getElementById('falt-label-cantidad').textContent = 'Cantidad *';
+    descEl.innerHTML = 'Selecciona si el conteo físico encontró <b>menos</b> (Faltante) o <b>más</b> (Sobrante) unidades de las que el sistema tiene registradas.';
+    return;
+  }
   const esFaltante = tipo === 'faltante';
   document.getElementById('falt-label-cantidad').textContent = esFaltante ? 'Cantidad Faltante *' : 'Cantidad Sobrante *';
-  document.getElementById('falt-descripcion').innerHTML = esFaltante
-    ? 'Usa esto cuando un conteo físico encontró <b>menos</b> unidades de las que el sistema tiene registradas. No es un reverso de ninguna operación — genera una <b>Pérdida por Ajuste de Inventario</b> y descuenta el stock del área seleccionada.'
-    : 'Usa esto cuando un conteo físico encontró <b>más</b> unidades de las que el sistema tiene registradas. No es un reverso de ninguna operación — genera una <b>Ganancia por Ajuste de Inventario</b> y suma el stock al área seleccionada.';
-}
-
-// Al elegir el empleado que reporta, mostrar su nombre en el recuadro de Confirmación de Usuario
-function onCambiarEmpleadoFaltante() {
-  const sel = document.getElementById('falt-empleado');
-  const nombreEl = document.getElementById('falt-empleado-nombre');
-  if (nombreEl) nombreEl.textContent = sel?.selectedOptions?.[0]?.text || '—';
-  const claveEl = document.getElementById('falt-clave');
-  if (claveEl) claveEl.value = '';
+  descEl.innerHTML = esFaltante
+    ? 'No es un reverso de ninguna operación — genera una <b>Pérdida por Ajuste de Inventario</b> y descuenta el stock del área seleccionada.'
+    : 'No es un reverso de ninguna operación — genera una <b>Ganancia por Ajuste de Inventario</b> y suma el stock al área seleccionada.';
 }
 
 async function guardarFaltanteInventario() {
@@ -952,15 +966,18 @@ async function guardarFaltanteInventario() {
   const tipo         = document.getElementById('falt-tipo').value; // 'faltante' | 'sobrante'
   const esFaltante   = tipo === 'faltante';
   const cantidad     = parseFloat(document.getElementById('falt-cantidad').value);
-  const idEmpleado   = parseInt(document.getElementById('falt-empleado').value) || null;
+  const idEmpleado   = parseInt(document.getElementById('falt-empleado').value) || null; // informativo
+  const idUsuarioEmp = parseInt(document.getElementById('falt-id-empleado-usuario').value) || null; // quien autoriza
   const clave        = document.getElementById('falt-clave').value || '';
   const obs          = document.getElementById('falt-observaciones').value.trim();
 
   if (!id_area)              { errEl.textContent = 'Debe seleccionar el área afectada.'; errEl.style.display = 'block'; return; }
+  if (!tipo)                 { errEl.textContent = 'Debe seleccionar el Tipo de Ajuste (Faltante o Sobrante).'; errEl.style.display = 'block'; return; }
   if (!cantidad || cantidad <= 0) { errEl.textContent = 'La cantidad debe ser mayor a cero.'; errEl.style.display = 'block'; return; }
   if (!idEmpleado)           { errEl.textContent = 'Debe seleccionar el empleado que reporta.'; errEl.style.display = 'block'; return; }
-  if (!clave)                { errEl.textContent = 'Debe ingresar la contraseña del empleado.'; errEl.style.display = 'block'; return; }
-  const valid = await validarClaveReceptor(idEmpleado, clave);
+  if (!clave)                { errEl.textContent = 'Debe ingresar su contraseña para confirmar.'; errEl.style.display = 'block'; return; }
+  if (!idUsuarioEmp)         { errEl.textContent = 'No se pudo identificar su usuario. Cierre y vuelva a abrir el modal.'; errEl.style.display = 'block'; return; }
+  const valid = await validarClaveReceptor(idUsuarioEmp, clave);
   if (!valid.ok)             { errEl.textContent = valid.msg; errEl.style.display = 'block'; return; }
 
   if (esFaltante) {
