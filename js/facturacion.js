@@ -965,7 +965,7 @@ async function guardarFaltanteInventario() {
       });
     }
 
-    okEl.textContent = '✓ Faltante registrado: -' + cantidad + ' ' + (r?.unidad || 'UND') + ' en ' + areaNombre + '.';
+    okEl.textContent = '✓ Ajuste realizado: -' + cantidad + ' ' + (r?.unidad || 'UND') + ' en ' + areaNombre + '.';
     okEl.style.display = 'block';
     setTimeout(function() {
       cerrarModal('modal-faltante-inventario');

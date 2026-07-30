@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260723066"></script>
-<script src="js/parametros.js?v=20260723066"></script>
-<script src="js/empresas.js?v=20260723066"></script>
-<script src="js/facturacion.js?v=20260723066"></script>
-<script src="js/inventario.js?v=20260723066"></script>
-<script src="js/contabilidad.js?v=20260723066"></script>
-<script src="js/pagos.js?v=20260723066"></script>
-<script src="js/vehiculos.js?v=20260723066"></script>
-<script src="js/catalogo.js?v=20260723066"></script>
-<script src="js/inventario2.js?v=20260723066"></script>
-<script src="js/ordenes.js?v=20260723066"></script>
+<script src="js/core.js?v=20260723067"></script>
+<script src="js/parametros.js?v=20260723067"></script>
+<script src="js/empresas.js?v=20260723067"></script>
+<script src="js/facturacion.js?v=20260723067"></script>
+<script src="js/inventario.js?v=20260723067"></script>
+<script src="js/contabilidad.js?v=20260723067"></script>
+<script src="js/pagos.js?v=20260723067"></script>
+<script src="js/vehiculos.js?v=20260723067"></script>
+<script src="js/catalogo.js?v=20260723067"></script>
+<script src="js/inventario2.js?v=20260723067"></script>
+<script src="js/ordenes.js?v=20260723067"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2473,7 +2473,7 @@
       <div id="stock-btn-faltante-cont" style="display:none;margin-top:10px">
         <button id="stock-btn-faltante" class="btn-secundario" style="width:100%;padding:10px;font-size:12px;border-color:rgba(252,129,129,0.3);color:#fc8181"
           onclick="abrirFaltanteInventario(_fichaInvActual.id)">
-          ⚠ Registrar Faltante (Ajuste)
+          ⚠ Realizar Ajuste por diferencia en Inventario
         </button>
       </div>
     </div>
@@ -2484,9 +2484,9 @@
 </div>
 
 <div class="modal-overlay" id="modal-faltante-inventario" style="z-index:2100">
-  <div class="modal-box" style="max-width:460px">
+  <div class="modal" style="max-width:460px">
     <div class="modal-header">
-      <h3>⚠ Registrar Faltante de Inventario</h3>
+      <h3>⚠ Ajuste por Diferencia en Inventario</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-faltante-inventario')">×</button>
     </div>
     <div class="modal-body" style="display:grid;gap:14px">
@@ -2525,7 +2525,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-faltante-inventario')">Cancelar</button>
-      <button class="btn-peligro" onclick="guardarFaltanteInventario()">⚠ Registrar Faltante</button>
+      <button class="btn-peligro" onclick="guardarFaltanteInventario()">⚠ Realizar Ajuste</button>
     </div>
   </div>
 </div>
