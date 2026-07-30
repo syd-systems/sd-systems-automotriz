@@ -877,6 +877,7 @@ async function abrirFaltanteInventario(id) {
   document.getElementById('falt-cantidad').value = '';
   document.getElementById('falt-observaciones').value = '';
   document.getElementById('falt-clave').value = '';
+  document.getElementById('falt-empleado-nombre').textContent = '—';
   document.getElementById('falt-tipo').value = 'faltante';
   document.getElementById('falt-stock-disponible').textContent = '';
   document.getElementById('alerta-falt-ok').style.display = 'none';
@@ -904,6 +905,8 @@ async function onCambiarAreaFaltante() {
   if (!id_area) {
     selEmp.innerHTML = '<option value="">— Seleccione primero el área —</option>';
     infoEl.textContent = '';
+    document.getElementById('falt-empleado-nombre').textContent = '—';
+    document.getElementById('falt-clave').value = '';
     return;
   }
   const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
@@ -914,6 +917,8 @@ async function onCambiarAreaFaltante() {
   selEmp.innerHTML = empleados.length
     ? '<option value="">— Seleccionar empleado —</option>' + empleados.map(function(e) { return '<option value="'+e.id_empleado+'">'+e.nombre_completo+'</option>'; }).join('')
     : '<option value="">— Esta área no tiene empleados activos —</option>';
+  document.getElementById('falt-empleado-nombre').textContent = '—';
+  document.getElementById('falt-clave').value = '';
   infoEl.textContent = 'Stock disponible en esta área: ' + stockDisp + ' ' + (r?.unidad || 'UND');
 }
 
@@ -925,6 +930,15 @@ function onCambiarTipoFaltante() {
   document.getElementById('falt-descripcion').innerHTML = esFaltante
     ? 'Usa esto cuando un conteo físico encontró <b>menos</b> unidades de las que el sistema tiene registradas. No es un reverso de ninguna operación — genera una <b>Pérdida por Ajuste de Inventario</b> y descuenta el stock del área seleccionada.'
     : 'Usa esto cuando un conteo físico encontró <b>más</b> unidades de las que el sistema tiene registradas. No es un reverso de ninguna operación — genera una <b>Ganancia por Ajuste de Inventario</b> y suma el stock al área seleccionada.';
+}
+
+// Al elegir el empleado que reporta, mostrar su nombre en el recuadro de Confirmación de Usuario
+function onCambiarEmpleadoFaltante() {
+  const sel = document.getElementById('falt-empleado');
+  const nombreEl = document.getElementById('falt-empleado-nombre');
+  if (nombreEl) nombreEl.textContent = sel?.selectedOptions?.[0]?.text || '—';
+  const claveEl = document.getElementById('falt-clave');
+  if (claveEl) claveEl.value = '';
 }
 
 async function guardarFaltanteInventario() {
