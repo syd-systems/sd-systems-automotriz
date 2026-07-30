@@ -794,19 +794,26 @@ async function guardarEntradaStock() {
   };
 
   // ── Validaciones en orden de aparición en pantalla ──
-  const fechaNeg  = document.getElementById('es-fecha-negociacion')?.value;
-  const hoy       = getHoyVzla();
-  if (!fechaNeg)                    return mostrarError('Seleccione la Fecha Negociación.', 'es-fecha-negociacion');
-  if (fechaNeg > hoy)               return mostrarError('La Fecha Negociación no puede ser mayor al día de hoy.', 'es-fecha-negociacion');
-  const monedaSel = document.getElementById('es-moneda-compra')?.value;
-  if (!monedaSel)                   return mostrarError('Seleccione la Moneda Negociación.', 'es-moneda-compra');
-  if (cantidad <= 0)                return mostrarError('Ingrese una cantidad mayor a 0.', 'es-cantidad');
-  const precioVal = parseMontoVE(document.getElementById('es-precio-costo')?.value);
-  if (precioVal <= 0)               return mostrarError('Ingrese el Precio Negociación.', 'es-precio-costo');
-  // Precio Venta — opcional, no se valida
   const motivoSel = document.getElementById('es-motivo')?.value;
   if (!motivoSel)                   return mostrarError('Seleccione la Transacción.', 'es-motivo');
-  // Proveedor o área origen — obligatorio según motivo
+  const fechaNeg  = document.getElementById('es-fecha-negociacion')?.value;
+  const hoy       = getHoyVzla();
+  if (!fechaNeg)                    return mostrarError('Seleccione la Fecha.', 'es-fecha-negociacion');
+  if (fechaNeg > hoy)               return mostrarError('La Fecha no puede ser mayor al día de hoy.', 'es-fecha-negociacion');
+  if (cantidad <= 0)                return mostrarError('Ingrese una cantidad mayor a 0.', 'es-cantidad');
+
+  // Moneda / Precio Negociación / Modalidad de Pago — SOLO para Compra.
+  // Devolución, Ajuste y Transferencia usan el CPP actual del artículo tal
+  // cual está, sin promediar un precio inventado solo para pasar el formulario.
+  let monedaSel = null, precioVal = 0;
+  if (motivoSel === 'compra') {
+    monedaSel = document.getElementById('es-moneda-compra')?.value;
+    if (!monedaSel)                 return mostrarError('Seleccione la Moneda Negociación.', 'es-moneda-compra');
+    precioVal = parseMontoVE(document.getElementById('es-precio-costo')?.value);
+    if (precioVal <= 0)             return mostrarError('Ingrese el Precio Negociación.', 'es-precio-costo');
+  }
+  // Precio Venta — opcional, no se valida
+  // Proveedor, Factura o Área origen — obligatorio según motivo
   if (motivoSel === 'compra') {
     const provSel = document.getElementById('es-proveedor')?.value;
     if (!provSel) return mostrarError('Seleccione el Proveedor.', 'es-proveedor');
@@ -825,68 +832,84 @@ async function guardarEntradaStock() {
     const facturaSel = document.getElementById('es-factura-devolucion')?.value;
     if (!facturaSel)                return mostrarError('Seleccione la Factura a la que corresponde esta devolución.', 'es-factura-devolucion');
   }
-  const pagoDSel  = document.getElementById('es-esquema-pago')?.value;
-  if (!pagoDSel) return mostrarError('Seleccione la Modalidad de Pago.', 'es-esquema-pago');
-  if (pagoDSel === 'CONTADO' && motivoSel === 'compra') {
-    const fechaPagoVal = document.getElementById('es-fecha-pago')?.value || '';
-    if (!fechaPagoVal) return mostrarError('Ingrese la Fecha de Pago.', 'es-fecha-pago');
-  }
-  if (pagoDSel === 'CREDITO') {
-    const numCuotasVal  = parseInt(document.getElementById('es-cuotas-num')?.value) || 0;
-    const fechaCuotaVal = document.getElementById('es-cuotas-fecha-inicio')?.value || '';
-    if (!numCuotasVal || numCuotasVal < 1) return mostrarError('Ingrese el número de cuotas.', 'es-cuotas-num');
-    if (!fechaCuotaVal) return mostrarError('Ingrese la Fecha de la Primera Cuota.', 'es-cuotas-fecha-inicio');
-    if (fechaCuotaVal <= getHoyVzla()) return mostrarError('La Fecha de la Primera Cuota tiene que ser mayor que el día de hoy.', 'es-cuotas-fecha-inicio');
+  let pagoDSel = null;
+  if (motivoSel === 'compra') {
+    pagoDSel = document.getElementById('es-esquema-pago')?.value;
+    if (!pagoDSel) return mostrarError('Seleccione la Modalidad de Pago.', 'es-esquema-pago');
+    if (pagoDSel === 'CONTADO') {
+      const fechaPagoVal = document.getElementById('es-fecha-pago')?.value || '';
+      if (!fechaPagoVal) return mostrarError('Ingrese la Fecha de Pago.', 'es-fecha-pago');
+    }
+    if (pagoDSel === 'CREDITO') {
+      const numCuotasVal  = parseInt(document.getElementById('es-cuotas-num')?.value) || 0;
+      const fechaCuotaVal = document.getElementById('es-cuotas-fecha-inicio')?.value || '';
+      if (!numCuotasVal || numCuotasVal < 1) return mostrarError('Ingrese el número de cuotas.', 'es-cuotas-num');
+      if (!fechaCuotaVal) return mostrarError('Ingrese la Fecha de la Primera Cuota.', 'es-cuotas-fecha-inicio');
+      if (fechaCuotaVal <= getHoyVzla()) return mostrarError('La Fecha de la Primera Cuota tiene que ser mayor que el día de hoy.', 'es-cuotas-fecha-inicio');
+    }
   }
   // Observaciones — opcional, no se valida
 
   try {
     const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
-    const precioIngresado  = parseMontoVE(document.getElementById('es-precio-costo').value);
-    const monedaCompra     = document.getElementById('es-moneda-compra')?.value || 'USD';
-    const tasaBCVVal       = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
-    const incluyeIVA_ent = document.getElementById('es-incluye-iva-val')?.value === 'SI' || false;
-    const IVA_RATE_ENT   = tasaIVAActual();
-    const nuevoPrecioCostoRaw = monedaCompra === 'VES'
-      ? (tasaBCVVal > 0 ? parseFloat((precioIngresado / tasaBCVVal).toFixed(4)) : parseMontoVE(document.getElementById('es-precio-usd-calc')?.value))
-      : precioIngresado;
-    // Si incluye IVA — precio costo = base sin IVA
-    const nuevoPrecioCosto = incluyeIVA_ent
-      ? parseFloat((nuevoPrecioCostoRaw / (1 + IVA_RATE_ENT)).toFixed(4))
-      : nuevoPrecioCostoRaw;
-    if (monedaCompra === 'VES' && precioIngresado > 0 && nuevoPrecioCosto <= 0) {
-      errEl.textContent = 'No se encontró tasa BCV para convertir el precio.';
-      errEl.style.display = 'block';
-      document.getElementById('es-precio-costo')?.focus();
-      resetBtn(); return;
-    }
-    const moneda_compra_val      = monedaCompra;
-    const precio_compra_original = precioIngresado;
-    let tasa_bcv_usada           = tasaBCVVal > 0 ? tasaBCVVal : null;
-    // Si no hay tasa, buscarla de la fecha de negociación
-    if (!tasa_bcv_usada) {
-      const fechaNeg = document.getElementById('es-fecha-negociacion')?.value || getHoyVzla();
-      try {
-        const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaNeg+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
-        if (tasaRows && tasaRows[0]) tasa_bcv_usada = parseFloat(tasaRows[0].tipo_cambio);
-      } catch(e) {}
-    }
-    // Último recurso: la tasa vigente en caché
-    if (!tasa_bcv_usada) tasa_bcv_usada = _tasaVigente || null;
-    // Si aun así no hay tasa válida, DETENER -- de lo contrario el monto_ves
-    // de la CxP y del asiento contable caerían a "monto_usd * 1" más abajo
-    // (un caso real: $30 USD se registró como Bs 30 exactos, tratando el
-    // dólar 1:1 con el bolívar por falta de una tasa BCV registrada).
-    if (!tasa_bcv_usada || tasa_bcv_usada <= 1) {
-      errEl.textContent = 'No se encontró una Tasa BCV válida para la Fecha de Negociación. Registre la tasa del día en Parámetros → Tasas de Cambio antes de continuar (o ingrésela manualmente en el campo Tasa BCV de este formulario).';
-      errEl.style.display = 'block';
-      document.getElementById('es-tasa-bcv')?.focus();
-      resetBtn(); return;
+    let nuevoPrecioCosto = 0;
+    let nuevoPrecioCostoRaw = 0;
+    let moneda_compra_val = 'USD';
+    let precio_compra_original = null;
+    let tasa_bcv_usada = _tasaVigente || null;
+    let incluyeIVA_ent = false;
+    const IVA_RATE_ENT = tasaIVAActual();
+
+    if (motivoSel === 'compra') {
+      const precioIngresado  = parseMontoVE(document.getElementById('es-precio-costo').value);
+      const monedaCompra     = document.getElementById('es-moneda-compra')?.value || 'USD';
+      const tasaBCVVal       = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
+      incluyeIVA_ent = document.getElementById('es-incluye-iva-val')?.value === 'SI' || false;
+      nuevoPrecioCostoRaw = monedaCompra === 'VES'
+        ? (tasaBCVVal > 0 ? parseFloat((precioIngresado / tasaBCVVal).toFixed(4)) : parseMontoVE(document.getElementById('es-precio-usd-calc')?.value))
+        : precioIngresado;
+      // Si incluye IVA — precio costo = base sin IVA
+      nuevoPrecioCosto = incluyeIVA_ent
+        ? parseFloat((nuevoPrecioCostoRaw / (1 + IVA_RATE_ENT)).toFixed(4))
+        : nuevoPrecioCostoRaw;
+      if (monedaCompra === 'VES' && precioIngresado > 0 && nuevoPrecioCosto <= 0) {
+        errEl.textContent = 'No se encontró tasa BCV para convertir el precio.';
+        errEl.style.display = 'block';
+        document.getElementById('es-precio-costo')?.focus();
+        resetBtn(); return;
+      }
+      moneda_compra_val      = monedaCompra;
+      precio_compra_original = precioIngresado;
+      tasa_bcv_usada         = tasaBCVVal > 0 ? tasaBCVVal : null;
+      // Si no hay tasa, buscarla de la fecha de negociación
+      if (!tasa_bcv_usada) {
+        const fechaNegBusq = document.getElementById('es-fecha-negociacion')?.value || getHoyVzla();
+        try {
+          const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaNegBusq+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+          if (tasaRows && tasaRows[0]) tasa_bcv_usada = parseFloat(tasaRows[0].tipo_cambio);
+        } catch(e) {}
+      }
+      // Último recurso: la tasa vigente en caché
+      if (!tasa_bcv_usada) tasa_bcv_usada = _tasaVigente || null;
+      // Si aun así no hay tasa válida, DETENER -- de lo contrario el monto_ves
+      // de la CxP y del asiento contable caerían a "monto_usd * 1" más abajo
+      // (un caso real: $30 USD se registró como Bs 30 exactos, tratando el
+      // dólar 1:1 con el bolívar por falta de una tasa BCV registrada).
+      if (!tasa_bcv_usada || tasa_bcv_usada <= 1) {
+        errEl.textContent = 'No se encontró una Tasa BCV válida para la Fecha de Negociación. Registre la tasa del día en Parámetros → Tasas de Cambio antes de continuar (o ingrésela manualmente en el campo Tasa BCV de este formulario).';
+        errEl.style.display = 'block';
+        document.getElementById('es-tasa-bcv')?.focus();
+        resetBtn(); return;
+      }
+    } else {
+      // Devolución / Ajuste / Transferencia: sin negociación — usar la tasa
+      // vigente solo como referencia para mostrar montos en Bs, sin exigirla.
+      if (!tasa_bcv_usada || tasa_bcv_usada <= 1) tasa_bcv_usada = 1;
     }
     const nuevoPrecioVenta       = null; // precio venta se gestiona desde SALIDA
 
     // ── FASE 1: Todas las validaciones ANTES de tocar BD ──
-    const motivoEnt = document.getElementById('es-motivo')?.value;
+    const motivoEnt = motivoSel;
     if (motivoEnt === 'compra') {
       const idProvVal = document.getElementById('es-proveedor')?.value;
       if (!idProvVal) { errEl.textContent = 'Debe seleccionar el proveedor.'; errEl.style.display = 'block'; document.getElementById('es-proveedor')?.focus(); resetBtn(); return; }
@@ -962,7 +985,7 @@ async function guardarEntradaStock() {
     const entradaRes = await api('stock_entradas', 'POST', {
       id_articulo:            id,
       cantidad:               cantidad,
-      precio_costo_moneda:    nuevoPrecioCosto || null,
+      precio_costo_moneda:    nuevoPrecioCosto > 0 ? nuevoPrecioCosto : costoActual,
       precio_compra_original: precio_compra_original || null,
       moneda_compra:          moneda_compra_val,
       tasa_bcv:               tasa_bcv_usada,
@@ -1019,10 +1042,14 @@ async function guardarEntradaStock() {
     // ── Monto TOTAL (con IVA si aplica) — se calcula UNA sola vez aquí y se
     // usa igual tanto para el asiento contable como para la CxP, para que
     // nunca queden descuadrados entre sí por redondeos en momentos distintos.
+    // Para Ajuste (sin precio negociado) se valora al CPP actual del artículo.
     const exentoIVAEnt2   = document.getElementById('es-exento-iva-val')?.value === 'SI';
-    const montoTotalConIVA = exentoIVAEnt2
-      ? parseFloat((nuevoPrecioCostoRaw * cantidad).toFixed(2))
-      : parseFloat((nuevoPrecioCostoRaw * cantidad * (incluyeIVA_ent ? 1 : (1 + IVA_RATE_ENT))).toFixed(2));
+    const precioBaseAsiento = motivoEnt === 'compra' ? nuevoPrecioCostoRaw : costoActual;
+    const montoTotalConIVA = motivoEnt !== 'compra'
+      ? parseFloat((precioBaseAsiento * cantidad).toFixed(2))
+      : (exentoIVAEnt2
+          ? parseFloat((precioBaseAsiento * cantidad).toFixed(2))
+          : parseFloat((precioBaseAsiento * cantidad * (incluyeIVA_ent ? 1 : (1 + IVA_RATE_ENT))).toFixed(2)));
 
     // Transferencias de otros articulos (Mercancias) NO generan asiento aqui.
     // Devolución de Cliente tampoco usa el asiento genérico — usa su propio

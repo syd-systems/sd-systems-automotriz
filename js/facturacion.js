@@ -1397,6 +1397,26 @@ function onCambiarMotivoEntrada() {
   const esCompra = motivo === 'compra';
   const tribuCont = document.getElementById('es-tributos-cont');
   if (tribuCont) tribuCont.style.display = esCompra ? '' : 'none';
+
+  // Campos de Negociación (Moneda/Precio/Monto/Tasa BCV) y Modalidad de Pago
+  // solo aplican a Compra — el CPP de Devolución/Ajuste/Transferencia se toma
+  // tal cual está, sin promediar un precio inventado.
+  const negCont  = document.getElementById('es-negociacion-cont');
+  const pagoCont = document.getElementById('es-pago-cont');
+  if (negCont)  negCont.style.display  = esCompra ? 'contents' : 'none';
+  if (pagoCont) pagoCont.style.display = esCompra ? 'contents' : 'none';
+  if (!esCompra) {
+    // Limpiar valores para que no queden datos viejos de una Compra anterior
+    if (document.getElementById('es-moneda-compra')) document.getElementById('es-moneda-compra').selectedIndex = 0;
+    if (document.getElementById('es-precio-costo'))  document.getElementById('es-precio-costo').value = '';
+    if (document.getElementById('es-monto-total'))   document.getElementById('es-monto-total').value = '0,00';
+    if (document.getElementById('es-tasa-bcv'))      document.getElementById('es-tasa-bcv').value = '';
+    if (document.getElementById('es-precio-usd-calc')) document.getElementById('es-precio-usd-calc').value = '';
+    if (document.getElementById('es-esquema-pago'))  document.getElementById('es-esquema-pago').selectedIndex = 0;
+    if (document.getElementById('es-fecha-pago-cont')) document.getElementById('es-fecha-pago-cont').style.display = 'none';
+    if (document.getElementById('es-credito-cont'))  document.getElementById('es-credito-cont').style.display = 'none';
+  }
+
   // Resetear IVA — sin preselección
   document.querySelectorAll('input[name="es-entrada-incluye-iva"]').forEach(function(r){ r.checked = false; });
   const prev = document.getElementById('es-tributos-preview');
