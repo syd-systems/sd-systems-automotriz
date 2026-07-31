@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260723075"></script>
-<script src="js/parametros.js?v=20260723075"></script>
-<script src="js/empresas.js?v=20260723075"></script>
-<script src="js/facturacion.js?v=20260723075"></script>
-<script src="js/inventario.js?v=20260723075"></script>
-<script src="js/contabilidad.js?v=20260723075"></script>
-<script src="js/pagos.js?v=20260723075"></script>
-<script src="js/vehiculos.js?v=20260723075"></script>
-<script src="js/catalogo.js?v=20260723075"></script>
-<script src="js/inventario2.js?v=20260723075"></script>
-<script src="js/ordenes.js?v=20260723075"></script>
+<script src="js/core.js?v=20260723076"></script>
+<script src="js/parametros.js?v=20260723076"></script>
+<script src="js/empresas.js?v=20260723076"></script>
+<script src="js/facturacion.js?v=20260723076"></script>
+<script src="js/inventario.js?v=20260723076"></script>
+<script src="js/contabilidad.js?v=20260723076"></script>
+<script src="js/pagos.js?v=20260723076"></script>
+<script src="js/vehiculos.js?v=20260723076"></script>
+<script src="js/catalogo.js?v=20260723076"></script>
+<script src="js/inventario2.js?v=20260723076"></script>
+<script src="js/ordenes.js?v=20260723076"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3771,6 +3771,11 @@
       <div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:10px 16px;margin-bottom:16px">
         <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Artículo</div>
         <div style="font-weight:600;font-size:15px" id="historial-art-nombre">—</div>
+      </div>
+      <div id="historial-tabs" style="display:flex;gap:8px;margin-bottom:14px">
+        <button id="historial-tab-todas" class="btn-naranja" style="padding:7px 16px;font-size:12px" onclick="filtrarHistorial('todas')">Todas</button>
+        <button id="historial-tab-entrada" class="btn-secundario" style="padding:7px 16px;font-size:12px" onclick="filtrarHistorial('entrada')">▲ Entradas</button>
+        <button id="historial-tab-salida" class="btn-secundario" style="padding:7px 16px;font-size:12px" onclick="filtrarHistorial('salida')">▼ Salidas</button>
       </div>
       <div id="historial-contenido"></div>
       <input type="hidden" id="historial-id-articulo">

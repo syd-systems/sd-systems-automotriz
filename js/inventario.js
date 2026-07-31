@@ -42,7 +42,7 @@ async function verHistorialStock(id_articulo, nombreArt) {
 }
 
 const HISTORIAL_PAGE_SIZE = 50;
-let _historialEstado = { id_articulo: null, cursor: null, terminado: false, idAreaH: null };
+let _historialEstado = { id_articulo: null, cursor: null, terminado: false, idAreaH: null, filtro: 'todas' };
 
 async function recargarHistorial(id_articulo) {
   if (!id_articulo) id_articulo = document.getElementById('historial-id-articulo').value;
@@ -54,7 +54,8 @@ async function recargarHistorial(id_articulo) {
       const empH = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_area&limit=1').catch(function(){ return []; });
       id_areaH = empH?.[0]?.id_area || null;
     }
-    _historialEstado = { id_articulo: id_articulo, cursor: null, terminado: false, idAreaH: id_areaH };
+    _historialEstado = { id_articulo: id_articulo, cursor: null, terminado: false, idAreaH: id_areaH, filtro: 'todas' };
+    _actualizarTabsHistorial();
 
     const movimientos = await _obtenerPaginaHistorial();
     if (!movimientos.length) {
@@ -67,21 +68,64 @@ async function recargarHistorial(id_articulo) {
   }
 }
 
-// Trae la siguiente página combinada (Entradas + Salidas) usando un cursor de fecha_registro.
-// Se piden HISTORIAL_PAGE_SIZE de CADA tabla por separado (garantiza que el top-N combinado
-// sea correcto sin traer el historial completo) y se mezclan ordenadas.
+// Cambiar el filtro (Todas / Entradas / Salidas) — reinicia la paginación desde el principio
+async function filtrarHistorial(tipo) {
+  _historialEstado.filtro = tipo;
+  _historialEstado.cursor = null;
+  _historialEstado.terminado = false;
+  _actualizarTabsHistorial();
+  const cont = document.getElementById('historial-contenido');
+  cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+  try {
+    const movimientos = await _obtenerPaginaHistorial();
+    if (!movimientos.length) {
+      cont.innerHTML = '<div style="text-align:center;padding:32px;color:var(--suave)">Sin movimientos ' + (tipo === 'entrada' ? 'de Entrada' : tipo === 'salida' ? 'de Salida' : '') + ' registrados</div>';
+      return;
+    }
+    cont.innerHTML = _renderTablaHistorial(movimientos);
+  } catch(err) {
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + err.message + '</div>';
+  }
+}
+
+function _actualizarTabsHistorial() {
+  const map = { todas: 'historial-tab-todas', entrada: 'historial-tab-entrada', salida: 'historial-tab-salida' };
+  Object.keys(map).forEach(function(k) {
+    const btn = document.getElementById(map[k]);
+    if (btn) btn.className = (k === _historialEstado.filtro) ? 'btn-naranja' : 'btn-secundario';
+  });
+}
+
+// Trae la siguiente página combinada (Entradas + Salidas, o solo una según el filtro activo)
+// usando un cursor de fecha_registro. Se piden HISTORIAL_PAGE_SIZE de cada tabla relevante por
+// separado (garantiza que el top-N combinado sea correcto sin traer el historial completo).
 async function _obtenerPaginaHistorial() {
-  const { id_articulo, cursor, idAreaH } = _historialEstado;
+  const { id_articulo, cursor, idAreaH, filtro } = _historialEstado;
   const cursorQS = cursor ? '&fecha_registro=lt.' + encodeURIComponent(cursor) : '';
   const qEnt = '?id_articulo=eq.' + id_articulo + (idAreaH ? '&id_area=eq.'+idAreaH : '') + cursorQS
     + '&order=fecha_registro.desc&limit=' + HISTORIAL_PAGE_SIZE
     + '&select=*,area_receptora:id_area(nombre,codigo),area_origen:id_area_origen(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),proveedores(nombre)';
-  const qSal = '?id_articulo=eq.' + id_articulo + (idAreaH ? '&or=(id_area.eq.'+idAreaH+',id_area_entrega.eq.'+idAreaH+')' : '') + cursorQS
+
+  // Solo Compras hace Entradas (incluida Transferencia: Área Origen → Compras), así que
+  // cada Transferencia deja DOS filas reales: una en stock_entradas (ganancia de Compras)
+  // y una espejo en stock_salidas con id_area = Compras (destino) — puesta ahí solo para
+  // trazabilidad del lado del Área Origen. Si Compras ve su propio historial y filtramos
+  // por "id_area = Compras OR id_area_entrega = Compras", esa fila espejo hace match DOS
+  // veces (una por su propia entrada, otra por esta salida) y la Transferencia se duplica
+  // como "Entrada" repetida. Por eso, cuando el área del usuario es Compras, solo se cuentan
+  // las salidas donde Compras fue quien ENTREGÓ (id_area_entrega) — nunca donde aparece como
+  // destino (id_area), ya que ese lado ya está cubierto por su fila de stock_entradas.
+  const esAreaCompras = idAreaH && _empresaActiva?.id_area_principal && idAreaH === _empresaActiva.id_area_principal;
+  const filtroAreaSal = !idAreaH ? ''
+    : esAreaCompras ? '&id_area_entrega=eq.' + idAreaH
+    : '&or=(id_area.eq.' + idAreaH + ',id_area_entrega.eq.' + idAreaH + ')';
+  const qSal = '?id_articulo=eq.' + id_articulo + filtroAreaSal + cursorQS
     + '&order=fecha_registro.desc&limit=' + HISTORIAL_PAGE_SIZE
     + '&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),empleado_entrega:id_empleado_entrega(nombre_completo)';
+
   const [entradas, salidas] = await Promise.all([
-    api('stock_entradas', 'GET', null, qEnt),
-    api('stock_salidas',  'GET', null, qSal),
+    filtro !== 'salida'  ? api('stock_entradas', 'GET', null, qEnt) : Promise.resolve([]),
+    filtro !== 'entrada' ? api('stock_salidas',  'GET', null, qSal) : Promise.resolve([]),
   ]);
 
   const combinados = [
@@ -93,7 +137,7 @@ async function _obtenerPaginaHistorial() {
   ].sort(function(a, b) { return new Date(b.fecha_reg) - new Date(a.fecha_reg); });
 
   const pagina = combinados.slice(0, HISTORIAL_PAGE_SIZE);
-  // Si ambas tablas devolvieron menos del tamaño de página, ya no queda nada más que traer.
+  // Si ambas tablas consultadas devolvieron menos del tamaño de página, ya no queda nada más que traer.
   _historialEstado.terminado = entradas.length < HISTORIAL_PAGE_SIZE && salidas.length < HISTORIAL_PAGE_SIZE;
   if (pagina.length) _historialEstado.cursor = pagina[pagina.length - 1].fecha_reg;
   return pagina;
