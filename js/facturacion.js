@@ -904,8 +904,13 @@ function _aplicarModoFaltante(modo, anulada) {
 
 // Ver la ficha de un Ajuste ya registrado (desde Historial de Movimientos)
 async function verFichaAjuste(tipoRegistro, idMovimiento, id_articulo) {
-  if (!sesionActual?.administrador && !puedo('INVENTARIO','AJUSTE_INCIDENCIA')) {
-    alert('No tiene permiso para ver Ajustes de Inventario.'); return;
+  // Ver la ficha requiere el mismo permiso mínimo que ya se necesitó para
+  // abrir el Historial de Movimientos (VER) — el tipo de ficha que se muestra
+  // es un hecho sobre el dato (es un Ajuste), no algo que dependa de si el
+  // usuario puede además editarlo o anularlo. Ese control de acción
+  // (Editar/Anular) vive aparte, en _aplicarModoFaltante().
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','VER')) {
+    alert('No tiene permiso para ver esta ficha.'); return;
   }
   const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
   let m;
