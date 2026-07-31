@@ -972,19 +972,19 @@ async function _guardarOSInterno() {
     }
 
     // ── Restaurar stock de artículos anteriores (solo en edición) ──
-    // Si es edición, las líneas anteriores ya fueron borradas arriba.
-    // Necesitamos restaurar el stock que consumieron antes de descontar el nuevo.
-    if (id && lineasArtículosAntes && lineasArtículosAntes.length) {
+    // Agregar un repuesto a la OS equivale a una Salida de Stock (Compras → Taller):
+    // resta de Compras, suma al Área de Taller. Si es edición, las líneas anteriores
+    // ya fueron borradas arriba — hay que revertir ese movimiento antes de aplicar el nuevo.
+    const id_areaTallerOS = parseInt(document.getElementById('os-area')?.value) || null;
+    const id_areaComprasOS = _empresaActiva?.id_area_principal || null;
+    if (id && lineasArtículosAntes && lineasArtículosAntes.length && id_areaTallerOS && id_areaComprasOS) {
       for (var k = 0; k < lineasArtículosAntes.length; k++) {
         var la = lineasArtículosAntes[k];
         if (!la.id_articulo) continue;
         try {
-          const invAntes = inventarioCache.find(function(x) { return x.id_articulo == la.id_articulo; });
-          if (invAntes) {
-            const stockRestaurado = invAntes.stock_actual_articulo + parseFloat(la.cantidad || 0);
-            await api('inventario_almacen', 'PATCH', { stock_actual_articulo: stockRestaurado }, '?id_articulo=eq.' + la.id_articulo);
-            invAntes.stock_actual_articulo = stockRestaurado; // actualizar cache local
-          }
+          var cantAntes = parseFloat(la.cantidad || 0);
+          await upsertStockArea(la.id_articulo, id_areaTallerOS, -cantAntes);
+          await upsertStockArea(la.id_articulo, id_areaComprasOS, cantAntes);
         } catch(eRest) { console.warn('Error restaurando stock:', eRest); }
       }
     }
@@ -1001,15 +1001,12 @@ async function _guardarOSInterno() {
         moneda: monR, precio_original: precR,
         precio_usd: lr.precio_usd, subtotal_usd: subtUsdR
       });
-      // Descontar stock siempre que haya artículo de inventario vinculado
-      if (lr.id_articulo) {
+      // Descontar de Compras y sumar a Taller (equivalente a una Salida de Stock)
+      if (lr.id_articulo && id_areaTallerOS && id_areaComprasOS) {
         try {
-          const invItem = inventarioCache.find(function(x) { return x.id_articulo == lr.id_articulo; });
-          if (invItem) {
-            const nuevoStock = Math.max(0, invItem.stock_actual_articulo - parseFloat(lr.cantidad));
-            await api('inventario_almacen', 'PATCH', { stock_actual_articulo: nuevoStock }, '?id_articulo=eq.' + lr.id_articulo);
-            invItem.stock_actual_articulo = nuevoStock; // actualizar cache local
-          }
+          var cantNueva = parseFloat(lr.cantidad);
+          await upsertStockArea(lr.id_articulo, id_areaComprasOS, -cantNueva);
+          await upsertStockArea(lr.id_articulo, id_areaTallerOS, cantNueva);
         } catch(eStock) { console.warn('Error descontando stock:', eStock); }
       }
     }
@@ -1022,24 +1019,40 @@ async function _guardarOSInterno() {
 
 // ─── ANULAR OS ───
 // ─── HELPER: restaurar o descontar stock de artículos de una OS ───
+// operacion: 'restaurar' (anular OS) devuelve el stock de Taller a Compras;
+// 'descontar' (reabrir OS) lo vuelve a pasar de Compras a Taller — el mismo
+// movimiento Compras↔Taller que se aplica al agregar/quitar líneas en _guardarOSInterno.
 async function ajustarStockOS(id_orden, operacion) {
-  // operacion: 'restaurar' suma al stock, 'descontar' resta
   try {
-    const lineas = await api('os_mercancias', 'GET', null, '?id_orden=eq.' + id_orden + '&select=id_articulo,cantidad');
+    const [lineas, osRes] = await Promise.all([
+      api('os_mercancias', 'GET', null, '?id_orden=eq.' + id_orden + '&select=id_articulo,cantidad'),
+      api('ordenes_servicio', 'GET', null, '?id_orden=eq.' + id_orden + '&select=id_usuario'),
+    ]);
+    const correoCreadorOS = osRes && osRes[0] ? osRes[0].id_usuario : null;
+    let id_areaTallerOS = null;
+    if (correoCreadorOS) {
+      const empOS = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correoCreadorOS)+'&select=id_area&limit=1');
+      id_areaTallerOS = empOS && empOS[0] ? empOS[0].id_area : null;
+    }
+    const id_areaComprasOS = _empresaActiva?.id_area_principal || null;
+    if (!id_areaTallerOS || !id_areaComprasOS) {
+      console.warn('ajustarStockOS: no se pudo determinar el área de Taller o Compras — stock no ajustado.');
+      return;
+    }
     for (var k = 0; k < lineas.length; k++) {
       var l = lineas[k];
       if (!l.id_articulo) continue;
       try {
-        const inv = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + l.id_articulo + '&select=id_articulo,stock_actual');
-        if (!inv.length) continue;
         var cant = parseFloat(l.cantidad || 0);
-        var nuevoStock = operacion === 'restaurar'
-          ? inv[0].stock_actual_articulo + cant
-          : Math.max(0, inv[0].stock_actual_articulo - cant);
-        await api('inventario_almacen', 'PATCH', { stock_actual_articulo: nuevoStock }, '?id_articulo=eq.' + l.id_articulo);
-        // Actualizar cache local
-        var cached = inventarioCache.find(function(x) { return x.id_articulo == l.id_articulo; });
-        if (cached) cached.stock_actual_articulo = nuevoStock;
+        if (operacion === 'restaurar') {
+          // Anular OS: el repuesto vuelve de Taller a Compras
+          await upsertStockArea(l.id_articulo, id_areaTallerOS, -cant);
+          await upsertStockArea(l.id_articulo, id_areaComprasOS, cant);
+        } else {
+          // Reabrir OS: se vuelve a pasar de Compras a Taller
+          await upsertStockArea(l.id_articulo, id_areaComprasOS, -cant);
+          await upsertStockArea(l.id_articulo, id_areaTallerOS, cant);
+        }
       } catch(eInv) { console.warn('Error ajustando stock artículo', l.id_articulo, eInv); }
     }
   } catch(e) { console.warn('Error ajustarStockOS:', e); }

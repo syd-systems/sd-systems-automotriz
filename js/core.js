@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723077';
+const SYD_VERSION = '20260723078';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -2621,17 +2621,23 @@ async function notifConfirmar() {
       { estado: 'APROBADO', fecha_respuesta: new Date().toISOString() },
       '?id=eq.'+_notifPendienteActual.id);
 
-    // 2. Sumar stock al artículo en el inventario del receptor (solo aplica
-    // a notificaciones de Recepción de Artículo)
+    // 2. Sumar stock al ÁREA DESTINO (solo aplica a notificaciones de
+    // Recepción de Artículo, y solo para Mercancía — un Consumible ya se
+    // gastó de inmediato al salir de Compras, así que confirmar su
+    // recepción es solo un acuse, sin efecto en el stock).
     try {
-      if (extras && extras.id_articulo && extras.cantidad) {
+      if (extras && extras.id_articulo && extras.cantidad && extras.id_area_destino) {
         const artRes = await api('inventario_almacen','GET',null,
-          '?id_articulo=eq.'+extras.id_articulo+'&select=id_articulo,stock_actual_articulo');
+          '?id_articulo=eq.'+extras.id_articulo+'&select=id_articulo,id_cuenta_contable');
         if (artRes && artRes[0]) {
-          const nuevoStock = parseFloat(artRes[0].stock_actual_articulo || 0) + parseFloat(extras.cantidad);
-          await api('inventario_almacen','PATCH',
-            { stock_actual_articulo: nuevoStock },
-            '?id_articulo=eq.'+extras.id_articulo);
+          let esMercanciaNotif = false;
+          if (artRes[0].id_cuenta_contable) {
+            const ctaNotif = await api('cont_cuentas','GET',null,'?id_cuenta=eq.'+artRes[0].id_cuenta_contable+'&select=codigo');
+            esMercanciaNotif = !!(ctaNotif && ctaNotif[0] && ctaNotif[0].codigo === '1.1.03.001');
+          }
+          if (esMercanciaNotif) {
+            await upsertStockArea(extras.id_articulo, extras.id_area_destino, parseFloat(extras.cantidad));
+          }
         }
       }
     } catch(eStock) { console.warn('Error actualizando stock al confirmar:', eStock); }

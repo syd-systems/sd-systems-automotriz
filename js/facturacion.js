@@ -1900,32 +1900,22 @@ async function _guardarSalidaStockInterno() {
     }
 
     if (esMercancia) {
-      // ── MERCANCÍA: solo se mueve el stock por área, SIN gasto ──
+      // ── MERCANCÍA: se mueve el stock por área, SIN gasto ──
       // (el costo se reconocerá contablemente cuando se facture al cliente)
       if (id_areaEntrega) await upsertStockArea(idRep, id_areaEntrega, -cantidad);
-      await upsertStockArea(idRep, id_area, cantidad);
+      // El crédito al área DESTINO se hace de inmediato solo si no hay un
+      // empleado receptor designado (no habrá confirmación que lo dispare
+      // después). Si sí hay receptor, el stock se suma cuando confirme la
+      // notificación de recepción (notifConfirmar en core.js) — sumarlo
+      // ambas veces le quitaría sentido al paso de "Confirmar Recepción".
+      if (!idEmpRecibe) await upsertStockArea(idRep, id_area, cantidad);
       if (pvSalida) await api('inventario_almacen', 'PATCH', { precio_venta_moneda: pvSalida }, '?id_articulo=eq.' + idRep);
       if (art) art.precio_venta_moneda = pvSalida || art.precio_venta_moneda;
     } else {
-    // Descontar del stock_actual y actualizar precio venta si se ingresó
-    // — leer el stock FRESCO de la BD justo antes de restar, en vez de
-    // confiar en el valor cacheado en el navegador, que puede estar
-    // desactualizado si otro proceso (ej. notifConfirmar) ya lo modificó.
-    let stockFrescoSal = art ? art.stock_actual_articulo : 0;
-    try {
-      const artFrescoSal = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + idRep + '&select=stock_actual_articulo');
-      if (artFrescoSal && artFrescoSal[0] && artFrescoSal[0].stock_actual_articulo != null) {
-        stockFrescoSal = parseFloat(artFrescoSal[0].stock_actual_articulo);
-      }
-    } catch(eFrescoSal) { console.warn('No se pudo leer stock fresco, usando cache:', eFrescoSal); }
-    const nuevoStock = stockFrescoSal - cantidad;
-    const patchInv = { stock_actual_articulo: nuevoStock };
-    if (pvSalida) patchInv.precio_venta_moneda = pvSalida;
-    await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + idRep);
+    // Consumible: descontar del área que entrega (Compras) y actualizar precio venta si se ingresó
     if (id_areaEntrega) await upsertStockArea(idRep, id_areaEntrega, -cantidad);
-
-    // Actualizar cache
-    if (art) art.stock_actual_articulo = nuevoStock;
+    if (pvSalida) await api('inventario_almacen', 'PATCH', { precio_venta_moneda: pvSalida }, '?id_articulo=eq.' + idRep);
+    if (art) art.precio_venta_moneda = pvSalida || art.precio_venta_moneda;
 
     // Salidas de CONSUMIBLES generan asiento: DEBE gasto / HABER inventario
     if (art && art.id_cuenta_contable && art.id_cuenta_costo_gasto) {
@@ -1972,7 +1962,8 @@ async function _guardarSalidaStockInterno() {
           // (la cuenta de Inventario puede ser compartida por varios artículos
           // de la misma categoría, así que se aíslan solo los asientos ligados
           // a las entradas/salidas DE ESTE artículo, vía su referencia)
-          if (Math.abs(nuevoStock) < 0.0001 && art.id_cuenta_contable) try {
+          const stockRestanteArea = id_areaEntrega ? await obtenerStockArea(idRep, id_areaEntrega) : 0;
+          if (Math.abs(stockRestanteArea) < 0.0001 && art.id_cuenta_contable) try {
             const [entradasRef, salidasRef] = await Promise.all([
               api('stock_entradas','GET',null,'?id_articulo=eq.'+idRep+'&or=(anulada.eq.false,anulada.is.null)&select=id_entrada'),
               api('stock_salidas','GET',null,'?id_articulo=eq.'+idRep+'&or=(anulada.eq.false,anulada.is.null)&select=id_salida'),

@@ -8,7 +8,7 @@ let inventarioCache = [];
 function clasificarABC(items) {
   if (!items.length) return items;
   const conValor = items.map(function(r) {
-    return Object.assign({}, r, { valor_inventario: parseFloat(r.precio_venta_moneda || 0) * parseFloat(r.stock_actual_articulo || 0) });
+    return Object.assign({}, r, { valor_inventario: parseFloat(r.precio_venta_moneda || 0) * stockMostrarArticulo(r.id_articulo) });
   });
   conValor.sort(function(a, b) { return b.valor_inventario - a.valor_inventario; });
   const totalValor = conValor.reduce(function(s, r) { return s + r.valor_inventario; }, 0);
@@ -165,13 +165,15 @@ async function renderInventario(filtro) {
     }
     const itemsTodos = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&select=*' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')) || [];
     const items = itemsTodos.filter(function(r) { return r.estado !== 'INACTIVO'; });
-    const itemsFiltradosBase = soloConStock ? items.filter(function(r) { return parseFloat(r.stock_actual_articulo||0) > 0; }) : items;
     inventarioCache = items;
+
+    // Calcular saldo por área (función centralizada) — ANTES de cualquier filtro de stock,
+    // para que "Solo con stock" y el filtro por área usen la fuente correcta (inventario_stock_area)
+    await calcularInvSaldoArea();
+    const itemsFiltradosBase = soloConStock ? items.filter(function(r) { return stockMostrarArticulo(r.id_articulo) > 0; }) : items;
 
     // ── Filtro por área si no tiene VER_INVENTARIO_GENERAL ──
     let itemsFiltradosBase2 = itemsFiltradosBase;
-    // Calcular saldo por área (función centralizada)
-    await calcularInvSaldoArea();
     if (_invSaldoArea) {
       itemsFiltradosBase2 = itemsFiltradosBase.filter(function(r) {
         return (_invSaldoArea[r.id_articulo]||0) > 0;
@@ -327,7 +329,7 @@ function invRenderABC(items, cont) {
       filasHTML += '<tr>'
         + '<td><span style="font-size:10px;font-weight:700;color:' + abcColor[g] + ';background:' + abcColor[g] + '22;padding:2px 7px;border-radius:3px">' + g + '</span></td>'
         + '<td style="font-weight:500">' + r.nombre_articulo + '</td>'
-        + '<td style="font-family:var(--font-mono);text-align:center">' + r.stock_actual_articulo + ' ' + (r.unidad||'UND') + '</td>'
+        + '<td style="font-family:var(--font-mono);text-align:center">' + stockMostrarArticulo(r.id_articulo) + ' ' + (r.unidad||'UND') + '</td>'
         + '<td style="font-family:var(--font-mono)">$ ' + fmtUSD(r.precio_venta_moneda) + '</td>'
         + '<td style="font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(r.valor_inventario) + '</td>'
         + '<td style="font-size:11px;color:var(--suave)">' + pct + '%</td></tr>';
@@ -346,13 +348,14 @@ function invRenderABC(items, cont) {
 
 function invRenderReorden(items, cont) {
   const filas = items.map(function(r) {
+    const stockMostrarReord = stockMostrarArticulo(r.id_articulo);
     const pr = calcularPuntoReorden(r);
-    const critico = r.stock_actual_articulo <= r.stock_minimo_articulo;
-    const enReorden = !critico && r.stock_actual_articulo <= pr;
+    const critico = stockMostrarReord <= r.stock_minimo_articulo;
+    const enReorden = !critico && stockMostrarReord <= pr;
     const demanda = r.demanda_diaria || (r.demanda_anual ? (r.demanda_anual/365).toFixed(2) : null);
     return '<tr>'
       + '<td><div style="font-weight:500">' + r.nombre_articulo + '</div><div style="font-size:10px;color:var(--suave)">' + (r.codigo_articulo||'') + '</div></td>'
-      + '<td style="font-family:var(--font-mono);text-align:center">' + r.stock_actual_articulo + '</td>'
+      + '<td style="font-family:var(--font-mono);text-align:center">' + stockMostrarReord + '</td>'
       + '<td style="font-family:var(--font-mono);text-align:center">' + r.stock_minimo_articulo + '</td>'
       + '<td style="font-family:var(--font-mono);text-align:center">' + (demanda !== null ? demanda : '<span style="color:var(--suave);font-size:10px">—</span>') + '</td>'
       + '<td style="font-family:var(--font-mono);text-align:center">' + (r.lead_time_dias || 7) + ' días</td>'
@@ -414,13 +417,12 @@ async function verFichaInventario(id) {
     cerrarModal(m);
   });
 
-  // ── GET fresco de BD para stock y costos actualizados ──
+  // ── GET fresco de BD para costos actualizados (el stock ya se lee de inventario_stock_area) ──
   try {
-    var qs = '?id_articulo=eq.' + id + '&select=stock_actual_articulo,precio_costo_moneda,precio_costo_ultimo_moneda,precio_venta_moneda';
+    var qs = '?id_articulo=eq.' + id + '&select=precio_costo_moneda,precio_costo_ultimo_moneda,precio_venta_moneda';
     if (_empresaActiva && _empresaActiva.id_empresa) qs += '&id_empresa=eq.' + _empresaActiva.id_empresa;
     var fresh = await api('inventario_almacen', 'GET', null, qs);
     if (fresh && fresh[0]) {
-      r.stock_actual_articulo      = parseFloat(fresh[0].stock_actual_articulo)      || 0;
       r.precio_costo_moneda        = parseFloat(fresh[0].precio_costo_moneda)        || 0;
       r.precio_costo_ultimo_moneda = parseFloat(fresh[0].precio_costo_ultimo_moneda) || 0;
       r.precio_venta_moneda        = parseFloat(fresh[0].precio_venta_moneda)        || 0;
@@ -518,7 +520,7 @@ async function verFichaInventario(id) {
   // sin límite — evita duplicar lógica y hereda los fixes ya hechos ahí.
   const contHist = document.getElementById('ficha-inv-historial');
   if (contHist) {
-    contHist.innerHTML = '<div style="padding:12px 0"><button class="btn-secundario" style="width:100%;padding:10px;font-size:12px" onclick="verHistorialStock(' + r.id_articulo + ',\'' + (r.nombre_articulo||'').replace(/'/g,"\\'") + '\')">📋 Ver Historial de Movimientos</button></div>';
+    contHist.innerHTML = '<div style="padding:12px 0"><button class="btn-secundario" style="width:100%;padding:10px;font-size:12px" onclick="cerrarModal(\'modal-ficha-inv\');verHistorialStock(' + r.id_articulo + ',\'' + (r.nombre_articulo||'').replace(/'/g,"\\'") + '\')">📋 Ver Historial de Movimientos</button></div>';
   }
 }
 
@@ -541,13 +543,12 @@ async function abrirEntradaStock(id) {
   }
   if (!r) { alert('Error: artículo no encontrado. Intente recargar el inventario.'); return; }
 
-  // GET fresco de BD
+  // GET fresco de BD (el stock ya se lee de inventario_stock_area más abajo)
   try {
-    var qs = '?id_articulo=eq.' + id + '&select=stock_actual_articulo,precio_costo_moneda,precio_venta_moneda,unidad';
+    var qs = '?id_articulo=eq.' + id + '&select=precio_costo_moneda,precio_venta_moneda,unidad';
     if (_empresaActiva && _empresaActiva.id_empresa) qs += '&id_empresa=eq.' + _empresaActiva.id_empresa;
     const fresh = await api('inventario_almacen', 'GET', null, qs);
     if (fresh && fresh[0]) {
-      if (fresh[0].stock_actual_articulo != null) r.stock_actual_articulo = parseFloat(fresh[0].stock_actual_articulo);
       if (fresh[0].precio_costo_moneda   != null) r.precio_costo_moneda   = parseFloat(fresh[0].precio_costo_moneda);
       if (fresh[0].precio_venta_moneda   != null) r.precio_venta_moneda   = parseFloat(fresh[0].precio_venta_moneda);
     }
@@ -1262,12 +1263,7 @@ async function guardarEntradaStock() {
     }
 
     // ── FASE 6: Actualizar cache y cerrar ──
-    // NOTA: r.stock_actual_articulo queda aquí como bandera de compatibilidad temporal
-    // para no romper pantallas que aún leen ese campo directo del catálogo. Representa el
-    // stock del ÁREA RECEPTORA (id_areaEnt, siempre Compras), no un total global —
-    // pendiente migrar todas las lecturas de pantalla a inventario_stock_area (Fase 2 del diseño).
     if (r) {
-      r.stock_actual_articulo     = nuevoStock;
       r.precio_costo_moneda       = parseFloat(cpp.toFixed(4));
       if (nuevoPrecioCosto > 0) r.precio_costo_ultimo_moneda = nuevoPrecioCosto;
     }
@@ -1384,7 +1380,12 @@ async function abrirEditarInventario(id) {
   document.getElementById('inv-codigo').value = r.codigo_articulo || '';
   document.getElementById('inv-nombre').value = r.nombre_articulo;
   document.getElementById('inv-descripcion').value = r.descripcion || '';
-  document.getElementById('inv-stock').value = r.stock_actual_articulo;
+  document.getElementById('inv-stock').value = stockMostrarArticulo(r.id_articulo);
+  // El stock real vive en inventario_stock_area (por área) desde que se migró el esquema —
+  // este campo ya no debe ser editable ni guardarse al editar un artículo existente.
+  // Un artículo nuevo sí puede definir un stock inicial (se asigna a Compras en guardarInventario).
+  document.getElementById('inv-stock').disabled = !!id;
+  document.getElementById('inv-stock').title = id ? 'El stock se gestiona por Entrada/Salida/Ajuste, no desde aquí' : '';
   document.getElementById('inv-stock-min').value = r.stock_minimo_articulo;
   document.getElementById('inv-costo').value = r.precio_costo_moneda || '';
   document.getElementById('inv-venta').value = r.precio_venta_moneda || '';
@@ -1475,7 +1476,7 @@ async function guardarInventario() {
     const id_categoria    = parseInt(document.getElementById('inv-categoria')?.value) || null;
     const id_tipo_articulo = parseInt(document.getElementById('inv-tipo-articulo')?.value) || null;
     const ventaFinal     = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? venta : undefined;
-    const datos = { nombre_articulo: nombre, descripcion_articulo: desc || null, codigo_articulo: codigo || null, stock_actual_articulo: stock,
+    const datos = { nombre_articulo: nombre, descripcion_articulo: desc || null, codigo_articulo: codigo || null,
       stock_minimo_articulo: stockMin, precio_costo_moneda: costo,
       id_empresa: _empresaActiva ? _empresaActiva.id_empresa : null,
       ...(ventaFinal !== undefined ? { precio_venta_moneda: ventaFinal } : {}),
@@ -1484,10 +1485,19 @@ async function guardarInventario() {
       id_cuenta_costo_gasto: parseInt(document.getElementById('inv-cuenta-costo-gasto')?.value) || null,
       demanda_anual: demandaAnual, lead_time_dias: leadTime, costo_pedido_usd: costoPedido, stock_seguridad: stockSeg,
       id_usuario: sesionActual.correo_usuario };
+    // stock_actual_articulo es un campo heredado, congelado a propósito desde que el
+    // stock real vive en inventario_stock_area — nunca se sobreescribe al editar.
     if (id) {
       await api('inventario_almacen', 'PATCH', datos, '?id_articulo=eq.' + id);
     } else {
-      await api('inventario_almacen', 'POST', datos);
+      datos.stock_actual_articulo = 0; // se mantiene en 0; el stock real entra vía inventario_stock_area
+      const nuevoArt = await api('inventario_almacen', 'POST', datos);
+      const idNuevoArt = nuevoArt && nuevoArt[0] ? nuevoArt[0].id_articulo : null;
+      if (idNuevoArt && stock > 0 && _empresaActiva?.id_area_principal) {
+        // Stock inicial declarado al crear el artículo — se asigna a Compras (área principal),
+        // que es la única área que recibe stock directamente.
+        await upsertStockArea(idNuevoArt, _empresaActiva.id_area_principal, stock);
+      }
     }
     okEl.textContent = '✓ Artículo guardado.'; okEl.style.display = 'block';
     setTimeout(function() { cerrarModal('modal-inventario'); document.getElementById('contenido-principal').innerHTML=''; renderInventario(); }, 1000);
@@ -1923,14 +1933,14 @@ async function invCargarMovimientos() {
       entradas.forEach(function(e) {
         const art=getArt(e.id_articulo); if(!art) return;
         const nom=artNom(art);
-        if (!arts[nom]) arts[nom] = { entradas:0, salidas:0, cpp:art.precio_costo_moneda||0, stock:art.stock_actual_articulo||0, hist:[] };
+        if (!arts[nom]) arts[nom] = { entradas:0, salidas:0, cpp:art.precio_costo_moneda||0, stock:stockMostrarArticulo(art.id_articulo), hist:[] };
         arts[nom].entradas += parseFloat(e.cantidad||0);
         arts[nom].hist.push({ fecha:e.fecha_entrada, tipo:'E', cant:e.cantidad, cpp:e.precio_costo_moneda||0 });
       });
       salidas.forEach(function(s) {
         const art=getArt(s.id_articulo); if(!art) return;
         const nom=artNom(art);
-        if (!arts[nom]) arts[nom] = { entradas:0, salidas:0, cpp:art.precio_costo_moneda||0, stock:art.stock_actual_articulo||0, hist:[] };
+        if (!arts[nom]) arts[nom] = { entradas:0, salidas:0, cpp:art.precio_costo_moneda||0, stock:stockMostrarArticulo(art.id_articulo), hist:[] };
         arts[nom].salidas += parseFloat(s.cantidad||0);
         arts[nom].hist.push({ fecha:s.fecha_salida, tipo:'S', cant:s.cantidad, cpp:0 });
       });

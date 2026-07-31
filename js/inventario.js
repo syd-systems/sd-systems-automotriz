@@ -368,10 +368,12 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     const artNomEl2 = document.getElementById('edit-sal-art-nombre');
     const artStEl2  = document.getElementById('edit-sal-stock');
     try {
-      const artData2 = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id_articulo+'&select=nombre_articulo,stock_actual_articulo,unidad&limit=1');
+      const artData2 = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id_articulo+'&select=nombre_articulo,unidad&limit=1');
       if (artData2 && artData2[0]) {
         if (artNomEl2) artNomEl2.textContent = artData2[0].nombre_articulo || '—';
-        if (artStEl2)  artStEl2.textContent  = (function(v){ return v % 1 === 0 ? parseInt(v) : v.toFixed(2); })(parseFloat(artData2[0].stock_actual_articulo||0)) + ' UND';
+        await calcularInvSaldoArea();
+        const stockMostrarSal = stockMostrarArticulo(id_articulo);
+        if (artStEl2)  artStEl2.textContent  = (function(v){ return v % 1 === 0 ? parseInt(v) : v.toFixed(2); })(stockMostrarSal) + ' UND';
         const unidadSal = artData2[0].unidad || 'UND';
         const lblUnidSal = document.getElementById('edit-sal-label-unidad');
         if (lblUnidSal) lblUnidSal.textContent = unidadSal;
@@ -466,10 +468,12 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
   const artNombreEl = document.getElementById('edit-mov-art-nombre');
   const artStockEl  = document.getElementById('edit-mov-stock-actual');
   try {
-    const artData = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id_articulo+'&select=nombre_articulo,stock_actual_articulo,unidad&limit=1');
+    const artData = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id_articulo+'&select=nombre_articulo,unidad&limit=1');
     if (artData && artData[0]) {
       if (artNombreEl) artNombreEl.textContent = artData[0].nombre_articulo || '—';
-      if (artStockEl)  artStockEl.textContent  = (function(v){ return v % 1 === 0 ? parseInt(v) : v.toFixed(2); })(parseFloat(artData[0].stock_actual_articulo||0)) + ' UND';
+      await calcularInvSaldoArea();
+      const stockMostrarEnt = stockMostrarArticulo(id_articulo);
+      if (artStockEl)  artStockEl.textContent  = (function(v){ return v % 1 === 0 ? parseInt(v) : v.toFixed(2); })(stockMostrarEnt) + ' UND';
       const unidadArt = artData[0].unidad || 'UND';
       const lblUnidEnt = document.getElementById('edit-mov-label-unidad');
       if (lblUnidEnt) lblUnidEnt.textContent = unidadArt;
@@ -893,10 +897,10 @@ async function guardarEdicionMovimiento() {
       datos.id_area_origen      = areaOrig;
       datos.esquema_pago        = pagoEdit;
 
-      // ── Leer cantidad original y stock ANTES de parchear ──
+      // ── Leer cantidad original ANTES de parchear ──
       const [movOrigArr, artArr] = await Promise.all([
         api('stock_entradas', 'GET', null, '?id_entrada=eq.' + id + '&select=cantidad'),
-        api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id_articulo + '&select=stock_actual_articulo,precio_costo_moneda'),
+        api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id_articulo + '&select=precio_costo_moneda'),
       ]);
       const cantOriginal = parseFloat(movOrigArr[0]?.cantidad || cantidad);
       const art = artArr[0];
@@ -904,21 +908,25 @@ async function guardarEdicionMovimiento() {
       // ── PATCH a stock_entradas ──
       await api('stock_entradas', 'PATCH', datos, '?id_entrada=eq.' + id);
 
+      // ── Ajustar el stock del ÁREA por la diferencia (delta), NO recalcular
+      // un total global desde cero — el stock real vive en inventario_stock_area,
+      // repartido por área, así que no existe un "total" único que reconstruir. ──
+      const deltaCantidad = cantidad - cantOriginal;
+      if (id_area && deltaCantidad !== 0) {
+        await upsertStockArea(id_articulo, id_area, deltaCantidad);
+      }
+
       // ── Recalcular el CPP del artículo desde CERO, reproduciendo toda su
       // historia de Entradas en orden cronológico (con el precio YA
       // corregido de esta que se acaba de editar). No se puede "restar" la
       // contribución de esta transacción del CPP actual, porque el CPP
       // actual YA incluye esa contribución original (posiblemente
-      // equivocada) -- sería una referencia circular. El Stock final sí se
-      // puede calcular directo: total de Entradas menos total de Salidas.
+      // equivocada) -- sería una referencia circular. El CPP es global por
+      // artículo (no por área), así que sí se recalcula completo.
       let cppEditado = null;
       if (art) {
-        const [entradasHist, salidasAgr] = await Promise.all([
-          api('stock_entradas', 'GET', null,
-            '?id_articulo=eq.' + id_articulo + '&or=(anulada.eq.false,anulada.is.null)&order=fecha_registro.asc&select=cantidad,precio_costo_moneda'),
-          api('stock_salidas', 'GET', null,
-            '?id_articulo=eq.' + id_articulo + '&select=cantidad'),
-        ]);
+        const entradasHist = await api('stock_entradas', 'GET', null,
+            '?id_articulo=eq.' + id_articulo + '&or=(anulada.eq.false,anulada.is.null)&order=fecha_registro.asc&select=cantidad,precio_costo_moneda');
         let stockRepro = 0, cppRepro = 0;
         (entradasHist || []).forEach(function(e) {
           const cantE = parseFloat(e.cantidad) || 0;
@@ -927,10 +935,8 @@ async function guardarEdicionMovimiento() {
           cppRepro = nuevoStockRepro > 0 ? ((stockRepro * cppRepro) + (cantE * precE)) / nuevoStockRepro : precE;
           stockRepro = nuevoStockRepro;
         });
-        const totalSalidas = (salidasAgr || []).reduce(function(s, x){ return s + (parseFloat(x.cantidad) || 0); }, 0);
-        const nuevoStock = Math.max(0, parseFloat((stockRepro - totalSalidas).toFixed(4)));
         cppEditado = parseFloat(cppRepro.toFixed(4));
-        const patchInv = { stock_actual_articulo: nuevoStock, precio_costo_moneda: cppEditado };
+        const patchInv = { precio_costo_moneda: cppEditado };
         if (precio !== null && !isNaN(precio)) patchInv.precio_costo_ultimo_moneda = precio;
         await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + id_articulo);
       }
@@ -1086,17 +1092,27 @@ async function guardarEdicionMovimiento() {
     } else {
       // ── SALIDA ──
       const [movOrigArr, artArr] = await Promise.all([
-        api('stock_salidas',     'GET', null, '?id_salida=eq.'    + id          + '&select=cantidad'),
-        api('inventario_almacen','GET', null, '?id_articulo=eq.'  + id_articulo + '&select=stock_actual_articulo'),
+        api('stock_salidas',     'GET', null, '?id_salida=eq.'    + id          + '&select=cantidad,id_area,id_area_entrega'),
+        api('inventario_almacen','GET', null, '?id_articulo=eq.'  + id_articulo + '&select=id_cuenta_contable'),
       ]);
-      const cantOriginal = parseFloat(movOrigArr[0]?.cantidad || cantidad);
+      const movOrig = movOrigArr[0] || {};
+      const cantOriginal = parseFloat(movOrig?.cantidad || cantidad);
       const art = artArr[0];
       await api('stock_salidas', 'PATCH', datos, '?id_salida=eq.' + id);
-      if (art) {
-        const stockActual = parseFloat(art.stock_actual_articulo) || 0;
-        const nuevoStock  = Math.max(0, parseFloat((stockActual + cantOriginal - cantidad).toFixed(4)));
-        await api('inventario_almacen', 'PATCH',
-          { stock_actual_articulo: nuevoStock }, '?id_articulo=eq.' + id_articulo);
+
+      // Ajustar el stock por ÁREA según la diferencia (delta) — no un total
+      // global. El área que entregó (Compras) siempre se ajusta; si el
+      // artículo es Mercancía, el área destino también recibió stock real
+      // (a diferencia de un Consumible, que se gasta de inmediato).
+      const deltaCantSal = cantidad - cantOriginal;
+      if (deltaCantSal !== 0) {
+        if (movOrig.id_area_entrega) await upsertStockArea(id_articulo, movOrig.id_area_entrega, -deltaCantSal);
+        let esMercanciaEdit = false;
+        if (art?.id_cuenta_contable) {
+          const ctaEdit = await api('cont_cuentas','GET',null,'?id_cuenta=eq.'+art.id_cuenta_contable+'&select=codigo');
+          esMercanciaEdit = !!(ctaEdit && ctaEdit[0] && ctaEdit[0].codigo === '1.1.03.001');
+        }
+        if (esMercanciaEdit && movOrig.id_area) await upsertStockArea(id_articulo, movOrig.id_area, deltaCantSal);
       }
     }
 
