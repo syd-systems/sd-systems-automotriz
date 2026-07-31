@@ -196,7 +196,17 @@ function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
   const modoLbl = document.getElementById('edit-mov-titulo');
   const idMov = document.getElementById('edit-mov-id')?.value;
   const refMov = idMov ? ' — Ref: ' + (tipo === 'ENTRADA' ? 'ENT-' : 'SAL-') + idMov : '';
-  if (modoLbl) modoLbl.textContent = (soloLectura ? '👁 FICHA ' : '✏ EDITAR ') + (tipo === 'ENTRADA' ? 'ENTRADA' : 'SALIDA') + ' DE STOCK' + refMov;
+  // Un Ajuste de Inventario (Sobrante o Faltante) no es una Entrada/Salida normal —
+  // usa el mismo modal por reutilización de campos, pero con su propio título.
+  const esAjusteSobrante = tipo === 'ENTRADA' && m?.motivo === 'ajuste';
+  const esAjusteFaltante = tipo === 'SALIDA'  && (m?.observaciones || '').indexOf('FALTANTE (Ajuste de Inventario)') === 0;
+  let tituloMov;
+  if (esAjusteSobrante || esAjusteFaltante) {
+    tituloMov = (soloLectura ? '👁 FICHA ' : '✏ EDITAR ') + 'AJUSTE DE INVENTARIO — ' + (esAjusteSobrante ? 'Sobrante' : 'Faltante') + refMov;
+  } else {
+    tituloMov = (soloLectura ? '👁 FICHA ' : '✏ EDITAR ') + (tipo === 'ENTRADA' ? 'ENTRADA' : 'SALIDA') + ' DE STOCK' + refMov;
+  }
+  if (modoLbl) modoLbl.textContent = tituloMov;
 }
 
 // Botón "✏ EDITAR" explícito — el modal siempre abre en modo lectura;
@@ -274,6 +284,11 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     if (salObsEl)   salObsEl.value   = m.observaciones || '';
     const salPvEl = document.getElementById('edit-sal-precio-venta');
     if (salPvEl) salPvEl.value = m.precio_venta_moneda ? parseFloat(m.precio_venta_moneda).toFixed(2) : '';
+    // Un Faltante (Ajuste de Inventario) no tiene Precio de Venta — se identifica
+    // por el prefijo que se guarda en observaciones al registrarlo.
+    const esFaltanteEdit = (m.observaciones || '').indexOf('FALTANTE (Ajuste de Inventario)') === 0;
+    const salPvCont = document.getElementById('edit-sal-precio-venta-cont');
+    if (salPvCont) salPvCont.style.display = esFaltanteEdit ? 'none' : '';
 
     // Área receptora
     const areas2 = await api('param_areas','GET',null,'?estado=eq.ACTIVO&order=nombre.asc');
@@ -452,6 +467,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     }
     const selMotivo = document.getElementById('edit-mov-motivo');
     if (selMotivo) selMotivo.value = motivoInferido;
+    onCambiarMotivoEdit(); // aplica también el ocultamiento de Moneda/Precio/Tasa BCV/Pago
 
     // Mostrar campo dinámico según motivo
     const motivo = motivoInferido;
@@ -1823,6 +1839,20 @@ function onCambiarMotivoEdit() {
   // Mostrar/ocultar proveedor
   const provCont = document.getElementById('edit-mov-proveedor-cont');
   if (provCont) provCont.style.display = esCompra ? '' : 'none';
+
+  // Campos de Negociación (Moneda/Precio/Monto/Tasa BCV) y Modalidad de Pago
+  // solo aplican a Compra — igual que en el modal de creación. Un Ajuste,
+  // Devolución o Transferencia no tiene precio negociado ni esquema de pago.
+  const monedaCont = document.getElementById('edit-mov-moneda-cont');
+  const precioCont = document.getElementById('edit-mov-precio-cont');
+  const preciosCont = document.getElementById('edit-mov-precios-cont');
+  const tasaCont   = document.getElementById('edit-mov-tasa-cont');
+  const pagoCont   = document.getElementById('edit-mov-pago-cont');
+  const creditoCont = document.getElementById('edit-mov-credito-cont');
+  [monedaCont, precioCont, preciosCont, tasaCont, pagoCont].forEach(function(el) {
+    if (el) el.style.display = esCompra ? '' : 'none';
+  });
+  if (!esCompra && creditoCont) creditoCont.style.display = 'none';
 }
 
 function onCambioExentoIVAEdit() {
