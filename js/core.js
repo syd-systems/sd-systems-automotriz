@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723079';
+const SYD_VERSION = '20260723080';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -442,6 +442,35 @@ async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '', sinReprese
     throw new Error(err.message || `Error ${r.status}`);
   }
   return metodo === 'GET' ? r.json() : (r.status === 204 ? null : r.json().catch(() => null));
+}
+
+// ── Cuentas Contables — vía función RPC (no lectura directa de la tabla) ──
+// La tabla cont_cuentas tiene RLS cerrada a Administrador/Contabilidad.
+// Cualquier otro módulo que necesite consultar el plan de cuentas para
+// operar (Pagos, Inventario, Facturación) pasa por esta función RPC
+// (security definer), que documenta explícitamente cada caso de uso en
+// vez de mezclar permisos ajenos dentro de la política de la tabla.
+// Se cachea en memoria porque se consulta desde muchos módulos distintos.
+let _cuentasContablesCache = null;
+async function obtenerCuentasContables(forzarRecarga) {
+  if (_cuentasContablesCache && !forzarRecarga) return _cuentasContablesCache;
+  try {
+    const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_cuentas_contables', {
+      method: 'POST',
+      headers: {
+        'apikey':        SUPABASE_KEY,
+        'Authorization': 'Bearer ' + _sessionJWT,
+        'Content-Type':  'application/json'
+      },
+      body: JSON.stringify({})
+    });
+    if (!resp.ok) { console.warn('obtenerCuentasContables: sin permiso o error', resp.status); return []; }
+    _cuentasContablesCache = await resp.json() || [];
+    return _cuentasContablesCache;
+  } catch(e) {
+    console.warn('Error obteniendo cuentas contables:', e);
+    return _cuentasContablesCache || [];
+  }
 }
 
 // ── Stock por Área — suma/resta atómica sobre inventario_stock_area ──
@@ -2632,8 +2661,8 @@ async function notifConfirmar() {
         if (artRes && artRes[0]) {
           let esMercanciaNotif = false;
           if (artRes[0].id_cuenta_contable) {
-            const ctaNotif = await api('cont_cuentas','GET',null,'?id_cuenta=eq.'+artRes[0].id_cuenta_contable+'&select=codigo');
-            esMercanciaNotif = !!(ctaNotif && ctaNotif[0] && ctaNotif[0].codigo === '1.1.03.001');
+            const ctaNotif = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === artRes[0].id_cuenta_contable; });
+            esMercanciaNotif = !!(ctaNotif && ctaNotif.codigo === '1.1.03.001');
           }
           if (esMercanciaNotif) {
             await upsertStockArea(extras.id_articulo, extras.id_area_destino, parseFloat(extras.cantidad));

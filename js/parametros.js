@@ -152,7 +152,7 @@ async function mostrarTablaParam(key) {
       var cuentasContMap = {};
       if (def.tieneCuentaContable) {
         try {
-          const ctasList = await api('cont_cuentas','GET',null,'?select=id_cuenta,codigo,nombre');
+          const ctasList = await obtenerCuentasContables();
           ctasList.forEach(function(c){ cuentasContMap[c.id_cuenta] = c; });
         } catch(e) {}
       }
@@ -310,7 +310,9 @@ async function abrirParamItem(key, id) {
       var opcCuentas = [];
       try {
         const filtroCod = def.filtroCuentaCodigo || '1.1.01';
-        const ctas = await api('cont_cuentas','GET',null,'?codigo=ilike.' + encodeURIComponent(filtroCod) + '%25&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre');
+        const ctas = (await obtenerCuentasContables()).filter(function(c) {
+          return c.codigo && c.codigo.indexOf(filtroCod) === 0 && c.estado === 'ACTIVA' && c.permite_movimiento === true;
+        }).sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
         opcCuentas = ctas.map(function(c) {
           return '<option value="' + c.id_cuenta + '"' + (item && item.id_cuenta_contable == c.id_cuenta ? ' selected' : '') + '>' + c.codigo + ' — ' + c.nombre + '</option>';
         });

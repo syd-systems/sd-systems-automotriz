@@ -1951,16 +1951,17 @@ async function generarAsientoInventario(tipo, datos) {
     if (!asiento || !asiento[0]) return;
     const idAst = asiento[0].id_asiento;
     const monto = datos.montoUSD || 0;
+    const _todasCtasAst = await obtenerCuentasContables();
 
     // Buscar cuenta de inventario
     let idInv = datos.id_cuentaInventario || null;
-    if (!idInv) { const cInv = await api('cont_cuentas','GET',null,'?codigo=eq.1.1.03.001&select=id_cuenta'); idInv = cInv.length ? cInv[0].id_cuenta : null; }
+    if (!idInv) { const cInv = _todasCtasAst.find(function(c){ return c.codigo === '1.1.03.001'; }); idInv = cInv ? cInv.id_cuenta : null; }
 
     // Buscar o crear cuenta auxiliar de área
     let id_areaCuenta = null;
     if (datos.areaId && datos.areaNombre) {
       const codigoArea = '6.1.01.' + String(datos.areaId).padStart(3,'0');
-      let cArea = await api('cont_cuentas','GET',null,'?codigo=eq.'+codigoArea+'&select=id_cuenta');
+      let cArea = _todasCtasAst.filter(function(c){ return c.codigo === codigoArea; });
       if (!cArea.length) {
         // Crear cuenta del área automáticamente
         const nuevaCuenta = await api('cont_cuentas','POST',{
@@ -1972,7 +1973,7 @@ async function generarAsientoInventario(tipo, datos) {
         cArea = nuevaCuenta || [];
         if (cArea.length) id_areaCuenta = cArea[0].id_cuenta;
         else {
-          const reCheck = await api('cont_cuentas','GET',null,'?codigo=eq.'+codigoArea+'&select=id_cuenta');
+          const reCheck = (await obtenerCuentasContables(true)).filter(function(c){ return c.codigo === codigoArea; });
           if (reCheck.length) id_areaCuenta = reCheck[0].id_cuenta;
         }
       } else {
@@ -1981,8 +1982,8 @@ async function generarAsientoInventario(tipo, datos) {
     }
 
     // Buscar cuenta de proveedores
-    const cProv = await api('cont_cuentas','GET',null,'?codigo=eq.2.1.01.001&select=id_cuenta');
-    const idProv = cProv.length ? cProv[0].id_cuenta : null;
+    const cProv = _todasCtasAst.find(function(c){ return c.codigo === '2.1.01.001'; });
+    const idProv = cProv ? cProv.id_cuenta : null;
 
     // ── Líneas según tipo ──
     // VEN-NIF: Moneda funcional = Bs. USD es auxiliar de referencia
@@ -2030,8 +2031,8 @@ async function generarAsientoInventario(tipo, datos) {
       }
 
       // Buscar cuenta IVA Crédito Fiscal
-      const cIVA = await api('cont_cuentas','GET',null,'?codigo=eq.1.1.04.001&select=id_cuenta&limit=1');
-      const idIVA = cIVA.length ? cIVA[0].id_cuenta : null;
+      const cIVA = _todasCtasAst.find(function(c){ return c.codigo === '1.1.04.001'; });
+      const idIVA = cIVA ? cIVA.id_cuenta : null;
 
       // DEBE: Inventario (base sin IVA)
       if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:1,
@@ -2063,8 +2064,8 @@ async function generarAsientoInventario(tipo, datos) {
       // Sobrante de inventario (conteo físico encontró MÁS de lo que dice el sistema).
       // No es reverso de nada — es un evento contable propio: Ganancia por Ajuste.
       // Reutiliza la misma cuenta que ya existe para el residuo de redondeo (4.2.02.001).
-      const cIngresoAjuste = await api('cont_cuentas','GET',null,'?codigo=eq.4.2.02.001&select=id_cuenta');
-      const idIngresoAjuste = cIngresoAjuste.length ? cIngresoAjuste[0].id_cuenta : null;
+      const cIngresoAjuste = _todasCtasAst.find(function(c){ return c.codigo === '4.2.02.001'; });
+      const idIngresoAjuste = cIngresoAjuste ? cIngresoAjuste.id_cuenta : null;
       if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:1,
         descripcion:'Sobrante de Inventario (Ajuste): '+datos.articulo+auxDesc,
         debe_usd:monto, haber_usd:0, debe_ves:montoBs, haber_ves:0 });
@@ -2076,8 +2077,8 @@ async function generarAsientoInventario(tipo, datos) {
       // Faltante de inventario (conteo físico encontró MENOS de lo que dice el sistema).
       // Tampoco es reverso de nada — evento contable propio: Pérdida por Ajuste.
       // Reutiliza la cuenta que ya existe para el residuo de redondeo (6.2.02.001).
-      const cGastoAjuste = await api('cont_cuentas','GET',null,'?codigo=eq.6.2.02.001&select=id_cuenta');
-      const idGastoAjuste = cGastoAjuste.length ? cGastoAjuste[0].id_cuenta : null;
+      const cGastoAjuste = _todasCtasAst.find(function(c){ return c.codigo === '6.2.02.001'; });
+      const idGastoAjuste = cGastoAjuste ? cGastoAjuste.id_cuenta : null;
       const montoBsSalAj = parseFloat((monto * tasa).toFixed(2));
       if (idGastoAjuste) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idGastoAjuste, orden:1,
         descripcion:'Pérdida por Ajuste de Inventario: '+datos.articulo+auxDesc,
@@ -2162,14 +2163,15 @@ async function generarAsientoGastoManual(datos) {
       ivaBs   = parseFloat((baseBs*IVA_RATE).toFixed(2));
     }
 
+    const _todasCtasGasto = await obtenerCuentasContables();
     let idCtaIVA = null;
     if (!datos.exentoIVA) {
-      const cIVA = await api('cont_cuentas','GET',null,'?codigo=eq.1.1.04.001&select=id_cuenta&limit=1');
-      idCtaIVA = cIVA.length ? cIVA[0].id_cuenta : null;
+      const cIVA = _todasCtasGasto.find(function(c){ return c.codigo === '1.1.04.001'; });
+      idCtaIVA = cIVA ? cIVA.id_cuenta : null;
     }
     let idCtaCxP = null;
-    { const cProv = await api('cont_cuentas','GET',null,'?codigo=eq.2.1.01.001&select=id_cuenta');
-      idCtaCxP = cProv.length ? cProv[0].id_cuenta : null; }
+    { const cProv = _todasCtasGasto.find(function(c){ return c.codigo === '2.1.01.001'; });
+      idCtaCxP = cProv ? cProv.id_cuenta : null; }
 
     let orden = 1;
     const textoLinea = datos.concepto || datos.descripcion || '';

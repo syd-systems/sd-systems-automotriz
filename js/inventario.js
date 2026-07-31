@@ -1108,8 +1108,8 @@ async function guardarEdicionMovimiento() {
         if (movOrig.id_area_entrega) await upsertStockArea(id_articulo, movOrig.id_area_entrega, -deltaCantSal);
         let esMercanciaEdit = false;
         if (art?.id_cuenta_contable) {
-          const ctaEdit = await api('cont_cuentas','GET',null,'?id_cuenta=eq.'+art.id_cuenta_contable+'&select=codigo');
-          esMercanciaEdit = !!(ctaEdit && ctaEdit[0] && ctaEdit[0].codigo === '1.1.03.001');
+          const ctaEdit = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === art.id_cuenta_contable; });
+          esMercanciaEdit = !!(ctaEdit && ctaEdit.codigo === '1.1.03.001');
         }
         if (esMercanciaEdit && movOrig.id_area) await upsertStockArea(id_articulo, movOrig.id_area, deltaCantSal);
       }

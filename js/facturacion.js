@@ -466,8 +466,8 @@ async function guardarFactura(emitir) {
           if (asiento && asiento[0]) {
             const idAst = asiento[0].id_asiento;
             // Buscar cuentas contables
-            const cuentas = await api('cont_cuentas','GET',null,
-              '?codigo=in.(1.1.02.001,4.1.01.001,4.1.02.001,2.1.03.001)&select=id_cuenta,codigo');
+            const _todasCtasFac = await obtenerCuentasContables();
+            const cuentas = _todasCtasFac.filter(function(c){ return ['1.1.02.001','4.1.01.001','4.1.02.001','2.1.03.001'].includes(c.codigo); });
             const cCxC     = cuentas.find(function(c){ return c.codigo==='1.1.02.001'; });
             const cIngServ = cuentas.find(function(c){ return c.codigo==='4.1.01.001'; });
             const cIngRep  = cuentas.find(function(c){ return c.codigo==='4.1.02.001'; });
@@ -476,13 +476,11 @@ async function guardarFactura(emitir) {
             // Línea 1: Débito CxC por el total
             // Buscar cuenta IGTF por pagar
             // Buscar cuenta IGTF por nombre
-            const cuentasIGTF = fac.igtf_usd > 0
-              ? await api('cont_cuentas','GET',null,'?nombre=ilike.%25IGTF%25por%25Pagar%25&estado=eq.ACTIVO&select=id_cuenta,codigo&limit=1')
-              : [];
-            let cIGTF = cuentasIGTF[0] || null;
+            let cIGTF = fac.igtf_usd > 0
+              ? (_todasCtasFac.find(function(c){ return c.estado === 'ACTIVO' && /igtf.*por.*pagar/i.test(c.nombre||''); }) || null)
+              : null;
             if (!cIGTF && fac.igtf_usd > 0) {
-              const igtfPorCodigo = await api('cont_cuentas','GET',null,'?codigo=eq.2.1.03.004&select=id_cuenta,codigo');
-              cIGTF = igtfPorCodigo[0] || null;
+              cIGTF = _todasCtasFac.find(function(c){ return c.codigo === '2.1.03.004'; }) || null;
             }
 
             // VEN-NIF: Moneda funcional = Bs. USD como auxiliar
@@ -1900,8 +1898,8 @@ async function _guardarSalidaStockInterno() {
     // 1.1.03.002 = Consumibles (se gasta de inmediato al salir de Compras)
     let esMercancia = false;
     if (art && art.id_cuenta_contable) {
-      const ctaArtSal = await api('cont_cuentas','GET',null,'?id_cuenta=eq.'+art.id_cuenta_contable+'&select=codigo');
-      esMercancia = !!(ctaArtSal && ctaArtSal[0] && ctaArtSal[0].codigo === '1.1.03.001');
+      const ctaArtSal = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === art.id_cuenta_contable; });
+      esMercancia = !!(ctaArtSal && ctaArtSal.codigo === '1.1.03.001');
     }
 
     if (esMercancia) {
@@ -1990,14 +1988,13 @@ async function _guardarSalidaStockInterno() {
                 });
                 const residuo = parseFloat((totalDebe - totalHaber).toFixed(2));
                 if (Math.abs(residuo) >= 0.01) {
-                  const [ctaGastoRes, ctaIngresoRes] = await Promise.all([
-                    api('cont_cuentas','GET',null,'?codigo=eq.6.2.02.001&select=id_cuenta'),
-                    api('cont_cuentas','GET',null,'?codigo=eq.4.2.02.001&select=id_cuenta'),
-                  ]);
+                  const _todasCtasRedondeo = await obtenerCuentasContables();
+                  const ctaGastoRes    = _todasCtasRedondeo.find(function(c){ return c.codigo === '6.2.02.001'; }) || null;
+                  const ctaIngresoRes  = _todasCtasRedondeo.find(function(c){ return c.codigo === '4.2.02.001'; }) || null;
                   const montoAjuste = Math.abs(residuo);
                   if (residuo > 0) {
                     // Inventario quedó DEUDOR (sobró valor) -> Gasto (debe) / Inventario (haber)
-                    const idCtaGasto = ctaGastoRes && ctaGastoRes[0] ? ctaGastoRes[0].id_cuenta : null;
+                    const idCtaGasto = ctaGastoRes ? ctaGastoRes.id_cuenta : null;
                     if (idCtaGasto) {
                       await api('cont_asiento_lineas','POST',{ id_asiento:arS.id_asiento, id_cuenta:idCtaGasto, orden:3,
                         descripcion:'Ajuste por redondeo de inventario: '+(art.nombre_articulo||''),
@@ -2008,7 +2005,7 @@ async function _guardarSalidaStockInterno() {
                     }
                   } else {
                     // Inventario quedó ACREEDOR (faltó valor) -> Inventario (debe) / Ingreso (haber)
-                    const idCtaIngreso = ctaIngresoRes && ctaIngresoRes[0] ? ctaIngresoRes[0].id_cuenta : null;
+                    const idCtaIngreso = ctaIngresoRes ? ctaIngresoRes.id_cuenta : null;
                     if (idCtaIngreso) {
                       await api('cont_asiento_lineas','POST',{ id_asiento:arS.id_asiento, id_cuenta:art.id_cuenta_contable, orden:3,
                         descripcion:'Ajuste por redondeo de inventario: '+(art.nombre_articulo||''),

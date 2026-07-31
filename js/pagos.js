@@ -392,8 +392,10 @@ async function abrirNuevoPago() {
 
   // Cargar cuentas de gasto — solo grupos 6.1.02, 6.1.04, 6.2.01, 6.2.02
   try {
-    const cuentas = await api('cont_cuentas','GET',null,
-      '?or=(codigo.ilike.6.1.02%25,codigo.ilike.6.1.04%25,codigo.ilike.6.2.01%25,codigo.ilike.6.2.02%25)&permite_movimiento=eq.true&estado=eq.ACTIVA&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
+    const gruposGasto = ['6.1.02','6.1.04','6.2.01','6.2.02'];
+    const cuentas = (await obtenerCuentasContables()).filter(function(c) {
+      return c.permite_movimiento === true && c.estado === 'ACTIVA' && c.codigo && gruposGasto.some(function(g){ return c.codigo.indexOf(g) === 0; });
+    }).sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
     const selC = document.getElementById('pago-cuenta-gasto');
     if (selC) {
       selC.innerHTML = '<option value="">— Seleccionar cuenta —</option>'
@@ -1255,10 +1257,10 @@ function onCambioPagoMoneda() {
         }
       } catch(eFiltro) {}
       var cuentasMap = {};
-      const ids = (metodos||[]).map(function(m){ return m.id_cuenta_contable; }).filter(Boolean).join(',');
-      if (ids) {
+      const idsArr = (metodos||[]).map(function(m){ return m.id_cuenta_contable; }).filter(Boolean);
+      if (idsArr.length) {
         try {
-          const ctas = await api('cont_cuentas','GET',null,'?id_cuenta=in.('+ids+')&select=id_cuenta,codigo,nombre');
+          const ctas = (await obtenerCuentasContables()).filter(function(c){ return idsArr.includes(c.id_cuenta); });
           (ctas||[]).forEach(function(c){ cuentasMap[c.id_cuenta] = c; });
         } catch(e) {}
       }
@@ -1458,8 +1460,8 @@ async function contGuardarPagoCxp() {
       const tasaPago   = tasaDia;
       const tasaCompra = parseFloat(c.tasa_bcv_compra || c.tasa_bcv || tasaPago);
 
-      const codigos = moneda === 'USD' ? '2.1.01.001,1.1.01.004,6.2.01.003,4.2.01.003,6.1.04.003,2.1.03.004' : '2.1.01.001,1.1.01.003';
-      const cuentasAst = await api('cont_cuentas','GET',null,'?codigo=in.('+codigos+')&select=id_cuenta,codigo') || [];
+      const codigosArr = moneda === 'USD' ? ['2.1.01.001','1.1.01.004','6.2.01.003','4.2.01.003','6.1.04.003','2.1.03.004'] : ['2.1.01.001','1.1.01.003'];
+      const cuentasAst = (await obtenerCuentasContables()).filter(function(c){ return codigosArr.includes(c.codigo); });
       const getCta = function(cod){ return cuentasAst.find(function(x){ return x.codigo===cod; }); };
       const cCxP      = getCta('2.1.01.001');
       const cBanVES   = getCta('1.1.01.003');
@@ -3515,8 +3517,9 @@ async function ejecutarPagoCxP(id_cxp) {
 
   // Cargar cuentas bancarias
   try {
-    const ctas = await api('cont_cuentas','GET',null,
-      '?codigo=like.1.1.01*&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre');
+    const ctas = (await obtenerCuentasContables()).filter(function(c){
+      return c.codigo && c.codigo.indexOf('1.1.01') === 0 && c.estado === 'ACTIVA' && c.permite_movimiento === true;
+    }).sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
     const sel = document.getElementById('exec-pago-cuenta-banco');
     if (sel) sel.innerHTML = '<option value="">— Seleccionar cuenta —</option>'
       + (ctas||[]).map(function(ct){
@@ -3676,8 +3679,7 @@ async function _resolverMetodoPagoEjecucion(moneda, prov) {
       '?codigo=eq.'+moneda+'&tipo_canal=eq.'+tipoMetodo+'&estado=eq.ACTIVO&limit=1&select=id_metodo,id_cuenta_contable' + emisorQ());
     const m = metodos && metodos[0];
     if (m && m.id_cuenta_contable) {
-      const ctas = await api('cont_cuentas','GET',null,'?id_cuenta=eq.'+m.id_cuenta_contable+'&select=id_cuenta,codigo,nombre&limit=1');
-      const cta = ctas && ctas[0];
+      const cta = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === m.id_cuenta_contable; });
       if (metodoHidden) metodoHidden.value = m.id_metodo;
       if (cuentaHidden) cuentaHidden.value = m.id_cuenta_contable;
       if (cuentaDisplay) cuentaDisplay.textContent = cta ? (cta.codigo + ' — ' + cta.nombre) : '—';
@@ -3909,16 +3911,12 @@ async function confirmarEjecucionPago() {
       : _calcularTributos(montoUSD, incluyeIgtf, tasaIGTF, aplicaIGTF);
 
     // 4. Obtener cuentas contables por código
-    const [ctaIGTF, ctaPerdCambio, ctaGanCambio, ctaCxP] = await Promise.all([
-      api('cont_cuentas','GET',null,'?codigo=eq.6.1.04.003&select=id_cuenta&limit=1'),
-      api('cont_cuentas','GET',null,'?codigo=eq.6.2.01.003&select=id_cuenta&limit=1'),
-      api('cont_cuentas','GET',null,'?codigo=eq.4.2.01.003&select=id_cuenta&limit=1'),
-      api('cont_cuentas','GET',null,'?codigo=eq.2.1.01.001&select=id_cuenta&limit=1')
-    ]);
-    const idCtaIGTF       = ctaIGTF       && ctaIGTF[0]       ? ctaIGTF[0].id_cuenta       : null;
-    const idCtaPerdCambio = ctaPerdCambio && ctaPerdCambio[0] ? ctaPerdCambio[0].id_cuenta  : null;
-    const idCtaGanCambio  = ctaGanCambio  && ctaGanCambio[0]  ? ctaGanCambio[0].id_cuenta  : null;
-    const idCtaCxP        = ctaCxP        && ctaCxP[0]         ? ctaCxP[0].id_cuenta        : null;
+    const _todasCtasPagoEjec = await obtenerCuentasContables();
+    const buscarCta = function(cod){ return _todasCtasPagoEjec.find(function(c){ return c.codigo === cod; }) || null; };
+    const idCtaIGTF       = buscarCta('6.1.04.003')?.id_cuenta || null;
+    const idCtaPerdCambio = buscarCta('6.2.01.003')?.id_cuenta || null;
+    const idCtaGanCambio  = buscarCta('4.2.01.003')?.id_cuenta || null;
+    const idCtaCxP        = buscarCta('2.1.01.001')?.id_cuenta || null;
 
     // 5. Calcular diferencial cambiario
     // montoVESCompra = el monto EXACTO ya booked/guardado en la CxP (incluye

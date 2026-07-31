@@ -502,10 +502,10 @@ async function verFichaInventario(id) {
   abrirModal('modal-ficha-inv');
   focusFirstField('modal-ficha-inv');
 
-  // Cargar nombres de cuentas contables
-  var _idsC = [r.id_cuenta_contable, r.id_cuenta_costo_gasto].filter(Boolean).join(',');
-  if (_idsC) {
-    api('cont_cuentas','GET',null,'?id_cuenta=in.('+_idsC+')&select=id_cuenta,codigo,nombre').then(function(ctas) {
+  // Cargar nombres de cuentas contables (vía RPC, no lectura directa de la tabla)
+  var _idsC = [r.id_cuenta_contable, r.id_cuenta_costo_gasto].filter(Boolean);
+  if (_idsC.length) {
+    obtenerCuentasContables().then(function(ctas) {
       var ctaInv = ctas ? ctas.find(function(c){ return c.id_cuenta === r.id_cuenta_contable; }) : null;
       var ctaCG  = ctas ? ctas.find(function(c){ return c.id_cuenta === r.id_cuenta_costo_gasto; }) : null;
       var elInv  = document.getElementById('ficha-inv-cta-inventario');
@@ -925,8 +925,9 @@ async function guardarEntradaStock() {
       // (1.1.03.002) ya se gastó al salir de Compras y no puede "devolverse" como
       // inventario; su corrección es ANULAR la Salida original, no Transferencia.
       if (r.id_cuenta_contable) {
-        const ctaArt = await api('cont_cuentas','GET',null,'?id_cuenta=eq.'+r.id_cuenta_contable+'&select=codigo');
-        const codigoCta = ctaArt && ctaArt[0] ? ctaArt[0].codigo : null;
+        const ctasArt = await obtenerCuentasContables();
+        const ctaArt = ctasArt.find(function(c){ return c.id_cuenta === r.id_cuenta_contable; });
+        const codigoCta = ctaArt ? ctaArt.codigo : null;
         if (codigoCta && codigoCta !== '1.1.03.001') {
           errEl.textContent = 'Este artículo es un Consumible (cuenta ' + codigoCta + '). Transferencia solo aplica a Mercancías. Si se envió a la área equivocada, anule la Salida original desde su Historial.';
           errEl.style.display = 'block';
@@ -1101,14 +1102,16 @@ async function guardarEntradaStock() {
           const totalDevUSD = parseFloat((subtotalDevUSD + ivaDevUSD + igtfDevUSD).toFixed(2));
           const tasaDev = parseFloat(facDev.tasa_bcv) || tasa_bcv_usada || 1;
 
-          const cuentasDev = await api('cont_cuentas','GET',null,'?codigo=in.(1.1.02.001,4.1.02.001,2.1.03.001)&select=id_cuenta,codigo');
+          const todasCtasDev = await obtenerCuentasContables();
+          const cuentasDev = todasCtasDev.filter(function(c){ return ['1.1.02.001','4.1.02.001','2.1.03.001'].includes(c.codigo); });
           const cCxCDev    = cuentasDev.find(function(c){ return c.codigo==='1.1.02.001'; });
           const cIngRepDev = cuentasDev.find(function(c){ return c.codigo==='4.1.02.001'; });
           const cIVADev    = cuentasDev.find(function(c){ return c.codigo==='2.1.03.001'; });
           let cIGTFDev = null;
           if (igtfDevUSD > 0) {
-            const igtfBuscado = await api('cont_cuentas','GET',null,'?nombre=ilike.%25IGTF%25por%25Pagar%25&estado=eq.ACTIVO&select=id_cuenta&limit=1');
-            cIGTFDev = igtfBuscado && igtfBuscado[0] ? igtfBuscado[0] : (await api('cont_cuentas','GET',null,'?codigo=eq.2.1.03.004&select=id_cuenta'))?.[0] || null;
+            cIGTFDev = todasCtasDev.find(function(c){ return c.estado === 'ACTIVO' && /igtf.*por.*pagar/i.test(c.nombre||''); })
+              || todasCtasDev.find(function(c){ return c.codigo === '2.1.03.004'; })
+              || null;
           }
 
           const anioDev = new Date().getFullYear();
@@ -1327,10 +1330,11 @@ async function abrirNuevoInventario() {
   if (infoEl) infoEl.style.display = 'none';
   // Cargar cuentas del grupo 1.1.03 para nuevo artículo
   try {
-    const ctas113 = await api('cont_cuentas','GET',null,'?codigo=like.1.1.03*&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
+    const todasCtasN = await obtenerCuentasContables();
+    const ctas113 = todasCtasN.filter(function(c){ return c.codigo && c.codigo.indexOf('1.1.03') === 0 && c.estado === 'ACTIVA' && c.permite_movimiento === true; }).sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
     const selCta = document.getElementById('inv-cuenta-contable');
     if (selCta) selCta.innerHTML = '<option value="">— Seleccionar cuenta 1.1.03.xxx —</option>' + ctas113.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join('');
-    const ctasCGn = await api('cont_cuentas','GET',null,'?tipo=in.(EGRESO,COSTO)&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
+    const ctasCGn = todasCtasN.filter(function(c){ return ['EGRESO','COSTO'].includes(c.tipo) && c.estado === 'ACTIVA' && c.permite_movimiento === true; }).sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
     const selCGn = document.getElementById('inv-cuenta-costo-gasto');
     if (selCGn) { selCGn.innerHTML = '<option value="">— Seleccionar cuenta —</option>' + ctasCGn.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join(''); selCGn.value = ''; }
   } catch(e2) {}
@@ -1362,10 +1366,11 @@ async function abrirEditarInventario(id) {
   // Asegurar que _invSaldoArea esté calculado para mostrar stock correcto del área
   await calcularInvSaldoArea();
   try {
-    const ctas113e = await api('cont_cuentas','GET',null,'?codigo=like.1.1.03*&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
+    const todasCtasE = await obtenerCuentasContables();
+    const ctas113e = todasCtasE.filter(function(c){ return c.codigo && c.codigo.indexOf('1.1.03') === 0 && c.estado === 'ACTIVA' && c.permite_movimiento === true; }).sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
     const selCtaE = document.getElementById('inv-cuenta-contable');
     if (selCtaE) { selCtaE.innerHTML = '<option value="">— Seleccionar —</option>' + ctas113e.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join(''); }
-    const ctasCGe = await api('cont_cuentas','GET',null,'?tipo=in.(EGRESO,COSTO)&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
+    const ctasCGe = todasCtasE.filter(function(c){ return ['EGRESO','COSTO'].includes(c.tipo) && c.estado === 'ACTIVA' && c.permite_movimiento === true; }).sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
     const selCGe = document.getElementById('inv-cuenta-costo-gasto');
     if (selCGe) selCGe.innerHTML = '<option value="">— Seleccionar cuenta —</option>' + ctasCGe.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join('');
   } catch(e3) {}
