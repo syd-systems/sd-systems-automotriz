@@ -41,6 +41,9 @@ async function verHistorialStock(id_articulo, nombreArt) {
   }
 }
 
+const HISTORIAL_PAGE_SIZE = 50;
+let _historialEstado = { id_articulo: null, cursor: null, terminado: false, idAreaH: null };
+
 async function recargarHistorial(id_articulo) {
   if (!id_articulo) id_articulo = document.getElementById('historial-id-articulo').value;
   const cont = document.getElementById('historial-contenido');
@@ -51,90 +54,140 @@ async function recargarHistorial(id_articulo) {
       const empH = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_area&limit=1').catch(function(){ return []; });
       id_areaH = empH?.[0]?.id_area || null;
     }
-    const qEnt = '?id_articulo=eq.' + id_articulo + (id_areaH ? '&id_area=eq.'+id_areaH : '') + '&order=fecha_registro.desc&select=*,area_receptora:id_area(nombre,codigo),area_origen:id_area_origen(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),proveedores(nombre)';
-    const qSal = '?id_articulo=eq.' + id_articulo + (id_areaH ? '&or=(id_area.eq.'+id_areaH+',id_area_entrega.eq.'+id_areaH+')' : '') + '&order=fecha_registro.desc&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),empleado_entrega:id_empleado_entrega(nombre_completo)';
-    const [entradas, salidas] = await Promise.all([
-      api('stock_entradas', 'GET', null, qEnt),
-      api('stock_salidas',  'GET', null, qSal),
-    ]);
+    _historialEstado = { id_articulo: id_articulo, cursor: null, terminado: false, idAreaH: id_areaH };
 
-    // Combinar y ordenar por fecha_registro desc
-    const movimientos = [
-      ...entradas.map(function(e) { return { ...e, tipo: 'ENTRADA', fecha: e.fecha_entrada, fecha_reg: e.fecha_registro }; }),
-      ...salidas.map(function(s)  {
-        // Si el area del usuario es el DESTINO (id_area), es una ENTRADA para él
-        const tipoMov = id_areaH && s.id_area === id_areaH ? 'ENTRADA' : 'SALIDA';
-        return { ...s, tipo: tipoMov, fecha: s.fecha_salida, fecha_reg: s.fecha_registro };
-      }),
-    ].sort(function(a, b) { return new Date(b.fecha_reg) - new Date(a.fecha_reg); });
-
+    const movimientos = await _obtenerPaginaHistorial();
     if (!movimientos.length) {
       cont.innerHTML = '<div style="text-align:center;padding:32px;color:var(--suave)">Sin movimientos registrados</div>';
       return;
     }
-
-    cont.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px">'
-      + '<thead><tr>'
-      + '<th style="text-align:left;padding:8px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;letter-spacing:1px">FECHA</th>'
-      + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">REF</th>'
-      + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">TIPO</th>'
-      + '<th style="text-align:center;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CANTIDAD</th>'
-      + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ÁREA / DETALLE</th>'
-      + '<th style="text-align:center;padding:8px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ESTADO</th>'
-      + '<th style="text-align:center;padding:8px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ACCIÓN</th>'
-      + '</tr></thead><tbody>'
-      + movimientos.map(function(m) {
-          const esEntrada = m.tipo === 'ENTRADA';
-          const anulada = !!m.anulada;
-          const areaRec = m.area_receptora || m.param_areas;
-          const area = areaRec ? areaRec.nombre + (areaRec.codigo ? ' (' + areaRec.codigo + ')' : '') : '—';
-          return '<tr style="opacity:' + (anulada ? '0.5' : '1') + '">'
-            + '<td style="padding:8px 0;font-size:12px;color:var(--suave)">' + (m.fecha||'—') + '</td>'
-            + '<td style="padding:8px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">'
-            + 'Ref: ' + (m.id_entrada ? 'ENT-' + m.id_entrada : 'SAL-' + m.id_salida) + '</td>'
-            + '<td style="padding:8px"><span class="badge ' + (esEntrada ? 'badge-verde' : 'badge-rojo') + '">'
-            + (esEntrada ? '▲ Entrada' : '▼ Salida') + '</span>'
-            + (anulada ? '<div style="font-size:10px;color:#fc8181;margin-top:2px">Anulada</div>' : '') + '</td>'
-            + '<td style="text-align:center;padding:8px;font-family:var(--font-mono);font-weight:600;color:' + (esEntrada ? '#22c55e' : '#fc8181') + '">'
-            + (esEntrada ? '+' : '-') + m.cantidad + '</td>'
-            + '<td style="padding:8px;font-size:12px">'
-            + (esEntrada
-              ? '<div>' + (m.area_receptora ? m.area_receptora.nombre + (m.area_receptora.codigo ? ' (' + m.area_receptora.codigo + ')' : '') : '—') + '</div>'
-                + (m.area_origen ? '<div style="font-size:11px;color:#60a5fa">↩ Origen: ' + m.area_origen.nombre + (m.area_origen.codigo ? ' (' + m.area_origen.codigo + ')' : '') + '</div>' : '')
-                + (m.proveedores ? '<div style="font-size:11px;color:#a78bfa">🏭 ' + m.proveedores.nombre + '</div>' : '')
-                + ((m.precio_compra_original ?? m.precio_costo_moneda)
-                    ? '<div style="font-size:11px;color:var(--suave)">' + (m.moneda_compra === 'VES' ? 'Bs. ' + fmtBs(m.precio_compra_original ?? m.precio_costo_moneda) : '$ ' + fmtUSD(m.precio_compra_original ?? m.precio_costo_moneda)) + ' / u</div>'
-                    : '')
-              : '<div>' + area + '</div>')
-            + ((esEntrada ? m.empleado_recibe : m.empleado_recibe) ? '<div style="font-size:11px;color:#60a5fa">👤 Recibe: ' + (m.empleado_recibe?.nombre_completo||'') + '</div>' : '')
-            + ((!esEntrada && m.empleado_entrega) ? '<div style="font-size:11px;color:#fb923c">👤 Entrega: ' + m.empleado_entrega.nombre_completo + '</div>' : '')
-            + (m.observaciones ? '<div style="font-size:11px;color:var(--suave)">' + m.observaciones + '</div>' : '')
-            + '</td>'
-            + '<td style="text-align:center;padding:8px 0">'
-            + (anulada
-                ? '<span style="font-size:10px;font-weight:600;color:#fc8181">Anulada</span>'
-                : '<span style="font-size:10px;color:#22c55e">Activa</span>')
-            + '</td>'
-            + '<td style="text-align:center;padding:8px 0">'
-            + (function() {
-                const esSobrante = esEntrada && m.motivo === 'ajuste';
-                const esFaltante = !esEntrada && (m.observaciones || '').indexOf('FALTANTE (Ajuste de Inventario)') === 0;
-                const tienePermisoAjuste = sesionActual?.administrador || puedo('INVENTARIO','AJUSTE_INCIDENCIA');
-                if ((esSobrante || esFaltante) && tienePermisoAjuste) {
-                  return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verFichaAjuste(\'' + (esSobrante ? 'ENTRADA' : 'SALIDA') + '\',' + (m.id_entrada||m.id_salida) + ',' + m.id_articulo + ')">👁 Ver</button>';
-                }
-                if (anulada) return '<span style="color:var(--suave);font-size:11px">—</span>';
-                const soloLec = (!sesionActual?.administrador && !puedo('INVENTARIO','EDITAR_STOCK')) ? 'true' : 'false';
-                if (m.id_entrada) return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verFichaEntradaStock(' + m.id_entrada + ',' + m.id_articulo + ')">👁 Ver</button>';
-                return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="editarMovimiento(\'SALIDA\',' + m.id_salida + ',' + m.id_articulo + ',' + soloLec + ')">👁 Ver</button>';
-              })()
-            + '</td>'
-            + '</tr>';
-        }).join('')
-      + '</tbody></table>';
+    cont.innerHTML = _renderTablaHistorial(movimientos);
   } catch(err) {
     cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + err.message + '</div>';
   }
+}
+
+// Trae la siguiente página combinada (Entradas + Salidas) usando un cursor de fecha_registro.
+// Se piden HISTORIAL_PAGE_SIZE de CADA tabla por separado (garantiza que el top-N combinado
+// sea correcto sin traer el historial completo) y se mezclan ordenadas.
+async function _obtenerPaginaHistorial() {
+  const { id_articulo, cursor, idAreaH } = _historialEstado;
+  const cursorQS = cursor ? '&fecha_registro=lt.' + encodeURIComponent(cursor) : '';
+  const qEnt = '?id_articulo=eq.' + id_articulo + (idAreaH ? '&id_area=eq.'+idAreaH : '') + cursorQS
+    + '&order=fecha_registro.desc&limit=' + HISTORIAL_PAGE_SIZE
+    + '&select=*,area_receptora:id_area(nombre,codigo),area_origen:id_area_origen(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),proveedores(nombre)';
+  const qSal = '?id_articulo=eq.' + id_articulo + (idAreaH ? '&or=(id_area.eq.'+idAreaH+',id_area_entrega.eq.'+idAreaH+')' : '') + cursorQS
+    + '&order=fecha_registro.desc&limit=' + HISTORIAL_PAGE_SIZE
+    + '&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),empleado_entrega:id_empleado_entrega(nombre_completo)';
+  const [entradas, salidas] = await Promise.all([
+    api('stock_entradas', 'GET', null, qEnt),
+    api('stock_salidas',  'GET', null, qSal),
+  ]);
+
+  const combinados = [
+    ...entradas.map(function(e) { return { ...e, tipo: 'ENTRADA', fecha: e.fecha_entrada, fecha_reg: e.fecha_registro }; }),
+    ...salidas.map(function(s)  {
+      const tipoMov = idAreaH && s.id_area === idAreaH ? 'ENTRADA' : 'SALIDA';
+      return { ...s, tipo: tipoMov, fecha: s.fecha_salida, fecha_reg: s.fecha_registro };
+    }),
+  ].sort(function(a, b) { return new Date(b.fecha_reg) - new Date(a.fecha_reg); });
+
+  const pagina = combinados.slice(0, HISTORIAL_PAGE_SIZE);
+  // Si ambas tablas devolvieron menos del tamaño de página, ya no queda nada más que traer.
+  _historialEstado.terminado = entradas.length < HISTORIAL_PAGE_SIZE && salidas.length < HISTORIAL_PAGE_SIZE;
+  if (pagina.length) _historialEstado.cursor = pagina[pagina.length - 1].fecha_reg;
+  return pagina;
+}
+
+async function cargarMasHistorial() {
+  const btn = document.getElementById('historial-btn-cargar-mas');
+  if (btn) { btn.disabled = true; btn.textContent = 'Cargando...'; }
+  try {
+    const pagina = await _obtenerPaginaHistorial();
+    const cont = document.getElementById('historial-contenido');
+    const tbody = cont.querySelector('tbody');
+    if (tbody && pagina.length) tbody.insertAdjacentHTML('beforeend', pagina.map(_renderFilaHistorial).join(''));
+    const footerViejo = document.getElementById('historial-footer-paginacion');
+    if (footerViejo) footerViejo.remove();
+    cont.insertAdjacentHTML('beforeend', _renderFooterPaginacion());
+  } catch(e) {
+    alert('Error cargando más movimientos: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Cargar más'; }
+  }
+}
+
+function _renderFooterPaginacion() {
+  if (_historialEstado.terminado) {
+    return '<div id="historial-footer-paginacion" style="text-align:center;padding:12px;color:var(--suave);font-size:11px">— Fin del historial —</div>';
+  }
+  return '<div id="historial-footer-paginacion" style="text-align:center;padding:12px">'
+    + '<button id="historial-btn-cargar-mas" class="btn-secundario" style="padding:8px 20px;font-size:12px" onclick="cargarMasHistorial()">Cargar más</button>'
+    + '</div>';
+}
+
+function _renderTablaHistorial(movimientos) {
+  return '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+    + '<thead><tr>'
+    + '<th style="text-align:left;padding:8px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;letter-spacing:1px">FECHA</th>'
+    + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">REF</th>'
+    + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">TIPO</th>'
+    + '<th style="text-align:center;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CANTIDAD</th>'
+    + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ÁREA / DETALLE</th>'
+    + '<th style="text-align:center;padding:8px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ESTADO</th>'
+    + '<th style="text-align:center;padding:8px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ACCIÓN</th>'
+    + '</tr></thead><tbody>'
+    + movimientos.map(_renderFilaHistorial).join('')
+    + '</tbody></table>'
+    + _renderFooterPaginacion();
+}
+
+function _renderFilaHistorial(m) {
+  const esEntrada = m.tipo === 'ENTRADA';
+  const anulada = !!m.anulada;
+  const areaRec = m.area_receptora || m.param_areas;
+  const area = areaRec ? areaRec.nombre + (areaRec.codigo ? ' (' + areaRec.codigo + ')' : '') : '—';
+  return '<tr style="opacity:' + (anulada ? '0.5' : '1') + '">'
+    + '<td style="padding:8px 0;font-size:12px;color:var(--suave)">' + (m.fecha||'—') + '</td>'
+    + '<td style="padding:8px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">'
+    + 'Ref: ' + (m.id_entrada ? 'ENT-' + m.id_entrada : 'SAL-' + m.id_salida) + '</td>'
+    + '<td style="padding:8px"><span class="badge ' + (esEntrada ? 'badge-verde' : 'badge-rojo') + '">'
+    + (esEntrada ? '▲ Entrada' : '▼ Salida') + '</span>'
+    + (anulada ? '<div style="font-size:10px;color:#fc8181;margin-top:2px">Anulada</div>' : '') + '</td>'
+    + '<td style="text-align:center;padding:8px;font-family:var(--font-mono);font-weight:600;color:' + (esEntrada ? '#22c55e' : '#fc8181') + '">'
+    + (esEntrada ? '+' : '-') + m.cantidad + '</td>'
+    + '<td style="padding:8px;font-size:12px">'
+    + (esEntrada
+      ? '<div>' + (m.area_receptora ? m.area_receptora.nombre + (m.area_receptora.codigo ? ' (' + m.area_receptora.codigo + ')' : '') : '—') + '</div>'
+        + (m.area_origen ? '<div style="font-size:11px;color:#60a5fa">↩ Origen: ' + m.area_origen.nombre + (m.area_origen.codigo ? ' (' + m.area_origen.codigo + ')' : '') + '</div>' : '')
+        + (m.proveedores ? '<div style="font-size:11px;color:#a78bfa">🏭 ' + m.proveedores.nombre + '</div>' : '')
+        + ((m.precio_compra_original ?? m.precio_costo_moneda)
+            ? '<div style="font-size:11px;color:var(--suave)">' + (m.moneda_compra === 'VES' ? 'Bs. ' + fmtBs(m.precio_compra_original ?? m.precio_costo_moneda) : '$ ' + fmtUSD(m.precio_compra_original ?? m.precio_costo_moneda)) + ' / u</div>'
+            : '')
+      : '<div>' + area + '</div>')
+    + ((esEntrada ? m.empleado_recibe : m.empleado_recibe) ? '<div style="font-size:11px;color:#60a5fa">👤 Recibe: ' + (m.empleado_recibe?.nombre_completo||'') + '</div>' : '')
+    + ((!esEntrada && m.empleado_entrega) ? '<div style="font-size:11px;color:#fb923c">👤 Entrega: ' + m.empleado_entrega.nombre_completo + '</div>' : '')
+    + (m.observaciones ? '<div style="font-size:11px;color:var(--suave)">' + m.observaciones + '</div>' : '')
+    + '</td>'
+    + '<td style="text-align:center;padding:8px 0">'
+    + (anulada
+        ? '<span style="font-size:10px;font-weight:600;color:#fc8181">Anulada</span>'
+        : '<span style="font-size:10px;color:#22c55e">Activa</span>')
+    + '</td>'
+    + '<td style="text-align:center;padding:8px 0">'
+    + (function() {
+        const esSobrante = esEntrada && m.motivo === 'ajuste';
+        const esFaltante = !esEntrada && (m.observaciones || '').indexOf('FALTANTE (Ajuste de Inventario)') === 0;
+        const tienePermisoAjuste = sesionActual?.administrador || puedo('INVENTARIO','AJUSTE_INCIDENCIA');
+        if ((esSobrante || esFaltante) && tienePermisoAjuste) {
+          return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verFichaAjuste(\'' + (esSobrante ? 'ENTRADA' : 'SALIDA') + '\',' + (m.id_entrada||m.id_salida) + ',' + m.id_articulo + ')">👁 Ver</button>';
+        }
+        if (anulada) return '<span style="color:var(--suave);font-size:11px">—</span>';
+        const soloLec = (!sesionActual?.administrador && !puedo('INVENTARIO','EDITAR_STOCK')) ? 'true' : 'false';
+        if (m.id_entrada) return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verFichaEntradaStock(' + m.id_entrada + ',' + m.id_articulo + ')">👁 Ver</button>';
+        return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="editarMovimiento(\'SALIDA\',' + m.id_salida + ',' + m.id_articulo + ',' + soloLec + ')">👁 Ver</button>';
+      })()
+    + '</td>'
+    + '</tr>';
 }
 
 function retornarDesdeEditMovimiento() {
