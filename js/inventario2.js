@@ -513,9 +513,13 @@ async function verFichaInventario(id) {
     });
   }
 
-  // Cargar historial de entradas y salidas
-  verHistorialEntradas(r.id_articulo);
-  verHistorialSalidas(r.id_articulo);
+  // Historial de movimientos: se abre en el modal dedicado (con pestañas
+  // Todas/Entradas/Salidas y paginación) en vez de cargar aquí dos listas
+  // sin límite — evita duplicar lógica y hereda los fixes ya hechos ahí.
+  const contHist = document.getElementById('ficha-inv-historial');
+  if (contHist) {
+    contHist.innerHTML = '<div style="padding:12px 0"><button class="btn-secundario" style="width:100%;padding:10px;font-size:12px" onclick="verHistorialStock(' + r.id_articulo + ',\'' + (r.nombre_articulo||'').replace(/'/g,"\\'") + '\')">📋 Ver Historial de Movimientos</button></div>';
+  }
 }
 
 function regresarAFichaInv() {
@@ -1513,90 +1517,10 @@ async function eliminarInventario(id, nombre) {
   } catch(e) { alert('Error: ' + e.message); }
 }
 
-// ─── HISTORIAL DE ENTRADAS ───
-async function verHistorialEntradas(id_articulo) {
-  const cont = document.getElementById('ficha-inv-historial');
-  if (!cont) return;
-  cont.innerHTML = '<div style="color:var(--suave);font-size:12px">Cargando...</div>';
-  try {
-    // Si el usuario solo ve su área, filtrar historial por área
-    const id_areaFiltro = _invSaldoArea && sesionActual?.correo_usuario
-      ? await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_area&limit=1').then(function(r){ return r&&r[0]?r[0].id_area:null; }).catch(function(){ return null; })
-      : null;
-    let filas = [];
+// ─── (verHistorialEntradas eliminada: ahora "Ver Ficha" abre el mismo
+//      modal-historial-stock con pestañas Todas/Entradas/Salidas y
+//      paginación — ver verHistorialStock() en inventario.js) ───
 
-    if (id_areaFiltro) {
-      // Para operador de área: sus "entradas" son las salidas del almacén hacia su área
-      const salsRecibidas = await api('stock_salidas','GET',null,
-        '?id_articulo=eq.'+id_articulo+'&id_area=eq.'+id_areaFiltro+'&order=fecha_salida.desc&select=*,area_origen:id_area_entrega(nombre,codigo)');
-      if (!salsRecibidas || !salsRecibidas.length) {
-        cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:8px 0">Sin entradas en tu área.</div>';
-        return;
-      }
-      filas = salsRecibidas.map(function(s) {
-        const origen = s.area_origen ? s.area_origen.nombre+(s.area_origen.codigo?' ('+s.area_origen.codigo+')':'') : 'Almacén';
-        const estado = s.anulada
-          ? '<span style="color:#fc8181;font-size:10px">Anulada</span>'
-          : '<span style="color:#22c55e;font-size:10px">Activa</span>';
-        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
-          + '<td style="padding:6px 4px">' + fmtFecha(s.fecha_salida) + '</td>'
-          + '<td style="text-align:right;padding:6px 4px;font-family:var(--font-mono)">' + s.cantidad + '</td>'
-          + '<td style="padding:6px 4px">' + origen + '</td>'
-          + '<td style="text-align:center;padding:6px 4px">' + estado + '</td>'
-          + '</tr>';
-      });
-      cont.innerHTML = '<div style="margin-top:16px;border-top:1px solid var(--borde);padding-top:12px">'
-        + '<div style="font-size:10px;color:var(--suave);letter-spacing:2px;margin-bottom:8px">ENTRADAS A TU ÁREA</div>'
-        + '<table style="width:100%;border-collapse:collapse;font-size:12px">'
-        + '<thead><tr style="border-bottom:1px solid var(--borde)">'
-        + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">FECHA</th>'
-        + '<th style="text-align:right;padding:6px 4px;color:var(--suave);font-size:10px">CANT</th>'
-        + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">ORIGEN</th>'
-        + '<th style="text-align:center;padding:6px 4px;color:var(--suave);font-size:10px">ESTADO</th>'
-        + '</tr></thead><tbody>' + filas.join('') + '</tbody></table></div>';
-      return;
-    }
-
-    // Administrador: ver todas las entradas directas
-    const qEntradas = '?id_articulo=eq.' + id_articulo + '&order=fecha_entrada.desc&select=*';
-    const entradas = await api('stock_entradas', 'GET', null, qEntradas);
-    if (!entradas || !entradas.length) {
-      cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:8px 0">Sin entradas registradas.</div>';
-      return;
-    }
-    const motivoLabel = { compra:'Compra', devolucion:'Devolución', transferencia:'Transferencia', ajuste:'Ajuste' };
-    cont.innerHTML = '<div style="margin-top:16px;border-top:1px solid var(--borde);padding-top:12px">'
-      + '<div style="font-size:10px;color:var(--suave);letter-spacing:2px;margin-bottom:8px">HISTORIAL DE ENTRADAS</div>'
-      + '<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">'
-      + '<colgroup><col style="width:88px"><col style="width:52px"><col style="width:108px"><col style="width:80px"><col style="width:65px"><col style="width:75px"></colgroup>'
-      + '<thead><tr style="border-bottom:1px solid var(--borde)">'
-      + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">FECHA</th>'
-      + '<th style="text-align:right;padding:6px 4px;color:var(--suave);font-size:10px">CANT</th>'
-      + '<th style="text-align:right;padding:6px 4px;color:var(--suave);font-size:10px">PRECIO</th>'
-      + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">MOTIVO</th>'
-      + '<th style="text-align:center;padding:6px 4px;color:var(--suave);font-size:10px">ESTADO</th>'
-      + '<th style="padding:6px 4px"></th>'
-      + '</tr></thead><tbody>'
-      + entradas.map(function(e) {
-          const mon  = (e.moneda_compra || 'USD').toUpperCase();
-          const prec = parseFloat(e.precio_compra_original || e.precio_costo_moneda || 0);
-          const precFmt = mon === 'VES' ? fmtBs(prec) + ' Bs' : '$ ' + fmtUSD(prec) + ' ' + mon;
-          const estado = e.anulada
-            ? '<span style="color:#fc8181;font-size:10px">Anulada</span>'
-            : '<span style="color:#22c55e;font-size:10px">Activa</span>';
-          return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
-            + '<td style="padding:6px 4px">' + fmtFecha(e.fecha_entrada) + '</td>'
-            + '<td style="text-align:right;padding:6px 4px;font-family:var(--font-mono)">' + e.cantidad + '</td>'
-            + '<td style="text-align:right;padding:6px 4px;font-family:var(--font-mono)">' + precFmt + '</td>'
-            + '<td style="padding:6px 4px">' + (motivoLabel[e.motivo] || e.motivo || '—') + '</td>'
-            + '<td style="text-align:center;padding:6px 4px">' + estado + '</td>'
-            + '</tr>';
-        }).join('')
-      + '</tbody></table></div>';
-  } catch(e) {
-    cont.innerHTML = '<div style="color:#fc8181;font-size:12px">Error: ' + e.message + '</div>';
-  }
-}
 
 // ─── CATEGORÍAS DE INVENTARIO ───
 async function invRenderCategorias(cont) {
@@ -1753,51 +1677,8 @@ async function invGuardarTipo() {
   } catch(e) { errEl.textContent='Error: '+e.message; errEl.style.display='block'; }
 }
 
-// ─── HISTORIAL DE SALIDAS ───
-async function verHistorialSalidas(id_articulo) {
-  const cont = document.getElementById('ficha-inv-historial-salidas');
-  if (!cont) return;
-  cont.innerHTML = '<div style="color:var(--suave);font-size:12px">Cargando...</div>';
-  try {
-    const id_areaFiltro = _invSaldoArea && sesionActual?.correo_usuario
-      ? await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_area&limit=1').then(function(r){ return r&&r[0]?r[0].id_area:null; }).catch(function(){ return null; })
-      : null;
-    // Para operador: solo salidas enviadas DESDE su área (id_area_entrega)
-    // Las recibidas ya se muestran en "Entradas a tu área"
-    const qSalidas = '?id_articulo=eq.' + id_articulo + '&order=fecha_salida.desc&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo)'
-      + (id_areaFiltro ? '&id_area_entrega=eq.'+id_areaFiltro : '');
-    const salidas = await api('stock_salidas', 'GET', null, qSalidas);
-    if (!salidas || !salidas.length) {
-      cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:8px 0">Sin salidas registradas.</div>';
-      return;
-    }
-    cont.innerHTML = '<div style="margin-top:16px;border-top:1px solid var(--borde);padding-top:12px">'
-      + '<div style="font-size:10px;color:var(--suave);letter-spacing:2px;margin-bottom:8px">HISTORIAL DE SALIDAS</div>'
-      + '<table style="width:100%;border-collapse:collapse;font-size:12px">'
-      + '<thead><tr style="border-bottom:1px solid var(--borde)">'
-      + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">FECHA</th>'
-      + '<th style="text-align:right;padding:6px 4px;color:var(--suave);font-size:10px">CANT</th>'
-      + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">ÁREA</th>'
-      + '<th style="text-align:center;padding:6px 4px;color:var(--suave);font-size:10px">ESTADO</th>'
-      + '<th style="padding:6px 4px"></th>'
-      + '</tr></thead><tbody>'
-      + salidas.map(function(s) {
-          const area = s.area_receptora ? s.area_receptora.nombre + (s.area_receptora.codigo ? ' (' + s.area_receptora.codigo + ')' : '') : '—';
-          const estado = s.anulada
-            ? '<span style="color:#fc8181;font-size:10px">Anulada</span>'
-            : '<span style="color:#22c55e;font-size:10px">Activa</span>';
-          return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
-            + '<td style="padding:6px 4px">' + fmtFecha(s.fecha_salida) + '</td>'
-            + '<td style="text-align:right;padding:6px 4px;font-family:var(--font-mono)">' + s.cantidad + '</td>'
-            + '<td style="padding:6px 4px">' + area + '</td>'
-            + '<td style="text-align:center;padding:6px 4px">' + estado + '</td>'
-            + '</tr>';
-        }).join('')
-      + '</tbody></table></div>';
-  } catch(e) {
-    cont.innerHTML = '<div style="color:#fc8181;font-size:12px">Error: ' + e.message + '</div>';
-  }
-}
+// ─── (verHistorialSalidas eliminada — ver nota arriba) ───
+
 
 
 // ─── MOVIMIENTOS DE INVENTARIO ───
