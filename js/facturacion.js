@@ -904,14 +904,12 @@ async function abrirFaltanteInventario(id) {
 // Carga el usuario de la sesión actual en el recuadro de Confirmación de Usuario
 async function cargarUsuarioConfirmacionFaltante() {
   const nomEl = document.getElementById('falt-usuario-nombre');
-  const hidEl = document.getElementById('falt-id-empleado-usuario');
   try {
     const correo = sesionActual?.correo_usuario;
     if (!correo) { if (nomEl) nomEl.textContent = '—'; return; }
-    const emps = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correo)+'&select=id_empleado,nombre_completo');
+    const emps = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correo)+'&select=nombre_completo');
     const emp = emps && emps[0] ? emps[0] : null;
     if (nomEl) nomEl.textContent = emp ? emp.nombre_completo : correo;
-    if (hidEl) hidEl.value = emp ? emp.id_empleado : '';
   } catch(e) {
     if (nomEl) nomEl.textContent = sesionActual?.correo_usuario || '—';
   }
@@ -967,7 +965,6 @@ async function guardarFaltanteInventario() {
   const esFaltante   = tipo === 'faltante';
   const cantidad     = parseFloat(document.getElementById('falt-cantidad').value);
   const idEmpleado   = parseInt(document.getElementById('falt-empleado').value) || null; // informativo
-  const idUsuarioEmp = parseInt(document.getElementById('falt-id-empleado-usuario').value) || null; // quien autoriza
   const clave        = document.getElementById('falt-clave').value || '';
   const obs          = document.getElementById('falt-observaciones').value.trim();
 
@@ -976,8 +973,7 @@ async function guardarFaltanteInventario() {
   if (!cantidad || cantidad <= 0) { errEl.textContent = 'La cantidad debe ser mayor a cero.'; errEl.style.display = 'block'; return; }
   if (!idEmpleado)           { errEl.textContent = 'Debe seleccionar el empleado que reporta.'; errEl.style.display = 'block'; return; }
   if (!clave)                { errEl.textContent = 'Debe ingresar su contraseña para confirmar.'; errEl.style.display = 'block'; return; }
-  if (!idUsuarioEmp)         { errEl.textContent = 'No se pudo identificar su usuario. Cierre y vuelva a abrir el modal.'; errEl.style.display = 'block'; return; }
-  const valid = await validarClaveReceptor(idUsuarioEmp, clave);
+  const valid = await validarClaveUsuarioActual(clave);
   if (!valid.ok)             { errEl.textContent = valid.msg; errEl.style.display = 'block'; return; }
 
   if (esFaltante) {
@@ -1185,6 +1181,17 @@ async function verificarContrasena(correoUsu, claveIngresada) {
 }
 
 // ─── VALIDAR CONTRASEÑA RECEPTOR ───
+// Valida la contraseña directamente contra el usuario de la sesión actual
+// (no requiere que exista un registro en `empleados` — útil para el Administrador,
+// que puede no tener ficha de empleado asociada).
+async function validarClaveUsuarioActual(clave) {
+  const correo = sesionActual?.correo_usuario;
+  if (!correo || !clave) return { ok: false, msg: 'Debe ingresar su contraseña.' };
+  const verif = await verificarContrasena(correo, clave);
+  if (!verif.ok) return { ok: false, msg: 'Contraseña incorrecta.' };
+  return { ok: true };
+}
+
 async function validarClaveReceptor(id_empleado, clave) {
   if (!id_empleado || !clave) return { ok: false, msg: 'Debe seleccionar un empleado remitente e ingresar su contraseña.' };
   try {
