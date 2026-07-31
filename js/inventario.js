@@ -117,6 +117,12 @@ async function recargarHistorial(id_articulo) {
             + '</td>'
             + '<td style="text-align:center;padding:8px 0">'
             + (function() {
+                const esSobrante = esEntrada && m.motivo === 'ajuste';
+                const esFaltante = !esEntrada && (m.observaciones || '').indexOf('FALTANTE (Ajuste de Inventario)') === 0;
+                const tienePermisoAjuste = sesionActual?.administrador || puedo('INVENTARIO','AJUSTE_INCIDENCIA');
+                if ((esSobrante || esFaltante) && tienePermisoAjuste) {
+                  return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verFichaAjuste(\'' + (esSobrante ? 'ENTRADA' : 'SALIDA') + '\',' + (m.id_entrada||m.id_salida) + ',' + m.id_articulo + ')">👁 Ver</button>';
+                }
                 if (anulada) return '<span style="color:var(--suave);font-size:11px">—</span>';
                 const soloLec = (!sesionActual?.administrador && !puedo('INVENTARIO','EDITAR_STOCK')) ? 'true' : 'false';
                 if (m.id_entrada) return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verFichaEntradaStock(' + m.id_entrada + ',' + m.id_articulo + ')">👁 Ver</button>';

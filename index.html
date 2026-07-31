@@ -1347,17 +1347,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260723073"></script>
-<script src="js/parametros.js?v=20260723073"></script>
-<script src="js/empresas.js?v=20260723073"></script>
-<script src="js/facturacion.js?v=20260723073"></script>
-<script src="js/inventario.js?v=20260723073"></script>
-<script src="js/contabilidad.js?v=20260723073"></script>
-<script src="js/pagos.js?v=20260723073"></script>
-<script src="js/vehiculos.js?v=20260723073"></script>
-<script src="js/catalogo.js?v=20260723073"></script>
-<script src="js/inventario2.js?v=20260723073"></script>
-<script src="js/ordenes.js?v=20260723073"></script>
+<script src="js/core.js?v=20260723074"></script>
+<script src="js/parametros.js?v=20260723074"></script>
+<script src="js/empresas.js?v=20260723074"></script>
+<script src="js/facturacion.js?v=20260723074"></script>
+<script src="js/inventario.js?v=20260723074"></script>
+<script src="js/contabilidad.js?v=20260723074"></script>
+<script src="js/pagos.js?v=20260723074"></script>
+<script src="js/vehiculos.js?v=20260723074"></script>
+<script src="js/catalogo.js?v=20260723074"></script>
+<script src="js/inventario2.js?v=20260723074"></script>
+<script src="js/ordenes.js?v=20260723074"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2486,15 +2486,19 @@
 <div class="modal-overlay" id="modal-faltante-inventario" style="z-index:2100">
   <div class="modal" style="max-width:460px">
     <div class="modal-header">
-      <h3>⚠ Ajuste por Diferencia en Inventario</h3>
+      <h3 id="falt-titulo">⚠ Ajuste por Diferencia en Inventario</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-faltante-inventario')">×</button>
     </div>
     <div class="modal-body" style="display:grid;gap:14px">
+      <div id="falt-badge-anulada" style="display:none;background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);border-radius:6px;padding:8px 12px;font-size:12px;color:#fc8181;font-weight:600">⚠ Este ajuste fue anulado</div>
       <div id="falt-descripcion" style="font-size:12px;color:var(--suave)">
         Usa esto cuando un conteo físico encontró una diferencia con lo que el sistema tiene registrado.
         No es un reverso de ninguna operación — genera un asiento de Ganancia o Pérdida por Ajuste, según corresponda.
       </div>
       <input type="hidden" id="falt-id-articulo">
+      <input type="hidden" id="falt-modo" value="crear">
+      <input type="hidden" id="falt-id-movimiento">
+      <input type="hidden" id="falt-tipo-registro">
       <div class="form-campo">
         <label>Área afectada *</label>
         <select id="falt-area" onchange="onCambiarAreaFaltante()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
@@ -2522,7 +2526,7 @@
           <option value="">— Seleccione primero el área —</option>
         </select>
       </div>
-      <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
+      <div id="falt-confirmacion-cont" class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
         <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
           <div style="font-size:13px;color:var(--texto)">Usuario: <span id="falt-usuario-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
@@ -2530,7 +2534,7 @@
         <label style="font-size:12px">Contraseña *</label>
         <input type="password" id="falt-clave" placeholder="Ingrese su contraseña para confirmar"
           style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">
-        <div style="font-size:11px;color:var(--suave);margin-top:4px">Confirme con su contraseña para autorizar el ajuste.</div>
+        <div id="falt-confirmacion-nota" style="font-size:11px;color:var(--suave);margin-top:4px">Confirme con su contraseña para autorizar el ajuste.</div>
       </div>
       <div class="form-campo form-full">
         <label>Observaciones</label>
@@ -2540,8 +2544,10 @@
       <div id="alerta-falt-err" class="alerta alerta-error" style="display:none"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secundario" onclick="cerrarModal('modal-faltante-inventario')">Retornar</button>
-      <button class="btn-peligro" onclick="guardarFaltanteInventario()">⚠ Realizar Ajuste</button>
+      <button id="falt-btn-retornar" class="btn-secundario" onclick="cerrarModal('modal-faltante-inventario')">Retornar</button>
+      <button id="falt-btn-editar" class="btn-secundario" style="display:none" onclick="habilitarEdicionFaltante()">✏ Editar</button>
+      <button id="falt-btn-anular" class="btn-peligro" style="display:none" onclick="anularFichaAjuste()">🗑 Anular</button>
+      <button id="falt-btn-guardar" class="btn-peligro" onclick="guardarFaltanteInventario()">⚠ Realizar Ajuste</button>
     </div>
   </div>
 </div>

@@ -868,12 +868,119 @@ async function abrirStockArticulo(id, nombre) {
   focusFirstField('modal-stock-articulo');
 }
 
+// ─── Estado visual del modal según el modo: crear / ver / editar ───
+function _aplicarModoFaltante(modo, anulada) {
+  document.getElementById('falt-modo').value = modo;
+  const soloLectura = modo === 'ver';
+  ['falt-area','falt-tipo','falt-cantidad'].forEach(function(id) {
+    document.getElementById(id).disabled = true; // Área/Tipo/Cantidad nunca se editan una vez creado (definen el asiento ya generado)
+  });
+  if (modo === 'crear') {
+    ['falt-area','falt-tipo','falt-cantidad'].forEach(function(id) { document.getElementById(id).disabled = false; });
+  }
+  document.getElementById('falt-empleado').disabled = soloLectura;
+  document.getElementById('falt-observaciones').disabled = soloLectura;
+  document.getElementById('falt-confirmacion-cont').style.display = soloLectura ? 'none' : '';
+  document.getElementById('falt-badge-anulada').style.display = anulada ? '' : 'none';
+
+  document.getElementById('falt-btn-retornar').style.display = (modo === 'ver' || modo === 'editar') ? '' : 'none';
+  document.getElementById('falt-btn-guardar').style.display  = (modo === 'crear' || modo === 'editar') ? '' : 'none';
+  document.getElementById('falt-btn-guardar').textContent    = modo === 'editar' ? '💾 Guardar Cambios' : '⚠ Realizar Ajuste';
+  const puedeGestionar = sesionActual?.administrador || puedo('INVENTARIO','AJUSTE_INCIDENCIA');
+  document.getElementById('falt-btn-editar').style.display = (modo === 'ver' && !anulada && puedeGestionar) ? '' : 'none';
+  document.getElementById('falt-btn-anular').style.display = (modo === 'ver' && !anulada && puedeGestionar) ? '' : 'none';
+
+  const titEl = document.getElementById('falt-titulo');
+  const descEl = document.getElementById('falt-descripcion');
+  if (modo === 'crear') {
+    titEl.textContent = '⚠ Ajuste por Diferencia en Inventario';
+    descEl.style.display = '';
+  } else {
+    const tipoTxt = document.getElementById('falt-tipo').value === 'sobrante' ? 'Sobrante' : 'Faltante';
+    titEl.textContent = (modo === 'editar' ? '✏ EDITAR' : '👁 FICHA') + ' AJUSTE DE INVENTARIO — ' + tipoTxt;
+    descEl.style.display = 'none';
+  }
+}
+
+// Ver la ficha de un Ajuste ya registrado (desde Historial de Movimientos)
+async function verFichaAjuste(tipoRegistro, idMovimiento, id_articulo) {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','AJUSTE_INCIDENCIA')) {
+    alert('No tiene permiso para ver Ajustes de Inventario.'); return;
+  }
+  const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
+  let m;
+  try {
+    if (tipoRegistro === 'ENTRADA') {
+      const res = await api('stock_entradas','GET',null,'?id_entrada=eq.'+idMovimiento+'&select=*');
+      m = res && res[0];
+    } else {
+      const res = await api('stock_salidas','GET',null,'?id_salida=eq.'+idMovimiento+'&select=*');
+      m = res && res[0];
+    }
+  } catch(e) { alert('Error cargando el ajuste: ' + e.message); return; }
+  if (!m) { alert('No se encontró el registro.'); return; }
+
+  document.getElementById('falt-id-articulo').value = id_articulo;
+  document.getElementById('falt-id-movimiento').value = idMovimiento;
+  document.getElementById('falt-tipo-registro').value = tipoRegistro;
+  document.getElementById('falt-tipo').value = tipoRegistro === 'ENTRADA' ? 'sobrante' : 'faltante';
+  onCambiarTipoFaltante();
+  document.getElementById('falt-cantidad').value = m.cantidad;
+  document.getElementById('falt-observaciones').value = (m.observaciones || '').replace(/^(FALTANTE|SOBRANTE) \(Ajuste de Inventario\):\s*/,'');
+  document.getElementById('falt-clave').value = '';
+  document.getElementById('alerta-falt-ok').style.display = 'none';
+  document.getElementById('alerta-falt-err').style.display = 'none';
+
+  const id_area = m.id_area;
+  let areas = [];
+  try { areas = await api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'); } catch(e) {}
+  const selArea = document.getElementById('falt-area');
+  selArea.innerHTML = areas.map(function(a) { return '<option value="'+a.id+'"'+(a.id==id_area?' selected':'')+'>'+a.nombre+(a.codigo?' ('+a.codigo+')':'')+'</option>'; }).join('');
+  document.getElementById('falt-stock-disponible').textContent = id_area && r ? ('Stock disponible en esta área: ' + await obtenerStockArea(id_articulo, id_area) + ' ' + (r.unidad||'UND')) : '';
+
+  const idEmpleadoReporta = tipoRegistro === 'ENTRADA' ? m.id_empleado : m.id_empleado_entrega;
+  const empleados = id_area ? await api('empleados','GET',null,'?estatus=eq.ACTIVO&id_area=eq.'+id_area+'&order=nombre_completo.asc&select=id_empleado,nombre_completo').catch(function(){ return []; }) : [];
+  const selEmp = document.getElementById('falt-empleado');
+  selEmp.innerHTML = empleados.map(function(e) { return '<option value="'+e.id_empleado+'"'+(e.id_empleado==idEmpleadoReporta?' selected':'')+'>'+e.nombre_completo+'</option>'; }).join('');
+
+  await cargarUsuarioConfirmacionFaltante();
+  _aplicarModoFaltante('ver', !!m.anulada);
+  abrirModal('modal-faltante-inventario');
+}
+
+// Habilitar edición (solo Empleado que reporta y Observaciones — Área/Tipo/Cantidad
+// ya generaron el asiento contable y no se pueden alterar retroactivamente;
+// si el registro está mal, se anula y se crea uno nuevo)
+function habilitarEdicionFaltante() {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','AJUSTE_INCIDENCIA')) {
+    alert('No tiene permiso para editar Ajustes de Inventario.'); return;
+  }
+  _aplicarModoFaltante('editar', false);
+}
+
+// Anular el Ajuste (reutiliza la misma lógica de Anular que Entrada/Salida)
+async function anularFichaAjuste() {
+  const tipoRegistro = document.getElementById('falt-tipo-registro').value;
+  const idMovimiento = parseInt(document.getElementById('falt-id-movimiento').value);
+  const id_articulo  = parseInt(document.getElementById('falt-id-articulo').value);
+  const cantidad     = parseFloat(document.getElementById('falt-cantidad').value) || 0;
+  if (!confirm('¿Anular este Ajuste de Inventario? Esta acción revertirá el stock y el asiento contable.')) return;
+  cerrarModal('modal-faltante-inventario');
+  if (tipoRegistro === 'ENTRADA') {
+    await anularMovimiento('ENTRADA', idMovimiento, cantidad, id_articulo);
+  } else {
+    await anularSalidaStock(idMovimiento, id_articulo, cantidad);
+  }
+}
+
 // ─── AJUSTE POR DIFERENCIA EN INVENTARIO (Faltante o Sobrante) ───
 async function abrirFaltanteInventario(id) {
   if (!puedo('INVENTARIO','AJUSTE_INCIDENCIA')) { alert('No tiene permiso para realizar Ajustes por diferencia en Inventario.'); return; }
   const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) return;
   document.getElementById('falt-id-articulo').value = id;
+  document.getElementById('falt-id-movimiento').value = '';
+  document.getElementById('falt-tipo-registro').value = '';
   document.getElementById('falt-cantidad').value = '';
   document.getElementById('falt-observaciones').value = '';
   document.getElementById('falt-clave').value = '';
@@ -896,6 +1003,7 @@ async function abrirFaltanteInventario(id) {
   // no el "Empleado que reporta" (que es solo informativo, filtrado por área).
   await cargarUsuarioConfirmacionFaltante();
 
+  _aplicarModoFaltante('crear');
   cerrarModal('modal-stock-articulo');
   abrirModal('modal-faltante-inventario');
   focusFirstField('modal-faltante-inventario');
@@ -954,6 +1062,8 @@ function onCambiarTipoFaltante() {
 }
 
 async function guardarFaltanteInventario() {
+  const modo = document.getElementById('falt-modo').value;
+  if (modo === 'editar') return guardarEdicionFaltante();
   if (!puedo('INVENTARIO','AJUSTE_INCIDENCIA')) { alert('No tiene permiso.'); return; }
   const errEl = document.getElementById('alerta-falt-err');
   const okEl  = document.getElementById('alerta-falt-ok');
@@ -1037,6 +1147,44 @@ async function guardarFaltanteInventario() {
       cerrarModal('modal-faltante-inventario');
       renderInventario();
     }, 1200);
+  } catch(e) {
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+// Guardar edición limitada de un Ajuste ya registrado: solo Empleado que
+// reporta y Observaciones. Área/Tipo/Cantidad no se tocan (ya generaron
+// el asiento contable) — si están mal, se anula y se crea un ajuste nuevo.
+async function guardarEdicionFaltante() {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','AJUSTE_INCIDENCIA')) { alert('No tiene permiso.'); return; }
+  const errEl = document.getElementById('alerta-falt-err');
+  const okEl  = document.getElementById('alerta-falt-ok');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+
+  const tipoRegistro = document.getElementById('falt-tipo-registro').value;
+  const idMovimiento = parseInt(document.getElementById('falt-id-movimiento').value);
+  const idEmpleado   = parseInt(document.getElementById('falt-empleado').value) || null;
+  const clave        = document.getElementById('falt-clave').value || '';
+  const obsBase      = document.getElementById('falt-observaciones').value.trim();
+  const prefijo      = tipoRegistro === 'ENTRADA' ? 'SOBRANTE (Ajuste de Inventario): ' : 'FALTANTE (Ajuste de Inventario): ';
+
+  if (!idEmpleado) { errEl.textContent = 'Debe seleccionar el empleado que reporta.'; errEl.style.display = 'block'; return; }
+  if (!clave)      { errEl.textContent = 'Debe ingresar su contraseña para confirmar.'; errEl.style.display = 'block'; return; }
+  const valid = await validarClaveUsuarioActual(clave);
+  if (!valid.ok)   { errEl.textContent = valid.msg; errEl.style.display = 'block'; return; }
+
+  try {
+    if (tipoRegistro === 'ENTRADA') {
+      await api('stock_entradas','PATCH',{ id_empleado: idEmpleado, observaciones: prefijo + (obsBase || 'Conteo físico') }, '?id_entrada=eq.'+idMovimiento);
+    } else {
+      await api('stock_salidas','PATCH',{ id_empleado_entrega: idEmpleado, observaciones: prefijo + (obsBase || 'Conteo físico') }, '?id_salida=eq.'+idMovimiento);
+    }
+    okEl.textContent = '✓ Cambios guardados.';
+    okEl.style.display = 'block';
+    setTimeout(function() {
+      _aplicarModoFaltante('ver', false);
+    }, 900);
   } catch(e) {
     errEl.textContent = 'Error: ' + e.message;
     errEl.style.display = 'block';
