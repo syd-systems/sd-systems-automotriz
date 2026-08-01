@@ -8,7 +8,7 @@ let inventarioCache = [];
 function clasificarABC(items) {
   if (!items.length) return items;
   const conValor = items.map(function(r) {
-    return Object.assign({}, r, { valor_inventario: parseFloat(r.precio_venta_moneda || 0) * stockMostrarArticulo(r.id_articulo) });
+    return Object.assign({}, r, { valor_inventario: parseFloat(r.precio_venta_moneda || 0) * parseFloat(r.stock_actual_articulo || 0) });
   });
   conValor.sort(function(a, b) { return b.valor_inventario - a.valor_inventario; });
   const totalValor = conValor.reduce(function(s, r) { return s + r.valor_inventario; }, 0);
@@ -55,46 +55,50 @@ function calcularMargen(r) {
 var _invVista = 'tabla';
 
 
-// ── Calcular saldo por área del usuario actual (y consolidado si aplica) ──
-// Lee directamente de inventario_stock_area, que es la fuente de verdad real
-// del stock por artículo/área (reemplaza el cálculo anterior basado en sumar
-// stock_entradas/stock_salidas, que tenía un bug de doble conteo en Transferencias).
-var _invSaldoConsolidado = null; // { id_articulo: totalTodasLasAreas }
+// ── Validar contraseña de un empleado por su id ──
+// ── Calcular saldo por área del usuario actual ──
 async function calcularInvSaldoArea() {
+  if (sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
+    _invSaldoArea = null; // Admins ven todo
+    return;
+  }
   try {
-    // Consolidado (todas las áreas) — se calcula siempre, lo usan los
-    // usuarios con VER_INVENTARIO_GENERAL y sirve de referencia general.
-    const todasLasFilas = await api('inventario_stock_area','GET',null,'?select=id_articulo,stock_actual') || [];
-    const consolidado = {};
-    todasLasFilas.forEach(function(f){ consolidado[f.id_articulo] = (consolidado[f.id_articulo]||0) + parseFloat(f.stock_actual||0); });
-    _invSaldoConsolidado = consolidado;
-
-    if (sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
-      _invSaldoArea = null; // Admins/con permiso ven el consolidado
-      return;
-    }
-
     const correo = sesionActual?.correo_usuario;
     if (!correo) { _invSaldoArea = null; return; }
-    const empRes = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1').catch(function(){ return []; });
+
+    const empRes = await Promise.race([
+      api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1'),
+      new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); }, 4000); })
+    ]).catch(function(){ return []; });
+
     const id_areaUsuario = empRes?.[0]?.id_area || null;
     if (!id_areaUsuario) { _invSaldoArea = {}; return; }
 
-    const filas = await api('inventario_stock_area','GET',null,'?id_area=eq.'+id_areaUsuario+'&select=id_articulo,stock_actual') || [];
+    // Obtener todos los artículos del emisor
+    const arts = inventarioCache.length > 0 ? inventarioCache
+      : await api('inventario_almacen','GET',null,'?order=nombre_articulo.asc&select=id_articulo' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')) || [];
+    if (!arts.length) { _invSaldoArea = {}; return; }
+
+    const inClause = arts.map(function(r){ return r.id_articulo; }).join(',');
+    const t4s = function(){ return new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); },4000); }); };
+
+    const [entsDirectas, salsRecibidas, salsEnviadas] = await Promise.all([
+      Promise.race([api('stock_entradas','GET',null,'?id_area=eq.'+id_areaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
+      Promise.race([api('stock_salidas','GET',null,'?id_area_entrega=eq.'+id_areaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; }),
+      Promise.race([api('stock_salidas','GET',null,'?id_area=eq.'+id_areaUsuario+'&id_articulo=in.('+inClause+')&select=id_articulo,cantidad'), t4s()]).catch(function(){ return []; })
+    ]);
+
     const saldo = {};
-    filas.forEach(function(f){ saldo[f.id_articulo] = parseFloat(f.stock_actual||0); });
+    (entsDirectas||[]).forEach(function(e){ saldo[e.id_articulo] = (saldo[e.id_articulo]||0) + parseFloat(e.cantidad||0); });
+    // salsRecibidas: transferencias donde mi área es el ORIGEN (id_area_entrega=yo) → son salidas de mi stock
+    (salsRecibidas||[]).forEach(function(s){ saldo[s.id_articulo] = (saldo[s.id_articulo]||0) - parseFloat(s.cantidad||0); });
+    // salsEnviadas: transferencias donde mi área es el DESTINO (id_area=yo) → son entradas a mi stock
+    (salsEnviadas||[]).forEach(function(s){ saldo[s.id_articulo] = (saldo[s.id_articulo]||0) + parseFloat(s.cantidad||0); });
     _invSaldoArea = saldo;
   } catch(e) {
     console.warn('calcularInvSaldoArea error:', e);
     _invSaldoArea = null;
-    _invSaldoConsolidado = null;
   }
-}
-// ── Helper único: stock a mostrar para un artículo, según permisos ──
-function stockMostrarArticulo(id_articulo) {
-  if (_invSaldoArea) return _invSaldoArea[id_articulo] || 0;
-  if (_invSaldoConsolidado) return _invSaldoConsolidado[id_articulo] || 0;
-  return 0;
 }
 
 async function renderInventario(filtro) {
@@ -165,15 +169,13 @@ async function renderInventario(filtro) {
     }
     const itemsTodos = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&select=*' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')) || [];
     const items = itemsTodos.filter(function(r) { return r.estado !== 'INACTIVO'; });
+    const itemsFiltradosBase = soloConStock ? items.filter(function(r) { return parseFloat(r.stock_actual_articulo||0) > 0; }) : items;
     inventarioCache = items;
-
-    // Calcular saldo por área (función centralizada) — ANTES de cualquier filtro de stock,
-    // para que "Solo con stock" y el filtro por área usen la fuente correcta (inventario_stock_area)
-    await calcularInvSaldoArea();
-    const itemsFiltradosBase = soloConStock ? items.filter(function(r) { return stockMostrarArticulo(r.id_articulo) > 0; }) : items;
 
     // ── Filtro por área si no tiene VER_INVENTARIO_GENERAL ──
     let itemsFiltradosBase2 = itemsFiltradosBase;
+    // Calcular saldo por área (función centralizada)
+    await calcularInvSaldoArea();
     if (_invSaldoArea) {
       itemsFiltradosBase2 = itemsFiltradosBase.filter(function(r) {
         return (_invSaldoArea[r.id_articulo]||0) > 0;
@@ -190,7 +192,7 @@ async function renderInventario(filtro) {
       return r.nombre_articulo.toLowerCase().includes(t) || (r.codigo_articulo || '').toLowerCase().includes(t) || (r.descripcion || '').toLowerCase().includes(t);
     });
   }
-    const stockBajos = items.filter(function(r) { return parseFloat(r.stock_minimo_articulo||0) > 0 && stockMostrarArticulo(r.id_articulo) <= r.stock_minimo_articulo; }).length;
+    const stockBajos = items.filter(function(r) { return parseFloat(r.stock_minimo_articulo||0) > 0 && r.stock_actual_articulo <= r.stock_minimo_articulo; }).length;
     const alertaDiv = document.getElementById('alerta-stock-bajo');
     if (alertaDiv) {
       if (stockBajos > 0) {
@@ -265,8 +267,7 @@ function invRenderTabla(items, cont) {
   clasificarABC(inventarioCache).forEach(function(r) { abcMap[r.id_articulo] = r.clase_abc; });
   const abcColor = { A: '#22c55e', B: '#f59e0b', C: '#94a3b8' };
   const filas = items.map(function(r) {
-    const stockMostrar = stockMostrarArticulo(r.id_articulo);
-    const stockBajo = parseFloat(r.stock_minimo_articulo||0) > 0 && stockMostrar <= r.stock_minimo_articulo;
+    const stockBajo = parseFloat(r.stock_minimo_articulo||0) > 0 && r.stock_actual_articulo <= r.stock_minimo_articulo;
     const abc = abcMap[r.id_articulo] || '—';
     const margen = calcularMargen(r);
     return '<tr>'
@@ -278,29 +279,26 @@ function invRenderTabla(items, cont) {
       + '<div style="font-weight:500">' + r.nombre_articulo + '</div>'
       + (r.descripcion ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion + '</div>' : '') + '</div></div></td>'
       + (function() {
-          return '<td><span class="badge ' + (stockBajo ? 'badge-rojo' : 'badge-verde') + '">' + stockMostrar + ' ' + (r.unidad || 'UND') + '</span>'
+          const stockMostrar = _invSaldoArea ? (_invSaldoArea[r.id_articulo]||0) : r.stock_actual_articulo;
+          const stockBajoArea = parseFloat(r.stock_minimo_articulo||0) > 0 && stockMostrar <= r.stock_minimo_articulo;
+          return '<td><span class="badge ' + (stockBajoArea ? 'badge-rojo' : 'badge-verde') + '">' + stockMostrar + ' ' + (r.unidad || 'UND') + '</span>'
             + (_invSaldoArea ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Stock área</div>' : '')
-            + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo_articulo + ')</div>' : '') + '</td>';
+            + (stockBajoArea ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo_articulo + ')</div>' : '') + '</td>';
         })()
       + (puedo('INVENTARIO','VER_COSTOS')
           ? '<td style="font-family:var(--font-mono);font-size:12px">'
             + '<div style="color:var(--suave);font-size:9px;letter-spacing:1px">COSTO PROM. (CPP)</div>'
-            + '<div>$ ' + fmtUSD(stockMostrar === 0 ? 0 : r.precio_costo_moneda) + ' <span style="color:var(--suave);font-size:11px">(Bs ' + fmtBs((stockMostrar === 0 ? 0 : parseFloat(r.precio_costo_moneda||0)) * _tasaVigente) + ')</span></div>'
+            + '<div>$ ' + fmtUSD(parseInt(r.stock_actual_articulo) === 0 ? 0 : r.precio_costo_moneda) + '</div>'
             + (r.precio_costo_ultimo_moneda
                 ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Última compra: $ ' + fmtUSD(r.precio_costo_ultimo_moneda) + '</div>'
                 : '')
             + '</td>'
           : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
       + (puedo('INVENTARIO','VER_PRECIOS_VENTA')
-          ? (function() {
-              const sinStock = stockMostrar === 0;
-              const ventaMostrar = sinStock ? 0 : parseFloat(r.precio_venta_moneda||0);
-              const margenMostrar = sinStock ? 0 : margen;
-              return '<td style="font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:10px">Venta</div>'
-                + '<span style="color:var(--naranja)">' + fmtBs(ventaMostrar * _tasaVigente) + ' Bs</span>'
-                + '<div style="font-size:10px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(ventaMostrar) + '</div>'
-                + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margenMostrar.toFixed(1) + '%</div></td>';
-            })()
+          ? '<td style="font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:10px">Venta</div>'
+            + '<span style="color:var(--naranja)">' + fmtBs(parseFloat(r.precio_venta_moneda||0) * _tasaVigente) + ' Bs</span>'
+            + '<div style="font-size:10px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(r.precio_venta_moneda) + '</div>'
+            + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen.toFixed(1) + '%</div></td>'
           : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
       + '<td><div style="display:flex;gap:6px">'
       + '<button class="btn-naranja" onclick="verFichaInventario(' + r.id_articulo + ')">Ver</button>'
@@ -329,7 +327,7 @@ function invRenderABC(items, cont) {
       filasHTML += '<tr>'
         + '<td><span style="font-size:10px;font-weight:700;color:' + abcColor[g] + ';background:' + abcColor[g] + '22;padding:2px 7px;border-radius:3px">' + g + '</span></td>'
         + '<td style="font-weight:500">' + r.nombre_articulo + '</td>'
-        + '<td style="font-family:var(--font-mono);text-align:center">' + stockMostrarArticulo(r.id_articulo) + ' ' + (r.unidad||'UND') + '</td>'
+        + '<td style="font-family:var(--font-mono);text-align:center">' + r.stock_actual_articulo + ' ' + (r.unidad||'UND') + '</td>'
         + '<td style="font-family:var(--font-mono)">$ ' + fmtUSD(r.precio_venta_moneda) + '</td>'
         + '<td style="font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(r.valor_inventario) + '</td>'
         + '<td style="font-size:11px;color:var(--suave)">' + pct + '%</td></tr>';
@@ -348,14 +346,13 @@ function invRenderABC(items, cont) {
 
 function invRenderReorden(items, cont) {
   const filas = items.map(function(r) {
-    const stockMostrarReord = stockMostrarArticulo(r.id_articulo);
     const pr = calcularPuntoReorden(r);
-    const critico = stockMostrarReord <= r.stock_minimo_articulo;
-    const enReorden = !critico && stockMostrarReord <= pr;
+    const critico = r.stock_actual_articulo <= r.stock_minimo_articulo;
+    const enReorden = !critico && r.stock_actual_articulo <= pr;
     const demanda = r.demanda_diaria || (r.demanda_anual ? (r.demanda_anual/365).toFixed(2) : null);
     return '<tr>'
       + '<td><div style="font-weight:500">' + r.nombre_articulo + '</div><div style="font-size:10px;color:var(--suave)">' + (r.codigo_articulo||'') + '</div></td>'
-      + '<td style="font-family:var(--font-mono);text-align:center">' + stockMostrarReord + '</td>'
+      + '<td style="font-family:var(--font-mono);text-align:center">' + r.stock_actual_articulo + '</td>'
       + '<td style="font-family:var(--font-mono);text-align:center">' + r.stock_minimo_articulo + '</td>'
       + '<td style="font-family:var(--font-mono);text-align:center">' + (demanda !== null ? demanda : '<span style="color:var(--suave);font-size:10px">—</span>') + '</td>'
       + '<td style="font-family:var(--font-mono);text-align:center">' + (r.lead_time_dias || 7) + ' días</td>'
@@ -417,12 +414,13 @@ async function verFichaInventario(id) {
     cerrarModal(m);
   });
 
-  // ── GET fresco de BD para costos actualizados (el stock ya se lee de inventario_stock_area) ──
+  // ── GET fresco de BD para stock y costos actualizados ──
   try {
-    var qs = '?id_articulo=eq.' + id + '&select=precio_costo_moneda,precio_costo_ultimo_moneda,precio_venta_moneda';
+    var qs = '?id_articulo=eq.' + id + '&select=stock_actual_articulo,precio_costo_moneda,precio_costo_ultimo_moneda,precio_venta_moneda';
     if (_empresaActiva && _empresaActiva.id_empresa) qs += '&id_empresa=eq.' + _empresaActiva.id_empresa;
     var fresh = await api('inventario_almacen', 'GET', null, qs);
     if (fresh && fresh[0]) {
+      r.stock_actual_articulo      = parseFloat(fresh[0].stock_actual_articulo)      || 0;
       r.precio_costo_moneda        = parseFloat(fresh[0].precio_costo_moneda)        || 0;
       r.precio_costo_ultimo_moneda = parseFloat(fresh[0].precio_costo_ultimo_moneda) || 0;
       r.precio_venta_moneda        = parseFloat(fresh[0].precio_venta_moneda)        || 0;
@@ -433,12 +431,8 @@ async function verFichaInventario(id) {
   clasificarABC(inventarioCache).forEach(function(x) { abcMap[x.id_articulo] = x.clase_abc; });
   const abc = abcMap[r.id_articulo] || '—';
   const abcColor = { A: '#22c55e', B: '#f59e0b', C: '#94a3b8' };
-  const stockMostrarFicha = stockMostrarArticulo(r.id_articulo);
-  const sinStockFicha = stockMostrarFicha === 0;
-  const costoMostrarFicha = sinStockFicha ? 0 : parseFloat(r.precio_costo_moneda||0);
-  const ventaMostrarFicha = sinStockFicha ? 0 : parseFloat(r.precio_venta_moneda||0);
-  const margen = sinStockFicha ? '0.0' : ((parseFloat(r.precio_venta_moneda||0) - parseFloat(r.precio_costo_moneda||0)) / (parseFloat(r.precio_venta_moneda||0)||1) * 100).toFixed(1);
-  const stockBajo = stockMostrarFicha <= r.stock_minimo_articulo;
+  const margen = ((parseFloat(r.precio_venta_moneda||0) - parseFloat(r.precio_costo_moneda||0)) / (parseFloat(r.precio_venta_moneda||0)||1) * 100).toFixed(1);
+  const stockBajo = r.stock_actual_articulo <= r.stock_minimo_articulo;
 
   document.getElementById('ficha-inv-contenido').innerHTML =
     '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">'
@@ -449,16 +443,16 @@ async function verFichaInventario(id) {
     + (r.descripcion ? '<div style="background:var(--gris2);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--suave)">' + r.descripcion + '</div>' : '')
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Stock Actual</div>'
-    + '<div style="font-family:var(--font-mono);font-size:18px;color:' + (stockBajo ? '#fc8181' : 'var(--naranja)') + '">' + stockMostrarFicha + ' ' + (r.unidad||'UND') + '</div>'
+    + '<div style="font-family:var(--font-mono);font-size:18px;color:' + (stockBajo ? '#fc8181' : 'var(--naranja)') + '">' + (_invSaldoArea ? (_invSaldoArea[r.id_articulo]||0) : r.stock_actual_articulo) + ' ' + (r.unidad||'UND') + '</div>'
     + (_invSaldoArea ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Stock en tu área</div>' : '')
     + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo_articulo + ')</div>' : '') + '</div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Stock Mínimo</div>'
     + '<div style="font-family:var(--font-mono);font-size:18px">' + r.stock_minimo_articulo + ' ' + (r.unidad||'UND') + '</div></div>'
-    + (puedo('INVENTARIO','VER_COSTOS') ? '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Costo Prom. (CPP)</div><div style="font-family:var(--font-mono)">$ ' + fmtUSD(costoMostrarFicha) + '</div><div style="font-size:11px;color:var(--suave);margin-top:2px;font-family:var(--font-mono)">Bs ' + fmtBs(costoMostrarFicha * _tasaVigente) + '</div></div>' : '')
+    + (puedo('INVENTARIO','VER_COSTOS') ? '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Costo Prom. (CPP)</div><div style="font-family:var(--font-mono)">$ ' + fmtUSD(r.precio_costo_moneda) + '</div></div>' : '')
     + (puedo('INVENTARIO','VER_PRECIOS_VENTA')
         ? '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
-          + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + fmtBs(ventaMostrarFicha * _tasaVigente) + ' Bs</div>'
-          + '<div style="font-size:11px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(ventaMostrarFicha) + '</div>'
+          + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + fmtBs(parseFloat(r.precio_venta_moneda||0) * _tasaVigente) + ' Bs</div>'
+          + '<div style="font-size:11px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(r.precio_venta_moneda) + '</div>'
           + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen + '%</div></div>'
         : '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
           + '<div style="font-size:13px;color:#555">🔒</div></div>')
@@ -502,10 +496,10 @@ async function verFichaInventario(id) {
   abrirModal('modal-ficha-inv');
   focusFirstField('modal-ficha-inv');
 
-  // Cargar nombres de cuentas contables (vía RPC, no lectura directa de la tabla)
-  var _idsC = [r.id_cuenta_contable, r.id_cuenta_costo_gasto].filter(Boolean);
-  if (_idsC.length) {
-    obtenerCuentasContables().then(function(ctas) {
+  // Cargar nombres de cuentas contables
+  var _idsC = [r.id_cuenta_contable, r.id_cuenta_costo_gasto].filter(Boolean).join(',');
+  if (_idsC) {
+    api('cont_cuentas','GET',null,'?id_cuenta=in.('+_idsC+')&select=id_cuenta,codigo,nombre').then(function(ctas) {
       var ctaInv = ctas ? ctas.find(function(c){ return c.id_cuenta === r.id_cuenta_contable; }) : null;
       var ctaCG  = ctas ? ctas.find(function(c){ return c.id_cuenta === r.id_cuenta_costo_gasto; }) : null;
       var elInv  = document.getElementById('ficha-inv-cta-inventario');
@@ -515,13 +509,9 @@ async function verFichaInventario(id) {
     });
   }
 
-  // Historial de movimientos: se abre en el modal dedicado (con pestañas
-  // Todas/Entradas/Salidas y paginación) en vez de cargar aquí dos listas
-  // sin límite — evita duplicar lógica y hereda los fixes ya hechos ahí.
-  const contHist = document.getElementById('ficha-inv-historial');
-  if (contHist) {
-    contHist.innerHTML = '<div style="padding:12px 0"><button class="btn-secundario" style="width:100%;padding:10px;font-size:12px" onclick="cerrarModal(\'modal-ficha-inv\');verHistorialStock(' + r.id_articulo + ',\'' + (r.nombre_articulo||'').replace(/'/g,"\\'") + '\')">📋 Ver Historial de Movimientos</button></div>';
-  }
+  // Cargar historial de entradas y salidas
+  verHistorialEntradas(r.id_articulo);
+  verHistorialSalidas(r.id_articulo);
 }
 
 function regresarAFichaInv() {
@@ -543,21 +533,26 @@ async function abrirEntradaStock(id) {
   }
   if (!r) { alert('Error: artículo no encontrado. Intente recargar el inventario.'); return; }
 
-  // GET fresco de BD (el stock ya se lee de inventario_stock_area más abajo)
+  // GET fresco de BD
   try {
-    var qs = '?id_articulo=eq.' + id + '&select=precio_costo_moneda,precio_venta_moneda,unidad';
+    var qs = '?id_articulo=eq.' + id + '&select=stock_actual_articulo,precio_costo_moneda,precio_venta_moneda,unidad,id_cuenta_costo_gasto,id_cuenta_contable';
     if (_empresaActiva && _empresaActiva.id_empresa) qs += '&id_empresa=eq.' + _empresaActiva.id_empresa;
     const fresh = await api('inventario_almacen', 'GET', null, qs);
     if (fresh && fresh[0]) {
+      if (fresh[0].stock_actual_articulo != null) r.stock_actual_articulo = parseFloat(fresh[0].stock_actual_articulo);
       if (fresh[0].precio_costo_moneda   != null) r.precio_costo_moneda   = parseFloat(fresh[0].precio_costo_moneda);
       if (fresh[0].precio_venta_moneda   != null) r.precio_venta_moneda   = parseFloat(fresh[0].precio_venta_moneda);
+      // id_cuenta_costo_gasto / id_cuenta_contable -- se refrescan siempre
+      // (incluso a null) para que la CxP y el asiento nunca usen un valor
+      // de cuenta desactualizado si el artículo se editó en otra sesión.
+      r.id_cuenta_costo_gasto = fresh[0].id_cuenta_costo_gasto ?? null;
+      r.id_cuenta_contable    = fresh[0].id_cuenta_contable ?? null;
     }
   } catch(e) { console.warn('abrirEntradaStock GET fresco:', e.message); }
 
   document.getElementById('es-id').value = id;
   document.getElementById('es-nombre').textContent = r.nombre_articulo;
-  await calcularInvSaldoArea();
-  document.getElementById('es-stock-actual').textContent = stockMostrarArticulo(id) + ' ' + (r.unidad || 'UND');
+  document.getElementById('es-stock-actual').textContent = (r.stock_actual_articulo || 0) + ' ' + (r.unidad || 'UND');
   const esLblUnidad = document.getElementById('es-label-unidad');
   if (esLblUnidad) esLblUnidad.textContent = r.unidad || 'UND';
   document.getElementById('es-cantidad').value = '';
@@ -576,7 +571,7 @@ async function abrirEntradaStock(id) {
   document.getElementById('alerta-es-ok').style.display = 'none';
   document.getElementById('alerta-es-err').style.display = 'none';
   if (document.getElementById('es-clave-receptor'))  document.getElementById('es-clave-receptor').value = '';
-  if (document.getElementById('es-factura-devolucion')) { document.getElementById('es-factura-devolucion').value = ''; document.getElementById('es-factura-devolucion-info').style.display = 'none'; }
+  if (document.getElementById('es-cliente-nombre')) document.getElementById('es-cliente-nombre').value = '';
   if (document.getElementById('es-area-origen'))    document.getElementById('es-area-origen').value = '';
   if (document.getElementById('es-moneda-compra'))  { var sm = document.getElementById('es-moneda-compra'); sm.selectedIndex = 0; }
   if (document.getElementById('es-tributos-cont'))  document.getElementById('es-tributos-cont').style.display = 'none';
@@ -614,9 +609,8 @@ async function abrirEntradaStock(id) {
     api('proveedores', 'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif,id_categoria,param_categorias_proveedor:id_categoria(nombre)'),
     api('param_categorias_proveedor','GET',null,'?nombre=ilike.*Artículo*&select=id&limit=1'),
     api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
-    api('os_mercancias', 'GET', null, '?id_articulo=eq.'+id+'&select=id_orden,cantidad,subtotal_usd'),
   ]).then(function(res) {
-    var provs = res[0], areas = res[2], repsArt = res[3] || [];
+    var provs = res[0], areas = res[2];
     var catArticulo = res[1] && res[1][0] ? res[1][0].id : null;
     if (catArticulo) provs = provs.filter(function(p){ return p.id_categoria === catArticulo; });
     var selProv = document.getElementById('es-proveedor');
@@ -626,25 +620,6 @@ async function abrirEntradaStock(id) {
     if (selOrigen) {
       selOrigen.innerHTML = '<option value="">— Seleccionar área de origen —</option>'
         + areas.map(function(a) { return '<option value="' + a.id + '">' + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>'; }).join('');
-    }
-    // Cargar facturas elegibles para Devolución (solo las que facturaron ESTE artículo)
-    var selFact = document.getElementById('es-factura-devolucion');
-    if (selFact && repsArt.length) {
-      var idsOrden = repsArt.map(function(r){ return r.id_orden; }).filter(function(v,i,a){ return v && a.indexOf(v)===i; });
-      if (idsOrden.length) {
-        api('facturas','GET',null,'?id_orden=in.('+idsOrden.join(',')+')&estado=eq.EMITIDA&select=id_factura,numero_factura,id_orden,receptor_nombre,subtotal_usd,iva_usd,igtf_usd,total_usd,tasa_bcv,aplica_iva,aplica_igtf').then(function(facs) {
-          window._facturasDevolucionArt = (facs||[]).map(function(f) {
-            var lineaOS = repsArt.find(function(r){ return r.id_orden === f.id_orden; });
-            return Object.assign({}, f, { cantidad_facturada: lineaOS ? parseFloat(lineaOS.cantidad) : 0, subtotal_usd_linea: lineaOS ? parseFloat(lineaOS.subtotal_usd) : 0 });
-          });
-          selFact.innerHTML = '<option value="">— Seleccionar factura —</option>'
-            + window._facturasDevolucionArt.map(function(f) { return '<option value="'+f.id_factura+'">'+f.numero_factura+' — '+(f.receptor_nombre||'')+' ('+f.cantidad_facturada+' unid.)</option>'; }).join('');
-        }).catch(function(){});
-      } else {
-        selFact.innerHTML = '<option value="">— Este artículo no tiene facturas emitidas —</option>';
-      }
-    } else if (selFact) {
-      selFact.innerHTML = '<option value="">— Este artículo no tiene facturas emitidas —</option>';
     }
     onCambiarMotivoEntrada();
     if (typeof buscarTasaBCVNegociacion === 'function') buscarTasaBCVNegociacion();
@@ -791,26 +766,19 @@ async function guardarEntradaStock() {
   };
 
   // ── Validaciones en orden de aparición en pantalla ──
-  const motivoSel = document.getElementById('es-motivo')?.value;
-  if (!motivoSel)                   return mostrarError('Seleccione la Transacción.', 'es-motivo');
   const fechaNeg  = document.getElementById('es-fecha-negociacion')?.value;
   const hoy       = getHoyVzla();
-  if (!fechaNeg)                    return mostrarError('Seleccione la Fecha.', 'es-fecha-negociacion');
-  if (fechaNeg > hoy)               return mostrarError('La Fecha no puede ser mayor al día de hoy.', 'es-fecha-negociacion');
+  if (!fechaNeg)                    return mostrarError('Seleccione la Fecha Negociación.', 'es-fecha-negociacion');
+  if (fechaNeg > hoy)               return mostrarError('La Fecha Negociación no puede ser mayor al día de hoy.', 'es-fecha-negociacion');
+  const monedaSel = document.getElementById('es-moneda-compra')?.value;
+  if (!monedaSel)                   return mostrarError('Seleccione la Moneda Negociación.', 'es-moneda-compra');
   if (cantidad <= 0)                return mostrarError('Ingrese una cantidad mayor a 0.', 'es-cantidad');
-
-  // Moneda / Precio Negociación / Modalidad de Pago — SOLO para Compra.
-  // Devolución, Ajuste y Transferencia usan el CPP actual del artículo tal
-  // cual está, sin promediar un precio inventado solo para pasar el formulario.
-  let monedaSel = null, precioVal = 0;
-  if (motivoSel === 'compra') {
-    monedaSel = document.getElementById('es-moneda-compra')?.value;
-    if (!monedaSel)                 return mostrarError('Seleccione la Moneda Negociación.', 'es-moneda-compra');
-    precioVal = parseMontoVE(document.getElementById('es-precio-costo')?.value);
-    if (precioVal <= 0)             return mostrarError('Ingrese el Precio Negociación.', 'es-precio-costo');
-  }
+  const precioVal = parseMontoVE(document.getElementById('es-precio-costo')?.value);
+  if (precioVal <= 0)               return mostrarError('Ingrese el Precio Negociación.', 'es-precio-costo');
   // Precio Venta — opcional, no se valida
-  // Proveedor, Factura o Área origen — obligatorio según motivo
+  const motivoSel = document.getElementById('es-motivo')?.value;
+  if (!motivoSel)                   return mostrarError('Seleccione la Transacción.', 'es-motivo');
+  // Proveedor o área origen — obligatorio según motivo
   if (motivoSel === 'compra') {
     const provSel = document.getElementById('es-proveedor')?.value;
     if (!provSel) return mostrarError('Seleccione el Proveedor.', 'es-proveedor');
@@ -826,114 +794,80 @@ async function guardarEntradaStock() {
     const areaOrig = document.getElementById('es-area-origen')?.value;
     if (!areaOrig)                  return mostrarError('Seleccione el Área de Origen.', 'es-area-origen');
   } else if (motivoSel === 'devolucion') {
-    const facturaSel = document.getElementById('es-factura-devolucion')?.value;
-    if (!facturaSel)                return mostrarError('Seleccione la Factura a la que corresponde esta devolución.', 'es-factura-devolucion');
+    const clienteNom = document.getElementById('es-cliente-nombre')?.value?.trim();
+    if (!clienteNom)                return mostrarError('Ingrese el nombre del cliente.', 'es-cliente-nombre');
   }
-  let pagoDSel = null;
-  if (motivoSel === 'compra') {
-    pagoDSel = document.getElementById('es-esquema-pago')?.value;
-    if (!pagoDSel) return mostrarError('Seleccione la Modalidad de Pago.', 'es-esquema-pago');
-    if (pagoDSel === 'CONTADO') {
-      const fechaPagoVal = document.getElementById('es-fecha-pago')?.value || '';
-      if (!fechaPagoVal) return mostrarError('Ingrese la Fecha de Pago.', 'es-fecha-pago');
-    }
-    if (pagoDSel === 'CREDITO') {
-      const numCuotasVal  = parseInt(document.getElementById('es-cuotas-num')?.value) || 0;
-      const fechaCuotaVal = document.getElementById('es-cuotas-fecha-inicio')?.value || '';
-      if (!numCuotasVal || numCuotasVal < 1) return mostrarError('Ingrese el número de cuotas.', 'es-cuotas-num');
-      if (!fechaCuotaVal) return mostrarError('Ingrese la Fecha de la Primera Cuota.', 'es-cuotas-fecha-inicio');
-      if (fechaCuotaVal <= getHoyVzla()) return mostrarError('La Fecha de la Primera Cuota tiene que ser mayor que el día de hoy.', 'es-cuotas-fecha-inicio');
-    }
+  const pagoDSel  = document.getElementById('es-esquema-pago')?.value;
+  if (!pagoDSel) return mostrarError('Seleccione la Modalidad de Pago.', 'es-esquema-pago');
+  if (pagoDSel === 'CONTADO' && motivoSel === 'compra') {
+    const fechaPagoVal = document.getElementById('es-fecha-pago')?.value || '';
+    if (!fechaPagoVal) return mostrarError('Ingrese la Fecha de Pago.', 'es-fecha-pago');
+  }
+  if (pagoDSel === 'CREDITO') {
+    const numCuotasVal  = parseInt(document.getElementById('es-cuotas-num')?.value) || 0;
+    const fechaCuotaVal = document.getElementById('es-cuotas-fecha-inicio')?.value || '';
+    if (!numCuotasVal || numCuotasVal < 1) return mostrarError('Ingrese el número de cuotas.', 'es-cuotas-num');
+    if (!fechaCuotaVal) return mostrarError('Ingrese la Fecha de la Primera Cuota.', 'es-cuotas-fecha-inicio');
+    if (fechaCuotaVal <= getHoyVzla()) return mostrarError('La Fecha de la Primera Cuota tiene que ser mayor que el día de hoy.', 'es-cuotas-fecha-inicio');
   }
   // Observaciones — opcional, no se valida
 
   try {
     const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
-    let nuevoPrecioCosto = 0;
-    let nuevoPrecioCostoRaw = 0;
-    let moneda_compra_val = 'USD';
-    let precio_compra_original = null;
-    let tasa_bcv_usada = _tasaVigente || null;
-    let incluyeIVA_ent = false;
-    const IVA_RATE_ENT = tasaIVAActual();
-
-    if (motivoSel === 'compra') {
-      const precioIngresado  = parseMontoVE(document.getElementById('es-precio-costo').value);
-      const monedaCompra     = document.getElementById('es-moneda-compra')?.value || 'USD';
-      const tasaBCVVal       = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
-      incluyeIVA_ent = document.getElementById('es-incluye-iva-val')?.value === 'SI' || false;
-      nuevoPrecioCostoRaw = monedaCompra === 'VES'
-        ? (tasaBCVVal > 0 ? parseFloat((precioIngresado / tasaBCVVal).toFixed(4)) : parseMontoVE(document.getElementById('es-precio-usd-calc')?.value))
-        : precioIngresado;
-      // Si incluye IVA — precio costo = base sin IVA
-      nuevoPrecioCosto = incluyeIVA_ent
-        ? parseFloat((nuevoPrecioCostoRaw / (1 + IVA_RATE_ENT)).toFixed(4))
-        : nuevoPrecioCostoRaw;
-      if (monedaCompra === 'VES' && precioIngresado > 0 && nuevoPrecioCosto <= 0) {
-        errEl.textContent = 'No se encontró tasa BCV para convertir el precio.';
-        errEl.style.display = 'block';
-        document.getElementById('es-precio-costo')?.focus();
-        resetBtn(); return;
-      }
-      moneda_compra_val      = monedaCompra;
-      precio_compra_original = precioIngresado;
-      tasa_bcv_usada         = tasaBCVVal > 0 ? tasaBCVVal : null;
-      // Si no hay tasa, buscarla de la fecha de negociación
-      if (!tasa_bcv_usada) {
-        const fechaNegBusq = document.getElementById('es-fecha-negociacion')?.value || getHoyVzla();
-        try {
-          const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaNegBusq+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
-          if (tasaRows && tasaRows[0]) tasa_bcv_usada = parseFloat(tasaRows[0].tipo_cambio);
-        } catch(e) {}
-      }
-      // Último recurso: la tasa vigente en caché
-      if (!tasa_bcv_usada) tasa_bcv_usada = _tasaVigente || null;
-      // Si aun así no hay tasa válida, DETENER -- de lo contrario el monto_ves
-      // de la CxP y del asiento contable caerían a "monto_usd * 1" más abajo
-      // (un caso real: $30 USD se registró como Bs 30 exactos, tratando el
-      // dólar 1:1 con el bolívar por falta de una tasa BCV registrada).
-      if (!tasa_bcv_usada || tasa_bcv_usada <= 1) {
-        errEl.textContent = 'No se encontró una Tasa BCV válida para la Fecha de Negociación. Registre la tasa del día en Parámetros → Tasas de Cambio antes de continuar (o ingrésela manualmente en el campo Tasa BCV de este formulario).';
-        errEl.style.display = 'block';
-        document.getElementById('es-tasa-bcv')?.focus();
-        resetBtn(); return;
-      }
-    } else {
-      // Devolución / Ajuste / Transferencia: sin negociación — usar la tasa
-      // vigente solo como referencia para mostrar montos en Bs, sin exigirla.
-      if (!tasa_bcv_usada || tasa_bcv_usada <= 1) tasa_bcv_usada = 1;
+    const precioIngresado  = parseMontoVE(document.getElementById('es-precio-costo').value);
+    const monedaCompra     = document.getElementById('es-moneda-compra')?.value || 'USD';
+    const tasaBCVVal       = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
+    const incluyeIVA_ent = document.getElementById('es-incluye-iva-val')?.value === 'SI' || false;
+    const IVA_RATE_ENT   = tasaIVAActual();
+    const nuevoPrecioCostoRaw = monedaCompra === 'VES'
+      ? (tasaBCVVal > 0 ? parseFloat((precioIngresado / tasaBCVVal).toFixed(4)) : parseMontoVE(document.getElementById('es-precio-usd-calc')?.value))
+      : precioIngresado;
+    // Si incluye IVA — precio costo = base sin IVA
+    const nuevoPrecioCosto = incluyeIVA_ent
+      ? parseFloat((nuevoPrecioCostoRaw / (1 + IVA_RATE_ENT)).toFixed(4))
+      : nuevoPrecioCostoRaw;
+    if (monedaCompra === 'VES' && precioIngresado > 0 && nuevoPrecioCosto <= 0) {
+      errEl.textContent = 'No se encontró tasa BCV para convertir el precio.';
+      errEl.style.display = 'block';
+      document.getElementById('es-precio-costo')?.focus();
+      resetBtn(); return;
+    }
+    const moneda_compra_val      = monedaCompra;
+    const precio_compra_original = precioIngresado;
+    let tasa_bcv_usada           = tasaBCVVal > 0 ? tasaBCVVal : null;
+    // Si no hay tasa, buscarla de la fecha de negociación
+    if (!tasa_bcv_usada) {
+      const fechaNeg = document.getElementById('es-fecha-negociacion')?.value || getHoyVzla();
+      try {
+        const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaNeg+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+        if (tasaRows && tasaRows[0]) tasa_bcv_usada = parseFloat(tasaRows[0].tipo_cambio);
+      } catch(e) {}
+    }
+    // Último recurso: la tasa vigente en caché
+    if (!tasa_bcv_usada) tasa_bcv_usada = _tasaVigente || null;
+    // Si aun así no hay tasa válida, DETENER -- de lo contrario el monto_ves
+    // de la CxP y del asiento contable caerían a "monto_usd * 1" más abajo
+    // (un caso real: $30 USD se registró como Bs 30 exactos, tratando el
+    // dólar 1:1 con el bolívar por falta de una tasa BCV registrada).
+    if (!tasa_bcv_usada || tasa_bcv_usada <= 1) {
+      errEl.textContent = 'No se encontró una Tasa BCV válida para la Fecha de Negociación. Registre la tasa del día en Parámetros → Tasas de Cambio antes de continuar (o ingrésela manualmente en el campo Tasa BCV de este formulario).';
+      errEl.style.display = 'block';
+      document.getElementById('es-tasa-bcv')?.focus();
+      resetBtn(); return;
     }
     const nuevoPrecioVenta       = null; // precio venta se gestiona desde SALIDA
 
     // ── FASE 1: Todas las validaciones ANTES de tocar BD ──
-    const motivoEnt = motivoSel;
+    const motivoEnt = document.getElementById('es-motivo')?.value;
     if (motivoEnt === 'compra') {
       const idProvVal = document.getElementById('es-proveedor')?.value;
       if (!idProvVal) { errEl.textContent = 'Debe seleccionar el proveedor.'; errEl.style.display = 'block'; document.getElementById('es-proveedor')?.focus(); resetBtn(); return; }
     } else if (motivoEnt === 'devolucion') {
-      const facturaDevVal = document.getElementById('es-factura-devolucion')?.value;
-      if (!facturaDevVal) { errEl.textContent = 'Debe seleccionar la Factura a la que corresponde esta devolución.'; errEl.style.display = 'block'; document.getElementById('es-factura-devolucion')?.focus(); resetBtn(); return; }
-      const facSel = (window._facturasDevolucionArt || []).find(function(f){ return String(f.id_factura) === String(facturaDevVal); });
-      if (facSel && cantidad > facSel.cantidad_facturada) {
-        errEl.textContent = 'La cantidad a devolver (' + cantidad + ') no puede superar lo facturado en esta factura (' + facSel.cantidad_facturada + ').';
-        errEl.style.display = 'block'; document.getElementById('es-cantidad')?.focus(); resetBtn(); return;
-      }
+      const clienteNom = document.getElementById('es-cliente-nombre')?.value.trim();
+      if (!clienteNom) { errEl.textContent = 'Debe ingresar el nombre del cliente.'; errEl.style.display = 'block'; document.getElementById('es-cliente-nombre')?.focus(); resetBtn(); return; }
     } else if (motivoEnt === 'transferencia') {
       const idOrigenVal = document.getElementById('es-area-origen')?.value;
       if (!idOrigenVal) { errEl.textContent = 'Debe seleccionar el área de origen.'; errEl.style.display = 'block'; document.getElementById('es-area-origen')?.focus(); resetBtn(); return; }
-      // Transferencia solo aplica a Mercancías (cuenta 1.1.03.001) — un Consumible
-      // (1.1.03.002) ya se gastó al salir de Compras y no puede "devolverse" como
-      // inventario; su corrección es ANULAR la Salida original, no Transferencia.
-      if (r.id_cuenta_contable) {
-        const ctasArt = await obtenerCuentasContables();
-        const ctaArt = ctasArt.find(function(c){ return c.id_cuenta === r.id_cuenta_contable; });
-        const codigoCta = ctaArt ? ctaArt.codigo : null;
-        if (codigoCta && codigoCta !== '1.1.03.001') {
-          errEl.textContent = 'Este artículo es un Consumible (cuenta ' + codigoCta + '). Transferencia solo aplica a Mercancías. Si se envió a la área equivocada, anule la Salida original desde su Historial.';
-          errEl.style.display = 'block';
-          resetBtn(); return;
-        }
-      }
     }
     const id_areaEntVal = document.getElementById('es-area')?.value || 
       (_empresaActiva?.id_area_principal || null);
@@ -943,27 +877,14 @@ async function guardarEntradaStock() {
     const validEnt = await validarClaveReceptor(idEmpEntVal, claveEnt);
     if (!validEnt.ok) { errEl.textContent = validEnt.msg; errEl.style.display = 'block'; document.getElementById('es-clave-receptor')?.focus(); resetBtn(); return; }
 
-    const id_areaEnt      = parseInt(id_areaEntVal) || null;
-    const id_areaOrigenH  = (motivoEnt === 'transferencia') ? (parseInt(document.getElementById('es-area-origen')?.value) || null) : null;
-
-    // ── FASE 1B: Si es Transferencia, validar que el Área de Origen tenga stock suficiente ──
-    // (antes de crear ningún registro — evita dejar una Entrada huérfana si se rechaza)
-    let stockOrigenActual = null;
-    if (motivoEnt === 'transferencia' && id_areaOrigenH) {
-      stockOrigenActual = await obtenerStockArea(id, id_areaOrigenH);
-      if (stockOrigenActual < cantidad) {
-        errEl.textContent = 'El Área de Origen no tiene suficiente stock disponible (' + stockOrigenActual + ' ' + (r.unidad||'UND') + ' disponibles).';
-        errEl.style.display = 'block';
-        document.getElementById('es-area-origen')?.focus();
-        resetBtn(); return;
-      }
-    }
-
-    // ── FASE 2: Leer stock de Compras (área receptora) fresco de BD — única fuente de verdad del CPP ──
-    let stockActual = await obtenerStockArea(id, id_areaEnt);
+    // ── FASE 2: Leer stock fresco de BD (única fuente de verdad) ──
+    let stockActual = parseFloat(r?.stock_actual_articulo || 0);
     let costoActual = parseFloat(r?.precio_costo_moneda || 0);
-    const artFresh = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id + '&select=precio_costo_moneda');
-    if (artFresh && artFresh[0]) costoActual = parseFloat(artFresh[0].precio_costo_moneda || 0);
+    const artFresh = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id + '&select=stock_actual_articulo,precio_costo_moneda');
+    if (artFresh && artFresh[0]) {
+      stockActual = parseFloat(artFresh[0].stock_actual_articulo || 0);
+      costoActual = parseFloat(artFresh[0].precio_costo_moneda || 0);
+    }
     const nuevoStock = stockActual + cantidad;
 
     // CPP
@@ -975,15 +896,16 @@ async function guardarEntradaStock() {
     }
 
     // ── FASE 3: Registrar entrada en historial ──
+    const id_areaEnt  = parseInt(id_areaEntVal) || null;
     const idProvEnt  = (motivoEnt === 'compra') ? (parseInt(document.getElementById('es-proveedor')?.value) || null) : null;
-    const clienteNomH  = (motivoEnt === 'devolucion') ? ((window._facturasDevolucionArt || []).find(function(f){ return String(f.id_factura) === String(document.getElementById('es-factura-devolucion')?.value); })?.receptor_nombre || null) : null;
-    const idFacturaH   = (motivoEnt === 'devolucion') ? (parseInt(document.getElementById('es-factura-devolucion')?.value) || null) : null;
+    const clienteNomH  = (motivoEnt === 'devolucion') ? (document.getElementById('es-cliente-nombre')?.value.trim() || null) : null;
+    const id_areaOrigenH = (motivoEnt === 'transferencia') ? (parseInt(document.getElementById('es-area-origen')?.value) || null) : null;
 
     let id_entrada = null;
     const entradaRes = await api('stock_entradas', 'POST', {
       id_articulo:            id,
       cantidad:               cantidad,
-      precio_costo_moneda:    nuevoPrecioCosto > 0 ? nuevoPrecioCosto : costoActual,
+      precio_costo_moneda:    nuevoPrecioCosto || null,
       precio_compra_original: precio_compra_original || null,
       moneda_compra:          moneda_compra_val,
       tasa_bcv:               tasa_bcv_usada,
@@ -993,7 +915,6 @@ async function guardarEntradaStock() {
       id_empleado:            idEmpEntVal,
       id_proveedor:           idProvEnt,
       cliente_nombre:         clienteNomH,
-      id_factura:             idFacturaH,
       id_area_origen:         id_areaOrigenH,
       motivo:                 motivoEnt || null,
       esquema_pago:           document.getElementById('es-esquema-pago')?.value || null,
@@ -1004,57 +925,98 @@ async function guardarEntradaStock() {
     });
     id_entrada = entradaRes && entradaRes[0] ? entradaRes[0].id_entrada : null;
 
-    // ── FASE 4: Actualizar CPP (global, sigue en inventario_almacen) y stock del área receptora (Compras) ──
-    const patchCPP = { precio_costo_moneda: parseFloat(cpp.toFixed(4)) };
-    if (nuevoPrecioCosto > 0) patchCPP.precio_costo_ultimo_moneda = nuevoPrecioCosto;
-    await api('inventario_almacen', 'PATCH', patchCPP, '?id_articulo=eq.' + id);
-    await upsertStockArea(id, id_areaEnt, cantidad);
+    // ── FASE 4: Actualizar stock e inventario DESPUÉS del INSERT exitoso ──
+    const patch = { stock_actual_articulo: nuevoStock, precio_costo_moneda: parseFloat(cpp.toFixed(4)) };
+    if (nuevoPrecioCosto > 0) patch.precio_costo_ultimo_moneda = nuevoPrecioCosto;
+    await api('inventario_almacen', 'PATCH', patch, '?id_articulo=eq.' + id);
 
-    // ── FASE 4.5: Si es Transferencia, registrar la salida del Área de Origen y descontarle el stock ──
+    // ── FASE 4.5: Registrar salida en área origen si es transferencia ──
     if (motivoEnt === 'transferencia' && id_areaOrigenH) {
       const idEmpEntregaH = parseInt(document.getElementById('es-empleado-entrega')?.value) || null;
       await api('stock_salidas', 'POST', {
         id_articulo:       id,
         cantidad:          cantidad,
         fecha_salida:      getHoyVzla(),
-        id_area:           id_areaEnt,          // destino (Compras, receptor)
+        id_area:           id_areaEnt,          // destino (receptor)
         id_area_entrega:   id_areaOrigenH,       // origen (quien entrega)
         id_empleado:       idEmpEntVal,         // receptor
         id_empleado_entrega: idEmpEntregaH,
         observaciones:     document.getElementById('es-observaciones')?.value.trim() || null,
         id_usuario:        sesionActual.correo_usuario
       });
-      // Descontar del Área de Origen (ya validamos en FASE 1B que tenía suficiente)
-      await upsertStockArea(id, id_areaOrigenH, -cantidad);
+      // Actualizar stock_actual del área origen — decrementar
+      const artOrigen = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id+'&select=stock_actual_articulo');
+      const stockOrigen = parseFloat(artOrigen?.[0]?.stock_actual_articulo || 0);
+      // stock_actual ya fue actualizado con nuevoStock (que sumó la entrada)
+      // necesitamos decrementar adicionalmente por la salida del origen
+      // stock_actual = (stock antes de transferencia) - cantidad + cantidad = sin cambio neto
+      // Corrección: el stock_actual debe bajar solo si es una salida sin entrada (diferente área)
+      // Para transferencia: stock_actual no cambia (entra en una área, sale de otra, mismo artículo)
     }
 
     // ── FASE 5: Asiento contable ──
-    // NOTA: Transferencia (Área → Compras) NUNCA genera asiento contable.
-    // - Si es Mercancía: nunca se gastó al salir de Compras (sigue como inventario
-    //   en el área), así que al volver solo se mueve el stock, sin asiento.
-    // - Si es un Consumible enviado por error a otra área: la corrección correcta
-    //   es ANULAR la Salida original desde su Historial (no un Reverso/asiento
-    //   nuevo aquí) — anular deja sin efecto el gasto ya registrado, en vez de
-    //   generar un segundo asiento que podría producir ganancias/pérdidas ficticias.
+    // Transferencias de CONSUMIBLES generan asiento: DEBE gasto / HABER inventario
+    if (motivoEnt === 'transferencia' && r.id_cuenta_contable && r.id_cuenta_costo_gasto) {
+      try {
+        // Calcular CPP_VES promedio ponderado (solo entradas en USD)
+        const entradasArt = await api('stock_entradas','GET',null,'?id_articulo=eq.'+id+'&select=cantidad,precio_costo_usd,tasa_bcv,moneda_compra&order=fecha_entrada.asc') || [];
+        var sumQxTasa = 0; var sumQ = 0;
+        entradasArt.forEach(function(e) {
+          var q = parseFloat(e.cantidad||0);
+          var t = parseFloat(e.tasa_bcv||0);
+          if (q > 0 && t > 0 && (e.moneda_compra||'USD') === 'USD') {
+            sumQxTasa += q * t;
+            sumQ += q;
+          }
+        });
+        var tasaPromedio = sumQ > 0 ? sumQxTasa / sumQ : (_tasaVigente || 1);
+        var cppUSD = parseFloat(r.precio_costo_moneda || 0);
+        var montoVESTransf = parseFloat((cantidad * cppUSD * tasaPromedio).toFixed(2));
+
+        // Numero asiento
+        var anioT = new Date().getFullYear();
+        var ultsT = await api('cont_asientos','GET',null,'?id_empresa=eq.'+(sesionActual?.id_empresa||_empresaActiva?.id_empresa||0)+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
+        var seqT = 1;
+        if (ultsT[0]?.numero_asiento) { var mmT = ultsT[0].numero_asiento.match(/(\d+)$/); if (mmT) seqT = parseInt(mmT[1])+1; }
+        var numAstT = 'AST-' + anioT + '-' + String(seqT).padStart(4,'0');
+
+        var astT = await api('cont_asientos','POST',{
+          id_empresa: sesionActual?.id_empresa||_empresaActiva?.id_empresa||0,
+          numero_asiento: numAstT, tipo: 'CONSUMO_INVENTARIO',
+          fecha: document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
+          descripcion: 'Consumo inventario: ' + (r.nombre_articulo||'') + ' x' + cantidad + ' — Transfer a: ' + (document.getElementById('es-area-display')?.textContent||''),
+          referencia: id_entrada ? 'ENT-' + id_entrada : 'TRANSF-'+id,
+          estado: 'APROBADO', moneda_base: 'VES', tasa_bcv: tasaPromedio,
+          id_usuario: sesionActual?.correo_usuario || null
+        });
+        var arT = Array.isArray(astT) ? astT[0] : astT;
+        if (arT?.id_asiento) {
+          // DEBE: Cuenta Costo/Gasto (6.1.02.004)
+          await api('cont_asiento_lineas','POST',{ id_asiento:arT.id_asiento, id_cuenta:r.id_cuenta_costo_gasto, orden:1,
+            descripcion:'Consumo: '+(r.nombre_articulo||'')+' x'+cantidad+' (CPP $'+cppUSD.toFixed(2)+' x T/C '+tasaPromedio.toFixed(2)+')',
+            debe_usd:0, haber_usd:0, debe_ves:montoVESTransf, haber_ves:0, tasa_bcv:tasaPromedio });
+          // HABER: Cuenta Inventario (1.1.03.xxx)
+          await api('cont_asiento_lineas','POST',{ id_asiento:arT.id_asiento, id_cuenta:r.id_cuenta_contable, orden:2,
+            descripcion:'Salida inventario consumible: '+(r.nombre_articulo||'')+' x'+cantidad,
+            debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoVESTransf, tasa_bcv:tasaPromedio });
+        }
+      } catch(eAstTransf) { console.warn('Error asiento transferencia consumible:', eAstTransf); }
+    }
 
     // ── Monto TOTAL (con IVA si aplica) — se calcula UNA sola vez aquí y se
     // usa igual tanto para el asiento contable como para la CxP, para que
     // nunca queden descuadrados entre sí por redondeos en momentos distintos.
-    // Para Ajuste (sin precio negociado) se valora al CPP actual del artículo.
     const exentoIVAEnt2   = document.getElementById('es-exento-iva-val')?.value === 'SI';
-    const precioBaseAsiento = motivoEnt === 'compra' ? nuevoPrecioCostoRaw : costoActual;
-    const montoTotalConIVA = motivoEnt !== 'compra'
-      ? parseFloat((precioBaseAsiento * cantidad).toFixed(2))
-      : (exentoIVAEnt2
-          ? parseFloat((precioBaseAsiento * cantidad).toFixed(2))
-          : parseFloat((precioBaseAsiento * cantidad * (incluyeIVA_ent ? 1 : (1 + IVA_RATE_ENT))).toFixed(2)));
+    const montoTotalConIVA = exentoIVAEnt2
+      ? parseFloat((nuevoPrecioCostoRaw * cantidad).toFixed(2))
+      : parseFloat((nuevoPrecioCostoRaw * cantidad * (incluyeIVA_ent ? 1 : (1 + IVA_RATE_ENT))).toFixed(2));
 
-    // Transferencias de otros articulos (Mercancias) NO generan asiento aqui.
-    // Devolución de Cliente tampoco usa el asiento genérico — usa su propio
-    // reverso de Ingreso + Costo de Venta más abajo (ver bloque siguiente).
-    if (motivoEnt !== "transferencia" && motivoEnt !== "devolucion") try {
+    // Transferencias de otros articulos (Mercancias) NO generan asiento aqui
+    if (motivoEnt !== "transferencia") try {
       const areaNombreEnt = document.getElementById('es-area-display')?.textContent || 'Área';
-      const tipoAst = motivoEnt === 'compra' ? 'ENTRADA_COMPRA' : 'ENTRADA_AJUSTE';
+      const tipoAst = motivoEnt === 'compra' ? 'ENTRADA_COMPRA'
+                    : motivoEnt === 'devolucion' ? 'ENTRADA_DEVOLUCION'
+                    : 'ENTRADA_AJUSTE';
       await generarAsientoInventario(tipoAst, {
         articulo:   r.nombre_articulo || r.codigo_articulo || ('Art#' + id),
         cantidad:   cantidad,
@@ -1079,97 +1041,6 @@ async function guardarEntradaStock() {
         // automático cuando el stock del artículo llegue a 0.
       });
     } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
-
-    // ── Devolución de Cliente: reverso de Ingreso + reverso de Costo de Venta ──
-    // (prorrateado según cuánto de lo facturado se está devolviendo)
-    if (motivoEnt === 'devolucion') try {
-      const idFacturaDev = parseInt(document.getElementById('es-factura-devolucion')?.value) || null;
-      if (idFacturaDev) {
-        const facRes = await api('facturas','GET',null,'?id_factura=eq.'+idFacturaDev+
-          '&select=id_factura,numero_factura,id_orden,receptor_nombre,subtotal_usd,iva_usd,igtf_usd,total_usd,tasa_bcv,aplica_iva,aplica_igtf');
-        const facDev = facRes && facRes[0] ? facRes[0] : null;
-        const lineaOS = facDev ? (await api('os_mercancias','GET',null,'?id_orden=eq.'+facDev.id_orden+'&id_articulo=eq.'+id+'&select=cantidad,subtotal_usd'))?.[0] : null;
-
-        if (facDev && lineaOS && parseFloat(lineaOS.cantidad) > 0) {
-          const cantFacturada   = parseFloat(lineaOS.cantidad);
-          const proporcion      = Math.min(1, cantidad / cantFacturada);
-          const subtotalLineaUS = parseFloat(lineaOS.subtotal_usd || 0);
-          const subtotalDevUSD  = parseFloat((subtotalLineaUS * proporcion).toFixed(2));
-          // IVA/IGTF prorrateados según la participación de esta línea en la factura total
-          const participacion   = facDev.subtotal_usd > 0 ? (subtotalLineaUS / facDev.subtotal_usd) : 0;
-          const ivaDevUSD  = facDev.aplica_iva  ? parseFloat((facDev.iva_usd  * participacion * proporcion).toFixed(2)) : 0;
-          const igtfDevUSD = facDev.aplica_igtf ? parseFloat((facDev.igtf_usd * participacion * proporcion).toFixed(2)) : 0;
-          const totalDevUSD = parseFloat((subtotalDevUSD + ivaDevUSD + igtfDevUSD).toFixed(2));
-          const tasaDev = parseFloat(facDev.tasa_bcv) || tasa_bcv_usada || 1;
-
-          const todasCtasDev = await obtenerCuentasContables();
-          const cuentasDev = todasCtasDev.filter(function(c){ return ['1.1.02.001','4.1.02.001','2.1.03.001'].includes(c.codigo); });
-          const cCxCDev    = cuentasDev.find(function(c){ return c.codigo==='1.1.02.001'; });
-          const cIngRepDev = cuentasDev.find(function(c){ return c.codigo==='4.1.02.001'; });
-          const cIVADev    = cuentasDev.find(function(c){ return c.codigo==='2.1.03.001'; });
-          let cIGTFDev = null;
-          if (igtfDevUSD > 0) {
-            cIGTFDev = todasCtasDev.find(function(c){ return c.estado === 'ACTIVO' && /igtf.*por.*pagar/i.test(c.nombre||''); })
-              || todasCtasDev.find(function(c){ return c.codigo === '2.1.03.004'; })
-              || null;
-          }
-
-          const anioDev = new Date().getFullYear();
-          const seqBase = await api('cont_asientos','GET',null,'?id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
-          let seqDev = 1;
-          if (seqBase[0]?.numero_asiento) { const mmD = seqBase[0].numero_asiento.match(/(\d+)$/); if (mmD) seqDev = parseInt(mmD[1])+1; }
-
-          // Asiento 1: Reverso del Ingreso (nota de crédito)
-          const numAstDev1 = 'AST-'+anioDev+'-'+String(seqDev).padStart(4,'0');
-          const astDev1 = await api('cont_asientos','POST',{
-            id_empresa: _empresaActiva?.id_empresa||0, numero_asiento: numAstDev1,
-            tipo: 'DEVOLUCION_VENTA', fecha: document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
-            descripcion: 'Devolución de Cliente — Factura '+facDev.numero_factura+' — '+(r.nombre_articulo||'')+' x'+cantidad,
-            referencia: id_entrada ? 'ENT-'+id_entrada : 'DEV-'+id,
-            estado: 'APROBADO', moneda_base: 'VES', tasa_bcv: tasaDev,
-            id_usuario: sesionActual?.correo_usuario||null
-          });
-          const arDev1 = Array.isArray(astDev1) ? astDev1[0] : astDev1;
-          if (arDev1?.id_asiento) {
-            let ordenDev = 1;
-            if (cIngRepDev) await api('cont_asiento_lineas','POST',{ id_asiento:arDev1.id_asiento, id_cuenta:cIngRepDev.id_cuenta, orden:ordenDev++,
-              descripcion:'Reverso Ingreso — Devolución Fact. '+facDev.numero_factura, debe_usd:subtotalDevUSD, haber_usd:0, debe_ves:parseFloat((subtotalDevUSD*tasaDev).toFixed(2)), haber_ves:0, tasa_bcv:tasaDev });
-            if (cIVADev && ivaDevUSD > 0) await api('cont_asiento_lineas','POST',{ id_asiento:arDev1.id_asiento, id_cuenta:cIVADev.id_cuenta, orden:ordenDev++,
-              descripcion:'Reverso IVA — Devolución Fact. '+facDev.numero_factura, debe_usd:ivaDevUSD, haber_usd:0, debe_ves:parseFloat((ivaDevUSD*tasaDev).toFixed(2)), haber_ves:0, tasa_bcv:tasaDev });
-            if (cIGTFDev && igtfDevUSD > 0) await api('cont_asiento_lineas','POST',{ id_asiento:arDev1.id_asiento, id_cuenta:cIGTFDev.id_cuenta, orden:ordenDev++,
-              descripcion:'Reverso IGTF — Devolución Fact. '+facDev.numero_factura, debe_usd:igtfDevUSD, haber_usd:0, debe_ves:parseFloat((igtfDevUSD*tasaDev).toFixed(2)), haber_ves:0, tasa_bcv:tasaDev });
-            if (cCxCDev) await api('cont_asiento_lineas','POST',{ id_asiento:arDev1.id_asiento, id_cuenta:cCxCDev.id_cuenta, orden:ordenDev++,
-              descripcion:'Reverso CxC — Devolución Fact. '+facDev.numero_factura, debe_usd:0, haber_usd:totalDevUSD, debe_ves:0, haber_ves:parseFloat((totalDevUSD*tasaDev).toFixed(2)), tasa_bcv:tasaDev });
-          }
-
-          // Asiento 2: Reverso del Costo de Venta (al CPP vigente del artículo)
-          if (r.id_cuenta_contable && r.id_cuenta_costo_gasto) {
-            const cppDevUSD = parseFloat((cantidad * parseFloat(r.precio_costo_moneda||0)).toFixed(4));
-            if (cppDevUSD > 0) {
-              const numAstDev2 = 'AST-'+anioDev+'-'+String(seqDev+1).padStart(4,'0');
-              const astDev2 = await api('cont_asientos','POST',{
-                id_empresa: _empresaActiva?.id_empresa||0, numero_asiento: numAstDev2,
-                tipo: 'DEVOLUCION_VENTA', fecha: document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
-                descripcion: 'Reverso Costo de Venta — Devolución Fact. '+facDev.numero_factura+' — '+(r.nombre_articulo||'')+' x'+cantidad,
-                referencia: id_entrada ? 'ENT-'+id_entrada : 'DEV-'+id,
-                estado: 'APROBADO', moneda_base: 'VES', tasa_bcv: tasaDev,
-                id_usuario: sesionActual?.correo_usuario||null
-              });
-              const arDev2 = Array.isArray(astDev2) ? astDev2[0] : astDev2;
-              const montoVESDev2 = parseFloat((cppDevUSD*tasaDev).toFixed(2));
-              if (arDev2?.id_asiento) {
-                await api('cont_asiento_lineas','POST',{ id_asiento:arDev2.id_asiento, id_cuenta:r.id_cuenta_contable, orden:1,
-                  descripcion:'Reingreso a Inventario — Devolución: '+(r.nombre_articulo||'')+' x'+cantidad,
-                  debe_usd:cppDevUSD, haber_usd:0, debe_ves:montoVESDev2, haber_ves:0, tasa_bcv:tasaDev });
-                await api('cont_asiento_lineas','POST',{ id_asiento:arDev2.id_asiento, id_cuenta:r.id_cuenta_costo_gasto, orden:2,
-                  descripcion:'Reverso Costo de Venta: '+(r.nombre_articulo||'')+' x'+cantidad,
-                  debe_usd:0, haber_usd:cppDevUSD, debe_ves:0, haber_ves:montoVESDev2, tasa_bcv:tasaDev });
-              }
-            }
-          }
-        }
-      }
-    } catch(eDevAst) { console.warn('Error generando asientos de Devolución de Cliente:', eDevAst); }
 
     // ── FASE 5B: Crear CxP según esquema de pago ──
     console.log('[SYD] fase5b motivo=' + motivoEnt + ' id_entrada=' + id_entrada + ' esquema=' + document.getElementById('es-esquema-pago')?.value);
@@ -1196,7 +1067,7 @@ async function guardarEntradaStock() {
             numero_doc:      numDocBase,
             fecha_emision:   fechaNegCxP,
             fecha_vencimiento: fechaPagoCxP,
-            moneda_pago:     moneda_compra_val || 'USD',
+            moneda_pago:     monedaCompra || 'USD',
             estado:          'PENDIENTE',
             monto_usd:       montoUSD,
             monto_ves:       montoVES,
@@ -1237,7 +1108,7 @@ async function guardarEntradaStock() {
               numero_doc:       numDocBase + '-C' + c.num,
               fecha_emision:    fechaNegCxP,
               fecha_vencimiento: c.fecha,
-              moneda_pago:      moneda_compra_val || 'USD',
+              moneda_pago:      monedaCompra || 'USD',
               estado:           'PENDIENTE',
               monto_usd:        parseFloat(c.monto.toFixed(2)),
               monto_ves:        montoVesCuota,
@@ -1267,10 +1138,11 @@ async function guardarEntradaStock() {
 
     // ── FASE 6: Actualizar cache y cerrar ──
     if (r) {
+      r.stock_actual_articulo     = nuevoStock;
       r.precio_costo_moneda       = parseFloat(cpp.toFixed(4));
       if (nuevoPrecioCosto > 0) r.precio_costo_ultimo_moneda = nuevoPrecioCosto;
     }
-    okEl.textContent = 'Stock de Compras actualizado: ' + stockActual + ' → ' + nuevoStock + ' ' + (r?.unidad || 'UND');
+    okEl.textContent = 'Stock actualizado: ' + stockActual + ' → ' + nuevoStock + ' ' + (r?.unidad || 'UND');
     okEl.style.display = 'block';
     setTimeout(async function() {
       cerrarModal('modal-entrada-stock');
@@ -1330,11 +1202,10 @@ async function abrirNuevoInventario() {
   if (infoEl) infoEl.style.display = 'none';
   // Cargar cuentas del grupo 1.1.03 para nuevo artículo
   try {
-    const todasCtasN = await obtenerCuentasContables();
-    const ctas113 = todasCtasN.filter(function(c){ return c.codigo && c.codigo.indexOf('1.1.03') === 0 && c.estado === 'ACTIVA' && c.permite_movimiento === true; }).sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
+    const ctas113 = await api('cont_cuentas','GET',null,'?codigo=like.1.1.03*&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
     const selCta = document.getElementById('inv-cuenta-contable');
     if (selCta) selCta.innerHTML = '<option value="">— Seleccionar cuenta 1.1.03.xxx —</option>' + ctas113.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join('');
-    const ctasCGn = todasCtasN.filter(function(c){ return ['EGRESO','COSTO'].includes(c.tipo) && c.estado === 'ACTIVA' && c.permite_movimiento === true; }).sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
+    const ctasCGn = await api('cont_cuentas','GET',null,'?tipo=in.(EGRESO,COSTO)&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
     const selCGn = document.getElementById('inv-cuenta-costo-gasto');
     if (selCGn) { selCGn.innerHTML = '<option value="">— Seleccionar cuenta —</option>' + ctasCGn.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join(''); selCGn.value = ''; }
   } catch(e2) {}
@@ -1366,11 +1237,10 @@ async function abrirEditarInventario(id) {
   // Asegurar que _invSaldoArea esté calculado para mostrar stock correcto del área
   await calcularInvSaldoArea();
   try {
-    const todasCtasE = await obtenerCuentasContables();
-    const ctas113e = todasCtasE.filter(function(c){ return c.codigo && c.codigo.indexOf('1.1.03') === 0 && c.estado === 'ACTIVA' && c.permite_movimiento === true; }).sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
+    const ctas113e = await api('cont_cuentas','GET',null,'?codigo=like.1.1.03*&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
     const selCtaE = document.getElementById('inv-cuenta-contable');
     if (selCtaE) { selCtaE.innerHTML = '<option value="">— Seleccionar —</option>' + ctas113e.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join(''); }
-    const ctasCGe = todasCtasE.filter(function(c){ return ['EGRESO','COSTO'].includes(c.tipo) && c.estado === 'ACTIVA' && c.permite_movimiento === true; }).sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
+    const ctasCGe = await api('cont_cuentas','GET',null,'?tipo=in.(EGRESO,COSTO)&estado=eq.ACTIVA&permite_movimiento=eq.true&order=codigo.asc&select=id_cuenta,codigo,nombre') || [];
     const selCGe = document.getElementById('inv-cuenta-costo-gasto');
     if (selCGe) selCGe.innerHTML = '<option value="">— Seleccionar cuenta —</option>' + ctasCGe.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join('');
   } catch(e3) {}
@@ -1385,12 +1255,7 @@ async function abrirEditarInventario(id) {
   document.getElementById('inv-codigo').value = r.codigo_articulo || '';
   document.getElementById('inv-nombre').value = r.nombre_articulo;
   document.getElementById('inv-descripcion').value = r.descripcion || '';
-  document.getElementById('inv-stock').value = stockMostrarArticulo(r.id_articulo);
-  // El stock real vive en inventario_stock_area (por área) desde que se migró el esquema —
-  // este campo ya no debe ser editable ni guardarse al editar un artículo existente.
-  // Un artículo nuevo sí puede definir un stock inicial (se asigna a Compras en guardarInventario).
-  document.getElementById('inv-stock').disabled = !!id;
-  document.getElementById('inv-stock').title = id ? 'El stock se gestiona por Entrada/Salida/Ajuste, no desde aquí' : '';
+  document.getElementById('inv-stock').value = r.stock_actual_articulo;
   document.getElementById('inv-stock-min').value = r.stock_minimo_articulo;
   document.getElementById('inv-costo').value = r.precio_costo_moneda || '';
   document.getElementById('inv-venta').value = r.precio_venta_moneda || '';
@@ -1417,7 +1282,7 @@ async function abrirEditarInventario(id) {
   var infoEl = document.getElementById('inv-info-stock-costo');
   if (infoEl) {
     infoEl.style.display = '';
-    const stockFicha = stockMostrarArticulo(r.id_articulo);
+    const stockFicha = _invSaldoArea ? (_invSaldoArea[r.id_articulo] || 0) : r.stock_actual_articulo;
     document.getElementById('inv-info-stock-val').textContent = stockFicha + ' ' + (r.unidad || 'UND');
     document.getElementById('inv-info-costo-val').textContent = '$ ' + parseFloat(r.precio_costo_moneda || 0).toFixed(2) + ' (CPP)';
   }
@@ -1481,7 +1346,7 @@ async function guardarInventario() {
     const id_categoria    = parseInt(document.getElementById('inv-categoria')?.value) || null;
     const id_tipo_articulo = parseInt(document.getElementById('inv-tipo-articulo')?.value) || null;
     const ventaFinal     = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? venta : undefined;
-    const datos = { nombre_articulo: nombre, descripcion_articulo: desc || null, codigo_articulo: codigo || null,
+    const datos = { nombre_articulo: nombre, descripcion_articulo: desc || null, codigo_articulo: codigo || null, stock_actual_articulo: stock,
       stock_minimo_articulo: stockMin, precio_costo_moneda: costo,
       id_empresa: _empresaActiva ? _empresaActiva.id_empresa : null,
       ...(ventaFinal !== undefined ? { precio_venta_moneda: ventaFinal } : {}),
@@ -1490,19 +1355,10 @@ async function guardarInventario() {
       id_cuenta_costo_gasto: parseInt(document.getElementById('inv-cuenta-costo-gasto')?.value) || null,
       demanda_anual: demandaAnual, lead_time_dias: leadTime, costo_pedido_usd: costoPedido, stock_seguridad: stockSeg,
       id_usuario: sesionActual.correo_usuario };
-    // stock_actual_articulo es un campo heredado, congelado a propósito desde que el
-    // stock real vive en inventario_stock_area — nunca se sobreescribe al editar.
     if (id) {
       await api('inventario_almacen', 'PATCH', datos, '?id_articulo=eq.' + id);
     } else {
-      datos.stock_actual_articulo = 0; // se mantiene en 0; el stock real entra vía inventario_stock_area
-      const nuevoArt = await api('inventario_almacen', 'POST', datos);
-      const idNuevoArt = nuevoArt && nuevoArt[0] ? nuevoArt[0].id_articulo : null;
-      if (idNuevoArt && stock > 0 && _empresaActiva?.id_area_principal) {
-        // Stock inicial declarado al crear el artículo — se asigna a Compras (área principal),
-        // que es la única área que recibe stock directamente.
-        await upsertStockArea(idNuevoArt, _empresaActiva.id_area_principal, stock);
-      }
+      await api('inventario_almacen', 'POST', datos);
     }
     okEl.textContent = '✓ Artículo guardado.'; okEl.style.display = 'block';
     setTimeout(function() { cerrarModal('modal-inventario'); document.getElementById('contenido-principal').innerHTML=''; renderInventario(); }, 1000);
@@ -1532,10 +1388,90 @@ async function eliminarInventario(id, nombre) {
   } catch(e) { alert('Error: ' + e.message); }
 }
 
-// ─── (verHistorialEntradas eliminada: ahora "Ver Ficha" abre el mismo
-//      modal-historial-stock con pestañas Todas/Entradas/Salidas y
-//      paginación — ver verHistorialStock() en inventario.js) ───
+// ─── HISTORIAL DE ENTRADAS ───
+async function verHistorialEntradas(id_articulo) {
+  const cont = document.getElementById('ficha-inv-historial');
+  if (!cont) return;
+  cont.innerHTML = '<div style="color:var(--suave);font-size:12px">Cargando...</div>';
+  try {
+    // Si el usuario solo ve su área, filtrar historial por área
+    const id_areaFiltro = _invSaldoArea && sesionActual?.correo_usuario
+      ? await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_area&limit=1').then(function(r){ return r&&r[0]?r[0].id_area:null; }).catch(function(){ return null; })
+      : null;
+    let filas = [];
 
+    if (id_areaFiltro) {
+      // Para operador de área: sus "entradas" son las salidas del almacén hacia su área
+      const salsRecibidas = await api('stock_salidas','GET',null,
+        '?id_articulo=eq.'+id_articulo+'&id_area=eq.'+id_areaFiltro+'&order=fecha_salida.desc&select=*,area_origen:id_area_entrega(nombre,codigo)');
+      if (!salsRecibidas || !salsRecibidas.length) {
+        cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:8px 0">Sin entradas en tu área.</div>';
+        return;
+      }
+      filas = salsRecibidas.map(function(s) {
+        const origen = s.area_origen ? s.area_origen.nombre+(s.area_origen.codigo?' ('+s.area_origen.codigo+')':'') : 'Almacén';
+        const estado = s.anulada
+          ? '<span style="color:#fc8181;font-size:10px">Anulada</span>'
+          : '<span style="color:#22c55e;font-size:10px">Activa</span>';
+        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
+          + '<td style="padding:6px 4px">' + fmtFecha(s.fecha_salida) + '</td>'
+          + '<td style="text-align:right;padding:6px 4px;font-family:var(--font-mono)">' + s.cantidad + '</td>'
+          + '<td style="padding:6px 4px">' + origen + '</td>'
+          + '<td style="text-align:center;padding:6px 4px">' + estado + '</td>'
+          + '</tr>';
+      });
+      cont.innerHTML = '<div style="margin-top:16px;border-top:1px solid var(--borde);padding-top:12px">'
+        + '<div style="font-size:10px;color:var(--suave);letter-spacing:2px;margin-bottom:8px">ENTRADAS A TU ÁREA</div>'
+        + '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+        + '<thead><tr style="border-bottom:1px solid var(--borde)">'
+        + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">FECHA</th>'
+        + '<th style="text-align:right;padding:6px 4px;color:var(--suave);font-size:10px">CANT</th>'
+        + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">ORIGEN</th>'
+        + '<th style="text-align:center;padding:6px 4px;color:var(--suave);font-size:10px">ESTADO</th>'
+        + '</tr></thead><tbody>' + filas.join('') + '</tbody></table></div>';
+      return;
+    }
+
+    // Administrador: ver todas las entradas directas
+    const qEntradas = '?id_articulo=eq.' + id_articulo + '&order=fecha_entrada.desc&select=*';
+    const entradas = await api('stock_entradas', 'GET', null, qEntradas);
+    if (!entradas || !entradas.length) {
+      cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:8px 0">Sin entradas registradas.</div>';
+      return;
+    }
+    const motivoLabel = { compra:'Compra', devolucion:'Devolución', transferencia:'Transferencia', ajuste:'Ajuste' };
+    cont.innerHTML = '<div style="margin-top:16px;border-top:1px solid var(--borde);padding-top:12px">'
+      + '<div style="font-size:10px;color:var(--suave);letter-spacing:2px;margin-bottom:8px">HISTORIAL DE ENTRADAS</div>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">'
+      + '<colgroup><col style="width:88px"><col style="width:52px"><col style="width:108px"><col style="width:80px"><col style="width:65px"><col style="width:75px"></colgroup>'
+      + '<thead><tr style="border-bottom:1px solid var(--borde)">'
+      + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">FECHA</th>'
+      + '<th style="text-align:right;padding:6px 4px;color:var(--suave);font-size:10px">CANT</th>'
+      + '<th style="text-align:right;padding:6px 4px;color:var(--suave);font-size:10px">PRECIO</th>'
+      + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">MOTIVO</th>'
+      + '<th style="text-align:center;padding:6px 4px;color:var(--suave);font-size:10px">ESTADO</th>'
+      + '<th style="padding:6px 4px"></th>'
+      + '</tr></thead><tbody>'
+      + entradas.map(function(e) {
+          const mon  = (e.moneda_compra || 'USD').toUpperCase();
+          const prec = parseFloat(e.precio_compra_original || e.precio_costo_moneda || 0);
+          const precFmt = mon === 'VES' ? fmtBs(prec) + ' Bs' : '$ ' + fmtUSD(prec) + ' ' + mon;
+          const estado = e.anulada
+            ? '<span style="color:#fc8181;font-size:10px">Anulada</span>'
+            : '<span style="color:#22c55e;font-size:10px">Activa</span>';
+          return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
+            + '<td style="padding:6px 4px">' + fmtFecha(e.fecha_entrada) + '</td>'
+            + '<td style="text-align:right;padding:6px 4px;font-family:var(--font-mono)">' + e.cantidad + '</td>'
+            + '<td style="text-align:right;padding:6px 4px;font-family:var(--font-mono)">' + precFmt + '</td>'
+            + '<td style="padding:6px 4px">' + (motivoLabel[e.motivo] || e.motivo || '—') + '</td>'
+            + '<td style="text-align:center;padding:6px 4px">' + estado + '</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table></div>';
+  } catch(e) {
+    cont.innerHTML = '<div style="color:#fc8181;font-size:12px">Error: ' + e.message + '</div>';
+  }
+}
 
 // ─── CATEGORÍAS DE INVENTARIO ───
 async function invRenderCategorias(cont) {
@@ -1692,8 +1628,58 @@ async function invGuardarTipo() {
   } catch(e) { errEl.textContent='Error: '+e.message; errEl.style.display='block'; }
 }
 
-// ─── (verHistorialSalidas eliminada — ver nota arriba) ───
-
+// ─── ANULAR ENTRADA ───
+async function reversarEntrada(id_entrada, id_articulo, cantidad) {
+  await reversarMovimiento('ENTRADA', id_entrada, cantidad, id_articulo);
+  // Retornar a inventario general después del reverso
+  cerrarTodosLosModales();
+  renderInventario();
+}
+// ─── HISTORIAL DE SALIDAS ───
+async function verHistorialSalidas(id_articulo) {
+  const cont = document.getElementById('ficha-inv-historial-salidas');
+  if (!cont) return;
+  cont.innerHTML = '<div style="color:var(--suave);font-size:12px">Cargando...</div>';
+  try {
+    const id_areaFiltro = _invSaldoArea && sesionActual?.correo_usuario
+      ? await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_area&limit=1').then(function(r){ return r&&r[0]?r[0].id_area:null; }).catch(function(){ return null; })
+      : null;
+    // Para operador: solo salidas enviadas DESDE su área (id_area_entrega)
+    // Las recibidas ya se muestran en "Entradas a tu área"
+    const qSalidas = '?id_articulo=eq.' + id_articulo + '&order=fecha_salida.desc&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo)'
+      + (id_areaFiltro ? '&id_area_entrega=eq.'+id_areaFiltro : '');
+    const salidas = await api('stock_salidas', 'GET', null, qSalidas);
+    if (!salidas || !salidas.length) {
+      cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:8px 0">Sin salidas registradas.</div>';
+      return;
+    }
+    cont.innerHTML = '<div style="margin-top:16px;border-top:1px solid var(--borde);padding-top:12px">'
+      + '<div style="font-size:10px;color:var(--suave);letter-spacing:2px;margin-bottom:8px">HISTORIAL DE SALIDAS</div>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+      + '<thead><tr style="border-bottom:1px solid var(--borde)">'
+      + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">FECHA</th>'
+      + '<th style="text-align:right;padding:6px 4px;color:var(--suave);font-size:10px">CANT</th>'
+      + '<th style="text-align:left;padding:6px 4px;color:var(--suave);font-size:10px">ÁREA</th>'
+      + '<th style="text-align:center;padding:6px 4px;color:var(--suave);font-size:10px">ESTADO</th>'
+      + '<th style="padding:6px 4px"></th>'
+      + '</tr></thead><tbody>'
+      + salidas.map(function(s) {
+          const area = s.area_receptora ? s.area_receptora.nombre + (s.area_receptora.codigo ? ' (' + s.area_receptora.codigo + ')' : '') : '—';
+          const estado = s.anulada
+            ? '<span style="color:#fc8181;font-size:10px">Anulada</span>'
+            : '<span style="color:#22c55e;font-size:10px">Activa</span>';
+          return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05)">'
+            + '<td style="padding:6px 4px">' + fmtFecha(s.fecha_salida) + '</td>'
+            + '<td style="text-align:right;padding:6px 4px;font-family:var(--font-mono)">' + s.cantidad + '</td>'
+            + '<td style="padding:6px 4px">' + area + '</td>'
+            + '<td style="text-align:center;padding:6px 4px">' + estado + '</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table></div>';
+  } catch(e) {
+    cont.innerHTML = '<div style="color:#fc8181;font-size:12px">Error: ' + e.message + '</div>';
+  }
+}
 
 
 // ─── MOVIMIENTOS DE INVENTARIO ───
@@ -1938,14 +1924,14 @@ async function invCargarMovimientos() {
       entradas.forEach(function(e) {
         const art=getArt(e.id_articulo); if(!art) return;
         const nom=artNom(art);
-        if (!arts[nom]) arts[nom] = { entradas:0, salidas:0, cpp:art.precio_costo_moneda||0, stock:stockMostrarArticulo(art.id_articulo), hist:[] };
+        if (!arts[nom]) arts[nom] = { entradas:0, salidas:0, cpp:art.precio_costo_moneda||0, stock:art.stock_actual_articulo||0, hist:[] };
         arts[nom].entradas += parseFloat(e.cantidad||0);
         arts[nom].hist.push({ fecha:e.fecha_entrada, tipo:'E', cant:e.cantidad, cpp:e.precio_costo_moneda||0 });
       });
       salidas.forEach(function(s) {
         const art=getArt(s.id_articulo); if(!art) return;
         const nom=artNom(art);
-        if (!arts[nom]) arts[nom] = { entradas:0, salidas:0, cpp:art.precio_costo_moneda||0, stock:stockMostrarArticulo(art.id_articulo), hist:[] };
+        if (!arts[nom]) arts[nom] = { entradas:0, salidas:0, cpp:art.precio_costo_moneda||0, stock:art.stock_actual_articulo||0, hist:[] };
         arts[nom].salidas += parseFloat(s.cantidad||0);
         arts[nom].hist.push({ fecha:s.fecha_salida, tipo:'S', cant:s.cantidad, cpp:0 });
       });
