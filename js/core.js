@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723081';
+const SYD_VERSION = '20260723082';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -1664,6 +1664,8 @@ async function abrirNuevoUsuario() {
   document.getElementById('alerta-modal-error').style.display = 'none';
   document.getElementById('fortaleza-usuario').style.display = 'none';
   document.getElementById('fortaleza-fill-u').style.width = '0%';
+  var btnCerrarSesionNuevo = document.getElementById('editar-usu-btn-cerrar-sesion');
+  if (btnCerrarSesionNuevo) btnCerrarSesionNuevo.style.display = 'none';
   renderAccesosModal([]);
   await cargarEmpresasAccesoModal(null);
 
@@ -1732,6 +1734,16 @@ async function abrirEditarUsuario(id) {
   const correoEditar = u.correo_usuario;
   await cargarEmpresasAccesoModal(correoEditar);
   await cargarFacultadesEnModal(id);
+
+  // Botón de Cerrar Sesión — visible siempre al editar (no depende de que esté
+  // "en línea" ahora mismo, a diferencia del de "Ver Ficha"), para forzar el
+  // refresco de permisos justo después de editarlos, sin importar si el
+  // usuario se conecta recién más tarde.
+  var btnCerrarSesionEdit = document.getElementById('editar-usu-btn-cerrar-sesion');
+  if (btnCerrarSesionEdit) {
+    btnCerrarSesionEdit.style.display = sesionActual?.administrador && u.correo_usuario !== sesionActual.correo_usuario ? '' : 'none';
+    btnCerrarSesionEdit.onclick = function() { cerrarSesionUsuario(u.correo_usuario, u.nombre, 'modal-usuario'); };
+  }
 
   abrirModal('modal-usuario');
   focusFirstField('modal-usuario');
@@ -2073,7 +2085,7 @@ async function cargarFacultadesEnModal(id_usuario) {
 }
 
 // ─── CERRAR SESIÓN DE UN USUARIO ESPECÍFICO ───
-async function cerrarSesionUsuario(correo, nombre) {
+async function cerrarSesionUsuario(correo, nombre, modalOrigen) {
   if (!confirm('¿Cerrar la sesión activa de "' + nombre + '"?')) return;
   try {
     await api('usuarios', 'PATCH', {
@@ -2081,7 +2093,7 @@ async function cerrarSesionUsuario(correo, nombre) {
       sesion_invalidada: true,
       ultima_desconexion: new Date().toISOString()
     }, '?correo_usuario=eq.' + encodeURIComponent(correo));
-    cerrarModal('modal-ficha-usu');
+    cerrarModal(modalOrigen || 'modal-ficha-usu');
     renderUsuarios();
     alert('✓ Sesión de "' + nombre + '" cerrada. El usuario será expulsado en los próximos 30 segundos.');
   } catch(e) { alert('Error: ' + e.message); }
