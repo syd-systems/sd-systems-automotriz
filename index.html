@@ -1290,9 +1290,12 @@
     <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
       <div class="alerta alerta-exito" id="alerta-modal-ok" style="margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-modal-error" style="margin:0;width:100%"></div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        <button class="btn-primario" onclick="btnSetGuardando(this,true);guardarUsuario().finally(()=>btnSetGuardando(this,false))">GUARDAR</button>
-        <button class="btn-secundario" onclick="cerrarModal('modal-usuario')">Retornar</button>
+      <div style="display:flex;gap:10px;justify-content:space-between;width:100%">
+        <button class="btn-secundario" id="editar-usu-btn-cerrar-sesion" style="display:none;border-color:rgba(255,107,0,0.4);color:var(--naranja)">⏻ Cerrar Sesión</button>
+        <div style="display:flex;gap:10px">
+          <button class="btn-primario" onclick="btnSetGuardando(this,true);guardarUsuario().finally(()=>btnSetGuardando(this,false))">GUARDAR</button>
+          <button class="btn-secundario" onclick="cerrarModal('modal-usuario')">Retornar</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1347,17 +1350,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260723058"></script>
-<script src="js/parametros.js?v=20260723058"></script>
-<script src="js/empresas.js?v=20260723058"></script>
-<script src="js/facturacion.js?v=20260723058"></script>
-<script src="js/inventario.js?v=20260723058"></script>
-<script src="js/contabilidad.js?v=20260723058"></script>
-<script src="js/pagos.js?v=20260723058"></script>
-<script src="js/vehiculos.js?v=20260723058"></script>
-<script src="js/catalogo.js?v=20260723058"></script>
-<script src="js/inventario2.js?v=20260723058"></script>
-<script src="js/ordenes.js?v=20260723058"></script>
+<script src="js/core.js?v=20260723083"></script>
+<script src="js/parametros.js?v=20260723083"></script>
+<script src="js/empresas.js?v=20260723083"></script>
+<script src="js/facturacion.js?v=20260723083"></script>
+<script src="js/inventario.js?v=20260723083"></script>
+<script src="js/contabilidad.js?v=20260723083"></script>
+<script src="js/pagos.js?v=20260723083"></script>
+<script src="js/vehiculos.js?v=20260723083"></script>
+<script src="js/catalogo.js?v=20260723083"></script>
+<script src="js/inventario2.js?v=20260723083"></script>
+<script src="js/ordenes.js?v=20260723083"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2470,9 +2473,84 @@
           <span>Historial</span>
         </button>
       </div>
+      <div id="stock-btn-faltante-cont" style="display:none;margin-top:10px">
+        <button id="stock-btn-faltante" class="btn-secundario" style="width:100%;padding:10px;font-size:12px;border-color:rgba(252,129,129,0.3);color:#fc8181"
+          onclick="abrirFaltanteInventario(_fichaInvActual.id)">
+          ⚠ Realizar Ajuste por diferencia en Inventario
+        </button>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-stock-articulo'); renderInventario()">Retornar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-faltante-inventario" style="z-index:2100">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <h3 id="falt-titulo">⚠ Ajuste por Diferencia en Inventario</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-faltante-inventario')">×</button>
+    </div>
+    <div class="modal-body" style="display:grid;gap:14px">
+      <div id="falt-badge-anulada" style="display:none;background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);border-radius:6px;padding:8px 12px;font-size:12px;color:#fc8181;font-weight:600">⚠ Este ajuste fue anulado</div>
+      <div id="falt-descripcion" style="font-size:12px;color:var(--suave)">
+        Usa esto cuando un conteo físico encontró una diferencia con lo que el sistema tiene registrado.
+        No es un reverso de ninguna operación — genera un asiento de Ganancia o Pérdida por Ajuste, según corresponda.
+      </div>
+      <input type="hidden" id="falt-id-articulo">
+      <input type="hidden" id="falt-modo" value="crear">
+      <input type="hidden" id="falt-id-movimiento">
+      <input type="hidden" id="falt-tipo-registro">
+      <div class="form-campo">
+        <label>Área afectada *</label>
+        <select id="falt-area" onchange="onCambiarAreaFaltante()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <option value="">— Seleccionar área —</option>
+        </select>
+        <div id="falt-stock-disponible" style="font-size:11px;color:var(--suave);margin-top:4px"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-campo" style="margin:0">
+          <label>Tipo de Ajuste *</label>
+          <select id="falt-tipo" onchange="onCambiarTipoFaltante()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar —</option>
+            <option value="faltante">Falta Artículo</option>
+            <option value="sobrante">Sobra Artículo</option>
+          </select>
+        </div>
+        <div class="form-campo" style="margin:0">
+          <label id="falt-label-cantidad">Cantidad *</label>
+          <input type="number" id="falt-cantidad" min="0" step="any" placeholder="0">
+        </div>
+      </div>
+      <div class="form-campo">
+        <label>Empleado que reporta <span style="font-size:10px;color:var(--suave);font-weight:400">(del área afectada — informativo)</span> *</label>
+        <select id="falt-empleado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <option value="">— Seleccione primero el área —</option>
+        </select>
+      </div>
+      <div id="falt-confirmacion-cont" class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
+        <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <div style="font-size:13px;color:var(--texto)">Usuario: <span id="falt-usuario-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
+        </div>
+        <label style="font-size:12px">Contraseña *</label>
+        <input type="password" id="falt-clave" placeholder="Ingrese su contraseña para confirmar"
+          style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">
+        <div id="falt-confirmacion-nota" style="font-size:11px;color:var(--suave);margin-top:4px">Confirme con su contraseña para autorizar el ajuste.</div>
+      </div>
+      <div class="form-campo form-full">
+        <label>Observaciones</label>
+        <textarea id="falt-observaciones" rows="2" placeholder="Detalle del conteo / motivo de la diferencia"></textarea>
+      </div>
+      <div id="alerta-falt-ok" class="alerta alerta-ok" style="display:none"></div>
+      <div id="alerta-falt-err" class="alerta alerta-error" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button id="falt-btn-retornar" class="btn-secundario" onclick="cerrarModal('modal-faltante-inventario')">Retornar</button>
+      <button id="falt-btn-editar" class="btn-secundario" style="display:none" onclick="habilitarEdicionFaltante()">✏ Editar</button>
+      <button id="falt-btn-anular" class="btn-peligro" style="display:none" onclick="anularFichaAjuste()">🗑 Anular</button>
+      <button id="falt-btn-guardar" class="btn-peligro" onclick="guardarFaltanteInventario()">⚠ Realizar Ajuste</button>
     </div>
   </div>
 </div>
@@ -2499,11 +2577,28 @@
       </div>
       <div id="edit-ent-cont">
       <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="form-campo form-full" style="grid-column:1/-1">
+          <label>Transacción</label>
+          <select id="es-motivo" onchange="onCambiarMotivoEntrada()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
+            <option value="" style="color:var(--suave)">— Seleccione transacción —</option>
+            <option value="compra">Compra a proveedor</option>
+            <option value="devolucion">Devolución de cliente</option>
+            <option value="transferencia">Transferencia</option>
+          </select>
+        </div>
         <div class="form-campo">
-          <label>Fecha Negociación</label>
+          <label>Fecha</label>
           <input type="date" id="es-fecha-negociacion" onchange="onCambiarFechaNegociacionEntrada()"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 10px;border-radius:5px;outline:none;width:100%;color-scheme:dark">
         </div>
+        <div class="form-campo">
+          <label>Cantidad <span id="es-label-unidad" style="font-size:10px;color:var(--suave);font-weight:400"></span></label>
+          <input type="number" id="es-cantidad" placeholder="0" min="0.01" step="0.01"
+            style="font-size:15px;font-family:var(--font-mono);text-align:center;color:var(--naranja)"
+            oninput="onCambiarPrecioEntrada()"
+            onkeydown="if(event.key==='Enter'){document.getElementById('es-precio-costo').focus()}">
+        </div>
+        <div id="es-negociacion-cont" style="display:contents">
         <div class="form-campo">
           <label>Moneda Negociación</label>
           <select id="es-moneda-compra" onchange="onCambiarMonedaEntrada()"
@@ -2512,13 +2607,6 @@
             <option value="USD">USD — Dólar</option>
             <option value="VES">VES — Bolívar</option>
           </select>
-        </div>
-        <div class="form-campo">
-          <label>Cantidad <span id="es-label-unidad" style="font-size:10px;color:var(--suave);font-weight:400"></span></label>
-          <input type="number" id="es-cantidad" placeholder="0" min="0.01" step="0.01"
-            style="font-size:15px;font-family:var(--font-mono);text-align:center;color:var(--naranja)"
-            oninput="onCambiarPrecioEntrada()"
-            onkeydown="if(event.key==='Enter'){document.getElementById('es-precio-costo').focus()}">
         </div>
         <div class="form-campo">
           <label>Precio Negociación <span id="es-label-moneda-compra" style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span></label>
@@ -2550,16 +2638,6 @@
             </div>
           </div>
         </div>
-        <div class="form-campo form-full" style="grid-column:1/-1">
-          <label>Transacción</label>
-          <select id="es-motivo" onchange="onCambiarMotivoEntrada()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
-            <option value="" style="color:var(--suave)">— Seleccione transacción —</option>
-            <option value="compra">Compra a proveedor</option>
-            <option value="devolucion">Devolución de cliente</option>
-            <option value="ajuste">Ajuste de inventario</option>
-            <option value="transferencia">Transferencia</option>
-            <option value="otro">Otro</option>
-          </select>
         </div>
 
         <!-- Campo dinámico según motivo -->
@@ -2570,8 +2648,11 @@
           </select>
         </div>
         <div class="form-campo form-full" id="es-campo-cliente-cont" style="grid-column:1/-1;display:none">
-          <label>Nombre del Cliente *</label>
-          <input type="text" id="es-cliente-nombre" placeholder="Nombre completo del cliente">
+          <label>Factura *</label>
+          <select id="es-factura-devolucion" onchange="onCambiarFacturaDevolucion()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar factura —</option>
+          </select>
+          <div id="es-factura-devolucion-info" style="margin-top:8px;font-size:12px;color:var(--suave);display:none"></div>
         </div>
         <div class="form-campo form-full" id="es-campo-transferencia-cont" style="grid-column:1/-1;display:none">
           <label>Área de Origen *</label>
@@ -2628,6 +2709,7 @@
           </div>
         </div>
       </div>
+      <div id="es-pago-cont" style="display:contents">
       <div class="form-campo">
         <label>Modalidad de Pago *</label>
         <select id="es-esquema-pago" onchange="onCambioEsquemaPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
@@ -2664,6 +2746,7 @@
           </div>
           <div id="es-cuotas-preview" style="margin-top:12px"></div>
         </div>
+      </div>
       </div>
       <input type="hidden" id="es-area">
       <input type="hidden" id="es-empleado">
@@ -3619,7 +3702,7 @@
 <!--    MODAL HISTORIAL DE STOCK            -->
 <!-- ═══════════════════════════════════════ -->
 <!-- ═══════════════════════════════════════ -->
-<!--    MODAL REVERSO DE MOVIMIENTO STOCK   -->
+<!--    MODAL ANULACIÓN DE MOVIMIENTO STOCK   -->
 <!-- ═══════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-anulacion-stock">
   <div class="modal" style="max-width:500px">
@@ -3674,7 +3757,7 @@
     </div>
     <div class="modal-footer">
       <div style="display:flex;gap:10px;justify-content:space-between">
-        <button class="btn-peligro" onclick="confirmarReverso()">⚠ CONFIRMAR ANULACIÓN</button>
+        <button class="btn-peligro" onclick="confirmarAnulacion()">⚠ CONFIRMAR ANULACIÓN</button>
         <button class="btn-secundario" onclick="cerrarModal('modal-anulacion-stock')">Cancelar</button>
       </div>
     </div>
@@ -3691,6 +3774,11 @@
       <div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:10px 16px;margin-bottom:16px">
         <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Artículo</div>
         <div style="font-weight:600;font-size:15px" id="historial-art-nombre">—</div>
+      </div>
+      <div id="historial-tabs" style="display:flex;gap:8px;margin-bottom:14px">
+        <button id="historial-tab-todas" class="btn-naranja" style="padding:7px 16px;font-size:12px" onclick="filtrarHistorial('todas')">Todas</button>
+        <button id="historial-tab-entrada" class="btn-secundario" style="padding:7px 16px;font-size:12px" onclick="filtrarHistorial('entrada')">▲ Entradas</button>
+        <button id="historial-tab-salida" class="btn-secundario" style="padding:7px 16px;font-size:12px" onclick="filtrarHistorial('salida')">▼ Salidas</button>
       </div>
       <div id="historial-contenido"></div>
       <input type="hidden" id="historial-id-articulo">
@@ -3821,8 +3909,7 @@
       <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-inv'); renderInventario()">✕</button>
     </div>
     <div class="modal-body" id="ficha-inv-contenido"></div>
-    <div id="ficha-inv-historial" style="padding:0 24px 8px"></div>
-    <div id="ficha-inv-historial-salidas" style="padding:0 24px 16px"></div>
+    <div id="ficha-inv-historial" style="padding:0 24px 16px"></div>
     <div id="ficha-inv-msg-eliminar" style="display:none;margin:0 24px 12px;padding:10px 14px;background:rgba(252,129,129,0.08);border:1px solid rgba(252,129,129,0.3);border-radius:6px;color:#fc8181;font-size:12px;line-height:1.5"></div>
     <div class="modal-footer">
       <button class="btn-secundario" id="ficha-inv-btn-eliminar" style="display:none;color:#fc8181;border-color:rgba(252,129,129,0.4)">🗑 Eliminar</button>
@@ -4493,7 +4580,6 @@
             <option value="devolucion">Devolución de cliente</option>
             <option value="ajuste">Ajuste de inventario</option>
             <option value="transferencia">Transferencia</option>
-            <option value="otro">Otro</option>
           </select>
         </div>
 
@@ -4644,7 +4730,7 @@
             <input type="number" id="edit-sal-cantidad" min="0.01" step="0.01" placeholder="0"
               style="font-size:15px;font-family:var(--font-mono);text-align:center;color:var(--naranja)">
           </div>
-          <div class="form-campo">
+          <div class="form-campo" id="edit-sal-precio-venta-cont">
             <label>Precio de Venta <span style="font-size:10px;color:var(--suave)">(opcional)</span></label>
             <input type="number" id="edit-sal-precio-venta" min="0" step="0.01" placeholder="0.00"
               style="font-family:var(--font-mono)"
