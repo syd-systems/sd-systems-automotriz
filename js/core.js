@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723083';
+const SYD_VERSION = '20260723058';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -154,7 +154,6 @@ const PERMISOS_POR_MODULO = {
     { accion: 'VER_COSTOS',       label: '🔒 Ver precios de costo y CPP' },
     { accion: 'VER_PRECIOS_VENTA',label: '🔒 Ver precios de venta' },
     { accion: 'VER_EOQ_ABC',      label: '🔒 Ver análisis ABC / EOQ / Reorden' },
-    { accion: 'AJUSTE_INCIDENCIA', label: '🔒 Realizar Ajuste por diferencia en Inventario (sobrante / faltante)' },
   ],
   CATALOGO: [
     { accion: 'VER',      label: 'Ver Ficha' },
@@ -443,72 +442,6 @@ async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '', sinReprese
   }
   return metodo === 'GET' ? r.json() : (r.status === 204 ? null : r.json().catch(() => null));
 }
-
-// ── Cuentas Contables — vía función RPC (no lectura directa de la tabla) ──
-// La tabla cont_cuentas tiene RLS cerrada a Administrador/Contabilidad.
-// Cualquier otro módulo que necesite consultar el plan de cuentas para
-// operar (Pagos, Inventario, Facturación) pasa por esta función RPC
-// (security definer), que documenta explícitamente cada caso de uso en
-// vez de mezclar permisos ajenos dentro de la política de la tabla.
-// Se cachea en memoria porque se consulta desde muchos módulos distintos.
-let _cuentasContablesCache = null;
-async function obtenerCuentasContables(forzarRecarga) {
-  if (_cuentasContablesCache && !forzarRecarga) return _cuentasContablesCache;
-  try {
-    const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_cuentas_contables', {
-      method: 'POST',
-      headers: {
-        'apikey':        SUPABASE_KEY,
-        'Authorization': 'Bearer ' + _sessionJWT,
-        'Content-Type':  'application/json'
-      },
-      body: JSON.stringify({})
-    });
-    if (!resp.ok) { console.warn('obtenerCuentasContables: sin permiso o error', resp.status); return []; }
-    _cuentasContablesCache = await resp.json() || [];
-    return _cuentasContablesCache;
-  } catch(e) {
-    console.warn('Error obteniendo cuentas contables:', e);
-    return _cuentasContablesCache || [];
-  }
-}
-
-// ── Stock por Área — suma/resta atómica sobre inventario_stock_area ──
-// delta puede ser positivo (entra/recibe) o negativo (sale/entrega).
-// Si no existe la fila (id_articulo, id_area), la crea con stock_actual = delta.
-// Devuelve el nuevo stock_actual resultante.
-async function upsertStockArea(id_articulo, id_area, delta) {
-  const fila = await api('inventario_stock_area', 'GET', null,
-    '?id_articulo=eq.' + id_articulo + '&id_area=eq.' + id_area + '&select=stock_actual');
-  const actual = (fila && fila[0]) ? parseFloat(fila[0].stock_actual || 0) : null;
-  if (actual === null) {
-    // No existe la fila — crearla directamente con el delta
-    const nuevo = parseFloat(delta) || 0;
-    await api('inventario_stock_area', 'POST', {
-      id_articulo: id_articulo, id_area: id_area, stock_actual: nuevo
-    });
-    return nuevo;
-  }
-  const nuevoStock = parseFloat((actual + parseFloat(delta || 0)).toFixed(4));
-  await api('inventario_stock_area', 'PATCH', { stock_actual: nuevoStock, actualizado_en: new Date().toISOString() },
-    '?id_articulo=eq.' + id_articulo + '&id_area=eq.' + id_area);
-  return nuevoStock;
-}
-
-// ── Consultar el stock actual de un artículo en un área específica ──
-async function obtenerStockArea(id_articulo, id_area) {
-  const fila = await api('inventario_stock_area', 'GET', null,
-    '?id_articulo=eq.' + id_articulo + '&id_area=eq.' + id_area + '&select=stock_actual');
-  return (fila && fila[0]) ? parseFloat(fila[0].stock_actual || 0) : 0;
-}
-
-// ── Consultar el stock CONSOLIDADO (todas las áreas) de un artículo ──
-async function obtenerStockConsolidado(id_articulo) {
-  const filas = await api('inventario_stock_area', 'GET', null,
-    '?id_articulo=eq.' + id_articulo + '&select=stock_actual');
-  return (filas || []).reduce(function(sum, f) { return sum + parseFloat(f.stock_actual || 0); }, 0);
-}
-
 
 
 // ─── CERRAR TODOS LOS MODALES ───
@@ -1664,8 +1597,6 @@ async function abrirNuevoUsuario() {
   document.getElementById('alerta-modal-error').style.display = 'none';
   document.getElementById('fortaleza-usuario').style.display = 'none';
   document.getElementById('fortaleza-fill-u').style.width = '0%';
-  var btnCerrarSesionNuevo = document.getElementById('editar-usu-btn-cerrar-sesion');
-  if (btnCerrarSesionNuevo) btnCerrarSesionNuevo.style.display = 'none';
   renderAccesosModal([]);
   await cargarEmpresasAccesoModal(null);
 
@@ -1734,16 +1665,6 @@ async function abrirEditarUsuario(id) {
   const correoEditar = u.correo_usuario;
   await cargarEmpresasAccesoModal(correoEditar);
   await cargarFacultadesEnModal(id);
-
-  // Botón de Cerrar Sesión — visible siempre al editar (no depende de que esté
-  // "en línea" ahora mismo, a diferencia del de "Ver Ficha"), para forzar el
-  // refresco de permisos justo después de editarlos, sin importar si el
-  // usuario se conecta recién más tarde.
-  var btnCerrarSesionEdit = document.getElementById('editar-usu-btn-cerrar-sesion');
-  if (btnCerrarSesionEdit) {
-    btnCerrarSesionEdit.style.display = sesionActual?.administrador && u.correo_usuario !== sesionActual.correo_usuario ? '' : 'none';
-    btnCerrarSesionEdit.onclick = function() { cerrarSesionUsuario(u.correo_usuario, u.nombre, 'modal-usuario'); };
-  }
 
   abrirModal('modal-usuario');
   focusFirstField('modal-usuario');
@@ -2032,20 +1953,11 @@ async function guardarUsuario() {
       }
     }
     okEl.style.display = 'block';
-    if (!idEdit) {
-      // Usuario nuevo: sí se cierra, no hay nada más que hacer aquí después de crearlo.
-      setTimeout(() => {
-        cerrarModal('modal-usuario');
-        document.getElementById('contenido-principal').innerHTML = '';
-        renderUsuarios();
-      }, 1200);
-    } else {
-      // Editar usuario: el modal se queda abierto -- así se puede usar el botón
-      // "Cerrar Sesión" justo después de guardar los permisos, sin tener que
-      // volver a entrar a Editar Usuario para encontrarlo.
+    setTimeout(() => {
+      cerrarModal('modal-usuario');
       document.getElementById('contenido-principal').innerHTML = '';
-      await renderUsuarios();
-    }
+      renderUsuarios();
+    }, 1200);
 
   } catch(e) {
     errEl.textContent = `Error: ${e.message}`;
@@ -2094,7 +2006,7 @@ async function cargarFacultadesEnModal(id_usuario) {
 }
 
 // ─── CERRAR SESIÓN DE UN USUARIO ESPECÍFICO ───
-async function cerrarSesionUsuario(correo, nombre, modalOrigen) {
+async function cerrarSesionUsuario(correo, nombre) {
   if (!confirm('¿Cerrar la sesión activa de "' + nombre + '"?')) return;
   try {
     await api('usuarios', 'PATCH', {
@@ -2102,7 +2014,7 @@ async function cerrarSesionUsuario(correo, nombre, modalOrigen) {
       sesion_invalidada: true,
       ultima_desconexion: new Date().toISOString()
     }, '?correo_usuario=eq.' + encodeURIComponent(correo));
-    cerrarModal(modalOrigen || 'modal-ficha-usu');
+    cerrarModal('modal-ficha-usu');
     renderUsuarios();
     alert('✓ Sesión de "' + nombre + '" cerrada. El usuario será expulsado en los próximos 30 segundos.');
   } catch(e) { alert('Error: ' + e.message); }
@@ -2671,23 +2583,17 @@ async function notifConfirmar() {
       { estado: 'APROBADO', fecha_respuesta: new Date().toISOString() },
       '?id=eq.'+_notifPendienteActual.id);
 
-    // 2. Sumar stock al ÁREA DESTINO (solo aplica a notificaciones de
-    // Recepción de Artículo, y solo para Mercancía — un Consumible ya se
-    // gastó de inmediato al salir de Compras, así que confirmar su
-    // recepción es solo un acuse, sin efecto en el stock).
+    // 2. Sumar stock al artículo en el inventario del receptor (solo aplica
+    // a notificaciones de Recepción de Artículo)
     try {
-      if (extras && extras.id_articulo && extras.cantidad && extras.id_area_destino) {
+      if (extras && extras.id_articulo && extras.cantidad) {
         const artRes = await api('inventario_almacen','GET',null,
-          '?id_articulo=eq.'+extras.id_articulo+'&select=id_articulo,id_cuenta_contable');
+          '?id_articulo=eq.'+extras.id_articulo+'&select=id_articulo,stock_actual_articulo');
         if (artRes && artRes[0]) {
-          let esMercanciaNotif = false;
-          if (artRes[0].id_cuenta_contable) {
-            const ctaNotif = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === artRes[0].id_cuenta_contable; });
-            esMercanciaNotif = !!(ctaNotif && ctaNotif.codigo === '1.1.03.001');
-          }
-          if (esMercanciaNotif) {
-            await upsertStockArea(extras.id_articulo, extras.id_area_destino, parseFloat(extras.cantidad));
-          }
+          const nuevoStock = parseFloat(artRes[0].stock_actual_articulo || 0) + parseFloat(extras.cantidad);
+          await api('inventario_almacen','PATCH',
+            { stock_actual_articulo: nuevoStock },
+            '?id_articulo=eq.'+extras.id_articulo);
         }
       }
     } catch(eStock) { console.warn('Error actualizando stock al confirmar:', eStock); }
