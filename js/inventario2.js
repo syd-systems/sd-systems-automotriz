@@ -1619,7 +1619,7 @@ async function invRenderTipos(cont) {
       api('inv_articulos_tipo','GET',null,'?id_empresa=eq.'+id_emisor+'&order=nombre.asc&select=*'),
       api('inv_categorias','GET',null,'?id_empresa=eq.'+id_emisor+'&select=id_categoria,nombre,codigo'),
     ]);
-    const catsMap = {}; (cats||[]).forEach(function(c){ catsMap[c.id]=c; });
+    const catsMap = {}; (cats||[]).forEach(function(c){ catsMap[c.id_categoria]=c; });
     const filas = (tipos||[]).map(function(t) {
       const cat=catsMap[t.id_categoria];
       return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
