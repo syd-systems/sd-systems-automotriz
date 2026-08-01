@@ -6,7 +6,7 @@
 // Definición de todas las tablas maestras
 const TABLAS_MAESTRAS = [
   { key: 'areas',              tabla: 'param_areas',   pk: 'id',              nombre: 'Áreas',                  icono: '🏢', tieneCodigo: true,  tieneArea: false, tieneAreaPadre: true },
-  { key: 'cargos',             tabla: 'param_cargos',   pk: 'id',             nombre: 'Cargos',                 icono: '👔', tieneCodigo: false, tieneArea: true  },
+  { key: 'cargos',             tabla: 'param_cargos',   pk: 'id',             nombre: 'Cargos',                 icono: '👔', tieneCodigo: false, tieneArea: true, tieneNivelCargo: true },
   { key: 'tipos_contrato',     tabla: 'param_tipos_contrato',   pk: 'id',     nombre: 'Tipos de Contrato',      icono: '📄', tieneCodigo: false, tieneArea: false },
   { key: 'tipos_salario',      tabla: 'param_tipos_salario',   pk: 'id',      nombre: 'Tipos de Salario',       icono: '💰', tieneCodigo: false, tieneArea: false },
   { key: 'calculos_salario',   tabla: 'param_calculos_salario',   pk: 'id',   nombre: 'Cálculo del Salario',    icono: '🧮', tieneCodigo: false, tieneArea: false, tieneDescripcion: true },
@@ -163,6 +163,7 @@ async function mostrarTablaParam(key) {
         return '<tr>'
           + '<td style="font-size:13px;font-weight:500">' + (item.codigo ? '<span style="font-family:var(--font-mono);color:var(--naranja);margin-right:8px">' + item.codigo + '</span>' : '') + nombreMostrar + (descMostrar ? '<div style="font-size:11px;color:var(--suave);margin-top:2px">' + descMostrar + '</div>' : '') + '</td>'
           + (def.tieneOrden ? '<td style="font-family:var(--font-mono);font-weight:700;color:var(--naranja);text-align:center">' + (item.orden != null ? item.orden : '—') + '</td>' : '')
+          + (def.tieneNivelCargo ? '<td style="font-family:var(--font-mono);font-weight:700;color:var(--naranja);text-align:center">' + (item.nivel_cargo != null ? item.nivel_cargo : '—') + '</td>' : '')
           + (def.tieneMontoMaxAprobacion ? '<td style="font-family:var(--font-mono);font-size:12px;color:var(--suave);text-align:center">' + (item.monto_maximo_aprobacion != null ? '$' + Number(item.monto_maximo_aprobacion).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : 'Sin límite') + '</td>' : '')
           + (def.tieneArea ? '<td style="font-size:12px;color:var(--suave)">' + (areasMap[item.id_area] ? areasMap[item.id_area].nombre : '—') + '</td>' : '')
           + (def.tieneTipoSector ? '<td style="font-size:12px;color:var(--suave)">' + (item.tipo_sector || '—') + '</td>' : '')
@@ -179,7 +180,7 @@ async function mostrarTablaParam(key) {
 
     var thead = key === 'areas'
       ? '<th style="width:100px">Código</th><th>Nombre</th><th>Nivel Superior</th><th>Estado</th><th>Acción</th>'
-      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : (def.tieneMoneda ? '<th>Moneda · Nombre</th>' : '<th>Nombre</th>')) + (def.tieneOrden ? '<th style="width:110px">Nivel Aprobación</th>' : '') + (def.tieneMontoMaxAprobacion ? '<th style="width:130px">Monto Máx. Aprob.</th>' : '') + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + (def.tieneTipoCanal ? '<th>Modo de Pago</th>' : '') + (def.tieneCategoria ? '<th>Categoría</th>' : '') + (def.tieneCuentaContable ? '<th>Cuenta Contable</th>' : '') + '<th>Estado</th><th>Acción</th>';
+      : (def.tieneCodigo ? '<th>Código · Nombre</th>' : (def.tieneMoneda ? '<th>Moneda · Nombre</th>' : '<th>Nombre</th>')) + (def.tieneOrden ? '<th style="width:110px">Nivel Aprobación</th>' : '') + (def.tieneNivelCargo ? '<th style="width:100px">Nivel de Cargo</th>' : '') + (def.tieneMontoMaxAprobacion ? '<th style="width:130px">Monto Máx. Aprob.</th>' : '') + (def.tieneArea ? '<th>Área</th>' : '') + (def.tieneTipoSector ? '<th>Tipo / Sector</th>' : '') + (def.tieneTipoCanal ? '<th>Modo de Pago</th>' : '') + (def.tieneCategoria ? '<th>Categoría</th>' : '') + (def.tieneCuentaContable ? '<th>Cuenta Contable</th>' : '') + '<th>Estado</th><th>Acción</th>';
     var colspan = key === 'areas' ? 5 : (2 + (def.tieneArea?1:0) + (def.tieneTipoSector?1:0));
 
     cont.innerHTML =
@@ -246,6 +247,12 @@ async function abrirParamItem(key, id) {
         + ' readonly title="No editable -- se asigna automáticamente"'
         + ' style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;cursor:not-allowed"></div>';
       camposHTML += '<div class="form-campo form-full" style="margin-top:-8px"><div style="font-size:10px;color:var(--suave)">No editable -- se asigna automáticamente el siguiente disponible al crear</div></div>';
+    }
+    if (def.tieneNivelCargo) {
+      const nivelCargoValor = item && item.nivel_cargo != null ? item.nivel_cargo : '';
+      camposHTML += '<div class="form-campo form-full"><label>Nivel de Cargo (1 al 10) *</label>'
+        + '<input type="number" id="param-item-nivel-cargo" min="1" max="10" step="1" value="' + nivelCargoValor + '" placeholder="Ej: 5"></div>';
+      camposHTML += '<div class="form-campo form-full" style="margin-top:-8px"><div style="font-size:10px;color:var(--suave)">Distintos Cargos pueden compartir el mismo Nivel (ej. dos cargos de igual jerarquía).</div></div>';
     }
     if (def.tieneMontoMaxAprobacion) {
       const montoMaxValor = item && item.monto_maximo_aprobacion != null ? item.monto_maximo_aprobacion : '';
@@ -405,6 +412,12 @@ async function guardarParamItem() {
   if (defCheck?.tieneOrden && !document.getElementById('param-item-orden')?.value) {
     errEl.textContent = 'El Nivel Aprobación es obligatorio.'; errEl.style.display = 'block'; resetBtn(); return;
   }
+  if (defCheck?.tieneNivelCargo) {
+    const nivelCargoVal = parseInt(document.getElementById('param-item-nivel-cargo')?.value);
+    if (!nivelCargoVal || nivelCargoVal < 1 || nivelCargoVal > 10) {
+      errEl.textContent = 'El Nivel de Cargo es obligatorio y debe estar entre 1 y 10.'; errEl.style.display = 'block'; resetBtn(); return;
+    }
+  }
 
 
   // Categorias e inv_articulos_tipo no estan en TABLAS_MAESTRAS
@@ -501,6 +514,7 @@ async function guardarParamItem() {
     if (def.tieneTipoSector)      datos.tipo_sector        = document.getElementById('param-item-tipo-sector')?.value || null;
     if (def.tieneTipoCanal)       datos.tipo_canal         = document.getElementById('param-item-tipo-canal')?.value || null;
     if (def.tieneOrden)           datos.orden              = parseInt(document.getElementById('param-item-orden')?.value) || null;
+    if (def.tieneNivelCargo)      datos.nivel_cargo         = parseInt(document.getElementById('param-item-nivel-cargo')?.value) || null;
     if (def.tieneMontoMaxAprobacion) {
       const montoMaxTxt = document.getElementById('param-item-monto-max-aprobacion')?.value;
       datos.monto_maximo_aprobacion = (montoMaxTxt !== undefined && montoMaxTxt !== null && montoMaxTxt.trim() !== '') ? parseFloat(montoMaxTxt) : null;
