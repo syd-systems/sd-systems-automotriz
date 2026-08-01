@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723082';
+const SYD_VERSION = '20260723083';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -2032,11 +2032,20 @@ async function guardarUsuario() {
       }
     }
     okEl.style.display = 'block';
-    setTimeout(() => {
-      cerrarModal('modal-usuario');
+    if (!idEdit) {
+      // Usuario nuevo: sí se cierra, no hay nada más que hacer aquí después de crearlo.
+      setTimeout(() => {
+        cerrarModal('modal-usuario');
+        document.getElementById('contenido-principal').innerHTML = '';
+        renderUsuarios();
+      }, 1200);
+    } else {
+      // Editar usuario: el modal se queda abierto -- así se puede usar el botón
+      // "Cerrar Sesión" justo después de guardar los permisos, sin tener que
+      // volver a entrar a Editar Usuario para encontrarlo.
       document.getElementById('contenido-principal').innerHTML = '';
-      renderUsuarios();
-    }, 1200);
+      await renderUsuarios();
+    }
 
   } catch(e) {
     errEl.textContent = `Error: ${e.message}`;
