@@ -3484,6 +3484,19 @@ async function rechazarPagoCxP(id_cxp) {
       aprobado_por: null
     },'?id_cxp=eq.'+id_cxp);
 
+    // ── Si es una CxP automática de una Entrada de Stock (ENT-<id>...),
+    // marcar esa Entrada como EN_REVISION para que quede visible/insistente
+    // hasta que se corrija o se anule -- evita que quede "huérfana" (stock
+    // y asiento ya aplicados, pero la obligación rechazada sin resolver).
+    let id_entradaRech = null;
+    const mNumDocRech = /^ENT-(\d+)/.exec(c.numero_doc || '');
+    if (mNumDocRech) {
+      id_entradaRech = parseInt(mNumDocRech[1]);
+      try {
+        await api('stock_entradas','PATCH',{ estado_revision: 'EN_REVISION' },'?id_entrada=eq.'+id_entradaRech);
+      } catch(eRevRech) { console.warn('Error marcando Entrada en revisión:', eRevRech); }
+    }
+
     // Notificar al operador que generó la solicitud
     if (c.id_usuario) {
       try {
@@ -3494,7 +3507,7 @@ async function rechazarPagoCxP(id_cxp) {
           mensaje: fmtCreadorCxP(infoCreadorRech) + ': tu solicitud de pago "' + (c.concepto || c.numero_doc || '') + '" fue rechazada por ' + (sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor') + '. Motivo: ' + motivo,
           estado: 'PENDIENTE',
           fecha_creacion: new Date().toISOString(),
-          datos_extra: JSON.stringify({ id_cxp: id_cxp, accion: 'ver_rechazo' })
+          datos_extra: JSON.stringify({ id_cxp: id_cxp, accion: 'ver_rechazo', id_entrada: id_entradaRech })
         }, '', true);
       } catch(eNotif) { console.warn('Error enviando notificación de rechazo:', eNotif); }
     }
