@@ -3893,6 +3893,20 @@ async function confirmarEjecucionPago() {
     if (!igtfSeleccionado) { errEl.textContent = 'Debe indicar si el monto incluye IGTF.'; errEl.style.display = 'block'; resetBtn(); return; }
   }
 
+  // Validar Vía de Pago obligatoria si está visible (proveedor con ambas
+  // vías registradas -- Cuenta Bancaria y Pago Móvil -- debe elegir una)
+  const viaContVis = document.getElementById('exec-pago-via-cont');
+  if (viaContVis && viaContVis.style.display !== 'none') {
+    const viaSeleccionada = document.getElementById('exec-pago-via')?.value;
+    if (!viaSeleccionada) {
+      errEl.textContent = 'Debe seleccionar la Vía de Pago.';
+      errEl.style.display = 'block';
+      document.getElementById('exec-pago-via')?.focus();
+      resetBtn();
+      return;
+    }
+  }
+
   const refExec = document.getElementById('exec-pago-ref')?.value || '';
   if (!refExec.trim()) {
     errEl.textContent = 'Debe ingresar el número de referencia o comprobante.';
