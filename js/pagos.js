@@ -3169,13 +3169,16 @@ async function _verCxPAutomatica(c, id_cxp) {
   // Modalidad de Pago
   document.getElementById('cxp-auto-modalidad').textContent = esCredito ? 'Crédito' : 'Contado';
 
-  // Referencia y Comprobante -- solo si ya se ejecutó el pago (PAGADA o PARCIAL)
+  // Referencia y Comprobante -- si ya se ejecutó el pago (PAGADA o PARCIAL);
+  // o Motivo del Rechazo, reutilizando el mismo bloque/línea, si RECHAZADA.
   const pagoInfoCont = document.getElementById('cxp-auto-pago-info-cont');
+  const refLabelEl = document.getElementById('cxp-auto-referencia-label');
   if (pagoInfoCont) {
     if (c.estado === 'PAGADA' || c.estado === 'PARCIAL') {
       pagoInfoCont.style.display = '';
+      if (refLabelEl) refLabelEl.textContent = 'Referencia de Pago';
       const refAutoEl = document.getElementById('cxp-auto-referencia');
-      if (refAutoEl) refAutoEl.textContent = c.referencia || '—';
+      if (refAutoEl) { refAutoEl.textContent = c.referencia || '—'; refAutoEl.style.color = ''; }
       const compAutoCont = document.getElementById('cxp-auto-comprobante-cont');
       const compAutoEl   = document.getElementById('cxp-auto-comprobante');
       if (c.url_comprobante && compAutoEl) {
@@ -3186,6 +3189,13 @@ async function _verCxPAutomatica(c, id_cxp) {
           : '<a href="'+urlAuto+'" target="_blank" style="color:var(--naranja);font-size:12px">&#x1F4C4; Ver comprobante</a>';
         if (compAutoCont) compAutoCont.style.display = '';
       } else if (compAutoCont) compAutoCont.style.display = 'none';
+    } else if (c.estado === 'RECHAZADA') {
+      pagoInfoCont.style.display = '';
+      if (refLabelEl) refLabelEl.textContent = 'Motivo del Rechazo';
+      const refAutoEl = document.getElementById('cxp-auto-referencia');
+      if (refAutoEl) { refAutoEl.textContent = c.motivo_rechazo || '—'; refAutoEl.style.color = '#fc8181'; }
+      const compAutoCont = document.getElementById('cxp-auto-comprobante-cont');
+      if (compAutoCont) compAutoCont.style.display = 'none';
     } else {
       pagoInfoCont.style.display = 'none';
     }
