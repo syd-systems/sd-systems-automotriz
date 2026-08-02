@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723088';
+const SYD_VERSION = '20260723089';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -2603,6 +2603,8 @@ function btnSetGuardando(btn, guardando, textoOriginal) {
 // SISTEMA DE NOTIFICACIONES INTERNAS
 // ══════════════════════════════════════════════════════════════
 let _notifPendienteActual = null;
+let _notifEsEntradaSinResolver = false;
+let _notifEntradaInfo = null; // { id_entrada, id_articulo, nombre_articulo }
 
 async function verificarNotificacionesPendientes() {
   if (!sesionActual?.correo_usuario) return;
@@ -2611,13 +2613,15 @@ async function verificarNotificacionesPendientes() {
       '?correo_destino=eq.'+encodeURIComponent(sesionActual.correo_usuario)
       +'&estado=eq.PENDIENTE&order=fecha_creacion.asc&select=*');
     if (notifs && notifs.length > 0) {
-      mostrarNotifPendiente(notifs[0]);
+      await mostrarNotifPendiente(notifs[0]);
     }
   } catch(e) { console.warn('Error verificando notificaciones:', e); }
 }
 
-function mostrarNotifPendiente(notif) {
+async function mostrarNotifPendiente(notif) {
   _notifPendienteActual = notif;
+  _notifEsEntradaSinResolver = false;
+  _notifEntradaInfo = null;
   const lista = document.getElementById('notif-pendiente-lista');
   if (!lista) return;
   lista.innerHTML =
@@ -2629,24 +2633,73 @@ function mostrarNotifPendiente(notif) {
   // Detectar el tipo de notificación por su 'accion' en datos_extra, para
   // mostrar titulo/instrucción/botón acordes -- no todas son de Inventario.
   let accionNotif = 'confirmar_recepcion';
+  let extrasNotif = null;
   try {
-    const extrasTipo = notif.datos_extra
+    extrasNotif = notif.datos_extra
       ? (typeof notif.datos_extra === 'string' ? JSON.parse(notif.datos_extra) : notif.datos_extra)
       : null;
-    if (extrasTipo && extrasTipo.accion) accionNotif = extrasTipo.accion;
+    if (extrasNotif && extrasNotif.accion) accionNotif = extrasNotif.accion;
   } catch(eTipo) {}
 
   const titEl = document.getElementById('notif-pendiente-titulo');
   const instrEl = document.getElementById('notif-pendiente-instruccion');
   const btnConf = document.getElementById('btn-notif-confirmar');
+  const btnEscalar = document.getElementById('btn-notif-escalar');
+  if (btnEscalar) btnEscalar.style.display = 'none';
   const CONFIG_NOTIF = {
     confirmar_recepcion: { titulo: '📦 Solicitud de Recepción', instruccion: 'Al confirmar, valida que recibió el consumible correctamente.', boton: '✓ Confirmar Recepción' },
     aprobar_pago:         { titulo: '📝 Solicitud de Aprobación', instruccion: 'Vaya al módulo de Pagos para revisar y aprobar esta Obligación.', boton: '✓ Confirmar Pago' },
     registrar_pago:       { titulo: '✅ Solicitud de Pago Aprobada', instruccion: 'Puede ir al módulo de Pagos para Registrar el Pago cuando guste.', boton: 'Entendido' },
     ver_rechazo:          { titulo: '❌ Solicitud de Pago Rechazada', instruccion: 'Revise el motivo y corrija la Obligación en el módulo de Pagos.', boton: 'Entendido' },
-    sin_firma_disponible: { titulo: '⚠️ Sin Firma Autorizada Disponible', instruccion: 'Ningún aprobador con Nivel de Firma tiene sesión activa en este momento. Avise a su supervisor o intente más tarde.', boton: 'Entendido' }
+    sin_firma_disponible: { titulo: '⚠️ Sin Firma Autorizada Disponible', instruccion: 'Ningún aprobador con Nivel de Firma tiene sesión activa en este momento. Avise a su supervisor o intente más tarde.', boton: 'Entendido' },
+    solicitud_anulacion_entrada: { titulo: '⚠ Solicitud de Anulación de Entrada', instruccion: 'Revise el detalle e ingrese a Inventario → Historial para decidir si anula el movimiento.', boton: 'Ir a Revisar' }
   };
-  const cfgNotif = CONFIG_NOTIF[accionNotif] || CONFIG_NOTIF.confirmar_recepcion;
+  let cfgNotif = CONFIG_NOTIF[accionNotif] || CONFIG_NOTIF.confirmar_recepcion;
+
+  // ── Caso especial: rechazo de una CxP automática de Entrada de Stock ──
+  // No se marca como resuelta con solo pulsar el botón -- se re-verifica en
+  // vivo si la Entrada sigue EN_REVISION; si sigue así, el botón lleva a
+  // corregirla (Inventario) en vez de descartar la notificación, y esta
+  // seguirá reapareciendo hasta que realmente se corrija o se anule.
+  if (accionNotif === 'ver_rechazo' && extrasNotif && extrasNotif.id_entrada) {
+    try {
+      const entRows = await api('stock_entradas','GET',null,
+        '?id_entrada=eq.'+extrasNotif.id_entrada+'&select=estado_revision,id_articulo,anulada');
+      const entRow = entRows && entRows[0];
+      if (entRow && !entRow.anulada && entRow.estado_revision === 'EN_REVISION') {
+        _notifEsEntradaSinResolver = true;
+        let nombreArt = '';
+        try {
+          const artRows = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+entRow.id_articulo+'&select=nombre_articulo');
+          nombreArt = artRows && artRows[0] ? artRows[0].nombre_articulo : '';
+        } catch(e) {}
+        _notifEntradaInfo = { id_entrada: extrasNotif.id_entrada, id_articulo: entRow.id_articulo, nombre_articulo: nombreArt };
+        cfgNotif = {
+          titulo: '❌ Entrada de Stock Rechazada — Pendiente',
+          instruccion: 'Esta Entrada quedó sin resolver. Corríjala desde Inventario, o solicite la anulación a su superior si no puede corregirla usted mismo.',
+          boton: 'Ir a Corregir'
+        };
+        if (btnEscalar && !sesionActual?.administrador && !puedo('INVENTARIO','ANULAR_ENTRADA')) {
+          btnEscalar.style.display = '';
+        }
+      }
+      // Si ya no está EN_REVISION (se corrigió o se anuló), se comporta
+      // como una notificación normal -- se descarta al pulsar "Entendido".
+    } catch(eChkEnt) { console.warn('Error verificando estado de Entrada:', eChkEnt); }
+  }
+
+  if (accionNotif === 'solicitud_anulacion_entrada' && extrasNotif && extrasNotif.id_entrada) {
+    try {
+      const entRows2 = await api('stock_entradas','GET',null,
+        '?id_entrada=eq.'+extrasNotif.id_entrada+'&select=estado_revision,id_articulo,anulada');
+      const entRow2 = entRows2 && entRows2[0];
+      if (entRow2 && !entRow2.anulada && entRow2.estado_revision === 'EN_REVISION') {
+        _notifEsEntradaSinResolver = true;
+        _notifEntradaInfo = { id_entrada: extrasNotif.id_entrada, id_articulo: entRow2.id_articulo, nombre_articulo: extrasNotif.nombre_articulo || '' };
+      }
+    } catch(eChkEnt2) { console.warn('Error verificando estado de Entrada:', eChkEnt2); }
+  }
+
   if (titEl) titEl.textContent = cfgNotif.titulo;
   if (instrEl) instrEl.textContent = cfgNotif.instruccion;
   if (btnConf) { btnConf.textContent = cfgNotif.boton; btnConf.dataset.textoOriginal = cfgNotif.boton; }
@@ -2656,6 +2709,21 @@ function mostrarNotifPendiente(notif) {
 
 async function notifConfirmar() {
   if (!_notifPendienteActual) return;
+
+  // ── Caso especial: Entrada de Stock rechazada, todavía sin resolver ──
+  // No se marca como leída -- solo navega a corregirla. Volverá a aparecer
+  // en la próxima navegación si sigue sin resolverse.
+  if (_notifEsEntradaSinResolver && _notifEntradaInfo) {
+    document.getElementById('modal-notif-pendiente').style.display = 'none';
+    mostrarModulo('inventario', document.getElementById('nav-INVENTARIO'));
+    setTimeout(function() {
+      if (typeof verHistorialStock === 'function') {
+        verHistorialStock(_notifEntradaInfo.id_articulo, _notifEntradaInfo.nombre_articulo || '');
+      }
+    }, 350);
+    return;
+  }
+
   const btn = document.getElementById('btn-notif-confirmar');
   if (btn) { btn.disabled = true; btn.textContent = 'Confirmando...'; }
   try {
@@ -2714,4 +2782,58 @@ async function notifConfirmar() {
 function notifVerDespues() {
   document.getElementById('modal-notif-pendiente').style.display = 'none';
   // No marca como leída — volverá a aparecer en la próxima navegación
+}
+
+async function notifSolicitarAnulacion() {
+  if (!_notifEntradaInfo) return;
+  const btnEsc = document.getElementById('btn-notif-escalar');
+  if (btnEsc) { btnEsc.disabled = true; btnEsc.textContent = 'Enviando...'; }
+  try {
+    const entRows = await api('stock_entradas','GET',null,
+      '?id_entrada=eq.'+_notifEntradaInfo.id_entrada+'&select=id_area,cantidad,motivo');
+    const ent = entRows && entRows[0];
+    const artRows = await api('inventario_almacen','GET',null,
+      '?id_articulo=eq.'+_notifEntradaInfo.id_articulo+'&select=nombre_articulo');
+    const nombreArt = artRows && artRows[0] ? artRows[0].nombre_articulo : _notifEntradaInfo.nombre_articulo || 'artículo';
+
+    // Buscar al responsable de mayor jerarquía del área (mismo patrón que
+    // ya se usa para notificar reversos de Salida)
+    const responsables = await api('empleados', 'GET', null,
+      '?id_area=eq.' + (ent?.id_area || 0) + '&id_nivel_jerarquico=not.is.null&order=id_nivel_jerarquico.asc&select=correo&limit=1'
+      + (_empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : ''));
+    const correoSuperior = responsables && responsables[0] ? responsables[0].correo : null;
+
+    if (!correoSuperior) {
+      alert('No se encontró un responsable de mayor jerarquía en el área de esta Entrada. Notifique manualmente a su supervisor.');
+      if (btnEsc) { btnEsc.disabled = false; btnEsc.textContent = '⬆ Solicitar Anulación al Superior'; }
+      return;
+    }
+
+    await api('notificaciones','POST',{
+      correo_destino: correoSuperior,
+      titulo: 'Solicitud de Anulación de Entrada de Stock',
+      mensaje: (sesionActual?.nombre || sesionActual?.correo_usuario || 'Un operador') + ' solicita la anulación de ENT-' + _notifEntradaInfo.id_entrada + ' (' + (ent?.cantidad || '') + ' uds. de "' + nombreArt + '"), ya que la Obligación de Pago fue rechazada y no cuenta con el permiso para anularla directamente.',
+      estado: 'PENDIENTE',
+      fecha_creacion: new Date().toISOString(),
+      datos_extra: JSON.stringify({ accion: 'solicitud_anulacion_entrada', id_entrada: _notifEntradaInfo.id_entrada, nombre_articulo: nombreArt })
+    }, '', true);
+
+    // La notificación de rechazo original ya cumplió su propósito (se
+    // escaló) -- se marca resuelta para el Operador; la responsabilidad
+    // de resolverlo pasa ahora al Superior.
+    if (_notifPendienteActual) {
+      await api('notificaciones','PATCH',{ estado: 'APROBADO', fecha_respuesta: new Date().toISOString() }, '?id=eq.'+_notifPendienteActual.id);
+    }
+
+    document.getElementById('modal-notif-pendiente').style.display = 'none';
+    alert('Se notificó al superior del área para que decida sobre la anulación.');
+    _notifPendienteActual = null;
+    _notifEsEntradaSinResolver = false;
+    _notifEntradaInfo = null;
+    await verificarNotificacionesPendientes();
+  } catch(eEsc) {
+    alert('Error al escalar la solicitud: ' + eEsc.message);
+  } finally {
+    if (btnEsc) { btnEsc.disabled = false; btnEsc.textContent = '⬆ Solicitar Anulación al Superior'; }
+  }
 }
