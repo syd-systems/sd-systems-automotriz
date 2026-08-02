@@ -559,7 +559,7 @@ async function guardarFactura(emitir) {
           if (id_areaEmp) await upsertStockArea(rep.id_articulo, id_areaEmp, -cantidadRep);
 
           // ── Asiento de Costo de Venta (faltaba por completo) ──
-          // DEBE Costo de Venta/Repuestos (id_cuenta_costo_gasto) / HABER Inventario de Mercancías (id_cuenta_contable)
+          // DEBE Costo de Venta/Artículos (id_cuenta_costo_gasto) / HABER Inventario de Mercancías (id_cuenta_contable)
           try {
             const artCOGS = await api('inventario_almacen','GET',null,
               '?id_articulo=eq.'+rep.id_articulo+'&select=nombre_articulo,precio_costo_moneda,id_cuenta_contable,id_cuenta_costo_gasto');
