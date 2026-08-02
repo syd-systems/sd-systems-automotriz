@@ -269,7 +269,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       const btnAprobar  = (puedo('PAGOS','APROBAR') && yaVenceAccion) ? '<button onclick="aprobarPagoCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">✅ Aprobar</button>' : '';
       const btnRechazar = (puedo('PAGOS','RECHAZAR') && yaVenceAccion) ? '<button onclick="rechazarPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">❌ Rechazar</button>' : '';
       const btnRegistrarPagoLista = (puedo('PAGOS','PAGAR') || sesionActual?.administrador) ? '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💸 Registrar Pago</button>' : '';
-      if (est === 'PENDIENTE' || est === 'RECHAZADA') acciones = btnVerPend + (btnAprobar ? ' '+btnAprobar : '') + (btnRechazar ? ' '+btnRechazar : '');
+      if (est === 'PENDIENTE' || est === 'RECHAZADA') acciones = btnVerPend + (btnAprobar ? ' '+btnAprobar : '') + ((btnRechazar && est !== 'RECHAZADA') ? ' '+btnRechazar : '');
       else if (est === 'APROBADA') acciones = btnVerPag + (btnRegistrarPagoLista ? ' '+btnRegistrarPagoLista : '');
       else if (est === 'POR_APROBAR') acciones = btnVerPag + (btnAprobar ? ' '+btnAprobar : '') + (btnRechazar ? ' '+btnRechazar : '');
       else acciones = btnVerPag;
@@ -3409,6 +3409,21 @@ async function aprobarPagoCxP(id_cxp) {
       aprobado_por: sesionActual?.correo_usuario || null,
       fecha_aprobacion: new Date().toISOString()
     },'?id_cxp=eq.'+id_cxp);
+
+    // ── Si esta CxP venía RECHAZADA (Entrada EN_REVISION) y se aprobó
+    // directamente sin pasar por "corregir", igual resuelve la revisión ──
+    const mNumDocAprob = /^ENT-(\d+)/.exec(c.numero_doc || '');
+    if (mNumDocAprob) {
+      const id_entradaAprob = parseInt(mNumDocAprob[1]);
+      try {
+        await api('stock_entradas','PATCH',{ estado_revision: null },'?id_entrada=eq.'+id_entradaAprob);
+        const notifsRevAprob = await api('notificaciones','GET',null,
+          '?estado=eq.PENDIENTE&datos_extra=ilike.*%22id_entrada%22%3A'+id_entradaAprob+'*&select=id');
+        for (const nAprob of (notifsRevAprob||[])) {
+          await api('notificaciones','PATCH',{ estado: 'APROBADO', fecha_respuesta: new Date().toISOString() },'?id=eq.'+nAprob.id);
+        }
+      } catch(eResAprob) { console.warn('Error resolviendo notificaciones de revisión:', eResAprob); }
+    }
 
     // Notificar al operador que generó la solicitud
     if (c.id_usuario) {
