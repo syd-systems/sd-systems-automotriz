@@ -1116,6 +1116,20 @@ async function _guardarEdicionMovimientoInterno() {
         }
       } catch(eCxPEdit) { console.warn('Error actualizando CxP:', eCxPEdit); }
 
+      // ── Si esta Entrada estaba EN_REVISION (CxP rechazada), la corrección
+      // recién guardada la resuelve -- limpiar el estado y marcar como
+      // resueltas las notificaciones pendientes asociadas (tanto la de
+      // rechazo al Operador como una posible escalada al Superior), para
+      // que dejen de reaparecer.
+      try {
+        await api('stock_entradas','PATCH',{ estado_revision: null },'?id_entrada=eq.'+id);
+        const notifsRevRes = await api('notificaciones','GET',null,
+          '?estado=eq.PENDIENTE&datos_extra=ilike.*%22id_entrada%22%3A'+id+'*&select=id');
+        for (const nRes of (notifsRevRes||[])) {
+          await api('notificaciones','PATCH',{ estado: 'APROBADO', fecha_respuesta: new Date().toISOString() },'?id=eq.'+nRes.id);
+        }
+      } catch(eResRev) { console.warn('Error resolviendo notificaciones de revisión:', eResRev); }
+
     } else {
       // ── SALIDA ──
       const [movOrigArr, artArr] = await Promise.all([
@@ -1418,8 +1432,17 @@ async function confirmarAnulacion() {
     // 6. Marcar movimiento como anulado
     if (tipo === 'ENTRADA') {
       await api('stock_entradas', 'PATCH',
-        { anulada: true, id_usuario_reversa: sesionActual.correo_usuario },
+        { anulada: true, id_usuario_reversa: sesionActual.correo_usuario, estado_revision: null },
         '?id_entrada=eq.' + idMovimiento);
+      // Si estaba EN_REVISION (CxP rechazada), anularla también la resuelve
+      // -- marcar como resueltas las notificaciones pendientes asociadas.
+      try {
+        const notifsRevAnul = await api('notificaciones','GET',null,
+          '?estado=eq.PENDIENTE&datos_extra=ilike.*%22id_entrada%22%3A'+idMovimiento+'*&select=id');
+        for (const nAnul of (notifsRevAnul||[])) {
+          await api('notificaciones','PATCH',{ estado: 'APROBADO', fecha_respuesta: new Date().toISOString() },'?id=eq.'+nAnul.id);
+        }
+      } catch(eResAnul) { console.warn('Error resolviendo notificaciones de revisión:', eResAnul); }
     } else {
       await api('stock_salidas', 'PATCH',
         { anulada: true, id_usuario_reversa: sesionActual.correo_usuario },
