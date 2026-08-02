@@ -755,6 +755,22 @@ async function guardarEdicionMovimiento() {
     alert('No tiene permiso para editar movimientos de stock.');
     return;
   }
+  // Protección contra doble clic / doble ejecución -- sin esto, un doble
+  // clic (o una red lenta) podía duplicar el asiento contable y la CxP.
+  if (window._guardandoEdicionMov) return;
+  window._guardandoEdicionMov = true;
+  const btnGuardarEdicion = document.getElementById('btn-guardar-movimiento');
+  const textoOriginalBtnEdicion = btnGuardarEdicion ? btnGuardarEdicion.textContent : 'GUARDAR';
+  if (btnGuardarEdicion) { btnGuardarEdicion.disabled = true; btnGuardarEdicion.textContent = 'Procesando...'; }
+  try {
+    await _guardarEdicionMovimientoInterno();
+  } finally {
+    window._guardandoEdicionMov = false;
+    if (btnGuardarEdicion) { btnGuardarEdicion.disabled = false; btnGuardarEdicion.textContent = textoOriginalBtnEdicion; }
+  }
+}
+
+async function _guardarEdicionMovimientoInterno() {
   const tipo        = document.getElementById('edit-mov-tipo').value;
   const id          = parseInt(document.getElementById('edit-mov-id').value);
   const id_articulo = parseInt(document.getElementById('edit-mov-id-articulo').value);
@@ -993,9 +1009,11 @@ async function guardarEdicionMovimiento() {
         const nuevoMontoUSD = montoTotalConIVAEdit !== null ? montoTotalConIVAEdit
           : parseFloat((cantidad * parseFloat(art?.precio_costo_moneda || 0) * (1+tasaIVAActual())).toFixed(2));
 
-        // Eliminar CxP existentes PENDIENTES para esta entrada
+        // Eliminar CxP existentes PENDIENTES o RECHAZADAS para esta entrada
+        // (si venía RECHAZADA, hay que limpiarla igual antes de crear la
+        // nueva -- de lo contrario queda huérfana y se duplica la obligación)
         const cxpsExist = await api('cont_cxp', 'GET', null,
-          '?numero_doc=ilike.' + encodeURIComponent(numDocBase + '*') + emisorQ() + '&estado=eq.PENDIENTE&select=id_cxp');
+          '?numero_doc=ilike.' + encodeURIComponent(numDocBase + '*') + emisorQ() + '&estado=in.(PENDIENTE,RECHAZADA)&select=id_cxp');
         for (const cx of (cxpsExist || [])) {
           await api('cont_cxp', 'DELETE', null, '?id_cxp=eq.' + cx.id_cxp);
         }
@@ -1056,6 +1074,13 @@ async function guardarEdicionMovimiento() {
               // Agregar el id_cxp real al numero_doc para que nunca se repita
               if (cxpCuotaEditCreada && cxpCuotaEditCreada[0]) {
                 await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-C' + c.num + '-' + cxpCuotaEditCreada[0].id_cxp }, '?id_cxp=eq.' + cxpCuotaEditCreada[0].id_cxp);
+                // Reenviar a aprobación -- la corrección debe volver a pasar
+                // por el Aprobador, igual que cuando se creó la Entrada
+                if (c.fecha <= getHoyVzla()) {
+                  enrutarAprobacionCxP(cxpCuotaEditCreada[0].id_cxp, numDocBase + '-C' + c.num + '-' + cxpCuotaEditCreada[0].id_cxp, c.monto);
+                } else {
+                  api('cont_cxp','PATCH',{ sin_firma_notificado: true }, '?id_cxp=eq.'+cxpCuotaEditCreada[0].id_cxp).catch(function(){});
+                }
               }
             }
           }
@@ -1084,6 +1109,9 @@ async function guardarEdicionMovimiento() {
           // Agregar el id_cxp real al numero_doc para que nunca se repita
           if (cxpEditContadoCreada && cxpEditContadoCreada[0]) {
             await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-' + cxpEditContadoCreada[0].id_cxp }, '?id_cxp=eq.' + cxpEditContadoCreada[0].id_cxp);
+            // Reenviar a aprobación -- la corrección debe volver a pasar
+            // por el Aprobador, igual que cuando se creó la Entrada
+            enrutarAprobacionCxP(cxpEditContadoCreada[0].id_cxp, numDocBase + '-' + cxpEditContadoCreada[0].id_cxp, nuevoMontoUSD);
           }
         }
       } catch(eCxPEdit) { console.warn('Error actualizando CxP:', eCxPEdit); }
