@@ -2919,6 +2919,13 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       }
       const detRef = document.getElementById('cont-pago-det-ref');
       if (detRef) detRef.textContent = c.referencia || '—';
+      const detViaCont = document.getElementById('cont-pago-det-via-cont');
+      const detVia = document.getElementById('cont-pago-det-via');
+      if (detViaCont && detVia) {
+        if (c.via_pago === 'BANCO') { detViaCont.style.display = ''; detVia.textContent = '🏦 Cuenta Bancaria'; }
+        else if (c.via_pago === 'PM') { detViaCont.style.display = ''; detVia.textContent = '📱 Pago Móvil'; }
+        else { detViaCont.style.display = 'none'; }
+      }
       // Forma de Pago -- Contado/Crédito; si es Crédito, indicar la cuota
       // (numero de cuota va embebido en numero_doc como '-C<N>')
       const detForma = document.getElementById('cont-pago-det-forma');
@@ -3168,6 +3175,24 @@ async function _verCxPAutomatica(c, id_cxp) {
 
   // Modalidad de Pago
   document.getElementById('cxp-auto-modalidad').textContent = esCredito ? 'Crédito' : 'Contado';
+
+  // Vía de Pago -- solo si quedó registrada (pago por Transferencia donde
+  // el proveedor tenía tanto Cuenta Bancaria como Pago Móvil)
+  const viaCont = document.getElementById('cxp-auto-via-cont');
+  const viaEl   = document.getElementById('cxp-auto-via');
+  if (viaCont && viaEl) {
+    if (c.via_pago === 'BANCO') {
+      viaCont.style.display = '';
+      const bancoNom = c.proveedores?.banco_prov?.nombre || '—';
+      viaEl.innerHTML = '🏦 Cuenta Bancaria — ' + bancoNom + (c.proveedores?.numero_cuenta ? '<div style="font-size:11px;color:var(--suave);margin-top:2px;font-family:var(--font-mono)">' + fmtNumCuenta(c.proveedores.numero_cuenta) + '</div>' : '');
+    } else if (c.via_pago === 'PM') {
+      viaCont.style.display = '';
+      const bancoPM = c.proveedores?.banco_pm?.nombre || '—';
+      viaEl.innerHTML = '📱 Pago Móvil — ' + bancoPM + (c.proveedores?.pm_celular ? '<div style="font-size:11px;color:var(--suave);margin-top:2px;font-family:var(--font-mono)">' + c.proveedores.pm_celular + '</div>' : '');
+    } else {
+      viaCont.style.display = 'none';
+    }
+  }
 
   // Referencia y Comprobante -- si ya se ejecutó el pago (PAGADA o PARCIAL);
   // o Motivo del Rechazo, reutilizando el mismo bloque/línea, si RECHAZADA.
@@ -4076,6 +4101,7 @@ async function confirmarEjecucionPago() {
       metodo_pago: idMetodo,
       tasa_bcv:    tasaPago,
       referencia:  refExec.trim(),
+      via_pago:    document.getElementById('exec-pago-via')?.value || null,
       // Si se corrigió la Moneda de Pago en este modal, persistirla para
       // que el registro quede reflejando la realidad de aquí en adelante
       moneda_pago: monedaCxP,
