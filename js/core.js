@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723089';
+const SYD_VERSION = '20260723090';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -2607,6 +2607,7 @@ let _notifEsEntradaSinResolver = false;
 let _notifEntradaInfo = null; // { id_entrada, id_articulo, nombre_articulo }
 
 async function verificarNotificacionesPendientes() {
+  if (window._suprimirCheckNotifUnaVez) { window._suprimirCheckNotifUnaVez = false; return; }
   if (!sesionActual?.correo_usuario) return;
   try {
     const notifs = await api('notificaciones','GET',null,
@@ -2715,6 +2716,7 @@ async function notifConfirmar() {
   // en la próxima navegación si sigue sin resolverse.
   if (_notifEsEntradaSinResolver && _notifEntradaInfo) {
     document.getElementById('modal-notif-pendiente').style.display = 'none';
+    window._suprimirCheckNotifUnaVez = true;
     mostrarModulo('inventario', document.getElementById('nav-INVENTARIO'));
     setTimeout(function() {
       if (typeof verHistorialStock === 'function') {
