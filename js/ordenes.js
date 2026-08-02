@@ -12,7 +12,7 @@ let tasaActualOS = 1;        // tasa USD→VES al crear/editar OS
 const ESTADOS_OS = {
   'ABIERTA':          { clase: 'badge-naranja', label: 'Abierta' },
   'EN_PROCESO':       { clase: 'badge-verde',   label: 'En Proceso' },
-  'ESPERA_REPUESTO':  { clase: 'badge-rojo',    label: 'Espera Artículo' },
+  'ESPERA_ARTICULO':  { clase: 'badge-rojo',    label: 'Espera Artículo' },
   'CERRADA':          { clase: 'badge-gris',    label: 'Cerrada' },
   'ANULADA':          { clase: 'badge-rojo',    label: 'Anulada' },
 };
@@ -73,7 +73,7 @@ async function renderOrdenes() {
     const resumen = {
       ABIERTA:         ordenes.filter(function(o) { return o.estado === 'ABIERTA'; }).length,
       EN_PROCESO:      ordenes.filter(function(o) { return o.estado === 'EN_PROCESO'; }).length,
-      ESPERA_REPUESTO: ordenes.filter(function(o) { return o.estado === 'ESPERA_REPUESTO'; }).length,
+      ESPERA_ARTICULO: ordenes.filter(function(o) { return o.estado === 'ESPERA_ARTICULO'; }).length,
       CERRADA:         ordenes.filter(function(o) { return o.estado === 'CERRADA'; }).length,
       ANULADA:         ordenes.filter(function(o) { return o.estado === 'ANULADA'; }).length,
     };
@@ -427,7 +427,7 @@ async function abrirEditarOS(id) {
         precio_original: parseFloat(l.precio_original || l.precio_usd || 0) };
     });
     osArtículosLineas = linRep.map(function(l) {
-      return { id: l.id_os_rep, id_articulo: l.id_articulo, descripcion: l.descripcion,
+      return { id: l.id_os_mercancia, id_articulo: l.id_articulo, descripcion: l.descripcion,
         cantidad: l.cantidad, precio_usd: l.precio_usd,
         moneda: (l.moneda || 'USD').toUpperCase(),
         precio_original: parseFloat(l.precio_original || l.precio_usd || 0) };
@@ -901,7 +901,7 @@ async function _guardarOSInterno() {
       observaciones: obs || null,
       tasa_bcv: tasaUSDGuardar,
       total_servicios_usd: totServ,
-      total_repuestos_usd: totRep,
+      total_articulos_usd: totRep,
       total_usd: totalUSDGuardar,
       total_ves: totalBsGuardar,
       id_usuario: sesionActual.correo_usuario,
@@ -972,7 +972,7 @@ async function _guardarOSInterno() {
     }
 
     // ── Restaurar stock de artículos anteriores (solo en edición) ──
-    // Agregar un repuesto a la OS equivale a una Salida de Stock (Compras → Taller):
+    // Agregar un artículo a la OS equivale a una Salida de Stock (Compras → Taller):
     // resta de Compras, suma al Área de Taller. Si es edición, las líneas anteriores
     // ya fueron borradas arriba — hay que revertir ese movimiento antes de aplicar el nuevo.
     const id_areaTallerOS = parseInt(document.getElementById('os-area')?.value) || null;
@@ -1045,7 +1045,7 @@ async function ajustarStockOS(id_orden, operacion) {
       try {
         var cant = parseFloat(l.cantidad || 0);
         if (operacion === 'restaurar') {
-          // Anular OS: el repuesto vuelve de Taller a Compras
+          // Anular OS: el artículo vuelve de Taller a Compras
           await upsertStockArea(l.id_articulo, id_areaTallerOS, -cant);
           await upsertStockArea(l.id_articulo, id_areaComprasOS, cant);
         } else {
