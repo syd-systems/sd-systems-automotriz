@@ -187,7 +187,7 @@ async function renderInventario(filtro) {
   if (filtro && filtro.trim()) {
     const t = filtro.toLowerCase();
     itemsFiltrados = itemsFiltrados.filter(function(r) {
-      return r.nombre_articulo.toLowerCase().includes(t) || (r.codigo_articulo || '').toLowerCase().includes(t) || (r.descripcion || '').toLowerCase().includes(t);
+      return r.nombre_articulo.toLowerCase().includes(t) || (r.codigo_articulo || '').toLowerCase().includes(t) || (r.descripcion_articulo || '').toLowerCase().includes(t);
     });
   }
     const stockBajos = items.filter(function(r) { return parseFloat(r.stock_minimo_articulo||0) > 0 && stockMostrarArticulo(r.id_articulo) <= r.stock_minimo_articulo; }).length;
@@ -276,7 +276,7 @@ function invRenderTabla(items, cont) {
       + (r.id_categoria_articulo ? ' · <span style="color:var(--suave)">' + (_invCategoriasCache.find(function(c){return c.id_categoria===r.id_categoria_articulo;})?.nombre || '') + '</span>' : '')
       + '</div>'
       + '<div style="font-weight:500">' + r.nombre_articulo + '</div>'
-      + (r.descripcion ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion + '</div>' : '') + '</div></div></td>'
+      + (r.descripcion_articulo ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion_articulo + '</div>' : '') + '</div></div></td>'
       + (function() {
           return '<td><span class="badge ' + (stockBajo ? 'badge-rojo' : 'badge-verde') + '">' + stockMostrar + ' ' + (r.unidad || 'UND') + '</span>'
             + (_invSaldoArea ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Stock área</div>' : '')
@@ -446,7 +446,7 @@ async function verFichaInventario(id) {
     + '<div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + r.nombre_articulo + '</div>'
     + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (r.codigo_articulo || 'Sin código') + ' · ' + (r.unidad || 'UND') + '</div>'
     + '</div></div>'
-    + (r.descripcion ? '<div style="background:var(--gris2);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--suave)">' + r.descripcion + '</div>' : '')
+    + (r.descripcion_articulo ? '<div style="background:var(--gris2);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--suave)">' + r.descripcion_articulo + '</div>' : '')
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Stock Actual</div>'
     + '<div style="font-family:var(--font-mono);font-size:18px;color:' + (stockBajo ? '#fc8181' : 'var(--naranja)') + '">' + stockMostrarFicha + ' ' + (r.unidad||'UND') + '</div>'
@@ -1388,7 +1388,7 @@ async function abrirEditarInventario(id) {
   document.getElementById('inv-id').value = r.id_articulo;
   document.getElementById('inv-codigo').value = r.codigo_articulo || '';
   document.getElementById('inv-nombre').value = r.nombre_articulo;
-  document.getElementById('inv-descripcion').value = r.descripcion || '';
+  document.getElementById('inv-descripcion').value = r.descripcion_articulo || '';
   document.getElementById('inv-stock').value = stockMostrarArticulo(r.id_articulo);
   // El stock real vive en inventario_stock_area (por área) desde que se migró el esquema —
   // este campo ya no debe ser editable ni guardarse al editar un artículo existente.
@@ -1497,7 +1497,7 @@ async function guardarInventario() {
     const id_categoria    = parseInt(document.getElementById('inv-categoria')?.value) || null;
     const id_tipo_articulo = parseInt(document.getElementById('inv-tipo-articulo')?.value) || null;
     const ventaFinal     = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? venta : undefined;
-    const datos = { nombre_articulo: nombre, descripcion: desc || null, codigo_articulo: codigo || null,
+    const datos = { nombre_articulo: nombre, descripcion_articulo: desc || null, codigo_articulo: codigo || null,
       stock_minimo_articulo: stockMin, precio_costo_moneda: costo,
       id_empresa: _empresaActiva ? _empresaActiva.id_empresa : null,
       ...(ventaFinal !== undefined ? { precio_venta_moneda: ventaFinal } : {}),
