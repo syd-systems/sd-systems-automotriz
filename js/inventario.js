@@ -191,7 +191,7 @@ function _renderFilaHistorial(m) {
   const areaRec = m.area_receptora || m.param_areas;
   const area = areaRec ? areaRec.nombre + (areaRec.codigo ? ' (' + areaRec.codigo + ')' : '') : '—';
   return '<tr style="opacity:' + (anulada ? '0.5' : '1') + '">'
-    + '<td style="padding:8px 0;font-size:12px;color:var(--suave)">' + (m.fecha||'—') + '</td>'
+    + '<td style="padding:8px 0;font-size:12px;color:var(--suave)">' + (m.fecha ? fmtFecha(m.fecha) : '—') + '</td>'
     + '<td style="padding:8px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">'
     + 'Ref: ' + (m.id_entrada ? 'ENT-' + m.id_entrada : 'SAL-' + m.id_salida) + '</td>'
     + '<td style="padding:8px"><span class="badge ' + (esEntrada ? 'badge-verde' : 'badge-rojo') + '">'
