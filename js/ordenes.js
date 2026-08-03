@@ -1334,7 +1334,7 @@ async function recalcularTasaOS(id, nuevaTasa) {
 async function cargarSelectsOS() {
   try {
     if (!catalogoCache.length) catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=grupo.asc,nombre.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
-    if (!inventarioCache.length) inventarioCache = await api('inventario_almacen', 'GET', null, '?order=nombre.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
+    inventarioCache = await api('inventario_almacen', 'GET', null, '?order=nombre.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
   } catch(e) {}
 
   // ── Área que realiza el servicio: se resuelve sola por el usuario (ver
@@ -1399,7 +1399,7 @@ async function cargarSelectsOS() {
       } catch(eCtaM) { console.warn('Error buscando cuenta de Mercancías:', eCtaM); }
     }
     if (_idCuentaMercanciasOS) {
-      itemsDisponibles = itemsDisponibles.filter(function(r) { return r.id_cuenta_contable === _idCuentaMercanciasOS; });
+      itemsDisponibles = itemsDisponibles.filter(function(r) { return String(r.id_cuenta_contable) === String(_idCuentaMercanciasOS); });
     }
     if (_invSaldoArea && !sesionActual?.administrador && !puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
       itemsDisponibles = itemsDisponibles.filter(function(r) {
