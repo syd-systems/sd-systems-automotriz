@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723116';
+const SYD_VERSION = '20260723117';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -1500,10 +1500,10 @@ async function renderUsuarios(filtro) {
       const minutosDesdeConexion = fechaUltimaCon ? (ahora - fechaUltimaCon) / (1000 * 60) : 999;
       const enLinea = u.sesion_activa === true && minutosDesdeConexion < 6;
       const ultimaCon = u.ultima_conexion
-        ? new Date(u.ultima_conexion).toLocaleString('es-VE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
+        ? new Date(u.ultima_conexion).toLocaleString('es-VE', { timeZone: 'America/Caracas',  day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
         : 'Nunca';
       const ultimaDes = u.ultima_desconexion
-        ? new Date(u.ultima_desconexion).toLocaleString('es-VE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
+        ? new Date(u.ultima_desconexion).toLocaleString('es-VE', { timeZone: 'America/Caracas',  day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
         : '—';
 
       return `
@@ -1632,7 +1632,7 @@ async function verFichaUsuario(id) {
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Conexión</div>'
     + '<div style="font-size:12px;color:' + (enLinea ? '#68d391' : 'var(--suave)') + '">' + (enLinea ? '● En línea' : '○ Desconectado') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Última Conexión</div>'
-    + '<div style="font-size:12px">' + (u.ultima_conexion ? new Date(u.ultima_conexion).toLocaleString('es-VE', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'Nunca') + '</div></div>'
+    + '<div style="font-size:12px">' + (u.ultima_conexion ? new Date(u.ultima_conexion).toLocaleString('es-VE', { timeZone: 'America/Caracas', day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'Nunca') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Registrado</div>'
     + '<div style="font-size:12px">' + new Date(u.fecha_registro).toLocaleDateString('es-VE') + '</div></div>'
     + '</div>'
