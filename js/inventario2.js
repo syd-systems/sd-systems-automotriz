@@ -550,14 +550,23 @@ async function abrirEntradaStock(id) {
 
   // GET fresco de BD (el stock ya se lee de inventario_stock_area más abajo)
   try {
-    var qs = '?id_articulo=eq.' + id + '&select=precio_costo_moneda,precio_venta_moneda,unidad';
+    var qs = '?id_articulo=eq.' + id + '&select=precio_costo_moneda,precio_venta_moneda,unidad,estado';
     if (_empresaActiva && _empresaActiva.id_empresa) qs += '&id_empresa=eq.' + _empresaActiva.id_empresa;
     const fresh = await api('inventario_almacen', 'GET', null, qs);
     if (fresh && fresh[0]) {
       if (fresh[0].precio_costo_moneda   != null) r.precio_costo_moneda   = parseFloat(fresh[0].precio_costo_moneda);
       if (fresh[0].precio_venta_moneda   != null) r.precio_venta_moneda   = parseFloat(fresh[0].precio_venta_moneda);
+      r.estado = fresh[0].estado;
     }
   } catch(e) { console.warn('abrirEntradaStock GET fresco:', e.message); }
+
+  // Bloquear si el artículo está Inactivo -- se pausó por decisión de
+  // negocio (ej. precio disparado) y no debe recibir movimientos nuevos
+  // hasta que se reactive desde Editar.
+  if (r.estado === 'INACTIVO') {
+    alert('Este artículo está Inactivo. Reactívelo desde Editar antes de registrar una Entrada.');
+    return;
+  }
 
   document.getElementById('es-id').value = id;
   document.getElementById('es-nombre').textContent = r.nombre_articulo;
