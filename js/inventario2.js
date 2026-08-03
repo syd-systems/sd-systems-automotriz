@@ -493,7 +493,9 @@ async function verFichaInventario(id) {
         } else {
           // Mostrar mensaje explicativo debajo del historial
           if (msgElReset) {
-            msgElReset.textContent = '⚠ Este artículo no puede eliminarse porque tiene movimientos de stock registrados. Para darlo de baja, márquelo como inactivo desde Editar.';
+            msgElReset.textContent = r.estado === 'INACTIVO'
+              ? '⚠ Para revertir la condición de Inactivo, márquelo como Activo desde Editar.'
+              : '⚠ Para dar de baja a este Artículo, márquelo como Inactivo desde Editar.';
             msgElReset.style.display = 'block';
           }
         }
