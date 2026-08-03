@@ -1589,13 +1589,14 @@ async function invAbrirCategoria(id) {
   const btnElim = document.getElementById('modal-param-eliminar');
   if (btnElim) { btnElim.style.display = id ? '' : 'none'; window._paramKey='inv_categorias'; window._paramId=id; }
   abrirModal('modal-param');
-  setTimeout(function(){ document.getElementById('icat-nombre')?.focus(); }, 100);
+  setTimeout(function(){ document.getElementById('icat-codigo')?.focus(); }, 100);
 }
 
 async function invGuardarCategoria() {
   const id=document.getElementById('icat-id').value, nombre=document.getElementById('icat-nombre')?.value.trim();
   const okEl=document.getElementById('icat-ok'), errEl=document.getElementById('icat-err');
-  if (!nombre) { errEl.textContent='El nombre es obligatorio.'; errEl.style.display='block'; return; }
+  okEl.style.display='none'; errEl.style.display='none';
+  if (!nombre) { errEl.textContent='El nombre es obligatorio.'; errEl.style.display='block'; document.getElementById('icat-nombre')?.focus(); return; }
   const datos = { nombre, estado:document.getElementById('icat-estado')?.value||'ACTIVO',
     codigo:document.getElementById('icat-codigo')?.value.trim().toUpperCase()||null,
     descripcion:document.getElementById('icat-desc')?.value.trim()||null, id_empresa:_empresaActiva?.id_empresa||null };
@@ -1672,15 +1673,16 @@ async function invAbrirTipo(id) {
   const btnElim = document.getElementById('modal-param-eliminar');
   if (btnElim) { btnElim.style.display = id ? '' : 'none'; window._paramKey='inv_articulos_tipo'; window._paramId=id; }
   abrirModal('modal-param');
-  setTimeout(function(){ document.getElementById('itipo-nombre')?.focus(); }, 100);
+  setTimeout(function(){ document.getElementById('itipo-codigo')?.focus(); }, 100);
 }
 
 async function invGuardarTipo() {
   const id=document.getElementById('itipo-id').value, nombre=document.getElementById('itipo-nombre')?.value.trim();
   const catId=parseInt(document.getElementById('itipo-categoria')?.value)||null;
   const okEl=document.getElementById('itipo-ok'), errEl=document.getElementById('itipo-err');
-  if (!nombre) { errEl.textContent='El nombre es obligatorio.'; errEl.style.display='block'; return; }
-  if (!catId)  { errEl.textContent='Debe seleccionar una categoría.'; errEl.style.display='block'; return; }
+  okEl.style.display='none'; errEl.style.display='none';
+  if (!nombre) { errEl.textContent='El nombre es obligatorio.'; errEl.style.display='block'; document.getElementById('itipo-nombre')?.focus(); return; }
+  if (!catId)  { errEl.textContent='Debe seleccionar una categoría.'; errEl.style.display='block'; document.getElementById('itipo-categoria')?.focus(); return; }
   const datos = { nombre, id_categoria:catId, estado:document.getElementById('itipo-estado')?.value||'ACTIVO',
     codigo:document.getElementById('itipo-codigo')?.value.trim().toUpperCase()||null,
     descripcion:document.getElementById('itipo-desc')?.value.trim()||null, id_empresa:_empresaActiva?.id_empresa||null };
