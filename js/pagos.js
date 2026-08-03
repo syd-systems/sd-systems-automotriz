@@ -3136,8 +3136,8 @@ async function _verCxPAutomatica(c, id_cxp) {
   estadoEl.style.color = c.estado === 'PAGADA' ? '#22c55e' : c.estado === 'PARCIAL' ? '#f59e0b' : 'var(--naranja)';
 
   // Fechas
-  document.getElementById('cxp-auto-fecha-emision').textContent = c.fecha_emision ? c.fecha_emision.slice(0,10) : '—';
-  document.getElementById('cxp-auto-fecha-venc').textContent    = c.fecha_vencimiento ? c.fecha_vencimiento.slice(0,10) : '—';
+  document.getElementById('cxp-auto-fecha-emision').textContent = c.fecha_emision ? c.fecha_emision.slice(0,10).split('-').reverse().join('/') : '—';
+  document.getElementById('cxp-auto-fecha-venc').textContent    = c.fecha_vencimiento ? c.fecha_vencimiento.slice(0,10).split('-').reverse().join('/') : '—';
 
   // Monto USD
   document.getElementById('cxp-auto-monto').textContent = '$ ' + parseFloat(c.monto_usd || 0).toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2});
@@ -3237,7 +3237,7 @@ async function _verCxPAutomatica(c, id_cxp) {
         + '&order=fecha_vencimiento.asc&select=numero_doc,monto_usd,fecha_vencimiento,estado,fecha_pago');
       if (cuotas && cuotas.length) {
         document.getElementById('cxp-auto-cuotas-num').textContent   = cuotas.length;
-        document.getElementById('cxp-auto-cuotas-fecha').textContent = cuotas[0].fecha_vencimiento?.slice(0,10) || '—';
+        document.getElementById('cxp-auto-cuotas-fecha').textContent = cuotas[0].fecha_vencimiento?.slice(0,10).split('-').reverse().join('/') || '—';
         document.getElementById('cxp-auto-cuotas-monto').textContent = '$ ' + parseFloat(cuotas[0].monto_usd||0).toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2});
         // Intervalo
         if (cuotas.length > 1) {
