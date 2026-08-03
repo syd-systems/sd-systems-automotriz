@@ -1393,6 +1393,13 @@ async function cargarSelectsOS() {
   }
 
   // ── Cargar selector de INVENTARIO ──
+  // Recalcular el saldo por área/consolidado SIEMPRE fresco al abrir este
+  // selector -- antes dependía de un cálculo hecho la última vez que se
+  // visitó el módulo de Inventario (si es que se visitó), pudiendo quedar
+  // desactualizado tras usar/anular Órdenes de Servicio en esta sesión.
+  if (typeof calcularInvSaldoArea === 'function') {
+    try { await calcularInvSaldoArea(); } catch(eSaldoOS) { console.warn('Error recalculando saldo para OS:', eSaldoOS); }
+  }
   const selInv = document.getElementById('os-sel-inv');
   if (selInv) try {
     // Calcular saldo por área si no está disponible y el usuario no tiene permiso general
