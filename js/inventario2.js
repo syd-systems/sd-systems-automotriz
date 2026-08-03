@@ -1349,6 +1349,8 @@ async function abrirNuevoInventario() {
     var el = document.getElementById(id);
     if (el) el.disabled = false;
   });
+  const invStockNuevo = document.getElementById('inv-stock');
+  if (invStockNuevo) { invStockNuevo.disabled = false; invStockNuevo.title = ''; }
   document.getElementById('modal-inv-titulo').textContent = 'NUEVO ARTICULO';
   document.getElementById('alerta-inv-ok').style.display = 'none';
   document.getElementById('alerta-inv-err').style.display = 'none';
@@ -1407,8 +1409,11 @@ async function abrirEditarInventario(id) {
   document.getElementById('alerta-inv-ok').style.display = 'none';
   document.getElementById('alerta-inv-err').style.display = 'none';
 
-  // Bloquear todos los campos excepto Parámetros de Gestión (EOQ/Reorden/JIT)
-  ['inv-categoria','inv-tipo-articulo','inv-codigo','inv-nombre','inv-descripcion','inv-unidad'].forEach(function(id) {
+  // Bloquear Categoría/Tipo/Código/Nombre/Unidad al editar (podrían romper
+  // coherencia con movimientos históricos si cambian después de que el
+  // artículo ya tiene stock/movimientos). Descripción queda editable --
+  // es solo texto informativo, sin ninguna referencia histórica que proteger.
+  ['inv-categoria','inv-tipo-articulo','inv-codigo','inv-nombre','inv-unidad'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.disabled = true;
   });
@@ -1481,7 +1486,7 @@ async function guardarInventario() {
     const id_categoria    = parseInt(document.getElementById('inv-categoria')?.value) || null;
     const id_tipo_articulo = parseInt(document.getElementById('inv-tipo-articulo')?.value) || null;
     const ventaFinal     = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? venta : undefined;
-    const datos = { nombre_articulo: nombre, descripcion_articulo: desc || null, codigo_articulo: codigo || null,
+    const datos = { nombre_articulo: nombre, descripcion: desc || null, codigo_articulo: codigo || null,
       stock_minimo_articulo: stockMin, precio_costo_moneda: costo,
       id_empresa: _empresaActiva ? _empresaActiva.id_empresa : null,
       ...(ventaFinal !== undefined ? { precio_venta_moneda: ventaFinal } : {}),
