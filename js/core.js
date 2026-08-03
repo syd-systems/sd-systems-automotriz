@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723117';
+const SYD_VERSION = '20260723118';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -666,7 +666,7 @@ async function cerrarSesionInactividad() {
 // ─── RELOJ ───
 function actualizarReloj() {
   const ahora = new Date();
-  const f = ahora.toLocaleDateString('es-VE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  const f = ahora.toLocaleDateString('es-VE', { timeZone: 'America/Caracas',  weekday:'long', year:'numeric', month:'long', day:'numeric' });
   const h = ahora.toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' });
   const el = document.getElementById('topbar-fecha');
   if (el) el.textContent = `${f}  ${h}`;
@@ -1531,7 +1531,7 @@ async function renderUsuarios(filtro) {
           </div>
         </td>
         <td style="font-size:11px;color:var(--suave)">
-          <div>Reg: ${new Date(u.fecha_registro).toLocaleDateString('es-VE')}</div>
+          <div>Reg: ${new Date(u.fecha_registro).toLocaleDateString('es-VE', { timeZone: 'America/Caracas' })}</div>
           <div style="margin-top:3px">Ent: ${ultimaCon}</div>
           <div style="margin-top:3px;color:#444">Sal: ${ultimaDes}</div>
         </td>
@@ -1634,7 +1634,7 @@ async function verFichaUsuario(id) {
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Última Conexión</div>'
     + '<div style="font-size:12px">' + (u.ultima_conexion ? new Date(u.ultima_conexion).toLocaleString('es-VE', { timeZone: 'America/Caracas', day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'Nunca') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Registrado</div>'
-    + '<div style="font-size:12px">' + new Date(u.fecha_registro).toLocaleDateString('es-VE') + '</div></div>'
+    + '<div style="font-size:12px">' + new Date(u.fecha_registro).toLocaleDateString('es-VE', { timeZone: 'America/Caracas' }) + '</div></div>'
     + '</div>'
     + (u.administrador ? '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--naranja)">👑 Acceso total al sistema — Administrador</div>'
       : ('<div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;margin-top:4px">Permisos Asignados</div>'
@@ -2373,7 +2373,7 @@ async function renderTasas() {
         const usdHA    = fAntes ? getValorFecha(histUsd,  fAntes) : null;
         const eurHA    = fAntes ? getValorFecha(histEur,  fAntes) : null;
         const usdtHA   = fAntes ? getValorFecha(histUsdt, fAntes) : null;
-        const fechaFmt = new Date(f + 'T12:00:00').toLocaleDateString('es-VE', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+        const fechaFmt = new Date(f + 'T12:00:00').toLocaleDateString('es-VE', { timeZone: 'America/Caracas',  weekday:'short', day:'2-digit', month:'short', year:'numeric' });
         filasHist += '<tr>'
           + '<td style="font-size:12px;color:var(--suave);white-space:nowrap;padding:12px 16px">' + fechaFmt + '</td>'
           + celdaHist(usdH,  usdHA)
@@ -2387,7 +2387,7 @@ async function renderTasas() {
 
     // ── Próxima tasa hábil ──
     let proximaHTML = '';
-    const fechaHoyFmt = new Date(vigenteFecha + 'T12:00:00').toLocaleDateString('es-VE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+    const fechaHoyFmt = new Date(vigenteFecha + 'T12:00:00').toLocaleDateString('es-VE', { timeZone: 'America/Caracas',  weekday:'long', day:'2-digit', month:'long', year:'numeric' });
     const fechaHoyCap = fechaHoyFmt.charAt(0).toUpperCase() + fechaHoyFmt.slice(1);
 
     if (proximaFecha) {
@@ -2410,7 +2410,7 @@ async function renderTasas() {
       const pEur    = _dbPEur ? parseFloat(_dbPEur.tipo_cambio) : getValorFecha(histEur,  proximaFecha);
       const pUsdt   = getValorFecha(histUsdt, proximaFecha);
       const subLabel= (_dbPUsd || _dbPEur) ? 'Publicada por el BCV' : 'Disponible anticipadamente';
-      const pFmt    = new Date(proximaFecha + 'T12:00:00').toLocaleDateString('es-VE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+      const pFmt    = new Date(proximaFecha + 'T12:00:00').toLocaleDateString('es-VE', { timeZone: 'America/Caracas',  weekday:'long', day:'2-digit', month:'long', year:'numeric' });
       const pCap    = pFmt.charAt(0).toUpperCase() + pFmt.slice(1);
       const label   = 'FECHA VALOR : ' + pCap;
 
@@ -2559,10 +2559,10 @@ async function consultarTasaPorFecha() {
     const usdtVal = getValor(histUsdt, fechaBuscar);
 
     // Formatear fecha mostrada
-    const fechaMostrar = new Date(fechaBuscar + 'T12:00:00').toLocaleDateString('es-VE', {
+    const fechaMostrar = new Date(fechaBuscar + 'T12:00:00').toLocaleDateString('es-VE', { timeZone: 'America/Caracas', 
       weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
     });
-    const fechaOrig = esFDS ? new Date(fecha + 'T12:00:00').toLocaleDateString('es-VE', {
+    const fechaOrig = esFDS ? new Date(fecha + 'T12:00:00').toLocaleDateString('es-VE', { timeZone: 'America/Caracas', 
       weekday: 'long', day: '2-digit', month: 'long'
     }) : null;
     const capFecha = fechaMostrar.charAt(0).toUpperCase() + fechaMostrar.slice(1);
