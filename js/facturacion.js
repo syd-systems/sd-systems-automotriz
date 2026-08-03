@@ -61,7 +61,7 @@ async function renderFacturas() {
       const prop   = f.propietarios;
       return '<tr data-id="' + f.id_factura + '">'
         + '<td><div style="font-family:var(--font-display);font-size:17px;color:var(--naranja)">' + (f.numero_factura||'—') + '</div>'
-        + '<div style="font-size:11px;color:var(--suave)">' + (f.fecha_emision||'—') + '</div></td>'
+        + '<div style="font-size:11px;color:var(--suave)">' + (f.fecha_emision ? fmtFecha(f.fecha_emision) : '—') + '</div></td>'
         + '<td style="font-size:12px">' + (emisor ? emisor.nombre : '—') + '</td>'
         + '<td style="font-size:12px">' + (prop ? prop.nombre_completo : (f.receptor_nombre||'—')) + '</td>'
         + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
@@ -637,7 +637,7 @@ async function verFichaFactura(id) {
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">'
       + '<div><div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">'+(f.numero_factura||'—')+'</div>'
       + '<span class="badge '+est.clase+'">'+est.label+'</span>'
-      + '<div style="font-size:11px;color:var(--suave);margin-top:4px">Fecha: '+(f.fecha_emision||'—')+'</div></div>'
+      + '<div style="font-size:11px;color:var(--suave);margin-top:4px">Fecha: '+(f.fecha_emision ? fmtFecha(f.fecha_emision) : '—')+'</div></div>'
       + (puedo('FACTURAS','VER_TOTALES')
           ? '<div style="text-align:right"><div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">TOTAL</div>'
             + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">'+fmtF(f.total_usd)+'</div>'
