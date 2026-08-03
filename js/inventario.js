@@ -1317,7 +1317,7 @@ async function anularMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
     : '—';
   document.getElementById('anulacion-info-area').textContent  = areaInfo;
   const fecha = tipo === 'ENTRADA' ? (movOrig.fecha_entrada || movOrig.fecha_registro) : (movOrig.fecha_salida || movOrig.fecha_registro);
-  document.getElementById('anulacion-info-fecha').textContent = fecha ? fecha.slice(0,10) : '—';
+  document.getElementById('anulacion-info-fecha').textContent = fecha ? fecha.slice(0,10).split('-').reverse().join('/') : '—';
   document.getElementById('anulacion-clave').value = '';
   document.getElementById('alerta-anulacion-ok').style.display  = 'none';
   document.getElementById('alerta-anulacion-err').style.display = 'none';
