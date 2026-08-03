@@ -482,17 +482,19 @@ async function verFichaInventario(id) {
     btnEliminar._id = r.id_articulo; btnEliminar._nombre = r.nombre_articulo;
     btnEliminar.onclick = function() { cerrarModal('modal-ficha-inv'); eliminarInventario(this._id, this._nombre); };
     btnEliminar.style.display = 'none'; // oculto por defecto, se muestra solo si no tiene entradas
+    const msgElReset = document.getElementById('ficha-inv-msg-eliminar');
+    if (msgElReset) msgElReset.style.display = 'none'; // resetear por si quedó visible de otro artículo
     if (puedo('INVENTARIO','ELIMINAR')) {
       api('stock_entradas','GET',null,'?id_articulo=eq.'+r.id_articulo+'&select=id_entrada&limit=1').then(function(ents) {
         if (!ents || !ents.length) {
           btnEliminar.style.display = '';
           btnEliminar.title = '';
+          if (msgElReset) msgElReset.style.display = 'none';
         } else {
           // Mostrar mensaje explicativo debajo del historial
-          const msgEl = document.getElementById('ficha-inv-msg-eliminar');
-          if (msgEl) {
-            msgEl.textContent = '⚠ Este artículo no puede eliminarse porque tiene movimientos de stock registrados. Para darlo de baja, márquelo como inactivo desde Editar.';
-            msgEl.style.display = 'block';
+          if (msgElReset) {
+            msgElReset.textContent = '⚠ Este artículo no puede eliminarse porque tiene movimientos de stock registrados. Para darlo de baja, márquelo como inactivo desde Editar.';
+            msgElReset.style.display = 'block';
           }
         }
       });
