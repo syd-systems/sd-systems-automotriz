@@ -828,16 +828,22 @@ async function _guardarOSInterno() {
   const errEl       = document.getElementById('alerta-os-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
 
-  // Validar que tenga al menos un servicio o consumible
-  const tieneServicios   = osServiciosLineas && osServiciosLineas.length > 0;
-  const tieneConsumibles = osArtículosLineas && osArtículosLineas.length > 0;
-  if (!tieneServicios && !tieneConsumibles) {
-    errEl.textContent = 'Debe agregar al menos un Servicio o un Consumible antes de guardar la OS.';
+  // Validar Vehículo y Fecha de Entrada primero -- son los campos que
+  // aparecen más arriba en el formulario.
+  if (!vehId) {
+    errEl.textContent = 'Debe buscar y seleccionar un vehículo.';
     errEl.style.display = 'block';
+    document.getElementById('os-placa-bus')?.focus();
+    return;
+  }
+  if (!fechaEnt) {
+    errEl.textContent = 'La fecha de entrada es obligatoria.';
+    errEl.style.display = 'block';
+    document.getElementById('os-fecha-entrada')?.focus();
     return;
   }
 
-  // Validar fechas obligatorias según estado
+  // Validar fechas obligatorias según estado (más abajo en el formulario)
   if (estado === 'CERRADA' && !fechaCierre) {
     errEl.textContent = 'Debe ingresar la Fecha de Cierre para cerrar la OS.';
     errEl.style.display = 'block';
@@ -849,8 +855,16 @@ async function _guardarOSInterno() {
     document.getElementById('os-fecha-anulacion')?.focus(); return;
   }
 
-  if (!vehId) { errEl.textContent = 'Debe buscar y seleccionar un vehículo.'; errEl.style.display = 'block'; return; }
-  if (!fechaEnt) { errEl.textContent = 'La fecha de entrada es obligatoria.'; errEl.style.display = 'block'; return; }
+  // Validar que tenga al menos un servicio o artículo -- estas secciones
+  // están más abajo en el formulario, se revisan al final.
+  const tieneServicios   = osServiciosLineas && osServiciosLineas.length > 0;
+  const tieneConsumibles = osArtículosLineas && osArtículosLineas.length > 0;
+  if (!tieneServicios && !tieneConsumibles) {
+    errEl.textContent = 'Debe agregar al menos un Servicio o un Artículo antes de guardar la OS.';
+    errEl.style.display = 'block';
+    document.getElementById('os-sel-grupo-cat')?.focus();
+    return;
+  }
 
   const tasaUSDGuardar = tasasDisponiblesOS.USD || tasaActualOS || 1;
 
@@ -1334,8 +1348,8 @@ async function recalcularTasaOS(id, nuevaTasa) {
 async function cargarSelectsOS() {
   try {
     if (!catalogoCache.length) catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=grupo.asc,nombre.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
-    inventarioCache = await api('inventario_almacen', 'GET', null, '?order=nombre.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
-  } catch(e) {}
+    inventarioCache = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
+  } catch(e) { console.warn('Error cargando catalogo/inventario para OS:', e); }
 
   // ── Área que realiza el servicio: se resuelve sola por el usuario (ver
   // _resolverAreaOS), no se carga como catálogo aquí. ──
@@ -1362,7 +1376,7 @@ async function cargarSelectsOS() {
 
   // ── Cargar selector de INVENTARIO ──
   const selInv = document.getElementById('os-sel-inv');
-  if (selInv) {
+  if (selInv) try {
     // Calcular saldo por área si no está disponible y el usuario no tiene permiso general
     if (!_invSaldoArea && !sesionActual?.administrador && !puedo('INVENTARIO','VER_INVENTARIO_GENERAL') && inventarioCache.length > 0) {
       try {
@@ -1411,7 +1425,7 @@ async function cargarSelectsOS() {
           const stock = stockMostrarArticulo(r.id_articulo);
           return '<option value="' + r.id_articulo + '">' + r.nombre_articulo + ' (Stock: ' + stock + ') — $' + parseFloat(r.precio_venta_moneda || 0).toFixed(2) + '</option>';
         }).join('');
-  }
+  } catch(eInvSel) { console.warn('Error cargando selector de Mercancías en OS:', eInvSel); }
 }
 
 // ── Filtrar servicios al cambiar el Grupo ──
