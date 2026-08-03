@@ -828,18 +828,30 @@ async function _guardarOSInterno() {
   const errEl       = document.getElementById('alerta-os-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
 
-  // Validar Vehículo y Fecha de Entrada primero -- son los campos que
-  // aparecen más arriba en el formulario.
+  // Validar Vehículo, Km de Entrada, Fecha de Entrada y Fecha Prometida --
+  // son los campos que aparecen más arriba en el formulario, en ese orden.
   if (!vehId) {
     errEl.textContent = 'Debe buscar y seleccionar un vehículo.';
     errEl.style.display = 'block';
     document.getElementById('os-placa-bus')?.focus();
     return;
   }
+  if (km === null) {
+    errEl.textContent = 'El Km de Entrada es obligatorio.';
+    errEl.style.display = 'block';
+    document.getElementById('os-km')?.focus();
+    return;
+  }
   if (!fechaEnt) {
     errEl.textContent = 'La fecha de entrada es obligatoria.';
     errEl.style.display = 'block';
     document.getElementById('os-fecha-entrada')?.focus();
+    return;
+  }
+  if (!fechaProm) {
+    errEl.textContent = 'La Fecha Prometida es obligatoria.';
+    errEl.style.display = 'block';
+    document.getElementById('os-fecha-prometida')?.focus();
     return;
   }
 
@@ -853,6 +865,12 @@ async function _guardarOSInterno() {
     errEl.textContent = 'Debe ingresar la Fecha de Anulación para anular la OS.';
     errEl.style.display = 'block';
     document.getElementById('os-fecha-anulacion')?.focus(); return;
+  }
+  if (!diagnostico) {
+    errEl.textContent = 'El Diagnóstico es obligatorio.';
+    errEl.style.display = 'block';
+    document.getElementById('os-diagnostico')?.focus();
+    return;
   }
 
   // Validar que tenga al menos un servicio o artículo -- estas secciones
