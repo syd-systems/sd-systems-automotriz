@@ -164,7 +164,7 @@ async function renderInventario(filtro) {
       } catch(e) {}
     }
     const itemsTodos = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&select=*' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')) || [];
-    const items = itemsTodos.filter(function(r) { return r.estado !== 'INACTIVO'; });
+    const items = itemsTodos; // se muestran Activos e Inactivos; se distinguen por la columna Estado
     inventarioCache = items;
 
     // Calcular saldo por área (función centralizada) — ANTES de cualquier filtro de stock,
@@ -302,14 +302,15 @@ function invRenderTabla(items, cont) {
                 + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margenMostrar.toFixed(1) + '%</div></td>';
             })()
           : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
+      + '<td><span class="badge ' + (r.estado === 'INACTIVO' ? 'badge-rojo' : 'badge-verde') + '">' + (r.estado || 'ACTIVO') + '</span></td>'
       + '<td><div style="display:flex;gap:6px">'
       + '<button class="btn-naranja" onclick="verFichaInventario(' + r.id_articulo + ')">Ver</button>'
       + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" style="border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="abrirStockArticulo(' + r.id_articulo + ',\'' + r.nombre_articulo.replace(/'/g,"\\'"  ) + '\')" >Stock</button>' : '')
       + '</div></td></tr>';
   }).join('');
   cont.innerHTML = '<div class="tabla-container"><table><thead><tr>'
-    + '<th>Artículo</th><th>Stock</th><th>Precio Costo</th><th>Precio Venta</th><th>Acción</th>'
-    + '</tr></thead><tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin artículos registrados</td></tr>') + '</tbody></table></div>';
+    + '<th>Artículo</th><th>Stock</th><th>Precio Costo</th><th>Precio Venta</th><th>Estado</th><th>Acción</th>'
+    + '</tr></thead><tbody>' + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">Sin artículos registrados</td></tr>') + '</tbody></table></div>';
 }
 
 function invRenderABC(items, cont) {
