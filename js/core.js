@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723114';
+const SYD_VERSION = '20260723115';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -751,6 +751,15 @@ async function verificarSesionActiva() {
           `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`);
       } catch(eP) {}
     }
+
+    // Heartbeat -- si llegamos hasta aquí, la sesión está sana (no se
+    // expulsó en ningún CASO anterior). Actualizar ultima_conexion para
+    // que la lista de Usuarios pueda mostrar correctamente "En línea"
+    // mientras la sesión siga activa, no solo en el momento del login.
+    try {
+      await api('usuarios', 'PATCH', { ultima_conexion: new Date().toISOString() },
+        `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`);
+    } catch(eHb) {}
   } catch(e) {}
 }
 let _pollingInterval = setInterval(verificarSesionActiva, 30000);
@@ -868,7 +877,7 @@ async function iniciarSesion() {
     await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correo), {
       method: 'PATCH',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ sesion_activa: true, sesion_invalidada: false, ultimo_acceso: new Date().toISOString(), token_sesion: miToken })
+      body: JSON.stringify({ sesion_activa: true, sesion_invalidada: false, ultimo_acceso: new Date().toISOString(), ultima_conexion: new Date().toISOString(), token_sesion: miToken })
     });
     // Reiniciar polling DESPUÉS de confirmar el token en BD
     clearInterval(_pollingInterval);
