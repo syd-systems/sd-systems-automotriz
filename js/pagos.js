@@ -840,7 +840,7 @@ async function guardarTasaBCVManual() {
 
     await Promise.all([upsertTasa('USD', usd), upsertTasa('EUR', eur)]);
 
-    const pFmt = new Date(fecha + 'T12:00:00').toLocaleDateString('es-VE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+    const pFmt = new Date(fecha + 'T12:00:00').toLocaleDateString('es-VE', { timeZone: 'America/Caracas',  weekday:'long', day:'2-digit', month:'long', year:'numeric' });
     const pCap = pFmt.charAt(0).toUpperCase() + pFmt.slice(1);
 
     msg.innerHTML = '<div class="alerta alerta-exito" style="display:block">✓ Tasas BCV guardadas para <strong>' + pCap + '</strong> — USD: ' + usd.toFixed(8) + ' · EUR: ' + eur.toFixed(8) + '</div>';
@@ -901,7 +901,7 @@ async function sincronizarTasasBCV(btn) {
     const fechaVal = data.fecha; // YYYY-MM-DD
 
     // Formatear fecha
-    const pFmt = new Date(fechaVal + 'T12:00:00').toLocaleDateString('es-VE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+    const pFmt = new Date(fechaVal + 'T12:00:00').toLocaleDateString('es-VE', { timeZone: 'America/Caracas',  weekday:'long', day:'2-digit', month:'long', year:'numeric' });
     const pCap = pFmt.charAt(0).toUpperCase() + pFmt.slice(1);
 
     // Actualizar sección FECHA VALOR visualmente
