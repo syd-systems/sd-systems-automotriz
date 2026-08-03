@@ -1105,11 +1105,13 @@ async function anularOS(id, numero) {
       return;
     }
   } catch(eFactAnul) { console.warn('Error verificando factura asociada:', eFactAnul); }
-  if (!confirm('¿Anular la orden ' + numero + '? Se restaurará el stock de los artículos utilizados.')) return;
+  if (!confirm('¿Anular la orden ' + numero + '? Esto no revierte el stock: la mercancía ya entregada al Taller sigue siendo su responsabilidad; si debe devolverse a Compras, hágalo con una Transferencia explícita.')) return;
   try {
     const hoyAnul = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
-    // Restaurar stock ANTES de anular
-    await ajustarStockOS(id, 'restaurar');
+    // Anular es solo un cambio de estado del documento -- NO mueve stock.
+    // La mercancía entregada al Taller vía esta OS es responsabilidad del
+    // Taller desde ese momento; anular la OS no la teletransporta de vuelta
+    // a Compras. Si hace falta devolverla, es una Transferencia aparte.
     await api('ordenes_servicio', 'PATCH', {
       estado: 'ANULADA',
       fecha_estado: hoyAnul,
@@ -1125,11 +1127,10 @@ async function reabrirOS(id, numero) {
     alert('No tiene permiso para reabrir órdenes de servicio.');
     return;
   }
-  if (!confirm('¿Reabrir la orden ' + numero + '? Se descontará nuevamente el stock de los artículos.')) return;
+  if (!confirm('¿Reabrir la orden ' + numero + '? El estado del documento cambia a ABIERTA; el stock no se ve afectado (la anulación tampoco lo afectó).')) return;
   try {
     const hoyReab = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
-    // Descontar stock nuevamente al reabrir
-    await ajustarStockOS(id, 'descontar');
+    // Reabrir tampoco mueve stock -- ver nota en anularOS().
     await api('ordenes_servicio', 'PATCH', {
       estado: 'ABIERTA',
       fecha_estado: hoyReab,
