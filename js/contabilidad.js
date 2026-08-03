@@ -538,7 +538,7 @@ function contRenderLineasForm() {
                 + ' onchange="contSetLinea(' + i + ',\'' + tipoStr + '\',parseFloat(this.value)||0,parseFloat(document.getElementById(\'cont-tl-' + i + '\').value)||1)"'
                 + ' style="width:100%;background:var(--gris2);border:1px solid ' + colorB + ';color:' + colorT + ';font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right"></td>'
                 + '<td style="padding:4px;text-align:right;font-family:var(--font-mono);font-size:12px;color:' + colorT + ';background:rgba(255,255,255,0.02);padding-right:10px">'
-                + (montoFunc > 0 ? montoFunc.toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—') + '</td>';
+                + (montoFunc > 0 ? montoFunc.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2,maximumFractionDigits:2}) : '—') + '</td>';
             })()
           + '<td style="padding:4px;text-align:center"><button onclick="contLineasAsiento.splice(' + i + ',1);contRenderLineasForm()" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px">✕</button></td>'
           + '</tr>';
