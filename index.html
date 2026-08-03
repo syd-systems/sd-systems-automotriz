@@ -1350,17 +1350,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260723093"></script>
-<script src="js/parametros.js?v=20260723093"></script>
-<script src="js/empresas.js?v=20260723093"></script>
-<script src="js/facturacion.js?v=20260723093"></script>
-<script src="js/inventario.js?v=20260723093"></script>
-<script src="js/contabilidad.js?v=20260723093"></script>
-<script src="js/pagos.js?v=20260723093"></script>
-<script src="js/vehiculos.js?v=20260723093"></script>
-<script src="js/catalogo.js?v=20260723093"></script>
-<script src="js/inventario2.js?v=20260723093"></script>
-<script src="js/ordenes.js?v=20260723093"></script>
+<script src="js/core.js?v=20260723094"></script>
+<script src="js/parametros.js?v=20260723094"></script>
+<script src="js/empresas.js?v=20260723094"></script>
+<script src="js/facturacion.js?v=20260723094"></script>
+<script src="js/inventario.js?v=20260723094"></script>
+<script src="js/contabilidad.js?v=20260723094"></script>
+<script src="js/pagos.js?v=20260723094"></script>
+<script src="js/vehiculos.js?v=20260723094"></script>
+<script src="js/catalogo.js?v=20260723094"></script>
+<script src="js/inventario2.js?v=20260723094"></script>
+<script src="js/ordenes.js?v=20260723094"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4414,19 +4414,6 @@
         </div>
       </div>
 
-      <div class="form-grid">
-        <div class="form-campo">
-          <label>Referencia *</label>
-          <input type="text" id="exec-pago-ref" placeholder="N° referencia bancaria o comprobante"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-        </div>
-        <div class="form-campo">
-          <label>Comprobante de Pago (opcional)</label>
-          <input type="file" id="exec-pago-archivo" accept="image/*,application/pdf"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
-        </div>
-      </div>
-
       <!-- Datos de pago del proveedor -- se muestran solo si el Método de Pago es tipo Transferencia -->
       <div class="form-grid" id="exec-pago-via-cont" style="display:none;margin-bottom:16px">
         <div class="form-campo form-full">
@@ -4447,6 +4434,19 @@
       </div>
       <div id="exec-pago-manual-info" style="display:none;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--suave)">
         Este proveedor no tiene datos bancarios ni de Pago Móvil registrados en su ficha.
+      </div>
+
+      <div class="form-grid">
+        <div class="form-campo">
+          <label>Referencia *</label>
+          <input type="text" id="exec-pago-ref" placeholder="N° referencia bancaria o comprobante"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+        </div>
+        <div class="form-campo">
+          <label>Comprobante de Pago (opcional)</label>
+          <input type="file" id="exec-pago-archivo" accept="image/*,application/pdf"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+        </div>
       </div>
       <div class="form-grid">
         <!-- IGTF — solo si aplica (pago en USD, efectivo o proveedor Contribuyente Especial). El IVA ya se contabilizó al crear la Obligación de Pago, no se vuelve a tocar aquí. -->
