@@ -1199,7 +1199,7 @@ async function verFichaEmpleado(id) {
     // Datos Personales
     + '<div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;border-bottom:1px solid var(--borde);padding-bottom:6px">Datos Personales</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
-    + (verDatos ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Fecha Nacimiento</div><div style="font-size:13px">' + (e.fecha_nacimiento||'—') + '</div></div>' : '')
+    + (verDatos ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Fecha Nacimiento</div><div style="font-size:13px">' + (e.fecha_nacimiento ? fmtFecha(e.fecha_nacimiento) : '—') + '</div></div>' : '')
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Estado Civil</div><div style="font-size:13px">' + getNombre(p.civiles, e.id_estado_civil) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Sexo</div><div style="font-size:13px">' + getNombre(p.sexos, e.id_sexo) + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Nivel Educativo</div><div style="font-size:13px">' + getNombre(p.niveles, e.id_nivel_educativo) + '</div></div>'
@@ -1234,7 +1234,7 @@ async function verFichaEmpleado(id) {
     + (verDatos && e.bono_transporte   ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Bono Transporte</div><div style="font-family:var(--font-mono)">' + fmtUSD(e.bono_transporte) + '</div></div>' : '')
     + (verDatos && e.bono_productividad? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Bono Productividad</div><div style="font-family:var(--font-mono)">' + fmtUSD(e.bono_productividad) + '</div></div>' : '')
     + (verDatos && e.comision_pct      ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Comisión</div><div style="font-family:var(--font-mono)">' + e.comision_pct + '%</div></div>' : '')
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">F. Ingreso</div><div style="font-size:13px">' + (e.fecha_ingreso||'—') + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">F. Ingreso</div><div style="font-size:13px">' + (e.fecha_ingreso ? fmtFecha(e.fecha_ingreso) : '—') + '</div></div>'
     + (e.fecha_egreso ? '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">F. Egreso</div><div style="font-size:13px">' + fmtFecha(e.fecha_egreso) + '</div></div>' : '')
     + '</div>'
 
