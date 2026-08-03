@@ -824,7 +824,7 @@ async function abrirStockArticulo(id, nombre) {
   var cppActual   = parseFloat(r.precio_costo_moneda)   || 0;
   var ventaActual = parseFloat(r.precio_venta_moneda)   || 0;
   try {
-    var qs = '?id_articulo=eq.' + id + '&select=precio_costo_moneda,precio_venta_moneda,unidad';
+    var qs = '?id_articulo=eq.' + id + '&select=precio_costo_moneda,precio_venta_moneda,unidad,estado';
     if (_empresaActiva && _empresaActiva.id_empresa) qs += '&id_empresa=eq.' + _empresaActiva.id_empresa;
     var fresh = await api('inventario_almacen', 'GET', null, qs);
     if (fresh && fresh[0]) {
@@ -832,11 +832,13 @@ async function abrirStockArticulo(id, nombre) {
       if (fresh[0].precio_venta_moneda   != null) ventaActual = parseFloat(fresh[0].precio_venta_moneda);
       r.precio_costo_moneda   = cppActual;
       r.precio_venta_moneda   = ventaActual;
+      r.estado = fresh[0].estado;
     }
   } catch(e) { console.warn('abrirStockArticulo GET fresco:', e.message); }
   if (stockActual === 0) { cppActual = 0; ventaActual = 0; } // sin stock, sin costo/venta que mostrar
 
-  document.getElementById('stock-art-nombre').textContent = r.nombre_articulo;
+  const inactivoArt = r.estado === 'INACTIVO';
+  document.getElementById('stock-art-nombre').textContent = r.nombre_articulo + (inactivoArt ? ' (INACTIVO)' : '');
   document.getElementById('stock-art-stock').textContent  = stockActual + ' ' + (r.unidad || 'UND');
 
   const ventaCont = document.getElementById('stock-art-venta-cont');
@@ -856,8 +858,10 @@ async function abrirStockArticulo(id, nombre) {
     if (costoCont) costoCont.style.display = 'none';
   }
 
-  document.getElementById('stock-btn-entrada').style.display  = puedo('INVENTARIO','ENTRADA_STOCK') ? '' : 'none';
-  document.getElementById('stock-btn-salida').style.display   = puedo('INVENTARIO','SALIDA_STOCK')  ? '' : 'none';
+  // Si está Inactivo, ocultar Entrada/Salida sin importar el permiso --
+  // el Historial se mantiene siempre disponible.
+  document.getElementById('stock-btn-entrada').style.display  = (puedo('INVENTARIO','ENTRADA_STOCK') && !inactivoArt) ? '' : 'none';
+  document.getElementById('stock-btn-salida').style.display   = (puedo('INVENTARIO','SALIDA_STOCK')  && !inactivoArt) ? '' : 'none';
   document.getElementById('stock-btn-historial').style.display = puedo('INVENTARIO','VER')          ? '' : 'none';
   const faltanteCont = document.getElementById('stock-btn-faltante-cont');
   if (faltanteCont) faltanteCont.style.display = puedo('INVENTARIO','AJUSTE_INCIDENCIA') ? '' : 'none';
@@ -1756,6 +1760,15 @@ async function cargarUsuarioReceptorEntrada() {
 // ─── SALIDA DE STOCK ───
 async function abrirSalidaStock(id, nombre) {
   if (!puedo('INVENTARIO','SALIDA_STOCK')) { alert('No tiene permiso para registrar salidas de stock.'); return; }
+
+  // Bloquear si el artículo está Inactivo -- mismo criterio que Entrada.
+  try {
+    const estRows = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id+'&select=estado');
+    if (estRows && estRows[0] && estRows[0].estado === 'INACTIVO') {
+      alert('Este artículo está Inactivo. Reactívelo desde Editar antes de registrar una Salida.');
+      return;
+    }
+  } catch(eEstSal) { console.warn('Error verificando estado del artículo:', eEstSal); }
 
   // Cargar áreas
   let areas = [];
