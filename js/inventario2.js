@@ -1348,6 +1348,8 @@ async function abrirNuevoInventario() {
     var el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('inv-unidad').value = 'UND';
+  const invEstadoNuevo = document.getElementById('inv-estado');
+  if (invEstadoNuevo) invEstadoNuevo.value = 'ACTIVO';
   var invVentaContN = document.getElementById('inv-venta-cont');
   if (invVentaContN) invVentaContN.style.display = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? '' : 'none';
   // Asegurar que todos los campos estén habilitados al crear nuevo
@@ -1405,6 +1407,8 @@ async function abrirEditarInventario(id) {
   var invVentaCont = document.getElementById('inv-venta-cont');
   if (invVentaCont) invVentaCont.style.display = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? '' : 'none';
   document.getElementById('inv-unidad').value = r.unidad || 'UND';
+  const invEstadoEdit = document.getElementById('inv-estado');
+  if (invEstadoEdit) invEstadoEdit.value = r.estado || 'ACTIVO';
   await invCargarCategorias(r.id_categoria_articulo || null);
   await invCargarTiposArticulo(r.id_tipo_articulo || null);
   document.getElementById('inv-demanda-anual').value = r.demanda_anual || '';
@@ -1504,6 +1508,7 @@ async function guardarInventario() {
     const id_tipo_articulo = parseInt(document.getElementById('inv-tipo-articulo')?.value) || null;
     const ventaFinal     = puedo('INVENTARIO','VER_PRECIOS_VENTA') ? venta : undefined;
     const datos = { nombre_articulo: nombre, descripcion_articulo: desc || null, codigo_articulo: codigo || null,
+      estado: document.getElementById('inv-estado')?.value || 'ACTIVO',
       stock_minimo_articulo: stockMin, precio_costo_moneda: costo,
       id_empresa: _empresaActiva ? _empresaActiva.id_empresa : null,
       ...(ventaFinal !== undefined ? { precio_venta_moneda: ventaFinal } : {}),
