@@ -703,7 +703,7 @@ async function verFichaVehiculo(id) {
         const p = h.propietarios;
         return '<div style="padding:8px 0;border-bottom:1px solid var(--borde)">'
           + '<div style="font-size:12px;font-weight:500">' + (p ? p.nombre_completo : '—') + '</div>'
-          + '<div style="font-size:11px;color:var(--suave);margin-top:3px">' + fmtFecha(h.fecha_desde) + ' → ' + (h.fecha_hasta || 'Desconocido') + '</div>'
+          + '<div style="font-size:11px;color:var(--suave);margin-top:3px">' + fmtFecha(h.fecha_desde) + ' → ' + (h.fecha_hasta ? fmtFecha(h.fecha_hasta) : 'Desconocido') + '</div>'
           + '</div>';
       }).join('')
     : '<div style="color:var(--suave);font-size:12px">Sin propietarios anteriores</div>';
