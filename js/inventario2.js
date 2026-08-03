@@ -1328,6 +1328,8 @@ async function invCargarTiposArticulo(selTipoId) {
 async function abrirNuevoInventario() {
   var infoEl = document.getElementById('inv-info-stock-costo');
   if (infoEl) infoEl.style.display = 'none';
+  var avisoBloqueoNuevo = document.getElementById('inv-aviso-bloqueado');
+  if (avisoBloqueoNuevo) avisoBloqueoNuevo.style.display = 'none';
   // Cargar cuentas del grupo 1.1.03 para nuevo artículo
   try {
     const todasCtasN = await obtenerCuentasContables();
@@ -1409,14 +1411,23 @@ async function abrirEditarInventario(id) {
   document.getElementById('alerta-inv-ok').style.display = 'none';
   document.getElementById('alerta-inv-err').style.display = 'none';
 
-  // Bloquear Categoría/Tipo/Código/Nombre/Unidad al editar (podrían romper
-  // coherencia con movimientos históricos si cambian después de que el
-  // artículo ya tiene stock/movimientos). Descripción queda editable --
-  // es solo texto informativo, sin ninguna referencia histórica que proteger.
-  ['inv-categoria','inv-tipo-articulo','inv-codigo','inv-nombre','inv-unidad'].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) el.disabled = true;
+  // Bloquear Categoría/Tipo/Código/Nombre/Unidad SOLO si el artículo ya
+  // tiene Entradas de Stock registradas (podrían romper coherencia con
+  // movimientos históricos si cambian después). Si nunca se le ha hecho
+  // ninguna Entrada, se permite editar todo libremente -- mismo criterio
+  // que ya usa eliminarInventario() para decidir si se puede borrar.
+  // Descripción queda editable siempre -- es solo texto informativo.
+  let tieneEntradasArt = false;
+  try {
+    const entradasChk = await api('stock_entradas','GET',null,'?id_articulo=eq.'+id+'&select=id_entrada&limit=1');
+    tieneEntradasArt = entradasChk && entradasChk.length > 0;
+  } catch(eChkEnt) { console.warn('Error verificando Entradas del artículo:', eChkEnt); tieneEntradasArt = true; /* por seguridad, bloquear si no se pudo confirmar */ }
+  ['inv-categoria','inv-tipo-articulo','inv-codigo','inv-nombre','inv-unidad'].forEach(function(id2) {
+    var el = document.getElementById(id2);
+    if (el) el.disabled = tieneEntradasArt;
   });
+  const avisoBloqueo = document.getElementById('inv-aviso-bloqueado');
+  if (avisoBloqueo) avisoBloqueo.style.display = tieneEntradasArt ? '' : 'none';
 
   // En edición mostrar stock actual y precio costo como info (solo lectura)
   var infoEl = document.getElementById('inv-info-stock-costo');
