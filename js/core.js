@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723115';
+const SYD_VERSION = '20260723116';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -763,6 +763,7 @@ async function verificarSesionActiva() {
   } catch(e) {}
 }
 let _pollingInterval = setInterval(verificarSesionActiva, 30000);
+let _intervalRefrescarUsuarios = null; // auto-refresco de la lista de Usuarios mientras esa pantalla esté abierta
 
 // ─── LOGIN ───
 document.getElementById('login-clave').addEventListener('keypress', e => {
@@ -1260,6 +1261,11 @@ async function recargarPermisosActuales() {
 }
 
 async function mostrarModulo(modulo, navEl) {
+  // Detener el auto-refresco de la lista de Usuarios si se navega a otro módulo
+  if (modulo !== 'usuarios' && _intervalRefrescarUsuarios) {
+    clearInterval(_intervalRefrescarUsuarios);
+    _intervalRefrescarUsuarios = null;
+  }
   // Verificar notificaciones pendientes al navegar
   verificarNotificacionesPendientes();
   // Quitar activo de todos
@@ -1434,6 +1440,14 @@ async function renderUsuarios(filtro) {
       `<div class="alerta alerta-error" style="display:block">No tiene acceso a este módulo.</div>`;
     return;
   }
+
+  // Auto-refrescar la lista cada 30s (mismo ritmo que el heartbeat de
+  // ultima_conexion) mientras esta pantalla esté abierta, para que el
+  // estado En línea/Desconectado se vea actualizado sin recargar a mano.
+  if (_intervalRefrescarUsuarios) clearInterval(_intervalRefrescarUsuarios);
+  _intervalRefrescarUsuarios = setInterval(function() {
+    renderUsuarios(document.getElementById('buscar-usu')?.value || '');
+  }, 30000);
 
 
   const c = document.getElementById('contenido-principal');
