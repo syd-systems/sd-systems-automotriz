@@ -1330,6 +1330,8 @@ async function abrirNuevoInventario() {
   if (infoEl) infoEl.style.display = 'none';
   var avisoBloqueoNuevo = document.getElementById('inv-aviso-bloqueado');
   if (avisoBloqueoNuevo) avisoBloqueoNuevo.style.display = 'none';
+  var avisoCuentasNuevo = document.getElementById('inv-aviso-cuentas');
+  if (avisoCuentasNuevo) avisoCuentasNuevo.style.display = 'none';
   // Cargar cuentas del grupo 1.1.03 para nuevo artículo
   try {
     const todasCtasN = await obtenerCuentasContables();
@@ -1428,6 +1430,8 @@ async function abrirEditarInventario(id) {
   });
   const avisoBloqueo = document.getElementById('inv-aviso-bloqueado');
   if (avisoBloqueo) avisoBloqueo.style.display = tieneEntradasArt ? '' : 'none';
+  const avisoCuentas = document.getElementById('inv-aviso-cuentas');
+  if (avisoCuentas) avisoCuentas.style.display = tieneEntradasArt ? '' : 'none';
 
   // En edición mostrar stock actual y precio costo como info (solo lectura)
   var infoEl = document.getElementById('inv-info-stock-costo');
