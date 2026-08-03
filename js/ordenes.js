@@ -267,7 +267,7 @@ function validarFechaPrometidaOS(input) {
 function formatearFechaCorta(fechaStr) {
   if (!fechaStr) return '';
   const d = new Date(fechaStr + 'T12:00:00');
-  return d.toLocaleDateString('es-VE', { day:'2-digit', month:'2-digit', year:'numeric' });
+  return d.toLocaleDateString('es-VE', { timeZone: 'America/Caracas',  day:'2-digit', month:'2-digit', year:'numeric' });
 }
 
 function mostrarAlertaFecha(msg) {
