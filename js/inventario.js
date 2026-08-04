@@ -1,6 +1,26 @@
 // ─── S&D Systems — Módulo: INVENTARIO (unificado) ───
 // Fusion de inventario.js + inventario2.js + funciones de facturacion.js
 // Reorganizacion ejecutada el 2026-08-03
+//
+// Fix 2026-08-04: se recuperaron 8 variables globales que se perdieron en
+// la fusión original (el script de extracción solo copió funciones, no
+// las variables sueltas declaradas fuera de ellas).
+let _historialEstado = { id_articulo: null, cursor: null, terminado: false, idAreaH: null, filtro: 'todas' };
+const HISTORIAL_PAGE_SIZE = 50;
+const CAMPOS_EDIT_ENTRADA = ['edit-mov-fecha-negociacion','edit-mov-moneda','edit-mov-cantidad',
+  'edit-mov-precio','edit-mov-precio-venta','edit-mov-motivo','edit-mov-proveedor',
+  'edit-mov-cliente','edit-mov-area-origen','edit-mov-area','edit-mov-empleado',
+  'edit-mov-esquema-pago','edit-mov-obs'];
+const CAMPOS_EDIT_SALIDA = ['edit-sal-fecha','edit-sal-cantidad','edit-sal-precio-venta',
+  'edit-sal-area','edit-sal-empleado','edit-sal-observaciones'];
+let _editMovTipoActual   = null;
+let _editMovPuedeEditar  = false;
+let _editMovEstaPagado   = false;
+var _invVista = 'tabla';
+var _invSaldoConsolidado = null; // { id_articulo: totalTodasLasAreas }
+let _invCategoriasCache = [];
+let _invSaldoArea = null; // Saldo por área del usuario — null = mostrar stock global
+var _fichaInvActual = { id: null, nombre: '' }; // reubicada aqui desde ingresos.js, es de Inventario
 
 // ═══ SECCION: Analisis, Lista General, ABC/EOQ/Reorden, Categorias/Tipos (ex inventario2.js) ═══
 function clasificarABC(items) {
