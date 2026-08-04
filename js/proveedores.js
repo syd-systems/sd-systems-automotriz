@@ -1,5 +1,6 @@
 // ─── S&D Systems — Módulo: PROVEEDORES ───
 // Extraido de inventario.js el 2026-08-03
+let _provBancosCache = null; // cache propia de bancos, independiente de _empParamCache (Empleados)
 
 async function renderProveedores() {
   if (!sesionActual?.administrador && !modulosAcceso.includes('PROVEEDORES')) {
@@ -91,11 +92,11 @@ async function verFichaProveedor(id) {
   if (!p) return;
 
   // Asegurar bancos en cache para mostrar nombres
-  if (!_empParamCache.bancos || !_empParamCache.bancos.length) {
+  if (!_provBancosCache || !_provBancosCache.length) {
     try {
       const bancos = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo');
-      _empParamCache.bancos = bancos || [];
-    } catch(e) { _empParamCache.bancos = []; }
+      _provBancosCache = bancos || [];
+    } catch(e) { _provBancosCache = []; }
   }
 
   const tipoLabel = { 'ORDINARIO':'Contribuyente Ordinario','ESPECIAL':'Contribuyente Especial','FORMAL':'Contribuyente Formal' };
@@ -135,14 +136,14 @@ async function verFichaProveedor(id) {
     // ── Datos Bancarios (solo si "Transferencia" sigue marcado actualmente) ──
     + (aceptaTransferenciaActual && (p.id_banco || p.numero_cuenta) ? '<div style="grid-column:1/-1;margin-top:12px;padding-top:12px;border-top:1px solid var(--borde)"><div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🏦 Datos Bancarios</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'
-      + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Institución Financiera</div><div>' + ((_empParamCache.bancos||[]).find(function(b){return b.id===p.id_banco;})?.nombre || '—') + '</div></div>'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Institución Financiera</div><div>' + ((_provBancosCache||[]).find(function(b){return b.id===p.id_banco;})?.nombre || '—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Tipo de Cuenta</div><div>' + (p.tipo_cuenta||'—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Número de Cuenta</div><div style="font-family:var(--font-mono)">' + (p.numero_cuenta||'—') + '</div></div>'
       + '</div></div>' : '')
     // ── Pago Móvil (solo si "Transferencia" sigue marcado actualmente) ──
     + (aceptaTransferenciaActual && (p.pm_id_banco || p.pm_celular) ? '<div style="grid-column:1/-1;margin-top:12px;padding-top:12px;border-top:1px solid var(--borde)"><div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">📱 Pago Móvil</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'
-      + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Banco</div><div>' + ((_empParamCache.bancos||[]).find(function(b){return b.id===p.pm_id_banco;})?.nombre || '—') + '</div></div>'
+      + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Banco</div><div>' + ((_provBancosCache||[]).find(function(b){return b.id===p.pm_id_banco;})?.nombre || '—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">C.I. / R.I.F</div><div style="font-family:var(--font-mono)">' + (p.pm_ci||'—') + '</div></div>'
       + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">N° Celular</div><div style="font-family:var(--font-mono)">' + (p.pm_celular||'—') + '</div></div>'
       + '</div></div>' : '')
@@ -163,7 +164,7 @@ function onSelBancoProveedor() {
   var restoEl = document.getElementById('prov-num-cuenta-resto');
   if (!sel || !codEl) return;
   var id_banco = parseInt(sel.value);
-  var banco   = (_empParamCache.bancos || []).find(function(b){ return b.id === id_banco; });
+  var banco   = (_provBancosCache || []).find(function(b){ return b.id === id_banco; });
   var codigo  = banco && banco.codigo ? banco.codigo.replace(/\D/g,'').substring(0,4) : '';
   codEl.value = codigo;
   if (restoEl) { restoEl.value = ''; restoEl.focus(); }
@@ -179,7 +180,7 @@ function sincronizarNumCuentaProv() {
 }
 
 function cargarBancosProveedor(id_bancoSel, id_bancoPMSel) {
-  var bancos = _empParamCache.bancos || [];
+  var bancos = _provBancosCache || [];
   var opts = '<option value="">— Seleccionar —</option>'
     + bancos.map(function(b){
         return '<option value="'+b.id+'"'+(b.id===id_bancoSel?' selected':'')+'>'+b.nombre+'</option>';
@@ -226,11 +227,11 @@ async function abrirProveedor(id) {
   document.getElementById('alerta-prov-err').style.display   = 'none';
 
   // Cargar bancos si no están en cache
-  if (!_empParamCache.bancos || !_empParamCache.bancos.length) {
+  if (!_provBancosCache || !_provBancosCache.length) {
     try {
       const bancos = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo');
-      _empParamCache.bancos = bancos || [];
-    } catch(e) { _empParamCache.bancos = []; }
+      _provBancosCache = bancos || [];
+    } catch(e) { _provBancosCache = []; }
   }
   cargarBancosProveedor(p ? (p.id_banco||null) : null, p ? (p.pm_id_banco||null) : null);
   // Cargar categorías de proveedor
