@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723122';
+const SYD_VERSION = '20260723123';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -2862,4 +2862,210 @@ async function notifSolicitarAnulacion() {
   } finally {
     if (btnEsc) { btnEsc.disabled = false; btnEsc.textContent = '⬆ Solicitar Anulación al Superior'; }
   }
+}
+
+
+// ═══ SECCION: Utilidades compartidas (movidas desde facturacion.js) ═══
+
+function emisorQ() {
+  return _empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : '';
+}
+
+function emisorQStart() {
+  return _empresaActiva ? '?id_empresa=eq.' + _empresaActiva.id_empresa : '?';
+}
+
+function fmtFecha(fecha) {
+  if (!fecha) return '—';
+  const f = fecha.substring(0, 10); // YYYY-MM-DD
+  const partes = f.split('-');
+  if (partes.length !== 3) return fecha;
+  return partes[2] + '-' + partes[1] + '-' + partes[0];
+}
+
+async function cargarEmpresasAccesoModal(correo) {
+  const grid = document.getElementById('empresas-acceso-grid');
+  if (!grid) return;
+  try {
+    const todasEmisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id_empresa,nombre,rif');
+    let asignadas = new Set();
+    let idEmpresaNomina = null;
+    if (correo) {
+      const ues = await api('usuarios_empresas','GET',null,
+        '?correo_usuario=eq.'+encodeURIComponent(correo)+'&activo=eq.true&select=id_empresa');
+      ues.forEach(function(u){ asignadas.add(u.id_empresa); });
+      // La empresa donde está registrado como empleado (nómina) debe verse
+      // marcada por defecto, aunque todavía no tenga fila en usuarios_empresas
+      try {
+        const empRows = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correo)+'&select=id_empresa&limit=1');
+        if (empRows && empRows[0] && empRows[0].id_empresa) {
+          idEmpresaNomina = empRows[0].id_empresa;
+          asignadas.add(idEmpresaNomina);
+        }
+      } catch(eEmpN) { console.warn('Error obteniendo empresa de nómina:', eEmpN); }
+    }
+    grid.innerHTML = todasEmisores.map(function(e) {
+      const esNomina = e.id_empresa === idEmpresaNomina;
+      const marcada  = esNomina || asignadas.has(e.id_empresa);
+      const checked  = marcada ? 'checked' : '';
+      const disabled = esNomina ? 'disabled' : '';
+      return '<label style="display:flex;align-items:center;gap:8px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:8px 12px;cursor:'+(esNomina?'not-allowed':'pointer')+';font-size:12px"'+(esNomina?' title="Empresa de Nómina -- no se puede quitar"':'')+'>'
+        + '<input type="checkbox" value="'+e.id_empresa+'" '+checked+' '+disabled+' class="emp-acceso-check" style="accent-color:var(--naranja);width:15px;height:15px">'
+        + '<div><div style="font-weight:600">'+e.nombre+(esNomina ? ' <span style="font-size:10px;color:var(--naranja);font-weight:400">🔒 (Empresa de Nómina)</span>' : '')+'</div>'
+        + (e.rif ? '<div style="font-size:10px;color:var(--suave)">'+e.rif+'</div>' : '')
+        + '</div></label>';
+    }).join('');
+  } catch(e) {
+    grid.innerHTML = '<div style="color:var(--suave);font-size:12px">Error cargando empresas</div>';
+  }
+}
+
+function getEmpresasAccesoSeleccionadas() {
+  const checks = document.querySelectorAll('.emp-acceso-check:checked');
+  return Array.from(checks).map(function(c){ return parseInt(c.value); });
+}
+
+async function hashearClave(clave) {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/hashear_clave', {
+      method: 'POST',
+      headers: {
+        'apikey':        SUPABASE_KEY,
+        'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
+        'Content-Type':  'application/json'
+      },
+      body: JSON.stringify({ p_clave: clave })
+    });
+    return await res.json();
+  } catch(e) {
+    throw new Error('Error hasheando contraseña: ' + e.message);
+  }
+}
+
+async function verificarContrasena(correoUsu, claveIngresada) {
+  try {
+    // Usa el JWT de sesión si existe (todos los llamadores actuales son
+    // re-confirmaciones a mitad de sesión); cae a la anon key solo si no hay sesión
+    const headers = {
+      'apikey':        SUPABASE_KEY,
+      'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
+      'Content-Type':  'application/json'
+    };
+    // Buscar usuario
+    const res = await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' 
+      + encodeURIComponent(correoUsu) 
+      + '&select=correo_usuario,contrasena,estado_usuario,nombre,administrador', { headers });
+    const data = await res.json();
+    if (!data || !data.length) return { ok: false, msg: 'Usuario no encontrado.' };
+    const usu = data[0];
+    if (usu.estado_usuario === 'INACTIVO') return { ok: false, msg: 'Usuario inactivo.' };
+
+    // Verificar bcrypt via RPC
+    const resVerif = await fetch(SUPABASE_URL + '/rest/v1/rpc/verificar_clave', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ p_clave: claveIngresada, p_hash: usu.contrasena })
+    });
+    
+    if (!resVerif.ok) {
+      // Fallback: si RPC falla, intentar comparación directa (compatibilidad)
+      console.warn('RPC verificar_clave falló, usando fallback');
+      return { ok: false, msg: 'Error de autenticación. Contacte al administrador.' };
+    }
+    
+    const valido = await resVerif.json();
+    if (!valido) return { ok: false, msg: 'Contraseña incorrecta.' };
+    return { ok: true, usuario: usu };
+  } catch(e) {
+    return { ok: false, msg: 'Error verificando contraseña: ' + e.message };
+  }
+}
+
+async function validarClaveUsuarioActual(clave) {
+  const correo = sesionActual?.correo_usuario;
+  if (!correo || !clave) return { ok: false, msg: 'Debe ingresar su contraseña.' };
+  const verif = await verificarContrasena(correo, clave);
+  if (!verif.ok) return { ok: false, msg: 'Contraseña incorrecta.' };
+  return { ok: true };
+}
+
+async function validarClaveReceptor(id_empleado, clave) {
+  if (!id_empleado || !clave) return { ok: false, msg: 'Debe seleccionar un empleado remitente e ingresar su contraseña.' };
+  try {
+    // Buscar el correo del empleado
+    const empArr = await api('empleados', 'GET', null, '?id_empleado=eq.' + id_empleado + '&select=id_empleado,nombre_completo,correo');
+    const emp = empArr[0];
+    if (!emp) return { ok: false, msg: 'Empleado no encontrado.' };
+    if (!emp.correo) return { ok: false, msg: 'El empleado remitente no tiene correo registrado en el sistema.' };
+
+    // Buscar usuario por correo y validar contraseña
+    const usuArr = await api('usuarios', 'GET', null,
+      '?correo_usuario=ilike.' + encodeURIComponent(emp.correo) + '&estado_usuario=eq.ACTIVO&select=correo_usuario,contrasena,nombre');
+    const usu = usuArr[0];
+    if (!usu) return { ok: false, msg: 'El empleado "' + emp.nombre_completo + '" no tiene usuario activo en el sistema.' };
+    const verifRec = await verificarContrasena(usu.correo_usuario, clave);
+    if (!verifRec.ok) return { ok: false, msg: '' + emp.nombre_completo + ' Contraseña incorrecta.' };
+
+    return { ok: true, nombre: emp.nombre_completo };
+  } catch(err) {
+    return { ok: false, msg: 'Error validando receptor: ' + err.message };
+  }
+}
+
+async function cargarEmpleadosPorArea(id_area, selectId, soloConPermiso) {
+  // soloConPermiso: si true, filtra solo empleados con permiso INVENTARIO->ENTRADA_STOCK
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  if (!id_area) {
+    sel.innerHTML = '<option value="">— Seleccionar área primero —</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">Cargando...</option>';
+  try {
+    const emps = await api('empleados', 'GET', null,
+      '?id_area=eq.' + id_area + '&estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo,id_cargo,correo,param_cargos(nombre)');
+    if (!emps || !emps.length) {
+      sel.innerHTML = '<option value="">— Sin empleados en esta área —</option>';
+      return;
+    }
+
+    let empsFiltrados = emps;
+
+    if (soloConPermiso) {
+      // Obtener correos con permiso INVENTARIO → ENTRADA_STOCK
+      const perms = await api('usuarios_permisos', 'GET', null,
+        '?modulo=eq.INVENTARIO&accion=eq.ENTRADA_STOCK&select=correo_usuario') || [];
+      const correosAutorizados = perms.map(function(p){ return (p.correo_usuario||'').toLowerCase(); });
+
+      // Cruzar por empleados.correo (el vínculo es correo, no id_usuario)
+      if (correosAutorizados.length) {
+        empsFiltrados = emps.filter(function(e){
+          return e.correo && correosAutorizados.includes(e.correo.toLowerCase());
+        });
+      } else {
+        empsFiltrados = [];
+      }
+    }
+
+    if (!empsFiltrados.length) {
+      sel.innerHTML = '<option value="">— Sin empleados autorizados en esta área —</option>';
+      return;
+    }
+
+    sel.innerHTML = '<option value="">— Seleccionar empleado —</option>'
+      + empsFiltrados.map(function(e) {
+          return '<option value="' + e.id_empleado + '">'
+            + e.nombre_completo
+            + (e.param_cargos ? ' · ' + e.param_cargos.nombre : '')
+            + '</option>';
+        }).join('');
+  } catch(err) {
+    sel.innerHTML = '<option value="">— Error cargando empleados —</option>';
+    console.error('cargarEmpleadosPorArea:', err);
+  }
+}
+
+function parseMontoVE(texto) {
+  const raw = String(texto || '').replace(/\./g,'').replace(',','.');
+  return parseFloat(raw) || 0;
 }
