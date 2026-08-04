@@ -385,6 +385,10 @@ async function abrirNuevaOS() {
   // Resetear grupo al abrir modal
   const grpSel = document.getElementById('os-sel-grupo-cat');
   if (grpSel) grpSel.value = '';
+  // Resetear el precio de Artículos -- quedaba con el valor de la última
+  // mercancía seleccionada en una OS anterior de la misma sesión.
+  const precioInvReset = document.getElementById('os-precio-inv');
+  if (precioInvReset) precioInvReset.value = '';
   abrirModal('modal-os');
   focusFirstField('modal-os');
 }
