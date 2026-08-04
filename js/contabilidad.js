@@ -1087,7 +1087,7 @@ async function contGuardarPagoCxc() {
       estado:      nuevoEstado,
       metodo_pago: metodo,
       referencia:  referencia,
-      fecha_pago:  new Date().toISOString()
+      fecha_cobro: new Date().toISOString()
     },'?id_cxc=eq.'+_pagoCxcActualId);
 
     // Mantener sincronizado el estado de la Factura relacionada, ya que la
