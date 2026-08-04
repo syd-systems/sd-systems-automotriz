@@ -711,7 +711,7 @@ async function verFichaFactura(id) {
               const i = contCxcCache.findIndex(function(x){ return x.id_cxc===c.id_cxc; });
               if (i >= 0) contCxcCache[i] = c; else contCxcCache.push(c);
             });
-            contRegistrarPagoCxc(cxcs[0].id_cxc);
+            contAbrirPagoCxc(cxcs[0].id_cxc);
           } else {
             alert('No se encontró la CxC asociada a esta factura.');
           }
@@ -792,9 +792,7 @@ async function aprobarFactura(id) {
   if (!confirm('¿Confirma la aprobación de esta factura?')) return;
   try {
     await api('facturas','PATCH',{
-      estado: 'APROBADA',
-      aprobado_por: sesionActual.nombre || sesionActual.correo_usuario,
-      fecha_aprobacion: new Date().toISOString()
+      estado: 'APROBADA'
     },'?id_factura=eq.'+id);
     cerrarModal('modal-ficha-fac');
     renderFacturas();
