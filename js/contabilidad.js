@@ -1018,6 +1018,103 @@ function contRenderResultadosHTML(saldos, hasta) {
 // ══════════════════════════════════════════════════════════════
 //  CUENTAS POR COBRAR
 // ══════════════════════════════════════════════════════════════
+let _pagoCxcActualId = null; // id_cxc que se esta cobrando en el modal
+
+async function contAbrirPagoCxc(id_cxc) {
+  const c = (contCxcCache || []).find(function(x) { return x.id_cxc === id_cxc; });
+  if (!c) { alert('No se encontró la Cuenta por Cobrar.'); return; }
+  _pagoCxcActualId = id_cxc;
+
+  const okEl  = document.getElementById('alerta-pago-cxc-ok');
+  const errEl = document.getElementById('alerta-pago-cxc-err');
+  if (okEl)  okEl.style.display  = 'none';
+  if (errEl) errEl.style.display = 'none';
+
+  const saldoPend = parseFloat(c.saldo_usd != null ? c.saldo_usd : c.monto_usd) || 0;
+  document.getElementById('cont-pago-cxc-monto').value  = saldoPend.toFixed(2);
+  document.getElementById('cont-pago-cxc-fecha').value  = getHoyVzla();
+  document.getElementById('cont-pago-cxc-metodo').value = 'EFECTIVO_VES';
+  document.getElementById('cont-pago-cxc-ref').value    = '';
+
+  const infoEl = document.getElementById('cont-pago-cxc-tasa-info');
+  if (infoEl) {
+    infoEl.textContent = 'Saldo pendiente: $ ' + saldoPend.toFixed(2)
+      + (c.tasa_bcv ? ' · Tasa registrada: ' + parseFloat(c.tasa_bcv).toFixed(2) + ' Bs/$' : '');
+  }
+
+  abrirModal('modal-cont-pago-cxc');
+  setTimeout(function(){ document.getElementById('cont-pago-cxc-monto')?.focus(); }, 100);
+}
+
+async function contGuardarPagoCxc() {
+  const okEl  = document.getElementById('alerta-pago-cxc-ok');
+  const errEl = document.getElementById('alerta-pago-cxc-err');
+  okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  if (!_pagoCxcActualId) { errEl.textContent = 'No hay ninguna Cuenta por Cobrar seleccionada.'; errEl.style.display = 'block'; return; }
+
+  const monto = parseFloat(document.getElementById('cont-pago-cxc-monto')?.value);
+  if (!monto || monto <= 0) {
+    errEl.textContent = 'El monto es obligatorio y debe ser mayor a cero.'; errEl.style.display = 'block';
+    document.getElementById('cont-pago-cxc-monto')?.focus(); return;
+  }
+  const fecha = document.getElementById('cont-pago-cxc-fecha')?.value;
+  if (!fecha) {
+    errEl.textContent = 'La fecha es obligatoria.'; errEl.style.display = 'block';
+    document.getElementById('cont-pago-cxc-fecha')?.focus(); return;
+  }
+  const metodo = document.getElementById('cont-pago-cxc-metodo')?.value || null;
+  const referencia = document.getElementById('cont-pago-cxc-ref')?.value.trim() || null;
+
+  try {
+    const rows = await api('cont_cxc','GET',null,'?id_cxc=eq.'+_pagoCxcActualId+'&select=*');
+    if (!rows || !rows[0]) { errEl.textContent = 'La Cuenta por Cobrar ya no existe.'; errEl.style.display = 'block'; return; }
+    const c = rows[0];
+
+    if (monto > parseFloat(c.saldo_usd != null ? c.saldo_usd : c.monto_usd) + 0.01) {
+      errEl.textContent = 'El monto no puede ser mayor al saldo pendiente ($ ' + parseFloat(c.saldo_usd||c.monto_usd).toFixed(2) + ').';
+      errEl.style.display = 'block';
+      document.getElementById('cont-pago-cxc-monto')?.focus(); return;
+    }
+
+    const nuevoPagado = parseFloat((parseFloat(c.pagado_usd||0) + monto).toFixed(2));
+    const nuevoSaldo  = Math.max(0, parseFloat((parseFloat(c.monto_usd||0) - nuevoPagado).toFixed(2)));
+    const nuevoEstado = nuevoSaldo <= 0.01 ? 'PAGADA' : 'PARCIAL';
+
+    await api('cont_cxc','PATCH',{
+      pagado_usd:  nuevoPagado,
+      saldo_usd:   nuevoSaldo,
+      estado:      nuevoEstado,
+      metodo_pago: metodo,
+      referencia:  referencia,
+      fecha_pago:  new Date().toISOString()
+    },'?id_cxc=eq.'+_pagoCxcActualId);
+
+    // Mantener sincronizado el estado de la Factura relacionada, ya que la
+    // lista de Contabilidad (contRenderCxc) se basa en facturas.estado.
+    if (c.id_factura) {
+      await api('facturas','PATCH',{ estado: nuevoEstado },'?id_factura=eq.'+c.id_factura);
+    }
+
+    // Refrescar la cache local
+    const i = contCxcCache.findIndex(function(x){ return x.id_cxc === _pagoCxcActualId; });
+    const cxcActualizada = Object.assign({}, c, { pagado_usd: nuevoPagado, saldo_usd: nuevoSaldo, estado: nuevoEstado });
+    if (i >= 0) contCxcCache[i] = cxcActualizada; else contCxcCache.push(cxcActualizada);
+
+    okEl.textContent = 'Cobro registrado correctamente.';
+    okEl.style.display = 'block';
+    setTimeout(function() {
+      cerrarModal('modal-cont-pago-cxc');
+      cerrarModal('modal-ficha-fac');
+      if (typeof renderFacturas === 'function') renderFacturas();
+      if (document.getElementById('cont-vista-cont') && typeof contRenderCxc === 'function') contRenderCxc();
+    }, 900);
+  } catch(e) {
+    errEl.textContent = 'Error al registrar el cobro: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
 async function contRenderCxc() {
   const cont = document.getElementById('cont-vista-cont');
   if (!cont) return;
