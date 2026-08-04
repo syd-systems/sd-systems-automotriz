@@ -1120,7 +1120,7 @@ async function contRenderCxc() {
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const facturas = await api('facturas','GET',null,'?estado=neq.ANULADA&order=fecha_emision.desc&select=*,propietarios(nombre_completo)'+emisorQ());
+    const facturas = await api('facturas','GET',null,'?estado=neq.ANULADA&order=fecha_emision.desc&select=*,propietarios(nombre_completo),cont_cxc(pagado_usd,saldo_usd,fecha_cobro,monto_usd)'+emisorQ());
     const pendientes = facturas.filter(function(f){ return f.estado!=='PAGADA'&&f.estado!=='ANULADA'; });
     const cobradas   = facturas.filter(function(f){ return f.estado==='PAGADA'; });
 
@@ -1143,8 +1143,11 @@ async function contRenderCxc() {
     const filas = facturas.map(function(f) {
       const tusd = parseFloat(f.total_usd||0);
       const tves = parseFloat(f.total_ves||0);
-      const cobUSD = parseFloat(f.monto_cobrado||0);
-      const saldoUSD = tusd - cobUSD;
+      // Los datos reales de cobro viven en cont_cxc, no en facturas -- se
+      // asume una sola CxC por factura (mismo criterio que verFichaFactura).
+      const cxc = (f.cont_cxc && f.cont_cxc[0]) || null;
+      const cobUSD = parseFloat(cxc?.pagado_usd||0);
+      const saldoUSD = cxc ? parseFloat(cxc.saldo_usd||0) : (tusd - cobUSD);
       // El cobrado/saldo no siempre se guarda en VES por separado -- se
       // aproxima con la misma proporción del total, para no inventar una
       // tasa de conversión adicional.
@@ -1159,7 +1162,7 @@ async function contRenderCxc() {
         +'<td style="padding:4px 8px;text-align:right;font-size:10px;font-family:var(--font-mono)">'+((tusd>0||tves>0)?fmtMonto(tusd,tves):'--')+'</td>'
         +'<td style="padding:4px 8px;text-align:right;font-size:10px;font-family:var(--font-mono)">'+((cobUSD>0||cobVES>0)?fmtMonto(cobUSD,cobVES):'--')+'</td>'
         +'<td style="padding:4px 8px;text-align:right;font-size:10px;font-family:var(--font-mono);color:'+(saldoUSD>0?'#fc8181':'#22c55e')+'">'+((tusd>0||tves>0)?fmtMonto(saldoUSD,saldoVES):'--')+'</td>'
-        +'<td style="padding:4px 8px">'+(f.fecha_pago?fmtFecha(f.fecha_pago):'--')+'</td>'+'<td style="padding:4px 8px">'+(eb[f.estado]||f.estado)+'</td>'
+        +'<td style="padding:4px 8px">'+(cxc?.fecha_cobro?fmtFecha(cxc.fecha_cobro):'--')+'</td>'+'<td style="padding:4px 8px">'+(eb[f.estado]||f.estado)+'</td>'
         +'</tr>';
     }).join('');
 
