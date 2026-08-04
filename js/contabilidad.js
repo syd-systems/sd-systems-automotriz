@@ -1181,33 +1181,6 @@ async function contRenderCxp() {
   }
 }
 
-async function contAnularCxP(id_cxp) {
-  if (!confirm('¿Anular esta Cuenta por Pagar?')) return;
-  try {
-    await api('cont_cxp','PATCH',{ estado: 'ANULADA' },'?id_cxp=eq.'+id_cxp);
-    contRenderCxp();
-  } catch(e) { alert('Error: '+e.message); }
-}
-
-async function contPagarCxP(id_cxp) {
-  const montoPago = parseFloat(prompt('Ingrese el monto a pagar en USD:'));
-  if (!montoPago || montoPago <= 0) return;
-  try {
-    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=*');
-    if (!rows || !rows[0]) return;
-    const c = rows[0];
-    const nuevoPagado = parseFloat(c.pagado_usd||0) + montoPago;
-    const nuevoSaldo  = parseFloat(c.monto_usd||0) - nuevoPagado;
-    const nuevoEstado = nuevoSaldo <= 0 ? 'PAGADA' : 'PARCIAL';
-    await api('cont_cxp','PATCH',{
-      pagado_usd: parseFloat(nuevoPagado.toFixed(2)),
-      saldo_usd:  parseFloat(Math.max(0, nuevoSaldo).toFixed(2)),
-      estado:     nuevoEstado
-    },'?id_cxp=eq.'+id_cxp);
-    contRenderCxp();
-  } catch(e) { alert('Error: '+e.message); }
-}
-
 async function contRenderConciliacion() {
   const cont = document.getElementById('cont-vista-cont');
   if (!cont) return;
