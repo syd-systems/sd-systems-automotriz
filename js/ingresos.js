@@ -809,7 +809,7 @@ async function eliminarFactura(id, numero) {
 
 
 // ─── ARTÍCULO ACTIVO EN FICHA ───
-var _fichaInvActual = { id: null, nombre: '' };
+
 
 
 
