@@ -656,7 +656,6 @@ async function agregarServicioCatalogo() {
     try { catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=grupo.asc,nombre.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+''); } catch(e) {}
   }
   const sel    = document.getElementById('os-sel-cat');
-  const precio = document.getElementById('os-precio-cat');
   const precioLibre = document.getElementById('os-precio-libre');
   const cant   = document.getElementById('os-cant-cat');
   const moneda = document.getElementById('os-moneda-cat').value;
@@ -692,14 +691,13 @@ async function agregarServicioCatalogo() {
   } else {
     const s = catalogoCache.find(function(x) { return x.id_servicio == sel.value; });
     if (!s) return;
-    const pVal = parsePrecio(precio.value, moneda) || parseFloat(s.precio_usd) || 0;
+    const pVal = parseFloat(s.precio_usd) || 0;
     osServiciosLineas.push({ id_servicio: s.id_servicio, descripcion: s.nombre,
       cantidad: parseFloat(cant.value) || 1, precio_usd: precioAUSD(pVal, moneda),
       precio_original: pVal, moneda });
   }
   // Resetear campos del formulario de agregar — sin borrar las opciones del select
   sel.value = '';
-  precio.value = '';
   precioLibre.value = '';
   cant.value = '1';
   const descLibreEl = document.getElementById('os-desc-libre');
@@ -719,12 +717,10 @@ async function agregarServicioCatalogo() {
 
 function onSelCatalogoChange() {
   const sel = document.getElementById('os-sel-cat');
-  const precio = document.getElementById('os-precio-cat');
   const descLibre = document.getElementById('os-desc-libre');
   const cant = document.getElementById('os-cant-cat');
 
   if (!sel.value) {
-    precio.value = '';
     // Desbloquear moneda para descripción libre
     const monedaSel = document.getElementById('os-moneda-cat');
     if (monedaSel) monedaSel.disabled = false;
@@ -732,19 +728,14 @@ function onSelCatalogoChange() {
     return;
   }
 
-  // Servicio seleccionado → autocompletar precio y moneda del catálogo
+  // Servicio seleccionado → autocompletar moneda del catálogo (el precio ya
+  // se ve en el propio texto del <option>, no se repite en un campo aparte)
   const s = catalogoCache.find(function(x) { return x.id_servicio == sel.value; });
   if (s) {
     const precioLibreEl = document.getElementById('os-precio-libre');
     if (precioLibreEl) precioLibreEl.value = '';
     const monedaServ = (s.moneda_precio || 'USD').toUpperCase();
     const monedaSel  = document.getElementById('os-moneda-cat');
-    // Mostrar precio en la moneda original del servicio
-    if (monedaServ === 'VES') {
-      precio.value = fmtBs(parseFloat(s.precio_usd || 0));
-    } else {
-      precio.value = fmtUSD(parseFloat(s.precio_usd || 0));
-    }
     // Asignar y bloquear la moneda — no se puede cambiar, viene del catálogo
     if (monedaSel) {
       // Asegurar que la opción existe en el select
@@ -1468,7 +1459,6 @@ async function cargarSelectsOS() {
 function onSelGrupoCatChange() {
   const grupo = document.getElementById('os-sel-grupo-cat').value;
   const selCat = document.getElementById('os-sel-cat');
-  const precio = document.getElementById('os-precio-cat');
 
   // Mostrar solo servicios del grupo seleccionado (o todos si grupo vacío)
   Array.from(selCat.options).forEach(function(opt) {
@@ -1478,7 +1468,6 @@ function onSelGrupoCatChange() {
 
   // Siempre resetear a "— Seleccionar servicio —" y limpiar precio
   selCat.value = '';
-  precio.value = '';
 }
 
 // Cargar selects cuando se abre el modal OS
