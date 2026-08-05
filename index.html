@@ -1350,17 +1350,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260723132"></script>
-<script src="js/parametros.js?v=20260723132"></script>
-<script src="js/empresas.js?v=20260723132"></script>
-<script src="js/ingresos.js?v=20260723132"></script>
-<script src="js/inventario.js?v=20260723132"></script>
-<script src="js/proveedores.js?v=20260723132"></script>
-<script src="js/contabilidad.js?v=20260723132"></script>
-<script src="js/egresos.js?v=20260723132"></script>
-<script src="js/vehiculos.js?v=20260723132"></script>
-<script src="js/catalogo.js?v=20260723132"></script>
-<script src="js/ordenes.js?v=20260723132"></script>
+<script src="js/core.js?v=20260723133"></script>
+<script src="js/parametros.js?v=20260723133"></script>
+<script src="js/empresas.js?v=20260723133"></script>
+<script src="js/ingresos.js?v=20260723133"></script>
+<script src="js/inventario.js?v=20260723133"></script>
+<script src="js/proveedores.js?v=20260723133"></script>
+<script src="js/contabilidad.js?v=20260723133"></script>
+<script src="js/egresos.js?v=20260723133"></script>
+<script src="js/vehiculos.js?v=20260723133"></script>
+<script src="js/catalogo.js?v=20260723133"></script>
+<script src="js/ordenes.js?v=20260723133"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2469,16 +2469,16 @@
           <span style="font-size:22px">▼</span>
           <span>Salida</span>
         </button>
-        <button id="stock-btn-historial" class="btn-naranja" style="padding:16px 8px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px"
-          onclick="cerrarModal('modal-stock-articulo'); verHistorialStock(_fichaInvActual.id,_fichaInvActual.nombre)">
-          <span style="font-size:22px">📋</span>
-          <span>Historial</span>
+        <button id="stock-btn-faltante" class="btn-secundario" style="padding:16px 8px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;border-color:rgba(252,129,129,0.3);color:#fc8181"
+          onclick="abrirFaltanteInventario(_fichaInvActual.id)">
+          <span style="font-size:22px">⚠</span>
+          <span>Ajuste Discrepancia</span>
         </button>
       </div>
-      <div id="stock-btn-faltante-cont" style="display:none;margin-top:10px">
-        <button id="stock-btn-faltante" class="btn-secundario" style="width:100%;padding:10px;font-size:12px;border-color:rgba(252,129,129,0.3);color:#fc8181"
-          onclick="abrirFaltanteInventario(_fichaInvActual.id)">
-          ⚠ Realizar Ajuste por diferencia en Inventario
+      <div id="stock-btn-faltante-cont" style="margin-top:10px">
+        <button id="stock-btn-historial" class="btn-naranja" style="width:100%;padding:10px;font-size:12px"
+          onclick="cerrarModal('modal-stock-articulo'); verHistorialStock(_fichaInvActual.id,_fichaInvActual.nombre)">
+          📋 Historial
         </button>
       </div>
     </div>
