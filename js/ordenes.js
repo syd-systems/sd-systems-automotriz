@@ -389,6 +389,8 @@ async function abrirNuevaOS() {
   // mercancía seleccionada en una OS anterior de la misma sesión.
   const precioInvReset = document.getElementById('os-precio-inv');
   if (precioInvReset) precioInvReset.value = '';
+  const precioLibreReset = document.getElementById('os-precio-libre');
+  if (precioLibreReset) precioLibreReset.value = '';
   abrirModal('modal-os');
   focusFirstField('modal-os');
 }
@@ -655,6 +657,7 @@ async function agregarServicioCatalogo() {
   }
   const sel    = document.getElementById('os-sel-cat');
   const precio = document.getElementById('os-precio-cat');
+  const precioLibre = document.getElementById('os-precio-libre');
   const cant   = document.getElementById('os-cant-cat');
   const moneda = document.getElementById('os-moneda-cat').value;
 
@@ -674,13 +677,13 @@ async function agregarServicioCatalogo() {
       descEl.focus();
       return;
     }
-    const pVal = parsePrecio(precio.value, moneda);
+    const pVal = parseFloat(precioLibre.value) || 0;
     if (pVal <= 0) {
-      precio.style.borderColor = 'var(--naranja)';
-      precio.style.boxShadow = '0 0 0 3px rgba(255,107,0,0.2)';
-      setTimeout(function() { precio.style.borderColor = ''; precio.style.boxShadow = ''; }, 2000);
-      precio.focus();
-      precio.select();
+      precioLibre.style.borderColor = 'var(--naranja)';
+      precioLibre.style.boxShadow = '0 0 0 3px rgba(255,107,0,0.2)';
+      setTimeout(function() { precioLibre.style.borderColor = ''; precioLibre.style.boxShadow = ''; }, 2000);
+      precioLibre.focus();
+      precioLibre.select();
       return;
     }
     osServiciosLineas.push({ id_servicio: null, descripcion: descEl.value.trim(),
@@ -697,6 +700,7 @@ async function agregarServicioCatalogo() {
   // Resetear campos del formulario de agregar — sin borrar las opciones del select
   sel.value = '';
   precio.value = '';
+  precioLibre.value = '';
   cant.value = '1';
   const descLibreEl = document.getElementById('os-desc-libre');
   if (descLibreEl) descLibreEl.value = '';
@@ -731,6 +735,8 @@ function onSelCatalogoChange() {
   // Servicio seleccionado → autocompletar precio y moneda del catálogo
   const s = catalogoCache.find(function(x) { return x.id_servicio == sel.value; });
   if (s) {
+    const precioLibreEl = document.getElementById('os-precio-libre');
+    if (precioLibreEl) precioLibreEl.value = '';
     const monedaServ = (s.moneda_precio || 'USD').toUpperCase();
     const monedaSel  = document.getElementById('os-moneda-cat');
     // Mostrar precio en la moneda original del servicio
