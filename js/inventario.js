@@ -3860,9 +3860,8 @@ async function abrirStockArticulo(id, nombre) {
   // el Historial se mantiene siempre disponible.
   document.getElementById('stock-btn-entrada').style.display  = (puedo('INVENTARIO','ENTRADA_STOCK') && !inactivoArt) ? '' : 'none';
   document.getElementById('stock-btn-salida').style.display   = (puedo('INVENTARIO','SALIDA_STOCK')  && !inactivoArt) ? '' : 'none';
+  document.getElementById('stock-btn-faltante').style.display = puedo('INVENTARIO','AJUSTE_INCIDENCIA') ? '' : 'none';
   document.getElementById('stock-btn-historial').style.display = puedo('INVENTARIO','VER')          ? '' : 'none';
-  const faltanteCont = document.getElementById('stock-btn-faltante-cont');
-  if (faltanteCont) faltanteCont.style.display = puedo('INVENTARIO','AJUSTE_INCIDENCIA') ? '' : 'none';
 
   abrirModal('modal-stock-articulo');
   focusFirstField('modal-stock-articulo');
