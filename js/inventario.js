@@ -4341,7 +4341,7 @@ function _aplicarModoFaltante(modo, anulada) {
   document.getElementById('falt-confirmacion-cont').style.display = soloLectura ? 'none' : '';
   document.getElementById('falt-badge-anulada').style.display = anulada ? '' : 'none';
 
-  document.getElementById('falt-btn-retornar').style.display = (modo === 'ver' || modo === 'editar') ? '' : 'none';
+  document.getElementById('falt-btn-retornar').style.display = ''; // Retornar siempre visible, en cualquier modo
   document.getElementById('falt-btn-guardar').style.display  = (modo === 'crear' || modo === 'editar') ? '' : 'none';
   document.getElementById('falt-btn-guardar').textContent    = modo === 'editar' ? '💾 Guardar Cambios' : '⚠ Realizar Ajuste';
   const puedeGestionar = sesionActual?.administrador || puedo('INVENTARIO','AJUSTE_INCIDENCIA');
