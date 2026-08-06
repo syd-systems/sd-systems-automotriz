@@ -1481,7 +1481,7 @@ async function cargarSelectsOS() {
     selInv.innerHTML = '<option value="">— Seleccionar —</option>'
       + itemsDisponibles.map(function(r) {
           const stock = stockMostrarArticulo(r.id_articulo);
-          return '<option value="' + r.id_articulo + '">' + r.nombre_articulo + ' (Stock: ' + stock + ') — $' + parseFloat(r.precio_venta_moneda || 0).toFixed(2) + '</option>';
+          return '<option value="' + r.id_articulo + '">' + r.nombre_articulo + ' (Stock: ' + stock + ')</option>';
         }).join('');
   } catch(eInvSel) { console.warn('Error cargando selector de Mercancías en OS:', eInvSel); }
 }
