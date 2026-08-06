@@ -19,6 +19,8 @@ let _editMovEstaPagado   = false;
 var _invVista = 'tabla';
 var _invSaldoConsolidado = null; // { id_articulo: totalTodasLasAreas }
 let _invCategoriasCache = [];
+let _invAreasCache = []; // Áreas activas -- para el selector de Área visible solo con VER_INVENTARIO_GENERAL
+let _invFiltroAreaManual = null; // id_area elegido manualmente por un usuario con VER_INVENTARIO_GENERAL (null = ver consolidado)
 let _invSaldoArea = null; // Saldo por área del usuario — null = mostrar stock global
 var _fichaInvActual = { id: null, nombre: '' }; // reubicada aqui desde ingresos.js, es de Inventario
 
@@ -82,16 +84,27 @@ async function calcularInvSaldoArea() {
     todasLasFilas.forEach(function(f){ consolidado[f.id_articulo] = (consolidado[f.id_articulo]||0) + parseFloat(f.stock_actual||0); });
     _invSaldoConsolidado = consolidado;
 
-    if (sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
-      _invSaldoArea = null; // Admins/con permiso ven el consolidado
+    const tienePermisoGeneral = sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL');
+
+    // Filtro manual por Área -- solo lo puede usar quien YA ve el
+    // consolidado (VER_INVENTARIO_GENERAL). Le permite enfocarse en una
+    // Área específica sin perder, por defecto, la vista general de siempre.
+    const idAreaManual = tienePermisoGeneral ? _invFiltroAreaManual : null;
+
+    if (tienePermisoGeneral && !idAreaManual) {
+      _invSaldoArea = null; // Ven el consolidado (comportamiento de siempre)
       return;
     }
 
-    const correo = sesionActual?.correo_usuario;
-    if (!correo) { _invSaldoArea = null; return; }
-    const empRes = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1').catch(function(){ return []; });
-    const id_areaUsuario = empRes?.[0]?.id_area || null;
-    if (!id_areaUsuario) { _invSaldoArea = {}; return; }
+    let id_areaUsuario = idAreaManual;
+    if (!id_areaUsuario) {
+      // Camino original: usuario SIN el permiso -- se limita a su propia Área
+      const correo = sesionActual?.correo_usuario;
+      if (!correo) { _invSaldoArea = null; return; }
+      const empRes = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1').catch(function(){ return []; });
+      id_areaUsuario = empRes?.[0]?.id_area || null;
+      if (!id_areaUsuario) { _invSaldoArea = {}; return; }
+    }
 
     const filas = await api('inventario_stock_area','GET',null,'?id_area=eq.'+id_areaUsuario+'&select=id_articulo,stock_actual') || [];
     const saldo = {};
@@ -136,6 +149,15 @@ async function renderInventario(filtro) {
       + '<option value="">Todas las categorías</option>'
       + (_invCategoriasCache.map ? _invCategoriasCache.map(function(c){ return '<option value="'+c.id_categoria+'">'+c.nombre+'</option>'; }).join('') : '')
       + '</select>'
+      // Filtro por Área -- visible SOLO para quien ya tiene VER_INVENTARIO_GENERAL
+      // (o es Administrador). Sin este permiso, el usuario ya está limitado a su
+      // propia Área automáticamente, así que este selector no le aporta nada.
+      + ((sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) ?
+          '<select id="inv-filtro-area" onchange="invFiltrarArea()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
+          + '<option value="">Todas las Áreas (consolidado)</option>'
+          + (_invAreasCache.map ? _invAreasCache.map(function(a){ return '<option value="'+a.id+'">'+a.nombre+(a.codigo?' ('+a.codigo+')':'')+'</option>'; }).join('') : '')
+          + '</select>'
+        : '')
       + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--suave);cursor:pointer">'
       + '<input type="checkbox" id="inv-mostrar-todos" onchange="renderInventario(document.getElementById(\'buscar-inv\')?.value||\'\')">'
       + 'Solo con stock</label>'
@@ -172,6 +194,23 @@ async function renderInventario(filtro) {
           }).join('');
           if (!selCat.innerHTML.includes(optsExtra)) {
             selCat.innerHTML = '<option value="">Todas las categorías</option>' + optsExtra;
+          }
+        }
+      } catch(e) {}
+    }
+    // Cargar cache de Áreas si está vacío -- solo aplica a quien tiene el
+    // selector visible (VER_INVENTARIO_GENERAL o Administrador).
+    if ((sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) && (!_invAreasCache || !_invAreasCache.length)) {
+      try {
+        _invAreasCache = await api('param_areas','GET',null,'?estado=eq.ACTIVO&order=codigo.asc,nombre.asc') || [];
+        const selArea = document.getElementById('inv-filtro-area');
+        if (selArea && _invAreasCache.length) {
+          const optsExtraArea = _invAreasCache.map(function(a){
+            return '<option value="'+a.id+'">'+a.nombre+(a.codigo?' ('+a.codigo+')':'')+'</option>';
+          }).join('');
+          if (!selArea.innerHTML.includes(optsExtraArea)) {
+            selArea.innerHTML = '<option value="">Todas las Áreas (consolidado)</option>' + optsExtraArea;
+            selArea.value = _invFiltroAreaManual || '';
           }
         }
       } catch(e) {}
@@ -239,6 +278,16 @@ function invFiltrarCategoria() {
   var contador = document.getElementById('inv-contador');
   if (contador) contador.textContent = 'Inventario General (' + items.length + ')';
   invRenderVista(items, _invVista);
+}
+
+// A diferencia de invFiltrarCategoria (que solo filtra la cache en el
+// cliente), cambiar de Área requiere recalcular el saldo real desde
+// inventario_stock_area en el servidor -- por eso se apoya en
+// calcularInvSaldoArea() y se vuelve a renderizar todo el módulo.
+async function invFiltrarArea() {
+  const sel = document.getElementById('inv-filtro-area');
+  _invFiltroAreaManual = sel && sel.value ? parseInt(sel.value) : null;
+  await renderInventario(document.getElementById('buscar-inv')?.value || '');
 }
 
 async function invCambiarVista(vista) {
