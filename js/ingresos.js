@@ -144,22 +144,14 @@ async function abrirNuevaFactura() {
   await cargarTasaIVAGlobal();
   window._facAlicuotaIVA  = tasaIVAActual()  * 100;
   window._facAlicuotaIGTF = tasaIGTFActual() * 100;
-  let osDisponibles = [], emisoresList = [], tasaActual = 1;
+  let emisoresList = [], tasaActual = 1;
   try {
-    const [os, em, ta] = await Promise.all([
-      api('ordenes_servicio','GET',null,'?estado=eq.CERRADA&select=id_orden,numero_os,fecha_entrada,total_usd,total_ves,estado,id_vehiculo,id_propietario,vehiculos(placa,marca,modelo),propietarios(nombre_completo,tipo_doc,numero_doc,tipo_contribuyente,direccion)&order=fecha_entrada.desc'+emisorQ()),
+    const [em, ta] = await Promise.all([
       api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*'),
       api('tasas','GET',null,'?moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
     emisoresList = em;
     tasaActual = ta.length ? parseFloat(ta[0].tipo_cambio) : 1;
-
-    // Excluir OS que ya tienen factura
-    try {
-      const facturadas = await api('facturas','GET',null,'?id_orden=not.is.null&select=id_orden&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
-      const idsFacturadas = new Set(facturadas.map(function(f){ return f.id_orden; }));
-      osDisponibles = os.filter(function(o){ return !idsFacturadas.has(o.id_orden); });
-    } catch(e) { osDisponibles = os; }
   } catch(e) {}
 
   window._facSubtotalOS = 0;
@@ -167,14 +159,16 @@ async function abrirNuevaFactura() {
   document.getElementById('fac-numero').textContent  = 'Se asignará al emitir';
   document.getElementById('fac-os-id').value         = '';
   document.getElementById('fac-os-info').innerHTML   = '';
-  document.getElementById('fac-lineas-cont').innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Selecciona una OS para cargar las líneas</div>';
+  document.getElementById('fac-lineas-cont').innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Selecciona una Orden para cargar las líneas</div>';
   document.getElementById('fac-receptor-nombre').value     = '';
   document.getElementById('fac-receptor-rif').value        = '';
   document.getElementById('fac-receptor-dir').value        = '';
   document.getElementById('fac-receptor-tipo-contrib').value = '';
-  document.getElementById('fac-aplica-iva').checked        = false;
+  // Por defecto: Moneda VES con IVA activado (el Usuario puede modificarlo).
+  // Si cambia a USD, onCambiarMonedaFactura() activa IVA + IGTF por defecto.
+  document.getElementById('fac-aplica-iva').checked        = true;
   document.getElementById('fac-aplica-igtf').checked       = false;
-  document.getElementById('fac-moneda').value              = 'USD';
+  document.getElementById('fac-moneda').value              = 'VES';
   document.getElementById('fac-tasa').value                = tasaActual.toFixed(4);
   document.getElementById('fac-fecha').value               = getHoyVzla();
   document.getElementById('fac-estado').value              = 'BORRADOR';
@@ -182,10 +176,6 @@ async function abrirNuevaFactura() {
   document.getElementById('alerta-fac-ok').style.display   = 'none';
   document.getElementById('alerta-fac-err').style.display  = 'none';
   document.getElementById('modal-fac-titulo').textContent  = 'NUEVA FACTURA';
-  var tasaCont = document.getElementById('fac-tasa-cont');
-  if (tasaCont) tasaCont.style.display = 'none';
-  var igtfCont = document.getElementById('fac-igtf-cont');
-  if (igtfCont) igtfCont.style.display = 'flex';
   document.getElementById('fac-subtotal-os').textContent = '$ 0.00';
 
   const selEm = document.getElementById('fac-emisor');
@@ -194,20 +184,70 @@ async function abrirNuevaFactura() {
   // Preseleccionar empresa activa
   if (_empresaActiva) selEm.value = _empresaActiva.id_empresa;
 
-  const selOS = document.getElementById('fac-os-sel');
-  selOS.innerHTML = '<option value="">— Seleccionar OS —</option>'
-    + osDisponibles.map(function(o) {
-        const veh = o.vehiculos, prop = o.propietarios;
-        return '<option value="' + o.id_orden + '">'
-          + o.numero_os + ' [' + (o.estado||'') + '] — '
-          + (veh ? veh.placa + ' ' + veh.marca + ' ' + veh.modelo : '')
-          + (prop ? ' · ' + prop.nombre_completo : '') + '</option>';
-      }).join('');
+  actualizarVisibilidadMonedaFactura();
+  // Las Órdenes que se listan dependen SIEMPRE de la Empresa seleccionada
+  // arriba -- nunca se muestran las de otra Empresa.
+  await cargarOSParaFactura(parseInt(selEm.value)||null);
 
   calcularTotalesFactura();
   abrirModal('modal-factura');
   focusFirstField('modal-factura');
   setTimeout(function() { document.querySelector('#modal-factura .modal-body')?.scrollTo(0,0); }, 80);
+}
+
+// Carga las Órdenes de Servicio CERRADAS de una Empresa específica, en el
+// select de Motivo -- nunca mezcla Órdenes de otra Empresa. idFacturaExcluir
+// permite mantener disponible la propia OS de la Factura que se está
+// editando, aunque ya tenga esa misma Factura asociada (de lo contrario
+// desaparecería del listado al editar un Borrador).
+async function cargarOSParaFactura(id_empresa, idFacturaExcluir) {
+  const selOS = document.getElementById('fac-os-sel');
+  if (!selOS) return;
+  if (!id_empresa) {
+    selOS.innerHTML = '<option value="">— Seleccione primero una Empresa —</option>';
+    return;
+  }
+  selOS.innerHTML = '<option value="">— Cargando Órdenes —</option>';
+  try {
+    const os = await api('ordenes_servicio','GET',null,
+      '?estado=eq.CERRADA&id_empresa=eq.'+id_empresa+'&select=id_orden,numero_os,fecha_entrada,total_usd,total_ves,estado,id_vehiculo,id_propietario,vehiculos(placa,marca,modelo),propietarios(nombre_completo,tipo_doc,numero_doc,tipo_contribuyente,direccion)&order=fecha_entrada.desc');
+    let osDisponibles = os;
+    try {
+      const facturadas = await api('facturas','GET',null,
+        '?id_orden=not.is.null&estado=neq.ANULADA&select=id_orden,id_factura&id_empresa=eq.'+id_empresa);
+      const idsFacturadas = new Set(
+        facturadas.filter(function(f){ return f.id_factura !== idFacturaExcluir; })
+                  .map(function(f){ return f.id_orden; })
+      );
+      osDisponibles = os.filter(function(o){ return !idsFacturadas.has(o.id_orden); });
+    } catch(e) {}
+    selOS.innerHTML = '<option value="">— Seleccionar Orden —</option>'
+      + osDisponibles.map(function(o) {
+          const veh = o.vehiculos, prop = o.propietarios;
+          return '<option value="' + o.id_orden + '">'
+            + o.numero_os + ' [' + (o.estado||'') + '] — '
+            + (veh ? veh.placa + ' ' + veh.marca + ' ' + veh.modelo : '')
+            + (prop ? ' · ' + prop.nombre_completo : '') + '</option>';
+        }).join('');
+  } catch(e) {
+    selOS.innerHTML = '<option value="">— Error cargando Órdenes —</option>';
+  }
+}
+
+// Al cambiar la Empresa dentro del formulario: la Orden, el Cliente y las
+// líneas pertenecían a la Empresa anterior, así que se limpian y se
+// recarga la lista de Órdenes para la nueva Empresa seleccionada.
+async function onCambiarEmpresaFactura() {
+  const id_empresa = parseInt(document.getElementById('fac-emisor')?.value) || null;
+  document.getElementById('fac-os-id').value = '';
+  document.getElementById('fac-os-info').innerHTML = '';
+  document.getElementById('fac-lineas-cont').innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Selecciona una Orden para cargar las líneas</div>';
+  document.getElementById('fac-receptor-nombre').value = '';
+  document.getElementById('fac-receptor-rif').value = '';
+  document.getElementById('fac-receptor-dir').value = '';
+  document.getElementById('fac-receptor-tipo-contrib').value = '';
+  window._facSubtotalOS = 0; actualizarSubtotalOSLabel(); calcularTotalesFactura();
+  await cargarOSParaFactura(id_empresa);
 }
 
 async function onSelOSFactura() {
@@ -216,7 +256,7 @@ async function onSelOSFactura() {
   const infoDiv = document.getElementById('fac-os-info');
   const linDiv  = document.getElementById('fac-lineas-cont');
   if (!id_os) {
-    infoDiv.innerHTML = ''; linDiv.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Selecciona una OS para cargar las líneas</div>';
+    infoDiv.innerHTML = ''; linDiv.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Selecciona una Orden para cargar las líneas</div>';
     document.getElementById('fac-os-id').value = '';
     window._facSubtotalOS = 0; actualizarSubtotalOSLabel(); calcularTotalesFactura(); return;
   }
@@ -289,15 +329,29 @@ function actualizarSubtotalOSLabel() {
   if (el) el.textContent = moneda==='VES' ? fmtBs(sub*tasa)+' Bs' : '$ '+fmtUSD(sub);
 }
 
-function onCambiarMonedaFactura() {
-  const moneda   = document.getElementById('fac-moneda')?.value||'USD';
+// Solo ajusta qué campos se ven según la moneda (Tasa / IGTF) -- no toca
+// los checkboxes de IVA/IGTF. La usa abrirEditarFactura() para respetar los
+// valores reales ya guardados de la Factura, sin pisarlos con un default.
+function actualizarVisibilidadMonedaFactura() {
+  const moneda   = document.getElementById('fac-moneda')?.value||'VES';
   const esVES    = moneda==='VES';
   const tasaCont = document.getElementById('fac-tasa-cont');
   const igtfCont = document.getElementById('fac-igtf-cont');
-  const igtfChk  = document.getElementById('fac-aplica-igtf');
   if (tasaCont) tasaCont.style.display = esVES ? 'block' : 'none';
   if (igtfCont) igtfCont.style.display = esVES ? 'none' : 'flex';
-  if (igtfChk && esVES) igtfChk.checked = false;
+}
+
+// Se dispara cuando el Usuario cambia la Moneda manualmente (onchange del
+// select) -- además de la visibilidad, aplica los defaults acordados:
+// VES -> IVA activado, IGTF no aplica. USD -> IVA e IGTF activados. El
+// Usuario puede modificar cualquiera de los dos después.
+function onCambiarMonedaFactura() {
+  actualizarVisibilidadMonedaFactura();
+  const esVES   = (document.getElementById('fac-moneda')?.value||'VES') === 'VES';
+  const ivaChk  = document.getElementById('fac-aplica-iva');
+  const igtfChk = document.getElementById('fac-aplica-igtf');
+  if (ivaChk)  ivaChk.checked  = true;
+  if (igtfChk) igtfChk.checked = !esVES;
   actualizarSubtotalOSLabel();
   var id_os = document.getElementById('fac-os-id')?.value;
   if (id_os) onSelOSFactura(); else calcularTotalesFactura();
@@ -338,202 +392,224 @@ async function guardarFactura(emitir) {
   // Protección contra doble clic
   if (window._facturaProcesando) return;
   window._facturaProcesando = true;
-  const btnGuardar = document.querySelector('#modal-factura .btn-primario');
+  const btnGuardar = document.getElementById(emitir ? 'btn-fac-emitir' : 'btn-fac-borrador');
+  const btnGuardarTextoOriginal = btnGuardar ? btnGuardar.textContent : (emitir ? '✓ Emitir Factura' : 'Guardar Borrador');
   if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = '⏳ Procesando...'; }
 
-  const id       = document.getElementById('fac-id').value;
-  const id_os     = parseInt(document.getElementById('fac-os-id').value)||null;
-  const id_emisor = parseInt(document.getElementById('fac-emisor').value)||null;
-  const recNom   = document.getElementById('fac-receptor-nombre').value.trim();
-  const recRif   = document.getElementById('fac-receptor-rif').value.trim();
-  const recDir   = document.getElementById('fac-receptor-dir').value.trim();
-  const tasa     = parseFloat(document.getElementById('fac-tasa').value)||1;
-  const fecha    = document.getElementById('fac-fecha').value;
-  const estadoActual = document.getElementById('fac-estado').value;
-  if (emitir && estadoActual === 'BORRADOR' && !puedeAprobar('FACTURAS')) {
-    const errEl = document.getElementById('alerta-fac-err');
-    errEl.textContent = 'Esta factura requiere aprobación antes de emitirse.';
-    errEl.style.display = 'block';
-    window._facturaProcesando = false;
-    if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = '✓ Emitir Factura'; }
-    return;
-  }
-  const estado   = emitir ? 'EMITIDA' : document.getElementById('fac-estado').value;
-  const obs      = document.getElementById('fac-observaciones').value.trim();
-  const aplIVA   = document.getElementById('fac-aplica-iva').checked;
-  const aplIGTF  = document.getElementById('fac-aplica-igtf').checked;
-  const okEl     = document.getElementById('alerta-fac-ok');
-  const errEl    = document.getElementById('alerta-fac-err');
+  const okEl  = document.getElementById('alerta-fac-ok');
+  const errEl = document.getElementById('alerta-fac-err');
   okEl.style.display='none'; errEl.style.display='none';
-  if (!id_os)     { errEl.textContent='Debe seleccionar una Orden de Servicio.'; errEl.style.display='block'; return; }
-  if (!id_emisor) { errEl.textContent='Debe seleccionar una Empresa.';           errEl.style.display='block'; return; }
-  if (!recNom)   { errEl.textContent='El nombre del cliente es obligatorio.';   errEl.style.display='block'; return; }
-  if (!fecha)    { errEl.textContent='La fecha es obligatoria.';                errEl.style.display='block'; return; }
-  const tot = window._facTotales||{subtotal:0,iva:0,igtf:0,total:0,totVes:0};
-  let idProp = null;
-  try { const os=await api('ordenes_servicio','GET',null,'?id_orden=eq.'+id_os+'&select=id_propietario'); if(os.length) idProp=os[0].id_propietario; } catch(e) {}
+
+  // El try/finally garantiza que la bandera _facturaProcesando y el botón
+  // SIEMPRE se liberan, sea cual sea la salida (validación fallida, error
+  // de red, o éxito) -- antes, varios "return" tempranos se saltaban ese
+  // reseteo y dejaban ambos botones bloqueados hasta recargar la página.
   try {
+    const id       = document.getElementById('fac-id').value;
+    const id_os     = parseInt(document.getElementById('fac-os-id').value)||null;
+    const id_emisor = parseInt(document.getElementById('fac-emisor').value)||null;
+    const recNom   = document.getElementById('fac-receptor-nombre').value.trim();
+    const recRif   = document.getElementById('fac-receptor-rif').value.trim();
+    const recDir   = document.getElementById('fac-receptor-dir').value.trim();
+    const tasa     = parseFloat(document.getElementById('fac-tasa').value)||1;
+    const fecha    = document.getElementById('fac-fecha').value;
+    const estadoActual = document.getElementById('fac-estado').value;
+
+    if (emitir && estadoActual === 'BORRADOR' && !puedeAprobar('FACTURAS')) {
+      errEl.textContent = 'Esta factura requiere aprobación antes de emitirse.';
+      errEl.style.display = 'block';
+      return;
+    }
+    const estado   = emitir ? 'EMITIDA' : estadoActual;
+    const obs      = document.getElementById('fac-observaciones').value.trim();
+    const aplIVA   = document.getElementById('fac-aplica-iva').checked;
+    const aplIGTF  = document.getElementById('fac-aplica-igtf').checked;
+    if (!id_os)     { errEl.textContent='Debe seleccionar una Orden de Servicio.'; errEl.style.display='block'; return; }
+    if (!id_emisor) { errEl.textContent='Debe seleccionar una Empresa.';           errEl.style.display='block'; return; }
+    if (!recNom)   { errEl.textContent='El nombre del cliente es obligatorio.';   errEl.style.display='block'; return; }
+    if (!fecha)    { errEl.textContent='La fecha es obligatoria.';                errEl.style.display='block'; return; }
+    const tot = window._facTotales||{subtotal:0,iva:0,igtf:0,total:0,totVes:0};
+    let idProp = null;
+    try { const os=await api('ordenes_servicio','GET',null,'?id_orden=eq.'+id_os+'&select=id_propietario'); if(os.length) idProp=os[0].id_propietario; } catch(e) {}
+
     const datos = {
       id_orden:id_os, id_empresa:id_emisor, id_propietario:idProp,
       receptor_nombre:recNom, receptor_rif:recRif||null, receptor_direccion:recDir||null,
       receptor_tipo_contribuyente:document.getElementById('fac-receptor-tipo-contrib')?.value||null,
-      moneda_cobro:document.getElementById('fac-moneda')?.value||'USD',
+      moneda_cobro:document.getElementById('fac-moneda')?.value||'VES',
       fecha_emision:fecha, estado,
       aplica_iva:aplIVA, aplica_igtf:aplIGTF,
       subtotal_usd:tot.subtotal, iva_usd:tot.iva, igtf_usd:tot.igtf,
       total_usd:tot.total, total_ves:tot.totVes, tasa_bcv:tot.tasa||tasa,
       observaciones:obs||null, id_usuario:sesionActual.correo_usuario
     };
+
+    // idFacturaFinal: id real de la Factura ya guardada -- antes se
+    // intentaba "adivinar" cuál factura se acababa de crear con un GET
+    // separado por nombre de receptor+fecha, lo cual era frágil (podía
+    // traer la fila equivocada si dos facturas coincidían). Ahora se toma
+    // directamente de la respuesta del PATCH/POST.
+    let idFacturaFinal = id ? parseInt(id) : null;
+
     if (id) {
       await api('facturas','PATCH',datos,'?id_factura=eq.'+id);
     } else {
       // Verificar que la OS no tenga ya una factura activa
-      if (id_os) {
-        const osFacturada = await api('facturas','GET',null,
-          '?id_orden=eq.'+id_os+'&estado=neq.ANULADA&select=id_factura,numero_factura');
-        if (osFacturada && osFacturada.length) {
-          errEl.textContent = 'Esta OS ya tiene una factura activa: ' + osFacturada[0].numero_factura;
-          errEl.style.display = 'block';
-          window._facturaProcesando = false;
-          if (btnGuardar) { btnGuardar.disabled=false; btnGuardar.textContent = emitir ? '✓ Emitir' : 'Guardar'; }
-          return;
-        }
+      const osFacturada = await api('facturas','GET',null,
+        '?id_orden=eq.'+id_os+'&estado=neq.ANULADA&select=id_factura,numero_factura');
+      if (osFacturada && osFacturada.length) {
+        errEl.textContent = 'Esta OS ya tiene una factura activa: ' + osFacturada[0].numero_factura;
+        errEl.style.display = 'block';
+        return;
       }
       const anio=new Date().getFullYear();
       const existentes=await api('facturas','GET',null,'?select=numero_factura&numero_factura=like.FAC-'+anio+'-*&order=numero_factura.desc&limit=1');
       let seq=1;
       if (existentes.length) { const p=existentes[0].numero_factura.split('-'); seq=parseInt(p[p.length-1])+1; }
       datos.numero_factura='FAC-'+anio+'-'+String(seq).padStart(4,'0');
-      await api('facturas','POST',datos);
-    }
-    // ── Si se emite: crear CxC y asiento contable automáticamente ──
-    if (emitir) {
-      const facGuardada = await api('facturas','GET',null,
-        '?id_propietario=eq.'+(idProp||0)+'&estado=eq.EMITIDA&order=fecha_emision.desc&limit=1&select=*');
-      const fac = facGuardada[0];
-      if (fac) {
-        // 1. Crear registro CxC
-        try {
-          await api('cont_cxc','POST',{
-            tipo:           'FACTURA',
-            id_propietario: idProp,
-            id_factura:     fac.id_factura,
-            numero_doc:     fac.numero_factura,
-            fecha_emision:  fac.fecha_emision,
-            monto_usd:      fac.total_usd,
-            monto_ves:      fac.total_ves || 0,
-            tasa_bcv:       fac.tasa_bcv || 1,
-            saldo_usd:      fac.total_usd,
-            estado:         'PENDIENTE',
-            moneda_cobro:   fac.moneda_cobro || 'USD',
-            id_empresa:      fac.id_empresa || null,
-            id_usuario:     sesionActual.correo_usuario
-          });
-        } catch(eCxc) { console.warn('Error creando CxC:', eCxc); }
-
-        // 2. Crear asiento contable
-        try {
-          const anioAst = new Date().getFullYear();
-          const existAst = await api('cont_asientos','GET',null,
-            '?numero_asiento=like.AST-'+anioAst+'-*&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
-          let seqAst = 1;
-          if (existAst.length) { const pa = existAst[0].numero_asiento.split('-'); seqAst = parseInt(pa[pa.length-1]) + 1; }
-          const numAst = 'AST-'+anioAst+'-'+String(seqAst).padStart(4,'0');
-          const tasa = fac.tasa_bcv || 1;
-
-          const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
-          const id_periodo = periodos.length ? periodos[0].id_periodo : null;
-
-          // Obtener tasa BCV real desde la BD
-          let tasaReal = 1;
-          try {
-            const tasasBCV = await api('tasas','GET',null,
-              '?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio');
-            tasaReal = tasasBCV.length ? parseFloat(tasasBCV[0].tipo_cambio) : (tot.tasa || tasa || 1);
-          } catch(eTasa) { tasaReal = tot.tasa || tasa || 1; }
-
-          const asiento = await api('cont_asientos','POST',{
-            numero_asiento: numAst,
-            fecha:          fac.fecha_emision,
-            descripcion:    'Factura '+fac.numero_factura+' — '+recNom,
-            tipo:           'AUTOMATICO',
-            referencia:     fac.numero_factura,
-            moneda_base:    document.getElementById('cont-form-moneda')?.value || ((_empresaActiva?.moneda_principal)||'VES').toUpperCase(),
-            tasa_bcv:       tasaReal,
-            id_periodo:     id_periodo,
-            id_empresa:      fac.id_empresa || null,
-            estado:         'APROBADO',
-            id_usuario:     sesionActual.correo_usuario
-          });
-
-          if (asiento && asiento[0]) {
-            const idAst = asiento[0].id_asiento;
-            // Buscar cuentas contables
-            const _todasCtasFac = await obtenerCuentasContables();
-            const cuentas = _todasCtasFac.filter(function(c){ return ['1.1.02.001','4.1.01.001','4.1.02.001','2.1.03.001'].includes(c.codigo); });
-            const cCxC     = cuentas.find(function(c){ return c.codigo==='1.1.02.001'; });
-            const cIngServ = cuentas.find(function(c){ return c.codigo==='4.1.01.001'; });
-            const cIngRep  = cuentas.find(function(c){ return c.codigo==='4.1.02.001'; });
-            const cIVA     = cuentas.find(function(c){ return c.codigo==='2.1.03.001'; });
-
-            // Línea 1: Débito CxC por el total
-            // Buscar cuenta IGTF por pagar
-            // Buscar cuenta IGTF por nombre
-            let cIGTF = fac.igtf_usd > 0
-              ? (_todasCtasFac.find(function(c){ return c.estado === 'ACTIVO' && /igtf.*por.*pagar/i.test(c.nombre||''); }) || null)
-              : null;
-            if (!cIGTF && fac.igtf_usd > 0) {
-              cIGTF = _todasCtasFac.find(function(c){ return c.codigo === '2.1.03.004'; }) || null;
-            }
-
-            // VEN-NIF: Moneda funcional = Bs. USD como auxiliar
-          const auxFac = ' (USD × '+tasaReal.toFixed(4)+')';
-          // Línea 1: Débito CxC — en Bs, auxiliar USD
-            if (cCxC) await api('cont_asiento_lineas','POST',{
-              id_asiento: idAst, id_cuenta: cCxC.id_cuenta, orden: 1,
-              descripcion: 'CxC '+fac.numero_factura+auxFac,
-              debe_usd: fac.total_usd, haber_usd: 0,
-              debe_ves: fac.total_usd * tasaReal, haber_ves: 0
-            });
-            // Línea 2: Crédito Ingresos — en Bs, auxiliar USD
-            if (cIngServ) await api('cont_asiento_lineas','POST',{
-              id_asiento: idAst, id_cuenta: cIngServ.id_cuenta, orden: 2,
-              descripcion: 'Ingreso '+fac.numero_factura+auxFac,
-              debe_usd: 0, haber_usd: fac.subtotal_usd,
-              debe_ves: 0, haber_ves: fac.subtotal_usd * tasaReal
-            });
-            // Línea 3: Crédito IVA — en Bs
-            if (cIVA && fac.iva_usd > 0) await api('cont_asiento_lineas','POST',{
-              id_asiento: idAst, id_cuenta: cIVA.id_cuenta, orden: 3,
-              descripcion: 'IVA '+fac.numero_factura+auxFac,
-              debe_usd: 0, haber_usd: fac.iva_usd,
-              debe_ves: 0, haber_ves: fac.iva_usd * tasaReal
-            });
-            // Línea 4: Crédito IGTF — en Bs
-            if (cIGTF && fac.igtf_usd > 0) await api('cont_asiento_lineas','POST',{
-              id_asiento: idAst, id_cuenta: cIGTF.id_cuenta, orden: 4,
-              descripcion: 'IGTF '+fac.numero_factura+auxFac,
-              debe_usd: 0, haber_usd: fac.igtf_usd,
-              debe_ves: 0, haber_ves: fac.igtf_usd * tasaReal
-            });
-          }
-        } catch(eAst) { console.warn('Error creando asiento:', eAst); }
-      }
+      const nuevaRows = await api('facturas','POST',datos);
+      idFacturaFinal = (nuevaRows && nuevaRows[0]) ? nuevaRows[0].id_factura : null;
     }
 
-    // ── Registrar salida automática de inventario al emitir factura ──
-    if (emitir && id_os) {
+    // Si se emite: crear CxC, asiento contable, salida de inventario y
+    // asiento de Costo de Venta -- toda esa lógica vive en una sola función
+    // reutilizable (también la usa emitirFactura() en la Ficha de Factura).
+    if (emitir && idFacturaFinal) {
+      await generarCxCyAsientoFactura(idFacturaFinal);
+    }
+
+    okEl.textContent = emitir ? '✓ Factura emitida correctamente.' : '✓ Factura guardada como borrador.';
+    okEl.style.display='block';
+    setTimeout(function() { cerrarModal('modal-factura'); renderFacturas(); }, 1200);
+  } catch(err) {
+    errEl.textContent='Error: '+err.message; errEl.style.display='block';
+  } finally {
+    window._facturaProcesando = false;
+    if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = btnGuardarTextoOriginal; }
+  }
+}
+
+// Crea la CxC, el asiento contable de la Factura, y (si la OS tenía
+// Mercancía) la salida de Inventario + asiento de Costo de Venta. Se llama
+// tanto al emitir directamente desde el formulario (guardarFactura) como al
+// emitir después un Borrador ya guardado desde la Ficha (emitirFactura) --
+// antes esta segunda vía no generaba nada de esto.
+async function generarCxCyAsientoFactura(idFactura) {
+  try {
+    const facRows = await api('facturas','GET',null,'?id_factura=eq.'+idFactura+'&select=*');
+    const fac = facRows && facRows[0];
+    if (!fac) return;
+
+    // Protección: si por algún motivo ya existe una CxC activa para esta
+    // Factura (doble llamada), no duplicar.
+    const yaExiste = await api('cont_cxc','GET',null,'?id_factura=eq.'+idFactura+'&estado=neq.ANULADA&select=id_cxc&limit=1');
+    if (yaExiste && yaExiste.length) return;
+
+    // 1. Crear registro CxC
+    try {
+      await api('cont_cxc','POST',{
+        tipo:           'FACTURA',
+        id_propietario: fac.id_propietario,
+        id_factura:     fac.id_factura,
+        numero_doc:     fac.numero_factura,
+        fecha_emision:  fac.fecha_emision,
+        monto_usd:      fac.total_usd,
+        monto_ves:      fac.total_ves || 0,
+        tasa_bcv:       fac.tasa_bcv || 1,
+        saldo_usd:      fac.total_usd,
+        estado:         'PENDIENTE',
+        moneda_cobro:   fac.moneda_cobro || 'VES',
+        id_empresa:      fac.id_empresa || null,
+        id_usuario:     sesionActual.correo_usuario
+      });
+    } catch(eCxc) { console.warn('Error creando CxC:', eCxc); }
+
+    // 2. Crear asiento contable
+    try {
+      const anioAst = new Date().getFullYear();
+      const existAst = await api('cont_asientos','GET',null,
+        '?numero_asiento=like.AST-'+anioAst+'-*&id_empresa=eq.'+(fac.id_empresa||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
+      let seqAst = 1;
+      if (existAst.length) { const pa = existAst[0].numero_asiento.split('-'); seqAst = parseInt(pa[pa.length-1]) + 1; }
+      const numAst = 'AST-'+anioAst+'-'+String(seqAst).padStart(4,'0');
+
+      const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo&id_empresa=eq.'+(fac.id_empresa||0));
+      const id_periodo = periodos.length ? periodos[0].id_periodo : null;
+
+      let tasaReal = fac.tasa_bcv || 1;
       try {
-        const reps = await api('os_mercancias','GET',null,'?id_orden=eq.'+id_os+'&select=id_articulo,cantidad');
-        // Obtener área del usuario que factura — es el área que hoy tiene la Mercancía
-        // en inventario_stock_area (se la transfirió Compras vía Salida de Stock)
+        const tasasBCV = await api('tasas','GET',null,
+          '?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+        tasaReal = tasasBCV.length ? parseFloat(tasasBCV[0].tipo_cambio) : (fac.tasa_bcv || 1);
+      } catch(eTasa) {}
+
+      const asiento = await api('cont_asientos','POST',{
+        numero_asiento: numAst,
+        fecha:          fac.fecha_emision,
+        descripcion:    'Factura '+fac.numero_factura+' — '+(fac.receptor_nombre||''),
+        tipo:           'AUTOMATICO',
+        referencia:     fac.numero_factura,
+        moneda_base:    (fac.moneda_cobro||'VES').toUpperCase(),
+        tasa_bcv:       tasaReal,
+        id_periodo:     id_periodo,
+        id_empresa:      fac.id_empresa || null,
+        estado:         'APROBADO',
+        id_usuario:     sesionActual.correo_usuario
+      });
+
+      if (asiento && asiento[0]) {
+        const idAst = asiento[0].id_asiento;
+        const _todasCtasFac = await obtenerCuentasContables();
+        const cuentas = _todasCtasFac.filter(function(c){ return ['1.1.02.001','4.1.01.001','4.1.02.001','2.1.03.001'].includes(c.codigo); });
+        const cCxC     = cuentas.find(function(c){ return c.codigo==='1.1.02.001'; });
+        const cIngServ = cuentas.find(function(c){ return c.codigo==='4.1.01.001'; });
+        const cIVA     = cuentas.find(function(c){ return c.codigo==='2.1.03.001'; });
+
+        let cIGTF = fac.igtf_usd > 0
+          ? (_todasCtasFac.find(function(c){ return c.estado === 'ACTIVO' && /igtf.*por.*pagar/i.test(c.nombre||''); }) || null)
+          : null;
+        if (!cIGTF && fac.igtf_usd > 0) {
+          cIGTF = _todasCtasFac.find(function(c){ return c.codigo === '2.1.03.004'; }) || null;
+        }
+
+        const auxFac = ' (USD × '+tasaReal.toFixed(4)+')';
+        if (cCxC) await api('cont_asiento_lineas','POST',{
+          id_asiento: idAst, id_cuenta: cCxC.id_cuenta, orden: 1,
+          descripcion: 'CxC '+fac.numero_factura+auxFac,
+          debe_usd: fac.total_usd, haber_usd: 0,
+          debe_ves: fac.total_usd * tasaReal, haber_ves: 0
+        });
+        if (cIngServ) await api('cont_asiento_lineas','POST',{
+          id_asiento: idAst, id_cuenta: cIngServ.id_cuenta, orden: 2,
+          descripcion: 'Ingreso '+fac.numero_factura+auxFac,
+          debe_usd: 0, haber_usd: fac.subtotal_usd,
+          debe_ves: 0, haber_ves: fac.subtotal_usd * tasaReal
+        });
+        if (cIVA && fac.iva_usd > 0) await api('cont_asiento_lineas','POST',{
+          id_asiento: idAst, id_cuenta: cIVA.id_cuenta, orden: 3,
+          descripcion: 'IVA '+fac.numero_factura+auxFac,
+          debe_usd: 0, haber_usd: fac.iva_usd,
+          debe_ves: 0, haber_ves: fac.iva_usd * tasaReal
+        });
+        if (cIGTF && fac.igtf_usd > 0) await api('cont_asiento_lineas','POST',{
+          id_asiento: idAst, id_cuenta: cIGTF.id_cuenta, orden: 4,
+          descripcion: 'IGTF '+fac.numero_factura+auxFac,
+          debe_usd: 0, haber_usd: fac.igtf_usd,
+          debe_ves: 0, haber_ves: fac.igtf_usd * tasaReal
+        });
+      }
+    } catch(eAst) { console.warn('Error creando asiento:', eAst); }
+
+    // 3. Registrar salida automática de inventario (si la OS tenía Mercancía)
+    if (fac.id_orden) {
+      try {
+        const reps = await api('os_mercancias','GET',null,'?id_orden=eq.'+fac.id_orden+'&select=id_articulo,cantidad');
         const correo = sesionActual?.correo_usuario;
         const empRes = correo ? await api('empleados','GET',null,
           '?correo=eq.'+encodeURIComponent(correo)+'&select=id_empleado,id_area&limit=1') : [];
         const id_areaEmp = empRes?.[0]?.id_area || null;
         const idEmpEmp  = empRes?.[0]?.id_empleado || null;
 
-        // Tasa BCV vigente para el asiento de Costo de Venta
         let tasaCOGS = _tasaVigente || 1;
         try {
           const tasasCOGS = await api('tasas','GET',null,
@@ -545,24 +621,20 @@ async function guardarFactura(emitir) {
           if (!rep.id_articulo || !parseFloat(rep.cantidad)) continue;
           const cantidadRep = parseFloat(rep.cantidad);
 
-          // Registrar salida en stock_salidas
           const sal = await api('stock_salidas','POST',{
             id_articulo:   rep.id_articulo,
             cantidad:      cantidadRep,
-            id_area:       null, // destino: cliente externo
+            id_area:       null,
             id_area_entrega: id_areaEmp,
             id_empleado_entrega: idEmpEmp,
             fecha_salida:  new Date().toISOString().split('T')[0],
-            observaciones: 'Factura ' + (idFac ? 'FAC-'+idFac : ''),
+            observaciones: 'Factura FAC-'+fac.id_factura,
             id_usuario:    correo
           });
           const id_salidaFac = sal && sal[0] ? sal[0].id_salida : null;
 
-          // Descontar del stock del ÁREA que tenía la Mercancía (esquema por área)
           if (id_areaEmp) await upsertStockArea(rep.id_articulo, id_areaEmp, -cantidadRep);
 
-          // ── Asiento de Costo de Venta (faltaba por completo) ──
-          // DEBE Costo de Venta/Artículos (id_cuenta_costo_gasto) / HABER Inventario de Mercancías (id_cuenta_contable)
           try {
             const artCOGS = await api('inventario_almacen','GET',null,
               '?id_articulo=eq.'+rep.id_articulo+'&select=nombre_articulo,precio_costo_moneda,id_cuenta_contable,id_cuenta_costo_gasto');
@@ -573,15 +645,15 @@ async function guardarFactura(emitir) {
               const montoVESCOGS = parseFloat((montoUSDCOGS * tasaCOGS).toFixed(2));
               if (montoUSDCOGS > 0) {
                 const anioCOGS = new Date().getFullYear();
-                const ultsCOGS = await api('cont_asientos','GET',null,'?id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
+                const ultsCOGS = await api('cont_asientos','GET',null,'?id_empresa=eq.'+(fac.id_empresa||0)+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
                 let seqCOGS = 1;
                 if (ultsCOGS[0]?.numero_asiento) { const mmC = ultsCOGS[0].numero_asiento.match(/(\d+)$/); if (mmC) seqCOGS = parseInt(mmC[1])+1; }
                 const numAstCOGS = 'AST-' + anioCOGS + '-' + String(seqCOGS).padStart(4,'0');
                 const astCOGS = await api('cont_asientos','POST',{
-                  id_empresa: _empresaActiva?.id_empresa||0, numero_asiento: numAstCOGS,
+                  id_empresa: fac.id_empresa||0, numero_asiento: numAstCOGS,
                   tipo: 'COSTO_VENTA', fecha: new Date().toISOString().split('T')[0],
-                  descripcion: 'Costo de Venta: ' + (aC.nombre_articulo||'') + ' x' + cantidadRep + ' — Factura ' + (idFac ? 'FAC-'+idFac : ''),
-                  referencia: id_salidaFac ? 'SAL-'+id_salidaFac : 'FAC-'+idFac,
+                  descripcion: 'Costo de Venta: ' + (aC.nombre_articulo||'') + ' x' + cantidadRep + ' — Factura FAC-'+fac.id_factura,
+                  referencia: id_salidaFac ? 'SAL-'+id_salidaFac : 'FAC-'+fac.id_factura,
                   estado: 'APROBADO', moneda_base: 'VES', tasa_bcv: tasaCOGS,
                   id_usuario: correo || null
                 });
@@ -600,11 +672,7 @@ async function guardarFactura(emitir) {
         }
       } catch(eSal) { console.warn('Error registrando salida de inventario:', eSal); }
     }
-
-    okEl.textContent = emitir ? '✓ Factura emitida correctamente.' : '✓ Factura guardada como borrador.';
-    okEl.style.display='block';
-    setTimeout(function() { cerrarModal('modal-factura'); renderFacturas(); }, 1200);
-  } catch(err) { errEl.textContent='Error: '+err.message; errEl.style.display='block'; }
+  } catch(eGen) { console.warn('Error generando CxC/asiento/salida de la factura:', eGen); }
 }
 
 async function verFichaFactura(id) {
@@ -737,7 +805,7 @@ async function abrirEditarFactura(id) {
     document.getElementById('fac-emisor').value=f.id_empresa||'';
     document.getElementById('fac-fecha').value=f.fecha_emision||getHoyVzla();
     document.getElementById('fac-estado').value=f.estado;
-    document.getElementById('fac-moneda').value=f.moneda_cobro||'USD';
+    document.getElementById('fac-moneda').value=f.moneda_cobro||'VES';
     document.getElementById('fac-tasa').value=parseFloat(f.tasa_bcv||1).toFixed(4);
     document.getElementById('fac-receptor-nombre').value=f.receptor_nombre||'';
     document.getElementById('fac-receptor-rif').value=f.receptor_rif||'';
@@ -747,7 +815,13 @@ async function abrirEditarFactura(id) {
     document.getElementById('fac-aplica-igtf').checked=!!f.aplica_igtf;
     document.getElementById('fac-observaciones').value=f.observaciones||'';
     document.getElementById('modal-fac-titulo').textContent='EDITAR FACTURA — '+(f.numero_factura||'Borrador');
-    onCambiarMonedaFactura();
+    // Solo visibilidad -- NO se debe pisar el IVA/IGTF real que ya se
+    // guardó, con el default de "cambio de moneda manual".
+    actualizarVisibilidadMonedaFactura();
+    // La lista de Órdenes debe reflejar la Empresa REAL de esta Factura
+    // (puede no coincidir con la Empresa activa global), y debe incluir su
+    // propia OS aunque ya esté facturada por esta misma Factura.
+    await cargarOSParaFactura(f.id_empresa, f.id_factura);
     if (f.id_orden) { document.getElementById('fac-os-sel').value=f.id_orden; await onSelOSFactura(); }
     calcularTotalesFactura();
   }, 300);
@@ -763,8 +837,17 @@ async function emitirFactura(id) {
   // Deshabilitar botón para evitar doble clic
   const btnEmitir = document.getElementById('ficha-fac-btn-emitir');
   if (btnEmitir) { btnEmitir.disabled = true; btnEmitir.textContent = '⏳ Procesando...'; }
-  try { await api('facturas','PATCH',{estado:'EMITIDA'},'?id_factura=eq.'+id); cerrarModal('modal-ficha-fac'); renderFacturas(); }
-  catch(err) { alert('Error: '+err.message); if (btnEmitir) { btnEmitir.disabled=false; btnEmitir.textContent='✓ Emitir'; } }
+  try {
+    await api('facturas','PATCH',{estado:'EMITIDA'},'?id_factura=eq.'+id);
+    // Antes, emitir desde aquí solo cambiaba el estado -- nunca creaba la
+    // CxC ni el asiento contable, a diferencia de emitir directo desde el
+    // formulario. Ahora usa la misma función que guardarFactura().
+    await generarCxCyAsientoFactura(id);
+    cerrarModal('modal-ficha-fac');
+    renderFacturas();
+  }
+  catch(err) { alert('Error: '+err.message); }
+  finally { if (btnEmitir) { btnEmitir.disabled=false; btnEmitir.textContent='✓ Emitir'; } }
 }
 
 async function anularFactura(id, numero) {
