@@ -699,6 +699,7 @@ async function agregarServicioCatalogo() {
   // Resetear campos del formulario de agregar — sin borrar las opciones del select
   sel.value = '';
   precioLibre.value = '';
+  precioLibre.readOnly = false; precioLibre.style.cursor = ''; precioLibre.style.opacity = ''; // desbloquear -- pudo quedar de solo lectura por un servicio de catálogo
   cant.value = '1';
   const descLibreEl = document.getElementById('os-desc-libre');
   if (descLibreEl) descLibreEl.value = '';
@@ -728,19 +729,33 @@ function onSelCatalogoChange() {
   const cant = document.getElementById('os-cant-cat');
 
   if (!sel.value) {
-    // Desbloquear moneda para descripción libre
+    // Sin servicio de catálogo seleccionado (Concepto libre) → Precio se
+    // desbloquea para que el Usuario lo escriba a mano.
     const monedaSel = document.getElementById('os-moneda-cat');
     if (monedaSel) monedaSel.disabled = false;
+    const precioLibreElVacio = document.getElementById('os-precio-libre');
+    if (precioLibreElVacio) {
+      precioLibreElVacio.readOnly = false;
+      precioLibreElVacio.style.cursor = '';
+      precioLibreElVacio.style.opacity = '';
+    }
     if (descLibre) setTimeout(function() { descLibre.focus(); }, 50);
     return;
   }
 
-  // Servicio seleccionado → autocompletar moneda del catálogo (el precio ya
-  // se ve en el propio texto del <option>, no se repite en un campo aparte)
+  // Servicio de catálogo seleccionado → el precio ya no se muestra en el
+  // texto del <option> (solo el Nombre); se muestra aquí, en el campo
+  // Precio, de solo lectura -- el precio real lo define el Catálogo de
+  // Servicios, no se edita desde la Orden.
   const s = catalogoCache.find(function(x) { return x.id_servicio == sel.value; });
   if (s) {
     const precioLibreEl = document.getElementById('os-precio-libre');
-    if (precioLibreEl) precioLibreEl.value = '';
+    if (precioLibreEl) {
+      precioLibreEl.value = parseFloat(s.precio_usd || 0).toFixed(2);
+      precioLibreEl.readOnly = true;
+      precioLibreEl.style.cursor = 'not-allowed';
+      precioLibreEl.style.opacity = '0.6';
+    }
     const monedaServ = (s.moneda_precio || 'USD').toUpperCase();
     const monedaSel  = document.getElementById('os-moneda-cat');
     // Asignar y bloquear la moneda — no se puede cambiar, viene del catálogo
@@ -1397,16 +1412,16 @@ async function cargarSelectsOS() {
   if (contConceptoInit)   contConceptoInit.style.display = 'none';
   const cantCatInit = document.getElementById('os-cant-cat');
   if (cantCatInit) { cantCatInit.readOnly = false; cantCatInit.style.cursor = ''; cantCatInit.style.opacity = ''; }
+  const precioLibreInit = document.getElementById('os-precio-libre');
+  if (precioLibreInit) { precioLibreInit.readOnly = false; precioLibreInit.style.cursor = ''; precioLibreInit.style.opacity = ''; }
 
   // ── Cargar selector de SERVICIOS — todos ocultos hasta seleccionar grupo ──
   const selCat = document.getElementById('os-sel-cat');
   if (selCat) {
     selCat.innerHTML = '<option value="">— Primero seleccione un grupo —</option>'
       + catalogoCache.map(function(s) {
-          const mon = (s.moneda_precio || 'USD').toUpperCase();
-          const precioFmt = mon === 'VES' ? fmtBs(parseFloat(s.precio_usd||0)) + ' Bs' : '$ ' + fmtUSD(parseFloat(s.precio_usd||0)) + ' ' + mon;
           return '<option value="' + s.id_servicio + '" data-grupo="' + (s.grupo || '') + '" style="display:none">'
-            + s.nombre + ' — ' + precioFmt + '</option>';
+            + s.nombre + '</option>';
         }).join('');
   }
 
@@ -1499,7 +1514,7 @@ function onSelGrupoCatChange() {
     if (contNombreServ) contNombreServ.style.display = 'none';
     if (contConcepto)   contConcepto.style.display = '';
     selCat.value = ''; // asegurar que no quede seleccionado el servicio placeholder de precio 0
-    if (precioLibreEl) precioLibreEl.value = '';
+    if (precioLibreEl) { precioLibreEl.value = ''; precioLibreEl.readOnly = false; precioLibreEl.style.cursor = ''; precioLibreEl.style.opacity = ''; }
     const cantElDL = document.getElementById('os-cant-cat');
     if (cantElDL) { cantElDL.value = '1'; cantElDL.readOnly = true; cantElDL.style.cursor = 'not-allowed'; cantElDL.style.opacity = '0.6'; }
     const monedaSelDL = document.getElementById('os-moneda-cat');
