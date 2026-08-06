@@ -714,6 +714,7 @@ async function agregarServicioCatalogo() {
   const contConceptoReset   = document.getElementById('os-cont-concepto');
   if (contNombreServReset) contNombreServReset.style.display = '';
   if (contConceptoReset)   contConceptoReset.style.display = 'none';
+  cant.readOnly = false; cant.style.cursor = ''; cant.style.opacity = ''; // desbloquear Cantidad -- ya no está en modo Descripción Libre
   // Ocultar todas las opciones de servicio hasta que se seleccione un grupo
   if (sel) Array.from(sel.options).forEach(function(opt) {
     if (opt.value) opt.style.display = 'none';
@@ -1394,6 +1395,8 @@ async function cargarSelectsOS() {
   const contConceptoInit   = document.getElementById('os-cont-concepto');
   if (contNombreServInit) contNombreServInit.style.display = '';
   if (contConceptoInit)   contConceptoInit.style.display = 'none';
+  const cantCatInit = document.getElementById('os-cant-cat');
+  if (cantCatInit) { cantCatInit.readOnly = false; cantCatInit.style.cursor = ''; cantCatInit.style.opacity = ''; }
 
   // ── Cargar selector de SERVICIOS — todos ocultos hasta seleccionar grupo ──
   const selCat = document.getElementById('os-sel-cat');
@@ -1490,11 +1493,15 @@ function onSelGrupoCatChange() {
     // Grupo "DESCRIPCIÓN LIBRE": no se toma el servicio/precio (0) asociado
     // a ese grupo en el catálogo -- se oculta el selector de Nombre del
     // Servicio y se usa en su lugar el campo Concepto (texto libre) con su
-    // propio Precio Venta, que el Usuario ingresa manualmente.
+    // propio Precio Venta, que el Usuario ingresa manualmente. La Cantidad
+    // queda fija en 1 y de solo lectura -- un concepto libre es una línea
+    // única, no tiene sentido "cantidad" editable.
     if (contNombreServ) contNombreServ.style.display = 'none';
     if (contConcepto)   contConcepto.style.display = '';
     selCat.value = ''; // asegurar que no quede seleccionado el servicio placeholder de precio 0
     if (precioLibreEl) precioLibreEl.value = '';
+    const cantElDL = document.getElementById('os-cant-cat');
+    if (cantElDL) { cantElDL.value = '1'; cantElDL.readOnly = true; cantElDL.style.cursor = 'not-allowed'; cantElDL.style.opacity = '0.6'; }
     const monedaSelDL = document.getElementById('os-moneda-cat');
     if (monedaSelDL) monedaSelDL.disabled = false;
     setTimeout(function() { descLibreEl?.focus(); }, 50);
@@ -1507,6 +1514,8 @@ function onSelGrupoCatChange() {
   if (contNombreServ) contNombreServ.style.display = '';
   if (contConcepto)   contConcepto.style.display = 'none';
   if (descLibreEl) descLibreEl.value = '';
+  const cantElNorm = document.getElementById('os-cant-cat');
+  if (cantElNorm) { cantElNorm.readOnly = false; cantElNorm.style.cursor = ''; cantElNorm.style.opacity = ''; } // desbloquear -- ya no es Descripción Libre
 
   // Mostrar solo servicios del grupo seleccionado (o todos si grupo vacío)
   Array.from(selCat.options).forEach(function(opt) {
