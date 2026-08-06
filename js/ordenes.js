@@ -672,7 +672,7 @@ async function agregarServicioCatalogo() {
     if (!descEl.value.trim()) {
       descEl.style.borderColor = 'var(--naranja)';
       descEl.placeholder = '⚠ Requerido';
-      setTimeout(function() { descEl.style.borderColor = ''; descEl.placeholder = 'Escribe descripción libre...'; }, 2000);
+      setTimeout(function() { descEl.style.borderColor = ''; descEl.placeholder = 'Escribe el concepto...'; }, 2000);
       descEl.focus();
       return;
     }
@@ -708,6 +708,12 @@ async function agregarServicioCatalogo() {
   // Resetear también el grupo para que el usuario elija de nuevo
   const grpEl = document.getElementById('os-sel-grupo-cat');
   if (grpEl) grpEl.value = '';
+  // Restaurar el toggle Nombre del Servicio / Concepto a su estado normal
+  // (por si la línea se agregó estando en modo "Descripción Libre")
+  const contNombreServReset = document.getElementById('os-cont-nombre-serv');
+  const contConceptoReset   = document.getElementById('os-cont-concepto');
+  if (contNombreServReset) contNombreServReset.style.display = '';
+  if (contConceptoReset)   contConceptoReset.style.display = 'none';
   // Ocultar todas las opciones de servicio hasta que se seleccione un grupo
   if (sel) Array.from(sel.options).forEach(function(opt) {
     if (opt.value) opt.style.display = 'none';
@@ -1381,6 +1387,13 @@ async function cargarSelectsOS() {
     selGrupo.innerHTML = '<option value="">— Seleccionar grupo —</option>'
       + grupos.map(function(g) { return '<option value="' + g + '">' + g + '</option>'; }).join('');
   }
+  // Al abrir el modal siempre se parte del estado normal: Nombre del
+  // Servicio visible, Concepto oculto -- por si quedó en el otro estado de
+  // una Orden anterior en la misma sesión del navegador.
+  const contNombreServInit = document.getElementById('os-cont-nombre-serv');
+  const contConceptoInit   = document.getElementById('os-cont-concepto');
+  if (contNombreServInit) contNombreServInit.style.display = '';
+  if (contConceptoInit)   contConceptoInit.style.display = 'none';
 
   // ── Cargar selector de SERVICIOS — todos ocultos hasta seleccionar grupo ──
   const selCat = document.getElementById('os-sel-cat');
@@ -1447,7 +1460,7 @@ async function cargarSelectsOS() {
         return (_invSaldoArea[r.id_articulo] || 0) > 0;
       });
     }
-    selInv.innerHTML = '<option value="">— Seleccionar Mercancía —</option>'
+    selInv.innerHTML = '<option value="">— Seleccionar —</option>'
       + itemsDisponibles.map(function(r) {
           const stock = stockMostrarArticulo(r.id_articulo);
           return '<option value="' + r.id_articulo + '">' + r.nombre_articulo + ' (Stock: ' + stock + ') — $' + parseFloat(r.precio_venta_moneda || 0).toFixed(2) + '</option>';
@@ -1455,10 +1468,45 @@ async function cargarSelectsOS() {
   } catch(eInvSel) { console.warn('Error cargando selector de Mercancías en OS:', eInvSel); }
 }
 
+// Comparación robusta de texto -- sin mayúsculas ni acentos -- para no
+// depender de que "DESCRIPCIÓN LIBRE" esté escrito exactamente igual en
+// la base de datos que en este código.
+function _normTxt(s) {
+  return (s || '').toString().trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 // ── Filtrar servicios al cambiar el Grupo ──
 function onSelGrupoCatChange() {
   const grupo = document.getElementById('os-sel-grupo-cat').value;
   const selCat = document.getElementById('os-sel-cat');
+  const esDescLibre = _normTxt(grupo) === 'DESCRIPCION LIBRE';
+
+  const contNombreServ = document.getElementById('os-cont-nombre-serv');
+  const contConcepto   = document.getElementById('os-cont-concepto');
+  const descLibreEl    = document.getElementById('os-desc-libre');
+  const precioLibreEl  = document.getElementById('os-precio-libre');
+
+  if (esDescLibre) {
+    // Grupo "DESCRIPCIÓN LIBRE": no se toma el servicio/precio (0) asociado
+    // a ese grupo en el catálogo -- se oculta el selector de Nombre del
+    // Servicio y se usa en su lugar el campo Concepto (texto libre) con su
+    // propio Precio Venta, que el Usuario ingresa manualmente.
+    if (contNombreServ) contNombreServ.style.display = 'none';
+    if (contConcepto)   contConcepto.style.display = '';
+    selCat.value = ''; // asegurar que no quede seleccionado el servicio placeholder de precio 0
+    if (precioLibreEl) precioLibreEl.value = '';
+    const monedaSelDL = document.getElementById('os-moneda-cat');
+    if (monedaSelDL) monedaSelDL.disabled = false;
+    setTimeout(function() { descLibreEl?.focus(); }, 50);
+    return;
+  }
+
+  // Cualquier otro grupo (o ninguno): comportamiento normal -- mostrar
+  // Nombre del Servicio, ocultar Concepto y limpiar su texto para que no
+  // quede un concepto de una selección anterior mezclado con un servicio real.
+  if (contNombreServ) contNombreServ.style.display = '';
+  if (contConcepto)   contConcepto.style.display = 'none';
+  if (descLibreEl) descLibreEl.value = '';
 
   // Mostrar solo servicios del grupo seleccionado (o todos si grupo vacío)
   Array.from(selCat.options).forEach(function(opt) {
