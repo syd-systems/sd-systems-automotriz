@@ -177,6 +177,23 @@ async function renderInventario(filtro) {
       + '<div id="tabla-inv-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
       + '</div>';
   }
+
+  // Solo al ABRIR el módulo (no en cada re-render por búsqueda/filtro): si
+  // el Usuario tiene acceso al stock global (VER_INVENTARIO_GENERAL o
+  // Administrador), por defecto se le muestra SU PROPIA Área -- puede
+  // cambiar a "Todas las Áreas (consolidado)" o cualquier otra desde el
+  // selector, pero cada vez que vuelva a entrar a Inventario General
+  // arranca de nuevo en su propia Área.
+  if (!panelYaExiste && (sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL'))) {
+    try {
+      const correoPropio = sesionActual?.correo_usuario;
+      if (correoPropio) {
+        const empPropio = await api('empleados','GET',null,
+          '?correo=eq.'+encodeURIComponent(correoPropio)+'&select=id_area&limit=1');
+        _invFiltroAreaManual = empPropio?.[0]?.id_area || null;
+      }
+    } catch(e) {}
+  }
   const tablaCont = document.getElementById('tabla-inv-cont');
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   // Si estamos en vista movimientos, no recargar la tabla
