@@ -1350,17 +1350,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260723144"></script>
-<script src="js/parametros.js?v=20260723144"></script>
-<script src="js/empresas.js?v=20260723144"></script>
-<script src="js/ingresos.js?v=20260723144"></script>
-<script src="js/inventario.js?v=20260723144"></script>
-<script src="js/proveedores.js?v=20260723144"></script>
-<script src="js/contabilidad.js?v=20260723144"></script>
-<script src="js/egresos.js?v=20260723144"></script>
-<script src="js/vehiculos.js?v=20260723144"></script>
-<script src="js/catalogo.js?v=20260723144"></script>
-<script src="js/ordenes.js?v=20260723144"></script>
+<script src="js/core.js?v=20260723145"></script>
+<script src="js/parametros.js?v=20260723145"></script>
+<script src="js/empresas.js?v=20260723145"></script>
+<script src="js/ingresos.js?v=20260723145"></script>
+<script src="js/inventario.js?v=20260723145"></script>
+<script src="js/proveedores.js?v=20260723145"></script>
+<script src="js/contabilidad.js?v=20260723145"></script>
+<script src="js/egresos.js?v=20260723145"></script>
+<script src="js/vehiculos.js?v=20260723145"></script>
+<script src="js/catalogo.js?v=20260723145"></script>
+<script src="js/ordenes.js?v=20260723145"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2929,6 +2929,16 @@
           <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">N° Orden</div>
           <div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)" id="os-numero">—</div>
         </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <label id="lbl-os-estado" style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin:0;white-space:nowrap">Estado</label>
+          <select id="os-estado" onchange="onCambioEstadoOS(this.value)" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">
+            <option value="">— Seleccione Estado —</option>
+            <option value="ABIERTA">Abierta</option>
+            <option value="EN_PROCESO">En Proceso</option>
+            <option value="ESPERA_ARTICULO">Espera Artículo</option>
+            <option value="CERRADA">Cerrada</option>
+          </select>
+        </div>
         <!-- os-tasa-usd y os-tasa-eur se mantienen ocultos para compatibilidad con el JS existente -->
         <span id="os-tasa-usd" style="display:none"></span>
         <span id="os-tasa-eur" style="display:none"></span>
@@ -2962,16 +2972,6 @@
       </div>
 
       <div class="form-grid">
-        <div class="form-campo">
-          <label id="lbl-os-estado">Estado</label>
-           <select id="os-estado" onchange="onCambioEstadoOS(this.value)">
-            <option value="">— Seleccione Estado —</option>
-            <option value="ABIERTA">Abierta</option>
-            <option value="EN_PROCESO">En Proceso</option>
-            <option value="ESPERA_ARTICULO">Espera Artículo</option>
-            <option value="CERRADA">Cerrada</option>
-          </select>
-        </div>
         <div class="form-campo" id="os-fecha-cierre-cont" style="display:none">
           <label>Fecha de Cierre <span style="color:var(--rojo)">*</span></label>
           <input type="date" id="os-fecha-cierre">
