@@ -1350,17 +1350,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260723134"></script>
-<script src="js/parametros.js?v=20260723134"></script>
-<script src="js/empresas.js?v=20260723134"></script>
-<script src="js/ingresos.js?v=20260723134"></script>
-<script src="js/inventario.js?v=20260723134"></script>
-<script src="js/proveedores.js?v=20260723134"></script>
-<script src="js/contabilidad.js?v=20260723134"></script>
-<script src="js/egresos.js?v=20260723134"></script>
-<script src="js/vehiculos.js?v=20260723134"></script>
-<script src="js/catalogo.js?v=20260723134"></script>
-<script src="js/ordenes.js?v=20260723134"></script>
+<script src="js/core.js?v=20260723135"></script>
+<script src="js/parametros.js?v=20260723135"></script>
+<script src="js/empresas.js?v=20260723135"></script>
+<script src="js/ingresos.js?v=20260723135"></script>
+<script src="js/inventario.js?v=20260723135"></script>
+<script src="js/proveedores.js?v=20260723135"></script>
+<script src="js/contabilidad.js?v=20260723135"></script>
+<script src="js/egresos.js?v=20260723135"></script>
+<script src="js/vehiculos.js?v=20260723135"></script>
+<script src="js/catalogo.js?v=20260723135"></script>
+<script src="js/ordenes.js?v=20260723135"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -1941,13 +1941,13 @@
           <input type="date" id="cont-pago-cxc-fecha" style="width:100%">
         </div>
         <div class="form-campo form-full">
-          <label>Método de Pago</label>
+          <label>Método de Pago *</label>
           <select id="cont-pago-cxc-metodo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Cargando métodos —</option>
           </select>
         </div>
         <div class="form-campo form-full">
-          <label>Referencia</label>
+          <label>Referencia *</label>
           <input type="text" id="cont-pago-cxc-ref" placeholder="N° referencia bancaria">
         </div>
       </div>
@@ -3137,14 +3137,14 @@
       <!-- EMISOR -->
       <div class="form-campo form-full" style="margin-bottom:16px">
         <label>Empresa</label>
-        <select id="fac-emisor" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+        <select id="fac-emisor" onchange="onCambiarEmpresaFactura()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
           <option value="">— Seleccionar empresa —</option>
         </select>
       </div>
 
       <!-- OS VINCULADA -->
       <div style="margin-bottom:16px">
-        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:8px">Orden de Servicio</div>
+        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:8px">Motivo</div>
         <select id="fac-os-sel" onchange="onSelOSFactura()" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none">
           <option value="">— Seleccionar OS —</option>
         </select>
@@ -3158,19 +3158,19 @@
         <div class="form-grid">
           <div class="form-campo form-full">
             <label>Nombre / Razón Social</label>
-            <input type="text" id="fac-receptor-nombre" placeholder="Nombre completo del receptor">
+            <input type="text" id="fac-receptor-nombre" placeholder="Nombre completo del receptor" readonly>
           </div>
           <div class="form-campo">
             <label>RIF / Cédula</label>
-            <input type="text" id="fac-receptor-rif" placeholder="J-XXXXXXXX-X">
+            <input type="text" id="fac-receptor-rif" placeholder="J-XXXXXXXX-X" readonly>
           </div>
           <div class="form-campo">
             <label>Dirección *</label>
-            <input type="text" id="fac-receptor-dir" placeholder="Dirección fiscal">
+            <input type="text" id="fac-receptor-dir" placeholder="Dirección fiscal" readonly>
           </div>
           <div class="form-campo form-full">
             <label>Tipo de Contribuyente</label>
-            <select id="fac-receptor-tipo-contrib">
+            <select id="fac-receptor-tipo-contrib" disabled>
               <option value="">— No aplica / No especificado —</option>
               <option value="ORDINARIO">Contribuyente Ordinario</option>
               <option value="ESPECIAL">Contribuyente Especial</option>
@@ -3235,8 +3235,8 @@
       <div class="alerta alerta-error" id="alerta-fac-err" style="margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
         <button class="btn-secundario" onclick="cerrarModal('modal-factura')">Retornar</button>
-        <button class="btn-secundario" onclick="guardarFactura(false)">Guardar Borrador</button>
-        <button class="btn-primario"   onclick="guardarFactura(true)">✓ Emitir Factura</button>
+        <button class="btn-secundario" id="btn-fac-borrador" onclick="guardarFactura(false)">Guardar Borrador</button>
+        <button class="btn-primario"   id="btn-fac-emitir"   onclick="guardarFactura(true)">✓ Emitir Factura</button>
       </div>
     </div>
   </div>
