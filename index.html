@@ -1350,17 +1350,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260723146"></script>
-<script src="js/parametros.js?v=20260723146"></script>
-<script src="js/empresas.js?v=20260723146"></script>
-<script src="js/ingresos.js?v=20260723146"></script>
-<script src="js/inventario.js?v=20260723146"></script>
-<script src="js/proveedores.js?v=20260723146"></script>
-<script src="js/contabilidad.js?v=20260723146"></script>
-<script src="js/egresos.js?v=20260723146"></script>
-<script src="js/vehiculos.js?v=20260723146"></script>
-<script src="js/catalogo.js?v=20260723146"></script>
-<script src="js/ordenes.js?v=20260723146"></script>
+<script src="js/core.js?v=20260723147"></script>
+<script src="js/parametros.js?v=20260723147"></script>
+<script src="js/empresas.js?v=20260723147"></script>
+<script src="js/ingresos.js?v=20260723147"></script>
+<script src="js/inventario.js?v=20260723147"></script>
+<script src="js/proveedores.js?v=20260723147"></script>
+<script src="js/contabilidad.js?v=20260723147"></script>
+<script src="js/egresos.js?v=20260723147"></script>
+<script src="js/vehiculos.js?v=20260723147"></script>
+<script src="js/catalogo.js?v=20260723147"></script>
+<script src="js/ordenes.js?v=20260723147"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3017,15 +3017,15 @@
               </div>
             </div>
           </div>
-          <!-- Fila 2: Precio de Venta + Cantidad + Moneda + Botón -->
-          <div style="display:grid;grid-template-columns:130px 90px 130px 100px;gap:8px;align-items:end">
-            <div class="form-campo" style="margin:0">
-              <label style="font-size:7px;white-space:nowrap">PRECIO DE VENTA</label>
-              <input type="number" id="os-precio-libre" step="0.01" min="0" placeholder="0.00" style="font-family:var(--font-mono)">
-            </div>
+          <!-- Fila 2: Cantidad + Precio + Moneda + Botón -->
+          <div style="display:grid;grid-template-columns:90px 130px 130px 100px;gap:8px;align-items:end">
             <div class="form-campo" style="margin:0">
               <label style="font-size:7px;white-space:nowrap">CANTIDAD</label>
               <input type="number" id="os-cant-cat" value="1" min="0.01" step="0.01" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+            </div>
+            <div class="form-campo" style="margin:0">
+              <label style="font-size:7px;white-space:nowrap">PRECIO</label>
+              <input type="number" id="os-precio-libre" step="0.01" min="0" placeholder="0.00" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
             </div>
             <div class="form-campo" style="margin:0">
               <label style="font-size:7px">MONEDA</label>
