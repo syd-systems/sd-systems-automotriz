@@ -20,6 +20,7 @@ var _invVista = 'tabla';
 var _invSaldoConsolidado = null; // { id_articulo: totalTodasLasAreas }
 let _invCategoriasCache = [];
 let _invAreasCache = []; // Áreas activas -- para el selector de Área visible solo con VER_INVENTARIO_GENERAL
+let _invAreasConStock = new Set(); // ids de Área con al menos un artículo con stock > 0 (se recalcula en calcularInvSaldoArea)
 let _invFiltroAreaManual = null; // id_area elegido manualmente por un usuario con VER_INVENTARIO_GENERAL (null = ver consolidado)
 let _invSaldoArea = null; // Saldo por área del usuario — null = mostrar stock global
 var _fichaInvActual = { id: null, nombre: '' }; // reubicada aqui desde ingresos.js, es de Inventario
@@ -79,10 +80,15 @@ async function calcularInvSaldoArea() {
   try {
     // Consolidado (todas las áreas) — se calcula siempre, lo usan los
     // usuarios con VER_INVENTARIO_GENERAL y sirve de referencia general.
-    const todasLasFilas = await api('inventario_stock_area','GET',null,'?select=id_articulo,stock_actual') || [];
+    const todasLasFilas = await api('inventario_stock_area','GET',null,'?select=id_articulo,id_area,stock_actual') || [];
     const consolidado = {};
-    todasLasFilas.forEach(function(f){ consolidado[f.id_articulo] = (consolidado[f.id_articulo]||0) + parseFloat(f.stock_actual||0); });
+    const areasConStock = new Set();
+    todasLasFilas.forEach(function(f){
+      consolidado[f.id_articulo] = (consolidado[f.id_articulo]||0) + parseFloat(f.stock_actual||0);
+      if (parseFloat(f.stock_actual||0) > 0) areasConStock.add(f.id_area);
+    });
     _invSaldoConsolidado = consolidado;
+    _invAreasConStock = areasConStock;
 
     const tienePermisoGeneral = sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL');
 
@@ -198,21 +204,13 @@ async function renderInventario(filtro) {
         }
       } catch(e) {}
     }
-    // Cargar cache de Áreas si está vacío -- solo aplica a quien tiene el
-    // selector visible (VER_INVENTARIO_GENERAL o Administrador).
+    // Cargar cache de nombres de Área si está vacío -- solo aplica a quien
+    // tiene el selector visible (VER_INVENTARIO_GENERAL o Administrador).
+    // El llenado real del <select>, filtrado a las Áreas con stock, se
+    // hace más abajo, después de calcularInvSaldoArea().
     if ((sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) && (!_invAreasCache || !_invAreasCache.length)) {
       try {
         _invAreasCache = await api('param_areas','GET',null,'?estado=eq.ACTIVO&order=codigo.asc,nombre.asc') || [];
-        const selArea = document.getElementById('inv-filtro-area');
-        if (selArea && _invAreasCache.length) {
-          const optsExtraArea = _invAreasCache.map(function(a){
-            return '<option value="'+a.id+'">'+a.nombre+(a.codigo?' ('+a.codigo+')':'')+'</option>';
-          }).join('');
-          if (!selArea.innerHTML.includes(optsExtraArea)) {
-            selArea.innerHTML = '<option value="">Todas las Áreas (consolidado)</option>' + optsExtraArea;
-            selArea.value = _invFiltroAreaManual || '';
-          }
-        }
       } catch(e) {}
     }
     const itemsTodos = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&select=*' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')) || [];
@@ -222,6 +220,22 @@ async function renderInventario(filtro) {
     // Calcular saldo por área (función centralizada) — ANTES de cualquier filtro de stock,
     // para que "Solo con stock" y el filtro por área usen la fuente correcta (inventario_stock_area)
     await calcularInvSaldoArea();
+
+    // Llenar el select de Área -- solo con las Áreas que tienen al menos
+    // un artículo con stock (_invAreasConStock, calculado arriba). Se hace
+    // aquí y no antes porque depende del resultado de calcularInvSaldoArea().
+    const selArea = document.getElementById('inv-filtro-area');
+    if (selArea) {
+      const areasConStockList = _invAreasCache.filter(function(a){ return _invAreasConStock.has(a.id); });
+      const optsExtraArea = areasConStockList.map(function(a){
+        return '<option value="'+a.id+'">'+a.nombre+(a.codigo?' ('+a.codigo+')':'')+'</option>';
+      }).join('');
+      if (!selArea.innerHTML.includes(optsExtraArea) || !areasConStockList.length) {
+        selArea.innerHTML = '<option value="">Todas las Áreas (consolidado)</option>' + optsExtraArea;
+        selArea.value = _invFiltroAreaManual || '';
+      }
+    }
+
     const itemsFiltradosBase = soloConStock ? items.filter(function(r) { return stockMostrarArticulo(r.id_articulo) > 0; }) : items;
 
     // ── Filtro por área si no tiene VER_INVENTARIO_GENERAL ──
