@@ -1052,7 +1052,7 @@ async function contAbrirPagoCxc(id_cxc) {
           + metodos.map(function(m) {
               return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-moneda="'+(m.codigo||'')+'">'+m.nombre+'</option>';
             }).join('');
-        selMetodo.value = metodos[0].id_metodo;
+        // Sin auto-selección: el usuario debe elegir el método explícitamente.
       }
     } catch(eMet) {
       selMetodo.innerHTML = '<option value="">— Sin métodos disponibles —</option>';
@@ -1086,8 +1086,18 @@ async function contGuardarPagoCxc() {
     errEl.textContent = 'La fecha es obligatoria.'; errEl.style.display = 'block';
     document.getElementById('cont-pago-cxc-fecha')?.focus(); return;
   }
-  const metodo = document.getElementById('cont-pago-cxc-metodo')?.value || null;
+  const selMetodoEl = document.getElementById('cont-pago-cxc-metodo');
+  const metodo = selMetodoEl?.value || null;
+  if (!metodo) {
+    errEl.textContent = 'Debe seleccionar el Método de Pago.'; errEl.style.display = 'block';
+    selMetodoEl?.focus(); return;
+  }
+  const metodoNombre = selMetodoEl?.selectedOptions?.[0]?.textContent || metodo;
   const referencia = document.getElementById('cont-pago-cxc-ref')?.value.trim() || null;
+  if (!referencia) {
+    errEl.textContent = 'La Referencia es obligatoria.'; errEl.style.display = 'block';
+    document.getElementById('cont-pago-cxc-ref')?.focus(); return;
+  }
 
   try {
     const rows = await api('cont_cxc','GET',null,'?id_cxc=eq.'+_pagoCxcActualId+'&select=*');
@@ -1108,7 +1118,7 @@ async function contGuardarPagoCxc() {
       pagado_usd:  nuevoPagado,
       saldo_usd:   nuevoSaldo,
       estado:      nuevoEstado,
-      metodo_pago: metodo,
+      metodo_pago: metodoNombre,
       referencia:  referencia,
       fecha_cobro: new Date().toISOString()
     },'?id_cxc=eq.'+_pagoCxcActualId);
