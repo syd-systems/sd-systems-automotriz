@@ -1033,8 +1033,31 @@ async function contAbrirPagoCxc(id_cxc) {
   const saldoPend = parseFloat(c.saldo_usd != null ? c.saldo_usd : c.monto_usd) || 0;
   document.getElementById('cont-pago-cxc-monto').value  = saldoPend.toFixed(2);
   document.getElementById('cont-pago-cxc-fecha').value  = getHoyVzla();
-  document.getElementById('cont-pago-cxc-metodo').value = 'EFECTIVO_VES';
   document.getElementById('cont-pago-cxc-ref').value    = '';
+
+  // Cargar métodos de Cobro reales desde Parámetros (param_metodos_pago),
+  // igual que Egresos -- ya no son opciones fijas en el HTML. Se traen
+  // TODOS los activos (ambas monedas), porque el Cliente puede pagar en
+  // cualquiera de las dos.
+  const selMetodo = document.getElementById('cont-pago-cxc-metodo');
+  if (selMetodo) {
+    selMetodo.innerHTML = '<option value="">— Cargando métodos —</option>';
+    try {
+      const metodos = await api('param_metodos_pago','GET',null,
+        '?estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,tipo_canal,id_cuenta_contable,codigo' + emisorQ());
+      if (!metodos || !metodos.length) {
+        selMetodo.innerHTML = '<option value="">⚠ Sin métodos de cobro configurados — configure uno en Parámetros</option>';
+      } else {
+        selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
+          + metodos.map(function(m) {
+              return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-moneda="'+(m.codigo||'')+'">'+m.nombre+'</option>';
+            }).join('');
+        selMetodo.value = metodos[0].id_metodo;
+      }
+    } catch(eMet) {
+      selMetodo.innerHTML = '<option value="">— Sin métodos disponibles —</option>';
+    }
+  }
 
   const infoEl = document.getElementById('cont-pago-cxc-tasa-info');
   if (infoEl) {
@@ -1095,6 +1118,123 @@ async function contGuardarPagoCxc() {
     if (c.id_factura) {
       await api('facturas','PATCH',{ estado: nuevoEstado },'?id_factura=eq.'+c.id_factura);
     }
+
+    // Generar asiento contable del Cobro -- Debe Caja/Banco (según método
+    // elegido, desde param_metodos_pago) / Haber CxC Cliente. Si la tasa
+    // BCV cambió desde que se emitió la Factura, se registra diferencia
+    // cambiaria (espejo exacto de cómo Egresos trata el Pago de CxP, pero
+    // en sentido de Cobro: si sube la tasa, la empresa recibe más Bs de lo
+    // que el Cliente debía = ganancia; si baja, pérdida). Si el método es
+    // en divisas, se agrega IGTF 3% (mismas cuentas que usa Egresos).
+    try {
+      const selMetodoEl = document.getElementById('cont-pago-cxc-metodo');
+      const optSel = selMetodoEl?.selectedOptions?.[0];
+      const idCuentaContraparte = parseInt(optSel?.dataset.cuentaId) || null;
+      const monedaMetodo = (optSel?.dataset.moneda || 'VES').toUpperCase();
+
+      if (!idCuentaContraparte) {
+        console.warn('Cobro registrado, pero no se generó asiento: el método seleccionado no tiene cuenta contable configurada en Parámetros.');
+      } else {
+        const todasCtas = await obtenerCuentasContables();
+        const getCta = function(codigo){ return todasCtas.find(function(x){ return x.codigo === codigo; }) || null; };
+        const cCxC       = getCta('1.1.02.001');
+        const cDifGasto   = getCta('6.2.01.003');
+        const cDifIngr    = getCta('4.2.01.003');
+        const cIGTF       = getCta('6.1.04.003');
+        const cIGTFPagar  = getCta('2.1.03.004');
+        const cContraparte = todasCtas.find(function(x){ return x.id_cuenta === idCuentaContraparte; }) || null;
+
+        let pctIGTF = 0.03;
+        try {
+          const trib = await api('param_tributos','GET',null,'?codigo=eq.IGTF&select=alicuota&limit=1');
+          if (trib && trib[0]) pctIGTF = parseFloat(trib[0].alicuota) / 100;
+        } catch(eTrib) {}
+
+        let tasaActual = parseFloat(c.tasa_bcv) || 1;
+        try {
+          const tasasBCV = await api('tasas','GET',null,'?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+          if (tasasBCV.length) tasaActual = parseFloat(tasasBCV[0].tipo_cambio);
+        } catch(eTasa) {}
+
+        const tasaOriginal      = parseFloat(c.tasa_bcv) || 1;
+        const montoVESOriginal  = parseFloat((monto * tasaOriginal).toFixed(2));
+        const montoVESCobro     = parseFloat((monto * tasaActual).toFixed(2));
+        const difCambio         = parseFloat((montoVESCobro - montoVESOriginal).toFixed(2));
+
+        let numeroFacturaRef = 'CXC-' + _pagoCxcActualId;
+        try {
+          if (c.id_factura) {
+            const facRef = await api('facturas','GET',null,'?id_factura=eq.'+c.id_factura+'&select=numero_factura,receptor_nombre');
+            if (facRef && facRef[0]) numeroFacturaRef = facRef[0].numero_factura || numeroFacturaRef;
+          }
+        } catch(eFacRef) {}
+
+        const anio = new Date(fecha).getFullYear();
+        const existAst = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-'+anio+'-*&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
+        let seqAst = 1;
+        if (existAst.length) { const p = existAst[0].numero_asiento.split('-'); seqAst = parseInt(p[p.length-1]) + 1; }
+        const numAst = 'AST-' + anio + '-' + String(seqAst).padStart(4,'0');
+
+        const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo&id_empresa=eq.'+(_empresaActiva?.id_empresa||0));
+        const id_periodo = periodos.length ? periodos[0].id_periodo : null;
+
+        const ast = await api('cont_asientos','POST',{
+          id_empresa: _empresaActiva?.id_empresa || null,
+          numero_asiento: numAst, tipo: 'COBRO_CLIENTE', fecha: fecha,
+          descripcion: 'Cobro Factura ' + numeroFacturaRef,
+          referencia: numeroFacturaRef, estado: 'APROBADO',
+          moneda_base: monedaMetodo, tasa_bcv: tasaActual, id_periodo: id_periodo,
+          id_usuario: sesionActual?.correo_usuario || null
+        });
+        const ar = Array.isArray(ast) ? ast[0] : ast;
+        if (ar?.id_asiento) {
+          const idAst = ar.id_asiento;
+          let orden = 1;
+          const desc = 'Cobro ' + numeroFacturaRef;
+
+          if (cContraparte) await api('cont_asiento_lineas','POST',{
+            id_asiento: idAst, id_cuenta: cContraparte.id_cuenta, orden: orden++,
+            descripcion: desc,
+            debe_usd: monto, haber_usd: 0, debe_ves: montoVESCobro, haber_ves: 0, tasa_bcv: tasaActual
+          });
+
+          if (cCxC) await api('cont_asiento_lineas','POST',{
+            id_asiento: idAst, id_cuenta: cCxC.id_cuenta, orden: orden++,
+            descripcion: desc,
+            debe_usd: 0, haber_usd: monto, debe_ves: 0, haber_ves: montoVESOriginal, tasa_bcv: tasaOriginal
+          });
+
+          if (difCambio < 0 && cDifGasto) {
+            await api('cont_asiento_lineas','POST',{
+              id_asiento: idAst, id_cuenta: cDifGasto.id_cuenta, orden: orden++,
+              descripcion: 'Pérdida por diferencia cambiaria ('+tasaOriginal+' -> '+tasaActual+')',
+              debe_usd: 0, haber_usd: 0, debe_ves: Math.abs(difCambio), haber_ves: 0, tasa_bcv: tasaActual
+            });
+          } else if (difCambio > 0 && cDifIngr) {
+            await api('cont_asiento_lineas','POST',{
+              id_asiento: idAst, id_cuenta: cDifIngr.id_cuenta, orden: orden++,
+              descripcion: 'Ganancia por diferencia cambiaria ('+tasaOriginal+' -> '+tasaActual+')',
+              debe_usd: 0, haber_usd: 0, debe_ves: 0, haber_ves: difCambio, tasa_bcv: tasaActual
+            });
+          }
+
+          if (monedaMetodo !== 'VES') {
+            const montoIGTF_USD = parseFloat((monto * pctIGTF).toFixed(2));
+            const montoIGTF_VES = parseFloat((montoIGTF_USD * tasaActual).toFixed(2));
+            if (cIGTF) await api('cont_asiento_lineas','POST',{
+              id_asiento: idAst, id_cuenta: cIGTF.id_cuenta, orden: orden++,
+              descripcion: 'IGTF '+(pctIGTF*100).toFixed(0)+'% sobre cobro en divisas',
+              debe_usd: 0, haber_usd: 0, debe_ves: montoIGTF_VES, haber_ves: 0, tasa_bcv: tasaActual
+            });
+            if (cIGTFPagar) await api('cont_asiento_lineas','POST',{
+              id_asiento: idAst, id_cuenta: cIGTFPagar.id_cuenta, orden: orden++,
+              descripcion: 'IGTF por Pagar (enterar primeros 12 días del mes)',
+              debe_usd: 0, haber_usd: 0, debe_ves: 0, haber_ves: montoIGTF_VES, tasa_bcv: tasaActual
+            });
+          }
+        }
+      }
+    } catch(eAst) { console.warn('Cobro registrado, pero hubo un error generando el asiento contable:', eAst); }
 
     // Refrescar la cache local
     const i = contCxcCache.findIndex(function(x){ return x.id_cxc === _pagoCxcActualId; });
