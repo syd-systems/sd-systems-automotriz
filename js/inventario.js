@@ -3927,6 +3927,22 @@ async function abrirSalidaStock(id, nombre) {
   const salLblUnidad = document.getElementById('salida-label-unidad');
   if (salLblUnidad) salLblUnidad.textContent = art?.unidad || 'UND';
 
+  // El Precio de Venta es obligatorio cuando el artículo es Mercancía
+  // (cuenta 1.1.03.001) -- en Consumibles (1.1.03.002) sigue siendo
+  // opcional. Solo es un aviso visual aquí; la validación real que impide
+  // guardar sin el dato vive en _guardarSalidaStockInterno().
+  let esMercanciaModal = false;
+  if (art && art.id_cuenta_contable) {
+    try {
+      const ctaArtModal = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === art.id_cuenta_contable; });
+      esMercanciaModal = !!(ctaArtModal && ctaArtModal.codigo === '1.1.03.001');
+    } catch(eCtaModal) {}
+  }
+  const pvLabel = document.getElementById('salida-precio-venta-label');
+  if (pvLabel) pvLabel.innerHTML = esMercanciaModal
+    ? 'Precio de Venta * <span style="font-size:10px;color:var(--naranja)">(obligatorio para Mercancía)</span>'
+    : 'Precio de Venta <span style="font-size:10px;color:var(--suave)">(opcional)</span>';
+
     abrirModal('modal-salida-stock');
   focusFirstField('modal-salida-stock');
   setTimeout(function() { document.getElementById('salida-cantidad')?.focus(); }, 100);
@@ -3958,12 +3974,31 @@ async function _guardarSalidaStockInterno() {
   const cantidad = parseFloat(document.getElementById('salida-cantidad').value);
   const fecha   = document.getElementById('salida-fecha').value;
   const obs     = document.getElementById('salida-observaciones').value.trim();
+  const pvSalida = parseFloat(document.getElementById('salida-precio-venta')?.value) || null;
   const okEl    = document.getElementById('alerta-salida-ok');
   const errEl   = document.getElementById('alerta-salida-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
 
+  const art = inventarioCache.find(function(x) { return x.id_articulo === idRep; });
+
+  // ── Clasificar el artículo por su cuenta contable de Inventario ──
+  // 1.1.03.001 = Mercancías (sigue como inventario en el área destino, se
+  // gasta al facturar -- por eso necesita Precio de Venta ya definido).
+  // 1.1.03.002 = Consumibles (se gasta de inmediato al salir de Compras,
+  // el Precio de Venta sigue siendo opcional para ellos).
+  let esMercancia = false;
+  if (art && art.id_cuenta_contable) {
+    const ctaArtSal = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === art.id_cuenta_contable; });
+    esMercancia = !!(ctaArtSal && ctaArtSal.codigo === '1.1.03.001');
+  }
+
   if (!fecha)           { errEl.textContent = 'La fecha es obligatoria.'; errEl.style.display = 'block'; document.getElementById('salida-fecha')?.focus(); return; }
   if (!cantidad || cantidad <= 0) { errEl.textContent = 'La cantidad debe ser mayor a cero.'; errEl.style.display = 'block'; document.getElementById('salida-cantidad')?.focus(); return; }
+  if (esMercancia && !pvSalida) {
+    errEl.textContent = 'Debe ingresar el Precio de Venta: es obligatorio para artículos de tipo Mercancía.';
+    errEl.style.display = 'block';
+    document.getElementById('salida-precio-venta')?.focus(); return;
+  }
   if (!id_area)          { errEl.textContent = 'Debe seleccionar el Área receptora.'; errEl.style.display = 'block'; document.getElementById('salida-area')?.focus(); return; }
 
   // Validar contraseña del empleado que ENTREGA
@@ -3986,7 +4021,6 @@ async function _guardarSalidaStockInterno() {
   }
 
   // Validar stock disponible — contra el ÁREA QUE ENTREGA (Compras), no el global
-  const art = inventarioCache.find(function(x) { return x.id_articulo === idRep; });
   const id_areaEntregaVal = parseInt(document.getElementById('salida-area-entrega')?.value) || null;
   if (id_areaEntregaVal) {
     const stockDisponibleArea = await obtenerStockArea(idRep, id_areaEntregaVal);
@@ -4000,7 +4034,6 @@ async function _guardarSalidaStockInterno() {
     // Registrar salida
     const idEmpRecibe    = parseInt(document.getElementById('salida-empleado')?.value) || null;
     const id_areaEntrega  = parseInt(document.getElementById('salida-area-entrega')?.value) || null;
-    const pvSalida = parseFloat(document.getElementById('salida-precio-venta')?.value) || null;
     const salidaRes = await api('stock_salidas', 'POST', {
       id_articulo:          idRep,
       id_area:              id_area,
@@ -4015,15 +4048,8 @@ async function _guardarSalidaStockInterno() {
     });
     const id_salida = salidaRes && salidaRes[0] ? salidaRes[0].id_salida : null;
 
-    // ── Clasificar el artículo por su cuenta contable de Inventario ──
-    // 1.1.03.001 = Mercancías (sigue como inventario en el área destino, se gasta al facturar)
-    // 1.1.03.002 = Consumibles (se gasta de inmediato al salir de Compras)
-    let esMercancia = false;
-    if (art && art.id_cuenta_contable) {
-      const ctaArtSal = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === art.id_cuenta_contable; });
-      esMercancia = !!(ctaArtSal && ctaArtSal.codigo === '1.1.03.001');
-    }
-
+    // esMercancia ya se determinó arriba (antes de validar), se reutiliza
+    // aquí para decidir cómo se mueve el stock/costo de esta Salida.
     if (esMercancia) {
       // ── MERCANCÍA: se mueve el stock por área, SIN gasto ──
       // (el costo se reconocerá contablemente cuando se facture al cliente)
