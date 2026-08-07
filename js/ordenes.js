@@ -1066,24 +1066,24 @@ async function _guardarOSInterno() {
     }
 
     // ── Restaurar stock de artículos anteriores (solo en edición) ──
-    // Agregar un artículo a la OS equivale a una Salida de Stock (Compras → Taller):
-    // resta de Compras, suma al Área de Taller. Si es edición, las líneas anteriores
-    // ya fueron borradas arriba — hay que revertir ese movimiento antes de aplicar el nuevo.
+    // Asignar un Artículo a la OS RESTA del stock que Taller YA TIENE
+    // (no genera una entrega nueva desde Compras -- Compras no interviene
+    // en este momento). Si es edición, las líneas anteriores ya fueron
+    // borradas arriba -- hay que devolverle a Taller esa cantidad antes
+    // de aplicar las líneas nuevas.
     const id_areaTallerOS = parseInt(document.getElementById('os-area')?.value) || null;
-    const id_areaComprasOS = _empresaActiva?.id_area_principal || null;
-    if (id && lineasArtículosAntes && lineasArtículosAntes.length && id_areaTallerOS && id_areaComprasOS) {
+    if (id && lineasArtículosAntes && lineasArtículosAntes.length && id_areaTallerOS) {
       for (var k = 0; k < lineasArtículosAntes.length; k++) {
         var la = lineasArtículosAntes[k];
         if (!la.id_articulo) continue;
         try {
           var cantAntes = parseFloat(la.cantidad || 0);
-          await upsertStockArea(la.id_articulo, id_areaTallerOS, -cantAntes);
-          await upsertStockArea(la.id_articulo, id_areaComprasOS, cantAntes);
+          await upsertStockArea(la.id_articulo, id_areaTallerOS, cantAntes);
         } catch(eRest) { console.warn('Error restaurando stock:', eRest); }
       }
     }
 
-    // ── Insertar nuevas líneas de artículos y descontar stock ──
+    // ── Insertar nuevas líneas de artículos y descontar del stock de Taller ──
     for (var j = 0; j < osArtículosLineas.length; j++) {
       var lr = osArtículosLineas[j];
       const monR   = (lr.moneda || 'USD').toUpperCase();
@@ -1095,12 +1095,11 @@ async function _guardarOSInterno() {
         moneda: monR, precio_original: precR,
         precio_usd: lr.precio_usd, subtotal_usd: subtUsdR
       });
-      // Descontar de Compras y sumar a Taller (equivalente a una Salida de Stock)
-      if (lr.id_articulo && id_areaTallerOS && id_areaComprasOS) {
+      // Descontar del stock que Taller YA TIENE -- no se toca Compras
+      if (lr.id_articulo && id_areaTallerOS) {
         try {
           var cantNueva = parseFloat(lr.cantidad);
-          await upsertStockArea(lr.id_articulo, id_areaComprasOS, -cantNueva);
-          await upsertStockArea(lr.id_articulo, id_areaTallerOS, cantNueva);
+          await upsertStockArea(lr.id_articulo, id_areaTallerOS, -cantNueva);
         } catch(eStock) { console.warn('Error descontando stock:', eStock); }
       }
     }
@@ -1113,9 +1112,10 @@ async function _guardarOSInterno() {
 
 // ─── ANULAR OS ───
 // ─── HELPER: restaurar o descontar stock de artículos de una OS ───
-// operacion: 'restaurar' (anular OS) devuelve el stock de Taller a Compras;
-// 'descontar' (reabrir OS) lo vuelve a pasar de Compras a Taller — el mismo
-// movimiento Compras↔Taller que se aplica al agregar/quitar líneas en _guardarOSInterno.
+// operacion: 'restaurar' (anular OS) le devuelve el stock a Taller;
+// 'descontar' (reabrir OS) se lo vuelve a restar -- Compras NO interviene
+// en ninguno de los dos casos, porque el Artículo nunca salió de Taller
+// (solo estaba reservado/asignado a esta OS).
 async function ajustarStockOS(id_orden, operacion) {
   try {
     const [lineas, osRes] = await Promise.all([
@@ -1128,9 +1128,8 @@ async function ajustarStockOS(id_orden, operacion) {
       const empOS = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correoCreadorOS)+'&select=id_area&limit=1');
       id_areaTallerOS = empOS && empOS[0] ? empOS[0].id_area : null;
     }
-    const id_areaComprasOS = _empresaActiva?.id_area_principal || null;
-    if (!id_areaTallerOS || !id_areaComprasOS) {
-      console.warn('ajustarStockOS: no se pudo determinar el área de Taller o Compras — stock no ajustado.');
+    if (!id_areaTallerOS) {
+      console.warn('ajustarStockOS: no se pudo determinar el área de Taller — stock no ajustado.');
       return;
     }
     for (var k = 0; k < lineas.length; k++) {
@@ -1139,13 +1138,11 @@ async function ajustarStockOS(id_orden, operacion) {
       try {
         var cant = parseFloat(l.cantidad || 0);
         if (operacion === 'restaurar') {
-          // Anular OS: el artículo vuelve de Taller a Compras
-          await upsertStockArea(l.id_articulo, id_areaTallerOS, -cant);
-          await upsertStockArea(l.id_articulo, id_areaComprasOS, cant);
-        } else {
-          // Reabrir OS: se vuelve a pasar de Compras a Taller
-          await upsertStockArea(l.id_articulo, id_areaComprasOS, -cant);
+          // Anular OS: se le devuelve la cantidad a Taller
           await upsertStockArea(l.id_articulo, id_areaTallerOS, cant);
+        } else {
+          // Reabrir OS: se le vuelve a restar a Taller
+          await upsertStockArea(l.id_articulo, id_areaTallerOS, -cant);
         }
       } catch(eInv) { console.warn('Error ajustando stock artículo', l.id_articulo, eInv); }
     }
@@ -1166,13 +1163,15 @@ async function anularOS(id, numero) {
       return;
     }
   } catch(eFactAnul) { console.warn('Error verificando factura asociada:', eFactAnul); }
-  if (!confirm('¿Anular la orden ' + numero + '? Esto no revierte el stock: la mercancía ya entregada al Taller sigue siendo su responsabilidad; si debe devolverse a Compras, hágalo con una Transferencia explícita.')) return;
+  if (!confirm('¿Anular la orden ' + numero + '? El Artículo asignado a esta OS se devolverá al Stock del Área de Taller.')) return;
   try {
     const hoyAnul = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
-    // Anular es solo un cambio de estado del documento -- NO mueve stock.
-    // La mercancía entregada al Taller vía esta OS es responsabilidad del
-    // Taller desde ese momento; anular la OS no la teletransporta de vuelta
-    // a Compras. Si hace falta devolverla, es una Transferencia aparte.
+    // Anular la OS devuelve al Área de Taller el stock que se le había
+    // restado al asignar el Artículo (ver ajustarStockOS) -- ya no es "solo
+    // un cambio de estado": el Artículo nunca salió de Compras (el modelo
+    // viejo, donde la OS actuaba como la entrega Compras→Taller, ya no
+    // aplica), solo estaba reservado dentro del propio stock de Taller.
+    await ajustarStockOS(id, 'restaurar');
     await api('ordenes_servicio', 'PATCH', {
       estado: 'ANULADA',
       fecha_estado: hoyAnul,
@@ -1188,10 +1187,12 @@ async function reabrirOS(id, numero) {
     alert('No tiene permiso para reabrir órdenes de servicio.');
     return;
   }
-  if (!confirm('¿Reabrir la orden ' + numero + '? El estado del documento cambia a ABIERTA; el stock no se ve afectado (la anulación tampoco lo afectó).')) return;
+  if (!confirm('¿Reabrir la orden ' + numero + '? El Artículo que se le había devuelto al Área de Taller se le volverá a restar (vuelve a quedar asignado a esta OS).')) return;
   try {
     const hoyReab = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
-    // Reabrir tampoco mueve stock -- ver nota en anularOS().
+    // Reabrir la OS le vuelve a restar al Área de Taller el stock que se
+    // le había devuelto al anular (ver ajustarStockOS y anularOS()).
+    await ajustarStockOS(id, 'descontar');
     await api('ordenes_servicio', 'PATCH', {
       estado: 'ABIERTA',
       fecha_estado: hoyReab,
