@@ -256,10 +256,14 @@ async function renderInventario(filtro) {
       const optsExtraArea = areasConStockList.map(function(a){
         return '<option value="'+a.id+'">'+a.nombre+(a.codigo?' ('+a.codigo+')':'')+'</option>';
       }).join('');
-      if (!selArea.innerHTML.includes(optsExtraArea) || !areasConStockList.length) {
-        selArea.innerHTML = '<option value="">Todas las Áreas (consolidado)</option>' + optsExtraArea;
-        selArea.value = _invFiltroAreaManual || '';
-      }
+      // Siempre se reconstruye -- antes había una comprobación
+      // (".includes()") para evitar reconstruir si "parecía" no haber
+      // cambiado, pero eso fallaba en silencio: si la lista nueva (correcta,
+      // más corta) era un subconjunto de una lista vieja ya renderizada (con
+      // áreas sin stock de antes), el chequeo se engañaba y el <select>
+      // nunca se actualizaba, dejando áreas sin stock visibles.
+      selArea.innerHTML = '<option value="">Todas las Áreas (consolidado)</option>' + optsExtraArea;
+      selArea.value = _invFiltroAreaManual || '';
     }
 
     const itemsFiltradosBase = soloConStock ? items.filter(function(r) { return stockMostrarArticulo(r.id_articulo) > 0; }) : items;
