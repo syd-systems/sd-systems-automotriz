@@ -271,9 +271,17 @@ async function renderInventario(filtro) {
 
     const itemsFiltradosBase = soloConStock ? items.filter(function(r) { return stockMostrarArticulo(r.id_articulo) > 0; }) : items;
 
-    // ── Filtro por área si no tiene VER_INVENTARIO_GENERAL ──
+    // ── Ocultar artículos sin stock en el Área SOLO si el Usuario está
+    // forzado a su propia Área (sin VER_INVENTARIO_GENERAL) -- para él,
+    // ver un artículo que no maneja no aporta nada. Quien SÍ tiene el
+    // permiso y eligió ver una Área específica desde el selector debe
+    // seguir viendo TODOS los artículos (con 0 donde no tenga stock),
+    // igual que en el consolidado -- de lo contrario parecía que el
+    // artículo no existiera. Para filtrar por stock, está el checkbox
+    // "Solo con stock".
+    const esPrivilegiadoInv = sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL');
     let itemsFiltradosBase2 = itemsFiltradosBase;
-    if (_invSaldoArea) {
+    if (_invSaldoArea && !esPrivilegiadoInv) {
       itemsFiltradosBase2 = itemsFiltradosBase.filter(function(r) {
         return (_invSaldoArea[r.id_articulo]||0) > 0;
       });
