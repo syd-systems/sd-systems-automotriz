@@ -180,27 +180,16 @@ async function renderInventario(filtro) {
 
   // Solo al ABRIR el módulo (no en cada re-render por búsqueda/filtro): si
   // el Usuario tiene acceso al stock global (VER_INVENTARIO_GENERAL o
-  // Administrador), por defecto se le muestra SU PROPIA Área -- pero SOLO
-  // si esa Área tiene al menos un artículo con stock; si está vacía, se
-  // muestra el consolidado ("Todas las Áreas") para no dar la impresión
-  // de que no hay inventario en el sistema. El Usuario puede cambiar el
-  // filtro libremente desde el selector, pero cada vez que vuelva a entrar
-  // a Inventario General se recalcula este mismo criterio desde cero.
+  // Administrador), por defecto se le muestra SU PROPIA Área. Más abajo,
+  // después de calcularInvSaldoArea(), se revisa si esa Área realmente
+  // tiene stock -- si no, se cae al consolidado.
   if (!panelYaExiste && (sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL'))) {
     try {
       const correoPropio = sesionActual?.correo_usuario;
-      let idAreaPropia = null;
       if (correoPropio) {
         const empPropio = await api('empleados','GET',null,
           '?correo=eq.'+encodeURIComponent(correoPropio)+'&select=id_area&limit=1');
-        idAreaPropia = empPropio?.[0]?.id_area || null;
-      }
-      if (idAreaPropia) {
-        const tieneStockPropio = await api('inventario_stock_area','GET',null,
-          '?id_area=eq.'+idAreaPropia+'&stock_actual=gt.0&select=id_articulo&limit=1');
-        _invFiltroAreaManual = (tieneStockPropio && tieneStockPropio.length) ? idAreaPropia : null;
-      } else {
-        _invFiltroAreaManual = null;
+        _invFiltroAreaManual = empPropio?.[0]?.id_area || null;
       }
     } catch(e) {}
   }
@@ -247,6 +236,16 @@ async function renderInventario(filtro) {
     // Calcular saldo por área (función centralizada) — ANTES de cualquier filtro de stock,
     // para que "Solo con stock" y el filtro por área usen la fuente correcta (inventario_stock_area)
     await calcularInvSaldoArea();
+
+    // Si el default recién aplicado (propia Área, arriba) resultó ser una
+    // Área SIN stock, se cae al consolidado en vez de mostrar una lista
+    // vacía. Se usa _invAreasConStock -- ya calculado por
+    // calcularInvSaldoArea() y probado (es el mismo que llena el selector
+    // de Área más abajo) -- en vez de una consulta nueva.
+    if (!panelYaExiste && _invFiltroAreaManual && !_invAreasConStock.has(_invFiltroAreaManual)) {
+      _invFiltroAreaManual = null;
+      await calcularInvSaldoArea();
+    }
 
     // Llenar el select de Área -- solo con las Áreas que tienen al menos
     // un artículo con stock (_invAreasConStock, calculado arriba). Se hace
