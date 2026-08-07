@@ -85,7 +85,7 @@ async function calcularInvSaldoArea() {
     const areasConStock = new Set();
     todasLasFilas.forEach(function(f){
       consolidado[f.id_articulo] = (consolidado[f.id_articulo]||0) + parseFloat(f.stock_actual||0);
-      if (parseFloat(f.stock_actual||0) > 0) areasConStock.add(f.id_area);
+      if (parseFloat(f.stock_actual||0) > 0) areasConStock.add(String(f.id_area));
     });
     _invSaldoConsolidado = consolidado;
     _invAreasConStock = areasConStock;
@@ -242,7 +242,7 @@ async function renderInventario(filtro) {
     // vacía. Se usa _invAreasConStock -- ya calculado por
     // calcularInvSaldoArea() y probado (es el mismo que llena el selector
     // de Área más abajo) -- en vez de una consulta nueva.
-    if (!panelYaExiste && _invFiltroAreaManual && !_invAreasConStock.has(_invFiltroAreaManual)) {
+    if (!panelYaExiste && _invFiltroAreaManual && !_invAreasConStock.has(String(_invFiltroAreaManual))) {
       _invFiltroAreaManual = null;
       await calcularInvSaldoArea();
     }
@@ -252,7 +252,7 @@ async function renderInventario(filtro) {
     // aquí y no antes porque depende del resultado de calcularInvSaldoArea().
     const selArea = document.getElementById('inv-filtro-area');
     if (selArea) {
-      const areasConStockList = _invAreasCache.filter(function(a){ return _invAreasConStock.has(a.id); });
+      const areasConStockList = _invAreasCache.filter(function(a){ return _invAreasConStock.has(String(a.id)); });
       const optsExtraArea = areasConStockList.map(function(a){
         return '<option value="'+a.id+'">'+a.nombre+(a.codigo?' ('+a.codigo+')':'')+'</option>';
       }).join('');
