@@ -2632,15 +2632,22 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     // muestra el botón EDITAR solo si el usuario tiene permiso y no está pagado/anulado)
     _aplicarSoloLecturaMovimiento('SALIDA', true);
 
-    // Botón Anular — visible si no está anulada y tiene permiso.
-    // (La rama SALIDA retorna antes de llegar al bloque compartido de más
-    // abajo, así que este botón nunca se mostraba para Salidas -- ni
-    // siquiera al Administrador. Se duplica aquí la misma lógica.)
+    // Botón Anular — visible si no está anulada y tiene permiso, PERO NO
+    // para entregas Área↔Área (m.id_area = área receptora real). Esas ya
+    // no se "anulan": si hace falta revertirlas, se hace con una
+    // Transferencia explícita (Entrada de Stock, Área de Origen = la
+    // receptora), que sí ajusta correctamente el stock de AMBAS áreas y
+    // queda registrada como una Salida real, no como una anulación que
+    // solo cambia el estado en el Historial sin mover el stock del área
+    // receptora.
+    const esEntregaAreaASal = !!m.id_area;
     const btnAnularSal = document.getElementById('btn-anular-movimiento');
     if (btnAnularSal) {
       const permAnularSal = sesionActual?.administrador || puedo('INVENTARIO','ANULAR_SALIDA');
-      btnAnularSal.style.display = (!m.anulada && permAnularSal) ? '' : 'none';
+      btnAnularSal.style.display = (!m.anulada && permAnularSal && !esEntregaAreaASal) ? '' : 'none';
     }
+    const avisoTransfSal = document.getElementById('edit-sal-aviso-transferencia');
+    if (avisoTransfSal) avisoTransfSal.style.display = (!m.anulada && esEntregaAreaASal) ? '' : 'none';
 
     // Abrir modal — al final después de cargar todos los datos
     const modalHist2 = document.getElementById('modal-historial-stock');
@@ -3492,6 +3499,10 @@ async function anularMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
         '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo)');
       if (!rows || !rows[0]) { alert('Movimiento no encontrado.'); return; }
       if (rows[0].anulada) { alert('Este movimiento ya fue anulado.'); return; }
+      if (rows[0].id_area) {
+        alert('Esta es una entrega entre Áreas -- no se puede anular desde aquí. Si hay que revertirla, use una Transferencia (Entrada de Stock, Área de Origen = el Área que la recibió).');
+        return;
+      }
       movOrig = rows[0];
     }
   } catch(e) { alert('Error cargando movimiento: ' + e.message); return; }
@@ -3572,6 +3583,9 @@ async function confirmarAnulacion() {
       const rows = await api('stock_salidas', 'GET', null, '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),empleado_recibe:id_empleado(nombre_completo,correo,id_area,param_areas:id_area(nombre))');
       if (!rows || !rows[0]) throw new Error('Movimiento no encontrado.');
       if (rows[0].anulada) throw new Error('Este movimiento ya fue anulado.');
+      if (rows[0].id_area) {
+        throw new Error('Esta es una entrega entre Áreas -- no se puede anular desde aquí. Si hay que revertirla, use una Transferencia (Entrada de Stock, Área de Origen = el Área que la recibió).');
+      }
       movOrig = rows[0];
     }
 
@@ -3614,11 +3628,12 @@ async function confirmarAnulacion() {
       if (movOrig.id_area) await upsertStockArea(id_articulo, movOrig.id_area, -cantidad);
     } else {
       // Se anula una Salida: devolver la cantidad al área que la entregó
-      // (movOrig.id_area_entrega — en la práctica, siempre Compras)
+      // (movOrig.id_area_entrega). Este bloque ya solo se alcanza para
+      // Salidas de venta a Cliente (id_area = null, ver más arriba) --
+      // las entregas Área↔Área (id_area = área receptora real) se
+      // bloquean antes de llegar aquí; su reverso correcto es una
+      // Transferencia explícita, que ajusta ambas áreas correctamente.
       if (movOrig.id_area_entrega) await upsertStockArea(id_articulo, movOrig.id_area_entrega, cantidad);
-      // NOTA: si el artículo es Mercancía y la Salida ya había sumado stock al área
-      // receptora (pendiente de implementar en _guardarSalidaStockInterno), esa resta
-      // también deberá agregarse aquí cuando se complete esa fase.
     }
 
 
