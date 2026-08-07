@@ -237,12 +237,15 @@ async function renderInventario(filtro) {
     // para que "Solo con stock" y el filtro por área usen la fuente correcta (inventario_stock_area)
     await calcularInvSaldoArea();
 
-    // Si el default recién aplicado (propia Área, arriba) resultó ser una
-    // Área SIN stock, se cae al consolidado en vez de mostrar una lista
-    // vacía. Se usa _invAreasConStock -- ya calculado por
-    // calcularInvSaldoArea() y probado (es el mismo que llena el selector
-    // de Área más abajo) -- en vez de una consulta nueva.
-    if (!panelYaExiste && _invFiltroAreaManual && !_invAreasConStock.has(String(_invFiltroAreaManual))) {
+    // Si el Área actualmente filtrada (sea el default de apertura, o una
+    // elegida manualmente antes) se quedó SIN stock -- por ejemplo, justo
+    // se acaba de hacer una Salida que dejó todo en 0 -- se cae al
+    // consolidado en vez de mostrar una lista vacía sin explicación. Se
+    // reevalúa en CADA render (no solo al abrir el módulo), porque el
+    // usuario puede volver a esta pantalla después de un movimiento de
+    // stock sin haber cerrado el módulo. Se usa _invAreasConStock -- ya
+    // calculado por calcularInvSaldoArea() y probado.
+    if (_invFiltroAreaManual && !_invAreasConStock.has(String(_invFiltroAreaManual))) {
       _invFiltroAreaManual = null;
       await calcularInvSaldoArea();
     }
