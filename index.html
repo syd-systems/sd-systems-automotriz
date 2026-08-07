@@ -1350,17 +1350,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260723149"></script>
-<script src="js/parametros.js?v=20260723149"></script>
-<script src="js/empresas.js?v=20260723149"></script>
-<script src="js/ingresos.js?v=20260723149"></script>
-<script src="js/inventario.js?v=20260723149"></script>
-<script src="js/proveedores.js?v=20260723149"></script>
-<script src="js/contabilidad.js?v=20260723149"></script>
-<script src="js/egresos.js?v=20260723149"></script>
-<script src="js/vehiculos.js?v=20260723149"></script>
-<script src="js/catalogo.js?v=20260723149"></script>
-<script src="js/ordenes.js?v=20260723149"></script>
+<script src="js/core.js?v=20260723150"></script>
+<script src="js/parametros.js?v=20260723150"></script>
+<script src="js/empresas.js?v=20260723150"></script>
+<script src="js/ingresos.js?v=20260723150"></script>
+<script src="js/inventario.js?v=20260723150"></script>
+<script src="js/proveedores.js?v=20260723150"></script>
+<script src="js/contabilidad.js?v=20260723150"></script>
+<script src="js/egresos.js?v=20260723150"></script>
+<script src="js/vehiculos.js?v=20260723150"></script>
+<script src="js/catalogo.js?v=20260723150"></script>
+<script src="js/ordenes.js?v=20260723150"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2543,12 +2543,12 @@
       <div id="alerta-falt-err" class="alerta alerta-error" style="display:none"></div>
     </div>
     <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center">
+      <button id="falt-btn-guardar" class="btn-peligro" onclick="guardarFaltanteInventario()">⚠ Realizar Ajuste</button>
       <div style="display:flex;gap:8px">
         <button id="falt-btn-retornar" class="btn-secundario" onclick="cerrarModal('modal-faltante-inventario')">Retornar</button>
         <button id="falt-btn-editar" class="btn-secundario" style="display:none" onclick="habilitarEdicionFaltante()">✏ Editar</button>
         <button id="falt-btn-anular" class="btn-peligro" style="display:none" onclick="anularFichaAjuste()">🗑 Anular</button>
       </div>
-      <button id="falt-btn-guardar" class="btn-peligro" onclick="guardarFaltanteInventario()">⚠ Realizar Ajuste</button>
     </div>
   </div>
 </div>
