@@ -4548,6 +4548,22 @@ async function guardarFaltanteInventario() {
   if (!id_area)              { errEl.textContent = 'Debe seleccionar el área afectada.'; errEl.style.display = 'block'; return; }
   if (!tipo)                 { errEl.textContent = 'Debe seleccionar el Tipo de Ajuste (Faltante o Sobrante).'; errEl.style.display = 'block'; return; }
   if (!cantidad || cantidad <= 0) { errEl.textContent = 'La cantidad debe ser mayor a cero.'; errEl.style.display = 'block'; return; }
+
+  // El artículo debe haber tenido al menos una Entrada real antes de poder
+  // ajustarlo -- si nunca entró por Compras, no hay costo con el que
+  // valorarlo, y el asiento contable terminaba omitiéndose en silencio
+  // (el monto daba 0, ver guardarFaltanteInventario más abajo).
+  let tieneEntradasFalt = false;
+  try {
+    const entradasFalt = await api('stock_entradas','GET',null,'?id_articulo=eq.'+id_articulo+'&select=id_entrada&limit=1');
+    tieneEntradasFalt = entradasFalt && entradasFalt.length > 0;
+  } catch(eEntFalt) { tieneEntradasFalt = false; /* por seguridad, bloquear si no se pudo confirmar */ }
+  if (!tieneEntradasFalt) {
+    errEl.textContent = 'Este artículo nunca ha tenido una Entrada registrada. No se puede hacer un Ajuste de Discrepancia sin un costo real con el cual valorarlo -- registre primero una Entrada de Compra.';
+    errEl.style.display = 'block';
+    return;
+  }
+
   if (!idEmpleado)           { errEl.textContent = 'Debe seleccionar el empleado que reporta.'; errEl.style.display = 'block'; return; }
   if (!clave)                { errEl.textContent = 'Debe ingresar su contraseña para confirmar.'; errEl.style.display = 'block'; return; }
   const valid = await validarClaveUsuarioActual(clave);
