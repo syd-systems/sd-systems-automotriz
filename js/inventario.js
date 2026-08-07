@@ -748,8 +748,15 @@ async function abrirEntradaStock(id) {
       + provs.map(function(p) { return '<option value="' + p.id_proveedor + '">' + p.nombre + (p.rif ? ' (' + p.rif + ')' : '') + '</option>'; }).join('');
     var selOrigen = document.getElementById('es-area-origen');
     if (selOrigen) {
+      // Excluir el Área receptora (siempre Compras en Entrada de Stock) de
+      // las opciones de Origen -- no tiene sentido una Transferencia de un
+      // Área hacia sí misma.
+      var idAreaReceptoraForm = _empresaActiva?.id_area_principal || null;
+      var areasOrigenDisp = idAreaReceptoraForm
+        ? areas.filter(function(a){ return String(a.id) !== String(idAreaReceptoraForm); })
+        : areas;
       selOrigen.innerHTML = '<option value="">— Seleccionar área de origen —</option>'
-        + areas.map(function(a) { return '<option value="' + a.id + '">' + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>'; }).join('');
+        + areasOrigenDisp.map(function(a) { return '<option value="' + a.id + '">' + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>'; }).join('');
     }
     // Cargar facturas elegibles para Devolución (solo las que facturaron ESTE artículo)
     var selFact = document.getElementById('es-factura-devolucion');
@@ -1068,6 +1075,18 @@ async function guardarEntradaStock() {
 
     const id_areaEnt      = parseInt(id_areaEntVal) || null;
     const id_areaOrigenH  = (motivoEnt === 'transferencia') ? (parseInt(document.getElementById('es-area-origen')?.value) || null) : null;
+
+    // Bloqueo real (no solo visual): el Área de Origen nunca puede ser la
+    // misma que la receptora -- una auto-transferencia no tiene sentido y
+    // dejaría el stock de esa Área intacto tras dos movimientos opuestos
+    // que se cancelan entre sí, sin ningún efecto real más que ruido en
+    // el Historial.
+    if (motivoEnt === 'transferencia' && id_areaOrigenH && id_areaEnt && id_areaOrigenH === id_areaEnt) {
+      errEl.textContent = 'El Área de Origen no puede ser la misma que el Área receptora. Seleccione un Área distinta.';
+      errEl.style.display = 'block';
+      document.getElementById('es-area-origen')?.focus();
+      resetBtn(); return;
+    }
 
     // ── FASE 1B: Si es Transferencia, validar que el Área de Origen tenga stock suficiente ──
     // (antes de crear ningún registro — evita dejar una Entrada huérfana si se rechaza)
