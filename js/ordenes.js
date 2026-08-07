@@ -585,7 +585,7 @@ function renderLineasRep() {
     const precioFmt = mon === 'VES' ? fmtBs(precio) : fmtUSD(precio);
     return '<div style="display:grid;grid-template-columns:1fr 70px 110px 60px auto;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
       + '<div style="font-size:13px;font-weight:500">' + l.descripcion + '</div>'
-      + '<input type="number" value="' + l.cantidad + '" min="0.01" step="0.01" onchange="osArtículosLineas[' + i + '].cantidad=parseFloat(this.value)||1;calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:center">'
+      + '<input type="number" value="' + l.cantidad + '" min="0.01" step="0.01" onchange="onCambiarCantidadLineaRep(' + i + ',this.value)" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:center">'
       + '<input type="text" value="' + precioFmt + '" onchange="osArtículosLineas[' + i + '].precio_original=parsePrecio(this.value,\'' + mon + '\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
       + '<div style="font-size:10px;font-weight:600;color:var(--suave);text-align:center">' + (monedaLabels[mon] || mon) + '</div>'
       + '<button onclick="quitarLineaRep(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px;padding:0 4px">✕</button>'
@@ -612,6 +612,32 @@ function convertirAUSD(precio, moneda) {
 
 function quitarLineaServ(i) { osServiciosLineas.splice(i, 1); renderLineasOS(); }
 function quitarLineaRep(i)  { osArtículosLineas.splice(i, 1); renderLineasRep(); }
+
+// Se dispara al editar la Cantidad directamente en la lista de líneas de
+// Artículos ya agregadas -- antes esto no validaba nada, permitiendo
+// escribir cualquier número sin importar el stock real. Misma regla de
+// bloqueo total que agregarMercanciaInventario(): nunca se puede superar
+// el stock disponible en el área, contando también lo que ya ocupan las
+// OTRAS líneas de ese mismo artículo en esta misma OS.
+function onCambiarCantidadLineaRep(i, valor) {
+  const linea = osArtículosLineas[i];
+  if (!linea) return;
+  const nuevaCant = parseFloat(valor) || 0;
+  const art = inventarioCache.find(function(x) { return x.id_articulo === linea.id_articulo; });
+  const stockDisponible = art ? stockMostrarArticulo(art.id_articulo) : 0;
+  const usadoOtrasLineas = osArtículosLineas
+    .filter(function(l, idx) { return idx !== i && l.id_articulo === linea.id_articulo; })
+    .reduce(function(acc, l) { return acc + (parseFloat(l.cantidad) || 0); }, 0);
+  const disponibleReal = stockDisponible - usadoOtrasLineas;
+  if (nuevaCant > disponibleReal) {
+    alert('⚠ Stock insuficiente. Disponible para este artículo: ' + disponibleReal
+      + '. No se puede agregar una cantidad mayor a la disponible.');
+    renderLineasRep(); // revertir el campo visual al último valor válido
+    return;
+  }
+  linea.cantidad = nuevaCant || 1;
+  calcularTotalesOS();
+}
 
 function calcularTotalesOS() {
   const tasaUSD = tasasDisponiblesOS.USD || tasaActualOS || 1;
@@ -800,8 +826,20 @@ async function agregarMercanciaInventario() {
     const r = inventarioCache.find(function(x) { return x.id_articulo == sel.value; });
     if (!r) return;
     const stockDisponible = stockMostrarArticulo(r.id_articulo);
-    if (stockDisponible < cantVal) {
-      if (!confirm('⚠ Stock insuficiente (' + stockDisponible + ' disponibles en tu área). ¿Agregar igual?')) return;
+    // Sumar lo que YA está agregado del mismo artículo en otras líneas de
+    // esta misma OS (todavía no guardadas en BD, por eso stockDisponible
+    // no las "ve" por sí solo) -- de lo contrario se podían agregar varias
+    // líneas del mismo artículo, cada una pasando la validación por
+    // separado, hasta sumar mucho más de lo que realmente existe.
+    const yaAgregadoEnEstaOS = osArtículosLineas
+      .filter(function(l) { return l.id_articulo === r.id_articulo; })
+      .reduce(function(acc, l) { return acc + (parseFloat(l.cantidad) || 0); }, 0);
+    const disponibleReal = stockDisponible - yaAgregadoEnEstaOS;
+    if (cantVal > disponibleReal) {
+      alert('⚠ Stock insuficiente. Disponible en tu área: ' + stockDisponible
+        + (yaAgregadoEnEstaOS > 0 ? ' (ya agregaste ' + yaAgregadoEnEstaOS + ' de este artículo en esta misma Orden, quedan ' + disponibleReal + ' disponibles)' : '')
+        + '. No se puede agregar una cantidad mayor a la disponible.');
+      return;
     }
     const pVal = parseFloat(precio.value) || parseFloat(r.precio_venta_moneda) || 0;
     osArtículosLineas.push({ id_articulo: r.id_articulo, descripcion: r.nombre_articulo,
