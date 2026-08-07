@@ -180,17 +180,27 @@ async function renderInventario(filtro) {
 
   // Solo al ABRIR el módulo (no en cada re-render por búsqueda/filtro): si
   // el Usuario tiene acceso al stock global (VER_INVENTARIO_GENERAL o
-  // Administrador), por defecto se le muestra SU PROPIA Área -- puede
-  // cambiar a "Todas las Áreas (consolidado)" o cualquier otra desde el
-  // selector, pero cada vez que vuelva a entrar a Inventario General
-  // arranca de nuevo en su propia Área.
+  // Administrador), por defecto se le muestra SU PROPIA Área -- pero SOLO
+  // si esa Área tiene al menos un artículo con stock; si está vacía, se
+  // muestra el consolidado ("Todas las Áreas") para no dar la impresión
+  // de que no hay inventario en el sistema. El Usuario puede cambiar el
+  // filtro libremente desde el selector, pero cada vez que vuelva a entrar
+  // a Inventario General se recalcula este mismo criterio desde cero.
   if (!panelYaExiste && (sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL'))) {
     try {
       const correoPropio = sesionActual?.correo_usuario;
+      let idAreaPropia = null;
       if (correoPropio) {
         const empPropio = await api('empleados','GET',null,
           '?correo=eq.'+encodeURIComponent(correoPropio)+'&select=id_area&limit=1');
-        _invFiltroAreaManual = empPropio?.[0]?.id_area || null;
+        idAreaPropia = empPropio?.[0]?.id_area || null;
+      }
+      if (idAreaPropia) {
+        const tieneStockPropio = await api('inventario_stock_area','GET',null,
+          '?id_area=eq.'+idAreaPropia+'&stock_actual=gt.0&select=id_articulo&limit=1');
+        _invFiltroAreaManual = (tieneStockPropio && tieneStockPropio.length) ? idAreaPropia : null;
+      } else {
+        _invFiltroAreaManual = null;
       }
     } catch(e) {}
   }
