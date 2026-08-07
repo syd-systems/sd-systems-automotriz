@@ -271,19 +271,22 @@ async function renderInventario(filtro) {
 
     const itemsFiltradosBase = soloConStock ? items.filter(function(r) { return stockMostrarArticulo(r.id_articulo) > 0; }) : items;
 
-    // ── Ocultar artículos sin stock en el Área SOLO si el Usuario está
-    // forzado a su propia Área (sin VER_INVENTARIO_GENERAL) -- para él,
-    // ver un artículo que no maneja no aporta nada. Quien SÍ tiene el
-    // permiso y eligió ver una Área específica desde el selector debe
-    // seguir viendo TODOS los artículos (con 0 donde no tenga stock),
-    // igual que en el consolidado -- de lo contrario parecía que el
-    // artículo no existiera. Para filtrar por stock, está el checkbox
-    // "Solo con stock".
+    // ── Mostrar SOLO artículos que alguna vez tuvieron movimiento en el
+    // Área del Usuario -- ver un artículo con el que nunca ha trabajado no
+    // le aporta nada. IMPORTANTE: el criterio es "existe una fila para ese
+    // artículo en inventario_stock_area" (upsertStockArea nunca borra la
+    // fila, solo la actualiza -- ver core.js), NO "stock_actual > 0". Antes
+    // exigía stock positivo, y si el Área llegaba a 0 en TODO, Inventario
+    // General se quedaba completamente vacío -- incluso perdiendo el
+    // acceso a su propio Historial de movimientos (solo se entra a través
+    // de un artículo listado). Quien tiene VER_INVENTARIO_GENERAL y eligió
+    // una Área específica desde el selector sigue viendo TODOS los
+    // artículos del sistema, con 0 donde no tenga stock.
     const esPrivilegiadoInv = sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL');
     let itemsFiltradosBase2 = itemsFiltradosBase;
     if (_invSaldoArea && !esPrivilegiadoInv) {
       itemsFiltradosBase2 = itemsFiltradosBase.filter(function(r) {
-        return (_invSaldoArea[r.id_articulo]||0) > 0;
+        return Object.prototype.hasOwnProperty.call(_invSaldoArea, r.id_articulo);
       });
     }
 
