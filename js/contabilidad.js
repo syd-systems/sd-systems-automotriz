@@ -292,6 +292,14 @@ async function contVerAsiento(id) {
       api('cont_asientos','GET',null,'?id_asiento=eq.' + id + '&select=*,cont_periodos(nombre)'),
       api('cont_asiento_lineas','GET',null,'?id_asiento=eq.' + id + '&order=orden.asc&select=*,cont_cuentas(codigo,nombre)'),
     ]);
+    // Mostrar las cuentas del asiento ordenadas por su Código (menor a
+    // mayor), igual que en el Catálogo de Cuentas -- no por el orden en
+    // que se insertaron las líneas (Debe/Haber según se fueron generando).
+    lineas.sort(function(la, lb) {
+      const ca = la.cont_cuentas?.codigo || '';
+      const cb = lb.cont_cuentas?.codigo || '';
+      return ca.localeCompare(cb, undefined, { numeric: true });
+    });
     const ast = a[0]; if (!ast) return;
     const est = ESTADOS_ASIENTO[ast.estado] || {clase:'badge-gris',label:ast.estado};
     const totalDebe     = lineas.reduce(function(s,l){ return s+parseFloat(l.debe_usd||0); }, 0);
