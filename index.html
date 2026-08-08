@@ -1350,17 +1350,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260723164"></script>
-<script src="js/parametros.js?v=20260723164"></script>
-<script src="js/empresas.js?v=20260723164"></script>
-<script src="js/ingresos.js?v=20260723164"></script>
-<script src="js/inventario.js?v=20260723164"></script>
-<script src="js/proveedores.js?v=20260723164"></script>
-<script src="js/contabilidad.js?v=20260723164"></script>
-<script src="js/egresos.js?v=20260723164"></script>
-<script src="js/vehiculos.js?v=20260723164"></script>
-<script src="js/catalogo.js?v=20260723164"></script>
-<script src="js/ordenes.js?v=20260723164"></script>
+<script src="js/core.js?v=20260723165"></script>
+<script src="js/parametros.js?v=20260723165"></script>
+<script src="js/empresas.js?v=20260723165"></script>
+<script src="js/ingresos.js?v=20260723165"></script>
+<script src="js/inventario.js?v=20260723165"></script>
+<script src="js/proveedores.js?v=20260723165"></script>
+<script src="js/contabilidad.js?v=20260723165"></script>
+<script src="js/egresos.js?v=20260723165"></script>
+<script src="js/vehiculos.js?v=20260723165"></script>
+<script src="js/catalogo.js?v=20260723165"></script>
+<script src="js/ordenes.js?v=20260723165"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2453,6 +2453,11 @@
       </div>
       <!-- Botones de acción -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <button id="stock-btn-faltante" class="btn-secundario" style="padding:16px 8px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;border-color:rgba(252,129,129,0.3);color:#fc8181"
+          onclick="abrirFaltanteInventario(_fichaInvActual.id)">
+          <span style="font-size:22px">⚠</span>
+          <span>Ajuste Discrepancia</span>
+        </button>
         <button id="stock-btn-entrada" class="btn-primario" style="padding:16px 8px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px"
           onclick="abrirEntradaStock(_fichaInvActual.id)">
           <span style="font-size:22px">▲</span>
@@ -2462,11 +2467,6 @@
           onclick="abrirSalidaStock(_fichaInvActual.id,_fichaInvActual.nombre)">
           <span style="font-size:22px">▼</span>
           <span>Salida</span>
-        </button>
-        <button id="stock-btn-faltante" class="btn-secundario" style="padding:16px 8px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;border-color:rgba(252,129,129,0.3);color:#fc8181"
-          onclick="abrirFaltanteInventario(_fichaInvActual.id)">
-          <span style="font-size:22px">⚠</span>
-          <span>Ajuste Discrepancia</span>
         </button>
       </div>
       <div id="stock-btn-faltante-cont" style="margin-top:10px">
