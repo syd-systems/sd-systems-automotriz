@@ -1193,7 +1193,7 @@ async function guardarEntradaStock() {
       id_area_origen:         id_areaOrigenH,
       motivo:                 motivoEnt || null,
       esquema_pago:           document.getElementById('es-esquema-pago')?.value || null,
-      observaciones:          document.getElementById('es-observaciones')?.value.trim() || null,
+      observaciones:          ((motivoEnt === 'transferencia' ? '[TRANSFERENCIA] ' : '') + (document.getElementById('es-observaciones')?.value.trim() || '')) || null,
       exento_iva:             document.getElementById('edit-mov-exento-iva-val')?.value === 'SI' ? true : (document.getElementById('es-exento-iva-val')?.value === 'SI' ? true : (document.getElementById('es-exento-iva-val')?.value === 'NO' ? false : null)),
       incluye_iva:            document.getElementById('es-incluye-iva-val')?.value === 'SI' ? true : (document.getElementById('es-incluye-iva-val')?.value === 'NO' ? false : null),
       id_usuario:             sesionActual.correo_usuario
@@ -2481,6 +2481,8 @@ function _renderTablaHistorial(movimientos) {
 function _renderFilaHistorial(m) {
   const esEntrada = m.tipo === 'ENTRADA';
   const esTransferenciaMirror = !esEntrada && (m.observaciones || '').indexOf('[TRANSFERENCIA]') === 0;
+  const tieneMarcadorTransf = (m.observaciones || '').indexOf('[TRANSFERENCIA]') === 0;
+  const obsSinMarcador = tieneMarcadorTransf ? (m.observaciones || '').replace('[TRANSFERENCIA]', '').trim() : (m.observaciones || '');
   const anulada = !!m.anulada;
   const areaRec = m.area_receptora || m.param_areas;
   const area = areaRec ? areaRec.nombre + (areaRec.codigo ? ' (' + areaRec.codigo + ')' : '') : '—';
@@ -2504,7 +2506,8 @@ function _renderFilaHistorial(m) {
       : '<div>' + area + '</div>')
     + ((esEntrada ? m.empleado_recibe : m.empleado_recibe) ? '<div style="font-size:11px;color:#60a5fa">👤 Recibe: ' + (m.empleado_recibe?.nombre_completo||'') + '</div>' : '')
     + ((!esEntrada && m.empleado_entrega) ? '<div style="font-size:11px;color:#fb923c">👤 Entrega: ' + m.empleado_entrega.nombre_completo + '</div>' : '')
-    + (m.observaciones ? '<div style="font-size:11px;color:var(--suave)">' + m.observaciones + '</div>' : '')
+    + (tieneMarcadorTransf ? '<div style="font-size:11px;font-weight:600;color:var(--naranja);margin-top:2px">[TRANSFERENCIA]</div>' : '')
+    + (obsSinMarcador ? '<div style="font-size:11px;color:var(--suave)">' + obsSinMarcador + '</div>' : '')
     + '</td>'
     + '<td style="text-align:center;padding:8px 0">'
     + (anulada
@@ -2583,7 +2586,7 @@ function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
   // usa el mismo modal por reutilización de campos, pero con su propio título.
   const esAjusteSobrante = tipo === 'ENTRADA' && m?.motivo === 'ajuste';
   const esAjusteFaltante = tipo === 'SALIDA'  && (m?.observaciones || '').indexOf('FALTANTE (Ajuste de Inventario)') === 0;
-  const esTransferenciaFicha = tipo === 'SALIDA' && (m?.observaciones || '').indexOf('[TRANSFERENCIA]') === 0;
+  const esTransferenciaFicha = (m?.observaciones || '').indexOf('[TRANSFERENCIA]') === 0;
   let tituloMov;
   if (esAjusteSobrante || esAjusteFaltante) {
     tituloMov = (soloLectura ? '👁 FICHA ' : '✏ EDITAR ') + 'AJUSTE DE INVENTARIO — ' + (esAjusteSobrante ? 'Sobrante' : 'Faltante') + refMov;
