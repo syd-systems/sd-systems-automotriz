@@ -1208,6 +1208,7 @@ async function guardarEntradaStock() {
     // ── FASE 4.5: Si es Transferencia, registrar la salida del Área de Origen y descontarle el stock ──
     if (motivoEnt === 'transferencia' && id_areaOrigenH) {
       const idEmpEntregaH = parseInt(document.getElementById('es-empleado-entrega')?.value) || null;
+      const obsUsuarioTransf = document.getElementById('es-observaciones')?.value.trim() || '';
       await api('stock_salidas', 'POST', {
         id_articulo:       id,
         cantidad:          cantidad,
@@ -1216,7 +1217,10 @@ async function guardarEntradaStock() {
         id_area_entrega:   id_areaOrigenH,       // origen (quien entrega)
         id_empleado:       idEmpEntVal,         // receptor
         id_empleado_entrega: idEmpEntregaH,
-        observaciones:     document.getElementById('es-observaciones')?.value.trim() || null,
+        // Prefijo reconocible -- distingue este registro espejo de una
+        // Salida real (venta/entrega) para mostrarlo como "Transferencia"
+        // en el Historial, en vez de "Salida" (que confunde).
+        observaciones:     '[TRANSFERENCIA] ' + obsUsuarioTransf,
         id_usuario:        sesionActual.correo_usuario
       });
       // Descontar del Área de Origen (ya validamos en FASE 1B que tenía suficiente)
@@ -2474,6 +2478,7 @@ function _renderTablaHistorial(movimientos) {
 
 function _renderFilaHistorial(m) {
   const esEntrada = m.tipo === 'ENTRADA';
+  const esTransferenciaMirror = !esEntrada && (m.observaciones || '').indexOf('[TRANSFERENCIA]') === 0;
   const anulada = !!m.anulada;
   const areaRec = m.area_receptora || m.param_areas;
   const area = areaRec ? areaRec.nombre + (areaRec.codigo ? ' (' + areaRec.codigo + ')' : '') : '—';
@@ -2481,8 +2486,8 @@ function _renderFilaHistorial(m) {
     + '<td style="padding:8px 0;font-size:12px;color:var(--suave)">' + (m.fecha ? fmtFecha(m.fecha) : '—') + '</td>'
     + '<td style="padding:8px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">'
     + 'Ref: ' + (m.id_entrada ? 'ENT-' + m.id_entrada : 'SAL-' + m.id_salida) + '</td>'
-    + '<td style="padding:8px"><span class="badge ' + (esEntrada ? 'badge-verde' : 'badge-rojo') + '">'
-    + (esEntrada ? '▲ Entrada' : '▼ Salida') + '</span>'
+    + '<td style="padding:8px"><span class="badge ' + (esEntrada ? 'badge-verde' : (esTransferenciaMirror ? '' : 'badge-rojo')) + '" style="' + (esTransferenciaMirror ? 'background:rgba(96,165,250,0.15);color:#60a5fa' : '') + '">'
+    + (esEntrada ? '▲ Entrada' : (esTransferenciaMirror ? '↔ Transferencia' : '▼ Salida')) + '</span>'
     + (anulada ? '<div style="font-size:10px;color:#fc8181;margin-top:2px">Anulada</div>' : '') + '</td>'
     + '<td style="text-align:center;padding:8px;font-family:var(--font-mono);font-weight:600;color:' + (esEntrada ? '#22c55e' : '#fc8181') + '">'
     + (esEntrada ? '+' : '-') + m.cantidad + '</td>'
@@ -2576,9 +2581,12 @@ function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
   // usa el mismo modal por reutilización de campos, pero con su propio título.
   const esAjusteSobrante = tipo === 'ENTRADA' && m?.motivo === 'ajuste';
   const esAjusteFaltante = tipo === 'SALIDA'  && (m?.observaciones || '').indexOf('FALTANTE (Ajuste de Inventario)') === 0;
+  const esTransferenciaFicha = tipo === 'SALIDA' && (m?.observaciones || '').indexOf('[TRANSFERENCIA]') === 0;
   let tituloMov;
   if (esAjusteSobrante || esAjusteFaltante) {
     tituloMov = (soloLectura ? '👁 FICHA ' : '✏ EDITAR ') + 'AJUSTE DE INVENTARIO — ' + (esAjusteSobrante ? 'Sobrante' : 'Faltante') + refMov;
+  } else if (esTransferenciaFicha) {
+    tituloMov = (soloLectura ? '👁 FICHA ' : '✏ EDITAR ') + 'TRANSFERENCIA' + refMov;
   } else {
     tituloMov = (soloLectura ? '👁 FICHA ' : '✏ EDITAR ') + (tipo === 'ENTRADA' ? 'ENTRADA' : 'SALIDA') + ' DE STOCK' + refMov;
   }
