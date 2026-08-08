@@ -20,6 +20,7 @@ var _invVista = 'tabla';
 var _invSaldoConsolidado = null; // { id_articulo: totalTodasLasAreas }
 let _invCategoriasCache = [];
 let _invAreasCache = []; // Áreas activas -- para el selector de Área visible solo con VER_INVENTARIO_GENERAL
+let _invPendientesPorArticulo = {}; // { id_articulo: [{cantidad, nombreArea, codigoArea}] } -- entregas en tránsito, pendientes de "Confirmar Recepción"
 let _invAreasConStock = new Set(); // ids de Área con al menos un artículo con stock > 0 (se recalcula en calcularInvSaldoArea)
 let _invFiltroAreaManual = null; // id_area elegido manualmente por un usuario con VER_INVENTARIO_GENERAL (null = ver consolidado)
 let _invSaldoArea = null; // Saldo por área del usuario — null = mostrar stock global
@@ -233,6 +234,52 @@ async function renderInventario(filtro) {
     const items = itemsTodos; // se muestran Activos e Inactivos; se distinguen por la columna Estado
     inventarioCache = items;
 
+    // Cargar entregas pendientes de "Confirmar Recepción" -- mientras el
+    // receptor no confirma, el stock no está ni en el área que lo entregó
+    // ni en la que lo recibe (ver notifConfirmar en core.js). Se muestran
+    // aquí para que no parezca que el Artículo desapareció.
+    _invPendientesPorArticulo = {};
+    try {
+      const notifsPend = await api('notificaciones','GET',null,
+        '?tipo=eq.RECEPCION_ARTICULO&estado=eq.PENDIENTE&select=datos_extra'
+        + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+      if (notifsPend && notifsPend.length) {
+        const idsAreaNecesarias = new Set();
+        const pendientesParsed = notifsPend.map(function(n) {
+          try {
+            const extra = typeof n.datos_extra === 'string' ? JSON.parse(n.datos_extra) : n.datos_extra;
+            if (extra && extra.id_articulo && extra.id_area_destino) {
+              idsAreaNecesarias.add(extra.id_area_destino);
+              return extra;
+            }
+          } catch(eParsePend) {}
+          return null;
+        }).filter(Boolean);
+        if (pendientesParsed.length) {
+          // Reutilizar _invAreasCache si ya está cargado (usuarios con
+          // VER_INVENTARIO_GENERAL); si no, traer solo las Áreas necesarias.
+          let mapaAreasNombres = {};
+          if (_invAreasCache && _invAreasCache.length) {
+            _invAreasCache.forEach(function(a){ mapaAreasNombres[a.id] = a; });
+          }
+          const idsFaltantes = Array.from(idsAreaNecesarias).filter(function(id){ return !mapaAreasNombres[id]; });
+          if (idsFaltantes.length) {
+            const areasExtra = await api('param_areas','GET',null,'?id=in.(' + idsFaltantes.join(',') + ')&select=id,nombre,codigo') || [];
+            areasExtra.forEach(function(a){ mapaAreasNombres[a.id] = a; });
+          }
+          pendientesParsed.forEach(function(extra) {
+            const areaInfo = mapaAreasNombres[extra.id_area_destino];
+            if (!_invPendientesPorArticulo[extra.id_articulo]) _invPendientesPorArticulo[extra.id_articulo] = [];
+            _invPendientesPorArticulo[extra.id_articulo].push({
+              cantidad: extra.cantidad,
+              nombreArea: areaInfo ? areaInfo.nombre : 'Área desconocida',
+              codigoArea: areaInfo ? areaInfo.codigo : null
+            });
+          });
+        }
+      }
+    } catch(ePend) { console.warn('Error cargando entregas pendientes de confirmar:', ePend); }
+
     // Calcular saldo por área (función centralizada) — ANTES de cualquier filtro de stock,
     // para que "Solo con stock" y el filtro por área usen la fuente correcta (inventario_stock_area)
     await calcularInvSaldoArea();
@@ -398,9 +445,15 @@ function invRenderTabla(items, cont) {
       + '<div style="font-weight:500">' + r.nombre_articulo + '</div>'
       + (r.descripcion_articulo ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion_articulo + '</div>' : '') + '</div></div></td>'
       + (function() {
+          const pendientesArt = _invPendientesPorArticulo[r.id_articulo] || [];
+          const pendientesHtml = pendientesArt.map(function(p) {
+            return '<div style="font-size:10px;color:var(--naranja);margin-top:3px;background:rgba(255,107,0,0.1);border-radius:3px;padding:2px 6px;display:inline-block">'
+              + '📦 ' + p.cantidad + ' unid. — ' + p.nombreArea + (p.codigoArea ? ' (' + p.codigoArea + ')' : '') + ' — <strong>Por Confirmar</strong></div>';
+          }).join('');
           return '<td><span class="badge ' + (stockBajo ? 'badge-rojo' : 'badge-verde') + '">' + stockMostrar + ' ' + (r.unidad || 'UND') + '</span>'
             + (_invSaldoArea ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Stock área</div>' : '')
-            + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo_articulo + ')</div>' : '') + '</td>';
+            + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo_articulo + ')</div>' : '')
+            + pendientesHtml + '</td>';
         })()
       + (puedo('INVENTARIO','VER_COSTOS')
           ? '<td style="font-family:var(--font-mono);font-size:12px">'
