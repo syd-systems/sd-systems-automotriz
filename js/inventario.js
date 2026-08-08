@@ -1590,7 +1590,7 @@ async function abrirEditarInventario(id) {
   if (selCGFinal && r.id_cuenta_costo_gasto) selCGFinal.value = r.id_cuenta_costo_gasto;
   document.getElementById('inv-id').value = r.id_articulo;
   document.getElementById('inv-codigo').value = r.codigo_articulo || '';
-  document.getElementById('inv-nombre').value = r.nombre_articulo;
+  document.getElementById('inv-nombre').value = (r.nombre_articulo || '').toUpperCase();
   document.getElementById('inv-descripcion').value = r.descripcion_articulo || '';
   document.getElementById('inv-stock').value = stockMostrarArticulo(r.id_articulo);
   // El stock real vive en inventario_stock_area (por área) desde que se migró el esquema —
@@ -1660,7 +1660,7 @@ async function guardarInventario() {
   if (id && !puedo('INVENTARIO','EDITAR')) { alert('No tiene permiso para editar artículos.'); return; }
   if (!id && !puedo('INVENTARIO','CREAR')) { alert('No tiene permiso para crear artículos.'); return; }
   const codigo   = document.getElementById('inv-codigo').value.trim();
-  const nombre   = document.getElementById('inv-nombre').value.trim();
+  const nombre   = document.getElementById('inv-nombre').value.trim().toUpperCase();
   const desc     = document.getElementById('inv-descripcion').value.trim();
   const stock    = parseInt(document.getElementById('inv-stock').value) || 0;
   const stockMin = parseInt(document.getElementById('inv-stock-min').value) || 0;
@@ -2480,7 +2480,6 @@ function _renderTablaHistorial(movimientos) {
 
 function _renderFilaHistorial(m) {
   const esEntrada = m.tipo === 'ENTRADA';
-  const esTransferenciaMirror = !esEntrada && (m.observaciones || '').indexOf('[TRANSFERENCIA]') === 0;
   const tieneMarcadorTransf = (m.observaciones || '').indexOf('[TRANSFERENCIA]') === 0;
   const obsSinMarcador = tieneMarcadorTransf ? (m.observaciones || '').replace('[TRANSFERENCIA]', '').trim() : (m.observaciones || '');
   const anulada = !!m.anulada;
@@ -2490,8 +2489,8 @@ function _renderFilaHistorial(m) {
     + '<td style="padding:8px 0;font-size:12px;color:var(--suave)">' + (m.fecha ? fmtFecha(m.fecha) : '—') + '</td>'
     + '<td style="padding:8px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">'
     + 'Ref: ' + (m.id_entrada ? 'ENT-' + m.id_entrada : 'SAL-' + m.id_salida) + '</td>'
-    + '<td style="padding:8px"><span class="badge ' + (esEntrada ? 'badge-verde' : (esTransferenciaMirror ? '' : 'badge-rojo')) + '" style="' + (esTransferenciaMirror ? 'background:rgba(96,165,250,0.15);color:#60a5fa' : '') + '">'
-    + (esEntrada ? '▲ Entrada' : (esTransferenciaMirror ? '↔ Transferencia' : '▼ Salida')) + '</span>'
+    + '<td style="padding:8px"><span class="badge ' + (esEntrada ? 'badge-verde' : 'badge-rojo') + '">'
+    + (esEntrada ? '▲ Entrada' : '▼ Salida') + '</span>'
     + (anulada ? '<div style="font-size:10px;color:#fc8181;margin-top:2px">Anulada</div>' : '') + '</td>'
     + '<td style="text-align:center;padding:8px;font-family:var(--font-mono);font-weight:600;color:' + (esEntrada ? '#22c55e' : '#fc8181') + '">'
     + (esEntrada ? '+' : '-') + m.cantidad + '</td>'
