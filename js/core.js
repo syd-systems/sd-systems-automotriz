@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260723163';
+const SYD_VERSION = '20260723164';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -2789,6 +2789,14 @@ async function notifConfirmar() {
     document.getElementById('modal-notif-pendiente').style.display = 'none';
     _notifPendienteActual = null;
     if (btn) { btn.disabled = false; btn.textContent = btn.dataset.textoOriginal || '✓ Confirmar Recepción'; }
+
+    // Si el Usuario está viendo Inventario General en este momento, se
+    // refresca -- de lo contrario el badge "Por Confirmar" y el Stock
+    // desactualizado se quedaban pegados hasta que alguien saliera y
+    // volviera a entrar al módulo manualmente.
+    if (document.getElementById('buscar-inv') && typeof renderInventario === 'function') {
+      try { await renderInventario(document.getElementById('buscar-inv').value || ''); } catch(eRefreshInv) {}
+    }
 
     // 3. Llevar directo al listado de Cuentas por Pagar si es una
     // notificación de aprobación de Pagos, en vez de solo cerrar el popup
