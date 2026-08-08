@@ -481,8 +481,9 @@ function invRenderTabla(items, cont) {
       + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" style="border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="abrirStockArticulo(' + r.id_articulo + ',\'' + r.nombre_articulo.replace(/'/g,"\\'"  ) + '\')" >Stock</button>' : '')
       + '</div></td></tr>';
   }).join('');
-  cont.innerHTML = '<div class="tabla-container"><table><thead><tr>'
-    + '<th>Artículo</th><th>Stock</th><th>Precio Costo</th><th>Precio Venta</th><th>Estado</th><th>Acción</th>'
+  const thStyleInv = 'background:var(--gris1);position:sticky;top:0;z-index:1';
+  cont.innerHTML = '<div class="tabla-container" style="max-height:calc(100vh - 320px);overflow-y:auto"><table><thead><tr>'
+    + '<th style="' + thStyleInv + '">Artículo</th><th style="' + thStyleInv + '">Stock</th><th style="' + thStyleInv + '">Precio Costo</th><th style="' + thStyleInv + '">Precio Venta</th><th style="' + thStyleInv + '">Estado</th><th style="' + thStyleInv + '">Acción</th>'
     + '</tr></thead><tbody>' + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">Sin artículos registrados</td></tr>') + '</tbody></table></div>';
 }
 
@@ -2461,15 +2462,16 @@ function _renderFooterPaginacion() {
 }
 
 function _renderTablaHistorial(movimientos) {
+  const thStyle = 'padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;letter-spacing:1px;background:var(--gris1);position:sticky;top:0;z-index:1';
   return '<table style="width:100%;border-collapse:collapse;font-size:13px">'
     + '<thead><tr>'
-    + '<th style="text-align:left;padding:8px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;letter-spacing:1px">FECHA</th>'
-    + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">REF</th>'
-    + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">TIPO</th>'
-    + '<th style="text-align:center;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CANTIDAD</th>'
-    + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ÁREA / DETALLE</th>'
-    + '<th style="text-align:center;padding:8px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ESTADO</th>'
-    + '<th style="text-align:center;padding:8px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ACCIÓN</th>'
+    + '<th style="text-align:left;' + thStyle + '">FECHA</th>'
+    + '<th style="text-align:left;' + thStyle + '">REF</th>'
+    + '<th style="text-align:left;' + thStyle + '">TIPO</th>'
+    + '<th style="text-align:center;' + thStyle + '">CANTIDAD</th>'
+    + '<th style="text-align:left;' + thStyle + '">ÁREA / DETALLE</th>'
+    + '<th style="text-align:center;' + thStyle + '">ESTADO</th>'
+    + '<th style="text-align:center;' + thStyle + '">ACCIÓN</th>'
     + '</tr></thead><tbody>'
     + movimientos.map(_renderFilaHistorial).join('')
     + '</tbody></table>'
