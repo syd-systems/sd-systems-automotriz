@@ -188,7 +188,7 @@ async function mostrarTablaParam(key) {
       + '<div style="font-family:var(--font-display);font-size:20px;letter-spacing:1px">' + def.icono + ' ' + def.nombre + ' <span style="font-size:14px;color:var(--suave)">(' + items.length + ')</span></div>'
       + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-primario" onclick="abrirParamItem(\'' + key + '\',null)" style="font-size:12px">+ Nuevo</button>' : '')
       + '</div>'
-      + '<div class="tabla-container" style="max-height:calc(100vh - 440px)"><table style="table-layout:fixed;width:100%"><thead><tr>' + thead + '</tr></thead><tbody>'
+      + '<div class="tabla-container" style="max-height:calc(100vh - 250px)"><table style="table-layout:fixed;width:100%"><thead><tr>' + thead + '</tr></thead><tbody>'
       + (filas || '<tr><td colspan="' + colspan + '" style="text-align:center;padding:32px;color:var(--suave)">Sin registros</td></tr>')
       + '</tbody></table></div>';
 
@@ -689,16 +689,16 @@ async function renderEmpleados() {
     }).join('');
 
     c.innerHTML =
-      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:24px">'
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:12px">'
       + Object.entries(ESTATUS_EMP).map(function(entry) {
-          return '<div class="tarjeta-stat" style="padding:14px">'
+          return '<div class="tarjeta-stat" style="padding:7px">'
             + '<div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">' + entry[1].label + '</div>'
-            + '<div style="font-family:var(--font-display);font-size:26px;color:var(--naranja)">' + (resumen[entry[0]]||0) + '</div>'
+            + '<div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + (resumen[entry[0]]||0) + '</div>'
             + '</div>';
         }).join('')
-      + '<div class="tarjeta-stat" style="padding:14px">'
+      + '<div class="tarjeta-stat" style="padding:7px">'
       + '<div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Total</div>'
-      + '<div style="font-family:var(--font-display);font-size:26px;color:var(--naranja)">' + empleados.length + '</div>'
+      + '<div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + empleados.length + '</div>'
       + '</div></div>'
       + '<div class="panel">'
       + '<div class="panel-header" style="flex-wrap:wrap;gap:10px">'
@@ -711,7 +711,7 @@ async function renderEmpleados() {
       + '<input type="text" id="emp-buscar" placeholder="Buscar nombre o cédula..." oninput="filtrarTablaEmpleados()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
       + (puedo('EMPLEADOS','CREAR') ? '<button class="btn-primario" onclick="abrirEmpleado(null)">+ Nuevo Empleado</button>' : '')
       + '</div></div>'
-      + '<div class="tabla-container" style="max-height:calc(100vh - 440px)"><table id="emp-tabla"><thead><tr>'
+      + '<div class="tabla-container" style="max-height:calc(100vh - 250px)"><table id="emp-tabla"><thead><tr>'
       + '<th>Empleado</th><th>Área</th><th>Cargo</th><th>Estatus</th><th>F. Ingreso</th><th>Acción</th>'
       + '</tr></thead><tbody id="emp-tbody">'
       + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">No hay empleados registrados</td></tr>')
