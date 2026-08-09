@@ -42,10 +42,10 @@ async function renderProveedores() {
     }).join('');
 
     c.innerHTML =
-      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:24px">'
-      + '<div class="tarjeta-stat" style="padding:14px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Total</div><div style="font-family:var(--font-display);font-size:26px;color:var(--naranja)">' + proveedores.length + '</div></div>'
-      + '<div class="tarjeta-stat" style="padding:14px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Activos</div><div style="font-family:var(--font-display);font-size:26px;color:var(--naranja)">' + activos + '</div></div>'
-      + '<div class="tarjeta-stat" style="padding:14px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Inactivos</div><div style="font-family:var(--font-display);font-size:26px;color:var(--naranja)">' + inactivos + '</div></div>'
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:12px">'
+      + '<div class="tarjeta-stat" style="padding:7px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Total</div><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + proveedores.length + '</div></div>'
+      + '<div class="tarjeta-stat" style="padding:7px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Activos</div><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + activos + '</div></div>'
+      + '<div class="tarjeta-stat" style="padding:7px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Inactivos</div><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + inactivos + '</div></div>'
       + '</div>'
       + '<div class="panel">'
       + '<div class="panel-header" style="flex-wrap:wrap;gap:10px">'
@@ -59,7 +59,7 @@ async function renderProveedores() {
       + '<input type="text" id="prov-buscar" placeholder="Buscar nombre o RIF..." oninput="filtrarTablaProveedores()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
       + (puedo('PROVEEDORES','CREAR') ? '<button class="btn-primario" onclick="abrirProveedor(null)">+ Nuevo Proveedor</button>' : '')
       + '</div></div>'
-      + '<div class="tabla-container" style="max-height:calc(100vh - 440px)"><table style="table-layout:fixed;width:100%"><thead><tr>'
+      + '<div class="tabla-container" style="max-height:calc(100vh - 250px)"><table style="table-layout:fixed;width:100%"><thead><tr>'
       + '<th>Nombre / RIF</th><th>Tipo</th><th>Teléfono</th><th>Correo</th><th>Moneda / Crédito</th><th>Estado</th><th>Acción</th>'
       + '</tr></thead><tbody id="prov-tbody">'
       + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">No hay proveedores registrados</td></tr>')
