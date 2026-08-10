@@ -48,7 +48,7 @@ async function renderParametros() {
           }).join('')}
         </div>
       </div>
-      <div id="param-tabla-cont" style="padding:24px">
+      <div id="param-tabla-cont" style="padding:12px 24px 24px">
         <div style="color:var(--suave);font-size:13px;text-align:center;padding:32px">
           Selecciona una tabla para gestionar
         </div>
@@ -184,7 +184,7 @@ async function mostrarTablaParam(key) {
     var colspan = key === 'areas' ? 5 : (2 + (def.tieneArea?1:0) + (def.tieneTipoSector?1:0));
 
     cont.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
       + '<div style="font-family:var(--font-display);font-size:20px;letter-spacing:1px">' + def.icono + ' ' + def.nombre + ' <span style="font-size:14px;color:var(--suave)">(' + items.length + ')</span></div>'
       + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-primario" onclick="abrirParamItem(\'' + key + '\',null)" style="font-size:12px">+ Nuevo</button>' : '')
       + '</div>'
