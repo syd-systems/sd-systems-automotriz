@@ -628,13 +628,24 @@ async function generarCxCyAsientoFactura(idFactura) {
       }
     } catch(eAst) { console.warn('Error creando asiento:', eAst); }
 
-    // 3. Registrar salida automática de inventario (si la OS tenía Mercancía)
+    // 3. Registrar en el Historial la salida por venta (si la OS tenía Mercancía)
+    // -- OJO: esto es SOLO informativo para el Historial de Stock. El stock
+    // real de Taller YA se rebajó cuando se asignó el Artículo a la OS (ver
+    // _guardarOSInterno en ordenes.js); NO se debe volver a tocar
+    // inventario_stock_area aquí, o quedaría descontado dos veces.
     if (fac.id_orden) {
       try {
         const reps = await api('os_mercancias','GET',null,'?id_orden=eq.'+fac.id_orden+'&select=id_articulo,cantidad');
         const correo = sesionActual?.correo_usuario;
-        const empRes = correo ? await api('empleados','GET',null,
-          '?correo=eq.'+encodeURIComponent(correo)+'&select=id_empleado,id_area&limit=1') : [];
+
+        // El Área a mostrar en el Historial es la del Taller que cerró la
+        // OS (su creador) -- NO la del usuario que está facturando ahora,
+        // que puede ser de otra Área (Facturación/Compras) sin relación
+        // con dónde salió físicamente el Artículo.
+        const osRow = await api('ordenes_servicio','GET',null,'?id_orden=eq.'+fac.id_orden+'&select=id_usuario');
+        const correoTaller = osRow && osRow[0] ? osRow[0].id_usuario : null;
+        const empRes = correoTaller ? await api('empleados','GET',null,
+          '?correo=eq.'+encodeURIComponent(correoTaller)+'&select=id_empleado,id_area&limit=1') : [];
         const id_areaEmp = empRes?.[0]?.id_area || null;
         const idEmpEmp  = empRes?.[0]?.id_empleado || null;
 
@@ -661,7 +672,8 @@ async function generarCxCyAsientoFactura(idFactura) {
           });
           const id_salidaFac = sal && sal[0] ? sal[0].id_salida : null;
 
-          if (id_areaEmp) await upsertStockArea(rep.id_articulo, id_areaEmp, -cantidadRep);
+          // NO se llama a upsertStockArea aquí -- el stock de Taller ya
+          // quedó correctamente rebajado al asignar el Artículo a la OS.
 
           try {
             const artCOGS = await api('inventario_almacen','GET',null,
