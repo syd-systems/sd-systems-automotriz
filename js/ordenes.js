@@ -711,7 +711,7 @@ async function agregarServicioCatalogo() {
       precioLibre.select();
       return;
     }
-    osServiciosLineas.push({ id_servicio: null, descripcion: descEl.value.trim(),
+    osServiciosLineas.push({ id_servicio: null, descripcion: descEl.value.trim().toUpperCase(),
       cantidad: parseFloat(cant.value) || 1, precio_usd: precioAUSD(pVal, moneda),
       precio_original: pVal, moneda });
   } else {
