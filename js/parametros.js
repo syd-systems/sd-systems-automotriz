@@ -38,7 +38,7 @@ async function renderParametros() {
 
   // Construir UI con tabs para cada tabla
   c.innerHTML = `
-    <div class="panel">
+    <div class="panel" style="margin-top:-24px">
       <div style="padding:16px 24px 12px;border-bottom:1px solid var(--borde);background:var(--gris2)">
         <div style="font-family:var(--font-display);font-size:16px;letter-spacing:1px;color:var(--texto);margin-bottom:10px">⚙️ Parámetros del Sistema — Tablas Maestras</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px">
