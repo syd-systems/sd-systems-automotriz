@@ -188,7 +188,7 @@ async function mostrarTablaParam(key) {
       + '<div style="font-family:var(--font-display);font-size:20px;letter-spacing:1px">' + def.icono + ' ' + def.nombre + ' <span style="font-size:14px;color:var(--suave)">(' + items.length + ')</span></div>'
       + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-primario" onclick="abrirParamItem(\'' + key + '\',null)" style="font-size:12px">+ Nuevo</button>' : '')
       + '</div>'
-      + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 530px))"><table style="table-layout:fixed;width:100%"><thead><tr>' + thead + '</tr></thead><tbody>'
+      + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 575px))"><table style="table-layout:fixed;width:100%"><thead><tr>' + thead + '</tr></thead><tbody>'
       + (filas || '<tr><td colspan="' + colspan + '" style="text-align:center;padding:32px;color:var(--suave)">Sin registros</td></tr>')
       + '</tbody></table></div>';
 
@@ -711,7 +711,7 @@ async function renderEmpleados() {
       + '<input type="text" id="emp-buscar" placeholder="Buscar nombre o cédula..." oninput="filtrarTablaEmpleados()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
       + (puedo('EMPLEADOS','CREAR') ? '<button class="btn-primario" onclick="abrirEmpleado(null)">+ Nuevo Empleado</button>' : '')
       + '</div></div>'
-      + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 265px))"><table id="emp-tabla"><thead><tr>'
+      + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 310px))"><table id="emp-tabla"><thead><tr>'
       + '<th>Empleado</th><th>Área</th><th>Cargo</th><th>Estatus</th><th>F. Ingreso</th><th>Acción</th>'
       + '</tr></thead><tbody id="emp-tbody">'
       + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">No hay empleados registrados</td></tr>')
