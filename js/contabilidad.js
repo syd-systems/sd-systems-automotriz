@@ -1039,9 +1039,34 @@ async function contAbrirPagoCxc(id_cxc) {
   if (errEl) errEl.style.display = 'none';
 
   const saldoPend = parseFloat(c.saldo_usd != null ? c.saldo_usd : c.monto_usd) || 0;
-  document.getElementById('cont-pago-cxc-monto').value  = saldoPend.toFixed(2);
+
+  // Tasa BCV vigente (la misma que se usará al guardar, para que lo que se
+  // muestra aquí coincida exactamente con lo que se registra después).
+  let tasaActualPago = parseFloat(c.tasa_bcv) || 1;
+  try {
+    const tasasBCVPago = await api('tasas','GET',null,
+      '?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    if (tasasBCVPago.length) tasaActualPago = parseFloat(tasasBCVPago[0].tipo_cambio);
+  } catch(eTasaPago) {}
+  const montoVESPago = parseFloat((saldoPend * tasaActualPago).toFixed(2));
+
+  document.getElementById('cont-pago-cxc-monto-ves').value = montoVESPago.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' Bs';
+  document.getElementById('cont-pago-cxc-monto').value  = '$ ' + saldoPend.toFixed(2);
+  document.getElementById('cont-pago-cxc-tasa').value   = tasaActualPago.toFixed(4) + ' Bs/$';
+  document.getElementById('cont-pago-cxc-monto-raw').value = saldoPend;
+  document.getElementById('cont-pago-cxc-tasa-raw').value  = tasaActualPago;
   document.getElementById('cont-pago-cxc-fecha').value  = getHoyVzla();
   document.getElementById('cont-pago-cxc-ref').value    = '';
+
+  // Limpiar comprobante y contraseña de una apertura anterior
+  const archivoElPago = document.getElementById('cont-pago-cxc-archivo');
+  if (archivoElPago) archivoElPago.value = '';
+  const previewContPago = document.getElementById('cont-pago-cxc-archivo-preview-cont');
+  if (previewContPago) previewContPago.style.display = 'none';
+  const claveElPago = document.getElementById('cont-pago-cxc-clave');
+  if (claveElPago) claveElPago.value = '';
+  const usuarioNombreEl = document.getElementById('cont-pago-cxc-usuario-nombre');
+  if (usuarioNombreEl) usuarioNombreEl.textContent = sesionActual?.nombre || sesionActual?.correo_usuario || '—';
 
   // Cargar métodos de Cobro reales desde Parámetros (param_metodos_pago),
   // igual que Egresos -- ya no son opciones fijas en el HTML. Se traen
@@ -1069,12 +1094,13 @@ async function contAbrirPagoCxc(id_cxc) {
 
   const infoEl = document.getElementById('cont-pago-cxc-tasa-info');
   if (infoEl) {
-    infoEl.textContent = 'Saldo pendiente: $ ' + saldoPend.toFixed(2)
-      + (c.tasa_bcv ? ' · Tasa registrada: ' + parseFloat(c.tasa_bcv).toFixed(2) + ' Bs/$' : '');
+    infoEl.textContent = c.tasa_bcv
+      ? 'Tasa registrada en la Factura original: ' + parseFloat(c.tasa_bcv).toFixed(4) + ' Bs/$'
+      : '';
   }
 
   abrirModal('modal-cont-pago-cxc');
-  setTimeout(function(){ document.getElementById('cont-pago-cxc-monto')?.focus(); }, 100);
+  setTimeout(function(){ document.getElementById('cont-pago-cxc-fecha')?.focus(); }, 100);
 }
 
 async function contGuardarPagoCxc() {
@@ -1084,10 +1110,10 @@ async function contGuardarPagoCxc() {
 
   if (!_pagoCxcActualId) { errEl.textContent = 'No hay ninguna Cuenta por Cobrar seleccionada.'; errEl.style.display = 'block'; return; }
 
-  const monto = parseFloat(document.getElementById('cont-pago-cxc-monto')?.value);
+  const monto = parseFloat(document.getElementById('cont-pago-cxc-monto-raw')?.value);
   if (!monto || monto <= 0) {
-    errEl.textContent = 'El monto es obligatorio y debe ser mayor a cero.'; errEl.style.display = 'block';
-    document.getElementById('cont-pago-cxc-monto')?.focus(); return;
+    errEl.textContent = 'No se pudo determinar el monto a cobrar. Cierre y vuelva a abrir el Cobro.'; errEl.style.display = 'block';
+    return;
   }
   const fecha = document.getElementById('cont-pago-cxc-fecha')?.value;
   if (!fecha) {
@@ -1106,6 +1132,16 @@ async function contGuardarPagoCxc() {
     errEl.textContent = 'La Referencia es obligatoria.'; errEl.style.display = 'block';
     document.getElementById('cont-pago-cxc-ref')?.focus(); return;
   }
+  const claveCxc = document.getElementById('cont-pago-cxc-clave')?.value || '';
+  if (!claveCxc) {
+    errEl.textContent = 'Debe ingresar su contraseña para confirmar.'; errEl.style.display = 'block';
+    document.getElementById('cont-pago-cxc-clave')?.focus(); return;
+  }
+  const validaClaveCxc = await validarClaveUsuarioActual(claveCxc);
+  if (!validaClaveCxc.ok) {
+    errEl.textContent = validaClaveCxc.msg; errEl.style.display = 'block';
+    document.getElementById('cont-pago-cxc-clave')?.focus(); return;
+  }
 
   try {
     const rows = await api('cont_cxc','GET',null,'?id_cxc=eq.'+_pagoCxcActualId+'&select=*');
@@ -1113,23 +1149,35 @@ async function contGuardarPagoCxc() {
     const c = rows[0];
 
     if (monto > parseFloat(c.saldo_usd != null ? c.saldo_usd : c.monto_usd) + 0.01) {
-      errEl.textContent = 'El monto no puede ser mayor al saldo pendiente ($ ' + parseFloat(c.saldo_usd||c.monto_usd).toFixed(2) + ').';
+      errEl.textContent = 'El saldo de esta Cuenta por Cobrar cambió desde que se abrió este Cobro (ahora es $ ' + parseFloat(c.saldo_usd||c.monto_usd).toFixed(2) + '). Cierre y vuelva a abrirlo.';
       errEl.style.display = 'block';
-      document.getElementById('cont-pago-cxc-monto')?.focus(); return;
+      return;
+    }
+
+    // Subir comprobante si se adjuntó archivo
+    let urlComprobanteCxc = null;
+    const archivoElCxc = document.getElementById('cont-pago-cxc-archivo');
+    if (archivoElCxc && archivoElCxc.files && archivoElCxc.files[0]) {
+      try {
+        urlComprobanteCxc = await subirFoto(archivoElCxc.files[0], 'comprobantes-cobro/' + _pagoCxcActualId);
+      } catch(eFileCxc) { console.warn('Error subiendo comprobante:', eFileCxc); }
     }
 
     const nuevoPagado = parseFloat((parseFloat(c.pagado_usd||0) + monto).toFixed(2));
     const nuevoSaldo  = Math.max(0, parseFloat((parseFloat(c.monto_usd||0) - nuevoPagado).toFixed(2)));
     const nuevoEstado = nuevoSaldo <= 0.01 ? 'PAGADA' : 'PARCIAL';
 
-    await api('cont_cxc','PATCH',{
+    const patchDataCxc = {
       pagado_usd:  nuevoPagado,
       saldo_usd:   nuevoSaldo,
       estado:      nuevoEstado,
       metodo_pago: metodoNombre,
       referencia:  referencia,
       fecha_cobro: new Date().toISOString()
-    },'?id_cxc=eq.'+_pagoCxcActualId);
+    };
+    if (urlComprobanteCxc) patchDataCxc.url_comprobante = urlComprobanteCxc;
+
+    await api('cont_cxc','PATCH', patchDataCxc, '?id_cxc=eq.'+_pagoCxcActualId);
 
     // Mantener sincronizado el estado de la Factura relacionada, ya que la
     // lista de Contabilidad (contRenderCxc) se basa en facturas.estado.
@@ -1168,11 +1216,7 @@ async function contGuardarPagoCxc() {
           if (trib && trib[0]) pctIGTF = parseFloat(trib[0].alicuota) / 100;
         } catch(eTrib) {}
 
-        let tasaActual = parseFloat(c.tasa_bcv) || 1;
-        try {
-          const tasasBCV = await api('tasas','GET',null,'?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio');
-          if (tasasBCV.length) tasaActual = parseFloat(tasasBCV[0].tipo_cambio);
-        } catch(eTasa) {}
+        let tasaActual = parseFloat(document.getElementById('cont-pago-cxc-tasa-raw')?.value) || parseFloat(c.tasa_bcv) || 1;
 
         const tasaOriginal      = parseFloat(c.tasa_bcv) || 1;
         const montoVESOriginal  = parseFloat((monto * tasaOriginal).toFixed(2));
