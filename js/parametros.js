@@ -39,14 +39,14 @@ async function renderParametros() {
   // Construir UI con tabs para cada tabla
   c.innerHTML = `
     <div class="panel">
-      <div class="panel-header">
-        <h3>⚙️ Parámetros del Sistema — Tablas Maestras</h3>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:16px 24px;border-bottom:1px solid var(--borde);background:var(--gris2)">
-        ${TABLAS_MAESTRAS.map(function(t) {
-          return '<button class="param-tab btn-secundario" id="tab-' + t.key + '" onclick="mostrarTablaParam(\'' + t.key + '\')" style="font-size:12px">'
-            + t.icono + ' ' + t.nombre + '</button>';
-        }).join('')}
+      <div style="padding:16px 24px 12px;border-bottom:1px solid var(--borde);background:var(--gris2)">
+        <div style="font-family:var(--font-display);font-size:16px;letter-spacing:1px;color:var(--texto);margin-bottom:10px">⚙️ Parámetros del Sistema — Tablas Maestras</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${TABLAS_MAESTRAS.map(function(t) {
+            return '<button class="param-tab btn-secundario" id="tab-' + t.key + '" onclick="mostrarTablaParam(\'' + t.key + '\')" style="font-size:12px">'
+              + t.icono + ' ' + t.nombre + '</button>';
+          }).join('')}
+        </div>
       </div>
       <div id="param-tabla-cont" style="padding:24px">
         <div style="color:var(--suave);font-size:13px;text-align:center;padding:32px">
@@ -188,7 +188,7 @@ async function mostrarTablaParam(key) {
       + '<div style="font-family:var(--font-display);font-size:20px;letter-spacing:1px">' + def.icono + ' ' + def.nombre + ' <span style="font-size:14px;color:var(--suave)">(' + items.length + ')</span></div>'
       + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-primario" onclick="abrirParamItem(\'' + key + '\',null)" style="font-size:12px">+ Nuevo</button>' : '')
       + '</div>'
-      + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 600px))"><table style="table-layout:fixed;width:100%"><thead><tr>' + thead + '</tr></thead><tbody>'
+      + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 530px))"><table style="table-layout:fixed;width:100%"><thead><tr>' + thead + '</tr></thead><tbody>'
       + (filas || '<tr><td colspan="' + colspan + '" style="text-align:center;padding:32px;color:var(--suave)">Sin registros</td></tr>')
       + '</tbody></table></div>';
 
@@ -711,7 +711,7 @@ async function renderEmpleados() {
       + '<input type="text" id="emp-buscar" placeholder="Buscar nombre o cédula..." oninput="filtrarTablaEmpleados()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
       + (puedo('EMPLEADOS','CREAR') ? '<button class="btn-primario" onclick="abrirEmpleado(null)">+ Nuevo Empleado</button>' : '')
       + '</div></div>'
-      + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 335px))"><table id="emp-tabla"><thead><tr>'
+      + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 265px))"><table id="emp-tabla"><thead><tr>'
       + '<th>Empleado</th><th>Área</th><th>Cargo</th><th>Estatus</th><th>F. Ingreso</th><th>Acción</th>'
       + '</tr></thead><tbody id="emp-tbody">'
       + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">No hay empleados registrados</td></tr>')
