@@ -253,7 +253,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
       + '</select>'
       
       + '</div></div>'
-      + '<div class="tabla-container" style="max-height:calc(100vh - 440px)"><table style="table-layout:fixed;width:100%"><thead><tr>'
+      + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 440px))"><table style="table-layout:fixed;width:100%"><thead><tr>'
       + '<th>N° Asiento</th><th>Fecha</th><th>Descripción</th><th>Período</th><th style="text-align:right">Monto</th><th>Estado</th><th>Acción</th>'
       + '</tr></thead><tbody>'
       + (asientos.length ? asientos.map(function(a) {
@@ -1422,7 +1422,7 @@ async function contRenderCxp() {
       +'<div style="font-size:12px;color:#f59e0b;font-weight:600">Saldo Pendiente: '+fmtMonto(totalPendiente)+'</div>'
       +'</div></div>'
       +(filas
-        ? '<div class="tabla-container" style="max-height:calc(100vh - 440px)"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+        ? '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 440px))"><table style="width:100%;border-collapse:collapse"><thead><tr>'
           +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">N° Doc</th>'
           +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Proveedor</th>'
           +'<th style="padding:8px;font-size:11px;color:var(--suave);text-align:left">Fecha</th>'
@@ -1510,7 +1510,7 @@ async function contIniciarConciliacion() {
     + '<input type="number" id="cont-conc-saldo-banco" placeholder="0.00" step="0.01" style="width:100%;background:var(--gris3);border:1px solid var(--naranja);color:var(--naranja);font-family:var(--font-display);font-size:22px;padding:8px 12px;border-radius:5px;outline:none;font-weight:700" onchange="contActualizarDiferencia(' + saldoLibros + ')">'
     + '<div id="cont-conc-dif" style="margin-top:6px;font-size:12px;color:var(--suave)">Diferencia: —</div>'
     + '</div></div>'
-    + '<div class="tabla-container" style="max-height:calc(100vh - 440px)"><table style="table-layout:fixed;width:100%"><thead><tr>'
+    + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 440px))"><table style="table-layout:fixed;width:100%"><thead><tr>'
     + '<th>Fecha</th><th>Asiento</th><th>Descripción</th><th style="text-align:right">Debe</th><th style="text-align:right">Haber</th><th style="text-align:right">Saldo Acum.</th>'
     + '</tr></thead><tbody>'
     + (filas.length ? filas.join('') : '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--suave)">Sin movimientos en este período.</td></tr>')
@@ -1547,7 +1547,7 @@ async function contRenderCuentas(filtro) {
     + '<input type="text" placeholder="Buscar código o nombre..." value="' + (filtro||'') + '" oninput="contRenderCuentas(this.value)" style="' + contSelStyle() + ';width:240px">'
     + (puedo('CONTABILIDAD','PLAN_CUENTAS') ? '<button class="btn-primario" onclick="contAbrirCuenta(null)">+ Nueva Cuenta</button>' : '')
     + '</div></div>'
-    + '<div class="tabla-container" style="max-height:calc(100vh - 410px)"><table style="width:100%"><thead><tr>'
+    + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 410px))"><table style="width:100%"><thead><tr>'
     + '<th style="width:160px">Código</th><th>Nombre</th><th style="width:110px">Tipo</th>'
     + '<th style="width:100px">Naturaleza</th><th style="width:60px;text-align:center">Nivel</th>'
     + '<th style="width:80px;text-align:center">Mov.</th>'
@@ -1687,7 +1687,7 @@ async function contRenderPeriodos() {
     + '<h3 style="margin:0">Períodos Contables</h3>'
     + '<button class="btn-primario" onclick="contAbrirPeriodo(null)">+ Nuevo Período</button>'
     + '</div>'
-    + '<div class="tabla-container" style="max-height:calc(100vh - 440px)"><table style="table-layout:fixed;width:100%"><thead><tr>'
+    + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 440px))"><table style="table-layout:fixed;width:100%"><thead><tr>'
     + '<th>Período</th><th>Fecha Inicio</th><th>Fecha Fin</th><th>Estado</th><th>Acción</th>'
     + '</tr></thead><tbody>'
     + contPeriodosCache.map(function(p) {
@@ -1781,7 +1781,7 @@ async function renderTributos() {
       + (puedo('TRIBUTOS','CREAR') ? '<button class="btn-primario" onclick="abrirFormTributo(null)" style="font-size:12px">+ Nuevo Tributo</button>' : '')
       + '</div></div>'
       + tributosAlerta()
-      + '<div class="tabla-container" style="max-height:calc(100vh - 440px)"><table style="table-layout:fixed;width:100%">'
+      + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 440px))"><table style="table-layout:fixed;width:100%">'
       + '<thead><tr>'
       + '<th style="width:9%;font-size:9px">Código</th>'
       + '<th style="font-size:9px">Nombre / Organismo</th>'
@@ -1844,7 +1844,7 @@ async function mostrarTablaParamTributos() {
       + '</select>'
       + (puedo('TRIBUTOS','CREAR') ? '<button class="btn-primario" onclick="abrirFormTributo(null)" style="font-size:12px">+ Nuevo Tributo</button>' : '')
       + '</div></div>'
-      + '<div class="tabla-container" style="max-height:calc(100vh - 440px)"><table style="table-layout:fixed;width:100%"><thead><tr>'
+      + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 440px))"><table style="table-layout:fixed;width:100%"><thead><tr>'
       + '<th style="padding:10px 14px;font-size:11px;color:var(--suave);text-align:left">Código</th>'
       + '<th style="padding:10px 14px;font-size:11px;color:var(--suave);text-align:left">Nombre / Organismo</th>'
       + '<th style="padding:10px 14px;font-size:11px;color:var(--suave);text-align:left">Nivel</th>'
@@ -1948,7 +1948,7 @@ function renderTablaTributos(filtro) {
     + (puedo('TRIBUTOS','CREAR') ? '<button class="btn-primario" onclick="abrirFormTributo(null)" style="font-size:10px">+ Nuevo Tributo</button>' : '')
     + '</div></div>'
     + tributosAlerta()
-    + '<div class="tabla-container" style="max-height:calc(100vh - 440px)"><table style="table-layout:fixed;width:100%">'
+    + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 440px))"><table style="table-layout:fixed;width:100%">'
     +'<thead><tr>'+'<th style="width:9%;font-size:11px">Código</th>'+'<th style="font-size:7px">Nombre / Organismo</th>'+'<th style="width:10%;font-size:7px">Nivel</th>'+'<th style="width:10%;font-size:7px">Tipo</th>'+'<th style="width:11%;font-size:7px">Periodicidad</th>'+'<th style="width:10%;text-align:right;font-size:7px">Alícuota %</th>'+'<th style="width:10%;font-size:7px">Ult. Revisión</th>'+'<th style="width:8%;font-size:7px">Estado</th>'+'<th style="width:8%;text-align:center;font-size:7px">Acción</th>'+'</tr></thead>'
     + '<tbody id="tributos-tbody"></tbody></table></div>';
 
