@@ -1354,17 +1354,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260723191"></script>
-<script src="js/parametros.js?v=20260723191"></script>
-<script src="js/empresas.js?v=20260723191"></script>
-<script src="js/ingresos.js?v=20260723191"></script>
-<script src="js/inventario.js?v=20260723191"></script>
-<script src="js/proveedores.js?v=20260723191"></script>
-<script src="js/contabilidad.js?v=20260723191"></script>
-<script src="js/egresos.js?v=20260723191"></script>
-<script src="js/vehiculos.js?v=20260723191"></script>
-<script src="js/catalogo.js?v=20260723191"></script>
-<script src="js/ordenes.js?v=20260723191"></script>
+<script src="js/core.js?v=20260723192"></script>
+<script src="js/parametros.js?v=20260723192"></script>
+<script src="js/empresas.js?v=20260723192"></script>
+<script src="js/ingresos.js?v=20260723192"></script>
+<script src="js/inventario.js?v=20260723192"></script>
+<script src="js/proveedores.js?v=20260723192"></script>
+<script src="js/contabilidad.js?v=20260723192"></script>
+<script src="js/egresos.js?v=20260723192"></script>
+<script src="js/vehiculos.js?v=20260723192"></script>
+<script src="js/catalogo.js?v=20260723192"></script>
+<script src="js/ordenes.js?v=20260723192"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -1934,17 +1934,27 @@
       <button class="modal-cerrar" onclick="cerrarModal('modal-cont-pago-cxc')">✕</button>
     </div>
     <div class="modal-body">
+      <input type="hidden" id="cont-pago-cxc-monto-raw">
+      <input type="hidden" id="cont-pago-cxc-tasa-raw">
       <div class="form-grid" style="grid-template-columns:1fr 1fr">
-        <div class="form-campo">
-          <label id="cont-pago-cxc-monto-label">Monto USD *</label>
-          <input type="number" id="cont-pago-cxc-monto" step="0.01" min="0" style="font-family:var(--font-mono)">
-          <div id="cont-pago-cxc-tasa-info" style="font-size:11px;color:var(--suave);margin-top:4px"></div>
+        <div class="form-campo form-full">
+          <label>Monto a Cobrar (Bs) *</label>
+          <input type="text" id="cont-pago-cxc-monto-ves" readonly style="background:var(--gris1);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:20px;font-weight:600;padding:12px 14px;border-radius:5px;outline:none;width:100%;cursor:not-allowed">
         </div>
+        <div class="form-campo">
+          <label id="cont-pago-cxc-monto-label">Monto USD</label>
+          <input type="text" id="cont-pago-cxc-monto" readonly style="background:var(--gris2);border:1px solid var(--borde);color:var(--suave);font-family:var(--font-mono);padding:11px 14px;border-radius:5px;outline:none;width:100%;cursor:not-allowed">
+        </div>
+        <div class="form-campo">
+          <label>Tasa BCV</label>
+          <input type="text" id="cont-pago-cxc-tasa" readonly style="background:var(--gris2);border:1px solid var(--borde);color:var(--suave);font-family:var(--font-mono);padding:11px 14px;border-radius:5px;outline:none;width:100%;cursor:not-allowed">
+        </div>
+        <div id="cont-pago-cxc-tasa-info" style="font-size:11px;color:var(--suave);grid-column:1/-1;margin-top:-8px"></div>
         <div class="form-campo">
           <label>Fecha *</label>
           <input type="date" id="cont-pago-cxc-fecha" style="width:100%">
         </div>
-        <div class="form-campo form-full">
+        <div class="form-campo">
           <label>Método de Pago *</label>
           <select id="cont-pago-cxc-metodo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Cargando métodos —</option>
@@ -1953,6 +1963,24 @@
         <div class="form-campo form-full">
           <label>Referencia *</label>
           <input type="text" id="cont-pago-cxc-ref" placeholder="N° referencia bancaria">
+        </div>
+        <div class="form-campo" id="cont-pago-cxc-archivo-campo">
+          <label>Comprobante (opcional)</label>
+          <input type="file" id="cont-pago-cxc-archivo" accept="image/*,application/pdf"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+        </div>
+        <div class="form-campo form-full" id="cont-pago-cxc-archivo-preview-cont" style="display:none">
+          <div id="cont-pago-cxc-archivo-preview"></div>
+        </div>
+        <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
+          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <div style="font-size:13px;color:var(--texto)">Usuario: <span id="cont-pago-cxc-usuario-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
+          </div>
+          <label style="font-size:12px">Contraseña *</label>
+          <input type="password" id="cont-pago-cxc-clave" placeholder="Ingrese su contraseña para confirmar"
+            style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">
+          <div style="font-size:11px;color:var(--suave);margin-top:4px">Confirme con su contraseña para autorizar el Cobro.</div>
         </div>
       </div>
       <div id="alerta-pago-cxc-ok"  class="alerta alerta-exito" style="display:none;margin-top:8px"></div>
