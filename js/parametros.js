@@ -39,8 +39,8 @@ async function renderParametros() {
   // Construir UI con tabs para cada tabla
   c.innerHTML = `
     <div class="panel" style="margin-top:-24px">
-      <div style="padding:10px 24px 8px;border-bottom:1px solid var(--borde);background:var(--gris2)">
-        <div style="font-family:var(--font-display);font-size:16px;letter-spacing:1px;color:var(--texto);margin-bottom:6px">⚙️ Parámetros del Sistema — Tablas Maestras</div>
+      <div style="padding:7px 24px 5px;border-bottom:1px solid var(--borde);background:var(--gris2)">
+        <div style="font-family:var(--font-display);font-size:13px;letter-spacing:1px;color:var(--texto);margin-bottom:4px">⚙️ Parámetros del Sistema — Tablas Maestras</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px">
           ${TABLAS_MAESTRAS.map(function(t) {
             return '<button class="param-tab btn-secundario" id="tab-' + t.key + '" onclick="mostrarTablaParam(\'' + t.key + '\')" style="font-size:12px">'
