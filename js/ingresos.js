@@ -563,7 +563,29 @@ async function generarCxCyAsientoFactura(idFactura) {
         const cuentas = _todasCtasFac.filter(function(c){ return ['1.1.02.001','4.1.01.001','4.1.02.001','2.1.03.001'].includes(c.codigo); });
         const cCxC     = cuentas.find(function(c){ return c.codigo==='1.1.02.001'; });
         const cIngServ = cuentas.find(function(c){ return c.codigo==='4.1.01.001'; });
+        const cIngRep  = cuentas.find(function(c){ return c.codigo==='4.1.02.001'; });
         const cIVA     = cuentas.find(function(c){ return c.codigo==='2.1.03.001'; });
+
+        // Desglosar el subtotal entre Servicios Realizados y Artículos
+        // Utilizados, tomando el detalle real de la OS de origen -- antes
+        // todo (servicios + artículos) se contabilizaba de golpe en la
+        // cuenta de Servicios (4.1.01.001), aunque incluyera venta de
+        // Mercancía, que debe ir a Ingreso por Ventas (4.1.02.001).
+        let totalServ = fac.subtotal_usd || 0;
+        let totalArt = 0;
+        if (fac.id_orden) {
+          try {
+            const [servRows, mercRows] = await Promise.all([
+              api('os_servicios','GET',null,'?id_orden=eq.'+fac.id_orden+'&select=subtotal_usd'),
+              api('os_mercancias','GET',null,'?id_orden=eq.'+fac.id_orden+'&select=subtotal_usd'),
+            ]);
+            totalServ = (servRows||[]).reduce(function(a,r){ return a + (parseFloat(r.subtotal_usd)||0); }, 0);
+            totalArt  = (mercRows||[]).reduce(function(a,r){ return a + (parseFloat(r.subtotal_usd)||0); }, 0);
+          } catch(eDesglose) {
+            console.warn('No se pudo desglosar Servicios/Artículos, todo va a Ingresos por Servicios:', eDesglose);
+            totalServ = fac.subtotal_usd || 0; totalArt = 0;
+          }
+        }
 
         let cIGTF = fac.igtf_usd > 0
           ? (_todasCtasFac.find(function(c){ return c.estado === 'ACTIVO' && /igtf.*por.*pagar/i.test(c.nombre||''); }) || null)
@@ -579,20 +601,26 @@ async function generarCxCyAsientoFactura(idFactura) {
           debe_usd: fac.total_usd, haber_usd: 0,
           debe_ves: fac.total_usd * tasaReal, haber_ves: 0
         });
-        if (cIngServ) await api('cont_asiento_lineas','POST',{
+        if (cIngServ && totalServ > 0) await api('cont_asiento_lineas','POST',{
           id_asiento: idAst, id_cuenta: cIngServ.id_cuenta, orden: 2,
-          descripcion: 'Ingreso '+fac.numero_factura+auxFac,
-          debe_usd: 0, haber_usd: fac.subtotal_usd,
-          debe_ves: 0, haber_ves: fac.subtotal_usd * tasaReal
+          descripcion: 'Ingreso por Servicios Realizados '+fac.numero_factura+auxFac,
+          debe_usd: 0, haber_usd: totalServ,
+          debe_ves: 0, haber_ves: totalServ * tasaReal
+        });
+        if (cIngRep && totalArt > 0) await api('cont_asiento_lineas','POST',{
+          id_asiento: idAst, id_cuenta: cIngRep.id_cuenta, orden: 3,
+          descripcion: 'Ingreso por Venta de Artículos '+fac.numero_factura+auxFac,
+          debe_usd: 0, haber_usd: totalArt,
+          debe_ves: 0, haber_ves: totalArt * tasaReal
         });
         if (cIVA && fac.iva_usd > 0) await api('cont_asiento_lineas','POST',{
-          id_asiento: idAst, id_cuenta: cIVA.id_cuenta, orden: 3,
+          id_asiento: idAst, id_cuenta: cIVA.id_cuenta, orden: 4,
           descripcion: 'IVA '+fac.numero_factura+auxFac,
           debe_usd: 0, haber_usd: fac.iva_usd,
           debe_ves: 0, haber_ves: fac.iva_usd * tasaReal
         });
         if (cIGTF && fac.igtf_usd > 0) await api('cont_asiento_lineas','POST',{
-          id_asiento: idAst, id_cuenta: cIGTF.id_cuenta, orden: 4,
+          id_asiento: idAst, id_cuenta: cIGTF.id_cuenta, orden: 5,
           descripcion: 'IGTF '+fac.numero_factura+auxFac,
           debe_usd: 0, haber_usd: fac.igtf_usd,
           debe_ves: 0, haber_ves: fac.igtf_usd * tasaReal
