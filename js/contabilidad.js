@@ -1547,7 +1547,7 @@ async function contRenderCuentas(filtro) {
     + '<input type="text" placeholder="Buscar código o nombre..." value="' + (filtro||'') + '" oninput="contRenderCuentas(this.value)" style="' + contSelStyle() + ';width:240px">'
     + (puedo('CONTABILIDAD','PLAN_CUENTAS') ? '<button class="btn-primario" onclick="contAbrirCuenta(null)">+ Nueva Cuenta</button>' : '')
     + '</div></div>'
-    + '<div class="tabla-container" style="max-height:calc(100vh - 350px)"><table style="width:100%"><thead><tr>'
+    + '<div class="tabla-container" style="max-height:calc(100vh - 410px)"><table style="width:100%"><thead><tr>'
     + '<th style="width:160px">Código</th><th>Nombre</th><th style="width:110px">Tipo</th>'
     + '<th style="width:100px">Naturaleza</th><th style="width:60px;text-align:center">Nivel</th>'
     + '<th style="width:80px;text-align:center">Mov.</th>'
