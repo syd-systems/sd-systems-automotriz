@@ -2408,7 +2408,7 @@ async function _obtenerPaginaHistorial() {
   // como "Entrada" repetida. Por eso, cuando el área del usuario es Compras, solo se cuentan
   // las salidas donde Compras fue quien ENTREGÓ (id_area_entrega) — nunca donde aparece como
   // destino (id_area), ya que ese lado ya está cubierto por su fila de stock_entradas.
-  const esAreaCompras = idAreaH && _empresaActiva?.id_area_principal && idAreaH === _empresaActiva.id_area_principal;
+  const esAreaCompras = idAreaH && _empresaActiva?.id_area_principal && String(idAreaH) === String(_empresaActiva.id_area_principal);
   const filtroAreaSal = !idAreaH ? ''
     : esAreaCompras ? '&id_area_entrega=eq.' + idAreaH
     : '&or=(id_area.eq.' + idAreaH + ',id_area_entrega.eq.' + idAreaH + ')';
@@ -2424,7 +2424,7 @@ async function _obtenerPaginaHistorial() {
   const combinados = [
     ...entradas.map(function(e) { return { ...e, tipo: 'ENTRADA', fecha: e.fecha_entrada, fecha_reg: e.fecha_registro }; }),
     ...salidas.map(function(s)  {
-      const tipoMov = idAreaH && s.id_area === idAreaH ? 'ENTRADA' : 'SALIDA';
+      const tipoMov = idAreaH && String(s.id_area) === String(idAreaH) ? 'ENTRADA' : 'SALIDA';
       return { ...s, tipo: tipoMov, fecha: s.fecha_salida, fecha_reg: s.fecha_registro };
     }),
   ].sort(function(a, b) { return new Date(b.fecha_reg) - new Date(a.fecha_reg); });
