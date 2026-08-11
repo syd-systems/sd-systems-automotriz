@@ -16,6 +16,7 @@ const CAMPOS_EDIT_SALIDA = ['edit-sal-fecha','edit-sal-cantidad','edit-sal-preci
 let _editMovTipoActual   = null;
 let _editMovPuedeEditar  = false;
 let _editMovEstaPagado   = false;
+let _editMovVistaComoEntrada = false; // true = se está viendo una Salida desde el Área receptora (se lee como Entrada)
 var _invVista = 'tabla';
 var _invSaldoConsolidado = null; // { id_articulo: totalTodasLasAreas }
 let _invCategoriasCache = [];
@@ -2596,7 +2597,7 @@ function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
     // se lee como una Entrada para quien la recibió -- solo cambia la
     // palabra en el título; la referencia real (Ref: SAL-X) no cambia,
     // porque es el dato real de auditoría del movimiento.
-    const esEntradaTitulo = tipo === 'ENTRADA' || vistaComoEntrada;
+    const esEntradaTitulo = tipo === 'ENTRADA' || _editMovVistaComoEntrada;
     tituloMov = (soloLectura ? '👁 FICHA ' : '✏ EDITAR ') + (esEntradaTitulo ? 'ENTRADA' : 'SALIDA') + ' DE STOCK' + refMov;
     const fechaLblMov = document.getElementById('edit-sal-fecha-label');
     if (fechaLblMov) fechaLblMov.textContent = 'Fecha de ' + (esEntradaTitulo ? 'Entrada' : 'Salida') + ' *';
@@ -2648,6 +2649,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
   // presiona el botón "✏ EDITAR" explícito (ver habilitarEdicionMovimiento()).
   _editMovTipoActual  = tipo;
   _editMovPuedeEditar = !soloLectura;
+  _editMovVistaComoEntrada = !!vistaComoEntrada;
 
   // Ancho del modal: ENTRADA = 780px, SALIDA = 580px
   const modalDiv = document.querySelector('#modal-edit-movimiento .modal');
