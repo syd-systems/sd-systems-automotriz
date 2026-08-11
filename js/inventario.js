@@ -2523,7 +2523,7 @@ function _renderFilaHistorial(m) {
         if (anulada) return '<span style="color:var(--suave);font-size:11px">—</span>';
         const soloLec = (!sesionActual?.administrador && !puedo('INVENTARIO','EDITAR_STOCK')) ? 'true' : 'false';
         if (m.id_entrada) return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verFichaEntradaStock(' + m.id_entrada + ',' + m.id_articulo + ')">👁 Ver</button>';
-        return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="editarMovimiento(\'SALIDA\',' + m.id_salida + ',' + m.id_articulo + ',' + soloLec + ')">👁 Ver</button>';
+        return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="editarMovimiento(\'SALIDA\',' + m.id_salida + ',' + m.id_articulo + ',' + soloLec + ',' + esEntrada + ')">👁 Ver</button>';
       })()
     + '</td>'
     + '</tr>';
@@ -2592,7 +2592,14 @@ function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
   } else if (esTransferenciaFicha) {
     tituloMov = (soloLectura ? '👁 FICHA ' : '✏ EDITAR ') + 'TRANSFERENCIA' + refMov;
   } else {
-    tituloMov = (soloLectura ? '👁 FICHA ' : '✏ EDITAR ') + (tipo === 'ENTRADA' ? 'ENTRADA' : 'SALIDA') + ' DE STOCK' + refMov;
+    // Si se está viendo desde el Área receptora (Taller), esta misma Salida
+    // se lee como una Entrada para quien la recibió -- solo cambia la
+    // palabra en el título; la referencia real (Ref: SAL-X) no cambia,
+    // porque es el dato real de auditoría del movimiento.
+    const esEntradaTitulo = tipo === 'ENTRADA' || vistaComoEntrada;
+    tituloMov = (soloLectura ? '👁 FICHA ' : '✏ EDITAR ') + (esEntradaTitulo ? 'ENTRADA' : 'SALIDA') + ' DE STOCK' + refMov;
+    const fechaLblMov = document.getElementById('edit-sal-fecha-label');
+    if (fechaLblMov) fechaLblMov.textContent = 'Fecha de ' + (esEntradaTitulo ? 'Entrada' : 'Salida') + ' *';
   }
   if (modoLbl) modoLbl.textContent = tituloMov;
 }
@@ -2606,7 +2613,7 @@ function habilitarEdicionMovimiento() {
   _aplicarSoloLecturaMovimiento(_editMovTipoActual, false);
 }
 
-async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
+async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vistaComoEntrada) {
   if (tipo === 'ENTRADA') await cargarTasaIVAGlobal(); // refresca IVA vigente -- solo Entrada tiene IVA
   try {
   try {
