@@ -2347,11 +2347,23 @@ async function recargarHistorial(id_articulo) {
   try {
     // Filtrar por área si usuario no es admin
     let id_areaH = null;
+    let esAreaComprasH = false;
     if (_invSaldoArea !== null) {
       const empH = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_area&limit=1').catch(function(){ return []; });
       id_areaH = empH?.[0]?.id_area || null;
+      // El Área de Compras se identifica por su código real (2300 —
+      // "Gerencias de Compras"), NO por emisores.id_area_principal (esa
+      // columna no existe; era un bug ya presente desde antes). "Gerencia
+      // General (1200)" es un Área totalmente distinta a Compras.
+      if (id_areaH) {
+        try {
+          const areaComprasRow = await api('param_areas','GET',null,'?codigo=eq.2300&select=id&limit=1');
+          const idAreaComprasReal = areaComprasRow?.[0]?.id || null;
+          esAreaComprasH = idAreaComprasReal != null && String(id_areaH) === String(idAreaComprasReal);
+        } catch(eAreaCompras) { console.warn('No se pudo determinar el Área de Compras:', eAreaCompras); }
+      }
     }
-    _historialEstado = { id_articulo: id_articulo, cursor: null, terminado: false, idAreaH: id_areaH, filtro: 'todas' };
+    _historialEstado = { id_articulo: id_articulo, cursor: null, terminado: false, idAreaH: id_areaH, esAreaCompras: esAreaComprasH, filtro: 'todas' };
     _actualizarTabsHistorial();
 
     const movimientos = await _obtenerPaginaHistorial();
@@ -2393,7 +2405,7 @@ function _actualizarTabsHistorial() {
 }
 
 async function _obtenerPaginaHistorial() {
-  const { id_articulo, cursor, idAreaH, filtro } = _historialEstado;
+  const { id_articulo, cursor, idAreaH, esAreaCompras, filtro } = _historialEstado;
   const cursorQS = cursor ? '&fecha_registro=lt.' + encodeURIComponent(cursor) : '';
   const qEnt = '?id_articulo=eq.' + id_articulo + (idAreaH ? '&id_area=eq.'+idAreaH : '') + cursorQS
     + '&order=fecha_registro.desc&limit=' + HISTORIAL_PAGE_SIZE
@@ -2408,7 +2420,8 @@ async function _obtenerPaginaHistorial() {
   // como "Entrada" repetida. Por eso, cuando el área del usuario es Compras, solo se cuentan
   // las salidas donde Compras fue quien ENTREGÓ (id_area_entrega) — nunca donde aparece como
   // destino (id_area), ya que ese lado ya está cubierto por su fila de stock_entradas.
-  const esAreaCompras = idAreaH && _empresaActiva?.id_area_principal && String(idAreaH) === String(_empresaActiva.id_area_principal);
+  // esAreaCompras ya viene calculado desde recargarHistorial() -- identificando el Área de
+  // Compras por su código real (2300), no por una columna que no existe en emisores.
   const filtroAreaSal = !idAreaH ? ''
     : esAreaCompras ? '&id_area_entrega=eq.' + idAreaH
     : '&or=(id_area.eq.' + idAreaH + ',id_area_entrega.eq.' + idAreaH + ')';
