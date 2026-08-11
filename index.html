@@ -1354,17 +1354,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260723195"></script>
-<script src="js/parametros.js?v=20260723195"></script>
-<script src="js/empresas.js?v=20260723195"></script>
-<script src="js/ingresos.js?v=20260723195"></script>
-<script src="js/inventario.js?v=20260723195"></script>
-<script src="js/proveedores.js?v=20260723195"></script>
-<script src="js/contabilidad.js?v=20260723195"></script>
-<script src="js/egresos.js?v=20260723195"></script>
-<script src="js/vehiculos.js?v=20260723195"></script>
-<script src="js/catalogo.js?v=20260723195"></script>
-<script src="js/ordenes.js?v=20260723195"></script>
+<script src="js/core.js?v=20260723196"></script>
+<script src="js/parametros.js?v=20260723196"></script>
+<script src="js/empresas.js?v=20260723196"></script>
+<script src="js/ingresos.js?v=20260723196"></script>
+<script src="js/inventario.js?v=20260723196"></script>
+<script src="js/proveedores.js?v=20260723196"></script>
+<script src="js/contabilidad.js?v=20260723196"></script>
+<script src="js/egresos.js?v=20260723196"></script>
+<script src="js/vehiculos.js?v=20260723196"></script>
+<script src="js/catalogo.js?v=20260723196"></script>
+<script src="js/ordenes.js?v=20260723196"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4803,17 +4803,10 @@
           </div>
           <div id="edit-sal-area-cont" style="display:contents">
             <div class="form-campo form-full">
-              <label>Área Receptora *</label>
-              <select id="edit-sal-area" onchange="onSelAreaEditSalida()"
-                style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-                <option value="">— Seleccionar área —</option>
-              </select>
-            </div>
-            <div class="form-campo form-full">
               <label>Empleado que Recibe</label>
               <select id="edit-sal-empleado"
                 style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-                <option value="">— Seleccionar área primero —</option>
+                <option value="">— Seleccionar empleado —</option>
               </select>
             </div>
           </div>
@@ -4826,22 +4819,15 @@
           <div class="form-campo form-full" id="edit-sal-clave-cont" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
             <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-              <div style="font-size:13px;color:var(--texto)">Usuario: <span id="edit-sal-entrega-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
-              <div style="font-size:11px;color:var(--suave)" id="edit-sal-entrega-area">—</div>
+              <div style="font-size:13px;color:var(--texto)" id="edit-sal-entrega-area">—</div>
+              <div style="font-size:13px;color:var(--texto)">·</div>
+              <div style="font-size:13px;font-weight:600;color:var(--naranja)" id="edit-sal-entrega-nombre">—</div>
             </div>
             <label style="font-size:12px">Contraseña *</label>
             <input type="password" id="edit-sal-clave" placeholder="Ingrese su contraseña para autorizar"
               style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px"
               onkeydown="if(event.key==='Enter'){guardarEdicionMovimiento()}">
             <div style="font-size:11px;color:var(--suave);margin-top:4px">Confirme con su contraseña para guardar los cambios.</div>
-          </div>
-
-          <!-- Precio Venta -->
-          <div class="form-campo form-full">
-            <label>Precio de Venta <span style="font-size:10px;color:var(--suave)">(opcional)</span></label>
-            <input type="number" id="edit-sal-precio-venta" min="0" step="0.01" placeholder="0.00"
-              style="font-family:var(--font-mono);width:100%;box-sizing:border-box"
-              onblur="this.value=this.value?parseFloat(this.value).toFixed(2):''">
           </div>
 
           <!-- Observaciones -->
