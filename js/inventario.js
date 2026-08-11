@@ -2616,7 +2616,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
       m = res[0];
     } else {
       const res = await api('stock_salidas', 'GET', null,
-        '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),empleado_recibe:id_empleado(nombre_completo)');
+        '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),empleado_entrega:id_empleado_entrega(nombre_completo)');
       m = res[0];
     }
   } catch(err) { alert('Error cargando movimiento: ' + err.message); return; }
@@ -2678,16 +2678,22 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
     const salPvCont = document.getElementById('edit-sal-precio-venta-cont');
     if (salPvCont) salPvCont.style.display = esFaltanteEdit ? 'none' : '';
 
-    // Área receptora
-    const areas2 = await api('param_areas','GET',null,'?estado=eq.ACTIVO&order=nombre.asc');
-    const selArea2 = document.getElementById('edit-sal-area');
-    if (selArea2) {
-      selArea2.innerHTML = '<option value="">— Seleccionar área —</option>'
-        + (areas2||[]).map(function(a) {
-          return '<option value="'+a.id+'"'+(m.id_area==a.id?' selected':'')+'>'+a.nombre+' ('+(a.codigo||'')+')</option>';
-        }).join('');
-      if (m.id_area) {
-        // Cargar empleados
+    // Área receptora -- si m.id_area es null, esta Salida es una venta
+    // directa a Cliente (generada automáticamente al facturar una OS), no
+    // una entrega entre Áreas. Se muestra así explícitamente en vez de
+    // dejar un select vacío que parece un dato perdido.
+    const areaRecCont = document.getElementById('edit-sal-area-cont');
+    const ventaClienteCont = document.getElementById('edit-sal-venta-cliente-cont');
+    if (m.id_area) {
+      if (areaRecCont) areaRecCont.style.display = '';
+      if (ventaClienteCont) ventaClienteCont.style.display = 'none';
+      const areas2 = await api('param_areas','GET',null,'?estado=eq.ACTIVO&order=nombre.asc');
+      const selArea2 = document.getElementById('edit-sal-area');
+      if (selArea2) {
+        selArea2.innerHTML = '<option value="">— Seleccionar área —</option>'
+          + (areas2||[]).map(function(a) {
+            return '<option value="'+a.id+'"'+(m.id_area==a.id?' selected':'')+'>'+a.nombre+' ('+(a.codigo||'')+')</option>';
+          }).join('');
         const emps2 = await api('empleados','GET',null,'?id_area=eq.'+m.id_area+'&select=id_empleado,nombre_completo&order=nombre_completo.asc');
         const selEmp2 = document.getElementById('edit-sal-empleado');
         if (selEmp2) {
@@ -2697,13 +2703,21 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura) {
             }).join('');
         }
       }
+    } else {
+      if (areaRecCont) areaRecCont.style.display = 'none';
+      if (ventaClienteCont) {
+        ventaClienteCont.style.display = '';
+        ventaClienteCont.textContent = '🧾 Venta directa a Cliente'
+          + ((m.observaciones||'').indexOf('Factura FAC-') === 0 ? ' — ' + m.observaciones : '');
+      }
     }
 
-    // Usuario entrega
+    // Usuario entrega -- el dato histórico real guardado en el movimiento,
+    // no quien tenga la sesión abierta ahora mismo viendo la ficha.
     const entNomEl = document.getElementById('edit-sal-entrega-nombre');
     const entAreaEl = document.getElementById('edit-sal-entrega-area');
-    if (entNomEl)  entNomEl.textContent  = sesionActual?.nombre || '—';
-    if (entAreaEl) entAreaEl.textContent = sesionActual?.nombre_area || '';
+    if (entNomEl)  entNomEl.textContent  = m.empleado_entrega?.nombre_completo || sesionActual?.nombre || '—';
+    if (entAreaEl) entAreaEl.textContent = m.id_area ? '' : (sesionActual?.nombre_area || '');
 
     // Limpiar clave
     const salClaveEl = document.getElementById('edit-sal-clave');
