@@ -2587,6 +2587,18 @@ function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
     const el = document.getElementById(id);
     if (el) el.disabled = !!soloLectura;
   });
+  // Empleado que Recibe: en modo lectura se ve como texto plano (un select
+  // deshabilitado ignora el color que se le ponga y el navegador lo pinta
+  // gris apagado, además de recortar nombres largos) -- el select real
+  // solo se muestra al entrar en modo Editar.
+  if (tipo === 'SALIDA') {
+    const empSel = document.getElementById('edit-sal-empleado');
+    const empDisplay = document.getElementById('edit-sal-empleado-display');
+    if (empSel && empDisplay) {
+      empSel.style.display = soloLectura ? 'none' : '';
+      empDisplay.style.display = soloLectura ? '' : 'none';
+    }
+  }
   const claveBox   = tipo === 'ENTRADA' ? document.getElementById('edit-mov-clave-cont') : document.getElementById('edit-sal-clave-cont');
   const btnGuardar  = document.getElementById('btn-guardar-movimiento');
   const btnEditar   = document.getElementById('btn-editar-movimiento');
@@ -2726,6 +2738,11 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
           + (emps2||[]).map(function(e) {
             return '<option value="'+e.id_empleado+'"'+(m.id_empleado==e.id_empleado?' selected':'')+'>'+e.nombre_completo+'</option>';
           }).join('');
+      }
+      const empDisplay2 = document.getElementById('edit-sal-empleado-display');
+      if (empDisplay2) {
+        const empSeleccionado = (emps2||[]).find(function(e){ return m.id_empleado == e.id_empleado; });
+        empDisplay2.textContent = empSeleccionado ? empSeleccionado.nombre_completo : (m.empleado_recibe?.nombre_completo || '—');
       }
     } else {
       if (areaRecCont) areaRecCont.style.display = 'none';
