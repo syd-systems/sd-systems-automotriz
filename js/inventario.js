@@ -17,6 +17,15 @@ let _editMovTipoActual   = null;
 let _editMovPuedeEditar  = false;
 let _editMovEstaPagado   = false;
 let _editMovVistaComoEntrada = false; // true = se está viendo una Salida desde el Área receptora (se lee como Entrada)
+let _idAreaComprasCache = null;
+async function obtenerIdAreaCompras() {
+  if (_idAreaComprasCache !== null) return _idAreaComprasCache;
+  try {
+    const r = await api('param_areas','GET',null,'?codigo=eq.2300&select=id&limit=1');
+    _idAreaComprasCache = r?.[0]?.id || null;
+  } catch(e) { console.warn('No se pudo determinar el Área de Compras:', e); _idAreaComprasCache = null; }
+  return _idAreaComprasCache;
+}
 var _invVista = 'tabla';
 var _invSaldoConsolidado = null; // { id_articulo: totalTodasLasAreas }
 let _invCategoriasCache = [];
@@ -794,7 +803,7 @@ async function abrirEntradaStock(id) {
     api('param_categorias_proveedor','GET',null,'?nombre=ilike.*Artículo*&select=id&limit=1'),
     api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
     api('os_mercancias', 'GET', null, '?id_articulo=eq.'+id+'&select=id_orden,cantidad,subtotal_usd'),
-  ]).then(function(res) {
+  ]).then(async function(res) {
     var provs = res[0], areas = res[2], repsArt = res[3] || [];
     var catArticulo = res[1] && res[1][0] ? res[1][0].id : null;
     if (catArticulo) provs = provs.filter(function(p){ return p.id_categoria === catArticulo; });
@@ -806,7 +815,7 @@ async function abrirEntradaStock(id) {
       // Excluir el Área receptora (siempre Compras en Entrada de Stock) de
       // las opciones de Origen -- no tiene sentido una Transferencia de un
       // Área hacia sí misma.
-      var idAreaReceptoraForm = _empresaActiva?.id_area_principal || null;
+      var idAreaReceptoraForm = await obtenerIdAreaCompras();
       var areasOrigenDisp = idAreaReceptoraForm
         ? areas.filter(function(a){ return String(a.id) !== String(idAreaReceptoraForm); })
         : areas;
@@ -1121,7 +1130,7 @@ async function guardarEntradaStock() {
       }
     }
     const id_areaEntVal = document.getElementById('es-area')?.value || 
-      (_empresaActiva?.id_area_principal || null);
+      (await obtenerIdAreaCompras());
     const idEmpEntVal = parseInt(document.getElementById('es-empleado')?.value) || null;
     const claveEnt = document.getElementById('es-clave-receptor')?.value || '';
     if (!claveEnt) { errEl.textContent = 'El empleado remitente debe ingresar su contraseña.'; errEl.style.display = 'block'; document.getElementById('es-clave-receptor')?.focus(); resetBtn(); return; }
@@ -1727,10 +1736,11 @@ async function guardarInventario() {
       datos.stock_actual_articulo = 0; // se mantiene en 0; el stock real entra vía inventario_stock_area
       const nuevoArt = await api('inventario_almacen', 'POST', datos);
       const idNuevoArt = nuevoArt && nuevoArt[0] ? nuevoArt[0].id_articulo : null;
-      if (idNuevoArt && stock > 0 && _empresaActiva?.id_area_principal) {
+      if (idNuevoArt && stock > 0) {
         // Stock inicial declarado al crear el artículo — se asigna a Compras (área principal),
         // que es la única área que recibe stock directamente.
-        await upsertStockArea(idNuevoArt, _empresaActiva.id_area_principal, stock);
+        const idAreaComprasNuevo = await obtenerIdAreaCompras();
+        if (idAreaComprasNuevo) await upsertStockArea(idNuevoArt, idAreaComprasNuevo, stock);
       }
     }
     okEl.textContent = '✓ Artículo guardado.'; okEl.style.display = 'block';
