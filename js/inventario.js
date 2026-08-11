@@ -12,7 +12,7 @@ const CAMPOS_EDIT_ENTRADA = ['edit-mov-fecha-negociacion','edit-mov-moneda','edi
   'edit-mov-cliente','edit-mov-area-origen','edit-mov-area','edit-mov-empleado',
   'edit-mov-esquema-pago','edit-mov-obs'];
 const CAMPOS_EDIT_SALIDA = ['edit-sal-fecha','edit-sal-cantidad','edit-sal-precio-venta',
-  'edit-sal-area','edit-sal-empleado','edit-sal-observaciones'];
+  'edit-sal-empleado','edit-sal-observaciones'];
 let _editMovTipoActual   = null;
 let _editMovPuedeEditar  = false;
 let _editMovEstaPagado   = false;
@@ -2624,7 +2624,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
       m = res[0];
     } else {
       const res = await api('stock_salidas', 'GET', null,
-        '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),empleado_entrega:id_empleado_entrega(nombre_completo)');
+        '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),empleado_entrega:id_empleado_entrega(nombre_completo)');
       m = res[0];
     }
   } catch(err) { alert('Error cargando movimiento: ' + err.message); return; }
@@ -2696,21 +2696,13 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     if (m.id_area) {
       if (areaRecCont) areaRecCont.style.display = '';
       if (ventaClienteCont) ventaClienteCont.style.display = 'none';
-      const areas2 = await api('param_areas','GET',null,'?estado=eq.ACTIVO&order=nombre.asc');
-      const selArea2 = document.getElementById('edit-sal-area');
-      if (selArea2) {
-        selArea2.innerHTML = '<option value="">— Seleccionar área —</option>'
-          + (areas2||[]).map(function(a) {
-            return '<option value="'+a.id+'"'+(m.id_area==a.id?' selected':'')+'>'+a.nombre+' ('+(a.codigo||'')+')</option>';
+      const emps2 = await api('empleados','GET',null,'?id_area=eq.'+m.id_area+'&select=id_empleado,nombre_completo&order=nombre_completo.asc');
+      const selEmp2 = document.getElementById('edit-sal-empleado');
+      if (selEmp2) {
+        selEmp2.innerHTML = '<option value="">— Seleccionar empleado —</option>'
+          + (emps2||[]).map(function(e) {
+            return '<option value="'+e.id_empleado+'"'+(m.id_empleado==e.id_empleado?' selected':'')+'>'+e.nombre_completo+'</option>';
           }).join('');
-        const emps2 = await api('empleados','GET',null,'?id_area=eq.'+m.id_area+'&select=id_empleado,nombre_completo&order=nombre_completo.asc');
-        const selEmp2 = document.getElementById('edit-sal-empleado');
-        if (selEmp2) {
-          selEmp2.innerHTML = '<option value="">— Seleccionar empleado —</option>'
-            + (emps2||[]).map(function(e) {
-              return '<option value="'+e.id_empleado+'"'+(m.id_empleado==e.id_empleado?' selected':'')+'>'+e.nombre_completo+'</option>';
-            }).join('');
-        }
       }
     } else {
       if (areaRecCont) areaRecCont.style.display = 'none';
@@ -2721,12 +2713,15 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
       }
     }
 
-    // Usuario entrega -- el dato histórico real guardado en el movimiento,
-    // no quien tenga la sesión abierta ahora mismo viendo la ficha.
+    // Usuario entrega -- Área de Origen · Nombre del empleado, ambos con el
+    // dato histórico real guardado en el movimiento, no quien tenga la
+    // sesión abierta ahora mismo viendo la ficha.
     const entNomEl = document.getElementById('edit-sal-entrega-nombre');
     const entAreaEl = document.getElementById('edit-sal-entrega-area');
     if (entNomEl)  entNomEl.textContent  = m.empleado_entrega?.nombre_completo || sesionActual?.nombre || '—';
-    if (entAreaEl) entAreaEl.textContent = m.id_area ? '' : (sesionActual?.nombre_area || '');
+    if (entAreaEl) entAreaEl.textContent = m.area_entrega
+      ? m.area_entrega.nombre + (m.area_entrega.codigo ? ' (' + m.area_entrega.codigo + ')' : '')
+      : (sesionActual?.nombre_area || '—');
 
     // Limpiar clave
     const salClaveEl = document.getElementById('edit-sal-clave');
