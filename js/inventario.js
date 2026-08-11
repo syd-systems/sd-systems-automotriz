@@ -2624,7 +2624,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
       m = res[0];
     } else {
       const res = await api('stock_salidas', 'GET', null,
-        '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),area_entrega:id_area_entrega(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),empleado_entrega:id_empleado_entrega(nombre_completo)');
+        '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),empleado_entrega:id_empleado_entrega(nombre_completo,id_area,param_areas:id_area(nombre,codigo))');
       m = res[0];
     }
   } catch(err) { alert('Error cargando movimiento: ' + err.message); return; }
@@ -2719,8 +2719,8 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     const entNomEl = document.getElementById('edit-sal-entrega-nombre');
     const entAreaEl = document.getElementById('edit-sal-entrega-area');
     if (entNomEl)  entNomEl.textContent  = m.empleado_entrega?.nombre_completo || sesionActual?.nombre || '—';
-    if (entAreaEl) entAreaEl.textContent = m.area_entrega
-      ? m.area_entrega.nombre + (m.area_entrega.codigo ? ' (' + m.area_entrega.codigo + ')' : '')
+    if (entAreaEl) entAreaEl.textContent = m.empleado_entrega?.param_areas
+      ? m.empleado_entrega.param_areas.nombre + (m.empleado_entrega.param_areas.codigo ? ' (' + m.empleado_entrega.param_areas.codigo + ')' : '')
       : (sesionActual?.nombre_area || '—');
 
     // Limpiar clave
