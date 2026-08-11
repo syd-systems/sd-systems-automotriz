@@ -1354,17 +1354,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260723201"></script>
-<script src="js/parametros.js?v=20260723201"></script>
-<script src="js/empresas.js?v=20260723201"></script>
-<script src="js/ingresos.js?v=20260723201"></script>
-<script src="js/inventario.js?v=20260723201"></script>
-<script src="js/proveedores.js?v=20260723201"></script>
-<script src="js/contabilidad.js?v=20260723201"></script>
-<script src="js/egresos.js?v=20260723201"></script>
-<script src="js/vehiculos.js?v=20260723201"></script>
-<script src="js/catalogo.js?v=20260723201"></script>
-<script src="js/ordenes.js?v=20260723201"></script>
+<script src="js/core.js?v=20260723202"></script>
+<script src="js/parametros.js?v=20260723202"></script>
+<script src="js/empresas.js?v=20260723202"></script>
+<script src="js/ingresos.js?v=20260723202"></script>
+<script src="js/inventario.js?v=20260723202"></script>
+<script src="js/proveedores.js?v=20260723202"></script>
+<script src="js/contabilidad.js?v=20260723202"></script>
+<script src="js/egresos.js?v=20260723202"></script>
+<script src="js/vehiculos.js?v=20260723202"></script>
+<script src="js/catalogo.js?v=20260723202"></script>
+<script src="js/ordenes.js?v=20260723202"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4548,7 +4548,7 @@
 <!--    MODAL EDITAR MOVIMIENTO STOCK       -->
 <!-- ═══════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-edit-movimiento">
-  <div class="modal" style="max-width:580px">
+  <div class="modal" style="max-width:1100px">
     <div class="modal-header">
       <h3 id="edit-mov-titulo">✏ EDITAR MOVIMIENTO</h3>
       <button class="modal-cerrar" onclick="retornarDesdeEditMovimiento()">✕</button>
@@ -4805,7 +4805,7 @@
             <div class="form-campo form-full">
               <label>Empleado que Recibe</label>
               <select id="edit-sal-empleado"
-                style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:39px;font-weight:600;padding:33px 42px;border-radius:8px;outline:none;width:100%">
+                style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:20px;font-weight:600;padding:16px 18px;border-radius:8px;outline:none;width:100%">
                 <option value="">— Seleccionar empleado —</option>
               </select>
             </div>
@@ -4816,13 +4816,13 @@
           <div class="form-campo form-full" style="margin-top:4px">
             <div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;border-bottom:1px solid rgba(255,107,0,0.2);padding-bottom:4px">📤 Quien Entrega</div>
           </div>
+          <div class="form-campo form-full" style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+            <div style="font-size:14px;color:var(--texto)" id="edit-sal-entrega-area">—</div>
+            <div style="font-size:14px;color:var(--texto)">·</div>
+            <div style="font-size:14px;font-weight:600;color:var(--naranja)" id="edit-sal-entrega-nombre">—</div>
+          </div>
           <div class="form-campo form-full" id="edit-sal-clave-cont" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
             <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-              <div style="font-size:13px;color:var(--texto)" id="edit-sal-entrega-area">—</div>
-              <div style="font-size:13px;color:var(--texto)">·</div>
-              <div style="font-size:13px;font-weight:600;color:var(--naranja)" id="edit-sal-entrega-nombre">—</div>
-            </div>
             <label style="font-size:12px">Contraseña *</label>
             <input type="password" id="edit-sal-clave" placeholder="Ingrese su contraseña para autorizar"
               style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px"
