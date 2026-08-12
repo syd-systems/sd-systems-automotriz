@@ -1354,17 +1354,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260812221"></script>
-<script src="js/parametros.js?v=20260812221"></script>
-<script src="js/empresas.js?v=20260812221"></script>
-<script src="js/ingresos.js?v=20260812221"></script>
-<script src="js/inventario.js?v=20260812221"></script>
-<script src="js/proveedores.js?v=20260812221"></script>
-<script src="js/contabilidad.js?v=20260812221"></script>
-<script src="js/egresos.js?v=20260812221"></script>
-<script src="js/vehiculos.js?v=20260812221"></script>
-<script src="js/catalogo.js?v=20260812221"></script>
-<script src="js/ordenes.js?v=20260812221"></script>
+<script src="js/core.js?v=20260812222"></script>
+<script src="js/parametros.js?v=20260812222"></script>
+<script src="js/empresas.js?v=20260812222"></script>
+<script src="js/ingresos.js?v=20260812222"></script>
+<script src="js/inventario.js?v=20260812222"></script>
+<script src="js/proveedores.js?v=20260812222"></script>
+<script src="js/contabilidad.js?v=20260812222"></script>
+<script src="js/egresos.js?v=20260812222"></script>
+<script src="js/vehiculos.js?v=20260812222"></script>
+<script src="js/catalogo.js?v=20260812222"></script>
+<script src="js/ordenes.js?v=20260812222"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4026,6 +4026,66 @@
       <button class="btn-secundario" id="ficha-emisor-btn-eliminar" style="color:#fc8181;border-color:rgba(252,129,129,0.4);display:none" onclick="eliminarEmisorFicha()">🗑 Eliminar</button>
       <button class="btn-primario" id="ficha-emisor-btn-editar">Editar</button>
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-emisor')">Retornar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL DEFINIR/CAMBIAR MARGEN BRUTO  -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-definir-margen">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3>📊 DEFINIR MARGEN BRUTO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-definir-margen')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-campo form-full">
+          <label>Tipo de Artículo</label>
+          <div id="margen-tipo-nombre" style="font-size:15px;font-weight:600;color:#60a5fa;padding:11px 14px;background:var(--gris2);border:1px solid var(--borde);border-radius:5px">—</div>
+        </div>
+        <div class="form-campo">
+          <label>% de Margen Bruto</label>
+          <input type="number" id="margen-pct" min="0" step="0.01" placeholder="0.00"
+            style="font-family:var(--font-mono)"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
+        </div>
+        <div class="form-campo">
+          <label>Vigente desde</label>
+          <input type="date" id="margen-fecha">
+        </div>
+        <div class="form-campo form-full" style="font-size:11px;color:var(--suave)">
+          Esto crea un registro nuevo en el histórico -- no borra ni modifica los valores anteriores, que siguen aplicando para cualquier fecha previa a esta vigencia.
+        </div>
+      </div>
+      <input type="hidden" id="margen-id-tipo">
+    </div>
+    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="alerta alerta-exito" id="alerta-margen-ok" style="margin:0;width:100%"></div>
+      <div class="alerta alerta-error" id="alerta-margen-err" style="margin:0;width:100%"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
+        <button class="btn-primario" onclick="guardarMargenBruto()">GUARDAR</button>
+        <button class="btn-secundario" onclick="cerrarModal('modal-definir-margen')">Retornar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL HISTORIAL DE MARGEN BRUTO     -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-historial-margen">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <h3 id="historial-margen-titulo">📜 HISTORIAL DE MARGEN</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-historial-margen')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="historial-margen-cont" class="tabla-container"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-historial-margen')">Cerrar</button>
     </div>
   </div>
 </div>

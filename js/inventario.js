@@ -166,6 +166,7 @@ async function renderInventario(filtro) {
       + (puedo('INVENTARIO','VER_MOVIMIENTOS') ? '<button id="inv-tab-movimientos" onclick="invCambiarVista(\'movimientos\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">📋 Movimientos</button>' : '')
       + (puedo('INVENTARIO','VER_CATEGORIAS') ? '<button id="inv-tab-categorias" onclick="invCambiarVista(\'categorias\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">📦 Categorías</button>' : '')
       + (puedo('INVENTARIO','VER_TIPOS') ? '<button id="inv-tab-tipos" onclick="invCambiarVista(\'tipos\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">🔩 Tipos</button>' : '')
+      + (puedo('INVENTARIO','VER_MARGEN_BRUTO') ? '<button id="inv-tab-margen" onclick="invCambiarVista(\'margen\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">📊 Margen Bruto</button>' : '')
       + '</div>'
       + '<select id="inv-filtro-cat" onchange="invFiltrarCategoria()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todas las categorías</option>'
@@ -420,7 +421,7 @@ async function invCambiarVista(vista) {
   // Ocultar "+ Nuevo Artículo" en vistas de administración
   const btnNuevo = document.querySelector('#panel-inventario .btn-primario[onclick="abrirNuevoInventario()"]');
   if (btnNuevo) {
-    btnNuevo.style.display = (vista === 'categorias' || vista === 'tipos') ? 'none' : '';
+    btnNuevo.style.display = (vista === 'categorias' || vista === 'tipos' || vista === 'margen') ? 'none' : '';
   }
   const contTabla = document.getElementById('tabla-inv-cont');
   if (vista === 'movimientos') {
@@ -440,6 +441,7 @@ async function invRenderVista(items, vista) {
   else if (vista === 'movimientos') await invRenderMovimientos(cont);
   else if (vista === 'categorias') await invRenderCategorias(cont);
   else if (vista === 'tipos')      await invRenderTipos(cont);
+  else if (vista === 'margen')     await invRenderMargenBruto(cont);
 }
 
 function invRenderTabla(items, cont) {
@@ -1884,6 +1886,127 @@ async function invRenderTipos(cont) {
       +'</tr></thead><tbody>'+(filas||'<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--suave)">Sin tipos registrados</td></tr>')
       +'</tbody></table></div>';
   } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>'; }
+}
+
+async function invRenderMargenBruto(cont) {
+  if (!cont) cont = document.getElementById('tabla-inv-cont');
+  if (!cont) return;
+  cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+  try {
+    const id_emisor = _empresaActiva?.id_empresa || 0;
+    const hoy = new Date().toISOString().slice(0,10);
+    const [tipos, cats, margenesTodos] = await Promise.all([
+      api('inv_articulos_tipo','GET',null,'?id_empresa=eq.'+id_emisor+'&estado=eq.ACTIVO&order=nombre.asc&select=*'),
+      api('inv_categorias','GET',null,'?id_empresa=eq.'+id_emisor+'&select=id_categoria,nombre,codigo'),
+      api('param_margen_bruto','GET',null,'?id_empresa=eq.'+id_emisor+'&order=fecha_vigencia_desde.desc,id.desc&select=*'),
+    ]);
+    _invMargenBrutoCache = margenesTodos || [];
+    const margenes = _invMargenBrutoCache.filter(function(m){ return m.fecha_vigencia_desde <= hoy; });
+    const catsMap = {}; (cats||[]).forEach(function(c){ catsMap[c.id_categoria]=c; });
+    // El vigente de cada Tipo es el de fecha_vigencia_desde más reciente
+    // (ya viene ordenado desc, así que basta con quedarse con el primero
+    // que aparezca por id_tipo_articulo).
+    const vigenteMap = {};
+    (margenes||[]).forEach(function(m) {
+      if (!vigenteMap[m.id_tipo_articulo]) vigenteMap[m.id_tipo_articulo] = m;
+    });
+    const filas = (tipos||[]).map(function(t) {
+      const cat = catsMap[t.id_categoria];
+      const vig = vigenteMap[t.id_tipo];
+      const margenTxt = vig ? parseFloat(vig.margen_pct).toFixed(2)+'%' : '0.00% <span style="color:var(--suave);font-size:11px">(sin definir)</span>';
+      const vigDesdeTxt = vig ? formatearFechaCorta(vig.fecha_vigencia_desde) : '—';
+      const tieneHistorial = _invMargenBrutoCache.some(function(m){ return m.id_tipo_articulo===t.id_tipo; });
+      return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+        +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(cat?(cat.codigo?cat.codigo+' — ':'')+cat.nombre:'—')+'</td>'
+        +'<td style="padding:8px;font-size:13px;font-weight:500">'+(t.codigo?t.codigo+' — ':'')+t.nombre+'</td>'
+        +'<td style="padding:8px;font-family:var(--font-mono);font-weight:600;color:'+(vig?'#22c55e':'var(--suave)')+'">'+margenTxt+'</td>'
+        +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+vigDesdeTxt+'</td>'
+        +'<td style="padding:8px;white-space:nowrap">'
+        +'<button class="btn-naranja" onclick="abrirDefinirMargen('+t.id_tipo+',\''+t.nombre.replace(/'/g,"\\'")+'\')" style="font-size:11px;padding:4px 10px;margin-right:6px">Definir/Cambiar</button>'
+        +(tieneHistorial?'<button class="btn-secundario" onclick="verHistorialMargen('+t.id_tipo+',\''+t.nombre.replace(/'/g,"\\'")+'\')" style="font-size:11px;padding:4px 10px">Ver historial</button>':'')
+        +'</td>'
+        +'</tr>';
+    }).join('');
+    cont.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+      +'<div style="font-size:18px;font-weight:600">📊 Margen Bruto % por Tipo de Artículo <span style="font-size:13px;color:var(--suave)">('+(tipos?.length||0)+')</span></div>'
+      +'</div>'
+      +'<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Categoría</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Tipo de Artículo</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Margen Vigente</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Vigente desde</th>'
+      +'<th style="padding:8px"></th>'
+      +'</tr></thead><tbody>'+(filas||'<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--suave)">Sin Tipos de Artículo registrados</td></tr>')
+      +'</tbody></table></div>';
+  } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>'; }
+}
+
+let _invMargenBrutoCache = [];
+
+function abrirDefinirMargen(id_tipo, nombreTipo) {
+  document.getElementById('margen-id-tipo').value = id_tipo;
+  document.getElementById('margen-tipo-nombre').textContent = nombreTipo || '—';
+  document.getElementById('margen-pct').value = '';
+  document.getElementById('margen-fecha').value = new Date().toISOString().slice(0,10);
+  document.getElementById('alerta-margen-ok').style.display = 'none';
+  document.getElementById('alerta-margen-err').style.display = 'none';
+  abrirModal('modal-definir-margen');
+}
+
+async function guardarMargenBruto() {
+  const errEl = document.getElementById('alerta-margen-err');
+  const okEl = document.getElementById('alerta-margen-ok');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+  const id_tipo_articulo = parseInt(document.getElementById('margen-id-tipo').value) || null;
+  const margen_pct = parseFloat(document.getElementById('margen-pct').value);
+  const fecha_vigencia_desde = document.getElementById('margen-fecha').value;
+  if (!id_tipo_articulo) { errEl.textContent = 'Falta el Tipo de Artículo.'; errEl.style.display = 'block'; return; }
+  if (isNaN(margen_pct) || margen_pct < 0) { errEl.textContent = 'Ingrese un % de Margen válido (0 o mayor).'; errEl.style.display = 'block'; document.getElementById('margen-pct')?.focus(); return; }
+  if (!fecha_vigencia_desde) { errEl.textContent = 'Seleccione la Fecha de Vigencia.'; errEl.style.display = 'block'; document.getElementById('margen-fecha')?.focus(); return; }
+  try {
+    await api('param_margen_bruto', 'POST', {
+      id_empresa: _empresaActiva?.id_empresa || null,
+      id_tipo_articulo: id_tipo_articulo,
+      margen_pct: margen_pct,
+      fecha_vigencia_desde: fecha_vigencia_desde,
+      id_usuario: sesionActual?.correo_usuario || null,
+    });
+    okEl.textContent = '✓ Margen registrado correctamente.';
+    okEl.style.display = 'block';
+    setTimeout(function() {
+      cerrarModal('modal-definir-margen');
+      invRenderMargenBruto();
+    }, 900);
+  } catch(e) {
+    errEl.textContent = 'Error al guardar: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+async function verHistorialMargen(id_tipo, nombreTipo) {
+  const filas = (_invMargenBrutoCache||[]).filter(function(m){ return m.id_tipo_articulo===id_tipo; });
+  const tituloEl = document.getElementById('historial-margen-titulo');
+  if (tituloEl) tituloEl.textContent = '📜 Historial de Margen — ' + (nombreTipo || '');
+  const cont = document.getElementById('historial-margen-cont');
+  if (!filas.length) {
+    cont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--suave)">Sin historial registrado para este Tipo.</div>';
+  } else {
+    cont.innerHTML = '<table style="width:100%;border-collapse:collapse"><thead><tr>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Vigente desde</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Margen %</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Registrado por</th>'
+      +'</tr></thead><tbody>'
+      + filas.map(function(m) {
+        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+          +'<td style="padding:8px;font-size:12px">'+formatearFechaCorta(m.fecha_vigencia_desde)+'</td>'
+          +'<td style="padding:8px;font-family:var(--font-mono);font-weight:600">'+parseFloat(m.margen_pct).toFixed(2)+'%</td>'
+          +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(m.id_usuario||'—')+'</td>'
+          +'</tr>';
+      }).join('')
+      +'</tbody></table>';
+  }
+  abrirModal('modal-historial-margen');
 }
 
 async function invAbrirTipo(id) {

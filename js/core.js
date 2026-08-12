@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260812221';
+const SYD_VERSION = '20260812222';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -156,6 +156,7 @@ const PERMISOS_POR_MODULO = {
     { accion: 'VER_PRECIOS_VENTA',label: '🔒 Ver precios de venta' },
     { accion: 'VER_EOQ_ABC',      label: '🔒 Ver análisis ABC / EOQ / Reorden' },
     { accion: 'AJUSTE_INCIDENCIA', label: '🔒 Realizar Ajuste por diferencia en Inventario (sobrante / faltante)' },
+    { accion: 'VER_MARGEN_BRUTO', label: '🔒 Ver y definir Margen Bruto % por Tipo de Artículo' },
   ],
   CATALOGO: [
     { accion: 'VER',      label: 'Ver Ficha' },
