@@ -3197,7 +3197,7 @@ async function _guardarEdicionMovimientoInterno() {
       } catch(eChkCxp) { console.warn('Error verificando estado de CxP:', eChkCxp); }
     }
   }
-  if (!clave) return mostrarError('Ingrese su contraseña para autorizar.', esSalida ? 'edit-sal-clave' : 'edit-mov-clave');
+  if (!clave) return mostrarError('El empleado que modifica debe ingresar su contraseña.', esSalida ? 'edit-sal-clave' : 'edit-mov-clave');
 
   const btnGuardar = document.getElementById('btn-guardar-movimiento');
   const textoOriginalBtn = btnGuardar ? btnGuardar.textContent : 'GUARDAR';
