@@ -611,7 +611,7 @@ function convertirAUSD(precio, moneda) {
 }
 
 function quitarLineaServ(i) { osServiciosLineas.splice(i, 1); renderLineasOS(); }
-function quitarLineaRep(i)  { osArtículosLineas.splice(i, 1); renderLineasRep(); }
+function quitarLineaRep(i)  { osArtículosLineas.splice(i, 1); renderLineasRep(); refrescarSelectorArticulosOS(); }
 
 // Se dispara al editar la Cantidad directamente en la lista de líneas de
 // Artículos ya agregadas -- antes esto no validaba nada, permitiendo
@@ -848,6 +848,7 @@ async function agregarMercanciaInventario() {
     sel.value = ''; precio.value = ''; cant.value = '1';
   }
   renderLineasRep();
+  refrescarSelectorArticulosOS();
 }
 
 function onSelInventarioChange() {
@@ -1530,6 +1531,28 @@ async function cargarSelectsOS() {
           return '<option value="' + r.id_articulo + '">' + r.nombre_articulo + ' (Stock: ' + stock + ')</option>';
         }).join('');
   } catch(eInvSel) { console.warn('Error cargando selector de Mercancías en OS:', eInvSel); }
+}
+
+// Refresca solo las ETIQUETAS "(Stock: X)" del selector de Artículos de la
+// OS, restando lo que ya se agregó en líneas de esta misma Orden (todavía
+// no guardadas en BD -- stockMostrarArticulo() por sí solo no las ve).
+// Se llama tras cada Agregar/Quitar línea para que el número mostrado no
+// quede desactualizado durante la sesión de edición de la OS.
+function refrescarSelectorArticulosOS() {
+  const selInv = document.getElementById('os-sel-inv');
+  if (!selInv) return;
+  const valorPrevio = selInv.value;
+  Array.prototype.forEach.call(selInv.options, function(opt) {
+    if (!opt.value) return; // "— Seleccionar —"
+    const stockReal = stockMostrarArticulo(opt.value);
+    const yaAgregado = osArtículosLineas
+      .filter(function(l) { return String(l.id_articulo) === String(opt.value); })
+      .reduce(function(acc, l) { return acc + (parseFloat(l.cantidad) || 0); }, 0);
+    const stockMostrar = stockReal - yaAgregado;
+    const r = inventarioCache.find(function(x) { return String(x.id_articulo) === String(opt.value); });
+    if (r) opt.textContent = r.nombre_articulo + ' (Stock: ' + stockMostrar + ')';
+  });
+  selInv.value = valorPrevio;
 }
 
 // Comparación robusta de texto -- sin mayúsculas ni acentos -- para no
