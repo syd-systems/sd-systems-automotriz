@@ -3140,6 +3140,11 @@ async function _guardarEdicionMovimientoInterno() {
 
   const mostrarError = function(msg, focusId) {
     errEl.textContent = msg; errEl.style.display = 'block';
+    // Sin esto el mensaje queda arriba del modal, fuera de la vista si el
+    // Usuario está viendo campos más abajo (p.ej. la Contraseña) -- parecía
+    // que el botón GUARDAR "no hacía nada" cuando en realidad sí mostraba
+    // el error, solo que no se veía sin desplazarse manualmente hacia arriba.
+    setTimeout(function() { errEl.scrollIntoView({behavior:'smooth', block:'nearest'}); }, 30);
     if (focusId) { const el = document.getElementById(focusId); if (el) el.focus(); }
   };
 
@@ -3192,7 +3197,7 @@ async function _guardarEdicionMovimientoInterno() {
       } catch(eChkCxp) { console.warn('Error verificando estado de CxP:', eChkCxp); }
     }
   }
-  if (!clave) return mostrarError('Ingrese su contraseña para autorizar.', 'edit-mov-clave');
+  if (!clave) return mostrarError('Ingrese su contraseña para autorizar.', esSalida ? 'edit-sal-clave' : 'edit-mov-clave');
 
   const btnGuardar = document.getElementById('btn-guardar-movimiento');
   const textoOriginalBtn = btnGuardar ? btnGuardar.textContent : 'GUARDAR';
