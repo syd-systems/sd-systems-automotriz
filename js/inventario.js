@@ -3572,16 +3572,32 @@ async function _guardarEdicionMovimientoInterno() {
           const notifVieja = await api('notificaciones', 'GET', null,
             '?tipo=eq.RECEPCION_ARTICULO&id_salida=eq.' + id + '&estado=eq.PENDIENTE&order=id.desc&limit=1&select=id,correo_destino');
           if (notifVieja && notifVieja[0]) {
+            // 1. Anular la vieja -- esto es lo CRÍTICO, tiene que pasar sí o
+            // sí. Va en su propio try separado de los nombres de Área (solo
+            // cosméticos para el texto del mensaje) para que un fallo ahí no
+            // tumbe lo esencial, como pasó con el bug de "param_areas.id_area
+            // does not exist" (la columna real es "id", no "id_area").
             await api('notificaciones', 'PATCH',
               { estado: 'ANULADO', fecha_respuesta: new Date().toISOString() },
               '?id=eq.' + notifVieja[0].id);
-            const [areaOrigenRow, areaDestRow] = await Promise.all([
-              movOrig.id_area_entrega ? api('param_areas','GET',null,'?id_area=eq.'+movOrig.id_area_entrega+'&select=nombre') : Promise.resolve(null),
-              movOrig.id_area          ? api('param_areas','GET',null,'?id_area=eq.'+movOrig.id_area+'&select=nombre')          : Promise.resolve(null),
-            ]);
-            const nombreOrigen = areaOrigenRow?.[0]?.nombre || 'Almacén';
-            const nombreDest   = areaDestRow?.[0]?.nombre   || 'Área';
-            const artNomEdit   = art?.nombre_articulo || art?.codigo_articulo || ('Art#' + id_articulo);
+
+            // 2. Nombres de Área para el texto del mensaje -- si esto falla,
+            // se sigue igual con nombres genéricos, no se aborta la creación
+            // de la notificación nueva (eso sí sería grave: dejaría la vieja
+            // anulada sin ninguna PENDIENTE que la reemplace).
+            let nombreOrigen = 'Almacén', nombreDest = 'Área';
+            try {
+              const [areaOrigenRow, areaDestRow] = await Promise.all([
+                movOrig.id_area_entrega ? api('param_areas','GET',null,'?id=eq.'+movOrig.id_area_entrega+'&select=nombre') : Promise.resolve(null),
+                movOrig.id_area          ? api('param_areas','GET',null,'?id=eq.'+movOrig.id_area+'&select=nombre')          : Promise.resolve(null),
+              ]);
+              nombreOrigen = areaOrigenRow?.[0]?.nombre || nombreOrigen;
+              nombreDest   = areaDestRow?.[0]?.nombre   || nombreDest;
+            } catch(eNombresArea) { console.warn('No se pudieron obtener nombres de Área (se usan genéricos):', eNombresArea); }
+
+            // 3. Crear la nueva notificación PENDIENTE con los datos ya
+            // corregidos.
+            const artNomEdit = art?.nombre_articulo || art?.codigo_articulo || ('Art#' + id_articulo);
             await api('notificaciones', 'POST', {
               tipo:           'RECEPCION_ARTICULO',
               id_empresa:      _empresaActiva?.id_empresa || null,

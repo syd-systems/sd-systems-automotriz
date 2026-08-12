@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260812217';
+const SYD_VERSION = '20260812218';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -2753,6 +2753,26 @@ async function notifConfirmar() {
   const btn = document.getElementById('btn-notif-confirmar');
   if (btn) { btn.disabled = true; btn.textContent = 'Confirmando...'; }
   try {
+    // Revalidación fresca: esta notificación pudo quedar abierta en pantalla
+    // desde antes de que alguien EDITARA la Salida que la originó -- en ese
+    // caso la Salida ya anuló esta notificación (estado=ANULADO) y generó
+    // una nueva con los datos correctos. Si se confirmara igual la vieja
+    // (con datos_extra desactualizados, ej. una cantidad ya corregida), se
+    // acreditaría stock con el número equivocado. Se verifica el estado
+    // REAL en la base antes de proceder, sin confiar en el objeto en
+    // memoria del navegador.
+    const notifFrescaChk = await api('notificaciones','GET',null,
+      '?id=eq.'+_notifPendienteActual.id+'&select=id,estado');
+    if (!notifFrescaChk || !notifFrescaChk[0] || notifFrescaChk[0].estado !== 'PENDIENTE') {
+      document.getElementById('modal-notif-pendiente').style.display = 'none';
+      _notifPendienteActual = null;
+      if (btn) { btn.disabled = false; btn.textContent = btn.dataset.textoOriginal || '✓ Confirmar Recepción'; }
+      alert('Esta notificación ya no está vigente -- probablemente fue actualizada (por ejemplo, si se corrigió la cantidad de la Salida que la originó). Se recargarán sus notificaciones pendientes.');
+      window._suprimirCheckNotifUnaVez = false;
+      setTimeout(verificarNotificacionesPendientes, 200);
+      return;
+    }
+
     const extras = _notifPendienteActual.datos_extra
       ? (typeof _notifPendienteActual.datos_extra === 'string'
           ? JSON.parse(_notifPendienteActual.datos_extra)
