@@ -17,6 +17,11 @@ let _editMovTipoActual   = null;
 let _editMovPuedeEditar  = false;
 let _editMovEstaPagado   = false;
 let _editMovVistaComoEntrada = false; // true = se está viendo una Salida desde el Área receptora (se lee como Entrada)
+// Notificación de Recepción ligada a la Salida que se está editando (solo
+// aplica si tiene Empleado que Recibe -- si no, el stock se acreditó de
+// inmediato al crearla y no hay notificación de por medio). null = no
+// aplica esta regla; {id, estado} = sí aplica.
+let _editMovNotifSalida = null;
 let _idAreaComprasCache = null;
 async function obtenerIdAreaCompras() {
   if (_idAreaComprasCache !== null) return _idAreaComprasCache;
@@ -2686,6 +2691,26 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
   _editMovPuedeEditar = !soloLectura;
   _editMovVistaComoEntrada = !!vistaComoEntrada;
 
+  // Si es una SALIDA con Empleado que Recibe, tiene una Notificación de
+  // Recepción asociada -- el stock del Área destino se acredita recién
+  // cuando esa notificación se CONFIRMA (ver notifConfirmar() en core.js),
+  // no al crear la Salida. Mientras esté PENDIENTE, se puede editar todo
+  // libremente. Si ya está APROBADA (confirmada por el receptor), la
+  // Salida queda bloqueada para editar -- el receptor ya dio por buena
+  // esa cantidad/información, y el stock destino ya se acreditó con ella.
+  _editMovNotifSalida = null;
+  if (!esEntrada && m.id_empleado) {
+    try {
+      const notifRes = await api('notificaciones', 'GET', null,
+        '?tipo=eq.RECEPCION_ARTICULO&id_salida=eq.' + idMovimiento + '&order=id.desc&limit=1&select=id,estado');
+      if (notifRes && notifRes[0]) _editMovNotifSalida = notifRes[0];
+    } catch(eNotifChk) { console.warn('Error verificando notificación de la Salida:', eNotifChk); }
+  }
+  const notifBloqueaEdicion = _editMovNotifSalida && _editMovNotifSalida.estado === 'APROBADO';
+  if (notifBloqueaEdicion) _editMovPuedeEditar = false;
+  const avisoBloqueoEl = document.getElementById('edit-sal-bloqueado-confirmado');
+  if (avisoBloqueoEl) avisoBloqueoEl.style.display = notifBloqueaEdicion ? '' : 'none';
+
   // Ancho del modal: ENTRADA = 780px, SALIDA = 580px
   const modalDiv = document.querySelector('#modal-edit-movimiento .modal');
   if (modalDiv) modalDiv.style.maxWidth = esEntrada ? '780px' : '580px';
@@ -3154,6 +3179,17 @@ async function _guardarEdicionMovimientoInterno() {
 
   // ── Validaciones en orden de pantalla ──
   if (tipo === 'SALIDA') {
+    // Revalidación fresca (no confiar solo en lo cargado al abrir la ficha):
+    // si el receptor ya confirmó la recepción mientras se tenía la ficha
+    // abierta, bloquear el guardado -- el stock destino ya se acreditó con
+    // la información original, no se puede alterar por debajo.
+    try {
+      const notifFresca = await api('notificaciones', 'GET', null,
+        '?tipo=eq.RECEPCION_ARTICULO&id_salida=eq.' + id + '&order=id.desc&limit=1&select=id,estado');
+      if (notifFresca && notifFresca[0] && notifFresca[0].estado === 'APROBADO') {
+        return mostrarError('El receptor ya confirmó la recepción de esta Salida. No se puede editar.');
+      }
+    } catch(eNotifFresh) { console.warn('Error revalidando notificación:', eNotifFresh); }
     const salFecha = document.getElementById('edit-sal-fecha')?.value;
     if (!salFecha) return mostrarError('Seleccione la Fecha de Salida.', 'edit-sal-fecha');
     // NOTA: el Área Receptora ya NO es editable aquí (rediseño 1.6 -- solo
@@ -3502,8 +3538,8 @@ async function _guardarEdicionMovimientoInterno() {
     } else {
       // ── SALIDA ──
       const [movOrigArr, artArr] = await Promise.all([
-        api('stock_salidas',     'GET', null, '?id_salida=eq.'    + id          + '&select=cantidad,id_area,id_area_entrega'),
-        api('inventario_almacen','GET', null, '?id_articulo=eq.'  + id_articulo + '&select=id_cuenta_contable'),
+        api('stock_salidas',     'GET', null, '?id_salida=eq.'    + id          + '&select=cantidad,id_area,id_area_entrega,id_empleado'),
+        api('inventario_almacen','GET', null, '?id_articulo=eq.'  + id_articulo + '&select=id_cuenta_contable,nombre_articulo,codigo_articulo'),
       ]);
       const movOrig = movOrigArr[0] || {};
       const cantOriginal = parseFloat(movOrig?.cantidad || cantidad);
@@ -3511,18 +3547,58 @@ async function _guardarEdicionMovimientoInterno() {
       await api('stock_salidas', 'PATCH', datos, '?id_salida=eq.' + id);
 
       // Ajustar el stock por ÁREA según la diferencia (delta) — no un total
-      // global. El área que entregó (Compras) siempre se ajusta; si el
-      // artículo es Mercancía, el área destino también recibió stock real
-      // (a diferencia de un Consumible, que se gasta de inmediato).
+      // global. El área que entregó (Compras) siempre se ajusta de inmediato
+      // (su stock sale al crear la Salida, sin esperar confirmación alguna).
       const deltaCantSal = cantidad - cantOriginal;
-      if (deltaCantSal !== 0) {
-        if (movOrig.id_area_entrega) await upsertStockArea(id_articulo, movOrig.id_area_entrega, -deltaCantSal);
-        let esMercanciaEdit = false;
-        if (art?.id_cuenta_contable) {
-          const ctaEdit = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === art.id_cuenta_contable; });
-          esMercanciaEdit = !!(ctaEdit && ctaEdit.codigo === '1.1.03.001');
-        }
-        if (esMercanciaEdit && movOrig.id_area) await upsertStockArea(id_articulo, movOrig.id_area, deltaCantSal);
+      if (deltaCantSal !== 0 && movOrig.id_area_entrega) {
+        await upsertStockArea(id_articulo, movOrig.id_area_entrega, -deltaCantSal);
+      }
+
+      let esMercanciaEdit = false;
+      if (art?.id_cuenta_contable) {
+        const ctaEdit = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === art.id_cuenta_contable; });
+        esMercanciaEdit = !!(ctaEdit && ctaEdit.codigo === '1.1.03.001');
+      }
+
+      if (movOrig.id_empleado) {
+        // Esta Salida pasó (y sigue pasando) por el flujo de Notificación de
+        // Recepción -- el Área destino NO ha recibido nada todavía (se
+        // acredita recién al Confirmar, ver notifConfirmar() en core.js). Ya
+        // se revalidó arriba que sigue PENDIENTE, así que en vez de tocar el
+        // stock del Área destino ahora, se anula la notificación vieja y se
+        // genera una nueva con los datos ya actualizados -- cuando el
+        // receptor confirme, se acreditará la cantidad CORRECTA.
+        try {
+          const notifVieja = await api('notificaciones', 'GET', null,
+            '?tipo=eq.RECEPCION_ARTICULO&id_salida=eq.' + id + '&estado=eq.PENDIENTE&order=id.desc&limit=1&select=id,correo_destino');
+          if (notifVieja && notifVieja[0]) {
+            await api('notificaciones', 'PATCH',
+              { estado: 'ANULADO', fecha_respuesta: new Date().toISOString() },
+              '?id=eq.' + notifVieja[0].id);
+            const [areaOrigenRow, areaDestRow] = await Promise.all([
+              movOrig.id_area_entrega ? api('param_areas','GET',null,'?id_area=eq.'+movOrig.id_area_entrega+'&select=nombre') : Promise.resolve(null),
+              movOrig.id_area          ? api('param_areas','GET',null,'?id_area=eq.'+movOrig.id_area+'&select=nombre')          : Promise.resolve(null),
+            ]);
+            const nombreOrigen = areaOrigenRow?.[0]?.nombre || 'Almacén';
+            const nombreDest   = areaDestRow?.[0]?.nombre   || 'Área';
+            const artNomEdit   = art?.nombre_articulo || art?.codigo_articulo || ('Art#' + id_articulo);
+            await api('notificaciones', 'POST', {
+              tipo:           'RECEPCION_ARTICULO',
+              id_empresa:      _empresaActiva?.id_empresa || null,
+              correo_destino: notifVieja[0].correo_destino,
+              titulo:         'Solicitud de Recepción de Artículo (actualizada)',
+              mensaje:        cantidad + ' unid. de "' + artNomEdit + '" enviadas desde ' + nombreOrigen + ' hacia ' + nombreDest + '. Información corregida -- por favor confirme la recepción.',
+              estado:         'PENDIENTE',
+              id_salida:      id,
+              datos_extra:    JSON.stringify({ id_articulo: id_articulo, cantidad: cantidad, id_area_origen: movOrig.id_area_entrega, id_area_destino: movOrig.id_area })
+            }, '', true);
+          }
+        } catch(eNotifEdit) { console.warn('Error anulando/recreando notificación de la Salida editada:', eNotifEdit); }
+      } else if (esMercanciaEdit && deltaCantSal !== 0 && movOrig.id_area) {
+        // Sin Empleado que Recibe -- el Área destino se acreditó de inmediato
+        // al crear la Salida (no hubo notificación de por medio), así que el
+        // delta se aplica directo, como siempre.
+        await upsertStockArea(id_articulo, movOrig.id_area, deltaCantSal);
       }
     }
 
