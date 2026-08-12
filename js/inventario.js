@@ -3144,8 +3144,12 @@ async function _guardarEdicionMovimientoInterno() {
     // Usuario está viendo campos más abajo (p.ej. la Contraseña) -- parecía
     // que el botón GUARDAR "no hacía nada" cuando en realidad sí mostraba
     // el error, solo que no se veía sin desplazarse manualmente hacia arriba.
-    setTimeout(function() { errEl.scrollIntoView({behavior:'smooth', block:'nearest'}); }, 30);
-    if (focusId) { const el = document.getElementById(focusId); if (el) el.focus(); }
+    // IMPORTANTE: el focus() de abajo, si no se le indica preventScroll,
+    // hace su propio scroll automático hacia el campo -- eso le "ganaba" a
+    // este scroll hacia el mensaje y el Usuario terminaba viendo el campo
+    // pero nunca el mensaje rojo. Por eso el focus usa preventScroll:true.
+    setTimeout(function() { errEl.scrollIntoView({behavior:'smooth', block:'start'}); }, 30);
+    if (focusId) { const el = document.getElementById(focusId); if (el) el.focus({preventScroll:true}); }
   };
 
   // ── Validaciones en orden de pantalla ──
