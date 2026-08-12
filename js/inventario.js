@@ -4170,14 +4170,10 @@ async function abrirSalidaStock(id, nombre) {
   document.getElementById('salida-observaciones').value    = '';
   const salPvEl = document.getElementById('salida-precio-venta');
   if (salPvEl) salPvEl.value = '';
-  // Moneda: se preselecciona con la última Moneda registrada para este
-  // Artículo (inventario_almacen.moneda_venta) -- si nunca se registró,
-  // el default de la columna en BD ya es 'USD'.
+  // Moneda: sin preseleccionar -- el Usuario debe elegirla explícitamente
+  // cada vez (mismo criterio que "Moneda Negociación" en Entrada de Stock).
   const salMonEl = document.getElementById('salida-moneda-venta');
-  if (salMonEl) {
-    const artMon = inventarioCache.find(function(x) { return x.id_articulo === id; });
-    salMonEl.value = (artMon && artMon.moneda_venta) || 'USD';
-  }
+  if (salMonEl) salMonEl.value = '';
   document.getElementById('alerta-salida-ok').style.display  = 'none';
   document.getElementById('alerta-salida-err').style.display = 'none';
   // Limpiar campos de contraseña
@@ -4254,7 +4250,7 @@ async function _guardarSalidaStockInterno() {
   const fecha   = document.getElementById('salida-fecha').value;
   const obs     = document.getElementById('salida-observaciones').value.trim();
   const pvSalida = parseFloat(document.getElementById('salida-precio-venta')?.value) || null;
-  const monedaVentaSal = document.getElementById('salida-moneda-venta')?.value || 'USD';
+  const monedaVentaSalRaw = document.getElementById('salida-moneda-venta')?.value || '';
   const okEl    = document.getElementById('alerta-salida-ok');
   const errEl   = document.getElementById('alerta-salida-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
@@ -4279,6 +4275,12 @@ async function _guardarSalidaStockInterno() {
     errEl.style.display = 'block';
     document.getElementById('salida-precio-venta')?.focus(); return;
   }
+  if (pvSalida && !monedaVentaSalRaw) {
+    errEl.textContent = 'Seleccione la Moneda del Precio de Venta.';
+    errEl.style.display = 'block';
+    document.getElementById('salida-moneda-venta')?.focus(); return;
+  }
+  const monedaVentaSal = monedaVentaSalRaw || 'USD';
   if (!id_area)          { errEl.textContent = 'Debe seleccionar el Área receptora.'; errEl.style.display = 'block'; document.getElementById('salida-area')?.focus(); return; }
 
   // Validar contraseña del empleado que ENTREGA

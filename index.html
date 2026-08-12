@@ -1354,17 +1354,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260811208"></script>
-<script src="js/parametros.js?v=20260811208"></script>
-<script src="js/empresas.js?v=20260811208"></script>
-<script src="js/ingresos.js?v=20260811208"></script>
-<script src="js/inventario.js?v=20260811208"></script>
-<script src="js/proveedores.js?v=20260811208"></script>
-<script src="js/contabilidad.js?v=20260811208"></script>
-<script src="js/egresos.js?v=20260811208"></script>
-<script src="js/vehiculos.js?v=20260811208"></script>
-<script src="js/catalogo.js?v=20260811208"></script>
-<script src="js/ordenes.js?v=20260811208"></script>
+<script src="js/core.js?v=20260811209"></script>
+<script src="js/parametros.js?v=20260811209"></script>
+<script src="js/empresas.js?v=20260811209"></script>
+<script src="js/ingresos.js?v=20260811209"></script>
+<script src="js/inventario.js?v=20260811209"></script>
+<script src="js/proveedores.js?v=20260811209"></script>
+<script src="js/contabilidad.js?v=20260811209"></script>
+<script src="js/egresos.js?v=20260811209"></script>
+<script src="js/vehiculos.js?v=20260811209"></script>
+<script src="js/catalogo.js?v=20260811209"></script>
+<script src="js/ordenes.js?v=20260811209"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3890,9 +3890,10 @@
             onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}"
             onblur="this.value=this.value?parseFloat(this.value).toFixed(2):''">
         </div>
-        <div class="form-campo">
+        <div class="form-campo" style="justify-content:flex-end">
           <label>Moneda</label>
           <select id="salida-moneda-venta" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccione moneda —</option>
             <option value="USD">USD — Dólar</option>
             <option value="VES">VES — Bolívar</option>
           </select>
@@ -4801,7 +4802,7 @@
               style="font-family:var(--font-mono)"
               onblur="this.value=this.value?parseFloat(this.value).toFixed(2):''">
           </div>
-          <div class="form-campo" id="edit-sal-moneda-venta-cont">
+          <div class="form-campo" id="edit-sal-moneda-venta-cont" style="justify-content:flex-end">
             <label>Moneda</label>
             <select id="edit-sal-moneda-venta" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
               <option value="USD">USD — Dólar</option>
