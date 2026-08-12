@@ -3581,21 +3581,29 @@ async function _guardarEdicionMovimientoInterno() {
         // Recepción -- el Área destino NO ha recibido nada todavía (se
         // acredita recién al Confirmar, ver notifConfirmar() en core.js). Ya
         // se revalidó arriba que sigue PENDIENTE, así que en vez de tocar el
-        // stock del Área destino ahora, se anula la notificación vieja y se
-        // genera una nueva con los datos ya actualizados -- cuando el
-        // receptor confirme, se acreditará la cantidad CORRECTA.
+        // stock del Área destino ahora, se anulan TODAS las notificaciones
+        // pendientes que queden de esta Salida y se genera una nueva con los
+        // datos ya actualizados -- cuando el receptor confirme, se
+        // acreditará la cantidad CORRECTA.
+        //
+        // IMPORTANTE: se anulan TODAS (no solo la más reciente) porque de
+        // ediciones anteriores (antes de este fix) pudieron quedar varias
+        // huérfanas en PENDIENTE sin anular -- si solo se anula la última,
+        // las demás sobreviven y el receptor puede terminar confirmando una
+        // vieja con datos obsoletos, acreditando stock de más.
         try {
-          const notifVieja = await api('notificaciones', 'GET', null,
-            '?tipo=eq.RECEPCION_ARTICULO&id_salida=eq.' + id + '&estado=eq.PENDIENTE&order=id.desc&limit=1&select=id,correo_destino');
-          if (notifVieja && notifVieja[0]) {
-            // 1. Anular la vieja -- esto es lo CRÍTICO, tiene que pasar sí o
-            // sí. Va en su propio try separado de los nombres de Área (solo
-            // cosméticos para el texto del mensaje) para que un fallo ahí no
-            // tumbe lo esencial, como pasó con el bug de "param_areas.id_area
-            // does not exist" (la columna real es "id", no "id_area").
+          const notifsViejas = await api('notificaciones', 'GET', null,
+            '?tipo=eq.RECEPCION_ARTICULO&id_salida=eq.' + id + '&estado=eq.PENDIENTE&order=id.desc&select=id,correo_destino');
+          if (notifsViejas && notifsViejas.length) {
+            // 1. Anular TODAS las pendientes -- esto es lo CRÍTICO, tiene que
+            // pasar sí o sí. Va en su propio try separado de los nombres de
+            // Área (solo cosméticos para el texto del mensaje) para que un
+            // fallo ahí no tumbe lo esencial, como pasó con el bug de
+            // "param_areas.id_area does not exist" (la columna real es "id").
             await api('notificaciones', 'PATCH',
               { estado: 'ANULADO', fecha_respuesta: new Date().toISOString() },
-              '?id=eq.' + notifVieja[0].id);
+              '?id=in.(' + notifsViejas.map(function(n){ return n.id; }).join(',') + ')');
+            const correoDestViejo = notifsViejas[0].correo_destino;
 
             // 2. Nombres de Área para el texto del mensaje -- si esto falla,
             // se sigue igual con nombres genéricos, no se aborta la creación
@@ -3617,7 +3625,7 @@ async function _guardarEdicionMovimientoInterno() {
             // si se cambió el Empleado (o el Área), tiene que notificarse al
             // correcto, no reenviarle al anterior.
             const artNomEdit = art?.nombre_articulo || art?.codigo_articulo || ('Art#' + id_articulo);
-            let correoDestNuevo = notifVieja[0].correo_destino;
+            let correoDestNuevo = correoDestViejo;
             try {
               if (idEmp) {
                 const empNuevo = await api('empleados','GET',null,
