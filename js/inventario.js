@@ -2732,6 +2732,8 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     // dejar un select vacío que parece un dato perdido.
     const areaRecCont = document.getElementById('edit-sal-area-cont');
     const ventaClienteCont = document.getElementById('edit-sal-venta-cliente-cont');
+    const salIdAreaEl = document.getElementById('edit-sal-id-area');
+    if (salIdAreaEl) salIdAreaEl.value = m.id_area || '';
     if (m.id_area) {
       if (areaRecCont) areaRecCont.style.display = '';
       if (ventaClienteCont) ventaClienteCont.style.display = 'none';
@@ -3127,7 +3129,7 @@ async function _guardarEdicionMovimientoInterno() {
   const id          = parseInt(document.getElementById('edit-mov-id').value);
   const id_articulo = parseInt(document.getElementById('edit-mov-id-articulo').value);
   const esSalida    = tipo === 'SALIDA';
-  const id_area     = parseInt((esSalida ? document.getElementById('edit-sal-area') : document.getElementById('edit-mov-area'))?.value) || null;
+  const id_area     = parseInt((esSalida ? document.getElementById('edit-sal-id-area') : document.getElementById('edit-mov-area'))?.value) || null;
   const idEmp       = parseInt((esSalida ? document.getElementById('edit-sal-empleado') : document.getElementById('edit-mov-empleado'))?.value) || null;
   const obs         = (esSalida ? document.getElementById('edit-sal-observaciones') : (document.getElementById('edit-mov-observaciones') || document.getElementById('edit-mov-obs')))?.value?.trim() || '';
   const clave       = (esSalida ? document.getElementById('edit-sal-clave') : document.getElementById('edit-mov-clave'))?.value || '';
@@ -3145,7 +3147,10 @@ async function _guardarEdicionMovimientoInterno() {
   if (tipo === 'SALIDA') {
     const salFecha = document.getElementById('edit-sal-fecha')?.value;
     if (!salFecha) return mostrarError('Seleccione la Fecha de Salida.', 'edit-sal-fecha');
-    if (!id_area)  return mostrarError('Seleccione el Área Receptora.', 'edit-sal-area');
+    // NOTA: el Área Receptora ya NO es editable aquí (rediseño 1.6 -- solo
+    // se puede cambiar el Empleado, dentro de la misma Área original). Un
+    // id_area null es válido y esperado: significa Venta directa a Cliente
+    // (generada automática al facturar una OS), no una entrega Área↔Área.
   }
   if (tipo === 'ENTRADA') {
     const fechaNeg = document.getElementById('edit-mov-fecha-negociacion')?.value;
@@ -4065,17 +4070,12 @@ function calcularTributosEdit() {
 }
 
 async function onSelAreaEditSalida() {
-  const idArea = document.getElementById('edit-sal-area')?.value;
-  const selEmp = document.getElementById('edit-sal-empleado');
-  if (!selEmp) return;
-  if (!idArea) { selEmp.innerHTML = '<option value="">— Seleccionar área primero —</option>'; return; }
-  try {
-    const emps = await api('empleados','GET',null,'?id_area=eq.'+idArea+'&select=id_empleado,nombre_completo&order=nombre_completo.asc');
-    selEmp.innerHTML = '<option value="">— Seleccionar empleado —</option>'
-      + (emps||[]).map(function(e){
-        return '<option value="'+e.id_empleado+'">'+e.nombre_completo+'</option>';
-      }).join('');
-  } catch(e) {}
+  // NOTA: código muerto -- el select 'edit-sal-area' que usaba ya no existe
+  // en el HTML desde el rediseño de "Quien Recibe" (solo Empleado, sin
+  // selector de Área visible). Nada del HTML llama a esta función. Se deja
+  // el nombre reservado sin cuerpo por si algo externo aún la referencia,
+  // pero no debe usarse -- ver editarMovimiento() para la carga real del
+  // Empleado según m.id_area.
 }
 
 // ═══ SECCION: Salida de Stock, Ajuste/Faltante de Inventario, soporte Entrada (ex facturacion.js) ═══

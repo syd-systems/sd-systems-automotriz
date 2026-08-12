@@ -1354,17 +1354,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260811210"></script>
-<script src="js/parametros.js?v=20260811210"></script>
-<script src="js/empresas.js?v=20260811210"></script>
-<script src="js/ingresos.js?v=20260811210"></script>
-<script src="js/inventario.js?v=20260811210"></script>
-<script src="js/proveedores.js?v=20260811210"></script>
-<script src="js/contabilidad.js?v=20260811210"></script>
-<script src="js/egresos.js?v=20260811210"></script>
-<script src="js/vehiculos.js?v=20260811210"></script>
-<script src="js/catalogo.js?v=20260811210"></script>
-<script src="js/ordenes.js?v=20260811210"></script>
+<script src="js/core.js?v=20260811211"></script>
+<script src="js/parametros.js?v=20260811211"></script>
+<script src="js/empresas.js?v=20260811211"></script>
+<script src="js/ingresos.js?v=20260811211"></script>
+<script src="js/inventario.js?v=20260811211"></script>
+<script src="js/proveedores.js?v=20260811211"></script>
+<script src="js/contabilidad.js?v=20260811211"></script>
+<script src="js/egresos.js?v=20260811211"></script>
+<script src="js/vehiculos.js?v=20260811211"></script>
+<script src="js/catalogo.js?v=20260811211"></script>
+<script src="js/ordenes.js?v=20260811211"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4803,7 +4803,7 @@
               onblur="this.value=this.value?parseFloat(this.value).toFixed(2):''">
           </div>
           <div class="form-campo" id="edit-sal-moneda-venta-cont">
-            <label>Moneda</label>
+            <label>Moneda<br><span style="font-size:10px;visibility:hidden">(x)</span></label>
             <select id="edit-sal-moneda-venta" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
               <option value="USD">USD — Dólar</option>
               <option value="VES">VES — Bolívar</option>
@@ -4821,6 +4821,7 @@
               style="display:none;background:transparent;border:none;color:#60a5fa;font-family:var(--font-body);font-size:16px;font-weight:600;padding:2px 0 0;margin-top:2px;outline:none;width:100%;-webkit-appearance:none;-moz-appearance:none;appearance:none">
               <option value="">— Seleccionar empleado —</option>
             </select>
+            <input type="hidden" id="edit-sal-id-area">
           </div>
           <div class="form-campo form-full" id="edit-sal-venta-cliente-cont" style="display:none;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.25);border-radius:6px;padding:10px 14px;font-size:12px;color:#60a5fa"></div>
 
