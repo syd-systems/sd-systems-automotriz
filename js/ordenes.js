@@ -853,9 +853,16 @@ async function agregarMercanciaInventario() {
 function onSelInventarioChange() {
   const sel = document.getElementById('os-sel-inv');
   const precio = document.getElementById('os-precio-inv');
-  if (!sel.value) { precio.value = ''; return; }
+  const monedaInv = document.getElementById('os-moneda-inv');
+  if (!sel.value) { precio.value = ''; if (monedaInv) monedaInv.value = 'USD'; return; }
   const r = inventarioCache.find(function(x) { return x.id_articulo == sel.value; });
-  if (r) precio.value = parseFloat(r.precio_venta_moneda || 0).toFixed(2);
+  if (r) {
+    precio.value = parseFloat(r.precio_venta_moneda || 0).toFixed(2);
+    // La Moneda viene del Artículo (inventario_almacen.moneda_venta, definida
+    // en su última Salida de Stock) — bloqueada aquí, coherente con el
+    // Precio que se muestra al lado. Queda deshabilitada en el HTML.
+    if (monedaInv) monedaInv.value = r.moneda_venta || 'USD';
+  }
 }
 
 // ─── GUARDAR OS ───

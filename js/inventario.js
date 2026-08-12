@@ -12,7 +12,7 @@ const CAMPOS_EDIT_ENTRADA = ['edit-mov-fecha-negociacion','edit-mov-moneda','edi
   'edit-mov-cliente','edit-mov-area-origen','edit-mov-area','edit-mov-empleado',
   'edit-mov-esquema-pago','edit-mov-obs'];
 const CAMPOS_EDIT_SALIDA = ['edit-sal-fecha','edit-sal-cantidad','edit-sal-precio-venta',
-  'edit-sal-empleado','edit-sal-observaciones'];
+  'edit-sal-moneda-venta','edit-sal-empleado','edit-sal-observaciones'];
 let _editMovTipoActual   = null;
 let _editMovPuedeEditar  = false;
 let _editMovEstaPagado   = false;
@@ -2716,11 +2716,15 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     if (salObsEl)   salObsEl.value   = m.observaciones || '';
     const salPvEl = document.getElementById('edit-sal-precio-venta');
     if (salPvEl) salPvEl.value = m.precio_venta_moneda ? parseFloat(m.precio_venta_moneda).toFixed(2) : '';
+    const salMonEl = document.getElementById('edit-sal-moneda-venta');
+    if (salMonEl) salMonEl.value = m.moneda_venta || 'USD';
     // Un Faltante (Ajuste de Inventario) no tiene Precio de Venta — se identifica
     // por el prefijo que se guarda en observaciones al registrarlo.
     const esFaltanteEdit = (m.observaciones || '').indexOf('FALTANTE (Ajuste de Inventario)') === 0;
     const salPvCont = document.getElementById('edit-sal-precio-venta-cont');
     if (salPvCont) salPvCont.style.display = esFaltanteEdit ? 'none' : '';
+    const salMonCont = document.getElementById('edit-sal-moneda-venta-cont');
+    if (salMonCont) salMonCont.style.display = esFaltanteEdit ? 'none' : '';
 
     // Área receptora -- si m.id_area es null, esta Salida es una venta
     // directa a Cliente (generada automáticamente al facturar una OS), no
@@ -3212,9 +3216,12 @@ async function _guardarEdicionMovimientoInterno() {
       if (salFechaVal) datos.fecha_salida = salFechaVal;
       const pvSalEl = document.getElementById('edit-sal-precio-venta');
       const pvSal   = pvSalEl?.value ? parseFloat(pvSalEl.value) : null;
+      const monSalEl = document.getElementById('edit-sal-moneda-venta');
+      const monSal   = monSalEl?.value || 'USD';
       if (pvSal) {
         datos.precio_venta_moneda = pvSal;
-        try { await api('inventario_almacen','PATCH',{ precio_venta_moneda: pvSal },'?id_articulo=eq.'+id_articulo); } catch(e) {}
+        datos.moneda_venta        = monSal;
+        try { await api('inventario_almacen','PATCH',{ precio_venta_moneda: pvSal, moneda_venta: monSal },'?id_articulo=eq.'+id_articulo); } catch(e) {}
       }
     }
 
@@ -4163,6 +4170,14 @@ async function abrirSalidaStock(id, nombre) {
   document.getElementById('salida-observaciones').value    = '';
   const salPvEl = document.getElementById('salida-precio-venta');
   if (salPvEl) salPvEl.value = '';
+  // Moneda: se preselecciona con la última Moneda registrada para este
+  // Artículo (inventario_almacen.moneda_venta) -- si nunca se registró,
+  // el default de la columna en BD ya es 'USD'.
+  const salMonEl = document.getElementById('salida-moneda-venta');
+  if (salMonEl) {
+    const artMon = inventarioCache.find(function(x) { return x.id_articulo === id; });
+    salMonEl.value = (artMon && artMon.moneda_venta) || 'USD';
+  }
   document.getElementById('alerta-salida-ok').style.display  = 'none';
   document.getElementById('alerta-salida-err').style.display = 'none';
   // Limpiar campos de contraseña
@@ -4239,6 +4254,7 @@ async function _guardarSalidaStockInterno() {
   const fecha   = document.getElementById('salida-fecha').value;
   const obs     = document.getElementById('salida-observaciones').value.trim();
   const pvSalida = parseFloat(document.getElementById('salida-precio-venta')?.value) || null;
+  const monedaVentaSal = document.getElementById('salida-moneda-venta')?.value || 'USD';
   const okEl    = document.getElementById('alerta-salida-ok');
   const errEl   = document.getElementById('alerta-salida-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
@@ -4308,6 +4324,7 @@ async function _guardarSalidaStockInterno() {
       fecha_salida:         fecha,
       observaciones:        obs || null,
       precio_venta_moneda:  pvSalida || null,
+      moneda_venta:         monedaVentaSal,
       id_usuario:           sesionActual.correo_usuario
     });
     const id_salida = salidaRes && salidaRes[0] ? salidaRes[0].id_salida : null;
@@ -4324,13 +4341,13 @@ async function _guardarSalidaStockInterno() {
       // notificación de recepción (notifConfirmar en core.js) — sumarlo
       // ambas veces le quitaría sentido al paso de "Confirmar Recepción".
       if (!idEmpRecibe) await upsertStockArea(idRep, id_area, cantidad);
-      if (pvSalida) await api('inventario_almacen', 'PATCH', { precio_venta_moneda: pvSalida }, '?id_articulo=eq.' + idRep);
-      if (art) art.precio_venta_moneda = pvSalida || art.precio_venta_moneda;
+      if (pvSalida) await api('inventario_almacen', 'PATCH', { precio_venta_moneda: pvSalida, moneda_venta: monedaVentaSal }, '?id_articulo=eq.' + idRep);
+      if (art) { art.precio_venta_moneda = pvSalida || art.precio_venta_moneda; art.moneda_venta = monedaVentaSal; }
     } else {
     // Consumible: descontar del área que entrega (Compras) y actualizar precio venta si se ingresó
     if (id_areaEntrega) await upsertStockArea(idRep, id_areaEntrega, -cantidad);
-    if (pvSalida) await api('inventario_almacen', 'PATCH', { precio_venta_moneda: pvSalida }, '?id_articulo=eq.' + idRep);
-    if (art) art.precio_venta_moneda = pvSalida || art.precio_venta_moneda;
+    if (pvSalida) await api('inventario_almacen', 'PATCH', { precio_venta_moneda: pvSalida, moneda_venta: monedaVentaSal }, '?id_articulo=eq.' + idRep);
+    if (art) { art.precio_venta_moneda = pvSalida || art.precio_venta_moneda; art.moneda_venta = monedaVentaSal; }
 
     // Salidas de CONSUMIBLES generan asiento: DEBE gasto / HABER inventario
     if (art && art.id_cuenta_contable && art.id_cuenta_costo_gasto) {

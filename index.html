@@ -1354,17 +1354,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260723207"></script>
-<script src="js/parametros.js?v=20260723207"></script>
-<script src="js/empresas.js?v=20260723207"></script>
-<script src="js/ingresos.js?v=20260723207"></script>
-<script src="js/inventario.js?v=20260723207"></script>
-<script src="js/proveedores.js?v=20260723207"></script>
-<script src="js/contabilidad.js?v=20260723207"></script>
-<script src="js/egresos.js?v=20260723207"></script>
-<script src="js/vehiculos.js?v=20260723207"></script>
-<script src="js/catalogo.js?v=20260723207"></script>
-<script src="js/ordenes.js?v=20260723207"></script>
+<script src="js/core.js?v=20260811208"></script>
+<script src="js/parametros.js?v=20260811208"></script>
+<script src="js/empresas.js?v=20260811208"></script>
+<script src="js/ingresos.js?v=20260811208"></script>
+<script src="js/inventario.js?v=20260811208"></script>
+<script src="js/proveedores.js?v=20260811208"></script>
+<script src="js/contabilidad.js?v=20260811208"></script>
+<script src="js/egresos.js?v=20260811208"></script>
+<script src="js/vehiculos.js?v=20260811208"></script>
+<script src="js/catalogo.js?v=20260811208"></script>
+<script src="js/ordenes.js?v=20260811208"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3098,7 +3098,7 @@
             </div>
             <div class="form-campo" style="margin:0">
               <label style="font-size:7px">MONEDA</label>
-              <select id="os-moneda-inv" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 6px;border-radius:5px;outline:none;width:100%">
+              <select id="os-moneda-inv" disabled title="La moneda del Artículo la gestiona Almacén, no se puede modificar desde aquí" style="background:var(--gris3);border:1px solid var(--borde);color:var(--suave);font-family:var(--font-body);font-size:12px;padding:8px 6px;border-radius:5px;outline:none;width:100%;cursor:not-allowed">
                 <option value="USD">$ USD</option>
                 <option value="EUR">€ EUR</option>
                 <option value="VES">Bs VES</option>
@@ -3890,7 +3890,13 @@
             onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}"
             onblur="this.value=this.value?parseFloat(this.value).toFixed(2):''">
         </div>
-        <div></div>
+        <div class="form-campo">
+          <label>Moneda</label>
+          <select id="salida-moneda-venta" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="USD">USD — Dólar</option>
+            <option value="VES">VES — Bolívar</option>
+          </select>
+        </div>
 
         <!-- Área y Empleado que RECIBE -->
         <div class="form-campo form-full" style="margin-top:4px">
@@ -4795,7 +4801,13 @@
               style="font-family:var(--font-mono)"
               onblur="this.value=this.value?parseFloat(this.value).toFixed(2):''">
           </div>
-          <div></div>
+          <div class="form-campo" id="edit-sal-moneda-venta-cont">
+            <label>Moneda</label>
+            <select id="edit-sal-moneda-venta" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+              <option value="USD">USD — Dólar</option>
+              <option value="VES">VES — Bolívar</option>
+            </select>
+          </div>
 
           <!-- Quien Recibe -->
           <div class="form-campo form-full" style="margin-top:4px">
