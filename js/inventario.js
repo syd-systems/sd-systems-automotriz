@@ -12,7 +12,7 @@ const CAMPOS_EDIT_ENTRADA = ['edit-mov-fecha-negociacion','edit-mov-moneda','edi
   'edit-mov-cliente','edit-mov-area-origen','edit-mov-area','edit-mov-empleado',
   'edit-mov-esquema-pago','edit-mov-obs'];
 const CAMPOS_EDIT_SALIDA = ['edit-sal-fecha','edit-sal-cantidad','edit-sal-precio-venta',
-  'edit-sal-moneda-venta','edit-sal-empleado','edit-sal-observaciones'];
+  'edit-sal-moneda-venta','edit-sal-area','edit-sal-empleado','edit-sal-observaciones'];
 let _editMovTipoActual   = null;
 let _editMovPuedeEditar  = false;
 let _editMovEstaPagado   = false;
@@ -2592,11 +2592,17 @@ function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
     const el = document.getElementById(id);
     if (el) el.disabled = !!soloLectura;
   });
-  // Empleado que Recibe: en modo lectura se ve como texto plano (un select
-  // deshabilitado ignora el color que se le ponga y el navegador lo pinta
-  // gris apagado, además de recortar nombres largos) -- el select real
-  // solo se muestra al entrar en modo Editar.
+  // Área Receptora y Empleado que Recibe: en modo lectura se ven como texto
+  // plano (un select deshabilitado ignora el color que se le ponga y el
+  // navegador lo pinta gris apagado, además de recortar nombres largos) --
+  // el select real solo se muestra al entrar en modo Editar.
   if (tipo === 'SALIDA') {
+    const areaSel = document.getElementById('edit-sal-area');
+    const areaDisplay = document.getElementById('edit-sal-area-display');
+    if (areaSel && areaDisplay) {
+      areaSel.style.display = soloLectura ? 'none' : '';
+      areaDisplay.style.display = soloLectura ? '' : 'none';
+    }
     const empSel = document.getElementById('edit-sal-empleado');
     const empDisplay = document.getElementById('edit-sal-empleado-display');
     if (empSel && empDisplay) {
@@ -2757,11 +2763,18 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     // dejar un select vacío que parece un dato perdido.
     const areaRecCont = document.getElementById('edit-sal-area-cont');
     const ventaClienteCont = document.getElementById('edit-sal-venta-cliente-cont');
-    const salIdAreaEl = document.getElementById('edit-sal-id-area');
-    if (salIdAreaEl) salIdAreaEl.value = m.id_area || '';
+    const selArea2 = document.getElementById('edit-sal-area');
+    const areaDisplay2 = document.getElementById('edit-sal-area-display');
     if (m.id_area) {
       if (areaRecCont) areaRecCont.style.display = '';
       if (ventaClienteCont) ventaClienteCont.style.display = 'none';
+      if (selArea2) {
+        selArea2.innerHTML = '<option value="">— Seleccionar Área —</option>'
+          + (areas||[]).map(function(a) {
+            return '<option value="'+a.id+'"'+(m.id_area==a.id?' selected':'')+'>'+a.nombre+(a.codigo?' ('+a.codigo+')':'')+'</option>';
+          }).join('');
+      }
+      if (areaDisplay2) areaDisplay2.textContent = m.area_receptora?.nombre || '—';
       const emps2 = await api('empleados','GET',null,'?id_area=eq.'+m.id_area+'&select=id_empleado,nombre_completo&order=nombre_completo.asc');
       const selEmp2 = document.getElementById('edit-sal-empleado');
       if (selEmp2) {
@@ -3154,7 +3167,7 @@ async function _guardarEdicionMovimientoInterno() {
   const id          = parseInt(document.getElementById('edit-mov-id').value);
   const id_articulo = parseInt(document.getElementById('edit-mov-id-articulo').value);
   const esSalida    = tipo === 'SALIDA';
-  const id_area     = parseInt((esSalida ? document.getElementById('edit-sal-id-area') : document.getElementById('edit-mov-area'))?.value) || null;
+  const id_area     = parseInt((esSalida ? document.getElementById('edit-sal-area') : document.getElementById('edit-mov-area'))?.value) || null;
   const idEmp       = parseInt((esSalida ? document.getElementById('edit-sal-empleado') : document.getElementById('edit-mov-empleado'))?.value) || null;
   const obs         = (esSalida ? document.getElementById('edit-sal-observaciones') : (document.getElementById('edit-mov-observaciones') || document.getElementById('edit-mov-obs')))?.value?.trim() || '';
   const clave       = (esSalida ? document.getElementById('edit-sal-clave') : document.getElementById('edit-mov-clave'))?.value || '';
@@ -3192,10 +3205,13 @@ async function _guardarEdicionMovimientoInterno() {
     } catch(eNotifFresh) { console.warn('Error revalidando notificación:', eNotifFresh); }
     const salFecha = document.getElementById('edit-sal-fecha')?.value;
     if (!salFecha) return mostrarError('Seleccione la Fecha de Salida.', 'edit-sal-fecha');
-    // NOTA: el Área Receptora ya NO es editable aquí (rediseño 1.6 -- solo
-    // se puede cambiar el Empleado, dentro de la misma Área original). Un
-    // id_area null es válido y esperado: significa Venta directa a Cliente
-    // (generada automática al facturar una OS), no una entrega Área↔Área.
+    // El Área Receptora ahora SÍ es editable (mientras la notificación siga
+    // PENDIENTE -- ya se revalidó arriba) -- pero solo aplica a entregas
+    // Área↔Área. Si el recuadro "Quien Recibe" está oculto, es porque esta
+    // Salida es una Venta directa a Cliente (id_area null desde su origen,
+    // generada automática al facturar una OS) -- ahí no hay Área que exigir.
+    const areaRecVisible = document.getElementById('edit-sal-area-cont')?.style.display !== 'none';
+    if (areaRecVisible && !id_area) return mostrarError('Seleccione el Área Receptora.', 'edit-sal-area');
   }
   if (tipo === 'ENTRADA') {
     const fechaNeg = document.getElementById('edit-mov-fecha-negociacion')?.value;
@@ -3589,24 +3605,35 @@ async function _guardarEdicionMovimientoInterno() {
             try {
               const [areaOrigenRow, areaDestRow] = await Promise.all([
                 movOrig.id_area_entrega ? api('param_areas','GET',null,'?id=eq.'+movOrig.id_area_entrega+'&select=nombre') : Promise.resolve(null),
-                movOrig.id_area          ? api('param_areas','GET',null,'?id=eq.'+movOrig.id_area+'&select=nombre')          : Promise.resolve(null),
+                id_area                 ? api('param_areas','GET',null,'?id=eq.'+id_area+'&select=nombre')                 : Promise.resolve(null),
               ]);
               nombreOrigen = areaOrigenRow?.[0]?.nombre || nombreOrigen;
               nombreDest   = areaDestRow?.[0]?.nombre   || nombreDest;
             } catch(eNombresArea) { console.warn('No se pudieron obtener nombres de Área (se usan genéricos):', eNombresArea); }
 
             // 3. Crear la nueva notificación PENDIENTE con los datos ya
-            // corregidos.
+            // corregidos -- el correo destino se recalcula con el Empleado
+            // ACTUAL del formulario (idEmp), no el de la notificación vieja:
+            // si se cambió el Empleado (o el Área), tiene que notificarse al
+            // correcto, no reenviarle al anterior.
             const artNomEdit = art?.nombre_articulo || art?.codigo_articulo || ('Art#' + id_articulo);
+            let correoDestNuevo = notifVieja[0].correo_destino;
+            try {
+              if (idEmp) {
+                const empNuevo = await api('empleados','GET',null,
+                  '?id_empleado=eq.'+idEmp+'&select=correo,usuarios(correo_usuario)');
+                correoDestNuevo = empNuevo?.[0]?.correo || empNuevo?.[0]?.usuarios?.correo_usuario || correoDestNuevo;
+              }
+            } catch(eCorreoNuevo) { console.warn('No se pudo obtener el correo del Empleado actual (se reutiliza el anterior):', eCorreoNuevo); }
             await api('notificaciones', 'POST', {
               tipo:           'RECEPCION_ARTICULO',
               id_empresa:      _empresaActiva?.id_empresa || null,
-              correo_destino: notifVieja[0].correo_destino,
+              correo_destino: correoDestNuevo,
               titulo:         'Solicitud de Recepción de Artículo (actualizada)',
               mensaje:        cantidad + ' unid. de "' + artNomEdit + '" enviadas desde ' + nombreOrigen + ' hacia ' + nombreDest + '. Información corregida -- por favor confirme la recepción.',
               estado:         'PENDIENTE',
               id_salida:      id,
-              datos_extra:    JSON.stringify({ id_articulo: id_articulo, cantidad: cantidad, id_area_origen: movOrig.id_area_entrega, id_area_destino: movOrig.id_area })
+              datos_extra:    JSON.stringify({ id_articulo: id_articulo, cantidad: cantidad, id_area_origen: movOrig.id_area_entrega, id_area_destino: id_area })
             }, '', true);
           }
         } catch(eNotifEdit) { console.warn('Error anulando/recreando notificación de la Salida editada:', eNotifEdit); }
@@ -4170,13 +4197,21 @@ function calcularTributosEdit() {
   if (prev) prev.style.display = '';
 }
 
-async function onSelAreaEditSalida() {
-  // NOTA: código muerto -- el select 'edit-sal-area' que usaba ya no existe
-  // en el HTML desde el rediseño de "Quien Recibe" (solo Empleado, sin
-  // selector de Área visible). Nada del HTML llama a esta función. Se deja
-  // el nombre reservado sin cuerpo por si algo externo aún la referencia,
-  // pero no debe usarse -- ver editarMovimiento() para la carga real del
-  // Empleado según m.id_area.
+async function onCambioAreaEditSalida() {
+  // Al cambiar el Área Receptora en modo Editar, la lista de Empleados debe
+  // recargarse -- los empleados pertenecen a un Área específica, no tendría
+  // sentido dejar seleccionado uno de la Área anterior.
+  const idArea = document.getElementById('edit-sal-area')?.value;
+  const selEmp = document.getElementById('edit-sal-empleado');
+  if (!selEmp) return;
+  if (!idArea) { selEmp.innerHTML = '<option value="">— Seleccionar Área primero —</option>'; return; }
+  try {
+    const emps = await api('empleados','GET',null,'?id_area=eq.'+idArea+'&select=id_empleado,nombre_completo&order=nombre_completo.asc');
+    selEmp.innerHTML = '<option value="">— Seleccionar empleado —</option>'
+      + (emps||[]).map(function(e){
+        return '<option value="'+e.id_empleado+'">'+e.nombre_completo+'</option>';
+      }).join('');
+  } catch(e) { console.warn('Error cargando empleados del Área:', e); }
 }
 
 // ═══ SECCION: Salida de Stock, Ajuste/Faltante de Inventario, soporte Entrada (ex facturacion.js) ═══

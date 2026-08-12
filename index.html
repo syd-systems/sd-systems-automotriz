@@ -1354,17 +1354,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260812218"></script>
-<script src="js/parametros.js?v=20260812218"></script>
-<script src="js/empresas.js?v=20260812218"></script>
-<script src="js/ingresos.js?v=20260812218"></script>
-<script src="js/inventario.js?v=20260812218"></script>
-<script src="js/proveedores.js?v=20260812218"></script>
-<script src="js/contabilidad.js?v=20260812218"></script>
-<script src="js/egresos.js?v=20260812218"></script>
-<script src="js/vehiculos.js?v=20260812218"></script>
-<script src="js/catalogo.js?v=20260812218"></script>
-<script src="js/ordenes.js?v=20260812218"></script>
+<script src="js/core.js?v=20260812219"></script>
+<script src="js/parametros.js?v=20260812219"></script>
+<script src="js/empresas.js?v=20260812219"></script>
+<script src="js/ingresos.js?v=20260812219"></script>
+<script src="js/inventario.js?v=20260812219"></script>
+<script src="js/proveedores.js?v=20260812219"></script>
+<script src="js/contabilidad.js?v=20260812219"></script>
+<script src="js/egresos.js?v=20260812219"></script>
+<script src="js/vehiculos.js?v=20260812219"></script>
+<script src="js/catalogo.js?v=20260812219"></script>
+<script src="js/ordenes.js?v=20260812219"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4819,13 +4819,18 @@
             <div style="font-size:10px;color:#60a5fa;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;border-bottom:1px solid rgba(96,165,250,0.2);padding-bottom:4px">📥 Quien Recibe</div>
           </div>
           <div id="edit-sal-area-cont" class="form-campo form-full" style="background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:12px 14px;margin-bottom:4px">
-            <div style="font-size:12px;color:var(--suave)">Empleado que Recibe</div>
+            <div style="font-size:12px;color:var(--suave)">Área Receptora</div>
+            <div id="edit-sal-area-display" style="font-size:16px;font-weight:600;color:#60a5fa;margin-top:2px">—</div>
+            <select id="edit-sal-area" onchange="onCambioAreaEditSalida()"
+              style="display:none;background:transparent;border:none;color:#60a5fa;font-family:var(--font-body);font-size:16px;font-weight:600;padding:2px 0 0;margin-top:2px;outline:none;width:100%;-webkit-appearance:none;-moz-appearance:none;appearance:none">
+              <option value="">— Seleccionar Área —</option>
+            </select>
+            <div style="font-size:12px;color:var(--suave);margin-top:10px">Empleado que Recibe</div>
             <div id="edit-sal-empleado-display" style="font-size:16px;font-weight:600;color:#60a5fa;margin-top:2px">—</div>
             <select id="edit-sal-empleado"
               style="display:none;background:transparent;border:none;color:#60a5fa;font-family:var(--font-body);font-size:16px;font-weight:600;padding:2px 0 0;margin-top:2px;outline:none;width:100%;-webkit-appearance:none;-moz-appearance:none;appearance:none">
               <option value="">— Seleccionar empleado —</option>
             </select>
-            <input type="hidden" id="edit-sal-id-area">
           </div>
           <div class="form-campo form-full" id="edit-sal-venta-cliente-cont" style="display:none;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.25);border-radius:6px;padding:10px 14px;font-size:12px;color:#60a5fa"></div>
 
