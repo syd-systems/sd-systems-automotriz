@@ -2727,10 +2727,16 @@ async function recargarHistorial(id_articulo) {
   if (!id_articulo) id_articulo = document.getElementById('historial-id-articulo').value;
   const cont = document.getElementById('historial-contenido');
   try {
-    // Filtrar por área si usuario no es admin
+    // Filtrar por Área SOLO si el Usuario realmente no tiene
+    // VER_INVENTARIO_GENERAL -- antes se revisaba "_invSaldoArea !== null",
+    // pero esa variable también queda distinta de null cuando un Usuario
+    // CON el permiso completo simplemente había aplicado el filtro manual
+    // de Área en Inventario General (otra pantalla) -- eso lo dejaba
+    // atrapado viendo solo su propia Área de empleado en el Historial, sin
+    // tener nada que ver con el permiso real que sí tiene.
     let id_areaH = null;
     let esAreaComprasH = false;
-    if (_invSaldoArea !== null) {
+    if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
       const empH = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_area&limit=1').catch(function(){ return []; });
       id_areaH = empH?.[0]?.id_area || null;
       // El Área de Compras se identifica por su código real (2300 —
