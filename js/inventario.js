@@ -2199,7 +2199,8 @@ async function invRenderMovimientos(cont) {
     + '<option value="articulo">Por Artículo</option>'
     + '<option value="proveedor">Por Proveedor</option>'
     + '<option value="rotacion">Rotación</option>'
-    + '<option value="saldo_area">Saldo por Área</option>'
+    + '<option value="saldo_area">Movimiento Neto del Período (por Área)</option>'
+    + '<option value="saldo_actual">Saldo Actual por Área</option>'
     + '</select></div>'
     + '<div id="mov-filtro-tipo-cont"><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Tipo</label>'
     + '<select id="mov-tipo" onchange="invCargarMovimientos()" style="' + INP + '">'
@@ -2276,6 +2277,22 @@ async function invCargarMovimientos() {
     const getArt = function(id) { return inventarioCache.find(function(x){ return x.id_articulo === id; }); };
     const artNom = function(a)  { return a ? a.nombre_articulo+(a.codigo_articulo?' ('+a.codigo_articulo+')':'') : '—'; };
 
+    // Movimientos anulados excluidos de TODAS las vistas de resumen/totales
+    // (área, categoría, artículo, proveedor, rotación, saldo por área) --
+    // solo la lista cronológica "Movimientos" los sigue mostrando, marcados
+    // con "REV", porque ahí sí interesa ver que existieron aunque ya no
+    // cuenten. Antes se sumaban igual en los totales, inflando los saldos.
+    const entradasValidas = entradas.filter(function(e){ return !e.anulada; });
+    const salidasValidas  = salidas.filter(function(s){ return !s.anulada; });
+    // Para cálculos de SALDO (no de actividad/volumen): una Transferencia
+    // genera DOS registros para el mismo movimiento real -- una Entrada
+    // (lado receptor) y una Salida "espejo" (lado origen), ambas marcadas
+    // [TRANSFERENCIA]. Sumar ambas duplica el efecto (ya lo capta la
+    // Entrada). Se excluyen aquí, mismo criterio que ya usa el Historial.
+    const salidasSinTransferencia = salidasValidas.filter(function(s){
+      return (s.observaciones||'').indexOf('[TRANSFERENCIA]') === -1;
+    });
+
     // ── VISTAS ────────────────────────────────────────────────
     if (agrup === 'movimientos') {
       // Lista cronológica
@@ -2333,14 +2350,14 @@ async function invCargarMovimientos() {
         }
         var _catG = _invCategoriasCache.find(function(c){ return c.id_categoria === art.id_categoria_articulo; }); return (_catG ? _catG.nombre : 'SIN CATEGORÍA').toUpperCase();
       };
-      entradas.forEach(function(e) {
+      entradasValidas.forEach(function(e) {
         const art = getArt(e.id_articulo); if (!art) return;
         const cat = getCatNom(art);
         if (!cats[cat]) cats[cat] = { entradas:0, salidas:0, costo:0 };
         cats[cat].entradas += parseFloat(e.cantidad||0);
         cats[cat].costo    += parseFloat(e.precio_costo_moneda||0) * parseFloat(e.cantidad||0);
       });
-      salidas.forEach(function(s) {
+      salidasValidas.forEach(function(s) {
         const art = getArt(s.id_articulo); if (!art) return;
         const cat = getCatNom(art);
         if (!cats[cat]) cats[cat] = { entradas:0, salidas:0, costo:0 };
@@ -2367,7 +2384,7 @@ async function invCargarMovimientos() {
     } else if (agrup === 'area') {
       const areas = {}; // key: areaNom||artNom
       // ENTRADAS directas (compras, ajustes) - excluir transferencias para no contar doble
-      entradas.forEach(function(e) {
+      entradasValidas.forEach(function(e) {
         if (e.motivo === 'transferencia') return; // Las transferencias se manejan desde salidas
         const art = getArt(e.id_articulo);
         const areaNom = e.area_receptora ? e.area_receptora.nombre+(e.area_receptora.codigo?' ('+e.area_receptora.codigo+')':'') : 'Sin área';
@@ -2377,7 +2394,7 @@ async function invCargarMovimientos() {
         areas[key].entradas += parseFloat(e.cantidad||0);
       });
       // SALIDAS = SALIDA del area origen + ENTRADA del area receptora
-      salidas.forEach(function(s) {
+      salidasValidas.forEach(function(s) {
         const art = getArt(s.id_articulo);
         const artNom    = art ? art.nombre_articulo : ('Art #'+s.id_articulo);
         // Area origen: quien entrega -> SALIDA
@@ -2411,14 +2428,14 @@ async function invCargarMovimientos() {
 
       } else if (agrup === 'articulo') {
       const arts = {};
-      entradas.forEach(function(e) {
+      entradasValidas.forEach(function(e) {
         const art=getArt(e.id_articulo); if(!art) return;
         const nom=artNom(art);
         if (!arts[nom]) arts[nom] = { entradas:0, salidas:0, cpp:art.precio_costo_moneda||0, stock:stockMostrarArticulo(art.id_articulo), hist:[] };
         arts[nom].entradas += parseFloat(e.cantidad||0);
         arts[nom].hist.push({ fecha:e.fecha_entrada, tipo:'E', cant:e.cantidad, cpp:e.precio_costo_moneda||0 });
       });
-      salidas.forEach(function(s) {
+      salidasValidas.forEach(function(s) {
         const art=getArt(s.id_articulo); if(!art) return;
         const nom=artNom(art);
         if (!arts[nom]) arts[nom] = { entradas:0, salidas:0, cpp:art.precio_costo_moneda||0, stock:stockMostrarArticulo(art.id_articulo), hist:[] };
@@ -2451,7 +2468,7 @@ async function invCargarMovimientos() {
 
     } else if (agrup === 'proveedor') {
       const provs = {};
-      entradas.filter(function(e){ return e.id_proveedor; }).forEach(function(e) {
+      entradasValidas.filter(function(e){ return e.id_proveedor; }).forEach(function(e) {
         const nom = e.proveedor ? e.proveedor.nombre : 'Prov #'+e.id_proveedor;
         if (!provs[nom]) provs[nom] = { cant:0, monto:0, items:0 };
         provs[nom].cant   += parseFloat(e.cantidad||0);
@@ -2476,15 +2493,19 @@ async function invCargarMovimientos() {
           +colC3+'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>');
 
     } else if (agrup === 'rotacion') {
+      // "Salidas" aquí debe reflejar consumo/uso real (venta, OS, etc.), no
+      // el movimiento interno entre Áreas -- una Transferencia no es una
+      // salida real del Artículo (sigue en la empresa, solo cambió de
+      // Área), y contarla duplicaría su efecto contra la Entrada emparejada.
       const rot = {};
-      entradas.forEach(function(e) {
+      entradasValidas.forEach(function(e) {
         const art=getArt(e.id_articulo); if(!art) return;
         const nom=artNom(art);
         if (!rot[nom]) rot[nom] = { entradas:0, salidas:0, movs:0 };
         rot[nom].entradas += parseFloat(e.cantidad||0);
         rot[nom].movs++;
       });
-      salidas.forEach(function(s) {
+      salidasSinTransferencia.forEach(function(s) {
         const art=getArt(s.id_articulo); if(!art) return;
         const nom=artNom(art);
         if (!rot[nom]) rot[nom] = { entradas:0, salidas:0, movs:0 };
@@ -2507,32 +2528,44 @@ async function invCargarMovimientos() {
         +'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>';
 
     } else if (agrup === 'saldo_area') {
-      // Saldo actual por área: stock que entró a cada área menos lo que salió
+      // Movimiento neto del período: cuánto cambió el stock de cada Área
+      // durante el rango Desde/Hasta seleccionado (entradas menos salidas
+      // DE ESE PERÍODO). NO es el saldo real actual -- si el Artículo tuvo
+      // movimientos antes de "Desde", esos no se cuentan aquí. Para el
+      // saldo real, ver "Saldo Actual por Área".
       const saldos = {};
-      entradas.forEach(function(e) {
+      entradasValidas.forEach(function(e) {
         const nom = e.area_receptora ? e.area_receptora.nombre+(e.area_receptora.codigo?' ('+e.area_receptora.codigo+')':'') : 'Sin área';
         const art = getArt(e.id_articulo); if(!art) return;
         if (!saldos[nom]) saldos[nom] = {};
         if (!saldos[nom][artNom(art)]) saldos[nom][artNom(art)] = 0;
         saldos[nom][artNom(art)] += parseFloat(e.cantidad||0);
       });
-      salidas.forEach(function(s) {
+      // Aquí sí se usa salidasValidas completo (no salidasSinTransferencia)
+      // para el lado que RESTA -- el Área que entrega SIEMPRE pierde ese
+      // stock, sea Transferencia o no, y esa resta no está duplicada en
+      // ningún otro lado. Lo que sí hay que omitir es la SUMA al Área que
+      // recibe cuando es Transferencia, porque esa parte ya la capta la
+      // Entrada emparejada (ver nota arriba).
+      salidasValidas.forEach(function(s) {
         const art = getArt(s.id_articulo); if(!art) return;
         const cant = parseFloat(s.cantidad||0);
+        const esTransferencia = (s.observaciones||'').indexOf('[TRANSFERENCIA]') !== -1;
         // Descuenta del área que entrega
         const nomOrigen = s.area_entrega ? s.area_entrega.nombre+(s.area_entrega.codigo?' ('+s.area_entrega.codigo+')':'') : 'Sin área';
         if (!saldos[nomOrigen]) saldos[nomOrigen] = {};
         if (!saldos[nomOrigen][artNom(art)]) saldos[nomOrigen][artNom(art)] = 0;
         saldos[nomOrigen][artNom(art)] -= cant;
-        // Suma al área que recibe
-        if (s.area_receptora) {
+        // Suma al área que recibe -- NO si es Transferencia (ya la sumó la
+        // Entrada emparejada; sumarla aquí también la duplicaría).
+        if (s.area_receptora && !esTransferencia) {
           const nomDestino = s.area_receptora.nombre+(s.area_receptora.codigo?' ('+s.area_receptora.codigo+')':'');
           if (!saldos[nomDestino]) saldos[nomDestino] = {};
           if (!saldos[nomDestino][artNom(art)]) saldos[nomDestino][artNom(art)] = 0;
           saldos[nomDestino][artNom(art)] += cant;
         }
       });
-      let html = '';
+      let html = '<div style="font-size:11px;color:var(--suave);margin-bottom:10px">📌 Esto es el movimiento neto <strong>del período seleccionado</strong> (Desde/Hasta), no el saldo real actual. Para el saldo real, use "Saldo Actual por Área".</div>';
       Object.keys(saldos).sort().forEach(function(area) {
         const filas = Object.keys(saldos[area]).sort().map(function(art) {
           const s=saldos[area][art];
@@ -2543,10 +2576,44 @@ async function invCargarMovimientos() {
         html += '<div style="margin-bottom:20px"><div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:8px 14px;margin-bottom:6px;font-family:var(--font-mono);color:var(--naranja)">'+area+'</div>'
           +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
           +'<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
-          +'<th style="text-align:right;padding:7px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Saldo</th>'
+          +'<th style="text-align:right;padding:7px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Neto del Período</th>'
           +'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>';
       });
-      res.innerHTML = html || '<div style="text-align:center;color:var(--suave);padding:40px">Sin datos en el período.</div>';
+      res.innerHTML = html;
+
+    } else if (agrup === 'saldo_actual') {
+      // Saldo REAL actual por Área -- ignora el filtro Desde/Hasta a
+      // propósito (un saldo es "ahora mismo", no depende de un rango de
+      // fechas). Viene directo de inventario_stock_area, la misma fuente
+      // que usa el resto del sistema (Inventario General, selector de
+      // Artículos en la OS, etc.) -- así siempre coincide.
+      let qStock = '?id_articulo=in.('+inClause+')&select=id_articulo,stock_actual,area:id_area(nombre,codigo)';
+      if (id_areaMovs) qStock += '&id_area=eq.'+id_areaMovs;
+      const stockRows = await api('inventario_stock_area','GET',null,qStock) || [];
+      const porArea = {};
+      stockRows.forEach(function(r) {
+        const art = getArt(r.id_articulo); if (!art) return;
+        const nom = r.area ? r.area.nombre+(r.area.codigo?' ('+r.area.codigo+')':'') : 'Sin área';
+        const stk = parseFloat(r.stock_actual||0);
+        if (!stk) return; // no mostrar ceros, igual que el resto del sistema
+        if (!porArea[nom]) porArea[nom] = {};
+        porArea[nom][artNom(art)] = stk;
+      });
+      let html2 = '';
+      Object.keys(porArea).sort().forEach(function(area) {
+        const filas = Object.keys(porArea[area]).sort().map(function(art) {
+          const s=porArea[area][art];
+          return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+            +'<td style="padding:7px;font-size:12px">'+art+'</td>'
+            +'<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-weight:700;color:'+(s>=0?'var(--naranja)':'#fc8181')+'">'+s+'</td></tr>';
+        });
+        html2 += '<div style="margin-bottom:20px"><div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:8px 14px;margin-bottom:6px;font-family:var(--font-mono);color:var(--naranja)">'+area+'</div>'
+          +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
+          +'<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
+          +'<th style="text-align:right;padding:7px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Saldo Actual</th>'
+          +'</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>';
+      });
+      res.innerHTML = html2 || '<div style="text-align:center;color:var(--suave);padding:40px">Sin stock registrado.</div>';
     }
 
   } catch(e) {
