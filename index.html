@@ -1354,17 +1354,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260813237"></script>
-<script src="js/parametros.js?v=20260813237"></script>
-<script src="js/empresas.js?v=20260813237"></script>
-<script src="js/ingresos.js?v=20260813237"></script>
-<script src="js/inventario.js?v=20260813237"></script>
-<script src="js/proveedores.js?v=20260813237"></script>
-<script src="js/contabilidad.js?v=20260813237"></script>
-<script src="js/egresos.js?v=20260813237"></script>
-<script src="js/vehiculos.js?v=20260813237"></script>
-<script src="js/catalogo.js?v=20260813237"></script>
-<script src="js/ordenes.js?v=20260813237"></script>
+<script src="js/core.js?v=20260813238"></script>
+<script src="js/parametros.js?v=20260813238"></script>
+<script src="js/empresas.js?v=20260813238"></script>
+<script src="js/ingresos.js?v=20260813238"></script>
+<script src="js/inventario.js?v=20260813238"></script>
+<script src="js/proveedores.js?v=20260813238"></script>
+<script src="js/contabilidad.js?v=20260813238"></script>
+<script src="js/egresos.js?v=20260813238"></script>
+<script src="js/vehiculos.js?v=20260813238"></script>
+<script src="js/catalogo.js?v=20260813238"></script>
+<script src="js/ordenes.js?v=20260813238"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3884,21 +3884,21 @@
           <div style="font-size:10px;color:var(--suave);margin-top:4px" id="salida-label-unidad"></div>
         </div>
         <div class="form-campo">
-          <label id="salida-precio-venta-label">Precio de Venta</label>
-          <div id="salida-precio-venta-display" style="font-family:var(--font-mono);font-size:14px;padding:11px 14px;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;color:var(--texto)">—</div>
-          <input type="number" id="salida-precio-venta" min="0" step="0.01" placeholder="0.00"
-            style="display:none;font-family:var(--font-mono)"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}"
-            onblur="this.value=this.value?parseFloat(this.value).toFixed(2):''">
-          <button type="button" id="salida-precio-venta-ajustar-btn" onclick="habilitarAjustePrecioVentaSalida()" style="display:none;font-size:10px;color:var(--naranja);background:none;border:none;cursor:pointer;padding:2px 0;margin-top:3px;text-align:left">✏ Ajustar manualmente</button>
-        </div>
-        <div class="form-campo">
-          <label>Moneda<br><span style="font-size:10px;visibility:hidden">(x)</span></label>
+          <label>Moneda</label>
           <select id="salida-moneda-venta" onchange="recalcularPrecioVentaSalida()" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccione moneda —</option>
             <option value="USD">USD — Dólar</option>
             <option value="VES">VES — Bolívar</option>
           </select>
+        </div>
+        <div class="form-campo">
+          <label id="salida-precio-venta-label">Precio de Venta</label>
+          <div id="salida-precio-venta-display" style="font-family:var(--font-mono);font-size:14px;padding:11px 14px;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+          <input type="number" id="salida-precio-venta" min="0" step="0.01" placeholder="0.00"
+            style="display:none;font-family:var(--font-mono)"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}"
+            onblur="this.value=this.value?parseFloat(this.value).toFixed(2):''">
+          <button type="button" id="salida-precio-venta-ajustar-btn" onclick="habilitarAjustePrecioVentaSalida()" style="display:none;font-size:10px;color:var(--naranja);background:none;border:none;cursor:pointer;padding:2px 0;margin-top:3px;text-align:left">✏ Ajustar manualmente</button>
         </div>
 
         <!-- Área y Empleado que RECIBE -->
@@ -4911,20 +4911,20 @@
             <input type="number" id="edit-sal-cantidad" min="0.01" step="0.01" placeholder="0"
               style="font-size:15px;font-family:var(--font-mono);text-align:center;color:var(--naranja)">
           </div>
-          <div class="form-campo" id="edit-sal-precio-venta-cont">
-            <label id="edit-sal-precio-venta-label">Precio de Venta</label>
-            <div id="edit-sal-precio-venta-display" style="font-family:var(--font-mono);font-size:14px;padding:11px 14px;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;color:var(--texto)">—</div>
-            <input type="number" id="edit-sal-precio-venta" min="0" step="0.01" placeholder="0.00"
-              style="display:none;font-family:var(--font-mono)"
-              onblur="this.value=this.value?parseFloat(this.value).toFixed(2):''">
-            <button type="button" id="edit-sal-precio-venta-ajustar-btn" onclick="habilitarAjustePrecioVentaEditSalida()" style="display:none;font-size:10px;color:var(--naranja);background:none;border:none;cursor:pointer;padding:2px 0;margin-top:3px;text-align:left">✏ Ajustar manualmente</button>
-          </div>
           <div class="form-campo" id="edit-sal-moneda-venta-cont">
-            <label>Moneda<br><span style="font-size:10px;visibility:hidden">(x)</span></label>
+            <label>Moneda</label>
             <select id="edit-sal-moneda-venta" onchange="recalcularPrecioVentaEditSalida()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
               <option value="USD">USD — Dólar</option>
               <option value="VES">VES — Bolívar</option>
             </select>
+          </div>
+          <div class="form-campo" id="edit-sal-precio-venta-cont">
+            <label id="edit-sal-precio-venta-label">Precio de Venta</label>
+            <div id="edit-sal-precio-venta-display" style="font-family:var(--font-mono);font-size:14px;padding:11px 14px;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+            <input type="number" id="edit-sal-precio-venta" min="0" step="0.01" placeholder="0.00"
+              style="display:none;font-family:var(--font-mono)"
+              onblur="this.value=this.value?parseFloat(this.value).toFixed(2):''">
+            <button type="button" id="edit-sal-precio-venta-ajustar-btn" onclick="habilitarAjustePrecioVentaEditSalida()" style="display:none;font-size:10px;color:var(--naranja);background:none;border:none;cursor:pointer;padding:2px 0;margin-top:3px;text-align:left">✏ Ajustar manualmente</button>
           </div>
 
           <!-- Quien Recibe -->

@@ -4799,10 +4799,11 @@ async function recalcularPrecioVentaSalida() {
   if (margen !== null && margen < 100) venta = cpp / (1 - margen/100);
   hiddenInput.value = venta.toFixed(2);
   const simb = monedaSel === 'VES' ? 'Bs ' : '$ ';
-  displayEl.textContent = simb + fmtUSD(venta)
-    + (margen === null
-        ? ' (sin Margen definido para este Tipo)'
-        : ' (Margen ' + margen.toFixed(1) + '%)');
+  const detalleTxt = margen === null
+    ? 'sin Margen definido'
+    : 'Margen ' + margen.toFixed(1) + '%';
+  displayEl.textContent = simb + fmtUSD(venta) + ' · ' + detalleTxt;
+  displayEl.title = simb + fmtUSD(venta) + ' (' + detalleTxt + ')';
 }
 
 // Desbloquea el Precio de Venta para ajuste manual -- solo Usuarios con
@@ -4844,10 +4845,11 @@ async function recalcularPrecioVentaEditSalida() {
   if (margen !== null && margen < 100) venta = cpp / (1 - margen/100);
   hiddenInput.value = venta.toFixed(2);
   const simb = monedaSel === 'VES' ? 'Bs ' : '$ ';
-  displayEl.textContent = simb + fmtUSD(venta)
-    + (margen === null
-        ? ' (sin Margen definido para este Tipo)'
-        : ' (Margen ' + margen.toFixed(1) + '%)');
+  const detalleTxt = margen === null
+    ? 'sin Margen definido'
+    : 'Margen ' + margen.toFixed(1) + '%';
+  displayEl.textContent = simb + fmtUSD(venta) + ' · ' + detalleTxt;
+  displayEl.title = simb + fmtUSD(venta) + ' (' + detalleTxt + ')';
 }
 
 function habilitarAjustePrecioVentaEditSalida() {
