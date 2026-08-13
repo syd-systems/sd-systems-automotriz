@@ -45,7 +45,12 @@ var _fichaInvActual = { id: null, nombre: '' }; // reubicada aqui desde ingresos
 function clasificarABC(items) {
   if (!items.length) return items;
   const conValor = items.map(function(r) {
-    return Object.assign({}, r, { valor_inventario: parseFloat(r.precio_venta_moneda || 0) * stockMostrarArticulo(r.id_articulo) });
+    // valor_inventario SIEMPRE en USD, y en VIVO (CPP ÷ Margen vigente) --
+    // el guardado es solo el histórico de la última Salida; usar ese
+    // rompería la clasificación si el CPP o el Margen cambiaron desde
+    // entonces, además del riesgo de mezclar monedas (ver precioVentaDual).
+    const ventaUSD = precioVentaEnVivo(r).usd;
+    return Object.assign({}, r, { valor_inventario: ventaUSD * stockMostrarArticulo(r.id_articulo) });
   });
   conValor.sort(function(a, b) { return b.valor_inventario - a.valor_inventario; });
   const totalValor = conValor.reduce(function(s, r) { return s + r.valor_inventario; }, 0);
@@ -55,6 +60,46 @@ function clasificarABC(items) {
     var pct = totalValor > 0 ? (acumulado / totalValor) * 100 : 0;
     return Object.assign({}, r, { clase_abc: pct <= 80 ? 'A' : pct <= 95 ? 'B' : 'C' });
   });
+}
+
+// Margen Bruto % vigente HOY para cada Tipo de Artículo, en una sola
+// consulta (no una por Artículo) -- se usa para calcular el Precio de
+// Venta EN VIVO donde se muestra el estado actual del Inventario
+// (Inventario General, Ficha del Artículo, Análisis ABC). El valor
+// guardado en inventario_almacen.precio_venta_moneda es solo el histórico
+// de la última Salida -- el real, si el CPP o el Margen cambiaron desde
+// entonces (por una Entrada nueva, o una corrección de Margen), es este.
+let _margenesVigentesMap = {};
+async function refrescarMargenesVigentes() {
+  _margenesVigentesMap = {};
+  try {
+    const hoy = new Date().toISOString().slice(0,10);
+    const rows = await api('param_margen_bruto','GET',null,
+      '?id_empresa=eq.'+(_empresaActiva?.id_empresa||0)
+      +'&estado=neq.ANULADO&fecha_vigencia_desde=lte.'+hoy
+      +'&order=fecha_vigencia_desde.desc,id.desc&select=id_tipo_articulo,margen_pct') || [];
+    rows.forEach(function(r) {
+      // Ya viene ordenado desc -- la primera vez que aparece un Tipo es su
+      // vigente más reciente; las siguientes filas de ese mismo Tipo se
+      // ignoran (son vigencias más viejas, ya reemplazadas).
+      if (_margenesVigentesMap[r.id_tipo_articulo] === undefined) {
+        _margenesVigentesMap[r.id_tipo_articulo] = parseFloat(r.margen_pct);
+      }
+    });
+  } catch(e) { console.warn('Error refrescando Márgenes vigentes:', e); }
+}
+
+// Precio de Venta EN VIVO: CPP actual ÷ (1 − Margen vigente del Tipo/100).
+// Devuelve {bs, usd} -- 0/0 si el Tipo no tiene Margen definido (regla de
+// negocio) o si el Artículo no tiene Tipo asignado.
+function precioVentaEnVivo(r) {
+  const cpp = parseFloat(r.precio_costo_moneda || 0);
+  const margen = r.id_tipo_articulo !== null && r.id_tipo_articulo !== undefined
+    ? _margenesVigentesMap[r.id_tipo_articulo]
+    : undefined;
+  if (margen === undefined || margen >= 100) return { bs: 0, usd: 0 };
+  const usd = cpp / (1 - margen/100);
+  return { bs: usd * (_tasaVigente || 0), usd: usd, margen: margen };
 }
 
 function invCalcularStockSeguridad() {
@@ -86,10 +131,17 @@ function calcularPuntoReorden(r) {
   return Math.ceil(demanda * lead + stockSeg);
 }
 
-function calcularMargen(r) {
-  var venta = parseFloat(r.precio_venta_moneda || 0);
-  if (!venta) return 0;
-  return ((venta - parseFloat(r.precio_costo_moneda || 0)) / venta * 100);
+// El Costo (CPP) SIEMPRE está guardado en USD (convención fija del
+// sistema). El Precio de Venta, en cambio, puede estar guardado en USD O
+// en VES, según inventario_almacen.moneda_venta -- esta función normaliza
+// ambos formatos a un par {bs, usd} siempre coherente, para no convertir
+// dos veces (ni comparar VES contra USD) en ningún lugar que lo muestre.
+function precioVentaDual(precioGuardado, monedaGuardada) {
+  const p = parseFloat(precioGuardado || 0);
+  if ((monedaGuardada || 'USD').toUpperCase() === 'VES') {
+    return { bs: p, usd: _tasaVigente ? (p / _tasaVigente) : 0 };
+  }
+  return { bs: p * (_tasaVigente || 0), usd: p };
 }
 
 async function calcularInvSaldoArea() {
@@ -249,6 +301,12 @@ async function renderInventario(filtro) {
     const itemsTodos = await api('inventario_almacen', 'GET', null, '?order=nombre_articulo.asc&select=*' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')) || [];
     const items = itemsTodos; // se muestran Activos e Inactivos; se distinguen por la columna Estado
     inventarioCache = items;
+
+    // Márgenes vigentes por Tipo -- para calcular el Precio de Venta EN
+    // VIVO (el real, según CPP y Margen actuales), no el guardado (que es
+    // solo el histórico de la última Salida). Se refresca siempre junto
+    // con el inventario, igual que ya hace calcularInvSaldoArea().
+    await refrescarMargenesVigentes();
 
     // Cargar entregas pendientes de "Confirmar Recepción" -- mientras el
     // receptor no confirma, el stock no está ni en el área que lo entregó
@@ -452,7 +510,6 @@ function invRenderTabla(items, cont) {
     const stockMostrar = stockMostrarArticulo(r.id_articulo);
     const stockBajo = parseFloat(r.stock_minimo_articulo||0) > 0 && stockMostrar <= r.stock_minimo_articulo;
     const abc = abcMap[r.id_articulo] || '—';
-    const margen = calcularMargen(r);
     return '<tr>'
       + '<td style="padding:5px 8px;vertical-align:middle"><div style="display:flex;align-items:center;gap:8px">'
       + '<span style="font-size:10px;font-weight:700;color:' + (abcColor[abc]||'#888') + ';background:' + (abcColor[abc]||'#888') + '22;padding:2px 6px;border-radius:3px">' + abc + '</span>'
@@ -484,12 +541,12 @@ function invRenderTabla(items, cont) {
       + (puedo('INVENTARIO','VER_PRECIOS_VENTA')
           ? (function() {
               const sinStock = stockMostrar === 0;
-              const ventaMostrar = sinStock ? 0 : parseFloat(r.precio_venta_moneda||0);
-              const margenMostrar = sinStock ? 0 : margen;
+              const dualVenta = sinStock ? {bs:0,usd:0,margen:undefined} : precioVentaEnVivo(r);
+              const margenTxt = dualVenta.margen !== undefined ? dualVenta.margen.toFixed(1) + '%' : 'sin definir';
               return '<td style="padding:5px 8px;vertical-align:middle;font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:9px">Venta</div>'
-                + '<span style="color:var(--naranja)">' + fmtBs(ventaMostrar * _tasaVigente) + ' Bs</span>'
-                + '<div style="font-size:9px;color:var(--suave);margin-top:1px">$ ' + fmtUSD(ventaMostrar) + '</div>'
-                + '<div style="font-size:9px;color:var(--suave);margin-top:1px">Margen: ' + margenMostrar.toFixed(1) + '%</div></td>';
+                + '<span style="color:var(--naranja)">' + fmtBs(dualVenta.bs) + ' Bs</span>'
+                + '<div style="font-size:9px;color:var(--suave);margin-top:1px">$ ' + fmtUSD(dualVenta.usd) + '</div>'
+                + '<div style="font-size:9px;color:var(--suave);margin-top:1px">Margen: ' + margenTxt + '</div></td>';
             })()
           : '<td style="padding:5px 8px;vertical-align:middle;text-align:center;color:#555;font-size:11px">🔒</td>')
       + '<td style="padding:5px 8px;vertical-align:middle"><span class="badge ' + (r.estado === 'INACTIVO' ? 'badge-rojo' : 'badge-verde') + '">' + (r.estado || 'ACTIVO') + '</span></td>'
@@ -522,7 +579,7 @@ function invRenderABC(items, cont) {
         + '<td><span style="font-size:10px;font-weight:700;color:' + abcColor[g] + ';background:' + abcColor[g] + '22;padding:2px 7px;border-radius:3px">' + g + '</span></td>'
         + '<td style="font-weight:500">' + r.nombre_articulo + '</td>'
         + '<td style="font-family:var(--font-mono);text-align:center">' + stockMostrarArticulo(r.id_articulo) + ' ' + (r.unidad||'UND') + '</td>'
-        + '<td style="font-family:var(--font-mono)">$ ' + fmtUSD(r.precio_venta_moneda) + '</td>'
+        + '<td style="font-family:var(--font-mono)">$ ' + fmtUSD(precioVentaEnVivo(r).usd) + '</td>'
         + '<td style="font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(r.valor_inventario) + '</td>'
         + '<td style="font-size:11px;color:var(--suave)">' + pct + '%</td></tr>';
     });
@@ -611,15 +668,20 @@ async function verFichaInventario(id) {
 
   // ── GET fresco de BD para costos actualizados (el stock ya se lee de inventario_stock_area) ──
   try {
-    var qs = '?id_articulo=eq.' + id + '&select=precio_costo_moneda,precio_costo_ultimo_moneda,precio_venta_moneda';
+    var qs = '?id_articulo=eq.' + id + '&select=precio_costo_moneda,precio_costo_ultimo_moneda,precio_venta_moneda,moneda_venta';
     if (_empresaActiva && _empresaActiva.id_empresa) qs += '&id_empresa=eq.' + _empresaActiva.id_empresa;
     var fresh = await api('inventario_almacen', 'GET', null, qs);
     if (fresh && fresh[0]) {
       r.precio_costo_moneda        = parseFloat(fresh[0].precio_costo_moneda)        || 0;
       r.precio_costo_ultimo_moneda = parseFloat(fresh[0].precio_costo_ultimo_moneda) || 0;
       r.precio_venta_moneda        = parseFloat(fresh[0].precio_venta_moneda)        || 0;
+      r.moneda_venta                = fresh[0].moneda_venta || 'USD';
     }
   } catch(e) { console.warn('verFichaInventario GET fresco:', e.message); }
+
+  // Márgenes vigentes -- fresco también aquí, por si la Ficha se abre sin
+  // haber pasado antes por la lista general recién cargada.
+  await refrescarMargenesVigentes();
 
   const abcMap = {};
   clasificarABC(inventarioCache).forEach(function(x) { abcMap[x.id_articulo] = x.clase_abc; });
@@ -628,8 +690,8 @@ async function verFichaInventario(id) {
   const stockMostrarFicha = stockMostrarArticulo(r.id_articulo);
   const sinStockFicha = stockMostrarFicha === 0;
   const costoMostrarFicha = sinStockFicha ? 0 : parseFloat(r.precio_costo_moneda||0);
-  const ventaMostrarFicha = sinStockFicha ? 0 : parseFloat(r.precio_venta_moneda||0);
-  const margen = sinStockFicha ? '0.0' : ((parseFloat(r.precio_venta_moneda||0) - parseFloat(r.precio_costo_moneda||0)) / (parseFloat(r.precio_venta_moneda||0)||1) * 100).toFixed(1);
+  const dualVentaFicha = sinStockFicha ? {bs:0,usd:0,margen:undefined} : precioVentaEnVivo(r);
+  const margenTxt = dualVentaFicha.margen !== undefined ? dualVentaFicha.margen.toFixed(1) + '%' : 'sin definir';
   const stockBajo = stockMostrarFicha <= r.stock_minimo_articulo;
 
   document.getElementById('ficha-inv-contenido').innerHTML =
@@ -649,9 +711,9 @@ async function verFichaInventario(id) {
     + (puedo('INVENTARIO','VER_COSTOS') ? '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Costo Prom. (CPP)</div><div style="font-family:var(--font-mono)">$ ' + fmtUSD(costoMostrarFicha) + '</div><div style="font-size:11px;color:var(--suave);margin-top:2px;font-family:var(--font-mono)">Bs ' + fmtBs(costoMostrarFicha * _tasaVigente) + '</div></div>' : '')
     + (puedo('INVENTARIO','VER_PRECIOS_VENTA')
         ? '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
-          + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + fmtBs(ventaMostrarFicha * _tasaVigente) + ' Bs</div>'
-          + '<div style="font-size:11px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(ventaMostrarFicha) + '</div>'
-          + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margen + '%</div></div>'
+          + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + fmtBs(dualVentaFicha.bs) + ' Bs</div>'
+          + '<div style="font-size:11px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(dualVentaFicha.usd) + '</div>'
+          + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margenTxt + '</div></div>'
         : '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
           + '<div style="font-size:13px;color:#555">🔒</div></div>')
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Categoría</div>'
@@ -4562,19 +4624,23 @@ async function abrirStockArticulo(id, nombre) {
   var stockActual = stockMostrarArticulo(id);
   var cppActual   = parseFloat(r.precio_costo_moneda)   || 0;
   var ventaActual = parseFloat(r.precio_venta_moneda)   || 0;
+  var monedaVentaActual = r.moneda_venta || 'USD';
   try {
-    var qs = '?id_articulo=eq.' + id + '&select=precio_costo_moneda,precio_venta_moneda,unidad,estado';
+    var qs = '?id_articulo=eq.' + id + '&select=precio_costo_moneda,precio_venta_moneda,moneda_venta,unidad,estado';
     if (_empresaActiva && _empresaActiva.id_empresa) qs += '&id_empresa=eq.' + _empresaActiva.id_empresa;
     var fresh = await api('inventario_almacen', 'GET', null, qs);
     if (fresh && fresh[0]) {
       if (fresh[0].precio_costo_moneda   != null) cppActual   = parseFloat(fresh[0].precio_costo_moneda);
       if (fresh[0].precio_venta_moneda   != null) ventaActual = parseFloat(fresh[0].precio_venta_moneda);
+      monedaVentaActual = fresh[0].moneda_venta || 'USD';
       r.precio_costo_moneda   = cppActual;
       r.precio_venta_moneda   = ventaActual;
+      r.moneda_venta           = monedaVentaActual;
       r.estado = fresh[0].estado;
     }
   } catch(e) { console.warn('abrirStockArticulo GET fresco:', e.message); }
-  if (stockActual === 0) { cppActual = 0; ventaActual = 0; } // sin stock, sin costo/venta que mostrar
+  if (stockActual === 0) { cppActual = 0; } // sin stock, sin costo que mostrar
+  await refrescarMargenesVigentes();
 
   const inactivoArt = r.estado === 'INACTIVO';
   document.getElementById('stock-art-nombre').textContent = r.nombre_articulo + (inactivoArt ? ' (INACTIVO)' : '');
@@ -4582,7 +4648,8 @@ async function abrirStockArticulo(id, nombre) {
 
   const ventaCont = document.getElementById('stock-art-venta-cont');
   if (puedo('INVENTARIO','VER_PRECIOS_VENTA')) {
-    document.getElementById('stock-art-venta').textContent = '$ ' + fmtUSD(ventaActual);
+    const dualVentaModal = stockActual === 0 ? {usd:0} : precioVentaEnVivo(r);
+    document.getElementById('stock-art-venta').textContent = '$ ' + fmtUSD(dualVentaModal.usd);
     if (ventaCont) ventaCont.style.display = '';
   } else {
     if (ventaCont) ventaCont.style.display = 'none';
