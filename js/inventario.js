@@ -1901,7 +1901,7 @@ async function invRenderMargenBruto(cont) {
       api('param_margen_bruto','GET',null,'?id_empresa=eq.'+id_emisor+'&order=fecha_vigencia_desde.desc,id.desc&select=*'),
     ]);
     _invMargenBrutoCache = margenesTodos || [];
-    const margenes = _invMargenBrutoCache.filter(function(m){ return m.fecha_vigencia_desde <= hoy; });
+    const margenes = _invMargenBrutoCache.filter(function(m){ return m.fecha_vigencia_desde <= hoy && m.estado !== 'ANULADO'; });
     const catsMap = {}; (cats||[]).forEach(function(c){ catsMap[c.id_categoria]=c; });
     // El vigente de cada Tipo es el de fecha_vigencia_desde más reciente
     // (ya viene ordenado desc, así que basta con quedarse con el primero
@@ -1945,6 +1945,9 @@ async function invRenderMargenBruto(cont) {
 let _invMargenBrutoCache = [];
 
 function abrirDefinirMargen(id_tipo, nombreTipo) {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_MARGEN_BRUTO')) {
+    alert('No tiene permiso para definir el Margen Bruto.'); return;
+  }
   document.getElementById('margen-id-tipo').value = id_tipo;
   document.getElementById('margen-tipo-nombre').textContent = nombreTipo || '—';
   document.getElementById('margen-pct').value = '';
@@ -1955,6 +1958,9 @@ function abrirDefinirMargen(id_tipo, nombreTipo) {
 }
 
 async function guardarMargenBruto() {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_MARGEN_BRUTO')) {
+    alert('No tiene permiso para definir el Margen Bruto.'); return;
+  }
   const errEl = document.getElementById('alerta-margen-err');
   const okEl = document.getElementById('alerta-margen-ok');
   errEl.style.display = 'none'; okEl.style.display = 'none';
@@ -1964,6 +1970,19 @@ async function guardarMargenBruto() {
   if (!id_tipo_articulo) { errEl.textContent = 'Falta el Tipo de Artículo.'; errEl.style.display = 'block'; return; }
   if (isNaN(margen_pct) || margen_pct < 0) { errEl.textContent = 'Ingrese un % de Margen válido (0 o mayor).'; errEl.style.display = 'block'; document.getElementById('margen-pct')?.focus(); return; }
   if (!fecha_vigencia_desde) { errEl.textContent = 'Seleccione la Fecha de Vigencia.'; errEl.style.display = 'block'; document.getElementById('margen-fecha')?.focus(); return; }
+  // Ya existe una restricción UNIQUE en la base (id_empresa, id_tipo_articulo,
+  // fecha_vigencia_desde) -- esta validación es solo para mostrar un mensaje
+  // amigable en vez del error crudo de Postgres si de todos modos se llega
+  // a intentar (p.ej. caché desactualizada del historial en pantalla).
+  const yaExiste = (_invMargenBrutoCache||[]).some(function(m) {
+    return m.id_tipo_articulo === id_tipo_articulo && m.fecha_vigencia_desde === fecha_vigencia_desde;
+  });
+  if (yaExiste) {
+    errEl.textContent = 'Ya existe un Margen registrado para este Tipo con esa misma Fecha de Vigencia. Elija otra fecha, o edite el valor existente desde "Ver historial".';
+    errEl.style.display = 'block';
+    document.getElementById('margen-fecha')?.focus();
+    return;
+  }
   try {
     await api('param_margen_bruto', 'POST', {
       id_empresa: _empresaActiva?.id_empresa || null,
@@ -1979,12 +1998,18 @@ async function guardarMargenBruto() {
       invRenderMargenBruto();
     }, 900);
   } catch(e) {
-    errEl.textContent = 'Error al guardar: ' + e.message;
+    const msgDuplicado = (e.message || '').indexOf('margen_bruto_unico') !== -1 || (e.message || '').indexOf('duplicate') !== -1;
+    errEl.textContent = msgDuplicado
+      ? 'Ya existe un Margen registrado para este Tipo con esa misma Fecha de Vigencia.'
+      : 'Error al guardar: ' + e.message;
     errEl.style.display = 'block';
   }
 }
 
 async function verHistorialMargen(id_tipo, nombreTipo) {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_MARGEN_BRUTO')) {
+    alert('No tiene permiso para ver el Historial de Margen Bruto.'); return;
+  }
   const filas = (_invMargenBrutoCache||[]).filter(function(m){ return m.id_tipo_articulo===id_tipo; });
   const tituloEl = document.getElementById('historial-margen-titulo');
   if (tituloEl) tituloEl.textContent = '📜 Historial de Margen — ' + (nombreTipo || '');
@@ -1992,21 +2017,112 @@ async function verHistorialMargen(id_tipo, nombreTipo) {
   if (!filas.length) {
     cont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--suave)">Sin historial registrado para este Tipo.</div>';
   } else {
+    // La fila corregible es la ACTIVO más reciente (filas ya viene ordenado
+    // por fecha_vigencia_desde desc, id desc desde invRenderMargenBruto) --
+    // solo esa puede "Corregirse"; una ya reemplazada o ya anulada, no.
+    const idMasRecienteActivo = (filas.find(function(m){ return m.estado !== 'ANULADO'; }) || {}).id;
     cont.innerHTML = '<table style="width:100%;border-collapse:collapse"><thead><tr>'
       +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Vigente desde</th>'
       +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Margen %</th>'
       +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Registrado por</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Estado</th>'
+      +'<th style="padding:8px"></th>'
       +'</tr></thead><tbody>'
       + filas.map(function(m) {
+        const anulado = m.estado === 'ANULADO';
+        const styleTachado = anulado ? 'text-decoration:line-through;opacity:0.55' : '';
         return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
-          +'<td style="padding:8px;font-size:12px">'+formatearFechaCorta(m.fecha_vigencia_desde)+'</td>'
-          +'<td style="padding:8px;font-family:var(--font-mono);font-weight:600">'+parseFloat(m.margen_pct).toFixed(2)+'%</td>'
-          +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(m.id_usuario||'—')+'</td>'
+          +'<td style="padding:8px;font-size:12px;'+styleTachado+'">'+formatearFechaCorta(m.fecha_vigencia_desde)+'</td>'
+          +'<td style="padding:8px;font-family:var(--font-mono);font-weight:600;'+styleTachado+'">'+parseFloat(m.margen_pct).toFixed(2)+'%</td>'
+          +'<td style="padding:8px;font-size:12px;color:var(--suave);'+styleTachado+'">'+(m.id_usuario||'—')+'</td>'
+          +'<td style="padding:8px"><span class="badge '+(anulado?'badge-rojo':'badge-verde')+'" style="font-size:10px">'+(anulado?'ANULADO':'ACTIVO')+'</span></td>'
+          +'<td style="padding:8px">'+(m.id===idMasRecienteActivo
+              ? '<button class="btn-naranja" onclick="abrirCorregirMargen('+m.id+','+m.id_tipo_articulo+',\''+(nombreTipo||'').replace(/'/g,"\\'")+'\','+parseFloat(m.margen_pct)+')" style="font-size:11px;padding:4px 10px">✏ Corregir</button>'
+              : '')+'</td>'
           +'</tr>';
       }).join('')
       +'</tbody></table>';
   }
   abrirModal('modal-historial-margen');
+}
+
+function abrirCorregirMargen(idViejo, id_tipo, nombreTipo, valorViejo) {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_MARGEN_BRUTO')) {
+    alert('No tiene permiso para corregir el Margen Bruto.'); return;
+  }
+  // Blindaje: revalidar que esta fila SIGUE siendo la más reciente activa --
+  // por si el Historial en pantalla quedó desactualizado (otra persona
+  // pudo haber agregado un valor más nuevo mientras se tenía este modal
+  // abierto).
+  const filasVigentes = (_invMargenBrutoCache||[])
+    .filter(function(m){ return m.id_tipo_articulo===id_tipo && m.estado !== 'ANULADO'; });
+  const masReciente = filasVigentes[0]; // ya viene ordenado desc desde la carga
+  if (!masReciente || masReciente.id !== idViejo) {
+    alert('No se puede corregir este registro: ya existe un valor más reciente que lo reemplazó. Actualice el Historial e inténtelo de nuevo si hace falta.');
+    return;
+  }
+  document.getElementById('corregir-margen-id-viejo').value = idViejo;
+  document.getElementById('corregir-margen-id-tipo').value = id_tipo;
+  document.getElementById('corregir-margen-tipo-nombre').textContent = nombreTipo || '—';
+  document.getElementById('corregir-margen-valor-viejo').textContent = parseFloat(valorViejo).toFixed(2) + '%';
+  document.getElementById('corregir-margen-pct').value = '';
+  document.getElementById('corregir-margen-clave').value = '';
+  document.getElementById('alerta-corregir-margen-ok').style.display = 'none';
+  document.getElementById('alerta-corregir-margen-err').style.display = 'none';
+  cerrarModal('modal-historial-margen');
+  abrirModal('modal-corregir-margen');
+}
+
+async function guardarCorreccionMargen() {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_MARGEN_BRUTO')) {
+    alert('No tiene permiso para corregir el Margen Bruto.'); return;
+  }
+  const errEl = document.getElementById('alerta-corregir-margen-err');
+  const okEl = document.getElementById('alerta-corregir-margen-ok');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+  const idViejo = parseInt(document.getElementById('corregir-margen-id-viejo').value) || null;
+  const id_tipo = parseInt(document.getElementById('corregir-margen-id-tipo').value) || null;
+  const nuevoPct = parseFloat(document.getElementById('corregir-margen-pct').value);
+  const clave = document.getElementById('corregir-margen-clave').value || '';
+  if (!idViejo || !id_tipo) { errEl.textContent = 'Faltan datos del registro a corregir.'; errEl.style.display = 'block'; return; }
+  if (isNaN(nuevoPct) || nuevoPct < 0) { errEl.textContent = 'Ingrese un % de Margen válido (0 o mayor).'; errEl.style.display = 'block'; document.getElementById('corregir-margen-pct')?.focus(); return; }
+  if (!clave) { errEl.textContent = 'Ingrese su contraseña para confirmar la corrección.'; errEl.style.display = 'block'; document.getElementById('corregir-margen-clave')?.focus(); return; }
+  try {
+    const verif = await verificarContrasena(sesionActual.correo_usuario, clave);
+    if (!verif.ok) { errEl.textContent = verif.msg || 'Contraseña incorrecta.'; errEl.style.display = 'block'; return; }
+
+    // Revalidación fresca (defensa en profundidad): confirmar en la base,
+    // justo antes de escribir, que esta sigue siendo la ACTIVO más
+    // reciente para este Tipo.
+    const freschChk = await api('param_margen_bruto','GET',null,
+      '?id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&id_tipo_articulo=eq.'+id_tipo
+      +'&estado=neq.ANULADO&order=fecha_vigencia_desde.desc,id.desc&limit=1&select=id');
+    if (!freschChk || !freschChk[0] || freschChk[0].id !== idViejo) {
+      errEl.textContent = 'No se puede corregir: ya existe un valor más reciente que lo reemplazó.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    const hoy = new Date().toISOString().slice(0,10);
+    await api('param_margen_bruto', 'PATCH', { estado: 'ANULADO' }, '?id=eq.'+idViejo);
+    await api('param_margen_bruto', 'POST', {
+      id_empresa: _empresaActiva?.id_empresa || null,
+      id_tipo_articulo: id_tipo,
+      margen_pct: nuevoPct,
+      fecha_vigencia_desde: hoy,
+      id_usuario: sesionActual?.correo_usuario || null,
+      estado: 'ACTIVO',
+    });
+    okEl.textContent = '✓ Corrección aplicada correctamente.';
+    okEl.style.display = 'block';
+    setTimeout(function() {
+      cerrarModal('modal-corregir-margen');
+      invRenderMargenBruto();
+    }, 900);
+  } catch(e) {
+    errEl.textContent = 'Error al corregir: ' + e.message;
+    errEl.style.display = 'block';
+  }
 }
 
 async function invAbrirTipo(id) {
