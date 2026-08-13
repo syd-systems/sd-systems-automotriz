@@ -2895,7 +2895,7 @@ function _renderFilaHistorial(m) {
       ? '<div>' + (m.area_receptora ? m.area_receptora.nombre + (m.area_receptora.codigo ? ' (' + m.area_receptora.codigo + ')' : '') : '—') + '</div>'
         + (m.area_origen ? '<div style="font-size:11px;color:#60a5fa">↩ Origen: ' + m.area_origen.nombre + (m.area_origen.codigo ? ' (' + m.area_origen.codigo + ')' : '') + '</div>' : '')
         + (m.proveedores ? '<div style="font-size:11px;color:#a78bfa">🏭 ' + m.proveedores.nombre + '</div>' : '')
-        + ((m.precio_compra_original ?? m.precio_costo_moneda)
+        + ((puedo('INVENTARIO','VER_COSTOS') && (m.precio_compra_original ?? m.precio_costo_moneda))
             ? '<div style="font-size:11px;color:var(--suave)">' + (m.moneda_compra === 'VES' ? 'Bs. ' + fmtBs(m.precio_compra_original ?? m.precio_costo_moneda) : '$ ' + fmtUSD(m.precio_compra_original ?? m.precio_costo_moneda)) + ' / u</div>'
             : '')
       : '<div>' + area + '</div>')
@@ -4560,7 +4560,7 @@ function onCambiarMotivoEdit() {
   const pagoCont   = document.getElementById('edit-mov-pago-cont');
   const creditoCont = document.getElementById('edit-mov-credito-cont');
   [monedaCont, precioCont, preciosCont, tasaCont, pagoCont].forEach(function(el) {
-    if (el) el.style.display = esCompra ? '' : 'none';
+    if (el) el.style.display = (esCompra && (sesionActual?.administrador || puedo('INVENTARIO','VER_COSTOS'))) ? '' : 'none';
   });
   if (!esCompra && creditoCont) creditoCont.style.display = 'none';
 }
