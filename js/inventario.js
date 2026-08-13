@@ -2981,6 +2981,11 @@ function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
     // Margen vigente) por si el Costo o el Margen cambiaron desde que se
     // guardó -- salvo que el Usuario ya lo esté ajustando manualmente.
     window._editSalPrecioManual = false;
+    // Se libera la Moneda también aquí (por si había quedado bloqueada de
+    // un ajuste manual anterior) -- este bloque corre tanto al abrir la
+    // ficha como al entrar a modo Editar.
+    const monedaSelLibEd = document.getElementById('edit-sal-moneda-venta');
+    if (monedaSelLibEd) monedaSelLibEd.disabled = false;
     const pvDisplayEd = document.getElementById('edit-sal-precio-venta-display');
     const pvInputEd = document.getElementById('edit-sal-precio-venta');
     const pvAjustarBtnEd = document.getElementById('edit-sal-precio-venta-ajustar-btn');
@@ -4694,6 +4699,10 @@ async function abrirSalidaStock(id, nombre) {
   document.getElementById('salida-art-nombre').textContent = nombre;
   document.getElementById('salida-id-articulo').value      = id;
   document.getElementById('salida-cantidad').value         = '';
+  // Al reabrir el modal desde cero, la Moneda queda liberada de nuevo (por
+  // si en un uso anterior se había bloqueado al ajustar el Precio a mano).
+  const monedaSelLib = document.getElementById('salida-moneda-venta');
+  if (monedaSelLib) monedaSelLib.disabled = false;
   // Tasa BCV vigente -- solo informativa, ya cargada globalmente al iniciar
   // sesión (_tasaVigente); no depende de ninguna selección de este modal.
   const tasaDispEl = document.getElementById('salida-tasa-bcv-display');
@@ -4824,6 +4833,12 @@ function habilitarAjustePrecioVentaSalida() {
   if (pvDisplay) pvDisplay.style.display = 'none';
   if (pvInputEl) { pvInputEl.style.display = ''; pvInputEl.focus(); }
   if (ajustarBtn) ajustarBtn.style.display = 'none';
+  // Al ajustar el Precio manualmente, la Moneda queda bloqueada -- si se
+  // pudiera seguir cambiando, el valor escrito a mano quedaría desfasado
+  // (fue calculado/pensado para una Moneda específica). Se libera de nuevo
+  // recién al volver a abrir el modal desde cero (ver abrirSalidaStock()).
+  const monedaSelBloq = document.getElementById('salida-moneda-venta');
+  if (monedaSelBloq) monedaSelBloq.disabled = true;
 }
 
 // Mismo mecanismo (CPP ÷ (1 − Margen/100)) pero para la Ficha de Editar
@@ -4867,6 +4882,11 @@ function habilitarAjustePrecioVentaEditSalida() {
   if (pvDisplay) pvDisplay.style.display = 'none';
   if (pvInputEl) { pvInputEl.style.display = ''; pvInputEl.focus(); }
   if (ajustarBtn) ajustarBtn.style.display = 'none';
+  // Mismo bloqueo que en Nueva Salida: Moneda queda fija mientras el
+  // Precio esté en ajuste manual -- se libera al volver a entrar en modo
+  // Editar (ver _aplicarSoloLecturaMovimiento()).
+  const monedaSelBloqEd = document.getElementById('edit-sal-moneda-venta');
+  if (monedaSelBloqEd) monedaSelBloqEd.disabled = true;
 }
 
 
