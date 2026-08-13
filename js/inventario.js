@@ -2976,6 +2976,17 @@ function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
       empSel.style.display = soloLectura ? 'none' : '';
       empDisplay.style.display = soloLectura ? '' : 'none';
     }
+    // Moneda: mismo tratamiento -- texto plano en modo lectura, select real
+    // solo al Editar.
+    const monSel = document.getElementById('edit-sal-moneda-venta');
+    const monDisplay = document.getElementById('edit-sal-moneda-venta-display');
+    if (monSel && monDisplay) {
+      monSel.style.display = soloLectura ? 'none' : '';
+      monDisplay.style.display = soloLectura ? '' : 'none';
+      if (soloLectura) {
+        monDisplay.textContent = monSel.value === 'VES' ? 'VES — Bolívar' : 'USD — Dólar';
+      }
+    }
     // Precio de Venta: en modo lectura se ve el valor histórico guardado,
     // tal cual quedó. Al entrar a Editar, se recalcula fresco (CPP ÷
     // Margen vigente) por si el Costo o el Margen cambiaron desde que se

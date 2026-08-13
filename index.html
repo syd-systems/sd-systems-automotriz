@@ -1354,17 +1354,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260813251"></script>
-<script src="js/parametros.js?v=20260813251"></script>
-<script src="js/empresas.js?v=20260813251"></script>
-<script src="js/ingresos.js?v=20260813251"></script>
-<script src="js/inventario.js?v=20260813251"></script>
-<script src="js/proveedores.js?v=20260813251"></script>
-<script src="js/contabilidad.js?v=20260813251"></script>
-<script src="js/egresos.js?v=20260813251"></script>
-<script src="js/vehiculos.js?v=20260813251"></script>
-<script src="js/catalogo.js?v=20260813251"></script>
-<script src="js/ordenes.js?v=20260813251"></script>
+<script src="js/core.js?v=20260813252"></script>
+<script src="js/parametros.js?v=20260813252"></script>
+<script src="js/empresas.js?v=20260813252"></script>
+<script src="js/ingresos.js?v=20260813252"></script>
+<script src="js/inventario.js?v=20260813252"></script>
+<script src="js/proveedores.js?v=20260813252"></script>
+<script src="js/contabilidad.js?v=20260813252"></script>
+<script src="js/egresos.js?v=20260813252"></script>
+<script src="js/vehiculos.js?v=20260813252"></script>
+<script src="js/catalogo.js?v=20260813252"></script>
+<script src="js/ordenes.js?v=20260813252"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4928,7 +4928,8 @@
           <div style="display:grid;grid-template-columns:2fr 3fr;gap:16px;margin-top:16px">
           <div class="form-campo" id="edit-sal-moneda-venta-cont">
             <label>Moneda</label>
-            <select id="edit-sal-moneda-venta" onchange="recalcularPrecioVentaEditSalida()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box;height:46px">
+            <div id="edit-sal-moneda-venta-display" style="font-size:16px;font-weight:600;color:#60a5fa;padding:11px 14px;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;box-sizing:border-box;height:46px;display:flex;align-items:center">—</div>
+            <select id="edit-sal-moneda-venta" onchange="recalcularPrecioVentaEditSalida()" style="display:none;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box;height:46px">
               <option value="USD">USD — Dólar</option>
               <option value="VES">VES — Bolívar</option>
             </select>
