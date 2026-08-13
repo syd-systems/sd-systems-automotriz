@@ -2914,6 +2914,27 @@ function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
       empSel.style.display = soloLectura ? 'none' : '';
       empDisplay.style.display = soloLectura ? '' : 'none';
     }
+    // Precio de Venta: en modo lectura se ve el valor histórico guardado,
+    // tal cual quedó. Al entrar a Editar, se recalcula fresco (CPP ÷
+    // Margen vigente) por si el Costo o el Margen cambiaron desde que se
+    // guardó -- salvo que el Usuario ya lo esté ajustando manualmente.
+    window._editSalPrecioManual = false;
+    const pvDisplayEd = document.getElementById('edit-sal-precio-venta-display');
+    const pvInputEd = document.getElementById('edit-sal-precio-venta');
+    const pvAjustarBtnEd = document.getElementById('edit-sal-precio-venta-ajustar-btn');
+    if (pvDisplayEd) pvDisplayEd.style.display = '';
+    if (pvInputEd) pvInputEd.style.display = 'none';
+    if (pvAjustarBtnEd) pvAjustarBtnEd.style.display = (!soloLectura && (sesionActual?.administrador || puedo('INVENTARIO','AJUSTAR_PRECIO_VENTA'))) ? '' : 'none';
+    if (soloLectura) {
+      // Vista de solo lectura: mostrar el valor histórico tal cual, sin recalcular.
+      const pvGuardado = pvInputEd ? pvInputEd.value : '';
+      const monGuardada = document.getElementById('edit-sal-moneda-venta')?.value || 'USD';
+      if (pvDisplayEd) pvDisplayEd.textContent = pvGuardado
+        ? (monGuardada === 'VES' ? 'Bs ' : '$ ') + fmtUSD(parseFloat(pvGuardado))
+        : '—';
+    } else {
+      recalcularPrecioVentaEditSalida();
+    }
   }
   const claveBox   = tipo === 'ENTRADA' ? document.getElementById('edit-mov-clave-cont') : document.getElementById('edit-sal-clave-cont');
   const btnGuardar  = document.getElementById('btn-guardar-movimiento');
@@ -3586,10 +3607,10 @@ async function _guardarEdicionMovimientoInterno() {
       const salFechaVal = document.getElementById('edit-sal-fecha')?.value;
       if (salFechaVal) datos.fecha_salida = salFechaVal;
       const pvSalEl = document.getElementById('edit-sal-precio-venta');
-      const pvSal   = pvSalEl?.value ? parseFloat(pvSalEl.value) : null;
+      const pvSal   = (pvSalEl?.value !== '' && pvSalEl?.value != null) ? parseFloat(pvSalEl.value) : null;
       const monSalEl = document.getElementById('edit-sal-moneda-venta');
       const monSal   = monSalEl?.value || 'USD';
-      if (pvSal) {
+      if (pvSal !== null) {
         datos.precio_venta_moneda = pvSal;
         datos.moneda_venta        = monSal;
         try { await api('inventario_almacen','PATCH',{ precio_venta_moneda: pvSal, moneda_venta: monSal },'?id_articulo=eq.'+id_articulo); } catch(e) {}
@@ -4651,26 +4672,130 @@ async function abrirSalidaStock(id, nombre) {
   const salLblUnidad = document.getElementById('salida-label-unidad');
   if (salLblUnidad) salLblUnidad.textContent = art?.unidad || 'UND';
 
-  // El Precio de Venta es obligatorio cuando el artículo es Mercancía
-  // (cuenta 1.1.03.001) -- en Consumibles (1.1.03.002) sigue siendo
-  // opcional. Solo es un aviso visual aquí; la validación real que impide
-  // guardar sin el dato vive en _guardarSalidaStockInterno().
-  let esMercanciaModal = false;
-  if (art && art.id_cuenta_contable) {
-    try {
-      const ctaArtModal = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === art.id_cuenta_contable; });
-      esMercanciaModal = !!(ctaArtModal && ctaArtModal.codigo === '1.1.03.001');
-    } catch(eCtaModal) {}
-  }
   const pvLabel = document.getElementById('salida-precio-venta-label');
-  if (pvLabel) pvLabel.innerHTML = esMercanciaModal
-    ? 'Precio de Venta * <span style="font-size:10px;color:var(--naranja)">(obligatorio para Mercancía)</span>'
-    : 'Precio de Venta <span style="font-size:10px;color:var(--suave)">(opcional)</span>';
+  if (pvLabel) pvLabel.textContent = 'Precio de Venta';
+
+  // El Precio de Venta ahora se CALCULA (CPP ÷ (1 − Margen/100), según el
+  // Margen Bruto vigente del Tipo de Artículo) -- ya no se escribe a mano.
+  // Solo Usuarios con AJUSTAR_PRECIO_VENTA pueden desbloquearlo y sobre-
+  // escribirlo manualmente.
+  window._salidaPrecioManual = false;
+  const ajustarBtn = document.getElementById('salida-precio-venta-ajustar-btn');
+  if (ajustarBtn) ajustarBtn.style.display = (sesionActual?.administrador || puedo('INVENTARIO','AJUSTAR_PRECIO_VENTA')) ? '' : 'none';
+  const pvDisplay = document.getElementById('salida-precio-venta-display');
+  if (pvDisplay) pvDisplay.style.display = '';
+  const pvInputEl = document.getElementById('salida-precio-venta');
+  if (pvInputEl) pvInputEl.style.display = 'none';
+  await recalcularPrecioVentaSalida();
 
     abrirModal('modal-salida-stock');
   focusFirstField('modal-salida-stock');
   setTimeout(function() { document.getElementById('salida-cantidad')?.focus(); }, 100);
 }
+
+// Margen Bruto % vigente hoy para un Tipo de Artículo -- null si no hay
+// ninguno definido (equivale a "Precio de Venta = 0", regla de negocio).
+async function obtenerMargenVigentePorTipo(id_tipo_articulo) {
+  if (!id_tipo_articulo) return null;
+  try {
+    const hoy = new Date().toISOString().slice(0,10);
+    const rows = await api('param_margen_bruto','GET',null,
+      '?id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&id_tipo_articulo=eq.'+id_tipo_articulo
+      +'&estado=neq.ANULADO&fecha_vigencia_desde=lte.'+hoy
+      +'&order=fecha_vigencia_desde.desc,id.desc&limit=1&select=margen_pct');
+    if (rows && rows[0]) return parseFloat(rows[0].margen_pct);
+  } catch(e) { console.warn('Error obteniendo margen vigente:', e); }
+  return null;
+}
+
+// Recalcula el Precio de Venta mostrado en el modal de Salida de Stock:
+// CPP (convertido a la Moneda elegida) ÷ (1 − Margen/100). Si no hay
+// Moneda elegida, o no hay Margen definido para el Tipo del Artículo, el
+// resultado es 0 -- regla de negocio confirmada explícitamente.
+async function recalcularPrecioVentaSalida() {
+  const displayEl = document.getElementById('salida-precio-venta-display');
+  const hiddenInput = document.getElementById('salida-precio-venta');
+  if (!displayEl || !hiddenInput) return;
+  if (window._salidaPrecioManual) return; // el Usuario lo está ajustando a mano -- no pisar su valor
+  const monedaSel = document.getElementById('salida-moneda-venta')?.value;
+  const idArt = parseInt(document.getElementById('salida-id-articulo')?.value) || null;
+  const art = idArt ? inventarioCache.find(function(x){ return x.id_articulo === idArt; }) : null;
+  if (!monedaSel || !art) {
+    displayEl.textContent = '— (seleccione Moneda)';
+    hiddenInput.value = '';
+    return;
+  }
+  let cpp = parseFloat(art.precio_costo_moneda || 0); // siempre guardado en USD
+  if (monedaSel === 'VES') cpp = cpp * (_tasaVigente || 0);
+  const margen = await obtenerMargenVigentePorTipo(art.id_tipo_articulo);
+  let venta = 0;
+  if (margen !== null && margen < 100) venta = cpp / (1 - margen/100);
+  hiddenInput.value = venta.toFixed(2);
+  const simb = monedaSel === 'VES' ? 'Bs ' : '$ ';
+  displayEl.textContent = simb + fmtUSD(venta)
+    + (margen === null
+        ? ' (sin Margen definido para este Tipo)'
+        : ' (Margen ' + margen.toFixed(1) + '%)');
+}
+
+// Desbloquea el Precio de Venta para ajuste manual -- solo Usuarios con
+// AJUSTAR_PRECIO_VENTA llegan a ver este botón en primer lugar, pero se
+// revalida el permiso aquí también (defensa en profundidad).
+function habilitarAjustePrecioVentaSalida() {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','AJUSTAR_PRECIO_VENTA')) {
+    alert('No tiene permiso para ajustar manualmente el Precio de Venta.'); return;
+  }
+  window._salidaPrecioManual = true;
+  const pvDisplay = document.getElementById('salida-precio-venta-display');
+  const pvInputEl = document.getElementById('salida-precio-venta');
+  const ajustarBtn = document.getElementById('salida-precio-venta-ajustar-btn');
+  if (pvDisplay) pvDisplay.style.display = 'none';
+  if (pvInputEl) { pvInputEl.style.display = ''; pvInputEl.focus(); }
+  if (ajustarBtn) ajustarBtn.style.display = 'none';
+}
+
+// Mismo mecanismo (CPP ÷ (1 − Margen/100)) pero para la Ficha de Editar
+// Salida de Stock -- usa el Artículo/Moneda de ESA ficha, no la de Nueva
+// Salida (son modales/IDs de campo distintos).
+async function recalcularPrecioVentaEditSalida() {
+  const displayEl = document.getElementById('edit-sal-precio-venta-display');
+  const hiddenInput = document.getElementById('edit-sal-precio-venta');
+  if (!displayEl || !hiddenInput) return;
+  if (window._editSalPrecioManual) return;
+  const monedaSel = document.getElementById('edit-sal-moneda-venta')?.value;
+  const idArt = parseInt(document.getElementById('edit-mov-id-articulo')?.value) || null;
+  const art = idArt ? inventarioCache.find(function(x){ return x.id_articulo === idArt; }) : null;
+  if (!monedaSel || !art) {
+    displayEl.textContent = '—';
+    hiddenInput.value = '';
+    return;
+  }
+  let cpp = parseFloat(art.precio_costo_moneda || 0);
+  if (monedaSel === 'VES') cpp = cpp * (_tasaVigente || 0);
+  const margen = await obtenerMargenVigentePorTipo(art.id_tipo_articulo);
+  let venta = 0;
+  if (margen !== null && margen < 100) venta = cpp / (1 - margen/100);
+  hiddenInput.value = venta.toFixed(2);
+  const simb = monedaSel === 'VES' ? 'Bs ' : '$ ';
+  displayEl.textContent = simb + fmtUSD(venta)
+    + (margen === null
+        ? ' (sin Margen definido para este Tipo)'
+        : ' (Margen ' + margen.toFixed(1) + '%)');
+}
+
+function habilitarAjustePrecioVentaEditSalida() {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','AJUSTAR_PRECIO_VENTA')) {
+    alert('No tiene permiso para ajustar manualmente el Precio de Venta.'); return;
+  }
+  window._editSalPrecioManual = true;
+  const pvDisplay = document.getElementById('edit-sal-precio-venta-display');
+  const pvInputEl = document.getElementById('edit-sal-precio-venta');
+  const ajustarBtn = document.getElementById('edit-sal-precio-venta-ajustar-btn');
+  if (pvDisplay) pvDisplay.style.display = 'none';
+  if (pvInputEl) { pvInputEl.style.display = ''; pvInputEl.focus(); }
+  if (ajustarBtn) ajustarBtn.style.display = 'none';
+}
+
 
 async function guardarSalidaStock() {
   if (!puedo('INVENTARIO','SALIDA_STOCK')) { alert('No tiene permiso.'); return; }
@@ -4698,7 +4823,8 @@ async function _guardarSalidaStockInterno() {
   const cantidad = parseFloat(document.getElementById('salida-cantidad').value);
   const fecha   = document.getElementById('salida-fecha').value;
   const obs     = document.getElementById('salida-observaciones').value.trim();
-  const pvSalida = parseFloat(document.getElementById('salida-precio-venta')?.value) || null;
+  const pvSalidaRaw = document.getElementById('salida-precio-venta')?.value;
+  const pvSalida = (pvSalidaRaw !== '' && pvSalidaRaw != null) ? parseFloat(pvSalidaRaw) : null;
   const monedaVentaSalRaw = document.getElementById('salida-moneda-venta')?.value || '';
   const okEl    = document.getElementById('alerta-salida-ok');
   const errEl   = document.getElementById('alerta-salida-err');
@@ -4719,17 +4845,17 @@ async function _guardarSalidaStockInterno() {
 
   if (!fecha)           { errEl.textContent = 'La fecha es obligatoria.'; errEl.style.display = 'block'; document.getElementById('salida-fecha')?.focus(); return; }
   if (!cantidad || cantidad <= 0) { errEl.textContent = 'La cantidad debe ser mayor a cero.'; errEl.style.display = 'block'; document.getElementById('salida-cantidad')?.focus(); return; }
-  if (esMercancia && !pvSalida) {
-    errEl.textContent = 'Debe ingresar el Precio de Venta: es obligatorio para artículos de tipo Mercancía.';
-    errEl.style.display = 'block';
-    document.getElementById('salida-precio-venta')?.focus(); return;
-  }
-  if (pvSalida && !monedaVentaSalRaw) {
-    errEl.textContent = 'Seleccione la Moneda del Precio de Venta.';
+  // El Precio de Venta ahora se calcula solo (CPP ÷ Margen) -- ya no hace
+  // falta exigirlo como "obligatorio para Mercancía"; siempre trae un
+  // valor (0 si el Tipo no tiene Margen definido, por regla de negocio).
+  // Lo que sí sigue siendo obligatorio es la Moneda, porque sin ella no
+  // hay con qué calcular el precio en primer lugar.
+  if (!monedaVentaSalRaw) {
+    errEl.textContent = 'Seleccione la Moneda.';
     errEl.style.display = 'block';
     document.getElementById('salida-moneda-venta')?.focus(); return;
   }
-  const monedaVentaSal = monedaVentaSalRaw || 'USD';
+  const monedaVentaSal = monedaVentaSalRaw;
   if (!id_area)          { errEl.textContent = 'Debe seleccionar el Área receptora.'; errEl.style.display = 'block'; document.getElementById('salida-area')?.focus(); return; }
 
   // Validar contraseña del empleado que ENTREGA
@@ -4774,7 +4900,7 @@ async function _guardarSalidaStockInterno() {
       cantidad:             cantidad,
       fecha_salida:         fecha,
       observaciones:        obs || null,
-      precio_venta_moneda:  pvSalida || null,
+      precio_venta_moneda:  pvSalida,
       moneda_venta:         monedaVentaSal,
       id_usuario:           sesionActual.correo_usuario
     });
@@ -4792,13 +4918,13 @@ async function _guardarSalidaStockInterno() {
       // notificación de recepción (notifConfirmar en core.js) — sumarlo
       // ambas veces le quitaría sentido al paso de "Confirmar Recepción".
       if (!idEmpRecibe) await upsertStockArea(idRep, id_area, cantidad);
-      if (pvSalida) await api('inventario_almacen', 'PATCH', { precio_venta_moneda: pvSalida, moneda_venta: monedaVentaSal }, '?id_articulo=eq.' + idRep);
-      if (art) { art.precio_venta_moneda = pvSalida || art.precio_venta_moneda; art.moneda_venta = monedaVentaSal; }
+      if (pvSalida !== null) await api('inventario_almacen', 'PATCH', { precio_venta_moneda: pvSalida, moneda_venta: monedaVentaSal }, '?id_articulo=eq.' + idRep);
+      if (art && pvSalida !== null) { art.precio_venta_moneda = pvSalida; art.moneda_venta = monedaVentaSal; }
     } else {
     // Consumible: descontar del área que entrega (Compras) y actualizar precio venta si se ingresó
     if (id_areaEntrega) await upsertStockArea(idRep, id_areaEntrega, -cantidad);
-    if (pvSalida) await api('inventario_almacen', 'PATCH', { precio_venta_moneda: pvSalida, moneda_venta: monedaVentaSal }, '?id_articulo=eq.' + idRep);
-    if (art) { art.precio_venta_moneda = pvSalida || art.precio_venta_moneda; art.moneda_venta = monedaVentaSal; }
+    if (pvSalida !== null) await api('inventario_almacen', 'PATCH', { precio_venta_moneda: pvSalida, moneda_venta: monedaVentaSal }, '?id_articulo=eq.' + idRep);
+    if (art && pvSalida !== null) { art.precio_venta_moneda = pvSalida; art.moneda_venta = monedaVentaSal; }
 
     // Salidas de CONSUMIBLES generan asiento: DEBE gasto / HABER inventario
     if (art && art.id_cuenta_contable && art.id_cuenta_costo_gasto) {
