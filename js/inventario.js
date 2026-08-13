@@ -2727,29 +2727,36 @@ async function recargarHistorial(id_articulo) {
   if (!id_articulo) id_articulo = document.getElementById('historial-id-articulo').value;
   const cont = document.getElementById('historial-contenido');
   try {
-    // Filtrar por Área SOLO si el Usuario realmente no tiene
-    // VER_INVENTARIO_GENERAL -- antes se revisaba "_invSaldoArea !== null",
-    // pero esa variable también queda distinta de null cuando un Usuario
-    // CON el permiso completo simplemente había aplicado el filtro manual
-    // de Área en Inventario General (otra pantalla) -- eso lo dejaba
-    // atrapado viendo solo su propia Área de empleado en el Historial, sin
-    // tener nada que ver con el permiso real que sí tiene.
+    // Tres casos, bien diferenciados (el fix anterior solo contempló el 1 y
+    // el 3, dejando roto el 2 -- ya no filtraba nada con el filtro manual
+    // activo):
+    // 1. Usuario SIN VER_INVENTARIO_GENERAL -- se limita a su propia Área.
+    // 2. Usuario CON el permiso, pero con el filtro manual de Área activo
+    //    en Inventario General -- el Historial debe respetar ESA Área
+    //    elegida (no la del empleado, que puede no coincidir).
+    // 3. Usuario CON el permiso, sin filtro manual -- ve todo, sin filtrar.
     let id_areaH = null;
     let esAreaComprasH = false;
-    if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
+    const tienePermisoGeneralH = sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL');
+    if (!tienePermisoGeneralH) {
+      // Caso 1
       const empH = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_area&limit=1').catch(function(){ return []; });
       id_areaH = empH?.[0]?.id_area || null;
+    } else if (_invFiltroAreaManual) {
+      // Caso 2
+      id_areaH = _invFiltroAreaManual;
+    }
+    // Caso 3: id_areaH se queda en null -- sin filtrar, ve todo.
+    if (id_areaH) {
       // El Área de Compras se identifica por su código real (2300 —
       // "Gerencias de Compras"), NO por emisores.id_area_principal (esa
       // columna no existe; era un bug ya presente desde antes). "Gerencia
       // General (1200)" es un Área totalmente distinta a Compras.
-      if (id_areaH) {
-        try {
-          const areaComprasRow = await api('param_areas','GET',null,'?codigo=eq.2300&select=id&limit=1');
-          const idAreaComprasReal = areaComprasRow?.[0]?.id || null;
-          esAreaComprasH = idAreaComprasReal != null && String(id_areaH) === String(idAreaComprasReal);
-        } catch(eAreaCompras) { console.warn('No se pudo determinar el Área de Compras:', eAreaCompras); }
-      }
+      try {
+        const areaComprasRow = await api('param_areas','GET',null,'?codigo=eq.2300&select=id&limit=1');
+        const idAreaComprasReal = areaComprasRow?.[0]?.id || null;
+        esAreaComprasH = idAreaComprasReal != null && String(id_areaH) === String(idAreaComprasReal);
+      } catch(eAreaCompras) { console.warn('No se pudo determinar el Área de Compras:', eAreaCompras); }
     }
     _historialEstado = { id_articulo: id_articulo, cursor: null, terminado: false, idAreaH: id_areaH, esAreaCompras: esAreaComprasH, filtro: 'todas' };
     _actualizarTabsHistorial();
