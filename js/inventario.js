@@ -154,7 +154,7 @@ async function renderInventario(filtro) {
   const c = document.getElementById('contenido-principal');
   const panelYaExiste = !!document.getElementById('buscar-inv');
   if (!panelYaExiste) {
-    c.innerHTML = '<div class="panel" id="panel-inventario">'
+    c.innerHTML = '<div class="panel" id="panel-inventario" style="margin-top:-16px">'
       + '<div class="panel-header" style="flex-wrap:wrap;gap:10px">'
       + '<h3 id="inv-contador" style="white-space:nowrap">Inventario General</h3>'
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;gap:10px">'
@@ -499,7 +499,7 @@ function invRenderTabla(items, cont) {
       + '</div></td></tr>';
   }).join('');
   const thStyleInv = 'background:var(--gris1);position:sticky;top:0;z-index:1';
-  cont.innerHTML = '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 320px));overflow-y:auto"><table><thead><tr>'
+  cont.innerHTML = '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 380px));overflow-y:auto"><table><thead><tr>'
     + '<th style="' + thStyleInv + '">Artículo</th><th style="' + thStyleInv + '">Stock</th><th style="' + thStyleInv + '">Precio Costo</th><th style="' + thStyleInv + '">Precio Venta</th><th style="' + thStyleInv + '">Estado</th><th style="' + thStyleInv + '">Acción</th>'
     + '</tr></thead><tbody>' + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">Sin artículos registrados</td></tr>') + '</tbody></table></div>';
 }
