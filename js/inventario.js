@@ -2299,8 +2299,7 @@ async function invCargarMovimientos() {
       movs.sort(function(a,b){ return b.fecha>a.fecha?1:b.fecha<a.fecha?-1:0; });
       if (!movs.length) { res.innerHTML='<div style="text-align:center;color:var(--suave);padding:40px">Sin movimientos en el período.</div>'; return; }
       const colC = puedo('INVENTARIO','VER_COSTOS') ? '<th style="text-align:right;padding:7px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:100px">Costo</th>' : '';
-      res.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-bottom:8px">'+movs.length+' movimientos</div>'
-        + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse;table-layout:fixed"><thead><tr>'
+      res.innerHTML = '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 400px));overflow-y:auto"><table style="width:100%;border-collapse:collapse;table-layout:fixed"><thead><tr>'
         + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:90px">Fecha</th>'
         + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
         + '<th style="text-align:right;padding:7px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:56px">Cant.</th>'
