@@ -3039,7 +3039,7 @@ function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
     const esEntradaTitulo = tipo === 'ENTRADA' || _editMovVistaComoEntrada;
     tituloMov = (soloLectura ? '👁 FICHA ' : '✏ EDITAR ') + (esEntradaTitulo ? 'ENTRADA' : 'SALIDA') + ' DE STOCK' + refMov;
     const fechaLblMov = document.getElementById('edit-sal-fecha-label');
-    if (fechaLblMov) fechaLblMov.textContent = 'Fecha de ' + (esEntradaTitulo ? 'Entrada' : 'Salida') + ' *';
+    if (fechaLblMov) fechaLblMov.textContent = 'Fecha de ' + (esEntradaTitulo ? 'Entrada' : 'Salida');
   }
   if (modoLbl) modoLbl.textContent = tituloMov;
 }
