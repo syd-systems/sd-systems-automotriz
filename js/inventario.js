@@ -2183,13 +2183,14 @@ async function invRenderMovimientos(cont) {
   const primerDia = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-01';
   const ultimoDia = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-' + String(new Date(hoy.getFullYear(),hoy.getMonth()+1,0).getDate()).padStart(2,'0');
   const INP = 'background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:7px 10px;border-radius:5px;font-size:12px';
+  const INP_FECHA = INP + ';font-size:12px !important;font-weight:400 !important;padding:7px 10px !important';
 
   cont.innerHTML =
     '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">'
     + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Desde</label>'
-    + '<input type="date" id="mov-desde" value="' + primerDia + '" onchange="invCargarMovimientos()" style="' + INP + '"></div>'
+    + '<input type="date" id="mov-desde" value="' + primerDia + '" onchange="invCargarMovimientos()" style="' + INP_FECHA + '"></div>'
     + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Hasta</label>'
-    + '<input type="date" id="mov-hasta" value="' + ultimoDia + '" onchange="invCargarMovimientos()" style="' + INP + '"></div>'
+    + '<input type="date" id="mov-hasta" value="' + ultimoDia + '" onchange="invCargarMovimientos()" style="' + INP_FECHA + '"></div>'
     + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Agrupar por</label>'
     + '<select id="mov-agrup" onchange="invCargarMovimientos()" style="' + INP + '">'
     + '<option value="movimientos">Movimientos</option>'
