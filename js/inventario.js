@@ -2182,8 +2182,8 @@ async function invRenderMovimientos(cont) {
   const hoy = new Date();
   const primerDia = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-01';
   const ultimoDia = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-' + String(new Date(hoy.getFullYear(),hoy.getMonth()+1,0).getDate()).padStart(2,'0');
-  const INP = 'background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:7px 10px;border-radius:5px;font-size:12px';
-  const INP_FECHA = INP + ';font-size:12px !important;font-weight:400 !important;padding:7px 10px !important';
+  const INP = 'background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:7px 10px;border-radius:5px;font-size:12px;height:33px;box-sizing:border-box';
+  const INP_FECHA = INP + ';font-size:12px !important;font-weight:400 !important;padding:7px 10px !important;height:33px !important;box-sizing:border-box !important';
 
   cont.innerHTML =
     '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">'
