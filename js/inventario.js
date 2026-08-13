@@ -1916,13 +1916,14 @@ async function invRenderMargenBruto(cont) {
       const margenTxt = vig ? parseFloat(vig.margen_pct).toFixed(2)+'%' : '0.00% <span style="color:var(--suave);font-size:11px">(sin definir)</span>';
       const vigDesdeTxt = vig ? formatearFechaCorta(vig.fecha_vigencia_desde) : '—';
       const tieneHistorial = _invMargenBrutoCache.some(function(m){ return m.id_tipo_articulo===t.id_tipo; });
+      const puedeDefinir = sesionActual?.administrador || puedo('INVENTARIO','DEFINIR_MARGEN_BRUTO');
       return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(cat?(cat.codigo?cat.codigo+' — ':'')+cat.nombre:'—')+'</td>'
         +'<td style="padding:8px;font-size:13px;font-weight:500">'+(t.codigo?t.codigo+' — ':'')+t.nombre+'</td>'
         +'<td style="padding:8px;font-family:var(--font-mono);font-weight:600;color:'+(vig?'#22c55e':'var(--suave)')+'">'+margenTxt+'</td>'
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+vigDesdeTxt+'</td>'
         +'<td style="padding:8px;white-space:nowrap">'
-        +'<button class="btn-naranja" onclick="abrirDefinirMargen('+t.id_tipo+',\''+t.nombre.replace(/'/g,"\\'")+'\')" style="font-size:11px;padding:4px 10px;margin-right:6px">Definir/Cambiar</button>'
+        +(puedeDefinir?'<button class="btn-naranja" onclick="abrirDefinirMargen('+t.id_tipo+',\''+t.nombre.replace(/'/g,"\\'")+'\')" style="font-size:11px;padding:4px 10px;margin-right:6px">Definir/Cambiar</button>':'')
         +(tieneHistorial?'<button class="btn-secundario" onclick="verHistorialMargen('+t.id_tipo+',\''+t.nombre.replace(/'/g,"\\'")+'\')" style="font-size:11px;padding:4px 10px">Ver historial</button>':'')
         +'</td>'
         +'</tr>';
@@ -1945,7 +1946,7 @@ async function invRenderMargenBruto(cont) {
 let _invMargenBrutoCache = [];
 
 function abrirDefinirMargen(id_tipo, nombreTipo) {
-  if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_MARGEN_BRUTO')) {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','DEFINIR_MARGEN_BRUTO')) {
     alert('No tiene permiso para definir el Margen Bruto.'); return;
   }
   document.getElementById('margen-id-tipo').value = id_tipo;
@@ -1958,7 +1959,7 @@ function abrirDefinirMargen(id_tipo, nombreTipo) {
 }
 
 async function guardarMargenBruto() {
-  if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_MARGEN_BRUTO')) {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','DEFINIR_MARGEN_BRUTO')) {
     alert('No tiene permiso para definir el Margen Bruto.'); return;
   }
   const errEl = document.getElementById('alerta-margen-err');
@@ -2021,12 +2022,12 @@ async function verHistorialMargen(id_tipo, nombreTipo) {
     // por fecha_vigencia_desde desc, id desc desde invRenderMargenBruto) --
     // solo esa puede "Corregirse"; una ya reemplazada o ya anulada, no.
     const idMasRecienteActivo = (filas.find(function(m){ return m.estado !== 'ANULADO'; }) || {}).id;
-    cont.innerHTML = '<table style="width:100%;border-collapse:collapse"><thead><tr>'
-      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Vigente desde</th>'
-      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Margen %</th>'
+    cont.innerHTML = '<table style="width:100%;border-collapse:collapse;table-layout:fixed"><thead><tr>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:100px">Vigente desde</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:80px">Margen %</th>'
       +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Registrado por</th>'
-      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Estado</th>'
-      +'<th style="padding:8px"></th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:80px">Estado</th>'
+      +'<th style="padding:8px;width:110px"></th>'
       +'</tr></thead><tbody>'
       + filas.map(function(m) {
         const anulado = m.estado === 'ANULADO';
@@ -2034,9 +2035,9 @@ async function verHistorialMargen(id_tipo, nombreTipo) {
         return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
           +'<td style="padding:8px;font-size:12px;'+styleTachado+'">'+formatearFechaCorta(m.fecha_vigencia_desde)+'</td>'
           +'<td style="padding:8px;font-family:var(--font-mono);font-weight:600;'+styleTachado+'">'+parseFloat(m.margen_pct).toFixed(2)+'%</td>'
-          +'<td style="padding:8px;font-size:12px;color:var(--suave);'+styleTachado+'">'+(m.id_usuario||'—')+'</td>'
+          +'<td style="padding:8px;font-size:12px;color:var(--suave);'+styleTachado+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(m.id_usuario||'')+'">'+(m.id_usuario||'—')+'</td>'
           +'<td style="padding:8px"><span class="badge '+(anulado?'badge-rojo':'badge-verde')+'" style="font-size:10px">'+(anulado?'ANULADO':'ACTIVO')+'</span></td>'
-          +'<td style="padding:8px">'+(m.id===idMasRecienteActivo
+          +'<td style="padding:8px">'+(m.id===idMasRecienteActivo && (sesionActual?.administrador || puedo('INVENTARIO','CORREGIR_MARGEN_BRUTO'))
               ? '<button class="btn-naranja" onclick="abrirCorregirMargen('+m.id+','+m.id_tipo_articulo+',\''+(nombreTipo||'').replace(/'/g,"\\'")+'\','+parseFloat(m.margen_pct)+')" style="font-size:11px;padding:4px 10px">✏ Corregir</button>'
               : '')+'</td>'
           +'</tr>';
@@ -2047,7 +2048,7 @@ async function verHistorialMargen(id_tipo, nombreTipo) {
 }
 
 function abrirCorregirMargen(idViejo, id_tipo, nombreTipo, valorViejo) {
-  if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_MARGEN_BRUTO')) {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','CORREGIR_MARGEN_BRUTO')) {
     alert('No tiene permiso para corregir el Margen Bruto.'); return;
   }
   // Blindaje: revalidar que esta fila SIGUE siendo la más reciente activa --
@@ -2074,7 +2075,7 @@ function abrirCorregirMargen(idViejo, id_tipo, nombreTipo, valorViejo) {
 }
 
 async function guardarCorreccionMargen() {
-  if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_MARGEN_BRUTO')) {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','CORREGIR_MARGEN_BRUTO')) {
     alert('No tiene permiso para corregir el Margen Bruto.'); return;
   }
   const errEl = document.getElementById('alerta-corregir-margen-err');
