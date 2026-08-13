@@ -454,46 +454,46 @@ function invRenderTabla(items, cont) {
     const abc = abcMap[r.id_articulo] || '—';
     const margen = calcularMargen(r);
     return '<tr>'
-      + '<td><div style="display:flex;align-items:center;gap:8px">'
+      + '<td style="padding:5px 8px;vertical-align:middle"><div style="display:flex;align-items:center;gap:8px">'
       + '<span style="font-size:10px;font-weight:700;color:' + (abcColor[abc]||'#888') + ';background:' + (abcColor[abc]||'#888') + '22;padding:2px 6px;border-radius:3px">' + abc + '</span>'
-      + '<div><div style="font-family:var(--font-mono);font-size:11px;color:var(--suave)">' + (r.codigo_articulo || '—')
+      + '<div><div style="font-family:var(--font-mono);font-size:10px;color:var(--suave);line-height:1.3">' + (r.codigo_articulo || '—')
       + (r.id_categoria_articulo ? ' · <span style="color:var(--suave)">' + (_invCategoriasCache.find(function(c){return c.id_categoria===r.id_categoria_articulo;})?.nombre || '') + '</span>' : '')
       + '</div>'
-      + '<div style="font-weight:500">' + r.nombre_articulo + '</div>'
-      + (r.descripcion_articulo ? '<div style="font-size:11px;color:var(--suave)">' + r.descripcion_articulo + '</div>' : '') + '</div></div></td>'
+      + '<div style="font-weight:500;line-height:1.3">' + r.nombre_articulo + '</div>'
+      + (r.descripcion_articulo ? '<div style="font-size:10px;color:var(--suave);line-height:1.3">' + r.descripcion_articulo + '</div>' : '') + '</div></div></td>'
       + (function() {
           const pendientesArt = _invPendientesPorArticulo[r.id_articulo] || [];
           const pendientesHtml = pendientesArt.map(function(p) {
-            return '<div style="font-size:10px;color:var(--naranja);margin-top:3px;background:rgba(255,107,0,0.1);border-radius:3px;padding:2px 6px;display:inline-block">'
+            return '<div style="font-size:9px;color:var(--naranja);margin-top:2px;background:rgba(255,107,0,0.1);border-radius:3px;padding:1px 6px;display:inline-block">'
               + '📦 ' + p.cantidad + ' unid. — ' + p.nombreArea + (p.codigoArea ? ' (' + p.codigoArea + ')' : '') + ' — <strong>Por Confirmar</strong></div>';
           }).join('');
-          return '<td><span class="badge ' + (stockBajo ? 'badge-rojo' : 'badge-verde') + '">' + stockMostrar + ' ' + (r.unidad || 'UND') + '</span>'
-            + (_invSaldoArea ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Stock área</div>' : '')
-            + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo_articulo + ')</div>' : '')
+          return '<td style="padding:5px 8px;vertical-align:middle"><span class="badge ' + (stockBajo ? 'badge-rojo' : 'badge-verde') + '">' + stockMostrar + ' ' + (r.unidad || 'UND') + '</span>'
+            + (_invSaldoArea ? '<div style="font-size:9px;color:var(--suave);margin-top:1px">Stock área</div>' : '')
+            + (stockBajo ? '<div style="font-size:9px;color:#fc8181;margin-top:2px">⚠ Bajo mínimo (' + r.stock_minimo_articulo + ')</div>' : '')
             + pendientesHtml + '</td>';
         })()
       + (puedo('INVENTARIO','VER_COSTOS')
-          ? '<td style="font-family:var(--font-mono);font-size:12px">'
+          ? '<td style="padding:5px 8px;vertical-align:middle;font-family:var(--font-mono);font-size:12px">'
             + '<div style="color:var(--suave);font-size:9px;letter-spacing:1px">COSTO PROM. (CPP)</div>'
             + '<div>$ ' + fmtUSD(stockMostrar === 0 ? 0 : r.precio_costo_moneda) + ' <span style="color:var(--suave);font-size:11px">(Bs ' + fmtBs((stockMostrar === 0 ? 0 : parseFloat(r.precio_costo_moneda||0)) * _tasaVigente) + ')</span></div>'
             + (r.precio_costo_ultimo_moneda
-                ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Última compra: $ ' + fmtUSD(r.precio_costo_ultimo_moneda) + '</div>'
+                ? '<div style="font-size:9px;color:var(--suave);margin-top:1px">Última compra: $ ' + fmtUSD(r.precio_costo_ultimo_moneda) + '</div>'
                 : '')
             + '</td>'
-          : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
+          : '<td style="padding:5px 8px;vertical-align:middle;text-align:center;color:#555;font-size:11px">🔒</td>')
       + (puedo('INVENTARIO','VER_PRECIOS_VENTA')
           ? (function() {
               const sinStock = stockMostrar === 0;
               const ventaMostrar = sinStock ? 0 : parseFloat(r.precio_venta_moneda||0);
               const margenMostrar = sinStock ? 0 : margen;
-              return '<td style="font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:10px">Venta</div>'
+              return '<td style="padding:5px 8px;vertical-align:middle;font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:9px">Venta</div>'
                 + '<span style="color:var(--naranja)">' + fmtBs(ventaMostrar * _tasaVigente) + ' Bs</span>'
-                + '<div style="font-size:10px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(ventaMostrar) + '</div>'
-                + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margenMostrar.toFixed(1) + '%</div></td>';
+                + '<div style="font-size:9px;color:var(--suave);margin-top:1px">$ ' + fmtUSD(ventaMostrar) + '</div>'
+                + '<div style="font-size:9px;color:var(--suave);margin-top:1px">Margen: ' + margenMostrar.toFixed(1) + '%</div></td>';
             })()
-          : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
-      + '<td><span class="badge ' + (r.estado === 'INACTIVO' ? 'badge-rojo' : 'badge-verde') + '">' + (r.estado || 'ACTIVO') + '</span></td>'
-      + '<td><div style="display:flex;gap:6px">'
+          : '<td style="padding:5px 8px;vertical-align:middle;text-align:center;color:#555;font-size:11px">🔒</td>')
+      + '<td style="padding:5px 8px;vertical-align:middle"><span class="badge ' + (r.estado === 'INACTIVO' ? 'badge-rojo' : 'badge-verde') + '">' + (r.estado || 'ACTIVO') + '</span></td>'
+      + '<td style="padding:5px 8px;vertical-align:middle"><div style="display:flex;gap:6px">'
       + '<button class="btn-naranja" onclick="verFichaInventario(' + r.id_articulo + ')">Ver</button>'
       + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" style="border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="abrirStockArticulo(' + r.id_articulo + ',\'' + r.nombre_articulo.replace(/'/g,"\\'"  ) + '\')" >Stock</button>' : '')
       + '</div></td></tr>';
