@@ -1354,17 +1354,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260813240"></script>
-<script src="js/parametros.js?v=20260813240"></script>
-<script src="js/empresas.js?v=20260813240"></script>
-<script src="js/ingresos.js?v=20260813240"></script>
-<script src="js/inventario.js?v=20260813240"></script>
-<script src="js/proveedores.js?v=20260813240"></script>
-<script src="js/contabilidad.js?v=20260813240"></script>
-<script src="js/egresos.js?v=20260813240"></script>
-<script src="js/vehiculos.js?v=20260813240"></script>
-<script src="js/catalogo.js?v=20260813240"></script>
-<script src="js/ordenes.js?v=20260813240"></script>
+<script src="js/core.js?v=20260813241"></script>
+<script src="js/parametros.js?v=20260813241"></script>
+<script src="js/empresas.js?v=20260813241"></script>
+<script src="js/ingresos.js?v=20260813241"></script>
+<script src="js/inventario.js?v=20260813241"></script>
+<script src="js/proveedores.js?v=20260813241"></script>
+<script src="js/contabilidad.js?v=20260813241"></script>
+<script src="js/egresos.js?v=20260813241"></script>
+<script src="js/vehiculos.js?v=20260813241"></script>
+<script src="js/catalogo.js?v=20260813241"></script>
+<script src="js/ordenes.js?v=20260813241"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3855,8 +3855,10 @@
         <div style="font-size:12px;color:var(--suave);margin-top:4px">Stock disponible: <span id="salida-stock-actual" style="color:var(--naranja);font-family:var(--font-mono)">—</span></div>
       </div>
 
-      <div class="form-grid" style="grid-template-columns:1fr 1fr">
-        <!-- Fila 1: Fecha y Cantidad -->
+      <div class="form-grid" style="grid-template-columns:1fr">
+        <!-- Fila 1: Fecha y Cantidad -- grid propio (Fecha 3fr / Cantidad 2fr,
+             Cantidad reducida 1/3 respecto al reparto parejo original) -->
+        <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px">
         <div class="form-campo">
           <label>Fecha de Salida *</label>
           <input type="date" id="salida-fecha" style="color-scheme:dark" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
@@ -3878,8 +3880,11 @@
               }
             }).call(this)">
         </div>
+        </div>
 
-        <!-- Fila 2: Moneda y Precio Venta -->
+        <!-- Fila 2: Moneda y Precio Venta -- grid propio, independiente del
+             de arriba (Precio de Venta recibe el espacio que Cantidad cedió) -->
+        <div style="display:grid;grid-template-columns:2fr 3fr;gap:16px;margin-top:16px">
         <div class="form-campo">
           <label>Moneda</label>
           <select id="salida-moneda-venta" onchange="recalcularPrecioVentaSalida()" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
@@ -3896,6 +3901,7 @@
             onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}"
             onblur="this.value=this.value?parseFloat(this.value).toFixed(2):''">
           <button type="button" id="salida-precio-venta-ajustar-btn" onclick="habilitarAjustePrecioVentaSalida()" style="display:none;font-size:10px;color:var(--naranja);background:none;border:none;cursor:pointer;padding:2px 0;margin-top:3px;text-align:left">✏ Ajustar manualmente</button>
+        </div>
         </div>
 
         <!-- Área y Empleado que RECIBE -->
