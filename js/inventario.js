@@ -155,8 +155,8 @@ async function renderInventario(filtro) {
   const panelYaExiste = !!document.getElementById('buscar-inv');
   if (!panelYaExiste) {
     c.innerHTML = '<div class="panel" id="panel-inventario" style="margin-top:-16px">'
-      + '<div class="panel-header" style="flex-wrap:wrap;gap:10px">'
-      + '<h3 id="inv-contador" style="white-space:nowrap">Inventario General</h3>'
+      + '<div class="panel-header" style="flex-wrap:wrap;gap:10px;padding:14px 24px">'
+      + '<h3 id="inv-contador" style="display:none"></h3>'
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;gap:10px">'
       + '<div style="display:flex;gap:3px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:3px">'
       + '<button id="inv-tab-tabla"   onclick="invCambiarVista(\'tabla\')"   class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:var(--naranja);color:#fff">Inventario</button>'
@@ -499,7 +499,7 @@ function invRenderTabla(items, cont) {
       + '</div></td></tr>';
   }).join('');
   const thStyleInv = 'background:var(--gris1);position:sticky;top:0;z-index:1';
-  cont.innerHTML = '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 330px));overflow-y:auto"><table><thead><tr>'
+  cont.innerHTML = '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 285px));overflow-y:auto"><table><thead><tr>'
     + '<th style="' + thStyleInv + '">Artículo</th><th style="' + thStyleInv + '">Stock</th><th style="' + thStyleInv + '">Precio Costo</th><th style="' + thStyleInv + '">Precio Venta</th><th style="' + thStyleInv + '">Estado</th><th style="' + thStyleInv + '">Acción</th>'
     + '</tr></thead><tbody>' + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">Sin artículos registrados</td></tr>') + '</tbody></table></div>';
 }
