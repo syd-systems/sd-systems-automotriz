@@ -2298,29 +2298,27 @@ async function invCargarMovimientos() {
       });
       movs.sort(function(a,b){ return b.fecha>a.fecha?1:b.fecha<a.fecha?-1:0; });
       if (!movs.length) { res.innerHTML='<div style="text-align:center;color:var(--suave);padding:40px">Sin movimientos en el período.</div>'; return; }
-      const colC = puedo('INVENTARIO','VER_COSTOS') ? '<th style="text-align:right;padding:7px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Costo</th>' : '';
+      const colC = puedo('INVENTARIO','VER_COSTOS') ? '<th style="text-align:right;padding:7px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:100px">Costo</th>' : '';
       res.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-bottom:8px">'+movs.length+' movimientos</div>'
-        + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
-        + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Fecha</th>'
-        + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Tipo</th>'
+        + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse;table-layout:fixed"><thead><tr>'
+        + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:90px">Fecha</th>'
         + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
-        + '<th style="text-align:right;padding:7px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Cant.</th>'
+        + '<th style="text-align:right;padding:7px;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:56px">Cant.</th>'
         + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Origen</th>'
         + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Destino</th>'
-        + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Motivo</th>'
+        + '<th style="padding:7px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:110px">Motivo</th>'
         + colC + '</tr></thead><tbody>'
         + movs.map(function(m) {
             const eE=m.tipo==='ENTRADA', c=eE?'#22c55e':'#fc8181';
-            const badge='<span style="background:'+(eE?'rgba(34,197,94,0.1)':'rgba(252,129,129,0.1)')+';color:'+c+';border:1px solid '+c+';border-radius:4px;padding:2px 6px;font-size:10px">'+m.tipo+'</span>'+(m.rev?'<span style="color:#fc8181;font-size:10px;margin-left:4px">REV</span>':'');
+            const badge='<span style="background:'+(eE?'rgba(34,197,94,0.1)':'rgba(252,129,129,0.1)')+';color:'+c+';border:1px solid '+c+';border-radius:4px;padding:1px 5px;font-size:9px">'+m.tipo+'</span>'+(m.rev?'<span style="color:#fc8181;font-size:9px;margin-left:3px">REV</span>':'');
             const costoTd = puedo('INVENTARIO','VER_COSTOS') ? '<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--suave)">'+(eE&&m.costo>0?(m.moneda==='VES'?'Bs ':simRef+' ')+fmtUSD(m.costo):'—')+'</td>' : '';
             return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)'+(m.rev?';opacity:0.5':'')+'">'
-              +'<td style="padding:7px;font-size:12px">'+fmtFecha(m.fecha)+'</td>'
-              +'<td style="padding:7px">'+badge+'</td>'
-              +'<td style="padding:7px;font-size:12px">'+m.art+'</td>'
+              +'<td style="padding:7px;font-size:12px;line-height:1.3">'+fmtFecha(m.fecha)+'<div style="margin-top:2px">'+badge+'</div></td>'
+              +'<td style="padding:7px;font-size:12px;word-break:break-word">'+m.art+'</td>'
               +'<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-size:12px">'+m.cant+'</td>'
-              +'<td style="padding:7px;font-size:12px">'+m.origen+'</td>'
-              +'<td style="padding:7px;font-size:12px">'+m.destino+'</td>'
-              +'<td style="padding:7px;font-size:11px;color:var(--suave)">'+m.motivo+'</td>'
+              +'<td style="padding:7px;font-size:12px;word-break:break-word">'+m.origen+'</td>'
+              +'<td style="padding:7px;font-size:12px;word-break:break-word">'+m.destino+'</td>'
+              +'<td style="padding:7px;font-size:11px;color:var(--suave);word-break:break-word">'+m.motivo+'</td>'
               +costoTd+'</tr>';
           }).join('')
         + '</tbody></table></div>';
