@@ -1354,17 +1354,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260813244"></script>
-<script src="js/parametros.js?v=20260813244"></script>
-<script src="js/empresas.js?v=20260813244"></script>
-<script src="js/ingresos.js?v=20260813244"></script>
-<script src="js/inventario.js?v=20260813244"></script>
-<script src="js/proveedores.js?v=20260813244"></script>
-<script src="js/contabilidad.js?v=20260813244"></script>
-<script src="js/egresos.js?v=20260813244"></script>
-<script src="js/vehiculos.js?v=20260813244"></script>
-<script src="js/catalogo.js?v=20260813244"></script>
-<script src="js/ordenes.js?v=20260813244"></script>
+<script src="js/core.js?v=20260813245"></script>
+<script src="js/parametros.js?v=20260813245"></script>
+<script src="js/empresas.js?v=20260813245"></script>
+<script src="js/ingresos.js?v=20260813245"></script>
+<script src="js/inventario.js?v=20260813245"></script>
+<script src="js/proveedores.js?v=20260813245"></script>
+<script src="js/contabilidad.js?v=20260813245"></script>
+<script src="js/egresos.js?v=20260813245"></script>
+<script src="js/vehiculos.js?v=20260813245"></script>
+<script src="js/catalogo.js?v=20260813245"></script>
+<script src="js/ordenes.js?v=20260813245"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3887,7 +3887,7 @@
         <div style="display:grid;grid-template-columns:2fr 3fr;gap:16px;margin-top:16px">
         <div class="form-campo">
           <label>Moneda</label>
-          <select id="salida-moneda-venta" onchange="recalcularPrecioVentaSalida()" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
+          <select id="salida-moneda-venta" onchange="recalcularPrecioVentaSalida()" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box;height:42px">
             <option value="">— Seleccionar —</option>
             <option value="USD">USD — Dólar</option>
             <option value="VES">VES — Bolívar</option>
@@ -3895,7 +3895,7 @@
         </div>
         <div class="form-campo">
           <label id="salida-precio-venta-label">Precio de Venta</label>
-          <div id="salida-precio-venta-display" style="font-family:var(--font-body);font-size:13px;padding:11px 14px;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box">—</div>
+          <div id="salida-precio-venta-display" style="font-family:var(--font-body);font-size:13px;padding:11px 14px;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;height:42px;display:flex;align-items:center">—</div>
           <input type="number" id="salida-precio-venta" min="0" step="0.01" placeholder="0.00"
             style="display:none;font-family:var(--font-mono)"
             onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}"
@@ -4916,14 +4916,14 @@
           </div>
           <div class="form-campo" id="edit-sal-moneda-venta-cont">
             <label>Moneda</label>
-            <select id="edit-sal-moneda-venta" onchange="recalcularPrecioVentaEditSalida()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
+            <select id="edit-sal-moneda-venta" onchange="recalcularPrecioVentaEditSalida()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box;height:42px">
               <option value="USD">USD — Dólar</option>
               <option value="VES">VES — Bolívar</option>
             </select>
           </div>
           <div class="form-campo" id="edit-sal-precio-venta-cont">
             <label id="edit-sal-precio-venta-label">Precio de Venta</label>
-            <div id="edit-sal-precio-venta-display" style="font-family:var(--font-body);font-size:13px;padding:11px 14px;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box">—</div>
+            <div id="edit-sal-precio-venta-display" style="font-family:var(--font-body);font-size:13px;padding:11px 14px;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;height:42px;display:flex;align-items:center">—</div>
             <input type="number" id="edit-sal-precio-venta" min="0" step="0.01" placeholder="0.00"
               style="display:none;font-family:var(--font-mono)"
               onblur="this.value=this.value?parseFloat(this.value).toFixed(2):''">
