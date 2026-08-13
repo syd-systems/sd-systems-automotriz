@@ -3002,14 +3002,19 @@ function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
     const pvAjustarBtnEd = document.getElementById('edit-sal-precio-venta-ajustar-btn');
     if (pvDisplayEd) pvDisplayEd.style.display = '';
     if (pvInputEd) pvInputEd.style.display = 'none';
-    if (pvAjustarBtnEd) pvAjustarBtnEd.style.display = (!soloLectura && (sesionActual?.administrador || puedo('INVENTARIO','AJUSTAR_PRECIO_VENTA'))) ? '' : 'none';
+    if (pvAjustarBtnEd) pvAjustarBtnEd.style.display = (!soloLectura && (sesionActual?.administrador || (puedo('INVENTARIO','VER_PRECIOS_VENTA') && puedo('INVENTARIO','AJUSTAR_PRECIO_VENTA')))) ? '' : 'none';
     if (soloLectura) {
-      // Vista de solo lectura: mostrar el valor histórico tal cual, sin recalcular.
-      const pvGuardado = pvInputEd ? pvInputEd.value : '';
-      const monGuardada = document.getElementById('edit-sal-moneda-venta')?.value || 'USD';
-      if (pvDisplayEd) pvDisplayEd.textContent = pvGuardado
-        ? (monGuardada === 'VES' ? 'Bs ' : '$ ') + fmtUSD(parseFloat(pvGuardado))
-        : '—';
+      // Vista de solo lectura: mostrar el valor histórico tal cual, sin
+      // recalcular -- salvo que el Usuario no tenga permiso, ahí candado.
+      if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_PRECIOS_VENTA')) {
+        if (pvDisplayEd) pvDisplayEd.textContent = '🔒';
+      } else {
+        const pvGuardado = pvInputEd ? pvInputEd.value : '';
+        const monGuardada = document.getElementById('edit-sal-moneda-venta')?.value || 'USD';
+        if (pvDisplayEd) pvDisplayEd.textContent = pvGuardado
+          ? (monGuardada === 'VES' ? 'Bs ' : '$ ') + fmtUSD(parseFloat(pvGuardado))
+          : '—';
+      }
     } else {
       recalcularPrecioVentaEditSalida();
     }
@@ -4789,7 +4794,7 @@ async function abrirSalidaStock(id, nombre) {
   // escribirlo manualmente.
   window._salidaPrecioManual = false;
   const ajustarBtn = document.getElementById('salida-precio-venta-ajustar-btn');
-  if (ajustarBtn) ajustarBtn.style.display = (sesionActual?.administrador || puedo('INVENTARIO','AJUSTAR_PRECIO_VENTA')) ? '' : 'none';
+  if (ajustarBtn) ajustarBtn.style.display = (sesionActual?.administrador || (puedo('INVENTARIO','VER_PRECIOS_VENTA') && puedo('INVENTARIO','AJUSTAR_PRECIO_VENTA'))) ? '' : 'none';
   const pvDisplay = document.getElementById('salida-precio-venta-display');
   if (pvDisplay) pvDisplay.style.display = '';
   const pvInputEl = document.getElementById('salida-precio-venta');
@@ -4839,6 +4844,16 @@ async function recalcularPrecioVentaSalida() {
   let venta = 0;
   if (margen !== null && margen < 100) venta = cpp / (1 - margen/100);
   hiddenInput.value = venta.toFixed(2);
+  // El valor SIEMPRE se calcula y se guarda en hiddenInput (la Salida tiene
+  // que poder ejecutarse igual, con el precio correcto) -- lo que se
+  // OCULTA sin el permiso es solo lo que el Usuario ve en pantalla, mismo
+  // candado que ya usa el resto del sistema (Inventario General, Ficha del
+  // Artículo, ABC).
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_PRECIOS_VENTA')) {
+    displayEl.textContent = '🔒';
+    displayEl.title = '';
+    return;
+  }
   const simb = monedaSel === 'VES' ? 'Bs ' : '$ ';
   const detalleTxt = margen === null
     ? 'sin Margen definido'
@@ -4851,7 +4866,7 @@ async function recalcularPrecioVentaSalida() {
 // AJUSTAR_PRECIO_VENTA llegan a ver este botón en primer lugar, pero se
 // revalida el permiso aquí también (defensa en profundidad).
 function habilitarAjustePrecioVentaSalida() {
-  if (!sesionActual?.administrador && !puedo('INVENTARIO','AJUSTAR_PRECIO_VENTA')) {
+  if (!sesionActual?.administrador && !(puedo('INVENTARIO','VER_PRECIOS_VENTA') && puedo('INVENTARIO','AJUSTAR_PRECIO_VENTA'))) {
     alert('No tiene permiso para ajustar manualmente el Precio de Venta.'); return;
   }
   if (!document.getElementById('salida-moneda-venta')?.value) {
@@ -4896,6 +4911,13 @@ async function recalcularPrecioVentaEditSalida() {
   let venta = 0;
   if (margen !== null && margen < 100) venta = cpp / (1 - margen/100);
   hiddenInput.value = venta.toFixed(2);
+  // Mismo candado que en Nueva Salida: se calcula y guarda igual, solo se
+  // oculta lo que ve el Usuario en pantalla.
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_PRECIOS_VENTA')) {
+    displayEl.textContent = '🔒';
+    displayEl.title = '';
+    return;
+  }
   const simb = monedaSel === 'VES' ? 'Bs ' : '$ ';
   const detalleTxt = margen === null
     ? 'sin Margen definido'
@@ -4905,7 +4927,7 @@ async function recalcularPrecioVentaEditSalida() {
 }
 
 function habilitarAjustePrecioVentaEditSalida() {
-  if (!sesionActual?.administrador && !puedo('INVENTARIO','AJUSTAR_PRECIO_VENTA')) {
+  if (!sesionActual?.administrador && !(puedo('INVENTARIO','VER_PRECIOS_VENTA') && puedo('INVENTARIO','AJUSTAR_PRECIO_VENTA'))) {
     alert('No tiene permiso para ajustar manualmente el Precio de Venta.'); return;
   }
   window._editSalPrecioManual = true;
