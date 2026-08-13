@@ -3138,6 +3138,23 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     if (salFechaEl) salFechaEl.value = m.fecha_salida?.slice(0,10) || getHoyVzla();
     if (salCantEl)  salCantEl.value  = parseFloat(m.cantidad || 0) % 1 === 0 ? parseInt(m.cantidad || 0) : parseFloat(m.cantidad || 0).toFixed(2);
     if (salObsEl)   salObsEl.value   = m.observaciones || '';
+    // Tasa BCV -- NO es la de hoy, es la que existía a la fecha de ESA
+    // Salida (histórico, para que la ficha refleje lo que realmente pasó
+    // en ese momento, no lo que vale hoy). Se busca la más reciente cuya
+    // fecha_valor sea <= la fecha de la Salida (mismo criterio de
+    // "vigencia a una fecha" que ya usamos en Margen Bruto).
+    const tasaDispEd = document.getElementById('edit-sal-tasa-bcv-display');
+    if (tasaDispEd) {
+      tasaDispEd.textContent = '—';
+      try {
+        const fechaParaTasa = (m.fecha_salida || '').slice(0,10) || getHoyVzla();
+        const tasaHistRows = await api('tasas','GET',null,
+          '?moneda_origen=eq.USD&fecha_valor=lte.'+fechaParaTasa
+          +'&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+        const tasaHist = tasaHistRows && tasaHistRows[0] ? parseFloat(tasaHistRows[0].tipo_cambio) : null;
+        tasaDispEd.textContent = tasaHist ? 'Bs ' + fmtBs(tasaHist) : '—';
+      } catch(eTasaHist) { console.warn('Error obteniendo Tasa BCV histórica:', eTasaHist); }
+    }
     const salPvEl = document.getElementById('edit-sal-precio-venta');
     if (salPvEl) salPvEl.value = m.precio_venta_moneda ? parseFloat(m.precio_venta_moneda).toFixed(2) : '';
     const salMonEl = document.getElementById('edit-sal-moneda-venta');
@@ -4825,6 +4842,11 @@ async function recalcularPrecioVentaSalida() {
 function habilitarAjustePrecioVentaSalida() {
   if (!sesionActual?.administrador && !puedo('INVENTARIO','AJUSTAR_PRECIO_VENTA')) {
     alert('No tiene permiso para ajustar manualmente el Precio de Venta.'); return;
+  }
+  if (!document.getElementById('salida-moneda-venta')?.value) {
+    alert('Seleccione primero la Moneda -- el ajuste manual del Precio de Venta necesita saber en qué Moneda se está escribiendo.');
+    document.getElementById('salida-moneda-venta')?.focus();
+    return;
   }
   window._salidaPrecioManual = true;
   const pvDisplay = document.getElementById('salida-precio-venta-display');
