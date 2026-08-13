@@ -1354,17 +1354,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260813238"></script>
-<script src="js/parametros.js?v=20260813238"></script>
-<script src="js/empresas.js?v=20260813238"></script>
-<script src="js/ingresos.js?v=20260813238"></script>
-<script src="js/inventario.js?v=20260813238"></script>
-<script src="js/proveedores.js?v=20260813238"></script>
-<script src="js/contabilidad.js?v=20260813238"></script>
-<script src="js/egresos.js?v=20260813238"></script>
-<script src="js/vehiculos.js?v=20260813238"></script>
-<script src="js/catalogo.js?v=20260813238"></script>
-<script src="js/ordenes.js?v=20260813238"></script>
+<script src="js/core.js?v=20260813239"></script>
+<script src="js/parametros.js?v=20260813239"></script>
+<script src="js/empresas.js?v=20260813239"></script>
+<script src="js/ingresos.js?v=20260813239"></script>
+<script src="js/inventario.js?v=20260813239"></script>
+<script src="js/proveedores.js?v=20260813239"></script>
+<script src="js/contabilidad.js?v=20260813239"></script>
+<script src="js/egresos.js?v=20260813239"></script>
+<script src="js/vehiculos.js?v=20260813239"></script>
+<script src="js/catalogo.js?v=20260813239"></script>
+<script src="js/ordenes.js?v=20260813239"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3855,7 +3855,7 @@
         <div style="font-size:12px;color:var(--suave);margin-top:4px">Stock disponible: <span id="salida-stock-actual" style="color:var(--naranja);font-family:var(--font-mono)">—</span></div>
       </div>
 
-      <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
+      <div class="form-grid" style="grid-template-columns:8fr 9fr 19fr">
         <!-- Fila 1: Fecha sola -->
         <div class="form-campo">
           <label>Fecha de Salida *</label>
@@ -3865,8 +3865,7 @@
 
         <!-- Fila 2: Cantidad y Precio Venta -->
         <div class="form-campo">
-          <label>Cantidad *</label>
-          <div style="font-size:10px;color:var(--suave);margin-bottom:4px" id="salida-label-unidad"></div>
+          <label>Cantidad * <span id="salida-label-unidad" style="font-size:10px;color:var(--suave);font-weight:400"></span></label>
           <input type="number" id="salida-cantidad" min="0.01" step="0.01" placeholder="0"
             onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}"
             oninput="(function(){
@@ -3881,7 +3880,6 @@
                 errEl.style.display='none';
               }
             }).call(this)">
-          <div style="font-size:10px;color:var(--suave);margin-top:4px" id="salida-label-unidad"></div>
         </div>
         <div class="form-campo">
           <label>Moneda</label>
