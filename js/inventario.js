@@ -4788,7 +4788,7 @@ async function recalcularPrecioVentaSalida() {
   const idArt = parseInt(document.getElementById('salida-id-articulo')?.value) || null;
   const art = idArt ? inventarioCache.find(function(x){ return x.id_articulo === idArt; }) : null;
   if (!monedaSel || !art) {
-    displayEl.textContent = '— (seleccione Moneda)';
+    displayEl.textContent = '—';
     hiddenInput.value = '';
     return;
   }
