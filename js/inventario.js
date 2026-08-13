@@ -4694,6 +4694,10 @@ async function abrirSalidaStock(id, nombre) {
   document.getElementById('salida-art-nombre').textContent = nombre;
   document.getElementById('salida-id-articulo').value      = id;
   document.getElementById('salida-cantidad').value         = '';
+  // Tasa BCV vigente -- solo informativa, ya cargada globalmente al iniciar
+  // sesión (_tasaVigente); no depende de ninguna selección de este modal.
+  const tasaDispEl = document.getElementById('salida-tasa-bcv-display');
+  if (tasaDispEl) tasaDispEl.textContent = _tasaVigente ? 'Bs ' + fmtBs(_tasaVigente) : '—';
   // Cargar stock disponible para validación en tiempo real (referencial —
   // la validación real al guardar usa obtenerStockArea contra el área que entrega)
   const stockDisp = document.getElementById('salida-stock-disp');
