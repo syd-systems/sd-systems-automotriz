@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260814261';
+const SYD_VERSION = '20260814262';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -2677,10 +2677,15 @@ async function mostrarNotifPendiente(notif) {
   const btnRechazarEnt = document.getElementById('btn-notif-rechazar-entrada');
   if (btnEscalar) btnEscalar.style.display = 'none';
   if (btnRechazarEnt) btnRechazarEnt.style.display = accionNotif === 'aprobar_entrada' ? '' : 'none';
+  const btnVerDespues = document.getElementById('btn-notif-ver-despues');
+  // No tiene sentido "posponer" una aprobación de Entrada de Compra -- hay
+  // que decidir Aprobar o Rechazar en el momento.
+  if (btnVerDespues) btnVerDespues.style.display = accionNotif === 'aprobar_entrada' ? 'none' : '';
   const CONFIG_NOTIF = {
     confirmar_recepcion: { titulo: '📦 Solicitud de Recepción', instruccion: 'Al confirmar, valida que recibió el consumible correctamente.', boton: '✓ Confirmar Recepción' },
     aprobar_pago:         { titulo: '📝 Solicitud de Aprobación', instruccion: 'Vaya al módulo de Pagos para revisar y aprobar esta Obligación.', boton: '✓ Confirmar Pago' },
     aprobar_entrada:      { titulo: '📝 Entrada de Compra pendiente de tu aprobación', instruccion: 'Revise el detalle e indique si Aprueba o Rechaza esta Entrada -- mientras no se resuelva, no afecta Stock ni Contabilidad.', boton: '✓ Aprobar' },
+    entrada_compra_rechazada: { titulo: '❌ Entrada de Compra Rechazada', instruccion: 'Revise el motivo, corrija la Entrada y vuelva a guardarla para que se reenvíe a aprobación.', boton: 'Entendido' },
     registrar_pago:       { titulo: '✅ Solicitud de Pago Aprobada', instruccion: 'Puede ir al módulo de Pagos para Registrar el Pago cuando guste.', boton: 'Entendido' },
     ver_rechazo:          { titulo: '❌ Solicitud de Pago Rechazada', instruccion: 'Revise el motivo y corrija la Obligación en el módulo de Pagos.', boton: 'Entendido' },
     sin_firma_disponible: { titulo: '⚠️ Sin Firma Autorizada Disponible', instruccion: 'Ningún aprobador con Nivel de Firma tiene sesión activa en este momento. Avise a su supervisor o intente más tarde.', boton: 'Entendido' },

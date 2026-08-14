@@ -2288,7 +2288,7 @@ async function rechazarEntradaCompra(id_entrada) {
           mensaje: 'Tu Entrada de Compra "ENT-'+id_entrada+'" fue rechazada por '+(sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor')+'. Motivo: '+motivo+'. Corríjala y vuelva a guardarla para que se reenvíe a aprobación.',
           estado: 'PENDIENTE',
           fecha_creacion: new Date().toISOString(),
-          datos_extra: JSON.stringify({ id_entrada: id_entrada, accion: 'ver_rechazo' })
+          datos_extra: JSON.stringify({ id_entrada: id_entrada, accion: 'entrada_compra_rechazada' })
         }, '', true);
       } catch(eNotifRechEnt) { console.warn('Error notificando rechazo de Entrada:', eNotifRechEnt); }
     }
