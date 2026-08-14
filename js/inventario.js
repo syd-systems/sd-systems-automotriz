@@ -262,7 +262,7 @@ async function renderInventario(filtro) {
       + (puedo('INVENTARIO','VER_CATEGORIAS') ? '<button id="inv-tab-categorias" onclick="invCambiarVista(\'categorias\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">📦 Categorías</button>' : '')
       + (puedo('INVENTARIO','VER_TIPOS') ? '<button id="inv-tab-tipos" onclick="invCambiarVista(\'tipos\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">🔩 Tipos</button>' : '')
       + (puedo('INVENTARIO','VER_MARGEN_BRUTO') ? '<button id="inv-tab-margen" onclick="invCambiarVista(\'margen\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">📊 Margen Bruto</button>' : '')
-      + ((sesionActual?.administrador || puedo('PAGOS','APROBAR')) ? '<button id="inv-tab-aprobaciones" onclick="invCambiarVista(\'aprobaciones\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">✅ Aprobaciones Pendientes</button>' : '')
+      + ((sesionActual?.administrador || puedo('INVENTARIO','ENTRADA_STOCK')) ? '<button id="inv-tab-rechazadas" onclick="invCambiarVista(\'rechazadas\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">⚠ Entradas Rechazadas<span id="badge-entradas-rechazadas"></span></button>' : '')
       + '</div>'
       + '<select id="inv-filtro-cat" onchange="invFiltrarCategoria()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todas las categorías</option>'
@@ -480,10 +480,28 @@ async function renderInventario(filtro) {
     if (_invVista !== 'movimientos') {
       invRenderVista(itemsFiltrados, _invVista);
     }
+    // En segundo plano, sin bloquear el render principal -- revisa si hay
+    // Entradas Rechazadas propias (o de cualquiera, si es administrador)
+    // para hacer titilar la pestaña y que no pase desapercibida.
+    revisarBadgeEntradasRechazadas();
   } catch(e) {
     const tabla = document.getElementById('tabla-inv-cont');
     if (tabla) tabla.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
   }
+}
+
+async function revisarBadgeEntradasRechazadas() {
+  const badgeEl = document.getElementById('badge-entradas-rechazadas');
+  if (!badgeEl) return;
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','ENTRADA_STOCK')) { badgeEl.innerHTML = ''; return; }
+  try {
+    let qBadge = '?motivo=eq.compra&estado_aprobacion=eq.RECHAZADA&select=id_entrada';
+    if (!sesionActual?.administrador) qBadge += '&id_usuario=eq.'+encodeURIComponent(sesionActual?.correo_usuario||'');
+    const rows = await api('stock_entradas','GET',null,qBadge) || [];
+    badgeEl.innerHTML = rows.length
+      ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fc8181;margin-left:6px;vertical-align:middle;animation:parpadeoAlerta 1.2s ease-in-out infinite"></span>'
+      : '';
+  } catch(eBadgeRech) { console.warn('Error revisando badge de Entradas Rechazadas:', eBadgeRech); }
 }
 
 function invFiltrarCategoria() {
@@ -524,7 +542,7 @@ async function invCambiarVista(vista) {
   // Ocultar "+ Nuevo Artículo" en vistas de administración
   const btnNuevo = document.querySelector('#panel-inventario .btn-primario[onclick="abrirNuevoInventario()"]');
   if (btnNuevo) {
-    btnNuevo.style.display = (vista === 'categorias' || vista === 'tipos' || vista === 'margen' || vista === 'aprobaciones') ? 'none' : '';
+    btnNuevo.style.display = (vista === 'categorias' || vista === 'tipos' || vista === 'margen' || vista === 'rechazadas') ? 'none' : '';
   }
   const contTabla = document.getElementById('tabla-inv-cont');
   if (vista === 'movimientos') {
@@ -545,7 +563,7 @@ async function invRenderVista(items, vista) {
   else if (vista === 'categorias') await invRenderCategorias(cont);
   else if (vista === 'tipos')      await invRenderTipos(cont);
   else if (vista === 'margen')     await invRenderMargenBruto(cont);
-  else if (vista === 'aprobaciones') await invRenderAprobacionesPendientes(cont);
+  else if (vista === 'rechazadas') await invRenderEntradasRechazadas(cont);
 }
 
 function invRenderTabla(items, cont) {
@@ -2170,20 +2188,22 @@ async function invRenderTipos(cont) {
 // botones reales de Aprobar/Rechazar. Solo Compras a Proveedor pasan por
 // aquí (Devolución/Ajuste/Transferencia siguen ejecutándose de inmediato,
 // sin necesitar aprobación).
-async function invRenderAprobacionesPendientes(cont) {
+async function invRenderEntradasRechazadas(cont) {
   if (!cont) cont = document.getElementById('tabla-inv-cont');
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const pendientes = await api('stock_entradas','GET',null,
-      '?motivo=eq.compra&estado_aprobacion=eq.PENDIENTE&order=fecha_registro.asc'
-      +'&select=id_entrada,id_articulo,cantidad,fecha_negociacion,monto_total_con_iva,moneda_compra,esquema_pago,id_usuario,id_proveedor') || [];
-    if (!pendientes.length) {
-      cont.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">✅ No hay Entradas de Compra pendientes de aprobación.</div>';
+    let qRech = '?motivo=eq.compra&estado_aprobacion=eq.RECHAZADA&order=fecha_registro.desc'
+      +'&select=id_entrada,id_articulo,cantidad,fecha_negociacion,monto_total_con_iva,esquema_pago,id_usuario,id_proveedor,motivo_rechazo';
+    // Cada quien ve solo lo suyo -- salvo administrador, que ve todo.
+    if (!sesionActual?.administrador) qRech += '&id_usuario=eq.'+encodeURIComponent(sesionActual?.correo_usuario||'');
+    const rechazadas = await api('stock_entradas','GET',null,qRech) || [];
+    if (!rechazadas.length) {
+      cont.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">✅ No tiene Entradas de Compra rechazadas pendientes de corregir.</div>';
       return;
     }
-    const idsArt = [...new Set(pendientes.map(function(p){ return p.id_articulo; }))];
-    const idsProv = [...new Set(pendientes.map(function(p){ return p.id_proveedor; }).filter(Boolean))];
+    const idsArt = [...new Set(rechazadas.map(function(p){ return p.id_articulo; }))];
+    const idsProv = [...new Set(rechazadas.map(function(p){ return p.id_proveedor; }).filter(Boolean))];
     const [arts, provs] = await Promise.all([
       idsArt.length ? api('inventario_almacen','GET',null,'?id_articulo=in.('+idsArt.join(',')+')&select=id_articulo,nombre_articulo,codigo_articulo') : Promise.resolve([]),
       idsProv.length ? api('proveedores','GET',null,'?id_proveedor=in.('+idsProv.join(',')+')&select=id_proveedor,nombre') : Promise.resolve([]),
@@ -2191,7 +2211,7 @@ async function invRenderAprobacionesPendientes(cont) {
     const artMap = {}; (arts||[]).forEach(function(a){ artMap[a.id_articulo] = a; });
     const provMap = {}; (provs||[]).forEach(function(p){ provMap[p.id_proveedor] = p.nombre; });
 
-    const filas = pendientes.map(function(p) {
+    const filas = rechazadas.map(function(p) {
       const art = artMap[p.id_articulo];
       const nomArt = art ? (art.codigo_articulo ? art.codigo_articulo+' — ' : '') + art.nombre_articulo : ('Art#'+p.id_articulo);
       const nomProv = provMap[p.id_proveedor] || '—';
@@ -2200,33 +2220,30 @@ async function invRenderAprobacionesPendientes(cont) {
         +'<td style="padding:8px;font-size:12px">'+nomArt+'</td>'
         +'<td style="padding:8px;text-align:right;font-family:var(--font-mono);font-size:12px">'+p.cantidad+'</td>'
         +'<td style="padding:8px;font-size:12px">'+nomProv+'</td>'
-        +'<td style="padding:8px;text-align:right;font-family:var(--font-mono);font-weight:600;color:var(--naranja)">$ '+fmtUSD(p.monto_total_con_iva)+'</td>'
-        +'<td style="padding:8px;font-size:11px;color:var(--suave)">'+(p.esquema_pago||'—')+'</td>'
-        +'<td style="padding:8px;white-space:nowrap">'
-        +'<button class="btn-naranja" onclick="aprobarEntradaCompra('+p.id_entrada+')" style="font-size:11px;padding:4px 10px;margin-right:6px">✓ Aprobar</button>'
-        +'<button class="btn-secundario" style="border-color:rgba(252,129,129,0.4);color:#fc8181" onclick="rechazarEntradaCompra('+p.id_entrada+')">✕ Rechazar</button>'
-        +'</td></tr>';
+        +'<td style="padding:8px;text-align:right;font-family:var(--font-mono);font-weight:600;color:#fc8181">$ '+fmtUSD(p.monto_total_con_iva)+'</td>'
+        +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(p.motivo_rechazo||'—')+'</td>'
+        +'</tr>';
     }).join('');
 
-    cont.innerHTML = '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+    cont.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-bottom:10px">Estas Entradas fueron rechazadas por un Nivel de Firma -- todavía no afectaron Stock ni Contabilidad. Corríjalas y vuelva a guardarlas para que se reenvíen a aprobación.</div>'
+      + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
       +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Fecha</th>'
       +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
       +'<th style="padding:8px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Cant.</th>'
       +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Proveedor</th>'
       +'<th style="padding:8px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Monto</th>'
-      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Pago</th>'
-      +'<th style="padding:8px"></th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Motivo del Rechazo</th>'
       +'</tr></thead><tbody>'+filas+'</tbody></table></div>';
   } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>'; }
 }
 
 async function rechazarEntradaCompra(id_entrada) {
   if (!sesionActual?.administrador && !puedo('PAGOS','APROBAR')) {
-    alert('No tiene permiso para rechazar Entradas de Compra.'); return;
+    alert('No tiene permiso para rechazar Entradas de Compra.'); return false;
   }
   const motivo = await new Promise(function(resolve) {
     const div = document.createElement('div');
-    div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center';
+    div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center';
     div.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:24px;max-width:380px;width:90%">'
       + '<div style="font-size:15px;margin-bottom:16px;color:#e8e8e8;text-align:center">Rechazar Entrada de Compra</div>'
       + '<label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Motivo del rechazo *</label>'
@@ -2248,15 +2265,15 @@ async function rechazarEntradaCompra(id_entrada) {
     };
     div.querySelector('#btn-confirm-ent-no').onclick = function() { cerrar(null); };
   });
-  if (!motivo) return;
+  if (!motivo) return false;
 
   try {
     const entRows = await api('stock_entradas','GET',null,'?id_entrada=eq.'+id_entrada);
     const m = entRows && entRows[0] ? entRows[0] : null;
-    if (!m) { alert('No se encontró la Entrada.'); return; }
+    if (!m) { alert('No se encontró la Entrada.'); return false; }
     if (m.estado_aprobacion !== 'PENDIENTE') {
       alert('Esta Entrada ya no está pendiente de aprobación (estado actual: ' + (m.estado_aprobacion || '—') + ').');
-      return;
+      return false;
     }
     await api('stock_entradas','PATCH',{
       estado_aprobacion: 'RECHAZADA',
@@ -2277,8 +2294,10 @@ async function rechazarEntradaCompra(id_entrada) {
     }
     alert('Entrada rechazada.');
     renderInventario();
+    return true;
   } catch(e) {
     alert('Error al rechazar la Entrada: ' + e.message);
+    return false;
   }
 }
 
