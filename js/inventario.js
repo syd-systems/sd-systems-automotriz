@@ -857,6 +857,15 @@ async function verFichaInventario(id) {
 
 async function abrirEntradaStock(id) {
   await cargarTasaIVAGlobal(); // refresca IVA vigente cada vez que se abre el formulario
+  // Por si quedó pegado de un "Retomar Entrada Rechazada" anterior -- una
+  // Entrada nueva normal jamás debe terminar actualizando por error una
+  // fila vieja. Se restaura también el título/botón del modal a su texto
+  // normal (retomarEntradaRechazada() los cambia después, si aplica).
+  window._retomandoEntradaId = null;
+  const tituloModalNormal = document.querySelector('#modal-entrada-stock .modal-header h3');
+  if (tituloModalNormal) tituloModalNormal.textContent = 'ENTRADA DE STOCK';
+  const btnGuardarNormal = document.querySelector('#modal-entrada-stock .btn-primario');
+  if (btnGuardarNormal) btnGuardarNormal.textContent = 'INGRESAR STOCK';
   let r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r && _fichaInvActual && _fichaInvActual.id === id) {
     r = _fichaInvActual;
@@ -1353,7 +1362,7 @@ async function guardarEntradaStock() {
     }
 
     let id_entrada = null;
-    const entradaRes = await api('stock_entradas', 'POST', {
+    const datosEntradaGuardar = {
       id_articulo:            id,
       cantidad:               cantidad,
       precio_costo_moneda:    nuevoPrecioCosto > 0 ? nuevoPrecioCosto : costoActual,
@@ -1377,8 +1386,21 @@ async function guardarEntradaStock() {
       cuotas_json:            cuotasJsonVal,
       estado_aprobacion:      motivoEnt === 'compra' ? 'PENDIENTE' : null,
       id_usuario:             sesionActual.correo_usuario
-    });
-    id_entrada = entradaRes && entradaRes[0] ? entradaRes[0].id_entrada : null;
+    };
+
+    if (window._retomandoEntradaId) {
+      // ── Retomar una Entrada RECHAZADA: se actualiza la MISMA fila (no se
+      // crea una nueva), y se limpia el rechazo anterior para que quede
+      // claro que fue corregida y reenviada.
+      id_entrada = window._retomandoEntradaId;
+      datosEntradaGuardar.motivo_rechazo = null;
+      datosEntradaGuardar.aprobado_por = null;
+      datosEntradaGuardar.fecha_aprobacion = null;
+      await api('stock_entradas', 'PATCH', datosEntradaGuardar, '?id_entrada=eq.'+id_entrada);
+    } else {
+      const entradaRes = await api('stock_entradas', 'POST', datosEntradaGuardar);
+      id_entrada = entradaRes && entradaRes[0] ? entradaRes[0].id_entrada : null;
+    }
 
     // ── COMPRA: se detiene aquí -- no se toca Stock, CPP, Asiento ni CxP
     // todavía. Eso solo pasa cuando un Nivel de Firma APRUEBE esta Entrada
@@ -1389,8 +1411,11 @@ async function guardarEntradaStock() {
         const numDocSol = id_entrada ? 'ENT-' + id_entrada : ('ENT-INV-' + id);
         await enrutarAprobacionEntrada(montoTotalConIVA, id_entrada, numDocSol);
       } catch(eEnrutEnt) { console.warn('Error enrutando aprobación de Entrada:', eEnrutEnt); }
-      okEl.textContent = 'Entrada registrada -- pendiente de aprobación de un Nivel de Firma antes de afectar Stock/Contabilidad.';
+      okEl.textContent = window._retomandoEntradaId
+        ? 'Entrada corregida y reenviada -- pendiente de aprobación de un Nivel de Firma.'
+        : 'Entrada registrada -- pendiente de aprobación de un Nivel de Firma antes de afectar Stock/Contabilidad.';
       okEl.style.display = 'block';
+      window._retomandoEntradaId = null;
       setTimeout(async function() {
         cerrarModal('modal-entrada-stock');
         cerrarModal('modal-stock-articulo');
@@ -1792,7 +1817,7 @@ async function aprobarEntradaCompra(id_entrada) {
     // Releer con aprobado_por ya seteado, para que ejecutarEfectosEntradaCompra lo use en la CxP
     const mAprobado = Object.assign({}, m, { aprobado_por: sesionActual?.correo_usuario || null });
     await ejecutarEfectosEntradaCompra(mAprobado);
-    alert('Entrada aprobada. Stock, Costo y Cuenta por Pagar actualizados.');
+    await mostrarAvisoOk('✓ Entrada aprobada. Stock, Costo y Cuenta por Pagar actualizados.');
     await calcularInvSaldoArea();
     renderInventario();
   } catch(e) {
@@ -2188,6 +2213,85 @@ async function invRenderTipos(cont) {
 // botones reales de Aprobar/Rechazar. Solo Compras a Proveedor pasan por
 // aquí (Devolución/Ajuste/Transferencia siguen ejecutándose de inmediato,
 // sin necesitar aprobación).
+// Retoma una Entrada de Compra RECHAZADA: abre el mismo modal de Nueva
+// Entrada, precargado con los datos guardados, para corregirlos y
+// reenviarla a aprobación -- sin crear una fila nueva (se actualiza la
+// misma), y sin tocar Stock/CPP/Asiento/CxP (nunca se aplicaron, quedaron
+// detenidos desde que se creó, así que no hay nada que revertir).
+async function retomarEntradaRechazada(id_entrada) {
+  try {
+    const entRows = await api('stock_entradas','GET',null,'?id_entrada=eq.'+id_entrada);
+    const m = entRows && entRows[0] ? entRows[0] : null;
+    if (!m) { alert('No se encontró la Entrada.'); return; }
+    if (m.estado_aprobacion !== 'RECHAZADA') {
+      alert('Esta Entrada ya no está en estado Rechazada (estado actual: ' + (m.estado_aprobacion || '—') + ').');
+      return;
+    }
+    if (!sesionActual?.administrador && m.id_usuario !== sesionActual?.correo_usuario) {
+      alert('Solo quien creó esta Entrada (o un administrador) puede retomarla.');
+      return;
+    }
+
+    await abrirEntradaStock(m.id_articulo);
+    // abrirEntradaStock carga proveedores/áreas en segundo plano (Promise.all
+    // sin await) -- se espera un momento a que termine antes de setear el
+    // Proveedor, si no el select seguiría con solo la opción vacía.
+    await new Promise(function(res) { setTimeout(res, 600); });
+
+    const motivoSelR = document.getElementById('es-motivo');
+    if (motivoSelR) { motivoSelR.value = 'compra'; onCambiarMotivoEntrada(); }
+
+    const fechaNegR = document.getElementById('es-fecha-negociacion');
+    if (fechaNegR) fechaNegR.value = (m.fecha_negociacion || m.fecha_entrada || '').slice(0,10);
+    const cantR = document.getElementById('es-cantidad');
+    if (cantR) cantR.value = m.cantidad;
+
+    const monedaSelR = document.getElementById('es-moneda-compra');
+    if (monedaSelR) { monedaSelR.value = m.moneda_compra || 'USD'; await onCambiarMonedaEntrada(); }
+    // La tasa que se auto-cargó al cambiar Moneda es la de HOY -- se
+    // sobreescribe con la que realmente se negoció originalmente.
+    const tasaR = document.getElementById('es-tasa-bcv');
+    if (tasaR && m.tasa_bcv) tasaR.value = m.tasa_bcv;
+    const precioR = document.getElementById('es-precio-costo');
+    if (precioR) precioR.value = m.precio_compra_original != null ? parseFloat(m.precio_compra_original).toFixed(2) : '';
+
+    const provSelR = document.getElementById('es-proveedor');
+    if (provSelR && m.id_proveedor) provSelR.value = m.id_proveedor;
+
+    if (m.exento_iva !== null) {
+      const radioExR = document.getElementById(m.exento_iva ? 'es-exento-iva-si' : 'es-exento-iva-no');
+      if (radioExR) { radioExR.checked = true; document.getElementById('es-exento-iva-val').value = m.exento_iva ? 'SI' : 'NO'; onCambioExentoIVAEntrada(); }
+    }
+    if (!m.exento_iva && m.incluye_iva !== null) {
+      const radioIvaR = document.getElementById(m.incluye_iva ? 'es-incluye-iva-si' : 'es-incluye-iva-no');
+      if (radioIvaR) { radioIvaR.checked = true; document.getElementById('es-incluye-iva-val').value = m.incluye_iva ? 'SI' : 'NO'; calcularTributosEntrada(); }
+    }
+
+    const esquemaSelR = document.getElementById('es-esquema-pago');
+    if (esquemaSelR) { esquemaSelR.value = m.esquema_pago || 'CONTADO'; onCambioEsquemaPago(); }
+    if (m.esquema_pago === 'CREDITO' && m.cuotas_json) {
+      const cuotasArrR = typeof m.cuotas_json === 'string' ? JSON.parse(m.cuotas_json) : m.cuotas_json;
+      if (cuotasArrR && cuotasArrR.length) {
+        const numCuotasElR = document.getElementById('es-cuotas-num');
+        const fechaCuotaElR = document.getElementById('es-cuotas-fecha-inicio');
+        if (numCuotasElR) numCuotasElR.value = cuotasArrR.length;
+        if (fechaCuotaElR) fechaCuotaElR.value = cuotasArrR[0].fecha;
+        calcularCuotasEntrada();
+      }
+    }
+
+    // Marca el modal en "modo retomar" -- guardarEntradaStock() lo detecta
+    // y, en vez de crear una fila nueva, actualiza esta misma.
+    window._retomandoEntradaId = id_entrada;
+    const tituloModalR = document.querySelector('#modal-entrada-stock .modal-header h3');
+    if (tituloModalR) tituloModalR.textContent = '↻ RETOMAR ENTRADA RECHAZADA';
+    const btnGuardarR = document.querySelector('#modal-entrada-stock .btn-primario');
+    if (btnGuardarR) btnGuardarR.textContent = 'CORREGIR Y REENVIAR A APROBACIÓN';
+  } catch(e) {
+    alert('Error al retomar la Entrada: ' + e.message);
+  }
+}
+
 async function invRenderEntradasRechazadas(cont) {
   if (!cont) cont = document.getElementById('tabla-inv-cont');
   if (!cont) return;
@@ -2222,6 +2326,7 @@ async function invRenderEntradasRechazadas(cont) {
         +'<td style="padding:8px;font-size:12px">'+nomProv+'</td>'
         +'<td style="padding:8px;text-align:right;font-family:var(--font-mono);font-weight:600;color:#fc8181">$ '+fmtUSD(p.monto_total_con_iva)+'</td>'
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(p.motivo_rechazo||'—')+'</td>'
+        +'<td style="padding:8px;white-space:nowrap"><button class="btn-naranja" onclick="retomarEntradaRechazada('+p.id_entrada+')" style="font-size:11px;padding:4px 10px">↻ Retomar y Editar</button></td>'
         +'</tr>';
     }).join('');
 
@@ -2233,6 +2338,7 @@ async function invRenderEntradasRechazadas(cont) {
       +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Proveedor</th>'
       +'<th style="padding:8px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Monto</th>'
       +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Motivo del Rechazo</th>'
+      +'<th style="padding:8px"></th>'
       +'</tr></thead><tbody>'+filas+'</tbody></table></div>';
   } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>'; }
 }
@@ -2292,7 +2398,7 @@ async function rechazarEntradaCompra(id_entrada) {
         }, '', true);
       } catch(eNotifRechEnt) { console.warn('Error notificando rechazo de Entrada:', eNotifRechEnt); }
     }
-    alert('Entrada rechazada.');
+    await mostrarAvisoOk('Entrada rechazada.');
     renderInventario();
     return true;
   } catch(e) {

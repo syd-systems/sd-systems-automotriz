@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260814263';
+const SYD_VERSION = '20260814264';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -2887,6 +2887,22 @@ async function confirmarSiNo(mensaje) {
     const cerrar = function(v) { document.body.removeChild(div); resolve(v); };
     div.querySelector('#btn-sn-si').onclick = function(){ cerrar(true); };
     div.querySelector('#btn-sn-no').onclick = function(){ cerrar(false); };
+  });
+}
+
+// Aviso simple (solo "Aceptar"), mismo estilo -- reemplaza al alert()
+// nativo del navegador, que se ve ajeno al resto de la app.
+async function mostrarAvisoOk(mensaje, esError) {
+  return new Promise(function(resolve) {
+    const div = document.createElement('div');
+    div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10001;display:flex;align-items:center;justify-content:center';
+    div.innerHTML = '<div style="background:#1a1a1a;border:1px solid '+(esError?'#fc8181':'#333')+';border-radius:10px;padding:24px;max-width:360px;width:90%">'
+      + '<div style="font-size:14px;margin-bottom:20px;color:'+(esError?'#fc8181':'#e8e8e8')+';text-align:center">'+mensaje+'</div>'
+      + '<div style="display:flex;justify-content:center">'
+      + '<button id="btn-aviso-ok" style="background:'+(esError?'#333':'var(--naranja)')+';border:none;color:'+(esError?'#e8e8e8':'#1a1a1a')+';padding:10px 32px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600">Aceptar</button>'
+      + '</div></div>';
+    document.body.appendChild(div);
+    div.querySelector('#btn-aviso-ok').onclick = function(){ document.body.removeChild(div); resolve(); };
   });
 }
 
