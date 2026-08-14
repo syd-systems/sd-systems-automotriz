@@ -62,6 +62,49 @@ function clasificarABC(items) {
   });
 }
 
+// Tasa BCV para convertir el CPP a Bs -- NO es la de hoy, es la que existía
+// en la fecha de la ÚLTIMA Entrada de cada Artículo (el CPP es un
+// promedio ponderado, así que su valor "nace" en el momento de esa
+// compra, no hoy). El Precio de Venta sí usa la tasa de HOY (es un cálculo
+// en vivo, no histórico) -- son cosas distintas a propósito.
+let _tasaCppPorArticulo = {};
+async function refrescarTasasHistoricasCPP() {
+  _tasaCppPorArticulo = {};
+  try {
+    const idsArt = inventarioCache.map(function(r){ return r.id_articulo; });
+    if (!idsArt.length) return;
+    // 1. Última fecha de Entrada por Artículo -- se trae todo ordenado por
+    // fecha desc y se toma solo la primera vez que aparece cada Artículo
+    // (PostgREST no tiene un "distinct on" directo por esta vía). Se
+    // filtra por los Artículos ya cargados (inventarioCache, correctamente
+    // scoped por empresa) en vez de id_empresa directo -- esa columna no
+    // se usa en ningún otro lado sobre stock_entradas.
+    const entradas = await api('stock_entradas','GET',null,
+      '?id_articulo=in.('+idsArt.join(',')+')'
+      +'&or=(anulada.eq.false,anulada.is.null)&order=fecha_entrada.desc&select=id_articulo,fecha_entrada') || [];
+    const ultimaFechaPorArticulo = {};
+    entradas.forEach(function(e) {
+      if (ultimaFechaPorArticulo[e.id_articulo] === undefined) {
+        ultimaFechaPorArticulo[e.id_articulo] = e.fecha_entrada;
+      }
+    });
+    // 2. Histórico completo de tasas USD, ordenado ascendente -- se recorre
+    // una sola vez para resolver todas las fechas necesarias.
+    const tasas = await api('tasas','GET',null,
+      '?moneda_origen=eq.USD&order=fecha_valor.asc&select=fecha_valor,tipo_cambio') || [];
+    Object.keys(ultimaFechaPorArticulo).forEach(function(idArt) {
+      const fecha = ultimaFechaPorArticulo[idArt];
+      // La tasa vigente a esa fecha es la más reciente cuyo fecha_valor
+      // sea <= la fecha de la Entrada.
+      let tasaEncontrada = null;
+      for (let i = tasas.length - 1; i >= 0; i--) {
+        if (tasas[i].fecha_valor <= fecha) { tasaEncontrada = parseFloat(tasas[i].tipo_cambio); break; }
+      }
+      if (tasaEncontrada !== null) _tasaCppPorArticulo[idArt] = tasaEncontrada;
+    });
+  } catch(e) { console.warn('Error refrescando Tasas históricas del CPP:', e); }
+}
+
 // Margen Bruto % vigente HOY para cada Tipo de Artículo, en una sola
 // consulta (no una por Artículo) -- se usa para calcular el Precio de
 // Venta EN VIVO donde se muestra el estado actual del Inventario
@@ -307,6 +350,7 @@ async function renderInventario(filtro) {
     // solo el histórico de la última Salida). Se refresca siempre junto
     // con el inventario, igual que ya hace calcularInvSaldoArea().
     await refrescarMargenesVigentes();
+    await refrescarTasasHistoricasCPP();
 
     // Cargar entregas pendientes de "Confirmar Recepción" -- mientras el
     // receptor no confirma, el stock no está ni en el área que lo entregó
@@ -530,14 +574,21 @@ function invRenderTabla(items, cont) {
             + pendientesHtml + '</td>';
         })()
       + (puedo('INVENTARIO','VER_COSTOS')
-          ? '<td style="padding:5px 8px;vertical-align:middle;font-family:var(--font-mono);font-size:12px">'
-            + '<div style="color:var(--suave);font-size:9px">COSTO PROM. (CPP)</div>'
-            + '<span>' + fmtBs((stockMostrar === 0 ? 0 : parseFloat(r.precio_costo_moneda||0)) * _tasaVigente) + ' Bs</span>'
-            + '<div style="font-size:9px;color:var(--suave);margin-top:1px">$ ' + fmtUSD(stockMostrar === 0 ? 0 : r.precio_costo_moneda) + ' (Bs ' + fmtBs((stockMostrar === 0 ? 0 : parseFloat(r.precio_costo_moneda||0)) * _tasaVigente) + ')</div>'
-            + (r.precio_costo_ultimo_moneda
-                ? '<div style="font-size:9px;color:var(--suave);margin-top:1px">Última compra: $ ' + fmtUSD(r.precio_costo_ultimo_moneda) + '</div>'
-                : '')
-            + '</td>'
+          ? (function() {
+              // Tasa histórica (de la última Entrada de ESTE Artículo), no
+              // la de hoy -- si nunca tuvo Entrada, se usa la de hoy como
+              // respaldo (no hay otra referencia posible).
+              const tasaCppFila = _tasaCppPorArticulo[r.id_articulo] || _tasaVigente;
+              const cppBsFila = fmtBs((stockMostrar === 0 ? 0 : parseFloat(r.precio_costo_moneda||0)) * tasaCppFila);
+              return '<td style="padding:5px 8px;vertical-align:middle;font-family:var(--font-mono);font-size:12px">'
+                + '<div style="color:var(--suave);font-size:9px">COSTO PROM. (CPP)</div>'
+                + '<span>' + cppBsFila + ' Bs</span>'
+                + '<div style="font-size:9px;color:var(--suave);margin-top:1px">$ ' + fmtUSD(stockMostrar === 0 ? 0 : r.precio_costo_moneda) + ' (Bs ' + cppBsFila + ')</div>'
+                + (r.precio_costo_ultimo_moneda
+                    ? '<div style="font-size:9px;color:var(--suave);margin-top:1px">Última compra: $ ' + fmtUSD(r.precio_costo_ultimo_moneda) + '</div>'
+                    : '')
+                + '</td>';
+            })()
           : '<td style="padding:5px 8px;vertical-align:middle;text-align:center;color:#555;font-size:11px">🔒</td>')
       + (puedo('INVENTARIO','VER_PRECIOS_VENTA')
           ? (function() {
@@ -683,6 +734,7 @@ async function verFichaInventario(id) {
   // Márgenes vigentes -- fresco también aquí, por si la Ficha se abre sin
   // haber pasado antes por la lista general recién cargada.
   await refrescarMargenesVigentes();
+    await refrescarTasasHistoricasCPP();
 
   const abcMap = {};
   clasificarABC(inventarioCache).forEach(function(x) { abcMap[x.id_articulo] = x.clase_abc; });
@@ -709,7 +761,7 @@ async function verFichaInventario(id) {
     + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo_articulo + ')</div>' : '') + '</div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Stock Mínimo</div>'
     + '<div style="font-family:var(--font-mono);font-size:18px">' + r.stock_minimo_articulo + ' ' + (r.unidad||'UND') + '</div></div>'
-    + (puedo('INVENTARIO','VER_COSTOS') ? '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Costo Prom. (CPP)</div><div style="font-family:var(--font-mono)">$ ' + fmtUSD(costoMostrarFicha) + '</div><div style="font-size:11px;color:var(--suave);margin-top:2px;font-family:var(--font-mono)">Bs ' + fmtBs(costoMostrarFicha * _tasaVigente) + '</div></div>' : '')
+    + (puedo('INVENTARIO','VER_COSTOS') ? '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Costo Prom. (CPP)</div><div style="font-family:var(--font-mono)">' + fmtBs(costoMostrarFicha * (_tasaCppPorArticulo[r.id_articulo] || _tasaVigente)) + ' Bs</div><div style="font-size:11px;color:var(--suave);margin-top:2px;font-family:var(--font-mono)">$ ' + fmtUSD(costoMostrarFicha) + '</div></div>' : '')
     + (puedo('INVENTARIO','VER_PRECIOS_VENTA')
         ? '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
           + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + fmtBs(dualVentaFicha.bs) + ' Bs</div>'
@@ -4693,6 +4745,7 @@ async function abrirStockArticulo(id, nombre) {
   } catch(e) { console.warn('abrirStockArticulo GET fresco:', e.message); }
   if (stockActual === 0) { cppActual = 0; } // sin stock, sin costo que mostrar
   await refrescarMargenesVigentes();
+    await refrescarTasasHistoricasCPP();
 
   const inactivoArt = r.estado === 'INACTIVO';
   document.getElementById('stock-art-nombre').textContent = r.nombre_articulo + (inactivoArt ? ' (INACTIVO)' : '');
