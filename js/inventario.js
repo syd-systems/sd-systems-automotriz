@@ -1315,7 +1315,7 @@ async function guardarEntradaStock() {
       precio_compra_original: precio_compra_original || null,
       moneda_compra:          moneda_compra_val,
       tasa_bcv:               tasa_bcv_usada,
-      fecha_entrada:          getHoyVzla(),
+      fecha_entrada:          document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
       fecha_negociacion:      document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
       id_area:                id_areaEnt,
       id_empleado:            idEmpEntVal,
@@ -3819,6 +3819,7 @@ async function _guardarEdicionMovimientoInterno() {
                                    : (document.getElementById('edit-mov-incluye-iva-val')?.value === 'NO' ? false : null));
       datos.moneda_compra       = monedaEdit;
       datos.fecha_negociacion   = fechaNeg;
+      datos.fecha_entrada       = fechaNeg;
       datos.motivo              = motivoEdit;
       datos.id_proveedor        = provEdit;
       datos.cliente_nombre      = clienteEdit;
