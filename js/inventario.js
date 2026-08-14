@@ -262,6 +262,7 @@ async function renderInventario(filtro) {
       + (puedo('INVENTARIO','VER_CATEGORIAS') ? '<button id="inv-tab-categorias" onclick="invCambiarVista(\'categorias\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">📦 Categorías</button>' : '')
       + (puedo('INVENTARIO','VER_TIPOS') ? '<button id="inv-tab-tipos" onclick="invCambiarVista(\'tipos\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">🔩 Tipos</button>' : '')
       + (puedo('INVENTARIO','VER_MARGEN_BRUTO') ? '<button id="inv-tab-margen" onclick="invCambiarVista(\'margen\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">📊 Margen Bruto</button>' : '')
+      + ((sesionActual?.administrador || puedo('PAGOS','APROBAR')) ? '<button id="inv-tab-aprobaciones" onclick="invCambiarVista(\'aprobaciones\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">✅ Aprobaciones Pendientes</button>' : '')
       + '</div>'
       + '<select id="inv-filtro-cat" onchange="invFiltrarCategoria()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todas las categorías</option>'
@@ -523,7 +524,7 @@ async function invCambiarVista(vista) {
   // Ocultar "+ Nuevo Artículo" en vistas de administración
   const btnNuevo = document.querySelector('#panel-inventario .btn-primario[onclick="abrirNuevoInventario()"]');
   if (btnNuevo) {
-    btnNuevo.style.display = (vista === 'categorias' || vista === 'tipos' || vista === 'margen') ? 'none' : '';
+    btnNuevo.style.display = (vista === 'categorias' || vista === 'tipos' || vista === 'margen' || vista === 'aprobaciones') ? 'none' : '';
   }
   const contTabla = document.getElementById('tabla-inv-cont');
   if (vista === 'movimientos') {
@@ -544,6 +545,7 @@ async function invRenderVista(items, vista) {
   else if (vista === 'categorias') await invRenderCategorias(cont);
   else if (vista === 'tipos')      await invRenderTipos(cont);
   else if (vista === 'margen')     await invRenderMargenBruto(cont);
+  else if (vista === 'aprobaciones') await invRenderAprobacionesPendientes(cont);
 }
 
 function invRenderTabla(items, cont) {
@@ -1307,6 +1309,31 @@ async function guardarEntradaStock() {
     const clienteNomH  = (motivoEnt === 'devolucion') ? ((window._facturasDevolucionArt || []).find(function(f){ return String(f.id_factura) === String(document.getElementById('es-factura-devolucion')?.value); })?.receptor_nombre || null) : null;
     const idFacturaH   = (motivoEnt === 'devolucion') ? (parseInt(document.getElementById('es-factura-devolucion')?.value) || null) : null;
 
+    // Monto TOTAL (con IVA si aplica) -- se calcula UNA sola vez, ANTES de
+    // guardar la Entrada, para que quede congelado en la fila (columna
+    // monto_total_con_iva) y así el Asiento y la CxP -- que para Compra
+    // ahora se generan recién al APROBAR, posiblemente horas/días después,
+    // por otra persona -- usen exactamente este mismo monto, sin
+    // recalcularlo con una tasa o un redondeo distinto al de este momento.
+    const exentoIVAEnt2   = document.getElementById('es-exento-iva-val')?.value === 'SI';
+    const precioBaseAsiento = motivoEnt === 'compra' ? nuevoPrecioCostoRaw : costoActual;
+    const montoTotalConIVA = motivoEnt !== 'compra'
+      ? parseFloat((precioBaseAsiento * cantidad).toFixed(2))
+      : (exentoIVAEnt2
+          ? parseFloat((precioBaseAsiento * cantidad).toFixed(2))
+          : parseFloat((precioBaseAsiento * cantidad * (incluyeIVA_ent ? 1 : (1 + IVA_RATE_ENT))).toFixed(2)));
+
+    // Cuotas (solo Crédito): se guarda el desglose YA CALCULADO tal cual se
+    // ve en pantalla (con cualquier ajuste manual del Usuario al monto por
+    // cuota, y el ajuste de fecha a día hábil) -- no se recalcula después,
+    // para que la aprobación (que puede pasar mucho más tarde) use
+    // exactamente lo que el Usuario vio y aceptó al crear la Entrada.
+    let cuotasJsonVal = null;
+    if (motivoEnt === 'compra' && document.getElementById('es-esquema-pago')?.value === 'CREDITO') {
+      const previewCuotasEnt = document.getElementById('es-cuotas-preview');
+      cuotasJsonVal = previewCuotasEnt?.dataset.cuotas ? previewCuotasEnt.dataset.cuotas : null;
+    }
+
     let id_entrada = null;
     const entradaRes = await api('stock_entradas', 'POST', {
       id_articulo:            id,
@@ -1328,9 +1355,32 @@ async function guardarEntradaStock() {
       observaciones:          ((motivoEnt === 'transferencia' ? '[TRANSFERENCIA] ' : '') + (document.getElementById('es-observaciones')?.value.trim() || '')) || null,
       exento_iva:             document.getElementById('edit-mov-exento-iva-val')?.value === 'SI' ? true : (document.getElementById('es-exento-iva-val')?.value === 'SI' ? true : (document.getElementById('es-exento-iva-val')?.value === 'NO' ? false : null)),
       incluye_iva:            document.getElementById('es-incluye-iva-val')?.value === 'SI' ? true : (document.getElementById('es-incluye-iva-val')?.value === 'NO' ? false : null),
+      monto_total_con_iva:    montoTotalConIVA,
+      cuotas_json:            cuotasJsonVal,
+      estado_aprobacion:      motivoEnt === 'compra' ? 'PENDIENTE' : null,
       id_usuario:             sesionActual.correo_usuario
     });
     id_entrada = entradaRes && entradaRes[0] ? entradaRes[0].id_entrada : null;
+
+    // ── COMPRA: se detiene aquí -- no se toca Stock, CPP, Asiento ni CxP
+    // todavía. Eso solo pasa cuando un Nivel de Firma APRUEBE esta Entrada
+    // (ver ejecutarEfectosEntradaCompra() / aprobarEntradaCompra()). Se
+    // notifica al aprobador correspondiente y se corta la ejecución aquí.
+    if (motivoEnt === 'compra') {
+      try {
+        const numDocSol = id_entrada ? 'ENT-' + id_entrada : ('ENT-INV-' + id);
+        await enrutarAprobacionEntrada(montoTotalConIVA, id_entrada, numDocSol);
+      } catch(eEnrutEnt) { console.warn('Error enrutando aprobación de Entrada:', eEnrutEnt); }
+      okEl.textContent = 'Entrada registrada -- pendiente de aprobación de un Nivel de Firma antes de afectar Stock/Contabilidad.';
+      okEl.style.display = 'block';
+      setTimeout(async function() {
+        cerrarModal('modal-entrada-stock');
+        cerrarModal('modal-stock-articulo');
+        renderInventario();
+      }, 1400);
+      resetBtn();
+      return;
+    }
 
     // ── FASE 4: Actualizar CPP (global, sigue en inventario_almacen) y stock del área receptora (Compras) ──
     const patchCPP = { precio_costo_moneda: parseFloat(cpp.toFixed(4)) };
@@ -1369,17 +1419,9 @@ async function guardarEntradaStock() {
     //   nuevo aquí) — anular deja sin efecto el gasto ya registrado, en vez de
     //   generar un segundo asiento que podría producir ganancias/pérdidas ficticias.
 
-    // ── Monto TOTAL (con IVA si aplica) — se calcula UNA sola vez aquí y se
-    // usa igual tanto para el asiento contable como para la CxP, para que
-    // nunca queden descuadrados entre sí por redondeos en momentos distintos.
-    // Para Ajuste (sin precio negociado) se valora al CPP actual del artículo.
-    const exentoIVAEnt2   = document.getElementById('es-exento-iva-val')?.value === 'SI';
-    const precioBaseAsiento = motivoEnt === 'compra' ? nuevoPrecioCostoRaw : costoActual;
-    const montoTotalConIVA = motivoEnt !== 'compra'
-      ? parseFloat((precioBaseAsiento * cantidad).toFixed(2))
-      : (exentoIVAEnt2
-          ? parseFloat((precioBaseAsiento * cantidad).toFixed(2))
-          : parseFloat((precioBaseAsiento * cantidad * (incluyeIVA_ent ? 1 : (1 + IVA_RATE_ENT))).toFixed(2)));
+    // montoTotalConIVA, precioBaseAsiento y exentoIVAEnt2 ya se calcularon
+    // arriba, antes de guardar la Entrada (para poder congelarlo en
+    // monto_total_con_iva) -- se reutilizan aquí tal cual.
 
     // Transferencias de otros articulos (Mercancias) NO generan asiento aqui.
     // Devolución de Cliente tampoco usa el asiento genérico — usa su propio
@@ -1503,99 +1545,11 @@ async function guardarEntradaStock() {
       }
     } catch(eDevAst) { console.warn('Error generando asientos de Devolución de Cliente:', eDevAst); }
 
-    // ── FASE 5B: Crear CxP según esquema de pago ──
-    console.log('[SYD] fase5b motivo=' + motivoEnt + ' id_entrada=' + id_entrada + ' esquema=' + document.getElementById('es-esquema-pago')?.value);
-    if (motivoEnt === 'compra') {
-      try {
-        const id_proveedor = parseInt(document.getElementById('es-proveedor')?.value) || null;
-        // Monto CxP = el mismo total ya calculado arriba (montoTotalConIVA),
-        // para que siempre coincida exactamente con el asiento contable
-        const montoUSD = montoTotalConIVA;
-        const montoVES    = parseFloat((montoUSD * (tasa_bcv_usada || _tasaVigente || 1)).toFixed(2));
-        const esquema     = document.getElementById('es-esquema-pago')?.value || 'CONTADO';
-        const numDocBase  = id_entrada ? 'ENT-' + id_entrada : ('ENT-INV-' + id);
-        const artNomCxP   = r.nombre_articulo || r.codigo_articulo || 'Art#'+id;
-        const fechaNegCxP = document.getElementById('es-fecha-negociacion')?.value || getHoyVzla();
-
-        if (esquema === 'CONTADO') {
-          const fechaPagoCxP = document.getElementById('es-fecha-pago')?.value || fechaNegCxP;
-          // Una sola CxP — contado
-          const cxpCreada = await api('cont_cxp','POST',{
-            id_proveedor:    id_proveedor,
-            id_empresa:      _empresaActiva?.id_empresa || null,
-            id_cuenta_gasto: r.id_cuenta_costo_gasto || null,
-            tipo:            'COMPRA_ARTICULO',
-            numero_doc:      numDocBase,
-            fecha_emision:   fechaNegCxP,
-            fecha_vencimiento: fechaPagoCxP,
-            moneda_pago:     moneda_compra_val || 'USD',
-            estado:          'PENDIENTE',
-            monto_usd:       montoUSD,
-            monto_ves:       montoVES,
-            tasa_bcv:        tasa_bcv_usada || 1,
-            tasa_bcv_compra: tasa_bcv_usada || 1,
-            pagado_usd:      0,
-            saldo_usd:       montoUSD,
-            observaciones:   artNomCxP + ' x ' + cantidad + ' uds.',
-            esquema_pago:    'CONTADO',
-            id_usuario:      sesionActual?.correo_usuario || null
-          });
-          // Agregar el id_cxp real al numero_doc para que nunca se repita
-          if (cxpCreada && cxpCreada[0]) {
-            await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-' + cxpCreada[0].id_cxp }, '?id_cxp=eq.' + cxpCreada[0].id_cxp);
-            enrutarAprobacionCxP(cxpCreada[0].id_cxp, numDocBase + '-' + cxpCreada[0].id_cxp, montoUSD);
-          }
-        } else {
-          // Crédito — múltiples CxP, una por cuota
-          const preview = document.getElementById('es-cuotas-preview');
-          const cuotas  = preview?.dataset.cuotas ? JSON.parse(preview.dataset.cuotas) : [];
-          if (!cuotas.length) throw new Error('No se calcularon las cuotas. Complete los campos de crédito.');
-          const totalVesCuotas = parseFloat((montoTotalConIVA * (tasa_bcv_usada || 1)).toFixed(2));
-          let acumVesCuotas = 0;
-          for (let i = 0; i < cuotas.length; i++) {
-            const c = cuotas[i];
-            const esUltimaCuota = i === cuotas.length - 1;
-            // La última cuota absorbe el residuo de redondeo en Bs, para que
-            // la suma de las cuotas coincida exactamente con el total del asiento
-            const montoVesCuota = esUltimaCuota
-              ? parseFloat((totalVesCuotas - acumVesCuotas).toFixed(2))
-              : parseFloat((c.monto * (tasa_bcv_usada || 1)).toFixed(2));
-            acumVesCuotas = parseFloat((acumVesCuotas + montoVesCuota).toFixed(2));
-            const cxpCuotaCreada = await api('cont_cxp','POST',{
-              id_proveedor:     id_proveedor,
-              id_empresa:       _empresaActiva?.id_empresa || null,
-              id_cuenta_gasto:  r.id_cuenta_costo_gasto || null,
-              tipo:             'COMPRA_ARTICULO_CREDITO',
-              numero_doc:       numDocBase + '-C' + c.num,
-              fecha_emision:    fechaNegCxP,
-              fecha_vencimiento: c.fecha,
-              moneda_pago:      moneda_compra_val || 'USD',
-              estado:           'PENDIENTE',
-              monto_usd:        parseFloat(c.monto.toFixed(2)),
-              monto_ves:        montoVesCuota,
-              tasa_bcv:         tasa_bcv_usada || 1,
-              tasa_bcv_compra:  tasa_bcv_usada || 1,
-              pagado_usd:       0,
-              saldo_usd:        parseFloat(c.monto.toFixed(2)),
-              observaciones:    artNomCxP + ' x ' + cantidad + ' uds.',
-              esquema_pago:     'CREDITO',
-              id_usuario:       sesionActual?.correo_usuario || null
-            });
-            // Agregar el id_cxp real al numero_doc para que nunca se repita
-            if (cxpCuotaCreada && cxpCuotaCreada[0]) {
-              await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-C' + c.num + '-' + cxpCuotaCreada[0].id_cxp }, '?id_cxp=eq.' + cxpCuotaCreada[0].id_cxp);
-              if (c.fecha <= getHoyVzla()) {
-                enrutarAprobacionCxP(cxpCuotaCreada[0].id_cxp, numDocBase + '-C' + c.num + '-' + cxpCuotaCreada[0].id_cxp, c.monto);
-              } else {
-                // Cuota con vencimiento futuro -- no notificar todavía; se
-                // enrutará sola cuando llegue su fecha (reintentar_enrutamiento_pendientes al iniciar sesión)
-                api('cont_cxp','PATCH',{ sin_firma_notificado: true }, '?id_cxp=eq.'+cxpCuotaCreada[0].id_cxp).catch(function(){});
-              }
-            }
-          }
-        }
-      } catch(eCxP) { console.warn('Error creando CxP:', eCxP.message); }
-    }
+    // NOTA: la creación de la CxP para motivo='compra' ya NO ocurre aquí --
+    // esa rama de código siempre hacía "return" más arriba (ver bloque
+    // "COMPRA: se detiene aquí"), así que este bloque había quedado
+    // inalcanzable. La CxP para Compras ahora se crea en
+    // ejecutarEfectosEntradaCompra(), al momento de la aprobación.
 
     // ── FASE 6: Actualizar cache y cerrar ──
     if (r) {
@@ -1616,6 +1570,215 @@ async function guardarEntradaStock() {
     errEl.textContent = 'Error: ' + e.message;
     errEl.style.display = 'block';
     resetBtn();
+  }
+}
+
+// Enruta la notificación de aprobación para una Entrada de Compra que
+// todavía no tiene CxP (nace recién al aprobar) -- llama a la función RPC
+// _buscar_y_notificar_aprobador_entrada / enrutar_aprobacion_entrada (misma
+// lógica de Área → Nivel 2 con límite de monto → escala a Nivel 1, que ya
+// usa Pagos para las CxP, pero referenciando la Entrada directamente).
+async function enrutarAprobacionEntrada(monto, idEntrada, numeroDoc) {
+  try {
+    const idAreaCreador = await _resolverAreaSesion();
+    const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/enrutar_aprobacion_entrada', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        p_id_area: idAreaCreador,
+        p_monto: monto,
+        p_id_entrada: idEntrada,
+        p_numero_doc: numeroDoc,
+        p_correo_creador: sesionActual?.correo_usuario || null
+      })
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(function(){ return {}; });
+      throw new Error(err.message || 'Error ' + resp.status);
+    }
+    const data = await resp.json();
+    console.log('[enrutamiento de aprobación de Entrada]', data);
+  } catch(e) { console.warn('Error en enrutamiento de aprobación de Entrada:', e); }
+}
+
+// Ejecuta TODO lo que antes pasaba de inmediato al guardar una Entrada de
+// Compra (Stock/CPP, Asiento contable, CxP) -- ahora ocurre recién cuando
+// un Nivel de Firma la APRUEBA. Lee todo desde la fila YA GUARDADA en
+// stock_entradas (parámetro m), no de un formulario en pantalla -- para
+// cuando esto se ejecuta, el formulario original ya no existe: puede
+// aprobarlo otra persona, en otro momento, desde otra pantalla.
+async function ejecutarEfectosEntradaCompra(m) {
+  const id = m.id_articulo;
+  const cantidad = parseFloat(m.cantidad || 0);
+  const nuevoPrecioCosto = parseFloat(m.precio_costo_moneda || 0); // ya es el costo unitario sin IVA, congelado al crear
+  const id_areaEnt = m.id_area;
+  const tasa_bcv_usada = parseFloat(m.tasa_bcv || 0) || null;
+  const montoTotalConIVA = parseFloat(m.monto_total_con_iva || 0);
+
+  // Artículo fresco (nombre, cuentas contables) -- puede no estar en
+  // inventarioCache si quien aprueba nunca abrió Inventario General.
+  const artRows = await api('inventario_almacen','GET',null,
+    '?id_articulo=eq.'+id+'&select=nombre_articulo,codigo_articulo,precio_costo_moneda,id_cuenta_contable,id_cuenta_costo_gasto');
+  const r = artRows && artRows[0] ? artRows[0] : {};
+
+  // ── Stock/CPP: mismo cálculo de siempre, pero con el stock/costo FRESCOS
+  // de ahora mismo (no los de cuando se creó la Entrada -- pudo pasar
+  // tiempo entre crear y aprobar, y otros movimientos pudieron ocurrir).
+  const stockActual = await obtenerStockArea(id, id_areaEnt);
+  const costoActual = parseFloat(r.precio_costo_moneda || 0);
+  const nuevoStock = stockActual + cantidad;
+  let cpp = costoActual;
+  if (nuevoPrecioCosto > 0) {
+    cpp = nuevoStock > 0
+      ? ((stockActual * costoActual) + (cantidad * nuevoPrecioCosto)) / nuevoStock
+      : nuevoPrecioCosto;
+  }
+  const patchCPP = { precio_costo_moneda: parseFloat(cpp.toFixed(4)) };
+  if (nuevoPrecioCosto > 0) patchCPP.precio_costo_ultimo_moneda = nuevoPrecioCosto;
+  await api('inventario_almacen', 'PATCH', patchCPP, '?id_articulo=eq.' + id);
+  await upsertStockArea(id, id_areaEnt, cantidad);
+
+  // ── Asiento contable (ENTRADA_COMPRA) ──
+  let areaNombreEnt = 'Área';
+  try {
+    const areaRows = await api('param_areas','GET',null,'?id=eq.'+id_areaEnt+'&select=nombre');
+    if (areaRows && areaRows[0]) areaNombreEnt = areaRows[0].nombre;
+  } catch(eAreaNom) {}
+  try {
+    await generarAsientoInventario('ENTRADA_COMPRA', {
+      articulo:   r.nombre_articulo || r.codigo_articulo || ('Art#' + id),
+      cantidad:   cantidad,
+      montoUSD:   montoTotalConIVA,
+      areaId:     id_areaEnt,
+      areaNombre: areaNombreEnt,
+      referencia: 'ENT-' + m.id_entrada,
+      id_cuentaInventario: r.id_cuenta_contable || null,
+      fecha:      m.fecha_negociacion || m.fecha_entrada,
+      tasa:       tasa_bcv_usada || null,
+      incluyeIVA:  true,
+      exentoIVA:   m.exento_iva === true
+    });
+  } catch(eAstInv) { console.warn('Error asiento entrada inventario (aprobación):', eAstInv); }
+
+  // ── CxP: nace ya APROBADA -- el Nivel de Firma que aprobó la Entrada ya
+  // cubrió esa validación, no tiene sentido pedirle a alguien que la
+  // vuelva a aprobar para el pago.
+  try {
+    const montoUSD = montoTotalConIVA;
+    const montoVES = parseFloat((montoUSD * (tasa_bcv_usada || _tasaVigente || 1)).toFixed(2));
+    const numDocBase = 'ENT-' + m.id_entrada;
+    const artNomCxP = r.nombre_articulo || r.codigo_articulo || 'Art#'+id;
+    const fechaNegCxP = m.fecha_negociacion || m.fecha_entrada;
+    const ahoraIso = new Date().toISOString();
+
+    if (m.esquema_pago === 'CREDITO') {
+      const cuotas = m.cuotas_json ? (typeof m.cuotas_json === 'string' ? JSON.parse(m.cuotas_json) : m.cuotas_json) : [];
+      if (!cuotas.length) throw new Error('La Entrada no tiene el desglose de cuotas guardado.');
+      const totalVesCuotas = parseFloat((montoTotalConIVA * (tasa_bcv_usada || 1)).toFixed(2));
+      let acumVesCuotas = 0;
+      for (let i = 0; i < cuotas.length; i++) {
+        const c = cuotas[i];
+        const esUltimaCuota = i === cuotas.length - 1;
+        const montoVesCuota = esUltimaCuota
+          ? parseFloat((totalVesCuotas - acumVesCuotas).toFixed(2))
+          : parseFloat((c.monto * (tasa_bcv_usada || 1)).toFixed(2));
+        acumVesCuotas = parseFloat((acumVesCuotas + montoVesCuota).toFixed(2));
+        const cxpCuotaCreada = await api('cont_cxp','POST',{
+          id_proveedor:     m.id_proveedor,
+          id_empresa:       _empresaActiva?.id_empresa || null,
+          id_cuenta_gasto:  r.id_cuenta_costo_gasto || null,
+          tipo:             'COMPRA_ARTICULO_CREDITO',
+          numero_doc:       numDocBase + '-C' + c.num,
+          fecha_emision:    fechaNegCxP,
+          fecha_vencimiento: c.fecha,
+          moneda_pago:      m.moneda_compra || 'USD',
+          estado:           'APROBADA',
+          aprobado_por:     m.aprobado_por || null,
+          fecha_aprobacion: ahoraIso,
+          monto_usd:        parseFloat(c.monto.toFixed(2)),
+          monto_ves:        montoVesCuota,
+          tasa_bcv:         tasa_bcv_usada || 1,
+          tasa_bcv_compra:  tasa_bcv_usada || 1,
+          pagado_usd:       0,
+          saldo_usd:        parseFloat(c.monto.toFixed(2)),
+          observaciones:    artNomCxP + ' x ' + cantidad + ' uds.',
+          esquema_pago:     'CREDITO',
+          id_usuario:       m.id_usuario || null
+        });
+        if (cxpCuotaCreada && cxpCuotaCreada[0]) {
+          await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-C' + c.num + '-' + cxpCuotaCreada[0].id_cxp }, '?id_cxp=eq.' + cxpCuotaCreada[0].id_cxp);
+        }
+      }
+    } else {
+      const cxpCreada = await api('cont_cxp','POST',{
+        id_proveedor:    m.id_proveedor,
+        id_empresa:      _empresaActiva?.id_empresa || null,
+        id_cuenta_gasto: r.id_cuenta_costo_gasto || null,
+        tipo:            'COMPRA_ARTICULO',
+        numero_doc:      numDocBase,
+        fecha_emision:   fechaNegCxP,
+        fecha_vencimiento: fechaNegCxP,
+        moneda_pago:     m.moneda_compra || 'USD',
+        estado:          'APROBADA',
+        aprobado_por:    m.aprobado_por || null,
+        fecha_aprobacion: ahoraIso,
+        monto_usd:       montoUSD,
+        monto_ves:       montoVES,
+        tasa_bcv:        tasa_bcv_usada || 1,
+        tasa_bcv_compra: tasa_bcv_usada || 1,
+        pagado_usd:      0,
+        saldo_usd:       montoUSD,
+        observaciones:   artNomCxP + ' x ' + cantidad + ' uds.',
+        esquema_pago:    'CONTADO',
+        id_usuario:      m.id_usuario || null
+      });
+      if (cxpCreada && cxpCreada[0]) {
+        await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-' + cxpCreada[0].id_cxp }, '?id_cxp=eq.' + cxpCreada[0].id_cxp);
+      }
+    }
+  } catch(eCxP) { console.warn('Error creando CxP (aprobación de Entrada):', eCxP.message); }
+}
+
+// Aprueba una Entrada de Compra pendiente -- revalida el monto contra el
+// límite del Nivel de Firma de quien aprueba, marca la Entrada como
+// APROBADA, y ejecuta recién ahí todos los efectos (Stock/CPP/Asiento/CxP).
+async function aprobarEntradaCompra(id_entrada) {
+  if (!sesionActual?.administrador && !puedo('PAGOS','APROBAR')) {
+    alert('No tiene permiso para aprobar Entradas de Compra.'); return;
+  }
+  try {
+    const entRows = await api('stock_entradas','GET',null,'?id_entrada=eq.'+id_entrada);
+    const m = entRows && entRows[0] ? entRows[0] : null;
+    if (!m) { alert('No se encontró la Entrada.'); return; }
+    if (m.estado_aprobacion !== 'PENDIENTE') {
+      alert('Esta Entrada ya no está pendiente de aprobación (estado actual: ' + (m.estado_aprobacion || '—') + '). Puede que ya haya sido aprobada, rechazada o editada por otra persona.');
+      return;
+    }
+    // Revalidar límite de Nivel de Firma de quien aprueba, contra el monto real.
+    if (!sesionActual?.administrador) {
+      const montoMaxAprob = await _resolverMontoMaxAprobacionSesion();
+      if (montoMaxAprob !== null && parseFloat(m.monto_total_con_iva||0) > montoMaxAprob) {
+        alert('Esta Entrada ($' + parseFloat(m.monto_total_con_iva||0).toFixed(2) + ') supera el monto máximo que su Nivel de Firma puede aprobar ($' + montoMaxAprob.toFixed(2) + '). Debe ser aprobada por un Nivel de Firma superior.');
+        return;
+      }
+    }
+    await api('stock_entradas','PATCH',{
+      estado_aprobacion: 'APROBADA',
+      aprobado_por: sesionActual?.correo_usuario || null,
+      fecha_aprobacion: new Date().toISOString()
+    },'?id_entrada=eq.'+id_entrada);
+    // Releer con aprobado_por ya seteado, para que ejecutarEfectosEntradaCompra lo use en la CxP
+    const mAprobado = Object.assign({}, m, { aprobado_por: sesionActual?.correo_usuario || null });
+    await ejecutarEfectosEntradaCompra(mAprobado);
+    alert('Entrada aprobada. Stock, Costo y Cuenta por Pagar actualizados.');
+    await calcularInvSaldoArea();
+    renderInventario();
+  } catch(e) {
+    alert('Error al aprobar la Entrada: ' + e.message);
   }
 }
 
@@ -2001,6 +2164,122 @@ async function invRenderTipos(cont) {
       +'</tr></thead><tbody>'+(filas||'<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--suave)">Sin tipos registrados</td></tr>')
       +'</tbody></table></div>';
   } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>'; }
+}
+
+// Lista las Entradas de Compra con estado_aprobacion = 'PENDIENTE' -- con
+// botones reales de Aprobar/Rechazar. Solo Compras a Proveedor pasan por
+// aquí (Devolución/Ajuste/Transferencia siguen ejecutándose de inmediato,
+// sin necesitar aprobación).
+async function invRenderAprobacionesPendientes(cont) {
+  if (!cont) cont = document.getElementById('tabla-inv-cont');
+  if (!cont) return;
+  cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+  try {
+    const pendientes = await api('stock_entradas','GET',null,
+      '?motivo=eq.compra&estado_aprobacion=eq.PENDIENTE&order=fecha_registro.asc'
+      +'&select=id_entrada,id_articulo,cantidad,fecha_negociacion,monto_total_con_iva,moneda_compra,esquema_pago,id_usuario,id_proveedor') || [];
+    if (!pendientes.length) {
+      cont.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">✅ No hay Entradas de Compra pendientes de aprobación.</div>';
+      return;
+    }
+    const idsArt = [...new Set(pendientes.map(function(p){ return p.id_articulo; }))];
+    const idsProv = [...new Set(pendientes.map(function(p){ return p.id_proveedor; }).filter(Boolean))];
+    const [arts, provs] = await Promise.all([
+      idsArt.length ? api('inventario_almacen','GET',null,'?id_articulo=in.('+idsArt.join(',')+')&select=id_articulo,nombre_articulo,codigo_articulo') : Promise.resolve([]),
+      idsProv.length ? api('proveedores','GET',null,'?id_proveedor=in.('+idsProv.join(',')+')&select=id_proveedor,nombre') : Promise.resolve([]),
+    ]);
+    const artMap = {}; (arts||[]).forEach(function(a){ artMap[a.id_articulo] = a; });
+    const provMap = {}; (provs||[]).forEach(function(p){ provMap[p.id_proveedor] = p.nombre; });
+
+    const filas = pendientes.map(function(p) {
+      const art = artMap[p.id_articulo];
+      const nomArt = art ? (art.codigo_articulo ? art.codigo_articulo+' — ' : '') + art.nombre_articulo : ('Art#'+p.id_articulo);
+      const nomProv = provMap[p.id_proveedor] || '—';
+      return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
+        +'<td style="padding:8px;font-size:12px">'+formatearFechaCorta(p.fecha_negociacion)+'</td>'
+        +'<td style="padding:8px;font-size:12px">'+nomArt+'</td>'
+        +'<td style="padding:8px;text-align:right;font-family:var(--font-mono);font-size:12px">'+p.cantidad+'</td>'
+        +'<td style="padding:8px;font-size:12px">'+nomProv+'</td>'
+        +'<td style="padding:8px;text-align:right;font-family:var(--font-mono);font-weight:600;color:var(--naranja)">$ '+fmtUSD(p.monto_total_con_iva)+'</td>'
+        +'<td style="padding:8px;font-size:11px;color:var(--suave)">'+(p.esquema_pago||'—')+'</td>'
+        +'<td style="padding:8px;white-space:nowrap">'
+        +'<button class="btn-naranja" onclick="aprobarEntradaCompra('+p.id_entrada+')" style="font-size:11px;padding:4px 10px;margin-right:6px">✓ Aprobar</button>'
+        +'<button class="btn-secundario" style="border-color:rgba(252,129,129,0.4);color:#fc8181" onclick="rechazarEntradaCompra('+p.id_entrada+')">✕ Rechazar</button>'
+        +'</td></tr>';
+    }).join('');
+
+    cont.innerHTML = '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Fecha</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
+      +'<th style="padding:8px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Cant.</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Proveedor</th>'
+      +'<th style="padding:8px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Monto</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Pago</th>'
+      +'<th style="padding:8px"></th>'
+      +'</tr></thead><tbody>'+filas+'</tbody></table></div>';
+  } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>'; }
+}
+
+async function rechazarEntradaCompra(id_entrada) {
+  if (!sesionActual?.administrador && !puedo('PAGOS','APROBAR')) {
+    alert('No tiene permiso para rechazar Entradas de Compra.'); return;
+  }
+  const motivo = await new Promise(function(resolve) {
+    const div = document.createElement('div');
+    div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center';
+    div.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:24px;max-width:380px;width:90%">'
+      + '<div style="font-size:15px;margin-bottom:16px;color:#e8e8e8;text-align:center">Rechazar Entrada de Compra</div>'
+      + '<label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Motivo del rechazo *</label>'
+      + '<textarea id="dlg-rechazo-ent-motivo" rows="3" placeholder="Explique por qué se rechaza esta Entrada..." style="width:100%;box-sizing:border-box;padding:10px;border-radius:6px;border:1px solid #444;background:#111;color:#e8e8e8;font-size:14px;margin-bottom:12px;resize:vertical;font-family:inherit"></textarea>'
+      + '<div id="dlg-rechazo-ent-err" style="color:#f87171;font-size:12px;margin-bottom:12px;display:none"></div>'
+      + '<div style="display:flex;gap:12px;justify-content:center">'
+      + '<button id="btn-confirm-ent-si" style="background:#fc8181;border:none;color:#1a1a1a;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600">Rechazar</button>'
+      + '<button id="btn-confirm-ent-no" style="background:#333;border:1px solid #555;color:#e8e8e8;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">Cancelar</button>'
+      + '</div></div>';
+    document.body.appendChild(div);
+    const motivoEl = div.querySelector('#dlg-rechazo-ent-motivo');
+    const errEl = div.querySelector('#dlg-rechazo-ent-err');
+    motivoEl.focus();
+    const cerrar = function(valor) { document.body.removeChild(div); resolve(valor); };
+    div.querySelector('#btn-confirm-ent-si').onclick = function() {
+      const val = motivoEl.value.trim();
+      if (!val) { errEl.textContent = 'Ingrese el motivo del rechazo.'; errEl.style.display = 'block'; return; }
+      cerrar(val);
+    };
+    div.querySelector('#btn-confirm-ent-no').onclick = function() { cerrar(null); };
+  });
+  if (!motivo) return;
+
+  try {
+    const entRows = await api('stock_entradas','GET',null,'?id_entrada=eq.'+id_entrada);
+    const m = entRows && entRows[0] ? entRows[0] : null;
+    if (!m) { alert('No se encontró la Entrada.'); return; }
+    if (m.estado_aprobacion !== 'PENDIENTE') {
+      alert('Esta Entrada ya no está pendiente de aprobación (estado actual: ' + (m.estado_aprobacion || '—') + ').');
+      return;
+    }
+    await api('stock_entradas','PATCH',{
+      estado_aprobacion: 'RECHAZADA',
+      motivo_rechazo: motivo
+    },'?id_entrada=eq.'+id_entrada);
+
+    if (m.id_usuario) {
+      try {
+        await api('notificaciones','POST',{
+          correo_destino: m.id_usuario,
+          titulo: 'Entrada de Compra Rechazada',
+          mensaje: 'Tu Entrada de Compra "ENT-'+id_entrada+'" fue rechazada por '+(sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor')+'. Motivo: '+motivo+'. Corríjala y vuelva a guardarla para que se reenvíe a aprobación.',
+          estado: 'PENDIENTE',
+          fecha_creacion: new Date().toISOString(),
+          datos_extra: JSON.stringify({ id_entrada: id_entrada, accion: 'ver_rechazo' })
+        }, '', true);
+      } catch(eNotifRechEnt) { console.warn('Error notificando rechazo de Entrada:', eNotifRechEnt); }
+    }
+    alert('Entrada rechazada.');
+    renderInventario();
+  } catch(e) {
+    alert('Error al rechazar la Entrada: ' + e.message);
+  }
 }
 
 async function invRenderMargenBruto(cont) {
