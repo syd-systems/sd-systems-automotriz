@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260814262';
+const SYD_VERSION = '20260814263';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -2870,6 +2870,26 @@ function notifVerDespues() {
 // rechazarEntradaCompra() (en inventario.js, ya pide el motivo, revalida
 // que siga PENDIENTE, y notifica al creador), y aquí solo se encarga de
 // cerrar/marcar esta notificación puntual como resuelta.
+// Diálogo genérico Sí/No con el mismo estilo visual del resto de la app
+// (evita la alerta nativa fea del navegador) -- usado antes de acciones
+// irreversibles o que abren otro paso (como pedir el motivo de un rechazo).
+async function confirmarSiNo(mensaje) {
+  return new Promise(function(resolve) {
+    const div = document.createElement('div');
+    div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10001;display:flex;align-items:center;justify-content:center';
+    div.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:24px;max-width:360px;width:90%">'
+      + '<div style="font-size:14px;margin-bottom:20px;color:#e8e8e8;text-align:center">'+mensaje+'</div>'
+      + '<div style="display:flex;gap:12px;justify-content:center">'
+      + '<button id="btn-sn-si" style="background:#fc8181;border:none;color:#1a1a1a;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600">Sí</button>'
+      + '<button id="btn-sn-no" style="background:#333;border:1px solid #555;color:#e8e8e8;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">No</button>'
+      + '</div></div>';
+    document.body.appendChild(div);
+    const cerrar = function(v) { document.body.removeChild(div); resolve(v); };
+    div.querySelector('#btn-sn-si').onclick = function(){ cerrar(true); };
+    div.querySelector('#btn-sn-no').onclick = function(){ cerrar(false); };
+  });
+}
+
 async function notifRechazarEntrada() {
   if (!_notifPendienteActual) return;
   const extras = _notifPendienteActual.datos_extra
@@ -2878,6 +2898,8 @@ async function notifRechazarEntrada() {
         : _notifPendienteActual.datos_extra)
     : null;
   if (!extras || !extras.id_entrada) return;
+  const confirmaRech = await confirmarSiNo('¿Seguro que desea rechazar esta Entrada?');
+  if (!confirmaRech) return;
   const idNotifRech = _notifPendienteActual.id;
   if (typeof rechazarEntradaCompra !== 'function') return;
   const seRechazoOk = await rechazarEntradaCompra(extras.id_entrada);
