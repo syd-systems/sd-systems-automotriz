@@ -2823,7 +2823,7 @@ async function invCargarMovimientos() {
         movs.push({ tipo:'ENTRADA', fecha:e.fecha_entrada, art:artNom(art),
           origen: e.area_origen ? e.area_origen.nombre+(e.area_origen.codigo?' ('+e.area_origen.codigo+')':'') : (e.proveedor?e.proveedor.nombre:(e.cliente_nombre||'—')),
           destino: e.area_receptora ? e.area_receptora.nombre+(e.area_receptora.codigo?' ('+e.area_receptora.codigo+')':'') : '—',
-          motivo:motivo, cant:e.cantidad, costo:e.precio_costo_moneda||0, moneda:e.moneda_compra||monedaRef, rev:e.anulada });
+          motivo:motivo, cant:e.cantidad, costo:e.precio_costo_moneda||0, moneda:e.moneda_compra||monedaRef, rev:e.anulada, estadoAprob:e.estado_aprobacion||null });
       });
       salidas.forEach(function(s) {
         const art = getArt(s.id_articulo);
@@ -2846,7 +2846,9 @@ async function invCargarMovimientos() {
         + colC + '</tr></thead><tbody>'
         + movs.map(function(m) {
             const eE=m.tipo==='ENTRADA', c=eE?'#22c55e':'#fc8181';
-            const badge='<span style="background:'+(eE?'rgba(34,197,94,0.1)':'rgba(252,129,129,0.1)')+';color:'+c+';border:1px solid '+c+';border-radius:4px;padding:1px 5px;font-size:9px">'+m.tipo+'</span>'+(m.rev?'<span style="color:#fc8181;font-size:9px;margin-left:3px">REV</span>':'');
+            const badge='<span style="background:'+(eE?'rgba(34,197,94,0.1)':'rgba(252,129,129,0.1)')+';color:'+c+';border:1px solid '+c+';border-radius:4px;padding:1px 5px;font-size:9px">'+m.tipo+'</span>'+(m.rev?'<span style="color:#fc8181;font-size:9px;margin-left:3px">REV</span>':'')
+              +(m.estadoAprob==='PENDIENTE'?'<div style="font-size:9px;color:var(--naranja);margin-top:1px">⏳ Pendiente</div>':'')
+              +(m.estadoAprob==='RECHAZADA'?'<div style="font-size:9px;color:#fc8181;margin-top:1px">❌ Rechazada</div>':'');
             const costoTd = puedo('INVENTARIO','VER_COSTOS') ? '<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--suave)">'+(eE&&m.costo>0?(m.moneda==='VES'?'Bs ':simRef+' ')+fmtUSD(m.costo):'—')+'</td>' : '';
             return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)'+(m.rev?';opacity:0.5':'')+'">'
               +'<td style="padding:7px;font-size:12px;line-height:1.3">'+fmtFecha(m.fecha)+'<div style="margin-top:2px">'+badge+'</div></td>'
@@ -3357,7 +3359,10 @@ function _renderFilaHistorial(m) {
     + 'Ref: ' + (m.id_entrada ? 'ENT-' + m.id_entrada : 'SAL-' + m.id_salida) + '</td>'
     + '<td style="padding:8px"><span class="badge ' + (esEntrada ? 'badge-verde' : 'badge-rojo') + '">'
     + (esEntrada ? '▲ Entrada' : '▼ Salida') + '</span>'
-    + (anulada ? '<div style="font-size:10px;color:#fc8181;margin-top:2px">Anulada</div>' : '') + '</td>'
+    + (anulada ? '<div style="font-size:10px;color:#fc8181;margin-top:2px">Anulada</div>' : '')
+    + (esEntrada && m.estado_aprobacion === 'PENDIENTE' ? '<div style="font-size:10px;color:var(--naranja);margin-top:2px">⏳ Pendiente de Aprobación</div>' : '')
+    + (esEntrada && m.estado_aprobacion === 'RECHAZADA' ? '<div style="font-size:10px;color:#fc8181;margin-top:2px">❌ Rechazada</div>' : '')
+    + '</td>'
     + '<td style="text-align:center;padding:8px;font-family:var(--font-mono);font-weight:600;color:' + (esEntrada ? '#22c55e' : '#fc8181') + '">'
     + (esEntrada ? '+' : '-') + m.cantidad + '</td>'
     + '<td style="padding:8px;font-size:12px">'
