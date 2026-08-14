@@ -531,8 +531,9 @@ function invRenderTabla(items, cont) {
         })()
       + (puedo('INVENTARIO','VER_COSTOS')
           ? '<td style="padding:5px 8px;vertical-align:middle;font-family:var(--font-mono);font-size:12px">'
-            + '<div style="color:var(--suave);font-size:9px;letter-spacing:1px">COSTO PROM. (CPP)</div>'
-            + '<div>$ ' + fmtUSD(stockMostrar === 0 ? 0 : r.precio_costo_moneda) + ' <span style="color:var(--suave);font-size:11px">(Bs ' + fmtBs((stockMostrar === 0 ? 0 : parseFloat(r.precio_costo_moneda||0)) * _tasaVigente) + ')</span></div>'
+            + '<div style="color:var(--suave);font-size:9px">COSTO PROM. (CPP)</div>'
+            + '<span>' + fmtBs((stockMostrar === 0 ? 0 : parseFloat(r.precio_costo_moneda||0)) * _tasaVigente) + ' Bs</span>'
+            + '<div style="font-size:9px;color:var(--suave);margin-top:1px">$ ' + fmtUSD(stockMostrar === 0 ? 0 : r.precio_costo_moneda) + ' (Bs ' + fmtBs((stockMostrar === 0 ? 0 : parseFloat(r.precio_costo_moneda||0)) * _tasaVigente) + ')</div>'
             + (r.precio_costo_ultimo_moneda
                 ? '<div style="font-size:9px;color:var(--suave);margin-top:1px">Última compra: $ ' + fmtUSD(r.precio_costo_ultimo_moneda) + '</div>'
                 : '')
