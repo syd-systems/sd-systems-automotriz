@@ -1181,6 +1181,10 @@ async function guardarEntradaStock() {
     if (pagoDSel === 'CONTADO') {
       const fechaPagoVal = document.getElementById('es-fecha-pago')?.value || '';
       if (!fechaPagoVal) return mostrarError('Ingrese la Fecha de Pago.', 'es-fecha-pago');
+      const fechaNegParaPago = document.getElementById('es-fecha-negociacion')?.value || '';
+      if (fechaNegParaPago && fechaPagoVal < fechaNegParaPago) {
+        return mostrarError('La Fecha de Pago no puede ser anterior a la Fecha de Negociación.', 'es-fecha-pago');
+      }
     }
     if (pagoDSel === 'CREDITO') {
       const numCuotasVal  = parseInt(document.getElementById('es-cuotas-num')?.value) || 0;
@@ -1665,7 +1669,11 @@ function _armarMensajeAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
   const d = detalle || {};
   const monedaFuncional = ((_empresaActiva?.moneda_principal) || 'VES').toUpperCase();
   const tasaUsar = d.tasaBcv || _tasaVigente || 1;
-  const montoBs = monto * tasaUsar;
+  // Redondeado a 2 decimales ANTES de formatear -- igual que hace la Ficha
+  // (calcularTributosEntrada), para que ambos números coincidan siempre.
+  // Sin este paso intermedio, la multiplicación en punto flotante puede
+  // arrastrar centavos de diferencia entre este mensaje y la Ficha.
+  const montoBs = parseFloat((monto * tasaUsar).toFixed(2));
   const principal = monedaFuncional === 'USD'
     ? '$ ' + fmtUSD(monto) + (d.monedaCompra !== 'USD' ? ' <span style="font-weight:400;color:var(--suave)">(equivalente a Bs ' + fmtBs(montoBs) + ')</span>' : '')
     : 'Bs ' + fmtBs(montoBs) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a $ ' + fmtUSD(monto) + ')</span>';
