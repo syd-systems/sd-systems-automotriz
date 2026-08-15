@@ -1409,7 +1409,13 @@ async function guardarEntradaStock() {
     if (motivoEnt === 'compra') {
       try {
         const numDocSol = id_entrada ? 'ENT-' + id_entrada : ('ENT-INV-' + id);
-        await enrutarAprobacionEntrada(montoTotalConIVA, id_entrada, numDocSol);
+        await enrutarAprobacionEntrada(montoTotalConIVA, id_entrada, numDocSol, {
+          nombreArt: r.nombre_articulo || r.codigo_articulo || ('Art#'+id),
+          cantidad: cantidad,
+          unidad: r.unidad || 'UND',
+          monedaCompra: moneda_compra_val,
+          tasaBcv: tasa_bcv_usada
+        });
       } catch(eEnrutEnt) { console.warn('Error enrutando aprobación de Entrada:', eEnrutEnt); }
       okEl.textContent = window._retomandoEntradaId
         ? 'Entrada corregida y reenviada -- pendiente de aprobación de un Nivel de Firma.'
@@ -1621,9 +1627,10 @@ async function guardarEntradaStock() {
 // _buscar_y_notificar_aprobador_entrada / enrutar_aprobacion_entrada (misma
 // lógica de Área → Nivel 2 con límite de monto → escala a Nivel 1, que ya
 // usa Pagos para las CxP, pero referenciando la Entrada directamente).
-async function enrutarAprobacionEntrada(monto, idEntrada, numeroDoc) {
+async function enrutarAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
   try {
     const idAreaCreador = await _resolverAreaSesion();
+    const mensajeRico = _armarMensajeAprobacionEntrada(monto, idEntrada, numeroDoc, detalle);
     const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/enrutar_aprobacion_entrada', {
       method: 'POST',
       headers: {
@@ -1636,7 +1643,8 @@ async function enrutarAprobacionEntrada(monto, idEntrada, numeroDoc) {
         p_monto: monto,
         p_id_entrada: idEntrada,
         p_numero_doc: numeroDoc,
-        p_correo_creador: sesionActual?.correo_usuario || null
+        p_correo_creador: sesionActual?.correo_usuario || null,
+        p_mensaje: mensajeRico
       })
     });
     if (!resp.ok) {
@@ -1646,6 +1654,27 @@ async function enrutarAprobacionEntrada(monto, idEntrada, numeroDoc) {
     const data = await resp.json();
     console.log('[enrutamiento de aprobación de Entrada]', data);
   } catch(e) { console.warn('Error en enrutamiento de aprobación de Entrada:', e); }
+}
+
+// Arma el mensaje de la notificación con formato (etiquetas/negritas), para
+// que el aprobador sepa DE UNA qué está autorizando -- no solo un número de
+// referencia y un monto suelto. "Monto a Pagar" respeta la Moneda Funcional
+// real de la Empresa (_empresaActiva.moneda_principal) -- no siempre es USD.
+function _armarMensajeAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
+  const d = detalle || {};
+  const monedaFuncional = ((_empresaActiva?.moneda_principal) || 'VES').toUpperCase();
+  const tasaUsar = d.tasaBcv || _tasaVigente || 1;
+  const montoBs = monto * tasaUsar;
+  const principal = monedaFuncional === 'USD'
+    ? '$ ' + fmtUSD(monto) + (d.monedaCompra !== 'USD' ? ' <span style="font-weight:400;color:var(--suave)">(equivalente a Bs ' + fmtBs(montoBs) + ')</span>' : '')
+    : 'Bs ' + fmtBs(montoBs) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a $ ' + fmtUSD(monto) + ')</span>';
+  return '<div style="font-size:10px;color:var(--suave);letter-spacing:0.5px;margin-bottom:2px">ARTÍCULO — ' + (numeroDoc || ('ENT-'+idEntrada)) + '</div>'
+    + '<div style="font-weight:600;margin-bottom:12px">' + (d.nombreArt || '—') + '</div>'
+    + '<div style="display:flex;gap:24px;margin-bottom:12px">'
+    + '<div><div style="font-size:10px;color:var(--suave)">CANTIDAD</div><div style="font-weight:600">' + (d.cantidad != null ? d.cantidad : '—') + ' ' + (d.unidad || 'UND') + '</div></div>'
+    + '<div><div style="font-size:10px;color:var(--suave)">MONEDA DE PAGO</div><div style="font-weight:600">' + (d.monedaCompra || '—') + '</div></div>'
+    + '</div>'
+    + '<div><div style="font-size:10px;color:var(--suave)">MONTO A PAGAR</div><div style="font-weight:700;color:var(--naranja);font-size:16px">' + principal + '</div></div>';
 }
 
 // Ejecuta TODO lo que antes pasaba de inmediato al guardar una Entrada de
