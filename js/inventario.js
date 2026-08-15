@@ -1382,6 +1382,7 @@ async function guardarEntradaStock() {
       observaciones:          ((motivoEnt === 'transferencia' ? '[TRANSFERENCIA] ' : '') + (document.getElementById('es-observaciones')?.value.trim() || '')) || null,
       exento_iva:             document.getElementById('edit-mov-exento-iva-val')?.value === 'SI' ? true : (document.getElementById('es-exento-iva-val')?.value === 'SI' ? true : (document.getElementById('es-exento-iva-val')?.value === 'NO' ? false : null)),
       incluye_iva:            document.getElementById('es-incluye-iva-val')?.value === 'SI' ? true : (document.getElementById('es-incluye-iva-val')?.value === 'NO' ? false : null),
+      fecha_pago:             document.getElementById('es-esquema-pago')?.value === 'CONTADO' ? (document.getElementById('es-fecha-pago')?.value || null) : null,
       monto_total_con_iva:    montoTotalConIVA,
       cuotas_json:            cuotasJsonVal,
       estado_aprobacion:      motivoEnt === 'compra' ? 'PENDIENTE' : null,
@@ -1793,7 +1794,7 @@ async function ejecutarEfectosEntradaCompra(m) {
         tipo:            'COMPRA_ARTICULO',
         numero_doc:      numDocBase,
         fecha_emision:   fechaNegCxP,
-        fecha_vencimiento: fechaNegCxP,
+        fecha_vencimiento: m.fecha_pago || fechaNegCxP,
         moneda_pago:     m.moneda_compra || 'USD',
         estado:          'APROBADA',
         aprobado_por:    m.aprobado_por || null,
@@ -2282,7 +2283,13 @@ async function retomarEntradaRechazada(id_entrada) {
     const tasaR = document.getElementById('es-tasa-bcv');
     if (tasaR && m.tasa_bcv) tasaR.value = m.tasa_bcv;
     const precioR = document.getElementById('es-precio-costo');
-    if (precioR) precioR.value = m.precio_compra_original != null ? parseFloat(m.precio_compra_original).toFixed(2) : '';
+    if (precioR) {
+      // El campo espera formato venezolano (puntos de millar, coma decimal)
+      // -- si se mete un número plano (estilo JS), el parser lo lee mal y
+      // arrastra el error a "Monto en USD" (quedaba en 0).
+      precioR.value = m.precio_compra_original != null ? formatearMontoVE(m.precio_compra_original) : '';
+      onCambiarPrecioEntrada();
+    }
 
     const provSelR = document.getElementById('es-proveedor');
     if (provSelR && m.id_proveedor) provSelR.value = m.id_proveedor;
@@ -2307,6 +2314,9 @@ async function retomarEntradaRechazada(id_entrada) {
         if (fechaCuotaElR) fechaCuotaElR.value = cuotasArrR[0].fecha;
         calcularCuotasEntrada();
       }
+    } else if (m.esquema_pago === 'CONTADO' && m.fecha_pago) {
+      const fechaPagoR = document.getElementById('es-fecha-pago');
+      if (fechaPagoR) fechaPagoR.value = m.fecha_pago;
     }
 
     // Marca el modal en "modo retomar" -- guardarEntradaStock() lo detecta

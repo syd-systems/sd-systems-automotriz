@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260814266';
+const SYD_VERSION = '20260814267';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -3191,4 +3191,14 @@ async function cargarEmpleadosPorArea(id_area, selectId, soloConPermiso) {
 function parseMontoVE(texto) {
   const raw = String(texto || '').replace(/\./g,'').replace(',','.');
   return parseFloat(raw) || 0;
+}
+
+// Inverso de parseMontoVE() -- convierte un número plano a formato
+// venezolano (puntos de millar, coma decimal), igual al que produce el
+// onblur del campo cuando el Usuario escribe a mano.
+function formatearMontoVE(num) {
+  const v = parseFloat(num);
+  if (isNaN(v)) return '';
+  const p = v.toFixed(2).split('.');
+  return p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + p[1];
 }
