@@ -2487,10 +2487,28 @@ async function rechazarEntradaCompra(id_entrada) {
 
     if (m.id_usuario) {
       try {
+        const artRechInfo = inventarioCache.find(function(x){ return x.id_articulo === m.id_articulo; })
+          || (await api('inventario_almacen','GET',null,'?id_articulo=eq.'+m.id_articulo+'&select=nombre_articulo,codigo_articulo,unidad'))?.[0]
+          || {};
+        const numDocRech = 'ENT-'+id_entrada;
+        const montoBsRech = (m.moneda_compra === 'VES' && m.monto_total_moneda_original != null)
+          ? m.monto_total_moneda_original
+          : (m.tasa_bcv ? parseFloat((m.monto_total_con_iva * m.tasa_bcv).toFixed(2)) : null);
+        const mensajeRechRico = _armarMensajeAprobacionEntrada(m.monto_total_con_iva, id_entrada, numDocRech, {
+          nombreArt: artRechInfo.nombre_articulo || artRechInfo.codigo_articulo || ('Art#'+m.id_articulo),
+          cantidad: m.cantidad,
+          unidad: artRechInfo.unidad || 'UND',
+          monedaCompra: m.moneda_compra,
+          tasaBcv: m.tasa_bcv,
+          montoBsExacto: montoBsRech
+        }) + '<div style="border-top:1px solid var(--borde);margin-top:12px;padding-top:10px;font-size:12px">'
+          + '<div><span style="color:var(--suave)">Rechazada por:</span> ' + (sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor') + '</div>'
+          + '<div style="margin-top:4px"><span style="color:var(--suave)">Motivo:</span> ' + motivo + '</div>'
+          + '</div>';
         await api('notificaciones','POST',{
           correo_destino: m.id_usuario,
           titulo: 'Entrada de Compra Rechazada',
-          mensaje: 'Tu Entrada de Compra "ENT-'+id_entrada+'" fue rechazada por '+(sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor')+'. Motivo: '+motivo+'. Corríjala y vuelva a guardarla para que se reenvíe a aprobación.',
+          mensaje: mensajeRechRico,
           estado: 'PENDIENTE',
           fecha_creacion: new Date().toISOString(),
           datos_extra: JSON.stringify({ id_entrada: id_entrada, accion: 'entrada_compra_rechazada' })
