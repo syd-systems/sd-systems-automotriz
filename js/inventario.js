@@ -1354,6 +1354,26 @@ async function guardarEntradaStock() {
           ? parseFloat((precioBaseAsiento * cantidad).toFixed(2))
           : parseFloat((precioBaseAsiento * cantidad * (incluyeIVA_ent ? 1 : (1 + IVA_RATE_ENT))).toFixed(2)));
 
+    // Monto TOTAL en la MONEDA ORIGINAL negociada (Bs si se negoció en VES,
+    // USD si se negoció en USD) -- calculado UNA sola vez, con la misma
+    // fórmula exacta que usa la Ficha (calcularTributosEntrada), y
+    // congelado en su propia columna. Antes, cualquier lugar que necesitara
+    // mostrar el monto en Bs lo recalculaba por su cuenta (USD congelado ×
+    // tasa), y esa ida-y-vuelta VES→USD→VES arrastraba centavos de
+    // diferencia frente a lo que la Ficha mostró originalmente -- ahora
+    // todos leen este mismo valor, nadie lo vuelve a calcular.
+    let montoTotalMonedaOriginal = null;
+    if (motivoEnt === 'compra') {
+      const precioIngresadoEnt = parseMontoVE(document.getElementById('es-precio-costo')?.value);
+      const montoOrigEnt = precioIngresadoEnt * cantidad;
+      if (exentoIVAEnt2 || incluyeIVA_ent) {
+        montoTotalMonedaOriginal = parseFloat(montoOrigEnt.toFixed(2));
+      } else {
+        const ivaOrigEnt = parseFloat((montoOrigEnt * IVA_RATE_ENT).toFixed(4));
+        montoTotalMonedaOriginal = parseFloat((montoOrigEnt + ivaOrigEnt).toFixed(2));
+      }
+    }
+
     // Cuotas (solo Crédito): se guarda el desglose YA CALCULADO tal cual se
     // ve en pantalla (con cualquier ajuste manual del Usuario al monto por
     // cuota, y el ajuste de fecha a día hábil) -- no se recalcula después,
@@ -1388,6 +1408,7 @@ async function guardarEntradaStock() {
       incluye_iva:            document.getElementById('es-incluye-iva-val')?.value === 'SI' ? true : (document.getElementById('es-incluye-iva-val')?.value === 'NO' ? false : null),
       fecha_pago:             document.getElementById('es-esquema-pago')?.value === 'CONTADO' ? (document.getElementById('es-fecha-pago')?.value || null) : null,
       monto_total_con_iva:    montoTotalConIVA,
+      monto_total_moneda_original: montoTotalMonedaOriginal,
       cuotas_json:            cuotasJsonVal,
       estado_aprobacion:      motivoEnt === 'compra' ? 'PENDIENTE' : null,
       id_usuario:             sesionActual.correo_usuario
@@ -1414,12 +1435,23 @@ async function guardarEntradaStock() {
     if (motivoEnt === 'compra') {
       try {
         const numDocSol = id_entrada ? 'ENT-' + id_entrada : ('ENT-INV-' + id);
+        // Monto en Bs EXACTO para mostrar en la notificación -- se deriva
+        // directo del montoTotalMonedaOriginal ya calculado arriba (una
+        // sola fórmula, una sola vez), no se vuelve a calcular por su
+        // cuenta. Si se negoció en VES, ya ES el Bs; si se negoció en USD,
+        // se convierte una sola vez (sin ida y vuelta).
+        const montoBsExacto = (motivoEnt === 'compra' && montoTotalMonedaOriginal != null)
+          ? (moneda_compra_val === 'VES'
+              ? montoTotalMonedaOriginal
+              : (tasa_bcv_usada ? parseFloat((montoTotalMonedaOriginal * tasa_bcv_usada).toFixed(2)) : null))
+          : null;
         await enrutarAprobacionEntrada(montoTotalConIVA, id_entrada, numDocSol, {
           nombreArt: r.nombre_articulo || r.codigo_articulo || ('Art#'+id),
           cantidad: cantidad,
           unidad: r.unidad || 'UND',
           monedaCompra: moneda_compra_val,
-          tasaBcv: tasa_bcv_usada
+          tasaBcv: tasa_bcv_usada,
+          montoBsExacto: montoBsExacto
         });
       } catch(eEnrutEnt) { console.warn('Error enrutando aprobación de Entrada:', eEnrutEnt); }
       okEl.textContent = window._retomandoEntradaId
@@ -1669,11 +1701,13 @@ function _armarMensajeAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
   const d = detalle || {};
   const monedaFuncional = ((_empresaActiva?.moneda_principal) || 'VES').toUpperCase();
   const tasaUsar = d.tasaBcv || _tasaVigente || 1;
-  // Redondeado a 2 decimales ANTES de formatear -- igual que hace la Ficha
-  // (calcularTributosEntrada), para que ambos números coincidan siempre.
-  // Sin este paso intermedio, la multiplicación en punto flotante puede
-  // arrastrar centavos de diferencia entre este mensaje y la Ficha.
-  const montoBs = parseFloat((monto * tasaUsar).toFixed(2));
+  // Usa el Bs EXACTO ya calculado igual que la Ficha (directo desde lo
+  // negociado, sin ida-y-vuelta VES→USD→VES) -- si por algún motivo no
+  // llegó (ej. una Entrada vieja retomada antes de este fix), se cae al
+  // cálculo anterior (monto USD × tasa) como respaldo.
+  const montoBs = d.montoBsExacto != null
+    ? d.montoBsExacto
+    : parseFloat((monto * tasaUsar).toFixed(2));
   const principal = monedaFuncional === 'USD'
     ? '$ ' + fmtUSD(monto) + (d.monedaCompra !== 'USD' ? ' <span style="font-weight:400;color:var(--suave)">(equivalente a Bs ' + fmtBs(montoBs) + ')</span>' : '')
     : 'Bs ' + fmtBs(montoBs) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a $ ' + fmtUSD(monto) + ')</span>';
@@ -1750,7 +1784,12 @@ async function ejecutarEfectosEntradaCompra(m) {
   // vuelva a aprobar para el pago.
   try {
     const montoUSD = montoTotalConIVA;
-    const montoVES = parseFloat((montoUSD * (tasa_bcv_usada || _tasaVigente || 1)).toFixed(2));
+    // Monto en Bs: usa el congelado en monto_total_moneda_original (si se
+    // negoció en VES, ya es ese valor directo, sin recalcular con la
+    // tasa) -- solo si se negoció en USD hace falta convertir.
+    const montoVES = (m.moneda_compra === 'VES' && m.monto_total_moneda_original != null)
+      ? parseFloat(m.monto_total_moneda_original)
+      : parseFloat((montoUSD * (tasa_bcv_usada || _tasaVigente || 1)).toFixed(2));
     const numDocBase = 'ENT-' + m.id_entrada;
     const artNomCxP = r.nombre_articulo || r.codigo_articulo || 'Art#'+id;
     const fechaNegCxP = m.fecha_negociacion || m.fecha_entrada;
@@ -1759,7 +1798,7 @@ async function ejecutarEfectosEntradaCompra(m) {
     if (m.esquema_pago === 'CREDITO') {
       const cuotas = m.cuotas_json ? (typeof m.cuotas_json === 'string' ? JSON.parse(m.cuotas_json) : m.cuotas_json) : [];
       if (!cuotas.length) throw new Error('La Entrada no tiene el desglose de cuotas guardado.');
-      const totalVesCuotas = parseFloat((montoTotalConIVA * (tasa_bcv_usada || 1)).toFixed(2));
+      const totalVesCuotas = montoVES;
       let acumVesCuotas = 0;
       for (let i = 0; i < cuotas.length; i++) {
         const c = cuotas[i];
