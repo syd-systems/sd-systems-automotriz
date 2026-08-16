@@ -1143,6 +1143,10 @@ async function guardarEntradaStock() {
   if (!fechaNeg)                    return mostrarError('Seleccione la Fecha.', 'es-fecha-negociacion');
   if (fechaNeg > hoy)               return mostrarError('La Fecha no puede ser mayor al día de hoy.', 'es-fecha-negociacion');
   if (cantidad <= 0)                return mostrarError('Ingrese una cantidad mayor a 0.', 'es-cantidad');
+  const articuloParaValidarCant = inventarioCache.find(function(x) { return x.id_articulo === id; });
+  if ((articuloParaValidarCant?.unidad || 'UND') === 'UND' && cantidad % 1 !== 0) {
+    return mostrarError('Este Artículo se mide en Unidades (UND) -- la cantidad debe ser un número entero, sin decimales.', 'es-cantidad');
+  }
 
   // Moneda / Precio Negociación / Modalidad de Pago — SOLO para Compra.
   // Devolución, Ajuste y Transferencia usan el CPP actual del artículo tal
@@ -2384,7 +2388,7 @@ async function invRenderEntradasRechazadas(cont) {
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
     let qRech = '?motivo=eq.compra&estado_aprobacion=eq.RECHAZADA&order=fecha_registro.desc'
-      +'&select=id_entrada,id_articulo,cantidad,fecha_negociacion,monto_total_con_iva,esquema_pago,id_usuario,id_proveedor,motivo_rechazo';
+      +'&select=id_entrada,id_articulo,cantidad,fecha_negociacion,monto_total_con_iva,monto_total_moneda_original,moneda_compra,tasa_bcv,esquema_pago,id_usuario,id_proveedor,motivo_rechazo';
     // Cada quien ve solo lo suyo -- salvo administrador, que ve todo.
     if (!sesionActual?.administrador) qRech += '&id_usuario=eq.'+encodeURIComponent(sesionActual?.correo_usuario||'');
     const rechazadas = await api('stock_entradas','GET',null,qRech) || [];
@@ -2405,12 +2409,21 @@ async function invRenderEntradasRechazadas(cont) {
       const art = artMap[p.id_articulo];
       const nomArt = art ? (art.codigo_articulo ? art.codigo_articulo+' — ' : '') + art.nombre_articulo : ('Art#'+p.id_articulo);
       const nomProv = provMap[p.id_proveedor] || '—';
+      // Monto en Bs: usa el congelado (monto_total_moneda_original) si se
+      // negoció en VES -- no se recalcula con la tasa de hoy, que sería
+      // otra fuente más de descuadre frente a lo que se negoció realmente.
+      const montoBsFila = p.moneda_compra === 'VES' && p.monto_total_moneda_original != null
+        ? p.monto_total_moneda_original
+        : (p.tasa_bcv ? p.monto_total_con_iva * p.tasa_bcv : null);
       return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
         +'<td style="padding:8px;font-size:12px">'+formatearFechaCorta(p.fecha_negociacion)+'</td>'
         +'<td style="padding:8px;font-size:12px">'+nomArt+'</td>'
         +'<td style="padding:8px;text-align:right;font-family:var(--font-mono);font-size:12px">'+p.cantidad+'</td>'
         +'<td style="padding:8px;font-size:12px">'+nomProv+'</td>'
-        +'<td style="padding:8px;text-align:right;font-family:var(--font-mono);font-weight:600;color:#fc8181">$ '+fmtUSD(p.monto_total_con_iva)+'</td>'
+        +'<td style="padding:8px;text-align:right;font-family:var(--font-mono)">'
+          +'<div style="font-weight:600;color:#fc8181">'+(montoBsFila != null ? fmtBs(montoBsFila)+' Bs' : '—')+'</div>'
+          +'<div style="font-size:10px;color:var(--suave)">$ '+fmtUSD(p.monto_total_con_iva)+'</div>'
+        +'</td>'
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(p.motivo_rechazo||'—')+'</td>'
         +'<td style="padding:8px;white-space:nowrap"><button class="btn-naranja" onclick="retomarEntradaRechazada('+p.id_entrada+')" style="font-size:11px;padding:4px 10px">↻ Retomar y Editar</button></td>'
         +'</tr>';
