@@ -3615,21 +3615,14 @@ async function ejecutarPagoCxP(id_cxp) {
   // formas (ver onCambiarMonedaExecPago).
   window._execPagoCxP = c;
   const monedaCxP = prov.moneda_facturacion || c.moneda_pago || 'USD';
-  const montoCxP  = monedaCxP === 'VES'
-    ? parseFloat(c.monto_ves || c.saldo_ves || 0)
-    : parseFloat(c.monto_usd || c.saldo_usd || 0);
   const monedaDispEl = document.getElementById('exec-pago-moneda-display');
   if (monedaDispEl) monedaDispEl.value = monedaCxP;
 
   // Buscar tasa vigente para mostrar equivalente
-  let tasaVigente = _tasaVigente || 1;
-  try {
-    const tasaHoy = await api('tasas','GET',null,'?moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
-    if (tasaHoy && tasaHoy[0]) tasaVigente = parseFloat(tasaHoy[0].tipo_cambio);
-  } catch(e) {}
-
-  const montoUSDShow = monedaCxP === 'VES' ? montoCxP / tasaVigente : montoCxP;
-  const montoVESShow = monedaCxP === 'VES' ? montoCxP : montoCxP * tasaVigente;
+  // Ambos montos (USD y VES) ya están congelados en la CxP -- no se
+  // recalcula con la tasa de hoy (mismo criterio que onCambiarMonedaExecPago).
+  const montoUSDShow = parseFloat(c.saldo_usd) || parseFloat(c.monto_usd || 0);
+  const montoVESShow = parseFloat(c.saldo_ves) || parseFloat(c.monto_ves || 0) || (montoUSDShow * (_tasaVigente || 1));
 
   document.getElementById('exec-pago-desc').textContent  = c.numero_doc + ' — ' + (c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim();
   document.getElementById('exec-pago-monto').textContent = 'Bs. ' + fmtBs(montoVESShow);
@@ -3680,16 +3673,14 @@ async function onCambiarMonedaExecPago() {
   const prov = window._execPagoProv || {};
   if (!c) return;
 
-  const montoCxP = monedaSel === 'VES'
-    ? parseFloat(c.monto_ves || c.saldo_ves || 0)
-    : parseFloat(c.monto_usd || c.saldo_usd || 0);
-  let tasaVigente = _tasaVigente || 1;
-  try {
-    const tasaHoy = await api('tasas','GET',null,'?moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
-    if (tasaHoy && tasaHoy[0]) tasaVigente = parseFloat(tasaHoy[0].tipo_cambio);
-  } catch(e) {}
-  const montoUSDShow = monedaSel === 'VES' ? montoCxP / tasaVigente : montoCxP;
-  const montoVESShow = monedaSel === 'VES' ? montoCxP : montoCxP * tasaVigente;
+  // Ambos montos (USD y VES) YA están congelados en la CxP desde que se
+  // creó -- no hace falta buscar ninguna tasa "de hoy" ni recalcular nada,
+  // sin importar en qué Moneda decida pagarse finalmente. Antes esto
+  // volvía a multiplicar por la tasa vigente al abrir el modal, y si
+  // pasaba aunque fuera un día entre crear la CxP y ejecutar el pago, el
+  // monto mostrado ya no coincidía con lo negociado ni con el Asiento.
+  const montoUSDShow = parseFloat(c.saldo_usd) || parseFloat(c.monto_usd || 0);
+  const montoVESShow = parseFloat(c.saldo_ves) || parseFloat(c.monto_ves || 0) || (montoUSDShow * (_tasaVigente || 1));
   document.getElementById('exec-pago-monto').textContent = 'Bs. ' + fmtBs(montoVESShow);
   const elMontoVES = document.getElementById('exec-pago-monto-ves');
   if (elMontoVES) elMontoVES.textContent = '$ ' + fmtBs(montoUSDShow);

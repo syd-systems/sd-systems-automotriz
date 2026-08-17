@@ -2440,19 +2440,19 @@ async function invRenderEntradasRechazadas(cont) {
           +'<div style="font-size:10px;color:var(--suave)">$ '+fmtUSD(p.monto_total_con_iva)+'</div>'
         +'</td>'
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(p.motivo_rechazo||'—')+'</td>'
-        +'<td style="padding:8px 14px 8px 8px;white-space:nowrap"><button class="btn-naranja" onclick="retomarEntradaRechazada('+p.id_entrada+')" style="font-size:11px;padding:4px 10px">↻ Retomar</button></td>'
+        +'<td style="padding:8px;white-space:nowrap"><button class="btn-naranja" onclick="retomarEntradaRechazada('+p.id_entrada+')" style="font-size:11px;padding:4px 10px;margin-right:8px">↻ Retomar</button></td>'
         +'</tr>';
     }).join('');
 
     cont.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-bottom:10px">Estas Entradas fueron rechazadas por un Nivel de Firma -- todavía no afectaron Stock ni Contabilidad. Corríjalas y vuelva a guardarlas para que se reenvíen a aprobación.</div>'
       + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse;table-layout:fixed"><thead><tr>'
       +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:9%">Fecha</th>'
-      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:24%">Artículo</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:23%">Artículo</th>'
       +'<th style="padding:8px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:6%">Cant.</th>'
-      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:14%">Proveedor</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:13%">Proveedor</th>'
       +'<th style="padding:8px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:17%">Monto</th>'
-      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:21%">Motivo del Rechazo</th>'
-      +'<th style="padding:8px;width:9%"></th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:20%">Motivo del Rechazo</th>'
+      +'<th style="padding:8px;width:12%"></th>'
       +'</tr></thead><tbody>'+filas+'</tbody></table></div>';
   } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>'; }
 }
