@@ -1525,9 +1525,16 @@ async function contGuardarPagoCxp() {
             descripcion:descBanco,
             debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:monto, tasa_bcv:tasaPago });
         } else {
-          const montoVESCompra = parseFloat((montoUSD * tasaCompra).toFixed(2));
-          const montoVESPago   = parseFloat((montoUSD * tasaPago).toFixed(2));
-          const difCambio      = parseFloat((montoVESPago - montoVESCompra).toFixed(2));
+          // montoVESCompra: el monto EXACTO ya congelado en la CxP (no se
+          // re-deriva multiplicando montoUSD × tasaCompra, mismo criterio
+          // que confirmarEjecucionPago()). montoVESPago solo se recalcula
+          // con la tasa de hoy si esa tasa REALMENTE es distinta a la de
+          // compra -- si no, usa el mismo monto congelado, para no generar
+          // un "diferencial cambiario" falso por redondeo cuando la tasa
+          // no se movió.
+          const montoVESCompra = parseFloat(c.monto_ves || 0) || parseFloat((montoUSD * tasaCompra).toFixed(2));
+          const montoVESPago   = tasaPago === tasaCompra ? montoVESCompra : parseFloat((montoUSD * tasaPago).toFixed(2));
+          const difCambio      = tasaPago === tasaCompra ? 0 : parseFloat((montoVESPago - montoVESCompra).toFixed(2));
           const montoIGTF_USD  = parseFloat((montoUSD * pctIGTF).toFixed(2));
           const montoIGTF_VES  = parseFloat((montoIGTF_USD * tasaPago).toFixed(2));
 
@@ -3993,9 +4000,17 @@ async function confirmarEjecucionPago() {
     // tasa de compra, para no reintroducir residuos de centavo cuando la
     // tasa no cambió. montoVESPago = lo que se paga hoy, a la tasa de hoy;
     // la diferencia entre ambos es la diferencia cambiaria real.
+    // EXCEPCIÓN: si la tasa de hoy es la MISMA que la de compra (no hubo
+    // devaluación real entre negociar y pagar), montoVESPago usa el mismo
+    // monto congelado -- multiplicar el USD (ya redondeado a 2 decimales)
+    // de vuelta por la tasa no siempre regresa exacto al Bs original, y
+    // eso generaba un "diferencial cambiario" falso de un centavo aun
+    // cuando la tasa no se movió ni un ápice.
     const montoVESCompra = montoVESCxP;
-    const montoVESPago   = monedaCxP === 'VES' ? montoVESCxP : parseFloat((montoUSD * tasaPago).toFixed(2));
-    const diferencial    = monedaCxP === 'VES' ? 0 : parseFloat((montoVESPago - montoVESCompra).toFixed(2));
+    const montoVESPago   = (monedaCxP === 'VES' || tasaPago === tasaCompra)
+      ? montoVESCxP
+      : parseFloat((montoUSD * tasaPago).toFixed(2));
+    const diferencial    = (monedaCxP === 'VES' || tasaPago === tasaCompra) ? 0 : parseFloat((montoVESPago - montoVESCompra).toFixed(2));
 
     // 6. Crear asiento contable
     const numAst = await _siguienteNumeroAsiento();
@@ -4036,7 +4051,13 @@ async function confirmarEjecucionPago() {
       // recalcular convirtiendo VES→USD→VES, porque ese redondeo de ida y
       // vuelta reintroducía centavos de diferencia contra la CxP (mismo tipo
       // de bug ya corregido antes en la creación de la CxP).
-      const bancoVES  = (monedaCxP === 'VES' && igtf === 0) ? cxpVES : r2(total * tasaPago);
+      // Cuando la Moneda de Pago SÍ difiere (o hay IGTF), bancoVES se arma
+      // como cxpVES + diferencial -- así el Asiento SIEMPRE cuadra exacto,
+      // incluso cuando la diferencia es de apenas 1 centavo (muy chica para
+      // que se le cree su propia línea de "Diferencia Cambiaria" más abajo,
+      // pero igual tiene que quedar reflejada en algún lado para que Debe y
+      // Haber coincidan).
+      const bancoVES  = (monedaCxP === 'VES' && igtf === 0) ? cxpVES : r2(cxpVES + igtfVES + diferencial);
 
       const numDoc2 = c.numero_doc || '';
       const cuotaM2 = numDoc2.match(/ENT-(\d+)-C(\d+)/);
