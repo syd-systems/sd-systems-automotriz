@@ -1356,17 +1356,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260814277"></script>
-<script src="js/parametros.js?v=20260814277"></script>
-<script src="js/empresas.js?v=20260814277"></script>
-<script src="js/ingresos.js?v=20260814277"></script>
-<script src="js/inventario.js?v=20260814277"></script>
-<script src="js/proveedores.js?v=20260814277"></script>
-<script src="js/contabilidad.js?v=20260814277"></script>
-<script src="js/egresos.js?v=20260814277"></script>
-<script src="js/vehiculos.js?v=20260814277"></script>
-<script src="js/catalogo.js?v=20260814277"></script>
-<script src="js/ordenes.js?v=20260814277"></script>
+<script src="js/core.js?v=20260814278"></script>
+<script src="js/parametros.js?v=20260814278"></script>
+<script src="js/empresas.js?v=20260814278"></script>
+<script src="js/ingresos.js?v=20260814278"></script>
+<script src="js/inventario.js?v=20260814278"></script>
+<script src="js/proveedores.js?v=20260814278"></script>
+<script src="js/contabilidad.js?v=20260814278"></script>
+<script src="js/egresos.js?v=20260814278"></script>
+<script src="js/vehiculos.js?v=20260814278"></script>
+<script src="js/catalogo.js?v=20260814278"></script>
+<script src="js/ordenes.js?v=20260814278"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2640,14 +2640,21 @@
             <option value="VES">VES — Bolívar</option>
           </select>
         </div>
-        <div class="form-campo form-full" style="grid-column:1/-1">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;grid-column:1/-1">
+        <div class="form-campo">
           <label>Precio Negociación <span id="es-label-moneda-compra" style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span></label>
           <input type="text" id="es-precio-costo" inputmode="decimal" placeholder="0,00"
-            style="font-family:var(--font-mono)"
+            style="font-family:var(--font-mono);width:100%;box-sizing:border-box"
             oninput="onCambiarPrecioEntrada()"
             onblur="if(this.value){var v=parseFloat(this.value.replace(/\./g,'').replace(',','.'));if(!isNaN(v)){var p=v.toFixed(2).split('.');this.value=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.')+','+p[1];}}onCambiarPrecioEntrada();">
           <div id="es-ref-cpp" style="font-size:10px;color:var(--naranja);margin-top:4px"></div>
-          <div id="es-precio-opuesto" style="font-size:11px;color:var(--suave);margin-top:4px"></div>
+        </div>
+        <div class="form-campo">
+          <label>Precio Negociación <span id="es-label-moneda-opuesta" style="font-size:10px;color:var(--naranja);font-weight:600">(VES)</span></label>
+          <input type="text" id="es-precio-opuesto" readonly placeholder="0,00"
+            style="font-family:var(--font-mono);background:var(--gris1);color:var(--naranja);width:100%;box-sizing:border-box;cursor:not-allowed;opacity:0.8">
+          <div id="es-formula-precio-opuesto" style="font-size:10px;color:var(--suave);margin-top:4px">Precio / Tasa BCV</div>
+        </div>
         </div>
         <div class="form-campo form-full" id="es-tasa-cont" style="display:none;grid-column:1/-1">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
@@ -2667,7 +2674,7 @@
               <label id="es-label-precio-usd">Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(VES)</span></label>
               <input type="text" id="es-precio-usd-calc" placeholder="0,00"
                 style="font-family:var(--font-mono);background:var(--gris1);color:var(--naranja);width:100%;cursor:not-allowed;opacity:0.7" readonly>
-              <div style="font-size:10px;color:var(--suave);margin-top:4px">Precio × Cantidad × Tasa BCV</div>
+              <div id="es-formula-opuesto" style="font-size:10px;color:var(--suave);margin-top:4px">Precio × Cantidad × Tasa BCV</div>
             </div>
           </div>
         </div>
@@ -4705,7 +4712,7 @@
 
       <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
         <div class="form-campo">
-          <label id="edit-mov-fecha-label">Fecha Negociación *</label>
+          <label id="edit-mov-fecha-label">Fecha de Negociación</label>
           <input type="date" id="edit-mov-fecha-negociacion"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 10px;border-radius:5px;outline:none;width:100%;color-scheme:dark"
             onchange="onCambiarFechaNegEdit()">
@@ -4720,21 +4727,30 @@
           </select>
         </div>
         <div class="form-campo">
-          <label>Cantidad * <span id="edit-mov-label-unidad" style="font-size:10px;color:var(--suave);font-weight:400"></span></label>
+          <label>Cantidad <span id="edit-mov-label-unidad" style="font-size:10px;color:var(--suave);font-weight:400"></span></label>
           <input type="number" id="edit-mov-cantidad" min="0.01" step="0.01" placeholder="0.00"
             style="font-size:15px;font-family:var(--font-mono);text-align:center;color:var(--naranja);width:100%;box-sizing:border-box"
             oninput="onCambiarPrecioEdit()"
             onblur="this.value=parseFloat(this.value||0).toFixed(2)">
         </div>
 
-        <div class="form-campo" id="edit-mov-precio-cont">
+        <div id="edit-mov-precio-cont" style="grid-column:1/-1">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-campo">
           <label>Precio Negociación <span id="edit-mov-label-moneda" style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span></label>
           <input type="text" id="edit-mov-precio" inputmode="decimal" placeholder="0,00"
             style="font-family:var(--font-mono);width:100%;box-sizing:border-box"
             oninput="onCambiarPrecioEdit()"
             onblur="if(this.value){var v=parseFloat(this.value.replace(/\./g,'').replace(',','.'));if(!isNaN(v)){var p=v.toFixed(2).split('.');this.value=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.')+','+p[1];}}onCambiarPrecioEdit();">
           <div id="edit-mov-ref-cpp" style="font-size:10px;color:var(--naranja);margin-top:4px"></div>
-          <div id="edit-mov-precio-opuesto" style="font-size:11px;color:var(--suave);margin-top:4px"></div>
+        </div>
+        <div class="form-campo">
+          <label>Precio Negociación <span id="edit-mov-label-moneda-opuesta" style="font-size:10px;color:var(--naranja);font-weight:600">(VES)</span></label>
+          <input type="text" id="edit-mov-precio-opuesto" readonly placeholder="0,00"
+            style="font-family:var(--font-mono);background:var(--gris1);color:var(--naranja);width:100%;box-sizing:border-box;cursor:not-allowed;opacity:0.8">
+          <div id="edit-mov-formula-precio-opuesto" style="font-size:10px;color:var(--suave);margin-top:4px">Precio / Tasa BCV</div>
+        </div>
+        </div>
         </div>
 
         <div class="form-campo form-full" id="edit-mov-tasa-cont" style="grid-column:1/-1">
@@ -4755,7 +4771,7 @@
               <label id="edit-mov-label-precio-usd">Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(VES)</span></label>
               <input type="text" id="edit-mov-precio-usd-calc" placeholder="0,00"
                 style="font-family:var(--font-mono);background:var(--gris1);color:var(--naranja);width:100%;cursor:not-allowed;opacity:0.7" readonly>
-              <div style="font-size:10px;color:var(--suave);margin-top:4px">Precio × Cantidad × Tasa BCV</div>
+              <div id="edit-mov-formula-opuesto" style="font-size:10px;color:var(--suave);margin-top:4px">Precio × Cantidad × Tasa BCV</div>
             </div>
           </div>
         </div>

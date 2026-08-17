@@ -3961,7 +3961,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
   const fechaNeg = document.getElementById('edit-mov-fecha-negociacion');
   const fechaLbl = document.getElementById('edit-mov-fecha-label');
   if (tipo === 'ENTRADA') {
-    if (fechaLbl) fechaLbl.textContent = 'Fecha de Negociación *';
+    if (fechaLbl) fechaLbl.textContent = 'Fecha de Negociación';
     if (fechaNeg) fechaNeg.value = m.fecha_negociacion || m.fecha_entrada?.slice(0,10) || getHoyVzla();
   } else {
     if (fechaLbl) fechaLbl.textContent = 'Fecha de Salida *';
@@ -5136,20 +5136,25 @@ function onCambiarPrecioEdit() {
   // Precio Negociación en la moneda CONTRARIA a la negociada (precio
   // unitario, no el total) -- mismo criterio que en Nueva Entrada.
   const elPrecioOpuesto = document.getElementById('edit-mov-precio-opuesto');
+  const lblMonedaOpuestaEdit = document.getElementById('edit-mov-label-moneda-opuesta');
+  const elFormulaPrecioOpuestoEdit = document.getElementById('edit-mov-formula-precio-opuesto');
+  const opuestaEdit = moneda === 'VES' ? 'USD' : 'VES';
+  if (lblMonedaOpuestaEdit) lblMonedaOpuestaEdit.textContent = '(' + opuestaEdit + ')';
+  if (elFormulaPrecioOpuestoEdit) elFormulaPrecioOpuestoEdit.textContent = moneda === 'VES' ? 'Precio / Tasa BCV' : 'Precio × Tasa BCV';
   if (elPrecioOpuesto) {
     if (precio > 0 && tasa > 0) {
-      const opuesta = moneda === 'VES' ? 'USD' : 'VES';
       const precioOpuesto = moneda === 'VES' ? (precio / tasa) : (precio * tasa);
-      const sim = opuesta === 'VES' ? 'Bs.' : '$';
-      elPrecioOpuesto.textContent = sim + ' ' + fmtBs(precioOpuesto) + ' (' + opuesta + ')';
+      elPrecioOpuesto.value = fmtBs(precioOpuesto);
     } else {
-      elPrecioOpuesto.textContent = '';
+      elPrecioOpuesto.value = '';
     }
   }
 
   if (elCalc && tasa > 0) {
     elCalc.value = moneda === 'VES' ? fmtBs(montoTotal / tasa) : fmtBs(montoTotal * tasa);
   }
+  const elFormulaOpuestoEdit = document.getElementById('edit-mov-formula-opuesto');
+  if (elFormulaOpuestoEdit) elFormulaOpuestoEdit.textContent = moneda === 'VES' ? 'Precio × Cantidad / Tasa BCV' : 'Precio × Cantidad × Tasa BCV';
   calcularTributosEdit();
   const cuotaMontoEditEl = document.getElementById('edit-mov-cuotas-monto');
   if (cuotaMontoEditEl) cuotaMontoEditEl.value = '';
@@ -6384,23 +6389,29 @@ function onCambiarPrecioEntrada() {
   // Precio Negociación en la moneda CONTRARIA a la negociada -- es el
   // precio unitario (no el total), para que se vea de inmediato al lado
   // del campo cuánto es en la otra moneda, sin tener que calcularlo aparte.
+  const lblMonedaOpuesta = document.getElementById('es-label-moneda-opuesta');
+  const elFormulaPrecioOpuesto = document.getElementById('es-formula-precio-opuesto');
+  const opuesta = moneda === 'VES' ? 'USD' : 'VES';
+  if (lblMonedaOpuesta) lblMonedaOpuesta.textContent = '(' + opuesta + ')';
+  if (elFormulaPrecioOpuesto) elFormulaPrecioOpuesto.textContent = moneda === 'VES' ? 'Precio / Tasa BCV' : 'Precio × Tasa BCV';
   if (elPrecioOpuesto) {
     if (precio > 0 && tasa > 0) {
-      const opuesta = moneda === 'VES' ? 'USD' : 'VES';
       const precioOpuesto = moneda === 'VES' ? (precio / tasa) : (precio * tasa);
-      const sim = opuesta === 'VES' ? 'Bs.' : '$';
-      elPrecioOpuesto.textContent = sim + ' ' + fmtBs(precioOpuesto) + ' (' + opuesta + ')';
+      elPrecioOpuesto.value = fmtBs(precioOpuesto);
     } else {
-      elPrecioOpuesto.textContent = '';
+      elPrecioOpuesto.value = '';
     }
   }
 
   // Precio VES calculado
   if (!elCalc || !tasa) { calcularTributosEntrada(); const cme = document.getElementById('es-cuotas-monto'); if (cme) cme.value=''; calcularCuotasEntrada(); return; }
+  const elFormulaOpuesto = document.getElementById('es-formula-opuesto');
   if (moneda === 'VES') {
     elCalc.value = tasa > 0 ? fmtBs(montoTotal / tasa) : '';
+    if (elFormulaOpuesto) elFormulaOpuesto.textContent = 'Precio × Cantidad / Tasa BCV';
   } else {
     elCalc.value = fmtBs(montoTotal * tasa);
+    if (elFormulaOpuesto) elFormulaOpuesto.textContent = 'Precio × Cantidad × Tasa BCV';
   }
   calcularTributosEntrada();
   const cuotaMontoEl = document.getElementById('es-cuotas-monto');
