@@ -73,34 +73,19 @@ async function refrescarTasasHistoricasCPP() {
   try {
     const idsArt = inventarioCache.map(function(r){ return r.id_articulo; });
     if (!idsArt.length) return;
-    // 1. Última fecha de Entrada por Artículo -- se trae todo ordenado por
-    // fecha desc y se toma solo la primera vez que aparece cada Artículo
-    // (PostgREST no tiene un "distinct on" directo por esta vía). Se
-    // filtra por los Artículos ya cargados (inventarioCache, correctamente
-    // scoped por empresa) en vez de id_empresa directo -- esa columna no
-    // se usa en ningún otro lado sobre stock_entradas.
+    // Última Entrada por Artículo, con la tasa que REALMENTE se usó en esa
+    // Entrada (tasa_bcv, ya guardada en la fila) -- no se vuelve a buscar
+    // en la tabla `tasas` por fecha, porque esa consulta separada puede
+    // devolver un valor distinto (varias tasas el mismo día, o cualquier
+    // diferencia de precisión) al que realmente se negoció y quedó
+    // congelado en la Entrada -- eso es justo lo que causaba el descuadre.
     const entradas = await api('stock_entradas','GET',null,
       '?id_articulo=in.('+idsArt.join(',')+')'
-      +'&or=(anulada.eq.false,anulada.is.null)&order=fecha_entrada.desc&select=id_articulo,fecha_entrada') || [];
-    const ultimaFechaPorArticulo = {};
+      +'&or=(anulada.eq.false,anulada.is.null)&order=fecha_entrada.desc&select=id_articulo,fecha_entrada,tasa_bcv') || [];
     entradas.forEach(function(e) {
-      if (ultimaFechaPorArticulo[e.id_articulo] === undefined) {
-        ultimaFechaPorArticulo[e.id_articulo] = e.fecha_entrada;
+      if (_tasaCppPorArticulo[e.id_articulo] === undefined && e.tasa_bcv) {
+        _tasaCppPorArticulo[e.id_articulo] = parseFloat(e.tasa_bcv);
       }
-    });
-    // 2. Histórico completo de tasas USD, ordenado ascendente -- se recorre
-    // una sola vez para resolver todas las fechas necesarias.
-    const tasas = await api('tasas','GET',null,
-      '?moneda_origen=eq.USD&order=fecha_valor.asc&select=fecha_valor,tipo_cambio') || [];
-    Object.keys(ultimaFechaPorArticulo).forEach(function(idArt) {
-      const fecha = ultimaFechaPorArticulo[idArt];
-      // La tasa vigente a esa fecha es la más reciente cuyo fecha_valor
-      // sea <= la fecha de la Entrada.
-      let tasaEncontrada = null;
-      for (let i = tasas.length - 1; i >= 0; i--) {
-        if (tasas[i].fecha_valor <= fecha) { tasaEncontrada = parseFloat(tasas[i].tipo_cambio); break; }
-      }
-      if (tasaEncontrada !== null) _tasaCppPorArticulo[idArt] = tasaEncontrada;
     });
   } catch(e) { console.warn('Error refrescando Tasas históricas del CPP:', e); }
 }
@@ -1366,13 +1351,23 @@ async function guardarEntradaStock() {
     // tasa), y esa ida-y-vuelta VES→USD→VES arrastraba centavos de
     // diferencia frente a lo que la Ficha mostró originalmente -- ahora
     // todos leen este mismo valor, nadie lo vuelve a calcular.
+    // baseMonedaOriginal: lo mismo pero para la BASE sin IVA -- necesaria
+    // para que el Asiento contable (línea "Inventario") tampoco tenga que
+    // extraerla de nuevo dividiendo el total, evitando otra fuente más de
+    // centavos de diferencia.
     let montoTotalMonedaOriginal = null;
+    let baseMonedaOriginal = null;
     if (motivoEnt === 'compra') {
       const precioIngresadoEnt = parseMontoVE(document.getElementById('es-precio-costo')?.value);
       const montoOrigEnt = precioIngresadoEnt * cantidad;
-      if (exentoIVAEnt2 || incluyeIVA_ent) {
+      if (exentoIVAEnt2) {
         montoTotalMonedaOriginal = parseFloat(montoOrigEnt.toFixed(2));
+        baseMonedaOriginal = montoTotalMonedaOriginal;
+      } else if (incluyeIVA_ent) {
+        montoTotalMonedaOriginal = parseFloat(montoOrigEnt.toFixed(2));
+        baseMonedaOriginal = parseFloat((montoOrigEnt / (1 + IVA_RATE_ENT)).toFixed(2));
       } else {
+        baseMonedaOriginal = parseFloat(montoOrigEnt.toFixed(2));
         const ivaOrigEnt = parseFloat((montoOrigEnt * IVA_RATE_ENT).toFixed(4));
         montoTotalMonedaOriginal = parseFloat((montoOrigEnt + ivaOrigEnt).toFixed(2));
       }
@@ -1413,6 +1408,7 @@ async function guardarEntradaStock() {
       fecha_pago:             document.getElementById('es-esquema-pago')?.value === 'CONTADO' ? (document.getElementById('es-fecha-pago')?.value || null) : null,
       monto_total_con_iva:    montoTotalConIVA,
       monto_total_moneda_original: montoTotalMonedaOriginal,
+      base_moneda_original:   baseMonedaOriginal,
       cuotas_json:            cuotasJsonVal,
       estado_aprobacion:      motivoEnt === 'compra' ? 'PENDIENTE' : null,
       id_usuario:             sesionActual.correo_usuario
@@ -1768,6 +1764,21 @@ async function ejecutarEfectosEntradaCompra(m) {
     if (areaRows && areaRows[0]) areaNombreEnt = areaRows[0].nombre;
   } catch(eAreaNom) {}
   try {
+    // Base y Total EXACTOS -- ya congelados al crear la Entrada (mismos
+    // que muestra la Ficha), para que el Asiento no tenga que extraer el
+    // IVA dividiendo el total por su cuenta (otra fuente más de centavos
+    // de diferencia). En USD, la base ya es precio_costo_moneda×cantidad
+    // (el costo sin IVA que se guarda siempre); en Bs, si se negoció en
+    // VES se usa el valor congelado directo, si se negoció en USD se
+    // convierte UNA sola vez (conversión hacia adelante, sin ida y vuelta).
+    const baseExactaUSDAst = nuevoPrecioCosto * cantidad;
+    const totalExactoUSDAst = montoTotalConIVA;
+    const baseExactaBsAst = m.moneda_compra === 'VES' && m.base_moneda_original != null
+      ? parseFloat(m.base_moneda_original)
+      : (tasa_bcv_usada ? parseFloat((baseExactaUSDAst * tasa_bcv_usada).toFixed(2)) : null);
+    const totalExactoBsAst = m.moneda_compra === 'VES' && m.monto_total_moneda_original != null
+      ? parseFloat(m.monto_total_moneda_original)
+      : (tasa_bcv_usada ? parseFloat((totalExactoUSDAst * tasa_bcv_usada).toFixed(2)) : null);
     await generarAsientoInventario('ENTRADA_COMPRA', {
       articulo:   r.nombre_articulo || r.codigo_articulo || ('Art#' + id),
       cantidad:   cantidad,
@@ -1778,8 +1789,12 @@ async function ejecutarEfectosEntradaCompra(m) {
       id_cuentaInventario: r.id_cuenta_contable || null,
       fecha:      m.fecha_negociacion || m.fecha_entrada,
       tasa:       tasa_bcv_usada || null,
-      incluyeIVA:  true,
-      exentoIVA:   m.exento_iva === true
+      incluyeIVA:  m.incluye_iva === true,
+      exentoIVA:   m.exento_iva === true,
+      baseExactaUSD: baseExactaUSDAst,
+      baseExactaBs:  baseExactaBsAst,
+      totalExactoUSD: totalExactoUSDAst,
+      totalExactoBs:  totalExactoBsAst
     });
   } catch(eAstInv) { console.warn('Error asiento entrada inventario (aprobación):', eAstInv); }
 
