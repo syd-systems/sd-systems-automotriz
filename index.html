@@ -1356,17 +1356,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260814278"></script>
-<script src="js/parametros.js?v=20260814278"></script>
-<script src="js/empresas.js?v=20260814278"></script>
-<script src="js/ingresos.js?v=20260814278"></script>
-<script src="js/inventario.js?v=20260814278"></script>
-<script src="js/proveedores.js?v=20260814278"></script>
-<script src="js/contabilidad.js?v=20260814278"></script>
-<script src="js/egresos.js?v=20260814278"></script>
-<script src="js/vehiculos.js?v=20260814278"></script>
-<script src="js/catalogo.js?v=20260814278"></script>
-<script src="js/ordenes.js?v=20260814278"></script>
+<script src="js/core.js?v=20260814279"></script>
+<script src="js/parametros.js?v=20260814279"></script>
+<script src="js/empresas.js?v=20260814279"></script>
+<script src="js/ingresos.js?v=20260814279"></script>
+<script src="js/inventario.js?v=20260814279"></script>
+<script src="js/proveedores.js?v=20260814279"></script>
+<script src="js/contabilidad.js?v=20260814279"></script>
+<script src="js/egresos.js?v=20260814279"></script>
+<script src="js/vehiculos.js?v=20260814279"></script>
+<script src="js/catalogo.js?v=20260814279"></script>
+<script src="js/ordenes.js?v=20260814279"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2619,7 +2619,7 @@
           </select>
         </div>
         <div class="form-campo">
-          <label>Fecha de Negociación</label>
+          <label>Fecha</label>
           <input type="date" id="es-fecha-negociacion" onchange="onCambiarFechaNegociacionEntrada()"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 10px;border-radius:5px;outline:none;width:100%;color-scheme:dark">
         </div>
@@ -2642,7 +2642,7 @@
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;grid-column:1/-1">
         <div class="form-campo">
-          <label>Precio Negociación <span id="es-label-moneda-compra" style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span></label>
+          <label>Precio <span id="es-label-moneda-compra" style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span></label>
           <input type="text" id="es-precio-costo" inputmode="decimal" placeholder="0,00"
             style="font-family:var(--font-mono);width:100%;box-sizing:border-box"
             oninput="onCambiarPrecioEntrada()"
@@ -2650,7 +2650,7 @@
           <div id="es-ref-cpp" style="font-size:10px;color:var(--naranja);margin-top:4px"></div>
         </div>
         <div class="form-campo">
-          <label>Precio Negociación <span id="es-label-moneda-opuesta" style="font-size:10px;color:var(--naranja);font-weight:600">(VES)</span></label>
+          <label>Precio <span id="es-label-moneda-opuesta" style="font-size:10px;color:var(--naranja);font-weight:600">(VES)</span></label>
           <input type="text" id="es-precio-opuesto" readonly placeholder="0,00"
             style="font-family:var(--font-mono);background:var(--gris1);color:var(--naranja);width:100%;box-sizing:border-box;cursor:not-allowed;opacity:0.8">
           <div id="es-formula-precio-opuesto" style="font-size:10px;color:var(--suave);margin-top:4px">Precio / Tasa BCV</div>
@@ -4712,7 +4712,7 @@
 
       <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
         <div class="form-campo">
-          <label id="edit-mov-fecha-label">Fecha de Negociación</label>
+          <label id="edit-mov-fecha-label">Fecha</label>
           <input type="date" id="edit-mov-fecha-negociacion"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 10px;border-radius:5px;outline:none;width:100%;color-scheme:dark"
             onchange="onCambiarFechaNegEdit()">
@@ -4737,7 +4737,7 @@
         <div id="edit-mov-precio-cont" style="grid-column:1/-1">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-campo">
-          <label>Precio Negociación <span id="edit-mov-label-moneda" style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span></label>
+          <label>Precio <span id="edit-mov-label-moneda" style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span></label>
           <input type="text" id="edit-mov-precio" inputmode="decimal" placeholder="0,00"
             style="font-family:var(--font-mono);width:100%;box-sizing:border-box"
             oninput="onCambiarPrecioEdit()"
@@ -4745,7 +4745,7 @@
           <div id="edit-mov-ref-cpp" style="font-size:10px;color:var(--naranja);margin-top:4px"></div>
         </div>
         <div class="form-campo">
-          <label>Precio Negociación <span id="edit-mov-label-moneda-opuesta" style="font-size:10px;color:var(--naranja);font-weight:600">(VES)</span></label>
+          <label>Precio <span id="edit-mov-label-moneda-opuesta" style="font-size:10px;color:var(--naranja);font-weight:600">(VES)</span></label>
           <input type="text" id="edit-mov-precio-opuesto" readonly placeholder="0,00"
             style="font-family:var(--font-mono);background:var(--gris1);color:var(--naranja);width:100%;box-sizing:border-box;cursor:not-allowed;opacity:0.8">
           <div id="edit-mov-formula-precio-opuesto" style="font-size:10px;color:var(--suave);margin-top:4px">Precio / Tasa BCV</div>

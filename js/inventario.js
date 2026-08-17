@@ -3961,7 +3961,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
   const fechaNeg = document.getElementById('edit-mov-fecha-negociacion');
   const fechaLbl = document.getElementById('edit-mov-fecha-label');
   if (tipo === 'ENTRADA') {
-    if (fechaLbl) fechaLbl.textContent = 'Fecha de Negociación';
+    if (fechaLbl) fechaLbl.textContent = 'Fecha';
     if (fechaNeg) fechaNeg.value = m.fecha_negociacion || m.fecha_entrada?.slice(0,10) || getHoyVzla();
   } else {
     if (fechaLbl) fechaLbl.textContent = 'Fecha de Salida *';
