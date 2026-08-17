@@ -2330,10 +2330,25 @@ async function generarAsientoInventario(tipo, datos) {
         descripcion: 'IVA (' + Math.round(IVA_RATE*100) + '%) compra ' + datos.articulo,
         debe_usd: ivaUSD, haber_usd: 0, debe_ves: ivaBs, haber_ves: 0 });
 
-      // HABER: CxP Proveedores (monto total con IVA)
-      if (idProv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idProv, orden:3,
+      // DEBE: IGTF Pagado -- gasto NO deducible/NO acreditable (a diferencia
+      // del IVA), no afecta el costo del Inventario ni el Crédito Fiscal --
+      // solo aumenta lo que se le debe al Proveedor. Solo se agrega si esta
+      // Entrada fue congelada con IGTF aplicable (moneda_facturacion USD +
+      // Proveedor Contribuyente Especial).
+      const montoIGTF_USD = datos.montoIGTF_USD || 0;
+      const montoIGTF_BS  = datos.montoIGTF_BS  || 0;
+      if (montoIGTF_USD > 0) {
+        const cIGTF = _todasCtasAst.find(function(c){ return c.codigo === '6.1.04.003'; });
+        const idIGTF = cIGTF ? cIGTF.id_cuenta : null;
+        if (idIGTF) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idIGTF, orden:3,
+          descripcion: 'IGTF (' + (datos.tasaIGTF ? Math.round(datos.tasaIGTF*100) : 3) + '%) compra ' + datos.articulo,
+          debe_usd: montoIGTF_USD, haber_usd: 0, debe_ves: montoIGTF_BS, haber_ves: 0 });
+      }
+
+      // HABER: CxP Proveedores (monto total con IVA + IGTF, si aplica)
+      if (idProv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idProv, orden:4,
         descripcion: 'CxP ' + datos.articulo + auxDesc,
-        debe_usd: 0, haber_usd: totalUSD, debe_ves: 0, haber_ves: totalBs });
+        debe_usd: 0, haber_usd: totalUSD + montoIGTF_USD, debe_ves: 0, haber_ves: totalBs + montoIGTF_BS });
 
     } else if (tipo === 'ENTRADA_DEVOLUCION') {
       // Débito: Inventario Bs / Crédito: Costo Área Bs

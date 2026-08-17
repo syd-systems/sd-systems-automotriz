@@ -1356,17 +1356,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260814280"></script>
-<script src="js/parametros.js?v=20260814280"></script>
-<script src="js/empresas.js?v=20260814280"></script>
-<script src="js/ingresos.js?v=20260814280"></script>
-<script src="js/inventario.js?v=20260814280"></script>
-<script src="js/proveedores.js?v=20260814280"></script>
-<script src="js/contabilidad.js?v=20260814280"></script>
-<script src="js/egresos.js?v=20260814280"></script>
-<script src="js/vehiculos.js?v=20260814280"></script>
-<script src="js/catalogo.js?v=20260814280"></script>
-<script src="js/ordenes.js?v=20260814280"></script>
+<script src="js/core.js?v=20260814281"></script>
+<script src="js/parametros.js?v=20260814281"></script>
+<script src="js/empresas.js?v=20260814281"></script>
+<script src="js/ingresos.js?v=20260814281"></script>
+<script src="js/inventario.js?v=20260814281"></script>
+<script src="js/proveedores.js?v=20260814281"></script>
+<script src="js/contabilidad.js?v=20260814281"></script>
+<script src="js/egresos.js?v=20260814281"></script>
+<script src="js/vehiculos.js?v=20260814281"></script>
+<script src="js/catalogo.js?v=20260814281"></script>
+<script src="js/ordenes.js?v=20260814281"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2683,9 +2683,19 @@
         <!-- Campo dinámico según motivo -->
         <div class="form-campo form-full" id="es-campo-proveedor-cont" style="grid-column:1/-1">
           <label>Proveedor *</label>
-          <select id="es-proveedor" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <select id="es-proveedor" onchange="onCambiarProveedorEntrada()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar proveedor —</option>
           </select>
+        </div>
+        <!-- IGTF -- solo aparece si el Proveedor factura en USD y es
+             Contribuyente Especial (mismo criterio que ya usa Ejecutar
+             Pago). Es un Gasto no deducible/no acreditable (a diferencia
+             del IVA), NO afecta el costo del Inventario ni el CPP -- solo
+             aumenta lo que se le debe al Proveedor. -->
+        <div class="form-campo form-full" id="es-igtf-cont" style="display:none;grid-column:1/-1;background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
+          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600">⚖ IGTF</div>
+          <div style="font-size:12px;color:var(--suave);margin-bottom:8px">Este Proveedor factura en USD y es Contribuyente Especial -- el IGTF aplica automáticamente sobre el monto a pagar. No afecta el costo del Inventario (Gasto no deducible, cuenta 6.1.04.003).</div>
+          <div id="es-igtf-preview" style="font-size:13px;font-family:var(--font-mono);color:var(--naranja);font-weight:600"></div>
         </div>
         <div class="form-campo form-full" id="es-campo-cliente-cont" style="grid-column:1/-1;display:none">
           <label>Factura *</label>
