@@ -1,0 +1,7 @@
+{
+  "name": "sd-systems-automotriz",
+  "private": true,
+  "devDependencies": {
+    "wrangler": "^4.107.0"
+  }
+}
