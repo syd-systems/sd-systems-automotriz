@@ -1708,6 +1708,12 @@ async function enrutarAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
   try {
     const idAreaCreador = await _resolverAreaSesion();
     const mensajeRico = _armarMensajeAprobacionEntrada(monto, idEntrada, numeroDoc, detalle);
+    // El monto que decide QUIÉN debe aprobar (contra el límite de su Nivel
+    // de Firma) tiene que ser lo que REALMENTE se está autorizando -- Base
+    // + IVA + IGTF (si aplica), no solo la Base+IVA. Si no se suma el
+    // IGTF aquí, una Compra podría enrutarse a un aprobador cuyo límite
+    // alcanza para el monto sin IGTF, pero no para el monto real a pagar.
+    const montoParaLimite = monto + (detalle?.montoIGTF || 0);
     const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/enrutar_aprobacion_entrada', {
       method: 'POST',
       headers: {
@@ -1717,7 +1723,7 @@ async function enrutarAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
       },
       body: JSON.stringify({
         p_id_area: idAreaCreador,
-        p_monto: monto,
+        p_monto: montoParaLimite,
         p_id_entrada: idEntrada,
         p_numero_doc: numeroDoc,
         p_correo_creador: sesionActual?.correo_usuario || null,
@@ -1962,11 +1968,14 @@ async function aprobarEntradaCompra(id_entrada) {
       alert('Esta Entrada ya no está pendiente de aprobación (estado actual: ' + (m.estado_aprobacion || '—') + '). Puede que ya haya sido aprobada, rechazada o editada por otra persona.');
       return;
     }
-    // Revalidar límite de Nivel de Firma de quien aprueba, contra el monto real.
+    // Revalidar límite de Nivel de Firma de quien aprueba, contra el monto
+    // real -- Base+IVA+IGTF (si aplica), lo mismo que se usó para decidir
+    // a quién enrutar la notificación (ver enrutarAprobacionEntrada).
     if (!sesionActual?.administrador) {
+      const montoRealAprob = parseFloat(m.monto_total_con_iva||0) + (m.aplica_igtf && m.monto_igtf != null ? parseFloat(m.monto_igtf) : 0);
       const montoMaxAprob = await _resolverMontoMaxAprobacionSesion();
-      if (montoMaxAprob !== null && parseFloat(m.monto_total_con_iva||0) > montoMaxAprob) {
-        alert('Esta Entrada ($' + parseFloat(m.monto_total_con_iva||0).toFixed(2) + ') supera el monto máximo que su Nivel de Firma puede aprobar ($' + montoMaxAprob.toFixed(2) + '). Debe ser aprobada por un Nivel de Firma superior.');
+      if (montoMaxAprob !== null && montoRealAprob > montoMaxAprob) {
+        alert('Esta Entrada ($' + montoRealAprob.toFixed(2) + ') supera el monto máximo que su Nivel de Firma puede aprobar ($' + montoMaxAprob.toFixed(2) + '). Debe ser aprobada por un Nivel de Firma superior.');
         return;
       }
     }
@@ -2480,7 +2489,7 @@ async function invRenderEntradasRechazadas(cont) {
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
     let qRech = '?motivo=eq.compra&estado_aprobacion=eq.RECHAZADA&order=fecha_registro.desc'
-      +'&select=id_entrada,id_articulo,cantidad,fecha_negociacion,monto_total_con_iva,monto_total_moneda_original,moneda_compra,tasa_bcv,esquema_pago,id_usuario,id_proveedor,motivo_rechazo';
+      +'&select=id_entrada,id_articulo,cantidad,fecha_negociacion,monto_total_con_iva,monto_total_moneda_original,moneda_compra,tasa_bcv,esquema_pago,id_usuario,id_proveedor,motivo_rechazo,aplica_igtf,monto_igtf';
     // Cada quien ve solo lo suyo -- salvo administrador, que ve todo.
     if (!sesionActual?.administrador) qRech += '&id_usuario=eq.'+encodeURIComponent(sesionActual?.correo_usuario||'');
     const rechazadas = await api('stock_entradas','GET',null,qRech) || [];
@@ -2504,9 +2513,14 @@ async function invRenderEntradasRechazadas(cont) {
       // Monto en Bs: usa el congelado (monto_total_moneda_original) si se
       // negoció en VES -- no se recalcula con la tasa de hoy, que sería
       // otra fuente más de descuadre frente a lo que se negoció realmente.
+      // Suma el IGTF (si aplica) -- es lo que realmente se le debe pagar
+      // al Proveedor, para que coincida con lo que muestra la notificación.
+      const montoIGTF_USD_Fila = p.aplica_igtf && p.monto_igtf != null ? parseFloat(p.monto_igtf) : 0;
+      const montoIGTF_BS_Fila = montoIGTF_USD_Fila > 0 && p.tasa_bcv ? parseFloat((montoIGTF_USD_Fila * p.tasa_bcv).toFixed(2)) : 0;
       const montoBsFila = p.moneda_compra === 'VES' && p.monto_total_moneda_original != null
-        ? p.monto_total_moneda_original
-        : (p.tasa_bcv ? p.monto_total_con_iva * p.tasa_bcv : null);
+        ? p.monto_total_moneda_original + montoIGTF_BS_Fila
+        : (p.tasa_bcv ? (p.monto_total_con_iva * p.tasa_bcv) + montoIGTF_BS_Fila : null);
+      const montoUSDFila = parseFloat(p.monto_total_con_iva || 0) + montoIGTF_USD_Fila;
       return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
         +'<td style="padding:8px;font-size:12px">'+formatearFechaCorta(p.fecha_negociacion)+'</td>'
         +'<td style="padding:8px;font-size:12px">'+nomArt+'</td>'
@@ -2514,7 +2528,7 @@ async function invRenderEntradasRechazadas(cont) {
         +'<td style="padding:8px;font-size:12px">'+nomProv+'</td>'
         +'<td style="padding:8px;text-align:right;font-family:var(--font-mono)">'
           +'<div style="font-weight:600;color:#fc8181">'+(montoBsFila != null ? fmtBs(montoBsFila)+' Bs' : '—')+'</div>'
-          +'<div style="font-size:10px;color:var(--suave)">$ '+fmtUSD(p.monto_total_con_iva)+'</div>'
+          +'<div style="font-size:10px;color:var(--suave)">$ '+fmtUSD(montoUSDFila)+(montoIGTF_USD_Fila > 0 ? ' (incl. IGTF)' : '')+'</div>'
         +'</td>'
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(p.motivo_rechazo||'—')+'</td>'
         +'<td style="padding:8px;white-space:nowrap"><button class="btn-naranja" onclick="retomarEntradaRechazada('+p.id_entrada+')" style="font-size:11px;padding:4px 10px;margin-right:8px">↻ Retomar</button></td>'
@@ -4032,6 +4046,61 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     // Tasa cont y tributos
     const tasaCont = document.getElementById('edit-mov-tasa-cont');
     if (tasaCont) tasaCont.style.display = '';
+
+    // Tabla de tributos (Base/IVA/Total, +IGTF si aplica) -- también en
+    // modo lectura, con los valores YA CONGELADOS de esta Entrada (nada se
+    // recalcula), para que sea consistente con el resto de lo que ya
+    // muestra esto (notificación, CxP, Asiento).
+    const prevTribView = document.getElementById('edit-mov-tributos-preview');
+    if (prevTribView && m.base_moneda_original != null && m.monto_total_moneda_original != null) {
+      prevTribView.style.display = '';
+      const baseView = parseFloat(m.base_moneda_original);
+      const totalView = parseFloat(m.monto_total_moneda_original);
+      const ivaView = parseFloat((totalView - baseView).toFixed(2));
+      const simView = moneda === 'VES' ? 'Bs.' : '$';
+      document.getElementById('edit-trib-base').textContent = simView + ' ' + fmtBs(baseView);
+      document.getElementById('edit-trib-iva').textContent  = ivaView > 0 ? simView + ' ' + fmtBs(ivaView) : '—';
+      document.getElementById('edit-trib-base-ves').textContent = tasa > 0 && moneda !== 'VES' ? 'Bs. ' + fmtBs(baseView * tasa) : (moneda === 'VES' && tasa > 0 ? '$ ' + fmtBs(baseView / tasa) : '—');
+      document.getElementById('edit-trib-iva-ves').textContent  = ivaView > 0 && tasa > 0 ? (moneda !== 'VES' ? 'Bs. ' + fmtBs(ivaView * tasa) : '$ ' + fmtBs(ivaView / tasa)) : '—';
+      document.getElementById('edit-trib-total').textContent = simView + ' ' + fmtBs(totalView);
+      document.getElementById('edit-trib-total-ves').textContent = tasa > 0 && moneda !== 'VES' ? 'Bs. ' + fmtBs(totalView * tasa) : (moneda === 'VES' && tasa > 0 ? '$ ' + fmtBs(totalView / tasa) : '—');
+
+      const lblTotalView = document.getElementById('edit-trib-total-label');
+      const igtfLabelView = document.getElementById('edit-trib-igtf-label');
+      const igtfRowView = document.getElementById('edit-trib-igtf');
+      const igtfRowVesView = document.getElementById('edit-trib-igtf-ves');
+      const totalFinalLabelView = document.getElementById('edit-trib-total-final-label');
+      const totalFinalView = document.getElementById('edit-trib-total-final');
+      const totalFinalVesView = document.getElementById('edit-trib-total-final-ves');
+      const igtfPctSpanView = document.getElementById('edit-trib-igtf-pct');
+
+      if (m.aplica_igtf && m.monto_igtf != null) {
+        const igtfUSDView = parseFloat(m.monto_igtf);
+        const tasaIGTFView = m.tasa_igtf ? parseFloat(m.tasa_igtf) : 0.03;
+        const igtfBsView = tasa > 0 ? parseFloat((igtfUSDView * tasa).toFixed(2)) : 0;
+        const igtfEnMonedaView = moneda === 'VES' ? igtfBsView : igtfUSDView;
+        if (lblTotalView) lblTotalView.textContent = 'Sub-Total Facturado';
+        if (igtfPctSpanView) igtfPctSpanView.textContent = (tasaIGTFView*100).toFixed(0);
+        if (igtfLabelView) igtfLabelView.style.display = '';
+        if (igtfRowView) { igtfRowView.style.display = ''; igtfRowView.textContent = simView + ' ' + fmtBs(igtfEnMonedaView); }
+        if (igtfRowVesView) {
+          igtfRowVesView.style.display = '';
+          igtfRowVesView.textContent = tasa > 0 && moneda !== 'VES' ? 'Bs. ' + fmtBs(igtfBsView) : (moneda === 'VES' && tasa > 0 ? '$ ' + fmtBs(igtfUSDView) : '—');
+        }
+        const totalConIGTFView = totalView + igtfEnMonedaView;
+        if (totalFinalLabelView) totalFinalLabelView.style.display = '';
+        if (totalFinalView) { totalFinalView.style.display = ''; totalFinalView.textContent = simView + ' ' + fmtBs(totalConIGTFView); }
+        if (totalFinalVesView) {
+          totalFinalVesView.style.display = '';
+          if (tasa > 0 && moneda !== 'VES') totalFinalVesView.textContent = 'Bs. ' + fmtBs(totalConIGTFView * tasa);
+          else if (moneda === 'VES' && tasa > 0) totalFinalVesView.textContent = '$ ' + fmtBs(totalConIGTFView / tasa);
+          else totalFinalVesView.textContent = '—';
+        }
+      } else {
+        if (lblTotalView) lblTotalView.textContent = 'Total Facturado';
+        [igtfLabelView, igtfRowView, igtfRowVesView, totalFinalLabelView, totalFinalView, totalFinalVesView].forEach(function(el){ if (el) el.style.display = 'none'; });
+      }
+    }
   }
 
   // Usuario confirmación
