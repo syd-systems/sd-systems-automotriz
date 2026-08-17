@@ -1282,6 +1282,11 @@ async function guardarEntradaStock() {
     if (!validEnt.ok) { errEl.textContent = validEnt.msg; errEl.style.display = 'block'; document.getElementById('es-clave-receptor')?.focus(); resetBtn(); return; }
 
     const id_areaEnt      = parseInt(id_areaEntVal) || null;
+    if (!id_areaEnt) {
+      errEl.textContent = 'No se pudo determinar el Área receptora (Compras) automáticamente. Verifique en Parámetros → Áreas que exista un Área con código "2300" activa, y vuelva a intentar.';
+      errEl.style.display = 'block';
+      resetBtn(); return;
+    }
     const id_areaOrigenH  = (motivoEnt === 'transferencia') ? (parseInt(document.getElementById('es-area-origen')?.value) || null) : null;
 
     // Bloqueo real (no solo visual): el Área de Origen nunca puede ser la
@@ -1905,14 +1910,26 @@ async function aprobarEntradaCompra(id_entrada) {
         return;
       }
     }
+    // Red de seguridad: si el Área receptora quedó vacía por algún motivo
+    // (dato incompleto de una versión anterior a esta validación), no se
+    // aprueba -- evita el mismo error que se veía al aplicar los efectos.
+    if (!m.id_area) {
+      alert('Esta Entrada no tiene Área receptora asignada (dato incompleto). Corrija el Área directamente en la base de datos antes de aprobarla, o pida ayuda para corregirlo.');
+      return;
+    }
+    // El estado solo se marca APROBADA DESPUÉS de que los efectos
+    // (Stock/CPP/Asiento/CxP) se aplicaron correctamente -- si
+    // ejecutarEfectosEntradaCompra() falla a mitad de camino, el catch de
+    // abajo lo atrapa y la Entrada se queda en PENDIENTE, lista para
+    // reintentar, en vez de quedar en un estado fantasma "aprobada" sin
+    // que nada de eso realmente haya pasado.
+    const mAprobado = Object.assign({}, m, { aprobado_por: sesionActual?.correo_usuario || null });
+    await ejecutarEfectosEntradaCompra(mAprobado);
     await api('stock_entradas','PATCH',{
       estado_aprobacion: 'APROBADA',
       aprobado_por: sesionActual?.correo_usuario || null,
       fecha_aprobacion: new Date().toISOString()
     },'?id_entrada=eq.'+id_entrada);
-    // Releer con aprobado_por ya seteado, para que ejecutarEfectosEntradaCompra lo use en la CxP
-    const mAprobado = Object.assign({}, m, { aprobado_por: sesionActual?.correo_usuario || null });
-    await ejecutarEfectosEntradaCompra(mAprobado);
     await mostrarAvisoOk('✓ Entrada aprobada. Stock, Costo y Cuenta por Pagar actualizados.');
     await calcularInvSaldoArea();
     renderInventario();
