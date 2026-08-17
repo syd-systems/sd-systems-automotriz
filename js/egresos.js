@@ -3143,14 +3143,14 @@ async function _verCxPAutomatica(c, id_cxp) {
   // Monto USD
   document.getElementById('cxp-auto-monto').textContent = '$ ' + parseFloat(c.monto_usd || 0).toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2});
 
-  // Tasa BCV y Monto VES — buscar tasa del día de hoy
-  let tasaHoy = 1;
-  try {
-    const hoy = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
-    const tasas = await api('tasas', 'GET', null, '?fecha_valor=lte.' + hoy + '&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
-    if (tasas && tasas.length) tasaHoy = parseFloat(tasas[0].tipo_cambio) || 1;
-  } catch(e) {}
-  const montoVES = parseFloat((parseFloat(c.monto_usd || 0) * tasaHoy).toFixed(2));
+  // Tasa BCV y Monto VES -- usa lo YA GUARDADO en la CxP (c.tasa_bcv,
+  // c.monto_ves), no se vuelve a calcular con la tasa de HOY. Antes esto
+  // buscaba la tasa vigente al momento de ABRIR el modal y recalculaba
+  // monto_usd × esa tasa -- si pasó aunque sea un día entre que se generó
+  // la CxP y se consulta este modal, el monto mostrado ya no coincidía con
+  // el que realmente se negoció ni con el del Asiento contable.
+  const tasaHoy = parseFloat(c.tasa_bcv || 0) || 1;
+  const montoVES = parseFloat(c.monto_ves || 0) || parseFloat((parseFloat(c.monto_usd || 0) * tasaHoy).toFixed(2));
   document.getElementById('cxp-auto-tasa').textContent    = tasaHoy.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:4, maximumFractionDigits:4});
   document.getElementById('cxp-auto-monto-ves').textContent = 'Bs. ' + montoVES.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2});
 

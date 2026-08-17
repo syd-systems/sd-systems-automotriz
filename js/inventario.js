@@ -1201,11 +1201,11 @@ async function guardarEntradaStock() {
       const tasaBCVVal       = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
       incluyeIVA_ent = document.getElementById('es-incluye-iva-val')?.value === 'SI' || false;
       nuevoPrecioCostoRaw = monedaCompra === 'VES'
-        ? (tasaBCVVal > 0 ? parseFloat((precioIngresado / tasaBCVVal).toFixed(4)) : parseMontoVE(document.getElementById('es-precio-usd-calc')?.value))
+        ? (tasaBCVVal > 0 ? parseFloat((precioIngresado / tasaBCVVal).toFixed(8)) : parseMontoVE(document.getElementById('es-precio-usd-calc')?.value))
         : precioIngresado;
       // Si incluye IVA — precio costo = base sin IVA
       nuevoPrecioCosto = incluyeIVA_ent
-        ? parseFloat((nuevoPrecioCostoRaw / (1 + IVA_RATE_ENT)).toFixed(4))
+        ? parseFloat((nuevoPrecioCostoRaw / (1 + IVA_RATE_ENT)).toFixed(8))
         : nuevoPrecioCostoRaw;
       if (monedaCompra === 'VES' && precioIngresado > 0 && nuevoPrecioCosto <= 0) {
         errEl.textContent = 'No se encontró tasa BCV para convertir el precio.';
@@ -1469,7 +1469,7 @@ async function guardarEntradaStock() {
     }
 
     // ── FASE 4: Actualizar CPP (global, sigue en inventario_almacen) y stock del área receptora (Compras) ──
-    const patchCPP = { precio_costo_moneda: parseFloat(cpp.toFixed(4)) };
+    const patchCPP = { precio_costo_moneda: parseFloat(cpp.toFixed(8)) };
     if (nuevoPrecioCosto > 0) patchCPP.precio_costo_ultimo_moneda = nuevoPrecioCosto;
     await api('inventario_almacen', 'PATCH', patchCPP, '?id_articulo=eq.' + id);
     await upsertStockArea(id, id_areaEnt, cantidad);
@@ -1639,7 +1639,7 @@ async function guardarEntradaStock() {
 
     // ── FASE 6: Actualizar cache y cerrar ──
     if (r) {
-      r.precio_costo_moneda       = parseFloat(cpp.toFixed(4));
+      r.precio_costo_moneda       = parseFloat(cpp.toFixed(8));
       if (nuevoPrecioCosto > 0) r.precio_costo_ultimo_moneda = nuevoPrecioCosto;
     }
     okEl.textContent = 'Stock de Compras actualizado: ' + stockActual + ' → ' + nuevoStock + ' ' + (r?.unidad || 'UND');
@@ -1752,7 +1752,7 @@ async function ejecutarEfectosEntradaCompra(m) {
       ? ((stockActual * costoActual) + (cantidad * nuevoPrecioCosto)) / nuevoStock
       : nuevoPrecioCosto;
   }
-  const patchCPP = { precio_costo_moneda: parseFloat(cpp.toFixed(4)) };
+  const patchCPP = { precio_costo_moneda: parseFloat(cpp.toFixed(8)) };
   if (nuevoPrecioCosto > 0) patchCPP.precio_costo_ultimo_moneda = nuevoPrecioCosto;
   await api('inventario_almacen', 'PATCH', patchCPP, '?id_articulo=eq.' + id);
   await upsertStockArea(id, id_areaEnt, cantidad);
@@ -2440,19 +2440,19 @@ async function invRenderEntradasRechazadas(cont) {
           +'<div style="font-size:10px;color:var(--suave)">$ '+fmtUSD(p.monto_total_con_iva)+'</div>'
         +'</td>'
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(p.motivo_rechazo||'—')+'</td>'
-        +'<td style="padding:8px;white-space:nowrap"><button class="btn-naranja" onclick="retomarEntradaRechazada('+p.id_entrada+')" style="font-size:11px;padding:4px 10px">↻ Retomar y Editar</button></td>'
+        +'<td style="padding:8px;white-space:nowrap"><button class="btn-naranja" onclick="retomarEntradaRechazada('+p.id_entrada+')" style="font-size:11px;padding:4px 10px">↻ Retomar</button></td>'
         +'</tr>';
     }).join('');
 
     cont.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-bottom:10px">Estas Entradas fueron rechazadas por un Nivel de Firma -- todavía no afectaron Stock ni Contabilidad. Corríjalas y vuelva a guardarlas para que se reenvíen a aprobación.</div>'
-      + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
-      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Fecha</th>'
-      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Artículo</th>'
-      +'<th style="padding:8px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Cant.</th>'
-      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Proveedor</th>'
-      +'<th style="padding:8px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Monto</th>'
-      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde)">Motivo del Rechazo</th>'
-      +'<th style="padding:8px"></th>'
+      + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse;table-layout:fixed"><thead><tr>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:9%">Fecha</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:24%">Artículo</th>'
+      +'<th style="padding:8px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:6%">Cant.</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:14%">Proveedor</th>'
+      +'<th style="padding:8px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:17%">Monto</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:21%">Motivo del Rechazo</th>'
+      +'<th style="padding:8px;width:9%"></th>'
       +'</tr></thead><tbody>'+filas+'</tbody></table></div>';
   } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>'; }
 }
@@ -4405,7 +4405,7 @@ async function _guardarEdicionMovimientoInterno() {
           cppRepro = nuevoStockRepro > 0 ? ((stockRepro * cppRepro) + (cantE * precE)) / nuevoStockRepro : precE;
           stockRepro = nuevoStockRepro;
         });
-        cppEditado = parseFloat(cppRepro.toFixed(4));
+        cppEditado = parseFloat(cppRepro.toFixed(8));
         const patchInv = { precio_costo_moneda: cppEditado };
         if (precio !== null && !isNaN(precio)) patchInv.precio_costo_ultimo_moneda = precio;
         await api('inventario_almacen', 'PATCH', patchInv, '?id_articulo=eq.' + id_articulo);
@@ -4941,7 +4941,7 @@ async function confirmarAnulacion() {
       sumaValorCPP    += cant * precio;
     });
     if (sumaCantidadCPP > 0) {
-      patchInv.precio_costo_moneda = parseFloat((sumaValorCPP / sumaCantidadCPP).toFixed(4));
+      patchInv.precio_costo_moneda = parseFloat((sumaValorCPP / sumaCantidadCPP).toFixed(8));
     } else {
       patchInv.precio_costo_moneda        = 0;
       patchInv.precio_costo_ultimo_moneda = 0;
