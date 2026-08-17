@@ -3961,7 +3961,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
   const fechaNeg = document.getElementById('edit-mov-fecha-negociacion');
   const fechaLbl = document.getElementById('edit-mov-fecha-label');
   if (tipo === 'ENTRADA') {
-    if (fechaLbl) fechaLbl.textContent = 'Fecha Negociación *';
+    if (fechaLbl) fechaLbl.textContent = 'Fecha de Negociación *';
     if (fechaNeg) fechaNeg.value = m.fecha_negociacion || m.fecha_entrada?.slice(0,10) || getHoyVzla();
   } else {
     if (fechaLbl) fechaLbl.textContent = 'Fecha de Salida *';
@@ -5114,9 +5114,9 @@ async function onCambiarMonedaEdit() {
   const lblMoneda = document.getElementById('edit-mov-label-moneda');
   if (lblMoneda) lblMoneda.textContent = '(' + moneda + ')';
   const lblMonto = document.getElementById('edit-mov-label-monto-total');
-  if (lblMonto) lblMonto.textContent = 'Monto en ' + moneda;
+  if (lblMonto) lblMonto.innerHTML = 'Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(' + moneda + ')</span>';
   const lblUSD = document.getElementById('edit-mov-label-precio-usd');
-  if (lblUSD) lblUSD.textContent = moneda === 'VES' ? 'Monto en USD' : 'Monto en VES';
+  if (lblUSD) lblUSD.innerHTML = 'Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(' + (moneda === 'VES' ? 'USD' : 'VES') + ')</span>';
   await onCambiarFechaNegEdit();
   onCambiarPrecioEdit();
 }
@@ -5129,9 +5129,24 @@ function onCambiarPrecioEdit() {
   const elMonto  = document.getElementById('edit-mov-monto-total');
   const elCalc   = document.getElementById('edit-mov-precio-usd-calc');
   const lblMontoTotal = document.getElementById('edit-mov-label-monto-total');
-  if (lblMontoTotal) lblMontoTotal.textContent = 'Monto en ' + moneda;
+  if (lblMontoTotal) lblMontoTotal.innerHTML = 'Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(' + moneda + ')</span>';
   const montoTotal = precio * cantidad;
   if (elMonto) elMonto.value = fmtBs(montoTotal);
+
+  // Precio Negociación en la moneda CONTRARIA a la negociada (precio
+  // unitario, no el total) -- mismo criterio que en Nueva Entrada.
+  const elPrecioOpuesto = document.getElementById('edit-mov-precio-opuesto');
+  if (elPrecioOpuesto) {
+    if (precio > 0 && tasa > 0) {
+      const opuesta = moneda === 'VES' ? 'USD' : 'VES';
+      const precioOpuesto = moneda === 'VES' ? (precio / tasa) : (precio * tasa);
+      const sim = opuesta === 'VES' ? 'Bs.' : '$';
+      elPrecioOpuesto.textContent = sim + ' ' + fmtBs(precioOpuesto) + ' (' + opuesta + ')';
+    } else {
+      elPrecioOpuesto.textContent = '';
+    }
+  }
+
   if (elCalc && tasa > 0) {
     elCalc.value = moneda === 'VES' ? fmtBs(montoTotal / tasa) : fmtBs(montoTotal * tasa);
   }
@@ -6257,7 +6272,7 @@ async function onCambiarMonedaEntrada() {
 
   // Actualizar label del campo de precio VES calculado
   const lblUSD = document.getElementById('es-label-precio-usd');
-  if (lblUSD) lblUSD.textContent = esVES ? 'Monto en USD' : 'Monto en VES';
+  if (lblUSD) lblUSD.innerHTML = 'Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(' + (esVES ? 'USD' : 'VES') + ')</span>';
 
   await buscarTasaBCVNegociacion();
   onCambiarPrecioEntrada();
@@ -6359,11 +6374,26 @@ function onCambiarPrecioEntrada() {
   const elCalc   = document.getElementById('es-precio-usd-calc');
   const elMonto  = document.getElementById('es-monto-total');
   const lblMonto = document.getElementById('es-label-monto-total');
+  const elPrecioOpuesto = document.getElementById('es-precio-opuesto');
 
   // Monto = Cantidad × Precio (en la moneda de negociación)
   const montoTotal = precio * cantidad;
   if (elMonto) elMonto.value = fmtBs(montoTotal);
-  if (lblMonto) lblMonto.innerHTML = 'Monto en ' + moneda;
+  if (lblMonto) lblMonto.innerHTML = 'Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(' + moneda + ')</span>';
+
+  // Precio Negociación en la moneda CONTRARIA a la negociada -- es el
+  // precio unitario (no el total), para que se vea de inmediato al lado
+  // del campo cuánto es en la otra moneda, sin tener que calcularlo aparte.
+  if (elPrecioOpuesto) {
+    if (precio > 0 && tasa > 0) {
+      const opuesta = moneda === 'VES' ? 'USD' : 'VES';
+      const precioOpuesto = moneda === 'VES' ? (precio / tasa) : (precio * tasa);
+      const sim = opuesta === 'VES' ? 'Bs.' : '$';
+      elPrecioOpuesto.textContent = sim + ' ' + fmtBs(precioOpuesto) + ' (' + opuesta + ')';
+    } else {
+      elPrecioOpuesto.textContent = '';
+    }
+  }
 
   // Precio VES calculado
   if (!elCalc || !tasa) { calcularTributosEntrada(); const cme = document.getElementById('es-cuotas-monto'); if (cme) cme.value=''; calcularCuotasEntrada(); return; }
