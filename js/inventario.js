@@ -4012,6 +4012,23 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     if (calcEl && tasa > 0) {
       calcEl.value = moneda === 'VES' ? fmtBs(montoTotal / tasa) : fmtBs(montoTotal * tasa);
     }
+    // Precio unitario en la moneda CONTRARIA -- este bloque llena los
+    // campos manualmente (no pasa por onCambiarPrecioEdit()), así que
+    // había quedado sin actualizar cuando se agregó este campo.
+    const elPrecioOpuestoView = document.getElementById('edit-mov-precio-opuesto');
+    const lblMonedaOpuestaView = document.getElementById('edit-mov-label-moneda-opuesta');
+    const opuestaView = moneda === 'VES' ? 'USD' : 'VES';
+    if (lblMonedaOpuestaView) lblMonedaOpuestaView.textContent = '(' + opuestaView + ')';
+    if (elPrecioOpuestoView) {
+      if (precio > 0 && tasa > 0) {
+        const precioOpuestoView = moneda === 'VES' ? (precio / tasa) : (precio * tasa);
+        elPrecioOpuestoView.value = fmtBs(precioOpuestoView);
+      } else {
+        elPrecioOpuestoView.value = '';
+      }
+    }
+    const elFormulaOpuestoView = document.getElementById('edit-mov-formula-precio-opuesto');
+    if (elFormulaOpuestoView) elFormulaOpuestoView.textContent = moneda === 'VES' ? 'Precio / Tasa BCV' : 'Precio × Tasa BCV';
     // Tasa cont y tributos
     const tasaCont = document.getElementById('edit-mov-tasa-cont');
     if (tasaCont) tasaCont.style.display = '';
@@ -6491,8 +6508,24 @@ async function onCambiarProveedorEntrada() {
 function actualizarIGTFEntrada(totalMonedaNeg, moneda, tasa) {
   const cont = document.getElementById('es-igtf-cont');
   const prevEl = document.getElementById('es-igtf-preview');
+  const lblTotal = document.getElementById('es-trib-total-label');
+  const igtfLabelRow = document.getElementById('es-trib-igtf-label');
+  const igtfRow = document.getElementById('es-trib-igtf');
+  const igtfRowVes = document.getElementById('es-trib-igtf-ves');
+  const totalFinalLabel = document.getElementById('es-trib-total-final-label');
+  const totalFinal = document.getElementById('es-trib-total-final');
+  const totalFinalVes = document.getElementById('es-trib-total-final-ves');
+  const igtfPctSpan = document.getElementById('es-trib-igtf-pct');
+
   if (!cont) return;
-  if (!window._aplicaIGTFEntrada) { cont.style.display = 'none'; return; }
+  if (!window._aplicaIGTFEntrada) {
+    cont.style.display = 'none';
+    // Sin IGTF, la tabla de tributos vuelve a mostrar solo Base/IVA/Total,
+    // ocultando la fila de IGTF y el Total final que la incluye.
+    if (lblTotal) lblTotal.textContent = 'Total Facturado';
+    [igtfLabelRow, igtfRow, igtfRowVes, totalFinalLabel, totalFinal, totalFinalVes].forEach(function(el){ if (el) el.style.display = 'none'; });
+    return;
+  }
   cont.style.display = '';
   if (!totalMonedaNeg || !prevEl) { if (prevEl) prevEl.textContent = ''; return; }
   const totalUSD = moneda === 'VES' ? (tasa > 0 ? totalMonedaNeg / tasa : 0) : totalMonedaNeg;
@@ -6500,6 +6533,30 @@ function actualizarIGTFEntrada(totalMonedaNeg, moneda, tasa) {
   const igtfUSD = parseFloat((totalUSD * tasaIGTF).toFixed(2));
   const igtfBs = tasa > 0 ? parseFloat((igtfUSD * tasa).toFixed(2)) : 0;
   prevEl.textContent = 'IGTF (' + (tasaIGTF*100).toFixed(0) + '%): $ ' + fmtUSD(igtfUSD) + (tasa > 0 ? ' · Bs ' + fmtBs(igtfBs) : '');
+
+  // Con IGTF: el "Total Facturado" que ya existía pasa a llamarse
+  // "Sub-Total Facturado" (Base+IVA), se agrega la línea de IGTF, y un
+  // "Total Facturado" nuevo, al final, que sí incluye el IGTF.
+  if (lblTotal) lblTotal.textContent = 'Sub-Total Facturado';
+  if (igtfPctSpan) igtfPctSpan.textContent = (tasaIGTF*100).toFixed(0);
+  const sim = moneda === 'VES' ? 'Bs.' : '$';
+  const igtfEnMoneda = moneda === 'VES' ? igtfBs : igtfUSD;
+  if (igtfLabelRow) igtfLabelRow.style.display = '';
+  if (igtfRow) { igtfRow.style.display = ''; igtfRow.textContent = sim + ' ' + fmtBs(igtfEnMoneda); }
+  if (igtfRowVes) {
+    igtfRowVes.style.display = '';
+    igtfRowVes.textContent = tasa > 0 && moneda !== 'VES' ? 'Bs. ' + fmtBs(igtfBs)
+      : (moneda === 'VES' && tasa > 0 ? '$ ' + fmtBs(igtfUSD) : '—');
+  }
+  const totalConIGTFEnMoneda = totalMonedaNeg + igtfEnMoneda;
+  if (totalFinalLabel) totalFinalLabel.style.display = '';
+  if (totalFinal) { totalFinal.style.display = ''; totalFinal.textContent = sim + ' ' + fmtBs(totalConIGTFEnMoneda); }
+  if (totalFinalVes) {
+    totalFinalVes.style.display = '';
+    if (tasa > 0 && moneda !== 'VES') totalFinalVes.textContent = 'Bs. ' + fmtBs(totalConIGTFEnMoneda * tasa);
+    else if (moneda === 'VES' && tasa > 0) totalFinalVes.textContent = '$ ' + fmtBs(totalConIGTFEnMoneda / tasa);
+    else totalFinalVes.textContent = '—';
+  }
 }
 
 function onCambiarPrecioEntrada() {

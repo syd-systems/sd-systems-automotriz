@@ -1356,17 +1356,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260814282"></script>
-<script src="js/parametros.js?v=20260814282"></script>
-<script src="js/empresas.js?v=20260814282"></script>
-<script src="js/ingresos.js?v=20260814282"></script>
-<script src="js/inventario.js?v=20260814282"></script>
-<script src="js/proveedores.js?v=20260814282"></script>
-<script src="js/contabilidad.js?v=20260814282"></script>
-<script src="js/egresos.js?v=20260814282"></script>
-<script src="js/vehiculos.js?v=20260814282"></script>
-<script src="js/catalogo.js?v=20260814282"></script>
-<script src="js/ordenes.js?v=20260814282"></script>
+<script src="js/core.js?v=20260814283"></script>
+<script src="js/parametros.js?v=20260814283"></script>
+<script src="js/empresas.js?v=20260814283"></script>
+<script src="js/ingresos.js?v=20260814283"></script>
+<script src="js/inventario.js?v=20260814283"></script>
+<script src="js/proveedores.js?v=20260814283"></script>
+<script src="js/contabilidad.js?v=20260814283"></script>
+<script src="js/egresos.js?v=20260814283"></script>
+<script src="js/vehiculos.js?v=20260814283"></script>
+<script src="js/catalogo.js?v=20260814283"></script>
+<script src="js/ordenes.js?v=20260814283"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2752,9 +2752,17 @@
               <span id="es-trib-iva" style="font-family:var(--font-mono);text-align:right;color:#60a5fa">—</span>
               <span id="es-trib-iva-ves" style="font-family:var(--font-mono);text-align:right;color:#60a5fa;font-size:11px">—</span>
 
-              <span style="color:var(--naranja);font-weight:600;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">Total Facturado</span>
+              <span id="es-trib-total-label" style="color:var(--naranja);font-weight:600;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">Total Facturado</span>
               <span id="es-trib-total" style="font-family:var(--font-mono);color:var(--naranja);font-weight:600;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
               <span id="es-trib-total-ves" style="font-family:var(--font-mono);color:var(--naranja);font-size:11px;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
+
+              <span id="es-trib-igtf-label" style="display:none;color:var(--suave)">IGTF (<span id="es-trib-igtf-pct">3</span>%) — 6.1.04.003</span>
+              <span id="es-trib-igtf" style="display:none;font-family:var(--font-mono);text-align:right;color:var(--naranja)">—</span>
+              <span id="es-trib-igtf-ves" style="display:none;font-family:var(--font-mono);text-align:right;color:var(--naranja);font-size:11px">—</span>
+
+              <span id="es-trib-total-final-label" style="display:none;color:var(--naranja);font-weight:700;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">Total Facturado</span>
+              <span id="es-trib-total-final" style="display:none;font-family:var(--font-mono);color:var(--naranja);font-weight:700;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
+              <span id="es-trib-total-final-ves" style="display:none;font-family:var(--font-mono);color:var(--naranja);font-weight:700;font-size:11px;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
             </div>
           </div>
         </div>
@@ -4888,9 +4896,17 @@
                 <span style="color:var(--suave)">IVA (<span id="edit-trib-iva-pct">16</span>%) — 1.1.04.001</span>
                 <span id="edit-trib-iva" style="font-family:var(--font-mono);text-align:right;color:#60a5fa">—</span>
                 <span id="edit-trib-iva-ves" style="font-family:var(--font-mono);text-align:right;color:#60a5fa;font-size:11px">—</span>
-                <span style="color:var(--naranja);font-weight:600;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">Total Facturado</span>
+                <span id="edit-trib-total-label" style="color:var(--naranja);font-weight:600;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">Total Facturado</span>
                 <span id="edit-trib-total" style="font-family:var(--font-mono);color:var(--naranja);font-weight:600;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
                 <span id="edit-trib-total-ves" style="font-family:var(--font-mono);color:var(--naranja);font-size:11px;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
+
+                <span id="edit-trib-igtf-label" style="display:none;color:var(--suave)">IGTF (<span id="edit-trib-igtf-pct">3</span>%) — 6.1.04.003</span>
+                <span id="edit-trib-igtf" style="display:none;font-family:var(--font-mono);text-align:right;color:var(--naranja)">—</span>
+                <span id="edit-trib-igtf-ves" style="display:none;font-family:var(--font-mono);text-align:right;color:var(--naranja);font-size:11px">—</span>
+
+                <span id="edit-trib-total-final-label" style="display:none;color:var(--naranja);font-weight:700;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">Total Facturado</span>
+                <span id="edit-trib-total-final" style="display:none;font-family:var(--font-mono);color:var(--naranja);font-weight:700;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
+                <span id="edit-trib-total-final-ves" style="display:none;font-family:var(--font-mono);color:var(--naranja);font-weight:700;font-size:11px;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
               </div>
             </div>
           </div>
