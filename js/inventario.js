@@ -2440,7 +2440,7 @@ async function invRenderEntradasRechazadas(cont) {
           +'<div style="font-size:10px;color:var(--suave)">$ '+fmtUSD(p.monto_total_con_iva)+'</div>'
         +'</td>'
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(p.motivo_rechazo||'—')+'</td>'
-        +'<td style="padding:8px;white-space:nowrap"><button class="btn-naranja" onclick="retomarEntradaRechazada('+p.id_entrada+')" style="font-size:11px;padding:4px 10px">↻ Retomar</button></td>'
+        +'<td style="padding:8px 14px 8px 8px;white-space:nowrap"><button class="btn-naranja" onclick="retomarEntradaRechazada('+p.id_entrada+')" style="font-size:11px;padding:4px 10px">↻ Retomar</button></td>'
         +'</tr>';
     }).join('');
 
