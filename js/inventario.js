@@ -1470,13 +1470,28 @@ async function guardarEntradaStock() {
               ? montoTotalMonedaOriginal
               : (tasa_bcv_usada ? parseFloat((montoTotalMonedaOriginal * tasa_bcv_usada).toFixed(2)) : null))
           : null;
+        // Moneda de PAGO real -- la que factura el Proveedor
+        // (moneda_facturacion), NO la Moneda de Negociación del precio --
+        // son dos cosas distintas. Es la moneda en la que realmente se le
+        // va a pagar, así que es la que debe verse en "Monto a Pagar".
+        let monedaPagoNotif = moneda_compra_val;
+        if (idProvEnt) {
+          try {
+            const provNotifRows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProvEnt+'&select=moneda_facturacion');
+            if (provNotifRows && provNotifRows[0] && provNotifRows[0].moneda_facturacion) {
+              monedaPagoNotif = provNotifRows[0].moneda_facturacion;
+            }
+          } catch(eProvNotif) {}
+        }
         await enrutarAprobacionEntrada(montoTotalConIVA, id_entrada, numDocSol, {
           nombreArt: r.nombre_articulo || r.codigo_articulo || ('Art#'+id),
           cantidad: cantidad,
           unidad: r.unidad || 'UND',
           monedaCompra: moneda_compra_val,
+          monedaPago: monedaPagoNotif,
           tasaBcv: tasa_bcv_usada,
-          montoBsExacto: montoBsExacto
+          montoBsExacto: montoBsExacto,
+          montoIGTF: montoIGTFEnt || 0
         });
       } catch(eEnrutEnt) { console.warn('Error enrutando aprobación de Entrada:', eEnrutEnt); }
       okEl.textContent = window._retomandoEntradaId
@@ -1724,25 +1739,37 @@ async function enrutarAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
 // real de la Empresa (_empresaActiva.moneda_principal) -- no siempre es USD.
 function _armarMensajeAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
   const d = detalle || {};
-  const monedaFuncional = ((_empresaActiva?.moneda_principal) || 'VES').toUpperCase();
   const tasaUsar = d.tasaBcv || _tasaVigente || 1;
+  // Monto a Pagar = Base+IVA + IGTF (si aplica) -- es lo que realmente se
+  // le va a pagar al Proveedor, no solo el costo del Inventario.
+  const montoIGTF = d.montoIGTF || 0;
+  const montoTotalUSD = monto + montoIGTF;
   // Usa el Bs EXACTO ya calculado igual que la Ficha (directo desde lo
   // negociado, sin ida-y-vuelta VES→USD→VES) -- si por algún motivo no
   // llegó (ej. una Entrada vieja retomada antes de este fix), se cae al
   // cálculo anterior (monto USD × tasa) como respaldo.
-  const montoBs = d.montoBsExacto != null
+  const montoBsBase = d.montoBsExacto != null
     ? d.montoBsExacto
     : parseFloat((monto * tasaUsar).toFixed(2));
-  const principal = monedaFuncional === 'USD'
-    ? '$ ' + fmtUSD(monto) + (d.monedaCompra !== 'USD' ? ' <span style="font-weight:400;color:var(--suave)">(equivalente a Bs ' + fmtBs(montoBs) + ')</span>' : '')
-    : 'Bs ' + fmtBs(montoBs) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a $ ' + fmtUSD(monto) + ')</span>';
+  const montoIGTFBs = montoIGTF > 0 ? parseFloat((montoIGTF * tasaUsar).toFixed(2)) : 0;
+  const montoTotalBs = parseFloat((montoBsBase + montoIGTFBs).toFixed(2));
+  // Moneda de PAGO real (moneda_facturacion del Proveedor) -- distinta de
+  // la Moneda de Negociación del precio. Es la que se muestra como
+  // principal, porque es en la que realmente se va a pagar.
+  const monedaPago = (d.monedaPago || d.monedaCompra || 'USD').toUpperCase();
+  const principal = monedaPago === 'USD'
+    ? '$ ' + fmtUSD(montoTotalUSD) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a Bs ' + fmtBs(montoTotalBs) + ')</span>'
+    : 'Bs ' + fmtBs(montoTotalBs) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a $ ' + fmtUSD(montoTotalUSD) + ')</span>';
+  const igtfLinea = montoIGTF > 0
+    ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Incluye IGTF: $ ' + fmtUSD(montoIGTF) + '</div>'
+    : '';
   return '<div style="font-size:10px;color:var(--suave);letter-spacing:0.5px;margin-bottom:2px">ARTÍCULO — ' + (numeroDoc || ('ENT-'+idEntrada)) + '</div>'
     + '<div style="font-weight:600;margin-bottom:12px">' + (d.nombreArt || '—') + '</div>'
     + '<div style="display:flex;gap:24px;margin-bottom:12px">'
     + '<div><div style="font-size:10px;color:var(--suave)">CANTIDAD</div><div style="font-weight:600">' + (d.cantidad != null ? d.cantidad : '—') + ' ' + (d.unidad || 'UND') + '</div></div>'
-    + '<div><div style="font-size:10px;color:var(--suave)">MONEDA DE PAGO</div><div style="font-weight:600">' + (d.monedaCompra || '—') + '</div></div>'
+    + '<div><div style="font-size:10px;color:var(--suave)">MONEDA DE PAGO</div><div style="font-weight:600">' + monedaPago + '</div></div>'
     + '</div>'
-    + '<div><div style="font-size:10px;color:var(--suave)">MONTO A PAGAR</div><div style="font-weight:700;color:var(--naranja);font-size:16px">' + principal + '</div></div>';
+    + '<div><div style="font-size:10px;color:var(--suave)">MONTO A PAGAR</div><div style="font-weight:700;color:var(--naranja);font-size:16px">' + principal + '</div>' + igtfLinea + '</div>';
 }
 
 // Ejecuta TODO lo que antes pasaba de inmediato al guardar una Entrada de
@@ -2555,6 +2582,17 @@ async function rechazarEntradaCompra(id_entrada) {
         const artRechInfo = inventarioCache.find(function(x){ return x.id_articulo === m.id_articulo; })
           || (await api('inventario_almacen','GET',null,'?id_articulo=eq.'+m.id_articulo+'&select=nombre_articulo,codigo_articulo,unidad'))?.[0]
           || {};
+        // Moneda de PAGO real (Proveedor.moneda_facturacion) -- misma
+        // lógica que al enrutar la aprobación, no la Moneda de Negociación.
+        let monedaPagoRech = m.moneda_compra;
+        if (m.id_proveedor) {
+          try {
+            const provRechRows = await api('proveedores','GET',null,'?id_proveedor=eq.'+m.id_proveedor+'&select=moneda_facturacion');
+            if (provRechRows && provRechRows[0] && provRechRows[0].moneda_facturacion) {
+              monedaPagoRech = provRechRows[0].moneda_facturacion;
+            }
+          } catch(eProvRech) {}
+        }
         const numDocRech = 'ENT-'+id_entrada;
         const montoBsRech = (m.moneda_compra === 'VES' && m.monto_total_moneda_original != null)
           ? m.monto_total_moneda_original
@@ -2564,8 +2602,10 @@ async function rechazarEntradaCompra(id_entrada) {
           cantidad: m.cantidad,
           unidad: artRechInfo.unidad || 'UND',
           monedaCompra: m.moneda_compra,
+          monedaPago: monedaPagoRech,
           tasaBcv: m.tasa_bcv,
-          montoBsExacto: montoBsRech
+          montoBsExacto: montoBsRech,
+          montoIGTF: m.aplica_igtf && m.monto_igtf != null ? parseFloat(m.monto_igtf) : 0
         }) + '<div style="border-top:1px solid var(--borde);margin-top:12px;padding-top:10px;font-size:12px">'
           + '<div><span style="color:var(--suave)">Rechazada por:</span> ' + (sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor') + '</div>'
           + '<div style="margin-top:4px"><span style="color:var(--suave)">Motivo:</span> ' + motivo + '</div>'
