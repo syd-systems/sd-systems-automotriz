@@ -2488,6 +2488,12 @@ async function generarAsientoGastoManual(datos) {
     { const cProv = _todasCtasGasto.find(function(c){ return c.codigo === '2.1.01.001'; });
       idCtaCxP = cProv ? cProv.id_cuenta : null; }
 
+    // IGTF -- gasto NO deducible/NO acreditable (a diferencia del IVA), no
+    // afecta la Cuenta de Gasto -- solo aumenta lo que se le debe al
+    // Proveedor. Igual criterio y misma cuenta que en Entradas de Compra.
+    const montoIGTF_USD = datos.montoIGTF_USD || 0;
+    const montoIGTF_BS  = datos.montoIGTF_BS  || 0;
+
     let orden = 1;
     const textoLinea = datos.concepto || datos.descripcion || '';
     if (datos.id_cuentaGasto) {
@@ -2500,10 +2506,17 @@ async function generarAsientoGastoManual(datos) {
         descripcion: textoLinea,
         debe_usd: ivaUSD, haber_usd:0, debe_ves: ivaBs, haber_ves:0, tasa_bcv: tasa });
     }
+    if (montoIGTF_USD > 0) {
+      const cIGTF = _todasCtasGasto.find(function(c){ return c.codigo === '6.1.04.003'; });
+      const idCtaIGTF = cIGTF ? cIGTF.id_cuenta : null;
+      if (idCtaIGTF) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idCtaIGTF, orden:orden++,
+        descripcion: 'IGTF (' + (datos.tasaIGTF ? Math.round(datos.tasaIGTF*100) : 3) + '%) — ' + textoLinea,
+        debe_usd: montoIGTF_USD, haber_usd:0, debe_ves: montoIGTF_BS, haber_ves:0, tasa_bcv: tasa });
+    }
     if (idCtaCxP) {
       await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idCtaCxP, orden:orden++,
         descripcion: textoLinea,
-        debe_usd:0, haber_usd: montoTotalUSD, debe_ves:0, haber_ves: montoTotalBs, tasa_bcv: tasa });
+        debe_usd:0, haber_usd: montoTotalUSD + montoIGTF_USD, debe_ves:0, haber_ves: montoTotalBs + montoIGTF_BS, tasa_bcv: tasa });
     }
 
     console.log('✓ Asiento gasto manual creado:', numAst);
