@@ -1903,13 +1903,26 @@ async function ejecutarEfectosEntradaCompra(m) {
       const cuotas = m.cuotas_json ? (typeof m.cuotas_json === 'string' ? JSON.parse(m.cuotas_json) : m.cuotas_json) : [];
       if (!cuotas.length) throw new Error('La Entrada no tiene el desglose de cuotas guardado.');
       const totalVesCuotas = montoVES;
+      const totalUsdCuotas = montoUSD; // Base+IVA+IGTF -- ver declaración arriba
       let acumVesCuotas = 0;
+      let acumUsdCuotas = 0;
       for (let i = 0; i < cuotas.length; i++) {
         const c = cuotas[i];
         const esUltimaCuota = i === cuotas.length - 1;
+        // Prorrateo proporcional del IGTF según el peso de esta cuota sobre
+        // el total Base+IVA (mismo criterio que el prorrateo de Devolución
+        // de Factura: igtf × participación) -- antes el IGTF completo caía
+        // de golpe en la última cuota, y solo en Bs (nunca en USD).
+        const igtfCuotaUSD = montoIGTF_USD_Ast > 0 && montoTotalConIVA > 0
+          ? parseFloat((montoIGTF_USD_Ast * (c.monto / montoTotalConIVA)).toFixed(2))
+          : 0;
+        const montoUsdCuota = esUltimaCuota
+          ? parseFloat((totalUsdCuotas - acumUsdCuotas).toFixed(2))
+          : parseFloat((c.monto + igtfCuotaUSD).toFixed(2));
+        acumUsdCuotas = parseFloat((acumUsdCuotas + montoUsdCuota).toFixed(2));
         const montoVesCuota = esUltimaCuota
           ? parseFloat((totalVesCuotas - acumVesCuotas).toFixed(2))
-          : parseFloat((c.monto * (tasa_bcv_usada || 1)).toFixed(2));
+          : parseFloat((montoUsdCuota * (tasa_bcv_usada || 1)).toFixed(2));
         acumVesCuotas = parseFloat((acumVesCuotas + montoVesCuota).toFixed(2));
         const cxpCuotaCreada = await api('cont_cxp','POST',{
           id_proveedor:     m.id_proveedor,
@@ -1923,12 +1936,12 @@ async function ejecutarEfectosEntradaCompra(m) {
           estado:           'APROBADA',
           aprobado_por:     m.aprobado_por || null,
           fecha_aprobacion: ahoraIso,
-          monto_usd:        parseFloat(c.monto.toFixed(2)),
+          monto_usd:        montoUsdCuota,
           monto_ves:        montoVesCuota,
           tasa_bcv:         tasa_bcv_usada || 1,
           tasa_bcv_compra:  tasa_bcv_usada || 1,
           pagado_usd:       0,
-          saldo_usd:        parseFloat(c.monto.toFixed(2)),
+          saldo_usd:        montoUsdCuota,
           observaciones:    artNomCxP + ' x ' + cantidad + ' uds.',
           esquema_pago:     'CREDITO',
           id_usuario:       m.id_usuario || null
