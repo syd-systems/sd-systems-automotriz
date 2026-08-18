@@ -411,7 +411,7 @@ async function abrirNuevoPago() {
   // porque ahora Proveedor va primero y Categoría se autocompleta de su ficha.
   try {
     const provs = await api('proveedores','GET',null,
-      '?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif,id_categoria,moneda_facturacion,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre)') || [];
+      '?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif,id_categoria,moneda_facturacion,tipo_contribuyente,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre)') || [];
     const selProv = document.getElementById('pago-proveedor');
     if (selProv) {
       selProv.innerHTML = '<option value="">— Seleccionar proveedor —</option>'
