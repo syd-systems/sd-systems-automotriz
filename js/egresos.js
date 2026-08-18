@@ -3220,7 +3220,15 @@ async function _verCxPAutomatica(c, id_cxp) {
       if (formaPagoCont && formaPagoEl) {
         if (c.metodo_pago) {
           formaPagoCont.style.display = '';
-          formaPagoEl.textContent = METODO_PAGO_LABELS[c.metodo_pago] || c.metodo_pago;
+          // c.metodo_pago es un id_metodo (fila de param_metodos_pago) --
+          // no el tipo genérico (Efectivo/Transferencia). Hay que
+          // consultar esa fila para saber qué tipo fue realmente.
+          formaPagoEl.textContent = '...';
+          try {
+            const metodoRows = await api('param_metodos_pago','GET',null,'?id_metodo=eq.'+c.metodo_pago+'&select=tipo_canal');
+            const tipoCanalReal = metodoRows && metodoRows[0] ? metodoRows[0].tipo_canal : null;
+            formaPagoEl.textContent = tipoCanalReal ? (METODO_PAGO_LABELS[tipoCanalReal] || tipoCanalReal) : '—';
+          } catch(eMetodoPago) { formaPagoEl.textContent = '—'; }
         } else {
           formaPagoCont.style.display = 'none';
         }
