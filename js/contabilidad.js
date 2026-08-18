@@ -1219,17 +1219,31 @@ async function contGuardarPagoCxc() {
         let tasaActual = parseFloat(document.getElementById('cont-pago-cxc-tasa-raw')?.value) || parseFloat(c.tasa_bcv) || 1;
 
         const tasaOriginal      = parseFloat(c.tasa_bcv) || 1;
-        const montoVESOriginal  = parseFloat((monto * tasaOriginal).toFixed(2));
-        const montoVESCobro     = parseFloat((monto * tasaActual).toFixed(2));
-        const difCambio         = parseFloat((montoVESCobro - montoVESOriginal).toFixed(2));
 
         let numeroFacturaRef = 'CXC-' + _pagoCxcActualId;
+        let totalVesFactura = null;
         try {
           if (c.id_factura) {
-            const facRef = await api('facturas','GET',null,'?id_factura=eq.'+c.id_factura+'&select=numero_factura,receptor_nombre');
-            if (facRef && facRef[0]) numeroFacturaRef = facRef[0].numero_factura || numeroFacturaRef;
+            const facRef = await api('facturas','GET',null,'?id_factura=eq.'+c.id_factura+'&select=numero_factura,receptor_nombre,total_ves');
+            if (facRef && facRef[0]) {
+              numeroFacturaRef = facRef[0].numero_factura || numeroFacturaRef;
+              if (facRef[0].total_ves != null) totalVesFactura = parseFloat(facRef[0].total_ves);
+            }
           }
         } catch(eFacRef) {}
+
+        // montoVESOriginal: el Bs EXACTO ya congelado en la propia Factura
+        // (facturas.total_ves) -- no se recalcula multiplicando el USD por
+        // la tasa, porque ese redondeo no siempre regresa exacto al monto
+        // real facturado (mismo patrón que ya corregimos en Compras).
+        const montoVESOriginal  = totalVesFactura != null ? totalVesFactura : parseFloat((monto * tasaOriginal).toFixed(2));
+        // montoVESCobro: solo se recalcula multiplicando USD × tasa si la
+        // tasa de HOY realmente es distinta a la original -- si es la
+        // misma (cobro el mismo día, sin devaluación real), usa el mismo
+        // monto congelado, para no generar un "diferencial cambiario"
+        // falso por puro redondeo cuando la tasa no se movió ni un ápice.
+        const montoVESCobro     = tasaActual === tasaOriginal ? montoVESOriginal : parseFloat((monto * tasaActual).toFixed(2));
+        const difCambio         = tasaActual === tasaOriginal ? 0 : parseFloat((montoVESCobro - montoVESOriginal).toFixed(2));
 
         const anio = new Date(fecha).getFullYear();
         const existAst = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-'+anio+'-*&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
