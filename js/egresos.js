@@ -3135,6 +3135,11 @@ async function _verCxPAutomatica(c, id_cxp) {
   // Determinar si es CRÉDITO por esquema_pago o por numero_doc con -C al final
   const esCredito = c.esquema_pago === 'CREDITO' || /-C\d+$/.test(c.numero_doc || '');
 
+  // Proveedor -- nombre y RIF, ya vienen en el join de la consulta
+  const provAuto = c.proveedores || {};
+  document.getElementById('cxp-auto-prov-nombre').textContent = provAuto.nombre || '—';
+  document.getElementById('cxp-auto-prov-rif').textContent = provAuto.rif || '—';
+
   // N° Documento
   document.getElementById('cxp-auto-numero').textContent = c.numero_doc || '—';
 
@@ -3210,6 +3215,16 @@ async function _verCxPAutomatica(c, id_cxp) {
     if (c.estado === 'PAGADA' || c.estado === 'PARCIAL') {
       pagoInfoCont.style.display = '';
       if (refLabelEl) refLabelEl.textContent = 'Referencia de Pago';
+      const formaPagoCont = document.getElementById('cxp-auto-forma-pago-cont');
+      const formaPagoEl = document.getElementById('cxp-auto-forma-pago');
+      if (formaPagoCont && formaPagoEl) {
+        if (c.metodo_pago) {
+          formaPagoCont.style.display = '';
+          formaPagoEl.textContent = METODO_PAGO_LABELS[c.metodo_pago] || c.metodo_pago;
+        } else {
+          formaPagoCont.style.display = 'none';
+        }
+      }
       const refAutoEl = document.getElementById('cxp-auto-referencia');
       if (refAutoEl) { refAutoEl.textContent = c.referencia || '—'; refAutoEl.style.color = ''; }
       const compAutoCont = document.getElementById('cxp-auto-comprobante-cont');
@@ -3225,6 +3240,8 @@ async function _verCxPAutomatica(c, id_cxp) {
     } else if (c.estado === 'RECHAZADA') {
       pagoInfoCont.style.display = '';
       if (refLabelEl) refLabelEl.textContent = 'Motivo del Rechazo';
+      const formaPagoContRech = document.getElementById('cxp-auto-forma-pago-cont');
+      if (formaPagoContRech) formaPagoContRech.style.display = 'none';
       const refAutoEl = document.getElementById('cxp-auto-referencia');
       if (refAutoEl) { refAutoEl.textContent = c.motivo_rechazo || '—'; refAutoEl.style.color = '#fc8181'; }
       const compAutoCont = document.getElementById('cxp-auto-comprobante-cont');

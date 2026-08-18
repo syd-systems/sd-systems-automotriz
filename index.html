@@ -1356,17 +1356,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260814286"></script>
-<script src="js/parametros.js?v=20260814286"></script>
-<script src="js/empresas.js?v=20260814286"></script>
-<script src="js/ingresos.js?v=20260814286"></script>
-<script src="js/inventario.js?v=20260814286"></script>
-<script src="js/proveedores.js?v=20260814286"></script>
-<script src="js/contabilidad.js?v=20260814286"></script>
-<script src="js/egresos.js?v=20260814286"></script>
-<script src="js/vehiculos.js?v=20260814286"></script>
-<script src="js/catalogo.js?v=20260814286"></script>
-<script src="js/ordenes.js?v=20260814286"></script>
+<script src="js/core.js?v=20260814287"></script>
+<script src="js/parametros.js?v=20260814287"></script>
+<script src="js/empresas.js?v=20260814287"></script>
+<script src="js/ingresos.js?v=20260814287"></script>
+<script src="js/inventario.js?v=20260814287"></script>
+<script src="js/proveedores.js?v=20260814287"></script>
+<script src="js/contabilidad.js?v=20260814287"></script>
+<script src="js/egresos.js?v=20260814287"></script>
+<script src="js/vehiculos.js?v=20260814287"></script>
+<script src="js/catalogo.js?v=20260814287"></script>
+<script src="js/ordenes.js?v=20260814287"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4274,6 +4274,13 @@
     </div>
     <div class="modal-body">
 
+      <!-- Proveedor -->
+      <div style="margin-bottom:16px;background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:12px 14px">
+        <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Proveedor</div>
+        <div id="cxp-auto-prov-nombre" style="font-size:14px;font-weight:600">—</div>
+        <div id="cxp-auto-prov-rif" style="font-size:12px;color:var(--suave);font-family:var(--font-mono);margin-top:2px">—</div>
+      </div>
+
       <!-- Datos principales -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
         <div>
@@ -4332,6 +4339,10 @@
 
       <!-- Referencia y Comprobante -- solo si ya se ejecutó el pago -->
       <div id="cxp-auto-pago-info-cont" style="display:none;margin-bottom:12px">
+        <div id="cxp-auto-forma-pago-cont" style="display:none">
+          <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Forma de Pago</div>
+          <div id="cxp-auto-forma-pago" style="font-size:13px;font-weight:600;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:10px 14px;margin-bottom:8px">—</div>
+        </div>
         <div id="cxp-auto-referencia-label" style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Referencia de Pago</div>
         <div id="cxp-auto-referencia" style="font-size:13px;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:10px 14px;margin-bottom:8px">—</div>
         <div id="cxp-auto-comprobante-cont" style="display:none">
