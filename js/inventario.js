@@ -3796,6 +3796,12 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
   } catch(err) { alert('Error cargando movimiento: ' + err.message); return; }
   if (!m) return;
 
+  // IGTF -- arranca con lo que YA está guardado en esta Entrada (no se
+  // resetea a false), hasta que el Usuario cambie el Proveedor y se
+  // vuelva a evaluar fresco (ver onCambiarProveedorEdit).
+  window._aplicaIGTFEntrada = tipo === 'ENTRADA' && m.aplica_igtf === true;
+  window._tasaIGTFEntrada = m.tasa_igtf ? parseFloat(m.tasa_igtf) : 0.03;
+
   // Cargar áreas y proveedores
   let areas = [], proveedores = [];
   try { areas      = await api('param_areas', 'GET', null, '?order=codigo.asc,nombre.asc'); } catch(e) {}
@@ -4542,6 +4548,24 @@ async function _guardarEdicionMovimientoInterno() {
       datos.cliente_nombre      = clienteEdit;
       datos.id_area_origen      = areaOrig;
       datos.esquema_pago        = pagoEdit;
+
+      // IGTF -- se recalcula fresco según el Proveedor actual
+      // (window._aplicaIGTFEntrada ya refleja el último cambio hecho en
+      // este formulario, ver onCambiarProveedorEdit). Antes esta función
+      // nunca guardaba estos campos -- aunque la pantalla ya mostrara el
+      // IGTF actualizado, se perdía al guardar.
+      const tasaEdit = parseFloat(document.getElementById('edit-mov-tasa-bcv')?.value) || 0;
+      datos.aplica_igtf = !!window._aplicaIGTFEntrada;
+      if (window._aplicaIGTFEntrada && montoTotalConIVAEdit != null) {
+        const totalUSDParaIGTFEdit = monedaEdit === 'VES'
+          ? (tasaEdit > 0 ? montoTotalConIVAEdit / tasaEdit : 0)
+          : montoTotalConIVAEdit;
+        datos.tasa_igtf = window._tasaIGTFEntrada || 0.03;
+        datos.monto_igtf = parseFloat((totalUSDParaIGTFEdit * datos.tasa_igtf).toFixed(2));
+      } else {
+        datos.monto_igtf = null;
+        datos.tasa_igtf = null;
+      }
 
       // ── Leer cantidad original ANTES de parchear ──
       const [movOrigArr, artArr] = await Promise.all([
@@ -5433,6 +5457,80 @@ function calcularTributosEdit() {
     document.getElementById('edit-trib-total-ves').textContent = moneda === 'VES' && tasa > 0 ? '$ ' + fmtBs(total / tasa) : '—';
   }
   if (prev) prev.style.display = '';
+  actualizarIGTFEdit(total, moneda, tasa);
+}
+
+// Verifica si el Proveedor factura en USD y es Contribuyente Especial --
+// mismo criterio que Nueva Entrada (onCambiarProveedorEntrada). Se dispara
+// al CAMBIAR el Proveedor en la Ficha de Editar, que antes no refrescaba
+// el IGTF en absoluto.
+async function onCambiarProveedorEdit() {
+  const idProv = parseInt(document.getElementById('edit-mov-proveedor')?.value) || null;
+  window._aplicaIGTFEntrada = false;
+  window._tasaIGTFEntrada = 0.03;
+  if (idProv) {
+    try {
+      const rows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProv+'&select=moneda_facturacion,tipo_contribuyente');
+      const p = rows && rows[0] ? rows[0] : {};
+      if (p.moneda_facturacion === 'USD' && p.tipo_contribuyente === 'ESPECIAL') {
+        window._aplicaIGTFEntrada = true;
+        const trib = await api('param_tributos','GET',null,'?codigo=eq.IGTF&estado=eq.ACTIVO&order=fecha_registro.desc&limit=1&select=alicuota');
+        if (trib && trib[0]) window._tasaIGTFEntrada = parseFloat(trib[0].alicuota) / 100;
+      }
+    } catch(e) { console.warn('Error verificando IGTF del Proveedor:', e); }
+  }
+  calcularTributosEdit();
+}
+
+// Misma lógica que actualizarIGTFEntrada(), pero apuntando a los ids de la
+// Ficha de Editar (edit-mov-*/edit-trib-*).
+function actualizarIGTFEdit(totalMonedaNeg, moneda, tasa) {
+  const cont = document.getElementById('edit-mov-igtf-cont');
+  const prevEl = document.getElementById('edit-mov-igtf-preview');
+  const lblTotal = document.getElementById('edit-trib-total-label');
+  const igtfLabelRow = document.getElementById('edit-trib-igtf-label');
+  const igtfRow = document.getElementById('edit-trib-igtf');
+  const igtfRowVes = document.getElementById('edit-trib-igtf-ves');
+  const totalFinalLabel = document.getElementById('edit-trib-total-final-label');
+  const totalFinal = document.getElementById('edit-trib-total-final');
+  const totalFinalVes = document.getElementById('edit-trib-total-final-ves');
+  const igtfPctSpan = document.getElementById('edit-trib-igtf-pct');
+
+  if (!cont) return;
+  if (!window._aplicaIGTFEntrada) {
+    cont.style.display = 'none';
+    if (lblTotal) lblTotal.textContent = 'Total Facturado';
+    [igtfLabelRow, igtfRow, igtfRowVes, totalFinalLabel, totalFinal, totalFinalVes].forEach(function(el){ if (el) el.style.display = 'none'; });
+    return;
+  }
+  cont.style.display = '';
+  if (!totalMonedaNeg || !prevEl) { if (prevEl) prevEl.textContent = ''; return; }
+  const totalUSD = moneda === 'VES' ? (tasa > 0 ? totalMonedaNeg / tasa : 0) : totalMonedaNeg;
+  const tasaIGTF = window._tasaIGTFEntrada || 0.03;
+  const igtfUSD = parseFloat((totalUSD * tasaIGTF).toFixed(2));
+  const igtfBs = tasa > 0 ? parseFloat((igtfUSD * tasa).toFixed(2)) : 0;
+  prevEl.textContent = 'IGTF (' + (tasaIGTF*100).toFixed(0) + '%): $ ' + fmtUSD(igtfUSD) + (tasa > 0 ? ' · Bs ' + fmtBs(igtfBs) : '');
+
+  if (lblTotal) lblTotal.textContent = 'Sub-Total Facturado';
+  if (igtfPctSpan) igtfPctSpan.textContent = (tasaIGTF*100).toFixed(0);
+  const sim = moneda === 'VES' ? 'Bs.' : '$';
+  const igtfEnMoneda = moneda === 'VES' ? igtfBs : igtfUSD;
+  if (igtfLabelRow) igtfLabelRow.style.display = '';
+  if (igtfRow) { igtfRow.style.display = ''; igtfRow.textContent = sim + ' ' + fmtBs(igtfEnMoneda); }
+  if (igtfRowVes) {
+    igtfRowVes.style.display = '';
+    igtfRowVes.textContent = tasa > 0 && moneda !== 'VES' ? 'Bs. ' + fmtBs(igtfBs)
+      : (moneda === 'VES' && tasa > 0 ? '$ ' + fmtBs(igtfUSD) : '—');
+  }
+  const totalConIGTFEnMoneda = totalMonedaNeg + igtfEnMoneda;
+  if (totalFinalLabel) totalFinalLabel.style.display = '';
+  if (totalFinal) { totalFinal.style.display = ''; totalFinal.textContent = sim + ' ' + fmtBs(totalConIGTFEnMoneda); }
+  if (totalFinalVes) {
+    totalFinalVes.style.display = '';
+    if (tasa > 0 && moneda !== 'VES') totalFinalVes.textContent = 'Bs. ' + fmtBs(totalConIGTFEnMoneda * tasa);
+    else if (moneda === 'VES' && tasa > 0) totalFinalVes.textContent = '$ ' + fmtBs(totalConIGTFEnMoneda / tasa);
+    else totalFinalVes.textContent = '—';
+  }
 }
 
 async function onCambioAreaEditSalida() {
