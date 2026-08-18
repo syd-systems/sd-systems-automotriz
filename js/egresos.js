@@ -76,7 +76,7 @@ function fmtCreadorCxP(info) {
 // Se hace vía RPC (no consultas directas del cliente) porque requiere leer
 // usuarios/usuarios_permisos de OTRAS personas -- datos sensibles que un
 // Operador normal no debe poder consultar libremente por RLS.
-async function enrutarAprobacionCxP(idCxp, numeroDoc, montoUsd) {
+async function enrutarAprobacionCxP(idCxp, numeroDoc, montoUsd, incluyeIgtf) {
   try {
     const idAreaCreador = await _resolverAreaSesion();
     const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/enrutar_aprobacion_cxp', {
@@ -91,7 +91,8 @@ async function enrutarAprobacionCxP(idCxp, numeroDoc, montoUsd) {
         p_monto: montoUsd,
         p_id_cxp: idCxp,
         p_numero_doc: numeroDoc,
-        p_correo_creador: sesionActual?.correo_usuario || null
+        p_correo_creador: sesionActual?.correo_usuario || null,
+        p_incluye_igtf: !!incluyeIgtf
       })
     });
     if (!resp.ok) {
@@ -2607,7 +2608,7 @@ async function guardarPago() {
             if (cxpCuotaConv && cxpCuotaConv[0]) {
               await api('cont_cxp','PATCH',{ numero_doc: numDocActual + '-C' + cc.num + '-' + cxpCuotaConv[0].id_cxp }, '?id_cxp=eq.' + cxpCuotaConv[0].id_cxp);
               if (cc.fecha <= getHoyVzla()) {
-                enrutarAprobacionCxP(cxpCuotaConv[0].id_cxp, numDocActual + '-C' + cc.num + '-' + cxpCuotaConv[0].id_cxp, montoUsdCuotaConv);
+                enrutarAprobacionCxP(cxpCuotaConv[0].id_cxp, numDocActual + '-C' + cc.num + '-' + cxpCuotaConv[0].id_cxp, montoUsdCuotaConv, aplicaIGTFFinal);
               } else {
                 api('cont_cxp','PATCH',{ sin_firma_notificado: true }, '?id_cxp=eq.'+cxpCuotaConv[0].id_cxp).catch(function(){});
               }
@@ -2627,7 +2628,7 @@ async function guardarPago() {
           });
           if (cxpContadoConv && cxpContadoConv[0]) {
             await api('cont_cxp','PATCH',{ numero_doc: numDocActual + '-' + cxpContadoConv[0].id_cxp }, '?id_cxp=eq.' + cxpContadoConv[0].id_cxp);
-            enrutarAprobacionCxP(cxpContadoConv[0].id_cxp, numDocActual + '-' + cxpContadoConv[0].id_cxp, montoTotalConIGTF);
+            enrutarAprobacionCxP(cxpContadoConv[0].id_cxp, numDocActual + '-' + cxpContadoConv[0].id_cxp, montoTotalConIGTF, aplicaIGTFFinal);
           }
         }
 
@@ -2796,7 +2797,7 @@ async function guardarPago() {
         if (cxpCuota && cxpCuota[0]) {
           await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-C' + c.num + '-' + cxpCuota[0].id_cxp }, '?id_cxp=eq.' + cxpCuota[0].id_cxp);
           if (c.fecha <= getHoyVzla()) {
-            enrutarAprobacionCxP(cxpCuota[0].id_cxp, numDocBase + '-C' + c.num + '-' + cxpCuota[0].id_cxp, montoUsdCuota);
+            enrutarAprobacionCxP(cxpCuota[0].id_cxp, numDocBase + '-C' + c.num + '-' + cxpCuota[0].id_cxp, montoUsdCuota, aplicaIGTFFinal);
           } else {
             // Cuota con vencimiento futuro -- no notificar todavía; se
             // enrutará solo cuando llegue su fecha (reintentar_enrutamiento_pendientes al iniciar sesión)
@@ -2835,7 +2836,7 @@ async function guardarPago() {
       });
       if (cxpContado && cxpContado[0]) {
         await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-' + cxpContado[0].id_cxp }, '?id_cxp=eq.' + cxpContado[0].id_cxp);
-        enrutarAprobacionCxP(cxpContado[0].id_cxp, numDocBase + '-' + cxpContado[0].id_cxp, montoTotalConIGTF);
+        enrutarAprobacionCxP(cxpContado[0].id_cxp, numDocBase + '-' + cxpContado[0].id_cxp, montoTotalConIGTF, aplicaIGTFFinal);
       }
     }
 
