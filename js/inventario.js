@@ -1798,6 +1798,20 @@ async function ejecutarEfectosEntradaCompra(m) {
     '?id_articulo=eq.'+id+'&select=nombre_articulo,codigo_articulo,precio_costo_moneda,id_cuenta_contable,id_cuenta_costo_gasto');
   const r = artRows && artRows[0] ? artRows[0] : {};
 
+  // Moneda de PAGO real (moneda_facturacion del Proveedor) -- NO es lo
+  // mismo que la Moneda de Negociación del precio (m.moneda_compra). La
+  // CxP debe reflejar en qué moneda realmente se le va a pagar al
+  // Proveedor, sin importar en qué moneda se negoció el precio.
+  let monedaPagoReal = m.moneda_compra || 'USD';
+  if (m.id_proveedor) {
+    try {
+      const provPagoRows = await api('proveedores','GET',null,'?id_proveedor=eq.'+m.id_proveedor+'&select=moneda_facturacion');
+      if (provPagoRows && provPagoRows[0] && provPagoRows[0].moneda_facturacion) {
+        monedaPagoReal = provPagoRows[0].moneda_facturacion;
+      }
+    } catch(eProvPago) {}
+  }
+
   // ── Stock/CPP: mismo cálculo de siempre, pero con el stock/costo FRESCOS
   // de ahora mismo (no los de cuando se creó la Entrada -- pudo pasar
   // tiempo entre crear y aprobar, y otros movimientos pudieron ocurrir).
@@ -1905,7 +1919,7 @@ async function ejecutarEfectosEntradaCompra(m) {
           numero_doc:       numDocBase + '-C' + c.num,
           fecha_emision:    fechaNegCxP,
           fecha_vencimiento: c.fecha,
-          moneda_pago:      m.moneda_compra || 'USD',
+          moneda_pago:      monedaPagoReal,
           estado:           'APROBADA',
           aprobado_por:     m.aprobado_por || null,
           fecha_aprobacion: ahoraIso,
@@ -1932,7 +1946,7 @@ async function ejecutarEfectosEntradaCompra(m) {
         numero_doc:      numDocBase,
         fecha_emision:   fechaNegCxP,
         fecha_vencimiento: m.fecha_pago || fechaNegCxP,
-        moneda_pago:     m.moneda_compra || 'USD',
+        moneda_pago:     monedaPagoReal,
         estado:          'APROBADA',
         aprobado_por:    m.aprobado_por || null,
         fecha_aprobacion: ahoraIso,
@@ -4674,6 +4688,17 @@ async function _guardarEdicionMovimientoInterno() {
         }
 
         const idProvEdit = provEdit || null;
+        // Moneda de PAGO real (moneda_facturacion del Proveedor) -- NO es
+        // lo mismo que la Moneda de Negociación del precio (monedaEdit).
+        let monedaPagoRealEdit = monedaEdit || 'USD';
+        if (idProvEdit) {
+          try {
+            const provPagoEditRows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProvEdit+'&select=moneda_facturacion');
+            if (provPagoEditRows && provPagoEditRows[0] && provPagoEditRows[0].moneda_facturacion) {
+              monedaPagoRealEdit = provPagoEditRows[0].moneda_facturacion;
+            }
+          } catch(eProvPagoEdit) {}
+        }
         let tasaEdit = parseFloat(art?.tasa_bcv || 0);
         if (!tasaEdit) {
           try {
@@ -4714,7 +4739,7 @@ async function _guardarEdicionMovimientoInterno() {
                 numero_doc:      numDocBase + '-C' + c.num,
                 fecha_emision:   fechaNeg,
                 fecha_vencimiento: c.fecha,
-                moneda_pago:     monedaEdit || 'USD',
+                moneda_pago:     monedaPagoRealEdit,
                 estado:          'PENDIENTE',
                 monto_usd:       parseFloat(c.monto.toFixed(2)),
                 monto_ves:       montoVesCuotaEdit,
@@ -4749,7 +4774,7 @@ async function _guardarEdicionMovimientoInterno() {
             numero_doc:      numDocBase,
             fecha_emision:   fechaNeg,
             fecha_vencimiento: fechaNeg,
-            moneda_pago:     monedaEdit || 'USD',
+            moneda_pago:     monedaPagoRealEdit,
             estado:          'PENDIENTE',
             monto_usd:       nuevoMontoUSD,
             monto_ves:       parseFloat((nuevoMontoUSD * tasaEdit).toFixed(2)),
@@ -5486,7 +5511,6 @@ async function onCambiarProveedorEdit() {
 // Ficha de Editar (edit-mov-*/edit-trib-*).
 function actualizarIGTFEdit(totalMonedaNeg, moneda, tasa) {
   const cont = document.getElementById('edit-mov-igtf-cont');
-  const prevEl = document.getElementById('edit-mov-igtf-preview');
   const lblTotal = document.getElementById('edit-trib-total-label');
   const igtfLabelRow = document.getElementById('edit-trib-igtf-label');
   const igtfRow = document.getElementById('edit-trib-igtf');
@@ -5504,12 +5528,11 @@ function actualizarIGTFEdit(totalMonedaNeg, moneda, tasa) {
     return;
   }
   cont.style.display = '';
-  if (!totalMonedaNeg || !prevEl) { if (prevEl) prevEl.textContent = ''; return; }
+  if (!totalMonedaNeg) return;
   const totalUSD = moneda === 'VES' ? (tasa > 0 ? totalMonedaNeg / tasa : 0) : totalMonedaNeg;
   const tasaIGTF = window._tasaIGTFEntrada || 0.03;
   const igtfUSD = parseFloat((totalUSD * tasaIGTF).toFixed(2));
   const igtfBs = tasa > 0 ? parseFloat((igtfUSD * tasa).toFixed(2)) : 0;
-  prevEl.textContent = 'IGTF (' + (tasaIGTF*100).toFixed(0) + '%): $ ' + fmtUSD(igtfUSD) + (tasa > 0 ? ' · Bs ' + fmtBs(igtfBs) : '');
 
   if (lblTotal) lblTotal.textContent = 'Sub-Total Facturado';
   if (igtfPctSpan) igtfPctSpan.textContent = (tasaIGTF*100).toFixed(0);
@@ -6674,7 +6697,6 @@ async function onCambiarProveedorEntrada() {
 // sobre el Total (Base + IVA), igual que en Ejecutar Pago.
 function actualizarIGTFEntrada(totalMonedaNeg, moneda, tasa) {
   const cont = document.getElementById('es-igtf-cont');
-  const prevEl = document.getElementById('es-igtf-preview');
   const lblTotal = document.getElementById('es-trib-total-label');
   const igtfLabelRow = document.getElementById('es-trib-igtf-label');
   const igtfRow = document.getElementById('es-trib-igtf');
@@ -6694,12 +6716,11 @@ function actualizarIGTFEntrada(totalMonedaNeg, moneda, tasa) {
     return;
   }
   cont.style.display = '';
-  if (!totalMonedaNeg || !prevEl) { if (prevEl) prevEl.textContent = ''; return; }
+  if (!totalMonedaNeg) return;
   const totalUSD = moneda === 'VES' ? (tasa > 0 ? totalMonedaNeg / tasa : 0) : totalMonedaNeg;
   const tasaIGTF = window._tasaIGTFEntrada || 0.03;
   const igtfUSD = parseFloat((totalUSD * tasaIGTF).toFixed(2));
   const igtfBs = tasa > 0 ? parseFloat((igtfUSD * tasa).toFixed(2)) : 0;
-  prevEl.textContent = 'IGTF (' + (tasaIGTF*100).toFixed(0) + '%): $ ' + fmtUSD(igtfUSD) + (tasa > 0 ? ' · Bs ' + fmtBs(igtfBs) : '');
 
   // Con IGTF: el "Total Facturado" que ya existía pasa a llamarse
   // "Sub-Total Facturado" (Base+IVA), se agrega la línea de IGTF, y un

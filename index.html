@@ -1356,17 +1356,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260814285"></script>
-<script src="js/parametros.js?v=20260814285"></script>
-<script src="js/empresas.js?v=20260814285"></script>
-<script src="js/ingresos.js?v=20260814285"></script>
-<script src="js/inventario.js?v=20260814285"></script>
-<script src="js/proveedores.js?v=20260814285"></script>
-<script src="js/contabilidad.js?v=20260814285"></script>
-<script src="js/egresos.js?v=20260814285"></script>
-<script src="js/vehiculos.js?v=20260814285"></script>
-<script src="js/catalogo.js?v=20260814285"></script>
-<script src="js/ordenes.js?v=20260814285"></script>
+<script src="js/core.js?v=20260814286"></script>
+<script src="js/parametros.js?v=20260814286"></script>
+<script src="js/empresas.js?v=20260814286"></script>
+<script src="js/ingresos.js?v=20260814286"></script>
+<script src="js/inventario.js?v=20260814286"></script>
+<script src="js/proveedores.js?v=20260814286"></script>
+<script src="js/contabilidad.js?v=20260814286"></script>
+<script src="js/egresos.js?v=20260814286"></script>
+<script src="js/vehiculos.js?v=20260814286"></script>
+<script src="js/catalogo.js?v=20260814286"></script>
+<script src="js/ordenes.js?v=20260814286"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2694,8 +2694,8 @@
              aumenta lo que se le debe al Proveedor. -->
         <div class="form-campo form-full" id="es-igtf-cont" style="display:none;grid-column:1/-1;background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
           <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600">⚖ IGTF</div>
-          <div style="font-size:12px;color:var(--suave);margin-bottom:8px">Este Proveedor factura en USD y es Contribuyente Especial -- el IGTF aplica automáticamente sobre el monto a pagar. No afecta el costo del Inventario (Gasto no deducible, cuenta 6.1.04.003).</div>
-          <div id="es-igtf-preview" style="font-size:13px;font-family:var(--font-mono);color:var(--naranja);font-weight:600"></div>
+          <div style="font-size:12px;color:var(--suave)">Este Proveedor factura en USD y es Contribuyente Especial -- el IGTF aplica automáticamente sobre el precio del producto más el Impuesto al Valor Agregado - IVA.</div>
+          
         </div>
         <div class="form-campo form-full" id="es-campo-cliente-cont" style="grid-column:1/-1;display:none">
           <label>Factura *</label>
@@ -4587,13 +4587,11 @@
           <div style="display:flex;gap:16px;flex-wrap:wrap">
             <div style="flex:1;min-width:130px">
               <div style="font-size:11px;color:var(--suave);margin-bottom:4px">MONEDA DE PAGO</div>
-              <!-- Editable por si el caso puntual requiere otra moneda que
-                   la de Facturación del proveedor (ver onCambiarMonedaExecPago) -->
-              <select id="exec-pago-moneda-display" onchange="onCambiarMonedaExecPago()"
-                style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none;width:100%">
-                <option value="USD">USD — Dólar</option>
-                <option value="VES">VES — Bolívar</option>
-              </select>
+              <!-- Solo lectura -- viene fija de la Moneda de Facturación
+                   configurada en la ficha del Proveedor, no se modifica
+                   desde aquí (antes era editable, se revirtió). -->
+              <div id="exec-pago-moneda-display" style="background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:8px 12px;font-size:13px;color:var(--texto);font-weight:600">—</div>
+              <input type="hidden" id="exec-pago-moneda">
             </div>
             <div style="flex:1;min-width:130px">
               <div style="font-size:11px;color:var(--suave);margin-bottom:4px">MÉTODO DE PAGO</div>
@@ -4818,8 +4816,8 @@
              deducible/no acreditable, NO afecta el costo del Inventario. -->
         <div class="form-campo form-full" id="edit-mov-igtf-cont" style="display:none;grid-column:1/-1;background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
           <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600">⚖ IGTF</div>
-          <div style="font-size:12px;color:var(--suave);margin-bottom:8px">Este Proveedor factura en USD y es Contribuyente Especial -- el IGTF aplica automáticamente sobre el monto a pagar. No afecta el costo del Inventario (Gasto no deducible, cuenta 6.1.04.003).</div>
-          <div id="edit-mov-igtf-preview" style="font-size:13px;font-family:var(--font-mono);color:var(--naranja);font-weight:600"></div>
+          <div style="font-size:12px;color:var(--suave)">Este Proveedor factura en USD y es Contribuyente Especial -- el IGTF aplica automáticamente sobre el precio del producto más el Impuesto al Valor Agregado - IVA.</div>
+          
         </div>
         <div class="form-campo form-full" id="edit-mov-cliente-cont" style="display:none;grid-column:1/-1">
           <label>Nombre del Cliente *</label>

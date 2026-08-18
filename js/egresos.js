@@ -3616,18 +3616,20 @@ async function ejecutarPagoCxP(id_cxp) {
   if (btnConf) { btnConf.disabled = false; btnConf.textContent = '💳 Confirmar Pago'; }
   document.getElementById('alerta-exec-err').style.display = 'none';
 
-  // Moneda de Pago -- por defecto la Moneda de Facturación de la ficha del
-  // proveedor (la fuente de verdad real), con fallback a la ya guardada en
-  // la CxP si el proveedor no la tiene configurada. Editable de todas
-  // formas (ver onCambiarMonedaExecPago).
+  // Moneda de Pago -- fija, viene de la Moneda de Facturación configurada
+  // en la ficha del Proveedor (la fuente de verdad real), con fallback a
+  // la ya guardada en la CxP si el proveedor no la tiene configurada. Solo
+  // lectura, no se modifica desde aquí (antes era editable, se revirtió).
   window._execPagoCxP = c;
   const monedaCxP = prov.moneda_facturacion || c.moneda_pago || 'USD';
   const monedaDispEl = document.getElementById('exec-pago-moneda-display');
-  if (monedaDispEl) monedaDispEl.value = monedaCxP;
+  if (monedaDispEl) monedaDispEl.textContent = monedaCxP === 'VES' ? 'VES — Bolívar' : 'USD — Dólar';
+  const monedaHiddenEl = document.getElementById('exec-pago-moneda');
+  if (monedaHiddenEl) monedaHiddenEl.value = monedaCxP;
 
   // Buscar tasa vigente para mostrar equivalente
   // Ambos montos (USD y VES) ya están congelados en la CxP -- no se
-  // recalcula con la tasa de hoy (mismo criterio que onCambiarMonedaExecPago).
+  // recalcula con la tasa de hoy.
   const montoUSDShow = parseFloat(c.saldo_usd) || parseFloat(c.monto_usd || 0);
   const montoVESShow = parseFloat(c.saldo_ves) || parseFloat(c.monto_ves || 0) || (montoUSDShow * (_tasaVigente || 1));
 
@@ -3668,44 +3670,6 @@ async function ejecutarPagoCxP(id_cxp) {
   await _resolverMetodoPagoEjecucion(monedaCxP, prov);
 
   abrirModal('modal-ejecutar-pago');
-}
-
-// Corrección manual de la Moneda de Pago heredada de la Obligación --
-// recalcula todo lo que dependía de ella: monto mostrado, visibilidad de
-// IGTF, y Método de Pago + Cuenta Contable (que se resuelven por
-// moneda+tipo_canal en param_metodos_pago).
-async function onCambiarMonedaExecPago() {
-  const monedaSel = document.getElementById('exec-pago-moneda-display')?.value || 'USD';
-  const c = window._execPagoCxP;
-  const prov = window._execPagoProv || {};
-  if (!c) return;
-
-  // Ambos montos (USD y VES) YA están congelados en la CxP desde que se
-  // creó -- no hace falta buscar ninguna tasa "de hoy" ni recalcular nada,
-  // sin importar en qué Moneda decida pagarse finalmente. Antes esto
-  // volvía a multiplicar por la tasa vigente al abrir el modal, y si
-  // pasaba aunque fuera un día entre crear la CxP y ejecutar el pago, el
-  // monto mostrado ya no coincidía con lo negociado ni con el Asiento.
-  const montoUSDShow = parseFloat(c.saldo_usd) || parseFloat(c.monto_usd || 0);
-  const montoVESShow = parseFloat(c.saldo_ves) || parseFloat(c.monto_ves || 0) || (montoUSDShow * (_tasaVigente || 1));
-  document.getElementById('exec-pago-monto').textContent = 'Bs. ' + fmtBs(montoVESShow);
-  const elMontoVES = document.getElementById('exec-pago-monto-ves');
-  if (elMontoVES) elMontoVES.textContent = '$ ' + fmtBs(montoUSDShow);
-
-  // IGTF solo aplica si la moneda (ya corregida) no es VES, y no es CxP de inventario
-  const esInventarioCxP = /^ENT-/.test(c.numero_doc || '');
-  const igtfWrapEl = document.getElementById('exec-pago-igtf-wrap');
-  const esUSDCxP = monedaSel !== 'VES';
-  if (igtfWrapEl) igtfWrapEl.style.display = (esUSDCxP && !esInventarioCxP) ? '' : 'none';
-  // Limpiar cualquier selección previa de IGTF -- el contexto cambió
-  document.querySelectorAll('input[name="exec-pago-incluye-igtf"]').forEach(function(r){ r.checked = false; });
-  const prevTrib = document.getElementById('exec-pago-tributos-preview');
-  if (prevTrib) prevTrib.style.display = 'none';
-
-  // Re-resolver Método de Pago + Cuenta Contable para la NUEVA moneda --
-  // de lo contrario quedaría, por ejemplo, una cuenta bancaria USD con
-  // una Moneda de Pago ya corregida a VES.
-  await _resolverMetodoPagoEjecucion(monedaSel, prov);
 }
 
 const METODO_PAGO_LABELS = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria' };
@@ -3772,7 +3736,7 @@ function onCambioIncluyeIvaPago() {
         return;
       }
       const fechaPagoPreview = rows[0].fecha_vencimiento?.slice(0,10) || (getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10));
-      const monedaCxP = document.getElementById('exec-pago-moneda-display')?.value || rows[0].moneda_pago || 'USD';
+      const monedaCxP = document.getElementById('exec-pago-moneda')?.value || rows[0].moneda_pago || 'USD';
       const esUSD = monedaCxP !== 'VES';
       const monto = monedaCxP === 'VES'
         ? parseFloat(rows[0].saldo_ves || rows[0].monto_ves || 0)
@@ -3951,7 +3915,7 @@ async function confirmarEjecucionPago() {
     // Moneda de Pago -- la que quedó seleccionada en pantalla (puede haber
     // sido corregida manualmente); si el select no llegó a existir por
     // algún motivo, cae a la guardada en la CxP.
-    const monedaCxP  = document.getElementById('exec-pago-moneda-display')?.value || c.moneda_pago || 'USD';
+    const monedaCxP  = document.getElementById('exec-pago-moneda')?.value || c.moneda_pago || 'USD';
     const esUSD      = monedaCxP !== 'VES';
     const incluyeIgtf = esUSD && document.getElementById('exec-pago-incluye-igtf-si')?.checked;
     const montoVESCxP = parseFloat(c.monto_ves || 0);
