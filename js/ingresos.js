@@ -180,9 +180,10 @@ async function abrirNuevaFactura() {
 
   const selEm = document.getElementById('fac-emisor');
   selEm.innerHTML = '<option value="">— Seleccionar empresa —</option>'
-    + emisoresList.map(function(e) { return '<option value="' + e.id_empresa + '">' + e.nombre + ' (' + (e.rif||'') + ')</option>'; }).join('');
+    + emisoresList.map(function(e) { return '<option value="' + e.id_empresa + '" data-tipo-contrib="' + (e.tipo_contribuyente||'') + '">' + e.nombre + ' (' + (e.rif||'') + ')</option>'; }).join('');
   // Preseleccionar empresa activa
   if (_empresaActiva) selEm.value = _empresaActiva.id_empresa;
+  _aplicarReglaIGTFFactura();
 
   actualizarVisibilidadMonedaFactura();
   // Las Órdenes que se listan dependen SIEMPRE de la Empresa seleccionada
@@ -246,7 +247,9 @@ async function onCambiarEmpresaFactura() {
   document.getElementById('fac-receptor-rif').value = '';
   document.getElementById('fac-receptor-dir').value = '';
   document.getElementById('fac-receptor-tipo-contrib').value = '';
-  window._facSubtotalOS = 0; actualizarSubtotalOSLabel(); calcularTotalesFactura();
+  window._facSubtotalOS = 0; actualizarSubtotalOSLabel();
+  _aplicarReglaIGTFFactura();
+  calcularTotalesFactura();
   await cargarOSParaFactura(id_empresa);
 }
 
@@ -341,17 +344,47 @@ function actualizarVisibilidadMonedaFactura() {
   if (igtfCont) igtfCont.style.display = esVES ? 'none' : 'flex';
 }
 
+// Regla legal de IGTF en Facturas: si la Empresa emisora es Contribuyente
+// Especial y la Moneda de Cobro no es VES, el IGTF es OBLIGATORIO por Ley
+// (no una preferencia) -- se marca y se bloquea, el Usuario no puede
+// desmarcarlo. Si la Empresa NO es Contribuyente Especial, no está
+// autorizada a cobrar IGTF -- se apaga y también se bloquea, para que no lo
+// pueda marcar por error. En VES no aplica de ningún modo (el contenedor ya
+// se oculta aparte).
+function _aplicarReglaIGTFFactura() {
+  const selEm = document.getElementById('fac-emisor');
+  const opt = selEm?.selectedOptions?.[0];
+  const esEspecial = opt?.dataset?.tipoContrib === 'ESPECIAL';
+  const esVES = (document.getElementById('fac-moneda')?.value || 'VES') === 'VES';
+  const igtfChk  = document.getElementById('fac-aplica-igtf');
+  const igtfNota = document.getElementById('fac-igtf-obligatorio-nota');
+  if (!igtfChk) return;
+  if (esVES) {
+    igtfChk.checked = false;
+    igtfChk.disabled = false;
+    if (igtfNota) igtfNota.style.display = 'none';
+  } else if (esEspecial) {
+    igtfChk.checked = true;
+    igtfChk.disabled = true;
+    if (igtfNota) { igtfNota.style.display = ''; igtfNota.textContent = 'Obligatorio por Ley — la Empresa es Contribuyente Especial.'; }
+  } else {
+    igtfChk.checked = false;
+    igtfChk.disabled = true;
+    if (igtfNota) { igtfNota.style.display = ''; igtfNota.textContent = 'No aplica — la Empresa no es Contribuyente Especial.'; }
+  }
+}
+
 // Se dispara cuando el Usuario cambia la Moneda manualmente (onchange del
 // select) -- además de la visibilidad, aplica los defaults acordados:
-// VES -> IVA activado, IGTF no aplica. USD -> IVA e IGTF activados. El
-// Usuario puede modificar cualquiera de los dos después.
+// VES -> IVA activado, IGTF no aplica. USD -> IVA activado, IGTF según la
+// regla legal de _aplicarReglaIGTFFactura(). El Usuario puede modificar el
+// IVA después; el IGTF no, cuando la regla lo determina obligatorio o
+// prohibido.
 function onCambiarMonedaFactura() {
   actualizarVisibilidadMonedaFactura();
-  const esVES   = (document.getElementById('fac-moneda')?.value||'VES') === 'VES';
   const ivaChk  = document.getElementById('fac-aplica-iva');
-  const igtfChk = document.getElementById('fac-aplica-igtf');
-  if (ivaChk)  ivaChk.checked  = true;
-  if (igtfChk) igtfChk.checked = !esVES;
+  if (ivaChk) ivaChk.checked = true;
+  _aplicarReglaIGTFFactura();
   actualizarSubtotalOSLabel();
   var id_os = document.getElementById('fac-os-id')?.value;
   if (id_os) onSelOSFactura(); else calcularTotalesFactura();
@@ -917,6 +950,11 @@ async function abrirEditarFactura(id) {
     // Solo visibilidad -- NO se debe pisar el IVA/IGTF real que ya se
     // guardó, con el default de "cambio de moneda manual".
     actualizarVisibilidadMonedaFactura();
+    // Re-aplicar la regla legal de IGTF (obligatorio/prohibido según la
+    // Empresa) -- una Factura en Borrador todavía no se emitió, así que
+    // conviene corregirla aquí si el Tipo de Contribuyente de la Empresa
+    // cambió desde que se guardó por última vez.
+    _aplicarReglaIGTFFactura();
     // La lista de Órdenes debe reflejar la Empresa REAL de esta Factura
     // (puede no coincidir con la Empresa activa global), y debe incluir su
     // propia OS aunque ya esté facturada por esta misma Factura.
