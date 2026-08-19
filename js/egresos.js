@@ -2940,9 +2940,13 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     const ivaInfoEl = document.getElementById('cont-pago-cxp-iva-info');
     if (ivaInfoEl) {
       const pctIVADet = Math.round(tasaIVAActual()*100);
+      // Desde la Ficha de Detalle importa el RESULTADO, no cómo se armó el
+      // cálculo al crear la Obligación (si el monto ya traía el IVA o si se
+      // le sumó) -- ambos casos terminan en la misma Obligación con IVA
+      // incluido, así que se muestra igual.
       ivaInfoEl.textContent = c.exento_iva
         ? 'Exento de IVA'
-        : (c.incluye_iva === true ? 'Incluye IVA (' + pctIVADet + '%)' : c.incluye_iva === false ? 'No incluye IVA (se sumó ' + pctIVADet + '%)' : '—');
+        : 'IVA ' + pctIVADet + '%';
     }
 
     // IGTF -- solo se muestra si esta CxP fue creada con IGTF ya resuelto
