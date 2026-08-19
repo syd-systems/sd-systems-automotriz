@@ -355,6 +355,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
 
 async function abrirNuevoPago() {
   _pagoEditando = null;
+  window._tipoContribProveedorPago = null;
   window._aplicaIGTFPago = false;
   window._tasaIGTFPago = 0.03;
   await cargarTasaIVAGlobal(); // refresca IVA/IGTF vigente cada vez que se abre el formulario
@@ -1894,6 +1895,28 @@ async function onSelProveedorCxP() {
   } catch(e) { console.warn('onSelProveedorCxP:', e); }
 }
 
+// Determina si aplica IGTF para ESTA Obligación puntual: Contribuyente
+// Especial + Moneda seleccionada en USD. Antes se decidía con
+// moneda_facturacion (fija en la ficha del Proveedor) y el campo Moneda
+// quedaba bloqueado -- ahora el campo es editable (el Usuario puede pagar
+// en una moneda distinta a la de facturación del Proveedor para esta
+// Obligación puntual) y el IGTF se reevalúa según lo que realmente esté
+// seleccionado. Mismo criterio y mismo patrón que Entradas
+// (_actualizarAplicaIGTFEntrada).
+async function _actualizarAplicaIGTFPago(monedaFieldId) {
+  const moneda = document.getElementById(monedaFieldId)?.value || '';
+  const tipoContrib = window._tipoContribProveedorPago || null;
+  const aplicaAhora = moneda === 'USD' && tipoContrib === 'ESPECIAL';
+  if (aplicaAhora && !window._aplicaIGTFPago) {
+    window._tasaIGTFPago = 0.03;
+    try {
+      const trib = await api('param_tributos','GET',null,'?codigo=eq.IGTF&estado=eq.ACTIVO&order=fecha_registro.desc&limit=1&select=alicuota');
+      if (trib && trib[0]) window._tasaIGTFPago = parseFloat(trib[0].alicuota) / 100;
+    } catch(e) { console.warn('Error verificando tasa IGTF:', e); }
+  }
+  window._aplicaIGTFPago = aplicaAhora;
+}
+
 async function onSelProveedorPago() {
   const idProv     = parseInt(document.getElementById('pago-proveedor')?.value) || null;
   const bancoInfo  = document.getElementById('pago-banco-info');
@@ -1917,6 +1940,7 @@ async function onSelProveedorPago() {
   if (selCta) selCta.value = '';
   if (selMon) selMon.value = '';
   // IGTF -- reset al cambiar de Proveedor; se re-detecta abajo si corresponde
+  window._tipoContribProveedorPago = null;
   window._aplicaIGTFPago = false;
   window._tasaIGTFPago = 0.03;
 
@@ -1933,20 +1957,21 @@ async function onSelProveedorPago() {
   }
   if (!p) { if (manualInfo) manualInfo.style.display = ''; calcularTributosPago(); return; }
 
-  // IGTF -- mismo criterio que Nueva Entrada (onCambiarProveedorEntrada): si
-  // el Proveedor factura en USD y es Contribuyente Especial, se activa
-  // automático (no es una casilla manual). Se congela al guardar.
-  if (p.moneda_facturacion === 'USD' && p.tipo_contribuyente === 'ESPECIAL') {
-    window._aplicaIGTFPago = true;
-    try {
-      const trib = await api('param_tributos','GET',null,'?codigo=eq.IGTF&estado=eq.ACTIVO&order=fecha_registro.desc&limit=1&select=alicuota');
-      if (trib && trib[0]) window._tasaIGTFPago = parseFloat(trib[0].alicuota) / 100;
-    } catch(e) { console.warn('Error verificando tasa IGTF:', e); }
-  }
+  // IGTF -- el criterio real es Contribuyente Especial + Moneda de esta
+  // Obligación en USD (no la Moneda de Facturación fija del Proveedor). Se
+  // guarda el Tipo de Contribuyente aparte, y se reevalúa más abajo, ya con
+  // la Moneda propuesta por defecto -- el Usuario puede después cambiarla
+  // para esta Obligación puntual, y el IGTF se reevalúa en vivo (ver
+  // onCambiarMonedaPago).
+  window._tipoContribProveedorPago = p.tipo_contribuyente || null;
 
   // Categoría de Servicio -- de solo lectura, según la ficha del proveedor
   if (selCat) selCat.value = p.id_categoria || '';
-  if (selMon) { selMon.value = p.moneda_facturacion || 'USD'; onCambiarMonedaPago(); }
+  if (selMon) {
+    selMon.value = p.moneda_facturacion || 'USD';
+    await _actualizarAplicaIGTFPago('pago-moneda');
+    onCambiarMonedaPago();
+  }
 
   // Cuenta de Gasto -- se autocompleta con la cuenta contable configurada
   // para esta Categoría de Servicio (Parámetros del Sistema), pero el select
@@ -2178,11 +2203,20 @@ async function editarCxPManual(id_cxp) {
     const claveElEdit = document.getElementById('pago-clave');
     if (claveElEdit) claveElEdit.value = '';
 
-    // Proveedor → Categoría y Moneda se autocompletan solas (ficha del proveedor)
+    // Proveedor → Categoría se autocompleta sola (ficha del proveedor).
+    // onSelProveedorPago() también propone una Moneda por defecto -- se
+    // vuelve a imponer la Moneda REAL ya guardada en esta Obligación justo
+    // después, para no perder lo que el Usuario haya elegido en su momento
+    // (puede ser distinta a la Moneda de Facturación actual del Proveedor).
     if (c.id_proveedor) {
       const selProv = document.getElementById('pago-proveedor');
       if (selProv) selProv.value = c.id_proveedor;
       if (typeof onSelProveedorPago === 'function') await onSelProveedorPago();
+      if (modoEl && c.moneda_pago) {
+        modoEl.value = c.moneda_pago;
+        await _actualizarAplicaIGTFPago('pago-moneda');
+        await onCambiarMonedaPago();
+      }
     }
 
     // Preseleccionar cuenta de gasto
@@ -2216,12 +2250,13 @@ async function editarCxPManual(id_cxp) {
 }
 
 
-function onCambiarMonedaPago() {
+async function onCambiarMonedaPago() {
   const moneda = document.getElementById('pago-moneda')?.value || '';
   const cont = document.getElementById('pago-tasa-cont-nuevo');
   if (cont) cont.style.display = moneda ? '' : 'none';
   const lbl = document.getElementById('pago-label-moneda-calc');
   if (lbl) lbl.textContent = moneda === 'VES' ? 'Monto en USD' : 'Monto en VES';
+  await _actualizarAplicaIGTFPago('pago-moneda');
   onCambiarMontoPago();
 }
 
