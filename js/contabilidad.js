@@ -1086,11 +1086,18 @@ async function contAbrirPagoCxc(id_cxc) {
         metodos = (metodos || []).filter(function(m) {
           return m.codigo === 'USD' && (m.tipo_canal === 'EFECTIVO' || m.tipo_canal === 'TRANSFERENCIA');
         });
+      } else {
+        // Sin IGTF aplicado en la Factura -- no se puede cobrar en USD (eso
+        // exigiría IGTF, que no se calculó al emitirla). Solo métodos que
+        // NO sean en USD.
+        metodos = (metodos || []).filter(function(m) {
+          return m.codigo !== 'USD';
+        });
       }
       if (!metodos || !metodos.length) {
         selMetodo.innerHTML = facturaConIGTF
           ? '<option value="">⚠ Esta Factura tiene IGTF aplicado y requiere Efectivo o Transferencia en USD — configure el método en Parámetros</option>'
-          : '<option value="">⚠ Sin métodos de cobro configurados — configure uno en Parámetros</option>';
+          : '<option value="">⚠ Esta Factura no tiene IGTF aplicado y no admite cobro en USD — configure un método en Bs en Parámetros</option>';
       } else {
         selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
           + metodos.map(function(m) {
@@ -1103,7 +1110,12 @@ async function contAbrirPagoCxc(id_cxc) {
     }
   }
   const igtfNotaEl = document.getElementById('cont-pago-cxc-igtf-nota');
-  if (igtfNotaEl) igtfNotaEl.style.display = facturaConIGTF ? '' : 'none';
+  if (igtfNotaEl) {
+    igtfNotaEl.style.display = '';
+    igtfNotaEl.textContent = facturaConIGTF
+      ? 'Esta Factura tiene IGTF aplicado — el pago debe ser en Efectivo o Transferencia en USD.'
+      : 'Esta Factura no tiene IGTF aplicado — no se puede cobrar en USD, solo en Bs.';
+  }
 
   const infoEl = document.getElementById('cont-pago-cxc-tasa-info');
   if (infoEl) {
