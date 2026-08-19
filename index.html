@@ -1356,17 +1356,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260814296"></script>
-<script src="js/parametros.js?v=20260814296"></script>
-<script src="js/empresas.js?v=20260814296"></script>
-<script src="js/ingresos.js?v=20260814296"></script>
-<script src="js/inventario.js?v=20260814296"></script>
-<script src="js/proveedores.js?v=20260814296"></script>
-<script src="js/contabilidad.js?v=20260814296"></script>
-<script src="js/egresos.js?v=20260814296"></script>
-<script src="js/vehiculos.js?v=20260814296"></script>
-<script src="js/catalogo.js?v=20260814296"></script>
-<script src="js/ordenes.js?v=20260814296"></script>
+<script src="js/core.js?v=20260814297"></script>
+<script src="js/parametros.js?v=20260814297"></script>
+<script src="js/empresas.js?v=20260814297"></script>
+<script src="js/ingresos.js?v=20260814297"></script>
+<script src="js/inventario.js?v=20260814297"></script>
+<script src="js/proveedores.js?v=20260814297"></script>
+<script src="js/contabilidad.js?v=20260814297"></script>
+<script src="js/egresos.js?v=20260814297"></script>
+<script src="js/vehiculos.js?v=20260814297"></script>
+<script src="js/catalogo.js?v=20260814297"></script>
+<script src="js/ordenes.js?v=20260814297"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4401,13 +4401,13 @@
       <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
 
         <div class="form-campo form-full">
-          <label>Proveedor *</label>
+          <label>Proveedor</label>
           <select id="pago-proveedor" onchange="onSelProveedorPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar —</option>
           </select>
         </div>
         <div class="form-campo">
-          <label>Categoría de Servicio *</label>
+          <label>Categoría de Servicio</label>
           <select id="pago-categoria-prov" disabled style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar —</option>
           </select>
@@ -4420,15 +4420,15 @@
           </select>
         </div>
         <div class="form-campo form-full">
-          <label>Concepto *</label>
+          <label>Concepto</label>
           <input type="text" id="pago-descripcion" placeholder="Concepto del pago" style="font-size:13px">
         </div>
         <div class="form-campo">
-          <label>Monto *</label>
+          <label>Monto</label>
           <input type="text" id="pago-monto" inputmode="decimal" style="font-family:var(--font-mono);font-size:15px;font-weight:600" placeholder="0,00" oninput="onCambiarMontoPago()" onblur="if(this.value){var v=parseFloat(this.value.replace(/\./g,'').replace(',','.'));if(!isNaN(v)){var p=v.toFixed(2).split('.');this.value=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.')+','+p[1];}}onCambiarMontoPago();">
         </div>
         <div class="form-campo">
-          <label>Moneda *</label>
+          <label>Moneda</label>
           <select id="pago-moneda" disabled onchange="onCambiarMonedaPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar —</option>
             <option value="VES">VES — Bolívares</option>
@@ -4453,30 +4453,12 @@
             </div>
           </div>
         </div>
-        <div class="form-campo form-full">
-          <label>Observaciones</label>
-          <textarea id="pago-observaciones" rows="2" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;width:100%"></textarea>
-        </div>
-
-        <!-- Modalidad de Pago + Fecha de Pago (solo Contado) -->
-        <div class="form-campo">
-          <label>Modalidad de Pago *</label>
-          <select id="pago-modalidad" onchange="onCambioModalidadPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccione pago —</option>
-            <option value="CONTADO">Contado</option>
-            <option value="CREDITO">Crédito</option>
-          </select>
-        </div>
-        <div class="form-campo" id="pago-vencimiento-cont" style="display:none">
-          <label>Fecha de Pago *</label>
-          <input type="date" id="pago-vencimiento" onchange="onCambiarFechaPagoContado()">
-        </div>
 
         <!-- Tributos -->
         <div class="form-campo form-full" style="background:rgba(255,107,0,0.05);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:12px 14px">
           <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">🧾 Tributos</div>
           <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
-            <label style="font-size:13px;font-weight:500;margin:0">¿Gasto Exento de IVA? *</label>
+            <label style="font-size:13px;font-weight:500;margin:0">¿Gasto Exento de IVA?</label>
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
               <input type="radio" name="pago-exento-iva" id="pago-exento-iva-si" value="SI" onchange="onCambioExentoIVAPago()"> Sí
             </label>
@@ -4517,17 +4499,31 @@
           </div>
         </div>
 
+        <!-- Modalidad de Pago + Fecha de Pago (solo Contado) -->
+        <div class="form-campo">
+          <label>Modalidad de Pago</label>
+          <select id="pago-modalidad" onchange="onCambioModalidadPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccione pago —</option>
+            <option value="CONTADO">Contado</option>
+            <option value="CREDITO">Crédito</option>
+          </select>
+        </div>
+        <div class="form-campo" id="pago-vencimiento-cont" style="display:none">
+          <label>Fecha de Pago</label>
+          <input type="date" id="pago-vencimiento" onchange="onCambiarFechaPagoContado()">
+        </div>
+
         <!-- Condiciones de Crédito -->
         <div id="pago-credito-cont" style="display:none;grid-column:1/-1">
           <div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-top:4px">
             <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">📅 Condiciones de Crédito</div>
             <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;gap:12px">
               <div class="form-campo" style="margin:0">
-                <label style="font-size:12px">N° de Cuotas *</label>
+                <label style="font-size:12px">N° de Cuotas</label>
                 <input type="number" id="pago-cuotas-num" min="1" max="60" placeholder="Ej: 3" oninput="document.getElementById('pago-cuotas-monto').value='';calcularCuotasPago()" style="font-family:var(--font-mono)">
               </div>
               <div class="form-campo" style="margin:0">
-                <label style="font-size:12px">Fecha Primera Cuota *</label>
+                <label style="font-size:12px">Fecha Primera Cuota</label>
                 <input type="date" id="pago-cuotas-fecha-inicio" oninput="calcularCuotasPago()">
               </div>
               <div class="form-campo" style="margin:0">
@@ -4543,6 +4539,12 @@
           </div>
         </div>
 
+        <!-- Observaciones -->
+        <div class="form-campo form-full">
+          <label>Observaciones</label>
+          <textarea id="pago-observaciones" rows="2" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;width:100%"></textarea>
+        </div>
+
         <!-- Confirmación de Usuario -->
         <div class="form-campo form-full" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
           <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>
@@ -4550,7 +4552,7 @@
             <div style="font-size:13px;color:var(--texto)">Usuario: <span id="pago-usuario-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
             <div style="font-size:11px;color:var(--suave)" id="pago-usuario-area">—</div>
           </div>
-          <label style="font-size:12px">Contraseña *</label>
+          <label style="font-size:12px">Contraseña</label>
           <input type="password" id="pago-clave" placeholder="Ingrese su contraseña para confirmar" autocomplete="new-password" style="width:100%">
           <div style="font-size:11px;color:var(--suave);margin-top:4px">Confirme con su contraseña de acceso al Sistema.</div>
         </div>
