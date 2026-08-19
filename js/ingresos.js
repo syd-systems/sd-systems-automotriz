@@ -354,11 +354,13 @@ function actualizarVisibilidadMonedaFactura() {
 function _aplicarReglaIGTFFactura() {
   const selEm = document.getElementById('fac-emisor');
   const opt = selEm?.selectedOptions?.[0];
-  const esEspecial = opt?.dataset?.tipoContrib === 'ESPECIAL';
+  const tipoContrib = opt?.dataset?.tipoContrib || '';
+  const esEspecial = tipoContrib === 'ESPECIAL';
   const esVES = (document.getElementById('fac-moneda')?.value || 'VES') === 'VES';
   const igtfChk  = document.getElementById('fac-aplica-igtf');
   const igtfNota = document.getElementById('fac-igtf-obligatorio-nota');
   if (!igtfChk) return;
+  const tipoLabelIGTF = { ORDINARIO: 'Contribuyente Ordinario', FORMAL: 'Contribuyente Formal' };
   if (esVES) {
     igtfChk.checked = false;
     igtfChk.disabled = false;
@@ -370,7 +372,10 @@ function _aplicarReglaIGTFFactura() {
   } else {
     igtfChk.checked = false;
     igtfChk.disabled = true;
-    if (igtfNota) { igtfNota.style.display = ''; igtfNota.textContent = 'No aplica — la Empresa no es Contribuyente Especial.'; }
+    if (igtfNota) {
+      igtfNota.style.display = '';
+      igtfNota.textContent = 'Por ser la Empresa un ' + (tipoLabelIGTF[tipoContrib] || 'Contribuyente no Especial') + ' no cobra IGTF.';
+    }
   }
 }
 
