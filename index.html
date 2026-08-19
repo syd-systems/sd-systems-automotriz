@@ -1356,17 +1356,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260814310"></script>
-<script src="js/parametros.js?v=20260814310"></script>
-<script src="js/empresas.js?v=20260814310"></script>
-<script src="js/ingresos.js?v=20260814310"></script>
-<script src="js/inventario.js?v=20260814310"></script>
-<script src="js/proveedores.js?v=20260814310"></script>
-<script src="js/contabilidad.js?v=20260814310"></script>
-<script src="js/egresos.js?v=20260814310"></script>
-<script src="js/vehiculos.js?v=20260814310"></script>
-<script src="js/catalogo.js?v=20260814310"></script>
-<script src="js/ordenes.js?v=20260814310"></script>
+<script src="js/core.js?v=20260814311"></script>
+<script src="js/parametros.js?v=20260814311"></script>
+<script src="js/empresas.js?v=20260814311"></script>
+<script src="js/ingresos.js?v=20260814311"></script>
+<script src="js/inventario.js?v=20260814311"></script>
+<script src="js/proveedores.js?v=20260814311"></script>
+<script src="js/contabilidad.js?v=20260814311"></script>
+<script src="js/egresos.js?v=20260814311"></script>
+<script src="js/vehiculos.js?v=20260814311"></script>
+<script src="js/catalogo.js?v=20260814311"></script>
+<script src="js/ordenes.js?v=20260814311"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2648,6 +2648,16 @@
             <option value="USD">USD — Dólar</option>
             <option value="VES">VES — Bolívar</option>
           </select>
+        </div>
+        <div class="form-campo">
+          <label>Moneda de Pago</label>
+          <select id="es-moneda-pago" onchange="_actualizarAplicaIGTFEntrada('es-moneda-pago').then(calcularTributosEntrada)"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccione moneda —</option>
+            <option value="USD">USD — Dólar</option>
+            <option value="VES">VES — Bolívar</option>
+          </select>
+          <div style="font-size:10px;color:var(--suave);margin-top:4px">En qué moneda se le va a pagar realmente al Proveedor — puede ser distinta a la de Negociación</div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;grid-column:1/-1">
         <div class="form-campo">
@@ -4770,6 +4780,16 @@
             <option value="USD">USD — Dólar</option>
             <option value="VES">VES — Bolívar</option>
           </select>
+        </div>
+        <div class="form-campo" id="edit-mov-moneda-pago-cont">
+          <label>Moneda de Pago</label>
+          <select id="edit-mov-moneda-pago" onchange="_actualizarAplicaIGTFEntrada('edit-mov-moneda-pago').then(calcularTributosEdit)"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccione moneda —</option>
+            <option value="USD">USD — Dólar</option>
+            <option value="VES">VES — Bolívar</option>
+          </select>
+          <div style="font-size:10px;color:var(--suave);margin-top:4px">En qué moneda se le va a pagar realmente al Proveedor</div>
         </div>
         <div class="form-campo">
           <label>Cantidad <span id="edit-mov-label-unidad" style="font-size:10px;color:var(--suave);font-weight:400"></span></label>
