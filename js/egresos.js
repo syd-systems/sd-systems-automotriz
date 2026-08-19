@@ -1453,17 +1453,34 @@ async function contGuardarPagoCxp() {
     const tasaDia   = parseFloat(c.tasa_bcv || _tasaVigente || 1);
     const fecha     = new Date().toISOString().split('T')[0]; // fecha real en que se ejecuta el pago
 
-    // Método de Pago -- se resuelve solo, según lo que permite la ficha
-    // del proveedor (mismo criterio que Ejecutar Pago); si la ficha no
-    // tiene nada configurado, cae a un método activo genérico para esa
-    // moneda.
-    let metodo = (c.proveedores && Array.isArray(c.proveedores.metodos_pago_tipos) && c.proveedores.metodos_pago_tipos[0]) || '';
-    if (!metodo) {
-      try {
-        const metRows = await api('param_metodos_pago','GET',null,'?codigo=eq.'+moneda+'&estado=eq.ACTIVO&order=nombre.asc&limit=1&select=tipo_canal');
-        metodo = metRows?.[0]?.tipo_canal || 'TRANSFERENCIA';
-      } catch(eMet) { metodo = 'TRANSFERENCIA'; }
-    }
+    // Método de Pago Y Cuenta Contable real (Efectivo -> Caja,
+    // Transferencia/Afiliación -> Banco) -- según lo que permite la ficha
+    // del proveedor + la Moneda, mismo criterio y misma tabla que usa
+    // Ejecutar Pago (_resolverMetodoPagoEjecucion). Antes esta ruta
+    // ("Registrar Pago" rápido desde la Ficha) ignoraba la Cuenta y siempre
+    // usaba Banco USD/VES fijo, sin importar si el Proveedor cobra en
+    // Efectivo. Se guarda el id_metodo (numérico) en metodo_pago -- mismo
+    // formato que usa Ejecutar Pago, para que la Ficha lo resuelva igual.
+    let tipoMetodo = (c.proveedores && Array.isArray(c.proveedores.metodos_pago_tipos) && c.proveedores.metodos_pago_tipos[0]) || '';
+    let idMetodoResuelto = null;
+    let idCuentaDestino  = null;
+    try {
+      let metRows = tipoMetodo
+        ? await api('param_metodos_pago','GET',null,'?codigo=eq.'+moneda+'&tipo_canal=eq.'+tipoMetodo+'&estado=eq.ACTIVO&limit=1&select=id_metodo,id_cuenta_contable,tipo_canal')
+        : null;
+      if (!metRows || !metRows[0]) {
+        // Sin Método configurado en la ficha -- cae a un método activo
+        // genérico para esa Moneda (mismo respaldo de siempre)
+        metRows = await api('param_metodos_pago','GET',null,'?codigo=eq.'+moneda+'&estado=eq.ACTIVO&order=nombre.asc&limit=1&select=id_metodo,id_cuenta_contable,tipo_canal');
+      }
+      if (metRows && metRows[0]) {
+        idMetodoResuelto = metRows[0].id_metodo;
+        idCuentaDestino  = metRows[0].id_cuenta_contable;
+        tipoMetodo       = metRows[0].tipo_canal || tipoMetodo;
+      }
+    } catch(eMet) {}
+    if (!tipoMetodo) tipoMetodo = 'TRANSFERENCIA';
+    const metodo = tipoMetodo;
 
     const nuevoPagado = parseFloat((parseFloat(c.pagado_usd||0) + montoUSD).toFixed(4));
     const nuevoSaldo  = parseFloat(Math.max(0, parseFloat(c.monto_usd||0) - nuevoPagado).toFixed(4));
@@ -1487,7 +1504,7 @@ async function contGuardarPagoCxp() {
       saldo_usd:       nuevoSaldo,
       referencia:      ref,
       fecha_pago:      fecha,
-      metodo_pago:     metodo,
+      metodo_pago:     idMetodoResuelto,
       pagado_por:      sesionActual?.correo_usuario || null
     };
     if (urlComprobante) patchData.url_comprobante = urlComprobante;
@@ -1501,15 +1518,22 @@ async function contGuardarPagoCxp() {
       const tasaCompra = parseFloat(c.tasa_bcv_compra || c.tasa_bcv || tasaPago);
 
       const codigosArr = moneda === 'USD' ? ['2.1.01.001','1.1.01.004','6.2.01.003','4.2.01.003','6.1.04.003','2.1.03.004'] : ['2.1.01.001','1.1.01.003'];
-      const cuentasAst = (await obtenerCuentasContables()).filter(function(c){ return codigosArr.includes(c.codigo); });
+      const cuentasAstFull = await obtenerCuentasContables();
+      const cuentasAst = cuentasAstFull.filter(function(c){ return codigosArr.includes(c.codigo); });
       const getCta = function(cod){ return cuentasAst.find(function(x){ return x.codigo===cod; }); };
       const cCxP      = getCta('2.1.01.001');
-      const cBanVES   = getCta('1.1.01.003');
-      const cBanUSD   = getCta('1.1.01.004');
       const cDifGasto = getCta('6.2.01.003');
       const cDifIngr  = getCta('4.2.01.003');
       const cIGTF     = getCta('6.1.04.003');
       const cIGTFPagar = getCta('2.1.03.004');
+      // Cuenta de Caja/Banco real, resuelta arriba según el Método de Pago
+      // del Proveedor -- si por algún motivo no se pudo resolver (Método
+      // sin Cuenta Contable configurada), cae a Banco USD/VES fijo como
+      // respaldo, igual que el comportamiento de siempre.
+      const cDestino = (idCuentaDestino && cuentasAstFull.find(function(x){ return x.id_cuenta === idCuentaDestino; }))
+        || (moneda === 'VES' ? getCta('1.1.01.003') : getCta('1.1.01.004'));
+      const cBanVES = moneda === 'VES' ? cDestino : getCta('1.1.01.003');
+      const cBanUSD = moneda === 'USD' ? cDestino : getCta('1.1.01.004');
 
       // El asiento de PAGO siempre debita CxP Proveedores (cierra el
       // pasivo) -- la cuenta de Gasto ya se debitó en el asiento de
@@ -2987,7 +3011,15 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     if (ctaGastoEl) ctaGastoEl.textContent = c.cuenta_gasto ? (c.cuenta_gasto.codigo + ' — ' + c.cuenta_gasto.nombre) : '—';
 
     const modalidadEl = document.getElementById('cont-pago-cxp-modalidad');
-    if (modalidadEl) modalidadEl.textContent = c.esquema_pago === 'CREDITO' ? 'Crédito' : (c.esquema_pago === 'CONTADO' ? 'Contado' : '—');
+    if (modalidadEl) {
+      const esCreditoModal = c.esquema_pago === 'CREDITO' || /-C\d+(?:-\d+)?$/.test(c.numero_doc || '');
+      if (esCreditoModal) {
+        const mCuotaModal = (c.numero_doc || '').match(/-C(\d+)(?:-\d+)?$/);
+        modalidadEl.textContent = 'Crédito' + (mCuotaModal ? ' — Cuota ' + mCuotaModal[1] : '');
+      } else {
+        modalidadEl.textContent = c.esquema_pago === 'CONTADO' ? 'Contado' : '—';
+      }
+    }
 
     const metodoLabels = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria' };
     const metodoDetEl = document.getElementById('cont-pago-cxp-metodo');
@@ -3134,16 +3166,25 @@ async function verDetalleCxP(id_cxp, modoInicial) {
         else if (c.via_pago === 'PM') { detViaCont.style.display = ''; detVia.textContent = '📱 Pago Móvil'; }
         else { detViaCont.style.display = 'none'; }
       }
-      // Forma de Pago -- Contado/Crédito; si es Crédito, indicar la cuota
-      // (numero de cuota va embebido en numero_doc como '-C<N>')
+      // Forma de Pago -- el método REAL (Efectivo/Transferencia/Afiliación
+      // Bancaria) según quedó registrado al pagar. Antes mostraba
+      // Contado/Crédito, que es la Modalidad -- dato que ya se muestra
+      // arriba, en la sección "Datos de la Obligación".
       const detForma = document.getElementById('cont-pago-det-forma');
       if (detForma) {
-        const esCreditoDet = c.esquema_pago === 'CREDITO' || /-C\d+(?:-\d+)?$/.test(c.numero_doc || '');
-        if (esCreditoDet) {
-          const mCuotaDet = (c.numero_doc || '').match(/-C(\d+)(?:-\d+)?$/);
-          detForma.textContent = 'Crédito' + (mCuotaDet ? ' — Cuota ' + mCuotaDet[1] : '');
+        const metodoPagoLabels = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria' };
+        const metodoPagoCrudo = c.metodo_pago || '';
+        if (metodoPagoLabels[metodoPagoCrudo]) {
+          detForma.textContent = metodoPagoLabels[metodoPagoCrudo];
+        } else if (/^\d+$/.test(String(metodoPagoCrudo))) {
+          // Guardado como id_metodo numérico (ruta "Ejecutar Pago") --
+          // resolver contra param_metodos_pago para obtener el tipo_canal.
+          try {
+            const mRowsForma = await api('param_metodos_pago','GET',null,'?id_metodo=eq.'+metodoPagoCrudo+'&select=tipo_canal&limit=1');
+            detForma.textContent = metodoPagoLabels[mRowsForma?.[0]?.tipo_canal] || '—';
+          } catch(eForma) { detForma.textContent = '—'; }
         } else {
-          detForma.textContent = 'Contado';
+          detForma.textContent = '—';
         }
       }
       // Comprobante
