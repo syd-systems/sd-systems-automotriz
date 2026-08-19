@@ -2267,6 +2267,9 @@ function calcularTributosPago() {
   // USD/EUR, se convierte Base y Total, y el IVA en Bs se deriva como resto
   // (Total-Base) para que los tres siempre cuadren exacto.
   let baseVes, ivaVes, totalVes;
+  // Declarada aquí (no dentro del else) porque el bloque de IGTF más abajo
+  // también la necesita, sin importar si moneda === 'VES' o no.
+  const tasaBcvVigentePago = window._pagoTasaUSD || _tasaVigente || 1;
   if (moneda === 'VES') {
     if (exento) { baseVes = montoNativo; ivaVes = 0; totalVes = montoNativo; }
     else if (incluye) {
@@ -2279,9 +2282,8 @@ function calcularTributosPago() {
       totalVes = parseFloat((baseVes+ivaVes).toFixed(2));
     }
   } else {
-    const tasa = window._pagoTasaUSD || _tasaVigente || 1;
-    baseVes  = parseFloat((base*tasa).toFixed(2));
-    totalVes = parseFloat((total*tasa).toFixed(2));
+    baseVes  = parseFloat((base*tasaBcvVigentePago).toFixed(2));
+    totalVes = parseFloat((total*tasaBcvVigentePago).toFixed(2));
     ivaVes   = parseFloat((totalVes-baseVes).toFixed(2));
   }
   document.getElementById('pago-trib-base-ves').textContent  = 'Bs ' + baseVes.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2,maximumFractionDigits:2});
@@ -2306,7 +2308,7 @@ function calcularTributosPago() {
   }
   const tasaIGTFPagoVal = window._tasaIGTFPago || 0.03;
   const igtfUSDPago = parseFloat((total * tasaIGTFPagoVal).toFixed(2));
-  const igtfBsPago = tasa > 0 ? parseFloat((igtfUSDPago * tasa).toFixed(2)) : 0;
+  const igtfBsPago = tasaBcvVigentePago > 0 ? parseFloat((igtfUSDPago * tasaBcvVigentePago).toFixed(2)) : 0;
   if (lblTotalPago) lblTotalPago.textContent = 'Sub-Total Facturado';
   if (igtfPctSpanPago) igtfPctSpanPago.textContent = (tasaIGTFPagoVal*100).toFixed(0);
   const igtfEnMonedaPago = moneda === 'VES' ? igtfBsPago : igtfUSDPago;
@@ -2314,16 +2316,16 @@ function calcularTributosPago() {
   if (igtfRowPago) { igtfRowPago.style.display = ''; igtfRowPago.textContent = (moneda === 'VES' ? 'Bs.' : '$') + ' ' + fmtBs(igtfEnMonedaPago); }
   if (igtfRowVesPago) {
     igtfRowVesPago.style.display = '';
-    igtfRowVesPago.textContent = tasa > 0 && moneda !== 'VES' ? 'Bs. ' + fmtBs(igtfBsPago)
-      : (moneda === 'VES' && tasa > 0 ? '$ ' + fmtBs(igtfUSDPago) : '—');
+    igtfRowVesPago.textContent = tasaBcvVigentePago > 0 && moneda !== 'VES' ? 'Bs. ' + fmtBs(igtfBsPago)
+      : (moneda === 'VES' && tasaBcvVigentePago > 0 ? '$ ' + fmtBs(igtfUSDPago) : '—');
   }
   const totalConIGTFNativo = totalVes && moneda === 'VES' ? totalVes + igtfBsPago : total + igtfUSDPago;
   if (totalFinalLabelPago) totalFinalLabelPago.style.display = '';
   if (totalFinalPago) { totalFinalPago.style.display = ''; totalFinalPago.textContent = (moneda === 'VES' ? 'Bs.' : '$') + ' ' + fmtBs(totalConIGTFNativo); }
   if (totalFinalVesPago) {
     totalFinalVesPago.style.display = '';
-    if (tasa > 0 && moneda !== 'VES') totalFinalVesPago.textContent = 'Bs. ' + fmtBs((total + igtfUSDPago) * tasa);
-    else if (moneda === 'VES' && tasa > 0) totalFinalVesPago.textContent = '$ ' + fmtBs((totalVes + igtfBsPago) / tasa);
+    if (tasaBcvVigentePago > 0 && moneda !== 'VES') totalFinalVesPago.textContent = 'Bs. ' + fmtBs((total + igtfUSDPago) * tasaBcvVigentePago);
+    else if (moneda === 'VES' && tasaBcvVigentePago > 0) totalFinalVesPago.textContent = '$ ' + fmtBs((totalVes + igtfBsPago) / tasaBcvVigentePago);
     else totalFinalVesPago.textContent = '—';
   }
 }
