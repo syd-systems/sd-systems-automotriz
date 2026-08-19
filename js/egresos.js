@@ -1576,6 +1576,13 @@ async function contGuardarPagoCxp() {
           const difCambio      = tasaPago === tasaCompra ? 0 : parseFloat((montoVESPago - montoVESCompra).toFixed(2));
           const montoIGTF_USD  = parseFloat((montoUSD * pctIGTF).toFixed(2));
           const montoIGTF_VES  = parseFloat((montoIGTF_USD * tasaPago).toFixed(2));
+          // IGTF -- si esta CxP ya trae aplica_igtf resuelto (no NULL), el
+          // IGTF ya se reconoció en el asiento de creación (GASTO_MANUAL) y
+          // ya está horneado en monto_usd/saldo_usd -- agregarlo otra vez
+          // aquí lo duplicaría. Solo las filas viejas (aplica_igtf NULL,
+          // creadas antes de esta corrección) siguen calculándolo en el
+          // momento del pago, como siempre.
+          const igtfYaResueltoReg = c.aplica_igtf !== null && c.aplica_igtf !== undefined;
 
           if (cDebito) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDebito.id_cuenta, orden:orden++,
             descripcion:descCxP,
@@ -1591,12 +1598,14 @@ async function contGuardarPagoCxp() {
               debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:Math.abs(difCambio), tasa_bcv:tasaPago });
           }
 
-          if (cIGTF) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cIGTF.id_cuenta, orden:orden++,
-            descripcion:'IGTF '+(pctIGTF*100).toFixed(0)+'% sobre pago en divisas',
-            debe_usd:0, haber_usd:0, debe_ves:montoIGTF_VES, haber_ves:0, tasa_bcv:tasaPago });
-          if (cIGTFPagar) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cIGTFPagar.id_cuenta, orden:orden++,
-            descripcion:'IGTF por Pagar (enterar primeros 12 días del mes)',
-            debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoIGTF_VES, tasa_bcv:tasaPago });
+          if (!igtfYaResueltoReg) {
+            if (cIGTF) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cIGTF.id_cuenta, orden:orden++,
+              descripcion:'IGTF '+(pctIGTF*100).toFixed(0)+'% sobre pago en divisas',
+              debe_usd:0, haber_usd:0, debe_ves:montoIGTF_VES, haber_ves:0, tasa_bcv:tasaPago });
+            if (cIGTFPagar) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cIGTFPagar.id_cuenta, orden:orden++,
+              descripcion:'IGTF por Pagar (enterar primeros 12 días del mes)',
+              debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoIGTF_VES, tasa_bcv:tasaPago });
+          }
 
           if (cBanUSD) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cBanUSD.id_cuenta, orden:orden++,
             descripcion:descBanco,
