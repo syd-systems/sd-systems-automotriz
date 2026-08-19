@@ -2605,6 +2605,7 @@ async function guardarPago() {
               concepto: descripcion, observaciones: observaciones || null, exento_iva: exento, incluye_iva: exento ? null : (incluyeIVAVal === 'SI'),
               esquema_pago: 'CREDITO',
               aplica_igtf: aplicaIGTFFinal, monto_igtf: igtfCuotaConv || null, tasa_igtf: aplicaIGTFFinal ? tasaIGTFFinal : null,
+              tasa_iva: exento ? null : tasaIVAFinal,
               id_usuario: sesionActual?.correo_usuario || null
             });
             if (cxpCuotaConv && cxpCuotaConv[0]) {
@@ -2626,6 +2627,7 @@ async function guardarPago() {
             exento_iva: exento, incluye_iva: exento ? null : (incluyeIVAVal === 'SI'),
             esquema_pago: 'CONTADO',
             aplica_igtf: aplicaIGTFFinal, monto_igtf: montoIGTFFinal || null, tasa_igtf: aplicaIGTFFinal ? tasaIGTFFinal : null,
+            tasa_iva: exento ? null : tasaIVAFinal,
             id_usuario: sesionActual?.correo_usuario || null
           });
           if (cxpContadoConv && cxpContadoConv[0]) {
@@ -2648,6 +2650,7 @@ async function guardarPago() {
         aplica_igtf:       aplicaIGTFFinal,
         monto_igtf:        montoIGTFFinal || null,
         tasa_igtf:         aplicaIGTFFinal ? tasaIGTFFinal : null,
+        tasa_iva:          exento ? null : tasaIVAFinal,
         incluye_iva:       exento ? null : (incluyeIVAVal === 'SI'),
         // Monto tal como se escribió, SIN resolver -- separado del total ya
         // calculado (monto_usd/monto_ves). Así, al reabrir para editar, el
@@ -2794,6 +2797,7 @@ async function guardarPago() {
           aplica_igtf:       aplicaIGTFFinal,
           monto_igtf:        igtfCuota || null,
           tasa_igtf:         aplicaIGTFFinal ? tasaIGTFFinal : null,
+          tasa_iva:          exento ? null : tasaIVAFinal,
           id_usuario:        sesionActual?.correo_usuario || null
         });
         if (cxpCuota && cxpCuota[0]) {
@@ -2834,6 +2838,7 @@ async function guardarPago() {
         aplica_igtf:       aplicaIGTFFinal,
         monto_igtf:        montoIGTFFinal || null,
         tasa_igtf:         aplicaIGTFFinal ? tasaIGTFFinal : null,
+        tasa_iva:          exento ? null : tasaIVAFinal,
         id_usuario:        sesionActual?.correo_usuario || null
       });
       if (cxpContado && cxpContado[0]) {
@@ -2939,7 +2944,10 @@ async function verDetalleCxP(id_cxp, modoInicial) {
 
     const ivaInfoEl = document.getElementById('cont-pago-cxp-iva-info');
     if (ivaInfoEl) {
-      const pctIVADet = Math.round(tasaIVAActual()*100);
+      // Usa la tasa REAL congelada al crear esta Obligación (tasa_iva) --
+      // no la de hoy. Solo cae a la tasa de hoy en filas viejas creadas
+      // antes de que existiera esta columna (tasa_iva NULL).
+      const pctIVADet = Math.round((c.tasa_iva != null ? parseFloat(c.tasa_iva) : tasaIVAActual())*100);
       // Desde la Ficha de Detalle importa el RESULTADO, no cómo se armó el
       // cálculo al crear la Obligación (si el monto ya traía el IVA o si se
       // le sumó) -- ambos casos terminan en la misma Obligación con IVA
