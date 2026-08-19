@@ -103,16 +103,39 @@ async function renderFacturas() {
       + Object.entries(ESTADOS_FAC).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('')
       + '</select>'
       + '<input type="text" id="fac-buscar" placeholder="Buscar N° factura, cliente..." oninput="buscarFac(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
-      + (puedo('FACTURAS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevaFactura()">+ Nueva Factura</button>' : '')
+      + (puedo('FACTURAS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevaFactura()">+ Nueva Factura<span id="badge-os-cerradas-fac"></span></button>' : '')
       + '</div></div>'
       + '<div class="tabla-container"><table id="fac-tabla"><thead><tr>'
       + '<th>N° / Fecha</th><th>Empresa</th><th>Cliente</th><th>Estado</th><th>Total</th><th>Acción</th>'
       + '</tr></thead><tbody id="fac-tbody">'
       + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">No hay facturas registradas</td></tr>')
       + '</tbody></table></div></div>';
+    // En segundo plano, sin bloquear el render principal -- revisa si hay
+    // Órdenes de Servicio Cerradas sin Factura asociada, para hacer titilar
+    // el botón "+ Nueva Factura" (mismo patrón que Entradas Rechazadas).
+    revisarBadgeOSCerradas();
   } catch(err) {
     c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + err.message + '</div>';
   }
+}
+
+async function revisarBadgeOSCerradas() {
+  const badgeEl = document.getElementById('badge-os-cerradas-fac');
+  if (!badgeEl) return;
+  if (!puedo('FACTURAS','CREAR')) { badgeEl.innerHTML = ''; return; }
+  try {
+    // Mismo criterio EXACTO que cargarOSParaFactura(): OS en estado CERRADA
+    // que todavía no tienen una Factura activa (no ANULADA) asociada.
+    const os = await api('ordenes_servicio','GET',null,'?estado=eq.CERRADA&select=id_orden'+emisorQ());
+    if (!os || !os.length) { badgeEl.innerHTML = ''; return; }
+    const facturadas = await api('facturas','GET',null,
+      '?id_orden=not.is.null&estado=neq.ANULADA&select=id_orden'+emisorQ());
+    const idsFacturadas = new Set((facturadas||[]).map(function(f){ return f.id_orden; }));
+    const pendientes = os.filter(function(o){ return !idsFacturadas.has(o.id_orden); });
+    badgeEl.innerHTML = pendientes.length
+      ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fc8181;margin-left:6px;vertical-align:middle;animation:parpadeoAlerta 1.2s ease-in-out infinite" title="'+pendientes.length+' Orden(es) de Servicio Cerrada(s) sin facturar"></span>'
+      : '';
+  } catch(eBadgeOS) { console.warn('Error revisando badge de OS Cerradas sin facturar:', eBadgeOS); }
 }
 
 
