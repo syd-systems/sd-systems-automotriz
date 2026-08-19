@@ -3824,10 +3824,19 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
   if (!m) return;
 
   // IGTF -- arranca con lo que YA está guardado en esta Entrada (no se
-  // resetea a false), hasta que el Usuario cambie el Proveedor y se
-  // vuelva a evaluar fresco (ver onCambiarProveedorEdit).
+  // resetea a false). Se vuelve a evaluar fresco en cuanto el Usuario
+  // cambie el Proveedor (onCambiarProveedorEdit) o la Moneda
+  // (onCambiarMonedaEdit) -- para eso hace falta el Tipo de Contribuyente
+  // del Proveedor ya guardado, no solo el resultado congelado.
   window._aplicaIGTFEntrada = tipo === 'ENTRADA' && m.aplica_igtf === true;
   window._tasaIGTFEntrada = m.tasa_igtf ? parseFloat(m.tasa_igtf) : 0.03;
+  window._tipoContribProveedorEntrada = null;
+  if (tipo === 'ENTRADA' && m.id_proveedor) {
+    try {
+      const provRowsEdit = await api('proveedores','GET',null,'?id_proveedor=eq.'+m.id_proveedor+'&select=tipo_contribuyente');
+      window._tipoContribProveedorEntrada = (provRowsEdit && provRowsEdit[0]) ? (provRowsEdit[0].tipo_contribuyente || null) : null;
+    } catch(e) { console.warn('Error cargando Tipo de Contribuyente del Proveedor:', e); }
+  }
 
   // Cargar áreas y proveedores
   let areas = [], proveedores = [];
@@ -5356,6 +5365,7 @@ async function onCambiarMonedaEdit() {
   const lblUSD = document.getElementById('edit-mov-label-precio-usd');
   if (lblUSD) lblUSD.innerHTML = 'Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(' + (moneda === 'VES' ? 'USD' : 'VES') + ')</span>';
   await onCambiarFechaNegEdit();
+  await _actualizarAplicaIGTFEntrada('edit-mov-moneda');
   onCambiarPrecioEdit();
 }
 
@@ -5498,23 +5508,21 @@ function calcularTributosEdit() {
   actualizarIGTFEdit(total, moneda, tasa);
 }
 
-// Verifica si el Proveedor factura en USD y es Contribuyente Especial --
-// mismo criterio que Nueva Entrada (onCambiarProveedorEntrada). Se dispara
-// al CAMBIAR el Proveedor en la Ficha de Editar, que antes no refrescaba
-// el IGTF en absoluto.
+// Guarda el Tipo de Contribuyente del Proveedor y reevalúa si aplica IGTF
+// para la Moneda YA seleccionada en esta Entrada (mismo criterio que Nueva
+// Entrada / onCambiarProveedorEntrada). Se dispara al CAMBIAR el Proveedor
+// en la Ficha de Editar.
 async function onCambiarProveedorEdit() {
   const idProv = parseInt(document.getElementById('edit-mov-proveedor')?.value) || null;
+  window._tipoContribProveedorEntrada = null;
   window._aplicaIGTFEntrada = false;
   window._tasaIGTFEntrada = 0.03;
   if (idProv) {
     try {
-      const rows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProv+'&select=moneda_facturacion,tipo_contribuyente');
+      const rows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProv+'&select=tipo_contribuyente');
       const p = rows && rows[0] ? rows[0] : {};
-      if (p.moneda_facturacion === 'USD' && p.tipo_contribuyente === 'ESPECIAL') {
-        window._aplicaIGTFEntrada = true;
-        const trib = await api('param_tributos','GET',null,'?codigo=eq.IGTF&estado=eq.ACTIVO&order=fecha_registro.desc&limit=1&select=alicuota');
-        if (trib && trib[0]) window._tasaIGTFEntrada = parseFloat(trib[0].alicuota) / 100;
-      }
+      window._tipoContribProveedorEntrada = p.tipo_contribuyente || null;
+      await _actualizarAplicaIGTFEntrada('edit-mov-moneda');
     } catch(e) { console.warn('Error verificando IGTF del Proveedor:', e); }
   }
   calcularTributosEdit();
@@ -6571,6 +6579,28 @@ async function onCambiarFechaNegociacionEntrada() {
   await buscarTasaBCVNegociacion();
 }
 
+// Determina si aplica IGTF para ESTA transacción puntual: Contribuyente
+// Especial + Moneda de Pago/Negociación de ESTA Entrada en USD. Antes se
+// fijaba una sola vez al elegir el Proveedor, usando su Moneda de
+// Facturación (un dato FIJO de su ficha) -- si el Proveedor factura en USD
+// por defecto pero esta Entrada puntual se negocia en VES, el IGTF se
+// quedaba "pegado" en true, impidiendo después cancelar/cerrar la Entrada
+// en VES. Se llama cada vez que cambia el Proveedor O la Moneda.
+async function _actualizarAplicaIGTFEntrada(monedaFieldId) {
+  const moneda = document.getElementById(monedaFieldId)?.value || 'USD';
+  const tipoContrib = window._tipoContribProveedorEntrada || null;
+  const aplicaAhora = moneda === 'USD' && tipoContrib === 'ESPECIAL';
+  if (aplicaAhora && !window._aplicaIGTFEntrada) {
+    // Recién pasa a aplicar (antes no aplicaba) -- traer la tasa vigente
+    window._tasaIGTFEntrada = 0.03;
+    try {
+      const trib = await api('param_tributos','GET',null,'?codigo=eq.IGTF&estado=eq.ACTIVO&order=fecha_registro.desc&limit=1&select=alicuota');
+      if (trib && trib[0]) window._tasaIGTFEntrada = parseFloat(trib[0].alicuota) / 100;
+    } catch(e) { console.warn('Error verificando tasa IGTF:', e); }
+  }
+  window._aplicaIGTFEntrada = aplicaAhora;
+}
+
 async function onCambiarMonedaEntrada() {
   const moneda   = document.getElementById('es-moneda-compra')?.value || 'USD';
   // Actualizar labels de moneda
@@ -6590,6 +6620,7 @@ async function onCambiarMonedaEntrada() {
   if (lblUSD) lblUSD.innerHTML = 'Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(' + (esVES ? 'USD' : 'VES') + ')</span>';
 
   await buscarTasaBCVNegociacion();
+  await _actualizarAplicaIGTFEntrada('es-moneda-compra');
   onCambiarPrecioEntrada();
 }
 
@@ -6683,22 +6714,22 @@ function calcularTributosEntrada() {
   actualizarIGTFEntrada(total, moneda, tasa);
 }
 
-// Verifica si el Proveedor factura en USD y es Contribuyente Especial --
-// mismo criterio que ya usa Ejecutar Pago. Si aplica, el IGTF se calcula
+// Guarda el Tipo de Contribuyente del Proveedor y reevalúa si aplica IGTF
+// para la Moneda YA seleccionada en esta Entrada -- el criterio real es
+// Contribuyente Especial + Moneda de ESTA transacción en USD, no la Moneda
+// de Facturación (fija) del Proveedor. Si aplica, el IGTF se calcula
 // automáticamente (no es una casilla que decide el Usuario).
 async function onCambiarProveedorEntrada() {
   const idProv = parseInt(document.getElementById('es-proveedor')?.value) || null;
+  window._tipoContribProveedorEntrada = null;
   window._aplicaIGTFEntrada = false;
   window._tasaIGTFEntrada = 0.03;
   if (idProv) {
     try {
-      const rows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProv+'&select=moneda_facturacion,tipo_contribuyente');
+      const rows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProv+'&select=tipo_contribuyente');
       const p = rows && rows[0] ? rows[0] : {};
-      if (p.moneda_facturacion === 'USD' && p.tipo_contribuyente === 'ESPECIAL') {
-        window._aplicaIGTFEntrada = true;
-        const trib = await api('param_tributos','GET',null,'?codigo=eq.IGTF&estado=eq.ACTIVO&order=fecha_registro.desc&limit=1&select=alicuota');
-        if (trib && trib[0]) window._tasaIGTFEntrada = parseFloat(trib[0].alicuota) / 100;
-      }
+      window._tipoContribProveedorEntrada = p.tipo_contribuyente || null;
+      await _actualizarAplicaIGTFEntrada('es-moneda-compra');
     } catch(e) { console.warn('Error verificando IGTF del Proveedor:', e); }
   }
   calcularTributosEntrada();
