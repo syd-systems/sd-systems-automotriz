@@ -1028,6 +1028,19 @@ function contRenderResultadosHTML(saldos, hasta) {
 // ══════════════════════════════════════════════════════════════
 let _pagoCxcActualId = null; // id_cxc que se esta cobrando en el modal
 
+// Muestra el campo "Banco Origen" solo cuando el Método de Cobro elegido es
+// Transferencia (Efectivo, Afiliación, etc. no lo necesitan).
+function onCambiarMetodoCobroCxc() {
+  const selMetodoEl = document.getElementById('cont-pago-cxc-metodo');
+  const tipoCanal = selMetodoEl?.selectedOptions?.[0]?.dataset?.tipoCanal || '';
+  const cont = document.getElementById('cont-pago-cxc-banco-origen-cont');
+  if (cont) cont.style.display = (tipoCanal === 'TRANSFERENCIA') ? '' : 'none';
+  if (tipoCanal !== 'TRANSFERENCIA') {
+    const sel = document.getElementById('cont-pago-cxc-banco-origen');
+    if (sel) sel.value = '';
+  }
+}
+
 async function contAbrirPagoCxc(id_cxc) {
   const c = (contCxcCache || []).find(function(x) { return x.id_cxc === id_cxc; });
   if (!c) { alert('No se encontró la Cuenta por Cobrar.'); return; }
@@ -1068,6 +1081,21 @@ async function contAbrirPagoCxc(id_cxc) {
   const usuarioNombreEl = document.getElementById('cont-pago-cxc-usuario-nombre');
   if (usuarioNombreEl) usuarioNombreEl.textContent = sesionActual?.nombre || sesionActual?.correo_usuario || '—';
 
+  // Bancos disponibles para "Banco Origen" (solo aplica cuando el Método
+  // de Cobro elegido es Transferencia) -- misma tabla de Parámetros que ya
+  // usa Proveedores.
+  const selBancoOrigen = document.getElementById('cont-pago-cxc-banco-origen');
+  if (selBancoOrigen) {
+    try {
+      const bancos = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre');
+      selBancoOrigen.innerHTML = '<option value="">— Seleccionar —</option>'
+        + (bancos||[]).map(function(b){ return '<option value="'+b.id+'">'+b.nombre+'</option>'; }).join('');
+    } catch(eBanCxc) { selBancoOrigen.innerHTML = '<option value="">— Sin bancos disponibles —</option>'; }
+    selBancoOrigen.value = '';
+  }
+  const bancoOrigenContCxc = document.getElementById('cont-pago-cxc-banco-origen-cont');
+  if (bancoOrigenContCxc) bancoOrigenContCxc.style.display = 'none';
+
   // Cargar métodos de Cobro reales desde Parámetros (param_metodos_pago),
   // igual que Egresos -- ya no son opciones fijas en el HTML. El listado se
   // restringe según si la Factura tiene IGTF aplicado (f.aplica_igtf):
@@ -1102,7 +1130,7 @@ async function contAbrirPagoCxc(id_cxc) {
       } else {
         selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
           + metodos.map(function(m) {
-              return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-moneda="'+(m.codigo||'')+'">'+m.nombre+'</option>';
+              return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-moneda="'+(m.codigo||'')+'" data-tipo-canal="'+(m.tipo_canal||'')+'">'+m.nombre+'</option>';
             }).join('');
         // Sin auto-selección: el usuario debe elegir el método explícitamente.
       }
@@ -1112,10 +1140,8 @@ async function contAbrirPagoCxc(id_cxc) {
   }
   const igtfNotaEl = document.getElementById('cont-pago-cxc-igtf-nota');
   if (igtfNotaEl) {
-    igtfNotaEl.style.display = '';
-    igtfNotaEl.textContent = facturaConIGTF
-      ? 'Esta Factura tiene IGTF aplicado — el pago debe ser en Efectivo o Transferencia en USD.'
-      : 'Esta Factura no tiene IGTF aplicado — el cobro debe ser en Efectivo o Transferencia en Bs.';
+    igtfNotaEl.style.display = facturaConIGTF ? '' : 'none';
+    if (facturaConIGTF) igtfNotaEl.textContent = 'Esta Factura tiene IGTF aplicado — el pago debe ser en Efectivo o Transferencia en USD.';
   }
 
   const infoEl = document.getElementById('cont-pago-cxc-tasa-info');
@@ -1153,9 +1179,19 @@ async function contGuardarPagoCxc() {
     selMetodoEl?.focus(); return;
   }
   const metodoNombre = selMetodoEl?.selectedOptions?.[0]?.textContent || metodo;
+  const tipoCanalSel = selMetodoEl?.selectedOptions?.[0]?.dataset?.tipoCanal || '';
+  let idBancoOrigen = null;
+  if (tipoCanalSel === 'TRANSFERENCIA') {
+    const selBancoEl = document.getElementById('cont-pago-cxc-banco-origen');
+    idBancoOrigen = parseInt(selBancoEl?.value) || null;
+    if (!idBancoOrigen) {
+      errEl.textContent = 'Debe seleccionar el Banco Origen de la Transferencia.'; errEl.style.display = 'block';
+      selBancoEl?.focus(); return;
+    }
+  }
   const referencia = document.getElementById('cont-pago-cxc-ref')?.value.trim() || null;
   if (!referencia) {
-    errEl.textContent = 'La Referencia es obligatoria.'; errEl.style.display = 'block';
+    errEl.textContent = 'El Comprobante de Cobro No. es obligatorio.'; errEl.style.display = 'block';
     document.getElementById('cont-pago-cxc-ref')?.focus(); return;
   }
   const claveCxc = document.getElementById('cont-pago-cxc-clave')?.value || '';
@@ -1199,6 +1235,7 @@ async function contGuardarPagoCxc() {
       estado:      nuevoEstado,
       metodo_pago: metodoNombre,
       referencia:  referencia,
+      id_banco_origen: idBancoOrigen,
       fecha_cobro: new Date().toISOString()
     };
     if (urlComprobanteCxc) patchDataCxc.url_comprobante = urlComprobanteCxc;
@@ -1384,7 +1421,7 @@ async function contRenderCxc() {
 
     const eb = {
       EMITIDA:'<span class="badge badge-naranja">Emitida</span>',
-      PAGADA:'<span class="badge" style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3)">Pagada</span>',
+      PAGADA:'<span class="badge" style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3)">Cobrada</span>',
       PARCIAL:'<span class="badge badge-gris">Parcial</span>',
     };
 
