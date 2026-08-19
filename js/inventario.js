@@ -7,7 +7,7 @@
 // las variables sueltas declaradas fuera de ellas).
 let _historialEstado = { id_articulo: null, cursor: null, terminado: false, idAreaH: null, filtro: 'todas' };
 const HISTORIAL_PAGE_SIZE = 50;
-const CAMPOS_EDIT_ENTRADA = ['edit-mov-fecha-negociacion','edit-mov-moneda','edit-mov-cantidad',
+const CAMPOS_EDIT_ENTRADA = ['edit-mov-fecha-negociacion','edit-mov-moneda','edit-mov-moneda-pago','edit-mov-cantidad',
   'edit-mov-precio','edit-mov-precio-venta','edit-mov-motivo','edit-mov-proveedor',
   'edit-mov-cliente','edit-mov-area-origen','edit-mov-area','edit-mov-empleado',
   'edit-mov-esquema-pago','edit-mov-obs'];
@@ -1144,6 +1144,8 @@ async function guardarEntradaStock() {
   if (motivoSel === 'compra') {
     monedaSel = document.getElementById('es-moneda-compra')?.value;
     if (!monedaSel)                 return mostrarError('Seleccione la Moneda Negociación.', 'es-moneda-compra');
+    const monedaPagoSel = document.getElementById('es-moneda-pago')?.value;
+    if (!monedaPagoSel)             return mostrarError('Seleccione la Moneda de Pago.', 'es-moneda-pago');
     precioVal = parseMontoVE(document.getElementById('es-precio-costo')?.value);
     if (precioVal <= 0)             return mostrarError('Ingrese el Precio Negociación.', 'es-precio-costo');
   }
@@ -1194,6 +1196,7 @@ async function guardarEntradaStock() {
     let nuevoPrecioCosto = 0;
     let nuevoPrecioCostoRaw = 0;
     let moneda_compra_val = 'USD';
+    let moneda_pago_val = 'USD';
     let precio_compra_original = null;
     let tasa_bcv_usada = _tasaVigente || null;
     let incluyeIVA_ent = false;
@@ -1218,6 +1221,7 @@ async function guardarEntradaStock() {
         resetBtn(); return;
       }
       moneda_compra_val      = monedaCompra;
+      moneda_pago_val        = document.getElementById('es-moneda-pago')?.value || monedaCompra;
       precio_compra_original = precioIngresado;
       tasa_bcv_usada         = tasaBCVVal > 0 ? tasaBCVVal : null;
       // Si no hay tasa, buscarla de la fecha de negociación
@@ -1413,6 +1417,7 @@ async function guardarEntradaStock() {
       precio_costo_moneda:    nuevoPrecioCosto > 0 ? nuevoPrecioCosto : costoActual,
       precio_compra_original: precio_compra_original || null,
       moneda_compra:          moneda_compra_val,
+      moneda_pago:            motivoEnt === 'compra' ? moneda_pago_val : null,
       tasa_bcv:               tasa_bcv_usada,
       fecha_entrada:          document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
       fecha_negociacion:      document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
@@ -1470,25 +1475,17 @@ async function guardarEntradaStock() {
               ? montoTotalMonedaOriginal
               : (tasa_bcv_usada ? parseFloat((montoTotalMonedaOriginal * tasa_bcv_usada).toFixed(2)) : null))
           : null;
-        // Moneda de PAGO real -- la que factura el Proveedor
-        // (moneda_facturacion), NO la Moneda de Negociación del precio --
-        // son dos cosas distintas. Es la moneda en la que realmente se le
-        // va a pagar, así que es la que debe verse en "Monto a Pagar".
-        let monedaPagoNotif = moneda_compra_val;
-        if (idProvEnt) {
-          try {
-            const provNotifRows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProvEnt+'&select=moneda_facturacion');
-            if (provNotifRows && provNotifRows[0] && provNotifRows[0].moneda_facturacion) {
-              monedaPagoNotif = provNotifRows[0].moneda_facturacion;
-            }
-          } catch(eProvNotif) {}
-        }
+        // Moneda de PAGO real -- ya leída del formulario (moneda_pago_val),
+        // la eligió el Usuario para esta transacción puntual. NO es la
+        // Moneda de Negociación del precio -- son dos cosas distintas. Es
+        // la moneda en la que realmente se le va a pagar, así que es la
+        // que debe verse en "Monto a Pagar".
         await enrutarAprobacionEntrada(montoTotalConIVA, id_entrada, numDocSol, {
           nombreArt: r.nombre_articulo || r.codigo_articulo || ('Art#'+id),
           cantidad: cantidad,
           unidad: r.unidad || 'UND',
           monedaCompra: moneda_compra_val,
-          monedaPago: monedaPagoNotif,
+          monedaPago: moneda_pago_val,
           tasaBcv: tasa_bcv_usada,
           montoBsExacto: montoBsExacto,
           montoIGTF: montoIGTFEnt || 0
@@ -1759,9 +1756,9 @@ function _armarMensajeAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
     : parseFloat((monto * tasaUsar).toFixed(2));
   const montoIGTFBs = montoIGTF > 0 ? parseFloat((montoIGTF * tasaUsar).toFixed(2)) : 0;
   const montoTotalBs = parseFloat((montoBsBase + montoIGTFBs).toFixed(2));
-  // Moneda de PAGO real (moneda_facturacion del Proveedor) -- distinta de
-  // la Moneda de Negociación del precio. Es la que se muestra como
-  // principal, porque es en la que realmente se va a pagar.
+  // Moneda de PAGO real -- ya viene resuelta desde afuera (d.monedaPago),
+  // distinta de la Moneda de Negociación del precio. Es la que se muestra
+  // como principal, porque es en la que realmente se va a pagar.
   const monedaPago = (d.monedaPago || d.monedaCompra || 'USD').toUpperCase();
   const principal = monedaPago === 'USD'
     ? '$ ' + fmtUSD(montoTotalUSD) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a Bs ' + fmtBs(montoTotalBs) + ')</span>'
@@ -1798,12 +1795,14 @@ async function ejecutarEfectosEntradaCompra(m) {
     '?id_articulo=eq.'+id+'&select=nombre_articulo,codigo_articulo,precio_costo_moneda,id_cuenta_contable,id_cuenta_costo_gasto');
   const r = artRows && artRows[0] ? artRows[0] : {};
 
-  // Moneda de PAGO real (moneda_facturacion del Proveedor) -- NO es lo
-  // mismo que la Moneda de Negociación del precio (m.moneda_compra). La
-  // CxP debe reflejar en qué moneda realmente se le va a pagar al
-  // Proveedor, sin importar en qué moneda se negoció el precio.
-  let monedaPagoReal = m.moneda_compra || 'USD';
-  if (m.id_proveedor) {
+  // Moneda de PAGO real -- YA congelada en la Entrada (m.moneda_pago), la
+  // eligió el Usuario para esta transacción puntual y puede ser distinta
+  // tanto de la Moneda de Negociación del precio (m.moneda_compra) como de
+  // la Moneda de Facturación (fija) del Proveedor. Entradas viejas, de
+  // antes de que existiera este campo, caen a moneda_facturacion como
+  // respaldo (mismo comportamiento que tenían antes).
+  let monedaPagoReal = m.moneda_pago || m.moneda_compra || 'USD';
+  if (!m.moneda_pago && m.id_proveedor) {
     try {
       const provPagoRows = await api('proveedores','GET',null,'?id_proveedor=eq.'+m.id_proveedor+'&select=moneda_facturacion');
       if (provPagoRows && provPagoRows[0] && provPagoRows[0].moneda_facturacion) {
@@ -2623,10 +2622,11 @@ async function rechazarEntradaCompra(id_entrada) {
         const artRechInfo = inventarioCache.find(function(x){ return x.id_articulo === m.id_articulo; })
           || (await api('inventario_almacen','GET',null,'?id_articulo=eq.'+m.id_articulo+'&select=nombre_articulo,codigo_articulo,unidad'))?.[0]
           || {};
-        // Moneda de PAGO real (Proveedor.moneda_facturacion) -- misma
-        // lógica que al enrutar la aprobación, no la Moneda de Negociación.
-        let monedaPagoRech = m.moneda_compra;
-        if (m.id_proveedor) {
+        // Moneda de PAGO real -- ya congelada en la Entrada (m.moneda_pago).
+        // Entradas viejas, de antes de que existiera este campo, caen a
+        // moneda_facturacion del Proveedor como respaldo.
+        let monedaPagoRech = m.moneda_pago || m.moneda_compra;
+        if (!m.moneda_pago && m.id_proveedor) {
           try {
             const provRechRows = await api('proveedores','GET',null,'?id_proveedor=eq.'+m.id_proveedor+'&select=moneda_facturacion');
             if (provRechRows && provRechRows[0] && provRechRows[0].moneda_facturacion) {
@@ -4198,6 +4198,22 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     const lblMoneda = document.getElementById('edit-mov-label-moneda');
     if (lblMoneda) lblMoneda.textContent = '(' + (m.moneda_compra || 'USD') + ')';
 
+    // Moneda de Pago -- ya guardada en esta Entrada (m.moneda_pago). Las
+    // Entradas viejas (de antes de que existiera este campo) no lo tienen
+    // guardado -- se completa con la Moneda de Facturación del Proveedor
+    // como mejor aproximación disponible, igual que se hacía antes.
+    const selMonedaPagoLoad = document.getElementById('edit-mov-moneda-pago');
+    if (selMonedaPagoLoad) {
+      if (m.moneda_pago) {
+        selMonedaPagoLoad.value = m.moneda_pago;
+      } else if (window._tipoContribProveedorEntrada !== undefined && m.id_proveedor) {
+        try {
+          const provMonPagoRows = await api('proveedores','GET',null,'?id_proveedor=eq.'+m.id_proveedor+'&select=moneda_facturacion');
+          selMonedaPagoLoad.value = (provMonPagoRows && provMonPagoRows[0] && provMonPagoRows[0].moneda_facturacion) || m.moneda_compra || 'USD';
+        } catch(eMonPagoLoad) { selMonedaPagoLoad.value = m.moneda_compra || 'USD'; }
+      }
+    }
+
     // Precio — usar el precio ORIGINAL negociado (antes de descontar IVA),
     // no el costo ya neto guardado en precio_costo_moneda. Si el registro es
     // anterior a que existiera esta columna, se cae al costo neto como antes.
@@ -4471,6 +4487,8 @@ async function _guardarEdicionMovimientoInterno() {
     if (fechaNeg > hoy)    return mostrarError('La Fecha Negociación no puede ser mayor al día de hoy.', 'edit-mov-fecha-negociacion');
     const monedaSel = document.getElementById('edit-mov-moneda')?.value;
     if (!monedaSel)        return mostrarError('Seleccione la Moneda Negociación.', 'edit-mov-moneda');
+    const monedaPagoSelEdit = document.getElementById('edit-mov-moneda-pago')?.value;
+    if (!monedaPagoSelEdit) return mostrarError('Seleccione la Moneda de Pago.', 'edit-mov-moneda-pago');
   }
   if (!cantidad || cantidad <= 0) return mostrarError('La cantidad debe ser mayor a cero.', esSalida ? 'edit-sal-cantidad' : 'edit-mov-cantidad');
   if (tipo === 'ENTRADA') {
@@ -4577,6 +4595,7 @@ async function _guardarEdicionMovimientoInterno() {
                                    : (document.getElementById('edit-mov-incluye-iva-val')?.value === 'SI' ? true
                                    : (document.getElementById('edit-mov-incluye-iva-val')?.value === 'NO' ? false : null));
       datos.moneda_compra       = monedaEdit;
+      datos.moneda_pago         = document.getElementById('edit-mov-moneda-pago')?.value || monedaEdit;
       datos.fecha_negociacion   = fechaNeg;
       datos.fecha_entrada       = fechaNeg;
       datos.motivo              = motivoEdit;
@@ -4710,17 +4729,11 @@ async function _guardarEdicionMovimientoInterno() {
         }
 
         const idProvEdit = provEdit || null;
-        // Moneda de PAGO real (moneda_facturacion del Proveedor) -- NO es
-        // lo mismo que la Moneda de Negociación del precio (monedaEdit).
-        let monedaPagoRealEdit = monedaEdit || 'USD';
-        if (idProvEdit) {
-          try {
-            const provPagoEditRows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProvEdit+'&select=moneda_facturacion');
-            if (provPagoEditRows && provPagoEditRows[0] && provPagoEditRows[0].moneda_facturacion) {
-              monedaPagoRealEdit = provPagoEditRows[0].moneda_facturacion;
-            }
-          } catch(eProvPagoEdit) {}
-        }
+        // Moneda de PAGO real -- ya leída del formulario arriba
+        // (datos.moneda_pago), la eligió el Usuario para esta transacción
+        // puntual. NO es lo mismo que la Moneda de Negociación del precio
+        // (monedaEdit).
+        const monedaPagoRealEdit = datos.moneda_pago || monedaEdit || 'USD';
         let tasaEdit = parseFloat(art?.tasa_bcv || 0);
         if (!tasaEdit) {
           try {
@@ -5365,7 +5378,6 @@ async function onCambiarMonedaEdit() {
   const lblUSD = document.getElementById('edit-mov-label-precio-usd');
   if (lblUSD) lblUSD.innerHTML = 'Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(' + (moneda === 'VES' ? 'USD' : 'VES') + ')</span>';
   await onCambiarFechaNegEdit();
-  await _actualizarAplicaIGTFEntrada('edit-mov-moneda');
   onCambiarPrecioEdit();
 }
 
@@ -5508,21 +5520,24 @@ function calcularTributosEdit() {
   actualizarIGTFEdit(total, moneda, tasa);
 }
 
-// Guarda el Tipo de Contribuyente del Proveedor y reevalúa si aplica IGTF
-// para la Moneda YA seleccionada en esta Entrada (mismo criterio que Nueva
+// Guarda el Tipo de Contribuyente del Proveedor, propone por defecto la
+// Moneda de Pago, y reevalúa si aplica IGTF (mismo criterio que Nueva
 // Entrada / onCambiarProveedorEntrada). Se dispara al CAMBIAR el Proveedor
 // en la Ficha de Editar.
 async function onCambiarProveedorEdit() {
   const idProv = parseInt(document.getElementById('edit-mov-proveedor')?.value) || null;
+  const selMonedaPagoEdit = document.getElementById('edit-mov-moneda-pago');
   window._tipoContribProveedorEntrada = null;
   window._aplicaIGTFEntrada = false;
   window._tasaIGTFEntrada = 0.03;
+  if (selMonedaPagoEdit) selMonedaPagoEdit.value = '';
   if (idProv) {
     try {
-      const rows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProv+'&select=tipo_contribuyente');
+      const rows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProv+'&select=moneda_facturacion,tipo_contribuyente');
       const p = rows && rows[0] ? rows[0] : {};
       window._tipoContribProveedorEntrada = p.tipo_contribuyente || null;
-      await _actualizarAplicaIGTFEntrada('edit-mov-moneda');
+      if (selMonedaPagoEdit && p.moneda_facturacion) selMonedaPagoEdit.value = p.moneda_facturacion;
+      await _actualizarAplicaIGTFEntrada('edit-mov-moneda-pago');
     } catch(e) { console.warn('Error verificando IGTF del Proveedor:', e); }
   }
   calcularTributosEdit();
@@ -6620,7 +6635,6 @@ async function onCambiarMonedaEntrada() {
   if (lblUSD) lblUSD.innerHTML = 'Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(' + (esVES ? 'USD' : 'VES') + ')</span>';
 
   await buscarTasaBCVNegociacion();
-  await _actualizarAplicaIGTFEntrada('es-moneda-compra');
   onCambiarPrecioEntrada();
 }
 
@@ -6714,22 +6728,26 @@ function calcularTributosEntrada() {
   actualizarIGTFEntrada(total, moneda, tasa);
 }
 
-// Guarda el Tipo de Contribuyente del Proveedor y reevalúa si aplica IGTF
-// para la Moneda YA seleccionada en esta Entrada -- el criterio real es
-// Contribuyente Especial + Moneda de ESTA transacción en USD, no la Moneda
-// de Facturación (fija) del Proveedor. Si aplica, el IGTF se calcula
-// automáticamente (no es una casilla que decide el Usuario).
+// Guarda el Tipo de Contribuyente del Proveedor, propone por defecto la
+// Moneda de Pago (según su Moneda de Facturación -- el Usuario puede
+// cambiarla para esta Entrada puntual), y reevalúa si aplica IGTF: el
+// criterio real es Contribuyente Especial + Moneda de PAGO (no la de
+// Negociación) en USD. Si aplica, el IGTF se calcula automáticamente (no
+// es una casilla que decide el Usuario).
 async function onCambiarProveedorEntrada() {
   const idProv = parseInt(document.getElementById('es-proveedor')?.value) || null;
+  const selMonedaPago = document.getElementById('es-moneda-pago');
   window._tipoContribProveedorEntrada = null;
   window._aplicaIGTFEntrada = false;
   window._tasaIGTFEntrada = 0.03;
+  if (selMonedaPago) selMonedaPago.value = '';
   if (idProv) {
     try {
-      const rows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProv+'&select=tipo_contribuyente');
+      const rows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProv+'&select=moneda_facturacion,tipo_contribuyente');
       const p = rows && rows[0] ? rows[0] : {};
       window._tipoContribProveedorEntrada = p.tipo_contribuyente || null;
-      await _actualizarAplicaIGTFEntrada('es-moneda-compra');
+      if (selMonedaPago && p.moneda_facturacion) selMonedaPago.value = p.moneda_facturacion;
+      await _actualizarAplicaIGTFEntrada('es-moneda-pago');
     } catch(e) { console.warn('Error verificando IGTF del Proveedor:', e); }
   }
   calcularTributosEntrada();
