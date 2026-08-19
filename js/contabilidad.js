@@ -1294,18 +1294,24 @@ async function contGuardarPagoCxc() {
             });
           }
 
-          if (monedaMetodo !== 'VES') {
+          // IGTF -- solo aplica si quien COBRA (nuestra propia empresa) es
+          // Contribuyente Especial. Antes se aplicaba a TODO cobro en
+          // divisas sin distinción -- el criterio correcto para CxC es el
+          // tipo_contribuyente de la EMPRESA EMISORA, no el del Cliente (a
+          // diferencia de CxP, donde el disparador es el tipo_contribuyente
+          // del Proveedor a quien se le paga).
+          if (monedaMetodo !== 'VES' && _empresaActiva?.tipo_contribuyente === 'ESPECIAL') {
             const montoIGTF_USD = parseFloat((monto * pctIGTF).toFixed(2));
             const montoIGTF_VES = parseFloat((montoIGTF_USD * tasaActual).toFixed(2));
             if (cIGTF) await api('cont_asiento_lineas','POST',{
               id_asiento: idAst, id_cuenta: cIGTF.id_cuenta, orden: orden++,
               descripcion: 'IGTF '+(pctIGTF*100).toFixed(0)+'% sobre cobro en divisas',
-              debe_usd: 0, haber_usd: 0, debe_ves: montoIGTF_VES, haber_ves: 0, tasa_bcv: tasaActual
+              debe_usd: montoIGTF_USD, haber_usd: 0, debe_ves: montoIGTF_VES, haber_ves: 0, tasa_bcv: tasaActual
             });
             if (cIGTFPagar) await api('cont_asiento_lineas','POST',{
               id_asiento: idAst, id_cuenta: cIGTFPagar.id_cuenta, orden: orden++,
               descripcion: 'IGTF por Pagar (enterar primeros 12 días del mes)',
-              debe_usd: 0, haber_usd: 0, debe_ves: 0, haber_ves: montoIGTF_VES, tasa_bcv: tasaActual
+              debe_usd: 0, haber_usd: montoIGTF_USD, debe_ves: 0, haber_ves: montoIGTF_VES, tasa_bcv: tasaActual
             });
           }
         }
