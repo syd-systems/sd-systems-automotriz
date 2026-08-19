@@ -1071,15 +1071,26 @@ async function contAbrirPagoCxc(id_cxc) {
   // Cargar métodos de Cobro reales desde Parámetros (param_metodos_pago),
   // igual que Egresos -- ya no son opciones fijas en el HTML. Se traen
   // TODOS los activos (ambas monedas), porque el Cliente puede pagar en
-  // cualquiera de las dos.
+  // cualquiera de las dos -- EXCEPTO si la Factura tiene IGTF aplicado
+  // (f.aplica_igtf), en cuyo caso el pago debe ser en divisas sí o sí, y
+  // solo por Efectivo o Transferencia (los únicos dos canales USD que
+  // maneja el sistema).
+  const facturaConIGTF = !!c.facturas?.aplica_igtf;
   const selMetodo = document.getElementById('cont-pago-cxc-metodo');
   if (selMetodo) {
     selMetodo.innerHTML = '<option value="">— Cargando métodos —</option>';
     try {
-      const metodos = await api('param_metodos_pago','GET',null,
+      let metodos = await api('param_metodos_pago','GET',null,
         '?estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,tipo_canal,id_cuenta_contable,codigo' + emisorQ());
+      if (facturaConIGTF) {
+        metodos = (metodos || []).filter(function(m) {
+          return m.codigo === 'USD' && (m.tipo_canal === 'EFECTIVO' || m.tipo_canal === 'TRANSFERENCIA');
+        });
+      }
       if (!metodos || !metodos.length) {
-        selMetodo.innerHTML = '<option value="">⚠ Sin métodos de cobro configurados — configure uno en Parámetros</option>';
+        selMetodo.innerHTML = facturaConIGTF
+          ? '<option value="">⚠ Esta Factura tiene IGTF aplicado y requiere Efectivo o Transferencia en USD — configure el método en Parámetros</option>'
+          : '<option value="">⚠ Sin métodos de cobro configurados — configure uno en Parámetros</option>';
       } else {
         selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
           + metodos.map(function(m) {
@@ -1091,6 +1102,8 @@ async function contAbrirPagoCxc(id_cxc) {
       selMetodo.innerHTML = '<option value="">— Sin métodos disponibles —</option>';
     }
   }
+  const igtfNotaEl = document.getElementById('cont-pago-cxc-igtf-nota');
+  if (igtfNotaEl) igtfNotaEl.style.display = facturaConIGTF ? '' : 'none';
 
   const infoEl = document.getElementById('cont-pago-cxc-tasa-info');
   if (infoEl) {
