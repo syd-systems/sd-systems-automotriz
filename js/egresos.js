@@ -1610,7 +1610,7 @@ async function contGuardarPagoCxp() {
 
           if (cDebito) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDebito.id_cuenta, orden:orden++,
             descripcion:descCxP,
-            debe_usd:0, haber_usd:0, debe_ves:montoVESCompra, haber_ves:0, tasa_bcv:tasaCompra });
+            debe_usd:montoUSD, haber_usd:0, debe_ves:montoVESCompra, haber_ves:0, tasa_bcv:tasaCompra });
 
           if (difCambio > 0 && cDifGasto) {
             await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDifGasto.id_cuenta, orden:orden++,
@@ -1625,12 +1625,17 @@ async function contGuardarPagoCxp() {
           if (!igtfYaResueltoReg) {
             if (cIGTF) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cIGTF.id_cuenta, orden:orden++,
               descripcion:'IGTF '+(pctIGTF*100).toFixed(0)+'% sobre pago en divisas',
-              debe_usd:0, haber_usd:0, debe_ves:montoIGTF_VES, haber_ves:0, tasa_bcv:tasaPago });
+              debe_usd:montoIGTF_USD, haber_usd:0, debe_ves:montoIGTF_VES, haber_ves:0, tasa_bcv:tasaPago });
             if (cIGTFPagar) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cIGTFPagar.id_cuenta, orden:orden++,
               descripcion:'IGTF por Pagar (enterar primeros 12 días del mes)',
-              debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoIGTF_VES, tasa_bcv:tasaPago });
+              debe_usd:0, haber_usd:montoIGTF_USD, debe_ves:0, haber_ves:montoIGTF_VES, tasa_bcv:tasaPago });
           }
 
+          // Lo que sale de Banco/Caja es solo el monto de la CxP (el
+          // IGTF, cuando se calcula aquí en filas viejas, queda como
+          // pasivo acumulado en 2.1.03.004 -- Debe IGTF / Haber IGTF por
+          // Pagar ya se cuadran entre sí, no sale de Banco en esta misma
+          // transacción; se entera al fisco aparte).
           if (cBanUSD) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cBanUSD.id_cuenta, orden:orden++,
             descripcion:descBanco,
             debe_usd:0, haber_usd:montoUSD, debe_ves:0, haber_ves:montoVESPago, tasa_bcv:tasaPago });
