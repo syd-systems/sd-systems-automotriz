@@ -837,8 +837,8 @@ async function verFichaFactura(id) {
         return '<tr><td style="padding:6px 0;font-size:12px">'+l.desc+'</td>'
           + '<td style="text-align:center;padding:6px"><span class="badge badge-gris" style="font-size:11px">'+l.tipo+'</span></td>'
           + '<td style="text-align:center;font-family:var(--font-mono);font-size:12px">'+l.cant+'</td>'
-          + '<td style="text-align:right;font-family:var(--font-mono);font-size:12px">'+fmtF(l.precio)+'</td>'
-          + '<td style="text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">'+fmtF(l.sub)+'</td></tr>';
+          + '<td style="text-align:right;font-family:var(--font-mono);font-size:12px;white-space:nowrap">'+fmtF(l.precio)+'</td>'
+          + '<td style="text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--naranja);white-space:nowrap">'+fmtF(l.sub)+'</td></tr>';
       }).join('');
 
     document.getElementById('ficha-fac-contenido').innerHTML =
