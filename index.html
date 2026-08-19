@@ -1356,17 +1356,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260814311"></script>
-<script src="js/parametros.js?v=20260814311"></script>
-<script src="js/empresas.js?v=20260814311"></script>
-<script src="js/ingresos.js?v=20260814311"></script>
-<script src="js/inventario.js?v=20260814311"></script>
-<script src="js/proveedores.js?v=20260814311"></script>
-<script src="js/contabilidad.js?v=20260814311"></script>
-<script src="js/egresos.js?v=20260814311"></script>
-<script src="js/vehiculos.js?v=20260814311"></script>
-<script src="js/catalogo.js?v=20260814311"></script>
-<script src="js/ordenes.js?v=20260814311"></script>
+<script src="js/core.js?v=20260814312"></script>
+<script src="js/parametros.js?v=20260814312"></script>
+<script src="js/empresas.js?v=20260814312"></script>
+<script src="js/ingresos.js?v=20260814312"></script>
+<script src="js/inventario.js?v=20260814312"></script>
+<script src="js/proveedores.js?v=20260814312"></script>
+<script src="js/contabilidad.js?v=20260814312"></script>
+<script src="js/egresos.js?v=20260814312"></script>
+<script src="js/vehiculos.js?v=20260814312"></script>
+<script src="js/catalogo.js?v=20260814312"></script>
+<script src="js/ordenes.js?v=20260814312"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4447,13 +4447,13 @@
         </div>
         <div class="form-campo">
           <label>Moneda</label>
-          <select id="pago-moneda" disabled onchange="onCambiarMonedaPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <select id="pago-moneda" onchange="onCambiarMonedaPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar —</option>
             <option value="VES">VES — Bolívares</option>
             <option value="USD">USD — Dólares</option>
             <option value="EUR">EUR — Euros</option>
           </select>
-          <div id="pago-moneda-nota" style="font-size:10px;color:var(--suave);margin-top:4px">Según Moneda de Facturación del proveedor — no editable</div>
+          <div id="pago-moneda-nota" style="font-size:10px;color:var(--suave);margin-top:4px">Se propone según la Moneda de Facturación del proveedor — puede ajustarla para esta Obligación puntual</div>
         </div>
         <div class="form-campo form-full" id="pago-tasa-cont-nuevo" style="display:none;grid-column:1/-1">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
