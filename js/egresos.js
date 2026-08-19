@@ -76,9 +76,45 @@ function fmtCreadorCxP(info) {
 // Se hace vía RPC (no consultas directas del cliente) porque requiere leer
 // usuarios/usuarios_permisos de OTRAS personas -- datos sensibles que un
 // Operador normal no debe poder consultar libremente por RLS.
-async function enrutarAprobacionCxP(idCxp, numeroDoc, montoUsd, incluyeIgtf) {
+// Arma el mensaje de la notificación con formato (etiquetas/negritas), para
+// que el aprobador sepa DE UNA qué está autorizando -- mismo patrón que
+// _armarMensajeAprobacionEntrada (inventario.js). "Monto a Pagar" es
+// Base+IVA+IGTF (si aplica) -- lo que realmente se le paga al Proveedor.
+function _armarMensajeAprobacionCxP(monto, idCxp, numeroDoc, detalle) {
+  const d = detalle || {};
+  const tasaUsar = d.tasaBcv || _tasaVigente || 1;
+  const montoIgtf = d.montoIgtf || 0;
+  const montoTotalUSD = monto + montoIgtf;
+  const montoBsBase = d.montoBsExacto != null
+    ? d.montoBsExacto
+    : parseFloat((monto * tasaUsar).toFixed(2));
+  const montoIgtfBs = montoIgtf > 0 ? parseFloat((montoIgtf * tasaUsar).toFixed(2)) : 0;
+  const montoTotalBs = parseFloat((montoBsBase + montoIgtfBs).toFixed(2));
+  const monedaPago = (d.monedaPago || 'USD').toUpperCase();
+  const principal = monedaPago === 'USD'
+    ? '$ ' + fmtUSD(montoTotalUSD) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a Bs ' + fmtBs(montoTotalBs) + ')</span>'
+    : 'Bs ' + fmtBs(montoTotalBs) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a $ ' + fmtUSD(montoTotalUSD) + ')</span>';
+  const igtfLinea = montoIgtf > 0
+    ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Incluye IGTF: $ ' + fmtUSD(montoIgtf) + '</div>'
+    : '';
+  return '<div style="font-size:10px;color:var(--suave);letter-spacing:0.5px;margin-bottom:2px">OBLIGACIÓN DE PAGO — ' + (numeroDoc || ('#'+idCxp)) + '</div>'
+    + '<div style="font-weight:600;margin-bottom:12px">' + (d.concepto || '—') + '</div>'
+    + '<div style="display:flex;gap:24px;margin-bottom:12px">'
+    + '<div><div style="font-size:10px;color:var(--suave)">PROVEEDOR</div><div style="font-weight:600">' + (d.proveedor || '—') + '</div></div>'
+    + '<div><div style="font-size:10px;color:var(--suave)">MONEDA DE PAGO</div><div style="font-weight:600">' + monedaPago + '</div></div>'
+    + '</div>'
+    + '<div><div style="font-size:10px;color:var(--suave)">MONTO A PAGAR</div><div style="font-weight:700;color:var(--naranja);font-size:16px">' + principal + '</div>' + igtfLinea + '</div>';
+}
+
+async function enrutarAprobacionCxP(idCxp, numeroDoc, montoUsd, detalle) {
   try {
     const idAreaCreador = await _resolverAreaSesion();
+    const mensajeRico = _armarMensajeAprobacionCxP(montoUsd, idCxp, numeroDoc, detalle);
+    // El monto que decide QUIÉN debe aprobar (contra el límite de su Nivel
+    // de Firma) tiene que ser lo que REALMENTE se está autorizando -- Base
+    // + IVA + IGTF (si aplica), no solo la Base+IVA. Mismo criterio que
+    // enrutarAprobacionEntrada.
+    const montoParaLimite = montoUsd + (detalle?.montoIgtf || 0);
     const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/enrutar_aprobacion_cxp', {
       method: 'POST',
       headers: {
@@ -88,11 +124,11 @@ async function enrutarAprobacionCxP(idCxp, numeroDoc, montoUsd, incluyeIgtf) {
       },
       body: JSON.stringify({
         p_id_area: idAreaCreador,
-        p_monto: montoUsd,
+        p_monto: montoParaLimite,
         p_id_cxp: idCxp,
         p_numero_doc: numeroDoc,
         p_correo_creador: sesionActual?.correo_usuario || null,
-        p_incluye_igtf: !!incluyeIgtf
+        p_mensaje: mensajeRico
       })
     });
     if (!resp.ok) {
@@ -2611,7 +2647,10 @@ async function guardarPago() {
             if (cxpCuotaConv && cxpCuotaConv[0]) {
               await api('cont_cxp','PATCH',{ numero_doc: numDocActual + '-C' + cc.num + '-' + cxpCuotaConv[0].id_cxp }, '?id_cxp=eq.' + cxpCuotaConv[0].id_cxp);
               if (cc.fecha <= getHoyVzla()) {
-                enrutarAprobacionCxP(cxpCuotaConv[0].id_cxp, numDocActual + '-C' + cc.num + '-' + cxpCuotaConv[0].id_cxp, montoUsdCuotaConv, aplicaIGTFFinal);
+                enrutarAprobacionCxP(cxpCuotaConv[0].id_cxp, numDocActual + '-C' + cc.num + '-' + cxpCuotaConv[0].id_cxp, cc.monto, {
+                  montoIgtf: igtfCuotaConv, monedaPago: moneda, tasaBcv: tasaUSD,
+                  concepto: descripcion, proveedor: nombreProvLinea
+                });
               } else {
                 api('cont_cxp','PATCH',{ sin_firma_notificado: true }, '?id_cxp=eq.'+cxpCuotaConv[0].id_cxp).catch(function(){});
               }
@@ -2632,7 +2671,10 @@ async function guardarPago() {
           });
           if (cxpContadoConv && cxpContadoConv[0]) {
             await api('cont_cxp','PATCH',{ numero_doc: numDocActual + '-' + cxpContadoConv[0].id_cxp }, '?id_cxp=eq.' + cxpContadoConv[0].id_cxp);
-            enrutarAprobacionCxP(cxpContadoConv[0].id_cxp, numDocActual + '-' + cxpContadoConv[0].id_cxp, montoTotalConIGTF, aplicaIGTFFinal);
+            enrutarAprobacionCxP(cxpContadoConv[0].id_cxp, numDocActual + '-' + cxpContadoConv[0].id_cxp, montoTotalConIVA, {
+              montoIgtf: montoIGTFFinal, monedaPago: moneda, tasaBcv: tasaUSD, montoBsExacto: montoTotalVES,
+              concepto: descripcion, proveedor: nombreProvLinea
+            });
           }
         }
 
@@ -2803,7 +2845,10 @@ async function guardarPago() {
         if (cxpCuota && cxpCuota[0]) {
           await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-C' + c.num + '-' + cxpCuota[0].id_cxp }, '?id_cxp=eq.' + cxpCuota[0].id_cxp);
           if (c.fecha <= getHoyVzla()) {
-            enrutarAprobacionCxP(cxpCuota[0].id_cxp, numDocBase + '-C' + c.num + '-' + cxpCuota[0].id_cxp, montoUsdCuota, aplicaIGTFFinal);
+            enrutarAprobacionCxP(cxpCuota[0].id_cxp, numDocBase + '-C' + c.num + '-' + cxpCuota[0].id_cxp, c.monto, {
+              montoIgtf: igtfCuota, monedaPago: moneda, tasaBcv: tasaUSD,
+              concepto: descripcion, proveedor: nombreProvLinea
+            });
           } else {
             // Cuota con vencimiento futuro -- no notificar todavía; se
             // enrutará solo cuando llegue su fecha (reintentar_enrutamiento_pendientes al iniciar sesión)
@@ -2843,7 +2888,10 @@ async function guardarPago() {
       });
       if (cxpContado && cxpContado[0]) {
         await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-' + cxpContado[0].id_cxp }, '?id_cxp=eq.' + cxpContado[0].id_cxp);
-        enrutarAprobacionCxP(cxpContado[0].id_cxp, numDocBase + '-' + cxpContado[0].id_cxp, montoTotalConIGTF, aplicaIGTFFinal);
+        enrutarAprobacionCxP(cxpContado[0].id_cxp, numDocBase + '-' + cxpContado[0].id_cxp, montoTotalConIVA, {
+          montoIgtf: montoIGTFFinal, monedaPago: moneda, tasaBcv: tasaUSD, montoBsExacto: montoTotalVES,
+          concepto: descripcion, proveedor: nombreProvLinea
+        });
       }
     }
 
