@@ -592,7 +592,14 @@ async function contGuardarAsiento() {
 
   try {
     let asientoId = id;
-    const datos = { fecha, descripcion: desc, referencia: ref||null, tipo, moneda_base: moneda, tasa_bcv: tasa, id_periodo: periodo || null, estado:'PENDIENTE', id_usuario: sesionActual.correo_usuario, id_empresa: _empresaActiva?.id_empresa || null };
+    // moneda_base -- SIEMPRE la Moneda Funcional de la Empresa
+    // (moneda_principal), sin excepción, sin importar qué Moneda haya
+    // elegido el Contador para capturar este Asiento puntual. Nada se
+    // puede ocultar contablemente: el select "cont-form-moneda" solo
+    // decide en cuál columna (REF/FUNC) escribe el monto de referencia --
+    // el equivalente en Moneda Funcional ya se calcula por línea (columna
+    // FUNC) y es siempre lo que queda como base del asiento.
+    const datos = { fecha, descripcion: desc, referencia: ref||null, tipo, moneda_base: monedaFunc, tasa_bcv: tasa, id_periodo: periodo || null, estado:'PENDIENTE', id_usuario: sesionActual.correo_usuario, id_empresa: _empresaActiva?.id_empresa || null };
 
     if (id) {
       await api('cont_asientos','PATCH',datos,'?id_asiento=eq.' + id);
