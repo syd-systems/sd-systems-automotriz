@@ -2538,7 +2538,7 @@ async function guardarPago() {
   // Moneda se autocompletan de su ficha, no se piden si falta el proveedor)
   if (!id_proveedor)   { mostrarErr('Debe seleccionar un Proveedor.');           document.getElementById('pago-proveedor')?.focus(); return; }
   if (!id_categoria)   { mostrarErr('El Proveedor seleccionado no tiene Categoría configurada en su ficha.'); return; }
-  if (!moneda)         { mostrarErr('El Proveedor seleccionado no tiene Moneda de Facturación configurada en su ficha.'); return; }
+  if (!moneda)         { mostrarErr('Debe seleccionar la Moneda de Pago.'); document.getElementById('pago-moneda')?.focus(); return; }
   if (!id_cuentaGasto) { mostrarErr('Debe seleccionar la Cuenta de Gasto.');    document.getElementById('pago-cuenta-gasto')?.focus(); return; }
   if (!descripcion)    { mostrarErr('El Concepto es obligatorio.');           document.getElementById('pago-descripcion')?.focus(); return; }
   if (!monto)          { mostrarErr('El Monto es obligatorio.');                 document.getElementById('pago-monto')?.focus(); return; }
