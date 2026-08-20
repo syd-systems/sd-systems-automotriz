@@ -1107,16 +1107,16 @@ async function contAbrirPagoCxc(id_cxc) {
 
   // Cargar métodos de Cobro reales desde Parámetros (param_metodos_pago),
   // igual que Egresos -- ya no son opciones fijas en el HTML. El listado se
-  // restringe así:
-  //   - Factura con IGTF aplicado -> obligatorio cobrar en divisas, solo
-  //     Efectivo o Transferencia en USD (por Ley).
+  // restringe por MONEDA, no por el tipo de canal exacto (Efectivo vs
+  // Transferencia no importa, cualquiera sirve mientras sea la Moneda
+  // correcta) -- solo se excluye Afiliación Bancaria, que es un canal
+  // exclusivo de CxP (pagos a Proveedores), no se usa para Cobros:
+  //   - Factura con IGTF aplicado -> obligatorio cobrar en USD (por Ley).
   //   - Factura sin IGTF -> el Método debe coincidir con la Moneda de
   //     Cobro REAL de la Factura (facturas.moneda_cobro) -- "sin IGTF" NO
   //     siempre significa "Factura en VES": una Empresa Contribuyente
   //     Ordinaria puede facturar en USD sin que el IGTF se active nunca
-  //     (solo aplica a Contribuyentes Especiales). Antes esto excluía USD
-  //     por completo sin importar la Moneda real de la Factura, forzando
-  //     el Cobro a una cuenta en Bs aunque la Factura fuera en USD.
+  //     (solo aplica a Contribuyentes Especiales).
   const facturaJoinCxc = Array.isArray(c.facturas) ? c.facturas[0] : c.facturas;
   const facturaConIGTF = !!facturaJoinCxc?.aplica_igtf;
   const monedaFacturaCxc = (facturaJoinCxc?.moneda_cobro || 'VES').toUpperCase();
@@ -1126,21 +1126,14 @@ async function contAbrirPagoCxc(id_cxc) {
     try {
       let metodos = await api('param_metodos_pago','GET',null,
         '?estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,tipo_canal,id_cuenta_contable,codigo' + emisorQ());
-      if (facturaConIGTF) {
-        metodos = (metodos || []).filter(function(m) {
-          return m.codigo === 'USD' && (m.tipo_canal === 'EFECTIVO' || m.tipo_canal === 'TRANSFERENCIA');
-        });
-      } else {
-        // Afiliación Bancaria es un canal exclusivo de CxP (pagos a
-        // Proveedores), no se usa para Cobros a Clientes.
-        metodos = (metodos || []).filter(function(m) {
-          return m.codigo === monedaFacturaCxc && (m.tipo_canal === 'EFECTIVO' || m.tipo_canal === 'TRANSFERENCIA');
-        });
-      }
+      const monedaBuscada = facturaConIGTF ? 'USD' : monedaFacturaCxc;
+      metodos = (metodos || []).filter(function(m) {
+        return (m.codigo || '').toUpperCase() === monedaBuscada && m.tipo_canal !== 'AFILIACION_BANCARIA';
+      });
       if (!metodos || !metodos.length) {
         selMetodo.innerHTML = facturaConIGTF
-          ? '<option value="">⚠ Esta Factura tiene IGTF aplicado y requiere Efectivo o Transferencia en USD — configure el método en Parámetros</option>'
-          : '<option value="">⚠ No hay métodos de Efectivo o Transferencia en '+monedaFacturaCxc+' configurados — configure uno en Parámetros</option>';
+          ? '<option value="">⚠ Esta Factura tiene IGTF aplicado y requiere cobrar en USD — configure un método en Parámetros</option>'
+          : '<option value="">⚠ No hay métodos de Cobro en '+monedaBuscada+' configurados — configure uno en Parámetros</option>';
       } else {
         selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
           + metodos.map(function(m) {
@@ -1193,6 +1186,12 @@ async function contGuardarPagoCxc() {
   }
   const metodoNombre = selMetodoEl?.selectedOptions?.[0]?.textContent || metodo;
   const tipoCanalSel = selMetodoEl?.selectedOptions?.[0]?.dataset?.tipoCanal || '';
+  const idCuentaMetodoSel = parseInt(selMetodoEl?.selectedOptions?.[0]?.dataset?.cuentaId) || null;
+  if (!idCuentaMetodoSel) {
+    errEl.textContent = 'El método "' + metodoNombre + '" no tiene una Cuenta Contable configurada en Parámetros. Configúrela antes de registrar este Cobro (de lo contrario quedaría sin asiento).';
+    errEl.style.display = 'block';
+    selMetodoEl?.focus(); return;
+  }
   let idBancoOrigen = null;
   if (tipoCanalSel === 'TRANSFERENCIA') {
     const selBancoEl = document.getElementById('cont-pago-cxc-banco-origen');
@@ -1276,6 +1275,7 @@ async function contGuardarPagoCxc() {
 
       if (!idCuentaContraparte) {
         console.warn('Cobro registrado, pero no se generó asiento: el método seleccionado no tiene cuenta contable configurada en Parámetros.');
+        if (okEl) { okEl.textContent = '⚠ Cobro registrado, pero SIN asiento contable (el método no tiene Cuenta configurada en Parámetros). Contacte a Contabilidad.'; okEl.style.display = 'block'; }
       } else {
         const todasCtas = await obtenerCuentasContables();
         const getCta = function(codigo){ return todasCtas.find(function(x){ return x.codigo === codigo; }) || null; };
