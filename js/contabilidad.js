@@ -1107,11 +1107,18 @@ async function contAbrirPagoCxc(id_cxc) {
 
   // Cargar métodos de Cobro reales desde Parámetros (param_metodos_pago),
   // igual que Egresos -- ya no son opciones fijas en el HTML. El listado se
-  // restringe según si la Factura tiene IGTF aplicado (f.aplica_igtf):
-  // con IGTF -> solo Efectivo o Transferencia en USD (obligatorio cobrar en
-  // divisas). Sin IGTF -> solo Efectivo o Transferencia en Bs (Afiliación
-  // Bancaria es un canal exclusivo de CxP, no aplica para Cobros).
+  // restringe así:
+  //   - Factura con IGTF aplicado -> obligatorio cobrar en divisas, solo
+  //     Efectivo o Transferencia en USD (por Ley).
+  //   - Factura sin IGTF -> el Método debe coincidir con la Moneda de
+  //     Cobro REAL de la Factura (facturas.moneda_cobro) -- "sin IGTF" NO
+  //     siempre significa "Factura en VES": una Empresa Contribuyente
+  //     Ordinaria puede facturar en USD sin que el IGTF se active nunca
+  //     (solo aplica a Contribuyentes Especiales). Antes esto excluía USD
+  //     por completo sin importar la Moneda real de la Factura, forzando
+  //     el Cobro a una cuenta en Bs aunque la Factura fuera en USD.
   const facturaConIGTF = !!c.facturas?.aplica_igtf;
+  const monedaFacturaCxc = (c.facturas?.moneda_cobro || 'VES').toUpperCase();
   const selMetodo = document.getElementById('cont-pago-cxc-metodo');
   if (selMetodo) {
     selMetodo.innerHTML = '<option value="">— Cargando métodos —</option>';
@@ -1123,19 +1130,16 @@ async function contAbrirPagoCxc(id_cxc) {
           return m.codigo === 'USD' && (m.tipo_canal === 'EFECTIVO' || m.tipo_canal === 'TRANSFERENCIA');
         });
       } else {
-        // Sin IGTF aplicado en la Factura -- no se puede cobrar en USD (eso
-        // exigiría IGTF, que no se calculó al emitirla). Solo métodos en
-        // Bs, y solo Efectivo o Transferencia -- Afiliación Bancaria es un
-        // canal exclusivo de CxP (pagos a Proveedores), no se usa para
-        // Cobros a Clientes.
+        // Afiliación Bancaria es un canal exclusivo de CxP (pagos a
+        // Proveedores), no se usa para Cobros a Clientes.
         metodos = (metodos || []).filter(function(m) {
-          return m.codigo !== 'USD' && (m.tipo_canal === 'EFECTIVO' || m.tipo_canal === 'TRANSFERENCIA');
+          return m.codigo === monedaFacturaCxc && (m.tipo_canal === 'EFECTIVO' || m.tipo_canal === 'TRANSFERENCIA');
         });
       }
       if (!metodos || !metodos.length) {
         selMetodo.innerHTML = facturaConIGTF
           ? '<option value="">⚠ Esta Factura tiene IGTF aplicado y requiere Efectivo o Transferencia en USD — configure el método en Parámetros</option>'
-          : '<option value="">⚠ Esta Factura no tiene IGTF aplicado y requiere Efectivo o Transferencia en Bs — configure el método en Parámetros</option>';
+          : '<option value="">⚠ No hay métodos de Efectivo o Transferencia en '+monedaFacturaCxc+' configurados — configure uno en Parámetros</option>';
       } else {
         selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
           + metodos.map(function(m) {
@@ -1152,7 +1156,6 @@ async function contAbrirPagoCxc(id_cxc) {
     igtfNotaEl.style.display = facturaConIGTF ? '' : 'none';
     if (facturaConIGTF) igtfNotaEl.textContent = 'Esta Factura tiene IGTF aplicado — el pago debe ser en Efectivo o Transferencia en USD.';
   }
-
   const infoEl = document.getElementById('cont-pago-cxc-tasa-info');
   if (infoEl) {
     infoEl.textContent = c.tasa_bcv
