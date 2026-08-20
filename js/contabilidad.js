@@ -1117,8 +1117,9 @@ async function contAbrirPagoCxc(id_cxc) {
   //     (solo aplica a Contribuyentes Especiales). Antes esto excluía USD
   //     por completo sin importar la Moneda real de la Factura, forzando
   //     el Cobro a una cuenta en Bs aunque la Factura fuera en USD.
-  const facturaConIGTF = !!c.facturas?.aplica_igtf;
-  const monedaFacturaCxc = (c.facturas?.moneda_cobro || 'VES').toUpperCase();
+  const facturaJoinCxc = Array.isArray(c.facturas) ? c.facturas[0] : c.facturas;
+  const facturaConIGTF = !!facturaJoinCxc?.aplica_igtf;
+  const monedaFacturaCxc = (facturaJoinCxc?.moneda_cobro || 'VES').toUpperCase();
   const selMetodo = document.getElementById('cont-pago-cxc-metodo');
   if (selMetodo) {
     selMetodo.innerHTML = '<option value="">— Cargando métodos —</option>';
