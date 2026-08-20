@@ -1558,7 +1558,12 @@ async function contGuardarPagoCxp() {
         id_empresa: id_emisor, numero_asiento: numAst, tipo: 'PAGO_PROVEEDOR', fecha: fecha,
         descripcion: 'Pago ' + (c.proveedores?.nombre||'Proveedor') + ' | Doc: ' + (c.numero_doc||'') + ' | Ref: ' + ref,
         referencia: c.numero_doc || ('CXP-'+id_cxp),
-        estado: 'APROBADO', moneda_base: moneda, tasa_bcv: tasaPago,
+        // moneda_base -- la Moneda FUNCIONAL de la Empresa (normalmente
+        // VES), no la de esta transacción puntual. Antes quedaba en
+        // 'moneda' (la de este pago), generando asientos "en USD" aunque
+        // la Empresa lleve su contabilidad en VES -- mismo criterio ya
+        // usado en Entradas, Devoluciones y Ejecutar Pago.
+        estado: 'APROBADO', moneda_base: ((_empresaActiva?.moneda_principal)||'VES').toUpperCase(), tasa_bcv: tasaPago,
         id_usuario: sesionActual?.correo_usuario || null
       });
       const ar = Array.isArray(ast) ? ast[0] : ast;
