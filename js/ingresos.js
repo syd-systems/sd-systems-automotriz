@@ -617,7 +617,10 @@ async function generarCxCyAsientoFactura(idFactura) {
         descripcion:    'Factura '+fac.numero_factura+' — '+(fac.receptor_nombre||''),
         tipo:           'AUTOMATICO',
         referencia:     fac.numero_factura,
-        moneda_base:    (fac.moneda_cobro||'VES').toUpperCase(),
+        // moneda_base -- SIEMPRE la Moneda Funcional de la Empresa, no la
+        // Moneda de Cobro de la Factura -- mismo criterio ya corregido en
+        // Pago/Cobro/Asiento Manual (nada se puede ocultar contablemente).
+        moneda_base:    ((_empresaActiva?.moneda_principal)||'VES').toUpperCase(),
         tasa_bcv:       tasaReal,
         id_periodo:     id_periodo,
         id_empresa:      fac.id_empresa || null,
@@ -1050,6 +1053,24 @@ async function anularFactura(id, numero) {
     try {
       await api('cont_cxc','PATCH',{estado:'ANULADA'},'?id_factura=eq.'+id);
     } catch(eCxc) { console.warn('Error anulando CxC:', eCxc); }
+
+    // Anular los Asientos contables asociados -- el de Reconocimiento de
+    // Venta (referencia = número de Factura) y los de Costo de Venta por
+    // línea/artículo (uno por cada renglón con mercancía, referencia
+    // 'FAC-<id>' o 'SAL-<id_salida>' según el caso, pero siempre
+    // mencionan "Factura FAC-<id>" en su descripción -- se buscan por
+    // ambos caminos para no dejar ninguno vivo).
+    try {
+      const refsAst = [numero, 'FAC-'+id];
+      const asientosAnular = await api('cont_asientos','GET',null,
+        '?estado=neq.ANULADO&or=(referencia.in.("'+refsAst.join('","')+'"),descripcion.ilike.*Factura FAC-'+id+'*)&select=id_asiento,descripcion');
+      for (const a of (asientosAnular || [])) {
+        await api('cont_asientos','PATCH',
+          { estado:'ANULADO', descripcion:'[ANULADO] '+(a.descripcion||'') },
+          '?id_asiento=eq.'+a.id_asiento);
+      }
+    } catch(eAstFac) { console.warn('Error anulando asientos de la Factura:', eAstFac); }
+
     cerrarModal('modal-ficha-fac');
     renderFacturas();
   }
