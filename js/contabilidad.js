@@ -1322,7 +1322,12 @@ async function contGuardarPagoCxc() {
           numero_asiento: numAst, tipo: 'COBRO_CLIENTE', fecha: fecha,
           descripcion: 'Cobro Factura ' + numeroFacturaRef,
           referencia: numeroFacturaRef, estado: 'APROBADO',
-          moneda_base: monedaMetodo, tasa_bcv: tasaActual, id_periodo: id_periodo,
+          // moneda_base -- la Moneda FUNCIONAL de la Empresa (normalmente
+          // VES), no la del Método de Cobro elegido. Antes quedaba en
+          // 'monedaMetodo' (USD si se cobraba en divisas), generando
+          // asientos "en USD" aunque la Empresa lleve su contabilidad en
+          // VES -- mismo criterio ya usado en Entradas y Egresos.
+          moneda_base: ((_empresaActiva?.moneda_principal)||'VES').toUpperCase(), tasa_bcv: tasaActual, id_periodo: id_periodo,
           id_usuario: sesionActual?.correo_usuario || null
         });
         const ar = Array.isArray(ast) ? ast[0] : ast;
