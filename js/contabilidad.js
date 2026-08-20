@@ -64,6 +64,7 @@ function contRenderShell() {
     + contTabBtn('balance',      '⚖ Balance',         'VER_BALANCE')
     + contTabBtn('cxc',          '💰 CxC',            'CXC')
     + contTabBtn('cxp',          '💳 CxP',            'CXP')
+    + contTabBtn('cajabancos',   '🏦 Caja - Bancos',  'VER')
     + contTabBtn('conciliacion', '🔄 Conciliación',   'CONCILIACION')
     + contTabBtn('asientos',     '📝 Asientos',       'CREAR')
     + contTabBtn('cuentas',      '📋 Cuentas',        'PLAN_CUENTAS')
@@ -102,6 +103,7 @@ async function contCambiarVista(vista, forzar) {
   else if (vista === 'balance')      await contRenderBalance();
   else if (vista === 'cxc')          await contRenderCxc();
   else if (vista === 'cxp')          await contRenderCxp();
+  else if (vista === 'cajabancos')   await contRenderCajaBancos();
   else if (vista === 'conciliacion') await contRenderConciliacion();
   else if (vista === 'asientos')     { cont.innerHTML = ''; _contVista = 'diario'; await contAbrirAsiento(null); }
   else if (vista === 'cuentas')      await contRenderCuentas();
@@ -1409,6 +1411,123 @@ async function contGuardarPagoCxc() {
   } catch(e) {
     errEl.textContent = 'Error al registrar el cobro: ' + e.message;
     errEl.style.display = 'block';
+  }
+}
+
+// ─── CAJA - BANCOS ───
+// Saldos REALES por Moneda -- no el equivalente en Moneda Funcional que ya
+// muestra el resto de la contabilidad (Diario/Mayor/Balance), sino la
+// suma/resta de los montos tal como se movieron en la Moneda seleccionada.
+// Las Cuentas relevantes se derivan de param_metodos_pago (misma fuente
+// que ya usa el sistema para saber a qué Cuenta va cada pago/cobro) --
+// si se agrega un Banco nuevo en Parámetros, aparece aquí solo.
+let _cajaBancosMoneda = null;
+let _cajaBancosDesde  = null;
+let _cajaBancosHasta  = null;
+
+async function contRenderCajaBancos() {
+  const cont = document.getElementById('cont-vista-cont');
+  if (!cont) return;
+
+  const monedaPrincipal  = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
+  const monedaSecundaria = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
+  if (!_cajaBancosMoneda) _cajaBancosMoneda = monedaPrincipal;
+
+  const hoy = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+  if (!_cajaBancosHasta) _cajaBancosHasta = hoy;
+  if (!_cajaBancosDesde) _cajaBancosDesde = hoy.slice(0,7) + '-01'; // primer día del mes actual
+
+  cont.innerHTML =
+    '<div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px;background:var(--gris2);border-radius:8px;padding:14px 16px">'
+    + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Moneda</label>'
+    + '<select id="cb-moneda" onchange="_cajaBancosMoneda=this.value" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-size:13px;padding:7px 10px;border-radius:5px;outline:none">'
+    + '<option value="'+monedaPrincipal+'"'+(_cajaBancosMoneda===monedaPrincipal?' selected':'')+'>'+monedaPrincipal+'</option>'
+    + (monedaSecundaria !== monedaPrincipal ? '<option value="'+monedaSecundaria+'"'+(_cajaBancosMoneda===monedaSecundaria?' selected':'')+'>'+monedaSecundaria+'</option>' : '')
+    + '</select></div>'
+    + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Desde</label>'
+    + '<input type="date" id="cb-desde" value="'+_cajaBancosDesde+'" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-size:13px;padding:6px 10px;border-radius:5px;outline:none"></div>'
+    + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Hasta</label>'
+    + '<input type="date" id="cb-hasta" value="'+_cajaBancosHasta+'" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-size:13px;padding:6px 10px;border-radius:5px;outline:none"></div>'
+    + '<button class="btn-primario" onclick="cbConsultarSaldos()">Consultar</button>'
+    + '</div>'
+    + '<div id="cb-resultado"></div>';
+
+  await cbConsultarSaldos();
+}
+
+async function cbConsultarSaldos() {
+  const resEl = document.getElementById('cb-resultado');
+  if (!resEl) return;
+  const moneda = document.getElementById('cb-moneda')?.value || _cajaBancosMoneda;
+  const desde  = document.getElementById('cb-desde')?.value || _cajaBancosDesde;
+  const hasta  = document.getElementById('cb-hasta')?.value || _cajaBancosHasta;
+  _cajaBancosMoneda = moneda; _cajaBancosDesde = desde; _cajaBancosHasta = hasta;
+
+  if (!desde || !hasta) { resEl.innerHTML = '<div class="alerta alerta-error" style="display:block">Debe indicar el rango de fechas.</div>'; return; }
+  if (desde > hasta)    { resEl.innerHTML = '<div class="alerta alerta-error" style="display:block">"Desde" no puede ser posterior a "Hasta".</div>'; return; }
+
+  resEl.innerHTML = '<div class="loading"><div class="spinner"></div> Calculando saldos...</div>';
+
+  try {
+    const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_saldos_caja_bancos', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        p_id_empresa: window._contEmisorActivo || _empresaActiva?.id_empresa || null,
+        p_moneda: moneda,
+        p_fecha_desde: desde,
+        p_fecha_hasta: hasta
+      })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const filas = await resp.json() || [];
+
+    if (!filas.length) {
+      resEl.innerHTML = '<div class="alerta alerta-info" style="display:block">No hay Cuentas de Caja/Banco configuradas en Parámetros para '+moneda+' (revise Métodos de Cobro/Pago).</div>';
+      return;
+    }
+
+    const simbolo = moneda === 'VES' ? 'Bs' : '$';
+    const fmt = function(n) { return simbolo + ' ' + parseFloat(n||0).toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2}); };
+    const totInicial = filas.reduce(function(s,f){ return s + parseFloat(f.saldo_inicial||0); }, 0);
+    const totEntradas = filas.reduce(function(s,f){ return s + parseFloat(f.entradas||0); }, 0);
+    const totSalidas  = filas.reduce(function(s,f){ return s + parseFloat(f.salidas||0); }, 0);
+    const totCierre   = filas.reduce(function(s,f){ return s + parseFloat(f.saldo_cierre||0); }, 0);
+
+    resEl.innerHTML =
+      '<div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:16px;margin-bottom:16px">'
+      + '<div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">Consolidado — '+moneda+'</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">'
+      + '<div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">SALDO INICIAL</div><div style="font-family:var(--font-mono);font-size:18px;font-weight:600">'+fmt(totInicial)+'</div></div>'
+      + '<div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">ENTRADAS</div><div style="font-family:var(--font-mono);font-size:18px;font-weight:600;color:#22c55e">+'+fmt(totEntradas)+'</div></div>'
+      + '<div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">SALIDAS</div><div style="font-family:var(--font-mono);font-size:18px;font-weight:600;color:#f87171">-'+fmt(totSalidas)+'</div></div>'
+      + '<div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">SALDO CIERRE</div><div style="font-family:var(--font-mono);font-size:18px;font-weight:700;color:var(--naranja)">'+fmt(totCierre)+'</div></div>'
+      + '</div></div>'
+      + '<div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Detalle por Cuenta</div>'
+      + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'
+      + '<thead><tr>'
+      + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CUENTA</th>'
+      + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">SALDO INICIAL</th>'
+      + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ENTRADAS</th>'
+      + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">SALIDAS</th>'
+      + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">SALDO CIERRE</th>'
+      + '</tr></thead><tbody>'
+      + filas.map(function(f) {
+          return '<tr>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde)"><span style="color:var(--naranja);font-family:var(--font-mono);font-size:11px">'+f.codigo+'</span><br>'+f.nombre+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde);text-align:right;font-family:var(--font-mono)">'+fmt(f.saldo_inicial)+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde);text-align:right;font-family:var(--font-mono);color:#22c55e">+'+fmt(f.entradas)+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde);text-align:right;font-family:var(--font-mono);color:#f87171">-'+fmt(f.salidas)+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde);text-align:right;font-family:var(--font-mono);font-weight:600;color:var(--naranja)">'+fmt(f.saldo_cierre)+'</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table></div>';
+  } catch(eCB) {
+    resEl.innerHTML = '<div class="alerta alerta-error" style="display:block">Error calculando saldos: ' + eCB.message + '</div>';
   }
 }
 
