@@ -1118,24 +1118,19 @@ async function contAbrirPagoCxc(id_cxc) {
   if (bancoOrigenContCxc) bancoOrigenContCxc.style.display = 'none';
 
   // Cargar métodos de Cobro reales desde Parámetros (param_metodos_pago),
-  // igual que Egresos -- ya no son opciones fijas en el HTML. El Cliente
-  // puede pagar en la Moneda que quiera, sin importar en qué Moneda se
-  // facturó (mismo criterio ya usado en Entradas/CxP: "Moneda de Pago"
-  // independiente de la Moneda de Negociación/Factura) -- por eso el
-  // select muestra TODOS los métodos activos, en ambas Monedas. Solo se
-  // excluye Afiliación Bancaria, que es un canal exclusivo de CxP (pagos
-  // a Proveedores), no se usa para Cobros.
+  // igual que Egresos -- ya no son opciones fijas en el HTML. El listado
+  // se filtra ESTRICTAMENTE por la Moneda de Cobro de la Factura
+  // (facturas.moneda_cobro) -- si la Factura es en Bs, no debe ser
+  // posible elegir por error un Método en USD (y viceversa). Sin
+  // preselección: es una decisión que le corresponde tomar al operador,
+  // aunque en la práctica solo va a quedar una Moneda disponible. Se
+  // excluye Afiliación Bancaria, canal exclusivo de CxP.
   //
-  // El IGTF NO se decide aquí con facturas.aplica_igtf (eso es lo que se
+  // El IGTF NO se decide con facturas.aplica_igtf (eso es lo que se
   // congeló al EMITIR la Factura) -- se evalúa fresco, en el momento de
   // ESTA cobranza puntual, cuando el Usuario elige el Método
   // (onCambiarMetodoCobroCxc): aplica si la Empresa es Contribuyente
-  // Especial Y la Moneda de este Método es USD, sin importar en qué
-  // Moneda se facturó originalmente.
-  // Preselección por defecto: el Método cuya Moneda coincida con la Moneda
-  // de Cobro de la Factura (facturas.moneda_cobro) -- es solo una
-  // sugerencia editable, el Usuario puede cambiarla libremente si el
-  // Cliente termina pagando en otra Moneda.
+  // Especial Y la Moneda de Cobro de la Factura es USD.
   const facturaJoinCxc = Array.isArray(c.facturas) ? c.facturas[0] : c.facturas;
   const monedaFacturaCxc = (facturaJoinCxc?.moneda_cobro || 'VES').toUpperCase();
   const selMetodo = document.getElementById('cont-pago-cxc-metodo');
@@ -1145,17 +1140,16 @@ async function contAbrirPagoCxc(id_cxc) {
       let metodos = await api('param_metodos_pago','GET',null,
         '?estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,tipo_canal,id_cuenta_contable,codigo' + emisorQ());
       metodos = (metodos || []).filter(function(m) {
-        return m.tipo_canal !== 'AFILIACION_BANCARIA';
+        return m.tipo_canal !== 'AFILIACION_BANCARIA' && (m.codigo || '').toUpperCase() === monedaFacturaCxc;
       });
       if (!metodos || !metodos.length) {
-        selMetodo.innerHTML = '<option value="">⚠ No hay métodos de Cobro configurados — configure uno en Parámetros</option>';
+        selMetodo.innerHTML = '<option value="">⚠ No hay métodos de Cobro en '+monedaFacturaCxc+' configurados — configure uno en Parámetros</option>';
       } else {
         selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
           + metodos.map(function(m) {
               return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-moneda="'+(m.codigo||'')+'" data-tipo-canal="'+(m.tipo_canal||'')+'">'+m.nombre+'</option>';
             }).join('');
-        const metodoSugerido = metodos.find(function(m) { return (m.codigo||'').toUpperCase() === monedaFacturaCxc; });
-        if (metodoSugerido) selMetodo.value = String(metodoSugerido.id_metodo);
+        // Sin preselección -- el operador debe elegir explícitamente.
       }
     } catch(eMet) {
       selMetodo.innerHTML = '<option value="">— Sin métodos disponibles —</option>';
