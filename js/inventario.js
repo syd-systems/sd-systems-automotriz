@@ -1834,30 +1834,41 @@ async function ejecutarEfectosEntradaCompra(m) {
     const areaRows = await api('param_areas','GET',null,'?id=eq.'+id_areaEnt+'&select=nombre');
     if (areaRows && areaRows[0]) areaNombreEnt = areaRows[0].nombre;
   } catch(eAreaNom) {}
-  // IGTF -- ya congelado al crear la Entrada (Gasto no deducible/no
-  // acreditable, NO afecta el costo del Inventario ni el CPP). El monto en
-  // Bs se deriva UNA vez de lo congelado en USD con la tasa de esta
-  // Entrada, sin ida y vuelta. Declarado aquí (fuera de los try de abajo)
-  // porque tanto el Asiento como la CxP lo necesitan.
   const montoIGTF_USD_Ast = m.aplica_igtf && m.monto_igtf != null ? parseFloat(m.monto_igtf) : 0;
-  const montoIGTF_BS_Ast = montoIGTF_USD_Ast > 0 && tasa_bcv_usada
-    ? parseFloat((montoIGTF_USD_Ast * tasa_bcv_usada).toFixed(2)) : 0;
+  // Base y Total Base+IVA EXACTOS -- ya congelados al crear la Entrada
+  // (mismos que muestra la Ficha), para que el Asiento no tenga que
+  // extraer el IVA dividiendo el total por su cuenta (otra fuente más de
+  // centavos de diferencia). En USD, la base ya es precio_costo_moneda×
+  // cantidad (el costo sin IVA que se guarda siempre); en Bs, si se
+  // negoció en VES se usa el valor congelado directo, si se negoció en
+  // USD se convierte UNA sola vez (conversión hacia adelante, sin ida y
+  // vuelta).
+  const baseExactaUSDAst = nuevoPrecioCosto * cantidad;
+  const totalExactoUSDAst = montoTotalConIVA;
+  const baseExactaBsAst = m.moneda_compra === 'VES' && m.base_moneda_original != null
+    ? parseFloat(m.base_moneda_original)
+    : (tasa_bcv_usada ? parseFloat((baseExactaUSDAst * tasa_bcv_usada).toFixed(2)) : null);
+  const totalExactoBsAst = m.moneda_compra === 'VES' && m.monto_total_moneda_original != null
+    ? parseFloat(m.monto_total_moneda_original)
+    : (tasa_bcv_usada ? parseFloat((totalExactoUSDAst * tasa_bcv_usada).toFixed(2)) : null);
+  // IGTF -- ya congelado al crear la Entrada (Gasto no deducible/no
+  // acreditable, NO afecta el costo del Inventario ni el CPP). El monto
+  // TOTAL en Bs (montoVES, Base+IVA+IGTF) se calcula con UN SOLO
+  // redondeo -- es el mismo valor que se congela en la CxP (monto_ves).
+  // montoIGTF_BS_Ast se deriva como el REMANENTE exacto (montoVES menos
+  // el Total Base+IVA ya redondeado), no como un redondeo independiente
+  // -- si se redondean por separado (Base+IVA por un lado, IGTF por
+  // otro) y se suman, el resultado puede diferir en 1 céntimo del
+  // redondeo único que usa la CxP, y el Asiento quedaba descuadrado
+  // contra lo que realmente se pagaba después.
+  const montoUSD = montoTotalConIVA + montoIGTF_USD_Ast;
+  const montoVES = (m.moneda_compra === 'VES' && m.monto_total_moneda_original != null)
+    ? parseFloat(m.monto_total_moneda_original) + (montoIGTF_USD_Ast > 0 && tasa_bcv_usada ? parseFloat((montoIGTF_USD_Ast * tasa_bcv_usada).toFixed(2)) : 0)
+    : parseFloat((montoUSD * (tasa_bcv_usada || _tasaVigente || 1)).toFixed(2));
+  const montoIGTF_BS_Ast = montoIGTF_USD_Ast > 0 && totalExactoBsAst != null
+    ? parseFloat((montoVES - totalExactoBsAst).toFixed(2))
+    : 0;
   try {
-    // Base y Total EXACTOS -- ya congelados al crear la Entrada (mismos
-    // que muestra la Ficha), para que el Asiento no tenga que extraer el
-    // IVA dividiendo el total por su cuenta (otra fuente más de centavos
-    // de diferencia). En USD, la base ya es precio_costo_moneda×cantidad
-    // (el costo sin IVA que se guarda siempre); en Bs, si se negoció en
-    // VES se usa el valor congelado directo, si se negoció en USD se
-    // convierte UNA sola vez (conversión hacia adelante, sin ida y vuelta).
-    const baseExactaUSDAst = nuevoPrecioCosto * cantidad;
-    const totalExactoUSDAst = montoTotalConIVA;
-    const baseExactaBsAst = m.moneda_compra === 'VES' && m.base_moneda_original != null
-      ? parseFloat(m.base_moneda_original)
-      : (tasa_bcv_usada ? parseFloat((baseExactaUSDAst * tasa_bcv_usada).toFixed(2)) : null);
-    const totalExactoBsAst = m.moneda_compra === 'VES' && m.monto_total_moneda_original != null
-      ? parseFloat(m.monto_total_moneda_original)
-      : (tasa_bcv_usada ? parseFloat((totalExactoUSDAst * tasa_bcv_usada).toFixed(2)) : null);
     await generarAsientoInventario('ENTRADA_COMPRA', {
       articulo:   r.nombre_articulo || r.codigo_articulo || ('Art#' + id),
       cantidad:   cantidad,
@@ -1886,13 +1897,6 @@ async function ejecutarEfectosEntradaCompra(m) {
   // aplica) -- es lo que realmente se le debe pagar al Proveedor; el
   // Inventario y el CPP NUNCA lo incluyen (ver arriba).
   try {
-    const montoUSD = montoTotalConIVA + montoIGTF_USD_Ast;
-    // Monto en Bs: usa el congelado en monto_total_moneda_original (si se
-    // negoció en VES, ya es ese valor directo, sin recalcular con la
-    // tasa) -- solo si se negoció en USD hace falta convertir.
-    const montoVES = (m.moneda_compra === 'VES' && m.monto_total_moneda_original != null)
-      ? parseFloat(m.monto_total_moneda_original) + montoIGTF_BS_Ast
-      : parseFloat((montoUSD * (tasa_bcv_usada || _tasaVigente || 1)).toFixed(2));
     const numDocBase = 'ENT-' + m.id_entrada;
     const artNomCxP = r.nombre_articulo || r.codigo_articulo || 'Art#'+id;
     const fechaNegCxP = m.fecha_negociacion || m.fecha_entrada;
