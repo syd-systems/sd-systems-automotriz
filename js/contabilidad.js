@@ -1038,15 +1038,27 @@ function contRenderResultadosHTML(saldos, hasta) {
 let _pagoCxcActualId = null; // id_cxc que se esta cobrando en el modal
 
 // Muestra el campo "Banco Origen" solo cuando el Método de Cobro elegido es
-// Transferencia (Efectivo, Afiliación, etc. no lo necesitan).
+// Transferencia (Efectivo, Afiliación, etc. no lo necesitan). También
+// evalúa fresco si aplica IGTF para ESTA cobranza puntual: Empresa
+// Contribuyente Especial + Moneda del Método elegido en USD -- sin
+// importar en qué Moneda se facturó originalmente (facturas.aplica_igtf
+// es solo lo que se congeló al EMITIR, no determina cómo se cobra).
 function onCambiarMetodoCobroCxc() {
   const selMetodoEl = document.getElementById('cont-pago-cxc-metodo');
-  const tipoCanal = selMetodoEl?.selectedOptions?.[0]?.dataset?.tipoCanal || '';
+  const opt = selMetodoEl?.selectedOptions?.[0];
+  const tipoCanal = opt?.dataset?.tipoCanal || '';
+  const monedaMetodoSel = (opt?.dataset?.moneda || '').toUpperCase();
   const cont = document.getElementById('cont-pago-cxc-banco-origen-cont');
   if (cont) cont.style.display = (tipoCanal === 'TRANSFERENCIA') ? '' : 'none';
   if (tipoCanal !== 'TRANSFERENCIA') {
     const sel = document.getElementById('cont-pago-cxc-banco-origen');
     if (sel) sel.value = '';
+  }
+  const igtfNotaEl = document.getElementById('cont-pago-cxc-igtf-nota');
+  if (igtfNotaEl) {
+    const aplicaIGTFAhora = monedaMetodoSel === 'USD' && _empresaActiva?.tipo_contribuyente === 'ESPECIAL';
+    igtfNotaEl.style.display = aplicaIGTFAhora ? '' : 'none';
+    if (aplicaIGTFAhora) igtfNotaEl.textContent = 'Por ser la Empresa Contribuyente Especial, este Cobro en USD lleva IGTF.';
   }
 }
 
@@ -1106,34 +1118,31 @@ async function contAbrirPagoCxc(id_cxc) {
   if (bancoOrigenContCxc) bancoOrigenContCxc.style.display = 'none';
 
   // Cargar métodos de Cobro reales desde Parámetros (param_metodos_pago),
-  // igual que Egresos -- ya no son opciones fijas en el HTML. El listado se
-  // restringe por MONEDA, no por el tipo de canal exacto (Efectivo vs
-  // Transferencia no importa, cualquiera sirve mientras sea la Moneda
-  // correcta) -- solo se excluye Afiliación Bancaria, que es un canal
-  // exclusivo de CxP (pagos a Proveedores), no se usa para Cobros:
-  //   - Factura con IGTF aplicado -> obligatorio cobrar en USD (por Ley).
-  //   - Factura sin IGTF -> el Método debe coincidir con la Moneda de
-  //     Cobro REAL de la Factura (facturas.moneda_cobro) -- "sin IGTF" NO
-  //     siempre significa "Factura en VES": una Empresa Contribuyente
-  //     Ordinaria puede facturar en USD sin que el IGTF se active nunca
-  //     (solo aplica a Contribuyentes Especiales).
-  const facturaJoinCxc = Array.isArray(c.facturas) ? c.facturas[0] : c.facturas;
-  const facturaConIGTF = !!facturaJoinCxc?.aplica_igtf;
-  const monedaFacturaCxc = (facturaJoinCxc?.moneda_cobro || 'VES').toUpperCase();
+  // igual que Egresos -- ya no son opciones fijas en el HTML. El Cliente
+  // puede pagar en la Moneda que quiera, sin importar en qué Moneda se
+  // facturó (mismo criterio ya usado en Entradas/CxP: "Moneda de Pago"
+  // independiente de la Moneda de Negociación/Factura) -- por eso el
+  // select muestra TODOS los métodos activos, en ambas Monedas. Solo se
+  // excluye Afiliación Bancaria, que es un canal exclusivo de CxP (pagos
+  // a Proveedores), no se usa para Cobros.
+  //
+  // El IGTF NO se decide aquí con facturas.aplica_igtf (eso es lo que se
+  // congeló al EMITIR la Factura) -- se evalúa fresco, en el momento de
+  // ESTA cobranza puntual, cuando el Usuario elige el Método
+  // (onCambiarMetodoCobroCxc): aplica si la Empresa es Contribuyente
+  // Especial Y la Moneda de este Método es USD, sin importar en qué
+  // Moneda se facturó originalmente.
   const selMetodo = document.getElementById('cont-pago-cxc-metodo');
   if (selMetodo) {
     selMetodo.innerHTML = '<option value="">— Cargando métodos —</option>';
     try {
       let metodos = await api('param_metodos_pago','GET',null,
         '?estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,tipo_canal,id_cuenta_contable,codigo' + emisorQ());
-      const monedaBuscada = facturaConIGTF ? 'USD' : monedaFacturaCxc;
       metodos = (metodos || []).filter(function(m) {
-        return (m.codigo || '').toUpperCase() === monedaBuscada && m.tipo_canal !== 'AFILIACION_BANCARIA';
+        return m.tipo_canal !== 'AFILIACION_BANCARIA';
       });
       if (!metodos || !metodos.length) {
-        selMetodo.innerHTML = facturaConIGTF
-          ? '<option value="">⚠ Esta Factura tiene IGTF aplicado y requiere cobrar en USD — configure un método en Parámetros</option>'
-          : '<option value="">⚠ No hay métodos de Cobro en '+monedaBuscada+' configurados — configure uno en Parámetros</option>';
+        selMetodo.innerHTML = '<option value="">⚠ No hay métodos de Cobro configurados — configure uno en Parámetros</option>';
       } else {
         selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
           + metodos.map(function(m) {
@@ -1145,11 +1154,7 @@ async function contAbrirPagoCxc(id_cxc) {
       selMetodo.innerHTML = '<option value="">— Sin métodos disponibles —</option>';
     }
   }
-  const igtfNotaEl = document.getElementById('cont-pago-cxc-igtf-nota');
-  if (igtfNotaEl) {
-    igtfNotaEl.style.display = facturaConIGTF ? '' : 'none';
-    if (facturaConIGTF) igtfNotaEl.textContent = 'Esta Factura tiene IGTF aplicado — el pago debe ser en Efectivo o Transferencia en USD.';
-  }
+  onCambiarMetodoCobroCxc();
   const infoEl = document.getElementById('cont-pago-cxc-tasa-info');
   if (infoEl) {
     infoEl.textContent = c.tasa_bcv
