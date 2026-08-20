@@ -425,7 +425,14 @@ function calcularTotalesFactura() {
   if (igtfLbl) igtfLbl.textContent = 'IGTF (' + Math.round(tasaIGTFActual()*100) + '%)';
   const subtotal = window._facSubtotalOS||0;
   const moneda   = document.getElementById('fac-moneda')?.value||'USD';
-  const tasa     = moneda==='VES' ? (parseFloat(document.getElementById('fac-tasa')?.value)||1) : 1;
+  // Tasa BCV real -- SIEMPRE se lee, sin importar la Moneda de la Factura.
+  // Antes, para Facturas en USD, se fijaba en 1 literal (en vez de la tasa
+  // real ya cargada en el campo al abrir el formulario), así que
+  // total_ves terminaba guardándose igual al total en USD -- un valor sin
+  // sentido, no un equivalente real en Bs. Eso rompía el cálculo de
+  // diferencial cambiario al momento de cobrar (comparaba contra "tasa
+  // original = 1", generando una "ganancia en cambio" falsa y gigantesca).
+  const tasa     = parseFloat(document.getElementById('fac-tasa')?.value)||1;
   const aplIVA   = document.getElementById('fac-aplica-iva')?.checked;
   const aplIGTF  = document.getElementById('fac-aplica-igtf')?.checked;
   const esVES    = moneda==='VES';
