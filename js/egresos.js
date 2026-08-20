@@ -3721,7 +3721,7 @@ async function aprobarPagoCxP(id_cxp) {
   if (!puedo('PAGOS','APROBAR')) { alert('Sin permiso para aprobar.'); return; }
   if (!(await tieneNivelMinimo(2))) { alert('Esta acción requiere Firma de Aprobación Nivel 1 o Nivel 2.'); return; }
   try {
-    const rowsChk = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=monto_usd,fecha_vencimiento');
+    const rowsChk = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=monto_usd,fecha_vencimiento,id_usuario');
     const montoCxP = rowsChk && rowsChk[0] ? Number(rowsChk[0].monto_usd) : null;
     const fechaVencChk = rowsChk && rowsChk[0] ? rowsChk[0].fecha_vencimiento : null;
     if (fechaVencChk && fechaVencChk > getHoyVzla()) {
@@ -3733,8 +3733,15 @@ async function aprobarPagoCxP(id_cxp) {
       alert('Esta Obligación ($' + montoCxP.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ') supera el monto máximo que su Nivel de Firma puede aprobar ($' + montoMax.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '). Debe ser aprobada por un Nivel de Firma superior.');
       return;
     }
+    // Autoaprobación (el mismo Usuario creó la Obligación y también es
+    // quien la aprueba) -- no tiene sentido decirle que "recibirá una
+    // notificación", ya lo sabe porque lo está haciendo él mismo.
+    window._esAutoaprobacionCxP = !!(rowsChk && rowsChk[0] && rowsChk[0].id_usuario === sesionActual?.correo_usuario);
   } catch(eChkMonto) { console.warn('Error validando monto máximo de aprobación:', eChkMonto); }
-  if (!confirm('¿Aprobar esta solicitud de pago? El operador que la generó recibirá una notificación para proceder a Registrar el Pago.')) return;
+  const msgConfirmAprob = window._esAutoaprobacionCxP
+    ? '¿Aprobar esta solicitud de pago?'
+    : '¿Aprobar esta solicitud de pago? El operador que la generó recibirá una notificación para proceder a Registrar el Pago.';
+  if (!confirm(msgConfirmAprob)) return;
   try {
     const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=id_usuario,numero_doc,observaciones,concepto');
     if (!rows || !rows[0]) return;
@@ -3764,8 +3771,10 @@ async function aprobarPagoCxP(id_cxp) {
       } catch(eResAprob) { console.warn('Error resolviendo notificaciones de revisión:', eResAprob); }
     }
 
-    // Notificar al operador que generó la solicitud
-    if (c.id_usuario) {
+    // Notificar al operador que generó la solicitud -- salvo que sea la
+    // misma persona que acaba de aprobar (autoaprobación), en cuyo caso no
+    // hace falta notificarse a sí mismo.
+    if (c.id_usuario && c.id_usuario !== sesionActual?.correo_usuario) {
       try {
         const infoCreadorAprob = await resolverCreadorCxP(c.id_usuario);
         await api('notificaciones','POST',{
