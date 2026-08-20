@@ -1132,6 +1132,12 @@ async function contAbrirPagoCxc(id_cxc) {
   // (onCambiarMetodoCobroCxc): aplica si la Empresa es Contribuyente
   // Especial Y la Moneda de este Método es USD, sin importar en qué
   // Moneda se facturó originalmente.
+  // Preselección por defecto: el Método cuya Moneda coincida con la Moneda
+  // de Cobro de la Factura (facturas.moneda_cobro) -- es solo una
+  // sugerencia editable, el Usuario puede cambiarla libremente si el
+  // Cliente termina pagando en otra Moneda.
+  const facturaJoinCxc = Array.isArray(c.facturas) ? c.facturas[0] : c.facturas;
+  const monedaFacturaCxc = (facturaJoinCxc?.moneda_cobro || 'VES').toUpperCase();
   const selMetodo = document.getElementById('cont-pago-cxc-metodo');
   if (selMetodo) {
     selMetodo.innerHTML = '<option value="">— Cargando métodos —</option>';
@@ -1148,7 +1154,8 @@ async function contAbrirPagoCxc(id_cxc) {
           + metodos.map(function(m) {
               return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-moneda="'+(m.codigo||'')+'" data-tipo-canal="'+(m.tipo_canal||'')+'">'+m.nombre+'</option>';
             }).join('');
-        // Sin auto-selección: el usuario debe elegir el método explícitamente.
+        const metodoSugerido = metodos.find(function(m) { return (m.codigo||'').toUpperCase() === monedaFacturaCxc; });
+        if (metodoSugerido) selMetodo.value = String(metodoSugerido.id_metodo);
       }
     } catch(eMet) {
       selMetodo.innerHTML = '<option value="">— Sin métodos disponibles —</option>';
