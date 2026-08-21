@@ -1909,18 +1909,12 @@ async function onSelProveedorCxP() {
 // Obligación puntual) y el IGTF se reevalúa según lo que realmente esté
 // seleccionado. Mismo criterio y mismo patrón que Entradas
 // (_actualizarAplicaIGTFEntrada).
+// El IGTF ya NO se calcula ni se muestra en la vista previa de la CxP
+// manual -- depende de en qué Moneda se termine pagando, y eso se decide
+// recién al pagar (puede cambiar entre que se crea la Obligación y que
+// efectivamente se paga). Esta función queda neutralizada a propósito.
 async function _actualizarAplicaIGTFPago(monedaFieldId) {
-  const moneda = document.getElementById(monedaFieldId)?.value || '';
-  const tipoContrib = window._tipoContribProveedorPago || null;
-  const aplicaAhora = moneda === 'USD' && tipoContrib === 'ESPECIAL';
-  if (aplicaAhora && !window._aplicaIGTFPago) {
-    window._tasaIGTFPago = 0.03;
-    try {
-      const trib = await api('param_tributos','GET',null,'?codigo=eq.IGTF&estado=eq.ACTIVO&order=fecha_registro.desc&limit=1&select=alicuota');
-      if (trib && trib[0]) window._tasaIGTFPago = parseFloat(trib[0].alicuota) / 100;
-    } catch(e) { console.warn('Error verificando tasa IGTF:', e); }
-  }
-  window._aplicaIGTFPago = aplicaAhora;
+  window._aplicaIGTFPago = false;
 }
 
 async function onSelProveedorPago() {
@@ -2719,7 +2713,6 @@ async function guardarPago() {
               estado: 'PENDIENTE', referencia: referenciaConv || null, id_cuenta_gasto: id_cuentaGasto,
               concepto: descripcion, observaciones: observaciones || null, exento_iva: exento, incluye_iva: exento ? null : (incluyeIVAVal === 'SI'),
               esquema_pago: 'CREDITO',
-              aplica_igtf: aplicaIGTFFinal, monto_igtf: igtfCuotaConv || null, tasa_igtf: aplicaIGTFFinal ? tasaIGTFFinal : null,
               tasa_iva: exento ? null : tasaIVAFinal,
               id_usuario: sesionActual?.correo_usuario || null
             });
@@ -2727,7 +2720,7 @@ async function guardarPago() {
               await api('cont_cxp','PATCH',{ numero_doc: numDocActual + '-C' + cc.num + '-' + cxpCuotaConv[0].id_cxp }, '?id_cxp=eq.' + cxpCuotaConv[0].id_cxp);
               if (cc.fecha <= getHoyVzla()) {
                 enrutarAprobacionCxP(cxpCuotaConv[0].id_cxp, numDocActual + '-C' + cc.num + '-' + cxpCuotaConv[0].id_cxp, cc.monto, {
-                  montoIgtf: igtfCuotaConv, monedaPago: moneda, tasaBcv: tasaUSD,
+                  monedaPago: moneda, tasaBcv: tasaUSD,
                   concepto: descripcion, proveedor: nombreProvLinea
                 });
               } else {
@@ -2744,14 +2737,13 @@ async function guardarPago() {
             referencia: referenciaConv || null, id_cuenta_gasto: id_cuentaGasto, concepto: descripcion, observaciones: observaciones || null,
             exento_iva: exento, incluye_iva: exento ? null : (incluyeIVAVal === 'SI'),
             esquema_pago: 'CONTADO',
-            aplica_igtf: aplicaIGTFFinal, monto_igtf: montoIGTFFinal || null, tasa_igtf: aplicaIGTFFinal ? tasaIGTFFinal : null,
             tasa_iva: exento ? null : tasaIVAFinal,
             id_usuario: sesionActual?.correo_usuario || null
           });
           if (cxpContadoConv && cxpContadoConv[0]) {
             await api('cont_cxp','PATCH',{ numero_doc: numDocActual + '-' + cxpContadoConv[0].id_cxp }, '?id_cxp=eq.' + cxpContadoConv[0].id_cxp);
             enrutarAprobacionCxP(cxpContadoConv[0].id_cxp, numDocActual + '-' + cxpContadoConv[0].id_cxp, montoTotalConIVA, {
-              montoIgtf: montoIGTFFinal, monedaPago: moneda, tasaBcv: tasaUSD, montoBsExacto: montoTotalVES,
+              monedaPago: moneda, tasaBcv: tasaUSD, montoBsExacto: montoTotalVES,
               concepto: descripcion, proveedor: nombreProvLinea
             });
           }
@@ -2768,9 +2760,6 @@ async function guardarPago() {
         monto_usd:         montoTotalConIGTF,
         monto_ves:         montoTotalVESConIGTF,
         saldo_usd:         montoTotalConIGTF,
-        aplica_igtf:       aplicaIGTFFinal,
-        monto_igtf:        montoIGTFFinal || null,
-        tasa_igtf:         aplicaIGTFFinal ? tasaIGTFFinal : null,
         tasa_iva:          exento ? null : tasaIVAFinal,
         incluye_iva:       exento ? null : (incluyeIVAVal === 'SI'),
         // Monto tal como se escribió, SIN resolver -- separado del total ya
@@ -2915,9 +2904,6 @@ async function guardarPago() {
           exento_iva:        exento,
           incluye_iva:       exento ? null : (incluyeIVAVal === 'SI'),
           esquema_pago:      'CREDITO',
-          aplica_igtf:       aplicaIGTFFinal,
-          monto_igtf:        igtfCuota || null,
-          tasa_igtf:         aplicaIGTFFinal ? tasaIGTFFinal : null,
           tasa_iva:          exento ? null : tasaIVAFinal,
           id_usuario:        sesionActual?.correo_usuario || null
         });
@@ -2925,7 +2911,7 @@ async function guardarPago() {
           await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-C' + c.num + '-' + cxpCuota[0].id_cxp }, '?id_cxp=eq.' + cxpCuota[0].id_cxp);
           if (c.fecha <= getHoyVzla()) {
             enrutarAprobacionCxP(cxpCuota[0].id_cxp, numDocBase + '-C' + c.num + '-' + cxpCuota[0].id_cxp, c.monto, {
-              montoIgtf: igtfCuota, monedaPago: moneda, tasaBcv: tasaUSD,
+              monedaPago: moneda, tasaBcv: tasaUSD,
               concepto: descripcion, proveedor: nombreProvLinea
             });
           } else {
@@ -2959,16 +2945,13 @@ async function guardarPago() {
         exento_iva:        exento,
         incluye_iva:       exento ? null : (incluyeIVAVal === 'SI'),
         esquema_pago:      'CONTADO',
-        aplica_igtf:       aplicaIGTFFinal,
-        monto_igtf:        montoIGTFFinal || null,
-        tasa_igtf:         aplicaIGTFFinal ? tasaIGTFFinal : null,
         tasa_iva:          exento ? null : tasaIVAFinal,
         id_usuario:        sesionActual?.correo_usuario || null
       });
       if (cxpContado && cxpContado[0]) {
         await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-' + cxpContado[0].id_cxp }, '?id_cxp=eq.' + cxpContado[0].id_cxp);
         enrutarAprobacionCxP(cxpContado[0].id_cxp, numDocBase + '-' + cxpContado[0].id_cxp, montoTotalConIVA, {
-          montoIgtf: montoIGTFFinal, monedaPago: moneda, tasaBcv: tasaUSD, montoBsExacto: montoTotalVES,
+          monedaPago: moneda, tasaBcv: tasaUSD, montoBsExacto: montoTotalVES,
           concepto: descripcion, proveedor: nombreProvLinea
         });
       }
@@ -4002,17 +3985,16 @@ async function ejecutarPagoCxP(id_cxp) {
     elMontoVES.textContent = monedaCxP === 'VES' ? '$ ' + fmtBs(montoUSDShow) : 'Bs. ' + fmtBs(montoVESShow);
   }
 
-  // IGTF -- solo se pregunta/recalcula para CxP VIEJAS creadas antes de esta
-  // corrección (aplica_igtf NULL, nunca resuelto). Las CxP nuevas -- de
-  // Entrada o manuales -- ya traen el IGTF congelado y horneado en
-  // saldo_usd/monto_usd al crearse, así que aquí solo se paga, sin volver a
-  // preguntar ni recalcular (misma "única fuente de verdad" del resto del
-  // sistema).
-  const esInventarioCxP = /^ENT-/.test(c.numero_doc || '');
+  // IGTF -- ya no se hornea nunca al crear la Obligación (ni Entrada ni
+  // manual) -- depende de cómo se termine pagando, y eso puede cambiar
+  // entre que se crea y que se paga. Se pregunta/calcula siempre fresco
+  // aquí, salvo CxP viejas que ya quedaron con aplica_igtf resuelto de
+  // antes de este cambio (esas si quedan tal como estaban).
   const igtfYaResueltoCxP = c.aplica_igtf !== null && c.aplica_igtf !== undefined;
   const igtfWrapEl = document.getElementById('exec-pago-igtf-wrap');
   const esUSDCxP = monedaCxP !== 'VES';
-  if (igtfWrapEl) igtfWrapEl.style.display = (esUSDCxP && !esInventarioCxP && !igtfYaResueltoCxP) ? '' : 'none';
+  const esEspecialCxP = prov?.tipo_contribuyente === 'ESPECIAL';
+  if (igtfWrapEl) igtfWrapEl.style.display = (esUSDCxP && esEspecialCxP && !igtfYaResueltoCxP) ? '' : 'none';
 
   // Resolver Método de Pago y Cuenta Contable automáticamente -- ya no se
   // pregunta: el Método de Pago viene fijo de la ficha del Proveedor
@@ -4079,12 +4061,10 @@ function onCambioIncluyeIvaPago() {
   api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=numero_doc,monto_usd,saldo_usd,monto_ves,moneda_pago,id_proveedor,fecha_vencimiento,aplica_igtf')
     .then(async function(rows) {
       if (!rows || !rows[0]) return;
-      // Si es CxP de inventario, o ya trae el IGTF resuelto/congelado desde
-      // que se creó -- no volver a preguntar ni recalcular aquí (ya está
-      // horneado en saldo_usd/monto_usd).
-      const esInv = /^ENT-/.test(rows[0].numero_doc || '');
+      // Si ya trae el IGTF resuelto/congelado desde antes de este cambio
+      // (CxP vieja) -- no volver a preguntar ni recalcular aquí.
       const yaResuelto = rows[0].aplica_igtf !== null && rows[0].aplica_igtf !== undefined;
-      if (esInv || yaResuelto) {
+      if (yaResuelto) {
         document.getElementById('exec-pago-tributos-preview').style.display = 'none';
         return;
       }
@@ -4284,16 +4264,15 @@ async function confirmarEjecucionPago() {
       } catch(e) {}
     }
 
-    // Verificar si aplica IGTF -- solo USD + proveedor Contribuyente Especial.
-    // Si la CxP ya trae aplica_igtf resuelto (no NULL) -- de Entrada o
-    // manual creada con el código nuevo -- el IGTF ya está horneado en
-    // saldo_usd/monto_usd desde que se creó; aquí no se vuelve a calcular
-    // ni a sumar aparte (única fuente de verdad). Solo las CxP manuales
-    // viejas (aplica_igtf NULL, creadas antes de esta corrección) siguen el
-    // cálculo en el momento del pago, como siempre.
+    // Verificar si aplica IGTF -- solo USD + proveedor Contribuyente
+    // Especial. El IGTF YA NO se hornea nunca al crear la Obligación (ni
+    // Entrada ni CxP manual) -- depende de cómo se termine pagando, y eso
+    // puede cambiar entre que se crea y que se paga. Por eso siempre se
+    // calcula fresco aquí, en el momento real del pago (aplica_igtf en la
+    // CxP se queda en NULL desde que se crea, a propósito).
     const esInventarioPago = /^ENT-/.test(c.numero_doc || '');
     const igtfYaResuelto = c.aplica_igtf !== null && c.aplica_igtf !== undefined;
-    const aplicaIGTF = esUSD && !esInventarioPago && !igtfYaResuelto && c.proveedores?.tipo_contribuyente === 'ESPECIAL';
+    const aplicaIGTF = esUSD && !igtfYaResuelto && c.proveedores?.tipo_contribuyente === 'ESPECIAL';
 
     // 2. Obtener tasa BCV del día de pago
     const tasasHoy = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaPago+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
@@ -4302,49 +4281,33 @@ async function confirmarEjecucionPago() {
     // Para CxP en VES: montoUSD = monto_ves / tasaPago
     //
     // Para CxP de Entrada que se NEGOCIÓ en VES pero se PAGA en USD -- la
-    // deuda real siempre fue en Bs (monto_ves, ya congelado y correcto,
-    // nunca cambia). El monto en USD que hace falta para pagarla depende
-    // de la tasa del día en que EFECTIVAMENTE se paga, no de la tasa de
+    // deuda real siempre fue en Bs (monto_ves = Base+IVA, ya congelado y
+    // correcto, nunca cambia -- ya no incluye IGTF, eso se calcula aparte
+    // más abajo). El monto en USD que hace falta para cubrirla depende de
+    // la tasa del día en que EFECTIVAMENTE se paga, no de la tasa de
     // cuando se negoció -- por eso se recalcula aquí con la tasa de HOY,
     // en vez de usar el saldo_usd congelado desde la creación (que era
-    // solo una estimación, no una deuda real en dólares). No es un
-    // diferencial cambiario: nunca hubo una deuda en USD que "cambiara de
-    // valor" -- recién se determina cuántos dólares hacen falta al pagar.
-    // El IGTF en Bs tampoco cambia (es fijo, 3% de la Base+IVA en Bs) --
-    // solo cambia su traducción a dólares.
+    // solo una estimación). No es un diferencial cambiario: nunca hubo
+    // una deuda en USD que "cambiara de valor" -- recién se determina
+    // cuántos dólares hacen falta al pagar.
     const esNegociacionVESPagoUSD = esInventarioPago && c.moneda_negociacion === 'VES' && monedaCxP !== 'VES';
-    let montoIGTFRecalc = null;
     let montoUSD;
     if (monedaCxP === 'VES') {
       montoUSD = parseFloat((montoVESCxP / (tasaPago || 1)).toFixed(4));
     } else if (esNegociacionVESPagoUSD) {
       montoUSD = parseFloat((montoVESCxP / (tasaPago || 1)).toFixed(2));
-      if (c.aplica_igtf) {
-        const tasaIgtfCong = parseFloat(c.tasa_igtf || 0.03);
-        const baseIvaVesCong = parseFloat((montoVESCxP / (1 + tasaIgtfCong)).toFixed(2));
-        const igtfBsCong = parseFloat((montoVESCxP - baseIvaVesCong).toFixed(2));
-        montoIGTFRecalc = parseFloat((igtfBsCong / (tasaPago || 1)).toFixed(2));
-      } else {
-        montoIGTFRecalc = 0;
-      }
     } else {
       montoUSD = montoUSDCxP;
     }
 
-    // Si hubo recálculo: corregir la CxP (monto_usd/saldo_usd/monto_igtf/
-    // tasa_bcv quedan con el valor REAL a la fecha de pago, no la
-    // estimación de la fecha de negociación) y, si es Contado, corregir
-    // también la línea de IGTF y la de CxP en el Asiento ORIGINAL de la
-    // Entrada (solo la columna USD -- la de Bs ya estaba bien, nunca
-    // dependió de la tasa). Para Crédito con varias cuotas esa línea es
-    // compartida entre todas, así que no se toca aquí -- queda pendiente
-    // de un tratamiento aparte.
+    // Si hubo recálculo de la Base+IVA: corregir la CxP (monto_usd/
+    // saldo_usd/tasa_bcv quedan con el valor REAL a la fecha de pago, no
+    // la estimación de la fecha de negociación).
     if (esNegociacionVESPagoUSD) {
       try {
         await api('cont_cxp','PATCH',{
           monto_usd: montoUSD,
           saldo_usd: montoUSD,
-          monto_igtf: montoIGTFRecalc,
           tasa_bcv: tasaPago
         }, '?id_cxp=eq.'+id_cxp);
         // El objeto 'c' en memoria también debe reflejar el monto corregido
@@ -4354,31 +4317,11 @@ async function confirmarEjecucionPago() {
         c.monto_usd = montoUSD;
         c.saldo_usd = montoUSD;
       } catch(eCorrCxp) { console.warn('Error corrigiendo monto real de la CxP:', eCorrCxp); }
-
-      if (c.esquema_pago === 'CONTADO' && c.aplica_igtf && montoIGTFRecalc != null) {
-        try {
-          const mEnt = (c.numero_doc || '').match(/^ENT-(\d+)/);
-          if (mEnt) {
-            const refEnt = 'ENT-' + mEnt[1];
-            const astRows = await api('cont_asientos','GET',null,
-              '?referencia=eq.'+refEnt+'&estado=eq.APROBADO&select=id_asiento&limit=1');
-            if (astRows && astRows[0]) {
-              const idAstCorr = astRows[0].id_asiento;
-              const lineasAst = await api('cont_asiento_lineas','GET',null,
-                '?id_asiento=eq.'+idAstCorr+'&select=id_linea,id_cuenta,debe_usd,haber_usd,cont_cuentas(codigo)');
-              const lineaIGTF = (lineasAst||[]).find(function(l){ return l.cont_cuentas?.codigo === '6.1.04.003'; });
-              const lineaCxP  = (lineasAst||[]).find(function(l){ return l.cont_cuentas?.codigo === '2.1.01.001'; });
-              if (lineaIGTF) await api('cont_asiento_lineas','PATCH',{ debe_usd: montoIGTFRecalc }, '?id_linea=eq.'+lineaIGTF.id_linea);
-              if (lineaCxP)  await api('cont_asiento_lineas','PATCH',{ haber_usd: montoUSD },      '?id_linea=eq.'+lineaCxP.id_linea);
-            }
-          }
-        } catch(eCorrAst) { console.warn('Error corrigiendo Asiento original de la Entrada:', eCorrAst); }
-      }
     }
 
     // 3. IGTF -- el IVA ya no se toca aquí, se contabilizó al crear la Obligación de Pago
     const { tasaIGTF } = await _obtenerTributos(fechaPago);
-    const { igtf, total } = (esInventarioPago || igtfYaResuelto)
+    const { igtf, total } = igtfYaResuelto
       ? { igtf: 0, total: montoUSD }
       : _calcularTributos(montoUSD, incluyeIgtf, tasaIGTF, aplicaIGTF);
 
