@@ -318,12 +318,13 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       : '<span style="background:rgba(255,255,255,0.06);color:var(--suave);border-radius:4px;padding:1px 6px;font-size:10px">Manual</span>';
 
     const montoVES = item.monto_ves ? fmtBs(item.monto_ves) : (item.monto_usd ? fmtBs(item.monto_usd) : '—');
-    // Resaltar la columna de la Moneda Principal de la empresa activa, y
-    // atenuar la otra -- antes USD siempre se veía resaltado sin importar
-    // cuál fuera la moneda principal real de la empresa.
-    const monedaPrincipalLista = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
-    const estiloUSD = monedaPrincipalLista === 'USD' ? '' : 'color:var(--suave)';
-    const estiloVES = monedaPrincipalLista === 'VES' ? '' : 'color:var(--suave)';
+    // Resaltar la columna de la Moneda de Pago REAL de ESTA Obligación
+    // (item._raw.moneda_pago), y atenuar la otra -- antes resaltaba según
+    // la Moneda Principal fija de la Empresa, sin importar en qué Moneda
+    // se pagó realmente cada Obligación puntual.
+    const monedaPagoItem = (item._raw?.moneda_pago || 'USD').toUpperCase();
+    const estiloUSD = monedaPagoItem === 'USD' ? '' : 'color:var(--suave)';
+    const estiloVES = monedaPagoItem === 'VES' ? '' : 'color:var(--suave)';
 
     return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
       +'<td style="padding:8px;font-family:var(--font-mono);font-size:11px;color:var(--naranja)">'+item.numero+'</td>'
