@@ -5524,9 +5524,10 @@ function calcularTributosEdit() {
   actualizarIGTFEdit(total, moneda, tasa);
 }
 
-// Guarda el Tipo de Contribuyente del Proveedor, propone por defecto la
-// Moneda de Pago, y reevalúa si aplica IGTF (mismo criterio que Nueva
-// Entrada / onCambiarProveedorEntrada). Se dispara al CAMBIAR el Proveedor
+// Guarda el Tipo de Contribuyente del Proveedor, y reevalúa si aplica IGTF
+// cuando el Usuario elija la Moneda de Pago (no se autocompleta ni se
+// sugiere -- la elige siempre el operador). Mismo criterio que Nueva
+// Entrada / onCambiarProveedorEntrada. Se dispara al CAMBIAR el Proveedor
 // en la Ficha de Editar.
 async function onCambiarProveedorEdit() {
   const idProv = parseInt(document.getElementById('edit-mov-proveedor')?.value) || null;
@@ -5537,10 +5538,9 @@ async function onCambiarProveedorEdit() {
   if (selMonedaPagoEdit) selMonedaPagoEdit.value = '';
   if (idProv) {
     try {
-      const rows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProv+'&select=moneda_facturacion,tipo_contribuyente');
+      const rows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProv+'&select=tipo_contribuyente');
       const p = rows && rows[0] ? rows[0] : {};
       window._tipoContribProveedorEntrada = p.tipo_contribuyente || null;
-      if (selMonedaPagoEdit && p.moneda_facturacion) selMonedaPagoEdit.value = p.moneda_facturacion;
       await _actualizarAplicaIGTFEntrada('edit-mov-moneda-pago');
     } catch(e) { console.warn('Error verificando IGTF del Proveedor:', e); }
   }
@@ -6735,9 +6735,12 @@ function calcularTributosEntrada() {
 // Guarda el Tipo de Contribuyente del Proveedor, propone por defecto la
 // Moneda de Pago (según su Moneda de Facturación -- el Usuario puede
 // cambiarla para esta Entrada puntual), y reevalúa si aplica IGTF: el
-// criterio real es Contribuyente Especial + Moneda de PAGO (no la de
-// Negociación) en USD. Si aplica, el IGTF se calcula automáticamente (no
-// es una casilla que decide el Usuario).
+// Guarda el Tipo de Contribuyente del Proveedor, y reevalúa si aplica IGTF
+// cuando el Usuario elija la Moneda de Pago (no se autocompleta ni se
+// sugiere -- la elige siempre el operador). Mismo criterio que Nueva
+// Entrada: Contribuyente Especial + Moneda de PAGO (no la de Negociación)
+// en USD. Si aplica, el IGTF se calcula automáticamente (no es una
+// casilla que decide el Usuario).
 async function onCambiarProveedorEntrada() {
   const idProv = parseInt(document.getElementById('es-proveedor')?.value) || null;
   const selMonedaPago = document.getElementById('es-moneda-pago');
@@ -6747,10 +6750,9 @@ async function onCambiarProveedorEntrada() {
   if (selMonedaPago) selMonedaPago.value = '';
   if (idProv) {
     try {
-      const rows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProv+'&select=moneda_facturacion,tipo_contribuyente');
+      const rows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProv+'&select=tipo_contribuyente');
       const p = rows && rows[0] ? rows[0] : {};
       window._tipoContribProveedorEntrada = p.tipo_contribuyente || null;
-      if (selMonedaPago && p.moneda_facturacion) selMonedaPago.value = p.moneda_facturacion;
       await _actualizarAplicaIGTFEntrada('es-moneda-pago');
     } catch(e) { console.warn('Error verificando IGTF del Proveedor:', e); }
   }
