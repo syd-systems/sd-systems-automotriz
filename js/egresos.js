@@ -4300,9 +4300,81 @@ async function confirmarEjecucionPago() {
     const tasaPago = parseFloat(tasasHoy && tasasHoy[0] ? tasasHoy[0].tipo_cambio : tasaCompra);
 
     // Para CxP en VES: montoUSD = monto_ves / tasaPago
-    const montoUSD = monedaCxP === 'VES'
-      ? parseFloat((montoVESCxP / (tasaPago || 1)).toFixed(4))
-      : montoUSDCxP;
+    //
+    // Para CxP de Entrada que se NEGOCIÓ en VES pero se PAGA en USD -- la
+    // deuda real siempre fue en Bs (monto_ves, ya congelado y correcto,
+    // nunca cambia). El monto en USD que hace falta para pagarla depende
+    // de la tasa del día en que EFECTIVAMENTE se paga, no de la tasa de
+    // cuando se negoció -- por eso se recalcula aquí con la tasa de HOY,
+    // en vez de usar el saldo_usd congelado desde la creación (que era
+    // solo una estimación, no una deuda real en dólares). No es un
+    // diferencial cambiario: nunca hubo una deuda en USD que "cambiara de
+    // valor" -- recién se determina cuántos dólares hacen falta al pagar.
+    // El IGTF en Bs tampoco cambia (es fijo, 3% de la Base+IVA en Bs) --
+    // solo cambia su traducción a dólares.
+    const esNegociacionVESPagoUSD = esInventarioPago && c.moneda_negociacion === 'VES' && monedaCxP !== 'VES';
+    let montoIGTFRecalc = null;
+    let montoUSD;
+    if (monedaCxP === 'VES') {
+      montoUSD = parseFloat((montoVESCxP / (tasaPago || 1)).toFixed(4));
+    } else if (esNegociacionVESPagoUSD) {
+      montoUSD = parseFloat((montoVESCxP / (tasaPago || 1)).toFixed(2));
+      if (c.aplica_igtf) {
+        const tasaIgtfCong = parseFloat(c.tasa_igtf || 0.03);
+        const baseIvaVesCong = parseFloat((montoVESCxP / (1 + tasaIgtfCong)).toFixed(2));
+        const igtfBsCong = parseFloat((montoVESCxP - baseIvaVesCong).toFixed(2));
+        montoIGTFRecalc = parseFloat((igtfBsCong / (tasaPago || 1)).toFixed(2));
+      } else {
+        montoIGTFRecalc = 0;
+      }
+    } else {
+      montoUSD = montoUSDCxP;
+    }
+
+    // Si hubo recálculo: corregir la CxP (monto_usd/saldo_usd/monto_igtf/
+    // tasa_bcv quedan con el valor REAL a la fecha de pago, no la
+    // estimación de la fecha de negociación) y, si es Contado, corregir
+    // también la línea de IGTF y la de CxP en el Asiento ORIGINAL de la
+    // Entrada (solo la columna USD -- la de Bs ya estaba bien, nunca
+    // dependió de la tasa). Para Crédito con varias cuotas esa línea es
+    // compartida entre todas, así que no se toca aquí -- queda pendiente
+    // de un tratamiento aparte.
+    if (esNegociacionVESPagoUSD) {
+      try {
+        await api('cont_cxp','PATCH',{
+          monto_usd: montoUSD,
+          saldo_usd: montoUSD,
+          monto_igtf: montoIGTFRecalc,
+          tasa_bcv: tasaPago
+        }, '?id_cxp=eq.'+id_cxp);
+        // El objeto 'c' en memoria también debe reflejar el monto corregido
+        // -- si no, la sección "Actualizar CxP" más abajo seguiría restando
+        // contra el monto_usd viejo (la estimación), dejando un saldo
+        // pendiente falso en vez de marcar la CxP como pagada.
+        c.monto_usd = montoUSD;
+        c.saldo_usd = montoUSD;
+      } catch(eCorrCxp) { console.warn('Error corrigiendo monto real de la CxP:', eCorrCxp); }
+
+      if (c.esquema_pago === 'CONTADO' && c.aplica_igtf && montoIGTFRecalc != null) {
+        try {
+          const mEnt = (c.numero_doc || '').match(/^ENT-(\d+)/);
+          if (mEnt) {
+            const refEnt = 'ENT-' + mEnt[1];
+            const astRows = await api('cont_asientos','GET',null,
+              '?referencia=eq.'+refEnt+'&estado=eq.APROBADO&select=id_asiento&limit=1');
+            if (astRows && astRows[0]) {
+              const idAstCorr = astRows[0].id_asiento;
+              const lineasAst = await api('cont_asiento_lineas','GET',null,
+                '?id_asiento=eq.'+idAstCorr+'&select=id_linea,id_cuenta,debe_usd,haber_usd,cont_cuentas(codigo)');
+              const lineaIGTF = (lineasAst||[]).find(function(l){ return l.cont_cuentas?.codigo === '6.1.04.003'; });
+              const lineaCxP  = (lineasAst||[]).find(function(l){ return l.cont_cuentas?.codigo === '2.1.01.001'; });
+              if (lineaIGTF) await api('cont_asiento_lineas','PATCH',{ debe_usd: montoIGTFRecalc }, '?id_linea=eq.'+lineaIGTF.id_linea);
+              if (lineaCxP)  await api('cont_asiento_lineas','PATCH',{ haber_usd: montoUSD },      '?id_linea=eq.'+lineaCxP.id_linea);
+            }
+          }
+        } catch(eCorrAst) { console.warn('Error corrigiendo Asiento original de la Entrada:', eCorrAst); }
+      }
+    }
 
     // 3. IGTF -- el IVA ya no se toca aquí, se contabilizó al crear la Obligación de Pago
     const { tasaIGTF } = await _obtenerTributos(fechaPago);
@@ -4331,10 +4403,10 @@ async function confirmarEjecucionPago() {
     // eso generaba un "diferencial cambiario" falso de un centavo aun
     // cuando la tasa no se movió ni un ápice.
     const montoVESCompra = montoVESCxP;
-    const montoVESPago   = (monedaCxP === 'VES' || tasaPago === tasaCompra)
+    const montoVESPago   = (monedaCxP === 'VES' || tasaPago === tasaCompra || esNegociacionVESPagoUSD)
       ? montoVESCxP
       : parseFloat((montoUSD * tasaPago).toFixed(2));
-    const diferencial    = (monedaCxP === 'VES' || tasaPago === tasaCompra) ? 0 : parseFloat((montoVESPago - montoVESCompra).toFixed(2));
+    const diferencial    = (monedaCxP === 'VES' || tasaPago === tasaCompra || esNegociacionVESPagoUSD) ? 0 : parseFloat((montoVESPago - montoVESCompra).toFixed(2));
 
     // 6. Crear asiento contable
     const numAst = await _siguienteNumeroAsiento();
