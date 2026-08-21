@@ -4067,7 +4067,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     if (montoTotalEl) montoTotalEl.value = fmtBs(montoTotal);
     const moneda = m.moneda_compra || 'USD';
     const lblMontoTotal = document.getElementById('edit-mov-label-monto-total');
-    if (lblMontoTotal) lblMontoTotal.textContent = 'Monto en ' + moneda;
+    if (lblMontoTotal) lblMontoTotal.innerHTML = 'Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(' + moneda + ')</span>';
     const calcEl = document.getElementById('edit-mov-precio-usd-calc');
     if (calcEl && tasa > 0) {
       calcEl.value = moneda === 'VES' ? fmtBs(montoTotal / tasa) : fmtBs(montoTotal * tasa);
