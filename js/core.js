@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260814341';
+const SYD_VERSION = '20260814342';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -2996,6 +2996,19 @@ function emisorQ() {
 
 function emisorQStart() {
   return _empresaActiva ? '?id_empresa=eq.' + _empresaActiva.id_empresa : '?';
+}
+
+// Traduce errores técnicos de red/navegador (que el usuario no puede
+// interpretar) a un mensaje amigable. "Failed to fetch" (Chrome/Edge),
+// "NetworkError when attempting to fetch resource" (Firefox) y
+// "Load failed" (Safari) son las variantes típicas cuando no hay conexión
+// a Internet o el servidor no responde.
+function msgErr(e) {
+  const m = (e && e.message) || String(e || '');
+  if (/Failed to fetch|NetworkError|Load failed/i.test(m)) {
+    return 'Falla de Comunicación — verifique su conexión a Internet e intente de nuevo.';
+  }
+  return m;
 }
 
 function fmtFecha(fecha) {
