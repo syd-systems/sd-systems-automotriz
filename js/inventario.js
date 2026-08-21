@@ -7,7 +7,7 @@
 // las variables sueltas declaradas fuera de ellas).
 let _historialEstado = { id_articulo: null, cursor: null, terminado: false, idAreaH: null, filtro: 'todas' };
 const HISTORIAL_PAGE_SIZE = 50;
-const CAMPOS_EDIT_ENTRADA = ['edit-mov-fecha-negociacion','edit-mov-moneda','edit-mov-moneda-pago','edit-mov-cantidad',
+const CAMPOS_EDIT_ENTRADA = ['edit-mov-fecha-negociacion','edit-mov-moneda','edit-mov-cantidad',
   'edit-mov-precio','edit-mov-precio-venta','edit-mov-motivo','edit-mov-proveedor',
   'edit-mov-cliente','edit-mov-area-origen','edit-mov-area','edit-mov-empleado',
   'edit-mov-esquema-pago','edit-mov-obs'];
@@ -1146,8 +1146,6 @@ async function guardarEntradaStock() {
   if (motivoSel === 'compra') {
     monedaSel = document.getElementById('es-moneda-compra')?.value;
     if (!monedaSel)                 return mostrarError('Seleccione la Moneda Negociación.', 'es-moneda-compra');
-    const monedaPagoSel = document.getElementById('es-moneda-pago')?.value;
-    if (!monedaPagoSel)             return mostrarError('Seleccione la Moneda de Pago.', 'es-moneda-pago');
     precioVal = parseMontoVE(document.getElementById('es-precio-costo')?.value);
     if (precioVal <= 0)             return mostrarError('Ingrese el Precio Negociación.', 'es-precio-costo');
   }
@@ -1474,7 +1472,8 @@ async function guardarEntradaStock() {
           monedaPago: moneda_pago_val,
           tasaBcv: tasa_bcv_usada,
           montoBsExacto: montoBsExacto,
-          montoIGTF: 0
+          montoIGTF: 0,
+          esContribuyenteEspecial: window._tipoContribProveedorEntrada === 'ESPECIAL'
         });
       } catch(eEnrutEnt) { console.warn('Error enrutando aprobación de Entrada:', eEnrutEnt); }
       okEl.textContent = window._retomandoEntradaId
@@ -1758,7 +1757,10 @@ function _armarMensajeAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
     + '<div><div style="font-size:10px;color:var(--suave)">CANTIDAD</div><div style="font-weight:600">' + (d.cantidad != null ? d.cantidad : '—') + ' ' + (d.unidad || 'UND') + '</div></div>'
     + '<div><div style="font-size:10px;color:var(--suave)">MONEDA DE PAGO</div><div style="font-weight:600">' + monedaPago + '</div></div>'
     + '</div>'
-    + '<div><div style="font-size:10px;color:var(--suave)">MONTO A PAGAR</div><div style="font-weight:700;color:var(--naranja);font-size:16px">' + principal + '</div>' + igtfLinea + '</div>';
+    + '<div><div style="font-size:10px;color:var(--suave)">MONTO A PAGAR</div><div style="font-weight:700;color:var(--naranja);font-size:16px">' + principal + '</div>' + igtfLinea + '</div>'
+    + (d.esContribuyenteEspecial
+        ? '<div style="font-size:11px;color:var(--naranja);margin-top:10px;padding-top:8px;border-top:1px solid var(--borde)">⚠ Este Proveedor es Contribuyente Especial — si el Pago se efectúa en USD, tendrá una recarga por IGTF (se calcula al momento de pagar).</div>'
+        : '');
 }
 
 // Ejecuta TODO lo que antes pasaba de inmediato al guardar una Entrada de
@@ -4173,22 +4175,6 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     const lblMoneda = document.getElementById('edit-mov-label-moneda');
     if (lblMoneda) lblMoneda.textContent = '(' + (m.moneda_compra || 'USD') + ')';
 
-    // Moneda de Pago -- ya guardada en esta Entrada (m.moneda_pago). Las
-    // Entradas viejas (de antes de que existiera este campo) no lo tienen
-    // guardado -- se completa con la Moneda de Facturación del Proveedor
-    // como mejor aproximación disponible, igual que se hacía antes.
-    const selMonedaPagoLoad = document.getElementById('edit-mov-moneda-pago');
-    if (selMonedaPagoLoad) {
-      if (m.moneda_pago) {
-        selMonedaPagoLoad.value = m.moneda_pago;
-      } else if (window._tipoContribProveedorEntrada !== undefined && m.id_proveedor) {
-        try {
-          const provMonPagoRows = await api('proveedores','GET',null,'?id_proveedor=eq.'+m.id_proveedor+'&select=moneda_facturacion');
-          selMonedaPagoLoad.value = (provMonPagoRows && provMonPagoRows[0] && provMonPagoRows[0].moneda_facturacion) || m.moneda_compra || 'USD';
-        } catch(eMonPagoLoad) { selMonedaPagoLoad.value = m.moneda_compra || 'USD'; }
-      }
-    }
-
     // Precio — usar el precio ORIGINAL negociado (antes de descontar IVA),
     // no el costo ya neto guardado en precio_costo_moneda. Si el registro es
     // anterior a que existiera esta columna, se cae al costo neto como antes.
@@ -4462,8 +4448,6 @@ async function _guardarEdicionMovimientoInterno() {
     if (fechaNeg > hoy)    return mostrarError('La Fecha Negociación no puede ser mayor al día de hoy.', 'edit-mov-fecha-negociacion');
     const monedaSel = document.getElementById('edit-mov-moneda')?.value;
     if (!monedaSel)        return mostrarError('Seleccione la Moneda Negociación.', 'edit-mov-moneda');
-    const monedaPagoSelEdit = document.getElementById('edit-mov-moneda-pago')?.value;
-    if (!monedaPagoSelEdit) return mostrarError('Seleccione la Moneda de Pago.', 'edit-mov-moneda-pago');
   }
   if (!cantidad || cantidad <= 0) return mostrarError('La cantidad debe ser mayor a cero.', esSalida ? 'edit-sal-cantidad' : 'edit-mov-cantidad');
   if (tipo === 'ENTRADA') {
@@ -5496,25 +5480,18 @@ function calcularTributosEdit() {
   actualizarIGTFEdit(total, moneda, tasa);
 }
 
-// Guarda el Tipo de Contribuyente del Proveedor, y reevalúa si aplica IGTF
-// cuando el Usuario elija la Moneda de Pago (no se autocompleta ni se
-// sugiere -- la elige siempre el operador). Mismo criterio que Nueva
-// Entrada / onCambiarProveedorEntrada. Se dispara al CAMBIAR el Proveedor
-// en la Ficha de Editar.
+// Guarda el Tipo de Contribuyente del Proveedor -- se usa para la
+// salvedad de IGTF en la notificación de aprobación. Se dispara al
+// CAMBIAR el Proveedor en la Ficha de Editar.
 async function onCambiarProveedorEdit() {
   const idProv = parseInt(document.getElementById('edit-mov-proveedor')?.value) || null;
-  const selMonedaPagoEdit = document.getElementById('edit-mov-moneda-pago');
   window._tipoContribProveedorEntrada = null;
-  window._aplicaIGTFEntrada = false;
-  window._tasaIGTFEntrada = 0.03;
-  if (selMonedaPagoEdit) selMonedaPagoEdit.value = '';
   if (idProv) {
     try {
       const rows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProv+'&select=tipo_contribuyente');
       const p = rows && rows[0] ? rows[0] : {};
       window._tipoContribProveedorEntrada = p.tipo_contribuyente || null;
-      await _actualizarAplicaIGTFEntrada('edit-mov-moneda-pago');
-    } catch(e) { console.warn('Error verificando IGTF del Proveedor:', e); }
+    } catch(e) { console.warn('Error verificando Tipo de Contribuyente del Proveedor:', e); }
   }
   calcularTributosEdit();
 }
@@ -6706,20 +6683,19 @@ function calcularTributosEntrada() {
 // Entrada: Contribuyente Especial + Moneda de PAGO (no la de Negociación)
 // en USD. Si aplica, el IGTF se calcula automáticamente (no es una
 // casilla que decide el Usuario).
+// Guarda el Tipo de Contribuyente del Proveedor -- se usa para la
+// salvedad de IGTF en la notificación de aprobación (si el Proveedor es
+// Especial y termina pagándose en USD, aplicará IGTF; eso se decide
+// recién en Ejecutar Pago, no aquí).
 async function onCambiarProveedorEntrada() {
   const idProv = parseInt(document.getElementById('es-proveedor')?.value) || null;
-  const selMonedaPago = document.getElementById('es-moneda-pago');
   window._tipoContribProveedorEntrada = null;
-  window._aplicaIGTFEntrada = false;
-  window._tasaIGTFEntrada = 0.03;
-  if (selMonedaPago) selMonedaPago.value = '';
   if (idProv) {
     try {
       const rows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProv+'&select=tipo_contribuyente');
       const p = rows && rows[0] ? rows[0] : {};
       window._tipoContribProveedorEntrada = p.tipo_contribuyente || null;
-      await _actualizarAplicaIGTFEntrada('es-moneda-pago');
-    } catch(e) { console.warn('Error verificando IGTF del Proveedor:', e); }
+    } catch(e) { console.warn('Error verificando Tipo de Contribuyente del Proveedor:', e); }
   }
   calcularTributosEntrada();
 }
