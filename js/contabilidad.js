@@ -275,7 +275,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
       + '</tbody></table></div>';
   } catch(e) {
     console.error('Error contRenderDiario:', e);
-    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error cargando Libro Diario: ' + e.message + '</div>';
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error cargando Libro Diario: ' + msgErr(e) + '</div>';
   }
 }
 
@@ -404,7 +404,7 @@ async function contVerAsiento(id) {
     focusFirstField('modal-cont-asiento-ver');
   } catch(e) {
     if (contEl) contEl.innerHTML = '<div class="alerta alerta-error" style="display:block">Error cargando asiento: ' + msgErr(e) + '</div>';
-    else alert('Error: ' + e.message);
+    else alert('Error: ' + msgErr(e));
   }
 }
 
@@ -637,7 +637,7 @@ async function contGuardarAsiento() {
     okEl.textContent = '✓ Asiento guardado como pendiente.';
     okEl.style.display='block';
     setTimeout(function(){ cerrarModal('modal-cont-asiento-form'); contCambiarVista('diario'); }, 900);
-  } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display='block'; }
+  } catch(e) { errEl.textContent = 'Error: ' + msgErr(e); errEl.style.display='block'; }
 }
 
 async function contAprobarAsiento(id) {
@@ -645,7 +645,7 @@ async function contAprobarAsiento(id) {
   try {
     await api('cont_asientos','PATCH',{ estado:'APROBADO', aprobado_por: sesionActual.correo_usuario, fecha_aprobacion: new Date().toISOString() },'?id_asiento=eq.' + id);
     contCambiarVista('diario');
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 async function contEliminarAsiento(id) {
@@ -655,7 +655,7 @@ async function contEliminarAsiento(id) {
     await api('cont_asientos', 'DELETE', null, '?id_asiento=eq.' + id);
     cerrarModal('modal-cont-asiento-ver');
     contCambiarVista('diario');
-  } catch(e) { alert('Error al eliminar: ' + e.message); }
+  } catch(e) { alert('Error al eliminar: ' + msgErr(e)); }
 }
 
 async function contAnularAsiento(id) {
@@ -663,7 +663,7 @@ async function contAnularAsiento(id) {
   try {
     await api('cont_asientos','PATCH',{ estado:'ANULADO' },'?id_asiento=eq.' + id);
     contCambiarVista('diario');
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -908,7 +908,7 @@ async function contCargarMayor() {
       + '<td colspan="3" style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700;color:' + (saldo>=0?'var(--naranja)':'#fc8181') + '">' + fmtM(Math.abs(saldo)) + (saldo<0?' Cr':' Dr') + '</td>'
       + '</tr></tfoot></table>';
 
-  } catch(e) { res.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>'; }
+  } catch(e) { res.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + msgErr(e) + '</div>'; }
 }
 
 
@@ -964,7 +964,7 @@ async function contGenerarBalance() {
     } else {
       res.innerHTML = contRenderResultadosHTML(saldos, hasta);
     }
-  } catch(e) { res.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>'; }
+  } catch(e) { res.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + msgErr(e) + '</div>'; }
 }
 
 function contSaldoGrupo(saldos, tipoCuenta, desde, hasta) {
@@ -1440,7 +1440,7 @@ async function contGuardarPagoCxc() {
       if (document.getElementById('cont-vista-cont') && typeof contRenderCxc === 'function') contRenderCxc();
     }, 900);
   } catch(e) {
-    errEl.textContent = 'Error al registrar el cobro: ' + e.message;
+    errEl.textContent = 'Error al registrar el cobro: ' + msgErr(e);
     errEl.style.display = 'block';
   }
 }
@@ -1558,7 +1558,7 @@ async function cbConsultarSaldos() {
         }).join('')
       + '</tbody></table></div>';
   } catch(eCB) {
-    resEl.innerHTML = '<div class="alerta alerta-error" style="display:block">Error calculando saldos: ' + eCB.message + '</div>';
+    resEl.innerHTML = '<div class="alerta alerta-error" style="display:block">Error calculando saldos: ' + msgErr(eCB) + '</div>';
   }
 }
 
@@ -1638,7 +1638,7 @@ async function contRenderCxc() {
       +(filas||'<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--suave)">Sin facturas registradas.</td></tr>')
       +'</tbody></table></div>';
   } catch(e) {
-    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>';
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+msgErr(e)+'</div>';
   }
 }
 
@@ -1724,7 +1724,7 @@ async function contRenderCxp() {
           +'</tr></thead><tbody>'+filas+'</tbody></table></div>'
         : '<div style="text-align:center;color:var(--suave);padding:40px">Sin registros de CxP.</div>');
   } catch(e) {
-    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>';
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+msgErr(e)+'</div>';
   }
 }
 
@@ -1938,7 +1938,7 @@ async function contEliminarCuenta() {
     await contCargarCuentas();
     contCuentasCache = [];
     contRenderCuentas();
-  } catch(e) { alert('Error al eliminar: '+e.message); }
+  } catch(e) { alert('Error al eliminar: '+msgErr(e)); }
 }
 
 async function contGuardarCuenta() {
@@ -1961,7 +1961,7 @@ async function contGuardarCuenta() {
     okEl.textContent='✓ Cuenta guardada.'; okEl.style.display='block';
     contCuentasCache = [];
     setTimeout(function(){ cerrarModal('modal-cont-cuenta'); contRenderCuentas(); }, 900);
-  } catch(e) { errEl.textContent='Error: ' + e.message; errEl.style.display='block'; }
+  } catch(e) { errEl.textContent='Error: ' + msgErr(e); errEl.style.display='block'; }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -2020,7 +2020,7 @@ async function contGuardarPeriodo() {
     else    { await api('cont_periodos','POST',datos); }
     okEl.textContent='✓ Período guardado.'; okEl.style.display='block';
     setTimeout(function(){ cerrarModal('modal-cont-periodo'); contRenderPeriodos(); }, 900);
-  } catch(e) { errEl.textContent='Error: ' + e.message; errEl.style.display='block'; }
+  } catch(e) { errEl.textContent='Error: ' + msgErr(e); errEl.style.display='block'; }
 }
 
 async function contCerrarPeriodo(id, nombre) {
@@ -2028,7 +2028,7 @@ async function contCerrarPeriodo(id, nombre) {
   try {
     await api('cont_periodos','PATCH',{ estado:'CERRADO' },'?id_periodo=eq.'+id);
     contRenderPeriodos();
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -2087,7 +2087,7 @@ async function renderTributos() {
     window._tributosNivelFiltro = '';
     renderTablaTributos();
   } catch(e) {
-    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error cargando tributos: ' + e.message + '</div>';
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error cargando tributos: ' + msgErr(e) + '</div>';
   }
 }
 
@@ -2150,7 +2150,7 @@ async function mostrarTablaParamTributos() {
     window._tributosNivelFiltro = '';
     renderTablaTributos();
   } catch(e) {
-    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + msgErr(e) + '</div>';
   }
 }
 
@@ -2276,7 +2276,7 @@ async function toggleEstadoTributo(id, estadoActual) {
   try {
     await api('param_tributos','PATCH',{ estado: nuevoEstado },'?id_tributo=eq.'+id);
     await mostrarTablaParamTributos();
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 async function abrirFormTributo(id) {
@@ -2348,7 +2348,7 @@ async function eliminarTributo() {
     _tributosCache = [];
     if (document.getElementById('tributos-tbody')) { await renderTributos(); } else { await mostrarTablaParamTributos(); }
     if (idGuardado) setTimeout(function(){ abrirFormTributo(idGuardado); }, 300);
-  } catch(e) { alert('Error al eliminar: '+e.message); }
+  } catch(e) { alert('Error al eliminar: '+msgErr(e)); }
 }
 
 async function guardarTributo() {
@@ -2415,7 +2415,7 @@ async function guardarTributo() {
     cerrarModal('modal-tributo');
     _tributosCache = [];
     if (document.getElementById('tributos-tbody')) { await renderTributos(); } else { await mostrarTablaParamTributos(); }
-  } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+  } catch(e) { errEl.textContent = 'Error: ' + msgErr(e); errEl.style.display = 'block'; }
 }
 
 // ══════════════════════════════════════════════════════════════
