@@ -115,7 +115,7 @@ async function renderFacturas() {
     // el botón "+ Nueva Factura" (mismo patrón que Entradas Rechazadas).
     revisarBadgeOSCerradas();
   } catch(err) {
-    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + err.message + '</div>';
+    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + msgErr(err) + '</div>';
   }
 }
 
@@ -344,7 +344,7 @@ async function onSelOSFactura() {
     actualizarSubtotalOSLabel();
     calcularTotalesFactura();
   } catch(err) {
-    linDiv.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + err.message + '</div>';
+    linDiv.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + msgErr(err) + '</div>';
   }
 }
 
@@ -561,7 +561,7 @@ async function guardarFactura(emitir) {
     okEl.style.display='block';
     setTimeout(function() { cerrarModal('modal-factura'); renderFacturas(); }, 1200);
   } catch(err) {
-    errEl.textContent='Error: '+err.message; errEl.style.display='block';
+    errEl.textContent='Error: '+msgErr(err); errEl.style.display='block';
   } finally {
     window._facturaProcesando = false;
     if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = btnGuardarTextoOriginal; }
@@ -988,7 +988,7 @@ async function verFichaFactura(id) {
           } else {
             alert('No se encontró la CxC asociada a esta factura.');
           }
-        } catch(e) { alert('Error: ' + e.message); }
+        } catch(e) { alert('Error: ' + msgErr(e)); }
       };
     }
     if (btnEditar)  { btnEditar._id=f.id_factura;  btnEditar.onclick=function(){cerrarModal('modal-ficha-fac');abrirEditarFactura(this._id);}; btnEditar.style.display=puedo('FACTURAS','EDITAR')&&f.estado==='BORRADOR'?'':'none'; }
@@ -997,7 +997,7 @@ async function verFichaFactura(id) {
     if (btnEliminar){ btnEliminar._id=f.id_factura; btnEliminar._num=f.numero_factura; btnEliminar.onclick=function(){eliminarFactura(this._id,this._num);}; btnEliminar.style.display=puedo('FACTURAS','ELIMINAR')&&f.estado==='ANULADA'?'':'none'; }
     abrirModal('modal-ficha-fac');
   focusFirstField('modal-ficha-fac');
-  } catch(err) { alert('Error: '+err.message); console.error(err); }
+  } catch(err) { alert('Error: '+msgErr(err)); console.error(err); }
 }
 
 async function abrirEditarFactura(id) {
@@ -1056,7 +1056,7 @@ async function emitirFactura(id) {
     cerrarModal('modal-ficha-fac');
     renderFacturas();
   }
-  catch(err) { alert('Error: '+err.message); }
+  catch(err) { alert('Error: '+msgErr(err)); }
   finally { if (btnEmitir) { btnEmitir.disabled=false; btnEmitir.textContent='✓ Emitir'; } }
 }
 
@@ -1095,7 +1095,7 @@ async function anularFactura(id, numero) {
     cerrarModal('modal-ficha-fac');
     renderFacturas();
   }
-  catch(err) { alert('Error: '+err.message); }
+  catch(err) { alert('Error: '+msgErr(err)); }
 }
 
 async function aprobarFactura(id) {
@@ -1107,13 +1107,13 @@ async function aprobarFactura(id) {
     },'?id_factura=eq.'+id);
     cerrarModal('modal-ficha-fac');
     renderFacturas();
-  } catch(e) { alert('Error: '+e.message); }
+  } catch(e) { alert('Error: '+msgErr(e)); }
 }
 
 async function eliminarFactura(id, numero) {
   if (!confirm('¿Eliminar definitivamente la factura '+numero+'?\\nEsta acción no se puede deshacer.')) return;
   try { await api('facturas','DELETE',null,'?id_factura=eq.'+id); cerrarModal('modal-ficha-fac'); renderFacturas(); }
-  catch(err) { alert('Error: '+err.message); }
+  catch(err) { alert('Error: '+msgErr(err)); }
 }
 
 
