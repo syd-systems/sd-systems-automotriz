@@ -862,7 +862,18 @@ async function verFichaFactura(id) {
     const emisor = f.emisores;
     const esVES  = f.moneda_cobro==='VES';
     const t      = parseFloat(f.tasa_bcv||1);
+    // Formato de UNA sola moneda (para columnas angostas de la tabla de
+    // Detalle, donde no cabe el dual) -- Moneda de Cobro, sin equivalente.
     function fmtF(usd) { return esVES ? fmtBs(usd*t)+' Bs' : '$ '+fmtUSD(usd); }
+    // Formato DUAL -- Moneda de Cobro como principal (grande), y debajo el
+    // equivalente en la Moneda contraria (chico, tenue). Se usa en
+    // Total/Subtotal/IVA/IGTF, donde sí hay espacio.
+    function fmtFDual(usd, tamPrincipal, colorPrincipal) {
+      const principal = esVES ? fmtBs(usd*t)+' Bs' : '$ '+fmtUSD(usd);
+      const secundario = esVES ? '$ '+fmtUSD(usd) : fmtBs(usd*t)+' Bs';
+      return '<div style="font-family:var(--font-mono);font-size:'+(tamPrincipal||'12px')+';'+(colorPrincipal?'color:'+colorPrincipal+';':'')+'">'+principal+'</div>'
+        + '<div style="font-family:var(--font-mono);font-size:10px;color:var(--suave);margin-top:1px">'+secundario+'</div>';
+    }
 
     const tablaLineas = [...linServ.map(function(l){return{desc:l.descripcion,tipo:'Serv.',cant:l.cantidad,precio:l.precio_usd,sub:l.subtotal_usd};}),
                          ...linRep.map(function(l) {return{desc:l.descripcion,tipo:'Rep.', cant:l.cantidad,precio:l.precio_usd,sub:l.subtotal_usd};})]
@@ -881,9 +892,8 @@ async function verFichaFactura(id) {
       + '<div style="font-size:11px;color:var(--suave);margin-top:4px">Fecha: '+(f.fecha_emision ? fmtFecha(f.fecha_emision) : '—')+'</div></div>'
       + (puedo('FACTURAS','VER_TOTALES')
           ? '<div style="text-align:right"><div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">TOTAL</div>'
-            + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">'+fmtF(f.total_usd)+'</div>'
-            + (esVES ? '<div style="font-size:11px;color:var(--suave)">Tasa: '+t.toFixed(2)+' Bs/$</div>' : '')
-            + '<div style="font-size:10px;color:#555;margin-top:3px">'+(f.moneda_cobro||'USD')+'</div></div>'
+            + fmtFDual(f.total_usd, '28px', 'var(--naranja)')
+            + '<div style="font-size:10px;color:#555;margin-top:3px">'+(f.moneda_cobro||'USD')+' · Tasa '+t.toFixed(2)+' Bs/$</div></div>'
           : '')
       + '</div>'
       + (emisor ? '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
@@ -902,11 +912,11 @@ async function verFichaFactura(id) {
       + (puedo('FACTURAS','VER_TOTALES')
           ? '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
             + (function() {
-                return '<div style="display:flex;flex-direction:column;gap:5px;font-size:12px">'
-                  + '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">Subtotal</span><span style="font-family:var(--font-mono)">'+fmtF(f.subtotal_usd)+'</span></div>'
-                  + (f.aplica_iva  ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">IVA (' + (f.subtotal_usd > 0 ? Math.round(f.iva_usd/f.subtotal_usd*100) : Math.round(tasaIVAActual()*100)) + '%)</span><span style="font-family:var(--font-mono)">'+fmtF(f.iva_usd)+'</span></div>' : '')
-                  + (f.aplica_igtf ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">IGTF (' + (f.subtotal_usd > 0 ? Math.round(f.igtf_usd/(f.subtotal_usd+(f.iva_usd||0))*100) : Math.round(tasaIGTFActual()*100)) + '%)</span><span style="font-family:var(--font-mono)">'+fmtF(f.igtf_usd)+'</span></div>' : '')
-                  + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:6px;font-weight:600"><span>Total</span><span style="font-family:var(--font-mono);color:var(--naranja)">'+fmtF(f.total_usd)+'</span></div>'
+                return '<div style="display:flex;flex-direction:column;gap:8px;font-size:12px">'
+                  + '<div style="display:flex;justify-content:space-between;align-items:flex-start"><span style="color:var(--suave)">Subtotal</span><div style="text-align:right">'+fmtFDual(f.subtotal_usd)+'</div></div>'
+                  + (f.aplica_iva  ? '<div style="display:flex;justify-content:space-between;align-items:flex-start"><span style="color:var(--suave)">IVA (' + (f.subtotal_usd > 0 ? Math.round(f.iva_usd/f.subtotal_usd*100) : Math.round(tasaIVAActual()*100)) + '%)</span><div style="text-align:right">'+fmtFDual(f.iva_usd)+'</div></div>' : '')
+                  + (f.aplica_igtf ? '<div style="display:flex;justify-content:space-between;align-items:flex-start"><span style="color:var(--suave)">IGTF (' + (f.subtotal_usd > 0 ? Math.round(f.igtf_usd/(f.subtotal_usd+(f.iva_usd||0))*100) : Math.round(tasaIGTFActual()*100)) + '%)</span><div style="text-align:right">'+fmtFDual(f.igtf_usd)+'</div></div>' : '')
+                  + '<div style="display:flex;justify-content:space-between;align-items:flex-start;border-top:1px solid var(--borde);padding-top:8px;font-weight:600"><span>Total</span><div style="text-align:right">'+fmtFDual(f.total_usd, '13px', 'var(--naranja)')+'</div></div>'
 
                   + '</div>';
               })()
