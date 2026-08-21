@@ -471,7 +471,7 @@ async function renderInventario(filtro) {
     revisarBadgeEntradasRechazadas();
   } catch(e) {
     const tabla = document.getElementById('tabla-inv-cont');
-    if (tabla) tabla.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+    if (tabla) tabla.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + msgErr(e) + '</div>';
   }
 }
 
@@ -734,7 +734,7 @@ async function verFichaInventario(id) {
       r.precio_venta_moneda        = parseFloat(fresh[0].precio_venta_moneda)        || 0;
       r.moneda_venta                = fresh[0].moneda_venta || 'USD';
     }
-  } catch(e) { console.warn('verFichaInventario GET fresco:', e.message); }
+  } catch(e) { console.warn('verFichaInventario GET fresco:', msgErr(e)); }
 
   // Márgenes vigentes -- fresco también aquí, por si la Ficha se abre sin
   // haber pasado antes por la lista general recién cargada.
@@ -872,7 +872,7 @@ async function abrirEntradaStock(id) {
       if (fresh[0].precio_venta_moneda   != null) r.precio_venta_moneda   = parseFloat(fresh[0].precio_venta_moneda);
       r.estado = fresh[0].estado;
     }
-  } catch(e) { console.warn('abrirEntradaStock GET fresco:', e.message); }
+  } catch(e) { console.warn('abrirEntradaStock GET fresco:', msgErr(e)); }
 
   // Bloquear si el artículo está Inactivo -- se pausó por decisión de
   // negocio (ej. precio disparado) y no debe recibir movimientos nuevos
@@ -1690,7 +1690,7 @@ async function guardarEntradaStock() {
     }, 1200);
 
   } catch(e) {
-    errEl.textContent = 'Error: ' + e.message;
+    errEl.textContent = 'Error: ' + msgErr(e);
     errEl.style.display = 'block';
     resetBtn();
   }
@@ -1980,7 +1980,7 @@ async function ejecutarEfectosEntradaCompra(m) {
         await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-' + cxpCreada[0].id_cxp }, '?id_cxp=eq.' + cxpCreada[0].id_cxp);
       }
     }
-  } catch(eCxP) { console.warn('Error creando CxP (aprobación de Entrada):', eCxP.message); }
+  } catch(eCxP) { console.warn('Error creando CxP (aprobación de Entrada):', msgErr(eCxP)); }
 }
 
 // Aprueba una Entrada de Compra pendiente -- revalida el monto contra el
@@ -2033,7 +2033,7 @@ async function aprobarEntradaCompra(id_entrada) {
     await calcularInvSaldoArea();
     renderInventario();
   } catch(e) {
-    alert('Error al aprobar la Entrada: ' + e.message);
+    alert('Error al aprobar la Entrada: ' + msgErr(e));
   }
 }
 
@@ -2285,7 +2285,7 @@ async function guardarInventario() {
     }
     okEl.textContent = '✓ Artículo guardado.'; okEl.style.display = 'block';
     setTimeout(function() { cerrarModal('modal-inventario'); document.getElementById('contenido-principal').innerHTML=''; renderInventario(); }, 1000);
-  } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+  } catch(e) { errEl.textContent = 'Error: ' + msgErr(e); errEl.style.display = 'block'; }
   finally { if (btnGuardar) { btnGuardar.textContent = textoOriginalBtn; btnGuardar.disabled = false; } }
 }
 
@@ -2308,7 +2308,7 @@ async function eliminarInventario(id, nombre) {
     await api('inventario_almacen', 'DELETE', null, '?id_articulo=eq.' + id);
     document.getElementById('contenido-principal').innerHTML = '';
     renderInventario();
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 async function invRenderCategorias(cont) {
@@ -2340,7 +2340,7 @@ async function invRenderCategorias(cont) {
       +'<th style="padding:8px"></th>'
       +'</tr></thead><tbody>'+(filas||'<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--suave)">Sin categorías registradas</td></tr>')
       +'</tbody></table></div>';
-  } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>'; }
+  } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+msgErr(e)+'</div>'; }
 }
 
 async function invAbrirCategoria(id) {
@@ -2381,7 +2381,7 @@ async function invGuardarCategoria() {
     _invCategoriasCache=[];
     okEl.textContent='✓ Categoría '+(id?'actualizada':'creada')+'.'; okEl.style.display='block';
     setTimeout(function(){ cerrarModal('modal-param'); invRenderCategorias(); }, 900);
-  } catch(e) { errEl.textContent='Error: '+e.message; errEl.style.display='block'; }
+  } catch(e) { errEl.textContent='Error: '+msgErr(e); errEl.style.display='block'; }
 }
 
 async function invRenderTipos(cont) {
@@ -2418,7 +2418,7 @@ async function invRenderTipos(cont) {
       +'<th style="padding:8px"></th>'
       +'</tr></thead><tbody>'+(filas||'<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--suave)">Sin tipos registrados</td></tr>')
       +'</tbody></table></div>';
-  } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>'; }
+  } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+msgErr(e)+'</div>'; }
 }
 
 // Lista las Entradas de Compra con estado_aprobacion = 'PENDIENTE' -- con
@@ -2509,7 +2509,7 @@ async function retomarEntradaRechazada(id_entrada) {
     const btnGuardarR = document.querySelector('#modal-entrada-stock .btn-primario');
     if (btnGuardarR) btnGuardarR.textContent = 'CORREGIR Y REENVIAR A APROBACIÓN';
   } catch(e) {
-    alert('Error al retomar la Entrada: ' + e.message);
+    alert('Error al retomar la Entrada: ' + msgErr(e));
   }
 }
 
@@ -2575,7 +2575,7 @@ async function invRenderEntradasRechazadas(cont) {
       +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:20%">Motivo del Rechazo</th>'
       +'<th style="padding:8px;width:12%"></th>'
       +'</tr></thead><tbody>'+filas+'</tbody></table></div>';
-  } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>'; }
+  } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+msgErr(e)+'</div>'; }
 }
 
 async function rechazarEntradaCompra(id_entrada) {
@@ -2669,7 +2669,7 @@ async function rechazarEntradaCompra(id_entrada) {
     renderInventario();
     return true;
   } catch(e) {
-    alert('Error al rechazar la Entrada: ' + e.message);
+    alert('Error al rechazar la Entrada: ' + msgErr(e));
     return false;
   }
 }
@@ -2726,7 +2726,7 @@ async function invRenderMargenBruto(cont) {
       +'<th style="padding:8px"></th>'
       +'</tr></thead><tbody>'+(filas||'<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--suave)">Sin Tipos de Artículo registrados</td></tr>')
       +'</tbody></table></div>';
-  } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>'; }
+  } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+msgErr(e)+'</div>'; }
 }
 
 let _invMargenBrutoCache = [];
@@ -2788,7 +2788,7 @@ async function guardarMargenBruto() {
     const msgDuplicado = (e.message || '').indexOf('margen_bruto_unico') !== -1 || (e.message || '').indexOf('duplicate') !== -1;
     errEl.textContent = msgDuplicado
       ? 'Ya existe un Margen registrado para este Tipo con esa misma Fecha de Vigencia.'
-      : 'Error al guardar: ' + e.message;
+      : 'Error al guardar: ' + msgErr(e);
     errEl.style.display = 'block';
   }
 }
@@ -2907,7 +2907,7 @@ async function guardarCorreccionMargen() {
       invRenderMargenBruto();
     }, 900);
   } catch(e) {
-    errEl.textContent = 'Error al corregir: ' + e.message;
+    errEl.textContent = 'Error al corregir: ' + msgErr(e);
     errEl.style.display = 'block';
   }
 }
@@ -2958,7 +2958,7 @@ async function invGuardarTipo() {
     else    await api('inv_articulos_tipo','POST',datos);
     okEl.textContent='✓ Tipo '+(id?'actualizado':'creado')+'.'; okEl.style.display='block';
     setTimeout(function(){ cerrarModal('modal-param'); invRenderTipos(); }, 900);
-  } catch(e) { errEl.textContent='Error: '+e.message; errEl.style.display='block'; }
+  } catch(e) { errEl.textContent='Error: '+msgErr(e); errEl.style.display='block'; }
 }
 
 async function invRenderMovimientos(cont) {
@@ -3405,7 +3405,7 @@ async function invCargarMovimientos() {
     }
 
   } catch(e) {
-    res.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+e.message+'</div>';
+    res.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+msgErr(e)+'</div>';
     console.error('invCargarMovimientos:', e);
   }
 }
@@ -3444,8 +3444,8 @@ async function verHistorialStock(id_articulo, nombreArt) {
   try {
     await recargarHistorial(id_articulo);
   } catch(e) {
-    console.error('[SYD] recargarHistorial error:', e.message);
-    elCont.innerHTML = '<div style="color:#fc8181;padding:16px">Error: ' + e.message + '</div>';
+    console.error('[SYD] recargarHistorial error:', msgErr(e));
+    elCont.innerHTML = '<div style="color:#fc8181;padding:16px">Error: ' + msgErr(e) + '</div>';
   }
 }
 
@@ -3494,7 +3494,7 @@ async function recargarHistorial(id_articulo) {
     }
     cont.innerHTML = _renderTablaHistorial(movimientos);
   } catch(err) {
-    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + err.message + '</div>';
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + msgErr(err) + '</div>';
   }
 }
 
@@ -3513,7 +3513,7 @@ async function filtrarHistorial(tipo) {
     }
     cont.innerHTML = _renderTablaHistorial(movimientos);
   } catch(err) {
-    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + err.message + '</div>';
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + msgErr(err) + '</div>';
   }
 }
 
@@ -3582,7 +3582,7 @@ async function cargarMasHistorial() {
     if (footerViejo) footerViejo.remove();
     cont.insertAdjacentHTML('beforeend', _renderFooterPaginacion());
   } catch(e) {
-    alert('Error cargando más movimientos: ' + e.message);
+    alert('Error cargando más movimientos: ' + msgErr(e));
     if (btn) { btn.disabled = false; btn.textContent = 'Cargar más'; }
   }
 }
@@ -3688,7 +3688,7 @@ async function verFichaEntradaStock(id_entrada, id_articulo) {
         return c.estado === 'PAGADA' || parseFloat(c.saldo_usd || 0) <= 0;
       });
     }
-  } catch(e) { console.warn('verFichaEntradaStock CxP check:', e.message); }
+  } catch(e) { console.warn('verFichaEntradaStock CxP check:', msgErr(e)); }
 
   _editMovEstaPagado = estaPagado;
   await editarMovimiento('ENTRADA', id_entrada, id_articulo,
@@ -3824,7 +3824,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
         '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),empleado_entrega:id_empleado_entrega(nombre_completo,id_area,param_areas:id_area(nombre,codigo))');
       m = res[0];
     }
-  } catch(err) { alert('Error cargando movimiento: ' + err.message); return; }
+  } catch(err) { alert('Error cargando movimiento: ' + msgErr(err)); return; }
   if (!m) return;
 
   // IGTF -- arranca con lo que YA está guardado en esta Entrada (no se
@@ -4398,7 +4398,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
   if (modalHist) { modalHist.classList.remove('abierto'); modalHist.style.display = 'none'; }
   console.log('[SYD] abriendo modal ENTRADA');
   abrirModal('modal-edit-movimiento');
-  } catch(e) { console.error('[SYD] editarMovimiento ERROR:', e.message, e.stack); }
+  } catch(e) { console.error('[SYD] editarMovimiento ERROR:', msgErr(e), e.stack); }
 }
 
 async function anularDesdeEdicion() {
@@ -4546,7 +4546,7 @@ async function _guardarEdicionMovimientoInterno() {
     try {
       const verifEdit = await verificarContrasena(sesionActual.correo_usuario, clave);
       if (!verifEdit.ok) return mostrarError('Contraseña incorrecta.', 'edit-mov-clave');
-    } catch(eV) { return mostrarError('Error verificando contraseña: ' + eV.message); }
+    } catch(eV) { return mostrarError('Error verificando contraseña: ' + msgErr(eV)); }
 
     try {
       const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
@@ -4981,7 +4981,7 @@ async function _guardarEdicionMovimientoInterno() {
     }, 900);
 
   } catch(err) {
-    errEl.textContent = 'Error: ' + err.message;
+    errEl.textContent = 'Error: ' + msgErr(err);
     errEl.style.display = 'block';
   }
 
@@ -5105,7 +5105,7 @@ async function anularMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
       }
       movOrig = rows[0];
     }
-  } catch(e) { alert('Error cargando movimiento: ' + e.message); return; }
+  } catch(e) { alert('Error cargando movimiento: ' + msgErr(e)); return; }
 
   // Rellenar modal
   const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
@@ -5359,7 +5359,7 @@ async function confirmarAnulacion() {
     }, 1500);
 
   } catch(err) {
-    errEl.textContent = 'Error: ' + err.message;
+    errEl.textContent = 'Error: ' + msgErr(err);
     errEl.style.display = 'block';
     resetBtn();
   }
@@ -5650,7 +5650,7 @@ async function abrirStockArticulo(id, nombre) {
       r.moneda_venta           = monedaVentaActual;
       r.estado = fresh[0].estado;
     }
-  } catch(e) { console.warn('abrirStockArticulo GET fresco:', e.message); }
+  } catch(e) { console.warn('abrirStockArticulo GET fresco:', msgErr(e)); }
   if (stockActual === 0) { cppActual = 0; } // sin stock, sin costo que mostrar
   await refrescarMargenesVigentes();
     await refrescarTasasHistoricasCPP();
@@ -6189,7 +6189,7 @@ async function _guardarSalidaStockInterno() {
       renderInventario();
     }, 1500);
   } catch(err) {
-    errEl.textContent = 'Error: ' + err.message;
+    errEl.textContent = 'Error: ' + msgErr(err);
     errEl.style.display = 'block';
   }
 }
@@ -6280,7 +6280,7 @@ async function verFichaAjuste(tipoRegistro, idMovimiento, id_articulo) {
       const res = await api('stock_salidas','GET',null,'?id_salida=eq.'+idMovimiento+'&select=*');
       m = res && res[0];
     }
-  } catch(e) { alert('Error cargando el ajuste: ' + e.message); return; }
+  } catch(e) { alert('Error cargando el ajuste: ' + msgErr(e)); return; }
   if (!m) { alert('No se encontró el registro.'); return; }
 
   document.getElementById('falt-id-articulo').value = id_articulo;
@@ -6519,7 +6519,7 @@ async function guardarFaltanteInventario() {
       renderInventario();
     }, 1200);
   } catch(e) {
-    errEl.textContent = 'Error: ' + e.message;
+    errEl.textContent = 'Error: ' + msgErr(e);
     errEl.style.display = 'block';
   }
 }
@@ -6554,7 +6554,7 @@ async function guardarEdicionFaltante() {
       _aplicarModoFaltante('ver', false);
     }, 900);
   } catch(e) {
-    errEl.textContent = 'Error: ' + e.message;
+    errEl.textContent = 'Error: ' + msgErr(e);
     errEl.style.display = 'block';
   }
 }
@@ -6598,7 +6598,7 @@ async function buscarTasaBCVNegociacion() {
       document.getElementById('es-tasa-bcv').value = '';
       document.getElementById('es-ref-cpp').textContent = 'No se encontró tasa BCV para esta fecha';
     }
-  } catch(e) { console.error('[SYD] buscarTasaBCVNegociacion error:', e.message); }
+  } catch(e) { console.error('[SYD] buscarTasaBCVNegociacion error:', msgErr(e)); }
   if (esVES) onCambiarPrecioEntrada();
 }
 
