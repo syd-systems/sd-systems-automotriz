@@ -5335,15 +5335,14 @@ async function anularSalidaStock(id_salida, id_articulo, cantidad) {
 
 async function onCambiarFechaNegEdit() {
   const fecha  = document.getElementById('edit-mov-fecha-negociacion')?.value;
-  const moneda = document.getElementById('edit-mov-moneda')?.value || 'USD';
-  if (!fecha || moneda === 'VES') return;
+  if (!fecha) return;
   try {
     const tasas = await api('tasas','GET',null,'?fecha_valor=lte.'+fecha+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio,fecha_valor');
     if (tasas && tasas[0]) {
       document.getElementById('edit-mov-tasa-bcv').value = parseFloat(tasas[0].tipo_cambio).toFixed(4);
-      onCambiarPrecioEdit();
     }
   } catch(e) {}
+  onCambiarPrecioEdit();
 }
 
 async function onCambiarMonedaEdit() {
@@ -6563,7 +6562,7 @@ async function buscarTasaBCVNegociacion() {
       document.getElementById('es-ref-cpp').textContent = 'No se encontró tasa BCV para esta fecha';
     }
   } catch(e) { console.error('[SYD] buscarTasaBCVNegociacion error:', msgErr(e)); }
-  if (esVES) onCambiarPrecioEntrada();
+  onCambiarPrecioEntrada();
 }
 
 async function onCambiarFechaNegociacionEntrada() {
