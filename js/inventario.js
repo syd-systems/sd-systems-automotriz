@@ -1370,8 +1370,6 @@ async function guardarEntradaStock() {
     // centavos de diferencia.
     let montoTotalMonedaOriginal = null;
     let baseMonedaOriginal = null;
-    let montoIGTFEnt = null;   // siempre en USD, congelado
-    let tasaIGTFEntVal = null;
     if (motivoEnt === 'compra') {
       const precioIngresadoEnt = parseMontoVE(document.getElementById('es-precio-costo')?.value);
       const montoOrigEnt = precioIngresadoEnt * cantidad;
@@ -1385,17 +1383,6 @@ async function guardarEntradaStock() {
         baseMonedaOriginal = parseFloat(montoOrigEnt.toFixed(2));
         const ivaOrigEnt = parseFloat((montoOrigEnt * IVA_RATE_ENT).toFixed(4));
         montoTotalMonedaOriginal = parseFloat((montoOrigEnt + ivaOrigEnt).toFixed(2));
-      }
-      // IGTF -- Gasto no deducible/no acreditable (a diferencia del IVA), NO
-      // afecta el costo del Inventario ni el CPP -- solo aumenta lo que se
-      // le debe al Proveedor. Se congela aquí, una sola vez, igual criterio
-      // que el resto de los montos de esta Entrada.
-      if (window._aplicaIGTFEntrada) {
-        tasaIGTFEntVal = window._tasaIGTFEntrada || 0.03;
-        const totalUSDParaIGTF = moneda_compra_val === 'VES'
-          ? (tasa_bcv_usada ? montoTotalMonedaOriginal / tasa_bcv_usada : 0)
-          : montoTotalMonedaOriginal;
-        montoIGTFEnt = parseFloat((totalUSDParaIGTF * tasaIGTFEntVal).toFixed(2));
       }
     }
 
@@ -1436,9 +1423,6 @@ async function guardarEntradaStock() {
       monto_total_con_iva:    montoTotalConIVA,
       monto_total_moneda_original: montoTotalMonedaOriginal,
       base_moneda_original:   baseMonedaOriginal,
-      aplica_igtf:             !!window._aplicaIGTFEntrada,
-      monto_igtf:              montoIGTFEnt,
-      tasa_igtf:               tasaIGTFEntVal,
       cuotas_json:            cuotasJsonVal,
       estado_aprobacion:      motivoEnt === 'compra' ? 'PENDIENTE' : null,
       id_usuario:             sesionActual.correo_usuario
@@ -1488,7 +1472,7 @@ async function guardarEntradaStock() {
           monedaPago: moneda_pago_val,
           tasaBcv: tasa_bcv_usada,
           montoBsExacto: montoBsExacto,
-          montoIGTF: montoIGTFEnt || 0
+          montoIGTF: 0
         });
       } catch(eEnrutEnt) { console.warn('Error enrutando aprobación de Entrada:', eEnrutEnt); }
       okEl.textContent = window._retomandoEntradaId
@@ -1834,7 +1818,6 @@ async function ejecutarEfectosEntradaCompra(m) {
     const areaRows = await api('param_areas','GET',null,'?id=eq.'+id_areaEnt+'&select=nombre');
     if (areaRows && areaRows[0]) areaNombreEnt = areaRows[0].nombre;
   } catch(eAreaNom) {}
-  const montoIGTF_USD_Ast = m.aplica_igtf && m.monto_igtf != null ? parseFloat(m.monto_igtf) : 0;
   // Base y Total Base+IVA EXACTOS -- ya congelados al crear la Entrada
   // (mismos que muestra la Ficha), para que el Asiento no tenga que
   // extraer el IVA dividiendo el total por su cuenta (otra fuente más de
@@ -1851,23 +1834,14 @@ async function ejecutarEfectosEntradaCompra(m) {
   const totalExactoBsAst = m.moneda_compra === 'VES' && m.monto_total_moneda_original != null
     ? parseFloat(m.monto_total_moneda_original)
     : (tasa_bcv_usada ? parseFloat((totalExactoUSDAst * tasa_bcv_usada).toFixed(2)) : null);
-  // IGTF -- ya congelado al crear la Entrada (Gasto no deducible/no
-  // acreditable, NO afecta el costo del Inventario ni el CPP). El monto
-  // TOTAL en Bs (montoVES, Base+IVA+IGTF) se calcula con UN SOLO
-  // redondeo -- es el mismo valor que se congela en la CxP (monto_ves).
-  // montoIGTF_BS_Ast se deriva como el REMANENTE exacto (montoVES menos
-  // el Total Base+IVA ya redondeado), no como un redondeo independiente
-  // -- si se redondean por separado (Base+IVA por un lado, IGTF por
-  // otro) y se suman, el resultado puede diferir en 1 céntimo del
-  // redondeo único que usa la CxP, y el Asiento quedaba descuadrado
-  // contra lo que realmente se pagaba después.
-  const montoUSD = montoTotalConIVA + montoIGTF_USD_Ast;
-  const montoVES = (m.moneda_compra === 'VES' && m.monto_total_moneda_original != null)
-    ? parseFloat(m.monto_total_moneda_original) + (montoIGTF_USD_Ast > 0 && tasa_bcv_usada ? parseFloat((montoIGTF_USD_Ast * tasa_bcv_usada).toFixed(2)) : 0)
+  // IGTF -- ya NO se calcula ni se hornea aquí. El IGTF depende de en qué
+  // Moneda se termine pagando la Obligación, y eso puede cambiar entre que
+  // se crea la Entrada y que efectivamente se paga -- por eso se calcula
+  // siempre fresco en el momento del Pago (Ejecutar Pago), nunca antes.
+  // El monto de la Entrada/CxP es exclusivamente Base+IVA.
+  const montoUSD = montoTotalConIVA;
+  const montoVES = totalExactoBsAst != null ? totalExactoBsAst
     : parseFloat((montoUSD * (tasa_bcv_usada || _tasaVigente || 1)).toFixed(2));
-  const montoIGTF_BS_Ast = montoIGTF_USD_Ast > 0 && totalExactoBsAst != null
-    ? parseFloat((montoVES - totalExactoBsAst).toFixed(2))
-    : 0;
   try {
     await generarAsientoInventario('ENTRADA_COMPRA', {
       articulo:   r.nombre_articulo || r.codigo_articulo || ('Art#' + id),
@@ -1884,18 +1858,15 @@ async function ejecutarEfectosEntradaCompra(m) {
       baseExactaUSD: baseExactaUSDAst,
       baseExactaBs:  baseExactaBsAst,
       totalExactoUSD: totalExactoUSDAst,
-      totalExactoBs:  totalExactoBsAst,
-      montoIGTF_USD: montoIGTF_USD_Ast,
-      montoIGTF_BS:  montoIGTF_BS_Ast,
-      tasaIGTF:      m.tasa_igtf ? parseFloat(m.tasa_igtf) : 0.03
+      totalExactoBs:  totalExactoBsAst
     });
   } catch(eAstInv) { console.warn('Error asiento entrada inventario (aprobación):', eAstInv); }
 
   // ── CxP: nace ya APROBADA -- el Nivel de Firma que aprobó la Entrada ya
   // cubrió esa validación, no tiene sentido pedirle a alguien que la
-  // vuelva a aprobar para el pago. El monto de la CxP incluye el IGTF (si
-  // aplica) -- es lo que realmente se le debe pagar al Proveedor; el
-  // Inventario y el CPP NUNCA lo incluyen (ver arriba).
+  // vuelva a aprobar para el pago. El monto de la CxP es Base+IVA
+  // solamente -- el IGTF (si aplica) se calcula y se suma aparte, recién
+  // en el momento del Pago, según cómo se termine pagando entonces.
   try {
     const numDocBase = 'ENT-' + m.id_entrada;
     const artNomCxP = r.nombre_articulo || r.codigo_articulo || 'Art#'+id;
@@ -1906,26 +1877,13 @@ async function ejecutarEfectosEntradaCompra(m) {
       const cuotas = m.cuotas_json ? (typeof m.cuotas_json === 'string' ? JSON.parse(m.cuotas_json) : m.cuotas_json) : [];
       if (!cuotas.length) throw new Error('La Entrada no tiene el desglose de cuotas guardado.');
       const totalVesCuotas = montoVES;
-      const totalUsdCuotas = montoUSD; // Base+IVA+IGTF -- ver declaración arriba
       let acumVesCuotas = 0;
-      let acumUsdCuotas = 0;
       for (let i = 0; i < cuotas.length; i++) {
         const c = cuotas[i];
         const esUltimaCuota = i === cuotas.length - 1;
-        // Prorrateo proporcional del IGTF según el peso de esta cuota sobre
-        // el total Base+IVA (mismo criterio que el prorrateo de Devolución
-        // de Factura: igtf × participación) -- antes el IGTF completo caía
-        // de golpe en la última cuota, y solo en Bs (nunca en USD).
-        const igtfCuotaUSD = montoIGTF_USD_Ast > 0 && montoTotalConIVA > 0
-          ? parseFloat((montoIGTF_USD_Ast * (c.monto / montoTotalConIVA)).toFixed(2))
-          : 0;
-        const montoUsdCuota = esUltimaCuota
-          ? parseFloat((totalUsdCuotas - acumUsdCuotas).toFixed(2))
-          : parseFloat((c.monto + igtfCuotaUSD).toFixed(2));
-        acumUsdCuotas = parseFloat((acumUsdCuotas + montoUsdCuota).toFixed(2));
         const montoVesCuota = esUltimaCuota
           ? parseFloat((totalVesCuotas - acumVesCuotas).toFixed(2))
-          : parseFloat((montoUsdCuota * (tasa_bcv_usada || 1)).toFixed(2));
+          : parseFloat((c.monto * (tasa_bcv_usada || 1)).toFixed(2));
         acumVesCuotas = parseFloat((acumVesCuotas + montoVesCuota).toFixed(2));
         const cxpCuotaCreada = await api('cont_cxp','POST',{
           id_proveedor:     m.id_proveedor,
@@ -1940,12 +1898,12 @@ async function ejecutarEfectosEntradaCompra(m) {
           estado:           'APROBADA',
           aprobado_por:     m.aprobado_por || null,
           fecha_aprobacion: ahoraIso,
-          monto_usd:        montoUsdCuota,
+          monto_usd:        parseFloat(c.monto.toFixed(2)),
           monto_ves:        montoVesCuota,
           tasa_bcv:         tasa_bcv_usada || 1,
           tasa_bcv_compra:  tasa_bcv_usada || 1,
           pagado_usd:       0,
-          saldo_usd:        montoUsdCuota,
+          saldo_usd:        parseFloat(c.monto.toFixed(2)),
           observaciones:    artNomCxP + ' x ' + cantidad + ' uds.',
           esquema_pago:     'CREDITO',
           id_usuario:       m.id_usuario || null
@@ -2652,7 +2610,7 @@ async function rechazarEntradaCompra(id_entrada) {
           monedaPago: monedaPagoRech,
           tasaBcv: m.tasa_bcv,
           montoBsExacto: montoBsRech,
-          montoIGTF: m.aplica_igtf && m.monto_igtf != null ? parseFloat(m.monto_igtf) : 0
+          montoIGTF: 0
         }) + '<div style="border-top:1px solid var(--borde);margin-top:12px;padding-top:10px;font-size:12px">'
           + '<div><span style="color:var(--suave)">Rechazada por:</span> ' + (sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor') + '</div>'
           + '<div style="margin-top:4px"><span style="color:var(--suave)">Motivo:</span> ' + motivo + '</div>'
@@ -6618,19 +6576,12 @@ async function onCambiarFechaNegociacionEntrada() {
 // por defecto pero esta Entrada puntual se negocia en VES, el IGTF se
 // quedaba "pegado" en true, impidiendo después cancelar/cerrar la Entrada
 // en VES. Se llama cada vez que cambia el Proveedor O la Moneda.
+// El IGTF ya NO se calcula ni se muestra en la vista previa de la Entrada
+// -- depende de en qué Moneda se termine pagando, y eso se decide recién
+// en Ejecutar Pago (puede cambiar entre que se crea la Entrada y que
+// efectivamente se paga). Esta función queda neutralizada a propósito.
 async function _actualizarAplicaIGTFEntrada(monedaFieldId) {
-  const moneda = document.getElementById(monedaFieldId)?.value || 'USD';
-  const tipoContrib = window._tipoContribProveedorEntrada || null;
-  const aplicaAhora = moneda === 'USD' && tipoContrib === 'ESPECIAL';
-  if (aplicaAhora && !window._aplicaIGTFEntrada) {
-    // Recién pasa a aplicar (antes no aplicaba) -- traer la tasa vigente
-    window._tasaIGTFEntrada = 0.03;
-    try {
-      const trib = await api('param_tributos','GET',null,'?codigo=eq.IGTF&estado=eq.ACTIVO&order=fecha_registro.desc&limit=1&select=alicuota');
-      if (trib && trib[0]) window._tasaIGTFEntrada = parseFloat(trib[0].alicuota) / 100;
-    } catch(e) { console.warn('Error verificando tasa IGTF:', e); }
-  }
-  window._aplicaIGTFEntrada = aplicaAhora;
+  window._aplicaIGTFEntrada = false;
 }
 
 async function onCambiarMonedaEntrada() {
