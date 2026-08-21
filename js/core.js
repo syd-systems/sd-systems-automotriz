@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260814342';
+const SYD_VERSION = '20260814343';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -1431,7 +1431,7 @@ async function renderDashboard() {
       </div>` : ''}
     `;
   } catch (e) {
-    c.innerHTML = `<div class="alerta alerta-error" style="display:block">Error cargando datos: ${e.message}</div>`;
+    c.innerHTML = `<div class="alerta alerta-error" style="display:block">Error cargando datos: ${msgErr(e)}</div>`;
   }
 }
 
@@ -1567,8 +1567,8 @@ async function renderUsuarios(filtro) {
       </table>`;
   } catch(e) {
     const tabla = document.getElementById('tabla-usu-cont');
-    if (tabla) tabla.innerHTML = `<div class="alerta alerta-error" style="display:block">Error: ${e.message}</div>`;
-    else document.getElementById('contenido-principal').innerHTML = `<div class="alerta alerta-error" style="display:block">Error: ${e.message}</div>`;
+    if (tabla) tabla.innerHTML = `<div class="alerta alerta-error" style="display:block">Error: ${msgErr(e)}</div>`;
+    else document.getElementById('contenido-principal').innerHTML = `<div class="alerta alerta-error" style="display:block">Error: ${msgErr(e)}</div>`;
   }
 }
 
@@ -2076,7 +2076,7 @@ async function guardarUsuario() {
     }
 
   } catch(e) {
-    errEl.textContent = `Error: ${e.message}`;
+    errEl.textContent = `Error: ${msgErr(e)}`;
     errEl.style.display = 'block';
   }
 }
@@ -2133,7 +2133,7 @@ async function cerrarSesionUsuario(correo, nombre, modalOrigen) {
     cerrarModal(modalOrigen || 'modal-ficha-usu');
     renderUsuarios();
     alert('✓ Sesión de "' + nombre + '" cerrada. El usuario será expulsado en los próximos 30 segundos.');
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 // ─── CERRAR TODAS LAS SESIONES ACTIVAS ───
@@ -2158,7 +2158,7 @@ async function cerrarTodasLasSesiones() {
       cont.parentElement.insertBefore(aviso, cont);
       setTimeout(function() { aviso.remove(); }, 4000);
     }
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 async function eliminarUsuario(id, nombre) {
@@ -2168,7 +2168,7 @@ async function eliminarUsuario(id, nombre) {
     await api('usuarios', 'DELETE', null, `?id_usuario=eq.${id}`);
     renderUsuarios();
   } catch(e) {
-    alert('Error al eliminar: ' + e.message);
+    alert('Error al eliminar: ' + msgErr(e));
   }
 }
 
@@ -2606,7 +2606,7 @@ async function consultarTasaPorFecha() {
       + bloque('💲',  'USDT — Mercado P2P / VES',      usdtVal, '#F0B90B');
 
   } catch(e) {
-    resEl.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+    resEl.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + msgErr(e) + '</div>';
     console.error(e);
   }
 }
@@ -2856,7 +2856,7 @@ async function notifConfirmar() {
     // Verificar si hay más notificaciones pendientes
     await verificarNotificacionesPendientes();
   } catch(e) {
-    alert('Error al confirmar: '+e.message);
+    alert('Error al confirmar: '+msgErr(e));
     if (btn) { btn.disabled = false; btn.textContent = btn.dataset.textoOriginal || '✓ Confirmar Recepción'; }
   }
 }
@@ -2981,7 +2981,7 @@ async function notifSolicitarAnulacion() {
     _notifEntradaInfo = null;
     await verificarNotificacionesPendientes();
   } catch(eEsc) {
-    alert('Error al escalar la solicitud: ' + eEsc.message);
+    alert('Error al escalar la solicitud: ' + msgErr(eEsc));
   } finally {
     if (btnEsc) { btnEsc.disabled = false; btnEsc.textContent = '⬆ Solicitar Anulación al Superior'; }
   }
@@ -3113,7 +3113,7 @@ async function verificarContrasena(correoUsu, claveIngresada) {
     if (!valido) return { ok: false, msg: 'Contraseña incorrecta.' };
     return { ok: true, usuario: usu };
   } catch(e) {
-    return { ok: false, msg: 'Error verificando contraseña: ' + e.message };
+    return { ok: false, msg: 'Error verificando contraseña: ' + msgErr(e) };
   }
 }
 
@@ -3144,7 +3144,7 @@ async function validarClaveReceptor(id_empleado, clave) {
 
     return { ok: true, nombre: emp.nombre_completo };
   } catch(err) {
-    return { ok: false, msg: 'Error validando receptor: ' + err.message };
+    return { ok: false, msg: 'Error validando receptor: ' + msgErr(err) };
   }
 }
 
