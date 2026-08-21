@@ -19,7 +19,7 @@ async function renderPagos() {
   try {
     await cargarPagos();
   } catch(e) {
-    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + msgErr(e) + '</div>';
   }
 }
 
@@ -908,7 +908,7 @@ async function guardarTasaBCVManual() {
     document.getElementById('bcv-eur').value = '';
 
   } catch(e) {
-    msg.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+    msg.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + msgErr(e) + '</div>';
     msg.style.display = 'block';
   }
 }
@@ -972,7 +972,7 @@ async function sincronizarTasasBCV(btn) {
     }, 2500);
 
   } catch(e) {
-    btn.innerHTML = '✗ ' + e.message;
+    btn.innerHTML = '✗ ' + msgErr(e);
     btn.style.background = '#e53e3e';
     setTimeout(function() {
       btn.innerHTML = texto;
@@ -1162,7 +1162,7 @@ async function resetearClave(correo, nombre) {
 
     alert(`✓ Correo de recuperación enviado a ${correo}`);
   } catch(e) {
-    alert('Error al enviar el correo: ' + e.message);
+    alert('Error al enviar el correo: ' + msgErr(e));
     console.error(e);
   }
 }
@@ -1657,7 +1657,7 @@ async function contGuardarPagoCxp() {
       cargarPagos();
     }, 1000);
   } catch(e) {
-    errEl.textContent = 'Error: '+e.message;
+    errEl.textContent = 'Error: '+msgErr(e);
     errEl.style.display = 'block';
   }
 }
@@ -1697,7 +1697,7 @@ async function anularPagoEjecutado(id_cxp) {
   try {
     const verif = await verificarContrasena(sesionActual.correo_usuario, clave);
     if (!verif.ok) { alert(verif.msg || 'Contraseña incorrecta.'); return; }
-  } catch(eV) { alert('Error verificando contraseña: ' + eV.message); return; }
+  } catch(eV) { alert('Error verificando contraseña: ' + msgErr(eV)); return; }
 
   try {
     const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=monto_usd,monto_ves,numero_doc,estado');
@@ -1723,7 +1723,7 @@ async function anularPagoEjecutado(id_cxp) {
     cerrarModal('modal-cont-pago-cxp');
     cerrarModal('modal-ver-cxp-auto');
     cargarPagos();
-  } catch(e) { alert('Error al anular el pago: '+e.message); }
+  } catch(e) { alert('Error al anular el pago: '+msgErr(e)); }
 }
 
 async function anularPagoCxP(id_cxp) {
@@ -1787,7 +1787,7 @@ async function anularPagoCxP(id_cxp) {
 
     cerrarModal('modal-cont-pago-cxp');
     cargarPagos();
-  } catch(e) { alert('Error al anular: '+e.message); }
+  } catch(e) { alert('Error al anular: '+msgErr(e)); }
 }
 
 // Deshace una anulación hecha por error -- SOLO si la CxP nunca tuvo pago
@@ -1855,7 +1855,7 @@ async function reactivarPagoCxP(id_cxp) {
 
     cerrarModal('modal-cont-pago-cxp');
     cargarPagos();
-  } catch(e) { alert('Error al reactivar: '+e.message); }
+  } catch(e) { alert('Error al reactivar: '+msgErr(e)); }
 }
 
 async function onSelProveedorCxP() {
@@ -2126,7 +2126,7 @@ async function verPagoCxP(id_cxp) {
     }
 
     abrirModal('modal-cont-pago-cxp');
-  } catch(e) { alert('Error: '+e.message); }
+  } catch(e) { alert('Error: '+msgErr(e)); }
 }
 
 async function editarCxPManual(id_cxp) {
@@ -2252,7 +2252,7 @@ async function editarCxPManual(id_cxp) {
     }
     const modalBodyEdit = document.querySelector('#modal-pago .modal-body');
     if (modalBodyEdit) modalBodyEdit.scrollTop = 0;
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 
@@ -2980,7 +2980,7 @@ async function guardarPago() {
       cargarPagos();
     }, 1000);
   } catch(e) {
-    mostrarErr('Error: ' + e.message);
+    mostrarErr('Error: ' + msgErr(e));
     const btnGuardar = document.getElementById('btn-guardar-pago');
     if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = btnGuardar.dataset.textoOriginal || btnGuardar.textContent; }
   }
@@ -3404,7 +3404,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
         + '</div>';
     }
 
-  } catch(e) { alert('Error: '+e.message); console.error(e); }
+  } catch(e) { alert('Error: '+msgErr(e)); console.error(e); }
 }
 
 // pagarCxP now delegates to verDetalleCxP
@@ -3650,7 +3650,7 @@ async function verCxPPendiente(id_cxp) {
     // CxP manual — abrir primero el Detalle de solo lectura; desde ahí, el
     // botón "✏️ Editar" (si el usuario tiene permiso) lleva al formulario editable.
     await verDetalleCxP(id_cxp);
-  } catch(e) { alert('Error: '+e.message); console.error(e); }
+  } catch(e) { alert('Error: '+msgErr(e)); console.error(e); }
 }
 
 function editarCxPPendiente(id_cxp) {
@@ -3718,7 +3718,7 @@ async function guardarEdicionCxP(id_cxp) {
 
     if (okEl) { okEl.textContent = '✓ Obligación actualizada correctamente.'; okEl.style.display = 'block'; }
     setTimeout(function() { cerrarModal('modal-pago'); cargarPagos(); }, 1000);
-  } catch(e) { mostrarErr('Error: ' + e.message); }
+  } catch(e) { mostrarErr('Error: ' + msgErr(e)); }
 }
 
 async function eliminarCxP(id_cxp) {
@@ -3729,7 +3729,7 @@ async function eliminarCxP(id_cxp) {
     const modalPago = document.getElementById('modal-pago');
     if (modalPago) { modalPago.classList.remove('abierto'); modalPago.style.display = 'none'; }
     cargarPagos();
-  } catch(e) { alert('Error al eliminar: '+e.message); }
+  } catch(e) { alert('Error al eliminar: '+msgErr(e)); }
 }
 
 async function aprobarPagoCxP(id_cxp) {
@@ -3804,7 +3804,7 @@ async function aprobarPagoCxP(id_cxp) {
     }
 
     cargarPagos();
-  } catch(e) { alert('Error al aprobar: '+e.message); console.error(e); }
+  } catch(e) { alert('Error al aprobar: '+msgErr(e)); console.error(e); }
 }
 
 
@@ -3891,7 +3891,7 @@ async function rechazarPagoCxP(id_cxp) {
     }
 
     cargarPagos();
-  } catch(e) { alert('Error: '+e.message); }
+  } catch(e) { alert('Error: '+msgErr(e)); }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -4452,7 +4452,7 @@ async function confirmarEjecucionPago() {
     if (typeof cargarPagos === 'function') cargarPagos();
 
   } catch(err) {
-    errEl.textContent = 'Error: ' + err.message;
+    errEl.textContent = 'Error: ' + msgErr(err);
     errEl.style.display = 'block';
     resetBtn();
   }
