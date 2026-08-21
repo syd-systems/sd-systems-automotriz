@@ -1459,17 +1459,15 @@ async function guardarEntradaStock() {
               ? montoTotalMonedaOriginal
               : (tasa_bcv_usada ? parseFloat((montoTotalMonedaOriginal * tasa_bcv_usada).toFixed(2)) : null))
           : null;
-        // Moneda de PAGO real -- ya leída del formulario (moneda_pago_val),
-        // la eligió el Usuario para esta transacción puntual. NO es la
-        // Moneda de Negociación del precio -- son dos cosas distintas. Es
-        // la moneda en la que realmente se le va a pagar, así que es la
-        // que debe verse en "Monto a Pagar".
+        // Modalidad de Pago (Contado/Crédito) -- esto SÍ se conoce y se
+        // decide al crear la Entrada. La Moneda de Pago ya no aplica
+        // mostrarla aquí: esa decisión se toma recién en Ejecutar Pago.
         await enrutarAprobacionEntrada(montoTotalConIVA, id_entrada, numDocSol, {
           nombreArt: r.nombre_articulo || r.codigo_articulo || ('Art#'+id),
           cantidad: cantidad,
           unidad: r.unidad || 'UND',
           monedaCompra: moneda_compra_val,
-          monedaPago: moneda_pago_val,
+          modalidadPago: document.getElementById('es-esquema-pago')?.value || 'CONTADO',
           tasaBcv: tasa_bcv_usada,
           montoBsExacto: montoBsExacto,
           montoIGTF: 0,
@@ -1741,13 +1739,15 @@ function _armarMensajeAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
     : parseFloat((monto * tasaUsar).toFixed(2));
   const montoIGTFBs = montoIGTF > 0 ? parseFloat((montoIGTF * tasaUsar).toFixed(2)) : 0;
   const montoTotalBs = parseFloat((montoBsBase + montoIGTFBs).toFixed(2));
-  // Moneda de PAGO real -- ya viene resuelta desde afuera (d.monedaPago),
-  // distinta de la Moneda de Negociación del precio. Es la que se muestra
-  // como principal, porque es en la que realmente se va a pagar.
-  const monedaPago = (d.monedaPago || d.monedaCompra || 'USD').toUpperCase();
-  const principal = monedaPago === 'USD'
+  // La Moneda de Pago ya NO se conoce a este nivel -- se decide recién en
+  // Ejecutar Pago. Lo que SÍ se conoce y tiene sentido mostrar aquí es la
+  // Moneda de Negociación (para el monto principal) y la Modalidad de Pago
+  // (Contado/Crédito).
+  const monedaMostrar = (d.monedaCompra || 'USD').toUpperCase();
+  const principal = monedaMostrar === 'USD'
     ? '$ ' + fmtUSD(montoTotalUSD) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a Bs ' + fmtBs(montoTotalBs) + ')</span>'
     : 'Bs ' + fmtBs(montoTotalBs) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a $ ' + fmtUSD(montoTotalUSD) + ')</span>';
+  const modalidadPagoLabel = d.modalidadPago === 'CREDITO' ? 'Crédito' : 'Contado';
   const igtfLinea = montoIGTF > 0
     ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Incluye IGTF: $ ' + fmtUSD(montoIGTF) + '</div>'
     : '';
@@ -1755,7 +1755,7 @@ function _armarMensajeAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
     + '<div style="font-weight:600;margin-bottom:12px">' + (d.nombreArt || '—') + '</div>'
     + '<div style="display:flex;gap:24px;margin-bottom:12px">'
     + '<div><div style="font-size:10px;color:var(--suave)">CANTIDAD</div><div style="font-weight:600">' + (d.cantidad != null ? d.cantidad : '—') + ' ' + (d.unidad || 'UND') + '</div></div>'
-    + '<div><div style="font-size:10px;color:var(--suave)">MONEDA DE PAGO</div><div style="font-weight:600">' + monedaPago + '</div></div>'
+    + '<div><div style="font-size:10px;color:var(--suave)">MODALIDAD DE PAGO</div><div style="font-weight:600">' + modalidadPagoLabel + '</div></div>'
     + '</div>'
     + '<div><div style="font-size:10px;color:var(--suave)">MONTO A PAGAR</div><div style="font-weight:700;color:var(--naranja);font-size:16px">' + principal + '</div>' + igtfLinea + '</div>'
     + (d.esContribuyenteEspecial
@@ -2590,18 +2590,6 @@ async function rechazarEntradaCompra(id_entrada) {
         const artRechInfo = inventarioCache.find(function(x){ return x.id_articulo === m.id_articulo; })
           || (await api('inventario_almacen','GET',null,'?id_articulo=eq.'+m.id_articulo+'&select=nombre_articulo,codigo_articulo,unidad'))?.[0]
           || {};
-        // Moneda de PAGO real -- ya congelada en la Entrada (m.moneda_pago).
-        // Entradas viejas, de antes de que existiera este campo, caen a
-        // moneda_facturacion del Proveedor como respaldo.
-        let monedaPagoRech = m.moneda_pago || m.moneda_compra;
-        if (!m.moneda_pago && m.id_proveedor) {
-          try {
-            const provRechRows = await api('proveedores','GET',null,'?id_proveedor=eq.'+m.id_proveedor+'&select=moneda_facturacion');
-            if (provRechRows && provRechRows[0] && provRechRows[0].moneda_facturacion) {
-              monedaPagoRech = provRechRows[0].moneda_facturacion;
-            }
-          } catch(eProvRech) {}
-        }
         const numDocRech = 'ENT-'+id_entrada;
         const montoBsRech = (m.moneda_compra === 'VES' && m.monto_total_moneda_original != null)
           ? m.monto_total_moneda_original
@@ -2611,7 +2599,7 @@ async function rechazarEntradaCompra(id_entrada) {
           cantidad: m.cantidad,
           unidad: artRechInfo.unidad || 'UND',
           monedaCompra: m.moneda_compra,
-          monedaPago: monedaPagoRech,
+          modalidadPago: m.esquema_pago || 'CONTADO',
           tasaBcv: m.tasa_bcv,
           montoBsExacto: montoBsRech,
           montoIGTF: 0
