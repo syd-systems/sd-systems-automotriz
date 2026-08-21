@@ -403,7 +403,7 @@ async function contVerAsiento(id) {
     abrirModal('modal-cont-asiento-ver');
     focusFirstField('modal-cont-asiento-ver');
   } catch(e) {
-    if (contEl) contEl.innerHTML = '<div class="alerta alerta-error" style="display:block">Error cargando asiento: ' + e.message + '</div>';
+    if (contEl) contEl.innerHTML = '<div class="alerta alerta-error" style="display:block">Error cargando asiento: ' + msgErr(e) + '</div>';
     else alert('Error: ' + e.message);
   }
 }
