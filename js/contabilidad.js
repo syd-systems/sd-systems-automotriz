@@ -1060,6 +1060,29 @@ function onCambiarMetodoCobroCxc() {
     igtfNotaEl.style.display = aplicaIGTFAhora ? '' : 'none';
     if (aplicaIGTFAhora) igtfNotaEl.textContent = 'Por ser la Empresa Contribuyente Especial, este Cobro en USD lleva IGTF.';
   }
+
+  // Monto a Cobrar principal (grande) -- debe ser la Moneda del Método
+  // elegido, no siempre Bs. Antes el campo grande quedaba fijo en Bs sin
+  // importar si el Cliente pagaba en USD.
+  const montoUSD = window._contPagoCxcMontoUSD;
+  const montoVES = window._contPagoCxcMontoVES;
+  const elPrincipal = document.getElementById('cont-pago-cxc-monto-ves');
+  const lblPrincipal = document.getElementById('cont-pago-cxc-monto-ves-label');
+  const elSecundario = document.getElementById('cont-pago-cxc-monto');
+  const lblSecundario = document.getElementById('cont-pago-cxc-monto-label');
+  if (montoUSD != null && montoVES != null && elPrincipal) {
+    if (monedaMetodoSel === 'USD') {
+      if (lblPrincipal) lblPrincipal.textContent = 'Monto a Cobrar (USD)';
+      elPrincipal.value = '$ ' + montoUSD.toFixed(2);
+      if (lblSecundario) lblSecundario.textContent = 'Monto Bs';
+      if (elSecundario) elSecundario.value = montoVES.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' Bs';
+    } else {
+      if (lblPrincipal) lblPrincipal.textContent = 'Monto a Cobrar (Bs)';
+      elPrincipal.value = montoVES.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' Bs';
+      if (lblSecundario) lblSecundario.textContent = 'Monto USD';
+      if (elSecundario) elSecundario.value = '$ ' + montoUSD.toFixed(2);
+    }
+  }
 }
 
 async function contAbrirPagoCxc(id_cxc) {
@@ -1084,8 +1107,8 @@ async function contAbrirPagoCxc(id_cxc) {
   } catch(eTasaPago) {}
   const montoVESPago = parseFloat((saldoPend * tasaActualPago).toFixed(2));
 
-  document.getElementById('cont-pago-cxc-monto-ves').value = montoVESPago.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' Bs';
-  document.getElementById('cont-pago-cxc-monto').value  = '$ ' + saldoPend.toFixed(2);
+  window._contPagoCxcMontoUSD = saldoPend;
+  window._contPagoCxcMontoVES = montoVESPago;
   document.getElementById('cont-pago-cxc-tasa').value   = tasaActualPago.toFixed(4) + ' Bs/$';
   document.getElementById('cont-pago-cxc-monto-raw').value = saldoPend;
   document.getElementById('cont-pago-cxc-tasa-raw').value  = tasaActualPago;
