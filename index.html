@@ -1356,17 +1356,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260814347"></script>
-<script src="js/parametros.js?v=20260814347"></script>
-<script src="js/empresas.js?v=20260814347"></script>
-<script src="js/ingresos.js?v=20260814347"></script>
-<script src="js/inventario.js?v=20260814347"></script>
-<script src="js/proveedores.js?v=20260814347"></script>
-<script src="js/contabilidad.js?v=20260814347"></script>
-<script src="js/egresos.js?v=20260814347"></script>
-<script src="js/vehiculos.js?v=20260814347"></script>
-<script src="js/catalogo.js?v=20260814347"></script>
-<script src="js/ordenes.js?v=20260814347"></script>
+<script src="js/core.js?v=20260814348"></script>
+<script src="js/parametros.js?v=20260814348"></script>
+<script src="js/empresas.js?v=20260814348"></script>
+<script src="js/ingresos.js?v=20260814348"></script>
+<script src="js/inventario.js?v=20260814348"></script>
+<script src="js/proveedores.js?v=20260814348"></script>
+<script src="js/contabilidad.js?v=20260814348"></script>
+<script src="js/egresos.js?v=20260814348"></script>
+<script src="js/vehiculos.js?v=20260814348"></script>
+<script src="js/catalogo.js?v=20260814348"></script>
+<script src="js/ordenes.js?v=20260814348"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2696,20 +2696,6 @@
             <option value="">— Seleccionar proveedor —</option>
           </select>
         </div>
-        <div class="form-campo">
-          <label>Moneda de Pago</label>
-          <select id="es-moneda-pago" onchange="_actualizarAplicaIGTFEntrada('es-moneda-pago').then(calcularTributosEntrada)"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccione moneda —</option>
-            <option value="USD">USD — Dólar</option>
-            <option value="VES">VES — Bolívar</option>
-          </select>
-        </div>
-        <!-- IGTF -- solo aparece si el Proveedor factura en USD y es
-             Contribuyente Especial (mismo criterio que ya usa Ejecutar
-             Pago). Es un Gasto no deducible/no acreditable (a diferencia
-             del IVA), NO afecta el costo del Inventario ni el CPP -- solo
-             aumenta lo que se le debe al Proveedor. -->
         <div class="form-campo form-full" id="es-igtf-cont" style="display:none;grid-column:1/-1;background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
           <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600">⚖ IGTF</div>
           <div style="font-size:12px;color:var(--suave)">Este Proveedor factura en USD y es Contribuyente Especial -- el IGTF aplica automáticamente sobre el precio del producto más el Impuesto al Valor Agregado - IVA.</div>
@@ -4626,11 +4612,11 @@
           <div style="display:flex;gap:16px;flex-wrap:wrap">
             <div style="flex:1;min-width:130px">
               <div style="font-size:11px;color:var(--suave);margin-bottom:4px">MONEDA DE PAGO</div>
-              <!-- Solo lectura -- viene fija de la Moneda de Facturación
-                   configurada en la ficha del Proveedor, no se modifica
-                   desde aquí (antes era editable, se revirtió). -->
-              <div id="exec-pago-moneda-display" style="background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:8px 12px;font-size:13px;color:var(--texto);font-weight:600">—</div>
-              <input type="hidden" id="exec-pago-moneda">
+              <select id="exec-pago-moneda" onchange="onCambiarMonedaEjecPago()"
+                style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none;width:100%;font-weight:600">
+                <option value="USD">USD — Dólar</option>
+                <option value="VES">VES — Bolívar</option>
+              </select>
             </div>
             <div style="flex:1;min-width:130px">
               <div style="font-size:11px;color:var(--suave);margin-bottom:4px">MÉTODO DE PAGO</div>
@@ -4849,23 +4835,6 @@
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar proveedor —</option>
           </select>
-        </div>
-        <div class="form-campo" id="edit-mov-moneda-pago-cont">
-          <label>Moneda de Pago</label>
-          <select id="edit-mov-moneda-pago" onchange="_actualizarAplicaIGTFEntrada('edit-mov-moneda-pago').then(calcularTributosEdit)"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccione moneda —</option>
-            <option value="USD">USD — Dólar</option>
-            <option value="VES">VES — Bolívar</option>
-          </select>
-        </div>
-        <!-- IGTF -- mismo criterio que Nueva Entrada: solo aparece si el
-             Proveedor factura en USD y es Contribuyente Especial. Gasto no
-             deducible/no acreditable, NO afecta el costo del Inventario. -->
-        <div class="form-campo form-full" id="edit-mov-igtf-cont" style="display:none;grid-column:1/-1;background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
-          <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600">⚖ IGTF</div>
-          <div style="font-size:12px;color:var(--suave)">Este Proveedor factura en USD y es Contribuyente Especial -- el IGTF aplica automáticamente sobre el precio del producto más el Impuesto al Valor Agregado - IVA.</div>
-          
         </div>
         <div class="form-campo form-full" id="edit-mov-cliente-cont" style="display:none;grid-column:1/-1">
           <label>Nombre del Cliente *</label>
