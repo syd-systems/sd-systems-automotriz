@@ -187,11 +187,12 @@ async function abrirNuevaFactura() {
   document.getElementById('fac-receptor-rif').value        = '';
   document.getElementById('fac-receptor-dir').value        = '';
   document.getElementById('fac-receptor-tipo-contrib').value = '';
-  // Por defecto: Moneda VES con IVA activado (el Usuario puede modificarlo).
-  // Si cambia a USD, onCambiarMonedaFactura() activa IVA + IGTF por defecto.
+  // Sin Moneda por defecto -- el operador debe elegirla explícitamente
+  // (mismo criterio que Método de Cobro: ninguna preselección que pueda
+  // pasar desapercibida y quedar guardada por error).
   document.getElementById('fac-aplica-iva').checked        = true;
   document.getElementById('fac-aplica-igtf').checked       = false;
-  document.getElementById('fac-moneda').value              = 'VES';
+  document.getElementById('fac-moneda').value              = '';
   document.getElementById('fac-tasa').value                = tasaActual.toFixed(4);
   document.getElementById('fac-fecha').value               = getHoyVzla();
   document.getElementById('fac-estado').value              = 'BORRADOR';
@@ -502,6 +503,8 @@ async function guardarFactura(emitir) {
     const aplIGTF  = document.getElementById('fac-aplica-igtf').checked;
     if (!id_os)     { errEl.textContent='Debe seleccionar una Orden de Servicio.'; errEl.style.display='block'; return; }
     if (!id_emisor) { errEl.textContent='Debe seleccionar una Empresa.';           errEl.style.display='block'; return; }
+    const monedaSel = document.getElementById('fac-moneda')?.value;
+    if (!monedaSel) { errEl.textContent='Debe seleccionar la Moneda de Cobro.';    errEl.style.display='block'; return; }
     if (!recNom)   { errEl.textContent='El nombre del cliente es obligatorio.';   errEl.style.display='block'; return; }
     if (!fecha)    { errEl.textContent='La fecha es obligatoria.';                errEl.style.display='block'; return; }
     const tot = window._facTotales||{subtotal:0,iva:0,igtf:0,total:0,totVes:0};
