@@ -4072,6 +4072,15 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     if (calcEl && tasa > 0) {
       calcEl.value = moneda === 'VES' ? fmtBs(montoTotal / tasa) : fmtBs(montoTotal * tasa);
     }
+    // Label (VES)/(USD) y fórmula del campo "Monto en la moneda contraria"
+    // -- faltaban en esta ruta de solo lectura (nunca pasa por
+    // onCambiarMonedaEdit()/onCambiarPrecioEdit()), así que se quedaban
+    // fijos en su valor por defecto del HTML ("(VES)"), sin importar la
+    // Moneda de Negociación real de esta Entrada.
+    const lblUSDView = document.getElementById('edit-mov-label-precio-usd');
+    if (lblUSDView) lblUSDView.innerHTML = 'Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(' + (moneda === 'VES' ? 'USD' : 'VES') + ')</span>';
+    const elFormulaOpuestoTotalView = document.getElementById('edit-mov-formula-opuesto');
+    if (elFormulaOpuestoTotalView) elFormulaOpuestoTotalView.textContent = moneda === 'VES' ? 'Precio × Cantidad / Tasa BCV' : 'Precio × Cantidad × Tasa BCV';
     // Precio unitario en la moneda CONTRARIA -- este bloque llena los
     // campos manualmente (no pasa por onCambiarPrecioEdit()), así que
     // había quedado sin actualizar cuando se agregó este campo.
