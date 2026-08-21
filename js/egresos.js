@@ -3946,12 +3946,18 @@ async function ejecutarPagoCxP(id_cxp) {
   if (btnConf) { btnConf.disabled = false; btnConf.textContent = '💳 Confirmar Pago'; }
   document.getElementById('alerta-exec-err').style.display = 'none';
 
-  // Moneda de Pago -- fija, viene de la Moneda de Facturación configurada
-  // en la ficha del Proveedor (la fuente de verdad real), con fallback a
-  // la ya guardada en la CxP si el proveedor no la tiene configurada. Solo
-  // lectura, no se modifica desde aquí (antes era editable, se revirtió).
+  // Moneda de Pago -- fija, viene de lo YA CONGELADO en la CxP
+  // (c.moneda_pago) -- es lo que el Usuario eligió para ESTA Obligación
+  // puntual al crearla, puede ser distinta a la Moneda de Facturación
+  // configurada en la ficha del Proveedor (esa es solo el default sugerido
+  // al crear, no una regla fija). Antes esto priorizaba
+  // prov.moneda_facturacion sobre c.moneda_pago -- al revés de como debía
+  // ser -- causando que esta Ficha mostrara una Moneda distinta a la que
+  // ya se ve en el resto del sistema (Ficha de la Obligación, Asiento,
+  // etc.) para la misma CxP. Solo lectura, no se modifica desde aquí
+  // (antes era editable, se revirtió).
   window._execPagoCxP = c;
-  const monedaCxP = prov.moneda_facturacion || c.moneda_pago || 'USD';
+  const monedaCxP = c.moneda_pago || prov.moneda_facturacion || 'USD';
   const monedaDispEl = document.getElementById('exec-pago-moneda-display');
   if (monedaDispEl) monedaDispEl.textContent = monedaCxP === 'VES' ? 'VES — Bolívar' : 'USD — Dólar';
   const monedaHiddenEl = document.getElementById('exec-pago-moneda');
