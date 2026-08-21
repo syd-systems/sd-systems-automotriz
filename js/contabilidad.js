@@ -1143,14 +1143,14 @@ async function contAbrirPagoCxc(id_cxc) {
   const elSecundarioCxc = document.getElementById('cont-pago-cxc-monto');
   const lblSecundarioCxc = document.getElementById('cont-pago-cxc-monto-label');
   if (monedaFacturaCxc === 'USD') {
-    if (lblPrincipalCxc) lblPrincipalCxc.innerHTML = 'Monto a Cobrar <span style="color:var(--naranja)">(USD)</span>';
+    if (lblPrincipalCxc) lblPrincipalCxc.innerHTML = 'Monto a Cobrar <span style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span>';
     if (elPrincipalCxc) elPrincipalCxc.value = '$ ' + saldoPend.toFixed(2);
-    if (lblSecundarioCxc) lblSecundarioCxc.textContent = 'Monto Bs';
+    if (lblSecundarioCxc) lblSecundarioCxc.innerHTML = 'Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(Bs)</span>';
     if (elSecundarioCxc) elSecundarioCxc.value = montoVESPago.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' Bs';
   } else {
-    if (lblPrincipalCxc) lblPrincipalCxc.innerHTML = 'Monto a Cobrar <span style="color:var(--naranja)">(Bs)</span>';
+    if (lblPrincipalCxc) lblPrincipalCxc.innerHTML = 'Monto a Cobrar <span style="font-size:10px;color:var(--naranja);font-weight:600">(Bs)</span>';
     if (elPrincipalCxc) elPrincipalCxc.value = montoVESPago.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' Bs';
-    if (lblSecundarioCxc) lblSecundarioCxc.textContent = 'Monto USD';
+    if (lblSecundarioCxc) lblSecundarioCxc.innerHTML = 'Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span>';
     if (elSecundarioCxc) elSecundarioCxc.value = '$ ' + saldoPend.toFixed(2);
   }
 
