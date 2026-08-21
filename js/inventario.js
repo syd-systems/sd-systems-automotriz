@@ -892,6 +892,8 @@ async function abrirEntradaStock(id) {
   var selMoneda = document.getElementById('es-moneda-compra');
   if (selMoneda) selMoneda.selectedIndex = 0;
   document.getElementById('es-precio-costo').value = '';
+  const elPrecioOpuestoReset1 = document.getElementById('es-precio-opuesto');
+  if (elPrecioOpuestoReset1) elPrecioOpuestoReset1.value = '';
   var selMotivo = document.getElementById('es-motivo');
   if (selMotivo) selMotivo.selectedIndex = 0;
   var selPago = document.getElementById('es-esquema-pago');
@@ -6858,6 +6860,7 @@ function onCambiarMotivoEntrada() {
     // Limpiar valores para que no queden datos viejos de una Compra anterior
     if (document.getElementById('es-moneda-compra')) document.getElementById('es-moneda-compra').selectedIndex = 0;
     if (document.getElementById('es-precio-costo'))  document.getElementById('es-precio-costo').value = '';
+    if (document.getElementById('es-precio-opuesto')) document.getElementById('es-precio-opuesto').value = '';
     if (document.getElementById('es-monto-total'))   document.getElementById('es-monto-total').value = '0,00';
     if (document.getElementById('es-tasa-bcv'))      document.getElementById('es-tasa-bcv').value = '';
     if (document.getElementById('es-precio-usd-calc')) document.getElementById('es-precio-usd-calc').value = '';
