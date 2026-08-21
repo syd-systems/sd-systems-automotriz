@@ -442,17 +442,25 @@ function calcularTotalesFactura() {
   const total  = base+igtf;
   const totVes = total*tasa;
   function fmt(usd) { return esVES ? fmtBs(usd*tasa)+' Bs' : '$ '+fmtUSD(usd); }
+  // Formato DUAL -- Moneda de Cobro como principal, y debajo el
+  // equivalente en la Moneda contraria (mismo patrón que la Ficha de
+  // Factura, verFichaFactura/fmtFDual).
+  function fmtDual(usd, tamPrincipal, colorPrincipal) {
+    const principal = esVES ? fmtBs(usd*tasa)+' Bs' : '$ '+fmtUSD(usd);
+    const secundario = esVES ? '$ '+fmtUSD(usd) : fmtBs(usd*tasa)+' Bs';
+    return '<div style="font-family:var(--font-mono);font-size:'+(tamPrincipal||'13px')+';'+(colorPrincipal?'color:'+colorPrincipal+';':'')+'">'+principal+'</div>'
+      + '<div style="font-family:var(--font-mono);font-size:10px;color:var(--suave);margin-top:1px">'+secundario+'</div>';
+  }
   const el = document.getElementById('fac-totales');
   if (!el) return;
-  el.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px;padding:14px 0">'
-    + '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">Subtotal</span><span style="font-family:var(--font-mono)">' + fmt(subtotal) + '</span></div>'
-    + (aplIVA  ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IVA (' + Math.round(tasaIVAActual()*100) + '%)</span><span style="font-family:var(--font-mono)">' + fmt(iva) + '</span></div>' : '')
-    + (aplIGTF ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IGTF (' + Math.round(tasaIGTFActual()*100) + '%)</span><span style="font-family:var(--font-mono)">' + fmt(igtf) + '</span></div>' : '')
-    + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:8px;margin-top:4px">'
+  el.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px;padding:14px 0">'
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:13px"><span style="color:var(--suave)">Subtotal</span><div style="text-align:right">' + fmtDual(subtotal) + '</div></div>'
+    + (aplIVA  ? '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:13px"><span style="color:var(--suave)">IVA (' + Math.round(tasaIVAActual()*100) + '%)</span><div style="text-align:right">' + fmtDual(iva) + '</div></div>' : '')
+    + (aplIGTF ? '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:13px"><span style="color:var(--suave)">IGTF (' + Math.round(tasaIGTFActual()*100) + '%)</span><div style="text-align:right">' + fmtDual(igtf) + '</div></div>' : '')
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;border-top:1px solid var(--borde);padding-top:8px;margin-top:4px">'
     + '<span style="font-family:var(--font-display);font-size:16px;letter-spacing:1px">TOTAL</span>'
-    + '<div style="text-align:right"><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + fmt(total) + '</div>'
-    + (esVES ? '<div style="font-size:11px;color:var(--suave)">Tasa: ' + tasa.toFixed(2) + ' Bs/$</div>' : '')
-    + '</div></div></div>';
+    + '<div style="text-align:right">' + fmtDual(total, '22px', 'var(--naranja)') + '</div>'
+    + '</div></div>';
   window._facTotales = { subtotal, iva, igtf, total, totVes, moneda, tasa };
 }
 
