@@ -125,7 +125,7 @@ async function renderOrdenes() {
       + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">Sin órdenes registradas</td></tr>')
       + '</tbody></table></div></div>';
   } catch(e) {
-    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + e.message + '</div>';
+    c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + msgErr(e) + '</div>';
   }
 }
 
@@ -522,7 +522,7 @@ async function buscarVehiculoOS() {
     document.getElementById('os-veh-id').value = v.id_vehiculo;
     infoDiv.innerHTML = renderVehInfoOS(v);
   } catch(e) {
-    infoDiv.innerHTML = '<div style="color:#fc8181;font-size:12px">' + e.message + '</div>';
+    infoDiv.innerHTML = '<div style="color:#fc8181;font-size:12px">' + msgErr(e) + '</div>';
   }
 }
 
@@ -1115,7 +1115,7 @@ async function _guardarOSInterno() {
     okEl.textContent = '✓ Orden de servicio guardada correctamente.';
     okEl.style.display = 'block';
     setTimeout(function() { cerrarModal('modal-os'); renderOrdenes(); }, 1200);
-  } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block'; }
+  } catch(e) { errEl.textContent = 'Error: ' + msgErr(e); errEl.style.display = 'block'; }
 }
 
 // ─── ANULAR OS ───
@@ -1186,7 +1186,7 @@ async function anularOS(id, numero) {
       usuario_estado: sesionActual.nombre || sesionActual.correo_usuario,
     }, '?id_orden=eq.' + id);
     renderOrdenes();
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 // ─── REABRIR OS (requiere permiso SERVICIOS.REABRIR) ───
@@ -1207,7 +1207,7 @@ async function reabrirOS(id, numero) {
       usuario_estado: sesionActual.nombre || sesionActual.correo_usuario,
     }, '?id_orden=eq.' + id);
     renderOrdenes();
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 // ─── FICHA OS ───
@@ -1410,7 +1410,7 @@ async function verFichaOS(id) {
     window._fichaOSId = o.id_orden;
     abrirModal('modal-ficha-os');
   focusFirstField('modal-ficha-os');
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 // ─── RECALCULAR TOTAL EN BS CON TASA ACTUAL (solo admins) ───
@@ -1430,7 +1430,7 @@ async function recalcularTasaOS(id, nuevaTasa) {
     o.total_ves = nuevoTotalVes;
     cerrarModal('modal-ficha-os');
     renderOrdenes();
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 // ─── Cargar catálogo e inventario en selects del modal OS ───
