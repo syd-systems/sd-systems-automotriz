@@ -3453,6 +3453,15 @@ async function _verCxPAutomatica(c, id_cxp) {
   document.getElementById('cxp-auto-tasa').textContent    = tasaHoy.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:4, maximumFractionDigits:4});
   document.getElementById('cxp-auto-monto-ves').textContent = 'Bs. ' + montoVES.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2});
 
+  // Resaltar en naranja el Monto que coincida con la Moneda de Pago REAL
+  // de esta CxP (c.moneda_pago) -- antes USD siempre quedaba resaltado
+  // (color fijo en el HTML), sin importar la Moneda real.
+  const monedaPagoAuto = (c.moneda_pago || 'USD').toUpperCase();
+  const elMontoUSDAuto = document.getElementById('cxp-auto-monto');
+  const elMontoVESAuto = document.getElementById('cxp-auto-monto-ves');
+  if (elMontoUSDAuto) elMontoUSDAuto.style.color = monedaPagoAuto === 'USD' ? 'var(--naranja)' : 'var(--texto)';
+  if (elMontoVESAuto) elMontoVESAuto.style.color = monedaPagoAuto === 'VES' ? 'var(--naranja)' : 'var(--texto)';
+
   // Descripción — eliminar prefijos automáticos
   const descRaw = c.observaciones || c.descripcion || '—';
   const desc = descRaw
