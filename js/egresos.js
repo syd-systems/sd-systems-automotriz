@@ -3954,7 +3954,14 @@ async function ejecutarPagoCxP(id_cxp) {
   const montoVESShow = parseFloat(c.saldo_ves) || parseFloat(c.monto_ves || 0) || (montoUSDShow * (_tasaVigente || 1));
 
   document.getElementById('exec-pago-desc').textContent  = c.numero_doc + ' — ' + (c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim();
-  document.getElementById('exec-pago-monto').textContent = 'Bs. ' + fmtBs(montoVESShow);
+  // Principal: la Moneda de Pago REAL de esta CxP -- antes siempre
+  // mostraba Bs como principal y USD como equivalente, sin importar cuál
+  // fuera realmente la Moneda de Pago (monedaCxP).
+  if (monedaCxP === 'VES') {
+    document.getElementById('exec-pago-monto').textContent = 'Bs. ' + fmtBs(montoVESShow);
+  } else {
+    document.getElementById('exec-pago-monto').textContent = '$ ' + fmtBs(montoUSDShow);
+  }
 
   // Proveedor, RIF y Fecha de Pago -- vienen del Modal Obligación de Pago
   const provEl = document.getElementById('exec-pago-proveedor');
@@ -3975,7 +3982,9 @@ async function ejecutarPagoCxP(id_cxp) {
     .forEach(function(el){ if (el) el.style.display = 'none'; });
 
   const elMontoVES = document.getElementById('exec-pago-monto-ves');
-  if (elMontoVES) elMontoVES.textContent = '$ ' + fmtBs(montoUSDShow);
+  if (elMontoVES) {
+    elMontoVES.textContent = monedaCxP === 'VES' ? '$ ' + fmtBs(montoUSDShow) : 'Bs. ' + fmtBs(montoVESShow);
+  }
 
   // IGTF -- solo se pregunta/recalcula para CxP VIEJAS creadas antes de esta
   // corrección (aplica_igtf NULL, nunca resuelto). Las CxP nuevas -- de
