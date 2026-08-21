@@ -72,7 +72,7 @@ async function renderFacturas() {
             ? '<td style="font-family:var(--font-mono)">'
               + (f.moneda_cobro==='VES'
                   ? '<span style="color:var(--naranja)">' + fmtBs(f.total_ves) + ' Bs</span><div style="font-size:10px;color:var(--suave)">$ ' + fmtUSD(f.total_usd) + '</div>'
-                  : '<span style="color:var(--naranja)">$ ' + fmtUSD(f.total_usd) + '</span>')
+                  : '<span style="color:var(--naranja)">$ ' + fmtUSD(f.total_usd) + '</span><div style="font-size:10px;color:var(--suave)">' + fmtBs(f.total_ves) + ' Bs</div>')
               + '</td>'
             : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
         + '<td><button class="btn-naranja" onclick="verFichaFactura(' + f.id_factura + ')">Ver</button>'
