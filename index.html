@@ -1356,17 +1356,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260814349"></script>
-<script src="js/parametros.js?v=20260814349"></script>
-<script src="js/empresas.js?v=20260814349"></script>
-<script src="js/ingresos.js?v=20260814349"></script>
-<script src="js/inventario.js?v=20260814349"></script>
-<script src="js/proveedores.js?v=20260814349"></script>
-<script src="js/contabilidad.js?v=20260814349"></script>
-<script src="js/egresos.js?v=20260814349"></script>
-<script src="js/vehiculos.js?v=20260814349"></script>
-<script src="js/catalogo.js?v=20260814349"></script>
-<script src="js/ordenes.js?v=20260814349"></script>
+<script src="js/core.js?v=20260814350"></script>
+<script src="js/parametros.js?v=20260814350"></script>
+<script src="js/empresas.js?v=20260814350"></script>
+<script src="js/ingresos.js?v=20260814350"></script>
+<script src="js/inventario.js?v=20260814350"></script>
+<script src="js/proveedores.js?v=20260814350"></script>
+<script src="js/contabilidad.js?v=20260814350"></script>
+<script src="js/egresos.js?v=20260814350"></script>
+<script src="js/vehiculos.js?v=20260814350"></script>
+<script src="js/catalogo.js?v=20260814350"></script>
+<script src="js/ordenes.js?v=20260814350"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4675,17 +4675,6 @@
         <!-- IGTF — solo si aplica (pago en USD, efectivo o proveedor Contribuyente Especial). El IVA ya se contabilizó al crear la Obligación de Pago, no se vuelve a tocar aquí. -->
         <div class="form-campo form-full" id="exec-pago-igtf-wrap" style="display:none;background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
           <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">⚖ IGTF</div>
-          <div id="exec-pago-incluye-igtf-cont" style="margin-bottom:10px">
-            <div style="display:flex;align-items:center;gap:12px">
-              <label style="font-size:13px;font-weight:500">Monto Facturado ya Incluye IGTF</label>
-              <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
-                <input type="radio" name="exec-pago-incluye-igtf" id="exec-pago-incluye-igtf-si" value="SI" onchange="onCambioIncluyeIvaPago()"> Sí
-              </label>
-              <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
-                <input type="radio" name="exec-pago-incluye-igtf" id="exec-pago-incluye-igtf-no" value="NO" onchange="onCambioIncluyeIvaPago()"> No
-              </label>
-            </div>
-          </div>
           <!-- Preview del desglose -->
           <div id="exec-pago-tributos-preview" style="display:none;margin-top:8px"></div>
         </div>
