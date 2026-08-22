@@ -3920,10 +3920,8 @@ async function ejecutarPagoCxP(id_cxp) {
   if (viaSel0) { viaSel0.innerHTML = ''; viaSel0.value = ''; }
   const viaCont0 = document.getElementById('exec-pago-via-cont');
   if (viaCont0) viaCont0.style.display = 'none';
-  // Limpiar selección IGTF -- el IVA ya no se pregunta aquí, se contabilizó
-  // al crear la Obligación de Pago
-  document.querySelectorAll('input[name="exec-pago-incluye-igtf"]').forEach(function(r){ r.checked = false; });
-  document.getElementById('exec-pago-incluye-igtf-cont').style.display = 'none';
+  // El IGTF ya no se pregunta aquí -- se calcula siempre fresco, sumado
+  // aparte al monto de la CxP (nunca "incluido" en lo facturado).
   document.getElementById('exec-pago-tributos-preview').style.display = 'none';
   const btnConf = document.getElementById('btn-confirmar-pago');
   if (btnConf) { btnConf.disabled = false; btnConf.textContent = '💳 Confirmar Pago'; }
@@ -3988,6 +3986,7 @@ async function ejecutarPagoCxP(id_cxp) {
   const esUSDCxP = monedaCxP !== 'VES';
   const esEspecialCxP = prov?.tipo_contribuyente === 'ESPECIAL';
   if (igtfWrapEl) igtfWrapEl.style.display = (esUSDCxP && esEspecialCxP && !igtfYaResueltoCxP) ? '' : 'none';
+  onCambioIncluyeIvaPago();
 
   // Resolver Método de Pago y Cuenta Contable automáticamente -- ya no se
   // pregunta: el Método de Pago viene fijo de la ficha del Proveedor
@@ -4079,8 +4078,6 @@ async function _resolverMetodoPagoEjecucion(moneda, prov) {
 
 
 function onCambioIncluyeIvaPago() {
-  const incluyeIgtf = document.getElementById('exec-pago-incluye-igtf-si')?.checked;
-
   if (!_ejecutarPagoCxPId) return;
 
   api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=numero_doc,monto_usd,saldo_usd,monto_ves,moneda_pago,id_proveedor,fecha_vencimiento,aplica_igtf')
@@ -4108,10 +4105,7 @@ function onCambioIncluyeIvaPago() {
           aplicaIGTF = provRows && provRows[0] && provRows[0].tipo_contribuyente === 'ESPECIAL';
         } catch(e) {}
       }
-      // Mostrar pregunta IGTF solo si aplica
-      const igtfCont = document.getElementById('exec-pago-incluye-igtf-cont');
-      if (igtfCont) igtfCont.style.display = aplicaIGTF ? '' : 'none';
-      _mostrarDesgloseTributos(monto, incluyeIgtf, aplicaIGTF, fechaPagoPreview);
+      _mostrarDesgloseTributos(monto, aplicaIGTF, fechaPagoPreview);
     }).catch(function(){});
 }
 
@@ -4184,25 +4178,21 @@ async function _obtenerTributos(fecha) {
   };
 }
 
-function _calcularTributos(montoTotal, incluyeIgtf, tasaIGTF, aplicaIGTF) {
-  // El IGTF siempre se sale ADICIONAL sobre el monto completo de la CxP --
-  // la CxP se debe saldar siempre por su monto íntegro, nunca parcial. Antes
-  // existía una línea de "Gasto" que absorbía cualquier diferencia si se
-  // "extraía" el IGTF de adentro del monto; al quitar esa línea (punto 3),
-  // extraerlo dejaría el asiento descuadrado. Por eso el IGTF calculado es
-  // siempre el mismo sin importar la respuesta de "¿Ya incluye IGTF?" --
-  // esa pregunta queda solo informativa hasta que se decida algo distinto.
+function _calcularTributos(montoTotal, tasaIGTF, aplicaIGTF) {
+  // El IGTF siempre se suma ADICIONAL sobre el monto completo de la CxP --
+  // nunca "viene incluido" en lo facturado por el Proveedor (por Ley debe
+  // mostrarse siempre por separado, en el momento de pagar en divisas).
   if (!aplicaIGTF) return { base: montoTotal, igtf: 0, total: montoTotal };
   const igtf = parseFloat((montoTotal * tasaIGTF).toFixed(4));
   return { base: montoTotal, igtf, total: parseFloat((montoTotal + igtf).toFixed(4)) };
 }
 
-async function _mostrarDesgloseTributos(monto, incluyeIgtf, aplicaIGTF, fecha) {
+async function _mostrarDesgloseTributos(monto, aplicaIGTF, fecha) {
   const preview = document.getElementById('exec-pago-tributos-preview');
   if (!preview) return;
   try {
     const { tasaIGTF } = await _obtenerTributos(fecha);
-    const { base, igtf, total } = _calcularTributos(monto, incluyeIgtf, tasaIGTF, aplicaIGTF);
+    const { base, igtf, total } = _calcularTributos(monto, tasaIGTF, aplicaIGTF);
     preview.style.display = '';
     preview.innerHTML =
       '<table style="width:100%;font-size:12px;border-collapse:collapse;margin-top:8px">'
@@ -4231,13 +4221,6 @@ async function confirmarEjecucionPago() {
 
   if (!idMetodo)    { errEl.textContent = 'Seleccione el método de pago.';          errEl.style.display = 'block'; resetBtn(); return; }
   if (!idCtaBanco)  { errEl.textContent = 'El método seleccionado no tiene cuenta contable asignada.'; errEl.style.display = 'block'; resetBtn(); return; }
-
-  // Validar IGTF obligatorio si está visible (el IVA ya no se pregunta aquí)
-  const igtfContVis = document.getElementById('exec-pago-incluye-igtf-cont');
-  if (igtfContVis && igtfContVis.style.display !== 'none') {
-    const igtfSeleccionado = document.querySelector('input[name="exec-pago-incluye-igtf"]:checked');
-    if (!igtfSeleccionado) { errEl.textContent = 'Debe indicar si el monto incluye IGTF.'; errEl.style.display = 'block'; resetBtn(); return; }
-  }
 
   // Validar Vía de Pago obligatoria si está visible (proveedor con ambas
   // vías registradas -- Cuenta Bancaria y Pago Móvil -- debe elegir una)
@@ -4275,7 +4258,6 @@ async function confirmarEjecucionPago() {
     // algún motivo, cae a la guardada en la CxP.
     const monedaCxP  = document.getElementById('exec-pago-moneda')?.value || c.moneda_pago || 'USD';
     const esUSD      = monedaCxP !== 'VES';
-    const incluyeIgtf = esUSD && document.getElementById('exec-pago-incluye-igtf-si')?.checked;
     const montoVESCxP = parseFloat(c.monto_ves || 0);
     const montoUSDCxP = parseFloat(c.saldo_usd || c.monto_usd || 0);
 
@@ -4348,7 +4330,7 @@ async function confirmarEjecucionPago() {
     const { tasaIGTF } = await _obtenerTributos(fechaPago);
     const { igtf, total } = igtfYaResuelto
       ? { igtf: 0, total: montoUSD }
-      : _calcularTributos(montoUSD, incluyeIgtf, tasaIGTF, aplicaIGTF);
+      : _calcularTributos(montoUSD, tasaIGTF, aplicaIGTF);
 
     // 4. Obtener cuentas contables por código
     const _todasCtasPagoEjec = await obtenerCuentasContables();
