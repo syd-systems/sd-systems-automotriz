@@ -4031,30 +4031,52 @@ async function onCambiarMonedaEjecPago() {
 }
 
 async function _resolverMetodoPagoEjecucion(moneda, prov) {
-  const metodoDisplay = document.getElementById('exec-pago-metodo-display');
+  const selTipoMetodo = document.getElementById('exec-pago-metodo-tipo');
+  const sinCuentaCont = document.getElementById('exec-pago-sin-cuenta-cont');
+  window._execPagoMoneda = moneda;
+  window._execPagoProv = prov;
+
+  const tiposAceptados = (prov && Array.isArray(prov.metodos_pago_tipos)) ? prov.metodos_pago_tipos : [];
+  if (selTipoMetodo) {
+    selTipoMetodo.innerHTML = tiposAceptados.map(function(t) {
+      return '<option value="'+t+'">'+(METODO_PAGO_LABELS[t] || t)+'</option>';
+    }).join('');
+  }
+  if (sinCuentaCont) sinCuentaCont.style.display = 'none';
+
+  if (!tiposAceptados.length) {
+    if (sinCuentaCont) {
+      sinCuentaCont.style.display = '';
+      sinCuentaCont.querySelector('.alerta')?.replaceChildren(document.createTextNode('Este proveedor no tiene ningún Método de Pago configurado en su ficha. Edítelo antes de continuar.'));
+    }
+    _actualizarInfoPagoProveedor();
+    return;
+  }
+
+  await onCambiarTipoMetodoEjecPago();
+}
+
+// Se dispara al abrir el modal (con el primer Método aceptado por el
+// Proveedor ya seleccionado) o al cambiar manualmente la selección --
+// resuelve la Cuenta Contable para la combinación Moneda + Método elegido.
+async function onCambiarTipoMetodoEjecPago() {
   const metodoHidden  = document.getElementById('exec-pago-metodo');
   const cuentaCont    = document.getElementById('exec-pago-cuenta-cont');
   const cuentaDisplay = document.getElementById('exec-pago-cuenta-display');
   const cuentaHidden  = document.getElementById('exec-pago-cuenta-banco');
   const sinCuentaCont = document.getElementById('exec-pago-sin-cuenta-cont');
+  const selTipoMetodo = document.getElementById('exec-pago-metodo-tipo');
+  const moneda = window._execPagoMoneda || 'USD';
 
-  const tipoMetodo = (prov && Array.isArray(prov.metodos_pago_tipos) && prov.metodos_pago_tipos[0]) || '';
+  const tipoMetodo = selTipoMetodo?.value || '';
   window._execPagoTipoMetodo = tipoMetodo;
 
-  if (metodoDisplay) metodoDisplay.textContent = METODO_PAGO_LABELS[tipoMetodo] || '— El proveedor no tiene Método de Pago configurado en su ficha —';
   if (metodoHidden) metodoHidden.value = '';
   if (cuentaCont) cuentaCont.style.display = 'none';
   if (cuentaHidden) cuentaHidden.value = '';
   if (sinCuentaCont) sinCuentaCont.style.display = 'none';
 
-  if (!tipoMetodo) {
-    if (sinCuentaCont) {
-      sinCuentaCont.style.display = '';
-      sinCuentaCont.querySelector('.alerta')?.replaceChildren(document.createTextNode('Este proveedor no tiene un Método de Pago configurado en su ficha. Edítelo antes de continuar.'));
-    }
-    _actualizarInfoPagoProveedor();
-    return;
-  }
+  if (!tipoMetodo) { _actualizarInfoPagoProveedor(); return; }
 
   try {
     const metodos = await api('param_metodos_pago','GET',null,
@@ -4068,6 +4090,7 @@ async function _resolverMetodoPagoEjecucion(moneda, prov) {
       if (cuentaCont) cuentaCont.style.display = '';
     } else if (sinCuentaCont) {
       sinCuentaCont.style.display = '';
+      sinCuentaCont.querySelector('.alerta')?.replaceChildren(document.createTextNode('No hay una Cuenta Contable configurada en Parámetros → Métodos de Pago para esta combinación de Moneda + Método de Pago. Configúrela antes de continuar.'));
     }
   } catch(e) {
     if (sinCuentaCont) sinCuentaCont.style.display = '';
