@@ -1910,6 +1910,7 @@ async function ejecutarEfectosEntradaCompra(m) {
           saldo_usd:        parseFloat(c.monto.toFixed(2)),
           observaciones:    artNomCxP + ' x ' + cantidad + ' uds.',
           esquema_pago:     'CREDITO',
+          exento_iva:       m.exento_iva === true,
           id_usuario:       m.id_usuario || null
         });
         if (cxpCuotaCreada && cxpCuotaCreada[0]) {
@@ -1938,6 +1939,7 @@ async function ejecutarEfectosEntradaCompra(m) {
         saldo_usd:       montoUSD,
         observaciones:   artNomCxP + ' x ' + cantidad + ' uds.',
         esquema_pago:    'CONTADO',
+        exento_iva:      m.exento_iva === true,
         id_usuario:      m.id_usuario || null
       });
       if (cxpCreada && cxpCreada[0]) {
@@ -4732,6 +4734,7 @@ async function _guardarEdicionMovimientoInterno() {
                 saldo_usd:       parseFloat(c.monto.toFixed(2)),
                 observaciones:   artNom + ' x ' + cantidad + ' uds.',
                 esquema_pago:    'CREDITO',
+                exento_iva:      exentoEdit === true,
                 id_usuario:      sesionActual?.correo_usuario || null
               });
               // Agregar el id_cxp real al numero_doc para que nunca se repita
@@ -4768,6 +4771,7 @@ async function _guardarEdicionMovimientoInterno() {
             saldo_usd:       nuevoMontoUSD,
             observaciones:   artNom + ' x ' + cantidad + ' uds.',
             esquema_pago:    'CONTADO',
+            exento_iva:      exentoEdit === true,
             id_usuario:      sesionActual?.correo_usuario || null
           });
           // Agregar el id_cxp real al numero_doc para que nunca se repita
