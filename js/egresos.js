@@ -2466,7 +2466,7 @@ function calcularCuotasPago() {
   const sumaCuotas = cuotas.reduce(function(s,c){ return s + c.monto; }, 0);
   const cuadra = Math.abs(sumaCuotas - totalUSD) < 0.01;
   preview.dataset.cuotas = JSON.stringify(cuotas);
-  preview.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-bottom:8px">Vista previa — Total: $ '+totalUSD.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2})+(cuadra?' ✓':' ⚠ revise el monto por cuota')+'</div>'
+  preview.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-bottom:8px">Vista previa — Total: $ '+totalUSD.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2})+(cuadra?' ✓':' ⚠ revise el monto por cuota')+'</div>'
     + '<table style="width:100%;font-size:12px"><thead><tr>'
     + '<th style="padding:6px 8px;text-align:left;color:var(--suave);font-size:10px">Cuota</th>'
     + '<th style="padding:6px 8px;text-align:left;color:var(--suave);font-size:10px">Fecha Vencimiento</th>'
@@ -3550,7 +3550,7 @@ async function _verCxPAutomatica(c, id_cxp) {
       if (cuotas && cuotas.length) {
         document.getElementById('cxp-auto-cuotas-num').textContent   = cuotas.length;
         document.getElementById('cxp-auto-cuotas-fecha').textContent = cuotas[0].fecha_vencimiento?.slice(0,10).split('-').reverse().join('/') || '—';
-        document.getElementById('cxp-auto-cuotas-monto').textContent = '$ ' + parseFloat(cuotas[0].monto_usd||0).toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2});
+        document.getElementById('cxp-auto-cuotas-monto').textContent = '$ ' + parseFloat(cuotas[0].monto_usd||0).toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2});
         // Intervalo
         if (cuotas.length > 1) {
           const f1 = new Date(cuotas[0].fecha_vencimiento + 'T00:00:00');
@@ -3560,7 +3560,7 @@ async function _verCxPAutomatica(c, id_cxp) {
         }
         const total = cuotas.reduce(function(s,q){ return s + parseFloat(q.monto_usd||0); }, 0);
         document.getElementById('cxp-auto-cuotas-tabla').innerHTML =
-          '<div style="font-size:11px;color:var(--suave);margin-bottom:8px">Vista previa — Total: $ '+total.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2})+' ✓</div>'
+          '<div style="font-size:11px;color:var(--suave);margin-bottom:8px">Vista previa — Total: $ '+total.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2})+' ✓</div>'
           +'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'
           +'<th style="padding:6px 8px;text-align:left;color:var(--suave);font-size:10px">Cuota</th>'
           +'<th style="padding:6px 8px;text-align:left;color:var(--suave);font-size:10px">Fecha Vencimiento</th>'
@@ -3573,7 +3573,7 @@ async function _verCxPAutomatica(c, id_cxp) {
               return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
                 +'<td style="padding:6px 8px;font-weight:600">Cuota '+(i+1)+'</td>'
                 +'<td style="padding:6px 8px;font-family:var(--font-mono)">'+(q.fecha_vencimiento?.slice(0,10)||'—')+'</td>'
-                +'<td style="padding:6px 8px;text-align:right;font-family:var(--font-mono)">$ '+parseFloat(q.monto_usd||0).toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2})+'</td>'
+                +'<td style="padding:6px 8px;text-align:right;font-family:var(--font-mono)">$ '+parseFloat(q.monto_usd||0).toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2})+'</td>'
                 +'<td style="padding:6px 8px;text-align:center;color:'+clr+';font-weight:600">'+(q.estado||'PENDIENTE')+'</td>'
                 +'<td style="padding:6px 8px;text-align:center;font-family:var(--font-mono);color:var(--suave)">'+(q.fecha_pago?.slice(0,10)||'—')+'</td>'
                 +'</tr>';
@@ -4235,12 +4235,12 @@ async function _mostrarDesgloseTributos(monto, aplicaIGTF, fecha) {
       '<table style="width:100%;font-size:12px;border-collapse:collapse;margin-top:8px">'
       +'<tr style="border-bottom:1px solid rgba(255,255,255,0.06)">'
       +'<td style="padding:4px 8px;color:var(--suave)">Monto CxP</td>'
-      +'<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono)">$ '+base.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2})+'</td></tr>'
+      +'<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono)">$ '+base.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2})+'</td></tr>'
       +(aplicaIGTF ? '<tr style="border-bottom:1px solid rgba(255,255,255,0.06)">'
         +'<td style="padding:4px 8px;color:var(--suave)">IGTF ('+(tasaIGTF*100).toFixed(0)+'%) — 6.1.04.003</td>'
-        +'<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono)">$ '+igtf.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2})+'</td></tr>' : '')
+        +'<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono)">$ '+igtf.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2})+'</td></tr>' : '')
       +'<tr><td style="padding:4px 8px;font-weight:700;color:var(--naranja)">Total a Pagar</td>'
-      +'<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">$ '+total.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2})+'</td></tr>'
+      +'<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">$ '+total.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2})+'</td></tr>'
       +'</table>';
   } catch(e) {}
 }
