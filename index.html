@@ -1356,17 +1356,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260814350"></script>
-<script src="js/parametros.js?v=20260814350"></script>
-<script src="js/empresas.js?v=20260814350"></script>
-<script src="js/ingresos.js?v=20260814350"></script>
-<script src="js/inventario.js?v=20260814350"></script>
-<script src="js/proveedores.js?v=20260814350"></script>
-<script src="js/contabilidad.js?v=20260814350"></script>
-<script src="js/egresos.js?v=20260814350"></script>
-<script src="js/vehiculos.js?v=20260814350"></script>
-<script src="js/catalogo.js?v=20260814350"></script>
-<script src="js/ordenes.js?v=20260814350"></script>
+<script src="js/core.js?v=20260814351"></script>
+<script src="js/parametros.js?v=20260814351"></script>
+<script src="js/empresas.js?v=20260814351"></script>
+<script src="js/ingresos.js?v=20260814351"></script>
+<script src="js/inventario.js?v=20260814351"></script>
+<script src="js/proveedores.js?v=20260814351"></script>
+<script src="js/contabilidad.js?v=20260814351"></script>
+<script src="js/egresos.js?v=20260814351"></script>
+<script src="js/vehiculos.js?v=20260814351"></script>
+<script src="js/catalogo.js?v=20260814351"></script>
+<script src="js/ordenes.js?v=20260814351"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3681,18 +3681,18 @@
           <textarea id="prov-observaciones" placeholder="Observaciones adicionales..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%"></textarea>
         </div>
       </div>
-      <!-- ── Método de Pago (uno solo) ── -->
+      <!-- ── Método de Pago (uno o varios) ── -->
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--borde)">
         <div style="font-size:11px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;font-weight:600">💳 Método de Pago</div>
         <div style="display:flex;flex-wrap:wrap;gap:10px 20px;font-size:13px">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-            <input type="radio" name="prov-metodo-pago-radio" class="prov-metodo-pago-chk" value="EFECTIVO" onchange="onCambioMetodoPagoAceptadoProv()"> Efectivo
+            <input type="checkbox" class="prov-metodo-pago-chk" value="EFECTIVO" onchange="onCambioMetodoPagoAceptadoProv()"> Efectivo
           </label>
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-            <input type="radio" name="prov-metodo-pago-radio" class="prov-metodo-pago-chk" value="TRANSFERENCIA" onchange="onCambioMetodoPagoAceptadoProv()"> Transferencia
+            <input type="checkbox" class="prov-metodo-pago-chk" value="TRANSFERENCIA" onchange="onCambioMetodoPagoAceptadoProv()"> Transferencia
           </label>
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-            <input type="radio" name="prov-metodo-pago-radio" class="prov-metodo-pago-chk" value="AFILIACION_BANCARIA" onchange="onCambioMetodoPagoAceptadoProv()"> Afiliación Bancaria
+            <input type="checkbox" class="prov-metodo-pago-chk" value="AFILIACION_BANCARIA" onchange="onCambioMetodoPagoAceptadoProv()"> Afiliación Bancaria
           </label>
         </div>
       </div>
@@ -4620,8 +4620,9 @@
             </div>
             <div style="flex:1;min-width:130px">
               <div style="font-size:11px;color:var(--suave);margin-bottom:4px">MÉTODO DE PAGO</div>
-              <!-- De solo lectura, viene fijo de la ficha del Proveedor -->
-              <div id="exec-pago-metodo-display" style="background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:8px 12px;font-size:13px;color:var(--texto);font-weight:600">—</div>
+              <select id="exec-pago-metodo-tipo" onchange="onCambiarTipoMetodoEjecPago()"
+                style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none;width:100%;font-weight:600">
+              </select>
               <input type="hidden" id="exec-pago-metodo">
             </div>
           </div>
