@@ -2684,7 +2684,7 @@ async function mostrarNotifPendiente(notif) {
   const CONFIG_NOTIF = {
     confirmar_recepcion: { titulo: '📦 Solicitud de Recepción', instruccion: 'Al confirmar, valida que recibió el consumible correctamente.', boton: '✓ Confirmar Recepción' },
     aprobar_pago:         { titulo: '📝 Solicitud de Aprobación', instruccion: 'Vaya al módulo de Pagos para revisar y aprobar esta Obligación.', boton: '✓ Confirmar Pago' },
-    aprobar_entrada:      { titulo: '📝 Entrada de Compra pendiente de tu aprobación', instruccion: 'Revise el detalle e indique si Aprueba o Rechaza esta Entrada -- mientras no se resuelva, no afecta Stock ni Contabilidad.', boton: '✓ Aprobar' },
+    aprobar_entrada:      { titulo: '📝 Pago Compra de Inventario', instruccion: 'Revise el detalle e indique si Aprueba o Rechaza esta Entrada -- mientras no se resuelva, no afecta Stock ni Contabilidad.', boton: '✓ Aprobar' },
     entrada_compra_rechazada: { titulo: '❌ Entrada de Compra Rechazada', instruccion: 'Revise el motivo, corrija la Entrada y vuelva a guardarla para que se reenvíe a aprobación.', boton: 'Entendido' },
     registrar_pago:       { titulo: '✅ Solicitud de Pago Aprobada', instruccion: 'Puede ir al módulo de Pagos para Registrar el Pago cuando guste.', boton: 'Entendido' },
     ver_rechazo:          { titulo: '❌ Solicitud de Pago Rechazada', instruccion: 'Revise el motivo y corrija la Obligación en el módulo de Pagos.', boton: 'Entendido' },
