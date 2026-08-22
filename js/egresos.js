@@ -4103,7 +4103,7 @@ async function onCambiarTipoMetodoEjecPago() {
 function onCambioIncluyeIvaPago() {
   if (!_ejecutarPagoCxPId) return;
 
-  api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=numero_doc,monto_usd,saldo_usd,monto_ves,moneda_pago,id_proveedor,fecha_vencimiento,aplica_igtf')
+  api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=numero_doc,monto_usd,saldo_usd,monto_ves,moneda_pago,moneda_negociacion,id_proveedor,fecha_vencimiento,aplica_igtf')
     .then(async function(rows) {
       if (!rows || !rows[0]) return;
       // Si ya trae el IGTF resuelto/congelado desde antes de este cambio
@@ -4116,9 +4116,23 @@ function onCambioIncluyeIvaPago() {
       const fechaPagoPreview = rows[0].fecha_vencimiento?.slice(0,10) || (getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10));
       const monedaCxP = document.getElementById('exec-pago-moneda')?.value || rows[0].moneda_pago || 'USD';
       const esUSD = monedaCxP !== 'VES';
-      const monto = monedaCxP === 'VES'
+      let monto = monedaCxP === 'VES'
         ? parseFloat(rows[0].saldo_ves || rows[0].monto_ves || 0)
         : parseFloat(rows[0].saldo_usd || rows[0].monto_usd || 0);
+      // Si la Entrada se NEGOCIÓ en VES pero se paga en USD -- la deuda
+      // real siempre fue en Bs (monto_ves, congelado, nunca cambia). El
+      // monto en USD depende de la tasa del día en que EFECTIVAMENTE se
+      // paga, no de la tasa de cuando se negoció -- por eso se recalcula
+      // aquí (mismo criterio que confirmarEjecucionPago), en vez de usar
+      // el monto_usd/saldo_usd congelado desde la creación.
+      const esNegociacionVESPagoUSDPrev = esUSD && rows[0].moneda_negociacion === 'VES';
+      if (esNegociacionVESPagoUSDPrev) {
+        try {
+          const tasasPrev = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaPagoPreview+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+          const tasaPagoPrev = parseFloat(tasasPrev && tasasPrev[0] ? tasasPrev[0].tipo_cambio : 1) || 1;
+          monto = parseFloat((parseFloat(rows[0].monto_ves || 0) / tasaPagoPrev).toFixed(2));
+        } catch(eTasaPrev) {}
+      }
       // Verificar si aplica IGTF -- solo USD + proveedor Contribuyente Especial
       let aplicaIGTF = false;
       if (esUSD && rows[0].id_proveedor) {
