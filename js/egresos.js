@@ -1447,13 +1447,56 @@ async function contGuardarPagoCxp() {
     if (!rows || !rows[0]) return;
     const c = rows[0];
 
-    // Monto/Moneda/Tasa ya quedaron definidos al crear la Obligación --
-    // no se vuelven a pedir aquí, solo se usan tal cual.
-    const moneda    = c.moneda_pago || 'VES';
-    const montoUSD  = parseFloat(c.monto_usd || 0);
-    const monto     = moneda === 'VES' ? parseFloat(c.monto_ves || 0) : montoUSD;
-    const tasaDia   = parseFloat(c.tasa_bcv || _tasaVigente || 1);
+    // Monto/Moneda ya quedaron definidos al crear la Obligación -- pero la
+    // TASA se busca fresca aquí (la real del día en que se ejecuta el
+    // pago), no la congelada desde la creación.
+    const monedaPagoReg = c.moneda_pago || 'VES';
+    const monedaNegReg  = (c.moneda_negociacion || monedaPagoReg).toUpperCase();
+    const montoVESCongReg = parseFloat(c.monto_ves || 0);
+    const montoUSDCongReg = parseFloat(c.monto_usd || 0);
     const fecha     = new Date().toISOString().split('T')[0]; // fecha real en que se ejecuta el pago
+
+    let tasaDia = parseFloat(c.tasa_bcv || 1);
+    try {
+      const tasasHoyReg = await api('tasas','GET',null,'?fecha_valor=lte.'+fecha+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+      if (tasasHoyReg && tasasHoyReg[0]) tasaDia = parseFloat(tasasHoyReg[0].tipo_cambio);
+    } catch(eTasaReg) {}
+
+    // La Moneda de NEGOCIACIÓN determina cuál es la deuda REAL:
+    //   - Misma Moneda que se paga -- sin conversión, sin diferencial.
+    //   - Deuda real en Bs, pagada en USD -- se convierte con la tasa de
+    //     HOY. El Bs nunca cambia de valor -- SIN diferencial.
+    //   - Deuda real en USD, pagada en Bs -- se recalcula con la tasa de
+    //     HOY. SÍ hay diferencial cambiario.
+    let montoUSD, montoVESReg, diferencialReg = 0;
+    if (monedaNegReg === monedaPagoReg) {
+      montoUSD = montoUSDCongReg;
+      montoVESReg = montoVESCongReg;
+    } else if (monedaNegReg === 'VES') {
+      montoVESReg = montoVESCongReg;
+      montoUSD = parseFloat((montoVESCongReg / (tasaDia || 1)).toFixed(2));
+    } else {
+      montoUSD = montoUSDCongReg;
+      montoVESReg = parseFloat((montoUSDCongReg * tasaDia).toFixed(2));
+      diferencialReg = parseFloat((montoVESReg - montoVESCongReg).toFixed(2));
+    }
+    const moneda = monedaPagoReg;
+    const monto  = moneda === 'VES' ? montoVESReg : montoUSD;
+
+    // Corregir la CxP con los montos REALES a la fecha de pago -- si la
+    // deuda real es en Bs, se corrige el monto_usd (era la estimación); si
+    // la deuda real es en USD, se corrige el monto_ves (era la estimación
+    // al negociar, la tasa de hoy es la real).
+    if (monedaNegReg !== monedaPagoReg) {
+      try {
+        const patchCorrReg = { tasa_bcv: tasaDia };
+        if (monedaNegReg === 'VES') patchCorrReg.monto_usd = montoUSD;
+        else patchCorrReg.monto_ves = montoVESReg;
+        await api('cont_cxp','PATCH', patchCorrReg, '?id_cxp=eq.'+id_cxp);
+        c.tasa_bcv = tasaDia;
+        if (monedaNegReg === 'VES') c.monto_usd = montoUSD; else c.monto_ves = montoVESReg;
+      } catch(eCorrReg) { console.warn('Error corrigiendo montos reales de la CxP:', eCorrReg); }
+    }
 
     // Método de Pago Y Cuenta Contable real (Efectivo -> Caja,
     // Transferencia/Afiliación -> Banco) -- según lo que permite la ficha
@@ -1517,7 +1560,6 @@ async function contGuardarPagoCxp() {
     try {
       const id_emisor  = _empresaActiva?.id_empresa || 0;
       const tasaPago   = tasaDia;
-      const tasaCompra = parseFloat(c.tasa_bcv_compra || c.tasa_bcv || tasaPago);
 
       const codigosArr = moneda === 'USD' ? ['2.1.01.001','1.1.01.004','6.2.01.003','4.2.01.003','6.1.04.003','2.1.03.004'] : ['2.1.01.001','1.1.01.003'];
       const cuentasAstFull = await obtenerCuentasContables();
@@ -1588,23 +1630,34 @@ async function contGuardarPagoCxp() {
         const descCxP   = textoLineaPago;
         const descBanco = textoLineaPago;
         if (moneda === 'VES') {
+          // montoVESCongReg = el monto ORIGINAL ya congelado en la CxP. Si
+          // la deuda real es en USD (monedaNegReg='USD'), montoVESReg ya
+          // viene recalculado arriba con la tasa de HOY -- la diferencia
+          // entre ambos es el diferencial cambiario real.
           if (cDebito) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDebito.id_cuenta, orden:orden++,
             descripcion:descCxP,
-            debe_usd:0, haber_usd:0, debe_ves:monto, haber_ves:0, tasa_bcv:tasaPago });
+            debe_usd:0, haber_usd:0, debe_ves:montoVESCongReg, haber_ves:0, tasa_bcv:tasaPago });
+          if (Math.abs(diferencialReg) > 0.01) {
+            if (diferencialReg > 0 && cDifGasto) {
+              await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDifGasto.id_cuenta, orden:orden++,
+                descripcion:'Pérdida por diferencia cambiaria',
+                debe_usd:0, haber_usd:0, debe_ves:diferencialReg, haber_ves:0, tasa_bcv:tasaPago });
+            } else if (diferencialReg < 0 && cDifIngr) {
+              await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDifIngr.id_cuenta, orden:orden++,
+                descripcion:'Ganancia por diferencia cambiaria',
+                debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:Math.abs(diferencialReg), tasa_bcv:tasaPago });
+            }
+          }
           if (cBanVES) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cBanVES.id_cuenta, orden:orden++,
             descripcion:descBanco,
             debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:monto, tasa_bcv:tasaPago });
         } else {
-          // montoVESCompra: el monto EXACTO ya congelado en la CxP (no se
-          // re-deriva multiplicando montoUSD × tasaCompra, mismo criterio
-          // que confirmarEjecucionPago()). montoVESPago solo se recalcula
-          // con la tasa de hoy si esa tasa REALMENTE es distinta a la de
-          // compra -- si no, usa el mismo monto congelado, para no generar
-          // un "diferencial cambiario" falso por redondeo cuando la tasa
-          // no se movió.
-          const montoVESCompra = parseFloat(c.monto_ves || 0) || parseFloat((montoUSD * tasaCompra).toFixed(2));
-          const montoVESPago   = tasaPago === tasaCompra ? montoVESCompra : parseFloat((montoUSD * tasaPago).toFixed(2));
-          const difCambio      = tasaPago === tasaCompra ? 0 : parseFloat((montoVESPago - montoVESCompra).toFixed(2));
+          // montoVESReg ya viene calculado arriba con el criterio simétrico
+          // (mismo congelado si se negoció y paga en USD; nunca hay
+          // diferencial en este lado -- ver comentario en el cálculo de
+          // arriba: el Bs nunca cambia de valor cuando la deuda real es en
+          // Bs y se paga en USD, solo se traduce a dólares).
+          const montoVESCompra = montoVESReg;
           const montoIGTF_USD  = parseFloat((montoUSD * pctIGTF).toFixed(2));
           const montoIGTF_VES  = parseFloat((montoIGTF_USD * tasaPago).toFixed(2));
           // IGTF -- si esta CxP ya trae aplica_igtf resuelto (no NULL), el
@@ -1617,17 +1670,7 @@ async function contGuardarPagoCxp() {
 
           if (cDebito) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDebito.id_cuenta, orden:orden++,
             descripcion:descCxP,
-            debe_usd:montoUSD, haber_usd:0, debe_ves:montoVESCompra, haber_ves:0, tasa_bcv:tasaCompra });
-
-          if (difCambio > 0 && cDifGasto) {
-            await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDifGasto.id_cuenta, orden:orden++,
-              descripcion:'Pérdida por diferencia cambiaria ('+tasaCompra+' -> '+tasaPago+')',
-              debe_usd:0, haber_usd:0, debe_ves:difCambio, haber_ves:0, tasa_bcv:tasaPago });
-          } else if (difCambio < 0 && cDifIngr) {
-            await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cDifIngr.id_cuenta, orden:orden++,
-              descripcion:'Ganancia por diferencia cambiaria ('+tasaCompra+' -> '+tasaPago+')',
-              debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:Math.abs(difCambio), tasa_bcv:tasaPago });
-          }
+            debe_usd:montoUSD, haber_usd:0, debe_ves:montoVESCompra, haber_ves:0, tasa_bcv:tasaPago });
 
           if (!igtfYaResueltoReg) {
             if (cIGTF) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cIGTF.id_cuenta, orden:orden++,
@@ -1645,7 +1688,7 @@ async function contGuardarPagoCxp() {
           // transacción; se entera al fisco aparte).
           if (cBanUSD) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cBanUSD.id_cuenta, orden:orden++,
             descripcion:descBanco,
-            debe_usd:0, haber_usd:montoUSD, debe_ves:0, haber_ves:montoVESPago, tasa_bcv:tasaPago });
+            debe_usd:0, haber_usd:montoUSD, debe_ves:0, haber_ves:montoVESCompra, tasa_bcv:tasaPago });
         }
       }
     } catch(eAst) { console.warn('Error generando asiento de pago:', eAst); }
