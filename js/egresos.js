@@ -4083,20 +4083,30 @@ async function _renderDesglosePagoEjecutar() {
   const esUSD = monedaCxP !== 'VES';
   const fechaPago = c.fecha_vencimiento?.slice(0,10) || (getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10));
 
-  // Total Facturado en la Moneda de Pago -- si la Entrada se NEGOCIÓ en
-  // VES pero se paga en USD, la deuda real es en Bs (monto_ves, fija) y
-  // hay que convertirla con la tasa del día de pago (mismo criterio que
-  // confirmarEjecucionPago).
-  let total = monedaCxP === 'VES'
-    ? parseFloat(c.saldo_ves || c.monto_ves || 0)
-    : parseFloat(c.saldo_usd || c.monto_usd || 0);
-  const esNegVESPagoUSD = esUSD && c.moneda_negociacion === 'VES';
-  if (esNegVESPagoUSD) {
+  // Total en la Moneda de Pago -- según cuál sea la Moneda de
+  // NEGOCIACIÓN (la deuda real):
+  //   - Misma Moneda -- sin conversión, usar el monto congelado directo.
+  //   - Deuda real en Bs (negociado VES), pagada en USD -- se convierte
+  //     con la tasa de HOY. Sin diferencial (el Bs nunca cambia).
+  //   - Deuda real en USD (negociado USD), pagada en Bs -- se recalcula
+  //     con la tasa de HOY. SÍ hay diferencial cambiario.
+  const monedaNeg = (c.moneda_negociacion || 'USD').toUpperCase();
+  let total, diferencial = 0;
+  if (monedaNeg === monedaCxP) {
+    total = monedaCxP === 'VES' ? parseFloat(c.saldo_ves || c.monto_ves || 0) : parseFloat(c.saldo_usd || c.monto_usd || 0);
+  } else {
+    let tasaPago = 1;
     try {
       const tasasD = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaPago+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
-      const tasaPago = parseFloat(tasasD && tasasD[0] ? tasasD[0].tipo_cambio : 1) || 1;
-      total = parseFloat((parseFloat(c.monto_ves || 0) / tasaPago).toFixed(2));
+      tasaPago = parseFloat(tasasD && tasasD[0] ? tasasD[0].tipo_cambio : 1) || 1;
     } catch(eTasaD) {}
+    if (monedaNeg === 'VES') {
+      total = parseFloat((parseFloat(c.monto_ves || 0) / tasaPago).toFixed(2));
+    } else {
+      const montoVESOriginal = parseFloat(c.monto_ves || 0);
+      total = parseFloat((parseFloat(c.saldo_usd || c.monto_usd || 0) * tasaPago).toFixed(2));
+      diferencial = parseFloat((total - montoVESOriginal).toFixed(2));
+    }
   }
 
   const { tasaIVA, tasaIGTF } = await _obtenerTributos(fechaPago);
@@ -4117,6 +4127,7 @@ async function _renderDesglosePagoEjecutar() {
     + '<tr><td style="padding:4px 0;color:var(--suave)">Base (Inventario/Costo)</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono)">'+fmt(base)+'</td></tr>'
     + (!exento ? '<tr><td style="padding:4px 0;color:var(--suave)">IVA ('+(tasaIVA*100).toFixed(0)+'%)</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono)">'+fmt(iva)+'</td></tr>' : '')
     + '<tr style="border-top:1px solid var(--borde)"><td style="padding:4px 0;font-weight:600">Total Facturado</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono);font-weight:600">'+fmt(total)+'</td></tr>'
+    + (Math.abs(diferencial) > 0.01 ? '<tr><td style="padding:4px 0;font-size:11px;color:'+(diferencial>0?'#f87171':'#22c55e')+'">↳ '+(diferencial>0?'Pérdida':'Ganancia')+' Cambiaria (vs. Bs '+fmtBs(parseFloat(c.monto_ves||0))+' al negociar)</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono);font-size:11px;color:'+(diferencial>0?'#f87171':'#22c55e')+'">'+fmt(Math.abs(diferencial))+'</td></tr>' : '')
     + (aplicaIGTF ? (
         '<tr><td style="padding:4px 0;color:var(--suave)">IGTF ('+(tasaIGTF*100).toFixed(0)+'%) — 6.1.04.003</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono)">'+fmt(igtf)+'</td></tr>'
         + '<tr style="border-top:1px solid var(--borde)"><td style="padding:4px 0;font-weight:700;color:var(--naranja)">Total</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">'+fmt(totalFinal)+'</td></tr>'
@@ -4239,6 +4250,15 @@ async function confirmarEjecucionPago() {
     return;
   }
 
+  const facturaNoExec = document.getElementById('exec-pago-factura-no')?.value || '';
+  if (!facturaNoExec.trim()) {
+    errEl.textContent = 'Debe ingresar el N° de Factura del Proveedor.';
+    errEl.style.display = 'block';
+    document.getElementById('exec-pago-factura-no')?.focus();
+    resetBtn();
+    return;
+  }
+
   try {
     // 1. Cargar CxP -- Fecha de Pago y Moneda vienen de aquí, de solo lectura
     const rows = await api('cont_cxp','GET',null,
@@ -4271,7 +4291,6 @@ async function confirmarEjecucionPago() {
     // puede cambiar entre que se crea y que se paga. Por eso siempre se
     // calcula fresco aquí, en el momento real del pago (aplica_igtf en la
     // CxP se queda en NULL desde que se crea, a propósito).
-    const esInventarioPago = /^ENT-/.test(c.numero_doc || '');
     const igtfYaResuelto = c.aplica_igtf !== null && c.aplica_igtf !== undefined;
     const aplicaIGTF = esUSD && !igtfYaResuelto && c.proveedores?.tipo_contribuyente === 'ESPECIAL';
 
@@ -4279,45 +4298,49 @@ async function confirmarEjecucionPago() {
     const tasasHoy = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaPago+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
     const tasaPago = parseFloat(tasasHoy && tasasHoy[0] ? tasasHoy[0].tipo_cambio : tasaCompra);
 
-    // Para CxP en VES: montoUSD = monto_ves / tasaPago
-    //
-    // Para CxP de Entrada que se NEGOCIÓ en VES pero se PAGA en USD -- la
-    // deuda real siempre fue en Bs (monto_ves = Base+IVA, ya congelado y
-    // correcto, nunca cambia -- ya no incluye IGTF, eso se calcula aparte
-    // más abajo). El monto en USD que hace falta para cubrirla depende de
-    // la tasa del día en que EFECTIVAMENTE se paga, no de la tasa de
-    // cuando se negoció -- por eso se recalcula aquí con la tasa de HOY,
-    // en vez de usar el saldo_usd congelado desde la creación (que era
-    // solo una estimación). No es un diferencial cambiario: nunca hubo
-    // una deuda en USD que "cambiara de valor" -- recién se determina
-    // cuántos dólares hacen falta al pagar.
-    const esNegociacionVESPagoUSD = esInventarioPago && c.moneda_negociacion === 'VES' && monedaCxP !== 'VES';
-    let montoUSD;
-    if (monedaCxP === 'VES') {
-      montoUSD = parseFloat((montoVESCxP / (tasaPago || 1)).toFixed(4));
-    } else if (esNegociacionVESPagoUSD) {
+    // La Moneda de NEGOCIACIÓN determina cuál es la deuda REAL (la que no
+    // cambia de valor). Si se paga en esa misma Moneda, no hay conversión
+    // ni diferencial. Si se paga en la Moneda contraria:
+    //   - Deuda real en USD, pagada en Bs -- el Bs SÍ se recalcula con la
+    //     tasa de HOY, y SÍ hay diferencial cambiario (la deuda en
+    //     dólares vale distinto en Bs según el día).
+    //   - Deuda real en Bs, pagada en USD -- el Bs nunca cambia de valor,
+    //     solo se determina cuántos dólares hacen falta hoy. NO hay
+    //     diferencial (no es que la deuda "cambió de valor").
+    const monedaNeg = (c.moneda_negociacion || 'USD').toUpperCase();
+    let montoUSD, montoVESPago, diferencial = 0;
+    if (monedaNeg === monedaCxP) {
+      if (monedaCxP === 'VES') {
+        montoVESPago = montoVESCxP;
+        montoUSD = parseFloat((montoVESCxP / (tasaPago || 1)).toFixed(4));
+      } else {
+        montoUSD = montoUSDCxP;
+        montoVESPago = montoVESCxP;
+      }
+    } else if (monedaNeg === 'VES') {
       montoUSD = parseFloat((montoVESCxP / (tasaPago || 1)).toFixed(2));
+      montoVESPago = montoVESCxP;
     } else {
       montoUSD = montoUSDCxP;
+      montoVESPago = (tasaPago === tasaCompra) ? montoVESCxP : parseFloat((montoUSDCxP * tasaPago).toFixed(2));
+      diferencial = parseFloat((montoVESPago - montoVESCxP).toFixed(2));
     }
+    const montoVESCompra = montoVESCxP;
 
-    // Si hubo recálculo de la Base+IVA: corregir la CxP (monto_usd/
-    // saldo_usd/tasa_bcv quedan con el valor REAL a la fecha de pago, no
-    // la estimación de la fecha de negociación).
-    if (esNegociacionVESPagoUSD) {
+    // Corregir la CxP con los montos REALES a la fecha de pago -- si la
+    // deuda real es en Bs (monedaNeg='VES'), lo que se corrige es el
+    // monto_usd/saldo_usd (era la estimación); si la deuda real es en USD,
+    // el monto_usd/saldo_usd YA era el real, lo que se corrige es el
+    // monto_ves (era la estimación al negociar, la tasa de hoy es la real).
+    if (monedaNeg !== monedaCxP) {
       try {
-        await api('cont_cxp','PATCH',{
-          monto_usd: montoUSD,
-          saldo_usd: montoUSD,
-          tasa_bcv: tasaPago
-        }, '?id_cxp=eq.'+id_cxp);
-        // El objeto 'c' en memoria también debe reflejar el monto corregido
-        // -- si no, la sección "Actualizar CxP" más abajo seguiría restando
-        // contra el monto_usd viejo (la estimación), dejando un saldo
-        // pendiente falso en vez de marcar la CxP como pagada.
-        c.monto_usd = montoUSD;
-        c.saldo_usd = montoUSD;
-      } catch(eCorrCxp) { console.warn('Error corrigiendo monto real de la CxP:', eCorrCxp); }
+        const patchCorrCxp = { tasa_bcv: tasaPago, monto_ves: montoVESPago };
+        if (monedaNeg === 'VES') { patchCorrCxp.monto_usd = montoUSD; patchCorrCxp.saldo_usd = montoUSD; }
+        await api('cont_cxp','PATCH', patchCorrCxp, '?id_cxp=eq.'+id_cxp);
+        c.monto_ves = montoVESPago;
+        c.tasa_bcv = tasaPago;
+        if (monedaNeg === 'VES') { c.monto_usd = montoUSD; c.saldo_usd = montoUSD; }
+      } catch(eCorrCxp) { console.warn('Error corrigiendo montos reales de la CxP:', eCorrCxp); }
     }
 
     // 3. IGTF -- el IVA ya no se toca aquí, se contabilizó al crear la Obligación de Pago
@@ -4333,24 +4356,6 @@ async function confirmarEjecucionPago() {
     const idCtaPerdCambio = buscarCta('6.2.01.003')?.id_cuenta || null;
     const idCtaGanCambio  = buscarCta('4.2.01.003')?.id_cuenta || null;
     const idCtaCxP        = buscarCta('2.1.01.001')?.id_cuenta || null;
-
-    // 5. Calcular diferencial cambiario
-    // montoVESCompra = el monto EXACTO ya booked/guardado en la CxP (incluye
-    // el ajuste de redondeo de la última cuota) — NO se recalcula con la
-    // tasa de compra, para no reintroducir residuos de centavo cuando la
-    // tasa no cambió. montoVESPago = lo que se paga hoy, a la tasa de hoy;
-    // la diferencia entre ambos es la diferencia cambiaria real.
-    // EXCEPCIÓN: si la tasa de hoy es la MISMA que la de compra (no hubo
-    // devaluación real entre negociar y pagar), montoVESPago usa el mismo
-    // monto congelado -- multiplicar el USD (ya redondeado a 2 decimales)
-    // de vuelta por la tasa no siempre regresa exacto al Bs original, y
-    // eso generaba un "diferencial cambiario" falso de un centavo aun
-    // cuando la tasa no se movió ni un ápice.
-    const montoVESCompra = montoVESCxP;
-    const montoVESPago   = (monedaCxP === 'VES' || tasaPago === tasaCompra || esNegociacionVESPagoUSD)
-      ? montoVESCxP
-      : parseFloat((montoUSD * tasaPago).toFixed(2));
-    const diferencial    = (monedaCxP === 'VES' || tasaPago === tasaCompra || esNegociacionVESPagoUSD) ? 0 : parseFloat((montoVESPago - montoVESCompra).toFixed(2));
 
     // 6. Crear asiento contable
     const numAst = await _siguienteNumeroAsiento();
@@ -4397,7 +4402,7 @@ async function confirmarEjecucionPago() {
       // que se le cree su propia línea de "Diferencia Cambiaria" más abajo,
       // pero igual tiene que quedar reflejada en algún lado para que Debe y
       // Haber coincidan).
-      const bancoVES  = (monedaCxP === 'VES' && igtf === 0) ? cxpVES : r2(cxpVES + igtfVES + diferencial);
+      const bancoVES  = (monedaCxP === 'VES' && igtf === 0 && diferencial === 0) ? cxpVES : r2(cxpVES + igtfVES + diferencial);
 
       const numDoc2 = c.numero_doc || '';
       const cuotaM2 = numDoc2.match(/ENT-(\d+)-C(\d+)/);
