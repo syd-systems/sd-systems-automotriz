@@ -3920,9 +3920,8 @@ async function ejecutarPagoCxP(id_cxp) {
   if (viaSel0) { viaSel0.innerHTML = ''; viaSel0.value = ''; }
   const viaCont0 = document.getElementById('exec-pago-via-cont');
   if (viaCont0) viaCont0.style.display = 'none';
-  // El IGTF ya no se pregunta aquí -- se calcula siempre fresco, sumado
-  // aparte al monto de la CxP (nunca "incluido" en lo facturado).
-  document.getElementById('exec-pago-tributos-preview').style.display = 'none';
+  // El desglose (Base/IVA/Total/IGTF) se recalcula y repinta siempre que
+  // se abre el modal o se cambia la Moneda de Pago (_renderDesglosePagoEjecutar).
   const btnConf = document.getElementById('btn-confirmar-pago');
   if (btnConf) { btnConf.disabled = false; btnConf.textContent = '💳 Confirmar Pago'; }
   document.getElementById('alerta-exec-err').style.display = 'none';
@@ -3944,14 +3943,17 @@ async function ejecutarPagoCxP(id_cxp) {
   const montoVESShow = parseFloat(c.saldo_ves) || parseFloat(c.monto_ves || 0) || (montoUSDShow * (_tasaVigente || 1));
 
   document.getElementById('exec-pago-desc').textContent  = c.numero_doc + ' — ' + (c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim();
-  // Principal: la Moneda de Pago REAL de esta CxP -- antes siempre
-  // mostraba Bs como principal y USD como equivalente, sin importar cuál
-  // fuera realmente la Moneda de Pago (monedaCxP).
-  if (monedaCxP === 'VES') {
-    document.getElementById('exec-pago-monto').textContent = 'Bs. ' + fmtBs(montoVESShow);
-  } else {
-    document.getElementById('exec-pago-monto').textContent = '$ ' + fmtBs(montoUSDShow);
-  }
+
+  // MONTO FACTURACIÓN -- lo que realmente factura el Proveedor, en la
+  // Moneda de NEGOCIACIÓN (fija, histórica) -- NO depende de la Moneda de
+  // Pago elegida más abajo, que puede ser otra.
+  const monedaNegFact = (c.moneda_negociacion || 'USD').toUpperCase();
+  const totalNegFact = monedaNegFact === 'VES' ? montoVESShow : montoUSDShow;
+  const montoFactEl = document.getElementById('exec-pago-monto-facturacion');
+  if (montoFactEl) montoFactEl.textContent = (monedaNegFact === 'VES' ? 'Bs. ' : '$ ') + totalNegFact.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+  const facturaNoEl = document.getElementById('exec-pago-factura-no');
+  if (facturaNoEl) facturaNoEl.value = c.numero_factura_proveedor || '';
 
   // Proveedor, RIF y Fecha de Pago -- vienen del Modal Obligación de Pago
   const provEl = document.getElementById('exec-pago-proveedor');
@@ -3971,27 +3973,11 @@ async function ejecutarPagoCxP(id_cxp) {
   [document.getElementById('exec-pago-banco-info'), document.getElementById('exec-pago-pm-info'), document.getElementById('exec-pago-manual-info')]
     .forEach(function(el){ if (el) el.style.display = 'none'; });
 
-  const elMontoVES = document.getElementById('exec-pago-monto-ves');
-  if (elMontoVES) {
-    elMontoVES.textContent = monedaCxP === 'VES' ? '$ ' + fmtBs(montoUSDShow) : 'Bs. ' + fmtBs(montoVESShow);
-  }
-
-  // IGTF -- ya no se hornea nunca al crear la Obligación (ni Entrada ni
-  // manual) -- depende de cómo se termine pagando, y eso puede cambiar
-  // entre que se crea y que se paga. Se pregunta/calcula siempre fresco
-  // aquí, salvo CxP viejas que ya quedaron con aplica_igtf resuelto de
-  // antes de este cambio (esas si quedan tal como estaban).
-  const igtfYaResueltoCxP = c.aplica_igtf !== null && c.aplica_igtf !== undefined;
-  const igtfWrapEl = document.getElementById('exec-pago-igtf-wrap');
-  const esUSDCxP = monedaCxP !== 'VES';
-  const esEspecialCxP = prov?.tipo_contribuyente === 'ESPECIAL';
-  if (igtfWrapEl) igtfWrapEl.style.display = (esUSDCxP && esEspecialCxP && !igtfYaResueltoCxP) ? '' : 'none';
-  onCambioIncluyeIvaPago();
-
   // Resolver Método de Pago y Cuenta Contable automáticamente -- ya no se
   // pregunta: el Método de Pago viene fijo de la ficha del Proveedor
   // (metodos_pago_tipos), combinado con la Moneda de la CxP.
   await _resolverMetodoPagoEjecucion(monedaCxP, prov);
+  await _renderDesglosePagoEjecutar();
 
   abrirModal('modal-ejecutar-pago');
 }
@@ -4008,26 +3994,8 @@ async function onCambiarMonedaEjecPago() {
   if (!c) return;
   const monedaCxP = document.getElementById('exec-pago-moneda')?.value || 'USD';
 
-  const montoUSDShow = parseFloat(c.saldo_usd) || parseFloat(c.monto_usd || 0);
-  const montoVESShow = parseFloat(c.saldo_ves) || parseFloat(c.monto_ves || 0) || (montoUSDShow * (_tasaVigente || 1));
-  if (monedaCxP === 'VES') {
-    document.getElementById('exec-pago-monto').textContent = 'Bs. ' + fmtBs(montoVESShow);
-  } else {
-    document.getElementById('exec-pago-monto').textContent = '$ ' + fmtBs(montoUSDShow);
-  }
-  const elMontoVES = document.getElementById('exec-pago-monto-ves');
-  if (elMontoVES) {
-    elMontoVES.textContent = monedaCxP === 'VES' ? '$ ' + fmtBs(montoUSDShow) : 'Bs. ' + fmtBs(montoVESShow);
-  }
-
-  const igtfYaResueltoCxP = c.aplica_igtf !== null && c.aplica_igtf !== undefined;
-  const igtfWrapEl = document.getElementById('exec-pago-igtf-wrap');
-  const esUSDCxP = monedaCxP !== 'VES';
-  const esEspecialCxP = prov?.tipo_contribuyente === 'ESPECIAL';
-  if (igtfWrapEl) igtfWrapEl.style.display = (esUSDCxP && esEspecialCxP && !igtfYaResueltoCxP) ? '' : 'none';
-
   await _resolverMetodoPagoEjecucion(monedaCxP, prov);
-  onCambioIncluyeIvaPago();
+  await _renderDesglosePagoEjecutar();
 }
 
 async function _resolverMetodoPagoEjecucion(moneda, prov) {
@@ -4100,50 +4068,60 @@ async function onCambiarTipoMetodoEjecPago() {
 }
 
 
-function onCambioIncluyeIvaPago() {
-  if (!_ejecutarPagoCxPId) return;
+// Arma el desglose de "Pago a Ejecutar" -- Base (Inventario/Costo), IVA
+// (16%), Total Facturado, y si aplica IGTF (USD + Proveedor Contribuyente
+// Especial + no resuelto de antes): IGTF y Total final. Siempre en la
+// Moneda de Pago elegida (no en la de Negociación -- esa es "Monto
+// Facturación", arriba, y no cambia con esta selección).
+async function _renderDesglosePagoEjecutar() {
+  const c = window._execPagoCxP;
+  const prov = window._execPagoProv;
+  const cont = document.getElementById('exec-pago-desglose');
+  if (!c || !cont) return;
 
-  api('cont_cxp','GET',null,'?id_cxp=eq.'+_ejecutarPagoCxPId+'&select=numero_doc,monto_usd,saldo_usd,monto_ves,moneda_pago,moneda_negociacion,id_proveedor,fecha_vencimiento,aplica_igtf')
-    .then(async function(rows) {
-      if (!rows || !rows[0]) return;
-      // Si ya trae el IGTF resuelto/congelado desde antes de este cambio
-      // (CxP vieja) -- no volver a preguntar ni recalcular aquí.
-      const yaResuelto = rows[0].aplica_igtf !== null && rows[0].aplica_igtf !== undefined;
-      if (yaResuelto) {
-        document.getElementById('exec-pago-tributos-preview').style.display = 'none';
-        return;
-      }
-      const fechaPagoPreview = rows[0].fecha_vencimiento?.slice(0,10) || (getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10));
-      const monedaCxP = document.getElementById('exec-pago-moneda')?.value || rows[0].moneda_pago || 'USD';
-      const esUSD = monedaCxP !== 'VES';
-      let monto = monedaCxP === 'VES'
-        ? parseFloat(rows[0].saldo_ves || rows[0].monto_ves || 0)
-        : parseFloat(rows[0].saldo_usd || rows[0].monto_usd || 0);
-      // Si la Entrada se NEGOCIÓ en VES pero se paga en USD -- la deuda
-      // real siempre fue en Bs (monto_ves, congelado, nunca cambia). El
-      // monto en USD depende de la tasa del día en que EFECTIVAMENTE se
-      // paga, no de la tasa de cuando se negoció -- por eso se recalcula
-      // aquí (mismo criterio que confirmarEjecucionPago), en vez de usar
-      // el monto_usd/saldo_usd congelado desde la creación.
-      const esNegociacionVESPagoUSDPrev = esUSD && rows[0].moneda_negociacion === 'VES';
-      if (esNegociacionVESPagoUSDPrev) {
-        try {
-          const tasasPrev = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaPagoPreview+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
-          const tasaPagoPrev = parseFloat(tasasPrev && tasasPrev[0] ? tasasPrev[0].tipo_cambio : 1) || 1;
-          monto = parseFloat((parseFloat(rows[0].monto_ves || 0) / tasaPagoPrev).toFixed(2));
-        } catch(eTasaPrev) {}
-      }
-      // Verificar si aplica IGTF -- solo USD + proveedor Contribuyente Especial
-      let aplicaIGTF = false;
-      if (esUSD && rows[0].id_proveedor) {
-        try {
-          const provRows = await api('proveedores','GET',null,
-            '?id_proveedor=eq.'+rows[0].id_proveedor+'&select=tipo_contribuyente&limit=1');
-          aplicaIGTF = provRows && provRows[0] && provRows[0].tipo_contribuyente === 'ESPECIAL';
-        } catch(e) {}
-      }
-      _mostrarDesgloseTributos(monto, aplicaIGTF, fechaPagoPreview);
-    }).catch(function(){});
+  const monedaCxP = document.getElementById('exec-pago-moneda')?.value || 'USD';
+  const esUSD = monedaCxP !== 'VES';
+  const fechaPago = c.fecha_vencimiento?.slice(0,10) || (getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10));
+
+  // Total Facturado en la Moneda de Pago -- si la Entrada se NEGOCIÓ en
+  // VES pero se paga en USD, la deuda real es en Bs (monto_ves, fija) y
+  // hay que convertirla con la tasa del día de pago (mismo criterio que
+  // confirmarEjecucionPago).
+  let total = monedaCxP === 'VES'
+    ? parseFloat(c.saldo_ves || c.monto_ves || 0)
+    : parseFloat(c.saldo_usd || c.monto_usd || 0);
+  const esNegVESPagoUSD = esUSD && c.moneda_negociacion === 'VES';
+  if (esNegVESPagoUSD) {
+    try {
+      const tasasD = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaPago+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+      const tasaPago = parseFloat(tasasD && tasasD[0] ? tasasD[0].tipo_cambio : 1) || 1;
+      total = parseFloat((parseFloat(c.monto_ves || 0) / tasaPago).toFixed(2));
+    } catch(eTasaD) {}
+  }
+
+  const { tasaIVA, tasaIGTF } = await _obtenerTributos(fechaPago);
+  const exento = c.exento_iva === true;
+  const base = exento ? total : parseFloat((total / (1 + tasaIVA)).toFixed(2));
+  const iva  = exento ? 0 : parseFloat((total - base).toFixed(2));
+
+  const igtfYaResuelto = c.aplica_igtf !== null && c.aplica_igtf !== undefined;
+  const aplicaIGTF = esUSD && !igtfYaResuelto && prov?.tipo_contribuyente === 'ESPECIAL';
+  const igtf = aplicaIGTF ? parseFloat((total * tasaIGTF).toFixed(2)) : 0;
+  const totalFinal = parseFloat((total + igtf).toFixed(2));
+
+  const simbolo = esUSD ? '$' : 'Bs.';
+  const fmt = function(n) { return simbolo + ' ' + n.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2}); };
+
+  cont.innerHTML =
+    '<table style="width:100%;font-size:12px;border-collapse:collapse">'
+    + '<tr><td style="padding:4px 0;color:var(--suave)">Base (Inventario/Costo)</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono)">'+fmt(base)+'</td></tr>'
+    + (!exento ? '<tr><td style="padding:4px 0;color:var(--suave)">IVA ('+(tasaIVA*100).toFixed(0)+'%)</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono)">'+fmt(iva)+'</td></tr>' : '')
+    + '<tr style="border-top:1px solid var(--borde)"><td style="padding:4px 0;font-weight:600">Total Facturado</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono);font-weight:600">'+fmt(total)+'</td></tr>'
+    + (aplicaIGTF ? (
+        '<tr><td style="padding:4px 0;color:var(--suave)">IGTF ('+(tasaIGTF*100).toFixed(0)+'%) — 6.1.04.003</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono)">'+fmt(igtf)+'</td></tr>'
+        + '<tr style="border-top:1px solid var(--borde)"><td style="padding:4px 0;font-weight:700;color:var(--naranja)">Total</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">'+fmt(totalFinal)+'</td></tr>'
+      ) : '')
+    + '</table>';
 }
 
 function _actualizarInfoPagoProveedor() {
@@ -4222,27 +4200,6 @@ function _calcularTributos(montoTotal, tasaIGTF, aplicaIGTF) {
   if (!aplicaIGTF) return { base: montoTotal, igtf: 0, total: montoTotal };
   const igtf = parseFloat((montoTotal * tasaIGTF).toFixed(4));
   return { base: montoTotal, igtf, total: parseFloat((montoTotal + igtf).toFixed(4)) };
-}
-
-async function _mostrarDesgloseTributos(monto, aplicaIGTF, fecha) {
-  const preview = document.getElementById('exec-pago-tributos-preview');
-  if (!preview) return;
-  try {
-    const { tasaIGTF } = await _obtenerTributos(fecha);
-    const { base, igtf, total } = _calcularTributos(monto, tasaIGTF, aplicaIGTF);
-    preview.style.display = '';
-    preview.innerHTML =
-      '<table style="width:100%;font-size:12px;border-collapse:collapse;margin-top:8px">'
-      +'<tr style="border-bottom:1px solid rgba(255,255,255,0.06)">'
-      +'<td style="padding:4px 8px;color:var(--suave)">Monto CxP</td>'
-      +'<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono)">$ '+base.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2})+'</td></tr>'
-      +(aplicaIGTF ? '<tr style="border-bottom:1px solid rgba(255,255,255,0.06)">'
-        +'<td style="padding:4px 8px;color:var(--suave)">IGTF ('+(tasaIGTF*100).toFixed(0)+'%) — 6.1.04.003</td>'
-        +'<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono)">$ '+igtf.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2})+'</td></tr>' : '')
-      +'<tr><td style="padding:4px 8px;font-weight:700;color:var(--naranja)">Total a Pagar</td>'
-      +'<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">$ '+total.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2})+'</td></tr>'
-      +'</table>';
-  } catch(e) {}
 }
 
 async function confirmarEjecucionPago() {
@@ -4501,6 +4458,7 @@ async function confirmarEjecucionPago() {
       // Si se corrigió la Moneda de Pago en este modal, persistirla para
       // que el registro quede reflejando la realidad de aquí en adelante
       moneda_pago: monedaCxP,
+      numero_factura_proveedor: document.getElementById('exec-pago-factura-no')?.value?.trim() || null,
       pagado_por:  sesionActual?.correo_usuario || null
     };
     if (urlComprobanteExec) patchFinalExec.url_comprobante = urlComprobanteExec;
