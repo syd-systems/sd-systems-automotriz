@@ -255,11 +255,10 @@ async function abrirProveedor(id) {
   document.getElementById('prov-pm-ci').value               = p ? (p.pm_ci||'') : '';
   document.getElementById('prov-pm-celular').value          = p ? (p.pm_celular||'') : '';
 
-  // Método de Pago -- selección única (radio), no múltiple.
+  // Método de Pago -- selección múltiple (checkbox).
   const tiposAceptados = (p && Array.isArray(p.metodos_pago_tipos)) ? p.metodos_pago_tipos : [];
-  const metodoActual = tiposAceptados[0] || '';
   document.querySelectorAll('.prov-metodo-pago-chk').forEach(function(chk) {
-    chk.checked = (chk.value === metodoActual);
+    chk.checked = tiposAceptados.includes(chk.value);
   });
   onCambioMetodoPagoAceptadoProv();
 
@@ -314,7 +313,7 @@ async function guardarProveedor() {
     }
   }
 
-  // ── Validar Método de Pago (selección única) ──
+  // ── Validar Método de Pago (selección múltiple) ──
   const metodosMarcados = Array.from(document.querySelectorAll('.prov-metodo-pago-chk:checked')).map(function(el){ return el.value; });
   if (!metodosMarcados.length) {
     errEl.textContent = 'Debe seleccionar un Método de Pago.';
