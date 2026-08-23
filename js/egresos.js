@@ -3489,8 +3489,23 @@ async function _verCxPAutomatica(c, id_cxp) {
   document.getElementById('cxp-auto-prov-nombre').textContent = provAuto.nombre || '—';
   document.getElementById('cxp-auto-prov-rif').textContent = provAuto.rif || '—';
 
-  // N° Documento
-  document.getElementById('cxp-auto-numero').textContent = c.numero_doc || '—';
+  // N° Documento -- antes de pagar, se ve aquí normal. Una vez PAGADA, este
+  // slot pasa a mostrar el N°. Factura, y el N° Documento se muestra más
+  // abajo, en formato de cuadro (entre Tasa BCV y Descripción).
+  const yaPagadaTop = c.estado === 'PAGADA';
+  const lblNumeroTop = document.getElementById('cxp-auto-numero-label');
+  const numeroDocBox = document.getElementById('cxp-auto-numero-doc-box');
+  const numeroDocBoxValor = document.getElementById('cxp-auto-numero-doc-box-valor');
+  if (yaPagadaTop) {
+    if (lblNumeroTop) lblNumeroTop.textContent = 'N°. Factura';
+    document.getElementById('cxp-auto-numero').textContent = c.numero_factura_proveedor || '—';
+    if (numeroDocBox) numeroDocBox.style.display = '';
+    if (numeroDocBoxValor) numeroDocBoxValor.textContent = c.numero_doc || '—';
+  } else {
+    if (lblNumeroTop) lblNumeroTop.textContent = 'N° Documento';
+    document.getElementById('cxp-auto-numero').textContent = c.numero_doc || '—';
+    if (numeroDocBox) numeroDocBox.style.display = 'none';
+  }
 
   // Estado
   const estadoEl = document.getElementById('cxp-auto-estado');
