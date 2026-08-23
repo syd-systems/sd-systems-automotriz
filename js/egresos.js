@@ -4448,13 +4448,13 @@ async function confirmarEjecucionPago() {
     const monedaNeg = (c.moneda_negociacion || 'USD').toUpperCase();
     let montoUSD, montoVESPago, diferencial = 0;
     if (monedaNeg === monedaCxP) {
-      if (monedaCxP === 'VES') {
-        montoVESPago = montoVESCxP;
-        montoUSD = parseFloat((montoVESCxP / (tasaPago || 1)).toFixed(4));
-      } else {
-        montoUSD = montoUSDCxP;
-        montoVESPago = montoVESCxP;
-      }
+      // Misma Moneda de Negociación y de Pago -- no hace falta ninguna
+      // conversión. montoUSD es directamente el ya congelado en la CxP
+      // (nunca se recalcula con la tasa de hoy aquí -- si se hiciera,
+      // el "monto pagado" quedaría en una tasa distinta a la que se usó
+      // para congelar monto_usd al negociar, dejando un saldo falso).
+      montoUSD = montoUSDCxP;
+      montoVESPago = montoVESCxP;
     } else if (monedaNeg === 'VES') {
       montoUSD = parseFloat((montoVESCxP / (tasaPago || 1)).toFixed(2));
       montoVESPago = montoVESCxP;
