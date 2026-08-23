@@ -1846,6 +1846,13 @@ async function ejecutarEfectosEntradaCompra(m) {
   const montoUSD = montoTotalConIVA;
   const montoVES = totalExactoBsAst != null ? totalExactoBsAst
     : parseFloat((montoUSD * (tasa_bcv_usada || _tasaVigente || 1)).toFixed(2));
+  let nombreProveedorAst = '';
+  if (m.id_proveedor) {
+    try {
+      const provNomRows = await api('proveedores','GET',null,'?id_proveedor=eq.'+m.id_proveedor+'&select=nombre&limit=1');
+      nombreProveedorAst = (provNomRows && provNomRows[0] && provNomRows[0].nombre) || '';
+    } catch(eProvNomAst) {}
+  }
   try {
     await generarAsientoInventario('ENTRADA_COMPRA', {
       articulo:   r.nombre_articulo || r.codigo_articulo || ('Art#' + id),
@@ -1854,6 +1861,7 @@ async function ejecutarEfectosEntradaCompra(m) {
       areaId:     id_areaEnt,
       areaNombre: areaNombreEnt,
       referencia: 'ENT-' + m.id_entrada,
+      proveedorNombre: nombreProveedorAst,
       id_cuentaInventario: r.id_cuenta_contable || null,
       fecha:      m.fecha_negociacion || m.fecha_entrada,
       tasa:       tasa_bcv_usada || null,
