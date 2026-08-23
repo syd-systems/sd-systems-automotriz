@@ -1647,8 +1647,35 @@ async function contGuardarPagoCxp() {
         }
         const numFacturaRefLinea = c.numero_factura_proveedor || c.referencia || c.numero_doc || '';
         const esEntradaLinea = /^ENT-/.test(c.numero_doc || '');
-        const descCxP   = 'Pago Factura ' + numFacturaRefLinea + (esEntradaLinea ? ' por la Compra de Inventario ' + c.numero_doc : '');
-        const descBanco = 'Egreso por Pago Factura ' + numFacturaRefLinea;
+        const descCxP   = esEntradaLinea
+          ? ('Pago Factura ' + numFacturaRefLinea + ' Compra de Inventario ' + c.numero_doc)
+          : ('Pago Factura ' + numFacturaRefLinea);
+        const descBanco = 'Egreso por Pago Factura ' + numFacturaRefLinea + (esEntradaLinea ? ' (' + c.numero_doc + ')' : '');
+
+        // Corregir retroactivamente la línea de Crédito Fiscal IVA del
+        // Asiento ORIGINAL de la Entrada -- se generó al crearla, cuando
+        // el Factura No. todavía no se conocía.
+        if (esEntradaLinea && c.numero_factura_proveedor) {
+          const mEntLinea = (c.numero_doc || '').match(/^ENT-(\d+)/);
+          if (mEntLinea) {
+            try {
+              const refEntLinea = 'ENT-' + mEntLinea[1];
+              const astOrigenLineaRows = await api('cont_asientos','GET',null,
+                '?referencia=eq.'+refEntLinea+'&estado=eq.APROBADO&select=id_asiento&limit=1');
+              if (astOrigenLineaRows && astOrigenLineaRows[0]) {
+                const lineasOrigenLinea = await api('cont_asiento_lineas','GET',null,
+                  '?id_asiento=eq.'+astOrigenLineaRows[0].id_asiento+'&select=id_linea,descripcion');
+                for (const lo of (lineasOrigenLinea || [])) {
+                  if (lo.descripcion && /^Pago IVA \(\d+%\) Factura \(/.test(lo.descripcion)) {
+                    await api('cont_asiento_lineas','PATCH',
+                      { descripcion: lo.descripcion.replace('Factura (', 'Factura ' + c.numero_factura_proveedor + ' (') },
+                      '?id_linea=eq.'+lo.id_linea);
+                  }
+                }
+              }
+            } catch(eCorrIVALinea) { console.warn('Error corrigiendo descripción de IVA con Factura No.:', eCorrIVALinea); }
+          }
+        }
         if (moneda === 'VES') {
           // montoVESCongReg = el monto ORIGINAL ya congelado en la CxP. Si
           // la deuda real es en USD (monedaNegReg='USD'), montoVESReg ya
@@ -1694,7 +1721,7 @@ async function contGuardarPagoCxp() {
 
           if (!igtfYaResueltoReg) {
             if (cIGTF) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cIGTF.id_cuenta, orden:orden++,
-              descripcion:'IGTF '+(pctIGTF*100).toFixed(0)+'% sobre pago en divisas',
+              descripcion:'Gasto IGTF pago Factura '+numFacturaRefLinea+(esEntradaLinea ? ' (' + c.numero_doc + ')' : ''),
               debe_usd:montoIGTF_USD, haber_usd:0, debe_ves:montoIGTF_VES, haber_ves:0, tasa_bcv:tasaPago });
             if (cIGTFPagar) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:cIGTFPagar.id_cuenta, orden:orden++,
               descripcion:'IGTF por Pagar (enterar primeros 12 días del mes)',
@@ -4510,6 +4537,32 @@ async function confirmarEjecucionPago() {
 
       const numFacturaRefAst = c.numero_factura_proveedor || numDoc2;
 
+      // Corregir retroactivamente la línea de Crédito Fiscal IVA del
+      // Asiento ORIGINAL de la Entrada -- se generó al crearla, cuando el
+      // Factura No. todavía no se conocía (recién se captura aquí, en el
+      // Pago). Ahora que ya se sabe, se completa.
+      if (c.numero_factura_proveedor) {
+        const idEntOrigenAst = cuotaM2 ? cuotaM2[1] : (entM2 ? entM2[1] : null);
+        if (idEntOrigenAst) {
+          try {
+            const refEntOrigen = 'ENT-' + idEntOrigenAst;
+            const astOrigenRows = await api('cont_asientos','GET',null,
+              '?referencia=eq.'+refEntOrigen+'&estado=eq.APROBADO&select=id_asiento&limit=1');
+            if (astOrigenRows && astOrigenRows[0]) {
+              const lineasOrigen = await api('cont_asiento_lineas','GET',null,
+                '?id_asiento=eq.'+astOrigenRows[0].id_asiento+'&select=id_linea,descripcion');
+              for (const lo of (lineasOrigen || [])) {
+                if (lo.descripcion && /^Pago IVA \(\d+%\) Factura \(/.test(lo.descripcion)) {
+                  await api('cont_asiento_lineas','PATCH',
+                    { descripcion: lo.descripcion.replace('Factura (', 'Factura ' + c.numero_factura_proveedor + ' (') },
+                    '?id_linea=eq.'+lo.id_linea);
+                }
+              }
+            }
+          } catch(eCorrIVAOrigen) { console.warn('Error corrigiendo descripción de IVA con Factura No.:', eCorrIVAOrigen); }
+        }
+      }
+
       const linea = async function(id_cta, debeUSD, haberUSD, debeVES, haberVES, desc) {
         await api('cont_asiento_lineas','POST',{
           id_asiento: idAst, id_cuenta: id_cta, orden: orden++,
@@ -4522,9 +4575,9 @@ async function confirmarEjecucionPago() {
       // Rebajar la CxP contra Banco/Efectivo -- el IVA y el Gasto/Costo ya se
       // contabilizaron al crear la Obligación de Pago, aquí no se repiten.
       // DEBE: 2.1.01.001 CxP Proveedores
-      if (idCtaCxP)  await linea(idCtaCxP, montoUSD, 0, cxpVES, 0, 'Pago Factura ' + numFacturaRefAst + ' por la Compra de Inventario ' + numDoc2);
+      if (idCtaCxP)  await linea(idCtaCxP, montoUSD, 0, cxpVES, 0, 'Pago Factura ' + numFacturaRefAst + ' Compra de Inventario ' + numDoc2);
       // DEBE: 6.1.04.003 IGTF -- se genera en el momento del pago
-      if (idCtaIGTF && igtf > 0) await linea(idCtaIGTF, igtf, 0, igtfVES, 0, 'Gasto IGTF pago Factura ' + numFacturaRefAst);
+      if (idCtaIGTF && igtf > 0) await linea(idCtaIGTF, igtf, 0, igtfVES, 0, 'Gasto IGTF pago Factura ' + numFacturaRefAst + ' (' + numDoc2 + ')');
       // Diferencial Cambiario — solo en BS
       if (Math.abs(diferencial) > 0.01) {
         if (diferencial > 0 && idCtaPerdCambio)
@@ -4533,7 +4586,7 @@ async function confirmarEjecucionPago() {
           await linea(idCtaGanCambio,  0, 0, 0, Math.abs(diferencial), 'Ganancia cambiaria — ' + descBase);
       }
       // HABER: Banco/Efectivo
-      if (idCtaBanco) await linea(idCtaBanco, 0, bancoUSD, 0, bancoVES, 'Egreso por Pago Factura ' + numFacturaRefAst);
+      if (idCtaBanco) await linea(idCtaBanco, 0, bancoUSD, 0, bancoVES, 'Egreso por Pago Factura ' + numFacturaRefAst + ' (' + numDoc2 + ')');
     }
 
     // 7. Actualizar CxP
