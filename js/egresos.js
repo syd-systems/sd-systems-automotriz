@@ -295,7 +295,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     return;
   }
 
-  const estCol2 = { PENDIENTE:'#f59e0b', APROBADA:'#a78bfa', POR_APROBAR:'#60a5fa', PAGADA:'#22c55e', ANULADA:'#6b7280', RECHAZADA:'#fc8181' };
+  const estCol2 = { PENDIENTE:'#f59e0b', APROBADA:'#a78bfa', POR_APROBAR:'#60a5fa', PAGADA:'#22c55e', PARCIAL:'#f59e0b', ANULADA:'#6b7280', RECHAZADA:'#fc8181' };
 
   // Resolver en bulk (una sola consulta) Nombre + Código de Área de cada
   // creador, para mostrarlo en el listado sin una consulta por fila.
@@ -312,8 +312,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
   }
 
   const filas = todos.map(function(item) {
-    // Normalizar estado — eliminar PARCIAL
-    const est = item.estado === 'PARCIAL' ? 'PAGADA' : (item.estado || 'PENDIENTE');
+    const est = item.estado || 'PENDIENTE';
     const col = estCol2[est] || '#888';
     const badge = '<span style="background:'+col+'22;color:'+col+';border:1px solid '+col+'44;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600">'+est+'</span>';
 
@@ -1553,8 +1552,14 @@ async function contGuardarPagoCxp() {
     if (!tipoMetodo) tipoMetodo = 'TRANSFERENCIA';
     const metodo = tipoMetodo;
 
-    const nuevoPagado = parseFloat((parseFloat(c.pagado_usd||0) + montoUSD).toFixed(4));
-    const nuevoSaldo  = parseFloat(Math.max(0, parseFloat(c.monto_usd||0) - nuevoPagado).toFixed(4));
+    // Redondeado a 2 decimales (precisión real de moneda) -- si se queda
+    // en 4, una división Bs/tasa puede dejar un residuo de centésimas de
+    // centavo (ej. $0,0001) que la comparación siguiente no perdona,
+    // marcando PARCIAL algo que en la práctica ya quedó pagado completo
+    // (pasaba incluso en Obligaciones de Contado, que nunca deberían
+    // quedar parciales).
+    const nuevoPagado = parseFloat((parseFloat(c.pagado_usd||0) + montoUSD).toFixed(2));
+    const nuevoSaldo  = parseFloat(Math.max(0, parseFloat(c.monto_usd||0) - nuevoPagado).toFixed(2));
     const nuevoEstado = nuevoSaldo <= 0 ? 'PAGADA' : 'PARCIAL';
 
     // Subir comprobante si se adjuntó archivo
@@ -4575,9 +4580,12 @@ async function confirmarEjecucionPago() {
       if (idCtaBanco) await linea(idCtaBanco, 0, bancoUSD, 0, bancoVES, 'Egreso por Pago' + sufijoPagoAst);
     }
 
-    // 7. Actualizar CxP
-    const nuevoPagado = parseFloat((parseFloat(c.pagado_usd||0) + montoUSD).toFixed(4));
-    const nuevoSaldo  = parseFloat(Math.max(0, parseFloat(c.monto_usd||0) - nuevoPagado).toFixed(4));
+    // 7. Actualizar CxP -- redondeado a 2 decimales (precisión real de
+    // moneda), mismo motivo que en Registrar Pago: evitar que un residuo
+    // de centésimas de centavo (por divisiones Bs/tasa) marque PARCIAL
+    // algo que ya quedó pagado completo.
+    const nuevoPagado = parseFloat((parseFloat(c.pagado_usd||0) + montoUSD).toFixed(2));
+    const nuevoSaldo  = parseFloat(Math.max(0, parseFloat(c.monto_usd||0) - nuevoPagado).toFixed(2));
     const nuevoEstado = nuevoSaldo <= 0 ? 'PAGADA' : 'PARCIAL';
 
     // Subir comprobante si se adjuntó archivo (opcional)
