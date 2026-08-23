@@ -205,6 +205,18 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
 
   const cxps = await api('cont_cxp','GET',null,'?id_empresa=eq.'+id_emisor+'&order=numero_doc.asc&select=*,proveedores:id_proveedor(nombre,id_categoria)');
 
+  // Tasa BCV de HOY -- se busca una sola vez para todo el listado (no por
+  // fila), y se usa para recalcular el equivalente en Bs de las
+  // Obligaciones AÚN NO PAGADAS cuya deuda real está en USD (Moneda de
+  // Negociación USD) -- mientras no se paguen, ese equivalente debe
+  // reflejar la tasa de hoy, no la tasa congelada de cuando se negoció.
+  let tasaHoyLista = _tasaVigente || 1;
+  try {
+    const hoyLista = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+    const tasasHoyListaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+hoyLista+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    if (tasasHoyListaRows && tasasHoyListaRows[0]) tasaHoyLista = parseFloat(tasasHoyListaRows[0].tipo_cambio);
+  } catch(eTasaLista) {}
+
   // Calcular total cuotas por prefijo para display
   const cxpMap = {};
   (cxps||[]).forEach(function(c) {
@@ -225,8 +237,15 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       const total  = cxpMap[prefix] || 1;
       tipoDisplay  = 'Crédito ' + num + '/' + total;
     }
-    // Usar monto_ves guardado en BD, no calcularlo
-    const montoVES = parseFloat(c.monto_ves || 0) || parseFloat(c.monto_usd || 0) * parseFloat(c.tasa_bcv || 1);
+    // Moneda de Negociación (deuda real) en USD + aún sin pagar -- el
+    // equivalente en Bs se recalcula con la tasa de HOY, no con la
+    // congelada al negociar (mismo criterio que la Ficha de Obligación).
+    // Si la deuda real es en Bs, o ya está pagada, se usa el monto
+    // congelado directo (nunca cambia / ya es lo que realmente ocurrió).
+    const monedaNegLista = (c.moneda_negociacion || c.moneda_pago || 'USD').toUpperCase();
+    const montoVES = (monedaNegLista === 'USD' && c.estado !== 'PAGADA')
+      ? parseFloat((parseFloat(c.monto_usd || 0) * tasaHoyLista).toFixed(2))
+      : (parseFloat(c.monto_ves || 0) || parseFloat(c.monto_usd || 0) * parseFloat(c.tasa_bcv || 1));
     return {
       _src:        'cxp',
       _id:         c.id_cxp,
@@ -3465,33 +3484,36 @@ async function _verCxPAutomatica(c, id_cxp) {
   document.getElementById('cxp-auto-fecha-emision').textContent = c.fecha_emision ? c.fecha_emision.slice(0,10).split('-').reverse().join('/') : '—';
   document.getElementById('cxp-auto-fecha-venc').textContent    = c.fecha_vencimiento ? c.fecha_vencimiento.slice(0,10).split('-').reverse().join('/') : '—';
 
-  // Monto USD y Bs -- si la Moneda de PAGO coincide con la de
-  // NEGOCIACIÓN, se usa lo congelado directamente. Si son distintas, se
-  // recalcula con la tasa BCV de HOY (mismo criterio simétrico ya usado
-  // en Ejecutar Pago / Registrar Pago): la Moneda de Negociación es la
-  // deuda REAL, así que esa nunca cambia -- la otra se traduce con la
-  // tasa del día.
-  const monedaPagoAuto = (c.moneda_pago || 'USD').toUpperCase();
-  const monedaNegAuto  = (c.moneda_negociacion || monedaPagoAuto).toUpperCase();
+  // Monto USD y Bs -- la Moneda de NEGOCIACIÓN es la deuda REAL, nunca
+  // cambia. La Moneda CONTRARIA es solo un equivalente informativo, y
+  // mientras la Obligación no esté pagada, se recalcula SIEMPRE con la
+  // tasa BCV de HOY (sin importar cuál sea la Moneda de Pago elegida) --
+  // antes solo se recalculaba si la Moneda de Pago era distinta a la de
+  // Negociación, dejando el caso más común (pagar en la misma Moneda que
+  // se negoció) mostrando el equivalente contrario con la tasa vieja.
+  // Una vez pagada, se muestra lo que realmente se pagó (congelado, ya no
+  // cambia).
+  const monedaNegAuto  = (c.moneda_negociacion || (c.moneda_pago || 'USD')).toUpperCase();
   const montoUSDCongAuto = parseFloat(c.monto_usd || 0);
   const montoVESCongAuto = parseFloat(c.monto_ves || 0);
-  let montoUSDMostrar = montoUSDCongAuto;
-  let montoVESMostrar = montoVESCongAuto;
+  const yaPagadaAuto = c.estado === 'PAGADA';
   let tasaMostrar = parseFloat(c.tasa_bcv || 0) || 1;
-  if (monedaNegAuto !== monedaPagoAuto) {
+  if (!yaPagadaAuto) {
     try {
       const hoyAuto = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
       const tasasHoyAuto = await api('tasas','GET',null,'?fecha_valor=lte.'+hoyAuto+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
       if (tasasHoyAuto && tasasHoyAuto[0]) tasaMostrar = parseFloat(tasasHoyAuto[0].tipo_cambio);
     } catch(eTasaAuto) {}
-    if (monedaNegAuto === 'VES') {
-      montoVESMostrar = montoVESCongAuto; // el Bs es la deuda real, nunca cambia
-      montoUSDMostrar = parseFloat((montoVESCongAuto / (tasaMostrar || 1)).toFixed(2));
-    } else {
-      montoUSDMostrar = montoUSDCongAuto; // el USD es la deuda real, nunca cambia
-      montoVESMostrar = parseFloat((montoUSDCongAuto * tasaMostrar).toFixed(2));
-    }
   }
+  let montoUSDMostrar, montoVESMostrar;
+  if (monedaNegAuto === 'VES') {
+    montoVESMostrar = montoVESCongAuto; // deuda real, fija
+    montoUSDMostrar = yaPagadaAuto ? montoUSDCongAuto : parseFloat((montoVESCongAuto / (tasaMostrar || 1)).toFixed(2));
+  } else {
+    montoUSDMostrar = montoUSDCongAuto; // deuda real, fija
+    montoVESMostrar = yaPagadaAuto ? montoVESCongAuto : parseFloat((montoUSDCongAuto * tasaMostrar).toFixed(2));
+  }
+  const monedaPagoAuto = (c.moneda_pago || 'USD').toUpperCase();
 
   document.getElementById('cxp-auto-monto').textContent = '$ ' + montoUSDMostrar.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2});
   document.getElementById('cxp-auto-tasa').textContent    = tasaMostrar.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:4, maximumFractionDigits:4});
