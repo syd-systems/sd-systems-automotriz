@@ -250,7 +250,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       _src:        'cxp',
       _id:         c.id_cxp,
       id_usuario:  c.id_usuario,
-      numero:      c.numero_doc || '—',
+      numero:      fmtNumeroDoc(c.numero_doc) || '—',
       beneficiario: c.proveedores?.nombre || '—',
       fecha:       (c.estado === 'PAGADA' ? c.fecha_pago : c.fecha_vencimiento) || c.fecha_emision || '',
       tipo:        tipoDisplay,
@@ -3500,10 +3500,10 @@ async function _verCxPAutomatica(c, id_cxp) {
     if (lblNumeroTop) lblNumeroTop.textContent = 'N°. Factura';
     document.getElementById('cxp-auto-numero').textContent = c.numero_factura_proveedor || '—';
     if (numeroDocBox) numeroDocBox.style.display = '';
-    if (numeroDocBoxValor) numeroDocBoxValor.textContent = c.numero_doc || '—';
+    if (numeroDocBoxValor) numeroDocBoxValor.textContent = fmtNumeroDoc(c.numero_doc) || '—';
   } else {
     if (lblNumeroTop) lblNumeroTop.textContent = 'N° Documento';
-    document.getElementById('cxp-auto-numero').textContent = c.numero_doc || '—';
+    document.getElementById('cxp-auto-numero').textContent = fmtNumeroDoc(c.numero_doc) || '—';
     if (numeroDocBox) numeroDocBox.style.display = 'none';
   }
 
@@ -4070,7 +4070,7 @@ async function ejecutarPagoCxP(id_cxp) {
   const montoUSDShow = parseFloat(c.saldo_usd) || parseFloat(c.monto_usd || 0);
   const montoVESShow = parseFloat(c.saldo_ves) || parseFloat(c.monto_ves || 0) || (montoUSDShow * (_tasaVigente || 1));
 
-  document.getElementById('exec-pago-desc').textContent  = c.numero_doc + ' — ' + (c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim();
+  document.getElementById('exec-pago-desc').textContent  = fmtNumeroDoc(c.numero_doc) + ' — ' + (c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim();
 
   // MONTO FACTURACIÓN -- lo que realmente factura el Proveedor, en la
   // Moneda de NEGOCIACIÓN (fija, histórica) -- NO depende de la Moneda de
