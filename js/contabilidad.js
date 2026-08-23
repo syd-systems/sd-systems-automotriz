@@ -2508,7 +2508,7 @@ async function generarAsientoInventario(tipo, datos) {
     // ── Líneas según tipo ──
     // VEN-NIF: Moneda funcional = Bs. USD es auxiliar de referencia
     const montoBs  = monto * tasa;
-    const auxDesc  = monto > 0 ? ' (USD '+fmtUSD(monto)+' × '+tasa.toFixed(4)+')' : '';
+    const auxDesc  = '';
 
     if (tipo === 'ENTRADA_COMPRA') {
       const IVA_RATE   = tasaIVAActual();
