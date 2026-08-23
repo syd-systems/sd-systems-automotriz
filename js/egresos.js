@@ -4378,6 +4378,11 @@ async function confirmarEjecucionPago() {
       '?id_cxp=eq.'+id_cxp+'&select=*,cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre),proveedores:id_proveedor(nombre,tipo_contribuyente,metodos_pago_tipos)');
     const c = rows && rows[0];
     if (!c) throw new Error('CxP no encontrada.');
+    // Sincronizar con lo que el Usuario acaba de escribir en el formulario
+    // -- si no, las descripciones del asiento (más abajo) seguirían
+    // usando lo que ya estaba guardado (vacío en un primer pago), en vez
+    // de lo que se acaba de capturar en esta misma pantalla.
+    c.numero_factura_proveedor = document.getElementById('exec-pago-factura-no')?.value?.trim() || null;
 
     const fechaPago  = c.fecha_vencimiento?.slice(0,10) || (getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10));
     // Moneda de Pago -- la que quedó seleccionada en pantalla (puede haber
@@ -4581,7 +4586,7 @@ async function confirmarEjecucionPago() {
       // Si se corrigió la Moneda de Pago en este modal, persistirla para
       // que el registro quede reflejando la realidad de aquí en adelante
       moneda_pago: monedaCxP,
-      numero_factura_proveedor: document.getElementById('exec-pago-factura-no')?.value?.trim() || null,
+      numero_factura_proveedor: c.numero_factura_proveedor,
       pagado_por:  sesionActual?.correo_usuario || null
     };
     if (urlComprobanteExec) patchFinalExec.url_comprobante = urlComprobanteExec;
