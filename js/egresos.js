@@ -3519,6 +3519,20 @@ async function _verCxPAutomatica(c, id_cxp) {
   document.getElementById('cxp-auto-tasa').textContent    = tasaMostrar.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:4, maximumFractionDigits:4});
   document.getElementById('cxp-auto-monto-ves').textContent = 'Bs. ' + montoVESMostrar.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2});
 
+  // Labels dinámicos: "Monto Pagado" para la Moneda predominante (la de
+  // Pago), "Contravalor Monto" para la contraria -- los campos en pantalla
+  // están fijos (USD primero, VES segundo), así que solo se cambia el
+  // texto del label según cuál sea la predominante.
+  const lblMontoAuto = document.getElementById('cxp-auto-monto-label');
+  const lblMontoVesAuto = document.getElementById('cxp-auto-monto-ves-label');
+  if (monedaPagoAuto === 'USD') {
+    if (lblMontoAuto) lblMontoAuto.textContent = 'Monto Pagado (USD)';
+    if (lblMontoVesAuto) lblMontoVesAuto.textContent = 'Contravalor Monto (VES)';
+  } else {
+    if (lblMontoAuto) lblMontoAuto.textContent = 'Contravalor Monto (USD)';
+    if (lblMontoVesAuto) lblMontoVesAuto.textContent = 'Monto Pagado (VES)';
+  }
+
   // Resaltar en naranja el Monto que coincida con la Moneda de Pago REAL
   // de esta CxP (c.moneda_pago) -- antes USD siempre quedaba resaltado
   // (color fijo en el HTML), sin importar la Moneda real.
