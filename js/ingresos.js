@@ -497,7 +497,7 @@ async function guardarFactura(emitir) {
       errEl.style.display = 'block';
       return;
     }
-    const estado   = emitir ? 'EMITIDA' : estadoActual;
+    const estado   = emitir ? 'EMITIDA' : 'BORRADOR';
     const obs      = document.getElementById('fac-observaciones').value.trim();
     const aplIVA   = document.getElementById('fac-aplica-iva').checked;
     const aplIGTF  = document.getElementById('fac-aplica-igtf').checked;
