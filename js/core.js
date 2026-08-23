@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260814366';
+const SYD_VERSION = '20260814367';
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
@@ -3003,6 +3003,20 @@ function emisorQStart() {
 // "NetworkError when attempting to fetch resource" (Firefox) y
 // "Load failed" (Safari) son las variantes típicas cuando no hay conexión
 // a Internet o el servidor no responde.
+// Simplifica el numero_doc para mostrarlo al usuario -- internamente lleva
+// un sufijo con el id_cxp (para evitar duplicados en la base de datos),
+// pero eso no le aporta nada al usuario. CONTADO: "ENT-1-1" -> "ENT-1".
+// CRÉDITO: "ENT-1-C2-15" -> "ENT-1-C2". El valor guardado en la base de
+// datos NO cambia, esto es solo para mostrar.
+function fmtNumeroDoc(numeroDoc) {
+  if (!numeroDoc) return numeroDoc;
+  const mCredito = numeroDoc.match(/^(ENT-\d+-C\d+)-\d+$/);
+  if (mCredito) return mCredito[1];
+  const mContado = numeroDoc.match(/^(ENT-\d+)-\d+$/);
+  if (mContado) return mContado[1];
+  return numeroDoc;
+}
+
 function msgErr(e) {
   const m = (e && e.message) || String(e || '');
   if (/Failed to fetch|NetworkError|Load failed/i.test(m)) {
