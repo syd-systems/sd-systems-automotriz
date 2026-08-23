@@ -2567,12 +2567,12 @@ async function generarAsientoInventario(tipo, datos) {
 
       // DEBE: Inventario (base sin IVA)
       if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:1,
-        descripcion: 'Compra de Artículos Entrada de Inventario No.' + (datos.referencia || '') + ' — ' + datos.articulo,
+        descripcion: 'Compra de Artículos Entrada de Inventario No.' + (datos.referencia || ''),
         debe_usd: baseUSD, haber_usd: 0, debe_ves: baseBs, haber_ves: 0 });
 
       // DEBE: Crédito Fiscal IVA (solo si aplica)
       if (!exentoIVA && idIVA && ivaUSD > 0) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idIVA, orden:2,
-        descripcion: 'Pago IVA (' + Math.round(IVA_RATE*100) + '%) Factura ' + (datos.referencia || ''),
+        descripcion: 'Pago IVA (' + Math.round(IVA_RATE*100) + '%) Factura (' + (datos.referencia || '') + ')',
         debe_usd: ivaUSD, haber_usd: 0, debe_ves: ivaBs, haber_ves: 0 });
 
       // DEBE: IGTF Pagado -- gasto NO deducible/NO acreditable (a diferencia
