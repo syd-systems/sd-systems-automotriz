@@ -1356,17 +1356,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260814365"></script>
-<script src="js/parametros.js?v=20260814365"></script>
-<script src="js/empresas.js?v=20260814365"></script>
-<script src="js/ingresos.js?v=20260814365"></script>
-<script src="js/inventario.js?v=20260814365"></script>
-<script src="js/proveedores.js?v=20260814365"></script>
-<script src="js/contabilidad.js?v=20260814365"></script>
-<script src="js/egresos.js?v=20260814365"></script>
-<script src="js/vehiculos.js?v=20260814365"></script>
-<script src="js/catalogo.js?v=20260814365"></script>
-<script src="js/ordenes.js?v=20260814365"></script>
+<script src="js/core.js?v=20260814366"></script>
+<script src="js/parametros.js?v=20260814366"></script>
+<script src="js/empresas.js?v=20260814366"></script>
+<script src="js/ingresos.js?v=20260814366"></script>
+<script src="js/inventario.js?v=20260814366"></script>
+<script src="js/proveedores.js?v=20260814366"></script>
+<script src="js/contabilidad.js?v=20260814366"></script>
+<script src="js/egresos.js?v=20260814366"></script>
+<script src="js/vehiculos.js?v=20260814366"></script>
+<script src="js/catalogo.js?v=20260814366"></script>
+<script src="js/ordenes.js?v=20260814366"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4294,7 +4294,7 @@
       <!-- Datos principales -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
         <div>
-          <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">N° Documento</div>
+          <div id="cxp-auto-numero-label" style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">N° Documento</div>
           <div id="cxp-auto-numero" style="font-size:13px;font-family:var(--font-mono);font-weight:600;color:var(--naranja)">—</div>
         </div>
         <div>
@@ -4321,6 +4321,14 @@
           <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Tasa BCV (día de pago)</div>
           <div id="cxp-auto-tasa" style="font-size:13px;font-family:var(--font-mono)">—</div>
         </div>
+      </div>
+
+      <!-- N° Documento -- solo se muestra aquí, en formato de cuadro, una
+           vez que la Obligación ya está PAGADA (antes de pagar, el N°
+           Documento se ve arriba, en su slot normal). -->
+      <div id="cxp-auto-numero-doc-box" style="display:none;margin-bottom:12px">
+        <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">N° Documento</div>
+        <div id="cxp-auto-numero-doc-box-valor" style="font-size:13px;font-family:var(--font-mono);background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:10px 14px">—</div>
       </div>
 
       <!-- Descripción -->
