@@ -1444,6 +1444,7 @@ async function contGuardarPagoCxp() {
   if (!puedo('PAGOS','PAGAR') && !sesionActual?.administrador) { alert('No tiene permiso para procesar pagos.'); return; }
   const id_cxp = parseInt(document.getElementById('cont-pago-cxp-id')?.value) || null;
   const ref    = document.getElementById('cont-pago-cxp-ref')?.value || '';
+  const facturaNoCxp = document.getElementById('cont-pago-cxp-factura-no')?.value || '';
   const okEl   = document.getElementById('alerta-pago-cxp-ok');
   const errEl  = document.getElementById('alerta-pago-cxp-err');
   if (okEl)  okEl.style.display  = 'none';
@@ -1460,11 +1461,17 @@ async function contGuardarPagoCxp() {
     document.getElementById('cont-pago-cxp-ref')?.focus();
     return;
   }
+  if (!facturaNoCxp.trim()) {
+    mostrarError('Debe ingresar el N° de Factura del Proveedor.');
+    document.getElementById('cont-pago-cxp-factura-no')?.focus();
+    return;
+  }
 
   try {
     const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,id_categoria,metodos_pago_tipos),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre)');
     if (!rows || !rows[0]) return;
     const c = rows[0];
+    c.numero_factura_proveedor = facturaNoCxp.trim();
 
     // Monto/Moneda ya quedaron definidos al crear la Obligación -- pero la
     // TASA se busca fresca aquí (la real del día en que se ejecuta el
@@ -1567,6 +1574,7 @@ async function contGuardarPagoCxp() {
       pagado_usd:      nuevoPagado,
       saldo_usd:       nuevoSaldo,
       referencia:      ref,
+      numero_factura_proveedor: c.numero_factura_proveedor,
       fecha_pago:      fecha,
       metodo_pago:     idMetodoResuelto,
       pagado_por:      sesionActual?.correo_usuario || null
@@ -3405,6 +3413,8 @@ async function verDetalleCxP(id_cxp, modoInicial) {
 
       // Reset campos pago
       document.getElementById('cont-pago-cxp-ref').value   = '';
+      const facturaNoResetEl = document.getElementById('cont-pago-cxp-factura-no');
+      if (facturaNoResetEl) facturaNoResetEl.value = '';
       document.getElementById('cont-pago-cxp-fecha').value = new Date().toISOString().split('T')[0];
       const archivoEl2 = document.getElementById('cont-pago-cxp-archivo');
       if (archivoEl2) { archivoEl2.value = ''; archivoEl2.style.display = ''; }
