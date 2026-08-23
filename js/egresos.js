@@ -3465,24 +3465,41 @@ async function _verCxPAutomatica(c, id_cxp) {
   document.getElementById('cxp-auto-fecha-emision').textContent = c.fecha_emision ? c.fecha_emision.slice(0,10).split('-').reverse().join('/') : '—';
   document.getElementById('cxp-auto-fecha-venc').textContent    = c.fecha_vencimiento ? c.fecha_vencimiento.slice(0,10).split('-').reverse().join('/') : '—';
 
-  // Monto USD
-  document.getElementById('cxp-auto-monto').textContent = '$ ' + parseFloat(c.monto_usd || 0).toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2});
+  // Monto USD y Bs -- si la Moneda de PAGO coincide con la de
+  // NEGOCIACIÓN, se usa lo congelado directamente. Si son distintas, se
+  // recalcula con la tasa BCV de HOY (mismo criterio simétrico ya usado
+  // en Ejecutar Pago / Registrar Pago): la Moneda de Negociación es la
+  // deuda REAL, así que esa nunca cambia -- la otra se traduce con la
+  // tasa del día.
+  const monedaPagoAuto = (c.moneda_pago || 'USD').toUpperCase();
+  const monedaNegAuto  = (c.moneda_negociacion || monedaPagoAuto).toUpperCase();
+  const montoUSDCongAuto = parseFloat(c.monto_usd || 0);
+  const montoVESCongAuto = parseFloat(c.monto_ves || 0);
+  let montoUSDMostrar = montoUSDCongAuto;
+  let montoVESMostrar = montoVESCongAuto;
+  let tasaMostrar = parseFloat(c.tasa_bcv || 0) || 1;
+  if (monedaNegAuto !== monedaPagoAuto) {
+    try {
+      const hoyAuto = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+      const tasasHoyAuto = await api('tasas','GET',null,'?fecha_valor=lte.'+hoyAuto+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+      if (tasasHoyAuto && tasasHoyAuto[0]) tasaMostrar = parseFloat(tasasHoyAuto[0].tipo_cambio);
+    } catch(eTasaAuto) {}
+    if (monedaNegAuto === 'VES') {
+      montoVESMostrar = montoVESCongAuto; // el Bs es la deuda real, nunca cambia
+      montoUSDMostrar = parseFloat((montoVESCongAuto / (tasaMostrar || 1)).toFixed(2));
+    } else {
+      montoUSDMostrar = montoUSDCongAuto; // el USD es la deuda real, nunca cambia
+      montoVESMostrar = parseFloat((montoUSDCongAuto * tasaMostrar).toFixed(2));
+    }
+  }
 
-  // Tasa BCV y Monto VES -- usa lo YA GUARDADO en la CxP (c.tasa_bcv,
-  // c.monto_ves), no se vuelve a calcular con la tasa de HOY. Antes esto
-  // buscaba la tasa vigente al momento de ABRIR el modal y recalculaba
-  // monto_usd × esa tasa -- si pasó aunque sea un día entre que se generó
-  // la CxP y se consulta este modal, el monto mostrado ya no coincidía con
-  // el que realmente se negoció ni con el del Asiento contable.
-  const tasaHoy = parseFloat(c.tasa_bcv || 0) || 1;
-  const montoVES = parseFloat(c.monto_ves || 0) || parseFloat((parseFloat(c.monto_usd || 0) * tasaHoy).toFixed(2));
-  document.getElementById('cxp-auto-tasa').textContent    = tasaHoy.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:4, maximumFractionDigits:4});
-  document.getElementById('cxp-auto-monto-ves').textContent = 'Bs. ' + montoVES.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById('cxp-auto-monto').textContent = '$ ' + montoUSDMostrar.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById('cxp-auto-tasa').textContent    = tasaMostrar.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:4, maximumFractionDigits:4});
+  document.getElementById('cxp-auto-monto-ves').textContent = 'Bs. ' + montoVESMostrar.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2});
 
   // Resaltar en naranja el Monto que coincida con la Moneda de Pago REAL
   // de esta CxP (c.moneda_pago) -- antes USD siempre quedaba resaltado
   // (color fijo en el HTML), sin importar la Moneda real.
-  const monedaPagoAuto = (c.moneda_pago || 'USD').toUpperCase();
   const elMontoUSDAuto = document.getElementById('cxp-auto-monto');
   const elMontoVESAuto = document.getElementById('cxp-auto-monto-ves');
   if (elMontoUSDAuto) elMontoUSDAuto.style.color = monedaPagoAuto === 'USD' ? 'var(--naranja)' : 'var(--texto)';
