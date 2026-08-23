@@ -1471,7 +1471,7 @@ async function contRenderCajaBancos() {
   cont.innerHTML =
     '<div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px;background:var(--gris2);border-radius:8px;padding:14px 16px">'
     + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Moneda</label>'
-    + '<select id="cb-moneda" onchange="_cajaBancosMoneda=this.value" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-size:13px;padding:7px 10px;border-radius:5px;outline:none">'
+    + '<select id="cb-moneda" onchange="_cajaBancosMoneda=this.value;cbConsultarSaldos()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-size:13px;padding:7px 10px;border-radius:5px;outline:none">'
     + '<option value="'+monedaPrincipal+'"'+(_cajaBancosMoneda===monedaPrincipal?' selected':'')+'>'+monedaPrincipal+'</option>'
     + (monedaSecundaria !== monedaPrincipal ? '<option value="'+monedaSecundaria+'"'+(_cajaBancosMoneda===monedaSecundaria?' selected':'')+'>'+monedaSecundaria+'</option>' : '')
     + '</select></div>'
@@ -2567,12 +2567,12 @@ async function generarAsientoInventario(tipo, datos) {
 
       // DEBE: Inventario (base sin IVA)
       if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:1,
-        descripcion: 'Entrada compra ' + datos.articulo + auxDesc,
+        descripcion: 'Compra de Artículos Entrada de Inventario No.' + (datos.referencia || '') + ' — ' + datos.articulo,
         debe_usd: baseUSD, haber_usd: 0, debe_ves: baseBs, haber_ves: 0 });
 
       // DEBE: Crédito Fiscal IVA (solo si aplica)
       if (!exentoIVA && idIVA && ivaUSD > 0) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idIVA, orden:2,
-        descripcion: 'IVA (' + Math.round(IVA_RATE*100) + '%) compra ' + datos.articulo,
+        descripcion: 'Pago IVA (' + Math.round(IVA_RATE*100) + '%) Factura ' + (datos.referencia || ''),
         debe_usd: ivaUSD, haber_usd: 0, debe_ves: ivaBs, haber_ves: 0 });
 
       // DEBE: IGTF Pagado -- gasto NO deducible/NO acreditable (a diferencia
@@ -2586,13 +2586,13 @@ async function generarAsientoInventario(tipo, datos) {
         const cIGTF = _todasCtasAst.find(function(c){ return c.codigo === '6.1.04.003'; });
         const idIGTF = cIGTF ? cIGTF.id_cuenta : null;
         if (idIGTF) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idIGTF, orden:3,
-          descripcion: 'IGTF (' + (datos.tasaIGTF ? Math.round(datos.tasaIGTF*100) : 3) + '%) compra ' + datos.articulo,
+          descripcion: 'Gasto IGTF pago Factura ' + (datos.referencia || ''),
           debe_usd: montoIGTF_USD, haber_usd: 0, debe_ves: montoIGTF_BS, haber_ves: 0 });
       }
 
       // HABER: CxP Proveedores (monto total con IVA + IGTF, si aplica)
       if (idProv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idProv, orden:4,
-        descripcion: 'CxP ' + datos.articulo + auxDesc,
+        descripcion: 'CxP Compra No.' + (datos.referencia || '') + ' a ' + (datos.proveedorNombre || datos.articulo),
         debe_usd: 0, haber_usd: totalUSD + montoIGTF_USD, debe_ves: 0, haber_ves: totalBs + montoIGTF_BS });
 
     } else if (tipo === 'ENTRADA_DEVOLUCION') {
