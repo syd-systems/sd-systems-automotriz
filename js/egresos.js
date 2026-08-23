@@ -1645,9 +1645,10 @@ async function contGuardarPagoCxp() {
             categoriaNombreLinea = catRowsLinea?.[0]?.nombre || '';
           } catch(eCatLinea) {}
         }
-        const textoLineaPago = [c.proveedores?.nombre, categoriaNombreLinea, (c.concepto || c.numero_doc || '')].filter(Boolean).join(' ');
-        const descCxP   = textoLineaPago;
-        const descBanco = textoLineaPago;
+        const numFacturaRefLinea = c.numero_factura_proveedor || c.referencia || c.numero_doc || '';
+        const esEntradaLinea = /^ENT-/.test(c.numero_doc || '');
+        const descCxP   = 'Pago Factura ' + numFacturaRefLinea + (esEntradaLinea ? ' por la Compra de Inventario ' + c.numero_doc : '');
+        const descBanco = 'Egreso por Pago Factura ' + numFacturaRefLinea;
         if (moneda === 'VES') {
           // montoVESCongReg = el monto ORIGINAL ya congelado en la CxP. Si
           // la deuda real es en USD (monedaNegReg='USD'), montoVESReg ya
@@ -4507,6 +4508,8 @@ async function confirmarEjecucionPago() {
                      : entM2   ? ('Contado — Inventario ENT-' + entM2[1])
                      : ((c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim() || numDoc2);
 
+      const numFacturaRefAst = c.numero_factura_proveedor || numDoc2;
+
       const linea = async function(id_cta, debeUSD, haberUSD, debeVES, haberVES, desc) {
         await api('cont_asiento_lineas','POST',{
           id_asiento: idAst, id_cuenta: id_cta, orden: orden++,
@@ -4519,9 +4522,9 @@ async function confirmarEjecucionPago() {
       // Rebajar la CxP contra Banco/Efectivo -- el IVA y el Gasto/Costo ya se
       // contabilizaron al crear la Obligación de Pago, aquí no se repiten.
       // DEBE: 2.1.01.001 CxP Proveedores
-      if (idCtaCxP)  await linea(idCtaCxP, montoUSD, 0, cxpVES, 0, 'Cancelación CxP — ' + descBase);
+      if (idCtaCxP)  await linea(idCtaCxP, montoUSD, 0, cxpVES, 0, 'Pago Factura ' + numFacturaRefAst + ' por la Compra de Inventario ' + numDoc2);
       // DEBE: 6.1.04.003 IGTF -- se genera en el momento del pago
-      if (idCtaIGTF && igtf > 0) await linea(idCtaIGTF, igtf, 0, igtfVES, 0, 'IGTF — ' + descBase);
+      if (idCtaIGTF && igtf > 0) await linea(idCtaIGTF, igtf, 0, igtfVES, 0, 'Gasto IGTF pago Factura ' + numFacturaRefAst);
       // Diferencial Cambiario — solo en BS
       if (Math.abs(diferencial) > 0.01) {
         if (diferencial > 0 && idCtaPerdCambio)
@@ -4530,7 +4533,7 @@ async function confirmarEjecucionPago() {
           await linea(idCtaGanCambio,  0, 0, 0, Math.abs(diferencial), 'Ganancia cambiaria — ' + descBase);
       }
       // HABER: Banco/Efectivo
-      if (idCtaBanco) await linea(idCtaBanco, 0, bancoUSD, 0, bancoVES, 'Salida banco — ' + descBase);
+      if (idCtaBanco) await linea(idCtaBanco, 0, bancoUSD, 0, bancoVES, 'Egreso por Pago Factura ' + numFacturaRefAst);
     }
 
     // 7. Actualizar CxP
