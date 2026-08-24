@@ -1875,6 +1875,8 @@ async function abrirDialogoRegistrarPago() {
     div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center';
     div.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:24px;max-width:380px;width:90%">'
       + '<div style="font-size:15px;margin-bottom:16px;color:#e8e8e8;text-align:center">Registrar Pago</div>'
+      + '<label style="font-size:12px;color:#999;display:block;margin-bottom:4px">N° Factura *</label>'
+      + '<input type="text" id="dlg-registrar-factura-no" placeholder="N° de la Factura del Proveedor" style="width:100%;box-sizing:border-box;padding:10px;border-radius:6px;border:1px solid #444;background:#111;color:#e8e8e8;font-size:14px;margin-bottom:14px">'
       + '<label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Referencia *</label>'
       + '<input type="text" id="dlg-registrar-ref" placeholder="N° referencia bancaria o comprobante" style="width:100%;box-sizing:border-box;padding:10px;border-radius:6px;border:1px solid #444;background:#111;color:#e8e8e8;font-size:14px;margin-bottom:14px">'
       + '<label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Comprobante (opcional)</label>'
@@ -1885,23 +1887,29 @@ async function abrirDialogoRegistrarPago() {
       + '<button id="btn-confirm-no" style="background:#333;border:1px solid #555;color:#e8e8e8;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">Cancelar</button>'
       + '</div></div>';
     document.body.appendChild(div);
+    const facturaNoEl = div.querySelector('#dlg-registrar-factura-no');
     const refEl = div.querySelector('#dlg-registrar-ref');
     const errEl = div.querySelector('#dlg-registrar-err');
-    refEl.focus();
+    facturaNoEl.focus();
     const cerrar = function(valor) { document.body.removeChild(div); resolve(valor); };
     div.querySelector('#btn-confirm-si').onclick = function() {
+      const facturaNoVal = facturaNoEl.value.trim();
       const val = refEl.value.trim();
-      if (!val) { errEl.textContent = 'Ingrese la Referencia.'; errEl.style.display = 'block'; return; }
+      if (!facturaNoVal) { errEl.textContent = 'Ingrese el N° de Factura.'; errEl.style.display = 'block'; facturaNoEl.focus(); return; }
+      if (!val) { errEl.textContent = 'Ingrese la Referencia.'; errEl.style.display = 'block'; refEl.focus(); return; }
       const archivoInput = div.querySelector('#dlg-registrar-archivo');
-      cerrar({ ref: val, archivo: (archivoInput.files && archivoInput.files[0]) || null });
+      cerrar({ facturaNo: facturaNoVal, ref: val, archivo: (archivoInput.files && archivoInput.files[0]) || null });
     };
     div.querySelector('#btn-confirm-no').onclick = function() { cerrar(null); };
     refEl.addEventListener('keydown', function(ev) { if (ev.key === 'Enter') div.querySelector('#btn-confirm-si').click(); });
+    facturaNoEl.addEventListener('keydown', function(ev) { if (ev.key === 'Enter') refEl.focus(); });
   });
   if (!resultado) return;
 
   // Trasladar lo capturado a los campos reales (ocultos) que
   // contGuardarPagoCxp() ya sabe leer, sin tener que tocar esa función.
+  const facturaNoFinal = document.getElementById('cont-pago-cxp-factura-no');
+  if (facturaNoFinal) facturaNoFinal.value = resultado.facturaNo;
   const refFinal = document.getElementById('cont-pago-cxp-ref');
   if (refFinal) refFinal.value = resultado.ref;
   const archivoFinal = document.getElementById('cont-pago-cxp-archivo');
