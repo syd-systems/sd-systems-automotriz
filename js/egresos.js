@@ -8,6 +8,395 @@
 
 var _pagoEditando = null;
 
+// ══════════════════════════════════════════════════════════════
+//  PENDIENTES POR FACTURAR / PAGO CONSOLIDADO
+// ══════════════════════════════════════════════════════════════
+// Agrupa varias Entradas CONTADO de un mismo Proveedor, con la misma
+// Fecha de Pago, bajo una sola Factura -- se pagan todas juntas en un
+// único movimiento de Banco/Caja. Cada Entrada conserva su propia
+// conversión/diferencial cambiario individual (pueden tener Monedas de
+// Negociación distintas entre sí).
+window._pendFacturarProvSel = null;
+window._pendFacturarEntradasSel = [];
+
+async function abrirPendientesFacturar() {
+  document.getElementById('pend-fact-paso-proveedores').style.display = '';
+  document.getElementById('pend-fact-paso-entradas').style.display = 'none';
+  document.getElementById('btn-confirmar-pago-consolidado').style.display = 'none';
+  window._pendFacturarProvSel = null;
+  window._pendFacturarEntradasSel = [];
+  abrirModal('modal-pend-facturar');
+  await _pendFacturarCargarProveedores();
+}
+
+async function _pendFacturarCargarProveedores() {
+  const cont = document.getElementById('pend-fact-lista-proveedores');
+  cont.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const id_emisor = _empresaActiva?.id_empresa || 0;
+    const rows = await api('cont_cxp','GET',null,
+      '?id_empresa=eq.'+id_emisor+'&estado=eq.APROBADA&id_pago_consolidado=is.null&select=id_cxp,numero_doc,id_proveedor,monto_usd,monto_ves,moneda_pago,proveedores:id_proveedor(nombre,rif)');
+    // Solo CONTADO -- numero_doc con patrón ENT-<id>-<id_cxp>, sin cuota (-C)
+    const contado = (rows||[]).filter(function(r){ return /^ENT-\d+-\d+$/.test(r.numero_doc||''); });
+
+    if (!contado.length) {
+      cont.innerHTML = '<p style="color:var(--suave);font-size:13px;text-align:center;padding:20px 0">No hay Entradas Contado pendientes de facturar.</p>';
+      return;
+    }
+
+    const porProveedor = {};
+    contado.forEach(function(r) {
+      const id = r.id_proveedor;
+      if (!porProveedor[id]) porProveedor[id] = { nombre: r.proveedores?.nombre || '—', rif: r.proveedores?.rif || '', cant: 0, totalUsd: 0 };
+      porProveedor[id].cant++;
+      porProveedor[id].totalUsd += parseFloat(r.monto_usd || 0);
+    });
+
+    cont.innerHTML = Object.keys(porProveedor).map(function(id) {
+      const p = porProveedor[id];
+      return '<div onclick="_pendFacturarSeleccionarProveedor('+id+')" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--gris2);border:1px solid var(--borde);border-radius:8px;margin-bottom:8px;cursor:pointer">'
+        + '<div><div style="font-weight:600">'+p.nombre+'</div><div style="font-size:11px;color:var(--suave)">'+p.rif+' — '+p.cant+' Entrada(s) pendiente(s)</div></div>'
+        + '<div style="color:var(--naranja);font-weight:700;font-family:var(--font-mono)">$ '+p.totalUsd.toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div>'
+        + '</div>';
+    }).join('');
+  } catch(e) {
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">'+msgErr(e)+'</div>';
+  }
+}
+
+async function _pendFacturarSeleccionarProveedor(id_proveedor) {
+  document.getElementById('pend-fact-paso-proveedores').style.display = 'none';
+  document.getElementById('pend-fact-paso-entradas').style.display = '';
+  document.getElementById('pend-fact-form-consolidado').style.display = 'none';
+  document.getElementById('btn-confirmar-pago-consolidado').style.display = 'none';
+  window._pendFacturarEntradasSel = [];
+
+  const id_emisor = _empresaActiva?.id_empresa || 0;
+  const rows = await api('proveedores','GET',null,'?id_proveedor=eq.'+id_proveedor+'&select=*&limit=1');
+  const prov = rows && rows[0];
+  window._pendFacturarProvSel = prov;
+  document.getElementById('pend-fact-prov-nombre').textContent = (prov?.nombre || '—') + (prov?.rif ? ' — ' + prov.rif : '');
+
+  const cxpRows = await api('cont_cxp','GET',null,
+    '?id_empresa=eq.'+id_emisor+'&id_proveedor=eq.'+id_proveedor+'&estado=eq.APROBADA&id_pago_consolidado=is.null&select=id_cxp,numero_doc,moneda_negociacion,moneda_pago,monto_usd,monto_ves,fecha_vencimiento,fecha_emision');
+  const contado = (cxpRows||[]).filter(function(r){ return /^ENT-\d+-\d+$/.test(r.numero_doc||''); });
+
+  const cont = document.getElementById('pend-fact-lista-entradas');
+  if (!contado.length) {
+    cont.innerHTML = '<p style="color:var(--suave);font-size:13px;text-align:center;padding:20px 0">Este Proveedor no tiene Entradas pendientes.</p>';
+    return;
+  }
+
+  const porFecha = {};
+  contado.forEach(function(r) {
+    const f = (r.fecha_vencimiento || r.fecha_emision || '').slice(0,10);
+    if (!porFecha[f]) porFecha[f] = [];
+    porFecha[f].push(r);
+  });
+
+  cont.innerHTML = Object.keys(porFecha).sort().map(function(fecha) {
+    const grupo = porFecha[fecha];
+    return '<div style="margin-bottom:14px">'
+      + '<div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Fecha de Pago: '+fecha.split('-').reverse().join('/')+'</div>'
+      + grupo.map(function(r) {
+          return '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;margin-bottom:6px;cursor:pointer">'
+            + '<input type="checkbox" class="pend-fact-chk-entrada" value="'+r.id_cxp+'" data-fecha="'+fecha+'" onchange="_pendFacturarOnCambioSeleccion()">'
+            + '<div style="flex:1"><span style="color:var(--naranja);font-weight:600">'+fmtNumeroDoc(r.numero_doc)+'</span> <span style="font-size:11px;color:var(--suave)">('+r.moneda_negociacion+')</span></div>'
+            + '<div style="font-family:var(--font-mono);font-weight:600">$ '+parseFloat(r.monto_usd||0).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div>'
+            + '</label>';
+        }).join('')
+      + '</div>';
+  }).join('');
+}
+
+function _pendFacturarVolverProveedores() {
+  document.getElementById('pend-fact-paso-proveedores').style.display = '';
+  document.getElementById('pend-fact-paso-entradas').style.display = 'none';
+  document.getElementById('btn-confirmar-pago-consolidado').style.display = 'none';
+}
+
+// Al marcar/desmarcar una Entrada -- solo se permite mantener marcadas las
+// que compartan la MISMA Fecha de Pago que la primera que se seleccionó
+// (desmarca automáticamente cualquier otra fecha distinta, con aviso).
+async function _pendFacturarOnCambioSeleccion() {
+  const chks = Array.from(document.querySelectorAll('.pend-fact-chk-entrada'));
+  const marcados = chks.filter(function(c){ return c.checked; });
+
+  if (marcados.length) {
+    const fechaBase = marcados[0].dataset.fecha;
+    chks.forEach(function(c) {
+      if (c.dataset.fecha !== fechaBase && c.checked) c.checked = false;
+    });
+  }
+
+  const seleccionados = chks.filter(function(c){ return c.checked; }).map(function(c){ return parseInt(c.value); });
+  window._pendFacturarEntradasSel = seleccionados;
+
+  const formCont = document.getElementById('pend-fact-form-consolidado');
+  const btnConf = document.getElementById('btn-confirmar-pago-consolidado');
+  if (seleccionados.length < 2) {
+    formCont.style.display = 'none';
+    btnConf.style.display = 'none';
+    return;
+  }
+  formCont.style.display = '';
+  btnConf.style.display = '';
+  await _pendFacturarResolverMetodo();
+}
+
+async function confirmarPagoConsolidado() {
+  const errEl = document.getElementById('alerta-pend-fact-err');
+  const btn = document.getElementById('btn-confirmar-pago-consolidado');
+  const resetBtn = function() { if (btn) { btn.disabled = false; btn.textContent = '💳 CONFIRMAR PAGO CONSOLIDADO'; } };
+  if (errEl) errEl.style.display = 'none';
+
+  const ids = window._pendFacturarEntradasSel || [];
+  const prov = window._pendFacturarProvSel;
+  const calculo = window._pendFacturarCalculo;
+  const detalle = window._pendFacturarDetalle;
+  if (!ids.length || ids.length < 2 || !calculo || !detalle) {
+    if (errEl) { errEl.textContent = 'Seleccione al menos 2 Entradas.'; errEl.style.display = 'block'; }
+    resetBtn(); return;
+  }
+
+  const facturaNo = document.getElementById('pend-fact-factura-no')?.value?.trim() || '';
+  const referencia = document.getElementById('pend-fact-referencia')?.value?.trim() || '';
+  if (!facturaNo)  { if (errEl) { errEl.textContent = 'Debe ingresar el N° de Factura.'; errEl.style.display = 'block'; } resetBtn(); return; }
+  if (!referencia) { if (errEl) { errEl.textContent = 'Debe ingresar la Referencia de Pago.'; errEl.style.display = 'block'; } resetBtn(); return; }
+
+  const idCuentaBanco = document.getElementById('pend-fact-cuenta-banco')?.value || null;
+  if (!idCuentaBanco) { if (errEl) { errEl.textContent = 'No hay Cuenta Contable resuelta para esta combinación de Moneda/Método.'; errEl.style.display = 'block'; } resetBtn(); return; }
+
+  const monedaPago = calculo.monedaPago;
+  const tipoMetodo = document.getElementById('pend-fact-metodo-tipo')?.value || '';
+  const fechaPago = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+
+  try {
+    // 1. Crear la cabecera del Pago Consolidado
+    const pagoRows = await api('cont_pagos_consolidados','POST',{
+      id_empresa: _empresaActiva?.id_empresa || null,
+      id_proveedor: prov.id_proveedor,
+      numero_factura_proveedor: facturaNo,
+      referencia: referencia,
+      fecha_pago: fechaPago,
+      moneda_pago: monedaPago,
+      metodo_pago: tipoMetodo,
+      id_cuenta_banco: parseInt(idCuentaBanco),
+      monto_total_usd: calculo.totalUSD,
+      monto_total_ves: calculo.totalVES,
+      monto_igtf_usd: calculo.igtf,
+      monto_igtf_ves: parseFloat((calculo.igtf * calculo.tasaHoy).toFixed(2)),
+      diferencial_cambiario_ves: calculo.diferencialTotal,
+      id_usuario: sesionActual?.correo_usuario || null
+    });
+    const idPagoConsolidado = pagoRows && pagoRows[0] ? pagoRows[0].id_pago_consolidado : null;
+
+    // 2. Crear el Asiento contable consolidado
+    const _todasCtasCons = await obtenerCuentasContables();
+    const buscarCtaCons = function(cod){ return _todasCtasCons.find(function(c){ return c.codigo === cod; }) || null; };
+    const idCtaIGTFCons       = buscarCtaCons('6.1.04.003')?.id_cuenta || null;
+    const idCtaPerdCambioCons = buscarCtaCons('6.2.01.003')?.id_cuenta || null;
+    const idCtaGanCambioCons  = buscarCtaCons('4.2.01.003')?.id_cuenta || null;
+    const idCtaCxPCons        = buscarCtaCons('2.1.01.001')?.id_cuenta || null;
+
+    const numAstCons = await _siguienteNumeroAsiento();
+    await api('cont_asientos','POST',{
+      id_empresa: _empresaActiva?.id_empresa || null,
+      numero_asiento: numAstCons,
+      tipo: 'PAGO_CXP',
+      fecha: fechaPago,
+      estado: 'APROBADO',
+      moneda_base: 'VES',
+      tasa_bcv: calculo.tasaHoy,
+      referencia: 'FACT-' + facturaNo,
+      descripcion: 'Pago Consolidado N° Factura ' + facturaNo + ' — ' + (prov.nombre || '') + ' (' + ids.length + ' Entradas)',
+      id_usuario: sesionActual?.correo_usuario
+    });
+    const astConsRows = await api('cont_asientos','GET',null,
+      '?numero_asiento=eq.'+encodeURIComponent(numAstCons)+emisorQ()+'&select=id_asiento&limit=1');
+    const idAstCons = astConsRows && astConsRows[0] ? astConsRows[0].id_asiento : null;
+
+    if (idAstCons) {
+      let orden = 1;
+      const r2c = function(v) { return parseFloat((v||0).toFixed(2)); };
+      const sufijoConsolidado = ' N° Factura ' + facturaNo + ' Ref. Pago ' + referencia;
+      const lineaCons = async function(id_cta, debeUSD, haberUSD, debeVES, haberVES, desc) {
+        await api('cont_asiento_lineas','POST',{
+          id_asiento: idAstCons, id_cuenta: id_cta, orden: orden++,
+          debe_usd: r2c(debeUSD), haber_usd: r2c(haberUSD),
+          debe_ves: r2c(debeVES), haber_ves: r2c(haberVES), tasa_bcv: calculo.tasaHoy,
+          descripcion: desc || null
+        });
+      };
+
+      // DEBE: una línea de CxP por cada Entrada. El lado USD usa el monto
+      // ya resuelto (igual al original, salvo que se haya negociado en
+      // Bs y se pague en USD -- ahí sí se recalcula con la tasa de hoy,
+      // mismo criterio que un pago individual). El lado Bs SIEMPRE usa el
+      // monto ORIGINAL congelado -- el diferencial (si aplica) se agrega
+      // aparte, más abajo, así que no se debe sumar dos veces aquí.
+      for (const d of detalle) {
+        if (idCtaCxPCons) await lineaCons(idCtaCxPCons, d.montoUSD, 0, d.montoVesOrig, 0, 'Pago' + sufijoConsolidado + ' (' + fmtNumeroDoc(d.numero_doc) + ')');
+      }
+      // DEBE: IGTF consolidado
+      if (idCtaIGTFCons && calculo.igtf > 0) {
+        const igtfVESCons = r2c(calculo.igtf * calculo.tasaHoy);
+        await lineaCons(idCtaIGTFCons, calculo.igtf, 0, igtfVESCons, 0, 'Gasto IGTF pago' + sufijoConsolidado);
+      }
+      // Diferencial Cambiario consolidado — solo en BS
+      if (Math.abs(calculo.diferencialTotal) > 0.01) {
+        if (calculo.diferencialTotal > 0 && idCtaPerdCambioCons)
+          await lineaCons(idCtaPerdCambioCons, 0, 0, Math.abs(calculo.diferencialTotal), 0, 'Pérdida cambiaria — Pago Consolidado Factura ' + facturaNo);
+        else if (calculo.diferencialTotal < 0 && idCtaGanCambioCons)
+          await lineaCons(idCtaGanCambioCons, 0, 0, 0, Math.abs(calculo.diferencialTotal), 'Ganancia cambiaria — Pago Consolidado Factura ' + facturaNo);
+      }
+      // HABER: una sola línea de Banco/Efectivo por el total. La columna
+      // Bs siempre refleja el total en Bs + IGTF en Bs (el Debe también
+      // lleva ambas columnas en cada línea, sin importar en qué Moneda se
+      // pague en efectivo) -- si no, el asiento quedaría descuadrado del
+      // lado Bs cuando se paga en USD.
+      const igtfVESParaBanco = r2c(calculo.igtf * calculo.tasaHoy);
+      const bancoUSDCons = monedaPago === 'VES' ? 0 : calculo.totalFinal;
+      const bancoVESCons = monedaPago === 'VES' ? calculo.totalFinal : r2c(calculo.totalVES + igtfVESParaBanco);
+      if (idCuentaBanco) await lineaCons(parseInt(idCuentaBanco), 0, bancoUSDCons, 0, bancoVESCons, 'Egreso por Pago' + sufijoConsolidado);
+
+      await api('cont_pagos_consolidados','PATCH',{ id_asiento: idAstCons }, '?id_pago_consolidado=eq.'+idPagoConsolidado);
+    }
+
+    // 3. Actualizar cada CxP -- PAGADA, con los datos compartidos del Pago Consolidado
+    for (const d of detalle) {
+      await api('cont_cxp','PATCH',{
+        estado: 'PAGADA',
+        pagado_usd: d.montoUSD,
+        saldo_usd: 0,
+        monto_ves: d.montoVES,
+        tasa_bcv: calculo.tasaHoy,
+        numero_factura_proveedor: facturaNo,
+        referencia: referencia,
+        fecha_pago: fechaPago,
+        metodo_pago: tipoMetodo,
+        moneda_pago: monedaPago,
+        id_pago_consolidado: idPagoConsolidado,
+        pagado_por: sesionActual?.correo_usuario || null
+      }, '?id_cxp=eq.'+d.id_cxp);
+    }
+
+    cerrarModal('modal-pend-facturar');
+    alert('Pago Consolidado registrado correctamente (' + ids.length + ' Entradas).');
+    if (typeof cargarPagos === 'function') cargarPagos();
+  } catch(e) {
+    if (errEl) { errEl.textContent = msgErr(e); errEl.style.display = 'block'; }
+    resetBtn();
+  }
+}
+
+async function _pendFacturarResolverMetodo() {
+  const prov = window._pendFacturarProvSel;
+  const moneda = document.getElementById('pend-fact-moneda')?.value || 'USD';
+  const selTipoMetodo = document.getElementById('pend-fact-metodo-tipo');
+  const tiposAceptados = (prov && Array.isArray(prov.metodos_pago_tipos)) ? prov.metodos_pago_tipos : [];
+  if (selTipoMetodo && !selTipoMetodo.dataset.poblado) {
+    selTipoMetodo.innerHTML = tiposAceptados.map(function(t){ return '<option value="'+t+'">'+(METODO_PAGO_LABELS[t]||t)+'</option>'; }).join('');
+    selTipoMetodo.dataset.poblado = '1';
+  }
+  const tipoMetodo = selTipoMetodo?.value || '';
+  const metodoHidden = document.getElementById('pend-fact-metodo');
+  const cuentaCont = document.getElementById('pend-fact-cuenta-cont');
+  const cuentaDisplay = document.getElementById('pend-fact-cuenta-display');
+  const cuentaHidden = document.getElementById('pend-fact-cuenta-banco');
+  if (cuentaCont) cuentaCont.style.display = 'none';
+  if (tipoMetodo) {
+    try {
+      const metodos = await api('param_metodos_pago','GET',null,
+        '?codigo=eq.'+moneda+'&tipo_canal=eq.'+tipoMetodo+'&estado=eq.ACTIVO&limit=1&select=id_metodo,id_cuenta_contable'+emisorQ());
+      const m = metodos && metodos[0];
+      if (m && m.id_cuenta_contable) {
+        const cta = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === m.id_cuenta_contable; });
+        if (metodoHidden) metodoHidden.value = m.id_metodo;
+        if (cuentaHidden) cuentaHidden.value = m.id_cuenta_contable;
+        if (cuentaDisplay) cuentaDisplay.textContent = cta ? (cta.codigo+' — '+cta.nombre) : '—';
+        if (cuentaCont) cuentaCont.style.display = '';
+      }
+    } catch(e) {}
+  }
+  await _renderDesglosePagoConsolidado();
+}
+
+// Arma el desglose del Pago Consolidado -- por cada Entrada seleccionada,
+// aplica el mismo criterio simétrico ya usado en Ejecutar Pago (según su
+// propia Moneda de Negociación vs la Moneda de Pago elegida aquí, con la
+// tasa BCV de HOY), y suma todo. IGTF y diferencial se muestran
+// consolidados, pero cada Entrada conserva su propio cálculo individual.
+async function _renderDesglosePagoConsolidado() {
+  const cont = document.getElementById('pend-fact-desglose-tabla');
+  const prov = window._pendFacturarProvSel;
+  const ids = window._pendFacturarEntradasSel || [];
+  if (!cont || !ids.length) return;
+
+  const monedaPago = document.getElementById('pend-fact-moneda')?.value || 'USD';
+  const esUSD = monedaPago !== 'VES';
+  const hoy = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+
+  let tasaHoy = _tasaVigente || 1;
+  try {
+    const tasasHoy = await api('tasas','GET',null,'?fecha_valor=lte.'+hoy+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    if (tasasHoy && tasasHoy[0]) tasaHoy = parseFloat(tasasHoy[0].tipo_cambio);
+  } catch(e) {}
+
+  const rows = await api('cont_cxp','GET',null,'?id_cxp=in.('+ids.join(',')+')&select=id_cxp,numero_doc,moneda_negociacion,monto_usd,monto_ves,exento_iva');
+
+  let totalUSD = 0, totalVES = 0, diferencialTotal = 0;
+  window._pendFacturarDetalle = [];
+  (rows||[]).forEach(function(r) {
+    const monedaNeg = (r.moneda_negociacion || 'USD').toUpperCase();
+    const montoUsdOrig = parseFloat(r.monto_usd || 0);
+    const montoVesOrig = parseFloat(r.monto_ves || 0);
+    let montoUSD, montoVES, diferencial = 0;
+    if (monedaNeg === monedaPago) {
+      montoUSD = montoUsdOrig; montoVES = montoVesOrig;
+    } else if (monedaNeg === 'VES') {
+      montoVES = montoVesOrig;
+      montoUSD = parseFloat((montoVesOrig / (tasaHoy||1)).toFixed(2));
+    } else {
+      montoUSD = montoUsdOrig;
+      montoVES = parseFloat((montoUsdOrig * tasaHoy).toFixed(2));
+      diferencial = parseFloat((montoVES - montoVesOrig).toFixed(2));
+    }
+    totalUSD += montoUSD; totalVES += montoVES; diferencialTotal += diferencial;
+    window._pendFacturarDetalle.push({ id_cxp: r.id_cxp, numero_doc: r.numero_doc, montoUSD, montoVES, diferencial, montoUsdOrig, montoVesOrig });
+  });
+  totalUSD = parseFloat(totalUSD.toFixed(2));
+  totalVES = parseFloat(totalVES.toFixed(2));
+  diferencialTotal = parseFloat(diferencialTotal.toFixed(2));
+
+  const totalPago = esUSD ? totalUSD : totalVES;
+  const esEspecial = prov?.tipo_contribuyente === 'ESPECIAL';
+  const aplicaIGTF = esUSD && esEspecial;
+  let tasaIGTF = 0.03;
+  try { const t = await _obtenerTributos(hoy); tasaIGTF = t.tasaIGTF; } catch(e) {}
+  const igtf = aplicaIGTF ? parseFloat((totalPago * tasaIGTF).toFixed(2)) : 0;
+  const totalFinal = parseFloat((totalPago + igtf).toFixed(2));
+  window._pendFacturarCalculo = { totalUSD, totalVES, diferencialTotal, igtf, totalFinal, tasaHoy, monedaPago, aplicaIGTF };
+
+  const simbolo = esUSD ? '$' : 'Bs.';
+  const fmt = function(n){ return simbolo+' '+n.toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+
+  document.getElementById('pend-fact-resumen-cant').textContent = ids.length;
+  document.getElementById('pend-fact-resumen-total').textContent = fmt(totalPago);
+
+  cont.innerHTML =
+    '<table style="width:100%;font-size:12px;border-collapse:collapse">'
+    + window._pendFacturarDetalle.map(function(d) {
+        const montoLinea = esUSD ? d.montoUSD : d.montoVES;
+        return '<tr><td style="padding:4px 0;color:var(--suave)">'+fmtNumeroDoc(d.numero_doc)+'</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono)">'+fmt(montoLinea)+'</td></tr>';
+      }).join('')
+    + '<tr style="border-top:1px solid var(--borde)"><td style="padding:4px 0;font-weight:600">Total Facturado</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono);font-weight:600">'+fmt(totalPago)+'</td></tr>'
+    + (Math.abs(diferencialTotal) > 0.01 ? '<tr><td style="padding:4px 0;font-size:11px;color:'+(diferencialTotal>0?'#f87171':'#22c55e')+'">↳ '+(diferencialTotal>0?'Pérdida':'Ganancia')+' Cambiaria (consolidada)</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono);font-size:11px;color:'+(diferencialTotal>0?'#f87171':'#22c55e')+'">'+fmt(Math.abs(diferencialTotal))+'</td></tr>' : '')
+    + (aplicaIGTF ? ('<tr><td style="padding:4px 0;color:var(--suave)">IGTF ('+(tasaIGTF*100).toFixed(0)+'%) — 6.1.04.003</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono)">'+fmt(igtf)+'</td></tr>'
+        + '<tr style="border-top:1px solid var(--borde)"><td style="padding:4px 0;font-weight:700;color:var(--naranja)">Total</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--naranja)">'+fmt(totalFinal)+'</td></tr>') : '')
+    + '</table>';
+}
+
 async function renderPagos() {
   if (!sesionActual?.administrador && !modulosAcceso.includes('PAGOS')) {
     document.getElementById('contenido-principal').innerHTML =
@@ -151,6 +540,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       '<h3 id="pagos-contador">Obligaciones de Pago (0)</h3>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
       (puedo('PAGOS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoPago()">+ Nuevo Pago</button>' : '') +
+      (puedo('PAGOS','CREAR') ? '<button class="btn-secundario" onclick="abrirPendientesFacturar()">📄 Pendientes por Facturar</button>' : '') +
       '</div></div>' +
       '<div style="padding:12px 24px;display:flex;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--borde)">' +
       '<input id="pagos-buscar" placeholder="🔍 Buscar beneficiario o N° doc..." style="' + inputStyle() + ';flex:1;min-width:160px" oninput="cargarPagosDesdeUI()">' +
