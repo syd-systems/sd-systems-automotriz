@@ -4689,11 +4689,14 @@ async function _guardarEdicionMovimientoInterno() {
         const nuevoMontoUSD = montoTotalConIVAEdit !== null ? montoTotalConIVAEdit
           : parseFloat((cantidad * parseFloat(art?.precio_costo_moneda || 0) * (1+tasaIVAActual())).toFixed(2));
 
-        // Eliminar CxP existentes PENDIENTES o RECHAZADAS para esta entrada
-        // (si venía RECHAZADA, hay que limpiarla igual antes de crear la
-        // nueva -- de lo contrario queda huérfana y se duplica la obligación)
+        // Eliminar CxP existentes PENDIENTE, RECHAZADA o APROBADA para esta
+        // entrada (si venía RECHAZADA o ya APROBADA -sin pagar-, hay que
+        // limpiarla igual antes de crear la nueva -- de lo contrario queda
+        // huérfana junto a la nueva, y se duplica la Obligación de Pago).
+        // Ya se validó más arriba que no haya ninguna PAGADA/PARCIAL antes
+        // de llegar aquí, así que borrar la APROBADA es seguro.
         const cxpsExist = await api('cont_cxp', 'GET', null,
-          '?numero_doc=ilike.' + encodeURIComponent(numDocBase + '*') + emisorQ() + '&estado=in.(PENDIENTE,RECHAZADA)&select=id_cxp');
+          '?numero_doc=ilike.' + encodeURIComponent(numDocBase + '*') + emisorQ() + '&estado=in.(PENDIENTE,RECHAZADA,APROBADA)&select=id_cxp');
         for (const cx of (cxpsExist || [])) {
           await api('cont_cxp', 'DELETE', null, '?id_cxp=eq.' + cx.id_cxp);
         }
