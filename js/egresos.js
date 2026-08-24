@@ -93,6 +93,7 @@ async function _pendFacturarSeleccionarProveedor(id_proveedor) {
     const m = (r.numero_doc||'').match(/^ENT-(\d+)-\d+$/); return m ? m[1] : null;
   }).filter(Boolean)));
   const detalleEntrada = {};
+  let errorDetalleEntrada = null;
   if (idsEntrada.length) {
     try {
       const entRows = await api('stock_entradas','GET',null,
@@ -110,7 +111,7 @@ async function _pendFacturarSeleccionarProveedor(id_proveedor) {
           nombreArticulo: art?.nombre_articulo || '—', unidad: art?.unidad || 'UND'
         };
       });
-    } catch(e) { console.warn('Error cargando detalle de Entradas:', e); }
+    } catch(e) { console.warn('Error cargando detalle de Entradas:', e); errorDetalleEntrada = msgErr(e); }
   }
   const MOTIVO_LABELS = { compra: 'Compra', devolucion: 'Devolución', ajuste: 'Ajuste', transferencia: 'Transferencia' };
 
@@ -131,7 +132,7 @@ async function _pendFacturarSeleccionarProveedor(id_proveedor) {
           const motivoLbl = det ? (MOTIVO_LABELS[det.motivo] || det.motivo) : '';
           const detalleLinea = det
             ? '<div style="font-size:11px;color:var(--suave);margin-top:2px">'+motivoLbl+' ('+det.unidad+') '+det.cantidad+'&nbsp;&nbsp;'+det.nombreArticulo+'</div>'
-            : '';
+            : (errorDetalleEntrada ? '<div style="font-size:11px;color:#f87171;margin-top:2px">Error cargando detalle: '+errorDetalleEntrada+'</div>' : '');
           return '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;margin-bottom:6px;cursor:pointer">'
             + '<input type="checkbox" class="pend-fact-chk-entrada" value="'+r.id_cxp+'" data-fecha="'+fecha+'" onchange="_pendFacturarOnCambioSeleccion()">'
             + '<div style="flex:1"><span style="color:var(--naranja);font-weight:600">'+fmtNumeroDoc(r.numero_doc)+'</span> <span style="font-size:11px;color:var(--suave)">('+r.moneda_negociacion+')</span>'+detalleLinea+'</div>'
