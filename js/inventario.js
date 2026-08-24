@@ -4782,9 +4782,14 @@ async function _guardarEdicionMovimientoInterno() {
               if (cxpCuotaEditCreada && cxpCuotaEditCreada[0]) {
                 await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-C' + c.num + '-' + cxpCuotaEditCreada[0].id_cxp }, '?id_cxp=eq.' + cxpCuotaEditCreada[0].id_cxp);
                 // Reenviar a aprobación -- la corrección debe volver a pasar
-                // por el Aprobador, igual que cuando se creó la Entrada
+                // por el Aprobador, igual que cuando se creó la Entrada.
+                // Mismo detalle rico que el caso CONTADO (ver más abajo).
                 if (c.fecha <= getHoyVzla()) {
-                  enrutarAprobacionCxP(cxpCuotaEditCreada[0].id_cxp, numDocBase + '-C' + c.num + '-' + cxpCuotaEditCreada[0].id_cxp, c.monto);
+                  const nombreProvEditCuota = document.getElementById('edit-mov-proveedor')?.selectedOptions?.[0]?.textContent || '';
+                  enrutarAprobacionCxP(cxpCuotaEditCreada[0].id_cxp, numDocBase + '-C' + c.num + '-' + cxpCuotaEditCreada[0].id_cxp, c.monto, {
+                    monedaPago: monedaPagoRealEdit, tasaBcv: tasaEdit, montoBsExacto: montoVesCuotaEdit,
+                    concepto: artNom + ' x ' + cantidad + ' uds. (Cuota ' + c.num + ')', proveedor: nombreProvEditCuota
+                  });
                 } else {
                   api('cont_cxp','PATCH',{ sin_firma_notificado: true }, '?id_cxp=eq.'+cxpCuotaEditCreada[0].id_cxp).catch(function(){});
                 }
@@ -4819,8 +4824,19 @@ async function _guardarEdicionMovimientoInterno() {
           if (cxpEditContadoCreada && cxpEditContadoCreada[0]) {
             await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-' + cxpEditContadoCreada[0].id_cxp }, '?id_cxp=eq.' + cxpEditContadoCreada[0].id_cxp);
             // Reenviar a aprobación -- la corrección debe volver a pasar
-            // por el Aprobador, igual que cuando se creó la Entrada
-            enrutarAprobacionCxP(cxpEditContadoCreada[0].id_cxp, numDocBase + '-' + cxpEditContadoCreada[0].id_cxp, nuevoMontoUSD);
+            // por el Aprobador, igual que cuando se creó la Entrada. Se
+            // arma el mismo detalle rico (Proveedor, Moneda, Concepto,
+            // IGTF) que usa el resto de los reenvíos de CxP -- antes se
+            // enviaba sin detalle, dejando la notificación con Proveedor
+            // y Concepto en blanco ('—'), a diferencia de la solicitud
+            // inicial (que sí muestra todo el detalle del artículo).
+            const nombreProvEdit = document.getElementById('edit-mov-proveedor')?.selectedOptions?.[0]?.textContent || '';
+            enrutarAprobacionCxP(cxpEditContadoCreada[0].id_cxp, numDocBase + '-' + cxpEditContadoCreada[0].id_cxp, nuevoMontoUSD, {
+              monedaPago: monedaPagoRealEdit, tasaBcv: tasaEdit,
+              montoBsExacto: parseFloat((nuevoMontoUSD * tasaEdit).toFixed(2)),
+              concepto: artNom + ' x ' + cantidad + ' uds.', proveedor: nombreProvEdit,
+              montoIgtf: datos.aplica_igtf ? (datos.monto_igtf || 0) : 0
+            });
           }
         }
       } catch(eCxPEdit) { console.warn('Error actualizando CxP:', eCxPEdit); }
