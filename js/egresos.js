@@ -617,6 +617,9 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       '<select id="pagos-estado" style="' + inputStyle() + '" onchange="cargarPagosDesdeUI()">' +
       '<option value="">Todos los estados</option>' +
       '<option value="PENDIENTE">Pendiente</option>' +
+      '<option value="POR_APROBAR">Por Aprobar</option>' +
+      '<option value="APROBADA">Aprobada</option>' +
+      '<option value="RECHAZADA">Rechazada</option>' +
       '<option value="PARCIAL">Parcial</option>' +
       '<option value="PAGADA">Pagado</option>' +
       '<option value="ANULADA">Anulado</option>' +
