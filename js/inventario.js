@@ -4599,11 +4599,20 @@ async function _guardarEdicionMovimientoInterno() {
 
       // ── Leer cantidad original ANTES de parchear ──
       const [movOrigArr, artArr] = await Promise.all([
-        api('stock_entradas', 'GET', null, '?id_entrada=eq.' + id + '&select=cantidad'),
+        api('stock_entradas', 'GET', null, '?id_entrada=eq.' + id + '&select=cantidad,estado_aprobacion'),
         api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id_articulo + '&select=precio_costo_moneda'),
       ]);
       const cantOriginal = parseFloat(movOrigArr[0]?.cantidad || cantidad);
       const art = artArr[0];
+
+      // Si la Entrada estaba RECHAZADA, al corregirla y guardarla vuelve a
+      // quedar Pendiente de Aprobación -- ya no debe seguir mostrándose
+      // como Rechazada, dado que se está reenviando (ver enrutarAprobacionCxP
+      // más abajo, que ya la manda de vuelta al Aprobador).
+      if (movOrigArr[0]?.estado_aprobacion === 'RECHAZADA') {
+        datos.estado_aprobacion = 'PENDIENTE';
+        datos.motivo_rechazo = null;
+      }
 
       // ── PATCH a stock_entradas ──
       await api('stock_entradas', 'PATCH', datos, '?id_entrada=eq.' + id);
