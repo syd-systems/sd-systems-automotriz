@@ -87,6 +87,33 @@ async function _pendFacturarSeleccionarProveedor(id_proveedor) {
     return;
   }
 
+  // Detalle de cada Entrada (Motivo, Cantidad, Artículo) -- se muestra
+  // junto al monto para que se sepa QUÉ se está pagando, no solo cuánto.
+  const idsEntrada = Array.from(new Set(contado.map(function(r){
+    const m = (r.numero_doc||'').match(/^ENT-(\d+)-\d+$/); return m ? m[1] : null;
+  }).filter(Boolean)));
+  const detalleEntrada = {};
+  if (idsEntrada.length) {
+    try {
+      const entRows = await api('stock_entradas','GET',null,
+        '?id_entrada=in.('+idsEntrada.join(',')+')&select=id_entrada,motivo,cantidad,id_articulo');
+      const idsArticulo = Array.from(new Set((entRows||[]).map(function(e){ return e.id_articulo; }).filter(Boolean)));
+      let articulos = [];
+      if (idsArticulo.length) {
+        articulos = await api('inventario_almacen','GET',null,
+          '?id_articulo=in.('+idsArticulo.join(',')+')&select=id_articulo,nombre_articulo,unidad');
+      }
+      (entRows||[]).forEach(function(e) {
+        const art = articulos.find(function(a){ return a.id_articulo === e.id_articulo; });
+        detalleEntrada[e.id_entrada] = {
+          motivo: e.motivo, cantidad: e.cantidad,
+          nombreArticulo: art?.nombre_articulo || '—', unidad: art?.unidad || 'UND'
+        };
+      });
+    } catch(e) { console.warn('Error cargando detalle de Entradas:', e); }
+  }
+  const MOTIVO_LABELS = { compra: 'Compra', devolucion: 'Devolución', ajuste: 'Ajuste', transferencia: 'Transferencia' };
+
   const porFecha = {};
   contado.forEach(function(r) {
     const f = (r.fecha_vencimiento || r.fecha_emision || '').slice(0,10);
@@ -99,10 +126,16 @@ async function _pendFacturarSeleccionarProveedor(id_proveedor) {
     return '<div style="margin-bottom:14px">'
       + '<div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Fecha de Pago: '+fecha.split('-').reverse().join('/')+'</div>'
       + grupo.map(function(r) {
+          const mEnt = (r.numero_doc||'').match(/^ENT-(\d+)-\d+$/);
+          const det = mEnt ? detalleEntrada[mEnt[1]] : null;
+          const motivoLbl = det ? (MOTIVO_LABELS[det.motivo] || det.motivo) : '';
+          const detalleLinea = det
+            ? '<div style="font-size:11px;color:var(--suave);margin-top:2px">'+motivoLbl+' ('+det.unidad+') '+det.cantidad+'&nbsp;&nbsp;'+det.nombreArticulo+'</div>'
+            : '';
           return '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;margin-bottom:6px;cursor:pointer">'
             + '<input type="checkbox" class="pend-fact-chk-entrada" value="'+r.id_cxp+'" data-fecha="'+fecha+'" onchange="_pendFacturarOnCambioSeleccion()">'
-            + '<div style="flex:1"><span style="color:var(--naranja);font-weight:600">'+fmtNumeroDoc(r.numero_doc)+'</span> <span style="font-size:11px;color:var(--suave)">('+r.moneda_negociacion+')</span></div>'
-            + '<div style="font-family:var(--font-mono);font-weight:600">$ '+parseFloat(r.monto_usd||0).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div>'
+            + '<div style="flex:1"><span style="color:var(--naranja);font-weight:600">'+fmtNumeroDoc(r.numero_doc)+'</span> <span style="font-size:11px;color:var(--suave)">('+r.moneda_negociacion+')</span>'+detalleLinea+'</div>'
+            + '<div style="font-family:var(--font-mono);font-weight:600;white-space:nowrap">Monto $ '+parseFloat(r.monto_usd||0).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div>'
             + '</label>';
         }).join('')
       + '</div>';
