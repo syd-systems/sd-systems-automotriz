@@ -53,10 +53,17 @@ async function _pendFacturarCargarProveedores() {
   cont.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   try {
     const id_emisor = _empresaActiva?.id_empresa || 0;
+    const hoyProvs = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
     const rows = await api('cont_cxp','GET',null,
-      '?id_empresa=eq.'+id_emisor+'&estado=eq.APROBADA&id_pago_consolidado=is.null&select=id_cxp,numero_doc,id_proveedor,monto_usd,monto_ves,moneda_pago,proveedores:id_proveedor(nombre,rif)');
+      '?id_empresa=eq.'+id_emisor+'&estado=eq.APROBADA&id_pago_consolidado=is.null&select=id_cxp,numero_doc,id_proveedor,monto_usd,monto_ves,moneda_pago,fecha_vencimiento,fecha_emision,proveedores:id_proveedor(nombre,rif)');
     // Solo CONTADO -- numero_doc con patrón ENT-<id>-<id_cxp>, sin cuota (-C)
-    const contado = (rows||[]).filter(function(r){ return /^ENT-\d+-\d+$/.test(r.numero_doc||''); });
+    // -- y solo cuya Fecha de Pago ya llegó (hoy o antes). Si es futura,
+    // para pagarla antes hay que ir a Editar la Entrada y adelantar la
+    // Fecha de Pago, no consolidarla "antes de tiempo" desde aquí.
+    const contado = (rows||[]).filter(function(r){
+      return /^ENT-\d+-\d+$/.test(r.numero_doc||'')
+        && (r.fecha_vencimiento || r.fecha_emision || '').slice(0,10) <= hoyProvs;
+    });
 
     if (!contado.length) {
       cont.innerHTML = '<p style="color:var(--suave);font-size:13px;text-align:center;padding:20px 0">No hay Entradas Contado pendientes de facturar.</p>';
@@ -98,7 +105,11 @@ async function _pendFacturarSeleccionarProveedor(id_proveedor, fechaFiltro) {
 
   const cxpRows = await api('cont_cxp','GET',null,
     '?id_empresa=eq.'+id_emisor+'&id_proveedor=eq.'+id_proveedor+'&estado=eq.APROBADA&id_pago_consolidado=is.null&select=id_cxp,numero_doc,moneda_negociacion,moneda_pago,monto_usd,monto_ves,fecha_vencimiento,fecha_emision');
-  let contado = (cxpRows||[]).filter(function(r){ return /^ENT-\d+-\d+$/.test(r.numero_doc||''); });
+  const hoySelProv = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+  let contado = (cxpRows||[]).filter(function(r){
+    return /^ENT-\d+-\d+$/.test(r.numero_doc||'')
+      && (r.fecha_vencimiento || r.fecha_emision || '').slice(0,10) <= hoySelProv;
+  });
   if (fechaFiltro) {
     contado = contado.filter(function(r){ return (r.fecha_vencimiento || r.fecha_emision || '').slice(0,10) === fechaFiltro; });
   }
@@ -800,11 +811,17 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       const esConsolidable = !!_idCxpAConsolidarProveedor[item._id];
       const esAutomaticaFila = /^ENT-/.test(item._raw?.numero_doc || '')
         || item._raw?.tipo === 'COMPRA_ARTICULO' || item._raw?.tipo === 'COMPRA_ARTICULO_CREDITO';
-      const btnRegistrarPagoLista = !(puedo('PAGOS','PAGAR') || sesionActual?.administrador) ? '' : (esConsolidable
-        ? '<button onclick="abrirPagoConsolidadoDesde('+_idCxpAConsolidarProveedor[item._id]+',\''+_idCxpAConsolidarFecha[item._id]+'\')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🔗 Consolidar Pagos</button>'
-        : (esAutomaticaFila
-          ? '<button onclick="ejecutarPagoCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💸 Pagar</button>'
-          : '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💸 Pagar</button>'));
+      // Pagar/Consolidar Pagos solo si la Fecha de Pago ya llegó (hoy o
+      // antes) -- si es futura, se oculta; para pagar antes de esa fecha
+      // hay que ir a Editar la Entrada y adelantar la Fecha de Pago, no
+      // pagarla "antes de tiempo" desde aquí.
+      const btnRegistrarPagoLista = !(puedo('PAGOS','PAGAR') || sesionActual?.administrador) ? '' : (!yaVenceAccion
+        ? '<span style="font-size:10px;color:var(--suave);white-space:nowrap">Paga desde '+fechaVencAccion.split('-').reverse().join('/')+'</span>'
+        : (esConsolidable
+          ? '<button onclick="abrirPagoConsolidadoDesde('+_idCxpAConsolidarProveedor[item._id]+',\''+_idCxpAConsolidarFecha[item._id]+'\')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🔗 Consolidar Pagos</button>'
+          : (esAutomaticaFila
+            ? '<button onclick="ejecutarPagoCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💸 Pagar</button>'
+            : '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💸 Pagar</button>')));
       if (est === 'PENDIENTE' || est === 'RECHAZADA') acciones = btnVerPend + (btnAprobar ? ' '+btnAprobar : '') + ((btnRechazar && est !== 'RECHAZADA') ? ' '+btnRechazar : '');
       else if (est === 'APROBADA') acciones = btnVerPag + (btnRegistrarPagoLista ? ' '+btnRegistrarPagoLista : '');
       else if (est === 'POR_APROBAR') acciones = btnVerPag + (btnAprobar ? ' '+btnAprobar : '') + (btnRechazar ? ' '+btnRechazar : '');
