@@ -2597,7 +2597,7 @@ async function rechazarEntradaCompra(id_entrada) {
 
     if (m.id_usuario) {
       try {
-        const artRechInfo = inventarioCache.find(function(x){ return x.id_articulo === m.id_articulo; })
+        const artRechInfo = (Array.isArray(inventarioCache) ? inventarioCache : []).find(function(x){ return x.id_articulo === m.id_articulo; })
           || (await api('inventario_almacen','GET',null,'?id_articulo=eq.'+m.id_articulo+'&select=nombre_articulo,codigo_articulo,unidad'))?.[0]
           || {};
         const numDocRech = 'ENT-'+id_entrada;
@@ -2625,7 +2625,12 @@ async function rechazarEntradaCompra(id_entrada) {
           fecha_creacion: new Date().toISOString(),
           datos_extra: JSON.stringify({ id_entrada: id_entrada, accion: 'entrada_compra_rechazada' })
         }, '', true);
-      } catch(eNotifRechEnt) { console.warn('Error notificando rechazo de Entrada:', eNotifRechEnt); }
+      } catch(eNotifRechEnt) {
+        console.warn('Error notificando rechazo de Entrada:', eNotifRechEnt);
+        // Antes este error quedaba invisible -- la Entrada sí se marcaba
+        // RECHAZADA, pero el operador que la creó nunca se enteraba.
+        alert('⚠ La Entrada quedó marcada como RECHAZADA, pero hubo un error enviando la notificación al operador: ' + msgErr(eNotifRechEnt) + '\n\nAvísele manualmente por ahora.');
+      }
     }
     await mostrarAvisoOk('Entrada rechazada.');
     renderInventario();
