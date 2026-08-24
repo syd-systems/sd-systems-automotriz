@@ -1356,17 +1356,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260814370"></script>
-<script src="js/parametros.js?v=20260814370"></script>
-<script src="js/empresas.js?v=20260814370"></script>
-<script src="js/ingresos.js?v=20260814370"></script>
-<script src="js/inventario.js?v=20260814370"></script>
-<script src="js/proveedores.js?v=20260814370"></script>
-<script src="js/contabilidad.js?v=20260814370"></script>
-<script src="js/egresos.js?v=20260814370"></script>
-<script src="js/vehiculos.js?v=20260814370"></script>
-<script src="js/catalogo.js?v=20260814370"></script>
-<script src="js/ordenes.js?v=20260814370"></script>
+<script src="js/core.js?v=20260814371"></script>
+<script src="js/parametros.js?v=20260814371"></script>
+<script src="js/empresas.js?v=20260814371"></script>
+<script src="js/ingresos.js?v=20260814371"></script>
+<script src="js/inventario.js?v=20260814371"></script>
+<script src="js/proveedores.js?v=20260814371"></script>
+<script src="js/contabilidad.js?v=20260814371"></script>
+<script src="js/egresos.js?v=20260814371"></script>
+<script src="js/vehiculos.js?v=20260814371"></script>
+<script src="js/catalogo.js?v=20260814371"></script>
+<script src="js/ordenes.js?v=20260814371"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4693,6 +4693,86 @@
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-ejecutar-pago')">Retornar</button>
       <button class="btn-primario" id="btn-confirmar-pago" onclick="this.disabled=true;this.textContent='⏳ Procesando...';confirmarEjecucionPago()">💳 CONFIRMAR PAGO</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- MODAL: PENDIENTES POR FACTURAR / PAGO CONSOLIDADO   -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-pend-facturar">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <h3 id="pend-fact-titulo">📄 PENDIENTES POR FACTURAR</h3>
+      <span class="modal-cerrar" onclick="cerrarModal('modal-pend-facturar')">✕</span>
+    </div>
+    <div class="modal-body">
+      <!-- PASO 1: Proveedores -->
+      <div id="pend-fact-paso-proveedores">
+        <p style="font-size:12px;color:var(--suave);margin-bottom:14px">Proveedores con Entradas de Compra Contado, aprobadas y sin pagar. Selecciona uno para agrupar varias bajo una misma Factura.</p>
+        <div id="pend-fact-lista-proveedores"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+
+      <!-- PASO 2: Entradas del Proveedor seleccionado -->
+      <div id="pend-fact-paso-entradas" style="display:none">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;color:var(--celeste)" onclick="_pendFacturarVolverProveedores()">← Volver a Proveedores</div>
+        <div style="margin-bottom:4px">
+          <span style="font-size:11px;color:var(--suave)">PROVEEDOR</span>
+          <div id="pend-fact-prov-nombre" style="font-weight:600;color:var(--naranja)">—</div>
+        </div>
+        <p style="font-size:12px;color:var(--suave);margin:10px 0">Solo se pueden agrupar Entradas con la misma Fecha de Pago. Selecciona las que vas a incluir en esta Factura.</p>
+        <div id="pend-fact-lista-entradas"></div>
+
+        <div id="pend-fact-form-consolidado" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--borde)">
+          <div style="font-size:11px;color:var(--suave);margin-bottom:8px">
+            <span id="pend-fact-resumen-cant">0</span> Entradas seleccionadas — Total facturado:
+            <span id="pend-fact-resumen-total" style="color:var(--naranja);font-weight:700"></span>
+          </div>
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
+            <div class="form-campo">
+              <label>N° Factura *</label>
+              <input type="text" id="pend-fact-factura-no" placeholder="N° de la Factura del Proveedor"
+                style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            </div>
+            <div class="form-campo">
+              <label>Referencia de Pago *</label>
+              <input type="text" id="pend-fact-referencia" placeholder="N° referencia bancaria o comprobante"
+                style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            </div>
+            <div class="form-campo">
+              <label>Moneda de Pago</label>
+              <select id="pend-fact-moneda" onchange="_pendFacturarResolverMetodo()"
+                style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+                <option value="USD">USD — Dólar</option>
+                <option value="VES">VES — Bolívar</option>
+              </select>
+            </div>
+            <div class="form-campo">
+              <label>Método de Pago</label>
+              <select id="pend-fact-metodo-tipo" onchange="_pendFacturarResolverMetodo()"
+                style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+              </select>
+              <input type="hidden" id="pend-fact-metodo">
+            </div>
+            <div class="form-campo form-full" id="pend-fact-cuenta-cont" style="display:none">
+              <label>Cuenta Contable</label>
+              <div id="pend-fact-cuenta-display" style="background:var(--gris2);border:1px solid var(--borde);border-radius:5px;padding:10px 14px;font-size:13px;color:var(--naranja);font-weight:600">—</div>
+              <input type="hidden" id="pend-fact-cuenta-banco">
+            </div>
+          </div>
+
+          <div id="pend-fact-desglose" style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,107,0,0.15)">
+            <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">💵 Pago Consolidado a Ejecutar</div>
+            <div id="pend-fact-desglose-tabla"></div>
+          </div>
+
+          <div class="alerta alerta-error" id="alerta-pend-fact-err" style="display:none;margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-pend-facturar')">Retornar</button>
+      <button class="btn-primario" id="btn-confirmar-pago-consolidado" style="display:none" onclick="this.disabled=true;this.textContent='⏳ Procesando...';confirmarPagoConsolidado()">💳 CONFIRMAR PAGO CONSOLIDADO</button>
     </div>
   </div>
 </div>
