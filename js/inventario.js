@@ -4646,10 +4646,15 @@ async function _guardarEdicionMovimientoInterno() {
         const ref = 'ENT-' + id;
         const asientosViejos = await api('cont_asientos', 'GET', null,
           '?referencia=eq.' + ref + emisorQ() + '&estado=neq.ANULADO&select=id_asiento,tasa_bcv');
-        let tasaParaAsiento = null;
+        // Tasa a usar: SIEMPRE la de la Fecha de Negociación actual (ya
+        // resuelta en el formulario) -- no la del asiento viejo, que queda
+        // desactualizada si el Usuario cambió la fecha. Si por algún motivo
+        // el formulario no la tiene, se usa la del asiento viejo como
+        // respaldo (mejor que nada, aunque pueda estar desactualizada).
+        let tasaParaAsiento = tasaFormEdit > 0 ? tasaFormEdit : null;
         if (asientosViejos && asientosViejos.length) {
           const idAstViejo = asientosViejos[0].id_asiento;
-          tasaParaAsiento = parseFloat(asientosViejos[0].tasa_bcv) || null;
+          if (!tasaParaAsiento) tasaParaAsiento = parseFloat(asientosViejos[0].tasa_bcv) || null;
           await api('cont_asiento_lineas', 'DELETE', null, '?id_asiento=eq.' + idAstViejo);
           await api('cont_asientos', 'DELETE', null, '?id_asiento=eq.' + idAstViejo);
         }
@@ -4678,7 +4683,14 @@ async function _guardarEdicionMovimientoInterno() {
             baseExactaBs:  (cppEditado > 0 && tasaParaAsiento) ? parseFloat((cantidad * cppEditado * tasaParaAsiento).toFixed(2)) : null
           });
         }
-      } catch(eAstEdit) { console.warn('Error reconstruyendo asiento:', eAstEdit); }
+      } catch(eAstEdit) {
+        console.warn('Error reconstruyendo asiento:', eAstEdit);
+        // Antes este error quedaba invisible (solo en la consola del
+        // navegador) -- el Usuario creía que la edición había quedado
+        // perfecta, pero el asiento contable se quedaba viejo/huérfano o
+        // directamente sin regenerar. Ahora se avisa explícitamente.
+        alert('⚠ La Entrada y la CxP se actualizaron correctamente, pero hubo un error reconstruyendo el Asiento Contable: ' + msgErr(eAstEdit) + '\n\nPor favor avise a Sistemas para revisar/corregir el Asiento de esta Entrada (ENT-' + id + ') manualmente.');
+      }
 
       // ── Actualizar CxP asociada ──
       try {
