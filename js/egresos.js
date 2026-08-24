@@ -30,11 +30,14 @@ async function abrirPendientesFacturar() {
 }
 
 // Entrada contextual: llega desde el botón "🔗 Consolidar Pagos" de una
-// fila del listado (ver cargarPagos) -- ya se sabe el Proveedor, así que
-// salta directo al Paso 2, sin pasar por la lista completa de Proveedores.
+// fila del listado o de la Ficha (ver cargarPagos / _verCxPAutomatica) --
+// ya se sabe el Proveedor y la Fecha de Pago de la Entrada que se pulsó,
+// así que salta directo al Paso 2 mostrando SOLO ese día, sin pasar por
+// la lista completa de Proveedores ni por las otras fechas pendientes.
 // Esa lista igual se carga en segundo plano, para que "← Volver a
-// Proveedores" funcione si el Usuario quiere ver otros Proveedores.
-async function abrirPagoConsolidadoDesde(id_proveedor) {
+// Proveedores" funcione si el Usuario quiere ver otros Proveedores u
+// otras fechas.
+async function abrirPagoConsolidadoDesde(id_proveedor, fecha) {
   document.getElementById('pend-fact-paso-proveedores').style.display = 'none';
   document.getElementById('pend-fact-paso-entradas').style.display = '';
   document.getElementById('btn-confirmar-pago-consolidado').style.display = 'none';
@@ -42,7 +45,7 @@ async function abrirPagoConsolidadoDesde(id_proveedor) {
   window._pendFacturarEntradasSel = [];
   abrirModal('modal-pend-facturar');
   _pendFacturarCargarProveedores();
-  await _pendFacturarSeleccionarProveedor(id_proveedor);
+  await _pendFacturarSeleccionarProveedor(id_proveedor, fecha);
 }
 
 async function _pendFacturarCargarProveedores() {
@@ -80,7 +83,7 @@ async function _pendFacturarCargarProveedores() {
   }
 }
 
-async function _pendFacturarSeleccionarProveedor(id_proveedor) {
+async function _pendFacturarSeleccionarProveedor(id_proveedor, fechaFiltro) {
   document.getElementById('pend-fact-paso-proveedores').style.display = 'none';
   document.getElementById('pend-fact-paso-entradas').style.display = '';
   document.getElementById('pend-fact-form-consolidado').style.display = 'none';
@@ -95,7 +98,10 @@ async function _pendFacturarSeleccionarProveedor(id_proveedor) {
 
   const cxpRows = await api('cont_cxp','GET',null,
     '?id_empresa=eq.'+id_emisor+'&id_proveedor=eq.'+id_proveedor+'&estado=eq.APROBADA&id_pago_consolidado=is.null&select=id_cxp,numero_doc,moneda_negociacion,moneda_pago,monto_usd,monto_ves,fecha_vencimiento,fecha_emision');
-  const contado = (cxpRows||[]).filter(function(r){ return /^ENT-\d+-\d+$/.test(r.numero_doc||''); });
+  let contado = (cxpRows||[]).filter(function(r){ return /^ENT-\d+-\d+$/.test(r.numero_doc||''); });
+  if (fechaFiltro) {
+    contado = contado.filter(function(r){ return (r.fecha_vencimiento || r.fecha_emision || '').slice(0,10) === fechaFiltro; });
+  }
 
   const cont = document.getElementById('pend-fact-lista-entradas');
   if (!contado.length) {
@@ -659,10 +665,16 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     gruposConsolidables[clave].push(c.id_cxp);
   });
   const _idCxpAConsolidarProveedor = {};
+  const _idCxpAConsolidarFecha = {};
   Object.keys(gruposConsolidables).forEach(function(clave) {
     if (gruposConsolidables[clave].length >= 2) {
-      const idProv = clave.split('|')[0];
-      gruposConsolidables[clave].forEach(function(idCxp) { _idCxpAConsolidarProveedor[idCxp] = idProv; });
+      const partes = clave.split('|');
+      const idProv = partes[0];
+      const fechaProv = partes[1];
+      gruposConsolidables[clave].forEach(function(idCxp) {
+        _idCxpAConsolidarProveedor[idCxp] = idProv;
+        _idCxpAConsolidarFecha[idCxp] = fechaProv;
+      });
     }
   });
 
@@ -787,7 +799,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       const btnRechazar = (puedo('PAGOS','RECHAZAR') && yaVenceAccion) ? '<button onclick="rechazarPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">❌ Rechazar</button>' : '';
       const esConsolidable = !!_idCxpAConsolidarProveedor[item._id];
       const btnRegistrarPagoLista = !(puedo('PAGOS','PAGAR') || sesionActual?.administrador) ? '' : (esConsolidable
-        ? '<button onclick="abrirPagoConsolidadoDesde('+_idCxpAConsolidarProveedor[item._id]+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🔗 Consolidar Pagos</button>'
+        ? '<button onclick="abrirPagoConsolidadoDesde('+_idCxpAConsolidarProveedor[item._id]+',\''+_idCxpAConsolidarFecha[item._id]+'\')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🔗 Consolidar Pagos</button>'
         : '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💸 Pagar</button>');
       if (est === 'PENDIENTE' || est === 'RECHAZADA') acciones = btnVerPend + (btnAprobar ? ' '+btnAprobar : '') + ((btnRechazar && est !== 'RECHAZADA') ? ' '+btnRechazar : '');
       else if (est === 'APROBADA') acciones = btnVerPag + (btnRegistrarPagoLista ? ' '+btnRegistrarPagoLista : '');
@@ -4208,7 +4220,7 @@ async function _verCxPAutomatica(c, id_cxp) {
         if (hermanasContado.length >= 2) {
           const idProvAuto = c.id_proveedor;
           btnPagar.textContent = '🔗 Consolidar Pagos';
-          btnPagar.onclick = function(){ cerrarModal('modal-ver-cxp-auto'); abrirPagoConsolidadoDesde(idProvAuto); };
+          btnPagar.onclick = function(){ cerrarModal('modal-ver-cxp-auto'); abrirPagoConsolidadoDesde(idProvAuto, fechaGrupoAuto); };
         }
       } catch(eHermanas) { console.warn('Error verificando grupo consolidable:', eHermanas); }
     }
