@@ -4518,24 +4518,38 @@ async function _guardarEdicionMovimientoInterno() {
     }
 
     if (tipo === 'ENTRADA') {
+      const monedaEdit = document.getElementById('edit-mov-moneda')?.value || 'USD';
+      const tasaFormEdit = parseFloat(document.getElementById('edit-mov-tasa-bcv')?.value) || 0;
       const precioRaw  = document.getElementById('edit-mov-precio').value;
       const precioParseado = parseMontoVE(precioRaw);
-      const precioNegociado = precioRaw !== '' && precioParseado > 0 ? precioParseado : null;
+      // precioNegociadoOriginal es el precio TAL COMO se negoció, en la
+      // Moneda de Negociación (puede ser Bs) -- se guarda tal cual en
+      // precio_compra_original, solo para referencia/display.
+      const precioNegociadoOriginal = precioRaw !== '' && precioParseado > 0 ? precioParseado : null;
+      if (monedaEdit === 'VES' && precioNegociadoOriginal !== null && tasaFormEdit <= 0) {
+        return mostrarError('No se encontró tasa BCV para convertir el precio.', 'edit-mov-precio');
+      }
+      // precioNegociado -- SIEMPRE en USD a partir de aquí (convertido con
+      // la tasa BCV de la Fecha de Negociación si se negoció en Bs) --
+      // misma conversión que se aplica al crear la entrada (nuevoPrecioCostoRaw
+      // más arriba en este mismo archivo). Sin esto, editar una Entrada
+      // negociada en VES guardaba el monto en Bs directamente en monto_usd.
+      const precioNegociado = precioNegociadoOriginal === null ? null
+        : (monedaEdit === 'VES' ? parseFloat((precioNegociadoOriginal / tasaFormEdit).toFixed(8)) : precioNegociadoOriginal);
       const exentoEdit  = document.getElementById('edit-mov-exento-iva-val')?.value === 'SI';
       const incluyeEdit = document.getElementById('edit-mov-incluye-iva-val')?.value === 'SI';
-      // precioNegociado es el precio TAL COMO se negoció (puede traer IVA
-      // incluido); precio_costo_moneda debe guardar siempre la BASE sin IVA
-      // — misma conversión que se aplica al crear la entrada (inventario2.js)
+      // precioNegociado (ya en USD) puede traer IVA incluido;
+      // precio_costo_moneda debe guardar siempre la BASE sin IVA
       const precio = (precioNegociado !== null && !exentoEdit && incluyeEdit)
         ? parseFloat((precioNegociado / (1+tasaIVAActual())).toFixed(4))
         : precioNegociado;
-      // Monto TOTAL (con IVA si aplica) — se calcula UNA sola vez aquí, a
-      // partir del precio NEGOCIADO original (sin redondeos intermedios),
-      // y se reutiliza tanto para reconstruir el asiento como la CxP
+      // Monto TOTAL (con IVA si aplica, ya en USD) — se calcula UNA sola
+      // vez aquí, a partir del precio NEGOCIADO ya convertido (sin
+      // redondeos intermedios), y se reutiliza tanto para reconstruir el
+      // asiento como la CxP
       const montoTotalConIVAEdit = precioNegociado === null ? null : (exentoEdit
         ? parseFloat((precioNegociado * cantidad).toFixed(2))
         : parseFloat((precioNegociado * cantidad * (incluyeEdit ? 1 : (1+tasaIVAActual()))).toFixed(2)));
-      const monedaEdit = document.getElementById('edit-mov-moneda')?.value || 'USD';
       const fechaNeg   = document.getElementById('edit-mov-fecha-negociacion')?.value || getHoyVzla();
       const motivoEdit = document.getElementById('edit-mov-motivo')?.value || '';
       const provEdit   = parseInt(document.getElementById('edit-mov-proveedor')?.value) || null;
@@ -4545,7 +4559,7 @@ async function _guardarEdicionMovimientoInterno() {
       const pvEdit     = parseFloat(document.getElementById('edit-mov-precio-venta')?.value) || null;
 
       if (precio !== null) datos.precio_costo_moneda = precio;
-      if (precioNegociado !== null) datos.precio_compra_original = precioNegociado;
+      if (precioNegociadoOriginal !== null) datos.precio_compra_original = precioNegociadoOriginal;
       datos.exento_iva          = document.getElementById('edit-mov-exento-iva-val')?.value === 'SI' ? true
                                    : (document.getElementById('edit-mov-exento-iva-val')?.value === 'NO' ? false : null);
       datos.incluye_iva         = exentoEdit ? null
@@ -4569,11 +4583,10 @@ async function _guardarEdicionMovimientoInterno() {
       const tasaEdit = parseFloat(document.getElementById('edit-mov-tasa-bcv')?.value) || 0;
       datos.aplica_igtf = !!window._aplicaIGTFEntrada;
       if (window._aplicaIGTFEntrada && montoTotalConIVAEdit != null) {
-        const totalUSDParaIGTFEdit = monedaEdit === 'VES'
-          ? (tasaEdit > 0 ? montoTotalConIVAEdit / tasaEdit : 0)
-          : montoTotalConIVAEdit;
+        // montoTotalConIVAEdit ya queda en USD (ver conversión más arriba,
+        // según Moneda de Negociación) -- no se vuelve a convertir aquí.
         datos.tasa_igtf = window._tasaIGTFEntrada || 0.03;
-        datos.monto_igtf = parseFloat((totalUSDParaIGTFEdit * datos.tasa_igtf).toFixed(2));
+        datos.monto_igtf = parseFloat((montoTotalConIVAEdit * datos.tasa_igtf).toFixed(2));
       } else {
         datos.monto_igtf = null;
         datos.tasa_igtf = null;
