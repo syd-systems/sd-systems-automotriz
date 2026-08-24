@@ -3679,6 +3679,17 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     const vencEl = document.getElementById('cont-pago-cxp-vencimiento');
     if (vencEl) vencEl.textContent = c.fecha_vencimiento ? fmtFecha(c.fecha_vencimiento) : '—';
 
+    const facturaNoVerCont = document.getElementById('cont-pago-cxp-factura-no-cont');
+    const facturaNoVerEl = document.getElementById('cont-pago-cxp-factura-no-ver');
+    if (facturaNoVerCont && facturaNoVerEl) {
+      if (c.numero_factura_proveedor) {
+        facturaNoVerCont.style.display = '';
+        facturaNoVerEl.textContent = c.numero_factura_proveedor;
+      } else {
+        facturaNoVerCont.style.display = 'none';
+      }
+    }
+
     const conceptoEl = document.getElementById('cont-pago-cxp-concepto');
     if (conceptoEl) conceptoEl.textContent = c.concepto || '—';
 
