@@ -4398,7 +4398,14 @@ async function _guardarEdicionMovimientoInterno() {
   const id          = parseInt(document.getElementById('edit-mov-id').value);
   const id_articulo = parseInt(document.getElementById('edit-mov-id-articulo').value);
   const esSalida    = tipo === 'SALIDA';
-  const id_area     = parseInt((esSalida ? document.getElementById('edit-sal-area') : document.getElementById('edit-mov-area'))?.value) || null;
+  // Para ENTRADA, el Área Receptora NO se edita en este formulario (no
+  // existe ese campo en el DOM -- se autoasigna una sola vez al crear,
+  // igual que en Creación, donde es un input oculto). Antes esta línea
+  // igual intentaba leer 'edit-mov-area' -- que no existe -- y siempre
+  // daba null, borrando silenciosamente el Área ya asignada en CADA
+  // edición. El valor real se preserva/corrige más abajo, justo antes
+  // del PATCH (ver movOrigArr).
+  let id_area       = esSalida ? (parseInt(document.getElementById('edit-sal-area')?.value) || null) : null;
   const idEmp       = parseInt((esSalida ? document.getElementById('edit-sal-empleado') : document.getElementById('edit-mov-empleado'))?.value) || null;
   const obs         = (esSalida ? document.getElementById('edit-sal-observaciones') : (document.getElementById('edit-mov-observaciones') || document.getElementById('edit-mov-obs')))?.value?.trim() || '';
   const clave       = (esSalida ? document.getElementById('edit-sal-clave') : document.getElementById('edit-mov-clave'))?.value || '';
@@ -4464,12 +4471,6 @@ async function _guardarEdicionMovimientoInterno() {
                            return mostrarError('Ingrese el nombre del cliente.', 'edit-mov-cliente');
     if (motivoSel === 'transferencia' && !document.getElementById('edit-mov-area-origen')?.value)
                            return mostrarError('Seleccione el Área de Origen.', 'edit-mov-area-origen');
-    // Área Receptora -- obligatoria (antes no se validaba aquí, a
-    // diferencia de Salida, que sí exige "Quien Recibe" -- eso permitió
-    // que una Entrada quedara guardada con id_area=NULL sin que nada lo
-    // impidiera, bloqueando después su aprobación).
-    if (!document.getElementById('edit-mov-area')?.value)
-                           return mostrarError('Seleccione el Área Receptora.', 'edit-mov-area');
     const pagoSel = document.getElementById('edit-mov-esquema-pago')?.value;
     if (!pagoSel) return mostrarError('Seleccione la Modalidad de Pago.', 'edit-mov-esquema-pago');
     if (pagoSel === 'CREDITO') {
@@ -4623,11 +4624,17 @@ async function _guardarEdicionMovimientoInterno() {
 
       // ── Leer cantidad original ANTES de parchear ──
       const [movOrigArr, artArr] = await Promise.all([
-        api('stock_entradas', 'GET', null, '?id_entrada=eq.' + id + '&select=cantidad,estado_aprobacion'),
+        api('stock_entradas', 'GET', null, '?id_entrada=eq.' + id + '&select=cantidad,estado_aprobacion,id_area'),
         api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id_articulo + '&select=precio_costo_moneda'),
       ]);
       const cantOriginal = parseFloat(movOrigArr[0]?.cantidad || cantidad);
       const art = artArr[0];
+
+      // Área Receptora de la Entrada -- se preserva la que ya tenía (no es
+      // editable desde este formulario); si por algún motivo faltara,
+      // mismo respaldo automático que usa la Creación (Compras).
+      id_area = movOrigArr[0]?.id_area || await obtenerIdAreaCompras();
+      datos.id_area = id_area;
 
       // Si la Entrada estaba RECHAZADA, al corregirla y guardarla vuelve a
       // quedar Pendiente de Aprobación -- ya no debe seguir mostrándose
@@ -4714,8 +4721,11 @@ async function _guardarEdicionMovimientoInterno() {
           const tipoAstEdit = motivoEdit === 'compra' ? 'ENTRADA_COMPRA'
                             : motivoEdit === 'devolucion' ? 'ENTRADA_DEVOLUCION'
                             : 'ENTRADA_AJUSTE';
-          const areaNombreEdit = document.getElementById('edit-mov-area')?.selectedOptions?.[0]?.textContent
-                                  || document.getElementById('edit-mov-area')?.selectedOptions?.[0]?.text || 'Área';
+          let areaNombreEdit = 'Área';
+          try {
+            const areaRowsEdit = await api('areas','GET',null,'?id=eq.'+id_area+'&select=nombre,codigo');
+            if (areaRowsEdit && areaRowsEdit[0]) areaNombreEdit = areaRowsEdit[0].nombre + (areaRowsEdit[0].codigo ? ' (' + areaRowsEdit[0].codigo + ')' : '');
+          } catch(eAreaNomEdit) {}
           await generarAsientoInventario(tipoAstEdit, {
             articulo:   r?.nombre_articulo || r?.codigo_articulo || ('Art#' + id_articulo),
             cantidad:   cantidad,
