@@ -4580,12 +4580,30 @@ async function _guardarEdicionMovimientoInterno() {
       datos.id_area_origen      = areaOrig;
       datos.esquema_pago        = pagoEdit;
 
+      // monto_total_con_iva / monto_total_moneda_original / tasa_bcv --
+      // estos 3 campos son los que lee ejecutarEfectosEntradaCompra() al
+      // APROBAR (Stock/CPP/Asiento/CxP se generan recién ahí, no aquí) --
+      // antes NUNCA se actualizaban en la edición, así que aprobar una
+      // Entrada corregida seguía usando el monto/tasa VIEJOS.
+      datos.monto_total_con_iva = montoTotalConIVAEdit;
+      datos.tasa_bcv = tasaFormEdit > 0 ? tasaFormEdit : null;
+      if (precioNegociadoOriginal !== null) {
+        const montoOrigEdit = precioNegociadoOriginal * cantidad;
+        if (exentoEdit || incluyeEdit) {
+          datos.monto_total_moneda_original = parseFloat(montoOrigEdit.toFixed(2));
+        } else {
+          const ivaOrigEdit = parseFloat((montoOrigEdit * tasaIVAActual()).toFixed(4));
+          datos.monto_total_moneda_original = parseFloat((montoOrigEdit + ivaOrigEdit).toFixed(2));
+        }
+      } else {
+        datos.monto_total_moneda_original = null;
+      }
+
       // IGTF -- se recalcula fresco según el Proveedor actual
       // (window._aplicaIGTFEntrada ya refleja el último cambio hecho en
       // este formulario, ver onCambiarProveedorEdit). Antes esta función
       // nunca guardaba estos campos -- aunque la pantalla ya mostrara el
       // IGTF actualizado, se perdía al guardar.
-      const tasaEdit = parseFloat(document.getElementById('edit-mov-tasa-bcv')?.value) || 0;
       datos.aplica_igtf = !!window._aplicaIGTFEntrada;
       if (window._aplicaIGTFEntrada && montoTotalConIVAEdit != null) {
         // montoTotalConIVAEdit ya queda en USD (ver conversión más arriba,
@@ -4607,7 +4625,7 @@ async function _guardarEdicionMovimientoInterno() {
 
       // Si la Entrada estaba RECHAZADA, al corregirla y guardarla vuelve a
       // quedar Pendiente de Aprobación -- ya no debe seguir mostrándose
-      // como Rechazada, dado que se está reenviando (ver enrutarAprobacionCxP
+      // como Rechazada, dado que se está reenviando (ver enrutarAprobacionEntrada
       // más abajo, que ya la manda de vuelta al Aprobador).
       if (movOrigArr[0]?.estado_aprobacion === 'RECHAZADA') {
         datos.estado_aprobacion = 'PENDIENTE';
@@ -4617,6 +4635,20 @@ async function _guardarEdicionMovimientoInterno() {
       // ── PATCH a stock_entradas ──
       await api('stock_entradas', 'PATCH', datos, '?id_entrada=eq.' + id);
 
+      // Si esta es una Entrada de Compra que TODAVÍA NO fue aprobada
+      // (venía PENDIENTE o RECHAZADA), no debe tener efectos en Stock,
+      // CPP, Asiento ni CxP -- esos solo se generan al APROBAR (ver
+      // ejecutarEfectosEntradaCompra), sea la primera vez o al reenviarla
+      // tras un rechazo. Antes esta función aplicaba los efectos de
+      // inmediato al guardar, sin importar si ya estaba aprobada o no --
+      // contradecía la propia notificación ("mientras no se resuelva, no
+      // afecta Stock ni Contabilidad") y generaba una CxP/Asiento a nivel
+      // de Entrada nunca aprobada. Para una Entrada YA aprobada (un ajuste
+      // posterior por un administrador), se mantiene el comportamiento
+      // anterior -- ahí sí hay efectos reales que corregir de inmediato.
+      const compraNuncaAprobada = motivoEdit === 'compra' && movOrigArr[0]?.estado_aprobacion !== 'APROBADA';
+
+      if (!compraNuncaAprobada) {
       // ── Ajustar el stock del ÁREA por la diferencia (delta), NO recalcular
       // un total global desde cero — el stock real vive en inventario_stock_area,
       // repartido por área, así que no existe un "total" único que reconstruir. ──
@@ -4849,6 +4881,37 @@ async function _guardarEdicionMovimientoInterno() {
           }
         }
       } catch(eCxPEdit) { console.warn('Error actualizando CxP:', eCxPEdit); }
+      } else {
+        // Entrada de Compra que nunca fue aprobada -- reenviar a
+        // aprobación a nivel de Entrada, exactamente igual que la primera
+        // vez (misma notificación rica, con botones Aprobar/Rechazar
+        // directos). Stock/CPP/Asiento/CxP quedan pendientes hasta que
+        // realmente se apruebe.
+        try {
+          const numDocBaseReenvio = 'ENT-' + id;
+          const artNomReenvio = r?.nombre_articulo || ('Art#' + id_articulo);
+          // montoBsExacto -- misma conversión condicional que en la
+          // creación: si se negoció en VES, monto_total_moneda_original ya
+          // ES el Bs exacto; si se negoció en USD, hay que convertirlo con
+          // la tasa (una sola vez, sin ida y vuelta).
+          const montoBsExactoReenvio = datos.monto_total_moneda_original != null
+            ? (datos.moneda_compra === 'VES'
+                ? datos.monto_total_moneda_original
+                : (datos.tasa_bcv ? parseFloat((datos.monto_total_moneda_original * datos.tasa_bcv).toFixed(2)) : null))
+            : null;
+          await enrutarAprobacionEntrada(datos.monto_total_con_iva || 0, id, numDocBaseReenvio, {
+            nombreArt: artNomReenvio,
+            cantidad: cantidad,
+            unidad: r?.unidad || 'UND',
+            monedaCompra: datos.moneda_compra,
+            modalidadPago: datos.esquema_pago || 'CONTADO',
+            tasaBcv: datos.tasa_bcv,
+            montoBsExacto: montoBsExactoReenvio,
+            montoIGTF: datos.aplica_igtf ? (datos.monto_igtf || 0) : 0,
+            esContribuyenteEspecial: window._tipoContribProveedorEntrada === 'ESPECIAL'
+          });
+        } catch(eReenvioEnt) { console.warn('Error reenviando Entrada a aprobación:', eReenvioEnt); }
+      }
 
       // ── Si esta Entrada estaba EN_REVISION (CxP rechazada), la corrección
       // recién guardada la resuelve -- limpiar el estado y marcar como
