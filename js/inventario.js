@@ -5409,10 +5409,13 @@ async function confirmarAnulacion() {
     if (tipo === 'ENTRADA') {
       try {
         const cxps = await api('cont_cxp', 'GET', null,
-          '?numero_doc=ilike.' + encodeURIComponent('ENT-' + idMovimiento + '*') + emisorQ() + '&estado=in.(PENDIENTE,APROBADA)&select=id_cxp');
+          '?numero_doc=ilike.' + encodeURIComponent('ENT-' + idMovimiento + '*') + emisorQ() + '&estado=in.(PENDIENTE,APROBADA)&select=id_cxp,observaciones');
         for (const cxAnul of (cxps || [])) {
+          // Preservar la descripción original (artículo + cantidad) --
+          // agregar el aviso de anulación, no reemplazarla.
+          const obsOrigCxp = cxAnul.observaciones ? (cxAnul.observaciones + ' — ') : '';
           await api('cont_cxp', 'PATCH',
-            { estado: 'ANULADA', observaciones: '[ANULADO] Entrada de stock anulada. Motivo: ' + motivo },
+            { estado: 'ANULADA', observaciones: obsOrigCxp + '[ANULADO] Motivo: ' + motivo },
             '?id_cxp=eq.' + cxAnul.id_cxp);
         }
       } catch(eCxP) { console.warn('Error anulando CxP:', eCxP); }
