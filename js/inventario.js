@@ -5198,14 +5198,25 @@ async function anularMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
     }
   } catch(e) { alert('Error cargando movimiento: ' + msgErr(e)); return; }
 
-  // Rellenar modal
-  const r = (Array.isArray(window.inventarioCache) ? window.inventarioCache : []).find(function(x) { return x.id_articulo === id_articulo; });
+  // Rellenar modal -- primero intenta la caché (evita una consulta extra
+  // si ya está cargada), y si no la encuentra ahí (puede estar vacía si
+  // se llega aquí desde otro módulo sin haber visitado Inventario antes,
+  // ej. desde "❌ Rechazar Compra" en Cuentas por Pagar), consulta directo.
+  let r = (Array.isArray(window.inventarioCache) ? window.inventarioCache : []).find(function(x) { return x.id_articulo === id_articulo; });
+  if (!r) {
+    try {
+      const artRowsAnul = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id_articulo+'&select=nombre_articulo,unidad');
+      if (artRowsAnul && artRowsAnul[0]) r = artRowsAnul[0];
+    } catch(eArtAnul) { console.warn('Error cargando Artículo:', eArtAnul); }
+  }
+  const numDocMostrar = (tipo === 'ENTRADA' ? 'ENT-' : 'SAL-') + idMovimiento;
   document.getElementById('anulacion-tipo').value          = tipo;
   document.getElementById('anulacion-id-movimiento').value = idMovimiento;
   document.getElementById('anulacion-id-articulo').value   = id_articulo;
   document.getElementById('anulacion-cantidad').value      = cantidad;
   document.getElementById('anulacion-titulo').textContent  = '⚠ ANULAR ' + tipo + ' DE STOCK';
   document.getElementById('anulacion-info-tipo').textContent     = tipo;
+  document.getElementById('anulacion-info-numdoc').textContent   = numDocMostrar;
   document.getElementById('anulacion-info-cantidad').textContent = cantidad + ' ' + (r?.unidad || 'UND');
   document.getElementById('anulacion-info-articulo').textContent = r?.nombre_articulo || '—';
   const areaInfo = movOrig.area_receptora
