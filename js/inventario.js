@@ -2597,7 +2597,7 @@ async function rechazarEntradaCompra(id_entrada) {
 
     if (m.id_usuario) {
       try {
-        const artRechInfo = (Array.isArray(inventarioCache) ? inventarioCache : []).find(function(x){ return x.id_articulo === m.id_articulo; })
+        const artRechInfo = (Array.isArray(window.inventarioCache) ? window.inventarioCache : []).find(function(x){ return x.id_articulo === m.id_articulo; })
           || (await api('inventario_almacen','GET',null,'?id_articulo=eq.'+m.id_articulo+'&select=nombre_articulo,codigo_articulo,unidad'))?.[0]
           || {};
         const numDocRech = 'ENT-'+id_entrada;
