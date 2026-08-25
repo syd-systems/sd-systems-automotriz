@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260814387';
+const SYD_VERSION = '20260814388';
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
@@ -2806,6 +2806,10 @@ async function notifConfirmar() {
       if (btn) { btn.disabled = false; btn.textContent = btn.dataset.textoOriginal || '✓ Confirmar Recepción'; }
       if (typeof aprobarEntradaCompra === 'function') await aprobarEntradaCompra(extras.id_entrada);
       await verificarNotificacionesPendientes();
+      // Ir directo a Cuentas por Pagar -- ya se resolvió la Entrada, tiene
+      // sentido ver de inmediato la Obligación de Pago que quedó (o no)
+      // generada, sin quedarse en la pantalla donde estaba antes.
+      mostrarModulo('pagos', document.getElementById('nav-PAGOS'));
       return;
     }
 
@@ -2932,6 +2936,7 @@ async function notifRechazarEntrada() {
       '?id=eq.'+idNotifRech);
   } catch(eNotifRechCierre) { console.warn('Error cerrando notificación de aprobación:', eNotifRechCierre); }
   await verificarNotificacionesPendientes();
+  mostrarModulo('pagos', document.getElementById('nav-PAGOS'));
 }
 
 async function notifSolicitarAnulacion() {
