@@ -2688,7 +2688,7 @@ async function mostrarNotifPendiente(notif) {
   // No tiene sentido "posponer" una aprobación de Entrada de Compra, ni el
   // aviso de que ya fue rechazada -- en ambos casos hay una única acción
   // clara a seguir en el momento.
-  if (btnVerDespues) btnVerDespues.style.display = (accionNotif === 'aprobar_entrada' || accionNotif === 'entrada_compra_rechazada') ? 'none' : '';
+  if (btnVerDespues) btnVerDespues.style.display = (accionNotif === 'aprobar_entrada' || accionNotif === 'entrada_compra_rechazada' || accionNotif === 'confirmar_recepcion') ? 'none' : '';
   const CONFIG_NOTIF = {
     confirmar_recepcion: { titulo: '📦 Solicitud de Recepción', instruccion: 'Al confirmar, valida que recibió el consumible correctamente.', boton: '✓ Confirmar Recepción' },
     aprobar_pago:         { titulo: '📝 Solicitud de Aprobación', instruccion: 'Vaya al módulo de Pagos para revisar y aprobar esta Obligación.', boton: '✓ Confirmar Pago' },
@@ -2886,6 +2886,15 @@ async function notifConfirmar() {
     // volviera a entrar al módulo manualmente.
     if (document.getElementById('buscar-inv') && typeof renderInventario === 'function') {
       try { await renderInventario(document.getElementById('buscar-inv').value || ''); } catch(eRefreshInv) {}
+    }
+
+    // Llevar directo a Inventario General tras confirmar una Recepción --
+    // antes solo se refrescaba si el usuario ya estaba parado ahí; ahora
+    // se navega siempre para que vea de inmediato el Stock actualizado.
+    if (!accionNotif && extras && extras.id_area_destino) {
+      await verificarNotificacionesPendientes();
+      mostrarModulo('inventario', document.getElementById('nav-INVENTARIO'));
+      return;
     }
 
     // 3. Llevar directo al listado de Cuentas por Pagar si es una
