@@ -3625,7 +3625,10 @@ function _renderFilaHistorial(m) {
         if (esSobrante || esFaltante) {
           return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verFichaAjuste(\'' + (esSobrante ? 'ENTRADA' : 'SALIDA') + '\',' + (m.id_entrada||m.id_salida) + ',' + m.id_articulo + ')">👁 Ver</button>';
         }
-        if (anulada) return '<span style="color:var(--suave);font-size:11px">—</span>';
+        if (anulada) {
+          if (m.id_entrada) return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verFichaEntradaStock(' + m.id_entrada + ',' + m.id_articulo + ')">👁 Ver</button>';
+          return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="editarMovimiento(\'SALIDA\',' + m.id_salida + ',' + m.id_articulo + ',true,' + esEntrada + ')">👁 Ver</button>';
+        }
         const soloLec = (!sesionActual?.administrador && !puedo('INVENTARIO','EDITAR_STOCK')) ? 'true' : 'false';
         if (m.id_entrada) return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verFichaEntradaStock(' + m.id_entrada + ',' + m.id_articulo + ')">👁 Ver</button>';
         return '<button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="editarMovimiento(\'SALIDA\',' + m.id_salida + ',' + m.id_articulo + ',' + soloLec + ',' + esEntrada + ')">👁 Ver</button>';
@@ -3793,6 +3796,11 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     }
   } catch(err) { alert('Error cargando movimiento: ' + msgErr(err)); return; }
   if (!m) return;
+
+  // Un movimiento ANULADO se puede ver siempre, pero nunca editar -- sin
+  // importar qué se haya pasado como parámetro (permiso, si está pagado,
+  // etc.), se fuerza solo lectura permanente.
+  if (m.anulada) soloLectura = true;
 
   // IGTF -- arranca con lo que YA está guardado en esta Entrada (no se
   // resetea a false). Se vuelve a evaluar fresco en cuanto el Usuario
