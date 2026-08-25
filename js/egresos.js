@@ -4608,8 +4608,22 @@ async function ejecutarPagoCxP(id_cxp) {
   const tipoContribLabel = { ORDINARIO: 'Contribuyente Ordinario', ESPECIAL: 'Contribuyente Especial', FORMAL: 'Contribuyente Formal' };
   const tipoContribEl = document.getElementById('exec-pago-tipo-contrib');
   if (tipoContribEl) tipoContribEl.textContent = tipoContribLabel[prov.tipo_contribuyente] || '—';
-  const fechaObEl = document.getElementById('exec-pago-fecha-obligacion');
-  if (fechaObEl) fechaObEl.textContent = c.fecha_vencimiento ? fmtFecha(c.fecha_vencimiento) : '—';
+  const fechaHoyExecEl = document.getElementById('exec-pago-fecha-hoy');
+  const fechaVencRefEl = document.getElementById('exec-pago-fecha-venc-ref');
+  const hoyExecFmt = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+  if (fechaHoyExecEl) fechaHoyExecEl.textContent = fmtFecha(hoyExecFmt);
+  if (fechaVencRefEl) {
+    const fechaVencFmt = c.fecha_vencimiento?.slice(0,10) || '';
+    if (fechaVencFmt && fechaVencFmt < hoyExecFmt) {
+      fechaVencRefEl.textContent = 'Venció el ' + fmtFecha(fechaVencFmt);
+      fechaVencRefEl.style.color = '#f87171';
+    } else if (fechaVencFmt) {
+      fechaVencRefEl.textContent = 'Vence: ' + fmtFecha(fechaVencFmt);
+      fechaVencRefEl.style.color = '';
+    } else {
+      fechaVencRefEl.textContent = '';
+    }
+  }
 
   // Se guarda el proveedor para que la info de pago (Transferencia/Pago
   // Móvil) se muestre según el Método de Pago que se seleccione abajo,
