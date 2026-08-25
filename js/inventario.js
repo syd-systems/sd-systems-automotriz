@@ -5166,7 +5166,7 @@ async function anularMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
   // Verificar permiso -- para ENTRADA, además del permiso propio de
   // Inventario, también se acepta PAGOS.APROBAR (Nivel de Aprobar/Rechazar
   // Compras), ya que esta misma función se invoca desde el botón
-  // "❌ Rechazar Compra" en la Ficha de Obligación de Pago.
+  // "❌ Anular Compra" en la Ficha de Obligación de Pago.
   const permiso = tipo === 'ENTRADA' ? 'ANULAR_ENTRADA' : 'ANULAR_SALIDA';
   const tienePermisoAnular = sesionActual?.administrador
     || puedo('INVENTARIO', permiso)
@@ -5201,7 +5201,7 @@ async function anularMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
   // Rellenar modal -- primero intenta la caché (evita una consulta extra
   // si ya está cargada), y si no la encuentra ahí (puede estar vacía si
   // se llega aquí desde otro módulo sin haber visitado Inventario antes,
-  // ej. desde "❌ Rechazar Compra" en Cuentas por Pagar), consulta directo.
+  // ej. desde "❌ Anular Compra" en Cuentas por Pagar), consulta directo.
   let r = (Array.isArray(window.inventarioCache) ? window.inventarioCache : []).find(function(x) { return x.id_articulo === id_articulo; });
   if (!r) {
     try {
