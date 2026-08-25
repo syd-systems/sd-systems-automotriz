@@ -5199,7 +5199,7 @@ async function anularMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
   } catch(e) { alert('Error cargando movimiento: ' + msgErr(e)); return; }
 
   // Rellenar modal
-  const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
+  const r = (Array.isArray(window.inventarioCache) ? window.inventarioCache : []).find(function(x) { return x.id_articulo === id_articulo; });
   document.getElementById('anulacion-tipo').value          = tipo;
   document.getElementById('anulacion-id-movimiento').value = idMovimiento;
   document.getElementById('anulacion-id-articulo').value   = id_articulo;
@@ -5395,7 +5395,7 @@ async function confirmarAnulacion() {
 
     // 9. Notificaciones para SALIDAS
     if (tipo === 'SALIDA') {
-      const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
+      const r = (Array.isArray(window.inventarioCache) ? window.inventarioCache : []).find(function(x) { return x.id_articulo === id_articulo; });
       const nomArt = r ? r.nombre_articulo : 'Artículo #' + id_articulo;
 
       // 9a. Notificación interna al empleado que recibió
@@ -5449,9 +5449,9 @@ async function confirmarAnulacion() {
     // 10. Actualizar cache y vistas
     try {
       const fresh = await api('inventario_almacen', 'GET', null, '?id_articulo=eq.' + id_articulo + '&select=*');
-      if (fresh && fresh[0]) {
-        const i = inventarioCache.findIndex(function(x) { return x.id_articulo === id_articulo; });
-        if (i !== -1) inventarioCache[i] = fresh[0];
+      if (fresh && fresh[0] && Array.isArray(window.inventarioCache)) {
+        const i = window.inventarioCache.findIndex(function(x) { return x.id_articulo === id_articulo; });
+        if (i !== -1) window.inventarioCache[i] = fresh[0];
       }
     } catch(e) {}
 
@@ -5462,7 +5462,7 @@ async function confirmarAnulacion() {
     setTimeout(async function() {
       cerrarModal('modal-anulacion-stock');
       await calcularInvSaldoArea();
-      if (document.getElementById('tabla-inv-cont')) invRenderVista(inventarioCache, _invVista);
+      if (document.getElementById('tabla-inv-cont')) invRenderVista(window.inventarioCache || [], _invVista);
       if (_fichaInvActual && _fichaInvActual.id) {
         await recargarHistorial(id_articulo);
         verHistorialStock(_fichaInvActual.id, _fichaInvActual.nombre);
