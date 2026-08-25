@@ -2784,7 +2784,7 @@ async function verHistorialMargen(id_tipo, nombreTipo) {
       +'</tr></thead><tbody>'
       + filas.map(function(m) {
         const anulado = m.estado === 'ANULADO';
-        const styleTachado = anulado ? 'text-decoration:line-through;opacity:0.55' : '';
+        const styleTachado = anulado ? 'text-decoration:line-through' : '';
         return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
           +'<td style="padding:8px;font-size:12px;'+styleTachado+'">'+formatearFechaCorta(m.fecha_vigencia_desde)+'</td>'
           +'<td style="padding:8px;font-family:var(--font-mono);font-weight:600;'+styleTachado+'">'+parseFloat(m.margen_pct).toFixed(2)+'%</td>'
