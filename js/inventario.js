@@ -3084,7 +3084,7 @@ async function invCargarMovimientos() {
               +(m.estadoAprob==='PENDIENTE'?'<div style="font-size:9px;color:var(--naranja);margin-top:1px">⏳ Pendiente</div>':'')
               +(m.estadoAprob==='RECHAZADA'?'<div style="font-size:9px;color:#fc8181;margin-top:1px">❌ Rechazada</div>':'');
             const costoTd = puedo('INVENTARIO','VER_COSTOS') ? '<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--suave)">'+(eE&&m.costo>0?(m.moneda==='VES'?'Bs ':simRef+' ')+fmtUSD(m.costo):'—')+'</td>' : '';
-            return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)'+(m.rev?';opacity:0.5':'')+'">'
+            return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
               +'<td style="padding:7px;font-size:12px;line-height:1.3">'+fmtFecha(m.fecha)+'<div style="margin-top:2px">'+badge+'</div></td>'
               +'<td style="padding:7px;font-size:12px;word-break:break-word">'+m.art+'</td>'
               +'<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-size:12px">'+m.cant+'</td>'
