@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260814388';
+const SYD_VERSION = '20260814389';
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
@@ -2679,14 +2679,15 @@ async function mostrarNotifPendiente(notif) {
   if (btnEscalar) btnEscalar.style.display = 'none';
   if (btnRechazarEnt) btnRechazarEnt.style.display = accionNotif === 'aprobar_entrada' ? '' : 'none';
   const btnVerDespues = document.getElementById('btn-notif-ver-despues');
-  // No tiene sentido "posponer" una aprobación de Entrada de Compra -- hay
-  // que decidir Aprobar o Rechazar en el momento.
-  if (btnVerDespues) btnVerDespues.style.display = accionNotif === 'aprobar_entrada' ? 'none' : '';
+  // No tiene sentido "posponer" una aprobación de Entrada de Compra, ni el
+  // aviso de que ya fue rechazada -- en ambos casos hay una única acción
+  // clara a seguir en el momento.
+  if (btnVerDespues) btnVerDespues.style.display = (accionNotif === 'aprobar_entrada' || accionNotif === 'entrada_compra_rechazada') ? 'none' : '';
   const CONFIG_NOTIF = {
     confirmar_recepcion: { titulo: '📦 Solicitud de Recepción', instruccion: 'Al confirmar, valida que recibió el consumible correctamente.', boton: '✓ Confirmar Recepción' },
     aprobar_pago:         { titulo: '📝 Solicitud de Aprobación', instruccion: 'Vaya al módulo de Pagos para revisar y aprobar esta Obligación.', boton: '✓ Confirmar Pago' },
     aprobar_entrada:      { titulo: '📝 Compra de Inventario', instruccion: 'Revise el detalle e indique si Aprueba o Rechaza esta Entrada -- mientras no se resuelva, no afecta Stock ni Contabilidad.', boton: '✓ Aprobar' },
-    entrada_compra_rechazada: { titulo: '❌ Entrada de Compra Rechazada', instruccion: 'Revise el motivo, corrija la Entrada y vuelva a guardarla para que se reenvíe a aprobación.', boton: 'Entendido' },
+    entrada_compra_rechazada: { titulo: '❌ Compra Rechazada', instruccion: 'Revise el motivo, corrija la Entrada y vuelva a guardarla para que se reenvíe a aprobación.', boton: 'Proceder' },
     registrar_pago:       { titulo: '✅ Solicitud de Pago Aprobada', instruccion: 'Puede ir al módulo de Pagos para Registrar el Pago cuando guste.', boton: 'Entendido' },
     ver_rechazo:          { titulo: '❌ Solicitud de Pago Rechazada', instruccion: 'Revise el motivo y corrija la Obligación en el módulo de Pagos.', boton: 'Entendido' },
     sin_firma_disponible: { titulo: '⚠️ Sin Firma Autorizada Disponible', instruccion: 'Ningún aprobador con Nivel de Firma tiene sesión activa en este momento. Avise a su supervisor o intente más tarde.', boton: 'Entendido' },
@@ -2810,6 +2811,36 @@ async function notifConfirmar() {
       // sentido ver de inmediato la Obligación de Pago que quedó (o no)
       // generada, sin quedarse en la pantalla donde estaba antes.
       mostrarModulo('pagos', document.getElementById('nav-PAGOS'));
+      return;
+    }
+
+    // ── Caso especial: aviso de Entrada de Compra Rechazada -- al pulsar
+    // "Proceder", en vez de solo cerrar el aviso, llevar directo al
+    // Historial de Movimientos del artículo, donde puede ver la Entrada
+    // rechazada en contexto y corregirla desde ahí.
+    if (accionNotif === 'entrada_compra_rechazada' && extras && extras.id_entrada) {
+      await api('notificaciones','PATCH',
+        { estado: 'APROBADO', fecha_respuesta: new Date().toISOString() },
+        '?id=eq.'+_notifPendienteActual.id);
+      document.getElementById('modal-notif-pendiente').style.display = 'none';
+      _notifPendienteActual = null;
+      if (btn) { btn.disabled = false; btn.textContent = btn.dataset.textoOriginal || '✓ Confirmar Recepción'; }
+      await verificarNotificacionesPendientes();
+      try {
+        const entRowsRech = await api('stock_entradas','GET',null,
+          '?id_entrada=eq.'+extras.id_entrada+'&select=id_articulo');
+        const idArticuloRech = entRowsRech && entRowsRech[0] ? entRowsRech[0].id_articulo : null;
+        let nombreArtRech = '';
+        if (idArticuloRech) {
+          const artRowsRech = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+idArticuloRech+'&select=nombre_articulo');
+          nombreArtRech = artRowsRech && artRowsRech[0] ? artRowsRech[0].nombre_articulo : '';
+        }
+        window._suprimirCheckNotifUnaVez = true;
+        mostrarModulo('inventario', document.getElementById('nav-INVENTARIO'));
+        setTimeout(function() {
+          if (idArticuloRech && typeof verHistorialStock === 'function') verHistorialStock(idArticuloRech, nombreArtRech);
+        }, 350);
+      } catch(eNavRech) { console.warn('Error navegando al Historial de Movimientos:', eNavRech); }
       return;
     }
 
