@@ -4464,6 +4464,12 @@ async function _guardarEdicionMovimientoInterno() {
                            return mostrarError('Ingrese el nombre del cliente.', 'edit-mov-cliente');
     if (motivoSel === 'transferencia' && !document.getElementById('edit-mov-area-origen')?.value)
                            return mostrarError('Seleccione el Área de Origen.', 'edit-mov-area-origen');
+    // Área Receptora -- obligatoria (antes no se validaba aquí, a
+    // diferencia de Salida, que sí exige "Quien Recibe" -- eso permitió
+    // que una Entrada quedara guardada con id_area=NULL sin que nada lo
+    // impidiera, bloqueando después su aprobación).
+    if (!document.getElementById('edit-mov-area')?.value)
+                           return mostrarError('Seleccione el Área Receptora.', 'edit-mov-area');
     const pagoSel = document.getElementById('edit-mov-esquema-pago')?.value;
     if (!pagoSel) return mostrarError('Seleccione la Modalidad de Pago.', 'edit-mov-esquema-pago');
     if (pagoSel === 'CREDITO') {
