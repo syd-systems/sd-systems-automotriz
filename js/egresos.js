@@ -4003,6 +4003,30 @@ async function verPagoCxP(id_cxp) {
   await verDetalleCxP(id_cxp, 'ver');
 }
 
+// Botón "❌ Rechazar Compra" en la Ficha de Obligación de Pago -- para
+// Usuarios con Nivel de Aprobar/Rechazar Compras (PAGOS.APROBAR), permite
+// rechazar una Compra ya aprobada, siempre que no esté PAGADA/PARCIAL.
+// Reutiliza el mecanismo de anulación ya existente (anularMovimiento),
+// que revierte Stock/CPP/Asiento y anula la CxP correctamente, con
+// confirmación por contraseña -- no se reimplementa esa lógica aquí.
+async function rechazarCompraDesdeFicha() {
+  const id_cxp = window._cxpAutoIdActual;
+  if (!id_cxp) return;
+  try {
+    const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=numero_doc');
+    const numeroDoc = rows && rows[0] ? rows[0].numero_doc : null;
+    const m = numeroDoc ? numeroDoc.match(/^ENT-(\d+)/) : null;
+    if (!m) { alert('No se pudo determinar la Entrada asociada a esta CxP.'); return; }
+    const idEntrada = parseInt(m[1]);
+    const entRows = await api('stock_entradas','GET',null,'?id_entrada=eq.'+idEntrada+'&select=cantidad,id_articulo');
+    if (!entRows || !entRows[0]) { alert('Entrada no encontrada.'); return; }
+    cerrarModal('modal-ver-cxp-auto');
+    if (typeof anularMovimiento === 'function') {
+      await anularMovimiento('ENTRADA', idEntrada, entRows[0].cantidad, entRows[0].id_articulo);
+    }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
+}
+
 async function _verCxPAutomatica(c, id_cxp) {
   window._cxpAutoIdActual = id_cxp;
   // Determinar si es CRÉDITO por esquema_pago o por numero_doc con -C al final
@@ -4248,6 +4272,16 @@ async function _verCxPAutomatica(c, id_cxp) {
   if (btnAnularEj) {
     const puedeAnular = (c.estado === 'PAGADA' || c.estado === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR'));
     btnAnularEj.style.display = puedeAnular ? '' : 'none';
+  }
+
+  // Mostrar botón RECHAZAR COMPRA si NO está PAGADA ni PARCIAL (una vez
+  // que hay dinero real movido, ya no se puede "rechazar" -- hay que
+  // Anular el Pago Ejecutado primero, ver botón de arriba) y el Usuario
+  // tiene el Nivel de Aprobar/Rechazar Compras.
+  const btnRechazarCompra = document.getElementById('cxp-auto-btn-rechazar');
+  if (btnRechazarCompra) {
+    const puedeRechazar = c.estado !== 'PAGADA' && c.estado !== 'PARCIAL' && (sesionActual?.administrador || puedo('PAGOS','APROBAR'));
+    btnRechazarCompra.style.display = puedeRechazar ? '' : 'none';
   }
 
   abrirModal('modal-ver-cxp-auto');
