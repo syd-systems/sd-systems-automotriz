@@ -1356,17 +1356,17 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260814401"></script>
-<script src="js/parametros.js?v=20260814401"></script>
-<script src="js/empresas.js?v=20260814401"></script>
-<script src="js/ingresos.js?v=20260814401"></script>
-<script src="js/inventario.js?v=20260814401"></script>
-<script src="js/proveedores.js?v=20260814401"></script>
-<script src="js/contabilidad.js?v=20260814401"></script>
-<script src="js/egresos.js?v=20260814401"></script>
-<script src="js/vehiculos.js?v=20260814401"></script>
-<script src="js/catalogo.js?v=20260814401"></script>
-<script src="js/ordenes.js?v=20260814401"></script>
+<script src="js/core.js?v=20260814403"></script>
+<script src="js/parametros.js?v=20260814403"></script>
+<script src="js/empresas.js?v=20260814403"></script>
+<script src="js/ingresos.js?v=20260814403"></script>
+<script src="js/inventario.js?v=20260814403"></script>
+<script src="js/proveedores.js?v=20260814403"></script>
+<script src="js/contabilidad.js?v=20260814403"></script>
+<script src="js/egresos.js?v=20260814403"></script>
+<script src="js/vehiculos.js?v=20260814403"></script>
+<script src="js/catalogo.js?v=20260814403"></script>
+<script src="js/ordenes.js?v=20260814403"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3834,6 +3834,12 @@
       </div>
 
       <div class="form-campo form-full">
+        <label>Motivo de la Anulación *</label>
+        <textarea id="anulacion-motivo" rows="2" placeholder="Explique por qué se está anulando este movimiento"
+          style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;resize:vertical"></textarea>
+      </div>
+
+      <div class="form-campo form-full">
         <label>Contraseña de Autorización *</label>
         <input type="password" id="anulacion-clave" placeholder="Ingrese su contraseña para confirmar"
           style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
@@ -4824,6 +4830,10 @@
 
       <div class="alerta alerta-exito" id="alerta-edit-mov-ok" style="display:none;margin:0 0 12px"></div>
       <div class="alerta alerta-error"  id="alerta-edit-mov-err" style="display:none;margin:0 0 12px"></div>
+      <div id="edit-mov-banner-anulada" style="display:none;background:rgba(252,129,129,0.08);border:1px solid rgba(252,129,129,0.3);border-radius:6px;padding:10px 14px;margin:0 0 12px;font-size:12px;color:#fc8181">
+        <strong>⚠ Movimiento Anulado</strong><br>
+        <span id="edit-mov-banner-anulada-motivo"></span>
+      </div>
 
       <div id="edit-mov-ent-cont">
       <!-- Info artículo -->
