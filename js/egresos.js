@@ -4726,7 +4726,11 @@ async function _renderDesglosePagoEjecutar() {
 
   const monedaCxP = document.getElementById('exec-pago-moneda')?.value || 'USD';
   const esUSD = monedaCxP !== 'VES';
-  const fechaPago = c.fecha_vencimiento?.slice(0,10) || (getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10));
+  // fechaPago -- SIEMPRE hoy, el día real en que se ejecuta el pago (para
+  // buscar la tasa BCV y el IGTF/IVA vigentes). Si una CxP vencida ayer se
+  // paga hoy, la tasa y el IGTF deben ser los de HOY, nunca los del día de
+  // vencimiento -- antes se usaba c.fecha_vencimiento por error.
+  const fechaPago = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
 
   // Total en la Moneda de Pago -- según cuál sea la Moneda de
   // NEGOCIACIÓN (la deuda real):
@@ -4916,7 +4920,11 @@ async function confirmarEjecucionPago() {
     // de lo que se acaba de capturar en esta misma pantalla.
     c.numero_factura_proveedor = document.getElementById('exec-pago-factura-no')?.value?.trim() || null;
 
-    const fechaPago  = c.fecha_vencimiento?.slice(0,10) || (getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10));
+    // fechaPago -- SIEMPRE hoy, el día real en que se ejecuta el pago
+    // (para buscar tasa BCV / IGTF / IVA vigentes). Antes se usaba
+    // c.fecha_vencimiento por error -- si una CxP vencida ayer se pagaba
+    // hoy, usaba la tasa y el IGTF de AYER en vez de los de hoy.
+    const fechaPago  = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
     // Moneda de Pago -- la que quedó seleccionada en pantalla (puede haber
     // sido corregida manualmente); si el select no llegó a existir por
     // algún motivo, cae a la guardada en la CxP.
