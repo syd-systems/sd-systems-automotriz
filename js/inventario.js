@@ -4154,6 +4154,25 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     if (el) el.style.display = tipo === 'ENTRADA' ? '' : 'none';
   });
 
+  // Banner de Motivo de Anulación, si aplica
+  const bannerAnul = document.getElementById('edit-mov-banner-anulada');
+  const bannerAnulMotivo = document.getElementById('edit-mov-banner-anulada-motivo');
+  if (bannerAnul) {
+    if (m.anulada) {
+      let motivoMostrar = '';
+      if (tipo === 'ENTRADA') {
+        motivoMostrar = m.motivo_rechazo || '';
+      } else {
+        const mObs = (m.observaciones || '').match(/\[Motivo Anulación: ([^\]]+)\]/);
+        motivoMostrar = mObs ? mObs[1] : '';
+      }
+      if (bannerAnulMotivo) bannerAnulMotivo.textContent = 'Motivo: ' + (motivoMostrar || '—');
+      bannerAnul.style.display = '';
+    } else {
+      bannerAnul.style.display = 'none';
+    }
+  }
+
   // Botón Anular — visible si no está anulada y tiene permiso
   const btnAnular = document.getElementById('btn-anular-movimiento');
   if (btnAnular) {
@@ -5233,6 +5252,7 @@ async function anularMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
   document.getElementById('anulacion-info-area').textContent  = areaInfo;
   const fecha = tipo === 'ENTRADA' ? (movOrig.fecha_entrada || movOrig.fecha_registro) : (movOrig.fecha_salida || movOrig.fecha_registro);
   document.getElementById('anulacion-info-fecha').textContent = fecha ? fecha.slice(0,10).split('-').reverse().join('/') : '—';
+  document.getElementById('anulacion-motivo').value = '';
   document.getElementById('anulacion-clave').value = '';
   document.getElementById('alerta-anulacion-ok').style.display  = 'none';
   document.getElementById('alerta-anulacion-err').style.display = 'none';
@@ -5249,8 +5269,10 @@ async function confirmarAnulacion() {
   const idMovimiento  = parseInt(document.getElementById('anulacion-id-movimiento').value);
   const id_articulo   = parseInt(document.getElementById('anulacion-id-articulo').value);
   const cantidad      = parseFloat(document.getElementById('anulacion-cantidad').value);
+  const motivo        = document.getElementById('anulacion-motivo').value.trim();
   const clave         = document.getElementById('anulacion-clave').value;
 
+  if (!motivo) { errEl.textContent = 'Explique el Motivo de la Anulación.'; errEl.style.display = 'block'; document.getElementById('anulacion-motivo')?.focus(); return; }
   if (!clave) { errEl.textContent = 'Ingrese su contraseña para autorizar.'; errEl.style.display = 'block'; return; }
 
   const btnConfirmar = document.querySelector('#modal-anulacion-stock .btn-peligro');
@@ -5347,10 +5369,10 @@ async function confirmarAnulacion() {
     }
 
 
-    // 6. Marcar movimiento como anulado
+    // 6. Marcar movimiento como anulado (con el Motivo, como evidencia)
     if (tipo === 'ENTRADA') {
       await api('stock_entradas', 'PATCH',
-        { anulada: true, id_usuario_reversa: sesionActual.correo_usuario, estado_revision: null },
+        { anulada: true, id_usuario_reversa: sesionActual.correo_usuario, estado_revision: null, motivo_rechazo: motivo },
         '?id_entrada=eq.' + idMovimiento);
       // Si estaba EN_REVISION (CxP rechazada), anularla también la resuelve
       // -- marcar como resueltas las notificaciones pendientes asociadas.
@@ -5362,19 +5384,22 @@ async function confirmarAnulacion() {
         }
       } catch(eResAnul) { console.warn('Error resolviendo notificaciones de revisión:', eResAnul); }
     } else {
+      // stock_salidas no tiene columna dedicada para el motivo -- se
+      // agrega a observaciones, preservando lo que ya hubiera.
+      const obsPrevSalAnul = movOrig.observaciones ? (movOrig.observaciones + ' ') : '';
       await api('stock_salidas', 'PATCH',
-        { anulada: true, id_usuario_reversa: sesionActual.correo_usuario },
+        { anulada: true, id_usuario_reversa: sesionActual.correo_usuario, observaciones: obsPrevSalAnul + '[Motivo Anulación: ' + motivo + ']' },
         '?id_salida=eq.' + idMovimiento);
     }
 
-    // 7. Anular asiento contable original
+    // 7. Anular asiento contable original (con el Motivo)
     try {
       const ref = tipo === 'ENTRADA' ? 'ENT-' + idMovimiento : 'SAL-' + idMovimiento;
       const asientos = await api('cont_asientos', 'GET', null,
         '?referencia=eq.' + ref + emisorQ() + '&select=id_asiento,descripcion&estado=neq.ANULADO');
       if (asientos && asientos.length) {
         await api('cont_asientos', 'PATCH',
-          { estado: 'ANULADO', descripcion: '[ANULADO] ' + (asientos[0].descripcion || '') },
+          { estado: 'ANULADO', descripcion: '[ANULADO — Motivo: ' + motivo + '] ' + (asientos[0].descripcion || '') },
           '?id_asiento=eq.' + asientos[0].id_asiento);
       }
     } catch(eAst) { console.warn('Error anulando asiento:', eAst); }
@@ -5387,7 +5412,7 @@ async function confirmarAnulacion() {
           '?numero_doc=ilike.' + encodeURIComponent('ENT-' + idMovimiento + '*') + emisorQ() + '&estado=in.(PENDIENTE,APROBADA)&select=id_cxp');
         for (const cxAnul of (cxps || [])) {
           await api('cont_cxp', 'PATCH',
-            { estado: 'ANULADA', observaciones: '[ANULADO] Entrada de stock anulada.' },
+            { estado: 'ANULADA', observaciones: '[ANULADO] Entrada de stock anulada. Motivo: ' + motivo },
             '?id_cxp=eq.' + cxAnul.id_cxp);
         }
       } catch(eCxP) { console.warn('Error anulando CxP:', eCxP); }
@@ -5403,7 +5428,7 @@ async function confirmarAnulacion() {
             correo_destino: movOrig.id_usuario,
             titulo: 'Entrada de Compra Rechazada',
             mensaje: '<div style="font-size:13px">La Compra <strong>ENT-'+idMovimiento+'</strong> ("'+artNomAnul+'", '+cantidad+' uds.), que ya estaba aprobada, fue <strong style="color:#fc8181">anulada</strong> por '
-              + (sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor') + '.</div>',
+              + (sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor') + '.<br><br><strong>Motivo:</strong> ' + motivo + '</div>',
             estado: 'PENDIENTE',
             fecha_creacion: new Date().toISOString(),
             datos_extra: JSON.stringify({ id_entrada: idMovimiento, accion: 'entrada_compra_rechazada' })
