@@ -4274,13 +4274,14 @@ async function _verCxPAutomatica(c, id_cxp) {
     btnAnularEj.style.display = puedeAnular ? '' : 'none';
   }
 
-  // Mostrar botón RECHAZAR COMPRA si NO está PAGADA ni PARCIAL (una vez
-  // que hay dinero real movido, ya no se puede "rechazar" -- hay que
-  // Anular el Pago Ejecutado primero, ver botón de arriba) y el Usuario
-  // tiene el Nivel de Aprobar/Rechazar Compras.
+  // Mostrar botón RECHAZAR COMPRA solo si está APROBADA -- es el único
+  // estado donde "rechazar" tiene sentido real: si ya está PAGADA/PARCIAL
+  // hay dinero real movido (hay que Anular el Pago Ejecutado primero, ver
+  // botón de arriba); si ya está ANULADA o RECHAZADA, ya se resolvió.
+  // Requiere además el Nivel de Aprobar/Rechazar Compras.
   const btnRechazarCompra = document.getElementById('cxp-auto-btn-rechazar');
   if (btnRechazarCompra) {
-    const puedeRechazar = c.estado !== 'PAGADA' && c.estado !== 'PARCIAL' && (sesionActual?.administrador || puedo('PAGOS','APROBAR'));
+    const puedeRechazar = c.estado === 'APROBADA' && (sesionActual?.administrador || puedo('PAGOS','APROBAR'));
     btnRechazarCompra.style.display = puedeRechazar ? '' : 'none';
   }
 
