@@ -5163,9 +5163,15 @@ function calcularCuotasEdit() {
 }
 
 async function anularMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
-  // Verificar permiso
+  // Verificar permiso -- para ENTRADA, además del permiso propio de
+  // Inventario, también se acepta PAGOS.APROBAR (Nivel de Aprobar/Rechazar
+  // Compras), ya que esta misma función se invoca desde el botón
+  // "❌ Rechazar Compra" en la Ficha de Obligación de Pago.
   const permiso = tipo === 'ENTRADA' ? 'ANULAR_ENTRADA' : 'ANULAR_SALIDA';
-  if (!sesionActual?.administrador && !puedo('INVENTARIO', permiso)) {
+  const tienePermisoAnular = sesionActual?.administrador
+    || puedo('INVENTARIO', permiso)
+    || (tipo === 'ENTRADA' && puedo('PAGOS', 'APROBAR'));
+  if (!tienePermisoAnular) {
     alert('No tiene permiso para anular ' + (tipo === 'ENTRADA' ? 'entradas' : 'salidas') + ' de stock.');
     return;
   }
@@ -5354,17 +5360,37 @@ async function confirmarAnulacion() {
       }
     } catch(eAst) { console.warn('Error anulando asiento:', eAst); }
 
-    // 8. Anular CxP si es entrada por compra
+    // 8. Anular CxP si es entrada por compra (PENDIENTE o APROBADA -- ya
+    // se validó más arriba que no esté PAGADA/PARCIAL)
     if (tipo === 'ENTRADA') {
       try {
         const cxps = await api('cont_cxp', 'GET', null,
-          '?numero_doc=eq.' + encodeURIComponent('ENT-' + idMovimiento) + emisorQ() + '&estado=eq.PENDIENTE&select=id_cxp');
-        if (cxps && cxps.length) {
+          '?numero_doc=ilike.' + encodeURIComponent('ENT-' + idMovimiento + '*') + emisorQ() + '&estado=in.(PENDIENTE,APROBADA)&select=id_cxp');
+        for (const cxAnul of (cxps || [])) {
           await api('cont_cxp', 'PATCH',
             { estado: 'ANULADA', observaciones: '[ANULADO] Entrada de stock anulada.' },
-            '?id_cxp=eq.' + cxps[0].id_cxp);
+            '?id_cxp=eq.' + cxAnul.id_cxp);
         }
       } catch(eCxP) { console.warn('Error anulando CxP:', eCxP); }
+
+      // 8b. Notificar al operador que creó la Entrada -- antes solo se
+      // notificaba en anulaciones de SALIDA; una Entrada ya APROBADA que
+      // se rechaza/anula desde Cuentas por Pagar también debe avisarle.
+      if (movOrig.id_usuario) {
+        try {
+          const artNomAnul = (Array.isArray(window.inventarioCache) ? window.inventarioCache : [])
+            .find(function(x){ return x.id_articulo === id_articulo; })?.nombre_articulo || ('Art#' + id_articulo);
+          await api('notificaciones','POST',{
+            correo_destino: movOrig.id_usuario,
+            titulo: 'Entrada de Compra Rechazada',
+            mensaje: '<div style="font-size:13px">La Compra <strong>ENT-'+idMovimiento+'</strong> ("'+artNomAnul+'", '+cantidad+' uds.), que ya estaba aprobada, fue <strong style="color:#fc8181">anulada</strong> por '
+              + (sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor') + '.</div>',
+            estado: 'PENDIENTE',
+            fecha_creacion: new Date().toISOString(),
+            datos_extra: JSON.stringify({ id_entrada: idMovimiento, accion: 'entrada_compra_rechazada' })
+          }, '', true);
+        } catch(eNotifAnulEnt) { console.warn('Error notificando anulación de Entrada:', eNotifAnulEnt); }
+      }
     }
 
     // 9. Notificaciones para SALIDAS
