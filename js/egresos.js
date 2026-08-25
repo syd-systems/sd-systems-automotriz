@@ -4003,7 +4003,7 @@ async function verPagoCxP(id_cxp) {
   await verDetalleCxP(id_cxp, 'ver');
 }
 
-// Botón "❌ Rechazar Compra" en la Ficha de Obligación de Pago -- para
+// Botón "❌ Anular Compra" en la Ficha de Obligación de Pago -- para
 // Usuarios con Nivel de Aprobar/Rechazar Compras (PAGOS.APROBAR), permite
 // rechazar una Compra ya aprobada, siempre que no esté PAGADA/PARCIAL.
 // Reutiliza el mecanismo de anulación ya existente (anularMovimiento),
@@ -4274,7 +4274,7 @@ async function _verCxPAutomatica(c, id_cxp) {
     btnAnularEj.style.display = puedeAnular ? '' : 'none';
   }
 
-  // Mostrar botón RECHAZAR COMPRA solo si está APROBADA -- es el único
+  // Mostrar botón ANULAR COMPRA solo si está APROBADA -- es el único
   // estado donde "rechazar" tiene sentido real: si ya está PAGADA/PARCIAL
   // hay dinero real movido (hay que Anular el Pago Ejecutado primero, ver
   // botón de arriba); si ya está ANULADA o RECHAZADA, ya se resolvió.
