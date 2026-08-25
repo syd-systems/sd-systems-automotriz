@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260814395';
+const SYD_VERSION = '20260814396';
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
@@ -77,8 +77,13 @@ async function cargarTasaIVAGlobal() {
 // Devuelve el decimal (ej. 0.16) o null si no hay ningún registro <= fecha.
 async function tributoVigenteEnFecha(codigo, fecha) {
   try {
+    // fecha_registro es timestamp CON hora, pero 'fecha' llega como solo
+    // YYYY-MM-DD -- sin esto, Postgres lo interpreta como medianoche, y un
+    // tributo registrado HOY después de medianoche (ej. 11:06 AM) queda
+    // excluido por el <=, cayendo erróneamente al registro más viejo.
+    const finDelDia = fecha + 'T23:59:59.999';
     const rows = await api('param_tributos','GET',null,
-      '?codigo=eq.'+codigo+'&fecha_registro=lte.'+fecha+'&order=fecha_registro.desc&limit=1&select=alicuota,fecha_registro');
+      '?codigo=eq.'+codigo+'&fecha_registro=lte.'+finDelDia+'&order=fecha_registro.desc&limit=1&select=alicuota,fecha_registro');
     return (rows && rows[0] && rows[0].alicuota != null) ? parseFloat(rows[0].alicuota) / 100 : null;
   } catch(e) {
     console.warn('Error buscando tributo '+codigo+' vigente en fecha '+fecha+':', e);
