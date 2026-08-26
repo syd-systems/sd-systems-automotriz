@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260826125';
+const SYD_VERSION = '20260826130';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -334,24 +334,22 @@ let _empresaActiva     = null; // { id_empresa, nombre, rif, ... }
 let _empresasUsuario   = [];   // lista de empresas del usuario
 let _tasaVigente       = 1;    // tasa USD→VES más reciente (se carga al iniciar)
 
-// ─── CACHES DE MÓDULO ───
-// Declaradas aquí (no solo dentro de renderModuloActual(), que únicamente
-// corre al cambiar de Empresa) para que existan desde que carga la página --
-// de lo contrario, un módulo que dependiera de la cache de OTRO antes de que
-// ese otro se hubiera visitado en la sesión actual lanzaba ReferenceError.
-let ordenesCache      = [];
-let facturasCache     = [];
-let vehiculosCache    = [];
-let propietariosCache = [];
+// ─── CACHES DE MÓDULO SIN DECLARACIÓN PROPIA ───
+// Solo las que NO tienen ya un 'let' en su propio archivo (ordenesCache,
+// facturasCache, vehiculosCache, propietariosCache, catalogoCache,
+// contAsientosCache, contCxcCache, contCxpCache YA están declaradas en
+// ordenes.js/ingresos.js/vehiculos.js/catalogo.js/contabilidad.js --
+// declararlas de nuevo aquí causaría SyntaxError "already declared" y
+// rompería la carga completa de esos archivos, como pasó en el intento
+// anterior). Estas cinco solo existían como asignación suelta dentro de
+// renderModuloActual() (que únicamente corre al cambiar de Empresa) o del
+// render*() de su propio módulo -- por eso Ventas fallaba con
+// ReferenceError al necesitar clientesCache sin haber abierto Clientes.
 let empleadosCache    = [];
 let inventarioCache   = [];
-let catalogoCache     = [];
 let proveedoresCache  = [];
 let clientesCache     = [];
 let ventasCache       = [];
-let contAsientosCache = [];
-let contCxcCache      = [];
-let contCxpCache      = [];
 
 // JWT de sesión — se actualiza al hacer login con Supabase Auth
 let _sessionJWT          = null;
