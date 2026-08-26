@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260826130"></script>
-<script src="js/parametros.js?v=20260826130"></script>
-<script src="js/empresas.js?v=20260826130"></script>
-<script src="js/ingresos.js?v=20260826130"></script>
-<script src="js/inventario.js?v=20260826130"></script>
-<script src="js/proveedores.js?v=20260826130"></script>
-<script src="js/clientes.js?v=20260826130"></script>
-<script src="js/ventas.js?v=20260826130"></script>
-<script src="js/contabilidad.js?v=20260826130"></script>
-<script src="js/egresos.js?v=20260826130"></script>
-<script src="js/vehiculos.js?v=20260826130"></script>
-<script src="js/catalogo.js?v=20260826130"></script>
-<script src="js/ordenes.js?v=20260826130"></script>
+<script src="js/core.js?v=20260826140"></script>
+<script src="js/parametros.js?v=20260826140"></script>
+<script src="js/empresas.js?v=20260826140"></script>
+<script src="js/ingresos.js?v=20260826140"></script>
+<script src="js/inventario.js?v=20260826140"></script>
+<script src="js/proveedores.js?v=20260826140"></script>
+<script src="js/clientes.js?v=20260826140"></script>
+<script src="js/ventas.js?v=20260826140"></script>
+<script src="js/contabilidad.js?v=20260826140"></script>
+<script src="js/egresos.js?v=20260826140"></script>
+<script src="js/vehiculos.js?v=20260826140"></script>
+<script src="js/catalogo.js?v=20260826140"></script>
+<script src="js/ordenes.js?v=20260826140"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3939,24 +3939,20 @@
           </div>
         </div>
         <div class="form-campo">
-          <label>Área de origen del Stock *</label>
-          <select id="vta-select-area" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"></select>
-        </div>
-        <div class="form-campo">
           <label>Fecha de Venta *</label>
           <input type="date" id="vta-fecha">
         </div>
         <div class="form-campo">
           <label>Moneda de Cobro</label>
-          <select id="vta-moneda" onchange="_aplicarReglaIGTFVenta()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <select id="vta-moneda" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="USD">USD</option>
             <option value="VES">VES</option>
           </select>
         </div>
         <div class="form-campo" style="display:flex;align-items:center;gap:16px;padding-top:22px">
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400"><input type="checkbox" id="vta-aplica-iva" onchange="_calcularTotalesVenta()"> Aplica IVA</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400"><input type="checkbox" id="vta-aplica-igtf" onchange="_calcularTotalesVenta()"> Aplica IGTF</label>
         </div>
+        <input type="hidden" id="vta-id-area">
       </div>
 
       <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center">
