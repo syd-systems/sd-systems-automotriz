@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260826120';
+const SYD_VERSION = '20260826125';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -333,6 +333,25 @@ async function tieneNivelMinimo(ordenRequerido) {
 let _empresaActiva     = null; // { id_empresa, nombre, rif, ... }
 let _empresasUsuario   = [];   // lista de empresas del usuario
 let _tasaVigente       = 1;    // tasa USD→VES más reciente (se carga al iniciar)
+
+// ─── CACHES DE MÓDULO ───
+// Declaradas aquí (no solo dentro de renderModuloActual(), que únicamente
+// corre al cambiar de Empresa) para que existan desde que carga la página --
+// de lo contrario, un módulo que dependiera de la cache de OTRO antes de que
+// ese otro se hubiera visitado en la sesión actual lanzaba ReferenceError.
+let ordenesCache      = [];
+let facturasCache     = [];
+let vehiculosCache    = [];
+let propietariosCache = [];
+let empleadosCache    = [];
+let inventarioCache   = [];
+let catalogoCache     = [];
+let proveedoresCache  = [];
+let clientesCache     = [];
+let ventasCache       = [];
+let contAsientosCache = [];
+let contCxcCache      = [];
+let contCxpCache      = [];
 
 // JWT de sesión — se actualiza al hacer login con Supabase Auth
 let _sessionJWT          = null;
