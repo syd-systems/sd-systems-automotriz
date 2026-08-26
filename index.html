@@ -1155,6 +1155,9 @@
       <div class="nav-item" id="nav-PROVEEDORES" onclick="mostrarModulo('proveedores', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">🏭</span> Proveedores
       </div>
+      <div class="nav-item" id="nav-CLIENTES" onclick="mostrarModulo('clientes', this); cerrarMenuMovil()" style="display:none">
+        <span class="nav-icono">🧑‍🤝‍🧑</span> Clientes
+      </div>
       <div class="nav-seccion" id="nav-seccion-soporte">Soporte Técnico</div>
       <div class="nav-item" id="nav-USUARIOS" onclick="mostrarModulo('usuarios', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">🔐</span> Usuarios
@@ -1356,17 +1359,18 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260825175"></script>
-<script src="js/parametros.js?v=20260825175"></script>
-<script src="js/empresas.js?v=20260825175"></script>
-<script src="js/ingresos.js?v=20260825175"></script>
-<script src="js/inventario.js?v=20260825175"></script>
-<script src="js/proveedores.js?v=20260825175"></script>
-<script src="js/contabilidad.js?v=20260825175"></script>
-<script src="js/egresos.js?v=20260825175"></script>
-<script src="js/vehiculos.js?v=20260825175"></script>
-<script src="js/catalogo.js?v=20260825175"></script>
-<script src="js/ordenes.js?v=20260825175"></script>
+<script src="js/core.js?v=20260826100"></script>
+<script src="js/parametros.js?v=20260826100"></script>
+<script src="js/empresas.js?v=20260826100"></script>
+<script src="js/ingresos.js?v=20260826100"></script>
+<script src="js/inventario.js?v=20260826100"></script>
+<script src="js/proveedores.js?v=20260826100"></script>
+<script src="js/clientes.js?v=20260826100"></script>
+<script src="js/contabilidad.js?v=20260826100"></script>
+<script src="js/egresos.js?v=20260826100"></script>
+<script src="js/vehiculos.js?v=20260826100"></script>
+<script src="js/catalogo.js?v=20260826100"></script>
+<script src="js/ordenes.js?v=20260826100"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3777,6 +3781,137 @@
       <button class="btn-peligro"    id="ficha-prov-btn-eliminar" style="display:none">🗑 Eliminar</button>
       <button class="btn-naranja" id="ficha-prov-btn-editar"   style="display:none">✏ Editar</button>
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-prov')">Retornar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL CLIENTE (crear/editar)        -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-cliente">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-header">
+      <h3 id="cli-modal-titulo">NUEVO CLIENTE</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-cliente')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-campo">
+          <label>Condición Legal *</label>
+          <select id="cli-condicion-legal" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="V">V — Venezolano</option>
+            <option value="E">E — Extranjero</option>
+            <option value="J">J — Jurídico</option>
+            <option value="G">G — Gubernamental</option>
+            <option value="C">C — Comuna</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Identificación *</label>
+          <input type="text" id="cli-identificacion" placeholder="Solo dígitos" maxlength="15" style="font-family:var(--font-mono)" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        </div>
+        <div class="form-campo form-full">
+          <label>Nombre / Apellido / Razón Social *</label>
+          <input type="text" id="cli-nombre-apellido" placeholder="Nombre completo del cliente">
+        </div>
+        <div class="form-campo">
+          <label>Teléfono Móvil</label>
+          <input type="text" id="cli-telefono-movil" placeholder="0414-XXXXXXX">
+        </div>
+        <div class="form-campo">
+          <label>Correo Electrónico</label>
+          <input type="email" id="cli-correo-electronico" placeholder="cliente@correo.com">
+        </div>
+        <div class="form-campo form-full">
+          <label>Dirección</label>
+          <input type="text" id="cli-direccion" placeholder="Dirección completa">
+        </div>
+        <div class="form-campo">
+          <label>Estado</label>
+          <select id="cli-estado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="ACTIVO">Activo</option>
+            <option value="INACTIVO">Inactivo</option>
+          </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Observaciones</label>
+          <textarea id="cli-observaciones" placeholder="Observaciones adicionales..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%"></textarea>
+        </div>
+      </div>
+      <input type="hidden" id="cli-id">
+    </div>
+    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="alerta alerta-exito" id="alerta-cli-ok"  style="margin:0"></div>
+      <div class="alerta alerta-error"  id="alerta-cli-err" style="margin:0"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-secundario" onclick="cerrarModal('modal-cliente')">Retornar</button>
+        <button class="btn-primario"   onclick="btnSetGuardando(this,true);guardarCliente().finally(()=>btnSetGuardando(this,false))">GUARDAR</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL FICHA CLIENTE                 -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-ficha-cliente">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header">
+      <h3>FICHA DEL CLIENTE</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-cliente')">✕</button>
+    </div>
+    <div class="modal-body" id="ficha-cliente-contenido"></div>
+    <div class="modal-footer">
+      <button class="btn-peligro"    id="ficha-cliente-btn-eliminar" style="display:none">🗑 Eliminar</button>
+      <button class="btn-naranja" id="ficha-cliente-btn-editar"   style="display:none">✏ Editar</button>
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-cliente')">Retornar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL CLIENTE RÁPIDO                -->
+<!--    Invocable desde otros módulos (ej. Ventas) sin salir del flujo -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-cliente-rapido">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h3>NUEVO CLIENTE RÁPIDO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-cliente-rapido')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-campo">
+          <label>Condición Legal *</label>
+          <select id="clir-condicion-legal" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="V">V — Venezolano</option>
+            <option value="E">E — Extranjero</option>
+            <option value="J">J — Jurídico</option>
+            <option value="G">G — Gubernamental</option>
+            <option value="C">C — Comuna</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Identificación *</label>
+          <input type="text" id="clir-identificacion" placeholder="Solo dígitos" maxlength="15" style="font-family:var(--font-mono)" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        </div>
+        <div class="form-campo form-full">
+          <label>Nombre / Apellido / Razón Social *</label>
+          <input type="text" id="clir-nombre-apellido" placeholder="Nombre completo del cliente">
+        </div>
+        <div class="form-campo form-full">
+          <label>Teléfono Móvil</label>
+          <input type="text" id="clir-telefono-movil" placeholder="0414-XXXXXXX">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="alerta alerta-exito" id="alerta-clir-ok"  style="margin:0"></div>
+      <div class="alerta alerta-error"  id="alerta-clir-err" style="margin:0"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-secundario" onclick="cerrarModal('modal-cliente-rapido')">Retornar</button>
+        <button class="btn-primario"   onclick="btnSetGuardando(this,true);guardarClienteRapido().finally(()=>btnSetGuardando(this,false))">GUARDAR</button>
+      </div>
     </div>
   </div>
 </div>
