@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260826140"></script>
-<script src="js/parametros.js?v=20260826140"></script>
-<script src="js/empresas.js?v=20260826140"></script>
-<script src="js/ingresos.js?v=20260826140"></script>
-<script src="js/inventario.js?v=20260826140"></script>
-<script src="js/proveedores.js?v=20260826140"></script>
-<script src="js/clientes.js?v=20260826140"></script>
-<script src="js/ventas.js?v=20260826140"></script>
-<script src="js/contabilidad.js?v=20260826140"></script>
-<script src="js/egresos.js?v=20260826140"></script>
-<script src="js/vehiculos.js?v=20260826140"></script>
-<script src="js/catalogo.js?v=20260826140"></script>
-<script src="js/ordenes.js?v=20260826140"></script>
+<script src="js/core.js?v=20260826150"></script>
+<script src="js/parametros.js?v=20260826150"></script>
+<script src="js/empresas.js?v=20260826150"></script>
+<script src="js/ingresos.js?v=20260826150"></script>
+<script src="js/inventario.js?v=20260826150"></script>
+<script src="js/proveedores.js?v=20260826150"></script>
+<script src="js/clientes.js?v=20260826150"></script>
+<script src="js/ventas.js?v=20260826150"></script>
+<script src="js/contabilidad.js?v=20260826150"></script>
+<script src="js/egresos.js?v=20260826150"></script>
+<script src="js/vehiculos.js?v=20260826150"></script>
+<script src="js/catalogo.js?v=20260826150"></script>
+<script src="js/ordenes.js?v=20260826150"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3926,27 +3926,26 @@
 <div class="modal-overlay" id="modal-venta">
   <div class="modal" style="max-width:760px">
     <div class="modal-header">
-      <h3 id="vta-modal-titulo">NUEVA VENTA</h3>
+      <div>
+        <h3 id="vta-modal-titulo">NUEVA VENTA</h3>
+        <div id="vta-fecha-display" style="font-size:12px;color:var(--suave);margin-top:2px"></div>
+      </div>
       <button class="modal-cerrar" onclick="cerrarModal('modal-venta')">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-campo">
-          <label>Cliente *</label>
+          <label>Cliente</label>
           <div style="display:flex;gap:6px">
             <select id="vta-select-cliente" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none"></select>
             <button type="button" class="btn-secundario" style="white-space:nowrap" onclick="abrirClienteRapido(function(cli){ if(!cli) return; const sel=document.getElementById('vta-select-cliente'); const opt=document.createElement('option'); opt.value=cli.id_cliente; opt.textContent=cli.nombre_apellido+' ('+cli.condicion_legal+'-'+cli.identificacion+')'; sel.appendChild(opt); sel.value=cli.id_cliente; })">+ Nuevo</button>
           </div>
         </div>
         <div class="form-campo">
-          <label>Fecha de Venta *</label>
-          <input type="date" id="vta-fecha">
-        </div>
-        <div class="form-campo">
           <label>Moneda de Cobro</label>
           <select id="vta-moneda" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="USD">USD</option>
             <option value="VES">VES</option>
+            <option value="USD">USD</option>
           </select>
         </div>
         <div class="form-campo" style="display:flex;align-items:center;gap:16px;padding-top:22px">
@@ -3961,7 +3960,7 @@
       </div>
       <div class="tabla-container" style="max-height:220px;margin-top:8px">
         <table style="width:100%"><thead><tr>
-          <th style="font-size:11px">Artículo</th><th style="font-size:11px">Cant.</th><th style="font-size:11px">P. Unit. ($)</th><th style="font-size:11px">Subtotal</th><th></th>
+          <th style="font-size:11px">Artículo</th><th style="font-size:11px">Cant.</th><th style="font-size:11px">P. Unit.</th><th style="font-size:11px">Subtotal</th><th></th>
         </tr></thead><tbody id="vta-lineas-cuerpo"></tbody></table>
       </div>
       <div id="vta-totales"></div>
@@ -3973,7 +3972,7 @@
       <div class="alerta alerta-error"  id="alerta-vta-err" style="margin:0"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button class="btn-secundario" onclick="cerrarModal('modal-venta')">Retornar</button>
-        <button class="btn-primario"   onclick="btnSetGuardando(this,true);guardarVentaBorrador().finally(()=>btnSetGuardando(this,false))">GUARDAR BORRADOR</button>
+        <button class="btn-primario"   onclick="btnSetGuardando(this,true);guardarVentaBorrador().finally(()=>btnSetGuardando(this,false))">GUARDAR PRESUPUESTO</button>
       </div>
     </div>
   </div>
