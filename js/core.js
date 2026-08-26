@@ -115,6 +115,7 @@ const TODOS_LOS_MODULOS = [
   { sigla: 'EMISORES',     nombre: 'Datos de Empresas',  icono: '🏢' },
   { sigla: 'EMPLEADOS',    nombre: 'Empleados',          icono: '👷' },
   { sigla: 'PROVEEDORES',  nombre: 'Proveedores',        icono: '🏭' },
+  { sigla: 'CLIENTES',     nombre: 'Clientes',           icono: '🧑‍🤝‍🧑' },
   { sigla: 'TRIBUTOS',     nombre: 'Tributos',           icono: '📋' },
   { sigla: 'USUARIOS',     nombre: 'Usuarios',           icono: '🔐' },
   { sigla: 'PARAMETROS',   nombre: 'Parámetros',         icono: '⚙️' },
@@ -237,6 +238,12 @@ const PERMISOS_POR_MODULO = {
     { accion: 'CREAR',    label: 'Registrar proveedor' },
     { accion: 'EDITAR',   label: 'Editar proveedor' },
     { accion: 'ELIMINAR', label: 'Eliminar proveedor' },
+  ],
+  CLIENTES: [
+    { accion: 'VER',      label: 'Ver Ficha' },
+    { accion: 'CREAR',    label: 'Registrar cliente' },
+    { accion: 'EDITAR',   label: 'Editar cliente' },
+    { accion: 'ELIMINAR', label: 'Eliminar cliente' },
   ],
   TRIBUTOS: [
     { accion: 'VER',    label: 'Ver Ficha' },
@@ -1188,6 +1195,7 @@ function renderModuloActual() {
   inventarioCache   = [];
   catalogoCache     = [];
   proveedoresCache  = [];
+  clientesCache     = [];
   usuariosCache     = [];
   contAsientosCache = [];
   contCxcCache      = [];
@@ -1300,6 +1308,7 @@ async function mostrarModulo(modulo, navEl) {
     pagos:        'CUENTAS POR PAGAR',
     empleados:    'EMPLEADOS',
     proveedores:  'PROVEEDORES',
+    clientes:     'CLIENTES',
     proximo:      'PRÓXIMAMENTE'
   };
 
@@ -1328,6 +1337,7 @@ async function mostrarModulo(modulo, navEl) {
     case 'pagos':        renderPagos();        break;
     case 'empleados':    renderEmpleados();    break;
     case 'proveedores':  renderProveedores();  break;
+    case 'clientes':     renderClientes();     break;
     case 'contabilidad': renderContabilidad(); break;
     default:             renderProximo(navEl?.querySelector('.nav-icono')?.textContent || '🔧',
                                        navEl?.textContent.trim() || modulo);
