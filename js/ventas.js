@@ -8,6 +8,16 @@
 // solo un "carrito" en memoria/BD, sin efecto real en Inventario/Contabilidad.
 
 let _ventaLineas = []; // líneas en edición del modal (en memoria, no se guardan hasta "Guardar Borrador")
+let _idAreaAlmacenVentas = null; // id de "Gerencia de Compras" (código 2300) -- Ventas siempre descuenta de ahí, sin pedirle al operador que elija Área
+
+async function _obtenerAreaAlmacenVentas() {
+  if (_idAreaAlmacenVentas) return _idAreaAlmacenVentas;
+  try {
+    const r = await api('param_areas','GET',null,'?codigo=eq.2300&select=id&limit=1');
+    _idAreaAlmacenVentas = (r && r[0]) ? r[0].id : null;
+  } catch(e) { _idAreaAlmacenVentas = null; }
+  return _idAreaAlmacenVentas;
+}
 
 async function renderVentas() {
   if (!sesionActual?.administrador && !modulosAcceso.includes('VENTAS')) {
@@ -93,12 +103,9 @@ async function abrirVenta(id) {
   const v = id ? ventasCache.find(function(x) { return x.id_venta === id; }) : null;
   if (id && v && v.estado !== 'BORRADOR') { alert('Solo se puede editar una Venta mientras está en estado BORRADOR.'); return; }
 
-  // Cargar clientes y áreas si no están en cache
+  // Cargar clientes si no están en cache
   if (!clientesCache || !clientesCache.length) {
     try { clientesCache = await api('clientes','GET',null,'?estado=eq.ACTIVO&order=nombre_apellido.asc'); } catch(e) { clientesCache = []; }
-  }
-  if (!_invAreasCache || !_invAreasCache.length) {
-    try { _invAreasCache = await api('param_areas','GET',null,'?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'); } catch(e) { _invAreasCache = []; }
   }
   if (!inventarioCache || !inventarioCache.length) {
     try { inventarioCache = await api('inventario_almacen','GET',null,'?order=nombre_articulo.asc&select=*' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')); } catch(e) { inventarioCache = []; }
@@ -112,13 +119,12 @@ async function abrirVenta(id) {
     '<option value="">Seleccione un cliente...</option>'
     + clientesCache.map(function(cl) { return '<option value="'+cl.id_cliente+'"'+(v && v.id_cliente===cl.id_cliente?' selected':'')+'>'+cl.nombre_apellido+' ('+cl.condicion_legal+'-'+cl.identificacion+')</option>'; }).join('');
 
-  document.getElementById('vta-select-area').innerHTML =
-    '<option value="">Seleccione un área...</option>'
-    + _invAreasCache.map(function(a) { return '<option value="'+a.id+'"'+(v && v.id_area===a.id?' selected':'')+'>'+a.nombre+(a.codigo?' ('+a.codigo+')':'')+'</option>'; }).join('');
+  // Área fija de Almacén (Gerencia de Compras, código 2300) -- no se le
+  // pregunta al operador, la Venta siempre descuenta stock de ahí.
+  document.getElementById('vta-id-area').value = v ? v.id_area : await _obtenerAreaAlmacenVentas();
 
   document.getElementById('vta-moneda').value = (v && v.moneda_cobro) || 'USD';
   document.getElementById('vta-aplica-iva').checked = v ? (v.iva_usd > 0) : true;
-  _aplicarReglaIGTFVenta();
 
   _ventaLineas = [];
   if (id) {
@@ -133,18 +139,6 @@ async function abrirVenta(id) {
   _renderLineasVenta();
   abrirModal('modal-venta');
   focusFirstField('modal-venta');
-}
-
-function _aplicarReglaIGTFVenta() {
-  const moneda = document.getElementById('vta-moneda')?.value || 'USD';
-  const igtfChk = document.getElementById('vta-aplica-igtf');
-  if (!igtfChk) return;
-  const esVES = moneda === 'VES';
-  const esEspecial = (_empresaActiva?.tipo_contribuyente || '') === 'ESPECIAL';
-  if (esVES) { igtfChk.checked = false; igtfChk.disabled = true; }
-  else if (esEspecial) { igtfChk.checked = true; igtfChk.disabled = true; }
-  else { igtfChk.checked = false; igtfChk.disabled = true; }
-  _calcularTotalesVenta();
 }
 
 function agregarLineaVenta() {
@@ -180,7 +174,7 @@ function _onCambioPrecioVenta(idx, valor) {
 function _renderLineasVenta() {
   const cont = document.getElementById('vta-lineas-cuerpo');
   if (!cont) return;
-  const idArea = parseInt(document.getElementById('vta-select-area')?.value) || null;
+  const idArea = parseInt(document.getElementById('vta-id-area')?.value) || null;
 
   cont.innerHTML = _ventaLineas.map(function(lin, idx) {
     const opciones = '<option value="">Seleccione...</option>'
@@ -201,23 +195,24 @@ function _renderLineasVenta() {
 function _calcularTotalesVenta() {
   const subtotal = _ventaLineas.reduce(function(a, l) { return a + (l.cantidad||0)*(l.precio_unitario||0); }, 0);
   const aplIVA  = document.getElementById('vta-aplica-iva')?.checked;
-  const aplIGTF = document.getElementById('vta-aplica-igtf')?.checked;
   const iva  = aplIVA  ? subtotal * tasaIVAActual() : 0;
-  const base = subtotal + iva;
-  const igtf = aplIGTF ? base * tasaIGTFActual() : 0;
-  const total = base + igtf;
+  // El IGTF NO se decide aquí -- depende de en qué moneda decida pagar el
+  // Cliente y de si la Empresa es Contribuyente Especial, algo que solo se
+  // sabe con certeza al momento del Cobro (igual que ya funciona para
+  // Órdenes de Servicio). El asiento inicial de la Factura sale sin IGTF.
+  const total = subtotal + iva;
 
   const el = document.getElementById('vta-totales');
   if (el) {
     el.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px;padding:10px 0">'
       + '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">Subtotal</span><span style="font-family:var(--font-mono)">$ '+fmtUSD(subtotal)+'</span></div>'
       + (aplIVA  ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IVA ('+Math.round(tasaIVAActual()*100)+'%)</span><span style="font-family:var(--font-mono)">$ '+fmtUSD(iva)+'</span></div>' : '')
-      + (aplIGTF ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IGTF ('+Math.round(tasaIGTFActual()*100)+'%)</span><span style="font-family:var(--font-mono)">$ '+fmtUSD(igtf)+'</span></div>' : '')
       + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:6px;margin-top:2px">'
       + '<span style="font-family:var(--font-display);font-size:15px;letter-spacing:1px">TOTAL</span>'
-      + '<span style="font-family:var(--font-mono);font-size:17px;color:var(--naranja)">$ '+fmtUSD(total)+'</span></div></div>';
+      + '<span style="font-family:var(--font-mono);font-size:17px;color:var(--naranja)">$ '+fmtUSD(total)+'</span></div>'
+      + '<div style="font-size:11px;color:var(--suave);padding-top:2px">El IGTF (si aplica) se calcula al momento del Cobro, según la moneda de pago elegida.</div></div>';
   }
-  window._vtaTotales = { subtotal: subtotal, iva: iva, igtf: igtf, total: total };
+  window._vtaTotales = { subtotal: subtotal, iva: iva, igtf: 0, total: total };
 }
 
 async function guardarVentaBorrador() {
@@ -227,12 +222,12 @@ async function guardarVentaBorrador() {
 
   const id       = document.getElementById('vta-id').value;
   const idCliente = parseInt(document.getElementById('vta-select-cliente').value) || null;
-  const idArea    = parseInt(document.getElementById('vta-select-area').value) || null;
+  const idArea    = parseInt(document.getElementById('vta-id-area').value) || null;
   const fecha     = document.getElementById('vta-fecha').value;
   const moneda    = document.getElementById('vta-moneda').value;
 
   if (!idCliente) { errEl.textContent = 'Debe seleccionar un Cliente.'; errEl.style.display = 'block'; return; }
-  if (!idArea)    { errEl.textContent = 'Debe seleccionar un Área de origen del Stock.'; errEl.style.display = 'block'; return; }
+  if (!idArea)    { errEl.textContent = 'No se pudo determinar el Área de Almacén (Gerencia de Compras, código 2300). Verifique que esa Área exista en Parámetros.'; errEl.style.display = 'block'; return; }
   if (!fecha)     { errEl.textContent = 'La fecha es obligatoria.'; errEl.style.display = 'block'; return; }
   const lineasValidas = _ventaLineas.filter(function(l) { return l.id_articulo && l.cantidad > 0; });
   if (!lineasValidas.length) { errEl.textContent = 'Debe agregar al menos un artículo con cantidad mayor a 0.'; errEl.style.display = 'block'; return; }
@@ -379,8 +374,13 @@ async function facturarVenta(id) {
       moneda_cobro: v.moneda_cobro || 'USD',
       fecha_emision: v.fecha_venta || getHoyVzla(),
       estado: 'EMITIDA',
-      aplica_iva: v.iva_usd > 0, aplica_igtf: v.igtf_usd > 0,
-      subtotal_usd: v.subtotal_usd, iva_usd: v.iva_usd, igtf_usd: v.igtf_usd,
+      // El IGTF NUNCA se fija aquí -- depende de en qué moneda decida
+      // pagar el Cliente y de si la Empresa es Contribuyente Especial,
+      // algo que solo se sabe con certeza al momento del Cobro (mismo
+      // criterio ya usado para Órdenes de Servicio vía
+      // onCambiarMetodoCobroCxc, en contabilidad.js).
+      aplica_iva: v.iva_usd > 0, aplica_igtf: false,
+      subtotal_usd: v.subtotal_usd, iva_usd: v.iva_usd, igtf_usd: 0,
       total_usd: v.total_usd, total_ves: (v.total_usd||0) * (v.tasa_bcv||1), tasa_bcv: v.tasa_bcv || 1,
       id_usuario: sesionActual.correo_usuario
     };
