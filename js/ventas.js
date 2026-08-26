@@ -197,12 +197,26 @@ function quitarLineaVenta(idx) {
 
 function _onCambioArticuloVenta(idx, idArticulo) {
   const art = inventarioCache.find(function(a) { return a.id_articulo === parseInt(idArticulo); });
-  _ventaLineas[idx].id_articulo = art ? art.id_articulo : null;
+  const lin = _ventaLineas[idx];
+  lin.errorDuplicado = null;
+
+  if (art) {
+    const yaExiste = _ventaLineas.some(function(l, i) { return i !== idx && l.id_articulo === art.id_articulo; });
+    if (yaExiste) {
+      lin.id_articulo = null;
+      lin.precio_unitario = 0;
+      lin.errorDuplicado = 'Ese artículo ya está en la lista';
+      _renderLineasVenta();
+      return;
+    }
+  }
+
+  lin.id_articulo = art ? art.id_articulo : null;
   // El precio SIEMPRE se toma del Inventario (precio de venta en vivo,
   // calculado a partir del CPP + Margen vigente) -- no es editable por el
   // operador. Se guarda internamente en USD, igual que el resto del
   // sistema; la Moneda de Cobro solo afecta cómo se MUESTRA.
-  _ventaLineas[idx].precio_unitario = art ? (precioVentaEnVivo(art).usd || 0) : 0;
+  lin.precio_unitario = art ? (precioVentaEnVivo(art).usd || 0) : 0;
   _validarStockLineaVenta(idx);
 }
 
@@ -243,7 +257,9 @@ function _renderLineasVenta() {
     const subtotal = (lin.cantidad || 0) * (lin.precio_unitario || 0);
     const borderCant = lin.errorStock ? 'border:1px solid #e57373' : 'border:1px solid var(--borde)';
     return '<tr>'
-      + '<td style="padding:4px"><select onchange="_onCambioArticuloVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">'+opciones+'</select></td>'
+      + '<td style="padding:4px"><select onchange="_onCambioArticuloVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);border:1px solid '+(lin.errorDuplicado?'#e57373':'var(--borde)')+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">'+opciones+'</select>'
+        + (lin.errorDuplicado ? '<div style="font-size:10px;color:#e57373;margin-top:2px">'+lin.errorDuplicado+'</div>' : '')
+        + '</td>'
       + '<td style="padding:4px;width:90px"><input type="number" min="0" step="any" value="'+(lin.cantidad||'')+'" oninput="_onCambioCantidadVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);'+borderCant+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)">'
         + (lin.errorStock ? '<div style="font-size:10px;color:#e57373;margin-top:2px">'+lin.errorStock+'</div>' : '')
         + '</td>'
@@ -304,6 +320,8 @@ async function guardarVentaBorrador() {
     if (!lin.cantidad || lin.cantidad <= 0) { errEl.textContent = 'Línea '+nLinea+': la Cantidad debe ser mayor a 0.'; errEl.style.display = 'block'; return; }
     if (!lin.precio_unitario || lin.precio_unitario <= 0) { errEl.textContent = 'Línea '+nLinea+': el Precio Unitario debe ser mayor a 0.'; errEl.style.display = 'block'; return; }
     if (lin.errorStock) { errEl.textContent = 'Línea '+nLinea+': '+lin.errorStock+'.'; errEl.style.display = 'block'; return; }
+    const duplicada = _ventaLineas.some(function(l2, i2) { return i2 !== i && l2.id_articulo === lin.id_articulo; });
+    if (duplicada) { errEl.textContent = 'Línea '+nLinea+': ese artículo ya está agregado en otra línea.'; errEl.style.display = 'block'; return; }
   }
   const lineasValidas = _ventaLineas;
 
