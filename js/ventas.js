@@ -243,12 +243,12 @@ function _renderLineasVenta() {
     const subtotal = (lin.cantidad || 0) * (lin.precio_unitario || 0);
     const borderCant = lin.errorStock ? 'border:1px solid #e57373' : 'border:1px solid var(--borde)';
     return '<tr>'
-      + '<td style="padding:3px"><select onchange="_onCambioArticuloVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:8px;padding:4px 5px;border-radius:4px;outline:none">'+opciones+'</select></td>'
-      + '<td style="padding:3px;width:90px"><input type="number" min="0" step="any" value="'+(lin.cantidad||'')+'" oninput="_onCambioCantidadVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);'+borderCant+';color:var(--texto);font-size:8px;padding:4px 5px;border-radius:4px;outline:none;font-family:var(--font-mono)">'
-        + (lin.errorStock ? '<div style="font-size:7px;color:#e57373;margin-top:2px">'+lin.errorStock+'</div>' : '')
+      + '<td style="padding:4px"><select onchange="_onCambioArticuloVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">'+opciones+'</select></td>'
+      + '<td style="padding:4px;width:90px"><input type="number" min="0" step="any" value="'+(lin.cantidad||'')+'" oninput="_onCambioCantidadVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);'+borderCant+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)">'
+        + (lin.errorStock ? '<div style="font-size:10px;color:#e57373;margin-top:2px">'+lin.errorStock+'</div>' : '')
         + '</td>'
-      + '<td style="padding:3px 5px;width:120px;text-align:right;font-family:var(--font-mono);font-size:8px;color:var(--suave)">'+_fmtMonedaVenta(lin.precio_unitario)+'</td>'
-      + '<td style="padding:3px 5px;width:120px;text-align:right;font-family:var(--font-mono);font-size:8px;color:var(--naranja)">'+_fmtMonedaVenta(subtotal)+'</td>'
+      + '<td style="padding:4px 8px;width:120px;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--suave)">'+_fmtMonedaVenta(lin.precio_unitario)+'</td>'
+      + '<td style="padding:4px 8px;width:120px;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">'+_fmtMonedaVenta(subtotal)+'</td>'
       + '<td style="padding:4px;width:36px;text-align:center"><button onclick="quitarLineaVenta('+idx+')" style="background:none;border:none;color:var(--rojo,#e57373);cursor:pointer;font-size:16px">✕</button></td>'
       + '</tr>';
   }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:16px;font-size:12px">Sin artículos agregados</td></tr>';
@@ -269,11 +269,11 @@ function _calcularTotalesVenta() {
   const el = document.getElementById('vta-totales');
   if (el) {
     el.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px;padding:10px 0">'
-      + '<div style="display:flex;justify-content:space-between;font-size:9px"><span style="color:var(--suave)">Subtotal</span><span style="font-family:var(--font-mono)">'+_fmtMonedaVenta(subtotal)+'</span></div>'
-      + (aplIVA  ? '<div style="display:flex;justify-content:space-between;font-size:9px"><span style="color:var(--suave)">IVA ('+Math.round(tasaIVAActual()*100)+'%)</span><span style="font-family:var(--font-mono)">'+_fmtMonedaVenta(iva)+'</span></div>' : '')
+      + '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">Subtotal</span><span style="font-family:var(--font-mono)">'+_fmtMonedaVenta(subtotal)+'</span></div>'
+      + (aplIVA  ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IVA ('+Math.round(tasaIVAActual()*100)+'%)</span><span style="font-family:var(--font-mono)">'+_fmtMonedaVenta(iva)+'</span></div>' : '')
       + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:6px;margin-top:2px">'
-      + '<span style="font-family:var(--font-display);font-size:10px;letter-spacing:1px">TOTAL</span>'
-      + '<span style="font-family:var(--font-mono);font-size:12px;color:var(--naranja)">'+_fmtMonedaVenta(total)+'</span></div></div>';
+      + '<span style="font-family:var(--font-display);font-size:15px;letter-spacing:1px">TOTAL</span>'
+      + '<span style="font-family:var(--font-mono);font-size:17px;color:var(--naranja)">'+_fmtMonedaVenta(total)+'</span></div></div>';
   }
   window._vtaTotales = { subtotal: subtotal, iva: iva, igtf: 0, total: total };
 }
