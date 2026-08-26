@@ -146,6 +146,10 @@ async function abrirVenta(id) {
   if (!inventarioCache || !inventarioCache.length) {
     try { inventarioCache = await api('inventario_almacen','GET',null,'?order=nombre_articulo.asc&select=*' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')); } catch(e) { inventarioCache = []; }
   }
+  // Refrescar Márgenes Vigentes antes de calcular precios -- si nunca se
+  // abrió Inventario en esta sesión, _margenesVigentesMap queda vacío y
+  // precioVentaEnVivo() siempre da 0, aunque el artículo sí tenga margen.
+  try { await refrescarMargenesVigentes(); } catch(e) {}
   await _cargarArticulosMercanciaVentas();
 
   document.getElementById('vta-modal-titulo').textContent = id ? 'EDITAR VENTA' : 'NUEVA VENTA';
