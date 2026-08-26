@@ -14,6 +14,7 @@ const ESTADO_LABEL_VENTA = { BORRADOR: 'Presupuesto', CONFIRMADA: 'Confirmada', 
 
 let _ventaLineas = []; // líneas en edición del modal (en memoria, no se guardan hasta "Guardar Borrador")
 let _idAreaAlmacenVentas = null; // id de "Gerencia de Compras" (código 2300) -- Ventas siempre descuenta de ahí, sin pedirle al operador que elija Área
+let _articulosMercanciaVentas = []; // artículos filtrados (solo Mercancías, cuenta 1.1.03.001) con su stock en el Almacén
 
 async function _obtenerAreaAlmacenVentas() {
   if (_idAreaAlmacenVentas) return _idAreaAlmacenVentas;
@@ -22,6 +23,36 @@ async function _obtenerAreaAlmacenVentas() {
     _idAreaAlmacenVentas = (r && r[0]) ? r[0].id : null;
   } catch(e) { _idAreaAlmacenVentas = null; }
   return _idAreaAlmacenVentas;
+}
+
+// Ventas solo puede vender artículos catalogados como Mercancías (cuenta
+// contable 1.1.03.001 — Inventario de Mercancías), no Repuestos ni
+// Consumibles de Taller. Se recalcula cada vez que se abre el modal, para
+// que el stock mostrado entre paréntesis esté siempre al día.
+async function _cargarArticulosMercanciaVentas() {
+  const idArea = await _obtenerAreaAlmacenVentas();
+  let idCuentaMercancias = null;
+  try {
+    const cuentas = await obtenerCuentasContables();
+    const ctaMercancias = cuentas.find(function(c) { return c.codigo === '1.1.03.001'; });
+    idCuentaMercancias = ctaMercancias ? ctaMercancias.id_cuenta : null;
+  } catch(e) {}
+
+  const soloMercancias = idCuentaMercancias
+    ? inventarioCache.filter(function(a) { return a.id_cuenta_contable === idCuentaMercancias; })
+    : [];
+
+  let mapaStock = {};
+  if (idArea) {
+    try {
+      const filas = await api('inventario_stock_area','GET',null,'?id_area=eq.'+idArea+'&select=id_articulo,stock_actual');
+      (filas||[]).forEach(function(f) { mapaStock[f.id_articulo] = parseFloat(f.stock_actual) || 0; });
+    } catch(e) {}
+  }
+
+  _articulosMercanciaVentas = soloMercancias.map(function(a) {
+    return { id_articulo: a.id_articulo, nombre_articulo: a.nombre_articulo, codigo_articulo: a.codigo_articulo, stockAlmacen: mapaStock[a.id_articulo] || 0 };
+  }).sort(function(a,b) { return a.nombre_articulo.localeCompare(b.nombre_articulo); });
 }
 
 async function renderVentas() {
@@ -115,6 +146,7 @@ async function abrirVenta(id) {
   if (!inventarioCache || !inventarioCache.length) {
     try { inventarioCache = await api('inventario_almacen','GET',null,'?order=nombre_articulo.asc&select=*' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')); } catch(e) { inventarioCache = []; }
   }
+  await _cargarArticulosMercanciaVentas();
 
   document.getElementById('vta-modal-titulo').textContent = id ? 'EDITAR VENTA' : 'NUEVA VENTA';
   document.getElementById('vta-id').value = id || '';
@@ -161,10 +193,11 @@ function quitarLineaVenta(idx) {
 function _onCambioArticuloVenta(idx, idArticulo) {
   const art = inventarioCache.find(function(a) { return a.id_articulo === parseInt(idArticulo); });
   _ventaLineas[idx].id_articulo = art ? art.id_articulo : null;
-  if (art) {
-    const venta = precioVentaEnVivo(art);
-    _ventaLineas[idx].precio_unitario = venta.usd || 0;
-  }
+  // El precio SIEMPRE se toma del Inventario (precio de venta en vivo,
+  // calculado a partir del CPP + Margen vigente) -- no es editable por el
+  // operador. Se guarda internamente en USD, igual que el resto del
+  // sistema; la Moneda de Cobro solo afecta cómo se MUESTRA.
+  _ventaLineas[idx].precio_unitario = art ? (precioVentaEnVivo(art).usd || 0) : 0;
   _validarStockLineaVenta(idx);
 }
 
@@ -180,17 +213,19 @@ async function _validarStockLineaVenta(idx) {
   if (lin.id_articulo && lin.cantidad > 0 && idArea) {
     try {
       const disponible = await obtenerStockArea(lin.id_articulo, idArea);
-      if (lin.cantidad > disponible) {
-        lin.errorStock = 'Supera el stock disponible en Almacén (' + disponible + ')';
-      }
+      if (lin.cantidad > disponible) lin.errorStock = 'Supera el stock';
     } catch(eValStock) {}
   }
   _renderLineasVenta();
 }
 
-function _onCambioPrecioVenta(idx, valor) {
-  _ventaLineas[idx].precio_unitario = parseFloat(valor) || 0;
-  _renderLineasVenta();
+// Formatea un monto (guardado internamente en USD) en la Moneda de Cobro
+// que el operador tenga elegida en ese momento -- Bs si es VES (convertido
+// a la tasa BCV vigente), o USD directo. Siempre con 2 decimales.
+function _fmtMonedaVenta(usdValue) {
+  const moneda = document.getElementById('vta-moneda')?.value || 'VES';
+  if (moneda === 'VES') return fmtBs((usdValue||0) * (_tasaVigente||0)) + ' Bs';
+  return '$ ' + fmtUSD(usdValue||0);
 }
 
 function _renderLineasVenta() {
@@ -199,7 +234,7 @@ function _renderLineasVenta() {
 
   cont.innerHTML = _ventaLineas.map(function(lin, idx) {
     const opciones = '<option value="">Seleccione...</option>'
-      + inventarioCache.map(function(a) { return '<option value="'+a.id_articulo+'"'+(lin.id_articulo===a.id_articulo?' selected':'')+'>'+a.nombre_articulo+' ('+a.codigo_articulo+')</option>'; }).join('');
+      + _articulosMercanciaVentas.map(function(a) { return '<option value="'+a.id_articulo+'"'+(lin.id_articulo===a.id_articulo?' selected':'')+'>'+a.nombre_articulo+' ('+a.codigo_articulo+') — '+a.stockAlmacen+' en stock</option>'; }).join('');
     const subtotal = (lin.cantidad || 0) * (lin.precio_unitario || 0);
     const borderCant = lin.errorStock ? 'border:1px solid #e57373' : 'border:1px solid var(--borde)';
     return '<tr>'
@@ -207,8 +242,8 @@ function _renderLineasVenta() {
       + '<td style="padding:4px;width:90px"><input type="number" min="0" step="any" value="'+(lin.cantidad||'')+'" oninput="_onCambioCantidadVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);'+borderCant+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)">'
         + (lin.errorStock ? '<div style="font-size:10px;color:#e57373;margin-top:2px">'+lin.errorStock+'</div>' : '')
         + '</td>'
-      + '<td style="padding:4px;width:110px"><input type="number" min="0" step="any" value="'+(lin.precio_unitario||'')+'" oninput="_onCambioPrecioVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
-      + '<td style="padding:4px;width:100px;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">'+fmtUSD(subtotal)+'</td>'
+      + '<td style="padding:4px 8px;width:120px;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--suave)">'+_fmtMonedaVenta(lin.precio_unitario)+'</td>'
+      + '<td style="padding:4px 8px;width:120px;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">'+_fmtMonedaVenta(subtotal)+'</td>'
       + '<td style="padding:4px;width:36px;text-align:center"><button onclick="quitarLineaVenta('+idx+')" style="background:none;border:none;color:var(--rojo,#e57373);cursor:pointer;font-size:16px">✕</button></td>'
       + '</tr>';
   }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:16px;font-size:12px">Sin artículos agregados</td></tr>';
@@ -229,11 +264,11 @@ function _calcularTotalesVenta() {
   const el = document.getElementById('vta-totales');
   if (el) {
     el.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px;padding:10px 0">'
-      + '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">Subtotal</span><span style="font-family:var(--font-mono)">$ '+fmtUSD(subtotal)+'</span></div>'
-      + (aplIVA  ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IVA ('+Math.round(tasaIVAActual()*100)+'%)</span><span style="font-family:var(--font-mono)">$ '+fmtUSD(iva)+'</span></div>' : '')
+      + '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">Subtotal</span><span style="font-family:var(--font-mono)">'+_fmtMonedaVenta(subtotal)+'</span></div>'
+      + (aplIVA  ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IVA ('+Math.round(tasaIVAActual()*100)+'%)</span><span style="font-family:var(--font-mono)">'+_fmtMonedaVenta(iva)+'</span></div>' : '')
       + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:6px;margin-top:2px">'
       + '<span style="font-family:var(--font-display);font-size:15px;letter-spacing:1px">TOTAL</span>'
-      + '<span style="font-family:var(--font-mono);font-size:17px;color:var(--naranja)">$ '+fmtUSD(total)+'</span></div></div>';
+      + '<span style="font-family:var(--font-mono);font-size:17px;color:var(--naranja)">'+_fmtMonedaVenta(total)+'</span></div></div>';
   }
   window._vtaTotales = { subtotal: subtotal, iva: iva, igtf: 0, total: total };
 }
