@@ -584,6 +584,18 @@ async function generarCxCyAsientoFactura(idFactura) {
     const yaExiste = await api('cont_cxc','GET',null,'?id_factura=eq.'+idFactura+'&estado=neq.ANULADA&select=id_cxc&limit=1');
     if (yaExiste && yaExiste.length) return;
 
+    // Si la Factura no viene de una Orden de Servicio, puede venir de una
+    // Venta directa (mostrador) -- se detecta buscando en `ventas` por
+    // id_factura (no se agrega columna nueva a `facturas` para esto, ya
+    // que `ventas.id_factura` ya apunta hacia acá una vez facturada).
+    let ventaOrigen = null;
+    if (!fac.id_orden) {
+      try {
+        const ventaRows = await api('ventas','GET',null,'?id_factura=eq.'+idFactura+'&select=id_venta,id_area');
+        ventaOrigen = ventaRows && ventaRows[0] ? ventaRows[0] : null;
+      } catch(eVentaOrigen) { console.warn('Error buscando Venta de origen de la factura:', eVentaOrigen); }
+    }
+
     // 1. Crear registro CxC
     try {
       await api('cont_cxc','POST',{
@@ -667,6 +679,11 @@ async function generarCxCyAsientoFactura(idFactura) {
             console.warn('No se pudo desglosar Servicios/Artículos, todo va a Ingresos por Servicios:', eDesglose);
             totalServ = fac.subtotal_usd || 0; totalArt = 0;
           }
+        } else if (ventaOrigen) {
+          // Una Venta directa (mostrador) es siempre 100% Artículos -- nunca
+          // hay Servicios en este flujo, así que no hace falta prorratear.
+          totalServ = 0;
+          totalArt  = fac.subtotal_usd || 0;
         }
 
         let cIGTF = fac.igtf_usd > 0
@@ -852,6 +869,73 @@ async function generarCxCyAsientoFactura(idFactura) {
           } catch(eCOGS) { console.warn('Error creando asiento de Costo de Venta:', eCOGS); }
         }
       } catch(eSal) { console.warn('Error registrando salida de inventario:', eSal); }
+    } else if (ventaOrigen) {
+      // ── Venta directa (mostrador): a diferencia de una OS, aquí el stock
+      // NO se había descontado todavía -- se descuenta recién ahora, al
+      // momento de facturar.
+      try {
+        const lineasVenta = await api('venta_detalle','GET',null,'?id_venta=eq.'+ventaOrigen.id_venta+'&select=id_articulo,cantidad');
+        const correo = sesionActual?.correo_usuario;
+
+        let tasaCOGS = _tasaVigente || 1;
+        try {
+          const tasasCOGS = await api('tasas','GET',null,
+            '?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+          if (tasasCOGS && tasasCOGS[0]) tasaCOGS = parseFloat(tasasCOGS[0].tipo_cambio) || tasaCOGS;
+        } catch(eTasaCOGSVenta) {}
+
+        for (const lin of (lineasVenta||[])) {
+          if (!lin.id_articulo || !parseFloat(lin.cantidad)) continue;
+          const cantidadVenta = parseFloat(lin.cantidad);
+
+          // Descontar el stock real del área de la Venta
+          try { await upsertStockArea(lin.id_articulo, ventaOrigen.id_area, -cantidadVenta); }
+          catch(eStockVenta) { console.warn('Error descontando stock de Venta directa:', eStockVenta); }
+
+          const sal = await api('stock_salidas','POST',{
+            id_articulo:   lin.id_articulo, id_area: ventaOrigen.id_area, cantidad: cantidadVenta,
+            fecha_salida:  fac.fecha_emision || new Date().toISOString().split('T')[0],
+            observaciones: 'Venta '+fac.numero_factura,
+            id_usuario:    correo
+          });
+          const id_salidaVenta = sal && sal[0] ? sal[0].id_salida : null;
+
+          try {
+            const artCOGSVenta = await api('inventario_almacen','GET',null,
+              '?id_articulo=eq.'+lin.id_articulo+'&select=nombre_articulo,precio_costo_moneda,id_cuenta_contable,id_cuenta_costo_gasto');
+            const aCV = artCOGSVenta && artCOGSVenta[0] ? artCOGSVenta[0] : null;
+            if (aCV && aCV.id_cuenta_contable && aCV.id_cuenta_costo_gasto) {
+              const cppCOGSVenta = parseFloat(aCV.precio_costo_moneda || 0);
+              const montoUSDCOGSVenta = parseFloat((cantidadVenta * cppCOGSVenta).toFixed(4));
+              const montoVESCOGSVenta = parseFloat((montoUSDCOGSVenta * tasaCOGS).toFixed(2));
+              if (montoUSDCOGSVenta > 0) {
+                const anioCOGSVenta = new Date().getFullYear();
+                const ultsCOGSVenta = await api('cont_asientos','GET',null,'?id_empresa=eq.'+(fac.id_empresa||0)+'&order=id_asiento.desc&limit=1&select=numero_asiento') || [];
+                let seqCOGSVenta = 1;
+                if (ultsCOGSVenta[0]?.numero_asiento) { const mmCV = ultsCOGSVenta[0].numero_asiento.match(/(\d+)$/); if (mmCV) seqCOGSVenta = parseInt(mmCV[1])+1; }
+                const numAstCOGSVenta = 'AST-' + anioCOGSVenta + '-' + String(seqCOGSVenta).padStart(4,'0');
+                const astCOGSVenta = await api('cont_asientos','POST',{
+                  id_empresa: fac.id_empresa||0, numero_asiento: numAstCOGSVenta,
+                  tipo: 'COSTO_VENTA', fecha: fac.fecha_emision || new Date().toISOString().split('T')[0],
+                  descripcion: 'Costo de Venta: ' + (aCV.nombre_articulo||'') + ' x' + cantidadVenta + ' — Factura '+fac.numero_factura,
+                  referencia: id_salidaVenta ? 'SAL-'+id_salidaVenta : 'FAC-'+fac.id_factura,
+                  estado: 'APROBADO', moneda_base: 'VES', tasa_bcv: tasaCOGS,
+                  id_usuario: correo || null
+                });
+                const arCOGSVenta = Array.isArray(astCOGSVenta) ? astCOGSVenta[0] : astCOGSVenta;
+                if (arCOGSVenta?.id_asiento) {
+                  await api('cont_asiento_lineas','POST',{ id_asiento:arCOGSVenta.id_asiento, id_cuenta:aCV.id_cuenta_costo_gasto, orden:1,
+                    descripcion:'Costo de Venta: '+(aCV.nombre_articulo||'')+' x'+cantidadVenta+' (CPP $'+cppCOGSVenta.toFixed(2)+' x T/C '+tasaCOGS.toFixed(2)+')',
+                    debe_usd:montoUSDCOGSVenta, haber_usd:0, debe_ves:montoVESCOGSVenta, haber_ves:0, tasa_bcv:tasaCOGS });
+                  await api('cont_asiento_lineas','POST',{ id_asiento:arCOGSVenta.id_asiento, id_cuenta:aCV.id_cuenta_contable, orden:2,
+                    descripcion:'Salida inventario por venta: '+(aCV.nombre_articulo||'')+' x'+cantidadVenta,
+                    debe_usd:0, haber_usd:montoUSDCOGSVenta, debe_ves:0, haber_ves:montoVESCOGSVenta, tasa_bcv:tasaCOGS });
+                }
+              }
+            }
+          } catch(eCOGSVenta) { console.warn('Error creando asiento de Costo de Venta (Venta directa):', eCOGSVenta); }
+        }
+      } catch(eSalVenta) { console.warn('Error registrando salida de inventario (Venta directa):', eSalVenta); }
     }
   } catch(eGen) { console.warn('Error generando CxC/asiento/salida de la factura:', eGen); }
 }
