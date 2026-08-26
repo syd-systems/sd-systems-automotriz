@@ -6,6 +6,11 @@
 //
 // El stock NO se descuenta hasta que la Venta se FACTURA -- antes de eso es
 // solo un "carrito" en memoria/BD, sin efecto real en Inventario/Contabilidad.
+//
+// NOTA: el valor interno 'BORRADOR' se muestra en la interfaz como
+// "Presupuesto" (ver ESTADO_LABEL) -- es más claro para el operador, ya que
+// en esta etapa aún no hay ningún compromiso real de stock ni contabilidad.
+const ESTADO_LABEL_VENTA = { BORRADOR: 'Presupuesto', CONFIRMADA: 'Confirmada', FACTURADA: 'Facturada', ANULADA: 'Anulada' };
 
 let _ventaLineas = []; // líneas en edición del modal (en memoria, no se guardan hasta "Guardar Borrador")
 let _idAreaAlmacenVentas = null; // id de "Gerencia de Compras" (código 2300) -- Ventas siempre descuenta de ahí, sin pedirle al operador que elija Área
@@ -44,7 +49,7 @@ async function renderVentas() {
         + '<td>' + (cli ? cli.nombre_apellido : '—') + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (cli ? cli.condicion_legal + '-' + cli.identificacion : '') + '</div></td>'
         + '<td style="font-size:12px">' + fmtFecha(v.fecha_venta) + '</td>'
         + '<td style="text-align:right;font-family:var(--font-mono)">$ ' + fmtUSD(v.total_usd || 0) + '</td>'
-        + '<td><span class="badge ' + (ESTADO_BADGE[v.estado] || 'badge-gris') + '">' + v.estado + '</span></td>'
+        + '<td><span class="badge ' + (ESTADO_BADGE[v.estado] || 'badge-gris') + '">' + (ESTADO_LABEL_VENTA[v.estado] || v.estado) + '</span></td>'
         + '<td><button class="btn-naranja" onclick="verFichaVenta(' + v.id_venta + ')">Ver</button></td>'
         + '</tr>';
     }).join('');
@@ -52,7 +57,7 @@ async function renderVentas() {
     c.innerHTML =
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:12px">'
       + ['BORRADOR','CONFIRMADA','FACTURADA','ANULADA'].map(function(e) {
-          return '<div class="tarjeta-stat" style="padding:7px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">' + e + '</div><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + stats[e] + '</div></div>';
+          return '<div class="tarjeta-stat" style="padding:7px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">' + ESTADO_LABEL_VENTA[e] + '</div><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + stats[e] + '</div></div>';
         }).join('')
       + '</div>'
       + '<div class="panel">'
@@ -61,7 +66,7 @@ async function renderVentas() {
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
       + '<select id="vta-filtro-estado" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todos los estados</option>'
-      + '<option value="BORRADOR">Borrador</option><option value="CONFIRMADA">Confirmada</option>'
+      + '<option value="BORRADOR">Presupuesto</option><option value="CONFIRMADA">Confirmada</option>'
       + '<option value="FACTURADA">Facturada</option><option value="ANULADA">Anulada</option>'
       + '</select>'
       + '<input type="text" id="vta-buscar" placeholder="Buscar cliente..." oninput="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
@@ -101,7 +106,7 @@ async function abrirVenta(id) {
   if (!id && !puedo('VENTAS','CREAR'))  { alert('No tiene permiso para crear ventas.'); return; }
 
   const v = id ? ventasCache.find(function(x) { return x.id_venta === id; }) : null;
-  if (id && v && v.estado !== 'BORRADOR') { alert('Solo se puede editar una Venta mientras está en estado BORRADOR.'); return; }
+  if (id && v && v.estado !== 'BORRADOR') { alert('Solo se puede editar una Venta mientras está en estado Presupuesto.'); return; }
 
   // Cargar clientes si no están en cache
   if (!clientesCache || !clientesCache.length) {
@@ -113,7 +118,9 @@ async function abrirVenta(id) {
 
   document.getElementById('vta-modal-titulo').textContent = id ? 'EDITAR VENTA' : 'NUEVA VENTA';
   document.getElementById('vta-id').value = id || '';
-  document.getElementById('vta-fecha').value = v ? v.fecha_venta : getHoyVzla();
+  // La fecha SIEMPRE es la del día -- no se le permite al operador elegir
+  // otra, para no someter el Inventario a ventas registradas a destiempo.
+  document.getElementById('vta-fecha-display').textContent = 'Fecha: ' + fmtFecha(getHoyVzla());
 
   document.getElementById('vta-select-cliente').innerHTML =
     '<option value="">Seleccione un cliente...</option>'
@@ -123,7 +130,7 @@ async function abrirVenta(id) {
   // pregunta al operador, la Venta siempre descuenta stock de ahí.
   document.getElementById('vta-id-area').value = v ? v.id_area : await _obtenerAreaAlmacenVentas();
 
-  document.getElementById('vta-moneda').value = (v && v.moneda_cobro) || 'USD';
+  document.getElementById('vta-moneda').value = (v && v.moneda_cobro) || 'VES';
   document.getElementById('vta-aplica-iva').checked = v ? (v.iva_usd > 0) : true;
 
   _ventaLineas = [];
@@ -158,11 +165,26 @@ function _onCambioArticuloVenta(idx, idArticulo) {
     const venta = precioVentaEnVivo(art);
     _ventaLineas[idx].precio_unitario = venta.usd || 0;
   }
-  _renderLineasVenta();
+  _validarStockLineaVenta(idx);
 }
 
 function _onCambioCantidadVenta(idx, valor) {
   _ventaLineas[idx].cantidad = parseFloat(valor) || 0;
+  _validarStockLineaVenta(idx);
+}
+
+async function _validarStockLineaVenta(idx) {
+  const lin = _ventaLineas[idx];
+  lin.errorStock = null;
+  const idArea = parseInt(document.getElementById('vta-id-area')?.value) || null;
+  if (lin.id_articulo && lin.cantidad > 0 && idArea) {
+    try {
+      const disponible = await obtenerStockArea(lin.id_articulo, idArea);
+      if (lin.cantidad > disponible) {
+        lin.errorStock = 'Supera el stock disponible en Almacén (' + disponible + ')';
+      }
+    } catch(eValStock) {}
+  }
   _renderLineasVenta();
 }
 
@@ -174,17 +196,19 @@ function _onCambioPrecioVenta(idx, valor) {
 function _renderLineasVenta() {
   const cont = document.getElementById('vta-lineas-cuerpo');
   if (!cont) return;
-  const idArea = parseInt(document.getElementById('vta-id-area')?.value) || null;
 
   cont.innerHTML = _ventaLineas.map(function(lin, idx) {
     const opciones = '<option value="">Seleccione...</option>'
       + inventarioCache.map(function(a) { return '<option value="'+a.id_articulo+'"'+(lin.id_articulo===a.id_articulo?' selected':'')+'>'+a.nombre_articulo+' ('+a.codigo_articulo+')</option>'; }).join('');
     const subtotal = (lin.cantidad || 0) * (lin.precio_unitario || 0);
+    const borderCant = lin.errorStock ? 'border:1px solid #e57373' : 'border:1px solid var(--borde)';
     return '<tr>'
       + '<td style="padding:4px"><select onchange="_onCambioArticuloVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">'+opciones+'</select></td>'
-      + '<td style="padding:4px;width:90px"><input type="number" min="0" step="any" value="'+(lin.cantidad||'')+'" oninput="_onCambioCantidadVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
+      + '<td style="padding:4px;width:90px"><input type="number" min="0" step="any" value="'+(lin.cantidad||'')+'" oninput="_onCambioCantidadVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);'+borderCant+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)">'
+        + (lin.errorStock ? '<div style="font-size:10px;color:#e57373;margin-top:2px">'+lin.errorStock+'</div>' : '')
+        + '</td>'
       + '<td style="padding:4px;width:110px"><input type="number" min="0" step="any" value="'+(lin.precio_unitario||'')+'" oninput="_onCambioPrecioVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
-      + '<td style="padding:4px;width:100px;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">$ '+fmtUSD(subtotal)+'</td>'
+      + '<td style="padding:4px;width:100px;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">'+fmtUSD(subtotal)+'</td>'
       + '<td style="padding:4px;width:36px;text-align:center"><button onclick="quitarLineaVenta('+idx+')" style="background:none;border:none;color:var(--rojo,#e57373);cursor:pointer;font-size:16px">✕</button></td>'
       + '</tr>';
   }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:16px;font-size:12px">Sin artículos agregados</td></tr>';
@@ -209,8 +233,7 @@ function _calcularTotalesVenta() {
       + (aplIVA  ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IVA ('+Math.round(tasaIVAActual()*100)+'%)</span><span style="font-family:var(--font-mono)">$ '+fmtUSD(iva)+'</span></div>' : '')
       + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:6px;margin-top:2px">'
       + '<span style="font-family:var(--font-display);font-size:15px;letter-spacing:1px">TOTAL</span>'
-      + '<span style="font-family:var(--font-mono);font-size:17px;color:var(--naranja)">$ '+fmtUSD(total)+'</span></div>'
-      + '<div style="font-size:11px;color:var(--suave);padding-top:2px">El IGTF (si aplica) se calcula al momento del Cobro, según la moneda de pago elegida.</div></div>';
+      + '<span style="font-family:var(--font-mono);font-size:17px;color:var(--naranja)">$ '+fmtUSD(total)+'</span></div></div>';
   }
   window._vtaTotales = { subtotal: subtotal, iva: iva, igtf: 0, total: total };
 }
@@ -223,27 +246,26 @@ async function guardarVentaBorrador() {
   const id       = document.getElementById('vta-id').value;
   const idCliente = parseInt(document.getElementById('vta-select-cliente').value) || null;
   const idArea    = parseInt(document.getElementById('vta-id-area').value) || null;
-  const fecha     = document.getElementById('vta-fecha').value;
+  // La fecha SIEMPRE es la del día -- no es un campo que el operador elija.
+  const fecha     = getHoyVzla();
   const moneda    = document.getElementById('vta-moneda').value;
 
   if (!idCliente) { errEl.textContent = 'Debe seleccionar un Cliente.'; errEl.style.display = 'block'; return; }
   if (!idArea)    { errEl.textContent = 'No se pudo determinar el Área de Almacén (Gerencia de Compras, código 2300). Verifique que esa Área exista en Parámetros.'; errEl.style.display = 'block'; return; }
-  if (!fecha)     { errEl.textContent = 'La fecha es obligatoria.'; errEl.style.display = 'block'; return; }
-  const lineasValidas = _ventaLineas.filter(function(l) { return l.id_articulo && l.cantidad > 0; });
-  if (!lineasValidas.length) { errEl.textContent = 'Debe agregar al menos un artículo con cantidad mayor a 0.'; errEl.style.display = 'block'; return; }
+  if (!_ventaLineas.length) { errEl.textContent = 'Debe agregar al menos un artículo.'; errEl.style.display = 'block'; return; }
 
-  // Validar stock disponible en el Área seleccionada para cada línea
-  for (const lin of lineasValidas) {
-    try {
-      const disponible = await obtenerStockArea(lin.id_articulo, idArea);
-      if (lin.cantidad > disponible) {
-        const art = inventarioCache.find(function(a) { return a.id_articulo === lin.id_articulo; });
-        errEl.textContent = 'Stock insuficiente para "'+(art?.nombre_articulo||lin.id_articulo)+'" en el área seleccionada (disponible: '+disponible+').';
-        errEl.style.display = 'block';
-        return;
-      }
-    } catch(eStock) {}
+  // Validar CADA línea agregada -- ya no se descartan en silencio las
+  // incompletas; se indica exactamente qué falta o qué está mal, con el
+  // número de línea, para que el operador sepa qué corregir.
+  for (let i = 0; i < _ventaLineas.length; i++) {
+    const lin = _ventaLineas[i];
+    const nLinea = i + 1;
+    if (!lin.id_articulo)          { errEl.textContent = 'Línea '+nLinea+': debe seleccionar un Artículo.'; errEl.style.display = 'block'; return; }
+    if (!lin.cantidad || lin.cantidad <= 0) { errEl.textContent = 'Línea '+nLinea+': la Cantidad debe ser mayor a 0.'; errEl.style.display = 'block'; return; }
+    if (!lin.precio_unitario || lin.precio_unitario <= 0) { errEl.textContent = 'Línea '+nLinea+': el Precio Unitario debe ser mayor a 0.'; errEl.style.display = 'block'; return; }
+    if (lin.errorStock) { errEl.textContent = 'Línea '+nLinea+': '+lin.errorStock+'.'; errEl.style.display = 'block'; return; }
   }
+  const lineasValidas = _ventaLineas;
 
   _calcularTotalesVenta();
   const tot = window._vtaTotales || { subtotal:0, iva:0, igtf:0, total:0 };
@@ -280,7 +302,7 @@ async function guardarVentaBorrador() {
       });
     }
 
-    okEl.textContent = '✓ Venta guardada como Borrador.';
+    okEl.textContent = '✓ Presupuesto guardado.';
     okEl.style.display = 'block';
     setTimeout(function() { cerrarModal('modal-venta'); renderVentas(); }, 1000);
   } catch(err) { errEl.textContent = 'Error: ' + err.message; errEl.style.display = 'block'; }
@@ -307,7 +329,7 @@ async function verFichaVenta(id) {
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">'
     + '<div><div style="font-weight:600;font-size:15px">'+(v.clientes?.nombre_apellido||'—')+'</div>'
     + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">'+(v.clientes?'V-'+v.id_venta:'')+(v.facturas?.numero_factura?' — '+v.facturas.numero_factura:'')+'</div></div>'
-    + '<span class="badge '+(ESTADO_BADGE[v.estado]||'badge-gris')+'">'+v.estado+'</span>'
+    + '<span class="badge '+(ESTADO_BADGE[v.estado]||'badge-gris')+'">'+(ESTADO_LABEL_VENTA[v.estado]||v.estado)+'</span>'
     + '</div>'
     + '<table style="width:100%;margin-bottom:14px"><thead><tr>'
     + '<th style="font-size:11px;text-align:left;color:var(--suave)">Artículo</th><th style="font-size:11px;color:var(--suave)">Cant.</th><th style="font-size:11px;color:var(--suave)">P. Unit.</th><th style="font-size:11px;color:var(--suave)">Subtotal</th>'
