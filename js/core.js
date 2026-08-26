@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260826110';
+const SYD_VERSION = '20260826120';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -116,6 +116,7 @@ const TODOS_LOS_MODULOS = [
   { sigla: 'EMPLEADOS',    nombre: 'Empleados',          icono: '👷' },
   { sigla: 'PROVEEDORES',  nombre: 'Proveedores',        icono: '🏭' },
   { sigla: 'CLIENTES',     nombre: 'Clientes',           icono: '🧑‍🤝‍🧑' },
+  { sigla: 'VENTAS',       nombre: 'Ventas',             icono: '🛒' },
   { sigla: 'TRIBUTOS',     nombre: 'Tributos',           icono: '📋' },
   { sigla: 'USUARIOS',     nombre: 'Usuarios',           icono: '🔐' },
   { sigla: 'PARAMETROS',   nombre: 'Parámetros',         icono: '⚙️' },
@@ -244,6 +245,12 @@ const PERMISOS_POR_MODULO = {
     { accion: 'CREAR',    label: 'Registrar cliente' },
     { accion: 'EDITAR',   label: 'Editar cliente' },
     { accion: 'ELIMINAR', label: 'Eliminar cliente' },
+  ],
+  VENTAS: [
+    { accion: 'VER',      label: 'Ver Ficha' },
+    { accion: 'CREAR',    label: 'Armar / Facturar Venta' },
+    { accion: 'EDITAR',   label: 'Editar / Confirmar Venta' },
+    { accion: 'ELIMINAR', label: 'Anular / Eliminar Venta' },
   ],
   TRIBUTOS: [
     { accion: 'VER',    label: 'Ver Ficha' },
@@ -1196,6 +1203,7 @@ function renderModuloActual() {
   catalogoCache     = [];
   proveedoresCache  = [];
   clientesCache     = [];
+  ventasCache       = [];
   usuariosCache     = [];
   contAsientosCache = [];
   contCxcCache      = [];
@@ -1309,6 +1317,7 @@ async function mostrarModulo(modulo, navEl) {
     empleados:    'EMPLEADOS',
     proveedores:  'PROVEEDORES',
     clientes:     'CLIENTES',
+    ventas:       'VENTAS',
     proximo:      'PRÓXIMAMENTE'
   };
 
@@ -1338,6 +1347,7 @@ async function mostrarModulo(modulo, navEl) {
     case 'empleados':    renderEmpleados();    break;
     case 'proveedores':  renderProveedores();  break;
     case 'clientes':     renderClientes();     break;
+    case 'ventas':       renderVentas();       break;
     case 'contabilidad': renderContabilidad(); break;
     default:             renderProximo(navEl?.querySelector('.nav-icono')?.textContent || '🔧',
                                        navEl?.textContent.trim() || modulo);
