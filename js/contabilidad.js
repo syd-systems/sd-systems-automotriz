@@ -2592,7 +2592,7 @@ async function generarAsientoInventario(tipo, datos) {
 
       // HABER: CxP Proveedores (monto total con IVA + IGTF, si aplica)
       if (idProv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idProv, orden:4,
-        descripcion: 'CxP Compra No.' + (datos.referencia || '') + ' a ' + (datos.proveedorNombre || datos.articulo),
+        descripcion: 'CxP Compra N° ' + (datos.referencia || '') + ' a ' + (datos.proveedorNombre || datos.articulo),
         debe_usd: 0, haber_usd: totalUSD + montoIGTF_USD, debe_ves: 0, haber_ves: totalBs + montoIGTF_BS });
 
     } else if (tipo === 'ENTRADA_DEVOLUCION') {
