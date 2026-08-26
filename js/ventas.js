@@ -156,7 +156,8 @@ async function abrirVenta(id) {
   document.getElementById('vta-id').value = id || '';
   // La fecha SIEMPRE es la del día -- no se le permite al operador elegir
   // otra, para no someter el Inventario a ventas registradas a destiempo.
-  document.getElementById('vta-fecha-display').textContent = 'Fecha: ' + fmtFecha(getHoyVzla());
+  document.getElementById('vta-fecha-display').textContent =
+    'Fecha: ' + fmtFecha(getHoyVzla()) + '   ·   Tasa BCV: ' + fmtBs(_tasaVigente || 0) + ' Bs/$';
 
   document.getElementById('vta-select-cliente').innerHTML =
     '<option value="">Seleccione un cliente...</option>'
