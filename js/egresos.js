@@ -1077,6 +1077,17 @@ function abrirModal(id) {
   const el = document.getElementById(id);
   el.style.display = ''; // quitar display:none inline si lo puso cerrarTodosLosModales
   el.classList.add('abierto');
+  // Traer al frente: si hay otro modal ya abierto (ej. un modal invocado
+  // desde DENTRO de otro, como "+ Nuevo Cliente" desde "+ Nueva Venta"),
+  // este debe quedar por encima sin importar el orden en el HTML.
+  const abiertos = Array.from(document.querySelectorAll('.modal-overlay.abierto'));
+  let maxZ = 1000;
+  abiertos.forEach(function(m) {
+    if (m === el) return;
+    const z = parseInt(window.getComputedStyle(m).zIndex) || 1000;
+    if (z > maxZ) maxZ = z;
+  });
+  el.style.zIndex = String(maxZ + 1);
   setTimeout(function() {
     const body = el.querySelector('.modal-body');
     if (body) body.scrollTop = 0;
@@ -1088,6 +1099,7 @@ function cerrarModal(id) {
   if (!el) return;
   el.classList.remove('abierto');
   el.style.display = 'none';
+  el.style.zIndex = ''; // limpiar el z-index elevado para la próxima apertura
 }
 
 // Cerrar modal al hacer clic fuera
