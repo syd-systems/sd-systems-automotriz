@@ -3318,3 +3318,5 @@ function formatearMontoVE(num) {
   const p = v.toFixed(2).split('.');
   return p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + p[1];
 }
+
+// Re-trigger de build (index.html quedó desactualizado tras el push anterior, mismo síntoma ya documentado)
