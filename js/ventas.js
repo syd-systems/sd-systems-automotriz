@@ -761,7 +761,7 @@ async function verFichaVenta(id) {
 }
 
 async function facturarVenta(id) {
-  if (!confirm('¿Facturar esta Venta? Esto generará la Factura, descontará el stock real, y creará la Cuenta por Cobrar y el asiento contable. Esta acción no se puede deshacer directamente.')) return;
+  if (!confirm('¿Facturar esta Venta?')) return;
   try {
     const vRows = await api('ventas','GET',null,'?id_venta=eq.'+id+'&select=*,clientes(*)');
     const v = vRows && vRows[0];
