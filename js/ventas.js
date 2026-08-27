@@ -331,9 +331,9 @@ async function abrirVenta(id) {
   document.getElementById('vta-fecha-display').textContent =
     'Fecha: ' + fmtFecha(getHoyVzla()) + '   ·   Tasa BCV: ' + fmtBs(_tasaVigente || 0) + ' Bs/$';
 
-  document.getElementById('vta-select-cliente').innerHTML =
-    '<option value="">Seleccione un cliente...</option>'
-    + clientesCache.map(function(cl) { return '<option value="'+cl.id_cliente+'"'+(v && v.id_cliente===cl.id_cliente?' selected':'')+'>'+cl.nombre_apellido+' ('+cl.condicion_legal+'-'+cl.identificacion+')</option>'; }).join('');
+  window._vtaClienteSeleccionadoId = v ? v.id_cliente : null;
+  document.getElementById('vta-buscar-cliente').value = '';
+  _renderSelectCliente();
 
   // Área fija de Almacén (Gerencia de Compras, código 2300) -- no se le
   // pregunta al operador, la Venta siempre descuenta stock de ahí.
@@ -385,6 +385,39 @@ async function cerrarModalVentaSinGuardar() {
     }
   }
   cerrarModal('modal-venta');
+}
+
+// Puebla el select de Cliente respetando el texto de búsqueda (nombre o
+// identificación) -- el cliente ya seleccionado SIEMPRE se incluye, aunque
+// no cumpla el filtro, para no perder la selección mientras se busca.
+function _renderSelectCliente() {
+  const texto = (document.getElementById('vta-buscar-cliente')?.value || '').toLowerCase().trim();
+  const seleccionadoId = window._vtaClienteSeleccionadoId;
+  const filtrados = clientesCache.filter(function(cl) {
+    if (seleccionadoId && cl.id_cliente === seleccionadoId) return true;
+    if (!texto) return true;
+    return cl.nombre_apellido.toLowerCase().includes(texto) || (cl.identificacion||'').toLowerCase().includes(texto);
+  });
+  const sel = document.getElementById('vta-select-cliente');
+  sel.innerHTML = '<option value="">Seleccione un cliente...</option>'
+    + filtrados.map(function(cl) { return '<option value="'+cl.id_cliente+'"'+(seleccionadoId===cl.id_cliente?' selected':'')+'>'+cl.nombre_apellido+' ('+cl.condicion_legal+'-'+cl.identificacion+')</option>'; }).join('');
+}
+
+function _filtrarSelectCliente() {
+  _renderSelectCliente();
+}
+
+function _onCambioSelectCliente() {
+  window._vtaClienteSeleccionadoId = parseInt(document.getElementById('vta-select-cliente').value) || null;
+  document.getElementById('alerta-vta-err').style.display = 'none';
+}
+
+// Se llama desde el modal de Cliente Rápido cuando se crea uno nuevo --
+// lo deja seleccionado y refresca el select con el filtro de búsqueda vigente.
+function _onClienteRapidoCreadoVenta(cli) {
+  if (!cli) return;
+  window._vtaClienteSeleccionadoId = cli.id_cliente;
+  _renderSelectCliente();
 }
 
 function agregarLineaVenta() {
