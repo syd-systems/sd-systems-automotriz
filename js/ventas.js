@@ -16,6 +16,11 @@ let _ventaLineas = []; // líneas en edición del modal (en memoria, no se guard
 let _ventaLineasOriginales = []; // snapshot de las líneas YA GUARDADAS al abrir el modal -- para poder revertir la reserva en vivo si se cierra sin guardar (Retornar / ✕)
 let _idAreaAlmacenVentas = null; // id de "Gerencia de Compras" (código 2300) -- Ventas siempre descuenta de ahí, sin pedirle al operador que elija Área
 let _articulosMercanciaVentas = []; // artículos filtrados (solo Mercancías, cuenta 1.1.03.001) con su stock en el Almacén
+let _invTiposCacheVentas = []; // catálogo de Tipos de Artículo (inv_articulos_tipo) -- para el filtro por Tipo
+let _vtaFiltroCategoria = '';
+let _vtaFiltroTipo = '';
+let _vtaFiltroTexto = '';
+let _vtaFiltroSoloStock = false;
 
 async function _obtenerAreaAlmacenVentas() {
   if (_idAreaAlmacenVentas) return _idAreaAlmacenVentas;
@@ -52,8 +57,36 @@ async function _cargarArticulosMercanciaVentas() {
   }
 
   _articulosMercanciaVentas = soloMercancias.map(function(a) {
-    return { id_articulo: a.id_articulo, nombre_articulo: a.nombre_articulo, codigo_articulo: a.codigo_articulo, stockAlmacen: mapaStock[a.id_articulo] || 0 };
+    return {
+      id_articulo: a.id_articulo, nombre_articulo: a.nombre_articulo, codigo_articulo: a.codigo_articulo,
+      id_categoria_articulo: a.id_categoria_articulo || null, id_tipo_articulo: a.id_tipo_articulo || null,
+      stockAlmacen: mapaStock[a.id_articulo] || 0
+    };
   }).sort(function(a,b) { return a.nombre_articulo.localeCompare(b.nombre_articulo); });
+}
+
+// Aplica los 4 filtros (Categoría, Tipo de Artículo, texto, Solo con
+// stock) sobre la lista base -- usado para poblar las opciones del select
+// de cada línea. `idArticuloActual` (si viene) siempre se incluye aunque
+// no cumpla el filtro, para no "perder" la selección ya hecha en esa línea.
+function _articulosFiltradosVenta(idArticuloActual) {
+  const texto = (_vtaFiltroTexto||'').toLowerCase().trim();
+  return _articulosMercanciaVentas.filter(function(a) {
+    if (idArticuloActual && a.id_articulo === idArticuloActual) return true;
+    if (_vtaFiltroCategoria && String(a.id_categoria_articulo) !== String(_vtaFiltroCategoria)) return false;
+    if (_vtaFiltroTipo && String(a.id_tipo_articulo) !== String(_vtaFiltroTipo)) return false;
+    if (_vtaFiltroSoloStock && a.stockAlmacen <= 0) return false;
+    if (texto && !(a.nombre_articulo.toLowerCase().includes(texto) || (a.codigo_articulo||'').toLowerCase().includes(texto))) return false;
+    return true;
+  });
+}
+
+function _filtrarArticulosVenta() {
+  _vtaFiltroCategoria  = document.getElementById('vta-filtro-categoria')?.value || '';
+  _vtaFiltroTipo       = document.getElementById('vta-filtro-tipo')?.value || '';
+  _vtaFiltroTexto      = document.getElementById('vta-filtro-buscar')?.value || '';
+  _vtaFiltroSoloStock  = document.getElementById('vta-filtro-solo-stock')?.checked || false;
+  _renderLineasVenta();
 }
 
 async function renderVentas() {
@@ -152,6 +185,24 @@ async function abrirVenta(id) {
   // precioVentaEnVivo() siempre da 0, aunque el artículo sí tenga margen.
   try { await refrescarMargenesVigentes(); } catch(e) {}
   await _cargarArticulosMercanciaVentas();
+
+  // Catálogos para los filtros de Categoría y Tipo de Artículo -- se
+  // reutiliza _invCategoriasCache si Inventario ya la cargó en esta
+  // sesión; Tipos se carga siempre fresco (propio de Ventas).
+  if (!_invCategoriasCache || !_invCategoriasCache.length) {
+    try { _invCategoriasCache = await api('inv_categorias','GET',null,'?estado=eq.ACTIVO&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')) || []; } catch(e) { _invCategoriasCache = []; }
+  }
+  try { _invTiposCacheVentas = await api('inv_articulos_tipo','GET',null,'?estado=eq.ACTIVO&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')) || []; } catch(e) { _invTiposCacheVentas = []; }
+
+  _vtaFiltroCategoria = ''; _vtaFiltroTipo = ''; _vtaFiltroTexto = ''; _vtaFiltroSoloStock = false;
+  document.getElementById('vta-filtro-categoria').innerHTML =
+    '<option value="">Todas las categorías</option>'
+    + _invCategoriasCache.map(function(c) { return '<option value="'+c.id_categoria+'">'+c.nombre+'</option>'; }).join('');
+  document.getElementById('vta-filtro-tipo').innerHTML =
+    '<option value="">Todos los tipos</option>'
+    + _invTiposCacheVentas.map(function(t) { return '<option value="'+t.id_tipo+'">'+t.nombre+'</option>'; }).join('');
+  document.getElementById('vta-filtro-buscar').value = '';
+  document.getElementById('vta-filtro-solo-stock').checked = false;
 
   document.getElementById('vta-modal-titulo').textContent = id ? 'EDITAR VENTA' : 'NUEVA VENTA';
   document.getElementById('vta-id').value = id || '';
@@ -342,7 +393,7 @@ function _renderLineasVenta() {
 
   cont.innerHTML = _ventaLineas.map(function(lin, idx) {
     const opciones = '<option value="">Seleccione...</option>'
-      + _articulosMercanciaVentas.map(function(a) { return '<option value="'+a.id_articulo+'"'+(lin.id_articulo===a.id_articulo?' selected':'')+'>'+a.nombre_articulo+' ('+a.codigo_articulo+') — '+a.stockAlmacen+' en stock</option>'; }).join('');
+      + _articulosFiltradosVenta(lin.id_articulo).map(function(a) { return '<option value="'+a.id_articulo+'"'+(lin.id_articulo===a.id_articulo?' selected':'')+'>'+a.nombre_articulo+' ('+a.codigo_articulo+') — '+a.stockAlmacen+' en stock</option>'; }).join('');
     const subtotal = (lin.cantidad || 0) * (lin.precio_unitario || 0);
     const borderCant = lin.errorStock ? 'border:1px solid #e57373' : 'border:1px solid var(--borde)';
     return '<tr>'
