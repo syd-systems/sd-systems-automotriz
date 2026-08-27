@@ -13,6 +13,7 @@
 const ESTADO_LABEL_VENTA = { BORRADOR: 'Presupuesto', CONFIRMADA: 'Confirmada', FACTURADA: 'Facturada', ANULADA: 'Anulada' };
 
 let _ventaLineas = []; // líneas en edición del modal (en memoria, no se guardan hasta "Guardar Borrador")
+let _ventaLineasOriginales = []; // snapshot de las líneas YA GUARDADAS al abrir el modal -- para poder revertir la reserva en vivo si se cierra sin guardar (Retornar / ✕)
 let _idAreaAlmacenVentas = null; // id de "Gerencia de Compras" (código 2300) -- Ventas siempre descuenta de ahí, sin pedirle al operador que elija Área
 let _articulosMercanciaVentas = []; // artículos filtrados (solo Mercancías, cuenta 1.1.03.001) con su stock en el Almacén
 
@@ -174,9 +175,16 @@ async function abrirVenta(id) {
   if (id) {
     try {
       const detalle = await api('venta_detalle','GET',null,'?id_venta=eq.'+id);
-      _ventaLineas = (detalle||[]).map(function(d) { return { id_articulo: d.id_articulo, cantidad: parseFloat(d.cantidad), precio_unitario: parseFloat(d.precio_unitario) }; });
+      _ventaLineas = (detalle||[]).map(function(d) {
+        const cant = parseFloat(d.cantidad);
+        return { id_articulo: d.id_articulo, cantidad: cant, precio_unitario: parseFloat(d.precio_unitario), reservadoActual: cant };
+      });
     } catch(e) {}
   }
+  // Snapshot de cómo estaban las líneas YA GUARDADAS antes de tocar nada en
+  // esta sesión de edición -- si se cierra el modal sin guardar, se usa
+  // para devolver la reserva en vivo exactamente a este estado.
+  _ventaLineasOriginales = _ventaLineas.map(function(l) { return { id_articulo: l.id_articulo, cantidad: l.cantidad }; });
 
   document.getElementById('alerta-vta-ok').style.display = 'none';
   document.getElementById('alerta-vta-err').style.display = 'none';
@@ -185,19 +193,56 @@ async function abrirVenta(id) {
   focusFirstField('modal-venta');
 }
 
+// Se llama al cerrar el modal SIN guardar (Retornar / ✕) -- revierte toda
+// la reserva en vivo hecha durante esta sesión de edición, dejando la BD
+// exactamente como estaba antes de abrir el modal (en 0 si era una Venta
+// nueva, o con la reserva original si se estaba editando una ya guardada).
+async function cerrarModalVentaSinGuardar() {
+  const idArea = parseInt(document.getElementById('vta-id-area')?.value) || null;
+  if (idArea) {
+    // 1. Liberar TODO lo que quedó reservado por las líneas actuales
+    for (const lin of _ventaLineas) {
+      if (lin.id_articulo && lin.reservadoActual > 0) {
+        try { await ajustarReservaArea(lin.id_articulo, idArea, -lin.reservadoActual); } catch(e) {}
+      }
+    }
+    // 2. Restaurar la reserva que ya existía antes de abrir el modal
+    for (const linOrig of _ventaLineasOriginales) {
+      if (linOrig.id_articulo && linOrig.cantidad > 0) {
+        try { await ajustarReservaArea(linOrig.id_articulo, idArea, linOrig.cantidad); } catch(e) {}
+      }
+    }
+  }
+  cerrarModal('modal-venta');
+}
+
 function agregarLineaVenta() {
-  _ventaLineas.push({ id_articulo: null, cantidad: 1, precio_unitario: 0 });
+  // Cantidad inicia en 0 -- obliga al operador a ingresarla explícitamente
+  // (si iniciara en 1, pasaría la validación sin que la tocara).
+  _ventaLineas.push({ id_articulo: null, cantidad: 0, precio_unitario: 0, reservadoActual: 0 });
   _renderLineasVenta();
 }
 
-function quitarLineaVenta(idx) {
+async function quitarLineaVenta(idx) {
+  const lin = _ventaLineas[idx];
+  const idArea = parseInt(document.getElementById('vta-id-area')?.value) || null;
+  if (lin.id_articulo && lin.reservadoActual > 0 && idArea) {
+    try { await ajustarReservaArea(lin.id_articulo, idArea, -lin.reservadoActual); } catch(e) {}
+  }
   _ventaLineas.splice(idx, 1);
   _renderLineasVenta();
 }
 
-function _onCambioArticuloVenta(idx, idArticulo) {
-  const art = inventarioCache.find(function(a) { return a.id_articulo === parseInt(idArticulo); });
+async function _onCambioArticuloVenta(idx, idArticulo) {
   const lin = _ventaLineas[idx];
+  const idArea = parseInt(document.getElementById('vta-id-area')?.value) || null;
+
+  // Liberar la reserva del artículo ANTERIOR de esta línea, si tenía
+  if (lin.id_articulo && lin.reservadoActual > 0 && idArea) {
+    try { await ajustarReservaArea(lin.id_articulo, idArea, -lin.reservadoActual); } catch(e) {}
+  }
+
+  const art = inventarioCache.find(function(a) { return a.id_articulo === parseInt(idArticulo); });
   lin.errorDuplicado = null;
 
   if (art) {
@@ -205,6 +250,8 @@ function _onCambioArticuloVenta(idx, idArticulo) {
     if (yaExiste) {
       lin.id_articulo = null;
       lin.precio_unitario = 0;
+      lin.cantidad = 0;
+      lin.reservadoActual = 0;
       lin.errorDuplicado = 'Ese artículo ya está en la lista';
       _renderLineasVenta();
       return;
@@ -217,23 +264,52 @@ function _onCambioArticuloVenta(idx, idArticulo) {
   // operador. Se guarda internamente en USD, igual que el resto del
   // sistema; la Moneda de Cobro solo afecta cómo se MUESTRA.
   lin.precio_unitario = art ? (precioVentaEnVivo(art).usd || 0) : 0;
-  _validarStockLineaVenta(idx);
+  // Cantidad vuelve a 0 -- es un artículo distinto, sin reserva todavía;
+  // se obliga a reingresar la Cantidad para este artículo nuevo.
+  lin.cantidad = 0;
+  lin.reservadoActual = 0;
+  lin.errorStock = null;
+  _renderLineasVenta();
 }
 
 function _onCambioCantidadVenta(idx, valor) {
   _ventaLineas[idx].cantidad = parseFloat(valor) || 0;
-  _validarStockLineaVenta(idx);
+  _ajustarReservaLineaVenta(idx);
 }
 
-async function _validarStockLineaVenta(idx) {
+// Reserva EN VIVO en la base de datos -- se ajusta apenas el operador
+// ingresa la Cantidad, sin esperar a "Guardar Presupuesto". Calcula el
+// delta contra lo que esta línea YA tiene reservado (reservadoActual) para
+// no sumar de más, y valida disponibilidad real antes de aumentar la
+// reserva (obtenerStockArea ya resta las reservas de TODOS, incluida la
+// propia, así que comparar el delta contra ese disponible es correcto).
+async function _ajustarReservaLineaVenta(idx) {
   const lin = _ventaLineas[idx];
   lin.errorStock = null;
   const idArea = parseInt(document.getElementById('vta-id-area')?.value) || null;
-  if (lin.id_articulo && lin.cantidad > 0 && idArea) {
+  if (!lin.id_articulo || !idArea) { _renderLineasVenta(); return; }
+
+  const cantidadNueva = lin.cantidad || 0;
+  const reservadoActual = lin.reservadoActual || 0;
+  const delta = parseFloat((cantidadNueva - reservadoActual).toFixed(4));
+  if (delta === 0) { _renderLineasVenta(); return; }
+
+  if (delta > 0) {
     try {
       const disponible = await obtenerStockArea(lin.id_articulo, idArea);
-      if (lin.cantidad > disponible) lin.errorStock = 'Supera el stock';
-    } catch(eValStock) {}
+      if (delta > disponible) {
+        lin.errorStock = 'Supera el stock';
+        _renderLineasVenta();
+        return; // no se reserva de más -- la Cantidad queda tal cual la escribió, pero sin aplicar en BD
+      }
+    } catch(e) {}
+  }
+
+  try {
+    await ajustarReservaArea(lin.id_articulo, idArea, delta);
+    lin.reservadoActual = cantidadNueva;
+  } catch(e) {
+    lin.errorStock = 'Error al reservar el stock';
   }
   _renderLineasVenta();
 }
@@ -250,6 +326,8 @@ function _fmtMonedaVenta(usdValue) {
 function _renderLineasVenta() {
   const cont = document.getElementById('vta-lineas-cuerpo');
   if (!cont) return;
+  const errEl = document.getElementById('alerta-vta-err');
+  if (errEl) errEl.style.display = 'none';
 
   cont.innerHTML = _ventaLineas.map(function(lin, idx) {
     const opciones = '<option value="">Seleccione...</option>'
@@ -273,6 +351,8 @@ function _renderLineasVenta() {
 }
 
 function _calcularTotalesVenta() {
+  const errElCalc = document.getElementById('alerta-vta-err');
+  if (errElCalc) errElCalc.style.display = 'none';
   const subtotal = _ventaLineas.reduce(function(a, l) { return a + (l.cantidad||0)*(l.precio_unitario||0); }, 0);
   const aplIVA  = document.getElementById('vta-aplica-iva')?.checked;
   const iva  = aplIVA  ? subtotal * tasaIVAActual() : 0;
@@ -486,6 +566,16 @@ async function anularVenta(id) {
   if (v && v.estado === 'FACTURADA') { alert('Esta Venta ya fue facturada. Para anularla, hágalo desde el módulo de Facturas (Ingresos), donde se reversa correctamente la Factura, la CxC y el asiento contable.'); return; }
   if (!confirm('¿Anular esta Venta?')) return;
   try {
+    if (v && v.id_area) {
+      try {
+        const lineas = await api('venta_detalle','GET',null,'?id_venta=eq.'+id+'&select=id_articulo,cantidad');
+        for (const lin of (lineas||[])) {
+          if (lin.id_articulo && parseFloat(lin.cantidad) > 0) {
+            await ajustarReservaArea(lin.id_articulo, v.id_area, -parseFloat(lin.cantidad));
+          }
+        }
+      } catch(eLibRes) { console.warn('Error liberando reserva al anular:', eLibRes); }
+    }
     await api('ventas','PATCH',{ estado:'ANULADA' },'?id_venta=eq.'+id);
     cerrarModal('modal-ficha-venta');
     renderVentas();
@@ -495,6 +585,17 @@ async function anularVenta(id) {
 async function eliminarVenta(id) {
   if (!confirm('¿Eliminar esta Venta en Borrador? Esta acción no se puede deshacer.')) return;
   try {
+    const v = ventasCache.find(function(x) { return x.id_venta === id; });
+    if (v && v.id_area) {
+      try {
+        const lineas = await api('venta_detalle','GET',null,'?id_venta=eq.'+id+'&select=id_articulo,cantidad');
+        for (const lin of (lineas||[])) {
+          if (lin.id_articulo && parseFloat(lin.cantidad) > 0) {
+            await ajustarReservaArea(lin.id_articulo, v.id_area, -parseFloat(lin.cantidad));
+          }
+        }
+      } catch(eLibRes) { console.warn('Error liberando reserva al eliminar:', eLibRes); }
+    }
     await api('venta_detalle','DELETE',null,'?id_venta=eq.'+id);
     await api('ventas','DELETE',null,'?id_venta=eq.'+id);
     cerrarModal('modal-ficha-venta');
