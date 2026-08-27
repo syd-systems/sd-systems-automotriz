@@ -1601,7 +1601,7 @@ async function contRenderCxc() {
       const propUSD = tusd > 0 ? cobUSD / tusd : 0;
       const cobVES  = tves * propUSD;
       const saldoVES = tves - cobVES;
-      const cliente = f.propietarios ? f.propietarios.nombre_completo : '--';
+      const cliente = f.propietarios ? f.propietarios.nombre_completo : (f.receptor_nombre || '--');
       return '<tr>'
         +'<td style="padding:4px 8px;font-size:10px;font-family:var(--font-mono);color:var(--naranja)">'+(f.numero_factura||'--')+'</td>'
         +'<td style="padding:4px 8px;font-size:11px">'+fmtFecha(f.fecha_emision)+'</td>'
