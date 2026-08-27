@@ -1,8 +1,15 @@
 // ─── S&D Systems — Módulo: VENTAS (mostrador / venta directa) ───
-// Creado el 2026-08-26. Una Venta pasa por 4 estados:
-//   BORRADOR (armando, editable) -> CONFIRMADA (lista, aún sin tocar stock/contabilidad)
-//   -> FACTURADA (genera factura + CxC + asiento + descuenta stock real, vía
-//      generarCxCyAsientoFactura() en ingresos.js) -> ANULADA
+// Creado el 2026-08-26. Una Venta pasa por 3 estados:
+//   BORRADOR ("Presupuesto", armando/editable, con la reserva de stock ya
+//   viva desde que se ingresa Cantidad) -> FACTURADA (genera factura + CxC
+//   + asiento + descuenta stock real, vía generarCxCyAsientoFactura() en
+//   ingresos.js) -> ANULADA
+//
+// El paso "Confirmar" (estado CONFIRMADA) se eliminó el 2026-08-27 -- no
+// aportaba ninguna protección real: la reserva de stock ya vive desde el
+// Presupuesto, y no hay un segundo revisor distinto al que arma la Venta
+// en este nivel de operación (a diferencia de Órdenes de Servicio, donde
+// sí puede haber un flujo de aprobación por Nivel de Firma).
 //
 // El stock NO se descuenta hasta que la Venta se FACTURA -- antes de eso es
 // solo un "carrito" en memoria/BD, sin efecto real en Inventario/Contabilidad.
@@ -10,7 +17,7 @@
 // NOTA: el valor interno 'BORRADOR' se muestra en la interfaz como
 // "Presupuesto" (ver ESTADO_LABEL) -- es más claro para el operador, ya que
 // en esta etapa aún no hay ningún compromiso real de stock ni contabilidad.
-const ESTADO_LABEL_VENTA = { BORRADOR: 'Presupuesto', CONFIRMADA: 'Confirmada', FACTURADA: 'Facturada', ANULADA: 'Anulada' };
+const ESTADO_LABEL_VENTA = { BORRADOR: 'Presupuesto', FACTURADA: 'Facturada', ANULADA: 'Anulada' };
 
 let _ventaLineas = []; // líneas en edición del modal (en memoria, no se guardan hasta "Guardar Borrador")
 let _ventaLineasOriginales = []; // snapshot de las líneas YA GUARDADAS al abrir el modal -- para poder revertir la reserva en vivo si se cierra sin guardar (Retornar / ✕)
@@ -102,10 +109,10 @@ async function renderVentas() {
       '?order=fecha_registro.desc&select=*,clientes(nombre_apellido,condicion_legal,identificacion),facturas(numero_factura)' + filtroEmpresa);
     ventasCache = ventas;
 
-    const stats = { BORRADOR: 0, CONFIRMADA: 0, FACTURADA: 0, ANULADA: 0 };
+    const stats = { BORRADOR: 0, FACTURADA: 0, ANULADA: 0 };
     ventas.forEach(function(v) { if (stats[v.estado] !== undefined) stats[v.estado]++; });
 
-    const ESTADO_BADGE = { BORRADOR: 'badge-gris', CONFIRMADA: 'badge-naranja', FACTURADA: 'badge-verde', ANULADA: 'badge-rojo' };
+    const ESTADO_BADGE = { BORRADOR: 'badge-gris', FACTURADA: 'badge-verde', ANULADA: 'badge-rojo' };
 
     const filas = ventas.map(function(v) {
       const cli = v.clientes;
@@ -121,7 +128,7 @@ async function renderVentas() {
 
     c.innerHTML =
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:12px">'
-      + ['BORRADOR','CONFIRMADA','FACTURADA','ANULADA'].map(function(e) {
+      + ['BORRADOR','FACTURADA','ANULADA'].map(function(e) {
           return '<div class="tarjeta-stat" style="padding:7px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">' + ESTADO_LABEL_VENTA[e] + '</div><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + stats[e] + '</div></div>';
         }).join('')
       + '</div>'
@@ -131,7 +138,7 @@ async function renderVentas() {
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
       + '<select id="vta-filtro-estado" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todos los estados</option>'
-      + '<option value="BORRADOR">Presupuesto</option><option value="CONFIRMADA">Confirmada</option>'
+      + '<option value="BORRADOR">Presupuesto</option>'
       + '<option value="FACTURADA">Facturada</option><option value="ANULADA">Anulada</option>'
       + '</select>'
       + '<input type="text" id="vta-buscar" placeholder="Buscar cliente..." oninput="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
@@ -530,7 +537,7 @@ async function verFichaVenta(id) {
       + '<td style="text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">$ '+fmtUSD(l.subtotal)+'</td></tr>';
   }).join('');
 
-  const ESTADO_BADGE = { BORRADOR: 'badge-gris', CONFIRMADA: 'badge-naranja', FACTURADA: 'badge-verde', ANULADA: 'badge-rojo' };
+  const ESTADO_BADGE = { BORRADOR: 'badge-gris', FACTURADA: 'badge-verde', ANULADA: 'badge-rojo' };
   document.getElementById('ficha-venta-contenido').innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">'
     + '<div><div style="font-weight:600;font-size:15px">'+(v.clientes?.nombre_apellido||'—')+'</div>'
@@ -548,33 +555,21 @@ async function verFichaVenta(id) {
     + '</div>';
 
   const btnEditar    = document.getElementById('ficha-venta-btn-editar');
-  const btnConfirmar = document.getElementById('ficha-venta-btn-confirmar');
   const btnFacturar  = document.getElementById('ficha-venta-btn-facturar');
   const btnAnular    = document.getElementById('ficha-venta-btn-anular');
   const btnEliminar  = document.getElementById('ficha-venta-btn-eliminar');
 
   btnEditar.style.display    = (v.estado === 'BORRADOR' && puedo('VENTAS','EDITAR'))   ? '' : 'none';
-  btnConfirmar.style.display = (v.estado === 'BORRADOR' && puedo('VENTAS','EDITAR'))   ? '' : 'none';
-  btnFacturar.style.display  = (v.estado === 'CONFIRMADA' && puedo('VENTAS','CREAR'))  ? '' : 'none';
-  btnAnular.style.display    = ((v.estado === 'BORRADOR' || v.estado === 'CONFIRMADA') && puedo('VENTAS','ELIMINAR')) ? '' : 'none';
+  btnFacturar.style.display  = (v.estado === 'BORRADOR' && puedo('VENTAS','CREAR'))    ? '' : 'none';
+  btnAnular.style.display    = (v.estado === 'BORRADOR' && puedo('VENTAS','ELIMINAR')) ? '' : 'none';
   btnEliminar.style.display  = (v.estado === 'BORRADOR' && puedo('VENTAS','ELIMINAR')) ? '' : 'none';
 
   btnEditar.onclick    = function() { cerrarModal('modal-ficha-venta'); abrirVenta(v.id_venta); };
-  btnConfirmar.onclick = function() { confirmarVenta(v.id_venta); };
   btnFacturar.onclick  = function() { facturarVenta(v.id_venta); };
   btnAnular.onclick    = function() { anularVenta(v.id_venta); };
   btnEliminar.onclick  = function() { eliminarVenta(v.id_venta); };
 
   abrirModal('modal-ficha-venta');
-}
-
-async function confirmarVenta(id) {
-  if (!confirm('¿Confirmar esta Venta? Ya no podrá editarse, pero el stock aún no se descuenta hasta que se facture.')) return;
-  try {
-    await api('ventas','PATCH',{ estado:'CONFIRMADA' },'?id_venta=eq.'+id);
-    cerrarModal('modal-ficha-venta');
-    renderVentas();
-  } catch(err) { alert('Error: ' + err.message); }
 }
 
 async function facturarVenta(id) {
@@ -583,7 +578,7 @@ async function facturarVenta(id) {
     const vRows = await api('ventas','GET',null,'?id_venta=eq.'+id+'&select=*,clientes(*)');
     const v = vRows && vRows[0];
     if (!v) throw new Error('Venta no encontrada.');
-    if (v.estado !== 'CONFIRMADA') throw new Error('Solo se puede facturar una Venta en estado CONFIRMADA.');
+    if (v.estado !== 'BORRADOR') throw new Error('Solo se puede facturar una Venta en estado Presupuesto.');
 
     const cli = v.clientes;
     const anio = new Date().getFullYear();
