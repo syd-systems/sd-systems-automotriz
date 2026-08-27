@@ -96,13 +96,41 @@ function _filtrarArticulosVenta() {
   _renderLineasVenta();
 }
 
+let _ventaVista = 'ventas'; // 'ventas' | 'entregas'
+let _entregaSubVista = 'pendientes'; // 'pendientes' | 'historico'
+
 async function renderVentas() {
-  if (!sesionActual?.administrador && !modulosAcceso.includes('VENTAS')) {
+  const accesoCompleto = sesionActual?.administrador || puedo('VENTAS','VER') || puedo('VENTAS','CREAR') || puedo('VENTAS','EDITAR');
+  const accesoEntregas  = accesoCompleto || puedo('VENTAS','VER_ENTREGAS');
+  if (!accesoEntregas) {
     document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
     return;
   }
+  // Quien solo tiene el permiso granular de Entregas (ej. Almacén, sin
+  // acceso al resto de Ventas) entra directo a esa pestaña, y ni siquiera
+  // ve la pestaña "Ventas" (listado general).
+  if (!accesoCompleto) _ventaVista = 'entregas';
+
   const c = document.getElementById('contenido-principal');
-  c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando ventas...</div>';
+  const tabsHtml = '<div style="display:flex;gap:3px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:3px;margin-bottom:14px;width:fit-content">'
+    + (accesoCompleto ? '<button onclick="_ventaCambiarVista(\'ventas\')" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:'+(_ventaVista==='ventas'?'var(--naranja)':'transparent')+';color:'+(_ventaVista==='ventas'?'#fff':'var(--suave)')+'">Ventas</button>' : '')
+    + '<button onclick="_ventaCambiarVista(\'entregas\')" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:'+(_ventaVista==='entregas'?'var(--naranja)':'transparent')+';color:'+(_ventaVista==='entregas'?'#fff':'var(--suave)')+'">📦 Entregas</button>'
+    + '</div>';
+
+  c.innerHTML = tabsHtml + '<div id="ventas-contenido-tab"><div class="loading"><div class="spinner"></div> Cargando...</div></div>';
+
+  if (_ventaVista === 'entregas') { await renderVentasEntregas(); return; }
+  await renderVentasListado();
+}
+
+function _ventaCambiarVista(v) {
+  _ventaVista = v;
+  renderVentas();
+}
+
+async function renderVentasListado() {
+  const c = document.getElementById('ventas-contenido-tab');
+  if (!c) return;
   try {
     const filtroEmpresa = _empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : '';
     const ventas = await api('ventas', 'GET', null,
@@ -144,7 +172,7 @@ async function renderVentas() {
       + '<input type="text" id="vta-buscar" placeholder="Buscar cliente..." oninput="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
       + (puedo('VENTAS','CREAR') ? '<button class="btn-primario" onclick="abrirVenta(null)">+ Nueva Venta</button>' : '')
       + '</div></div>'
-      + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 355px))"><table style="table-layout:fixed;width:100%"><thead><tr>'
+      + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 400px))"><table style="table-layout:fixed;width:100%"><thead><tr>'
       + '<th>N° Factura</th><th>Cliente</th><th>Fecha</th><th style="text-align:right">Total</th><th>Estado</th><th>Acción</th>'
       + '</tr></thead><tbody id="vta-tbody">'
       + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">No hay ventas registradas</td></tr>')
@@ -152,6 +180,91 @@ async function renderVentas() {
   } catch(err) {
     c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + err.message + '</div>';
   }
+}
+
+async function renderVentasEntregas() {
+  const c = document.getElementById('ventas-contenido-tab');
+  if (!c) return;
+  c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+
+  const subTabsHtml = '<div style="display:flex;gap:3px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:3px;margin-bottom:14px;width:fit-content">'
+    + '<button onclick="_entregaCambiarSubVista(\'pendientes\')" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:'+(_entregaSubVista==='pendientes'?'var(--naranja)':'transparent')+';color:'+(_entregaSubVista==='pendientes'?'#fff':'var(--suave)')+'">Pendientes de Entrega</button>'
+    + '<button onclick="_entregaCambiarSubVista(\'historico\')" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:'+(_entregaSubVista==='historico'?'var(--naranja)':'transparent')+';color:'+(_entregaSubVista==='historico'?'#fff':'var(--suave)')+'">Histórico de Entregas</button>'
+    + '</div>';
+
+  try {
+    // Pendientes: Venta Facturada, aún no entregada, y su Factura ya
+    // PAGADA (join !inner filtrando por el estado de la Factura, mismo
+    // patrón ya usado en contabilidad.js para cont_asientos).
+    let ventas;
+    if (_entregaSubVista === 'pendientes') {
+      ventas = await api('ventas','GET',null,
+        '?estado=eq.FACTURADA&entregado=eq.false&select=*,clientes(nombre_apellido,condicion_legal,identificacion,telefono_movil),facturas!inner(numero_factura,estado,fecha_emision)&facturas.estado=eq.PAGADA&order=fecha_venta.asc');
+    } else {
+      ventas = await api('ventas','GET',null,
+        '?entregado=eq.true&select=*,clientes(nombre_apellido,condicion_legal,identificacion),facturas(numero_factura,fecha_emision)&order=fecha_entrega.desc');
+    }
+
+    // Líneas de TODAS las Ventas de esta lista en una sola consulta (evita
+    // N llamadas, una por fila).
+    const idsVentas = ventas.map(function(v){ return v.id_venta; });
+    let lineasPorVenta = {};
+    if (idsVentas.length) {
+      const lineas = await api('venta_detalle','GET',null,
+        '?id_venta=in.('+idsVentas.join(',')+')&select=id_venta,cantidad,inventario_almacen(nombre_articulo)');
+      (lineas||[]).forEach(function(l) {
+        if (!lineasPorVenta[l.id_venta]) lineasPorVenta[l.id_venta] = [];
+        lineasPorVenta[l.id_venta].push((l.inventario_almacen?.nombre_articulo||'Artículo')+' x'+l.cantidad);
+      });
+    }
+
+    const puedeMarcar = sesionActual?.administrador || puedo('VENTAS','MARCAR_ENTREGA');
+
+    const filas = ventas.map(function(v) {
+      const cli = v.clientes;
+      const arts = (lineasPorVenta[v.id_venta]||[]).join(', ') || '—';
+      return '<tr>'
+        + '<td style="font-family:var(--font-mono);font-size:12px">'+(v.facturas?.numero_factura||'—')+'</td>'
+        + '<td style="font-size:12px">'+(cli?cli.nombre_apellido:'—')+'<div style="font-size:10px;color:var(--suave);font-family:var(--font-mono)">'+(cli?cli.condicion_legal+'-'+cli.identificacion:'')+(cli?.telefono_movil?' · '+cli.telefono_movil:'')+'</div></td>'
+        + '<td style="font-size:12px">'+arts+'</td>'
+        + '<td style="text-align:right;font-family:var(--font-mono)">$ '+fmtUSD(v.total_usd||0)+'</td>'
+        + (_entregaSubVista==='pendientes'
+            ? '<td style="font-size:12px">'+(v.facturas?.fecha_emision?fmtFecha(v.facturas.fecha_emision):'—')+'</td>'
+              + '<td>'+(puedeMarcar ? '<button class="btn-primario" onclick="marcarVentaEntregada('+v.id_venta+')">✓ Marcar Entregado</button>' : '')+'</td>'
+            : '<td style="font-size:12px">'+(v.fecha_entrega?fmtFecha(v.fecha_entrega):'—')+'</td>'
+              + '<td style="font-size:12px">'+(v.entregado_por||'—')+'</td>')
+        + '</tr>';
+    }).join('');
+
+    c.innerHTML = subTabsHtml
+      + '<div class="panel">'
+      + '<div class="panel-header"><h3>'+(_entregaSubVista==='pendientes'?'Pendientes de Entrega':'Histórico de Entregas')+'</h3></div>'
+      + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 400px))"><table style="width:100%"><thead><tr>'
+      + '<th>N° Factura</th><th>Cliente</th><th>Artículos</th><th style="text-align:right">Total</th>'
+      + (_entregaSubVista==='pendientes' ? '<th>Fecha Cobro</th><th>Acción</th>' : '<th>Fecha Entrega</th><th>Entregado por</th>')
+      + '</tr></thead><tbody>'
+      + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">'+(_entregaSubVista==='pendientes'?'No hay Ventas pendientes de entrega.':'Sin entregas registradas todavía.')+'</td></tr>')
+      + '</tbody></table></div></div>';
+  } catch(err) {
+    c.innerHTML = subTabsHtml + '<div class="alerta alerta-error" style="display:block">Error: '+err.message+'</div>';
+  }
+}
+
+function _entregaCambiarSubVista(v) {
+  _entregaSubVista = v;
+  renderVentasEntregas();
+}
+
+async function marcarVentaEntregada(id) {
+  if (!confirm('¿Confirmar que esta Venta ya fue entregada al Cliente?')) return;
+  try {
+    await api('ventas','PATCH',{
+      entregado: true,
+      fecha_entrega: new Date().toISOString(),
+      entregado_por: sesionActual.correo_usuario
+    },'?id_venta=eq.'+id);
+    renderVentasEntregas();
+  } catch(err) { alert('Error: ' + err.message); }
 }
 
 function filtrarTablaVentas() {
@@ -552,7 +665,12 @@ async function verFichaVenta(id) {
     + (v.iva_usd > 0 ? '<div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--suave)">IVA</span><span style="font-family:var(--font-mono)">$ '+fmtUSD(v.iva_usd)+'</span></div>' : '')
     + (v.igtf_usd > 0 ? '<div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--suave)">IGTF</span><span style="font-family:var(--font-mono)">$ '+fmtUSD(v.igtf_usd)+'</span></div>' : '')
     + '<div style="display:flex;justify-content:space-between;font-family:var(--font-display);font-size:15px;padding-top:4px"><span>TOTAL</span><span style="color:var(--naranja)">$ '+fmtUSD(v.total_usd||0)+'</span></div>'
-    + '</div>';
+    + '</div>'
+    + (v.estado === 'FACTURADA'
+        ? '<div style="margin-top:10px;font-size:11px;color:var(--suave)">'
+          + (v.entregado ? '📦 Entregado el ' + fmtFecha(v.fecha_entrega) + (v.entregado_por ? ' por ' + v.entregado_por : '') : '📦 Pendiente de entrega')
+          + '</div>'
+        : '');
 
   const btnEditar    = document.getElementById('ficha-venta-btn-editar');
   const btnFacturar  = document.getElementById('ficha-venta-btn-facturar');
