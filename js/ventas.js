@@ -544,19 +544,43 @@ function _fmtMonedaVenta(usdValue) {
   return '$ ' + fmtUSD(usdValue||0);
 }
 
+// Texto que se muestra (y se busca) por cada Artículo en el datalist.
+function _textoOpcionArticulo(a) {
+  return a.nombre_articulo + ' (' + a.codigo_articulo + ') — ' + a.stockAlmacen + ' en stock';
+}
+
+// Resuelve el Artículo a partir del texto escrito -- se extrae el código
+// (único) entre paréntesis, en vez de comparar el texto completo, para que
+// siga funcionando aunque el "X en stock" haya cambiado desde que se
+// generó la sugerencia (el datalist se refresca solo cada cierto tiempo).
+function _onEscribirArticuloVenta(idx, texto) {
+  const m = texto.match(/\(([^)]+)\)/);
+  const codigo = m ? m[1] : null;
+  const art = codigo ? _articulosMercanciaVentas.find(function(a) { return a.codigo_articulo === codigo; }) : null;
+  if (!art) return; // sigue escribiendo, o no hay coincidencia todavía -- no tocar nada
+  _onCambioArticuloVenta(idx, art.id_articulo);
+}
+
 function _renderLineasVenta() {
   const cont = document.getElementById('vta-lineas-cuerpo');
   if (!cont) return;
   const errEl = document.getElementById('alerta-vta-err');
   if (errEl) errEl.style.display = 'none';
 
+  // Datalist compartido por todas las líneas -- respeta los 4 filtros
+  // (Categoría/Tipo/texto/Solo con stock) vigentes.
+  const datalistEl = document.getElementById('vta-articulos-datalist');
+  if (datalistEl) {
+    datalistEl.innerHTML = _articulosFiltradosVenta(null).map(function(a) { return '<option value="'+_textoOpcionArticulo(a)+'">'; }).join('');
+  }
+
   cont.innerHTML = _ventaLineas.map(function(lin, idx) {
-    const opciones = '<option value="">Seleccione...</option>'
-      + _articulosFiltradosVenta(lin.id_articulo).map(function(a) { return '<option value="'+a.id_articulo+'"'+(lin.id_articulo===a.id_articulo?' selected':'')+'>'+a.nombre_articulo+' ('+a.codigo_articulo+') — '+a.stockAlmacen+' en stock</option>'; }).join('');
+    const artActual = lin.id_articulo ? _articulosMercanciaVentas.find(function(a) { return a.id_articulo === lin.id_articulo; }) : null;
+    const textoActual = artActual ? _textoOpcionArticulo(artActual) : '';
     const subtotal = (lin.cantidad || 0) * (lin.precio_unitario || 0);
     const borderCant = lin.errorStock ? 'border:1px solid #e57373' : 'border:1px solid var(--borde)';
     return '<tr>'
-      + '<td style="padding:4px"><select onchange="_onCambioArticuloVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);border:1px solid '+(lin.errorDuplicado?'#e57373':'var(--borde)')+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">'+opciones+'</select>'
+      + '<td style="padding:4px"><input type="text" list="vta-articulos-datalist" value="'+textoActual.replace(/"/g,'&quot;')+'" oninput="_onEscribirArticuloVenta('+idx+', this.value)" placeholder="Buscar artículo..." style="width:100%;background:var(--gris2);border:1px solid '+(lin.errorDuplicado?'#e57373':'var(--borde)')+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">'
         + (lin.errorDuplicado ? '<div style="font-size:10px;color:#e57373;margin-top:2px">'+lin.errorDuplicado+'</div>' : '')
         + '</td>'
       + '<td style="padding:4px;width:90px"><input id="vta-cant-'+idx+'" type="number" min="0" step="any" value="'+(lin.cantidad||'')+'" oninput="_onCambioCantidadVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);'+borderCant+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)">'
