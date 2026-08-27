@@ -332,8 +332,9 @@ async function abrirVenta(id) {
     'Fecha: ' + fmtFecha(getHoyVzla()) + '   ·   Tasa BCV: ' + fmtBs(_tasaVigente || 0) + ' Bs/$';
 
   window._vtaClienteSeleccionadoId = v ? v.id_cliente : null;
-  document.getElementById('vta-buscar-cliente').value = '';
-  _renderSelectCliente();
+  _poblarDatalistClientes();
+  const clienteActual = v ? clientesCache.find(function(cl) { return cl.id_cliente === v.id_cliente; }) : null;
+  document.getElementById('vta-cliente-input').value = clienteActual ? _textoOpcionCliente(clienteActual) : '';
 
   // Área fija de Almacén (Gerencia de Compras, código 2300) -- no se le
   // pregunta al operador, la Venta siempre descuenta stock de ahí.
@@ -387,37 +388,36 @@ async function cerrarModalVentaSinGuardar() {
   cerrarModal('modal-venta');
 }
 
-// Puebla el select de Cliente respetando el texto de búsqueda (nombre o
-// identificación) -- el cliente ya seleccionado SIEMPRE se incluye, aunque
-// no cumpla el filtro, para no perder la selección mientras se busca.
-function _renderSelectCliente() {
-  const texto = (document.getElementById('vta-buscar-cliente')?.value || '').toLowerCase().trim();
-  const seleccionadoId = window._vtaClienteSeleccionadoId;
-  const filtrados = clientesCache.filter(function(cl) {
-    if (seleccionadoId && cl.id_cliente === seleccionadoId) return true;
-    if (!texto) return true;
-    return cl.nombre_apellido.toLowerCase().includes(texto) || (cl.identificacion||'').toLowerCase().includes(texto);
-  });
-  const sel = document.getElementById('vta-select-cliente');
-  sel.innerHTML = '<option value="">Seleccione un cliente...</option>'
-    + filtrados.map(function(cl) { return '<option value="'+cl.id_cliente+'"'+(seleccionadoId===cl.id_cliente?' selected':'')+'>'+cl.nombre_apellido+' ('+cl.condicion_legal+'-'+cl.identificacion+')</option>'; }).join('');
+// Texto que se muestra (y se busca) por cada Cliente en el datalist.
+function _textoOpcionCliente(cl) {
+  return cl.nombre_apellido + ' (' + cl.condicion_legal + '-' + cl.identificacion + ')';
 }
 
-function _filtrarSelectCliente() {
-  _renderSelectCliente();
+// Puebla el datalist UNA vez con todos los clientes -- el propio <input>
+// con list="..." ya filtra en vivo mientras se escribe, sin necesitar
+// re-renderizar nada en cada tecla.
+function _poblarDatalistClientes() {
+  document.getElementById('vta-clientes-datalist').innerHTML =
+    clientesCache.map(function(cl) { return '<option value="'+_textoOpcionCliente(cl)+'">'; }).join('');
 }
 
-function _onCambioSelectCliente() {
-  window._vtaClienteSeleccionadoId = parseInt(document.getElementById('vta-select-cliente').value) || null;
+// Resuelve el id_cliente a partir del texto exacto escrito/elegido en el
+// input -- si el texto no coincide con ningún cliente (el operador sigue
+// escribiendo, o escribió algo que no existe), no hay selección todavía.
+function _onEscribirCliente() {
+  const texto = document.getElementById('vta-cliente-input').value;
+  const match = clientesCache.find(function(cl) { return _textoOpcionCliente(cl) === texto; });
+  window._vtaClienteSeleccionadoId = match ? match.id_cliente : null;
   document.getElementById('alerta-vta-err').style.display = 'none';
 }
 
 // Se llama desde el modal de Cliente Rápido cuando se crea uno nuevo --
-// lo deja seleccionado y refresca el select con el filtro de búsqueda vigente.
+// lo deja seleccionado y refresca el datalist con el nuevo cliente incluido.
 function _onClienteRapidoCreadoVenta(cli) {
   if (!cli) return;
   window._vtaClienteSeleccionadoId = cli.id_cliente;
-  _renderSelectCliente();
+  _poblarDatalistClientes();
+  document.getElementById('vta-cliente-input').value = _textoOpcionCliente(cli);
 }
 
 function agregarLineaVenta() {
@@ -601,7 +601,7 @@ async function guardarVentaBorrador() {
   okEl.style.display = 'none'; errEl.style.display = 'none';
 
   const id       = document.getElementById('vta-id').value;
-  const idCliente = parseInt(document.getElementById('vta-select-cliente').value) || null;
+  const idCliente = window._vtaClienteSeleccionadoId || null;
   const idArea    = parseInt(document.getElementById('vta-id-area').value) || null;
   // La fecha SIEMPRE es la del día -- no es un campo que el operador elija.
   const fecha     = getHoyVzla();
