@@ -194,7 +194,7 @@ async function abrirVenta(id) {
   }
   try { _invTiposCacheVentas = await api('inv_articulos_tipo','GET',null,'?estado=eq.ACTIVO&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')) || []; } catch(e) { _invTiposCacheVentas = []; }
 
-  _vtaFiltroCategoria = ''; _vtaFiltroTipo = ''; _vtaFiltroTexto = ''; _vtaFiltroSoloStock = false;
+  _vtaFiltroCategoria = ''; _vtaFiltroTipo = ''; _vtaFiltroTexto = ''; _vtaFiltroSoloStock = true;
   document.getElementById('vta-filtro-categoria').innerHTML =
     '<option value="">Todas las categorías</option>'
     + _invCategoriasCache.map(function(c) { return '<option value="'+c.id_categoria+'">'+c.nombre+'</option>'; }).join('');
@@ -202,7 +202,7 @@ async function abrirVenta(id) {
     '<option value="">Todos los tipos</option>'
     + _invTiposCacheVentas.map(function(t) { return '<option value="'+t.id_tipo+'">'+t.nombre+'</option>'; }).join('');
   document.getElementById('vta-filtro-buscar').value = '';
-  document.getElementById('vta-filtro-solo-stock').checked = false;
+  document.getElementById('vta-filtro-solo-stock').checked = true;
 
   document.getElementById('vta-modal-titulo').textContent = id ? 'EDITAR VENTA' : 'NUEVA VENTA';
   document.getElementById('vta-id').value = id || '';
