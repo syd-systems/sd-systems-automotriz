@@ -268,6 +268,12 @@ async function cerrarModalVentaSinGuardar() {
 }
 
 function agregarLineaVenta() {
+  const yaHayVacia = _ventaLineas.some(function(l) { return !l.id_articulo; });
+  if (yaHayVacia) {
+    const errEl = document.getElementById('alerta-vta-err');
+    if (errEl) { errEl.textContent = 'Seleccione un Artículo en la línea vacía antes de agregar otra.'; errEl.style.display = 'block'; }
+    return;
+  }
   // Cantidad inicia en 0 -- obliga al operador a ingresarla explícitamente
   // (si iniciara en 1, pasaría la validación sin que la tocara).
   _ventaLineas.push({ id_articulo: null, cantidad: 0, precio_unitario: 0, reservadoActual: 0 });
