@@ -268,10 +268,10 @@ async function cerrarModalVentaSinGuardar() {
 }
 
 function agregarLineaVenta() {
-  const yaHayVacia = _ventaLineas.some(function(l) { return !l.id_articulo; });
-  if (yaHayVacia) {
+  const lineaIncompleta = _ventaLineas.some(function(l) { return !l.id_articulo || !l.cantidad || l.cantidad <= 0; });
+  if (lineaIncompleta) {
     const errEl = document.getElementById('alerta-vta-err');
-    if (errEl) { errEl.textContent = 'Seleccione un Artículo en la línea vacía antes de agregar otra.'; errEl.style.display = 'block'; }
+    if (errEl) { errEl.textContent = 'Complete el Artículo y la Cantidad de la línea vacía antes de agregar otra.'; errEl.style.display = 'block'; }
     return;
   }
   // Cantidad inicia en 0 -- obliga al operador a ingresarla explícitamente
