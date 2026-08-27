@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260827210"></script>
-<script src="js/parametros.js?v=20260827210"></script>
-<script src="js/empresas.js?v=20260827210"></script>
-<script src="js/ingresos.js?v=20260827210"></script>
-<script src="js/inventario.js?v=20260827210"></script>
-<script src="js/proveedores.js?v=20260827210"></script>
-<script src="js/clientes.js?v=20260827210"></script>
-<script src="js/ventas.js?v=20260827210"></script>
-<script src="js/contabilidad.js?v=20260827210"></script>
-<script src="js/egresos.js?v=20260827210"></script>
-<script src="js/vehiculos.js?v=20260827210"></script>
-<script src="js/catalogo.js?v=20260827210"></script>
-<script src="js/ordenes.js?v=20260827210"></script>
+<script src="js/core.js?v=20260827220"></script>
+<script src="js/parametros.js?v=20260827220"></script>
+<script src="js/empresas.js?v=20260827220"></script>
+<script src="js/ingresos.js?v=20260827220"></script>
+<script src="js/inventario.js?v=20260827220"></script>
+<script src="js/proveedores.js?v=20260827220"></script>
+<script src="js/clientes.js?v=20260827220"></script>
+<script src="js/ventas.js?v=20260827220"></script>
+<script src="js/contabilidad.js?v=20260827220"></script>
+<script src="js/egresos.js?v=20260827220"></script>
+<script src="js/vehiculos.js?v=20260827220"></script>
+<script src="js/catalogo.js?v=20260827220"></script>
+<script src="js/ordenes.js?v=20260827220"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3997,9 +3997,12 @@
 <!-- ═══════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-ficha-venta">
   <div class="modal" style="max-width:560px">
-    <div class="modal-header">
-      <h3>FICHA DE VENTA</h3>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-venta')">✕</button>
+    <div class="modal-header" style="flex-direction:column;align-items:flex-start;gap:2px">
+      <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
+        <h3>FICHA DE VENTA</h3>
+        <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-venta')">✕</button>
+      </div>
+      <div id="ficha-venta-fecha-display" style="font-size:11px;color:var(--suave)"></div>
     </div>
     <div class="modal-body" id="ficha-venta-contenido"></div>
     <div class="modal-footer" style="flex-wrap:wrap;gap:8px">
