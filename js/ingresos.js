@@ -9,7 +9,7 @@ let facturasCache = [];
 
 const ESTADOS_FAC = {
   'BORRADOR': { clase: 'badge-gris',    label: 'Borrador'  },
-  'EMITIDA':  { clase: 'badge-naranja', label: 'Emitida'   },
+  'EMITIDA':  { clase: 'badge-naranja', label: 'Pendiente' },
   'APROBADA': { clase: 'badge-verde',   label: 'Aprobada'  },
   'PAGADA':   { clase: 'badge-verde',   label: 'Cobrada'   },
   'ANULADA':  { clase: 'badge-rojo',    label: 'Anulada'   },
