@@ -176,12 +176,16 @@ async function calcularInvSaldoArea() {
   try {
     // Consolidado (todas las áreas) — se calcula siempre, lo usan los
     // usuarios con VER_INVENTARIO_GENERAL y sirve de referencia general.
-    const todasLasFilas = await api('inventario_stock_area','GET',null,'?select=id_articulo,id_area,stock_actual') || [];
+    // Se resta 'reservado' para mostrar el disponible REAL -- de lo
+    // contrario, un Presupuesto de Venta ya armado quedaría invisible para
+    // Almacén, que podría comprometer ese mismo stock con otra Área.
+    const todasLasFilas = await api('inventario_stock_area','GET',null,'?select=id_articulo,id_area,stock_actual,reservado') || [];
     const consolidado = {};
     const areasConStock = new Set();
     todasLasFilas.forEach(function(f){
-      consolidado[f.id_articulo] = (consolidado[f.id_articulo]||0) + parseFloat(f.stock_actual||0);
-      if (parseFloat(f.stock_actual||0) > 0) areasConStock.add(String(f.id_area));
+      const disponibleFila = parseFloat(f.stock_actual||0) - parseFloat(f.reservado||0);
+      consolidado[f.id_articulo] = (consolidado[f.id_articulo]||0) + disponibleFila;
+      if (disponibleFila > 0) areasConStock.add(String(f.id_area));
     });
     _invSaldoConsolidado = consolidado;
     _invAreasConStock = areasConStock;
@@ -208,9 +212,9 @@ async function calcularInvSaldoArea() {
       if (!id_areaUsuario) { _invSaldoArea = {}; return; }
     }
 
-    const filas = await api('inventario_stock_area','GET',null,'?id_area=eq.'+id_areaUsuario+'&select=id_articulo,stock_actual') || [];
+    const filas = await api('inventario_stock_area','GET',null,'?id_area=eq.'+id_areaUsuario+'&select=id_articulo,stock_actual,reservado') || [];
     const saldo = {};
-    filas.forEach(function(f){ saldo[f.id_articulo] = parseFloat(f.stock_actual||0); });
+    filas.forEach(function(f){ saldo[f.id_articulo] = parseFloat(f.stock_actual||0) - parseFloat(f.reservado||0); });
     _invSaldoArea = saldo;
   } catch(e) {
     console.warn('calcularInvSaldoArea error:', e);
@@ -3341,15 +3345,17 @@ async function invCargarMovimientos() {
       // propósito (un saldo es "ahora mismo", no depende de un rango de
       // fechas). Viene directo de inventario_stock_area, la misma fuente
       // que usa el resto del sistema (Inventario General, selector de
-      // Artículos en la OS, etc.) -- así siempre coincide.
-      let qStock = '?id_articulo=in.('+inClause+')&select=id_articulo,stock_actual,area:id_area(nombre,codigo)';
+      // Artículos en la OS, etc.) -- así siempre coincide. Se resta
+      // 'reservado' para mostrar el disponible REAL (lo ya comprometido
+      // por un Presupuesto de Venta no debe aparecer como libre).
+      let qStock = '?id_articulo=in.('+inClause+')&select=id_articulo,stock_actual,reservado,area:id_area(nombre,codigo)';
       if (id_areaMovs) qStock += '&id_area=eq.'+id_areaMovs;
       const stockRows = await api('inventario_stock_area','GET',null,qStock) || [];
       const porArea = {};
       stockRows.forEach(function(r) {
         const art = getArt(r.id_articulo); if (!art) return;
         const nom = r.area ? r.area.nombre+(r.area.codigo?' ('+r.area.codigo+')':'') : 'Sin área';
-        const stk = parseFloat(r.stock_actual||0);
+        const stk = parseFloat(r.stock_actual||0) - parseFloat(r.reservado||0);
         if (!stk) return; // no mostrar ceros, igual que el resto del sistema
         if (!porArea[nom]) porArea[nom] = {};
         porArea[nom][artNom(art)] = stk;
