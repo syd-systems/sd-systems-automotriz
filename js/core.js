@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260826205';
+const SYD_VERSION = '20260826210';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -538,11 +538,41 @@ async function upsertStockArea(id_articulo, id_area, delta) {
   return nuevoStock;
 }
 
-// ── Consultar el stock actual de un artículo en un área específica ──
+// ── Consultar el stock DISPONIBLE (stock_actual - reservado) de un
+// artículo en un área específica -- "reservado" son cantidades ya
+// comprometidas por Presupuestos de Venta activos (BORRADOR/CONFIRMADA)
+// que aún no se han facturado. Se resta aquí, en un solo lugar, para que
+// todas las validaciones/displays existentes en Inventario (Transferencias,
+// Salidas, corrección de faltantes, etc.) respeten automáticamente lo ya
+// comprometido por Ventas, sin tener que tocar cada uno por separado.
 async function obtenerStockArea(id_articulo, id_area) {
   const fila = await api('inventario_stock_area', 'GET', null,
-    '?id_articulo=eq.' + id_articulo + '&id_area=eq.' + id_area + '&select=stock_actual');
-  return (fila && fila[0]) ? parseFloat(fila[0].stock_actual || 0) : 0;
+    '?id_articulo=eq.' + id_articulo + '&id_area=eq.' + id_area + '&select=stock_actual,reservado');
+  if (!fila || !fila[0]) return 0;
+  const actual    = parseFloat(fila[0].stock_actual || 0);
+  const reservado = parseFloat(fila[0].reservado || 0);
+  return parseFloat((actual - reservado).toFixed(4));
+}
+
+// ── Ajustar la reserva de stock (columna 'reservado') de un artículo en
+// un área específica -- mismo patrón que upsertStockArea, pero sobre la
+// reserva en vez del stock real. Usado por Ventas al ingresar/quitar
+// Cantidad en un Presupuesto (antes de Facturar).
+async function ajustarReservaArea(id_articulo, id_area, delta) {
+  const fila = await api('inventario_stock_area', 'GET', null,
+    '?id_articulo=eq.' + id_articulo + '&id_area=eq.' + id_area + '&select=reservado');
+  const actual = (fila && fila[0]) ? parseFloat(fila[0].reservado || 0) : null;
+  if (actual === null) {
+    const nuevo = Math.max(0, parseFloat(delta) || 0);
+    await api('inventario_stock_area', 'POST', {
+      id_articulo: id_articulo, id_area: id_area, stock_actual: 0, reservado: nuevo
+    });
+    return nuevo;
+  }
+  const nuevoReservado = Math.max(0, parseFloat((actual + parseFloat(delta || 0)).toFixed(4)));
+  await api('inventario_stock_area', 'PATCH', { reservado: nuevoReservado, actualizado_en: new Date().toISOString() },
+    '?id_articulo=eq.' + id_articulo + '&id_area=eq.' + id_area);
+  return nuevoReservado;
 }
 
 // ── Consultar el stock CONSOLIDADO (todas las áreas) de un artículo ──
