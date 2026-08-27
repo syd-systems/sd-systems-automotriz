@@ -952,6 +952,20 @@ async function verFichaFactura(id) {
         api('os_servicios','GET',null,'?id_orden=eq.'+f.id_orden+'&select=*'),
         api('os_mercancias','GET',null,'?id_orden=eq.'+f.id_orden+'&select=*'),
       ]);
+    } else {
+      // Factura de Venta directa -- las líneas viven en venta_detalle, no
+      // en os_mercancias. Se ubica la Venta de origen por id_factura
+      // (mismo criterio ya usado en generarCxCyAsientoFactura).
+      try {
+        const ventaOrigenFicha = await api('ventas','GET',null,'?id_factura=eq.'+id+'&select=id_venta&limit=1');
+        if (ventaOrigenFicha && ventaOrigenFicha[0]) {
+          const lineasVentaFicha = await api('venta_detalle','GET',null,
+            '?id_venta=eq.'+ventaOrigenFicha[0].id_venta+'&select=cantidad,precio_unitario,subtotal,inventario_almacen(nombre_articulo)');
+          linRep = (lineasVentaFicha||[]).map(function(l) {
+            return { descripcion: l.inventario_almacen?.nombre_articulo || 'Artículo', cantidad: l.cantidad, precio_usd: l.precio_unitario, subtotal_usd: l.subtotal };
+          });
+        }
+      } catch(eLineasVentaFicha) { console.warn('Error cargando líneas de Venta para la ficha:', eLineasVentaFicha); }
     }
     const est    = ESTADOS_FAC[f.estado]||{clase:'badge-gris',label:f.estado};
     const emisor = f.emisores;
