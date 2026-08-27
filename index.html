@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260826205"></script>
-<script src="js/parametros.js?v=20260826205"></script>
-<script src="js/empresas.js?v=20260826205"></script>
-<script src="js/ingresos.js?v=20260826205"></script>
-<script src="js/inventario.js?v=20260826205"></script>
-<script src="js/proveedores.js?v=20260826205"></script>
-<script src="js/clientes.js?v=20260826205"></script>
-<script src="js/ventas.js?v=20260826205"></script>
-<script src="js/contabilidad.js?v=20260826205"></script>
-<script src="js/egresos.js?v=20260826205"></script>
-<script src="js/vehiculos.js?v=20260826205"></script>
-<script src="js/catalogo.js?v=20260826205"></script>
-<script src="js/ordenes.js?v=20260826205"></script>
+<script src="js/core.js?v=20260826210"></script>
+<script src="js/parametros.js?v=20260826210"></script>
+<script src="js/empresas.js?v=20260826210"></script>
+<script src="js/ingresos.js?v=20260826210"></script>
+<script src="js/inventario.js?v=20260826210"></script>
+<script src="js/proveedores.js?v=20260826210"></script>
+<script src="js/clientes.js?v=20260826210"></script>
+<script src="js/ventas.js?v=20260826210"></script>
+<script src="js/contabilidad.js?v=20260826210"></script>
+<script src="js/egresos.js?v=20260826210"></script>
+<script src="js/vehiculos.js?v=20260826210"></script>
+<script src="js/catalogo.js?v=20260826210"></script>
+<script src="js/ordenes.js?v=20260826210"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3930,14 +3930,14 @@
         <h3 id="vta-modal-titulo">NUEVA VENTA</h3>
         <div id="vta-fecha-display" style="font-size:12px;color:var(--suave);margin-top:2px"></div>
       </div>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-venta')">✕</button>
+      <button class="modal-cerrar" onclick="cerrarModalVentaSinGuardar()">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-grid" style="gap:6px">
         <div class="form-campo" style="grid-column:1/-1;gap:2px">
           <label style="font-size:9px;letter-spacing:1px">Cliente</label>
           <div style="display:flex;gap:6px">
-            <select id="vta-select-cliente" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:9px;padding:7px 9px;border-radius:5px;outline:none"></select>
+            <select id="vta-select-cliente" onchange="document.getElementById('alerta-vta-err').style.display='none'" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:9px;padding:7px 9px;border-radius:5px;outline:none"></select>
             <button type="button" class="btn-secundario" style="white-space:nowrap" onclick="abrirClienteRapido(function(cli){ if(!cli) return; const sel=document.getElementById('vta-select-cliente'); const opt=document.createElement('option'); opt.value=cli.id_cliente; opt.textContent=cli.nombre_apellido+' ('+cli.condicion_legal+'-'+cli.identificacion+')'; sel.appendChild(opt); sel.value=cli.id_cliente; })">+ Nuevo</button>
           </div>
         </div>
@@ -3971,7 +3971,7 @@
       <div class="alerta alerta-exito" id="alerta-vta-ok"  style="margin:0"></div>
       <div class="alerta alerta-error"  id="alerta-vta-err" style="margin:0"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button class="btn-secundario" onclick="cerrarModal('modal-venta')">Retornar</button>
+        <button class="btn-secundario" onclick="cerrarModalVentaSinGuardar()">Retornar</button>
         <button class="btn-primario"   onclick="btnSetGuardando(this,true);guardarVentaBorrador().finally(()=>btnSetGuardando(this,false))">GUARDAR PRESUPUESTO</button>
       </div>
     </div>
