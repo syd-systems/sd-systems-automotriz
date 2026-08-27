@@ -709,16 +709,16 @@ async function verFichaVenta(id) {
 
   const ESTADO_BADGE = { BORRADOR: 'badge-gris', FACTURADA: 'badge-verde', ANULADA: 'badge-rojo' };
   const tasa = v.tasa_bcv || 1;
-  document.getElementById('ficha-venta-fecha-display').textContent =
-    'Fecha: ' + fmtFecha(v.fecha_venta) + '   ·   Tasa BCV: ' + fmtBs(tasa) + ' Bs/$';
+  document.getElementById('ficha-venta-fecha-display').textContent = 'Fecha: ' + fmtFecha(v.fecha_venta);
   const esVES = v.moneda_cobro === 'VES';
   // Resalta en naranja la cifra en la Moneda de Facturación real de esta
-  // Venta; la otra moneda se muestra atenuada, solo de referencia.
+  // Venta, arriba; la otra moneda se muestra atenuada, más pequeña, debajo.
   const fmtDual = function(usd) {
     const ves = (usd||0) * tasa;
-    return '<span style="'+(esVES?'color:var(--suave)':'color:var(--naranja)')+'">$ '+fmtUSD(usd||0)+'</span>'
-      + '<span style="color:var(--suave);font-size:11px"> · </span>'
-      + '<span style="'+(esVES?'color:var(--naranja)':'color:var(--suave)')+'">Bs '+fmtBs(ves)+'</span>';
+    const principal = esVES ? 'Bs ' + fmtBs(ves) : '$ ' + fmtUSD(usd||0);
+    const secundaria = esVES ? '$ ' + fmtUSD(usd||0) : 'Bs ' + fmtBs(ves);
+    return '<div style="color:var(--naranja)">'+principal+'</div>'
+      + '<div style="color:var(--suave);font-size:11px">'+secundaria+'</div>';
   };
   document.getElementById('ficha-venta-contenido').innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">'
@@ -729,11 +729,11 @@ async function verFichaVenta(id) {
     + '<table style="width:100%;margin-bottom:14px"><thead><tr>'
     + '<th style="font-size:11px;text-align:left;color:var(--suave)">Artículo</th><th style="font-size:11px;color:var(--suave)">Cant.</th><th style="font-size:11px;color:var(--suave)">P. Unit.</th><th style="font-size:11px;color:var(--suave)">Subtotal</th>'
     + '</tr></thead><tbody>'+(filasLin || '<tr><td colspan="4" style="text-align:center;color:var(--suave);padding:12px;font-size:12px">Sin líneas</td></tr>')+'</tbody></table>'
-    + '<div style="display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--borde);padding-top:10px;font-family:var(--font-mono)">'
-    + '<div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--suave);font-family:var(--font-body)">Subtotal</span><span>'+fmtDual(v.subtotal_usd)+'</span></div>'
-    + (v.iva_usd > 0 ? '<div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--suave);font-family:var(--font-body)">IVA</span><span>'+fmtDual(v.iva_usd)+'</span></div>' : '')
-    + (v.igtf_usd > 0 ? '<div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--suave);font-family:var(--font-body)">IGTF</span><span>'+fmtDual(v.igtf_usd)+'</span></div>' : '')
-    + '<div style="display:flex;justify-content:space-between;font-size:15px;padding-top:4px"><span style="font-family:var(--font-display)">TOTAL</span><span>'+fmtDual(v.total_usd)+'</span></div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--borde);padding-top:10px;font-family:var(--font-mono)">'
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:12px"><span style="color:var(--suave);font-family:var(--font-body);padding-top:1px">Subtotal</span><div style="text-align:right">'+fmtDual(v.subtotal_usd)+'</div></div>'
+    + (v.iva_usd > 0 ? '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:12px"><span style="color:var(--suave);font-family:var(--font-body);padding-top:1px">IVA</span><div style="text-align:right">'+fmtDual(v.iva_usd)+'</div></div>' : '')
+    + (v.igtf_usd > 0 ? '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:12px"><span style="color:var(--suave);font-family:var(--font-body);padding-top:1px">IGTF</span><div style="text-align:right">'+fmtDual(v.igtf_usd)+'</div></div>' : '')
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:15px;padding-top:4px"><span style="font-family:var(--font-display);padding-top:2px">TOTAL</span><div style="text-align:right">'+fmtDual(v.total_usd)+'</div></div>'
     + '</div>'
     + '<div style="font-size:10px;color:var(--suave);margin-top:4px;text-align:right">Moneda de Facturación: '+(esVES?'VES':'USD')+' · Tasa BCV: '+fmtBs(tasa)+' Bs/$</div>'
     + (v.estado === 'FACTURADA'
