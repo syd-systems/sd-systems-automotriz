@@ -388,6 +388,38 @@ async function renderInventario(filtro) {
       }
     } catch(ePend) { console.warn('Error cargando entregas pendientes de confirmar:', ePend); }
 
+    // Reservas activas de Ventas (Presupuestos en BORRADOR/CONFIRMADA, aún
+    // sin facturar) -- se muestran con la misma nota visual, etiquetadas
+    // con el Área real "Ventas y Marketing" (código 6000), para dejar claro
+    // que ese stock ya está comprometido aunque el stock crudo del Almacén
+    // (2300) todavía no lo refleje como salida física.
+    try {
+      const ventasActivas = await api('ventas','GET',null,
+        '?estado=in.(BORRADOR,CONFIRMADA)&select=id_venta'
+        + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+      const idsVentasActivas = (ventasActivas||[]).map(function(v){ return v.id_venta; });
+      if (idsVentasActivas.length) {
+        const lineasReservadas = await api('venta_detalle','GET',null,
+          '?id_venta=in.(' + idsVentasActivas.join(',') + ')&select=id_articulo,cantidad');
+        const areaVentasRows = await api('param_areas','GET',null,'?codigo=eq.6000&select=id,nombre,codigo&limit=1');
+        const areaVentas = areaVentasRows && areaVentasRows[0] ? areaVentasRows[0] : null;
+        const reservadoPorArticulo = {};
+        (lineasReservadas||[]).forEach(function(l) {
+          reservadoPorArticulo[l.id_articulo] = (reservadoPorArticulo[l.id_articulo]||0) + parseFloat(l.cantidad||0);
+        });
+        Object.keys(reservadoPorArticulo).forEach(function(idArt) {
+          const cant = reservadoPorArticulo[idArt];
+          if (cant <= 0) return;
+          if (!_invPendientesPorArticulo[idArt]) _invPendientesPorArticulo[idArt] = [];
+          _invPendientesPorArticulo[idArt].push({
+            cantidad: cant,
+            nombreArea: areaVentas ? areaVentas.nombre : 'Ventas y Marketing',
+            codigoArea: areaVentas ? areaVentas.codigo : '6000'
+          });
+        });
+      }
+    } catch(ePendVentas) { console.warn('Error cargando reservas activas de Ventas:', ePendVentas); }
+
     // Calcular saldo por área (función centralizada) — ANTES de cualquier filtro de stock,
     // para que "Solo con stock" y el filtro por área usen la fuente correcta (inventario_stock_area)
     await calcularInvSaldoArea();
