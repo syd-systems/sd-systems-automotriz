@@ -230,6 +230,7 @@ async function quitarLineaVenta(idx) {
     try { await ajustarReservaArea(lin.id_articulo, idArea, -lin.reservadoActual); } catch(e) {}
   }
   _ventaLineas.splice(idx, 1);
+  await _cargarArticulosMercanciaVentas(); // refrescar el stock mostrado en los demás select
   _renderLineasVenta();
 }
 
@@ -269,7 +270,16 @@ async function _onCambioArticuloVenta(idx, idArticulo) {
   lin.cantidad = 0;
   lin.reservadoActual = 0;
   lin.errorStock = null;
+
+  // Refrescar el stock mostrado en TODOS los select -- puede haber
+  // cambiado por reservas hechas en esta misma sesión o por otros
+  // operadores mientras el modal estaba abierto.
+  await _cargarArticulosMercanciaVentas();
   _renderLineasVenta();
+
+  // Posicionar el cursor directo en Cantidad, para no obligar al operador
+  // a hacer clic ahí manualmente después de elegir el Artículo.
+  if (art) { document.getElementById('vta-cant-'+idx)?.focus(); }
 }
 
 function _onCambioCantidadVenta(idx, valor) {
@@ -308,6 +318,7 @@ async function _ajustarReservaLineaVenta(idx) {
   try {
     await ajustarReservaArea(lin.id_articulo, idArea, delta);
     lin.reservadoActual = cantidadNueva;
+    await _cargarArticulosMercanciaVentas(); // refrescar el stock mostrado en los select
   } catch(e) {
     lin.errorStock = 'Error al reservar el stock';
   }
@@ -338,7 +349,7 @@ function _renderLineasVenta() {
       + '<td style="padding:4px"><select onchange="_onCambioArticuloVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);border:1px solid '+(lin.errorDuplicado?'#e57373':'var(--borde)')+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">'+opciones+'</select>'
         + (lin.errorDuplicado ? '<div style="font-size:10px;color:#e57373;margin-top:2px">'+lin.errorDuplicado+'</div>' : '')
         + '</td>'
-      + '<td style="padding:4px;width:90px"><input type="number" min="0" step="any" value="'+(lin.cantidad||'')+'" oninput="_onCambioCantidadVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);'+borderCant+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)">'
+      + '<td style="padding:4px;width:90px"><input id="vta-cant-'+idx+'" type="number" min="0" step="any" value="'+(lin.cantidad||'')+'" oninput="_onCambioCantidadVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);'+borderCant+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)">'
         + (lin.errorStock ? '<div style="font-size:10px;color:#e57373;margin-top:2px">'+lin.errorStock+'</div>' : '')
         + '</td>'
       + '<td style="padding:4px 8px;width:120px;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--suave)">'+_fmtMonedaVenta(lin.precio_unitario)+'</td>'
