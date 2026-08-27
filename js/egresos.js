@@ -1105,7 +1105,13 @@ function cerrarModal(id) {
 // Cerrar modal al hacer clic fuera
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => {
-    if (e.target === overlay) overlay.classList.remove('abierto');
+    if (e.target === overlay) {
+      if (overlay.id === 'modal-venta' && typeof cerrarModalVentaSinGuardar === 'function') {
+        cerrarModalVentaSinGuardar();
+      } else {
+        overlay.classList.remove('abierto');
+      }
+    }
   });
 });
 
