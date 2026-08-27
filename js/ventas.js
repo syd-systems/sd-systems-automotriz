@@ -709,6 +709,8 @@ async function verFichaVenta(id) {
 
   const ESTADO_BADGE = { BORRADOR: 'badge-gris', FACTURADA: 'badge-verde', ANULADA: 'badge-rojo' };
   const tasa = v.tasa_bcv || 1;
+  document.getElementById('ficha-venta-fecha-display').textContent =
+    'Fecha: ' + fmtFecha(v.fecha_venta) + '   ·   Tasa BCV: ' + fmtBs(tasa) + ' Bs/$';
   const esVES = v.moneda_cobro === 'VES';
   // Resalta en naranja la cifra en la Moneda de Facturación real de esta
   // Venta; la otra moneda se muestra atenuada, solo de referencia.
