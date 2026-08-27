@@ -46,8 +46,8 @@ async function _cargarArticulosMercanciaVentas() {
   let mapaStock = {};
   if (idArea) {
     try {
-      const filas = await api('inventario_stock_area','GET',null,'?id_area=eq.'+idArea+'&select=id_articulo,stock_actual');
-      (filas||[]).forEach(function(f) { mapaStock[f.id_articulo] = parseFloat(f.stock_actual) || 0; });
+      const filas = await api('inventario_stock_area','GET',null,'?id_area=eq.'+idArea+'&select=id_articulo,stock_actual,reservado');
+      (filas||[]).forEach(function(f) { mapaStock[f.id_articulo] = parseFloat(f.stock_actual||0) - parseFloat(f.reservado||0); });
     } catch(e) {}
   }
 
