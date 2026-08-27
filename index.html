@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260827170"></script>
-<script src="js/parametros.js?v=20260827170"></script>
-<script src="js/empresas.js?v=20260827170"></script>
-<script src="js/ingresos.js?v=20260827170"></script>
-<script src="js/inventario.js?v=20260827170"></script>
-<script src="js/proveedores.js?v=20260827170"></script>
-<script src="js/clientes.js?v=20260827170"></script>
-<script src="js/ventas.js?v=20260827170"></script>
-<script src="js/contabilidad.js?v=20260827170"></script>
-<script src="js/egresos.js?v=20260827170"></script>
-<script src="js/vehiculos.js?v=20260827170"></script>
-<script src="js/catalogo.js?v=20260827170"></script>
-<script src="js/ordenes.js?v=20260827170"></script>
+<script src="js/core.js?v=20260827180"></script>
+<script src="js/parametros.js?v=20260827180"></script>
+<script src="js/empresas.js?v=20260827180"></script>
+<script src="js/ingresos.js?v=20260827180"></script>
+<script src="js/inventario.js?v=20260827180"></script>
+<script src="js/proveedores.js?v=20260827180"></script>
+<script src="js/clientes.js?v=20260827180"></script>
+<script src="js/ventas.js?v=20260827180"></script>
+<script src="js/contabilidad.js?v=20260827180"></script>
+<script src="js/egresos.js?v=20260827180"></script>
+<script src="js/vehiculos.js?v=20260827180"></script>
+<script src="js/catalogo.js?v=20260827180"></script>
+<script src="js/ordenes.js?v=20260827180"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3936,9 +3936,10 @@
       <div class="form-grid" style="gap:6px">
         <div class="form-campo" style="grid-column:1/-1;gap:2px">
           <label style="font-size:9px;letter-spacing:1px">Cliente</label>
+          <input type="text" id="vta-buscar-cliente" placeholder="Buscar por nombre o identificación..." oninput="_filtrarSelectCliente()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:9px;padding:7px 9px;border-radius:5px;outline:none;width:100%;margin-bottom:6px">
           <div style="display:flex;gap:6px">
-            <select id="vta-select-cliente" onchange="document.getElementById('alerta-vta-err').style.display='none'" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:9px;padding:7px 9px;border-radius:5px;outline:none"></select>
-            <button type="button" class="btn-secundario" style="white-space:nowrap" onclick="abrirClienteRapido(function(cli){ if(!cli) return; const sel=document.getElementById('vta-select-cliente'); const opt=document.createElement('option'); opt.value=cli.id_cliente; opt.textContent=cli.nombre_apellido+' ('+cli.condicion_legal+'-'+cli.identificacion+')'; sel.appendChild(opt); sel.value=cli.id_cliente; })">+ Nuevo</button>
+            <select id="vta-select-cliente" onchange="_onCambioSelectCliente()" style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:9px;padding:7px 9px;border-radius:5px;outline:none"></select>
+            <button type="button" class="btn-secundario" style="white-space:nowrap" onclick="abrirClienteRapido(_onClienteRapidoCreadoVenta)">+ Nuevo</button>
           </div>
         </div>
         <div class="form-campo" style="gap:2px">
