@@ -140,13 +140,19 @@ async function renderVentasListado() {
 
     const filas = ventas.map(function(v) {
       const cli = v.clientes;
+      const tasa = v.tasa_bcv || 1;
+      const esVES = v.moneda_cobro === 'VES';
+      const ves = (v.total_usd||0) * tasa;
+      const totalDual = '<div style="' + (esVES?'color:var(--suave)':'color:var(--naranja)') + '">$ ' + fmtUSD(v.total_usd||0) + '</div>'
+        + '<div style="' + (esVES?'color:var(--naranja)':'color:var(--suave)') + ';font-size:11px">Bs ' + fmtBs(ves) + '</div>';
+      const botonLabel = v.estado === 'BORRADOR' ? 'Editar / Facturar' : 'Ver';
       return '<tr data-id="' + v.id_venta + '">'
         + '<td style="font-family:var(--font-mono);font-size:12px">' + (v.facturas?.numero_factura || 'V-' + v.id_venta) + '</td>'
         + '<td>' + (cli ? cli.nombre_apellido : '—') + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (cli ? cli.condicion_legal + '-' + cli.identificacion : '') + '</div></td>'
         + '<td style="font-size:12px">' + fmtFecha(v.fecha_venta) + '</td>'
-        + '<td style="text-align:right;font-family:var(--font-mono)">$ ' + fmtUSD(v.total_usd || 0) + '</td>'
+        + '<td style="text-align:right;font-family:var(--font-mono)">' + totalDual + '</td>'
         + '<td><span class="badge ' + (ESTADO_BADGE[v.estado] || 'badge-gris') + '">' + (ESTADO_LABEL_VENTA[v.estado] || v.estado) + '</span></td>'
-        + '<td><button class="btn-naranja" onclick="verFichaVenta(' + v.id_venta + ')">Ver</button></td>'
+        + '<td><button class="btn-naranja" onclick="verFichaVenta(' + v.id_venta + ')">' + botonLabel + '</button></td>'
         + '</tr>';
     }).join('');
 
