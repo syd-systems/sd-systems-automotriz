@@ -381,7 +381,7 @@ async function contVerAsiento(id) {
       let btns = '';
       // Eliminar — solo en PENDIENTE (asiento no contabilizado aún)
       if (puedo('CONTABILIDAD','ELIMINAR') && ast.estado === 'PENDIENTE') {
-        btns += '<button class="btn-secundario" style="color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="contEliminarAsiento(' + ast.id_asiento + ')">🗑 Eliminar</button>';
+        btns += '<button class="btn-secundario" style="color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="btnSetGuardando(this,true,null,\'Procesando...\');contEliminarAsiento(' + ast.id_asiento + ').finally(()=>btnSetGuardando(this,false))">🗑 Eliminar</button>';
       }
       // Anular — solo en APROBADO y no automático
       if (puedo('CONTABILIDAD','ANULAR') && ast.estado === 'APROBADO' && ast.tipo === 'MANUAL') {
@@ -1986,7 +1986,7 @@ async function contRenderPeriodos() {
           + '<td style="font-size:12px">' + fmtFecha(p.fecha_fin) + '</td>'
           + '<td><span class="badge ' + (p.estado==='ABIERTO'?'badge-verde':'badge-gris') + '">' + p.estado + '</span></td>'
           + '<td><div style="display:flex;gap:6px">'
-          + (p.estado==='ABIERTO' ? '<button class="btn-secundario" style="font-size:11px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="contCerrarPeriodo(' + p.id_periodo + ',\'' + p.nombre + '\')">🔒 Cerrar</button>' : '')
+          + (p.estado==='ABIERTO' ? '<button class="btn-secundario" style="font-size:11px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="btnSetGuardando(this,true,null,\'Procesando...\');contCerrarPeriodo(' + p.id_periodo + ',\'' + p.nombre + '\').finally(()=>btnSetGuardando(this,false))">🔒 Cerrar</button>' : '')
           + '<button class="btn-secundario" style="font-size:11px" onclick="contAbrirPeriodo(' + p.id_periodo + ')">✏</button>'
           + '</div></td></tr>';
       }).join('')
