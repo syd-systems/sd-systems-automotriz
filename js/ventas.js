@@ -833,7 +833,7 @@ async function facturarVenta(id) {
       // onCambiarMetodoCobroCxc, en contabilidad.js).
       aplica_iva: v.iva_usd > 0, aplica_igtf: false,
       subtotal_usd: v.subtotal_usd, iva_usd: v.iva_usd, igtf_usd: 0,
-      total_usd: v.total_usd, total_ves: (v.total_usd||0) * (v.tasa_bcv||1), tasa_bcv: v.tasa_bcv || 1,
+      total_usd: v.total_usd, total_ves: parseFloat(((v.total_usd||0) * (v.tasa_bcv||1)).toFixed(2)), tasa_bcv: v.tasa_bcv || 1,
       id_usuario: sesionActual.correo_usuario
     };
 
