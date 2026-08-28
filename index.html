@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260827250"></script>
-<script src="js/parametros.js?v=20260827250"></script>
-<script src="js/empresas.js?v=20260827250"></script>
-<script src="js/ingresos.js?v=20260827250"></script>
-<script src="js/inventario.js?v=20260827250"></script>
-<script src="js/proveedores.js?v=20260827250"></script>
-<script src="js/clientes.js?v=20260827250"></script>
-<script src="js/ventas.js?v=20260827250"></script>
-<script src="js/contabilidad.js?v=20260827250"></script>
-<script src="js/egresos.js?v=20260827250"></script>
-<script src="js/vehiculos.js?v=20260827250"></script>
-<script src="js/catalogo.js?v=20260827250"></script>
-<script src="js/ordenes.js?v=20260827250"></script>
+<script src="js/core.js?v=20260828100"></script>
+<script src="js/parametros.js?v=20260828100"></script>
+<script src="js/empresas.js?v=20260828100"></script>
+<script src="js/ingresos.js?v=20260828100"></script>
+<script src="js/inventario.js?v=20260828100"></script>
+<script src="js/proveedores.js?v=20260828100"></script>
+<script src="js/clientes.js?v=20260828100"></script>
+<script src="js/ventas.js?v=20260828100"></script>
+<script src="js/contabilidad.js?v=20260828100"></script>
+<script src="js/egresos.js?v=20260828100"></script>
+<script src="js/vehiculos.js?v=20260828100"></script>
+<script src="js/catalogo.js?v=20260828100"></script>
+<script src="js/ordenes.js?v=20260828100"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3938,7 +3938,7 @@
           <label style="font-size:9px;letter-spacing:1px">Cliente</label>
           <div style="display:flex;gap:6px">
             <div style="flex:1;position:relative">
-              <input type="text" id="vta-cliente-input" autocomplete="off" placeholder="Escriba el nombre o identificación..." oninput="_renderOpcionesCliente(this.value)" onfocus="_renderOpcionesCliente(this.value)" onblur="setTimeout(function(){document.getElementById('vta-cliente-opciones').style.display='none'},150)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:9px;padding:7px 9px;border-radius:5px;outline:none">
+              <input type="text" id="vta-cliente-input" autocomplete="off" placeholder="Escriba el nombre o identificación..." oninput="_renderOpcionesCliente(this.value)" onfocus="_renderOpcionesCliente(this.value)" onblur="setTimeout(function(){document.getElementById('vta-cliente-opciones').style.display='none'},150)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:11px;padding:7px 9px;border-radius:5px;outline:none">
               <div id="vta-cliente-opciones" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:60;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;max-height:180px;overflow-y:auto;margin-top:2px;box-shadow:0 4px 10px rgba(0,0,0,0.4)"></div>
             </div>
             <button type="button" class="btn-secundario" style="white-space:nowrap" onclick="abrirClienteRapido(_onClienteRapidoCreadoVenta)">+ Nuevo</button>
@@ -3946,7 +3946,7 @@
         </div>
         <div class="form-campo" style="gap:2px">
           <label style="font-size:9px;letter-spacing:1px">Moneda Facturación</label>
-          <select id="vta-moneda" onchange="_renderLineasVenta()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:9px;padding:7px 9px;border-radius:5px;outline:none;width:100%">
+          <select id="vta-moneda" onchange="_renderLineasVenta()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:11px;padding:7px 9px;border-radius:5px;outline:none;width:100%">
             <option value="VES">VES</option>
             <option value="USD">USD</option>
           </select>
