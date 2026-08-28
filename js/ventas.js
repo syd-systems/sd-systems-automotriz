@@ -232,7 +232,7 @@ async function renderVentasEntregas() {
         + '<td style="text-align:right;font-family:var(--font-mono)">$ '+fmtUSD(v.total_usd||0)+'</td>'
         + (_entregaSubVista==='pendientes'
             ? '<td style="font-size:12px">'+(v.facturas?.fecha_emision?fmtFecha(v.facturas.fecha_emision):'—')+'</td>'
-              + '<td>'+(puedeMarcar ? '<button class="btn-primario" onclick="marcarVentaEntregada('+v.id_venta+')">✓ Marcar Entregado</button>' : '')+'</td>'
+              + '<td>'+(puedeMarcar ? '<button class="btn-primario" onclick="btnSetGuardando(this,true,null,\'Procesando...\');marcarVentaEntregada('+v.id_venta+').finally(()=>btnSetGuardando(this,false))">✓ Marcar Entregado</button>' : '')+'</td>'
             : '<td style="font-size:12px">'+(v.fecha_entrega?fmtFecha(v.fecha_entrega):'—')+'</td>'
               + '<td style="font-size:12px">'+(v.entregado_por||'—')+'</td>')
         + '</tr>';
@@ -792,8 +792,8 @@ async function verFichaVenta(id) {
 
   btnEditar.onclick    = function() { cerrarModal('modal-ficha-venta'); abrirVenta(v.id_venta); };
   btnFacturar.onclick  = function() { facturarVenta(v.id_venta); };
-  btnAnular.onclick    = function() { anularVenta(v.id_venta); };
-  btnEliminar.onclick  = function() { eliminarVenta(v.id_venta); };
+  btnAnular.onclick    = function() { btnSetGuardando(this,true,null,'Procesando...'); anularVenta(v.id_venta).finally(()=>btnSetGuardando(this,false)); };
+  btnEliminar.onclick  = function() { btnSetGuardando(this,true,null,'Procesando...'); eliminarVenta(v.id_venta).finally(()=>btnSetGuardando(this,false)); };
 
   abrirModal('modal-ficha-venta');
 }
