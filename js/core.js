@@ -2691,11 +2691,11 @@ async function consultarTasaPorFecha() {
 
 
 // ── Helper global para estado Guardando en botones ──
-function btnSetGuardando(btn, guardando, textoOriginal) {
+function btnSetGuardando(btn, guardando, textoOriginal, textoEnProgreso) {
   if (!btn) return;
   if (guardando) {
     btn.dataset.textoOriginal = btn.textContent;
-    btn.textContent = 'Guardando...';
+    btn.textContent = textoEnProgreso || 'Guardando...';
     btn.disabled = true;
   } else {
     btn.textContent = btn.dataset.textoOriginal || textoOriginal || 'Guardar';
