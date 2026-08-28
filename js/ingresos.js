@@ -1075,7 +1075,7 @@ async function verFichaFactura(id) {
     var btnAprobar = document.getElementById('ficha-fac-btn-aprobar');
     if (btnAprobar) {
       btnAprobar.style.display = (f.estado==='EMITIDA' && puedeAprobar('FACTURAS')) ? '' : 'none';
-      btnAprobar.onclick = function() { aprobarFactura(f.id_factura); };
+      btnAprobar.onclick = function() { btnSetGuardando(this,true,null,'Procesando...'); aprobarFactura(f.id_factura).finally(()=>btnSetGuardando(this,false)); };
     }
     if (btnPago) {
       btnPago._id = f.id_factura;
@@ -1099,8 +1099,8 @@ async function verFichaFactura(id) {
     }
     if (btnEditar)  { btnEditar._id=f.id_factura;  btnEditar.onclick=function(){cerrarModal('modal-ficha-fac');abrirEditarFactura(this._id);}; btnEditar.style.display=puedo('FACTURAS','EDITAR')&&f.estado==='BORRADOR'?'':'none'; }
     if (btnEmitir)  { btnEmitir._id=f.id_factura;  btnEmitir.onclick=function(){emitirFactura(this._id);};   btnEmitir.style.display=puedo('FACTURAS','CREAR')&&f.estado==='BORRADOR'?'':'none'; }
-    if (btnAnular)  { btnAnular._id=f.id_factura;  btnAnular._num=f.numero_factura; btnAnular.onclick=function(){anularFactura(this._id,this._num);}; btnAnular.style.display=puedo('FACTURAS','ANULAR')&&(f.estado==='EMITIDA'||f.estado==='PAGADA')?'':'none'; }
-    if (btnEliminar){ btnEliminar._id=f.id_factura; btnEliminar._num=f.numero_factura; btnEliminar.onclick=function(){eliminarFactura(this._id,this._num);}; btnEliminar.style.display=puedo('FACTURAS','ELIMINAR')&&f.estado==='ANULADA'?'':'none'; }
+    if (btnAnular)  { btnAnular._id=f.id_factura;  btnAnular._num=f.numero_factura; btnAnular.onclick=function(){btnSetGuardando(this,true,null,'Procesando...');anularFactura(this._id,this._num).finally(()=>btnSetGuardando(this,false));}; btnAnular.style.display=puedo('FACTURAS','ANULAR')&&(f.estado==='EMITIDA'||f.estado==='PAGADA')?'':'none'; }
+    if (btnEliminar){ btnEliminar._id=f.id_factura; btnEliminar._num=f.numero_factura; btnEliminar.onclick=function(){btnSetGuardando(this,true,null,'Procesando...');eliminarFactura(this._id,this._num).finally(()=>btnSetGuardando(this,false));}; btnEliminar.style.display=puedo('FACTURAS','ELIMINAR')&&f.estado==='ANULADA'?'':'none'; }
     abrirModal('modal-ficha-fac');
   focusFirstField('modal-ficha-fac');
   } catch(err) { alert('Error: '+msgErr(err)); console.error(err); }
