@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260828100"></script>
-<script src="js/parametros.js?v=20260828100"></script>
-<script src="js/empresas.js?v=20260828100"></script>
-<script src="js/ingresos.js?v=20260828100"></script>
-<script src="js/inventario.js?v=20260828100"></script>
-<script src="js/proveedores.js?v=20260828100"></script>
-<script src="js/clientes.js?v=20260828100"></script>
-<script src="js/ventas.js?v=20260828100"></script>
-<script src="js/contabilidad.js?v=20260828100"></script>
-<script src="js/egresos.js?v=20260828100"></script>
-<script src="js/vehiculos.js?v=20260828100"></script>
-<script src="js/catalogo.js?v=20260828100"></script>
-<script src="js/ordenes.js?v=20260828100"></script>
+<script src="js/core.js?v=20260828110"></script>
+<script src="js/parametros.js?v=20260828110"></script>
+<script src="js/empresas.js?v=20260828110"></script>
+<script src="js/ingresos.js?v=20260828110"></script>
+<script src="js/inventario.js?v=20260828110"></script>
+<script src="js/proveedores.js?v=20260828110"></script>
+<script src="js/clientes.js?v=20260828110"></script>
+<script src="js/ventas.js?v=20260828110"></script>
+<script src="js/contabilidad.js?v=20260828110"></script>
+<script src="js/egresos.js?v=20260828110"></script>
+<script src="js/vehiculos.js?v=20260828110"></script>
+<script src="js/catalogo.js?v=20260828110"></script>
+<script src="js/ordenes.js?v=20260828110"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3935,7 +3935,7 @@
     <div class="modal-body">
       <div class="form-grid" style="gap:6px">
         <div class="form-campo" style="grid-column:1/-1;gap:2px">
-          <label style="font-size:9px;letter-spacing:1px">Cliente</label>
+          <label style="font-size:9px;letter-spacing:1px;text-transform:none">Cliente</label>
           <div style="display:flex;gap:6px">
             <div style="flex:1;position:relative">
               <input type="text" id="vta-cliente-input" autocomplete="off" placeholder="Escriba el nombre o identificación..." oninput="_renderOpcionesCliente(this.value)" onfocus="_renderOpcionesCliente(this.value)" onblur="setTimeout(function(){document.getElementById('vta-cliente-opciones').style.display='none'},150)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:11px;padding:7px 9px;border-radius:5px;outline:none">
@@ -3945,7 +3945,7 @@
           </div>
         </div>
         <div class="form-campo" style="gap:2px">
-          <label style="font-size:9px;letter-spacing:1px">Moneda Facturación</label>
+          <label style="font-size:9px;letter-spacing:1px;text-transform:none">Moneda de Facturación</label>
           <select id="vta-moneda" onchange="_renderLineasVenta()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:11px;padding:7px 9px;border-radius:5px;outline:none;width:100%">
             <option value="VES">VES</option>
             <option value="USD">USD</option>
@@ -3968,14 +3968,13 @@
         <select id="vta-filtro-tipo" onchange="_filtrarArticulosVenta()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:11px;padding:6px 8px;border-radius:5px;outline:none;cursor:pointer">
           <option value="">Todos los tipos</option>
         </select>
-        <input type="text" id="vta-filtro-buscar" placeholder="Buscar artículo o código..." oninput="_filtrarArticulosVenta()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:11px;padding:6px 10px;border-radius:5px;outline:none;flex:1;min-width:140px">
         <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--suave);cursor:pointer;white-space:nowrap">
           <input type="checkbox" id="vta-filtro-solo-stock" onchange="_filtrarArticulosVenta()"> Solo con stock
         </label>
       </div>
       <div class="tabla-container" style="max-height:max(140px, calc(90vh - 460px));margin-top:8px">
         <table style="width:100%"><thead><tr>
-          <th style="font-size:11px">Artículo</th><th style="font-size:11px">Cant.</th><th style="font-size:11px">P. Unit.</th><th style="font-size:11px">Subtotal</th><th></th>
+          <th style="font-size:11px;color:var(--texto)">Artículo</th><th style="font-size:11px;color:var(--texto)">Cant.</th><th style="font-size:11px;color:var(--texto)">P. Unit.</th><th style="font-size:11px;color:var(--texto)">Subtotal</th><th></th>
         </tr></thead><tbody id="vta-lineas-cuerpo"></tbody></table>
       </div>
       <div id="vta-totales"></div>
