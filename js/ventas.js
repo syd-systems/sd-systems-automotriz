@@ -152,7 +152,7 @@ async function renderVentasListado() {
         + '<td style="font-size:12px">' + fmtFecha(v.fecha_venta) + '</td>'
         + '<td style="text-align:right;font-family:var(--font-mono)">' + totalDual + '</td>'
         + '<td><span class="badge ' + (ESTADO_BADGE[v.estado] || 'badge-gris') + '">' + (ESTADO_LABEL_VENTA[v.estado] || v.estado) + '</span></td>'
-        + '<td><button class="btn-naranja" onclick="verFichaVenta(' + v.id_venta + ')">' + botonLabel + '</button></td>'
+        + '<td><button class="btn-naranja" style="font-size:10px;padding:7px 10px;letter-spacing:0.3px;white-space:nowrap" onclick="verFichaVenta(' + v.id_venta + ')">' + botonLabel + '</button></td>'
         + '</tr>';
     }).join('');
 
