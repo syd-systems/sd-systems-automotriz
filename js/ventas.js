@@ -363,6 +363,19 @@ async function abrirVenta(id) {
   _renderLineasVenta();
   abrirModal('modal-venta');
   focusFirstField('modal-venta');
+  // focusFirstField enfoca automáticamente el primer campo visible del
+  // modal (Cliente), lo que dispara su propio onfocus y abre la lista de
+  // sugerencias sin que el operador haya interactuado -- se le quita el
+  // foco después de que corra (mismo delay + margen), dejando intacta la
+  // navegación por Enter que esa función configura para el resto de campos.
+  setTimeout(function() {
+    const inputCliente = document.getElementById('vta-cliente-input');
+    if (document.activeElement === inputCliente) {
+      inputCliente.blur();
+      const opciones = document.getElementById('vta-cliente-opciones');
+      if (opciones) opciones.style.display = 'none';
+    }
+  }, 250);
 }
 
 // Se llama al cerrar el modal SIN guardar (Retornar / ✕) -- revierte toda
