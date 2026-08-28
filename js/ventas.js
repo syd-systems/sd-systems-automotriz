@@ -26,7 +26,6 @@ let _articulosMercanciaVentas = []; // artículos filtrados (solo Mercancías, c
 let _invTiposCacheVentas = []; // catálogo de Tipos de Artículo (inv_articulos_tipo) -- para el filtro por Tipo
 let _vtaFiltroCategoria = '';
 let _vtaFiltroTipo = '';
-let _vtaFiltroTexto = '';
 let _vtaFiltroSoloStock = false;
 
 async function _obtenerAreaAlmacenVentas() {
@@ -77,13 +76,11 @@ async function _cargarArticulosMercanciaVentas() {
 // de cada línea. `idArticuloActual` (si viene) siempre se incluye aunque
 // no cumpla el filtro, para no "perder" la selección ya hecha en esa línea.
 function _articulosFiltradosVenta(idArticuloActual) {
-  const texto = (_vtaFiltroTexto||'').toLowerCase().trim();
   return _articulosMercanciaVentas.filter(function(a) {
     if (idArticuloActual && a.id_articulo === idArticuloActual) return true;
     if (_vtaFiltroCategoria && String(a.id_categoria_articulo) !== String(_vtaFiltroCategoria)) return false;
     if (_vtaFiltroTipo && String(a.id_tipo_articulo) !== String(_vtaFiltroTipo)) return false;
     if (_vtaFiltroSoloStock && a.stockAlmacen <= 0) return false;
-    if (texto && !(a.nombre_articulo.toLowerCase().includes(texto) || (a.codigo_articulo||'').toLowerCase().includes(texto))) return false;
     return true;
   });
 }
@@ -91,7 +88,6 @@ function _articulosFiltradosVenta(idArticuloActual) {
 function _filtrarArticulosVenta() {
   _vtaFiltroCategoria  = document.getElementById('vta-filtro-categoria')?.value || '';
   _vtaFiltroTipo       = document.getElementById('vta-filtro-tipo')?.value || '';
-  _vtaFiltroTexto      = document.getElementById('vta-filtro-buscar')?.value || '';
   _vtaFiltroSoloStock  = document.getElementById('vta-filtro-solo-stock')?.checked || false;
   _renderLineasVenta();
 }
@@ -314,14 +310,13 @@ async function abrirVenta(id) {
   }
   try { _invTiposCacheVentas = await api('inv_articulos_tipo','GET',null,'?estado=eq.ACTIVO&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')) || []; } catch(e) { _invTiposCacheVentas = []; }
 
-  _vtaFiltroCategoria = ''; _vtaFiltroTipo = ''; _vtaFiltroTexto = ''; _vtaFiltroSoloStock = true;
+  _vtaFiltroCategoria = ''; _vtaFiltroTipo = ''; _vtaFiltroSoloStock = true;
   document.getElementById('vta-filtro-categoria').innerHTML =
     '<option value="">Todas las categorías</option>'
     + _invCategoriasCache.map(function(c) { return '<option value="'+c.id_categoria+'">'+c.nombre+'</option>'; }).join('');
   document.getElementById('vta-filtro-tipo').innerHTML =
     '<option value="">Todos los tipos</option>'
     + _invTiposCacheVentas.map(function(t) { return '<option value="'+t.id_tipo+'">'+t.nombre+'</option>'; }).join('');
-  document.getElementById('vta-filtro-buscar').value = '';
   document.getElementById('vta-filtro-solo-stock').checked = true;
 
   document.getElementById('vta-modal-titulo').textContent = id ? 'EDITAR VENTA' : 'NUEVA VENTA';
@@ -604,7 +599,7 @@ function _renderLineasVenta() {
     const subtotal = (lin.cantidad || 0) * (lin.precio_unitario || 0);
     const borderCant = lin.errorStock ? 'border:1px solid #e57373' : 'border:1px solid var(--borde)';
     return '<tr>'
-      + '<td style="padding:4px"><input type="text" autocomplete="off" value="'+textoActual.replace(/"/g,'&quot;')+'" oninput="_mostrarOpcionesArticulo('+idx+', this, this.value)" onfocus="_mostrarOpcionesArticulo('+idx+', this, this.value)" onblur="setTimeout(_ocultarOpcionesArticulo, 150)" placeholder="Buscar artículo..." style="width:100%;background:var(--gris2);border:1px solid '+(lin.errorDuplicado?'#e57373':'var(--borde)')+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">'
+      + '<td style="padding:4px"><input type="text" autocomplete="off" value="'+textoActual.replace(/"/g,'&quot;')+'" oninput="_mostrarOpcionesArticulo('+idx+', this, this.value)" onfocus="_mostrarOpcionesArticulo('+idx+', this, this.value)" onblur="setTimeout(_ocultarOpcionesArticulo, 150)" placeholder="Buscar artículo o código..." style="width:100%;background:var(--gris2);border:1px solid '+(lin.errorDuplicado?'#e57373':'var(--borde)')+';color:var(--texto);font-size:13px;padding:6px 8px;border-radius:4px;outline:none">'
         + (lin.errorDuplicado ? '<div style="font-size:10px;color:#e57373;margin-top:2px">'+lin.errorDuplicado+'</div>' : '')
         + '</td>'
       + '<td style="padding:4px;width:90px"><input id="vta-cant-'+idx+'" type="number" min="0" step="any" value="'+(lin.cantidad||'')+'" oninput="_onCambioCantidadVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);'+borderCant+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)">'
