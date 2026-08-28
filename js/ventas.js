@@ -800,6 +800,9 @@ async function verFichaVenta(id) {
 
 async function facturarVenta(id) {
   if (!confirm('¿Facturar esta Venta?')) return;
+  const btn = document.getElementById('ficha-venta-btn-facturar');
+  const textoOriginalBtn = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Procesando...'; }
   try {
     const vRows = await api('ventas','GET',null,'?id_venta=eq.'+id+'&select=*,clientes(*)');
     const v = vRows && vRows[0];
@@ -847,7 +850,10 @@ async function facturarVenta(id) {
     cerrarModal('modal-ficha-venta');
     renderVentas();
     alert('✓ Venta facturada correctamente: ' + numeroFactura);
-  } catch(err) { alert('Error al facturar: ' + err.message); }
+  } catch(err) {
+    alert('Error al facturar: ' + err.message);
+    if (btn) { btn.disabled = false; btn.textContent = textoOriginalBtn; }
+  }
 }
 
 async function anularVenta(id) {
