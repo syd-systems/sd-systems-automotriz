@@ -3352,3 +3352,5 @@ function formatearMontoVE(num) {
 }
 
 // Re-trigger de build (index.html quedó desactualizado tras el push anterior, mismo síntoma ya documentado)
+
+// re-trigger build 2026-08-27-21-00
