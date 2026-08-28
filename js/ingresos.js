@@ -892,6 +892,14 @@ async function generarCxCyAsientoFactura(idFactura) {
           try { await upsertStockArea(lin.id_articulo, ventaOrigen.id_area, -cantidadVenta); }
           catch(eStockVenta) { console.warn('Error descontando stock de Venta directa:', eStockVenta); }
 
+          // Liberar la reserva de esta línea -- ya se descontó como stock
+          // REAL arriba, así que la reserva "en vivo" que traía desde el
+          // Presupuesto debe soltarse aquí. Sin esto, quedaba colgada y
+          // restaba el disponible dos veces (una como reserva fantasma,
+          // otra como salida real ya reflejada en stock_actual).
+          try { await ajustarReservaArea(lin.id_articulo, ventaOrigen.id_area, -cantidadVenta); }
+          catch(eReservaVenta) { console.warn('Error liberando reserva al facturar Venta:', eReservaVenta); }
+
           const sal = await api('stock_salidas','POST',{
             id_articulo:   lin.id_articulo, id_area: ventaOrigen.id_area, cantidad: cantidadVenta,
             fecha_salida:  fac.fecha_emision || new Date().toISOString().split('T')[0],
