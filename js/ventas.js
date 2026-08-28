@@ -332,7 +332,6 @@ async function abrirVenta(id) {
     'Fecha: ' + fmtFecha(getHoyVzla()) + '   ·   Tasa BCV: ' + fmtBs(_tasaVigente || 0) + ' Bs/$';
 
   window._vtaClienteSeleccionadoId = v ? v.id_cliente : null;
-  _poblarDatalistClientes();
   const clienteActual = v ? clientesCache.find(function(cl) { return cl.id_cliente === v.id_cliente; }) : null;
   document.getElementById('vta-cliente-input').value = clienteActual ? _textoOpcionCliente(clienteActual) : '';
 
@@ -388,35 +387,44 @@ async function cerrarModalVentaSinGuardar() {
   cerrarModal('modal-venta');
 }
 
-// Texto que se muestra (y se busca) por cada Cliente en el datalist.
+// Texto que se muestra (y se busca) por cada Cliente en el buscador.
 function _textoOpcionCliente(cl) {
   return cl.nombre_apellido + ' (' + cl.condicion_legal + '-' + cl.identificacion + ')';
 }
 
-// Puebla el datalist UNA vez con todos los clientes -- el propio <input>
-// con list="..." ya filtra en vivo mientras se escribe, sin necesitar
-// re-renderizar nada en cada tecla.
-function _poblarDatalistClientes() {
-  document.getElementById('vta-clientes-datalist').innerHTML =
-    clientesCache.map(function(cl) { return '<option value="'+_textoOpcionCliente(cl)+'">'; }).join('');
+// Renderiza las coincidencias (por nombre o identificación, en cualquier
+// parte del texto) en el contenedor propio bajo el input -- reemplaza al
+// <datalist> nativo, que resultó con soporte inconsistente entre
+// navegadores (no mostraba sugerencias incluso coincidiendo desde el inicio).
+function _renderOpcionesCliente(texto) {
+  const t = (texto || '').toLowerCase().trim();
+  const cont = document.getElementById('vta-cliente-opciones');
+  const matches = clientesCache.filter(function(cl) {
+    return !t || cl.nombre_apellido.toLowerCase().includes(t) || (cl.identificacion || '').toLowerCase().includes(t);
+  }).slice(0, 30);
+  if (!matches.length) { cont.style.display = 'none'; cont.innerHTML = ''; return; }
+  cont.innerHTML = matches.map(function(cl) {
+    return '<div onmousedown="_elegirCliente(' + cl.id_cliente + ')" style="padding:7px 9px;cursor:pointer;font-size:11px;border-bottom:1px solid var(--borde)" onmouseover="this.style.background=\'rgba(255,255,255,0.06)\'" onmouseout="this.style.background=\'\'">' + _textoOpcionCliente(cl) + '</div>';
+  }).join('');
+  cont.style.display = 'block';
 }
 
-// Resuelve el id_cliente a partir del texto exacto escrito/elegido en el
-// input -- si el texto no coincide con ningún cliente (el operador sigue
-// escribiendo, o escribió algo que no existe), no hay selección todavía.
-function _onEscribirCliente() {
-  const texto = document.getElementById('vta-cliente-input').value;
-  const match = clientesCache.find(function(cl) { return _textoOpcionCliente(cl) === texto; });
-  window._vtaClienteSeleccionadoId = match ? match.id_cliente : null;
+// Se llama al hacer clic (mousedown, para que dispare ANTES del blur del
+// input) sobre una opción de la lista -- ahí sí queda resuelto el Cliente.
+function _elegirCliente(idCliente) {
+  const cl = clientesCache.find(function(c) { return c.id_cliente === idCliente; });
+  if (!cl) return;
+  window._vtaClienteSeleccionadoId = idCliente;
+  document.getElementById('vta-cliente-input').value = _textoOpcionCliente(cl);
+  document.getElementById('vta-cliente-opciones').style.display = 'none';
   document.getElementById('alerta-vta-err').style.display = 'none';
 }
 
 // Se llama desde el modal de Cliente Rápido cuando se crea uno nuevo --
-// lo deja seleccionado y refresca el datalist con el nuevo cliente incluido.
+// lo deja seleccionado directamente, sin pasar por la lista.
 function _onClienteRapidoCreadoVenta(cli) {
   if (!cli) return;
   window._vtaClienteSeleccionadoId = cli.id_cliente;
-  _poblarDatalistClientes();
   document.getElementById('vta-cliente-input').value = _textoOpcionCliente(cli);
 }
 
@@ -544,21 +552,44 @@ function _fmtMonedaVenta(usdValue) {
   return '$ ' + fmtUSD(usdValue||0);
 }
 
-// Texto que se muestra (y se busca) por cada Artículo en el datalist.
+// Texto que se muestra (y se busca) por cada Artículo en el buscador.
 function _textoOpcionArticulo(a) {
   return a.nombre_articulo + ' (' + a.codigo_articulo + ') — ' + a.stockAlmacen + ' en stock';
 }
 
-// Resuelve el Artículo a partir del texto escrito -- se extrae el código
-// (único) entre paréntesis, en vez de comparar el texto completo, para que
-// siga funcionando aunque el "X en stock" haya cambiado desde que se
-// generó la sugerencia (el datalist se refresca solo cada cierto tiempo).
-function _onEscribirArticuloVenta(idx, texto) {
-  const m = texto.match(/\(([^)]+)\)/);
-  const codigo = m ? m[1] : null;
-  const art = codigo ? _articulosMercanciaVentas.find(function(a) { return a.codigo_articulo === codigo; }) : null;
-  if (!art) return; // sigue escribiendo, o no hay coincidencia todavía -- no tocar nada
-  _onCambioArticuloVenta(idx, art.id_articulo);
+// Muestra el contenedor flotante compartido de sugerencias de Artículo,
+// posicionado justo debajo del input de la línea `idx` que tiene el foco.
+// Es un único elemento con position:fixed (fuera del scroll de la tabla
+// de líneas) para que nunca se recorte, sin importar en qué fila esté.
+function _mostrarOpcionesArticulo(idx, inputEl, texto) {
+  window._vtaArticuloIdxActivo = idx;
+  const cont = document.getElementById('vta-art-opciones-flotante');
+  const t = (texto || '').toLowerCase().trim();
+  const matches = _articulosFiltradosVenta(null).filter(function(a) {
+    return !t || a.nombre_articulo.toLowerCase().includes(t) || (a.codigo_articulo || '').toLowerCase().includes(t);
+  }).slice(0, 30);
+  if (!matches.length) { cont.style.display = 'none'; cont.innerHTML = ''; return; }
+  const r = inputEl.getBoundingClientRect();
+  cont.style.left  = r.left + 'px';
+  cont.style.top   = (r.bottom + 2) + 'px';
+  cont.style.width = r.width + 'px';
+  cont.innerHTML = matches.map(function(a) {
+    return '<div onmousedown="_elegirArticuloVenta(' + idx + ',' + a.id_articulo + ')" style="padding:7px 9px;cursor:pointer;font-size:11px;border-bottom:1px solid var(--borde)" onmouseover="this.style.background=\'rgba(255,255,255,0.06)\'" onmouseout="this.style.background=\'\'">' + _textoOpcionArticulo(a) + '</div>';
+  }).join('');
+  cont.style.display = 'block';
+}
+
+function _ocultarOpcionesArticulo() {
+  document.getElementById('vta-art-opciones-flotante').style.display = 'none';
+}
+
+// Se llama al hacer clic (mousedown, para que dispare ANTES del blur del
+// input) sobre una opción de la lista -- reutiliza toda la lógica ya
+// existente de cambio de Artículo (libera reserva anterior, valida
+// duplicado, calcula precio, refresca stock, enfoca Cantidad).
+function _elegirArticuloVenta(idx, idArticulo) {
+  _ocultarOpcionesArticulo();
+  _onCambioArticuloVenta(idx, idArticulo);
 }
 
 function _renderLineasVenta() {
@@ -567,20 +598,13 @@ function _renderLineasVenta() {
   const errEl = document.getElementById('alerta-vta-err');
   if (errEl) errEl.style.display = 'none';
 
-  // Datalist compartido por todas las líneas -- respeta los 4 filtros
-  // (Categoría/Tipo/texto/Solo con stock) vigentes.
-  const datalistEl = document.getElementById('vta-articulos-datalist');
-  if (datalistEl) {
-    datalistEl.innerHTML = _articulosFiltradosVenta(null).map(function(a) { return '<option value="'+_textoOpcionArticulo(a)+'">'; }).join('');
-  }
-
   cont.innerHTML = _ventaLineas.map(function(lin, idx) {
     const artActual = lin.id_articulo ? _articulosMercanciaVentas.find(function(a) { return a.id_articulo === lin.id_articulo; }) : null;
     const textoActual = artActual ? _textoOpcionArticulo(artActual) : '';
     const subtotal = (lin.cantidad || 0) * (lin.precio_unitario || 0);
     const borderCant = lin.errorStock ? 'border:1px solid #e57373' : 'border:1px solid var(--borde)';
     return '<tr>'
-      + '<td style="padding:4px"><input type="text" list="vta-articulos-datalist" value="'+textoActual.replace(/"/g,'&quot;')+'" oninput="_onEscribirArticuloVenta('+idx+', this.value)" placeholder="Buscar artículo..." style="width:100%;background:var(--gris2);border:1px solid '+(lin.errorDuplicado?'#e57373':'var(--borde)')+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">'
+      + '<td style="padding:4px"><input type="text" autocomplete="off" value="'+textoActual.replace(/"/g,'&quot;')+'" oninput="_mostrarOpcionesArticulo('+idx+', this, this.value)" onfocus="_mostrarOpcionesArticulo('+idx+', this, this.value)" onblur="setTimeout(_ocultarOpcionesArticulo, 150)" placeholder="Buscar artículo..." style="width:100%;background:var(--gris2);border:1px solid '+(lin.errorDuplicado?'#e57373':'var(--borde)')+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">'
         + (lin.errorDuplicado ? '<div style="font-size:10px;color:#e57373;margin-top:2px">'+lin.errorDuplicado+'</div>' : '')
         + '</td>'
       + '<td style="padding:4px;width:90px"><input id="vta-cant-'+idx+'" type="number" min="0" step="any" value="'+(lin.cantidad||'')+'" oninput="_onCambioCantidadVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);'+borderCant+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)">'
