@@ -274,6 +274,7 @@ async function renderInventario(filtro) {
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\');}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:180px">'
       + (puedo('INVENTARIO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Artículo</button>' : '')
+      + '<button class="btn-secundario" title="Refrescar" onclick="renderInventario(document.getElementById(\'buscar-inv\')?.value||\'\')">🔄 Refrescar</button>'
       + '</div></div>'
       + '<div id="alerta-stock-bajo" style="display:none"></div>'
       + '<div id="tabla-inv-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
