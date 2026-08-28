@@ -809,8 +809,8 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       const btnVerPag  = '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">👁 Ver</button>';
       const fechaVencAccion = item._raw?.fecha_vencimiento || '';
       const yaVenceAccion   = !fechaVencAccion || fechaVencAccion <= getHoyVzla();
-      const btnAprobar  = (puedo('PAGOS','APROBAR') && yaVenceAccion) ? '<button onclick="aprobarPagoCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">✅ Aprobar</button>' : '';
-      const btnRechazar = (puedo('PAGOS','RECHAZAR') && yaVenceAccion) ? '<button onclick="rechazarPagoCxP('+item._id+')" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">❌ Rechazar</button>' : '';
+      const btnAprobar  = (puedo('PAGOS','APROBAR') && yaVenceAccion) ? '<button onclick="btnSetGuardando(this,true,null,\'Procesando...\');aprobarPagoCxP('+item._id+').finally(()=>btnSetGuardando(this,false))" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">✅ Aprobar</button>' : '';
+      const btnRechazar = (puedo('PAGOS','RECHAZAR') && yaVenceAccion) ? '<button onclick="btnSetGuardando(this,true,null,\'Procesando...\');rechazarPagoCxP('+item._id+').finally(()=>btnSetGuardando(this,false))" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">❌ Rechazar</button>' : '';
       const esConsolidable = !!_idCxpAConsolidarProveedor[item._id];
       const esAutomaticaFila = /^ENT-/.test(item._raw?.numero_doc || '')
         || item._raw?.tipo === 'COMPRA_ARTICULO' || item._raw?.tipo === 'COMPRA_ARTICULO_CREDITO';
@@ -3896,7 +3896,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       } else {
         const btnAnularF    = (esManualF && est !== 'ANULADA' && est !== 'PAGADA') ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+');cerrarModal(\'modal-cont-pago-cxp\')">🗑 Anular</button>' : '';
         const btnAnularEjecF = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR'))) ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Procesado</button>' : '';
-        const btnReactivarF = (est === 'ANULADA' && (sesionActual?.administrador || puedo('PAGOS','ELIMINAR'))) ? '<button class="btn-primario" onclick="reactivarPagoCxP('+id_cxp+')">↩ Reactivar</button>' : '';
+        const btnReactivarF = (est === 'ANULADA' && (sesionActual?.administrador || puedo('PAGOS','ELIMINAR'))) ? '<button class="btn-primario" onclick="btnSetGuardando(this,true,null,\'Procesando...\');reactivarPagoCxP('+id_cxp+').finally(()=>btnSetGuardando(this,false))">↩ Reactivar</button>' : '';
         footer.innerHTML =
           '<div style="display:flex;gap:10px;justify-content:space-between;align-items:center;width:100%">'
           + (btnAnularF || btnAnularEjecF || btnReactivarF)
@@ -4000,7 +4000,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       const btnAnularEjec = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR')))
         ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Procesado</button>' : '';
       const btnReactivar = (est === 'ANULADA' && (sesionActual?.administrador || puedo('PAGOS','ELIMINAR')))
-        ? '<button class="btn-primario" onclick="reactivarPagoCxP('+id_cxp+')">↩ Reactivar</button>' : '';
+        ? '<button class="btn-primario" onclick="btnSetGuardando(this,true,null,\'Procesando...\');reactivarPagoCxP('+id_cxp+').finally(()=>btnSetGuardando(this,false))">↩ Reactivar</button>' : '';
       footerPend.innerHTML =
         '<div style="display:flex;gap:10px;justify-content:space-between;align-items:center;width:100%">'
         + (btnEditar + btnRegistrarPago + btnAnular + btnAnularEjec + btnReactivar)
@@ -4348,7 +4348,7 @@ function editarCxPPendiente(id_cxp) {
   const footer = document.querySelector('#modal-pago .modal-footer');
   if (footer) footer.innerHTML =
     '<button class="btn-secundario" onclick="cerrarModal(\'modal-pago\')">Retornar</button>'
-    + '<button class="btn-primario" onclick="guardarEdicionCxP(' + id_cxp + ')">💾 Guardar Cambios</button>';
+    + '<button class="btn-primario" onclick="btnSetGuardando(this,true,null,\'Procesando...\');guardarEdicionCxP(' + id_cxp + ').finally(()=>btnSetGuardando(this,false))">💾 Guardar Cambios</button>';
 }
 
 async function guardarEdicionCxP(id_cxp) {
