@@ -441,7 +441,7 @@ function calcularTotalesFactura() {
   const base   = subtotal+iva;
   const igtf   = aplIGTF ? base*tasaIGTFActual() : 0;
   const total  = base+igtf;
-  const totVes = total*tasa;
+  const totVes = parseFloat((total*tasa).toFixed(2));
   function fmt(usd) { return esVES ? fmtBs(usd*tasa)+' Bs' : '$ '+fmtUSD(usd); }
   // Formato DUAL -- Moneda de Cobro como principal, y debajo el
   // equivalente en la Moneda contraria (mismo patrón que la Ficha de
@@ -698,7 +698,7 @@ async function generarCxCyAsientoFactura(idFactura) {
           id_asiento: idAst, id_cuenta: cCxC.id_cuenta, orden: 1,
           descripcion: 'CxC '+fac.numero_factura+auxFac,
           debe_usd: fac.total_usd, haber_usd: 0,
-          debe_ves: fac.total_usd * tasaReal, haber_ves: 0
+          debe_ves: fac.total_ves, haber_ves: 0
         });
         if (cIngServ && totalServ > 0) await api('cont_asiento_lineas','POST',{
           id_asiento: idAst, id_cuenta: cIngServ.id_cuenta, orden: 2,
