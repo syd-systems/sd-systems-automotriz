@@ -1946,45 +1946,55 @@
     <div class="modal-body">
       <input type="hidden" id="cont-pago-cxc-monto-raw">
       <input type="hidden" id="cont-pago-cxc-tasa-raw">
-      <div class="form-grid" style="grid-template-columns:1fr 1fr">
-        <div class="form-campo form-full">
+      <div class="form-grid" style="grid-template-columns:2fr 1fr">
+        <div class="form-campo">
           <div id="cont-pago-cxc-factura-ref" style="font-size:12px;color:var(--suave);margin-bottom:2px"></div>
+          <div id="cont-pago-cxc-factura-fecha" style="font-size:11px;color:var(--suave);margin-bottom:8px"></div>
           <label>Monto</label>
           <div style="display:flex;align-items:baseline;gap:12px;background:var(--gris1);border:1px solid var(--borde);border-radius:5px;padding:12px 14px">
             <span id="cont-pago-cxc-monto-ves" style="font-family:var(--font-mono);font-size:20px;font-weight:600;color:var(--texto)"></span>
             <span id="cont-pago-cxc-monto" style="font-family:var(--font-mono);font-size:13px;color:var(--suave)"></span>
           </div>
         </div>
-        <div class="form-campo">
+        <div class="form-campo" style="align-self:flex-end">
           <label>Tasa BCV</label>
           <input type="text" id="cont-pago-cxc-tasa" readonly style="background:var(--gris2);border:1px solid var(--borde);color:var(--suave);font-family:var(--font-mono);padding:11px 14px;border-radius:5px;outline:none;width:100%;cursor:not-allowed">
         </div>
         <div id="cont-pago-cxc-tasa-info" style="font-size:11px;color:var(--suave);grid-column:1/-1;margin-top:-8px"></div>
-        <div class="form-campo">
-          <label>Fecha</label>
-          <input type="date" id="cont-pago-cxc-fecha" style="width:100%">
-        </div>
-        <div class="form-campo">
-          <label>Método de Cobro</label>
-          <select id="cont-pago-cxc-metodo" onchange="onCambiarMetodoCobroCxc()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Cargando métodos —</option>
-          </select>
-          <div id="cont-pago-cxc-igtf-nota" style="display:none;font-size:11px;color:var(--naranja);margin-top:4px">Esta Factura tiene IGTF aplicado — el pago debe ser en Efectivo o Transferencia en USD.</div>
-        </div>
-        <div class="form-campo" id="cont-pago-cxc-banco-origen-cont" style="display:none">
-          <label>Banco Origen</label>
-          <select id="cont-pago-cxc-banco-origen" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar —</option>
-          </select>
-        </div>
-        <div class="form-campo form-full">
-          <label>Comprobante de Cobro No.</label>
-          <input type="text" id="cont-pago-cxc-ref" placeholder="N° de comprobante de cobro">
-        </div>
-        <div class="form-campo" id="cont-pago-cxc-archivo-campo">
-          <label>Comprobante (opcional)</label>
-          <input type="file" id="cont-pago-cxc-archivo" accept="image/*,application/pdf"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+
+        <div class="form-campo form-full" style="border:1px solid var(--borde);border-radius:8px;padding:14px;margin-top:6px">
+          <div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">Cobranza</div>
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
+            <div class="form-campo">
+              <label>Moneda</label>
+              <select id="cont-pago-cxc-moneda" onchange="_cargarMetodosCobroCxc()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+                <option value="VES">VES</option>
+                <option value="USD">USD</option>
+              </select>
+            </div>
+            <div class="form-campo">
+              <label>Método de Pago</label>
+              <select id="cont-pago-cxc-metodo" onchange="onCambiarMetodoCobroCxc()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+                <option value="">— Cargando métodos —</option>
+              </select>
+              <div id="cont-pago-cxc-igtf-nota" style="display:none;font-size:11px;color:var(--naranja);margin-top:4px">Esta Factura tiene IGTF aplicado — el pago debe ser en Efectivo o Transferencia en USD.</div>
+            </div>
+            <div class="form-campo" id="cont-pago-cxc-banco-origen-cont" style="display:none">
+              <label>Banco Origen</label>
+              <select id="cont-pago-cxc-banco-origen" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+                <option value="">— Seleccionar —</option>
+              </select>
+            </div>
+            <div class="form-campo form-full" id="cont-pago-cxc-ref-cont" style="display:none">
+              <label>Comprobante No.</label>
+              <input type="text" id="cont-pago-cxc-ref" placeholder="N° de comprobante de cobro" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            </div>
+            <div class="form-campo form-full">
+              <label>Comprobante (opcional)</label>
+              <input type="file" id="cont-pago-cxc-archivo" accept="image/*,application/pdf"
+                style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+            </div>
+          </div>
         </div>
         <div class="form-campo form-full" id="cont-pago-cxc-archivo-preview-cont" style="display:none">
           <div id="cont-pago-cxc-archivo-preview"></div>
