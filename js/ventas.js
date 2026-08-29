@@ -795,6 +795,8 @@ async function verFichaVenta(id) {
 
   btnEditar.style.display    = (v.estado === 'BORRADOR' && puedo('VENTAS','EDITAR'))   ? '' : 'none';
   btnFacturar.style.display  = (v.estado === 'BORRADOR' && puedo('VENTAS','CREAR'))    ? '' : 'none';
+  btnFacturar.disabled = false;
+  btnFacturar.textContent = '🧾 Facturar';
   btnAnular.style.display    = (v.estado === 'BORRADOR' && puedo('VENTAS','ELIMINAR')) ? '' : 'none';
   btnEliminar.style.display  = (v.estado === 'BORRADOR' && puedo('VENTAS','ELIMINAR')) ? '' : 'none';
 
