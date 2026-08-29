@@ -1448,7 +1448,14 @@ async function contGuardarPagoCxc() {
           }
         }
       }
-    } catch(eAst) { console.warn('Cobro registrado, pero hubo un error generando el asiento contable:', eAst); }
+    } catch(eAst) {
+      console.warn('Cobro registrado, pero hubo un error generando el asiento contable:', eAst);
+      if (okEl) {
+        okEl.textContent = '⚠ Cobro registrado, pero el asiento contable NO se generó. Error: ' + (eAst?.message || eAst) + ' — este movimiento no aparecerá en Caja/Bancos hasta corregirlo.';
+        okEl.style.display = 'block';
+        okEl.style.color = 'var(--naranja)';
+      }
+    }
 
     // Refrescar la cache local
     const i = contCxcCache.findIndex(function(x){ return x.id_cxc === _pagoCxcActualId; });
