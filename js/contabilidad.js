@@ -1333,7 +1333,6 @@ async function contGuardarPagoCxc() {
         const cCxC       = getCta('1.1.02.001');
         const cDifGasto   = getCta('6.2.01.003');
         const cDifIngr    = getCta('4.2.01.003');
-        const cIGTF       = getCta('6.1.04.003');
         const cIGTFPagar  = getCta('2.1.03.004');
         const cContraparte = todasCtas.find(function(x){ return x.id_cuenta === idCuentaContraparte; }) || null;
 
@@ -1400,10 +1399,23 @@ async function contGuardarPagoCxc() {
           let orden = 1;
           const desc = 'Cobro ' + numeroFacturaRef;
 
+          // IGTF -- solo aplica si quien COBRA (nuestra propia empresa) es
+          // Contribuyente Especial (agente de percepción ante el SENIAT).
+          // Quien PAGA el IGTF es el CLIENTE, no la Empresa: al pagar en
+          // divisas, entrega el monto de la venta MÁS 3% de IGTF -- la
+          // Empresa solo lo recauda en nombre del SENIAT (no es un gasto
+          // propio). Por eso a Caja/Banco entra la SUMA de ambos montos,
+          // y se abona contra dos cuentas: CxC (el monto base) e IGTF por
+          // Pagar (lo recaudado, que ahora se le debe a SENIAT) -- sin
+          // ninguna línea de "IGTF Pagado" (gasto), que no aplica aquí.
+          const aplicaIGTFCobro = monedaMetodo !== 'VES' && _empresaActiva?.tipo_contribuyente === 'ESPECIAL';
+          const montoIGTF_USD = aplicaIGTFCobro ? parseFloat((monto * pctIGTF).toFixed(2)) : 0;
+          const montoIGTF_VES = aplicaIGTFCobro ? parseFloat((montoIGTF_USD * tasaActual).toFixed(2)) : 0;
+
           if (cContraparte) await api('cont_asiento_lineas','POST',{
             id_asiento: idAst, id_cuenta: cContraparte.id_cuenta, orden: orden++,
-            descripcion: desc,
-            debe_usd: monto, haber_usd: 0, debe_ves: montoVESCobro, haber_ves: 0, tasa_bcv: tasaActual
+            descripcion: desc + (aplicaIGTFCobro ? ' (incluye IGTF '+(pctIGTF*100).toFixed(0)+'%)' : ''),
+            debe_usd: monto + montoIGTF_USD, haber_usd: 0, debe_ves: montoVESCobro + montoIGTF_VES, haber_ves: 0, tasa_bcv: tasaActual
           });
 
           if (cCxC) await api('cont_asiento_lineas','POST',{
@@ -1426,23 +1438,10 @@ async function contGuardarPagoCxc() {
             });
           }
 
-          // IGTF -- solo aplica si quien COBRA (nuestra propia empresa) es
-          // Contribuyente Especial. Antes se aplicaba a TODO cobro en
-          // divisas sin distinción -- el criterio correcto para CxC es el
-          // tipo_contribuyente de la EMPRESA EMISORA, no el del Cliente (a
-          // diferencia de CxP, donde el disparador es el tipo_contribuyente
-          // del Proveedor a quien se le paga).
-          if (monedaMetodo !== 'VES' && _empresaActiva?.tipo_contribuyente === 'ESPECIAL') {
-            const montoIGTF_USD = parseFloat((monto * pctIGTF).toFixed(2));
-            const montoIGTF_VES = parseFloat((montoIGTF_USD * tasaActual).toFixed(2));
-            if (cIGTF) await api('cont_asiento_lineas','POST',{
-              id_asiento: idAst, id_cuenta: cIGTF.id_cuenta, orden: orden++,
-              descripcion: 'IGTF '+(pctIGTF*100).toFixed(0)+'% sobre cobro en divisas',
-              debe_usd: montoIGTF_USD, haber_usd: 0, debe_ves: montoIGTF_VES, haber_ves: 0, tasa_bcv: tasaActual
-            });
-            if (cIGTFPagar) await api('cont_asiento_lineas','POST',{
+          if (aplicaIGTFCobro && cIGTFPagar) {
+            await api('cont_asiento_lineas','POST',{
               id_asiento: idAst, id_cuenta: cIGTFPagar.id_cuenta, orden: orden++,
-              descripcion: 'IGTF por Pagar (enterar primeros 12 días del mes)',
+              descripcion: 'IGTF '+(pctIGTF*100).toFixed(0)+'% recaudado al Cliente (enterar primeros 12 días del mes)',
               debe_usd: 0, haber_usd: montoIGTF_USD, debe_ves: 0, haber_ves: montoIGTF_VES, tasa_bcv: tasaActual
             });
           }
