@@ -49,8 +49,11 @@ async function renderFacturas() {
   window._facAlicuotaIGTF = tasaIGTFActual() * 100;
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando facturas...</div>';
   try {
+    if (!usuariosCache || !usuariosCache.length) {
+      try { usuariosCache = await api('usuarios','GET',null,'?select=id_usuario,correo_usuario,nombre') || []; } catch(eUsu) { usuariosCache = []; }
+    }
     const [facturas, tasas] = await Promise.all([
-      api('facturas','GET',null,'?order=fecha_emision.desc&select=*,emisores(nombre,rif),propietarios(nombre_completo)'+emisorQ()),
+      api('facturas','GET',null,'?order=fecha_emision.desc&select=*,emisores(nombre,rif),propietarios(nombre_completo,tipo_doc,numero_doc)'+emisorQ()),
       api('tasas','GET',null,'?moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
     facturasCache = facturas;
@@ -60,13 +63,14 @@ async function renderFacturas() {
     facturas.forEach(function(f) { if (resumen[f.estado]!==undefined) resumen[f.estado]++; });
     const filas = facturas.map(function(f) {
       const est = ESTADOS_FAC[f.estado] || { clase:'badge-gris', label:f.estado };
-      const emisor = f.emisores;
       const prop   = f.propietarios;
+      const vendedor = (usuariosCache.find(function(u) { return u.correo_usuario === f.id_usuario; }) || {}).nombre || f.id_usuario || '—';
+      const identifCliente = prop ? ((prop.tipo_doc||'') + '-' + (prop.numero_doc||'')) : (f.receptor_rif || '');
       return '<tr data-id="' + f.id_factura + '">'
         + '<td><div style="font-family:var(--font-display);font-size:17px;color:var(--naranja)">' + (f.numero_factura||'—') + '</div>'
         + '<div style="font-size:11px;color:var(--suave)">' + (f.fecha_emision ? fmtFecha(f.fecha_emision) : '—') + '</div></td>'
-        + '<td style="font-size:12px">' + (emisor ? emisor.nombre : '—') + '</td>'
-        + '<td style="font-size:12px">' + (prop ? prop.nombre_completo : (f.receptor_nombre||'—')) + '</td>'
+        + '<td style="font-size:12px">' + vendedor + '</td>'
+        + '<td style="font-size:12px">' + (prop ? prop.nombre_completo : (f.receptor_nombre||'—')) + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + identifCliente + '</div></td>'
         + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
         + (puedo('FACTURAS','VER_TOTALES')
             ? '<td style="font-family:var(--font-mono)">'
@@ -106,7 +110,7 @@ async function renderFacturas() {
       + (puedo('FACTURAS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevaFactura()">+ Nueva Factura<span id="badge-os-cerradas-fac"></span></button>' : '')
       + '</div></div>'
       + '<div class="tabla-container"><table id="fac-tabla"><thead><tr>'
-      + '<th>N° / Fecha</th><th>Empresa</th><th>Cliente</th><th>Estado</th><th>Total</th><th>Acción</th>'
+      + '<th>N° / Fecha</th><th>Vendedor</th><th>Cliente</th><th>Estado</th><th>Total</th><th>Acción</th>'
       + '</tr></thead><tbody id="fac-tbody">'
       + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">No hay facturas registradas</td></tr>')
       + '</tbody></table></div></div>';
