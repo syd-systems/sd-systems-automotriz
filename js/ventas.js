@@ -340,9 +340,6 @@ async function abrirVenta(id) {
   // pregunta al operador, la Venta siempre descuenta stock de ahí.
   document.getElementById('vta-id-area').value = v ? v.id_area : await _obtenerAreaAlmacenVentas();
 
-  document.getElementById('vta-moneda').value = (v && v.moneda_cobro) || 'VES';
-  document.getElementById('vta-aplica-iva').checked = v ? (v.iva_usd > 0) : true;
-
   _ventaLineas = [];
   if (id) {
     try {
@@ -561,7 +558,7 @@ async function _ajustarReservaLineaVenta(idx) {
 // que el operador tenga elegida en ese momento -- Bs si es VES (convertido
 // a la tasa BCV vigente), o USD directo. Siempre con 2 decimales.
 function _fmtMonedaVenta(usdValue) {
-  const moneda = document.getElementById('vta-moneda')?.value || 'VES';
+  const moneda = (_empresaActiva?.moneda_principal || 'VES').toUpperCase();
   if (moneda === 'VES') return fmtBs((usdValue||0) * (_tasaVigente||0)) + ' Bs';
   return '$ ' + fmtUSD(usdValue||0);
 }
@@ -637,8 +634,7 @@ function _calcularTotalesVenta() {
   const errElCalc = document.getElementById('alerta-vta-err');
   if (errElCalc) errElCalc.style.display = 'none';
   const subtotal = _ventaLineas.reduce(function(a, l) { return a + (l.cantidad||0)*(l.precio_unitario||0); }, 0);
-  const aplIVA  = document.getElementById('vta-aplica-iva')?.checked;
-  const iva  = aplIVA  ? subtotal * tasaIVAActual() : 0;
+  const iva  = subtotal * tasaIVAActual();
   // El IGTF NO se decide aquí -- depende de en qué moneda decida pagar el
   // Cliente y de si la Empresa es Contribuyente Especial, algo que solo se
   // sabe con certeza al momento del Cobro (igual que ya funciona para
@@ -649,7 +645,7 @@ function _calcularTotalesVenta() {
   if (el) {
     el.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px;padding:10px 0">'
       + '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">Subtotal</span><span style="font-family:var(--font-mono)">'+_fmtMonedaVenta(subtotal)+'</span></div>'
-      + (aplIVA  ? '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IVA ('+Math.round(tasaIVAActual()*100)+'%)</span><span style="font-family:var(--font-mono)">'+_fmtMonedaVenta(iva)+'</span></div>' : '')
+      + '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IVA ('+Math.round(tasaIVAActual()*100)+'%)</span><span style="font-family:var(--font-mono)">'+_fmtMonedaVenta(iva)+'</span></div>'
       + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:6px;margin-top:2px">'
       + '<span style="font-family:var(--font-display);font-size:15px;letter-spacing:1px">TOTAL</span>'
       + '<span style="font-family:var(--font-mono);font-size:17px;color:var(--naranja)">'+_fmtMonedaVenta(total)+'</span></div></div>';
@@ -667,7 +663,7 @@ async function guardarVentaBorrador() {
   const idArea    = parseInt(document.getElementById('vta-id-area').value) || null;
   // La fecha SIEMPRE es la del día -- no es un campo que el operador elija.
   const fecha     = getHoyVzla();
-  const moneda    = document.getElementById('vta-moneda').value;
+  const moneda    = (_empresaActiva?.moneda_principal || 'VES').toUpperCase();
 
   if (!idCliente) { errEl.textContent = 'Debe seleccionar un Cliente.'; errEl.style.display = 'block'; return; }
   if (!idArea)    { errEl.textContent = 'No se pudo determinar el Área de Almacén (Gerencia de Compras, código 2300). Verifique que esa Área exista en Parámetros.'; errEl.style.display = 'block'; return; }
