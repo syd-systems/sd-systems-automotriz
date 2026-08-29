@@ -1063,7 +1063,16 @@ async function verFichaFactura(id) {
             + '</div>'
             + '<div style="display:flex;flex-direction:column;gap:10px">'
             + '<div><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Forma de Cobro</div><div style="font-weight:600">'+(cxcFicha.metodo_pago||'—')+'</div></div>'
-            + '<div><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Monto Cobrado</div><div style="font-weight:600;font-family:var(--font-mono)">$ '+fmtUSD(cxcFicha.pagado_usd||0)+'<span style="font-size:11px;color:var(--suave)"> · Bs '+fmtBs((cxcFicha.pagado_usd||0)*(cxcFicha.tasa_bcv||0))+'</span></div></div>'
+            + (function() {
+                const pagadoUSD = cxcFicha.pagado_usd||0;
+                const pagadoVES = pagadoUSD * (cxcFicha.tasa_bcv||0);
+                const pagoEnUSD = /USD/i.test(cxcFicha.metodo_pago||'');
+                const principal = pagoEnUSD ? '$ '+fmtUSD(pagadoUSD) : 'Bs '+fmtBs(pagadoVES);
+                const secundario = pagoEnUSD ? 'Bs '+fmtBs(pagadoVES) : '$ '+fmtUSD(pagadoUSD);
+                return '<div><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Monto Cobrado</div>'
+                  + '<div style="font-weight:600;font-family:var(--font-mono);color:var(--naranja)">'+principal+'</div>'
+                  + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">'+secundario+'</div></div>';
+              })()
             + '</div>'
             + '<div style="grid-column:1/-1"><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Comprobante de Cobro No.</div><div style="font-weight:600;font-family:var(--font-mono)">'+(cxcFicha.referencia||'—')+'</div></div>'
             + '</div></div>';
