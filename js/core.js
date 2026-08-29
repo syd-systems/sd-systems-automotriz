@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260829110';
+const SYD_VERSION = '20260829120';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -749,6 +749,22 @@ setInterval(actualizarReloj, 1000);
 actualizarReloj();
 
 // ─── VERIFICAR SESIÓN INVALIDADA (cada 30 segundos) ───
+// Forzar la verificación de sesión de inmediato al volver la pestaña a
+// primer plano -- el setInterval de 30s puede quedar pausado por el
+// navegador mientras la pestaña está en segundo plano (ahorro de
+// recursos), dejando esa pestaña sin detectar que su sesión ya fue
+// reemplazada por un inicio de sesión en otro lugar. Sin este refuerzo,
+// dos sesiones simultáneas del mismo usuario podían parecer "activas"
+// indefinidamente con solo dejar una pestaña de fondo.
+if (!window._visibilitySesionListener) {
+  window._visibilitySesionListener = true;
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible' && sesionActual && window._miTokenSesion && window._sesionLista) {
+      verificarSesionActiva();
+    }
+  });
+}
+
 async function verificarSesionActiva() {
   if (!sesionActual) return;
   if (!window._miTokenSesion) return;
