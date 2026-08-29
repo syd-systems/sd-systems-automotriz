@@ -1966,15 +1966,15 @@
           <div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">Cobranza</div>
           <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
             <div class="form-campo">
-              <label>Moneda</label>
-              <select id="cont-pago-cxc-moneda" onchange="_cargarMetodosCobroCxc()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+              <label style="font-size:9px;text-transform:none">Moneda</label>
+              <select id="cont-pago-cxc-moneda" onchange="_cargarMetodosCobroCxc()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:11px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
                 <option value="VES">VES</option>
                 <option value="USD">USD</option>
               </select>
             </div>
             <div class="form-campo">
-              <label>Método de Pago</label>
-              <select id="cont-pago-cxc-metodo" onchange="onCambiarMetodoCobroCxc()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+              <label style="font-size:9px;text-transform:none">Método de Pago</label>
+              <select id="cont-pago-cxc-metodo" onchange="onCambiarMetodoCobroCxc()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:11px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
                 <option value="">— Cargando métodos —</option>
               </select>
               <div id="cont-pago-cxc-igtf-nota" style="display:none;font-size:11px;color:var(--naranja);margin-top:4px">Esta Factura tiene IGTF aplicado — el pago debe ser en Efectivo o Transferencia en USD.</div>
