@@ -1066,7 +1066,14 @@ function onCambiarMetodoCobroCxc() {
   if (igtfNotaEl) {
     const aplicaIGTFAhora = monedaMetodoSel === 'USD' && _empresaActiva?.tipo_contribuyente === 'ESPECIAL';
     igtfNotaEl.style.display = aplicaIGTFAhora ? '' : 'none';
-    if (aplicaIGTFAhora) igtfNotaEl.textContent = 'Por ser la Empresa Contribuyente Especial, este Cobro en USD lleva IGTF.';
+    if (aplicaIGTFAhora) {
+      const pctIGTF = window._contPagoCxcPctIGTF || 0.03;
+      const montoUSD = window._contPagoCxcMontoUSD || 0;
+      const montoIGTF = parseFloat((montoUSD * pctIGTF).toFixed(2));
+      const totalPagar = parseFloat((montoUSD + montoIGTF).toFixed(2));
+      igtfNotaEl.innerHTML = 'Por ser la Empresa Contribuyente Especial, este Cobro en USD lleva IGTF ('+(pctIGTF*100).toFixed(0)+'%): <strong>$ '+montoIGTF.toFixed(2)+'</strong>'
+        + '<div style="margin-top:2px;color:var(--texto);font-weight:600">Total a Pagar: $ '+totalPagar.toFixed(2)+'</div>';
+    }
   }
 }
 
@@ -1100,6 +1107,10 @@ async function contAbrirPagoCxc(id_cxc) {
 
   window._contPagoCxcMontoUSD = saldoPend;
   window._contPagoCxcMontoVES = montoVESPago;
+  try {
+    const tribCxc = await api('param_tributos','GET',null,'?codigo=eq.IGTF&select=alicuota&limit=1');
+    window._contPagoCxcPctIGTF = (tribCxc && tribCxc[0]) ? parseFloat(tribCxc[0].alicuota) / 100 : 0.03;
+  } catch(eTribCxc) { window._contPagoCxcPctIGTF = 0.03; }
   document.getElementById('cont-pago-cxc-tasa').value   = tasaActualPago.toFixed(4) + ' Bs/$';
   document.getElementById('cont-pago-cxc-monto-raw').value = saldoPend;
   document.getElementById('cont-pago-cxc-tasa-raw').value  = tasaActualPago;
