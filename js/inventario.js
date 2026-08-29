@@ -172,8 +172,57 @@ function precioVentaDual(precioGuardado, monedaGuardada) {
   return { bs: p * (_tasaVigente || 0), usd: p };
 }
 
+// ── Autocorrección de reservas huérfanas ──
+// El proceso de Facturar una Venta hace varias llamadas separadas a la
+// base de datos (no es una sola transacción); si algo lo interrumpe a
+// mitad de camino (se cierra la pestaña, se corta la conexión, el
+// navegador se cuelga), puede quedar una reserva "colgada" en
+// inventario_stock_area.reservado que ya no corresponde a ningún
+// Presupuesto real. Esta función recalcula el reservado REAL (la suma de
+// venta_detalle.cantidad de Ventas que sigan en BORRADOR) y corrige
+// cualquier fila que no coincida -- se llama automáticamente cada vez que
+// se abre Inventario General, así el sistema se autocorrige solo con el
+// uso normal, sin necesitar intervención manual por SQL.
+async function _reconciliarReservasHuerfanas() {
+  try {
+    const filasReservadas = await api('inventario_stock_area','GET',null,'?reservado=gt.0&select=id_articulo,id_area,reservado');
+    if (!filasReservadas || !filasReservadas.length) return;
+
+    const ventasActivas = await api('ventas','GET',null,'?estado=eq.BORRADOR&select=id_venta,id_area');
+    const idsVentasActivas = (ventasActivas||[]).map(function(v){ return v.id_venta; });
+    const areaPorVenta = {};
+    (ventasActivas||[]).forEach(function(v){ areaPorVenta[v.id_venta] = v.id_area; });
+
+    let reservadoCorrectoPorClave = {}; // clave "id_articulo-id_area" -> cantidad correcta
+    if (idsVentasActivas.length) {
+      const lineasActivas = await api('venta_detalle','GET',null,'?id_venta=in.('+idsVentasActivas.join(',')+')&select=id_venta,id_articulo,cantidad');
+      (lineasActivas||[]).forEach(function(l) {
+        const idArea = areaPorVenta[l.id_venta];
+        if (!idArea) return;
+        const clave = l.id_articulo+'-'+idArea;
+        reservadoCorrectoPorClave[clave] = (reservadoCorrectoPorClave[clave]||0) + parseFloat(l.cantidad||0);
+      });
+    }
+
+    for (const fila of filasReservadas) {
+      const clave = fila.id_articulo+'-'+fila.id_area;
+      const correcto = parseFloat((reservadoCorrectoPorClave[clave]||0).toFixed(4));
+      const actual = parseFloat(fila.reservado||0);
+      if (Math.abs(correcto - actual) > 0.0001) {
+        try {
+          await api('inventario_stock_area','PATCH',{ reservado: correcto },
+            '?id_articulo=eq.'+fila.id_articulo+'&id_area=eq.'+fila.id_area);
+          console.warn('Reserva huérfana corregida automáticamente: artículo '+fila.id_articulo+', área '+fila.id_area+' — de '+actual+' a '+correcto);
+        } catch(ePatchReconciliar) {}
+      }
+    }
+  } catch(eReconciliar) { console.warn('Error reconciliando reservas huérfanas:', eReconciliar); }
+}
+
 async function calcularInvSaldoArea() {
   try {
+    await _reconciliarReservasHuerfanas();
+
     // Consolidado (todas las áreas) — se calcula siempre, lo usan los
     // usuarios con VER_INVENTARIO_GENERAL y sirve de referencia general.
     // Se resta 'reservado' para mostrar el disponible REAL -- de lo
