@@ -1071,7 +1071,7 @@ function onCambiarMetodoCobroCxc() {
       const montoUSD = window._contPagoCxcMontoUSD || 0;
       const montoIGTF = parseFloat((montoUSD * pctIGTF).toFixed(2));
       const totalPagar = parseFloat((montoUSD + montoIGTF).toFixed(2));
-      igtfNotaEl.innerHTML = 'Contribuyente Especial, Cobros en USD aplica IGTF ('+(pctIGTF*100).toFixed(0)+'%): <strong>$ '+montoIGTF.toFixed(2)+'</strong>'
+      igtfNotaEl.innerHTML = '<div style="white-space:nowrap;overflow-x:auto">Contribuyente Especial, Cobros en USD aplica IGTF ('+(pctIGTF*100).toFixed(0)+'%): <strong>$ '+montoIGTF.toFixed(2)+'</strong></div>'
         + '<div style="margin-top:4px;color:var(--texto);font-family:var(--font-mono);font-size:23px;font-weight:600">Total a Pagar: $ '+totalPagar.toFixed(2)+'</div>';
     }
   }
