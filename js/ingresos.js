@@ -574,7 +574,10 @@ async function guardarFactura(emitir) {
 // emitir después un Borrador ya guardado desde la Ficha (emitirFactura) --
 // antes esta segunda vía no generaba nada de esto.
 async function generarCxCyAsientoFactura(idFactura) {
+  const _tg0 = Date.now();
+  const _tglog = function(etiqueta) { console.log('[generarCxCyAsientoFactura] ' + etiqueta + ' — ' + (Date.now()-_tg0) + 'ms desde el inicio'); };
   try {
+    _tglog('inicio');
     const facRows = await api('facturas','GET',null,'?id_factura=eq.'+idFactura+'&select=*');
     const fac = facRows && facRows[0];
     if (!fac) return;
@@ -614,6 +617,7 @@ async function generarCxCyAsientoFactura(idFactura) {
         id_usuario:     sesionActual.correo_usuario
       });
     } catch(eCxc) { console.warn('Error creando CxC:', eCxc); }
+    _tglog('CxC creada');
 
     // 2. Crear asiento contable
     try {
@@ -726,6 +730,7 @@ async function generarCxCyAsientoFactura(idFactura) {
         });
       }
     } catch(eAst) { console.warn('Error creando asiento:', eAst); }
+    _tglog('asiento contable creado -- entrando a stock/salida');
 
     // 3. Registrar en el Historial la salida por venta (si la OS tenía Mercancía)
     // -- OJO: esto es SOLO informativo para el Historial de Stock. El stock
@@ -945,7 +950,8 @@ async function generarCxCyAsientoFactura(idFactura) {
         }
       } catch(eSalVenta) { console.warn('Error registrando salida de inventario (Venta directa):', eSalVenta); }
     }
-  } catch(eGen) { console.warn('Error generando CxC/asiento/salida de la factura:', eGen); }
+    _tglog('completado exitosamente');
+  } catch(eGen) { _tglog('ERROR: ' + eGen.message); console.warn('Error generando CxC/asiento/salida de la factura:', eGen); }
 }
 
 async function verFichaFactura(id) {
