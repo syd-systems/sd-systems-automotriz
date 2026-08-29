@@ -813,8 +813,12 @@ async function facturarVenta(id) {
   const btn = document.getElementById('ficha-venta-btn-facturar');
   const textoOriginalBtn = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Procesando...'; }
+  const _t0 = Date.now();
+  const _tlog = function(etiqueta) { console.log('[facturarVenta] ' + etiqueta + ' — ' + (Date.now()-_t0) + 'ms desde el inicio'); };
   try {
+    _tlog('inicio');
     const vRows = await api('ventas','GET',null,'?id_venta=eq.'+id+'&select=*,clientes(*)');
+    _tlog('Venta consultada');
     const v = vRows && vRows[0];
     if (!v) throw new Error('Venta no encontrada.');
     if (v.estado !== 'BORRADOR') throw new Error('Solo se puede facturar una Venta en estado Presupuesto.');
@@ -822,6 +826,7 @@ async function facturarVenta(id) {
     const cli = v.clientes;
     const anio = new Date().getFullYear();
     const existentes = await api('facturas','GET',null,'?select=numero_factura&numero_factura=like.FAC-'+anio+'-*&order=numero_factura.desc&limit=1');
+    _tlog('numero de factura consultado');
     let seq = 1;
     if (existentes.length) { const p = existentes[0].numero_factura.split('-'); seq = parseInt(p[p.length-1])+1; }
     const numeroFactura = 'FAC-'+anio+'-'+String(seq).padStart(4,'0');
@@ -848,19 +853,23 @@ async function facturarVenta(id) {
     };
 
     const nuevaFactura = await api('facturas','POST',datosFactura);
+    _tlog('Factura creada');
     const idFacturaFinal = nuevaFactura && nuevaFactura[0] ? nuevaFactura[0].id_factura : null;
     if (!idFacturaFinal) throw new Error('No se pudo crear la Factura.');
 
     await api('ventas','PATCH',{ estado:'FACTURADA', id_factura: idFacturaFinal },'?id_venta=eq.'+id);
+    _tlog('Venta marcada FACTURADA -- entrando a generarCxCyAsientoFactura');
 
     // Reutiliza el motor de CxC + Asiento Contable + Salida de Inventario +
     // Costo de Venta ya probado en producción (ver ingresos.js)
     await generarCxCyAsientoFactura(idFacturaFinal);
+    _tlog('generarCxCyAsientoFactura completado');
 
     cerrarModal('modal-ficha-venta');
     renderVentas();
     alert('✓ Venta facturada correctamente: ' + numeroFactura);
   } catch(err) {
+    _tlog('ERROR: ' + err.message);
     alert('Error al facturar: ' + err.message);
     if (btn) { btn.disabled = false; btn.textContent = textoOriginalBtn; }
   }
