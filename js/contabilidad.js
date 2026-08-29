@@ -1054,6 +1054,14 @@ function onCambiarMetodoCobroCxc() {
     const sel = document.getElementById('cont-pago-cxc-banco-origen');
     if (sel) sel.value = '';
   }
+  // Comprobante No. -- solo aplica (y solo se exige) cuando el Método es
+  // Transferencia; para Efectivo u otros canales no hay número que pedir.
+  const refCont = document.getElementById('cont-pago-cxc-ref-cont');
+  if (refCont) refCont.style.display = (tipoCanal === 'TRANSFERENCIA') ? '' : 'none';
+  if (tipoCanal !== 'TRANSFERENCIA') {
+    const refEl = document.getElementById('cont-pago-cxc-ref');
+    if (refEl) refEl.value = '';
+  }
   const igtfNotaEl = document.getElementById('cont-pago-cxc-igtf-nota');
   if (igtfNotaEl) {
     const aplicaIGTFAhora = monedaMetodoSel === 'USD' && _empresaActiva?.tipo_contribuyente === 'ESPECIAL';
@@ -1070,6 +1078,8 @@ async function contAbrirPagoCxc(id_cxc) {
   const facturaRefCxc = Array.isArray(c.facturas) ? c.facturas[0] : c.facturas;
   const elFacturaRefCxc = document.getElementById('cont-pago-cxc-factura-ref');
   if (elFacturaRefCxc) elFacturaRefCxc.textContent = 'Factura ' + (facturaRefCxc?.numero_factura || '—') + ' — ' + (facturaRefCxc?.receptor_nombre || '');
+  const elFacturaFechaCxc = document.getElementById('cont-pago-cxc-factura-fecha');
+  if (elFacturaFechaCxc) elFacturaFechaCxc.textContent = facturaRefCxc?.fecha_emision ? 'Fecha: ' + fmtFecha(facturaRefCxc.fecha_emision) : '';
 
   const okEl  = document.getElementById('alerta-pago-cxc-ok');
   const errEl = document.getElementById('alerta-pago-cxc-err');
@@ -1093,7 +1103,6 @@ async function contAbrirPagoCxc(id_cxc) {
   document.getElementById('cont-pago-cxc-tasa').value   = tasaActualPago.toFixed(4) + ' Bs/$';
   document.getElementById('cont-pago-cxc-monto-raw').value = saldoPend;
   document.getElementById('cont-pago-cxc-tasa-raw').value  = tasaActualPago;
-  document.getElementById('cont-pago-cxc-fecha').value  = getHoyVzla();
   document.getElementById('cont-pago-cxc-ref').value    = '';
 
   // Limpiar comprobante y contraseña de una apertura anterior
@@ -1121,26 +1130,16 @@ async function contAbrirPagoCxc(id_cxc) {
   const bancoOrigenContCxc = document.getElementById('cont-pago-cxc-banco-origen-cont');
   if (bancoOrigenContCxc) bancoOrigenContCxc.style.display = 'none';
 
-  // Cargar métodos de Cobro reales desde Parámetros (param_metodos_pago),
-  // igual que Egresos -- ya no son opciones fijas en el HTML. El listado
-  // se filtra ESTRICTAMENTE por la Moneda de Cobro de la Factura
-  // (facturas.moneda_cobro) -- si la Factura es en Bs, no debe ser
-  // posible elegir por error un Método en USD (y viceversa). Sin
-  // preselección: es una decisión que le corresponde tomar al operador,
-  // aunque en la práctica solo va a quedar una Moneda disponible. Se
-  // excluye Afiliación Bancaria, canal exclusivo de CxP.
-  //
   // El IGTF NO se decide con facturas.aplica_igtf (eso es lo que se
   // congeló al EMITIR la Factura) -- se evalúa fresco, en el momento de
   // ESTA cobranza puntual, cuando el Usuario elige el Método
   // (onCambiarMetodoCobroCxc): aplica si la Empresa es Contribuyente
-  // Especial Y la Moneda de Cobro de la Factura es USD.
+  // Especial Y la Moneda elegida para este Cobro es USD.
   const monedaFacturaCxc = (facturaRefCxc?.moneda_cobro || 'VES').toUpperCase();
 
-  // Monto (principal, grande) -- según la Moneda de Cobro de la Factura,
-  // NO depende de qué Método elija el operador (que además ya está
-  // filtrado para coincidir con esa misma Moneda). El secundario
-  // (equivalente en la otra moneda) va en la misma línea, en gris.
+  // Monto (principal, grande) -- según la Moneda de Cobro de la Factura
+  // (fija, es lo que se debe al Cliente). El secundario (equivalente en
+  // la otra moneda) va en la misma línea, en gris.
   const elPrincipalCxc = document.getElementById('cont-pago-cxc-monto-ves');
   const elSecundarioCxc = document.getElementById('cont-pago-cxc-monto');
   if (monedaFacturaCxc === 'USD') {
@@ -1151,29 +1150,15 @@ async function contAbrirPagoCxc(id_cxc) {
     if (elSecundarioCxc) elSecundarioCxc.textContent = '≈ $ ' + saldoPend.toFixed(2);
   }
 
-  const selMetodo = document.getElementById('cont-pago-cxc-metodo');
-  if (selMetodo) {
-    selMetodo.innerHTML = '<option value="">— Cargando métodos —</option>';
-    try {
-      let metodos = await api('param_metodos_pago','GET',null,
-        '?estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,tipo_canal,id_cuenta_contable,codigo' + emisorQ());
-      metodos = (metodos || []).filter(function(m) {
-        return m.tipo_canal !== 'AFILIACION_BANCARIA' && (m.codigo || '').toUpperCase() === monedaFacturaCxc;
-      });
-      if (!metodos || !metodos.length) {
-        selMetodo.innerHTML = '<option value="">⚠ No hay métodos de Cobro en '+monedaFacturaCxc+' configurados — configure uno en Parámetros</option>';
-      } else {
-        selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
-          + metodos.map(function(m) {
-              return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-moneda="'+(m.codigo||'')+'" data-tipo-canal="'+(m.tipo_canal||'')+'">'+m.nombre+'</option>';
-            }).join('');
-        // Sin preselección -- el operador debe elegir explícitamente.
-      }
-    } catch(eMet) {
-      selMetodo.innerHTML = '<option value="">— Sin métodos disponibles —</option>';
-    }
-  }
-  onCambiarMetodoCobroCxc();
+  // Moneda del Cobro -- por defecto, la misma Moneda de Cobro de la
+  // Factura; el operador puede cambiarla (ej. Cliente paga en efectivo
+  // en la otra moneda), y el listado de Métodos se refiltra según lo que
+  // elija aquí.
+  const selMoneda = document.getElementById('cont-pago-cxc-moneda');
+  if (selMoneda) selMoneda.value = monedaFacturaCxc;
+
+  await _cargarMetodosCobroCxc();
+
   const infoEl = document.getElementById('cont-pago-cxc-tasa-info');
   if (infoEl) {
     infoEl.textContent = c.tasa_bcv
@@ -1182,7 +1167,35 @@ async function contAbrirPagoCxc(id_cxc) {
   }
 
   abrirModal('modal-cont-pago-cxc');
-  setTimeout(function(){ document.getElementById('cont-pago-cxc-fecha')?.focus(); }, 100);
+}
+
+// Carga los Métodos de Cobro disponibles para la Moneda actualmente
+// elegida en el select Moneda -- separado de contAbrirPagoCxc() para
+// poder llamarse de nuevo cuando el operador cambia esa Moneda.
+async function _cargarMetodosCobroCxc() {
+  const monedaSel = (document.getElementById('cont-pago-cxc-moneda')?.value || 'VES').toUpperCase();
+  const selMetodo = document.getElementById('cont-pago-cxc-metodo');
+  if (!selMetodo) return;
+  selMetodo.innerHTML = '<option value="">— Cargando métodos —</option>';
+  try {
+    let metodos = await api('param_metodos_pago','GET',null,
+      '?estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,tipo_canal,id_cuenta_contable,codigo' + emisorQ());
+    metodos = (metodos || []).filter(function(m) {
+      return m.tipo_canal !== 'AFILIACION_BANCARIA' && (m.codigo || '').toUpperCase() === monedaSel;
+    });
+    if (!metodos || !metodos.length) {
+      selMetodo.innerHTML = '<option value="">⚠ No hay métodos de Cobro en '+monedaSel+' configurados — configure uno en Parámetros</option>';
+    } else {
+      selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
+        + metodos.map(function(m) {
+            return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-moneda="'+(m.codigo||'')+'" data-tipo-canal="'+(m.tipo_canal||'')+'">'+m.nombre+'</option>';
+          }).join('');
+      // Sin preselección -- el operador debe elegir explícitamente.
+    }
+  } catch(eMet) {
+    selMetodo.innerHTML = '<option value="">— Sin métodos disponibles —</option>';
+  }
+  onCambiarMetodoCobroCxc();
 }
 
 async function contGuardarPagoCxc() {
@@ -1197,11 +1210,7 @@ async function contGuardarPagoCxc() {
     errEl.textContent = 'No se pudo determinar el monto a cobrar. Cierre y vuelva a abrir el Cobro.'; errEl.style.display = 'block';
     return;
   }
-  const fecha = document.getElementById('cont-pago-cxc-fecha')?.value;
-  if (!fecha) {
-    errEl.textContent = 'La fecha es obligatoria.'; errEl.style.display = 'block';
-    document.getElementById('cont-pago-cxc-fecha')?.focus(); return;
-  }
+  const fecha = getHoyVzla();
   const selMetodoEl = document.getElementById('cont-pago-cxc-metodo');
   const metodo = selMetodoEl?.value || null;
   if (!metodo) {
@@ -1226,8 +1235,8 @@ async function contGuardarPagoCxc() {
     }
   }
   const referencia = document.getElementById('cont-pago-cxc-ref')?.value.trim() || null;
-  if (!referencia) {
-    errEl.textContent = 'El Comprobante de Cobro No. es obligatorio.'; errEl.style.display = 'block';
+  if (tipoCanalSel === 'TRANSFERENCIA' && !referencia) {
+    errEl.textContent = 'El Comprobante No. es obligatorio para pagos por Transferencia.'; errEl.style.display = 'block';
     document.getElementById('cont-pago-cxc-ref')?.focus(); return;
   }
   const claveCxc = document.getElementById('cont-pago-cxc-clave')?.value || '';
