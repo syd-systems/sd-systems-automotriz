@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260828210"></script>
-<script src="js/parametros.js?v=20260828210"></script>
-<script src="js/empresas.js?v=20260828210"></script>
-<script src="js/ingresos.js?v=20260828210"></script>
-<script src="js/inventario.js?v=20260828210"></script>
-<script src="js/proveedores.js?v=20260828210"></script>
-<script src="js/clientes.js?v=20260828210"></script>
-<script src="js/ventas.js?v=20260828210"></script>
-<script src="js/contabilidad.js?v=20260828210"></script>
-<script src="js/egresos.js?v=20260828210"></script>
-<script src="js/vehiculos.js?v=20260828210"></script>
-<script src="js/catalogo.js?v=20260828210"></script>
-<script src="js/ordenes.js?v=20260828210"></script>
+<script src="js/core.js?v=20260828220"></script>
+<script src="js/parametros.js?v=20260828220"></script>
+<script src="js/empresas.js?v=20260828220"></script>
+<script src="js/ingresos.js?v=20260828220"></script>
+<script src="js/inventario.js?v=20260828220"></script>
+<script src="js/proveedores.js?v=20260828220"></script>
+<script src="js/clientes.js?v=20260828220"></script>
+<script src="js/ventas.js?v=20260828220"></script>
+<script src="js/contabilidad.js?v=20260828220"></script>
+<script src="js/egresos.js?v=20260828220"></script>
+<script src="js/vehiculos.js?v=20260828220"></script>
+<script src="js/catalogo.js?v=20260828220"></script>
+<script src="js/ordenes.js?v=20260828220"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -1948,12 +1948,12 @@
       <input type="hidden" id="cont-pago-cxc-tasa-raw">
       <div class="form-grid" style="grid-template-columns:1fr 1fr">
         <div class="form-campo form-full">
-          <label id="cont-pago-cxc-monto-ves-label">Monto a Cobrar (Bs)</label>
-          <input type="text" id="cont-pago-cxc-monto-ves" readonly style="background:var(--gris1);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:20px;font-weight:600;padding:12px 14px;border-radius:5px;outline:none;width:100%;cursor:not-allowed">
-        </div>
-        <div class="form-campo">
-          <label id="cont-pago-cxc-monto-label">Monto USD</label>
-          <input type="text" id="cont-pago-cxc-monto" readonly style="background:var(--gris2);border:1px solid var(--borde);color:var(--suave);font-family:var(--font-mono);padding:11px 14px;border-radius:5px;outline:none;width:100%;cursor:not-allowed">
+          <div id="cont-pago-cxc-factura-ref" style="font-size:12px;color:var(--suave);margin-bottom:2px"></div>
+          <label>Monto</label>
+          <div style="display:flex;align-items:baseline;gap:12px;background:var(--gris1);border:1px solid var(--borde);border-radius:5px;padding:12px 14px">
+            <span id="cont-pago-cxc-monto-ves" style="font-family:var(--font-mono);font-size:20px;font-weight:600;color:var(--texto)"></span>
+            <span id="cont-pago-cxc-monto" style="font-family:var(--font-mono);font-size:13px;color:var(--suave)"></span>
+          </div>
         </div>
         <div class="form-campo">
           <label>Tasa BCV</label>
