@@ -1083,7 +1083,7 @@ async function verFichaFactura(id) {
       btnPago._facId = f.id_factura;
       btnPago.onclick = async function() {
         try {
-          const cxcs = await api('cont_cxc','GET',null,'?id_factura=eq.'+this._facId+'&estado=neq.ANULADA&select=*,facturas(aplica_igtf,moneda_cobro,numero_factura,receptor_nombre)');
+          const cxcs = await api('cont_cxc','GET',null,'?id_factura=eq.'+this._facId+'&estado=neq.ANULADA&select=*,facturas(aplica_igtf,moneda_cobro,numero_factura,receptor_nombre,fecha_emision)');
           if (cxcs && cxcs.length) {
             if (!contCxcCache) contCxcCache = [];
             cxcs.forEach(function(c) {
