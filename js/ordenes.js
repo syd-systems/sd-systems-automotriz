@@ -1702,18 +1702,24 @@ window.addEventListener('load', async () => {
         }
       } catch(eE) { console.warn('Error cargando empresas al restaurar sesión:', eE); }
 
-      // Leer token_sesion actual de BD y asignarlo para que el polling funcione
+      // Generar un token PROPIO y escribirlo en BD -- igual que un login
+      // real, para que esta pestaña restaurada desplace correctamente
+      // cualquier otra sesión activa (no basta con leer/adoptar el token
+      // que ya hubiera en BD: si dos pestañas hicieran eso, ambas
+      // terminarían con el MISMO token y el control de sesión única
+      // nunca detectaría un conflicto entre ellas).
       try {
-        const uRes = await api('usuarios', 'GET', null,
-          '?correo_usuario=eq.' + encodeURIComponent(usuario.correo_usuario) + '&select=token_sesion');
-        if (uRes && uRes[0] && uRes[0].token_sesion) {
-          window._miTokenSesion = uRes[0].token_sesion;
-          // Reiniciar polling y habilitar
-          clearInterval(_pollingInterval);
-          _pollingInterval = setInterval(verificarSesionActiva, 30000);
-          window._sesionLista = true;
-        }
-      } catch(eT) { console.warn('Error leyendo token_sesion:', eT); }
+        const miTokenRestaurado = Math.random().toString(36).substr(2) + Date.now().toString(36);
+        window._miTokenSesion = miTokenRestaurado;
+        await api('usuarios', 'PATCH', {
+          sesion_activa: true, sesion_invalidada: false,
+          ultimo_acceso: new Date().toISOString(), ultima_conexion: new Date().toISOString(),
+          token_sesion: miTokenRestaurado
+        }, '?correo_usuario=eq.' + encodeURIComponent(usuario.correo_usuario));
+        clearInterval(_pollingInterval);
+        _pollingInterval = setInterval(verificarSesionActiva, 30000);
+        window._sesionLista = true;
+      } catch(eT) { console.warn('Error generando token propio al restaurar sesión:', eT); }
 
       // iniciarApp DESPUÉS de que _empresaActiva esté asignado
       iniciarApp();
