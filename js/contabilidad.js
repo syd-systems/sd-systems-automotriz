@@ -1067,6 +1067,10 @@ async function contAbrirPagoCxc(id_cxc) {
   if (!c) { alert('No se encontró la Cuenta por Cobrar.'); return; }
   _pagoCxcActualId = id_cxc;
 
+  const facturaRefCxc = Array.isArray(c.facturas) ? c.facturas[0] : c.facturas;
+  const elFacturaRefCxc = document.getElementById('cont-pago-cxc-factura-ref');
+  if (elFacturaRefCxc) elFacturaRefCxc.textContent = 'Factura ' + (facturaRefCxc?.numero_factura || '—') + ' — ' + (facturaRefCxc?.receptor_nombre || '');
+
   const okEl  = document.getElementById('alerta-pago-cxc-ok');
   const errEl = document.getElementById('alerta-pago-cxc-err');
   if (okEl)  okEl.style.display  = 'none';
@@ -1131,27 +1135,20 @@ async function contAbrirPagoCxc(id_cxc) {
   // ESTA cobranza puntual, cuando el Usuario elige el Método
   // (onCambiarMetodoCobroCxc): aplica si la Empresa es Contribuyente
   // Especial Y la Moneda de Cobro de la Factura es USD.
-  const facturaJoinCxc = Array.isArray(c.facturas) ? c.facturas[0] : c.facturas;
-  const monedaFacturaCxc = (facturaJoinCxc?.moneda_cobro || 'VES').toUpperCase();
+  const monedaFacturaCxc = (facturaRefCxc?.moneda_cobro || 'VES').toUpperCase();
 
-  // Monto a Cobrar (principal, grande) -- según la Moneda de Cobro de la
-  // Factura, NO depende de qué Método elija el operador (que además ya
-  // está filtrado para coincidir con esa misma Moneda). Mismo estilo
-  // (naranja, entre paréntesis) ya usado en CxP.
+  // Monto (principal, grande) -- según la Moneda de Cobro de la Factura,
+  // NO depende de qué Método elija el operador (que además ya está
+  // filtrado para coincidir con esa misma Moneda). El secundario
+  // (equivalente en la otra moneda) va en la misma línea, en gris.
   const elPrincipalCxc = document.getElementById('cont-pago-cxc-monto-ves');
-  const lblPrincipalCxc = document.getElementById('cont-pago-cxc-monto-ves-label');
   const elSecundarioCxc = document.getElementById('cont-pago-cxc-monto');
-  const lblSecundarioCxc = document.getElementById('cont-pago-cxc-monto-label');
   if (monedaFacturaCxc === 'USD') {
-    if (lblPrincipalCxc) lblPrincipalCxc.innerHTML = 'Monto a Cobrar <span style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span>';
-    if (elPrincipalCxc) elPrincipalCxc.value = '$ ' + saldoPend.toFixed(2);
-    if (lblSecundarioCxc) lblSecundarioCxc.innerHTML = 'Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(Bs)</span>';
-    if (elSecundarioCxc) elSecundarioCxc.value = montoVESPago.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' Bs';
+    if (elPrincipalCxc) elPrincipalCxc.textContent = '$ ' + saldoPend.toFixed(2);
+    if (elSecundarioCxc) elSecundarioCxc.textContent = '≈ Bs ' + montoVESPago.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2});
   } else {
-    if (lblPrincipalCxc) lblPrincipalCxc.innerHTML = 'Monto a Cobrar <span style="font-size:10px;color:var(--naranja);font-weight:600">(Bs)</span>';
-    if (elPrincipalCxc) elPrincipalCxc.value = montoVESPago.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' Bs';
-    if (lblSecundarioCxc) lblSecundarioCxc.innerHTML = 'Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span>';
-    if (elSecundarioCxc) elSecundarioCxc.value = '$ ' + saldoPend.toFixed(2);
+    if (elPrincipalCxc) elPrincipalCxc.textContent = montoVESPago.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' Bs';
+    if (elSecundarioCxc) elSecundarioCxc.textContent = '≈ $ ' + saldoPend.toFixed(2);
   }
 
   const selMetodo = document.getElementById('cont-pago-cxc-metodo');
