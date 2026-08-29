@@ -439,6 +439,18 @@ function _onClienteRapidoCreadoVenta(cli) {
   document.getElementById('vta-cliente-input').value = _textoOpcionCliente(cli);
 }
 
+// El botón "Nuevo/Editar" cumple dos funciones: si no hay Cliente
+// seleccionado, crea uno nuevo (modal rápido); si ya hay uno elegido,
+// abre su ficha completa para editarlo. En ambos casos, al guardar se
+// actualiza el texto mostrado en el campo de Ventas (mismo callback).
+function _onClickBotonClienteVenta() {
+  if (window._vtaClienteSeleccionadoId) {
+    abrirCliente(window._vtaClienteSeleccionadoId, _onClienteRapidoCreadoVenta);
+  } else {
+    abrirClienteRapido(_onClienteRapidoCreadoVenta);
+  }
+}
+
 function agregarLineaVenta() {
   const lineaIncompleta = _ventaLineas.some(function(l) { return !l.id_articulo || !l.cantidad || l.cantidad <= 0; });
   if (lineaIncompleta) {
