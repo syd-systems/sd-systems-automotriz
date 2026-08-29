@@ -2015,7 +2015,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-cont-pago-cxc')">Retornar</button>
-      <button class="btn-primario"   onclick="contGuardarPagoCxc()">💰 Registrar Cobro</button>
+      <button class="btn-primario"   onclick="btnSetGuardando(this,true,null,'Procesando...');contGuardarPagoCxc().finally(()=>btnSetGuardando(this,false))">💰 Registrar Cobro</button>
     </div>
     <input type="hidden" id="cont-pago-cxc-id">
   </div>
