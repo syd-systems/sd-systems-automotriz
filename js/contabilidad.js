@@ -1072,7 +1072,7 @@ function onCambiarMetodoCobroCxc() {
       const montoIGTF = parseFloat((montoUSD * pctIGTF).toFixed(2));
       const totalPagar = parseFloat((montoUSD + montoIGTF).toFixed(2));
       igtfNotaEl.innerHTML = 'Por ser la Empresa Contribuyente Especial, este Cobro en USD lleva IGTF ('+(pctIGTF*100).toFixed(0)+'%): <strong>$ '+montoIGTF.toFixed(2)+'</strong>'
-        + '<div style="margin-top:2px;color:var(--texto);font-weight:600">Total a Pagar: $ '+totalPagar.toFixed(2)+'</div>';
+        + '<div style="margin-top:4px;color:var(--texto);font-family:var(--font-mono);font-size:20px;font-weight:600">Total a Pagar: $ '+totalPagar.toFixed(2)+'</div>';
     }
   }
 }
@@ -1111,7 +1111,7 @@ async function contAbrirPagoCxc(id_cxc) {
     const tribCxc = await api('param_tributos','GET',null,'?codigo=eq.IGTF&select=alicuota&limit=1');
     window._contPagoCxcPctIGTF = (tribCxc && tribCxc[0]) ? parseFloat(tribCxc[0].alicuota) / 100 : 0.03;
   } catch(eTribCxc) { window._contPagoCxcPctIGTF = 0.03; }
-  document.getElementById('cont-pago-cxc-tasa').value   = tasaActualPago.toFixed(4) + ' Bs/$';
+  document.getElementById('cont-pago-cxc-tasa').value   = tasaActualPago.toFixed(2) + ' Bs/$';
   document.getElementById('cont-pago-cxc-monto-raw').value = saldoPend;
   document.getElementById('cont-pago-cxc-tasa-raw').value  = tasaActualPago;
   document.getElementById('cont-pago-cxc-ref').value    = '';
@@ -1148,25 +1148,13 @@ async function contAbrirPagoCxc(id_cxc) {
   // Especial Y la Moneda elegida para este Cobro es USD.
   const monedaFacturaCxc = (facturaRefCxc?.moneda_cobro || 'VES').toUpperCase();
 
-  // Monto (principal, grande) -- según la Moneda de Cobro de la Factura
-  // (fija, es lo que se debe al Cliente). El secundario (equivalente en
-  // la otra moneda) va en la misma línea, en gris.
-  const elPrincipalCxc = document.getElementById('cont-pago-cxc-monto-ves');
-  const elSecundarioCxc = document.getElementById('cont-pago-cxc-monto');
-  if (monedaFacturaCxc === 'USD') {
-    if (elPrincipalCxc) elPrincipalCxc.textContent = '$ ' + saldoPend.toFixed(2);
-    if (elSecundarioCxc) elSecundarioCxc.textContent = '≈ Bs ' + montoVESPago.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2});
-  } else {
-    if (elPrincipalCxc) elPrincipalCxc.textContent = montoVESPago.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' Bs';
-    if (elSecundarioCxc) elSecundarioCxc.textContent = '≈ $ ' + saldoPend.toFixed(2);
-  }
-
   // Moneda del Cobro -- por defecto, la misma Moneda de Cobro de la
   // Factura; el operador puede cambiarla (ej. Cliente paga en efectivo
-  // en la otra moneda), y el listado de Métodos se refiltra según lo que
-  // elija aquí.
+  // en la otra moneda), y el listado de Métodos y el Monto principal se
+  // refiltran/invierten según lo que elija aquí.
   const selMoneda = document.getElementById('cont-pago-cxc-moneda');
   if (selMoneda) selMoneda.value = monedaFacturaCxc;
+  _actualizarMontoPrincipalCxc();
 
   await _cargarMetodosCobroCxc();
 
@@ -1180,10 +1168,29 @@ async function contAbrirPagoCxc(id_cxc) {
   abrirModal('modal-cont-pago-cxc');
 }
 
+// Invierte cuál Monto (Bs o USD) se muestra como principal (grande) según
+// la Moneda actualmente elegida en el select -- se llama al abrir el
+// modal y cada vez que el operador cambia esa Moneda.
+function _actualizarMontoPrincipalCxc() {
+  const monedaSel = (document.getElementById('cont-pago-cxc-moneda')?.value || 'VES').toUpperCase();
+  const saldoPend = window._contPagoCxcMontoUSD || 0;
+  const montoVESPago = window._contPagoCxcMontoVES || 0;
+  const elPrincipalCxc = document.getElementById('cont-pago-cxc-monto-ves');
+  const elSecundarioCxc = document.getElementById('cont-pago-cxc-monto');
+  if (monedaSel === 'USD') {
+    if (elPrincipalCxc) elPrincipalCxc.textContent = '$ ' + saldoPend.toFixed(2);
+    if (elSecundarioCxc) elSecundarioCxc.textContent = '≈ Bs ' + montoVESPago.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2});
+  } else {
+    if (elPrincipalCxc) elPrincipalCxc.textContent = montoVESPago.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' Bs';
+    if (elSecundarioCxc) elSecundarioCxc.textContent = '≈ $ ' + saldoPend.toFixed(2);
+  }
+}
+
 // Carga los Métodos de Cobro disponibles para la Moneda actualmente
 // elegida en el select Moneda -- separado de contAbrirPagoCxc() para
 // poder llamarse de nuevo cuando el operador cambia esa Moneda.
 async function _cargarMetodosCobroCxc() {
+  _actualizarMontoPrincipalCxc();
   const monedaSel = (document.getElementById('cont-pago-cxc-moneda')?.value || 'VES').toUpperCase();
   const selMetodo = document.getElementById('cont-pago-cxc-metodo');
   if (!selMetodo) return;
