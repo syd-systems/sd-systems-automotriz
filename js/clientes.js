@@ -106,9 +106,12 @@ function verFichaCliente(id) {
   focusFirstField('modal-ficha-cliente');
 }
 
-function abrirCliente(id) {
+let _callbackClienteEditado = null;
+
+function abrirCliente(id, onGuardado) {
   if (id && !puedo('CLIENTES','EDITAR'))  { alert('No tiene permiso para editar clientes.'); return; }
   if (!id && !puedo('CLIENTES','CREAR'))  { alert('No tiene permiso para registrar clientes.'); return; }
+  _callbackClienteEditado = typeof onGuardado === 'function' ? onGuardado : null;
 
   const x = id ? clientesCache.find(function(c) { return c.id_cliente === id; }) : null;
 
@@ -188,10 +191,28 @@ async function guardarCliente() {
   };
 
   try {
-    if (id) { await api('clientes','PATCH',datos,'?id_cliente=eq.'+id); okEl.textContent = '✓ Cliente actualizado correctamente.'; }
-    else    { await api('clientes','POST',datos);                        okEl.textContent = '✓ Cliente registrado correctamente.'; }
+    let clienteGuardado;
+    if (id) {
+      await api('clientes','PATCH',datos,'?id_cliente=eq.'+id);
+      okEl.textContent = '✓ Cliente actualizado correctamente.';
+      clienteGuardado = Object.assign({ id_cliente: parseInt(id) }, datos);
+      const idxCache = (clientesCache||[]).findIndex(function(c) { return c.id_cliente === parseInt(id); });
+      if (idxCache >= 0) clientesCache[idxCache] = Object.assign({}, clientesCache[idxCache], datos);
+    } else {
+      const creado = await api('clientes','POST',datos);
+      okEl.textContent = '✓ Cliente registrado correctamente.';
+      clienteGuardado = Array.isArray(creado) ? creado[0] : creado;
+      if (clienteGuardado && clienteGuardado.id_cliente) {
+        clientesCache = clientesCache || [];
+        clientesCache.push(clienteGuardado);
+      }
+    }
     okEl.style.display = 'block';
-    setTimeout(function() { cerrarModal('modal-cliente'); renderClientes(); }, 1200);
+    setTimeout(function() {
+      cerrarModal('modal-cliente');
+      if (_callbackClienteEditado) { _callbackClienteEditado(clienteGuardado); _callbackClienteEditado = null; }
+      else { renderClientes(); }
+    }, 1200);
   } catch(err) { errEl.textContent = 'Error: ' + err.message; errEl.style.display = 'block'; }
 }
 
