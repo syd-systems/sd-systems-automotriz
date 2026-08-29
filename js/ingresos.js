@@ -951,7 +951,7 @@ async function generarCxCyAsientoFactura(idFactura) {
 async function verFichaFactura(id) {
   try {
     const [facArr] = await Promise.all([
-      api('facturas','GET',null,'?id_factura=eq.'+id+'&select=*,emisores(*),propietarios(nombre_completo,tipo_doc,numero_doc),cont_cxc(metodo_pago,referencia,fecha_cobro,pagado_usd,id_banco_origen,banco_origen:id_banco_origen(nombre))'),
+      api('facturas','GET',null,'?id_factura=eq.'+id+'&select=*,emisores(*),propietarios(nombre_completo,tipo_doc,numero_doc),cont_cxc(metodo_pago,referencia,fecha_cobro,pagado_usd,tasa_bcv,id_banco_origen,banco_origen:id_banco_origen(nombre))'),
     ]);
     const f = facArr[0]; if (!f) return;
     let linServ=[], linRep=[];
@@ -1047,10 +1047,15 @@ async function verFichaFactura(id) {
           return '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
             + '<div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Datos de Cobro</div>'
             + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">'
+            + '<div style="display:flex;flex-direction:column;gap:10px">'
             + '<div><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Fecha de Cobro</div><div style="font-weight:600">'+fmtFecha(cxcFicha.fecha_cobro)+'</div></div>'
-            + '<div><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Forma de Cobro</div><div style="font-weight:600">'+(cxcFicha.metodo_pago||'—')+'</div></div>'
             + (cxcFicha.banco_origen?.nombre ? '<div><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Banco Origen</div><div style="font-weight:600">'+cxcFicha.banco_origen.nombre+'</div></div>' : '')
-            + '<div><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Comprobante de Cobro No.</div><div style="font-weight:600;font-family:var(--font-mono)">'+(cxcFicha.referencia||'—')+'</div></div>'
+            + '</div>'
+            + '<div style="display:flex;flex-direction:column;gap:10px">'
+            + '<div><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Forma de Cobro</div><div style="font-weight:600">'+(cxcFicha.metodo_pago||'—')+'</div></div>'
+            + '<div><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Monto Cobrado</div><div style="font-weight:600;font-family:var(--font-mono)">$ '+fmtUSD(cxcFicha.pagado_usd||0)+'<span style="font-size:11px;color:var(--suave)"> · Bs '+fmtBs((cxcFicha.pagado_usd||0)*(cxcFicha.tasa_bcv||0))+'</span></div></div>'
+            + '</div>'
+            + '<div style="grid-column:1/-1"><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Comprobante de Cobro No.</div><div style="font-weight:600;font-family:var(--font-mono)">'+(cxcFicha.referencia||'—')+'</div></div>'
             + '</div></div>';
         })()
       + '<div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Detalle</div>'
