@@ -3951,7 +3951,7 @@
               <input type="text" id="vta-cliente-input" autocomplete="off" placeholder="Escriba el nombre o identificación..." oninput="_renderOpcionesCliente(this.value)" onfocus="_renderOpcionesCliente(this.value)" onblur="setTimeout(function(){document.getElementById('vta-cliente-opciones').style.display='none'},150)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:11px;padding:7px 9px;border-radius:5px;outline:none">
               <div id="vta-cliente-opciones" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:60;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;max-height:180px;overflow-y:auto;margin-top:2px;box-shadow:0 4px 10px rgba(0,0,0,0.4)"></div>
             </div>
-            <button type="button" class="btn-secundario" style="white-space:nowrap" onclick="abrirClienteRapido(_onClienteRapidoCreadoVenta)">+ Nuevo</button>
+            <button type="button" id="vta-btn-cliente" class="btn-secundario" style="white-space:nowrap" onclick="_onClickBotonClienteVenta()">Nuevo/Editar</button>
           </div>
         </div>
         <input type="hidden" id="vta-id-area">
