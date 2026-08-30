@@ -3231,11 +3231,11 @@
         </select>
       </div>
 
-      <!-- OS VINCULADA -->
+      <!-- OS VINCULADA (opcional) -->
       <div style="margin-bottom:16px">
-        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:8px">Motivo</div>
+        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:8px">Motivo (opcional)</div>
         <select id="fac-os-sel" onchange="onSelOSFactura()" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none">
-          <option value="">— Seleccionar OS —</option>
+          <option value="">— Ninguna (Factura Manual) —</option>
         </select>
         <div id="fac-os-info"></div>
         <input type="hidden" id="fac-os-id">
@@ -3247,19 +3247,19 @@
         <div class="form-grid">
           <div class="form-campo form-full">
             <label>Nombre / Razón Social</label>
-            <input type="text" id="fac-receptor-nombre" placeholder="Nombre completo del receptor" readonly>
+            <input type="text" id="fac-receptor-nombre" placeholder="Nombre completo del receptor">
           </div>
           <div class="form-campo">
             <label>RIF / Cédula</label>
-            <input type="text" id="fac-receptor-rif" placeholder="J-XXXXXXXX-X" readonly>
+            <input type="text" id="fac-receptor-rif" placeholder="J-XXXXXXXX-X">
           </div>
           <div class="form-campo">
             <label>Dirección *</label>
-            <input type="text" id="fac-receptor-dir" placeholder="Dirección fiscal" readonly>
+            <input type="text" id="fac-receptor-dir" placeholder="Dirección fiscal">
           </div>
           <div class="form-campo form-full">
             <label>Tipo de Contribuyente</label>
-            <select id="fac-receptor-tipo-contrib" disabled>
+            <select id="fac-receptor-tipo-contrib">
               <option value="">— No aplica / No especificado —</option>
               <option value="ORDINARIO">Contribuyente Ordinario</option>
               <option value="ESPECIAL">Contribuyente Especial</option>
@@ -3269,14 +3269,19 @@
         </div>
       </div>
 
-      <!-- LÍNEAS OS -->
-      <div style="margin-bottom:16px">
+      <!-- LÍNEAS OS (solo si hay OS vinculada) -->
+      <div style="margin-bottom:16px" id="fac-cont-lineas-os">
         <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:8px">Detalle de la OS</div>
         <div id="fac-lineas-cont" style="background:var(--gris2);border-radius:6px;padding:12px"></div>
         <div style="display:flex;justify-content:flex-end;padding:6px 0">
           <span style="font-size:11px;color:var(--suave)" id="fac-subtotal-label">Subtotal OS: </span>
           <span id="fac-subtotal-os" style="font-family:var(--font-mono);font-size:13px;color:var(--naranja);margin-left:8px">$ 0.00</span>
         </div>
+      </div>
+      <!-- SUBTOTAL MANUAL (solo si NO hay OS vinculada) -->
+      <div class="form-campo form-full" style="margin-bottom:16px;display:none" id="fac-cont-subtotal-manual">
+        <label>Subtotal (monto de la Factura, sin impuestos)</label>
+        <input type="number" id="fac-subtotal-manual" step="0.01" min="0" placeholder="0.00" oninput="window._facSubtotalOS=parseFloat(this.value)||0;actualizarSubtotalOSLabel();calcularTotalesFactura()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:14px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
       </div>
 
       <!-- IMPUESTOS Y TASA -->
