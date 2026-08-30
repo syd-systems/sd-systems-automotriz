@@ -6068,11 +6068,12 @@ async function recalcularPrecioVentaSalida() {
     return;
   }
   const simb = monedaSel === 'VES' ? 'Bs ' : '$ ';
+  const puedeVerMargen = sesionActual?.administrador || puedo('INVENTARIO','VER_MARGEN_BRUTO');
   const detalleTxt = margen === null
     ? 'sin Margen definido'
     : 'Margen ' + margen.toFixed(1) + '%';
-  displayEl.textContent = simb + fmtUSD(venta) + ' · ' + detalleTxt;
-  displayEl.title = simb + fmtUSD(venta) + ' (' + detalleTxt + ')';
+  displayEl.textContent = simb + fmtUSD(venta) + (puedeVerMargen ? ' · ' + detalleTxt : '');
+  displayEl.title = puedeVerMargen ? simb + fmtUSD(venta) + ' (' + detalleTxt + ')' : '';
 }
 
 // Desbloquea el Precio de Venta para ajuste manual -- solo Usuarios con
@@ -6132,11 +6133,12 @@ async function recalcularPrecioVentaEditSalida() {
     return;
   }
   const simb = monedaSel === 'VES' ? 'Bs ' : '$ ';
+  const puedeVerMargen = sesionActual?.administrador || puedo('INVENTARIO','VER_MARGEN_BRUTO');
   const detalleTxt = margen === null
     ? 'sin Margen definido'
     : 'Margen ' + margen.toFixed(1) + '%';
-  displayEl.textContent = simb + fmtUSD(venta) + ' · ' + detalleTxt;
-  displayEl.title = simb + fmtUSD(venta) + ' (' + detalleTxt + ')';
+  displayEl.textContent = simb + fmtUSD(venta) + (puedeVerMargen ? ' · ' + detalleTxt : '');
+  displayEl.title = puedeVerMargen ? simb + fmtUSD(venta) + ' (' + detalleTxt + ')' : '';
 }
 
 function habilitarAjustePrecioVentaEditSalida() {
