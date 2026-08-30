@@ -689,7 +689,7 @@ function invRenderTabla(items, cont) {
               return '<td style="padding:5px 8px;vertical-align:middle;font-family:var(--font-mono);font-size:12px"><div style="color:var(--suave);font-size:9px">Venta</div>'
                 + '<span style="color:var(--naranja)">' + fmtBs(dualVenta.bs) + ' Bs</span>'
                 + '<div style="font-size:9px;color:var(--suave);margin-top:1px">$ ' + fmtUSD(dualVenta.usd) + '</div>'
-                + '<div style="font-size:9px;color:var(--suave);margin-top:1px">Margen: ' + margenTxt + '</div></td>';
+                + (puedo('INVENTARIO','VER_MARGEN_BRUTO') ? '<div style="font-size:9px;color:var(--suave);margin-top:1px">Margen: ' + margenTxt + '</div>' : '') + '</td>';
             })()
           : '<td style="padding:5px 8px;vertical-align:middle;text-align:center;color:#555;font-size:11px">🔒</td>')
       + '<td style="padding:5px 8px;vertical-align:middle"><span class="badge ' + (r.estado === 'INACTIVO' ? 'badge-rojo' : 'badge-verde') + '">' + (r.estado || 'ACTIVO') + '</span></td>'
@@ -857,7 +857,7 @@ async function verFichaInventario(id) {
         ? '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
           + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + fmtBs(dualVentaFicha.bs) + ' Bs</div>'
           + '<div style="font-size:11px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(dualVentaFicha.usd) + '</div>'
-          + '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margenTxt + '</div></div>'
+          + (puedo('INVENTARIO','VER_MARGEN_BRUTO') ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margenTxt + '</div>' : '') + '</div>'
         : '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
           + '<div style="font-size:13px;color:#555">🔒</div></div>')
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Categoría</div>'
