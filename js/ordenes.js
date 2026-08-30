@@ -1489,7 +1489,9 @@ async function verFichaOS(id) {
     // Boton Facturar -- acceso directo cuando la OS esta Cerrada, sin
     // depender de entrar a modo edicion (el boton Editar se oculta a
     // proposito en este estado, asi que Facturar necesita su propio boton
-    // aqui mismo; mismo criterio ya usado en la ficha de Venta).
+    // aqui mismo; mismo criterio ya usado en la ficha de Venta). Se oculta
+    // si ya existe una Factura activa para esta OS, para no prestarse a
+    // confusion.
     let btnFacturarOS = document.getElementById('ficha-os-facturar-btn');
     if (!btnFacturarOS) {
       btnFacturarOS = document.createElement('button');
@@ -1497,7 +1499,14 @@ async function verFichaOS(id) {
       btnFacturarOS.className = 'btn-primario';
       document.getElementById('ficha-os-editar-btn').parentNode.insertBefore(btnFacturarOS, document.getElementById('ficha-os-editar-btn'));
     }
+    let yaFacturadaVerOS = false;
     if (o.estado === 'CERRADA') {
+      try {
+        const facExistenteVerOS = await api('facturas','GET',null,'?id_orden=eq.'+id+'&estado=neq.ANULADA&select=id_factura&limit=1');
+        yaFacturadaVerOS = !!(facExistenteVerOS && facExistenteVerOS.length);
+      } catch(eFacChk) {}
+    }
+    if (o.estado === 'CERRADA' && !yaFacturadaVerOS) {
       btnFacturarOS.textContent = '🧾 Facturar';
       btnFacturarOS.onclick = function() { facturarOS(id); };
       btnFacturarOS.style.display = '';
