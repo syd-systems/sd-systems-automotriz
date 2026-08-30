@@ -186,11 +186,21 @@ async function abrirNuevaFactura() {
   document.getElementById('fac-numero').textContent  = 'Se asignará al emitir';
   document.getElementById('fac-os-id').value         = '';
   document.getElementById('fac-os-info').innerHTML   = '';
-  document.getElementById('fac-lineas-cont').innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Selecciona una Orden para cargar las líneas</div>';
+  document.getElementById('fac-os-sel').value        = '';
+  document.getElementById('fac-lineas-cont').innerHTML = '';
+  const contLineasOSInit = document.getElementById('fac-cont-lineas-os');
+  if (contLineasOSInit) contLineasOSInit.style.display = 'none';
+  const contSubtotalManualInit = document.getElementById('fac-cont-subtotal-manual');
+  if (contSubtotalManualInit) contSubtotalManualInit.style.display = '';
+  document.getElementById('fac-subtotal-manual').value      = '';
   document.getElementById('fac-receptor-nombre').value     = '';
   document.getElementById('fac-receptor-rif').value        = '';
   document.getElementById('fac-receptor-dir').value        = '';
+  document.getElementById('fac-receptor-nombre').removeAttribute('readonly');
+  document.getElementById('fac-receptor-rif').removeAttribute('readonly');
+  document.getElementById('fac-receptor-dir').removeAttribute('readonly');
   document.getElementById('fac-receptor-tipo-contrib').value = '';
+  document.getElementById('fac-receptor-tipo-contrib').disabled = false;
   // Sin Moneda por defecto -- el operador debe elegirla explícitamente
   // (mismo criterio que Método de Cobro: ninguna preselección que pueda
   // pasar desapercibida y quedar guardada por error).
@@ -286,11 +296,29 @@ async function onSelOSFactura() {
   const id_os   = parseInt(sel.value);
   const infoDiv = document.getElementById('fac-os-info');
   const linDiv  = document.getElementById('fac-lineas-cont');
+  const contLineasOS = document.getElementById('fac-cont-lineas-os');
+  const contSubtotalManual = document.getElementById('fac-cont-subtotal-manual');
+  const camposReceptor = ['fac-receptor-nombre','fac-receptor-rif','fac-receptor-dir'];
   if (!id_os) {
-    infoDiv.innerHTML = ''; linDiv.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Selecciona una Orden para cargar las líneas</div>';
+    infoDiv.innerHTML = ''; linDiv.innerHTML = '';
     document.getElementById('fac-os-id').value = '';
+    if (contLineasOS) contLineasOS.style.display = 'none';
+    if (contSubtotalManual) contSubtotalManual.style.display = '';
+    camposReceptor.forEach(function(idc) {
+      const el = document.getElementById(idc);
+      if (el) { el.removeAttribute('readonly'); el.value = ''; }
+    });
+    const tipoContribEl = document.getElementById('fac-receptor-tipo-contrib');
+    if (tipoContribEl) { tipoContribEl.disabled = false; tipoContribEl.value = ''; }
+    const subManualEl = document.getElementById('fac-subtotal-manual');
+    if (subManualEl) subManualEl.value = '';
     window._facSubtotalOS = 0; actualizarSubtotalOSLabel(); calcularTotalesFactura(); return;
   }
+  if (contLineasOS) contLineasOS.style.display = '';
+  if (contSubtotalManual) contSubtotalManual.style.display = 'none';
+  camposReceptor.forEach(function(idc) { const el = document.getElementById(idc); if (el) el.setAttribute('readonly', 'readonly'); });
+  const tipoContribEl2 = document.getElementById('fac-receptor-tipo-contrib');
+  if (tipoContribEl2) tipoContribEl2.disabled = true;
   document.getElementById('fac-os-id').value = id_os;
   linDiv.innerHTML = '<div class="loading" style="padding:16px"><div class="spinner"></div> Cargando líneas...</div>';
   try {
@@ -505,15 +533,19 @@ async function guardarFactura(emitir) {
     const obs      = document.getElementById('fac-observaciones').value.trim();
     const aplIVA   = document.getElementById('fac-aplica-iva').checked;
     const aplIGTF  = document.getElementById('fac-aplica-igtf').checked;
-    if (!id_os)     { errEl.textContent='Debe seleccionar una Orden de Servicio.'; errEl.style.display='block'; return; }
     if (!id_emisor) { errEl.textContent='Debe seleccionar una Empresa.';           errEl.style.display='block'; return; }
     const monedaSel = document.getElementById('fac-moneda')?.value;
     if (!monedaSel) { errEl.textContent='Debe seleccionar la Moneda de Cobro.';    errEl.style.display='block'; return; }
     if (!recNom)   { errEl.textContent='El nombre del cliente es obligatorio.';   errEl.style.display='block'; return; }
     if (!fecha)    { errEl.textContent='La fecha es obligatoria.';                errEl.style.display='block'; return; }
+    if (!id_os && (!window._facSubtotalOS || window._facSubtotalOS <= 0)) {
+      errEl.textContent='El Subtotal debe ser mayor a 0.'; errEl.style.display='block'; return;
+    }
     const tot = window._facTotales||{subtotal:0,iva:0,igtf:0,total:0,totVes:0};
     let idProp = null;
-    try { const os=await api('ordenes_servicio','GET',null,'?id_orden=eq.'+id_os+'&select=id_propietario'); if(os.length) idProp=os[0].id_propietario; } catch(e) {}
+    if (id_os) {
+      try { const os=await api('ordenes_servicio','GET',null,'?id_orden=eq.'+id_os+'&select=id_propietario'); if(os.length) idProp=os[0].id_propietario; } catch(e) {}
+    }
 
     const datos = {
       id_orden:id_os, id_empresa:id_emisor, id_propietario:idProp,
@@ -537,13 +569,16 @@ async function guardarFactura(emitir) {
     if (id) {
       await api('facturas','PATCH',datos,'?id_factura=eq.'+id);
     } else {
-      // Verificar que la OS no tenga ya una factura activa
-      const osFacturada = await api('facturas','GET',null,
-        '?id_orden=eq.'+id_os+'&estado=neq.ANULADA&select=id_factura,numero_factura');
-      if (osFacturada && osFacturada.length) {
-        errEl.textContent = 'Esta OS ya tiene una factura activa: ' + osFacturada[0].numero_factura;
-        errEl.style.display = 'block';
-        return;
+      // Verificar que la OS no tenga ya una factura activa (solo aplica
+      // si esta Factura está vinculada a una OS)
+      if (id_os) {
+        const osFacturada = await api('facturas','GET',null,
+          '?id_orden=eq.'+id_os+'&estado=neq.ANULADA&select=id_factura,numero_factura');
+        if (osFacturada && osFacturada.length) {
+          errEl.textContent = 'Esta OS ya tiene una factura activa: ' + osFacturada[0].numero_factura;
+          errEl.style.display = 'block';
+          return;
+        }
       }
       const anio=new Date().getFullYear();
       const existentes=await api('facturas','GET',null,'?select=numero_factura&numero_factura=like.FAC-'+anio+'-*&order=numero_factura.desc&limit=1');
