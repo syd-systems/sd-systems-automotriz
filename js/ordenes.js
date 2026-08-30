@@ -1236,6 +1236,7 @@ async function facturarOS(id, skipConfirm) {
 
     const datosFactura = {
       id_orden: id, id_empresa: os.id_empresa, id_propietario: os.id_propietario,
+      numero_factura: numeroFactura,
       receptor_nombre: prop?.nombre_completo || 'Cliente sin nombre',
       receptor_rif: prop ? ((prop.tipo_doc||'')+'-'+(prop.numero_doc||'')) : null,
       receptor_direccion: prop?.direccion || null,
