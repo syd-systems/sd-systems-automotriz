@@ -3082,21 +3082,20 @@
 
       <!-- LÍNEAS DE SERVICIOS -->
       <div style="margin-top:20px;border-top:1px solid var(--borde);padding-top:16px">
-        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:12px">🔧 Servicios</div>
-        <div id="os-lineas-serv" style="margin-bottom:12px"></div>
+        <div style="font-size:17px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--texto);margin-bottom:12px">🔧 Servicios</div>
         <!-- Agregar servicio - búsqueda en cascada: Grupo → Nombre -->
         <div style="padding:12px;background:var(--gris2);border-radius:6px;display:flex;flex-direction:column;gap:10px">
           <!-- Fila 1: Grupo + (Nombre del Servicio O Concepto, según el Grupo) -->
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div class="form-campo" style="margin:0">
-              <label style="font-size:7px">Grupo de Servicio</label>
+              <label style="font-size:11px !important;font-weight:600 !important;letter-spacing:1px !important">Grupo de Servicio</label>
               <select id="os-sel-grupo-cat" onchange="onSelGrupoCatChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
                 <option value="">— Todos los grupos —</option>
               </select>
             </div>
             <div style="margin:0">
               <div class="form-campo" style="margin:0" id="os-cont-nombre-serv">
-                <label style="font-size:7px">Nombre del Servicio</label>
+                <label style="font-size:11px !important;font-weight:600 !important;letter-spacing:1px !important">Nombre del Servicio</label>
                 <select id="os-sel-cat" onchange="onSelCatalogoChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
                   <option value="">— Seleccionar servicio —</option>
                 </select>
@@ -3110,15 +3109,15 @@
           <!-- Fila 2: Cantidad + Precio + Moneda + Botón -->
           <div style="display:grid;grid-template-columns:90px 130px 130px 100px;gap:8px;align-items:end">
             <div class="form-campo" style="margin:0">
-              <label style="font-size:7px;white-space:nowrap">CANTIDAD</label>
+              <label style="font-size:11px !important;font-weight:600 !important;letter-spacing:1px !important;white-space:nowrap">CANTIDAD</label>
               <input type="number" id="os-cant-cat" value="1" min="0.01" step="0.01" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
             </div>
             <div class="form-campo" style="margin:0">
-              <label style="font-size:7px;white-space:nowrap">PRECIO</label>
+              <label style="font-size:11px !important;font-weight:600 !important;letter-spacing:1px !important;white-space:nowrap">PRECIO</label>
               <input type="number" id="os-precio-libre" step="0.01" min="0" placeholder="0.00" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
             </div>
             <div class="form-campo" style="margin:0">
-              <label style="font-size:7px">MONEDA</label>
+              <label style="font-size:11px !important;font-weight:600 !important;letter-spacing:1px !important">MONEDA</label>
               <select id="os-moneda-cat" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 6px;border-radius:5px;outline:none;width:100%">
                 <option value="USD">$ USD</option>
                 <option value="EUR">€ EUR</option>
@@ -3128,32 +3127,32 @@
             <button class="btn-primario" onclick="agregarServicioCatalogo()" style="padding:8px 12px;font-size:11px;align-self:end;width:100%">+ AGREGAR</button>
           </div>
         </div>
+        <div id="os-lineas-serv" style="margin-top:12px"></div>
       </div>
 
       <!-- LÍNEAS DE ARTÍCULOS -->
       <div style="margin-top:20px;border-top:1px solid var(--borde);padding-top:16px">
-        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:12px">📦 Artículos</div>
-        <div id="os-lineas-rep" style="margin-bottom:12px"></div>
+        <div style="font-size:17px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--texto);margin-bottom:12px">📦 Artículos</div>
         <!-- Agregar artículo -->
         <div style="padding:10px;background:var(--gris2);border-radius:6px;display:flex;flex-direction:column;gap:10px">
           <!-- Fila 1: Seleccionar Artículo (ancho completo) -->
           <div class="form-campo" style="margin:0">
-            <label style="font-size:10px">Seleccionar Artículo</label>
+            <label style="font-size:11px !important;font-weight:600 !important;letter-spacing:1px !important">Seleccionar Artículo</label>
             <select id="os-sel-inv" onchange="onSelInventarioChange()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:14px;padding:11px 12px;border-radius:5px;outline:none;width:100%"></select>
             <input type="hidden" id="os-desc-rep-libre">
           </div>
           <!-- Fila 2: Cantidad + Precio + Moneda + Botón -->
           <div style="display:grid;grid-template-columns:90px 130px 130px 100px;gap:8px;align-items:end">
             <div class="form-campo" style="margin:0">
-              <label style="font-size:7px;white-space:nowrap">CANTIDAD</label>
+              <label style="font-size:11px !important;font-weight:600 !important;letter-spacing:1px !important;white-space:nowrap">CANTIDAD</label>
               <input type="number" id="os-cant-inv" value="1" min="0.01" step="0.01" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
             </div>
             <div class="form-campo" style="margin:0">
-              <label style="font-size:7px;white-space:nowrap">PRECIO</label>
+              <label style="font-size:11px !important;font-weight:600 !important;letter-spacing:1px !important;white-space:nowrap">PRECIO</label>
               <input type="text" id="os-precio-inv" placeholder="0,00" inputmode="decimal" readonly title="El precio del artículo lo gestiona Almacén, no se puede modificar desde aquí" style="background:var(--gris3);border:1px solid var(--borde);color:var(--suave);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%;cursor:not-allowed">
             </div>
             <div class="form-campo" style="margin:0">
-              <label style="font-size:7px">MONEDA</label>
+              <label style="font-size:11px !important;font-weight:600 !important;letter-spacing:1px !important">MONEDA</label>
               <select id="os-moneda-inv" disabled title="La moneda del Artículo la gestiona Almacén, no se puede modificar desde aquí" style="background:var(--gris3);border:1px solid var(--borde);color:var(--suave);font-family:var(--font-body);font-size:12px;padding:8px 6px;border-radius:5px;outline:none;width:100%;cursor:not-allowed">
                 <option value="USD">$ USD</option>
                 <option value="EUR">€ EUR</option>
@@ -3163,6 +3162,7 @@
             <button class="btn-primario" onclick="agregarMercanciaInventario()" style="padding:8px 12px;font-size:11px;align-self:end;width:100%">+ AGREGAR</button>
           </div>
         </div>
+        <div id="os-lineas-rep" style="margin-top:12px"></div>
       </div>
 
       <!-- TOTALES -->
