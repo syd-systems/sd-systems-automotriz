@@ -1460,6 +1460,24 @@ async function verFichaOS(id) {
 
     document.getElementById('ficha-os-editar-btn').setAttribute('onclick', 'cerrarModal(\'modal-ficha-os\');abrirEditarOS(' + id + ')');
     document.getElementById('ficha-os-editar-btn').style.display = (o.estado !== 'CERRADA' && o.estado !== 'ANULADA') ? '' : 'none';
+    // Boton Facturar -- acceso directo cuando la OS esta Cerrada, sin
+    // depender de entrar a modo edicion (el boton Editar se oculta a
+    // proposito en este estado, asi que Facturar necesita su propio boton
+    // aqui mismo; mismo criterio ya usado en la ficha de Venta).
+    let btnFacturarOS = document.getElementById('ficha-os-facturar-btn');
+    if (!btnFacturarOS) {
+      btnFacturarOS = document.createElement('button');
+      btnFacturarOS.id = 'ficha-os-facturar-btn';
+      btnFacturarOS.className = 'btn-primario';
+      document.getElementById('ficha-os-editar-btn').parentNode.insertBefore(btnFacturarOS, document.getElementById('ficha-os-editar-btn'));
+    }
+    if (o.estado === 'CERRADA') {
+      btnFacturarOS.textContent = '🧾 Facturar';
+      btnFacturarOS.onclick = function() { facturarOS(id); };
+      btnFacturarOS.style.display = '';
+    } else {
+      btnFacturarOS.style.display = 'none';
+    }
     // Botón Reabrir (solo admins, solo en CERRADA o ANULADA)
     let btnReabrir = document.getElementById('ficha-os-reabrir-btn');
     if (!btnReabrir) {
