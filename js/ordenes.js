@@ -391,6 +391,11 @@ async function abrirNuevaOS() {
   if (precioInvReset) precioInvReset.value = '';
   const precioLibreReset = document.getElementById('os-precio-libre');
   if (precioLibreReset) precioLibreReset.value = '';
+  const btnGuardarNuevaOS = document.getElementById('btn-guardar-os');
+  if (btnGuardarNuevaOS) {
+    btnGuardarNuevaOS.textContent = 'GUARDAR OS';
+    btnGuardarNuevaOS.onclick = function() { guardarOS(); };
+  }
   abrirModal('modal-os');
   focusFirstField('modal-os');
 }
@@ -499,6 +504,21 @@ async function abrirEditarOS(id) {
   calcularTotalesOS();
   await cargarSelectsOS();
   await _resolverAreaOS(o.id_usuario);
+
+  // Si la OS está Cerrada, el botón de guardar se convierte en Facturar --
+  // genera la Factura directo, sin pasar por el formulario manual de
+  // '+ Nueva Factura' (mismo atajo que ya existe en Ventas).
+  const btnGuardarOS = document.getElementById('btn-guardar-os');
+  if (btnGuardarOS) {
+    if (o.estado === 'CERRADA') {
+      btnGuardarOS.textContent = '🧾 Facturar';
+      btnGuardarOS.onclick = function() { facturarOS(o.id_orden); };
+    } else {
+      btnGuardarOS.textContent = 'GUARDAR OS';
+      btnGuardarOS.onclick = function() { guardarOS(); };
+    }
+  }
+
   abrirModal('modal-os');
   focusFirstField('modal-os');
 }
@@ -1155,6 +1175,72 @@ async function ajustarStockOS(id_orden, operacion) {
       } catch(eInv) { console.warn('Error ajustando stock artículo', l.id_articulo, eInv); }
     }
   } catch(e) { console.warn('Error ajustarStockOS:', e); }
+}
+
+// Genera la Factura directo desde una OS Cerrada -- mismo criterio que
+// facturarVenta() en Ventas: sin preguntar Moneda de Facturación (usa la
+// Moneda Funcional de la Empresa) ni IVA (siempre aplica). El IGTF, igual
+// que en Ventas, se decide después, en el momento del Cobro, no aquí.
+async function facturarOS(id) {
+  if (!confirm('¿Facturar esta Orden de Servicio?')) return;
+  const btn = document.getElementById('btn-guardar-os');
+  const textoOriginalBtn = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Procesando...'; }
+  try {
+    const osRows = await api('ordenes_servicio','GET',null,'?id_orden=eq.'+id+'&select=*,propietarios(nombre_completo,tipo_doc,numero_doc,direccion)');
+    const os = osRows && osRows[0];
+    if (!os) throw new Error('Orden de Servicio no encontrada.');
+    if (os.estado !== 'CERRADA') throw new Error('Solo se puede facturar una OS en estado Cerrada.');
+
+    const yaFacturada = await api('facturas','GET',null,'?id_orden=eq.'+id+'&estado=neq.ANULADA&select=id_factura,numero_factura');
+    if (yaFacturada && yaFacturada.length) throw new Error('Esta OS ya tiene una factura activa: '+yaFacturada[0].numero_factura);
+
+    await cargarTasaIVAGlobal();
+    const prop = os.propietarios;
+    const subtotal = parseFloat(os.total_usd||0);
+    const iva = parseFloat((subtotal * tasaIVAActual()).toFixed(2));
+    const total = parseFloat((subtotal + iva).toFixed(2));
+    const tasaBCV = parseFloat(os.tasa_bcv) || 1;
+    const totalVes = parseFloat((total * tasaBCV).toFixed(2));
+
+    const anio = new Date().getFullYear();
+    const existentes = await api('facturas','GET',null,'?select=numero_factura&numero_factura=like.FAC-'+anio+'-*&order=numero_factura.desc&limit=1');
+    let seq = 1;
+    if (existentes.length) { const p = existentes[0].numero_factura.split('-'); seq = parseInt(p[p.length-1])+1; }
+    const numeroFactura = 'FAC-'+anio+'-'+String(seq).padStart(4,'0');
+
+    const datosFactura = {
+      id_orden: id, id_empresa: os.id_empresa, id_propietario: os.id_propietario,
+      receptor_nombre: prop?.nombre_completo || 'Cliente sin nombre',
+      receptor_rif: prop ? ((prop.tipo_doc||'')+'-'+(prop.numero_doc||'')) : null,
+      receptor_direccion: prop?.direccion || null,
+      receptor_tipo_contribuyente: null,
+      moneda_cobro: (_empresaActiva?.moneda_principal || 'VES').toUpperCase(),
+      fecha_emision: getHoyVzla(),
+      estado: 'EMITIDA',
+      aplica_iva: true, aplica_igtf: false,
+      subtotal_usd: subtotal, iva_usd: iva, igtf_usd: 0,
+      total_usd: total, total_ves: totalVes, tasa_bcv: tasaBCV,
+      id_usuario: sesionActual.correo_usuario
+    };
+
+    const nuevaFactura = await api('facturas','POST',datosFactura);
+    const idFacturaFinal = nuevaFactura && nuevaFactura[0] ? nuevaFactura[0].id_factura : null;
+    if (!idFacturaFinal) throw new Error('No se pudo crear la Factura.');
+
+    // Reutiliza el motor de CxC + Asiento Contable + Salida de Inventario +
+    // Costo de Venta ya probado en producción (ver ingresos.js) -- ya sabe
+    // manejar Órdenes de Servicio (fac.id_orden).
+    await generarCxCyAsientoFactura(idFacturaFinal);
+
+    cerrarModal('modal-os');
+    renderOrdenes();
+    alert('✓ Orden facturada correctamente: ' + numeroFactura);
+  } catch(err) {
+    alert('Error al facturar: ' + err.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = textoOriginalBtn; }
+  }
 }
 
 async function anularOS(id, numero) {
