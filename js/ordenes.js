@@ -231,6 +231,45 @@ function onCambioEstadoOS(estado) {
   // Si cambia a otro estado, limpiar fechas
   if (estado !== 'CERRADA')  { var fc = document.getElementById('os-fecha-cierre');   if (fc) fc.value = ''; }
   if (estado !== 'ANULADA')  { var fa = document.getElementById('os-fecha-anulacion'); if (fa) fa.value = ''; }
+
+  // Al elegir Cerrada, el botón se convierte de inmediato en Facturar --
+  // guardar el cierre y generar la Factura quedan como una sola acción,
+  // sin tener que cerrar el formulario y volver a entrar.
+  const btnGuardarEstado = document.getElementById('btn-guardar-os');
+  if (btnGuardarEstado) {
+    const idOsActual = document.getElementById('os-id').value;
+    if (estado === 'CERRADA' && idOsActual) {
+      btnGuardarEstado.textContent = '🧾 Facturar';
+      btnGuardarEstado.onclick = function() { guardarOSyFacturar(); };
+    } else {
+      btnGuardarEstado.textContent = 'GUARDAR OS';
+      btnGuardarEstado.onclick = function() { guardarOS(); };
+    }
+  }
+}
+
+// Guarda el cierre de la OS y genera la Factura en un solo clic -- ya no
+// hace falta cerrar el formulario y volver a entrar para ver el botón
+// Facturar por separado.
+async function guardarOSyFacturar() {
+  if (!confirm('¿Cerrar esta Orden de Servicio y generar su Factura?')) return;
+  if (window._guardandoOS) return;
+  window._guardandoOS = true;
+  const btnGuardar = document.getElementById('btn-guardar-os');
+  const textoOriginal = btnGuardar ? btnGuardar.textContent : '';
+  if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = '⏳ Procesando...'; }
+  const idOrdenActual = parseInt(document.getElementById('os-id').value) || null;
+  try {
+    await _guardarOSInterno();
+    const errElGuardar = document.getElementById('alerta-os-err');
+    if (errElGuardar && errElGuardar.style.display === 'block') return; // el propio guardado ya mostró el motivo
+    if (idOrdenActual) await facturarOS(idOrdenActual, true);
+  } catch(err) {
+    alert('Error: ' + (err.message||err));
+  } finally {
+    window._guardandoOS = false;
+    if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = textoOriginal; }
+  }
 }
 
 function validarFechaEntradaOS(input) {
@@ -504,20 +543,6 @@ async function abrirEditarOS(id) {
   calcularTotalesOS();
   await cargarSelectsOS();
   await _resolverAreaOS(o.id_usuario);
-
-  // Si la OS está Cerrada, el botón de guardar se convierte en Facturar --
-  // genera la Factura directo, sin pasar por el formulario manual de
-  // '+ Nueva Factura' (mismo atajo que ya existe en Ventas).
-  const btnGuardarOS = document.getElementById('btn-guardar-os');
-  if (btnGuardarOS) {
-    if (o.estado === 'CERRADA') {
-      btnGuardarOS.textContent = '🧾 Facturar';
-      btnGuardarOS.onclick = function() { facturarOS(o.id_orden); };
-    } else {
-      btnGuardarOS.textContent = 'GUARDAR OS';
-      btnGuardarOS.onclick = function() { guardarOS(); };
-    }
-  }
 
   abrirModal('modal-os');
   focusFirstField('modal-os');
@@ -1181,8 +1206,8 @@ async function ajustarStockOS(id_orden, operacion) {
 // facturarVenta() en Ventas: sin preguntar Moneda de Facturación (usa la
 // Moneda Funcional de la Empresa) ni IVA (siempre aplica). El IGTF, igual
 // que en Ventas, se decide después, en el momento del Cobro, no aquí.
-async function facturarOS(id) {
-  if (!confirm('¿Facturar esta Orden de Servicio?')) return;
+async function facturarOS(id, skipConfirm) {
+  if (!skipConfirm && !confirm('¿Facturar esta Orden de Servicio?')) return;
   const btn = document.getElementById('btn-guardar-os');
   const textoOriginalBtn = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Procesando...'; }
