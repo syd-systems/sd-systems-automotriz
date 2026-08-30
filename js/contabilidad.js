@@ -1627,10 +1627,14 @@ async function contRenderCxc() {
       const saldoUSD = cxc ? parseFloat(cxc.saldo_usd||0) : (tusd - cobUSD);
       // El cobrado/saldo no siempre se guarda en VES por separado -- se
       // aproxima con la misma proporción del total, para no inventar una
-      // tasa de conversión adicional.
+      // tasa de conversión adicional. Excepción: si ya está totalmente
+      // pagada, se usa el Total en Bs EXACTO en vez de la proporción --
+      // de lo contrario, una diferencia mínima de centavos en el USD
+      // guardado se amplifica al multiplicar por un monto grande en Bs.
+      const totalmentePagada = saldoUSD <= 0.005;
       const propUSD = tusd > 0 ? cobUSD / tusd : 0;
-      const cobVES  = tves * propUSD;
-      const saldoVES = tves - cobVES;
+      const cobVES  = totalmentePagada ? tves : tves * propUSD;
+      const saldoVES = totalmentePagada ? 0 : tves - cobVES;
       const cliente = f.propietarios ? f.propietarios.nombre_completo : (f.receptor_nombre || '--');
       return '<tr>'
         +'<td style="padding:4px 8px;font-size:10px;font-family:var(--font-mono);color:var(--naranja)">'+(f.numero_factura||'--')+'</td>'
