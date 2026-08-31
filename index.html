@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260830180"></script>
-<script src="js/parametros.js?v=20260830180"></script>
-<script src="js/empresas.js?v=20260830180"></script>
-<script src="js/ingresos.js?v=20260830180"></script>
-<script src="js/inventario.js?v=20260830180"></script>
-<script src="js/proveedores.js?v=20260830180"></script>
-<script src="js/clientes.js?v=20260830180"></script>
-<script src="js/ventas.js?v=20260830180"></script>
-<script src="js/contabilidad.js?v=20260830180"></script>
-<script src="js/egresos.js?v=20260830180"></script>
-<script src="js/vehiculos.js?v=20260830180"></script>
-<script src="js/catalogo.js?v=20260830180"></script>
-<script src="js/ordenes.js?v=20260830180"></script>
+<script src="js/core.js?v=20260831181"></script>
+<script src="js/parametros.js?v=20260831181"></script>
+<script src="js/empresas.js?v=20260831181"></script>
+<script src="js/ingresos.js?v=20260831181"></script>
+<script src="js/inventario.js?v=20260831181"></script>
+<script src="js/proveedores.js?v=20260831181"></script>
+<script src="js/clientes.js?v=20260831181"></script>
+<script src="js/ventas.js?v=20260831181"></script>
+<script src="js/contabilidad.js?v=20260831181"></script>
+<script src="js/egresos.js?v=20260831181"></script>
+<script src="js/vehiculos.js?v=20260831181"></script>
+<script src="js/catalogo.js?v=20260831181"></script>
+<script src="js/ordenes.js?v=20260831181"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -1966,15 +1966,15 @@
           <div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">Cobranza</div>
           <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
             <div class="form-campo">
-              <label style="font-size:9px;text-transform:none">Moneda</label>
-              <select id="cont-pago-cxc-moneda" onchange="_cargarMetodosCobroCxc()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:11px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-                <option value="VES">VES</option>
-                <option value="USD">USD</option>
+              <div style="font-size:11px;color:var(--suave);margin-bottom:4px">MONEDA</div>
+              <select id="cont-pago-cxc-moneda" onchange="_cargarMetodosCobroCxc()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none;width:100%;font-weight:600">
+                <option value="VES">VES — Bolívar</option>
+                <option value="USD">USD — Dólar</option>
               </select>
             </div>
             <div class="form-campo">
-              <label style="font-size:9px;text-transform:none">Método de Pago</label>
-              <select id="cont-pago-cxc-metodo" onchange="onCambiarMetodoCobroCxc()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:11px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+              <div style="font-size:11px;color:var(--suave);margin-bottom:4px">MÉTODO DE PAGO</div>
+              <select id="cont-pago-cxc-metodo" onchange="onCambiarMetodoCobroCxc()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none;width:100%;font-weight:600">
                 <option value="">— Cargando métodos —</option>
               </select>
             </div>
