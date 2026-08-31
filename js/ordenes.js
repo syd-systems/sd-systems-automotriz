@@ -1428,11 +1428,18 @@ async function verFichaOS(id) {
         + '</tbody></table>'
       : '<div style="color:var(--suave);font-size:12px">Sin artículos</div>';
 
+    let facturaRefOS = null;
+    try {
+      const facRefRows = await api('facturas','GET',null,'?id_orden=eq.'+id+'&estado=neq.ANULADA&select=numero_factura&limit=1');
+      facturaRefOS = (facRefRows && facRefRows[0]) || null;
+    } catch(eFacRefOS) {}
+
     document.getElementById('ficha-os-contenido').innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px;flex-wrap:wrap">'
       + '<div><div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + (o.numero_os || '—') + '</div>'
       + '<span class="badge ' + est.clase + '">' + est.label + '</span>'
       + (o.fecha_estado ? '<span style="font-size:10px;color:var(--suave);margin-left:8px">desde ' + fmtFecha(o.fecha_estado) + (o.usuario_estado ? ' · ' + o.usuario_estado : '') + '</span>' : '')
+      + (facturaRefOS ? '<span style="font-size:11px;color:var(--suave);margin-left:8px">· Factura: <span style="color:var(--naranja)">' + facturaRefOS.numero_factura + '</span></span>' : '')
       + '</div>'
       + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL</div>'
       + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + fmtBs(o.total_ves) + ' Bs</div>'
@@ -1493,13 +1500,7 @@ async function verFichaOS(id) {
       btnFacturarOS.className = 'btn-primario';
       document.getElementById('ficha-os-editar-btn').parentNode.insertBefore(btnFacturarOS, document.getElementById('ficha-os-editar-btn'));
     }
-    let yaFacturadaVerOS = false;
-    if (o.estado === 'CERRADA') {
-      try {
-        const facExistenteVerOS = await api('facturas','GET',null,'?id_orden=eq.'+id+'&estado=neq.ANULADA&select=id_factura&limit=1');
-        yaFacturadaVerOS = !!(facExistenteVerOS && facExistenteVerOS.length);
-      } catch(eFacChk) {}
-    }
+    const yaFacturadaVerOS = !!facturaRefOS;
     if (o.estado === 'CERRADA' && !yaFacturadaVerOS) {
       btnFacturarOS.textContent = '🧾 Facturar';
       btnFacturarOS.onclick = function() { facturarOS(id); };
