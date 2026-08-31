@@ -4180,6 +4180,20 @@ async function _verCxPAutomatica(c, id_cxp) {
     }
   }
 
+  // Banco Origen -- Banco NUESTRO desde el que salió la Transferencia
+  // (homologado con Registrar Cobro). Se muestra siempre que haya quedado
+  // registrado, sin importar la Vía de Pago del proveedor.
+  const bancoOrigenAutoCont = document.getElementById('cxp-auto-banco-origen-cont');
+  const bancoOrigenAutoEl   = document.getElementById('cxp-auto-banco-origen');
+  if (bancoOrigenAutoCont && bancoOrigenAutoEl) {
+    if (c.banco_origen?.nombre) {
+      bancoOrigenAutoCont.style.display = '';
+      bancoOrigenAutoEl.textContent = c.banco_origen.nombre;
+    } else {
+      bancoOrigenAutoCont.style.display = 'none';
+    }
+  }
+
   // Referencia y Comprobante -- si ya se ejecutó el pago (PAGADA o PARCIAL);
   // o Motivo del Rechazo, reutilizando el mismo bloque/línea, si RECHAZADA.
   const pagoInfoCont = document.getElementById('cxp-auto-pago-info-cont');
@@ -4323,7 +4337,7 @@ async function verCxPPendiente(id_cxp) {
 
     if (esAutomatica) {
       const full = await api('cont_cxp','GET',null,
-        '?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre),id_categoria),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre)');
+        '?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre),id_categoria),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre),banco_origen:id_banco_origen(nombre)');
       if (full && full[0]) await _verCxPAutomatica(full[0], id_cxp);
       return;
     }
