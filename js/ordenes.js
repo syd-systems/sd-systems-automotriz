@@ -1269,34 +1269,42 @@ async function facturarOS(id, skipConfirm) {
   }
 }
 
-async function anularOS(id, numero) {
+// "Anular OS" se eliminó de raíz de este archivo -- decisión de negocio:
+// el término "Anular" desaparece del sistema por completo. eliminarOS()
+// (más abajo) queda como única acción de cancelación para OS que no estén
+// Cerradas.
+
+// ─── ELIMINAR OS (borrado físico) -- solo para OS que NO estén Cerradas
+// (análogo a "Eliminar Venta" en Ventas, que solo aplica en Presupuesto/
+// Borrador). Una OS Cerrada no puede eliminarse físicamente por aquí --
+// para eso existe Anular OS, que si corresponde bloquea por Factura
+// asociada. Reutiliza el permiso SERVICIOS.ANULAR (misma autoridad que ya
+// permite cancelar una OS).
+async function eliminarOS(id, numero) {
   if (!puedo('SERVICIOS','ANULAR')) {
-    alert('No tiene permiso para anular órdenes de servicio.');
+    alert('No tiene permiso para eliminar órdenes de servicio.');
     return;
   }
-  // No se puede anular si ya tiene una factura asociada (misma salvedad que
-  // antes tenía Eliminar, ya que Anular pasa a cubrir ambos casos)
+  const oElim = ordenesCache.find(function(x) { return x.id_orden === id; });
+  // Segunda barrera, sin importar desde dónde se invoque esta función:
+  // nunca eliminar físicamente una OS que ya esté Cerrada.
+  if (oElim && oElim.estado === 'CERRADA') { alert('Esta Orden de Servicio ya está Cerrada y no se puede eliminar. Use Anular OS si necesita cancelarla.'); return; }
+  // Defensa adicional -- una OS Cerrada es la única que puede facturarse,
+  // así que esto no debería activarse nunca, pero se verifica igual.
   try {
-    const facturasAnul = await api('facturas', 'GET', null, '?id_orden=eq.' + id + '&select=id_factura&limit=1');
-    if (facturasAnul && facturasAnul.length > 0) {
-      alert('No se puede anular la orden ' + numero + ' porque tiene una factura asociada.');
+    const facturasElim = await api('facturas', 'GET', null, '?id_orden=eq.' + id + '&select=id_factura&limit=1');
+    if (facturasElim && facturasElim.length > 0) {
+      alert('No se puede eliminar la orden ' + numero + ' porque tiene una factura asociada.');
       return;
     }
-  } catch(eFactAnul) { console.warn('Error verificando factura asociada:', eFactAnul); }
-  if (!confirm('¿Anular la orden ' + numero + '? El Artículo asignado a esta OS se devolverá al Stock del Área de Taller.')) return;
+  } catch(eFactElim) { console.warn('Error verificando factura asociada:', eFactElim); }
+  if (!confirm('¿Eliminar definitivamente la orden ' + numero + '? Esta acción no se puede deshacer. El Artículo asignado (si lo hay) se devolverá al Stock del Área de Taller.')) return;
   try {
-    const hoyAnul = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
-    // Anular la OS devuelve al Área de Taller el stock que se le había
-    // restado al asignar el Artículo (ver ajustarStockOS) -- ya no es "solo
-    // un cambio de estado": el Artículo nunca salió de Compras (el modelo
-    // viejo, donde la OS actuaba como la entrega Compras→Taller, ya no
-    // aplica), solo estaba reservado dentro del propio stock de Taller.
+    // Devolver a Taller cualquier Artículo ya asignado, antes de borrar.
     await ajustarStockOS(id, 'restaurar');
-    await api('ordenes_servicio', 'PATCH', {
-      estado: 'ANULADA',
-      fecha_estado: hoyAnul,
-      usuario_estado: sesionActual.nombre || sesionActual.correo_usuario,
-    }, '?id_orden=eq.' + id);
+    await api('os_servicios', 'DELETE', null, '?id_orden=eq.' + id);
+    await api('os_mercancias', 'DELETE', null, '?id_orden=eq.' + id);
+    await api('ordenes_servicio', 'DELETE', null, '?id_orden=eq.' + id);
     renderOrdenes();
   } catch(e) { alert('Error: ' + msgErr(e)); }
 }
@@ -1311,7 +1319,8 @@ async function reabrirOS(id, numero) {
   try {
     const hoyReab = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
     // Reabrir la OS le vuelve a restar al Área de Taller el stock que se
-    // le había devuelto al anular (ver ajustarStockOS y anularOS()).
+    // le había devuelto al quedar Anulada (rama que solo aplica a registros
+    // históricos -- Anular OS ya no existe como acción del sistema).
     await ajustarStockOS(id, 'descontar');
     await api('ordenes_servicio', 'PATCH', {
       estado: 'ABIERTA',
@@ -1524,22 +1533,24 @@ async function verFichaOS(id) {
     } else {
       btnReabrir.style.display = 'none';
     }
-    // Botón Anular (siempre visible si la OS no está ya anulada; el permiso
-    // se valida dentro de anularOS() al hacer clic, igual que en el resto
-    // de módulos)
-    let btnAnularOS = document.getElementById('ficha-os-anular-btn');
-    if (!btnAnularOS) {
-      btnAnularOS = document.createElement('button');
-      btnAnularOS.id = 'ficha-os-anular-btn';
-      btnAnularOS.className = 'btn-peligro';
-      document.getElementById('ficha-os-editar-btn').parentNode.insertBefore(btnAnularOS, document.getElementById('ficha-os-editar-btn'));
+    // "Anular OS" se eliminó de raíz -- ver eliminarOS() más abajo, que
+    // queda como única acción de cancelación para OS que no estén Cerradas.
+    // Botón Eliminar OS (borrado físico) -- solo para OS que NO estén
+    // Cerradas (análogo a "Eliminar" en Ventas, que solo aplica en
+    // Presupuesto/Borrador). Una vez Cerrada, la única vía es Anular OS.
+    let btnEliminarOS = document.getElementById('ficha-os-eliminar-btn');
+    if (!btnEliminarOS) {
+      btnEliminarOS = document.createElement('button');
+      btnEliminarOS.id = 'ficha-os-eliminar-btn';
+      btnEliminarOS.className = 'btn-peligro';
+      document.getElementById('ficha-os-editar-btn').parentNode.insertBefore(btnEliminarOS, document.getElementById('ficha-os-editar-btn'));
     }
-    if (o.estado !== 'ANULADA') {
-      btnAnularOS.textContent = '🗑 Anular OS';
-      btnAnularOS.setAttribute('onclick', 'cerrarModal(\'modal-ficha-os\');anularOS(' + id + ',\'' + (o.numero_os || '') + '\')');
-      btnAnularOS.style.display = '';
+    if (o.estado !== 'CERRADA') {
+      btnEliminarOS.textContent = '🗑 Eliminar OS';
+      btnEliminarOS.setAttribute('onclick', 'cerrarModal(\'modal-ficha-os\');eliminarOS(' + id + ',\'' + (o.numero_os || '') + '\')');
+      btnEliminarOS.style.display = '';
     } else {
-      btnAnularOS.style.display = 'none';
+      btnEliminarOS.style.display = 'none';
     }
     window._fichaOSId = o.id_orden;
     abrirModal('modal-ficha-os');
