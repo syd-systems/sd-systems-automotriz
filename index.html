@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260831185"></script>
-<script src="js/parametros.js?v=20260831185"></script>
-<script src="js/empresas.js?v=20260831185"></script>
-<script src="js/ingresos.js?v=20260831185"></script>
-<script src="js/inventario.js?v=20260831185"></script>
-<script src="js/proveedores.js?v=20260831185"></script>
-<script src="js/clientes.js?v=20260831185"></script>
-<script src="js/ventas.js?v=20260831185"></script>
-<script src="js/contabilidad.js?v=20260831185"></script>
-<script src="js/egresos.js?v=20260831185"></script>
-<script src="js/vehiculos.js?v=20260831185"></script>
-<script src="js/catalogo.js?v=20260831185"></script>
-<script src="js/ordenes.js?v=20260831185"></script>
+<script src="js/core.js?v=20260831188"></script>
+<script src="js/parametros.js?v=20260831188"></script>
+<script src="js/empresas.js?v=20260831188"></script>
+<script src="js/ingresos.js?v=20260831188"></script>
+<script src="js/inventario.js?v=20260831188"></script>
+<script src="js/proveedores.js?v=20260831188"></script>
+<script src="js/clientes.js?v=20260831188"></script>
+<script src="js/ventas.js?v=20260831188"></script>
+<script src="js/contabilidad.js?v=20260831188"></script>
+<script src="js/egresos.js?v=20260831188"></script>
+<script src="js/vehiculos.js?v=20260831188"></script>
+<script src="js/catalogo.js?v=20260831188"></script>
+<script src="js/ordenes.js?v=20260831188"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3353,7 +3353,6 @@
       <button class="btn-naranja" id="ficha-fac-btn-editar"  style="display:none">Editar</button>
       <button class="btn-primario"   id="ficha-fac-btn-emitir"  style="display:none">✓ Emitir</button>
       <button class="btn-primario"   id="ficha-fac-btn-aprobar" style="display:none;background:#8b5cf6;border-color:#8b5cf6">✓ Aprobar</button>
-      <button class="btn-peligro"    id="ficha-fac-btn-anular"  style="display:none">Anular</button>
       <button class="btn-primario"   id="ficha-fac-btn-pago"    style="display:none">💰 Registrar Cobro</button>
       <button class="btn-peligro"    id="ficha-fac-btn-eliminar" style="display:none">Eliminar</button>
     </div>
@@ -4013,7 +4012,6 @@
     <div class="modal-body" id="ficha-venta-contenido"></div>
     <div class="modal-footer" style="flex-wrap:wrap;gap:8px">
       <button class="btn-peligro"    id="ficha-venta-btn-eliminar"  style="display:none">🗑 Eliminar</button>
-      <button class="btn-peligro"    id="ficha-venta-btn-anular"    style="display:none">⊘ Anular</button>
       <button class="btn-naranja" id="ficha-venta-btn-editar"    style="display:none">✏ Editar</button>
       <button class="btn-primario"   id="ficha-venta-btn-facturar"  style="display:none">🧾 Facturar</button>
       <button class="btn-secundario" onclick="cerrarModal('modal-ficha-venta')">Retornar</button>
@@ -4969,6 +4967,27 @@
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-ejecutar-pago')">Retornar</button>
       <button class="btn-primario" id="btn-confirmar-pago" onclick="this.disabled=true;this.textContent='⏳ Procesando...';confirmarEjecucionPago()">💳 CONFIRMAR PAGO</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL ARTÍCULOS POR ENTREGAR (Almacén) ══ -->
+<div class="modal-overlay" id="modal-entregas-almacen">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header">
+      <h3>📦 ARTÍCULOS POR ENTREGAR</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-entregas-almacen')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--suave);margin-bottom:14px">
+        Ventas Facturadas y Pagadas, pendientes de entregar al Comprador. Como mecanismo
+        de seguridad, el sistema no muestra el N° de Factura -- el operador debe ingresar
+        el número que el Cliente presenta físicamente para validar la entrega.
+      </p>
+      <div id="entregas-almacen-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-entregas-almacen')">Cerrar</button>
     </div>
   </div>
 </div>
