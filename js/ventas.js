@@ -220,8 +220,6 @@ async function renderVentasEntregas() {
       });
     }
 
-    const puedeMarcar = sesionActual?.administrador || puedo('VENTAS','MARCAR_ENTREGA');
-
     const filas = ventas.map(function(v) {
       const cli = v.clientes;
       const arts = (lineasPorVenta[v.id_venta]||[]).join(', ') || '—';
@@ -232,7 +230,10 @@ async function renderVentasEntregas() {
         + '<td style="text-align:right;font-family:var(--font-mono)">$ '+fmtUSD(v.total_usd||0)+'</td>'
         + (_entregaSubVista==='pendientes'
             ? '<td style="font-size:12px">'+(v.facturas?.fecha_emision?fmtFecha(v.facturas.fecha_emision):'—')+'</td>'
-              + '<td>'+(puedeMarcar ? '<button class="btn-primario" onclick="btnSetGuardando(this,true,null,\'Procesando...\');marcarVentaEntregada('+v.id_venta+').finally(()=>btnSetGuardando(this,false))">✓ Marcar Entregado</button>' : '')+'</td>'
+              // Solo consulta -- el vendedor ve el estado, pero la acción de
+              // "Marcar Entregado" vive exclusivamente en Inventario General
+              // (el Custodio de la Mercancía), no aquí.
+              + '<td style="font-size:12px;color:var(--suave)">⏳ Pendiente en Almacén</td>'
             : '<td style="font-size:12px">'+(v.fecha_entrega?fmtFecha(v.fecha_entrega):'—')+'</td>'
               + '<td style="font-size:12px">'+(v.entregado_por||'—')+'</td>')
         + '</tr>';
@@ -243,7 +244,7 @@ async function renderVentasEntregas() {
       + '<div class="panel-header"><h3>'+(_entregaSubVista==='pendientes'?'Pendientes de Entrega':'Histórico de Entregas')+'</h3></div>'
       + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 400px))"><table style="width:100%"><thead><tr>'
       + '<th>N° Factura</th><th>Cliente</th><th>Artículos</th><th style="text-align:right">Total</th>'
-      + (_entregaSubVista==='pendientes' ? '<th>Fecha Cobro</th><th>Acción</th>' : '<th>Fecha Entrega</th><th>Entregado por</th>')
+      + (_entregaSubVista==='pendientes' ? '<th>Fecha Cobro</th><th>Estado</th>' : '<th>Fecha Entrega</th><th>Entregado por</th>')
       + '</tr></thead><tbody>'
       + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">'+(_entregaSubVista==='pendientes'?'No hay Ventas pendientes de entrega.':'Sin entregas registradas todavía.')+'</td></tr>')
       + '</tbody></table></div></div>';
@@ -257,17 +258,10 @@ function _entregaCambiarSubVista(v) {
   renderVentasEntregas();
 }
 
-async function marcarVentaEntregada(id) {
-  if (!confirm('¿Confirmar que esta Venta ya fue entregada al Cliente?')) return;
-  try {
-    await api('ventas','PATCH',{
-      entregado: true,
-      fecha_entrega: new Date().toISOString(),
-      entregado_por: sesionActual.correo_usuario
-    },'?id_venta=eq.'+id);
-    renderVentasEntregas();
-  } catch(err) { alert('Error: ' + err.message); }
-}
+// marcarVentaEntregada() se eliminó de aquí -- el proceso de Entrega ahora
+// vive exclusivamente en Inventario General (_confirmarEntregaAlmacen en
+// inventario.js), donde lo ejecuta el Custodio de la Mercancía. Esta
+// pestaña de Ventas queda como consulta de solo lectura para el vendedor.
 
 function filtrarTablaVentas() {
   const estado = document.getElementById('vta-filtro-estado')?.value || '';
@@ -790,19 +784,18 @@ async function verFichaVenta(id) {
 
   const btnEditar    = document.getElementById('ficha-venta-btn-editar');
   const btnFacturar  = document.getElementById('ficha-venta-btn-facturar');
-  const btnAnular    = document.getElementById('ficha-venta-btn-anular');
   const btnEliminar  = document.getElementById('ficha-venta-btn-eliminar');
 
   btnEditar.style.display    = (v.estado === 'BORRADOR' && puedo('VENTAS','EDITAR'))   ? '' : 'none';
   btnFacturar.style.display  = (v.estado === 'BORRADOR' && puedo('VENTAS','CREAR'))    ? '' : 'none';
   btnFacturar.disabled = false;
   btnFacturar.textContent = '🧾 Facturar';
-  btnAnular.style.display    = (v.estado === 'BORRADOR' && puedo('VENTAS','ELIMINAR')) ? '' : 'none';
+  // "Anular Venta" se eliminó de raíz -- "Eliminar" (solo en Borrador)
+  // queda como única acción de cancelación antes de facturar.
   btnEliminar.style.display  = (v.estado === 'BORRADOR' && puedo('VENTAS','ELIMINAR')) ? '' : 'none';
 
   btnEditar.onclick    = function() { cerrarModal('modal-ficha-venta'); abrirVenta(v.id_venta); };
   btnFacturar.onclick  = function() { facturarVenta(v.id_venta); };
-  btnAnular.onclick    = function() { btnSetGuardando(this,true,null,'Procesando...'); anularVenta(v.id_venta).finally(()=>btnSetGuardando(this,false)); };
   btnEliminar.onclick  = function() { btnSetGuardando(this,true,null,'Procesando...'); eliminarVenta(v.id_venta).finally(()=>btnSetGuardando(this,false)); };
 
   abrirModal('modal-ficha-venta');
@@ -875,28 +868,19 @@ async function facturarVenta(id) {
   }
 }
 
-async function anularVenta(id) {
-  const v = ventasCache.find(function(x) { return x.id_venta === id; });
-  if (v && v.estado === 'FACTURADA') { alert('Esta Venta ya fue facturada. Para anularla, hágalo desde el módulo de Facturas (Ingresos), donde se reversa correctamente la Factura, la CxC y el asiento contable.'); return; }
-  if (!confirm('¿Anular esta Venta?')) return;
-  try {
-    if (v && v.id_area) {
-      try {
-        const lineas = await api('venta_detalle','GET',null,'?id_venta=eq.'+id+'&select=id_articulo,cantidad');
-        for (const lin of (lineas||[])) {
-          if (lin.id_articulo && parseFloat(lin.cantidad) > 0) {
-            await ajustarReservaArea(lin.id_articulo, v.id_area, -parseFloat(lin.cantidad));
-          }
-        }
-      } catch(eLibRes) { console.warn('Error liberando reserva al anular:', eLibRes); }
-    }
-    await api('ventas','PATCH',{ estado:'ANULADA' },'?id_venta=eq.'+id);
-    cerrarModal('modal-ficha-venta');
-    renderVentas();
-  } catch(err) { alert('Error: ' + err.message); }
-}
+// "Anular Venta" se eliminó de raíz de este archivo (botón HTML, wiring y
+// función) -- decisión de negocio: el término "Anular" desaparece del
+// sistema por completo. "Eliminar" (borrado físico, solo para Ventas en
+// Borrador -- ver eliminarVenta más abajo) queda como única acción de
+// cancelación antes de facturar. Una Venta ya Facturada no admite ninguna
+// forma de cancelación (ver también anularFactura, eliminado en ingresos.js).
 
 async function eliminarVenta(id) {
+  // Segunda barrera (además de que el botón solo se muestra en BORRADOR):
+  // nunca eliminar físicamente una Venta que ya fue Facturada, sin
+  // importar desde dónde se invoque esta función.
+  const vChk = ventasCache.find(function(x) { return x.id_venta === id; });
+  if (vChk && vChk.estado !== 'BORRADOR') { alert('Solo se pueden eliminar Ventas en Borrador. Esta Venta ya fue Facturada y no puede eliminarse.'); return; }
   if (!confirm('¿Eliminar esta Venta en Borrador? Esta acción no se puede deshacer.')) return;
   try {
     const v = ventasCache.find(function(x) { return x.id_venta === id; });
