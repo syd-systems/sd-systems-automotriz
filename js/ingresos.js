@@ -342,9 +342,13 @@ async function onSelOSFactura() {
       + '</div></div>';
 
     var monedaLineas = document.getElementById('fac-moneda')?.value||'USD';
-    var tasaLineas   = monedaLineas==='VES' ? (parseFloat(document.getElementById('fac-tasa')?.value)||1) : 1;
+    var tasaReal     = parseFloat(document.getElementById('fac-tasa')?.value)||1;
     var esVESLineas  = monedaLineas==='VES';
-    function fmtLin(usd) { return esVESLineas ? fmtBs(usd*tasaLineas)+' Bs' : '$ '+fmtUSD(usd); }
+    function fmtLin(usd) {
+      const principal  = esVESLineas ? fmtBs(usd*tasaReal)+' Bs' : '$ '+fmtUSD(usd);
+      const secundario = esVESLineas ? '$ '+fmtUSD(usd) : fmtBs(usd*tasaReal)+' Bs';
+      return principal + '<div style="font-size:10px;color:var(--suave)">'+secundario+'</div>';
+    }
 
     const todasLineas = [
       ...linServ.map(function(l) { return {tipo:'servicio',desc:l.descripcion,cant:l.cantidad,precio:l.precio_usd,subtotal:l.subtotal_usd}; }),
@@ -1024,9 +1028,14 @@ async function verFichaFactura(id) {
     const emisor = f.emisores;
     const esVES  = f.moneda_cobro==='VES';
     const t      = parseFloat(f.tasa_bcv||1);
-    // Formato de UNA sola moneda (para columnas angostas de la tabla de
-    // Detalle, donde no cabe el dual) -- Moneda de Cobro, sin equivalente.
-    function fmtF(usd) { return esVES ? fmtBs(usd*t)+' Bs' : '$ '+fmtUSD(usd); }
+    // Formato DUAL para P/U y Subtotal del Detalle -- Moneda de Cobro
+    // como principal, y debajo el equivalente en la otra moneda (chico,
+    // tenue), mismo criterio ya usado en Total/Subtotal/IVA.
+    function fmtF(usd) {
+      const principal  = esVES ? fmtBs(usd*t)+' Bs' : '$ '+fmtUSD(usd);
+      const secundario = esVES ? '$ '+fmtUSD(usd) : fmtBs(usd*t)+' Bs';
+      return principal + '<div style="font-size:10px;color:var(--suave)">'+secundario+'</div>';
+    }
     // Formato DUAL -- Moneda de Cobro como principal (grande), y debajo el
     // equivalente en la Moneda contraria (chico, tenue). Se usa en
     // Total/Subtotal/IVA/IGTF, donde sí hay espacio.
