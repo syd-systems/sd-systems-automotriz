@@ -1135,7 +1135,6 @@ async function verFichaFactura(id) {
 
     var btnEditar   = document.getElementById('ficha-fac-btn-editar');
     var btnEmitir   = document.getElementById('ficha-fac-btn-emitir');
-    var btnAnular   = document.getElementById('ficha-fac-btn-anular');
     var btnPago     = document.getElementById('ficha-fac-btn-pago');
     var btnEliminar = document.getElementById('ficha-fac-btn-eliminar');
     // Botón Aprobar
@@ -1167,7 +1166,12 @@ async function verFichaFactura(id) {
     }
     if (btnEditar)  { btnEditar._id=f.id_factura;  btnEditar.onclick=function(){cerrarModal('modal-ficha-fac');abrirEditarFactura(this._id);}; btnEditar.style.display=puedo('FACTURAS','EDITAR')&&f.estado==='BORRADOR'?'':'none'; }
     if (btnEmitir)  { btnEmitir._id=f.id_factura;  btnEmitir.onclick=function(){emitirFactura(this._id);};   btnEmitir.style.display=puedo('FACTURAS','CREAR')&&f.estado==='BORRADOR'?'':'none'; }
-    if (btnAnular)  { btnAnular._id=f.id_factura;  btnAnular._num=f.numero_factura; btnAnular.onclick=function(){btnSetGuardando(this,true,null,'Procesando...');anularFactura(this._id,this._num).finally(()=>btnSetGuardando(this,false));}; btnAnular.style.display=puedo('FACTURAS','ANULAR')&&(f.estado==='EMITIDA'||f.estado==='PAGADA')?'':'none'; }
+    // "Anular Factura" se eliminó de raíz (botón HTML, wiring y función) --
+    // decisión de negocio: una vez Emitida, la Empresa no está dispuesta a
+    // asumir el riesgo fiscal de que el IVA ya reportado al SENIAT quede
+    // como gasto propio. Ventas y OS ya bloqueaban su propia anulación una
+    // vez facturadas (ver anularVenta() en ventas.js y anularOS() en
+    // ordenes.js) -- esta era la única puerta que quedaba abierta.
     if (btnEliminar){ btnEliminar._id=f.id_factura; btnEliminar._num=f.numero_factura; btnEliminar.onclick=function(){btnSetGuardando(this,true,null,'Procesando...');eliminarFactura(this._id,this._num).finally(()=>btnSetGuardando(this,false));}; btnEliminar.style.display=puedo('FACTURAS','ELIMINAR')&&f.estado==='ANULADA'?'':'none'; }
     abrirModal('modal-ficha-fac');
   focusFirstField('modal-ficha-fac');
@@ -1234,43 +1238,18 @@ async function emitirFactura(id) {
   finally { if (btnEmitir) { btnEmitir.disabled=false; btnEmitir.textContent='✓ Emitir'; } }
 }
 
-async function anularFactura(id, numero) {
-  if (!confirm('¿Anular la factura '+numero+'? Esta acción no se puede deshacer.')) return;
-  try {
-    // Obtener la OS asociada antes de anular
-    const facData = await api('facturas','GET',null,'?id_factura=eq.'+id+'&select=id_orden');
-    await api('facturas','PATCH',{estado:'ANULADA'},'?id_factura=eq.'+id);
-    // Liberar la OS para que pueda usarse en otra factura
-    if (facData && facData[0] && facData[0].id_orden) {
-      await api('facturas','PATCH',{id_orden:null},'?id_factura=eq.'+id);
-    }
-    // Anular CxC asociada
-    try {
-      await api('cont_cxc','PATCH',{estado:'ANULADA'},'?id_factura=eq.'+id);
-    } catch(eCxc) { console.warn('Error anulando CxC:', eCxc); }
-
-    // Anular los Asientos contables asociados -- el de Reconocimiento de
-    // Venta (referencia = número de Factura) y los de Costo de Venta por
-    // línea/artículo (uno por cada renglón con mercancía, referencia
-    // 'FAC-<id>' o 'SAL-<id_salida>' según el caso, pero siempre
-    // mencionan "Factura FAC-<id>" en su descripción -- se buscan por
-    // ambos caminos para no dejar ninguno vivo).
-    try {
-      const refsAst = [numero, 'FAC-'+id];
-      const asientosAnular = await api('cont_asientos','GET',null,
-        '?estado=neq.ANULADO&or=(referencia.in.("'+refsAst.join('","')+'"),descripcion.ilike.*Factura FAC-'+id+'*)&select=id_asiento,descripcion');
-      for (const a of (asientosAnular || [])) {
-        await api('cont_asientos','PATCH',
-          { estado:'ANULADO', descripcion:'[ANULADO] '+(a.descripcion||'') },
-          '?id_asiento=eq.'+a.id_asiento);
-      }
-    } catch(eAstFac) { console.warn('Error anulando asientos de la Factura:', eAstFac); }
-
-    cerrarModal('modal-ficha-fac');
-    renderFacturas();
-  }
-  catch(err) { alert('Error: '+msgErr(err)); }
-}
+// "Anular Factura" se eliminó de raíz de este archivo -- decisión de
+// negocio: una vez que una Factura fue EMITIDA, no se permite anularla
+// bajo ningún caso -- si ya fue reportada al SENIAT, el IVA queda como un
+// gasto que la Empresa asume directamente, riesgo que se decidió no
+// aceptar. Ventas y Órdenes de Servicio ya bloqueaban su propia anulación
+// una vez facturadas (ver anularVenta() en ventas.js y anularOS() en
+// ordenes.js); esta era la única puerta que quedaba abierta.
+//
+// La corrección de una Factura ya Emitida deberá hacerse, en el futuro,
+// con Notas de Crédito/Débito (pendiente de implementar -- ver backlog).
+// La función y el botón anteriores quedan recuperables en el historial de
+// Git si alguna vez se retoma ese diseño.
 
 async function aprobarFactura(id) {
   if (!puedeAprobar('FACTURAS')) { alert('No tiene facultad para aprobar facturas.'); return; }
