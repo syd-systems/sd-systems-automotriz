@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831189';
+const SYD_VERSION = '20260831190';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -169,6 +169,8 @@ const PERMISOS_POR_MODULO = {
     { accion: 'DEFINIR_MARGEN_BRUTO', label: '🔒 Definir/Cambiar el Margen Bruto %' },
     { accion: 'CORREGIR_MARGEN_BRUTO', label: '🔒 Corregir un Margen Bruto % ya registrado' },
     { accion: 'AJUSTAR_PRECIO_VENTA', label: '🔒 Ajustar manualmente el Precio de Venta calculado' },
+    { accion: 'VER_ENTREGAS',    label: 'Ver Artículos por Entregar / pestaña Entregas de Ventas (sin el resto de Inventario)' },
+    { accion: 'MARCAR_ENTREGA',  label: 'Confirmar Entrega de Mercancía Vendida al Cliente' },
   ],
   CATALOGO: [
     { accion: 'VER',      label: 'Ver Ficha' },
@@ -250,8 +252,6 @@ const PERMISOS_POR_MODULO = {
     { accion: 'CREAR',    label: 'Armar / Facturar Venta' },
     { accion: 'EDITAR',   label: 'Editar Venta' },
     { accion: 'ELIMINAR', label: 'Eliminar Venta (Presupuesto)' },
-    { accion: 'VER_ENTREGAS',    label: 'Ver pestaña Entregas (sin el resto de Ventas)' },
-    { accion: 'MARCAR_ENTREGA',  label: 'Marcar Venta como Entregada' },
   ],
   TRIBUTOS: [
     { accion: 'VER',    label: 'Ver Ficha' },
