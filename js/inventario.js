@@ -323,7 +323,7 @@ async function renderInventario(filtro) {
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\');}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:180px">'
       + (puedo('INVENTARIO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Artículo</button>' : '')
-      + ((sesionActual?.administrador || puedo('VENTAS','VER_ENTREGAS')) ? '<button class="btn-secundario" onclick="abrirModalEntregasAlmacen()">📦 Artículos por Entregar</button>' : '')
+      + ((sesionActual?.administrador || puedo('INVENTARIO','VER_ENTREGAS')) ? '<button class="btn-secundario" onclick="abrirModalEntregasAlmacen()">📦 Artículos por Entregar</button>' : '')
       + '<button class="btn-secundario" title="Refrescar" onclick="renderInventario(document.getElementById(\'buscar-inv\')?.value||\'\')">🔄 Refrescar</button>'
       + '</div></div>'
       + '<div id="alerta-stock-bajo" style="display:none"></div>'
@@ -7232,15 +7232,15 @@ function onSelAreaEntrega() {
 // ══════════════════════════════════════════════════════════════
 //  ARTÍCULOS POR ENTREGAR (Almacén) -- Ventas Facturadas y Pagadas
 //  pendientes de entrega física al Comprador. Vive en Inventario General
-//  para que un operador de Almacén (permiso VENTAS.VER_ENTREGAS, sin
-//  necesidad del resto de Ventas) pueda atenderlas sin salir de su
-//  módulo. La lista NUNCA muestra el N° de Factura -- se valida contra
+//  para que un operador de Almacén (permiso INVENTARIO.VER_ENTREGAS, sin
+//  necesidad del resto de Inventario/Ventas) pueda atenderlas sin salir de
+//  su módulo. La lista NUNCA muestra el N° de Factura -- se valida contra
 //  Supabase en el momento de confirmar, para que el número correcto no
 //  llegue al navegador de antemano (ver _confirmarEntregaAlmacen).
 // ══════════════════════════════════════════════════════════════
 
 async function abrirModalEntregasAlmacen() {
-  if (!sesionActual?.administrador && !puedo('VENTAS','VER_ENTREGAS')) {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_ENTREGAS')) {
     alert('No tiene permiso para ver Artículos por Entregar.');
     return;
   }
@@ -7272,7 +7272,7 @@ async function _cargarEntregasAlmacen() {
       });
     }
 
-    const puedeMarcar = sesionActual?.administrador || puedo('VENTAS','MARCAR_ENTREGA');
+    const puedeMarcar = sesionActual?.administrador || puedo('INVENTARIO','MARCAR_ENTREGA');
 
     if (!ventas || !ventas.length) {
       cont.innerHTML = '<div style="text-align:center;color:var(--suave);padding:32px">No hay Ventas pendientes de entrega.</div>';
