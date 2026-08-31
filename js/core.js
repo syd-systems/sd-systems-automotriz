@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831185';
+const SYD_VERSION = '20260831188';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -141,7 +141,7 @@ const PERMISOS_POR_MODULO = {
     { accion: 'VER',         label: 'Ver Ficha' },
     { accion: 'CREAR',       label: 'Crear nueva OS' },
     { accion: 'EDITAR',      label: 'Editar OS abierta' },
-    { accion: 'ANULAR',      label: 'Anular OS' },
+    { accion: 'ANULAR',      label: 'Eliminar OS (antes: Anular)' },
     { accion: 'REABRIR',     label: 'Reabrir OS cerrada/anulada' },
     { accion: 'VER_TOTALES', label: '🔒 Ver totales y montos' },
     { accion: 'VER_TASA',    label: '🔒 Ver tasa de cambio en OS' },
