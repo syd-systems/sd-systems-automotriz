@@ -323,6 +323,7 @@ async function renderInventario(filtro) {
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\');}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:180px">'
       + (puedo('INVENTARIO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Artículo</button>' : '')
+      + ((sesionActual?.administrador || puedo('VENTAS','VER_ENTREGAS')) ? '<button class="btn-secundario" onclick="abrirModalEntregasAlmacen()">📦 Artículos por Entregar</button>' : '')
       + '<button class="btn-secundario" title="Refrescar" onclick="renderInventario(document.getElementById(\'buscar-inv\')?.value||\'\')">🔄 Refrescar</button>'
       + '</div></div>'
       + '<div id="alerta-stock-bajo" style="display:none"></div>'
@@ -7226,4 +7227,144 @@ async function cargarUsuarioReceptorEntrada() {
 function onSelAreaEntrega() {
   const id_area = document.getElementById('salida-area-entrega')?.value;
   cargarEmpleadosPorArea(parseInt(id_area)||null, 'salida-empleado-entrega', false);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ARTÍCULOS POR ENTREGAR (Almacén) -- Ventas Facturadas y Pagadas
+//  pendientes de entrega física al Comprador. Vive en Inventario General
+//  para que un operador de Almacén (permiso VENTAS.VER_ENTREGAS, sin
+//  necesidad del resto de Ventas) pueda atenderlas sin salir de su
+//  módulo. La lista NUNCA muestra el N° de Factura -- se valida contra
+//  Supabase en el momento de confirmar, para que el número correcto no
+//  llegue al navegador de antemano (ver _confirmarEntregaAlmacen).
+// ══════════════════════════════════════════════════════════════
+
+async function abrirModalEntregasAlmacen() {
+  if (!sesionActual?.administrador && !puedo('VENTAS','VER_ENTREGAS')) {
+    alert('No tiene permiso para ver Artículos por Entregar.');
+    return;
+  }
+  abrirModal('modal-entregas-almacen');
+  await _cargarEntregasAlmacen();
+}
+
+async function _cargarEntregasAlmacen() {
+  const cont = document.getElementById('entregas-almacen-cont');
+  if (!cont) return;
+  cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+  try {
+    // OJO: select NO incluye facturas.numero_factura a propósito --
+    // ese valor solo se consulta puntualmente al confirmar una entrega.
+    const ventas = await api('ventas','GET',null,
+      '?estado=eq.FACTURADA&entregado=eq.false&select=id_venta,total_usd,clientes(nombre_apellido,condicion_legal,identificacion),facturas!inner(estado)&facturas.estado=eq.PAGADA&order=fecha_venta.asc');
+
+    // Detalle de Artículos -- el Custodio necesita saber QUÉ va a entregar,
+    // no solo a quién y por cuánto. Una sola consulta por lote para todas
+    // las Ventas de esta lista (mismo patrón que ya usa Ventas > Entregas).
+    const idsVentasAlm = ventas.map(function(v){ return v.id_venta; });
+    let lineasPorVentaAlm = {};
+    if (idsVentasAlm.length) {
+      const lineasAlm = await api('venta_detalle','GET',null,
+        '?id_venta=in.('+idsVentasAlm.join(',')+')&select=id_venta,cantidad,inventario_almacen(nombre_articulo)');
+      (lineasAlm||[]).forEach(function(l) {
+        if (!lineasPorVentaAlm[l.id_venta]) lineasPorVentaAlm[l.id_venta] = [];
+        lineasPorVentaAlm[l.id_venta].push((l.inventario_almacen?.nombre_articulo||'Artículo')+' x'+l.cantidad);
+      });
+    }
+
+    const puedeMarcar = sesionActual?.administrador || puedo('VENTAS','MARCAR_ENTREGA');
+
+    if (!ventas || !ventas.length) {
+      cont.innerHTML = '<div style="text-align:center;color:var(--suave);padding:32px">No hay Ventas pendientes de entrega.</div>';
+      return;
+    }
+
+    const filas = ventas.map(function(v) {
+      const cli = v.clientes;
+      const arts = (lineasPorVentaAlm[v.id_venta]||[]).join(', ') || '—';
+      return '<tr>'
+        + '<td style="font-family:var(--font-mono);font-size:12px">'+(cli?(cli.condicion_legal+'-'+cli.identificacion):'—')+'</td>'
+        + '<td style="font-size:12px">'+(cli?cli.nombre_apellido:'—')+'</td>'
+        + '<td style="font-size:12px">'+arts+'</td>'
+        + '<td style="text-align:right;font-family:var(--font-mono)">$ '+fmtUSD(v.total_usd||0)+'</td>'
+        + '<td>'
+        + (puedeMarcar
+            ? '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+              + '<input type="text" id="entrega-almacen-input-'+v.id_venta+'" placeholder="N° de Factura" '
+              + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();_confirmarEntregaAlmacen('+v.id_venta+')}" '
+              + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:7px 10px;border-radius:5px;outline:none;width:120px">'
+              + '<button class="btn-primario" id="entrega-almacen-btn-'+v.id_venta+'" style="font-size:10px;padding:7px 10px" onclick="_confirmarEntregaAlmacen('+v.id_venta+')">Confirmar Entrega</button>'
+              + '</div>'
+              + '<div id="entrega-almacen-msg-'+v.id_venta+'" style="display:none;font-size:11px;margin-top:4px"></div>'
+            : '<span style="font-size:11px;color:var(--suave)">Sin permiso para entregar</span>')
+        + '</td>'
+        + '</tr>';
+    }).join('');
+
+    cont.innerHTML = '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 400px))"><table style="width:100%"><thead><tr>'
+      + '<th>Cédula/RIF</th><th>Cliente</th><th>Artículos</th><th style="text-align:right">Monto Factura</th><th>Validar Entrega</th>'
+      + '</tr></thead><tbody>'
+      + filas
+      + '</tbody></table></div>';
+  } catch(err) {
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+err.message+'</div>';
+  }
+}
+
+async function _confirmarEntregaAlmacen(id_venta) {
+  const inputEl = document.getElementById('entrega-almacen-input-'+id_venta);
+  const btnEl   = document.getElementById('entrega-almacen-btn-'+id_venta);
+  const msgEl   = document.getElementById('entrega-almacen-msg-'+id_venta);
+  const numeroTecleado = (inputEl?.value || '').trim();
+
+  if (!msgEl) return;
+  msgEl.style.display = 'none';
+
+  if (!numeroTecleado) {
+    msgEl.textContent = 'Ingrese el N° de Factura que le presenta el Cliente.';
+    msgEl.style.color = '#fc8181';
+    msgEl.style.display = '';
+    inputEl?.focus();
+    return;
+  }
+
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Verificando...'; }
+
+  try {
+    // Validación contra Supabase, en el momento -- nunca se compara contra
+    // un número ya cargado en el navegador. ilike (sin comodines) para
+    // tolerar mayúsculas/minúsculas, no espacios de más.
+    const check = await api('ventas','GET',null,
+      '?id_venta=eq.'+id_venta+'&select=id_venta,facturas!inner(numero_factura)&facturas.numero_factura=ilike.'+encodeURIComponent(numeroTecleado));
+
+    if (!check || !check.length) {
+      msgEl.textContent = '⚠ El número ingresado no corresponde a esta Factura. Verifique con el Cliente.';
+      msgEl.style.color = '#fc8181';
+      msgEl.style.display = '';
+      if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Confirmar Entrega'; }
+      inputEl?.focus();
+      return;
+    }
+
+    await api('ventas','PATCH',{
+      entregado: true,
+      fecha_entrega: new Date().toISOString(),
+      entregado_por: sesionActual.correo_usuario
+    },'?id_venta=eq.'+id_venta);
+
+    msgEl.textContent = '✓ Entrega confirmada.';
+    msgEl.style.color = '#22c55e';
+    msgEl.style.display = '';
+    if (btnEl) { btnEl.disabled = true; btnEl.textContent = '✓ Entregado'; }
+    if (inputEl) inputEl.disabled = true;
+
+    // Quitar la fila de la lista después de un instante, para que el
+    // operador alcance a ver la confirmación antes de que desaparezca.
+    setTimeout(function(){ _cargarEntregasAlmacen(); }, 900);
+  } catch(err) {
+    msgEl.textContent = 'Error: ' + err.message;
+    msgEl.style.color = '#fc8181';
+    msgEl.style.display = '';
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Confirmar Entrega'; }
+  }
 }
