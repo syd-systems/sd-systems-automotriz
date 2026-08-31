@@ -4609,6 +4609,20 @@ async function ejecutarPagoCxP(id_cxp) {
         }).join('');
   } catch(e) {}
 
+  // Banco Origen -- mismo catálogo (param_bancos) que usa Registrar Cobro,
+  // aquí representa el Banco NUESTRO desde el que sale la Transferencia.
+  const selBancoOrigenExec = document.getElementById('exec-pago-banco-origen');
+  if (selBancoOrigenExec) {
+    try {
+      const bancosExec = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre');
+      selBancoOrigenExec.innerHTML = '<option value="">— Seleccionar —</option>'
+        + (bancosExec||[]).map(function(b){ return '<option value="'+b.id+'">'+b.nombre+'</option>'; }).join('');
+    } catch(eBanExec) { selBancoOrigenExec.innerHTML = '<option value="">— Sin bancos disponibles —</option>'; }
+    selBancoOrigenExec.value = '';
+  }
+  const bancoOrigenContExec = document.getElementById('exec-pago-banco-origen-cont');
+  if (bancoOrigenContExec) bancoOrigenContExec.style.display = 'none';
+
   // Resetear campos
   const cuentaCont = document.getElementById('exec-pago-cuenta-cont');
   if (cuentaCont) cuentaCont.style.display = 'none';
@@ -4861,9 +4875,19 @@ function _actualizarInfoPagoProveedor() {
   const pmInfoEl     = document.getElementById('exec-pago-pm-info');
   const pmDatosEl    = document.getElementById('exec-pago-pm-datos');
   const manualInfoEl = document.getElementById('exec-pago-manual-info');
-  [viaContEl, bancoInfoEl, pmInfoEl, manualInfoEl].forEach(function(el){ if (el) el.style.display = 'none'; });
+  const bancoOrigenContEl = document.getElementById('exec-pago-banco-origen-cont');
+  [viaContEl, bancoInfoEl, pmInfoEl, manualInfoEl, bancoOrigenContEl].forEach(function(el){ if (el) el.style.display = 'none'; });
 
-  if (tipoCanal !== 'TRANSFERENCIA') return; // Efectivo, Afiliación Bancaria, etc. -- no se muestra nada
+  if (tipoCanal !== 'TRANSFERENCIA') {
+    const selBancoOrigenReset = document.getElementById('exec-pago-banco-origen');
+    if (selBancoOrigenReset) selBancoOrigenReset.value = '';
+    return; // Efectivo, Afiliación Bancaria, etc. -- no se muestra nada
+  }
+
+  // Banco Origen se muestra siempre que el Método sea Transferencia,
+  // independientemente de qué Vía de Pago tenga el proveedor -- es el
+  // Banco NUESTRO, no depende de los datos bancarios del proveedor.
+  if (bancoOrigenContEl) bancoOrigenContEl.style.display = '';
 
   const tieneBanco = !!prov.id_banco;
   const tienePM    = !!prov.pm_id_banco;
@@ -4952,6 +4976,21 @@ async function confirmarEjecucionPago() {
       errEl.textContent = 'Debe seleccionar la Vía de Pago.';
       errEl.style.display = 'block';
       document.getElementById('exec-pago-via')?.focus();
+      resetBtn();
+      return;
+    }
+  }
+
+  // Banco Origen obligatorio si el Método de Pago es Transferencia --
+  // mismo criterio y mismo campo que en Registrar Cobro.
+  let idBancoOrigenExec = null;
+  if (window._execPagoTipoMetodo === 'TRANSFERENCIA') {
+    const selBancoOrigenExec2 = document.getElementById('exec-pago-banco-origen');
+    idBancoOrigenExec = parseInt(selBancoOrigenExec2?.value) || null;
+    if (!idBancoOrigenExec) {
+      errEl.textContent = 'Debe seleccionar el Banco Origen de la Transferencia.';
+      errEl.style.display = 'block';
+      selBancoOrigenExec2?.focus();
       resetBtn();
       return;
     }
@@ -5192,6 +5231,7 @@ async function confirmarEjecucionPago() {
       metodo_pago: idMetodo,
       tasa_bcv:    tasaPago,
       referencia:  refExec.trim(),
+      id_banco_origen: idBancoOrigenExec,
       via_pago:    document.getElementById('exec-pago-via')?.value || null,
       // Si se corrigió la Moneda de Pago en este modal, persistirla para
       // que el registro quede reflejando la realidad de aquí en adelante
