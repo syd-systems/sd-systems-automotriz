@@ -1204,9 +1204,14 @@ async function _cargarMetodosCobroCxc() {
     if (!metodos || !metodos.length) {
       selMetodo.innerHTML = '<option value="">⚠ No hay métodos de Cobro en '+monedaSel+' configurados — configure uno en Parámetros</option>';
     } else {
+      // Etiqueta homologada con Ejecutar Pago (METODO_PAGO_LABELS, definida
+      // en egresos.js): se muestra solo el tipo de canal ("Efectivo",
+      // "Transferencia"), sin repetir la Moneda -- ya se eligió arriba en
+      // el campo Moneda, y repetirla aquí era redundante/inconsistente.
       selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
         + metodos.map(function(m) {
-            return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-moneda="'+(m.codigo||'')+'" data-tipo-canal="'+(m.tipo_canal||'')+'">'+m.nombre+'</option>';
+            const etiqueta = (typeof METODO_PAGO_LABELS !== 'undefined' && METODO_PAGO_LABELS[m.tipo_canal]) || m.nombre;
+            return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-moneda="'+(m.codigo||'')+'" data-tipo-canal="'+(m.tipo_canal||'')+'">'+etiqueta+'</option>';
           }).join('');
       // Sin preselección -- el operador debe elegir explícitamente.
     }
