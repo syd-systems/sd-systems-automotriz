@@ -706,8 +706,8 @@ function calcularTotalesOS() {
 
   const el = document.getElementById('os-totales');
   if (el) el.innerHTML = '<div style="display:flex;gap:24px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:12px 0">'
-    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Servicios</div><div style="font-family:var(--font-mono)">' + fmtBs(totServBs) + ' Bs</div></div>'
-    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Artículos</div><div style="font-family:var(--font-mono)">' + fmtBs(totRepBs) + ' Bs</div></div>'
+    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Servicios</div><div style="font-family:var(--font-mono)">' + fmtBs(totServBs) + ' Bs</div><div style="font-size:11px;color:var(--suave)">$ ' + fmtUSD(tasaUSD > 0 ? totServBs / tasaUSD : 0) + '</div></div>'
+    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Artículos</div><div style="font-family:var(--font-mono)">' + fmtBs(totRepBs) + ' Bs</div><div style="font-size:11px;color:var(--suave)">$ ' + fmtUSD(tasaUSD > 0 ? totRepBs / tasaUSD : 0) + '</div></div>'
     + '<div style="border-left:1px solid var(--borde);padding-left:24px">'
     +   '<div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL</div>'
     +   '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + fmtBs(totalBs) + ' Bs</div>'
