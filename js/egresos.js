@@ -4181,14 +4181,21 @@ async function _verCxPAutomatica(c, id_cxp) {
   }
 
   // Banco Origen -- Banco NUESTRO desde el que salió la Transferencia
-  // (homologado con Registrar Cobro). Se muestra siempre que haya quedado
-  // registrado, sin importar la Vía de Pago del proveedor.
+  // (homologado con Registrar Cobro). Se resuelve con una consulta aparte
+  // a param_bancos (igual patrón que usa Método de Pago más abajo) en vez
+  // de un embed automático de PostgREST sobre id_banco_origen -- ese
+  // embed no resolvía de forma confiable justo después de crear la
+  // relación (problema de caché de esquema de PostgREST/Supabase).
   const bancoOrigenAutoCont = document.getElementById('cxp-auto-banco-origen-cont');
   const bancoOrigenAutoEl   = document.getElementById('cxp-auto-banco-origen');
   if (bancoOrigenAutoCont && bancoOrigenAutoEl) {
-    if (c.banco_origen?.nombre) {
+    if (c.id_banco_origen) {
       bancoOrigenAutoCont.style.display = '';
-      bancoOrigenAutoEl.textContent = c.banco_origen.nombre;
+      bancoOrigenAutoEl.textContent = '...';
+      try {
+        const bancoOrigenRows = await api('param_bancos','GET',null,'?id=eq.'+c.id_banco_origen+'&select=nombre');
+        bancoOrigenAutoEl.textContent = (bancoOrigenRows && bancoOrigenRows[0]) ? bancoOrigenRows[0].nombre : '—';
+      } catch(eBancoOrigenAuto) { bancoOrigenAutoEl.textContent = '—'; }
     } else {
       bancoOrigenAutoCont.style.display = 'none';
     }
@@ -4337,7 +4344,7 @@ async function verCxPPendiente(id_cxp) {
 
     if (esAutomatica) {
       const full = await api('cont_cxp','GET',null,
-        '?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre),id_categoria),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre),banco_origen:id_banco_origen(nombre)');
+        '?id_cxp=eq.'+id_cxp+'&select=*,proveedores:id_proveedor(nombre,rif,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre),id_categoria),cuenta_gasto:id_cuenta_gasto(id_cuenta,codigo,nombre)');
       if (full && full[0]) await _verCxPAutomatica(full[0], id_cxp);
       return;
     }
