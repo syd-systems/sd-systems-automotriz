@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260831181"></script>
-<script src="js/parametros.js?v=20260831181"></script>
-<script src="js/empresas.js?v=20260831181"></script>
-<script src="js/ingresos.js?v=20260831181"></script>
-<script src="js/inventario.js?v=20260831181"></script>
-<script src="js/proveedores.js?v=20260831181"></script>
-<script src="js/clientes.js?v=20260831181"></script>
-<script src="js/ventas.js?v=20260831181"></script>
-<script src="js/contabilidad.js?v=20260831181"></script>
-<script src="js/egresos.js?v=20260831181"></script>
-<script src="js/vehiculos.js?v=20260831181"></script>
-<script src="js/catalogo.js?v=20260831181"></script>
-<script src="js/ordenes.js?v=20260831181"></script>
+<script src="js/core.js?v=20260831182"></script>
+<script src="js/parametros.js?v=20260831182"></script>
+<script src="js/empresas.js?v=20260831182"></script>
+<script src="js/ingresos.js?v=20260831182"></script>
+<script src="js/inventario.js?v=20260831182"></script>
+<script src="js/proveedores.js?v=20260831182"></script>
+<script src="js/clientes.js?v=20260831182"></script>
+<script src="js/ventas.js?v=20260831182"></script>
+<script src="js/contabilidad.js?v=20260831182"></script>
+<script src="js/egresos.js?v=20260831182"></script>
+<script src="js/vehiculos.js?v=20260831182"></script>
+<script src="js/catalogo.js?v=20260831182"></script>
+<script src="js/ordenes.js?v=20260831182"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2015,7 +2015,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-cont-pago-cxc')">Retornar</button>
-      <button class="btn-primario"   onclick="btnSetGuardando(this,true,null,'Procesando...');contGuardarPagoCxc().finally(()=>btnSetGuardando(this,false))">💰 Registrar Cobro</button>
+      <button class="btn-primario"   onclick="btnSetGuardando(this,true,null,'Procesando...');contGuardarPagoCxc().finally(()=>btnSetGuardando(this,false))">💰 CONFIRMAR COBRO</button>
     </div>
     <input type="hidden" id="cont-pago-cxc-id">
   </div>
@@ -4836,11 +4836,11 @@
   </div>
 </div>
 
-<!-- ══ MODAL EJECUTAR PAGO ══ -->
+<!-- ══ MODAL REGISTRAR PAGO (antes "Ejecutar Pago") ══ -->
 <div class="modal-overlay" id="modal-ejecutar-pago">
   <div class="modal" style="max-width:460px;width:95%">
     <div class="modal-header">
-      <h2 class="modal-titulo">EJECUTAR PAGO</h2>
+      <h2 class="modal-titulo">REGISTRAR PAGO</h2>
       <button class="modal-cerrar" onclick="cerrarModal('modal-ejecutar-pago')">✕</button>
     </div>
     <div class="modal-body">
