@@ -97,7 +97,7 @@ let _entregaSubVista = 'pendientes'; // 'pendientes' | 'historico'
 
 async function renderVentas() {
   const accesoCompleto = sesionActual?.administrador || puedo('VENTAS','VER') || puedo('VENTAS','CREAR') || puedo('VENTAS','EDITAR');
-  const accesoEntregas  = accesoCompleto || puedo('VENTAS','VER_ENTREGAS');
+  const accesoEntregas  = accesoCompleto || puedo('INVENTARIO','VER_ENTREGAS');
   if (!accesoEntregas) {
     document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
     return;
