@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831188';
+const SYD_VERSION = '20260831189';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -205,7 +205,6 @@ const PERMISOS_POR_MODULO = {
     { accion: 'CREAR',       label: 'Crear factura' },
     { accion: 'EDITAR',      label: 'Editar factura borrador' },
     { accion: 'APROBAR',     label: 'Aprobar factura' },
-    { accion: 'ANULAR',      label: 'Anular factura emitida' },
     { accion: 'ELIMINAR',    label: 'Eliminar factura anulada' },
     { accion: 'VER_TOTALES', label: '🔒 Ver montos y totales' },
   ],
@@ -250,7 +249,7 @@ const PERMISOS_POR_MODULO = {
     { accion: 'VER',      label: 'Ver Ficha' },
     { accion: 'CREAR',    label: 'Armar / Facturar Venta' },
     { accion: 'EDITAR',   label: 'Editar Venta' },
-    { accion: 'ELIMINAR', label: 'Anular / Eliminar Venta' },
+    { accion: 'ELIMINAR', label: 'Eliminar Venta (Presupuesto)' },
     { accion: 'VER_ENTREGAS',    label: 'Ver pestaña Entregas (sin el resto de Ventas)' },
     { accion: 'MARCAR_ENTREGA',  label: 'Marcar Venta como Entregada' },
   ],
