@@ -1388,16 +1388,12 @@ async function verFichaOS(id) {
             const mon  = (l.moneda || 'USD').toUpperCase();
             const prec = parseFloat(l.precio_original || l.precio_usd || 0);
             const subt = parseFloat(l.subtotal_usd || 0);
-            const simbolo = { USD: '$', EUR: '€', USDT: '₮' };
-            const sim = simbolo[mon] || '';
             const precUsdEq  = mon === 'VES' ? (tasaParaLineas > 0 ? parseFloat(l.precio_usd || 0) : 0) : prec;
             const subtUsdEq  = subt;
-            const precFmt = mon === 'VES'
-              ? fmtBs(prec) + ' Bs<div style="font-size:10px;color:var(--suave)">≈ $ ' + fmtUSD(precUsdEq) + '</div>'
-              : sim + ' ' + fmtUSD(prec) + ' ' + mon + '<div style="font-size:10px;color:var(--suave)">≈ Bs ' + fmtBs(prec * tasaParaLineas) + '</div>';
-            const subtFmt = mon === 'VES'
-              ? fmtBs(subt * tasaParaLineas) + ' Bs<div style="font-size:10px;color:var(--suave)">≈ $ ' + fmtUSD(subtUsdEq) + '</div>'
-              : sim + ' ' + fmtUSD(subt) + ' ' + mon + '<div style="font-size:10px;color:var(--suave)">≈ Bs ' + fmtBs(subt * tasaParaLineas) + '</div>';
+            const precBs = mon === 'VES' ? prec : (prec * tasaParaLineas);
+            const subtBs = subt * tasaParaLineas;
+            const precFmt = fmtBs(precBs) + ' Bs<div style="font-size:10px;color:var(--suave)">= $ ' + fmtUSD(precUsdEq) + '</div>';
+            const subtFmt = fmtBs(subtBs) + ' Bs<div style="font-size:10px;color:var(--suave)">= $ ' + fmtUSD(subtUsdEq) + '</div>';
             return '<tr><td style="padding:6px 0;font-size:14px">' + l.descripcion + '</td>'
               + '<td style="text-align:right;padding:6px 0">' + l.cantidad + '</td>'
               + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">' + precFmt + '</td>'
@@ -1418,14 +1414,12 @@ async function verFichaOS(id) {
             const mon  = (l.moneda || 'USD').toUpperCase();
             const prec = parseFloat(l.precio_original || l.precio_usd || 0);
             const subt = parseFloat(l.subtotal_usd || 0);
-            const simbolo = { USD: '$', EUR: '€', USDT: '₮' };
-            const sim = simbolo[mon] || '';
-            const precFmt = mon === 'VES'
-              ? fmtBs(prec) + ' Bs<div style="font-size:10px;color:var(--suave)">≈ $ ' + fmtUSD(parseFloat(l.precio_usd || 0)) + '</div>'
-              : sim + ' ' + fmtUSD(prec) + ' ' + mon + '<div style="font-size:10px;color:var(--suave)">≈ Bs ' + fmtBs(prec * tasaParaLineas) + '</div>';
-            const subtFmt = mon === 'VES'
-              ? fmtBs(subt * tasaParaLineas) + ' Bs<div style="font-size:10px;color:var(--suave)">≈ $ ' + fmtUSD(subt) + '</div>'
-              : sim + ' ' + fmtUSD(subt) + ' ' + mon + '<div style="font-size:10px;color:var(--suave)">≈ Bs ' + fmtBs(subt * tasaParaLineas) + '</div>';
+            const precUsdEq = mon === 'VES' ? parseFloat(l.precio_usd || 0) : prec;
+            const subtUsdEq = subt;
+            const precBs = mon === 'VES' ? prec : (prec * tasaParaLineas);
+            const subtBs = subt * tasaParaLineas;
+            const precFmt = fmtBs(precBs) + ' Bs<div style="font-size:10px;color:var(--suave)">= $ ' + fmtUSD(precUsdEq) + '</div>';
+            const subtFmt = fmtBs(subtBs) + ' Bs<div style="font-size:10px;color:var(--suave)">= $ ' + fmtUSD(subtUsdEq) + '</div>';
             return '<tr><td style="padding:6px 0;font-size:14px">' + l.descripcion + '</td>'
               + '<td style="text-align:right;padding:6px 0">' + l.cantidad + '</td>'
               + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">' + precFmt + '</td>'
