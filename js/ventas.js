@@ -26,6 +26,7 @@ let _ventasFiltroTipo = '';
 let _ventasFiltroCliente = '';
 let _ventasFiltroDesde = '';
 let _ventasFiltroHasta = '';
+let _ventasFiltroFechaYaInicializada = false; // Desde/Hasta arrancan en HOY, una sola vez -- si el usuario las limpia, no se le vuelven a imponer
 let _ventasFiltroCategoriasCache = null; // catálogo, se carga una sola vez
 let _ventasFiltroTiposCache = null;      // catálogo, se carga una sola vez
 let _ventasArticulosPorVenta = {};       // { id_venta: {categorias:Set, tipos:Set} }
@@ -174,6 +175,16 @@ async function renderVentasListado() {
       });
     }
 
+    // Desde/Hasta arrancan en la fecha de hoy -- una sola vez por sesión de
+    // este módulo; si el usuario las limpia después, no se le vuelven a
+    // imponer en los siguientes re-renders.
+    if (!_ventasFiltroFechaYaInicializada) {
+      const hoyVenta = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
+      _ventasFiltroDesde = hoyVenta;
+      _ventasFiltroHasta = hoyVenta;
+      _ventasFiltroFechaYaInicializada = true;
+    }
+
     const stats = { BORRADOR: 0, FACTURADA: 0, ANULADA: 0 };
     ventas.forEach(function(v) { if (stats[v.estado] !== undefined) stats[v.estado]++; });
 
@@ -198,15 +209,17 @@ async function renderVentasListado() {
     }).join('');
 
     c.innerHTML =
-      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:12px">'
+      '<div id="vta-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:12px">'
       + ['BORRADOR','FACTURADA','ANULADA'].map(function(e) {
-          return '<div class="tarjeta-stat" style="padding:7px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">' + ESTADO_LABEL_VENTA[e] + '</div><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + stats[e] + '</div></div>';
+          return '<div class="tarjeta-stat" style="padding:7px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">' + ESTADO_LABEL_VENTA[e] + '</div><div id="vta-stat-' + e + '" style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + stats[e] + '</div></div>';
         }).join('')
       + '</div>'
       + '<div class="panel">'
       + '<div class="panel-header" style="flex-wrap:wrap;gap:10px">'
       + '<h3 style="white-space:nowrap">Ventas</h3>'
-      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+      + '</div>'
+      // Fila 1: Estado, Categoría, Tipo, Buscar
+      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:0 16px 10px">'
       + '<select id="vta-filtro-estado" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todos los estados</option>'
       + '<option value="BORRADOR">Presupuesto</option>'
@@ -221,16 +234,24 @@ async function renderVentasListado() {
       + _ventasFiltroTiposCache.map(function(t){ return '<option value="'+t.id_tipo+'">'+t.nombre+'</option>'; }).join('')
       + '</select>'
       + '<input type="text" id="vta-buscar" placeholder="Buscar por Cliente o Cédula/RIF..." oninput="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:220px">'
-      + '<input type="date" id="vta-filtro-desde" title="Desde" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
-      + '<input type="date" id="vta-filtro-hasta" title="Hasta" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
-      + '<button class="btn-secundario" style="font-size:12px;padding:8px 12px" onclick="limpiarFiltrosVentas()">Limpiar</button>'
+      + '</div>'
+      // Fila 2: Desde / Hasta / Limpiar / + Nueva Venta
+      + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:0 16px 14px">'
+      + '<label style="font-size:12px;color:var(--suave);font-weight:600">Desde</label>'
+      + '<input type="date" id="vta-filtro-desde" value="'+_ventasFiltroDesde+'" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
+      + '<label style="font-size:12px;color:var(--suave);font-weight:600">Hasta</label>'
+      + '<input type="date" id="vta-filtro-hasta" value="'+_ventasFiltroHasta+'" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
+      + '<button class="btn-secundario" style="font-size:12px;padding:8px 12px" onclick="limpiarFiltrosVentas()">Limpiar Filtros</button>'
       + (puedo('VENTAS','CREAR') ? '<button class="btn-primario" onclick="abrirVenta(null)">+ Nueva Venta</button>' : '')
-      + '</div></div>'
+      + '</div>'
       + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 400px))"><table style="table-layout:fixed;width:100%"><thead><tr>'
       + '<th>N° Factura</th><th>Cliente</th><th>Fecha</th><th style="text-align:right">Total</th><th>Estado</th><th>Acción</th>'
       + '</tr></thead><tbody id="vta-tbody">'
       + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">No hay ventas registradas</td></tr>')
       + '</tbody></table></div></div>';
+    // Aplica el filtro inicial (fecha de hoy) apenas se pinta la tabla, para
+    // que los contadores y la lista arranquen ya acotados al día.
+    filtrarTablaVentas();
   } catch(err) {
     c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + err.message + '</div>';
   }
@@ -396,6 +417,21 @@ function filtrarTablaVentas() {
   const hasta = document.getElementById('vta-filtro-hasta')?.value || '';
   const tbody  = document.getElementById('vta-tbody');
   if (!tbody) return;
+
+  // Los contadores (Presupuesto/Facturada/Anulada) responden SOLO al rango
+  // de fechas -- no al resto de filtros (Estado, Categoría, Cliente), para
+  // que siga teniendo sentido comparar los 3 conteos entre sí.
+  const statsRango = { BORRADOR: 0, FACTURADA: 0, ANULADA: 0 };
+  (ventasCache||[]).forEach(function(v) {
+    const fechaVentaStat = (v.fecha_venta || '').substring(0, 10);
+    const matchRango = (!desde || fechaVentaStat >= desde) && (!hasta || fechaVentaStat <= hasta);
+    if (matchRango && statsRango[v.estado] !== undefined) statsRango[v.estado]++;
+  });
+  Object.keys(statsRango).forEach(function(e) {
+    const statEl = document.getElementById('vta-stat-' + e);
+    if (statEl) statEl.textContent = statsRango[e];
+  });
+
   Array.from(tbody.querySelectorAll('tr[data-id]')).forEach(function(tr) {
     const vId = parseInt(tr.dataset.id);
     const v   = ventasCache.find(function(x) { return x.id_venta === vId; });
