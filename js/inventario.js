@@ -7277,6 +7277,12 @@ async function _cargarEntregasAlmacen() {
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
 
+  // La leyenda explica por qué se oculta el N° de Factura -- solo tiene
+  // sentido en Pendientes (mecanismo de validación de la entrega física).
+  // En Histórico ya no aplica: la Venta ya fue entregada.
+  const leyendaEl = document.getElementById('entregas-almacen-leyenda');
+  if (leyendaEl) leyendaEl.style.display = (_entregasAlmacenSubVista === 'historico') ? 'none' : '';
+
   const subTabsHtml = '<div style="display:flex;gap:3px;background:var(--fondo);border:1px solid var(--borde);border-radius:6px;padding:3px;margin-bottom:14px;width:fit-content">'
     + '<button onclick="_entregasAlmacenCambiarSubVista(\'pendientes\')" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:'+(_entregasAlmacenSubVista==='pendientes'?'var(--naranja)':'transparent')+';color:'+(_entregasAlmacenSubVista==='pendientes'?'#fff':'var(--suave)')+'">Pendientes de Entrega</button>'
     + '<button onclick="_entregasAlmacenCambiarSubVista(\'historico\')" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:'+(_entregasAlmacenSubVista==='historico'?'var(--naranja)':'transparent')+';color:'+(_entregasAlmacenSubVista==='historico'?'#fff':'var(--suave)')+'">Histórico de Entregas</button>'
@@ -7315,7 +7321,7 @@ async function _cargarEntregasAlmacen() {
       if (_entregasAlmacenHistDesde) filtroFechaAlm += '&fecha_entrega=gte.'+_entregasAlmacenHistDesde;
       if (_entregasAlmacenHistHasta) filtroFechaAlm += '&fecha_entrega=lte.'+_entregasAlmacenHistHasta+'T23:59:59';
       ventas = await api('ventas','GET',null,
-        '?entregado=eq.true&select=id_venta,total_usd,fecha_venta,entregado,fecha_entrega,entregado_por,clientes(nombre_apellido,condicion_legal,identificacion),facturas(fecha_emision,total_ves)'+filtroFechaAlm+'&order=fecha_entrega.desc');
+        '?entregado=eq.true&select=id_venta,total_usd,fecha_venta,entregado,fecha_entrega,entregado_por,clientes(nombre_apellido,condicion_legal,identificacion),facturas(numero_factura,fecha_emision,total_ves)'+filtroFechaAlm+'&order=fecha_entrega.desc');
       if (_entregasAlmacenHistBusqueda.trim()) {
         const qBusqAlm = _entregasAlmacenHistBusqueda.trim().toLowerCase();
         ventas = ventas.filter(function(v) {
