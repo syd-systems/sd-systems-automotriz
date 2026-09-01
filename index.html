@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260831191"></script>
-<script src="js/parametros.js?v=20260831191"></script>
-<script src="js/empresas.js?v=20260831191"></script>
-<script src="js/ingresos.js?v=20260831191"></script>
-<script src="js/inventario.js?v=20260831191"></script>
-<script src="js/proveedores.js?v=20260831191"></script>
-<script src="js/clientes.js?v=20260831191"></script>
-<script src="js/ventas.js?v=20260831191"></script>
-<script src="js/contabilidad.js?v=20260831191"></script>
-<script src="js/egresos.js?v=20260831191"></script>
-<script src="js/vehiculos.js?v=20260831191"></script>
-<script src="js/catalogo.js?v=20260831191"></script>
-<script src="js/ordenes.js?v=20260831191"></script>
+<script src="js/core.js?v=20260831192"></script>
+<script src="js/parametros.js?v=20260831192"></script>
+<script src="js/empresas.js?v=20260831192"></script>
+<script src="js/ingresos.js?v=20260831192"></script>
+<script src="js/inventario.js?v=20260831192"></script>
+<script src="js/proveedores.js?v=20260831192"></script>
+<script src="js/clientes.js?v=20260831192"></script>
+<script src="js/ventas.js?v=20260831192"></script>
+<script src="js/contabilidad.js?v=20260831192"></script>
+<script src="js/egresos.js?v=20260831192"></script>
+<script src="js/vehiculos.js?v=20260831192"></script>
+<script src="js/catalogo.js?v=20260831192"></script>
+<script src="js/ordenes.js?v=20260831192"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4967,6 +4967,22 @@
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-ejecutar-pago')">Retornar</button>
       <button class="btn-primario" id="btn-confirmar-pago" onclick="this.disabled=true;this.textContent='⏳ Procesando...';confirmarEjecucionPago()">💳 CONFIRMAR PAGO</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL LISTA DE ARTÍCULOS DE LA VENTA (solo lectura) ══ -->
+<div class="modal-overlay" id="modal-lista-articulos-venta">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3>📋 ARTÍCULOS DE LA VENTA</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-lista-articulos-venta')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="lista-articulos-venta-cont"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-lista-articulos-venta')">Cerrar</button>
     </div>
   </div>
 </div>
