@@ -238,9 +238,9 @@ async function renderVentasListado() {
       // Fila 2: Desde / Hasta / Limpiar / + Nueva Venta
       + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:0 16px 14px">'
       + '<label style="font-size:12px;color:var(--suave);font-weight:600">Desde</label>'
-      + '<input type="date" id="vta-filtro-desde" value="'+_ventasFiltroDesde+'" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
+      + '<div style="width:170px"><input type="date" id="vta-filtro-desde" value="'+_ventasFiltroDesde+'" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none"></div>'
       + '<label style="font-size:12px;color:var(--suave);font-weight:600">Hasta</label>'
-      + '<input type="date" id="vta-filtro-hasta" value="'+_ventasFiltroHasta+'" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
+      + '<div style="width:170px"><input type="date" id="vta-filtro-hasta" value="'+_ventasFiltroHasta+'" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none"></div>'
       + '<button class="btn-secundario" style="font-size:12px;padding:8px 12px" onclick="limpiarFiltrosVentas()">Limpiar Filtros</button>'
       + (puedo('VENTAS','CREAR') ? '<button class="btn-primario" onclick="abrirVenta(null)">+ Nueva Venta</button>' : '')
       + '</div>'
