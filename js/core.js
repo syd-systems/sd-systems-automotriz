@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831194';
+const SYD_VERSION = '20260831195';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3223,6 +3223,12 @@ function renderTarjetaEntregaVenta(v, lineas, opts) {
   return '<div style="background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:16px;margin-bottom:14px">'
     + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:8px">'
       + '<div>'
+        // N° de Factura -- solo se muestra en modo lectura (Histórico o
+        // consulta desde Ventas). En Inventario > Pendientes se sigue
+        // ocultando a propósito: es el dato que el operador debe obtener
+        // del Cliente físicamente, para validar la entrega.
+        + (opts.soloLectura ? '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">N° Factura</div>'
+          + '<div style="font-family:var(--font-mono);font-size:13px;margin-bottom:6px">'+(v.facturas?.numero_factura||'—')+'</div>' : '')
         + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Cédula/RIF</div>'
         + '<div style="font-family:var(--font-mono);font-size:13px;margin-bottom:6px">'+(cli?(cli.condicion_legal+'-'+cli.identificacion):'—')+'</div>'
         + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Cliente</div>'
@@ -3236,14 +3242,16 @@ function renderTarjetaEntregaVenta(v, lineas, opts) {
         + '<div style="font-family:var(--font-mono);font-size:11px;color:var(--suave)">$ '+fmtUSD(v.total_usd||0)+'</div>'
       + '</div>'
     + '</div>'
-    + '<table style="width:100%;border-collapse:collapse;margin-bottom:12px"><thead><tr style="border-bottom:1px solid var(--borde)">'
-      + '<th style="text-align:center;font-size:10px;color:var(--suave);text-transform:uppercase;padding:6px 0;width:70px">Cantidad</th>'
-      + '<th style="text-align:left;font-size:10px;color:var(--suave);text-transform:uppercase;padding:6px 0">Artículos</th>'
-      + '<th style="text-align:center;font-size:10px;color:var(--suave);text-transform:uppercase;padding:6px 0;width:80px">Entregado</th>'
+    + '<div style="max-height:220px;overflow-y:auto;margin-bottom:12px;border-bottom:1px solid var(--borde)">'
+    + '<table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--borde)">'
+      + '<th style="text-align:center;font-size:10px;color:var(--suave);text-transform:uppercase;padding:6px 0;width:70px;position:sticky;top:0;background:var(--gris2)">Cantidad</th>'
+      + '<th style="text-align:left;font-size:10px;color:var(--suave);text-transform:uppercase;padding:6px 0;position:sticky;top:0;background:var(--gris2)">Artículos</th>'
+      + '<th style="text-align:center;font-size:10px;color:var(--suave);text-transform:uppercase;padding:6px 0;width:80px;position:sticky;top:0;background:var(--gris2)">Entregado</th>'
       + '</tr></thead><tbody>'
       + filasArts
       + '</tbody></table>'
-    + '<div style="border-top:1px solid var(--borde);padding-top:12px">'+pie+'</div>'
+    + '</div>'
+    + '<div style="padding-top:12px">'+pie+'</div>'
   + '</div>';
 }
 
