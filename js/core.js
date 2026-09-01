@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831192';
+const SYD_VERSION = '20260831194';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3167,6 +3167,84 @@ function fmtFecha(fecha) {
   const partes = f.split('-');
   if (partes.length !== 3) return fecha;
   return partes[2] + '-' + partes[1] + '-' + partes[0];
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TARJETA DE ENTREGA (compartida entre Ventas e Inventario General)
+//
+//  Un solo lugar que dibuja la tarjeta de "qué compone esta Venta y su
+//  estado de entrega", para que Ventas (consulta) e Inventario (proceso
+//  real de entrega) SIEMPRE se vean exactamente igual -- si algún día hay
+//  que ajustar el formato, se ajusta aquí una sola vez.
+//
+//  v: fila de `ventas` con embeds clientes(...) y facturas(...,total_ves)
+//  lineas: arreglo [{nombre, cantidad}, ...] de venta_detalle
+//  opts:
+//    soloLectura  -- true en Ventas (Lista) e Inventario > Histórico;
+//                    false en Inventario > Pendientes (permite entregar)
+//    puedeMarcar  -- solo aplica si soloLectura=false
+// ══════════════════════════════════════════════════════════════
+function renderTarjetaEntregaVenta(v, lineas, opts) {
+  opts = opts || {};
+  const cli = v.clientes;
+  const fecha = v.facturas?.fecha_emision ? fmtFecha(v.facturas.fecha_emision) : (v.fecha_venta ? fmtFecha(v.fecha_venta) : '—');
+  const entregada = !!v.entregado;
+
+  const filasArts = (lineas && lineas.length)
+    ? lineas.map(function(l) {
+        return '<tr>'
+          + '<td style="text-align:center;font-family:var(--font-mono)">'+l.cantidad+'</td>'
+          + '<td>'+l.nombre+'</td>'
+          + '<td style="text-align:center"><input type="checkbox" '+(opts.soloLectura?('disabled'+(entregada?' checked':'')):'')+' style="width:16px;height:16px;cursor:'+(opts.soloLectura?'default':'pointer')+'"></td>'
+          + '</tr>';
+      }).join('')
+    : '<tr><td colspan="3" style="text-align:center;color:var(--suave)">Sin artículos registrados</td></tr>';
+
+  let pie;
+  if (opts.soloLectura) {
+    pie = entregada
+      ? '<div style="color:#22c55e;font-size:12px">✓ Entregado el '+(v.fecha_entrega?fmtFecha(v.fecha_entrega):'—')+' por '+(v.entregado_por||'—')+'</div>'
+      : '<div style="color:var(--suave);font-size:12px">⏳ Pendiente de entrega en Almacén</div>';
+  } else {
+    pie = '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+      + '<div style="font-size:11px;color:var(--suave);text-transform:uppercase;letter-spacing:1px">Validar Entrega</div>'
+      + (opts.puedeMarcar
+          ? '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+            + '<input type="text" id="entrega-almacen-input-'+v.id_venta+'" placeholder="N° de Factura" '
+            + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();_confirmarEntregaAlmacen('+v.id_venta+')}" '
+            + 'style="background:var(--fondo);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:140px">'
+            + '<button class="btn-primario" id="entrega-almacen-btn-'+v.id_venta+'" style="font-size:11px;padding:8px 14px" onclick="_confirmarEntregaAlmacen('+v.id_venta+')">Confirmar Entrega</button>'
+            + '</div>'
+          : '<span style="font-size:11px;color:var(--suave)">Sin permiso para entregar</span>')
+      + '</div>'
+      + '<div id="entrega-almacen-msg-'+v.id_venta+'" style="display:none;font-size:11px;margin-top:8px;text-align:right"></div>';
+  }
+
+  return '<div style="background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:16px;margin-bottom:14px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:8px">'
+      + '<div>'
+        + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Cédula/RIF</div>'
+        + '<div style="font-family:var(--font-mono);font-size:13px;margin-bottom:6px">'+(cli?(cli.condicion_legal+'-'+cli.identificacion):'—')+'</div>'
+        + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Cliente</div>'
+        + '<div style="font-size:13px;font-weight:600">'+(cli?cli.nombre_apellido:'—')+'</div>'
+      + '</div>'
+      + '<div style="text-align:right">'
+        + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Fecha</div>'
+        + '<div style="font-size:13px;margin-bottom:6px">'+fecha+'</div>'
+        + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Monto Factura</div>'
+        + '<div style="font-family:var(--font-mono);font-size:14px;color:var(--naranja);font-weight:600">'+fmtBs(v.facturas?.total_ves||0)+' Bs</div>'
+        + '<div style="font-family:var(--font-mono);font-size:11px;color:var(--suave)">$ '+fmtUSD(v.total_usd||0)+'</div>'
+      + '</div>'
+    + '</div>'
+    + '<table style="width:100%;border-collapse:collapse;margin-bottom:12px"><thead><tr style="border-bottom:1px solid var(--borde)">'
+      + '<th style="text-align:center;font-size:10px;color:var(--suave);text-transform:uppercase;padding:6px 0;width:70px">Cantidad</th>'
+      + '<th style="text-align:left;font-size:10px;color:var(--suave);text-transform:uppercase;padding:6px 0">Artículos</th>'
+      + '<th style="text-align:center;font-size:10px;color:var(--suave);text-transform:uppercase;padding:6px 0;width:80px">Entregado</th>'
+      + '</tr></thead><tbody>'
+      + filasArts
+      + '</tbody></table>'
+    + '<div style="border-top:1px solid var(--borde);padding-top:12px">'+pie+'</div>'
+  + '</div>';
 }
 
 async function cargarEmpresasAccesoModal(correo) {
