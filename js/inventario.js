@@ -7381,7 +7381,7 @@ async function _confirmarEntregaAlmacen(id_venta) {
     await api('ventas','PATCH',{
       entregado: true,
       fecha_entrega: new Date().toISOString(),
-      entregado_por: sesionActual.correo_usuario
+      entregado_por: sesionActual.nombre || sesionActual.correo_usuario
     },'?id_venta=eq.'+id_venta);
 
     msgEl.textContent = '✓ Entrega confirmada.';
