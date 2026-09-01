@@ -7239,6 +7239,11 @@ function onSelAreaEntrega() {
 //  llegue al navegador de antemano (ver _confirmarEntregaAlmacen).
 // ══════════════════════════════════════════════════════════════
 
+let _entregasAlmacenSubVista = 'pendientes'; // 'pendientes' | 'historico'
+let _entregasAlmacenHistDesde = '';
+let _entregasAlmacenHistHasta = '';
+let _entregasAlmacenHistBusqueda = '';
+
 async function abrirModalEntregasAlmacen() {
   if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_ENTREGAS')) {
     alert('No tiene permiso para ver Artículos por Entregar.');
@@ -7248,20 +7253,82 @@ async function abrirModalEntregasAlmacen() {
   await _cargarEntregasAlmacen();
 }
 
+function _entregasAlmacenCambiarSubVista(v) {
+  _entregasAlmacenSubVista = v;
+  _cargarEntregasAlmacen();
+}
+
+function _entregasAlmacenFiltrarHistorico() {
+  _entregasAlmacenHistDesde = document.getElementById('entregas-almacen-hist-desde')?.value || '';
+  _entregasAlmacenHistHasta = document.getElementById('entregas-almacen-hist-hasta')?.value || '';
+  _entregasAlmacenHistBusqueda = document.getElementById('entregas-almacen-hist-busqueda')?.value || '';
+  _cargarEntregasAlmacen();
+}
+
+function _entregasAlmacenLimpiarFiltroHistorico() {
+  _entregasAlmacenHistDesde = '';
+  _entregasAlmacenHistHasta = '';
+  _entregasAlmacenHistBusqueda = '';
+  _cargarEntregasAlmacen();
+}
+
 async function _cargarEntregasAlmacen() {
   const cont = document.getElementById('entregas-almacen-cont');
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+
+  const subTabsHtml = '<div style="display:flex;gap:3px;background:var(--fondo);border:1px solid var(--borde);border-radius:6px;padding:3px;margin-bottom:14px;width:fit-content">'
+    + '<button onclick="_entregasAlmacenCambiarSubVista(\'pendientes\')" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:'+(_entregasAlmacenSubVista==='pendientes'?'var(--naranja)':'transparent')+';color:'+(_entregasAlmacenSubVista==='pendientes'?'#fff':'var(--suave)')+'">Pendientes de Entrega</button>'
+    + '<button onclick="_entregasAlmacenCambiarSubVista(\'historico\')" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:'+(_entregasAlmacenSubVista==='historico'?'var(--naranja)':'transparent')+';color:'+(_entregasAlmacenSubVista==='historico'?'#fff':'var(--suave)')+'">Histórico de Entregas</button>'
+    + '</div>';
+
+  const filtroHtml = _entregasAlmacenSubVista==='historico'
+    ? '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px">'
+      + '<div class="form-campo" style="margin:0">'
+        + '<label style="font-size:9px;text-transform:none">Desde</label>'
+        + '<input type="date" id="entregas-almacen-hist-desde" value="'+_entregasAlmacenHistDesde+'" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
+      + '</div>'
+      + '<div class="form-campo" style="margin:0">'
+        + '<label style="font-size:9px;text-transform:none">Hasta</label>'
+        + '<input type="date" id="entregas-almacen-hist-hasta" value="'+_entregasAlmacenHistHasta+'" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
+      + '</div>'
+      + '<div class="form-campo" style="margin:0">'
+        + '<label style="font-size:9px;text-transform:none">Cédula/RIF o Nombre</label>'
+        + '<input type="text" id="entregas-almacen-hist-busqueda" value="'+_entregasAlmacenHistBusqueda+'" placeholder="Buscar Cliente..." '
+        + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();_entregasAlmacenFiltrarHistorico()}" '
+        + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:180px">'
+      + '</div>'
+      + '<button class="btn-primario" style="font-size:11px;padding:8px 14px" onclick="_entregasAlmacenFiltrarHistorico()">Filtrar</button>'
+      + (_entregasAlmacenHistDesde||_entregasAlmacenHistHasta||_entregasAlmacenHistBusqueda ? '<button class="btn-secundario" style="font-size:11px;padding:8px 14px" onclick="_entregasAlmacenLimpiarFiltroHistorico()">Limpiar</button>' : '')
+      + '</div>'
+    : '';
+
   try {
     // OJO: select NO incluye facturas.numero_factura a propósito --
     // ese valor solo se consulta puntualmente al confirmar una entrega.
-    const ventas = await api('ventas','GET',null,
-      '?estado=eq.FACTURADA&entregado=eq.false&select=id_venta,total_usd,fecha_venta,clientes(nombre_apellido,condicion_legal,identificacion),facturas!inner(estado,fecha_emision)&facturas.estado=eq.PAGADA&order=fecha_venta.asc');
+    let ventas;
+    if (_entregasAlmacenSubVista === 'pendientes') {
+      ventas = await api('ventas','GET',null,
+        '?estado=eq.FACTURADA&entregado=eq.false&select=id_venta,total_usd,fecha_venta,entregado,clientes(nombre_apellido,condicion_legal,identificacion),facturas!inner(estado,fecha_emision,total_ves)&facturas.estado=eq.PAGADA&order=fecha_venta.asc');
+    } else {
+      let filtroFechaAlm = '';
+      if (_entregasAlmacenHistDesde) filtroFechaAlm += '&fecha_entrega=gte.'+_entregasAlmacenHistDesde;
+      if (_entregasAlmacenHistHasta) filtroFechaAlm += '&fecha_entrega=lte.'+_entregasAlmacenHistHasta+'T23:59:59';
+      ventas = await api('ventas','GET',null,
+        '?entregado=eq.true&select=id_venta,total_usd,fecha_venta,entregado,fecha_entrega,entregado_por,clientes(nombre_apellido,condicion_legal,identificacion),facturas(fecha_emision,total_ves)'+filtroFechaAlm+'&order=fecha_entrega.desc');
+      if (_entregasAlmacenHistBusqueda.trim()) {
+        const qBusqAlm = _entregasAlmacenHistBusqueda.trim().toLowerCase();
+        ventas = ventas.filter(function(v) {
+          const cli = v.clientes;
+          if (!cli) return false;
+          return (cli.nombre_apellido||'').toLowerCase().includes(qBusqAlm)
+              || (cli.identificacion||'').toLowerCase().includes(qBusqAlm);
+        });
+      }
+    }
 
-    // Detalle de Artículos -- el Custodio necesita ver cada Artículo con su
-    // propia Cantidad en una fila (no todo apretado en una sola celda),
-    // para que una Venta con muchos ítems se lea bien. Una sola consulta
-    // por lote para todas las Ventas de esta lista.
+    // Detalle de Artículos -- una sola consulta por lote para todas las
+    // Ventas de esta lista (evita N llamadas, una por tarjeta).
     const idsVentasAlm = ventas.map(function(v){ return v.id_venta; });
     let lineasPorVentaAlm = {};
     if (idsVentasAlm.length) {
@@ -7274,72 +7341,27 @@ async function _cargarEntregasAlmacen() {
     }
 
     const puedeMarcar = sesionActual?.administrador || puedo('INVENTARIO','MARCAR_ENTREGA');
+    const esHistorico = _entregasAlmacenSubVista === 'historico';
 
     if (!ventas || !ventas.length) {
-      cont.innerHTML = '<div style="text-align:center;color:var(--suave);padding:32px">No hay Ventas pendientes de entrega.</div>';
+      cont.innerHTML = subTabsHtml + filtroHtml + '<div style="text-align:center;color:var(--suave);padding:32px">'
+        + (esHistorico
+            ? ((_entregasAlmacenHistDesde||_entregasAlmacenHistHasta||_entregasAlmacenHistBusqueda) ? 'No se encontraron entregas con ese filtro.' : 'Sin entregas registradas todavía.')
+            : 'No hay Ventas pendientes de entrega.')
+        + '</div>';
       return;
     }
 
+    // Tarjeta compartida con Ventas > Entregas (renderTarjetaEntregaVenta,
+    // definida en core.js) -- así ambas pantallas siempre muestran
+    // exactamente el mismo formulario, sin poder desalinearse.
     const tarjetas = ventas.map(function(v) {
-      const cli = v.clientes;
-      const lineas = lineasPorVentaAlm[v.id_venta] || [];
-      const fecha = v.facturas?.fecha_emision ? fmtFecha(v.facturas.fecha_emision) : (v.fecha_venta ? fmtFecha(v.fecha_venta) : '—');
-
-      const filasArts = lineas.length
-        ? lineas.map(function(l) {
-            return '<tr>'
-              + '<td style="text-align:center;font-family:var(--font-mono)">'+l.cantidad+'</td>'
-              + '<td>'+l.nombre+'</td>'
-              // Checkbox visual para que el Custodio vaya marcando cada
-              // Artículo mientras hace la entrega física -- es solo una
-              // ayuda de conteo en pantalla, no queda guardado en la base
-              // de datos (lo que sí se guarda es la entrega completa, al
-              // validar el N° de Factura más abajo).
-              + '<td style="text-align:center"><input type="checkbox" style="width:16px;height:16px;cursor:pointer"></td>'
-              + '</tr>';
-          }).join('')
-        : '<tr><td colspan="3" style="text-align:center;color:var(--suave)">Sin artículos registrados</td></tr>';
-
-      return '<div style="background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:16px;margin-bottom:14px">'
-        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:8px">'
-          + '<div>'
-            + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Cédula/RIF</div>'
-            + '<div style="font-family:var(--font-mono);font-size:13px;margin-bottom:6px">'+(cli?(cli.condicion_legal+'-'+cli.identificacion):'—')+'</div>'
-            + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Cliente</div>'
-            + '<div style="font-size:13px;font-weight:600">'+(cli?cli.nombre_apellido:'—')+'</div>'
-          + '</div>'
-          + '<div style="text-align:right">'
-            + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Fecha</div>'
-            + '<div style="font-size:13px;margin-bottom:6px">'+fecha+'</div>'
-            + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Monto Factura</div>'
-            + '<div style="font-family:var(--font-mono);font-size:14px;color:var(--naranja);font-weight:600">$ '+fmtUSD(v.total_usd||0)+'</div>'
-          + '</div>'
-        + '</div>'
-        + '<table style="width:100%;border-collapse:collapse;margin-bottom:12px"><thead><tr style="border-bottom:1px solid var(--borde)">'
-          + '<th style="text-align:center;font-size:10px;color:var(--suave);text-transform:uppercase;padding:6px 0;width:70px">Cantidad</th>'
-          + '<th style="text-align:left;font-size:10px;color:var(--suave);text-transform:uppercase;padding:6px 0">Artículos</th>'
-          + '<th style="text-align:center;font-size:10px;color:var(--suave);text-transform:uppercase;padding:6px 0;width:80px">Entregado</th>'
-          + '</tr></thead><tbody>'
-          + filasArts
-          + '</tbody></table>'
-        + '<div style="border-top:1px solid var(--borde);padding-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
-          + '<div style="font-size:11px;color:var(--suave);text-transform:uppercase;letter-spacing:1px">Validar Entrega</div>'
-          + (puedeMarcar
-              ? '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
-                + '<input type="text" id="entrega-almacen-input-'+v.id_venta+'" placeholder="N° de Factura" '
-                + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();_confirmarEntregaAlmacen('+v.id_venta+')}" '
-                + 'style="background:var(--fondo);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:140px">'
-                + '<button class="btn-primario" id="entrega-almacen-btn-'+v.id_venta+'" style="font-size:11px;padding:8px 14px" onclick="_confirmarEntregaAlmacen('+v.id_venta+')">Confirmar Entrega</button>'
-                + '</div>'
-              : '<span style="font-size:11px;color:var(--suave)">Sin permiso para entregar</span>')
-        + '</div>'
-        + '<div id="entrega-almacen-msg-'+v.id_venta+'" style="display:none;font-size:11px;margin-top:8px;text-align:right"></div>'
-      + '</div>';
+      return renderTarjetaEntregaVenta(v, lineasPorVentaAlm[v.id_venta] || [], { soloLectura: esHistorico, puedeMarcar: puedeMarcar });
     }).join('');
 
-    cont.innerHTML = '<div style="max-height:max(200px, calc(100vh - 380px));overflow-y:auto">' + tarjetas + '</div>';
+    cont.innerHTML = subTabsHtml + filtroHtml + '<div style="max-height:max(200px, calc(100vh - 420px));overflow-y:auto">' + tarjetas + '</div>';
   } catch(err) {
-    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+err.message+'</div>';
+    cont.innerHTML = subTabsHtml + '<div class="alerta alerta-error" style="display:block">Error: '+err.message+'</div>';
   }
 }
 
