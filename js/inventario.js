@@ -7365,7 +7365,7 @@ async function _cargarEntregasAlmacen() {
       return renderTarjetaEntregaVenta(v, lineasPorVentaAlm[v.id_venta] || [], { soloLectura: esHistorico, puedeMarcar: puedeMarcar });
     }).join('');
 
-    cont.innerHTML = subTabsHtml + filtroHtml + '<div style="max-height:max(200px, calc(100vh - 420px));overflow-y:auto">' + tarjetas + '</div>';
+    cont.innerHTML = subTabsHtml + filtroHtml + tarjetas;
   } catch(err) {
     cont.innerHTML = subTabsHtml + '<div class="alerta alerta-error" style="display:block">Error: '+err.message+'</div>';
   }
