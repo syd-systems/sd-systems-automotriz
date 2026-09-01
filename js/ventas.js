@@ -204,13 +204,13 @@ async function renderVentasEntregas() {
     let ventas;
     if (_entregaSubVista === 'pendientes') {
       ventas = await api('ventas','GET',null,
-        '?estado=eq.FACTURADA&entregado=eq.false&select=*,clientes(nombre_apellido,condicion_legal,identificacion,telefono_movil),facturas!inner(numero_factura,estado,fecha_emision)&facturas.estado=eq.PAGADA&order=fecha_venta.asc');
+        '?estado=eq.FACTURADA&entregado=eq.false&select=*,clientes(nombre_apellido,condicion_legal,identificacion,telefono_movil),facturas!inner(numero_factura,estado,fecha_emision,total_ves)&facturas.estado=eq.PAGADA&order=fecha_venta.asc');
     } else {
       let filtroFecha = '';
       if (_entregaHistDesde) filtroFecha += '&fecha_entrega=gte.'+_entregaHistDesde;
       if (_entregaHistHasta) filtroFecha += '&fecha_entrega=lte.'+_entregaHistHasta+'T23:59:59';
       ventas = await api('ventas','GET',null,
-        '?entregado=eq.true&select=*,clientes(nombre_apellido,condicion_legal,identificacion),facturas(numero_factura,fecha_emision)'+filtroFecha+'&order=fecha_entrega.desc');
+        '?entregado=eq.true&select=*,clientes(nombre_apellido,condicion_legal,identificacion),facturas(numero_factura,fecha_emision,total_ves)'+filtroFecha+'&order=fecha_entrega.desc');
     }
 
     // Búsqueda por Cédula/RIF o Nombre del Cliente -- se filtra sobre lo ya
@@ -252,7 +252,10 @@ async function renderVentasEntregas() {
         + '<td style="font-family:var(--font-mono);font-size:12px">'+(v.facturas?.numero_factura||'—')+'</td>'
         + '<td style="font-size:12px">'+(cli?cli.nombre_apellido:'—')+'<div style="font-size:10px;color:var(--suave);font-family:var(--font-mono)">'+(cli?cli.condicion_legal+'-'+cli.identificacion:'')+(cli?.telefono_movil?' · '+cli.telefono_movil:'')+'</div></td>'
         + '<td><button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verListaArticulosVenta('+v.id_venta+')">📋 Lista</button></td>'
-        + '<td style="text-align:right;font-family:var(--font-mono)">$ '+fmtUSD(v.total_usd||0)+'</td>'
+        + '<td style="text-align:right;font-family:var(--font-mono)">'
+          + '<div style="color:var(--naranja)">'+fmtBs(v.facturas?.total_ves||0)+' Bs</div>'
+          + '<div style="font-size:10px;color:var(--suave)">$ '+fmtUSD(v.total_usd||0)+'</div>'
+        + '</td>'
         + (_entregaSubVista==='pendientes'
             ? '<td style="font-size:12px">'+(v.facturas?.fecha_emision?fmtFecha(v.facturas.fecha_emision):'—')+'</td>'
               // Solo consulta -- el vendedor ve el estado, pero la acción de
@@ -299,54 +302,15 @@ async function renderVentasEntregas() {
 }
 
 // Muestra el detalle de Artículos de una Venta (Pendiente o ya Entregada)
-// en una ficha de solo lectura, mismo formato de tarjeta que usa
-// Inventario > Artículos por Entregar -- sin campos de validación, porque
-// aquí solo es consulta.
+// en una ficha de solo lectura. Usa renderTarjetaEntregaVenta (definida en
+// core.js), la MISMA función que usa Inventario > Artículos por Entregar,
+// para que ambas pantallas se vean siempre exactamente igual.
 let _entregaVentasCache = {};
 function verListaArticulosVenta(id_venta) {
   const data = _entregaVentasCache[id_venta];
   const cont = document.getElementById('lista-articulos-venta-cont');
   if (!data || !cont) return;
-  const v = data.venta;
-  const cli = v.clientes;
-  const lineas = data.lineas;
-  const fecha = v.facturas?.fecha_emision ? fmtFecha(v.facturas.fecha_emision) : (v.fecha_venta ? fmtFecha(v.fecha_venta) : '—');
-
-  const filasArts = lineas.length
-    ? lineas.map(function(l) {
-        return '<tr>'
-          + '<td style="text-align:center;font-family:var(--font-mono)">'+l.cantidad+'</td>'
-          + '<td>'+l.nombre+'</td>'
-          + '</tr>';
-      }).join('')
-    : '<tr><td colspan="2" style="text-align:center;color:var(--suave)">Sin artículos registrados</td></tr>';
-
-  const pieEstado = _entregaSubVista === 'pendientes'
-    ? '<div style="color:var(--suave);font-size:12px">⏳ Pendiente de entrega en Almacén</div>'
-    : '<div style="color:#22c55e;font-size:12px">✓ Entregado el '+(v.fecha_entrega?fmtFecha(v.fecha_entrega):'—')+' por '+(v.entregado_por||'—')+'</div>';
-
-  cont.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:8px">'
-      + '<div>'
-        + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Cédula/RIF</div>'
-        + '<div style="font-family:var(--font-mono);font-size:13px;margin-bottom:6px">'+(cli?(cli.condicion_legal+'-'+cli.identificacion):'—')+'</div>'
-        + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Cliente</div>'
-        + '<div style="font-size:13px;font-weight:600">'+(cli?cli.nombre_apellido:'—')+'</div>'
-      + '</div>'
-      + '<div style="text-align:right">'
-        + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Fecha</div>'
-        + '<div style="font-size:13px;margin-bottom:6px">'+fecha+'</div>'
-        + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Monto Factura</div>'
-        + '<div style="font-family:var(--font-mono);font-size:14px;color:var(--naranja);font-weight:600">$ '+fmtUSD(v.total_usd||0)+'</div>'
-      + '</div>'
-    + '</div>'
-    + '<table style="width:100%;border-collapse:collapse;margin-bottom:12px"><thead><tr style="border-bottom:1px solid var(--borde)">'
-      + '<th style="text-align:center;font-size:10px;color:var(--suave);text-transform:uppercase;padding:6px 0;width:70px">Cantidad</th>'
-      + '<th style="text-align:left;font-size:10px;color:var(--suave);text-transform:uppercase;padding:6px 0">Artículos</th>'
-      + '</tr></thead><tbody>'
-      + filasArts
-      + '</tbody></table>'
-    + '<div style="border-top:1px solid var(--borde);padding-top:12px">'+pieEstado+'</div>';
-
+  cont.innerHTML = renderTarjetaEntregaVenta(data.venta, data.lineas, { soloLectura: true });
   abrirModal('modal-lista-articulos-venta');
 }
 
