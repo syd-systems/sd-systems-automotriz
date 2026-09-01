@@ -19,6 +19,17 @@
 // en esta etapa aún no hay ningún compromiso real de stock ni contabilidad.
 const ESTADO_LABEL_VENTA = { BORRADOR: 'Presupuesto', FACTURADA: 'Facturada', ANULADA: 'Anulada' };
 
+// ─── Filtros del listado de Ventas (Categoría/Tipo de Artículo, Cliente,
+// Rango de Fechas) -- estado persistente entre re-renders de la pestaña.
+let _ventasFiltroCategoria = '';
+let _ventasFiltroTipo = '';
+let _ventasFiltroCliente = '';
+let _ventasFiltroDesde = '';
+let _ventasFiltroHasta = '';
+let _ventasFiltroCategoriasCache = null; // catálogo, se carga una sola vez
+let _ventasFiltroTiposCache = null;      // catálogo, se carga una sola vez
+let _ventasArticulosPorVenta = {};       // { id_venta: {categorias:Set, tipos:Set} }
+
 let _ventaLineas = []; // líneas en edición del modal (en memoria, no se guardan hasta "Guardar Borrador")
 let _ventaLineasOriginales = []; // snapshot de las líneas YA GUARDADAS al abrir el modal -- para poder revertir la reserva en vivo si se cierra sin guardar (Retornar / ✕)
 let _idAreaAlmacenVentas = null; // id de "Gerencia de Compras" (código 2300) -- Ventas siempre descuenta de ahí, sin pedirle al operador que elija Área
@@ -136,6 +147,33 @@ async function renderVentasListado() {
       '?order=fecha_registro.desc&select=*,clientes(nombre_apellido,condicion_legal,identificacion),facturas(numero_factura)' + filtroEmpresa);
     ventasCache = ventas;
 
+    // Catálogos de Categoría/Tipo de Artículo -- se cargan una sola vez
+    // (se reutilizan en cada re-render de esta pestaña).
+    if (!_ventasFiltroCategoriasCache) {
+      _ventasFiltroCategoriasCache = await api('inv_categorias','GET',null,
+        '?order=nombre.asc&select=id_categoria,nombre' + filtroEmpresa);
+    }
+    if (!_ventasFiltroTiposCache) {
+      _ventasFiltroTiposCache = await api('inv_articulos_tipo','GET',null,
+        '?order=nombre.asc&select=id_tipo,nombre,id_categoria' + filtroEmpresa);
+    }
+
+    // Qué Categoría(s)/Tipo(s) de Artículo componen cada Venta -- una sola
+    // consulta por lote (no una por fila), para poder filtrar por esto sin
+    // tener que volver a consultar Supabase cada vez que el operador
+    // cambia el filtro (mismo patrón client-side que ya usa Estado/Buscar).
+    _ventasArticulosPorVenta = {};
+    const idsVentasTodas = ventas.map(function(v){ return v.id_venta; });
+    if (idsVentasTodas.length) {
+      const lineasTodas = await api('venta_detalle','GET',null,
+        '?id_venta=in.('+idsVentasTodas.join(',')+')&select=id_venta,inventario_almacen(id_categoria_articulo,id_tipo_articulo)');
+      (lineasTodas||[]).forEach(function(l) {
+        if (!_ventasArticulosPorVenta[l.id_venta]) _ventasArticulosPorVenta[l.id_venta] = { categorias: new Set(), tipos: new Set() };
+        if (l.inventario_almacen?.id_categoria_articulo) _ventasArticulosPorVenta[l.id_venta].categorias.add(l.inventario_almacen.id_categoria_articulo);
+        if (l.inventario_almacen?.id_tipo_articulo) _ventasArticulosPorVenta[l.id_venta].tipos.add(l.inventario_almacen.id_tipo_articulo);
+      });
+    }
+
     const stats = { BORRADOR: 0, FACTURADA: 0, ANULADA: 0 };
     ventas.forEach(function(v) { if (stats[v.estado] !== undefined) stats[v.estado]++; });
 
@@ -174,7 +212,18 @@ async function renderVentasListado() {
       + '<option value="BORRADOR">Presupuesto</option>'
       + '<option value="FACTURADA">Facturada</option><option value="ANULADA">Anulada</option>'
       + '</select>'
-      + '<input type="text" id="vta-buscar" placeholder="Buscar cliente..." oninput="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
+      + '<select id="vta-filtro-categoria" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
+      + '<option value="">Todas las Categorías</option>'
+      + _ventasFiltroCategoriasCache.map(function(cat){ return '<option value="'+cat.id_categoria+'">'+cat.nombre+'</option>'; }).join('')
+      + '</select>'
+      + '<select id="vta-filtro-tipo" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
+      + '<option value="">Todos los Tipos</option>'
+      + _ventasFiltroTiposCache.map(function(t){ return '<option value="'+t.id_tipo+'">'+t.nombre+'</option>'; }).join('')
+      + '</select>'
+      + '<input type="text" id="vta-buscar" placeholder="Buscar por Cliente o Cédula/RIF..." oninput="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:220px">'
+      + '<input type="date" id="vta-filtro-desde" title="Desde" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
+      + '<input type="date" id="vta-filtro-hasta" title="Hasta" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
+      + '<button class="btn-secundario" style="font-size:12px;padding:8px 12px" onclick="limpiarFiltrosVentas()">Limpiar</button>'
       + (puedo('VENTAS','CREAR') ? '<button class="btn-primario" onclick="abrirVenta(null)">+ Nueva Venta</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 400px))"><table style="table-layout:fixed;width:100%"><thead><tr>'
@@ -340,7 +389,11 @@ function _entregaLimpiarFiltroHistorico() {
 
 function filtrarTablaVentas() {
   const estado = document.getElementById('vta-filtro-estado')?.value || '';
+  const categoria = document.getElementById('vta-filtro-categoria')?.value || '';
+  const tipo = document.getElementById('vta-filtro-tipo')?.value || '';
   const buscar = (document.getElementById('vta-buscar')?.value || '').toLowerCase().trim();
+  const desde = document.getElementById('vta-filtro-desde')?.value || '';
+  const hasta = document.getElementById('vta-filtro-hasta')?.value || '';
   const tbody  = document.getElementById('vta-tbody');
   if (!tbody) return;
   Array.from(tbody.querySelectorAll('tr[data-id]')).forEach(function(tr) {
@@ -348,10 +401,29 @@ function filtrarTablaVentas() {
     const v   = ventasCache.find(function(x) { return x.id_venta === vId; });
     if (!v) { tr.style.display = 'none'; return; }
     const matchEstado = !estado || v.estado === estado;
+
+    const artsVenta = _ventasArticulosPorVenta[vId];
+    const matchCategoria = !categoria || (artsVenta && artsVenta.categorias.has(parseInt(categoria)));
+    const matchTipo = !tipo || (artsVenta && artsVenta.tipos.has(parseInt(tipo)));
+
     const nomCli = (v.clientes?.nombre_apellido || '').toLowerCase();
-    const matchBuscar = !buscar || nomCli.includes(buscar);
-    tr.style.display = matchEstado && matchBuscar ? '' : 'none';
+    const idCli  = (v.clientes?.identificacion || '').toLowerCase();
+    const matchBuscar = !buscar || nomCli.includes(buscar) || idCli.includes(buscar);
+
+    const fechaVenta = (v.fecha_venta || '').substring(0, 10);
+    const matchDesde = !desde || fechaVenta >= desde;
+    const matchHasta = !hasta || fechaVenta <= hasta;
+
+    tr.style.display = (matchEstado && matchCategoria && matchTipo && matchBuscar && matchDesde && matchHasta) ? '' : 'none';
   });
+}
+
+function limpiarFiltrosVentas() {
+  ['vta-filtro-estado','vta-filtro-categoria','vta-filtro-tipo','vta-buscar','vta-filtro-desde','vta-filtro-hasta'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  filtrarTablaVentas();
 }
 
 // ═══════════════════════════════════════════════
