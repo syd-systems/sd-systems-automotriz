@@ -7243,6 +7243,8 @@ let _entregasAlmacenSubVista = 'pendientes'; // 'pendientes' | 'historico'
 let _entregasAlmacenHistDesde = '';
 let _entregasAlmacenHistHasta = '';
 let _entregasAlmacenHistBusqueda = '';
+let _entregasAlmacenExpandido = null; // id_venta cuya tarjeta está desplegada, o null
+let _entregasAlmacenCache = { ventas: [], lineasPorVenta: {} }; // último resultado cargado, para expandir sin re-consultar
 
 async function abrirModalEntregasAlmacen() {
   if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_ENTREGAS')) {
@@ -7255,6 +7257,7 @@ async function abrirModalEntregasAlmacen() {
 
 function _entregasAlmacenCambiarSubVista(v) {
   _entregasAlmacenSubVista = v;
+  _entregasAlmacenExpandido = null;
   _cargarEntregasAlmacen();
 }
 
@@ -7262,6 +7265,7 @@ function _entregasAlmacenFiltrarHistorico() {
   _entregasAlmacenHistDesde = document.getElementById('entregas-almacen-hist-desde')?.value || '';
   _entregasAlmacenHistHasta = document.getElementById('entregas-almacen-hist-hasta')?.value || '';
   _entregasAlmacenHistBusqueda = document.getElementById('entregas-almacen-hist-busqueda')?.value || '';
+  _entregasAlmacenExpandido = null;
   _cargarEntregasAlmacen();
 }
 
@@ -7269,7 +7273,15 @@ function _entregasAlmacenLimpiarFiltroHistorico() {
   _entregasAlmacenHistDesde = '';
   _entregasAlmacenHistHasta = '';
   _entregasAlmacenHistBusqueda = '';
+  _entregasAlmacenExpandido = null;
   _cargarEntregasAlmacen();
+}
+
+// Alterna la tarjeta expandida sin volver a consultar Supabase -- usa lo
+// que ya está en _entregasAlmacenCache.
+function _entregasAlmacenToggleExpandir(id_venta) {
+  _entregasAlmacenExpandido = (_entregasAlmacenExpandido === id_venta) ? null : id_venta;
+  _entregasAlmacenRenderLista();
 }
 
 async function _cargarEntregasAlmacen() {
@@ -7346,29 +7358,52 @@ async function _cargarEntregasAlmacen() {
       });
     }
 
-    const puedeMarcar = sesionActual?.administrador || puedo('INVENTARIO','MARCAR_ENTREGA');
-    const esHistorico = _entregasAlmacenSubVista === 'historico';
-
-    if (!ventas || !ventas.length) {
-      cont.innerHTML = subTabsHtml + filtroHtml + '<div style="text-align:center;color:var(--suave);padding:32px">'
-        + (esHistorico
-            ? ((_entregasAlmacenHistDesde||_entregasAlmacenHistHasta||_entregasAlmacenHistBusqueda) ? 'No se encontraron entregas con ese filtro.' : 'Sin entregas registradas todavía.')
-            : 'No hay Ventas pendientes de entrega.')
-        + '</div>';
-      return;
-    }
-
-    // Tarjeta compartida con Ventas > Entregas (renderTarjetaEntregaVenta,
-    // definida en core.js) -- así ambas pantallas siempre muestran
-    // exactamente el mismo formulario, sin poder desalinearse.
-    const tarjetas = ventas.map(function(v) {
-      return renderTarjetaEntregaVenta(v, lineasPorVentaAlm[v.id_venta] || [], { soloLectura: esHistorico, puedeMarcar: puedeMarcar });
-    }).join('');
-
-    cont.innerHTML = subTabsHtml + filtroHtml + tarjetas;
+    _entregasAlmacenCache = { ventas: ventas, lineasPorVenta: lineasPorVentaAlm, subTabsHtml: subTabsHtml, filtroHtml: filtroHtml };
+    _entregasAlmacenRenderLista();
   } catch(err) {
     cont.innerHTML = subTabsHtml + '<div class="alerta alerta-error" style="display:block">Error: '+err.message+'</div>';
   }
+}
+
+// Pinta la lista compacta (Cédula/RIF, Cliente, botón FACTURA) y, si hay
+// una tarjeta expandida, la tarjeta completa (renderTarjetaEntregaVenta)
+// justo debajo de su fila -- todo desde _entregasAlmacenCache, sin volver
+// a consultar Supabase.
+function _entregasAlmacenRenderLista() {
+  const cont = document.getElementById('entregas-almacen-cont');
+  if (!cont) return;
+  const { ventas, lineasPorVenta, subTabsHtml, filtroHtml } = _entregasAlmacenCache;
+  const puedeMarcar = sesionActual?.administrador || puedo('INVENTARIO','MARCAR_ENTREGA');
+  const esHistorico = _entregasAlmacenSubVista === 'historico';
+
+  if (!ventas || !ventas.length) {
+    cont.innerHTML = subTabsHtml + filtroHtml + '<div style="text-align:center;color:var(--suave);padding:32px">'
+      + (esHistorico
+          ? ((_entregasAlmacenHistDesde||_entregasAlmacenHistHasta||_entregasAlmacenHistBusqueda) ? 'No se encontraron entregas con ese filtro.' : 'Sin entregas registradas todavía.')
+          : 'No hay Ventas pendientes de entrega.')
+      + '</div>';
+    return;
+  }
+
+  const filas = ventas.map(function(v) {
+    const cli = v.clientes;
+    const expandido = _entregasAlmacenExpandido === v.id_venta;
+    const filaCompacta = '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--gris2);border:1px solid var(--borde);border-radius:8px;margin-bottom:'+(expandido?'0':'10px')+'">'
+      + '<div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">'
+        + '<div><div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Cédula/RIF</div><div style="font-family:var(--font-mono);font-size:13px">'+(cli?(cli.condicion_legal+'-'+cli.identificacion):'—')+'</div></div>'
+        + '<div><div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Cliente</div><div style="font-size:13px;font-weight:600">'+(cli?cli.nombre_apellido:'—')+'</div></div>'
+      + '</div>'
+      + '<button class="btn-'+(expandido?'secundario':'primario')+'" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="_entregasAlmacenToggleExpandir('+v.id_venta+')">🧾 '+(expandido?'Ocultar':'FACTURA')+'</button>'
+    + '</div>';
+
+    const tarjetaExpandida = expandido
+      ? '<div style="margin-bottom:10px;padding:0 2px">'+renderTarjetaEntregaVenta(v, lineasPorVenta[v.id_venta] || [], { soloLectura: esHistorico, puedeMarcar: puedeMarcar })+'</div>'
+      : '';
+
+    return filaCompacta + tarjetaExpandida;
+  }).join('');
+
+  cont.innerHTML = subTabsHtml + filtroHtml + filas;
 }
 
 async function _confirmarEntregaAlmacen(id_venta) {
