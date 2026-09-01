@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831200';
+const SYD_VERSION = '20260831201';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -1233,6 +1233,10 @@ function seleccionarEmpresa(id_emisor) {
   // Moneda Principal de la ficha de ESTA empresa -- si se dejaba el valor
   // de la empresa anterior, podía mostrar la moneda equivocada.
   if (typeof _contMoneda !== 'undefined') _contMoneda = null;
+  // Igual para los catálogos de Categoría/Tipo de Artículo usados en el
+  // filtro de Ventas -- son propios de cada Empresa.
+  if (typeof _ventasFiltroCategoriasCache !== 'undefined') _ventasFiltroCategoriasCache = null;
+  if (typeof _ventasFiltroTiposCache !== 'undefined') _ventasFiltroTiposCache = null;
   // Guardar empresa activa en sessionStorage y localStorage
   sessionStorage.setItem('sd_empresa_activa', JSON.stringify(_empresaActiva));
   localStorage.setItem('sd_empresa_activa', JSON.stringify(_empresaActiva));
