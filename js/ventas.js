@@ -94,6 +94,9 @@ function _filtrarArticulosVenta() {
 
 let _ventaVista = 'ventas'; // 'ventas' | 'entregas'
 let _entregaSubVista = 'pendientes'; // 'pendientes' | 'historico'
+let _entregaHistDesde = '';
+let _entregaHistHasta = '';
+let _entregaHistBusqueda = '';
 
 async function renderVentas() {
   const accesoCompleto = sesionActual?.administrador || puedo('VENTAS','VER') || puedo('VENTAS','CREAR') || puedo('VENTAS','EDITAR');
@@ -203,12 +206,31 @@ async function renderVentasEntregas() {
       ventas = await api('ventas','GET',null,
         '?estado=eq.FACTURADA&entregado=eq.false&select=*,clientes(nombre_apellido,condicion_legal,identificacion,telefono_movil),facturas!inner(numero_factura,estado,fecha_emision)&facturas.estado=eq.PAGADA&order=fecha_venta.asc');
     } else {
+      let filtroFecha = '';
+      if (_entregaHistDesde) filtroFecha += '&fecha_entrega=gte.'+_entregaHistDesde;
+      if (_entregaHistHasta) filtroFecha += '&fecha_entrega=lte.'+_entregaHistHasta+'T23:59:59';
       ventas = await api('ventas','GET',null,
-        '?entregado=eq.true&select=*,clientes(nombre_apellido,condicion_legal,identificacion),facturas(numero_factura,fecha_emision)&order=fecha_entrega.desc');
+        '?entregado=eq.true&select=*,clientes(nombre_apellido,condicion_legal,identificacion),facturas(numero_factura,fecha_emision)'+filtroFecha+'&order=fecha_entrega.desc');
+    }
+
+    // Búsqueda por Cédula/RIF o Nombre del Cliente -- se filtra sobre lo ya
+    // cargado (el volumen del Histórico no justifica un OR contra la tabla
+    // relacionada en Supabase).
+    if (_entregaSubVista === 'historico' && _entregaHistBusqueda.trim()) {
+      const qBusq = _entregaHistBusqueda.trim().toLowerCase();
+      ventas = ventas.filter(function(v) {
+        const cli = v.clientes;
+        if (!cli) return false;
+        return (cli.nombre_apellido||'').toLowerCase().includes(qBusq)
+            || (cli.identificacion||'').toLowerCase().includes(qBusq);
+      });
     }
 
     // Líneas de TODAS las Ventas de esta lista en una sola consulta (evita
-    // N llamadas, una por fila).
+    // N llamadas, una por fila). Se guardan como arreglo {nombre,cantidad}
+    // -- ya no se unen en un solo texto -- para poder pintarlas como tabla
+    // (una fila por Artículo) dentro del botón "Lista", igual que en
+    // Inventario > Artículos por Entregar.
     const idsVentas = ventas.map(function(v){ return v.id_venta; });
     let lineasPorVenta = {};
     if (idsVentas.length) {
@@ -216,17 +238,20 @@ async function renderVentasEntregas() {
         '?id_venta=in.('+idsVentas.join(',')+')&select=id_venta,cantidad,inventario_almacen(nombre_articulo)');
       (lineas||[]).forEach(function(l) {
         if (!lineasPorVenta[l.id_venta]) lineasPorVenta[l.id_venta] = [];
-        lineasPorVenta[l.id_venta].push((l.inventario_almacen?.nombre_articulo||'Artículo')+' x'+l.cantidad);
+        lineasPorVenta[l.id_venta].push({ nombre: l.inventario_almacen?.nombre_articulo||'Artículo', cantidad: l.cantidad });
       });
     }
 
+    // Caché para que el botón "Lista" abra el detalle sin otra consulta.
+    _entregaVentasCache = {};
+    ventas.forEach(function(v) { _entregaVentasCache[v.id_venta] = { venta: v, lineas: lineasPorVenta[v.id_venta] || [] }; });
+
     const filas = ventas.map(function(v) {
       const cli = v.clientes;
-      const arts = (lineasPorVenta[v.id_venta]||[]).join(', ') || '—';
       return '<tr>'
         + '<td style="font-family:var(--font-mono);font-size:12px">'+(v.facturas?.numero_factura||'—')+'</td>'
         + '<td style="font-size:12px">'+(cli?cli.nombre_apellido:'—')+'<div style="font-size:10px;color:var(--suave);font-family:var(--font-mono)">'+(cli?cli.condicion_legal+'-'+cli.identificacion:'')+(cli?.telefono_movil?' · '+cli.telefono_movil:'')+'</div></td>'
-        + '<td style="font-size:12px">'+arts+'</td>'
+        + '<td><button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verListaArticulosVenta('+v.id_venta+')">📋 Lista</button></td>'
         + '<td style="text-align:right;font-family:var(--font-mono)">$ '+fmtUSD(v.total_usd||0)+'</td>'
         + (_entregaSubVista==='pendientes'
             ? '<td style="font-size:12px">'+(v.facturas?.fecha_emision?fmtFecha(v.facturas.fecha_emision):'—')+'</td>'
@@ -242,19 +267,105 @@ async function renderVentasEntregas() {
     c.innerHTML = subTabsHtml
       + '<div class="panel">'
       + '<div class="panel-header"><h3>'+(_entregaSubVista==='pendientes'?'Pendientes de Entrega':'Histórico de Entregas')+'</h3></div>'
+      + (_entregaSubVista==='historico'
+          ? '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding:0 16px 14px">'
+            + '<div class="form-campo" style="margin:0">'
+              + '<label style="font-size:9px;text-transform:none">Desde</label>'
+              + '<input type="date" id="entrega-hist-desde" value="'+_entregaHistDesde+'" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
+            + '</div>'
+            + '<div class="form-campo" style="margin:0">'
+              + '<label style="font-size:9px;text-transform:none">Hasta</label>'
+              + '<input type="date" id="entrega-hist-hasta" value="'+_entregaHistHasta+'" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">'
+            + '</div>'
+            + '<div class="form-campo" style="margin:0">'
+              + '<label style="font-size:9px;text-transform:none">Cédula/RIF o Nombre</label>'
+              + '<input type="text" id="entrega-hist-busqueda" value="'+_entregaHistBusqueda+'" placeholder="Buscar Cliente..." '
+              + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();_entregaFiltrarHistorico()}" '
+              + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:180px">'
+            + '</div>'
+            + '<button class="btn-primario" style="font-size:11px;padding:8px 14px" onclick="_entregaFiltrarHistorico()">Filtrar</button>'
+            + (_entregaHistDesde||_entregaHistHasta||_entregaHistBusqueda ? '<button class="btn-secundario" style="font-size:11px;padding:8px 14px" onclick="_entregaLimpiarFiltroHistorico()">Limpiar</button>' : '')
+            + '</div>'
+          : '')
       + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 400px))"><table style="width:100%"><thead><tr>'
-      + '<th>N° Factura</th><th>Cliente</th><th>Artículos</th><th style="text-align:right">Total</th>'
+      + '<th>N° Factura</th><th>Cliente</th><th>Detalle</th><th style="text-align:right">Total</th>'
       + (_entregaSubVista==='pendientes' ? '<th>Fecha Cobro</th><th>Estado</th>' : '<th>Fecha Entrega</th><th>Entregado por</th>')
       + '</tr></thead><tbody>'
-      + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">'+(_entregaSubVista==='pendientes'?'No hay Ventas pendientes de entrega.':'Sin entregas registradas todavía.')+'</td></tr>')
+      + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">'+(_entregaSubVista==='pendientes'?'No hay Ventas pendientes de entrega.':((_entregaHistDesde||_entregaHistHasta||_entregaHistBusqueda)?'No se encontraron entregas con ese filtro.':'Sin entregas registradas todavía.'))+'</td></tr>')
       + '</tbody></table></div></div>';
   } catch(err) {
     c.innerHTML = subTabsHtml + '<div class="alerta alerta-error" style="display:block">Error: '+err.message+'</div>';
   }
 }
 
+// Muestra el detalle de Artículos de una Venta (Pendiente o ya Entregada)
+// en una ficha de solo lectura, mismo formato de tarjeta que usa
+// Inventario > Artículos por Entregar -- sin campos de validación, porque
+// aquí solo es consulta.
+let _entregaVentasCache = {};
+function verListaArticulosVenta(id_venta) {
+  const data = _entregaVentasCache[id_venta];
+  const cont = document.getElementById('lista-articulos-venta-cont');
+  if (!data || !cont) return;
+  const v = data.venta;
+  const cli = v.clientes;
+  const lineas = data.lineas;
+  const fecha = v.facturas?.fecha_emision ? fmtFecha(v.facturas.fecha_emision) : (v.fecha_venta ? fmtFecha(v.fecha_venta) : '—');
+
+  const filasArts = lineas.length
+    ? lineas.map(function(l) {
+        return '<tr>'
+          + '<td style="text-align:center;font-family:var(--font-mono)">'+l.cantidad+'</td>'
+          + '<td>'+l.nombre+'</td>'
+          + '</tr>';
+      }).join('')
+    : '<tr><td colspan="2" style="text-align:center;color:var(--suave)">Sin artículos registrados</td></tr>';
+
+  const pieEstado = _entregaSubVista === 'pendientes'
+    ? '<div style="color:var(--suave);font-size:12px">⏳ Pendiente de entrega en Almacén</div>'
+    : '<div style="color:#22c55e;font-size:12px">✓ Entregado el '+(v.fecha_entrega?fmtFecha(v.fecha_entrega):'—')+' por '+(v.entregado_por||'—')+'</div>';
+
+  cont.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:8px">'
+      + '<div>'
+        + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Cédula/RIF</div>'
+        + '<div style="font-family:var(--font-mono);font-size:13px;margin-bottom:6px">'+(cli?(cli.condicion_legal+'-'+cli.identificacion):'—')+'</div>'
+        + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Cliente</div>'
+        + '<div style="font-size:13px;font-weight:600">'+(cli?cli.nombre_apellido:'—')+'</div>'
+      + '</div>'
+      + '<div style="text-align:right">'
+        + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Fecha</div>'
+        + '<div style="font-size:13px;margin-bottom:6px">'+fecha+'</div>'
+        + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Monto Factura</div>'
+        + '<div style="font-family:var(--font-mono);font-size:14px;color:var(--naranja);font-weight:600">$ '+fmtUSD(v.total_usd||0)+'</div>'
+      + '</div>'
+    + '</div>'
+    + '<table style="width:100%;border-collapse:collapse;margin-bottom:12px"><thead><tr style="border-bottom:1px solid var(--borde)">'
+      + '<th style="text-align:center;font-size:10px;color:var(--suave);text-transform:uppercase;padding:6px 0;width:70px">Cantidad</th>'
+      + '<th style="text-align:left;font-size:10px;color:var(--suave);text-transform:uppercase;padding:6px 0">Artículos</th>'
+      + '</tr></thead><tbody>'
+      + filasArts
+      + '</tbody></table>'
+    + '<div style="border-top:1px solid var(--borde);padding-top:12px">'+pieEstado+'</div>';
+
+  abrirModal('modal-lista-articulos-venta');
+}
+
 function _entregaCambiarSubVista(v) {
   _entregaSubVista = v;
+  renderVentasEntregas();
+}
+
+function _entregaFiltrarHistorico() {
+  _entregaHistDesde = document.getElementById('entrega-hist-desde')?.value || '';
+  _entregaHistHasta = document.getElementById('entrega-hist-hasta')?.value || '';
+  _entregaHistBusqueda = document.getElementById('entrega-hist-busqueda')?.value || '';
+  renderVentasEntregas();
+}
+
+function _entregaLimpiarFiltroHistorico() {
+  _entregaHistDesde = '';
+  _entregaHistHasta = '';
+  _entregaHistBusqueda = '';
   renderVentasEntregas();
 }
 
