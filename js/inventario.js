@@ -6415,7 +6415,7 @@ async function _guardarSalidaStockInterno() {
             id_empresa:      _empresaActiva?.id_empresa || null,
             correo_destino: correoReceptor,
             titulo:         'Solicitud de Recepción de Artículo',
-            mensaje:        cantidad + ' unid. de "' + artNom + '" enviadas desde ' + areaOrig + ' hacia ' + areaDest + '. Por favor confirme la recepción.',
+            mensaje:        'Favor confirmar la solicitud y recepción de la cantidad de ' + cantidad + ' unid. de "' + artNom + '" enviados por la ' + areaOrig,
             estado:         'PENDIENTE',
             id_salida:      id_salida,
             datos_extra:    JSON.stringify({ id_articulo: idRep, cantidad: cantidad, id_area_origen: id_areaEntrega, id_area_destino: id_area })
