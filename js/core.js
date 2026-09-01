@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831209';
+const SYD_VERSION = '20260831210';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -2778,7 +2778,7 @@ async function mostrarNotifPendiente(notif) {
   // clara a seguir en el momento.
   if (btnVerDespues) btnVerDespues.style.display = (accionNotif === 'aprobar_entrada' || accionNotif === 'entrada_compra_rechazada' || accionNotif === 'confirmar_recepcion') ? 'none' : '';
   const CONFIG_NOTIF = {
-    confirmar_recepcion: { titulo: '📦 Solicitud de Recepción', instruccion: 'Al confirmar, valida que recibió el consumible correctamente.', boton: '✓ Confirmar Recepción' },
+    confirmar_recepcion: { titulo: '📦 Recepción de Artículos', instruccion: '', boton: '✓ Confirmar' },
     aprobar_pago:         { titulo: '📝 Solicitud de Aprobación', instruccion: 'Vaya al módulo de Pagos para revisar y aprobar esta Obligación.', boton: '✓ Confirmar Pago' },
     aprobar_entrada:      { titulo: '📝 Compra de Inventario', instruccion: 'Revise el detalle e indique si Aprueba o Rechaza esta Entrada -- mientras no se resuelva, no afecta Stock ni Contabilidad.', boton: '✓ Aprobar' },
     entrada_compra_rechazada: { titulo: '❌ Compra Rechazada', instruccion: 'Revise el motivo, corrija la Entrada y vuelva a guardarla para que se reenvíe a aprobación.', boton: 'Proceder' },
@@ -2834,7 +2834,7 @@ async function mostrarNotifPendiente(notif) {
   }
 
   if (titEl) titEl.textContent = cfgNotif.titulo;
-  if (instrEl) instrEl.textContent = cfgNotif.instruccion;
+  if (instrEl) { instrEl.textContent = cfgNotif.instruccion; instrEl.style.display = cfgNotif.instruccion ? '' : 'none'; }
   if (btnConf) { btnConf.textContent = cfgNotif.boton; btnConf.dataset.textoOriginal = cfgNotif.boton; }
 
   document.getElementById('modal-notif-pendiente').style.display = 'flex';
