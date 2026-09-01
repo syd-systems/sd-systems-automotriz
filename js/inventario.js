@@ -7385,25 +7385,36 @@ function _entregasAlmacenRenderLista() {
     return;
   }
 
+  // Si hay una Venta expandida, se muestra SOLO su ficha completa (con un
+  // botón para volver) -- nunca junto a la lista, para que no se solapen.
+  if (_entregasAlmacenExpandido) {
+    const v = ventas.find(function(x) { return x.id_venta === _entregasAlmacenExpandido; });
+    if (v) {
+      cont.innerHTML = '<button class="btn-secundario" style="font-size:11px;padding:7px 14px;margin-bottom:14px" onclick="_entregasAlmacenToggleExpandir('+v.id_venta+')">← Volver a la lista</button>'
+        + renderTarjetaEntregaVenta(v, lineasPorVenta[v.id_venta] || [], { soloLectura: esHistorico, puedeMarcar: puedeMarcar });
+      return;
+    }
+    // La Venta expandida ya no está en esta lista (ej. se acaba de
+    // entregar y desapareció de Pendientes) -- se limpia y se cae a la
+    // lista normal más abajo.
+    _entregasAlmacenExpandido = null;
+  }
+
   const filas = ventas.map(function(v) {
     const cli = v.clientes;
-    const expandido = _entregasAlmacenExpandido === v.id_venta;
-    const filaCompacta = '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--gris2);border:1px solid var(--borde);border-radius:8px;margin-bottom:'+(expandido?'0':'10px')+'">'
-      + '<div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">'
-        + '<div><div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Cédula/RIF</div><div style="font-family:var(--font-mono);font-size:13px">'+(cli?(cli.condicion_legal+'-'+cli.identificacion):'—')+'</div></div>'
-        + '<div><div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Cliente</div><div style="font-size:13px;font-weight:600">'+(cli?cli.nombre_apellido:'—')+'</div></div>'
-      + '</div>'
-      + '<button class="btn-'+(expandido?'secundario':'primario')+'" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="_entregasAlmacenToggleExpandir('+v.id_venta+')">🧾 '+(expandido?'Ocultar':'FACTURA')+'</button>'
-    + '</div>';
-
-    const tarjetaExpandida = expandido
-      ? '<div style="margin-bottom:10px;padding:0 2px">'+renderTarjetaEntregaVenta(v, lineasPorVenta[v.id_venta] || [], { soloLectura: esHistorico, puedeMarcar: puedeMarcar })+'</div>'
-      : '';
-
-    return filaCompacta + tarjetaExpandida;
+    return '<tr>'
+      + '<td style="font-family:var(--font-mono);font-size:13px">'+(cli?(cli.condicion_legal+'-'+cli.identificacion):'—')+'</td>'
+      + '<td style="font-size:13px;font-weight:600">'+(cli?cli.nombre_apellido:'—')+'</td>'
+      + '<td style="text-align:right"><button class="btn-primario" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="_entregasAlmacenToggleExpandir('+v.id_venta+')">🧾 FACTURA</button></td>'
+      + '</tr>';
   }).join('');
 
-  cont.innerHTML = subTabsHtml + filtroHtml + filas;
+  cont.innerHTML = subTabsHtml + filtroHtml
+    + '<div class="tabla-container"><table style="width:100%"><thead><tr>'
+    + '<th>Cédula/RIF</th><th>Cliente</th><th></th>'
+    + '</tr></thead><tbody>'
+    + filas
+    + '</tbody></table></div>';
 }
 
 async function _confirmarEntregaAlmacen(id_venta) {
