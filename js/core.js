@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831203';
+const SYD_VERSION = '20260831204';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3199,7 +3199,7 @@ function renderTarjetaEntregaVenta(v, lineas, opts) {
         return '<tr>'
           + '<td style="text-align:center;font-family:var(--font-mono)">'+l.cantidad+'</td>'
           + '<td>'+l.nombre+'</td>'
-          + '<td style="text-align:center"><input type="checkbox" '+(opts.soloLectura?('disabled'+(entregada?' checked':'')):'')+' style="width:16px;height:16px;cursor:'+(opts.soloLectura?'default':'pointer')+'"></td>'
+          + '<td style="text-align:center"><input type="checkbox" class="'+(opts.soloLectura?'':'chk-entrega-articulo chk-entrega-articulo-'+v.id_venta)+'" '+(opts.soloLectura?('disabled'+(entregada?' checked':'')):'')+' style="width:16px;height:16px;cursor:'+(opts.soloLectura?'default':'pointer')+'"></td>'
           + '</tr>';
       }).join('')
     : '<tr><td colspan="3" style="text-align:center;color:var(--suave)">Sin artículos registrados</td></tr>';
