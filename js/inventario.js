@@ -323,12 +323,16 @@ async function renderInventario(filtro) {
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\');}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:180px">'
       + (puedo('INVENTARIO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Artículo</button>' : '')
-      + ((sesionActual?.administrador || puedo('INVENTARIO','VER_ENTREGAS')) ? '<button class="btn-secundario" onclick="abrirModalEntregasAlmacen()">📦 Artículos por Entregar</button>' : '')
+      + ((sesionActual?.administrador || puedo('INVENTARIO','VER_ENTREGAS')) ? '<button class="btn-secundario" onclick="abrirModalEntregasAlmacen()">📦 Salidas por Ventas<span id="badge-entregas-almacen"></span></button>' : '')
       + '<button class="btn-secundario" title="Refrescar" onclick="renderInventario(document.getElementById(\'buscar-inv\')?.value||\'\')">🔄 Refrescar</button>'
       + '</div></div>'
       + '<div id="alerta-stock-bajo" style="display:none"></div>'
       + '<div id="tabla-inv-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
       + '</div>';
+    // En segundo plano, sin bloquear el render principal -- revisa si hay
+    // Ventas pendientes de entrega, para hacer titilar el botón "Salidas
+    // por Ventas" (mismo patrón que "+ Nueva Factura" con OS Cerradas).
+    revisarBadgeEntregasAlmacen();
   }
 
   // Solo al ABRIR el módulo (no en cada re-render por búsqueda/filtro): si
@@ -7230,13 +7234,14 @@ function onSelAreaEntrega() {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  ARTÍCULOS POR ENTREGAR (Almacén) -- Ventas Facturadas y Pagadas
-//  pendientes de entrega física al Comprador. Vive en Inventario General
-//  para que un operador de Almacén (permiso INVENTARIO.VER_ENTREGAS, sin
-//  necesidad del resto de Inventario/Ventas) pueda atenderlas sin salir de
-//  su módulo. La lista NUNCA muestra el N° de Factura -- se valida contra
-//  Supabase en el momento de confirmar, para que el número correcto no
-//  llegue al navegador de antemano (ver _confirmarEntregaAlmacen).
+//  SALIDAS POR VENTAS (Almacén) -- antes "Artículos por Entregar".
+//  Ventas Facturadas y Pagadas pendientes de entrega física al Comprador.
+//  Vive en Inventario General para que un operador de Almacén (permiso
+//  INVENTARIO.VER_ENTREGAS, sin necesidad del resto de Inventario/Ventas)
+//  pueda atenderlas sin salir de su módulo. La lista NUNCA muestra el N°
+//  de Factura en Pendientes -- se valida contra Supabase en el momento de
+//  confirmar, para que el número correcto no llegue al navegador de
+//  antemano (ver _confirmarEntregaAlmacen).
 // ══════════════════════════════════════════════════════════════
 
 let _entregasAlmacenSubVista = 'pendientes'; // 'pendientes' | 'historico'
@@ -7248,11 +7253,31 @@ let _entregasAlmacenCache = { ventas: [], lineasPorVenta: {} }; // último resul
 
 async function abrirModalEntregasAlmacen() {
   if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_ENTREGAS')) {
-    alert('No tiene permiso para ver Artículos por Entregar.');
+    alert('No tiene permiso para ver Salidas por Ventas.');
     return;
   }
+  // Siempre arranca en Pendientes de Entrega, sin importar en qué
+  // sub-vista se haya quedado la última vez que se abrió.
+  _entregasAlmacenSubVista = 'pendientes';
+  _entregasAlmacenExpandido = null;
+  const btnVolverInicial = document.getElementById('entregas-almacen-btn-volver');
+  if (btnVolverInicial) btnVolverInicial.style.display = 'none';
   abrirModal('modal-entregas-almacen');
   await _cargarEntregasAlmacen();
+}
+
+async function revisarBadgeEntregasAlmacen() {
+  const badgeEl = document.getElementById('badge-entregas-almacen');
+  if (!badgeEl) return;
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_ENTREGAS')) { badgeEl.innerHTML = ''; return; }
+  try {
+    // Mismo criterio EXACTO que la consulta de Pendientes de Entrega.
+    const ventas = await api('ventas','GET',null,
+      '?estado=eq.FACTURADA&entregado=eq.false&select=id_venta,facturas!inner(estado)&facturas.estado=eq.PAGADA&limit=1');
+    badgeEl.innerHTML = (ventas && ventas.length)
+      ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fc8181;margin-left:6px;vertical-align:middle;animation:parpadeoAlerta 1.2s ease-in-out infinite" title="Hay Ventas pendientes de entrega"></span>'
+      : '';
+  } catch(eBadgeEntregas) { console.warn('Error revisando badge de Ventas pendientes de entrega:', eBadgeEntregas); }
 }
 
 function _entregasAlmacenCambiarSubVista(v) {
@@ -7284,6 +7309,11 @@ function _entregasAlmacenToggleExpandir(id_venta) {
   _entregasAlmacenRenderLista();
 }
 
+function _entregasAlmacenVolverALista() {
+  _entregasAlmacenExpandido = null;
+  _entregasAlmacenRenderLista();
+}
+
 async function _cargarEntregasAlmacen() {
   const cont = document.getElementById('entregas-almacen-cont');
   if (!cont) return;
@@ -7296,8 +7326,8 @@ async function _cargarEntregasAlmacen() {
   if (leyendaEl) leyendaEl.style.display = (_entregasAlmacenSubVista === 'historico') ? 'none' : '';
 
   const subTabsHtml = '<div style="display:flex;gap:3px;background:var(--fondo);border:1px solid var(--borde);border-radius:6px;padding:3px;margin-bottom:14px;width:fit-content">'
-    + '<button onclick="_entregasAlmacenCambiarSubVista(\'pendientes\')" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:'+(_entregasAlmacenSubVista==='pendientes'?'var(--naranja)':'transparent')+';color:'+(_entregasAlmacenSubVista==='pendientes'?'#fff':'var(--suave)')+'">Pendientes de Entrega</button>'
-    + '<button onclick="_entregasAlmacenCambiarSubVista(\'historico\')" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:'+(_entregasAlmacenSubVista==='historico'?'var(--naranja)':'transparent')+';color:'+(_entregasAlmacenSubVista==='historico'?'#fff':'var(--suave)')+'">Histórico de Entregas</button>'
+    + '<button onclick="_entregasAlmacenCambiarSubVista(\'pendientes\')" style="font-size:13px;font-weight:600;padding:7px 14px;border-radius:4px;border:none;cursor:pointer;background:'+(_entregasAlmacenSubVista==='pendientes'?'var(--naranja)':'transparent')+';color:'+(_entregasAlmacenSubVista==='pendientes'?'#fff':'var(--suave)')+'">Pendientes</button>'
+    + '<button onclick="_entregasAlmacenCambiarSubVista(\'historico\')" style="font-size:13px;font-weight:600;padding:7px 14px;border-radius:4px;border:none;cursor:pointer;background:'+(_entregasAlmacenSubVista==='historico'?'var(--naranja)':'transparent')+';color:'+(_entregasAlmacenSubVista==='historico'?'#fff':'var(--suave)')+'">Histórico</button>'
     + '</div>';
 
   const filtroHtml = _entregasAlmacenSubVista==='historico'
@@ -7375,8 +7405,10 @@ function _entregasAlmacenRenderLista() {
   const { ventas, lineasPorVenta, subTabsHtml, filtroHtml } = _entregasAlmacenCache;
   const puedeMarcar = sesionActual?.administrador || puedo('INVENTARIO','MARCAR_ENTREGA');
   const esHistorico = _entregasAlmacenSubVista === 'historico';
+  const btnVolverEl = document.getElementById('entregas-almacen-btn-volver');
 
   if (!ventas || !ventas.length) {
+    if (btnVolverEl) btnVolverEl.style.display = 'none';
     cont.innerHTML = subTabsHtml + filtroHtml + '<div style="text-align:center;color:var(--suave);padding:32px">'
       + (esHistorico
           ? ((_entregasAlmacenHistDesde||_entregasAlmacenHistHasta||_entregasAlmacenHistBusqueda) ? 'No se encontraron entregas con ese filtro.' : 'Sin entregas registradas todavía.')
@@ -7385,13 +7417,14 @@ function _entregasAlmacenRenderLista() {
     return;
   }
 
-  // Si hay una Venta expandida, se muestra SOLO su ficha completa (con un
-  // botón para volver) -- nunca junto a la lista, para que no se solapen.
+  // Si hay una Venta expandida, se muestra SOLO su ficha completa -- nunca
+  // junto a la lista, para que no se solapen. El botón "Volver a la
+  // lista" vive en el footer del modal (junto a "Cerrar"), no aquí.
   if (_entregasAlmacenExpandido) {
     const v = ventas.find(function(x) { return x.id_venta === _entregasAlmacenExpandido; });
     if (v) {
-      cont.innerHTML = '<button class="btn-secundario" style="font-size:11px;padding:7px 14px;margin-bottom:14px" onclick="_entregasAlmacenToggleExpandir('+v.id_venta+')">← Volver a la lista</button>'
-        + renderTarjetaEntregaVenta(v, lineasPorVenta[v.id_venta] || [], { soloLectura: esHistorico, puedeMarcar: puedeMarcar });
+      if (btnVolverEl) btnVolverEl.style.display = '';
+      cont.innerHTML = renderTarjetaEntregaVenta(v, lineasPorVenta[v.id_venta] || [], { soloLectura: esHistorico, puedeMarcar: puedeMarcar });
       return;
     }
     // La Venta expandida ya no está en esta lista (ej. se acaba de
@@ -7399,6 +7432,8 @@ function _entregasAlmacenRenderLista() {
     // lista normal más abajo.
     _entregasAlmacenExpandido = null;
   }
+
+  if (btnVolverEl) btnVolverEl.style.display = 'none';
 
   const filas = ventas.map(function(v) {
     const cli = v.clientes;
@@ -7466,7 +7501,7 @@ async function _confirmarEntregaAlmacen(id_venta) {
 
     // Quitar la fila de la lista después de un instante, para que el
     // operador alcance a ver la confirmación antes de que desaparezca.
-    setTimeout(function(){ _cargarEntregasAlmacen(); }, 900);
+    setTimeout(function(){ _cargarEntregasAlmacen(); revisarBadgeEntregasAlmacen(); }, 900);
   } catch(err) {
     msgEl.textContent = 'Error: ' + err.message;
     msgEl.style.color = '#fc8181';
