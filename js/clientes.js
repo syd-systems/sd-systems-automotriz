@@ -26,7 +26,7 @@ async function renderClientes() {
         + '<div style="font-weight:500">' + x.nombre_apellido + '</div>'
         + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + x.condicion_legal + '-' + x.identificacion + '</div>'
         + '</td>'
-        + '<td style="font-size:12px"><span class="badge badge-gris">' + (CONDICION_LEGAL_LABEL[x.condicion_legal] || x.condicion_legal) + '</span></td>'
+        + '<td style="font-size:12px">' + (x.direccion || '—') + '</td>'
         + '<td style="font-size:12px">' + (x.telefono_movil || '—') + '</td>'
         + '<td style="font-size:12px">' + (x.correo_electronico || '—') + '</td>'
         + '<td><span class="badge ' + (x.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (x.estado || 'ACTIVO') + '</span></td>'
@@ -54,7 +54,7 @@ async function renderClientes() {
       + (puedo('CLIENTES','CREAR') ? '<button class="btn-primario" onclick="abrirCliente(null)">+ Nuevo Cliente</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 355px))"><table style="table-layout:fixed;width:100%"><thead><tr>'
-      + '<th>Nombre / Identificación</th><th>Condición Legal</th><th>Teléfono</th><th>Correo</th><th>Estado</th><th>Acción</th>'
+      + '<th>Nombre / Identificación</th><th>Dirección</th><th>Teléfono</th><th>Correo</th><th>Estado</th><th>Acción</th>'
       + '</tr></thead><tbody id="cli-tbody">'
       + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">No hay clientes registrados</td></tr>')
       + '</tbody></table></div></div>';
