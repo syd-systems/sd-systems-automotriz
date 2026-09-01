@@ -7461,6 +7461,17 @@ async function _confirmarEntregaAlmacen(id_venta) {
   if (!msgEl) return;
   msgEl.style.display = 'none';
 
+  // Todos los Artículos de esta Venta deben quedar tildados como "visto
+  // bueno" físicamente por el Custodio, antes de poder confirmar la
+  // entrega -- no basta con el N° de Factura.
+  const checksArticulos = document.querySelectorAll('.chk-entrega-articulo-'+id_venta);
+  if (checksArticulos.length && Array.from(checksArticulos).some(function(chk){ return !chk.checked; })) {
+    msgEl.textContent = 'Debe tildar como entregados TODOS los Artículos antes de confirmar.';
+    msgEl.style.color = '#fc8181';
+    msgEl.style.display = '';
+    return;
+  }
+
   if (!numeroTecleado) {
     msgEl.textContent = 'Ingrese el N° de Factura que le presenta el Cliente.';
     msgEl.style.color = '#fc8181';
