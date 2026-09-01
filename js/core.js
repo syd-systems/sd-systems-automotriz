@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831195';
+const SYD_VERSION = '20260831196';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3220,8 +3220,8 @@ function renderTarjetaEntregaVenta(v, lineas, opts) {
       + '<div id="entrega-almacen-msg-'+v.id_venta+'" style="display:none;font-size:11px;margin-top:8px;text-align:right"></div>';
   }
 
-  return '<div style="background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:16px;margin-bottom:14px">'
-    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:8px">'
+  return '<div style="margin-bottom:20px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;flex-wrap:wrap;gap:8px">'
       + '<div>'
         // N° de Factura -- solo se muestra en modo lectura (Histórico o
         // consulta desde Ventas). En Inventario > Pendientes se sigue
@@ -3242,6 +3242,7 @@ function renderTarjetaEntregaVenta(v, lineas, opts) {
         + '<div style="font-family:var(--font-mono);font-size:11px;color:var(--suave)">$ '+fmtUSD(v.total_usd||0)+'</div>'
       + '</div>'
     + '</div>'
+    + '<div style="background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:16px">'
     + '<div style="max-height:220px;overflow-y:auto;margin-bottom:12px;border-bottom:1px solid var(--borde)">'
     + '<table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--borde)">'
       + '<th style="text-align:center;font-size:10px;color:var(--suave);text-transform:uppercase;padding:6px 0;width:70px;position:sticky;top:0;background:var(--gris2)">Cantidad</th>'
@@ -3252,6 +3253,7 @@ function renderTarjetaEntregaVenta(v, lineas, opts) {
       + '</tbody></table>'
     + '</div>'
     + '<div style="padding-top:12px">'+pie+'</div>'
+    + '</div>'
   + '</div>';
 }
 
