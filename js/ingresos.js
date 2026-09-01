@@ -986,6 +986,65 @@ async function generarCxCyAsientoFactura(idFactura) {
                   await api('cont_asiento_lineas','POST',{ id_asiento:arCOGSVenta.id_asiento, id_cuenta:aCV.id_cuenta_contable, orden:2,
                     descripcion:'Salida inventario por venta: '+(aCV.nombre_articulo||'')+' x'+cantidadVenta,
                     debe_usd:0, haber_usd:montoUSDCOGSVenta, debe_ves:0, haber_ves:montoVESCOGSVenta, tasa_bcv:tasaCOGS });
+
+                  // ── Si el stock del artículo quedó en 0 GLOBAL (sumando
+                  // todas las Áreas), cerrar cualquier residuo de redondeo
+                  // del CPP -- mismo mecanismo ya usado en la rama de OS
+                  // arriba y en Salida de Stock de Consumibles
+                  // (inventario.js). Faltaba aquí, en Venta directa, que es
+                  // el camino de código que generó exactamente este bug.
+                  try {
+                    const stockGlobalFilasVenta = await api('inventario_stock_area','GET',null,
+                      '?id_articulo=eq.'+lin.id_articulo+'&select=stock_actual');
+                    const stockGlobalRestanteVenta = (stockGlobalFilasVenta||[]).reduce(function(a,f){ return a + (parseFloat(f.stock_actual)||0); }, 0);
+                    if (Math.abs(stockGlobalRestanteVenta) < 0.0001 && aCV.id_cuenta_contable) {
+                      const [entradasRefVenta, salidasRefVenta] = await Promise.all([
+                        api('stock_entradas','GET',null,'?id_articulo=eq.'+lin.id_articulo+'&or=(anulada.eq.false,anulada.is.null)&select=id_entrada'),
+                        api('stock_salidas','GET',null,'?id_articulo=eq.'+lin.id_articulo+'&or=(anulada.eq.false,anulada.is.null)&select=id_salida'),
+                      ]);
+                      const refsVenta = []
+                        .concat((entradasRefVenta||[]).map(function(e){ return 'ENT-'+e.id_entrada; }))
+                        .concat((salidasRefVenta||[]).map(function(s){ return 'SAL-'+s.id_salida; }));
+                      if (refsVenta.length) {
+                        const asientosArtVenta = await api('cont_asientos','GET',null,
+                          '?referencia=in.(' + refsVenta.join(',') + ')&estado=neq.ANULADO&select=id_asiento');
+                        const idsAstVenta = (asientosArtVenta||[]).map(function(a){ return a.id_asiento; });
+                        if (idsAstVenta.length) {
+                          const lineasInvVenta = await api('cont_asiento_lineas','GET',null,
+                            '?id_asiento=in.(' + idsAstVenta.join(',') + ')&id_cuenta=eq.' + aCV.id_cuenta_contable + '&select=debe_ves,haber_ves');
+                          let totalDebeVenta = 0, totalHaberVenta = 0;
+                          (lineasInvVenta||[]).forEach(function(l) {
+                            totalDebeVenta  += parseFloat(l.debe_ves  || 0);
+                            totalHaberVenta += parseFloat(l.haber_ves || 0);
+                          });
+                          const residuoVenta = parseFloat((totalDebeVenta - totalHaberVenta).toFixed(2));
+                          if (Math.abs(residuoVenta) >= 0.01) {
+                            const _todasCtasRedondeoVenta = await obtenerCuentasContables();
+                            const ctaGastoResVenta   = _todasCtasRedondeoVenta.find(function(c){ return c.codigo === '6.2.02.001'; }) || null;
+                            const ctaIngresoResVenta = _todasCtasRedondeoVenta.find(function(c){ return c.codigo === '4.2.02.001'; }) || null;
+                            const montoAjusteVenta = Math.abs(residuoVenta);
+                            if (residuoVenta > 0 && ctaGastoResVenta) {
+                              // Inventario quedó DEUDOR (sobró valor) -> Gasto (debe) / Inventario (haber)
+                              await api('cont_asiento_lineas','POST',{ id_asiento:arCOGSVenta.id_asiento, id_cuenta:ctaGastoResVenta.id_cuenta, orden:3,
+                                descripcion:'Ajuste por redondeo de inventario: '+(aCV.nombre_articulo||''),
+                                debe_usd:0, haber_usd:0, debe_ves:montoAjusteVenta, haber_ves:0, tasa_bcv:tasaCOGS });
+                              await api('cont_asiento_lineas','POST',{ id_asiento:arCOGSVenta.id_asiento, id_cuenta:aCV.id_cuenta_contable, orden:4,
+                                descripcion:'Ajuste por redondeo de inventario: '+(aCV.nombre_articulo||''),
+                                debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoAjusteVenta, tasa_bcv:tasaCOGS });
+                            } else if (residuoVenta < 0 && ctaIngresoResVenta) {
+                              // Inventario quedó ACREEDOR (faltó valor) -> Inventario (debe) / Ingreso (haber)
+                              await api('cont_asiento_lineas','POST',{ id_asiento:arCOGSVenta.id_asiento, id_cuenta:aCV.id_cuenta_contable, orden:3,
+                                descripcion:'Ajuste por redondeo de inventario: '+(aCV.nombre_articulo||''),
+                                debe_usd:0, haber_usd:0, debe_ves:montoAjusteVenta, haber_ves:0, tasa_bcv:tasaCOGS });
+                              await api('cont_asiento_lineas','POST',{ id_asiento:arCOGSVenta.id_asiento, id_cuenta:ctaIngresoResVenta.id_cuenta, orden:4,
+                                descripcion:'Ajuste por redondeo de inventario: '+(aCV.nombre_articulo||''),
+                                debe_usd:0, haber_usd:0, debe_ves:0, haber_ves:montoAjusteVenta, tasa_bcv:tasaCOGS });
+                            }
+                          }
+                        }
+                      }
+                    }
+                  } catch(eAjusteRedondeoVenta) { console.warn('Error generando ajuste por redondeo de inventario (Venta directa):', eAjusteRedondeoVenta); }
                 }
               }
             }
