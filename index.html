@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260831214"></script>
-<script src="js/parametros.js?v=20260831214"></script>
-<script src="js/empresas.js?v=20260831214"></script>
-<script src="js/ingresos.js?v=20260831214"></script>
-<script src="js/inventario.js?v=20260831214"></script>
-<script src="js/proveedores.js?v=20260831214"></script>
-<script src="js/clientes.js?v=20260831214"></script>
-<script src="js/ventas.js?v=20260831214"></script>
-<script src="js/contabilidad.js?v=20260831214"></script>
-<script src="js/egresos.js?v=20260831214"></script>
-<script src="js/vehiculos.js?v=20260831214"></script>
-<script src="js/catalogo.js?v=20260831214"></script>
-<script src="js/ordenes.js?v=20260831214"></script>
+<script src="js/core.js?v=20260831215"></script>
+<script src="js/parametros.js?v=20260831215"></script>
+<script src="js/empresas.js?v=20260831215"></script>
+<script src="js/ingresos.js?v=20260831215"></script>
+<script src="js/inventario.js?v=20260831215"></script>
+<script src="js/proveedores.js?v=20260831215"></script>
+<script src="js/clientes.js?v=20260831215"></script>
+<script src="js/ventas.js?v=20260831215"></script>
+<script src="js/contabilidad.js?v=20260831215"></script>
+<script src="js/egresos.js?v=20260831215"></script>
+<script src="js/vehiculos.js?v=20260831215"></script>
+<script src="js/catalogo.js?v=20260831215"></script>
+<script src="js/ordenes.js?v=20260831215"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4981,51 +4981,45 @@
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-campo">
-          <label>Fecha *</label>
+          <label>Fecha</label>
           <input type="date" id="traspaso-cb-fecha"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
         </div>
         <div class="form-campo">
-          <label>Moneda *</label>
+          <label>Moneda</label>
           <select id="traspaso-cb-moneda" onchange="_traspasoCBActualizarCuentas()"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"></select>
         </div>
       </div>
       <div class="form-campo" style="margin-top:14px">
-        <label>Dirección del Traspaso *</label>
+        <label>Dirección del Traspaso</label>
         <select id="traspaso-cb-direccion"
           style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
           <option value="CAJA_A_BANCO">Caja → Banco (depósito)</option>
           <option value="BANCO_A_CAJA">Banco → Caja (retiro)</option>
         </select>
       </div>
-      <div class="form-grid" style="margin-top:14px">
-        <div class="form-campo">
-          <label>Cuenta Caja *</label>
-          <select id="traspaso-cb-cuenta-caja"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"></select>
-        </div>
-        <div class="form-campo">
-          <label>Banco *</label>
-          <select id="traspaso-cb-banco"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar —</option>
-          </select>
-        </div>
-      </div>
       <div class="form-campo" style="margin-top:14px">
-        <label>Cuenta Banco *</label>
-        <select id="traspaso-cb-cuenta-banco"
+        <label>Cuenta Caja</label>
+        <select id="traspaso-cb-cuenta-caja"
           style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"></select>
       </div>
+      <div class="form-campo" style="margin-top:14px">
+        <label>Cuenta Bancaria</label>
+        <select id="traspaso-cb-cuenta-bancaria"
+          style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <option value="">— Seleccionar —</option>
+        </select>
+        <div style="font-size:11px;color:var(--suave);margin-top:4px">¿No aparece la cuenta que buscas? <a href="#" onclick="abrirModalCuentasBancariasEmpresa();return false" style="color:var(--naranja)">Agrégala aquí</a>.</div>
+      </div>
       <div class="form-grid" style="margin-top:14px">
         <div class="form-campo">
-          <label>Monto *</label>
+          <label>Monto</label>
           <input type="number" id="traspaso-cb-monto" min="0.01" step="0.01" placeholder="0.00"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
         </div>
         <div class="form-campo">
-          <label>Referencia / Comprobante *</label>
+          <label>Referencia / Comprobante</label>
           <input type="text" id="traspaso-cb-referencia" placeholder="N° de comprobante"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
         </div>
@@ -5048,7 +5042,7 @@
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
           <div style="font-size:13px;color:var(--texto)">Usuario: <span id="traspaso-cb-usuario-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
         </div>
-        <label style="font-size:12px">Contraseña *</label>
+        <label style="font-size:12px">Contraseña</label>
         <input type="password" id="traspaso-cb-clave" placeholder="Ingrese su contraseña para confirmar"
           style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px"
           onkeydown="if(event.key==='Enter'){guardarTraspasoCB()}">
@@ -5059,6 +5053,73 @@
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-traspaso-cb')">Cancelar</button>
       <button class="btn-primario" id="btn-traspaso-cb-confirmar" onclick="guardarTraspasoCB()">✓ Confirmar Traspaso</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL CUENTAS BANCARIAS DE LA EMPRESA ══ -->
+<div class="modal-overlay" id="modal-cuentas-bancarias-empresa">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <h3>🏦 CUENTAS BANCARIAS DE LA EMPRESA</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-cuentas-bancarias-empresa')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--suave);margin-bottom:16px">
+        Cuentas bancarias reales de la Empresa (información propia, no de Clientes ni Proveedores).
+        Se usan al registrar Traspasos Caja/Banco, y a futuro en Conciliación Bancaria.
+      </p>
+      <div id="cbe-listado-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>
+
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--naranja);margin:24px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--borde)">+ Agregar Cuenta</div>
+      <div class="form-grid">
+        <div class="form-campo">
+          <label>Alias</label>
+          <input type="text" id="cbe-alias" placeholder="Ej. Cuenta Corriente Operativa"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+        </div>
+        <div class="form-campo">
+          <label>Moneda</label>
+          <select id="cbe-moneda"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"></select>
+        </div>
+      </div>
+      <div class="form-grid" style="margin-top:14px">
+        <div class="form-campo">
+          <label>Institución Financiera</label>
+          <select id="cbe-banco"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar —</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>Tipo de Cuenta</label>
+          <select id="cbe-tipo-cuenta"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar —</option>
+            <option value="CORRIENTE">Corriente</option>
+            <option value="AHORRO">Ahorro</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid" style="margin-top:14px">
+        <div class="form-campo">
+          <label>Número de Cuenta</label>
+          <input type="text" id="cbe-numero-cuenta" placeholder="0000000000000000" maxlength="20"
+            oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+        </div>
+        <div class="form-campo">
+          <label>Cuenta Contable (para el asiento)</label>
+          <select id="cbe-cuenta-contable"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"></select>
+        </div>
+      </div>
+      <div class="alerta alerta-error" id="alerta-cbe-err" style="display:none;margin-top:14px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-cuentas-bancarias-empresa')">Cerrar</button>
+      <button class="btn-primario" id="btn-cbe-guardar" onclick="guardarCuentaBancariaEmpresa()">+ Agregar Cuenta</button>
     </div>
   </div>
 </div>
