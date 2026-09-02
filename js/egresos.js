@@ -4666,6 +4666,10 @@ async function ejecutarPagoCxP(id_cxp) {
   const btnConf = document.getElementById('btn-confirmar-pago');
   if (btnConf) { btnConf.disabled = false; btnConf.textContent = '💳 Confirmar Pago'; }
   document.getElementById('alerta-exec-err').style.display = 'none';
+  const claveElExec = document.getElementById('exec-pago-clave');
+  if (claveElExec) claveElExec.value = '';
+  const usuarioNombreElExec = document.getElementById('exec-pago-usuario-nombre');
+  if (usuarioNombreElExec) usuarioNombreElExec.textContent = sesionActual?.nombre || sesionActual?.correo_usuario || '—';
 
   // Moneda de Pago -- select editable. Se sugiere por defecto lo YA
   // CONGELADO en la CxP (c.moneda_pago) -- es el mejor punto de partida
@@ -5030,6 +5034,23 @@ async function confirmarEjecucionPago() {
     errEl.textContent = 'Debe ingresar el número de referencia o comprobante.';
     errEl.style.display = 'block';
     document.getElementById('exec-pago-ref')?.focus();
+    resetBtn();
+    return;
+  }
+
+  const claveExec = document.getElementById('exec-pago-clave')?.value || '';
+  if (!claveExec) {
+    errEl.textContent = 'Debe ingresar su contraseña para confirmar.';
+    errEl.style.display = 'block';
+    document.getElementById('exec-pago-clave')?.focus();
+    resetBtn();
+    return;
+  }
+  const validaClaveExec = await validarClaveUsuarioActual(claveExec);
+  if (!validaClaveExec.ok) {
+    errEl.textContent = validaClaveExec.msg;
+    errEl.style.display = 'block';
+    document.getElementById('exec-pago-clave')?.focus();
     resetBtn();
     return;
   }
