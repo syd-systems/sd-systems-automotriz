@@ -1672,12 +1672,16 @@ async function _verComprobanteTraspaso(rutaComprobante) {
 // futuro el módulo de Conciliación Bancaria.
 // ══════════════════════════════════════════════════════════════
 
+let _cbeBancosCache = []; // { id, nombre, codigo } -- para resolver el código de 4 dígitos al elegir Banco
+
 async function abrirModalCuentasBancariasEmpresa() {
   if (!sesionActual?.administrador && !puedo('CONTABILIDAD','TRASPASO')) {
     alert('No tiene permiso para gestionar Cuentas Bancarias de la Empresa.');
     return;
   }
   document.getElementById('cbe-alias').value = '';
+  document.getElementById('cbe-cod-banco').value = '';
+  document.getElementById('cbe-num-cuenta-resto').value = '';
   document.getElementById('cbe-numero-cuenta').value = '';
   document.getElementById('cbe-tipo-cuenta').value = '';
   document.getElementById('alerta-cbe-err').style.display = 'none';
@@ -1688,9 +1692,11 @@ async function abrirModalCuentasBancariasEmpresa() {
     + (monedaSecundariaCbe !== monedaPrincipalCbe ? '<option value="'+monedaSecundariaCbe+'">'+monedaSecundariaCbe+'</option>' : '');
 
   try {
-    const bancosCbe = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre');
+    // Mismo patrón que "Cuenta Nómina" en Empleados: código de 4 dígitos
+    // del Banco se auto-llena al elegirlo (ver onSelBancoCbe más abajo).
+    _cbeBancosCache = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo') || [];
     document.getElementById('cbe-banco').innerHTML = '<option value="">— Seleccionar —</option>'
-      + (bancosCbe||[]).map(function(b){ return '<option value="'+b.id+'">'+b.nombre+'</option>'; }).join('');
+      + _cbeBancosCache.map(function(b){ return '<option value="'+b.id+'">'+b.nombre+'</option>'; }).join('');
   } catch(eBancosCbe) {}
 
   try {
@@ -1703,6 +1709,31 @@ async function abrirModalCuentasBancariasEmpresa() {
 
   await cbeCargarListado();
   abrirModal('modal-cuentas-bancarias-empresa');
+}
+
+// Mismo patrón que onSelBancoEmpleado()/sincronizarNumeroCuenta() en
+// parametros.js -- código de 4 dígitos del Banco se auto-llena y no se
+// puede editar; el resto del número sí.
+function onSelBancoCbe() {
+  const sel     = document.getElementById('cbe-banco');
+  const codEl   = document.getElementById('cbe-cod-banco');
+  const restoEl = document.getElementById('cbe-num-cuenta-resto');
+  if (!sel || !codEl) return;
+
+  const id_banco = parseInt(sel.value);
+  const banco = _cbeBancosCache.find(function(b) { return b.id === id_banco; });
+  const codigo = banco && banco.codigo ? banco.codigo.replace(/\D/g,'').substring(0,4) : '';
+
+  codEl.value = codigo;
+  if (restoEl) { restoEl.value = ''; restoEl.focus(); }
+  sincronizarNumeroCuentaCbe();
+}
+
+function sincronizarNumeroCuentaCbe() {
+  const cod    = document.getElementById('cbe-cod-banco')?.value || '';
+  const resto  = document.getElementById('cbe-num-cuenta-resto')?.value || '';
+  const hidden = document.getElementById('cbe-numero-cuenta');
+  if (hidden) hidden.value = (cod + resto).replace(/\s/g,'');
 }
 
 async function cbeCargarListado() {
