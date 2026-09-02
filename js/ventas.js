@@ -34,7 +34,7 @@ let _ventasArticulosPorVenta = {};       // { id_venta: {categorias:Set, tipos:S
 let _ventaLineas = []; // líneas en edición del modal (en memoria, no se guardan hasta "Guardar Borrador")
 let _ventaLineasOriginales = []; // snapshot de las líneas YA GUARDADAS al abrir el modal -- para poder revertir la reserva en vivo si se cierra sin guardar (Retornar / ✕)
 let _idAreaAlmacenVentas = null; // id de "Gerencia de Compras" (código 2300) -- Ventas siempre descuenta de ahí, sin pedirle al operador que elija Área
-let _articulosMercanciaVentas = []; // artículos filtrados (solo Mercancías, cuenta 1.1.03.001) con su stock en el Almacén
+let _articulosMercanciaVentas = []; // artículos filtrados (solo Mercancías, cuenta 1.1.04.001) con su stock en el Almacén
 let _invTiposCacheVentas = []; // catálogo de Tipos de Artículo (inv_articulos_tipo) -- para el filtro por Tipo
 let _vtaFiltroCategoria = '';
 let _vtaFiltroTipo = '';
@@ -50,7 +50,7 @@ async function _obtenerAreaAlmacenVentas() {
 }
 
 // Ventas solo puede vender artículos catalogados como Mercancías (cuenta
-// contable 1.1.03.001 — Inventario de Mercancías), no Repuestos ni
+// contable 1.1.04.001 — Inventario de Mercancías), no Repuestos ni
 // Consumibles de Taller. Se recalcula cada vez que se abre el modal, para
 // que el stock mostrado entre paréntesis esté siempre al día.
 async function _cargarArticulosMercanciaVentas() {
@@ -58,7 +58,7 @@ async function _cargarArticulosMercanciaVentas() {
   let idCuentaMercancias = null;
   try {
     const cuentas = await obtenerCuentasContables();
-    const ctaMercancias = cuentas.find(function(c) { return c.codigo === '1.1.03.001'; });
+    const ctaMercancias = cuentas.find(function(c) { return c.codigo === '1.1.04.001'; });
     idCuentaMercancias = ctaMercancias ? ctaMercancias.id_cuenta : null;
   } catch(e) {}
 
