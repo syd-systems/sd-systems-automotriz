@@ -2690,16 +2690,20 @@ async function verPagoCxP(id_cxp) {
     const previewEl2   = document.getElementById('cont-pago-cxp-archivo-preview');
     if (previewEl2) {
       if (c.url_comprobante) {
-        const url = c.url_comprobante;
-        const esImg = url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-        let html = '<div style="margin-top:8px"><div style="font-size:10px;color:var(--suave);margin-bottom:4px">Comprobante:</div>';
-        if (esImg) {
-          html += '<a href="' + url + '" target="_blank"><img src="' + url + '" style="max-width:100%;max-height:200px;border-radius:6px;border:1px solid var(--borde);cursor:pointer"></a>';
+        const url = await obtenerUrlFirmadaComprobante(c.url_comprobante);
+        if (url) {
+          const esImg = c.url_comprobante.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+          let html = '<div style="margin-top:8px"><div style="font-size:10px;color:var(--suave);margin-bottom:4px">Comprobante:</div>';
+          if (esImg) {
+            html += '<a href="' + url + '" target="_blank"><img src="' + url + '" style="max-width:100%;max-height:200px;border-radius:6px;border:1px solid var(--borde);cursor:pointer"></a>';
+          } else {
+            html += '<a href="' + url + '" target="_blank" style="color:var(--naranja);font-size:12px">&#x1F4C4; Ver comprobante PDF</a>';
+          }
+          html += '</div>';
+          previewEl2.innerHTML = html;
         } else {
-          html += '<a href="' + url + '" target="_blank" style="color:var(--naranja);font-size:12px">&#x1F4C4; Ver comprobante PDF</a>';
+          previewEl2.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-top:4px">Comprobante adjunto (no se pudo generar el link para verlo)</div>';
         }
-        html += '</div>';
-        previewEl2.innerHTML = html;
       } else {
         previewEl2.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-top:4px">Sin comprobante adjunto</div>';
       }
@@ -3839,12 +3843,14 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       const detCompCont = document.getElementById('cont-pago-det-comprobante-cont');
       const detComp = document.getElementById('cont-pago-det-comprobante');
       if (c.url_comprobante && detComp) {
-        const url = c.url_comprobante;
-        const esImg = url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-        detComp.innerHTML = esImg
-          ? '<a href="'+url+'" target="_blank"><img src="'+url+'" style="max-width:100%;max-height:150px;border-radius:6px;border:1px solid var(--borde)"></a>'
-          : '<a href="'+url+'" target="_blank" style="color:var(--naranja);font-size:12px">&#x1F4C4; Ver comprobante</a>';
-        if (detCompCont) detCompCont.style.display = '';
+        const url = await obtenerUrlFirmadaComprobante(c.url_comprobante);
+        if (url) {
+          const esImg = c.url_comprobante.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+          detComp.innerHTML = esImg
+            ? '<a href="'+url+'" target="_blank"><img src="'+url+'" style="max-width:100%;max-height:150px;border-radius:6px;border:1px solid var(--borde)"></a>'
+            : '<a href="'+url+'" target="_blank" style="color:var(--naranja);font-size:12px">&#x1F4C4; Ver comprobante</a>';
+          if (detCompCont) detCompCont.style.display = '';
+        } else if (detCompCont) detCompCont.style.display = 'none';
       } else if (detCompCont) detCompCont.style.display = 'none';
     }
 
@@ -4232,12 +4238,14 @@ async function _verCxPAutomatica(c, id_cxp) {
       const compAutoCont = document.getElementById('cxp-auto-comprobante-cont');
       const compAutoEl   = document.getElementById('cxp-auto-comprobante');
       if (c.url_comprobante && compAutoEl) {
-        const urlAuto = c.url_comprobante;
-        const esImgAuto = urlAuto.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-        compAutoEl.innerHTML = esImgAuto
-          ? '<a href="'+urlAuto+'" target="_blank"><img src="'+urlAuto+'" style="max-width:100%;max-height:150px;border-radius:6px;border:1px solid var(--borde)"></a>'
-          : '<a href="'+urlAuto+'" target="_blank" style="color:var(--naranja);font-size:12px">&#x1F4C4; Ver comprobante</a>';
-        if (compAutoCont) compAutoCont.style.display = '';
+        const urlAuto = await obtenerUrlFirmadaComprobante(c.url_comprobante);
+        if (urlAuto) {
+          const esImgAuto = c.url_comprobante.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+          compAutoEl.innerHTML = esImgAuto
+            ? '<a href="'+urlAuto+'" target="_blank"><img src="'+urlAuto+'" style="max-width:100%;max-height:150px;border-radius:6px;border:1px solid var(--borde)"></a>'
+            : '<a href="'+urlAuto+'" target="_blank" style="color:var(--naranja);font-size:12px">&#x1F4C4; Ver comprobante</a>';
+          if (compAutoCont) compAutoCont.style.display = '';
+        } else if (compAutoCont) compAutoCont.style.display = 'none';
       } else if (compAutoCont) compAutoCont.style.display = 'none';
     } else if (c.estado === 'RECHAZADA') {
       pagoInfoCont.style.display = '';
