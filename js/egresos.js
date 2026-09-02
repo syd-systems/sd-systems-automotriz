@@ -2119,7 +2119,7 @@ async function contGuardarPagoCxp() {
       const id_emisor  = _empresaActiva?.id_empresa || 0;
       const tasaPago   = tasaDia;
 
-      const codigosArr = moneda === 'USD' ? ['2.1.01.001','1.1.01.004','6.2.01.003','4.2.01.003','6.1.04.003','2.1.03.004'] : ['2.1.01.001','1.1.01.003'];
+      const codigosArr = moneda === 'USD' ? ['2.1.01.001','1.1.02.002','6.2.01.003','4.2.01.003','6.1.04.003','2.1.03.004'] : ['2.1.01.001','1.1.02.001'];
       const cuentasAstFull = await obtenerCuentasContables();
       const cuentasAst = cuentasAstFull.filter(function(c){ return codigosArr.includes(c.codigo); });
       const getCta = function(cod){ return cuentasAst.find(function(x){ return x.codigo===cod; }); };
@@ -2133,9 +2133,9 @@ async function contGuardarPagoCxp() {
       // sin Cuenta Contable configurada), cae a Banco USD/VES fijo como
       // respaldo, igual que el comportamiento de siempre.
       const cDestino = (idCuentaDestino && cuentasAstFull.find(function(x){ return x.id_cuenta === idCuentaDestino; }))
-        || (moneda === 'VES' ? getCta('1.1.01.003') : getCta('1.1.01.004'));
-      const cBanVES = moneda === 'VES' ? cDestino : getCta('1.1.01.003');
-      const cBanUSD = moneda === 'USD' ? cDestino : getCta('1.1.01.004');
+        || (moneda === 'VES' ? getCta('1.1.02.001') : getCta('1.1.02.002'));
+      const cBanVES = moneda === 'VES' ? cDestino : getCta('1.1.02.001');
+      const cBanUSD = moneda === 'USD' ? cDestino : getCta('1.1.02.002');
 
       // El asiento de PAGO siempre debita CxP Proveedores (cierra el
       // pasivo) -- la cuenta de Gasto ya se debitó en el asiento de
