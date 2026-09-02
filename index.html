@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260831215"></script>
-<script src="js/parametros.js?v=20260831215"></script>
-<script src="js/empresas.js?v=20260831215"></script>
-<script src="js/ingresos.js?v=20260831215"></script>
-<script src="js/inventario.js?v=20260831215"></script>
-<script src="js/proveedores.js?v=20260831215"></script>
-<script src="js/clientes.js?v=20260831215"></script>
-<script src="js/ventas.js?v=20260831215"></script>
-<script src="js/contabilidad.js?v=20260831215"></script>
-<script src="js/egresos.js?v=20260831215"></script>
-<script src="js/vehiculos.js?v=20260831215"></script>
-<script src="js/catalogo.js?v=20260831215"></script>
-<script src="js/ordenes.js?v=20260831215"></script>
+<script src="js/core.js?v=20260831216"></script>
+<script src="js/parametros.js?v=20260831216"></script>
+<script src="js/empresas.js?v=20260831216"></script>
+<script src="js/ingresos.js?v=20260831216"></script>
+<script src="js/inventario.js?v=20260831216"></script>
+<script src="js/proveedores.js?v=20260831216"></script>
+<script src="js/clientes.js?v=20260831216"></script>
+<script src="js/ventas.js?v=20260831216"></script>
+<script src="js/contabilidad.js?v=20260831216"></script>
+<script src="js/egresos.js?v=20260831216"></script>
+<script src="js/vehiculos.js?v=20260831216"></script>
+<script src="js/catalogo.js?v=20260831216"></script>
+<script src="js/ordenes.js?v=20260831216"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -5087,7 +5087,7 @@
       <div class="form-grid" style="margin-top:14px">
         <div class="form-campo">
           <label>Institución Financiera</label>
-          <select id="cbe-banco"
+          <select id="cbe-banco" onchange="onSelBancoCbe()"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar —</option>
           </select>
@@ -5105,9 +5105,14 @@
       <div class="form-grid" style="margin-top:14px">
         <div class="form-campo">
           <label>Número de Cuenta</label>
-          <input type="text" id="cbe-numero-cuenta" placeholder="0000000000000000" maxlength="20"
-            oninput="this.value=this.value.replace(/[^0-9]/g,'')"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <div style="display:flex;align-items:center;gap:0">
+            <input type="text" id="cbe-cod-banco" maxlength="4" readonly
+              style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--naranja);background:var(--gris3);border:1px solid var(--borde);border-right:none;padding:11px 14px;border-radius:5px 0 0 5px;width:90px;outline:none;cursor:not-allowed;text-align:center">
+            <input type="text" id="cbe-num-cuenta-resto" maxlength="16" placeholder="0000 0000 0000 0000"
+              oninput="this.value=this.value.replace(/[^0-9]/g,'');sincronizarNumeroCuentaCbe()"
+              style="font-family:var(--font-mono);font-size:13px;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:11px 10px;border-radius:0 5px 5px 0;flex:1;outline:none">
+          </div>
+          <input type="hidden" id="cbe-numero-cuenta">
         </div>
         <div class="form-campo">
           <label>Cuenta Contable (para el asiento)</label>
