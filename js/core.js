@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831210';
+const SYD_VERSION = '20260831212';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -234,6 +234,7 @@ const PERMISOS_POR_MODULO = {
     { accion: 'CXC',           label: 'Cuentas por Cobrar' },
     { accion: 'CXP',           label: 'Cuentas por Pagar' },
     { accion: 'CONCILIACION',  label: '🔒 Conciliación Bancaria' },
+    { accion: 'TRASPASO',      label: 'Traspasos Caja/Banco' },
   ],
   PROVEEDORES: [
     { accion: 'VER',      label: 'Ver Ficha' },
