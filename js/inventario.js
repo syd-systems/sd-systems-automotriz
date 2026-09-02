@@ -1358,14 +1358,14 @@ async function guardarEntradaStock() {
     } else if (motivoEnt === 'transferencia') {
       const idOrigenVal = document.getElementById('es-area-origen')?.value;
       if (!idOrigenVal) { errEl.textContent = 'Debe seleccionar el área de origen.'; errEl.style.display = 'block'; document.getElementById('es-area-origen')?.focus(); resetBtn(); return; }
-      // Transferencia solo aplica a Mercancías (cuenta 1.1.03.001) — un Consumible
-      // (1.1.03.002) ya se gastó al salir de Compras y no puede "devolverse" como
+      // Transferencia solo aplica a Mercancías (cuenta 1.1.04.001) — un Consumible
+      // (1.1.04.002) ya se gastó al salir de Compras y no puede "devolverse" como
       // inventario; su corrección es ANULAR la Salida original, no Transferencia.
       if (r.id_cuenta_contable) {
         const ctasArt = await obtenerCuentasContables();
         const ctaArt = ctasArt.find(function(c){ return c.id_cuenta === r.id_cuenta_contable; });
         const codigoCta = ctaArt ? ctaArt.codigo : null;
-        if (codigoCta && codigoCta !== '1.1.03.001') {
+        if (codigoCta && codigoCta !== '1.1.04.001') {
           errEl.textContent = 'Este artículo es un Consumible (cuenta ' + codigoCta + '). Transferencia solo aplica a Mercancías. Si se envió a la área equivocada, anule la Salida original desde su Historial.';
           errEl.style.display = 'block';
           resetBtn(); return;
@@ -1674,8 +1674,8 @@ async function guardarEntradaStock() {
           const tasaDev = parseFloat(facDev.tasa_bcv) || tasa_bcv_usada || 1;
 
           const todasCtasDev = await obtenerCuentasContables();
-          const cuentasDev = todasCtasDev.filter(function(c){ return ['1.1.02.001','4.1.02.001','2.1.03.001'].includes(c.codigo); });
-          const cCxCDev    = cuentasDev.find(function(c){ return c.codigo==='1.1.02.001'; });
+          const cuentasDev = todasCtasDev.filter(function(c){ return ['1.1.03.001','4.1.02.001','2.1.03.001'].includes(c.codigo); });
+          const cCxCDev    = cuentasDev.find(function(c){ return c.codigo==='1.1.03.001'; });
           const cIngRepDev = cuentasDev.find(function(c){ return c.codigo==='4.1.02.001'; });
           const cIVADev    = cuentasDev.find(function(c){ return c.codigo==='2.1.03.001'; });
           let cIGTFDev = null;
@@ -5085,7 +5085,7 @@ async function _guardarEdicionMovimientoInterno() {
       let esMercanciaEdit = false;
       if (art?.id_cuenta_contable) {
         const ctaEdit = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === art.id_cuenta_contable; });
-        esMercanciaEdit = !!(ctaEdit && ctaEdit.codigo === '1.1.03.001');
+        esMercanciaEdit = !!(ctaEdit && ctaEdit.codigo === '1.1.04.001');
       }
 
       if (movOrig.id_empleado) {
@@ -6201,14 +6201,14 @@ async function _guardarSalidaStockInterno() {
   const art = inventarioCache.find(function(x) { return x.id_articulo === idRep; });
 
   // ── Clasificar el artículo por su cuenta contable de Inventario ──
-  // 1.1.03.001 = Mercancías (sigue como inventario en el área destino, se
+  // 1.1.04.001 = Mercancías (sigue como inventario en el área destino, se
   // gasta al facturar -- por eso necesita Precio de Venta ya definido).
-  // 1.1.03.002 = Consumibles (se gasta de inmediato al salir de Compras,
+  // 1.1.04.002 = Consumibles (se gasta de inmediato al salir de Compras,
   // el Precio de Venta sigue siendo opcional para ellos).
   let esMercancia = false;
   if (art && art.id_cuenta_contable) {
     const ctaArtSal = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === art.id_cuenta_contable; });
-    esMercancia = !!(ctaArtSal && ctaArtSal.codigo === '1.1.03.001');
+    esMercancia = !!(ctaArtSal && ctaArtSal.codigo === '1.1.04.001');
   }
 
   if (!fecha)           { errEl.textContent = 'La fecha es obligatoria.'; errEl.style.display = 'block'; document.getElementById('salida-fecha')?.focus(); return; }
