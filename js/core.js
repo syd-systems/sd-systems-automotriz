@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831212';
+const SYD_VERSION = '20260831214';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -487,6 +487,63 @@ async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '', sinReprese
     throw new Error(err.message || `Error ${r.status}`);
   }
   return metodo === 'GET' ? r.json() : (r.status === 204 ? null : r.json().catch(() => null));
+}
+
+// ── Subir un archivo (imagen/PDF) a Supabase Storage ──
+// Un solo bucket PRIVADO 'comprobantes' para todo el sistema; `path` es la
+// carpeta dentro de ese bucket (ej. 'comprobantes-cobro/123'). Faltaba
+// esta función por completo -- todos los "Comprobante (opcional)" del
+// sistema (Registrar Cobro, Ejecutar Pago/CxP, Traspasos) la llamaban sin
+// que existiera, fallando en silencio dentro de su propio try/catch.
+//
+// Como el bucket es privado, esto devuelve la RUTA interna del archivo
+// (no una URL usable directamente) -- para mostrarlo hay que pedir un
+// link temporal firmado con obtenerUrlFirmadaComprobante() en el momento,
+// nunca queda un link abierto guardado de forma permanente.
+async function subirFoto(file, path) {
+  if (!file) return null;
+  const bucket = 'comprobantes';
+  const nombreLimpio = (file.name || 'archivo').replace(/[^a-zA-Z0-9._-]/g, '_');
+  const rutaCompleta = path + '/' + Date.now() + '_' + nombreLimpio;
+  const token = (_sessionJWT && _sessionJWTExpiry && Date.now() < _sessionJWTExpiry) ? _sessionJWT : SUPABASE_KEY;
+  const resp = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${rutaCompleta}`, {
+    method: 'POST',
+    headers: {
+      'apikey':        SUPABASE_KEY,
+      'Authorization': `Bearer ${token}`,
+      'Content-Type':  file.type || 'application/octet-stream'
+    },
+    body: file
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.message || `Error subiendo archivo (${resp.status})`);
+  }
+  return rutaCompleta;
+}
+
+// ── Obtener un link temporal (firmado) para VER un comprobante guardado
+// en el bucket privado 'comprobantes'. `path` es lo que devolvió
+// subirFoto() y quedó guardado en el campo url_comprobante. El link vence
+// a los `segundos` indicados (1 hora por defecto) -- nunca se guarda, se
+// pide de nuevo cada vez que alguien necesita verlo.
+async function obtenerUrlFirmadaComprobante(path, segundos) {
+  if (!path) return null;
+  const bucket = 'comprobantes';
+  const token = (_sessionJWT && _sessionJWTExpiry && Date.now() < _sessionJWTExpiry) ? _sessionJWT : SUPABASE_KEY;
+  const resp = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/${bucket}/${path}`, {
+    method: 'POST',
+    headers: {
+      'apikey':        SUPABASE_KEY,
+      'Authorization': `Bearer ${token}`,
+      'Content-Type':  'application/json'
+    },
+    body: JSON.stringify({ expiresIn: segundos || 3600 })
+  });
+  if (!resp.ok) return null;
+  const data = await resp.json().catch(() => null);
+  if (!data || !data.signedURL) return null;
+  return `${SUPABASE_URL}/storage/v1${data.signedURL}`;
 }
 
 // ── Cuentas Contables — vía función RPC (no lectura directa de la tabla) ──
