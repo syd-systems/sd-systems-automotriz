@@ -701,8 +701,8 @@ async function generarCxCyAsientoFactura(idFactura) {
       if (asiento && asiento[0]) {
         const idAst = asiento[0].id_asiento;
         const _todasCtasFac = await obtenerCuentasContables();
-        const cuentas = _todasCtasFac.filter(function(c){ return ['1.1.02.001','4.1.01.001','4.1.02.001','2.1.03.001'].includes(c.codigo); });
-        const cCxC     = cuentas.find(function(c){ return c.codigo==='1.1.02.001'; });
+        const cuentas = _todasCtasFac.filter(function(c){ return ['1.1.03.001','4.1.01.001','4.1.02.001','2.1.03.001'].includes(c.codigo); });
+        const cCxC     = cuentas.find(function(c){ return c.codigo==='1.1.03.001'; });
         const cIngServ = cuentas.find(function(c){ return c.codigo==='4.1.01.001'; });
         const cIngRep  = cuentas.find(function(c){ return c.codigo==='4.1.02.001'; });
         const cIVA     = cuentas.find(function(c){ return c.codigo==='2.1.03.001'; });
