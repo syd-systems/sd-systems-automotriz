@@ -1620,6 +1620,17 @@ async function cbCargarTraspasosRecientes() {
         + '<div style="color:var(--suave);font-size:12px;padding:12px">Todavía no se ha registrado ningún Traspaso.</div>';
       return;
     }
+
+    // Comprobante adjunto (si lo hay) -- vive en cont_traspasos_cb, no en
+    // el asiento genérico. Una sola consulta por lote.
+    const idsAstTraspRec = asientos.map(function(a){ return a.id_asiento; });
+    let comprobantePorAsiento = {};
+    try {
+      const trCbRows = await api('cont_traspasos_cb','GET',null,
+        '?id_asiento=in.('+idsAstTraspRec.join(',')+')&select=id_asiento,url_comprobante');
+      (trCbRows||[]).forEach(function(t){ if (t.url_comprobante) comprobantePorAsiento[t.id_asiento] = t.url_comprobante; });
+    } catch(eCompTraspRec) {}
+
     cont.innerHTML = '<div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Traspasos Recientes</div>'
       + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'
       + '<thead><tr>'
@@ -1627,19 +1638,30 @@ async function cbCargarTraspasosRecientes() {
       + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">FECHA</th>'
       + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">DESCRIPCIÓN</th>'
       + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">REFERENCIA</th>'
+      + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">COMPROBANTE</th>'
       + '</tr></thead><tbody>'
       + asientos.map(function(a) {
+          const rutaComp = comprobantePorAsiento[a.id_asiento];
           return '<tr>'
             + '<td style="padding:8px;border-bottom:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono)">'+a.numero_asiento+'</td>'
             + '<td style="padding:8px;border-bottom:1px solid var(--borde)">'+fmtFecha(a.fecha)+'</td>'
             + '<td style="padding:8px;border-bottom:1px solid var(--borde)">'+(a.descripcion||'—')+'</td>'
             + '<td style="padding:8px;border-bottom:1px solid var(--borde);font-family:var(--font-mono)">'+(a.referencia||'—')+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde)">'
+              + (rutaComp ? '<a href="#" onclick="_verComprobanteTraspaso(\''+rutaComp.replace(/'/g,"\\'")+'\');return false" style="color:var(--naranja)">📄 Ver</a>' : '—')
+            + '</td>'
             + '</tr>';
         }).join('')
       + '</tbody></table></div>';
   } catch(eTraspRec) {
     cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error cargando Traspasos: '+msgErr(eTraspRec)+'</div>';
   }
+}
+
+async function _verComprobanteTraspaso(rutaComprobante) {
+  const url = await obtenerUrlFirmadaComprobante(rutaComprobante);
+  if (url) window.open(url, '_blank');
+  else alert('No se pudo generar el link para ver el comprobante.');
 }
 
 async function abrirModalTraspasoCB() {
@@ -1654,6 +1676,10 @@ async function abrirModalTraspasoCB() {
   document.getElementById('traspaso-cb-direccion').value = 'CAJA_A_BANCO';
   document.getElementById('traspaso-cb-clave').value = '';
   document.getElementById('traspaso-cb-usuario-nombre').textContent = sesionActual?.nombre || sesionActual?.correo_usuario || '—';
+  const archivoElTrasp = document.getElementById('traspaso-cb-archivo');
+  if (archivoElTrasp) archivoElTrasp.value = '';
+  const previewContTrasp = document.getElementById('traspaso-cb-archivo-preview-cont');
+  if (previewContTrasp) previewContTrasp.style.display = 'none';
   document.getElementById('alerta-traspaso-cb-err').style.display = 'none';
 
   const monedaPrincipal  = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
@@ -1819,6 +1845,37 @@ async function guardarTraspasoCB() {
       id_asiento: idAstTrasp, id_cuenta: idCtaOrigen, orden: 2,
       descripcion: 'Traspaso ' + direccionTexto + ' -- ' + (ctaOrigenInfo?.nombre||''),
       debe_usd: 0, haber_usd: montoUSD, debe_ves: 0, haber_ves: montoVES, tasa_bcv: tasaTrasp
+    });
+
+    // Subir comprobante (opcional) y registrar el detalle propio del
+    // proceso -- mismo patrón que Ventas/Facturas/CxC/CxP: el asiento
+    // contable queda genérico, y los datos específicos del Traspaso (Banco,
+    // comprobante) viven en su propia tabla de negocio, enlazada por
+    // id_asiento.
+    let urlComprobanteTrasp = null;
+    const archivoElTrasp = document.getElementById('traspaso-cb-archivo');
+    if (archivoElTrasp && archivoElTrasp.files && archivoElTrasp.files[0]) {
+      try {
+        urlComprobanteTrasp = await subirFoto(archivoElTrasp.files[0], 'comprobantes-traspaso/' + idAstTrasp);
+      } catch(eFileTrasp) { console.warn('Error subiendo comprobante de Traspaso:', eFileTrasp); }
+    }
+
+    await api('cont_traspasos_cb','POST',{
+      id_empresa:        _empresaActiva ? _empresaActiva.id_empresa : null,
+      id_asiento:        idAstTrasp,
+      fecha:             fecha,
+      direccion:         direccion,
+      moneda:            moneda,
+      id_cuenta_origen:  idCtaOrigen,
+      id_cuenta_destino: idCtaDestino,
+      id_banco:          parseInt(idBanco) || null,
+      monto:             monto,
+      monto_usd:         montoUSD,
+      monto_ves:         montoVES,
+      referencia:        referencia,
+      concepto:          concepto || null,
+      url_comprobante:   urlComprobanteTrasp,
+      id_usuario:        sesionActual.correo_usuario
     });
 
     cerrarModal('modal-traspaso-cb');
