@@ -1515,10 +1515,13 @@ async function contRenderCajaBancos() {
     + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Hasta</label>'
     + '<input type="date" id="cb-hasta" value="'+_cajaBancosHasta+'" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-size:13px;padding:6px 10px;border-radius:5px;outline:none"></div>'
     + '<button class="btn-primario" onclick="cbConsultarSaldos()">Consultar</button>'
+    + ((sesionActual?.administrador || puedo('CONTABILIDAD','TRASPASO')) ? '<button class="btn-secundario" onclick="abrirModalTraspasoCB()">🔁 Nuevo Traspaso</button>' : '')
     + '</div>'
-    + '<div id="cb-resultado"></div>';
+    + '<div id="cb-resultado"></div>'
+    + '<div id="cb-traspasos-cont" style="margin-top:20px"></div>';
 
   await cbConsultarSaldos();
+  await cbCargarTraspasosRecientes();
 }
 
 async function cbConsultarSaldos() {
@@ -1594,6 +1597,238 @@ async function cbConsultarSaldos() {
       + '</tbody></table></div>';
   } catch(eCB) {
     resEl.innerHTML = '<div class="alerta alerta-error" style="display:block">Error calculando saldos: ' + msgErr(eCB) + '</div>';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TRASPASOS CAJA/BANCO -- movimientos de EFECTIVO entre una Cuenta de
+//  Caja y una Cuenta de Banco (en cualquier dirección), dentro de la
+//  MISMA Moneda -- nunca se mezclan monedas en un mismo traspaso. Se
+//  apoya en el mismo catálogo (param_metodos_pago) que ya usa el resto
+//  del sistema para Cobros/Pagos, para no duplicar cuentas.
+// ══════════════════════════════════════════════════════════════
+
+async function cbCargarTraspasosRecientes() {
+  const cont = document.getElementById('cb-traspasos-cont');
+  if (!cont) return;
+  try {
+    const asientos = await api('cont_asientos','GET',null,
+      '?tipo=eq.TRASPASO_CAJA_BANCO&estado=neq.ANULADO&order=fecha.desc&limit=10&select=id_asiento,numero_asiento,fecha,descripcion,referencia,tasa_bcv,moneda_base'
+      + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+    if (!asientos || !asientos.length) {
+      cont.innerHTML = '<div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Traspasos Recientes</div>'
+        + '<div style="color:var(--suave);font-size:12px;padding:12px">Todavía no se ha registrado ningún Traspaso.</div>';
+      return;
+    }
+    cont.innerHTML = '<div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Traspasos Recientes</div>'
+      + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'
+      + '<thead><tr>'
+      + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">N° ASIENTO</th>'
+      + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">FECHA</th>'
+      + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">DESCRIPCIÓN</th>'
+      + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">REFERENCIA</th>'
+      + '</tr></thead><tbody>'
+      + asientos.map(function(a) {
+          return '<tr>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono)">'+a.numero_asiento+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde)">'+fmtFecha(a.fecha)+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde)">'+(a.descripcion||'—')+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde);font-family:var(--font-mono)">'+(a.referencia||'—')+'</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table></div>';
+  } catch(eTraspRec) {
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error cargando Traspasos: '+msgErr(eTraspRec)+'</div>';
+  }
+}
+
+async function abrirModalTraspasoCB() {
+  if (!sesionActual?.administrador && !puedo('CONTABILIDAD','TRASPASO')) {
+    alert('No tiene permiso para realizar Traspasos Caja/Banco.');
+    return;
+  }
+  document.getElementById('traspaso-cb-fecha').value = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+  document.getElementById('traspaso-cb-monto').value = '';
+  document.getElementById('traspaso-cb-referencia').value = '';
+  document.getElementById('traspaso-cb-concepto').value = '';
+  document.getElementById('traspaso-cb-direccion').value = 'CAJA_A_BANCO';
+  document.getElementById('traspaso-cb-clave').value = '';
+  document.getElementById('traspaso-cb-usuario-nombre').textContent = sesionActual?.nombre || sesionActual?.correo_usuario || '—';
+  document.getElementById('alerta-traspaso-cb-err').style.display = 'none';
+
+  const monedaPrincipal  = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
+  const monedaSecundaria = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
+  const selMonedaTrasp = document.getElementById('traspaso-cb-moneda');
+  selMonedaTrasp.innerHTML = '<option value="'+monedaPrincipal+'">'+monedaPrincipal+'</option>'
+    + (monedaSecundaria !== monedaPrincipal ? '<option value="'+monedaSecundaria+'">'+monedaSecundaria+'</option>' : '');
+
+  // Banco (institución) -- informativo, mismo catálogo que Registrar
+  // Cobro/Pago, para el comprobante.
+  try {
+    const bancosTrasp = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre');
+    document.getElementById('traspaso-cb-banco').innerHTML = '<option value="">— Seleccionar —</option>'
+      + (bancosTrasp||[]).map(function(b){ return '<option value="'+b.id+'">'+b.nombre+'</option>'; }).join('');
+  } catch(eBancosTrasp) {}
+
+  await _traspasoCBActualizarCuentas();
+  abrirModal('modal-traspaso-cb');
+}
+
+// Repuebla Cuenta Caja y Cuenta Banco según la Moneda elegida -- mismo
+// catálogo (param_metodos_pago) que ya usa Cobros/Pagos, filtrado por
+// tipo_canal (EFECTIVO = Caja, TRANSFERENCIA = Banco).
+async function _traspasoCBActualizarCuentas() {
+  const moneda = document.getElementById('traspaso-cb-moneda')?.value;
+  if (!moneda) return;
+  try {
+    const metodosTrasp = await api('param_metodos_pago','GET',null,
+      '?estado=eq.ACTIVO&codigo=eq.'+moneda+'&order=nombre.asc&select=id_metodo,nombre,tipo_canal,id_cuenta_contable');
+
+    const cajas = (metodosTrasp||[]).filter(function(m){ return m.tipo_canal === 'EFECTIVO'; });
+    const bancos = (metodosTrasp||[]).filter(function(m){ return m.tipo_canal === 'TRANSFERENCIA'; });
+
+    const selCaja = document.getElementById('traspaso-cb-cuenta-caja');
+    selCaja.innerHTML = cajas.length
+      ? cajas.map(function(m){ return '<option value="'+m.id_cuenta_contable+'" data-metodo="'+m.id_metodo+'">'+m.nombre+'</option>'; }).join('')
+      : '<option value="">— Sin Cuenta de Caja en '+moneda+' —</option>';
+
+    const selBancoCta = document.getElementById('traspaso-cb-cuenta-banco');
+    selBancoCta.innerHTML = bancos.length
+      ? bancos.map(function(m){ return '<option value="'+m.id_cuenta_contable+'" data-metodo="'+m.id_metodo+'">'+m.nombre+'</option>'; }).join('')
+      : '<option value="">— Sin Cuenta de Banco en '+moneda+' —</option>';
+  } catch(eCtasTrasp) { console.warn('Error cargando cuentas de Traspaso:', eCtasTrasp); }
+}
+
+async function guardarTraspasoCB() {
+  const errEl = document.getElementById('alerta-traspaso-cb-err');
+  errEl.style.display = 'none';
+
+  const fecha       = document.getElementById('traspaso-cb-fecha').value;
+  const direccion   = document.getElementById('traspaso-cb-direccion').value; // 'CAJA_A_BANCO' | 'BANCO_A_CAJA'
+  const moneda      = document.getElementById('traspaso-cb-moneda').value;
+  const idCtaCaja   = parseInt(document.getElementById('traspaso-cb-cuenta-caja').value) || null;
+  const idCtaBanco  = parseInt(document.getElementById('traspaso-cb-cuenta-banco').value) || null;
+  const idBanco     = document.getElementById('traspaso-cb-banco').value || null;
+  const monto       = parseFloat(document.getElementById('traspaso-cb-monto').value) || 0;
+  const referencia  = document.getElementById('traspaso-cb-referencia').value.trim();
+  const concepto    = document.getElementById('traspaso-cb-concepto').value.trim();
+
+  if (!fecha)                 { errEl.textContent = 'Debe indicar la Fecha.'; errEl.style.display = 'block'; return; }
+  if (!idCtaCaja)              { errEl.textContent = 'Debe seleccionar la Cuenta de Caja.'; errEl.style.display = 'block'; return; }
+  if (!idCtaBanco)             { errEl.textContent = 'Debe seleccionar la Cuenta de Banco.'; errEl.style.display = 'block'; return; }
+  if (!idBanco)                { errEl.textContent = 'Debe seleccionar el Banco.'; errEl.style.display = 'block'; return; }
+  if (!monto || monto <= 0)   { errEl.textContent = 'Debe indicar un Monto mayor a cero.'; errEl.style.display = 'block'; return; }
+  if (!referencia)             { errEl.textContent = 'Debe indicar la Referencia/Comprobante.'; errEl.style.display = 'block'; return; }
+
+  const claveTrasp = document.getElementById('traspaso-cb-clave')?.value || '';
+  if (!claveTrasp) {
+    errEl.textContent = 'Debe ingresar su contraseña para confirmar.'; errEl.style.display = 'block';
+    document.getElementById('traspaso-cb-clave')?.focus(); return;
+  }
+  const validaClaveTrasp = await validarClaveUsuarioActual(claveTrasp);
+  if (!validaClaveTrasp.ok) {
+    errEl.textContent = validaClaveTrasp.msg; errEl.style.display = 'block';
+    document.getElementById('traspaso-cb-clave')?.focus(); return;
+  }
+
+  const idCtaOrigen  = direccion === 'CAJA_A_BANCO' ? idCtaCaja  : idCtaBanco;
+  const idCtaDestino = direccion === 'CAJA_A_BANCO' ? idCtaBanco : idCtaCaja;
+
+  const btn = document.getElementById('btn-traspaso-cb-confirmar');
+  btnSetGuardando(btn, true, null, 'Procesando...');
+  try {
+    // Validar saldo suficiente en la Cuenta de Origen -- se reutiliza la
+    // MISMA fuente de verdad que el reporte de Caja/Bancos (la función
+    // obtener_saldos_caja_bancos), para no calcular el saldo dos veces de
+    // forma distinta y arriesgarnos a que no coincidan.
+    const cuentasTodasTrasp = await obtenerCuentasContables();
+    const ctaOrigenInfo  = cuentasTodasTrasp.find(function(c){ return c.id_cuenta === idCtaOrigen; });
+    const ctaDestinoInfo = cuentasTodasTrasp.find(function(c){ return c.id_cuenta === idCtaDestino; });
+
+    const respSaldos = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_saldos_caja_bancos', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        p_id_empresa: window._contEmisorActivo || _empresaActiva?.id_empresa || null,
+        p_moneda: moneda,
+        p_fecha_desde: '2000-01-01',
+        p_fecha_hasta: fecha
+      })
+    });
+    if (respSaldos.ok) {
+      const filasSaldos = await respSaldos.json() || [];
+      const filaOrigen = filasSaldos.find(function(f){ return f.codigo === ctaOrigenInfo?.codigo; });
+      const saldoOrigenActual = filaOrigen ? parseFloat(filaOrigen.saldo_cierre||0) : 0;
+      if (saldoOrigenActual < monto) {
+        errEl.textContent = 'Saldo insuficiente en '+(ctaOrigenInfo?.nombre||'la Cuenta de Origen')+'. Disponible: '+saldoOrigenActual.toFixed(2)+' '+moneda+'.';
+        errEl.style.display = 'block';
+        btnSetGuardando(btn, false);
+        return;
+      }
+    }
+
+    // Tasa BCV vigente (informativa -- el Traspaso no convierte moneda, es
+    // el mismo monto en la misma Moneda en ambas cuentas; se registra la
+    // tasa solo para mantener consistencia con el resto de los asientos,
+    // que siempre llevan ambas columnas USD/VES).
+    let tasaTrasp = 1;
+    try {
+      const tasasTrasp = await api('tasas','GET',null,'?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+      if (tasasTrasp.length) tasaTrasp = parseFloat(tasasTrasp[0].tipo_cambio);
+    } catch(eTasaTrasp) {}
+
+    const montoUSD = moneda === 'USD' ? monto : parseFloat((monto / tasaTrasp).toFixed(2));
+    const montoVES = moneda === 'VES' ? monto : parseFloat((monto * tasaTrasp).toFixed(2));
+
+    const anioTrasp = new Date().getFullYear();
+    const existTrasp = await api('cont_asientos','GET',null,
+      '?numero_asiento=like.AST-'+anioTrasp+'-*&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
+    let seqTrasp = 1;
+    if (existTrasp.length) { const p = existTrasp[0].numero_asiento.split('-'); seqTrasp = parseInt(p[p.length-1])+1; }
+    const numAstTrasp = 'AST-'+anioTrasp+'-'+String(seqTrasp).padStart(4,'0');
+
+    const periodosTrasp = await api('cont_periodos','GET',null,
+      '?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo&id_empresa=eq.'+(_empresaActiva?.id_empresa||0));
+    const idPeriodoTrasp = periodosTrasp.length ? periodosTrasp[0].id_periodo : null;
+
+    const direccionTexto = direccion === 'CAJA_A_BANCO' ? 'Caja → Banco' : 'Banco → Caja';
+    const descAsientoTrasp = 'Traspaso ' + direccionTexto + (concepto ? ': ' + concepto : '');
+
+    const asientoTrasp = await api('cont_asientos','POST',{
+      numero_asiento: numAstTrasp,
+      fecha:          fecha,
+      descripcion:    descAsientoTrasp,
+      tipo:           'TRASPASO_CAJA_BANCO',
+      referencia:     referencia,
+      moneda_base:    ((_empresaActiva?.moneda_principal)||'VES').toUpperCase(),
+      tasa_bcv:       tasaTrasp,
+      id_periodo:     idPeriodoTrasp,
+      id_empresa:     _empresaActiva ? _empresaActiva.id_empresa : null,
+      estado:         'APROBADO',
+      id_usuario:     sesionActual.correo_usuario
+    });
+    if (!asientoTrasp || !asientoTrasp[0]) throw new Error('No se pudo crear el asiento del Traspaso.');
+    const idAstTrasp = asientoTrasp[0].id_asiento;
+
+    await api('cont_asiento_lineas','POST',{
+      id_asiento: idAstTrasp, id_cuenta: idCtaDestino, orden: 1,
+      descripcion: 'Traspaso ' + direccionTexto + ' -- ' + (ctaDestinoInfo?.nombre||''),
+      debe_usd: montoUSD, haber_usd: 0, debe_ves: montoVES, haber_ves: 0, tasa_bcv: tasaTrasp
+    });
+    await api('cont_asiento_lineas','POST',{
+      id_asiento: idAstTrasp, id_cuenta: idCtaOrigen, orden: 2,
+      descripcion: 'Traspaso ' + direccionTexto + ' -- ' + (ctaOrigenInfo?.nombre||''),
+      debe_usd: 0, haber_usd: montoUSD, debe_ves: 0, haber_ves: montoVES, tasa_bcv: tasaTrasp
+    });
+
+    cerrarModal('modal-traspaso-cb');
+    await cbConsultarSaldos();
+    await cbCargarTraspasosRecientes();
+  } catch(eGuardarTrasp) {
+    errEl.textContent = 'Error: ' + msgErr(eGuardarTrasp);
+    errEl.style.display = 'block';
+  } finally {
+    btnSetGuardando(btn, false);
   }
 }
 
