@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260831212"></script>
-<script src="js/parametros.js?v=20260831212"></script>
-<script src="js/empresas.js?v=20260831212"></script>
-<script src="js/ingresos.js?v=20260831212"></script>
-<script src="js/inventario.js?v=20260831212"></script>
-<script src="js/proveedores.js?v=20260831212"></script>
-<script src="js/clientes.js?v=20260831212"></script>
-<script src="js/ventas.js?v=20260831212"></script>
-<script src="js/contabilidad.js?v=20260831212"></script>
-<script src="js/egresos.js?v=20260831212"></script>
-<script src="js/vehiculos.js?v=20260831212"></script>
-<script src="js/catalogo.js?v=20260831212"></script>
-<script src="js/ordenes.js?v=20260831212"></script>
+<script src="js/core.js?v=20260831214"></script>
+<script src="js/parametros.js?v=20260831214"></script>
+<script src="js/empresas.js?v=20260831214"></script>
+<script src="js/ingresos.js?v=20260831214"></script>
+<script src="js/inventario.js?v=20260831214"></script>
+<script src="js/proveedores.js?v=20260831214"></script>
+<script src="js/clientes.js?v=20260831214"></script>
+<script src="js/ventas.js?v=20260831214"></script>
+<script src="js/contabilidad.js?v=20260831214"></script>
+<script src="js/egresos.js?v=20260831214"></script>
+<script src="js/vehiculos.js?v=20260831214"></script>
+<script src="js/catalogo.js?v=20260831214"></script>
+<script src="js/ordenes.js?v=20260831214"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -5034,6 +5034,14 @@
         <label>Concepto (opcional)</label>
         <input type="text" id="traspaso-cb-concepto" placeholder="Motivo del traspaso"
           style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+      </div>
+      <div class="form-campo" style="margin-top:14px">
+        <label>Comprobante de Depósito/Retiro (opcional)</label>
+        <input type="file" id="traspaso-cb-archivo" accept="image/*,application/pdf"
+          style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
+      </div>
+      <div class="form-campo form-full" id="traspaso-cb-archivo-preview-cont" style="display:none">
+        <div id="traspaso-cb-archivo-preview"></div>
       </div>
       <div class="form-campo" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-top:14px">
         <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>
