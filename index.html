@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260831218"></script>
-<script src="js/parametros.js?v=20260831218"></script>
-<script src="js/empresas.js?v=20260831218"></script>
-<script src="js/ingresos.js?v=20260831218"></script>
-<script src="js/inventario.js?v=20260831218"></script>
-<script src="js/proveedores.js?v=20260831218"></script>
-<script src="js/clientes.js?v=20260831218"></script>
-<script src="js/ventas.js?v=20260831218"></script>
-<script src="js/contabilidad.js?v=20260831218"></script>
-<script src="js/egresos.js?v=20260831218"></script>
-<script src="js/vehiculos.js?v=20260831218"></script>
-<script src="js/catalogo.js?v=20260831218"></script>
-<script src="js/ordenes.js?v=20260831218"></script>
+<script src="js/core.js?v=20260831219"></script>
+<script src="js/parametros.js?v=20260831219"></script>
+<script src="js/empresas.js?v=20260831219"></script>
+<script src="js/ingresos.js?v=20260831219"></script>
+<script src="js/inventario.js?v=20260831219"></script>
+<script src="js/proveedores.js?v=20260831219"></script>
+<script src="js/clientes.js?v=20260831219"></script>
+<script src="js/ventas.js?v=20260831219"></script>
+<script src="js/contabilidad.js?v=20260831219"></script>
+<script src="js/egresos.js?v=20260831219"></script>
+<script src="js/vehiculos.js?v=20260831219"></script>
+<script src="js/catalogo.js?v=20260831219"></script>
+<script src="js/ordenes.js?v=20260831219"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4961,6 +4961,17 @@
           <input type="file" id="exec-pago-archivo" accept="image/*,application/pdf"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;width:100%">
         </div>
+      </div>
+      <div class="form-campo" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-top:14px">
+        <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <div style="font-size:13px;color:var(--texto)">Usuario: <span id="exec-pago-usuario-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
+        </div>
+        <label style="font-size:12px">Contraseña *</label>
+        <input type="password" id="exec-pago-clave" placeholder="Ingrese su contraseña para confirmar"
+          style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px"
+          onkeydown="if(event.key==='Enter'){document.getElementById('btn-confirmar-pago')?.click()}">
+        <div style="font-size:11px;color:var(--suave);margin-top:4px">Confirme con su contraseña para autorizar el Pago.</div>
       </div>
       <div class="alerta alerta-error" id="alerta-exec-err" style="display:none;margin-top:12px"></div>
     </div>
