@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831217';
+const SYD_VERSION = '20260831218';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3013,7 +3013,7 @@ async function notifConfirmar() {
           let esMercanciaNotif = false;
           if (artRes[0].id_cuenta_contable) {
             const ctaNotif = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === artRes[0].id_cuenta_contable; });
-            esMercanciaNotif = !!(ctaNotif && ctaNotif.codigo === '1.1.03.001');
+            esMercanciaNotif = !!(ctaNotif && ctaNotif.codigo === '1.1.04.001');
           }
           if (esMercanciaNotif) {
             await upsertStockArea(extras.id_articulo, extras.id_area_destino, parseFloat(extras.cantidad));
