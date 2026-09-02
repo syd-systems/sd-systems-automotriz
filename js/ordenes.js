@@ -3,7 +3,7 @@
 //  FASE 3 — ÓRDENES DE SERVICIO
 // ══════════════════════════════════════════════════════════════
 let ordenesCache = [];
-let _idCuentaMercanciasOS = null; // cache del id_cuenta de 1.1.03.001 (Inventario de Mercancías)
+let _idCuentaMercanciasOS = null; // cache del id_cuenta de 1.1.04.001 (Inventario de Mercancías)
 let osServiciosLineas = [];  // líneas de servicios de la OS activa
 let osArtículosLineas = [];  // líneas de artículos de la OS activa
 // ─── fmtBs / fmtUSD / fmtVES definidas globalmente en core.js ───
@@ -1651,14 +1651,14 @@ async function cargarSelectsOS() {
       } catch(eS) { console.warn('Error calculando saldo área OS:', eS); }
     }
 
-    // Filtrar: solo Mercancías (cuenta contable 1.1.03.001) con saldo
-    // positivo en el área del usuario -- los Consumibles (ej. 1.1.03.002)
+    // Filtrar: solo Mercancías (cuenta contable 1.1.04.001) con saldo
+    // positivo en el área del usuario -- los Consumibles (ej. 1.1.04.002)
     // no deben ofrecerse aquí, ya que las Órdenes de Servicio son para
     // repuestos/mercancías del vehículo, no para artículos de uso interno.
     let itemsDisponibles = inventarioCache;
     if (!_idCuentaMercanciasOS) {
       try {
-        const ctaMercRows = await api('cont_cuentas','GET',null,'?codigo=eq.1.1.03.001&select=id_cuenta&limit=1');
+        const ctaMercRows = await api('cont_cuentas','GET',null,'?codigo=eq.1.1.04.001&select=id_cuenta&limit=1');
         _idCuentaMercanciasOS = ctaMercRows && ctaMercRows[0] ? ctaMercRows[0].id_cuenta : null;
       } catch(eCtaM) { console.warn('Error buscando cuenta de Mercancías:', eCtaM); }
     }
