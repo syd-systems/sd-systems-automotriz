@@ -1787,7 +1787,7 @@ async function guardarCuentaBancariaEmpresa() {
   if (!idBancoCbe)          { errEl.textContent = 'Debe seleccionar la Institución Financiera.'; errEl.style.display = 'block'; return; }
   if (!tipoCuenta)          { errEl.textContent = 'Debe seleccionar el Tipo de Cuenta.'; errEl.style.display = 'block'; return; }
   if (!numeroCuenta)        { errEl.textContent = 'Debe indicar el Número de Cuenta.'; errEl.style.display = 'block'; return; }
-  if (!idCuentaContableCbe) { errEl.textContent = 'Debe seleccionar la Cuenta Contable para el asiento.'; errEl.style.display = 'block'; return; }
+  if (!idCuentaContableCbe) { errEl.textContent = 'Debe seleccionar la Cuenta Contable.'; errEl.style.display = 'block'; return; }
 
   const btn = document.getElementById('btn-cbe-guardar');
   btnSetGuardando(btn, true, null, 'Procesando...');
