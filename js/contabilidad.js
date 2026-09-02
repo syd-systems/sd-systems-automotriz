@@ -1335,7 +1335,7 @@ async function contGuardarPagoCxc() {
       } else {
         const todasCtas = await obtenerCuentasContables();
         const getCta = function(codigo){ return todasCtas.find(function(x){ return x.codigo === codigo; }) || null; };
-        const cCxC       = getCta('1.1.02.001');
+        const cCxC       = getCta('1.1.03.001');
         const cDifGasto   = getCta('6.2.01.003');
         const cDifIngr    = getCta('4.2.01.003');
         const cIGTFPagar  = getCta('2.1.03.004');
@@ -2958,7 +2958,7 @@ async function generarAsientoInventario(tipo, datos) {
 
     // Buscar cuenta de inventario
     let idInv = datos.id_cuentaInventario || null;
-    if (!idInv) { const cInv = _todasCtasAst.find(function(c){ return c.codigo === '1.1.03.001'; }); idInv = cInv ? cInv.id_cuenta : null; }
+    if (!idInv) { const cInv = _todasCtasAst.find(function(c){ return c.codigo === '1.1.04.001'; }); idInv = cInv ? cInv.id_cuenta : null; }
 
     // Buscar o crear cuenta auxiliar de área
     let id_areaCuenta = null;
@@ -3045,7 +3045,7 @@ async function generarAsientoInventario(tipo, datos) {
       }
 
       // Buscar cuenta IVA Crédito Fiscal
-      const cIVA = _todasCtasAst.find(function(c){ return c.codigo === '1.1.04.001'; });
+      const cIVA = _todasCtasAst.find(function(c){ return c.codigo === '1.1.05.001'; });
       const idIVA = cIVA ? cIVA.id_cuenta : null;
 
       // DEBE: Inventario (base sin IVA)
@@ -3195,7 +3195,7 @@ async function generarAsientoGastoManual(datos) {
     const _todasCtasGasto = await obtenerCuentasContables();
     let idCtaIVA = null;
     if (!datos.exentoIVA) {
-      const cIVA = _todasCtasGasto.find(function(c){ return c.codigo === '1.1.04.001'; });
+      const cIVA = _todasCtasGasto.find(function(c){ return c.codigo === '1.1.05.001'; });
       idCtaIVA = cIVA ? cIVA.id_cuenta : null;
     }
     let idCtaCxP = null;
