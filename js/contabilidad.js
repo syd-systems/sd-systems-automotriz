@@ -1516,6 +1516,7 @@ async function contRenderCajaBancos() {
     + '<input type="date" id="cb-hasta" value="'+_cajaBancosHasta+'" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-size:13px;padding:6px 10px;border-radius:5px;outline:none"></div>'
     + '<button class="btn-primario" onclick="cbConsultarSaldos()">Consultar</button>'
     + ((sesionActual?.administrador || puedo('CONTABILIDAD','TRASPASO')) ? '<button class="btn-secundario" onclick="abrirModalTraspasoCB()">🔁 Nuevo Traspaso</button>' : '')
+    + ((sesionActual?.administrador || puedo('CONTABILIDAD','TRASPASO')) ? '<button class="btn-secundario" onclick="abrirModalCuentasBancariasEmpresa()">🏦 Cuentas Bancarias</button>' : '')
     + '</div>'
     + '<div id="cb-resultado"></div>'
     + '<div id="cb-traspasos-cont" style="margin-top:20px"></div>';
@@ -1664,6 +1665,129 @@ async function _verComprobanteTraspaso(rutaComprobante) {
   else alert('No se pudo generar el link para ver el comprobante.');
 }
 
+// ══════════════════════════════════════════════════════════════
+//  CUENTAS BANCARIAS DE LA EMPRESA -- catálogo real (Institución + Tipo +
+// Número), distinto de la Cuenta Contable abstracta. Puramente informativo
+// por ahora; alimenta el selector de Cuenta Bancaria en Traspasos, y a
+// futuro el módulo de Conciliación Bancaria.
+// ══════════════════════════════════════════════════════════════
+
+async function abrirModalCuentasBancariasEmpresa() {
+  if (!sesionActual?.administrador && !puedo('CONTABILIDAD','TRASPASO')) {
+    alert('No tiene permiso para gestionar Cuentas Bancarias de la Empresa.');
+    return;
+  }
+  document.getElementById('cbe-alias').value = '';
+  document.getElementById('cbe-numero-cuenta').value = '';
+  document.getElementById('cbe-tipo-cuenta').value = '';
+  document.getElementById('alerta-cbe-err').style.display = 'none';
+
+  const monedaPrincipalCbe  = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
+  const monedaSecundariaCbe = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
+  document.getElementById('cbe-moneda').innerHTML = '<option value="'+monedaPrincipalCbe+'">'+monedaPrincipalCbe+'</option>'
+    + (monedaSecundariaCbe !== monedaPrincipalCbe ? '<option value="'+monedaSecundariaCbe+'">'+monedaSecundariaCbe+'</option>' : '');
+
+  try {
+    const bancosCbe = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre');
+    document.getElementById('cbe-banco').innerHTML = '<option value="">— Seleccionar —</option>'
+      + (bancosCbe||[]).map(function(b){ return '<option value="'+b.id+'">'+b.nombre+'</option>'; }).join('');
+  } catch(eBancosCbe) {}
+
+  try {
+    const cuentasContablesCbe = await obtenerCuentasContables();
+    // Solo cuentas de Banco (código 1.1.02.x) tienen sentido enlazar aquí.
+    const ctasBanco = cuentasContablesCbe.filter(function(c){ return c.codigo && c.codigo.indexOf('1.1.02') === 0; });
+    document.getElementById('cbe-cuenta-contable').innerHTML = '<option value="">— Seleccionar —</option>'
+      + ctasBanco.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join('');
+  } catch(eCtasCbe) {}
+
+  await cbeCargarListado();
+  abrirModal('modal-cuentas-bancarias-empresa');
+}
+
+async function cbeCargarListado() {
+  const cont = document.getElementById('cbe-listado-cont');
+  if (!cont) return;
+  cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+  try {
+    const cuentasCbe = await api('param_cuentas_bancarias_empresa','GET',null,
+      '?estado=eq.ACTIVA&order=alias.asc&select=id,alias,tipo_cuenta,numero_cuenta,moneda,param_bancos(nombre)'
+      + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+    if (!cuentasCbe || !cuentasCbe.length) {
+      cont.innerHTML = '<div style="text-align:center;color:var(--suave);padding:24px;font-size:12px">Todavía no hay Cuentas Bancarias registradas.</div>';
+      return;
+    }
+    cont.innerHTML = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'
+      + '<thead><tr>'
+      + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">ALIAS</th>'
+      + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">INSTITUCIÓN</th>'
+      + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">TIPO</th>'
+      + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">N° CUENTA</th>'
+      + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">MONEDA</th>'
+      + '</tr></thead><tbody>'
+      + cuentasCbe.map(function(c) {
+          const numMasked = c.numero_cuenta ? '****'+c.numero_cuenta.slice(-4) : '—';
+          return '<tr>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde);font-weight:600">'+(c.alias||'—')+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde)">'+(c.param_bancos?.nombre||'—')+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde)">'+(c.tipo_cuenta||'—')+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde);font-family:var(--font-mono)">'+numMasked+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde)">'+(c.moneda||'—')+'</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table></div>';
+  } catch(eCbeListado) {
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+msgErr(eCbeListado)+'</div>';
+  }
+}
+
+async function guardarCuentaBancariaEmpresa() {
+  const errEl = document.getElementById('alerta-cbe-err');
+  errEl.style.display = 'none';
+
+  const alias         = document.getElementById('cbe-alias').value.trim();
+  const moneda         = document.getElementById('cbe-moneda').value;
+  const idBancoCbe      = parseInt(document.getElementById('cbe-banco').value) || null;
+  const tipoCuenta      = document.getElementById('cbe-tipo-cuenta').value;
+  const numeroCuenta    = document.getElementById('cbe-numero-cuenta').value.trim();
+  const idCuentaContableCbe = parseInt(document.getElementById('cbe-cuenta-contable').value) || null;
+
+  if (!alias)              { errEl.textContent = 'Debe indicar un Alias.'; errEl.style.display = 'block'; return; }
+  if (!idBancoCbe)          { errEl.textContent = 'Debe seleccionar la Institución Financiera.'; errEl.style.display = 'block'; return; }
+  if (!tipoCuenta)          { errEl.textContent = 'Debe seleccionar el Tipo de Cuenta.'; errEl.style.display = 'block'; return; }
+  if (!numeroCuenta)        { errEl.textContent = 'Debe indicar el Número de Cuenta.'; errEl.style.display = 'block'; return; }
+  if (!idCuentaContableCbe) { errEl.textContent = 'Debe seleccionar la Cuenta Contable para el asiento.'; errEl.style.display = 'block'; return; }
+
+  const btn = document.getElementById('btn-cbe-guardar');
+  btnSetGuardando(btn, true, null, 'Procesando...');
+  try {
+    await api('param_cuentas_bancarias_empresa','POST',{
+      id_empresa:         _empresaActiva ? _empresaActiva.id_empresa : null,
+      alias:              alias,
+      id_banco:           idBancoCbe,
+      tipo_cuenta:        tipoCuenta,
+      numero_cuenta:      numeroCuenta,
+      moneda:             moneda,
+      id_cuenta_contable: idCuentaContableCbe,
+      estado:             'ACTIVA'
+    });
+    document.getElementById('cbe-alias').value = '';
+    document.getElementById('cbe-numero-cuenta').value = '';
+    document.getElementById('cbe-tipo-cuenta').value = '';
+    await cbeCargarListado();
+    // Si el Traspaso está abierto y en la misma Moneda, refresca su
+    // selector para que la cuenta recién creada aparezca de inmediato.
+    if (document.getElementById('traspaso-cb-moneda')?.value === moneda) {
+      await _traspasoCBActualizarCuentas();
+    }
+  } catch(eGuardarCbe) {
+    errEl.textContent = 'Error: ' + msgErr(eGuardarCbe);
+    errEl.style.display = 'block';
+  } finally {
+    btnSetGuardando(btn, false);
+  }
+}
+
 async function abrirModalTraspasoCB() {
   if (!sesionActual?.administrador && !puedo('CONTABILIDAD','TRASPASO')) {
     alert('No tiene permiso para realizar Traspasos Caja/Banco.');
@@ -1688,41 +1812,38 @@ async function abrirModalTraspasoCB() {
   selMonedaTrasp.innerHTML = '<option value="'+monedaPrincipal+'">'+monedaPrincipal+'</option>'
     + (monedaSecundaria !== monedaPrincipal ? '<option value="'+monedaSecundaria+'">'+monedaSecundaria+'</option>' : '');
 
-  // Banco (institución) -- informativo, mismo catálogo que Registrar
-  // Cobro/Pago, para el comprobante.
-  try {
-    const bancosTrasp = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre');
-    document.getElementById('traspaso-cb-banco').innerHTML = '<option value="">— Seleccionar —</option>'
-      + (bancosTrasp||[]).map(function(b){ return '<option value="'+b.id+'">'+b.nombre+'</option>'; }).join('');
-  } catch(eBancosTrasp) {}
-
   await _traspasoCBActualizarCuentas();
   abrirModal('modal-traspaso-cb');
 }
 
-// Repuebla Cuenta Caja y Cuenta Banco según la Moneda elegida -- mismo
-// catálogo (param_metodos_pago) que ya usa Cobros/Pagos, filtrado por
-// tipo_canal (EFECTIVO = Caja, TRANSFERENCIA = Banco).
+// Repuebla Cuenta Caja (param_metodos_pago, sin cambios) y Cuenta
+// Bancaria (ahora param_cuentas_bancarias_empresa -- Institución + Tipo +
+// Número reales, no una cuenta contable abstracta) según la Moneda.
 async function _traspasoCBActualizarCuentas() {
   const moneda = document.getElementById('traspaso-cb-moneda')?.value;
   if (!moneda) return;
   try {
     const metodosTrasp = await api('param_metodos_pago','GET',null,
-      '?estado=eq.ACTIVO&codigo=eq.'+moneda+'&order=nombre.asc&select=id_metodo,nombre,tipo_canal,id_cuenta_contable');
-
-    const cajas = (metodosTrasp||[]).filter(function(m){ return m.tipo_canal === 'EFECTIVO'; });
-    const bancos = (metodosTrasp||[]).filter(function(m){ return m.tipo_canal === 'TRANSFERENCIA'; });
-
+      '?estado=eq.ACTIVO&codigo=eq.'+moneda+'&tipo_canal=eq.EFECTIVO&order=nombre.asc&select=id_metodo,nombre,tipo_canal,id_cuenta_contable');
     const selCaja = document.getElementById('traspaso-cb-cuenta-caja');
-    selCaja.innerHTML = cajas.length
-      ? cajas.map(function(m){ return '<option value="'+m.id_cuenta_contable+'" data-metodo="'+m.id_metodo+'">'+m.nombre+'</option>'; }).join('')
+    selCaja.innerHTML = (metodosTrasp||[]).length
+      ? metodosTrasp.map(function(m){ return '<option value="'+m.id_cuenta_contable+'" data-metodo="'+m.id_metodo+'">'+m.nombre+'</option>'; }).join('')
       : '<option value="">— Sin Cuenta de Caja en '+moneda+' —</option>';
+  } catch(eCtasTrasp) { console.warn('Error cargando Cuenta Caja de Traspaso:', eCtasTrasp); }
 
-    const selBancoCta = document.getElementById('traspaso-cb-cuenta-banco');
-    selBancoCta.innerHTML = bancos.length
-      ? bancos.map(function(m){ return '<option value="'+m.id_cuenta_contable+'" data-metodo="'+m.id_metodo+'">'+m.nombre+'</option>'; }).join('')
-      : '<option value="">— Sin Cuenta de Banco en '+moneda+' —</option>';
-  } catch(eCtasTrasp) { console.warn('Error cargando cuentas de Traspaso:', eCtasTrasp); }
+  try {
+    const cuentasBancTrasp = await api('param_cuentas_bancarias_empresa','GET',null,
+      '?estado=eq.ACTIVA&moneda=eq.'+moneda+'&order=alias.asc&select=id,alias,tipo_cuenta,numero_cuenta,id_cuenta_contable,param_bancos(nombre)'
+      + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+    const selCtaBanc = document.getElementById('traspaso-cb-cuenta-bancaria');
+    selCtaBanc.innerHTML = (cuentasBancTrasp||[]).length
+      ? (cuentasBancTrasp||[]).map(function(cb) {
+          const numMasked = cb.numero_cuenta ? '****'+cb.numero_cuenta.slice(-4) : '';
+          const label = cb.alias + ' — ' + (cb.param_bancos?.nombre||'') + ' — ' + (cb.tipo_cuenta||'') + ' — ' + numMasked;
+          return '<option value="'+cb.id+'" data-cuenta-contable="'+cb.id_cuenta_contable+'">'+label+'</option>';
+        }).join('')
+      : '<option value="">— Sin Cuentas Bancarias en '+moneda+' —</option>';
+  } catch(eCuentasBancTrasp) { console.warn('Error cargando Cuentas Bancarias de Traspaso:', eCuentasBancTrasp); }
 }
 
 async function guardarTraspasoCB() {
@@ -1733,16 +1854,16 @@ async function guardarTraspasoCB() {
   const direccion   = document.getElementById('traspaso-cb-direccion').value; // 'CAJA_A_BANCO' | 'BANCO_A_CAJA'
   const moneda      = document.getElementById('traspaso-cb-moneda').value;
   const idCtaCaja   = parseInt(document.getElementById('traspaso-cb-cuenta-caja').value) || null;
-  const idCtaBanco  = parseInt(document.getElementById('traspaso-cb-cuenta-banco').value) || null;
-  const idBanco     = document.getElementById('traspaso-cb-banco').value || null;
+  const selCuentaBancTrasp = document.getElementById('traspaso-cb-cuenta-bancaria');
+  const idCuentaBancaria   = parseInt(selCuentaBancTrasp.value) || null;
+  const idCtaBanco  = parseInt(selCuentaBancTrasp.selectedOptions[0]?.dataset.cuentaContable) || null;
   const monto       = parseFloat(document.getElementById('traspaso-cb-monto').value) || 0;
   const referencia  = document.getElementById('traspaso-cb-referencia').value.trim();
   const concepto    = document.getElementById('traspaso-cb-concepto').value.trim();
 
   if (!fecha)                 { errEl.textContent = 'Debe indicar la Fecha.'; errEl.style.display = 'block'; return; }
   if (!idCtaCaja)              { errEl.textContent = 'Debe seleccionar la Cuenta de Caja.'; errEl.style.display = 'block'; return; }
-  if (!idCtaBanco)             { errEl.textContent = 'Debe seleccionar la Cuenta de Banco.'; errEl.style.display = 'block'; return; }
-  if (!idBanco)                { errEl.textContent = 'Debe seleccionar el Banco.'; errEl.style.display = 'block'; return; }
+  if (!idCuentaBancaria || !idCtaBanco) { errEl.textContent = 'Debe seleccionar la Cuenta Bancaria.'; errEl.style.display = 'block'; return; }
   if (!monto || monto <= 0)   { errEl.textContent = 'Debe indicar un Monto mayor a cero.'; errEl.style.display = 'block'; return; }
   if (!referencia)             { errEl.textContent = 'Debe indicar la Referencia/Comprobante.'; errEl.style.display = 'block'; return; }
 
@@ -1868,7 +1989,7 @@ async function guardarTraspasoCB() {
       moneda:            moneda,
       id_cuenta_origen:  idCtaOrigen,
       id_cuenta_destino: idCtaDestino,
-      id_banco:          parseInt(idBanco) || null,
+      id_cuenta_bancaria_empresa: idCuentaBancaria,
       monto:             monto,
       monto_usd:         montoUSD,
       monto_ves:         montoVES,
