@@ -15,7 +15,6 @@ const ESTADOS_OS = {
   'EN_PROCESO':       { clase: 'badge-verde',   label: 'En Proceso' },
   'ESPERA_ARTICULO':  { clase: 'badge-rojo',    label: 'Espera Artículo' },
   'CERRADA':          { clase: 'badge-gris',    label: 'Cerrada' },
-  'ANULADA':          { clase: 'badge-rojo',    label: 'Anulada' },
 };
 
 async function renderOrdenes() {
@@ -76,7 +75,6 @@ async function renderOrdenes() {
       EN_PROCESO:      ordenes.filter(function(o) { return o.estado === 'EN_PROCESO'; }).length,
       ESPERA_ARTICULO: ordenes.filter(function(o) { return o.estado === 'ESPERA_ARTICULO'; }).length,
       CERRADA:         ordenes.filter(function(o) { return o.estado === 'CERRADA'; }).length,
-      ANULADA:         ordenes.filter(function(o) { return o.estado === 'ANULADA'; }).length,
     };
 
     c.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:24px">'
@@ -225,12 +223,9 @@ function getHoyVzla() {
 
 function onCambioEstadoOS(estado) {
   const cierreCont   = document.getElementById('os-fecha-cierre-cont');
-  const anulaCont    = document.getElementById('os-fecha-anulacion-cont');
   if (cierreCont)  cierreCont.style.display  = (estado === 'CERRADA')  ? '' : 'none';
-  if (anulaCont)   anulaCont.style.display   = (estado === 'ANULADA')  ? '' : 'none';
-  // Si cambia a otro estado, limpiar fechas
+  // Si cambia a otro estado, limpiar fecha
   if (estado !== 'CERRADA')  { var fc = document.getElementById('os-fecha-cierre');   if (fc) fc.value = ''; }
-  if (estado !== 'ANULADA')  { var fa = document.getElementById('os-fecha-anulacion'); if (fa) fa.value = ''; }
 
   // Al elegir Cerrada, el botón se convierte de inmediato en Facturar --
   // guardar el cierre y generar la Factura quedan como una sola acción,
@@ -400,7 +395,6 @@ async function abrirNuevaOS() {
   document.getElementById('os-fecha-entrada').max = sesionActual.administrador ? '' : hoyOS;
   document.getElementById('os-fecha-prometida').value = '';
   document.getElementById('os-fecha-cierre').value    = '';
-  document.getElementById('os-fecha-anulacion').value = '';
   onCambioEstadoOS('ABIERTA');
   document.getElementById('os-fecha-prometida').min = sesionActual.administrador ? '' : hoyOS;
   document.getElementById('os-estado').value = 'ABIERTA';
@@ -507,9 +501,8 @@ async function abrirEditarOS(id) {
   document.getElementById('os-km').value = o.kilometraje_entrada || '';
   document.getElementById('os-fecha-entrada').value = o.fecha_entrada || '';
   document.getElementById('os-fecha-prometida').value = o.fecha_prometida || '';
-  // Cargar fechas cierre/anulación
+  // Cargar fecha de cierre
   document.getElementById('os-fecha-cierre').value   = o.fecha_cierre    || '';
-  document.getElementById('os-fecha-anulacion').value = o.fecha_anulacion || '';
   // Mostrar/ocultar según estado
   onCambioEstadoOS(o.estado || '');
   document.getElementById('os-estado').value = o.estado;
@@ -935,7 +928,6 @@ async function _guardarOSInterno() {
   const fechaProm   = document.getElementById('os-fecha-prometida').value;
   const estado        = document.getElementById('os-estado').value;
   const fechaCierre   = document.getElementById('os-fecha-cierre')?.value   || null;
-  const fechaAnulacion= document.getElementById('os-fecha-anulacion')?.value || null;
   const diagnostico   = document.getElementById('os-diagnostico').value.trim();
   const obs         = document.getElementById('os-observaciones').value.trim();
   const okEl        = document.getElementById('alerta-os-ok');
@@ -974,11 +966,6 @@ async function _guardarOSInterno() {
     errEl.textContent = 'Debe ingresar la Fecha de Cierre para cerrar la OS.';
     errEl.style.display = 'block';
     document.getElementById('os-fecha-cierre')?.focus(); return;
-  }
-  if (estado === 'ANULADA' && !fechaAnulacion) {
-    errEl.textContent = 'Debe ingresar la Fecha de Anulación para anular la OS.';
-    errEl.style.display = 'block';
-    document.getElementById('os-fecha-anulacion')?.focus(); return;
   }
   if (!diagnostico) {
     errEl.textContent = 'El Diagnóstico es obligatorio.';
@@ -1042,7 +1029,6 @@ async function _guardarOSInterno() {
       fecha_entrada:   fechaEnt,
       fecha_prometida: fechaProm    || null,
       fecha_cierre:    fechaCierre   || null,
-      fecha_anulacion: fechaAnulacion || null,
       estado,
       diagnostico: diagnostico || null,
       observaciones: obs || null,
@@ -1517,7 +1503,8 @@ async function verFichaOS(id) {
     } else {
       btnFacturarOS.style.display = 'none';
     }
-    // Botón Reabrir (solo admins, solo en CERRADA o ANULADA)
+    // Botón Reabrir (solo admins, solo en CERRADA -- ANULADA ya no existe
+    // como estado alcanzable)
     let btnReabrir = document.getElementById('ficha-os-reabrir-btn');
     if (!btnReabrir) {
       btnReabrir = document.createElement('button');
@@ -1526,7 +1513,7 @@ async function verFichaOS(id) {
       btnReabrir.style.cssText = 'border-color:rgba(255,107,0,0.4);color:var(--naranja)';
       document.getElementById('ficha-os-editar-btn').parentNode.insertBefore(btnReabrir, document.getElementById('ficha-os-editar-btn'));
     }
-    if (puedo('SERVICIOS','REABRIR') && (o.estado === 'CERRADA' || o.estado === 'ANULADA')) {
+    if (puedo('SERVICIOS','REABRIR') && o.estado === 'CERRADA') {
       btnReabrir.textContent = '↺ Reabrir OS';
       btnReabrir.setAttribute('onclick', 'cerrarModal(\'modal-ficha-os\');reabrirOS(' + id + ',\'' + (o.numero_os || '') + '\')');
       btnReabrir.style.display = '';
