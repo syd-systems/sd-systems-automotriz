@@ -617,11 +617,9 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       '<select id="pagos-estado" style="' + inputStyle() + '" onchange="cargarPagosDesdeUI()">' +
       '<option value="">Todos los estados</option>' +
       '<option value="PENDIENTE">Pendiente</option>' +
-      '<option value="POR_APROBAR">Por Aprobar</option>' +
       '<option value="APROBADA">Aprobada</option>' +
       '<option value="RECHAZADA">Rechazada</option>' +
-      '<option value="PARCIAL">Parcial</option>' +
-      '<option value="PAGADA">Pagado</option>' +
+      '<option value="PAGADA">Pagada</option>' +
       '<option value="ANULADA">Anulado</option>' +
       '</select>' +
       '<select id="pagos-categoria" style="' + inputStyle() + '" onchange="cargarPagosDesdeUI()">' +
@@ -775,14 +773,14 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
   const cont = document.getElementById('pagos-tabla-cont');
   if (!cont) return;
 
-  const estCol = { PENDIENTE:'#f59e0b', PARCIAL:'#60a5fa', PAGADA:'#22c55e', ANULADA:'#6b7280' };
+  const estCol = { PENDIENTE:'#f59e0b', PAGADA:'#22c55e', ANULADA:'#6b7280' };
 
   if (!todos.length) {
     cont.innerHTML = '<div style="text-align:center;padding:40px;color:var(--suave)">Sin obligaciones de pago registradas.</div>';
     return;
   }
 
-  const estCol2 = { PENDIENTE:'#f59e0b', APROBADA:'#a78bfa', POR_APROBAR:'#60a5fa', PAGADA:'#22c55e', PARCIAL:'#f59e0b', ANULADA:'#6b7280', RECHAZADA:'#fc8181' };
+  const estCol2 = { PENDIENTE:'#f59e0b', APROBADA:'#a78bfa', PAGADA:'#22c55e', ANULADA:'#6b7280', RECHAZADA:'#fc8181' };
 
   // Resolver en bulk (una sola consulta) Nombre + Código de Área de cada
   // creador, para mostrarlo en el listado sin una consulta por fila.
@@ -827,7 +825,6 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
             : '<button onclick="verDetalleCxP('+item._id+')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">💸 Pagar</button>')));
       if (est === 'PENDIENTE' || est === 'RECHAZADA') acciones = btnVerPend + (btnAprobar ? ' '+btnAprobar : '') + ((btnRechazar && est !== 'RECHAZADA') ? ' '+btnRechazar : '');
       else if (est === 'APROBADA') acciones = btnVerPag + (btnRegistrarPagoLista ? ' '+btnRegistrarPagoLista : '');
-      else if (est === 'POR_APROBAR') acciones = btnVerPag + (btnAprobar ? ' '+btnAprobar : '') + (btnRechazar ? ' '+btnRechazar : '');
       else acciones = btnVerPag;
     }
 
@@ -2078,15 +2075,14 @@ async function contGuardarPagoCxp() {
     if (!tipoMetodo) tipoMetodo = 'TRANSFERENCIA';
     const metodo = tipoMetodo;
 
-    // Redondeado a 2 decimales (precisión real de moneda) -- si se queda
-    // en 4, una división Bs/tasa puede dejar un residuo de centésimas de
-    // centavo (ej. $0,0001) que la comparación siguiente no perdona,
-    // marcando PARCIAL algo que en la práctica ya quedó pagado completo
-    // (pasaba incluso en Obligaciones de Contado, que nunca deberían
-    // quedar parciales).
+    // Redondeado a 2 decimales (precisión real de moneda) -- el formulario
+    // de pago siempre envía el monto completo (no hay forma de pagar un
+    // monto parcial desde la interfaz), así que el saldo debería quedar
+    // siempre en 0. Se sigue calculando por precisión/consistencia con el
+    // resto del sistema, pero el estado resultante es siempre PAGADA.
     const nuevoPagado = parseFloat((parseFloat(c.pagado_usd||0) + montoUSD).toFixed(2));
     const nuevoSaldo  = parseFloat(Math.max(0, parseFloat(c.monto_usd||0) - nuevoPagado).toFixed(2));
-    const nuevoEstado = nuevoSaldo <= 0 ? 'PAGADA' : 'PARCIAL';
+    const nuevoEstado = 'PAGADA';
 
     // Subir comprobante si se adjuntó archivo
     let urlComprobante = null;
@@ -2099,7 +2095,7 @@ async function contGuardarPagoCxp() {
 
     // Guardar datos del pago -- la aprobación del superior ya ocurrió
     // antes de llegar aquí (la CxP estaba en estado APROBADA), así que
-    // este paso va directo a PAGADA/PARCIAL y genera el asiento real.
+    // este paso va directo a PAGADA y genera el asiento real.
     const patchData = {
       estado:          nuevoEstado,
       pagado_usd:      nuevoPagado,
@@ -2311,7 +2307,7 @@ async function anularPagoEjecutado(id_cxp) {
     const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=monto_usd,monto_ves,numero_doc,estado');
     if (!rows || !rows[0]) throw new Error('CxP no encontrada.');
     const c = rows[0];
-    if (c.estado !== 'PAGADA' && c.estado !== 'PARCIAL') { alert('Esta CxP no está en estado PAGADA ni PARCIAL.'); return; }
+    if (c.estado !== 'PAGADA') { alert('Esta CxP no está en estado PAGADA.'); return; }
 
     // 1. Devolver la CxP a PENDIENTE (dejar sin efecto el pago registrado)
     await api('cont_cxp','PATCH',
@@ -2745,7 +2741,7 @@ async function editarCxPManual(id_cxp) {
     const c = rows[0];
 
     // Defensa adicional -- no confiar solo en que el boton este oculto.
-    // Editar el monto de una CxP ya PAGADA/PARCIAL corrompe el registro:
+    // Editar el monto de una CxP ya PAGADA corrompe el registro:
     // resetea el saldo pero no el estado, y regenera el asiento contable
     // con un monto distinto al que realmente salio del banco.
     if (c.estado !== 'PENDIENTE' && c.estado !== 'RECHAZADA') {
@@ -3721,7 +3717,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     // Badge de Estado, en el extremo derecho del encabezado de la sección
     const estadoBadgeEl = document.getElementById('cont-pago-cxp-estado-badge');
     if (estadoBadgeEl) {
-      const coloresEstado = { PENDIENTE:'#f59e0b', RECHAZADA:'#fc8181', APROBADA:'#a78bfa', POR_APROBAR:'#60a5fa', PAGADA:'#22c55e', PARCIAL:'#22c55e', ANULADA:'#6b7280' };
+      const coloresEstado = { PENDIENTE:'#f59e0b', RECHAZADA:'#fc8181', APROBADA:'#a78bfa', PAGADA:'#22c55e', ANULADA:'#6b7280' };
       const estActual = c.estado || 'PENDIENTE';
       const colEstado = coloresEstado[estActual] || '#888';
       estadoBadgeEl.textContent = estActual;
@@ -3778,7 +3774,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     // ── Sección 2: Datos del pago (si ya se registró un pago, aunque
     // esté pendiente de aprobación) ──
     const secPago = document.getElementById('cont-pago-cxp-seccion-pago');
-    const tienePago = est === 'PAGADA' || est === 'PARCIAL' || est === 'POR_APROBAR';
+    const tienePago = est === 'PAGADA';
     if (secPago) secPago.style.display = tienePago ? '' : 'none';
     if (tienePago) {
       const detFecha = document.getElementById('cont-pago-det-fecha');
@@ -3901,7 +3897,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
           + '<button class="btn-primario" onclick="abrirDialogoRegistrarPago()">&#x1F4B8; Registrar Pago</button>';
       } else {
         const btnAnularF    = (esManualF && est !== 'ANULADA' && est !== 'PAGADA') ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+');cerrarModal(\'modal-cont-pago-cxp\')">🗑 Anular</button>' : '';
-        const btnAnularEjecF = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR'))) ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Procesado</button>' : '';
+        const btnAnularEjecF = (est === 'PAGADA' && (sesionActual?.administrador || puedo('PAGOS','ANULAR'))) ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Procesado</button>' : '';
         const btnReactivarF = (est === 'ANULADA' && (sesionActual?.administrador || puedo('PAGOS','ELIMINAR'))) ? '<button class="btn-primario" onclick="btnSetGuardando(this,true,null,\'Procesando...\');reactivarPagoCxP('+id_cxp+').finally(()=>btnSetGuardando(this,false))">↩ Reactivar</button>' : '';
         footer.innerHTML =
           '<div style="display:flex;gap:10px;justify-content:space-between;align-items:center;width:100%">'
@@ -4003,7 +3999,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
         ? '<button class="btn-primario" onclick="abrirDialogoRegistrarPago()">&#x1F4B8; Registrar Pago</button>' : '';
       const btnAnular = ((est === 'PENDIENTE' || est === 'RECHAZADA') && (puedo('PAGOS','ELIMINAR') || sesionActual?.administrador))
         ? '<button class="btn-peligro" onclick="anularPagoCxP('+id_cxp+')">🗑 Anular</button>' : '';
-      const btnAnularEjec = ((est === 'PAGADA' || est === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR')))
+      const btnAnularEjec = (est === 'PAGADA' && (sesionActual?.administrador || puedo('PAGOS','ANULAR')))
         ? '<button class="btn-peligro" onclick="anularPagoEjecutado('+id_cxp+')">🗑 Anular Pago Procesado</button>' : '';
       const btnReactivar = (est === 'ANULADA' && (sesionActual?.administrador || puedo('PAGOS','ELIMINAR')))
         ? '<button class="btn-primario" onclick="btnSetGuardando(this,true,null,\'Procesando...\');reactivarPagoCxP('+id_cxp+').finally(()=>btnSetGuardando(this,false))">↩ Reactivar</button>' : '';
@@ -4029,7 +4025,7 @@ async function verPagoCxP(id_cxp) {
 
 // Botón "❌ Anular Compra" en la Ficha de Obligación de Pago -- para
 // Usuarios con Nivel de Aprobar/Rechazar Compras (PAGOS.APROBAR), permite
-// rechazar una Compra ya aprobada, siempre que no esté PAGADA/PARCIAL.
+// rechazar una Compra ya aprobada, siempre que no esté PAGADA.
 // Reutiliza el mecanismo de anulación ya existente (anularMovimiento),
 // que revierte Stock/CPP/Asiento y anula la CxP correctamente, con
 // confirmación por contraseña -- no se reimplementa esa lógica aquí.
@@ -4082,7 +4078,7 @@ async function _verCxPAutomatica(c, id_cxp) {
   // Estado
   const estadoEl = document.getElementById('cxp-auto-estado');
   estadoEl.textContent = c.estado || '—';
-  estadoEl.style.color = c.estado === 'PAGADA' ? '#22c55e' : c.estado === 'PARCIAL' ? '#f59e0b' : 'var(--naranja)';
+  estadoEl.style.color = c.estado === 'PAGADA' ? '#22c55e' : 'var(--naranja)';
 
   // Fechas
   document.getElementById('cxp-auto-fecha-emision').textContent = c.fecha_emision ? c.fecha_emision.slice(0,10).split('-').reverse().join('/') : '—';
@@ -4207,12 +4203,12 @@ async function _verCxPAutomatica(c, id_cxp) {
     }
   }
 
-  // Referencia y Comprobante -- si ya se ejecutó el pago (PAGADA o PARCIAL);
+  // Referencia y Comprobante -- si ya se ejecutó el pago (PAGADA);
   // o Motivo del Rechazo, reutilizando el mismo bloque/línea, si RECHAZADA.
   const pagoInfoCont = document.getElementById('cxp-auto-pago-info-cont');
   const refLabelEl = document.getElementById('cxp-auto-referencia-label');
   if (pagoInfoCont) {
-    if (c.estado === 'PAGADA' || c.estado === 'PARCIAL') {
+    if (c.estado === 'PAGADA') {
       pagoInfoCont.style.display = '';
       if (refLabelEl) refLabelEl.textContent = 'Referencia de Pago';
       const formaPagoCont = document.getElementById('cxp-auto-forma-pago-cont');
@@ -4292,7 +4288,7 @@ async function _verCxPAutomatica(c, id_cxp) {
           +'<th style="padding:6px 8px;text-align:center;color:var(--suave);font-size:10px">Fecha de Pago</th>'
           +'</tr></thead><tbody>'
           + cuotas.map(function(q,i) {
-              const clr = q.estado === 'PAGADA' ? '#22c55e' : q.estado === 'PARCIAL' ? '#f59e0b' : 'var(--suave)';
+              const clr = q.estado === 'PAGADA' ? '#22c55e' : 'var(--suave)';
               return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
                 +'<td style="padding:6px 8px;font-weight:600">Cuota '+(i+1)+'</td>'
                 +'<td style="padding:6px 8px;font-family:var(--font-mono)">'+(q.fecha_vencimiento?.slice(0,10)||'—')+'</td>'
@@ -4313,16 +4309,16 @@ async function _verCxPAutomatica(c, id_cxp) {
   // listado (ver cargarPagos), que ya calcula lo mismo (grupo
   // consolidable) sin necesidad de abrir esta Ficha primero.
 
-  // Mostrar botón ANULAR PAGO EJECUTADO si está PAGADA o PARCIAL (un pago
+  // Mostrar botón ANULAR PAGO EJECUTADO si está PAGADA (un pago
   // parcial también puede necesitar reversarse, ej. si quedó mal calculado)
   const btnAnularEj = document.getElementById('cxp-auto-btn-anular-ejecutado');
   if (btnAnularEj) {
-    const puedeAnular = (c.estado === 'PAGADA' || c.estado === 'PARCIAL') && (sesionActual?.administrador || puedo('PAGOS','ANULAR'));
+    const puedeAnular = c.estado === 'PAGADA' && (sesionActual?.administrador || puedo('PAGOS','ANULAR'));
     btnAnularEj.style.display = puedeAnular ? '' : 'none';
   }
 
   // Mostrar botón ANULAR COMPRA solo si está APROBADA -- es el único
-  // estado donde "rechazar" tiene sentido real: si ya está PAGADA/PARCIAL
+  // estado donde "rechazar" tiene sentido real: si ya está PAGADA
   // hay dinero real movido (hay que Anular el Pago Ejecutado primero, ver
   // botón de arriba); si ya está ANULADA o RECHAZADA, ya se resolvió.
   // Requiere además el Nivel de Aprobar/Rechazar Compras.
@@ -5257,12 +5253,12 @@ async function confirmarEjecucionPago() {
     }
 
     // 7. Actualizar CxP -- redondeado a 2 decimales (precisión real de
-    // moneda), mismo motivo que en Registrar Pago: evitar que un residuo
-    // de centésimas de centavo (por divisiones Bs/tasa) marque PARCIAL
-    // algo que ya quedó pagado completo.
+    // moneda). El formulario de Ejecutar Pago siempre envía el monto
+    // completo (no hay campo editable de monto parcial), así que el
+    // saldo debería quedar siempre en 0 y el estado siempre PAGADA.
     const nuevoPagado = parseFloat((parseFloat(c.pagado_usd||0) + montoUSD).toFixed(2));
     const nuevoSaldo  = parseFloat(Math.max(0, parseFloat(c.monto_usd||0) - nuevoPagado).toFixed(2));
-    const nuevoEstado = nuevoSaldo <= 0 ? 'PAGADA' : 'PARCIAL';
+    const nuevoEstado = 'PAGADA';
 
     // Subir comprobante si se adjuntó archivo (opcional)
     let urlComprobanteExec = null;
