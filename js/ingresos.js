@@ -12,7 +12,6 @@ const ESTADOS_FAC = {
   'EMITIDA':  { clase: 'badge-naranja', label: 'Pendiente' },
   'APROBADA': { clase: 'badge-verde',   label: 'Aprobada'  },
   'PAGADA':   { clase: 'badge-verde',   label: 'Cobrada'   },
-  'ANULADA':  { clase: 'badge-rojo',    label: 'Anulada'   },
 };
 
 // ── Verificar facultad de aprobación ──
@@ -1195,7 +1194,9 @@ async function verFichaFactura(id) {
     var btnEditar   = document.getElementById('ficha-fac-btn-editar');
     var btnEmitir   = document.getElementById('ficha-fac-btn-emitir');
     var btnPago     = document.getElementById('ficha-fac-btn-pago');
-    var btnEliminar = document.getElementById('ficha-fac-btn-eliminar');
+    // "Eliminar Factura Anulada" se eliminó de raíz -- dependía por completo
+    // de estado==='ANULADA', y ese estado ya no se genera desde que se
+    // eliminó "Anular Factura" de raíz (ver notas de esa sesión).
     // Botón Aprobar
     await cargarFacultades();
     var btnAprobar = document.getElementById('ficha-fac-btn-aprobar');
@@ -1231,7 +1232,7 @@ async function verFichaFactura(id) {
     // como gasto propio. Ventas y OS ya bloqueaban su propia anulación una
     // vez facturadas (ver anularVenta() en ventas.js y anularOS() en
     // ordenes.js) -- esta era la única puerta que quedaba abierta.
-    if (btnEliminar){ btnEliminar._id=f.id_factura; btnEliminar._num=f.numero_factura; btnEliminar.onclick=function(){btnSetGuardando(this,true,null,'Procesando...');eliminarFactura(this._id,this._num).finally(()=>btnSetGuardando(this,false));}; btnEliminar.style.display=puedo('FACTURAS','ELIMINAR')&&f.estado==='ANULADA'?'':'none'; }
+    // (ver comentario arriba sobre btnEliminar)
     abrirModal('modal-ficha-fac');
   focusFirstField('modal-ficha-fac');
   } catch(err) { alert('Error: '+msgErr(err)); console.error(err); }
@@ -1322,11 +1323,9 @@ async function aprobarFactura(id) {
   } catch(e) { alert('Error: '+msgErr(e)); }
 }
 
-async function eliminarFactura(id, numero) {
-  if (!confirm('¿Eliminar definitivamente la factura '+numero+'?\\nEsta acción no se puede deshacer.')) return;
-  try { await api('facturas','DELETE',null,'?id_factura=eq.'+id); cerrarModal('modal-ficha-fac'); renderFacturas(); }
-  catch(err) { alert('Error: '+msgErr(err)); }
-}
+// "eliminarFactura()" se eliminó de raíz -- dependía por completo de una
+// Factura en estado ANULADA, que ya no puede ocurrir. Recuperable en el
+// historial de Git si algún día se retoma un mecanismo de corrección.
 
 
 
