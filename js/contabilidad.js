@@ -2420,6 +2420,7 @@ async function contEliminarCuenta() {
     cerrarModal('modal-cont-cuenta');
     await contCargarCuentas();
     contCuentasCache = [];
+    if (typeof _cuentasContablesCache !== 'undefined') _cuentasContablesCache = null;
     contRenderCuentas();
   } catch(e) { alert('Error al eliminar: '+msgErr(e)); }
 }
@@ -2443,6 +2444,11 @@ async function contGuardarCuenta() {
     else    { await api('cont_cuentas','POST',datos); }
     okEl.textContent='✓ Cuenta guardada.'; okEl.style.display='block';
     contCuentasCache = [];
+    // También invalidar el caché global de obtenerCuentasContables() (core.js),
+    // que alimenta selectores en otros módulos (Parámetros, Traspasos, etc.) --
+    // si no, la cuenta recién creada/editada no aparece ahí hasta recargar
+    // toda la página.
+    if (typeof _cuentasContablesCache !== 'undefined') _cuentasContablesCache = null;
     setTimeout(function(){ cerrarModal('modal-cont-cuenta'); contRenderCuentas(); }, 900);
   } catch(e) { errEl.textContent='Error: ' + msgErr(e); errEl.style.display='block'; }
 }
