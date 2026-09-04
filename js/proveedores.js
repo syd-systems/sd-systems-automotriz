@@ -299,8 +299,8 @@ async function guardarProveedor() {
   const pmCiVal      = (document.getElementById('prov-pm-ci')?.value || '').trim().toUpperCase();
   const pmCelVal     = (document.getElementById('prov-pm-celular')?.value || '').replace(/\D/g,'');
   if (id_bancoPMVal) {
-    if (!/^[JGVEPCE]\d{8}$/.test(pmCiVal.replace(/[-]/g,''))) {
-      errEl.textContent = 'C.I./R.I.F debe comenzar con J, G, V, E, P o C seguido de 8 dígitos (ej: J12345678).';
+    if (!/^(?:[JG]\d{9}|[VEPC]\d{8})$/.test(pmCiVal.replace(/[-]/g,''))) {
+      errEl.textContent = 'C.I./R.I.F inválido. Persona natural (V, E, P, C): 8 dígitos (ej: V12345678). Empresa (J, G): 9 dígitos (ej: J123456789).';
       errEl.style.display = 'block';
       document.getElementById('prov-pm-ci')?.focus();
       return;
