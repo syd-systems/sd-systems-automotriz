@@ -2869,10 +2869,13 @@ async function verHistorialMargen(id_tipo, nombreTipo) {
   if (!filas.length) {
     cont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--suave)">Sin historial registrado para este Tipo.</div>';
   } else {
-    // La fila corregible es la ACTIVO más reciente (filas ya viene ordenado
-    // por fecha_vigencia_desde desc, id desc desde invRenderMargenBruto) --
-    // solo esa puede "Corregirse"; una ya reemplazada o ya anulada, no.
+    // La fila corregible es la ACTIVO más reciente, Y ADEMÁS registrada
+    // HOY -- un Margen de un día anterior es historial cerrado: no se
+    // edita ni se anula bajo ninguna circunstancia, solo se reemplaza
+    // hacia adelante con una nueva vigencia (Definir Margen normal).
+    const hoyHistMargen = getHoyVzla();
     const idMasRecienteActivo = (filas.find(function(m){ return m.estado !== 'ANULADO'; }) || {}).id;
+    const masRecienteEsHoy = (filas.find(function(m){ return m.id === idMasRecienteActivo; })||{}).fecha_vigencia_desde === hoyHistMargen;
     cont.innerHTML = '<table style="width:100%;border-collapse:collapse;table-layout:fixed"><thead><tr>'
       +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:100px">Vigente desde</th>'
       +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:80px">Margen %</th>'
@@ -2888,7 +2891,7 @@ async function verHistorialMargen(id_tipo, nombreTipo) {
           +'<td style="padding:8px;font-family:var(--font-mono);font-weight:600;'+styleTachado+'">'+parseFloat(m.margen_pct).toFixed(2)+'%</td>'
           +'<td style="padding:8px;font-size:12px;color:var(--suave);'+styleTachado+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(m.id_usuario||'')+'">'+(m.id_usuario||'—')+'</td>'
           +'<td style="padding:8px"><span class="badge '+(anulado?'badge-rojo':'badge-verde')+'" style="font-size:10px">'+(anulado?'ANULADO':'ACTIVO')+'</span></td>'
-          +'<td style="padding:8px">'+(m.id===idMasRecienteActivo && (sesionActual?.administrador || puedo('INVENTARIO','CORREGIR_MARGEN_BRUTO'))
+          +'<td style="padding:8px">'+(m.id===idMasRecienteActivo && masRecienteEsHoy && (sesionActual?.administrador || puedo('INVENTARIO','CORREGIR_MARGEN_BRUTO'))
               ? '<button class="btn-naranja" onclick="abrirCorregirMargen('+m.id+','+m.id_tipo_articulo+',\''+(nombreTipo||'').replace(/'/g,"\\'")+'\','+parseFloat(m.margen_pct)+')" style="font-size:11px;padding:4px 10px">✏ Corregir</button>'
               : '')+'</td>'
           +'</tr>';
@@ -2911,6 +2914,10 @@ function abrirCorregirMargen(idViejo, id_tipo, nombreTipo, valorViejo) {
   const masReciente = filasVigentes[0]; // ya viene ordenado desc desde la carga
   if (!masReciente || masReciente.id !== idViejo) {
     alert('No se puede corregir este registro: ya existe un valor más reciente que lo reemplazó. Actualice el Historial e inténtelo de nuevo si hace falta.');
+    return;
+  }
+  if (masReciente.fecha_vigencia_desde !== getHoyVzla()) {
+    alert('Solo se puede corregir un Margen registrado HOY. Un valor de un día anterior es historial cerrado -- si necesita cambiarlo, defina un nuevo Margen vigente desde hoy.');
     return;
   }
   document.getElementById('corregir-margen-id-viejo').value = idViejo;
@@ -2945,27 +2952,30 @@ async function guardarCorreccionMargen() {
 
     // Revalidación fresca (defensa en profundidad): confirmar en la base,
     // justo antes de escribir, que esta sigue siendo la ACTIVO más
-    // reciente para este Tipo.
+    // reciente para este Tipo Y que sigue fechada HOY -- si alguien la
+    // dejó pasar de un día para otro con este modal abierto, ya no se
+    // permite reescribirla (pasa a ser historial cerrado).
+    const hoyChk = getHoyVzla();
     const freschChk = await api('param_margen_bruto','GET',null,
       '?id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&id_tipo_articulo=eq.'+id_tipo
-      +'&estado=neq.ANULADO&order=fecha_vigencia_desde.desc,id.desc&limit=1&select=id');
+      +'&estado=neq.ANULADO&order=fecha_vigencia_desde.desc,id.desc&limit=1&select=id,fecha_vigencia_desde');
     if (!freschChk || !freschChk[0] || freschChk[0].id !== idViejo) {
       errEl.textContent = 'No se puede corregir: ya existe un valor más reciente que lo reemplazó.';
       errEl.style.display = 'block';
       return;
     }
+    if (freschChk[0].fecha_vigencia_desde !== hoyChk) {
+      errEl.textContent = 'Ya no se puede corregir: este registro pasó a ser historial de un día anterior. Defina un nuevo Margen vigente desde hoy en su lugar.';
+      errEl.style.display = 'block';
+      return;
+    }
 
-    const hoy = new Date().toISOString().slice(0,10);
-    await api('param_margen_bruto', 'PATCH', { estado: 'ANULADO' }, '?id=eq.'+idViejo);
-    await api('param_margen_bruto', 'POST', {
-      id_empresa: _empresaActiva?.id_empresa || null,
-      id_tipo_articulo: id_tipo,
-      margen_pct: nuevoPct,
-      fecha_vigencia_desde: hoy,
-      id_usuario: sesionActual?.correo_usuario || null,
-      estado: 'ACTIVO',
-    });
-    okEl.textContent = '✓ Corrección aplicada correctamente.';
+    // Un Margen registrado y corregido el MISMO día no es una anulación --
+    // es simplemente reescribir la cifra. Se actualiza el propio registro
+    // (mismo id, misma fecha_vigencia_desde), sin crear uno nuevo ni
+    // marcar nada como ANULADO.
+    await api('param_margen_bruto', 'PATCH', { margen_pct: nuevoPct }, '?id=eq.'+idViejo);
+    okEl.textContent = '✓ Valor corregido correctamente.';
     okEl.style.display = 'block';
     setTimeout(function() {
       cerrarModal('modal-corregir-margen');
