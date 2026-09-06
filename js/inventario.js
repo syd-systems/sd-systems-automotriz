@@ -323,6 +323,7 @@ async function renderInventario(filtro) {
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\');}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:180px">'
       + (puedo('INVENTARIO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Artículo</button>' : '')
+      + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" onclick="abrirEntradaConsolidada()">📥 Entrada Consolidada</button>' : '')
       + ((sesionActual?.administrador || puedo('INVENTARIO','VER_ENTREGAS')) ? '<button class="btn-secundario" onclick="abrirModalEntregasAlmacen()">📦 Salidas por Ventas<span id="badge-entregas-almacen"></span></button>' : '')
       + '<button class="btn-secundario" title="Refrescar" onclick="renderInventario(document.getElementById(\'buscar-inv\')?.value||\'\')">🔄 Refrescar</button>'
       + '</div></div>'
@@ -2134,6 +2135,336 @@ async function invCargarTiposArticulo(selTipoId) {
             (t.codigo?t.codigo+' — ':'')+t.nombre+'</option>';
         }).join('');
   } catch(e) { console.warn('invCargarTiposArticulo:', e); }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ENTRADA CONSOLIDADA -- varios Artículos en una sola Compra a
+//  Proveedor (una sola Factura). Comparten Proveedor/Fecha/Moneda/Tasa/
+//  IVA/Modalidad de Pago; cada línea tiene su propio Artículo/Cantidad/
+//  Precio. Al guardar, se crea una fila en stock_entradas POR artículo
+//  (mismo estado PENDIENTE de siempre, sin tocar Stock/CPP/Asiento/CxP
+//  todavía -- eso sigue pasando recién al aprobar, igual que hoy), todas
+//  compartiendo un mismo id_lote_consolidado, y se enruta UNA SOLA
+//  notificación de aprobación para todo el lote (no una por artículo).
+// ══════════════════════════════════════════════════════════════
+
+let _entconsLineas = [];
+
+async function abrirEntradaConsolidada() {
+  if (!puedo('INVENTARIO','ENTRADA_STOCK')) {
+    alert('No tiene permiso para ingresar stock.');
+    return;
+  }
+  document.getElementById('entcons-proveedor').innerHTML = '<option value="">— Seleccionar —</option>';
+  document.getElementById('entcons-factura-no').value = '';
+  document.getElementById('entcons-fecha').value = getHoyVzla();
+  document.getElementById('entcons-fecha').max = getHoyVzla();
+  document.getElementById('entcons-moneda').value = 'USD';
+  document.getElementById('entcons-tasa-bcv').value = '';
+  document.querySelector('input[name="entcons-exento-iva"][value="NO"]').checked = true;
+  document.querySelector('input[name="entcons-incluye-iva"][value="NO"]').checked = true;
+  document.getElementById('entcons-esquema-pago').value = '';
+  document.getElementById('entcons-contado-cont').style.display = 'none';
+  document.getElementById('entcons-credito-cont').style.display = 'none';
+  document.getElementById('entcons-fecha-pago').value = '';
+  document.getElementById('entcons-cuotas-num').value = '';
+  document.getElementById('entcons-cuotas-fecha-inicio').value = '';
+  document.getElementById('entcons-cuotas-preview').innerHTML = '';
+  document.getElementById('entcons-clave-receptor').value = '';
+  document.getElementById('alerta-entcons-err').style.display = 'none';
+  _entconsLineas = [{ id_articulo: null, cantidad: '', precio_unitario: 0 }];
+
+  try {
+    const provRows = await api('proveedores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre');
+    document.getElementById('entcons-proveedor').innerHTML = '<option value="">— Seleccionar —</option>'
+      + (provRows||[]).map(function(p){ return '<option value="'+p.id_proveedor+'">'+p.nombre+'</option>'; }).join('');
+  } catch(eProvEntCons) {}
+
+  try {
+    const idAreaCompras = await obtenerIdAreaCompras();
+    const empRows = await api('empleados','GET',null,'?id_area=eq.'+idAreaCompras+'&estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo');
+    document.getElementById('entcons-empleado').innerHTML = '<option value="">— Seleccionar —</option>'
+      + (empRows||[]).map(function(e){ return '<option value="'+e.id_empleado+'">'+e.nombre_completo+'</option>'; }).join('');
+  } catch(eEmpEntCons) {}
+
+  await _entconsActualizarTasa();
+  _entconsRenderLineas();
+  abrirModal('modal-entrada-consolidada');
+}
+
+async function _entconsActualizarTasa() {
+  const fecha = document.getElementById('entcons-fecha')?.value || getHoyVzla();
+  try {
+    const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fecha+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+    if (tasaRows && tasaRows[0]) document.getElementById('entcons-tasa-bcv').value = parseFloat(tasaRows[0].tipo_cambio).toFixed(2);
+  } catch(eTasaEntCons) {}
+  _entconsRenderLineas();
+}
+
+function _entconsCambiarEsquemaPago() {
+  const esquema = document.getElementById('entcons-esquema-pago')?.value;
+  document.getElementById('entcons-contado-cont').style.display = esquema === 'CONTADO' ? '' : 'none';
+  document.getElementById('entcons-credito-cont').style.display = esquema === 'CREDITO' ? '' : 'none';
+  if (esquema === 'CREDITO') _entconsCalcularCuotas();
+}
+
+function _entconsAgregarLinea() {
+  _entconsLineas.push({ id_articulo: null, cantidad: '', precio_unitario: 0 });
+  _entconsRenderLineas();
+}
+
+function _entconsQuitarLinea(idx) {
+  _entconsLineas.splice(idx, 1);
+  if (!_entconsLineas.length) _entconsLineas.push({ id_articulo: null, cantidad: '', precio_unitario: 0 });
+  _entconsRenderLineas();
+}
+
+function _entconsCambioArticulo(idx, id_articulo) {
+  _entconsLineas[idx].id_articulo = parseInt(id_articulo) || null;
+  _entconsRenderLineas();
+}
+
+function _entconsCambioCampo(idx, campo, valor) {
+  _entconsLineas[idx][campo] = campo === 'cantidad' ? valor : parseMontoVE(valor);
+  _entconsRenderLineas();
+}
+
+// Convierte el precio de una línea (en la Moneda Negociación elegida) a Bs
+// para mostrar dual, igual que Ventas -- todo el cálculo real (USD base)
+// sigue haciéndose en guardarEntradaConsolidada(), esto es solo display.
+function _entconsFmtDual(montoEnMonedaNeg) {
+  const moneda = document.getElementById('entcons-moneda')?.value || 'USD';
+  const tasa = parseFloat(document.getElementById('entcons-tasa-bcv')?.value) || 0;
+  const bs = moneda === 'VES' ? montoEnMonedaNeg : montoEnMonedaNeg * tasa;
+  const usd = moneda === 'VES' ? (tasa > 0 ? montoEnMonedaNeg / tasa : 0) : montoEnMonedaNeg;
+  return '<div>'+fmtBs(bs)+' Bs</div><div style="font-size:10px;color:var(--suave)">$ '+fmtUSD(usd)+'</div>';
+}
+
+function _entconsRenderLineas() {
+  const cont = document.getElementById('entcons-lineas-cuerpo');
+  if (!cont) return;
+  const opcionesArt = '<option value="">— Seleccionar —</option>' + (inventarioCache||[]).map(function(a){
+    return '<option value="'+a.id_articulo+'">'+a.nombre_articulo+' ('+a.codigo_articulo+')</option>';
+  }).join('');
+
+  cont.innerHTML = _entconsLineas.map(function(lin, idx) {
+    const subtotal = (parseFloat(lin.cantidad)||0) * (lin.precio_unitario||0);
+    return '<tr>'
+      + '<td style="padding:4px"><select onchange="_entconsCambioArticulo('+idx+', this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">'
+        + opcionesArt.replace('value="'+lin.id_articulo+'"', 'value="'+lin.id_articulo+'" selected')
+        + '</select></td>'
+      + '<td style="padding:4px;width:90px"><input type="number" min="0" step="any" value="'+(lin.cantidad||'')+'" oninput="_entconsCambioCampo('+idx+',\'cantidad\',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
+      + '<td style="padding:4px;width:110px"><input type="text" inputmode="decimal" value="'+(lin.precio_unitario||'')+'" oninput="_entconsCambioCampo('+idx+',\'precio_unitario\',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
+      + '<td style="padding:4px 8px;width:120px;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">'+_entconsFmtDual(subtotal)+'</td>'
+      + '<td style="padding:4px;width:36px;text-align:center"><button onclick="_entconsQuitarLinea('+idx+')" style="background:none;border:none;color:var(--rojo,#e57373);cursor:pointer;font-size:16px">✕</button></td>'
+      + '</tr>';
+  }).join('');
+
+  _entconsCalcularTotales();
+}
+
+function _entconsCalcularTotales() {
+  const exento = document.querySelector('input[name="entcons-exento-iva"]:checked')?.value === 'SI';
+  const incluye = document.querySelector('input[name="entcons-incluye-iva"]:checked')?.value === 'SI';
+  const ivaRate = tasaIVAActual();
+  const subtotalNeg = _entconsLineas.reduce(function(a,l){ return a + (parseFloat(l.cantidad)||0)*(l.precio_unitario||0); }, 0);
+  let base, iva, total;
+  if (exento) { base = subtotalNeg; iva = 0; total = subtotalNeg; }
+  else if (incluye) { base = subtotalNeg / (1+ivaRate); iva = subtotalNeg - base; total = subtotalNeg; }
+  else { base = subtotalNeg; iva = subtotalNeg * ivaRate; total = base + iva; }
+
+  const el = document.getElementById('entcons-totales');
+  if (el) {
+    el.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px;padding:10px 0">'
+      + '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">Base</span><span style="text-align:right">'+_entconsFmtDual(base)+'</span></div>'
+      + '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IVA ('+Math.round(ivaRate*100)+'%)</span><span style="text-align:right">'+_entconsFmtDual(iva)+'</span></div>'
+      + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:6px;margin-top:2px">'
+      + '<span style="font-family:var(--font-display);font-size:15px;letter-spacing:1px">TOTAL</span>'
+      + '<span style="font-family:var(--font-mono);font-size:17px;color:var(--naranja);text-align:right">'+_entconsFmtDual(total)+'</span></div></div>';
+  }
+  window._entconsTotales = { subtotalNeg: subtotalNeg, base: base, iva: iva, total: total };
+  if (document.getElementById('entcons-esquema-pago')?.value === 'CREDITO') _entconsCalcularCuotas();
+}
+
+function _entconsCalcularCuotas() {
+  const numCuotas = parseInt(document.getElementById('entcons-cuotas-num')?.value) || 0;
+  const fechaInicio = document.getElementById('entcons-cuotas-fecha-inicio')?.value || '';
+  const preview = document.getElementById('entcons-cuotas-preview');
+  if (!preview) return;
+  if (!numCuotas || !fechaInicio || !window._entconsTotales) { preview.innerHTML = ''; return; }
+
+  const moneda = document.getElementById('entcons-moneda')?.value || 'USD';
+  const tasa = parseFloat(document.getElementById('entcons-tasa-bcv')?.value) || 1;
+  const totalUSD = moneda === 'VES' ? window._entconsTotales.total / tasa : window._entconsTotales.total;
+  const montoCuota = parseFloat((totalUSD / numCuotas).toFixed(2));
+
+  function ajustarHabilLunes(d) {
+    const dia = d.getDay();
+    if (dia === 6) d.setDate(d.getDate() + 2);
+    if (dia === 0) d.setDate(d.getDate() + 1);
+    return d;
+  }
+  const cuotas = [];
+  let acumulado = 0;
+  for (let i = 0; i < numCuotas; i++) {
+    const d = new Date(fechaInicio + 'T12:00:00');
+    d.setMonth(d.getMonth() + i);
+    ajustarHabilLunes(d);
+    const esUltima = i === numCuotas - 1;
+    const monto = esUltima ? parseFloat((totalUSD - acumulado).toFixed(2)) : montoCuota;
+    acumulado = parseFloat((acumulado + monto).toFixed(2));
+    cuotas.push({ num: i+1, fecha: d.toISOString().slice(0,10), monto: monto });
+  }
+  preview.dataset.cuotas = JSON.stringify(cuotas);
+  preview.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-bottom:6px">Vista previa de cuotas ($ '+fmtUSD(totalUSD)+' total):</div>'
+    + cuotas.map(function(c){ return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span>Cuota '+c.num+' — '+formatearFechaCorta(c.fecha)+'</span><span style="font-family:var(--font-mono)">$ '+fmtUSD(c.monto)+'</span></div>'; }).join('');
+}
+
+async function guardarEntradaConsolidada() {
+  const errEl = document.getElementById('alerta-entcons-err');
+  errEl.style.display = 'none';
+
+  const idProveedor = parseInt(document.getElementById('entcons-proveedor')?.value) || null;
+  const facturaNo = document.getElementById('entcons-factura-no')?.value.trim();
+  const fecha = document.getElementById('entcons-fecha')?.value;
+  const moneda = document.getElementById('entcons-moneda')?.value;
+  const tasaBcv = parseFloat(document.getElementById('entcons-tasa-bcv')?.value) || 0;
+  const exento = document.querySelector('input[name="entcons-exento-iva"]:checked')?.value === 'SI';
+  const incluye = document.querySelector('input[name="entcons-incluye-iva"]:checked')?.value === 'SI';
+  const esquemaPago = document.getElementById('entcons-esquema-pago')?.value;
+  const idEmpleado = parseInt(document.getElementById('entcons-empleado')?.value) || null;
+  const claveReceptor = document.getElementById('entcons-clave-receptor')?.value || '';
+
+  const err = function(msg, focusId) { errEl.textContent = msg; errEl.style.display = 'block'; if (focusId) document.getElementById(focusId)?.focus(); };
+
+  if (!idProveedor) return err('Seleccione el Proveedor.', 'entcons-proveedor');
+  if (!facturaNo) return err('Ingrese el N° de Factura.', 'entcons-factura-no');
+  if (!fecha) return err('Seleccione la Fecha.', 'entcons-fecha');
+  if (fecha > getHoyVzla()) return err('La Fecha no puede ser mayor a hoy.', 'entcons-fecha');
+  if (!moneda) return err('Seleccione la Moneda Negociación.', 'entcons-moneda');
+  if (!tasaBcv || tasaBcv <= 1) return err('Ingrese una Tasa BCV válida.', 'entcons-tasa-bcv');
+  if (!document.querySelector('input[name="entcons-exento-iva"]:checked')) return err('Indique si el Gasto está Exento de IVA.');
+  const lineasValidas = _entconsLineas.filter(function(l){ return l.id_articulo && parseFloat(l.cantidad) > 0 && l.precio_unitario > 0; });
+  if (!lineasValidas.length) return err('Agregue al menos un Artículo con Cantidad y Precio válidos.');
+  const idsUnicos = lineasValidas.map(function(l){ return l.id_articulo; });
+  if (new Set(idsUnicos).size !== idsUnicos.length) return err('Hay Artículos duplicados en la lista -- combine la Cantidad en una sola línea.');
+  if (!esquemaPago) return err('Seleccione la Modalidad de Pago.', 'entcons-esquema-pago');
+  let fechaPago = null, cuotasJson = null;
+  if (esquemaPago === 'CONTADO') {
+    fechaPago = document.getElementById('entcons-fecha-pago')?.value;
+    if (!fechaPago) return err('Ingrese la Fecha de Pago.', 'entcons-fecha-pago');
+    if (fechaPago < fecha) return err('La Fecha de Pago no puede ser anterior a la Fecha de Negociación.', 'entcons-fecha-pago');
+  } else {
+    const numCuotas = parseInt(document.getElementById('entcons-cuotas-num')?.value) || 0;
+    const fechaCuotaInicio = document.getElementById('entcons-cuotas-fecha-inicio')?.value;
+    if (!numCuotas || numCuotas < 1) return err('Ingrese el número de cuotas.', 'entcons-cuotas-num');
+    if (!fechaCuotaInicio) return err('Ingrese la Fecha de la Primera Cuota.', 'entcons-cuotas-fecha-inicio');
+    if (fechaCuotaInicio <= getHoyVzla()) return err('La Fecha de la Primera Cuota tiene que ser mayor a hoy.', 'entcons-cuotas-fecha-inicio');
+    cuotasJson = document.getElementById('entcons-cuotas-preview')?.dataset.cuotas || null;
+    if (!cuotasJson) return err('No se pudo calcular el desglose de cuotas.');
+  }
+  if (!idEmpleado) return err('Seleccione el Empleado que recibe.', 'entcons-empleado');
+  if (!claveReceptor) return err('El Empleado que recibe debe ingresar su contraseña.', 'entcons-clave-receptor');
+
+  const btn = document.getElementById('btn-entcons-guardar');
+  btnSetGuardando(btn, true, null, 'Procesando...');
+  try {
+    const validEmp = await validarClaveReceptor(idEmpleado, claveReceptor);
+    if (!validEmp.ok) { err(validEmp.msg); btnSetGuardando(btn, false); return; }
+
+    const id_areaCompras = await obtenerIdAreaCompras();
+    const ivaRate = tasaIVAActual();
+
+    // Cada línea se guarda EXACTAMENTE con la misma fórmula que usa hoy la
+    // Entrada de un solo Artículo (guardarEntradaStock) -- para que, al
+    // aprobarse, cada renglón siga siendo autosuficiente y consistente con
+    // el resto del sistema. Lo único distinto es que comparten
+    // id_lote_consolidado y que la notificación de aprobación se enruta
+    // una sola vez para el total, no una por artículo.
+    const idsCreados = [];
+    let montoTotalLoteConIVA = 0;
+    let montoTotalLoteMonedaOriginal = 0;
+    let idLote = null;
+
+    for (const lin of lineasValidas) {
+      const cantidad = parseFloat(lin.cantidad);
+      const precioIngresado = lin.precio_unitario;
+      const precioUSD = moneda === 'VES' ? parseFloat((precioIngresado / tasaBcv).toFixed(8)) : precioIngresado;
+      const precioCostoBase = incluye ? parseFloat((precioUSD / (1+ivaRate)).toFixed(8)) : precioUSD;
+
+      const montoOrigLinea = precioIngresado * cantidad;
+      let montoTotalMonedaOriginalLinea, baseMonedaOriginalLinea;
+      if (exento) { montoTotalMonedaOriginalLinea = parseFloat(montoOrigLinea.toFixed(2)); baseMonedaOriginalLinea = montoTotalMonedaOriginalLinea; }
+      else if (incluye) { montoTotalMonedaOriginalLinea = parseFloat(montoOrigLinea.toFixed(2)); baseMonedaOriginalLinea = parseFloat((montoOrigLinea/(1+ivaRate)).toFixed(2)); }
+      else { baseMonedaOriginalLinea = parseFloat(montoOrigLinea.toFixed(2)); montoTotalMonedaOriginalLinea = parseFloat((montoOrigLinea*(1+ivaRate)).toFixed(2)); }
+
+      const montoTotalConIVALinea = exento
+        ? parseFloat((precioCostoBase*cantidad).toFixed(2))
+        : parseFloat((precioCostoBase*cantidad*(1+ivaRate)).toFixed(2));
+
+      montoTotalLoteConIVA += montoTotalConIVALinea;
+      montoTotalLoteMonedaOriginal += montoTotalMonedaOriginalLinea;
+
+      const datosLinea = {
+        id_articulo: lin.id_articulo,
+        cantidad: cantidad,
+        precio_costo_moneda: precioCostoBase,
+        precio_compra_original: precioIngresado,
+        moneda_compra: moneda,
+        moneda_pago: moneda,
+        tasa_bcv: tasaBcv,
+        fecha_entrada: fecha,
+        fecha_negociacion: fecha,
+        id_area: id_areaCompras,
+        id_empleado: idEmpleado,
+        id_proveedor: idProveedor,
+        motivo: 'compra',
+        esquema_pago: esquemaPago,
+        observaciones: 'Factura Proveedor N° ' + facturaNo + ' (Entrada Consolidada)',
+        exento_iva: exento,
+        incluye_iva: incluye,
+        fecha_pago: esquemaPago === 'CONTADO' ? fechaPago : null,
+        monto_total_con_iva: montoTotalConIVALinea,
+        monto_total_moneda_original: montoTotalMonedaOriginalLinea,
+        base_moneda_original: baseMonedaOriginalLinea,
+        cuotas_json: esquemaPago === 'CREDITO' ? cuotasJson : null,
+        estado_aprobacion: 'PENDIENTE',
+        id_lote_consolidado: idLote,
+        id_usuario: sesionActual.correo_usuario
+      };
+      const res = await api('stock_entradas','POST',datosLinea);
+      const idNuevo = res && res[0] ? res[0].id_entrada : null;
+      if (!idNuevo) throw new Error('No se pudo guardar una de las líneas.');
+      idsCreados.push(idNuevo);
+      if (!idLote) {
+        idLote = idNuevo;
+        await api('stock_entradas','PATCH',{ id_lote_consolidado: idLote }, '?id_entrada=eq.'+idNuevo);
+      }
+    }
+
+    // Enrutar UNA SOLA notificación de aprobación para todo el lote --
+    // referenciando la primera Entrada creada (idLote), con el monto TOTAL
+    // sumado de todas las líneas.
+    const numDocLote = 'ENT-' + idLote + ' (Lote x' + lineasValidas.length + ' artículos)';
+    const montoBsLoteExacto = moneda === 'VES' ? montoTotalLoteMonedaOriginal : parseFloat((montoTotalLoteMonedaOriginal * tasaBcv).toFixed(2));
+    await enrutarAprobacionEntrada(montoTotalLoteConIVA, idLote, numDocLote, {
+      nombreArt: lineasValidas.length + ' Artículos (Factura N° ' + facturaNo + ')',
+      cantidad: lineasValidas.length,
+      unidad: 'líneas',
+      monedaCompra: moneda,
+      tasaBcv: tasaBcv,
+      montoBsExacto: montoBsLoteExacto,
+      modalidadPago: esquemaPago
+    });
+
+    document.getElementById('alerta-entcons-err').style.display = 'none';
+    alert('✓ Entrada Consolidada enviada a aprobación (' + lineasValidas.length + ' artículos, Lote ENT-' + idLote + ').');
+    cerrarModal('modal-entrada-consolidada');
+  } catch(eGuardarEntCons) {
+    err('Error: ' + msgErr(eGuardarEntCons));
+  } finally {
+    btnSetGuardando(btn, false);
+  }
 }
 
 async function abrirNuevoInventario() {
