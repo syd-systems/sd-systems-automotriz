@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260831228"></script>
-<script src="js/parametros.js?v=20260831228"></script>
-<script src="js/empresas.js?v=20260831228"></script>
-<script src="js/ingresos.js?v=20260831228"></script>
-<script src="js/inventario.js?v=20260831228"></script>
-<script src="js/proveedores.js?v=20260831228"></script>
-<script src="js/clientes.js?v=20260831228"></script>
-<script src="js/ventas.js?v=20260831228"></script>
-<script src="js/contabilidad.js?v=20260831228"></script>
-<script src="js/egresos.js?v=20260831228"></script>
-<script src="js/vehiculos.js?v=20260831228"></script>
-<script src="js/catalogo.js?v=20260831228"></script>
-<script src="js/ordenes.js?v=20260831228"></script>
+<script src="js/core.js?v=20260831229"></script>
+<script src="js/parametros.js?v=20260831229"></script>
+<script src="js/empresas.js?v=20260831229"></script>
+<script src="js/ingresos.js?v=20260831229"></script>
+<script src="js/inventario.js?v=20260831229"></script>
+<script src="js/proveedores.js?v=20260831229"></script>
+<script src="js/clientes.js?v=20260831229"></script>
+<script src="js/ventas.js?v=20260831229"></script>
+<script src="js/contabilidad.js?v=20260831229"></script>
+<script src="js/egresos.js?v=20260831229"></script>
+<script src="js/vehiculos.js?v=20260831229"></script>
+<script src="js/catalogo.js?v=20260831229"></script>
+<script src="js/ordenes.js?v=20260831229"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -5131,6 +5131,131 @@
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-cuentas-bancarias-empresa')">Cerrar</button>
       <button class="btn-primario" id="btn-cbe-guardar" onclick="guardarCuentaBancariaEmpresa()">+ Agregar Cuenta</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL ENTRADA CONSOLIDADA (varios artículos, una sola Compra) ══ -->
+<div class="modal-overlay" id="modal-entrada-consolidada" style="z-index:2000">
+  <div class="modal" style="max-width:900px">
+    <div class="modal-header">
+      <h3>📥 ENTRADA CONSOLIDADA (Compra a Proveedor)</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-entrada-consolidada')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--suave);margin-bottom:16px">
+        Para registrar en una sola Factura del Proveedor varios Artículos a la vez. Genera una sola solicitud
+        de aprobación y, al aprobarse, un solo Asiento contable y una sola Cuenta por Pagar para todo el lote.
+      </p>
+      <div class="form-grid">
+        <div class="form-campo">
+          <label>Proveedor</label>
+          <select id="entcons-proveedor" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar —</option>
+          </select>
+        </div>
+        <div class="form-campo">
+          <label>N° Factura del Proveedor</label>
+          <input type="text" id="entcons-factura-no" placeholder="N° de Factura"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+        </div>
+      </div>
+      <div class="form-grid" style="margin-top:14px">
+        <div class="form-campo">
+          <label>Fecha de Negociación</label>
+          <input type="date" id="entcons-fecha" onchange="_entconsActualizarTasa()"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;color-scheme:dark">
+        </div>
+        <div class="form-campo">
+          <label>Moneda Negociación</label>
+          <select id="entcons-moneda" onchange="_entconsActualizarTasa();_entconsRenderLineas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="USD">USD — Dólar</option>
+            <option value="VES">VES — Bolívar</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid" style="margin-top:14px">
+        <div class="form-campo">
+          <label>Tasa BCV</label>
+          <input type="text" id="entcons-tasa-bcv" inputmode="decimal" placeholder="0,00" oninput="_entconsRenderLineas()"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+        </div>
+        <div class="form-campo">
+          <label>¿Exento de IVA?</label>
+          <div style="display:flex;gap:16px;align-items:center;height:44px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="entcons-exento-iva" value="SI" onchange="_entconsRenderLineas()"> Sí</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="entcons-exento-iva" value="NO" checked onchange="_entconsRenderLineas()"> No</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-grid" id="entcons-incluye-iva-cont" style="margin-top:14px">
+        <div class="form-campo">
+          <label>¿El precio de cada línea ya incluye el IVA?</label>
+          <div style="display:flex;gap:16px;align-items:center;height:44px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="entcons-incluye-iva" value="SI" onchange="_entconsRenderLineas()"> Sí</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="entcons-incluye-iva" value="NO" checked onchange="_entconsRenderLineas()"> No</label>
+          </div>
+        </div>
+        <div class="form-campo">
+          <label>Modalidad de Pago</label>
+          <select id="entcons-esquema-pago" onchange="_entconsCambiarEsquemaPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar —</option>
+            <option value="CONTADO">Contado</option>
+            <option value="CREDITO">Crédito</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid" id="entcons-contado-cont" style="display:none;margin-top:14px">
+        <div class="form-campo">
+          <label>Fecha de Pago</label>
+          <input type="date" id="entcons-fecha-pago"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;color-scheme:dark">
+        </div>
+      </div>
+      <div id="entcons-credito-cont" style="display:none;margin-top:14px">
+        <div class="form-grid">
+          <div class="form-campo">
+            <label>N° de Cuotas</label>
+            <input type="number" id="entcons-cuotas-num" min="1" step="1" oninput="_entconsCalcularCuotas()"
+              style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          </div>
+          <div class="form-campo">
+            <label>Fecha de la Primera Cuota</label>
+            <input type="date" id="entcons-cuotas-fecha-inicio" onchange="_entconsCalcularCuotas()"
+              style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;color-scheme:dark">
+          </div>
+        </div>
+        <div style="margin-top:10px" id="entcons-cuotas-preview"></div>
+      </div>
+
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--naranja);margin:24px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--borde);display:flex;justify-content:space-between;align-items:center">
+        <span>Artículos de esta Factura</span>
+        <button type="button" class="btn-secundario" style="font-size:11px;padding:6px 10px" onclick="_entconsAgregarLinea()">+ Agregar Artículo</button>
+      </div>
+      <div class="tabla-container" style="max-height:220px">
+        <table style="width:100%"><thead><tr>
+          <th style="font-size:11px">Artículo</th><th style="font-size:11px">Cant.</th><th style="font-size:11px">P. Unit.</th><th style="font-size:11px">Subtotal</th><th></th>
+        </tr></thead><tbody id="entcons-lineas-cuerpo"></tbody></table>
+      </div>
+      <div id="entcons-totales"></div>
+
+      <div style="margin-top:16px">
+        <label>Empleado que recibe (Compras)</label>
+        <select id="entcons-empleado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <option value="">— Seleccionar —</option>
+        </select>
+      </div>
+      <div style="margin-top:14px">
+        <label>Contraseña del Empleado que recibe</label>
+        <input type="password" id="entcons-clave-receptor" placeholder="Contraseña"
+          style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+      </div>
+
+      <div class="alerta alerta-error" id="alerta-entcons-err" style="display:none;margin-top:14px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-entrada-consolidada')">Cancelar</button>
+      <button class="btn-primario" id="btn-entcons-guardar" onclick="guardarEntradaConsolidada()">Enviar a Aprobación</button>
     </div>
   </div>
 </div>
