@@ -2156,7 +2156,6 @@ async function abrirEntradaConsolidada() {
     return;
   }
   document.getElementById('entcons-proveedor').innerHTML = '<option value="">— Seleccionar —</option>';
-  document.getElementById('entcons-factura-no').value = '';
   document.getElementById('entcons-fecha').value = getHoyVzla();
   document.getElementById('entcons-fecha').max = getHoyVzla();
   document.getElementById('entcons-moneda').value = 'USD';
@@ -2165,31 +2164,49 @@ async function abrirEntradaConsolidada() {
   document.querySelector('input[name="entcons-incluye-iva"][value="NO"]').checked = true;
   document.getElementById('entcons-esquema-pago').value = '';
   document.getElementById('entcons-contado-cont').style.display = 'none';
-  document.getElementById('entcons-credito-cont').style.display = 'none';
+  document.getElementById('entcons-credito-fecha-cont').style.display = 'none';
+  document.getElementById('entcons-credito-num-cont').style.display = 'none';
   document.getElementById('entcons-fecha-pago').value = '';
   document.getElementById('entcons-cuotas-num').value = '';
   document.getElementById('entcons-cuotas-fecha-inicio').value = '';
   document.getElementById('entcons-cuotas-preview').innerHTML = '';
-  document.getElementById('entcons-clave-receptor').value = '';
+  document.getElementById('entcons-clave-usuario').value = '';
   document.getElementById('alerta-entcons-err').style.display = 'none';
   _entconsLineas = [{ id_articulo: null, cantidad: '', precio_unitario: 0 }];
 
   try {
-    const provRows = await api('proveedores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre');
+    const provRows = await api('proveedores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif');
     document.getElementById('entcons-proveedor').innerHTML = '<option value="">— Seleccionar —</option>'
-      + (provRows||[]).map(function(p){ return '<option value="'+p.id_proveedor+'">'+p.nombre+'</option>'; }).join('');
+      + (provRows||[]).map(function(p){ return '<option value="'+p.id_proveedor+'">'+p.nombre+(p.rif?' — '+p.rif:'')+'</option>'; }).join('');
   } catch(eProvEntCons) {}
 
-  try {
-    const idAreaCompras = await obtenerIdAreaCompras();
-    const empRows = await api('empleados','GET',null,'?id_area=eq.'+idAreaCompras+'&estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo');
-    document.getElementById('entcons-empleado').innerHTML = '<option value="">— Seleccionar —</option>'
-      + (empRows||[]).map(function(e){ return '<option value="'+e.id_empleado+'">'+e.nombre_completo+'</option>'; }).join('');
-  } catch(eEmpEntCons) {}
-
+  await _entconsCargarUsuarioActual();
   await _entconsActualizarTasa();
   _entconsRenderLineas();
   abrirModal('modal-entrada-consolidada');
+}
+
+// El usuario actual ES quien gestiona la Compra -- no es selectivo, mismo
+// patrón que "Quien Entrega" en Salida de Stock (cargarUsuarioEntregaSalida).
+async function _entconsCargarUsuarioActual() {
+  try {
+    const correo = sesionActual?.correo_usuario;
+    const nomEl  = document.getElementById('entcons-usuario-nombre');
+    const areaEl = document.getElementById('entcons-usuario-area');
+    if (!correo) return;
+    const emps = await api('empleados','GET',null,
+      '?correo=eq.'+encodeURIComponent(correo)+'&select=nombre_completo,param_areas(nombre,codigo)');
+    const emp = emps && emps[0] ? emps[0] : null;
+    if (emp) {
+      if (nomEl)  nomEl.textContent  = emp.nombre_completo;
+      if (areaEl) areaEl.textContent = emp.param_areas
+        ? emp.param_areas.nombre + (emp.param_areas.codigo ? ' (' + emp.param_areas.codigo + ')' : '')
+        : '';
+    } else {
+      if (nomEl)  nomEl.textContent  = sesionActual?.nombre || correo;
+      if (areaEl) areaEl.textContent = '';
+    }
+  } catch(eUsrEntCons) { console.warn('_entconsCargarUsuarioActual:', eUsrEntCons); }
 }
 
 async function _entconsActualizarTasa() {
@@ -2204,8 +2221,10 @@ async function _entconsActualizarTasa() {
 function _entconsCambiarEsquemaPago() {
   const esquema = document.getElementById('entcons-esquema-pago')?.value;
   document.getElementById('entcons-contado-cont').style.display = esquema === 'CONTADO' ? '' : 'none';
-  document.getElementById('entcons-credito-cont').style.display = esquema === 'CREDITO' ? '' : 'none';
+  document.getElementById('entcons-credito-fecha-cont').style.display = esquema === 'CREDITO' ? '' : 'none';
+  document.getElementById('entcons-credito-num-cont').style.display = esquema === 'CREDITO' ? '' : 'none';
   if (esquema === 'CREDITO') _entconsCalcularCuotas();
+  else document.getElementById('entcons-cuotas-preview').innerHTML = '';
 }
 
 function _entconsAgregarLinea() {
@@ -2325,20 +2344,17 @@ async function guardarEntradaConsolidada() {
   errEl.style.display = 'none';
 
   const idProveedor = parseInt(document.getElementById('entcons-proveedor')?.value) || null;
-  const facturaNo = document.getElementById('entcons-factura-no')?.value.trim();
   const fecha = document.getElementById('entcons-fecha')?.value;
   const moneda = document.getElementById('entcons-moneda')?.value;
   const tasaBcv = parseFloat(document.getElementById('entcons-tasa-bcv')?.value) || 0;
   const exento = document.querySelector('input[name="entcons-exento-iva"]:checked')?.value === 'SI';
   const incluye = document.querySelector('input[name="entcons-incluye-iva"]:checked')?.value === 'SI';
   const esquemaPago = document.getElementById('entcons-esquema-pago')?.value;
-  const idEmpleado = parseInt(document.getElementById('entcons-empleado')?.value) || null;
-  const claveReceptor = document.getElementById('entcons-clave-receptor')?.value || '';
+  const claveUsuario = document.getElementById('entcons-clave-usuario')?.value || '';
 
   const err = function(msg, focusId) { errEl.textContent = msg; errEl.style.display = 'block'; if (focusId) document.getElementById(focusId)?.focus(); };
 
   if (!idProveedor) return err('Seleccione el Proveedor.', 'entcons-proveedor');
-  if (!facturaNo) return err('Ingrese el N° de Factura.', 'entcons-factura-no');
   if (!fecha) return err('Seleccione la Fecha.', 'entcons-fecha');
   if (fecha > getHoyVzla()) return err('La Fecha no puede ser mayor a hoy.', 'entcons-fecha');
   if (!moneda) return err('Seleccione la Moneda Negociación.', 'entcons-moneda');
@@ -2363,17 +2379,23 @@ async function guardarEntradaConsolidada() {
     cuotasJson = document.getElementById('entcons-cuotas-preview')?.dataset.cuotas || null;
     if (!cuotasJson) return err('No se pudo calcular el desglose de cuotas.');
   }
-  if (!idEmpleado) return err('Seleccione el Empleado que recibe.', 'entcons-empleado');
-  if (!claveReceptor) return err('El Empleado que recibe debe ingresar su contraseña.', 'entcons-clave-receptor');
+  if (!claveUsuario) return err('Debe ingresar su contraseña para confirmar.', 'entcons-clave-usuario');
 
   const btn = document.getElementById('btn-entcons-guardar');
   btnSetGuardando(btn, true, null, 'Procesando...');
   try {
-    const validEmp = await validarClaveReceptor(idEmpleado, claveReceptor);
-    if (!validEmp.ok) { err(validEmp.msg); btnSetGuardando(btn, false); return; }
+    const validUsr = await validarClaveUsuarioActual(claveUsuario);
+    if (!validUsr.ok) { err(validUsr.msg); btnSetGuardando(btn, false); return; }
 
     const id_areaCompras = await obtenerIdAreaCompras();
     const ivaRate = tasaIVAActual();
+    // El "Empleado que gestiona" es el usuario actual, no uno seleccionado
+    // a mano -- se resuelve automáticamente por su correo.
+    let idEmpleadoActual = null;
+    try {
+      const empActualRows = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_empleado&limit=1');
+      idEmpleadoActual = empActualRows && empActualRows[0] ? empActualRows[0].id_empleado : null;
+    } catch(eEmpActualEntCons) {}
 
     // Cada línea se guarda EXACTAMENTE con la misma fórmula que usa hoy la
     // Entrada de un solo Artículo (guardarEntradaStock) -- para que, al
@@ -2416,11 +2438,11 @@ async function guardarEntradaConsolidada() {
         fecha_entrada: fecha,
         fecha_negociacion: fecha,
         id_area: id_areaCompras,
-        id_empleado: idEmpleado,
+        id_empleado: idEmpleadoActual,
         id_proveedor: idProveedor,
         motivo: 'compra',
         esquema_pago: esquemaPago,
-        observaciones: 'Factura Proveedor N° ' + facturaNo + ' (Entrada Consolidada)',
+        observaciones: 'Compra a Proveedor (Entrada Consolidada)',
         exento_iva: exento,
         incluye_iva: incluye,
         fecha_pago: esquemaPago === 'CONTADO' ? fechaPago : null,
@@ -2448,7 +2470,7 @@ async function guardarEntradaConsolidada() {
     const numDocLote = 'ENT-' + idLote + ' (Lote x' + lineasValidas.length + ' artículos)';
     const montoBsLoteExacto = moneda === 'VES' ? montoTotalLoteMonedaOriginal : parseFloat((montoTotalLoteMonedaOriginal * tasaBcv).toFixed(2));
     await enrutarAprobacionEntrada(montoTotalLoteConIVA, idLote, numDocLote, {
-      nombreArt: lineasValidas.length + ' Artículos (Factura N° ' + facturaNo + ')',
+      nombreArt: lineasValidas.length + ' Artículos (Compra a Proveedor)',
       cantidad: lineasValidas.length,
       unidad: 'líneas',
       monedaCompra: moneda,
