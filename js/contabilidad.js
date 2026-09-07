@@ -2911,6 +2911,102 @@ async function guardarTributo() {
 //  ASIENTOS CONTABLES DE INVENTARIO
 // ══════════════════════════════════════════════════════════════
 
+// Versión "por lote" de generarAsientoInventario('ENTRADA_COMPRA', ...) --
+// UN SOLO asiento para varios Artículos de la misma Compra (Entrada
+// Consolidada). Agrupa las líneas de Inventario por Cuenta Contable (si
+// dos Artículos comparten cuenta, se suman en una sola línea), una sola
+// línea de IVA agregada, y una sola línea de CxP Proveedores por el total.
+// `lineas`: [{ articulo, cantidad, id_cuentaInventario, baseExactaUSD,
+//              baseExactaBs, totalExactoUSD, totalExactoBs }, ...]
+async function generarAsientoInventarioLote(lineas, datos) {
+  try {
+    let tasa = datos.tasa ? parseFloat(datos.tasa) : 0;
+    if (!tasa) {
+      const fechaBuscar = datos.fecha || getHoyVzla();
+      const tasas = await api('tasas','GET',null,'?fecha_valor=lte.' + fechaBuscar + '&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+      tasa = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
+    }
+
+    const anioLote = new Date().getFullYear();
+    const existAstLote = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-'+anioLote+'-*&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
+    let seqLote = 1;
+    if (existAstLote.length) { const p = existAstLote[0].numero_asiento.split('-'); seqLote = parseInt(p[p.length-1])+1; }
+    const numAstLote = 'AST-'+anioLote+'-'+String(seqLote).padStart(4,'0');
+
+    const periodosLote = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
+    const id_periodoLote = periodosLote.length ? periodosLote[0].id_periodo : null;
+
+    const asientoLote = await api('cont_asientos','POST',{
+      numero_asiento: numAstLote,
+      fecha:          datos.fecha || getHoyVzla(),
+      descripcion:    'Compra Inventario (Lote x' + lineas.length + ' artículos): ' + (datos.proveedorNombre || ''),
+      tipo:           'AUTOMATICO',
+      referencia:     datos.referencia || null,
+      moneda_base:    ((_empresaActiva?.moneda_principal)||'VES').toUpperCase(),
+      tasa_bcv:       tasa,
+      id_periodo:     id_periodoLote,
+      id_empresa:     _empresaActiva ? _empresaActiva.id_empresa : null,
+      estado:         'APROBADO',
+      id_usuario:     sesionActual.correo_usuario
+    });
+    if (!asientoLote || !asientoLote[0]) return null;
+    const idAstLote = asientoLote[0].id_asiento;
+
+    const _todasCtasLote = await obtenerCuentasContables();
+    const IVA_RATE_LOTE = tasaIVAActual();
+    const exentoLote  = datos.exentoIVA  || false;
+    const incluyeLote = datos.incluyeIVA || false;
+
+    // Agrupar líneas por Cuenta de Inventario -- si dos Artículos comparten
+    // cuenta, quedan sumados en una sola línea del asiento.
+    const gruposPorCuenta = {};
+    let baseTotalUSD = 0, baseTotalBs = 0, totalUSDTodo = 0, totalBsTodo = 0;
+    lineas.forEach(function(lin) {
+      const clave = lin.id_cuentaInventario || 'sin_cuenta';
+      if (!gruposPorCuenta[clave]) gruposPorCuenta[clave] = { id_cuenta: lin.id_cuentaInventario, baseUSD: 0, baseBs: 0, nombres: [] };
+      gruposPorCuenta[clave].baseUSD += lin.baseExactaUSD;
+      gruposPorCuenta[clave].baseBs  += (lin.baseExactaBs || 0);
+      gruposPorCuenta[clave].nombres.push(lin.articulo);
+      baseTotalUSD += lin.baseExactaUSD;
+      baseTotalBs  += (lin.baseExactaBs || 0);
+      totalUSDTodo += lin.totalExactoUSD;
+      totalBsTodo  += (lin.totalExactoBs || 0);
+    });
+
+    let orden = 1;
+    for (const clave in gruposPorCuenta) {
+      const g = gruposPorCuenta[clave];
+      if (!g.id_cuenta) continue;
+      await api('cont_asiento_lineas','POST',{ id_asiento:idAstLote, id_cuenta:g.id_cuenta, orden:orden++,
+        descripcion: 'Compra de Artículos Entrada de Inventario N° ' + (datos.referencia||'') + ' -- ' + g.nombres.join(', ').substring(0,180),
+        debe_usd: parseFloat(g.baseUSD.toFixed(2)), haber_usd: 0, debe_ves: parseFloat(g.baseBs.toFixed(2)), haber_ves: 0 });
+    }
+
+    // IVA agregado -- calculado por diferencia (Total del lote - Base del
+    // lote), igual que en el asiento de un solo Artículo, para que cuadre
+    // exacto contra los montos ya congelados por línea.
+    const ivaTotalUSD = exentoLote ? 0 : parseFloat((totalUSDTodo - baseTotalUSD).toFixed(2));
+    const ivaTotalBs  = exentoLote ? 0 : parseFloat((totalBsTodo  - baseTotalBs ).toFixed(2));
+    if (!exentoLote && ivaTotalUSD > 0) {
+      const cIVALote = _todasCtasLote.find(function(c){ return c.codigo === '1.1.05.001'; });
+      if (cIVALote) await api('cont_asiento_lineas','POST',{ id_asiento:idAstLote, id_cuenta:cIVALote.id_cuenta, orden:orden++,
+        descripcion: 'Pago IVA (' + Math.round(IVA_RATE_LOTE*100) + '%) Compra de Artículos Entrada de Inventario (' + (datos.referencia||'') + ')',
+        debe_usd: ivaTotalUSD, haber_usd: 0, debe_ves: ivaTotalBs, haber_ves: 0 });
+    }
+
+    // HABER: CxP Proveedores -- una sola línea por el total del lote.
+    const cProvLote = _todasCtasLote.find(function(c){ return c.codigo === '2.1.01.001'; });
+    if (cProvLote) await api('cont_asiento_lineas','POST',{ id_asiento:idAstLote, id_cuenta:cProvLote.id_cuenta, orden:orden++,
+      descripcion: 'CxP Compra N° ' + (datos.referencia||'') + ' a ' + (datos.proveedorNombre || '(Lote)'),
+      debe_usd: 0, haber_usd: parseFloat(totalUSDTodo.toFixed(2)), debe_ves: 0, haber_ves: parseFloat(totalBsTodo.toFixed(2)) });
+
+    return { idAsiento: idAstLote, numeroAsiento: numAstLote, totalUSD: totalUSDTodo, totalBs: totalBsTodo };
+  } catch(eAstLote) {
+    console.warn('Error generando asiento de Entrada Consolidada:', eAstLote);
+    return null;
+  }
+}
+
 async function generarAsientoInventario(tipo, datos) {
   // tipo: 'ENTRADA_COMPRA' | 'ENTRADA_DEVOLUCION' | 'ENTRADA_AJUSTE'
   //       'SALIDA_AREA' | 'SALIDA_AJUSTE'
