@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831235';
+const SYD_VERSION = '20260831236';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -2979,18 +2979,27 @@ async function notifConfirmar() {
       await verificarNotificacionesPendientes();
       try {
         const entRowsRech = await api('stock_entradas','GET',null,
-          '?id_entrada=eq.'+extras.id_entrada+'&select=id_articulo');
-        const idArticuloRech = entRowsRech && entRowsRech[0] ? entRowsRech[0].id_articulo : null;
-        let nombreArtRech = '';
-        if (idArticuloRech) {
-          const artRowsRech = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+idArticuloRech+'&select=nombre_articulo');
-          nombreArtRech = artRowsRech && artRowsRech[0] ? artRowsRech[0].nombre_articulo : '';
-        }
+          '?id_entrada=eq.'+extras.id_entrada+'&select=id_articulo,id_lote_consolidado');
+        const filaRech = entRowsRech && entRowsRech[0] ? entRowsRech[0] : null;
         window._suprimirCheckNotifUnaVez = true;
         mostrarModulo('inventario', document.getElementById('nav-INVENTARIO'));
-        setTimeout(function() {
-          if (idArticuloRech && typeof verHistorialStock === 'function') verHistorialStock(idArticuloRech, nombreArtRech);
-        }, 350);
+        if (filaRech && filaRech.id_lote_consolidado) {
+          // Es parte de un Lote (Entrada Consolidada) -- abrir el Lote
+          // completo para corregirlo, no solo este renglón.
+          setTimeout(function() {
+            if (typeof retomarLoteRechazado === 'function') retomarLoteRechazado(filaRech.id_lote_consolidado);
+          }, 350);
+        } else {
+          const idArticuloRech = filaRech ? filaRech.id_articulo : null;
+          let nombreArtRech = '';
+          if (idArticuloRech) {
+            const artRowsRech = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+idArticuloRech+'&select=nombre_articulo');
+            nombreArtRech = artRowsRech && artRowsRech[0] ? artRowsRech[0].nombre_articulo : '';
+          }
+          setTimeout(function() {
+            if (idArticuloRech && typeof verHistorialStock === 'function') verHistorialStock(idArticuloRech, nombreArtRech);
+          }, 350);
+        }
       } catch(eNavRech) { console.warn('Error navegando al Historial de Movimientos:', eNavRech); }
       return;
     }
