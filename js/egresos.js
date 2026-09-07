@@ -56,12 +56,13 @@ async function _pendFacturarCargarProveedores() {
     const hoyProvs = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
     const rows = await api('cont_cxp','GET',null,
       '?id_empresa=eq.'+id_emisor+'&estado=eq.APROBADA&id_pago_consolidado=is.null&select=id_cxp,numero_doc,id_proveedor,monto_usd,monto_ves,moneda_pago,fecha_vencimiento,fecha_emision,proveedores:id_proveedor(nombre,rif)');
-    // Solo CONTADO -- numero_doc con patrón ENT-<id>-<id_cxp>, sin cuota (-C)
-    // -- y solo cuya Fecha de Pago ya llegó (hoy o antes). Si es futura,
-    // para pagarla antes hay que ir a Editar la Entrada y adelantar la
-    // Fecha de Pago, no consolidarla "antes de tiempo" desde aquí.
+    // Solo CONTADO -- numero_doc con patrón ENT-<id>-<id_cxp> o
+    // CPRA-<id>-<id_cxp> (según cuándo se creó), sin cuota (-C) -- y solo
+    // cuya Fecha de Pago ya llegó (hoy o antes). Si es futura, para pagarla
+    // antes hay que ir a Editar la Entrada y adelantar la Fecha de Pago,
+    // no consolidarla "antes de tiempo" desde aquí.
     const contado = (rows||[]).filter(function(r){
-      return /^ENT-\d+-\d+$/.test(r.numero_doc||'')
+      return /^(?:ENT|CPRA)-\d+-\d+$/.test(r.numero_doc||'')
         && (r.fecha_vencimiento || r.fecha_emision || '').slice(0,10) <= hoyProvs;
     });
 
@@ -107,7 +108,7 @@ async function _pendFacturarSeleccionarProveedor(id_proveedor, fechaFiltro) {
     '?id_empresa=eq.'+id_emisor+'&id_proveedor=eq.'+id_proveedor+'&estado=eq.APROBADA&id_pago_consolidado=is.null&select=id_cxp,numero_doc,moneda_negociacion,moneda_pago,monto_usd,monto_ves,fecha_vencimiento,fecha_emision');
   const hoySelProv = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
   let contado = (cxpRows||[]).filter(function(r){
-    return /^ENT-\d+-\d+$/.test(r.numero_doc||'')
+    return /^(?:ENT|CPRA)-\d+-\d+$/.test(r.numero_doc||'')
       && (r.fecha_vencimiento || r.fecha_emision || '').slice(0,10) <= hoySelProv;
   });
   if (fechaFiltro) {
@@ -123,7 +124,7 @@ async function _pendFacturarSeleccionarProveedor(id_proveedor, fechaFiltro) {
   // Detalle de cada Entrada (Motivo, Cantidad, Artículo) -- se muestra
   // junto al monto para que se sepa QUÉ se está pagando, no solo cuánto.
   const idsEntrada = Array.from(new Set(contado.map(function(r){
-    const m = (r.numero_doc||'').match(/^ENT-(\d+)-\d+$/); return m ? m[1] : null;
+    const m = (r.numero_doc||'').match(/^(?:ENT|CPRA)-(\d+)-\d+$/); return m ? m[1] : null;
   }).filter(Boolean)));
   const detalleEntrada = {};
   let errorDetalleEntrada = null;
@@ -160,7 +161,7 @@ async function _pendFacturarSeleccionarProveedor(id_proveedor, fechaFiltro) {
     return '<div style="margin-bottom:14px">'
       + '<div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Fecha de Pago: '+fecha.split('-').reverse().join('/')+'</div>'
       + grupo.map(function(r) {
-          const mEnt = (r.numero_doc||'').match(/^ENT-(\d+)-\d+$/);
+          const mEnt = (r.numero_doc||'').match(/^(?:ENT|CPRA)-(\d+)-\d+$/);
           const det = mEnt ? detalleEntrada[mEnt[1]] : null;
           const motivoLbl = det ? (MOTIVO_LABELS[det.motivo] || det.motivo) : '';
           const detalleLinea = det
@@ -670,7 +671,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
   const gruposConsolidables = {};
   (cxps||[]).forEach(function(c) {
     if (c.estado !== 'APROBADA' || c.id_pago_consolidado) return;
-    if (!/^ENT-\d+-\d+$/.test(c.numero_doc||'')) return;
+    if (!/^(?:ENT|CPRA)-\d+-\d+$/.test(c.numero_doc||'')) return;
     const fechaGrupo = (c.fecha_vencimiento || c.fecha_emision || '').slice(0,10);
     const clave = c.id_proveedor + '|' + fechaGrupo;
     if (!gruposConsolidables[clave]) gruposConsolidables[clave] = [];
@@ -810,7 +811,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       const btnAprobar  = (puedo('PAGOS','APROBAR') && yaVenceAccion) ? '<button onclick="btnSetGuardando(this,true,null,\'Procesando...\');aprobarPagoCxP('+item._id+').finally(()=>btnSetGuardando(this,false))" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">✅ Aprobar</button>' : '';
       const btnRechazar = (puedo('PAGOS','RECHAZAR') && yaVenceAccion) ? '<button onclick="btnSetGuardando(this,true,null,\'Procesando...\');rechazarPagoCxP('+item._id+').finally(()=>btnSetGuardando(this,false))" style="background:rgba(252,129,129,0.1);border:1px solid rgba(252,129,129,0.3);color:#fc8181;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">❌ Rechazar</button>' : '';
       const esConsolidable = !!_idCxpAConsolidarProveedor[item._id];
-      const esAutomaticaFila = /^ENT-/.test(item._raw?.numero_doc || '')
+      const esAutomaticaFila = /^(?:ENT|CPRA)-/.test(item._raw?.numero_doc || '')
         || item._raw?.tipo === 'COMPRA_ARTICULO' || item._raw?.tipo === 'COMPRA_ARTICULO_CREDITO';
       // Pagar/Consolidar Pagos solo si la Fecha de Pago ya llegó (hoy o
       // antes) -- si es futura, se oculta; para pagar antes de esa fecha
@@ -2181,9 +2182,13 @@ async function contGuardarPagoCxp() {
           } catch(eCatLinea) {}
         }
         const numFacturaRefLinea = c.numero_factura_proveedor || c.referencia || c.numero_doc || '';
-        const esEntradaLinea = /^ENT-/.test(c.numero_doc || '');
-        const mEntLinea = (c.numero_doc || '').match(/^ENT-(\d+)/);
-        const refEntLinea = mEntLinea ? ('ENT-' + mEntLinea[1]) : (c.numero_doc || '');
+        // Reconoce tanto el prefijo viejo (ENT-, de antes del cambio de
+        // nomenclatura) como el nuevo (CPRA-, de compras ya aprobadas de
+        // aquí en adelante) -- una CxP existente puede tener cualquiera de
+        // los dos, según cuándo se haya creado.
+        const esEntradaLinea = /^(ENT|CPRA)-/.test(c.numero_doc || '');
+        const mEntLinea = (c.numero_doc || '').match(/^(ENT|CPRA)-(\d+)/);
+        const refEntLinea = mEntLinea ? (mEntLinea[1] + '-' + mEntLinea[2]) : (c.numero_doc || '');
         const sufijoPagoLinea = esEntradaLinea
           ? (' N° Factura ' + numFacturaRefLinea + ' (' + refEntLinea + ') Ref. Pago ' + ref)
           : (' N° Factura ' + numFacturaRefLinea + ' Ref. Pago ' + ref);
@@ -3590,7 +3595,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     const c = rows[0];
 
     // ── Detectar si es CxP automática de Inventario ──
-    const esAutomatica = /^ENT-/.test(c.numero_doc || '')
+    const esAutomatica = /^(?:ENT|CPRA)-/.test(c.numero_doc || '')
       || c.tipo === 'COMPRA_ARTICULO' || c.tipo === 'COMPRA_ARTICULO_CREDITO';
     if (esAutomatica) {
       await _verCxPAutomatica(c, id_cxp);
@@ -4035,7 +4040,7 @@ async function rechazarCompraDesdeFicha() {
   try {
     const rows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp+'&select=numero_doc');
     const numeroDoc = rows && rows[0] ? rows[0].numero_doc : null;
-    const m = numeroDoc ? numeroDoc.match(/^ENT-(\d+)/) : null;
+    const m = numeroDoc ? numeroDoc.match(/^(?:ENT|CPRA)-(\d+)/) : null;
     if (!m) { alert('No se pudo determinar la Entrada asociada a esta CxP.'); return; }
     const idEntrada = parseInt(m[1]);
     const entRows = await api('stock_entradas','GET',null,'?id_entrada=eq.'+idEntrada+'&select=cantidad,id_articulo');
@@ -4343,7 +4348,7 @@ async function verCxPPendiente(id_cxp) {
     const c = rows[0];
 
     // ── Detectar si es CxP automática de Inventario ──
-    const esAutomatica = /^ENT-/.test(c.numero_doc || '')
+    const esAutomatica = /^(?:ENT|CPRA)-/.test(c.numero_doc || '')
       || c.tipo === 'COMPRA_ARTICULO' || c.tipo === 'COMPRA_ARTICULO_CREDITO';
 
     if (esAutomatica) {
@@ -4479,7 +4484,7 @@ async function aprobarPagoCxP(id_cxp) {
 
     // ── Si esta CxP venía RECHAZADA (Entrada EN_REVISION) y se aprobó
     // directamente sin pasar por "corregir", igual resuelve la revisión ──
-    const mNumDocAprob = /^ENT-(\d+)/.exec(c.numero_doc || '');
+    const mNumDocAprob = /^(?:ENT|CPRA)-(\d+)/.exec(c.numero_doc || '');
     if (mNumDocAprob) {
       const id_entradaAprob = parseInt(mNumDocAprob[1]);
       try {
@@ -4573,7 +4578,7 @@ async function rechazarPagoCxP(id_cxp) {
     // hasta que se corrija o se anule -- evita que quede "huérfana" (stock
     // y asiento ya aplicados, pero la obligación rechazada sin resolver).
     let id_entradaRech = null;
-    const mNumDocRech = /^ENT-(\d+)/.exec(c.numero_doc || '');
+    const mNumDocRech = /^(?:ENT|CPRA)-(\d+)/.exec(c.numero_doc || '');
     if (mNumDocRech) {
       id_entradaRech = parseInt(mNumDocRech[1]);
       try {
@@ -5181,10 +5186,11 @@ async function confirmarEjecucionPago() {
       descripcion:    (function() {
         const numDoc = c.numero_doc || '';
         const obs    = (c.observaciones || '').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim();
-        const cuotaM = numDoc.match(/ENT-(\d+)-C(\d+)/);
-        const entM   = numDoc.match(/^ENT-(\d+)(?:-\d+)?$/);
-        if (cuotaM) return 'Cuota ' + cuotaM[2] + ' — Pago compra Inventario ENT-' + cuotaM[1];
-        if (entM)   return 'Pago contado Inventario ENT-' + entM[1];
+        const cuotaM = numDoc.match(/(?:ENT|CPRA)-(\d+)-C(\d+)/);
+        const entM   = numDoc.match(/^(?:ENT|CPRA)-(\d+)(?:-\d+)?$/);
+        const prefDetectado = (numDoc.match(/^(ENT|CPRA)/) || [])[1] || 'CPRA';
+        if (cuotaM) return 'Cuota ' + cuotaM[2] + ' — Pago compra Inventario ' + prefDetectado + '-' + cuotaM[1];
+        if (entM)   return 'Pago contado Inventario ' + prefDetectado + '-' + entM[1];
         return obs || ('Pago ' + (c.proveedores?.nombre || numDoc));
       })(),
       id_usuario:     sesionActual?.correo_usuario
@@ -5215,15 +5221,17 @@ async function confirmarEjecucionPago() {
       const bancoVES  = (monedaCxP === 'VES' && igtf === 0 && diferencial === 0) ? cxpVES : r2(cxpVES + igtfVES + diferencial);
 
       const numDoc2 = c.numero_doc || '';
-      const cuotaM2 = numDoc2.match(/ENT-(\d+)-C(\d+)/);
-      const entM2   = numDoc2.match(/^ENT-(\d+)(?:-\d+)?$/);
-      const descBase = cuotaM2 ? ('Cuota ' + cuotaM2[2] + ' — Inventario ENT-' + cuotaM2[1])
-                     : entM2   ? ('Contado — Inventario ENT-' + entM2[1])
+      // Reconoce tanto el prefijo viejo (ENT-) como el nuevo (CPRA-) --
+      // ver misma nota más arriba, en la otra función de esta pantalla.
+      const cuotaM2 = numDoc2.match(/(?:ENT|CPRA)-(\d+)-C(\d+)/);
+      const entM2   = numDoc2.match(/^(?:ENT|CPRA)-(\d+)(?:-\d+)?$/);
+      const descBase = cuotaM2 ? ('Cuota ' + cuotaM2[2] + ' — Inventario ' + numDoc2.match(/^(ENT|CPRA)/)[1] + '-' + cuotaM2[1])
+                     : entM2   ? ('Contado — Inventario ' + numDoc2.match(/^(ENT|CPRA)/)[1] + '-' + entM2[1])
                      : ((c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim() || numDoc2);
 
       const numFacturaRefAst = c.numero_factura_proveedor || numDoc2;
       const idEntAst = cuotaM2 ? cuotaM2[1] : (entM2 ? entM2[1] : null);
-      const refEntAst = idEntAst ? ('ENT-' + idEntAst) : numDoc2;
+      const refEntAst = idEntAst ? ((numDoc2.match(/^(ENT|CPRA)/)?.[1] || 'CPRA') + '-' + idEntAst) : numDoc2;
       const sufijoPagoAst = ' N° Factura ' + numFacturaRefAst + ' (' + refEntAst + ') Ref. Pago ' + (refExec || '');
 
       const linea = async function(id_cta, debeUSD, haberUSD, debeVES, haberVES, desc) {
