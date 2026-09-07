@@ -4679,15 +4679,19 @@ async function ejecutarPagoCxP(id_cxp) {
   const usuarioNombreElExec = document.getElementById('exec-pago-usuario-nombre');
   if (usuarioNombreElExec) usuarioNombreElExec.textContent = sesionActual?.nombre || sesionActual?.correo_usuario || '—';
 
-  // Moneda de Pago -- select editable. Se sugiere por defecto lo YA
-  // CONGELADO en la CxP (c.moneda_pago) -- es el mejor punto de partida
-  // conocido -- pero el Usuario puede cambiarla libremente aquí, porque la
-  // decisión real de en qué Moneda pagar se toma recién en este momento
-  // (puede ser distinta a lo que se pensaba cuando se creó la Obligación).
+  // Moneda de Pago -- select editable. Arranca siempre en VES (Moneda
+  // Funcional de la Empresa) por defecto, sin importar lo que se haya
+  // guardado antes en la CxP ni en el Proveedor -- el Usuario puede
+  // cambiarla libremente, porque la decisión real de en qué Moneda pagar
+  // se toma recién en este momento.
   window._execPagoCxP = c;
-  const monedaCxP = c.moneda_pago || prov.moneda_facturacion || 'USD';
+  // La Moneda de Pago siempre arranca en VES (Moneda Funcional de la
+  // Empresa) por defecto -- la decisión real de en qué Moneda pagar se
+  // toma recién en este momento, así que no tiene que heredar lo que se
+  // haya guardado antes en la Obligación ni en el Proveedor.
   const monedaSelEl = document.getElementById('exec-pago-moneda');
-  if (monedaSelEl) monedaSelEl.value = (monedaCxP === 'VES') ? 'VES' : 'USD';
+  if (monedaSelEl) monedaSelEl.value = 'VES';
+  const monedaCxP = 'VES';
 
   // Buscar tasa vigente para mostrar equivalente
   // Ambos montos (USD y VES) ya están congelados en la CxP -- no se
@@ -4881,8 +4885,14 @@ async function _renderDesglosePagoEjecutar() {
       total = parseFloat((parseFloat(c.monto_ves || 0) / tasaPago).toFixed(2));
     } else {
       const montoVESOriginal = parseFloat(c.monto_ves || 0);
-      total = parseFloat((parseFloat(c.saldo_usd || c.monto_usd || 0) * tasaPago).toFixed(2));
-      diferencial = parseFloat((total - montoVESOriginal).toFixed(2));
+      // Mismo criterio que en la ejecución real del Pago: si esta
+      // Obligación se negoció el mismo día en que se está pagando, NUNCA
+      // hay diferencial cambiario -- se compara por fecha, no por si la
+      // tasa recién consultada coincide en precisión exacta con la
+      // guardada.
+      const mismoDiaVistaPrevia = (c.fecha_emision?.slice(0,10) || '') === fechaPago;
+      total = mismoDiaVistaPrevia ? montoVESOriginal : parseFloat((parseFloat(c.saldo_usd || c.monto_usd || 0) * tasaPago).toFixed(2));
+      diferencial = mismoDiaVistaPrevia ? 0 : parseFloat((total - montoVESOriginal).toFixed(2));
     }
   }
 
