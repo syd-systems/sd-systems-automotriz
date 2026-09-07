@@ -1556,6 +1556,7 @@ async function guardarEntradaStock() {
         // mostrarla aquí: esa decisión se toma recién en Ejecutar Pago.
         await enrutarAprobacionEntrada(montoTotalConIVA, id_entrada, numDocSol, {
           nombreArt: r.nombre_articulo || r.codigo_articulo || ('Art#'+id),
+          proveedorNombre: document.getElementById('es-proveedor')?.selectedOptions[0]?.text || null,
           cantidad: cantidad,
           unidad: r.unidad || 'UND',
           monedaCompra: moneda_compra_val,
@@ -1844,7 +1845,8 @@ function _armarMensajeAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
     ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Incluye IGTF: $ ' + fmtUSD(montoIGTF) + '</div>'
     : '';
   return '<div style="font-size:10px;color:var(--suave);letter-spacing:0.5px;margin-bottom:2px">ARTÍCULO — ' + (numeroDoc || ('ENT-'+idEntrada)) + '</div>'
-    + '<div style="font-weight:600;margin-bottom:12px">' + (d.nombreArt || '—') + '</div>'
+    + '<div style="font-weight:600;margin-bottom:'+(d.proveedorNombre?'2px':'12px')+'">' + (d.nombreArt || '—') + '</div>'
+    + (d.proveedorNombre ? '<div style="font-size:11px;color:var(--suave);margin-bottom:12px">Proveedor: <span style="color:var(--texto);font-weight:600">'+d.proveedorNombre+'</span></div>' : '')
     + '<div style="display:flex;gap:24px;margin-bottom:12px">'
     + '<div><div style="font-size:10px;color:var(--suave)">CANTIDAD</div><div style="font-weight:600">' + (d.cantidad != null ? d.cantidad : '—') + ' ' + (d.unidad || 'UND') + '</div></div>'
     + '<div><div style="font-size:10px;color:var(--suave)">MODALIDAD DE PAGO</div><div style="font-weight:600">' + modalidadPagoLabel + '</div></div>'
@@ -2495,6 +2497,7 @@ async function guardarEntradaConsolidada() {
     const montoBsLoteExacto = moneda === 'VES' ? montoTotalLoteMonedaOriginal : parseFloat((montoTotalLoteMonedaOriginal * tasaBcv).toFixed(2));
     await enrutarAprobacionEntrada(montoTotalLoteConIVA, idLote, numDocLote, {
       nombreArt: lineasValidas.length + ' Artículos (Compra a Proveedor)',
+      proveedorNombre: document.getElementById('entcons-proveedor')?.selectedOptions[0]?.text || null,
       cantidad: lineasValidas.length,
       unidad: 'líneas',
       monedaCompra: moneda,
@@ -5431,6 +5434,7 @@ async function _guardarEdicionMovimientoInterno() {
             : null;
           await enrutarAprobacionEntrada(datos.monto_total_con_iva || 0, id, numDocBaseReenvio, {
             nombreArt: artNomReenvio,
+            proveedorNombre: document.getElementById('edit-mov-proveedor')?.selectedOptions[0]?.text || null,
             cantidad: cantidad,
             unidad: r?.unidad || 'UND',
             monedaCompra: datos.moneda_compra,
