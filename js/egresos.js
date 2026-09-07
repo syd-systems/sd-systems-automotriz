@@ -4138,13 +4138,13 @@ async function _verCxPAutomatica(c, id_cxp) {
     if (lblMontoVesAuto) lblMontoVesAuto.textContent = 'Monto Pagado (VES)';
   }
 
-  // Resaltar en naranja el Monto que coincida con la Moneda de Pago REAL
-  // de esta CxP (c.moneda_pago) -- antes USD siempre quedaba resaltado
-  // (color fijo en el HTML), sin importar la Moneda real.
+  // Resaltar siempre el monto en VES -- es la Moneda Funcional de la
+  // Empresa, independientemente de en qué Moneda se haya pagado realmente
+  // esta CxP (c.moneda_pago).
   const elMontoUSDAuto = document.getElementById('cxp-auto-monto');
   const elMontoVESAuto = document.getElementById('cxp-auto-monto-ves');
-  if (elMontoUSDAuto) elMontoUSDAuto.style.color = monedaPagoAuto === 'USD' ? 'var(--naranja)' : 'var(--texto)';
-  if (elMontoVESAuto) elMontoVESAuto.style.color = monedaPagoAuto === 'VES' ? 'var(--naranja)' : 'var(--texto)';
+  if (elMontoUSDAuto) elMontoUSDAuto.style.color = 'var(--texto)';
+  if (elMontoVESAuto) elMontoVESAuto.style.color = 'var(--naranja)';
 
   // Descripción — eliminar prefijos automáticos
   const descRaw = c.observaciones || c.descripcion || '—';
