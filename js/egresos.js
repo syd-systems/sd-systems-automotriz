@@ -4699,7 +4699,7 @@ async function ejecutarPagoCxP(id_cxp) {
   const montoUSDShow = parseFloat(c.saldo_usd) || parseFloat(c.monto_usd || 0);
   const montoVESShow = parseFloat(c.saldo_ves) || parseFloat(c.monto_ves || 0) || (montoUSDShow * (_tasaVigente || 1));
 
-  document.getElementById('exec-pago-desc').textContent = 'Pago Compra Ref: ' + fmtNumeroDoc(c.numero_doc) + ' de fecha ' + fmtFecha(c.fecha_emision);
+  document.getElementById('exec-pago-desc').textContent = 'Pago Ref: ' + fmtNumeroDoc(c.numero_doc) + ' de fecha ' + fmtFecha(c.fecha_emision);
 
   // MONTO FACTURACIÓN -- lo que realmente factura el Proveedor, en la
   // Moneda de NEGOCIACIÓN (fija, histórica) -- NO depende de la Moneda de
