@@ -2453,6 +2453,10 @@ function _entconsQuitarLinea(idx) {
 function _entconsCambioArticulo(idx, id_articulo) {
   _entconsLineas[idx].id_articulo = parseInt(id_articulo) || null;
   _entconsRenderLineas();
+  // Al elegir el Artículo, pasar el foco directo a Cantidad -- no hace
+  // falta que el usuario haga clic aparte.
+  const campoCant = document.getElementById('entcons-cantidad-'+idx);
+  if (campoCant) campoCant.focus();
 }
 
 function _entconsCambioCampo(idx, campo, valor) {
@@ -2465,6 +2469,30 @@ function _entconsCambioCampo(idx, campo, valor) {
     celda.innerHTML = _entconsFmtDual(subtotal);
   }
   _entconsCalcularTotales();
+}
+
+// Encadena el foco al presionar Enter: Cantidad -> Precio -> (si es la
+// última línea) agrega una nueva y enfoca su Artículo -- así se puede
+// cargar toda la Compra sin soltar el teclado.
+function _entconsEnterCantidad(idx, ev) {
+  if (ev.key !== 'Enter') return;
+  ev.preventDefault();
+  const campoPrecio = document.getElementById('entcons-precio-'+idx);
+  if (campoPrecio) campoPrecio.focus();
+}
+function _entconsEnterPrecio(idx, ev) {
+  if (ev.key !== 'Enter') return;
+  ev.preventDefault();
+  if (idx === _entconsLineas.length - 1) {
+    _entconsAgregarLinea();
+    setTimeout(function() {
+      const nuevoSelect = document.querySelector('#entcons-lineas-cuerpo tr:last-child select');
+      if (nuevoSelect) nuevoSelect.focus();
+    }, 0);
+  } else {
+    const siguienteSelect = document.querySelector('#entcons-lineas-cuerpo tr:nth-child('+(idx+2)+') select');
+    if (siguienteSelect) siguienteSelect.focus();
+  }
 }
 
 // Formatea el campo Precio Unitario al perder el foco, igual que el resto
@@ -2501,8 +2529,8 @@ function _entconsRenderLineas() {
       + '<td style="padding:4px"><select onchange="_entconsCambioArticulo('+idx+', this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">'
         + opcionesArt.replace('value="'+lin.id_articulo+'"', 'value="'+lin.id_articulo+'" selected')
         + '</select></td>'
-      + '<td style="padding:4px;width:90px"><input type="number" min="0" step="any" value="'+(lin.cantidad||'')+'" oninput="_entconsCambioCampo('+idx+',\'cantidad\',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
-      + '<td style="padding:4px;width:110px"><input type="text" inputmode="decimal" placeholder="0,00" value="'+(lin.precio_unitario||'')+'" oninput="_entconsCambioCampo('+idx+',\'precio_unitario\',this.value)" onblur="_entconsFormatearPrecioBlur(this)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
+      + '<td style="padding:4px;width:90px"><input type="number" id="entcons-cantidad-'+idx+'" min="0" step="any" value="'+(lin.cantidad||'')+'" oninput="_entconsCambioCampo('+idx+',\'cantidad\',this.value)" onkeydown="_entconsEnterCantidad('+idx+',event)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
+      + '<td style="padding:4px;width:110px"><input type="text" id="entcons-precio-'+idx+'" inputmode="decimal" placeholder="0,00" value="'+(lin.precio_unitario||'')+'" oninput="_entconsCambioCampo('+idx+',\'precio_unitario\',this.value)" onblur="_entconsFormatearPrecioBlur(this)" onkeydown="_entconsEnterPrecio('+idx+',event)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
       + '<td id="entcons-subtotal-'+idx+'" style="padding:4px 8px;width:120px;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">'+_entconsFmtDual(subtotal)+'</td>'
       + '<td style="padding:4px;width:36px;text-align:center"><button onclick="_entconsQuitarLinea('+idx+')" style="background:none;border:none;color:var(--rojo,#e57373);cursor:pointer;font-size:16px">✕</button></td>'
       + '</tr>';
@@ -3263,6 +3291,11 @@ async function retomarLoteRechazado(id_lote_consolidado) {
     if (tituloModalLR) tituloModalLR.textContent = '↻ RETOMAR LOTE RECHAZADO';
     const btnGuardarLR = document.getElementById('btn-entcons-guardar');
     if (btnGuardarLR) btnGuardarLR.textContent = 'Corregir y Reenviar a Aprobación';
+    // Que se muestre desde el principio del formulario -- todo el
+    // precargado de campos que hicimos arriba puede haber movido el
+    // scroll, así que se fuerza de nuevo al final.
+    const modalBodyLR = document.querySelector('#modal-entrada-consolidada .modal-body');
+    if (modalBodyLR) modalBodyLR.scrollTop = 0;
   } catch(eRetLote) {
     alert('Error al retomar el Lote: ' + msgErr(eRetLote));
   }
