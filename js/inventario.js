@@ -2349,7 +2349,7 @@ async function abrirEntradaConsolidada() {
   }
   window._retomandoLoteId = null;
   const tituloModalEC = document.querySelector('#modal-entrada-consolidada .modal-header h3');
-  if (tituloModalEC) tituloModalEC.textContent = '📥 ENTRADA CONSOLIDADA (Compra a Proveedor)';
+  if (tituloModalEC) tituloModalEC.textContent = '📥 ORDEN DE COMPRA';
   const btnGuardarEC = document.getElementById('btn-entcons-guardar');
   if (btnGuardarEC) btnGuardarEC.textContent = 'Solicitar Aprobación de Compra';
   document.getElementById('entcons-proveedor').innerHTML = '<option value="">— Seleccionar —</option>';
@@ -2357,8 +2357,6 @@ async function abrirEntradaConsolidada() {
   document.getElementById('entcons-fecha').max = getHoyVzla();
   document.getElementById('entcons-moneda').value = 'USD';
   document.getElementById('entcons-tasa-bcv').value = '';
-  document.querySelector('input[name="entcons-exento-iva"][value="NO"]').checked = true;
-  document.querySelector('input[name="entcons-incluye-iva"][value="NO"]').checked = true;
   document.getElementById('entcons-esquema-pago').value = '';
   document.getElementById('entcons-contado-cont').style.display = 'none';
   document.getElementById('entcons-credito-fecha-cont').style.display = 'none';
@@ -2383,6 +2381,10 @@ async function abrirEntradaConsolidada() {
   await _entconsActualizarTasa();
   _entconsRenderLineas();
   abrirModal('modal-entrada-consolidada');
+  // Que siempre se muestre desde el principio del formulario, sin importar
+  // en qué parte haya quedado el scroll de una vez anterior.
+  const modalBodyEC = document.querySelector('#modal-entrada-consolidada .modal-body');
+  if (modalBodyEC) modalBodyEC.scrollTop = 0;
 }
 
 // El usuario actual ES quien gestiona la Compra -- no es selectivo, mismo
@@ -2510,14 +2512,14 @@ function _entconsRenderLineas() {
 }
 
 function _entconsCalcularTotales() {
-  const exento = document.querySelector('input[name="entcons-exento-iva"]:checked')?.value === 'SI';
-  const incluye = document.querySelector('input[name="entcons-incluye-iva"]:checked')?.value === 'SI';
   const ivaRate = tasaIVAActual();
   const subtotalNeg = _entconsLineas.reduce(function(a,l){ return a + (parseFloat(l.cantidad)||0)*(l.precio_unitario||0); }, 0);
-  let base, iva, total;
-  if (exento) { base = subtotalNeg; iva = 0; total = subtotalNeg; }
-  else if (incluye) { base = subtotalNeg / (1+ivaRate); iva = subtotalNeg - base; total = subtotalNeg; }
-  else { base = subtotalNeg; iva = subtotalNeg * ivaRate; total = base + iva; }
+  // Siempre se calcula el IVA ENCIMA del Precio ingresado -- nunca exento,
+  // nunca "ya incluido" (decisión tomada para simplificar la Orden de
+  // Compra; el Precio de cada línea es siempre el precio base sin IVA).
+  const base = subtotalNeg;
+  const iva = subtotalNeg * ivaRate;
+  const total = base + iva;
 
   const el = document.getElementById('entcons-totales');
   if (el) {
@@ -2578,8 +2580,10 @@ async function guardarEntradaConsolidada() {
   const fecha = document.getElementById('entcons-fecha')?.value;
   const moneda = document.getElementById('entcons-moneda')?.value;
   const tasaBcv = parseFloat(document.getElementById('entcons-tasa-bcv')?.value) || 0;
-  const exento = document.querySelector('input[name="entcons-exento-iva"]:checked')?.value === 'SI';
-  const incluye = document.querySelector('input[name="entcons-incluye-iva"]:checked')?.value === 'SI';
+  // Siempre se calcula el IVA encima del Precio ingresado -- nunca exento,
+  // nunca "ya incluido".
+  const exento = false;
+  const incluye = false;
   const esquemaPago = document.getElementById('entcons-esquema-pago')?.value;
   const claveUsuario = document.getElementById('entcons-clave-usuario')?.value || '';
 
@@ -2590,7 +2594,6 @@ async function guardarEntradaConsolidada() {
   if (fecha > getHoyVzla()) return err('La Fecha no puede ser mayor a hoy.', 'entcons-fecha');
   if (!moneda) return err('Seleccione la Moneda Negociación.', 'entcons-moneda');
   if (!tasaBcv || tasaBcv <= 1) return err('Ingrese una Tasa BCV válida.', 'entcons-tasa-bcv');
-  if (!document.querySelector('input[name="entcons-exento-iva"]:checked')) return err('Indique si el Gasto está Exento de IVA.');
   const lineasValidas = _entconsLineas.filter(function(l){ return l.id_articulo && parseFloat(l.cantidad) > 0 && l.precio_unitario > 0; });
   if (!lineasValidas.length) return err('Agregue al menos un Artículo con Cantidad y Precio válidos.');
   const idsUnicos = lineasValidas.map(function(l){ return l.id_articulo; });
@@ -3217,13 +3220,6 @@ async function retomarLoteRechazado(id_lote_consolidado) {
     await _entconsActualizarTasa();
     const tasaLR = document.getElementById('entcons-tasa-bcv');
     if (tasaLR && primeraR.tasa_bcv) tasaLR.value = primeraR.tasa_bcv;
-
-    if (primeraR.exento_iva != null) {
-      document.querySelector('input[name="entcons-exento-iva"][value="'+(primeraR.exento_iva?'SI':'NO')+'"]').checked = true;
-    }
-    if (!primeraR.exento_iva && primeraR.incluye_iva != null) {
-      document.querySelector('input[name="entcons-incluye-iva"][value="'+(primeraR.incluye_iva?'SI':'NO')+'"]').checked = true;
-    }
 
     const esquemaLR = document.getElementById('entcons-esquema-pago');
     if (esquemaLR) { esquemaLR.value = primeraR.esquema_pago || 'CONTADO'; _entconsCambiarEsquemaPago(); }
