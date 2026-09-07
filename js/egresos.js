@@ -2026,8 +2026,15 @@ async function contGuardarPagoCxp() {
       montoUSD = parseFloat((montoVESCongReg / (tasaDia || 1)).toFixed(2));
     } else {
       montoUSD = montoUSDCongReg;
-      montoVESReg = parseFloat((montoUSDCongReg * tasaDia).toFixed(2));
-      diferencialReg = parseFloat((montoVESReg - montoVESCongReg).toFixed(2));
+      // Comparar por FECHA (misma lógica que Ejecutar Pago): si esta
+      // Obligación se creó el mismo día en que se está pagando, es
+      // imposible que exista diferencial cambiario, sin importar que la
+      // tasa guardada (tecleada al crear) y la tasa recién consultada de
+      // la tabla `tasas` (con más decimales) no coincidan exactamente por
+      // un simple tema de precisión.
+      const mismoDiaObligYPagoReg = (c.fecha_emision?.slice(0,10) || '') === fecha;
+      montoVESReg = mismoDiaObligYPagoReg ? montoVESCongReg : parseFloat((montoUSDCongReg * tasaDia).toFixed(2));
+      diferencialReg = mismoDiaObligYPagoReg ? 0 : parseFloat((montoVESReg - montoVESCongReg).toFixed(2));
     }
     const moneda = monedaPagoReg;
     const monto  = moneda === 'VES' ? montoVESReg : montoUSD;
@@ -5143,8 +5150,17 @@ async function confirmarEjecucionPago() {
       montoVESPago = montoVESCxP;
     } else {
       montoUSD = montoUSDCxP;
-      montoVESPago = (tasaPago === tasaCompra) ? montoVESCxP : parseFloat((montoUSDCxP * tasaPago).toFixed(2));
-      diferencial = parseFloat((montoVESPago - montoVESCxP).toFixed(2));
+      // Comparar por FECHA, no por el valor de la tasa -- si la Compra se
+      // negoció el mismo día del Pago, es IMPOSIBLE que exista diferencial
+      // cambiario, sin importar que la tasa guardada en la CxP (tecleada
+      // con 2 decimales al crear la Compra) y la tasa recién consultada de
+      // la tabla `tasas` (con hasta 4 decimales) no coincidan exactamente
+      // por un simple tema de precisión -- antes esa comparación de
+      // igualdad estricta (tasaPago === tasaCompra) fallaba en ese caso y
+      // generaba una "ganancia/pérdida cambiaria" falsa el mismo día.
+      const mismoDiaCompraYPago = (c.fecha_emision?.slice(0,10) || '') === fechaPago;
+      montoVESPago = mismoDiaCompraYPago ? montoVESCxP : parseFloat((montoUSDCxP * tasaPago).toFixed(2));
+      diferencial = mismoDiaCompraYPago ? 0 : parseFloat((montoVESPago - montoVESCxP).toFixed(2));
     }
     const montoVESCompra = montoVESCxP;
 
