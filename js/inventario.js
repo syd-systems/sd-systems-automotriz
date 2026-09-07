@@ -1863,6 +1863,175 @@ function _armarMensajeAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
 // stock_entradas (parámetro m), no de un formulario en pantalla -- para
 // cuando esto se ejecuta, el formulario original ya no existe: puede
 // aprobarlo otra persona, en otro momento, desde otra pantalla.
+// Versión "por lote" de ejecutarEfectosEntradaCompra() -- se ejecuta al
+// aprobar UNA Entrada Consolidada (varios Artículos, un solo Proveedor,
+// una sola Factura). Actualiza Stock/CPP de cada Artículo individualmente
+// (igual que siempre), pero genera UN SOLO Asiento y UNA SOLA CxP (o un
+// solo juego de Cuotas si es Crédito) para todo el lote junto.
+async function ejecutarEfectosEntradaCompraLote(filasLote) {
+  const primeraFila = filasLote[0];
+  const lineasAsiento = [];
+  let idCuentaGastoComun = null;
+  let gastoVarios = false;
+
+  for (const m of filasLote) {
+    const id = m.id_articulo;
+    const cantidad = parseFloat(m.cantidad || 0);
+    const nuevoPrecioCosto = parseFloat(m.precio_costo_moneda || 0);
+    const tasa_bcv_usada = parseFloat(m.tasa_bcv || 0) || null;
+
+    const artRows = await api('inventario_almacen','GET',null,
+      '?id_articulo=eq.'+id+'&select=nombre_articulo,codigo_articulo,precio_costo_moneda,id_cuenta_contable,id_cuenta_costo_gasto');
+    const r = artRows && artRows[0] ? artRows[0] : {};
+
+    if (idCuentaGastoComun === null && !gastoVarios) idCuentaGastoComun = r.id_cuenta_costo_gasto || null;
+    else if (idCuentaGastoComun !== (r.id_cuenta_costo_gasto || null)) gastoVarios = true;
+
+    // Stock/CPP -- mismo cálculo de siempre, con datos frescos de ahora.
+    const stockActual = await obtenerStockArea(id, m.id_area);
+    const costoActual = parseFloat(r.precio_costo_moneda || 0);
+    const nuevoStock = stockActual + cantidad;
+    let cpp = costoActual;
+    if (nuevoPrecioCosto > 0) {
+      cpp = nuevoStock > 0
+        ? ((stockActual * costoActual) + (cantidad * nuevoPrecioCosto)) / nuevoStock
+        : nuevoPrecioCosto;
+    }
+    const patchCPP = { precio_costo_moneda: parseFloat(cpp.toFixed(8)) };
+    if (nuevoPrecioCosto > 0) patchCPP.precio_costo_ultimo_moneda = nuevoPrecioCosto;
+    await api('inventario_almacen', 'PATCH', patchCPP, '?id_articulo=eq.' + id);
+    await upsertStockArea(id, m.id_area, cantidad);
+
+    const baseExactaUSD = nuevoPrecioCosto * cantidad;
+    const baseExactaBs = m.moneda_compra === 'VES' && m.base_moneda_original != null
+      ? parseFloat(m.base_moneda_original)
+      : (tasa_bcv_usada ? parseFloat((baseExactaUSD * tasa_bcv_usada).toFixed(2)) : null);
+    const totalExactoUSD = parseFloat(m.monto_total_con_iva || 0);
+    const totalExactoBs = m.moneda_compra === 'VES' && m.monto_total_moneda_original != null
+      ? parseFloat(m.monto_total_moneda_original)
+      : (tasa_bcv_usada ? parseFloat((totalExactoUSD * tasa_bcv_usada).toFixed(2)) : null);
+
+    lineasAsiento.push({
+      articulo: r.nombre_articulo || r.codigo_articulo || ('Art#'+id),
+      cantidad: cantidad,
+      id_cuentaInventario: r.id_cuenta_contable || null,
+      baseExactaUSD: baseExactaUSD,
+      baseExactaBs: baseExactaBs,
+      totalExactoUSD: totalExactoUSD,
+      totalExactoBs: totalExactoBs
+    });
+  }
+
+  // Moneda de PAGO real -- igual criterio que en la versión de un solo
+  // Artículo (congelada en la Entrada, con respaldo al Proveedor).
+  let monedaPagoReal = primeraFila.moneda_pago || primeraFila.moneda_compra || 'USD';
+  if (!primeraFila.moneda_pago && primeraFila.id_proveedor) {
+    try {
+      const provPagoRows = await api('proveedores','GET',null,'?id_proveedor=eq.'+primeraFila.id_proveedor+'&select=moneda_facturacion');
+      if (provPagoRows && provPagoRows[0] && provPagoRows[0].moneda_facturacion) monedaPagoReal = provPagoRows[0].moneda_facturacion;
+    } catch(eProvPagoLote) {}
+  }
+
+  let nombreProveedorLote = '';
+  if (primeraFila.id_proveedor) {
+    try {
+      const provNomRows = await api('proveedores','GET',null,'?id_proveedor=eq.'+primeraFila.id_proveedor+'&select=nombre&limit=1');
+      nombreProveedorLote = (provNomRows && provNomRows[0] && provNomRows[0].nombre) || '';
+    } catch(eProvNomLote) {}
+  }
+
+  const tasaLoteUsada = parseFloat(primeraFila.tasa_bcv || 0) || null;
+  const numDocLoteAst = 'ENT-' + primeraFila.id_lote_consolidado;
+
+  // ── Un solo Asiento para todo el lote ──
+  const resAstLote = await generarAsientoInventarioLote(lineasAsiento, {
+    referencia: numDocLoteAst,
+    proveedorNombre: nombreProveedorLote,
+    fecha: primeraFila.fecha_negociacion || primeraFila.fecha_entrada,
+    tasa: tasaLoteUsada,
+    incluyeIVA: primeraFila.incluye_iva === true,
+    exentoIVA: primeraFila.exento_iva === true
+  });
+  if (!resAstLote) console.warn('No se pudo generar el asiento de la Entrada Consolidada -- se sigue igual con la CxP, revisar manualmente.');
+
+  // ── Una sola CxP (o un solo juego de Cuotas si es Crédito) por el total ──
+  const totalUSDLote = lineasAsiento.reduce(function(a,l){ return a + l.totalExactoUSD; }, 0);
+  const totalBsLote = lineasAsiento.reduce(function(a,l){ return a + (l.totalExactoBs||0); }, 0);
+  const nombresArticulosLote = lineasAsiento.map(function(l){ return l.articulo; }).join(', ');
+  const ahoraIsoLote = new Date().toISOString();
+
+  try {
+    if (primeraFila.esquema_pago === 'CREDITO') {
+      const cuotasLote = primeraFila.cuotas_json ? (typeof primeraFila.cuotas_json === 'string' ? JSON.parse(primeraFila.cuotas_json) : primeraFila.cuotas_json) : [];
+      if (!cuotasLote.length) throw new Error('El lote no tiene el desglose de cuotas guardado.');
+      let acumVesLote = 0;
+      for (let i = 0; i < cuotasLote.length; i++) {
+        const c = cuotasLote[i];
+        const esUltima = i === cuotasLote.length - 1;
+        const montoVesCuota = esUltima
+          ? parseFloat((totalBsLote - acumVesLote).toFixed(2))
+          : parseFloat((c.monto * (tasaLoteUsada || 1)).toFixed(2));
+        acumVesLote = parseFloat((acumVesLote + montoVesCuota).toFixed(2));
+        const cxpCuotaLote = await api('cont_cxp','POST',{
+          id_proveedor: primeraFila.id_proveedor,
+          id_empresa: _empresaActiva?.id_empresa || null,
+          id_cuenta_gasto: gastoVarios ? null : idCuentaGastoComun,
+          tipo: 'COMPRA_LOTE_CREDITO',
+          numero_doc: numDocLoteAst + '-C' + c.num,
+          fecha_emision: primeraFila.fecha_negociacion || primeraFila.fecha_entrada,
+          fecha_vencimiento: c.fecha,
+          moneda_pago: monedaPagoReal,
+          moneda_negociacion: primeraFila.moneda_compra || 'USD',
+          estado: 'APROBADA',
+          aprobado_por: primeraFila.aprobado_por || null,
+          fecha_aprobacion: ahoraIsoLote,
+          monto_usd: parseFloat(c.monto.toFixed(2)),
+          monto_ves: montoVesCuota,
+          tasa_bcv: tasaLoteUsada || 1,
+          tasa_bcv_compra: tasaLoteUsada || 1,
+          pagado_usd: 0,
+          saldo_usd: parseFloat(c.monto.toFixed(2)),
+          observaciones: nombresArticulosLote.substring(0,250),
+          esquema_pago: 'CREDITO',
+          exento_iva: primeraFila.exento_iva === true,
+          id_usuario: primeraFila.id_usuario || null
+        });
+        if (cxpCuotaLote && cxpCuotaLote[0]) {
+          await api('cont_cxp','PATCH',{ numero_doc: numDocLoteAst + '-C' + c.num + '-' + cxpCuotaLote[0].id_cxp }, '?id_cxp=eq.' + cxpCuotaLote[0].id_cxp);
+        }
+      }
+    } else {
+      const cxpLote = await api('cont_cxp','POST',{
+        id_proveedor: primeraFila.id_proveedor,
+        id_empresa: _empresaActiva?.id_empresa || null,
+        id_cuenta_gasto: gastoVarios ? null : idCuentaGastoComun,
+        tipo: 'COMPRA_LOTE',
+        numero_doc: numDocLoteAst,
+        fecha_emision: primeraFila.fecha_negociacion || primeraFila.fecha_entrada,
+        fecha_vencimiento: primeraFila.fecha_pago || primeraFila.fecha_negociacion || primeraFila.fecha_entrada,
+        moneda_pago: monedaPagoReal,
+        moneda_negociacion: primeraFila.moneda_compra || 'USD',
+        estado: 'APROBADA',
+        aprobado_por: primeraFila.aprobado_por || null,
+        fecha_aprobacion: ahoraIsoLote,
+        monto_usd: parseFloat(totalUSDLote.toFixed(2)),
+        monto_ves: parseFloat(totalBsLote.toFixed(2)),
+        tasa_bcv: tasaLoteUsada || 1,
+        tasa_bcv_compra: tasaLoteUsada || 1,
+        pagado_usd: 0,
+        saldo_usd: parseFloat(totalUSDLote.toFixed(2)),
+        observaciones: nombresArticulosLote.substring(0,250),
+        esquema_pago: 'CONTADO',
+        exento_iva: primeraFila.exento_iva === true,
+        id_usuario: primeraFila.id_usuario || null
+      });
+      if (cxpLote && cxpLote[0]) {
+        await api('cont_cxp','PATCH',{ numero_doc: numDocLoteAst + '-' + cxpLote[0].id_cxp }, '?id_cxp=eq.' + cxpLote[0].id_cxp);
+      }
+    }
+  } catch(eCxPLote) { console.warn('Error creando CxP del lote (aprobación de Entrada Consolidada):', msgErr(eCxPLote)); }
+}
+
 async function ejecutarEfectosEntradaCompra(m) {
   const id = m.id_articulo;
   const cantidad = parseFloat(m.cantidad || 0);
@@ -2066,11 +2235,26 @@ async function aprobarEntradaCompra(id_entrada) {
       alert('Esta Entrada ya no está pendiente de aprobación (estado actual: ' + (m.estado_aprobacion || '—') + '). Puede que ya haya sido aprobada, rechazada o editada por otra persona.');
       return;
     }
+
+    // Si pertenece a un Lote (Entrada Consolidada), traer TODAS las filas
+    // hermanas -- se aprueban, se calculan y se marcan TODAS juntas, nunca
+    // una por una.
+    let filasLote = [m];
+    if (m.id_lote_consolidado) {
+      filasLote = await api('stock_entradas','GET',null,'?id_lote_consolidado=eq.'+m.id_lote_consolidado+'&order=id_entrada.asc');
+      if (!filasLote || !filasLote.length) filasLote = [m];
+      const algunaNoPendiente = filasLote.some(function(f){ return f.estado_aprobacion !== 'PENDIENTE'; });
+      if (algunaNoPendiente) {
+        alert('Este Lote ya no está completo como Pendiente -- alguna de sus líneas ya fue procesada por otra persona. Revise el Historial.');
+        return;
+      }
+    }
+
     // Revalidar límite de Nivel de Firma de quien aprueba, contra el monto
-    // real -- Base+IVA+IGTF (si aplica), lo mismo que se usó para decidir
-    // a quién enrutar la notificación (ver enrutarAprobacionEntrada).
+    // real TOTAL del lote (o de la Entrada individual) -- lo mismo que se
+    // usó para decidir a quién enrutar la notificación.
+    const montoRealAprob = filasLote.reduce(function(a,f){ return a + parseFloat(f.monto_total_con_iva||0) + (f.aplica_igtf && f.monto_igtf != null ? parseFloat(f.monto_igtf) : 0); }, 0);
     if (!sesionActual?.administrador) {
-      const montoRealAprob = parseFloat(m.monto_total_con_iva||0) + (m.aplica_igtf && m.monto_igtf != null ? parseFloat(m.monto_igtf) : 0);
       const montoMaxAprob = await _resolverMontoMaxAprobacionSesion();
       if (montoMaxAprob !== null && montoRealAprob > montoMaxAprob) {
         alert('Esta Entrada ($' + montoRealAprob.toFixed(2) + ') supera el monto máximo que su Nivel de Firma puede aprobar ($' + montoMaxAprob.toFixed(2) + '). Debe ser aprobada por un Nivel de Firma superior.');
@@ -2080,24 +2264,31 @@ async function aprobarEntradaCompra(id_entrada) {
     // Red de seguridad: si el Área receptora quedó vacía por algún motivo
     // (dato incompleto de una versión anterior a esta validación), no se
     // aprueba -- evita el mismo error que se veía al aplicar los efectos.
-    if (!m.id_area) {
+    if (filasLote.some(function(f){ return !f.id_area; })) {
       alert('Esta Entrada no tiene Área receptora asignada (dato incompleto). Corrija el Área directamente en la base de datos antes de aprobarla, o pida ayuda para corregirlo.');
       return;
     }
     // El estado solo se marca APROBADA DESPUÉS de que los efectos
-    // (Stock/CPP/Asiento/CxP) se aplicaron correctamente -- si
-    // ejecutarEfectosEntradaCompra() falla a mitad de camino, el catch de
-    // abajo lo atrapa y la Entrada se queda en PENDIENTE, lista para
-    // reintentar, en vez de quedar en un estado fantasma "aprobada" sin
-    // que nada de eso realmente haya pasado.
-    const mAprobado = Object.assign({}, m, { aprobado_por: sesionActual?.correo_usuario || null });
-    await ejecutarEfectosEntradaCompra(mAprobado);
+    // (Stock/CPP/Asiento/CxP) se aplicaron correctamente -- si falla a
+    // mitad de camino, el catch de abajo lo atrapa y la Entrada (o el
+    // Lote completo) se queda en PENDIENTE, lista para reintentar.
+    const correoAprobador = sesionActual?.correo_usuario || null;
+    if (m.id_lote_consolidado) {
+      const filasLoteAprobado = filasLote.map(function(f){ return Object.assign({}, f, { aprobado_por: correoAprobador }); });
+      await ejecutarEfectosEntradaCompraLote(filasLoteAprobado);
+    } else {
+      const mAprobado = Object.assign({}, m, { aprobado_por: correoAprobador });
+      await ejecutarEfectosEntradaCompra(mAprobado);
+    }
+    const idsLote = filasLote.map(function(f){ return f.id_entrada; });
     await api('stock_entradas','PATCH',{
       estado_aprobacion: 'APROBADA',
-      aprobado_por: sesionActual?.correo_usuario || null,
+      aprobado_por: correoAprobador,
       fecha_aprobacion: new Date().toISOString()
-    },'?id_entrada=eq.'+id_entrada);
-    await mostrarAvisoOk('✓ Entrada aprobada. Stock, Costo y Cuenta por Pagar actualizados.');
+    },'?id_entrada=in.('+idsLote.join(',')+')');
+    await mostrarAvisoOk(idsLote.length > 1
+      ? '✓ Lote de ' + idsLote.length + ' Artículos aprobado. Stock, Costo y Cuenta por Pagar actualizados.'
+      : '✓ Entrada aprobada. Stock, Costo y Cuenta por Pagar actualizados.');
     await calcularInvSaldoArea();
     renderInventario();
   } catch(e) {
@@ -3068,32 +3259,63 @@ async function rechazarEntradaCompra(id_entrada) {
       alert('Esta Entrada ya no está pendiente de aprobación (estado actual: ' + (m.estado_aprobacion || '—') + ').');
       return false;
     }
+
+    // Si pertenece a un Lote (Entrada Consolidada), rechazar TODAS las
+    // filas hermanas juntas -- nunca solo una del lote.
+    let filasLoteRech = [m];
+    if (m.id_lote_consolidado) {
+      const hermanasRech = await api('stock_entradas','GET',null,'?id_lote_consolidado=eq.'+m.id_lote_consolidado+'&order=id_entrada.asc');
+      if (hermanasRech && hermanasRech.length) filasLoteRech = hermanasRech;
+    }
+    const idsLoteRech = filasLoteRech.map(function(f){ return f.id_entrada; });
+
     await api('stock_entradas','PATCH',{
       estado_aprobacion: 'RECHAZADA',
       motivo_rechazo: motivo
-    },'?id_entrada=eq.'+id_entrada);
+    },'?id_entrada=in.('+idsLoteRech.join(',')+')');
 
     if (m.id_usuario) {
       try {
-        const artRechInfo = (Array.isArray(window.inventarioCache) ? window.inventarioCache : []).find(function(x){ return x.id_articulo === m.id_articulo; })
-          || (await api('inventario_almacen','GET',null,'?id_articulo=eq.'+m.id_articulo+'&select=nombre_articulo,codigo_articulo,unidad'))?.[0]
-          || {};
-        let proveedorNombreRech = null;
+        const esLoteRech = filasLoteRech.length > 1;
+        let nombreArtRech, cantidadRech, unidadRech, proveedorNombreRech = null, montoTotalConIVARech, montoBsRech;
+
+        if (esLoteRech) {
+          const montoTotalConIVALoteRech = filasLoteRech.reduce(function(a,f){ return a + parseFloat(f.monto_total_con_iva||0); }, 0);
+          const montoBsLoteRech = filasLoteRech.reduce(function(a,f){
+            const bs = f.moneda_compra === 'VES' && f.monto_total_moneda_original != null
+              ? parseFloat(f.monto_total_moneda_original)
+              : (f.tasa_bcv ? parseFloat((f.monto_total_con_iva * f.tasa_bcv).toFixed(2)) : 0);
+            return a + (bs||0);
+          }, 0);
+          nombreArtRech = filasLoteRech.length + ' Artículos (Compra a Proveedor)';
+          cantidadRech = filasLoteRech.length;
+          unidadRech = 'líneas';
+          montoTotalConIVARech = montoTotalConIVALoteRech;
+          montoBsRech = montoBsLoteRech;
+        } else {
+          const artRechInfo = (Array.isArray(window.inventarioCache) ? window.inventarioCache : []).find(function(x){ return x.id_articulo === m.id_articulo; })
+            || (await api('inventario_almacen','GET',null,'?id_articulo=eq.'+m.id_articulo+'&select=nombre_articulo,codigo_articulo,unidad'))?.[0]
+            || {};
+          nombreArtRech = artRechInfo.nombre_articulo || artRechInfo.codigo_articulo || ('Art#'+m.id_articulo);
+          cantidadRech = m.cantidad;
+          unidadRech = artRechInfo.unidad || 'UND';
+          montoTotalConIVARech = m.monto_total_con_iva;
+          montoBsRech = (m.moneda_compra === 'VES' && m.monto_total_moneda_original != null)
+            ? m.monto_total_moneda_original
+            : (m.tasa_bcv ? parseFloat((m.monto_total_con_iva * m.tasa_bcv).toFixed(2)) : null);
+        }
         if (m.id_proveedor) {
           try {
             const provRechRows = await api('proveedores','GET',null,'?id_proveedor=eq.'+m.id_proveedor+'&select=nombre');
             proveedorNombreRech = provRechRows && provRechRows[0] ? provRechRows[0].nombre : null;
           } catch(eProvRech) {}
         }
-        const numDocRech = 'ENT-'+id_entrada;
-        const montoBsRech = (m.moneda_compra === 'VES' && m.monto_total_moneda_original != null)
-          ? m.monto_total_moneda_original
-          : (m.tasa_bcv ? parseFloat((m.monto_total_con_iva * m.tasa_bcv).toFixed(2)) : null);
-        const mensajeRechRico = _armarMensajeAprobacionEntrada(m.monto_total_con_iva, id_entrada, numDocRech, {
-          nombreArt: artRechInfo.nombre_articulo || artRechInfo.codigo_articulo || ('Art#'+m.id_articulo),
+        const numDocRech = esLoteRech ? ('ENT-'+m.id_lote_consolidado+' (Lote x'+filasLoteRech.length+' artículos)') : ('ENT-'+id_entrada);
+        const mensajeRechRico = _armarMensajeAprobacionEntrada(montoTotalConIVARech, id_entrada, numDocRech, {
+          nombreArt: nombreArtRech,
           proveedorNombre: proveedorNombreRech,
-          cantidad: m.cantidad,
-          unidad: artRechInfo.unidad || 'UND',
+          cantidad: cantidadRech,
+          unidad: unidadRech,
           monedaCompra: m.moneda_compra,
           modalidadPago: m.esquema_pago || 'CONTADO',
           tasaBcv: m.tasa_bcv,
@@ -3105,7 +3327,7 @@ async function rechazarEntradaCompra(id_entrada) {
           + '</div>';
         await api('notificaciones','POST',{
           correo_destino: m.id_usuario,
-          titulo: 'Entrada de Compra Rechazada',
+          titulo: esLoteRech ? 'Lote de Compra Rechazado' : 'Entrada de Compra Rechazada',
           mensaje: mensajeRechRico,
           estado: 'PENDIENTE',
           fecha_creacion: new Date().toISOString(),
@@ -3118,7 +3340,7 @@ async function rechazarEntradaCompra(id_entrada) {
         alert('⚠ La Entrada quedó marcada como RECHAZADA, pero hubo un error enviando la notificación al operador: ' + msgErr(eNotifRechEnt) + '\n\nAvísele manualmente por ahora.');
       }
     }
-    await mostrarAvisoOk('Entrada rechazada.');
+    await mostrarAvisoOk(filasLoteRech.length > 1 ? 'Lote de ' + filasLoteRech.length + ' Artículos rechazado.' : 'Entrada rechazada.');
     renderInventario();
     return true;
   } catch(e) {
