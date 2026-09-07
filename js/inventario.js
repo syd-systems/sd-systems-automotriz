@@ -2740,8 +2740,8 @@ async function guardarEntradaConsolidada() {
 
     document.getElementById('alerta-entcons-err').style.display = 'none';
     alert(window._retomandoLoteId
-      ? '✓ Lote corregido y reenviado a aprobación (' + lineasValidas.length + ' artículos, Lote ENT-' + idLote + ').'
-      : '✓ Entrada Consolidada enviada a aprobación (' + lineasValidas.length + ' artículos, Lote ENT-' + idLote + ').');
+      ? '✓ Lote corregido y reenviado a aprobación (' + lineasValidas.length + ' artículos, Lote OC-' + idLote + ').'
+      : '✓ Entrada Consolidada enviada a aprobación (' + lineasValidas.length + ' artículos, Lote OC-' + idLote + ').');
     window._retomandoLoteId = null;
     cerrarModal('modal-entrada-consolidada');
   } catch(eGuardarEntCons) {
