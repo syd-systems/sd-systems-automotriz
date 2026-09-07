@@ -310,35 +310,36 @@ async function contVerAsiento(id) {
     const totalHaberVes = lineas.reduce(function(s,l){ return s+parseFloat(l.haber_ves||0); }, 0);
     const cuadra     = Math.abs(totalDebeVes - totalHaberVes) < 0.01 || Math.abs(totalDebe - totalHaber) < 0.01;
     const monLabelI   = (ast.moneda_base || ((_empresaActiva?.moneda_secundaria)||'USD')).toUpperCase();
-    // Orden de columnas según la Moneda Principal de LA FICHA de la empresa
-    // activa -- no fijo, porque cada empresa puede tener una principal
-    // distinta (ver seleccionarEmpresa()).
-    const vesPrimero = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase() === 'VES';
-    const thBs  = '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">DEBE Bs</th>'
-                + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">HABER Bs</th>';
-    const thUsd = '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">DEBE USD</th>'
-                + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">HABER USD</th>';
-    const tdBs = function(l) {
-      return (function(){
-        const v = l.debe_ves||0;
-        const txt = v>0 ? fmtBs(v) : '—';
-        const fs  = txt.length > 16 ? '12px' : txt.length > 12 ? '13px' : '15px';
-        return '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:'+fs+'!important;font-weight:600;white-space:nowrap;color:' + (v>0?'#22c55e':'var(--suave)') + '">' + txt + '</td>';
-      })() + (function(){
-        const v = l.haber_ves||0;
-        const txt = v>0 ? fmtBs(v) : '—';
-        const fs  = txt.length > 16 ? '12px' : txt.length > 12 ? '13px' : '15px';
-        return '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:'+fs+'!important;font-weight:600;white-space:nowrap;color:' + (v>0?'#fc8181':'var(--suave)') + '">' + txt + '</td>';
-      })();
+    const thDual = '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">DEBE</th>'
+                 + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">HABER</th>';
+    // Cada celda muestra el monto en Bs (Moneda Funcional) con el
+    // equivalente en USD debajo, en gris -- mismo patrón dual que ya usa
+    // el resto del sistema (Ventas, Traspasos), en vez de columnas
+    // separadas para cada Moneda.
+    const tdDual = function(l) {
+      const vBsDebe = l.debe_ves||0, vUsdDebe = l.debe_usd||0;
+      const vBsHaber = l.haber_ves||0, vUsdHaber = l.haber_usd||0;
+      const txtDebe = vBsDebe>0 ? fmtBs(vBsDebe) : '—';
+      const fsDebe  = txtDebe.length > 16 ? '12px' : txtDebe.length > 12 ? '13px' : '15px';
+      const txtHaber = vBsHaber>0 ? fmtBs(vBsHaber) : '—';
+      const fsHaber  = txtHaber.length > 16 ? '12px' : txtHaber.length > 12 ? '13px' : '15px';
+      return '<td style="text-align:right;padding:7px 8px;white-space:nowrap">'
+          + '<div style="font-family:var(--font-mono);font-size:'+fsDebe+'!important;font-weight:600;color:' + (vBsDebe>0?'#22c55e':'var(--suave)') + '">' + txtDebe + '</div>'
+          + (vUsdDebe>0 ? '<div style="font-size:10px;color:var(--suave);font-family:var(--font-mono)">$ '+fmtUSD(vUsdDebe)+'</div>' : '')
+          + '</td>'
+        + '<td style="text-align:right;padding:7px 8px;white-space:nowrap">'
+          + '<div style="font-family:var(--font-mono);font-size:'+fsHaber+'!important;font-weight:600;color:' + (vBsHaber>0?'#fc8181':'var(--suave)') + '">' + txtHaber + '</div>'
+          + (vUsdHaber>0 ? '<div style="font-size:10px;color:var(--suave);font-family:var(--font-mono)">$ '+fmtUSD(vUsdHaber)+'</div>' : '')
+          + '</td>';
     };
-    const tdUsd = function(l) {
-      return '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:15px!important;font-weight:600;color:' + (l.debe_usd>0?'#22c55e':'var(--suave)') + '">' + (l.debe_usd>0?fmtUSD(l.debe_usd):'—') + '</td>'
-           + '<td style="text-align:right;padding:7px 8px;font-family:var(--font-mono);font-size:15px!important;font-weight:600;color:' + (l.haber_usd>0?'#fc8181':'var(--suave)') + '">' + (l.haber_usd>0?fmtUSD(l.haber_usd):'—') + '</td>';
-    };
-    const tfBs = '<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-size:' + (fmtBs(totalDebeVes).length>12?'12px':'15px') + '!important;font-weight:600;white-space:nowrap;color:var(--naranja)">' + fmtBs(totalDebeVes) + '</td>'
-               + '<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-size:' + (fmtBs(totalHaberVes).length>12?'12px':'15px') + '!important;font-weight:600;white-space:nowrap;color:var(--naranja)">' + fmtBs(totalHaberVes) + '</td>';
-    const tfUsd = '<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-size:15px!important;font-weight:600;color:var(--naranja)">' + fmtUSD(totalDebe) + '</td>'
-                + '<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-size:15px!important;font-weight:600;color:var(--naranja)">' + fmtUSD(totalHaber) + '</td>';
+    const tfDual = '<td style="text-align:right;padding:8px;white-space:nowrap">'
+        + '<div style="font-family:var(--font-mono);font-size:' + (fmtBs(totalDebeVes).length>12?'12px':'15px') + '!important;font-weight:600;color:var(--naranja)">' + fmtBs(totalDebeVes) + '</div>'
+        + '<div style="font-size:10px;color:var(--suave);font-family:var(--font-mono)">$ '+fmtUSD(totalDebe)+'</div>'
+        + '</td>'
+      + '<td style="text-align:right;padding:8px;white-space:nowrap">'
+        + '<div style="font-family:var(--font-mono);font-size:' + (fmtBs(totalHaberVes).length>12?'12px':'15px') + '!important;font-weight:600;color:var(--naranja)">' + fmtBs(totalHaberVes) + '</div>'
+        + '<div style="font-size:10px;color:var(--suave);font-family:var(--font-mono)">$ '+fmtUSD(totalHaber)+'</div>'
+        + '</td>';
 
     document.getElementById('cont-asiento-contenido').innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px">'
@@ -356,7 +357,7 @@ async function contVerAsiento(id) {
       + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'
       + '<thead><tr>'
       + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CUENTA</th>'
-      + (vesPrimero ? thBs + thUsd : thUsd + thBs)
+      + thDual
       + '</tr></thead><tbody>'
       + lineas.map(function(l){
           return '<tr>'
@@ -364,13 +365,13 @@ async function contVerAsiento(id) {
             + '<div>' + (l.cont_cuentas ? l.cont_cuentas.nombre : '') + '</div>'
             + (l.descripcion ? '<div style="font-size:10px;color:var(--suave)">' + l.descripcion + '</div>' : '')
             + '</td>'
-            + (vesPrimero ? tdBs(l) + tdUsd(l) : tdUsd(l) + tdBs(l))
+            + tdDual(l)
             + '</tr>';
         }).join('')
       + '</tbody><tfoot>'
       + '<tr style="border-top:2px solid var(--borde);font-weight:700">'
       + '<td style="padding:8px">TOTALES</td>'
-      + (vesPrimero ? tfBs + tfUsd : tfUsd + tfBs)
+      + tfDual
       + '</tr>'
       + '</tfoot></table></div>';
 
@@ -2978,7 +2979,7 @@ async function generarAsientoInventarioLote(lineas, datos) {
       const g = gruposPorCuenta[clave];
       if (!g.id_cuenta) continue;
       await api('cont_asiento_lineas','POST',{ id_asiento:idAstLote, id_cuenta:g.id_cuenta, orden:orden++,
-        descripcion: 'Compra de Artículos Entrada de Inventario N° ' + (datos.referencia||'') + ' -- ' + g.nombres.join(', ').substring(0,180),
+        descripcion: 'Registro N° ' + (datos.referencia||'') + ' Compra a ' + (datos.proveedorNombre || '(Lote)'),
         debe_usd: parseFloat(g.baseUSD.toFixed(2)), haber_usd: 0, debe_ves: parseFloat(g.baseBs.toFixed(2)), haber_ves: 0 });
     }
 
@@ -2990,14 +2991,14 @@ async function generarAsientoInventarioLote(lineas, datos) {
     if (!exentoLote && ivaTotalUSD > 0) {
       const cIVALote = _todasCtasLote.find(function(c){ return c.codigo === '1.1.05.001'; });
       if (cIVALote) await api('cont_asiento_lineas','POST',{ id_asiento:idAstLote, id_cuenta:cIVALote.id_cuenta, orden:orden++,
-        descripcion: 'Pago IVA (' + Math.round(IVA_RATE_LOTE*100) + '%) Compra de Artículos Entrada de Inventario (' + (datos.referencia||'') + ')',
+        descripcion: 'Registro N° ' + (datos.referencia||'') + ' Pago IVA (' + Math.round(IVA_RATE_LOTE*100) + '%) a ' + (datos.proveedorNombre || '(Lote)'),
         debe_usd: ivaTotalUSD, haber_usd: 0, debe_ves: ivaTotalBs, haber_ves: 0 });
     }
 
     // HABER: CxP Proveedores -- una sola línea por el total del lote.
     const cProvLote = _todasCtasLote.find(function(c){ return c.codigo === '2.1.01.001'; });
     if (cProvLote) await api('cont_asiento_lineas','POST',{ id_asiento:idAstLote, id_cuenta:cProvLote.id_cuenta, orden:orden++,
-      descripcion: 'CxP Compra N° ' + (datos.referencia||'') + ' a ' + (datos.proveedorNombre || '(Lote)'),
+      descripcion: 'Registro N° ' + (datos.referencia||'') + ' CxP a ' + (datos.proveedorNombre || '(Lote)'),
       debe_usd: 0, haber_usd: parseFloat(totalUSDTodo.toFixed(2)), debe_ves: 0, haber_ves: parseFloat(totalBsTodo.toFixed(2)) });
 
     return { idAsiento: idAstLote, numeroAsiento: numAstLote, totalUSD: totalUSDTodo, totalBs: totalBsTodo };
@@ -3152,12 +3153,12 @@ async function generarAsientoInventario(tipo, datos) {
 
       // DEBE: Inventario (base sin IVA)
       if (idInv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idInv, orden:1,
-        descripcion: 'Compra de Artículos Entrada de Inventario N° ' + (datos.referencia || ''),
+        descripcion: 'Registro N° ' + (datos.referencia || '') + ' Compra a ' + (datos.proveedorNombre || datos.articulo),
         debe_usd: baseUSD, haber_usd: 0, debe_ves: baseBs, haber_ves: 0 });
 
       // DEBE: Crédito Fiscal IVA (solo si aplica)
       if (!exentoIVA && idIVA && ivaUSD > 0) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idIVA, orden:2,
-        descripcion: 'Pago IVA (' + Math.round(IVA_RATE*100) + '%) Compra de Artículos Entrada de Inventario (' + (datos.referencia || '') + ')',
+        descripcion: 'Registro N° ' + (datos.referencia || '') + ' Pago IVA (' + Math.round(IVA_RATE*100) + '%) a ' + (datos.proveedorNombre || datos.articulo),
         debe_usd: ivaUSD, haber_usd: 0, debe_ves: ivaBs, haber_ves: 0 });
 
       // DEBE: IGTF Pagado -- gasto NO deducible/NO acreditable (a diferencia
@@ -3177,7 +3178,7 @@ async function generarAsientoInventario(tipo, datos) {
 
       // HABER: CxP Proveedores (monto total con IVA + IGTF, si aplica)
       if (idProv) await api('cont_asiento_lineas','POST',{ id_asiento:idAst, id_cuenta:idProv, orden:4,
-        descripcion: 'CxP Compra N° ' + (datos.referencia || '') + ' a ' + (datos.proveedorNombre || datos.articulo),
+        descripcion: 'Registro N° ' + (datos.referencia || '') + ' CxP a ' + (datos.proveedorNombre || datos.articulo),
         debe_usd: 0, haber_usd: totalUSD + montoIGTF_USD, debe_ves: 0, haber_ves: totalBs + montoIGTF_BS });
 
     } else if (tipo === 'ENTRADA_DEVOLUCION') {
