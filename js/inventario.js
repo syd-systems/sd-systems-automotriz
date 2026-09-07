@@ -3078,12 +3078,20 @@ async function rechazarEntradaCompra(id_entrada) {
         const artRechInfo = (Array.isArray(window.inventarioCache) ? window.inventarioCache : []).find(function(x){ return x.id_articulo === m.id_articulo; })
           || (await api('inventario_almacen','GET',null,'?id_articulo=eq.'+m.id_articulo+'&select=nombre_articulo,codigo_articulo,unidad'))?.[0]
           || {};
+        let proveedorNombreRech = null;
+        if (m.id_proveedor) {
+          try {
+            const provRechRows = await api('proveedores','GET',null,'?id_proveedor=eq.'+m.id_proveedor+'&select=nombre');
+            proveedorNombreRech = provRechRows && provRechRows[0] ? provRechRows[0].nombre : null;
+          } catch(eProvRech) {}
+        }
         const numDocRech = 'ENT-'+id_entrada;
         const montoBsRech = (m.moneda_compra === 'VES' && m.monto_total_moneda_original != null)
           ? m.monto_total_moneda_original
           : (m.tasa_bcv ? parseFloat((m.monto_total_con_iva * m.tasa_bcv).toFixed(2)) : null);
         const mensajeRechRico = _armarMensajeAprobacionEntrada(m.monto_total_con_iva, id_entrada, numDocRech, {
           nombreArt: artRechInfo.nombre_articulo || artRechInfo.codigo_articulo || ('Art#'+m.id_articulo),
+          proveedorNombre: proveedorNombreRech,
           cantidad: m.cantidad,
           unidad: artRechInfo.unidad || 'UND',
           monedaCompra: m.moneda_compra,
