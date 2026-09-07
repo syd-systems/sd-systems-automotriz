@@ -2428,6 +2428,16 @@ function _entconsCambiarEsquemaPago() {
 }
 
 function _entconsAgregarLinea() {
+  const errEl = document.getElementById('alerta-entcons-err');
+  const incompleta = _entconsLineas.some(function(l){ return !l.id_articulo || !(parseFloat(l.cantidad) > 0) || !(l.precio_unitario > 0); });
+  if (incompleta) {
+    if (errEl) {
+      errEl.textContent = 'Complete el Artículo, la Cantidad y el Precio de todas las líneas antes de agregar una nueva.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+  if (errEl) errEl.style.display = 'none';
   _entconsLineas.push({ id_articulo: null, cantidad: '', precio_unitario: 0 });
   _entconsRenderLineas();
 }
