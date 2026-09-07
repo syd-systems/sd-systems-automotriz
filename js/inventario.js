@@ -2347,6 +2347,11 @@ async function abrirEntradaConsolidada() {
     alert('No tiene permiso para ingresar stock.');
     return;
   }
+  window._retomandoLoteId = null;
+  const tituloModalEC = document.querySelector('#modal-entrada-consolidada .modal-header h3');
+  if (tituloModalEC) tituloModalEC.textContent = '📥 ENTRADA CONSOLIDADA (Compra a Proveedor)';
+  const btnGuardarEC = document.getElementById('btn-entcons-guardar');
+  if (btnGuardarEC) btnGuardarEC.textContent = 'Solicitar Aprobación de Compra';
   document.getElementById('entcons-proveedor').innerHTML = '<option value="">— Seleccionar —</option>';
   document.getElementById('entcons-fecha').value = getHoyVzla();
   document.getElementById('entcons-fecha').max = getHoyVzla();
@@ -2613,6 +2618,15 @@ async function guardarEntradaConsolidada() {
       idEmpleadoActual = empActualRows && empActualRows[0] ? empActualRows[0].id_empleado : null;
     } catch(eEmpActualEntCons) {}
 
+    // Si se está retomando un Lote RECHAZADO, se borran sus filas viejas
+    // primero -- nunca tuvieron efecto en Stock/CPP/Asiento/CxP (quedaron
+    // detenidas desde que se crearon), así que no hay nada que revertir.
+    // Se recrean desde cero (permite además agregar/quitar Artículos al
+    // corregir, cosa que un simple PATCH por fila no permitiría).
+    if (window._retomandoLoteId) {
+      await api('stock_entradas','DELETE',null,'?id_lote_consolidado=eq.'+window._retomandoLoteId);
+    }
+
     // Cada línea se guarda EXACTAMENTE con la misma fórmula que usa hoy la
     // Entrada de un solo Artículo (guardarEntradaStock) -- para que, al
     // aprobarse, cada renglón siga siendo autosuficiente y consistente con
@@ -2700,7 +2714,10 @@ async function guardarEntradaConsolidada() {
     });
 
     document.getElementById('alerta-entcons-err').style.display = 'none';
-    alert('✓ Entrada Consolidada enviada a aprobación (' + lineasValidas.length + ' artículos, Lote ENT-' + idLote + ').');
+    alert(window._retomandoLoteId
+      ? '✓ Lote corregido y reenviado a aprobación (' + lineasValidas.length + ' artículos, Lote ENT-' + idLote + ').'
+      : '✓ Entrada Consolidada enviada a aprobación (' + lineasValidas.length + ' artículos, Lote ENT-' + idLote + ').');
+    window._retomandoLoteId = null;
     cerrarModal('modal-entrada-consolidada');
   } catch(eGuardarEntCons) {
     err('Error: ' + msgErr(eGuardarEntCons));
@@ -3158,13 +3175,88 @@ async function retomarEntradaRechazada(id_entrada) {
   }
 }
 
+// Versión "por lote" de retomarEntradaRechazada() -- abre el modal de
+// Entrada Consolidada, precargado con TODOS los Artículos del Lote
+// rechazado, para corregirlos juntos y reenviar UNA SOLA solicitud de
+// aprobación (igual que al crearlo la primera vez).
+async function retomarLoteRechazado(id_lote_consolidado) {
+  try {
+    const filasLoteR = await api('stock_entradas','GET',null,'?id_lote_consolidado=eq.'+id_lote_consolidado+'&order=id_entrada.asc');
+    if (!filasLoteR || !filasLoteR.length) { alert('No se encontró el Lote.'); return; }
+    const primeraR = filasLoteR[0];
+    if (primeraR.estado_aprobacion !== 'RECHAZADA') {
+      alert('Este Lote ya no está en estado Rechazada (estado actual: ' + (primeraR.estado_aprobacion || '—') + ').');
+      return;
+    }
+    if (!sesionActual?.administrador && primeraR.id_usuario !== sesionActual?.correo_usuario) {
+      alert('Solo quien creó este Lote (o un administrador) puede retomarlo.');
+      return;
+    }
+
+    await abrirEntradaConsolidada();
+    await new Promise(function(res) { setTimeout(res, 400); });
+
+    const provSelLR = document.getElementById('entcons-proveedor');
+    if (provSelLR && primeraR.id_proveedor) provSelLR.value = primeraR.id_proveedor;
+
+    const fechaLR = document.getElementById('entcons-fecha');
+    if (fechaLR) fechaLR.value = (primeraR.fecha_negociacion || primeraR.fecha_entrada || '').slice(0,10);
+
+    const monedaLR = document.getElementById('entcons-moneda');
+    if (monedaLR) monedaLR.value = primeraR.moneda_compra || 'USD';
+    await _entconsActualizarTasa();
+    const tasaLR = document.getElementById('entcons-tasa-bcv');
+    if (tasaLR && primeraR.tasa_bcv) tasaLR.value = primeraR.tasa_bcv;
+
+    if (primeraR.exento_iva != null) {
+      document.querySelector('input[name="entcons-exento-iva"][value="'+(primeraR.exento_iva?'SI':'NO')+'"]').checked = true;
+    }
+    if (!primeraR.exento_iva && primeraR.incluye_iva != null) {
+      document.querySelector('input[name="entcons-incluye-iva"][value="'+(primeraR.incluye_iva?'SI':'NO')+'"]').checked = true;
+    }
+
+    const esquemaLR = document.getElementById('entcons-esquema-pago');
+    if (esquemaLR) { esquemaLR.value = primeraR.esquema_pago || 'CONTADO'; _entconsCambiarEsquemaPago(); }
+    if (primeraR.esquema_pago === 'CREDITO' && primeraR.cuotas_json) {
+      const cuotasArrLR = typeof primeraR.cuotas_json === 'string' ? JSON.parse(primeraR.cuotas_json) : primeraR.cuotas_json;
+      if (cuotasArrLR && cuotasArrLR.length) {
+        document.getElementById('entcons-cuotas-num').value = cuotasArrLR.length;
+        document.getElementById('entcons-cuotas-fecha-inicio').value = cuotasArrLR[0].fecha;
+      }
+    } else if (primeraR.esquema_pago === 'CONTADO' && primeraR.fecha_pago) {
+      document.getElementById('entcons-fecha-pago').value = primeraR.fecha_pago;
+    }
+
+    // Precargar TODAS las líneas del Lote -- el precio se guarda en la
+    // Moneda Negociación original (precio_compra_original), igual que en
+    // el retomar de un solo Artículo.
+    _entconsLineas = filasLoteR.map(function(f) {
+      return { id_articulo: f.id_articulo, cantidad: f.cantidad, precio_unitario: parseFloat(f.precio_compra_original || 0) };
+    });
+    _entconsRenderLineas();
+    if (esquemaLR && esquemaLR.value === 'CREDITO') _entconsCalcularCuotas();
+
+    // Marca el modal en "modo retomar lote" -- guardarEntradaConsolidada()
+    // lo detecta y, en vez de crear filas nuevas, reemplaza las del Lote
+    // (nunca tuvieron efectos en Stock/CPP/Asiento/CxP -- quedaron
+    // detenidas desde que se crearon, así que no hay nada que revertir).
+    window._retomandoLoteId = id_lote_consolidado;
+    const tituloModalLR = document.querySelector('#modal-entrada-consolidada .modal-header h3');
+    if (tituloModalLR) tituloModalLR.textContent = '↻ RETOMAR LOTE RECHAZADO';
+    const btnGuardarLR = document.getElementById('btn-entcons-guardar');
+    if (btnGuardarLR) btnGuardarLR.textContent = 'Corregir y Reenviar a Aprobación';
+  } catch(eRetLote) {
+    alert('Error al retomar el Lote: ' + msgErr(eRetLote));
+  }
+}
+
 async function invRenderEntradasRechazadas(cont) {
   if (!cont) cont = document.getElementById('tabla-inv-cont');
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
     let qRech = '?motivo=eq.compra&estado_aprobacion=eq.RECHAZADA&order=fecha_registro.desc'
-      +'&select=id_entrada,id_articulo,cantidad,fecha_negociacion,monto_total_con_iva,monto_total_moneda_original,moneda_compra,tasa_bcv,esquema_pago,id_usuario,id_proveedor,motivo_rechazo,aplica_igtf,monto_igtf';
+      +'&select=id_entrada,id_articulo,cantidad,fecha_negociacion,monto_total_con_iva,monto_total_moneda_original,moneda_compra,tasa_bcv,esquema_pago,id_usuario,id_proveedor,motivo_rechazo,aplica_igtf,monto_igtf,id_lote_consolidado';
     // Cada quien ve solo lo suyo -- salvo administrador, que ve todo.
     if (!sesionActual?.administrador) qRech += '&id_usuario=eq.'+encodeURIComponent(sesionActual?.correo_usuario||'');
     const rechazadas = await api('stock_entradas','GET',null,qRech) || [];
@@ -3181,7 +3273,21 @@ async function invRenderEntradasRechazadas(cont) {
     const artMap = {}; (arts||[]).forEach(function(a){ artMap[a.id_articulo] = a; });
     const provMap = {}; (provs||[]).forEach(function(p){ provMap[p.id_proveedor] = p.nombre; });
 
-    const filas = rechazadas.map(function(p) {
+    // Agrupar por Lote (Entrada Consolidada) -- una sola fila por Lote, no
+    // una por cada Artículo que lo compone. Las que no pertenecen a ningún
+    // Lote (id_lote_consolidado null) se muestran igual que siempre.
+    const gruposRech = {};
+    const sueltas = [];
+    rechazadas.forEach(function(p) {
+      if (p.id_lote_consolidado) {
+        if (!gruposRech[p.id_lote_consolidado]) gruposRech[p.id_lote_consolidado] = [];
+        gruposRech[p.id_lote_consolidado].push(p);
+      } else {
+        sueltas.push(p);
+      }
+    });
+
+    const filasSueltas = sueltas.map(function(p) {
       const art = artMap[p.id_articulo];
       const nomArt = art ? (art.codigo_articulo ? art.codigo_articulo+' — ' : '') + art.nombre_articulo : ('Art#'+p.id_articulo);
       const nomProv = provMap[p.id_proveedor] || '—';
@@ -3208,7 +3314,38 @@ async function invRenderEntradasRechazadas(cont) {
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(p.motivo_rechazo||'—')+'</td>'
         +'<td style="padding:8px;white-space:nowrap"><button class="btn-naranja" onclick="retomarEntradaRechazada('+p.id_entrada+')" style="font-size:11px;padding:4px 10px;margin-right:8px">↻ Retomar</button></td>'
         +'</tr>';
-    }).join('');
+    });
+
+    const filasLote = Object.keys(gruposRech).map(function(idLoteKey) {
+      const filasG = gruposRech[idLoteKey];
+      const nomProvG = provMap[filasG[0].id_proveedor] || '—';
+      const nombresArtG = filasG.map(function(p){ const art = artMap[p.id_articulo]; return art ? art.nombre_articulo : ('Art#'+p.id_articulo); }).join(', ');
+      const cantidadTotalG = filasG.reduce(function(a,p){ return a + (parseFloat(p.cantidad)||0); }, 0);
+      const montoIGTF_USD_G = filasG.reduce(function(a,p){ return a + (p.aplica_igtf && p.monto_igtf != null ? parseFloat(p.monto_igtf) : 0); }, 0);
+      const montoUSD_G = filasG.reduce(function(a,p){ return a + parseFloat(p.monto_total_con_iva||0); }, 0) + montoIGTF_USD_G;
+      const montoBs_G = filasG.reduce(function(a,p){
+        const igtfBs = (p.aplica_igtf && p.monto_igtf != null && p.tasa_bcv) ? parseFloat((p.monto_igtf * p.tasa_bcv).toFixed(2)) : 0;
+        const bs = p.moneda_compra === 'VES' && p.monto_total_moneda_original != null
+          ? parseFloat(p.monto_total_moneda_original) + igtfBs
+          : (p.tasa_bcv ? parseFloat((p.monto_total_con_iva * p.tasa_bcv).toFixed(2)) + igtfBs : 0);
+        return a + (bs||0);
+      }, 0);
+      const motivoG = filasG[0].motivo_rechazo || '—';
+      return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);background:rgba(255,107,0,0.03)">'
+        +'<td style="padding:8px;font-size:12px">'+formatearFechaCorta(filasG[0].fecha_negociacion)+'</td>'
+        +'<td style="padding:8px;font-size:12px">📦 Lote x'+filasG.length+': '+nombresArtG.substring(0,60)+(nombresArtG.length>60?'…':'')+'</td>'
+        +'<td style="padding:8px;text-align:right;font-family:var(--font-mono);font-size:12px">'+cantidadTotalG+'</td>'
+        +'<td style="padding:8px;font-size:12px">'+nomProvG+'</td>'
+        +'<td style="padding:8px;text-align:right;font-family:var(--font-mono)">'
+          +'<div style="font-weight:600;color:#fc8181">'+fmtBs(montoBs_G)+' Bs</div>'
+          +'<div style="font-size:10px;color:var(--suave)">$ '+fmtUSD(montoUSD_G)+(montoIGTF_USD_G > 0 ? ' (incl. IGTF)' : '')+'</div>'
+        +'</td>'
+        +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+motivoG+'</td>'
+        +'<td style="padding:8px;white-space:nowrap"><button class="btn-naranja" onclick="retomarLoteRechazado('+idLoteKey+')" style="font-size:11px;padding:4px 10px;margin-right:8px">↻ Retomar Lote</button></td>'
+        +'</tr>';
+    });
+
+    const filas = filasLote.concat(filasSueltas).join('');
 
     cont.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-bottom:10px">Estas Entradas fueron rechazadas por un Nivel de Firma -- todavía no afectaron Stock ni Contabilidad. Corríjalas y vuelva a guardarlas para que se reenvíen a aprobación.</div>'
       + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse;table-layout:fixed"><thead><tr>'
