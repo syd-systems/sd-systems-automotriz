@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260831230"></script>
-<script src="js/parametros.js?v=20260831230"></script>
-<script src="js/empresas.js?v=20260831230"></script>
-<script src="js/ingresos.js?v=20260831230"></script>
-<script src="js/inventario.js?v=20260831230"></script>
-<script src="js/proveedores.js?v=20260831230"></script>
-<script src="js/clientes.js?v=20260831230"></script>
-<script src="js/ventas.js?v=20260831230"></script>
-<script src="js/contabilidad.js?v=20260831230"></script>
-<script src="js/egresos.js?v=20260831230"></script>
-<script src="js/vehiculos.js?v=20260831230"></script>
-<script src="js/catalogo.js?v=20260831230"></script>
-<script src="js/ordenes.js?v=20260831230"></script>
+<script src="js/core.js?v=20260831231"></script>
+<script src="js/parametros.js?v=20260831231"></script>
+<script src="js/empresas.js?v=20260831231"></script>
+<script src="js/ingresos.js?v=20260831231"></script>
+<script src="js/inventario.js?v=20260831231"></script>
+<script src="js/proveedores.js?v=20260831231"></script>
+<script src="js/clientes.js?v=20260831231"></script>
+<script src="js/ventas.js?v=20260831231"></script>
+<script src="js/contabilidad.js?v=20260831231"></script>
+<script src="js/egresos.js?v=20260831231"></script>
+<script src="js/vehiculos.js?v=20260831231"></script>
+<script src="js/catalogo.js?v=20260831231"></script>
+<script src="js/ordenes.js?v=20260831231"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -5188,7 +5188,7 @@
           </div>
         </div>
       </div>
-      <div class="form-grid" id="entcons-modalidad-fila" style="margin-top:14px;grid-template-columns:1fr 1fr 1fr">
+      <div class="form-grid" id="entcons-modalidad-fila" style="margin-top:14px;grid-template-columns:1fr 1fr 1fr 1fr">
         <div class="form-campo">
           <label>Modalidad de Pago</label>
           <select id="entcons-esquema-pago" onchange="_entconsCambiarEsquemaPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
@@ -5203,13 +5203,18 @@
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;color-scheme:dark">
         </div>
         <div class="form-campo" id="entcons-credito-fecha-cont" style="display:none">
-          <label>Fecha de la Primera Cuota</label>
+          <label>Primera Cuota</label>
           <input type="date" id="entcons-cuotas-fecha-inicio" onchange="_entconsCalcularCuotas()"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;color-scheme:dark">
         </div>
         <div class="form-campo" id="entcons-credito-num-cont" style="display:none">
           <label>N° de Cuotas</label>
           <input type="number" id="entcons-cuotas-num" min="1" step="1" oninput="_entconsCalcularCuotas()"
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+        </div>
+        <div class="form-campo" id="entcons-credito-intervalo-cont" style="display:none">
+          <label>Intervalo (días)</label>
+          <input type="number" id="entcons-cuotas-intervalo" min="1" value="30" oninput="_entconsCalcularCuotas()"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
         </div>
       </div>
