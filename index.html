@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260831237"></script>
-<script src="js/parametros.js?v=20260831237"></script>
-<script src="js/empresas.js?v=20260831237"></script>
-<script src="js/ingresos.js?v=20260831237"></script>
-<script src="js/inventario.js?v=20260831237"></script>
-<script src="js/proveedores.js?v=20260831237"></script>
-<script src="js/clientes.js?v=20260831237"></script>
-<script src="js/ventas.js?v=20260831237"></script>
-<script src="js/contabilidad.js?v=20260831237"></script>
-<script src="js/egresos.js?v=20260831237"></script>
-<script src="js/vehiculos.js?v=20260831237"></script>
-<script src="js/catalogo.js?v=20260831237"></script>
-<script src="js/ordenes.js?v=20260831237"></script>
+<script src="js/core.js?v=20260831238"></script>
+<script src="js/parametros.js?v=20260831238"></script>
+<script src="js/empresas.js?v=20260831238"></script>
+<script src="js/ingresos.js?v=20260831238"></script>
+<script src="js/inventario.js?v=20260831238"></script>
+<script src="js/proveedores.js?v=20260831238"></script>
+<script src="js/clientes.js?v=20260831238"></script>
+<script src="js/ventas.js?v=20260831238"></script>
+<script src="js/contabilidad.js?v=20260831238"></script>
+<script src="js/egresos.js?v=20260831238"></script>
+<script src="js/vehiculos.js?v=20260831238"></script>
+<script src="js/catalogo.js?v=20260831238"></script>
+<script src="js/ordenes.js?v=20260831238"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -5139,14 +5139,10 @@
 <div class="modal-overlay" id="modal-entrada-consolidada" style="z-index:2000">
   <div class="modal" style="max-width:900px">
     <div class="modal-header">
-      <h3>📥 ENTRADA CONSOLIDADA (Compra a Proveedor)</h3>
+      <h3>📥 ORDEN DE COMPRA</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-entrada-consolidada')">✕</button>
     </div>
     <div class="modal-body">
-      <p style="font-size:12px;color:var(--suave);margin-bottom:16px">
-        Para registrar en una sola Factura del Proveedor varios Artículos a la vez. Genera una sola solicitud
-        de aprobación y, al aprobarse, un solo Asiento contable y una sola Cuenta por Pagar para todo el lote.
-      </p>
       <div class="form-campo form-full">
         <label>Proveedor</label>
         <select id="entcons-proveedor" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
@@ -5170,22 +5166,6 @@
           <label>Tasa BCV</label>
           <input type="text" id="entcons-tasa-bcv" inputmode="decimal" placeholder="0,00" oninput="_entconsRenderLineas()"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-        </div>
-      </div>
-      <div class="form-grid" style="margin-top:14px">
-        <div class="form-campo">
-          <label>¿Exento de IVA?</label>
-          <div style="display:flex;gap:16px;align-items:center;height:44px">
-            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="entcons-exento-iva" value="SI" onchange="_entconsRenderLineas()"> Sí</label>
-            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="entcons-exento-iva" value="NO" checked onchange="_entconsRenderLineas()"> No</label>
-          </div>
-        </div>
-        <div class="form-campo">
-          <label>¿El precio de cada línea ya incluye el IVA?</label>
-          <div style="display:flex;gap:16px;align-items:center;height:44px">
-            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="entcons-incluye-iva" value="SI" onchange="_entconsRenderLineas()"> Sí</label>
-            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="entcons-incluye-iva" value="NO" checked onchange="_entconsRenderLineas()"> No</label>
-          </div>
         </div>
       </div>
       <div class="form-grid" id="entcons-modalidad-fila" style="margin-top:14px;grid-template-columns:1fr 1fr 1fr 1fr">
