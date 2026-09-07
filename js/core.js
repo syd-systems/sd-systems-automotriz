@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831234';
+const SYD_VERSION = '20260831235';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -2837,7 +2837,7 @@ async function mostrarNotifPendiente(notif) {
   const CONFIG_NOTIF = {
     confirmar_recepcion: { titulo: '📦 Recepción de Artículos', instruccion: '', boton: '✓ Confirmar' },
     aprobar_pago:         { titulo: '📝 Solicitud de Aprobación', instruccion: 'Vaya al módulo de Pagos para revisar y aprobar esta Obligación.', boton: '✓ Confirmar Pago' },
-    aprobar_entrada:      { titulo: '📝 Compra de Inventario', instruccion: 'Revise el detalle e indique si Aprueba o Rechaza esta Entrada -- mientras no se resuelva, no afecta Stock ni Contabilidad.', boton: '✓ Aprobar' },
+    aprobar_entrada:      { titulo: '📝 Compra de Inventario', instruccion: 'Revise el detalle e indique si Aprueba o Rechaza esta Compra de Artículos.', boton: '✓ Aprobar' },
     entrada_compra_rechazada: { titulo: '❌ Compra Rechazada', instruccion: 'Revise el motivo, corrija la Entrada y vuelva a guardarla para que se reenvíe a aprobación.', boton: 'Proceder' },
     registrar_pago:       { titulo: '✅ Solicitud de Pago Aprobada', instruccion: 'Puede ir al módulo de Pagos para Registrar el Pago cuando guste.', boton: 'Entendido' },
     ver_rechazo:          { titulo: '❌ Solicitud de Pago Rechazada', instruccion: 'Revise el motivo y corrija la Obligación en el módulo de Pagos.', boton: 'Entendido' },
