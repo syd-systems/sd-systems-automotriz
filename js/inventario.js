@@ -1559,6 +1559,8 @@ async function guardarEntradaStock() {
           proveedorNombre: document.getElementById('es-proveedor')?.selectedOptions[0]?.text || null,
           cantidad: cantidad,
           unidad: r.unidad || 'UND',
+          numArticulos: 1,
+          piezasTotal: cantidad,
           monedaCompra: moneda_compra_val,
           modalidadPago: document.getElementById('es-esquema-pago')?.value || 'CONTADO',
           tasaBcv: tasa_bcv_usada,
@@ -1832,26 +1834,23 @@ function _armarMensajeAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
     : parseFloat((monto * tasaUsar).toFixed(2));
   const montoIGTFBs = montoIGTF > 0 ? parseFloat((montoIGTF * tasaUsar).toFixed(2)) : 0;
   const montoTotalBs = parseFloat((montoBsBase + montoIGTFBs).toFixed(2));
-  // La Moneda de Pago ya NO se conoce a este nivel -- se decide recién en
-  // Ejecutar Pago. Lo que SÍ se conoce y tiene sentido mostrar aquí es la
-  // Moneda de Negociación (para el monto principal) y la Modalidad de Pago
-  // (Contado/Crédito).
-  const monedaMostrar = (d.monedaCompra || 'USD').toUpperCase();
-  const principal = monedaMostrar === 'USD'
-    ? '$ ' + fmtUSD(montoTotalUSD) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a Bs ' + fmtBs(montoTotalBs) + ')</span>'
-    : 'Bs ' + fmtBs(montoTotalBs) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a $ ' + fmtUSD(montoTotalUSD) + ')</span>';
   const modalidadPagoLabel = d.modalidadPago === 'CREDITO' ? 'Crédito' : 'Contado';
   const igtfLinea = montoIGTF > 0
     ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Incluye IGTF: $ ' + fmtUSD(montoIGTF) + '</div>'
     : '';
-  return '<div style="font-size:10px;color:var(--suave);letter-spacing:0.5px;margin-bottom:2px">ARTÍCULO — ' + (numeroDoc || ('ENT-'+idEntrada)) + '</div>'
-    + '<div style="font-weight:600;margin-bottom:'+(d.proveedorNombre?'2px':'12px')+'">' + (d.nombreArt || '—') + '</div>'
-    + (d.proveedorNombre ? '<div style="font-size:11px;color:var(--suave);margin-bottom:12px">Proveedor: <span style="color:var(--texto);font-weight:600">'+d.proveedorNombre+'</span></div>' : '')
-    + '<div style="display:flex;gap:24px;margin-bottom:12px">'
-    + '<div><div style="font-size:10px;color:var(--suave)">CANTIDAD</div><div style="font-weight:600">' + (d.cantidad != null ? d.cantidad : '—') + ' ' + (d.unidad || 'UND') + '</div></div>'
-    + '<div><div style="font-size:10px;color:var(--suave)">MODALIDAD DE PAGO</div><div style="font-weight:600">' + modalidadPagoLabel + '</div></div>'
+  // Piezas: total de unidades de todas las líneas (en un solo Artículo,
+  // coincide con la Cantidad; en un Lote, es la suma de todas las líneas).
+  const numArticulos = d.numArticulos != null ? d.numArticulos : (d.cantidad != null ? d.cantidad : 1);
+  const piezasTotal = d.piezasTotal != null ? d.piezasTotal : (d.cantidad != null ? d.cantidad : '—');
+  return (d.proveedorNombre ? '<div>Proveedor: <strong>' + d.proveedorNombre + '</strong></div>' : '')
+    + '<div style="margin-top:'+(d.proveedorNombre?'8px':'0')+'">Ref: ' + (numeroDoc || ('ENT-'+idEntrada)) + '</div>'
+    + '<div style="display:flex;gap:24px;margin-top:12px;flex-wrap:wrap">'
+    + '<div>Artículos: <strong>' + numArticulos + '</strong></div>'
+    + '<div>Piezas: <strong>' + piezasTotal + '</strong></div>'
+    + '<div>Modalidad de Pago: <strong>' + modalidadPagoLabel + '</strong></div>'
     + '</div>'
-    + '<div><div style="font-size:10px;color:var(--suave)">MONTO A PAGAR</div><div style="font-weight:700;color:var(--naranja);font-size:16px">' + principal + '</div>' + igtfLinea + '</div>'
+    + '<div style="margin-top:14px"><div style="font-size:10px;color:var(--suave)">MONTO A PAGAR</div>'
+    + '<div style="font-weight:700;color:var(--naranja);font-size:16px">Bs ' + fmtBs(montoTotalBs) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a $ ' + fmtUSD(montoTotalUSD) + ')</span></div>' + igtfLinea + '</div>'
     + (d.esContribuyenteEspecial
         ? '<div style="font-size:11px;color:var(--naranja);margin-top:10px;padding-top:8px;border-top:1px solid var(--borde)">⚠ Este Proveedor es Contribuyente Especial — si el Pago se efectúa en USD, tendrá una recarga por IGTF (se calcula al momento de pagar).</div>'
         : '');
@@ -2684,13 +2683,16 @@ async function guardarEntradaConsolidada() {
     // Enrutar UNA SOLA notificación de aprobación para todo el lote --
     // referenciando la primera Entrada creada (idLote), con el monto TOTAL
     // sumado de todas las líneas.
-    const numDocLote = 'ENT-' + idLote + ' (Lote x' + lineasValidas.length + ' artículos)';
+    const numDocLote = 'ENT-' + idLote;
+    const piezasTotalLote = lineasValidas.reduce(function(a,l){ return a + (parseFloat(l.cantidad)||0); }, 0);
     const montoBsLoteExacto = moneda === 'VES' ? montoTotalLoteMonedaOriginal : parseFloat((montoTotalLoteMonedaOriginal * tasaBcv).toFixed(2));
     await enrutarAprobacionEntrada(montoTotalLoteConIVA, idLote, numDocLote, {
       nombreArt: lineasValidas.length + ' Artículos (Compra a Proveedor)',
       proveedorNombre: document.getElementById('entcons-proveedor')?.selectedOptions[0]?.text || null,
       cantidad: lineasValidas.length,
       unidad: 'líneas',
+      numArticulos: lineasValidas.length,
+      piezasTotal: piezasTotalLote,
       monedaCompra: moneda,
       tasaBcv: tasaBcv,
       montoBsExacto: montoBsLoteExacto,
@@ -3277,7 +3279,7 @@ async function rechazarEntradaCompra(id_entrada) {
     if (m.id_usuario) {
       try {
         const esLoteRech = filasLoteRech.length > 1;
-        let nombreArtRech, cantidadRech, unidadRech, proveedorNombreRech = null, montoTotalConIVARech, montoBsRech;
+        let nombreArtRech, cantidadRech, unidadRech, proveedorNombreRech = null, montoTotalConIVARech, montoBsRech, piezasTotalRech;
 
         if (esLoteRech) {
           const montoTotalConIVALoteRech = filasLoteRech.reduce(function(a,f){ return a + parseFloat(f.monto_total_con_iva||0); }, 0);
@@ -3290,6 +3292,7 @@ async function rechazarEntradaCompra(id_entrada) {
           nombreArtRech = filasLoteRech.length + ' Artículos (Compra a Proveedor)';
           cantidadRech = filasLoteRech.length;
           unidadRech = 'líneas';
+          piezasTotalRech = filasLoteRech.reduce(function(a,f){ return a + (parseFloat(f.cantidad)||0); }, 0);
           montoTotalConIVARech = montoTotalConIVALoteRech;
           montoBsRech = montoBsLoteRech;
         } else {
@@ -3299,6 +3302,7 @@ async function rechazarEntradaCompra(id_entrada) {
           nombreArtRech = artRechInfo.nombre_articulo || artRechInfo.codigo_articulo || ('Art#'+m.id_articulo);
           cantidadRech = m.cantidad;
           unidadRech = artRechInfo.unidad || 'UND';
+          piezasTotalRech = m.cantidad;
           montoTotalConIVARech = m.monto_total_con_iva;
           montoBsRech = (m.moneda_compra === 'VES' && m.monto_total_moneda_original != null)
             ? m.monto_total_moneda_original
@@ -3310,12 +3314,14 @@ async function rechazarEntradaCompra(id_entrada) {
             proveedorNombreRech = provRechRows && provRechRows[0] ? provRechRows[0].nombre : null;
           } catch(eProvRech) {}
         }
-        const numDocRech = esLoteRech ? ('ENT-'+m.id_lote_consolidado+' (Lote x'+filasLoteRech.length+' artículos)') : ('ENT-'+id_entrada);
+        const numDocRech = esLoteRech ? ('ENT-'+m.id_lote_consolidado) : ('ENT-'+id_entrada);
         const mensajeRechRico = _armarMensajeAprobacionEntrada(montoTotalConIVARech, id_entrada, numDocRech, {
           nombreArt: nombreArtRech,
           proveedorNombre: proveedorNombreRech,
           cantidad: cantidadRech,
           unidad: unidadRech,
+          numArticulos: cantidadRech,
+          piezasTotal: piezasTotalRech,
           monedaCompra: m.moneda_compra,
           modalidadPago: m.esquema_pago || 'CONTADO',
           tasaBcv: m.tasa_bcv,
@@ -5667,6 +5673,8 @@ async function _guardarEdicionMovimientoInterno() {
             proveedorNombre: document.getElementById('edit-mov-proveedor')?.selectedOptions[0]?.text || null,
             cantidad: cantidad,
             unidad: r?.unidad || 'UND',
+            numArticulos: 1,
+            piezasTotal: cantidad,
             monedaCompra: datos.moneda_compra,
             modalidadPago: datos.esquema_pago || 'CONTADO',
             tasaBcv: datos.tasa_bcv,
