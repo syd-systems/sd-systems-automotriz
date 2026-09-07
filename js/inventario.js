@@ -2166,6 +2166,8 @@ async function abrirEntradaConsolidada() {
   document.getElementById('entcons-contado-cont').style.display = 'none';
   document.getElementById('entcons-credito-fecha-cont').style.display = 'none';
   document.getElementById('entcons-credito-num-cont').style.display = 'none';
+  document.getElementById('entcons-credito-intervalo-cont').style.display = 'none';
+  document.getElementById('entcons-cuotas-intervalo').value = '30';
   document.getElementById('entcons-fecha-pago').value = '';
   document.getElementById('entcons-cuotas-num').value = '';
   document.getElementById('entcons-cuotas-fecha-inicio').value = '';
@@ -2223,6 +2225,7 @@ function _entconsCambiarEsquemaPago() {
   document.getElementById('entcons-contado-cont').style.display = esquema === 'CONTADO' ? '' : 'none';
   document.getElementById('entcons-credito-fecha-cont').style.display = esquema === 'CREDITO' ? '' : 'none';
   document.getElementById('entcons-credito-num-cont').style.display = esquema === 'CREDITO' ? '' : 'none';
+  document.getElementById('entcons-credito-intervalo-cont').style.display = esquema === 'CREDITO' ? '' : 'none';
   if (esquema === 'CREDITO') _entconsCalcularCuotas();
   else document.getElementById('entcons-cuotas-preview').innerHTML = '';
 }
@@ -2245,7 +2248,24 @@ function _entconsCambioArticulo(idx, id_articulo) {
 
 function _entconsCambioCampo(idx, campo, valor) {
   _entconsLineas[idx][campo] = campo === 'cantidad' ? valor : parseMontoVE(valor);
-  _entconsRenderLineas();
+  // Actualizar solo el Subtotal de esta fila y los Totales -- NO
+  // re-dibujar toda la tabla (perdería el foco/cursor en cada tecla).
+  const celda = document.getElementById('entcons-subtotal-'+idx);
+  if (celda) {
+    const subtotal = (parseFloat(_entconsLineas[idx].cantidad)||0) * (_entconsLineas[idx].precio_unitario||0);
+    celda.innerHTML = _entconsFmtDual(subtotal);
+  }
+  _entconsCalcularTotales();
+}
+
+// Formatea el campo Precio Unitario al perder el foco, igual que el resto
+// del sistema (formato venezolano: miles con '.', decimales con ',').
+function _entconsFormatearPrecioBlur(input) {
+  if (!input.value) return;
+  const v = parseMontoVE(input.value);
+  if (isNaN(v)) return;
+  const p = v.toFixed(2).split('.');
+  input.value = p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.') + ',' + p[1];
 }
 
 // Convierte el precio de una línea (en la Moneda Negociación elegida) a Bs
@@ -2273,8 +2293,8 @@ function _entconsRenderLineas() {
         + opcionesArt.replace('value="'+lin.id_articulo+'"', 'value="'+lin.id_articulo+'" selected')
         + '</select></td>'
       + '<td style="padding:4px;width:90px"><input type="number" min="0" step="any" value="'+(lin.cantidad||'')+'" oninput="_entconsCambioCampo('+idx+',\'cantidad\',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
-      + '<td style="padding:4px;width:110px"><input type="text" inputmode="decimal" value="'+(lin.precio_unitario||'')+'" oninput="_entconsCambioCampo('+idx+',\'precio_unitario\',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
-      + '<td style="padding:4px 8px;width:120px;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">'+_entconsFmtDual(subtotal)+'</td>'
+      + '<td style="padding:4px;width:110px"><input type="text" inputmode="decimal" placeholder="0,00" value="'+(lin.precio_unitario||'')+'" oninput="_entconsCambioCampo('+idx+',\'precio_unitario\',this.value)" onblur="_entconsFormatearPrecioBlur(this)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
+      + '<td id="entcons-subtotal-'+idx+'" style="padding:4px 8px;width:120px;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">'+_entconsFmtDual(subtotal)+'</td>'
       + '<td style="padding:4px;width:36px;text-align:center"><button onclick="_entconsQuitarLinea('+idx+')" style="background:none;border:none;color:var(--rojo,#e57373);cursor:pointer;font-size:16px">✕</button></td>'
       + '</tr>';
   }).join('');
@@ -2308,6 +2328,7 @@ function _entconsCalcularTotales() {
 function _entconsCalcularCuotas() {
   const numCuotas = parseInt(document.getElementById('entcons-cuotas-num')?.value) || 0;
   const fechaInicio = document.getElementById('entcons-cuotas-fecha-inicio')?.value || '';
+  const intervalo = parseInt(document.getElementById('entcons-cuotas-intervalo')?.value) || 30;
   const preview = document.getElementById('entcons-cuotas-preview');
   if (!preview) return;
   if (!numCuotas || !fechaInicio || !window._entconsTotales) { preview.innerHTML = ''; return; }
@@ -2325,14 +2346,17 @@ function _entconsCalcularCuotas() {
   }
   const cuotas = [];
   let acumulado = 0;
+  let fechaCuota = ajustarHabilLunes(new Date(fechaInicio + 'T00:00:00'));
   for (let i = 0; i < numCuotas; i++) {
-    const d = new Date(fechaInicio + 'T12:00:00');
-    d.setMonth(d.getMonth() + i);
-    ajustarHabilLunes(d);
+    if (i > 0) {
+      const anteriorMasIntervalo = new Date(cuotas[i-1].fecha + 'T00:00:00');
+      anteriorMasIntervalo.setDate(anteriorMasIntervalo.getDate() + intervalo);
+      fechaCuota = ajustarHabilLunes(anteriorMasIntervalo);
+    }
     const esUltima = i === numCuotas - 1;
     const monto = esUltima ? parseFloat((totalUSD - acumulado).toFixed(2)) : montoCuota;
     acumulado = parseFloat((acumulado + monto).toFixed(2));
-    cuotas.push({ num: i+1, fecha: d.toISOString().slice(0,10), monto: monto });
+    cuotas.push({ num: i+1, fecha: fechaCuota.toISOString().slice(0,10), monto: monto });
   }
   preview.dataset.cuotas = JSON.stringify(cuotas);
   preview.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-bottom:6px">Vista previa de cuotas ($ '+fmtUSD(totalUSD)+' total):</div>'
