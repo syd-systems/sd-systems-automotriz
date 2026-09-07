@@ -1369,13 +1369,15 @@ async function contGuardarPagoCxc() {
         // la tasa, porque ese redondeo no siempre regresa exacto al monto
         // real facturado (mismo patrón que ya corregimos en Compras).
         const montoVESOriginal  = totalVesFactura != null ? totalVesFactura : parseFloat((monto * tasaOriginal).toFixed(2));
-        // montoVESCobro: solo se recalcula multiplicando USD × tasa si la
-        // tasa de HOY realmente es distinta a la original -- si es la
-        // misma (cobro el mismo día, sin devaluación real), usa el mismo
-        // monto congelado, para no generar un "diferencial cambiario"
-        // falso por puro redondeo cuando la tasa no se movió ni un ápice.
-        const montoVESCobro     = tasaActual === tasaOriginal ? montoVESOriginal : parseFloat((monto * tasaActual).toFixed(2));
-        const difCambio         = tasaActual === tasaOriginal ? 0 : parseFloat((montoVESCobro - montoVESOriginal).toFixed(2));
+        // montoVESCobro: solo se recalcula multiplicando USD × tasa si el
+        // Cobro ocurre en un día DISTINTO al de la Factura original -- se
+        // compara por FECHA, no por el valor de la tasa (una tasa tecleada
+        // con 2 decimales al facturar puede no coincidir en precisión
+        // exacta con la misma tasa recién consultada de la tabla `tasas`,
+        // generando un "diferencial cambiario" falso el mismo día).
+        const mismoDiaFacturaYCobro = (c.fecha_emision?.slice(0,10) || '') === fecha;
+        const montoVESCobro     = mismoDiaFacturaYCobro ? montoVESOriginal : parseFloat((monto * tasaActual).toFixed(2));
+        const difCambio         = mismoDiaFacturaYCobro ? 0 : parseFloat((montoVESCobro - montoVESOriginal).toFixed(2));
 
         const anio = new Date(fecha).getFullYear();
         const existAst = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-'+anio+'-*&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
