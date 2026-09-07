@@ -1540,7 +1540,7 @@ async function guardarEntradaStock() {
     // notifica al aprobador correspondiente y se corta la ejecución aquí.
     if (motivoEnt === 'compra') {
       try {
-        const numDocSol = id_entrada ? 'ENT-' + id_entrada : ('ENT-INV-' + id);
+        const numDocSol = id_entrada ? 'OC-' + id_entrada : ('OC-INV-' + id);
         // Monto en Bs EXACTO para mostrar en la notificación -- se deriva
         // directo del montoTotalMonedaOriginal ya calculado arriba (una
         // sola fórmula, una sola vez), no se vuelve a calcular por su
@@ -1843,7 +1843,7 @@ function _armarMensajeAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
   const numArticulos = d.numArticulos != null ? d.numArticulos : (d.cantidad != null ? d.cantidad : 1);
   const piezasTotal = d.piezasTotal != null ? d.piezasTotal : (d.cantidad != null ? d.cantidad : '—');
   return (d.proveedorNombre ? '<div>Proveedor: <strong>' + d.proveedorNombre + '</strong></div>' : '')
-    + '<div style="margin-top:'+(d.proveedorNombre?'8px':'0')+'">Ref: ' + (numeroDoc || ('ENT-'+idEntrada)) + '</div>'
+    + '<div style="margin-top:'+(d.proveedorNombre?'8px':'0')+'">Ref: ' + (numeroDoc || ('OC-'+idEntrada)) + '</div>'
     + '<div style="display:flex;gap:24px;margin-top:12px;flex-wrap:wrap">'
     + '<div>Artículos: <strong>' + numArticulos + '</strong></div>'
     + '<div>Piezas: <strong>' + piezasTotal + '</strong></div>'
@@ -1940,7 +1940,7 @@ async function ejecutarEfectosEntradaCompraLote(filasLote) {
   }
 
   const tasaLoteUsada = parseFloat(primeraFila.tasa_bcv || 0) || null;
-  const numDocLoteAst = 'ENT-' + primeraFila.id_lote_consolidado;
+  const numDocLoteAst = 'CPRA-' + primeraFila.id_lote_consolidado;
 
   // ── Un solo Asiento para todo el lote ──
   const resAstLote = await generarAsientoInventarioLote(lineasAsiento, {
@@ -2122,7 +2122,7 @@ async function ejecutarEfectosEntradaCompra(m) {
       montoUSD:   montoTotalConIVA,
       areaId:     id_areaEnt,
       areaNombre: areaNombreEnt,
-      referencia: 'ENT-' + m.id_entrada,
+      referencia: 'CPRA-' + m.id_entrada,
       proveedorNombre: nombreProveedorAst,
       id_cuentaInventario: r.id_cuenta_contable || null,
       fecha:      m.fecha_negociacion || m.fecha_entrada,
@@ -2142,7 +2142,7 @@ async function ejecutarEfectosEntradaCompra(m) {
   // solamente -- el IGTF (si aplica) se calcula y se suma aparte, recién
   // en el momento del Pago, según cómo se termine pagando entonces.
   try {
-    const numDocBase = 'ENT-' + m.id_entrada;
+    const numDocBase = 'CPRA-' + m.id_entrada;
     const artNomCxP = r.nombre_articulo || r.codigo_articulo || 'Art#'+id;
     const fechaNegCxP = m.fecha_negociacion || m.fecha_entrada;
     const ahoraIso = new Date().toISOString();
@@ -2631,13 +2631,15 @@ async function guardarEntradaConsolidada() {
       idEmpleadoActual = empActualRows && empActualRows[0] ? empActualRows[0].id_empleado : null;
     } catch(eEmpActualEntCons) {}
 
-    // Si se está retomando un Lote RECHAZADO, se borran sus filas viejas
-    // primero -- nunca tuvieron efecto en Stock/CPP/Asiento/CxP (quedaron
-    // detenidas desde que se crearon), así que no hay nada que revertir.
-    // Se recrean desde cero (permite además agregar/quitar Artículos al
-    // corregir, cosa que un simple PATCH por fila no permitiría).
+    // Si se está retomando un Lote RECHAZADO: se conserva la PRIMERA fila
+    // (nunca se borra) para que el número de referencia (OC-X / CPRA-X)
+    // sea siempre el mismo, sin importar cuántas veces se corrija -- solo
+    // se borran las demás filas, que se recrean desde cero (permite
+    // agregar/quitar Artículos al corregir). Ninguna de las filas del Lote
+    // tuvo nunca efecto en Stock/CPP/Asiento/CxP mientras estuvo
+    // Pendiente/Rechazada, así que no hay nada que revertir.
     if (window._retomandoLoteId) {
-      await api('stock_entradas','DELETE',null,'?id_lote_consolidado=eq.'+window._retomandoLoteId);
+      await api('stock_entradas','DELETE',null,'?id_lote_consolidado=eq.'+window._retomandoLoteId+'&id_entrada=neq.'+window._retomandoLoteId);
     }
 
     // Cada línea se guarda EXACTAMENTE con la misma fórmula que usa hoy la
@@ -2649,7 +2651,8 @@ async function guardarEntradaConsolidada() {
     const idsCreados = [];
     let montoTotalLoteConIVA = 0;
     let montoTotalLoteMonedaOriginal = 0;
-    let idLote = null;
+    let idLote = window._retomandoLoteId || null;
+    let esPrimeraLinea = true;
 
     for (const lin of lineasValidas) {
       const cantidad = parseFloat(lin.cantidad);
@@ -2694,23 +2697,32 @@ async function guardarEntradaConsolidada() {
         base_moneda_original: baseMonedaOriginalLinea,
         cuotas_json: esquemaPago === 'CREDITO' ? cuotasJson : null,
         estado_aprobacion: 'PENDIENTE',
+        motivo_rechazo: null,
         id_lote_consolidado: idLote,
         id_usuario: sesionActual.correo_usuario
       };
-      const res = await api('stock_entradas','POST',datosLinea);
-      const idNuevo = res && res[0] ? res[0].id_entrada : null;
-      if (!idNuevo) throw new Error('No se pudo guardar una de las líneas.');
-      idsCreados.push(idNuevo);
-      if (!idLote) {
-        idLote = idNuevo;
-        await api('stock_entradas','PATCH',{ id_lote_consolidado: idLote }, '?id_entrada=eq.'+idNuevo);
+
+      if (esPrimeraLinea && window._retomandoLoteId) {
+        // Reescribe la fila que se conservó -- mismo id, misma referencia.
+        await api('stock_entradas','PATCH',datosLinea,'?id_entrada=eq.'+window._retomandoLoteId);
+        idsCreados.push(window._retomandoLoteId);
+      } else {
+        const res = await api('stock_entradas','POST',datosLinea);
+        const idNuevo = res && res[0] ? res[0].id_entrada : null;
+        if (!idNuevo) throw new Error('No se pudo guardar una de las líneas.');
+        idsCreados.push(idNuevo);
+        if (!idLote) {
+          idLote = idNuevo;
+          await api('stock_entradas','PATCH',{ id_lote_consolidado: idLote }, '?id_entrada=eq.'+idNuevo);
+        }
       }
+      esPrimeraLinea = false;
     }
 
     // Enrutar UNA SOLA notificación de aprobación para todo el lote --
     // referenciando la primera Entrada creada (idLote), con el monto TOTAL
     // sumado de todas las líneas.
-    const numDocLote = 'ENT-' + idLote;
+    const numDocLote = 'OC-' + idLote;
     const piezasTotalLote = lineasValidas.reduce(function(a,l){ return a + (parseFloat(l.cantidad)||0); }, 0);
     const montoBsLoteExacto = moneda === 'VES' ? montoTotalLoteMonedaOriginal : parseFloat((montoTotalLoteMonedaOriginal * tasaBcv).toFixed(2));
     await enrutarAprobacionEntrada(montoTotalLoteConIVA, idLote, numDocLote, {
@@ -3457,7 +3469,7 @@ async function rechazarEntradaCompra(id_entrada) {
             proveedorNombreRech = provRechRows && provRechRows[0] ? provRechRows[0].nombre : null;
           } catch(eProvRech) {}
         }
-        const numDocRech = esLoteRech ? ('ENT-'+m.id_lote_consolidado) : ('ENT-'+id_entrada);
+        const numDocRech = esLoteRech ? ('OC-'+m.id_lote_consolidado) : ('OC-'+id_entrada);
         const mensajeRechRico = _armarMensajeAprobacionEntrada(montoTotalConIVARech, id_entrada, numDocRech, {
           nombreArt: nombreArtRech,
           proveedorNombre: proveedorNombreRech,
@@ -4456,10 +4468,17 @@ function _renderFilaHistorial(m) {
   const anulada = !!m.anulada;
   const areaRec = m.area_receptora || m.param_areas;
   const area = areaRec ? areaRec.nombre + (areaRec.codigo ? ' (' + areaRec.codigo + ')' : '') : '—';
+  // Compra: mientras Pendiente/Rechazada es una Orden de Compra (OC-),
+  // recién es una Compra en firme (CPRA-) cuando ya se aprobó -- el resto
+  // de los motivos (Ajuste, Devolución, Transferencia) y las Salidas
+  // siguen con su prefijo de siempre.
+  const refEntrada = (m.motivo === 'compra')
+    ? ((m.estado_aprobacion === 'APROBADA' ? 'CPRA-' : 'OC-') + m.id_entrada)
+    : ('ENT-' + m.id_entrada);
   return '<tr>'
     + '<td style="padding:8px 0;font-size:12px;color:var(--suave)">' + (m.fecha ? fmtFecha(m.fecha) : '—') + '</td>'
     + '<td style="padding:8px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">'
-    + 'Ref: ' + (m.id_entrada ? 'ENT-' + m.id_entrada : 'SAL-' + m.id_salida) + '</td>'
+    + 'Ref: ' + (m.id_entrada ? refEntrada : 'SAL-' + m.id_salida) + '</td>'
     + '<td style="padding:8px"><span class="badge ' + (esEntrada ? 'badge-verde' : 'badge-rojo') + '">'
     + (esEntrada ? '▲ Entrada' : '▼ Salida') + '</span>'
     + (anulada ? '<div style="font-size:10px;color:#fc8181;margin-top:2px">Anulada</div>' : '')
@@ -4518,7 +4537,7 @@ async function verFichaEntradaStock(id_entrada, id_articulo) {
   // Verificar si existe CxP asociada y su estado de pago
   let estaPagado = false;
   try {
-    const numDoc = 'ENT-' + id_entrada;
+    const numDoc = 'CPRA-' + id_entrada;
     const cxps = await api('cont_cxp', 'GET', null,
       '?numero_doc=like.' + encodeURIComponent(numDoc) + '%' + emisorQ() + '&select=id_cxp,estado,saldo_usd');
     if (cxps && cxps.length > 0) {
@@ -4617,7 +4636,10 @@ function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
   }
   const modoLbl = document.getElementById('edit-mov-titulo');
   const idMov = document.getElementById('edit-mov-id')?.value;
-  const refMov = idMov ? ' — Ref: ' + (tipo === 'ENTRADA' ? 'ENT-' : 'SAL-') + idMov : '';
+  const prefRefMov = tipo === 'ENTRADA'
+    ? (m?.motivo === 'compra' ? (m?.estado_aprobacion === 'APROBADA' ? 'CPRA-' : 'OC-') : 'ENT-')
+    : 'SAL-';
+  const refMov = idMov ? ' — Ref: ' + prefRefMov + idMov : '';
   // Un Ajuste de Inventario (Sobrante o Faltante) no es una Entrada/Salida normal —
   // usa el mismo modal por reutilización de campos, pero con su propio título.
   const esAjusteSobrante = tipo === 'ENTRADA' && m?.motivo === 'ajuste';
@@ -5158,7 +5180,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     if (!esquemaPago) {
       try {
         const cxps = await api('cont_cxp', 'GET', null,
-          '?numero_doc=ilike.' + encodeURIComponent('ENT-' + idMovimiento + '*') + emisorQ() + '&select=id_cxp&limit=2');
+          '?numero_doc=ilike.' + encodeURIComponent('CPRA-' + idMovimiento + '*') + emisorQ() + '&select=id_cxp&limit=2');
         esquemaPago = (cxps && cxps.length > 1) ? 'CREDITO' : (cxps && cxps.length === 1 ? 'CONTADO' : '');
       } catch(e) {}
     }
@@ -5182,7 +5204,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     if (creditoCont) creditoCont.style.display = esquemaPago === 'CREDITO' ? '' : 'none';
     if (esquemaPago === 'CREDITO') {
       try {
-        const _urlCuotas = '?numero_doc=ilike.' + encodeURIComponent('ENT-' + idMovimiento + '*') + emisorQ() + '&order=fecha_vencimiento.asc&select=monto_usd,fecha_vencimiento';
+        const _urlCuotas = '?numero_doc=ilike.' + encodeURIComponent('CPRA-' + idMovimiento + '*') + emisorQ() + '&order=fecha_vencimiento.asc&select=monto_usd,fecha_vencimiento';
         console.log('[SYD] buscando cuotas URL:', _urlCuotas);
         const cuotasExist = await api('cont_cxp', 'GET', null, _urlCuotas);
         console.log('[SYD] cuotasExist:', JSON.stringify(cuotasExist));
@@ -5379,8 +5401,8 @@ async function _guardarEdicionMovimientoInterno() {
     if (motivoSel === 'compra') {
       try {
         const cxpsBloqueo = await api('cont_cxp','GET',null,
-          '?numero_doc=ilike.'+encodeURIComponent('ENT-'+id+'*')+emisorQ()+'&select=numero_doc,estado');
-        const bloqueante = (cxpsBloqueo||[]).find(function(cx){ return cx.estado === 'PAGADA' || cx.estado === 'PARCIAL'; });
+          '?numero_doc=ilike.'+encodeURIComponent('CPRA-'+id+'*')+emisorQ()+'&select=numero_doc,estado');
+        const bloqueante = (cxpsBloqueo||[]).find(function(cx){ return cx.estado === 'PAGADA'; });
         if (bloqueante) {
           return mostrarError('No se puede editar: la CxP "'+bloqueante.numero_doc+'" ya está '+bloqueante.estado+'. Anule el pago primero (Pagos → esa CxP → botón "🗑 Anular Pago Ejecutado") antes de corregir este movimiento.');
         }
@@ -5598,7 +5620,7 @@ async function _guardarEdicionMovimientoInterno() {
       // asiento viejo y se regenera con la misma función que se usa al
       // crear una entrada nueva, ya con los fixes de IVA aplicados)
       if (true) try {
-        const ref = 'ENT-' + id;
+        const ref = motivoEdit === 'compra' ? ('CPRA-' + id) : ('ENT-' + id);
         const asientosViejos = await api('cont_asientos', 'GET', null,
           '?referencia=eq.' + ref + emisorQ() + '&estado=neq.ANULADO&select=id_asiento,tasa_bcv');
         // Tasa a usar: SIEMPRE la de la Fecha de Negociación actual (ya
@@ -5647,12 +5669,12 @@ async function _guardarEdicionMovimientoInterno() {
         // navegador) -- el Usuario creía que la edición había quedado
         // perfecta, pero el asiento contable se quedaba viejo/huérfano o
         // directamente sin regenerar. Ahora se avisa explícitamente.
-        alert('⚠ La Entrada y la CxP se actualizaron correctamente, pero hubo un error reconstruyendo el Asiento Contable: ' + msgErr(eAstEdit) + '\n\nPor favor avise a Sistemas para revisar/corregir el Asiento de esta Entrada (ENT-' + id + ') manualmente.');
+        alert('⚠ La Entrada y la CxP se actualizaron correctamente, pero hubo un error reconstruyendo el Asiento Contable: ' + msgErr(eAstEdit) + '\n\nPor favor avise a Sistemas para revisar/corregir el Asiento de esta Entrada (' + (motivoEdit === 'compra' ? 'CPRA-' : 'ENT-') + id + ') manualmente.');
       }
 
       // ── Actualizar CxP asociada ──
       try {
-        const numDocBase = 'ENT-' + id;
+        const numDocBase = 'CPRA-' + id;
         const artNom = r?.nombre_articulo || ('Art#' + id_articulo);
         // Reutilizar el mismo total ya calculado arriba (montoTotalConIVAEdit),
         // para que la CxP siempre coincida exactamente con el asiento
@@ -5663,7 +5685,7 @@ async function _guardarEdicionMovimientoInterno() {
         // entrada (si venía RECHAZADA o ya APROBADA -sin pagar-, hay que
         // limpiarla igual antes de crear la nueva -- de lo contrario queda
         // huérfana junto a la nueva, y se duplica la Obligación de Pago).
-        // Ya se validó más arriba que no haya ninguna PAGADA/PARCIAL antes
+        // Ya se validó más arriba que no haya ninguna PAGADA antes
         // de llegar aquí, así que borrar la APROBADA es seguro.
         const cxpsExist = await api('cont_cxp', 'GET', null,
           '?numero_doc=ilike.' + encodeURIComponent(numDocBase + '*') + emisorQ() + '&estado=in.(PENDIENTE,RECHAZADA,APROBADA)&select=id_cxp');
@@ -5800,7 +5822,7 @@ async function _guardarEdicionMovimientoInterno() {
         // directos). Stock/CPP/Asiento/CxP quedan pendientes hasta que
         // realmente se apruebe.
         try {
-          const numDocBaseReenvio = 'ENT-' + id;
+          const numDocBaseReenvio = 'OC-' + id;
           const artNomReenvio = r?.nombre_articulo || ('Art#' + id_articulo);
           // montoBsExacto -- misma conversión condicional que en la
           // creación: si se negoció en VES, monto_total_moneda_original ya
@@ -6108,7 +6130,9 @@ async function anularMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
       if (artRowsAnul && artRowsAnul[0]) r = artRowsAnul[0];
     } catch(eArtAnul) { console.warn('Error cargando Artículo:', eArtAnul); }
   }
-  const numDocMostrar = (tipo === 'ENTRADA' ? 'ENT-' : 'SAL-') + idMovimiento;
+  const numDocMostrar = tipo === 'ENTRADA'
+    ? ((movOrig?.motivo === 'compra' ? (movOrig?.estado_aprobacion === 'APROBADA' ? 'CPRA-' : 'OC-') : 'ENT-') + idMovimiento)
+    : ('SAL-' + idMovimiento);
   document.getElementById('anulacion-tipo').value          = tipo;
   document.getElementById('anulacion-id-movimiento').value = idMovimiento;
   document.getElementById('anulacion-id-articulo').value   = id_articulo;
@@ -6172,9 +6196,9 @@ async function confirmarAnulacion() {
       // ── Validar que la CxP no esté pagada ──
       try {
         const cxps = await api('cont_cxp', 'GET', null,
-          '?numero_doc=ilike.' + encodeURIComponent('ENT-' + idMovimiento + '*') + emisorQ() + '&select=id_cxp,estado,numero_doc');
+          '?numero_doc=ilike.' + encodeURIComponent('CPRA-' + idMovimiento + '*') + emisorQ() + '&select=id_cxp,estado,numero_doc');
         if (cxps && cxps.length) {
-          const pagadas = cxps.filter(function(c) { return c.estado === 'PAGADA' || c.estado === 'PARCIAL'; });
+          const pagadas = cxps.filter(function(c) { return c.estado === 'PAGADA'; });
           if (pagadas.length > 0) {
             throw new Error('No se puede anular esta entrada porque la CxP "' + pagadas[0].numero_doc + '" tiene estado ' + pagadas[0].estado + '. Anule el pago primero: vaya a Pagos → abra esa Cuenta por Pagar → botón "🗑 Anular Pago Ejecutado". Luego vuelva aquí a anular la Entrada.');
           }
@@ -6266,7 +6290,9 @@ async function confirmarAnulacion() {
 
     // 7. Anular asiento contable original (con el Motivo)
     try {
-      const ref = tipo === 'ENTRADA' ? 'ENT-' + idMovimiento : 'SAL-' + idMovimiento;
+      const ref = tipo === 'ENTRADA'
+        ? ((movOrig?.motivo === 'compra' ? 'CPRA-' : 'ENT-') + idMovimiento)
+        : ('SAL-' + idMovimiento);
       const asientos = await api('cont_asientos', 'GET', null,
         '?referencia=eq.' + ref + emisorQ() + '&select=id_asiento,descripcion&estado=neq.ANULADO');
       if (asientos && asientos.length) {
@@ -6277,11 +6303,11 @@ async function confirmarAnulacion() {
     } catch(eAst) { console.warn('Error anulando asiento:', eAst); }
 
     // 8. Anular CxP si es entrada por compra (PENDIENTE o APROBADA -- ya
-    // se validó más arriba que no esté PAGADA/PARCIAL)
+    // se validó más arriba que no esté PAGADA)
     if (tipo === 'ENTRADA') {
       try {
         const cxps = await api('cont_cxp', 'GET', null,
-          '?numero_doc=ilike.' + encodeURIComponent('ENT-' + idMovimiento + '*') + emisorQ() + '&estado=in.(PENDIENTE,APROBADA)&select=id_cxp,observaciones');
+          '?numero_doc=ilike.' + encodeURIComponent('CPRA-' + idMovimiento + '*') + emisorQ() + '&estado=in.(PENDIENTE,APROBADA)&select=id_cxp,observaciones');
         for (const cxAnul of (cxps || [])) {
           // Preservar la descripción original (artículo + cantidad) --
           // agregar el aviso de anulación, no reemplazarla.
