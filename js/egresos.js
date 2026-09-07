@@ -4688,15 +4688,21 @@ async function ejecutarPagoCxP(id_cxp) {
   const montoUSDShow = parseFloat(c.saldo_usd) || parseFloat(c.monto_usd || 0);
   const montoVESShow = parseFloat(c.saldo_ves) || parseFloat(c.monto_ves || 0) || (montoUSDShow * (_tasaVigente || 1));
 
-  document.getElementById('exec-pago-desc').textContent  = fmtNumeroDoc(c.numero_doc) + ' — ' + (c.observaciones||'').replace(/^Cuota\s+\d+\/\d+\s*[—\-]\s*/i,'').replace(/^Contado\s*[—\-]\s*/i,'').trim();
+  document.getElementById('exec-pago-desc').textContent = 'Pago Compra Ref: ' + fmtNumeroDoc(c.numero_doc) + ' de fecha ' + fmtFecha(c.fecha_emision);
 
   // MONTO FACTURACIÓN -- lo que realmente factura el Proveedor, en la
   // Moneda de NEGOCIACIÓN (fija, histórica) -- NO depende de la Moneda de
-  // Pago elegida más abajo, que puede ser otra.
+  // Pago elegida más abajo, que puede ser otra. Siempre se muestra primero
+  // en la Moneda Funcional de la Empresa (Bs), y debajo el contravalor a
+  // la tasa BCV del día de pago (_tasaVigente).
   const monedaNegFact = (c.moneda_negociacion || 'USD').toUpperCase();
-  const totalNegFact = monedaNegFact === 'VES' ? montoVESShow : montoUSDShow;
+  const tasaDiaPago = _tasaVigente || parseFloat(c.tasa_bcv || 0) || 1;
+  const montoBsFuncional = monedaNegFact === 'VES' ? montoVESShow : parseFloat((montoUSDShow * tasaDiaPago).toFixed(2));
+  const montoUSDContravalor = monedaNegFact === 'USD' ? montoUSDShow : parseFloat((montoVESShow / tasaDiaPago).toFixed(2));
   const montoFactEl = document.getElementById('exec-pago-monto-facturacion');
-  if (montoFactEl) montoFactEl.textContent = (monedaNegFact === 'VES' ? 'Bs. ' : '$ ') + totalNegFact.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2});
+  if (montoFactEl) montoFactEl.textContent = 'Bs. ' + montoBsFuncional.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const montoFactContravalorEl = document.getElementById('exec-pago-monto-facturacion-contravalor');
+  if (montoFactContravalorEl) montoFactContravalorEl.textContent = '$ ' + montoUSDContravalor.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2});
 
   const facturaNoEl = document.getElementById('exec-pago-factura-no');
   if (facturaNoEl) facturaNoEl.value = c.numero_factura_proveedor || '';
