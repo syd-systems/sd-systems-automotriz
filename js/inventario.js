@@ -1888,20 +1888,8 @@ async function ejecutarEfectosEntradaCompraLote(filasLote) {
     if (idCuentaGastoComun === null && !gastoVarios) idCuentaGastoComun = r.id_cuenta_costo_gasto || null;
     else if (idCuentaGastoComun !== (r.id_cuenta_costo_gasto || null)) gastoVarios = true;
 
-    // Stock/CPP -- mismo cálculo de siempre, con datos frescos de ahora.
-    const stockActual = await obtenerStockArea(id, m.id_area);
-    const costoActual = parseFloat(r.precio_costo_moneda || 0);
-    const nuevoStock = stockActual + cantidad;
-    let cpp = costoActual;
-    if (nuevoPrecioCosto > 0) {
-      cpp = nuevoStock > 0
-        ? ((stockActual * costoActual) + (cantidad * nuevoPrecioCosto)) / nuevoStock
-        : nuevoPrecioCosto;
-    }
-    const patchCPP = { precio_costo_moneda: parseFloat(cpp.toFixed(8)) };
-    if (nuevoPrecioCosto > 0) patchCPP.precio_costo_ultimo_moneda = nuevoPrecioCosto;
-    await api('inventario_almacen', 'PATCH', patchCPP, '?id_articulo=eq.' + id);
-    await upsertStockArea(id, m.id_area, cantidad);
+    // Stock/CPP: se movió a Certificar Recepción -- al Aprobar solo se
+    // genera el compromiso financiero (Asiento + CxP).
 
     const baseExactaUSD = nuevoPrecioCosto * cantidad;
     const baseExactaBs = m.moneda_compra === 'VES' && m.base_moneda_original != null
@@ -2063,22 +2051,11 @@ async function ejecutarEfectosEntradaCompra(m) {
     } catch(eProvPago) {}
   }
 
-  // ── Stock/CPP: mismo cálculo de siempre, pero con el stock/costo FRESCOS
-  // de ahora mismo (no los de cuando se creó la Entrada -- pudo pasar
-  // tiempo entre crear y aprobar, y otros movimientos pudieron ocurrir).
-  const stockActual = await obtenerStockArea(id, id_areaEnt);
-  const costoActual = parseFloat(r.precio_costo_moneda || 0);
-  const nuevoStock = stockActual + cantidad;
-  let cpp = costoActual;
-  if (nuevoPrecioCosto > 0) {
-    cpp = nuevoStock > 0
-      ? ((stockActual * costoActual) + (cantidad * nuevoPrecioCosto)) / nuevoStock
-      : nuevoPrecioCosto;
-  }
-  const patchCPP = { precio_costo_moneda: parseFloat(cpp.toFixed(8)) };
-  if (nuevoPrecioCosto > 0) patchCPP.precio_costo_ultimo_moneda = nuevoPrecioCosto;
-  await api('inventario_almacen', 'PATCH', patchCPP, '?id_articulo=eq.' + id);
-  await upsertStockArea(id, id_areaEnt, cantidad);
+  // ── Stock/CPP: se movió a Certificar Recepción -- al Aprobar solo se
+  // genera el compromiso financiero (Asiento + CxP). El Stock/CPP recién
+  // se actualiza cuando Almacén certifica que llegó físicamente, para que
+  // esta certificación sea real y no un simple trámite posterior a algo
+  // que ya pasó igual.
 
   // ── Asiento contable (ENTRADA_COMPRA) ──
   let areaNombreEnt = 'Área';
@@ -2288,8 +2265,8 @@ async function aprobarEntradaCompra(id_entrada) {
       fecha_aprobacion: new Date().toISOString()
     },'?id_entrada=in.('+idsLote.join(',')+')');
     await mostrarAvisoOk(idsLote.length > 1
-      ? '✓ Lote de ' + idsLote.length + ' Artículos aprobado. Stock, Costo y Cuenta por Pagar actualizados.'
-      : '✓ Entrada aprobada. Stock, Costo y Cuenta por Pagar actualizados.');
+      ? '✓ Lote de ' + idsLote.length + ' Artículos aprobado. Cuenta por Pagar y Asiento generados -- falta Certificar Recepción para que el Stock entre al Inventario.'
+      : '✓ Entrada aprobada. Cuenta por Pagar y Asiento generados -- falta Certificar Recepción para que el Stock entre al Inventario.');
     await calcularInvSaldoArea();
     renderInventario();
   } catch(e) {
@@ -8299,6 +8276,33 @@ async function guardarCertificacionRecepcion(idRef, esLote) {
     if (!valid.ok) { errEl.textContent = valid.msg; errEl.style.display = 'block'; btnSetGuardando(btn, false); return; }
 
     const idsEntrada = Array.from(checks).map(function(c){ return c.dataset.idEntrada; });
+
+    // ── Recién AHORA entra el Stock al Inventario -- se trae fresco cada
+    // fila que se está certificando (nunca lo tocó la Aprobación), y se
+    // aplica el mismo cálculo de CPP (Costo Promedio Ponderado) de
+    // siempre, con el Stock/Costo actuales de este momento.
+    const filasCert = await api('stock_entradas','GET',null,
+      '?id_entrada=in.('+idsEntrada.join(',')+')&select=id_entrada,id_articulo,cantidad,id_area,precio_costo_moneda');
+    for (const f of (filasCert||[])) {
+      const idArt = f.id_articulo;
+      const cantidadCert = parseFloat(f.cantidad || 0);
+      const nuevoPrecioCostoCert = parseFloat(f.precio_costo_moneda || 0);
+      const artRowCert = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+idArt+'&select=precio_costo_moneda');
+      const costoActualCert = parseFloat((artRowCert && artRowCert[0] && artRowCert[0].precio_costo_moneda) || 0);
+      const stockActualCert = await obtenerStockArea(idArt, f.id_area);
+      const nuevoStockCert = stockActualCert + cantidadCert;
+      let cppCert = costoActualCert;
+      if (nuevoPrecioCostoCert > 0) {
+        cppCert = nuevoStockCert > 0
+          ? ((stockActualCert * costoActualCert) + (cantidadCert * nuevoPrecioCostoCert)) / nuevoStockCert
+          : nuevoPrecioCostoCert;
+      }
+      const patchCPPCert = { precio_costo_moneda: parseFloat(cppCert.toFixed(8)) };
+      if (nuevoPrecioCostoCert > 0) patchCPPCert.precio_costo_ultimo_moneda = nuevoPrecioCostoCert;
+      await api('inventario_almacen', 'PATCH', patchCPPCert, '?id_articulo=eq.' + idArt);
+      await upsertStockArea(idArt, f.id_area, cantidadCert);
+    }
+
     await api('stock_entradas','PATCH',{
       certificado_almacen: true,
       certificado_por: sesionActual.correo_usuario,
