@@ -323,9 +323,9 @@ async function renderInventario(filtro) {
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\');}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:180px">'
       + (puedo('INVENTARIO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Artículo</button>' : '')
-      + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" onclick="abrirEntradaConsolidada()">📥 Entrada Consolidada</button>' : '')
-      + ((sesionActual?.administrador || puedo('INVENTARIO','VER_ENTREGAS')) ? '<button class="btn-secundario" onclick="abrirModalEntregasAlmacen()">📦 Salidas por Ventas<span id="badge-entregas-almacen"></span></button>' : '')
-      + ((sesionActual?.administrador || puedo('INVENTARIO','CERTIFICAR_RECEPCION')) ? '<button class="btn-secundario" onclick="abrirModalCertificarRecepcion()">✓ Certificar Recepción<span id="badge-certificar-recepcion"></span></button>' : '')
+      + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" onclick="abrirEntradaConsolidada()">📥 Orden de Compra</button>' : '')
+      + ((sesionActual?.administrador || puedo('INVENTARIO','VER_ENTREGAS')) ? '<button class="btn-secundario" onclick="abrirModalEntregasAlmacen()">📦 Salida de Inventario<span id="badge-entregas-almacen"></span></button>' : '')
+      + ((sesionActual?.administrador || puedo('INVENTARIO','CERTIFICAR_RECEPCION')) ? '<button class="btn-secundario" onclick="abrirModalCertificarRecepcion()">✓ Entrada de Inventario<span id="badge-certificar-recepcion"></span></button>' : '')
       + '<button class="btn-secundario" title="Refrescar" onclick="renderInventario(document.getElementById(\'buscar-inv\')?.value||\'\')">🔄 Refrescar</button>'
       + '</div></div>'
       + '<div id="alerta-stock-bajo" style="display:none"></div>'
