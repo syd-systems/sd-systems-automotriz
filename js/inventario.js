@@ -4422,6 +4422,24 @@ async function _obtenerPaginaHistorial() {
     filtro !== 'entrada' ? api('stock_salidas',  'GET', null, qSal) : Promise.resolve([]),
   ]);
 
+  // Resolver la POSICIÓN de cada Entrada dentro de su Lote (Orden de
+  // Compra), si pertenece a uno -- para poder referenciarla como
+  // OC-{lote}-{posición} (ej. OC-1-2), no con su propio id_entrada suelto,
+  // que hacía ver una sola Orden de varios Artículos como si fueran
+  // Órdenes distintas.
+  const idsLotesPresentes = [...new Set(entradas.map(function(e){ return e.id_lote_consolidado; }).filter(Boolean))];
+  if (idsLotesPresentes.length) {
+    const filasLoteTodas = await api('stock_entradas','GET',null,
+      '?id_lote_consolidado=in.('+idsLotesPresentes.join(',')+')&select=id_entrada,id_lote_consolidado&order=id_entrada.asc');
+    const posicionPorEntrada = {};
+    const contadorPorLote = {};
+    (filasLoteTodas||[]).forEach(function(f){
+      contadorPorLote[f.id_lote_consolidado] = (contadorPorLote[f.id_lote_consolidado]||0) + 1;
+      posicionPorEntrada[f.id_entrada] = contadorPorLote[f.id_lote_consolidado];
+    });
+    entradas.forEach(function(e){ if (e.id_lote_consolidado) e.posicionLote = posicionPorEntrada[e.id_entrada]; });
+  }
+
   const combinados = [
     ...entradas.map(function(e) { return { ...e, tipo: 'ENTRADA', fecha: e.fecha_entrada, fecha_reg: e.fecha_registro }; }),
     ...salidas.map(function(s)  {
@@ -4490,10 +4508,14 @@ function _renderFilaHistorial(m) {
   // Compra: mientras Pendiente/Rechazada es una Orden de Compra (OC-),
   // recién es una Compra en firme (CPRA-) cuando ya se aprobó -- el resto
   // de los motivos (Ajuste, Devolución, Transferencia) y las Salidas
-  // siguen con su prefijo de siempre.
-  const refEntrada = (m.motivo === 'compra')
-    ? ((m.estado_aprobacion === 'APROBADA' ? 'CPRA-' : 'OC-') + m.id_entrada)
-    : ('ENT-' + m.id_entrada);
+  // siguen con su prefijo de siempre. Si el Artículo pertenece a un Lote
+  // (Orden con varios Artículos), se referencia como {prefijo}-{lote}-
+  // {posición} (ej. OC-1-2) -- para que se vea como lo que es: UNA sola
+  // Orden compuesta de varios Artículos, no varias Órdenes sueltas.
+  const prefEntrada = m.motivo === 'compra' ? (m.estado_aprobacion === 'APROBADA' ? 'CPRA-' : 'OC-') : 'ENT-';
+  const refEntrada = m.motivo === 'compra' && m.id_lote_consolidado
+    ? prefEntrada + m.id_lote_consolidado + '-' + (m.posicionLote || '?')
+    : prefEntrada + m.id_entrada;
   return '<tr>'
     + '<td style="padding:8px 0;font-size:12px;color:var(--suave)">' + (m.fecha ? fmtFecha(m.fecha) : '—') + '</td>'
     + '<td style="padding:8px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">'
@@ -4658,7 +4680,9 @@ function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
   const prefRefMov = tipo === 'ENTRADA'
     ? (m?.motivo === 'compra' ? (m?.estado_aprobacion === 'APROBADA' ? 'CPRA-' : 'OC-') : 'ENT-')
     : 'SAL-';
-  const refMov = idMov ? ' — Ref: ' + prefRefMov + idMov : '';
+  const refMov = idMov
+    ? ' — Ref: ' + prefRefMov + (tipo === 'ENTRADA' && m?.motivo === 'compra' && m?.id_lote_consolidado ? (m.id_lote_consolidado + '-' + (m.posicionLote || '?')) : idMov)
+    : '';
   // Un Ajuste de Inventario (Sobrante o Faltante) no es una Entrada/Salida normal —
   // usa el mismo modal por reutilización de campos, pero con su propio título.
   const esAjusteSobrante = tipo === 'ENTRADA' && m?.motivo === 'ajuste';
@@ -4699,6 +4723,17 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
       const res = await api('stock_entradas', 'GET', null,
         '?id_entrada=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),empleado_recibe:id_empleado(nombre_completo)');
       m = res[0];
+      // Si pertenece a un Lote (Orden de Compra con varios Artículos),
+      // resolver su posición dentro de ese Lote (1ro, 2do, 3ro...) para
+      // poder referenciarlo como OC-{lote}-{posición}.
+      if (m && m.id_lote_consolidado) {
+        try {
+          const hermanas = await api('stock_entradas','GET',null,
+            '?id_lote_consolidado=eq.'+m.id_lote_consolidado+'&select=id_entrada&order=id_entrada.asc');
+          const idxLote = (hermanas||[]).findIndex(function(h){ return h.id_entrada === m.id_entrada; });
+          if (idxLote >= 0) m.posicionLote = idxLote + 1;
+        } catch(ePosLote) {}
+      }
     } else {
       const res = await api('stock_salidas', 'GET', null,
         '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),empleado_entrega:id_empleado_entrega(nombre_completo,id_area,param_areas:id_area(nombre,codigo))');
@@ -6149,8 +6184,18 @@ async function anularMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
       if (artRowsAnul && artRowsAnul[0]) r = artRowsAnul[0];
     } catch(eArtAnul) { console.warn('Error cargando Artículo:', eArtAnul); }
   }
+  let posicionLoteAnul = null;
+  if (tipo === 'ENTRADA' && movOrig?.motivo === 'compra' && movOrig?.id_lote_consolidado) {
+    try {
+      const hermanasAnul = await api('stock_entradas','GET',null,
+        '?id_lote_consolidado=eq.'+movOrig.id_lote_consolidado+'&select=id_entrada&order=id_entrada.asc');
+      const idxLoteAnul = (hermanasAnul||[]).findIndex(function(h){ return h.id_entrada === movOrig.id_entrada; });
+      if (idxLoteAnul >= 0) posicionLoteAnul = idxLoteAnul + 1;
+    } catch(ePosLoteAnul) {}
+  }
   const numDocMostrar = tipo === 'ENTRADA'
-    ? ((movOrig?.motivo === 'compra' ? (movOrig?.estado_aprobacion === 'APROBADA' ? 'CPRA-' : 'OC-') : 'ENT-') + idMovimiento)
+    ? ((movOrig?.motivo === 'compra' ? (movOrig?.estado_aprobacion === 'APROBADA' ? 'CPRA-' : 'OC-') : 'ENT-')
+        + (movOrig?.motivo === 'compra' && movOrig?.id_lote_consolidado ? (movOrig.id_lote_consolidado + '-' + (posicionLoteAnul || '?')) : idMovimiento))
     : ('SAL-' + idMovimiento);
   document.getElementById('anulacion-tipo').value          = tipo;
   document.getElementById('anulacion-id-movimiento').value = idMovimiento;
