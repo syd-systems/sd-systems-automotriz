@@ -325,6 +325,7 @@ async function renderInventario(filtro) {
       + (puedo('INVENTARIO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Artículo</button>' : '')
       + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" onclick="abrirEntradaConsolidada()">📥 Entrada Consolidada</button>' : '')
       + ((sesionActual?.administrador || puedo('INVENTARIO','VER_ENTREGAS')) ? '<button class="btn-secundario" onclick="abrirModalEntregasAlmacen()">📦 Salidas por Ventas<span id="badge-entregas-almacen"></span></button>' : '')
+      + ((sesionActual?.administrador || puedo('INVENTARIO','CERTIFICAR_RECEPCION')) ? '<button class="btn-secundario" onclick="abrirModalCertificarRecepcion()">✓ Certificar Recepción<span id="badge-certificar-recepcion"></span></button>' : '')
       + '<button class="btn-secundario" title="Refrescar" onclick="renderInventario(document.getElementById(\'buscar-inv\')?.value||\'\')">🔄 Refrescar</button>'
       + '</div></div>'
       + '<div id="alerta-stock-bajo" style="display:none"></div>'
@@ -334,6 +335,7 @@ async function renderInventario(filtro) {
     // Ventas pendientes de entrega, para hacer titilar el botón "Salidas
     // por Ventas" (mismo patrón que "+ Nueva Factura" con OS Cerradas).
     revisarBadgeEntregasAlmacen();
+    revisarBadgeCertificarRecepcion();
   }
 
   // Solo al ABRIR el módulo (no en cada re-render por búsqueda/filtro): si
@@ -8116,6 +8118,202 @@ async function revisarBadgeEntregasAlmacen() {
       ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fc8181;margin-left:6px;vertical-align:middle;animation:parpadeoAlerta 1.2s ease-in-out infinite" title="Hay Ventas pendientes de entrega"></span>'
       : '';
   } catch(eBadgeEntregas) { console.warn('Error revisando badge de Ventas pendientes de entrega:', eBadgeEntregas); }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CERTIFICAR RECEPCIÓN FÍSICA -- verificación por tilde de los Artículos
+//  de una Compra ya APROBADA (Stock/Asiento/CxP ya generados). No afecta
+//  nada de Contabilidad ni Stock -- es una certificación adicional de que
+//  Almacén recibió físicamente todo. Normalmente la hace el Empleado de
+//  Almacén, pero cualquiera con el permiso puede recibir como respaldo si
+//  esa persona no está presente.
+// ══════════════════════════════════════════════════════════════
+
+async function revisarBadgeCertificarRecepcion() {
+  const badgeEl = document.getElementById('badge-certificar-recepcion');
+  if (!badgeEl) return;
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','CERTIFICAR_RECEPCION')) { badgeEl.innerHTML = ''; return; }
+  try {
+    const pend = await api('stock_entradas','GET',null,
+      '?motivo=eq.compra&estado_aprobacion=eq.APROBADA&certificado_almacen=eq.false&select=id_entrada&limit=1');
+    badgeEl.innerHTML = (pend && pend.length)
+      ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fc8181;margin-left:6px;vertical-align:middle;animation:parpadeoAlerta 1.2s ease-in-out infinite" title="Hay Compras pendientes de certificar recepción"></span>'
+      : '';
+  } catch(eBadgeCert) { console.warn('Error revisando badge de Certificar Recepción:', eBadgeCert); }
+}
+
+async function abrirModalCertificarRecepcion() {
+  if (!sesionActual?.administrador && !puedo('INVENTARIO','CERTIFICAR_RECEPCION')) {
+    alert('No tiene permiso para certificar la Recepción de Compras.');
+    return;
+  }
+  document.getElementById('cert-recep-lista-cont').style.display = '';
+  document.getElementById('cert-recep-detalle-cont').style.display = 'none';
+  document.getElementById('cert-recep-detalle-cont').innerHTML = '';
+  document.getElementById('cert-recep-leyenda').style.display = '';
+  document.getElementById('cert-recep-btn-volver').style.display = 'none';
+  abrirModal('modal-certificar-recepcion');
+  await _certRecepCargarLista();
+}
+
+function _certRecepVolverLista() {
+  document.getElementById('cert-recep-lista-cont').style.display = '';
+  document.getElementById('cert-recep-detalle-cont').style.display = 'none';
+  document.getElementById('cert-recep-leyenda').style.display = '';
+  document.getElementById('cert-recep-btn-volver').style.display = 'none';
+  _certRecepCargarLista();
+}
+
+async function _certRecepCargarLista() {
+  const cont = document.getElementById('cert-recep-lista-cont');
+  cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+  try {
+    const filas = await api('stock_entradas','GET',null,
+      '?motivo=eq.compra&estado_aprobacion=eq.APROBADA&certificado_almacen=eq.false&order=id_entrada.asc'
+      + '&select=id_entrada,id_articulo,cantidad,id_lote_consolidado,id_proveedor,fecha_negociacion,fecha_entrada');
+    if (!filas || !filas.length) {
+      cont.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">✅ No hay Compras pendientes de certificar recepción.</div>';
+      return;
+    }
+    const idsProv = [...new Set(filas.map(function(f){ return f.id_proveedor; }).filter(Boolean))];
+    const provs = idsProv.length ? await api('proveedores','GET',null,'?id_proveedor=in.('+idsProv.join(',')+')&select=id_proveedor,nombre') : [];
+    const provMap = {}; (provs||[]).forEach(function(p){ provMap[p.id_proveedor] = p.nombre; });
+
+    // Agrupar por Lote (o standalone si no pertenece a ninguno).
+    const grupos = {};
+    filas.forEach(function(f) {
+      const clave = f.id_lote_consolidado || ('solo-'+f.id_entrada);
+      if (!grupos[clave]) grupos[clave] = { idRef: f.id_lote_consolidado || f.id_entrada, esLote: !!f.id_lote_consolidado, filas: [] };
+      grupos[clave].filas.push(f);
+    });
+
+    cont.innerHTML = Object.values(grupos).map(function(g) {
+      const primeraF = g.filas[0];
+      const nomProv = provMap[primeraF.id_proveedor] || '—';
+      const ref = (g.esLote ? 'CPRA-' : 'CPRA-') + g.idRef;
+      const fecha = primeraF.fecha_negociacion || primeraF.fecha_entrada;
+      return '<div onclick="_certRecepVerDetalle('+g.idRef+','+g.esLote+')" style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid var(--borde);border-radius:8px;margin-bottom:8px;cursor:pointer" onmouseover="this.style.borderColor=\'var(--naranja)\'" onmouseout="this.style.borderColor=\'var(--borde)\'">'
+        + '<div>'
+        + '<div style="font-size:11px;color:var(--naranja);font-family:var(--font-mono)">Ref: '+ref+(g.filas.length>1?' (Lote x'+g.filas.length+' artículos)':'')+'</div>'
+        + '<div style="font-weight:600;margin-top:2px">'+nomProv+'</div>'
+        + '<div style="font-size:11px;color:var(--suave);margin-top:2px">'+fmtFecha(fecha)+'</div>'
+        + '</div>'
+        + '<button class="btn-secundario" style="font-size:11px;padding:6px 12px">Ver →</button>'
+        + '</div>';
+    }).join('');
+  } catch(eCertLista) {
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+msgErr(eCertLista)+'</div>';
+  }
+}
+
+async function _certRecepVerDetalle(idRef, esLote) {
+  const contLista = document.getElementById('cert-recep-lista-cont');
+  const contDet = document.getElementById('cert-recep-detalle-cont');
+  contLista.style.display = 'none';
+  document.getElementById('cert-recep-leyenda').style.display = 'none';
+  document.getElementById('cert-recep-btn-volver').style.display = '';
+  contDet.style.display = '';
+  contDet.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+
+  try {
+    const filtro = esLote ? '?id_lote_consolidado=eq.'+idRef : '?id_entrada=eq.'+idRef;
+    const filas = await api('stock_entradas','GET',null,
+      filtro + '&order=id_entrada.asc&select=id_entrada,id_articulo,cantidad,id_proveedor,fecha_negociacion,fecha_entrada');
+    if (!filas || !filas.length) { contDet.innerHTML = '<div class="alerta alerta-error" style="display:block">No se encontró esta Compra.</div>'; return; }
+
+    const idsArt = [...new Set(filas.map(function(f){ return f.id_articulo; }))];
+    const arts = await api('inventario_almacen','GET',null,'?id_articulo=in.('+idsArt.join(',')+')&select=id_articulo,nombre_articulo,codigo_articulo,unidad');
+    const artMap = {}; (arts||[]).forEach(function(a){ artMap[a.id_articulo] = a; });
+
+    let nomProv = '—';
+    if (filas[0].id_proveedor) {
+      const provRows = await api('proveedores','GET',null,'?id_proveedor=eq.'+filas[0].id_proveedor+'&select=nombre');
+      nomProv = provRows && provRows[0] ? provRows[0].nombre : '—';
+    }
+    const ref = 'CPRA-' + idRef;
+
+    contDet.innerHTML = '<div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-bottom:16px">'
+      + '<div style="font-size:11px;color:var(--naranja);font-family:var(--font-mono)">Ref: '+ref+'</div>'
+      + '<div style="font-weight:700;font-size:15px;margin-top:2px">'+nomProv+'</div>'
+      + '<div style="font-size:11px;color:var(--suave);margin-top:2px">'+fmtFecha(filas[0].fecha_negociacion || filas[0].fecha_entrada)+'</div>'
+      + '</div>'
+      + '<div style="font-size:11px;color:var(--suave);margin-bottom:10px">Tilde cada Artículo a medida que lo verifique físicamente. Todos deben quedar tildados para poder confirmar.</div>'
+      + '<div class="tabla-container" style="max-height:240px;margin-bottom:16px">'
+      + '<table style="width:100%"><thead><tr>'
+      + '<th style="font-size:11px">Artículo</th><th style="font-size:11px;text-align:center">Cant.</th><th style="font-size:11px;text-align:center">Recibido</th>'
+      + '</tr></thead><tbody>'
+      + filas.map(function(f) {
+          const a = artMap[f.id_articulo] || {};
+          return '<tr>'
+            + '<td style="padding:6px 8px">'+(a.nombre_articulo||'Art#'+f.id_articulo)+' <span style="color:var(--suave);font-size:11px">('+(a.codigo_articulo||'')+')</span></td>'
+            + '<td style="padding:6px 8px;text-align:center;font-family:var(--font-mono)">'+f.cantidad+' '+(a.unidad||'UND')+'</td>'
+            + '<td style="padding:6px 8px;text-align:center"><input type="checkbox" class="chk-cert-recep" data-id-entrada="'+f.id_entrada+'" onchange="_certRecepValidarTodos()" style="width:18px;height:18px;cursor:pointer"></td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table></div>'
+      + '<div class="form-campo" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">'
+      + '<div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>'
+      + '<div style="font-size:13px;color:var(--texto);margin-bottom:12px">Usuario: <span style="font-weight:600;color:var(--naranja)">'+(sesionActual?.nombre || sesionActual?.correo_usuario || '—')+'</span></div>'
+      + '<label style="font-size:12px">Contraseña</label>'
+      + '<input type="password" id="cert-recep-clave" placeholder="Ingrese su contraseña para confirmar" onkeydown="if(event.key===\'Enter\'){guardarCertificacionRecepcion('+idRef+','+esLote+')}"'
+      + ' style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">'
+      + '</div>'
+      + '<div class="alerta alerta-error" id="alerta-cert-recep-err" style="display:none;margin-top:14px"></div>'
+      + '<div style="margin-top:16px;text-align:right">'
+      + '<button class="btn-primario" id="btn-cert-recep-confirmar" disabled onclick="guardarCertificacionRecepcion('+idRef+','+esLote+')">✓ Confirmar Recepción</button>'
+      + '</div>';
+  } catch(eCertDet) {
+    contDet.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+msgErr(eCertDet)+'</div>';
+  }
+}
+
+function _certRecepValidarTodos() {
+  const checks = document.querySelectorAll('.chk-cert-recep');
+  const btn = document.getElementById('btn-cert-recep-confirmar');
+  if (!btn) return;
+  btn.disabled = !Array.from(checks).every(function(c){ return c.checked; });
+}
+
+async function guardarCertificacionRecepcion(idRef, esLote) {
+  const errEl = document.getElementById('alerta-cert-recep-err');
+  errEl.style.display = 'none';
+
+  const checks = document.querySelectorAll('.chk-cert-recep');
+  if (!checks.length || !Array.from(checks).every(function(c){ return c.checked; })) {
+    errEl.textContent = 'Debe tildar todos los Artículos como Recibidos antes de confirmar.';
+    errEl.style.display = 'block';
+    return;
+  }
+  const clave = document.getElementById('cert-recep-clave')?.value || '';
+  if (!clave) {
+    errEl.textContent = 'Debe ingresar su contraseña para confirmar.';
+    errEl.style.display = 'block';
+    document.getElementById('cert-recep-clave')?.focus();
+    return;
+  }
+
+  const btn = document.getElementById('btn-cert-recep-confirmar');
+  btnSetGuardando(btn, true, null, 'Procesando...');
+  try {
+    const valid = await validarClaveUsuarioActual(clave);
+    if (!valid.ok) { errEl.textContent = valid.msg; errEl.style.display = 'block'; btnSetGuardando(btn, false); return; }
+
+    const idsEntrada = Array.from(checks).map(function(c){ return c.dataset.idEntrada; });
+    await api('stock_entradas','PATCH',{
+      certificado_almacen: true,
+      certificado_por: sesionActual.correo_usuario,
+      fecha_certificacion: new Date().toISOString()
+    }, '?id_entrada=in.('+idsEntrada.join(',')+')');
+
+    await mostrarAvisoOk('✓ Recepción certificada correctamente.');
+    await revisarBadgeCertificarRecepcion();
+    _certRecepVolverLista();
+  } catch(eGuardarCert) {
+    errEl.textContent = 'Error: ' + msgErr(eGuardarCert);
+    errEl.style.display = 'block';
+  } finally {
+    btnSetGuardando(btn, false);
+  }
 }
 
 function _entregasAlmacenCambiarSubVista(v) {
