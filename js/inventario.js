@@ -8316,7 +8316,6 @@ async function guardarCertificacionRecepcion(idRef, esLote) {
       fecha_certificacion: new Date().toISOString()
     }, '?id_entrada=in.('+idsEntrada.join(',')+')');
 
-    await mostrarAvisoOk('✓ Recepción certificada correctamente.');
     await revisarBadgeCertificarRecepcion();
     _certRecepVolverLista();
     // Refrescar el listado principal de Inventario -- recién ahora el
