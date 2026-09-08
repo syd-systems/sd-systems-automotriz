@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831248';
+const SYD_VERSION = '20260831249';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -2948,7 +2948,8 @@ async function notifConfirmar() {
 
     // ── Caso especial: Aprobación de Entrada de Compra -- se resuelve
     // directo desde la notificación (aprobarEntradaCompra ya revalida el
-    // límite del Nivel de Firma y ejecuta Stock/CPP/Asiento/CxP), en vez de
+    // límite del Nivel de Firma y genera Asiento/CxP -- el Stock/CPP se
+    // mueve recién al Certificar Recepción, no aquí), en vez de
     // solo acreditar stock como hace confirmar_recepcion.
     if (accionNotif === 'aprobar_entrada' && extras && extras.id_entrada) {
       await api('notificaciones','PATCH',
