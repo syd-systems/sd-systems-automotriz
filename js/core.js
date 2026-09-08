@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831249';
+const SYD_VERSION = '20260831250';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -911,6 +911,7 @@ async function verificarSesionActiva() {
 }
 let _pollingInterval = setInterval(verificarSesionActiva, 30000);
 let _intervalRefrescarUsuarios = null; // auto-refresco de la lista de Usuarios mientras esa pantalla esté abierta
+let _intervalBadgeCertRecep = null; // auto-revisión del punto rojo de Certificar Recepción mientras Inventario esté abierto
 
 // ─── LOGIN ───
 document.getElementById('login-clave').addEventListener('keypress', e => {
@@ -1418,6 +1419,12 @@ async function mostrarModulo(modulo, navEl) {
   if (modulo !== 'usuarios' && _intervalRefrescarUsuarios) {
     clearInterval(_intervalRefrescarUsuarios);
     _intervalRefrescarUsuarios = null;
+  }
+  // Detener la auto-revisión del punto rojo de Certificar Recepción si se
+  // navega fuera de Inventario.
+  if (modulo !== 'inventario' && _intervalBadgeCertRecep) {
+    clearInterval(_intervalBadgeCertRecep);
+    _intervalBadgeCertRecep = null;
   }
   // Verificar notificaciones pendientes al navegar
   verificarNotificacionesPendientes();
