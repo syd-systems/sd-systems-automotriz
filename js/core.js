@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831245';
+const SYD_VERSION = '20260831246';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -171,6 +171,7 @@ const PERMISOS_POR_MODULO = {
     { accion: 'AJUSTAR_PRECIO_VENTA', label: '🔒 Ajustar manualmente el Precio de Venta calculado' },
     { accion: 'VER_ENTREGAS',    label: 'Ver Artículos por Entregar / pestaña Entregas de Ventas (sin el resto de Inventario)' },
     { accion: 'MARCAR_ENTREGA',  label: 'Confirmar Entrega de Mercancía Vendida al Cliente' },
+    { accion: 'CERTIFICAR_RECEPCION', label: 'Certificar la Recepción Física de Artículos de una Compra' },
   ],
   CATALOGO: [
     { accion: 'VER',      label: 'Ver Ficha' },
