@@ -2264,9 +2264,6 @@ async function aprobarEntradaCompra(id_entrada) {
       aprobado_por: correoAprobador,
       fecha_aprobacion: new Date().toISOString()
     },'?id_entrada=in.('+idsLote.join(',')+')');
-    await mostrarAvisoOk(idsLote.length > 1
-      ? '✓ Lote de ' + idsLote.length + ' Artículos aprobado. Cuenta por Pagar y Asiento generados -- falta Certificar Recepción para que el Stock entre al Inventario.'
-      : '✓ Entrada aprobada. Cuenta por Pagar y Asiento generados -- falta Certificar Recepción para que el Stock entre al Inventario.');
     await calcularInvSaldoArea();
     renderInventario();
   } catch(e) {
@@ -2748,7 +2745,7 @@ async function guardarEntradaConsolidada() {
     document.getElementById('alerta-entcons-err').style.display = 'none';
     alert(window._retomandoLoteId
       ? '✓ Lote corregido y reenviado a aprobación (' + lineasValidas.length + ' artículos, Lote OC-' + idLote + ').'
-      : '✓ Entrada Consolidada enviada a aprobación (' + lineasValidas.length + ' artículos, Lote OC-' + idLote + ').');
+      : '✓ Orden de Compra enviada a aprobación (' + lineasValidas.length + ' artículos, Lote OC-' + idLote + ').');
     window._retomandoLoteId = null;
     cerrarModal('modal-entrada-consolidada');
   } catch(eGuardarEntCons) {
@@ -3513,7 +3510,6 @@ async function rechazarEntradaCompra(id_entrada) {
         alert('⚠ La Entrada quedó marcada como RECHAZADA, pero hubo un error enviando la notificación al operador: ' + msgErr(eNotifRechEnt) + '\n\nAvísele manualmente por ahora.');
       }
     }
-    await mostrarAvisoOk(filasLoteRech.length > 1 ? 'Lote de ' + filasLoteRech.length + ' Artículos rechazado.' : 'Entrada rechazada.');
     renderInventario();
     return true;
   } catch(e) {
