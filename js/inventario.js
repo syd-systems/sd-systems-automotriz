@@ -8312,6 +8312,12 @@ async function guardarCertificacionRecepcion(idRef, esLote) {
     await mostrarAvisoOk('✓ Recepción certificada correctamente.');
     await revisarBadgeCertificarRecepcion();
     _certRecepVolverLista();
+    // Refrescar el listado principal de Inventario -- recién ahora el
+    // Stock certificado entró de verdad, así que el número visible en
+    // pantalla debe reflejarlo sin que el Usuario tenga que refrescar a
+    // mano. Este modal solo se abre estando en Inventario, así que no
+    // hace falta validar en qué módulo está.
+    renderInventario(document.getElementById('buscar-inv')?.value || '');
   } catch(eGuardarCert) {
     errEl.textContent = 'Error: ' + msgErr(eGuardarCert);
     errEl.style.display = 'block';
