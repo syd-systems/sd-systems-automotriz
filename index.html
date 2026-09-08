@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260831245"></script>
-<script src="js/parametros.js?v=20260831245"></script>
-<script src="js/empresas.js?v=20260831245"></script>
-<script src="js/ingresos.js?v=20260831245"></script>
-<script src="js/inventario.js?v=20260831245"></script>
-<script src="js/proveedores.js?v=20260831245"></script>
-<script src="js/clientes.js?v=20260831245"></script>
-<script src="js/ventas.js?v=20260831245"></script>
-<script src="js/contabilidad.js?v=20260831245"></script>
-<script src="js/egresos.js?v=20260831245"></script>
-<script src="js/vehiculos.js?v=20260831245"></script>
-<script src="js/catalogo.js?v=20260831245"></script>
-<script src="js/ordenes.js?v=20260831245"></script>
+<script src="js/core.js?v=20260831246"></script>
+<script src="js/parametros.js?v=20260831246"></script>
+<script src="js/empresas.js?v=20260831246"></script>
+<script src="js/ingresos.js?v=20260831246"></script>
+<script src="js/inventario.js?v=20260831246"></script>
+<script src="js/proveedores.js?v=20260831246"></script>
+<script src="js/clientes.js?v=20260831246"></script>
+<script src="js/ventas.js?v=20260831246"></script>
+<script src="js/contabilidad.js?v=20260831246"></script>
+<script src="js/egresos.js?v=20260831246"></script>
+<script src="js/vehiculos.js?v=20260831246"></script>
+<script src="js/catalogo.js?v=20260831246"></script>
+<script src="js/ordenes.js?v=20260831246"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -5132,6 +5132,28 @@
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-cuentas-bancarias-empresa')">Cerrar</button>
       <button class="btn-primario" id="btn-cbe-guardar" onclick="guardarCuentaBancariaEmpresa()">+ Agregar Cuenta</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL CERTIFICAR RECEPCIÓN FÍSICA (Compras ya aprobadas) ══ -->
+<div class="modal-overlay" id="modal-certificar-recepcion" style="z-index:2000">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <h3>✓ CERTIFICAR RECEPCIÓN</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-certificar-recepcion')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--suave);margin-bottom:16px" id="cert-recep-leyenda">
+        Compras ya Aprobadas (Stock, Asiento y CxP ya generados) pendientes de que Almacén certifique que
+        físicamente llegó todo lo que dice la Compra.
+      </p>
+      <div id="cert-recep-lista-cont"></div>
+      <div id="cert-recep-detalle-cont" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" id="cert-recep-btn-volver" style="display:none" onclick="_certRecepVolverLista()">← Volver a la lista</button>
+      <button class="btn-secundario" onclick="cerrarModal('modal-certificar-recepcion')">Cerrar</button>
     </div>
   </div>
 </div>
