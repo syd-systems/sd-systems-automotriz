@@ -336,6 +336,17 @@ async function renderInventario(filtro) {
     // por Ventas" (mismo patrón que "+ Nueva Factura" con OS Cerradas).
     revisarBadgeEntregasAlmacen();
     revisarBadgeCertificarRecepcion();
+    // Auto-revisar el punto rojo de Certificar Recepción cada 90s mientras
+    // esta pantalla siga abierta -- antes solo se revisaba al entrar/volver
+    // a entrar al módulo, así que si alguien se aprobaba una OC mientras el
+    // Operador de Almacén ya estaba parado en Inventario, nunca se enteraba
+    // sin salir y volver a entrar.
+    if (typeof _intervalBadgeCertRecep !== 'undefined') {
+      if (_intervalBadgeCertRecep) clearInterval(_intervalBadgeCertRecep);
+      _intervalBadgeCertRecep = setInterval(function() {
+        revisarBadgeCertificarRecepcion();
+      }, 90000);
+    }
   }
 
   // Solo al ABRIR el módulo (no en cada re-render por búsqueda/filtro): si
