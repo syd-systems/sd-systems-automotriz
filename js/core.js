@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831255';
+const SYD_VERSION = '20260831257';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -929,7 +929,7 @@ async function verificarSesionActiva() {
 }
 let _pollingInterval = setInterval(verificarSesionActiva, 30000);
 let _intervalRefrescarUsuarios = null; // auto-refresco de la lista de Usuarios mientras esa pantalla esté abierta
-let _intervalBadgeCertRecep = null; // auto-revisión del punto rojo de Certificar Recepción mientras Inventario esté abierto
+let _intervalBadgeEntradaInventario = null; // auto-revisión del punto rojo de Entrada de Inventario mientras Inventario esté abierto
 
 // ─── LOGIN ───
 document.getElementById('login-clave').addEventListener('keypress', e => {
@@ -1438,11 +1438,11 @@ async function mostrarModulo(modulo, navEl) {
     clearInterval(_intervalRefrescarUsuarios);
     _intervalRefrescarUsuarios = null;
   }
-  // Detener la auto-revisión del punto rojo de Certificar Recepción si se
+  // Detener la auto-revisión del punto rojo de Entrada de Inventario si se
   // navega fuera de Inventario.
-  if (modulo !== 'inventario' && _intervalBadgeCertRecep) {
-    clearInterval(_intervalBadgeCertRecep);
-    _intervalBadgeCertRecep = null;
+  if (modulo !== 'inventario' && _intervalBadgeEntradaInventario) {
+    clearInterval(_intervalBadgeEntradaInventario);
+    _intervalBadgeEntradaInventario = null;
   }
   // Verificar notificaciones pendientes al navegar
   verificarNotificacionesPendientes();
@@ -2974,7 +2974,7 @@ async function notifConfirmar() {
     // ── Caso especial: Aprobación de Entrada de Compra -- se resuelve
     // directo desde la notificación (aprobarEntradaCompra ya revalida el
     // límite del Nivel de Firma y genera Asiento/CxP -- el Stock/CPP se
-    // mueve recién al Certificar Recepción, no aquí), en vez de
+    // mueve recién al Entrada de Inventario, no aquí), en vez de
     // solo acreditar stock como hace confirmar_recepcion.
     if (accionNotif === 'aprobar_entrada' && extras && extras.id_entrada) {
       await api('notificaciones','PATCH',
