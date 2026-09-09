@@ -4990,7 +4990,29 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
   document.getElementById('edit-mov-id-articulo').value = id_articulo;
   document.getElementById('edit-mov-cantidad').value    = parseFloat(m.cantidad || 0) % 1 === 0 ? parseInt(m.cantidad || 0) : parseFloat(m.cantidad || 0).toFixed(2);
   const obsEl = document.getElementById('edit-mov-observaciones') || document.getElementById('edit-mov-obs');
-  if (obsEl) obsEl.value = m.observaciones || '';
+  if (obsEl) {
+    if (m.motivo === 'compra' && m.id_orden_compra) {
+      // Se reconstruye dinámicamente cada vez que se abre la Ficha (no es
+      // el texto guardado tal cual) -- porque el N° de Factura recién se
+      // conoce cuando se Registra el Pago, no al crear la Compra.
+      const fechaObsMov = m.fecha_negociacion ? formatearFechaCorta(m.fecha_negociacion) : '';
+      let textoObsMov = 'Compra a Proveedor según OC-' + m.id_orden_compra + (fechaObsMov ? ' de fecha ' + fechaObsMov : '');
+      if (m.estado_aprobacion === 'APROBADA') {
+        try {
+          const cxpObsMov = await api('cont_cxp','GET',null,
+            '?numero_doc=ilike.'+encodeURIComponent('CPRA-'+m.id_orden_compra+'*')+'&select=numero_factura_proveedor&limit=1');
+          const facturaObsMov = cxpObsMov && cxpObsMov[0] ? cxpObsMov[0].numero_factura_proveedor : null;
+          textoObsMov = 'Compra a Proveedor según OC-' + m.id_orden_compra
+            + (facturaObsMov ? ', Factura No. ' + facturaObsMov : '')
+            + ', CPRA-' + m.id_orden_compra
+            + (fechaObsMov ? ' de fecha ' + fechaObsMov : '');
+        } catch(eObsMov) {}
+      }
+      obsEl.value = textoObsMov;
+    } else {
+      obsEl.value = m.observaciones || '';
+    }
+  }
   const okEl  = document.getElementById('alerta-edit-mov-ok')  || document.getElementById('alerta-es-ok');
   const errEl = document.getElementById('alerta-edit-mov-err') || document.getElementById('alerta-es-err');
   if (okEl)  okEl.style.display  = 'none';
@@ -5217,32 +5239,10 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     if (cliContEl)  cliContEl.style.display  = motivo === 'devolucion'    ? '' : 'none';
     if (aoContEl)   aoContEl.style.display   = motivo === 'transferencia' ? '' : 'none';
 
-    // Tributos IVA — cargar valores guardados
-    const tribuCont = document.getElementById('edit-mov-tributos-cont');
-    if (tribuCont) tribuCont.style.display = motivo === 'compra' ? '' : 'none';
-    if (motivo === 'compra') {
-      const exentoVal   = document.getElementById('edit-mov-exento-iva-val');
-      const incluyeVal  = document.getElementById('edit-mov-incluye-iva-val');
-      const ivaContEl2  = document.getElementById('edit-mov-incluye-iva-cont');
-      const exentoSi    = document.getElementById('edit-exento-iva-si');
-      const exentoNo    = document.getElementById('edit-exento-iva-no');
-      const incluyeSi   = document.getElementById('edit-incluye-iva-si');
-      const incluyeNo   = document.getElementById('edit-incluye-iva-no');
-
-      const exento  = m.exento_iva  === true;
-      const incluye = m.incluye_iva === true;
-
-      if (exentoVal)  exentoVal.value  = exento  ? 'SI' : (m.exento_iva === false ? 'NO' : '');
-      if (incluyeVal) incluyeVal.value = incluye ? 'SI' : (m.incluye_iva === false ? 'NO' : '');
-
-      if (exentoSi)  exentoSi.checked  = exento;
-      if (exentoNo)  exentoNo.checked  = m.exento_iva === false;
-      if (ivaContEl2) ivaContEl2.style.display = exento ? 'none' : '';
-      if (incluyeSi) incluyeSi.checked = incluye;
-      if (incluyeNo) incluyeNo.checked = m.incluye_iva === false;
-
-      calcularTributosEdit();
-    }
+    // Tributos IVA: ya no se pregunta -- el IVA se calcula siempre ENCIMA
+    // del Precio, nunca exento, nunca "ya incluido" (mismo criterio que
+    // Orden de Compra). Los valores guardados de una Entrada vieja (de
+    // antes de este cambio) se ignoran a partir de aquí.
 
     // Proveedor
     const selProv = document.getElementById('edit-mov-proveedor');
@@ -5277,6 +5277,12 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     }
     const selPago = document.getElementById('edit-mov-esquema-pago');
     if (selPago) selPago.value = esquemaPago;
+    const fechaPagoContElLoad = document.getElementById('edit-mov-fecha-pago-cont');
+    if (fechaPagoContElLoad) fechaPagoContElLoad.style.display = esquemaPago === 'CONTADO' ? '' : 'none';
+    const fechaPagoElLoad = document.getElementById('edit-mov-fecha-pago');
+    if (fechaPagoElLoad) fechaPagoElLoad.value = m.fecha_pago || '';
+    const notaEntregaElLoad = document.getElementById('edit-mov-nota-entrega');
+    if (notaEntregaElLoad) notaEntregaElLoad.value = m.nota_entrega_factura || '';
 
     // Mostrar Condiciones de Crédito si aplica
     const creditoCont = document.getElementById('edit-mov-credito-cont');
@@ -5358,6 +5364,10 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
   if (modalHist) { modalHist.classList.remove('abierto'); modalHist.style.display = 'none'; }
   console.log('[SYD] abriendo modal ENTRADA');
   abrirModal('modal-edit-movimiento');
+  // Que se muestre desde el principio del formulario -- todo el
+  // precargado de campos hecho arriba puede haber movido el scroll.
+  const modalBodyEditMov = document.querySelector('#modal-edit-movimiento .modal-body');
+  if (modalBodyEditMov) modalBodyEditMov.scrollTop = 0;
   } catch(e) { console.error('[SYD] editarMovimiento ERROR:', msgErr(e), e.stack); }
 }
 
@@ -5557,8 +5567,11 @@ async function _guardarEdicionMovimientoInterno() {
       // negociada en VES guardaba el monto en Bs directamente en monto_usd.
       const precioNegociado = precioNegociadoOriginal === null ? null
         : (monedaEdit === 'VES' ? parseFloat((precioNegociadoOriginal / tasaFormEdit).toFixed(8)) : precioNegociadoOriginal);
-      const exentoEdit  = document.getElementById('edit-mov-exento-iva-val')?.value === 'SI';
-      const incluyeEdit = document.getElementById('edit-mov-incluye-iva-val')?.value === 'SI';
+      // El IVA se calcula siempre ENCIMA del Precio -- nunca exento, nunca
+      // "ya incluido" (mismo criterio que Orden de Compra). Ya no se
+      // pregunta con selectores.
+      const exentoEdit  = false;
+      const incluyeEdit = false;
       // precioNegociado (ya en USD) puede traer IVA incluido;
       // precio_costo_moneda debe guardar siempre la BASE sin IVA
       const precio = (precioNegociado !== null && !exentoEdit && incluyeEdit)
@@ -5581,11 +5594,8 @@ async function _guardarEdicionMovimientoInterno() {
 
       if (precio !== null) datos.precio_costo_moneda = precio;
       if (precioNegociadoOriginal !== null) datos.precio_compra_original = precioNegociadoOriginal;
-      datos.exento_iva          = document.getElementById('edit-mov-exento-iva-val')?.value === 'SI' ? true
-                                   : (document.getElementById('edit-mov-exento-iva-val')?.value === 'NO' ? false : null);
-      datos.incluye_iva         = exentoEdit ? null
-                                   : (document.getElementById('edit-mov-incluye-iva-val')?.value === 'SI' ? true
-                                   : (document.getElementById('edit-mov-incluye-iva-val')?.value === 'NO' ? false : null));
+      datos.exento_iva          = false;
+      datos.incluye_iva         = false;
       datos.moneda_compra       = monedaEdit;
       datos.moneda_pago         = document.getElementById('edit-mov-moneda-pago')?.value || monedaEdit;
       datos.fecha_negociacion   = fechaNeg;
@@ -5595,6 +5605,8 @@ async function _guardarEdicionMovimientoInterno() {
       datos.cliente_nombre      = clienteEdit;
       datos.id_area_origen      = areaOrig;
       datos.esquema_pago        = pagoEdit;
+      datos.fecha_pago          = pagoEdit === 'CONTADO' ? (document.getElementById('edit-mov-fecha-pago')?.value || null) : null;
+      datos.nota_entrega_factura = document.getElementById('edit-mov-nota-entrega')?.value.trim() || null;
 
       // monto_total_con_iva / monto_total_moneda_original / tasa_bcv --
       // estos 3 campos son los que lee ejecutarEfectosEntradaCompra() al
@@ -6091,6 +6103,8 @@ function onCambioEsquemaPagoEdit() {
   const esquema = document.getElementById('edit-mov-esquema-pago')?.value;
   const cont    = document.getElementById('edit-mov-credito-cont');
   if (cont) cont.style.display = esquema === 'CREDITO' ? '' : 'none';
+  const fechaPagoContEl = document.getElementById('edit-mov-fecha-pago-cont');
+  if (fechaPagoContEl) fechaPagoContEl.style.display = esquema === 'CONTADO' ? '' : 'none';
   if (esquema === 'CREDITO') calcularCuotasEdit();
 }
 
@@ -6111,8 +6125,9 @@ function calcularCuotasEdit() {
   const montoCuotaInput = parseFloat(document.getElementById('edit-mov-cuotas-monto')?.value) || 0;
   // precio es el precio NEGOCIADO (puede traer IVA incluido o no, según la
   // bandera) — reconstruir el TOTAL con IVA correctamente antes de repartir
-  const exentoCuotas  = document.getElementById('edit-mov-exento-iva-val')?.value === 'SI';
-  const incluyeCuotas = document.getElementById('edit-mov-incluye-iva-val')?.value === 'SI';
+  // El IVA se calcula siempre ENCIMA -- nunca exento, nunca "ya incluido".
+  const exentoCuotas  = false;
+  const incluyeCuotas = false;
   const montoBase = precio * cantidad;
   let totalUSD = parseFloat((exentoCuotas || incluyeCuotas ? montoBase : montoBase * (1+tasaIVAActual())).toFixed(2));
   if (!totalUSD && montoCuotaInput && numCuotas) totalUSD = parseFloat((montoCuotaInput * numCuotas).toFixed(2));
@@ -6592,17 +6607,6 @@ function onCambiarPrecioEdit() {
 
 function onCambiarMotivoEdit() {
   const motivo = document.getElementById('edit-mov-motivo')?.value;
-  const esCompra = motivo === 'compra';
-  const tribuCont = document.getElementById('edit-mov-tributos-cont');
-  if (tribuCont) tribuCont.style.display = esCompra ? '' : 'none';
-  document.querySelectorAll('input[name="edit-exento-iva"]').forEach(function(r){ r.checked = false; });
-  document.querySelectorAll('input[name="edit-incluye-iva"]').forEach(function(r){ r.checked = false; });
-  document.getElementById('edit-mov-exento-iva-val').value = '';
-  document.getElementById('edit-mov-incluye-iva-val').value = '';
-  const ivaContEl = document.getElementById('edit-mov-incluye-iva-cont');
-  if (ivaContEl) ivaContEl.style.display = 'none';
-  const prev = document.getElementById('edit-mov-tributos-preview');
-  if (prev) prev.style.display = 'none';
   // Mostrar/ocultar proveedor
   const provCont = document.getElementById('edit-mov-proveedor-cont');
   if (provCont) provCont.style.display = esCompra ? '' : 'none';
@@ -6636,58 +6640,11 @@ function onCambioExentoIVAEdit() {
   calcularCuotasEdit();
 }
 
-function calcularTributosEdit() {
-  const pctIVAEdit = Math.round(tasaIVAActual()*100);
-  const pctLblEdit = document.getElementById('edit-iva-pct-label');
-  if (pctLblEdit) pctLblEdit.textContent = 'IVA (' + pctIVAEdit + '%)';
-  const pctSpanEdit = document.getElementById('edit-trib-iva-pct');
-  if (pctSpanEdit) pctSpanEdit.textContent = pctIVAEdit;
-  const exento    = document.getElementById('edit-mov-exento-iva-val')?.value === 'SI';
-  const ivaVal    = document.getElementById('edit-mov-incluye-iva-val')?.value;
-  const prev      = document.getElementById('edit-mov-tributos-preview');
-  const moneda    = document.getElementById('edit-mov-moneda')?.value || 'USD';
-  const tasa      = parseFloat(document.getElementById('edit-mov-tasa-bcv')?.value) || 0;
-  const precio    = parseMontoVE(document.getElementById('edit-mov-precio')?.value);
-  const cantidad  = parseFloat(document.getElementById('edit-mov-cantidad')?.value) || 0;
-  const montoTotal = precio * cantidad;
-  const sim = moneda === 'VES' ? 'Bs.' : '$';
-  const IVA_RATE = tasaIVAActual();
-
-  if (!montoTotal) { if (prev) prev.style.display = 'none'; return; }
-
-  let base, iva, total;
-  if (exento) {
-    base = montoTotal; iva = 0; total = montoTotal;
-  } else if (!ivaVal) {
-    if (prev) prev.style.display = 'none'; return;
-  } else if (ivaVal === 'SI') {
-    base  = parseFloat((montoTotal / (1 + IVA_RATE)).toFixed(4));
-    iva   = parseFloat((montoTotal - base).toFixed(4));
-    total = montoTotal;
-  } else {
-    base  = montoTotal;
-    iva   = parseFloat((montoTotal * IVA_RATE).toFixed(4));
-    total = parseFloat((montoTotal + iva).toFixed(4));
-  }
-
-  document.getElementById('edit-trib-base').textContent  = sim + ' ' + fmtBs(base);
-  document.getElementById('edit-trib-iva').textContent   = iva > 0 ? sim + ' ' + fmtBs(iva) : '—';
-  document.getElementById('edit-trib-total').textContent = sim + ' ' + fmtBs(total);
-  if (tasa > 0 && moneda !== 'VES') {
-    const baseVesEdit  = parseFloat((base * tasa).toFixed(2));
-    const totalVesEdit = parseFloat((total * tasa).toFixed(2));
-    const ivaVesEdit   = parseFloat((totalVesEdit - baseVesEdit).toFixed(2));
-    document.getElementById('edit-trib-base-ves').textContent  = 'Bs. ' + fmtBs(baseVesEdit);
-    document.getElementById('edit-trib-iva-ves').textContent   = iva > 0 ? 'Bs. ' + fmtBs(ivaVesEdit) : '—';
-    document.getElementById('edit-trib-total-ves').textContent = 'Bs. ' + fmtBs(totalVesEdit);
-  } else {
-    document.getElementById('edit-trib-base-ves').textContent  = moneda === 'VES' && tasa > 0 ? '$ ' + fmtBs(base / tasa) : '—';
-    document.getElementById('edit-trib-iva-ves').textContent   = moneda === 'VES' && iva > 0 && tasa > 0 ? '$ ' + fmtBs(iva / tasa) : '—';
-    document.getElementById('edit-trib-total-ves').textContent = moneda === 'VES' && tasa > 0 ? '$ ' + fmtBs(total / tasa) : '—';
-  }
-  if (prev) prev.style.display = '';
-  actualizarIGTFEdit(total, moneda, tasa);
-}
+// El IVA se calcula siempre ENCIMA -- ya no hay selectores de Exento/Incluye
+// que mostrar aquí, así que esta función queda sin efecto (se deja como
+// no-operativa en vez de borrar todas sus llamadas dispersas, que
+// disparaban el recálculo de otros campos también).
+function calcularTributosEdit() {}
 
 // Guarda el Tipo de Contribuyente del Proveedor -- se usa para la
 // salvedad de IGTF en la notificación de aprobación. Se dispara al
