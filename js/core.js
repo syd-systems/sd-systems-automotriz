@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260831254';
+const SYD_VERSION = '20260831255';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -573,6 +573,24 @@ async function obtenerCuentasContables(forzarRecarga) {
     console.warn('Error obteniendo cuentas contables:', e);
     return _cuentasContablesCache || [];
   }
+}
+
+// ── Siguiente Número de Orden de Compra -- consecutivo real y limpio
+// (orden_compra_seq), sin importar cuántas filas internas use la Orden en
+// stock_entradas (una fila por Artículo). Se pide UNA sola vez por Orden
+// creada (sea de un solo Artículo o un Lote), nunca por artículo.
+async function obtenerSiguienteNumeroOrdenCompra() {
+  const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/siguiente_numero_orden_compra', {
+    method: 'POST',
+    headers: {
+      'apikey':        SUPABASE_KEY,
+      'Authorization': 'Bearer ' + _sessionJWT,
+      'Content-Type':  'application/json'
+    },
+    body: JSON.stringify({})
+  });
+  if (!resp.ok) throw new Error('No se pudo obtener el siguiente número de Orden de Compra.');
+  return await resp.json();
 }
 
 // ── Stock por Área — suma/resta atómica sobre inventario_stock_area ──
@@ -2988,15 +3006,15 @@ async function notifConfirmar() {
       await verificarNotificacionesPendientes();
       try {
         const entRowsRech = await api('stock_entradas','GET',null,
-          '?id_entrada=eq.'+extras.id_entrada+'&select=id_articulo,id_lote_consolidado');
+          '?id_entrada=eq.'+extras.id_entrada+'&select=id_articulo,id_orden_compra');
         const filaRech = entRowsRech && entRowsRech[0] ? entRowsRech[0] : null;
         window._suprimirCheckNotifUnaVez = true;
         mostrarModulo('inventario', document.getElementById('nav-INVENTARIO'));
-        if (filaRech && filaRech.id_lote_consolidado) {
+        if (filaRech && filaRech.id_orden_compra) {
           // Es parte de un Lote (Entrada Consolidada) -- abrir el Lote
           // completo para corregirlo, no solo este renglón.
           setTimeout(function() {
-            if (typeof retomarLoteRechazado === 'function') retomarLoteRechazado(filaRech.id_lote_consolidado);
+            if (typeof retomarLoteRechazado === 'function') retomarLoteRechazado(filaRech.id_orden_compra);
           }, 350);
         } else {
           const idArticuloRech = filaRech ? filaRech.id_articulo : null;
