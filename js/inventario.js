@@ -4617,7 +4617,7 @@ async function verFichaEntradaStock(id_entrada, id_articulo) {
     const idOrdenFicha = (filaOrdenFicha && filaOrdenFicha[0] && filaOrdenFicha[0].id_orden_compra) || id_entrada;
     const numDoc = 'CPRA-' + idOrdenFicha;
     const cxps = await api('cont_cxp', 'GET', null,
-      '?numero_doc=like.' + encodeURIComponent(numDoc) + '%' + emisorQ() + '&select=id_cxp,estado,saldo_usd');
+      '?numero_doc=like.' + encodeURIComponent(numDoc + '*') + emisorQ() + '&select=id_cxp,estado,saldo_usd');
     if (cxps && cxps.length > 0) {
       // Pagado si TODAS las cuotas están PAGADA o saldo = 0
       estaPagado = cxps.every(function(c) {
@@ -6607,6 +6607,7 @@ function onCambiarPrecioEdit() {
 
 function onCambiarMotivoEdit() {
   const motivo = document.getElementById('edit-mov-motivo')?.value;
+  const esCompra = motivo === 'compra';
   // Mostrar/ocultar proveedor
   const provCont = document.getElementById('edit-mov-proveedor-cont');
   if (provCont) provCont.style.display = esCompra ? '' : 'none';
@@ -6626,19 +6627,9 @@ function onCambiarMotivoEdit() {
   if (!esCompra && creditoCont) creditoCont.style.display = 'none';
 }
 
-function onCambioExentoIVAEdit() {
-  const exento = document.getElementById('edit-mov-exento-iva-val')?.value === 'SI';
-  const ivaContEl = document.getElementById('edit-mov-incluye-iva-cont');
-  if (ivaContEl) ivaContEl.style.display = exento ? 'none' : '';
-  document.getElementById('edit-mov-incluye-iva-val').value = '';
-  document.querySelectorAll('input[name="edit-incluye-iva"]').forEach(function(r){ r.checked = false; });
-  const prev = document.getElementById('edit-mov-tributos-preview');
-  if (prev) prev.style.display = 'none';
-  calcularTributosEdit();
-  const cme3 = document.getElementById('edit-mov-cuotas-monto');
-  if (cme3) cme3.value = '';
-  calcularCuotasEdit();
-}
+// Huérfana -- su único disparador (los radios de Exento/Incluye IVA) ya no
+// existe en el HTML, se deja como no-operativa por seguridad.
+function onCambioExentoIVAEdit() {}
 
 // El IVA se calcula siempre ENCIMA -- ya no hay selectores de Exento/Incluye
 // que mostrar aquí, así que esta función queda sin efecto (se deja como
