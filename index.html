@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260831255"></script>
-<script src="js/parametros.js?v=20260831255"></script>
-<script src="js/empresas.js?v=20260831255"></script>
-<script src="js/ingresos.js?v=20260831255"></script>
-<script src="js/inventario.js?v=20260831255"></script>
-<script src="js/proveedores.js?v=20260831255"></script>
-<script src="js/clientes.js?v=20260831255"></script>
-<script src="js/ventas.js?v=20260831255"></script>
-<script src="js/contabilidad.js?v=20260831255"></script>
-<script src="js/egresos.js?v=20260831255"></script>
-<script src="js/vehiculos.js?v=20260831255"></script>
-<script src="js/catalogo.js?v=20260831255"></script>
-<script src="js/ordenes.js?v=20260831255"></script>
+<script src="js/core.js?v=20260831257"></script>
+<script src="js/parametros.js?v=20260831257"></script>
+<script src="js/empresas.js?v=20260831257"></script>
+<script src="js/ingresos.js?v=20260831257"></script>
+<script src="js/inventario.js?v=20260831257"></script>
+<script src="js/proveedores.js?v=20260831257"></script>
+<script src="js/clientes.js?v=20260831257"></script>
+<script src="js/ventas.js?v=20260831257"></script>
+<script src="js/contabilidad.js?v=20260831257"></script>
+<script src="js/egresos.js?v=20260831257"></script>
+<script src="js/vehiculos.js?v=20260831257"></script>
+<script src="js/catalogo.js?v=20260831257"></script>
+<script src="js/ordenes.js?v=20260831257"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -5137,23 +5137,23 @@
 </div>
 
 <!-- ══ MODAL CERTIFICAR RECEPCIÓN FÍSICA (Compras ya aprobadas) ══ -->
-<div class="modal-overlay" id="modal-certificar-recepcion" style="z-index:2000">
+<div class="modal-overlay" id="modal-entrada-inventario" style="z-index:2000">
   <div class="modal" style="max-width:640px">
     <div class="modal-header">
       <h3>✓ ENTRADA DE INVENTARIO</h3>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-certificar-recepcion')">✕</button>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-entrada-inventario')">✕</button>
     </div>
     <div class="modal-body">
-      <p style="font-size:12px;color:var(--suave);margin-bottom:16px" id="cert-recep-leyenda">
+      <p style="font-size:12px;color:var(--suave);margin-bottom:16px" id="ent-inv-leyenda">
         Compras ya Aprobadas (Asiento y CxP ya generados) pendientes de que Almacén certifique que
         físicamente llegó todo lo que dice la Compra. El Stock recién entra al Inventario cuando se certifica aquí.
       </p>
-      <div id="cert-recep-lista-cont"></div>
-      <div id="cert-recep-detalle-cont" style="display:none"></div>
+      <div id="ent-inv-lista-cont"></div>
+      <div id="ent-inv-detalle-cont" style="display:none"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secundario" id="cert-recep-btn-volver" style="display:none" onclick="_certRecepVolverLista()">← Volver a la lista</button>
-      <button class="btn-secundario" onclick="cerrarModal('modal-certificar-recepcion')">Cerrar</button>
+      <button class="btn-secundario" id="ent-inv-btn-volver" style="display:none" onclick="_entInvVolverLista()">← Volver a la lista</button>
+      <button class="btn-secundario" onclick="cerrarModal('modal-entrada-inventario')">Cerrar</button>
     </div>
   </div>
 </div>
