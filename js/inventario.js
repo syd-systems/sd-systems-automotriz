@@ -10,7 +10,8 @@ const HISTORIAL_PAGE_SIZE = 50;
 const CAMPOS_EDIT_ENTRADA = ['edit-mov-fecha-negociacion','edit-mov-moneda','edit-mov-cantidad',
   'edit-mov-precio','edit-mov-precio-venta','edit-mov-motivo','edit-mov-proveedor',
   'edit-mov-cliente','edit-mov-area-origen','edit-mov-area','edit-mov-empleado',
-  'edit-mov-esquema-pago','edit-mov-obs'];
+  'edit-mov-esquema-pago','edit-mov-fecha-pago','edit-mov-nota-entrega',
+  'edit-mov-observaciones'];
 const CAMPOS_EDIT_SALIDA = ['edit-sal-fecha','edit-sal-cantidad','edit-sal-precio-venta',
   'edit-sal-moneda-venta','edit-sal-area','edit-sal-empleado','edit-sal-observaciones'];
 let _editMovTipoActual   = null;
