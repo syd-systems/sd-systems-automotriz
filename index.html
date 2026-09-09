@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260831257"></script>
-<script src="js/parametros.js?v=20260831257"></script>
-<script src="js/empresas.js?v=20260831257"></script>
-<script src="js/ingresos.js?v=20260831257"></script>
-<script src="js/inventario.js?v=20260831257"></script>
-<script src="js/proveedores.js?v=20260831257"></script>
-<script src="js/clientes.js?v=20260831257"></script>
-<script src="js/ventas.js?v=20260831257"></script>
-<script src="js/contabilidad.js?v=20260831257"></script>
-<script src="js/egresos.js?v=20260831257"></script>
-<script src="js/vehiculos.js?v=20260831257"></script>
-<script src="js/catalogo.js?v=20260831257"></script>
-<script src="js/ordenes.js?v=20260831257"></script>
+<script src="js/core.js?v=20260831258"></script>
+<script src="js/parametros.js?v=20260831258"></script>
+<script src="js/empresas.js?v=20260831258"></script>
+<script src="js/ingresos.js?v=20260831258"></script>
+<script src="js/inventario.js?v=20260831258"></script>
+<script src="js/proveedores.js?v=20260831258"></script>
+<script src="js/clientes.js?v=20260831258"></script>
+<script src="js/ventas.js?v=20260831258"></script>
+<script src="js/contabilidad.js?v=20260831258"></script>
+<script src="js/egresos.js?v=20260831258"></script>
+<script src="js/vehiculos.js?v=20260831258"></script>
+<script src="js/catalogo.js?v=20260831258"></script>
+<script src="js/ordenes.js?v=20260831258"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -5523,14 +5523,28 @@
           </select>
         </div>
 
-        <div class="form-campo" id="edit-mov-pago-cont" style="grid-column:1/-1">
-          <label>Modalidad de Pago *</label>
-          <select id="edit-mov-esquema-pago" onchange="onCambioEsquemaPagoEdit()"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
-            <option value="">— Seleccione pago —</option>
-            <option value="CONTADO">Contado</option>
-            <option value="CREDITO">Crédito</option>
-          </select>
+        <div class="form-campo form-full" id="edit-mov-pago-cont" style="grid-column:1/-1">
+          <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
+            <div class="form-campo" style="margin:0">
+              <label>Modalidad de Pago *</label>
+              <select id="edit-mov-esquema-pago" onchange="onCambioEsquemaPagoEdit()"
+                style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
+                <option value="">— Seleccione pago —</option>
+                <option value="CONTADO">Contado</option>
+                <option value="CREDITO">Crédito</option>
+              </select>
+            </div>
+            <div class="form-campo" id="edit-mov-fecha-pago-cont" style="margin:0;display:none">
+              <label>Fecha de Pago</label>
+              <input type="date" id="edit-mov-fecha-pago"
+                style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box;color-scheme:dark">
+            </div>
+            <div class="form-campo" style="margin:0">
+              <label>Nota de Entrega / Factura No.</label>
+              <input type="text" id="edit-mov-nota-entrega" placeholder="N° de la Nota de Entrega o Factura del Proveedor"
+                style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
+            </div>
+          </div>
         </div>
 
         <!-- Condiciones de Crédito -->
@@ -5556,56 +5570,6 @@
               </div>
             </div>
             <div id="edit-mov-cuotas-preview" style="margin-top:12px"></div>
-          </div>
-        </div>
-
-        <!-- Tributos -->
-        <div class="form-campo form-full" id="edit-mov-tributos-cont" style="display:none;grid-column:1/-1">
-          <div style="background:rgba(255,107,0,0.05);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
-            <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">🧾 Tributos</div>
-            <input type="hidden" id="edit-mov-exento-iva-val" value="">
-            <input type="hidden" id="edit-mov-incluye-iva-val" value="">
-            <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
-              <label style="font-size:13px;font-weight:500">¿Gasto Exento de IVA?</label>
-              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
-                <input type="radio" name="edit-exento-iva" id="edit-exento-iva-si" value="SI" onchange="document.getElementById('edit-mov-exento-iva-val').value='SI';onCambioExentoIVAEdit()"> Sí
-              </label>
-              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
-                <input type="radio" name="edit-exento-iva" id="edit-exento-iva-no" value="NO" onchange="document.getElementById('edit-mov-exento-iva-val').value='NO';onCambioExentoIVAEdit()"> No
-              </label>
-            </div>
-            <div id="edit-mov-incluye-iva-cont" style="display:none;margin-bottom:12px">
-              <div style="display:flex;align-items:center;gap:16px">
-                <label style="font-size:13px;font-weight:500">Monto Facturado incluye <span id="edit-iva-pct-label">IVA</span></label>
-                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
-                  <input type="radio" name="edit-incluye-iva" id="edit-incluye-iva-si" value="SI" onchange="document.getElementById('edit-mov-incluye-iva-val').value='SI';calcularTributosEdit();document.getElementById('edit-mov-cuotas-monto').value='';calcularCuotasEdit()"> Sí
-                </label>
-                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">
-                  <input type="radio" name="edit-incluye-iva" id="edit-incluye-iva-no" value="NO" onchange="document.getElementById('edit-mov-incluye-iva-val').value='NO';calcularTributosEdit();document.getElementById('edit-mov-cuotas-monto').value='';calcularCuotasEdit()"> No
-                </label>
-              </div>
-            </div>
-            <div id="edit-mov-tributos-preview" style="display:none;background:rgba(0,0,0,0.2);border-radius:6px;padding:10px;font-size:12px">
-              <div style="display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;align-items:center">
-                <span style="color:var(--suave)">Base (Inventario/Costo)</span>
-                <span id="edit-trib-base" style="font-family:var(--font-mono);text-align:right">—</span>
-                <span id="edit-trib-base-ves" style="font-family:var(--font-mono);text-align:right;color:var(--suave);font-size:11px">—</span>
-                <span style="color:var(--suave)">IVA (<span id="edit-trib-iva-pct">16</span>%) — 1.1.04.001</span>
-                <span id="edit-trib-iva" style="font-family:var(--font-mono);text-align:right;color:#60a5fa">—</span>
-                <span id="edit-trib-iva-ves" style="font-family:var(--font-mono);text-align:right;color:#60a5fa;font-size:11px">—</span>
-                <span id="edit-trib-total-label" style="color:var(--naranja);font-weight:600;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">Total Facturado</span>
-                <span id="edit-trib-total" style="font-family:var(--font-mono);color:var(--naranja);font-weight:600;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
-                <span id="edit-trib-total-ves" style="font-family:var(--font-mono);color:var(--naranja);font-size:11px;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
-
-                <span id="edit-trib-igtf-label" style="display:none;color:var(--suave)">IGTF (<span id="edit-trib-igtf-pct">3</span>%) — 6.1.04.003</span>
-                <span id="edit-trib-igtf" style="display:none;font-family:var(--font-mono);text-align:right;color:var(--naranja)">—</span>
-                <span id="edit-trib-igtf-ves" style="display:none;font-family:var(--font-mono);text-align:right;color:var(--naranja);font-size:11px">—</span>
-
-                <span id="edit-trib-total-final-label" style="display:none;color:var(--naranja);font-weight:700;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">Total Facturado</span>
-                <span id="edit-trib-total-final" style="display:none;font-family:var(--font-mono);color:var(--naranja);font-weight:700;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
-                <span id="edit-trib-total-final-ves" style="display:none;font-family:var(--font-mono);color:var(--naranja);font-weight:700;font-size:11px;text-align:right;border-top:1px solid var(--borde);padding-top:6px;margin-top:4px">—</span>
-              </div>
-            </div>
           </div>
         </div>
 
