@@ -1502,6 +1502,14 @@ async function guardarEntradaStock() {
       cuotasJsonVal = previewCuotasEnt?.dataset.cuotas ? previewCuotasEnt.dataset.cuotas : null;
     }
 
+    // Número de Orden de Compra -- consecutivo real y limpio, se pide UNA
+    // sola vez al crear (nunca al retomar una rechazada, que conserva el
+    // mismo número que ya tenía).
+    let idOrdenCompraNueva = null;
+    if (motivoEnt === 'compra' && !window._retomandoEntradaId) {
+      idOrdenCompraNueva = await obtenerSiguienteNumeroOrdenCompra();
+    }
+
     let id_entrada = null;
     const datosEntradaGuardar = {
       id_articulo:            id,
@@ -1532,6 +1540,7 @@ async function guardarEntradaStock() {
       estado_aprobacion:      motivoEnt === 'compra' ? 'PENDIENTE' : null,
       id_usuario:             sesionActual.correo_usuario
     };
+    if (motivoEnt === 'compra' && idOrdenCompraNueva) datosEntradaGuardar.id_orden_compra = idOrdenCompraNueva;
 
     if (window._retomandoEntradaId) {
       // ── Retomar una Entrada RECHAZADA: se actualiza la MISMA fila (no se
@@ -1547,13 +1556,24 @@ async function guardarEntradaStock() {
       id_entrada = entradaRes && entradaRes[0] ? entradaRes[0].id_entrada : null;
     }
 
+    // Número de Orden real a mostrar -- el recién pedido si es Compra
+    // nueva, o el que YA tenía si se está retomando una rechazada (se
+    // conserva, nunca se pide uno nuevo al corregir).
+    let idOrdenCompraReal = idOrdenCompraNueva;
+    if (motivoEnt === 'compra' && window._retomandoEntradaId && !idOrdenCompraReal) {
+      try {
+        const filaOrdenRetomar = await api('stock_entradas','GET',null,'?id_entrada=eq.'+window._retomandoEntradaId+'&select=id_orden_compra');
+        idOrdenCompraReal = filaOrdenRetomar && filaOrdenRetomar[0] ? filaOrdenRetomar[0].id_orden_compra : null;
+      } catch(eOrdenRetomar) {}
+    }
+
     // ── COMPRA: se detiene aquí -- no se toca Stock, CPP, Asiento ni CxP
     // todavía. Eso solo pasa cuando un Nivel de Firma APRUEBE esta Entrada
     // (ver ejecutarEfectosEntradaCompra() / aprobarEntradaCompra()). Se
     // notifica al aprobador correspondiente y se corta la ejecución aquí.
     if (motivoEnt === 'compra') {
       try {
-        const numDocSol = id_entrada ? 'OC-' + id_entrada : ('OC-INV-' + id);
+        const numDocSol = idOrdenCompraReal ? 'OC-' + idOrdenCompraReal : ('OC-INV-' + id);
         // Monto en Bs EXACTO para mostrar en la notificación -- se deriva
         // directo del montoTotalMonedaOriginal ya calculado arriba (una
         // sola fórmula, una sola vez), no se vuelve a calcular por su
@@ -1941,7 +1961,7 @@ async function ejecutarEfectosEntradaCompraLote(filasLote) {
   }
 
   const tasaLoteUsada = parseFloat(primeraFila.tasa_bcv || 0) || null;
-  const numDocLoteAst = 'CPRA-' + primeraFila.id_lote_consolidado;
+  const numDocLoteAst = 'CPRA-' + primeraFila.id_orden_compra;
 
   // ── Un solo Asiento para todo el lote ──
   const resAstLote = await generarAsientoInventarioLote(lineasAsiento, {
@@ -2112,7 +2132,7 @@ async function ejecutarEfectosEntradaCompra(m) {
       montoUSD:   montoTotalConIVA,
       areaId:     id_areaEnt,
       areaNombre: areaNombreEnt,
-      referencia: 'CPRA-' + m.id_entrada,
+      referencia: 'CPRA-' + (m.id_orden_compra || m.id_entrada),
       proveedorNombre: nombreProveedorAst,
       id_cuentaInventario: r.id_cuenta_contable || null,
       fecha:      m.fecha_negociacion || m.fecha_entrada,
@@ -2132,7 +2152,7 @@ async function ejecutarEfectosEntradaCompra(m) {
   // solamente -- el IGTF (si aplica) se calcula y se suma aparte, recién
   // en el momento del Pago, según cómo se termine pagando entonces.
   try {
-    const numDocBase = 'CPRA-' + m.id_entrada;
+    const numDocBase = 'CPRA-' + (m.id_orden_compra || m.id_entrada);
     const artNomCxP = r.nombre_articulo || r.codigo_articulo || 'Art#'+id;
     const fechaNegCxP = m.fecha_negociacion || m.fecha_entrada;
     const ahoraIso = new Date().toISOString();
@@ -2229,8 +2249,8 @@ async function aprobarEntradaCompra(id_entrada) {
     // hermanas -- se aprueban, se calculan y se marcan TODAS juntas, nunca
     // una por una.
     let filasLote = [m];
-    if (m.id_lote_consolidado) {
-      filasLote = await api('stock_entradas','GET',null,'?id_lote_consolidado=eq.'+m.id_lote_consolidado+'&order=id_entrada.asc');
+    if (m.id_orden_compra) {
+      filasLote = await api('stock_entradas','GET',null,'?id_orden_compra=eq.'+m.id_orden_compra+'&order=id_entrada.asc');
       if (!filasLote || !filasLote.length) filasLote = [m];
       const algunaNoPendiente = filasLote.some(function(f){ return f.estado_aprobacion !== 'PENDIENTE'; });
       if (algunaNoPendiente) {
@@ -2262,7 +2282,7 @@ async function aprobarEntradaCompra(id_entrada) {
     // mitad de camino, el catch de abajo lo atrapa y la Entrada (o el
     // Lote completo) se queda en PENDIENTE, lista para reintentar.
     const correoAprobador = sesionActual?.correo_usuario || null;
-    if (m.id_lote_consolidado) {
+    if (m.id_orden_compra) {
       const filasLoteAprobado = filasLote.map(function(f){ return Object.assign({}, f, { aprobado_por: correoAprobador }); });
       await ejecutarEfectosEntradaCompraLote(filasLoteAprobado);
     } else {
@@ -2323,7 +2343,7 @@ async function invCargarTiposArticulo(selTipoId) {
 //  Precio. Al guardar, se crea una fila en stock_entradas POR artículo
 //  (mismo estado PENDIENTE de siempre, sin tocar Stock/CPP/Asiento/CxP
 //  todavía -- eso sigue pasando recién al aprobar, igual que hoy), todas
-//  compartiendo un mismo id_lote_consolidado, y se enruta UNA SOLA
+//  compartiendo un mismo id_orden_compra, y se enruta UNA SOLA
 //  notificación de aprobación para todo el lote (no una por artículo).
 // ══════════════════════════════════════════════════════════════
 
@@ -2335,6 +2355,7 @@ async function abrirEntradaConsolidada() {
     return;
   }
   window._retomandoLoteId = null;
+  window._retomandoLoteAnclaEntrada = null;
   const tituloModalEC = document.querySelector('#modal-entrada-consolidada .modal-header h3');
   if (tituloModalEC) tituloModalEC.textContent = '📥 ORDEN DE COMPRA';
   const btnGuardarEC = document.getElementById('btn-entcons-guardar');
@@ -2646,27 +2667,36 @@ async function guardarEntradaConsolidada() {
       idEmpleadoActual = empActualRows && empActualRows[0] ? empActualRows[0].id_empleado : null;
     } catch(eEmpActualEntCons) {}
 
-    // Si se está retomando un Lote RECHAZADO: se conserva la PRIMERA fila
-    // (nunca se borra) para que el número de referencia (OC-X / CPRA-X)
+    // Si se está retomando un Lote RECHAZADO: se conserva la fila ANCLA
+    // real (nunca se borra) para que el número de Orden (OC-X / CPRA-X)
     // sea siempre el mismo, sin importar cuántas veces se corrija -- solo
     // se borran las demás filas, que se recrean desde cero (permite
     // agregar/quitar Artículos al corregir). Ninguna de las filas del Lote
     // tuvo nunca efecto en Stock/CPP/Asiento/CxP mientras estuvo
     // Pendiente/Rechazada, así que no hay nada que revertir.
     if (window._retomandoLoteId) {
-      await api('stock_entradas','DELETE',null,'?id_lote_consolidado=eq.'+window._retomandoLoteId+'&id_entrada=neq.'+window._retomandoLoteId);
+      await api('stock_entradas','DELETE',null,'?id_orden_compra=eq.'+window._retomandoLoteId+'&id_entrada=neq.'+window._retomandoLoteAnclaEntrada);
     }
+
+    // Número de Orden de Compra -- consecutivo real y limpio, se pide UNA
+    // sola vez al crear (nunca al retomar una rechazada, que conserva el
+    // mismo número que ya tenía).
+    const idOrdenCompraLote = window._retomandoLoteId || await obtenerSiguienteNumeroOrdenCompra();
 
     // Cada línea se guarda EXACTAMENTE con la misma fórmula que usa hoy la
     // Entrada de un solo Artículo (guardarEntradaStock) -- para que, al
     // aprobarse, cada renglón siga siendo autosuficiente y consistente con
     // el resto del sistema. Lo único distinto es que comparten
-    // id_lote_consolidado y que la notificación de aprobación se enruta
+    // id_orden_compra y que la notificación de aprobación se enruta
     // una sola vez para el total, no una por artículo.
     const idsCreados = [];
     let montoTotalLoteConIVA = 0;
     let montoTotalLoteMonedaOriginal = 0;
-    let idLote = window._retomandoLoteId || null;
+    // idAnclaFila: el id_entrada REAL de una fila cualquiera del Lote --
+    // se usa solo para enrutar la notificación de aprobación (que necesita
+    // referenciar una fila puntual), nunca para mostrarse -- lo que se
+    // muestra siempre es idOrdenCompraLote.
+    let idAnclaFila = window._retomandoLoteAnclaEntrada || null;
     let esPrimeraLinea = true;
 
     for (const lin of lineasValidas) {
@@ -2713,34 +2743,33 @@ async function guardarEntradaConsolidada() {
         cuotas_json: esquemaPago === 'CREDITO' ? cuotasJson : null,
         estado_aprobacion: 'PENDIENTE',
         motivo_rechazo: null,
-        id_lote_consolidado: idLote,
+        id_orden_compra: idOrdenCompraLote,
         id_usuario: sesionActual.correo_usuario
       };
 
-      if (esPrimeraLinea && window._retomandoLoteId) {
-        // Reescribe la fila que se conservó -- mismo id, misma referencia.
-        await api('stock_entradas','PATCH',datosLinea,'?id_entrada=eq.'+window._retomandoLoteId);
-        idsCreados.push(window._retomandoLoteId);
+      if (esPrimeraLinea && window._retomandoLoteAnclaEntrada) {
+        // Reescribe la fila ancla que se conservó -- mismo id, mismo
+        // número de Orden.
+        await api('stock_entradas','PATCH',datosLinea,'?id_entrada=eq.'+window._retomandoLoteAnclaEntrada);
+        idsCreados.push(window._retomandoLoteAnclaEntrada);
       } else {
         const res = await api('stock_entradas','POST',datosLinea);
         const idNuevo = res && res[0] ? res[0].id_entrada : null;
         if (!idNuevo) throw new Error('No se pudo guardar una de las líneas.');
         idsCreados.push(idNuevo);
-        if (!idLote) {
-          idLote = idNuevo;
-          await api('stock_entradas','PATCH',{ id_lote_consolidado: idLote }, '?id_entrada=eq.'+idNuevo);
-        }
+        if (!idAnclaFila) idAnclaFila = idNuevo;
       }
       esPrimeraLinea = false;
     }
 
     // Enrutar UNA SOLA notificación de aprobación para todo el lote --
-    // referenciando la primera Entrada creada (idLote), con el monto TOTAL
-    // sumado de todas las líneas.
-    const numDocLote = 'OC-' + idLote;
+    // referenciando una fila cualquiera del Lote (idAnclaFila) para el
+    // enrutamiento interno, mostrando el número de Orden real
+    // (idOrdenCompraLote) para el Usuario.
+    const numDocLote = 'OC-' + idOrdenCompraLote;
     const piezasTotalLote = lineasValidas.reduce(function(a,l){ return a + (parseFloat(l.cantidad)||0); }, 0);
     const montoBsLoteExacto = moneda === 'VES' ? montoTotalLoteMonedaOriginal : parseFloat((montoTotalLoteMonedaOriginal * tasaBcv).toFixed(2));
-    await enrutarAprobacionEntrada(montoTotalLoteConIVA, idLote, numDocLote, {
+    await enrutarAprobacionEntrada(montoTotalLoteConIVA, idAnclaFila, numDocLote, {
       nombreArt: lineasValidas.length + ' Artículos (Compra a Proveedor)',
       proveedorNombre: document.getElementById('entcons-proveedor')?.selectedOptions[0]?.text || null,
       cantidad: lineasValidas.length,
@@ -2755,9 +2784,10 @@ async function guardarEntradaConsolidada() {
 
     document.getElementById('alerta-entcons-err').style.display = 'none';
     alert(window._retomandoLoteId
-      ? '✓ Lote corregido y reenviado a aprobación (' + lineasValidas.length + ' artículos, Lote OC-' + idLote + ').'
-      : '✓ Orden de Compra enviada a aprobación (' + lineasValidas.length + ' artículos, Lote OC-' + idLote + ').');
+      ? '✓ Lote corregido y reenviado a aprobación (' + lineasValidas.length + ' artículos, Lote OC-' + idOrdenCompraLote + ').'
+      : '✓ Orden de Compra enviada a aprobación (' + lineasValidas.length + ' artículos, Lote OC-' + idOrdenCompraLote + ').');
     window._retomandoLoteId = null;
+    window._retomandoLoteAnclaEntrada = null;
     cerrarModal('modal-entrada-consolidada');
   } catch(eGuardarEntCons) {
     err('Error: ' + msgErr(eGuardarEntCons));
@@ -3219,9 +3249,9 @@ async function retomarEntradaRechazada(id_entrada) {
 // Entrada Consolidada, precargado con TODOS los Artículos del Lote
 // rechazado, para corregirlos juntos y reenviar UNA SOLA solicitud de
 // aprobación (igual que al crearlo la primera vez).
-async function retomarLoteRechazado(id_lote_consolidado) {
+async function retomarLoteRechazado(id_orden_compra) {
   try {
-    const filasLoteR = await api('stock_entradas','GET',null,'?id_lote_consolidado=eq.'+id_lote_consolidado+'&order=id_entrada.asc');
+    const filasLoteR = await api('stock_entradas','GET',null,'?id_orden_compra=eq.'+id_orden_compra+'&order=id_entrada.asc');
     if (!filasLoteR || !filasLoteR.length) { alert('No se encontró el Lote.'); return; }
     const primeraR = filasLoteR[0];
     if (primeraR.estado_aprobacion !== 'RECHAZADA') {
@@ -3273,7 +3303,12 @@ async function retomarLoteRechazado(id_lote_consolidado) {
     // lo detecta y, en vez de crear filas nuevas, reemplaza las del Lote
     // (nunca tuvieron efectos en Stock/CPP/Asiento/CxP -- quedaron
     // detenidas desde que se crearon, así que no hay nada que revertir).
-    window._retomandoLoteId = id_lote_consolidado;
+    window._retomandoLoteId = id_orden_compra;
+    // La fila ANCLA (la que se conserva/reescribe, en vez de borrar y
+    // recrear) -- distinta del número de Orden ahora que este viene de su
+    // propia secuencia (orden_compra_seq), no del id_entrada de la primera
+    // fila como antes.
+    window._retomandoLoteAnclaEntrada = primeraR.id_entrada;
     const tituloModalLR = document.querySelector('#modal-entrada-consolidada .modal-header h3');
     if (tituloModalLR) tituloModalLR.textContent = '↻ RETOMAR LOTE RECHAZADO';
     const btnGuardarLR = document.getElementById('btn-entcons-guardar');
@@ -3294,7 +3329,7 @@ async function invRenderEntradasRechazadas(cont) {
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
     let qRech = '?motivo=eq.compra&estado_aprobacion=eq.RECHAZADA&order=fecha_registro.desc'
-      +'&select=id_entrada,id_articulo,cantidad,fecha_negociacion,monto_total_con_iva,monto_total_moneda_original,moneda_compra,tasa_bcv,esquema_pago,id_usuario,id_proveedor,motivo_rechazo,aplica_igtf,monto_igtf,id_lote_consolidado';
+      +'&select=id_entrada,id_articulo,cantidad,fecha_negociacion,monto_total_con_iva,monto_total_moneda_original,moneda_compra,tasa_bcv,esquema_pago,id_usuario,id_proveedor,motivo_rechazo,aplica_igtf,monto_igtf,id_orden_compra';
     // Cada quien ve solo lo suyo -- salvo administrador, que ve todo.
     if (!sesionActual?.administrador) qRech += '&id_usuario=eq.'+encodeURIComponent(sesionActual?.correo_usuario||'');
     const rechazadas = await api('stock_entradas','GET',null,qRech) || [];
@@ -3313,13 +3348,13 @@ async function invRenderEntradasRechazadas(cont) {
 
     // Agrupar por Lote (Entrada Consolidada) -- una sola fila por Lote, no
     // una por cada Artículo que lo compone. Las que no pertenecen a ningún
-    // Lote (id_lote_consolidado null) se muestran igual que siempre.
+    // Lote (id_orden_compra null) se muestran igual que siempre.
     const gruposRech = {};
     const sueltas = [];
     rechazadas.forEach(function(p) {
-      if (p.id_lote_consolidado) {
-        if (!gruposRech[p.id_lote_consolidado]) gruposRech[p.id_lote_consolidado] = [];
-        gruposRech[p.id_lote_consolidado].push(p);
+      if (p.id_orden_compra) {
+        if (!gruposRech[p.id_orden_compra]) gruposRech[p.id_orden_compra] = [];
+        gruposRech[p.id_orden_compra].push(p);
       } else {
         sueltas.push(p);
       }
@@ -3440,8 +3475,8 @@ async function rechazarEntradaCompra(id_entrada) {
     // Si pertenece a un Lote (Entrada Consolidada), rechazar TODAS las
     // filas hermanas juntas -- nunca solo una del lote.
     let filasLoteRech = [m];
-    if (m.id_lote_consolidado) {
-      const hermanasRech = await api('stock_entradas','GET',null,'?id_lote_consolidado=eq.'+m.id_lote_consolidado+'&order=id_entrada.asc');
+    if (m.id_orden_compra) {
+      const hermanasRech = await api('stock_entradas','GET',null,'?id_orden_compra=eq.'+m.id_orden_compra+'&order=id_entrada.asc');
       if (hermanasRech && hermanasRech.length) filasLoteRech = hermanasRech;
     }
     const idsLoteRech = filasLoteRech.map(function(f){ return f.id_entrada; });
@@ -3489,7 +3524,7 @@ async function rechazarEntradaCompra(id_entrada) {
             proveedorNombreRech = provRechRows && provRechRows[0] ? provRechRows[0].nombre : null;
           } catch(eProvRech) {}
         }
-        const numDocRech = esLoteRech ? ('OC-'+m.id_lote_consolidado) : ('OC-'+id_entrada);
+        const numDocRech = esLoteRech ? ('OC-'+m.id_orden_compra) : ('OC-'+(m.id_orden_compra || id_entrada));
         const mensajeRechRico = _armarMensajeAprobacionEntrada(montoTotalConIVARech, id_entrada, numDocRech, {
           nombreArt: nombreArtRech,
           proveedorNombre: proveedorNombreRech,
@@ -4427,17 +4462,17 @@ async function _obtenerPaginaHistorial() {
   // OC-{lote}-{posición} (ej. OC-1-2), no con su propio id_entrada suelto,
   // que hacía ver una sola Orden de varios Artículos como si fueran
   // Órdenes distintas.
-  const idsLotesPresentes = [...new Set(entradas.map(function(e){ return e.id_lote_consolidado; }).filter(Boolean))];
+  const idsLotesPresentes = [...new Set(entradas.map(function(e){ return e.id_orden_compra; }).filter(Boolean))];
   if (idsLotesPresentes.length) {
     const filasLoteTodas = await api('stock_entradas','GET',null,
-      '?id_lote_consolidado=in.('+idsLotesPresentes.join(',')+')&select=id_entrada,id_lote_consolidado&order=id_entrada.asc');
+      '?id_orden_compra=in.('+idsLotesPresentes.join(',')+')&select=id_entrada,id_orden_compra&order=id_entrada.asc');
     const posicionPorEntrada = {};
     const contadorPorLote = {};
     (filasLoteTodas||[]).forEach(function(f){
-      contadorPorLote[f.id_lote_consolidado] = (contadorPorLote[f.id_lote_consolidado]||0) + 1;
-      posicionPorEntrada[f.id_entrada] = contadorPorLote[f.id_lote_consolidado];
+      contadorPorLote[f.id_orden_compra] = (contadorPorLote[f.id_orden_compra]||0) + 1;
+      posicionPorEntrada[f.id_entrada] = contadorPorLote[f.id_orden_compra];
     });
-    entradas.forEach(function(e){ if (e.id_lote_consolidado) e.posicionLote = posicionPorEntrada[e.id_entrada]; });
+    entradas.forEach(function(e){ if (e.id_orden_compra) e.posicionLote = posicionPorEntrada[e.id_entrada]; });
   }
 
   const combinados = [
@@ -4513,8 +4548,8 @@ function _renderFilaHistorial(m) {
   // {posición} (ej. OC-1-2) -- para que se vea como lo que es: UNA sola
   // Orden compuesta de varios Artículos, no varias Órdenes sueltas.
   const prefEntrada = m.motivo === 'compra' ? (m.estado_aprobacion === 'APROBADA' ? 'CPRA-' : 'OC-') : 'ENT-';
-  const refEntrada = m.motivo === 'compra' && m.id_lote_consolidado
-    ? prefEntrada + m.id_lote_consolidado + '-' + (m.posicionLote || '?')
+  const refEntrada = m.motivo === 'compra' && m.id_orden_compra
+    ? prefEntrada + m.id_orden_compra + '-' + (m.posicionLote || '?')
     : prefEntrada + m.id_entrada;
   return '<tr>'
     + '<td style="padding:8px 0;font-size:12px;color:var(--suave)">' + (m.fecha ? fmtFecha(m.fecha) : '—') + '</td>'
@@ -4578,7 +4613,9 @@ async function verFichaEntradaStock(id_entrada, id_articulo) {
   // Verificar si existe CxP asociada y su estado de pago
   let estaPagado = false;
   try {
-    const numDoc = 'CPRA-' + id_entrada;
+    const filaOrdenFicha = await api('stock_entradas','GET',null,'?id_entrada=eq.'+id_entrada+'&select=id_orden_compra');
+    const idOrdenFicha = (filaOrdenFicha && filaOrdenFicha[0] && filaOrdenFicha[0].id_orden_compra) || id_entrada;
+    const numDoc = 'CPRA-' + idOrdenFicha;
     const cxps = await api('cont_cxp', 'GET', null,
       '?numero_doc=like.' + encodeURIComponent(numDoc) + '%' + emisorQ() + '&select=id_cxp,estado,saldo_usd');
     if (cxps && cxps.length > 0) {
@@ -4681,7 +4718,7 @@ function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
     ? (m?.motivo === 'compra' ? (m?.estado_aprobacion === 'APROBADA' ? 'CPRA-' : 'OC-') : 'ENT-')
     : 'SAL-';
   const refMov = idMov
-    ? ' — Ref: ' + prefRefMov + (tipo === 'ENTRADA' && m?.motivo === 'compra' && m?.id_lote_consolidado ? (m.id_lote_consolidado + '-' + (m.posicionLote || '?')) : idMov)
+    ? ' — Ref: ' + prefRefMov + (tipo === 'ENTRADA' && m?.motivo === 'compra' && m?.id_orden_compra ? (m.id_orden_compra + '-' + (m.posicionLote || '?')) : idMov)
     : '';
   // Un Ajuste de Inventario (Sobrante o Faltante) no es una Entrada/Salida normal —
   // usa el mismo modal por reutilización de campos, pero con su propio título.
@@ -4726,10 +4763,10 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
       // Si pertenece a un Lote (Orden de Compra con varios Artículos),
       // resolver su posición dentro de ese Lote (1ro, 2do, 3ro...) para
       // poder referenciarlo como OC-{lote}-{posición}.
-      if (m && m.id_lote_consolidado) {
+      if (m && m.id_orden_compra) {
         try {
           const hermanas = await api('stock_entradas','GET',null,
-            '?id_lote_consolidado=eq.'+m.id_lote_consolidado+'&select=id_entrada&order=id_entrada.asc');
+            '?id_orden_compra=eq.'+m.id_orden_compra+'&select=id_entrada&order=id_entrada.asc');
           const idxLote = (hermanas||[]).findIndex(function(h){ return h.id_entrada === m.id_entrada; });
           if (idxLote >= 0) m.posicionLote = idxLote + 1;
         } catch(ePosLote) {}
@@ -5234,7 +5271,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     if (!esquemaPago) {
       try {
         const cxps = await api('cont_cxp', 'GET', null,
-          '?numero_doc=ilike.' + encodeURIComponent('CPRA-' + idMovimiento + '*') + emisorQ() + '&select=id_cxp&limit=2');
+          '?numero_doc=ilike.' + encodeURIComponent('CPRA-' + (m.id_orden_compra || idMovimiento) + '*') + emisorQ() + '&select=id_cxp&limit=2');
         esquemaPago = (cxps && cxps.length > 1) ? 'CREDITO' : (cxps && cxps.length === 1 ? 'CONTADO' : '');
       } catch(e) {}
     }
@@ -5258,7 +5295,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     if (creditoCont) creditoCont.style.display = esquemaPago === 'CREDITO' ? '' : 'none';
     if (esquemaPago === 'CREDITO') {
       try {
-        const _urlCuotas = '?numero_doc=ilike.' + encodeURIComponent('CPRA-' + idMovimiento + '*') + emisorQ() + '&order=fecha_vencimiento.asc&select=monto_usd,fecha_vencimiento';
+        const _urlCuotas = '?numero_doc=ilike.' + encodeURIComponent('CPRA-' + (m.id_orden_compra || idMovimiento) + '*') + emisorQ() + '&order=fecha_vencimiento.asc&select=monto_usd,fecha_vencimiento';
         console.log('[SYD] buscando cuotas URL:', _urlCuotas);
         const cuotasExist = await api('cont_cxp', 'GET', null, _urlCuotas);
         console.log('[SYD] cuotasExist:', JSON.stringify(cuotasExist));
@@ -5455,7 +5492,7 @@ async function _guardarEdicionMovimientoInterno() {
     if (motivoSel === 'compra') {
       try {
         const cxpsBloqueo = await api('cont_cxp','GET',null,
-          '?numero_doc=ilike.'+encodeURIComponent('CPRA-'+id+'*')+emisorQ()+'&select=numero_doc,estado');
+          '?numero_doc=ilike.'+encodeURIComponent('CPRA-'+(m.id_orden_compra || id)+'*')+emisorQ()+'&select=numero_doc,estado');
         const bloqueante = (cxpsBloqueo||[]).find(function(cx){ return cx.estado === 'PAGADA'; });
         if (bloqueante) {
           return mostrarError('No se puede editar: la CxP "'+bloqueante.numero_doc+'" ya está '+bloqueante.estado+'. Anule el pago primero (Pagos → esa CxP → botón "🗑 Anular Pago Ejecutado") antes de corregir este movimiento.');
@@ -6185,17 +6222,17 @@ async function anularMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
     } catch(eArtAnul) { console.warn('Error cargando Artículo:', eArtAnul); }
   }
   let posicionLoteAnul = null;
-  if (tipo === 'ENTRADA' && movOrig?.motivo === 'compra' && movOrig?.id_lote_consolidado) {
+  if (tipo === 'ENTRADA' && movOrig?.motivo === 'compra' && movOrig?.id_orden_compra) {
     try {
       const hermanasAnul = await api('stock_entradas','GET',null,
-        '?id_lote_consolidado=eq.'+movOrig.id_lote_consolidado+'&select=id_entrada&order=id_entrada.asc');
+        '?id_orden_compra=eq.'+movOrig.id_orden_compra+'&select=id_entrada&order=id_entrada.asc');
       const idxLoteAnul = (hermanasAnul||[]).findIndex(function(h){ return h.id_entrada === movOrig.id_entrada; });
       if (idxLoteAnul >= 0) posicionLoteAnul = idxLoteAnul + 1;
     } catch(ePosLoteAnul) {}
   }
   const numDocMostrar = tipo === 'ENTRADA'
     ? ((movOrig?.motivo === 'compra' ? (movOrig?.estado_aprobacion === 'APROBADA' ? 'CPRA-' : 'OC-') : 'ENT-')
-        + (movOrig?.motivo === 'compra' && movOrig?.id_lote_consolidado ? (movOrig.id_lote_consolidado + '-' + (posicionLoteAnul || '?')) : idMovimiento))
+        + (movOrig?.motivo === 'compra' && movOrig?.id_orden_compra ? (movOrig.id_orden_compra + '-' + (posicionLoteAnul || '?')) : idMovimiento))
     : ('SAL-' + idMovimiento);
   document.getElementById('anulacion-tipo').value          = tipo;
   document.getElementById('anulacion-id-movimiento').value = idMovimiento;
@@ -8166,7 +8203,7 @@ async function revisarBadgeCertificarRecepcion() {
     const pend = await api('stock_entradas','GET',null,
       '?motivo=eq.compra&estado_aprobacion=eq.APROBADA&certificado_almacen=eq.false&select=id_entrada&limit=1');
     badgeEl.innerHTML = (pend && pend.length)
-      ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fc8181;margin-left:6px;vertical-align:middle;animation:parpadeoAlerta 1.2s ease-in-out infinite" title="Hay Compras pendientes de certificar recepción"></span>'
+      ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fc8181;margin-left:6px;vertical-align:middle;animation:parpadeoAlerta 1.2s ease-in-out infinite" title="Hay Compras pendientes de Entrada de Inventario"></span>'
       : '';
   } catch(eBadgeCert) { console.warn('Error revisando badge de Certificar Recepción:', eBadgeCert); }
 }
@@ -8199,9 +8236,9 @@ async function _certRecepCargarLista() {
   try {
     const filas = await api('stock_entradas','GET',null,
       '?motivo=eq.compra&estado_aprobacion=eq.APROBADA&certificado_almacen=eq.false&order=id_entrada.asc'
-      + '&select=id_entrada,id_articulo,cantidad,id_lote_consolidado,id_proveedor,fecha_negociacion,fecha_entrada');
+      + '&select=id_entrada,id_articulo,cantidad,id_orden_compra,id_proveedor,fecha_negociacion,fecha_entrada');
     if (!filas || !filas.length) {
-      cont.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">✅ No hay Compras pendientes de certificar recepción.</div>';
+      cont.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">✅ No hay Compras pendientes de Entrada de Inventario.</div>';
       return;
     }
     const idsProv = [...new Set(filas.map(function(f){ return f.id_proveedor; }).filter(Boolean))];
@@ -8211,8 +8248,8 @@ async function _certRecepCargarLista() {
     // Agrupar por Lote (o standalone si no pertenece a ninguno).
     const grupos = {};
     filas.forEach(function(f) {
-      const clave = f.id_lote_consolidado || ('solo-'+f.id_entrada);
-      if (!grupos[clave]) grupos[clave] = { idRef: f.id_lote_consolidado || f.id_entrada, esLote: !!f.id_lote_consolidado, filas: [] };
+      const clave = f.id_orden_compra || ('solo-'+f.id_entrada);
+      if (!grupos[clave]) grupos[clave] = { idRef: f.id_orden_compra || f.id_entrada, esLote: !!f.id_orden_compra, filas: [] };
       grupos[clave].filas.push(f);
     });
 
@@ -8245,7 +8282,7 @@ async function _certRecepVerDetalle(idRef, esLote) {
   contDet.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
 
   try {
-    const filtro = esLote ? '?id_lote_consolidado=eq.'+idRef : '?id_entrada=eq.'+idRef;
+    const filtro = esLote ? '?id_orden_compra=eq.'+idRef : '?id_entrada=eq.'+idRef;
     const filas = await api('stock_entradas','GET',null,
       filtro + '&order=id_entrada.asc&select=id_entrada,id_articulo,cantidad,id_proveedor,fecha_negociacion,fecha_entrada');
     if (!filas || !filas.length) { contDet.innerHTML = '<div class="alerta alerta-error" style="display:block">No se encontró esta Compra.</div>'; return; }
