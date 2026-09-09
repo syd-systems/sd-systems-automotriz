@@ -325,7 +325,7 @@ async function renderInventario(filtro) {
       + (puedo('INVENTARIO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Artículo</button>' : '')
       + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" onclick="abrirEntradaConsolidada()">📥 Orden de Compra</button>' : '')
       + ((sesionActual?.administrador || puedo('INVENTARIO','VER_ENTREGAS')) ? '<button class="btn-secundario" onclick="abrirModalEntregasAlmacen()">📦 Salida de Inventario<span id="badge-entregas-almacen"></span></button>' : '')
-      + ((sesionActual?.administrador || puedo('INVENTARIO','CERTIFICAR_RECEPCION')) ? '<button class="btn-secundario" onclick="abrirModalCertificarRecepcion()">✓ Entrada de Inventario<span id="badge-certificar-recepcion"></span></button>' : '')
+      + ((sesionActual?.administrador || puedo('INVENTARIO','CERTIFICAR_RECEPCION')) ? '<button class="btn-secundario" onclick="abrirModalEntradaInventario()">✓ Entrada de Inventario<span id="badge-entrada-inventario"></span></button>' : '')
       + '<button class="btn-secundario" title="Refrescar" onclick="renderInventario(document.getElementById(\'buscar-inv\')?.value||\'\')">🔄 Refrescar</button>'
       + '</div></div>'
       + '<div id="alerta-stock-bajo" style="display:none"></div>'
@@ -335,16 +335,16 @@ async function renderInventario(filtro) {
     // Ventas pendientes de entrega, para hacer titilar el botón "Salidas
     // por Ventas" (mismo patrón que "+ Nueva Factura" con OS Cerradas).
     revisarBadgeEntregasAlmacen();
-    revisarBadgeCertificarRecepcion();
-    // Auto-revisar el punto rojo de Certificar Recepción cada 90s mientras
+    revisarBadgeEntradaInventario();
+    // Auto-revisar el punto rojo de Entrada de Inventario cada 90s mientras
     // esta pantalla siga abierta -- antes solo se revisaba al entrar/volver
     // a entrar al módulo, así que si alguien se aprobaba una OC mientras el
     // Operador de Almacén ya estaba parado en Inventario, nunca se enteraba
     // sin salir y volver a entrar.
-    if (typeof _intervalBadgeCertRecep !== 'undefined') {
-      if (_intervalBadgeCertRecep) clearInterval(_intervalBadgeCertRecep);
-      _intervalBadgeCertRecep = setInterval(function() {
-        revisarBadgeCertificarRecepcion();
+    if (typeof _intervalBadgeEntradaInventario !== 'undefined') {
+      if (_intervalBadgeEntradaInventario) clearInterval(_intervalBadgeEntradaInventario);
+      _intervalBadgeEntradaInventario = setInterval(function() {
+        revisarBadgeEntradaInventario();
       }, 90000);
     }
   }
@@ -1919,7 +1919,7 @@ async function ejecutarEfectosEntradaCompraLote(filasLote) {
     if (idCuentaGastoComun === null && !gastoVarios) idCuentaGastoComun = r.id_cuenta_costo_gasto || null;
     else if (idCuentaGastoComun !== (r.id_cuenta_costo_gasto || null)) gastoVarios = true;
 
-    // Stock/CPP: se movió a Certificar Recepción -- al Aprobar solo se
+    // Stock/CPP: se movió a Entrada de Inventario -- al Aprobar solo se
     // genera el compromiso financiero (Asiento + CxP).
 
     const baseExactaUSD = nuevoPrecioCosto * cantidad;
@@ -2082,7 +2082,7 @@ async function ejecutarEfectosEntradaCompra(m) {
     } catch(eProvPago) {}
   }
 
-  // ── Stock/CPP: se movió a Certificar Recepción -- al Aprobar solo se
+  // ── Stock/CPP: se movió a Entrada de Inventario -- al Aprobar solo se
   // genera el compromiso financiero (Asiento + CxP). El Stock/CPP recién
   // se actualiza cuando Almacén certifica que llegó físicamente, para que
   // esta certificación sea real y no un simple trámite posterior a algo
@@ -8195,8 +8195,8 @@ async function revisarBadgeEntregasAlmacen() {
 //  esa persona no está presente.
 // ══════════════════════════════════════════════════════════════
 
-async function revisarBadgeCertificarRecepcion() {
-  const badgeEl = document.getElementById('badge-certificar-recepcion');
+async function revisarBadgeEntradaInventario() {
+  const badgeEl = document.getElementById('badge-entrada-inventario');
   if (!badgeEl) return;
   if (!sesionActual?.administrador && !puedo('INVENTARIO','CERTIFICAR_RECEPCION')) { badgeEl.innerHTML = ''; return; }
   try {
@@ -8205,33 +8205,35 @@ async function revisarBadgeCertificarRecepcion() {
     badgeEl.innerHTML = (pend && pend.length)
       ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fc8181;margin-left:6px;vertical-align:middle;animation:parpadeoAlerta 1.2s ease-in-out infinite" title="Hay Compras pendientes de Entrada de Inventario"></span>'
       : '';
-  } catch(eBadgeCert) { console.warn('Error revisando badge de Certificar Recepción:', eBadgeCert); }
+  } catch(eBadgeEntInv) { console.warn('Error revisando badge de Entrada de Inventario:', eBadgeEntInv); }
 }
 
-async function abrirModalCertificarRecepcion() {
+async function abrirModalEntradaInventario() {
   if (!sesionActual?.administrador && !puedo('INVENTARIO','CERTIFICAR_RECEPCION')) {
     alert('No tiene permiso para certificar la Recepción de Compras.');
     return;
   }
-  document.getElementById('cert-recep-lista-cont').style.display = '';
-  document.getElementById('cert-recep-detalle-cont').style.display = 'none';
-  document.getElementById('cert-recep-detalle-cont').innerHTML = '';
-  document.getElementById('cert-recep-leyenda').style.display = '';
-  document.getElementById('cert-recep-btn-volver').style.display = 'none';
-  abrirModal('modal-certificar-recepcion');
-  await _certRecepCargarLista();
+  document.getElementById('ent-inv-lista-cont').style.display = '';
+  document.getElementById('ent-inv-detalle-cont').style.display = 'none';
+  document.getElementById('ent-inv-detalle-cont').innerHTML = '';
+  document.getElementById('ent-inv-leyenda').style.display = '';
+  document.getElementById('ent-inv-btn-volver').style.display = 'none';
+  abrirModal('modal-entrada-inventario');
+  const modalBodyEntInvLista = document.querySelector('#modal-entrada-inventario .modal-body');
+  if (modalBodyEntInvLista) modalBodyEntInvLista.scrollTop = 0;
+  await _entInvCargarLista();
 }
 
-function _certRecepVolverLista() {
-  document.getElementById('cert-recep-lista-cont').style.display = '';
-  document.getElementById('cert-recep-detalle-cont').style.display = 'none';
-  document.getElementById('cert-recep-leyenda').style.display = '';
-  document.getElementById('cert-recep-btn-volver').style.display = 'none';
-  _certRecepCargarLista();
+function _entInvVolverLista() {
+  document.getElementById('ent-inv-lista-cont').style.display = '';
+  document.getElementById('ent-inv-detalle-cont').style.display = 'none';
+  document.getElementById('ent-inv-leyenda').style.display = '';
+  document.getElementById('ent-inv-btn-volver').style.display = 'none';
+  _entInvCargarLista();
 }
 
-async function _certRecepCargarLista() {
-  const cont = document.getElementById('cert-recep-lista-cont');
+async function _entInvCargarLista() {
+  const cont = document.getElementById('ent-inv-lista-cont');
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
     const filas = await api('stock_entradas','GET',null,
@@ -8258,7 +8260,7 @@ async function _certRecepCargarLista() {
       const nomProv = provMap[primeraF.id_proveedor] || '—';
       const ref = (g.esLote ? 'CPRA-' : 'CPRA-') + g.idRef;
       const fecha = primeraF.fecha_negociacion || primeraF.fecha_entrada;
-      return '<div onclick="_certRecepVerDetalle('+g.idRef+','+g.esLote+')" style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid var(--borde);border-radius:8px;margin-bottom:8px;cursor:pointer" onmouseover="this.style.borderColor=\'var(--naranja)\'" onmouseout="this.style.borderColor=\'var(--borde)\'">'
+      return '<div onclick="_entInvVerDetalle('+g.idRef+','+g.esLote+')" style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid var(--borde);border-radius:8px;margin-bottom:8px;cursor:pointer" onmouseover="this.style.borderColor=\'var(--naranja)\'" onmouseout="this.style.borderColor=\'var(--borde)\'">'
         + '<div>'
         + '<div style="font-size:11px;color:var(--naranja);font-family:var(--font-mono)">Ref: '+ref+(g.filas.length>1?' (Lote x'+g.filas.length+' artículos)':'')+'</div>'
         + '<div style="font-weight:600;margin-top:2px">'+nomProv+'</div>'
@@ -8267,17 +8269,17 @@ async function _certRecepCargarLista() {
         + '<button class="btn-secundario" style="font-size:11px;padding:6px 12px">Ver →</button>'
         + '</div>';
     }).join('');
-  } catch(eCertLista) {
-    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+msgErr(eCertLista)+'</div>';
+  } catch(eEntInvLista) {
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+msgErr(eEntInvLista)+'</div>';
   }
 }
 
-async function _certRecepVerDetalle(idRef, esLote) {
-  const contLista = document.getElementById('cert-recep-lista-cont');
-  const contDet = document.getElementById('cert-recep-detalle-cont');
+async function _entInvVerDetalle(idRef, esLote) {
+  const contLista = document.getElementById('ent-inv-lista-cont');
+  const contDet = document.getElementById('ent-inv-detalle-cont');
   contLista.style.display = 'none';
-  document.getElementById('cert-recep-leyenda').style.display = 'none';
-  document.getElementById('cert-recep-btn-volver').style.display = '';
+  document.getElementById('ent-inv-leyenda').style.display = 'none';
+  document.getElementById('ent-inv-btn-volver').style.display = '';
   contDet.style.display = '';
   contDet.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
 
@@ -8313,52 +8315,69 @@ async function _certRecepVerDetalle(idRef, esLote) {
           return '<tr>'
             + '<td style="padding:6px 8px">'+(a.nombre_articulo||'Art#'+f.id_articulo)+' <span style="color:var(--suave);font-size:11px">('+(a.codigo_articulo||'')+')</span></td>'
             + '<td style="padding:6px 8px;text-align:center;font-family:var(--font-mono)">'+f.cantidad+' '+(a.unidad||'UND')+'</td>'
-            + '<td style="padding:6px 8px;text-align:center"><input type="checkbox" class="chk-cert-recep" data-id-entrada="'+f.id_entrada+'" onchange="_certRecepValidarTodos()" style="width:18px;height:18px;cursor:pointer"></td>'
+            + '<td style="padding:6px 8px;text-align:center"><input type="checkbox" class="chk-ent-inv" data-id-entrada="'+f.id_entrada+'" onchange="_entInvValidarTodos()" style="width:18px;height:18px;cursor:pointer"></td>'
             + '</tr>';
         }).join('')
       + '</tbody></table></div>'
+      + '<div class="form-campo" style="margin-bottom:16px">'
+      + '<label>Nota de Entrega / Factura No.</label>'
+      + '<input type="text" id="ent-inv-nota-entrega" placeholder="N° de la Nota de Entrega o Factura del Proveedor"'
+      + ' onkeydown="if(event.key===\'Enter\'){document.getElementById(\'ent-inv-clave\')?.focus()}"'
+      + ' style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
+      + '</div>'
       + '<div class="form-campo" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">'
       + '<div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>'
       + '<div style="font-size:13px;color:var(--texto);margin-bottom:12px">Usuario: <span style="font-weight:600;color:var(--naranja)">'+(sesionActual?.nombre || sesionActual?.correo_usuario || '—')+'</span></div>'
       + '<label style="font-size:12px">Contraseña</label>'
-      + '<input type="password" id="cert-recep-clave" placeholder="Ingrese su contraseña para confirmar" onkeydown="if(event.key===\'Enter\'){guardarCertificacionRecepcion('+idRef+','+esLote+')}"'
+      + '<input type="password" id="ent-inv-clave" placeholder="Ingrese su contraseña para confirmar" onkeydown="if(event.key===\'Enter\'){guardarEntradaInventario('+idRef+','+esLote+')}"'
       + ' style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">'
       + '</div>'
-      + '<div class="alerta alerta-error" id="alerta-cert-recep-err" style="display:none;margin-top:14px"></div>'
+      + '<div class="alerta alerta-error" id="alerta-ent-inv-err" style="display:none;margin-top:14px"></div>'
       + '<div style="margin-top:16px;text-align:right">'
-      + '<button class="btn-primario" id="btn-cert-recep-confirmar" disabled onclick="guardarCertificacionRecepcion('+idRef+','+esLote+')">✓ Confirmar Recepción</button>'
+      + '<button class="btn-primario" id="btn-ent-inv-confirmar" disabled onclick="guardarEntradaInventario('+idRef+','+esLote+')">✓ Confirmar Recepción</button>'
       + '</div>';
-  } catch(eCertDet) {
-    contDet.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+msgErr(eCertDet)+'</div>';
+    // Que se muestre desde el principio del detalle, sin importar en qué
+    // parte haya quedado el scroll de la lista anterior.
+    const modalBodyEntInvDetalle = document.querySelector('#modal-entrada-inventario .modal-body');
+    if (modalBodyEntInvDetalle) modalBodyEntInvDetalle.scrollTop = 0;
+  } catch(eEntInvDet) {
+    contDet.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+msgErr(eEntInvDet)+'</div>';
   }
 }
 
-function _certRecepValidarTodos() {
-  const checks = document.querySelectorAll('.chk-cert-recep');
-  const btn = document.getElementById('btn-cert-recep-confirmar');
+function _entInvValidarTodos() {
+  const checks = document.querySelectorAll('.chk-ent-inv');
+  const btn = document.getElementById('btn-ent-inv-confirmar');
   if (!btn) return;
   btn.disabled = !Array.from(checks).every(function(c){ return c.checked; });
 }
 
-async function guardarCertificacionRecepcion(idRef, esLote) {
-  const errEl = document.getElementById('alerta-cert-recep-err');
+async function guardarEntradaInventario(idRef, esLote) {
+  const errEl = document.getElementById('alerta-ent-inv-err');
   errEl.style.display = 'none';
 
-  const checks = document.querySelectorAll('.chk-cert-recep');
+  const checks = document.querySelectorAll('.chk-ent-inv');
   if (!checks.length || !Array.from(checks).every(function(c){ return c.checked; })) {
     errEl.textContent = 'Debe tildar todos los Artículos como Recibidos antes de confirmar.';
     errEl.style.display = 'block';
     return;
   }
-  const clave = document.getElementById('cert-recep-clave')?.value || '';
+  const notaEntrega = document.getElementById('ent-inv-nota-entrega')?.value.trim() || '';
+  if (!notaEntrega) {
+    errEl.textContent = 'Debe ingresar el N° de la Nota de Entrega o Factura del Proveedor.';
+    errEl.style.display = 'block';
+    document.getElementById('ent-inv-nota-entrega')?.focus();
+    return;
+  }
+  const clave = document.getElementById('ent-inv-clave')?.value || '';
   if (!clave) {
     errEl.textContent = 'Debe ingresar su contraseña para confirmar.';
     errEl.style.display = 'block';
-    document.getElementById('cert-recep-clave')?.focus();
+    document.getElementById('ent-inv-clave')?.focus();
     return;
   }
 
-  const btn = document.getElementById('btn-cert-recep-confirmar');
+  const btn = document.getElementById('btn-ent-inv-confirmar');
   btnSetGuardando(btn, true, null, 'Procesando...');
   try {
     const valid = await validarClaveUsuarioActual(clave);
@@ -8370,44 +8389,45 @@ async function guardarCertificacionRecepcion(idRef, esLote) {
     // fila que se está certificando (nunca lo tocó la Aprobación), y se
     // aplica el mismo cálculo de CPP (Costo Promedio Ponderado) de
     // siempre, con el Stock/Costo actuales de este momento.
-    const filasCert = await api('stock_entradas','GET',null,
+    const filasEntInv = await api('stock_entradas','GET',null,
       '?id_entrada=in.('+idsEntrada.join(',')+')&select=id_entrada,id_articulo,cantidad,id_area,precio_costo_moneda');
-    for (const f of (filasCert||[])) {
+    for (const f of (filasEntInv||[])) {
       const idArt = f.id_articulo;
-      const cantidadCert = parseFloat(f.cantidad || 0);
-      const nuevoPrecioCostoCert = parseFloat(f.precio_costo_moneda || 0);
-      const artRowCert = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+idArt+'&select=precio_costo_moneda');
-      const costoActualCert = parseFloat((artRowCert && artRowCert[0] && artRowCert[0].precio_costo_moneda) || 0);
-      const stockActualCert = await obtenerStockArea(idArt, f.id_area);
-      const nuevoStockCert = stockActualCert + cantidadCert;
-      let cppCert = costoActualCert;
-      if (nuevoPrecioCostoCert > 0) {
-        cppCert = nuevoStockCert > 0
-          ? ((stockActualCert * costoActualCert) + (cantidadCert * nuevoPrecioCostoCert)) / nuevoStockCert
-          : nuevoPrecioCostoCert;
+      const cantidadEntInv = parseFloat(f.cantidad || 0);
+      const nuevoPrecioCostoEntInv = parseFloat(f.precio_costo_moneda || 0);
+      const artRowEntInv = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+idArt+'&select=precio_costo_moneda');
+      const costoActualEntInv = parseFloat((artRowEntInv && artRowEntInv[0] && artRowEntInv[0].precio_costo_moneda) || 0);
+      const stockActualEntInv = await obtenerStockArea(idArt, f.id_area);
+      const nuevoStockEntInv = stockActualEntInv + cantidadEntInv;
+      let cppEntInv = costoActualEntInv;
+      if (nuevoPrecioCostoEntInv > 0) {
+        cppEntInv = nuevoStockEntInv > 0
+          ? ((stockActualEntInv * costoActualEntInv) + (cantidadEntInv * nuevoPrecioCostoEntInv)) / nuevoStockEntInv
+          : nuevoPrecioCostoEntInv;
       }
-      const patchCPPCert = { precio_costo_moneda: parseFloat(cppCert.toFixed(8)) };
-      if (nuevoPrecioCostoCert > 0) patchCPPCert.precio_costo_ultimo_moneda = nuevoPrecioCostoCert;
-      await api('inventario_almacen', 'PATCH', patchCPPCert, '?id_articulo=eq.' + idArt);
-      await upsertStockArea(idArt, f.id_area, cantidadCert);
+      const patchCPPEntInv = { precio_costo_moneda: parseFloat(cppEntInv.toFixed(8)) };
+      if (nuevoPrecioCostoEntInv > 0) patchCPPEntInv.precio_costo_ultimo_moneda = nuevoPrecioCostoEntInv;
+      await api('inventario_almacen', 'PATCH', patchCPPEntInv, '?id_articulo=eq.' + idArt);
+      await upsertStockArea(idArt, f.id_area, cantidadEntInv);
     }
 
     await api('stock_entradas','PATCH',{
       certificado_almacen: true,
       certificado_por: sesionActual.correo_usuario,
-      fecha_certificacion: new Date().toISOString()
+      fecha_certificacion: new Date().toISOString(),
+      nota_entrega_factura: notaEntrega
     }, '?id_entrada=in.('+idsEntrada.join(',')+')');
 
-    await revisarBadgeCertificarRecepcion();
-    _certRecepVolverLista();
+    await revisarBadgeEntradaInventario();
+    _entInvVolverLista();
     // Refrescar el listado principal de Inventario -- recién ahora el
     // Stock certificado entró de verdad, así que el número visible en
     // pantalla debe reflejarlo sin que el Usuario tenga que refrescar a
     // mano. Este modal solo se abre estando en Inventario, así que no
     // hace falta validar en qué módulo está.
     renderInventario(document.getElementById('buscar-inv')?.value || '');
-  } catch(eGuardarCert) {
-    errEl.textContent = 'Error: ' + msgErr(eGuardarCert);
+  } catch(eGuardarEntInv) {
+    errEl.textContent = 'Error: ' + msgErr(eGuardarEntInv);
     errEl.style.display = 'block';
   } finally {
     btnSetGuardando(btn, false);
