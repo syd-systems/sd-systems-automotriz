@@ -1362,19 +1362,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909003"></script>
-<script src="js/parametros.js?v=20260909003"></script>
-<script src="js/empresas.js?v=20260909003"></script>
-<script src="js/ingresos.js?v=20260909003"></script>
-<script src="js/inventario.js?v=20260909003"></script>
-<script src="js/proveedores.js?v=20260909003"></script>
-<script src="js/clientes.js?v=20260909003"></script>
-<script src="js/ventas.js?v=20260909003"></script>
-<script src="js/contabilidad.js?v=20260909003"></script>
-<script src="js/egresos.js?v=20260909003"></script>
-<script src="js/vehiculos.js?v=20260909003"></script>
-<script src="js/catalogo.js?v=20260909003"></script>
-<script src="js/ordenes.js?v=20260909003"></script>
+<script src="js/core.js?v=20260909004"></script>
+<script src="js/parametros.js?v=20260909004"></script>
+<script src="js/empresas.js?v=20260909004"></script>
+<script src="js/ingresos.js?v=20260909004"></script>
+<script src="js/inventario.js?v=20260909004"></script>
+<script src="js/proveedores.js?v=20260909004"></script>
+<script src="js/clientes.js?v=20260909004"></script>
+<script src="js/ventas.js?v=20260909004"></script>
+<script src="js/contabilidad.js?v=20260909004"></script>
+<script src="js/egresos.js?v=20260909004"></script>
+<script src="js/vehiculos.js?v=20260909004"></script>
+<script src="js/catalogo.js?v=20260909004"></script>
+<script src="js/ordenes.js?v=20260909004"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4998,11 +4998,11 @@
 </div>
 
 <!-- ══ MODAL ENTRADA CONSOLIDADA (varios artículos, una sola Compra) ══ -->
-<div class="modal-overlay" id="modal-entrada-consolidada" style="z-index:2000">
+<div class="modal-overlay" id="modal-orden-compra" style="z-index:2000">
   <div class="modal" style="max-width:900px">
     <div class="modal-header">
       <h3>📥 ORDEN DE COMPRA</h3>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-entrada-consolidada')">✕</button>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-orden-compra')">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-campo form-full">
@@ -5084,8 +5084,8 @@
       <div class="alerta alerta-error" id="alerta-entcons-err" style="display:none;margin-top:14px"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secundario" onclick="cerrarModal('modal-entrada-consolidada')">Cancelar</button>
-      <button class="btn-primario" id="btn-entcons-guardar" onclick="guardarEntradaConsolidada()">Solicitar Aprobación de Compra</button>
+      <button class="btn-secundario" onclick="cerrarModal('modal-orden-compra')">Cancelar</button>
+      <button class="btn-primario" id="btn-entcons-guardar" onclick="guardarOrdenCompra()">Solicitar Aprobación de Compra</button>
     </div>
   </div>
 </div>
@@ -5223,7 +5223,7 @@
     <div class="modal-footer">
       <button class="btn-naranja" id="btn-notif-ver-despues" onclick="notifVerDespues()" style="font-size:12px;color:var(--suave)">Ver después</button>
       <button class="btn-secundario" id="btn-notif-escalar" onclick="notifSolicitarAnulacion()" style="display:none;font-size:12px;color:#fc8181;border-color:rgba(252,129,129,0.4)">⬆ Solicitar Anulación al Superior</button>
-      <button class="btn-secundario" id="btn-notif-rechazar-entrada" onclick="notifRechazarEntrada()" style="display:none;font-size:12px;color:#fc8181;border-color:rgba(252,129,129,0.4)">✕ Rechazar</button>
+      <button class="btn-secundario" id="btn-notif-rechazar-orden" onclick="notifRechazarOrdenCompra()" style="display:none;font-size:12px;color:#fc8181;border-color:rgba(252,129,129,0.4)">✕ Rechazar</button>
       <button class="btn-primario"   onclick="notifConfirmar()" id="btn-notif-confirmar">✓ Confirmar Recepción</button>
     </div>
   </div>
