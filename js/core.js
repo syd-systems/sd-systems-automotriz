@@ -1,11 +1,31 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909001';
+const SYD_VERSION = '20260909002';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
   'background:#ff6b00;color:#fff;font-weight:700;padding:4px 8px;border-radius:4px 0 0 4px',
   'background:#1a1a1a;color:#ff6b00;font-weight:700;padding:4px 8px;border-radius:0 4px 4px 0');
+
+// ─── ESTADO COMPUESTO DE CxP (cont_cxp) ───
+// Desde la migración de separación de estados, cont_cxp tiene DOS columnas
+// independientes: estado_aprobacion (PENDIENTE/APROBADA/RECHAZADA -- ¿se
+// autorizó la obligación?) y estado (PENDIENTE/PARCIAL/PAGADA/ANULADA --
+// ¿cómo va el pago en sí?). Esta función las combina en el mismo
+// vocabulario de 5 valores que usaba el campo único viejo, para las
+// pantallas que ya dependen de ese comportamiento (badges de "Pagos" y
+// botones Aprobar/Rechazar/Pagar) -- no reinventar esta regla en cada sitio.
+const ESTADO_CXP_COLORES = { PENDIENTE:'#f59e0b', APROBADA:'#a78bfa', RECHAZADA:'#fc8181', PAGADA:'#22c55e', ANULADA:'#6b7280', PARCIAL:'#60a5fa' };
+function estadoCxPCompuesto(c) {
+  const estadoPago = (c && c.estado) || 'PENDIENTE';
+  if (estadoPago !== 'PENDIENTE') {
+    // Ya PAGADA, PARCIAL o ANULADA -- la autorización es historia, no hace
+    // falta mezclarla, el pago ya define el estado visible.
+    return { texto: estadoPago, color: ESTADO_CXP_COLORES[estadoPago] || '#888' };
+  }
+  const estadoAprob = (c && c.estado_aprobacion) || 'PENDIENTE';
+  return { texto: estadoAprob, color: ESTADO_CXP_COLORES[estadoAprob] || '#888' };
+}
 
 // ─── FORMATO MONETARIO GLOBAL ───
 function fmtBs(valor) {
