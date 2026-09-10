@@ -1603,7 +1603,7 @@ async function ejecutarEfectosEntradaCompraLote(filasLote) {
           id_usuario: primeraFila.id_usuario || null
         });
         if (cxpCuotaLote && cxpCuotaLote[0]) {
-          await api('cont_cxp','PATCH',{ numero_doc: numDocLoteAst + '-C' + c.num + '-' + cxpCuotaLote[0].id_cxp }, '?id_cxp=eq.' + cxpCuotaLote[0].id_cxp);
+          await api('cont_cxp','PATCH',{ numero_doc: numDocLoteAst + '-' + cxpCuotaLote[0].id_cxp + '-C' + c.num }, '?id_cxp=eq.' + cxpCuotaLote[0].id_cxp);
         }
       }
     } else {
@@ -1782,7 +1782,7 @@ async function ejecutarEfectosEntradaCompra(m) {
           id_usuario:       m.id_usuario || null
         });
         if (cxpCuotaCreada && cxpCuotaCreada[0]) {
-          await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-C' + c.num + '-' + cxpCuotaCreada[0].id_cxp }, '?id_cxp=eq.' + cxpCuotaCreada[0].id_cxp);
+          await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-' + cxpCuotaCreada[0].id_cxp + '-C' + c.num }, '?id_cxp=eq.' + cxpCuotaCreada[0].id_cxp);
         }
       }
     } else {
@@ -5323,13 +5323,13 @@ async function _guardarEdicionMovimientoInterno() {
               });
               // Agregar el id_cxp real al numero_doc para que nunca se repita
               if (cxpCuotaEditCreada && cxpCuotaEditCreada[0]) {
-                await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-C' + c.num + '-' + cxpCuotaEditCreada[0].id_cxp }, '?id_cxp=eq.' + cxpCuotaEditCreada[0].id_cxp);
+                await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-' + cxpCuotaEditCreada[0].id_cxp + '-C' + c.num }, '?id_cxp=eq.' + cxpCuotaEditCreada[0].id_cxp);
                 // Reenviar a aprobación -- la corrección debe volver a pasar
                 // por el Aprobador, igual que cuando se creó la Entrada.
                 // Mismo detalle rico que el caso CONTADO (ver más abajo).
                 if (c.fecha <= getHoyVzla()) {
                   const nombreProvEditCuota = document.getElementById('edit-mov-proveedor')?.selectedOptions?.[0]?.textContent || '';
-                  enrutarAprobacionCxP(cxpCuotaEditCreada[0].id_cxp, numDocBase + '-C' + c.num + '-' + cxpCuotaEditCreada[0].id_cxp, c.monto, {
+                  enrutarAprobacionCxP(cxpCuotaEditCreada[0].id_cxp, numDocBase + '-' + cxpCuotaEditCreada[0].id_cxp + '-C' + c.num, c.monto, {
                     monedaPago: monedaPagoRealEdit, tasaBcv: tasaEdit, montoBsExacto: montoVesCuotaEdit,
                     concepto: artNom + ' x ' + cantidad + ' uds. (Cuota ' + c.num + ')', proveedor: nombreProvEditCuota
                   });
