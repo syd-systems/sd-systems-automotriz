@@ -1980,7 +1980,7 @@ async function abrirOrdenCompra() {
   abrirModal('modal-orden-compra');
   // Que siempre se muestre desde el principio del formulario, sin importar
   // en qué parte haya quedado el scroll de una vez anterior.
-  const modalBodyEC = document.querySelector('#modal-orden-compra .modal-body');
+  const modalBodyEC = document.querySelector('#modal-orden-compra .modal');
   if (modalBodyEC) modalBodyEC.scrollTop = 0;
 }
 
@@ -2432,7 +2432,7 @@ async function abrirNuevoInventario() {
   await invCargarCategorias(null);
   abrirModal('modal-inventario');
   setTimeout(function() {
-    const body = document.querySelector('#modal-inventario .modal-body');
+    const body = document.querySelector('#modal-inventario .modal');
     if (body) body.scrollTop = 0;
     document.getElementById('inv-categoria')?.focus();
   }, 80);
@@ -2521,7 +2521,7 @@ async function abrirEditarInventario(id) {
   abrirModal('modal-inventario');
   focusFirstField('modal-inventario');
   setTimeout(function() {
-    const body = document.querySelector('#modal-inventario .modal-body');
+    const body = document.querySelector('#modal-inventario .modal');
     if (body) body.scrollTop = 0;
   }, 50);
 }
@@ -2818,7 +2818,7 @@ async function retomarLoteRechazado(id_orden_compra) {
     // Que se muestre desde el principio del formulario -- todo el
     // precargado de campos que hicimos arriba puede haber movido el
     // scroll, así que se fuerza de nuevo al final.
-    const modalBodyLR = document.querySelector('#modal-orden-compra .modal-body');
+    const modalBodyLR = document.querySelector('#modal-orden-compra .modal');
     if (modalBodyLR) modalBodyLR.scrollTop = 0;
   } catch(eRetLote) {
     alert('Error al retomar el Lote: ' + msgErr(eRetLote));
@@ -4830,7 +4830,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
   abrirModal('modal-edit-movimiento');
   // Que se muestre desde el principio del formulario -- todo el
   // precargado de campos hecho arriba puede haber movido el scroll.
-  const modalBodyEditMov = document.querySelector('#modal-edit-movimiento .modal-body');
+  const modalBodyEditMov = document.querySelector('#modal-edit-movimiento .modal');
   if (modalBodyEditMov) modalBodyEditMov.scrollTop = 0;
   } catch(e) { console.error('[SYD] editarMovimiento ERROR:', msgErr(e), e.stack); }
 }
@@ -7293,7 +7293,7 @@ async function abrirModalEntradaInventario() {
   document.getElementById('ent-inv-leyenda').style.display = '';
   document.getElementById('ent-inv-btn-volver').style.display = 'none';
   abrirModal('modal-entrada-inventario');
-  const modalBodyEntInvLista = document.querySelector('#modal-entrada-inventario .modal-body');
+  const modalBodyEntInvLista = document.querySelector('#modal-entrada-inventario .modal');
   if (modalBodyEntInvLista) modalBodyEntInvLista.scrollTop = 0;
   await _entInvCargarLista();
 }
@@ -7412,7 +7412,7 @@ async function _entInvVerDetalle(idRef, esLote) {
       + '</div>';
     // Que se muestre desde el principio del detalle, sin importar en qué
     // parte haya quedado el scroll de la lista anterior.
-    const modalBodyEntInvDetalle = document.querySelector('#modal-entrada-inventario .modal-body');
+    const modalBodyEntInvDetalle = document.querySelector('#modal-entrada-inventario .modal');
     if (modalBodyEntInvDetalle) modalBodyEntInvDetalle.scrollTop = 0;
   } catch(eEntInvDet) {
     contDet.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+msgErr(eEntInvDet)+'</div>';
