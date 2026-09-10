@@ -2812,7 +2812,7 @@ async function retomarLoteRechazado(id_orden_compra) {
     // fila como antes.
     window._retomandoLoteAnclaEntrada = primeraR.id_entrada;
     const tituloModalLR = document.querySelector('#modal-orden-compra .modal-header h3');
-    if (tituloModalLR) tituloModalLR.textContent = '↻ RETOMAR LOTE RECHAZADO';
+    if (tituloModalLR) tituloModalLR.textContent = 'EDITAR ORDEN DE COMPRA RECHAZADA';
     const btnGuardarLR = document.getElementById('btn-entcons-guardar');
     if (btnGuardarLR) btnGuardarLR.textContent = 'Corregir y Reenviar a Aprobación';
     // Que se muestre desde el principio del formulario -- todo el
@@ -2839,13 +2839,8 @@ async function invRenderOrdenesRechazadas(cont) {
       cont.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">✅ No tiene Entradas de Compra rechazadas pendientes de corregir.</div>';
       return;
     }
-    const idsArt = [...new Set(rechazadas.map(function(p){ return p.id_articulo; }))];
     const idsProv = [...new Set(rechazadas.map(function(p){ return p.id_proveedor; }).filter(Boolean))];
-    const [arts, provs] = await Promise.all([
-      idsArt.length ? api('inventario_almacen','GET',null,'?id_articulo=in.('+idsArt.join(',')+')&select=id_articulo,nombre_articulo,codigo_articulo') : Promise.resolve([]),
-      idsProv.length ? api('proveedores','GET',null,'?id_proveedor=in.('+idsProv.join(',')+')&select=id_proveedor,nombre') : Promise.resolve([]),
-    ]);
-    const artMap = {}; (arts||[]).forEach(function(a){ artMap[a.id_articulo] = a; });
+    const provs = idsProv.length ? await api('proveedores','GET',null,'?id_proveedor=in.('+idsProv.join(',')+')&select=id_proveedor,nombre') : [];
     const provMap = {}; (provs||[]).forEach(function(p){ provMap[p.id_proveedor] = p.nombre; });
 
     // Agrupar por Lote (Entrada Consolidada) -- una sola fila por Lote, no
@@ -2862,7 +2857,6 @@ async function invRenderOrdenesRechazadas(cont) {
     const filasLote = Object.keys(gruposRech).map(function(idLoteKey) {
       const filasG = gruposRech[idLoteKey];
       const nomProvG = provMap[filasG[0].id_proveedor] || '—';
-      const nombresArtG = filasG.map(function(p){ const art = artMap[p.id_articulo]; return art ? art.nombre_articulo : ('Art#'+p.id_articulo); }).join(', ');
       const cantidadTotalG = filasG.reduce(function(a,p){ return a + (parseFloat(p.cantidad)||0); }, 0);
       const montoIGTF_USD_G = filasG.reduce(function(a,p){ return a + (p.aplica_igtf && p.monto_igtf != null ? parseFloat(p.monto_igtf) : 0); }, 0);
       const montoUSD_G = filasG.reduce(function(a,p){ return a + parseFloat(p.monto_total_con_iva||0); }, 0) + montoIGTF_USD_G;
@@ -2876,7 +2870,7 @@ async function invRenderOrdenesRechazadas(cont) {
       const motivoG = filasG[0].motivo_rechazo || '—';
       return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);background:rgba(255,107,0,0.03)">'
         +'<td style="padding:8px;font-size:12px">'+formatearFechaCorta(filasG[0].fecha_negociacion)+'</td>'
-        +'<td style="padding:8px;font-size:12px">📦 Lote x'+filasG.length+': '+nombresArtG.substring(0,60)+(nombresArtG.length>60?'…':'')+'</td>'
+        +'<td style="padding:8px;font-size:12px">📦 Orden de Compra<div style="font-size:10px;color:var(--suave);font-family:var(--font-mono)">Ref: OC-'+idLoteKey+' — '+filasG.length+' artículo'+(filasG.length>1?'s':'')+'</div></td>'
         +'<td style="padding:8px;text-align:right;font-family:var(--font-mono);font-size:12px">'+cantidadTotalG+'</td>'
         +'<td style="padding:8px;font-size:12px">'+nomProvG+'</td>'
         +'<td style="padding:8px;text-align:right;font-family:var(--font-mono)">'
@@ -2884,7 +2878,7 @@ async function invRenderOrdenesRechazadas(cont) {
           +'<div style="font-size:10px;color:var(--suave)">$ '+fmtUSD(montoUSD_G)+(montoIGTF_USD_G > 0 ? ' (incl. IGTF)' : '')+'</div>'
         +'</td>'
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+motivoG+'</td>'
-        +'<td style="padding:8px;white-space:nowrap"><button class="btn-naranja" onclick="retomarLoteRechazado('+idLoteKey+')" style="font-size:11px;padding:4px 10px;margin-right:8px">↻ Retomar Lote</button></td>'
+        +'<td style="padding:8px;text-align:center"><button class="btn-naranja" onclick="retomarLoteRechazado('+idLoteKey+')" style="font-size:11px;padding:4px 8px;white-space:nowrap">↻ Retomar Orden</button></td>'
         +'</tr>';
     });
 
@@ -2893,12 +2887,12 @@ async function invRenderOrdenesRechazadas(cont) {
     cont.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-bottom:10px">Estas Entradas fueron rechazadas por un Nivel de Firma -- todavía no afectaron Stock ni Contabilidad. Corríjalas y vuelva a guardarlas para que se reenvíen a aprobación.</div>'
       + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse;table-layout:fixed"><thead><tr>'
       +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:9%">Fecha</th>'
-      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:23%">Artículo</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:20%">Artículo</th>'
       +'<th style="padding:8px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:6%">Cant.</th>'
       +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:13%">Proveedor</th>'
       +'<th style="padding:8px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:17%">Monto</th>'
-      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:20%">Motivo del Rechazo</th>'
-      +'<th style="padding:8px;width:12%"></th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:19%">Motivo del Rechazo</th>'
+      +'<th style="padding:8px;width:16%"></th>'
       +'</tr></thead><tbody>'+filas+'</tbody></table></div>';
   } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+msgErr(e)+'</div>'; }
 }
