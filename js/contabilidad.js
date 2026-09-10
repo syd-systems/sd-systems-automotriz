@@ -2161,10 +2161,19 @@ async function contRenderCxp() {
     };
 
     const estadoColor = { PENDIENTE:'#f59e0b', PAGADA:'#22c55e', ANULADA:'#6b7280', PARCIAL:'#60a5fa' };
+    const aprobColor  = { PENDIENTE:'#f59e0b', APROBADA:'#a78bfa', RECHAZADA:'#fc8181' };
+    const aprobLabel  = { PENDIENTE:'Pend. Firma', APROBADA:'Aprobada', RECHAZADA:'Rechazada' };
     const filas = cxps.map(function(c) {
       const prov = c.proveedores ? c.proveedores.nombre : '—';
       const est  = c.estado || 'PENDIENTE';
       const badge = '<span style="background:'+( estadoColor[est]||'#888')+'22;color:'+(estadoColor[est]||'#888')+';border:1px solid '+(estadoColor[est]||'#888')+'44;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600">'+est+'</span>';
+      // Badge secundario: estado de AUTORIZACIÓN (independiente de si ya se
+      // pagó) -- solo aporta información mientras no está Pagada/Anulada;
+      // una vez Pagada, la autorización es historia y no hace falta repetirla.
+      const estAprob = c.estado_aprobacion || 'PENDIENTE';
+      const badgeAprob = (est === 'PENDIENTE')
+        ? ' <span style="background:'+(aprobColor[estAprob]||'#888')+'22;color:'+(aprobColor[estAprob]||'#888')+';border:1px solid '+(aprobColor[estAprob]||'#888')+'44;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600">'+(aprobLabel[estAprob]||estAprob)+'</span>'
+        : '';
       const acciones = ''; // Gestión de pagos en módulo Pagos
       return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
         +'<td style="padding:8px;font-size:11px;color:var(--naranja);font-family:var(--font-mono)">'+c.numero_doc+'</td>'
@@ -2174,7 +2183,7 @@ async function contRenderCxp() {
         +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#fc8181">'+fmtMonto(c.monto_usd, c.monto_ves)+'</td>'
         +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);color:#22c55e">'+fmtMonto(c.pagado_usd||0)+'</td>'
         +'<td style="text-align:right;padding:8px;font-family:var(--font-mono);font-weight:700">'+fmtMonto(c.saldo_usd||0)+'</td>'
-        +'<td style="padding:8px;text-align:center">'+badge+'</td>'
+        +'<td style="padding:8px;text-align:center">'+badge+badgeAprob+'</td>'
         
         +'</tr>';
     }).join('');
