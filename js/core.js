@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909003';
+const SYD_VERSION = '20260909004';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -950,6 +950,7 @@ async function verificarSesionActiva() {
 let _pollingInterval = setInterval(verificarSesionActiva, 30000);
 let _intervalRefrescarUsuarios = null; // auto-refresco de la lista de Usuarios mientras esa pantalla esté abierta
 let _intervalBadgeEntradaInventario = null; // auto-revisión del punto rojo de Entrada de Inventario mientras Inventario esté abierto
+let _intervalBadgeEntradasRechazadas = null; // auto-revisión del punto rojo de Órdenes Rechazadas mientras Inventario esté abierto
 
 // ─── LOGIN ───
 document.getElementById('login-clave').addEventListener('keypress', e => {
@@ -1463,6 +1464,11 @@ async function mostrarModulo(modulo, navEl) {
   if (modulo !== 'inventario' && _intervalBadgeEntradaInventario) {
     clearInterval(_intervalBadgeEntradaInventario);
     _intervalBadgeEntradaInventario = null;
+  }
+  // Mismo cuidado para el punto rojo de Órdenes Rechazadas.
+  if (modulo !== 'inventario' && _intervalBadgeEntradasRechazadas) {
+    clearInterval(_intervalBadgeEntradasRechazadas);
+    _intervalBadgeEntradasRechazadas = null;
   }
   // Verificar notificaciones pendientes al navegar
   verificarNotificacionesPendientes();
@@ -2872,19 +2878,19 @@ async function mostrarNotifPendiente(notif) {
   const instrEl = document.getElementById('notif-pendiente-instruccion');
   const btnConf = document.getElementById('btn-notif-confirmar');
   const btnEscalar = document.getElementById('btn-notif-escalar');
-  const btnRechazarEnt = document.getElementById('btn-notif-rechazar-entrada');
+  const btnRechazarEnt = document.getElementById('btn-notif-rechazar-orden');
   if (btnEscalar) btnEscalar.style.display = 'none';
-  if (btnRechazarEnt) btnRechazarEnt.style.display = accionNotif === 'aprobar_entrada' ? '' : 'none';
+  if (btnRechazarEnt) btnRechazarEnt.style.display = accionNotif === 'aprobar_orden_compra' ? '' : 'none';
   const btnVerDespues = document.getElementById('btn-notif-ver-despues');
-  // No tiene sentido "posponer" una aprobación de Entrada de Compra, ni el
+  // No tiene sentido "posponer" una aprobación de Orden de Compra, ni el
   // aviso de que ya fue rechazada -- en ambos casos hay una única acción
   // clara a seguir en el momento.
-  if (btnVerDespues) btnVerDespues.style.display = (accionNotif === 'aprobar_entrada' || accionNotif === 'entrada_compra_rechazada' || accionNotif === 'confirmar_recepcion') ? 'none' : '';
+  if (btnVerDespues) btnVerDespues.style.display = (accionNotif === 'aprobar_orden_compra' || accionNotif === 'orden_compra_rechazada' || accionNotif === 'confirmar_recepcion') ? 'none' : '';
   const CONFIG_NOTIF = {
     confirmar_recepcion: { titulo: '📦 Recepción de Artículos', instruccion: '', boton: '✓ Confirmar' },
     aprobar_pago:         { titulo: '📝 Solicitud de Aprobación', instruccion: 'Vaya al módulo de Pagos para revisar y aprobar esta Obligación.', boton: '✓ Confirmar Pago' },
-    aprobar_entrada:      { titulo: '📝 Orden de Compra de Inventario', instruccion: 'Revise el detalle e indique si Aprueba o Rechaza esta Compra de Artículos.', boton: '✓ Aprobar' },
-    entrada_compra_rechazada: { titulo: '❌ Orden de Compra Rechazada', instruccion: 'Revise el motivo, corrija la Entrada y vuelva a guardarla para que se reenvíe a aprobación.', boton: 'Proceder' },
+    aprobar_orden_compra: { titulo: '📝 Orden de Compra de Inventario', instruccion: 'Revise el detalle e indique si Aprueba o Rechaza esta Compra de Artículos.', boton: '✓ Aprobar' },
+    orden_compra_rechazada: { titulo: '❌ Orden de Compra Rechazada', instruccion: 'Revise el motivo, corrija la Orden y vuelva a guardarla para que se reenvíe a aprobación.', boton: 'Proceder' },
     registrar_pago:       { titulo: '✅ Solicitud de Pago Aprobada', instruccion: 'Puede ir al módulo de Pagos para Registrar el Pago cuando guste.', boton: 'Entendido' },
     ver_rechazo:          { titulo: '❌ Solicitud de Pago Rechazada', instruccion: 'Revise el motivo y corrija la Obligación en el módulo de Pagos.', boton: 'Entendido' },
     sin_firma_disponible: { titulo: '⚠️ Sin Firma Autorizada Disponible', instruccion: 'Ningún aprobador con Nivel de Firma tiene sesión activa en este momento. Avise a su supervisor o intente más tarde.', boton: 'Entendido' },
@@ -2991,19 +2997,19 @@ async function notifConfirmar() {
       : null;
     const accionNotif = extras && extras.accion || null;
 
-    // ── Caso especial: Aprobación de Entrada de Compra -- se resuelve
-    // directo desde la notificación (aprobarEntradaCompra ya revalida el
+    // ── Caso especial: Aprobación de Orden de Compra -- se resuelve
+    // directo desde la notificación (aprobarOrdenCompra ya revalida el
     // límite del Nivel de Firma y genera Asiento/CxP -- el Stock/CPP se
     // mueve recién al Entrada de Inventario, no aquí), en vez de
     // solo acreditar stock como hace confirmar_recepcion.
-    if (accionNotif === 'aprobar_entrada' && extras && extras.id_entrada) {
+    if (accionNotif === 'aprobar_orden_compra' && extras && extras.id_entrada) {
       await api('notificaciones','PATCH',
         { estado: 'APROBADO', fecha_respuesta: new Date().toISOString() },
         '?id=eq.'+_notifPendienteActual.id);
       document.getElementById('modal-notif-pendiente').style.display = 'none';
       _notifPendienteActual = null;
       if (btn) { btn.disabled = false; btn.textContent = btn.dataset.textoOriginal || '✓ Confirmar Recepción'; }
-      if (typeof aprobarEntradaCompra === 'function') await aprobarEntradaCompra(extras.id_entrada);
+      if (typeof aprobarOrdenCompra === 'function') await aprobarOrdenCompra(extras.id_entrada);
       await verificarNotificacionesPendientes();
       // Ir directo a Cuentas por Pagar -- ya se resolvió la Entrada, tiene
       // sentido ver de inmediato la Obligación de Pago que quedó (o no)
@@ -3012,11 +3018,11 @@ async function notifConfirmar() {
       return;
     }
 
-    // ── Caso especial: aviso de Entrada de Compra Rechazada -- al pulsar
+    // ── Caso especial: aviso de Orden de Compra Rechazada -- al pulsar
     // "Proceder", en vez de solo cerrar el aviso, llevar directo al
     // Historial de Movimientos del artículo, donde puede ver la Entrada
     // rechazada en contexto y corregirla desde ahí.
-    if (accionNotif === 'entrada_compra_rechazada' && extras && extras.id_entrada) {
+    if (accionNotif === 'orden_compra_rechazada' && extras && extras.id_entrada) {
       await api('notificaciones','PATCH',
         { estado: 'APROBADO', fecha_respuesta: new Date().toISOString() },
         '?id=eq.'+_notifPendienteActual.id);
@@ -3031,7 +3037,7 @@ async function notifConfirmar() {
         window._suprimirCheckNotifUnaVez = true;
         mostrarModulo('inventario', document.getElementById('nav-INVENTARIO'));
         if (filaRech && filaRech.id_orden_compra) {
-          // Es parte de un Lote (Entrada Consolidada) -- abrir el Lote
+          // Es parte de un Lote (Orden de Compra) -- abrir el Lote
           // completo para corregirlo, no solo este renglón.
           setTimeout(function() {
             if (typeof retomarLoteRechazado === 'function') retomarLoteRechazado(filaRech.id_orden_compra);
@@ -3118,8 +3124,8 @@ function notifVerDespues() {
   // No marca como leída — volverá a aparecer en la próxima navegación
 }
 
-// Rechaza una Entrada de Compra directo desde la notificación -- reutiliza
-// rechazarEntradaCompra() (en inventario.js, ya pide el motivo, revalida
+// Rechaza una Orden de Compra directo desde la notificación -- reutiliza
+// rechazarOrdenCompra() (en inventario.js, ya pide el motivo, revalida
 // que siga PENDIENTE, y notifica al creador), y aquí solo se encarga de
 // cerrar/marcar esta notificación puntual como resuelta.
 // Diálogo genérico Sí/No con el mismo estilo visual del resto de la app
@@ -3158,7 +3164,7 @@ async function mostrarAvisoOk(mensaje, esError) {
   });
 }
 
-async function notifRechazarEntrada() {
+async function notifRechazarOrdenCompra() {
   if (!_notifPendienteActual) return;
   const extras = _notifPendienteActual.datos_extra
     ? (typeof _notifPendienteActual.datos_extra === 'string'
@@ -3166,11 +3172,11 @@ async function notifRechazarEntrada() {
         : _notifPendienteActual.datos_extra)
     : null;
   if (!extras || !extras.id_entrada) return;
-  const confirmaRech = await confirmarSiNo('¿Seguro que desea rechazar esta Entrada?');
+  const confirmaRech = await confirmarSiNo('¿Seguro que desea rechazar esta Orden?');
   if (!confirmaRech) return;
   const idNotifRech = _notifPendienteActual.id;
-  if (typeof rechazarEntradaCompra !== 'function') return;
-  const seRechazoOk = await rechazarEntradaCompra(extras.id_entrada);
+  if (typeof rechazarOrdenCompra !== 'function') return;
+  const seRechazoOk = await rechazarOrdenCompra(extras.id_entrada);
   // Si el Usuario canceló el diálogo de motivo (o algo falló), la
   // notificación se queda tal cual, para volver a intentarlo -- no se
   // cierra el modal ni se marca como resuelta.
