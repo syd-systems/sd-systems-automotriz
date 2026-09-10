@@ -948,15 +948,6 @@ async function verFichaInventario(id) {
 
 async function abrirEntradaStock(id) {
   await cargarTasaIVAGlobal(); // refresca IVA vigente cada vez que se abre el formulario
-  // Por si quedó pegado de un "Retomar Entrada Rechazada" anterior -- una
-  // Entrada nueva normal jamás debe terminar actualizando por error una
-  // fila vieja. Se restaura también el título/botón del modal a su texto
-  // normal (retomarEntradaRechazada() los cambia después, si aplica).
-  window._retomandoEntradaId = null;
-  window._aplicaIGTFEntrada = false;
-  window._tasaIGTFEntrada = 0.03;
-  const igtfContReset = document.getElementById('es-igtf-cont');
-  if (igtfContReset) igtfContReset.style.display = 'none';
   const tituloModalNormal = document.querySelector('#modal-entrada-stock .modal-header h3');
   if (tituloModalNormal) tituloModalNormal.textContent = 'ENTRADA DE STOCK';
   const btnGuardarNormal = document.querySelector('#modal-entrada-stock .btn-primario');
@@ -995,69 +986,21 @@ async function abrirEntradaStock(id) {
   const esLblUnidad = document.getElementById('es-label-unidad');
   if (esLblUnidad) esLblUnidad.textContent = r.unidad || 'UND';
   document.getElementById('es-cantidad').value = '';
-  var selMoneda = document.getElementById('es-moneda-compra');
-  if (selMoneda) selMoneda.selectedIndex = 0;
-  document.getElementById('es-precio-costo').value = '';
-  const elPrecioOpuestoReset1 = document.getElementById('es-precio-opuesto');
-  if (elPrecioOpuestoReset1) elPrecioOpuestoReset1.value = '';
   var selMotivo = document.getElementById('es-motivo');
   if (selMotivo) selMotivo.selectedIndex = 0;
-  var selPago = document.getElementById('es-esquema-pago');
-  if (selPago) selPago.selectedIndex = 0;
   if (document.getElementById('es-fecha-negociacion')) document.getElementById('es-fecha-negociacion').value = getHoyVzla();
-  if (document.getElementById('es-fecha-pago')) document.getElementById('es-fecha-pago').value = '';
-  if (document.getElementById('es-fecha-pago-cont')) document.getElementById('es-fecha-pago-cont').style.display = 'none';
-  const refCPP = document.getElementById('es-ref-cpp');
-  if (refCPP) refCPP.textContent = '$ ' + fmtUSD(r.precio_costo_moneda) + ' (CPP actual)';
   document.getElementById('alerta-es-ok').style.display = 'none';
   document.getElementById('alerta-es-err').style.display = 'none';
   if (document.getElementById('es-clave-receptor'))  document.getElementById('es-clave-receptor').value = '';
   if (document.getElementById('es-factura-devolucion')) { document.getElementById('es-factura-devolucion').value = ''; document.getElementById('es-factura-devolucion-info').style.display = 'none'; }
   if (document.getElementById('es-area-origen'))    document.getElementById('es-area-origen').value = '';
-  if (document.getElementById('es-moneda-compra'))  { var sm = document.getElementById('es-moneda-compra'); sm.selectedIndex = 0; }
-  if (document.getElementById('es-tributos-cont'))  document.getElementById('es-tributos-cont').style.display = 'none';
-  document.querySelectorAll('input[name="es-entrada-incluye-iva"]').forEach(function(r){ r.checked = false; });
-  document.querySelectorAll('input[name="es-exento-iva"]').forEach(function(r){ r.checked = false; });
-  const exentoVal = document.getElementById('es-exento-iva-val');
-  if (exentoVal) exentoVal.value = '';
-  const ivaVal = document.getElementById('es-incluye-iva-val');
-  if (ivaVal) ivaVal.value = '';
-  const incluyeIVACont = document.getElementById('es-incluye-iva-cont');
-  if (incluyeIVACont) incluyeIVACont.style.display = 'none';
-  if (document.getElementById('es-tributos-preview')) document.getElementById('es-tributos-preview').style.display = 'none';
-  if (document.getElementById('es-precio-usd-cont'))document.getElementById('es-precio-usd-cont').style.display = 'none';
-  if (document.getElementById('es-tasa-bcv'))       document.getElementById('es-tasa-bcv').value = '';
-  if (document.getElementById('es-precio-usd-calc'))document.getElementById('es-precio-usd-calc').value = '';
-  if (document.getElementById('es-monto-total'))    document.getElementById('es-monto-total').value = '0,00';
-  const lblMontoTotalReset = document.getElementById('es-label-monto-total');
-  if (lblMontoTotalReset) lblMontoTotalReset.textContent = 'Monto en USD';
-  const esquemaEl = document.getElementById('es-esquema-pago');
-  if (esquemaEl) esquemaEl.selectedIndex = 0;
-  const creditoCont = document.getElementById('es-credito-cont');
-  if (creditoCont) creditoCont.style.display = 'none';
-  const prevEl = document.getElementById('es-cuotas-preview');
-  if (prevEl) { prevEl.innerHTML = ''; delete prevEl.dataset.cuotas; }
-  const montoCuotaEl = document.getElementById('es-cuotas-monto');
-  if (montoCuotaEl) montoCuotaEl.value = '';
-  const numCuotasEl = document.getElementById('es-cuotas-num');
-  if (numCuotasEl) numCuotasEl.value = '';
-  const fechaCuotaEl = document.getElementById('es-cuotas-fecha-inicio');
-  if (fechaCuotaEl) fechaCuotaEl.value = '';
   // Setear área y empleado desde el usuario logueado (hidden fields)
   await cargarUsuarioReceptorEntrada();
-  document.getElementById('es-proveedor').innerHTML = '<option value="">— Seleccionar proveedor (opcional) —</option>';
   Promise.all([
-    api('proveedores', 'GET', null, '?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif,id_categoria,param_categorias_proveedor:id_categoria(nombre)'),
-    api('param_categorias_proveedor','GET',null,'?nombre=ilike.*Artículo*&select=id&limit=1'),
     api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'),
     api('os_mercancias', 'GET', null, '?id_articulo=eq.'+id+'&select=id_orden,cantidad,subtotal_usd'),
   ]).then(async function(res) {
-    var provs = res[0], areas = res[2], repsArt = res[3] || [];
-    var catArticulo = res[1] && res[1][0] ? res[1][0].id : null;
-    if (catArticulo) provs = provs.filter(function(p){ return p.id_categoria === catArticulo; });
-    var selProv = document.getElementById('es-proveedor');
-    selProv.innerHTML = '<option value="">— Seleccionar proveedor —</option>'
-      + provs.map(function(p) { return '<option value="' + p.id_proveedor + '">' + p.nombre + (p.rif ? ' (' + p.rif + ')' : '') + '</option>'; }).join('');
+    var areas = res[0], repsArt = res[1] || [];
     var selOrigen = document.getElementById('es-area-origen');
     if (selOrigen) {
       // Excluir el Área receptora (siempre Compras en Entrada de Stock) de
@@ -1090,114 +1033,10 @@ async function abrirEntradaStock(id) {
       selFact.innerHTML = '<option value="">— Este artículo no tiene facturas emitidas —</option>';
     }
     onCambiarMotivoEntrada();
-    if (typeof buscarTasaBCVNegociacion === 'function') buscarTasaBCVNegociacion();
   }).catch(function(){});
   abrirModal('modal-entrada-stock');
   focusFirstField('modal-entrada-stock');
   setTimeout(function() { document.getElementById('es-cantidad').focus(); }, 100);
-}
-
-function onCambioEsquemaPago() {
-  const esquema = document.getElementById('es-esquema-pago')?.value;
-  const cont    = document.getElementById('es-credito-cont');
-  if (cont) cont.style.display = esquema === 'CREDITO' ? '' : 'none';
-  const fechaPagoCont = document.getElementById('es-fecha-pago-cont');
-  if (fechaPagoCont) fechaPagoCont.style.display = esquema === 'CONTADO' ? '' : 'none';
-  if (esquema === 'CREDITO') calcularCuotasEntrada();
-}
-
-function calcularCuotasEntrada() {
-  const numCuotas  = parseInt(document.getElementById('es-cuotas-num')?.value) || 0;
-  const fechaInicio = document.getElementById('es-cuotas-fecha-inicio')?.value || '';
-  const intervalo  = parseInt(document.getElementById('es-cuotas-intervalo')?.value) || 30;
-  const precioRawCuotas   = parseMontoVE(document.getElementById('es-precio-costo')?.value);
-  const monedaCuotas      = document.getElementById('es-moneda-compra')?.value || 'USD';
-  const tasaBCVCuotasVal  = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
-  // El precio se ingresa en la Moneda Negociación (puede ser VES) -- convertir
-  // siempre a USD antes de calcular, igual que se hace al guardar
-  // (guardarEntradaStock/nuevoPrecioCostoRaw), para que ambos cálculos coincidan
-  const montoTotal = monedaCuotas === 'VES'
-    ? (tasaBCVCuotasVal > 0 ? parseFloat((precioRawCuotas / tasaBCVCuotasVal).toFixed(4)) : parseMontoVE(document.getElementById('es-precio-usd-calc')?.value))
-    : (precioRawCuotas || parseMontoVE(document.getElementById('es-precio-usd-calc')?.value));
-  const cantidad   = parseFloat(document.getElementById('es-cantidad')?.value) || 0;
-  // montoTotal es el precio NEGOCIADO (puede traer IVA incluido o no) —
-  // reconstruir el TOTAL con IVA correctamente antes de repartir en cuotas
-  const exentoCuotasEnt  = document.getElementById('es-exento-iva-val')?.value === 'SI';
-  const incluyeCuotasEnt = document.getElementById('es-incluye-iva-val')?.value === 'SI';
-  const montoBaseEnt = montoTotal * cantidad;
-  const totalUSD   = parseFloat((exentoCuotasEnt || incluyeCuotasEnt ? montoBaseEnt : montoBaseEnt * (1+tasaIVAActual())).toFixed(2));
-  const preview    = document.getElementById('es-cuotas-preview');
-  if (!preview) return;
-
-  if (!numCuotas || !fechaInicio) {
-    preview.innerHTML = '';
-    return;
-  }
-
-  // Validar que monto por cuota no exceda el total
-  const montoCuotaInput = parseFloat(document.getElementById('es-cuotas-monto')?.value) || 0;
-  const montoMaxCuota = parseFloat((totalUSD / numCuotas).toFixed(2));
-  const montoCuotaFinal = montoCuotaInput > 0 ? montoCuotaInput : montoMaxCuota;
-
-  // Auto-llenar monto si está vacío
-  const montoEl = document.getElementById('es-cuotas-monto');
-  if (montoEl && !montoEl.value && totalUSD > 0) montoEl.value = montoMaxCuota;
-
-  // Validar que las cuotas no excedan el total
-  const totalCuotas = parseFloat((montoCuotaFinal * numCuotas).toFixed(2));
-  if (totalCuotas > totalUSD + 0.01) {
-    preview.innerHTML = '<div style="color:#fc8181;font-size:12px">⚠ El monto por cuota ($ '+fmtUSD(montoCuotaFinal)+' × '+numCuotas+' = $ '+fmtUSD(totalCuotas)+') excede el total ($ '+fmtUSD(totalUSD)+'). Reduzca el monto por cuota.</div>';
-    return;
-  }
-
-  // Generar tabla de cuotas
-  // Ajusta fecha al lunes siguiente si cae en fin de semana
-  function ajustarHabilLunes(d) {
-    var dia = d.getDay(); // 0=domingo, 6=sábado
-    if (dia === 6) d.setDate(d.getDate() + 2); // sábado → lunes
-    if (dia === 0) d.setDate(d.getDate() + 1); // domingo → lunes
-    return d;
-  }
-
-  const cuotas = [];
-  let fecha = ajustarHabilLunes(new Date(fechaInicio + 'T00:00:00'));
-  for (let i = 0; i < numCuotas; i++) {
-    if (i > 0) {
-      fecha = ajustarHabilLunes(new Date(new Date(cuotas[i-1].fecha + 'T00:00:00').setDate(
-        new Date(cuotas[i-1].fecha + 'T00:00:00').getDate() + intervalo
-      )));
-    }
-    cuotas.push({
-      num:   i + 1,
-      fecha: fecha.toISOString().split('T')[0],
-      monto: i === numCuotas - 1
-        ? parseFloat((totalUSD - montoCuotaFinal * (numCuotas - 1)).toFixed(2))
-        : montoCuotaFinal
-    });
-  }
-
-  const total = cuotas.reduce(function(s,c){ return s + c.monto; }, 0);
-  const diff  = parseFloat((totalUSD - total).toFixed(2));
-
-  preview.innerHTML =
-    '<div style="font-size:11px;color:var(--suave);margin-bottom:8px">Vista previa de cuotas — Total: $ '+fmtUSD(total)
-    +(diff !== 0 ? ' <span style="color:#fc8181">(diferencia: $ '+fmtUSD(Math.abs(diff))+')</span>' : ' <span style="color:#22c55e">✓</span>')+'</div>'
-    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'
-    +'<th style="padding:6px 8px;text-align:left;color:var(--suave);font-size:10px">Cuota</th>'
-    +'<th style="padding:6px 8px;text-align:left;color:var(--suave);font-size:10px">Fecha Vencimiento</th>'
-    +'<th style="padding:6px 8px;text-align:right;color:var(--suave);font-size:10px">Monto USD</th>'
-    +'</tr></thead><tbody>'
-    + cuotas.map(function(c) {
-        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
-          +'<td style="padding:6px 8px;font-weight:600">Cuota '+c.num+'</td>'
-          +'<td style="padding:6px 8px;font-family:var(--font-mono)">'+fmtFecha(c.fecha)+'</td>'
-          +'<td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);color:var(--naranja)">$ '+fmtUSD(c.monto)+'</td>'
-          +'</tr>';
-      }).join('')
-    +'</tbody></table></div>';
-
-  // Guardar cuotas en dataset para usarlas al guardar
-  preview.dataset.cuotas = JSON.stringify(cuotas);
 }
 
 async function guardarEntradaStock() {
@@ -1245,124 +1084,28 @@ async function guardarEntradaStock() {
     return mostrarError('Este Artículo se mide en Unidades (UND) -- la cantidad debe ser un número entero, sin decimales.', 'es-cantidad');
   }
 
-  // Moneda / Precio Negociación / Modalidad de Pago — SOLO para Compra.
-  // Devolución, Ajuste y Transferencia usan el CPP actual del artículo tal
-  // cual está, sin promediar un precio inventado solo para pasar el formulario.
-  let monedaSel = null, precioVal = 0;
-  if (motivoSel === 'compra') {
-    monedaSel = document.getElementById('es-moneda-compra')?.value;
-    if (!monedaSel)                 return mostrarError('Seleccione la Moneda Negociación.', 'es-moneda-compra');
-    precioVal = parseMontoVE(document.getElementById('es-precio-costo')?.value);
-    if (precioVal <= 0)             return mostrarError('Ingrese el Precio Negociación.', 'es-precio-costo');
-  }
-  // Precio Venta — opcional, no se valida
-  // Proveedor, Factura o Área origen — obligatorio según motivo
-  if (motivoSel === 'compra') {
-    const provSel = document.getElementById('es-proveedor')?.value;
-    if (!provSel) return mostrarError('Seleccione el Proveedor.', 'es-proveedor');
-    // Exento IVA obligatorio
-    const exentoSel = document.querySelector('input[name="es-exento-iva"]:checked');
-    if (!exentoSel) return mostrarError('Debe indicar si el Gasto está Exento de IVA.', 'es-exento-iva-si');
-    // Si NO exento, IVA obligatorio
-    if (exentoSel.value === 'NO') {
-      const ivaSeleccionado = document.getElementById('es-incluye-iva-val')?.value ? {value: document.getElementById('es-incluye-iva-val').value} : null;
-      if (!ivaSeleccionado) return mostrarError('Debe indicar si el monto facturado incluye IVA.', 'es-incluye-iva-si');
-    }
-  } else if (motivoSel === 'transferencia') {
+  // Área de Origen o Factura de Devolución -- obligatorio según motivo
+  if (motivoSel === 'transferencia') {
     const areaOrig = document.getElementById('es-area-origen')?.value;
     if (!areaOrig)                  return mostrarError('Seleccione el Área de Origen.', 'es-area-origen');
   } else if (motivoSel === 'devolucion') {
     const facturaSel = document.getElementById('es-factura-devolucion')?.value;
     if (!facturaSel)                return mostrarError('Seleccione la Factura a la que corresponde esta devolución.', 'es-factura-devolucion');
   }
-  let pagoDSel = null;
-  if (motivoSel === 'compra') {
-    pagoDSel = document.getElementById('es-esquema-pago')?.value;
-    if (!pagoDSel) return mostrarError('Seleccione la Modalidad de Pago.', 'es-esquema-pago');
-    if (pagoDSel === 'CONTADO') {
-      const fechaPagoVal = document.getElementById('es-fecha-pago')?.value || '';
-      if (!fechaPagoVal) return mostrarError('Ingrese la Fecha de Pago.', 'es-fecha-pago');
-      const fechaNegParaPago = document.getElementById('es-fecha-negociacion')?.value || '';
-      if (fechaNegParaPago && fechaPagoVal < fechaNegParaPago) {
-        return mostrarError('La Fecha de Pago no puede ser anterior a la Fecha de Negociación.', 'es-fecha-pago');
-      }
-    }
-    if (pagoDSel === 'CREDITO') {
-      const numCuotasVal  = parseInt(document.getElementById('es-cuotas-num')?.value) || 0;
-      const fechaCuotaVal = document.getElementById('es-cuotas-fecha-inicio')?.value || '';
-      if (!numCuotasVal || numCuotasVal < 1) return mostrarError('Ingrese el número de cuotas.', 'es-cuotas-num');
-      if (!fechaCuotaVal) return mostrarError('Ingrese la Fecha de la Primera Cuota.', 'es-cuotas-fecha-inicio');
-      if (fechaCuotaVal <= getHoyVzla()) return mostrarError('La Fecha de la Primera Cuota tiene que ser mayor que el día de hoy.', 'es-cuotas-fecha-inicio');
-    }
-  }
   // Observaciones — opcional, no se valida
 
   try {
     const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
     let nuevoPrecioCosto = 0;
-    let nuevoPrecioCostoRaw = 0;
-    let moneda_compra_val = 'USD';
-    let moneda_pago_val = 'USD';
-    let precio_compra_original = null;
+    // Devolución / Transferencia: sin negociación -- usar la tasa vigente
+    // solo como referencia para mostrar montos en Bs, sin exigirla.
     let tasa_bcv_usada = _tasaVigente || null;
-    let incluyeIVA_ent = false;
-    const IVA_RATE_ENT = tasaIVAActual();
-
-    if (motivoSel === 'compra') {
-      const precioIngresado  = parseMontoVE(document.getElementById('es-precio-costo').value);
-      const monedaCompra     = document.getElementById('es-moneda-compra')?.value || 'USD';
-      const tasaBCVVal       = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
-      incluyeIVA_ent = document.getElementById('es-incluye-iva-val')?.value === 'SI' || false;
-      nuevoPrecioCostoRaw = monedaCompra === 'VES'
-        ? (tasaBCVVal > 0 ? parseFloat((precioIngresado / tasaBCVVal).toFixed(8)) : parseMontoVE(document.getElementById('es-precio-usd-calc')?.value))
-        : precioIngresado;
-      // Si incluye IVA — precio costo = base sin IVA
-      nuevoPrecioCosto = incluyeIVA_ent
-        ? parseFloat((nuevoPrecioCostoRaw / (1 + IVA_RATE_ENT)).toFixed(8))
-        : nuevoPrecioCostoRaw;
-      if (monedaCompra === 'VES' && precioIngresado > 0 && nuevoPrecioCosto <= 0) {
-        errEl.textContent = 'No se encontró tasa BCV para convertir el precio.';
-        errEl.style.display = 'block';
-        document.getElementById('es-precio-costo')?.focus();
-        resetBtn(); return;
-      }
-      moneda_compra_val      = monedaCompra;
-      moneda_pago_val        = document.getElementById('es-moneda-pago')?.value || monedaCompra;
-      precio_compra_original = precioIngresado;
-      tasa_bcv_usada         = tasaBCVVal > 0 ? tasaBCVVal : null;
-      // Si no hay tasa, buscarla de la fecha de negociación
-      if (!tasa_bcv_usada) {
-        const fechaNegBusq = document.getElementById('es-fecha-negociacion')?.value || getHoyVzla();
-        try {
-          const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fechaNegBusq+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
-          if (tasaRows && tasaRows[0]) tasa_bcv_usada = parseFloat(tasaRows[0].tipo_cambio);
-        } catch(e) {}
-      }
-      // Último recurso: la tasa vigente en caché
-      if (!tasa_bcv_usada) tasa_bcv_usada = _tasaVigente || null;
-      // Si aun así no hay tasa válida, DETENER -- de lo contrario el monto_ves
-      // de la CxP y del asiento contable caerían a "monto_usd * 1" más abajo
-      // (un caso real: $30 USD se registró como Bs 30 exactos, tratando el
-      // dólar 1:1 con el bolívar por falta de una tasa BCV registrada).
-      if (!tasa_bcv_usada || tasa_bcv_usada <= 1) {
-        errEl.textContent = 'No se encontró una Tasa BCV válida para la Fecha de Negociación. Registre la tasa del día en Parámetros → Tasas de Cambio antes de continuar (o ingrésela manualmente en el campo Tasa BCV de este formulario).';
-        errEl.style.display = 'block';
-        document.getElementById('es-tasa-bcv')?.focus();
-        resetBtn(); return;
-      }
-    } else {
-      // Devolución / Ajuste / Transferencia: sin negociación — usar la tasa
-      // vigente solo como referencia para mostrar montos en Bs, sin exigirla.
-      if (!tasa_bcv_usada || tasa_bcv_usada <= 1) tasa_bcv_usada = 1;
-    }
+    if (!tasa_bcv_usada || tasa_bcv_usada <= 1) tasa_bcv_usada = 1;
     const nuevoPrecioVenta       = null; // precio venta se gestiona desde SALIDA
 
     // ── FASE 1: Todas las validaciones ANTES de tocar BD ──
     const motivoEnt = motivoSel;
-    if (motivoEnt === 'compra') {
-      const idProvVal = document.getElementById('es-proveedor')?.value;
-      if (!idProvVal) { errEl.textContent = 'Debe seleccionar el proveedor.'; errEl.style.display = 'block'; document.getElementById('es-proveedor')?.focus(); resetBtn(); return; }
-    } else if (motivoEnt === 'devolucion') {
+    if (motivoEnt === 'devolucion') {
       const facturaDevVal = document.getElementById('es-factura-devolucion')?.value;
       if (!facturaDevVal) { errEl.textContent = 'Debe seleccionar la Factura a la que corresponde esta devolución.'; errEl.style.display = 'block'; document.getElementById('es-factura-devolucion')?.focus(); resetBtn(); return; }
       const facSel = (window._facturasDevolucionArt || []).find(function(f){ return String(f.id_factura) === String(facturaDevVal); });
@@ -1444,178 +1187,47 @@ async function guardarEntradaStock() {
     }
 
     // ── FASE 3: Registrar entrada en historial ──
-    const idProvEnt  = (motivoEnt === 'compra') ? (parseInt(document.getElementById('es-proveedor')?.value) || null) : null;
     const clienteNomH  = (motivoEnt === 'devolucion') ? ((window._facturasDevolucionArt || []).find(function(f){ return String(f.id_factura) === String(document.getElementById('es-factura-devolucion')?.value); })?.receptor_nombre || null) : null;
     const idFacturaH   = (motivoEnt === 'devolucion') ? (parseInt(document.getElementById('es-factura-devolucion')?.value) || null) : null;
 
-    // Monto TOTAL (con IVA si aplica) -- se calcula UNA sola vez, ANTES de
-    // guardar la Entrada, para que quede congelado en la fila (columna
-    // monto_total_con_iva) y así el Asiento y la CxP -- que para Compra
-    // ahora se generan recién al APROBAR, posiblemente horas/días después,
-    // por otra persona -- usen exactamente este mismo monto, sin
-    // recalcularlo con una tasa o un redondeo distinto al de este momento.
-    const exentoIVAEnt2   = document.getElementById('es-exento-iva-val')?.value === 'SI';
-    const precioBaseAsiento = motivoEnt === 'compra' ? nuevoPrecioCostoRaw : costoActual;
-    const montoTotalConIVA = motivoEnt !== 'compra'
-      ? parseFloat((precioBaseAsiento * cantidad).toFixed(2))
-      : (exentoIVAEnt2
-          ? parseFloat((precioBaseAsiento * cantidad).toFixed(2))
-          : parseFloat((precioBaseAsiento * cantidad * (incluyeIVA_ent ? 1 : (1 + IVA_RATE_ENT))).toFixed(2)));
-
-    // Monto TOTAL en la MONEDA ORIGINAL negociada (Bs si se negoció en VES,
-    // USD si se negoció en USD) -- calculado UNA sola vez, con la misma
-    // fórmula exacta que usa la Ficha (calcularTributosEntrada), y
-    // congelado en su propia columna. Antes, cualquier lugar que necesitara
-    // mostrar el monto en Bs lo recalculaba por su cuenta (USD congelado ×
-    // tasa), y esa ida-y-vuelta VES→USD→VES arrastraba centavos de
-    // diferencia frente a lo que la Ficha mostró originalmente -- ahora
-    // todos leen este mismo valor, nadie lo vuelve a calcular.
-    // baseMonedaOriginal: lo mismo pero para la BASE sin IVA -- necesaria
-    // para que el Asiento contable (línea "Inventario") tampoco tenga que
-    // extraerla de nuevo dividiendo el total, evitando otra fuente más de
-    // centavos de diferencia.
-    let montoTotalMonedaOriginal = null;
-    let baseMonedaOriginal = null;
-    if (motivoEnt === 'compra') {
-      const precioIngresadoEnt = parseMontoVE(document.getElementById('es-precio-costo')?.value);
-      const montoOrigEnt = precioIngresadoEnt * cantidad;
-      if (exentoIVAEnt2) {
-        montoTotalMonedaOriginal = parseFloat(montoOrigEnt.toFixed(2));
-        baseMonedaOriginal = montoTotalMonedaOriginal;
-      } else if (incluyeIVA_ent) {
-        montoTotalMonedaOriginal = parseFloat(montoOrigEnt.toFixed(2));
-        baseMonedaOriginal = parseFloat((montoOrigEnt / (1 + IVA_RATE_ENT)).toFixed(2));
-      } else {
-        baseMonedaOriginal = parseFloat(montoOrigEnt.toFixed(2));
-        const ivaOrigEnt = parseFloat((montoOrigEnt * IVA_RATE_ENT).toFixed(4));
-        montoTotalMonedaOriginal = parseFloat((montoOrigEnt + ivaOrigEnt).toFixed(2));
-      }
-    }
-
-    // Cuotas (solo Crédito): se guarda el desglose YA CALCULADO tal cual se
-    // ve en pantalla (con cualquier ajuste manual del Usuario al monto por
-    // cuota, y el ajuste de fecha a día hábil) -- no se recalcula después,
-    // para que la aprobación (que puede pasar mucho más tarde) use
-    // exactamente lo que el Usuario vio y aceptó al crear la Entrada.
-    let cuotasJsonVal = null;
-    if (motivoEnt === 'compra' && document.getElementById('es-esquema-pago')?.value === 'CREDITO') {
-      const previewCuotasEnt = document.getElementById('es-cuotas-preview');
-      cuotasJsonVal = previewCuotasEnt?.dataset.cuotas ? previewCuotasEnt.dataset.cuotas : null;
-    }
-
-    // Número de Orden de Compra -- consecutivo real y limpio, se pide UNA
-    // sola vez al crear (nunca al retomar una rechazada, que conserva el
-    // mismo número que ya tenía).
-    let idOrdenCompraNueva = null;
-    if (motivoEnt === 'compra' && !window._retomandoEntradaId) {
-      idOrdenCompraNueva = await obtenerSiguienteNumeroOrdenCompra();
-    }
+    // Monto TOTAL -- se calcula UNA sola vez, antes de guardar la Entrada,
+    // usando el CPP actual del artículo (Devolución/Transferencia no
+    // negocian precio nuevo, así que no hay IVA que calcular aquí).
+    const montoTotalConIVA = parseFloat((costoActual * cantidad).toFixed(2));
 
     let id_entrada = null;
     const datosEntradaGuardar = {
       id_articulo:            id,
       cantidad:               cantidad,
-      precio_costo_moneda:    nuevoPrecioCosto > 0 ? nuevoPrecioCosto : costoActual,
-      precio_compra_original: precio_compra_original || null,
-      moneda_compra:          moneda_compra_val,
-      moneda_pago:            motivoEnt === 'compra' ? moneda_pago_val : null,
+      precio_costo_moneda:    costoActual,
+      precio_compra_original: null,
+      moneda_compra:          'USD',
+      moneda_pago:            null,
       tasa_bcv:               tasa_bcv_usada,
       fecha_entrada:          document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
       fecha_negociacion:      document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
       id_area:                id_areaEnt,
       id_empleado:            idEmpEntVal,
-      id_proveedor:           idProvEnt,
+      id_proveedor:           null,
       cliente_nombre:         clienteNomH,
       id_factura:             idFacturaH,
       id_area_origen:         id_areaOrigenH,
       motivo:                 motivoEnt || null,
-      esquema_pago:           document.getElementById('es-esquema-pago')?.value || null,
+      esquema_pago:           null,
       observaciones:          ((motivoEnt === 'transferencia' ? '[TRANSFERENCIA] ' : '') + (document.getElementById('es-observaciones')?.value.trim() || '')) || null,
-      exento_iva:             document.getElementById('edit-mov-exento-iva-val')?.value === 'SI' ? true : (document.getElementById('es-exento-iva-val')?.value === 'SI' ? true : (document.getElementById('es-exento-iva-val')?.value === 'NO' ? false : null)),
-      incluye_iva:            document.getElementById('es-incluye-iva-val')?.value === 'SI' ? true : (document.getElementById('es-incluye-iva-val')?.value === 'NO' ? false : null),
-      fecha_pago:             document.getElementById('es-esquema-pago')?.value === 'CONTADO' ? (document.getElementById('es-fecha-pago')?.value || null) : null,
+      exento_iva:             null,
+      incluye_iva:            null,
+      fecha_pago:             null,
       monto_total_con_iva:    montoTotalConIVA,
-      monto_total_moneda_original: montoTotalMonedaOriginal,
-      base_moneda_original:   baseMonedaOriginal,
-      cuotas_json:            cuotasJsonVal,
-      estado_aprobacion:      motivoEnt === 'compra' ? 'PENDIENTE' : null,
+      monto_total_moneda_original: null,
+      base_moneda_original:   null,
+      cuotas_json:            null,
+      estado_aprobacion:      null,
       id_usuario:             sesionActual.correo_usuario
     };
-    if (motivoEnt === 'compra' && idOrdenCompraNueva) datosEntradaGuardar.id_orden_compra = idOrdenCompraNueva;
 
-    if (window._retomandoEntradaId) {
-      // ── Retomar una Entrada RECHAZADA: se actualiza la MISMA fila (no se
-      // crea una nueva), y se limpia el rechazo anterior para que quede
-      // claro que fue corregida y reenviada.
-      id_entrada = window._retomandoEntradaId;
-      datosEntradaGuardar.motivo_rechazo = null;
-      datosEntradaGuardar.aprobado_por = null;
-      datosEntradaGuardar.fecha_aprobacion = null;
-      await api('stock_entradas', 'PATCH', datosEntradaGuardar, '?id_entrada=eq.'+id_entrada);
-    } else {
-      const entradaRes = await api('stock_entradas', 'POST', datosEntradaGuardar);
-      id_entrada = entradaRes && entradaRes[0] ? entradaRes[0].id_entrada : null;
-    }
-
-    // Número de Orden real a mostrar -- el recién pedido si es Compra
-    // nueva, o el que YA tenía si se está retomando una rechazada (se
-    // conserva, nunca se pide uno nuevo al corregir).
-    let idOrdenCompraReal = idOrdenCompraNueva;
-    if (motivoEnt === 'compra' && window._retomandoEntradaId && !idOrdenCompraReal) {
-      try {
-        const filaOrdenRetomar = await api('stock_entradas','GET',null,'?id_entrada=eq.'+window._retomandoEntradaId+'&select=id_orden_compra');
-        idOrdenCompraReal = filaOrdenRetomar && filaOrdenRetomar[0] ? filaOrdenRetomar[0].id_orden_compra : null;
-      } catch(eOrdenRetomar) {}
-    }
-
-    // ── COMPRA: se detiene aquí -- no se toca Stock, CPP, Asiento ni CxP
-    // todavía. Eso solo pasa cuando un Nivel de Firma APRUEBE esta Entrada
-    // (ver ejecutarEfectosEntradaCompra() / aprobarEntradaCompra()). Se
-    // notifica al aprobador correspondiente y se corta la ejecución aquí.
-    if (motivoEnt === 'compra') {
-      try {
-        const numDocSol = idOrdenCompraReal ? 'OC-' + idOrdenCompraReal : ('OC-INV-' + id);
-        // Monto en Bs EXACTO para mostrar en la notificación -- se deriva
-        // directo del montoTotalMonedaOriginal ya calculado arriba (una
-        // sola fórmula, una sola vez), no se vuelve a calcular por su
-        // cuenta. Si se negoció en VES, ya ES el Bs; si se negoció en USD,
-        // se convierte una sola vez (sin ida y vuelta).
-        const montoBsExacto = (motivoEnt === 'compra' && montoTotalMonedaOriginal != null)
-          ? (moneda_compra_val === 'VES'
-              ? montoTotalMonedaOriginal
-              : (tasa_bcv_usada ? parseFloat((montoTotalMonedaOriginal * tasa_bcv_usada).toFixed(2)) : null))
-          : null;
-        // Modalidad de Pago (Contado/Crédito) -- esto SÍ se conoce y se
-        // decide al crear la Entrada. La Moneda de Pago ya no aplica
-        // mostrarla aquí: esa decisión se toma recién en Ejecutar Pago.
-        await enrutarAprobacionEntrada(montoTotalConIVA, id_entrada, numDocSol, {
-          nombreArt: r.nombre_articulo || r.codigo_articulo || ('Art#'+id),
-          proveedorNombre: document.getElementById('es-proveedor')?.selectedOptions[0]?.text || null,
-          cantidad: cantidad,
-          unidad: r.unidad || 'UND',
-          numArticulos: 1,
-          piezasTotal: cantidad,
-          monedaCompra: moneda_compra_val,
-          modalidadPago: document.getElementById('es-esquema-pago')?.value || 'CONTADO',
-          tasaBcv: tasa_bcv_usada,
-          montoBsExacto: montoBsExacto,
-          montoIGTF: 0,
-          esContribuyenteEspecial: window._tipoContribProveedorEntrada === 'ESPECIAL'
-        });
-      } catch(eEnrutEnt) { console.warn('Error enrutando aprobación de Entrada:', eEnrutEnt); }
-      okEl.textContent = window._retomandoEntradaId
-        ? 'Entrada corregida y reenviada -- pendiente de aprobación de un Nivel de Firma.'
-        : 'Entrada registrada -- pendiente de aprobación de un Nivel de Firma antes de afectar Stock/Contabilidad.';
-      okEl.style.display = 'block';
-      window._retomandoEntradaId = null;
-      setTimeout(async function() {
-        cerrarModal('modal-entrada-stock');
-        cerrarModal('modal-stock-articulo');
-        renderInventario();
-      }, 1400);
-      resetBtn();
-      return;
-    }
+    const entradaRes = await api('stock_entradas', 'POST', datosEntradaGuardar);
+    id_entrada = entradaRes && entradaRes[0] ? entradaRes[0].id_entrada : null;
 
     // ── FASE 4: Actualizar CPP (global, sigue en inventario_almacen) y stock del área receptora (Compras) ──
     const patchCPP = { precio_costo_moneda: parseFloat(cpp.toFixed(8)) };
@@ -1653,41 +1265,10 @@ async function guardarEntradaStock() {
     //   es ANULAR la Salida original desde su Historial (no un Reverso/asiento
     //   nuevo aquí) — anular deja sin efecto el gasto ya registrado, en vez de
     //   generar un segundo asiento que podría producir ganancias/pérdidas ficticias.
-
-    // montoTotalConIVA, precioBaseAsiento y exentoIVAEnt2 ya se calcularon
-    // arriba, antes de guardar la Entrada (para poder congelarlo en
-    // monto_total_con_iva) -- se reutilizan aquí tal cual.
-
-    // Transferencias de otros articulos (Mercancias) NO generan asiento aqui.
-    // Devolución de Cliente tampoco usa el asiento genérico — usa su propio
+    // Devolución de Cliente tampoco usa un asiento genérico -- usa su propio
     // reverso de Ingreso + Costo de Venta más abajo (ver bloque siguiente).
-    if (motivoEnt !== "transferencia" && motivoEnt !== "devolucion") try {
-      const areaNombreEnt = document.getElementById('es-area-display')?.textContent || 'Área';
-      const tipoAst = motivoEnt === 'compra' ? 'ENTRADA_COMPRA' : 'ENTRADA_AJUSTE';
-      await generarAsientoInventario(tipoAst, {
-        articulo:   r.nombre_articulo || r.codigo_articulo || ('Art#' + id),
-        cantidad:   cantidad,
-        montoUSD:   montoTotalConIVA,
-        areaId:     id_areaEnt,
-        areaNombre: areaNombreEnt,
-        referencia: id_entrada ? 'ENT-' + id_entrada : ('ENT-INV-' + id),
-        id_cuentaInventario: r.id_cuenta_contable || null,
-        fecha:      document.getElementById('es-fecha-negociacion')?.value || getHoyVzla(),
-        tasa:       tasa_bcv_usada || null,
-        // montoTotalConIVA ya es el TOTAL (con IVA incluido si no es exento);
-        // se le pide a generarAsientoInventario que lo desgloce (base = total/1.16)
-        incluyeIVA:  true,
-        exentoIVA:   exentoIVAEnt2
-        // NOTA: ya NO se pasa baseExactaUSD/baseExactaBs con el CPP mezclado.
-        // El asiento de la Compra debe reflejar SIEMPRE el monto real de esta
-        // factura (Base/IVA/Total tal como se ve en Tributos) -- la Cuenta
-        // por Pagar y el Crédito Fiscal de IVA deben coincidir exacto con lo
-        // facturado por el proveedor, sin mezclarse con el costo promedio de
-        // compras anteriores. El posible residuo de redondeo que esto genera
-        // en la cuenta de Inventario se resuelve con un asiento de ajuste
-        // automático cuando el stock del artículo llegue a 0.
-      });
-    } catch(eAstInv) { console.warn('Error asiento entrada inventario:', eAstInv); }
+    // Como esos son los dos únicos motivos posibles en este formulario, no
+    // queda ningún caso que necesite un asiento genérico aquí.
 
     // ── Devolución de Cliente: reverso de Ingreso + reverso de Costo de Venta ──
     // (prorrateado según cuánto de lo facturado se está devolviendo)
@@ -1779,12 +1360,6 @@ async function guardarEntradaStock() {
         }
       }
     } catch(eDevAst) { console.warn('Error generando asientos de Devolución de Cliente:', eDevAst); }
-
-    // NOTA: la creación de la CxP para motivo='compra' ya NO ocurre aquí --
-    // esa rama de código siempre hacía "return" más arriba (ver bloque
-    // "COMPRA: se detiene aquí"), así que este bloque había quedado
-    // inalcanzable. La CxP para Compras ahora se crea en
-    // ejecutarEfectosEntradaCompra(), al momento de la aprobación.
 
     // ── FASE 6: Actualizar cache y cerrar ──
     if (r) {
@@ -3160,97 +2735,10 @@ async function invRenderTipos(cont) {
 
 // Lista las Entradas de Compra con estado_aprobacion = 'PENDIENTE' -- con
 // botones reales de Aprobar/Rechazar. Solo Compras a Proveedor pasan por
-// aquí (Devolución/Ajuste/Transferencia siguen ejecutándose de inmediato,
-// sin necesitar aprobación).
-// Retoma una Entrada de Compra RECHAZADA: abre el mismo modal de Nueva
-// Entrada, precargado con los datos guardados, para corregirlos y
-// reenviarla a aprobación -- sin crear una fila nueva (se actualiza la
-// misma), y sin tocar Stock/CPP/Asiento/CxP (nunca se aplicaron, quedaron
-// detenidos desde que se creó, así que no hay nada que revertir).
-async function retomarEntradaRechazada(id_entrada) {
-  try {
-    const entRows = await api('stock_entradas','GET',null,'?id_entrada=eq.'+id_entrada);
-    const m = entRows && entRows[0] ? entRows[0] : null;
-    if (!m) { alert('No se encontró la Entrada.'); return; }
-    if (m.estado_aprobacion !== 'RECHAZADA') {
-      alert('Esta Entrada ya no está en estado Rechazada (estado actual: ' + (m.estado_aprobacion || '—') + ').');
-      return;
-    }
-    if (!sesionActual?.administrador && m.id_usuario !== sesionActual?.correo_usuario) {
-      alert('Solo quien creó esta Entrada (o un administrador) puede retomarla.');
-      return;
-    }
+// aquí (todas vienen de Orden de Compra desde que se retiró la opción
+// "Compra a proveedor" del formulario manual de Entrada de Stock).
 
-    await abrirEntradaStock(m.id_articulo);
-    // abrirEntradaStock carga proveedores/áreas en segundo plano (Promise.all
-    // sin await) -- se espera un momento a que termine antes de setear el
-    // Proveedor, si no el select seguiría con solo la opción vacía.
-    await new Promise(function(res) { setTimeout(res, 600); });
-
-    const motivoSelR = document.getElementById('es-motivo');
-    if (motivoSelR) { motivoSelR.value = 'compra'; onCambiarMotivoEntrada(); }
-
-    const fechaNegR = document.getElementById('es-fecha-negociacion');
-    if (fechaNegR) fechaNegR.value = (m.fecha_negociacion || m.fecha_entrada || '').slice(0,10);
-    const cantR = document.getElementById('es-cantidad');
-    if (cantR) cantR.value = m.cantidad;
-
-    const monedaSelR = document.getElementById('es-moneda-compra');
-    if (monedaSelR) { monedaSelR.value = m.moneda_compra || 'USD'; await onCambiarMonedaEntrada(); }
-    // La tasa que se auto-cargó al cambiar Moneda es la de HOY -- se
-    // sobreescribe con la que realmente se negoció originalmente.
-    const tasaR = document.getElementById('es-tasa-bcv');
-    if (tasaR && m.tasa_bcv) tasaR.value = m.tasa_bcv;
-    const precioR = document.getElementById('es-precio-costo');
-    if (precioR) {
-      // El campo espera formato venezolano (puntos de millar, coma decimal)
-      // -- si se mete un número plano (estilo JS), el parser lo lee mal y
-      // arrastra el error a "Monto en USD" (quedaba en 0).
-      precioR.value = m.precio_compra_original != null ? formatearMontoVE(m.precio_compra_original) : '';
-      onCambiarPrecioEntrada();
-    }
-
-    const provSelR = document.getElementById('es-proveedor');
-    if (provSelR && m.id_proveedor) { provSelR.value = m.id_proveedor; await onCambiarProveedorEntrada(); }
-
-    if (m.exento_iva !== null) {
-      const radioExR = document.getElementById(m.exento_iva ? 'es-exento-iva-si' : 'es-exento-iva-no');
-      if (radioExR) { radioExR.checked = true; document.getElementById('es-exento-iva-val').value = m.exento_iva ? 'SI' : 'NO'; onCambioExentoIVAEntrada(); }
-    }
-    if (!m.exento_iva && m.incluye_iva !== null) {
-      const radioIvaR = document.getElementById(m.incluye_iva ? 'es-incluye-iva-si' : 'es-incluye-iva-no');
-      if (radioIvaR) { radioIvaR.checked = true; document.getElementById('es-incluye-iva-val').value = m.incluye_iva ? 'SI' : 'NO'; calcularTributosEntrada(); }
-    }
-
-    const esquemaSelR = document.getElementById('es-esquema-pago');
-    if (esquemaSelR) { esquemaSelR.value = m.esquema_pago || 'CONTADO'; onCambioEsquemaPago(); }
-    if (m.esquema_pago === 'CREDITO' && m.cuotas_json) {
-      const cuotasArrR = typeof m.cuotas_json === 'string' ? JSON.parse(m.cuotas_json) : m.cuotas_json;
-      if (cuotasArrR && cuotasArrR.length) {
-        const numCuotasElR = document.getElementById('es-cuotas-num');
-        const fechaCuotaElR = document.getElementById('es-cuotas-fecha-inicio');
-        if (numCuotasElR) numCuotasElR.value = cuotasArrR.length;
-        if (fechaCuotaElR) fechaCuotaElR.value = cuotasArrR[0].fecha;
-        calcularCuotasEntrada();
-      }
-    } else if (m.esquema_pago === 'CONTADO' && m.fecha_pago) {
-      const fechaPagoR = document.getElementById('es-fecha-pago');
-      if (fechaPagoR) fechaPagoR.value = m.fecha_pago;
-    }
-
-    // Marca el modal en "modo retomar" -- guardarEntradaStock() lo detecta
-    // y, en vez de crear una fila nueva, actualiza esta misma.
-    window._retomandoEntradaId = id_entrada;
-    const tituloModalR = document.querySelector('#modal-entrada-stock .modal-header h3');
-    if (tituloModalR) tituloModalR.textContent = '↻ RETOMAR ENTRADA RECHAZADA';
-    const btnGuardarR = document.querySelector('#modal-entrada-stock .btn-primario');
-    if (btnGuardarR) btnGuardarR.textContent = 'CORREGIR Y REENVIAR A APROBACIÓN';
-  } catch(e) {
-    alert('Error al retomar la Entrada: ' + msgErr(e));
-  }
-}
-
-// Versión "por lote" de retomarEntradaRechazada() -- abre el modal de
+// Versión "por lote" de lo anterior -- abre el modal de
 // Entrada Consolidada, precargado con TODOS los Artículos del Lote
 // rechazado, para corregirlos juntos y reenviar UNA SOLA solicitud de
 // aprobación (igual que al crearlo la primera vez).
@@ -3352,46 +2840,14 @@ async function invRenderEntradasRechazadas(cont) {
     const provMap = {}; (provs||[]).forEach(function(p){ provMap[p.id_proveedor] = p.nombre; });
 
     // Agrupar por Lote (Entrada Consolidada) -- una sola fila por Lote, no
-    // una por cada Artículo que lo compone. Las que no pertenecen a ningún
-    // Lote (id_orden_compra null) se muestran igual que siempre.
+    // una por cada Artículo que lo compone. Desde que se retiró la opción
+    // "Compra a proveedor" del formulario manual, toda Entrada de Compra
+    // viene de Orden de Compra y siempre trae id_orden_compra -- ya no
+    // existen Entradas de Compra "sueltas" (sin Lote).
     const gruposRech = {};
-    const sueltas = [];
     rechazadas.forEach(function(p) {
-      if (p.id_orden_compra) {
-        if (!gruposRech[p.id_orden_compra]) gruposRech[p.id_orden_compra] = [];
-        gruposRech[p.id_orden_compra].push(p);
-      } else {
-        sueltas.push(p);
-      }
-    });
-
-    const filasSueltas = sueltas.map(function(p) {
-      const art = artMap[p.id_articulo];
-      const nomArt = art ? (art.codigo_articulo ? art.codigo_articulo+' — ' : '') + art.nombre_articulo : ('Art#'+p.id_articulo);
-      const nomProv = provMap[p.id_proveedor] || '—';
-      // Monto en Bs: usa el congelado (monto_total_moneda_original) si se
-      // negoció en VES -- no se recalcula con la tasa de hoy, que sería
-      // otra fuente más de descuadre frente a lo que se negoció realmente.
-      // Suma el IGTF (si aplica) -- es lo que realmente se le debe pagar
-      // al Proveedor, para que coincida con lo que muestra la notificación.
-      const montoIGTF_USD_Fila = p.aplica_igtf && p.monto_igtf != null ? parseFloat(p.monto_igtf) : 0;
-      const montoIGTF_BS_Fila = montoIGTF_USD_Fila > 0 && p.tasa_bcv ? parseFloat((montoIGTF_USD_Fila * p.tasa_bcv).toFixed(2)) : 0;
-      const montoBsFila = p.moneda_compra === 'VES' && p.monto_total_moneda_original != null
-        ? p.monto_total_moneda_original + montoIGTF_BS_Fila
-        : (p.tasa_bcv ? (p.monto_total_con_iva * p.tasa_bcv) + montoIGTF_BS_Fila : null);
-      const montoUSDFila = parseFloat(p.monto_total_con_iva || 0) + montoIGTF_USD_Fila;
-      return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
-        +'<td style="padding:8px;font-size:12px">'+formatearFechaCorta(p.fecha_negociacion)+'</td>'
-        +'<td style="padding:8px;font-size:12px">'+nomArt+'</td>'
-        +'<td style="padding:8px;text-align:right;font-family:var(--font-mono);font-size:12px">'+p.cantidad+'</td>'
-        +'<td style="padding:8px;font-size:12px">'+nomProv+'</td>'
-        +'<td style="padding:8px;text-align:right;font-family:var(--font-mono)">'
-          +'<div style="font-weight:600;color:#fc8181">'+(montoBsFila != null ? fmtBs(montoBsFila)+' Bs' : '—')+'</div>'
-          +'<div style="font-size:10px;color:var(--suave)">$ '+fmtUSD(montoUSDFila)+(montoIGTF_USD_Fila > 0 ? ' (incl. IGTF)' : '')+'</div>'
-        +'</td>'
-        +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(p.motivo_rechazo||'—')+'</td>'
-        +'<td style="padding:8px;white-space:nowrap"><button class="btn-naranja" onclick="retomarEntradaRechazada('+p.id_entrada+')" style="font-size:11px;padding:4px 10px;margin-right:8px">↻ Retomar</button></td>'
-        +'</tr>';
+      if (!gruposRech[p.id_orden_compra]) gruposRech[p.id_orden_compra] = [];
+      gruposRech[p.id_orden_compra].push(p);
     });
 
     const filasLote = Object.keys(gruposRech).map(function(idLoteKey) {
@@ -3423,7 +2879,7 @@ async function invRenderEntradasRechazadas(cont) {
         +'</tr>';
     });
 
-    const filas = filasLote.concat(filasSueltas).join('');
+    const filas = filasLote.join('');
 
     cont.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-bottom:10px">Estas Entradas fueron rechazadas por un Nivel de Firma -- todavía no afectaron Stock ni Contabilidad. Corríjalas y vuelva a guardarlas para que se reenvíen a aprobación.</div>'
       + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse;table-layout:fixed"><thead><tr>'
@@ -6659,8 +6115,8 @@ async function onCambiarProveedorEdit() {
   calcularTributosEdit();
 }
 
-// Misma lógica que actualizarIGTFEntrada(), pero apuntando a los ids de la
-// Ficha de Editar (edit-mov-*/edit-trib-*).
+// Misma lógica que se usaba en el formulario de Nueva Entrada (ya
+// retirado), pero apuntando a los ids de la Ficha de Editar (edit-mov-*/edit-trib-*).
 function actualizarIGTFEdit(totalMonedaNeg, moneda, tasa) {
   const cont = document.getElementById('edit-mov-igtf-cont');
   const lblTotal = document.getElementById('edit-trib-total-label');
@@ -7686,289 +7142,6 @@ function onSelAreaEntrada() {
   cargarEmpleadosPorArea(parseInt(id_area)||null, 'es-empleado', true);
 }
 
-async function buscarTasaBCVNegociacion() {
-  const moneda = document.getElementById('es-moneda-compra')?.value || 'USD';
-  const esVES  = moneda === 'VES';
-  const fecha  = document.getElementById('es-fecha-negociacion')?.value || getHoyVzla();
-  console.log('[SYD] fecha:', fecha, 'moneda:', moneda);
-  try {
-    const tasas = await api('tasas', 'GET', null,
-      '?fecha_valor=lte.' + fecha + '&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio,fecha_valor');
-    if (tasas && tasas.length) {
-      document.getElementById('es-tasa-bcv').value = parseFloat(tasas[0].tipo_cambio).toFixed(4);
-      if (esVES) {
-        document.getElementById('es-ref-cpp').textContent = 'Tasa BCV: ' + parseFloat(tasas[0].tipo_cambio).toFixed(4) + ' Bs/$ (' + tasas[0].fecha_valor + ')';
-      }
-    } else if (esVES) {
-      document.getElementById('es-tasa-bcv').value = '';
-      document.getElementById('es-ref-cpp').textContent = 'No se encontró tasa BCV para esta fecha';
-    }
-  } catch(e) { console.error('[SYD] buscarTasaBCVNegociacion error:', msgErr(e)); }
-  onCambiarPrecioEntrada();
-}
-
-async function onCambiarFechaNegociacionEntrada() {
-  console.log('[SYD] onCambiarFechaNegociacionEntrada llamada');
-  await buscarTasaBCVNegociacion();
-}
-
-// Determina si aplica IGTF para ESTA transacción puntual: Contribuyente
-// Especial + Moneda de Pago/Negociación de ESTA Entrada en USD. Antes se
-// fijaba una sola vez al elegir el Proveedor, usando su Moneda de
-// Facturación (un dato FIJO de su ficha) -- si el Proveedor factura en USD
-// por defecto pero esta Entrada puntual se negocia en VES, el IGTF se
-// quedaba "pegado" en true, impidiendo después cancelar/cerrar la Entrada
-// en VES. Se llama cada vez que cambia el Proveedor O la Moneda.
-// El IGTF ya NO se calcula ni se muestra en la vista previa de la Entrada
-// -- depende de en qué Moneda se termine pagando, y eso se decide recién
-// en Ejecutar Pago (puede cambiar entre que se crea la Entrada y que
-// efectivamente se paga). Esta función queda neutralizada a propósito.
-async function _actualizarAplicaIGTFEntrada(monedaFieldId) {
-  window._aplicaIGTFEntrada = false;
-}
-
-async function onCambiarMonedaEntrada() {
-  const moneda   = document.getElementById('es-moneda-compra')?.value || 'USD';
-  // Actualizar labels de moneda
-  const lblCompra = document.getElementById('es-label-moneda-compra');
-  const lblVenta  = document.getElementById('es-label-moneda-venta');
-  if (lblCompra) lblCompra.textContent = '(' + moneda + ')';
-  if (lblVenta)  lblVenta.textContent  = '(' + moneda + ')';
-  const tasaCont = document.getElementById('es-tasa-cont');
-  const usdCont  = document.getElementById('es-precio-usd-cont');
-  const esVES    = moneda === 'VES';
-
-  if (tasaCont) tasaCont.style.display  = ''; // Siempre visible como referencia
-  if (usdCont)  usdCont.style.display   = ''; // Siempre visible — VES si moneda VES, VES calculado si USD
-
-  // Actualizar label del campo de precio VES calculado
-  const lblUSD = document.getElementById('es-label-precio-usd');
-  if (lblUSD) lblUSD.innerHTML = 'Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(' + (esVES ? 'USD' : 'VES') + ')</span>';
-
-  await buscarTasaBCVNegociacion();
-  onCambiarPrecioEntrada();
-}
-
-function onCambioExentoIVAEntrada() {
-  const exento = document.getElementById('es-exento-iva-val')?.value === 'SI';
-  const ivaContEl = document.getElementById('es-incluye-iva-cont');
-  if (ivaContEl) ivaContEl.style.display = exento ? 'none' : '';
-  // Limpiar selección de incluye IVA al cambiar
-  document.getElementById('es-incluye-iva-val').value = '';
-  document.querySelectorAll('input[name="es-entrada-incluye-iva"]').forEach(function(r){ r.checked = false; });
-  const prev = document.getElementById('es-tributos-preview');
-  if (prev) prev.style.display = 'none';
-  calcularTributosEntrada();
-  const cme2 = document.getElementById('es-cuotas-monto');
-  if (cme2) cme2.value = '';
-  calcularCuotasEntrada();
-}
-
-function calcularTributosEntrada() {
-  const pctIVAEnt = Math.round(tasaIVAActual()*100);
-  const pctLblEnt = document.getElementById('es-iva-pct-label');
-  if (pctLblEnt) pctLblEnt.textContent = 'IVA (' + pctIVAEnt + '%)';
-  const pctSpanEnt = document.getElementById('es-trib-iva-pct');
-  if (pctSpanEnt) pctSpanEnt.textContent = pctIVAEnt;
-  const exento     = document.getElementById('es-exento-iva-val')?.value === 'SI';
-  const ivaVal     = document.getElementById('es-incluye-iva-val')?.value;
-  const prev = document.getElementById('es-tributos-preview');
-
-  // Si exento — no hay IVA, mostrar solo base
-  if (exento) {
-    const montoTotal = parseMontoVE(document.getElementById('es-precio-costo')?.value)
-                     * parseFloat(document.getElementById('es-cantidad')?.value || 0);
-    if (!montoTotal) { if (prev) prev.style.display = 'none'; return; }
-    const moneda = document.getElementById('es-moneda-compra')?.value || 'USD';
-    const tasa   = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
-    const sim    = moneda === 'VES' ? 'Bs.' : '$';
-    document.getElementById('es-trib-base').textContent  = sim + ' ' + fmtBs(montoTotal);
-    document.getElementById('es-trib-iva').textContent   = '—';
-    document.getElementById('es-trib-total').textContent = sim + ' ' + fmtBs(montoTotal);
-    document.getElementById('es-trib-base-ves').textContent  = tasa > 0 && moneda !== 'VES' ? 'Bs. ' + fmtBs(montoTotal * tasa) : '—';
-    document.getElementById('es-trib-iva-ves').textContent   = '—';
-    document.getElementById('es-trib-total-ves').textContent = tasa > 0 && moneda !== 'VES' ? 'Bs. ' + fmtBs(montoTotal * tasa) : '—';
-    if (prev) prev.style.display = '';
-    actualizarIGTFEntrada(montoTotal, moneda, tasa);
-    return;
-  }
-
-  // Si no ha seleccionado IVA — no calcular
-  if (!ivaVal) { if (prev) prev.style.display = 'none'; return; }
-
-  const incluyeIVA = ivaVal === 'SI';
-  const montoTotal2 = parseMontoVE(document.getElementById('es-precio-costo')?.value)
-                   * parseFloat(document.getElementById('es-cantidad')?.value || 0);
-  if (!montoTotal2) { if (prev) prev.style.display = 'none'; return; }
-
-  const IVA_RATE = tasaIVAActual();
-  let base, iva, total;
-  if (false) { // exento ya manejado arriba
-  } else if (incluyeIVA) {
-    base  = parseFloat((montoTotal2 / (1 + IVA_RATE)).toFixed(4));
-    iva   = parseFloat((montoTotal2 - base).toFixed(4));
-    total = montoTotal2;
-  } else {
-    base  = montoTotal2;
-    iva   = parseFloat((montoTotal2 * IVA_RATE).toFixed(4));
-    total = parseFloat((montoTotal2 + iva).toFixed(4));
-  }
-
-  const moneda = document.getElementById('es-moneda-compra')?.value || 'USD';
-  const tasa   = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
-  const sim    = moneda === 'VES' ? 'Bs.' : '$';
-
-  document.getElementById('es-trib-base').textContent  = sim + ' ' + fmtBs(base);
-  document.getElementById('es-trib-iva').textContent   = iva > 0 ? sim + ' ' + fmtBs(iva) : '—';
-  document.getElementById('es-trib-total').textContent = sim + ' ' + fmtBs(total);
-
-  // Columna VES
-  if (tasa > 0 && moneda !== 'VES') {
-    const baseVesEnt  = parseFloat((base * tasa).toFixed(2));
-    const totalVesEnt = parseFloat((total * tasa).toFixed(2));
-    const ivaVesEnt   = parseFloat((totalVesEnt - baseVesEnt).toFixed(2));
-    document.getElementById('es-trib-base-ves').textContent  = 'Bs. ' + fmtBs(baseVesEnt);
-    document.getElementById('es-trib-iva-ves').textContent   = iva > 0 ? 'Bs. ' + fmtBs(ivaVesEnt) : '—';
-    document.getElementById('es-trib-total-ves').textContent = 'Bs. ' + fmtBs(totalVesEnt);
-  } else {
-    document.getElementById('es-trib-base-ves').textContent  = moneda === 'VES' && tasa > 0 ? '$ ' + fmtBs(base / tasa) : '—';
-    document.getElementById('es-trib-iva-ves').textContent   = moneda === 'VES' && iva > 0 && tasa > 0 ? '$ ' + fmtBs(iva / tasa) : '—';
-    document.getElementById('es-trib-total-ves').textContent = moneda === 'VES' && tasa > 0 ? '$ ' + fmtBs(total / tasa) : '—';
-  }
-  if (prev) prev.style.display = '';
-  actualizarIGTFEntrada(total, moneda, tasa);
-}
-
-// Guarda el Tipo de Contribuyente del Proveedor, propone por defecto la
-// Moneda de Pago (según su Moneda de Facturación -- el Usuario puede
-// cambiarla para esta Entrada puntual), y reevalúa si aplica IGTF: el
-// Guarda el Tipo de Contribuyente del Proveedor, y reevalúa si aplica IGTF
-// cuando el Usuario elija la Moneda de Pago (no se autocompleta ni se
-// sugiere -- la elige siempre el operador). Mismo criterio que Nueva
-// Entrada: Contribuyente Especial + Moneda de PAGO (no la de Negociación)
-// en USD. Si aplica, el IGTF se calcula automáticamente (no es una
-// casilla que decide el Usuario).
-// Guarda el Tipo de Contribuyente del Proveedor -- se usa para la
-// salvedad de IGTF en la notificación de aprobación (si el Proveedor es
-// Especial y termina pagándose en USD, aplicará IGTF; eso se decide
-// recién en Ejecutar Pago, no aquí).
-async function onCambiarProveedorEntrada() {
-  const idProv = parseInt(document.getElementById('es-proveedor')?.value) || null;
-  window._tipoContribProveedorEntrada = null;
-  if (idProv) {
-    try {
-      const rows = await api('proveedores','GET',null,'?id_proveedor=eq.'+idProv+'&select=tipo_contribuyente');
-      const p = rows && rows[0] ? rows[0] : {};
-      window._tipoContribProveedorEntrada = p.tipo_contribuyente || null;
-    } catch(e) { console.warn('Error verificando Tipo de Contribuyente del Proveedor:', e); }
-  }
-  calcularTributosEntrada();
-}
-
-// Muestra/oculta y calcula el IGTF en vivo -- Gasto no deducible/no
-// acreditable (a diferencia del IVA), NO afecta el costo del Inventario
-// ni el CPP, solo aumenta lo que se le debe al Proveedor. Se calcula
-// sobre el Total (Base + IVA), igual que en Ejecutar Pago.
-function actualizarIGTFEntrada(totalMonedaNeg, moneda, tasa) {
-  const cont = document.getElementById('es-igtf-cont');
-  const lblTotal = document.getElementById('es-trib-total-label');
-  const igtfLabelRow = document.getElementById('es-trib-igtf-label');
-  const igtfRow = document.getElementById('es-trib-igtf');
-  const igtfRowVes = document.getElementById('es-trib-igtf-ves');
-  const totalFinalLabel = document.getElementById('es-trib-total-final-label');
-  const totalFinal = document.getElementById('es-trib-total-final');
-  const totalFinalVes = document.getElementById('es-trib-total-final-ves');
-  const igtfPctSpan = document.getElementById('es-trib-igtf-pct');
-
-  if (!cont) return;
-  if (!window._aplicaIGTFEntrada) {
-    cont.style.display = 'none';
-    // Sin IGTF, la tabla de tributos vuelve a mostrar solo Base/IVA/Total,
-    // ocultando la fila de IGTF y el Total final que la incluye.
-    if (lblTotal) lblTotal.textContent = 'Total Facturado';
-    [igtfLabelRow, igtfRow, igtfRowVes, totalFinalLabel, totalFinal, totalFinalVes].forEach(function(el){ if (el) el.style.display = 'none'; });
-    return;
-  }
-  cont.style.display = '';
-  if (!totalMonedaNeg) return;
-  const totalUSD = moneda === 'VES' ? (tasa > 0 ? totalMonedaNeg / tasa : 0) : totalMonedaNeg;
-  const tasaIGTF = window._tasaIGTFEntrada || 0.03;
-  const igtfUSD = parseFloat((totalUSD * tasaIGTF).toFixed(2));
-  const igtfBs = tasa > 0 ? parseFloat((igtfUSD * tasa).toFixed(2)) : 0;
-
-  // Con IGTF: el "Total Facturado" que ya existía pasa a llamarse
-  // "Sub-Total Facturado" (Base+IVA), se agrega la línea de IGTF, y un
-  // "Total Facturado" nuevo, al final, que sí incluye el IGTF.
-  if (lblTotal) lblTotal.textContent = 'Sub-Total Facturado';
-  if (igtfPctSpan) igtfPctSpan.textContent = (tasaIGTF*100).toFixed(0);
-  const sim = moneda === 'VES' ? 'Bs.' : '$';
-  const igtfEnMoneda = moneda === 'VES' ? igtfBs : igtfUSD;
-  if (igtfLabelRow) igtfLabelRow.style.display = '';
-  if (igtfRow) { igtfRow.style.display = ''; igtfRow.textContent = sim + ' ' + fmtBs(igtfEnMoneda); }
-  if (igtfRowVes) {
-    igtfRowVes.style.display = '';
-    igtfRowVes.textContent = tasa > 0 && moneda !== 'VES' ? 'Bs. ' + fmtBs(igtfBs)
-      : (moneda === 'VES' && tasa > 0 ? '$ ' + fmtBs(igtfUSD) : '—');
-  }
-  const totalConIGTFEnMoneda = totalMonedaNeg + igtfEnMoneda;
-  if (totalFinalLabel) totalFinalLabel.style.display = '';
-  if (totalFinal) { totalFinal.style.display = ''; totalFinal.textContent = sim + ' ' + fmtBs(totalConIGTFEnMoneda); }
-  if (totalFinalVes) {
-    totalFinalVes.style.display = '';
-    if (tasa > 0 && moneda !== 'VES') totalFinalVes.textContent = 'Bs. ' + fmtBs(totalConIGTFEnMoneda * tasa);
-    else if (moneda === 'VES' && tasa > 0) totalFinalVes.textContent = '$ ' + fmtBs(totalConIGTFEnMoneda / tasa);
-    else totalFinalVes.textContent = '—';
-  }
-}
-
-function onCambiarPrecioEntrada() {
-  const moneda   = document.getElementById('es-moneda-compra')?.value || 'USD';
-  const precio   = parseMontoVE(document.getElementById('es-precio-costo')?.value);
-  const cantidad = parseFloat(document.getElementById('es-cantidad')?.value) || 0;
-  const tasa     = parseFloat(document.getElementById('es-tasa-bcv')?.value) || 0;
-  const elCalc   = document.getElementById('es-precio-usd-calc');
-  const elMonto  = document.getElementById('es-monto-total');
-  const lblMonto = document.getElementById('es-label-monto-total');
-  const elPrecioOpuesto = document.getElementById('es-precio-opuesto');
-
-  // Monto = Cantidad × Precio (en la moneda de negociación)
-  const montoTotal = precio * cantidad;
-  if (elMonto) elMonto.value = fmtBs(montoTotal);
-  if (lblMonto) lblMonto.innerHTML = 'Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(' + moneda + ')</span>';
-
-  // Precio Negociación en la moneda CONTRARIA a la negociada -- es el
-  // precio unitario (no el total), para que se vea de inmediato al lado
-  // del campo cuánto es en la otra moneda, sin tener que calcularlo aparte.
-  const lblMonedaOpuesta = document.getElementById('es-label-moneda-opuesta');
-  const elFormulaPrecioOpuesto = document.getElementById('es-formula-precio-opuesto');
-  const opuesta = moneda === 'VES' ? 'USD' : 'VES';
-  if (lblMonedaOpuesta) lblMonedaOpuesta.textContent = '(' + opuesta + ')';
-  if (elFormulaPrecioOpuesto) elFormulaPrecioOpuesto.textContent = moneda === 'VES' ? 'Precio / Tasa BCV' : 'Precio × Tasa BCV';
-  if (elPrecioOpuesto) {
-    if (precio > 0 && tasa > 0) {
-      const precioOpuesto = moneda === 'VES' ? (precio / tasa) : (precio * tasa);
-      elPrecioOpuesto.value = fmtBs(precioOpuesto);
-    } else {
-      elPrecioOpuesto.value = '';
-    }
-  }
-
-  // Precio VES calculado
-  if (!elCalc || !tasa) { calcularTributosEntrada(); const cme = document.getElementById('es-cuotas-monto'); if (cme) cme.value=''; calcularCuotasEntrada(); return; }
-  const elFormulaOpuesto = document.getElementById('es-formula-opuesto');
-  if (moneda === 'VES') {
-    elCalc.value = tasa > 0 ? fmtBs(montoTotal / tasa) : '';
-    if (elFormulaOpuesto) elFormulaOpuesto.textContent = 'Precio × Cantidad / Tasa BCV';
-  } else {
-    elCalc.value = fmtBs(montoTotal * tasa);
-    if (elFormulaOpuesto) elFormulaOpuesto.textContent = 'Precio × Cantidad × Tasa BCV';
-  }
-  calcularTributosEntrada();
-  const cuotaMontoEl = document.getElementById('es-cuotas-monto');
-  if (cuotaMontoEl) cuotaMontoEl.value = '';
-  calcularCuotasEntrada();
-}
-
 function onCambiarFacturaDevolucion() {
   const idFact = document.getElementById('es-factura-devolucion')?.value;
   const infoEl = document.getElementById('es-factura-devolucion-info');
@@ -7985,76 +7158,20 @@ function onCambiarFacturaDevolucion() {
 
 function onCambiarMotivoEntrada() {
   const motivo = document.getElementById('es-motivo')?.value;
-  const esCompra = motivo === 'compra';
-  const tribuCont = document.getElementById('es-tributos-cont');
-  if (tribuCont) tribuCont.style.display = esCompra ? '' : 'none';
 
-  // Campos de Negociación (Moneda/Precio/Monto/Tasa BCV) y Modalidad de Pago
-  // solo aplican a Compra — el CPP de Devolución/Ajuste/Transferencia se toma
-  // tal cual está, sin promediar un precio inventado.
-  const negCont  = document.getElementById('es-negociacion-cont');
-  const pagoCont = document.getElementById('es-pago-cont');
-  if (negCont)  negCont.style.display  = esCompra ? 'contents' : 'none';
-  if (pagoCont) pagoCont.style.display = esCompra ? 'contents' : 'none';
-  if (!esCompra) {
-    // Limpiar valores para que no queden datos viejos de una Compra anterior
-    if (document.getElementById('es-moneda-compra')) document.getElementById('es-moneda-compra').selectedIndex = 0;
-    if (document.getElementById('es-precio-costo'))  document.getElementById('es-precio-costo').value = '';
-    if (document.getElementById('es-precio-opuesto')) document.getElementById('es-precio-opuesto').value = '';
-    if (document.getElementById('es-monto-total'))   document.getElementById('es-monto-total').value = '0,00';
-    if (document.getElementById('es-tasa-bcv'))      document.getElementById('es-tasa-bcv').value = '';
-    if (document.getElementById('es-precio-usd-calc')) document.getElementById('es-precio-usd-calc').value = '';
-    if (document.getElementById('es-esquema-pago'))  document.getElementById('es-esquema-pago').selectedIndex = 0;
-    if (document.getElementById('es-fecha-pago-cont')) document.getElementById('es-fecha-pago-cont').style.display = 'none';
-    if (document.getElementById('es-credito-cont'))  document.getElementById('es-credito-cont').style.display = 'none';
-  }
-
-  // Resetear IVA — sin preselección
-  document.querySelectorAll('input[name="es-entrada-incluye-iva"]').forEach(function(r){ r.checked = false; });
-  const prev = document.getElementById('es-tributos-preview');
-  if (prev) prev.style.display = 'none';
-  const contProv    = document.getElementById('es-campo-proveedor-cont');
   const contCliente = document.getElementById('es-campo-cliente-cont');
   const contTransf  = document.getElementById('es-campo-transferencia-cont');
-  if (!contProv) return;
+  if (!contCliente) return;
 
   // Ocultar todos los campos adicionales
-  contProv.style.display    = 'none';
   contCliente.style.display = 'none';
   contTransf.style.display  = 'none';
 
   // Mostrar el correspondiente
-  if (motivo === 'compra') {
-    contProv.style.display = '';
-    contProv.querySelector('label').textContent = 'Proveedor *';
-  } else if (motivo === 'devolucion') {
+  if (motivo === 'devolucion') {
     contCliente.style.display = '';
   } else if (motivo === 'transferencia') {
     contTransf.style.display = '';
-  }
-
-  // Restricción de moneda:
-  // Solo compra con proveedor puede ser en moneda distinta a la Funcional.
-  // Transferencias, devoluciones y ajustes = solo Moneda Funcional.
-  const selMoneda = document.getElementById('es-moneda-compra');
-  const monedaFunc = ((_empresaActiva?.moneda_principal) || 'VES').toUpperCase();
-  if (selMoneda) {
-    if (!motivo) {
-      // Sin transacción seleccionada — habilitar moneda y mostrar placeholder
-      Array.from(selMoneda.options).forEach(function(o) { o.disabled = false; });
-      selMoneda.disabled = false;
-      selMoneda.selectedIndex = 0;
-    } else if (motivo === 'compra') {
-      // Habilitar todas las opciones
-      Array.from(selMoneda.options).forEach(function(o) { o.disabled = false; });
-      selMoneda.disabled = false;
-    } else {
-      // Forzar Moneda Funcional y deshabilitar el select
-      selMoneda.value    = monedaFunc;
-      selMoneda.disabled = true;
-      // Disparar el cambio para actualizar labels de tasa/precio
-      selMoneda.dispatchEvent(new Event('change'));
-    }
   }
 }
 
