@@ -703,10 +703,12 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
     if (tasasHoyListaRows && tasasHoyListaRows[0]) tasaHoyLista = parseFloat(tasasHoyListaRows[0].tipo_cambio);
   } catch(eTasaLista) {}
 
-  // Calcular total cuotas por prefijo para display
+  // Calcular total cuotas por prefijo para display -- agrupa por
+  // "PREFIJO-orden" (ignora el id_cxp intermedio, que es distinto en cada
+  // cuota) para contar cuántas cuotas tiene la Orden en total.
   const cxpMap = {};
   (cxps||[]).forEach(function(c) {
-    const m = (c.numero_doc||'').match(/^(.*)-C(\d+)(?:-\d+)?$/);
+    const m = (c.numero_doc||'').match(/^([A-Za-z]+-\d+)-\d+-C(\d+)$/);
     if (m) {
       const prefix = m[1];
       if (!cxpMap[prefix]) cxpMap[prefix] = 0;
@@ -715,7 +717,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
   });
 
   const itemsCxP = (cxps||[]).map(function(c) {
-    const m = (c.numero_doc||'').match(/^(.*)-C(\d+)(?:-\d+)?$/);
+    const m = (c.numero_doc||'').match(/^([A-Za-z]+-\d+)-\d+-C(\d+)$/);
     let tipoDisplay = 'CONTADO';
     if (m) {
       const prefix = m[1];
@@ -3344,9 +3346,9 @@ async function guardarPago() {
               id_usuario: sesionActual?.correo_usuario || null
             });
             if (cxpCuotaConv && cxpCuotaConv[0]) {
-              await api('cont_cxp','PATCH',{ numero_doc: numDocActual + '-C' + cc.num + '-' + cxpCuotaConv[0].id_cxp }, '?id_cxp=eq.' + cxpCuotaConv[0].id_cxp);
+              await api('cont_cxp','PATCH',{ numero_doc: numDocActual + '-' + cxpCuotaConv[0].id_cxp + '-C' + cc.num }, '?id_cxp=eq.' + cxpCuotaConv[0].id_cxp);
               if (cc.fecha <= getHoyVzla()) {
-                enrutarAprobacionCxP(cxpCuotaConv[0].id_cxp, numDocActual + '-C' + cc.num + '-' + cxpCuotaConv[0].id_cxp, cc.monto, {
+                enrutarAprobacionCxP(cxpCuotaConv[0].id_cxp, numDocActual + '-' + cxpCuotaConv[0].id_cxp + '-C' + cc.num, cc.monto, {
                   monedaPago: moneda, tasaBcv: tasaUSD,
                   concepto: descripcion, proveedor: nombreProvLinea
                 });
@@ -3535,9 +3537,9 @@ async function guardarPago() {
           id_usuario:        sesionActual?.correo_usuario || null
         });
         if (cxpCuota && cxpCuota[0]) {
-          await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-C' + c.num + '-' + cxpCuota[0].id_cxp }, '?id_cxp=eq.' + cxpCuota[0].id_cxp);
+          await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-' + cxpCuota[0].id_cxp + '-C' + c.num }, '?id_cxp=eq.' + cxpCuota[0].id_cxp);
           if (c.fecha <= getHoyVzla()) {
-            enrutarAprobacionCxP(cxpCuota[0].id_cxp, numDocBase + '-C' + c.num + '-' + cxpCuota[0].id_cxp, c.monto, {
+            enrutarAprobacionCxP(cxpCuota[0].id_cxp, numDocBase + '-' + cxpCuota[0].id_cxp + '-C' + c.num, c.monto, {
               monedaPago: moneda, tasaBcv: tasaUSD,
               concepto: descripcion, proveedor: nombreProvLinea
             });
