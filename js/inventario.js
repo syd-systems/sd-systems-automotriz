@@ -2003,7 +2003,8 @@ async function ejecutarEfectosEntradaCompraLote(filasLote) {
           fecha_vencimiento: c.fecha,
           moneda_pago: monedaPagoReal,
           moneda_negociacion: primeraFila.moneda_compra || 'USD',
-          estado: 'APROBADA',
+          estado_aprobacion: 'APROBADA',
+          estado: 'PENDIENTE',
           aprobado_por: primeraFila.aprobado_por || null,
           fecha_aprobacion: ahoraIsoLote,
           monto_usd: parseFloat(c.monto.toFixed(2)),
@@ -2032,7 +2033,8 @@ async function ejecutarEfectosEntradaCompraLote(filasLote) {
         fecha_vencimiento: primeraFila.fecha_pago || primeraFila.fecha_negociacion || primeraFila.fecha_entrada,
         moneda_pago: monedaPagoReal,
         moneda_negociacion: primeraFila.moneda_compra || 'USD',
-        estado: 'APROBADA',
+        estado_aprobacion: 'APROBADA',
+        estado: 'PENDIENTE',
         aprobado_por: primeraFila.aprobado_por || null,
         fecha_aprobacion: ahoraIsoLote,
         monto_usd: parseFloat(totalUSDLote.toFixed(2)),
@@ -2180,7 +2182,8 @@ async function ejecutarEfectosEntradaCompra(m) {
           fecha_vencimiento: c.fecha,
           moneda_pago:      monedaPagoReal,
           moneda_negociacion: m.moneda_compra || 'USD',
-          estado:           'APROBADA',
+          estado_aprobacion: 'APROBADA',
+          estado:           'PENDIENTE',
           aprobado_por:     m.aprobado_por || null,
           fecha_aprobacion: ahoraIso,
           monto_usd:        parseFloat(c.monto.toFixed(2)),
@@ -2209,7 +2212,8 @@ async function ejecutarEfectosEntradaCompra(m) {
         fecha_vencimiento: m.fecha_pago || fechaNegCxP,
         moneda_pago:     monedaPagoReal,
         moneda_negociacion: m.moneda_compra || 'USD',
-        estado:          'APROBADA',
+        estado_aprobacion: 'APROBADA',
+        estado:          'PENDIENTE',
         aprobado_por:    m.aprobado_por || null,
         fecha_aprobacion: ahoraIso,
         monto_usd:       montoUSD,
@@ -5785,14 +5789,15 @@ async function _guardarEdicionMovimientoInterno() {
         const nuevoMontoUSD = montoTotalConIVAEdit !== null ? montoTotalConIVAEdit
           : parseFloat((cantidad * parseFloat(art?.precio_costo_moneda || 0) * (1+tasaIVAActual())).toFixed(2));
 
-        // Eliminar CxP existentes PENDIENTE, RECHAZADA o APROBADA para esta
-        // entrada (si venía RECHAZADA o ya APROBADA -sin pagar-, hay que
-        // limpiarla igual antes de crear la nueva -- de lo contrario queda
-        // huérfana junto a la nueva, y se duplica la Obligación de Pago).
-        // Ya se validó más arriba que no haya ninguna PAGADA antes
-        // de llegar aquí, así que borrar la APROBADA es seguro.
+        // Eliminar CxP existentes sin pagar para esta entrada, sin importar
+        // su estado_aprobacion (Pendiente de Firma, Rechazada o ya
+        // Aprobada -sin pagar-) -- hay que limpiarla igual antes de crear
+        // la nueva -- de lo contrario queda huérfana junto a la nueva, y
+        // se duplica la Obligación de Pago). Ya se validó más arriba que
+        // no haya ninguna PAGADA antes de llegar aquí, así que borrar
+        // cualquier PENDIENTE es seguro.
         const cxpsExist = await api('cont_cxp', 'GET', null,
-          '?numero_doc=ilike.' + encodeURIComponent(numDocBase + '*') + emisorQ() + '&estado=in.(PENDIENTE,RECHAZADA,APROBADA)&select=id_cxp');
+          '?numero_doc=ilike.' + encodeURIComponent(numDocBase + '*') + emisorQ() + '&estado=eq.PENDIENTE&select=id_cxp');
         for (const cx of (cxpsExist || [])) {
           await api('cont_cxp', 'DELETE', null, '?id_cxp=eq.' + cx.id_cxp);
         }
@@ -6419,12 +6424,12 @@ async function confirmarAnulacion() {
       }
     } catch(eAst) { console.warn('Error anulando asiento:', eAst); }
 
-    // 8. Anular CxP si es entrada por compra (PENDIENTE o APROBADA -- ya
-    // se validó más arriba que no esté PAGADA)
+    // 8. Anular CxP si es entrada por compra (cualquiera que no esté
+    // PAGADA -- ya se validó más arriba)
     if (tipo === 'ENTRADA') {
       try {
         const cxps = await api('cont_cxp', 'GET', null,
-          '?numero_doc=ilike.' + encodeURIComponent('CPRA-' + idMovimiento + '*') + emisorQ() + '&estado=in.(PENDIENTE,APROBADA)&select=id_cxp,observaciones');
+          '?numero_doc=ilike.' + encodeURIComponent('CPRA-' + idMovimiento + '*') + emisorQ() + '&estado=eq.PENDIENTE&select=id_cxp,observaciones');
         for (const cxAnul of (cxps || [])) {
           // Preservar la descripción original (artículo + cantidad) --
           // agregar el aviso de anulación, no reemplazarla.
