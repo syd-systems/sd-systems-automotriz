@@ -55,7 +55,7 @@ async function _pendFacturarCargarProveedores() {
     const id_emisor = _empresaActiva?.id_empresa || 0;
     const hoyProvs = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
     const rows = await api('cont_cxp','GET',null,
-      '?id_empresa=eq.'+id_emisor+'&estado=eq.APROBADA&id_pago_consolidado=is.null&select=id_cxp,numero_doc,id_proveedor,monto_usd,monto_ves,moneda_pago,fecha_vencimiento,fecha_emision,proveedores:id_proveedor(nombre,rif)');
+      '?id_empresa=eq.'+id_emisor+'&estado=eq.PENDIENTE&estado_aprobacion=eq.APROBADA&id_pago_consolidado=is.null&select=id_cxp,numero_doc,id_proveedor,monto_usd,monto_ves,moneda_pago,fecha_vencimiento,fecha_emision,proveedores:id_proveedor(nombre,rif)');
     // Solo CONTADO -- numero_doc con patrón ENT-<id>-<id_cxp> o
     // CPRA-<id>-<id_cxp> (según cuándo se creó), sin cuota (-C) -- y solo
     // cuya Fecha de Pago ya llegó (hoy o antes). Si es futura, para pagarla
@@ -105,7 +105,7 @@ async function _pendFacturarSeleccionarProveedor(id_proveedor, fechaFiltro) {
   document.getElementById('pend-fact-prov-nombre').textContent = (prov?.nombre || '—') + (prov?.rif ? ' — ' + prov.rif : '');
 
   const cxpRows = await api('cont_cxp','GET',null,
-    '?id_empresa=eq.'+id_emisor+'&id_proveedor=eq.'+id_proveedor+'&estado=eq.APROBADA&id_pago_consolidado=is.null&select=id_cxp,numero_doc,moneda_negociacion,moneda_pago,monto_usd,monto_ves,fecha_vencimiento,fecha_emision');
+    '?id_empresa=eq.'+id_emisor+'&id_proveedor=eq.'+id_proveedor+'&estado=eq.PENDIENTE&estado_aprobacion=eq.APROBADA&id_pago_consolidado=is.null&select=id_cxp,numero_doc,moneda_negociacion,moneda_pago,monto_usd,monto_ves,fecha_vencimiento,fecha_emision');
   const hoySelProv = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
   let contado = (cxpRows||[]).filter(function(r){
     return /^(?:ENT|CPRA)-\d+-\d+$/.test(r.numero_doc||'')
@@ -670,7 +670,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
   // "🔗 Consolidar Pagos" en vez de "💸 Pagar" (ver render de acciones).
   const gruposConsolidables = {};
   (cxps||[]).forEach(function(c) {
-    if (c.estado !== 'APROBADA' || c.id_pago_consolidado) return;
+    if (c.estado !== 'PENDIENTE' || c.estado_aprobacion !== 'APROBADA' || c.id_pago_consolidado) return;
     if (!/^(?:ENT|CPRA)-\d+-\d+$/.test(c.numero_doc||'')) return;
     const fechaGrupo = (c.fecha_vencimiento || c.fecha_emision || '').slice(0,10);
     const clave = c.id_proveedor + '|' + fechaGrupo;
@@ -743,7 +743,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       origen:      c.tipo === 'PAGO_MANUAL' ? 'Manual' : 'Automático',
       monto_usd:   parseFloat(c.monto_usd || 0),
       monto_ves:   montoVES,
-      estado:      c.estado || 'PENDIENTE',
+      estado:      estadoCxPCompuesto(c).texto,
       _raw:        c
     };
   });
@@ -2453,9 +2453,11 @@ async function reactivarPagoCxP(id_cxp) {
   if (!verifReactivar.ok) { alert(verifReactivar.msg || 'Contraseña incorrecta.'); return; }
 
   try {
-    // 1. Regresar la CxP a PENDIENTE
+    // 1. Regresar la CxP a PENDIENTE -- y también su estado_aprobacion a
+    // PENDIENTE (exige volver a pedir la firma de aprobación; no hereda la
+    // que tenía antes de anularse, por seguridad).
     await api('cont_cxp','PATCH',
-      { estado: 'PENDIENTE', observaciones: (cxpChk.observaciones || '').replace(/^\[ANULADA\]\s*/, ''), revertido_por: sesionActual?.correo_usuario || null },
+      { estado: 'PENDIENTE', estado_aprobacion: 'PENDIENTE', observaciones: (cxpChk.observaciones || '').replace(/^\[ANULADA\]\s*/, ''), revertido_por: sesionActual?.correo_usuario || null },
       '?id_cxp=eq.'+id_cxp);
 
     // 2. Restaurar (APROBADO) el asiento GASTO_MANUAL que se anuló al cancelarla
@@ -2756,8 +2758,9 @@ async function editarCxPManual(id_cxp) {
     // Editar el monto de una CxP ya PAGADA corrompe el registro:
     // resetea el saldo pero no el estado, y regenera el asiento contable
     // con un monto distinto al que realmente salio del banco.
-    if (c.estado !== 'PENDIENTE' && c.estado !== 'RECHAZADA') {
-      alert('No se puede editar: esta Obligación de Pago ya está en estado ' + c.estado + '. Si necesita corregirla, anule el pago primero (botón "🗑 Anular Pago Procesado").');
+    if (c.estado !== 'PENDIENTE' || c.estado_aprobacion === 'APROBADA') {
+      const motivoBloqueoEdit = c.estado !== 'PENDIENTE' ? c.estado : c.estado_aprobacion;
+      alert('No se puede editar: esta Obligación de Pago ya está en estado ' + motivoBloqueoEdit + '. Si necesita corregirla, anule el pago primero (botón "🗑 Anular Pago Procesado").');
       return;
     }
 
@@ -2854,8 +2857,10 @@ async function editarCxPManual(id_cxp) {
     }
     calcularTributosPago();
 
-    // Agregar botón Anular al footer (Eliminar solo aplica a CxP PENDIENTE)
-    if (c.estado === 'PENDIENTE') {
+    // Agregar botón Anular al footer (Eliminar solo aplica a CxP PENDIENTE
+    // de firma -- si ya está Aprobada, "Anular" sigue disponible pero por
+    // otro camino, no por este botón de edición manual)
+    if (c.estado === 'PENDIENTE' && c.estado_aprobacion === 'PENDIENTE') {
       const footerEdit = document.querySelector('#modal-pago .modal-footer');
       if (footerEdit) {
         footerEdit.innerHTML =
@@ -3110,9 +3115,10 @@ async function guardarPago() {
   // corrompe el registro (ver nota en editarCxPManual).
   if (id_cxp_edit) {
     try {
-      const chkRows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp_edit+'&select=estado');
-      if (chkRows && chkRows[0] && chkRows[0].estado !== 'PENDIENTE' && chkRows[0].estado !== 'RECHAZADA') {
-        alert('No se puede guardar: esta Obligación de Pago ya está en estado ' + chkRows[0].estado + '. Anule el pago primero (botón "🗑 Anular Pago Procesado").');
+      const chkRows = await api('cont_cxp','GET',null,'?id_cxp=eq.'+id_cxp_edit+'&select=estado,estado_aprobacion');
+      if (chkRows && chkRows[0] && (chkRows[0].estado !== 'PENDIENTE' || chkRows[0].estado_aprobacion === 'APROBADA')) {
+        const motivoBloqueoGuardar = chkRows[0].estado !== 'PENDIENTE' ? chkRows[0].estado : chkRows[0].estado_aprobacion;
+        alert('No se puede guardar: esta Obligación de Pago ya está en estado ' + motivoBloqueoGuardar + '. Anule el pago primero (botón "🗑 Anular Pago Procesado").');
         return;
       }
     } catch(eChk) {}
@@ -3256,10 +3262,11 @@ async function guardarPago() {
         // 1. Todas las filas hermanas de esta obligación (todas las cuotas
         // si era CREDITO, o la única fila si era CONTADO)
         const hermanas = await api('cont_cxp','GET',null,
-          '?numero_doc=ilike.'+encodeURIComponent(numDocActual+'*')+emisorQ()+'&select=id_cxp,numero_doc,estado');
-        const noPendiente = (hermanas||[]).find(function(h){ return h.estado !== 'PENDIENTE'; });
+          '?numero_doc=ilike.'+encodeURIComponent(numDocActual+'*')+emisorQ()+'&select=id_cxp,numero_doc,estado,estado_aprobacion');
+        const noPendiente = (hermanas||[]).find(function(h){ return h.estado !== 'PENDIENTE' || h.estado_aprobacion !== 'PENDIENTE'; });
         if (noPendiente) {
-          mostrarErr('No se puede cambiar la Modalidad de Pago: "'+noPendiente.numero_doc+'" ya está en estado '+noPendiente.estado+'. Toda la obligación debe estar PENDIENTE para reestructurarla.');
+          const motivoNoPend = noPendiente.estado !== 'PENDIENTE' ? noPendiente.estado : noPendiente.estado_aprobacion;
+          mostrarErr('No se puede cambiar la Modalidad de Pago: "'+noPendiente.numero_doc+'" ya está en estado '+motivoNoPend+'. Toda la obligación debe estar PENDIENTE para reestructurarla.');
           if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar'; }
           return;
         }
@@ -3616,7 +3623,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     }
 
     const prov = c.proveedores || {};
-    const est  = c.estado || 'PENDIENTE';
+    const est  = estadoCxPCompuesto(c).texto;
 
     // Limpiar dataset
     const modal = document.getElementById('modal-cont-pago-cxp');
@@ -3729,13 +3736,11 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     // Badge de Estado, en el extremo derecho del encabezado de la sección
     const estadoBadgeEl = document.getElementById('cont-pago-cxp-estado-badge');
     if (estadoBadgeEl) {
-      const coloresEstado = { PENDIENTE:'#f59e0b', RECHAZADA:'#fc8181', APROBADA:'#a78bfa', PAGADA:'#22c55e', ANULADA:'#6b7280' };
-      const estActual = c.estado || 'PENDIENTE';
-      const colEstado = coloresEstado[estActual] || '#888';
-      estadoBadgeEl.textContent = estActual;
-      estadoBadgeEl.style.color = colEstado;
-      estadoBadgeEl.style.background = colEstado + '22';
-      estadoBadgeEl.style.borderColor = colEstado + '44';
+      const compEstadoDet = estadoCxPCompuesto(c);
+      estadoBadgeEl.textContent = compEstadoDet.texto;
+      estadoBadgeEl.style.color = compEstadoDet.color;
+      estadoBadgeEl.style.background = compEstadoDet.color + '22';
+      estadoBadgeEl.style.borderColor = compEstadoDet.color + '44';
     }
 
     // Observación -- solo se muestra si tiene contenido
@@ -4004,7 +4009,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     // Footer dinámico con botón Anular y Editar
     const footerPend = document.querySelector('#modal-cont-pago-cxp .modal-footer');
     if (footerPend) {
-      const est = c.estado || '';
+      const est = estadoCxPCompuesto(c).texto;
       const btnEditar = ((est === 'PENDIENTE' || est === 'RECHAZADA') && puedo('PAGOS','EDITAR'))
         ? '<button class="btn-naranja" onclick="editarCxPManual('+id_cxp+')">✏️ Editar</button>' : '';
       const btnRegistrarPago = (est === 'APROBADA' && (puedo('PAGOS','PAGAR') || sesionActual?.administrador))
@@ -4089,7 +4094,8 @@ async function _verCxPAutomatica(c, id_cxp) {
 
   // Estado
   const estadoEl = document.getElementById('cxp-auto-estado');
-  estadoEl.textContent = c.estado || '—';
+  const compEstadoAuto = estadoCxPCompuesto(c);
+  estadoEl.textContent = compEstadoAuto.texto;
   estadoEl.style.color = c.estado === 'PAGADA' ? '#22c55e' : 'var(--naranja)';
 
   // Fechas
@@ -4255,7 +4261,7 @@ async function _verCxPAutomatica(c, id_cxp) {
           if (compAutoCont) compAutoCont.style.display = '';
         } else if (compAutoCont) compAutoCont.style.display = 'none';
       } else if (compAutoCont) compAutoCont.style.display = 'none';
-    } else if (c.estado === 'RECHAZADA') {
+    } else if (c.estado_aprobacion === 'RECHAZADA') {
       pagoInfoCont.style.display = '';
       if (refLabelEl) refLabelEl.textContent = 'Motivo del Rechazo';
       const formaPagoContRech = document.getElementById('cxp-auto-forma-pago-cont');
@@ -4336,7 +4342,7 @@ async function _verCxPAutomatica(c, id_cxp) {
   // Requiere además el Nivel de Aprobar/Rechazar Compras.
   const btnRechazarCompra = document.getElementById('cxp-auto-btn-rechazar');
   if (btnRechazarCompra) {
-    const puedeRechazar = c.estado === 'APROBADA' && (sesionActual?.administrador || puedo('PAGOS','APROBAR'));
+    const puedeRechazar = c.estado === 'PENDIENTE' && c.estado_aprobacion === 'APROBADA' && (sesionActual?.administrador || puedo('PAGOS','APROBAR'));
     btnRechazarCompra.style.display = puedeRechazar ? '' : 'none';
   }
 
@@ -4443,7 +4449,7 @@ async function eliminarCxP(id_cxp) {
   if (!puedo('PAGOS','ELIMINAR')) { alert('No tiene permiso para eliminar obligaciones de pago.'); return; }
   if (!confirm('¿Eliminar esta obligación de pago? Esta acción no se puede deshacer.')) return;
   try {
-    await api('cont_cxp','DELETE',null,'?id_cxp=eq.'+id_cxp+'&estado=eq.PENDIENTE');
+    await api('cont_cxp','DELETE',null,'?id_cxp=eq.'+id_cxp+'&estado=eq.PENDIENTE&estado_aprobacion=eq.PENDIENTE');
     const modalPago = document.getElementById('modal-pago');
     if (modalPago) { modalPago.classList.remove('abierto'); modalPago.style.display = 'none'; }
     cargarPagos();
@@ -4484,7 +4490,8 @@ async function aprobarPagoCxP(id_cxp) {
     // ocurre después, cuando el operador Registra el Pago (ver
     // contGuardarPagoCxp). Aquí solo se autoriza a seguir adelante.
     await api('cont_cxp','PATCH',{
-      estado: 'APROBADA',
+      estado_aprobacion: 'APROBADA',
+      motivo_rechazo: null,
       aprobado_por: sesionActual?.correo_usuario || null,
       fecha_aprobacion: new Date().toISOString()
     },'?id_cxp=eq.'+id_cxp);
@@ -4575,7 +4582,7 @@ async function rechazarPagoCxP(id_cxp) {
     // ya se rechazó una vez -- se corrige igual que PENDIENTE (Editar) y
     // al guardar vuelve a PENDIENTE para una nueva revisión.
     await api('cont_cxp','PATCH',{
-      estado: 'RECHAZADA',
+      estado_aprobacion: 'RECHAZADA',
       motivo_rechazo: motivo,
       aprobado_por: null
     },'?id_cxp=eq.'+id_cxp);
