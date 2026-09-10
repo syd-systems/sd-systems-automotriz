@@ -301,7 +301,7 @@ async function renderInventario(filtro) {
       + (puedo('INVENTARIO','VER_CATEGORIAS') ? '<button id="inv-tab-categorias" onclick="invCambiarVista(\'categorias\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">📦 Categorías</button>' : '')
       + (puedo('INVENTARIO','VER_TIPOS') ? '<button id="inv-tab-tipos" onclick="invCambiarVista(\'tipos\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">🔩 Tipos</button>' : '')
       + (puedo('INVENTARIO','VER_MARGEN_BRUTO') ? '<button id="inv-tab-margen" onclick="invCambiarVista(\'margen\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">📊 Margen Bruto</button>' : '')
-      + ((sesionActual?.administrador || puedo('INVENTARIO','ENTRADA_STOCK')) ? '<button id="inv-tab-rechazadas" onclick="invCambiarVista(\'rechazadas\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">⚠ Entradas Rechazadas<span id="badge-entradas-rechazadas"></span></button>' : '')
+      + ((sesionActual?.administrador || puedo('INVENTARIO','ENTRADA_STOCK')) ? '<button id="inv-tab-rechazadas" onclick="invCambiarVista(\'rechazadas\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">⚠ Órdenes Rechazadas<span id="badge-ordenes-rechazadas"></span></button>' : '')
       + '</div>'
       + '<select id="inv-filtro-cat" onchange="invFiltrarCategoria()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todas las categorías</option>'
@@ -324,7 +324,7 @@ async function renderInventario(filtro) {
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();renderInventario(this.value)}else if(event.key===\'Escape\'){this.value=\'\';renderInventario(\'\');}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:180px">'
       + (puedo('INVENTARIO','CREAR') ? '<button class="btn-primario" onclick="abrirNuevoInventario()">+ Nuevo Artículo</button>' : '')
-      + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" onclick="abrirEntradaConsolidada()">📥 Orden de Compra</button>' : '')
+      + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" onclick="abrirOrdenCompra()">📥 Orden de Compra</button>' : '')
       + ((sesionActual?.administrador || puedo('INVENTARIO','VER_ENTREGAS')) ? '<button class="btn-secundario" onclick="abrirModalEntregasAlmacen()">📦 Salida de Inventario<span id="badge-entregas-almacen"></span></button>' : '')
       + ((sesionActual?.administrador || puedo('INVENTARIO','CERTIFICAR_RECEPCION')) ? '<button class="btn-secundario" onclick="abrirModalEntradaInventario()">✓ Entrada de Inventario<span id="badge-entrada-inventario"></span></button>' : '')
       + '<button class="btn-secundario" title="Refrescar" onclick="renderInventario(document.getElementById(\'buscar-inv\')?.value||\'\')">🔄 Refrescar</button>'
@@ -346,6 +346,15 @@ async function renderInventario(filtro) {
       if (_intervalBadgeEntradaInventario) clearInterval(_intervalBadgeEntradaInventario);
       _intervalBadgeEntradaInventario = setInterval(function() {
         revisarBadgeEntradaInventario();
+      }, 90000);
+    }
+    // Mismo patrón para el punto rojo de Órdenes Rechazadas -- si a alguien
+    // le rechazan una Orden de Compra mientras ya está parado en Inventario,
+    // se entera sin tener que salir y volver a entrar.
+    if (typeof _intervalBadgeEntradasRechazadas !== 'undefined') {
+      if (_intervalBadgeEntradasRechazadas) clearInterval(_intervalBadgeEntradasRechazadas);
+      _intervalBadgeEntradasRechazadas = setInterval(function() {
+        revisarBadgeOrdenesRechazadas();
       }, 90000);
     }
   }
@@ -574,15 +583,15 @@ async function renderInventario(filtro) {
     // En segundo plano, sin bloquear el render principal -- revisa si hay
     // Entradas Rechazadas propias (o de cualquiera, si es administrador)
     // para hacer titilar la pestaña y que no pase desapercibida.
-    revisarBadgeEntradasRechazadas();
+    revisarBadgeOrdenesRechazadas();
   } catch(e) {
     const tabla = document.getElementById('tabla-inv-cont');
     if (tabla) tabla.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + msgErr(e) + '</div>';
   }
 }
 
-async function revisarBadgeEntradasRechazadas() {
-  const badgeEl = document.getElementById('badge-entradas-rechazadas');
+async function revisarBadgeOrdenesRechazadas() {
+  const badgeEl = document.getElementById('badge-ordenes-rechazadas');
   if (!badgeEl) return;
   if (!sesionActual?.administrador && !puedo('INVENTARIO','ENTRADA_STOCK')) { badgeEl.innerHTML = ''; return; }
   try {
@@ -654,7 +663,7 @@ async function invRenderVista(items, vista) {
   else if (vista === 'categorias') await invRenderCategorias(cont);
   else if (vista === 'tipos')      await invRenderTipos(cont);
   else if (vista === 'margen')     await invRenderMargenBruto(cont);
-  else if (vista === 'rechazadas') await invRenderEntradasRechazadas(cont);
+  else if (vista === 'rechazadas') await invRenderOrdenesRechazadas(cont);
 }
 
 function invRenderTabla(items, cont) {
@@ -1383,22 +1392,22 @@ async function guardarEntradaStock() {
   }
 }
 
-// Enruta la notificación de aprobación para una Entrada de Compra que
+// Enruta la notificación de aprobación para una Orden de Compra que
 // todavía no tiene CxP (nace recién al aprobar) -- llama a la función RPC
-// _buscar_y_notificar_aprobador_entrada / enrutar_aprobacion_entrada (misma
+// _buscar_y_notificar_aprobador_entrada / enrutar_aprobacion_orden_compra (misma
 // lógica de Área → Nivel 2 con límite de monto → escala a Nivel 1, que ya
 // usa Pagos para las CxP, pero referenciando la Entrada directamente).
-async function enrutarAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
+async function enrutarAprobacionOrdenCompra(monto, idEntrada, numeroDoc, detalle) {
   try {
     const idAreaCreador = await _resolverAreaSesion();
-    const mensajeRico = _armarMensajeAprobacionEntrada(monto, idEntrada, numeroDoc, detalle);
+    const mensajeRico = _armarMensajeAprobacionOrdenCompra(monto, idEntrada, numeroDoc, detalle);
     // El monto que decide QUIÉN debe aprobar (contra el límite de su Nivel
     // de Firma) tiene que ser lo que REALMENTE se está autorizando -- Base
     // + IVA + IGTF (si aplica), no solo la Base+IVA. Si no se suma el
     // IGTF aquí, una Compra podría enrutarse a un aprobador cuyo límite
     // alcanza para el monto sin IGTF, pero no para el monto real a pagar.
     const montoParaLimite = monto + (detalle?.montoIGTF || 0);
-    const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/enrutar_aprobacion_entrada', {
+    const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/enrutar_aprobacion_orden_compra', {
       method: 'POST',
       headers: {
         'apikey': SUPABASE_KEY,
@@ -1419,15 +1428,15 @@ async function enrutarAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
       throw new Error(err.message || 'Error ' + resp.status);
     }
     const data = await resp.json();
-    console.log('[enrutamiento de aprobación de Entrada]', data);
-  } catch(e) { console.warn('Error en enrutamiento de aprobación de Entrada:', e); }
+    console.log('[enrutamiento de aprobación de Orden de Compra]', data);
+  } catch(e) { console.warn('Error en enrutamiento de aprobación de Orden de Compra:', e); }
 }
 
 // Arma el mensaje de la notificación con formato (etiquetas/negritas), para
 // que el aprobador sepa DE UNA qué está autorizando -- no solo un número de
 // referencia y un monto suelto. "Monto a Pagar" respeta la Moneda Funcional
 // real de la Empresa (_empresaActiva.moneda_principal) -- no siempre es USD.
-function _armarMensajeAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
+function _armarMensajeAprobacionOrdenCompra(monto, idEntrada, numeroDoc, detalle) {
   const d = detalle || {};
   const tasaUsar = d.tasaBcv || _tasaVigente || 1;
   // Monto a Pagar = Base+IVA + IGTF (si aplica) -- es lo que realmente se
@@ -1472,7 +1481,7 @@ function _armarMensajeAprobacionEntrada(monto, idEntrada, numeroDoc, detalle) {
 // cuando esto se ejecuta, el formulario original ya no existe: puede
 // aprobarlo otra persona, en otro momento, desde otra pantalla.
 // Versión "por lote" de ejecutarEfectosEntradaCompra() -- se ejecuta al
-// aprobar UNA Entrada Consolidada (varios Artículos, un solo Proveedor,
+// aprobar UNA Orden de Compra (varios Artículos, un solo Proveedor,
 // una sola Factura). Actualiza Stock/CPP de cada Artículo individualmente
 // (igual que siempre), pero genera UN SOLO Asiento y UNA SOLA CxP (o un
 // solo juego de Cuotas si es Crédito) para todo el lote junto.
@@ -1548,7 +1557,7 @@ async function ejecutarEfectosEntradaCompraLote(filasLote) {
     incluyeIVA: primeraFila.incluye_iva === true,
     exentoIVA: primeraFila.exento_iva === true
   });
-  if (!resAstLote) console.warn('No se pudo generar el asiento de la Entrada Consolidada -- se sigue igual con la CxP, revisar manualmente.');
+  if (!resAstLote) console.warn('No se pudo generar el asiento de la Orden de Compra -- se sigue igual con la CxP, revisar manualmente.');
 
   // ── Una sola CxP (o un solo juego de Cuotas si es Crédito) por el total ──
   const totalUSDLote = lineasAsiento.reduce(function(a,l){ return a + l.totalExactoUSD; }, 0);
@@ -1627,7 +1636,7 @@ async function ejecutarEfectosEntradaCompraLote(filasLote) {
         await api('cont_cxp','PATCH',{ numero_doc: numDocLoteAst + '-' + cxpLote[0].id_cxp }, '?id_cxp=eq.' + cxpLote[0].id_cxp);
       }
     }
-  } catch(eCxPLote) { console.warn('Error creando CxP del lote (aprobación de Entrada Consolidada):', msgErr(eCxPLote)); }
+  } catch(eCxPLote) { console.warn('Error creando CxP del lote (aprobación de Orden de Compra):', msgErr(eCxPLote)); }
 }
 
 async function ejecutarEfectosEntradaCompra(m) {
@@ -1806,13 +1815,13 @@ async function ejecutarEfectosEntradaCompra(m) {
         await api('cont_cxp','PATCH',{ numero_doc: numDocBase + '-' + cxpCreada[0].id_cxp }, '?id_cxp=eq.' + cxpCreada[0].id_cxp);
       }
     }
-  } catch(eCxP) { console.warn('Error creando CxP (aprobación de Entrada):', msgErr(eCxP)); }
+  } catch(eCxP) { console.warn('Error creando CxP (aprobación de Orden de Compra):', msgErr(eCxP)); }
 }
 
-// Aprueba una Entrada de Compra pendiente -- revalida el monto contra el
+// Aprueba una Orden de Compra pendiente -- revalida el monto contra el
 // límite del Nivel de Firma de quien aprueba, marca la Entrada como
 // APROBADA, y ejecuta recién ahí todos los efectos (Stock/CPP/Asiento/CxP).
-async function aprobarEntradaCompra(id_entrada) {
+async function aprobarOrdenCompra(id_entrada) {
   if (!sesionActual?.administrador && !puedo('PAGOS','APROBAR')) {
     alert('No tiene permiso para aprobar Entradas de Compra.'); return;
   }
@@ -1825,7 +1834,7 @@ async function aprobarEntradaCompra(id_entrada) {
       return;
     }
 
-    // Si pertenece a un Lote (Entrada Consolidada), traer TODAS las filas
+    // Si pertenece a un Lote (Orden de Compra), traer TODAS las filas
     // hermanas -- se aprueban, se calculan y se marcan TODAS juntas, nunca
     // una por una.
     let filasLote = [m];
@@ -1929,14 +1938,14 @@ async function invCargarTiposArticulo(selTipoId) {
 
 let _entconsLineas = [];
 
-async function abrirEntradaConsolidada() {
+async function abrirOrdenCompra() {
   if (!puedo('INVENTARIO','ENTRADA_STOCK')) {
     alert('No tiene permiso para ingresar stock.');
     return;
   }
   window._retomandoLoteId = null;
   window._retomandoLoteAnclaEntrada = null;
-  const tituloModalEC = document.querySelector('#modal-entrada-consolidada .modal-header h3');
+  const tituloModalEC = document.querySelector('#modal-orden-compra .modal-header h3');
   if (tituloModalEC) tituloModalEC.textContent = '📥 ORDEN DE COMPRA';
   const btnGuardarEC = document.getElementById('btn-entcons-guardar');
   if (btnGuardarEC) btnGuardarEC.textContent = 'Solicitar Aprobación de Compra';
@@ -1968,10 +1977,10 @@ async function abrirEntradaConsolidada() {
   await _entconsCargarUsuarioActual();
   await _entconsActualizarTasa();
   _entconsRenderLineas();
-  abrirModal('modal-entrada-consolidada');
+  abrirModal('modal-orden-compra');
   // Que siempre se muestre desde el principio del formulario, sin importar
   // en qué parte haya quedado el scroll de una vez anterior.
-  const modalBodyEC = document.querySelector('#modal-entrada-consolidada .modal-body');
+  const modalBodyEC = document.querySelector('#modal-orden-compra .modal-body');
   if (modalBodyEC) modalBodyEC.scrollTop = 0;
 }
 
@@ -2095,7 +2104,7 @@ function _entconsFormatearPrecioBlur(input) {
 
 // Convierte el precio de una línea (en la Moneda Negociación elegida) a Bs
 // para mostrar dual, igual que Ventas -- todo el cálculo real (USD base)
-// sigue haciéndose en guardarEntradaConsolidada(), esto es solo display.
+// sigue haciéndose en guardarOrdenCompra(), esto es solo display.
 function _entconsFmtDual(montoEnMonedaNeg) {
   const moneda = document.getElementById('entcons-moneda')?.value || 'USD';
   const tasa = parseFloat(document.getElementById('entcons-tasa-bcv')?.value) || 0;
@@ -2188,7 +2197,7 @@ function _entconsCalcularCuotas() {
     + cuotas.map(function(c){ return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span>Cuota '+c.num+' — '+formatearFechaCorta(c.fecha)+'</span><span style="font-family:var(--font-mono)">$ '+fmtUSD(c.monto)+'</span></div>'; }).join('');
 }
 
-async function guardarEntradaConsolidada() {
+async function guardarOrdenCompra() {
   const errEl = document.getElementById('alerta-entcons-err');
   errEl.style.display = 'none';
 
@@ -2313,7 +2322,7 @@ async function guardarEntradaConsolidada() {
         id_proveedor: idProveedor,
         motivo: 'compra',
         esquema_pago: esquemaPago,
-        observaciones: 'Compra a Proveedor (Entrada Consolidada)',
+        observaciones: 'Compra a Proveedor (Orden de Compra)',
         exento_iva: exento,
         incluye_iva: incluye,
         fecha_pago: esquemaPago === 'CONTADO' ? fechaPago : null,
@@ -2349,7 +2358,7 @@ async function guardarEntradaConsolidada() {
     const numDocLote = 'OC-' + idOrdenCompraLote;
     const piezasTotalLote = lineasValidas.reduce(function(a,l){ return a + (parseFloat(l.cantidad)||0); }, 0);
     const montoBsLoteExacto = moneda === 'VES' ? montoTotalLoteMonedaOriginal : parseFloat((montoTotalLoteMonedaOriginal * tasaBcv).toFixed(2));
-    await enrutarAprobacionEntrada(montoTotalLoteConIVA, idAnclaFila, numDocLote, {
+    await enrutarAprobacionOrdenCompra(montoTotalLoteConIVA, idAnclaFila, numDocLote, {
       nombreArt: lineasValidas.length + ' Artículos (Compra a Proveedor)',
       proveedorNombre: document.getElementById('entcons-proveedor')?.selectedOptions[0]?.text || null,
       cantidad: lineasValidas.length,
@@ -2368,7 +2377,7 @@ async function guardarEntradaConsolidada() {
       : '✓ Orden de Compra enviada a aprobación (' + lineasValidas.length + ' artículos, Lote OC-' + idOrdenCompraLote + ').');
     window._retomandoLoteId = null;
     window._retomandoLoteAnclaEntrada = null;
-    cerrarModal('modal-entrada-consolidada');
+    cerrarModal('modal-orden-compra');
   } catch(eGuardarEntCons) {
     err('Error: ' + msgErr(eGuardarEntCons));
   } finally {
@@ -2739,7 +2748,7 @@ async function invRenderTipos(cont) {
 // "Compra a proveedor" del formulario manual de Entrada de Stock).
 
 // Versión "por lote" de lo anterior -- abre el modal de
-// Entrada Consolidada, precargado con TODOS los Artículos del Lote
+// Orden de Compra, precargado con TODOS los Artículos del Lote
 // rechazado, para corregirlos juntos y reenviar UNA SOLA solicitud de
 // aprobación (igual que al crearlo la primera vez).
 async function retomarLoteRechazado(id_orden_compra) {
@@ -2756,7 +2765,7 @@ async function retomarLoteRechazado(id_orden_compra) {
       return;
     }
 
-    await abrirEntradaConsolidada();
+    await abrirOrdenCompra();
     await new Promise(function(res) { setTimeout(res, 400); });
 
     const provSelLR = document.getElementById('entcons-proveedor');
@@ -2792,7 +2801,7 @@ async function retomarLoteRechazado(id_orden_compra) {
     _entconsRenderLineas();
     if (esquemaLR && esquemaLR.value === 'CREDITO') _entconsCalcularCuotas();
 
-    // Marca el modal en "modo retomar lote" -- guardarEntradaConsolidada()
+    // Marca el modal en "modo retomar lote" -- guardarOrdenCompra()
     // lo detecta y, en vez de crear filas nuevas, reemplaza las del Lote
     // (nunca tuvieron efectos en Stock/CPP/Asiento/CxP -- quedaron
     // detenidas desde que se crearon, así que no hay nada que revertir).
@@ -2802,21 +2811,21 @@ async function retomarLoteRechazado(id_orden_compra) {
     // propia secuencia (orden_compra_seq), no del id_entrada de la primera
     // fila como antes.
     window._retomandoLoteAnclaEntrada = primeraR.id_entrada;
-    const tituloModalLR = document.querySelector('#modal-entrada-consolidada .modal-header h3');
+    const tituloModalLR = document.querySelector('#modal-orden-compra .modal-header h3');
     if (tituloModalLR) tituloModalLR.textContent = '↻ RETOMAR LOTE RECHAZADO';
     const btnGuardarLR = document.getElementById('btn-entcons-guardar');
     if (btnGuardarLR) btnGuardarLR.textContent = 'Corregir y Reenviar a Aprobación';
     // Que se muestre desde el principio del formulario -- todo el
     // precargado de campos que hicimos arriba puede haber movido el
     // scroll, así que se fuerza de nuevo al final.
-    const modalBodyLR = document.querySelector('#modal-entrada-consolidada .modal-body');
+    const modalBodyLR = document.querySelector('#modal-orden-compra .modal-body');
     if (modalBodyLR) modalBodyLR.scrollTop = 0;
   } catch(eRetLote) {
     alert('Error al retomar el Lote: ' + msgErr(eRetLote));
   }
 }
 
-async function invRenderEntradasRechazadas(cont) {
+async function invRenderOrdenesRechazadas(cont) {
   if (!cont) cont = document.getElementById('tabla-inv-cont');
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
@@ -2894,7 +2903,7 @@ async function invRenderEntradasRechazadas(cont) {
   } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+msgErr(e)+'</div>'; }
 }
 
-async function rechazarEntradaCompra(id_entrada) {
+async function rechazarOrdenCompra(id_entrada) {
   if (!sesionActual?.administrador && !puedo('PAGOS','APROBAR')) {
     alert('No tiene permiso para rechazar Entradas de Compra.'); return false;
   }
@@ -2902,9 +2911,9 @@ async function rechazarEntradaCompra(id_entrada) {
     const div = document.createElement('div');
     div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center';
     div.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:24px;max-width:380px;width:90%">'
-      + '<div style="font-size:15px;margin-bottom:16px;color:#e8e8e8;text-align:center">Rechazar Entrada de Compra</div>'
+      + '<div style="font-size:15px;margin-bottom:16px;color:#e8e8e8;text-align:center">Rechazar Orden de Compra</div>'
       + '<label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Motivo del rechazo *</label>'
-      + '<textarea id="dlg-rechazo-ent-motivo" rows="3" placeholder="Explique por qué se rechaza esta Entrada..." style="width:100%;box-sizing:border-box;padding:10px;border-radius:6px;border:1px solid #444;background:#111;color:#e8e8e8;font-size:14px;margin-bottom:12px;resize:vertical;font-family:inherit"></textarea>'
+      + '<textarea id="dlg-rechazo-ent-motivo" rows="3" placeholder="Explique por qué se rechaza esta Orden..." style="width:100%;box-sizing:border-box;padding:10px;border-radius:6px;border:1px solid #444;background:#111;color:#e8e8e8;font-size:14px;margin-bottom:12px;resize:vertical;font-family:inherit"></textarea>'
       + '<div id="dlg-rechazo-ent-err" style="color:#f87171;font-size:12px;margin-bottom:12px;display:none"></div>'
       + '<div style="display:flex;gap:12px;justify-content:center">'
       + '<button id="btn-confirm-ent-si" style="background:#fc8181;border:none;color:#1a1a1a;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600">Rechazar</button>'
@@ -2933,7 +2942,7 @@ async function rechazarEntradaCompra(id_entrada) {
       return false;
     }
 
-    // Si pertenece a un Lote (Entrada Consolidada), rechazar TODAS las
+    // Si pertenece a un Lote (Orden de Compra), rechazar TODAS las
     // filas hermanas juntas -- nunca solo una del lote.
     let filasLoteRech = [m];
     if (m.id_orden_compra) {
@@ -2986,7 +2995,7 @@ async function rechazarEntradaCompra(id_entrada) {
           } catch(eProvRech) {}
         }
         const numDocRech = esLoteRech ? ('OC-'+m.id_orden_compra) : ('OC-'+(m.id_orden_compra || id_entrada));
-        const mensajeRechRico = _armarMensajeAprobacionEntrada(montoTotalConIVARech, id_entrada, numDocRech, {
+        const mensajeRechRico = _armarMensajeAprobacionOrdenCompra(montoTotalConIVARech, id_entrada, numDocRech, {
           nombreArt: nombreArtRech,
           proveedorNombre: proveedorNombreRech,
           cantidad: cantidadRech,
@@ -3004,11 +3013,11 @@ async function rechazarEntradaCompra(id_entrada) {
           + '</div>';
         await api('notificaciones','POST',{
           correo_destino: m.id_usuario,
-          titulo: esLoteRech ? 'Lote de Compra Rechazado' : 'Entrada de Compra Rechazada',
+          titulo: esLoteRech ? 'Lote de Compra Rechazado' : 'Orden de Compra Rechazada',
           mensaje: mensajeRechRico,
           estado: 'PENDIENTE',
           fecha_creacion: new Date().toISOString(),
-          datos_extra: JSON.stringify({ id_entrada: id_entrada, accion: 'entrada_compra_rechazada' })
+          datos_extra: JSON.stringify({ id_entrada: id_entrada, accion: 'orden_compra_rechazada' })
         }, '', true);
       } catch(eNotifRechEnt) {
         console.warn('Error notificando rechazo de Entrada:', eNotifRechEnt);
@@ -5120,7 +5129,7 @@ async function _guardarEdicionMovimientoInterno() {
 
       // Si la Entrada estaba RECHAZADA, al corregirla y guardarla vuelve a
       // quedar Pendiente de Aprobación -- ya no debe seguir mostrándose
-      // como Rechazada, dado que se está reenviando (ver enrutarAprobacionEntrada
+      // como Rechazada, dado que se está reenviando (ver enrutarAprobacionOrdenCompra
       // más abajo, que ya la manda de vuelta al Aprobador).
       if (movOrigArr[0]?.estado_aprobacion === 'RECHAZADA') {
         datos.estado_aprobacion = 'PENDIENTE';
@@ -5130,7 +5139,7 @@ async function _guardarEdicionMovimientoInterno() {
       // ── PATCH a stock_entradas ──
       await api('stock_entradas', 'PATCH', datos, '?id_entrada=eq.' + id);
 
-      // Si esta es una Entrada de Compra que TODAVÍA NO fue aprobada
+      // Si esta es una Orden de Compra que TODAVÍA NO fue aprobada
       // (venía PENDIENTE o RECHAZADA), no debe tener efectos en Stock,
       // CPP, Asiento ni CxP -- esos solo se generan al APROBAR (ver
       // ejecutarEfectosEntradaCompra), sea la primera vez o al reenviarla
@@ -5381,7 +5390,7 @@ async function _guardarEdicionMovimientoInterno() {
         }
       } catch(eCxPEdit) { console.warn('Error actualizando CxP:', eCxPEdit); }
       } else {
-        // Entrada de Compra que nunca fue aprobada -- reenviar a
+        // Orden de Compra que nunca fue aprobada -- reenviar a
         // aprobación a nivel de Entrada, exactamente igual que la primera
         // vez (misma notificación rica, con botones Aprobar/Rechazar
         // directos). Stock/CPP/Asiento/CxP quedan pendientes hasta que
@@ -5398,7 +5407,7 @@ async function _guardarEdicionMovimientoInterno() {
                 ? datos.monto_total_moneda_original
                 : (datos.tasa_bcv ? parseFloat((datos.monto_total_moneda_original * datos.tasa_bcv).toFixed(2)) : null))
             : null;
-          await enrutarAprobacionEntrada(datos.monto_total_con_iva || 0, id, numDocBaseReenvio, {
+          await enrutarAprobacionOrdenCompra(datos.monto_total_con_iva || 0, id, numDocBaseReenvio, {
             nombreArt: artNomReenvio,
             proveedorNombre: document.getElementById('edit-mov-proveedor')?.selectedOptions[0]?.text || null,
             cantidad: cantidad,
@@ -5905,12 +5914,12 @@ async function confirmarAnulacion() {
             .find(function(x){ return x.id_articulo === id_articulo; })?.nombre_articulo || ('Art#' + id_articulo);
           await api('notificaciones','POST',{
             correo_destino: movOrig.id_usuario,
-            titulo: 'Entrada de Compra Rechazada',
+            titulo: 'Orden de Compra Rechazada',
             mensaje: '<div style="font-size:13px">La Compra <strong>ENT-'+idMovimiento+'</strong> ("'+artNomAnul+'", '+cantidad+' uds.), que ya estaba aprobada, fue <strong style="color:#fc8181">anulada</strong> por '
               + (sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor') + '.<br><br><strong>Motivo:</strong> ' + motivo + '</div>',
             estado: 'PENDIENTE',
             fecha_creacion: new Date().toISOString(),
-            datos_extra: JSON.stringify({ id_entrada: idMovimiento, accion: 'entrada_compra_rechazada' })
+            datos_extra: JSON.stringify({ id_entrada: idMovimiento, accion: 'orden_compra_rechazada' })
           }, '', true);
         } catch(eNotifAnulEnt) { console.warn('Error notificando anulación de Entrada:', eNotifAnulEnt); }
       }
@@ -7008,7 +7017,7 @@ async function guardarFaltanteInventario() {
     tieneEntradasFalt = entradasFalt && entradasFalt.length > 0;
   } catch(eEntFalt) { tieneEntradasFalt = false; /* por seguridad, bloquear si no se pudo confirmar */ }
   if (!tieneEntradasFalt) {
-    errEl.textContent = 'Este artículo nunca ha tenido una Entrada registrada. No se puede hacer un Ajuste de Discrepancia sin un costo real con el cual valorarlo -- registre primero una Entrada de Compra.';
+    errEl.textContent = 'Este artículo nunca ha tenido una Entrada registrada. No se puede hacer un Ajuste de Discrepancia sin un costo real con el cual valorarlo -- registre y apruebe primero una Orden de Compra.';
     errEl.style.display = 'block';
     return;
   }
