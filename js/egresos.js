@@ -535,7 +535,7 @@ function fmtCreadorCxP(info) {
 // Operador normal no debe poder consultar libremente por RLS.
 // Arma el mensaje de la notificación con formato (etiquetas/negritas), para
 // que el aprobador sepa DE UNA qué está autorizando -- mismo patrón que
-// _armarMensajeAprobacionEntrada (inventario.js). "Monto a Pagar" es
+// _armarMensajeAprobacionOrdenCompra (inventario.js). "Monto a Pagar" es
 // Base+IVA+IGTF (si aplica) -- lo que realmente se le paga al Proveedor.
 function _armarMensajeAprobacionCxP(monto, idCxp, numeroDoc, detalle) {
   const d = detalle || {};
@@ -570,7 +570,7 @@ async function enrutarAprobacionCxP(idCxp, numeroDoc, montoUsd, detalle) {
     // El monto que decide QUIÉN debe aprobar (contra el límite de su Nivel
     // de Firma) tiene que ser lo que REALMENTE se está autorizando -- Base
     // + IVA + IGTF (si aplica), no solo la Base+IVA. Mismo criterio que
-    // enrutarAprobacionEntrada.
+    // enrutarAprobacionOrdenCompra.
     const montoParaLimite = montoUsd + (detalle?.montoIgtf || 0);
     const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/enrutar_aprobacion_cxp', {
       method: 'POST',
@@ -1087,7 +1087,7 @@ function abrirModal(id) {
   });
   el.style.zIndex = String(maxZ + 1);
   setTimeout(function() {
-    const body = el.querySelector('.modal-body');
+    const body = el.querySelector('.modal');
     if (body) body.scrollTop = 0;
   }, 30);
 }
@@ -2869,7 +2869,7 @@ async function editarCxPManual(id_cxp) {
           + '<button class="btn-primario" id="btn-guardar-pago" data-texto-original="💾 Guardar Cambios" onclick="this.disabled=true;this.textContent=\'⏳ Procesando...\';guardarPago()">💾 Guardar Cambios</button>';
       }
     }
-    const modalBodyEdit = document.querySelector('#modal-pago .modal-body');
+    const modalBodyEdit = document.querySelector('#modal-pago .modal');
     if (modalBodyEdit) modalBodyEdit.scrollTop = 0;
   } catch(e) { alert('Error: ' + msgErr(e)); }
 }
