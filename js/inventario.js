@@ -1966,7 +1966,7 @@ async function abrirOrdenCompra() {
   document.getElementById('entcons-cuotas-preview').innerHTML = '';
   document.getElementById('entcons-clave-usuario').value = '';
   document.getElementById('alerta-entcons-err').style.display = 'none';
-  _entconsLineas = [{ id_articulo: null, cantidad: '', precio_unitario: 0 }];
+  _entconsLineas = [];
 
   try {
     const provRows = await api('proveedores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif');
