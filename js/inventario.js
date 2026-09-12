@@ -6489,6 +6489,7 @@ async function _guardarRequerimientoInternoInterno() {
 
   if (!fecha) { err('La fecha es obligatoria.', 'reqint-fecha'); return; }
   if (!id_area) { err('Debe seleccionar el Área receptora.', 'reqint-area'); return; }
+  if (!idEmpRecibe) { err('Debe seleccionar el Empleado que Recibe -- es quien confirma que le llegaron los Artículos.', 'reqint-empleado'); return; }
 
   const lineasValidas = _reqIntLineas.filter(function(l){ return l.id_articulo && parseFloat(l.cantidad) > 0; });
   if (!lineasValidas.length) { err('Agregue al menos un Artículo con Cantidad válida.'); return; }
@@ -6552,13 +6553,10 @@ async function _guardarRequerimientoInternoInterno() {
       await upsertStockArea(lin.id_articulo, id_areaEntrega, -cantidad);
 
       if (esMercancia) {
-        // El crédito al área DESTINO se hace de inmediato solo si no hay
-        // un empleado receptor designado -- si sí hay, el stock se suma
-        // cuando confirme la notificación de recepción (notifConfirmar en
-        // core.js), igual que en la Salida individual de antes.
-        if (!idEmpRecibe) {
-          await upsertStockArea(lin.id_articulo, id_area, cantidad);
-        } else if (id_salidaReqInt) {
+        // El crédito al área DESTINO nunca es inmediato -- siempre espera
+        // a que el Empleado que Recibe (ahora obligatorio) confirme la
+        // notificación de recepción (notifConfirmar en core.js).
+        if (id_salidaReqInt) {
           try {
             const empReceptorReqInt = await api('empleados','GET',null,'?id_empleado=eq.'+idEmpRecibe+'&select=correo,nombre_completo,id_usuario,usuarios(correo_usuario)');
             const correoReceptorReqInt = empReceptorReqInt?.[0]?.correo || empReceptorReqInt?.[0]?.usuarios?.correo_usuario || null;
@@ -6612,7 +6610,7 @@ async function _guardarRequerimientoInternoInterno() {
       } catch(eAstReqInt) { console.warn('Error generando asiento consolidado de Requerimiento Interno:', eAstReqInt); }
     }
 
-    okEl.textContent = 'Requerimiento Interno "' + numDocReqInt + '" registrado' + (lineasConsumibleAst.length < lineasValidas.length ? ' -- se notificó al receptor de los artículos de Mercancía con empleado asignado.' : '.');
+    okEl.textContent = 'Requerimiento Interno "' + numDocReqInt + '" registrado' + (lineasConsumibleAst.length < lineasValidas.length ? ' -- se notificó al receptor de los artículos de Mercancía para que confirme la recepción.' : '.');
     okEl.style.display = 'block';
     setTimeout(function() {
       cerrarModal('modal-requerimiento-interno');
