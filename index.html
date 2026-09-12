@@ -1396,19 +1396,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909019"></script>
-<script src="js/parametros.js?v=20260909019"></script>
-<script src="js/empresas.js?v=20260909019"></script>
-<script src="js/ingresos.js?v=20260909019"></script>
-<script src="js/inventario.js?v=20260909019"></script>
-<script src="js/proveedores.js?v=20260909019"></script>
-<script src="js/clientes.js?v=20260909019"></script>
-<script src="js/ventas.js?v=20260909019"></script>
-<script src="js/contabilidad.js?v=20260909019"></script>
-<script src="js/egresos.js?v=20260909019"></script>
-<script src="js/vehiculos.js?v=20260909019"></script>
-<script src="js/catalogo.js?v=20260909019"></script>
-<script src="js/ordenes.js?v=20260909019"></script>
+<script src="js/core.js?v=20260909020"></script>
+<script src="js/parametros.js?v=20260909020"></script>
+<script src="js/empresas.js?v=20260909020"></script>
+<script src="js/ingresos.js?v=20260909020"></script>
+<script src="js/inventario.js?v=20260909020"></script>
+<script src="js/proveedores.js?v=20260909020"></script>
+<script src="js/clientes.js?v=20260909020"></script>
+<script src="js/ventas.js?v=20260909020"></script>
+<script src="js/contabilidad.js?v=20260909020"></script>
+<script src="js/egresos.js?v=20260909020"></script>
+<script src="js/vehiculos.js?v=20260909020"></script>
+<script src="js/catalogo.js?v=20260909020"></script>
+<script src="js/ordenes.js?v=20260909020"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2889,11 +2889,11 @@
       <!-- INFO OS -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding:10px 14px;background:var(--gris2);border-radius:6px;border:1px solid var(--borde)">
         <div>
-          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">N° Orden</div>
+          <div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">N° Orden</div>
           <div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)" id="os-numero">—</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
-          <label id="lbl-os-estado" style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin:0;white-space:nowrap">Estado</label>
+          <label id="lbl-os-estado" style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin:0;white-space:nowrap">Estado</label>
           <select id="os-estado" onchange="onCambioEstadoOS(this.value)" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none">
             <option value="">— Seleccione Estado —</option>
             <option value="ABIERTA">Abierta</option>
@@ -2909,7 +2909,7 @@
 
       <!-- BÚSQUEDA VEHÍCULO -->
       <div style="margin-bottom:16px">
-        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--suave);margin-bottom:8px">Vehículo</div>
+        <div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px">Vehículo</div>
         <div style="display:flex;gap:10px">
           <input type="text" id="os-placa-bus" placeholder="Buscar por placa..." style="flex:1;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;text-transform:uppercase"
             onkeydown="if(event.key==='Enter'){event.preventDefault();buscarVehiculoOS()}">
@@ -2921,7 +2921,7 @@
 
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
         <div class="form-campo" style="margin:0">
-          <label>Km de Entrada *</label>
+          <label>Km de Entrada</label>
           <input type="number" id="os-km" placeholder="0" min="0">
         </div>
         <div class="form-campo" style="margin:0">
@@ -2929,18 +2929,18 @@
           <input type="date" id="os-fecha-entrada" onchange="validarFechaEntradaOS(this)">
         </div>
         <div class="form-campo" style="margin:0">
-          <label>Fecha Prometida *</label>
+          <label>Fecha Prometida</label>
           <input type="date" id="os-fecha-prometida" onchange="validarFechaPrometidaOS(this)">
         </div>
       </div>
 
       <div class="form-grid">
         <div class="form-campo" id="os-fecha-cierre-cont" style="display:none">
-          <label>Fecha de Cierre <span style="color:var(--rojo)">*</span></label>
+          <label>Fecha de Cierre</label>
           <input type="date" id="os-fecha-cierre">
         </div>
         <div class="form-campo form-full">
-          <label>Diagnóstico *</label>
+          <label>Diagnóstico</label>
           <textarea id="os-diagnostico" placeholder="Descripción del problema o diagnóstico inicial..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%"></textarea>
         </div>
         <div class="form-campo form-full">
