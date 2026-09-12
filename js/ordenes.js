@@ -887,7 +887,7 @@ async function agregarMercanciaInventario() {
         + '. No se puede agregar una cantidad mayor a la disponible.');
       return;
     }
-    const pVal = parseFloat(precio.value) || parseFloat(r.precio_venta_moneda) || 0;
+    const pVal = parseFloat(precio.value) || precioVentaEnVivo(r).usd || 0;
     osArtículosLineas.push({ id_articulo: r.id_articulo, descripcion: r.nombre_articulo,
       cantidad: cantVal, precio_usd: precioAUSD(pVal, moneda),
       precio_original: pVal, moneda });
