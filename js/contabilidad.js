@@ -1171,6 +1171,7 @@ async function contAbrirPagoCxc(id_cxc) {
   }
 
   abrirModal('modal-cont-pago-cxc');
+  focusFirstField('modal-cont-pago-cxc');
 }
 
 // Invierte cuál Monto (Bs o USD) se muestra como principal (grande) según
@@ -1716,6 +1717,7 @@ async function abrirModalCuentasBancariasEmpresa() {
 
   await cbeCargarListado();
   abrirModal('modal-cuentas-bancarias-empresa');
+  focusFirstField('modal-cuentas-bancarias-empresa');
 }
 
 // Mismo patrón que onSelBancoEmpleado()/sincronizarNumeroCuenta() en
@@ -1852,6 +1854,7 @@ async function abrirModalTraspasoCB() {
 
   await _traspasoCBActualizarCuentas();
   abrirModal('modal-traspaso-cb');
+  focusFirstField('modal-traspaso-cb');
 }
 
 // Repuebla Cuenta Caja (param_metodos_pago, sin cambios) y Cuenta
@@ -2821,6 +2824,7 @@ async function abrirFormTributo(id) {
   const esRet = t ? t.es_retencion : false;
   await cargarCuentasTributo(esRet, t ? t.id_cuenta_contable : null);
   abrirModal('modal-tributo');
+  focusFirstField('modal-tributo');
 }
 
 async function cargarCuentasTributo(esRetencion, id_cuentaActual) {
