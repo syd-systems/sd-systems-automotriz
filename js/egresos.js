@@ -4766,6 +4766,7 @@ async function ejecutarPagoCxP(id_cxp) {
   await _renderDesglosePagoEjecutar();
 
   abrirModal('modal-ejecutar-pago');
+  focusFirstField('modal-ejecutar-pago');
 }
 
 const METODO_PAGO_LABELS = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria' };
