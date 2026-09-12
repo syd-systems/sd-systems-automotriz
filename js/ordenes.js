@@ -4,6 +4,7 @@
 // ══════════════════════════════════════════════════════════════
 let ordenesCache = [];
 let _idCuentaMercanciasOS = null; // cache del id_cuenta de 1.1.04.001 (Inventario de Mercancías)
+let _itemsDisponiblesOS = []; // Artículos (solo Mercancías, con stock) que puede elegir cada fila de la tabla de Artículos
 let osServiciosLineas = [];  // líneas de servicios de la OS activa
 let osArtículosLineas = [];  // líneas de artículos de la OS activa
 // ─── fmtBs / fmtUSD / fmtVES definidas globalmente en core.js ───
@@ -419,19 +420,10 @@ async function abrirNuevaOS() {
   document.getElementById('alerta-os-err').style.display = 'none';
   document.getElementById('modal-os-titulo').textContent = 'NUEVA ORDEN DE SERVICIO';
 
+  await cargarSelectsOS();
   renderLineasOS();
   renderLineasRep();
   calcularTotalesOS();
-  await cargarSelectsOS();
-  // Resetear grupo al abrir modal
-  const grpSel = document.getElementById('os-sel-grupo-cat');
-  if (grpSel) grpSel.value = '';
-  // Resetear el precio de Artículos -- quedaba con el valor de la última
-  // mercancía seleccionada en una OS anterior de la misma sesión.
-  const precioInvReset = document.getElementById('os-precio-inv');
-  if (precioInvReset) precioInvReset.value = '';
-  const precioLibreReset = document.getElementById('os-precio-libre');
-  if (precioLibreReset) precioLibreReset.value = '';
   const btnGuardarNuevaOS = document.getElementById('btn-guardar-os');
   if (btnGuardarNuevaOS) {
     btnGuardarNuevaOS.textContent = 'GUARDAR OS';
@@ -471,6 +463,11 @@ async function abrirEditarOS(id) {
   osServiciosLineas = [];
   osArtículosLineas = [];
 
+  // cargarSelectsOS() ANTES de armar las líneas -- necesita catalogoCache
+  // ya cargado para poder reconstruir el Grupo de cada Servicio guardado
+  // (la base solo guarda id_servicio, el Grupo se deriva del catálogo).
+  await cargarSelectsOS();
+
   try {
     const [linServ, linRep, tasasDB] = await Promise.all([
       api('os_servicios', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
@@ -478,7 +475,12 @@ async function abrirEditarOS(id) {
       api('tasas', 'GET', null, '?order=fecha_valor.desc&limit=10&select=*'),
     ]);
     osServiciosLineas = linServ.map(function(l) {
-      return { id: l.id_os_serv, id_servicio: l.id_servicio, descripcion: l.descripcion,
+      // Reconstruir Grupo/esLibre -- la BD solo guarda id_servicio (null si
+      // fue un Concepto libre); el Grupo real se busca en el catálogo.
+      const catServ  = l.id_servicio ? catalogoCache.find(function(c) { return c.id_servicio === l.id_servicio; }) : null;
+      const esLibreL = !l.id_servicio;
+      return { id: l.id_os_serv, id_grupo: esLibreL ? 'Descripción Libre' : (catServ ? catServ.grupo : ''), esLibre: esLibreL,
+        id_servicio: l.id_servicio, descripcion: l.descripcion,
         cantidad: l.cantidad, precio_usd: l.precio_usd,
         moneda: (l.moneda || 'USD').toUpperCase(),
         precio_original: parseFloat(l.precio_original || l.precio_usd || 0) };
@@ -546,7 +548,6 @@ async function abrirEditarOS(id) {
   renderLineasOS();
   renderLineasRep();
   calcularTotalesOS();
-  await cargarSelectsOS();
   await _resolverAreaOS(o.id_usuario);
 
   abrirModal('modal-os');
@@ -585,72 +586,122 @@ function renderVehInfoOS(v) {
     + '</div></div></div>';
 }
 
-// ─── LÍNEAS DE SERVICIOS ───
-function renderLineasOS() {
-  const cont = document.getElementById('os-lineas-serv');
-  if (!cont) return;
-  if (!osServiciosLineas.length) {
-    cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Sin servicios agregados</div>';
-    return;
+// ─── LÍNEAS DE SERVICIOS (tabla editable, estilo Orden de Compra) ───
+// Cada fila es un objeto editable en osServiciosLineas: { id_grupo,
+// id_servicio, esLibre, descripcion, cantidad, precio_original,
+// precio_usd, moneda }. "esLibre" = true cuando el Grupo elegido es
+// "Descripción Libre" -- la celda Servicio se vuelve un campo de texto
+// (Concepto) con Precio/Moneda editables a mano, y Cantidad fija en 1.
+function agregarLineaServVacia() {
+  const incompleta = osServiciosLineas.some(function(l) {
+    return (!l.esLibre && !l.id_servicio) || (l.esLibre && !l.descripcion) || !(parseFloat(l.cantidad) > 0);
+  });
+  if (incompleta) { alert('Complete la línea anterior antes de agregar una nueva.'); return; }
+  osServiciosLineas.push({ id_grupo: '', id_servicio: null, esLibre: false, descripcion: '',
+    cantidad: 1, precio_original: 0, precio_usd: 0, moneda: 'USD' });
+  renderLineasOS();
+}
+
+function quitarLineaServ(i) { osServiciosLineas.splice(i, 1); renderLineasOS(); }
+
+function onCambioGrupoFilaServ(i, grupo) {
+  const l = osServiciosLineas[i];
+  if (!l) return;
+  l.id_grupo = grupo;
+  l.esLibre  = _normTxt(grupo) === 'DESCRIPCION LIBRE';
+  l.id_servicio = null; l.descripcion = ''; l.precio_original = 0; l.precio_usd = 0; l.moneda = 'USD';
+  l.cantidad = l.esLibre ? 1 : (l.cantidad || 1);
+  renderLineasOS();
+}
+
+function onCambioServicioFila(i, id_servicio) {
+  const l = osServiciosLineas[i];
+  if (!l) return;
+  l.id_servicio = id_servicio ? parseInt(id_servicio) : null;
+  if (l.id_servicio) {
+    const s = catalogoCache.find(function(x) { return x.id_servicio == l.id_servicio; });
+    if (s) {
+      l.descripcion     = s.nombre;
+      l.precio_original = parseFloat(s.precio_usd || 0);
+      l.moneda          = (s.moneda_precio || 'USD').toUpperCase();
+      l.precio_usd       = convertirAUSD(l.precio_original, l.moneda);
+    }
+  } else {
+    l.descripcion = ''; l.precio_original = 0; l.precio_usd = 0; l.moneda = 'USD';
   }
-  const monedaLabels = { USD: '$ USD', EUR: '€ EUR', VES: 'Bs VES' };
-  cont.innerHTML = '<div style="display:grid;grid-template-columns:1fr 70px 110px 60px auto;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:4px">'
-    + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px">Descripción</div>'
-    + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px;text-align:center">Cant.</div>'
-    + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px;text-align:right">Precio</div>'
-    + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px;text-align:center">Mon.</div>'
-    + '<div></div></div>'
-  + osServiciosLineas.map(function(l, i) {
-    const mon    = (l.moneda || 'USD').toUpperCase();
-    const precio = parseFloat(l.precio_original !== undefined ? l.precio_original : (l.precio_usd || 0));
-    const precioFmt = mon === 'VES' ? fmtBs(precio) : fmtUSD(precio);
-    return '<div style="display:grid;grid-template-columns:1fr 70px 110px 60px auto;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
-      + '<div style="font-size:13px;font-weight:500">' + l.descripcion + '</div>'
-      + '<input type="number" value="' + l.cantidad + '" min="0.01" step="0.01" onchange="osServiciosLineas[' + i + '].cantidad=parseFloat(this.value)||1;calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:center">'
-      + '<input type="text" value="' + precioFmt + '" onchange="osServiciosLineas[' + i + '].precio_original=parsePrecio(this.value,\'' + mon + '\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
-      + '<div style="font-size:10px;font-weight:600;color:var(--suave);text-align:center">' + (monedaLabels[mon] || mon) + '</div>'
-      + '<button onclick="quitarLineaServ(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px;padding:0 4px">✕</button>'
-      + '</div>';
-  }).join('');
+  renderLineasOS();
+}
+
+function onCambioConceptoFila(i, texto) {
+  const l = osServiciosLineas[i];
+  if (l) l.descripcion = (texto || '').toUpperCase();
+}
+
+function onCambioCantidadFilaServ(i, valor) {
+  const l = osServiciosLineas[i];
+  if (l) l.cantidad = parseFloat(valor) || 0;
   calcularTotalesOS();
 }
 
-function renderLineasRep() {
-  const cont = document.getElementById('os-lineas-rep');
+function onCambioPrecioFilaServ(i, valor) {
+  const l = osServiciosLineas[i];
+  if (!l) return;
+  l.precio_original = parsePrecio(valor, l.moneda);
+  l.precio_usd       = convertirAUSD(l.precio_original, l.moneda);
+  calcularTotalesOS();
+}
+
+function onCambioMonedaFilaServ(i, moneda) {
+  const l = osServiciosLineas[i];
+  if (!l) return;
+  l.moneda     = moneda;
+  l.precio_usd = convertirAUSD(l.precio_original, moneda);
+  calcularTotalesOS();
+}
+
+function renderLineasOS() {
+  const cont = document.getElementById('os-lineas-serv');
   if (!cont) return;
-  if (!osArtículosLineas.length) {
-    cont.innerHTML = '<div style="color:var(--suave);font-size:12px;padding:12px 0;text-align:center">Sin artículos agregados</div>';
-    return;
-  }
-  const monedaLabels = { USD: '$ USD', EUR: '€ EUR', VES: 'Bs VES' };
-  cont.innerHTML = '<div style="display:grid;grid-template-columns:1fr 70px 110px 60px auto;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:4px">'
-    + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px">Descripción</div>'
-    + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px;text-align:center">Cant.</div>'
-    + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px;text-align:right">Precio</div>'
-    + '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:1px;text-align:center">Mon.</div>'
-    + '<div></div></div>'
-  + osArtículosLineas.map(function(l, i) {
-    const mon    = (l.moneda || 'USD').toUpperCase();
-    const precio = parseFloat(l.precio_original !== undefined ? l.precio_original : (l.precio_usd || 0));
-    const precioFmt = mon === 'VES' ? fmtBs(precio) : fmtUSD(precio);
-    return '<div style="display:grid;grid-template-columns:1fr 70px 110px 60px auto;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
-      + '<div style="font-size:13px;font-weight:500">' + l.descripcion + '</div>'
-      + '<input type="number" value="' + l.cantidad + '" min="0.01" step="0.01" onchange="onCambiarCantidadLineaRep(' + i + ',this.value)" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:center">'
-      + '<input type="text" value="' + precioFmt + '" onchange="osArtículosLineas[' + i + '].precio_original=parsePrecio(this.value,\'' + mon + '\');calcularTotalesOS()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono);font-size:12px;padding:5px 8px;border-radius:4px;outline:none;text-align:right">'
-      + '<div style="font-size:10px;font-weight:600;color:var(--suave);text-align:center">' + (monedaLabels[mon] || mon) + '</div>'
-      + '<button onclick="quitarLineaRep(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px;padding:0 4px">✕</button>'
-      + '</div>';
+  const gruposServ = [...new Set(catalogoCache.map(function(s) { return s.grupo; }).filter(Boolean))].sort();
+
+  cont.innerHTML = osServiciosLineas.map(function(l, i) {
+    const opcionesGrupo = '<option value="">— Seleccionar —</option>'
+      + gruposServ.map(function(g) { return '<option value="' + g + '"' + (l.id_grupo === g ? ' selected' : '') + '>' + g + '</option>'; }).join('')
+      + '<option value="Descripción Libre"' + (l.esLibre ? ' selected' : '') + '>Descripción Libre</option>';
+
+    const serviciosFiltrados = catalogoCache.filter(function(s) { return !l.id_grupo || s.grupo === l.id_grupo; });
+    const opcionesServ = '<option value="">— Seleccionar —</option>'
+      + serviciosFiltrados.map(function(s) { return '<option value="' + s.id_servicio + '"' + (l.id_servicio == s.id_servicio ? ' selected' : '') + '>' + s.nombre + '</option>'; }).join('');
+
+    const celdaServicio = !l.id_grupo
+      ? '<select disabled style="width:100%;background:var(--gris1);border:1px solid var(--borde);color:var(--suave);font-size:12px;padding:6px 8px;border-radius:4px;cursor:not-allowed"><option>— Elija un Grupo primero —</option></select>'
+      : l.esLibre
+        ? '<input type="text" value="' + (l.descripcion || '') + '" placeholder="Escribe el concepto..." oninput="onCambioConceptoFila(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-transform:uppercase">'
+        : '<select onchange="onCambioServicioFila(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">' + opcionesServ + '</select>';
+
+    const catalogado = !l.esLibre && l.id_servicio;
+    const estiloPrecio = catalogado
+      ? 'width:100%;background:var(--gris1);border:1px solid var(--borde);color:var(--suave);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;cursor:not-allowed'
+      : 'width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--naranja);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)';
+
+    const subtotal    = (parseFloat(l.cantidad) || 0) * (parseFloat(l.precio_original) || 0);
+    const subtotalFmt = l.moneda === 'VES' ? fmtBs(subtotal) + ' Bs' : '$ ' + fmtUSD(subtotal);
+
+    return '<tr>'
+      + '<td style="padding:4px"><select onchange="onCambioGrupoFilaServ(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">' + opcionesGrupo + '</select></td>'
+      + '<td style="padding:4px">' + celdaServicio + '</td>'
+      + '<td style="padding:4px;width:70px"><input type="number" min="0.01" step="0.01" value="' + l.cantidad + '" ' + (l.esLibre ? 'readonly style="width:100%;background:var(--gris1);color:var(--suave);border:1px solid var(--borde);font-size:12px;padding:6px 8px;border-radius:4px;cursor:not-allowed"' : 'oninput="onCambioCantidadFilaServ(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"') + '></td>'
+      + '<td style="padding:4px;width:90px"><input type="text" value="' + (l.precio_original ? l.precio_original.toFixed(2) : '') + '" ' + (catalogado ? 'readonly' : 'oninput="onCambioPrecioFilaServ(' + i + ',this.value)"') + ' style="' + estiloPrecio + '"></td>'
+      + '<td style="padding:4px;width:80px"><select onchange="onCambioMonedaFilaServ(' + i + ',this.value)" ' + (catalogado ? 'disabled' : '') + ' style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none"><option value="USD"' + (l.moneda === 'USD' ? ' selected' : '') + '>$ USD</option><option value="EUR"' + (l.moneda === 'EUR' ? ' selected' : '') + '>€ EUR</option><option value="VES"' + (l.moneda === 'VES' ? ' selected' : '') + '>Bs VES</option></select></td>'
+      + '<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono);color:var(--naranja);white-space:nowrap">' + subtotalFmt + '</td>'
+      + '<td style="padding:4px;text-align:center"><button onclick="quitarLineaServ(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px">✕</button></td>'
+      + '</tr>';
   }).join('');
   calcularTotalesOS();
 }
 
 function parsePrecio(valor, moneda) {
   const s = (valor || '0').toString();
-  // Todo el sistema MUESTRA los precios en formato venezolano (punto=miles,
-  // coma=decimal) sin importar la moneda -- fmtUSD() es solo un alias de
-  // fmtBs(). Por eso aquí también se debe parsear siempre igual; antes se
-  // asumía formato inglés (coma=miles) para USD/EUR, lo que interpretaba
-  // "80,00" como 8000 (inflado 100x).
   return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
 }
 
@@ -660,278 +711,88 @@ function convertirAUSD(precio, moneda) {
   return precio; // USD
 }
 
-function quitarLineaServ(i) { osServiciosLineas.splice(i, 1); renderLineasOS(); }
-function quitarLineaRep(i)  { osArtículosLineas.splice(i, 1); renderLineasRep(); refrescarSelectorArticulosOS(); }
+// ─── LÍNEAS DE ARTÍCULOS (tabla editable, estilo Orden de Compra) ───
+// Cada fila: { id_articulo, descripcion, cantidad, precio_original,
+// precio_usd, moneda }. El Precio siempre viene de precioVentaEnVivo()
+// (CPP ÷ Margen del Tipo) -- de solo lectura, nunca se edita a mano, y
+// siempre en USD.
+function agregarLineaArtVacia() {
+  const incompleta = osArtículosLineas.some(function(l) { return !l.id_articulo || !(parseFloat(l.cantidad) > 0); });
+  if (incompleta) { alert('Complete la línea anterior antes de agregar una nueva.'); return; }
+  osArtículosLineas.push({ id_articulo: null, descripcion: '', cantidad: 1, precio_original: 0, precio_usd: 0, moneda: 'USD' });
+  renderLineasRep();
+}
 
-// Se dispara al editar la Cantidad directamente en la lista de líneas de
-// Artículos ya agregadas -- antes esto no validaba nada, permitiendo
-// escribir cualquier número sin importar el stock real. Misma regla de
-// bloqueo total que agregarMercanciaInventario(): nunca se puede superar
-// el stock disponible en el área, contando también lo que ya ocupan las
-// OTRAS líneas de ese mismo artículo en esta misma OS.
-function onCambiarCantidadLineaRep(i, valor) {
-  const linea = osArtículosLineas[i];
-  if (!linea) return;
-  const nuevaCant = parseFloat(valor) || 0;
-  const art = inventarioCache.find(function(x) { return x.id_articulo === linea.id_articulo; });
-  const stockDisponible = art ? stockMostrarArticulo(art.id_articulo) : 0;
+function quitarLineaRep(i) { osArtículosLineas.splice(i, 1); renderLineasRep(); }
+
+function _stockDisponibleFilaOS(id_articulo, idxExcluir) {
+  const stockReal = stockMostrarArticulo(id_articulo);
   const usadoOtrasLineas = osArtículosLineas
-    .filter(function(l, idx) { return idx !== i && l.id_articulo === linea.id_articulo; })
+    .filter(function(l, idx) { return idx !== idxExcluir && l.id_articulo === id_articulo; })
     .reduce(function(acc, l) { return acc + (parseFloat(l.cantidad) || 0); }, 0);
-  const disponibleReal = stockDisponible - usadoOtrasLineas;
-  if (nuevaCant > disponibleReal) {
-    alert('⚠ Stock insuficiente. Disponible para este artículo: ' + disponibleReal
-      + '. No se puede agregar una cantidad mayor a la disponible.');
-    renderLineasRep(); // revertir el campo visual al último valor válido
-    return;
+  return stockReal - usadoOtrasLineas;
+}
+
+function onCambioArticuloFilaOS(i, id_articulo) {
+  const l = osArtículosLineas[i];
+  if (!l) return;
+  l.id_articulo = id_articulo ? parseInt(id_articulo) : null;
+  if (l.id_articulo) {
+    const r = inventarioCache.find(function(x) { return x.id_articulo === l.id_articulo; });
+    if (r) {
+      l.descripcion = r.nombre_articulo;
+      const ventaViva   = precioVentaEnVivo(r);
+      l.precio_original = ventaViva.usd;
+      l.precio_usd       = ventaViva.usd;
+      l.moneda           = 'USD';
+    }
+  } else {
+    l.descripcion = ''; l.precio_original = 0; l.precio_usd = 0;
   }
-  linea.cantidad = nuevaCant || 1;
+  renderLineasRep();
+}
+
+function onCambioCantidadFilaArt(i, valor) {
+  const l = osArtículosLineas[i];
+  if (!l) return;
+  const nuevaCant = parseFloat(valor) || 0;
+  if (l.id_articulo) {
+    const disponibleReal = _stockDisponibleFilaOS(l.id_articulo, i);
+    if (nuevaCant > disponibleReal) {
+      alert('⚠ Stock insuficiente. Disponible para este artículo: ' + disponibleReal + '. No se puede agregar una cantidad mayor a la disponible.');
+      renderLineasRep();
+      return;
+    }
+  }
+  l.cantidad = nuevaCant || 0;
   calcularTotalesOS();
 }
 
-function calcularTotalesOS() {
-  const tasaUSD = tasasDisponiblesOS.USD || tasaActualOS || 1;
+function renderLineasRep() {
+  const cont = document.getElementById('os-lineas-rep');
+  if (!cont) return;
 
-  function lineaABs(precio, moneda) {
-    const p   = parseFloat(precio) || 0;
-    const mon = (moneda || 'USD').toUpperCase();
-    if (mon === 'VES') return p;
-    const tasa = tasasDisponiblesOS[mon] || tasaUSD;
-    return p * tasa;
-  }
+  cont.innerHTML = osArtículosLineas.map(function(l, i) {
+    const opcionesArt = '<option value="">— Seleccionar —</option>'
+      + _itemsDisponiblesOS.filter(function(a) { return a.id_articulo === l.id_articulo || _stockDisponibleFilaOS(a.id_articulo, i) > 0; })
+        .map(function(a) { return '<option value="' + a.id_articulo + '"' + (l.id_articulo === a.id_articulo ? ' selected' : '') + '>' + a.nombre_articulo + '</option>'; }).join('');
 
-  const totServBs = osServiciosLineas.reduce(function(acc, l) {
-    return acc + lineaABs(l.precio_original || l.precio_usd, l.moneda) * parseFloat(l.cantidad);
-  }, 0);
-  const totRepBs = osArtículosLineas.reduce(function(acc, l) {
-    return acc + lineaABs(l.precio_original || l.precio_usd, l.moneda || 'USD') * parseFloat(l.cantidad);
-  }, 0);
-  const totalBs  = totServBs + totRepBs;
-  const totalUSD = tasaUSD > 0 ? totalBs / tasaUSD : 0;
-  // Vista previa del IVA que se va a cobrar al Facturar -- misma tasa que
-  // usa facturarOS() (tasaIVAActual()), para que no sea una sorpresa recién
-  // al momento de generar la Factura.
-  const ivaPct  = tasaIVAActual();
-  const ivaBs   = totalBs * ivaPct;
-  const ivaUSD  = totalUSD * ivaPct;
-  const totalConIvaBs  = totalBs + ivaBs;
-  const totalConIvaUSD = totalUSD + ivaUSD;
+    const stockTxt  = l.id_articulo ? _stockDisponibleFilaOS(l.id_articulo, i) : '—';
+    const subtotal    = (parseFloat(l.cantidad) || 0) * (parseFloat(l.precio_original) || 0);
+    const subtotalFmt = '$ ' + fmtUSD(subtotal);
 
-  const el = document.getElementById('os-totales');
-  if (el) el.innerHTML = '<div style="display:flex;gap:24px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:12px 0">'
-    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Servicios</div><div style="font-family:var(--font-mono)">' + fmtBs(totServBs) + ' Bs</div><div style="font-size:11px;color:var(--suave)">$ ' + fmtUSD(tasaUSD > 0 ? totServBs / tasaUSD : 0) + '</div></div>'
-    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Artículos</div><div style="font-family:var(--font-mono)">' + fmtBs(totRepBs) + ' Bs</div><div style="font-size:11px;color:var(--suave)">$ ' + fmtUSD(tasaUSD > 0 ? totRepBs / tasaUSD : 0) + '</div></div>'
-    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Subtotal</div><div style="font-family:var(--font-mono)">' + fmtBs(totalBs) + ' Bs</div><div style="font-size:11px;color:var(--suave)">$ ' + fmtUSD(totalUSD) + '</div></div>'
-    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">IVA (' + (ivaPct*100).toFixed(0) + '%)</div><div style="font-family:var(--font-mono)">' + fmtBs(ivaBs) + ' Bs</div><div style="font-size:11px;color:var(--suave)">$ ' + fmtUSD(ivaUSD) + '</div></div>'
-    + '<div style="border-left:1px solid var(--borde);padding-left:24px">'
-    +   '<div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL CON IVA</div>'
-    +   '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + fmtBs(totalConIvaBs) + ' Bs</div>'
-    +   '<div style="font-size:12px;color:var(--suave)">$ ' + fmtUSD(totalConIvaUSD) + ' USD</div>'
-    +   '<div style="font-size:9px;color:var(--suave);margin-top:2px">Tasa: $ 1 = ' + fmtBs(tasaUSD) + ' Bs</div>'
-    + '</div>'
-    + '</div>';
-
-  // Actualizar totales globales para guardar en BD -- SIN IVA (el Subtotal
-  // de Servicios+Artículos es lo que se guarda en la OS; el IVA solo se
-  // calcula y aplica recién al Facturar, en facturarOS()).
-  window._osLastTotalBs  = totalBs;
-  window._osLastTotalUSD = totalUSD;
+    return '<tr>'
+      + '<td style="padding:4px"><select onchange="onCambioArticuloFilaOS(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">' + opcionesArt + '</select></td>'
+      + '<td style="padding:4px;width:70px"><input type="number" min="0.01" step="0.01" value="' + l.cantidad + '" oninput="onCambioCantidadFilaArt(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
+      + '<td style="padding:4px;width:90px"><input type="text" value="' + (l.precio_original ? l.precio_original.toFixed(2) : '') + '" readonly title="El precio del Artículo se calcula solo (CPP × Margen), no se edita aquí" style="width:100%;background:var(--gris1);border:1px solid var(--borde);color:var(--suave);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;cursor:not-allowed"></td>'
+      + '<td style="padding:4px 8px;width:90px;font-size:12px;color:var(--suave);font-family:var(--font-mono)">' + stockTxt + '</td>'
+      + '<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono);color:var(--naranja);white-space:nowrap">' + subtotalFmt + '</td>'
+      + '<td style="padding:4px;text-align:center"><button onclick="quitarLineaRep(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px">✕</button></td>'
+      + '</tr>';
+  }).join('');
+  calcularTotalesOS();
 }
 
-// ─── AGREGAR LÍNEA SERVICIO DESDE CATÁLOGO ───
-async function agregarServicioCatalogo() {
-  if (!catalogoCache.length) {
-    try { catalogoCache = await api('servicios_catalogo', 'GET', null, '?activo=eq.true&order=grupo.asc,nombre.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+''); } catch(e) {}
-  }
-  const sel    = document.getElementById('os-sel-cat');
-  const precioLibre = document.getElementById('os-precio-libre');
-  const cant   = document.getElementById('os-cant-cat');
-  const moneda = document.getElementById('os-moneda-cat').value;
-
-  // Convertir precio a USD equivalente según moneda
-  function precioAUSD(p, mon) {
-    if (mon === 'VES') return tasasDisponiblesOS.USD > 0 ? p / tasasDisponiblesOS.USD : p;
-    if (mon === 'EUR') return tasasDisponiblesOS.USD > 0 && tasasDisponiblesOS.EUR > 0 ? p * (tasasDisponiblesOS.EUR / tasasDisponiblesOS.USD) : p;
-    return p; // USD
-  }
-
-  if (!sel.value) {
-    const descEl = document.getElementById('os-desc-libre');
-    if (!descEl.value.trim()) {
-      descEl.style.borderColor = 'var(--naranja)';
-      descEl.placeholder = '⚠ Requerido';
-      setTimeout(function() { descEl.style.borderColor = ''; descEl.placeholder = 'Escribe el concepto...'; }, 2000);
-      descEl.focus();
-      return;
-    }
-    const pVal = parseFloat(precioLibre.value) || 0;
-    if (pVal <= 0) {
-      precioLibre.style.borderColor = 'var(--naranja)';
-      precioLibre.style.boxShadow = '0 0 0 3px rgba(255,107,0,0.2)';
-      setTimeout(function() { precioLibre.style.borderColor = ''; precioLibre.style.boxShadow = ''; }, 2000);
-      precioLibre.focus();
-      precioLibre.select();
-      return;
-    }
-    osServiciosLineas.push({ id_servicio: null, descripcion: descEl.value.trim().toUpperCase(),
-      cantidad: parseFloat(cant.value) || 1, precio_usd: precioAUSD(pVal, moneda),
-      precio_original: pVal, moneda });
-  } else {
-    const s = catalogoCache.find(function(x) { return x.id_servicio == sel.value; });
-    if (!s) return;
-    const pVal = parseFloat(s.precio_usd) || 0;
-    osServiciosLineas.push({ id_servicio: s.id_servicio, descripcion: s.nombre,
-      cantidad: parseFloat(cant.value) || 1, precio_usd: precioAUSD(pVal, moneda),
-      precio_original: pVal, moneda });
-  }
-  // Resetear campos del formulario de agregar — sin borrar las opciones del select
-  sel.value = '';
-  precioLibre.value = '';
-  precioLibre.readOnly = false; precioLibre.style.cursor = ''; precioLibre.style.opacity = ''; // desbloquear -- pudo quedar de solo lectura por un servicio de catálogo
-  cant.value = '1';
-  const descLibreEl = document.getElementById('os-desc-libre');
-  if (descLibreEl) descLibreEl.value = '';
-  // Desbloquear moneda
-  const monedaSelEl = document.getElementById('os-moneda-cat');
-  if (monedaSelEl) monedaSelEl.disabled = false;
-  // Resetear también el grupo para que el usuario elija de nuevo
-  const grpEl = document.getElementById('os-sel-grupo-cat');
-  if (grpEl) grpEl.value = '';
-  // Restaurar el toggle Nombre del Servicio / Concepto a su estado normal
-  // (por si la línea se agregó estando en modo "Descripción Libre")
-  const contNombreServReset = document.getElementById('os-cont-nombre-serv');
-  const contConceptoReset   = document.getElementById('os-cont-concepto');
-  if (contNombreServReset) contNombreServReset.style.display = '';
-  if (contConceptoReset)   contConceptoReset.style.display = 'none';
-  cant.readOnly = false; cant.style.cursor = ''; cant.style.opacity = ''; // desbloquear Cantidad -- ya no está en modo Descripción Libre
-  // Ocultar todas las opciones de servicio hasta que se seleccione un grupo
-  if (sel) Array.from(sel.options).forEach(function(opt) {
-    if (opt.value) opt.style.display = 'none';
-  });
-  renderLineasOS();
-}
-
-function onSelCatalogoChange() {
-  const sel = document.getElementById('os-sel-cat');
-  const descLibre = document.getElementById('os-desc-libre');
-  const cant = document.getElementById('os-cant-cat');
-
-  if (!sel.value) {
-    // Sin servicio de catálogo seleccionado (Concepto libre) → Precio se
-    // desbloquea para que el Usuario lo escriba a mano.
-    const monedaSel = document.getElementById('os-moneda-cat');
-    if (monedaSel) monedaSel.disabled = false;
-    const precioLibreElVacio = document.getElementById('os-precio-libre');
-    if (precioLibreElVacio) {
-      precioLibreElVacio.readOnly = false;
-      precioLibreElVacio.style.cursor = '';
-      precioLibreElVacio.style.opacity = '';
-    }
-    if (descLibre) setTimeout(function() { descLibre.focus(); }, 50);
-    return;
-  }
-
-  // Servicio de catálogo seleccionado → el precio ya no se muestra en el
-  // texto del <option> (solo el Nombre); se muestra aquí, en el campo
-  // Precio, de solo lectura -- el precio real lo define el Catálogo de
-  // Servicios, no se edita desde la Orden.
-  const s = catalogoCache.find(function(x) { return x.id_servicio == sel.value; });
-  if (s) {
-    const precioLibreEl = document.getElementById('os-precio-libre');
-    if (precioLibreEl) {
-      precioLibreEl.value = parseFloat(s.precio_usd || 0).toFixed(2);
-      precioLibreEl.readOnly = true;
-      precioLibreEl.style.cursor = 'not-allowed';
-      precioLibreEl.style.opacity = '0.6';
-    }
-    const monedaServ = (s.moneda_precio || 'USD').toUpperCase();
-    const monedaSel  = document.getElementById('os-moneda-cat');
-    // Asignar y bloquear la moneda — no se puede cambiar, viene del catálogo
-    if (monedaSel) {
-      // Asegurar que la opción existe en el select
-      let optExists = Array.from(monedaSel.options).find(function(o) { return o.value === monedaServ; });
-      if (!optExists) {
-        const opt = document.createElement('option');
-        opt.value = monedaServ;
-        opt.textContent = monedaServ;
-        monedaSel.appendChild(opt);
-      }
-      monedaSel.value   = monedaServ;
-      monedaSel.disabled = true; // bloqueado — la moneda la define el catálogo
-    }
-  }
-  if (cant) setTimeout(function() { cant.focus(); cant.select(); }, 50);
-}
-
-// ─── AGREGAR LÍNEA ARTÍCULO DESDE INVENTARIO ───
-async function agregarMercanciaInventario() {
-  if (!inventarioCache.length) {
-    try { inventarioCache = await api('inventario_almacen', 'GET', null, '?order=nombre.asc&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+''); } catch(e) {}
-  }
-  const sel    = document.getElementById('os-sel-inv');
-  const precio = document.getElementById('os-precio-inv');
-  const cant   = document.getElementById('os-cant-inv');
-  const desc   = document.getElementById('os-desc-rep-libre');
-  const moneda = document.getElementById('os-moneda-inv').value;
-  const cantVal = parseFloat(cant.value) || 1;
-
-  function precioAUSD(p, mon) {
-    if (mon === 'VES') return tasasDisponiblesOS.USD > 0 ? p / tasasDisponiblesOS.USD : p;
-    if (mon === 'EUR') return tasasDisponiblesOS.USD > 0 && tasasDisponiblesOS.EUR > 0 ? p * (tasasDisponiblesOS.EUR / tasasDisponiblesOS.USD) : p;
-    return p;
-  }
-
-  if (!sel.value) {
-    alert('Debe seleccionar un consumible del inventario.');
-    return;
-  } else {
-    const r = inventarioCache.find(function(x) { return x.id_articulo == sel.value; });
-    if (!r) return;
-    const stockDisponible = stockMostrarArticulo(r.id_articulo);
-    // Sumar lo que YA está agregado del mismo artículo en otras líneas de
-    // esta misma OS (todavía no guardadas en BD, por eso stockDisponible
-    // no las "ve" por sí solo) -- de lo contrario se podían agregar varias
-    // líneas del mismo artículo, cada una pasando la validación por
-    // separado, hasta sumar mucho más de lo que realmente existe.
-    const yaAgregadoEnEstaOS = osArtículosLineas
-      .filter(function(l) { return l.id_articulo === r.id_articulo; })
-      .reduce(function(acc, l) { return acc + (parseFloat(l.cantidad) || 0); }, 0);
-    const disponibleReal = stockDisponible - yaAgregadoEnEstaOS;
-    if (cantVal > disponibleReal) {
-      alert('⚠ Stock insuficiente. Disponible en tu área: ' + stockDisponible
-        + (yaAgregadoEnEstaOS > 0 ? ' (ya agregaste ' + yaAgregadoEnEstaOS + ' de este artículo en esta misma Orden, quedan ' + disponibleReal + ' disponibles)' : '')
-        + '. No se puede agregar una cantidad mayor a la disponible.');
-      return;
-    }
-    const pVal = parseFloat(precio.value) || precioVentaEnVivo(r).usd || 0;
-    osArtículosLineas.push({ id_articulo: r.id_articulo, descripcion: r.nombre_articulo,
-      cantidad: cantVal, precio_usd: precioAUSD(pVal, moneda),
-      precio_original: pVal, moneda });
-    sel.value = ''; precio.value = ''; cant.value = '1';
-  }
-  renderLineasRep();
-  refrescarSelectorArticulosOS();
-}
-
-function onSelInventarioChange() {
-  const sel = document.getElementById('os-sel-inv');
-  const precio = document.getElementById('os-precio-inv');
-  const monedaInv = document.getElementById('os-moneda-inv');
-  if (!sel.value) { precio.value = ''; if (monedaInv) monedaInv.value = 'USD'; return; }
-  const r = inventarioCache.find(function(x) { return x.id_articulo == sel.value; });
-  if (r) {
-    // Precio de Venta EN VIVO: CPP actual ÷ Margen vigente del Tipo de
-    // Artículo (precioVentaEnVivo, definida en inventario.js) -- es un
-    // VALOR DERIVADO, nunca se guarda a mano. Antes se leía la columna
-    // inventario_almacen.precio_venta_moneda, que quedó huérfana (nadie la
-    // llena) desde que se retiró la vieja Salida de Stock individual -- el
-    // único lugar que la escribía. Siempre resulta en USD, que es la
-    // moneda en la que se calcula (CPP y Margen son ambos en USD).
-    const ventaViva = precioVentaEnVivo(r);
-    precio.value = ventaViva.usd.toFixed(2);
-    if (monedaInv) monedaInv.value = 'USD';
-  }
-}
 
 // ─── GUARDAR OS ───
 async function guardarOS() {
@@ -1003,14 +864,19 @@ async function _guardarOSInterno() {
     return;
   }
 
-  // Validar que tenga al menos un servicio o artículo -- estas secciones
-  // están más abajo en el formulario, se revisan al final.
-  const tieneServicios   = osServiciosLineas && osServiciosLineas.length > 0;
-  const tieneConsumibles = osArtículosLineas && osArtículosLineas.length > 0;
-  if (!tieneServicios && !tieneConsumibles) {
+  // Validar que tenga al menos un Servicio o Artículo, y que NINGUNA línea
+  // haya quedado a medio llenar -- con la tabla editable, una fila se
+  // puede agregar y dejar sin completar por error.
+  const serviciosValidos = (osServiciosLineas||[]).filter(function(l) { return (l.esLibre ? !!l.descripcion : !!l.id_servicio) && parseFloat(l.cantidad) > 0; });
+  const articulosValidos = (osArtículosLineas||[]).filter(function(l) { return l.id_articulo && parseFloat(l.cantidad) > 0; });
+  if (serviciosValidos.length !== osServiciosLineas.length || articulosValidos.length !== osArtículosLineas.length) {
+    errEl.textContent = 'Complete o quite las líneas de Servicios/Artículos que quedaron incompletas antes de guardar.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (!serviciosValidos.length && !articulosValidos.length) {
     errEl.textContent = 'Debe agregar al menos un Servicio o un Artículo antes de guardar la OS.';
     errEl.style.display = 'block';
-    document.getElementById('os-sel-grupo-cat')?.focus();
     return;
   }
 
@@ -1619,45 +1485,15 @@ async function cargarSelectsOS() {
   // ── Área que realiza el servicio: se resuelve sola por el usuario (ver
   // _resolverAreaOS), no se carga como catálogo aquí. ──
 
-  // ── Cargar selector de GRUPOS ──
-  const selGrupo = document.getElementById('os-sel-grupo-cat');
-  if (selGrupo) {
-    const grupos = [...new Set(catalogoCache.map(function(s) { return s.grupo; }).filter(Boolean))].sort();
-    selGrupo.innerHTML = '<option value="">— Seleccionar grupo —</option>'
-      + grupos.map(function(g) { return '<option value="' + g + '">' + g + '</option>'; }).join('');
-  }
-  // Al abrir el modal siempre se parte del estado normal: Nombre del
-  // Servicio visible, Concepto oculto -- por si quedó en el otro estado de
-  // una Orden anterior en la misma sesión del navegador.
-  const contNombreServInit = document.getElementById('os-cont-nombre-serv');
-  const contConceptoInit   = document.getElementById('os-cont-concepto');
-  if (contNombreServInit) contNombreServInit.style.display = '';
-  if (contConceptoInit)   contConceptoInit.style.display = 'none';
-  const cantCatInit = document.getElementById('os-cant-cat');
-  if (cantCatInit) { cantCatInit.readOnly = false; cantCatInit.style.cursor = ''; cantCatInit.style.opacity = ''; }
-  const precioLibreInit = document.getElementById('os-precio-libre');
-  if (precioLibreInit) { precioLibreInit.readOnly = false; precioLibreInit.style.cursor = ''; precioLibreInit.style.opacity = ''; }
-
-  // ── Cargar selector de SERVICIOS — todos ocultos hasta seleccionar grupo ──
-  const selCat = document.getElementById('os-sel-cat');
-  if (selCat) {
-    selCat.innerHTML = '<option value="">— Primero seleccione un grupo —</option>'
-      + catalogoCache.map(function(s) {
-          return '<option value="' + s.id_servicio + '" data-grupo="' + (s.grupo || '') + '" style="display:none">'
-            + s.nombre + '</option>';
-        }).join('');
-  }
-
-  // ── Cargar selector de INVENTARIO ──
+  // ── Calcular qué Artículos ofrecer en la tabla de Artículos ──
   // Recalcular el saldo por área/consolidado SIEMPRE fresco al abrir este
-  // selector -- antes dependía de un cálculo hecho la última vez que se
+  // formulario -- antes dependía de un cálculo hecho la última vez que se
   // visitó el módulo de Inventario (si es que se visitó), pudiendo quedar
   // desactualizado tras usar/anular Órdenes de Servicio en esta sesión.
   if (typeof calcularInvSaldoArea === 'function') {
     try { await calcularInvSaldoArea(); } catch(eSaldoOS) { console.warn('Error recalculando saldo para OS:', eSaldoOS); }
   }
-  const selInv = document.getElementById('os-sel-inv');
-  if (selInv) try {
+  try {
     // Calcular saldo por área si no está disponible y el usuario no tiene permiso general
     if (!_invSaldoArea && !sesionActual?.administrador && !puedo('INVENTARIO','VER_INVENTARIO_GENERAL') && inventarioCache.length > 0) {
       try {
@@ -1686,6 +1522,8 @@ async function cargarSelectsOS() {
     // positivo en el área del usuario -- los Consumibles (ej. 1.1.04.002)
     // no deben ofrecerse aquí, ya que las Órdenes de Servicio son para
     // repuestos/mercancías del vehículo, no para artículos de uso interno.
+    // El resultado queda en _itemsDisponiblesOS, que usa cada fila de la
+    // tabla de Artículos (renderLineasRep) para armar su selector.
     let itemsDisponibles = inventarioCache;
     if (!_idCuentaMercanciasOS) {
       try {
@@ -1701,90 +1539,8 @@ async function cargarSelectsOS() {
         return (_invSaldoArea[r.id_articulo] || 0) > 0;
       });
     }
-    selInv.innerHTML = '<option value="">— Seleccionar —</option>'
-      + itemsDisponibles.map(function(r) {
-          const stock = stockMostrarArticulo(r.id_articulo);
-          return '<option value="' + r.id_articulo + '">' + r.nombre_articulo + ' (Stock: ' + stock + ')</option>';
-        }).join('');
-  } catch(eInvSel) { console.warn('Error cargando selector de Mercancías en OS:', eInvSel); }
-}
-
-// Refresca solo las ETIQUETAS "(Stock: X)" del selector de Artículos de la
-// OS, restando lo que ya se agregó en líneas de esta misma Orden (todavía
-// no guardadas en BD -- stockMostrarArticulo() por sí solo no las ve).
-// Se llama tras cada Agregar/Quitar línea para que el número mostrado no
-// quede desactualizado durante la sesión de edición de la OS.
-function refrescarSelectorArticulosOS() {
-  const selInv = document.getElementById('os-sel-inv');
-  if (!selInv) return;
-  const valorPrevio = selInv.value;
-  Array.prototype.forEach.call(selInv.options, function(opt) {
-    if (!opt.value) return; // "— Seleccionar —"
-    const stockReal = stockMostrarArticulo(opt.value);
-    const yaAgregado = osArtículosLineas
-      .filter(function(l) { return String(l.id_articulo) === String(opt.value); })
-      .reduce(function(acc, l) { return acc + (parseFloat(l.cantidad) || 0); }, 0);
-    const stockMostrar = stockReal - yaAgregado;
-    const r = inventarioCache.find(function(x) { return String(x.id_articulo) === String(opt.value); });
-    if (r) opt.textContent = r.nombre_articulo + ' (Stock: ' + stockMostrar + ')';
-  });
-  selInv.value = valorPrevio;
-}
-
-// Comparación robusta de texto -- sin mayúsculas ni acentos -- para no
-// depender de que "DESCRIPCIÓN LIBRE" esté escrito exactamente igual en
-// la base de datos que en este código.
-function _normTxt(s) {
-  return (s || '').toString().trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-}
-
-// ── Filtrar servicios al cambiar el Grupo ──
-function onSelGrupoCatChange() {
-  const grupo = document.getElementById('os-sel-grupo-cat').value;
-  const selCat = document.getElementById('os-sel-cat');
-  const esDescLibre = _normTxt(grupo) === 'DESCRIPCION LIBRE';
-
-  const contNombreServ = document.getElementById('os-cont-nombre-serv');
-  const contConcepto   = document.getElementById('os-cont-concepto');
-  const descLibreEl    = document.getElementById('os-desc-libre');
-  const precioLibreEl  = document.getElementById('os-precio-libre');
-
-  if (esDescLibre) {
-    // Grupo "DESCRIPCIÓN LIBRE": no se toma el servicio/precio (0) asociado
-    // a ese grupo en el catálogo -- se oculta el selector de Nombre del
-    // Servicio y se usa en su lugar el campo Concepto (texto libre) con su
-    // propio Precio Venta, que el Usuario ingresa manualmente. La Cantidad
-    // queda fija en 1 y de solo lectura -- un concepto libre es una línea
-    // única, no tiene sentido "cantidad" editable.
-    if (contNombreServ) contNombreServ.style.display = 'none';
-    if (contConcepto)   contConcepto.style.display = '';
-    selCat.value = ''; // asegurar que no quede seleccionado el servicio placeholder de precio 0
-    if (precioLibreEl) { precioLibreEl.value = ''; precioLibreEl.readOnly = false; precioLibreEl.style.cursor = ''; precioLibreEl.style.opacity = ''; }
-    const cantElDL = document.getElementById('os-cant-cat');
-    if (cantElDL) { cantElDL.value = '1'; cantElDL.readOnly = true; cantElDL.style.cursor = 'not-allowed'; cantElDL.style.opacity = '0.6'; }
-    const monedaSelDL = document.getElementById('os-moneda-cat');
-    if (monedaSelDL) monedaSelDL.disabled = false;
-    setTimeout(function() { descLibreEl?.focus(); }, 50);
-    return;
-  }
-
-  // Cualquier otro grupo (o ninguno): comportamiento normal -- mostrar
-  // Nombre del Servicio, ocultar Concepto y limpiar su texto para que no
-  // quede un concepto de una selección anterior mezclado con un servicio real.
-  if (contNombreServ) contNombreServ.style.display = '';
-  if (contConcepto)   contConcepto.style.display = 'none';
-  if (descLibreEl) descLibreEl.value = '';
-  const cantElNorm = document.getElementById('os-cant-cat');
-  if (cantElNorm) { cantElNorm.readOnly = false; cantElNorm.style.cursor = ''; cantElNorm.style.opacity = ''; } // desbloquear -- ya no es Descripción Libre
-
-  // Mostrar solo servicios del grupo seleccionado (o todos si grupo vacío)
-  Array.from(selCat.options).forEach(function(opt) {
-    if (!opt.value) { opt.style.display = ''; return; } // placeholder siempre visible
-    opt.style.display = (!grupo || opt.dataset.grupo === grupo) ? '' : 'none';
-  });
-
-  // Siempre resetear a "— Seleccionar servicio —" y limpiar precio
-  selCat.value = '';
+    _itemsDisponiblesOS = itemsDisponibles;
+  } catch(eInvSel) { console.warn('Error calculando Artículos disponibles en OS:', eInvSel); }
 }
 
 // Cargar selects cuando se abre el modal OS
