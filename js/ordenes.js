@@ -1443,20 +1443,20 @@ async function verFichaOS(id) {
       + '<div style="font-size:10px;color:var(--suave);margin-bottom:16px">Área: ' + areaLabelFicha + '</div>'
 
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
-      + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Vehículo</div>'
+      + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Vehículo</div>'
       + '<div style="font-weight:500">' + (veh ? veh.placa + ' — ' + veh.marca + ' ' + veh.modelo : '—') + '</div></div>'
-      + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Propietario</div>'
+      + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Propietario</div>'
       + '<div>' + (prop ? prop.nombre_completo : '—') + '</div></div>'
       + '</div>'
 
       + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px">'
-      + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Fecha Entrada</div>'
+      + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Fecha Entrada</div>'
       + '<div style="font-size:12px">' + (o.fecha_entrada ? fmtFecha(o.fecha_entrada) : '—') + '</div></div>'
-      + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Fecha Prometida</div>'
+      + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Fecha Prometida</div>'
       + '<div style="font-size:12px">' + (o.fecha_prometida ? fmtFecha(o.fecha_prometida) : '—') + '</div></div>'
-      + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Km Entrada</div>'
+      + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Km Entrada</div>'
       + '<div style="font-size:12px">' + (o.kilometraje_entrada ? o.kilometraje_entrada.toLocaleString() + ' km' : '—') + '</div></div>'
-      + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">'
+      + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">'
       + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' ? 'Tasa USD Actual' : 'Tasa USD al Cerrar')
       + '</div><div style="font-family:var(--font-mono);font-size:12px">'
       + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' && tasaActualFicha ? tasaActualFicha : tasaHistorica).toFixed(2) + ' Bs/$'
@@ -1464,9 +1464,9 @@ async function verFichaOS(id) {
       + '</div></div>'
       + '</div>'
 
-      + (o.diagnostico ? '<div style="margin-bottom:16px"><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Diagnóstico</div>'
+      + (o.diagnostico ? '<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Diagnóstico</div>'
         + '<div style="background:var(--gris2);border-radius:6px;padding:12px;font-size:13px">' + o.diagnostico + '</div></div>' : '')
-      + (o.observaciones ? '<div style="margin-bottom:16px"><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Observaciones</div>'
+      + (o.observaciones ? '<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Observaciones</div>'
         + '<div style="background:var(--gris2);border-radius:6px;padding:12px;font-size:13px">' + o.observaciones + '</div></div>' : '')
 
       + (tasaDiferente && sesionActual && sesionActual.administrador && o.estado !== 'CERRADA' && o.estado !== 'ANULADA'
