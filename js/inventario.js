@@ -6531,46 +6531,51 @@ async function _guardarRequerimientoInternoInterno() {
         esMercancia = !!(ctaReqInt && ctaReqInt.codigo === '1.1.04.001');
       }
 
-      const salidaResReqInt = await api('stock_salidas', 'POST', {
-        id_articulo:          lin.id_articulo,
-        id_area:               id_area,
-        id_empleado:            idEmpRecibe,
-        id_area_entrega:        id_areaEntrega,
-        id_empleado_entrega:    idEmpEntrega,
-        cantidad:               cantidad,
-        fecha_salida:           fecha,
-        observaciones:          obs || null,
-        id_requerimiento:       numReqInt,
-        id_usuario:             sesionActual.correo_usuario
-      });
-      const id_salidaReqInt = salidaResReqInt && salidaResReqInt[0] ? salidaResReqInt[0].id_salida : null;
-
-      // Mover stock siempre contra el Área que entrega (Compras)
-      await upsertStockArea(lin.id_articulo, id_areaEntrega, -cantidad);
-
-      if (esMercancia) {
-        // El crédito al área DESTINO nunca es inmediato -- siempre espera
-        // a que el Empleado que Recibe (ahora obligatorio) confirme la
-        // notificación de recepción (notifConfirmar en core.js).
-        if (id_salidaReqInt) {
-          try {
-            const empReceptorReqInt = await api('empleados','GET',null,'?id_empleado=eq.'+idEmpRecibe+'&select=correo,nombre_completo,id_usuario,usuarios(correo_usuario)');
-            const correoReceptorReqInt = empReceptorReqInt?.[0]?.correo || empReceptorReqInt?.[0]?.usuarios?.correo_usuario || null;
-            if (empReceptorReqInt && empReceptorReqInt[0] && correoReceptorReqInt) {
-              await api('notificaciones','POST',{
-                tipo:           'RECEPCION_ARTICULO',
-                id_empresa:      _empresaActiva?.id_empresa || null,
-                correo_destino: correoReceptorReqInt,
-                titulo:         'Solicitud de Recepción de Artículo',
-                mensaje:        'Favor confirmar la solicitud y recepción de la cantidad de ' + cantidad + ' ' + (art.unidad||'UND') + ' de "' + (art.nombre_articulo||'') + '" enviados por la ' + areaOrigNombreReqInt + ' (Requerimiento ' + numDocReqInt + ')',
-                estado:         'PENDIENTE',
-                id_salida:      id_salidaReqInt,
-                datos_extra:    JSON.stringify({ id_articulo: lin.id_articulo, cantidad: cantidad, id_area_origen: id_areaEntrega, id_area_destino: id_area })
-              }, '', true);
-            }
-          } catch(eNotifReqInt) { console.warn('Error creando notificación de recepción:', eNotifReqInt); }
+      // Registrar esta línea como UNA sola transacción atómica en
+      // Postgres (insertar Salida + descontar Stock + crear notificación
+      // si aplica) -- si algo se corta a mitad de camino, Postgres
+      // revierte todo junto, nunca queda stock descontado sin su
+      // contraparte. (Antes esto eran 3 llamadas sueltas -- una caída de
+      // conexión real entre la 1ª y la 3ª dejó 2 unidades de un Artículo
+      // perdidas, restadas de Compras sin llegar a ningún lado.)
+      let id_salidaReqInt = null;
+      try {
+        const rpcResp = await fetch(SUPABASE_URL + '/rest/v1/rpc/registrar_linea_requerimiento_interno', {
+          method: 'POST',
+          headers: {
+            'apikey':        SUPABASE_KEY,
+            'Authorization': 'Bearer ' + _sessionJWT,
+            'Content-Type':  'application/json'
+          },
+          body: JSON.stringify({
+            p_id_articulo:          lin.id_articulo,
+            p_cantidad:             cantidad,
+            p_id_area_entrega:      id_areaEntrega,
+            p_id_empleado_entrega:  idEmpEntrega,
+            p_id_area_destino:      id_area,
+            p_id_empleado_destino:  idEmpRecibe,
+            p_es_mercancia:         esMercancia,
+            p_fecha_salida:         fecha,
+            p_observaciones:        obs || null,
+            p_id_requerimiento:     numReqInt,
+            p_id_usuario:           sesionActual.correo_usuario,
+            p_numero_doc:           numDocReqInt,
+            p_nombre_articulo:      art.nombre_articulo || art.codigo_articulo || ('Art#'+lin.id_articulo),
+            p_unidad:               art.unidad || 'UND',
+            p_area_origen_nombre:   areaOrigNombreReqInt,
+            p_id_empresa:           _empresaActiva?.id_empresa || null
+          })
+        });
+        if (!rpcResp.ok) {
+          const errBodyReqInt = await rpcResp.json().catch(function(){ return {}; });
+          throw new Error(errBodyReqInt.message || ('No se pudo registrar "' + (art.nombre_articulo||'') + '".'));
         }
-      } else {
+        id_salidaReqInt = await rpcResp.json();
+      } catch(eLineaReqInt) {
+        throw new Error('Error registrando "' + (art.nombre_articulo||'artículo') + '": ' + msgErr(eLineaReqInt));
+      }
+
+      if (!esMercancia) {
         // Consumible: se gasta de inmediato -- se acumula para UN SOLO
         // asiento consolidado del Requerimiento completo (ver más abajo),
         // en vez de un asiento por cada Artículo.
