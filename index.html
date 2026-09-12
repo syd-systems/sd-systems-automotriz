@@ -689,11 +689,11 @@
      MEJORADA" (más abajo) también usa !important a nivel de toda la
      app -- sin esto, esta regla más específica no le ganaba. */
   #modal-orden-compra .form-campo label {
-    font-size: 32px !important;
+    font-size: 12px !important;
   }
   #modal-orden-compra .form-campo input,
   #modal-orden-compra .form-campo select {
-    font-size: 28px !important;
+    font-size: 13px !important;
   }
 
   .form-campo input,
@@ -1374,19 +1374,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909015"></script>
-<script src="js/parametros.js?v=20260909015"></script>
-<script src="js/empresas.js?v=20260909015"></script>
-<script src="js/ingresos.js?v=20260909015"></script>
-<script src="js/inventario.js?v=20260909015"></script>
-<script src="js/proveedores.js?v=20260909015"></script>
-<script src="js/clientes.js?v=20260909015"></script>
-<script src="js/ventas.js?v=20260909015"></script>
-<script src="js/contabilidad.js?v=20260909015"></script>
-<script src="js/egresos.js?v=20260909015"></script>
-<script src="js/vehiculos.js?v=20260909015"></script>
-<script src="js/catalogo.js?v=20260909015"></script>
-<script src="js/ordenes.js?v=20260909015"></script>
+<script src="js/core.js?v=20260909016"></script>
+<script src="js/parametros.js?v=20260909016"></script>
+<script src="js/empresas.js?v=20260909016"></script>
+<script src="js/ingresos.js?v=20260909016"></script>
+<script src="js/inventario.js?v=20260909016"></script>
+<script src="js/proveedores.js?v=20260909016"></script>
+<script src="js/clientes.js?v=20260909016"></script>
+<script src="js/ventas.js?v=20260909016"></script>
+<script src="js/contabilidad.js?v=20260909016"></script>
+<script src="js/egresos.js?v=20260909016"></script>
+<script src="js/vehiculos.js?v=20260909016"></script>
+<script src="js/catalogo.js?v=20260909016"></script>
+<script src="js/ordenes.js?v=20260909016"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -4990,7 +4990,7 @@
     <div class="modal-body">
       <div class="form-campo form-full">
         <label>Proveedor</label>
-        <select id="entcons-proveedor" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:28px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+        <select id="entcons-proveedor" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
           <option value="">— Seleccionar —</option>
         </select>
       </div>
@@ -4998,11 +4998,11 @@
         <div class="form-campo">
           <label>Fecha de Negociación</label>
           <input type="date" id="entcons-fecha" onchange="_entconsActualizarTasa()"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:28px;padding:11px 14px;border-radius:5px;outline:none;width:100%;color-scheme:dark">
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;color-scheme:dark">
         </div>
         <div class="form-campo">
           <label>Moneda Negociación</label>
-          <select id="entcons-moneda" onchange="_entconsActualizarTasa();_entconsRenderLineas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:28px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <select id="entcons-moneda" onchange="_entconsActualizarTasa();_entconsRenderLineas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="USD">USD — Dólar</option>
             <option value="VES">VES — Bolívar</option>
           </select>
@@ -5010,13 +5010,13 @@
         <div class="form-campo">
           <label>Tasa BCV</label>
           <input type="text" id="entcons-tasa-bcv" inputmode="decimal" placeholder="0,00" oninput="_entconsRenderLineas()"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:28px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
         </div>
       </div>
       <div class="form-grid" id="entcons-modalidad-fila" style="margin-top:14px;grid-template-columns:1fr 1fr 1fr 1fr">
         <div class="form-campo">
           <label>Modalidad de Pago</label>
-          <select id="entcons-esquema-pago" onchange="_entconsCambiarEsquemaPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:28px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <select id="entcons-esquema-pago" onchange="_entconsCambiarEsquemaPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar —</option>
             <option value="CONTADO">Contado</option>
             <option value="CREDITO">Crédito</option>
@@ -5025,43 +5025,43 @@
         <div class="form-campo" id="entcons-contado-cont" style="display:none">
           <label>Fecha de Pago</label>
           <input type="date" id="entcons-fecha-pago"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:28px;padding:11px 14px;border-radius:5px;outline:none;width:100%;color-scheme:dark">
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;color-scheme:dark">
         </div>
         <div class="form-campo" id="entcons-credito-fecha-cont" style="display:none">
           <label>Primera Cuota</label>
           <input type="date" id="entcons-cuotas-fecha-inicio" onchange="_entconsCalcularCuotas()"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:28px;padding:11px 14px;border-radius:5px;outline:none;width:100%;color-scheme:dark">
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;color-scheme:dark">
         </div>
         <div class="form-campo" id="entcons-credito-num-cont" style="display:none">
           <label>N° de Cuotas</label>
           <input type="number" id="entcons-cuotas-num" min="1" step="1" oninput="_entconsCalcularCuotas()"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:28px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
         </div>
         <div class="form-campo" id="entcons-credito-intervalo-cont" style="display:none">
           <label>Intervalo (días)</label>
           <input type="number" id="entcons-cuotas-intervalo" min="1" value="30" oninput="_entconsCalcularCuotas()"
-            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:28px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
         </div>
       </div>
       <div id="entcons-cuotas-preview" style="margin-top:10px"></div>
 
-      <div style="font-size:28px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--naranja);margin:24px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--borde);display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--naranja);margin:24px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--borde);display:flex;justify-content:space-between;align-items:center">
         <span>Artículos de esta Compra</span>
-        <button type="button" class="btn-secundario" style="font-size:44px;padding:6px 10px" onclick="_entconsAgregarLinea()">+ Agregar Artículo</button>
+        <button type="button" class="btn-secundario" style="font-size:12px;padding:6px 10px" onclick="_entconsAgregarLinea()">+ Agregar Artículo</button>
       </div>
       <div class="tabla-container" style="max-height:220px">
         <table style="width:100%"><thead><tr>
-          <th style="font-size:44px">Artículo</th><th style="font-size:44px">Cant.</th><th style="font-size:44px">P. Unit.</th><th style="font-size:44px">Subtotal</th><th></th>
+          <th style="font-size:12px">Artículo</th><th style="font-size:12px">Cant.</th><th style="font-size:12px">P. Unit.</th><th style="font-size:12px">Subtotal</th><th></th>
         </tr></thead><tbody id="entcons-lineas-cuerpo"></tbody></table>
       </div>
       <div id="entcons-totales"></div>
 
       <div class="form-campo" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-top:16px">
-        <div style="font-size:44px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Persona que gestiona la Compra</div>
-        <div style="font-size:28px;color:var(--texto);margin-bottom:12px">Usuario: <span id="entcons-usuario-nombre" style="font-weight:600;color:var(--naranja)">—</span> <span id="entcons-usuario-area" style="color:var(--suave)"></span></div>
-        <label style="font-size:32px">Contraseña</label>
+        <div style="font-size:12px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Persona que gestiona la Compra</div>
+        <div style="font-size:13px;color:var(--texto);margin-bottom:12px">Usuario: <span id="entcons-usuario-nombre" style="font-weight:600;color:var(--naranja)">—</span> <span id="entcons-usuario-area" style="color:var(--suave)"></span></div>
+        <label style="font-size:12px">Contraseña</label>
         <input type="password" id="entcons-clave-usuario" placeholder="Ingrese su contraseña para confirmar"
-          style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:28px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">
+          style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">
       </div>
 
       <div class="alerta alerta-error" id="alerta-entcons-err" style="display:none;margin-top:14px"></div>
