@@ -586,6 +586,56 @@ function renderVehInfoOS(v) {
     + '</div></div></div>';
 }
 
+// ─── TOTALES DE LA OS (Servicios + Artículos + vista previa del IVA) ───
+function calcularTotalesOS() {
+  const tasaUSD = tasasDisponiblesOS.USD || tasaActualOS || 1;
+
+  function lineaABs(precio, moneda) {
+    const p   = parseFloat(precio) || 0;
+    const mon = (moneda || 'USD').toUpperCase();
+    if (mon === 'VES') return p;
+    const tasa = tasasDisponiblesOS[mon] || tasaUSD;
+    return p * tasa;
+  }
+
+  const totServBs = osServiciosLineas.reduce(function(acc, l) {
+    return acc + lineaABs(l.precio_original || l.precio_usd, l.moneda) * parseFloat(l.cantidad || 0);
+  }, 0);
+  const totRepBs = osArtículosLineas.reduce(function(acc, l) {
+    return acc + lineaABs(l.precio_original || l.precio_usd, l.moneda || 'USD') * parseFloat(l.cantidad || 0);
+  }, 0);
+  const totalBs  = totServBs + totRepBs;
+  const totalUSD = tasaUSD > 0 ? totalBs / tasaUSD : 0;
+  // Vista previa del IVA que se va a cobrar al Facturar -- misma tasa que
+  // usa facturarOS() (tasaIVAActual()), para que no sea una sorpresa recién
+  // al momento de generar la Factura.
+  const ivaPct  = tasaIVAActual();
+  const ivaBs   = totalBs * ivaPct;
+  const ivaUSD  = totalUSD * ivaPct;
+  const totalConIvaBs  = totalBs + ivaBs;
+  const totalConIvaUSD = totalUSD + ivaUSD;
+
+  const el = document.getElementById('os-totales');
+  if (el) el.innerHTML = '<div style="display:flex;gap:24px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:12px 0">'
+    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Servicios</div><div style="font-family:var(--font-mono)">' + fmtBs(totServBs) + ' Bs</div><div style="font-size:11px;color:var(--suave)">$ ' + fmtUSD(tasaUSD > 0 ? totServBs / tasaUSD : 0) + '</div></div>'
+    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Artículos</div><div style="font-family:var(--font-mono)">' + fmtBs(totRepBs) + ' Bs</div><div style="font-size:11px;color:var(--suave)">$ ' + fmtUSD(tasaUSD > 0 ? totRepBs / tasaUSD : 0) + '</div></div>'
+    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">Subtotal</div><div style="font-family:var(--font-mono)">' + fmtBs(totalBs) + ' Bs</div><div style="font-size:11px;color:var(--suave)">$ ' + fmtUSD(totalUSD) + '</div></div>'
+    + '<div><div style="font-size:10px;color:var(--suave);letter-spacing:1px">IVA (' + (ivaPct*100).toFixed(0) + '%)</div><div style="font-family:var(--font-mono)">' + fmtBs(ivaBs) + ' Bs</div><div style="font-size:11px;color:var(--suave)">$ ' + fmtUSD(ivaUSD) + '</div></div>'
+    + '<div style="border-left:1px solid var(--borde);padding-left:24px">'
+    +   '<div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL CON IVA</div>'
+    +   '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + fmtBs(totalConIvaBs) + ' Bs</div>'
+    +   '<div style="font-size:12px;color:var(--suave)">$ ' + fmtUSD(totalConIvaUSD) + ' USD</div>'
+    +   '<div style="font-size:9px;color:var(--suave);margin-top:2px">Tasa: $ 1 = ' + fmtBs(tasaUSD) + ' Bs</div>'
+    + '</div>'
+    + '</div>';
+
+  // Actualizar totales globales para guardar en BD -- SIN IVA (el Subtotal
+  // de Servicios+Artículos es lo que se guarda en la OS; el IVA solo se
+  // calcula y aplica recién al Facturar, en facturarOS()).
+  window._osLastTotalBs  = totalBs;
+  window._osLastTotalUSD = totalUSD;
+}
+
 // ─── LÍNEAS DE SERVICIOS (tabla editable, estilo Orden de Compra) ───
 // Cada fila es un objeto editable en osServiciosLineas: { id_grupo,
 // id_servicio, esLibre, descripcion, cantidad, precio_original,
@@ -698,6 +748,13 @@ function renderLineasOS() {
       + '</tr>';
   }).join('');
   calcularTotalesOS();
+}
+
+// Comparación robusta de texto -- sin mayúsculas ni acentos -- para no
+// depender de que "Descripción Libre" esté escrito exactamente igual en
+// todos lados.
+function _normTxt(s) {
+  return (s || '').toString().trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
 function parsePrecio(valor, moneda) {
