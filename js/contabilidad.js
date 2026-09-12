@@ -2930,6 +2930,79 @@ async function guardarTributo() {
 // línea de IVA agregada, y una sola línea de CxP Proveedores por el total.
 // `lineas`: [{ articulo, cantidad, id_cuentaInventario, baseExactaUSD,
 //              baseExactaBs, totalExactoUSD, totalExactoBs }, ...]
+// Asiento CONSOLIDADO para varios Artículos Consumibles salidos en un
+// mismo Requerimiento Interno -- mismo patrón de agrupar por Cuenta
+// Contable que generarAsientoInventarioLote(), pero DEBE Gasto / HABER
+// Inventario (consumo), no DEBE Inventario / HABER CxP (compra).
+// `lineas`: [{ articulo, cantidad, id_cuentaInventario, id_cuentaGasto,
+//              montoUSD, montoVES, tasa, referencia }]
+async function generarAsientoSalidaConsumibleLote(lineas, datos) {
+  try {
+    const anioReqInt = new Date().getFullYear();
+    const existAstReqInt = await api('cont_asientos','GET',null,'?numero_asiento=like.AST-'+anioReqInt+'-*&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'&order=numero_asiento.desc&limit=1&select=numero_asiento');
+    let seqReqInt = 1;
+    if (existAstReqInt.length) { const p = existAstReqInt[0].numero_asiento.split('-'); seqReqInt = parseInt(p[p.length-1])+1; }
+    const numAstReqInt = 'AST-'+anioReqInt+'-'+String(seqReqInt).padStart(4,'0');
+
+    const periodosReqInt = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
+    const id_periodoReqInt = periodosReqInt.length ? periodosReqInt[0].id_periodo : null;
+
+    // Tasa BCV de referencia del Asiento -- promedio ponderado de todas
+    // las líneas (cada una ya trae su propia tasa promedio por Artículo).
+    const sumaMontoVES = lineas.reduce(function(s,l){ return s + l.montoVES; }, 0);
+    const sumaMontoUSD = lineas.reduce(function(s,l){ return s + l.montoUSD; }, 0);
+    const tasaRefReqInt = sumaMontoUSD > 0 ? sumaMontoVES / sumaMontoUSD : (lineas[0]?.tasa || 1);
+
+    const asientoReqInt = await api('cont_asientos','POST',{
+      numero_asiento: numAstReqInt,
+      fecha:          datos.fecha || getHoyVzla(),
+      descripcion:    'Consumo (Requerimiento Interno x' + lineas.length + ' artículos) -> ' + (datos.areaNombre || ''),
+      tipo:           'CONSUMO_INVENTARIO',
+      referencia:     datos.numeroDoc || null,
+      moneda_base:    ((_empresaActiva?.moneda_principal)||'VES').toUpperCase(),
+      tasa_bcv:       tasaRefReqInt,
+      id_periodo:     id_periodoReqInt,
+      id_empresa:     _empresaActiva ? _empresaActiva.id_empresa : null,
+      estado:         'APROBADO',
+      id_usuario:     sesionActual.correo_usuario
+    });
+    if (!asientoReqInt || !asientoReqInt[0]) return null;
+    const idAstReqInt = asientoReqInt[0].id_asiento;
+
+    // Agrupar por par (Cuenta Gasto, Cuenta Inventario) -- si dos
+    // Artículos comparten ambas cuentas, quedan sumados en una sola línea
+    // DEBE y una sola línea HABER.
+    const gruposReqInt = {};
+    lineas.forEach(function(lin) {
+      const clave = (lin.id_cuentaGasto||'x') + '|' + (lin.id_cuentaInventario||'x');
+      if (!gruposReqInt[clave]) gruposReqInt[clave] = { id_cuentaGasto: lin.id_cuentaGasto, id_cuentaInventario: lin.id_cuentaInventario, montoUSD: 0, montoVES: 0, nombres: [] };
+      gruposReqInt[clave].montoUSD += lin.montoUSD;
+      gruposReqInt[clave].montoVES += lin.montoVES;
+      gruposReqInt[clave].nombres.push(lin.articulo + ' x' + lin.cantidad);
+    });
+
+    let ordenReqInt = 1;
+    for (const clave in gruposReqInt) {
+      const g = gruposReqInt[clave];
+      if (!g.id_cuentaGasto || !g.id_cuentaInventario) continue;
+      const montoUSD_g = parseFloat(g.montoUSD.toFixed(2));
+      const montoVES_g = parseFloat(g.montoVES.toFixed(2));
+      const descGrupo = 'Consumo (Req. ' + (datos.numeroDoc||'') + '): ' + g.nombres.join(', ').substring(0,180);
+      await api('cont_asiento_lineas','POST',{ id_asiento:idAstReqInt, id_cuenta:g.id_cuentaGasto, orden:ordenReqInt++,
+        descripcion: descGrupo,
+        debe_usd: montoUSD_g, haber_usd: 0, debe_ves: montoVES_g, haber_ves: 0 });
+      await api('cont_asiento_lineas','POST',{ id_asiento:idAstReqInt, id_cuenta:g.id_cuentaInventario, orden:ordenReqInt++,
+        descripcion: descGrupo,
+        debe_usd: 0, haber_usd: montoUSD_g, debe_ves: 0, haber_ves: montoVES_g });
+    }
+
+    return { idAsiento: idAstReqInt, numeroAsiento: numAstReqInt, totalUSD: sumaMontoUSD, totalBs: sumaMontoVES };
+  } catch(eAstReqIntLote) {
+    console.warn('Error generando asiento consolidado de Requerimiento Interno:', eAstReqIntLote);
+    return null;
+  }
+}
+
 async function generarAsientoInventarioLote(lineas, datos) {
   try {
     let tasa = datos.tasa ? parseFloat(datos.tasa) : 0;
