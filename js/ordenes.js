@@ -667,6 +667,12 @@ function onCambioGrupoFilaServ(i, grupo) {
   l.id_servicio = null; l.descripcion = ''; l.precio_original = 0; l.precio_usd = 0; l.moneda = 'USD';
   l.cantidad = l.esLibre ? 1 : (l.cantidad || 1);
   renderLineasOS();
+  // Avanzar el foco al campo Servicio/Concepto de esta misma fila -- con
+  // setTimeout porque renderLineasOS() acaba de reconstruir todo el
+  // <tbody>, así que el elemento nuevo recién existe después de este ciclo.
+  setTimeout(function() {
+    (document.getElementById('os-serv-nombre-'+i) || document.getElementById('os-serv-concepto-'+i))?.focus();
+  }, 0);
 }
 
 function onCambioServicioFila(i, id_servicio) {
@@ -685,6 +691,7 @@ function onCambioServicioFila(i, id_servicio) {
     l.descripcion = ''; l.precio_original = 0; l.precio_usd = 0; l.moneda = 'USD';
   }
   renderLineasOS();
+  setTimeout(function() { document.getElementById('os-serv-cant-'+i)?.focus(); }, 0);
 }
 
 function onCambioConceptoFila(i, texto) {
@@ -727,11 +734,17 @@ function renderLineasOS() {
     const opcionesServ = '<option value="">— Seleccionar —</option>'
       + serviciosFiltrados.map(function(s) { return '<option value="' + s.id_servicio + '"' + (l.id_servicio == s.id_servicio ? ' selected' : '') + '>' + s.nombre + '</option>'; }).join('');
 
+    // Enter en Cantidad/Precio avanza al siguiente campo de ESTA fila --
+    // estos dos no re-renderizan al escribir (solo recalculan totales),
+    // así que el elemento destino ya existe, no hace falta setTimeout.
+    const enterCant   = 'if(event.key===\'Enter\'){event.preventDefault();document.getElementById(\'os-serv-precio-' + i + '\')?.focus()}';
+    const enterPrecio = 'if(event.key===\'Enter\'){event.preventDefault();document.getElementById(\'os-serv-moneda-' + i + '\')?.focus()}';
+
     const celdaServicio = !l.id_grupo
       ? '<select disabled style="width:100%;background:var(--gris1);border:1px solid var(--borde);color:var(--suave);font-size:12px;padding:6px 8px;border-radius:4px;cursor:not-allowed"><option>— Elija un Grupo primero —</option></select>'
       : l.esLibre
-        ? '<input type="text" value="' + (l.descripcion || '') + '" placeholder="Escribe el concepto..." oninput="onCambioConceptoFila(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-transform:uppercase">'
-        : '<select onchange="onCambioServicioFila(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">' + opcionesServ + '</select>';
+        ? '<input type="text" id="os-serv-concepto-' + i + '" value="' + (l.descripcion || '') + '" placeholder="Escribe el concepto..." oninput="onCambioConceptoFila(' + i + ',this.value)" onkeydown="' + enterCant + '" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-transform:uppercase">'
+        : '<select id="os-serv-nombre-' + i + '" onchange="onCambioServicioFila(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">' + opcionesServ + '</select>';
 
     const catalogado = !l.esLibre && l.id_servicio;
     const estiloPrecio = catalogado
@@ -742,11 +755,11 @@ function renderLineasOS() {
     const subtotalFmt = l.moneda === 'VES' ? fmtBs(subtotal) + ' Bs' : '$ ' + fmtUSD(subtotal);
 
     return '<tr>'
-      + '<td style="padding:4px"><select onchange="onCambioGrupoFilaServ(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">' + opcionesGrupo + '</select></td>'
+      + '<td style="padding:4px"><select id="os-serv-grupo-' + i + '" onchange="onCambioGrupoFilaServ(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">' + opcionesGrupo + '</select></td>'
       + '<td style="padding:4px">' + celdaServicio + '</td>'
-      + '<td style="padding:4px;width:70px"><input type="number" min="0.01" step="0.01" value="' + l.cantidad + '" ' + (l.esLibre ? 'readonly style="width:100%;background:var(--gris1);color:var(--suave);border:1px solid var(--borde);font-size:12px;padding:6px 8px;border-radius:4px;cursor:not-allowed"' : 'oninput="onCambioCantidadFilaServ(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"') + '></td>'
-      + '<td style="padding:4px;width:90px"><input type="text" value="' + (l.precio_original ? l.precio_original.toFixed(2) : '') + '" ' + (catalogado ? 'readonly' : 'oninput="onCambioPrecioFilaServ(' + i + ',this.value)"') + ' style="' + estiloPrecio + '"></td>'
-      + '<td style="padding:4px;width:80px"><select onchange="onCambioMonedaFilaServ(' + i + ',this.value)" ' + (catalogado ? 'disabled' : '') + ' style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none"><option value="USD"' + (l.moneda === 'USD' ? ' selected' : '') + '>$ USD</option><option value="EUR"' + (l.moneda === 'EUR' ? ' selected' : '') + '>€ EUR</option><option value="VES"' + (l.moneda === 'VES' ? ' selected' : '') + '>Bs VES</option></select></td>'
+      + '<td style="padding:4px;width:70px"><input type="number" id="os-serv-cant-' + i + '" min="0.01" step="0.01" value="' + l.cantidad + '" onkeydown="' + enterCant + '" ' + (l.esLibre ? 'readonly style="width:100%;background:var(--gris1);color:var(--suave);border:1px solid var(--borde);font-size:12px;padding:6px 8px;border-radius:4px;cursor:not-allowed"' : 'oninput="onCambioCantidadFilaServ(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"') + '></td>'
+      + '<td style="padding:4px;width:90px"><input type="text" id="os-serv-precio-' + i + '" value="' + (l.precio_original ? l.precio_original.toFixed(2) : '') + '" onkeydown="' + enterPrecio + '" ' + (catalogado ? 'readonly' : 'oninput="onCambioPrecioFilaServ(' + i + ',this.value)"') + ' style="' + estiloPrecio + '"></td>'
+      + '<td style="padding:4px;width:80px"><select id="os-serv-moneda-' + i + '" onchange="onCambioMonedaFilaServ(' + i + ',this.value)" ' + (catalogado ? 'disabled' : '') + ' style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none"><option value="USD"' + (l.moneda === 'USD' ? ' selected' : '') + '>$ USD</option><option value="EUR"' + (l.moneda === 'EUR' ? ' selected' : '') + '>€ EUR</option><option value="VES"' + (l.moneda === 'VES' ? ' selected' : '') + '>Bs VES</option></select></td>'
       + '<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono);color:var(--naranja);white-space:nowrap">' + subtotalFmt + '</td>'
       + '<td style="padding:4px;text-align:center"><button onclick="quitarLineaServ(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px">✕</button></td>'
       + '</tr>';
@@ -811,6 +824,9 @@ function onCambioArticuloFilaOS(i, id_articulo) {
     l.descripcion = ''; l.precio_original = 0; l.precio_usd = 0;
   }
   renderLineasRep();
+  // Avanzar el foco a Cantidad de esta misma fila -- con setTimeout porque
+  // renderLineasRep() acaba de reconstruir todo el <tbody>.
+  setTimeout(function() { document.getElementById('os-art-cant-'+i)?.focus(); }, 0);
 }
 
 function onCambioCantidadFilaArt(i, valor) {
@@ -843,8 +859,8 @@ function renderLineasRep() {
     const subtotalFmt = '$ ' + fmtUSD(subtotal);
 
     return '<tr>'
-      + '<td style="padding:4px"><select onchange="onCambioArticuloFilaOS(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">' + opcionesArt + '</select></td>'
-      + '<td style="padding:4px;width:70px"><input type="number" min="0.01" step="0.01" value="' + l.cantidad + '" oninput="onCambioCantidadFilaArt(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
+      + '<td style="padding:4px"><select id="os-art-sel-' + i + '" onchange="onCambioArticuloFilaOS(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">' + opcionesArt + '</select></td>'
+      + '<td style="padding:4px;width:70px"><input type="number" id="os-art-cant-' + i + '" min="0.01" step="0.01" value="' + l.cantidad + '" oninput="onCambioCantidadFilaArt(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
       + '<td style="padding:4px;width:90px"><input type="text" value="' + (l.precio_original ? l.precio_original.toFixed(2) : '') + '" readonly title="El precio del Artículo se calcula solo (CPP × Margen), no se edita aquí" style="width:100%;background:var(--gris1);border:1px solid var(--borde);color:var(--suave);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;cursor:not-allowed"></td>'
       + '<td style="padding:4px 8px;width:90px;font-size:12px;color:var(--suave);font-family:var(--font-mono)">' + stockTxt + '</td>'
       + '<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono);color:var(--naranja);white-space:nowrap">' + subtotalFmt + '</td>'
