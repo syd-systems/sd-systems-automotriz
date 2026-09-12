@@ -685,9 +685,15 @@
   }
   /* Orden de Compra: etiquetas y valores más compactos que el resto de
      la app, a pedido -- el modal se sentía muy grande con el tamaño
-     estándar. */
+     estándar. Con !important porque la regla "TIPOGRAFÍA LABELS
+     MEJORADA" (más abajo) también usa !important a nivel de toda la
+     app -- sin esto, esta regla más específica no le ganaba. */
   #modal-orden-compra .form-campo label {
-    font-size: 8px;
+    font-size: 8px !important;
+  }
+  #modal-orden-compra .form-campo input,
+  #modal-orden-compra .form-campo select {
+    font-size: 7px !important;
   }
 
   .form-campo input,
@@ -1368,19 +1374,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909013"></script>
-<script src="js/parametros.js?v=20260909013"></script>
-<script src="js/empresas.js?v=20260909013"></script>
-<script src="js/ingresos.js?v=20260909013"></script>
-<script src="js/inventario.js?v=20260909013"></script>
-<script src="js/proveedores.js?v=20260909013"></script>
-<script src="js/clientes.js?v=20260909013"></script>
-<script src="js/ventas.js?v=20260909013"></script>
-<script src="js/contabilidad.js?v=20260909013"></script>
-<script src="js/egresos.js?v=20260909013"></script>
-<script src="js/vehiculos.js?v=20260909013"></script>
-<script src="js/catalogo.js?v=20260909013"></script>
-<script src="js/ordenes.js?v=20260909013"></script>
+<script src="js/core.js?v=20260909014"></script>
+<script src="js/parametros.js?v=20260909014"></script>
+<script src="js/empresas.js?v=20260909014"></script>
+<script src="js/ingresos.js?v=20260909014"></script>
+<script src="js/inventario.js?v=20260909014"></script>
+<script src="js/proveedores.js?v=20260909014"></script>
+<script src="js/clientes.js?v=20260909014"></script>
+<script src="js/ventas.js?v=20260909014"></script>
+<script src="js/contabilidad.js?v=20260909014"></script>
+<script src="js/egresos.js?v=20260909014"></script>
+<script src="js/vehiculos.js?v=20260909014"></script>
+<script src="js/catalogo.js?v=20260909014"></script>
+<script src="js/ordenes.js?v=20260909014"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
