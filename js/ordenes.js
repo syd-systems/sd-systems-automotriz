@@ -474,12 +474,17 @@ async function abrirEditarOS(id) {
       api('os_mercancias', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
       api('tasas', 'GET', null, '?order=fecha_valor.desc&limit=10&select=*'),
     ]);
+    // El Grupo real "Descripción Libre" (con sus acentos/mayúsculas tal
+    // como esté en el catálogo) para las líneas de Concepto libre -- se
+    // busca UNA vez, sin importar cuántas líneas haya.
+    const grupoLibreReal = catalogoCache.map(function(s) { return s.grupo; })
+      .find(function(g) { return _normTxt(g) === 'DESCRIPCION LIBRE'; }) || 'DESCRIPCIÓN LIBRE';
     osServiciosLineas = linServ.map(function(l) {
       // Reconstruir Grupo/esLibre -- la BD solo guarda id_servicio (null si
       // fue un Concepto libre); el Grupo real se busca en el catálogo.
       const catServ  = l.id_servicio ? catalogoCache.find(function(c) { return c.id_servicio === l.id_servicio; }) : null;
       const esLibreL = !l.id_servicio;
-      return { id: l.id_os_serv, id_grupo: esLibreL ? 'Descripción Libre' : (catServ ? catServ.grupo : ''), esLibre: esLibreL,
+      return { id: l.id_os_serv, id_grupo: esLibreL ? grupoLibreReal : (catServ ? catServ.grupo : ''), esLibre: esLibreL,
         id_servicio: l.id_servicio, descripcion: l.descripcion,
         cantidad: l.cantidad, precio_usd: l.precio_usd,
         moneda: (l.moneda || 'USD').toUpperCase(),
@@ -716,8 +721,7 @@ function renderLineasOS() {
 
   cont.innerHTML = osServiciosLineas.map(function(l, i) {
     const opcionesGrupo = '<option value="">— Seleccionar —</option>'
-      + gruposServ.map(function(g) { return '<option value="' + g + '"' + (l.id_grupo === g ? ' selected' : '') + '>' + g + '</option>'; }).join('')
-      + '<option value="Descripción Libre"' + (l.esLibre ? ' selected' : '') + '>Descripción Libre</option>';
+      + gruposServ.map(function(g) { return '<option value="' + g + '"' + (l.id_grupo === g ? ' selected' : '') + '>' + g + '</option>'; }).join('');
 
     const serviciosFiltrados = catalogoCache.filter(function(s) { return !l.id_grupo || s.grupo === l.id_grupo; });
     const opcionesServ = '<option value="">— Seleccionar —</option>'
