@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909008';
+const SYD_VERSION = '20260909009';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -610,6 +610,20 @@ async function obtenerSiguienteNumeroOrdenCompra() {
     body: JSON.stringify({})
   });
   if (!resp.ok) throw new Error('No se pudo obtener el siguiente número de Orden de Compra.');
+  return await resp.json();
+}
+
+async function obtenerSiguienteNumeroRequerimientoInterno() {
+  const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/siguiente_numero_requerimiento_interno', {
+    method: 'POST',
+    headers: {
+      'apikey':        SUPABASE_KEY,
+      'Authorization': 'Bearer ' + _sessionJWT,
+      'Content-Type':  'application/json'
+    },
+    body: JSON.stringify({})
+  });
+  if (!resp.ok) throw new Error('No se pudo obtener el siguiente número de Requerimiento Interno.');
   return await resp.json();
 }
 
