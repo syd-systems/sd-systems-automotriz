@@ -308,7 +308,11 @@ async function contVerAsiento(id) {
     const totalHaber    = lineas.reduce(function(s,l){ return s+parseFloat(l.haber_usd||0); }, 0);
     const totalDebeVes  = lineas.reduce(function(s,l){ return s+parseFloat(l.debe_ves||0); }, 0);
     const totalHaberVes = lineas.reduce(function(s,l){ return s+parseFloat(l.haber_ves||0); }, 0);
-    const cuadra     = Math.abs(totalDebeVes - totalHaberVes) < 0.01 || Math.abs(totalDebe - totalHaber) < 0.01;
+    // Cuadrado de verdad exige que AMBAS monedas coincidan (antes bastaba
+    // con que UNA de las dos cuadrara, lo cual podía mostrar "✓ cuadrado"
+    // con el USD exacto mientras el Bs tenía una diferencia real sin que
+    // se notara).
+    const cuadra     = Math.abs(totalDebeVes - totalHaberVes) < 0.01 && Math.abs(totalDebe - totalHaber) < 0.01;
     const monLabelI   = (ast.moneda_base || ((_empresaActiva?.moneda_secundaria)||'USD')).toUpperCase();
     const thDual = '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">DEBE</th>'
                  + '<th style="text-align:right;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">HABER</th>';
