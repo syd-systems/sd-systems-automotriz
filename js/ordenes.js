@@ -352,11 +352,16 @@ async function _resolverAreaOS(correo) {
 
 async function abrirNuevaOS() {
   setTimeout(function() {
-    const body = document.querySelector('#modal-os .modal-body');
+    const body = document.querySelector('#modal-os .modal');
     if (body) body.scrollTop = 0;
   }, 80);
   osServiciosLineas = [];
   osArtículosLineas = [];
+  // Precio de Venta de Artículos = CPP ÷ Margen vigente del Tipo (ver
+  // precioVentaEnVivo en inventario.js) -- refrescar el mapa de Márgenes
+  // aquí, igual que hace Ventas al abrir su modal, para no depender de que
+  // el Usuario haya visitado Inventario antes en esta sesión.
+  try { await refrescarMargenesVigentes(); } catch(e) {}
 
   // Obtener tasas vigentes (USD y EUR)
   try {
@@ -440,9 +445,12 @@ async function abrirEditarOS(id) {
     return;
   }
   setTimeout(function() {
-    const body = document.querySelector('#modal-os .modal-body');
+    const body = document.querySelector('#modal-os .modal');
     if (body) body.scrollTop = 0;
   }, 80);
+  // Precio de Venta de Artículos = CPP ÷ Margen vigente del Tipo -- ver
+  // nota en abrirNuevaOS().
+  try { await refrescarMargenesVigentes(); } catch(e) {}
   // Refrescar OS desde Supabase antes de editar
   try {
     const fresh = await api('ordenes_servicio', 'GET', null,
@@ -896,11 +904,16 @@ function onSelInventarioChange() {
   if (!sel.value) { precio.value = ''; if (monedaInv) monedaInv.value = 'USD'; return; }
   const r = inventarioCache.find(function(x) { return x.id_articulo == sel.value; });
   if (r) {
-    precio.value = parseFloat(r.precio_venta_moneda || 0).toFixed(2);
-    // La Moneda viene del Artículo (inventario_almacen.moneda_venta, definida
-    // en su última Salida de Stock) — bloqueada aquí, coherente con el
-    // Precio que se muestra al lado. Queda deshabilitada en el HTML.
-    if (monedaInv) monedaInv.value = r.moneda_venta || 'USD';
+    // Precio de Venta EN VIVO: CPP actual ÷ Margen vigente del Tipo de
+    // Artículo (precioVentaEnVivo, definida en inventario.js) -- es un
+    // VALOR DERIVADO, nunca se guarda a mano. Antes se leía la columna
+    // inventario_almacen.precio_venta_moneda, que quedó huérfana (nadie la
+    // llena) desde que se retiró la vieja Salida de Stock individual -- el
+    // único lugar que la escribía. Siempre resulta en USD, que es la
+    // moneda en la que se calcula (CPP y Margen son ambos en USD).
+    const ventaViva = precioVentaEnVivo(r);
+    precio.value = ventaViva.usd.toFixed(2);
+    if (monedaInv) monedaInv.value = 'USD';
   }
 }
 
@@ -1205,6 +1218,21 @@ async function facturarOS(id, skipConfirm) {
 
     const yaFacturada = await api('facturas','GET',null,'?id_orden=eq.'+id+'&estado=neq.ANULADA&select=id_factura,numero_factura');
     if (yaFacturada && yaFacturada.length) throw new Error('Esta OS ya tiene una factura activa: '+yaFacturada[0].numero_factura);
+
+    // Validar que NINGUNA línea (Servicio o Mercancía) tenga precio en $0
+    // -- una OS puede tener un total > 0 en general (ej. la Mano de Obra sí
+    // trae precio) y aun así traer arrastrada una línea individual en $0
+    // (típicamente un Artículo cuyo precio_venta_moneda nunca se configuró
+    // en Editar Artículo) -- eso pasaría desapercibido si solo se revisara
+    // el total de la OS, así que se revisa línea por línea.
+    const [lineasServVal, lineasRepVal] = await Promise.all([
+      api('os_servicios','GET',null,'?id_orden=eq.'+id+'&select=descripcion,precio_usd'),
+      api('os_mercancias','GET',null,'?id_orden=eq.'+id+'&select=descripcion,precio_usd'),
+    ]);
+    const lineaSinPrecio = (lineasServVal||[]).concat(lineasRepVal||[]).find(function(l){ return parseFloat(l.precio_usd||0) <= 0; });
+    if (lineaSinPrecio) {
+      throw new Error('"'+lineaSinPrecio.descripcion+'" tiene Precio $ 0,00 -- corrija el precio antes de facturar (si es un Artículo, configure su Precio de Venta desde Editar Artículo).');
+    }
 
     await cargarTasaIVAGlobal();
     const prop = os.propietarios;
