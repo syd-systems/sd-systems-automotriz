@@ -1975,6 +1975,7 @@ async function abrirOrdenCompra() {
   await _entconsActualizarTasa();
   _entconsRenderLineas();
   abrirModal('modal-orden-compra');
+  focusFirstField('modal-orden-compra');
   // Que siempre se muestre desde el principio del formulario, sin importar
   // en qué parte haya quedado el scroll de una vez anterior.
   const modalBodyEC = document.querySelector('#modal-orden-compra .modal');
@@ -2680,6 +2681,7 @@ async function invAbrirCategoria(id) {
   const btnElim = document.getElementById('modal-param-eliminar');
   if (btnElim) { btnElim.style.display = id ? '' : 'none'; window._paramKey='inv_categorias'; window._paramId=id; }
   abrirModal('modal-param');
+  focusFirstField('modal-param');
   setTimeout(function(){ document.getElementById('icat-codigo')?.focus(); }, 100);
 }
 
@@ -3093,6 +3095,7 @@ function abrirDefinirMargen(id_tipo, nombreTipo) {
   document.getElementById('alerta-margen-ok').style.display = 'none';
   document.getElementById('alerta-margen-err').style.display = 'none';
   abrirModal('modal-definir-margen');
+  focusFirstField('modal-definir-margen');
 }
 
 async function guardarMargenBruto() {
@@ -3216,6 +3219,7 @@ function abrirCorregirMargen(idViejo, id_tipo, nombreTipo, valorViejo) {
   document.getElementById('alerta-corregir-margen-err').style.display = 'none';
   cerrarModal('modal-historial-margen');
   abrirModal('modal-corregir-margen');
+  focusFirstField('modal-corregir-margen');
 }
 
 async function guardarCorreccionMargen() {
@@ -3299,6 +3303,7 @@ async function invAbrirTipo(id) {
   const btnElim = document.getElementById('modal-param-eliminar');
   if (btnElim) { btnElim.style.display = id ? '' : 'none'; window._paramKey='inv_articulos_tipo'; window._paramId=id; }
   abrirModal('modal-param');
+  focusFirstField('modal-param');
   setTimeout(function(){ document.getElementById('itipo-codigo')?.focus(); }, 100);
 }
 
@@ -4444,6 +4449,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     if (modalHist2) { modalHist2.classList.remove('abierto'); modalHist2.style.display = 'none'; }
     console.log('[SYD] abriendo modal SALIDA');
     abrirModal('modal-edit-movimiento');
+    focusFirstField('modal-edit-movimiento');
     return;
   }
   document.getElementById('edit-mov-tipo').value        = 'ENTRADA';
@@ -4825,6 +4831,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
   if (modalHist) { modalHist.classList.remove('abierto'); modalHist.style.display = 'none'; }
   console.log('[SYD] abriendo modal ENTRADA');
   abrirModal('modal-edit-movimiento');
+  focusFirstField('modal-edit-movimiento');
   // Que se muestre desde el principio del formulario -- todo el
   // precargado de campos hecho arriba puede haber movido el scroll.
   const modalBodyEditMov = document.querySelector('#modal-edit-movimiento .modal');
@@ -5732,6 +5739,7 @@ async function anularMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
   document.getElementById('alerta-anulacion-err').style.display = 'none';
 
   abrirModal('modal-anulacion-stock');
+  focusFirstField('modal-anulacion-stock');
 }
 
 async function confirmarAnulacion() {
