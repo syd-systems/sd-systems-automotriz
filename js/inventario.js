@@ -360,19 +360,15 @@ async function renderInventario(filtro) {
     }
   }
 
-  // Solo al ABRIR el módulo (no en cada re-render por búsqueda/filtro): si
-  // el Usuario tiene acceso al stock global (VER_INVENTARIO_GENERAL o
-  // Administrador), por defecto se le muestra SU PROPIA Área. Más abajo,
-  // después de calcularInvSaldoArea(), se revisa si esa Área realmente
-  // tiene stock -- si no, se cae al consolidado.
+  // Solo al ABRIR el módulo (no en cada re-render por búsqueda/filtro): por
+  // defecto siempre se muestra Gerencias de Compras (el Área central de
+  // Inventario General, donde vive casi todo el flujo -- Entrada, Salida,
+  // Orden de Compra, Requerimiento Interno), no el consolidado ni el Área
+  // propia del Usuario. Más abajo, después de calcularInvSaldoArea(), se
+  // revisa si Compras realmente tiene stock -- si no, se cae al consolidado.
   if (!panelYaExiste && (sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL'))) {
     try {
-      const correoPropio = sesionActual?.correo_usuario;
-      if (correoPropio) {
-        const empPropio = await api('empleados','GET',null,
-          '?correo=eq.'+encodeURIComponent(correoPropio)+'&select=id_area&limit=1');
-        _invFiltroAreaManual = empPropio?.[0]?.id_area || null;
-      }
+      _invFiltroAreaManual = await obtenerIdAreaCompras();
     } catch(e) {}
   }
   const tablaCont = document.getElementById('tabla-inv-cont');
