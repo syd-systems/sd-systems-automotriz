@@ -673,12 +673,16 @@ async function generarCxCyAsientoFactura(idFactura) {
       const periodos = await api('cont_periodos','GET',null,'?estado=eq.ABIERTO&order=fecha_inicio.desc&limit=1&select=id_periodo&id_empresa=eq.'+(fac.id_empresa||0));
       const id_periodo = periodos.length ? periodos[0].id_periodo : null;
 
-      let tasaReal = fac.tasa_bcv || 1;
-      try {
-        const tasasBCV = await api('tasas','GET',null,
-          '?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio');
-        tasaReal = tasasBCV.length ? parseFloat(tasasBCV[0].tipo_cambio) : (fac.tasa_bcv || 1);
-      } catch(eTasa) {}
+      // La tasa SIEMPRE es la que ya quedó congelada en la Factura
+      // (fac.tasa_bcv), la misma que se usó para calcular fac.total_ves --
+      // NUNCA se vuelve a buscar "la más reciente" de la tabla `tasas`.
+      // Antes sí se hacía eso, y como la línea de CxC usa fac.total_ves
+      // (congelado) mientras las demás líneas (IVA, Ingresos) recalculaban
+      // con esa tasa "fresca" -- si la tasa había cambiado entre facturar y
+      // generar el asiento, Debe y Haber quedaban con dos tasas distintas,
+      // descuadrando el asiento (mismo patrón ya corregido antes en
+      // Compras y en Pago/Cobro de CxP/CxC).
+      const tasaReal = parseFloat(fac.tasa_bcv) || 1;
 
       const asiento = await api('cont_asientos','POST',{
         numero_asiento: numAst,
