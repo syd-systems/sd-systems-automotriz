@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909036';
+const SYD_VERSION = '20260909037';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3455,38 +3455,24 @@ async function hashearClave(clave) {
 
 async function verificarContrasena(correoUsu, claveIngresada) {
   try {
-    // Usa el JWT de sesión si existe (todos los llamadores actuales son
-    // re-confirmaciones a mitad de sesión); cae a la anon key solo si no hay sesión
+    // Verificación COMPLETA del lado del servidor -- el hash de la
+    // contraseña nunca sale de la base de datos (antes se traía al
+    // navegador con un SELECT y se verificaba aquí, lo cual exponía el
+    // hash bcrypt de cualquier usuario a quien tuviera la clave anon).
     const headers = {
       'apikey':        SUPABASE_KEY,
       'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY),
       'Content-Type':  'application/json'
     };
-    // Buscar usuario
-    const res = await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' 
-      + encodeURIComponent(correoUsu) 
-      + '&select=correo_usuario,contrasena,estado_usuario,nombre,administrador', { headers });
-    const data = await res.json();
-    if (!data || !data.length) return { ok: false, msg: 'Usuario no encontrado.' };
-    const usu = data[0];
-    if (usu.estado_usuario === 'INACTIVO') return { ok: false, msg: 'Usuario inactivo.' };
-
-    // Verificar bcrypt via RPC
-    const resVerif = await fetch(SUPABASE_URL + '/rest/v1/rpc/verificar_clave', {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/verificar_credenciales_usuario', {
       method: 'POST',
       headers: headers,
-      body: JSON.stringify({ p_clave: claveIngresada, p_hash: usu.contrasena })
+      body: JSON.stringify({ p_correo: correoUsu, p_clave: claveIngresada })
     });
-    
-    if (!resVerif.ok) {
-      // Fallback: si RPC falla, intentar comparación directa (compatibilidad)
-      console.warn('RPC verificar_clave falló, usando fallback');
-      return { ok: false, msg: 'Error de autenticación. Contacte al administrador.' };
-    }
-    
-    const valido = await resVerif.json();
-    if (!valido) return { ok: false, msg: 'Contraseña incorrecta.' };
-    return { ok: true, usuario: usu };
+    if (!res.ok) return { ok: false, msg: 'Error de autenticación. Contacte al administrador.' };
+    const resultado = await res.json();
+    if (!resultado || !resultado.ok) return { ok: false, msg: (resultado && resultado.msg) || 'Contraseña incorrecta.' };
+    return { ok: true, usuario: { correo_usuario: resultado.correo_usuario, nombre: resultado.nombre, administrador: resultado.administrador } };
   } catch(e) {
     return { ok: false, msg: 'Error verificando contraseña: ' + msgErr(e) };
   }
@@ -3509,9 +3495,11 @@ async function validarClaveReceptor(id_empleado, clave) {
     if (!emp) return { ok: false, msg: 'Empleado no encontrado.' };
     if (!emp.correo) return { ok: false, msg: 'El empleado remitente no tiene correo registrado en el sistema.' };
 
-    // Buscar usuario por correo y validar contraseña
+    // Buscar usuario por correo (solo para confirmar que existe y está
+    // activo -- la verificación real de la contraseña la hace
+    // verificarContrasena(), que ya no expone el hash al navegador)
     const usuArr = await api('usuarios', 'GET', null,
-      '?correo_usuario=ilike.' + encodeURIComponent(emp.correo) + '&estado_usuario=eq.ACTIVO&select=correo_usuario,contrasena,nombre');
+      '?correo_usuario=ilike.' + encodeURIComponent(emp.correo) + '&estado_usuario=eq.ACTIVO&select=correo_usuario,nombre');
     const usu = usuArr[0];
     if (!usu) return { ok: false, msg: 'El empleado "' + emp.nombre_completo + '" no tiene usuario activo en el sistema.' };
     const verifRec = await verificarContrasena(usu.correo_usuario, clave);
