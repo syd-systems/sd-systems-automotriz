@@ -872,29 +872,29 @@ async function verFichaInventario(id) {
     + '</div></div>'
     + (r.descripcion_articulo ? '<div style="background:var(--gris2);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--suave)">' + r.descripcion_articulo + '</div>' : '')
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Stock Actual</div>'
+    + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Stock Actual</div>'
     + '<div style="font-family:var(--font-mono);font-size:18px;color:' + (stockBajo ? '#fc8181' : 'var(--naranja)') + '">' + stockMostrarFicha + ' ' + (r.unidad||'UND') + '</div>'
     + (_invSaldoArea ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Stock en tu área</div>' : '')
     + (stockBajo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px">⚠ Bajo mínimo (' + r.stock_minimo_articulo + ')</div>' : '') + '</div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Stock Mínimo</div>'
+    + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Stock Mínimo</div>'
     + '<div style="font-family:var(--font-mono);font-size:18px">' + r.stock_minimo_articulo + ' ' + (r.unidad||'UND') + '</div></div>'
-    + (puedo('INVENTARIO','VER_COSTOS') ? '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Costo Prom. (CPP)</div><div style="font-family:var(--font-mono)">' + fmtBs(costoMostrarFicha * (_tasaCppPorArticulo[r.id_articulo] || _tasaVigente)) + ' Bs</div><div style="font-size:11px;color:var(--suave);margin-top:2px;font-family:var(--font-mono)">$ ' + fmtUSD(costoMostrarFicha) + '</div></div>' : '')
+    + (puedo('INVENTARIO','VER_COSTOS') ? '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Costo Prom. (CPP)</div><div style="font-family:var(--font-mono)">' + fmtBs(costoMostrarFicha * (_tasaCppPorArticulo[r.id_articulo] || _tasaVigente)) + ' Bs</div><div style="font-size:11px;color:var(--suave);margin-top:2px;font-family:var(--font-mono)">$ ' + fmtUSD(costoMostrarFicha) + '</div></div>' : '')
     + (puedo('INVENTARIO','VER_PRECIOS_VENTA')
-        ? '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
+        ? '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
           + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + fmtBs(dualVentaFicha.bs) + ' Bs</div>'
           + '<div style="font-size:11px;color:var(--suave);margin-top:2px">$ ' + fmtUSD(dualVentaFicha.usd) + '</div>'
           + (puedo('INVENTARIO','VER_MARGEN_BRUTO') ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Margen: ' + margenTxt + '</div>' : '') + '</div>'
-        : '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
+        : '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Precio Venta</div>'
           + '<div style="font-size:13px;color:#555">🔒</div></div>')
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Categoría</div>'
+    + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Categoría</div>'
     + '<div style="font-size:13px">' + (_invCategoriasCache.find(function(c){return c.id_categoria===r.id_categoria_articulo;})?.nombre || '—') + '</div></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Valor Inventario</div>'
+    + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Valor Inventario</div>'
     + '</div>'
     + '</div>'
     + '<div style="background:var(--gris2);border-radius:6px;padding:12px 14px;margin-top:4px;display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Cuenta Contable Inventario</div>'
+    + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Cuenta Contable Inventario</div>'
     + '<div id="ficha-inv-cta-inventario" style="font-size:12px;font-family:var(--font-mono);color:var(--suave)">—</div></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Cuenta Costo / Gasto</div>'
+    + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Cuenta Costo / Gasto</div>'
     + '<div id="ficha-inv-cta-costo" style="font-size:12px;font-family:var(--font-mono);color:var(--suave)">—</div></div>'
     + '</div>'
 
