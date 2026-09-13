@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909033';
+const SYD_VERSION = '20260909034';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -1849,17 +1849,17 @@ async function verFichaUsuario(id) {
     + '<span class="badge ' + (u.administrador ? 'badge-naranja' : 'badge-gris') + '" style="margin-top:4px">' + (u.administrador ? 'Administrador' : 'Operador') + '</span>'
     + '</div></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Estado</div>'
+    + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Estado</div>'
     + '<span class="badge ' + (u.estado_usuario === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + u.estado_usuario + '</span></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Conexión</div>'
+    + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Conexión</div>'
     + '<div style="font-size:12px;color:' + (enLinea ? '#68d391' : 'var(--suave)') + '">' + (enLinea ? '● En línea' : '○ Desconectado') + '</div></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Última Conexión</div>'
+    + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Última Conexión</div>'
     + '<div style="font-size:12px">' + (u.ultima_conexion ? new Date(u.ultima_conexion).toLocaleString('es-VE', { timeZone: 'America/Caracas', day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'Nunca') + '</div></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Registrado</div>'
+    + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Registrado</div>'
     + '<div style="font-size:12px">' + new Date(u.fecha_registro).toLocaleDateString('es-VE', { timeZone: 'America/Caracas', day:'2-digit', month:'2-digit', year:'numeric' }) + '</div></div>'
     + '</div>'
     + (u.administrador ? '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--naranja)">👑 Acceso total al sistema — Administrador</div>'
-      : ('<div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;margin-top:4px">Permisos Asignados</div>'
+      : ('<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px;margin-top:4px">Permisos Asignados</div>'
         + (modulosHTML || '<div style="color:var(--suave);font-size:13px">Sin permisos asignados</div>')));
 
   var btnEditar = document.getElementById('ficha-usu-btn-editar');
@@ -3364,17 +3364,17 @@ function renderTarjetaEntregaVenta(v, lineas, opts) {
         // consulta desde Ventas). En Inventario > Pendientes se sigue
         // ocultando a propósito: es el dato que el operador debe obtener
         // del Cliente físicamente, para validar la entrega.
-        + (opts.soloLectura ? '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">N° Factura</div>'
+        + (opts.soloLectura ? '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">N° Factura</div>'
           + '<div style="font-family:var(--font-mono);font-size:13px;margin-bottom:6px">'+(v.facturas?.numero_factura||'—')+'</div>' : '')
-        + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Cédula/RIF</div>'
+        + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Cédula/RIF</div>'
         + '<div style="font-family:var(--font-mono);font-size:13px;margin-bottom:6px">'+(cli?(cli.condicion_legal+'-'+cli.identificacion):'—')+'</div>'
-        + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Cliente</div>'
+        + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Cliente</div>'
         + '<div style="font-size:13px;font-weight:600">'+(cli?cli.nombre_apellido:'—')+'</div>'
       + '</div>'
       + '<div style="text-align:right">'
-        + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Fecha</div>'
+        + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Fecha</div>'
         + '<div style="font-size:13px;margin-bottom:6px">'+fecha+'</div>'
-        + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Monto Factura</div>'
+        + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Monto Factura</div>'
         + '<div style="font-family:var(--font-mono);font-size:14px;color:var(--naranja);font-weight:600">'+fmtBs(v.facturas?.total_ves||0)+' Bs</div>'
         + '<div style="font-family:var(--font-mono);font-size:11px;color:var(--suave)">$ '+fmtUSD(v.total_usd||0)+'</div>'
       + '</div>'
