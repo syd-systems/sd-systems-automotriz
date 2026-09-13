@@ -701,7 +701,16 @@ async function _onCambioArticuloVenta(idx, idArticulo) {
 }
 
 function _onCambioCantidadVenta(idx, valor) {
-  _ventaLineas[idx].cantidad = parseFloat(valor) || 0;
+  const lin = _ventaLineas[idx];
+  if (lin.id_articulo) {
+    const art = inventarioCache.find(function(a) { return a.id_articulo === lin.id_articulo; });
+    if ((art?.unidad || 'UND') === 'UND' && valor && (parseFloat(valor) % 1 !== 0)) {
+      alert('⚠ Este Artículo se mide en Unidades (UND) -- la cantidad debe ser un número entero, sin decimales.');
+      _renderLineasVenta();
+      return;
+    }
+  }
+  lin.cantidad = parseFloat(valor) || 0;
   _ajustarReservaLineaVenta(idx);
 }
 
@@ -809,11 +818,13 @@ function _renderLineasVenta() {
     const textoActual = artActual ? _textoOpcionArticulo(artActual) : '';
     const subtotal = (lin.cantidad || 0) * (lin.precio_unitario || 0);
     const borderCant = lin.errorStock ? 'border:1px solid #e57373' : 'border:1px solid var(--borde)';
+    const artCantVenta = lin.id_articulo ? inventarioCache.find(function(a) { return a.id_articulo === lin.id_articulo; }) : null;
+    const esUnidadEnteraVta = (artCantVenta?.unidad || 'UND') === 'UND';
     return '<tr>'
       + '<td style="padding:4px"><input type="text" autocomplete="off" value="'+textoActual.replace(/"/g,'&quot;')+'" oninput="_mostrarOpcionesArticulo('+idx+', this, this.value)" onfocus="_mostrarOpcionesArticulo('+idx+', this, this.value)" onblur="setTimeout(_ocultarOpcionesArticulo, 150)" placeholder="Buscar artículo o código..." style="width:100%;background:var(--gris2);border:1px solid '+(lin.errorDuplicado?'#e57373':'var(--borde)')+';color:var(--texto);font-size:13px;padding:6px 8px;border-radius:4px;outline:none">'
         + (lin.errorDuplicado ? '<div style="font-size:10px;color:#e57373;margin-top:2px">'+lin.errorDuplicado+'</div>' : '')
         + '</td>'
-      + '<td style="padding:4px;width:90px"><input id="vta-cant-'+idx+'" type="number" min="0" step="any" value="'+(lin.cantidad||'')+'" oninput="_onCambioCantidadVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);'+borderCant+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)">'
+      + '<td style="padding:4px;width:90px"><input id="vta-cant-'+idx+'" type="number" class="'+(esUnidadEnteraVta?'sin-flechas':'')+'" min="'+(esUnidadEnteraVta?'1':'0')+'" step="'+(esUnidadEnteraVta?'1':'any')+'" value="'+(lin.cantidad||'')+'" oninput="_onCambioCantidadVenta('+idx+', this.value)" style="width:100%;background:var(--gris2);'+borderCant+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)">'
         + (lin.errorStock ? '<div style="font-size:10px;color:#e57373;margin-top:2px">'+lin.errorStock+'</div>' : '')
         + '</td>'
       + '<td style="padding:4px 8px;width:120px;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--suave)">'+_fmtMonedaVentaDual(lin.precio_unitario)+'</td>'
