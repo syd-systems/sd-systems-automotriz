@@ -265,7 +265,7 @@ async function cargarOSParaFactura(id_empresa, idFacturaExcluir) {
           return '<option value="' + o.id_orden + '">'
             + o.numero_os + ' [' + (o.estado||'') + '] — '
             + (veh ? veh.placa + ' ' + veh.marca + ' ' + veh.modelo : '')
-            + (prop ? ' · ' + prop.nombre_completo : '') + '</option>';
+            + (prop ? ' · ' + escapeHtml(prop.nombre_completo) : '') + '</option>';
         }).join('');
   } catch(e) {
     selOS.innerHTML = '<option value="">— Error cargando Órdenes —</option>';
@@ -337,7 +337,7 @@ async function onSelOSFactura() {
       + '<div style="display:flex;gap:16px;flex-wrap:wrap">'
       + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">OS</div><div style="font-weight:600;color:var(--naranja)">' + o.numero_os + '</div></div>'
       + (veh ? '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Vehículo</div><div>' + veh.placa + ' · ' + veh.marca + ' ' + veh.modelo + '</div></div>' : '')
-      + (prop ? '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Propietario</div><div>' + prop.nombre_completo + '</div></div>' : '')
+      + (prop ? '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Propietario</div><div>' + escapeHtml(prop.nombre_completo) + '</div></div>' : '')
       + '</div></div>';
 
     var monedaLineas = document.getElementById('fac-moneda')?.value||'USD';
@@ -1133,7 +1133,7 @@ async function verFichaFactura(id) {
           + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Empresa</div>'
           + '<div style="font-weight:600">'+emisor.nombre+'</div>'
           + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">'+(emisor.rif||'')+'</div>'
-          + (emisor.direccion ? '<div style="font-size:11px;color:var(--suave);margin-top:2px">'+emisor.direccion+'</div>' : '')
+          + (emisor.direccion ? '<div style="font-size:11px;color:var(--suave);margin-top:2px">'+escapeHtml(emisor.direccion)+'</div>' : '')
           + '</div>' : '')
       + '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
       + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Cliente</div>'
@@ -1193,7 +1193,7 @@ async function verFichaFactura(id) {
       + '</tr></thead><tbody>'
       + (tablaLineas||'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--suave)">Sin líneas</td></tr>')
       + '</tbody></table></div>'
-      + (f.observaciones ? '<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Observaciones</div><div style="background:var(--gris2);border-radius:6px;padding:10px 14px;font-size:13px">'+f.observaciones+'</div></div>' : '');
+      + (f.observaciones ? '<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Observaciones</div><div style="background:var(--gris2);border-radius:6px;padding:10px 14px;font-size:13px">'+escapeHtml(f.observaciones)+'</div></div>' : '');
 
     var btnEditar   = document.getElementById('ficha-fac-btn-editar');
     var btnEmitir   = document.getElementById('ficha-fac-btn-emitir');
@@ -1210,7 +1210,7 @@ async function verFichaFactura(id) {
     }
     if (btnPago) {
       btnPago._id = f.id_factura;
-      btnPago.style.display = (f.estado==='EMITIDA'||f.estado==='APROBADA'||f.estado==='PARCIAL') ? '' : 'none';
+      btnPago.style.display = ((f.estado==='EMITIDA'||f.estado==='APROBADA'||f.estado==='PARCIAL') && (sesionActual?.administrador || puedo('FACTURAS','COBRAR'))) ? '' : 'none';
       btnPago._facId = f.id_factura;
       btnPago.onclick = async function() {
         try {
