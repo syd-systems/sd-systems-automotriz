@@ -663,10 +663,33 @@ async function renderEmpleados() {
       '?order=nombre_completo.asc&select=*,param_areas(nombre,codigo),param_cargos(nombre)'+emisorQ());
     empleadosCache = empleados;
 
+    const verDatosEmp = sesionActual?.administrador || puedo('EMPLEADOS','VER_DATOS_PERSONALES');
+
+    // Cédula/N° de Cuenta quedaron cifrados en la base de datos -- si el
+    // Usuario tiene permiso para verlos, se traen los de TODOS los
+    // Empleados de una sola vez (un solo RPC), en vez de uno por fila.
+    if (verDatosEmp) {
+      try {
+        const rpcLista = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_datos_sensibles_empleados_lista', {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+          body: '{}'
+        });
+        if (rpcLista.ok) {
+          const datosSensibles = await rpcLista.json();
+          const mapaSensibles = {};
+          datosSensibles.forEach(function(d) { mapaSensibles[d.id_empleado] = d; });
+          empleadosCache.forEach(function(e) {
+            const d = mapaSensibles[e.id_empleado];
+            e.numero_doc     = d ? d.numero_doc : '';
+            e.numero_cuenta  = d ? d.numero_cuenta : '';
+          });
+        }
+      } catch(eSensLista) { console.warn('Error trayendo datos sensibles de empleados:', eSensLista); }
+    }
+
     const resumen = { ACTIVO:0, INACTIVO:0, SUSPENDIDO:0, RETIRADO:0, RENUNCIA:0 };
     empleados.forEach(function(e) { if (resumen[e.estatus] !== undefined) resumen[e.estatus]++; });
-
-    const verDatosEmp = sesionActual?.administrador || puedo('EMPLEADOS','VER_DATOS_PERSONALES');
 
     const filas = empleados.map(function(e) {
       const est = ESTATUS_EMP[e.estatus] || { clase: 'badge-gris', label: e.estatus };
@@ -678,7 +701,7 @@ async function renderEmpleados() {
             : '<div style="width:36px;height:36px;border-radius:50%;background:var(--gris3);display:flex;align-items:center;justify-content:center;font-size:16px">👤</div>')
         + '<div>'
         + '<div style="font-weight:500">' + escapeHtml(e.nombre_completo) + '</div>'
-        + (verDatosEmp ? '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (e.tipo_doc||'V') + '-' + e.numero_doc + '</div>' : '')
+        + (verDatosEmp ? '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (e.tipo_doc||'V') + '-' + escapeHtml(e.numero_doc) + '</div>' : '')
         + '</div></div></td>'
         + '<td style="font-size:12px">' + (e.param_areas ? e.param_areas.nombre + (e.param_areas.codigo ? ' (' + e.param_areas.codigo + ')' : '') : '—') + '</td>'
         + '<td style="font-size:12px">' + (e.param_cargos ? e.param_cargos.nombre : '—') + '</td>'
@@ -806,6 +829,23 @@ async function abrirEmpleado(id) {
       if (resE && resE[0]) e = resE[0];
     } catch(eEmp) {}
     if (!e) e = empleadosCache.find(function(x) { return x.id_empleado === id || x.id_empleado === parseInt(id); });
+
+    // Cédula y N° de Cuenta quedaron cifrados -- se traen aparte, por RPC
+    // (solo si el Usuario tiene permiso para verlos/editarlos).
+    if (e) {
+      try {
+        const rpcSens = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_datos_sensibles_empleado', {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_id_empleado: e.id_empleado })
+        });
+        if (rpcSens.ok) {
+          const sens = await rpcSens.json();
+          e.numero_doc    = sens?.numero_doc || '';
+          e.numero_cuenta = sens?.numero_cuenta || '';
+        }
+      } catch(eSensForm) { console.warn('Error trayendo datos sensibles del empleado:', eSensForm); }
+    }
   }
 
   document.getElementById('modal-emp-titulo').textContent = e ? 'EDITAR EMPLEADO' : 'NUEVO EMPLEADO';
@@ -1027,11 +1067,17 @@ async function guardarEmpleado() {
     return;
   }
 
-  // Validar duplicado por documento
+  // Validar duplicado por documento -- ya no se puede comparar directo
+  // contra la columna (queda cifrada), se valida con un RPC que
+  // descifra y compara por dentro.
   try {
-    const existe = await api('empleados', 'GET', null,
-      '?numero_doc=eq.' + encodeURIComponent(numDoc) + (id ? '&id_empleado=neq.' + id : ''));
-    if (existe && existe.length > 0) {
+    const rpcDup = await fetch(SUPABASE_URL + '/rest/v1/rpc/numero_doc_ya_existe', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_numero_doc: numDoc, p_excluir_id: id ? parseInt(id) : null })
+    });
+    const yaExiste = rpcDup.ok ? await rpcDup.json() : false;
+    if (yaExiste) {
       errEl.textContent = 'Ya existe un empleado con el documento ' + numDoc + '.';
       errEl.style.display = 'block'; return;
     }
@@ -1045,7 +1091,6 @@ async function guardarEmpleado() {
 
   const datos = {
     tipo_doc:           document.getElementById('emp-tipo-doc').value,
-    numero_doc:         numDoc,
     nombre_completo:    capitalizarNombre(nombre),
     fecha_nacimiento:   document.getElementById('emp-fecha-nac').value || null,
     id_estado_civil:    parseInt(document.getElementById('emp-estado-civil').value) || null,
@@ -1077,7 +1122,6 @@ async function guardarEmpleado() {
     fecha_egreso:       document.getElementById('emp-fecha-egreso').value || null,
     id_institucion:     parseInt(document.getElementById('emp-banco').value) || null,
     tipo_cuenta:        document.getElementById('emp-tipo-cuenta').value || null,
-    numero_cuenta:      document.getElementById('emp-num-cuenta').value.trim() || null,
     id_empresa:          parseInt(document.getElementById('emp-emisor')?.value) || null,
     id_usuario:         sesionActual.correo_usuario,
   };
@@ -1091,12 +1135,23 @@ async function guardarEmpleado() {
     } else {
       const resPost = await api('empleados', 'POST', datos);
       empIdFinal = resPost && resPost[0] ? resPost[0].id_empleado : null;
-      // Si POST no retorna id, buscarlo por documento
       if (!empIdFinal) {
-        const busq = await api('empleados', 'GET', null, '?numero_doc=eq.' + encodeURIComponent(numDoc) + '&select=id_empleado&order=fecha_registro.desc&limit=1');
-        if (busq && busq[0]) empIdFinal = busq[0].id_empleado;
+        console.warn('POST de empleado no devolvió id_empleado -- ya no se puede recuperar buscando por numero_doc (columna cifrada). Refresque la lista para confirmar que se guardó.');
       }
       okEl.textContent = '✓ Empleado registrado correctamente.';
+    }
+
+    // Guardar Cédula y N° de Cuenta (cifrados) -- por RPC aparte, ya que
+    // esas 2 columnas quedaron bloqueadas para escritura directa.
+    if (empIdFinal) {
+      const numCuentaFinal = document.getElementById('emp-num-cuenta').value.trim() || null;
+      try {
+        await fetch(SUPABASE_URL + '/rest/v1/rpc/guardar_datos_sensibles_empleado', {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_id_empleado: empIdFinal, p_numero_doc: numDoc, p_numero_cuenta: numCuentaFinal })
+        });
+      } catch(eSens) { console.warn('Error guardando datos sensibles del empleado:', eSens); }
     }
 
     // Subir fotos del empleado
@@ -1179,6 +1234,23 @@ async function verFichaEmpleado(id) {
 
   const verDatos = sesionActual?.administrador || puedo('EMPLEADOS','VER_DATOS_PERSONALES');
 
+  // Cédula y N° de Cuenta quedaron cifrados -- se traen aparte, por RPC,
+  // solo si el Usuario tiene permiso para verlos.
+  if (verDatos) {
+    try {
+      const rpcSensFicha = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_datos_sensibles_empleado', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_id_empleado: e.id_empleado })
+      });
+      if (rpcSensFicha.ok) {
+        const sensFicha = await rpcSensFicha.json();
+        e.numero_doc    = sensFicha?.numero_doc || '';
+        e.numero_cuenta = sensFicha?.numero_cuenta || '';
+      }
+    } catch(eSensF) { console.warn('Error trayendo datos sensibles del empleado:', eSensF); }
+  }
+
   document.getElementById('ficha-emp-contenido').innerHTML =
     // Cabecera
     '<div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">'
@@ -1187,7 +1259,7 @@ async function verFichaEmpleado(id) {
         : '<div style="width:70px;height:70px;border-radius:50%;background:var(--gris3);display:flex;align-items:center;justify-content:center;font-size:28px">👤</div>')
     + '<div>'
     + '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + escapeHtml(e.nombre_completo) + '</div>'
-    + (verDatos ? '<div style="font-size:12px;color:var(--suave);font-family:var(--font-mono)">' + (e.tipo_doc||'V') + '-' + e.numero_doc + '</div>' : '<div style="font-size:12px;color:#555">🔒 Documento restringido</div>')
+    + (verDatos ? '<div style="font-size:12px;color:var(--suave);font-family:var(--font-mono)">' + (e.tipo_doc||'V') + '-' + escapeHtml(e.numero_doc) + '</div>' : '<div style="font-size:12px;color:#555">🔒 Documento restringido</div>')
     + '<span class="badge ' + est.clase + '" style="margin-top:4px;display:inline-block">' + est.label + '</span>'
     + '</div></div>'
     + (fotosPerfilEmp && fotosPerfilEmp.length
@@ -1243,7 +1315,7 @@ async function verFichaEmpleado(id) {
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
       + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Institución</div><div style="font-size:13px">' + getNombre(p.bancos, e.id_institucion) + '</div></div>'
       + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Tipo Cuenta</div><div style="font-size:13px">' + (e.tipo_cuenta||'—') + '</div></div>'
-      + '<div class="form-full" style="grid-column:1/-1"><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">N° Cuenta</div><div style="font-size:13px;font-family:var(--font-mono)">' + (e.numero_cuenta||'—') + '</div></div>'
+      + '<div class="form-full" style="grid-column:1/-1"><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">N° Cuenta</div><div style="font-size:13px;font-family:var(--font-mono)">' + escapeHtml(e.numero_cuenta||'—') + '</div></div>'
       + '</div>' : '');
 
   // Botones footer
