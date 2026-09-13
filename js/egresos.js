@@ -1513,9 +1513,6 @@ async function sincronizarTasasBCV(btn) {
     }, 3500);
   }
 }
-const GMAIL_USER = 'syd.systems2001@gmail.com';
-const GMAIL_PASS = 'xmuhiofyfvcxvskx';
-
 function mostrarRecuperar() {
   document.querySelector('.login-form-box').style.display = 'none';
   document.getElementById('form-recuperar').style.display = 'block';
