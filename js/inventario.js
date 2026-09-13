@@ -2009,7 +2009,7 @@ async function _entconsActualizarTasa() {
   const fecha = document.getElementById('entcons-fecha')?.value || getHoyVzla();
   try {
     const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fecha+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
-    if (tasaRows && tasaRows[0]) document.getElementById('entcons-tasa-bcv').value = parseFloat(tasaRows[0].tipo_cambio).toFixed(2);
+    if (tasaRows && tasaRows[0]) document.getElementById('entcons-tasa-bcv').value = formatearMontoVE(tasaRows[0].tipo_cambio);
   } catch(eTasaEntCons) {}
   _entconsRenderLineas();
 }
@@ -2055,6 +2055,14 @@ function _entconsCambioArticulo(idx, id_articulo) {
 }
 
 function _entconsCambioCampo(idx, campo, valor) {
+  if (campo === 'cantidad') {
+    const artCant = inventarioCache.find(function(a) { return a.id_articulo === _entconsLineas[idx].id_articulo; });
+    if ((artCant?.unidad || 'UND') === 'UND' && valor && (parseFloat(valor) % 1 !== 0)) {
+      alert('⚠ Este Artículo se mide en Unidades (UND) -- la cantidad debe ser un número entero, sin decimales.');
+      _entconsRenderLineas();
+      return;
+    }
+  }
   _entconsLineas[idx][campo] = campo === 'cantidad' ? valor : parseMontoVE(valor);
   // Actualizar solo el Subtotal de esta fila y los Totales -- NO
   // re-dibujar toda la tabla (perdería el foco/cursor en cada tecla).
@@ -2105,7 +2113,7 @@ function _entconsFormatearPrecioBlur(input) {
 // sigue haciéndose en guardarOrdenCompra(), esto es solo display.
 function _entconsFmtDual(montoEnMonedaNeg) {
   const moneda = document.getElementById('entcons-moneda')?.value || 'USD';
-  const tasa = parseFloat(document.getElementById('entcons-tasa-bcv')?.value) || 0;
+  const tasa = parseMontoVE(document.getElementById('entcons-tasa-bcv')?.value) || 0;
   const bs = moneda === 'VES' ? montoEnMonedaNeg : montoEnMonedaNeg * tasa;
   const usd = moneda === 'VES' ? (tasa > 0 ? montoEnMonedaNeg / tasa : 0) : montoEnMonedaNeg;
   return '<div>'+fmtBs(bs)+' Bs</div><div style="font-size:10px;color:var(--suave)">$ '+fmtUSD(usd)+'</div>';
@@ -2120,11 +2128,13 @@ function _entconsRenderLineas() {
 
   cont.innerHTML = _entconsLineas.map(function(lin, idx) {
     const subtotal = (parseFloat(lin.cantidad)||0) * (lin.precio_unitario||0);
+    const artEntConsCant = inventarioCache.find(function(a) { return a.id_articulo === lin.id_articulo; });
+    const esUnidadEnteraEC = (artEntConsCant?.unidad || 'UND') === 'UND';
     return '<tr>'
       + '<td style="padding:4px"><select onchange="_entconsCambioArticulo('+idx+', this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">'
         + opcionesArt.replace('value="'+lin.id_articulo+'"', 'value="'+lin.id_articulo+'" selected')
         + '</select></td>'
-      + '<td style="padding:4px;width:90px"><input type="number" id="entcons-cantidad-'+idx+'" min="0" step="any" value="'+(lin.cantidad||'')+'" oninput="_entconsCambioCampo('+idx+',\'cantidad\',this.value)" onkeydown="_entconsEnterCantidad('+idx+',event)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
+      + '<td style="padding:4px;width:90px"><input type="number" id="entcons-cantidad-'+idx+'" class="'+(esUnidadEnteraEC?'sin-flechas':'')+'" min="'+(esUnidadEnteraEC?'1':'0')+'" step="'+(esUnidadEnteraEC?'1':'any')+'" value="'+(lin.cantidad||'')+'" oninput="_entconsCambioCampo('+idx+',\'cantidad\',this.value)" onkeydown="_entconsEnterCantidad('+idx+',event)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
       + '<td style="padding:4px;width:110px"><input type="text" id="entcons-precio-'+idx+'" inputmode="decimal" placeholder="0,00" value="'+(lin.precio_unitario||'')+'" oninput="_entconsCambioCampo('+idx+',\'precio_unitario\',this.value)" onblur="_entconsFormatearPrecioBlur(this)" onkeydown="_entconsEnterPrecio('+idx+',event)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
       + '<td id="entcons-subtotal-'+idx+'" style="padding:4px 8px;width:120px;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">'+_entconsFmtDual(subtotal)+'</td>'
       + '<td style="padding:4px;width:36px;text-align:center"><button onclick="_entconsQuitarLinea('+idx+')" style="background:none;border:none;color:var(--rojo,#e57373);cursor:pointer;font-size:16px">✕</button></td>'
@@ -2166,7 +2176,7 @@ function _entconsCalcularCuotas() {
   if (!numCuotas || !fechaInicio || !window._entconsTotales) { preview.innerHTML = ''; return; }
 
   const moneda = document.getElementById('entcons-moneda')?.value || 'USD';
-  const tasa = parseFloat(document.getElementById('entcons-tasa-bcv')?.value) || 1;
+  const tasa = parseMontoVE(document.getElementById('entcons-tasa-bcv')?.value) || 1;
   const totalUSD = moneda === 'VES' ? window._entconsTotales.total / tasa : window._entconsTotales.total;
   const montoCuota = parseFloat((totalUSD / numCuotas).toFixed(2));
 
@@ -2202,7 +2212,7 @@ async function guardarOrdenCompra() {
   const idProveedor = parseInt(document.getElementById('entcons-proveedor')?.value) || null;
   const fecha = document.getElementById('entcons-fecha')?.value;
   const moneda = document.getElementById('entcons-moneda')?.value;
-  const tasaBcv = parseFloat(document.getElementById('entcons-tasa-bcv')?.value) || 0;
+  const tasaBcv = parseMontoVE(document.getElementById('entcons-tasa-bcv')?.value) || 0;
   // Siempre se calcula el IVA encima del Precio ingresado -- nunca exento,
   // nunca "ya incluido".
   const exento = false;
@@ -2777,7 +2787,7 @@ async function retomarLoteRechazado(id_orden_compra) {
     if (monedaLR) monedaLR.value = primeraR.moneda_compra || 'USD';
     await _entconsActualizarTasa();
     const tasaLR = document.getElementById('entcons-tasa-bcv');
-    if (tasaLR && primeraR.tasa_bcv) tasaLR.value = primeraR.tasa_bcv;
+    if (tasaLR && primeraR.tasa_bcv) tasaLR.value = formatearMontoVE(primeraR.tasa_bcv);
 
     const esquemaLR = document.getElementById('entcons-esquema-pago');
     if (esquemaLR) { esquemaLR.value = primeraR.esquema_pago || 'CONTADO'; _entconsCambiarEsquemaPago(); }
@@ -4505,7 +4515,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
   if (tipo === 'ENTRADA') {
     const tasaEl = document.getElementById('edit-mov-tasa-bcv');
     const tasa   = parseFloat(m.tasa_bcv_usada || m.tasa_bcv || 0);
-    if (tasaEl) tasaEl.value = tasa > 0 ? tasa.toFixed(4) : '';
+    if (tasaEl) tasaEl.value = tasa > 0 ? formatearTasaVE(tasa) : '';
     const precio   = parseFloat(m.precio_compra_original ?? m.precio_costo_moneda ?? 0);
     const cantidad = parseFloat(m.cantidad || 0);
     const montoTotal = precio * cantidad;
@@ -5018,7 +5028,7 @@ async function _guardarEdicionMovimientoInterno() {
 
     if (tipo === 'ENTRADA') {
       const monedaEdit = document.getElementById('edit-mov-moneda')?.value || 'USD';
-      const tasaFormEdit = parseFloat(document.getElementById('edit-mov-tasa-bcv')?.value) || 0;
+      const tasaFormEdit = parseMontoVE(document.getElementById('edit-mov-tasa-bcv')?.value) || 0;
       const precioRaw  = document.getElementById('edit-mov-precio').value;
       const precioParseado = parseMontoVE(precioRaw);
       // precioNegociadoOriginal es el precio TAL COMO se negoció, en la
@@ -5583,7 +5593,7 @@ function calcularCuotasEdit() {
   const intervalo   = parseInt(document.getElementById('edit-mov-cuotas-intervalo')?.value) || 30;
   const precioRawEdit  = parseMontoVE(document.getElementById('edit-mov-precio')?.value);
   const monedaEditC    = document.getElementById('edit-mov-moneda')?.value || 'USD';
-  const tasaEditC      = parseFloat(document.getElementById('edit-mov-tasa-bcv')?.value) || 0;
+  const tasaEditC      = parseMontoVE(document.getElementById('edit-mov-tasa-bcv')?.value) || 0;
   // El precio se ingresa en la Moneda Negociación (puede ser VES) -- convertir
   // siempre a USD antes de calcular, igual que en Entrada de Stock, para que
   // el total repartido en cuotas coincida con el total realmente guardado
@@ -6017,7 +6027,7 @@ async function onCambiarFechaNegEdit() {
   try {
     const tasas = await api('tasas','GET',null,'?fecha_valor=lte.'+fecha+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio,fecha_valor');
     if (tasas && tasas[0]) {
-      document.getElementById('edit-mov-tasa-bcv').value = parseFloat(tasas[0].tipo_cambio).toFixed(4);
+      document.getElementById('edit-mov-tasa-bcv').value = formatearTasaVE(tasas[0].tipo_cambio);
     }
   } catch(e) {}
   onCambiarPrecioEdit();
@@ -6039,7 +6049,7 @@ function onCambiarPrecioEdit() {
   const moneda   = document.getElementById('edit-mov-moneda')?.value || 'USD';
   const precio   = parseMontoVE(document.getElementById('edit-mov-precio')?.value);
   const cantidad = parseFloat(document.getElementById('edit-mov-cantidad')?.value) || 0;
-  const tasa     = parseFloat(document.getElementById('edit-mov-tasa-bcv')?.value) || 0;
+  const tasa     = parseMontoVE(document.getElementById('edit-mov-tasa-bcv')?.value) || 0;
   const elMonto  = document.getElementById('edit-mov-monto-total');
   const elCalc   = document.getElementById('edit-mov-precio-usd-calc');
   const lblMontoTotal = document.getElementById('edit-mov-label-monto-total');
@@ -6338,7 +6348,14 @@ function _reqIntCambioArticulo(idx, id_articulo) {
 }
 
 function _reqIntCambioCantidad(idx, valor) {
-  _reqIntLineas[idx].cantidad = valor;
+  const lin = _reqIntLineas[idx];
+  const art = _reqIntCatalogo.find(function(a){ return a.id_articulo === lin.id_articulo; });
+  if ((art?.unidad || 'UND') === 'UND' && valor && (parseFloat(valor) % 1 !== 0)) {
+    alert('⚠ Este Artículo se mide en Unidades (UND) -- la cantidad debe ser un número entero, sin decimales.');
+    _reqIntRenderLineas();
+    return;
+  }
+  lin.cantidad = valor;
   _reqIntActualizarFilaStock(idx);
 }
 
@@ -6365,11 +6382,12 @@ function _reqIntRenderLineas() {
     const stockTxt = art ? (art.stockAlmacen + ' ' + (art.unidad||'UND')) : '—';
     const cant = parseFloat(lin.cantidad) || 0;
     const excede = art && cant > art.stockAlmacen;
+    const esUnidadEnteraRI = (art?.unidad || 'UND') === 'UND';
     return '<tr>'
       + '<td style="padding:4px"><select onchange="_reqIntCambioArticulo('+idx+', this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">'
         + opcionesArt.replace('value="'+lin.id_articulo+'"', 'value="'+lin.id_articulo+'" selected')
         + '</select></td>'
-      + '<td style="padding:4px;width:90px"><input type="number" id="reqint-cantidad-'+idx+'" min="0.01" step="any" value="'+(lin.cantidad||'')+'" oninput="_reqIntCambioCantidad('+idx+',this.value)" style="width:100%;background:var(--gris2);border:1px solid '+(excede?'#e57373':'var(--borde)')+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
+      + '<td style="padding:4px;width:90px"><input type="number" id="reqint-cantidad-'+idx+'" class="'+(esUnidadEnteraRI?'sin-flechas':'')+'" min="'+(esUnidadEnteraRI?'1':'0.01')+'" step="'+(esUnidadEnteraRI?'1':'any')+'" value="'+(lin.cantidad||'')+'" oninput="_reqIntCambioCantidad('+idx+',this.value)" style="width:100%;background:var(--gris2);border:1px solid '+(excede?'#e57373':'var(--borde)')+';color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
       + '<td style="padding:4px 8px;width:100px;font-size:12px;color:var(--suave);font-family:var(--font-mono)">'+stockTxt+'</td>'
       + '<td style="padding:4px;width:36px;text-align:center"><button onclick="_reqIntQuitarLinea('+idx+')" style="background:none;border:none;color:var(--rojo,#e57373);cursor:pointer;font-size:16px">✕</button></td>'
       + '</tr>';
