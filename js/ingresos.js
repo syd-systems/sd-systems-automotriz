@@ -335,9 +335,9 @@ async function onSelOSFactura() {
     }
     infoDiv.innerHTML = '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:10px 14px;margin-top:6px">'
       + '<div style="display:flex;gap:16px;flex-wrap:wrap">'
-      + '<div><div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">OS</div><div style="font-weight:600;color:var(--naranja)">' + o.numero_os + '</div></div>'
-      + (veh ? '<div><div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Vehículo</div><div>' + veh.placa + ' · ' + veh.marca + ' ' + veh.modelo + '</div></div>' : '')
-      + (prop ? '<div><div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Propietario</div><div>' + prop.nombre_completo + '</div></div>' : '')
+      + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">OS</div><div style="font-weight:600;color:var(--naranja)">' + o.numero_os + '</div></div>'
+      + (veh ? '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Vehículo</div><div>' + veh.placa + ' · ' + veh.marca + ' ' + veh.modelo + '</div></div>' : '')
+      + (prop ? '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Propietario</div><div>' + prop.nombre_completo + '</div></div>' : '')
       + '</div></div>';
 
     var monedaLineas = document.getElementById('fac-moneda')?.value||'USD';
@@ -1124,19 +1124,19 @@ async function verFichaFactura(id) {
       + '<span class="badge '+est.clase+'">'+est.label+'</span>'
       + '<div style="font-size:11px;color:var(--suave);margin-top:4px">Fecha: '+(f.fecha_emision ? fmtFecha(f.fecha_emision) : '—')+'</div></div>'
       + (puedo('FACTURAS','VER_TOTALES')
-          ? '<div style="text-align:right"><div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">TOTAL</div>'
+          ? '<div style="text-align:right"><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">TOTAL</div>'
             + fmtFDual(f.total_usd, '28px', 'var(--naranja)')
             + '<div style="font-size:10px;color:#555;margin-top:3px">'+(f.moneda_cobro||'USD')+' · Tasa '+formatearTasaVE(t)+' Bs/$</div></div>'
           : '')
       + '</div>'
       + (emisor ? '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
-          + '<div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Empresa</div>'
+          + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Empresa</div>'
           + '<div style="font-weight:600">'+emisor.nombre+'</div>'
           + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">'+(emisor.rif||'')+'</div>'
           + (emisor.direccion ? '<div style="font-size:11px;color:var(--suave);margin-top:2px">'+emisor.direccion+'</div>' : '')
           + '</div>' : '')
       + '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
-      + '<div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Cliente</div>'
+      + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Cliente</div>'
       + '<div style="font-weight:600">'+(f.receptor_nombre||'—')+'</div>'
       + (f.receptor_rif ? '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">'+f.receptor_rif+'</div>' : '')
       + (f.receptor_tipo_contribuyente ? '<span class="badge '+(({'ORDINARIO':'badge-naranja','ESPECIAL':'badge-verde','FORMAL':'badge-gris'})[f.receptor_tipo_contribuyente]||'badge-gris')+'" style="font-size:10px;margin-top:4px;display:inline-block">'+(({'ORDINARIO':'Contribuyente Ordinario','ESPECIAL':'Contribuyente Especial','FORMAL':'Contribuyente Formal'})[f.receptor_tipo_contribuyente]||f.receptor_tipo_contribuyente)+'</span>' : '')
@@ -1161,7 +1161,7 @@ async function verFichaFactura(id) {
           const cxcFicha = (f.cont_cxc && f.cont_cxc[0]) || null;
           if (!cxcFicha || !cxcFicha.fecha_cobro) return '';
           return '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
-            + '<div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Datos de Cobro</div>'
+            + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px">Datos de Cobro</div>'
             + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">'
             + '<div style="display:flex;flex-direction:column;gap:10px">'
             + '<div><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Fecha de Cobro</div><div style="font-weight:600">'+fmtFecha(cxcFicha.fecha_cobro)+'</div></div>'
@@ -1183,7 +1183,7 @@ async function verFichaFactura(id) {
             + '<div style="grid-column:1/-1"><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Comprobante de Cobro No.</div><div style="font-weight:600;font-family:var(--font-mono)">'+(cxcFicha.referencia||'—')+'</div></div>'
             + '</div></div>';
         })()
-      + '<div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Detalle</div>'
+      + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px">Detalle</div>'
       + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
       + '<th style="text-align:left;padding:6px 0;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">DESCRIPCIÓN</th>'
       + '<th style="text-align:center;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">TIPO</th>'
@@ -1193,7 +1193,7 @@ async function verFichaFactura(id) {
       + '</tr></thead><tbody>'
       + (tablaLineas||'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--suave)">Sin líneas</td></tr>')
       + '</tbody></table></div>'
-      + (f.observaciones ? '<div style="margin-top:14px"><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Observaciones</div><div style="background:var(--gris2);border-radius:6px;padding:10px 14px;font-size:13px">'+f.observaciones+'</div></div>' : '');
+      + (f.observaciones ? '<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Observaciones</div><div style="background:var(--gris2);border-radius:6px;padding:10px 14px;font-size:13px">'+f.observaciones+'</div></div>' : '');
 
     var btnEditar   = document.getElementById('ficha-fac-btn-editar');
     var btnEmitir   = document.getElementById('ficha-fac-btn-emitir');
