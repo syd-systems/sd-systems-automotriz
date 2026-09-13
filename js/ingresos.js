@@ -206,7 +206,7 @@ async function abrirNuevaFactura() {
   document.getElementById('fac-aplica-iva').checked        = true;
   document.getElementById('fac-aplica-igtf').checked       = false;
   document.getElementById('fac-moneda').value              = '';
-  document.getElementById('fac-tasa').value                = tasaActual.toFixed(4);
+  document.getElementById('fac-tasa').value                = formatearTasaVE(tasaActual);
   document.getElementById('fac-fecha').value               = getHoyVzla();
   document.getElementById('fac-estado').value              = 'BORRADOR';
   document.getElementById('fac-observaciones').value       = '';
@@ -341,7 +341,7 @@ async function onSelOSFactura() {
       + '</div></div>';
 
     var monedaLineas = document.getElementById('fac-moneda')?.value||'USD';
-    var tasaReal     = parseFloat(document.getElementById('fac-tasa')?.value)||1;
+    var tasaReal     = parseMontoVE(document.getElementById('fac-tasa')?.value)||1;
     var esVESLineas  = monedaLineas==='VES';
     function fmtLin(usd) {
       const principal  = esVESLineas ? fmtBs(usd*tasaReal)+' Bs' : '$ '+fmtUSD(usd);
@@ -386,7 +386,7 @@ async function onSelOSFactura() {
 function actualizarSubtotalOSLabel() {
   const sub    = window._facSubtotalOS||0;
   const moneda = document.getElementById('fac-moneda')?.value||'USD';
-  const tasa   = moneda==='VES' ? (parseFloat(document.getElementById('fac-tasa')?.value)||1) : 1;
+  const tasa   = moneda==='VES' ? (parseMontoVE(document.getElementById('fac-tasa')?.value)||1) : 1;
   const el     = document.getElementById('fac-subtotal-os');
   if (el) el.textContent = moneda==='VES' ? fmtBs(sub*tasa)+' Bs' : '$ '+fmtUSD(sub);
 }
@@ -468,7 +468,7 @@ function calcularTotalesFactura() {
   // sentido, no un equivalente real en Bs. Eso rompía el cálculo de
   // diferencial cambiario al momento de cobrar (comparaba contra "tasa
   // original = 1", generando una "ganancia en cambio" falsa y gigantesca).
-  const tasa     = parseFloat(document.getElementById('fac-tasa')?.value)||1;
+  const tasa     = parseMontoVE(document.getElementById('fac-tasa')?.value)||1;
   const aplIVA   = document.getElementById('fac-aplica-iva')?.checked;
   const aplIGTF  = document.getElementById('fac-aplica-igtf')?.checked;
   const esVES    = moneda==='VES';
@@ -523,7 +523,7 @@ async function guardarFactura(emitir) {
     const recNom   = document.getElementById('fac-receptor-nombre').value.trim();
     const recRif   = document.getElementById('fac-receptor-rif').value.trim();
     const recDir   = document.getElementById('fac-receptor-dir').value.trim();
-    const tasa     = parseFloat(document.getElementById('fac-tasa').value)||1;
+    const tasa     = parseMontoVE(document.getElementById('fac-tasa').value)||1;
     const fecha    = document.getElementById('fac-fecha').value;
     const estadoActual = document.getElementById('fac-estado').value;
 
@@ -743,7 +743,7 @@ async function generarCxCyAsientoFactura(idFactura) {
           cIGTF = _todasCtasFac.find(function(c){ return c.codigo === '2.1.03.004'; }) || null;
         }
 
-        const auxFac = ' (USD × '+tasaReal.toFixed(4)+')';
+        const auxFac = ' (USD × '+formatearTasaVE(tasaReal)+')';
         if (cCxC) await api('cont_asiento_lineas','POST',{
           id_asiento: idAst, id_cuenta: cCxC.id_cuenta, orden: 1,
           descripcion: 'CxC '+fac.numero_factura+auxFac,
@@ -1126,7 +1126,7 @@ async function verFichaFactura(id) {
       + (puedo('FACTURAS','VER_TOTALES')
           ? '<div style="text-align:right"><div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">TOTAL</div>'
             + fmtFDual(f.total_usd, '28px', 'var(--naranja)')
-            + '<div style="font-size:10px;color:#555;margin-top:3px">'+(f.moneda_cobro||'USD')+' · Tasa '+t.toFixed(2)+' Bs/$</div></div>'
+            + '<div style="font-size:10px;color:#555;margin-top:3px">'+(f.moneda_cobro||'USD')+' · Tasa '+formatearTasaVE(t)+' Bs/$</div></div>'
           : '')
       + '</div>'
       + (emisor ? '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
@@ -1253,7 +1253,7 @@ async function abrirEditarFactura(id) {
     document.getElementById('fac-fecha').value=f.fecha_emision||getHoyVzla();
     document.getElementById('fac-estado').value=f.estado;
     document.getElementById('fac-moneda').value=f.moneda_cobro||'VES';
-    document.getElementById('fac-tasa').value=parseFloat(f.tasa_bcv||1).toFixed(4);
+    document.getElementById('fac-tasa').value=formatearTasaVE(f.tasa_bcv||1);
     document.getElementById('fac-receptor-nombre').value=f.receptor_nombre||'';
     document.getElementById('fac-receptor-rif').value=f.receptor_rif||'';
     document.getElementById('fac-receptor-dir').value=f.receptor_direccion||'';
