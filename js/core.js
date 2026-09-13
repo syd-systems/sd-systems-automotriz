@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909040';
+const SYD_VERSION = '20260909041';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -228,6 +228,7 @@ const PERMISOS_POR_MODULO = {
     { accion: 'CREAR',       label: 'Crear factura' },
     { accion: 'EDITAR',      label: 'Editar factura borrador' },
     { accion: 'APROBAR',     label: 'Aprobar factura' },
+    { accion: 'COBRAR',      label: 'Registrar Cobro (Cuenta por Cobrar)' },
     { accion: 'VER_TOTALES', label: '🔒 Ver montos y totales' },
   ],
   PAGOS: [
@@ -1936,7 +1937,7 @@ async function abrirNuevoUsuario() {
       selEmp.innerHTML = '<option value="">— Seleccionar empleado —</option>'
         + emps.map(function(e) {
             return '<option value="' + e.id_empleado + '" data-nombre="' + (e.nombre_completo||'') + '" data-correo="' + (e.correo||'') + '">'
-              + e.nombre_completo + (e.correo ? ' · ' + e.correo : '') + '</option>';
+              + escapeHtml(e.nombre_completo) + (e.correo ? ' · ' + escapeHtml(e.correo) : '') + '</option>';
           }).join('');
     }
     // Mostrar selector solo en nuevo usuario
@@ -3514,9 +3515,9 @@ async function validarClaveReceptor(id_empleado, clave) {
     const usuArr = await api('usuarios', 'GET', null,
       '?correo_usuario=ilike.' + encodeURIComponent(emp.correo) + '&estado_usuario=eq.ACTIVO&select=correo_usuario,nombre');
     const usu = usuArr[0];
-    if (!usu) return { ok: false, msg: 'El empleado "' + emp.nombre_completo + '" no tiene usuario activo en el sistema.' };
+    if (!usu) return { ok: false, msg: 'El empleado "' + escapeHtml(emp.nombre_completo) + '" no tiene usuario activo en el sistema.' };
     const verifRec = await verificarContrasena(usu.correo_usuario, clave);
-    if (!verifRec.ok) return { ok: false, msg: '' + emp.nombre_completo + ' Contraseña incorrecta.' };
+    if (!verifRec.ok) return { ok: false, msg: '' + escapeHtml(emp.nombre_completo) + ' Contraseña incorrecta.' };
 
     return { ok: true, nombre: emp.nombre_completo };
   } catch(err) {
@@ -3567,8 +3568,8 @@ async function cargarEmpleadosPorArea(id_area, selectId, soloConPermiso) {
     sel.innerHTML = '<option value="">— Seleccionar empleado —</option>'
       + empsFiltrados.map(function(e) {
           return '<option value="' + e.id_empleado + '">'
-            + e.nombre_completo
-            + (e.param_cargos ? ' · ' + e.param_cargos.nombre : '')
+            + escapeHtml(e.nombre_completo)
+            + (e.param_cargos ? ' · ' + escapeHtml(e.param_cargos.nombre) : '')
             + '</option>';
         }).join('');
   } catch(err) {
@@ -3585,6 +3586,21 @@ function parseMontoVE(texto) {
 // Inverso de parseMontoVE() -- convierte un número plano a formato
 // venezolano (puntos de millar, coma decimal), igual al que produce el
 // onblur del campo cuando el Usuario escribe a mano.
+// Escapa HTML antes de insertarlo con innerHTML -- convierte < > & " ' en
+// sus entidades, para que un valor que un Usuario escribió (Nombre,
+// Dirección, Observaciones, etc.) nunca pueda inyectar una etiqueta o un
+// atributo ejecutable. Usar SIEMPRE al insertar texto libre de un
+// Usuario dentro de una plantilla de innerHTML.
+function escapeHtml(valor) {
+  if (valor === null || valor === undefined) return '';
+  return String(valor)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function formatearMontoVE(num) {
   const v = parseFloat(num);
   if (isNaN(v)) return '';
