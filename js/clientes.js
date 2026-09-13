@@ -87,14 +87,14 @@ function verFichaCliente(id) {
 
   document.getElementById('ficha-cliente-contenido').innerHTML =
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
-    + '<div style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Nombre / Apellido</div><div style="font-weight:600;font-size:15px">' + x.nombre_apellido + '</div></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Condición Legal</div><div><span class="badge badge-gris">' + (CONDICION_LEGAL_LABEL[x.condicion_legal] || x.condicion_legal) + '</span></div></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Identificación</div><div style="font-family:var(--font-mono)">' + x.condicion_legal + '-' + x.identificacion + '</div></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Teléfono Móvil</div><div>' + (x.telefono_movil||'—') + '</div></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Correo</div><div>' + (x.correo_electronico||'—') + '</div></div>'
-    + '<div style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div>' + (x.direccion||'—') + '</div></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Estado</div><div><span class="badge ' + (x.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (x.estado||'ACTIVO') + '</span></div></div>'
-    + (x.observaciones ? '<div style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Observaciones</div><div style="background:var(--gris2);border-radius:6px;padding:10px 14px;font-size:13px">' + x.observaciones + '</div></div>' : '')
+    + '<div style="grid-column:1/-1"><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Nombre / Apellido</div><div style="font-weight:600;font-size:15px">' + x.nombre_apellido + '</div></div>'
+    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Condición Legal</div><div><span class="badge badge-gris">' + (CONDICION_LEGAL_LABEL[x.condicion_legal] || x.condicion_legal) + '</span></div></div>'
+    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Identificación</div><div style="font-size:14px;font-family:var(--font-mono)">' + x.condicion_legal + '-' + x.identificacion + '</div></div>'
+    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Teléfono Móvil</div><div style="font-size:14px">' + (x.telefono_movil||'—') + '</div></div>'
+    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:14px">' + (x.correo_electronico||'—') + '</div></div>'
+    + '<div style="grid-column:1/-1"><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:14px">' + (x.direccion||'—') + '</div></div>'
+    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Estado</div><div><span class="badge ' + (x.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (x.estado||'ACTIVO') + '</span></div></div>'
+    + (x.observaciones ? '<div style="grid-column:1/-1"><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Observaciones</div><div style="background:var(--gris2);border-radius:6px;padding:10px 14px;font-size:13px">' + x.observaciones + '</div></div>' : '')
     + '</div>';
 
   var btnEditar   = document.getElementById('ficha-cliente-btn-editar');
