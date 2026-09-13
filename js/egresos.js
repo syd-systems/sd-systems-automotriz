@@ -1434,9 +1434,9 @@ async function guardarTasaBCVManual() {
         + '</div>'
         + '<div style="display:flex;gap:32px;flex-wrap:wrap">'
         + '<div><div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">🇺🇸 USD</div>'
-        + '<div style="font-family:var(--font-mono);font-size:22px;font-weight:700;color:#FF6B00">' + usd.toFixed(4) + ' <span style="font-size:11px;color:#555">Bs</span></div></div>'
+        + '<div style="font-family:var(--font-mono);font-size:22px;font-weight:700;color:#FF6B00">' + formatearTasaVE(usd) + ' <span style="font-size:11px;color:#555">Bs</span></div></div>'
         + '<div><div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">🇪🇺 EUR</div>'
-        + '<div style="font-family:var(--font-mono);font-size:22px;font-weight:700;color:#4299e1">' + eur.toFixed(4) + ' <span style="font-size:11px;color:#555">Bs</span></div></div>'
+        + '<div style="font-family:var(--font-mono);font-size:22px;font-weight:700;color:#4299e1">' + formatearTasaVE(eur) + ' <span style="font-size:11px;color:#555">Bs</span></div></div>'
         + '</div>';
     }
 
@@ -1493,13 +1493,13 @@ async function sincronizarTasasBCV(btn) {
         + '</div></div>'
         + '<div style="display:flex;gap:32px;flex-wrap:wrap">'
         + '<div><div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">🇺🇸 USD</div>'
-        + '<div style="font-family:var(--font-mono);font-size:22px;font-weight:700;color:#FF6B00">' + tasaUsd.toFixed(4) + ' <span style="font-size:11px;color:#555;font-weight:400">Bs</span></div></div>'
+        + '<div style="font-family:var(--font-mono);font-size:22px;font-weight:700;color:#FF6B00">' + formatearTasaVE(tasaUsd) + ' <span style="font-size:11px;color:#555;font-weight:400">Bs</span></div></div>'
         + '<div><div style="font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">🇪🇺 EUR</div>'
-        + '<div style="font-family:var(--font-mono);font-size:22px;font-weight:700;color:#4299e1">' + tasaEur.toFixed(4) + ' <span style="font-size:11px;color:#555;font-weight:400">Bs</span></div></div>'
+        + '<div style="font-family:var(--font-mono);font-size:22px;font-weight:700;color:#4299e1">' + formatearTasaVE(tasaEur) + ' <span style="font-size:11px;color:#555;font-weight:400">Bs</span></div></div>'
         + '</div>';
     }
 
-    btn.innerHTML = '✓ USD ' + tasaUsd.toFixed(4) + ' · EUR ' + tasaEur.toFixed(4);
+    btn.innerHTML = '✓ USD ' + formatearTasaVE(tasaUsd) + ' · EUR ' + formatearTasaVE(tasaEur);
     btn.style.background = '#48bb78';
     setTimeout(function() {
       btn.innerHTML = texto;
