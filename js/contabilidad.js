@@ -263,7 +263,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
           return '<tr>'
             + '<td style="font-family:var(--font-mono);font-weight:600;color:var(--naranja)">' + a.numero_asiento + '</td>'
             + '<td style="font-size:12px">' + fmtFecha(a.fecha) + '</td>'
-            + '<td style="font-size:12px">' + a.descripcion
+            + '<td style="font-size:12px">' + escapeHtml(a.descripcion)
             + (a.referencia ? '<div style="font-size:10px;color:var(--suave)">Ref: ' + a.referencia + '</div>' : '')
             + '</td>'
             + '<td style="font-size:11px;color:var(--suave)">' + (a.cont_periodos ? a.cont_periodos.nombre : '—') + '</td>'
@@ -357,7 +357,7 @@ async function contVerAsiento(id) {
       + '<div style="font-size:11px;color:' + (cuadra ? '#22c55e' : '#fc8181') + ';margin-top:4px;font-weight:600">'
       + (cuadra ? '✓ Asiento cuadrado' : '✗ Asiento descuadrado') + '</div>'
       + '</div></div>'
-      + '<div style="background:var(--gris2);border-radius:6px;padding:12px;margin-bottom:16px;font-size:13px">' + ast.descripcion + '</div>'
+      + '<div style="background:var(--gris2);border-radius:6px;padding:12px;margin-bottom:16px;font-size:13px">' + escapeHtml(ast.descripcion) + '</div>'
       + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'
       + '<thead><tr>'
       + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">CUENTA</th>'
@@ -367,7 +367,7 @@ async function contVerAsiento(id) {
           return '<tr>'
             + '<td style="padding:7px 8px"><div style="font-size:10px;color:var(--naranja);font-family:var(--font-mono)">' + (l.cont_cuentas ? l.cont_cuentas.codigo : '') + '</div>'
             + '<div>' + (l.cont_cuentas ? l.cont_cuentas.nombre : '') + '</div>'
-            + (l.descripcion ? '<div style="font-size:10px;color:var(--suave)">' + l.descripcion + '</div>' : '')
+            + (l.descripcion ? '<div style="font-size:10px;color:var(--suave)">' + escapeHtml(l.descripcion) + '</div>' : '')
             + '</td>'
             + tdDual(l)
             + '</tr>';
@@ -1083,6 +1083,7 @@ function onCambiarMetodoCobroCxc() {
 }
 
 async function contAbrirPagoCxc(id_cxc) {
+  if (!sesionActual?.administrador && !puedo('FACTURAS','COBRAR')) { alert('No tiene permiso para registrar Cobros.'); return; }
   const c = (contCxcCache || []).find(function(x) { return x.id_cxc === id_cxc; });
   if (!c) { alert('No se encontró la Cuenta por Cobrar.'); return; }
   _pagoCxcActualId = id_cxc;
@@ -1241,6 +1242,11 @@ async function contGuardarPagoCxc() {
   const okEl  = document.getElementById('alerta-pago-cxc-ok');
   const errEl = document.getElementById('alerta-pago-cxc-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  if (!sesionActual?.administrador && !puedo('FACTURAS','COBRAR')) {
+    errEl.textContent = 'No tiene permiso para registrar Cobros.'; errEl.style.display = 'block';
+    return;
+  }
 
   if (!_pagoCxcActualId) { errEl.textContent = 'No hay ninguna Cuenta por Cobrar seleccionada.'; errEl.style.display = 'block'; return; }
 
