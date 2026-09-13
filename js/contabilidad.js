@@ -1766,9 +1766,15 @@ async function cbeCargarListado() {
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const cuentasCbe = await api('param_cuentas_bancarias_empresa','GET',null,
-      '?estado=eq.ACTIVA&order=alias.asc&select=id,alias,tipo_cuenta,numero_cuenta,moneda,param_bancos(nombre)'
-      + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+    // El N° de Cuenta viene YA enmascarado desde el servidor (nunca sale
+    // completo por la API -- quedó cifrado en la base de datos).
+    const rpcCbe = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_cuentas_bancarias_empresa_masked', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_id_empresa: _empresaActiva ? _empresaActiva.id_empresa : null })
+    });
+    if (!rpcCbe.ok) throw new Error('No se pudieron cargar las Cuentas Bancarias.');
+    const cuentasCbe = await rpcCbe.json();
     if (!cuentasCbe || !cuentasCbe.length) {
       cont.innerHTML = '<div style="text-align:center;color:var(--suave);padding:24px;font-size:12px">Todavía no hay Cuentas Bancarias registradas.</div>';
       return;
@@ -1782,13 +1788,12 @@ async function cbeCargarListado() {
       + '<th style="text-align:left;padding:8px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px">MONEDA</th>'
       + '</tr></thead><tbody>'
       + cuentasCbe.map(function(c) {
-          const numMasked = c.numero_cuenta ? '****'+c.numero_cuenta.slice(-4) : '—';
           return '<tr>'
-            + '<td style="padding:8px;border-bottom:1px solid var(--borde);font-weight:600">'+(c.alias||'—')+'</td>'
-            + '<td style="padding:8px;border-bottom:1px solid var(--borde)">'+(c.param_bancos?.nombre||'—')+'</td>'
-            + '<td style="padding:8px;border-bottom:1px solid var(--borde)">'+(c.tipo_cuenta||'—')+'</td>'
-            + '<td style="padding:8px;border-bottom:1px solid var(--borde);font-family:var(--font-mono)">'+numMasked+'</td>'
-            + '<td style="padding:8px;border-bottom:1px solid var(--borde)">'+(c.moneda||'—')+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde);font-weight:600">'+escapeHtml(c.alias||'—')+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde)">'+escapeHtml(c.banco_nombre||'—')+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde)">'+escapeHtml(c.tipo_cuenta||'—')+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde);font-family:var(--font-mono)">'+escapeHtml(c.numero_cuenta_masked||'—')+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde)">'+escapeHtml(c.moneda||'—')+'</td>'
             + '</tr>';
         }).join('')
       + '</tbody></table></div>';
@@ -1817,16 +1822,25 @@ async function guardarCuentaBancariaEmpresa() {
   const btn = document.getElementById('btn-cbe-guardar');
   btnSetGuardando(btn, true, null, 'Procesando...');
   try {
-    await api('param_cuentas_bancarias_empresa','POST',{
-      id_empresa:         _empresaActiva ? _empresaActiva.id_empresa : null,
-      alias:              alias,
-      id_banco:           idBancoCbe,
-      tipo_cuenta:        tipoCuenta,
-      numero_cuenta:      numeroCuenta,
-      moneda:             moneda,
-      id_cuenta_contable: idCuentaContableCbe,
-      estado:             'ACTIVA'
+    // Cuenta cifrada -- va por RPC, ya no es un INSERT directo sobre la
+    // columna en texto plano (bloqueada por API).
+    const rpcGuardarCbe = await fetch(SUPABASE_URL + '/rest/v1/rpc/guardar_cuenta_bancaria_empresa', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        p_id_empresa:         _empresaActiva ? _empresaActiva.id_empresa : null,
+        p_alias:              alias,
+        p_id_banco:           idBancoCbe,
+        p_tipo_cuenta:        tipoCuenta,
+        p_numero_cuenta:      numeroCuenta,
+        p_moneda:             moneda,
+        p_id_cuenta_contable: idCuentaContableCbe
+      })
     });
+    if (!rpcGuardarCbe.ok) {
+      const errBody = await rpcGuardarCbe.json().catch(function(){ return {}; });
+      throw new Error(errBody.message || 'No se pudo registrar la Cuenta Bancaria.');
+    }
     document.getElementById('cbe-alias').value = '';
     document.getElementById('cbe-numero-cuenta').value = '';
     document.getElementById('cbe-tipo-cuenta').value = '';
@@ -1889,15 +1903,18 @@ async function _traspasoCBActualizarCuentas() {
   } catch(eCtasTrasp) { console.warn('Error cargando Cuenta Caja de Traspaso:', eCtasTrasp); }
 
   try {
-    const cuentasBancTrasp = await api('param_cuentas_bancarias_empresa','GET',null,
-      '?estado=eq.ACTIVA&moneda=eq.'+moneda+'&order=alias.asc&select=id,alias,tipo_cuenta,numero_cuenta,id_cuenta_contable,param_bancos(nombre)'
-      + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+    const rpcCbTrasp = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_cuentas_bancarias_empresa_masked', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_id_empresa: _empresaActiva ? _empresaActiva.id_empresa : null })
+    });
+    const cuentasBancTraspAll = rpcCbTrasp.ok ? await rpcCbTrasp.json() : [];
+    const cuentasBancTrasp = (cuentasBancTraspAll||[]).filter(function(cb) { return cb.moneda === moneda; });
     const selCtaBanc = document.getElementById('traspaso-cb-cuenta-bancaria');
     selCtaBanc.innerHTML = (cuentasBancTrasp||[]).length
       ? (cuentasBancTrasp||[]).map(function(cb) {
-          const numMasked = cb.numero_cuenta ? '****'+cb.numero_cuenta.slice(-4) : '';
-          const label = cb.alias + ' — ' + (cb.param_bancos?.nombre||'') + ' — ' + (cb.tipo_cuenta||'') + ' — ' + numMasked;
-          return '<option value="'+cb.id+'" data-cuenta-contable="'+cb.id_cuenta_contable+'">'+label+'</option>';
+          const label = cb.alias + ' — ' + (cb.banco_nombre||'') + ' — ' + (cb.tipo_cuenta||'') + ' — ' + (cb.numero_cuenta_masked||'');
+          return '<option value="'+cb.id+'" data-cuenta-contable="'+cb.id_cuenta_contable+'">'+escapeHtml(label)+'</option>';
         }).join('')
       : '<option value="">— Sin Cuentas Bancarias en '+moneda+' —</option>';
   } catch(eCuentasBancTrasp) { console.warn('Error cargando Cuentas Bancarias de Traspaso:', eCuentasBancTrasp); }
