@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909027';
+const SYD_VERSION = '20260909028';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3588,6 +3588,16 @@ function formatearMontoVE(num) {
   const v = parseFloat(num);
   if (isNaN(v)) return '';
   const p = v.toFixed(2).split('.');
+  return p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + p[1];
+}
+
+// Igual que formatearMontoVE() pero con 4 decimales -- la Tasa BCV
+// necesita esa precisión (ej. 832,4883), a diferencia de los montos en
+// Bs/USD que siempre se muestran con 2.
+function formatearTasaVE(num) {
+  const v = parseFloat(num);
+  if (isNaN(v)) return '';
+  const p = v.toFixed(4).split('.');
   return p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + p[1];
 }
 
