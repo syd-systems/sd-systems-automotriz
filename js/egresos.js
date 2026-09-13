@@ -1613,6 +1613,20 @@ async function enviarRecuperacion() {
 }
 
 async function guardarNuevaClave() {
+  if (window._guardandoNuevaClave) return; // evita doble-envío (doble clic dispara 2 RPC en paralelo -- el 2do siempre ve el token ya usado por el 1ro y muestra error, aunque la contraseña sí haya cambiado)
+  window._guardandoNuevaClave = true;
+  const btn = document.getElementById('btn-cambiar-clave');
+  const textoOriginalBtn = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Procesando...'; }
+  try {
+    await _guardarNuevaClaveInterno();
+  } finally {
+    window._guardandoNuevaClave = false;
+    if (btn) { btn.disabled = false; btn.textContent = textoOriginalBtn; }
+  }
+}
+
+async function _guardarNuevaClaveInterno() {
   const clave1 = document.getElementById('nueva-clave').value;
   const clave2 = document.getElementById('confirmar-clave').value;
   const errEl  = document.getElementById('nueva-error');
