@@ -677,7 +677,7 @@ async function renderEmpleados() {
             ? '<img src="' + e.foto_documento + '" onerror="imgError(this)" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--borde)">'
             : '<div style="width:36px;height:36px;border-radius:50%;background:var(--gris3);display:flex;align-items:center;justify-content:center;font-size:16px">👤</div>')
         + '<div>'
-        + '<div style="font-weight:500">' + e.nombre_completo + '</div>'
+        + '<div style="font-weight:500">' + escapeHtml(e.nombre_completo) + '</div>'
         + (verDatosEmp ? '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (e.tipo_doc||'V') + '-' + e.numero_doc + '</div>' : '')
         + '</div></div></td>'
         + '<td style="font-size:12px">' + (e.param_areas ? e.param_areas.nombre + (e.param_areas.codigo ? ' (' + e.param_areas.codigo + ')' : '') : '—') + '</td>'
@@ -850,7 +850,7 @@ async function abrirEmpleado(id) {
   if (selNivJer) {
     selNivJer.innerHTML = '<option value="">— Sin nivel asignado —</option>'
       + (p.nivelesJer||[]).map(function(n) {
-          const label = n.nivel_jerarquicos + (n.descripcion_jerarquicos ? ' — ' + n.descripcion_jerarquicos : '');
+          const label = escapeHtml(n.nivel_jerarquicos) + (n.descripcion_jerarquicos ? ' — ' + escapeHtml(n.descripcion_jerarquicos) : '');
           return '<option value="' + n.id_jerarquicos + '"' + (e && e.id_nivel_jerarquico == n.id_jerarquicos ? ' selected' : '') + '>' + label + '</option>';
         }).join('');
   }
@@ -1186,7 +1186,7 @@ async function verFichaEmpleado(id) {
         ? '<img src="' + e.foto_documento + '" onerror="imgError(this)" style="width:70px;height:70px;border-radius:50%;object-fit:cover;border:2px solid var(--naranja);cursor:pointer" onclick="abrirVisor(\'' + e.foto_documento + '\')">'
         : '<div style="width:70px;height:70px;border-radius:50%;background:var(--gris3);display:flex;align-items:center;justify-content:center;font-size:28px">👤</div>')
     + '<div>'
-    + '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + e.nombre_completo + '</div>'
+    + '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + escapeHtml(e.nombre_completo) + '</div>'
     + (verDatos ? '<div style="font-size:12px;color:var(--suave);font-family:var(--font-mono)">' + (e.tipo_doc||'V') + '-' + e.numero_doc + '</div>' : '<div style="font-size:12px;color:#555">🔒 Documento restringido</div>')
     + '<span class="badge ' + est.clase + '" style="margin-top:4px;display:inline-block">' + est.label + '</span>'
     + '</div></div>'
@@ -1222,7 +1222,7 @@ async function verFichaEmpleado(id) {
     + '<div style="grid-column:1/-1"><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Empresa</div><div style="font-size:13px;font-weight:600;color:var(--naranja)">' + (e.emisores ? e.emisores.nombre : '—') + '</div></div>'
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Área</div><div style="font-size:13px">' + getNombreCodigo(p.areas, e.id_area) + '</div></div>'
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Cargo</div><div style="font-size:13px">' + getNombre(p.cargos, e.id_cargo) + '</div></div>'
-    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Nivel Jerárquico</div><div style="font-size:13px">' + (function() { var n = (p.nivelesJer||[]).find(function(x){ return x.id_jerarquicos == e.id_nivel_jerarquico; }); return n ? n.nivel_jerarquicos + (n.descripcion_jerarquicos ? ' — ' + n.descripcion_jerarquicos : '') : '—'; })() + '</div></div>'
+    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Nivel Jerárquico</div><div style="font-size:13px">' + (function() { var n = (p.nivelesJer||[]).find(function(x){ return x.id_jerarquicos == e.id_nivel_jerarquico; }); return n ? escapeHtml(n.nivel_jerarquicos) + (n.descripcion_jerarquicos ? ' — ' + escapeHtml(n.descripcion_jerarquicos) : '') : '—'; })() + '</div></div>'
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Tipo Contrato</div><div style="font-size:13px">' + getNombre(p.contratos, e.id_tipo_contrato) + '</div></div>'
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Tipo Salario</div><div style="font-size:13px">' + getNombre(p.salarios, e.id_tipo_salario) + '</div></div>'
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Cálculo Salario</div><div style="font-size:13px">' + getNombre(p.calculos, e.id_calculo_salario) + '</div></div>'
