@@ -49,13 +49,13 @@ async function verFichaEmisor(id) {
   const tipoLabel = { 'ORDINARIO':'Contribuyente Ordinario','ESPECIAL':'Contribuyente Especial','FORMAL':'Contribuyente Formal' };
   document.getElementById('ficha-emisor-contenido').innerHTML =
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Nombre</div><div style="font-weight:600">' + e.nombre + '</div></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">RIF</div><div style="font-family:var(--font-mono)">' + (e.rif||'—') + '</div></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Tipo Contribuyente</div><div>' + (tipoLabel[e.tipo_contribuyente]||'—') + '</div></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Estado</div><span class="badge ' + (e.estado==='ACTIVO'?'badge-verde':'badge-rojo') + '">' + (e.estado||'ACTIVO') + '</span></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div>' + (e.telefono||'—') + '</div></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Correo</div><div>' + (e.correo||'—') + '</div></div>'
-    + '<div style="grid-column:1/-1"><div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div>' + (e.direccion||'—') + '</div></div>'
+    + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Nombre</div><div style="font-weight:600">' + e.nombre + '</div></div>'
+    + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">RIF</div><div style="font-family:var(--font-mono)">' + (e.rif||'—') + '</div></div>'
+    + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Tipo Contribuyente</div><div>' + (tipoLabel[e.tipo_contribuyente]||'—') + '</div></div>'
+    + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Estado</div><span class="badge ' + (e.estado==='ACTIVO'?'badge-verde':'badge-rojo') + '">' + (e.estado||'ACTIVO') + '</span></div>'
+    + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div>' + (e.telefono||'—') + '</div></div>'
+    + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Correo</div><div>' + (e.correo||'—') + '</div></div>'
+    + '<div style="grid-column:1/-1"><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div>' + (e.direccion||'—') + '</div></div>'
     + '</div>';
   var btnEditar   = document.getElementById('ficha-emisor-btn-editar');
   window._fichaEmisorId     = e.id_empresa;
