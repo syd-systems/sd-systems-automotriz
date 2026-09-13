@@ -851,6 +851,10 @@ async function abrirEmpleado(id) {
   document.getElementById('modal-emp-titulo').textContent = e ? 'EDITAR EMPLEADO' : 'NUEVO EMPLEADO';
   document.getElementById('alerta-emp-ok').style.display  = 'none';
   document.getElementById('alerta-emp-err').style.display = 'none';
+  const avisoCedInit = document.getElementById('emp-numero-doc-aviso');
+  if (avisoCedInit) avisoCedInit.style.display = 'none';
+  const campoCedInit = document.getElementById('emp-numero-doc');
+  if (campoCedInit) campoCedInit.style.borderColor = '';
 
   // ── Datos Personales ──
   document.getElementById('emp-tipo-doc').value       = e ? (e.tipo_doc||'V') : 'V';
@@ -967,6 +971,31 @@ async function abrirEmpleado(id) {
 }
 
 // ─── GUARDAR EMPLEADO ───
+// Validación en vivo de cédula duplicada -- se dispara apenas el Usuario
+// sale del campo, en vez de esperar a que llene todo el formulario y le
+// dé a Guardar. Reutiliza el mismo RPC (numero_doc_ya_existe) que la
+// validación final de guardarEmpleado().
+async function validarCedulaDuplicada() {
+  const campo = document.getElementById('emp-numero-doc');
+  const aviso = document.getElementById('emp-numero-doc-aviso');
+  if (!campo || !aviso) return;
+  const numDoc = campo.value.trim();
+  aviso.style.display = 'none';
+  if (!numDoc) return;
+
+  const id = document.getElementById('emp-id')?.value;
+  try {
+    const rpcDup = await fetch(SUPABASE_URL + '/rest/v1/rpc/numero_doc_ya_existe', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_numero_doc: numDoc, p_excluir_id: id ? parseInt(id) : null })
+    });
+    const yaExiste = rpcDup.ok ? await rpcDup.json() : false;
+    campo.style.borderColor = yaExiste ? '#fc8181' : '';
+    aviso.style.display = yaExiste ? 'block' : 'none';
+  } catch(eValCed) { console.warn('Error validando cédula:', eValCed); }
+}
+
 async function guardarEmpleado() {
   const id     = document.getElementById('emp-id').value;
   if (id && !puedo('EMPLEADOS','EDITAR')) { alert('No tiene permiso para editar empleados.'); return; }
