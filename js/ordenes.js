@@ -1555,7 +1555,7 @@ async function verFichaOS(id) {
 // ─── RECALCULAR TOTAL EN BS CON TASA ACTUAL (solo admins) ───
 async function recalcularTasaOS(id, nuevaTasa) {
   if (!sesionActual || !sesionActual.administrador) return;
-  if (!confirm('¿Recalcular el Total en Bs de esta OS usando la tasa actual (' + parseFloat(nuevaTasa).toFixed(2) + ' Bs/$)?')) return;
+  if (!confirm('¿Recalcular el Total en Bs de esta OS usando la tasa actual (' + formatearTasaVE(nuevaTasa) + ' Bs/$)?')) return;
   try {
     const o = ordenesCache.find(function(x) { return x.id_orden === id; });
     if (!o) return;
