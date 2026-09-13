@@ -268,7 +268,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
             + '</td>'
             + '<td style="font-size:11px;color:var(--suave)">' + (a.cont_periodos ? a.cont_periodos.nombre : '—') + '</td>'
             + '<td style="text-align:right;font-size:12px;font-family:var(--font-mono);font-weight:600">' + fmtMontoAst(a.id_asiento)
-            + '<div style="font-size:10px;color:var(--suave);font-weight:400">Tasa: ' + parseFloat(a.tasa_bcv||1).toFixed(2) + '</div></td>'
+            + '<div style="font-size:10px;color:var(--suave);font-weight:400">Tasa: ' + formatearTasaVE(a.tasa_bcv||1) + '</div></td>'
             + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
             + '<td style="text-align:center"><button class="btn-secundario" style="font-size:11px;padding:4px 8px" onclick="contVerAsiento(' + a.id_asiento + ')">Ver</button></td></tr>';
         }).join('') : '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--suave)">Sin asientos registrados</td></tr>')
@@ -353,7 +353,7 @@ async function contVerAsiento(id) {
       + (ast.referencia ? '<div style="font-size:11px;color:var(--suave)">Ref: ' + ast.referencia + '</div>' : '')
       + '</div>'
       + '<div style="text-align:right">'
-      + '<div style="font-size:11px;color:var(--suave)">Moneda: ' + ast.moneda_base + ' · Tasa BCV: ' + parseFloat(ast.tasa_bcv||1).toFixed(2) + '</div>'
+      + '<div style="font-size:11px;color:var(--suave)">Moneda: ' + ast.moneda_base + ' · Tasa BCV: ' + formatearTasaVE(ast.tasa_bcv||1) + '</div>'
       + '<div style="font-size:11px;color:' + (cuadra ? '#22c55e' : '#fc8181') + ';margin-top:4px;font-weight:600">'
       + (cuadra ? '✓ Asiento cuadrado' : '✗ Asiento descuadrado') + '</div>'
       + '</div></div>'
@@ -435,7 +435,7 @@ async function contAbrirAsiento(id) {
     document.getElementById('cont-form-desc').value        = ast.descripcion;
     document.getElementById('cont-form-ref').value         = ast.referencia || '';
     document.getElementById('cont-form-tipo').value        = ast.tipo;
-    document.getElementById('cont-form-tasa').value        = parseFloat(ast.tasa_bcv||1).toFixed(2);
+    document.getElementById('cont-form-tasa').value        = formatearMontoVE(ast.tasa_bcv||1);
     document.getElementById('cont-form-periodo').value     = ast.id_periodo || '';
     document.getElementById('modal-cont-form-titulo').textContent = 'EDITAR ASIENTO — ' + ast.numero_asiento;
     contLineasAsiento = lineas.map(function(l){ return { id_cuenta: l.id_cuenta, descripcion: l.descripcion||'', debe_usd: l.debe_usd, haber_usd: l.haber_usd, debe_ves: l.debe_ves, haber_ves: l.haber_ves, tasa: l.tasa || 1 }; });
@@ -451,8 +451,8 @@ async function contAbrirAsiento(id) {
     // Cargar tasa BCV del día
     try {
       const tasas = await api('tasas','GET',null,'?order=fecha_valor.desc&limit=1&select=tipo_cambio');
-      document.getElementById('cont-form-tasa').value = tasas.length ? parseFloat(tasas[0].tipo_cambio).toFixed(2) : '1.00';
-    } catch(e) { document.getElementById('cont-form-tasa').value = '1.00'; }
+      document.getElementById('cont-form-tasa').value = tasas.length ? formatearMontoVE(tasas[0].tipo_cambio) : '1,00';
+    } catch(e) { document.getElementById('cont-form-tasa').value = '1,00'; }
   }
 
   // Llenar select de períodos
@@ -533,7 +533,7 @@ function contRenderLineasForm() {
           + (function() {
               const cInfo    = contCuentasCache.find(function(x){ return x.id_cuenta === l.id_cuenta; });
               const nat      = cInfo ? cInfo.naturaleza : null;
-              const tasaGlob = parseFloat(document.getElementById('cont-form-tasa')?.value) || 1;
+              const tasaGlob = parseMontoVE(document.getElementById('cont-form-tasa')?.value) || 1;
               const tasaL    = parseFloat(l.tasa || tasaGlob);
               const monedaRef  = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
               const monedaFunc = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
@@ -576,7 +576,7 @@ async function contGuardarAsiento() {
   const ref     = document.getElementById('cont-form-ref').value.trim();
   const tipo    = document.getElementById('cont-form-tipo').value;
   const moneda  = document.getElementById('cont-form-moneda').value;
-  const tasa    = parseFloat(document.getElementById('cont-form-tasa').value) || 1;
+  const tasa    = parseMontoVE(document.getElementById('cont-form-tasa').value) || 1;
   const periodo = parseInt(document.getElementById('cont-form-periodo').value) || null;
   const okEl    = document.getElementById('alerta-cont-form-ok');
   const errEl   = document.getElementById('alerta-cont-form-err');
@@ -1100,14 +1100,24 @@ async function contAbrirPagoCxc(id_cxc) {
 
   const saldoPend = parseFloat(c.saldo_usd != null ? c.saldo_usd : c.monto_usd) || 0;
 
-  // Tasa BCV vigente (la misma que se usará al guardar, para que lo que se
-  // muestra aquí coincida exactamente con lo que se registra después).
+  // Tasa BCV: si el Cobro se registra el MISMO día que se emitió la
+  // Factura, se usa la tasa YA CONGELADA en la Factura -- coincide exacto
+  // con lo que muestra la Factura, ni un centavo de diferencia. Si es un
+  // día distinto, sí se busca la tasa vigente de HOY (aplica diferencial
+  // cambiario al guardar -- ver mismoDiaFacturaYCobro más abajo, en la
+  // función que realmente guarda el Cobro). Antes esto SIEMPRE buscaba
+  // "la más reciente" sin importar el día, mostrando un Monto que no
+  // coincidía con la Factura incluso cobrando el mismo día.
+  const hoyPagoCxc = getHoyVzla();
+  const mismoDiaAbrirPagoCxc = (facturaRefCxc?.fecha_emision?.slice(0,10) || '') === hoyPagoCxc;
   let tasaActualPago = parseFloat(c.tasa_bcv) || 1;
-  try {
-    const tasasBCVPago = await api('tasas','GET',null,
-      '?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio');
-    if (tasasBCVPago.length) tasaActualPago = parseFloat(tasasBCVPago[0].tipo_cambio);
-  } catch(eTasaPago) {}
+  if (!mismoDiaAbrirPagoCxc) {
+    try {
+      const tasasBCVPago = await api('tasas','GET',null,
+        '?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+      if (tasasBCVPago.length) tasaActualPago = parseFloat(tasasBCVPago[0].tipo_cambio);
+    } catch(eTasaPago) {}
+  }
   const montoVESPago = parseFloat((saldoPend * tasaActualPago).toFixed(2));
 
   window._contPagoCxcMontoUSD = saldoPend;
@@ -1116,7 +1126,7 @@ async function contAbrirPagoCxc(id_cxc) {
     const tribCxc = await api('param_tributos','GET',null,'?codigo=eq.IGTF&select=alicuota&limit=1');
     window._contPagoCxcPctIGTF = (tribCxc && tribCxc[0]) ? parseFloat(tribCxc[0].alicuota) / 100 : 0.03;
   } catch(eTribCxc) { window._contPagoCxcPctIGTF = 0.03; }
-  document.getElementById('cont-pago-cxc-tasa').value   = tasaActualPago.toFixed(2) + ' Bs/$';
+  document.getElementById('cont-pago-cxc-tasa').value   = formatearMontoVE(tasaActualPago) + ' Bs/$';
   document.getElementById('cont-pago-cxc-monto-raw').value = saldoPend;
   document.getElementById('cont-pago-cxc-tasa-raw').value  = tasaActualPago;
   document.getElementById('cont-pago-cxc-ref').value    = '';
@@ -1166,7 +1176,7 @@ async function contAbrirPagoCxc(id_cxc) {
   const infoEl = document.getElementById('cont-pago-cxc-tasa-info');
   if (infoEl) {
     infoEl.textContent = c.tasa_bcv
-      ? 'Tasa registrada en la Factura original: ' + parseFloat(c.tasa_bcv).toFixed(4) + ' Bs/$'
+      ? 'Tasa registrada en la Factura original: ' + formatearTasaVE(c.tasa_bcv) + ' Bs/$'
       : '';
   }
 
