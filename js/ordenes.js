@@ -1389,7 +1389,7 @@ async function verFichaOS(id) {
             const subtBs = subt * tasaParaLineas;
             const precFmt = fmtBs(precBs) + ' Bs<div style="font-size:10px;color:var(--suave)">= $ ' + fmtUSD(precUsdEq) + '</div>';
             const subtFmt = fmtBs(subtBs) + ' Bs<div style="font-size:10px;color:var(--suave)">= $ ' + fmtUSD(subtUsdEq) + '</div>';
-            return '<tr><td style="padding:6px 0;font-size:14px">' + l.descripcion + '</td>'
+            return '<tr><td style="padding:6px 0;font-size:14px">' + escapeHtml(l.descripcion) + '</td>'
               + '<td style="text-align:right;padding:6px 0">' + l.cantidad + '</td>'
               + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">' + precFmt + '</td>'
               + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">' + subtFmt + '</td></tr>';
@@ -1415,7 +1415,7 @@ async function verFichaOS(id) {
             const subtBs = subt * tasaParaLineas;
             const precFmt = fmtBs(precBs) + ' Bs<div style="font-size:10px;color:var(--suave)">= $ ' + fmtUSD(precUsdEq) + '</div>';
             const subtFmt = fmtBs(subtBs) + ' Bs<div style="font-size:10px;color:var(--suave)">= $ ' + fmtUSD(subtUsdEq) + '</div>';
-            return '<tr><td style="padding:6px 0;font-size:14px">' + l.descripcion + '</td>'
+            return '<tr><td style="padding:6px 0;font-size:14px">' + escapeHtml(l.descripcion) + '</td>'
               + '<td style="text-align:right;padding:6px 0">' + l.cantidad + '</td>'
               + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">' + precFmt + '</td>'
               + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">' + subtFmt + '</td></tr>';
@@ -1474,7 +1474,7 @@ async function verFichaOS(id) {
       + (o.diagnostico ? '<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Diagnóstico</div>'
         + '<div style="background:var(--gris2);border-radius:6px;padding:12px;font-size:13px">' + o.diagnostico + '</div></div>' : '')
       + (o.observaciones ? '<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Observaciones</div>'
-        + '<div style="background:var(--gris2);border-radius:6px;padding:12px;font-size:13px">' + o.observaciones + '</div></div>' : '')
+        + '<div style="background:var(--gris2);border-radius:6px;padding:12px;font-size:13px">' + escapeHtml(o.observaciones) + '</div></div>' : '')
 
       + (tasaDiferente && sesionActual && sesionActual.administrador && o.estado !== 'CERRADA' && o.estado !== 'ANULADA'
           ? '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.25);border-radius:6px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px">'
