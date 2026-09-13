@@ -2897,15 +2897,15 @@ function onCambiarMontoPago() {
   const calcEl = document.getElementById('pago-monto-calc');
   const fechaEl = document.getElementById('pago-tasa-bcv-fecha');
   if (moneda === 'VES') {
-    if (tasaEl) tasaEl.value = tasaUSD.toFixed(4);
+    if (tasaEl) tasaEl.value = formatearTasaVE(tasaUSD);
     if (calcEl) calcEl.value = tasaUSD > 0 ? (monto / tasaUSD).toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2,maximumFractionDigits:2}) : '';
     if (fechaEl) fechaEl.textContent = window._pagoTasaFechaUSD ? fmtFecha(window._pagoTasaFechaUSD) : 'día';
   } else if (moneda === 'EUR') {
-    if (tasaEl) tasaEl.value = tasaEUR.toFixed(4);
+    if (tasaEl) tasaEl.value = formatearTasaVE(tasaEUR);
     if (calcEl) calcEl.value = (monto * tasaEUR).toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2,maximumFractionDigits:2});
     if (fechaEl) fechaEl.textContent = window._pagoTasaFechaEUR ? fmtFecha(window._pagoTasaFechaEUR) : 'día';
   } else {
-    if (tasaEl) tasaEl.value = tasaUSD.toFixed(4);
+    if (tasaEl) tasaEl.value = formatearTasaVE(tasaUSD);
     if (calcEl) calcEl.value = (monto * tasaUSD).toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2,maximumFractionDigits:2});
     if (fechaEl) fechaEl.textContent = window._pagoTasaFechaUSD ? fmtFecha(window._pagoTasaFechaUSD) : 'día';
   }
@@ -3687,7 +3687,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     }
 
     const tasaCreacionEl = document.getElementById('cont-pago-cxp-tasa-creacion');
-    if (tasaCreacionEl) tasaCreacionEl.textContent = c.tasa_bcv ? parseFloat(c.tasa_bcv).toFixed(4) : '—';
+    if (tasaCreacionEl) tasaCreacionEl.textContent = c.tasa_bcv ? formatearTasaVE(c.tasa_bcv) : '—';
 
     const ivaInfoEl = document.getElementById('cont-pago-cxp-iva-info');
     if (ivaInfoEl) {
