@@ -758,7 +758,7 @@ function renderLineasOS() {
       + '<td style="padding:4px"><select id="os-serv-grupo-' + i + '" onchange="onCambioGrupoFilaServ(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">' + opcionesGrupo + '</select></td>'
       + '<td style="padding:4px">' + celdaServicio + '</td>'
       + '<td style="padding:4px;width:70px"><input type="number" id="os-serv-cant-' + i + '" min="0.01" step="0.01" value="' + l.cantidad + '" onkeydown="' + enterCant + '" ' + (l.esLibre ? 'readonly style="width:100%;background:var(--gris1);color:var(--suave);border:1px solid var(--borde);font-size:12px;padding:6px 8px;border-radius:4px;cursor:not-allowed"' : 'oninput="onCambioCantidadFilaServ(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"') + '></td>'
-      + '<td style="padding:4px;width:90px"><input type="text" id="os-serv-precio-' + i + '" value="' + (l.precio_original ? l.precio_original.toFixed(2) : '') + '" onkeydown="' + enterPrecio + '" ' + (catalogado ? 'readonly' : 'oninput="onCambioPrecioFilaServ(' + i + ',this.value)"') + ' style="' + estiloPrecio + '"></td>'
+      + '<td style="padding:4px;width:90px"><input type="text" id="os-serv-precio-' + i + '" value="' + formatearMontoVE(l.precio_original || 0) + '" onkeydown="' + enterPrecio + '" ' + (catalogado ? 'readonly' : 'oninput="onCambioPrecioFilaServ(' + i + ',this.value)"') + ' style="' + estiloPrecio + '"></td>'
       + '<td style="padding:4px;width:80px"><select id="os-serv-moneda-' + i + '" onchange="onCambioMonedaFilaServ(' + i + ',this.value)" ' + (catalogado ? 'disabled' : '') + ' style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none"><option value="USD"' + (l.moneda === 'USD' ? ' selected' : '') + '>$ USD</option><option value="EUR"' + (l.moneda === 'EUR' ? ' selected' : '') + '>€ EUR</option><option value="VES"' + (l.moneda === 'VES' ? ' selected' : '') + '>Bs VES</option></select></td>'
       + '<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono);color:var(--naranja);white-space:nowrap">' + subtotalFmt + '</td>'
       + '<td style="padding:4px;text-align:center"><button onclick="quitarLineaServ(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px">✕</button></td>'
@@ -834,6 +834,12 @@ function onCambioCantidadFilaArt(i, valor) {
   if (!l) return;
   const nuevaCant = parseFloat(valor) || 0;
   if (l.id_articulo) {
+    const artValCant = inventarioCache.find(function(x) { return x.id_articulo === l.id_articulo; });
+    if ((artValCant?.unidad || 'UND') === 'UND' && nuevaCant % 1 !== 0) {
+      alert('⚠ Este Artículo se mide en Unidades (UND) -- la cantidad debe ser un número entero, sin decimales.');
+      renderLineasRep();
+      return;
+    }
     const disponibleReal = _stockDisponibleFilaOS(l.id_articulo, i);
     if (nuevaCant > disponibleReal) {
       alert('⚠ Stock insuficiente. Disponible para este artículo: ' + disponibleReal + '. No se puede agregar una cantidad mayor a la disponible.');
@@ -858,10 +864,17 @@ function renderLineasRep() {
     const subtotal    = (parseFloat(l.cantidad) || 0) * (parseFloat(l.precio_original) || 0);
     const subtotalFmt = '$ ' + fmtUSD(subtotal);
 
+    // Si el Artículo se mide en Unidades (UND, o ninguno seleccionado
+    // todavía -- se asume UND por defecto, mismo criterio que Entrada de
+    // Stock), la Cantidad es un entero -- sin las flechas nativas del
+    // input, que invitan a fraccionar algo que no se puede fraccionar.
+    const artRep = l.id_articulo ? inventarioCache.find(function(x) { return x.id_articulo === l.id_articulo; }) : null;
+    const esUnidadEntera = (artRep?.unidad || 'UND') === 'UND';
+
     return '<tr>'
       + '<td style="padding:4px"><select id="os-art-sel-' + i + '" onchange="onCambioArticuloFilaOS(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">' + opcionesArt + '</select></td>'
-      + '<td style="padding:4px;width:70px"><input type="number" id="os-art-cant-' + i + '" min="0.01" step="0.01" value="' + l.cantidad + '" oninput="onCambioCantidadFilaArt(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
-      + '<td style="padding:4px;width:90px"><input type="text" value="' + (l.precio_original ? l.precio_original.toFixed(2) : '') + '" readonly title="El precio del Artículo se calcula solo (CPP × Margen), no se edita aquí" style="width:100%;background:var(--gris1);border:1px solid var(--borde);color:var(--suave);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;cursor:not-allowed"></td>'
+      + '<td style="padding:4px;width:70px"><input type="number" id="os-art-cant-' + i + '" class="' + (esUnidadEntera ? 'sin-flechas' : '') + '" min="' + (esUnidadEntera ? '1' : '0.01') + '" step="' + (esUnidadEntera ? '1' : '0.01') + '" value="' + l.cantidad + '" oninput="onCambioCantidadFilaArt(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
+      + '<td style="padding:4px;width:90px"><input type="text" value="' + formatearMontoVE(l.precio_original || 0) + '" readonly title="El precio del Artículo se calcula solo (CPP × Margen), no se edita aquí" style="width:100%;background:var(--gris1);border:1px solid var(--borde);color:var(--suave);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;cursor:not-allowed"></td>'
       + '<td style="padding:4px 8px;width:90px;font-size:12px;color:var(--suave);font-family:var(--font-mono)">' + stockTxt + '</td>'
       + '<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono);color:var(--naranja);white-space:nowrap">' + subtotalFmt + '</td>'
       + '<td style="padding:4px;text-align:center"><button onclick="quitarLineaRep(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px">✕</button></td>'
@@ -1412,9 +1425,16 @@ async function verFichaOS(id) {
 
     let facturaRefOS = null;
     try {
-      const facRefRows = await api('facturas','GET',null,'?id_orden=eq.'+id+'&estado=neq.ANULADA&select=numero_factura&limit=1');
+      const facRefRows = await api('facturas','GET',null,'?id_orden=eq.'+id+'&estado=neq.ANULADA&select=numero_factura,total_usd,total_ves&limit=1');
       facturaRefOS = (facRefRows && facRefRows[0]) || null;
     } catch(eFacRefOS) {}
+
+    // Si ya está Facturada, el Total real (el que de verdad se le cobra al
+    // Cliente) es el de la Factura -- CON IVA incluido. Si todavía no se
+    // ha facturado, se muestra el Subtotal de la OS (sin IVA todavía,
+    // porque el IVA solo se calcula al momento de Facturar).
+    const totalFichaVes = facturaRefOS ? facturaRefOS.total_ves : o.total_ves;
+    const totalFichaUsd = facturaRefOS ? facturaRefOS.total_usd : o.total_usd;
 
     document.getElementById('ficha-os-contenido').innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px;flex-wrap:wrap">'
@@ -1423,9 +1443,9 @@ async function verFichaOS(id) {
       + (o.fecha_estado ? '<span style="font-size:10px;color:var(--suave);margin-left:8px">desde ' + fmtFecha(o.fecha_estado) + (o.usuario_estado ? ' · ' + o.usuario_estado : '') + '</span>' : '')
       + (facturaRefOS ? '<span style="font-size:11px;color:var(--suave);margin-left:8px">· Factura: <span style="color:var(--naranja)">' + facturaRefOS.numero_factura + '</span></span>' : '')
       + '</div>'
-      + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL</div>'
-      + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + fmtBs(o.total_ves) + ' Bs</div>'
-      + '<div style="font-size:12px;color:var(--suave)">$ ' + fmtUSD(o.total_usd) + ' USD</div>'
+      + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">' + (facturaRefOS ? 'TOTAL CON IVA' : 'TOTAL (sin facturar)') + '</div>'
+      + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + fmtBs(totalFichaVes) + ' Bs</div>'
+      + '<div style="font-size:12px;color:var(--suave)">$ ' + fmtUSD(totalFichaUsd) + ' USD</div>'
       + '</div></div>'
       + '<div style="font-size:10px;color:var(--suave);margin-bottom:16px">Área: ' + areaLabelFicha + '</div>'
 
