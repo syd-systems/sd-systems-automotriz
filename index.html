@@ -1523,19 +1523,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909044"></script>
-<script src="js/parametros.js?v=20260909044"></script>
-<script src="js/empresas.js?v=20260909044"></script>
-<script src="js/ingresos.js?v=20260909044"></script>
-<script src="js/inventario.js?v=20260909044"></script>
-<script src="js/proveedores.js?v=20260909044"></script>
-<script src="js/clientes.js?v=20260909044"></script>
-<script src="js/ventas.js?v=20260909044"></script>
-<script src="js/contabilidad.js?v=20260909044"></script>
-<script src="js/egresos.js?v=20260909044"></script>
-<script src="js/vehiculos.js?v=20260909044"></script>
-<script src="js/catalogo.js?v=20260909044"></script>
-<script src="js/ordenes.js?v=20260909044"></script>
+<script src="js/core.js?v=20260909045"></script>
+<script src="js/parametros.js?v=20260909045"></script>
+<script src="js/empresas.js?v=20260909045"></script>
+<script src="js/ingresos.js?v=20260909045"></script>
+<script src="js/inventario.js?v=20260909045"></script>
+<script src="js/proveedores.js?v=20260909045"></script>
+<script src="js/clientes.js?v=20260909045"></script>
+<script src="js/ventas.js?v=20260909045"></script>
+<script src="js/contabilidad.js?v=20260909045"></script>
+<script src="js/egresos.js?v=20260909045"></script>
+<script src="js/vehiculos.js?v=20260909045"></script>
+<script src="js/catalogo.js?v=20260909045"></script>
+<script src="js/ordenes.js?v=20260909045"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3354,7 +3354,8 @@
         </div>
         <div class="form-campo">
           <label>N° Documento *</label>
-          <input type="text" id="emp-numero-doc" placeholder="Ej: 12345678">
+          <input type="text" id="emp-numero-doc" placeholder="Ej: 12345678" onblur="validarCedulaDuplicada()">
+          <div id="emp-numero-doc-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un empleado con esta cédula.</div>
         </div>
         <div class="form-campo form-full">
           <label>Nombre Completo *</label>
