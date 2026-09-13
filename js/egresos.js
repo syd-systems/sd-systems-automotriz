@@ -1221,21 +1221,17 @@ function validarFortaleza(clave) {
 }
 
 // Verificar si la clave ya fue usada antes (historial completo, nunca se puede repetir)
+// -- la comparación se hace COMPLETA del lado del servidor (clave_ya_usada),
+// el historial de hashes nunca sale de la base de datos.
 async function claveYaUsada(correo, nuevaClave) {
   try {
-    const hdrs = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY) };
-    const res = await fetch(SUPABASE_URL + '/rest/v1/historial_claves?correo_usuario=eq.' + encodeURIComponent(correo) + '&select=contrasena', { headers: hdrs });
-    const historial = await res.json();
-    // Con bcrypt no se puede comparar directamente — verificar cada hash
-    for (const h of historial) {
-      const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/verificar_clave', {
-        method: 'POST',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ p_clave: nuevaClave, p_hash: h.contrasena })
-      });
-      if (await r.json()) return true;
-    }
-    return false;
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/clave_ya_usada', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_correo: correo, p_nueva_clave: nuevaClave })
+    });
+    if (!res.ok) return false;
+    return await res.json();
   } catch(e) { return false; }
 }
 
