@@ -1740,11 +1740,11 @@ window.addEventListener('load', async () => {
       try {
         const miTokenRestaurado = Math.random().toString(36).substr(2) + Date.now().toString(36);
         window._miTokenSesion = miTokenRestaurado;
-        await api('usuarios', 'PATCH', {
+        await actualizarMiSesion({
           sesion_activa: true, sesion_invalidada: false,
-          ultimo_acceso: new Date().toISOString(), ultima_conexion: new Date().toISOString(),
-          token_sesion: miTokenRestaurado
-        }, '?correo_usuario=eq.' + encodeURIComponent(usuario.correo_usuario));
+          token_sesion: miTokenRestaurado,
+          marcar_ultimo_acceso: true, marcar_ultima_conexion: true
+        });
         clearInterval(_pollingInterval);
         _pollingInterval = setInterval(verificarSesionActiva, 30000);
         window._sesionLista = true;
