@@ -132,7 +132,7 @@ async function verFichaProveedor(id) {
     + '<div style="grid-column:1/-1"><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">💳 Método de Pago</div><div>'
       + (metodosProv.length ? metodosProv.map(function(m){ return '<span class="badge badge-naranja" style="margin-right:6px">' + (metodosLabel[m]||m) + '</span>'; }).join('') : '<span style="color:var(--suave)">— Sin métodos marcados —</span>')
       + '</div></div>'
-    + (p.observaciones ? '<div style="grid-column:1/-1"><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Observaciones</div><div style="background:var(--gris2);border-radius:6px;padding:10px 14px;font-size:13px">' + p.observaciones + '</div></div>' : '')
+    + (p.observaciones ? '<div style="grid-column:1/-1"><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Observaciones</div><div style="background:var(--gris2);border-radius:6px;padding:10px 14px;font-size:13px">' + escapeHtml(p.observaciones) + '</div></div>' : '')
     // ── Datos Bancarios (solo si "Transferencia" sigue marcado actualmente) ──
     + (aceptaTransferenciaActual && (p.id_banco || p.numero_cuenta) ? '<div style="grid-column:1/-1;margin-top:12px;padding-top:12px;border-top:1px solid var(--borde)"><div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🏦 Datos Bancarios</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'
