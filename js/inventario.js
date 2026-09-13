@@ -678,7 +678,7 @@ function invRenderTabla(items, cont) {
       + (r.id_categoria_articulo ? ' · <span style="color:var(--suave)">' + (_invCategoriasCache.find(function(c){return c.id_categoria===r.id_categoria_articulo;})?.nombre || '') + '</span>' : '')
       + '</div>'
       + '<div style="font-weight:500;line-height:1.3">' + r.nombre_articulo + '</div>'
-      + (r.descripcion_articulo ? '<div style="font-size:10px;color:var(--suave);line-height:1.3">' + r.descripcion_articulo + '</div>' : '') + '</div></div></td>'
+      + (r.descripcion_articulo ? '<div style="font-size:10px;color:var(--suave);line-height:1.3">' + escapeHtml(r.descripcion_articulo) + '</div>' : '') + '</div></div></td>'
       + (function() {
           const pendientesArt = _invPendientesPorArticulo[r.id_articulo] || [];
           const pendientesHtml = pendientesArt.map(function(p) {
@@ -870,7 +870,7 @@ async function verFichaInventario(id) {
     + '<div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + r.nombre_articulo + '</div>'
     + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (r.codigo_articulo || 'Sin código') + ' · ' + (r.unidad || 'UND') + '</div>'
     + '</div></div>'
-    + (r.descripcion_articulo ? '<div style="background:var(--gris2);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--suave)">' + r.descripcion_articulo + '</div>' : '')
+    + (r.descripcion_articulo ? '<div style="background:var(--gris2);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--suave)">' + escapeHtml(r.descripcion_articulo) + '</div>' : '')
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">'
     + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Stock Actual</div>'
     + '<div style="font-family:var(--font-mono);font-size:18px;color:' + (stockBajo ? '#fc8181' : 'var(--naranja)') + '">' + stockMostrarFicha + ' ' + (r.unidad||'UND') + '</div>'
@@ -3499,7 +3499,7 @@ async function invCargarMovimientos() {
               +'<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-size:12px">'+m.cant+'</td>'
               +'<td style="padding:7px;font-size:12px;word-break:break-word">'+m.origen+'</td>'
               +'<td style="padding:7px;font-size:12px;word-break:break-word">'+m.destino+'</td>'
-              +'<td style="padding:7px;font-size:11px;color:var(--suave);word-break:break-word">'+m.motivo+'</td>'
+              +'<td style="padding:7px;font-size:11px;color:var(--suave);word-break:break-word">'+escapeHtml(m.motivo)+'</td>'
               +costoTd+'</tr>';
           }).join('')
         + '</tbody></table></div>';
@@ -4396,7 +4396,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
       if (selEmp2) {
         selEmp2.innerHTML = '<option value="">— Seleccionar empleado —</option>'
           + (emps2||[]).map(function(e) {
-            return '<option value="'+e.id_empleado+'"'+(m.id_empleado==e.id_empleado?' selected':'')+'>'+e.nombre_completo+'</option>';
+            return '<option value="'+e.id_empleado+'"'+(m.id_empleado==e.id_empleado?' selected':'')+'>'+escapeHtml(e.nombre_completo)+'</option>';
           }).join('');
       }
       const empDisplay2 = document.getElementById('edit-sal-empleado-display');
@@ -4409,7 +4409,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
       if (ventaClienteCont) {
         ventaClienteCont.style.display = '';
         ventaClienteCont.textContent = '🧾 Venta directa a Cliente'
-          + ((m.observaciones||'').indexOf('Factura FAC-') === 0 ? ' — ' + m.observaciones : '');
+          + ((m.observaciones||'').indexOf('Factura FAC-') === 0 ? ' — ' + escapeHtml(m.observaciones) : '');
       }
     }
 
@@ -5971,7 +5971,7 @@ async function confirmarAnulacion() {
               body: JSON.stringify({
                 to:      resp.correo,
                 subject: '⚠ Anulación de Salida de Inventario — ' + areaName,
-                html:    '<p>Estimado/a <strong>' + resp.nombre_completo + '</strong>,</p>'
+                html:    '<p>Estimado/a <strong>' + escapeHtml(resp.nombre_completo) + '</strong>,</p>'
                        + '<p>Se ha anulado una salida de inventario registrada para su área.</p>'
                        + '<table style="border-collapse:collapse;width:100%">'
                        + '<tr><td style="padding:6px;border:1px solid #ddd"><strong>Artículo</strong></td><td style="padding:6px;border:1px solid #ddd">' + nomArt + '</td></tr>'
@@ -6194,7 +6194,7 @@ async function onCambioAreaEditSalida() {
     const emps = await api('empleados','GET',null,'?id_area=eq.'+idArea+'&select=id_empleado,nombre_completo&order=nombre_completo.asc');
     selEmp.innerHTML = '<option value="">— Seleccionar empleado —</option>'
       + (emps||[]).map(function(e){
-        return '<option value="'+e.id_empleado+'">'+e.nombre_completo+'</option>';
+        return '<option value="'+e.id_empleado+'">'+escapeHtml(e.nombre_completo)+'</option>';
       }).join('');
   } catch(e) { console.warn('Error cargando empleados del Área:', e); }
 }
@@ -6727,7 +6727,7 @@ async function verFichaAjuste(tipoRegistro, idMovimiento, id_articulo) {
   const idEmpleadoReporta = tipoRegistro === 'ENTRADA' ? m.id_empleado : m.id_empleado_entrega;
   const empleados = id_area ? await api('empleados','GET',null,'?estatus=eq.ACTIVO&id_area=eq.'+id_area+'&order=nombre_completo.asc&select=id_empleado,nombre_completo').catch(function(){ return []; }) : [];
   const selEmp = document.getElementById('falt-empleado');
-  selEmp.innerHTML = empleados.map(function(e) { return '<option value="'+e.id_empleado+'"'+(e.id_empleado==idEmpleadoReporta?' selected':'')+'>'+e.nombre_completo+'</option>'; }).join('');
+  selEmp.innerHTML = empleados.map(function(e) { return '<option value="'+e.id_empleado+'"'+(e.id_empleado==idEmpleadoReporta?' selected':'')+'>'+escapeHtml(e.nombre_completo)+'</option>'; }).join('');
 
   await cargarUsuarioConfirmacionFaltante();
   _aplicarModoFaltante('ver', !!m.anulada);
@@ -6819,7 +6819,7 @@ async function onCambiarAreaFaltante() {
     obtenerStockArea(id_articulo, id_area)
   ]);
   selEmp.innerHTML = empleados.length
-    ? '<option value="">— Seleccionar empleado —</option>' + empleados.map(function(e) { return '<option value="'+e.id_empleado+'">'+e.nombre_completo+'</option>'; }).join('')
+    ? '<option value="">— Seleccionar empleado —</option>' + empleados.map(function(e) { return '<option value="'+e.id_empleado+'">'+escapeHtml(e.nombre_completo)+'</option>'; }).join('')
     : '<option value="">— Esta área no tiene empleados activos —</option>';
   infoEl.textContent = 'Stock disponible en esta área: ' + stockDisp + ' ' + (r?.unidad || 'UND');
 }
