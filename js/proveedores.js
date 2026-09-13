@@ -91,6 +91,17 @@ async function verFichaProveedor(id) {
   const p = proveedoresCache.find(function(x) { return x.id_proveedor === id; });
   if (!p) return;
 
+  // N° de Cuenta quedó cifrado -- se trae aparte, por RPC (el permiso VER
+  // ya se validó arriba).
+  try {
+    const rpcNumCta = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_numero_cuenta_proveedor', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_id_proveedor: p.id_proveedor })
+    });
+    if (rpcNumCta.ok) p.numero_cuenta = await rpcNumCta.json();
+  } catch(eNumCta) { console.warn('Error trayendo N° de Cuenta del proveedor:', eNumCta); }
+
   // Asegurar bancos en cache para mostrar nombres
   if (!_provBancosCache || !_provBancosCache.length) {
     try {
@@ -138,7 +149,7 @@ async function verFichaProveedor(id) {
       + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'
       + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Institución Financiera</div><div style="font-size:14px">' + ((_provBancosCache||[]).find(function(b){return b.id===p.id_banco;})?.nombre || '—') + '</div></div>'
       + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Tipo de Cuenta</div><div style="font-size:14px">' + (p.tipo_cuenta||'—') + '</div></div>'
-      + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Número de Cuenta</div><div style="font-size:14px;font-family:var(--font-mono)">' + (p.numero_cuenta||'—') + '</div></div>'
+      + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Número de Cuenta</div><div style="font-size:14px;font-family:var(--font-mono)">' + escapeHtml(p.numero_cuenta||'—') + '</div></div>'
       + '</div></div>' : '')
     // ── Pago Móvil (solo si "Transferencia" sigue marcado actualmente) ──
     + (aceptaTransferenciaActual && (p.pm_id_banco || p.pm_celular) ? '<div style="grid-column:1/-1;margin-top:12px;padding-top:12px;border-top:1px solid var(--borde)"><div style="font-size:10px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">📱 Pago Móvil</div>'
@@ -208,6 +219,18 @@ async function abrirProveedor(id) {
   if (!id && !puedo('PROVEEDORES','CREAR'))  { alert('No tiene permiso para registrar proveedores.'); return; }
 
   const p = id ? proveedoresCache.find(function(x) { return x.id_proveedor === id; }) : null;
+
+  // N° de Cuenta quedó cifrado -- se trae aparte, por RPC.
+  if (p) {
+    try {
+      const rpcNumCtaEdit = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_numero_cuenta_proveedor', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_id_proveedor: p.id_proveedor })
+      });
+      if (rpcNumCtaEdit.ok) p.numero_cuenta = await rpcNumCtaEdit.json();
+    } catch(eNumCtaEdit) { console.warn('Error trayendo N° de Cuenta del proveedor:', eNumCtaEdit); }
+  }
 
   document.getElementById('prov-modal-titulo').textContent   = p ? 'EDITAR PROVEEDOR' : 'NUEVO PROVEEDOR';
   document.getElementById('prov-id').value                   = p ? p.id_proveedor : '';
@@ -348,7 +371,6 @@ async function guardarProveedor() {
     // Datos bancarios
     id_banco:           parseInt(document.getElementById('prov-banco')?.value) || null,
     tipo_cuenta:        document.getElementById('prov-tipo-cuenta')?.value || null,
-    numero_cuenta:      document.getElementById('prov-num-cuenta')?.value || null,
     // Pago móvil
     pm_id_banco:        parseInt(document.getElementById('prov-pm-banco')?.value) || null,
     pm_ci:              document.getElementById('prov-pm-ci')?.value.trim().toUpperCase() || null,
@@ -360,8 +382,30 @@ async function guardarProveedor() {
   };
 
   try {
-    if (id) { await api('proveedores','PATCH',datos,'?id_proveedor=eq.'+id); okEl.textContent = '✓ Proveedor actualizado correctamente.'; }
-    else    { await api('proveedores','POST',datos);                          okEl.textContent = '✓ Proveedor registrado correctamente.'; }
+    var idProvFinal;
+    if (id) {
+      await api('proveedores','PATCH',datos,'?id_proveedor=eq.'+id);
+      idProvFinal = parseInt(id);
+      okEl.textContent = '✓ Proveedor actualizado correctamente.';
+    } else {
+      const resPostProv = await api('proveedores','POST',datos);
+      idProvFinal = resPostProv && resPostProv[0] ? resPostProv[0].id_proveedor : null;
+      okEl.textContent = '✓ Proveedor registrado correctamente.';
+    }
+
+    // N° de Cuenta (cifrado) -- por RPC aparte, ya que esa columna quedó
+    // bloqueada para escritura directa.
+    if (idProvFinal) {
+      const numCuentaProvFinal = document.getElementById('prov-num-cuenta')?.value || null;
+      try {
+        await fetch(SUPABASE_URL + '/rest/v1/rpc/guardar_numero_cuenta_proveedor', {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_id_proveedor: idProvFinal, p_numero_cuenta: numCuentaProvFinal })
+        });
+      } catch(eGuardarNumCta) { console.warn('Error guardando N° de Cuenta del proveedor:', eGuardarNumCta); }
+    }
+
     okEl.style.display = 'block';
     setTimeout(function() { cerrarModal('modal-proveedor'); renderProveedores(); }, 1200);
   } catch(err) { errEl.textContent = 'Error: ' + err.message; errEl.style.display = 'block'; }
