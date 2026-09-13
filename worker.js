@@ -34,6 +34,16 @@ export default {
     headers.set('Cloudflare-CDN-Cache-Control', 'no-store');
     headers.set('Pragma', 'no-cache');
     headers.set('Expires', '0');
+    // Cabeceras de seguridad -- se fijan aquí también (no solo en
+    // _headers) porque este Worker es quien de verdad controla la
+    // respuesta del documento principal; _headers puede o no aplicarse
+    // según cómo Cloudflare sirva los Static Assets en este proyecto.
+    headers.set('X-Frame-Options', 'SAMEORIGIN');
+    headers.set('X-Content-Type-Options', 'nosniff');
+    headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://fpqvgefclvrhfehtvkbd.supabase.co; connect-src 'self' https://fpqvgefclvrhfehtvkbd.supabase.co https://ve.dolarapi.com; frame-ancestors 'self'");
 
     return new Response(resp.body, { status: resp.status, statusText: resp.statusText, headers });
   }
