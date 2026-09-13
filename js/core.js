@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909028';
+const SYD_VERSION = '20260909029';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -1564,7 +1564,7 @@ async function renderDashboard() {
     let tasaValor = '—';
     if (ultimaTasa) {
       const t = await api('tasas', 'GET', null, `?id_tasa=eq.${ultimaTasa.id_tasa}&select=tipo_cambio,moneda_origen,moneda_destino`);
-      if (t.length > 0) tasaValor = parseFloat(t[0].tipo_cambio).toFixed(2);
+      if (t.length > 0) tasaValor = formatearTasaVE(t[0].tipo_cambio);
     }
 
     const hora = new Date().toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' });
@@ -2519,13 +2519,13 @@ async function renderTasas() {
       const arr  = n > 0 ? '▲' : n < 0 ? '▼' : '●';
       const sign = n > 0 ? '+' : '';
       return '<span style="color:' + col + ';font-size:13px;font-weight:600">'
-        + arr + ' ' + sign + parseFloat(pct).toFixed(2) + '%'
+        + arr + ' ' + sign + formatearMontoVE(pct) + '%'
         + '</span>'
-        + ' <span style="color:' + col + ';font-size:11px">(' + sign + parseFloat(abs).toFixed(4) + ' Bs)</span>';
+        + ' <span style="color:' + col + ';font-size:11px">(' + sign + formatearTasaVE(abs) + ' Bs)</span>';
     }
 
     function tarjeta(icono, nombre, val, cierre, fuente, color) {
-      const fmt  = val ? val.toFixed(4) : '—';
+      const fmt  = val ? formatearTasaVE(val) : '—';
       const vVar = varCalc(val, cierre);
       return '<div style="background:var(--gris1);border:1px solid var(--borde);border-radius:10px;padding:24px 28px;flex:1;min-width:240px;position:relative;overflow:hidden">'
         + '<div style="position:absolute;top:0;left:0;right:0;height:3px;background:' + color + '"></div>'
@@ -2570,7 +2570,7 @@ async function renderTasas() {
 
     function celdaHist(val, valAnterior) {
       if (val === null) return '<td style="text-align:center;color:#444;padding:12px 16px">—</td>';
-      const fmt = val.toFixed(4);
+      const fmt = formatearTasaVE(val);
       let varStr = '';
       if (valAnterior !== null) {
         const diff = val - valAnterior;
@@ -2578,7 +2578,7 @@ async function renderTasas() {
         const col  = diff > 0 ? '#68d391' : diff < 0 ? '#fc8181' : '#888';
         const arr  = diff > 0 ? '▲' : diff < 0 ? '▼' : '●';
         const sign = diff > 0 ? '+' : '';
-        varStr = '<div style="font-size:10px;color:' + col + ';margin-top:2px">' + arr + ' ' + sign + pct + '%</div>';
+        varStr = '<div style="font-size:10px;color:' + col + ';margin-top:2px">' + arr + ' ' + sign + formatearMontoVE(pct) + '%</div>';
       }
       return '<td style="text-align:center;padding:12px 16px">'
         + '<div style="font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--texto)">' + fmt + '</div>'
@@ -2639,7 +2639,7 @@ async function renderTasas() {
       function celdaProx(val, color) {
         if (!val) return '<div style="color:#444;font-size:13px">—</div>';
         return '<div style="font-family:var(--font-mono);font-size:22px;font-weight:700;color:' + color + '">'
-          + val.toFixed(4) + ' <span style="font-size:11px;color:#555;font-weight:400">Bs</span></div>';
+          + formatearTasaVE(val) + ' <span style="font-size:11px;color:#555;font-weight:400">Bs</span></div>';
       }
 
       proximaHTML = '<div id="seccion-proxima-tasa" style="background:var(--gris1);border:1px solid var(--borde);border-radius:8px;padding:20px 24px;margin-bottom:24px">'
@@ -2806,7 +2806,7 @@ async function consultarTasaPorFecha() {
         + '<div style="font-family:var(--font-display);font-size:17px;letter-spacing:1px;color:var(--texto)">' + nombre + '</div>'
         + '</div>'
         + '<div style="font-family:var(--font-mono);font-size:32px;font-weight:700;color:' + color + '">'
-        + val.toFixed(4) + ' <span style="font-size:13px;color:#555;font-weight:400">Bs</span>'
+        + formatearTasaVE(val) + ' <span style="font-size:13px;color:#555;font-weight:400">Bs</span>'
         + '</div></div>'
         + '<div style="font-size:10px;color:#555;margin-top:8px">🌐 ve.dolarapi.com</div>'
         + '</div>';
