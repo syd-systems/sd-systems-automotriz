@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909037';
+const SYD_VERSION = '20260909038';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -832,10 +832,7 @@ function mostrarAvisoInactividad() {
 async function cerrarSesionInactividad() {
   const correo = sesionActual?.correo_usuario;
   try {
-    if (correo) await api('usuarios', 'PATCH', {
-      sesion_activa: false,
-      ultima_desconexion: new Date().toISOString()
-    }, `?correo_usuario=eq.${encodeURIComponent(correo)}`);
+    if (correo) await actualizarMiSesion({ sesion_activa: false, marcar_ultima_desconexion: true });
   } catch(e) { console.error('Error marcando desconexión:', e); }
   limpiarSesionLocal();
   const errEl = document.getElementById('login-error');
@@ -903,9 +900,10 @@ async function verificarSesionActiva() {
     // ── CASO 1: Usuario desactivado → expulsar ──
     if (u.estado_usuario === 'INACTIVO') {
       console.warn('[polling] CASO 1 — usuario INACTIVO');
-      const correoActual = sesionActual.correo_usuario;
+      // Resetear la bandera ANTES de limpiar la sesión local -- el RPC
+      // necesita el JWT todavía válido para identificar de quién es la fila.
+      try { await actualizarMiSesion({ sesion_invalidada: false }); } catch(e) {}
       limpiarSesionLocal();
-      try { await api('usuarios', 'PATCH', { sesion_invalidada: false }, `?correo_usuario=eq.${encodeURIComponent(correoActual)}`); } catch(e) {}
       const errEl = document.getElementById('login-error');
       errEl.textContent = '🚫 Tu usuario fue desactivado por el administrador.';
       errEl.style.display = 'block';
@@ -919,9 +917,8 @@ async function verificarSesionActiva() {
     // Requiere AMBAS condiciones para evitar falsos positivos del beforeunload
     if (u.sesion_activa === false && u.sesion_invalidada === true) {
       console.warn('[polling] CASO 2 — sesion_activa:', u.sesion_activa, '| sesion_invalidada:', u.sesion_invalidada);
-      const correoActual = sesionActual.correo_usuario;
+      try { await actualizarMiSesion({ sesion_invalidada: false }); } catch(e) {}
       limpiarSesionLocal();
-      try { await api('usuarios', 'PATCH', { sesion_invalidada: false }, `?correo_usuario=eq.${encodeURIComponent(correoActual)}`); } catch(e) {}
       const errEl = document.getElementById('login-error');
       errEl.textContent = '🔒 Tu sesión fue cerrada por el administrador.';
       errEl.style.display = 'block';
@@ -946,8 +943,7 @@ async function verificarSesionActiva() {
           '?correo_usuario=eq.' + encodeURIComponent(sesionActual.correo_usuario) + '&activo=eq.true&select=acceso_tipo');
         modulosAcceso = accesos.map(a => a.acceso_tipo);
         cargarTasaIVAGlobal();
-        await api('usuarios', 'PATCH', { sesion_invalidada: false },
-          `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`);
+        await actualizarMiSesion({ sesion_invalidada: false });
       } catch(eP) {}
     }
 
@@ -956,8 +952,7 @@ async function verificarSesionActiva() {
     // que la lista de Usuarios pueda mostrar correctamente "En línea"
     // mientras la sesión siga activa, no solo en el momento del login.
     try {
-      await api('usuarios', 'PATCH', { ultima_conexion: new Date().toISOString() },
-        `?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`);
+      await actualizarMiSesion({ marcar_ultima_conexion: true });
     } catch(eHb) {}
   } catch(e) {}
 }
@@ -977,6 +972,32 @@ document.getElementById('login-clave').addEventListener('keydown', function(e) {
     iniciarSesion();
   }
 });
+
+// Actualiza columnas de sesión (sesion_activa, sesion_invalidada,
+// token_sesion, ultimo_acceso, ultima_conexion, ultima_desconexion) SOLO
+// de la propia fila del usuario logueado -- vía RPC (actualizar_mi_sesion),
+// nunca un PATCH directo. Con RLS activo, un usuario común no puede hacer
+// UPDATE directo sobre su propia fila en "usuarios" (eso permitiría, por
+// ejemplo, mandar {"administrador":true} en el mismo PATCH) -- el RPC
+// solo puede tocar estas columnas de sesión, nunca "administrador" ni
+// "contrasena".
+async function actualizarMiSesion(opts) {
+  opts = opts || {};
+  try {
+    await fetch(SUPABASE_URL + '/rest/v1/rpc/actualizar_mi_sesion', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        p_sesion_activa:             opts.sesion_activa ?? null,
+        p_sesion_invalidada:         opts.sesion_invalidada ?? null,
+        p_token_sesion:              opts.token_sesion ?? null,
+        p_marcar_ultimo_acceso:      !!opts.marcar_ultimo_acceso,
+        p_marcar_ultima_conexion:    !!opts.marcar_ultima_conexion,
+        p_marcar_ultima_desconexion: !!opts.marcar_ultima_desconexion
+      })
+    });
+  } catch(e) { console.warn('actualizarMiSesion:', e); }
+}
 
 async function iniciarSesion() {
   const correo = document.getElementById('login-correo').value.trim();
@@ -1076,11 +1097,7 @@ async function iniciarSesion() {
     const miToken = Math.random().toString(36).substr(2) + Date.now().toString(36);
     window._miTokenSesion = miToken;
     // Escribir token en BD ANTES de habilitar el polling
-    await fetch(SUPABASE_URL + '/rest/v1/usuarios?correo_usuario=eq.' + encodeURIComponent(correo), {
-      method: 'PATCH',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ sesion_activa: true, sesion_invalidada: false, ultimo_acceso: new Date().toISOString(), ultima_conexion: new Date().toISOString(), token_sesion: miToken })
-    });
+    await actualizarMiSesion({ sesion_activa: true, sesion_invalidada: false, token_sesion: miToken, marcar_ultimo_acceso: true, marcar_ultima_conexion: true });
     // Reiniciar polling DESPUÉS de confirmar el token en BD
     clearInterval(_pollingInterval);
     _pollingInterval = setInterval(verificarSesionActiva, 30000);
@@ -1439,11 +1456,7 @@ async function cerrarSesion() {
   if (!confirm('¿Desea cerrar sesión?')) return;
   const correo = sesionActual?.correo_usuario;
   try {
-    if (correo) await api('usuarios', 'PATCH', {
-      sesion_activa: false,
-      sesion_invalidada: false,
-      ultima_desconexion: new Date().toISOString()
-    }, `?correo_usuario=eq.${encodeURIComponent(correo)}`);
+    if (correo) await actualizarMiSesion({ sesion_activa: false, sesion_invalidada: false, marcar_ultima_desconexion: true });
   } catch(e) { console.error('Error cerrando sesión:', e); }
   limpiarSesionLocal();
   // Redirigir a landing page
