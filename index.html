@@ -1523,19 +1523,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909056"></script>
-<script src="js/parametros.js?v=20260909056"></script>
-<script src="js/empresas.js?v=20260909056"></script>
-<script src="js/ingresos.js?v=20260909056"></script>
-<script src="js/inventario.js?v=20260909056"></script>
-<script src="js/proveedores.js?v=20260909056"></script>
-<script src="js/clientes.js?v=20260909056"></script>
-<script src="js/ventas.js?v=20260909056"></script>
-<script src="js/contabilidad.js?v=20260909056"></script>
-<script src="js/egresos.js?v=20260909056"></script>
-<script src="js/vehiculos.js?v=20260909056"></script>
-<script src="js/catalogo.js?v=20260909056"></script>
-<script src="js/ordenes.js?v=20260909056"></script>
+<script src="js/core.js?v=20260909057"></script>
+<script src="js/parametros.js?v=20260909057"></script>
+<script src="js/empresas.js?v=20260909057"></script>
+<script src="js/ingresos.js?v=20260909057"></script>
+<script src="js/inventario.js?v=20260909057"></script>
+<script src="js/proveedores.js?v=20260909057"></script>
+<script src="js/clientes.js?v=20260909057"></script>
+<script src="js/ventas.js?v=20260909057"></script>
+<script src="js/contabilidad.js?v=20260909057"></script>
+<script src="js/egresos.js?v=20260909057"></script>
+<script src="js/vehiculos.js?v=20260909057"></script>
+<script src="js/catalogo.js?v=20260909057"></script>
+<script src="js/ordenes.js?v=20260909057"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -1744,53 +1744,56 @@
     <div class="modal-body">
 
       <div class="form-grid">
-        <div class="form-campo">
-          <label>Placa</label>
-          <input type="text" id="veh-placa" placeholder="Ej: ABC123" style="text-transform:uppercase">
+        <div class="form-campo form-full" style="display:grid;grid-template-columns:140px 110px 1fr;gap:14px">
+          <div>
+            <label>Placa</label>
+            <input type="text" id="veh-placa" placeholder="Ej: ABC123" style="text-transform:uppercase;width:100%" onblur="validarPlacaDuplicada()">
+            <div id="veh-placa-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un vehículo con esta placa.</div>
+          </div>
+          <div>
+            <label>Año</label>
+            <input type="number" id="veh-anio" min="1950" max="2030" style="width:100%">
+          </div>
+          <div>
+            <label>Marca</label>
+            <input type="text" id="veh-marca" placeholder="Ej: Toyota" style="width:100%">
+          </div>
         </div>
-        <div class="form-campo">
-          <label>Año</label>
-          <input type="number" id="veh-anio" min="1950" max="2030">
+        <div class="form-campo form-full" style="display:grid;grid-template-columns:1fr 140px 1fr;gap:14px">
+          <div>
+            <label>Modelo</label>
+            <input type="text" id="veh-modelo" placeholder="Ej: Corolla" style="width:100%">
+          </div>
+          <div>
+            <label>Color</label>
+            <input type="text" id="veh-color" placeholder="Ej: Blanco" style="width:100%">
+          </div>
+          <div>
+            <label>Tipo de Carrocería</label>
+            <select id="veh-carroceria" style="width:100%">
+              <option value="">Seleccionar...</option>
+              <option>SEDAN</option><option>SUV</option><option>PICKUP</option>
+              <option>HATCHBACK</option><option>COUPE</option><option>VAN</option>
+              <option>BUS</option><option>CAMIÓN</option><option>MOTO</option>
+            </select>
+          </div>
         </div>
-        <div class="form-campo">
-          <label>Marca</label>
-          <input type="text" id="veh-marca" placeholder="Ej: Toyota">
-        </div>
-        <div class="form-campo">
-          <label>Modelo</label>
-          <input type="text" id="veh-modelo" placeholder="Ej: Corolla">
-        </div>
-        <div class="form-campo">
-          <label>Color</label>
-          <input type="text" id="veh-color" placeholder="Ej: Blanco">
-        </div>
-        <div class="form-campo">
-          <label>Tipo de Carrocería</label>
-          <select id="veh-carroceria">
-            <option value="">Seleccionar...</option>
-            <option>SEDAN</option><option>SUV</option><option>PICKUP</option>
-            <option>HATCHBACK</option><option>COUPE</option><option>VAN</option>
-            <option>BUS</option><option>CAMIÓN</option><option>MOTO</option>
-          </select>
-        </div>
-        <div class="form-campo">
-          <label>Número de Motor</label>
-          <input type="text" id="veh-motor" placeholder="Número de motor">
-        </div>
-        <div class="form-campo">
-          <label>Número de Chasis</label>
-          <input type="text" id="veh-chasis" placeholder="VIN / Chasis">
-        </div>
-        <div class="form-campo">
-          <label>Kilometraje</label>
-          <input type="number" id="veh-km" min="0" placeholder="0">
-        </div>
-        <div class="form-campo">
-          <label>Estado</label>
-          <select id="veh-estado">
-            <option value="ACTIVO">Activo</option>
-            <option value="INACTIVO">Inactivo</option>
-          </select>
+        <div class="form-campo form-full" style="display:grid;grid-template-columns:1fr 1fr 140px;gap:14px">
+          <div>
+            <label>Serial Motor</label>
+            <input type="text" id="veh-motor" placeholder="Serial de motor" style="width:100%">
+          </div>
+          <div>
+            <label>Serial Chasis</label>
+            <input type="text" id="veh-chasis" placeholder="VIN / Chasis" style="width:100%">
+          </div>
+          <div>
+            <label>Estado</label>
+            <select id="veh-estado" style="width:100%">
+              <option value="ACTIVO">Activo</option>
+              <option value="INACTIVO">Inactivo</option>
+            </select>
+          </div>
         </div>
         <div class="form-campo form-full">
           <label>Cliente</label>
