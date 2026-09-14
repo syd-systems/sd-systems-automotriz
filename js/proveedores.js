@@ -266,7 +266,7 @@ async function abrirProveedor(id) {
   document.getElementById('prov-telefono').value             = p ? (p.telefono||'') : '';
   document.getElementById('prov-correo').value               = p ? (p.correo||'') : '';
   document.getElementById('prov-direccion').value            = p ? (p.direccion||'') : '';
-  document.getElementById('prov-moneda').value               = p ? (p.moneda_facturacion||'USD') : 'USD';
+  document.getElementById('prov-moneda').value               = p ? (p.moneda_facturacion||'VES') : 'VES';
   document.getElementById('prov-dias-credito').value         = p ? (p.dias_credito||0) : 0;
   document.getElementById('prov-limite-credito').value       = p ? (p.limite_credito||0) : 0;
   document.getElementById('prov-estado').value               = p ? (p.estado||'ACTIVO') : 'ACTIVO';
@@ -343,6 +343,19 @@ async function guardarProveedor() {
 
   if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
 
+  const telefonoVal = document.getElementById('prov-telefono').value.trim();
+  const correoVal   = document.getElementById('prov-correo').value.trim();
+  if (!telefonoVal) {
+    errEl.textContent = 'El Teléfono es obligatorio.'; errEl.style.display = 'block';
+    document.getElementById('prov-telefono').focus();
+    return;
+  }
+  if (!correoVal) {
+    errEl.textContent = 'El Correo Electrónico es obligatorio.'; errEl.style.display = 'block';
+    document.getElementById('prov-correo').focus();
+    return;
+  }
+
   // ── Validar datos bancarios (solo si se seleccionó banco) ──
   const id_bancoVal    = document.getElementById('prov-banco')?.value;
   const tipoCuentaVal = document.getElementById('prov-tipo-cuenta')?.value;
@@ -407,7 +420,7 @@ async function guardarProveedor() {
     telefono:           document.getElementById('prov-telefono').value.trim() || null,
     correo:             document.getElementById('prov-correo').value.trim() || null,
     direccion:          document.getElementById('prov-direccion').value.trim() || null,
-    moneda_facturacion: document.getElementById('prov-moneda').value || 'USD',
+    moneda_facturacion: document.getElementById('prov-moneda').value || 'VES',
     dias_credito:       parseInt(document.getElementById('prov-dias-credito').value) || 0,
     limite_credito:     parseFloat(document.getElementById('prov-limite-credito').value) || 0,
     estado:             document.getElementById('prov-estado').value || 'ACTIVO',
