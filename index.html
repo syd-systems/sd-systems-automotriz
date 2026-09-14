@@ -1523,19 +1523,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909053"></script>
-<script src="js/parametros.js?v=20260909053"></script>
-<script src="js/empresas.js?v=20260909053"></script>
-<script src="js/ingresos.js?v=20260909053"></script>
-<script src="js/inventario.js?v=20260909053"></script>
-<script src="js/proveedores.js?v=20260909053"></script>
-<script src="js/clientes.js?v=20260909053"></script>
-<script src="js/ventas.js?v=20260909053"></script>
-<script src="js/contabilidad.js?v=20260909053"></script>
-<script src="js/egresos.js?v=20260909053"></script>
-<script src="js/vehiculos.js?v=20260909053"></script>
-<script src="js/catalogo.js?v=20260909053"></script>
-<script src="js/ordenes.js?v=20260909053"></script>
+<script src="js/core.js?v=20260909054"></script>
+<script src="js/parametros.js?v=20260909054"></script>
+<script src="js/empresas.js?v=20260909054"></script>
+<script src="js/ingresos.js?v=20260909054"></script>
+<script src="js/inventario.js?v=20260909054"></script>
+<script src="js/proveedores.js?v=20260909054"></script>
+<script src="js/clientes.js?v=20260909054"></script>
+<script src="js/ventas.js?v=20260909054"></script>
+<script src="js/contabilidad.js?v=20260909054"></script>
+<script src="js/egresos.js?v=20260909054"></script>
+<script src="js/vehiculos.js?v=20260909054"></script>
+<script src="js/catalogo.js?v=20260909054"></script>
+<script src="js/ordenes.js?v=20260909054"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3593,14 +3593,16 @@
     </div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="form-campo">
-          <label>RIF</label>
-          <input type="text" id="prov-rif" placeholder="J-XXXXXXXX-X" style="text-transform:uppercase" onblur="validarRifProveedorDuplicado()">
-          <div id="prov-rif-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un proveedor con este RIF.</div>
-        </div>
-        <div class="form-campo">
-          <label>Nombre / Razón Social</label>
-          <input type="text" id="prov-nombre" placeholder="Nombre completo del proveedor">
+        <div class="form-campo form-full" style="display:grid;grid-template-columns:220px 1fr;gap:14px">
+          <div>
+            <label>RIF</label>
+            <input type="text" id="prov-rif" placeholder="J-XXXXXXXX-X" style="text-transform:uppercase;width:100%" onblur="validarRifProveedorDuplicado()">
+            <div id="prov-rif-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un proveedor con este RIF.</div>
+          </div>
+          <div>
+            <label>Nombre / Razón Social</label>
+            <input type="text" id="prov-nombre" placeholder="Nombre completo del proveedor" style="width:100%">
+          </div>
         </div>
         <div class="form-campo form-full" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
           <div>
