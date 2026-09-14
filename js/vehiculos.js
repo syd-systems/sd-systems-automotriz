@@ -576,6 +576,27 @@ function filtrarVehiculosPorPropietario(propId) {
   cargarVehiculos(null, propId || null);
 }
 
+// Validación en vivo de placa duplicada -- se dispara apenas el Usuario
+// sale del campo, en vez de esperar a que llene todo el formulario.
+async function validarPlacaDuplicada() {
+  const campo = document.getElementById('veh-placa');
+  const aviso = document.getElementById('veh-placa-aviso');
+  if (!campo || !aviso) return;
+  const placa = campo.value.trim().toUpperCase();
+  aviso.style.display = 'none';
+  campo.style.borderColor = '';
+  if (!placa) return;
+
+  const idVeh = document.getElementById('veh-id')?.value || null;
+  try {
+    const existe = await api('vehiculos', 'GET', null,
+      '?placa=eq.' + encodeURIComponent(placa) + (idVeh ? '&id_vehiculo=neq.' + idVeh : ''));
+    const yaExiste = existe && existe.length > 0;
+    campo.style.borderColor = yaExiste ? '#fc8181' : '';
+    aviso.style.display = yaExiste ? 'block' : 'none';
+  } catch(eValPlacaDup) { console.warn('Error validando placa:', eValPlacaDup); }
+}
+
 async function abrirVehiculo(id) {
   if (id && !puedo('VEHICULOS','EDITAR')) { alert('No tiene permiso para editar vehículos.'); return; }
   if (!id && !puedo('VEHICULOS','CREAR')) { alert('No tiene permiso para registrar vehículos.'); return; }
@@ -590,13 +611,16 @@ async function abrirVehiculo(id) {
   document.getElementById('veh-carroceria').value    = v ? (v.tipo_carroceria || '') : '';
   document.getElementById('veh-motor').value         = v ? (v.numero_motor || '')   : '';
   document.getElementById('veh-chasis').value        = v ? (v.numero_chasis || '')  : '';
-  document.getElementById('veh-km').value            = v ? (v.kilometraje || 0)     : 0;
   document.getElementById('veh-estado').value        = v ? v.estado_vehiculo        : 'ACTIVO';
   document.getElementById('veh-propietario').value   = v && v.id_cliente ? v.id_cliente : '';
   document.getElementById('veh-carnet-preview').style.display = 'none';
   document.getElementById('alerta-veh-ok').style.display  = 'none';
   document.getElementById('alerta-veh-err').style.display = 'none';
   document.getElementById('veh-fotos-preview').innerHTML  = '';
+  const avisoPlacaInit = document.getElementById('veh-placa-aviso');
+  if (avisoPlacaInit) avisoPlacaInit.style.display = 'none';
+  const campoPlacaInit = document.getElementById('veh-placa');
+  if (campoPlacaInit) campoPlacaInit.style.borderColor = '';
 
   // Mostrar carnet actual con opción de eliminar
   const carnetDiv = document.getElementById('veh-carnet-actual');
@@ -652,7 +676,6 @@ async function guardarVehiculo() {
   const carr     = document.getElementById('veh-carroceria').value.trim();
   const motor    = document.getElementById('veh-motor').value.trim();
   const chasis   = document.getElementById('veh-chasis').value.trim();
-  const km       = parseInt(document.getElementById('veh-km').value) || 0;
   const estado   = document.getElementById('veh-estado').value;
   const propId   = document.getElementById('veh-propietario').value || null;
   const carnetF  = document.getElementById('veh-carnet-file').files[0];
@@ -661,9 +684,57 @@ async function guardarVehiculo() {
   const errEl    = document.getElementById('alerta-veh-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
 
-  if (!placa || !marca || !modelo || !anio) {
-    errEl.textContent = 'Placa, marca, modelo y año son obligatorios.';
-    errEl.style.display = 'block'; return;
+  // Validación en orden -- cada campo se revisa antes de seguir al siguiente.
+  if (!placa) {
+    errEl.textContent = 'La Placa es obligatoria.'; errEl.style.display = 'block';
+    document.getElementById('veh-placa').focus();
+    return;
+  }
+  try {
+    const existePlacaDup = await api('vehiculos', 'GET', null,
+      '?placa=eq.' + encodeURIComponent(placa) + (id ? '&id_vehiculo=neq.' + id : ''));
+    if (existePlacaDup && existePlacaDup.length > 0) {
+      errEl.textContent = 'Ya existe un vehículo registrado con la placa ' + placa + '.';
+      errEl.style.display = 'block';
+      document.getElementById('veh-placa').focus();
+      return;
+    }
+  } catch(ePlacaDupGuardar) {}
+
+  if (!anio) {
+    errEl.textContent = 'El Año es obligatorio.'; errEl.style.display = 'block';
+    document.getElementById('veh-anio').focus();
+    return;
+  }
+  if (!marca) {
+    errEl.textContent = 'La Marca es obligatoria.'; errEl.style.display = 'block';
+    document.getElementById('veh-marca').focus();
+    return;
+  }
+  if (!modelo) {
+    errEl.textContent = 'El Modelo es obligatorio.'; errEl.style.display = 'block';
+    document.getElementById('veh-modelo').focus();
+    return;
+  }
+  if (!color) {
+    errEl.textContent = 'El Color es obligatorio.'; errEl.style.display = 'block';
+    document.getElementById('veh-color').focus();
+    return;
+  }
+  if (!carr) {
+    errEl.textContent = 'El Tipo de Carrocería es obligatorio.'; errEl.style.display = 'block';
+    document.getElementById('veh-carroceria').focus();
+    return;
+  }
+  if (!motor && !chasis) {
+    errEl.textContent = 'Debe ingresar al menos el Serial Motor o el Serial Chasis.'; errEl.style.display = 'block';
+    document.getElementById('veh-motor').focus();
+    return;
+  }
+  if (!propId) {
+    errEl.textContent = 'Debe seleccionar un Cliente.'; errEl.style.display = 'block';
+    document.getElementById('veh-propietario').focus();
+    return;
   }
 
   const btnGuardar = document.getElementById('btn-guardar-vehiculo');
@@ -677,7 +748,7 @@ async function guardarVehiculo() {
     const datos = {
       placa, marca, modelo, anio, color: color || null,
       tipo_carroceria: carr || null, numero_motor: motor || null,
-      numero_chasis: chasis || null, kilometraje: km,
+      numero_chasis: chasis || null,
       estado_vehiculo: estado,
       id_cliente: propId ? parseInt(propId) : null,
       foto_carnet: carnetUrl,
@@ -792,9 +863,8 @@ async function verFichaVehiculo(id) {
     + '<div style="font-size:12px;color:var(--suave)">' + (v.color || '') + ' · ' + (v.tipo_carroceria || '') + '</div>'
     + '</div></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Motor</div><div style="font-size:13px;font-family:var(--font-mono)">' + (v.numero_motor || '—') + '</div></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Chasis</div><div style="font-size:13px;font-family:var(--font-mono)">' + (v.numero_chasis || '—') + '</div></div>'
-    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Kilometraje</div><div style="font-size:13px">' + (v.kilometraje || 0).toLocaleString() + ' km</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Serial Motor</div><div style="font-size:13px;font-family:var(--font-mono)">' + (v.numero_motor || '—') + '</div></div>'
+    + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Serial Chasis</div><div style="font-size:13px;font-family:var(--font-mono)">' + (v.numero_chasis || '—') + '</div></div>'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Estado</div><span class="badge ' + (v.estado_vehiculo === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + v.estado_vehiculo + '</span></div>'
     + '</div>'
     + (prop ? '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:12px 16px;margin-bottom:20px">'
