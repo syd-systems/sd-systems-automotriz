@@ -369,7 +369,16 @@ async function eliminarPropietario(id, nombre) {
     await api('clientes', 'DELETE', null, '?id_cliente=eq.' + id);
     document.getElementById('contenido-principal').innerHTML = '';
     renderPropietarios();
-  } catch(e) { alert('Error al eliminar: ' + e.message); }
+  } catch(e) {
+    const msg = String(e.message || '');
+    if (msg.indexOf('vehiculos_id_cliente_fkey') !== -1 || msg.indexOf('vehiculos_id_propietario_fkey') !== -1 || /violates foreign key constraint.*vehiculos/i.test(msg)) {
+      alert('No se puede eliminar este cliente porque tiene Vehículos registrados a su nombre. Reasigne o elimine esos vehículos primero.');
+    } else if (/violates foreign key constraint/i.test(msg)) {
+      alert('No se puede eliminar este cliente porque tiene registros relacionados en otro módulo (Órdenes de Servicio, Facturas, etc.).');
+    } else {
+      alert('Error al eliminar: ' + msg);
+    }
+  }
 }
 
 async function verFichaPropietario(id) {
@@ -752,7 +761,8 @@ async function guardarVehiculo() {
       estado_vehiculo: estado,
       id_cliente: propId ? parseInt(propId) : null,
       foto_carnet: carnetUrl,
-      id_usuario: sesionActual.correo_usuario
+      id_usuario: sesionActual.correo_usuario,
+      id_empresa: _empresaActiva ? _empresaActiva.id_empresa : null
     };
 
     let vehId = id;
@@ -897,7 +907,7 @@ async function eliminarVehiculo(id, placa) {
     await api('vehiculos', 'DELETE', null, '?id_vehiculo=eq.' + id);
     document.getElementById('contenido-principal').innerHTML = '';
     renderVehiculos();
-  } catch(e) { alert('Error al eliminar: ' + e.message); }
+  } catch(e) { alert('Error al eliminar: ' + msgErr(e)); }
 }
 
 async function verFotosVehiculo(id) {
@@ -972,7 +982,7 @@ async function eliminarFotoEditar(idFoto, id_vehiculo) {
     } else {
       fotosDiv.innerHTML = '<div style="font-size:11px;color:var(--suave)">Sin fotos registradas</div>';
     }
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 
@@ -981,7 +991,7 @@ async function eliminarFotoFicha(idFoto, id_vehiculo) {
   try {
     await api('vehiculos_fotos', 'DELETE', null, '?id_foto=eq.' + idFoto);
     verFichaVehiculo(id_vehiculo);
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 
@@ -994,7 +1004,7 @@ async function eliminarCarnet(id_vehiculo, desdeEditar) {
     if (desdeEditar) {
       document.getElementById('veh-carnet-actual').innerHTML = '';
     }
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 async function eliminarDocPropietario(id_cliente, desdeEditar) {
@@ -1007,7 +1017,7 @@ async function eliminarDocPropietario(id_cliente, desdeEditar) {
       const div = document.getElementById('prop-foto-actual');
       if (div) div.innerHTML = '';
     }
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 // ─── VISOR DE IMAGEN ───
