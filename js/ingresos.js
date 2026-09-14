@@ -52,7 +52,7 @@ async function renderFacturas() {
       try { usuariosCache = await api('usuarios','GET',null,'?select=id_usuario,correo_usuario,nombre') || []; } catch(eUsu) { usuariosCache = []; }
     }
     const [facturas, tasas] = await Promise.all([
-      api('facturas','GET',null,'?order=fecha_emision.desc&select=*,emisores(nombre,rif),propietarios(nombre_completo,tipo_doc,numero_doc)'+emisorQ()),
+      api('facturas','GET',null,'?order=fecha_emision.desc&select=*,emisores(nombre,rif),clientes(nombre_completo,tipo_doc,numero_doc)'+emisorQ()),
       api('tasas','GET',null,'?moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
     facturasCache = facturas;
@@ -62,7 +62,7 @@ async function renderFacturas() {
     facturas.forEach(function(f) { if (resumen[f.estado]!==undefined) resumen[f.estado]++; });
     const filas = facturas.map(function(f) {
       const est = ESTADOS_FAC[f.estado] || { clase:'badge-gris', label:f.estado };
-      const prop   = f.propietarios;
+      const prop   = f.clientes;
       const vendedor = (usuariosCache.find(function(u) { return u.correo_usuario === f.id_usuario; }) || {}).nombre || f.id_usuario || '—';
       const identifCliente = prop ? ((prop.tipo_doc||'') + '-' + (prop.numero_doc||'')) : (f.receptor_rif || '');
       return '<tr data-id="' + f.id_factura + '">'
@@ -158,7 +158,7 @@ function filtrarTablaFacturas() {
     const matchDesde  = !desde || fechaFac >= desde;
     const matchHasta  = !hasta || fechaFac <= hasta;
     const matchBuscar = !buscar || [f.numero_factura||'', f.receptor_nombre||'',
-      f.emisores ? f.emisores.nombre : '', f.propietarios ? f.propietarios.nombre_completo : '']
+      f.emisores ? f.emisores.nombre : '', f.clientes ? f.clientes.nombre_completo : '']
       .some(function(s) { return s.toLowerCase().includes(buscar); });
     tr.style.display = matchEstado && matchDesde && matchHasta && matchBuscar ? '' : 'none';
   });
@@ -248,7 +248,7 @@ async function cargarOSParaFactura(id_empresa, idFacturaExcluir) {
   selOS.innerHTML = '<option value="">— Cargando Órdenes —</option>';
   try {
     const os = await api('ordenes_servicio','GET',null,
-      '?estado=eq.CERRADA&id_empresa=eq.'+id_empresa+'&select=id_orden,numero_os,fecha_entrada,total_usd,total_ves,estado,id_vehiculo,id_propietario,vehiculos(placa,marca,modelo),propietarios(nombre_completo,tipo_doc,numero_doc,tipo_contribuyente,direccion)&order=fecha_entrada.desc');
+      '?estado=eq.CERRADA&id_empresa=eq.'+id_empresa+'&select=id_orden,numero_os,fecha_entrada,total_usd,total_ves,estado,id_vehiculo,id_cliente,vehiculos(placa,marca,modelo),clientes(nombre_completo,tipo_doc,numero_doc,tipo_contribuyente,direccion)&order=fecha_entrada.desc');
     let osDisponibles = os;
     try {
       const facturadas = await api('facturas','GET',null,
@@ -261,7 +261,7 @@ async function cargarOSParaFactura(id_empresa, idFacturaExcluir) {
     } catch(e) {}
     selOS.innerHTML = '<option value="">— Seleccionar Orden —</option>'
       + osDisponibles.map(function(o) {
-          const veh = o.vehiculos, prop = o.propietarios;
+          const veh = o.vehiculos, prop = o.clientes;
           return '<option value="' + o.id_orden + '">'
             + o.numero_os + ' [' + (o.estado||'') + '] — '
             + (veh ? veh.placa + ' ' + veh.marca + ' ' + veh.modelo : '')
@@ -324,9 +324,9 @@ async function onSelOSFactura() {
     const [linServ, linRep, osData] = await Promise.all([
       api('os_servicios','GET',null,'?id_orden=eq.'+id_os+'&select=*'),
       api('os_mercancias','GET',null,'?id_orden=eq.'+id_os+'&select=*'),
-      api('ordenes_servicio','GET',null,'?id_orden=eq.'+id_os+'&select=*,vehiculos(placa,marca,modelo),propietarios(nombre_completo,tipo_doc,numero_doc,correo,telefono,direccion,tipo_contribuyente)'),
+      api('ordenes_servicio','GET',null,'?id_orden=eq.'+id_os+'&select=*,vehiculos(placa,marca,modelo),clientes(nombre_completo,tipo_doc,numero_doc,correo,telefono,direccion,tipo_contribuyente)'),
     ]);
-    const o = osData[0]||{}, prop = o.propietarios, veh = o.vehiculos;
+    const o = osData[0]||{}, prop = o.clientes, veh = o.vehiculos;
     if (prop) {
       document.getElementById('fac-receptor-nombre').value = prop.nombre_completo||'';
       document.getElementById('fac-receptor-rif').value    = (prop.tipo_doc&&prop.numero_doc) ? prop.tipo_doc+'-'+prop.numero_doc : '';
@@ -337,7 +337,7 @@ async function onSelOSFactura() {
       + '<div style="display:flex;gap:16px;flex-wrap:wrap">'
       + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">OS</div><div style="font-weight:600;color:var(--naranja)">' + o.numero_os + '</div></div>'
       + (veh ? '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Vehículo</div><div>' + veh.placa + ' · ' + veh.marca + ' ' + veh.modelo + '</div></div>' : '')
-      + (prop ? '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Propietario</div><div>' + escapeHtml(prop.nombre_completo) + '</div></div>' : '')
+      + (prop ? '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Cliente</div><div>' + escapeHtml(prop.nombre_completo) + '</div></div>' : '')
       + '</div></div>';
 
     var monedaLineas = document.getElementById('fac-moneda')?.value||'USD';
@@ -547,11 +547,11 @@ async function guardarFactura(emitir) {
     const tot = window._facTotales||{subtotal:0,iva:0,igtf:0,total:0,totVes:0};
     let idProp = null;
     if (id_os) {
-      try { const os=await api('ordenes_servicio','GET',null,'?id_orden=eq.'+id_os+'&select=id_propietario'); if(os.length) idProp=os[0].id_propietario; } catch(e) {}
+      try { const os=await api('ordenes_servicio','GET',null,'?id_orden=eq.'+id_os+'&select=id_cliente'); if(os.length) idProp=os[0].id_cliente; } catch(e) {}
     }
 
     const datos = {
-      id_orden:id_os, id_empresa:id_emisor, id_propietario:idProp,
+      id_orden:id_os, id_empresa:id_emisor, id_cliente:idProp,
       receptor_nombre:recNom, receptor_rif:recRif||null, receptor_direccion:recDir||null,
       receptor_tipo_contribuyente:document.getElementById('fac-receptor-tipo-contrib')?.value||null,
       moneda_cobro:document.getElementById('fac-moneda')?.value||'VES',
@@ -645,7 +645,7 @@ async function generarCxCyAsientoFactura(idFactura) {
     try {
       await api('cont_cxc','POST',{
         tipo:           'FACTURA',
-        id_propietario: fac.id_propietario,
+        id_cliente: fac.id_cliente,
         id_factura:     fac.id_factura,
         numero_doc:     fac.numero_factura,
         fecha_emision:  fac.fecha_emision,
@@ -1062,7 +1062,7 @@ async function generarCxCyAsientoFactura(idFactura) {
 async function verFichaFactura(id) {
   try {
     const [facArr] = await Promise.all([
-      api('facturas','GET',null,'?id_factura=eq.'+id+'&select=*,emisores(*),propietarios(nombre_completo,tipo_doc,numero_doc),cont_cxc(metodo_pago,referencia,fecha_cobro,pagado_usd,tasa_bcv,id_banco_origen,banco_origen:id_banco_origen(nombre))'),
+      api('facturas','GET',null,'?id_factura=eq.'+id+'&select=*,emisores(*),clientes(nombre_completo,tipo_doc,numero_doc),cont_cxc(metodo_pago,referencia,fecha_cobro,pagado_usd,tasa_bcv,id_banco_origen,banco_origen:id_banco_origen(nombre))'),
     ]);
     const f = facArr[0]; if (!f) return;
     let linServ=[], linRep=[];
