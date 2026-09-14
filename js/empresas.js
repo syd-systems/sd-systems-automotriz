@@ -116,7 +116,7 @@ async function eliminarEmisorFicha() {
     emisoresCache = [];
     cerrarModal('modal-ficha-emisor');
     await renderEmisores();
-  } catch(e) { alert('Error al eliminar: ' + e.message); }
+  } catch(e) { alert('Error al eliminar: ' + msgErr(e)); }
 }
 
 async function eliminarEmisor() {
@@ -147,7 +147,7 @@ async function eliminarEmisor() {
     await api('emisores', 'DELETE', null, '?id_empresa=eq.' + id);
     cerrarModal('modal-emisor');
     renderEmisores();
-  } catch(e) { alert('Error al eliminar: ' + e.message); }
+  } catch(e) { alert('Error al eliminar: ' + msgErr(e)); }
 }
 
 async function guardarEmisor() {
