@@ -1523,19 +1523,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909050"></script>
-<script src="js/parametros.js?v=20260909050"></script>
-<script src="js/empresas.js?v=20260909050"></script>
-<script src="js/ingresos.js?v=20260909050"></script>
-<script src="js/inventario.js?v=20260909050"></script>
-<script src="js/proveedores.js?v=20260909050"></script>
-<script src="js/clientes.js?v=20260909050"></script>
-<script src="js/ventas.js?v=20260909050"></script>
-<script src="js/contabilidad.js?v=20260909050"></script>
-<script src="js/egresos.js?v=20260909050"></script>
-<script src="js/vehiculos.js?v=20260909050"></script>
-<script src="js/catalogo.js?v=20260909050"></script>
-<script src="js/ordenes.js?v=20260909050"></script>
+<script src="js/core.js?v=20260909051"></script>
+<script src="js/parametros.js?v=20260909051"></script>
+<script src="js/empresas.js?v=20260909051"></script>
+<script src="js/ingresos.js?v=20260909051"></script>
+<script src="js/inventario.js?v=20260909051"></script>
+<script src="js/proveedores.js?v=20260909051"></script>
+<script src="js/clientes.js?v=20260909051"></script>
+<script src="js/ventas.js?v=20260909051"></script>
+<script src="js/contabilidad.js?v=20260909051"></script>
+<script src="js/egresos.js?v=20260909051"></script>
+<script src="js/vehiculos.js?v=20260909051"></script>
+<script src="js/catalogo.js?v=20260909051"></script>
+<script src="js/ordenes.js?v=20260909051"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -1643,16 +1643,16 @@
           </select>
         </div>
         <div class="form-campo">
-          <label>Número de Identificación (Solo Dígitos)</label>
-          <input type="text" id="prop-num-doc" placeholder="Ej: 12345678" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=6) consultarCedula(document.getElementById('prop-tipo-doc').value, this.value)"
+          <label>Número de Identificación</label>
+          <input type="text" id="prop-num-doc" placeholder="Solo Dígitos" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=6) consultarCedula(document.getElementById('prop-tipo-doc').value, this.value)"
             onblur="validarIdentificacionPropietarioDuplicada()"
             onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
-          <div id="prop-num-doc-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un propietario con esta identificación.</div>
+          <div id="prop-num-doc-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un cliente con esta identificación.</div>
           <div id="prop-cedula-info" style="grid-column:1/-1;display:none"></div>
         </div>
         <div class="form-campo form-full">
-          <label>Nombre / Apellido / Razón Social (Nombre Completo)</label>
-          <input type="text" id="prop-nombre" placeholder="Nombre completo del propietario" onblur="this.value=capitalizarNombre(this.value)">
+          <label>Nombre / Apellido / Razón Social</label>
+          <input type="text" id="prop-nombre" placeholder="Nombre Completo" onblur="this.value=capitalizarNombre(this.value)">
         </div>
         <div class="form-campo">
           <label>RIF</label>
@@ -1674,8 +1674,8 @@
           </select>
         </div>
         <div class="form-campo form-full">
-          <label>Dirección Fiscal (Dirección Completa)</label>
-          <input type="text" id="prop-direccion" placeholder="Dirección completa">
+          <label>Dirección Fiscal</label>
+          <input type="text" id="prop-direccion" placeholder="Dirección Completa">
         </div>
         <div class="form-campo form-full">
           <label>Empresa u Organización</label>
