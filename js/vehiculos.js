@@ -22,19 +22,10 @@ function formatearRifRegistroCivil(tipDoc, rifApi) {
 }
 
 async function consultarCedula(tipDoc, numDoc) {
-  const infoEl = document.getElementById('prop-cedula-info');
-  if (!infoEl) return;
-
-  if (!numDoc || numDoc.length < 5 || (tipDoc !== 'V' && tipDoc !== 'E')) {
-    infoEl.style.display = 'none';
-    return;
-  }
+  if (!numDoc || numDoc.length < 5 || (tipDoc !== 'V' && tipDoc !== 'E')) return;
 
   // Rellenar con ceros a la izquierda hasta 8 dígitos (requerido por la API)
   const numDocPadded = numDoc.replace(/\D/g, '').padStart(8, '0');
-
-  infoEl.innerHTML = '<div style="color:var(--suave);font-size:12px">🔍 Consultando...</div>';
-  infoEl.style.display = 'block';
 
   try {
     const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/consultar_cedula', {
@@ -54,10 +45,12 @@ async function consultarCedula(tipDoc, numDoc) {
         .filter(function(x) { return x && x.trim(); })
         .join(' ').trim();
       const rif    = d.rif || null;
-      const estado = d.cne ? d.cne.estado : null;
-      const municipio = d.cne ? d.cne.municipio : null;
+      const estadoUbicacion = d.cne ? d.cne.estado : null;
+      const municipioUbicacion = d.cne ? d.cne.municipio : null;
 
-      // Auto-llenar campos del formulario (siempre reemplaza con los datos encontrados)
+      // Auto-llenar campos del formulario, en silencio (sin mostrar ningún
+      // recuadro de información) -- siempre reemplaza con los datos
+      // encontrados.
       const campoNombre = document.getElementById('prop-nombre');
       if (campoNombre && nombre) {
         campoNombre.value = capitalizarNombre(nombre);
@@ -66,27 +59,14 @@ async function consultarCedula(tipDoc, numDoc) {
       if (campoRif && rif) {
         campoRif.value = formatearRifRegistroCivil(tipDoc, rif);
       }
-
-      infoEl.innerHTML =
-        '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.25);border-radius:6px;padding:10px 14px">'
-        + '<div style="font-size:10px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">📋 Datos encontrados en el registro civil</div>'
-        + '<div style="font-size:13px;font-weight:500;color:var(--texto);margin-bottom:3px">' + capitalizarNombre(nombre) + '</div>'
-        + (rif ? '<div style="font-size:11px;color:var(--suave);margin-bottom:2px">RIF: ' + formatearRifRegistroCivil(tipDoc, rif) + '</div>' : '')
-        + (estado ? '<div style="font-size:11px;color:var(--suave)">📍 ' + estado + (municipio ? ' · ' + municipio : '') + '</div>' : '')
-        + '<div style="font-size:10px;color:#555;margin-top:6px">ℹ️ Datos autocompletados. Verifique y complete manualmente.</div>'
-        + '</div>';
-    } else {
-      infoEl.innerHTML =
-        '<div style="background:rgba(100,100,100,0.08);border:1px solid var(--borde);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--suave)">'
-        + '⚠️ No se encontraron datos para esta cédula en el registro civil.'
-        + '</div>';
+      // Dirección: solo si el campo está vacío (no pisar algo que el
+      // Usuario ya haya escrito a mano).
+      const campoDireccion = document.getElementById('prop-direccion');
+      if (campoDireccion && !campoDireccion.value.trim() && (estadoUbicacion || municipioUbicacion)) {
+        campoDireccion.value = [municipioUbicacion, estadoUbicacion].filter(function(x) { return x; }).join(', ');
+      }
     }
-  } catch(e) {
-    infoEl.innerHTML =
-      '<div style="background:rgba(100,100,100,0.08);border:1px solid var(--borde);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--suave)">'
-      + '⚠️ No se pudo conectar al servicio de consulta.'
-      + '</div>';
-  }
+  } catch(e) { /* consulta silenciosa -- si falla, simplemente no se autocompleta */ }
 }
 
 // ── Subir archivo a Supabase Storage ──
