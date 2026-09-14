@@ -14,6 +14,19 @@ const SUPABASE_UPLOAD_URL  = SUPABASE_URL + '/storage/v1/object/sd-systems-fotos
 // "V004284964"), y a veces solo los dígitos (ej. "004284964") -- esta
 // función normaliza cualquiera de los 2 casos al formato correcto
 // "V-004284964", sin duplicar la letra.
+// Limpia los campos que se autocompletan con la consulta del Registro
+// Civil (Nombre, RIF, Dirección) -- se llama ANTES de cada consulta
+// nueva, para que no se quede pegada la información de una cédula
+// distinta que se haya consultado antes en el mismo formulario.
+function limpiarDatosRegistroCivilPropietario() {
+  const campoNombre = document.getElementById('prop-nombre');
+  const campoRif = document.getElementById('prop-rif-civil');
+  const campoDireccion = document.getElementById('prop-direccion');
+  if (campoNombre) campoNombre.value = '';
+  if (campoRif) campoRif.value = '';
+  if (campoDireccion) campoDireccion.value = '';
+}
+
 function formatearRifRegistroCivil(tipDoc, rifApi) {
   if (!rifApi) return null;
   const match = String(rifApi).match(/^([VEJGP])[-]?(\d+)$/i);
