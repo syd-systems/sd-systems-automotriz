@@ -577,7 +577,7 @@ async function eliminarParamItem() {
       _invCategoriasCache=[];
       cerrarModal('modal-param');
       if(typeof invRenderCategorias==='function') invRenderCategorias();
-    } catch(e) { alert('Error: '+e.message); } return;
+    } catch(e) { alert('Error: '+msgErr(e)); } return;
   }
   if (key === 'inv_articulos_tipo') {
     try {
@@ -586,7 +586,7 @@ async function eliminarParamItem() {
       await api('inv_articulos_tipo','DELETE',null,'?id_tipo=eq.'+id);
       cerrarModal('modal-param');
       if(typeof invRenderTipos==='function') invRenderTipos();
-    } catch(e) { alert('Error: '+e.message); } return;
+    } catch(e) { alert('Error: '+msgErr(e)); } return;
   }
   // Validar dependencias antes de eliminar
   if (key === 'areas') {
@@ -646,7 +646,7 @@ async function eliminarParamItem() {
     _paramAreasCache = []; // Invalidar cache areas
     cerrarModal('modal-param');
     mostrarTablaParam(key);
-  } catch(e) { alert('Error: '+e.message); }
+  } catch(e) { alert('Error: '+msgErr(e)); }
 }
 
 
@@ -1371,7 +1371,7 @@ async function eliminarEmpleado(id, nombre) {
   try {
     await api('empleados', 'DELETE', null, '?id_empleado=eq.' + id);
     renderEmpleados();
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 // ─── VALIDAR FECHA EGRESO SEGÚN ESTATUS ───
@@ -1428,7 +1428,7 @@ async function eliminarFotoPerfilEmp(idFoto, id_empleado) {
         div.innerHTML = '<div style="font-size:11px;color:var(--suave)">Sin fotos registradas</div>';
       }
     }
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 // ─── ELIMINAR FOTO EMPLEADO ───
@@ -1439,7 +1439,7 @@ async function eliminarFotoEmp(id) {
     const emp = empleadosCache.find(function(x) { return x.id_empleado == id; });
     if (emp) emp.foto_documento = null;
     document.getElementById('emp-foto-actual').innerHTML = '';
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
 
