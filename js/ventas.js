@@ -145,7 +145,7 @@ async function renderVentasListado() {
   try {
     const filtroEmpresa = _empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : '';
     const ventas = await api('ventas', 'GET', null,
-      '?order=fecha_registro.desc&select=*,clientes(nombre_apellido,condicion_legal,identificacion),facturas(numero_factura)' + filtroEmpresa);
+      '?order=fecha_registro.desc&select=*,clientes(nombre_completo,tipo_doc,numero_doc),facturas(numero_factura)' + filtroEmpresa);
     ventasCache = ventas;
 
     // Catálogos de Categoría/Tipo de Artículo -- se cargan una sola vez
@@ -200,7 +200,7 @@ async function renderVentasListado() {
       const botonLabel = v.estado === 'BORRADOR' ? 'Editar / Facturar' : 'Ver';
       return '<tr data-id="' + v.id_venta + '">'
         + '<td style="font-family:var(--font-mono);font-size:12px">' + (v.facturas?.numero_factura || 'V-' + v.id_venta) + '</td>'
-        + '<td>' + (cli ? cli.nombre_apellido : '—') + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (cli ? cli.condicion_legal + '-' + cli.identificacion : '') + '</div></td>'
+        + '<td>' + (cli ? cli.nombre_completo : '—') + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (cli ? cli.tipo_doc + '-' + cli.numero_doc : '') + '</div></td>'
         + '<td style="font-size:12px">' + fmtFecha(v.fecha_venta) + '</td>'
         + '<td style="text-align:right;font-family:var(--font-mono)">' + totalDual + '</td>'
         + '<td><span class="badge ' + (ESTADO_BADGE[v.estado] || 'badge-gris') + '">' + (ESTADO_LABEL_VENTA[v.estado] || v.estado) + '</span></td>'
@@ -274,13 +274,13 @@ async function renderVentasEntregas() {
     let ventas;
     if (_entregaSubVista === 'pendientes') {
       ventas = await api('ventas','GET',null,
-        '?estado=eq.FACTURADA&entregado=eq.false&select=*,clientes(nombre_apellido,condicion_legal,identificacion,telefono_movil),facturas!inner(numero_factura,estado,fecha_emision,total_ves)&facturas.estado=eq.PAGADA&order=fecha_venta.asc');
+        '?estado=eq.FACTURADA&entregado=eq.false&select=*,clientes(nombre_completo,tipo_doc,numero_doc,telefono),facturas!inner(numero_factura,estado,fecha_emision,total_ves)&facturas.estado=eq.PAGADA&order=fecha_venta.asc');
     } else {
       let filtroFecha = '';
       if (_entregaHistDesde) filtroFecha += '&fecha_entrega=gte.'+_entregaHistDesde;
       if (_entregaHistHasta) filtroFecha += '&fecha_entrega=lte.'+_entregaHistHasta+'T23:59:59';
       ventas = await api('ventas','GET',null,
-        '?entregado=eq.true&select=*,clientes(nombre_apellido,condicion_legal,identificacion),facturas(numero_factura,fecha_emision,total_ves)'+filtroFecha+'&order=fecha_entrega.desc');
+        '?entregado=eq.true&select=*,clientes(nombre_completo,tipo_doc,numero_doc),facturas(numero_factura,fecha_emision,total_ves)'+filtroFecha+'&order=fecha_entrega.desc');
     }
 
     // Búsqueda por Cédula/RIF o Nombre del Cliente -- se filtra sobre lo ya
@@ -291,8 +291,8 @@ async function renderVentasEntregas() {
       ventas = ventas.filter(function(v) {
         const cli = v.clientes;
         if (!cli) return false;
-        return (cli.nombre_apellido||'').toLowerCase().includes(qBusq)
-            || (cli.identificacion||'').toLowerCase().includes(qBusq);
+        return (cli.nombre_completo||'').toLowerCase().includes(qBusq)
+            || (cli.numero_doc||'').toLowerCase().includes(qBusq);
       });
     }
 
@@ -320,7 +320,7 @@ async function renderVentasEntregas() {
       const cli = v.clientes;
       return '<tr>'
         + '<td style="font-family:var(--font-mono);font-size:12px">'+(v.facturas?.numero_factura||'—')+'</td>'
-        + '<td style="font-size:12px">'+(cli?cli.nombre_apellido:'—')+'<div style="font-size:10px;color:var(--suave);font-family:var(--font-mono)">'+(cli?cli.condicion_legal+'-'+cli.identificacion:'')+(cli?.telefono_movil?' · '+cli.telefono_movil:'')+'</div></td>'
+        + '<td style="font-size:12px">'+(cli?cli.nombre_completo:'—')+'<div style="font-size:10px;color:var(--suave);font-family:var(--font-mono)">'+(cli?cli.tipo_doc+'-'+cli.numero_doc:'')+(cli?.telefono?' · '+cli.telefono:'')+'</div></td>'
         + '<td><button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verListaArticulosVenta('+v.id_venta+')">📋 Lista</button></td>'
         + '<td style="text-align:right;font-family:var(--font-mono)">'
           + '<div style="color:var(--naranja)">'+fmtBs(v.facturas?.total_ves||0)+' Bs</div>'
@@ -442,8 +442,8 @@ function filtrarTablaVentas() {
     const matchCategoria = !categoria || (artsVenta && artsVenta.categorias.has(parseInt(categoria)));
     const matchTipo = !tipo || (artsVenta && artsVenta.tipos.has(parseInt(tipo)));
 
-    const nomCli = (v.clientes?.nombre_apellido || '').toLowerCase();
-    const idCli  = (v.clientes?.identificacion || '').toLowerCase();
+    const nomCli = (v.clientes?.nombre_completo || '').toLowerCase();
+    const idCli  = (v.clientes?.numero_doc || '').toLowerCase();
     const matchBuscar = !buscar || nomCli.includes(buscar) || idCli.includes(buscar);
 
     const fechaVenta = (v.fecha_venta || '').substring(0, 10);
@@ -474,7 +474,7 @@ async function abrirVenta(id) {
 
   // Cargar clientes si no están en cache
   if (!clientesCache || !clientesCache.length) {
-    try { clientesCache = await api('clientes','GET',null,'?estado=eq.ACTIVO&order=nombre_apellido.asc'); } catch(e) { clientesCache = []; }
+    try { clientesCache = await api('clientes','GET',null,'?activo=eq.true&order=nombre_completo.asc'); } catch(e) { clientesCache = []; }
   }
   if (!inventarioCache || !inventarioCache.length) {
     try { inventarioCache = await api('inventario_almacen','GET',null,'?order=nombre_articulo.asc&select=*' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')); } catch(e) { inventarioCache = []; }
@@ -577,7 +577,7 @@ async function cerrarModalVentaSinGuardar() {
 
 // Texto que se muestra (y se busca) por cada Cliente en el buscador.
 function _textoOpcionCliente(cl) {
-  return cl.nombre_apellido + ' (' + cl.condicion_legal + '-' + cl.identificacion + ')';
+  return cl.nombre_completo + ' (' + cl.tipo_doc + '-' + cl.numero_doc + ')';
 }
 
 // Renderiza las coincidencias (por nombre o identificación, en cualquier
@@ -588,7 +588,7 @@ function _renderOpcionesCliente(texto) {
   const t = (texto || '').toLowerCase().trim();
   const cont = document.getElementById('vta-cliente-opciones');
   const matches = clientesCache.filter(function(cl) {
-    return !t || cl.nombre_apellido.toLowerCase().includes(t) || (cl.identificacion || '').toLowerCase().includes(t);
+    return !t || cl.nombre_completo.toLowerCase().includes(t) || (cl.numero_doc || '').toLowerCase().includes(t);
   }).slice(0, 30);
   if (!matches.length) { cont.style.display = 'none'; cont.innerHTML = ''; return; }
   cont.innerHTML = matches.map(function(cl) {
@@ -621,11 +621,7 @@ function _onClienteRapidoCreadoVenta(cli) {
 // abre su ficha completa para editarlo. En ambos casos, al guardar se
 // actualiza el texto mostrado en el campo de Ventas (mismo callback).
 function _onClickBotonClienteVenta() {
-  if (window._vtaClienteSeleccionadoId) {
-    abrirCliente(window._vtaClienteSeleccionadoId, _onClienteRapidoCreadoVenta);
-  } else {
-    abrirClienteRapido(_onClienteRapidoCreadoVenta);
-  }
+  abrirPropietario(window._vtaClienteSeleccionadoId || null, _onClienteRapidoCreadoVenta);
 }
 
 function agregarLineaVenta() {
@@ -962,7 +958,7 @@ async function verFichaVenta(id) {
   };
   document.getElementById('ficha-venta-contenido').innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">'
-    + '<div><div style="font-weight:600;font-size:15px">'+(v.clientes?.nombre_apellido||'—')+'</div>'
+    + '<div><div style="font-weight:600;font-size:15px">'+(v.clientes?.nombre_completo||'—')+'</div>'
     + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">'+(v.clientes?'V-'+v.id_venta:'')+(v.facturas?.numero_factura?' — '+v.facturas.numero_factura:'')+'</div></div>'
     + '<span class="badge '+(ESTADO_BADGE[v.estado]||'badge-gris')+'">'+(ESTADO_LABEL_VENTA[v.estado]||v.estado)+'</span>'
     + '</div>'
@@ -1025,10 +1021,10 @@ async function facturarVenta(id) {
     const numeroFactura = 'FAC-'+anio+'-'+String(seq).padStart(4,'0');
 
     const datosFactura = {
-      id_orden: null, id_empresa: v.id_empresa, id_propietario: null, id_cliente: v.id_cliente,
+      id_orden: null, id_empresa: v.id_empresa, id_cliente: v.id_cliente,
       numero_factura: numeroFactura,
-      receptor_nombre: cli?.nombre_apellido || 'Cliente sin nombre',
-      receptor_rif: cli ? (cli.condicion_legal + '-' + cli.identificacion) : null,
+      receptor_nombre: cli?.nombre_completo || 'Cliente sin nombre',
+      receptor_rif: cli ? (cli.tipo_doc + '-' + cli.numero_doc) : null,
       receptor_direccion: cli?.direccion || null,
       receptor_tipo_contribuyente: null,
       moneda_cobro: v.moneda_cobro || 'USD',
