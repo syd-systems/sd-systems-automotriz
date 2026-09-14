@@ -249,7 +249,7 @@ async function eliminarCliente(id, nombre) {
   if (!puedo('CLIENTES','ELIMINAR')) { alert('No tiene permiso para eliminar clientes.'); return; }
   if (!confirm('¿Eliminar el cliente "' + nombre + '"?\\nEsta acción no se puede deshacer.')) return;
   try { await api('clientes','DELETE',null,'?id_cliente=eq.'+id); renderClientes(); }
-  catch(err) { alert('Error: ' + err.message); }
+  catch(err) { alert('Error: ' + msgErr(err)); }
 }
 
 // ═══════════════════════════════════════════════════════════════
