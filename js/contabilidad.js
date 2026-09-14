@@ -2089,7 +2089,7 @@ async function contRenderCxc() {
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const facturas = await api('facturas','GET',null,'?estado=neq.ANULADA&order=fecha_emision.desc&select=*,propietarios(nombre_completo),cont_cxc(pagado_usd,saldo_usd,fecha_cobro,monto_usd)'+emisorQ());
+    const facturas = await api('facturas','GET',null,'?estado=neq.ANULADA&order=fecha_emision.desc&select=*,clientes(nombre_completo),cont_cxc(pagado_usd,saldo_usd,fecha_cobro,monto_usd)'+emisorQ());
     const pendientes = facturas.filter(function(f){ return f.estado!=='PAGADA'&&f.estado!=='ANULADA'; });
     const cobradas   = facturas.filter(function(f){ return f.estado==='PAGADA'; });
 
@@ -2127,7 +2127,7 @@ async function contRenderCxc() {
       const propUSD = tusd > 0 ? cobUSD / tusd : 0;
       const cobVES  = totalmentePagada ? tves : tves * propUSD;
       const saldoVES = totalmentePagada ? 0 : tves - cobVES;
-      const cliente = f.propietarios ? f.propietarios.nombre_completo : (f.receptor_nombre || '--');
+      const cliente = f.clientes ? f.clientes.nombre_completo : (f.receptor_nombre || '--');
       return '<tr>'
         +'<td style="padding:4px 8px;font-size:10px;font-family:var(--font-mono);color:var(--naranja)">'+(f.numero_factura||'--')+'</td>'
         +'<td style="padding:4px 8px;font-size:11px">'+fmtFecha(f.fecha_emision)+'</td>'
