@@ -1523,19 +1523,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909051"></script>
-<script src="js/parametros.js?v=20260909051"></script>
-<script src="js/empresas.js?v=20260909051"></script>
-<script src="js/ingresos.js?v=20260909051"></script>
-<script src="js/inventario.js?v=20260909051"></script>
-<script src="js/proveedores.js?v=20260909051"></script>
-<script src="js/clientes.js?v=20260909051"></script>
-<script src="js/ventas.js?v=20260909051"></script>
-<script src="js/contabilidad.js?v=20260909051"></script>
-<script src="js/egresos.js?v=20260909051"></script>
-<script src="js/vehiculos.js?v=20260909051"></script>
-<script src="js/catalogo.js?v=20260909051"></script>
-<script src="js/ordenes.js?v=20260909051"></script>
+<script src="js/core.js?v=20260909052"></script>
+<script src="js/parametros.js?v=20260909052"></script>
+<script src="js/empresas.js?v=20260909052"></script>
+<script src="js/ingresos.js?v=20260909052"></script>
+<script src="js/inventario.js?v=20260909052"></script>
+<script src="js/proveedores.js?v=20260909052"></script>
+<script src="js/clientes.js?v=20260909052"></script>
+<script src="js/ventas.js?v=20260909052"></script>
+<script src="js/contabilidad.js?v=20260909052"></script>
+<script src="js/egresos.js?v=20260909052"></script>
+<script src="js/vehiculos.js?v=20260909052"></script>
+<script src="js/catalogo.js?v=20260909052"></script>
+<script src="js/ordenes.js?v=20260909052"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -1635,7 +1635,7 @@
       <div class="form-grid">
         <div class="form-campo">
           <label>Condición Legal</label>
-          <select id="prop-tipo-doc" onchange="consultarCedula(this.value, document.getElementById('prop-num-doc').value)">
+          <select id="prop-tipo-doc" onchange="limpiarDatosRegistroCivilPropietario(); consultarCedula(this.value, document.getElementById('prop-num-doc').value)">
             <option value="V">V — Venezolano</option>
             <option value="E">E — Extranjero</option>
             <option value="J">J — Jurídico</option>
@@ -1644,7 +1644,7 @@
         </div>
         <div class="form-campo">
           <label>Número de Identificación</label>
-          <input type="text" id="prop-num-doc" placeholder="Solo Dígitos" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=6) consultarCedula(document.getElementById('prop-tipo-doc').value, this.value)"
+          <input type="text" id="prop-num-doc" placeholder="Solo Dígitos" oninput="this.value=this.value.replace(/[^0-9]/g,''); limpiarDatosRegistroCivilPropietario(); if(this.value.length>=6) consultarCedula(document.getElementById('prop-tipo-doc').value, this.value)"
             onblur="validarIdentificacionPropietarioDuplicada()"
             onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
           <div id="prop-num-doc-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un cliente con esta identificación.</div>
