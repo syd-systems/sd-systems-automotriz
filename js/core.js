@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909058';
+const SYD_VERSION = '20260909059';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3313,6 +3313,28 @@ function msgErr(e) {
   const m = (e && e.message) || String(e || '');
   if (/Failed to fetch|NetworkError|Load failed/i.test(m)) {
     return 'Falla de Comunicación — verifique su conexión a Internet e intente de nuevo.';
+  }
+  // Postgres avisa "... violates foreign key constraint ... on table
+  // \"XXX\"" cuando no se puede eliminar/actualizar un registro porque
+  // otra tabla todavía lo referencia -- se traduce a un mensaje legible,
+  // nombrando el módulo relacionado en vez del nombre crudo de la tabla.
+  const fk = m.match(/violates foreign key constraint[^"]*"[^"]*"\s*on table\s*"([a-z_]+)"/i);
+  if (fk) {
+    const tablasAmigables = {
+      vehiculos: 'Vehículos', vehiculos_clientes_hist: 'Historial de Vehículos',
+      ordenes_servicio: 'Órdenes de Servicio', os_servicios: 'Servicios de una Orden',
+      os_mercancias: 'Artículos de una Orden', facturas: 'Facturas',
+      ventas: 'Ventas', venta_detalle: 'líneas de una Venta',
+      cont_cxc: 'Cuentas por Cobrar', cont_cxp: 'Cuentas por Pagar',
+      cont_asientos: 'Asientos Contables', cont_asiento_lineas: 'líneas de un Asiento',
+      stock_entradas: 'Entradas de Stock', stock_salidas: 'Salidas de Stock',
+      empleados: 'Empleados', usuarios: 'Usuarios', usuarios_permisos: 'Permisos de Usuarios',
+      proveedores: 'Proveedores', clientes: 'Clientes',
+      param_cuentas_bancarias_empresa: 'Cuentas Bancarias de la Empresa',
+      historial_claves: 'historial de contraseñas', tokens_recuperacion: 'recuperaciones de contraseña',
+    };
+    const tablaAmigable = tablasAmigables[fk[1]] || fk[1];
+    return 'No se puede eliminar -- todavía tiene registros relacionados en ' + tablaAmigable + '.';
   }
   return m;
 }
