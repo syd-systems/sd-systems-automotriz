@@ -214,6 +214,27 @@ function onCambioMetodoPagoAceptadoProv() {
   if (pmCont)    pmCont.style.display    = aceptaTransferencia ? '' : 'none';
 }
 
+// Validación en vivo de RIF duplicado -- se dispara apenas el Usuario
+// sale del campo, en vez de esperar a que llene todo el formulario.
+async function validarRifProveedorDuplicado() {
+  const campo = document.getElementById('prov-rif');
+  const aviso = document.getElementById('prov-rif-aviso');
+  if (!campo || !aviso) return;
+  const rif = campo.value.trim().toUpperCase();
+  aviso.style.display = 'none';
+  campo.style.borderColor = '';
+  if (!rif) return;
+
+  const idProv = document.getElementById('prov-id')?.value || null;
+  try {
+    const existe = await api('proveedores', 'GET', null,
+      '?rif=eq.' + encodeURIComponent(rif) + (idProv ? '&id_proveedor=neq.' + idProv : ''));
+    const yaExiste = existe && existe.length > 0;
+    campo.style.borderColor = yaExiste ? '#fc8181' : '';
+    aviso.style.display = yaExiste ? 'block' : 'none';
+  } catch(eValRifDup) { console.warn('Error validando RIF de proveedor:', eValRifDup); }
+}
+
 async function abrirProveedor(id) {
   if (id && !puedo('PROVEEDORES','EDITAR'))  { alert('No tiene permiso para editar proveedores.'); return; }
   if (!id && !puedo('PROVEEDORES','CREAR'))  { alert('No tiene permiso para registrar proveedores.'); return; }
@@ -236,6 +257,10 @@ async function abrirProveedor(id) {
   document.getElementById('prov-id').value                   = p ? p.id_proveedor : '';
   document.getElementById('prov-nombre').value               = p ? (p.nombre||'') : '';
   document.getElementById('prov-rif').value                  = p ? (p.rif||'') : '';
+  const avisoRifInit = document.getElementById('prov-rif-aviso');
+  if (avisoRifInit) avisoRifInit.style.display = 'none';
+  const campoRifInit = document.getElementById('prov-rif');
+  if (campoRifInit) campoRifInit.style.borderColor = '';
   document.getElementById('prov-tipo-contrib').value         = p ? (p.tipo_contribuyente||'') : '';
   document.getElementById('prov-tipo').value                 = p ? (p.tipo_proveedor||'NACIONAL') : 'NACIONAL';
   document.getElementById('prov-telefono').value             = p ? (p.telefono||'') : '';
@@ -292,10 +317,29 @@ async function abrirProveedor(id) {
 
 async function guardarProveedor() {
   const id     = document.getElementById('prov-id').value;
+  const rif    = document.getElementById('prov-rif').value.trim().toUpperCase();
   const nombre = document.getElementById('prov-nombre').value.trim();
   const okEl   = document.getElementById('alerta-prov-ok');
   const errEl  = document.getElementById('alerta-prov-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
+
+  // El RIF es el primer campo validado (obligatorio + sin duplicados),
+  // antes que el resto del formulario.
+  if (!rif) {
+    errEl.textContent = 'El RIF es obligatorio.'; errEl.style.display = 'block';
+    document.getElementById('prov-rif').focus();
+    return;
+  }
+  try {
+    const existeRifDup = await api('proveedores', 'GET', null,
+      '?rif=eq.' + encodeURIComponent(rif) + (id ? '&id_proveedor=neq.' + id : ''));
+    if (existeRifDup && existeRifDup.length > 0) {
+      errEl.textContent = 'Ya existe un proveedor registrado con el RIF ' + rif + '.';
+      errEl.style.display = 'block';
+      document.getElementById('prov-rif').focus();
+      return;
+    }
+  } catch(eRifDupGuardar) {}
 
   if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
 
