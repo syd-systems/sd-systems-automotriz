@@ -472,5 +472,5 @@ async function eliminarProveedor(id, nombre) {
   if (!puedo('PROVEEDORES','ELIMINAR')) { alert('No tiene permiso para eliminar proveedores.'); return; }
   if (!confirm('¿Eliminar el proveedor "' + nombre + '"?\\nEsta acción no se puede deshacer.')) return;
   try { await api('proveedores','DELETE',null,'?id_proveedor=eq.'+id); renderProveedores(); }
-  catch(err) { alert('Error: ' + err.message); }
+  catch(err) { alert('Error: ' + msgErr(err)); }
 }
