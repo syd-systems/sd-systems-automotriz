@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909047';
+const SYD_VERSION = '20260909048';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -124,7 +124,7 @@ const ESTATUS_EMP = {
 // ─── MÓDULOS DEL SISTEMA ───
 const TODOS_LOS_MODULOS = [
   { sigla: 'VEHICULOS',    nombre: 'Vehículos',          icono: '🚗' },
-  { sigla: 'PROPIETARIOS', nombre: 'Propietarios',       icono: '👤' },
+  { sigla: 'PROPIETARIOS', nombre: 'Clientes',       icono: '👤' },
   { sigla: 'SERVICIOS',    nombre: 'Órdenes de Servicio',icono: '🔧' },
   { sigla: 'CATALOGO',     nombre: 'Catálogo Servicios', icono: '🗂️' },
   { sigla: 'INVENTARIO',   nombre: 'Inventario',         icono: '📦' },
@@ -135,7 +135,6 @@ const TODOS_LOS_MODULOS = [
   { sigla: 'EMISORES',     nombre: 'Datos de Empresas',  icono: '🏢' },
   { sigla: 'EMPLEADOS',    nombre: 'Empleados',          icono: '👷' },
   { sigla: 'PROVEEDORES',  nombre: 'Proveedores',        icono: '🏭' },
-  { sigla: 'CLIENTES',     nombre: 'Clientes',           icono: '🧑‍🤝‍🧑' },
   { sigla: 'VENTAS',       nombre: 'Ventas',             icono: '🛒' },
   { sigla: 'TRIBUTOS',     nombre: 'Tributos',           icono: '📋' },
   { sigla: 'USUARIOS',     nombre: 'Usuarios',           icono: '🔐' },
@@ -152,9 +151,9 @@ const PERMISOS_POR_MODULO = {
   ],
   PROPIETARIOS: [
     { accion: 'VER',                  label: 'Ver Ficha' },
-    { accion: 'CREAR',                label: 'Registrar propietario' },
-    { accion: 'EDITAR',               label: 'Editar propietario' },
-    { accion: 'ELIMINAR',             label: 'Eliminar propietario' },
+    { accion: 'CREAR',                label: 'Registrar cliente' },
+    { accion: 'EDITAR',               label: 'Editar cliente' },
+    { accion: 'ELIMINAR',             label: 'Eliminar cliente' },
     { accion: 'VER_DATOS_PERSONALES', label: '🔒 Ver datos personales (teléfono, dirección)' },
   ],
   SERVICIOS: [
@@ -262,12 +261,6 @@ const PERMISOS_POR_MODULO = {
     { accion: 'CREAR',    label: 'Registrar proveedor' },
     { accion: 'EDITAR',   label: 'Editar proveedor' },
     { accion: 'ELIMINAR', label: 'Eliminar proveedor' },
-  ],
-  CLIENTES: [
-    { accion: 'VER',      label: 'Ver Ficha' },
-    { accion: 'CREAR',    label: 'Registrar cliente' },
-    { accion: 'EDITAR',   label: 'Editar cliente' },
-    { accion: 'ELIMINAR', label: 'Eliminar cliente' },
   ],
   VENTAS: [
     { accion: 'VER',      label: 'Ver Ficha' },
@@ -1551,7 +1544,6 @@ async function mostrarModulo(modulo, navEl) {
     case 'pagos':        renderPagos();        break;
     case 'empleados':    renderEmpleados();    break;
     case 'proveedores':  renderProveedores();  break;
-    case 'clientes':     renderClientes();     break;
     case 'ventas':       renderVentas();       break;
     case 'contabilidad': renderContabilidad(); break;
     default:             renderProximo(navEl?.querySelector('.nav-icono')?.textContent || '🔧',
@@ -1570,7 +1562,7 @@ async function renderDashboard() {
       api('usuarios', 'GET', null, '?select=id_usuario'),
       api('tasas', 'GET', null, '?select=id_tasa&order=fecha_registro.desc&limit=1'),
       api('vehiculos', 'GET', null, '?select=id_vehiculo'+emisorQ()),
-      api('propietarios', 'GET', null, '?select=id_propietario'+emisorQ()),
+      api('clientes', 'GET', null, '?select=id_cliente'+emisorQ()),
       api('ordenes_servicio', 'GET', null, '?select=id_orden&estado=neq.CERRADA&estado=neq.ANULADA'+emisorQ()),
     ]);
 
@@ -1617,7 +1609,7 @@ async function renderDashboard() {
         <div class="tarjeta-stat" onclick="mostrarModulo('propietarios', document.getElementById('nav-PROPIETARIOS'))">
           <div class="tarjeta-icono">👤</div>
           <div class="tarjeta-valor">${propietarios.length}</div>
-          <div class="tarjeta-nombre">Propietarios</div>
+          <div class="tarjeta-nombre">Clientes</div>
         </div>` : ''}
         ${puedo('SERVICIOS','VER') ? `
         <div class="tarjeta-stat" onclick="mostrarModulo('ordenes', document.getElementById('nav-SERVICIOS'))">
@@ -1652,7 +1644,7 @@ async function renderDashboard() {
               <tr><td>Login y Control de Accesos</td><td>Fase 1</td><td><span class="badge badge-verde">Activo</span></td></tr>
               <tr><td>Usuarios y Permisos</td><td>Fase 1</td><td><span class="badge badge-verde">Activo</span></td></tr>
               <tr><td>Tipos de Cambio</td><td>Fase 1</td><td><span class="badge badge-verde">Activo</span></td></tr>
-              <tr><td>Vehículos y Propietarios</td><td>Fase 2</td><td><span class="badge badge-verde">Activo</span></td></tr>
+              <tr><td>Vehículos y Clientes</td><td>Fase 2</td><td><span class="badge badge-verde">Activo</span></td></tr>
               <tr><td>Órdenes de Servicio</td><td>Fase 3</td><td><span class="badge badge-verde">Activo</span></td></tr>
               <tr><td>Facturación y Pagos</td><td>Fase 4</td><td><span class="badge badge-gris">Pendiente</span></td></tr>
               <tr><td>Empleados y Nómina</td><td>Fase 5</td><td><span class="badge badge-gris">Pendiente</span></td></tr>
