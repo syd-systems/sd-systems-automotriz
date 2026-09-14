@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909046';
+const SYD_VERSION = '20260909047';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -1714,7 +1714,7 @@ async function renderUsuarios(filtro) {
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
 
   try {
-    const usuarios = await api('usuarios', 'GET', null, '?select=id_usuario,correo_usuario,nombre,administrador,estado_usuario,cambiar_clave,fecha_registro,sesion_activa,sesion_invalidada,token_sesion,ultima_conexion,ultima_desconexion,id_empresa&order=fecha_registro.asc');
+    const usuarios = await api('usuarios', 'GET', null, '?select=id_usuario,correo_usuario,nombre,administrador,estado_usuario,cambiar_clave,fecha_registro,sesion_activa,sesion_invalidada,token_sesion,ultima_conexion,ultima_desconexion&order=fecha_registro.asc');
     usuariosCache = usuarios;
 
     // Cargar empresas de cada usuario (de la ficha de empleado)
@@ -1807,7 +1807,7 @@ async function renderUsuarios(filtro) {
 async function verFichaUsuario(id) {
   // Asegurar que el caché está cargado
   if (!usuariosCache || !usuariosCache.length) {
-    const us = await api('usuarios','GET',null,'?select=id_usuario,correo_usuario,nombre,administrador,estado_usuario,cambiar_clave,fecha_registro,sesion_activa,sesion_invalidada,token_sesion,ultima_conexion,ultima_desconexion,id_empresa&order=fecha_registro.asc');
+    const us = await api('usuarios','GET',null,'?select=id_usuario,correo_usuario,nombre,administrador,estado_usuario,cambiar_clave,fecha_registro,sesion_activa,sesion_invalidada,token_sesion,ultima_conexion,ultima_desconexion&order=fecha_registro.asc');
     usuariosCache = us;
   }
   const u = usuariosCache.find(function(x) { return x.id_usuario === parseInt(id); });
