@@ -1094,5 +1094,5 @@ async function eliminarVenta(id) {
     await api('ventas','DELETE',null,'?id_venta=eq.'+id);
     cerrarModal('modal-ficha-venta');
     renderVentas();
-  } catch(err) { alert('Error: ' + err.message); }
+  } catch(err) { alert('Error: ' + msgErr(err)); }
 }
