@@ -1523,19 +1523,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909052"></script>
-<script src="js/parametros.js?v=20260909052"></script>
-<script src="js/empresas.js?v=20260909052"></script>
-<script src="js/ingresos.js?v=20260909052"></script>
-<script src="js/inventario.js?v=20260909052"></script>
-<script src="js/proveedores.js?v=20260909052"></script>
-<script src="js/clientes.js?v=20260909052"></script>
-<script src="js/ventas.js?v=20260909052"></script>
-<script src="js/contabilidad.js?v=20260909052"></script>
-<script src="js/egresos.js?v=20260909052"></script>
-<script src="js/vehiculos.js?v=20260909052"></script>
-<script src="js/catalogo.js?v=20260909052"></script>
-<script src="js/ordenes.js?v=20260909052"></script>
+<script src="js/core.js?v=20260909053"></script>
+<script src="js/parametros.js?v=20260909053"></script>
+<script src="js/empresas.js?v=20260909053"></script>
+<script src="js/ingresos.js?v=20260909053"></script>
+<script src="js/inventario.js?v=20260909053"></script>
+<script src="js/proveedores.js?v=20260909053"></script>
+<script src="js/clientes.js?v=20260909053"></script>
+<script src="js/ventas.js?v=20260909053"></script>
+<script src="js/contabilidad.js?v=20260909053"></script>
+<script src="js/egresos.js?v=20260909053"></script>
+<script src="js/vehiculos.js?v=20260909053"></script>
+<script src="js/catalogo.js?v=20260909053"></script>
+<script src="js/ordenes.js?v=20260909053"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3593,35 +3593,38 @@
     </div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="form-campo form-full">
-          <label>Nombre / Razón Social *</label>
-          <input type="text" id="prov-nombre" placeholder="Nombre completo del proveedor">
-        </div>
         <div class="form-campo">
           <label>RIF</label>
-          <input type="text" id="prov-rif" placeholder="J-XXXXXXXX-X" style="text-transform:uppercase">
+          <input type="text" id="prov-rif" placeholder="J-XXXXXXXX-X" style="text-transform:uppercase" onblur="validarRifProveedorDuplicado()">
+          <div id="prov-rif-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un proveedor con este RIF.</div>
         </div>
         <div class="form-campo">
-          <label>Tipo de Contribuyente</label>
-          <select id="prov-tipo-contrib" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar —</option>
-            <option value="ORDINARIO">Contribuyente Ordinario</option>
-            <option value="ESPECIAL">Contribuyente Especial</option>
-            <option value="FORMAL">Contribuyente Formal</option>
-          </select>
+          <label>Nombre / Razón Social</label>
+          <input type="text" id="prov-nombre" placeholder="Nombre completo del proveedor">
         </div>
-        <div class="form-campo">
-          <label>Tipo de Proveedor</label>
-          <select id="prov-tipo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="NACIONAL">Nacional</option>
-            <option value="INTERNACIONAL">Internacional</option>
-          </select>
-        </div>
-        <div class="form-campo">
-          <label>Categorías de Servicios</label>
-          <select id="prov-categoria" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="">— Seleccionar —</option>
-          </select>
+        <div class="form-campo form-full" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+          <div>
+            <label>Tipo de Contribuyente</label>
+            <select id="prov-tipo-contrib" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+              <option value="">— Seleccionar —</option>
+              <option value="ORDINARIO">Contribuyente Ordinario</option>
+              <option value="ESPECIAL">Contribuyente Especial</option>
+              <option value="FORMAL">Contribuyente Formal</option>
+            </select>
+          </div>
+          <div>
+            <label>Tipo de Proveedor</label>
+            <select id="prov-tipo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+              <option value="NACIONAL">Nacional</option>
+              <option value="INTERNACIONAL">Internacional</option>
+            </select>
+          </div>
+          <div>
+            <label>Categorías de Servicios</label>
+            <select id="prov-categoria" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+              <option value="">— Seleccionar —</option>
+            </select>
+          </div>
         </div>
         <div class="form-campo">
           <label>Teléfono</label>
