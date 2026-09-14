@@ -29,7 +29,7 @@ async function renderOrdenes() {
   try {
     const [ordenes, tasas] = await Promise.all([
       api('ordenes_servicio', 'GET', null,
-        '?order=fecha_registro.desc&select=*,vehiculos(placa,marca,modelo),propietarios(nombre_completo)'+emisorQ()),
+        '?order=fecha_registro.desc&select=*,vehiculos(placa,marca,modelo),clientes(nombre_completo)'+emisorQ()),
       api('tasas', 'GET', null, '?order=fecha_registro.desc&limit=1&select=tipo_cambio'),
     ]);
     ordenesCache = ordenes;
@@ -51,7 +51,7 @@ async function renderOrdenes() {
     const filas = ordenesFiltradas.map(function(o) {
       const est = ESTADOS_OS[o.estado] || { clase: 'badge-gris', label: o.estado };
       const veh = o.vehiculos;
-      const prop = o.propietarios;
+      const prop = o.clientes;
       return '<tr data-id="' + o.id_orden + '" data-estado="' + (o.estado||'') + '" data-fecha="' + (o.fecha_entrada ? o.fecha_entrada.substring(0,10) : '') + '">'
         + '<td><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + (o.numero_os || '—') + '</div>'
         + '<div style="font-size:11px;color:var(--suave)">' + fmtFecha(o.fecha_entrada) + '</div></td>'
@@ -112,14 +112,14 @@ async function renderOrdenes() {
           return '<option value="' + e[0] + '"' + (window._osEstadoFiltro === e[0] ? ' selected' : '') + '>' + e[1].label + '</option>';
         }).join('')
       + '</select>'
-      + '<input type="text" id="os-buscar" placeholder="Buscar N° OS, vehículo, propietario..." '
+      + '<input type="text" id="os-buscar" placeholder="Buscar N° OS, vehículo, cliente..." '
       + 'value="' + (window._osBuscar || '') + '" '
       + 'oninput="buscarOS(this.value)" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:220px">'
       + (puedo('SERVICIOS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevaOS()">+ Nueva OS</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container"><table id="os-tabla"><thead><tr>'
-      + '<th>N° OS / Fecha</th><th>Vehículo</th><th>Propietario</th><th>Estado</th><th>Total</th><th>Acción</th>'
+      + '<th>N° OS / Fecha</th><th>Vehículo</th><th>Cliente</th><th>Estado</th><th>Total</th><th>Acción</th>'
       + '</tr></thead><tbody id="os-tbody">'
       + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">Sin órdenes registradas</td></tr>')
       + '</tbody></table></div></div>';
@@ -197,7 +197,7 @@ function filtrarTablaOS() {
     const matchBuscar = !hayBusqueda || [
       o.numero_os || '',
       (o.vehiculos ? o.vehiculos.placa + ' ' + o.vehiculos.marca + ' ' + o.vehiculos.modelo : ''),
-      (o.propietarios ? o.propietarios.nombre_completo : ''),
+      (o.clientes ? o.clientes.nombre_completo : ''),
     ].some(function(s) { return s.toLowerCase().includes(buscar); });
 
     const visible = matchEstado && matchDesde && matchHasta && matchBuscar;
@@ -450,7 +450,7 @@ async function abrirEditarOS(id) {
   // Refrescar OS desde Supabase antes de editar
   try {
     const fresh = await api('ordenes_servicio', 'GET', null,
-      '?id_orden=eq.' + id + '&select=*,vehiculos(placa,marca,modelo),propietarios(nombre_completo)');
+      '?id_orden=eq.' + id + '&select=*,vehiculos(placa,marca,modelo),clientes(nombre_completo)');
     if (fresh && fresh[0]) {
       const idx = ordenesCache.findIndex(function(x) { return x.id_orden === id; });
       if (idx >= 0) ordenesCache[idx] = fresh[0];
@@ -568,7 +568,7 @@ async function buscarVehiculoOS() {
   infoDiv.innerHTML = '<div class="loading" style="padding:12px"><div class="spinner"></div> Buscando...</div>';
   try {
     const vehs = await api('vehiculos', 'GET', null,
-      '?placa=eq.' + encodeURIComponent(placa) + '&select=*,propietarios(nombre_completo)');
+      '?placa=eq.' + encodeURIComponent(placa) + '&select=*,clientes(nombre_completo)');
     if (!vehs.length) {
       infoDiv.innerHTML = '<div style="color:#fc8181;font-size:12px;padding:8px">Vehículo no encontrado</div>';
       document.getElementById('os-veh-id').value = '';
@@ -587,7 +587,7 @@ function renderVehInfoOS(v) {
     + '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">'
     + '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + v.placa + '</div>'
     + '<div><div style="font-weight:500">' + v.marca + ' ' + v.modelo + '</div>'
-    + (v.propietarios ? '<div style="font-size:12px;color:var(--suave)">👤 ' + v.propietarios.nombre_completo + '</div>' : '')
+    + (v.clientes ? '<div style="font-size:12px;color:var(--suave)">👤 ' + v.clientes.nombre_completo + '</div>' : '')
     + '</div></div></div>';
 }
 
@@ -991,11 +991,11 @@ async function _guardarOSInterno() {
   const totServ = tasaUSDGuardar > 0 ? totServBs / tasaUSDGuardar : 0;
   const totRep  = tasaUSDGuardar > 0 ? totRepBs  / tasaUSDGuardar : 0;
 
-  // Obtener id_propietario del vehículo
-  let id_propietario = null;
+  // Obtener id_cliente del vehículo
+  let id_cliente = null;
   try {
-    const veh = await api('vehiculos', 'GET', null, '?id_vehiculo=eq.' + vehId + '&select=id_propietario');
-    if (veh.length) id_propietario = veh[0].id_propietario;
+    const veh = await api('vehiculos', 'GET', null, '?id_vehiculo=eq.' + vehId + '&select=id_cliente');
+    if (veh.length) id_cliente = veh[0].id_cliente;
   } catch(e) {}
 
   if (!_empresaActiva) { alert('No hay empresa activa. Por favor seleccione una empresa.'); return; }
@@ -1009,7 +1009,7 @@ async function _guardarOSInterno() {
     const datos = {
       id_empresa: _empresaActiva.id_empresa,
       id_vehiculo: parseInt(vehId),
-      id_propietario: id_propietario,
+      id_cliente: id_cliente,
       kilometraje_entrada: km,
       fecha_entrada:   fechaEnt,
       fecha_prometida: fechaProm    || null,
@@ -1183,7 +1183,7 @@ async function facturarOS(id, skipConfirm) {
   const textoOriginalBtn = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Procesando...'; }
   try {
-    const osRows = await api('ordenes_servicio','GET',null,'?id_orden=eq.'+id+'&select=*,propietarios(nombre_completo,tipo_doc,numero_doc,direccion)');
+    const osRows = await api('ordenes_servicio','GET',null,'?id_orden=eq.'+id+'&select=*,clientes(nombre_completo,tipo_doc,numero_doc,direccion)');
     const os = osRows && osRows[0];
     if (!os) throw new Error('Orden de Servicio no encontrada.');
     if (os.estado !== 'CERRADA') throw new Error('Solo se puede facturar una OS en estado Cerrada.');
@@ -1207,7 +1207,7 @@ async function facturarOS(id, skipConfirm) {
     }
 
     await cargarTasaIVAGlobal();
-    const prop = os.propietarios;
+    const prop = os.clientes;
     const subtotal = parseFloat(os.total_usd||0);
     const iva = parseFloat((subtotal * tasaIVAActual()).toFixed(2));
     const total = parseFloat((subtotal + iva).toFixed(2));
@@ -1221,7 +1221,7 @@ async function facturarOS(id, skipConfirm) {
     const numeroFactura = 'FAC-'+anio+'-'+String(seq).padStart(4,'0');
 
     const datosFactura = {
-      id_orden: id, id_empresa: os.id_empresa, id_propietario: os.id_propietario,
+      id_orden: id, id_empresa: os.id_empresa, id_cliente: os.id_cliente,
       numero_factura: numeroFactura,
       receptor_nombre: prop?.nombre_completo || 'Cliente sin nombre',
       receptor_rif: prop ? ((prop.tipo_doc||'')+'-'+(prop.numero_doc||'')) : null,
@@ -1327,7 +1327,7 @@ async function verFichaOS(id) {
   // Refrescar OS desde Supabase antes de mostrar
   try {
     const fresh = await api('ordenes_servicio', 'GET', null,
-      '?id_orden=eq.' + id + '&select=*,vehiculos(placa,marca,modelo),propietarios(nombre_completo)');
+      '?id_orden=eq.' + id + '&select=*,vehiculos(placa,marca,modelo),clientes(nombre_completo)');
     if (fresh && fresh[0]) {
       const idx = ordenesCache.findIndex(function(x) { return x.id_orden === id; });
       if (idx >= 0) ordenesCache[idx] = fresh[0];
@@ -1369,7 +1369,7 @@ async function verFichaOS(id) {
     const tasaParaLineas = (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' && tasaActualFicha) ? tasaActualFicha : tasaHistorica;
     const est = ESTADOS_OS[o.estado] || { clase: 'badge-gris', label: o.estado };
     const veh = o.vehiculos;
-    const prop = o.propietarios;
+    const prop = o.clientes;
 
     const tablaServ = linServ.length
       ? '<table style="width:100%;border-collapse:collapse;font-size:12px">'
@@ -1452,7 +1452,7 @@ async function verFichaOS(id) {
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
       + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Vehículo</div>'
       + '<div style="font-weight:500">' + (veh ? veh.placa + ' — ' + veh.marca + ' ' + veh.modelo : '—') + '</div></div>'
-      + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Propietario</div>'
+      + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Cliente</div>'
       + '<div>' + (prop ? prop.nombre_completo : '—') + '</div></div>'
       + '</div>'
 
