@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909055';
+const SYD_VERSION = '20260909056';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -975,10 +975,11 @@ document.getElementById('login-clave').addEventListener('keydown', function(e) {
 // ejemplo, mandar {"administrador":true} en el mismo PATCH) -- el RPC
 // solo puede tocar estas columnas de sesión, nunca "administrador" ni
 // "contrasena".
-async function actualizarMiSesion(opts) {
+async function actualizarMiSesion(opts, intentos) {
   opts = opts || {};
+  intentos = intentos === undefined ? 3 : intentos;
   try {
-    await fetch(SUPABASE_URL + '/rest/v1/rpc/actualizar_mi_sesion', {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/actualizar_mi_sesion', {
       method: 'POST',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -990,7 +991,19 @@ async function actualizarMiSesion(opts) {
         p_marcar_ultima_desconexion: !!opts.marcar_ultima_desconexion
       })
     });
-  } catch(e) { console.warn('actualizarMiSesion:', e); }
+    if (!res.ok) throw new Error('actualizar_mi_sesion respondió ' + res.status);
+  } catch(e) {
+    console.warn('actualizarMiSesion (quedan ' + intentos + ' intentos):', e);
+    // Reintentar -- crítico especialmente para escribir token_sesion en el
+    // login: si esta escritura falla en silencio por una conexión
+    // inestable, la base de datos se queda con el token de la sesión
+    // ANTERIOR, y cualquier verificación posterior expulsa al usuario
+    // pensando que inició sesión en otro dispositivo, aunque no sea así.
+    if (intentos > 0) {
+      await new Promise(function(r) { setTimeout(r, 800); });
+      return actualizarMiSesion(opts, intentos - 1);
+    }
+  }
 }
 
 async function iniciarSesion() {
