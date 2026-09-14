@@ -10,6 +10,17 @@ const SUPABASE_UPLOAD_URL  = SUPABASE_URL + '/storage/v1/object/sd-systems-fotos
 
 
 // ── Consultar cédula en cedula.com.ve ──
+// La API externa a veces devuelve el RIF ya con la letra pegada (ej.
+// "V004284964"), y a veces solo los dígitos (ej. "004284964") -- esta
+// función normaliza cualquiera de los 2 casos al formato correcto
+// "V-004284964", sin duplicar la letra.
+function formatearRifRegistroCivil(tipDoc, rifApi) {
+  if (!rifApi) return null;
+  const match = String(rifApi).match(/^([VEJGP])[-]?(\d+)$/i);
+  if (match) return match[1].toUpperCase() + '-' + match[2];
+  return tipDoc + '-' + rifApi;
+}
+
 async function consultarCedula(tipDoc, numDoc) {
   const infoEl = document.getElementById('prop-cedula-info');
   if (!infoEl) return;
@@ -53,14 +64,14 @@ async function consultarCedula(tipDoc, numDoc) {
       }
       const campoRif = document.getElementById('prop-rif-civil');
       if (campoRif && rif) {
-        campoRif.value = tipDoc + '-' + rif;
+        campoRif.value = formatearRifRegistroCivil(tipDoc, rif);
       }
 
       infoEl.innerHTML =
         '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.25);border-radius:6px;padding:10px 14px">'
         + '<div style="font-size:10px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">📋 Datos encontrados en el registro civil</div>'
         + '<div style="font-size:13px;font-weight:500;color:var(--texto);margin-bottom:3px">' + capitalizarNombre(nombre) + '</div>'
-        + (rif ? '<div style="font-size:11px;color:var(--suave);margin-bottom:2px">RIF: ' + tipDoc + '-' + rif + '</div>' : '')
+        + (rif ? '<div style="font-size:11px;color:var(--suave);margin-bottom:2px">RIF: ' + formatearRifRegistroCivil(tipDoc, rif) + '</div>' : '')
         + (estado ? '<div style="font-size:11px;color:var(--suave)">📍 ' + estado + (municipio ? ' · ' + municipio : '') + '</div>' : '')
         + '<div style="font-size:10px;color:#555;margin-top:6px">ℹ️ Datos autocompletados. Verifique y complete manualmente.</div>'
         + '</div>';
