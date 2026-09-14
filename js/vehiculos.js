@@ -118,7 +118,7 @@ async function renderPropietarios() {
   }
 
   const c = document.getElementById('contenido-principal');
-  c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando propietarios...</div>';
+  c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando clientes...</div>';
   await cargarPropietarios();
 }
 
@@ -137,7 +137,7 @@ async function cargarPropietarios(filtro) {
       + 'onkeyup="cargarPropietarios(this.value)" '
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();cargarPropietarios(this.value)}else if(event.key===\'Escape\'){this.value=\'\';cargarPropietarios(\'\')}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:250px">'
-      + (puedo('PROPIETARIOS','CREAR') ? '<button class="btn-primario" onclick="abrirPropietario(null)">+ Nuevo Propietario</button>' : '')
+      + (puedo('PROPIETARIOS','CREAR') ? '<button class="btn-primario" onclick="abrirPropietario(null)">+ Nuevo Cliente</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container" id="tabla-prop-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
       + '</div>';
@@ -149,12 +149,12 @@ async function cargarPropietarios(filtro) {
   try {
     let query = '?select=*&order=fecha_registro.desc' + emisorQ();
     if (filtro && filtro.trim()) query += '&or=(nombre_completo.ilike.*' + encodeURIComponent(filtro.trim()) + '*,numero_doc.ilike.*' + encodeURIComponent(filtro.trim()) + '*)';
-    const props = await api('propietarios', 'GET', null, query);
+    const props = await api('clientes', 'GET', null, query);
     propietariosCache = props;
 
-    const vehs = await api('vehiculos', 'GET', null, '?select=id_vehiculo,placa,marca,modelo,id_propietario'+emisorQ());
+    const vehs = await api('vehiculos', 'GET', null, '?select=id_vehiculo,placa,marca,modelo,id_cliente'+emisorQ());
     props.forEach(function(p) {
-      p.vehiculos = vehs.filter(function(v) { return v.id_propietario === p.id_propietario; });
+      p.vehiculos = vehs.filter(function(v) { return v.id_cliente === p.id_cliente; });
     });
 
     const filas = props.map(function(p) {
@@ -173,22 +173,22 @@ async function cargarPropietarios(filtro) {
         + '</div></div></td>'
         + '<td style="font-size:12px">' + (puedo('PROPIETARIOS','VER_DATOS_PERSONALES') ? (p.telefono || '—') : '🔒') + '</td>'
         + '<td style="font-size:12px">' + (puedo('PROPIETARIOS','VER_DATOS_PERSONALES') ? (p.correo || '—') : '🔒') + '</td>'
-        + '<td><span class="badge badge-naranja" style="cursor:pointer" onclick="verVehiculosPropietario(' + p.id_propietario + ')">' + vCount + ' veh.</span></td>'
+        + '<td><span class="badge badge-naranja" style="cursor:pointer" onclick="verVehiculosPropietario(' + p.id_cliente + ')">' + vCount + ' veh.</span></td>'
         + '<td style="font-size:11px;color:var(--suave)">' + (vList.length > 30 ? vList.substring(0,30)+'...' : vList) + '</td>'
         + '<td>'
         + '<div style="display:flex;gap:6px">'
-        + '<button class="btn-secundario" onclick="verFichaPropietario(' + p.id_propietario + ')">Ver</button>'
+        + '<button class="btn-secundario" onclick="verFichaPropietario(' + p.id_cliente + ')">Ver</button>'
         + '</div></td>'
         + '</tr>';
     }).join('');
 
     const contador = document.getElementById('prop-contador');
-    if (contador) contador.textContent = 'Propietarios (' + props.length + ')';
+    if (contador) contador.textContent = 'Clientes (' + props.length + ')';
 
     const tabla = document.getElementById('tabla-prop-cont');
     if (tabla) tabla.innerHTML =
-      '<table><thead><tr><th>Propietario</th><th>Teléfono</th><th>Correo</th><th>Vehículos</th><th>Placas</th><th>Acción</th></tr></thead>'
-      + '<tbody>' + (filas || '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--suave)">No hay propietarios registrados</td></tr>') + '</tbody>'
+      '<table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Correo</th><th>Vehículos</th><th>Placas</th><th>Acción</th></tr></thead>'
+      + '<tbody>' + (filas || '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--suave)">No hay clientes registrados</td></tr>') + '</tbody>'
       + '</table>';
 
   } catch(e) {
@@ -197,12 +197,39 @@ async function cargarPropietarios(filtro) {
   }
 }
 
-function abrirPropietario(id) {
+// Validación en vivo de identificación duplicada -- combina Condición
+// Legal + Número de Identificación (V-12345678 y E-12345678 son
+// personas distintas). Se dispara apenas el Usuario sale del campo.
+async function validarIdentificacionPropietarioDuplicada() {
+  const campo = document.getElementById('prop-num-doc');
+  const aviso = document.getElementById('prop-num-doc-aviso');
+  if (!campo || !aviso) return;
+  const numDoc = campo.value.trim();
+  aviso.style.display = 'none';
+  campo.style.borderColor = '';
+  if (!numDoc) return;
+
+  const tipoDoc = document.getElementById('prop-tipo-doc')?.value || 'V';
+  const idProp = document.getElementById('prop-id')?.value || null;
+  try {
+    const existe = await api('clientes', 'GET', null,
+      '?tipo_doc=eq.' + tipoDoc + '&numero_doc=eq.' + encodeURIComponent(numDoc)
+      + (idProp ? '&id_cliente=neq.' + idProp : ''));
+    const yaExiste = existe && existe.length > 0;
+    campo.style.borderColor = yaExiste ? '#fc8181' : '';
+    aviso.style.display = yaExiste ? 'block' : 'none';
+  } catch(eValPropDup) { console.warn('Error validando identificación de propietario:', eValPropDup); }
+}
+
+let _callbackPropietarioGuardado = null;
+
+function abrirPropietario(id, onGuardado) {
   if (id && !puedo('PROPIETARIOS','EDITAR')) { alert('No tiene permiso para editar propietarios.'); return; }
   if (!id && !puedo('PROPIETARIOS','CREAR')) { alert('No tiene permiso para registrar propietarios.'); return; }
-  const p = id ? propietariosCache.find(function(x) { return x.id_propietario === id; }) : null;
-  document.getElementById('modal-prop-titulo').textContent = p ? 'EDITAR PROPIETARIO' : 'NUEVO PROPIETARIO';
-  document.getElementById('prop-id').value          = p ? p.id_propietario : '';
+  _callbackPropietarioGuardado = typeof onGuardado === 'function' ? onGuardado : null;
+  const p = id ? propietariosCache.find(function(x) { return x.id_cliente === id; }) : null;
+  document.getElementById('modal-prop-titulo').textContent = p ? 'EDITAR CLIENTE' : 'NUEVO CLIENTE';
+  document.getElementById('prop-id').value          = p ? p.id_cliente : '';
   document.getElementById('prop-tipo-doc').value    = p ? p.tipo_doc        : 'V';
   document.getElementById('prop-num-doc').value     = p ? p.numero_doc      : '';
   document.getElementById('prop-nombre').value      = p ? p.nombre_completo : '';
@@ -210,13 +237,19 @@ function abrirPropietario(id) {
   document.getElementById('prop-telefono').value    = p ? (p.telefono || '') : '';
   document.getElementById('prop-correo').value      = p ? (p.correo || '')   : '';
   document.getElementById('prop-direccion').value   = p ? (p.direccion || '') : '';
+  document.getElementById('prop-estado').value      = p ? String(p.activo !== false) : 'true';
   document.getElementById('prop-empresa').value          = p ? (p.empresa || '')  : '';
   document.getElementById('prop-tipo-contribuyente').value = p ? (p.tipo_contribuyente || '') : '';
+  document.getElementById('prop-observaciones').value      = p ? (p.observaciones || '') : '';
   const propFotoPreview = document.getElementById('prop-foto-preview');
   propFotoPreview.src = p && p.foto_documento ? p.foto_documento : '';
   propFotoPreview.style.display = 'none';
   document.getElementById('alerta-prop-ok').style.display    = 'none';
   document.getElementById('alerta-prop-err').style.display   = 'none';
+  const avisoPropInit = document.getElementById('prop-num-doc-aviso');
+  if (avisoPropInit) avisoPropInit.style.display = 'none';
+  const campoPropInit = document.getElementById('prop-num-doc');
+  if (campoPropInit) campoPropInit.style.borderColor = '';
 
   // Mostrar foto actual del documento con opción de eliminar
   const propFotoActual = document.getElementById('prop-foto-actual');
@@ -224,7 +257,7 @@ function abrirPropietario(id) {
     if (p && p.foto_documento) {
       propFotoActual.innerHTML = '<div style="position:relative;display:inline-block">'
         + '<img src="' + p.foto_documento + '" onerror="imgError(this)" style="height:70px;border-radius:6px;border:1px solid var(--borde);cursor:pointer" onclick="abrirVisor(\'' + p.foto_documento + '\')">'
-        + '<button onclick="eliminarDocPropietario(' + (p ? p.id_propietario : 0) + ', true)" style="position:absolute;top:-6px;right:-6px;background:rgba(229,62,62,0.85);border:none;color:#fff;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center">✕</button>'
+        + '<button onclick="eliminarDocPropietario(' + (p ? p.id_cliente : 0) + ', true)" style="position:absolute;top:-6px;right:-6px;background:rgba(229,62,62,0.85);border:none;color:#fff;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center">✕</button>'
         + '</div>';
     } else {
       propFotoActual.innerHTML = '';
@@ -259,6 +292,18 @@ async function guardarPropietario() {
     errEl.style.display = 'block'; return;
   }
 
+  // Validar duplicado (Condición Legal + Identificación) -- respaldo por
+  // si nunca se disparó la validación en vivo del campo.
+  try {
+    const existePropDup = await api('clientes', 'GET', null,
+      '?tipo_doc=eq.' + tipDoc + '&numero_doc=eq.' + encodeURIComponent(numDoc)
+      + (id ? '&id_cliente=neq.' + id : ''));
+    if (existePropDup && existePropDup.length > 0) {
+      errEl.textContent = 'Ya existe un cliente registrado con ese documento (' + tipDoc + '-' + numDoc + ').';
+      errEl.style.display = 'block'; return;
+    }
+  } catch(ePropDup) {}
+
   // Capitalizar nombre correctamente
   const nombreFinal = capitalizarNombre(nombre);
 
@@ -267,7 +312,7 @@ async function guardarPropietario() {
   if (btnGuardar) { btnGuardar.textContent = 'GUARDANDO...'; btnGuardar.disabled = true; }
 
   try {
-    let fotoUrl = id ? (propietariosCache.find(function(p) { return p.id_propietario == id; })?.foto_documento || null) : null;
+    let fotoUrl = id ? (propietariosCache.find(function(p) { return p.id_cliente == id; })?.foto_documento || null) : null;
     if (fotoFile) fotoUrl = await subirFoto(fotoFile, 'propietarios');
 
     const datos = {
@@ -275,22 +320,34 @@ async function guardarPropietario() {
       rif: rif || null, telefono: tel || null, correo: correo || null,
       direccion: dir || null, empresa: emp || null,
       tipo_contribuyente: tipoContrib || null,
+      observaciones: document.getElementById('prop-observaciones').value.trim() || null,
+      activo: document.getElementById('prop-estado').value === 'true',
       foto_documento: fotoUrl, id_usuario: sesionActual.correo_usuario,
       id_empresa: _empresaActiva ? _empresaActiva.id_empresa : null
     };
 
+    let idFinal = id ? parseInt(id) : null;
     if (id) {
-      await api('propietarios', 'PATCH', datos, '?id_propietario=eq.' + id);
-      okEl.textContent = '✓ Propietario actualizado.';
+      await api('clientes', 'PATCH', datos, '?id_cliente=eq.' + id);
+      okEl.textContent = '✓ Cliente actualizado.';
     } else {
-      await api('propietarios', 'POST', datos);
-      okEl.textContent = '✓ Propietario registrado.';
+      const resPostProp = await api('clientes', 'POST', datos);
+      idFinal = resPostProp && resPostProp[0] ? resPostProp[0].id_cliente : null;
+      okEl.textContent = '✓ Cliente registrado.';
     }
     okEl.style.display = 'block';
+
+    const callbackProp = _callbackPropietarioGuardado;
+    _callbackPropietarioGuardado = null;
+
     setTimeout(function() {
       cerrarModal('modal-propietario');
-      document.getElementById('contenido-principal').innerHTML = '';
-      renderPropietarios();
+      if (callbackProp) {
+        callbackProp(Object.assign({ id_cliente: idFinal }, datos));
+      } else {
+        document.getElementById('contenido-principal').innerHTML = '';
+        renderPropietarios();
+      }
     }, 1200);
   } catch(e) {
     errEl.textContent = 'Error: ' + e.message;
@@ -302,10 +359,10 @@ async function guardarPropietario() {
 
 async function eliminarPropietario(id, nombre) {
   if (!puedo('PROPIETARIOS','ELIMINAR')) { alert('No tiene permiso para eliminar propietarios.'); return; }
-  if (!confirm('¿Eliminar al propietario "' + nombre + '"?\nVerifique que no tenga vehículos activos asignados.')) return;
+  if (!confirm('¿Eliminar al cliente "' + nombre + '"?\nVerifique que no tenga vehículos activos asignados.')) return;
   try {
-    await api('vehiculos_propietarios_hist', 'DELETE', null, '?id_propietario=eq.' + id);
-    await api('propietarios', 'DELETE', null, '?id_propietario=eq.' + id);
+    await api('vehiculos_clientes_hist', 'DELETE', null, '?id_cliente=eq.' + id);
+    await api('clientes', 'DELETE', null, '?id_cliente=eq.' + id);
     document.getElementById('contenido-principal').innerHTML = '';
     renderPropietarios();
   } catch(e) { alert('Error al eliminar: ' + e.message); }
@@ -313,12 +370,12 @@ async function eliminarPropietario(id, nombre) {
 
 async function verFichaPropietario(id) {
   if (!sesionActual?.administrador && !puedo('PROPIETARIOS','VER')) {
-    alert('No tiene permiso para ver la ficha del propietario.');
+    alert('No tiene permiso para ver la ficha del cliente.');
     return;
   }
-  const p = propietariosCache.find(function(x) { return x.id_propietario == id; });
+  const p = propietariosCache.find(function(x) { return x.id_cliente == id; });
   if (!p) return;
-  const vehs = await api('vehiculos', 'GET', null, '?id_propietario=eq.' + id + '&select=*');
+  const vehs = await api('vehiculos', 'GET', null, '?id_cliente=eq.' + id + '&select=*');
 
   const vehsHTML = vehs.length ? vehs.map(function(v) {
     return '<div style="background:var(--gris3);border-radius:6px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">'
@@ -382,7 +439,7 @@ async function renderVehiculos() {
 
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando vehículos...</div>';
-  propietariosSimple = await api('propietarios', 'GET', null, '?select=id_propietario,tipo_doc,numero_doc,nombre_completo&order=nombre_completo.asc'+emisorQ());
+  propietariosSimple = await api('clientes', 'GET', null, '?select=id_cliente,tipo_doc,numero_doc,nombre_completo&order=nombre_completo.asc'+emisorQ());
   await cargarVehiculos(null, null); // Sin filtros al cargar
 }
 
@@ -405,8 +462,8 @@ async function cargarVehiculos(filtro, propId) {
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:240px">'
       + '<select id="filtro-prop-veh" onchange="filtrarVehiculosPorPropietario(this.value || null)" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none">'
-      + '<option value="">Todos los propietarios</option>'
-      + propietariosSimple.map(function(p) { return '<option value="' + p.id_propietario + '">' + p.nombre_completo + '</option>'; }).join('')
+      + '<option value="">Todos los clientes</option>'
+      + propietariosSimple.map(function(p) { return '<option value="' + p.id_cliente + '">' + p.nombre_completo + '</option>'; }).join('')
       + '</select>'
       + (puedo('VEHICULOS','CREAR') ? '<button class="btn-primario" onclick="abrirVehiculo(null)">+ Nuevo Vehículo</button>' : '')
       + '</div></div>'
@@ -429,23 +486,23 @@ async function cargarVehiculos(filtro, propId) {
       const f = encodeURIComponent(filtro.trim());
       query += '&or=(placa.ilike.*' + f + '*,marca.ilike.*' + f + '*,modelo.ilike.*' + f + '*)';
     }
-    if (propId) query += '&id_propietario=eq.' + propId;
+    if (propId) query += '&id_cliente=eq.' + propId;
 
     const [vehs, todosProp, todasFotos] = await Promise.all([
       api('vehiculos', 'GET', null, query),
-      api('propietarios', 'GET', null, '?select=id_propietario,tipo_doc,numero_doc,nombre_completo'+emisorQ()),
+      api('clientes', 'GET', null, '?select=id_cliente,tipo_doc,numero_doc,nombre_completo'+emisorQ()),
       api('vehiculos_fotos', 'GET', null, '?select=id_vehiculo,url_foto,orden&order=orden.asc')
     ]);
 
     vehiculosCache = vehs;
 
     vehs.forEach(function(v) {
-      v.propietarios = todosProp.find(function(p) { return p.id_propietario === v.id_propietario; }) || null;
+      v.clientes = todosProp.find(function(p) { return p.id_cliente === v.id_cliente; }) || null;
       v.vehiculos_fotos = todasFotos.filter(function(f) { return f.id_vehiculo === v.id_vehiculo; });
     });
 
     const filas = vehs.map(function(v) {
-      const prop  = v.propietarios;
+      const prop  = v.clientes;
       const fotos = v.vehiculos_fotos ? v.vehiculos_fotos.sort(function(a,b){return a.orden-b.orden;}) : [];
       const foto  = fotos.length ? fotos[0].url_foto : null;
       return '<tr>'
@@ -464,7 +521,7 @@ async function cargarVehiculos(filtro, propId) {
         + (prop
           ? '<div style="font-size:12px;font-weight:500">' + prop.nombre_completo + '</div>'
           + '<div style="font-size:11px;color:var(--suave)">' + prop.tipo_doc + '-' + prop.numero_doc + '</div>'
-          : '<span style="color:#444;font-size:12px">Sin propietario</span>')
+          : '<span style="color:#444;font-size:12px">Sin cliente</span>')
         + '</td>'
         + '<td style="font-size:12px;text-align:center">' + fotos.length + ' 📷</td>'
         + '<td><span class="badge ' + (v.estado_vehiculo === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + v.estado_vehiculo + '</span></td>'
@@ -481,7 +538,7 @@ async function cargarVehiculos(filtro, propId) {
     const tabla = document.getElementById('tabla-vehiculos-cont');
     if (tabla) tabla.innerHTML =
       '<table><thead><tr>'
-      + '<th>Vehículo</th><th>Año</th><th>Color · Tipo</th><th>Propietario</th><th>Fotos</th><th>Estado</th><th>Acción</th>'
+      + '<th>Vehículo</th><th>Año</th><th>Color · Tipo</th><th>Cliente</th><th>Fotos</th><th>Estado</th><th>Acción</th>'
       + '</tr></thead>'
       + '<tbody>' + (filas || '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--suave)">No hay vehículos registrados</td></tr>') + '</tbody>'
       + '</table>';
@@ -531,7 +588,7 @@ async function abrirVehiculo(id) {
   document.getElementById('veh-chasis').value        = v ? (v.numero_chasis || '')  : '';
   document.getElementById('veh-km').value            = v ? (v.kilometraje || 0)     : 0;
   document.getElementById('veh-estado').value        = v ? v.estado_vehiculo        : 'ACTIVO';
-  document.getElementById('veh-propietario').value   = v && v.id_propietario ? v.id_propietario : '';
+  document.getElementById('veh-propietario').value   = v && v.id_cliente ? v.id_cliente : '';
   document.getElementById('veh-carnet-preview').style.display = 'none';
   document.getElementById('alerta-veh-ok').style.display  = 'none';
   document.getElementById('alerta-veh-err').style.display = 'none';
@@ -569,9 +626,9 @@ async function abrirVehiculo(id) {
 
   // Populate propietarios dropdown
   const sel = document.getElementById('veh-propietario');
-  sel.innerHTML = '<option value="">Sin propietario</option>'
+  sel.innerHTML = '<option value="">Sin cliente</option>'
     + propietariosSimple.map(function(p) {
-        return '<option value="' + p.id_propietario + '" ' + (v && v.id_propietario == p.id_propietario ? 'selected' : '') + '>'
+        return '<option value="' + p.id_cliente + '" ' + (v && v.id_cliente == p.id_cliente ? 'selected' : '') + '>'
           + p.tipo_doc + '-' + p.numero_doc + ' · ' + p.nombre_completo + '</option>';
       }).join('');
 
@@ -618,7 +675,7 @@ async function guardarVehiculo() {
       tipo_carroceria: carr || null, numero_motor: motor || null,
       numero_chasis: chasis || null, kilometraje: km,
       estado_vehiculo: estado,
-      id_propietario: propId ? parseInt(propId) : null,
+      id_cliente: propId ? parseInt(propId) : null,
       foto_carnet: carnetUrl,
       id_usuario: sesionActual.correo_usuario
     };
@@ -643,13 +700,13 @@ async function guardarVehiculo() {
 
     // Registrar en historial de propietarios si cambió
     if (propId && vehId) {
-      await api('vehiculos_propietarios_hist', 'PATCH', { activo: false, fecha_hasta: new Date().toISOString().split('T')[0] },
-        '?id_vehiculo=eq.' + vehId + '&activo=eq.true&id_propietario=neq.' + propId);
-      const histActivo = await api('vehiculos_propietarios_hist', 'GET', null,
+      await api('vehiculos_clientes_hist', 'PATCH', { activo: false, fecha_hasta: new Date().toISOString().split('T')[0] },
+        '?id_vehiculo=eq.' + vehId + '&activo=eq.true&id_cliente=neq.' + propId);
+      const histActivo = await api('vehiculos_clientes_hist', 'GET', null,
         '?id_vehiculo=eq.' + vehId + '&activo=eq.true&select=id_hist');
       if (!histActivo.length) {
-        await api('vehiculos_propietarios_hist', 'POST', {
-          id_vehiculo: parseInt(vehId), id_propietario: parseInt(propId),
+        await api('vehiculos_clientes_hist', 'POST', {
+          id_vehiculo: parseInt(vehId), id_cliente: parseInt(propId),
           fecha_desde: new Date().toISOString().split('T')[0], activo: true,
           id_usuario: sesionActual.correo_usuario
         });
@@ -680,13 +737,13 @@ async function verFichaVehiculo(id) {
   // Buscar directo en Supabase para tener datos completos
   let v = vehiculosCache.find(function(x) { return x.id_vehiculo == id; });
   if (!v) {
-    const res = await api('vehiculos', 'GET', null, '?id_vehiculo=eq.' + id + '&select=*,propietarios(id_propietario,tipo_doc,numero_doc,nombre_completo)');
+    const res = await api('vehiculos', 'GET', null, '?id_vehiculo=eq.' + id + '&select=*,clientes(id_cliente,tipo_doc,numero_doc,nombre_completo)');
     if (!res || !res.length) { alert('Vehículo no encontrado'); return; }
     v = res[0];
   }
   const [fotos, histProp] = await Promise.all([
     api('vehiculos_fotos', 'GET', null, '?id_vehiculo=eq.' + id + '&order=orden.asc'),
-    api('vehiculos_propietarios_hist', 'GET', null, '?id_vehiculo=eq.' + id + '&select=*,propietarios(nombre_completo,tipo_doc,numero_doc)&order=fecha_desde.desc')
+    api('vehiculos_clientes_hist', 'GET', null, '?id_vehiculo=eq.' + id + '&select=*,clientes(nombre_completo,tipo_doc,numero_doc)&order=fecha_desde.desc')
   ]);
 
   const fotosHTML = fotos.length
@@ -696,19 +753,19 @@ async function verFichaVehiculo(id) {
         }).join('')
     : '<div style="color:var(--suave);font-size:12px;margin-bottom:20px">Sin fotos registradas</div>';
 
-  // Solo mostrar propietarios anteriores (no el actual)
+  // Solo mostrar clientes anteriores (no el actual)
   const histAnterior = histProp.filter(function(h) { return !h.activo; });
   const histHTML = histAnterior.length
     ? histAnterior.map(function(h) {
-        const p = h.propietarios;
+        const p = h.clientes;
         return '<div style="padding:8px 0;border-bottom:1px solid var(--borde)">'
           + '<div style="font-size:12px;font-weight:500">' + (p ? p.nombre_completo : '—') + '</div>'
           + '<div style="font-size:11px;color:var(--suave);margin-top:3px">' + fmtFecha(h.fecha_desde) + ' → ' + (h.fecha_hasta ? fmtFecha(h.fecha_hasta) : 'Desconocido') + '</div>'
           + '</div>';
       }).join('')
-    : '<div style="color:var(--suave);font-size:12px">Sin propietarios anteriores</div>';
+    : '<div style="color:var(--suave);font-size:12px">Sin clientes anteriores</div>';
 
-  const prop = v.propietarios;
+  const prop = v.clientes;
   // Configurar botones footer
   var btnVehEditar = document.getElementById('ficha-veh-btn-editar');
   var btnVehElim   = document.getElementById('ficha-veh-btn-eliminar');
@@ -737,7 +794,7 @@ async function verFichaVehiculo(id) {
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Estado</div><span class="badge ' + (v.estado_vehiculo === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + v.estado_vehiculo + '</span></div>'
     + '</div>'
     + (prop ? '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:12px 16px;margin-bottom:20px">'
-      + '<div style="font-size:9px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Propietario Actual</div>'
+      + '<div style="font-size:9px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Cliente Actual</div>'
       + '<div style="font-weight:500">' + prop.nombre_completo + '</div>'
       + '<div style="font-size:11px;color:var(--suave)">' + prop.tipo_doc + '-' + prop.numero_doc + '</div>'
       + '</div>' : '')
@@ -746,7 +803,7 @@ async function verFichaVehiculo(id) {
     + fotosHTML
     + '</div>'
     + '<div style="width:100%;margin-top:20px">'
-    + '<div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Propietarios Anteriores</div>'
+    + '<div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Clientes Anteriores</div>'
     + histHTML
     + '</div>';
 
@@ -757,11 +814,11 @@ async function verFichaVehiculo(id) {
 
 async function eliminarVehiculo(id, placa) {
   if (!puedo('VEHICULOS','ELIMINAR')) { alert('No tiene permiso para eliminar vehículos.'); return; }
-  if (!confirm('¿Eliminar el vehículo con placa "' + placa + '"?\nSe eliminarán también sus fotos y el historial de propietarios.')) return;
+  if (!confirm('¿Eliminar el vehículo con placa "' + placa + '"?\nSe eliminarán también sus fotos y el historial de clientes.')) return;
   try {
     await Promise.all([
       api('vehiculos_fotos', 'DELETE', null, '?id_vehiculo=eq.' + id),
-      api('vehiculos_propietarios_hist', 'DELETE', null, '?id_vehiculo=eq.' + id),
+      api('vehiculos_clientes_hist', 'DELETE', null, '?id_vehiculo=eq.' + id),
     ]);
     await api('vehiculos', 'DELETE', null, '?id_vehiculo=eq.' + id);
     document.getElementById('contenido-principal').innerHTML = '';
@@ -866,11 +923,11 @@ async function eliminarCarnet(id_vehiculo, desdeEditar) {
   } catch(e) { alert('Error: ' + e.message); }
 }
 
-async function eliminarDocPropietario(id_propietario, desdeEditar) {
+async function eliminarDocPropietario(id_cliente, desdeEditar) {
   if (!confirm('¿Eliminar la foto del documento de identidad?')) return;
   try {
-    await api('propietarios', 'PATCH', { foto_documento: null }, '?id_propietario=eq.' + id_propietario);
-    const p = propietariosCache.find(function(x) { return x.id_propietario == id_propietario; });
+    await api('clientes', 'PATCH', { foto_documento: null }, '?id_cliente=eq.' + id_cliente);
+    const p = propietariosCache.find(function(x) { return x.id_cliente == id_cliente; });
     if (p) p.foto_documento = null;
     if (desdeEditar) {
       const div = document.getElementById('prop-foto-actual');
