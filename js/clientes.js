@@ -127,6 +127,10 @@ function abrirCliente(id, onGuardado) {
   document.getElementById('cli-observaciones').value           = x ? (x.observaciones||'') : '';
   document.getElementById('alerta-cli-ok').style.display     = 'none';
   document.getElementById('alerta-cli-err').style.display    = 'none';
+  const avisoCliInit = document.getElementById('cli-identificacion-aviso');
+  if (avisoCliInit) avisoCliInit.style.display = 'none';
+  const campoCliInit = document.getElementById('cli-identificacion');
+  if (campoCliInit) campoCliInit.style.borderColor = '';
 
   abrirModal('modal-cliente');
   focusFirstField('modal-cliente');
@@ -151,6 +155,31 @@ function _validarDatosCliente(prefijo, errEl, idExcluir) {
     nombre_apellido:     nombreApellido,
     _idExcluir:          idExcluir || null
   };
+}
+
+// Validación en vivo de identificación duplicada -- se dispara apenas el
+// Usuario sale del campo, en vez de esperar a que llene todo el
+// formulario y le dé a Guardar. Sirve para el modal completo (cli-) y
+// el modal rápido (clir-), ambos comparten el mismo patrón de campos.
+async function validarIdentificacionClienteDuplicada(prefijo) {
+  const campo = document.getElementById(prefijo + '-identificacion');
+  const aviso = document.getElementById(prefijo + '-identificacion-aviso');
+  if (!campo || !aviso) return;
+  const identificacion = campo.value.trim();
+  aviso.style.display = 'none';
+  campo.style.borderColor = '';
+  if (!identificacion || !/^\d{6,15}$/.test(identificacion)) return;
+
+  const condicionLegal = document.getElementById(prefijo + '-condicion-legal')?.value || 'V';
+  const idExcluir = document.getElementById(prefijo === 'cli' ? 'cli-id' : 'clir-id')?.value || null;
+  try {
+    const existe = await api('clientes', 'GET', null,
+      '?condicion_legal=eq.' + condicionLegal + '&identificacion=eq.' + identificacion
+      + (idExcluir ? '&id_cliente=neq.' + idExcluir : ''));
+    const yaExiste = existe && existe.length > 0;
+    campo.style.borderColor = yaExiste ? '#fc8181' : '';
+    aviso.style.display = yaExiste ? 'block' : 'none';
+  } catch(eValCliDup) { console.warn('Error validando identificación de cliente:', eValCliDup); }
 }
 
 async function _verificarDuplicadoCliente(condicionLegal, identificacion, idExcluir, errEl) {
@@ -245,6 +274,10 @@ function abrirClienteRapido(onCreado) {
   document.getElementById('clir-telefono-movil').value     = '';
   document.getElementById('alerta-clir-ok').style.display  = 'none';
   document.getElementById('alerta-clir-err').style.display = 'none';
+  const avisoClirInit = document.getElementById('clir-identificacion-aviso');
+  if (avisoClirInit) avisoClirInit.style.display = 'none';
+  const campoClirInit = document.getElementById('clir-identificacion');
+  if (campoClirInit) campoClirInit.style.borderColor = '';
 
   abrirModal('modal-cliente-rapido');
   focusFirstField('modal-cliente-rapido');
