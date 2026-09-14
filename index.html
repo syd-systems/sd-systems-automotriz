@@ -1239,7 +1239,7 @@
     <div class="patron"></div>
     <div class="info-titulo">SISTEMA DE<br>GESTIÓN<br>AUTOMOTRIZ</div>
     <ul class="modulos-lista">
-      <li><span class="icono">🚗</span> Vehículos y Propietarios</li>
+      <li><span class="icono">🚗</span> Vehículos y Clientes</li>
       <li><span class="icono">🔧</span> Órdenes de Servicio</li>
       <li><span class="icono">🧾</span> Facturación y Pagos</li>
       <li><span class="icono">👥</span> Empleados y Nómina</li>
@@ -1277,7 +1277,7 @@
         <span class="nav-icono">🚗</span> Vehículos
       </div>
       <div class="nav-item" id="nav-PROPIETARIOS" onclick="mostrarModulo('propietarios', this); cerrarMenuMovil()" style="display:none">
-        <span class="nav-icono">👤</span> Propietarios
+        <span class="nav-icono">👤</span> Clientes
       </div>
       <div class="nav-item" id="nav-SERVICIOS" onclick="mostrarModulo('ordenes', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">🔧</span> Órdenes de Servicio
@@ -1523,19 +1523,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909047"></script>
-<script src="js/parametros.js?v=20260909047"></script>
-<script src="js/empresas.js?v=20260909047"></script>
-<script src="js/ingresos.js?v=20260909047"></script>
-<script src="js/inventario.js?v=20260909047"></script>
-<script src="js/proveedores.js?v=20260909047"></script>
-<script src="js/clientes.js?v=20260909047"></script>
-<script src="js/ventas.js?v=20260909047"></script>
-<script src="js/contabilidad.js?v=20260909047"></script>
-<script src="js/egresos.js?v=20260909047"></script>
-<script src="js/vehiculos.js?v=20260909047"></script>
-<script src="js/catalogo.js?v=20260909047"></script>
-<script src="js/ordenes.js?v=20260909047"></script>
+<script src="js/core.js?v=20260909048"></script>
+<script src="js/parametros.js?v=20260909048"></script>
+<script src="js/empresas.js?v=20260909048"></script>
+<script src="js/ingresos.js?v=20260909048"></script>
+<script src="js/inventario.js?v=20260909048"></script>
+<script src="js/proveedores.js?v=20260909048"></script>
+<script src="js/clientes.js?v=20260909048"></script>
+<script src="js/ventas.js?v=20260909048"></script>
+<script src="js/contabilidad.js?v=20260909048"></script>
+<script src="js/egresos.js?v=20260909048"></script>
+<script src="js/vehiculos.js?v=20260909048"></script>
+<script src="js/catalogo.js?v=20260909048"></script>
+<script src="js/ordenes.js?v=20260909048"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -1627,14 +1627,14 @@
 <div class="modal-overlay" id="modal-propietario">
   <div class="modal" style="max-width:750px">
     <div class="modal-header">
-      <h3 id="modal-prop-titulo">NUEVO PROPIETARIO</h3>
+      <h3 id="modal-prop-titulo">NUEVO CLIENTE</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-propietario')">✕</button>
     </div>
     <div class="modal-body">
 
       <div class="form-grid">
         <div class="form-campo">
-          <label>Tipo Documento</label>
+          <label>Condición Legal</label>
           <select id="prop-tipo-doc" onchange="consultarCedula(this.value, document.getElementById('prop-num-doc').value)">
             <option value="V">V — Venezolano</option>
             <option value="E">E — Extranjero</option>
@@ -1643,14 +1643,15 @@
           </select>
         </div>
         <div class="form-campo">
-          <label>Número de Documento</label>
-          <input type="text" id="prop-num-doc" placeholder="Ej: 12345678"
-            oninput="if(this.value.length>=6) consultarCedula(document.getElementById('prop-tipo-doc').value, this.value)"
+          <label>Número de Identificación (Solo Dígitos)</label>
+          <input type="text" id="prop-num-doc" placeholder="Ej: 12345678" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=6) consultarCedula(document.getElementById('prop-tipo-doc').value, this.value)"
+            onblur="validarIdentificacionPropietarioDuplicada()"
             onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
+          <div id="prop-num-doc-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un propietario con esta identificación.</div>
           <div id="prop-cedula-info" style="grid-column:1/-1;display:none"></div>
         </div>
         <div class="form-campo form-full">
-          <label>Nombre Completo</label>
+          <label>Nombre / Apellido / Razón Social (Nombre Completo)</label>
           <input type="text" id="prop-nombre" placeholder="Nombre completo del propietario" onblur="this.value=capitalizarNombre(this.value)">
         </div>
         <div class="form-campo">
@@ -1665,8 +1666,15 @@
           <label>Correo Electrónico *</label>
           <input type="email" id="prop-correo" placeholder="correo@ejemplo.com">
         </div>
+        <div class="form-campo">
+          <label>Estado</label>
+          <select id="prop-estado">
+            <option value="true">Activo</option>
+            <option value="false">Inactivo</option>
+          </select>
+        </div>
         <div class="form-campo form-full">
-          <label>Dirección *</label>
+          <label>Dirección Fiscal (Dirección Completa)</label>
           <input type="text" id="prop-direccion" placeholder="Dirección completa">
         </div>
         <div class="form-campo form-full">
@@ -1681,6 +1689,10 @@
             <option value="ESPECIAL">Contribuyente Especial</option>
             <option value="FORMAL">Contribuyente Formal</option>
           </select>
+        </div>
+        <div class="form-campo form-full">
+          <label>Observaciones</label>
+          <textarea id="prop-observaciones" rows="2" placeholder="Notas adicionales (opcional)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;width:100%"></textarea>
         </div>
         <div class="form-campo form-full">
           <label>Foto del Documento de Identidad</label>
@@ -1708,7 +1720,7 @@
 <div class="modal-overlay" id="modal-ficha-prop">
   <div class="modal" style="max-width:600px">
     <div class="modal-header">
-      <h3>PROPIETARIO</h3>
+      <h3>CLIENTE</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-prop')">✕</button>
     </div>
     <div class="modal-body" id="ficha-prop-contenido"></div>
@@ -1781,7 +1793,7 @@
           </select>
         </div>
         <div class="form-campo form-full">
-          <label>Propietario</label>
+          <label>Cliente</label>
           <select id="veh-propietario"></select>
         </div>
         <div class="form-campo form-full">
@@ -3774,7 +3786,8 @@
         </div>
         <div class="form-campo">
           <label>Identificación *</label>
-          <input type="text" id="cli-identificacion" placeholder="Solo dígitos" maxlength="15" style="font-family:var(--font-mono)" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+          <input type="text" id="cli-identificacion" placeholder="Solo dígitos" maxlength="15" style="font-family:var(--font-mono)" oninput="this.value=this.value.replace(/[^0-9]/g,'')" onblur="validarIdentificacionClienteDuplicada('cli')">
+          <div id="cli-identificacion-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un cliente con esta identificación.</div>
         </div>
         <div class="form-campo form-full">
           <label>Nombre / Apellido / Razón Social *</label>
@@ -3859,7 +3872,8 @@
         </div>
         <div class="form-campo">
           <label>Identificación *</label>
-          <input type="text" id="clir-identificacion" placeholder="Solo dígitos" maxlength="15" style="font-family:var(--font-mono)" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+          <input type="text" id="clir-identificacion" placeholder="Solo dígitos" maxlength="15" style="font-family:var(--font-mono)" oninput="this.value=this.value.replace(/[^0-9]/g,'')" onblur="validarIdentificacionClienteDuplicada('clir')">
+          <div id="clir-identificacion-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un cliente con esta identificación.</div>
         </div>
         <div class="form-campo form-full">
           <label>Nombre / Apellido / Razón Social *</label>
