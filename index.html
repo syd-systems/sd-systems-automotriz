@@ -51,9 +51,130 @@
     overflow: hidden;
   }
 
-  .login-izquierda {
-    flex: 1;
+  /* ─── Panel HERO (bienvenida) -- ocupa toda la pantalla al inicio,
+         se encoge a un lado cuando aparece el formulario ─── */
+  .login-hero {
+    flex: 1 1 100%;
+    background: var(--gris3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+    gap: clamp(8px, 2vh, 24px);
+    position: relative;
+    overflow: hidden;
+    transition: flex-basis 0.6s cubic-bezier(0.65,0,0.35,1), max-width 0.6s cubic-bezier(0.65,0,0.35,1);
+  }
+
+  .login-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,107,0,0.05) 39px, rgba(255,107,0,0.05) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,107,0,0.05) 39px, rgba(255,107,0,0.05) 40px);
+    pointer-events: none;
+  }
+
+  .login-hero::after {
+    content: '';
+    position: fixed;
+    top: -200px;
+    left: 25%;
+    width: 800px;
+    height: 600px;
+    background: radial-gradient(ellipse, rgba(255,107,0,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,107,0,0.08);
+    border: 1px solid rgba(255,107,0,0.25);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: clamp(9px, 1vw, 11px);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--naranja);
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--naranja);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .hero-titulo {
+    font-family: var(--font-display);
+    font-size: clamp(40px, 8vw, 100px);
+    letter-spacing: 6px;
+    line-height: 0.9;
+    color: var(--texto);
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-titulo span {
+    color: var(--naranja);
+    display: block;
+  }
+
+  .hero-desc {
+    max-width: 460px;
+    font-size: clamp(12px, 1.2vw, 15px);
+    color: var(--suave);
+    line-height: 1.6;
+    font-weight: 300;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ─── Panel del FORMULARIO -- oculto al inicio, aparece al pulsar
+         el botón del hero ─── */
+  .login-form-panel {
+    flex: 0 0 0%;
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: flex-basis 0.6s cubic-bezier(0.65,0,0.35,1), max-width 0.6s cubic-bezier(0.65,0,0.35,1), opacity 0.4s ease 0.15s;
+  }
+
+  #pantalla-login.mostrar-form .login-hero {
+    flex: 0 0 55%;
+    max-width: 55%;
+  }
+
+  #pantalla-login.mostrar-form .login-form-panel {
+    flex: 1 1 45%;
+    max-width: 45%;
     min-width: 380px;
+    opacity: 1;
+  }
+
+  @media (max-width: 768px) {
+    #pantalla-login.mostrar-form .login-hero { display: none; }
+    #pantalla-login.mostrar-form .login-form-panel { flex: 1 1 100%; max-width: 100%; min-width: 0; }
+  }
+
+  .login-izquierda {
+    width: 100%;
+    height: 100%;
     background: var(--gris2);
     display: flex;
     flex-direction: column;
@@ -190,68 +311,6 @@
     margin-top: 16px;
     display: none;
     text-align: center;
-  }
-
-  .login-derecha {
-    width: 380px;
-    min-width: 380px;
-    background: linear-gradient(135deg, var(--gris2) 0%, var(--negro) 100%);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: clamp(20px, 4vh, 60px) 50px;
-    border-left: 1px solid var(--borde);
-    position: relative;
-    overflow: hidden;
-    pointer-events: none;
-  }
-
-  .login-derecha .patron {
-    position: absolute;
-    inset: 0;
-    background-image:
-      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,107,0,0.04) 39px, rgba(255,107,0,0.04) 40px),
-      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,107,0,0.04) 39px, rgba(255,107,0,0.04) 40px);
-    pointer-events: none;
-  }
-
-  .login-derecha .info-titulo {
-    font-family: var(--font-display);
-    font-size: clamp(26px, 4vh, 42px);
-    line-height: 1.1;
-    color: var(--naranja);
-    margin-bottom: clamp(14px, 2.5vh, 30px);
-    position: relative;
-    z-index: 1;
-  }
-
-  .modulos-lista {
-    list-style: none;
-    position: relative;
-    z-index: 1;
-  }
-
-  .modulos-lista li {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: clamp(6px, 1.2vh, 12px) 0;
-    border-bottom: 1px solid var(--borde);
-    font-size: clamp(11px, 1.5vh, 13px);
-    color: var(--suave);
-    font-weight: 400;
-  }
-
-  .modulos-lista li:last-child { border-bottom: none; }
-
-  .modulos-lista li .icono {
-    width: 28px; height: 28px;
-    background: rgba(255,107,0,0.1);
-    border: 1px solid rgba(255,107,0,0.2);
-    border-radius: 6px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 17px;
-    flex-shrink: 0;
   }
 
   /* ─── PANTALLA PRINCIPAL ─── */
@@ -1101,7 +1160,6 @@
 
   /* RESPONSIVE */
   @media (max-width: 900px) {
-    .login-derecha { display: none; }
     .sidebar {
       transform: translateX(-240px);
       transition: transform 0.3s;
@@ -1129,7 +1187,25 @@
 <!-- ═══════════════════════════════════════ -->
 <div id="pantalla-login">
 
-  <!-- FORMULARIO IZQUIERDA -->
+  <!-- HERO (bienvenida) -- ocupa toda la pantalla al inicio, se encoge
+       al pulsar "Iniciar Sesión" para dar paso al formulario -->
+  <div class="login-hero">
+    <div class="hero-badge">Sistema de Gestión Empresarial</div>
+    <h1 class="hero-titulo">
+      S&amp;D
+      <span>SYSTEMS</span>
+    </h1>
+    <p class="hero-desc">
+      Plataforma integral para la gestión, optimización y planificación de los recursos Empresariales
+    </p>
+    <button class="btn-login" style="width:auto;padding:clamp(10px,1.8vh,15px) 36px;display:inline-flex;align-items:center;gap:10px;position:relative;z-index:1" onclick="document.getElementById('pantalla-login').classList.add('mostrar-form'); setTimeout(()=>document.getElementById('login-correo')?.focus(), 350)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      INICIAR SESIÓN
+    </button>
+  </div>
+
+  <!-- FORMULARIO -- oculto al inicio, aparece al pulsar el botón del hero -->
+  <div class="login-form-panel">
   <div class="login-izquierda">
     <div class="login-logo">
       <div class="marca">S&D</div>
@@ -1227,21 +1303,6 @@
       <div class="alerta alerta-exito" id="nueva-exito" style="display:none;margin-top:16px"></div>
     </div>
   </div>
-
-  <!-- INFO DERECHA -->
-  <div class="login-derecha">
-    <div class="patron"></div>
-    <div class="info-titulo">SISTEMA DE<br>GESTIÓN<br>AUTOMOTRIZ</div>
-    <ul class="modulos-lista">
-      <li><span class="icono">🚗</span> Vehículos y Clientes</li>
-      <li><span class="icono">🔧</span> Órdenes de Servicio</li>
-      <li><span class="icono">🧾</span> Facturación y Pagos</li>
-      <li><span class="icono">👥</span> Empleados y Nómina</li>
-      <li><span class="icono">📦</span> Proveedores</li>
-      <li><span class="icono">📊</span> Tributos e Impuestos</li>
-      <li><span class="icono">💱</span> Tipos de Cambio</li>
-      <li><span class="icono">⚙️</span> Configuración del Sistema</li>
-    </ul>
   </div>
 </div>
 
@@ -1514,18 +1575,18 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909076"></script>
-<script src="js/parametros.js?v=20260909076"></script>
-<script src="js/empresas.js?v=20260909076"></script>
-<script src="js/ingresos.js?v=20260909076"></script>
-<script src="js/inventario.js?v=20260909076"></script>
-<script src="js/proveedores.js?v=20260909076"></script>
-<script src="js/ventas.js?v=20260909076"></script>
-<script src="js/contabilidad.js?v=20260909076"></script>
-<script src="js/egresos.js?v=20260909076"></script>
-<script src="js/vehiculos.js?v=20260909076"></script>
-<script src="js/catalogo.js?v=20260909076"></script>
-<script src="js/ordenes.js?v=20260909076"></script>
+<script src="js/core.js?v=20260909077"></script>
+<script src="js/parametros.js?v=20260909077"></script>
+<script src="js/empresas.js?v=20260909077"></script>
+<script src="js/ingresos.js?v=20260909077"></script>
+<script src="js/inventario.js?v=20260909077"></script>
+<script src="js/proveedores.js?v=20260909077"></script>
+<script src="js/ventas.js?v=20260909077"></script>
+<script src="js/contabilidad.js?v=20260909077"></script>
+<script src="js/egresos.js?v=20260909077"></script>
+<script src="js/vehiculos.js?v=20260909077"></script>
+<script src="js/catalogo.js?v=20260909077"></script>
+<script src="js/ordenes.js?v=20260909077"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
