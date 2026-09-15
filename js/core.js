@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909068';
+const SYD_VERSION = '20260909069';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3662,9 +3662,8 @@ function mostrarSugerenciasCorreo(input) {
   cont.innerHTML = dominios.map(function(d) {
     const correoCompleto = valor + '@' + d;
     return '<div style="padding:9px 14px;font-size:13px;cursor:pointer;color:var(--texto);font-family:var(--font-mono)" '
-      + 'onmousedown="event.preventDefault()" '
       + 'onmouseover="this.style.background=\'var(--gris3)\'" onmouseout="this.style.background=\'\'" '
-      + 'onclick="document.getElementById(\'' + input.id + '\').value = ' + JSON.stringify(correoCompleto) + '; cerrarSugerenciasCorreo();">'
+      + 'onmousedown="event.preventDefault(); document.getElementById(\'' + input.id + '\').value = ' + JSON.stringify(correoCompleto) + '; cerrarSugerenciasCorreo();">'
       + escapeHtml(correoCompleto) + '</div>';
   }).join('');
 
