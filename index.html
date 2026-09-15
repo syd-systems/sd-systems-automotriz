@@ -1520,19 +1520,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909067"></script>
-<script src="js/parametros.js?v=20260909067"></script>
-<script src="js/empresas.js?v=20260909067"></script>
-<script src="js/ingresos.js?v=20260909067"></script>
-<script src="js/inventario.js?v=20260909067"></script>
-<script src="js/proveedores.js?v=20260909067"></script>
-<script src="js/clientes.js?v=20260909067"></script>
-<script src="js/ventas.js?v=20260909067"></script>
-<script src="js/contabilidad.js?v=20260909067"></script>
-<script src="js/egresos.js?v=20260909067"></script>
-<script src="js/vehiculos.js?v=20260909067"></script>
-<script src="js/catalogo.js?v=20260909067"></script>
-<script src="js/ordenes.js?v=20260909067"></script>
+<script src="js/core.js?v=20260909068"></script>
+<script src="js/parametros.js?v=20260909068"></script>
+<script src="js/empresas.js?v=20260909068"></script>
+<script src="js/ingresos.js?v=20260909068"></script>
+<script src="js/inventario.js?v=20260909068"></script>
+<script src="js/proveedores.js?v=20260909068"></script>
+<script src="js/clientes.js?v=20260909068"></script>
+<script src="js/ventas.js?v=20260909068"></script>
+<script src="js/contabilidad.js?v=20260909068"></script>
+<script src="js/egresos.js?v=20260909068"></script>
+<script src="js/vehiculos.js?v=20260909068"></script>
+<script src="js/catalogo.js?v=20260909068"></script>
+<script src="js/ordenes.js?v=20260909068"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -1664,7 +1664,7 @@
           </div>
           <div>
             <label>Correo Electrónico</label>
-            <input type="email" id="prop-correo" placeholder="correo@ejemplo.com" style="width:100%" onblur="this.value=this.value.trim().toLowerCase()">
+            <input type="email" id="prop-correo" placeholder="correo@ejemplo.com" style="width:100%" oninput="mostrarSugerenciasCorreo(this)" onblur="this.value=this.value.trim().toLowerCase(); setTimeout(cerrarSugerenciasCorreo, 150)">
           </div>
         </div>
         <div class="form-campo form-full">
