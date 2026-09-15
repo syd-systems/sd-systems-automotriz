@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909067';
+const SYD_VERSION = '20260909068';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3634,6 +3634,46 @@ function nextField(el) {
     const idx = campos.indexOf(el);
     if (idx !== -1 && idx < campos.length - 1) campos[idx + 1].focus();
   } catch(e) {}
+}
+
+// Sugerencias de dominio de correo -- al escribir la parte antes de la
+// "@", muestra un desplegable flotante con las 3 opciones más comunes
+// (gmail.com, outlook.com, yahoo.com). Al hacer clic en una, completa el
+// campo automáticamente. Reutilizable en cualquier campo de correo de la
+// app: solo hace falta conectar oninput="mostrarSugerenciasCorreo(this)"
+// y onblur="setTimeout(cerrarSugerenciasCorreo, 150)".
+let _sugerenciaCorreoActiva = null;
+
+function mostrarSugerenciasCorreo(input) {
+  cerrarSugerenciasCorreo();
+  const valor = input.value.trim();
+  if (!valor || valor.indexOf('@') !== -1) return;
+
+  const dominios = ['gmail.com', 'outlook.com', 'yahoo.com'];
+  const cont = document.createElement('div');
+  cont.id = 'sugerencias-correo-flotante';
+  cont.style.cssText = 'position:fixed;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;z-index:99999;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.4)';
+
+  const rect = input.getBoundingClientRect();
+  cont.style.left  = rect.left + 'px';
+  cont.style.top   = (rect.bottom + 4) + 'px';
+  cont.style.width = rect.width + 'px';
+
+  cont.innerHTML = dominios.map(function(d) {
+    const correoCompleto = valor + '@' + d;
+    return '<div style="padding:9px 14px;font-size:13px;cursor:pointer;color:var(--texto);font-family:var(--font-mono)" '
+      + 'onmousedown="event.preventDefault()" '
+      + 'onmouseover="this.style.background=\'var(--gris3)\'" onmouseout="this.style.background=\'\'" '
+      + 'onclick="document.getElementById(\'' + input.id + '\').value = ' + JSON.stringify(correoCompleto) + '; cerrarSugerenciasCorreo();">'
+      + escapeHtml(correoCompleto) + '</div>';
+  }).join('');
+
+  document.body.appendChild(cont);
+  _sugerenciaCorreoActiva = cont;
+}
+
+function cerrarSugerenciasCorreo() {
+  if (_sugerenciaCorreoActiva) { _sugerenciaCorreoActiva.remove(); _sugerenciaCorreoActiva = null; }
 }
 
 function escapeHtml(valor) {
