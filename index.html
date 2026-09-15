@@ -1520,19 +1520,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909063"></script>
-<script src="js/parametros.js?v=20260909063"></script>
-<script src="js/empresas.js?v=20260909063"></script>
-<script src="js/ingresos.js?v=20260909063"></script>
-<script src="js/inventario.js?v=20260909063"></script>
-<script src="js/proveedores.js?v=20260909063"></script>
-<script src="js/clientes.js?v=20260909063"></script>
-<script src="js/ventas.js?v=20260909063"></script>
-<script src="js/contabilidad.js?v=20260909063"></script>
-<script src="js/egresos.js?v=20260909063"></script>
-<script src="js/vehiculos.js?v=20260909063"></script>
-<script src="js/catalogo.js?v=20260909063"></script>
-<script src="js/ordenes.js?v=20260909063"></script>
+<script src="js/core.js?v=20260909064"></script>
+<script src="js/parametros.js?v=20260909064"></script>
+<script src="js/empresas.js?v=20260909064"></script>
+<script src="js/ingresos.js?v=20260909064"></script>
+<script src="js/inventario.js?v=20260909064"></script>
+<script src="js/proveedores.js?v=20260909064"></script>
+<script src="js/clientes.js?v=20260909064"></script>
+<script src="js/ventas.js?v=20260909064"></script>
+<script src="js/contabilidad.js?v=20260909064"></script>
+<script src="js/egresos.js?v=20260909064"></script>
+<script src="js/vehiculos.js?v=20260909064"></script>
+<script src="js/catalogo.js?v=20260909064"></script>
+<script src="js/ordenes.js?v=20260909064"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3082,7 +3082,7 @@
         </div>
         <div class="form-campo form-full">
           <label>Diagnóstico</label>
-          <textarea id="os-diagnostico" placeholder="Descripción del problema o diagnóstico inicial..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%"></textarea>
+          <textarea id="os-diagnostico" placeholder="Descripción del problema o diagnóstico inicial..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%" onblur="this.value=capitalizarNombre(this.value)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();nextField(this)}"></textarea>
         </div>
         <div class="form-campo form-full">
           <label>Observaciones</label>
