@@ -291,25 +291,54 @@ async function guardarPropietario() {
   const errEl   = document.getElementById('alerta-prop-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
 
-  if (!nombre || !numDoc) {
-    errEl.textContent = 'Nombre y número de documento son obligatorios.';
-    errEl.style.display = 'block'; return;
+  // Validación en orden -- coincide con el orden visual del formulario:
+  // Identificación (+duplicado) → RIF → Nombre → Teléfono → Correo → Dirección.
+  if (!numDoc) {
+    errEl.textContent = 'El Número de Identificación es obligatorio.'; errEl.style.display = 'block';
+    document.getElementById('prop-num-doc').focus();
+    return;
   }
-
-  // Validar duplicado (Condición Legal + Identificación) -- respaldo por
-  // si nunca se disparó la validación en vivo del campo.
   try {
     const existePropDup = await api('clientes', 'GET', null,
       '?tipo_doc=eq.' + tipDoc + '&numero_doc=eq.' + encodeURIComponent(numDoc)
       + (id ? '&id_cliente=neq.' + id : ''));
     if (existePropDup && existePropDup.length > 0) {
       errEl.textContent = 'Ya existe un cliente registrado con ese documento (' + tipDoc + '-' + numDoc + ').';
-      errEl.style.display = 'block'; return;
+      errEl.style.display = 'block';
+      document.getElementById('prop-num-doc').focus();
+      return;
     }
   } catch(ePropDup) {}
 
-  // Capitalizar nombre correctamente
+  if (!rif) {
+    errEl.textContent = 'El RIF es obligatorio.'; errEl.style.display = 'block';
+    document.getElementById('prop-rif-civil').focus();
+    return;
+  }
+  if (!nombre) {
+    errEl.textContent = 'El Nombre / Apellido / Razón Social es obligatorio.'; errEl.style.display = 'block';
+    document.getElementById('prop-nombre').focus();
+    return;
+  }
+  if (!tel) {
+    errEl.textContent = 'El Teléfono es obligatorio.'; errEl.style.display = 'block';
+    document.getElementById('prop-telefono').focus();
+    return;
+  }
+  if (!correo) {
+    errEl.textContent = 'El Correo Electrónico es obligatorio.'; errEl.style.display = 'block';
+    document.getElementById('prop-correo').focus();
+    return;
+  }
+  if (!dir) {
+    errEl.textContent = 'La Dirección Fiscal es obligatoria.'; errEl.style.display = 'block';
+    document.getElementById('prop-direccion').focus();
+    return;
+  }
+
+  // Capitalizar nombre correctamente, correo siempre en minúsculas
   const nombreFinal = capitalizarNombre(nombre);
+  const correoFinal = correo.toLowerCase();
 
   const btnGuardar = document.getElementById('btn-guardar-propietario');
   const textoOriginalBtn = btnGuardar ? btnGuardar.textContent : 'GUARDAR';
@@ -321,7 +350,7 @@ async function guardarPropietario() {
 
     const datos = {
       tipo_doc: tipDoc, numero_doc: numDoc, nombre_completo: nombreFinal,
-      rif: rif || null, telefono: tel || null, correo: correo || null,
+      rif: rif || null, telefono: tel || null, correo: correoFinal || null,
       direccion: dir || null, empresa: emp || null,
       tipo_contribuyente: tipoContrib || null,
       observaciones: document.getElementById('prop-observaciones').value.trim() || null,
@@ -678,10 +707,10 @@ async function guardarVehiculo() {
   if (id && !puedo('VEHICULOS','EDITAR')) { alert('No tiene permiso para editar vehículos.'); return; }
   if (!id && !puedo('VEHICULOS','CREAR')) { alert('No tiene permiso para registrar vehículos.'); return; }
   const placa    = document.getElementById('veh-placa').value.trim().toUpperCase();
-  const marca    = document.getElementById('veh-marca').value.trim();
-  const modelo   = document.getElementById('veh-modelo').value.trim();
+  const marca    = capitalizarNombre(document.getElementById('veh-marca').value.trim());
+  const modelo   = capitalizarNombre(document.getElementById('veh-modelo').value.trim());
   const anio     = parseInt(document.getElementById('veh-anio').value);
-  const color    = document.getElementById('veh-color').value.trim();
+  const color    = capitalizarNombre(document.getElementById('veh-color').value.trim());
   const carr     = document.getElementById('veh-carroceria').value.trim();
   const motor    = document.getElementById('veh-motor').value.trim();
   const chasis   = document.getElementById('veh-chasis').value.trim();
