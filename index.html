@@ -1523,19 +1523,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909061"></script>
-<script src="js/parametros.js?v=20260909061"></script>
-<script src="js/empresas.js?v=20260909061"></script>
-<script src="js/ingresos.js?v=20260909061"></script>
-<script src="js/inventario.js?v=20260909061"></script>
-<script src="js/proveedores.js?v=20260909061"></script>
-<script src="js/clientes.js?v=20260909061"></script>
-<script src="js/ventas.js?v=20260909061"></script>
-<script src="js/contabilidad.js?v=20260909061"></script>
-<script src="js/egresos.js?v=20260909061"></script>
-<script src="js/vehiculos.js?v=20260909061"></script>
-<script src="js/catalogo.js?v=20260909061"></script>
-<script src="js/ordenes.js?v=20260909061"></script>
+<script src="js/core.js?v=20260909062"></script>
+<script src="js/parametros.js?v=20260909062"></script>
+<script src="js/empresas.js?v=20260909062"></script>
+<script src="js/ingresos.js?v=20260909062"></script>
+<script src="js/inventario.js?v=20260909062"></script>
+<script src="js/proveedores.js?v=20260909062"></script>
+<script src="js/clientes.js?v=20260909062"></script>
+<script src="js/ventas.js?v=20260909062"></script>
+<script src="js/contabilidad.js?v=20260909062"></script>
+<script src="js/egresos.js?v=20260909062"></script>
+<script src="js/vehiculos.js?v=20260909062"></script>
+<script src="js/catalogo.js?v=20260909062"></script>
+<script src="js/ordenes.js?v=20260909062"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -1672,7 +1672,7 @@
         </div>
         <div class="form-campo form-full">
           <label>Dirección Fiscal</label>
-          <input type="text" id="prop-direccion" placeholder="Dirección Completa">
+          <input type="text" id="prop-direccion" placeholder="Dirección Completa" onblur="this.value=capitalizarNombre(this.value)">
         </div>
         <div class="form-campo form-full" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
           <div>
@@ -1691,10 +1691,6 @@
               <option value="false">Inactivo</option>
             </select>
           </div>
-        </div>
-        <div class="form-campo form-full">
-          <label>Empresa u Organización</label>
-          <input type="text" id="prop-empresa" placeholder="Opcional">
         </div>
         <div class="form-campo form-full">
           <label>Observaciones</label>
@@ -1787,11 +1783,11 @@
         <div class="form-campo form-full" style="display:grid;grid-template-columns:1fr 1fr 140px;gap:14px">
           <div>
             <label>Serial Motor</label>
-            <input type="text" id="veh-motor" placeholder="Serial de motor" style="width:100%">
+            <input type="text" id="veh-motor" placeholder="Serial de motor" style="width:100%;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
           </div>
           <div>
             <label>Serial Chasis</label>
-            <input type="text" id="veh-chasis" placeholder="VIN / Chasis" style="width:100%">
+            <input type="text" id="veh-chasis" placeholder="VIN / Chasis" style="width:100%;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
           </div>
           <div>
             <label>Estado</label>
