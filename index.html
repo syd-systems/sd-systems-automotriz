@@ -817,17 +817,11 @@
     font-size: 13px !important;
   }
   #modal-usuario .form-campo label,
-  #modal-cliente .form-campo label,
-  #modal-cliente-rapido .form-campo label,
   #modal-venta .form-campo label {
     font-size: 12px !important;
   }
   #modal-usuario .form-campo input,
   #modal-usuario .form-campo select,
-  #modal-cliente .form-campo input,
-  #modal-cliente .form-campo select,
-  #modal-cliente-rapido .form-campo input,
-  #modal-cliente-rapido .form-campo select,
   #modal-venta .form-campo input,
   #modal-venta .form-campo select {
     font-size: 13px !important;
@@ -1384,7 +1378,7 @@
         </div>
         <div class="form-campo form-full">
           <label>Correo Electrónico</label>
-          <input type="email" id="u-correo" placeholder="correo@ejemplo.com" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
+          <input type="email" id="u-correo" placeholder="correo@ejemplo.com" oninput="mostrarSugerenciasCorreo(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}" onblur="this.value=this.value.trim().toLowerCase(); setTimeout(cerrarSugerenciasCorreo, 150)">
         </div>
         <div class="form-campo form-full">
           <label>Contraseña</label>
@@ -1520,19 +1514,18 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909070"></script>
-<script src="js/parametros.js?v=20260909070"></script>
-<script src="js/empresas.js?v=20260909070"></script>
-<script src="js/ingresos.js?v=20260909070"></script>
-<script src="js/inventario.js?v=20260909070"></script>
-<script src="js/proveedores.js?v=20260909070"></script>
-<script src="js/clientes.js?v=20260909070"></script>
-<script src="js/ventas.js?v=20260909070"></script>
-<script src="js/contabilidad.js?v=20260909070"></script>
-<script src="js/egresos.js?v=20260909070"></script>
-<script src="js/vehiculos.js?v=20260909070"></script>
-<script src="js/catalogo.js?v=20260909070"></script>
-<script src="js/ordenes.js?v=20260909070"></script>
+<script src="js/core.js?v=20260909071"></script>
+<script src="js/parametros.js?v=20260909071"></script>
+<script src="js/empresas.js?v=20260909071"></script>
+<script src="js/ingresos.js?v=20260909071"></script>
+<script src="js/inventario.js?v=20260909071"></script>
+<script src="js/proveedores.js?v=20260909071"></script>
+<script src="js/ventas.js?v=20260909071"></script>
+<script src="js/contabilidad.js?v=20260909071"></script>
+<script src="js/egresos.js?v=20260909071"></script>
+<script src="js/vehiculos.js?v=20260909071"></script>
+<script src="js/catalogo.js?v=20260909071"></script>
+<script src="js/ordenes.js?v=20260909071"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3393,7 +3386,7 @@
         </div>
         <div class="form-campo form-full">
           <label>Correo Electrónico</label>
-          <input type="email" id="emp-correo" placeholder="correo@ejemplo.com">
+          <input type="email" id="emp-correo" placeholder="correo@ejemplo.com" oninput="mostrarSugerenciasCorreo(this)" onblur="this.value=this.value.trim().toLowerCase(); setTimeout(cerrarSugerenciasCorreo, 150)">
         </div>
         <div class="form-campo" style="grid-column:span 1">
           <label>Teléfono Móvil</label>
@@ -3636,7 +3629,7 @@
         </div>
         <div class="form-campo">
           <label>Correo Electrónico</label>
-          <input type="email" id="prov-correo" placeholder="proveedor@correo.com">
+          <input type="email" id="prov-correo" placeholder="proveedor@correo.com" oninput="mostrarSugerenciasCorreo(this)" onblur="this.value=this.value.trim().toLowerCase(); setTimeout(cerrarSugerenciasCorreo, 150)">
         </div>
         <div class="form-campo form-full">
           <label>Dirección</label>
@@ -3770,138 +3763,6 @@
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════ -->
-<!--    MODAL CLIENTE (crear/editar)        -->
-<!-- ═══════════════════════════════════════ -->
-<div class="modal-overlay" id="modal-cliente">
-  <div class="modal" style="max-width:620px">
-    <div class="modal-header">
-      <h3 id="cli-modal-titulo">NUEVO CLIENTE</h3>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-cliente')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-grid">
-        <div class="form-campo">
-          <label>Condición Legal</label>
-          <select id="cli-condicion-legal" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="V">V — Venezolano</option>
-            <option value="E">E — Extranjero</option>
-            <option value="J">J — Jurídico</option>
-            <option value="G">G — Gubernamental</option>
-            <option value="C">C — Comuna</option>
-          </select>
-        </div>
-        <div class="form-campo">
-          <label>Identificación</label>
-          <input type="text" id="cli-identificacion" placeholder="Solo dígitos" maxlength="15" style="font-family:var(--font-mono)" oninput="this.value=this.value.replace(/[^0-9]/g,'')" onblur="validarIdentificacionClienteDuplicada('cli')">
-          <div id="cli-identificacion-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un cliente con esta identificación.</div>
-        </div>
-        <div class="form-campo form-full">
-          <label>Nombre / Apellido / Razón Social</label>
-          <input type="text" id="cli-nombre-apellido" placeholder="Nombre completo del cliente">
-        </div>
-        <div class="form-campo">
-          <label>Teléfono Móvil</label>
-          <input type="text" id="cli-telefono-movil" placeholder="0414-XXXXXXX">
-        </div>
-        <div class="form-campo">
-          <label>Correo Electrónico</label>
-          <input type="email" id="cli-correo-electronico" placeholder="cliente@correo.com">
-        </div>
-        <div class="form-campo form-full">
-          <label>Dirección</label>
-          <input type="text" id="cli-direccion" placeholder="Dirección completa">
-        </div>
-        <div class="form-campo">
-          <label>Estado</label>
-          <select id="cli-estado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="ACTIVO">Activo</option>
-            <option value="INACTIVO">Inactivo</option>
-          </select>
-        </div>
-        <div class="form-campo form-full">
-          <label>Observaciones</label>
-          <textarea id="cli-observaciones" placeholder="Observaciones adicionales..." style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%"></textarea>
-        </div>
-      </div>
-      <input type="hidden" id="cli-id">
-    </div>
-    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
-      <div class="alerta alerta-exito" id="alerta-cli-ok"  style="margin:0"></div>
-      <div class="alerta alerta-error"  id="alerta-cli-err" style="margin:0"></div>
-      <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button class="btn-secundario" onclick="cerrarModal('modal-cliente')">Retornar</button>
-        <button class="btn-primario"   onclick="btnSetGuardando(this,true);guardarCliente().finally(()=>btnSetGuardando(this,false))">GUARDAR</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════ -->
-<!--    MODAL FICHA CLIENTE                 -->
-<!-- ═══════════════════════════════════════ -->
-<div class="modal-overlay" id="modal-ficha-cliente">
-  <div class="modal" style="max-width:580px">
-    <div class="modal-header">
-      <h3>FICHA DEL CLIENTE</h3>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-cliente')">✕</button>
-    </div>
-    <div class="modal-body" id="ficha-cliente-contenido"></div>
-    <div class="modal-footer">
-      <button class="btn-peligro"    id="ficha-cliente-btn-eliminar" style="display:none">🗑 Eliminar</button>
-      <button class="btn-naranja" id="ficha-cliente-btn-editar"   style="display:none">✏ Editar</button>
-      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-cliente')">Retornar</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════ -->
-<!--    MODAL CLIENTE RÁPIDO                -->
-<!--    Invocable desde otros módulos (ej. Ventas) sin salir del flujo -->
-<!-- ═══════════════════════════════════════ -->
-<div class="modal-overlay" id="modal-cliente-rapido">
-  <div class="modal" style="max-width:420px">
-    <div class="modal-header">
-      <h3>NUEVO CLIENTE RÁPIDO</h3>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-cliente-rapido')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-grid">
-        <div class="form-campo">
-          <label>Condición Legal</label>
-          <select id="clir-condicion-legal" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-            <option value="V">V — Venezolano</option>
-            <option value="E">E — Extranjero</option>
-            <option value="J">J — Jurídico</option>
-            <option value="G">G — Gubernamental</option>
-            <option value="C">C — Comuna</option>
-          </select>
-        </div>
-        <div class="form-campo">
-          <label>Identificación</label>
-          <input type="text" id="clir-identificacion" placeholder="Solo dígitos" maxlength="15" style="font-family:var(--font-mono)" oninput="this.value=this.value.replace(/[^0-9]/g,'')" onblur="validarIdentificacionClienteDuplicada('clir')">
-          <div id="clir-identificacion-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un cliente con esta identificación.</div>
-        </div>
-        <div class="form-campo form-full">
-          <label>Nombre / Apellido / Razón Social</label>
-          <input type="text" id="clir-nombre-apellido" placeholder="Nombre completo del cliente">
-        </div>
-        <div class="form-campo form-full">
-          <label>Teléfono Móvil</label>
-          <input type="text" id="clir-telefono-movil" placeholder="0414-XXXXXXX">
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer" style="flex-direction:column;align-items:stretch;gap:8px">
-      <div class="alerta alerta-exito" id="alerta-clir-ok"  style="margin:0"></div>
-      <div class="alerta alerta-error"  id="alerta-clir-err" style="margin:0"></div>
-      <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button class="btn-secundario" onclick="cerrarModal('modal-cliente-rapido')">Retornar</button>
-        <button class="btn-primario"   onclick="btnSetGuardando(this,true);guardarClienteRapido().finally(()=>btnSetGuardando(this,false))">GUARDAR</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL VENTA (armar / editar borrador) -->
@@ -4397,7 +4258,7 @@
         </div>
         <div class="form-campo form-full">
           <label>Correo Electrónico</label>
-          <input type="email" id="em-correo" placeholder="empresa@correo.com">
+          <input type="email" id="em-correo" placeholder="empresa@correo.com" oninput="mostrarSugerenciasCorreo(this)" onblur="this.value=this.value.trim().toLowerCase(); setTimeout(cerrarSugerenciasCorreo, 150)">
         </div>
         <div class="form-campo form-full">
           <label>Dirección Fiscal</label>
