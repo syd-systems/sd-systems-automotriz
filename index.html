@@ -1386,7 +1386,7 @@
           <input type="text" id="u-nombre" placeholder="Ej: María García" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
         </div>
         <div class="form-campo form-full">
-          <label>Correo Electrónico *</label>
+          <label>Correo Electrónico</label>
           <input type="email" id="u-correo" placeholder="correo@ejemplo.com" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
         </div>
         <div class="form-campo form-full">
@@ -1523,19 +1523,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909060"></script>
-<script src="js/parametros.js?v=20260909060"></script>
-<script src="js/empresas.js?v=20260909060"></script>
-<script src="js/ingresos.js?v=20260909060"></script>
-<script src="js/inventario.js?v=20260909060"></script>
-<script src="js/proveedores.js?v=20260909060"></script>
-<script src="js/clientes.js?v=20260909060"></script>
-<script src="js/ventas.js?v=20260909060"></script>
-<script src="js/contabilidad.js?v=20260909060"></script>
-<script src="js/egresos.js?v=20260909060"></script>
-<script src="js/vehiculos.js?v=20260909060"></script>
-<script src="js/catalogo.js?v=20260909060"></script>
-<script src="js/ordenes.js?v=20260909060"></script>
+<script src="js/core.js?v=20260909061"></script>
+<script src="js/parametros.js?v=20260909061"></script>
+<script src="js/empresas.js?v=20260909061"></script>
+<script src="js/ingresos.js?v=20260909061"></script>
+<script src="js/inventario.js?v=20260909061"></script>
+<script src="js/proveedores.js?v=20260909061"></script>
+<script src="js/clientes.js?v=20260909061"></script>
+<script src="js/ventas.js?v=20260909061"></script>
+<script src="js/contabilidad.js?v=20260909061"></script>
+<script src="js/egresos.js?v=20260909061"></script>
+<script src="js/vehiculos.js?v=20260909061"></script>
+<script src="js/catalogo.js?v=20260909061"></script>
+<script src="js/ordenes.js?v=20260909061"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2028,7 +2028,7 @@
     <div class="modal-body">
       <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr 1fr;margin-bottom:16px">
         <div class="form-campo">
-          <label>Fecha *</label>
+          <label>Fecha</label>
           <input type="date" id="cont-form-fecha">
         </div>
         <div class="form-campo">
@@ -2050,7 +2050,7 @@
           <input type="text" id="cont-form-tasa" inputmode="decimal" placeholder="0,00" onblur="this.value=formatearMontoVE(parseMontoVE(this.value))" style="font-family:var(--font-mono)">
         </div>
         <div class="form-campo form-full" style="grid-column:1/-1">
-          <label>Descripción *</label>
+          <label>Descripción</label>
           <input type="text" id="cont-form-desc" placeholder="Descripción del asiento contable">
         </div>
         <div class="form-campo">
@@ -2084,7 +2084,7 @@
     <div class="modal-body">
       <div class="form-grid" style="grid-template-columns:1fr 1fr">
         <div class="form-campo form-full">
-          <label>Cliente *</label>
+          <label>Cliente</label>
           <select id="cont-cxc-prop" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"></select>
         </div>
         <div class="form-campo">
@@ -2092,11 +2092,11 @@
           <input type="text" id="cont-cxc-doc" placeholder="Fact-001">
         </div>
         <div class="form-campo">
-          <label>Monto USD *</label>
+          <label>Monto USD</label>
           <input type="number" id="cont-cxc-monto" step="0.01" min="0" placeholder="0.00" style="font-family:var(--font-mono)">
         </div>
         <div class="form-campo">
-          <label>Fecha Emisión *</label>
+          <label>Fecha Emisión</label>
           <input type="date" id="cont-cxc-fecha">
         </div>
         <div class="form-campo">
@@ -2212,7 +2212,7 @@
     <div class="modal-body">
       <div class="form-grid" style="grid-template-columns:1fr 1fr">
         <div class="form-campo form-full">
-          <label>Proveedor *</label>
+          <label>Proveedor</label>
           <select id="cont-cxp-prov" onchange="onSelProveedorCxP()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"></select>
         </div>
         <div class="form-campo">
@@ -2220,11 +2220,11 @@
           <input type="text" id="cont-cxp-doc" placeholder="Fact-001">
         </div>
         <div class="form-campo">
-          <label>Monto USD *</label>
+          <label>Monto USD</label>
           <input type="number" id="cont-cxp-monto" step="0.01" min="0" placeholder="0.00" style="font-family:var(--font-mono)">
         </div>
         <div class="form-campo">
-          <label>Fecha Emisión *</label>
+          <label>Fecha Emisión</label>
           <input type="date" id="cont-cxp-fecha">
         </div>
         <div class="form-campo">
@@ -2376,7 +2376,7 @@
         <div style="display:none">
           <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
             <div class="form-campo form-full">
-              <label>Moneda de Pago *</label>
+              <label>Moneda de Pago</label>
               <select id="cont-pago-cxp-moneda" onchange="onCambioPagoMoneda()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
                 <option value="VES">VES — Bolívares (Funcional)</option>
                 <option value="USD">USD — Dólares</option>
@@ -2386,7 +2386,7 @@
 
             <!-- Método de Pago dinámico -->
             <div class="form-campo form-full" id="cont-pago-manual-info">
-              <label>Método de Pago *</label>
+              <label>Método de Pago</label>
               <select id="cont-pago-manual-tipo" onchange="onCambioMetodoPagoManual()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
                 <option value="">— Seleccione moneda primero —</option>
               </select>
@@ -2413,7 +2413,7 @@
               <div id="cont-pago-cxp-equiv-label" style="font-size:11px;color:var(--suave);margin-top:4px"></div>
             </div>
             <div class="form-campo">
-              <label>Fecha de Pago *</label>
+              <label>Fecha de Pago</label>
               <input type="date" id="cont-pago-cxp-fecha">
             </div>
           </div>
@@ -2421,11 +2421,11 @@
 
         <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
           <div class="form-campo">
-            <label>Referencia *</label>
+            <label>Referencia</label>
             <input type="text" id="cont-pago-cxp-ref" placeholder="N° referencia bancaria o comprobante">
           </div>
           <div class="form-campo">
-            <label>Factura No. *</label>
+            <label>Factura No.</label>
             <input type="text" id="cont-pago-cxp-factura-no" placeholder="N° de la Factura del Proveedor">
           </div>
           <div class="form-campo" id="cont-pago-cxp-archivo-campo">
@@ -2460,7 +2460,7 @@
     <div class="modal-body">
       <div class="form-grid" style="grid-template-columns:1fr 1fr">
         <div class="form-campo">
-          <label>Código *</label>
+          <label>Código</label>
           <input type="text" id="cont-cuenta-codigo" placeholder="Ej: 1.1.01.010" style="font-family:var(--font-mono)">
         </div>
         <div class="form-campo">
@@ -2474,7 +2474,7 @@
           </select>
         </div>
         <div class="form-campo form-full">
-          <label>Nombre *</label>
+          <label>Nombre</label>
           <input type="text" id="cont-cuenta-nombre" placeholder="Nombre de la cuenta">
         </div>
         <div class="form-campo">
@@ -2525,15 +2525,15 @@
     <div class="modal-body">
       <div class="form-grid" style="grid-template-columns:1fr 1fr">
         <div class="form-campo form-full">
-          <label>Nombre del Período *</label>
+          <label>Nombre del Período</label>
           <input type="text" id="cont-per-nombre" placeholder="Ej: Enero 2025">
         </div>
         <div class="form-campo">
-          <label>Fecha Inicio *</label>
+          <label>Fecha Inicio</label>
           <input type="date" id="cont-per-desde">
         </div>
         <div class="form-campo">
-          <label>Fecha Fin *</label>
+          <label>Fecha Fin</label>
           <input type="date" id="cont-per-hasta">
         </div>
       </div>
@@ -2561,15 +2561,15 @@
     <div class="modal-body">
       <div class="form-grid" style="grid-template-columns:1fr 1fr">
         <div class="form-campo">
-          <label>Código *</label>
+          <label>Código</label>
           <input type="text" id="trib-codigo" placeholder="Ej: IVA-GEN" style="text-transform:uppercase">
         </div>
         <div class="form-campo">
-          <label>Organismo *</label>
+          <label>Organismo</label>
           <input type="text" id="trib-organismo" placeholder="Ej: SENIAT, ALCALDIA">
         </div>
         <div class="form-campo form-full">
-          <label>Nombre *</label>
+          <label>Nombre</label>
           <input type="text" id="trib-nombre" placeholder="Nombre del tributo">
         </div>
         <div class="form-campo form-full">
@@ -2748,7 +2748,7 @@
       <input type="hidden" id="falt-id-movimiento">
       <input type="hidden" id="falt-tipo-registro">
       <div class="form-campo">
-        <label>Área afectada *</label>
+        <label>Área afectada</label>
         <select id="falt-area" onchange="onCambiarAreaFaltante()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
           <option value="">— Seleccionar área —</option>
         </select>
@@ -2756,7 +2756,7 @@
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-campo" style="margin:0">
-          <label>Tipo de Ajuste *</label>
+          <label>Tipo de Ajuste</label>
           <select id="falt-tipo" onchange="onCambiarTipoFaltante()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar —</option>
             <option value="faltante">Falta Artículo</option>
@@ -2764,12 +2764,12 @@
           </select>
         </div>
         <div class="form-campo" style="margin:0">
-          <label id="falt-label-cantidad">Cantidad *</label>
+          <label id="falt-label-cantidad">Cantidad</label>
           <input type="number" id="falt-cantidad" min="0" step="any" placeholder="0">
         </div>
       </div>
       <div class="form-campo">
-        <label>Empleado que reporta <span style="font-size:10px;color:var(--suave);font-weight:400">(del área afectada — informativo)</span> *</label>
+        <label>Empleado que reporta <span style="font-size:10px;color:var(--suave);font-weight:400">(del área afectada — informativo)</span></label>
         <select id="falt-empleado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
           <option value="">— Seleccione primero el área —</option>
         </select>
@@ -2779,7 +2779,7 @@
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
           <div style="font-size:13px;color:var(--texto)">Usuario: <span id="falt-usuario-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
         </div>
-        <label style="font-size:12px">Contraseña *</label>
+        <label style="font-size:12px">Contraseña</label>
         <input type="password" id="falt-clave" placeholder="Ingrese su contraseña para confirmar"
           style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">
         <div id="falt-confirmacion-nota" style="font-size:11px;color:var(--suave);margin-top:4px">Confirme con su contraseña para autorizar el ajuste.</div>
@@ -2843,14 +2843,14 @@
             style="font-size:15px;font-family:var(--font-mono);text-align:center;color:var(--naranja)">
         </div>
         <div class="form-campo form-full" id="es-campo-cliente-cont" style="grid-column:1/-1;display:none">
-          <label>Factura *</label>
+          <label>Factura</label>
           <select id="es-factura-devolucion" onchange="onCambiarFacturaDevolucion()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar factura —</option>
           </select>
           <div id="es-factura-devolucion-info" style="margin-top:8px;font-size:12px;color:var(--suave);display:none"></div>
         </div>
         <div class="form-campo form-full" id="es-campo-transferencia-cont" style="grid-column:1/-1;display:none">
-          <label>Área de Origen *</label>
+          <label>Área de Origen</label>
           <select id="es-area-origen" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar área de origen —</option>
           </select>
@@ -2863,7 +2863,7 @@
             <div style="font-size:13px;color:var(--texto)">Usuario: <span id="es-receptor-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
             <div style="font-size:11px;color:var(--suave)" id="es-receptor-area">—</div>
           </div>
-          <label style="font-size:12px">Contraseña *</label>
+          <label style="font-size:12px">Contraseña</label>
           <input type="password" id="es-clave-receptor" placeholder="Ingrese su contraseña para confirmar"
             style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">
           <div style="font-size:11px;color:var(--suave);margin-top:4px">Confirme con su contraseña para autorizar la recepción.</div>
@@ -2912,7 +2912,7 @@
           <input type="text" id="inv-codigo" placeholder="Ej: REP-001" style="text-transform:uppercase">
         </div>
         <div class="form-campo form-full">
-          <label>Nombre del Artículo *</label>
+          <label>Nombre del Artículo</label>
           <input type="text" id="inv-nombre" placeholder="Nombre del artículo" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
         </div>
         <div class="form-campo">
@@ -3223,7 +3223,7 @@
             <input type="text" id="fac-receptor-rif" placeholder="J-XXXXXXXX-X">
           </div>
           <div class="form-campo">
-            <label>Dirección *</label>
+            <label>Dirección</label>
             <input type="text" id="fac-receptor-dir" placeholder="Dirección fiscal">
           </div>
           <div class="form-campo form-full">
@@ -3374,16 +3374,16 @@
           </select>
         </div>
         <div class="form-campo">
-          <label>N° Documento *</label>
+          <label>N° Documento</label>
           <input type="text" id="emp-numero-doc" placeholder="Ej: 12345678" onblur="validarCedulaDuplicada()">
           <div id="emp-numero-doc-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un empleado con esta cédula.</div>
         </div>
         <div class="form-campo form-full">
-          <label>Nombre Completo *</label>
+          <label>Nombre Completo</label>
           <input type="text" id="emp-nombre" placeholder="Apellidos y Nombres">
         </div>
         <div class="form-campo">
-          <label>Fecha de Nacimiento *</label>
+          <label>Fecha de Nacimiento</label>
           <input type="date" id="emp-fecha-nac">
         </div>
         <div class="form-campo">
@@ -3399,11 +3399,11 @@
           <select id="emp-nivel-edu"></select>
         </div>
         <div class="form-campo form-full">
-          <label>Correo Electrónico *</label>
+          <label>Correo Electrónico</label>
           <input type="email" id="emp-correo" placeholder="correo@ejemplo.com">
         </div>
         <div class="form-campo" style="grid-column:span 1">
-          <label>Teléfono Móvil *</label>
+          <label>Teléfono Móvil</label>
           <input type="text" id="emp-tel-movil" placeholder="0414-0000000" style="width:100%;box-sizing:border-box">
         </div>
         <div class="form-campo" style="grid-column:span 1">
@@ -3411,7 +3411,7 @@
           <input type="text" id="emp-tel-fijo" placeholder="0212-0000000" style="width:100%;box-sizing:border-box">
         </div>
         <div class="form-campo form-full">
-          <label>Dirección *</label>
+          <label>Dirección</label>
           <textarea id="emp-direccion" placeholder="Dirección completa" rows="2"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;width:100%"></textarea>
         </div>
@@ -3431,11 +3431,11 @@
       <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--naranja);margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--borde)">🚨 Contacto de Emergencia</div>
       <div class="form-grid">
         <div class="form-campo form-full">
-          <label>Nombre *</label>
+          <label>Nombre</label>
           <input type="text" id="emp-emerg-nombre" placeholder="Nombre del contacto">
         </div>
         <div class="form-campo">
-          <label>Teléfono Móvil *</label>
+          <label>Teléfono Móvil</label>
           <input type="text" id="emp-emerg-tel" placeholder="0414-0000000">
         </div>
       </div>
@@ -3444,7 +3444,7 @@
       <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--naranja);margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--borde)">💼 Datos Laborales</div>
       <div class="form-grid">
         <div class="form-campo form-full">
-          <label>Empresa <span style="color:var(--rojo)">*</span></label>
+          <label>Empresa</label>
           <select id="emp-emisor" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"></select>
         </div>
         <div class="form-campo">
@@ -3476,7 +3476,7 @@
           <select id="emp-freq-pago"></select>
         </div>
         <div class="form-campo">
-          <label>Monto Salario *</label>
+          <label>Monto Salario</label>
           <input type="number" id="emp-monto-sal" placeholder="0.00" step="0.01" min="0">
         </div>
         <div class="form-campo">
@@ -3512,7 +3512,7 @@
           <input type="number" id="emp-comision" placeholder="0.00" step="0.01" min="0" max="100">
         </div>
         <div class="form-campo">
-          <label>Fecha de Ingreso *</label>
+          <label>Fecha de Ingreso</label>
           <input type="date" id="emp-fecha-ingreso">
         </div>
         <div class="form-campo">
@@ -3526,7 +3526,7 @@
           </select>
         </div>
         <div class="form-campo">
-          <label>Fecha de Egreso <span id="emp-egreso-req" style="color:#fc8181;display:none">*</span> <span style="font-size:11px;color:var(--suave)">(Requerida si Retirado o Renuncia)</span></label>
+          <label>Fecha de Egreso <span style="font-size:11px;color:var(--suave)">(Requerida si Retirado o Renuncia)</span></label>
           <input type="date" id="emp-fecha-egreso" onchange="validarFechaEgresoEmp()">
         </div>
       </div>
@@ -3535,11 +3535,11 @@
       <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--naranja);margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--borde)">🏦 Cuenta Nómina</div>
       <div class="form-grid">
         <div class="form-campo form-full">
-          <label>Institución Financiera *</label>
+          <label>Institución Financiera</label>
           <select id="emp-banco" onchange="onSelBancoEmpleado()"></select>
         </div>
         <div class="form-campo">
-          <label>Tipo de Cuenta *</label>
+          <label>Tipo de Cuenta</label>
           <select id="emp-tipo-cuenta">
             <option value="">— Seleccionar —</option>
             <option value="CORRIENTE">Corriente</option>
@@ -3547,7 +3547,7 @@
           </select>
         </div>
         <div class="form-campo">
-          <label>Número de Cuenta *</label>
+          <label>Número de Cuenta</label>
           <div style="display:flex;align-items:center;gap:0">
             <input type="text" id="emp-cod-banco" maxlength="4" readonly
               style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--naranja);background:var(--gris3);border:1px solid var(--borde);border-right:none;padding:11px 14px;border-radius:5px 0 0 5px;width:90px;outline:none;cursor:not-allowed;text-align:center">
@@ -3789,7 +3789,7 @@
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-campo">
-          <label>Condición Legal *</label>
+          <label>Condición Legal</label>
           <select id="cli-condicion-legal" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="V">V — Venezolano</option>
             <option value="E">E — Extranjero</option>
@@ -3799,12 +3799,12 @@
           </select>
         </div>
         <div class="form-campo">
-          <label>Identificación *</label>
+          <label>Identificación</label>
           <input type="text" id="cli-identificacion" placeholder="Solo dígitos" maxlength="15" style="font-family:var(--font-mono)" oninput="this.value=this.value.replace(/[^0-9]/g,'')" onblur="validarIdentificacionClienteDuplicada('cli')">
           <div id="cli-identificacion-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un cliente con esta identificación.</div>
         </div>
         <div class="form-campo form-full">
-          <label>Nombre / Apellido / Razón Social *</label>
+          <label>Nombre / Apellido / Razón Social</label>
           <input type="text" id="cli-nombre-apellido" placeholder="Nombre completo del cliente">
         </div>
         <div class="form-campo">
@@ -3875,7 +3875,7 @@
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-campo">
-          <label>Condición Legal *</label>
+          <label>Condición Legal</label>
           <select id="clir-condicion-legal" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="V">V — Venezolano</option>
             <option value="E">E — Extranjero</option>
@@ -3885,12 +3885,12 @@
           </select>
         </div>
         <div class="form-campo">
-          <label>Identificación *</label>
+          <label>Identificación</label>
           <input type="text" id="clir-identificacion" placeholder="Solo dígitos" maxlength="15" style="font-family:var(--font-mono)" oninput="this.value=this.value.replace(/[^0-9]/g,'')" onblur="validarIdentificacionClienteDuplicada('clir')">
           <div id="clir-identificacion-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un cliente con esta identificación.</div>
         </div>
         <div class="form-campo form-full">
-          <label>Nombre / Apellido / Razón Social *</label>
+          <label>Nombre / Apellido / Razón Social</label>
           <input type="text" id="clir-nombre-apellido" placeholder="Nombre completo del cliente">
         </div>
         <div class="form-campo form-full">
@@ -4048,13 +4048,13 @@
       </div>
 
       <div class="form-campo form-full">
-        <label>Motivo de la Anulación *</label>
+        <label>Motivo de la Anulación</label>
         <textarea id="anulacion-motivo" rows="2" placeholder="Explique por qué se está anulando este movimiento"
           style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;resize:vertical"></textarea>
       </div>
 
       <div class="form-campo form-full">
-        <label>Contraseña de Autorización *</label>
+        <label>Contraseña de Autorización</label>
         <input type="password" id="anulacion-clave" placeholder="Ingrese su contraseña para confirmar"
           style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
       </div>
@@ -4403,7 +4403,7 @@
           <input type="text" id="em-telefono" placeholder="0212-XXXXXXX">
         </div>
         <div class="form-campo form-full">
-          <label>Correo Electrónico *</label>
+          <label>Correo Electrónico</label>
           <input type="email" id="em-correo" placeholder="empresa@correo.com">
         </div>
         <div class="form-campo form-full">
@@ -4865,7 +4865,7 @@
       <!-- Datos de pago del proveedor -- se muestran solo si el Método de Pago es tipo Transferencia -->
       <div class="form-grid" id="exec-pago-via-cont" style="display:none;margin-bottom:16px">
         <div class="form-campo form-full">
-          <label>Vía de Pago *</label>
+          <label>Vía de Pago</label>
           <select id="exec-pago-via" onchange="_actualizarInfoPagoProveedor()"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccione —</option>
@@ -4890,7 +4890,7 @@
            elegido arriba es Transferencia. -->
       <div class="form-grid" id="exec-pago-banco-origen-cont" style="display:none;margin-bottom:16px">
         <div class="form-campo form-full">
-          <label>Banco Origen *</label>
+          <label>Banco Origen</label>
           <select id="exec-pago-banco-origen"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar —</option>
@@ -4900,7 +4900,7 @@
 
       <div class="form-grid">
         <div class="form-campo">
-          <label>Referencia *</label>
+          <label>Referencia</label>
           <input type="text" id="exec-pago-ref" placeholder="N° referencia bancaria o comprobante"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
         </div>
@@ -4915,7 +4915,7 @@
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
           <div style="font-size:13px;color:var(--texto)">Usuario: <span id="exec-pago-usuario-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
         </div>
-        <label style="font-size:12px">Contraseña *</label>
+        <label style="font-size:12px">Contraseña</label>
         <input type="password" id="exec-pago-clave" placeholder="Ingrese su contraseña para confirmar"
           style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px"
           onkeydown="if(event.key==='Enter'){document.getElementById('btn-confirmar-pago')?.click()}">
@@ -5274,12 +5274,12 @@
           </div>
           <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
             <div class="form-campo">
-              <label>N° Factura *</label>
+              <label>N° Factura</label>
               <input type="text" id="pend-fact-factura-no" placeholder="N° de la Factura del Proveedor"
                 style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             </div>
             <div class="form-campo">
-              <label>Referencia de Pago *</label>
+              <label>Referencia de Pago</label>
               <input type="text" id="pend-fact-referencia" placeholder="N° referencia bancaria o comprobante"
                 style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             </div>
@@ -5456,19 +5456,19 @@
         </div>
 
         <div class="form-campo form-full" id="edit-mov-proveedor-cont" style="display:none;grid-column:1/-1">
-          <label>Proveedor *</label>
+          <label>Proveedor</label>
           <select id="edit-mov-proveedor" onchange="onCambiarProveedorEdit()"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar proveedor —</option>
           </select>
         </div>
         <div class="form-campo form-full" id="edit-mov-cliente-cont" style="display:none;grid-column:1/-1">
-          <label>Nombre del Cliente *</label>
+          <label>Nombre del Cliente</label>
           <input type="text" id="edit-mov-cliente" placeholder="Nombre completo del cliente"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
         </div>
         <div class="form-campo form-full" id="edit-mov-area-origen-cont" style="display:none;grid-column:1/-1">
-          <label>Área de Origen *</label>
+          <label>Área de Origen</label>
           <select id="edit-mov-area-origen"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar área de origen —</option>
@@ -5478,7 +5478,7 @@
         <div class="form-campo form-full" id="edit-mov-pago-cont" style="grid-column:1/-1">
           <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
             <div class="form-campo" style="margin:0">
-              <label>Modalidad de Pago *</label>
+              <label>Modalidad de Pago</label>
               <select id="edit-mov-esquema-pago" onchange="onCambioEsquemaPagoEdit()"
                 style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box">
                 <option value="">— Seleccione pago —</option>
@@ -5505,11 +5505,11 @@
             <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;font-weight:600">📅 Condiciones de Crédito</div>
             <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;gap:12px">
               <div class="form-campo" style="margin:0">
-                <label style="font-size:12px">N° de Cuotas *</label>
+                <label style="font-size:12px">N° de Cuotas</label>
                 <input type="number" id="edit-mov-cuotas-num" min="1" max="60" placeholder="Ej: 3" oninput="document.getElementById('edit-mov-cuotas-monto').value='';calcularCuotasEdit()" style="font-family:var(--font-mono)">
               </div>
               <div class="form-campo" style="margin:0">
-                <label style="font-size:12px">Fecha Primera Cuota *</label>
+                <label style="font-size:12px">Fecha Primera Cuota</label>
                 <input type="date" id="edit-mov-cuotas-fecha" oninput="calcularCuotasEdit()">
               </div>
               <div class="form-campo" style="margin:0">
@@ -5532,7 +5532,7 @@
             <div style="font-size:13px;color:var(--texto)">Usuario: <span id="edit-mov-receptor-nombre" style="font-weight:600;color:var(--naranja)">—</span></div>
             <div style="font-size:11px;color:var(--suave)" id="edit-mov-receptor-area">—</div>
           </div>
-          <label style="font-size:12px">Contraseña *</label>
+          <label style="font-size:12px">Contraseña</label>
           <input type="password" id="edit-mov-clave"
             style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px"
             onkeydown="if(event.key==='Enter'){guardarEdicionMovimiento()}">
@@ -5609,7 +5609,7 @@
             <div style="font-size:10px;color:#60a5fa;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600;border-bottom:1px solid rgba(96,165,250,0.2);padding-bottom:4px">📥 Quien Recibe</div>
           </div>
           <div id="edit-sal-area-cont" class="form-campo form-full">
-            <label>Área Receptora *</label>
+            <label>Área Receptora</label>
             <div id="edit-sal-area-display" style="font-size:16px;font-weight:600;color:#60a5fa;padding:11px 14px;background:var(--gris2);border:1px solid var(--borde);border-radius:5px">—</div>
             <select id="edit-sal-area" onchange="onCambioAreaEditSalida()"
               style="display:none;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
@@ -5637,7 +5637,7 @@
           </div>
           <div class="form-campo form-full" id="edit-sal-clave-cont" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">
             <div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>
-            <label style="font-size:12px">Contraseña *</label>
+            <label style="font-size:12px">Contraseña</label>
             <input type="password" id="edit-sal-clave" placeholder="Ingrese su contraseña para autorizar"
               style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px"
               onkeydown="if(event.key==='Enter'){guardarEdicionMovimiento()}">
