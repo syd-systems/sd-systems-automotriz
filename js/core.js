@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909076';
+const SYD_VERSION = '20260909077';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -886,6 +886,7 @@ async function verificarSesionActiva() {
         errEl.style.display = 'block';
       }
       document.getElementById('pantalla-login').style.display = 'flex';
+      document.getElementById('pantalla-login').classList.add('mostrar-form');
       document.getElementById('pantalla-app').style.display   = 'none';
       setTimeout(function() { document.getElementById('login-correo')?.focus(); }, 200);
       return;
@@ -898,6 +899,9 @@ async function verificarSesionActiva() {
       // necesita el JWT todavía válido para identificar de quién es la fila.
       try { await actualizarMiSesion({ sesion_invalidada: false }); } catch(e) {}
       limpiarSesionLocal();
+      document.getElementById('pantalla-login').style.display = 'flex';
+      document.getElementById('pantalla-login').classList.add('mostrar-form');
+      document.getElementById('pantalla-app').style.display   = 'none';
       const errEl = document.getElementById('login-error');
       errEl.textContent = '🚫 Tu usuario fue desactivado por el administrador.';
       errEl.style.display = 'block';
@@ -913,6 +917,9 @@ async function verificarSesionActiva() {
       console.warn('[polling] CASO 2 — sesion_activa:', u.sesion_activa, '| sesion_invalidada:', u.sesion_invalidada);
       try { await actualizarMiSesion({ sesion_invalidada: false }); } catch(e) {}
       limpiarSesionLocal();
+      document.getElementById('pantalla-login').style.display = 'flex';
+      document.getElementById('pantalla-login').classList.add('mostrar-form');
+      document.getElementById('pantalla-app').style.display   = 'none';
       const errEl = document.getElementById('login-error');
       errEl.textContent = '🔒 Tu sesión fue cerrada por el administrador.';
       errEl.style.display = 'block';
@@ -1466,8 +1473,8 @@ async function cerrarSesion() {
     if (correo) await actualizarMiSesion({ sesion_activa: false, sesion_invalidada: false, marcar_ultima_desconexion: true });
   } catch(e) { console.error('Error cerrando sesión:', e); }
   limpiarSesionLocal();
-  // Redirigir a landing page
-  window.location.href = 'landing.html';
+  // Redirigir a la pantalla de bienvenida (ahora fusionada en index.html)
+  window.location.href = '/';
 }
 
 // ─── NAVEGACIÓN ───
