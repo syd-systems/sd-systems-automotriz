@@ -135,7 +135,7 @@ async function cargarPropietarios(filtro) {
     c.innerHTML =
       '<div class="panel" id="panel-propietarios">'
       + '<div class="panel-header">'
-      + '<h3 id="prop-contador">Propietarios</h3>'
+      + '<h3 id="prop-contador">Clientes</h3>'
       + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
       + '<input type="text" id="buscar-prop" placeholder="Buscar por nombre o documento..." '
       + 'onkeyup="cargarPropietarios(this.value)" '
@@ -171,7 +171,7 @@ async function cargarPropietarios(filtro) {
           ? '<img src="' + p.foto_documento + '" onerror="imgError(this)" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--borde)">'
           : '<div style="width:32px;height:32px;border-radius:50%;background:var(--gris3);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--suave)">👤</div>')
         + '<div>'
-        + '<div style="font-weight:500">' + p.nombre_completo + '</div>'
+        + '<div style="font-weight:500;font-size:15px">' + p.nombre_completo + '</div>'
         + '<div style="font-size:11px;color:var(--suave)">' + p.tipo_doc + '-' + p.numero_doc + '</div>'
         + (p.tipo_contribuyente ? '<span class="badge ' + ({'ORDINARIO':'badge-naranja','ESPECIAL':'badge-verde','FORMAL':'badge-gris'}[p.tipo_contribuyente]||'badge-gris') + '" style="font-size:9px;margin-top:3px;display:inline-block">' + ({'ORDINARIO':'Ord.','ESPECIAL':'Esp.','FORMAL':'Form.'}[p.tipo_contribuyente]||p.tipo_contribuyente) + '</span>' : '')
         + '</div></div></td>'
