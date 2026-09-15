@@ -1520,19 +1520,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909065"></script>
-<script src="js/parametros.js?v=20260909065"></script>
-<script src="js/empresas.js?v=20260909065"></script>
-<script src="js/ingresos.js?v=20260909065"></script>
-<script src="js/inventario.js?v=20260909065"></script>
-<script src="js/proveedores.js?v=20260909065"></script>
-<script src="js/clientes.js?v=20260909065"></script>
-<script src="js/ventas.js?v=20260909065"></script>
-<script src="js/contabilidad.js?v=20260909065"></script>
-<script src="js/egresos.js?v=20260909065"></script>
-<script src="js/vehiculos.js?v=20260909065"></script>
-<script src="js/catalogo.js?v=20260909065"></script>
-<script src="js/ordenes.js?v=20260909065"></script>
+<script src="js/core.js?v=20260909066"></script>
+<script src="js/parametros.js?v=20260909066"></script>
+<script src="js/empresas.js?v=20260909066"></script>
+<script src="js/ingresos.js?v=20260909066"></script>
+<script src="js/inventario.js?v=20260909066"></script>
+<script src="js/proveedores.js?v=20260909066"></script>
+<script src="js/clientes.js?v=20260909066"></script>
+<script src="js/ventas.js?v=20260909066"></script>
+<script src="js/contabilidad.js?v=20260909066"></script>
+<script src="js/egresos.js?v=20260909066"></script>
+<script src="js/vehiculos.js?v=20260909066"></script>
+<script src="js/catalogo.js?v=20260909066"></script>
+<script src="js/ordenes.js?v=20260909066"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -1788,7 +1788,7 @@
           </div>
           <div>
             <label>Estado</label>
-            <select id="veh-estado" style="width:100%">
+            <select id="veh-estado" style="width:100%" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
               <option value="ACTIVO">Activo</option>
               <option value="INACTIVO">Inactivo</option>
             </select>
@@ -1796,7 +1796,7 @@
         </div>
         <div class="form-campo form-full">
           <label>Cliente (Propietario)</label>
-          <select id="veh-propietario"></select>
+          <select id="veh-propietario" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}"></select>
         </div>
         <div class="form-campo form-full">
           <label>Foto del Carnet de Circulación</label>
