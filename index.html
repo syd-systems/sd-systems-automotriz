@@ -1520,19 +1520,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909066"></script>
-<script src="js/parametros.js?v=20260909066"></script>
-<script src="js/empresas.js?v=20260909066"></script>
-<script src="js/ingresos.js?v=20260909066"></script>
-<script src="js/inventario.js?v=20260909066"></script>
-<script src="js/proveedores.js?v=20260909066"></script>
-<script src="js/clientes.js?v=20260909066"></script>
-<script src="js/ventas.js?v=20260909066"></script>
-<script src="js/contabilidad.js?v=20260909066"></script>
-<script src="js/egresos.js?v=20260909066"></script>
-<script src="js/vehiculos.js?v=20260909066"></script>
-<script src="js/catalogo.js?v=20260909066"></script>
-<script src="js/ordenes.js?v=20260909066"></script>
+<script src="js/core.js?v=20260909067"></script>
+<script src="js/parametros.js?v=20260909067"></script>
+<script src="js/empresas.js?v=20260909067"></script>
+<script src="js/ingresos.js?v=20260909067"></script>
+<script src="js/inventario.js?v=20260909067"></script>
+<script src="js/proveedores.js?v=20260909067"></script>
+<script src="js/clientes.js?v=20260909067"></script>
+<script src="js/ventas.js?v=20260909067"></script>
+<script src="js/contabilidad.js?v=20260909067"></script>
+<script src="js/egresos.js?v=20260909067"></script>
+<script src="js/vehiculos.js?v=20260909067"></script>
+<script src="js/catalogo.js?v=20260909067"></script>
+<script src="js/ordenes.js?v=20260909067"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -1801,13 +1801,13 @@
         <div class="form-campo form-full">
           <label>Foto del Carnet de Circulación</label>
           <div id="veh-carnet-actual" style="margin-bottom:8px"></div>
-          <input type="file" id="veh-carnet-file" accept="image/*" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:8px;border-radius:5px;width:100%">
+          <input type="file" id="veh-carnet-file" accept="image/*" onkeydown="if(event.key==='Enter'){event.preventDefault()}" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:8px;border-radius:5px;width:100%">
           <img id="veh-carnet-preview" style="margin-top:8px;max-height:100px;border-radius:6px;display:none">
         </div>
         <div class="form-campo form-full">
           <label>Fotos del Vehículo (máx. 8)</label>
           <div id="veh-fotos-actuales" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-bottom:10px"></div>
-          <input type="file" id="veh-fotos-files" accept="image/*" multiple style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:8px;border-radius:5px;width:100%">
+          <input type="file" id="veh-fotos-files" accept="image/*" multiple onkeydown="if(event.key==='Enter'){event.preventDefault()}" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:8px;border-radius:5px;width:100%">
           <div id="veh-fotos-preview" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
         </div>
       </div>
