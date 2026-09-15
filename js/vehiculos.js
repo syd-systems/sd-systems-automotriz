@@ -242,7 +242,6 @@ function abrirPropietario(id, onGuardado) {
   document.getElementById('prop-correo').value      = p ? (p.correo || '')   : '';
   document.getElementById('prop-direccion').value   = p ? (p.direccion || '') : '';
   document.getElementById('prop-estado').value      = p ? String(p.activo !== false) : 'true';
-  document.getElementById('prop-empresa').value          = p ? (p.empresa || '')  : '';
   document.getElementById('prop-tipo-contribuyente').value = p ? (p.tipo_contribuyente || '') : '';
   document.getElementById('prop-observaciones').value      = p ? (p.observaciones || '') : '';
   const propFotoPreview = document.getElementById('prop-foto-preview');
@@ -282,8 +281,7 @@ async function guardarPropietario() {
   const nombre  = document.getElementById('prop-nombre').value.trim();
   const tel     = document.getElementById('prop-telefono').value.trim();
   const correo  = document.getElementById('prop-correo').value.trim();
-  const dir     = document.getElementById('prop-direccion').value.trim();
-  const emp     = document.getElementById('prop-empresa').value.trim();
+  const dir     = capitalizarNombre(document.getElementById('prop-direccion').value.trim());
   const rif     = document.getElementById('prop-rif-civil').value.trim();
   const tipoContrib = document.getElementById('prop-tipo-contribuyente').value;
   const fotoFile= document.getElementById('prop-foto-file').files[0];
@@ -351,7 +349,7 @@ async function guardarPropietario() {
     const datos = {
       tipo_doc: tipDoc, numero_doc: numDoc, nombre_completo: nombreFinal,
       rif: rif || null, telefono: tel || null, correo: correoFinal || null,
-      direccion: dir || null, empresa: emp || null,
+      direccion: dir || null,
       tipo_contribuyente: tipoContrib || null,
       observaciones: document.getElementById('prop-observaciones').value.trim() || null,
       activo: document.getElementById('prop-estado').value === 'true',
@@ -712,8 +710,8 @@ async function guardarVehiculo() {
   const anio     = parseInt(document.getElementById('veh-anio').value);
   const color    = capitalizarNombre(document.getElementById('veh-color').value.trim());
   const carr     = document.getElementById('veh-carroceria').value.trim();
-  const motor    = document.getElementById('veh-motor').value.trim();
-  const chasis   = document.getElementById('veh-chasis').value.trim();
+  const motor    = document.getElementById('veh-motor').value.trim().toUpperCase();
+  const chasis   = document.getElementById('veh-chasis').value.trim().toUpperCase();
   const estado   = document.getElementById('veh-estado').value;
   const propId   = document.getElementById('veh-propietario').value || null;
   const carnetF  = document.getElementById('veh-carnet-file').files[0];
