@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909073';
+const SYD_VERSION = '20260909074';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -1573,7 +1573,7 @@ async function renderDashboard() {
     // Contar registros de tablas existentes
     const [usuarios, tasas, vehiculos, propietarios, ordenes] = await Promise.all([
       api('usuarios', 'GET', null, '?select=id_usuario'),
-      api('tasas', 'GET', null, '?select=id_tasa&order=fecha_registro.desc&limit=1'),
+      api('tasas', 'GET', null, '?moneda_origen=eq.USD&moneda_destino=eq.VES&select=id_tasa&order=fecha_registro.desc&limit=1'),
       api('vehiculos', 'GET', null, '?select=id_vehiculo'+emisorQ()),
       api('clientes', 'GET', null, '?select=id_cliente'+emisorQ()),
       api('ordenes_servicio', 'GET', null, '?select=id_orden&estado=neq.CERRADA&estado=neq.ANULADA'+emisorQ()),
@@ -1594,8 +1594,7 @@ async function renderDashboard() {
       <div class="bienvenida">
         <div>
           <h1>BIENVENIDO</h1>
-          <p>${sesionActual.nombre} · ${esAdmin ? 'Administrador del Sistema' : 'Operador'}</p>
-          <p style="margin-top:6px;font-size:12px;color:#888">S&D Systems Automotriz · Fase 1 activa</p>
+          <p>${sesionActual.nombre} · ${esAdmin ? 'Administrador del Sistema' : 'Usuario'}</p>
         </div>
         <div class="hora">${hora}</div>
       </div>
