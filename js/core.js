@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909077';
+const SYD_VERSION = '20260909078';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -1762,8 +1762,8 @@ async function renderUsuarios(filtro) {
               <div style="position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;background:${enLinea ? '#38a169' : '#444'};border:2px solid var(--gris1)"></div>
             </div>
             <div>
-              <div style="font-weight:500">${u.nombre}</div>
-              <div style="font-size:11px;color:var(--suave)">${u.correo_usuario}</div>
+              <div style="font-weight:500;font-size:15px">${u.nombre}</div>
+              <div style="font-size:13px;color:var(--suave)">${u.correo_usuario}</div>
               ${u._empresaEmpleado ? `<div style="font-size:10px;color:var(--naranja);font-weight:600">🏢 ${u._empresaEmpleado}</div>` : ''}
             </div>
           </div>
