@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909065';
+const SYD_VERSION = '20260909066';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3629,7 +3629,7 @@ function nextField(el) {
     const modal = el.closest('.modal');
     if (!modal) return;
     const campos = Array.from(modal.querySelectorAll(
-      'input:not([type=hidden]):not([disabled]):not([readonly]):not([type=button]):not([type=submit]), select:not([disabled]), textarea:not([disabled])'
+      'input:not([type=hidden]):not([disabled]):not([readonly]):not([type=button]):not([type=submit]):not([type=file]), select:not([disabled]), textarea:not([disabled])'
     )).filter(function(c) { return c.offsetParent !== null; });
     const idx = campos.indexOf(el);
     if (idx !== -1 && idx < campos.length - 1) campos[idx + 1].focus();
