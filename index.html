@@ -1523,19 +1523,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909059"></script>
-<script src="js/parametros.js?v=20260909059"></script>
-<script src="js/empresas.js?v=20260909059"></script>
-<script src="js/ingresos.js?v=20260909059"></script>
-<script src="js/inventario.js?v=20260909059"></script>
-<script src="js/proveedores.js?v=20260909059"></script>
-<script src="js/clientes.js?v=20260909059"></script>
-<script src="js/ventas.js?v=20260909059"></script>
-<script src="js/contabilidad.js?v=20260909059"></script>
-<script src="js/egresos.js?v=20260909059"></script>
-<script src="js/vehiculos.js?v=20260909059"></script>
-<script src="js/catalogo.js?v=20260909059"></script>
-<script src="js/ordenes.js?v=20260909059"></script>
+<script src="js/core.js?v=20260909060"></script>
+<script src="js/parametros.js?v=20260909060"></script>
+<script src="js/empresas.js?v=20260909060"></script>
+<script src="js/ingresos.js?v=20260909060"></script>
+<script src="js/inventario.js?v=20260909060"></script>
+<script src="js/proveedores.js?v=20260909060"></script>
+<script src="js/clientes.js?v=20260909060"></script>
+<script src="js/ventas.js?v=20260909060"></script>
+<script src="js/contabilidad.js?v=20260909060"></script>
+<script src="js/egresos.js?v=20260909060"></script>
+<script src="js/vehiculos.js?v=20260909060"></script>
+<script src="js/catalogo.js?v=20260909060"></script>
+<script src="js/ordenes.js?v=20260909060"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -1633,62 +1633,68 @@
     <div class="modal-body">
 
       <div class="form-grid">
-        <div class="form-campo">
-          <label>Condición Legal</label>
-          <select id="prop-tipo-doc" onchange="limpiarDatosRegistroCivilPropietario(); consultarCedula(this.value, document.getElementById('prop-num-doc').value)">
-            <option value="V">V — Venezolano</option>
-            <option value="E">E — Extranjero</option>
-            <option value="J">J — Jurídico</option>
-            <option value="G">G — Gubernamental</option>
-          </select>
-        </div>
-        <div class="form-campo">
-          <label>Número de Identificación</label>
-          <input type="text" id="prop-num-doc" placeholder="Solo Dígitos" oninput="this.value=this.value.replace(/[^0-9]/g,''); limpiarDatosRegistroCivilPropietario(); if(this.value.length>=6) consultarCedula(document.getElementById('prop-tipo-doc').value, this.value)"
-            onblur="validarIdentificacionPropietarioDuplicada()"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
-          <div id="prop-num-doc-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un cliente con esta identificación.</div>
-          <div id="prop-cedula-info" style="grid-column:1/-1;display:none"></div>
+        <div class="form-campo form-full" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+          <div>
+            <label>Condición Legal</label>
+            <select id="prop-tipo-doc" onchange="limpiarDatosRegistroCivilPropietario(); consultarCedula(this.value, document.getElementById('prop-num-doc').value)" style="width:100%">
+              <option value="V">V — Venezolano</option>
+              <option value="E">E — Extranjero</option>
+              <option value="J">J — Jurídico</option>
+              <option value="G">G — Gubernamental</option>
+            </select>
+          </div>
+          <div>
+            <label>Número de Identificación</label>
+            <input type="text" id="prop-num-doc" placeholder="Solo Dígitos" style="width:100%" oninput="this.value=this.value.replace(/[^0-9]/g,''); limpiarDatosRegistroCivilPropietario(); if(this.value.length>=6) consultarCedula(document.getElementById('prop-tipo-doc').value, this.value)"
+              onblur="validarIdentificacionPropietarioDuplicada()"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
+            <div id="prop-num-doc-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un cliente con esta identificación.</div>
+            <div id="prop-cedula-info" style="display:none"></div>
+          </div>
+          <div>
+            <label>RIF</label>
+            <input type="text" id="prop-rif-civil" placeholder="Ej: V-04284968" style="text-transform:uppercase;width:100%">
+          </div>
         </div>
         <div class="form-campo form-full">
           <label>Nombre / Apellido / Razón Social</label>
           <input type="text" id="prop-nombre" placeholder="Nombre Completo" onblur="this.value=capitalizarNombre(this.value)">
         </div>
-        <div class="form-campo">
-          <label>RIF</label>
-          <input type="text" id="prop-rif-civil" placeholder="Ej: V-04284968" style="text-transform:uppercase">
-        </div>
-        <div class="form-campo">
-          <label>Teléfono</label>
-          <input type="text" id="prop-telefono" placeholder="0414-0000000">
-        </div>
-        <div class="form-campo">
-          <label>Correo Electrónico *</label>
-          <input type="email" id="prop-correo" placeholder="correo@ejemplo.com">
-        </div>
-        <div class="form-campo">
-          <label>Estado</label>
-          <select id="prop-estado">
-            <option value="true">Activo</option>
-            <option value="false">Inactivo</option>
-          </select>
+        <div class="form-campo form-full" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div>
+            <label>Teléfono</label>
+            <input type="text" id="prop-telefono" placeholder="0414-0000000" style="width:100%">
+          </div>
+          <div>
+            <label>Correo Electrónico</label>
+            <input type="email" id="prop-correo" placeholder="correo@ejemplo.com" style="width:100%" onblur="this.value=this.value.trim().toLowerCase()">
+          </div>
         </div>
         <div class="form-campo form-full">
           <label>Dirección Fiscal</label>
           <input type="text" id="prop-direccion" placeholder="Dirección Completa">
         </div>
+        <div class="form-campo form-full" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div>
+            <label>Tipo de Contribuyente</label>
+            <select id="prop-tipo-contribuyente" style="width:100%">
+              <option value="">— No aplica / No especificado —</option>
+              <option value="ORDINARIO">Contribuyente Ordinario</option>
+              <option value="ESPECIAL">Contribuyente Especial</option>
+              <option value="FORMAL">Contribuyente Formal</option>
+            </select>
+          </div>
+          <div>
+            <label>Estado</label>
+            <select id="prop-estado" style="width:100%">
+              <option value="true">Activo</option>
+              <option value="false">Inactivo</option>
+            </select>
+          </div>
+        </div>
         <div class="form-campo form-full">
           <label>Empresa u Organización</label>
           <input type="text" id="prop-empresa" placeholder="Opcional">
-        </div>
-        <div class="form-campo form-full">
-          <label>Tipo de Contribuyente</label>
-          <select id="prop-tipo-contribuyente">
-            <option value="">— No aplica / No especificado —</option>
-            <option value="ORDINARIO">Contribuyente Ordinario</option>
-            <option value="ESPECIAL">Contribuyente Especial</option>
-            <option value="FORMAL">Contribuyente Formal</option>
-          </select>
         </div>
         <div class="form-campo form-full">
           <label>Observaciones</label>
@@ -1756,17 +1762,17 @@
           </div>
           <div>
             <label>Marca</label>
-            <input type="text" id="veh-marca" placeholder="Ej: Toyota" style="width:100%">
+            <input type="text" id="veh-marca" placeholder="Ej: Toyota" style="width:100%" onblur="this.value=capitalizarNombre(this.value)">
           </div>
         </div>
         <div class="form-campo form-full" style="display:grid;grid-template-columns:1fr 140px 1fr;gap:14px">
           <div>
             <label>Modelo</label>
-            <input type="text" id="veh-modelo" placeholder="Ej: Corolla" style="width:100%">
+            <input type="text" id="veh-modelo" placeholder="Ej: Corolla" style="width:100%" onblur="this.value=capitalizarNombre(this.value)">
           </div>
           <div>
             <label>Color</label>
-            <input type="text" id="veh-color" placeholder="Ej: Blanco" style="width:100%">
+            <input type="text" id="veh-color" placeholder="Ej: Blanco" style="width:100%" onblur="this.value=capitalizarNombre(this.value)">
           </div>
           <div>
             <label>Tipo de Carrocería</label>
