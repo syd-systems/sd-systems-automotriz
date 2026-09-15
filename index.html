@@ -1520,19 +1520,19 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909064"></script>
-<script src="js/parametros.js?v=20260909064"></script>
-<script src="js/empresas.js?v=20260909064"></script>
-<script src="js/ingresos.js?v=20260909064"></script>
-<script src="js/inventario.js?v=20260909064"></script>
-<script src="js/proveedores.js?v=20260909064"></script>
-<script src="js/clientes.js?v=20260909064"></script>
-<script src="js/ventas.js?v=20260909064"></script>
-<script src="js/contabilidad.js?v=20260909064"></script>
-<script src="js/egresos.js?v=20260909064"></script>
-<script src="js/vehiculos.js?v=20260909064"></script>
-<script src="js/catalogo.js?v=20260909064"></script>
-<script src="js/ordenes.js?v=20260909064"></script>
+<script src="js/core.js?v=20260909065"></script>
+<script src="js/parametros.js?v=20260909065"></script>
+<script src="js/empresas.js?v=20260909065"></script>
+<script src="js/ingresos.js?v=20260909065"></script>
+<script src="js/inventario.js?v=20260909065"></script>
+<script src="js/proveedores.js?v=20260909065"></script>
+<script src="js/clientes.js?v=20260909065"></script>
+<script src="js/ventas.js?v=20260909065"></script>
+<script src="js/contabilidad.js?v=20260909065"></script>
+<script src="js/egresos.js?v=20260909065"></script>
+<script src="js/vehiculos.js?v=20260909065"></script>
+<script src="js/catalogo.js?v=20260909065"></script>
+<script src="js/ordenes.js?v=20260909065"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3063,15 +3063,15 @@
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
         <div class="form-campo" style="margin:0">
           <label>Km de Entrada</label>
-          <input type="number" id="os-km" placeholder="0" min="0">
+          <input type="number" id="os-km" placeholder="0" min="0" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
         </div>
         <div class="form-campo" style="margin:0">
           <label>Fecha de Entrada</label>
-          <input type="date" id="os-fecha-entrada" onchange="validarFechaEntradaOS(this)">
+          <input type="date" id="os-fecha-entrada" onchange="validarFechaEntradaOS(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
         </div>
         <div class="form-campo" style="margin:0">
           <label>Fecha Prometida</label>
-          <input type="date" id="os-fecha-prometida" onchange="validarFechaPrometidaOS(this)">
+          <input type="date" id="os-fecha-prometida" onchange="validarFechaPrometidaOS(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
         </div>
       </div>
 
