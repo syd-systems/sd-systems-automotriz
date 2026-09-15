@@ -8,16 +8,17 @@
 // usuarios seguían viendo el index.html de la versión anterior hasta que,
 // por azar, esa URL específica expiraba de la caché de borde.
 //
-// Con este Worker, index.html (y "/") pasan explícitamente por código
-// antes de responder, forzando que Cloudflare NUNCA los sirva desde caché
-// -- el resto de los archivos (JS, CSS, imágenes) se sirven igual que
-// antes, directo desde Assets, conservando el cacheo normal (correcto:
-// esos sí cambian de nombre via ?v= en cada despliegue, así que cachearlos
-// agresivamente es deseable y no causa el problema).
+// Con este Worker, index.html, landing.html (y "/") pasan explícitamente
+// por código antes de responder, forzando que Cloudflare NUNCA los sirva
+// desde caché -- el resto de los archivos (JS, CSS, imágenes) se sirven
+// igual que antes, directo desde Assets, conservando el cacheo normal
+// (correcto: esos sí cambian de nombre via ?v= en cada despliegue, así
+// que cachearlos agresivamente es deseable y no causa el problema).
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    const esDocumentoPrincipal = url.pathname === '/' || url.pathname === '/index.html';
+    const esDocumentoPrincipal = url.pathname === '/' || url.pathname === '/index.html'
+      || url.pathname === '/landing' || url.pathname === '/landing.html';
 
     if (!esDocumentoPrincipal) {
       return env.ASSETS.fetch(request);
