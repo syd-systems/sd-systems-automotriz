@@ -318,7 +318,7 @@ async function abrirProveedor(id) {
 async function guardarProveedor() {
   const id     = document.getElementById('prov-id').value;
   const rif    = document.getElementById('prov-rif').value.trim().toUpperCase();
-  const nombre = document.getElementById('prov-nombre').value.trim();
+  const nombre = capitalizarNombre(document.getElementById('prov-nombre').value.trim());
   const okEl   = document.getElementById('alerta-prov-ok');
   const errEl  = document.getElementById('alerta-prov-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
@@ -418,8 +418,8 @@ async function guardarProveedor() {
     tipo_contribuyente: document.getElementById('prov-tipo-contrib').value || null,
     tipo_proveedor:     document.getElementById('prov-tipo').value || 'NACIONAL',
     telefono:           document.getElementById('prov-telefono').value.trim() || null,
-    correo:             document.getElementById('prov-correo').value.trim() || null,
-    direccion:          document.getElementById('prov-direccion').value.trim() || null,
+    correo:             document.getElementById('prov-correo').value.trim().toLowerCase() || null,
+    direccion:          capitalizarNombre(document.getElementById('prov-direccion').value.trim()) || null,
     moneda_facturacion: document.getElementById('prov-moneda').value || 'VES',
     dias_credito:       parseInt(document.getElementById('prov-dias-credito').value) || 0,
     limite_credito:     parseFloat(document.getElementById('prov-limite-credito').value) || 0,
