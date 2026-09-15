@@ -553,7 +553,7 @@ async function cargarVehiculos(filtro, propId) {
           : '<div style="width:44px;height:34px;background:var(--gris3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🚗</div>')
         + '<div>'
         + '<div style="font-family:var(--font-mono);font-weight:700;color:var(--naranja);font-size:13px">' + v.placa + '</div>'
-        + '<div style="font-size:11px;color:var(--suave)">' + v.marca + ' ' + v.modelo + '</div>'
+        + '<div style="font-size:12px;font-weight:500">' + v.marca + ' ' + v.modelo + '</div>'
         + '</div></div></td>'
         + '<td style="font-size:12px">' + v.anio + '</td>'
         + '<td style="font-size:12px;color:var(--suave)">' + (v.color || '—') + ' · ' + (v.tipo_carroceria || '—') + '</td>'
