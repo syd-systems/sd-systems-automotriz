@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909075';
+const SYD_VERSION = '20260909076';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -1293,7 +1293,7 @@ function iniciarApp() {
   document.getElementById('nombre-usuario').textContent = nombre;
   // Mostrar empresa activa en sidebar y topbar
   actualizarEmpresaUI();
-  document.getElementById('rol-usuario').textContent = sesionActual.administrador ? 'Administrador' : 'Operador';
+  document.getElementById('rol-usuario').textContent = sesionActual.administrador ? 'Administrador' : 'Usuario';
   document.getElementById('avatar-inicial').textContent = nombre.charAt(0).toUpperCase();
 
   // Mostrar días restantes de clave
@@ -1594,7 +1594,7 @@ async function renderDashboard() {
       <div class="bienvenida">
         <div>
           <h1>BIENVENIDO</h1>
-          <p>${sesionActual.nombre} · ${esAdmin ? 'Administrador del Sistema' : 'Usuario'}</p>
+          <p>${sesionActual.nombre}</p>
         </div>
         <div class="hora">${hora}</div>
       </div>
