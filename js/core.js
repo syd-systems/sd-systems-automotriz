@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909063';
+const SYD_VERSION = '20260909064';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3618,6 +3618,24 @@ function parseMontoVE(texto) {
 // Dirección, Observaciones, etc.) nunca pueda inyectar una etiqueta o un
 // atributo ejecutable. Usar SIEMPRE al insertar texto libre de un
 // Usuario dentro de una plantilla de innerHTML.
+// Enter -- mueve el foco al siguiente campo navegable dentro del mismo
+// modal (simple y predecible: el que sigue en el orden del DOM). Función
+// GLOBAL para que cualquier onkeydown="nextField(this)" en el HTML
+// pueda llamarla -- antes existía una versión con el mismo nombre pero
+// encerrada dentro de otra función en ordenes.js, así que nunca se podía
+// invocar desde HTML (nextField is not defined, en silencio).
+function nextField(el) {
+  try {
+    const modal = el.closest('.modal');
+    if (!modal) return;
+    const campos = Array.from(modal.querySelectorAll(
+      'input:not([type=hidden]):not([disabled]):not([readonly]):not([type=button]):not([type=submit]), select:not([disabled]), textarea:not([disabled])'
+    )).filter(function(c) { return c.offsetParent !== null; });
+    const idx = campos.indexOf(el);
+    if (idx !== -1 && idx < campos.length - 1) campos[idx + 1].focus();
+  } catch(e) {}
+}
+
 function escapeHtml(valor) {
   if (valor === null || valor === undefined) return '';
   return String(valor)
