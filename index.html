@@ -1575,18 +1575,18 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909078"></script>
-<script src="js/parametros.js?v=20260909078"></script>
-<script src="js/empresas.js?v=20260909078"></script>
-<script src="js/ingresos.js?v=20260909078"></script>
-<script src="js/inventario.js?v=20260909078"></script>
-<script src="js/proveedores.js?v=20260909078"></script>
-<script src="js/ventas.js?v=20260909078"></script>
-<script src="js/contabilidad.js?v=20260909078"></script>
-<script src="js/egresos.js?v=20260909078"></script>
-<script src="js/vehiculos.js?v=20260909078"></script>
-<script src="js/catalogo.js?v=20260909078"></script>
-<script src="js/ordenes.js?v=20260909078"></script>
+<script src="js/core.js?v=20260909079"></script>
+<script src="js/parametros.js?v=20260909079"></script>
+<script src="js/empresas.js?v=20260909079"></script>
+<script src="js/ingresos.js?v=20260909079"></script>
+<script src="js/inventario.js?v=20260909079"></script>
+<script src="js/proveedores.js?v=20260909079"></script>
+<script src="js/ventas.js?v=20260909079"></script>
+<script src="js/contabilidad.js?v=20260909079"></script>
+<script src="js/egresos.js?v=20260909079"></script>
+<script src="js/vehiculos.js?v=20260909079"></script>
+<script src="js/catalogo.js?v=20260909079"></script>
+<script src="js/ordenes.js?v=20260909079"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3657,7 +3657,7 @@
           </div>
           <div>
             <label>Nombre / Razón Social</label>
-            <input type="text" id="prov-nombre" placeholder="Nombre completo del proveedor" style="width:100%">
+            <input type="text" id="prov-nombre" placeholder="Nombre completo del proveedor" style="width:100%" onblur="this.value=capitalizarNombre(this.value)">
           </div>
         </div>
         <div class="form-campo form-full" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
@@ -3694,7 +3694,7 @@
         </div>
         <div class="form-campo form-full">
           <label>Dirección</label>
-          <input type="text" id="prov-direccion" placeholder="Dirección completa">
+          <input type="text" id="prov-direccion" placeholder="Dirección completa" onblur="this.value=capitalizarNombre(this.value)">
         </div>
         <div class="form-campo">
           <label>Moneda de Facturación</label>
