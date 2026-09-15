@@ -908,7 +908,7 @@ async function _guardarOSInterno() {
   const fechaProm   = document.getElementById('os-fecha-prometida').value;
   const estado        = document.getElementById('os-estado').value;
   const fechaCierre   = document.getElementById('os-fecha-cierre')?.value   || null;
-  const diagnostico   = document.getElementById('os-diagnostico').value.trim();
+  const diagnostico   = capitalizarNombre(document.getElementById('os-diagnostico').value.trim());
   const obs         = document.getElementById('os-observaciones').value.trim();
   const okEl        = document.getElementById('alerta-os-ok');
   const errEl       = document.getElementById('alerta-os-err');
