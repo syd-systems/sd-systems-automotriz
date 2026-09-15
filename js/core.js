@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909061';
+const SYD_VERSION = '20260909062';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -123,8 +123,8 @@ const ESTATUS_EMP = {
 
 // ─── MÓDULOS DEL SISTEMA ───
 const TODOS_LOS_MODULOS = [
-  { sigla: 'VEHICULOS',    nombre: 'Vehículos',          icono: '🚗' },
   { sigla: 'PROPIETARIOS', nombre: 'Clientes',       icono: '👤' },
+  { sigla: 'VEHICULOS',    nombre: 'Vehículos',          icono: '🚗' },
   { sigla: 'SERVICIOS',    nombre: 'Órdenes de Servicio',icono: '🔧' },
   { sigla: 'CATALOGO',     nombre: 'Catálogo Servicios', icono: '🗂️' },
   { sigla: 'INVENTARIO',   nombre: 'Inventario',         icono: '📦' },
