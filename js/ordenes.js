@@ -55,8 +55,8 @@ async function renderOrdenes() {
       return '<tr data-id="' + o.id_orden + '" data-estado="' + (o.estado||'') + '" data-fecha="' + (o.fecha_entrada ? o.fecha_entrada.substring(0,10) : '') + '">'
         + '<td><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + (o.numero_os || '—') + '</div>'
         + '<div style="font-size:11px;color:var(--suave)">' + fmtFecha(o.fecha_entrada) + '</div></td>'
-        + '<td>' + (veh ? '<div style="font-weight:500">' + veh.placa + '</div><div style="font-size:11px;color:var(--suave)">' + veh.marca + ' ' + veh.modelo + '</div>' : '—') + '</td>'
-        + '<td>' + (prop ? prop.nombre_completo : '—') + '</td>'
+        + '<td>' + (veh ? '<div style="font-weight:500;font-size:15px">' + veh.placa + '</div><div style="font-size:13px;color:var(--suave)">' + veh.marca + ' ' + veh.modelo + '</div>' : '—') + '</td>'
+        + '<td style="font-size:15px">' + (prop ? prop.nombre_completo : '—') + '</td>'
         + '<td><span class="badge ' + est.clase + '">' + est.label + '</span>'
         + (o.fecha_estado ? '<div style="font-size:10px;color:var(--suave);margin-top:3px">' + fmtFecha(o.fecha_estado) + '</div>' : '')
         + '</td>'
