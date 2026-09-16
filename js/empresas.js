@@ -159,6 +159,12 @@ async function guardarEmisor() {
   okEl.style.display = 'none'; errEl.style.display = 'none';
   if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
   if (!rif)    { errEl.textContent = 'El RIF es obligatorio.';    errEl.style.display = 'block'; return; }
+  if (!validarFormatoRif(rif)) {
+    errEl.textContent = 'El RIF debe tener el formato LETRA-XXXXXXXX-X (9 dígitos en total). Ej: J-50610603-5.';
+    errEl.style.display = 'block';
+    document.getElementById('em-rif').focus();
+    return;
+  }
   const datos = {
     nombre, rif,
     telefono: document.getElementById('em-telefono').value.trim() || null,
