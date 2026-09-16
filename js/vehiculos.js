@@ -313,6 +313,12 @@ async function guardarPropietario() {
     document.getElementById('prop-rif-civil').focus();
     return;
   }
+  if (!validarFormatoRif(rif)) {
+    errEl.textContent = 'El RIF debe tener el formato LETRA-XXXXXXXX-X (9 dígitos en total). Ej: V-04284968-0.';
+    errEl.style.display = 'block';
+    document.getElementById('prop-rif-civil').focus();
+    return;
+  }
   if (!nombre) {
     errEl.textContent = 'El Nombre / Apellido / Razón Social es obligatorio.'; errEl.style.display = 'block';
     document.getElementById('prop-nombre').focus();
@@ -553,7 +559,7 @@ async function cargarVehiculos(filtro, propId) {
           : '<div style="width:44px;height:34px;background:var(--gris3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🚗</div>')
         + '<div>'
         + '<div style="font-family:var(--font-mono);font-weight:700;color:var(--naranja);font-size:13px">' + v.placa + '</div>'
-        + '<div style="font-size:12px;font-weight:500">' + v.marca + ' ' + v.modelo + '</div>'
+        + '<div style="font-size:15px;font-weight:500">' + v.marca + ' ' + v.modelo + '</div>'
         + '</div></div></td>'
         + '<td style="font-size:12px">' + v.anio + '</td>'
         + '<td style="font-size:12px;color:var(--suave)">' + (v.color || '—') + ' · ' + (v.tipo_carroceria || '—') + '</td>'
