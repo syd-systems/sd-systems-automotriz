@@ -859,6 +859,7 @@ async function abrirEmpleado(id) {
   // ── Datos Personales ──
   document.getElementById('emp-tipo-doc').value       = e ? (e.tipo_doc||'V') : 'V';
   document.getElementById('emp-numero-doc').value     = e ? (e.numero_doc||'') : '';
+  document.getElementById('emp-rif').value            = e ? (e.rif||'') : '';
   document.getElementById('emp-nombre').value         = e ? (e.nombre_completo||'') : '';
   document.getElementById('emp-fecha-nac').value      = e ? (e.fecha_nacimiento||'') : '';
   document.getElementById('emp-correo').value         = e ? (e.correo||'') : '';
@@ -948,7 +949,7 @@ async function abrirEmpleado(id) {
   // Deshabilitar campos sensibles si no tiene permiso VER_DATOS_PERSONALES
   var tienePerm = sesionActual?.administrador || puedo('EMPLEADOS','VER_DATOS_PERSONALES');
   var camposSensibles = [
-    'emp-numero-doc','emp-fecha-nac','emp-correo','emp-tel-movil','emp-tel-fijo',
+    'emp-numero-doc','emp-rif','emp-fecha-nac','emp-correo','emp-tel-movil','emp-tel-fijo',
     'emp-direccion','emp-monto-sal','emp-moneda-calc','emp-moneda-pago',
     'emp-bono-ali','emp-bono-trans','emp-bono-prod','emp-comision',
     'emp-banco','emp-tipo-cuenta','emp-num-cuenta','emp-cod-banco','emp-num-cuenta-resto'
@@ -1002,12 +1003,19 @@ async function guardarEmpleado() {
   if (!id && !puedo('EMPLEADOS','CREAR')) { alert('No tiene permiso para crear empleados.'); return; }
 
   const numDoc  = document.getElementById('emp-numero-doc').value.trim();
+  const rifEmp  = document.getElementById('emp-rif').value.trim();
   const nombre  = document.getElementById('emp-nombre').value.trim();
   const okEl    = document.getElementById('alerta-emp-ok');
   const errEl   = document.getElementById('alerta-emp-err');
   okEl.style.display = 'none'; errEl.style.display = 'none';
 
   if (!numDoc) { errEl.textContent = 'El número de documento es obligatorio.'; errEl.style.display = 'block'; return; }
+  if (rifEmp && !validarFormatoRif(rifEmp)) {
+    errEl.textContent = 'El RIF debe tener el formato LETRA-XXXXXXXX-X (9 dígitos en total). Ej: V-04284968-1.';
+    errEl.style.display = 'block';
+    document.getElementById('emp-rif').focus();
+    return;
+  }
   if (!nombre) { errEl.textContent = 'El nombre es obligatorio.'; errEl.style.display = 'block'; return; }
   const id_emisorEmp = parseInt(document.getElementById('emp-emisor')?.value) || null;
   if (!id_emisorEmp) { errEl.textContent = 'Debe seleccionar la empresa del empleado.'; errEl.style.display = 'block'; document.getElementById('emp-emisor')?.focus(); return; }
@@ -1120,6 +1128,7 @@ async function guardarEmpleado() {
 
   const datos = {
     tipo_doc:           document.getElementById('emp-tipo-doc').value,
+    rif:                rifEmp.toUpperCase() || null,
     nombre_completo:    capitalizarNombre(nombre),
     fecha_nacimiento:   document.getElementById('emp-fecha-nac').value || null,
     id_estado_civil:    parseInt(document.getElementById('emp-estado-civil').value) || null,
