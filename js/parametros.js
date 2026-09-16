@@ -997,6 +997,22 @@ async function validarCedulaDuplicada() {
   } catch(eValCed) { console.warn('Error validando cédula:', eValCed); }
 }
 
+// Autocompletar RIF a partir de Tipo Doc + N° Documento -- solo para
+// Persona Natural (V/E), donde el dígito verificador SÍ se puede
+// calcular. Jurídico (J) no se toca -- ese RIF viene completo y hay que
+// escribirlo tal cual.
+function autocompletarRifEmpleado() {
+  const tipoDoc = document.getElementById('emp-tipo-doc')?.value;
+  const numDoc  = document.getElementById('emp-numero-doc')?.value.trim();
+  const campoRif = document.getElementById('emp-rif');
+  if (!campoRif || tipoDoc === 'J' || !numDoc) return;
+  const cedula = numDoc.replace(/\D/g, '');
+  if (!cedula) return;
+  const verificador = calcularDigitoVerificadorRif(tipoDoc, cedula);
+  if (verificador === null) return;
+  campoRif.value = tipoDoc + '-' + cedula.padStart(8,'0').slice(-8) + '-' + verificador;
+}
+
 async function guardarEmpleado() {
   const id     = document.getElementById('emp-id').value;
   if (id && !puedo('EMPLEADOS','EDITAR')) { alert('No tiene permiso para editar empleados.'); return; }
