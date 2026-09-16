@@ -1575,18 +1575,18 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909080"></script>
-<script src="js/parametros.js?v=20260909080"></script>
-<script src="js/empresas.js?v=20260909080"></script>
-<script src="js/ingresos.js?v=20260909080"></script>
-<script src="js/inventario.js?v=20260909080"></script>
-<script src="js/proveedores.js?v=20260909080"></script>
-<script src="js/ventas.js?v=20260909080"></script>
-<script src="js/contabilidad.js?v=20260909080"></script>
-<script src="js/egresos.js?v=20260909080"></script>
-<script src="js/vehiculos.js?v=20260909080"></script>
-<script src="js/catalogo.js?v=20260909080"></script>
-<script src="js/ordenes.js?v=20260909080"></script>
+<script src="js/core.js?v=20260909081"></script>
+<script src="js/parametros.js?v=20260909081"></script>
+<script src="js/empresas.js?v=20260909081"></script>
+<script src="js/ingresos.js?v=20260909081"></script>
+<script src="js/inventario.js?v=20260909081"></script>
+<script src="js/proveedores.js?v=20260909081"></script>
+<script src="js/ventas.js?v=20260909081"></script>
+<script src="js/contabilidad.js?v=20260909081"></script>
+<script src="js/egresos.js?v=20260909081"></script>
+<script src="js/vehiculos.js?v=20260909081"></script>
+<script src="js/catalogo.js?v=20260909081"></script>
+<script src="js/ordenes.js?v=20260909081"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3412,18 +3412,24 @@
       <!-- DATOS PERSONALES -->
       <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--naranja);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--borde)">👤 Datos Personales</div>
       <div class="form-grid">
-        <div class="form-campo">
-          <label>Tipo Doc.</label>
-          <select id="emp-tipo-doc">
-            <option value="V">V — Venezolano</option>
-            <option value="E">E — Extranjero</option>
-            <option value="J">J — Jurídico</option>
-          </select>
-        </div>
-        <div class="form-campo">
-          <label>N° Documento</label>
-          <input type="text" id="emp-numero-doc" placeholder="Ej: 12345678" onblur="validarCedulaDuplicada()">
-          <div id="emp-numero-doc-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un empleado con esta cédula.</div>
+        <div class="form-campo form-full" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+          <div>
+            <label>Tipo Doc.</label>
+            <select id="emp-tipo-doc">
+              <option value="V">V — Venezolano</option>
+              <option value="E">E — Extranjero</option>
+              <option value="J">J — Jurídico</option>
+            </select>
+          </div>
+          <div>
+            <label>N° Documento</label>
+            <input type="text" id="emp-numero-doc" placeholder="Ej: 12345678" onblur="validarCedulaDuplicada()">
+            <div id="emp-numero-doc-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un empleado con esta cédula.</div>
+          </div>
+          <div>
+            <label>RIF</label>
+            <input type="text" id="emp-rif" placeholder="V-XXXXXXXX-X" style="text-transform:uppercase;width:100%" oninput="formatearRifInput(this)" onblur="formatearRifBlur(this)">
+          </div>
         </div>
         <div class="form-campo form-full">
           <label>Nombre Completo</label>
