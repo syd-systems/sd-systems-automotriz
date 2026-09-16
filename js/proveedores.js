@@ -308,6 +308,16 @@ async function abrirProveedor(id) {
   setTimeout(function() { document.getElementById('prov-nombre')?.focus(); }, 100);
 }
 
+// Al seleccionar un banco de Pago Móvil, si el campo C.I./R.I.F todavía
+// está vacío, se rellena con el RIF ya ingresado al inicio del
+// formulario (no pisa nada si el Usuario ya escribió uno distinto ahí).
+function onSelBancoPMProv() {
+  const campoCi = document.getElementById('prov-pm-ci');
+  if (!campoCi || campoCi.value.trim()) return;
+  const rifPrincipal = document.getElementById('prov-rif')?.value.trim();
+  if (rifPrincipal) campoCi.value = rifPrincipal;
+}
+
 async function guardarProveedor() {
   const id     = document.getElementById('prov-id').value;
   const rif    = document.getElementById('prov-rif').value.trim().toUpperCase();
