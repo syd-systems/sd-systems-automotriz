@@ -1575,18 +1575,18 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909079"></script>
-<script src="js/parametros.js?v=20260909079"></script>
-<script src="js/empresas.js?v=20260909079"></script>
-<script src="js/ingresos.js?v=20260909079"></script>
-<script src="js/inventario.js?v=20260909079"></script>
-<script src="js/proveedores.js?v=20260909079"></script>
-<script src="js/ventas.js?v=20260909079"></script>
-<script src="js/contabilidad.js?v=20260909079"></script>
-<script src="js/egresos.js?v=20260909079"></script>
-<script src="js/vehiculos.js?v=20260909079"></script>
-<script src="js/catalogo.js?v=20260909079"></script>
-<script src="js/ordenes.js?v=20260909079"></script>
+<script src="js/core.js?v=20260909080"></script>
+<script src="js/parametros.js?v=20260909080"></script>
+<script src="js/empresas.js?v=20260909080"></script>
+<script src="js/ingresos.js?v=20260909080"></script>
+<script src="js/inventario.js?v=20260909080"></script>
+<script src="js/proveedores.js?v=20260909080"></script>
+<script src="js/ventas.js?v=20260909080"></script>
+<script src="js/contabilidad.js?v=20260909080"></script>
+<script src="js/egresos.js?v=20260909080"></script>
+<script src="js/vehiculos.js?v=20260909080"></script>
+<script src="js/catalogo.js?v=20260909080"></script>
+<script src="js/ordenes.js?v=20260909080"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -1704,7 +1704,7 @@
           </div>
           <div>
             <label>RIF</label>
-            <input type="text" id="prop-rif-civil" placeholder="Ej: V-04284968" style="text-transform:uppercase;width:100%">
+            <input type="text" id="prop-rif-civil" placeholder="Ej: V-04284968-0" style="text-transform:uppercase;width:100%" oninput="formatearRifInput(this)" onblur="formatearRifBlur(this)">
           </div>
         </div>
         <div class="form-campo form-full">
@@ -3267,7 +3267,7 @@
           </div>
           <div class="form-campo">
             <label>RIF / Cédula</label>
-            <input type="text" id="fac-receptor-rif" placeholder="J-XXXXXXXX-X">
+            <input type="text" id="fac-receptor-rif" placeholder="J-XXXXXXXX-X" oninput="formatearRifInput(this)" onblur="formatearRifBlur(this)">
           </div>
           <div class="form-campo">
             <label>Dirección</label>
@@ -3652,7 +3652,7 @@
         <div class="form-campo form-full" style="display:grid;grid-template-columns:220px 1fr;gap:14px">
           <div>
             <label>RIF</label>
-            <input type="text" id="prov-rif" placeholder="J-XXXXXXXX-X" style="text-transform:uppercase;width:100%" onblur="validarRifProveedorDuplicado()">
+            <input type="text" id="prov-rif" placeholder="J-XXXXXXXX-X" style="text-transform:uppercase;width:100%" oninput="formatearRifInput(this)" onblur="formatearRifBlur(this); validarRifProveedorDuplicado()">
             <div id="prov-rif-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un proveedor con este RIF.</div>
           </div>
           <div>
@@ -3784,7 +3784,7 @@
           </div>
           <div class="form-campo">
             <label>C.I. / R.I.F</label>
-            <input type="text" id="prov-pm-ci" placeholder="V-XXXXXXXX" style="text-transform:uppercase">
+            <input type="text" id="prov-pm-ci" placeholder="V-XXXXXXXX-X" style="text-transform:uppercase" oninput="formatearRifInput(this)" onblur="formatearRifBlur(this)">
           </div>
           <div class="form-campo">
             <label>N° Celular</label>
@@ -4311,7 +4311,7 @@
 
         <div class="form-campo">
           <label>RIF</label>
-          <input type="text" id="em-rif" placeholder="J-XXXXXXXX-X" style="text-transform:uppercase">
+          <input type="text" id="em-rif" placeholder="J-XXXXXXXX-X" style="text-transform:uppercase" oninput="formatearRifInput(this)" onblur="formatearRifBlur(this)">
         </div>
         <div class="form-campo">
           <label>Teléfono</label>
