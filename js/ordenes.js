@@ -1337,14 +1337,22 @@ async function verFichaOS(id) {
   const o = ordenesCache.find(function(x) { return x.id_orden === id; });
   if (!o) return;
   // Área que realiza el servicio -- se resuelve por el usuario que creó la
-  // OS (empleados.id_area), ya no se guarda en ordenes_servicio.
+  // OS (empleados.id_area), ya no se guarda en ordenes_servicio. Se usa un
+  // RPC (no una consulta directa a "empleados") porque la política de RLS
+  // de esa tabla exige el permiso EMPLEADOS→VER, que la mayoría de quienes
+  // ven Órdenes de Servicio no tiene -- el RPC solo expone el área, nada
+  // más del empleado.
   let areaLabelFicha = '—';
   try {
     if (o.id_usuario) {
-      const empAreaRows = await api('empleados', 'GET', null,
-        '?correo=eq.' + encodeURIComponent(o.id_usuario) + '&select=param_areas(codigo,nombre)&limit=1');
-      const a = empAreaRows && empAreaRows[0] && empAreaRows[0].param_areas;
-      if (a) areaLabelFicha = (a.codigo ? a.codigo + ' — ' : '') + a.nombre;
+      const rpcArea = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_area_por_correo', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_correo: o.id_usuario })
+      });
+      const areaRows = rpcArea.ok ? await rpcArea.json() : [];
+      const a = areaRows && areaRows[0];
+      if (a) areaLabelFicha = a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '');
     }
   } catch(eAreaFicha) { console.warn('Error resolviendo Área en Ficha OS:', eAreaFicha); }
   // Actualizar fila de la tabla si el estado cambió
@@ -1390,9 +1398,9 @@ async function verFichaOS(id) {
             const precFmt = fmtBs(precBs) + ' Bs<div style="font-size:10px;color:var(--suave)">= $ ' + fmtUSD(precUsdEq) + '</div>';
             const subtFmt = fmtBs(subtBs) + ' Bs<div style="font-size:10px;color:var(--suave)">= $ ' + fmtUSD(subtUsdEq) + '</div>';
             return '<tr><td style="padding:6px 0;font-size:14px">' + escapeHtml(l.descripcion) + '</td>'
-              + '<td style="text-align:right;padding:6px 0">' + l.cantidad + '</td>'
-              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">' + precFmt + '</td>'
-              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">' + subtFmt + '</td></tr>';
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);font-size:12px">' + l.cantidad + '</td>'
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);font-size:12px">' + precFmt + '</td>'
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">' + subtFmt + '</td></tr>';
           }).join('')
         + '</tbody></table>'
       : '<div style="color:var(--suave);font-size:12px">Sin servicios</div>';
@@ -1416,9 +1424,9 @@ async function verFichaOS(id) {
             const precFmt = fmtBs(precBs) + ' Bs<div style="font-size:10px;color:var(--suave)">= $ ' + fmtUSD(precUsdEq) + '</div>';
             const subtFmt = fmtBs(subtBs) + ' Bs<div style="font-size:10px;color:var(--suave)">= $ ' + fmtUSD(subtUsdEq) + '</div>';
             return '<tr><td style="padding:6px 0;font-size:14px">' + escapeHtml(l.descripcion) + '</td>'
-              + '<td style="text-align:right;padding:6px 0">' + l.cantidad + '</td>'
-              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono)">' + precFmt + '</td>'
-              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);color:var(--naranja)">' + subtFmt + '</td></tr>';
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);font-size:12px">' + l.cantidad + '</td>'
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);font-size:12px">' + precFmt + '</td>'
+              + '<td style="text-align:right;padding:6px 0;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">' + subtFmt + '</td></tr>';
           }).join('')
         + '</tbody></table>'
       : '<div style="color:var(--suave);font-size:12px">Sin artículos</div>';
@@ -1431,10 +1439,12 @@ async function verFichaOS(id) {
 
     // Si ya está Facturada, el Total real (el que de verdad se le cobra al
     // Cliente) es el de la Factura -- CON IVA incluido. Si todavía no se
-    // ha facturado, se muestra el Subtotal de la OS (sin IVA todavía,
-    // porque el IVA solo se calcula al momento de Facturar).
-    const totalFichaVes = facturaRefOS ? facturaRefOS.total_ves : o.total_ves;
-    const totalFichaUsd = facturaRefOS ? facturaRefOS.total_usd : o.total_usd;
+    // ha facturado, se calcula lo que SERÍA el total con IVA incluido (a
+    // la tasa de IVA vigente), como proyección -- la Factura real puede
+    // variar levemente si la tasa de IVA cambia antes de facturar.
+    const ivaProyectado = tasaIVAActual();
+    const totalFichaVes = facturaRefOS ? facturaRefOS.total_ves : (o.total_ves * (1 + ivaProyectado));
+    const totalFichaUsd = facturaRefOS ? facturaRefOS.total_usd : (o.total_usd * (1 + ivaProyectado));
 
     document.getElementById('ficha-os-contenido').innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px;flex-wrap:wrap">'
@@ -1443,17 +1453,14 @@ async function verFichaOS(id) {
       + (o.fecha_estado ? '<span style="font-size:10px;color:var(--suave);margin-left:8px">desde ' + fmtFecha(o.fecha_estado) + (o.usuario_estado ? ' · ' + o.usuario_estado : '') + '</span>' : '')
       + (facturaRefOS ? '<span style="font-size:11px;color:var(--suave);margin-left:8px">· Factura: <span style="color:var(--naranja)">' + facturaRefOS.numero_factura + '</span></span>' : '')
       + '</div>'
-      + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">' + (facturaRefOS ? 'TOTAL CON IVA' : 'TOTAL (sin facturar)') + '</div>'
-      + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + fmtBs(totalFichaVes) + ' Bs</div>'
-      + '<div style="font-size:12px;color:var(--suave)">$ ' + fmtUSD(totalFichaUsd) + ' USD</div>'
-      + '</div></div>'
+      + '</div>'
       + '<div style="font-size:10px;color:var(--suave);margin-bottom:16px">Área: ' + areaLabelFicha + '</div>'
 
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
       + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Vehículo</div>'
-      + '<div style="font-weight:500">' + (veh ? veh.placa + ' — ' + veh.marca + ' ' + veh.modelo : '—') + '</div></div>'
+      + '<div style="font-weight:500;color:var(--suave)">' + (veh ? veh.placa + ' — ' + veh.marca + ' ' + veh.modelo : '—') + '</div></div>'
       + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Cliente</div>'
-      + '<div>' + (prop ? prop.nombre_completo : '—') + '</div></div>'
+      + '<div style="color:var(--suave)">' + (prop ? prop.nombre_completo : '—') + '</div></div>'
       + '</div>'
 
       + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px">'
@@ -1482,10 +1489,16 @@ async function verFichaOS(id) {
             + '<button class="btn-primario" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="recalcularTasaOS(' + id + ',' + tasaActualFicha + ')">Recalcular Bs</button>'
             + '</div>'
           : '')
-      + '<div style="margin-bottom:16px"><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">🔧 Servicios Realizados</div>'
+      + '<div style="margin-bottom:16px"><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;font-weight:700">🔧 Servicios Realizados</div>'
       + tablaServ + '</div>'
-      + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">📦 Artículos Utilizados</div>'
-      + tablaRep + '</div>';
+      + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;font-weight:700">📦 Artículos Utilizados</div>'
+      + tablaRep + '</div>'
+
+      + '<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--borde);display:flex;justify-content:flex-end">'
+      + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">' + (facturaRefOS ? 'TOTAL CON IVA' : 'TOTAL CON IVA (proyectado, sin facturar)') + '</div>'
+      + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + fmtBs(totalFichaVes) + ' Bs</div>'
+      + '<div style="font-size:12px;color:var(--suave)">$ ' + fmtUSD(totalFichaUsd) + ' USD</div>'
+      + '</div></div>';
 
     document.getElementById('ficha-os-editar-btn').setAttribute('onclick', 'cerrarModal(\'modal-ficha-os\');abrirEditarOS(' + id + ')');
     document.getElementById('ficha-os-editar-btn').style.display = (o.estado !== 'CERRADA' && o.estado !== 'ANULADA') ? '' : 'none';
