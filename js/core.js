@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909079';
+const SYD_VERSION = '20260909080';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3680,6 +3680,79 @@ function mostrarSugerenciasCorreo(input) {
 
 function cerrarSugerenciasCorreo() {
   if (_sugerenciaCorreoActiva) { _sugerenciaCorreoActiva.remove(); _sugerenciaCorreoActiva = null; }
+}
+
+// RIF venezolano -- formato real: LETRA + 8 dígitos + dígito verificador
+// (9 dígitos en total), IGUAL para V/E/J/G/P/C, con guiones fijos:
+// LETRA-XXXXXXXX-X. Funciones compartidas para estandarizar el campo en
+// toda la app (Cliente, Proveedor, Empresa, Factura).
+//
+// En persona natural, el RIF es la cédula + un dígito verificador
+// calculado -- y hay cédulas con menos de 8 dígitos, que se completan
+// con ceros a la izquierda (ej: cédula 4284968 → 04284968). Mientras el
+// Usuario escribe no se le fuerza nada (sería intrusivo); el relleno con
+// ceros se hace en el evento onblur, una vez que termina de escribir.
+function formatearRifInput(el) {
+  const cursorAlFinal = el.selectionStart === el.value.length;
+  let v = el.value.toUpperCase();
+  let letra = '';
+  const m = v.match(/[VEJGPC]/);
+  if (m) letra = m[0];
+  let digitos = v.replace(/[^0-9]/g, '').slice(0, 9);
+  let resultado = letra;
+  if (digitos.length > 0) resultado += '-' + digitos.slice(0, 8);
+  if (digitos.length > 8) resultado += '-' + digitos.slice(8, 9);
+  el.value = resultado;
+  if (cursorAlFinal) el.setSelectionRange(el.value.length, el.value.length);
+}
+
+// Cálculo del dígito verificador del RIF (solo Persona Natural: V/E/P/C
+// -- Jurídica/Gubernamental ya trae su propio dígito verificador, no se
+// calcula). Algoritmo estándar venezolano: módulo 11 sobre el código de
+// tipo + los 8 dígitos de la cédula, con pesos fijos.
+function calcularDigitoVerificadorRif(tipo, cedula) {
+  const tipos = { V: 1, E: 2, J: 3, P: 4, G: 5 };
+  const tipoNum = tipos[tipo];
+  if (!tipoNum) return null;
+  const cedulaStr = String(cedula).padStart(8, '0').slice(-8);
+  const valor = String(tipoNum) + cedulaStr;
+  const pesos = [4, 3, 2, 7, 6, 5, 4, 3, 2];
+  let suma = 0;
+  for (let i = 0; i < 9; i++) suma += parseInt(valor[i], 10) * pesos[i];
+  let verificador = 11 - (suma % 11);
+  if (verificador === 10 || verificador === 11) verificador = 0;
+  return verificador;
+}
+
+function formatearRifBlur(el) {
+  let v = el.value.toUpperCase();
+  const letraM = v.match(/[VEJGPC]/);
+  if (!letraM) return;
+  const letra = letraM[0];
+  let digitos = v.replace(/[^0-9]/g, '');
+  if (!digitos) return;
+
+  if (letra === 'J' || letra === 'G') {
+    // Jurídica/Gubernamental: el RIF ya viene completo con su propio
+    // dígito verificador -- no se calcula, se toma el último dígito
+    // escrito tal cual.
+    if (digitos.length < 2) return;
+    const verificador = digitos.slice(-1);
+    const cuerpo = digitos.slice(0, -1).padStart(8, '0').slice(0, 8);
+    el.value = letra + '-' + cuerpo + '-' + verificador;
+  } else {
+    // Persona natural (V/E/P/C): todos los dígitos escritos son la
+    // cédula (rellenada con ceros si tiene menos de 8) -- el dígito
+    // verificador se calcula, no se toma del último dígito escrito.
+    const cedula = digitos.padStart(8, '0').slice(-8);
+    const verificador = calcularDigitoVerificadorRif(letra, cedula);
+    if (verificador === null) return;
+    el.value = letra + '-' + cedula + '-' + verificador;
+  }
+}
+
+function validarFormatoRif(valor) {
+  return /^[VEJGPC]-\d{8}-\d$/.test((valor || '').toUpperCase().trim());
 }
 
 function escapeHtml(valor) {
