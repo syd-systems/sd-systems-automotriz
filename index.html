@@ -1575,18 +1575,18 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909081"></script>
-<script src="js/parametros.js?v=20260909081"></script>
-<script src="js/empresas.js?v=20260909081"></script>
-<script src="js/ingresos.js?v=20260909081"></script>
-<script src="js/inventario.js?v=20260909081"></script>
-<script src="js/proveedores.js?v=20260909081"></script>
-<script src="js/ventas.js?v=20260909081"></script>
-<script src="js/contabilidad.js?v=20260909081"></script>
-<script src="js/egresos.js?v=20260909081"></script>
-<script src="js/vehiculos.js?v=20260909081"></script>
-<script src="js/catalogo.js?v=20260909081"></script>
-<script src="js/ordenes.js?v=20260909081"></script>
+<script src="js/core.js?v=20260909082"></script>
+<script src="js/parametros.js?v=20260909082"></script>
+<script src="js/empresas.js?v=20260909082"></script>
+<script src="js/ingresos.js?v=20260909082"></script>
+<script src="js/inventario.js?v=20260909082"></script>
+<script src="js/proveedores.js?v=20260909082"></script>
+<script src="js/ventas.js?v=20260909082"></script>
+<script src="js/contabilidad.js?v=20260909082"></script>
+<script src="js/egresos.js?v=20260909082"></script>
+<script src="js/vehiculos.js?v=20260909082"></script>
+<script src="js/catalogo.js?v=20260909082"></script>
+<script src="js/ordenes.js?v=20260909082"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3415,7 +3415,7 @@
         <div class="form-campo form-full" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
           <div>
             <label>Tipo Doc.</label>
-            <select id="emp-tipo-doc">
+            <select id="emp-tipo-doc" onchange="autocompletarRifEmpleado()">
               <option value="V">V — Venezolano</option>
               <option value="E">E — Extranjero</option>
               <option value="J">J — Jurídico</option>
@@ -3423,7 +3423,7 @@
           </div>
           <div>
             <label>N° Documento</label>
-            <input type="text" id="emp-numero-doc" placeholder="Ej: 12345678" onblur="validarCedulaDuplicada()">
+            <input type="text" id="emp-numero-doc" placeholder="Ej: 12345678" oninput="autocompletarRifEmpleado()" onblur="validarCedulaDuplicada()">
             <div id="emp-numero-doc-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un empleado con esta cédula.</div>
           </div>
           <div>
