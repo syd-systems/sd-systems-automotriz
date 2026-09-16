@@ -330,6 +330,12 @@ async function guardarProveedor() {
     document.getElementById('prov-rif').focus();
     return;
   }
+  if (!validarFormatoRif(rif)) {
+    errEl.textContent = 'El RIF debe tener el formato LETRA-XXXXXXXX-X (9 dígitos en total). Ej: J-50610603-5.';
+    errEl.style.display = 'block';
+    document.getElementById('prov-rif').focus();
+    return;
+  }
   try {
     const existeRifDup = await api('proveedores', 'GET', null,
       '?rif=eq.' + encodeURIComponent(rif) + (id ? '&id_proveedor=neq.' + id : ''));
@@ -379,8 +385,8 @@ async function guardarProveedor() {
   const pmCiVal      = (document.getElementById('prov-pm-ci')?.value || '').trim().toUpperCase();
   const pmCelVal     = (document.getElementById('prov-pm-celular')?.value || '').replace(/\D/g,'');
   if (id_bancoPMVal) {
-    if (!/^(?:[JG]\d{9}|[VEPC]\d{8})$/.test(pmCiVal.replace(/[-]/g,''))) {
-      errEl.textContent = 'C.I./R.I.F inválido. Persona natural (V, E, P, C): 8 dígitos (ej: V12345678). Empresa (J, G): 9 dígitos (ej: J123456789).';
+    if (!validarFormatoRif(pmCiVal)) {
+      errEl.textContent = 'C.I./R.I.F inválido. Debe tener el formato LETRA-XXXXXXXX-X (9 dígitos en total). Ej: V-04284968-0.';
       errEl.style.display = 'block';
       document.getElementById('prov-pm-ci')?.focus();
       return;
