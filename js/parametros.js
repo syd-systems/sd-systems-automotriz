@@ -700,7 +700,7 @@ async function renderEmpleados() {
             ? '<img src="' + e.foto_documento + '" onerror="imgError(this)" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--borde)">'
             : '<div style="width:36px;height:36px;border-radius:50%;background:var(--gris3);display:flex;align-items:center;justify-content:center;font-size:16px">👤</div>')
         + '<div>'
-        + '<div style="font-weight:500">' + escapeHtml(e.nombre_completo) + '</div>'
+        + '<div style="font-weight:500;font-size:15px">' + escapeHtml(e.nombre_completo) + '</div>'
         + (verDatosEmp ? '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (e.tipo_doc||'V') + '-' + escapeHtml(e.numero_doc) + '</div>' : '')
         + '</div></div></td>'
         + '<td style="font-size:12px">' + (e.param_areas ? e.param_areas.nombre + (e.param_areas.codigo ? ' (' + e.param_areas.codigo + ')' : '') : '—') + '</td>'
@@ -1313,7 +1313,7 @@ async function verFichaEmpleado(id) {
         : '<div style="width:70px;height:70px;border-radius:50%;background:var(--gris3);display:flex;align-items:center;justify-content:center;font-size:28px">👤</div>')
     + '<div>'
     + '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + escapeHtml(e.nombre_completo) + '</div>'
-    + (verDatos ? '<div style="font-size:12px;color:var(--suave);font-family:var(--font-mono)">' + (e.tipo_doc||'V') + '-' + escapeHtml(e.numero_doc) + '</div>' : '<div style="font-size:12px;color:#555">🔒 Documento restringido</div>')
+    + (verDatos ? '<div style="font-size:12px;color:var(--suave);font-family:var(--font-mono)">' + (e.tipo_doc||'V') + '-' + escapeHtml(e.numero_doc) + (e.rif ? ' · RIF: ' + escapeHtml(e.rif) : '') + '</div>' : '<div style="font-size:12px;color:#555">🔒 Documento restringido</div>')
     + '<span class="badge ' + est.clase + '" style="margin-top:4px;display:inline-block">' + est.label + '</span>'
     + '</div></div>'
     + (fotosPerfilEmp && fotosPerfilEmp.length
@@ -1353,13 +1353,13 @@ async function verFichaEmpleado(id) {
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Tipo Salario</div><div style="font-size:13px">' + getNombre(p.salarios, e.id_tipo_salario) + '</div></div>'
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Cálculo Salario</div><div style="font-size:13px">' + getNombre(p.calculos, e.id_calculo_salario) + '</div></div>'
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Frecuencia Pago</div><div style="font-size:13px">' + getNombre(p.frecuencias, e.id_frecuencia_pago) + '</div></div>'
-    + (verDatos ? '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Salario</div><div style="font-family:var(--font-mono);color:var(--naranja)">' + (e.monto_salario ? (e.moneda_calculo||'USD') + ' ' + fmtUSD(e.monto_salario) : '—') + '</div></div>' : '')
+    + (verDatos ? '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Salario</div><div style="font-size:13px;font-family:var(--font-mono);color:var(--naranja)">' + (e.monto_salario ? (e.moneda_calculo||'USD') + ' ' + fmtUSD(e.monto_salario) : '—') + '</div></div>' : '')
     + (verDatos ? '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Moneda Cálculo</div><div style="font-size:13px">' + (e.moneda_calculo||'—') + '</div></div>' : '')
     + (verDatos ? '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Moneda Pago</div><div style="font-size:13px">' + (e.moneda_pago||'—') + '</div></div>' : '')
-    + (verDatos && e.bono_alimentacion ? '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Bono Alimentación</div><div style="font-family:var(--font-mono)">' + fmtUSD(e.bono_alimentacion) + '</div></div>' : '')
-    + (verDatos && e.bono_transporte   ? '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Bono Transporte</div><div style="font-family:var(--font-mono)">' + fmtUSD(e.bono_transporte) + '</div></div>' : '')
-    + (verDatos && e.bono_productividad? '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Bono Productividad</div><div style="font-family:var(--font-mono)">' + fmtUSD(e.bono_productividad) + '</div></div>' : '')
-    + (verDatos && e.comision_pct      ? '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Comisión</div><div style="font-family:var(--font-mono)">' + e.comision_pct + '%</div></div>' : '')
+    + (verDatos && e.bono_alimentacion ? '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Bono Alimentación</div><div style="font-size:13px;font-family:var(--font-mono)">' + fmtUSD(e.bono_alimentacion) + '</div></div>' : '')
+    + (verDatos && e.bono_transporte   ? '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Bono Transporte</div><div style="font-size:13px;font-family:var(--font-mono)">' + fmtUSD(e.bono_transporte) + '</div></div>' : '')
+    + (verDatos && e.bono_productividad? '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Bono Productividad</div><div style="font-size:13px;font-family:var(--font-mono)">' + fmtUSD(e.bono_productividad) + '</div></div>' : '')
+    + (verDatos && e.comision_pct      ? '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Comisión</div><div style="font-size:13px;font-family:var(--font-mono)">' + e.comision_pct + '%</div></div>' : '')
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">F. Ingreso</div><div style="font-size:13px">' + (e.fecha_ingreso ? fmtFecha(e.fecha_ingreso) : '—') + '</div></div>'
     + (e.fecha_egreso ? '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">F. Egreso</div><div style="font-size:13px">' + fmtFecha(e.fecha_egreso) + '</div></div>' : '')
     + '</div>'
