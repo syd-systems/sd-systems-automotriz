@@ -22,19 +22,12 @@ async function renderProveedores() {
     const filas = proveedores.map(function(p) {
       return '<tr data-id="' + p.id_proveedor + '">'
         + '<td>'
-        + '<div style="font-weight:500">' + p.nombre + '</div>'
-        + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (p.rif||'—') + '</div>'
+        + '<div style="font-weight:500;font-size:15px">' + p.nombre + '</div>'
+        + '<div style="font-size:13px;color:var(--suave);font-family:var(--font-mono)">' + (p.rif||'—') + '</div>'
         + (p.tipo_contribuyente ? '<span class="badge ' + (tipoColor[p.tipo_contribuyente]||'badge-gris') + '" style="font-size:9px;margin-top:3px;display:inline-block">' + (tipoLabel[p.tipo_contribuyente]||p.tipo_contribuyente) + '</span>' : '')
-        + '</td>'
-        + '<td style="font-size:12px">'
-        + '<span class="badge ' + (p.tipo_proveedor === 'NACIONAL' ? 'badge-naranja' : 'badge-gris') + '" style="font-size:10px">' + (p.tipo_proveedor||'NACIONAL') + '</span>'
         + '</td>'
         + '<td style="font-size:12px">' + (p.telefono||'—') + '</td>'
         + '<td style="font-size:12px">' + (p.correo||'—') + '</td>'
-        + '<td style="font-size:12px;font-family:var(--font-mono)">'
-        + (p.moneda_facturacion||'USD')
-        + (p.dias_credito ? '<div style="font-size:10px;color:var(--suave)">' + p.dias_credito + ' días crédito</div>' : '')
-        + '</td>'
         + '<td><span class="badge ' + (p.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (p.estado||'ACTIVO') + '</span></td>'
         + '<td><button class="btn-naranja" onclick="verFichaProveedor(' + p.id_proveedor + ')">Ver</button>'
         + '</td>'
@@ -60,9 +53,9 @@ async function renderProveedores() {
       + (puedo('PROVEEDORES','CREAR') ? '<button class="btn-primario" onclick="abrirProveedor(null)">+ Nuevo Proveedor</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 355px))"><table style="table-layout:fixed;width:100%"><thead><tr>'
-      + '<th>Nombre / RIF</th><th>Tipo</th><th>Teléfono</th><th>Correo</th><th>Moneda / Crédito</th><th>Estado</th><th>Acción</th>'
+      + '<th>Nombre / RIF</th><th>Teléfono</th><th>Correo</th><th>Estado</th><th>Acción</th>'
       + '</tr></thead><tbody id="prov-tbody">'
-      + (filas || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">No hay proveedores registrados</td></tr>')
+      + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">No hay proveedores registrados</td></tr>')
       + '</tbody></table></div></div>';
   } catch(err) {
     c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + err.message + '</div>';
