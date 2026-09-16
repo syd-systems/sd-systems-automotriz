@@ -53,7 +53,7 @@ async function renderProveedores() {
       + (puedo('PROVEEDORES','CREAR') ? '<button class="btn-primario" onclick="abrirProveedor(null)">+ Nuevo Proveedor</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 355px))"><table style="table-layout:fixed;width:100%"><thead><tr>'
-      + '<th>Nombre / RIF</th><th>Teléfono</th><th>Correo</th><th>Estado</th><th>Acción</th>'
+      + '<th style="width:30%">Nombre / RIF</th><th style="width:15%">Teléfono</th><th style="width:30%">Correo</th><th style="width:12%">Estado</th><th style="width:13%">Acción</th>'
       + '</tr></thead><tbody id="prov-tbody">'
       + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">No hay proveedores registrados</td></tr>')
       + '</tbody></table></div></div>';
