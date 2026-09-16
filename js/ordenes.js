@@ -1433,18 +1433,25 @@ async function verFichaOS(id) {
 
     let facturaRefOS = null;
     try {
-      const facRefRows = await api('facturas','GET',null,'?id_orden=eq.'+id+'&estado=neq.ANULADA&select=numero_factura,total_usd,total_ves&limit=1');
+      const facRefRows = await api('facturas','GET',null,'?id_orden=eq.'+id+'&estado=neq.ANULADA&select=numero_factura,subtotal_usd,iva_usd,total_usd,total_ves&limit=1');
       facturaRefOS = (facRefRows && facRefRows[0]) || null;
     } catch(eFacRefOS) {}
 
-    // Si ya está Facturada, el Total real (el que de verdad se le cobra al
-    // Cliente) es el de la Factura -- CON IVA incluido. Si todavía no se
-    // ha facturado, se calcula lo que SERÍA el total con IVA incluido (a
-    // la tasa de IVA vigente), como proyección -- la Factura real puede
-    // variar levemente si la tasa de IVA cambia antes de facturar.
-    const ivaProyectado = tasaIVAActual();
-    const totalFichaVes = facturaRefOS ? facturaRefOS.total_ves : (o.total_ves * (1 + ivaProyectado));
-    const totalFichaUsd = facturaRefOS ? facturaRefOS.total_usd : (o.total_usd * (1 + ivaProyectado));
+    // Si ya está Facturada, el desglose real (el que de verdad se le
+    // cobra al Cliente) es el de la Factura. Si todavía no se ha
+    // facturado, se calcula lo que SERÍA (Subtotal + IVA = Total), a la
+    // tasa de IVA vigente, como proyección -- la Factura real puede
+    // variar levemente si la tasa de IVA cambia antes de facturar. El
+    // VES de cada parte se deriva con la misma proporción del Total en
+    // VES (no existe una columna subtotal_ves/iva_ves en facturas).
+    const ivaProyectado   = tasaIVAActual();
+    const subtotalFichaUsd = facturaRefOS ? facturaRefOS.subtotal_usd : o.total_usd;
+    const ivaFichaUsd      = facturaRefOS ? facturaRefOS.iva_usd      : (o.total_usd * ivaProyectado);
+    const totalFichaUsd    = facturaRefOS ? facturaRefOS.total_usd    : (subtotalFichaUsd + ivaFichaUsd);
+    const totalFichaVes    = facturaRefOS ? facturaRefOS.total_ves    : (o.total_ves * (1 + ivaProyectado));
+    const tasaImplicita    = totalFichaUsd > 0 ? (totalFichaVes / totalFichaUsd) : 0;
+    const subtotalFichaVes = subtotalFichaUsd * tasaImplicita;
+    const ivaFichaVes      = ivaFichaUsd * tasaImplicita;
 
     document.getElementById('ficha-os-contenido').innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px;flex-wrap:wrap">'
@@ -1489,16 +1496,19 @@ async function verFichaOS(id) {
             + '<button class="btn-primario" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="recalcularTasaOS(' + id + ',' + tasaActualFicha + ')">Recalcular Bs</button>'
             + '</div>'
           : '')
-      + '<div style="margin-bottom:16px"><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;font-weight:700">🔧 Servicios Realizados</div>'
+      + '<div style="margin-bottom:16px"><div style="font-size:13px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px">🔧 Servicios Realizados</div>'
       + tablaServ + '</div>'
-      + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;font-weight:700">📦 Artículos Utilizados</div>'
+      + '<div><div style="font-size:13px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px">📦 Artículos Utilizados</div>'
       + tablaRep + '</div>'
 
-      + '<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--borde);display:flex;justify-content:flex-end">'
-      + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">' + (facturaRefOS ? 'TOTAL CON IVA' : 'TOTAL CON IVA (proyectado, sin facturar)') + '</div>'
+      + '<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--borde)">'
+      + '<div style="display:flex;justify-content:flex-end;margin-bottom:6px"><div style="width:260px;display:flex;justify-content:space-between;font-size:12px;color:var(--suave)"><span>Subtotal</span><span style="font-family:var(--font-mono)">' + fmtBs(subtotalFichaVes) + ' Bs</span></div></div>'
+      + '<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><div style="width:260px;display:flex;justify-content:space-between;font-size:12px;color:var(--suave)"><span>IVA (' + (ivaProyectado*100).toFixed(0) + '%)</span><span style="font-family:var(--font-mono)">' + fmtBs(ivaFichaVes) + ' Bs</span></div></div>'
+      + '<div style="display:flex;justify-content:flex-end">'
+      + '<div style="width:260px;text-align:right"><div style="font-size:10px;color:var(--suave);letter-spacing:1px">' + (facturaRefOS ? 'TOTAL CON IVA' : 'TOTAL CON IVA (proyectado, sin facturar)') + '</div>'
       + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + fmtBs(totalFichaVes) + ' Bs</div>'
       + '<div style="font-size:12px;color:var(--suave)">$ ' + fmtUSD(totalFichaUsd) + ' USD</div>'
-      + '</div></div>';
+      + '</div></div></div>';
 
     document.getElementById('ficha-os-editar-btn').setAttribute('onclick', 'cerrarModal(\'modal-ficha-os\');abrirEditarOS(' + id + ')');
     document.getElementById('ficha-os-editar-btn').style.display = (o.estado !== 'CERRADA' && o.estado !== 'ANULADA') ? '' : 'none';
