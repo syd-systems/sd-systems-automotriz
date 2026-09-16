@@ -677,7 +677,7 @@ function invRenderTabla(items, cont) {
       + '<div><div style="font-family:var(--font-mono);font-size:10px;color:var(--suave);line-height:1.3">' + (r.codigo_articulo || '—')
       + (r.id_categoria_articulo ? ' · <span style="color:var(--suave)">' + (_invCategoriasCache.find(function(c){return c.id_categoria===r.id_categoria_articulo;})?.nombre || '') + '</span>' : '')
       + '</div>'
-      + '<div style="font-weight:500;line-height:1.3">' + r.nombre_articulo + '</div>'
+      + '<div style="font-weight:500;font-size:15px;line-height:1.3">' + r.nombre_articulo + '</div>'
       + (r.descripcion_articulo ? '<div style="font-size:10px;color:var(--suave);line-height:1.3">' + escapeHtml(r.descripcion_articulo) + '</div>' : '') + '</div></div></td>'
       + (function() {
           const pendientesArt = _invPendientesPorArticulo[r.id_articulo] || [];
