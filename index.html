@@ -1579,18 +1579,18 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909102"></script>
-<script src="js/parametros.js?v=20260909102"></script>
-<script src="js/empresas.js?v=20260909102"></script>
-<script src="js/ingresos.js?v=20260909102"></script>
-<script src="js/inventario.js?v=20260909102"></script>
-<script src="js/proveedores.js?v=20260909102"></script>
-<script src="js/ventas.js?v=20260909102"></script>
-<script src="js/contabilidad.js?v=20260909102"></script>
-<script src="js/egresos.js?v=20260909102"></script>
-<script src="js/vehiculos.js?v=20260909102"></script>
-<script src="js/catalogo.js?v=20260909102"></script>
-<script src="js/ordenes.js?v=20260909102"></script>
+<script src="js/core.js?v=20260909103"></script>
+<script src="js/parametros.js?v=20260909103"></script>
+<script src="js/empresas.js?v=20260909103"></script>
+<script src="js/ingresos.js?v=20260909103"></script>
+<script src="js/inventario.js?v=20260909103"></script>
+<script src="js/proveedores.js?v=20260909103"></script>
+<script src="js/ventas.js?v=20260909103"></script>
+<script src="js/contabilidad.js?v=20260909103"></script>
+<script src="js/egresos.js?v=20260909103"></script>
+<script src="js/vehiculos.js?v=20260909103"></script>
+<script src="js/catalogo.js?v=20260909103"></script>
+<script src="js/ordenes.js?v=20260909103"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2093,11 +2093,11 @@
         </div>
         <div class="form-campo">
           <label>Moneda de Referencia</label>
-          <select id="cont-form-moneda" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+          <select id="cont-form-moneda" onchange="actualizarEtiquetaTasaAsiento()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
           </select>
         </div>
         <div class="form-campo">
-          <label>Tasa BCV</label>
+          <label id="cont-form-tasa-label">Tasa BCV</label>
           <input type="text" id="cont-form-tasa" inputmode="decimal" placeholder="0,00" onblur="this.value=formatearMontoVE(parseMontoVE(this.value))" style="font-family:var(--font-mono)">
         </div>
         <div class="form-campo form-full" style="grid-column:1/-1">
@@ -2190,7 +2190,7 @@
           </div>
         </div>
         <div class="form-campo" style="align-self:flex-end">
-          <label>Tasa BCV</label>
+          <label>Tasa BCV (VES/USD)</label>
           <input type="text" id="cont-pago-cxc-tasa" readonly style="background:var(--gris2);border:1px solid var(--borde);color:var(--suave);font-family:var(--font-mono);padding:11px 14px;border-radius:5px;outline:none;width:100%;cursor:not-allowed">
         </div>
         <div id="cont-pago-cxc-tasa-info" style="font-size:11px;color:var(--suave);grid-column:1/-1;margin-top:-8px"></div>
@@ -2360,7 +2360,7 @@
             <div id="cont-pago-cxp-vencimiento" style="font-size:13px;font-family:var(--font-mono)">—</div></div>
           <div id="cont-pago-cxp-factura-no-cont" style="display:none"><div style="font-size:10px;color:var(--suave);margin-bottom:3px">N° Factura</div>
             <div id="cont-pago-cxp-factura-no-ver" style="font-size:13px;color:var(--naranja);font-weight:600">—</div></div>
-          <div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Tasa BCV (al crear)</div>
+          <div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Tasa BCV (VES/USD, al crear)</div>
             <div id="cont-pago-cxp-tasa-creacion" style="font-size:13px;font-family:var(--font-mono)">—</div></div>
           <div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">IVA</div>
             <div id="cont-pago-cxp-iva-info" style="font-size:13px">—</div></div>
