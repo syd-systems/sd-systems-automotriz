@@ -53,7 +53,7 @@ async function _pendFacturarCargarProveedores() {
   cont.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   try {
     const id_emisor = _empresaActiva?.id_empresa || 0;
-    const hoyProvs = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+    const hoyProvs = getHoyVzla();
     const rows = await api('cont_cxp','GET',null,
       '?id_empresa=eq.'+id_emisor+'&estado=eq.PENDIENTE&estado_aprobacion=eq.APROBADA&id_pago_consolidado=is.null&select=id_cxp,numero_doc,id_proveedor,monto_usd,monto_ves,moneda_pago,fecha_vencimiento,fecha_emision,proveedores:id_proveedor(nombre,rif)');
     // Solo CONTADO -- numero_doc con patrón ENT-<id>-<id_cxp> o
@@ -106,7 +106,7 @@ async function _pendFacturarSeleccionarProveedor(id_proveedor, fechaFiltro) {
 
   const cxpRows = await api('cont_cxp','GET',null,
     '?id_empresa=eq.'+id_emisor+'&id_proveedor=eq.'+id_proveedor+'&estado=eq.PENDIENTE&estado_aprobacion=eq.APROBADA&id_pago_consolidado=is.null&select=id_cxp,numero_doc,moneda_negociacion,moneda_pago,monto_usd,monto_ves,fecha_vencimiento,fecha_emision');
-  const hoySelProv = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+  const hoySelProv = getHoyVzla();
   let contado = (cxpRows||[]).filter(function(r){
     return /^(?:ENT|CPRA)-\d+-\d+$/.test(r.numero_doc||'')
       && (r.fecha_vencimiento || r.fecha_emision || '').slice(0,10) <= hoySelProv;
@@ -237,7 +237,7 @@ async function confirmarPagoConsolidado() {
 
   const monedaPago = calculo.monedaPago;
   const tipoMetodo = document.getElementById('pend-fact-metodo-tipo')?.value || '';
-  const fechaPago = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+  const fechaPago = getHoyVzla();
 
   try {
     // 1. Crear la cabecera del Pago Consolidado
@@ -403,7 +403,7 @@ async function _renderDesglosePagoConsolidado() {
 
   const monedaPago = document.getElementById('pend-fact-moneda')?.value || 'USD';
   const esUSD = monedaPago !== 'VES';
-  const hoy = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+  const hoy = getHoyVzla();
 
   let tasaHoy = _tasaVigente || 1;
   try {
@@ -698,7 +698,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
   // reflejar la tasa de hoy, no la tasa congelada de cuando se negoció.
   let tasaHoyLista = _tasaVigente || 1;
   try {
-    const hoyLista = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+    const hoyLista = getHoyVzla();
     const tasasHoyListaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+hoyLista+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
     if (tasasHoyListaRows && tasasHoyListaRows[0]) tasaHoyLista = parseFloat(tasasHoyListaRows[0].tipo_cambio);
   } catch(eTasaLista) {}
@@ -1336,7 +1336,7 @@ async function procesarCambioClave() {
       headers: hdrs,
       body: JSON.stringify({
         contrasena:    nuevaHash,
-        fecha_clave:   new Date().toISOString().split('T')[0],
+        fecha_clave:   hoyVenezuela(),
         cambiar_clave: false
       })
     });
@@ -1360,7 +1360,7 @@ async function procesarCambioClave() {
 
     // Actualizar sesión local
     if (sesionActual) sesionActual.contrasena = nueva;
-    if (sesionActual) sesionActual.fecha_clave = new Date().toISOString().split('T')[0];
+    if (sesionActual) sesionActual.fecha_clave = hoyVenezuela();
     if (sesionActual) sessionStorage.setItem('sd_sesion', JSON.stringify({ usuario: sesionActual, accesos: modulosAcceso, jwt: _sessionJWT, jwtExpiry: _sessionJWTExpiry, refreshToken: _sessionRefreshToken }));
 
     okEl.textContent = '✓ Contraseña actualizada correctamente.';
@@ -1602,7 +1602,7 @@ async function enviarRecuperacion() {
 
     await enviarCorreoRecuperacion(correo, solicitud.nombre, enlace, false);
 
-    okEl.textContent = `✓ Enlace enviado a ${correo}. Revisa tu bandeja de entrada.`;
+    okEl.textContent = `✓ Enlace enviado a ${correo}. Revisa tu bandeja de entrada y haz clic en el botón del correo -- puedes cerrar esta pestaña, el enlace abre una nueva.`;
     okEl.style.display = 'block';
 
   } catch(e) {
@@ -2012,7 +2012,7 @@ async function contGuardarPagoCxp() {
     const monedaNegReg  = (c.moneda_negociacion || monedaPagoReg).toUpperCase();
     const montoVESCongReg = parseFloat(c.monto_ves || 0);
     const montoUSDCongReg = parseFloat(c.monto_usd || 0);
-    const fecha     = new Date().toISOString().split('T')[0]; // fecha real en que se ejecuta el pago
+    const fecha     = hoyVenezuela(); // fecha real en que se ejecuta el pago
 
     let tasaDia = parseFloat(c.tasa_bcv || 1);
     try {
@@ -3239,7 +3239,7 @@ async function guardarPago() {
   const montoTotalVESConIGTF = parseFloat((montoTotalVES + montoIGTFVESFinal).toFixed(2));
 
   const id_emisor = _empresaActiva?.id_empresa || 0;
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = hoyVenezuela();
 
   try {
     const btnGuardar = document.getElementById('btn-guardar-pago');
@@ -3315,7 +3315,7 @@ async function guardarPago() {
 
         // 4. Crear la nueva estructura -- misma lógica que al crear desde cero
         const id_emisorConv = _empresaActiva?.id_empresa || 0;
-        const hoyConv = new Date().toISOString().split('T')[0];
+        const hoyConv = hoyVenezuela();
         const referenciaConv = document.getElementById('pago-referencia')?.value.trim() || '';
 
         if (modalidad === 'CREDITO') {
@@ -3964,7 +3964,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       document.getElementById('cont-pago-cxp-ref').value   = '';
       const facturaNoResetEl = document.getElementById('cont-pago-cxp-factura-no');
       if (facturaNoResetEl) facturaNoResetEl.value = '';
-      document.getElementById('cont-pago-cxp-fecha').value = new Date().toISOString().split('T')[0];
+      document.getElementById('cont-pago-cxp-fecha').value = hoyVenezuela();
       const archivoEl2 = document.getElementById('cont-pago-cxp-archivo');
       if (archivoEl2) { archivoEl2.value = ''; archivoEl2.style.display = ''; }
       const archivoCampoEl = document.getElementById('cont-pago-cxp-archivo-campo');
@@ -4127,7 +4127,7 @@ async function _verCxPAutomatica(c, id_cxp) {
   let tasaMostrar = parseFloat(c.tasa_bcv || 0) || 1;
   if (!yaPagadaAuto) {
     try {
-      const hoyAuto = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+      const hoyAuto = getHoyVzla();
       const tasasHoyAuto = await api('tasas','GET',null,'?fecha_valor=lte.'+hoyAuto+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
       if (tasasHoyAuto && tasasHoyAuto[0]) tasaMostrar = parseFloat(tasasHoyAuto[0].tipo_cambio);
     } catch(eTasaAuto) {}
@@ -4744,7 +4744,7 @@ async function ejecutarPagoCxP(id_cxp) {
   if (tipoContribEl) tipoContribEl.textContent = tipoContribLabel[prov.tipo_contribuyente] || '—';
   const fechaHoyExecEl = document.getElementById('exec-pago-fecha-hoy');
   const fechaVencRefEl = document.getElementById('exec-pago-fecha-venc-ref');
-  const hoyExecFmt = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+  const hoyExecFmt = getHoyVzla();
   if (fechaHoyExecEl) fechaHoyExecEl.textContent = fmtFecha(hoyExecFmt);
   if (fechaVencRefEl) {
     const fechaVencFmt = c.fecha_vencimiento?.slice(0,10) || '';
@@ -4879,7 +4879,7 @@ async function _renderDesglosePagoEjecutar() {
   // buscar la tasa BCV y el IGTF/IVA vigentes). Si una CxP vencida ayer se
   // paga hoy, la tasa y el IGTF deben ser los de HOY, nunca los del día de
   // vencimiento -- antes se usaba c.fecha_vencimiento por error.
-  const fechaPago = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+  const fechaPago = getHoyVzla();
 
   // Total en la Moneda de Pago -- según cuál sea la Moneda de
   // NEGOCIACIÓN (la deuda real):
@@ -5121,7 +5121,7 @@ async function confirmarEjecucionPago() {
     // (para buscar tasa BCV / IGTF / IVA vigentes). Antes se usaba
     // c.fecha_vencimiento por error -- si una CxP vencida ayer se pagaba
     // hoy, usaba la tasa y el IGTF de AYER en vez de los de hoy.
-    const fechaPago  = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+    const fechaPago  = getHoyVzla();
     // Moneda de Pago -- la que quedó seleccionada en pantalla (puede haber
     // sido corregida manualmente); si el select no llegó a existir por
     // algún motivo, cae a la guardada en la CxP.
