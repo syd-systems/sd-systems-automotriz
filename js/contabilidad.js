@@ -416,6 +416,16 @@ async function contVerAsiento(id) {
 // ─── ABRIR / EDITAR ASIENTO ───
 let contLineasAsiento = [];
 
+// Actualiza la etiqueta "Tasa BCV" del Asiento manual para que muestre
+// el par de moneda correcto (VES/USD, VES/EUR, etc.) según la Moneda de
+// Referencia seleccionada, ya que ese Asiento puede ser en cualquier
+// moneda de la Empresa, no siempre USD.
+function actualizarEtiquetaTasaAsiento() {
+  const moneda = document.getElementById('cont-form-moneda')?.value || 'USD';
+  const lbl = document.getElementById('cont-form-tasa-label');
+  if (lbl) lbl.textContent = moneda === 'VES' ? 'Tasa BCV' : 'Tasa BCV (VES/' + moneda + ')';
+}
+
 async function contAbrirAsiento(id) {
   if (!puedo('CONTABILIDAD', id ? 'EDITAR' : 'CREAR')) { alert('Sin permiso.'); return; }
   contLineasAsiento = [];
@@ -474,6 +484,7 @@ async function contAbrirAsiento(id) {
     '<option value="'+mpEmisor+'">'+mpEmisor+' — '+(monedaLabels[mpEmisor]||mpEmisor)+'</option>' +
     (msEmisor !== mpEmisor ? '<option value="'+msEmisor+'">'+msEmisor+' — '+(monedaLabels[msEmisor]||msEmisor)+'</option>' : '');
   selMoneda.value = id ? (document.getElementById('cont-form-moneda').value||mpEmisor) : mpEmisor;
+  actualizarEtiquetaTasaAsiento();
   abrirModal('modal-cont-asiento-form');
   focusFirstField('modal-cont-asiento-form');
 }
@@ -1127,7 +1138,7 @@ async function contAbrirPagoCxc(id_cxc) {
     const tribCxc = await api('param_tributos','GET',null,'?codigo=eq.IGTF&select=alicuota&limit=1');
     window._contPagoCxcPctIGTF = (tribCxc && tribCxc[0]) ? parseFloat(tribCxc[0].alicuota) / 100 : 0.03;
   } catch(eTribCxc) { window._contPagoCxcPctIGTF = 0.03; }
-  document.getElementById('cont-pago-cxc-tasa').value   = formatearMontoVE(tasaActualPago) + ' Bs/$';
+  document.getElementById('cont-pago-cxc-tasa').value   = formatearMontoVE(tasaActualPago) + ' VES/USD';
   document.getElementById('cont-pago-cxc-monto-raw').value = saldoPend;
   document.getElementById('cont-pago-cxc-tasa-raw').value  = tasaActualPago;
   document.getElementById('cont-pago-cxc-ref').value    = '';
@@ -1177,7 +1188,7 @@ async function contAbrirPagoCxc(id_cxc) {
   const infoEl = document.getElementById('cont-pago-cxc-tasa-info');
   if (infoEl) {
     infoEl.textContent = c.tasa_bcv
-      ? 'Tasa registrada en la Factura original: ' + formatearTasaVE(c.tasa_bcv) + ' Bs/$'
+      ? 'Tasa registrada en la Factura original: ' + formatearTasaVE(c.tasa_bcv) + ' VES/USD'
       : '';
   }
 
