@@ -1579,18 +1579,18 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909104"></script>
-<script src="js/parametros.js?v=20260909104"></script>
-<script src="js/empresas.js?v=20260909104"></script>
-<script src="js/ingresos.js?v=20260909104"></script>
-<script src="js/inventario.js?v=20260909104"></script>
-<script src="js/proveedores.js?v=20260909104"></script>
-<script src="js/ventas.js?v=20260909104"></script>
-<script src="js/contabilidad.js?v=20260909104"></script>
-<script src="js/egresos.js?v=20260909104"></script>
-<script src="js/vehiculos.js?v=20260909104"></script>
-<script src="js/catalogo.js?v=20260909104"></script>
-<script src="js/ordenes.js?v=20260909104"></script>
+<script src="js/core.js?v=20260909105"></script>
+<script src="js/parametros.js?v=20260909105"></script>
+<script src="js/empresas.js?v=20260909105"></script>
+<script src="js/ingresos.js?v=20260909105"></script>
+<script src="js/inventario.js?v=20260909105"></script>
+<script src="js/proveedores.js?v=20260909105"></script>
+<script src="js/ventas.js?v=20260909105"></script>
+<script src="js/contabilidad.js?v=20260909105"></script>
+<script src="js/egresos.js?v=20260909105"></script>
+<script src="js/vehiculos.js?v=20260909105"></script>
+<script src="js/catalogo.js?v=20260909105"></script>
+<script src="js/ordenes.js?v=20260909105"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -5290,6 +5290,24 @@
       </div>
 
       <div id="edit-mov-ent-cont">
+      <!-- Personas que intervinieron (Solicitante / Aprobador / Receptor) -->
+      <div id="edit-mov-personas-cont" style="display:none;padding:12px 16px;background:var(--gris2);border-radius:6px;margin-bottom:16px;flex-wrap:wrap;gap:16px">
+        <div id="edit-mov-persona-solicitante" style="display:none">
+          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">Solicitante</div>
+          <div style="font-weight:500;font-size:13px" id="edit-mov-persona-solicitante-nombre">—</div>
+          <div style="font-size:11px;color:var(--suave)" id="edit-mov-persona-solicitante-area"></div>
+        </div>
+        <div id="edit-mov-persona-aprobador" style="display:none">
+          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">Aprobado por</div>
+          <div style="font-weight:500;font-size:13px" id="edit-mov-persona-aprobador-nombre">—</div>
+          <div style="font-size:11px;color:var(--suave)" id="edit-mov-persona-aprobador-area"></div>
+        </div>
+        <div id="edit-mov-persona-receptor" style="display:none">
+          <div style="font-size:9px;color:var(--suave);letter-spacing:2px;text-transform:uppercase">Receptor</div>
+          <div style="font-weight:500;font-size:13px" id="edit-mov-persona-receptor-nombre">—</div>
+          <div style="font-size:11px;color:var(--suave)" id="edit-mov-persona-receptor-area"></div>
+        </div>
+      </div>
       <!-- Info artículo -->
       <div style="padding:12px 16px;background:var(--gris2);border-radius:6px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
         <div>
