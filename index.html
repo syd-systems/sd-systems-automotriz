@@ -1575,18 +1575,18 @@
 <!-- ═══════════════════════════════════════ -->
 <!--         JAVASCRIPT                     -->
 <!-- ═══════════════════════════════════════ -->
-<script src="js/core.js?v=20260909091"></script>
-<script src="js/parametros.js?v=20260909091"></script>
-<script src="js/empresas.js?v=20260909091"></script>
-<script src="js/ingresos.js?v=20260909091"></script>
-<script src="js/inventario.js?v=20260909091"></script>
-<script src="js/proveedores.js?v=20260909091"></script>
-<script src="js/ventas.js?v=20260909091"></script>
-<script src="js/contabilidad.js?v=20260909091"></script>
-<script src="js/egresos.js?v=20260909091"></script>
-<script src="js/vehiculos.js?v=20260909091"></script>
-<script src="js/catalogo.js?v=20260909091"></script>
-<script src="js/ordenes.js?v=20260909091"></script>
+<script src="js/core.js?v=20260909092"></script>
+<script src="js/parametros.js?v=20260909092"></script>
+<script src="js/empresas.js?v=20260909092"></script>
+<script src="js/ingresos.js?v=20260909092"></script>
+<script src="js/inventario.js?v=20260909092"></script>
+<script src="js/proveedores.js?v=20260909092"></script>
+<script src="js/ventas.js?v=20260909092"></script>
+<script src="js/contabilidad.js?v=20260909092"></script>
+<script src="js/egresos.js?v=20260909092"></script>
+<script src="js/vehiculos.js?v=20260909092"></script>
+<script src="js/catalogo.js?v=20260909092"></script>
+<script src="js/ordenes.js?v=20260909092"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2960,7 +2960,7 @@
         </div>
         <div class="form-campo form-full">
           <label>Nombre del Artículo</label>
-          <input type="text" id="inv-nombre" placeholder="Nombre del artículo" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+          <input type="text" id="inv-nombre" placeholder="Nombre del artículo" onblur="this.value=capitalizarNombre(this.value)">
         </div>
         <div class="form-campo">
           <label>Selección Características Físicas</label>
@@ -2982,7 +2982,7 @@
         </div>
         <div class="form-campo form-full">
           <label>Descripción</label>
-          <input type="text" id="inv-descripcion" placeholder="Descripción opcional">
+          <input type="text" id="inv-descripcion" placeholder="Descripción opcional" onblur="this.value=capitalizarNombre(this.value)">
         </div>
 
         <div class="form-campo form-full">
