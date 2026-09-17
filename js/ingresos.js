@@ -1126,7 +1126,7 @@ async function verFichaFactura(id) {
       + (puedo('FACTURAS','VER_TOTALES')
           ? '<div style="text-align:right"><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">TOTAL</div>'
             + fmtFDual(f.total_usd, '28px', 'var(--naranja)')
-            + '<div style="font-size:10px;color:#555;margin-top:3px">'+(f.moneda_cobro||'USD')+' · Tasa '+formatearTasaVE(t)+' Bs/$</div></div>'
+            + '<div style="font-size:10px;color:#555;margin-top:3px">'+(f.moneda_cobro||'USD')+' · Tasa '+formatearTasaVE(t)+' VES/USD</div></div>'
           : '')
       + '</div>'
       + (emisor ? '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
