@@ -818,14 +818,14 @@ async function guardarVehiculo() {
 
     // Registrar en historial de propietarios si cambió
     if (propId && vehId) {
-      await api('vehiculos_clientes_hist', 'PATCH', { activo: false, fecha_hasta: new Date().toISOString().split('T')[0] },
+      await api('vehiculos_clientes_hist', 'PATCH', { activo: false, fecha_hasta: hoyVenezuela() },
         '?id_vehiculo=eq.' + vehId + '&activo=eq.true&id_cliente=neq.' + propId);
       const histActivo = await api('vehiculos_clientes_hist', 'GET', null,
         '?id_vehiculo=eq.' + vehId + '&activo=eq.true&select=id_hist');
       if (!histActivo.length) {
         await api('vehiculos_clientes_hist', 'POST', {
           id_vehiculo: parseInt(vehId), id_cliente: parseInt(propId),
-          fecha_desde: new Date().toISOString().split('T')[0], activo: true,
+          fecha_desde: hoyVenezuela(), activo: true,
           id_usuario: sesionActual.correo_usuario
         });
       }
