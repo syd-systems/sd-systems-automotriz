@@ -1612,11 +1612,11 @@ async function cbConsultarSaldos() {
       + '</tr></thead><tbody>'
       + filas.map(function(f) {
           return '<tr>'
-            + '<td style="padding:8px;border-bottom:1px solid var(--borde)"><span style="color:var(--naranja);font-family:var(--font-mono);font-size:25.5px">'+f.codigo+'</span><br>'+f.nombre+'</td>'
-            + '<td style="padding:8px;border-bottom:1px solid var(--borde);text-align:right;font-family:var(--font-mono)">'+fmt(f.saldo_inicial)+'</td>'
-            + '<td style="padding:8px;border-bottom:1px solid var(--borde);text-align:right;font-family:var(--font-mono);color:#22c55e">+'+fmt(f.entradas)+'</td>'
-            + '<td style="padding:8px;border-bottom:1px solid var(--borde);text-align:right;font-family:var(--font-mono);color:#f87171">-'+fmt(f.salidas)+'</td>'
-            + '<td style="padding:8px;border-bottom:1px solid var(--borde);text-align:right;font-family:var(--font-mono);font-weight:600;color:var(--naranja)">'+fmt(f.saldo_cierre)+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde);font-size:25.5px"><span style="color:var(--naranja);font-family:var(--font-mono)">'+f.codigo+'</span><br>'+f.nombre+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde);text-align:right;font-family:var(--font-mono);font-size:25.5px">'+fmt(f.saldo_inicial)+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde);text-align:right;font-family:var(--font-mono);font-size:25.5px;color:#22c55e">+'+fmt(f.entradas)+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde);text-align:right;font-family:var(--font-mono);font-size:25.5px;color:#f87171">-'+fmt(f.salidas)+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde);text-align:right;font-family:var(--font-mono);font-size:25.5px;font-weight:600;color:var(--naranja)">'+fmt(f.saldo_cierre)+'</td>'
             + '</tr>';
         }).join('')
       + '</tbody></table></div>';
