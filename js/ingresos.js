@@ -53,7 +53,7 @@ async function renderFacturas() {
     }
     const [facturas, tasas] = await Promise.all([
       api('facturas','GET',null,'?order=fecha_emision.desc&select=*,emisores(nombre,rif),clientes(nombre_completo,tipo_doc,numero_doc)'+emisorQ()),
-      api('tasas','GET',null,'?moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio'),
+      api('tasas','GET',null,'?moneda_origen=eq.USD&fecha_valor=lte.' + getHoyVzla() + '&order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
     facturasCache = facturas;
     const tasaActual = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
@@ -174,7 +174,7 @@ async function abrirNuevaFactura() {
   try {
     const [em, ta] = await Promise.all([
       api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*'),
-      api('tasas','GET',null,'?moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio'),
+      api('tasas','GET',null,'?moneda_origen=eq.USD&fecha_valor=lte.' + getHoyVzla() + '&order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
     emisoresList = em;
     tasaActual = ta.length ? parseFloat(ta[0].tipo_cambio) : 1;
@@ -802,7 +802,7 @@ async function generarCxCyAsientoFactura(idFactura) {
         let tasaCOGS = _tasaVigente || 1;
         try {
           const tasasCOGS = await api('tasas','GET',null,
-            '?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+            '?moneda_origen=eq.USD&moneda_destino=eq.VES&fecha_valor=lte.' + getHoyVzla() + '&order=fecha_valor.desc&limit=1&select=tipo_cambio');
           if (tasasCOGS && tasasCOGS[0]) tasaCOGS = parseFloat(tasasCOGS[0].tipo_cambio) || tasaCOGS;
         } catch(eTasaCOGS) {}
 
@@ -816,7 +816,7 @@ async function generarCxCyAsientoFactura(idFactura) {
             id_area:       null,
             id_area_entrega: id_areaEmp,
             id_empleado_entrega: idEmpEmp,
-            fecha_salida:  new Date().toISOString().split('T')[0],
+            fecha_salida:  hoyVenezuela(),
             observaciones: 'Factura FAC-'+fac.id_factura,
             id_usuario:    correo
           });
@@ -841,7 +841,7 @@ async function generarCxCyAsientoFactura(idFactura) {
                 const numAstCOGS = 'AST-' + anioCOGS + '-' + String(seqCOGS).padStart(4,'0');
                 const astCOGS = await api('cont_asientos','POST',{
                   id_empresa: fac.id_empresa||0, numero_asiento: numAstCOGS,
-                  tipo: 'COSTO_VENTA', fecha: new Date().toISOString().split('T')[0],
+                  tipo: 'COSTO_VENTA', fecha: hoyVenezuela(),
                   descripcion: 'Costo de Venta: ' + (aC.nombre_articulo||'') + ' x' + cantidadRep + ' — Factura FAC-'+fac.id_factura,
                   referencia: id_salidaFac ? 'SAL-'+id_salidaFac : 'FAC-'+fac.id_factura,
                   estado: 'APROBADO', moneda_base: 'VES', tasa_bcv: tasaCOGS,
@@ -931,7 +931,7 @@ async function generarCxCyAsientoFactura(idFactura) {
         let tasaCOGS = _tasaVigente || 1;
         try {
           const tasasCOGS = await api('tasas','GET',null,
-            '?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+            '?moneda_origen=eq.USD&moneda_destino=eq.VES&fecha_valor=lte.' + getHoyVzla() + '&order=fecha_valor.desc&limit=1&select=tipo_cambio');
           if (tasasCOGS && tasasCOGS[0]) tasaCOGS = parseFloat(tasasCOGS[0].tipo_cambio) || tasaCOGS;
         } catch(eTasaCOGSVenta) {}
 
@@ -953,7 +953,7 @@ async function generarCxCyAsientoFactura(idFactura) {
 
           const sal = await api('stock_salidas','POST',{
             id_articulo:   lin.id_articulo, id_area: ventaOrigen.id_area, cantidad: cantidadVenta,
-            fecha_salida:  fac.fecha_emision || new Date().toISOString().split('T')[0],
+            fecha_salida:  fac.fecha_emision || hoyVenezuela(),
             observaciones: 'Venta '+fac.numero_factura,
             id_usuario:    correo
           });
@@ -975,7 +975,7 @@ async function generarCxCyAsientoFactura(idFactura) {
                 const numAstCOGSVenta = 'AST-' + anioCOGSVenta + '-' + String(seqCOGSVenta).padStart(4,'0');
                 const astCOGSVenta = await api('cont_asientos','POST',{
                   id_empresa: fac.id_empresa||0, numero_asiento: numAstCOGSVenta,
-                  tipo: 'COSTO_VENTA', fecha: fac.fecha_emision || new Date().toISOString().split('T')[0],
+                  tipo: 'COSTO_VENTA', fecha: fac.fecha_emision || hoyVenezuela(),
                   descripcion: 'Costo de Venta: ' + (aCV.nombre_articulo||'') + ' x' + cantidadVenta + ' — Factura '+fac.numero_factura,
                   referencia: id_salidaVenta ? 'SAL-'+id_salidaVenta : 'FAC-'+fac.id_factura,
                   estado: 'APROBADO', moneda_base: 'VES', tasa_bcv: tasaCOGS,
