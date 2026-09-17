@@ -239,7 +239,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
       return '<option value="' + p.id_periodo + '"' + (filtroPeriodo == p.id_periodo ? ' selected':'') + '>' + p.nombre + '</option>';
     }).join('');
 
-    const hoyDiario = new Date().toISOString().split('T')[0];
+    const hoyDiario = hoyVenezuela();
     cont.innerHTML =
       contSelectorMoneda(hoyDiario) +
       '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:12px 0 16px">'
@@ -450,7 +450,7 @@ async function contAbrirAsiento(id) {
     document.getElementById('modal-cont-form-titulo').textContent = 'NUEVO ASIENTO CONTABLE';
     // Cargar tasa BCV del día
     try {
-      const tasas = await api('tasas','GET',null,'?order=fecha_valor.desc&limit=1&select=tipo_cambio');
+      const tasas = await api('tasas','GET',null,'?fecha_valor=lte.' + getHoyVzla() + '&order=fecha_valor.desc&limit=1&select=tipo_cambio');
       document.getElementById('cont-form-tasa').value = tasas.length ? formatearMontoVE(tasas[0].tipo_cambio) : '1,00';
     } catch(e) { document.getElementById('cont-form-tasa').value = '1,00'; }
   }
@@ -680,7 +680,7 @@ async function contRenderMayor() {
   if (!_contMoneda) _contMoneda = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase().toUpperCase();
   const monedaPrincipal = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase().toUpperCase();
   const usandoSecundaria = _contMoneda !== monedaPrincipal;
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = hoyVenezuela();
   const tasa = usandoSecundaria ? await contGetTasa(hoy) : null;
   const convertir = function(m) { return usandoSecundaria && tasa ? m / tasa : m; };
   const monedaLabel = _contMoneda;
@@ -923,7 +923,7 @@ async function contRenderBalance() {
   if (!_contMoneda) _contMoneda = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase().toUpperCase();
   const monedaPrincipal = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase().toUpperCase();
   const usandoSecundaria = _contMoneda !== monedaPrincipal;
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = hoyVenezuela();
   const tasa = usandoSecundaria ? await contGetTasa(hoy) : null;
   const convertir = function(m) { return usandoSecundaria && tasa ? m / tasa : m; };
   const monedaLabel = _contMoneda;
@@ -1115,7 +1115,7 @@ async function contAbrirPagoCxc(id_cxc) {
   if (!mismoDiaAbrirPagoCxc) {
     try {
       const tasasBCVPago = await api('tasas','GET',null,
-        '?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+        '?moneda_origen=eq.USD&moneda_destino=eq.VES&fecha_valor=lte.' + getHoyVzla() + '&order=fecha_valor.desc&limit=1&select=tipo_cambio');
       if (tasasBCVPago.length) tasaActualPago = parseFloat(tasasBCVPago[0].tipo_cambio);
     } catch(eTasaPago) {}
   }
@@ -1523,7 +1523,7 @@ async function contRenderCajaBancos() {
   const monedaSecundaria = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
   if (!_cajaBancosMoneda) _cajaBancosMoneda = monedaPrincipal;
 
-  const hoy = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+  const hoy = getHoyVzla();
   if (!_cajaBancosHasta) _cajaBancosHasta = hoy;
   if (!_cajaBancosDesde) _cajaBancosDesde = hoy.slice(0,7) + '-01'; // primer día del mes actual
 
@@ -1863,7 +1863,7 @@ async function abrirModalTraspasoCB() {
     alert('No tiene permiso para realizar Traspasos Caja/Banco.');
     return;
   }
-  document.getElementById('traspaso-cb-fecha').value = getHoyVzla ? getHoyVzla() : new Date().toISOString().slice(0,10);
+  document.getElementById('traspaso-cb-fecha').value = getHoyVzla();
   document.getElementById('traspaso-cb-monto').value = '';
   document.getElementById('traspaso-cb-referencia').value = '';
   document.getElementById('traspaso-cb-concepto').value = '';
@@ -1994,7 +1994,7 @@ async function guardarTraspasoCB() {
     // que siempre llevan ambas columnas USD/VES).
     let tasaTrasp = 1;
     try {
-      const tasasTrasp = await api('tasas','GET',null,'?moneda_origen=eq.USD&moneda_destino=eq.VES&order=fecha_valor.desc&limit=1&select=tipo_cambio');
+      const tasasTrasp = await api('tasas','GET',null,'?moneda_origen=eq.USD&moneda_destino=eq.VES&fecha_valor=lte.' + getHoyVzla() + '&order=fecha_valor.desc&limit=1&select=tipo_cambio');
       if (tasasTrasp.length) tasaTrasp = parseFloat(tasasTrasp[0].tipo_cambio);
     } catch(eTasaTrasp) {}
 
@@ -2139,7 +2139,7 @@ async function contRenderCxc() {
         +'</tr>';
     }).join('');
 
-    const hoyCxc = new Date().toISOString().split('T')[0];
+    const hoyCxc = hoyVenezuela();
     cont.innerHTML =
       contSelectorMoneda(hoyCxc) +
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin:12px 0 20px">'
@@ -2190,7 +2190,7 @@ async function contRenderCxp() {
 
     const monedaPrincipal = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
     const usandoVES = (_contMoneda || monedaPrincipal) === 'VES';
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = hoyVenezuela();
     const tasaHoy = usandoVES ? await contGetTasa(hoy) : null;
     const fmtMonto = function(usd, ves) {
       if (!usandoVES) return '$ ' + fmtUSD(usd || 0);
@@ -2267,7 +2267,7 @@ async function contRenderConciliacion() {
   const cont = document.getElementById('cont-vista-cont');
   if (!cont) return;
   const cuentasBanco = contCuentasCache.filter(function(c){ return c.permite_movimiento && (c.codigo.startsWith('1.1.01') ); });
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = hoyVenezuela();
   cont.innerHTML = contSelectorMoneda(hoy) +
     '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<h3 style="margin:0">Conciliación Bancaria</h3>'
@@ -2363,7 +2363,7 @@ async function contRenderCuentas(filtro) {
 
   const tipoBadge = { ACTIVO:'badge-verde', PASIVO:'badge-rojo', PATRIMONIO:'badge-naranja', INGRESO:'badge-verde', EGRESO:'badge-rojo' };
 
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = hoyVenezuela();
   cont.innerHTML = contSelectorMoneda(hoy) +
     '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">'
     + '<h3 style="margin:0">Plan de Cuentas VEN-NIF</h3>'
@@ -2924,7 +2924,7 @@ async function guardarTributo() {
       base_legal: baseLegal||null, periodicidad, es_retencion: esRet,
       porcentaje_retencion: porcRet, aplica_servicios: apServ, aplica_bienes: apBien,
       estado: document.getElementById('trib-estado').value,
-      fecha_revision: new Date().toISOString().split('T')[0],
+      fecha_revision: hoyVenezuela(),
       revisado_por: sesionActual?.correo_usuario || '',
       fecha_vigencia: document.getElementById('trib-fecha-vigencia').value || null,
       lapso_pago: document.getElementById('trib-lapso-pago').value.trim() || null,
