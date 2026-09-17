@@ -1394,6 +1394,27 @@ async function guardarEntradaStock() {
 // _buscar_y_notificar_aprobador_entrada / enrutar_aprobacion_orden_compra (misma
 // lógica de Área → Nivel 2 con límite de monto → escala a Nivel 1, que ya
 // usa Pagos para las CxP, pero referenciando la Entrada directamente).
+// Si quien está creando la Orden de Compra tiene, él mismo, Nivel de
+// Firma suficiente para el monto (o es Administrador), se aprueba de
+// inmediato -- sin esperar ninguna notificación, ya que sería la misma
+// persona notificándose a sí misma. Devuelve true si la aprobó (y por lo
+// tanto no hace falta enrutar ninguna notificación), false si hay que
+// seguir con el enrutamiento normal.
+async function _intentarAutoAprobarOrdenCompra(idAnclaFila, montoParaLimite) {
+  try {
+    if (!sesionActual?.administrador && !puedo('PAGOS','APROBAR')) return false;
+    if (!sesionActual?.administrador) {
+      const montoMax = await _resolverMontoMaxAprobacionSesion();
+      if (montoMax !== null && montoParaLimite > montoMax) return false;
+    }
+    await aprobarOrdenCompra(idAnclaFila);
+    return true;
+  } catch(eAutoAprob) {
+    console.warn('Error en auto-aprobación de Orden de Compra:', eAutoAprob);
+    return false;
+  }
+}
+
 async function enrutarAprobacionOrdenCompra(monto, idEntrada, numeroDoc, detalle) {
   try {
     const idAreaCreador = await _resolverAreaSesion();
@@ -2366,18 +2387,22 @@ async function guardarOrdenCompra() {
     const numDocLote = 'OC-' + idOrdenCompraLote;
     const piezasTotalLote = lineasValidas.reduce(function(a,l){ return a + (parseFloat(l.cantidad)||0); }, 0);
     const montoBsLoteExacto = moneda === 'VES' ? montoTotalLoteMonedaOriginal : parseFloat((montoTotalLoteMonedaOriginal * tasaBcv).toFixed(2));
-    await enrutarAprobacionOrdenCompra(montoTotalLoteConIVA, idAnclaFila, numDocLote, {
-      nombreArt: lineasValidas.length + ' Artículos (Compra a Proveedor)',
-      proveedorNombre: document.getElementById('entcons-proveedor')?.selectedOptions[0]?.text || null,
-      cantidad: lineasValidas.length,
-      unidad: 'líneas',
-      numArticulos: lineasValidas.length,
-      piezasTotal: piezasTotalLote,
-      monedaCompra: moneda,
-      tasaBcv: tasaBcv,
-      montoBsExacto: montoBsLoteExacto,
-      modalidadPago: esquemaPago
-    });
+    const montoParaLimiteLote = montoTotalLoteConIVA; // el IGTF (si aplica) se suma dentro de enrutarAprobacionOrdenCompra -- aquí se revalida igual, sin IGTF, ya que el límite de Nivel de Firma es el mismo criterio
+    const seAutoAprobo = await _intentarAutoAprobarOrdenCompra(idAnclaFila, montoParaLimiteLote);
+    if (!seAutoAprobo) {
+      await enrutarAprobacionOrdenCompra(montoTotalLoteConIVA, idAnclaFila, numDocLote, {
+        nombreArt: lineasValidas.length + ' Artículos (Compra a Proveedor)',
+        proveedorNombre: document.getElementById('entcons-proveedor')?.selectedOptions[0]?.text || null,
+        cantidad: lineasValidas.length,
+        unidad: 'líneas',
+        numArticulos: lineasValidas.length,
+        piezasTotal: piezasTotalLote,
+        monedaCompra: moneda,
+        tasaBcv: tasaBcv,
+        montoBsExacto: montoBsLoteExacto,
+        modalidadPago: esquemaPago
+      });
+    }
 
     document.getElementById('alerta-entcons-err').style.display = 'none';
     alert(window._retomandoLoteId
@@ -3948,7 +3973,7 @@ async function _obtenerPaginaHistorial() {
       contadorPorLote[f.id_orden_compra] = (contadorPorLote[f.id_orden_compra]||0) + 1;
       posicionPorEntrada[f.id_entrada] = contadorPorLote[f.id_orden_compra];
     });
-    entradas.forEach(function(e){ if (e.id_orden_compra) e.posicionLote = posicionPorEntrada[e.id_entrada]; });
+    entradas.forEach(function(e){ if (e.id_orden_compra) { e.posicionLote = posicionPorEntrada[e.id_entrada]; e.totalEnLote = contadorPorLote[e.id_orden_compra]; } });
   }
 
   const combinados = [
@@ -4024,9 +4049,11 @@ function _renderFilaHistorial(m) {
   // {posición} (ej. OC-1-2) -- para que se vea como lo que es: UNA sola
   // Orden compuesta de varios Artículos, no varias Órdenes sueltas.
   const prefEntrada = m.motivo === 'compra' ? (m.estado_aprobacion === 'APROBADA' ? 'CPRA-' : 'OC-') : 'ENT-';
-  const refEntrada = m.motivo === 'compra' && m.id_orden_compra
+  const refEntrada = m.motivo === 'compra' && m.id_orden_compra && m.totalEnLote > 1
     ? prefEntrada + m.id_orden_compra + '-' + (m.posicionLote || '?')
-    : prefEntrada + m.id_entrada;
+    : m.motivo === 'compra' && m.id_orden_compra
+      ? prefEntrada + m.id_orden_compra
+      : prefEntrada + m.id_entrada;
   return '<tr>'
     + '<td style="padding:8px 0;font-size:12px;color:var(--suave)">' + (m.fecha ? fmtFecha(m.fecha) : '—') + '</td>'
     + '<td style="padding:8px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">'
@@ -4194,7 +4221,7 @@ function _aplicarSoloLecturaMovimiento(tipo, soloLectura) {
     ? (m?.motivo === 'compra' ? (m?.estado_aprobacion === 'APROBADA' ? 'CPRA-' : 'OC-') : 'ENT-')
     : 'SAL-';
   const refMov = idMov
-    ? ' — Ref: ' + prefRefMov + (tipo === 'ENTRADA' && m?.motivo === 'compra' && m?.id_orden_compra ? (m.id_orden_compra + '-' + (m.posicionLote || '?')) : idMov)
+    ? ' — Ref: ' + prefRefMov + (tipo === 'ENTRADA' && m?.motivo === 'compra' && m?.id_orden_compra ? (m.totalEnLote > 1 ? (m.id_orden_compra + '-' + (m.posicionLote || '?')) : String(m.id_orden_compra)) : idMov)
     : '';
   // Un Ajuste de Inventario (Sobrante o Faltante) no es una Entrada/Salida normal —
   // usa el mismo modal por reutilización de campos, pero con su propio título.
@@ -4245,6 +4272,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
             '?id_orden_compra=eq.'+m.id_orden_compra+'&select=id_entrada&order=id_entrada.asc');
           const idxLote = (hermanas||[]).findIndex(function(h){ return h.id_entrada === m.id_entrada; });
           if (idxLote >= 0) m.posicionLote = idxLote + 1;
+          m.totalEnLote = (hermanas||[]).length;
         } catch(ePosLote) {}
       }
     } else {
@@ -5415,6 +5443,8 @@ async function _guardarEdicionMovimientoInterno() {
                 ? datos.monto_total_moneda_original
                 : (datos.tasa_bcv ? parseFloat((datos.monto_total_moneda_original * datos.tasa_bcv).toFixed(2)) : null))
             : null;
+          const seAutoAprobo2 = await _intentarAutoAprobarOrdenCompra(id, datos.monto_total_con_iva || 0);
+          if (!seAutoAprobo2) {
           await enrutarAprobacionOrdenCompra(datos.monto_total_con_iva || 0, id, numDocBaseReenvio, {
             nombreArt: artNomReenvio,
             proveedorNombre: document.getElementById('edit-mov-proveedor')?.selectedOptions[0]?.text || null,
@@ -5429,6 +5459,7 @@ async function _guardarEdicionMovimientoInterno() {
             montoIGTF: datos.aplica_igtf ? (datos.monto_igtf || 0) : 0,
             esContribuyenteEspecial: window._tipoContribProveedorEntrada === 'ESPECIAL'
           });
+          }
         } catch(eReenvioEnt) { console.warn('Error reenviando Entrada a aprobación:', eReenvioEnt); }
       }
 
@@ -5716,17 +5747,21 @@ async function anularMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
     } catch(eArtAnul) { console.warn('Error cargando Artículo:', eArtAnul); }
   }
   let posicionLoteAnul = null;
+  let totalEnLoteAnul = 0;
   if (tipo === 'ENTRADA' && movOrig?.motivo === 'compra' && movOrig?.id_orden_compra) {
     try {
       const hermanasAnul = await api('stock_entradas','GET',null,
         '?id_orden_compra=eq.'+movOrig.id_orden_compra+'&select=id_entrada&order=id_entrada.asc');
       const idxLoteAnul = (hermanasAnul||[]).findIndex(function(h){ return h.id_entrada === movOrig.id_entrada; });
       if (idxLoteAnul >= 0) posicionLoteAnul = idxLoteAnul + 1;
+      totalEnLoteAnul = (hermanasAnul||[]).length;
     } catch(ePosLoteAnul) {}
   }
   const numDocMostrar = tipo === 'ENTRADA'
     ? ((movOrig?.motivo === 'compra' ? (movOrig?.estado_aprobacion === 'APROBADA' ? 'CPRA-' : 'OC-') : 'ENT-')
-        + (movOrig?.motivo === 'compra' && movOrig?.id_orden_compra ? (movOrig.id_orden_compra + '-' + (posicionLoteAnul || '?')) : idMovimiento))
+        + (movOrig?.motivo === 'compra' && movOrig?.id_orden_compra
+            ? (totalEnLoteAnul > 1 ? (movOrig.id_orden_compra + '-' + (posicionLoteAnul || '?')) : String(movOrig.id_orden_compra))
+            : idMovimiento))
     : ('SAL-' + idMovimiento);
   document.getElementById('anulacion-tipo').value          = tipo;
   document.getElementById('anulacion-id-movimiento').value = idMovimiento;
