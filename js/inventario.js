@@ -677,7 +677,7 @@ function invRenderTabla(items, cont) {
       + '<div><div style="font-family:var(--font-mono);font-size:10px;color:var(--suave);line-height:1.3">' + (r.codigo_articulo || '—')
       + (r.id_categoria_articulo ? ' · <span style="color:var(--suave)">' + (_invCategoriasCache.find(function(c){return c.id_categoria===r.id_categoria_articulo;})?.nombre || '') + '</span>' : '')
       + '</div>'
-      + '<div style="font-weight:500;font-size:15px;line-height:1.3">' + r.nombre_articulo + '</div>'
+      + '<div style="font-weight:500;font-size:10px;line-height:1.3">' + r.nombre_articulo + '</div>'
       + (r.descripcion_articulo ? '<div style="font-size:10px;color:var(--suave);line-height:1.3">' + escapeHtml(r.descripcion_articulo) + '</div>' : '') + '</div></div></td>'
       + (function() {
           const pendientesArt = _invPendientesPorArticulo[r.id_articulo] || [];
@@ -2539,8 +2539,8 @@ async function guardarInventario() {
   if (id && !puedo('INVENTARIO','EDITAR')) { alert('No tiene permiso para editar artículos.'); return; }
   if (!id && !puedo('INVENTARIO','CREAR')) { alert('No tiene permiso para crear artículos.'); return; }
   const codigo   = document.getElementById('inv-codigo').value.trim();
-  const nombre   = document.getElementById('inv-nombre').value.trim().toUpperCase();
-  const desc     = document.getElementById('inv-descripcion').value.trim();
+  const nombre   = capitalizarNombre(document.getElementById('inv-nombre').value.trim());
+  const desc     = capitalizarNombre(document.getElementById('inv-descripcion').value.trim());
   const stock    = parseInt(document.getElementById('inv-stock').value) || 0;
   const stockMin = parseInt(document.getElementById('inv-stock-min').value) || 0;
   const costo    = parseFloat(document.getElementById('inv-costo').value) || 0;
@@ -2676,9 +2676,9 @@ async function invAbrirCategoria(id) {
   let item = null;
   if (id) { const r = await api('inv_categorias','GET',null,'?id_categoria=eq.'+id)||[]; item=r[0]||null; }
   const html = '<div class="form-grid">'
-    +'<div class="form-campo"><label>Código *</label><input type="text" id="icat-codigo" value="'+(item?.codigo||'')+'" placeholder="Ej: CAT-01" oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase"></div>'
-    +'<div class="form-campo form-full"><label>Nombre *</label><input type="text" id="icat-nombre" value="'+(item?.nombre||'')+'" placeholder="Nombre de la categoría" oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase"></div>'
-    +'<div class="form-campo form-full"><label>Descripción</label><textarea id="icat-desc" oninput="this.value=this.value.toUpperCase()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%;text-transform:uppercase">'+(item?.descripcion||'')+'</textarea></div>'
+    +'<div class="form-campo"><label>Código</label><input type="text" id="icat-codigo" value="'+(item?.codigo||'')+'" placeholder="Ej: CAT-01" oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase"></div>'
+    +'<div class="form-campo form-full"><label>Nombre</label><input type="text" id="icat-nombre" value="'+(item?.nombre||'')+'" placeholder="Nombre de la categoría" onblur="this.value=capitalizarNombre(this.value)"></div>'
+    +'<div class="form-campo form-full"><label>Descripción</label><textarea id="icat-desc" onblur="this.value=capitalizarNombre(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%">'+(item?.descripcion||'')+'</textarea></div>'
     +'<div class="form-campo form-full"><label>Estado</label><select id="icat-estado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="ACTIVO"'+((!item||item.estado==="ACTIVO")?" selected":"")+'>Activo</option><option value="INACTIVO"'+(item?.estado==="INACTIVO"?" selected":"")+'>Inactivo</option></select></div>'
     +'</div><input type="hidden" id="icat-id" value="'+(id||'')+'">'
     +'<div class="alerta alerta-exito" id="icat-ok" style="margin-top:12px;display:none"></div>'
@@ -2696,7 +2696,7 @@ async function invAbrirCategoria(id) {
 }
 
 async function invGuardarCategoria() {
-  const id=document.getElementById('icat-id').value, nombre=document.getElementById('icat-nombre')?.value.trim().toUpperCase();
+  const id=document.getElementById('icat-id').value, nombre=capitalizarNombre(document.getElementById('icat-nombre')?.value.trim());
   const codigo=document.getElementById('icat-codigo')?.value.trim().toUpperCase();
   const okEl=document.getElementById('icat-ok'), errEl=document.getElementById('icat-err');
   okEl.style.display='none'; errEl.style.display='none';
@@ -2704,7 +2704,7 @@ async function invGuardarCategoria() {
   if (!nombre) { errEl.textContent='El nombre es obligatorio.'; errEl.style.display='block'; document.getElementById('icat-nombre')?.focus(); return; }
   const datos = { nombre, estado:document.getElementById('icat-estado')?.value||'ACTIVO',
     codigo:codigo||null,
-    descripcion:document.getElementById('icat-desc')?.value.trim().toUpperCase()||null, id_empresa:_empresaActiva?.id_empresa||null };
+    descripcion:capitalizarNombre(document.getElementById('icat-desc')?.value.trim())||null, id_empresa:_empresaActiva?.id_empresa||null };
   try {
     if (id) await api('inv_categorias','PATCH',datos,'?id_categoria=eq.'+id);
     else    await api('inv_categorias','POST',datos);
@@ -3297,10 +3297,10 @@ async function invAbrirTipo(id) {
       (c.codigo?c.codigo+' — ':'')+c.nombre+'</option>';
   }).join('');
   const html = '<div class="form-grid">'
-    +'<div class="form-campo"><label>Código *</label><input type="text" id="itipo-codigo" value="'+(item?.codigo||'')+'" placeholder="Ej: TIPO-01" oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase"></div>'
-    +'<div class="form-campo form-full"><label>Nombre *</label><input type="text" id="itipo-nombre" value="'+(item?.nombre||'')+'" placeholder="Nombre del tipo" oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase"></div>'
-    +'<div class="form-campo form-full"><label>Categoría *</label><select id="itipo-categoria" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="">— Seleccionar —</option>'+opcCats+'</select></div>'
-    +'<div class="form-campo form-full"><label>Descripción</label><textarea id="itipo-desc" oninput="this.value=this.value.toUpperCase()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%;text-transform:uppercase">'+(item?.descripcion||'')+'</textarea></div>'
+    +'<div class="form-campo"><label>Código</label><input type="text" id="itipo-codigo" value="'+(item?.codigo||'')+'" placeholder="Ej: TIPO-01" oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase"></div>'
+    +'<div class="form-campo form-full"><label>Nombre</label><input type="text" id="itipo-nombre" value="'+(item?.nombre||'')+'" placeholder="Nombre del tipo" onblur="this.value=capitalizarNombre(this.value)"></div>'
+    +'<div class="form-campo form-full"><label>Categoría</label><select id="itipo-categoria" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="">— Seleccionar —</option>'+opcCats+'</select></div>'
+    +'<div class="form-campo form-full"><label>Descripción</label><textarea id="itipo-desc" onblur="this.value=capitalizarNombre(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%">'+(item?.descripcion||'')+'</textarea></div>'
     +'<div class="form-campo form-full"><label>Estado</label><select id="itipo-estado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="ACTIVO"'+((!item||item.estado==="ACTIVO")?" selected":"")+'>Activo</option><option value="INACTIVO"'+(item?.estado==="INACTIVO"?" selected":"")+'>Inactivo</option></select></div>'
     +'</div><input type="hidden" id="itipo-id" value="'+(id||'')+'">'
     +'<div class="alerta alerta-exito" id="itipo-ok" style="margin-top:12px;display:none"></div>'
@@ -3318,7 +3318,7 @@ async function invAbrirTipo(id) {
 }
 
 async function invGuardarTipo() {
-  const id=document.getElementById('itipo-id').value, nombre=document.getElementById('itipo-nombre')?.value.trim().toUpperCase();
+  const id=document.getElementById('itipo-id').value, nombre=capitalizarNombre(document.getElementById('itipo-nombre')?.value.trim());
   const codigoTipo=document.getElementById('itipo-codigo')?.value.trim().toUpperCase();
   const catId=parseInt(document.getElementById('itipo-categoria')?.value)||null;
   const okEl=document.getElementById('itipo-ok'), errEl=document.getElementById('itipo-err');
@@ -3328,7 +3328,7 @@ async function invGuardarTipo() {
   if (!catId)  { errEl.textContent='Debe seleccionar una categoría.'; errEl.style.display='block'; document.getElementById('itipo-categoria')?.focus(); return; }
   const datos = { nombre, id_categoria:catId, estado:document.getElementById('itipo-estado')?.value||'ACTIVO',
     codigo:codigoTipo||null,
-    descripcion:document.getElementById('itipo-desc')?.value.trim().toUpperCase()||null, id_empresa:_empresaActiva?.id_empresa||null };
+    descripcion:capitalizarNombre(document.getElementById('itipo-desc')?.value.trim())||null, id_empresa:_empresaActiva?.id_empresa||null };
   try {
     if (id) await api('inv_articulos_tipo','PATCH',datos,'?id_tipo=eq.'+id);
     else    await api('inv_articulos_tipo','POST',datos);
