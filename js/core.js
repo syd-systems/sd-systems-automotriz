@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909090';
+const SYD_VERSION = '20260909091';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -63,6 +63,20 @@ window._tasaIGTFGlobal = null; // Alícuota de IGTF vigente (decimal, ej. 0.03) 
 
 // Alícuota de IVA vigente, en decimal (0.16 = 16%). Devuelve el valor
 // cacheado; si aún no se ha cargado, cae a 0.16 solo como último recurso.
+// Fecha de HOY en Venezuela (UTC-4), sin importar la zona horaria del
+// navegador o del servidor. CRÍTICO para todo lo relacionado con tasas
+// BCV: cada tasa tiene una fecha_valor legalmente efectiva a partir de
+// ese día -- usar la fecha de otra zona horaria (como el UTC crudo de
+// toISOString()) puede hacer que el sistema tome una tasa ANTES de su
+// fecha de vigencia real, lo cual no es válido legalmente en Venezuela.
+// (Antes vivía solo en ordenes.js, el último script en cargar -- movida
+// aquí para que esté disponible desde el principio, sin excepción.)
+function getHoyVzla() {
+  const _vzla = new Date(Date.now() - 4 * 60 * 60 * 1000);
+  return _vzla.toISOString().split('T')[0];
+}
+function hoyVenezuela() { return getHoyVzla(); }
+
 function tasaIVAActual() {
   return (window._tasaIVAGlobal != null) ? window._tasaIVAGlobal : 0.16;
 }
@@ -1333,7 +1347,7 @@ function iniciarApp() {
   mostrarModulo('dashboard', null);
 
   // Cargar tasa USD vigente como global para todos los módulos
-  api('tasas', 'GET', null, '?moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio')
+  api('tasas', 'GET', null, '?moneda_origen=eq.USD&fecha_valor=lte.' + getHoyVzla() + '&order=fecha_valor.desc&limit=1&select=tipo_cambio')
     .then(function(r) { if (r && r[0]) _tasaVigente = parseFloat(r[0].tipo_cambio) || 1; })
     .catch(function() {});
 }
@@ -2448,9 +2462,7 @@ async function renderTasas() {
     const tasasDB  = resTasasSupabase.status === 'fulfilled' && Array.isArray(resTasasSupabase.value) ? resTasasSupabase.value : [];
 
     // Fecha actual en zona horaria Venezuela (UTC-4)
-    const _ahora = new Date();
-    const _vzla  = new Date(_ahora.getTime() - (4 * 60 * 60 * 1000));
-    const hoyStr = _vzla.toISOString().split('T')[0];
+    const hoyStr = getHoyVzla();
 
     // Función para obtener valor de una fecha específica del historial dolarapi
     function getValorFecha(hist, fecha) {
@@ -2683,8 +2695,8 @@ async function renderTasas() {
         + '⏳ La tasa del próximo día hábil aún no está disponible — estará publicada en breve</div>';
     }
 
-    const hoy  = new Date().toISOString().split('T')[0];
-    const ayer = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const hoy  = hoyVenezuela();
+    const ayer = new Date(Date.now() - 4 * 60 * 60 * 1000 - 86400000).toISOString().split('T')[0];
 
     c.innerHTML =
       '<div style="margin-bottom:24px">'
