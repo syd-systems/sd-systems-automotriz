@@ -217,10 +217,8 @@ function filtrarTablaOS() {
 }
 
 // ─── VALIDACIÓN DE FECHAS OS ───
-function getHoyVzla() {
-  const _vzla = new Date(new Date().getTime() - 4 * 60 * 60 * 1000);
-  return _vzla.toISOString().split('T')[0];
-}
+// getHoyVzla() ahora vive en core.js (se movió ahí para que esté
+// disponible desde el principio, sin depender del orden de carga).
 
 function onCambioEstadoOS(estado) {
   const cierreCont   = document.getElementById('os-fecha-cierre-cont');
@@ -370,14 +368,14 @@ async function abrirNuevaOS() {
   // Obtener tasas vigentes (USD y EUR)
   try {
     const tasasDB = await api('tasas', 'GET', null, '?order=fecha_valor.desc&limit=10&select=*');
-    const hoy = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
+    const hoy = getHoyVzla();
 
     function getTasaOS(moneda) {
-      // tasasDB ya viene ordenado por fecha_valor.desc desde la consulta --
-      // tomar directamente la más reciente para esta moneda, sin comparar
-      // contra "hoy" (ese cálculo con ajuste de huso horario podía excluir
-      // la tasa del día según la hora exacta del navegador).
-      const reg = tasasDB.filter(function(t) { return t.moneda_origen === moneda; })
+      // Solo se puede usar una tasa cuya fecha_valor ya haya llegado (nunca
+      // una fecha futura, aunque el BCV ya la haya publicado -- la fecha
+      // valor que el BCV establece es la que determina desde cuándo es
+      // legalmente efectiva, no la fecha en que se publicó).
+      const reg = tasasDB.filter(function(t) { return t.moneda_origen === moneda && String(t.fecha_valor||'').substring(0,10) <= hoy; })
         .sort(function(a,b) {
           const fa = String(a.fecha_valor||'').substring(0,10);
           const fb = String(b.fecha_valor||'').substring(0,10);
@@ -501,7 +499,8 @@ async function abrirEditarOS(id) {
     // tasasDisponiblesOS.USD/EUR sin actualizar y calcularTotalesOS()
     // terminaba usando su valor por defecto de 1).
     function getTasaEditOS(moneda) {
-      const reg = (tasasDB || []).filter(function(t) { return t.moneda_origen === moneda; })
+      const hoyEditOS = getHoyVzla();
+      const reg = (tasasDB || []).filter(function(t) { return t.moneda_origen === moneda && String(t.fecha_valor||'').substring(0,10) <= hoyEditOS; })
         .sort(function(a,b) {
           const fa = String(a.fecha_valor||'').substring(0,10);
           const fb = String(b.fecha_valor||'').substring(0,10);
@@ -1367,7 +1366,7 @@ async function verFichaOS(id) {
     const [linServ, linRep, tasasActuales] = await Promise.all([
       api('os_servicios', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
       api('os_mercancias', 'GET', null, '?id_orden=eq.' + id + '&select=*'),
-      api('tasas', 'GET', null, '?moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio'),
+      api('tasas', 'GET', null, '?moneda_origen=eq.USD&fecha_valor=lte.' + getHoyVzla() + '&order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
     const tasaActualFicha = tasasActuales.length ? parseFloat(tasasActuales[0].tipo_cambio) : null;
     const tasaHistorica = parseFloat(o.tasa_bcv || 1);
