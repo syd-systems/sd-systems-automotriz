@@ -102,7 +102,7 @@ let _margenesVigentesMap = {};
 async function refrescarMargenesVigentes() {
   _margenesVigentesMap = {};
   try {
-    const hoy = new Date().toISOString().slice(0,10);
+    const hoy = getHoyVzla();
     const rows = await api('param_margen_bruto','GET',null,
       '?id_empresa=eq.'+(_empresaActiva?.id_empresa||0)
       +'&estado=neq.ANULADO&fecha_vigencia_desde=lte.'+hoy
@@ -3043,7 +3043,7 @@ async function invRenderMargenBruto(cont) {
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
     const id_emisor = _empresaActiva?.id_empresa || 0;
-    const hoy = new Date().toISOString().slice(0,10);
+    const hoy = getHoyVzla();
     const [tipos, cats, margenesTodos] = await Promise.all([
       api('inv_articulos_tipo','GET',null,'?id_empresa=eq.'+id_emisor+'&estado=eq.ACTIVO&order=nombre.asc&select=*'),
       api('inv_categorias','GET',null,'?id_empresa=eq.'+id_emisor+'&select=id_categoria,nombre,codigo'),
@@ -3101,7 +3101,7 @@ function abrirDefinirMargen(id_tipo, nombreTipo) {
   document.getElementById('margen-id-tipo').value = id_tipo;
   document.getElementById('margen-tipo-nombre').textContent = nombreTipo || '—';
   document.getElementById('margen-pct').value = '';
-  document.getElementById('margen-fecha').value = new Date().toISOString().slice(0,10);
+  document.getElementById('margen-fecha').value = getHoyVzla();
   document.getElementById('alerta-margen-ok').style.display = 'none';
   document.getElementById('alerta-margen-err').style.display = 'none';
   abrirModal('modal-definir-margen');
