@@ -4275,6 +4275,20 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
           m.totalEnLote = (hermanas||[]).length;
         } catch(ePosLote) {}
       }
+
+      // Personas que intervinieron (Solicitante/Aprobador/Receptor) -- por
+      // RPC, ya que consultar "empleados" directo se bloquea por RLS para
+      // quien no tenga el permiso EMPLEADOS→VER (la mayoría de quienes ven
+      // esta Ficha).
+      try {
+        const rpcPersonas = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_personas_entrada_stock', {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_id_entrada: idMovimiento })
+        });
+        const personasRows = rpcPersonas.ok ? await rpcPersonas.json() : [];
+        m._personas = (personasRows && personasRows[0]) || null;
+      } catch(ePersonas) { console.warn('Error trayendo Solicitante/Aprobador/Receptor:', ePersonas); }
     } else {
       const res = await api('stock_salidas', 'GET', null,
         '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),empleado_recibe:id_empleado(nombre_completo),empleado_entrega:id_empleado_entrega(nombre_completo,id_area,param_areas:id_area(nombre,codigo))');
@@ -4526,6 +4540,36 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
   // Artículo y Stock
   const artNombreEl = document.getElementById('edit-mov-art-nombre');
   const artStockEl  = document.getElementById('edit-mov-stock-actual');
+
+  // Solicitante / Aprobador / Receptor -- solo aplica a Entradas
+  const personasCont = document.getElementById('edit-mov-personas-cont');
+  if (tipo === 'ENTRADA' && m && m._personas && personasCont) {
+    const p = m._personas;
+    const filas = [
+      ['solicitante', p.solicitante_nombre, p.solicitante_area, p.solicitante_area_codigo],
+      ['aprobador',   p.aprobador_nombre,   p.aprobador_area,   p.aprobador_area_codigo],
+      ['receptor',    p.receptor_nombre,    p.receptor_area,    p.receptor_area_codigo],
+    ];
+    let hayAlguna = false;
+    filas.forEach(function(f) {
+      const rol = f[0], nombre = f[1], area = f[2], codigo = f[3];
+      const filaEl = document.getElementById('edit-mov-persona-' + rol);
+      if (!filaEl) return;
+      if (nombre) {
+        hayAlguna = true;
+        filaEl.style.display = '';
+        document.getElementById('edit-mov-persona-' + rol + '-nombre').textContent = escapeHtml(nombre);
+        document.getElementById('edit-mov-persona-' + rol + '-area').textContent =
+          area ? escapeHtml(area) + (codigo ? ' (' + escapeHtml(codigo) + ')' : '') : '';
+      } else {
+        filaEl.style.display = 'none';
+      }
+    });
+    personasCont.style.display = hayAlguna ? 'flex' : 'none';
+  } else if (personasCont) {
+    personasCont.style.display = 'none';
+  }
+
   try {
     const artData = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+id_articulo+'&select=nombre_articulo,unidad&limit=1');
     if (artData && artData[0]) {
