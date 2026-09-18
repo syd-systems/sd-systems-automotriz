@@ -35,7 +35,7 @@ async function renderReportes() {
 async function repInventarioRender(cont) {
   if (!cont) return;
   const fechaCorteVal = document.getElementById('rep-inv-fecha')?.value || getHoyVzla();
-  const monedaVal = document.getElementById('rep-inv-moneda')?.value || 'USD';
+  const monedaVal = document.getElementById('rep-inv-moneda')?.value || 'VES';
 
   cont.innerHTML =
     '<div style="padding:16px 24px">'
@@ -44,8 +44,8 @@ async function repInventarioRender(cont) {
     + '<input type="date" id="rep-inv-fecha" value="' + fechaCorteVal + '" max="' + getHoyVzla() + '" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none"></div>'
     + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Moneda</label>'
     + '<select id="rep-inv-moneda" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
-    + '<option value="USD"' + (monedaVal==='USD'?' selected':'') + '>USD</option>'
     + '<option value="VES"' + (monedaVal==='VES'?' selected':'') + '>VES</option>'
+    + '<option value="USD"' + (monedaVal==='USD'?' selected':'') + '>USD</option>'
     + '</select></div>'
     + '<div id="rep-inv-tasa-info" style="font-size:12px;color:var(--suave);font-family:var(--font-mono)">Cargando tasa...</div>'
     + '<div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">'
@@ -265,25 +265,38 @@ function repInventarioExportar() {
   else _repInvExportarCSV();
 }
 
-// Encabezados y filas planas -- compartido entre los 3 formatos.
+// Encabezados y filas -- compartido entre los 3 formatos. Devuelve los
+// montos como NÚMEROS crudos (filasNumericas, para Excel -- así Excel
+// puede sumarlos/filtrarlos, y los muestra con el separador decimal que
+// tenga configurado el propio Excel de quien lo abra) y también ya
+// formateados en texto con coma decimal (filasTexto, para CSV y PDF, que
+// que no tienen un tipo "numérico" real, son solo texto/imagen).
 function _repInvDatosExportar() {
   const d = window._reporteInvActual;
   if (!d) return null;
   const encabezados = ['Código','Artículo','Stock','Stock Mínimo','Rotación (días)','Precio Promedio ('+d.monedaVal+')','Valor Total ('+d.monedaVal+')','Margen %'];
-  const filas = d.filas.map(function(f) {
+  const fmtMoneda = d.monedaVal === 'VES' ? fmtBs : fmtUSD;
+  const filasNumericas = d.filas.map(function(f) {
     return [
       f.codigo, f.nombre, f.stock, f.stockMin,
-      f.diasCobertura !== null ? f.diasCobertura : '—', f.precioProm.toFixed(2), f.valorLinea.toFixed(2),
+      f.diasCobertura !== null ? f.diasCobertura : '—', f.precioProm, f.valorLinea,
       f.margen !== null ? f.margen.toFixed(1) + '%' : '—'
     ];
   });
-  return { d, encabezados, filas };
+  const filasTexto = d.filas.map(function(f) {
+    return [
+      f.codigo, f.nombre, f.stock, f.stockMin,
+      f.diasCobertura !== null ? f.diasCobertura : '—', fmtMoneda(f.precioProm), fmtMoneda(f.valorLinea),
+      f.margen !== null ? f.margen.toFixed(1) + '%' : '—'
+    ];
+  });
+  return { d, encabezados, filasNumericas, filasTexto };
 }
 
 function _repInvExportarCSV() {
   const dat = _repInvDatosExportar();
   if (!dat) return;
-  const filasCsv = [dat.encabezados].concat(dat.filas);
+  const filasCsv = [dat.encabezados].concat(dat.filasTexto);
   const csv = filasCsv.map(function(f){ return f.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
   const blob = new Blob(['\ufeff'+csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -301,7 +314,7 @@ function _repInvExportarExcel() {
     ['Fecha de Corte: ' + dat.d.fechaCorteVal + '   |   Moneda: ' + dat.d.monedaVal + (dat.d.monedaVal === 'VES' ? '   |   Tasa BCV: ' + dat.d.tasaCorte : '')],
     [],
     dat.encabezados,
-  ].concat(dat.filas));
+  ].concat(dat.filasNumericas));
   hoja['!cols'] = [ {wch:14}, {wch:38}, {wch:10}, {wch:12}, {wch:14}, {wch:16}, {wch:16}, {wch:10} ];
   const libro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(libro, hoja, 'Inventario');
@@ -320,7 +333,7 @@ function _repInvExportarPDF() {
     + (dat.d.monedaVal === 'VES' ? '   |   Tasa BCV: ' + dat.d.tasaCorte : ''), 14, 21);
   doc.autoTable({
     head: [dat.encabezados],
-    body: dat.filas,
+    body: dat.filasTexto,
     startY: 26,
     styles: { fontSize: 8 },
     headStyles: { fillColor: [255, 107, 0] },
