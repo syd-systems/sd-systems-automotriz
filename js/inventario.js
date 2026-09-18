@@ -3958,6 +3958,38 @@ async function _obtenerPaginaHistorial() {
     filtro !== 'entrada' ? api('stock_salidas',  'GET', null, qSal) : Promise.resolve([]),
   ]);
 
+  // Solicitante (id_usuario) y Receptor real (certificado_por) de las
+  // Entradas de Compra -- se resuelven TODOS de una sola vez (no uno por
+  // fila) via RPC, porque consultar "empleados" directo se bloquea por
+  // RLS para quien no tenga el permiso EMPLEADOS→VER (la mayoría de
+  // quienes ven este Historial). id_empleado NO sirve para esto: ese
+  // campo siempre es quien gestionó la Orden en el sistema, no
+  // necesariamente quien recibió físicamente la mercancía.
+  const correosPersonas = [...new Set(
+    entradas
+      .filter(function(e){ return e.motivo === 'compra'; })
+      .flatMap(function(e){ return [e.id_usuario, e.certificado_por]; })
+      .filter(Boolean)
+  )];
+  let nombresPorCorreo = {};
+  if (correosPersonas.length) {
+    try {
+      const rpcNombres = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_nombres_por_correos', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_correos: correosPersonas })
+      });
+      const filasNombres = rpcNombres.ok ? await rpcNombres.json() : [];
+      (filasNombres||[]).forEach(function(f){ nombresPorCorreo[f.correo] = f.nombre_completo; });
+    } catch(eNombresHist) { console.warn('Error resolviendo Solicitante/Receptor del historial:', eNombresHist); }
+  }
+  entradas.forEach(function(e){
+    if (e.motivo === 'compra') {
+      e._solicitanteNombre = nombresPorCorreo[e.id_usuario] || null;
+      e._receptorNombre    = nombresPorCorreo[e.certificado_por] || null;
+    }
+  });
+
   // Resolver la POSICIÓN de cada Entrada dentro de su Lote (Orden de
   // Compra), si pertenece a uno -- para poder referenciarla como
   // OC-{lote}-{posición} (ej. OC-1-2), no con su propio id_entrada suelto,
@@ -4075,10 +4107,11 @@ function _renderFilaHistorial(m) {
             ? '<div style="font-size:11px;color:var(--suave)">' + (m.moneda_compra === 'VES' ? 'Bs. ' + fmtBs(m.precio_compra_original ?? m.precio_costo_moneda) : '$ ' + fmtUSD(m.precio_compra_original ?? m.precio_costo_moneda)) + ' / u</div>'
             : '')
       : '<div>' + area + '</div>')
-    + ((esEntrada ? m.empleado_recibe : m.empleado_recibe) ? '<div style="font-size:11px;color:#60a5fa">👤 Recibe: ' + (m.empleado_recibe?.nombre_completo||'') + '</div>' : '')
+    + ((esEntrada && m.motivo === 'compra' && m._solicitanteNombre) ? '<div style="font-size:11px;color:#60a5fa">👤 Solicitante: ' + escapeHtml(m._solicitanteNombre) + '</div>' : (esEntrada && !(m.motivo === 'compra') && m.empleado_recibe) ? '<div style="font-size:11px;color:#60a5fa">👤 Recibe: ' + (m.empleado_recibe?.nombre_completo||'') + '</div>' : '')
+    + ((esEntrada && m.motivo === 'compra' && m._receptorNombre) ? '<div style="font-size:11px;color:#60a5fa">👤 Receptor: ' + escapeHtml(m._receptorNombre) + '</div>' : '')
     + ((!esEntrada && m.empleado_entrega) ? '<div style="font-size:11px;color:#fb923c">👤 Entrega: ' + m.empleado_entrega.nombre_completo + '</div>' : '')
     + (tieneMarcadorTransf ? '<div style="font-size:11px;font-weight:600;color:var(--naranja);margin-top:2px">[TRANSFERENCIA]</div>' : '')
-    + (obsSinMarcador ? '<div style="font-size:11px;color:var(--suave)">' + obsSinMarcador + '</div>' : '')
+    + (m.motivo === 'compra' ? '' : (obsSinMarcador ? '<div style="font-size:11px;color:var(--suave)">' + obsSinMarcador + '</div>' : ''))
     + '</td>'
     + '<td style="text-align:center;padding:8px 0">'
     + (anulada
