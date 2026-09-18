@@ -116,9 +116,21 @@ async function repInventarioRender(cont) {
   const catNombrePorId = {};
   (categorias||[]).forEach(function(c){ catNombrePorId[c.id_categoria] = c.nombre; });
 
+  // El stock real vive por Área en "inventario_stock_area" -- la columna
+  // stock_actual_articulo de inventario_almacen queda desactualizada (no
+  // refleja las Entradas certificadas), así que se suma el stock real de
+  // todas las Áreas por Artículo.
+  let stockPorArticulo = {};
+  try {
+    const stockAreaRows = await api('inventario_stock_area','GET',null,'?select=id_articulo,stock_actual');
+    (stockAreaRows||[]).forEach(function(s) {
+      stockPorArticulo[s.id_articulo] = (stockPorArticulo[s.id_articulo]||0) + parseFloat(s.stock_actual||0);
+    });
+  } catch(eStockAreaRep) { console.warn('Error trayendo stock por Área:', eStockAreaRep); }
+
   let totalUnidades = 0, totalValor = 0;
   const filasHtml = items.map(function(a) {
-    const stock = parseFloat(a.stock_actual_articulo||0);
+    const stock = stockPorArticulo[a.id_articulo] || 0;
     const stockMin = parseFloat(a.stock_minimo_articulo||0);
     const costoUsd = parseFloat(a.precio_costo_moneda||0);
     const ventaUsd = parseFloat(a.precio_venta_moneda||0);
@@ -141,14 +153,14 @@ async function repInventarioRender(cont) {
     }
 
     return '<tr>'
-      + '<td style="font-family:var(--font-mono);font-size:12px;color:var(--naranja)">' + escapeHtml(a.codigo_articulo||'—') + '</td>'
-      + '<td>' + escapeHtml(a.nombre_articulo) + (catNombrePorId[a.id_categoria_articulo] ? '<div style="font-size:10px;color:var(--suave)">' + escapeHtml(catNombrePorId[a.id_categoria_articulo]) + '</div>' : '') + '</td>'
-      + '<td style="text-align:right;font-family:var(--font-mono)">' + stock + '</td>'
-      + '<td style="text-align:right;font-family:var(--font-mono);color:var(--suave)">' + stockMin + '</td>'
-      + '<td style="text-align:center">' + rotacionHtml + '</td>'
-      + '<td style="text-align:right;font-family:var(--font-mono)">' + (monedaVal==='VES' ? fmtBs(precioPromMostrar) : fmtUSD(precioPromMostrar)) + '</td>'
-      + '<td style="text-align:right;font-family:var(--font-mono);color:var(--naranja);font-weight:600">' + (monedaVal==='VES' ? fmtBs(valorLinea) : fmtUSD(valorLinea)) + '</td>'
-      + '<td style="text-align:right;font-family:var(--font-mono)">' + (margen !== null ? margen.toFixed(1) + '%' : '—') + '</td>'
+      + '<td style="font-family:var(--font-mono);font-size:15px;color:var(--naranja)">' + escapeHtml(a.codigo_articulo||'—') + '</td>'
+      + '<td style="font-size:15px">' + escapeHtml(a.nombre_articulo) + (catNombrePorId[a.id_categoria_articulo] ? '<div style="font-size:11px;color:var(--suave)">' + escapeHtml(catNombrePorId[a.id_categoria_articulo]) + '</div>' : '') + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono);font-size:15px">' + stock + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono);color:var(--suave);font-size:15px">' + stockMin + '</td>'
+      + '<td style="text-align:center;font-size:15px">' + rotacionHtml + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono);font-size:15px">' + (monedaVal==='VES' ? fmtBs(precioPromMostrar) : fmtUSD(precioPromMostrar)) + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono);color:var(--naranja);font-weight:600;font-size:15px">' + (monedaVal==='VES' ? fmtBs(valorLinea) : fmtUSD(valorLinea)) + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono);font-size:15px">' + (margen !== null ? margen.toFixed(1) + '%' : '—') + '</td>'
       + '</tr>';
   }).join('');
 
@@ -156,7 +168,7 @@ async function repInventarioRender(cont) {
   document.getElementById('rep-inv-total-unidades').textContent = totalUnidades.toLocaleString('es-VE');
   document.getElementById('rep-inv-total-valor').textContent = (monedaVal==='VES' ? fmtBs(totalValor) + ' Bs' : '$ ' + fmtUSD(totalValor));
 
-  window._reporteInvActual = { items, monedaVal, tasaCorte, fechaCorteVal, catNombrePorId, consumoPorArticulo };
+  window._reporteInvActual = { items, monedaVal, tasaCorte, fechaCorteVal, catNombrePorId, consumoPorArticulo, stockPorArticulo };
 }
 
 function repInventarioExportar() {
@@ -164,7 +176,7 @@ function repInventarioExportar() {
   if (!d) return;
   const filas = [['Código','Artículo','Stock','Stock Mínimo','Consumo 90 días','Precio Promedio ('+d.monedaVal+')','Valor Total ('+d.monedaVal+')','Margen %']];
   d.items.forEach(function(a) {
-    const stock = parseFloat(a.stock_actual_articulo||0);
+    const stock = d.stockPorArticulo[a.id_articulo] || 0;
     const costoUsd = parseFloat(a.precio_costo_moneda||0);
     const ventaUsd = parseFloat(a.precio_venta_moneda||0);
     const precioProm = d.monedaVal === 'VES' ? costoUsd * d.tasaCorte : costoUsd;
