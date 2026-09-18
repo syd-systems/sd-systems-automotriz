@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909106';
+const SYD_VERSION = '20260909107';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -153,6 +153,7 @@ const TODOS_LOS_MODULOS = [
   { sigla: 'TRIBUTOS',     nombre: 'Tributos',           icono: '📋' },
   { sigla: 'USUARIOS',     nombre: 'Usuarios',           icono: '🔐' },
   { sigla: 'PARAMETROS',   nombre: 'Parámetros',         icono: '⚙️' },
+  { sigla: 'REPORTES',     nombre: 'Reportes',           icono: '📊' },
 ];
 
 // ─── PERMISOS GRANULARES POR MÓDULO ───
@@ -287,6 +288,9 @@ const PERMISOS_POR_MODULO = {
     { accion: 'CREAR',  label: 'Registrar tributo' },
     { accion: 'EDITAR', label: 'Editar tributo' },
     { accion: 'ELIMINAR', label: 'Eliminar tributo' },
+  ],
+  REPORTES: [
+    { accion: 'VER', label: 'Ver Reportes' },
   ],
 
 };
@@ -1550,6 +1554,7 @@ async function mostrarModulo(modulo, navEl) {
     proveedores:  'PROVEEDORES',
     clientes:     'CLIENTES',
     ventas:       'VENTAS',
+    reportes:     'REPORTES',
     proximo:      'PRÓXIMAMENTE'
   };
 
@@ -1579,6 +1584,7 @@ async function mostrarModulo(modulo, navEl) {
     case 'empleados':    renderEmpleados();    break;
     case 'proveedores':  renderProveedores();  break;
     case 'ventas':       renderVentas();       break;
+    case 'reportes':     renderReportes();     break;
     case 'contabilidad': renderContabilidad(); break;
     default:             renderProximo(navEl?.querySelector('.nav-icono')?.textContent || '🔧',
                                        navEl?.textContent.trim() || modulo);
