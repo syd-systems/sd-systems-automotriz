@@ -37,6 +37,7 @@ async function repInventarioRender(cont) {
   const fechaCorteVal = document.getElementById('rep-inv-fecha')?.value || getHoyVzla();
   const monedaVal = document.getElementById('rep-inv-moneda')?.value || 'VES';
   const formatoVal = document.getElementById('rep-inv-formato')?.value || 'pdf';
+  const soloConStock = document.getElementById('rep-inv-solo-stock')?.checked || false;
 
   cont.innerHTML =
     '<div style="padding:16px 24px">'
@@ -48,6 +49,9 @@ async function repInventarioRender(cont) {
     + '<option value="VES"' + (monedaVal==='VES'?' selected':'') + '>VES</option>'
     + '<option value="USD"' + (monedaVal==='USD'?' selected':'') + '>USD</option>'
     + '</select></div>'
+    + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--texto);cursor:pointer;padding-bottom:9px">'
+    + '<input type="checkbox" id="rep-inv-solo-stock" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))"' + (soloConStock ? ' checked' : '') + ' style="cursor:pointer">'
+    + 'Solo Artículos con Stock</label>'
     + '<div id="rep-inv-tasa-info" style="font-size:12px;color:var(--suave);font-family:var(--font-mono)">Cargando tasa...</div>'
     + '<div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">'
     + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Formato</label>'
@@ -151,8 +155,12 @@ async function repInventarioRender(cont) {
     });
   } catch(eMargenRep) { console.warn('Error trayendo Márgenes vigentes:', eMargenRep); }
 
+  const itemsFiltrados = soloConStock
+    ? items.filter(function(a){ return (stockPorArticulo[a.id_articulo] || 0) > 0; })
+    : items;
+
   let totalUnidades = 0, totalValor = 0;
-  const filas = items.map(function(a) {
+  const filas = itemsFiltrados.map(function(a) {
     const stock = stockPorArticulo[a.id_articulo] || 0;
     const stockMin = parseFloat(a.stock_minimo_articulo||0);
     const costoUsd = parseFloat(a.precio_costo_moneda||0);
