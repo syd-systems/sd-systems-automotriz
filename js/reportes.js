@@ -103,7 +103,7 @@ async function repInventarioRender(cont) {
     + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--texto);cursor:pointer;padding-bottom:9px">'
     + '<input type="checkbox" id="rep-inv-solo-stock" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))"' + (soloConStock ? ' checked' : '') + ' style="cursor:pointer">'
     + 'Solo Artículos con Stock</label>'
-    + '<button onclick="repInventarioLimpiarFiltros()" title="Limpiar filtros" style="background:var(--gris2);border:1px solid var(--borde);color:var(--suave);padding:8px 10px;border-radius:5px;cursor:pointer;font-size:14px;line-height:1">🗑</button>'
+    + '<button onclick="repInventarioLimpiarFiltros()" title="Limpiar filtros" style="background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.4);color:#f87171;padding:8px 10px;border-radius:5px;cursor:pointer;font-size:16px;line-height:1">🗑</button>'
     + '<div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">'
     + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Formato</label>'
     + '<select id="rep-inv-formato" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
@@ -530,7 +530,7 @@ async function repComprasRender(cont) {
     + '<option value=""' + (proveedorVal===''?' selected':'') + '>Todos</option>'
     + proveedores.map(function(p){ return '<option value="'+p.id_proveedor+'"' + (String(proveedorVal)===String(p.id_proveedor)?' selected':'') + '>' + escapeHtml(p.nombre) + '</option>'; }).join('')
     + '</select></div>'
-    + '<button onclick="repComprasLimpiarFiltros()" title="Limpiar filtros" style="background:var(--gris2);border:1px solid var(--borde);color:var(--suave);padding:8px 10px;border-radius:5px;cursor:pointer;font-size:14px;line-height:1">🗑</button>'
+    + '<button onclick="repComprasLimpiarFiltros()" title="Limpiar filtros" style="background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.4);color:#f87171;padding:8px 10px;border-radius:5px;cursor:pointer;font-size:16px;line-height:1">🗑</button>'
     + '<div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">'
     + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Formato</label>'
     + '<select id="rep-com-formato" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
