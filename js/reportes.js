@@ -57,7 +57,7 @@ async function repInventarioRender(cont) {
   let areas = [];
   try {
     areas = await api('param_areas','GET',null,
-      '?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+      '?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo');
   } catch(eAreasRep) { console.warn('Error cargando Áreas para el Reporte:', eAreasRep); }
 
   let categorias = [];
@@ -483,7 +483,7 @@ async function repComprasRender(cont) {
   let areas = [], categorias = [], tipos = [], proveedores = [];
   try {
     areas = await api('param_areas','GET',null,
-      '?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+      '?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo');
   } catch(e) { console.warn('Error cargando Áreas:', e); }
   try {
     categorias = await api('inv_categorias','GET',null,
@@ -578,8 +578,7 @@ async function repComprasRender(cont) {
   try {
     let qEnt = '?motivo=eq.compra&estado_aprobacion=eq.APROBADA&anulada=eq.false'
       + '&fecha_entrada=gte.'+desdeVal+'&fecha_entrada=lte.'+hastaVal
-      + '&select=id_entrada,id_articulo,cantidad,precio_costo_moneda,fecha_entrada,id_proveedor,id_area,tasa_bcv'
-      + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '');
+      + '&select=id_entrada,id_articulo,cantidad,precio_costo_moneda,fecha_entrada,id_proveedor,id_area,tasa_bcv';
     if (areaVal) qEnt += '&id_area=eq.'+areaVal;
     if (proveedorVal) qEnt += '&id_proveedor=eq.'+proveedorVal;
     entradas = await api('stock_entradas','GET',null, qEnt);
