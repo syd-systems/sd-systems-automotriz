@@ -279,15 +279,15 @@ function _repInvDatosExportar() {
   const filasNumericas = d.filas.map(function(f) {
     return [
       f.codigo, f.nombre, f.stock, f.stockMin,
-      f.diasCobertura !== null ? f.diasCobertura : '—', f.precioProm, f.valorLinea,
-      f.margen !== null ? f.margen.toFixed(1) + '%' : '—'
+      f.diasCobertura !== null ? f.diasCobertura : 0, f.precioProm, f.valorLinea,
+      f.margen !== null ? f.margen : 0
     ];
   });
   const filasTexto = d.filas.map(function(f) {
     return [
       f.codigo, f.nombre, f.stock, f.stockMin,
-      f.diasCobertura !== null ? f.diasCobertura : '—', fmtMoneda(f.precioProm), fmtMoneda(f.valorLinea),
-      f.margen !== null ? f.margen.toFixed(1) + '%' : '—'
+      f.diasCobertura !== null ? f.diasCobertura : 0, fmtMoneda(f.precioProm), fmtMoneda(f.valorLinea),
+      (f.margen !== null ? f.margen : 0).toFixed(1) + '%'
     ];
   });
   return { d, encabezados, filasNumericas, filasTexto };
@@ -309,6 +309,7 @@ function _repInvExportarCSV() {
 function _repInvExportarExcel() {
   const dat = _repInvDatosExportar();
   if (!dat || typeof XLSX === 'undefined') { alert('No se pudo cargar el generador de Excel. Verifica tu conexión e intenta de nuevo.'); return; }
+  const FILA_TITULO = 0, FILA_SUBT = 1, FILA_ENCAB = 3, FILA_DATOS_DESDE = 4;
   const hoja = XLSX.utils.aoa_to_sheet([
     ['Reporte de Inventario'],
     ['Fecha de Corte: ' + dat.d.fechaCorteVal + '   |   Moneda: ' + dat.d.monedaVal + (dat.d.monedaVal === 'VES' ? '   |   Tasa BCV: ' + dat.d.tasaCorte : '')],
@@ -316,6 +317,26 @@ function _repInvExportarExcel() {
     dat.encabezados,
   ].concat(dat.filasNumericas));
   hoja['!cols'] = [ {wch:14}, {wch:38}, {wch:10}, {wch:12}, {wch:14}, {wch:16}, {wch:16}, {wch:10} ];
+
+  // Encabezados centrados; columnas numéricas (2 a 7) con formato
+  // "1.000,00" (punto de miles, coma decimal) y alineadas a la derecha --
+  // aplicado como formato de celda, así el valor sigue siendo un número
+  // real (se puede sumar/filtrar en Excel), solo cambia cómo se ve.
+  const NUM_FILAS = dat.filasNumericas.length;
+  for (let col = 0; col < 8; col++) {
+    const refEncab = XLSX.utils.encode_cell({ r: FILA_ENCAB, c: col });
+    if (hoja[refEncab]) hoja[refEncab].s = { alignment: { horizontal: 'center' } };
+    if (col < 2) continue; // Código y Artículo: texto, sin formato numérico
+    const formatoNum = (col === 5 || col === 6) ? '#.##0,00' : (col === 7 ? '#.##0,0"%"' : '#.##0');
+    for (let i = 0; i < NUM_FILAS; i++) {
+      const ref = XLSX.utils.encode_cell({ r: FILA_DATOS_DESDE + i, c: col });
+      if (hoja[ref]) {
+        hoja[ref].z = formatoNum;
+        hoja[ref].s = { alignment: { horizontal: 'right' } };
+      }
+    }
+  }
+
   const libro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(libro, hoja, 'Inventario');
   XLSX.writeFile(libro, 'reporte_inventario_' + dat.d.fechaCorteVal + '_' + dat.d.monedaVal + '.xlsx');
@@ -336,7 +357,13 @@ function _repInvExportarPDF() {
     body: dat.filasTexto,
     startY: 26,
     styles: { fontSize: 8 },
-    headStyles: { fillColor: [255, 107, 0] },
+    headStyles: { fillColor: [255, 107, 0], halign: 'center' },
+    // Columnas numéricas (Stock en adelante) alineadas a la derecha;
+    // Código y Artículo (0 y 1) se quedan como vienen (izquierda).
+    columnStyles: {
+      2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' },
+      5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' },
+    },
   });
   doc.save('reporte_inventario_' + dat.d.fechaCorteVal + '_' + dat.d.monedaVal + '.pdf');
 }
