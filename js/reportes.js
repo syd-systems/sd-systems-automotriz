@@ -38,6 +38,30 @@ async function repInventarioRender(cont) {
   const monedaVal = document.getElementById('rep-inv-moneda')?.value || 'VES';
   const formatoVal = document.getElementById('rep-inv-formato')?.value || 'pdf';
   const soloConStock = document.getElementById('rep-inv-solo-stock')?.checked || false;
+  const areaVal = document.getElementById('rep-inv-area')?.value || '';
+  const categoriaVal = document.getElementById('rep-inv-categoria')?.value || '';
+  const tipoVal = document.getElementById('rep-inv-tipo')?.value || '';
+
+  let areas = [];
+  try {
+    areas = await api('param_areas','GET',null,
+      '?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+  } catch(eAreasRep) { console.warn('Error cargando Áreas para el Reporte:', eAreasRep); }
+
+  let categorias = [];
+  try {
+    categorias = await api('inv_categorias','GET',null,
+      '?select=id_categoria,nombre,codigo&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+  } catch(eCatRep) { console.warn('Error cargando Categorías para el Reporte:', eCatRep); }
+
+  let tipos = [];
+  try {
+    tipos = await api('inv_articulos_tipo','GET',null,
+      '?select=id_tipo,nombre,codigo&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+  } catch(eTipoRep) { console.warn('Error cargando Tipos de Artículo para el Reporte:', eTipoRep); }
+
+  const catNombrePorId = {};
+  (categorias||[]).forEach(function(c){ catNombrePorId[c.id_categoria] = c.nombre; });
 
   cont.innerHTML =
     '<div style="padding:16px 24px">'
@@ -48,6 +72,21 @@ async function repInventarioRender(cont) {
     + '<select id="rep-inv-moneda" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
     + '<option value="VES"' + (monedaVal==='VES'?' selected':'') + '>VES</option>'
     + '<option value="USD"' + (monedaVal==='USD'?' selected':'') + '>USD</option>'
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Área</label>'
+    + '<select id="rep-inv-area" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value=""' + (areaVal===''?' selected':'') + '>Todas las Áreas</option>'
+    + areas.map(function(a){ return '<option value="'+a.id+'"' + (String(areaVal)===String(a.id)?' selected':'') + '>' + escapeHtml(a.nombre) + (a.codigo ? ' (' + escapeHtml(a.codigo) + ')' : '') + '</option>'; }).join('')
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Categoría</label>'
+    + '<select id="rep-inv-categoria" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value=""' + (categoriaVal===''?' selected':'') + '>Todas</option>'
+    + categorias.map(function(c){ return '<option value="'+c.id_categoria+'"' + (String(categoriaVal)===String(c.id_categoria)?' selected':'') + '>' + escapeHtml(c.nombre) + '</option>'; }).join('')
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Tipo de Artículo</label>'
+    + '<select id="rep-inv-tipo" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value=""' + (tipoVal===''?' selected':'') + '>Todos</option>'
+    + tipos.map(function(t){ return '<option value="'+t.id_tipo+'"' + (String(tipoVal)===String(t.id_tipo)?' selected':'') + '>' + escapeHtml(t.nombre) + '</option>'; }).join('')
     + '</select></div>'
     + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--texto);cursor:pointer;padding-bottom:9px">'
     + '<input type="checkbox" id="rep-inv-solo-stock" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))"' + (soloConStock ? ' checked' : '') + ' style="cursor:pointer">'
@@ -115,25 +154,20 @@ async function repInventarioRender(cont) {
   // (no depende de que el módulo Inventario ya esté cargado/cacheado).
   let items = [];
   try {
-    items = await api('inventario_almacen','GET',null,
-      '?estado=eq.ACTIVO&select=*' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+    let qItems = '?estado=eq.ACTIVO&select=*' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '');
+    if (categoriaVal) qItems += '&id_categoria_articulo=eq.'+categoriaVal;
+    if (tipoVal) qItems += '&id_tipo_articulo=eq.'+tipoVal;
+    items = await api('inventario_almacen','GET',null, qItems);
   } catch(eItemsRep) { console.warn('Error cargando Artículos para el Reporte:', eItemsRep); }
-
-  let categorias = [];
-  try {
-    categorias = await api('inv_categorias','GET',null,
-      '?select=id_categoria,nombre' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
-  } catch(eCatRep) {}
-  const catNombrePorId = {};
-  (categorias||[]).forEach(function(c){ catNombrePorId[c.id_categoria] = c.nombre; });
 
   // El stock real vive por Área en "inventario_stock_area" -- la columna
   // stock_actual_articulo de inventario_almacen queda desactualizada (no
-  // refleja las Entradas certificadas), así que se suma el stock real de
-  // todas las Áreas por Artículo.
+  // refleja las Entradas certificadas). Si se eligió un Área específica,
+  // se suma SOLO esa; si no, se suma el total de todas.
   let stockPorArticulo = {};
   try {
-    const stockAreaRows = await api('inventario_stock_area','GET',null,'?select=id_articulo,stock_actual');
+    const qStockArea = '?select=id_articulo,stock_actual' + (areaVal ? '&id_area=eq.'+areaVal : '');
+    const stockAreaRows = await api('inventario_stock_area','GET',null,qStockArea);
     (stockAreaRows||[]).forEach(function(s) {
       stockPorArticulo[s.id_articulo] = (stockPorArticulo[s.id_articulo]||0) + parseFloat(s.stock_actual||0);
     });
