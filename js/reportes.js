@@ -36,6 +36,7 @@ async function repInventarioRender(cont) {
   if (!cont) return;
   const fechaCorteVal = document.getElementById('rep-inv-fecha')?.value || getHoyVzla();
   const monedaVal = document.getElementById('rep-inv-moneda')?.value || 'VES';
+  const formatoVal = document.getElementById('rep-inv-formato')?.value || 'pdf';
 
   cont.innerHTML =
     '<div style="padding:16px 24px">'
@@ -51,9 +52,9 @@ async function repInventarioRender(cont) {
     + '<div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">'
     + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Formato</label>'
     + '<select id="rep-inv-formato" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
-    + '<option value="csv">CSV</option>'
-    + '<option value="excel">Excel (.xlsx)</option>'
-    + '<option value="pdf">PDF</option>'
+    + '<option value="pdf"' + (formatoVal==='pdf'?' selected':'') + '>PDF</option>'
+    + '<option value="excel"' + (formatoVal==='excel'?' selected':'') + '>Excel (.xlsx)</option>'
+    + '<option value="csv"' + (formatoVal==='csv'?' selected':'') + '>CSV</option>'
     + '</select></div>'
     + '<button class="btn-secundario" onclick="repInventarioExportar()">⬇ Exportar</button>'
     + '</div>'
