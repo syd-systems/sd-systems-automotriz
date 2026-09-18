@@ -230,7 +230,17 @@ async function repInventarioRender(cont) {
   document.getElementById('rep-inv-total-unidades').textContent = totalUnidades.toLocaleString('es-VE');
   document.getElementById('rep-inv-total-valor').textContent = (monedaVal==='VES' ? fmtBs(totalValor) + ' Bs' : '$ ' + fmtUSD(totalValor));
 
-  window._reporteInvActual = { items, monedaVal, tasaCorte, fechaCorteVal, catNombrePorId, consumoPorArticulo, stockPorArticulo, filas };
+  // Filtros activos, en texto legible -- para que quede explícito en los
+  // reportes exportados (no basta con que los datos YA vengan filtrados;
+  // quien lo lea después debe poder ver bajo qué criterio se generó).
+  const filtrosActivos = [];
+  if (areaVal) { const a = areas.find(function(x){ return String(x.id)===String(areaVal); }); if (a) filtrosActivos.push('Área: ' + a.nombre); }
+  if (categoriaVal) { const c = categorias.find(function(x){ return String(x.id_categoria)===String(categoriaVal); }); if (c) filtrosActivos.push('Categoría: ' + c.nombre); }
+  if (tipoVal) { const t = tipos.find(function(x){ return String(x.id_tipo)===String(tipoVal); }); if (t) filtrosActivos.push('Tipo: ' + t.nombre); }
+  if (soloConStock) filtrosActivos.push('Solo Artículos con Stock');
+  const filtrosTexto = filtrosActivos.length ? filtrosActivos.join('   |   ') : 'Sin filtros adicionales (todos los Artículos, todas las Áreas)';
+
+  window._reporteInvActual = { items, monedaVal, tasaCorte, fechaCorteVal, catNombrePorId, consumoPorArticulo, stockPorArticulo, filas, filtrosTexto };
   _repInvOrdenCol = _repInvOrdenCol || null;
   _repInvOrdenAsc = _repInvOrdenAsc !== false;
   _repInvRenderTabla();
@@ -355,7 +365,12 @@ function _repInvDatosExportar() {
 function _repInvExportarCSV() {
   const dat = _repInvDatosExportar();
   if (!dat) return;
-  const filasCsv = [dat.encabezados].concat(dat.filasTexto);
+  const filasCsv = [
+    ['Fecha de Corte: ' + dat.d.fechaCorteVal + '   |   Moneda: ' + dat.d.monedaVal + (dat.d.monedaVal === 'VES' ? '   |   Tasa BCV: ' + dat.d.tasaCorte : '')],
+    ['Filtros: ' + dat.d.filtrosTexto],
+    [],
+    dat.encabezados,
+  ].concat(dat.filasTexto);
   const csv = filasCsv.map(function(f){ return f.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
   const blob = new Blob(['\ufeff'+csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -368,10 +383,11 @@ function _repInvExportarCSV() {
 function _repInvExportarExcel() {
   const dat = _repInvDatosExportar();
   if (!dat || typeof XLSX === 'undefined') { alert('No se pudo cargar el generador de Excel. Verifica tu conexión e intenta de nuevo.'); return; }
-  const FILA_ENCAB = 3, FILA_DATOS_DESDE = 4;
+  const FILA_ENCAB = 4, FILA_DATOS_DESDE = 5;
   const hoja = XLSX.utils.aoa_to_sheet([
     ['Reporte de Inventario'],
     ['Fecha de Corte: ' + dat.d.fechaCorteVal + '   |   Moneda: ' + dat.d.monedaVal + (dat.d.monedaVal === 'VES' ? '   |   Tasa BCV: ' + dat.d.tasaCorte : '')],
+    ['Filtros: ' + dat.d.filtrosTexto],
     [],
     dat.encabezados,
   ].concat(dat.filasNumericas));
@@ -415,10 +431,11 @@ function _repInvExportarPDF() {
   doc.setFontSize(9);
   doc.text('Fecha de Corte: ' + dat.d.fechaCorteVal + '   |   Moneda: ' + dat.d.monedaVal
     + (dat.d.monedaVal === 'VES' ? '   |   Tasa BCV: ' + dat.d.tasaCorte : ''), 14, 21);
+  doc.text('Filtros: ' + dat.d.filtrosTexto, 14, 26);
   doc.autoTable({
     head: [dat.encabezados],
     body: dat.filasTexto,
-    startY: 26,
+    startY: 31,
     styles: { fontSize: 8 },
     headStyles: { fillColor: [255, 107, 0], halign: 'center' },
     // Columnas numéricas (Stock en adelante) alineadas a la derecha;
