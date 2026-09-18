@@ -258,7 +258,12 @@ function _repInvRenderTabla() {
   document.getElementById('rep-inv-tbody').innerHTML = filasHtml || '<tr><td colspan="8" style="text-align:center;color:var(--suave);padding:32px">No hay Artículos activos</td></tr>';
 }
 
-function repInventarioExportar() {
+async function repInventarioExportar() {
+  // Se refresca el reporte justo antes de exportar (no basta con confiar
+  // en lo que quedó de la última vez que se renderizó) -- así el archivo
+  // siempre sale con la Moneda y los datos que están seleccionados en
+  // pantalla EN ESE MOMENTO, nunca desactualizados.
+  await repInventarioRender(document.getElementById('reportes-contenido'));
   const formato = document.getElementById('rep-inv-formato')?.value || 'csv';
   if (formato === 'excel') _repInvExportarExcel();
   else if (formato === 'pdf') _repInvExportarPDF();
@@ -274,7 +279,7 @@ function repInventarioExportar() {
 function _repInvDatosExportar() {
   const d = window._reporteInvActual;
   if (!d) return null;
-  const encabezados = ['Código','Artículo','Stock','Stock Mínimo','Rotación (días)','Precio Promedio ('+d.monedaVal+')','Valor Total ('+d.monedaVal+')','Margen %'];
+  const encabezados = ['Código','Artículo','Stock','Stock Mínimo','Rotación (días)','Precio Promedio','Valor Total','Margen %'];
   const fmtMoneda = d.monedaVal === 'VES' ? fmtBs : fmtUSD;
   const filasNumericas = d.filas.map(function(f) {
     return [
@@ -309,7 +314,7 @@ function _repInvExportarCSV() {
 function _repInvExportarExcel() {
   const dat = _repInvDatosExportar();
   if (!dat || typeof XLSX === 'undefined') { alert('No se pudo cargar el generador de Excel. Verifica tu conexión e intenta de nuevo.'); return; }
-  const FILA_TITULO = 0, FILA_SUBT = 1, FILA_ENCAB = 3, FILA_DATOS_DESDE = 4;
+  const FILA_ENCAB = 3, FILA_DATOS_DESDE = 4;
   const hoja = XLSX.utils.aoa_to_sheet([
     ['Reporte de Inventario'],
     ['Fecha de Corte: ' + dat.d.fechaCorteVal + '   |   Moneda: ' + dat.d.monedaVal + (dat.d.monedaVal === 'VES' ? '   |   Tasa BCV: ' + dat.d.tasaCorte : '')],
@@ -318,20 +323,24 @@ function _repInvExportarExcel() {
   ].concat(dat.filasNumericas));
   hoja['!cols'] = [ {wch:14}, {wch:38}, {wch:10}, {wch:12}, {wch:14}, {wch:16}, {wch:16}, {wch:10} ];
 
-  // Encabezados centrados; columnas numéricas (2 a 7) con formato
-  // "1.000,00" (punto de miles, coma decimal) y alineadas a la derecha --
-  // aplicado como formato de celda, así el valor sigue siendo un número
-  // real (se puede sumar/filtrar en Excel), solo cambia cómo se ve.
+  // Encabezados centrados; columnas numéricas (2 a 7) con formato de
+  // celda -- el valor sigue siendo un número real (se puede sumar/
+  // filtrar en Excel), solo cambia cómo se ve. El código del formato usa
+  // la sintaxis estándar de Excel (coma miles, punto decimal); Excel lo
+  // traduce solo a "1.000,00" según el idioma/región configurado en el
+  // Excel de quien lo abre -- esa traducción automática es de Excel, no
+  // de este archivo. Stock/Stock Mínimo/Rotación sin decimales.
   const NUM_FILAS = dat.filasNumericas.length;
   for (let col = 0; col < 8; col++) {
     const refEncab = XLSX.utils.encode_cell({ r: FILA_ENCAB, c: col });
-    if (hoja[refEncab]) hoja[refEncab].s = { alignment: { horizontal: 'center' } };
+    if (hoja[refEncab]) hoja[refEncab].s = { alignment: { horizontal: 'center', vertical: 'center' }, font: { bold: true } };
     if (col < 2) continue; // Código y Artículo: texto, sin formato numérico
-    const formatoNum = (col === 5 || col === 6) ? '#.##0,00' : (col === 7 ? '#.##0,0"%"' : '#.##0');
+    const formatoNum = (col === 5 || col === 6) ? '#,##0.00' : (col === 7 ? '0.0"%"' : '#,##0');
     for (let i = 0; i < NUM_FILAS; i++) {
       const ref = XLSX.utils.encode_cell({ r: FILA_DATOS_DESDE + i, c: col });
       if (hoja[ref]) {
         hoja[ref].z = formatoNum;
+        hoja[ref].t = 'n';
         hoja[ref].s = { alignment: { horizontal: 'right' } };
       }
     }
@@ -339,7 +348,7 @@ function _repInvExportarExcel() {
 
   const libro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(libro, hoja, 'Inventario');
-  XLSX.writeFile(libro, 'reporte_inventario_' + dat.d.fechaCorteVal + '_' + dat.d.monedaVal + '.xlsx');
+  XLSX.writeFile(libro, 'reporte_inventario_' + dat.d.fechaCorteVal + '_' + dat.d.monedaVal + '.xlsx', { cellStyles: true });
 }
 
 function _repInvExportarPDF() {
