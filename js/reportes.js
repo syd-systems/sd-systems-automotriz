@@ -8,6 +8,7 @@
 
 const REPORTES_DISPONIBLES = [
   { id: 'inventario', nombre: '📦 Reporte de Inventario', render: repInventarioRender },
+  { id: 'compras',    nombre: '🛒 Reporte de Compras',    render: repComprasRender },
 ];
 
 let _reporteActual = 'inventario';
@@ -446,4 +447,319 @@ function _repInvExportarPDF() {
     },
   });
   doc.save('reporte_inventario_' + dat.d.fechaCorteVal + '_' + dat.d.monedaVal + '.pdf');
+}
+
+// ═══════════════════ REPORTE DE COMPRAS ═══════════════════
+// Fuente: stock_entradas con motivo='compra' y estado_aprobacion='APROBADA'
+// (compras reales, no propuestas pendientes ni rechazadas). A diferencia
+// de Inventario (una foto a una fecha), esto es un LISTADO de
+// transacciones en un Rango de Fechas -- cada línea usa SU PROPIA tasa_bcv
+// (la vigente el día de esa compra en particular), no una tasa única de
+// corte, porque cada compra ocurrió en un día distinto.
+function repComprasLimpiarFiltros() {
+  const hoy = getHoyVzla();
+  const desde = document.getElementById('rep-com-desde'); if (desde) desde.value = hoy;
+  const hasta = document.getElementById('rep-com-hasta'); if (hasta) hasta.value = hoy;
+  const moneda = document.getElementById('rep-com-moneda'); if (moneda) moneda.value = 'VES';
+  const area = document.getElementById('rep-com-area'); if (area) area.value = '';
+  const categoria = document.getElementById('rep-com-categoria'); if (categoria) categoria.value = '';
+  const tipo = document.getElementById('rep-com-tipo'); if (tipo) tipo.value = '';
+  const proveedor = document.getElementById('rep-com-proveedor'); if (proveedor) proveedor.value = '';
+  repComprasRender(document.getElementById('reportes-contenido'));
+}
+
+async function repComprasRender(cont) {
+  if (!cont) return;
+  const hoy = getHoyVzla();
+  const desdeVal = document.getElementById('rep-com-desde')?.value || hoy;
+  const hastaVal = document.getElementById('rep-com-hasta')?.value || hoy;
+  const monedaVal = document.getElementById('rep-com-moneda')?.value || 'VES';
+  const formatoVal = document.getElementById('rep-com-formato')?.value || 'pdf';
+  const areaVal = document.getElementById('rep-com-area')?.value || '';
+  const categoriaVal = document.getElementById('rep-com-categoria')?.value || '';
+  const tipoVal = document.getElementById('rep-com-tipo')?.value || '';
+  const proveedorVal = document.getElementById('rep-com-proveedor')?.value || '';
+
+  let areas = [], categorias = [], tipos = [], proveedores = [];
+  try {
+    areas = await api('param_areas','GET',null,
+      '?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+  } catch(e) { console.warn('Error cargando Áreas:', e); }
+  try {
+    categorias = await api('inv_categorias','GET',null,
+      '?select=id_categoria,nombre&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+  } catch(e) { console.warn('Error cargando Categorías:', e); }
+  try {
+    tipos = await api('inv_articulos_tipo','GET',null,
+      '?select=id_tipo,nombre&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+  } catch(e) { console.warn('Error cargando Tipos de Artículo:', e); }
+  try {
+    proveedores = await api('proveedores','GET',null,
+      '?estado=eq.ACTIVO&select=id_proveedor,nombre&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+  } catch(e) { console.warn('Error cargando Proveedores:', e); }
+
+  cont.innerHTML =
+    '<div style="padding:16px 24px">'
+    + '<div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--borde)">'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Desde</label>'
+    + '<input type="date" id="rep-com-desde" value="' + desdeVal + '" max="' + hoy + '" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none"></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Hasta</label>'
+    + '<input type="date" id="rep-com-hasta" value="' + hastaVal + '" max="' + hoy + '" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none"></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Moneda</label>'
+    + '<select id="rep-com-moneda" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value="VES"' + (monedaVal==='VES'?' selected':'') + '>VES</option>'
+    + '<option value="USD"' + (monedaVal==='USD'?' selected':'') + '>USD</option>'
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Área</label>'
+    + '<select id="rep-com-area" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value=""' + (areaVal===''?' selected':'') + '>Todas las Áreas</option>'
+    + areas.map(function(a){ return '<option value="'+a.id+'"' + (String(areaVal)===String(a.id)?' selected':'') + '>' + escapeHtml(a.nombre) + '</option>'; }).join('')
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Categoría</label>'
+    + '<select id="rep-com-categoria" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value=""' + (categoriaVal===''?' selected':'') + '>Todas</option>'
+    + categorias.map(function(c){ return '<option value="'+c.id_categoria+'"' + (String(categoriaVal)===String(c.id_categoria)?' selected':'') + '>' + escapeHtml(c.nombre) + '</option>'; }).join('')
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Tipo de Artículo</label>'
+    + '<select id="rep-com-tipo" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value=""' + (tipoVal===''?' selected':'') + '>Todos</option>'
+    + tipos.map(function(t){ return '<option value="'+t.id_tipo+'"' + (String(tipoVal)===String(t.id_tipo)?' selected':'') + '>' + escapeHtml(t.nombre) + '</option>'; }).join('')
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Proveedor</label>'
+    + '<select id="rep-com-proveedor" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value=""' + (proveedorVal===''?' selected':'') + '>Todos</option>'
+    + proveedores.map(function(p){ return '<option value="'+p.id_proveedor+'"' + (String(proveedorVal)===String(p.id_proveedor)?' selected':'') + '>' + escapeHtml(p.nombre) + '</option>'; }).join('')
+    + '</select></div>'
+    + '<button onclick="repComprasLimpiarFiltros()" title="Limpiar filtros" style="background:var(--gris2);border:1px solid var(--borde);color:var(--suave);padding:8px 10px;border-radius:5px;cursor:pointer;font-size:14px;line-height:1">🗑</button>'
+    + '<div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Formato</label>'
+    + '<select id="rep-com-formato" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value="pdf"' + (formatoVal==='pdf'?' selected':'') + '>PDF</option>'
+    + '<option value="excel"' + (formatoVal==='excel'?' selected':'') + '>Excel (.xlsx)</option>'
+    + '<option value="csv"' + (formatoVal==='csv'?' selected':'') + '>CSV</option>'
+    + '</select></div>'
+    + '<button class="btn-secundario" onclick="repComprasExportar()">⬇ Exportar</button>'
+    + '</div>'
+    + '</div>'
+    + '<div id="rep-com-resumen" style="display:flex;gap:20px;margin-bottom:20px">'
+    + '<div style="flex:1;background:var(--gris2);border-radius:8px;padding:16px 20px">'
+    + '<div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Total de Compras</div>'
+    + '<div id="rep-com-total-compras" style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">0</div>'
+    + '</div>'
+    + '<div style="flex:1;background:var(--gris2);border-radius:8px;padding:16px 20px">'
+    + '<div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Monto Total</div>'
+    + '<div id="rep-com-total-monto" style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">0</div>'
+    + '</div>'
+    + '</div>'
+    + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 420px))"><table style="width:100%;border-collapse:collapse;table-layout:fixed">'
+    + '<thead><tr id="rep-com-thead-row"></tr></thead>'
+    + '<tbody id="rep-com-tbody"><tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Cargando...</td></tr></tbody>'
+    + '</table></div>'
+    + '</div>';
+
+  // Artículos activos, para resolver Nombre/Categoría/Tipo por id_articulo
+  // (stock_entradas solo guarda el id) y para poder filtrar por
+  // Categoría/Tipo (stock_entradas no los tiene directamente).
+  let itemsMap = {};
+  try {
+    let qItems = '?estado=eq.ACTIVO&select=id_articulo,nombre_articulo,id_categoria_articulo,id_tipo_articulo' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '');
+    if (categoriaVal) qItems += '&id_categoria_articulo=eq.'+categoriaVal;
+    if (tipoVal) qItems += '&id_tipo_articulo=eq.'+tipoVal;
+    const itemsRows = await api('inventario_almacen','GET',null, qItems);
+    (itemsRows||[]).forEach(function(a){ itemsMap[a.id_articulo] = a; });
+  } catch(e) { console.warn('Error cargando Artículos:', e); }
+
+  const proveedorNombrePorId = {};
+  proveedores.forEach(function(p){ proveedorNombrePorId[p.id_proveedor] = p.nombre; });
+  const areaNombrePorId = {};
+  areas.forEach(function(a){ areaNombrePorId[a.id] = a.nombre; });
+
+  let entradas = [];
+  try {
+    let qEnt = '?motivo=eq.compra&estado_aprobacion=eq.APROBADA&anulada=eq.false'
+      + '&fecha_entrada=gte.'+desdeVal+'&fecha_entrada=lte.'+hastaVal
+      + '&select=id_entrada,id_articulo,cantidad,precio_costo_moneda,fecha_entrada,id_proveedor,id_area,tasa_bcv'
+      + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '');
+    if (areaVal) qEnt += '&id_area=eq.'+areaVal;
+    if (proveedorVal) qEnt += '&id_proveedor=eq.'+proveedorVal;
+    entradas = await api('stock_entradas','GET',null, qEnt);
+  } catch(e) { console.warn('Error cargando Compras:', e); }
+
+  // Filtro por Categoría/Tipo -- se aplica aquí (client-side) porque
+  // stock_entradas no tiene esas columnas directamente, solo id_articulo.
+  if (categoriaVal || tipoVal) {
+    entradas = entradas.filter(function(en){ return itemsMap[en.id_articulo] !== undefined; });
+  }
+
+  let totalCompras = 0, totalMonto = 0;
+  const filas = entradas.map(function(en) {
+    const art = itemsMap[en.id_articulo];
+    const costoUsd = parseFloat(en.precio_costo_moneda||0);
+    const tasaEnt = parseFloat(en.tasa_bcv||1);
+    const precioMostrar = monedaVal === 'VES' ? costoUsd * tasaEnt : costoUsd;
+    const montoLinea = parseFloat(en.cantidad||0) * precioMostrar;
+    totalCompras++;
+    totalMonto += montoLinea;
+    return {
+      fecha: en.fecha_entrada, proveedor: proveedorNombrePorId[en.id_proveedor]||'—',
+      articulo: art ? art.nombre_articulo : '(Artículo eliminado)', area: areaNombrePorId[en.id_area]||'',
+      cantidad: parseFloat(en.cantidad||0), precio: precioMostrar, montoLinea: montoLinea
+    };
+  });
+
+  document.getElementById('rep-com-total-compras').textContent = totalCompras.toLocaleString('es-VE');
+  document.getElementById('rep-com-total-monto').textContent = (monedaVal==='VES' ? fmtBs(totalMonto) + ' Bs' : '$ ' + fmtUSD(totalMonto));
+
+  const filtrosActivos = [];
+  if (areaVal) filtrosActivos.push('Área: ' + (areaNombrePorId[areaVal]||areaVal));
+  if (categoriaVal) { const c = categorias.find(function(x){ return String(x.id_categoria)===String(categoriaVal); }); if (c) filtrosActivos.push('Categoría: ' + c.nombre); }
+  if (tipoVal) { const t = tipos.find(function(x){ return String(x.id_tipo)===String(tipoVal); }); if (t) filtrosActivos.push('Tipo: ' + t.nombre); }
+  if (proveedorVal) filtrosActivos.push('Proveedor: ' + (proveedorNombrePorId[proveedorVal]||proveedorVal));
+  const filtrosTexto = filtrosActivos.length ? filtrosActivos.join('   |   ') : 'Sin filtros adicionales (todos los Artículos, todas las Áreas)';
+
+  window._reporteComprasActual = { monedaVal, desdeVal, hastaVal, filas, filtrosTexto };
+  _repComOrdenCol = _repComOrdenCol || null;
+  _repComOrdenAsc = _repComOrdenAsc !== false;
+  _repComRenderTabla();
+}
+
+let _repComOrdenCol = null;
+let _repComOrdenAsc = true;
+const REP_COM_COLUMNAS = [
+  { campo: 'fecha',     tipo: 'texto',  label: 'Fecha Compra', ancho: '13%' },
+  { campo: 'proveedor', tipo: 'texto',  label: 'Proveedor',    ancho: '25%' },
+  { campo: 'articulo',  tipo: 'texto',  label: 'Artículo',     ancho: '32%' },
+  { campo: 'cantidad',  tipo: 'numero', label: 'Cantidad',     ancho: '12%' },
+  { campo: 'precio',    tipo: 'numero', label: 'Precio',       ancho: '18%' },
+];
+
+function repComprasOrdenar(campo) {
+  if (_repComOrdenCol === campo) { _repComOrdenAsc = !_repComOrdenAsc; }
+  else { _repComOrdenCol = campo; _repComOrdenAsc = true; }
+  _repComRenderTabla();
+}
+
+function _repComRenderTabla() {
+  const d = window._reporteComprasActual;
+  if (!d) return;
+  const monedaVal = d.monedaVal;
+
+  const theadRow = REP_COM_COLUMNAS.map(function(c) {
+    const alinear = (c.tipo === 'numero') ? 'text-align:right' : 'text-align:left';
+    const flecha = _repComOrdenCol === c.campo ? (_repComOrdenAsc ? ' ▲' : ' ▼') : '';
+    return '<th style="width:'+c.ancho+';'+alinear+';cursor:pointer;user-select:none" onclick="repComprasOrdenar(\''+c.campo+'\')" title="Ordenar">' + c.label + flecha + '</th>';
+  }).join('');
+  const theadEl = document.getElementById('rep-com-thead-row');
+  if (theadEl) theadEl.innerHTML = theadRow;
+
+  let filasOrd = d.filas.slice();
+  if (_repComOrdenCol) {
+    const colDef = REP_COM_COLUMNAS.find(function(c){ return c.campo === _repComOrdenCol; });
+    filasOrd.sort(function(a, b) {
+      let va = a[_repComOrdenCol], vb = b[_repComOrdenCol];
+      let cmp = colDef.tipo === 'texto' ? String(va).localeCompare(String(vb), 'es', { sensitivity: 'base' }) : va - vb;
+      return _repComOrdenAsc ? cmp : -cmp;
+    });
+  }
+
+  const filasHtml = filasOrd.map(function(f) {
+    return '<tr>'
+      + '<td style="font-family:var(--font-mono);font-size:15px">' + fmtFecha(f.fecha) + '</td>'
+      + '<td style="font-size:15px">' + escapeHtml(f.proveedor) + (f.area ? '<div style="font-size:11px;color:var(--suave)">' + escapeHtml(f.area) + '</div>' : '') + '</td>'
+      + '<td style="font-size:15px">' + escapeHtml(f.articulo) + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono);font-size:15px">' + f.cantidad + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono);color:var(--naranja);font-weight:600;font-size:15px">' + (monedaVal==='VES' ? fmtBs(f.precio) : fmtUSD(f.precio)) + '</td>'
+      + '</tr>';
+  }).join('');
+
+  document.getElementById('rep-com-tbody').innerHTML = filasHtml || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">No hay Compras en el rango seleccionado</td></tr>';
+}
+
+async function repComprasExportar() {
+  await repComprasRender(document.getElementById('reportes-contenido'));
+  const formato = document.getElementById('rep-com-formato')?.value || 'pdf';
+  if (formato === 'excel') _repComExportarExcel();
+  else if (formato === 'pdf') _repComExportarPDF();
+  else _repComExportarCSV();
+}
+
+function _repComDatosExportar() {
+  const d = window._reporteComprasActual;
+  if (!d) return null;
+  const encabezados = ['Fecha Compra','Proveedor','Artículo','Cantidad','Precio'];
+  const fmtMoneda = d.monedaVal === 'VES' ? fmtBs : fmtUSD;
+  const filasNumericas = d.filas.map(function(f) {
+    return [fmtFecha(f.fecha), f.proveedor, f.articulo, f.cantidad, f.precio];
+  });
+  const filasTexto = d.filas.map(function(f) {
+    return [fmtFecha(f.fecha), f.proveedor, f.articulo, f.cantidad, fmtMoneda(f.precio)];
+  });
+  return { d, encabezados, filasNumericas, filasTexto };
+}
+
+function _repComExportarCSV() {
+  const dat = _repComDatosExportar();
+  if (!dat) return;
+  const filasCsv = [
+    ['Compras del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Moneda: ' + dat.d.monedaVal],
+    ['Filtros: ' + dat.d.filtrosTexto],
+    [],
+    dat.encabezados,
+  ].concat(dat.filasTexto);
+  const csv = filasCsv.map(function(f){ return f.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  const blob = new Blob(['\ufeff'+csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'reporte_compras_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '_' + dat.d.monedaVal + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function _repComExportarExcel() {
+  const dat = _repComDatosExportar();
+  if (!dat || typeof XLSX === 'undefined') { alert('No se pudo cargar el generador de Excel. Verifica tu conexión e intenta de nuevo.'); return; }
+  const FILA_ENCAB = 4, FILA_DATOS_DESDE = 5;
+  const hoja = XLSX.utils.aoa_to_sheet([
+    ['Reporte de Compras'],
+    ['Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Moneda: ' + dat.d.monedaVal],
+    ['Filtros: ' + dat.d.filtrosTexto],
+    [],
+    dat.encabezados,
+  ].concat(dat.filasNumericas));
+  hoja['!cols'] = [ {wch:14}, {wch:30}, {wch:38}, {wch:12}, {wch:16} ];
+  const NUM_FILAS = dat.filasNumericas.length;
+  for (let col = 0; col < 5; col++) {
+    const refEncab = XLSX.utils.encode_cell({ r: FILA_ENCAB, c: col });
+    if (hoja[refEncab]) hoja[refEncab].s = { alignment: { horizontal: 'center', vertical: 'center' }, font: { bold: true } };
+    if (col < 3) continue; // Fecha/Proveedor/Artículo: texto
+    const formatoNum = col === 4 ? '#,##0.00' : '#,##0';
+    for (let i = 0; i < NUM_FILAS; i++) {
+      const ref = XLSX.utils.encode_cell({ r: FILA_DATOS_DESDE + i, c: col });
+      if (hoja[ref]) { hoja[ref].z = formatoNum; hoja[ref].t = 'n'; hoja[ref].s = { alignment: { horizontal: 'right' } }; }
+    }
+  }
+  const libro = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(libro, hoja, 'Compras');
+  XLSX.writeFile(libro, 'reporte_compras_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '_' + dat.d.monedaVal + '.xlsx', { cellStyles: true });
+}
+
+function _repComExportarPDF() {
+  const dat = _repComDatosExportar();
+  if (!dat || typeof window.jspdf === 'undefined') { alert('No se pudo cargar el generador de PDF. Verifica tu conexión e intenta de nuevo.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape' });
+  doc.setFontSize(14);
+  doc.text('Reporte de Compras', 14, 15);
+  doc.setFontSize(9);
+  doc.text('Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Moneda: ' + dat.d.monedaVal, 14, 21);
+  doc.text('Filtros: ' + dat.d.filtrosTexto, 14, 26);
+  doc.autoTable({
+    head: [dat.encabezados],
+    body: dat.filasTexto,
+    startY: 31,
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [255, 107, 0], halign: 'center' },
+    columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' } },
+  });
+  doc.save('reporte_compras_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '_' + dat.d.monedaVal + '.pdf');
 }
