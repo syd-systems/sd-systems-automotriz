@@ -9,6 +9,7 @@
 const REPORTES_DISPONIBLES = [
   { id: 'inventario', nombre: '📦 Reporte de Inventario', render: repInventarioRender },
   { id: 'compras',    nombre: '🛒 Reporte de Compras',    render: repComprasRender },
+  { id: 'ventas',     nombre: '💰 Reporte de Ventas',     render: repVentasRender },
 ];
 
 let _reporteActual = 'inventario';
@@ -761,4 +762,334 @@ function _repComExportarPDF() {
     columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' } },
   });
   doc.save('reporte_compras_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '_' + dat.d.monedaVal + '.pdf');
+}
+
+// ═══════════════════ REPORTE DE VENTAS ═══════════════════
+function repVentasLimpiarFiltros() {
+  const hoy = getHoyVzla();
+  const desde = document.getElementById('rep-ven-desde'); if (desde) desde.value = hoy;
+  const hasta = document.getElementById('rep-ven-hasta'); if (hasta) hasta.value = hoy;
+  const moneda = document.getElementById('rep-ven-moneda'); if (moneda) moneda.value = 'VES';
+  const area = document.getElementById('rep-ven-area'); if (area) area.value = '';
+  const categoria = document.getElementById('rep-ven-categoria'); if (categoria) categoria.value = '';
+  const tipo = document.getElementById('rep-ven-tipo'); if (tipo) tipo.value = '';
+  const cliente = document.getElementById('rep-ven-cliente'); if (cliente) cliente.value = '';
+  repVentasRender(document.getElementById('reportes-contenido'));
+}
+
+async function repVentasRender(cont) {
+  if (!cont) return;
+  const hoy = getHoyVzla();
+  const desdeVal = document.getElementById('rep-ven-desde')?.value || hoy;
+  const hastaVal = document.getElementById('rep-ven-hasta')?.value || hoy;
+  const monedaVal = document.getElementById('rep-ven-moneda')?.value || 'VES';
+  const formatoVal = document.getElementById('rep-ven-formato')?.value || 'pdf';
+  const areaVal = document.getElementById('rep-ven-area')?.value || '';
+  const categoriaVal = document.getElementById('rep-ven-categoria')?.value || '';
+  const tipoVal = document.getElementById('rep-ven-tipo')?.value || '';
+  const clienteVal = document.getElementById('rep-ven-cliente')?.value || '';
+
+  let areas = [], categorias = [], tipos = [], clientes = [];
+  try {
+    areas = await api('param_areas','GET',null, '?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo');
+  } catch(e) { console.warn('Error cargando Áreas:', e); }
+  try {
+    categorias = await api('inv_categorias','GET',null,
+      '?select=id_categoria,nombre&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+  } catch(e) { console.warn('Error cargando Categorías:', e); }
+  try {
+    tipos = await api('inv_articulos_tipo','GET',null,
+      '?select=id_tipo,nombre&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+  } catch(e) { console.warn('Error cargando Tipos de Artículo:', e); }
+  try {
+    clientes = await api('clientes','GET',null, '?activo=eq.true&select=id_cliente,nombre_completo&order=nombre_completo.asc');
+  } catch(e) { console.warn('Error cargando Clientes:', e); }
+
+  cont.innerHTML =
+    '<div style="padding:16px 24px">'
+    + '<div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--borde)">'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Desde</label>'
+    + '<input type="date" id="rep-ven-desde" value="' + desdeVal + '" max="' + hoy + '" onchange="repVentasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none"></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Hasta</label>'
+    + '<input type="date" id="rep-ven-hasta" value="' + hastaVal + '" max="' + hoy + '" onchange="repVentasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none"></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Moneda</label>'
+    + '<select id="rep-ven-moneda" onchange="repVentasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value="VES"' + (monedaVal==='VES'?' selected':'') + '>VES</option>'
+    + '<option value="USD"' + (monedaVal==='USD'?' selected':'') + '>USD</option>'
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Área</label>'
+    + '<select id="rep-ven-area" onchange="repVentasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value=""' + (areaVal===''?' selected':'') + '>Todas las Áreas</option>'
+    + areas.map(function(a){ return '<option value="'+a.id+'"' + (String(areaVal)===String(a.id)?' selected':'') + '>' + escapeHtml(a.nombre) + '</option>'; }).join('')
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Categoría</label>'
+    + '<select id="rep-ven-categoria" onchange="repVentasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value=""' + (categoriaVal===''?' selected':'') + '>Todas</option>'
+    + categorias.map(function(c){ return '<option value="'+c.id_categoria+'"' + (String(categoriaVal)===String(c.id_categoria)?' selected':'') + '>' + escapeHtml(c.nombre) + '</option>'; }).join('')
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Tipo de Artículo</label>'
+    + '<select id="rep-ven-tipo" onchange="repVentasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value=""' + (tipoVal===''?' selected':'') + '>Todos</option>'
+    + tipos.map(function(t){ return '<option value="'+t.id_tipo+'"' + (String(tipoVal)===String(t.id_tipo)?' selected':'') + '>' + escapeHtml(t.nombre) + '</option>'; }).join('')
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Cliente</label>'
+    + '<select id="rep-ven-cliente" onchange="repVentasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value=""' + (clienteVal===''?' selected':'') + '>Todos</option>'
+    + clientes.map(function(c){ return '<option value="'+c.id_cliente+'"' + (String(clienteVal)===String(c.id_cliente)?' selected':'') + '>' + escapeHtml(c.nombre_completo) + '</option>'; }).join('')
+    + '</select></div>'
+    + '<button onclick="repVentasLimpiarFiltros()" title="Limpiar filtros" style="background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.4);color:#f87171;padding:8px 10px;border-radius:5px;cursor:pointer;font-size:16px;line-height:1">🗑</button>'
+    + '<div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Formato</label>'
+    + '<select id="rep-ven-formato" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value="pdf"' + (formatoVal==='pdf'?' selected':'') + '>PDF</option>'
+    + '<option value="excel"' + (formatoVal==='excel'?' selected':'') + '>Excel (.xlsx)</option>'
+    + '<option value="csv"' + (formatoVal==='csv'?' selected':'') + '>CSV</option>'
+    + '</select></div>'
+    + '<button class="btn-secundario" onclick="repVentasExportar()">⬇ Exportar</button>'
+    + '</div>'
+    + '</div>'
+    + '<div id="rep-ven-resumen" style="display:flex;gap:20px;margin-bottom:20px">'
+    + '<div style="flex:1;background:var(--gris2);border-radius:8px;padding:16px 20px">'
+    + '<div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Total de Ventas</div>'
+    + '<div id="rep-ven-total-ventas" style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">0</div>'
+    + '</div>'
+    + '<div style="flex:1;background:var(--gris2);border-radius:8px;padding:16px 20px">'
+    + '<div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Monto Total</div>'
+    + '<div id="rep-ven-total-monto" style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">0</div>'
+    + '</div>'
+    + '</div>'
+    + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 420px))"><table style="width:100%;border-collapse:collapse;table-layout:fixed">'
+    + '<thead><tr id="rep-ven-thead-row"></tr></thead>'
+    + '<tbody id="rep-ven-tbody"><tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">Cargando...</td></tr></tbody>'
+    + '</table></div>'
+    + '</div>';
+
+  let itemsMap = {};
+  try {
+    let qItems = '?estado=eq.ACTIVO&select=id_articulo,nombre_articulo,id_categoria_articulo,id_tipo_articulo' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '');
+    if (categoriaVal) qItems += '&id_categoria_articulo=eq.'+categoriaVal;
+    if (tipoVal) qItems += '&id_tipo_articulo=eq.'+tipoVal;
+    const itemsRows = await api('inventario_almacen','GET',null, qItems);
+    (itemsRows||[]).forEach(function(a){ itemsMap[a.id_articulo] = a; });
+  } catch(e) { console.warn('Error cargando Artículos:', e); }
+
+  const clienteNombrePorId = {};
+  clientes.forEach(function(c){ clienteNombrePorId[c.id_cliente] = c.nombre_completo; });
+  const areaNombrePorId = {};
+  areas.forEach(function(a){ areaNombrePorId[a.id] = a.nombre; });
+
+  // Cabecera de la Venta (fecha, cliente, área, moneda de cobro, estado,
+  // tasa, factura) -- luego se cruza con venta_detalle para las líneas por
+  // Artículo, y con cont_cxc (por id_factura) para la Forma de Pago real
+  // (Efectivo/Transferencia/Pago Móvil, etc.) con la que se cobró.
+  let ventasHead = {};
+  try {
+    let qVen = '?estado=neq.ANULADA&fecha_venta=gte.'+desdeVal+'&fecha_venta=lte.'+hastaVal
+      + '&select=id_venta,fecha_venta,id_cliente,id_area,moneda_cobro,estado,tasa_bcv,id_factura'
+      + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '');
+    if (areaVal) qVen += '&id_area=eq.'+areaVal;
+    if (clienteVal) qVen += '&id_cliente=eq.'+clienteVal;
+    const ventasRows = await api('ventas','GET',null, qVen);
+    (ventasRows||[]).forEach(function(v){ ventasHead[v.id_venta] = v; });
+  } catch(e) { console.warn('Error cargando Ventas:', e); }
+
+  const idsFactura = Object.values(ventasHead).map(function(v){ return v.id_factura; }).filter(Boolean);
+  let metodoPorFactura = {};
+  if (idsFactura.length) {
+    try {
+      const cxcRows = await api('cont_cxc','GET',null,
+        '?id_factura=in.(' + idsFactura.join(',') + ')&select=id_factura,metodo_pago');
+      (cxcRows||[]).forEach(function(c){ if (c.metodo_pago) metodoPorFactura[c.id_factura] = c.metodo_pago; });
+    } catch(e) { console.warn('Error cargando Forma de Pago (cont_cxc):', e); }
+  }
+
+  let detalle = [];
+  const idsVenta = Object.keys(ventasHead);
+  if (idsVenta.length) {
+    try {
+      detalle = await api('venta_detalle','GET',null,
+        '?id_venta=in.(' + idsVenta.join(',') + ')&select=id_venta,id_articulo,cantidad,precio_unitario');
+    } catch(e) { console.warn('Error cargando Detalle de Ventas:', e); }
+  }
+
+  if (categoriaVal || tipoVal) {
+    detalle = detalle.filter(function(d){ return itemsMap[d.id_articulo] !== undefined; });
+  }
+
+  let totalVentasSet = new Set(), totalMonto = 0;
+  const filas = detalle.map(function(d) {
+    const v = ventasHead[d.id_venta];
+    const art = itemsMap[d.id_articulo];
+    const precioUsd = parseFloat(d.precio_unitario||0);
+    const tasaVen = parseFloat(v?.tasa_bcv||1);
+    const precioMostrar = monedaVal === 'VES' ? precioUsd * tasaVen : precioUsd;
+    const montoLinea = parseFloat(d.cantidad||0) * precioMostrar;
+    totalVentasSet.add(d.id_venta);
+    totalMonto += montoLinea;
+    return {
+      fecha: v?.fecha_venta, cliente: clienteNombrePorId[v?.id_cliente]||'—',
+      articulo: art ? art.nombre_articulo : '(Artículo eliminado)', area: areaNombrePorId[v?.id_area]||'',
+      cantidad: parseFloat(d.cantidad||0), precio: precioMostrar, montoLinea: montoLinea,
+      pago: v?.id_factura && metodoPorFactura[v.id_factura] ? metodoPorFactura[v.id_factura] : 'Pendiente de cobro'
+    };
+  });
+
+  document.getElementById('rep-ven-total-ventas').textContent = totalVentasSet.size.toLocaleString('es-VE');
+  document.getElementById('rep-ven-total-monto').textContent = (monedaVal==='VES' ? fmtBs(totalMonto) + ' Bs' : '$ ' + fmtUSD(totalMonto));
+
+  const filtrosActivos = [];
+  if (areaVal) filtrosActivos.push('Área: ' + (areaNombrePorId[areaVal]||areaVal));
+  if (categoriaVal) { const c = categorias.find(function(x){ return String(x.id_categoria)===String(categoriaVal); }); if (c) filtrosActivos.push('Categoría: ' + c.nombre); }
+  if (tipoVal) { const t = tipos.find(function(x){ return String(x.id_tipo)===String(tipoVal); }); if (t) filtrosActivos.push('Tipo: ' + t.nombre); }
+  if (clienteVal) filtrosActivos.push('Cliente: ' + (clienteNombrePorId[clienteVal]||clienteVal));
+  const filtrosTexto = filtrosActivos.length ? filtrosActivos.join('   |   ') : 'Sin filtros adicionales (todos los Artículos, todas las Áreas)';
+
+  window._reporteVentasActual = { monedaVal, desdeVal, hastaVal, filas, filtrosTexto };
+  _repVenOrdenCol = _repVenOrdenCol || null;
+  _repVenOrdenAsc = _repVenOrdenAsc !== false;
+  _repVenRenderTabla();
+}
+
+let _repVenOrdenCol = null;
+let _repVenOrdenAsc = true;
+const REP_VEN_COLUMNAS = [
+  { campo: 'fecha',    tipo: 'texto',  label: 'Fecha Venta', ancho: '11%' },
+  { campo: 'cliente',  tipo: 'texto',  label: 'Cliente',     ancho: '22%' },
+  { campo: 'articulo', tipo: 'texto',  label: 'Artículo',    ancho: '25%' },
+  { campo: 'cantidad', tipo: 'numero', label: 'Cantidad',    ancho: '10%' },
+  { campo: 'precio',   tipo: 'numero', label: 'Precio',      ancho: '16%' },
+  { campo: 'pago',     tipo: 'texto',  label: 'Pago',        ancho: '16%' },
+];
+
+function repVentasOrdenar(campo) {
+  if (_repVenOrdenCol === campo) { _repVenOrdenAsc = !_repVenOrdenAsc; }
+  else { _repVenOrdenCol = campo; _repVenOrdenAsc = true; }
+  _repVenRenderTabla();
+}
+
+function _repVenRenderTabla() {
+  const d = window._reporteVentasActual;
+  if (!d) return;
+  const monedaVal = d.monedaVal;
+
+  const theadRow = REP_VEN_COLUMNAS.map(function(c) {
+    const alinear = (c.tipo === 'numero') ? 'text-align:right' : (c.campo === 'pago' ? 'text-align:center' : 'text-align:left');
+    const flecha = _repVenOrdenCol === c.campo ? (_repVenOrdenAsc ? ' ▲' : ' ▼') : '';
+    return '<th style="width:'+c.ancho+';'+alinear+';cursor:pointer;user-select:none" onclick="repVentasOrdenar(\''+c.campo+'\')" title="Ordenar">' + c.label + flecha + '</th>';
+  }).join('');
+  const theadEl = document.getElementById('rep-ven-thead-row');
+  if (theadEl) theadEl.innerHTML = theadRow;
+
+  let filasOrd = d.filas.slice();
+  if (_repVenOrdenCol) {
+    const colDef = REP_VEN_COLUMNAS.find(function(c){ return c.campo === _repVenOrdenCol; });
+    filasOrd.sort(function(a, b) {
+      let va = a[_repVenOrdenCol], vb = b[_repVenOrdenCol];
+      let cmp = colDef.tipo === 'texto' ? String(va).localeCompare(String(vb), 'es', { sensitivity: 'base' }) : va - vb;
+      return _repVenOrdenAsc ? cmp : -cmp;
+    });
+  }
+
+  const filasHtml = filasOrd.map(function(f) {
+    return '<tr>'
+      + '<td style="font-family:var(--font-mono);font-size:15px">' + fmtFecha(f.fecha) + '</td>'
+      + '<td style="font-size:15px">' + escapeHtml(f.cliente) + (f.area ? '<div style="font-size:11px;color:var(--suave)">' + escapeHtml(f.area) + '</div>' : '') + '</td>'
+      + '<td style="font-size:15px">' + escapeHtml(f.articulo) + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono);font-size:15px">' + f.cantidad + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono);color:var(--naranja);font-weight:600;font-size:15px">' + (monedaVal==='VES' ? fmtBs(f.precio) : fmtUSD(f.precio)) + '</td>'
+      + '<td style="text-align:center;font-size:13px;color:var(--suave)">' + escapeHtml(f.pago) + '</td>'
+      + '</tr>';
+  }).join('');
+
+  document.getElementById('rep-ven-tbody').innerHTML = filasHtml || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">No hay Ventas en el rango seleccionado</td></tr>';
+}
+
+async function repVentasExportar() {
+  await repVentasRender(document.getElementById('reportes-contenido'));
+  const formato = document.getElementById('rep-ven-formato')?.value || 'pdf';
+  if (formato === 'excel') _repVenExportarExcel();
+  else if (formato === 'pdf') _repVenExportarPDF();
+  else _repVenExportarCSV();
+}
+
+function _repVenDatosExportar() {
+  const d = window._reporteVentasActual;
+  if (!d) return null;
+  const encabezados = ['Fecha Venta','Cliente','Artículo','Cantidad','Precio','Pago'];
+  const fmtMoneda = d.monedaVal === 'VES' ? fmtBs : fmtUSD;
+  const filasNumericas = d.filas.map(function(f) {
+    return [fmtFecha(f.fecha), f.cliente, f.articulo, f.cantidad, f.precio, f.pago];
+  });
+  const filasTexto = d.filas.map(function(f) {
+    return [fmtFecha(f.fecha), f.cliente, f.articulo, f.cantidad, fmtMoneda(f.precio), f.pago];
+  });
+  return { d, encabezados, filasNumericas, filasTexto };
+}
+
+function _repVenExportarCSV() {
+  const dat = _repVenDatosExportar();
+  if (!dat) return;
+  const filasCsv = [
+    ['Ventas del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Moneda: ' + dat.d.monedaVal],
+    ['Filtros: ' + dat.d.filtrosTexto],
+    [],
+    dat.encabezados,
+  ].concat(dat.filasTexto);
+  const csv = filasCsv.map(function(f){ return f.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  const blob = new Blob(['\ufeff'+csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'reporte_ventas_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '_' + dat.d.monedaVal + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function _repVenExportarExcel() {
+  const dat = _repVenDatosExportar();
+  if (!dat || typeof XLSX === 'undefined') { alert('No se pudo cargar el generador de Excel. Verifica tu conexión e intenta de nuevo.'); return; }
+  const FILA_ENCAB = 4, FILA_DATOS_DESDE = 5;
+  const hoja = XLSX.utils.aoa_to_sheet([
+    ['Reporte de Ventas'],
+    ['Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Moneda: ' + dat.d.monedaVal],
+    ['Filtros: ' + dat.d.filtrosTexto],
+    [],
+    dat.encabezados,
+  ].concat(dat.filasNumericas));
+  hoja['!cols'] = [ {wch:14}, {wch:28}, {wch:34}, {wch:12}, {wch:16}, {wch:18} ];
+  const NUM_FILAS = dat.filasNumericas.length;
+  for (let col = 0; col < 6; col++) {
+    const refEncab = XLSX.utils.encode_cell({ r: FILA_ENCAB, c: col });
+    if (hoja[refEncab]) hoja[refEncab].s = { alignment: { horizontal: 'center', vertical: 'center' }, font: { bold: true } };
+    if (col === 3 || col === 4) {
+      const formatoNum = col === 4 ? '#,##0.00' : '#,##0';
+      for (let i = 0; i < NUM_FILAS; i++) {
+        const ref = XLSX.utils.encode_cell({ r: FILA_DATOS_DESDE + i, c: col });
+        if (hoja[ref]) { hoja[ref].z = formatoNum; hoja[ref].t = 'n'; hoja[ref].s = { alignment: { horizontal: 'right' } }; }
+      }
+    }
+  }
+  const libro = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(libro, hoja, 'Ventas');
+  XLSX.writeFile(libro, 'reporte_ventas_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '_' + dat.d.monedaVal + '.xlsx', { cellStyles: true });
+}
+
+function _repVenExportarPDF() {
+  const dat = _repVenDatosExportar();
+  if (!dat || typeof window.jspdf === 'undefined') { alert('No se pudo cargar el generador de PDF. Verifica tu conexión e intenta de nuevo.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape' });
+  doc.setFontSize(14);
+  doc.text('Reporte de Ventas', 14, 15);
+  doc.setFontSize(9);
+  doc.text('Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Moneda: ' + dat.d.monedaVal, 14, 21);
+  doc.text('Filtros: ' + dat.d.filtrosTexto, 14, 26);
+  doc.autoTable({
+    head: [dat.encabezados],
+    body: dat.filasTexto,
+    startY: 31,
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [255, 107, 0], halign: 'center' },
+    columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'center' } },
+  });
+  doc.save('reporte_ventas_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '_' + dat.d.monedaVal + '.pdf');
 }
