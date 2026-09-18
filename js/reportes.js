@@ -792,6 +792,11 @@ async function repVentasRender(cont) {
   let areas = [], categorias = [], tipos = [], clientes = [];
   try {
     areas = await api('param_areas','GET',null, '?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo');
+    // Solo Áreas de Ventas -- códigos del grupo 5000 y 6000
+    areas = areas.filter(function(a) {
+      const cod = parseInt(a.codigo, 10);
+      return cod >= 5000 && cod < 7000;
+    });
   } catch(e) { console.warn('Error cargando Áreas:', e); }
   try {
     categorias = await api('inv_categorias','GET',null,
