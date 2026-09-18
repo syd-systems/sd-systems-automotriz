@@ -23,6 +23,7 @@ async function renderReportes() {
     + '<select id="rep-selector" onchange="_reporteActual=this.value; renderReportes()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;cursor:pointer">'
     + REPORTES_DISPONIBLES.map(function(r){ return '<option value="'+r.id+'"' + (r.id === _reporteActual ? ' selected' : '') + '>' + r.nombre + '</option>'; }).join('')
     + '</select>'
+    + '<span id="rep-inv-tasa-info" style="margin-left:14px;font-size:12px;color:var(--suave);font-family:var(--font-mono)"></span>'
     + '</div>'
     + '<div id="reportes-contenido"></div>'
     + '</div>';
@@ -102,7 +103,6 @@ async function repInventarioRender(cont) {
     + '<input type="checkbox" id="rep-inv-solo-stock" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))"' + (soloConStock ? ' checked' : '') + ' style="cursor:pointer">'
     + 'Solo Artículos con Stock</label>'
     + '<button onclick="repInventarioLimpiarFiltros()" title="Limpiar filtros" style="background:var(--gris2);border:1px solid var(--borde);color:var(--suave);padding:8px 10px;border-radius:5px;cursor:pointer;font-size:14px;line-height:1">🗑</button>'
-    + '<div id="rep-inv-tasa-info" style="font-size:12px;color:var(--suave);font-family:var(--font-mono)">Cargando tasa...</div>'
     + '<div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">'
     + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Formato</label>'
     + '<select id="rep-inv-formato" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
