@@ -48,7 +48,15 @@ async function repInventarioRender(cont) {
     + '<option value="VES"' + (monedaVal==='VES'?' selected':'') + '>VES</option>'
     + '</select></div>'
     + '<div id="rep-inv-tasa-info" style="font-size:12px;color:var(--suave);font-family:var(--font-mono)">Cargando tasa...</div>'
-    + '<button class="btn-secundario" onclick="repInventarioExportar()" style="margin-left:auto">⬇ Exportar CSV</button>'
+    + '<div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Formato</label>'
+    + '<select id="rep-inv-formato" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value="csv">CSV</option>'
+    + '<option value="excel">Excel (.xlsx)</option>'
+    + '<option value="pdf">PDF</option>'
+    + '</select></div>'
+    + '<button class="btn-secundario" onclick="repInventarioExportar()">⬇ Exportar</button>'
+    + '</div>'
     + '</div>'
     + '<div id="rep-inv-resumen" style="display:flex;gap:20px;margin-bottom:20px">'
     + '<div style="flex:1;background:var(--gris2);border-radius:8px;padding:16px 20px">'
@@ -251,21 +259,71 @@ function _repInvRenderTabla() {
 }
 
 function repInventarioExportar() {
+  const formato = document.getElementById('rep-inv-formato')?.value || 'csv';
+  if (formato === 'excel') _repInvExportarExcel();
+  else if (formato === 'pdf') _repInvExportarPDF();
+  else _repInvExportarCSV();
+}
+
+// Encabezados y filas planas -- compartido entre los 3 formatos.
+function _repInvDatosExportar() {
   const d = window._reporteInvActual;
-  if (!d) return;
-  const filasCsv = [['Código','Artículo','Stock','Stock Mínimo','Rotación (días)','Precio Promedio ('+d.monedaVal+')','Valor Total ('+d.monedaVal+')','Margen %']];
-  d.filas.forEach(function(f) {
-    filasCsv.push([
+  if (!d) return null;
+  const encabezados = ['Código','Artículo','Stock','Stock Mínimo','Rotación (días)','Precio Promedio ('+d.monedaVal+')','Valor Total ('+d.monedaVal+')','Margen %'];
+  const filas = d.filas.map(function(f) {
+    return [
       f.codigo, f.nombre, f.stock, f.stockMin,
-      f.diasCobertura !== null ? f.diasCobertura : '', f.precioProm.toFixed(2), f.valorLinea.toFixed(2),
-      f.margen !== null ? f.margen.toFixed(1) : ''
-    ]);
+      f.diasCobertura !== null ? f.diasCobertura : '—', f.precioProm.toFixed(2), f.valorLinea.toFixed(2),
+      f.margen !== null ? f.margen.toFixed(1) + '%' : '—'
+    ];
   });
+  return { d, encabezados, filas };
+}
+
+function _repInvExportarCSV() {
+  const dat = _repInvDatosExportar();
+  if (!dat) return;
+  const filasCsv = [dat.encabezados].concat(dat.filas);
   const csv = filasCsv.map(function(f){ return f.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
   const blob = new Blob(['\ufeff'+csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'reporte_inventario_' + d.fechaCorteVal + '_' + d.monedaVal + '.csv';
+  a.href = url; a.download = 'reporte_inventario_' + dat.d.fechaCorteVal + '_' + dat.d.monedaVal + '.csv';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function _repInvExportarExcel() {
+  const dat = _repInvDatosExportar();
+  if (!dat || typeof XLSX === 'undefined') { alert('No se pudo cargar el generador de Excel. Verifica tu conexión e intenta de nuevo.'); return; }
+  const hoja = XLSX.utils.aoa_to_sheet([
+    ['Reporte de Inventario'],
+    ['Fecha de Corte: ' + dat.d.fechaCorteVal + '   |   Moneda: ' + dat.d.monedaVal + (dat.d.monedaVal === 'VES' ? '   |   Tasa BCV: ' + dat.d.tasaCorte : '')],
+    [],
+    dat.encabezados,
+  ].concat(dat.filas));
+  hoja['!cols'] = [ {wch:14}, {wch:38}, {wch:10}, {wch:12}, {wch:14}, {wch:16}, {wch:16}, {wch:10} ];
+  const libro = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(libro, hoja, 'Inventario');
+  XLSX.writeFile(libro, 'reporte_inventario_' + dat.d.fechaCorteVal + '_' + dat.d.monedaVal + '.xlsx');
+}
+
+function _repInvExportarPDF() {
+  const dat = _repInvDatosExportar();
+  if (!dat || typeof window.jspdf === 'undefined') { alert('No se pudo cargar el generador de PDF. Verifica tu conexión e intenta de nuevo.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape' });
+  doc.setFontSize(14);
+  doc.text('Reporte de Inventario', 14, 15);
+  doc.setFontSize(9);
+  doc.text('Fecha de Corte: ' + dat.d.fechaCorteVal + '   |   Moneda: ' + dat.d.monedaVal
+    + (dat.d.monedaVal === 'VES' ? '   |   Tasa BCV: ' + dat.d.tasaCorte : ''), 14, 21);
+  doc.autoTable({
+    head: [dat.encabezados],
+    body: dat.filas,
+    startY: 26,
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [255, 107, 0] },
+  });
+  doc.save('reporte_inventario_' + dat.d.fechaCorteVal + '_' + dat.d.monedaVal + '.pdf');
 }
