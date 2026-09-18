@@ -32,6 +32,16 @@ async function renderReportes() {
 }
 
 // ═══════════════════ REPORTE DE INVENTARIO ═══════════════════
+function repInventarioLimpiarFiltros() {
+  const fecha = document.getElementById('rep-inv-fecha');       if (fecha) fecha.value = getHoyVzla();
+  const moneda = document.getElementById('rep-inv-moneda');     if (moneda) moneda.value = 'VES';
+  const area = document.getElementById('rep-inv-area');         if (area) area.value = '';
+  const categoria = document.getElementById('rep-inv-categoria'); if (categoria) categoria.value = '';
+  const tipo = document.getElementById('rep-inv-tipo');         if (tipo) tipo.value = '';
+  const soloStock = document.getElementById('rep-inv-solo-stock'); if (soloStock) soloStock.checked = false;
+  repInventarioRender(document.getElementById('reportes-contenido'));
+}
+
 async function repInventarioRender(cont) {
   if (!cont) return;
   const fechaCorteVal = document.getElementById('rep-inv-fecha')?.value || getHoyVzla();
@@ -91,6 +101,7 @@ async function repInventarioRender(cont) {
     + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--texto);cursor:pointer;padding-bottom:9px">'
     + '<input type="checkbox" id="rep-inv-solo-stock" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))"' + (soloConStock ? ' checked' : '') + ' style="cursor:pointer">'
     + 'Solo Artículos con Stock</label>'
+    + '<button onclick="repInventarioLimpiarFiltros()" title="Limpiar filtros" style="background:var(--gris2);border:1px solid var(--borde);color:var(--suave);padding:8px 10px;border-radius:5px;cursor:pointer;font-size:14px;line-height:1">🗑</button>'
     + '<div id="rep-inv-tasa-info" style="font-size:12px;color:var(--suave);font-family:var(--font-mono)">Cargando tasa...</div>'
     + '<div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">'
     + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Formato</label>'
