@@ -765,11 +765,11 @@
   #modal-vehiculo .form-campo select {
     font-size: 13px !important;
   }
-  #modal-propietario .form-campo label {
+  #modal-cliente .form-campo label {
     font-size: 12px !important;
   }
-  #modal-propietario .form-campo input,
-  #modal-propietario .form-campo select {
+  #modal-cliente .form-campo input,
+  #modal-cliente .form-campo select {
     font-size: 13px !important;
   }
   #modal-os .form-campo label {
@@ -1332,7 +1332,7 @@
       </div>
 
       <div class="nav-seccion" id="nav-seccion-operaciones">Operaciones</div>
-      <div class="nav-item" id="nav-PROPIETARIOS" onclick="mostrarModulo('propietarios', this); cerrarMenuMovil()" style="display:none">
+      <div class="nav-item" id="nav-CLIENTES" onclick="mostrarModulo('clientes', this); cerrarMenuMovil()" style="display:none">
         <span class="nav-icono">👤</span> Clientes
       </div>
       <div class="nav-item" id="nav-VEHICULOS" onclick="mostrarModulo('vehiculos', this); cerrarMenuMovil()" style="display:none">
@@ -1585,19 +1585,19 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="js/core.js?v=20260909128"></script>
-<script src="js/parametros.js?v=20260909128"></script>
-<script src="js/empresas.js?v=20260909128"></script>
-<script src="js/ingresos.js?v=20260909128"></script>
-<script src="js/inventario.js?v=20260909128"></script>
-<script src="js/proveedores.js?v=20260909128"></script>
-<script src="js/ventas.js?v=20260909128"></script>
-<script src="js/contabilidad.js?v=20260909128"></script>
-<script src="js/egresos.js?v=20260909128"></script>
-<script src="js/vehiculos.js?v=20260909128"></script>
-<script src="js/catalogo.js?v=20260909128"></script>
-<script src="js/ordenes.js?v=20260909128"></script>
-<script src="js/reportes.js?v=20260909128"></script>
+<script src="js/core.js?v=20260909129"></script>
+<script src="js/parametros.js?v=20260909129"></script>
+<script src="js/empresas.js?v=20260909129"></script>
+<script src="js/ingresos.js?v=20260909129"></script>
+<script src="js/inventario.js?v=20260909129"></script>
+<script src="js/proveedores.js?v=20260909129"></script>
+<script src="js/ventas.js?v=20260909129"></script>
+<script src="js/contabilidad.js?v=20260909129"></script>
+<script src="js/egresos.js?v=20260909129"></script>
+<script src="js/vehiculos.js?v=20260909129"></script>
+<script src="js/catalogo.js?v=20260909129"></script>
+<script src="js/ordenes.js?v=20260909129"></script>
+<script src="js/reportes.js?v=20260909129"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -1684,13 +1684,13 @@
 
 
 <!-- ═══════════════════════════════════════ -->
-<!--    MODAL PROPIETARIO                   -->
+<!--    MODAL CLIENTE                   -->
 <!-- ═══════════════════════════════════════ -->
-<div class="modal-overlay" id="modal-propietario">
+<div class="modal-overlay" id="modal-cliente">
   <div class="modal" style="max-width:750px">
     <div class="modal-header">
       <h3 id="modal-prop-titulo">NUEVO CLIENTE</h3>
-      <button class="modal-cerrar" onclick="cerrarModal('modal-propietario')">✕</button>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-cliente')">✕</button>
     </div>
     <div class="modal-body">
 
@@ -1698,7 +1698,7 @@
         <div class="form-campo form-full" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
           <div>
             <label>Condición Legal</label>
-            <select id="prop-tipo-doc" onchange="limpiarDatosRegistroCivilPropietario(); consultarCedula(this.value, document.getElementById('prop-num-doc').value)" style="width:100%">
+            <select id="prop-tipo-doc" onchange="limpiarDatosRegistroCivilCliente(); consultarCedula(this.value, document.getElementById('prop-num-doc').value)" style="width:100%">
               <option value="V">V — Venezolano</option>
               <option value="E">E — Extranjero</option>
               <option value="J">J — Jurídico</option>
@@ -1707,8 +1707,8 @@
           </div>
           <div>
             <label>Número de Identificación</label>
-            <input type="text" id="prop-num-doc" placeholder="Solo Dígitos" style="width:100%" oninput="this.value=this.value.replace(/[^0-9]/g,''); limpiarDatosRegistroCivilPropietario(); if(this.value.length>=6) consultarCedula(document.getElementById('prop-tipo-doc').value, this.value)"
-              onblur="validarIdentificacionPropietarioDuplicada()"
+            <input type="text" id="prop-num-doc" placeholder="Solo Dígitos" style="width:100%" oninput="this.value=this.value.replace(/[^0-9]/g,''); limpiarDatosRegistroCivilCliente(); if(this.value.length>=6) consultarCedula(document.getElementById('prop-tipo-doc').value, this.value)"
+              onblur="validarIdentificacionClienteDuplicada()"
               onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}">
             <div id="prop-num-doc-aviso" style="display:none;font-size:11px;color:#fc8181;margin-top:4px">⚠ Ya existe un cliente con esta identificación.</div>
             <div id="prop-cedula-info" style="display:none"></div>
@@ -1771,15 +1771,15 @@
       <div class="alerta alerta-exito" id="alerta-prop-ok" style="margin:0;width:100%"></div>
       <div class="alerta alerta-error" id="alerta-prop-err" style="margin:0;width:100%"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;width:100%">
-        <button class="btn-secundario" onclick="cerrarModal('modal-propietario')">Retornar</button>
-        <button id="btn-guardar-propietario" class="btn-primario" onclick="guardarPropietario()">GUARDAR</button>
+        <button class="btn-secundario" onclick="cerrarModal('modal-cliente')">Retornar</button>
+        <button id="btn-guardar-cliente" class="btn-primario" onclick="guardarCliente()">GUARDAR</button>
       </div>
     </div>
   </div>
 </div>
 
 <!-- ═══════════════════════════════════════ -->
-<!--    MODAL FICHA PROPIETARIO             -->
+<!--    MODAL FICHA CLIENTE             -->
 <!-- ═══════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-ficha-prop">
   <div class="modal" style="max-width:600px">
@@ -1860,8 +1860,8 @@
           </div>
         </div>
         <div class="form-campo form-full">
-          <label>Cliente (Propietario)</label>
-          <select id="veh-propietario" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}"></select>
+          <label>Cliente</label>
+          <select id="veh-cliente" onkeydown="if(event.key==='Enter'){event.preventDefault();nextField(this)}"></select>
         </div>
         <div class="form-campo form-full">
           <label>Foto del Carnet de Circulación</label>
