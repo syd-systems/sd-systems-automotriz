@@ -463,7 +463,6 @@ function repComprasLimpiarFiltros() {
   const desde = document.getElementById('rep-com-desde'); if (desde) desde.value = hoy;
   const hasta = document.getElementById('rep-com-hasta'); if (hasta) hasta.value = hoy;
   const moneda = document.getElementById('rep-com-moneda'); if (moneda) moneda.value = 'VES';
-  const area = document.getElementById('rep-com-area'); if (area) area.value = '';
   const categoria = document.getElementById('rep-com-categoria'); if (categoria) categoria.value = '';
   const tipo = document.getElementById('rep-com-tipo'); if (tipo) tipo.value = '';
   const proveedor = document.getElementById('rep-com-proveedor'); if (proveedor) proveedor.value = '';
@@ -511,11 +510,6 @@ async function repComprasRender(cont) {
     + '<select id="rep-com-moneda" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
     + '<option value="VES"' + (monedaVal==='VES'?' selected':'') + '>VES</option>'
     + '<option value="USD"' + (monedaVal==='USD'?' selected':'') + '>USD</option>'
-    + '</select></div>'
-    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Área</label>'
-    + '<select id="rep-com-area" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
-    + '<option value=""' + (areaVal===''?' selected':'') + '>Todas las Áreas</option>'
-    + areas.map(function(a){ return '<option value="'+a.id+'"' + (String(areaVal)===String(a.id)?' selected':'') + '>' + escapeHtml(a.nombre) + '</option>'; }).join('')
     + '</select></div>'
     + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Categoría</label>'
     + '<select id="rep-com-categoria" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
@@ -775,6 +769,7 @@ function repVentasLimpiarFiltros() {
   const categoria = document.getElementById('rep-ven-categoria'); if (categoria) categoria.value = '';
   const tipo = document.getElementById('rep-ven-tipo'); if (tipo) tipo.value = '';
   const cliente = document.getElementById('rep-ven-cliente'); if (cliente) cliente.value = '';
+  const formaPago = document.getElementById('rep-ven-forma-pago'); if (formaPago) formaPago.value = '';
   repVentasRender(document.getElementById('reportes-contenido'));
 }
 
@@ -789,8 +784,12 @@ async function repVentasRender(cont) {
   const categoriaVal = document.getElementById('rep-ven-categoria')?.value || '';
   const tipoVal = document.getElementById('rep-ven-tipo')?.value || '';
   const clienteVal = document.getElementById('rep-ven-cliente')?.value || '';
+  const formaPagoVal = document.getElementById('rep-ven-forma-pago')?.value || '';
 
-  let areas = [], categorias = [], tipos = [], clientes = [];
+  let areas = [], categorias = [], tipos = [], clientes = [], formasPago = [];
+  try {
+    formasPago = await api('param_metodos_pago','GET',null, '?select=id_metodo,nombre&order=nombre.asc');
+  } catch(e) { console.warn('Error cargando Formas de Pago:', e); }
   try {
     areas = await api('param_areas','GET',null, '?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo');
     // Solo Áreas de Ventas -- códigos del grupo 5000 y 6000
@@ -842,6 +841,12 @@ async function repVentasRender(cont) {
     + '<select id="rep-ven-cliente" onchange="repVentasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
     + '<option value=""' + (clienteVal===''?' selected':'') + '>Todos</option>'
     + clientes.map(function(c){ return '<option value="'+c.id_cliente+'"' + (String(clienteVal)===String(c.id_cliente)?' selected':'') + '>' + escapeHtml(c.nombre_completo) + '</option>'; }).join('')
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Forma de Pago</label>'
+    + '<select id="rep-ven-forma-pago" onchange="repVentasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value=""' + (formaPagoVal===''?' selected':'') + '>Todas</option>'
+    + formasPago.map(function(m){ return '<option value="'+escapeHtml(m.nombre)+'"' + (formaPagoVal===m.nombre?' selected':'') + '>' + escapeHtml(m.nombre) + '</option>'; }).join('')
+    + '<option value="Pendiente de cobro"' + (formaPagoVal==='Pendiente de cobro'?' selected':'') + '>Pendiente de cobro</option>'
     + '</select></div>'
     + '<button onclick="repVentasLimpiarFiltros()" title="Limpiar filtros" style="background:#dc2626;border:1px solid #dc2626;color:#fff;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:16px;line-height:1;box-shadow:0 1px 3px rgba(220,38,38,0.4)">🗑</button>'
     + '<div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">'
@@ -922,23 +927,24 @@ async function repVentasRender(cont) {
     detalle = detalle.filter(function(d){ return itemsMap[d.id_articulo] !== undefined; });
   }
 
-  let totalVentasSet = new Set(), totalMonto = 0;
-  const filas = detalle.map(function(d) {
+  let filas = detalle.map(function(d) {
     const v = ventasHead[d.id_venta];
     const art = itemsMap[d.id_articulo];
     const precioUsd = parseFloat(d.precio_unitario||0);
     const tasaVen = parseFloat(v?.tasa_bcv||1);
     const precioMostrar = monedaVal === 'VES' ? precioUsd * tasaVen : precioUsd;
     const montoLinea = parseFloat(d.cantidad||0) * precioMostrar;
-    totalVentasSet.add(d.id_venta);
-    totalMonto += montoLinea;
     return {
-      fecha: v?.fecha_venta, cliente: clienteNombrePorId[v?.id_cliente]||'—',
+      idVenta: d.id_venta, fecha: v?.fecha_venta, cliente: clienteNombrePorId[v?.id_cliente]||'—',
       articulo: art ? art.nombre_articulo : '(Artículo eliminado)', area: areaNombrePorId[v?.id_area]||'',
       cantidad: parseFloat(d.cantidad||0), precio: precioMostrar, montoLinea: montoLinea,
       pago: v?.id_factura && metodoPorFactura[v.id_factura] ? metodoPorFactura[v.id_factura] : 'Pendiente de cobro'
     };
   });
+  if (formaPagoVal) filas = filas.filter(function(f){ return f.pago === formaPagoVal; });
+
+  let totalVentasSet = new Set(), totalMonto = 0;
+  filas.forEach(function(f){ totalVentasSet.add(f.idVenta); totalMonto += f.montoLinea; });
 
   document.getElementById('rep-ven-total-ventas').textContent = totalVentasSet.size.toLocaleString('es-VE');
   document.getElementById('rep-ven-total-monto').textContent = (monedaVal==='VES' ? fmtBs(totalMonto) + ' Bs' : '$ ' + fmtUSD(totalMonto));
@@ -948,6 +954,7 @@ async function repVentasRender(cont) {
   if (categoriaVal) { const c = categorias.find(function(x){ return String(x.id_categoria)===String(categoriaVal); }); if (c) filtrosActivos.push('Categoría: ' + c.nombre); }
   if (tipoVal) { const t = tipos.find(function(x){ return String(x.id_tipo)===String(tipoVal); }); if (t) filtrosActivos.push('Tipo: ' + t.nombre); }
   if (clienteVal) filtrosActivos.push('Cliente: ' + (clienteNombrePorId[clienteVal]||clienteVal));
+  if (formaPagoVal) filtrosActivos.push('Forma de Pago: ' + formaPagoVal);
   const filtrosTexto = filtrosActivos.length ? filtrosActivos.join('   |   ') : 'Sin filtros adicionales (todos los Artículos, todas las Áreas)';
 
   window._reporteVentasActual = { monedaVal, desdeVal, hastaVal, filas, filtrosTexto };
@@ -1115,6 +1122,7 @@ function repServiciosLimpiarFiltros() {
   const carroceria = document.getElementById('rep-ser-carroceria'); if (carroceria) carroceria.value = '';
   const marca = document.getElementById('rep-ser-marca'); if (marca) marca.value = '';
   const modelo = document.getElementById('rep-ser-modelo'); if (modelo) modelo.value = '';
+  const formaPago = document.getElementById('rep-ser-forma-pago'); if (formaPago) formaPago.value = '';
   repServiciosRender(document.getElementById('reportes-contenido'));
 }
 
@@ -1129,8 +1137,12 @@ async function repServiciosRender(cont) {
   const carroceriaVal = document.getElementById('rep-ser-carroceria')?.value || '';
   const marcaVal = document.getElementById('rep-ser-marca')?.value || '';
   const modeloVal = document.getElementById('rep-ser-modelo')?.value || '';
+  const formaPagoVal = document.getElementById('rep-ser-forma-pago')?.value || '';
 
-  let catalogo = [], carrocerias = [], marcas = [], modelos = [];
+  let catalogo = [], carrocerias = [], marcas = [], modelos = [], formasPago = [];
+  try {
+    formasPago = await api('param_metodos_pago','GET',null, '?select=id_metodo,nombre&order=nombre.asc');
+  } catch(e) { console.warn('Error cargando Formas de Pago:', e); }
   try {
     catalogo = await api('servicios_catalogo','GET',null,
       '?activo=eq.true&select=id_servicio,nombre,grupo&order=grupo.asc,nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
@@ -1178,6 +1190,12 @@ async function repServiciosRender(cont) {
     + '<select id="rep-ser-modelo" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
     + '<option value=""' + (modeloVal===''?' selected':'') + '>Todos</option>'
     + modelos.map(function(m){ return '<option value="'+escapeHtml(m)+'"' + (modeloVal===m?' selected':'') + '>' + escapeHtml(m) + '</option>'; }).join('')
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Forma de Pago</label>'
+    + '<select id="rep-ser-forma-pago" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value=""' + (formaPagoVal===''?' selected':'') + '>Todas</option>'
+    + formasPago.map(function(m){ return '<option value="'+escapeHtml(m.nombre)+'"' + (formaPagoVal===m.nombre?' selected':'') + '>' + escapeHtml(m.nombre) + '</option>'; }).join('')
+    + '<option value="Pendiente de cobro"' + (formaPagoVal==='Pendiente de cobro'?' selected':'') + '>Pendiente de cobro</option>'
     + '</select></div>'
     + '<button onclick="repServiciosLimpiarFiltros()" title="Limpiar filtros" style="background:#dc2626;border:1px solid #dc2626;color:#fff;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:16px;line-height:1;box-shadow:0 1px 3px rgba(220,38,38,0.4)">🗑</button>'
     + '<div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">'
@@ -1253,12 +1271,10 @@ async function repServiciosRender(cont) {
     } catch(e) { console.warn('Error cargando Forma de Pago (cont_cxc):', e); }
   }
 
-  let totalMonto = 0;
-  const filas = lineas.map(function(l) {
+  let filas = lineas.map(function(l) {
     const o = ordenesHead[l.id_orden];
     const idFact = idsFacturaOrden[l.id_orden];
     const precio = parseFloat(l.precio_usd||0);
-    totalMonto += precio;
     return {
       fecha: o?.fecha_entrada, cliente: o?.clientes?.nombre_completo || '—',
       servicio: l.id_servicio && catalogoPorId[l.id_servicio] ? catalogoPorId[l.id_servicio].nombre : (l.descripcion||'(Servicio libre)'),
@@ -1266,11 +1282,16 @@ async function repServiciosRender(cont) {
       pago: idFact && metodoPorFactura[idFact] ? metodoPorFactura[idFact] : 'Pendiente de cobro'
     };
   });
+  if (formaPagoVal) filas = filas.filter(function(f){ return f.pago === formaPagoVal; });
+
+  let totalMonto = 0;
+  filas.forEach(function(f){ totalMonto += f.precio; });
 
   document.getElementById('rep-ser-total-servicios').textContent = filas.length.toLocaleString('es-VE');
   document.getElementById('rep-ser-total-monto').textContent = '$ ' + fmtUSD(totalMonto);
 
   const filtrosActivos = [];
+  if (formaPagoVal) filtrosActivos.push('Forma de Pago: ' + formaPagoVal);
   if (grupoVal) filtrosActivos.push('Grupo: ' + grupoVal);
   if (servicioVal) { const s = catalogo.find(function(x){ return String(x.id_servicio)===String(servicioVal); }); if (s) filtrosActivos.push('Servicio: ' + s.nombre); }
   if (carroceriaVal) filtrosActivos.push('Carrocería: ' + carroceriaVal);
