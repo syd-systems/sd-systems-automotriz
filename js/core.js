@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909139';
+const SYD_VERSION = '20260909140';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -1750,10 +1750,17 @@ async function renderUsuarios(filtro) {
 
     // Cargar empresas de cada usuario (de la ficha de empleado)
     try {
-      const empleadosMap = await api('empleados','GET',null,'?select=correo,id_empresa,emisores(nombre)');
+      const empleadosMap = await api('empleados','GET',null,'?select=correo,id_empresa,emisores(nombre),param_areas(nombre,codigo)');
       const mapaEmpleados = {};
-      empleadosMap.forEach(function(e){ mapaEmpleados[e.correo] = e.emisores ? e.emisores.nombre : null; });
-      usuarios.forEach(function(u){ u._empresaEmpleado = mapaEmpleados[u.correo_usuario] || null; });
+      const mapaAreas = {};
+      empleadosMap.forEach(function(e){
+        mapaEmpleados[e.correo] = e.emisores ? e.emisores.nombre : null;
+        mapaAreas[e.correo] = e.param_areas ? e.param_areas : null;
+      });
+      usuarios.forEach(function(u){
+        u._empresaEmpleado = mapaEmpleados[u.correo_usuario] || null;
+        u._areaEmpleado = mapaAreas[u.correo_usuario] || null;
+      });
     } catch(eEmp) {}
 
     const usuariosFiltrados = (filtro && filtro.trim())
@@ -1785,6 +1792,7 @@ async function renderUsuarios(filtro) {
               <div style="font-weight:500;font-size:15px">${u.nombre}</div>
               <div style="font-size:13px;color:var(--suave)">${u.correo_usuario}</div>
               ${u._empresaEmpleado ? `<div style="font-size:10px;color:var(--naranja);font-weight:600">🏢 ${u._empresaEmpleado}</div>` : ''}
+              ${u._areaEmpleado ? `<div style="font-size:10px;color:var(--suave)">📍 ${u._areaEmpleado.nombre}${u._areaEmpleado.codigo ? ' (' + String(u._areaEmpleado.codigo).replace(/-/g,'') + ')' : ''}</div>` : ''}
             </div>
           </div>
         </td>
