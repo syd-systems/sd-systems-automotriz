@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: VEHICULOS ───
 // ═══════════════════════════════════════════════════════
-// FASE 2 — VEHÍCULOS Y PROPIETARIOS
+// FASE 2 — VEHÍCULOS Y CLIENTES
 // ═══════════════════════════════════════════════════════
 
 const SUPABASE_STORAGE_URL = SUPABASE_URL + '/storage/v1/object/public/sd-systems-fotos/';
@@ -18,7 +18,7 @@ const SUPABASE_UPLOAD_URL  = SUPABASE_URL + '/storage/v1/object/sd-systems-fotos
 // Civil (Nombre, RIF, Dirección) -- se llama ANTES de cada consulta
 // nueva, para que no se quede pegada la información de una cédula
 // distinta que se haya consultado antes en el mismo formulario.
-function limpiarDatosRegistroCivilPropietario() {
+function limpiarDatosRegistroCivilCliente() {
   const campoNombre = document.getElementById('prop-nombre');
   const campoRif = document.getElementById('prop-rif-civil');
   const campoDireccion = document.getElementById('prop-direccion');
@@ -101,7 +101,7 @@ async function subirFoto(archivo, carpeta) {
 }
 
 // ══════════════════════════════
-// MÓDULO PROPIETARIOS
+// MÓDULO CLIENTES
 // ══════════════════════════════
 
 // ─── CAPITALIZAR NOMBRE ───
@@ -113,35 +113,35 @@ function capitalizarNombre(str) {
 }
 
 
-let propietariosCache = [];
+let clientesCache = [];
 
-async function renderPropietarios() {
-  if (!sesionActual?.administrador && !modulosAcceso.includes('PROPIETARIOS')) {
+async function renderClientes() {
+  if (!sesionActual?.administrador && !modulosAcceso.includes('CLIENTES')) {
     document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
     return;
   }
 
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando clientes...</div>';
-  await cargarPropietarios();
+  await cargarClientes();
 }
 
-async function cargarPropietarios(filtro) {
+async function cargarClientes(filtro) {
   const c = document.getElementById('contenido-principal');
 
   const panelYaExiste = !!document.getElementById('buscar-prop');
 
   if (!panelYaExiste) {
     c.innerHTML =
-      '<div class="panel" id="panel-propietarios">'
+      '<div class="panel" id="panel-clientes">'
       + '<div class="panel-header">'
       + '<h3 id="prop-contador">Clientes</h3>'
       + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
       + '<input type="text" id="buscar-prop" placeholder="Buscar por nombre o documento..." '
-      + 'onkeyup="cargarPropietarios(this.value)" '
-      + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();cargarPropietarios(this.value)}else if(event.key===\'Escape\'){this.value=\'\';cargarPropietarios(\'\')}" '
+      + 'onkeyup="cargarClientes(this.value)" '
+      + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();cargarClientes(this.value)}else if(event.key===\'Escape\'){this.value=\'\';cargarClientes(\'\')}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:250px">'
-      + (puedo('PROPIETARIOS','CREAR') ? '<button class="btn-primario" onclick="abrirPropietario(null)">+ Nuevo Cliente</button>' : '')
+      + (puedo('CLIENTES','CREAR') ? '<button class="btn-primario" onclick="abrirCliente(null)">+ Nuevo Cliente</button>' : '')
       + '</div></div>'
       + '<div class="tabla-container" id="tabla-prop-cont"><div class="loading"><div class="spinner"></div> Cargando...</div></div>'
       + '</div>';
@@ -154,7 +154,7 @@ async function cargarPropietarios(filtro) {
     let query = '?select=*&order=fecha_registro.desc' + emisorQ();
     if (filtro && filtro.trim()) query += '&or=(nombre_completo.ilike.*' + encodeURIComponent(filtro.trim()) + '*,numero_doc.ilike.*' + encodeURIComponent(filtro.trim()) + '*)';
     const props = await api('clientes', 'GET', null, query);
-    propietariosCache = props;
+    clientesCache = props;
 
     const vehs = await api('vehiculos', 'GET', null, '?select=id_vehiculo,placa,marca,modelo,id_cliente'+emisorQ());
     props.forEach(function(p) {
@@ -175,13 +175,13 @@ async function cargarPropietarios(filtro) {
         + '<div style="font-size:11px;color:var(--suave)">' + p.tipo_doc + '-' + p.numero_doc + '</div>'
         + (p.tipo_contribuyente ? '<span class="badge ' + ({'ORDINARIO':'badge-naranja','ESPECIAL':'badge-verde','FORMAL':'badge-gris'}[p.tipo_contribuyente]||'badge-gris') + '" style="font-size:9px;margin-top:3px;display:inline-block">' + ({'ORDINARIO':'Ord.','ESPECIAL':'Esp.','FORMAL':'Form.'}[p.tipo_contribuyente]||p.tipo_contribuyente) + '</span>' : '')
         + '</div></div></td>'
-        + '<td style="font-size:12px">' + (puedo('PROPIETARIOS','VER_DATOS_PERSONALES') ? (p.telefono || '—') : '🔒') + '</td>'
-        + '<td style="font-size:12px">' + (puedo('PROPIETARIOS','VER_DATOS_PERSONALES') ? (p.correo || '—') : '🔒') + '</td>'
-        + '<td><span class="badge badge-naranja" style="cursor:pointer" onclick="verVehiculosPropietario(' + p.id_cliente + ')">' + vCount + ' veh.</span></td>'
+        + '<td style="font-size:12px">' + (puedo('CLIENTES','VER_DATOS_PERSONALES') ? (p.telefono || '—') : '🔒') + '</td>'
+        + '<td style="font-size:12px">' + (puedo('CLIENTES','VER_DATOS_PERSONALES') ? (p.correo || '—') : '🔒') + '</td>'
+        + '<td><span class="badge badge-naranja" style="cursor:pointer" onclick="verVehiculosCliente(' + p.id_cliente + ')">' + vCount + ' veh.</span></td>'
         + '<td style="font-size:11px;color:var(--suave)">' + (vList.length > 30 ? vList.substring(0,30)+'...' : vList) + '</td>'
         + '<td>'
         + '<div style="display:flex;gap:6px">'
-        + '<button class="btn-secundario" onclick="verFichaPropietario(' + p.id_cliente + ')">Ver</button>'
+        + '<button class="btn-secundario" onclick="verFichaCliente(' + p.id_cliente + ')">Ver</button>'
         + '</div></td>'
         + '</tr>';
     }).join('');
@@ -204,7 +204,7 @@ async function cargarPropietarios(filtro) {
 // Validación en vivo de identificación duplicada -- combina Condición
 // Legal + Número de Identificación (V-12345678 y E-12345678 son
 // personas distintas). Se dispara apenas el Usuario sale del campo.
-async function validarIdentificacionPropietarioDuplicada() {
+async function validarIdentificacionClienteDuplicada() {
   const campo = document.getElementById('prop-num-doc');
   const aviso = document.getElementById('prop-num-doc-aviso');
   if (!campo || !aviso) return;
@@ -222,16 +222,16 @@ async function validarIdentificacionPropietarioDuplicada() {
     const yaExiste = existe && existe.length > 0;
     campo.style.borderColor = yaExiste ? '#fc8181' : '';
     aviso.style.display = yaExiste ? 'block' : 'none';
-  } catch(eValPropDup) { console.warn('Error validando identificación de propietario:', eValPropDup); }
+  } catch(eValPropDup) { console.warn('Error validando identificación de cliente:', eValPropDup); }
 }
 
-let _callbackPropietarioGuardado = null;
+let _callbackClienteGuardado = null;
 
-function abrirPropietario(id, onGuardado) {
-  if (id && !puedo('PROPIETARIOS','EDITAR')) { alert('No tiene permiso para editar propietarios.'); return; }
-  if (!id && !puedo('PROPIETARIOS','CREAR')) { alert('No tiene permiso para registrar propietarios.'); return; }
-  _callbackPropietarioGuardado = typeof onGuardado === 'function' ? onGuardado : null;
-  const p = id ? propietariosCache.find(function(x) { return x.id_cliente === id; }) : null;
+function abrirCliente(id, onGuardado) {
+  if (id && !puedo('CLIENTES','EDITAR')) { alert('No tiene permiso para editar clientes.'); return; }
+  if (!id && !puedo('CLIENTES','CREAR')) { alert('No tiene permiso para registrar clientes.'); return; }
+  _callbackClienteGuardado = typeof onGuardado === 'function' ? onGuardado : null;
+  const p = id ? clientesCache.find(function(x) { return x.id_cliente === id; }) : null;
   document.getElementById('modal-prop-titulo').textContent = p ? 'EDITAR CLIENTE' : 'NUEVO CLIENTE';
   document.getElementById('prop-id').value          = p ? p.id_cliente : '';
   document.getElementById('prop-tipo-doc').value    = p ? p.tipo_doc        : 'V';
@@ -260,7 +260,7 @@ function abrirPropietario(id, onGuardado) {
     if (p && p.foto_documento) {
       propFotoActual.innerHTML = '<div style="position:relative;display:inline-block">'
         + '<img src="' + p.foto_documento + '" onerror="imgError(this)" style="height:70px;border-radius:6px;border:1px solid var(--borde);cursor:pointer" onclick="abrirVisor(\'' + p.foto_documento + '\')">'
-        + '<button onclick="eliminarDocPropietario(' + (p ? p.id_cliente : 0) + ', true)" style="position:absolute;top:-6px;right:-6px;background:rgba(229,62,62,0.85);border:none;color:#fff;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center">✕</button>'
+        + '<button onclick="eliminarDocCliente(' + (p ? p.id_cliente : 0) + ', true)" style="position:absolute;top:-6px;right:-6px;background:rgba(229,62,62,0.85);border:none;color:#fff;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center">✕</button>'
         + '</div>';
     } else {
       propFotoActual.innerHTML = '';
@@ -268,14 +268,14 @@ function abrirPropietario(id, onGuardado) {
   }
   const infoEl = document.getElementById('prop-cedula-info');
   if (infoEl) infoEl.style.display = 'none';
-  abrirModal('modal-propietario');
-  focusFirstField('modal-propietario');
+  abrirModal('modal-cliente');
+  focusFirstField('modal-cliente');
 }
 
-async function guardarPropietario() {
+async function guardarCliente() {
   const id = document.getElementById('prop-id').value;
-  if (id && !puedo('PROPIETARIOS','EDITAR')) { alert('No tiene permiso para editar propietarios.'); return; }
-  if (!id && !puedo('PROPIETARIOS','CREAR')) { alert('No tiene permiso para registrar propietarios.'); return; }
+  if (id && !puedo('CLIENTES','EDITAR')) { alert('No tiene permiso para editar clientes.'); return; }
+  if (!id && !puedo('CLIENTES','CREAR')) { alert('No tiene permiso para registrar clientes.'); return; }
   const tipDoc  = document.getElementById('prop-tipo-doc').value;
   const numDoc  = document.getElementById('prop-num-doc').value.trim();
   const nombre  = document.getElementById('prop-nombre').value.trim();
@@ -344,13 +344,13 @@ async function guardarPropietario() {
   const nombreFinal = capitalizarNombre(nombre);
   const correoFinal = correo.toLowerCase();
 
-  const btnGuardar = document.getElementById('btn-guardar-propietario');
+  const btnGuardar = document.getElementById('btn-guardar-cliente');
   const textoOriginalBtn = btnGuardar ? btnGuardar.textContent : 'GUARDAR';
   if (btnGuardar) { btnGuardar.textContent = 'GUARDANDO...'; btnGuardar.disabled = true; }
 
   try {
-    let fotoUrl = id ? (propietariosCache.find(function(p) { return p.id_cliente == id; })?.foto_documento || null) : null;
-    if (fotoFile) fotoUrl = await subirFoto(fotoFile, 'propietarios');
+    let fotoUrl = id ? (clientesCache.find(function(p) { return p.id_cliente == id; })?.foto_documento || null) : null;
+    if (fotoFile) fotoUrl = await subirFoto(fotoFile, 'clientes');
 
     const datos = {
       tipo_doc: tipDoc, numero_doc: numDoc, nombre_completo: nombreFinal,
@@ -374,16 +374,16 @@ async function guardarPropietario() {
     }
     okEl.style.display = 'block';
 
-    const callbackProp = _callbackPropietarioGuardado;
-    _callbackPropietarioGuardado = null;
+    const callbackProp = _callbackClienteGuardado;
+    _callbackClienteGuardado = null;
 
     setTimeout(function() {
-      cerrarModal('modal-propietario');
+      cerrarModal('modal-cliente');
       if (callbackProp) {
         callbackProp(Object.assign({ id_cliente: idFinal }, datos));
       } else {
         document.getElementById('contenido-principal').innerHTML = '';
-        renderPropietarios();
+        renderClientes();
       }
     }, 1200);
   } catch(e) {
@@ -394,17 +394,17 @@ async function guardarPropietario() {
   }
 }
 
-async function eliminarPropietario(id, nombre) {
-  if (!puedo('PROPIETARIOS','ELIMINAR')) { alert('No tiene permiso para eliminar propietarios.'); return; }
+async function eliminarCliente(id, nombre) {
+  if (!puedo('CLIENTES','ELIMINAR')) { alert('No tiene permiso para eliminar clientes.'); return; }
   if (!confirm('¿Eliminar al cliente "' + nombre + '"?\nVerifique que no tenga vehículos activos asignados.')) return;
   try {
     await api('vehiculos_clientes_hist', 'DELETE', null, '?id_cliente=eq.' + id);
     await api('clientes', 'DELETE', null, '?id_cliente=eq.' + id);
     document.getElementById('contenido-principal').innerHTML = '';
-    renderPropietarios();
+    renderClientes();
   } catch(e) {
     const msg = String(e.message || '');
-    if (msg.indexOf('vehiculos_id_cliente_fkey') !== -1 || msg.indexOf('vehiculos_id_propietario_fkey') !== -1 || /violates foreign key constraint.*vehiculos/i.test(msg)) {
+    if (msg.indexOf('vehiculos_id_cliente_fkey') !== -1 || msg.indexOf('vehiculos_id_cliente_fkey') !== -1 || /violates foreign key constraint.*vehiculos/i.test(msg)) {
       alert('No se puede eliminar este cliente porque tiene Vehículos registrados a su nombre. Reasigne o elimine esos vehículos primero.');
     } else if (/violates foreign key constraint/i.test(msg)) {
       alert('No se puede eliminar este cliente porque tiene registros relacionados en otro módulo (Órdenes de Servicio, Facturas, etc.).');
@@ -414,12 +414,12 @@ async function eliminarPropietario(id, nombre) {
   }
 }
 
-async function verFichaPropietario(id) {
-  if (!sesionActual?.administrador && !puedo('PROPIETARIOS','VER')) {
+async function verFichaCliente(id) {
+  if (!sesionActual?.administrador && !puedo('CLIENTES','VER')) {
     alert('No tiene permiso para ver la ficha del cliente.');
     return;
   }
-  const p = propietariosCache.find(function(x) { return x.id_cliente == id; });
+  const p = clientesCache.find(function(x) { return x.id_cliente == id; });
   if (!p) return;
   const vehs = await api('vehiculos', 'GET', null, '?id_cliente=eq.' + id + '&select=*');
 
@@ -436,10 +436,10 @@ async function verFichaPropietario(id) {
   // Configurar botones footer
   var btnPropEditar = document.getElementById('ficha-prop-btn-editar');
   var btnPropElim   = document.getElementById('ficha-prop-btn-eliminar');
-  if (btnPropEditar) { btnPropEditar._id = id; btnPropEditar.onclick = function() { cerrarModal('modal-ficha-prop'); abrirPropietario(this._id); };                            btnPropEditar.style.display = puedo('PROPIETARIOS','EDITAR') ? '' : 'none'; }
-  if (btnPropElim)   { btnPropElim._id = id;   btnPropElim._nombre = p.nombre_completo; btnPropElim.onclick = function() { cerrarModal('modal-ficha-prop'); eliminarPropietario(this._id, this._nombre); }; btnPropElim.style.display = puedo('PROPIETARIOS','ELIMINAR') ? '' : 'none'; }
+  if (btnPropEditar) { btnPropEditar._id = id; btnPropEditar.onclick = function() { cerrarModal('modal-ficha-prop'); abrirCliente(this._id); };                            btnPropEditar.style.display = puedo('CLIENTES','EDITAR') ? '' : 'none'; }
+  if (btnPropElim)   { btnPropElim._id = id;   btnPropElim._nombre = p.nombre_completo; btnPropElim.onclick = function() { cerrarModal('modal-ficha-prop'); eliminarCliente(this._id, this._nombre); }; btnPropElim.style.display = puedo('CLIENTES','ELIMINAR') ? '' : 'none'; }
 
-  const verDatosProp = sesionActual?.administrador || puedo('PROPIETARIOS','VER_DATOS_PERSONALES');
+  const verDatosProp = sesionActual?.administrador || puedo('CLIENTES','VER_DATOS_PERSONALES');
   document.getElementById('ficha-prop-contenido').innerHTML =
     '<div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">'
     + (p.foto_documento ? '<img src="' + p.foto_documento + '" onerror="imgError(this)" style="width:60px;height:60px;border-radius:8px;object-fit:cover;border:2px solid var(--borde);cursor:zoom-in" onclick="abrirVisor(\'' + p.foto_documento + '\')">' : '')
@@ -462,20 +462,20 @@ async function verFichaPropietario(id) {
   focusFirstField('modal-ficha-prop');
 }
 
-function verVehiculosPropietario(id) {
+function verVehiculosCliente(id) {
   if (!sesionActual?.administrador && !modulosAcceso.includes('VEHICULOS')) {
     alert('No tiene acceso al módulo de Vehículos.');
     return;
   }
   mostrarModulo('vehiculos', document.getElementById('nav-VEHICULOS'));
-  setTimeout(function() { filtrarVehiculosPorPropietario(id); }, 500);
+  setTimeout(function() { filtrarVehiculosPorCliente(id); }, 500);
 }
 
 // ══════════════════════════════
 // MÓDULO VEHÍCULOS
 // ══════════════════════════════
 let vehiculosCache = [];
-let propietariosSimple = [];
+let clientesSimple = [];
 
 async function renderVehiculos() {
   if (!sesionActual?.administrador && !modulosAcceso.includes('VEHICULOS')) {
@@ -485,7 +485,7 @@ async function renderVehiculos() {
 
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando vehículos...</div>';
-  propietariosSimple = await api('clientes', 'GET', null, '?select=id_cliente,tipo_doc,numero_doc,nombre_completo&order=nombre_completo.asc'+emisorQ());
+  clientesSimple = await api('clientes', 'GET', null, '?select=id_cliente,tipo_doc,numero_doc,nombre_completo&order=nombre_completo.asc'+emisorQ());
   await cargarVehiculos(null, null); // Sin filtros al cargar
 }
 
@@ -506,10 +506,10 @@ async function cargarVehiculos(filtro, propId) {
       + 'onkeyup="buscarVehiculos(this.value)" '
       + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();buscarVehiculos(this.value)}else if(event.key===\'Escape\'){this.value=\'\';buscarVehiculos(\'\')}" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;width:240px">'
-      + '<select id="filtro-prop-veh" onchange="filtrarVehiculosPorPropietario(this.value || null)" '
+      + '<select id="filtro-prop-veh" onchange="filtrarVehiculosPorCliente(this.value || null)" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none">'
       + '<option value="">Todos los clientes</option>'
-      + propietariosSimple.map(function(p) { return '<option value="' + p.id_cliente + '">' + p.nombre_completo + '</option>'; }).join('')
+      + clientesSimple.map(function(p) { return '<option value="' + p.id_cliente + '">' + p.nombre_completo + '</option>'; }).join('')
       + '</select>'
       + (puedo('VEHICULOS','CREAR') ? '<button class="btn-primario" onclick="abrirVehiculo(null)">+ Nuevo Vehículo</button>' : '')
       + '</div></div>'
@@ -517,7 +517,7 @@ async function cargarVehiculos(filtro, propId) {
       + '</div>';
   }
 
-  // Actualizar el select de propietarios si ya existe
+  // Actualizar el select de clientes si ya existe
   const selProp = document.getElementById('filtro-prop-veh');
   if (selProp && propId !== undefined) {
     selProp.value = propId || '';
@@ -596,9 +596,9 @@ async function cargarVehiculos(filtro, propId) {
 }
 
 
-// Helper: buscar por texto respetando filtro de propietario activo
+// Helper: buscar por texto respetando filtro de cliente activo
 function buscarVehiculos(texto) {
-  // Si hay texto, limpiar el filtro de propietario
+  // Si hay texto, limpiar el filtro de cliente
   if (texto && texto.trim()) {
     const selProp = document.getElementById('filtro-prop-veh');
     if (selProp) selProp.value = '';
@@ -606,11 +606,11 @@ function buscarVehiculos(texto) {
   cargarVehiculos(texto || null, null);
 }
 
-// Helper: filtrar por propietario — limpia el texto de búsqueda
-function filtrarVehiculosPorPropietario(propId) {
+// Helper: filtrar por cliente — limpia el texto de búsqueda
+function filtrarVehiculosPorCliente(propId) {
   const sel = document.getElementById('filtro-prop-veh');
   if (sel) sel.value = propId || '';
-  // Si hay propietario seleccionado, limpiar búsqueda de texto
+  // Si hay cliente seleccionado, limpiar búsqueda de texto
   if (propId) {
     const buscarEl = document.getElementById('buscar-veh');
     if (buscarEl) buscarEl.value = '';
@@ -654,7 +654,7 @@ async function abrirVehiculo(id) {
   document.getElementById('veh-motor').value         = v ? (v.numero_motor || '')   : '';
   document.getElementById('veh-chasis').value        = v ? (v.numero_chasis || '')  : '';
   document.getElementById('veh-estado').value        = v ? v.estado_vehiculo        : 'ACTIVO';
-  document.getElementById('veh-propietario').value   = v && v.id_cliente ? v.id_cliente : '';
+  document.getElementById('veh-cliente').value   = v && v.id_cliente ? v.id_cliente : '';
   document.getElementById('veh-carnet-preview').style.display = 'none';
   document.getElementById('alerta-veh-ok').style.display  = 'none';
   document.getElementById('alerta-veh-err').style.display = 'none';
@@ -694,10 +694,10 @@ async function abrirVehiculo(id) {
     fotosDiv.innerHTML = '';
   }
 
-  // Populate propietarios dropdown
-  const sel = document.getElementById('veh-propietario');
+  // Populate clientes dropdown
+  const sel = document.getElementById('veh-cliente');
   sel.innerHTML = '<option value="">Sin cliente</option>'
-    + propietariosSimple.map(function(p) {
+    + clientesSimple.map(function(p) {
         return '<option value="' + p.id_cliente + '" ' + (v && v.id_cliente == p.id_cliente ? 'selected' : '') + '>'
           + p.tipo_doc + '-' + p.numero_doc + ' · ' + p.nombre_completo + '</option>';
       }).join('');
@@ -719,7 +719,7 @@ async function guardarVehiculo() {
   const motor    = document.getElementById('veh-motor').value.trim().toUpperCase();
   const chasis   = document.getElementById('veh-chasis').value.trim().toUpperCase();
   const estado   = document.getElementById('veh-estado').value;
-  const propId   = document.getElementById('veh-propietario').value || null;
+  const propId   = document.getElementById('veh-cliente').value || null;
   const carnetF  = document.getElementById('veh-carnet-file').files[0];
   const fotosF   = document.getElementById('veh-fotos-files').files;
   const okEl     = document.getElementById('alerta-veh-ok');
@@ -775,7 +775,7 @@ async function guardarVehiculo() {
   }
   if (!propId) {
     errEl.textContent = 'Debe seleccionar un Cliente.'; errEl.style.display = 'block';
-    document.getElementById('veh-propietario').focus();
+    document.getElementById('veh-cliente').focus();
     return;
   }
 
@@ -816,7 +816,7 @@ async function guardarVehiculo() {
       }
     }
 
-    // Registrar en historial de propietarios si cambió
+    // Registrar en historial de clientes si cambió
     if (propId && vehId) {
       await api('vehiculos_clientes_hist', 'PATCH', { activo: false, fecha_hasta: hoyVenezuela() },
         '?id_vehiculo=eq.' + vehId + '&activo=eq.true&id_cliente=neq.' + propId);
@@ -1040,11 +1040,11 @@ async function eliminarCarnet(id_vehiculo, desdeEditar) {
   } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
-async function eliminarDocPropietario(id_cliente, desdeEditar) {
+async function eliminarDocCliente(id_cliente, desdeEditar) {
   if (!confirm('¿Eliminar la foto del documento de identidad?')) return;
   try {
     await api('clientes', 'PATCH', { foto_documento: null }, '?id_cliente=eq.' + id_cliente);
-    const p = propietariosCache.find(function(x) { return x.id_cliente == id_cliente; });
+    const p = clientesCache.find(function(x) { return x.id_cliente == id_cliente; });
     if (p) p.foto_documento = null;
     if (desdeEditar) {
       const div = document.getElementById('prop-foto-actual');
