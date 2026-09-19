@@ -6534,8 +6534,17 @@ async function cargarUsuarioEntregaReqInt() {
   try {
     const correo = sesionActual?.correo_usuario;
     if (!correo) return;
-    const emps = await api('empleados','GET',null,
-      '?correo=eq.'+encodeURIComponent(correo)+'&select=id_empleado,nombre_completo,id_area,param_areas(nombre,codigo)');
+    // Vía RPC (no consulta directa a "empleados"): esa tabla exige el
+    // permiso EMPLEADOS→VER para SELECT, que la mayoría de quienes
+    // registran una Salida no tiene -- sin esto, "Quien Entrega" nunca
+    // se resolvía y el guardado fallaba con "No se pudo determinar el
+    // empleado que entrega".
+    const rpcEmp = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_empleado_por_correo', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_correo: correo })
+    });
+    const emps = rpcEmp.ok ? await rpcEmp.json() : [];
     const emp = emps && emps[0] ? emps[0] : null;
 
     const nomEl   = document.getElementById('reqint-entrega-nombre');
@@ -6545,8 +6554,8 @@ async function cargarUsuarioEntregaReqInt() {
 
     if (emp) {
       if (nomEl)  nomEl.textContent  = emp.nombre_completo;
-      if (areaEl) areaEl.textContent = emp.param_areas
-        ? emp.param_areas.nombre + (emp.param_areas.codigo ? ' (' + emp.param_areas.codigo + ')' : '')
+      if (areaEl) areaEl.textContent = emp.area_nombre
+        ? emp.area_nombre + (emp.area_codigo ? ' (' + emp.area_codigo + ')' : '')
         : '—';
       if (hidEmp)  hidEmp.value  = emp.id_empleado;
       if (hidArea) hidArea.value = emp.id_area || '';
