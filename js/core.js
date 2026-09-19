@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909128';
+const SYD_VERSION = '20260909129';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -137,7 +137,7 @@ const ESTATUS_EMP = {
 
 // ─── MÓDULOS DEL SISTEMA ───
 const TODOS_LOS_MODULOS = [
-  { sigla: 'PROPIETARIOS', nombre: 'Clientes',       icono: '👤' },
+  { sigla: 'CLIENTES', nombre: 'Clientes',       icono: '👤' },
   { sigla: 'VEHICULOS',    nombre: 'Vehículos',          icono: '🚗' },
   { sigla: 'SERVICIOS',    nombre: 'Órdenes de Servicio',icono: '🔧' },
   { sigla: 'CATALOGO',     nombre: 'Catálogo Servicios', icono: '🗂️' },
@@ -164,7 +164,7 @@ const PERMISOS_POR_MODULO = {
     { accion: 'EDITAR',   label: 'Editar vehículo' },
     { accion: 'ELIMINAR', label: 'Eliminar vehículo' },
   ],
-  PROPIETARIOS: [
+  CLIENTES: [
     { accion: 'VER',                  label: 'Ver Ficha' },
     { accion: 'CREAR',                label: 'Registrar cliente' },
     { accion: 'EDITAR',               label: 'Editar cliente' },
@@ -370,7 +370,7 @@ let _tasaVigente       = 1;    // tasa USD→VES más reciente (se carga al inic
 
 // ─── CACHES DE MÓDULO SIN DECLARACIÓN PROPIA ───
 // Solo las que NO tienen ya un 'let' en su propio archivo (ordenesCache,
-// facturasCache, vehiculosCache, propietariosCache, catalogoCache,
+// facturasCache, vehiculosCache, clientesCache, catalogoCache,
 // contAsientosCache, contCxcCache, contCxpCache YA están declaradas en
 // ordenes.js/ingresos.js/vehiculos.js/catalogo.js/contabilidad.js --
 // declararlas de nuevo aquí causaría SyntaxError "already declared" y
@@ -1426,7 +1426,7 @@ function renderModuloActual() {
   ordenesCache      = [];
   facturasCache     = [];
   vehiculosCache    = [];
-  propietariosCache = [];
+  clientesCache = [];
   empleadosCache    = [];
   inventarioCache   = [];
   catalogoCache     = [];
@@ -1543,7 +1543,7 @@ async function mostrarModulo(modulo, navEl) {
     tasas:        'TIPOS DE CAMBIO',
     parametros:   'PARÁMETROS DEL SISTEMA',
     vehiculos:    'VEHÍCULOS',
-    propietarios: 'PROPIETARIOS',
+    clientes: 'CLIENTES',
     ordenes:      'ÓRDENES DE SERVICIO',
     inventario:   'INVENTARIO GENERAL',
     catalogo:     'CATÁLOGO DE SERVICIOS',
@@ -1566,7 +1566,7 @@ async function mostrarModulo(modulo, navEl) {
     case 'tasas':        renderTasas();        break;
     case 'tributos':     await renderTributos();    break;
     case 'vehiculos':    renderVehiculos();    break;
-    case 'propietarios': renderPropietarios(); break;
+    case 'clientes': renderClientes(); break;
     case 'parametros':   renderParametros();   break;
     case 'ordenes':      await renderOrdenes();      break;
     case 'inventario':   _invVista = 'tabla'; renderInventario();   break;
@@ -1598,7 +1598,7 @@ async function renderDashboard() {
 
   try {
     // Contar registros de tablas existentes
-    const [usuarios, tasas, vehiculos, propietarios, ordenes] = await Promise.all([
+    const [usuarios, tasas, vehiculos, clientes, ordenes] = await Promise.all([
       api('usuarios', 'GET', null, '?select=id_usuario'),
       api('tasas', 'GET', null, '?moneda_origen=eq.USD&moneda_destino=eq.VES&select=id_tasa&order=fecha_registro.desc&limit=1'),
       api('vehiculos', 'GET', null, '?select=id_vehiculo'+emisorQ()),
@@ -1644,10 +1644,10 @@ async function renderDashboard() {
           <div class="tarjeta-valor">${vehiculos.length}</div>
           <div class="tarjeta-nombre">Vehículos</div>
         </div>` : ''}
-        ${puedo('PROPIETARIOS','VER') ? `
-        <div class="tarjeta-stat" onclick="mostrarModulo('propietarios', document.getElementById('nav-PROPIETARIOS'))">
+        ${puedo('CLIENTES','VER') ? `
+        <div class="tarjeta-stat" onclick="mostrarModulo('clientes', document.getElementById('nav-CLIENTES'))">
           <div class="tarjeta-icono">👤</div>
-          <div class="tarjeta-valor">${propietarios.length}</div>
+          <div class="tarjeta-valor">${clientes.length}</div>
           <div class="tarjeta-nombre">Clientes</div>
         </div>` : ''}
         ${puedo('SERVICIOS','VER') ? `
