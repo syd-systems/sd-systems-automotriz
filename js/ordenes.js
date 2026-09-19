@@ -330,6 +330,9 @@ function cambiarTipoTasaOS(moneda) {
 // Resuelve el Área que Realiza el Servicio a partir de un usuario (correo) --
 // se busca su ficha de empleado y de ahí su Área asignada. Se usa tanto para
 // una OS nueva (usuario en sesión) como para una existente (su creador).
+// Vía RPC (no consulta directa a "empleados"): esa tabla exige el permiso
+// EMPLEADOS→VER para SELECT, que la mayoría de quienes crean una Orden de
+// Servicio no tiene -- mismo bug ya corregido antes en la Ficha de OS.
 async function _resolverAreaOS(correo) {
   const disp = document.getElementById('os-area-display');
   const hid  = document.getElementById('os-area');
@@ -337,9 +340,13 @@ async function _resolverAreaOS(correo) {
   if (hid) hid.value = '';
   if (!correo) return;
   try {
-    const empRows = await api('empleados', 'GET', null,
-      '?correo=eq.' + encodeURIComponent(correo) + '&select=id_area,param_areas(id,codigo,nombre)&limit=1');
-    const a = empRows && empRows[0] && empRows[0].param_areas;
+    const rpcArea = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_area_por_correo', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_correo: correo })
+    });
+    const areaRows = rpcArea.ok ? await rpcArea.json() : [];
+    const a = areaRows && areaRows[0];
     if (a) {
       if (disp) disp.textContent = 'Área: ' + (a.codigo ? a.codigo + ' — ' : '') + a.nombre;
       if (hid) hid.value = a.id;
