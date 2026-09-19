@@ -83,7 +83,7 @@ async function consultarCedula(tipDoc, numDoc) {
 }
 
 // ── Subir archivo a Supabase Storage ──
-async function subirFoto(archivo, carpeta) {
+async function subirFotoDocumento(archivo, carpeta) {
   const ext      = archivo.name.split('.').pop();
   const nombre   = carpeta + '/' + Date.now() + '_' + Math.random().toString(36).substring(2) + '.' + ext;
   const resp     = await fetch(SUPABASE_UPLOAD_URL + nombre, {
@@ -113,7 +113,7 @@ function capitalizarNombre(str) {
 }
 
 
-let clientesCache = [];
+let clientesFichaCache = [];
 
 async function renderClientes() {
   if (!sesionActual?.administrador && !modulosAcceso.includes('CLIENTES')) {
@@ -154,7 +154,7 @@ async function cargarClientes(filtro) {
     let query = '?select=*&order=fecha_registro.desc' + emisorQ();
     if (filtro && filtro.trim()) query += '&or=(nombre_completo.ilike.*' + encodeURIComponent(filtro.trim()) + '*,numero_doc.ilike.*' + encodeURIComponent(filtro.trim()) + '*)';
     const props = await api('clientes', 'GET', null, query);
-    clientesCache = props;
+    clientesFichaCache = props;
 
     const vehs = await api('vehiculos', 'GET', null, '?select=id_vehiculo,placa,marca,modelo,id_cliente'+emisorQ());
     props.forEach(function(p) {
@@ -231,7 +231,7 @@ function abrirCliente(id, onGuardado) {
   if (id && !puedo('CLIENTES','EDITAR')) { alert('No tiene permiso para editar clientes.'); return; }
   if (!id && !puedo('CLIENTES','CREAR')) { alert('No tiene permiso para registrar clientes.'); return; }
   _callbackClienteGuardado = typeof onGuardado === 'function' ? onGuardado : null;
-  const p = id ? clientesCache.find(function(x) { return x.id_cliente === id; }) : null;
+  const p = id ? clientesFichaCache.find(function(x) { return x.id_cliente === id; }) : null;
   document.getElementById('modal-prop-titulo').textContent = p ? 'EDITAR CLIENTE' : 'NUEVO CLIENTE';
   document.getElementById('prop-id').value          = p ? p.id_cliente : '';
   document.getElementById('prop-tipo-doc').value    = p ? p.tipo_doc        : 'V';
@@ -349,8 +349,8 @@ async function guardarCliente() {
   if (btnGuardar) { btnGuardar.textContent = 'GUARDANDO...'; btnGuardar.disabled = true; }
 
   try {
-    let fotoUrl = id ? (clientesCache.find(function(p) { return p.id_cliente == id; })?.foto_documento || null) : null;
-    if (fotoFile) fotoUrl = await subirFoto(fotoFile, 'clientes');
+    let fotoUrl = id ? (clientesFichaCache.find(function(p) { return p.id_cliente == id; })?.foto_documento || null) : null;
+    if (fotoFile) fotoUrl = await subirFotoDocumento(fotoFile, 'clientes');
 
     const datos = {
       tipo_doc: tipDoc, numero_doc: numDoc, nombre_completo: nombreFinal,
@@ -419,7 +419,7 @@ async function verFichaCliente(id) {
     alert('No tiene permiso para ver la ficha del cliente.');
     return;
   }
-  const p = clientesCache.find(function(x) { return x.id_cliente == id; });
+  const p = clientesFichaCache.find(function(x) { return x.id_cliente == id; });
   if (!p) return;
   const vehs = await api('vehiculos', 'GET', null, '?id_cliente=eq.' + id + '&select=*');
 
@@ -785,7 +785,7 @@ async function guardarVehiculo() {
 
   try {
     let carnetUrl = id ? (vehiculosCache.find(function(v) { return v.id_vehiculo == id; })?.foto_carnet || null) : null;
-    if (carnetF) carnetUrl = await subirFoto(carnetF, 'carnets');
+    if (carnetF) carnetUrl = await subirFotoDocumento(carnetF, 'carnets');
 
     const datos = {
       placa, marca, modelo, anio, color: color || null,
@@ -811,7 +811,7 @@ async function guardarVehiculo() {
       const fotosExistentes = await api('vehiculos_fotos', 'GET', null, '?id_vehiculo=eq.' + vehId + '&select=orden&order=orden.desc&limit=1');
       let ordenInicial = fotosExistentes.length ? (fotosExistentes[0].orden + 1) : 1;
       for (let i = 0; i < Math.min(fotosF.length, 8); i++) {
-        const url = await subirFoto(fotosF[i], 'vehiculos/' + vehId);
+        const url = await subirFotoDocumento(fotosF[i], 'vehiculos/' + vehId);
         await api('vehiculos_fotos', 'POST', { id_vehiculo: parseInt(vehId), url_foto: url, orden: ordenInicial + i });
       }
     }
@@ -976,7 +976,7 @@ async function subirMasFotos() {
     const disponibles = 8 - existentes.length;
     const orden = existentes.length + 1;
     for (let i = 0; i < Math.min(files.length, disponibles); i++) {
-      const url = await subirFoto(files[i], 'vehiculos/' + id);
+      const url = await subirFotoDocumento(files[i], 'vehiculos/' + id);
       await api('vehiculos_fotos', 'POST', { id_vehiculo: parseInt(id), url_foto: url, orden: orden + i });
     }
     okEl.textContent = '✓ Fotos subidas correctamente.';
@@ -1044,7 +1044,7 @@ async function eliminarDocCliente(id_cliente, desdeEditar) {
   if (!confirm('¿Eliminar la foto del documento de identidad?')) return;
   try {
     await api('clientes', 'PATCH', { foto_documento: null }, '?id_cliente=eq.' + id_cliente);
-    const p = clientesCache.find(function(x) { return x.id_cliente == id_cliente; });
+    const p = clientesFichaCache.find(function(x) { return x.id_cliente == id_cliente; });
     if (p) p.foto_documento = null;
     if (desdeEditar) {
       const div = document.getElementById('prop-foto-actual');
