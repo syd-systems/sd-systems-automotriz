@@ -10,6 +10,7 @@ const REPORTES_DISPONIBLES = [
   { id: 'inventario', nombre: '📦 Reporte de Inventario', render: repInventarioRender },
   { id: 'compras',    nombre: '🛒 Reporte de Compras',    render: repComprasRender },
   { id: 'ventas',     nombre: '💰 Reporte de Ventas',     render: repVentasRender },
+  { id: 'servicios',  nombre: '🔧 Reporte por Servicios', render: repServiciosRender },
 ];
 
 let _reporteActual = 'inventario';
@@ -1097,4 +1098,322 @@ function _repVenExportarPDF() {
     columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'center' } },
   });
   doc.save('reporte_ventas_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '_' + dat.d.monedaVal + '.pdf');
+}
+
+// ═══════════════════ REPORTE POR SERVICIOS ═══════════════════
+// Fuente: os_servicios (líneas de servicio de cada Orden), cruzado con
+// ordenes_servicio (fecha/cliente/vehículo), vehiculos (marca/modelo/
+// carrocería) y servicios_catalogo (grupo/nombre). La Forma de Pago sale
+// igual que en Ventas: ordenes_servicio → facturas (por id_orden) →
+// cont_cxc (por id_factura) → metodo_pago.
+function repServiciosLimpiarFiltros() {
+  const hoy = getHoyVzla();
+  const desde = document.getElementById('rep-ser-desde'); if (desde) desde.value = hoy;
+  const hasta = document.getElementById('rep-ser-hasta'); if (hasta) hasta.value = hoy;
+  const grupo = document.getElementById('rep-ser-grupo'); if (grupo) grupo.value = '';
+  const servicio = document.getElementById('rep-ser-servicio'); if (servicio) servicio.value = '';
+  const carroceria = document.getElementById('rep-ser-carroceria'); if (carroceria) carroceria.value = '';
+  const marca = document.getElementById('rep-ser-marca'); if (marca) marca.value = '';
+  const modelo = document.getElementById('rep-ser-modelo'); if (modelo) modelo.value = '';
+  repServiciosRender(document.getElementById('reportes-contenido'));
+}
+
+async function repServiciosRender(cont) {
+  if (!cont) return;
+  const hoy = getHoyVzla();
+  const desdeVal = document.getElementById('rep-ser-desde')?.value || hoy;
+  const hastaVal = document.getElementById('rep-ser-hasta')?.value || hoy;
+  const formatoVal = document.getElementById('rep-ser-formato')?.value || 'pdf';
+  const grupoVal = document.getElementById('rep-ser-grupo')?.value || '';
+  const servicioVal = document.getElementById('rep-ser-servicio')?.value || '';
+  const carroceriaVal = document.getElementById('rep-ser-carroceria')?.value || '';
+  const marcaVal = document.getElementById('rep-ser-marca')?.value || '';
+  const modeloVal = document.getElementById('rep-ser-modelo')?.value || '';
+
+  let catalogo = [], carrocerias = [], marcas = [], modelos = [];
+  try {
+    catalogo = await api('servicios_catalogo','GET',null,
+      '?activo=eq.true&select=id_servicio,nombre,grupo&order=grupo.asc,nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+  } catch(e) { console.warn('Error cargando Catálogo de Servicios:', e); }
+  try {
+    const vehRows = await api('vehiculos','GET',null, '?activo=eq.true&select=tipo_carroceria,marca,modelo');
+    carrocerias = [...new Set((vehRows||[]).map(function(v){ return v.tipo_carroceria; }).filter(Boolean))].sort();
+    marcas = [...new Set((vehRows||[]).map(function(v){ return v.marca; }).filter(Boolean))].sort();
+    modelos = [...new Set((vehRows||[])
+      .filter(function(v){ return !marcaVal || v.marca === marcaVal; })
+      .map(function(v){ return v.modelo; }).filter(Boolean))].sort();
+  } catch(e) { console.warn('Error cargando Vehículos:', e); }
+
+  const gruposUnicos = [...new Set(catalogo.map(function(s){ return s.grupo; }).filter(Boolean))].sort();
+  const serviciosDelGrupo = grupoVal ? catalogo.filter(function(s){ return s.grupo === grupoVal; }) : catalogo;
+
+  cont.innerHTML =
+    '<div style="padding:16px 24px">'
+    + '<div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--borde)">'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Desde</label>'
+    + '<input type="date" id="rep-ser-desde" value="' + desdeVal + '" max="' + hoy + '" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none"></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Hasta</label>'
+    + '<input type="date" id="rep-ser-hasta" value="' + hastaVal + '" max="' + hoy + '" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none"></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Grupo</label>'
+    + '<select id="rep-ser-grupo" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value=""' + (grupoVal===''?' selected':'') + '>Todos</option>'
+    + gruposUnicos.map(function(g){ return '<option value="'+escapeHtml(g)+'"' + (grupoVal===g?' selected':'') + '>' + escapeHtml(g) + '</option>'; }).join('')
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Servicio</label>'
+    + '<select id="rep-ser-servicio" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value=""' + (servicioVal===''?' selected':'') + '>Todos</option>'
+    + serviciosDelGrupo.map(function(s){ return '<option value="'+s.id_servicio+'"' + (String(servicioVal)===String(s.id_servicio)?' selected':'') + '>' + escapeHtml(s.nombre) + '</option>'; }).join('')
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Carrocería</label>'
+    + '<select id="rep-ser-carroceria" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value=""' + (carroceriaVal===''?' selected':'') + '>Todas</option>'
+    + carrocerias.map(function(c){ return '<option value="'+escapeHtml(c)+'"' + (carroceriaVal===c?' selected':'') + '>' + escapeHtml(c) + '</option>'; }).join('')
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Marca</label>'
+    + '<select id="rep-ser-marca" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value=""' + (marcaVal===''?' selected':'') + '>Todas</option>'
+    + marcas.map(function(m){ return '<option value="'+escapeHtml(m)+'"' + (marcaVal===m?' selected':'') + '>' + escapeHtml(m) + '</option>'; }).join('')
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Modelo</label>'
+    + '<select id="rep-ser-modelo" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value=""' + (modeloVal===''?' selected':'') + '>Todos</option>'
+    + modelos.map(function(m){ return '<option value="'+escapeHtml(m)+'"' + (modeloVal===m?' selected':'') + '>' + escapeHtml(m) + '</option>'; }).join('')
+    + '</select></div>'
+    + '<button onclick="repServiciosLimpiarFiltros()" title="Limpiar filtros" style="background:#dc2626;border:1px solid #dc2626;color:#fff;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:16px;line-height:1;box-shadow:0 1px 3px rgba(220,38,38,0.4)">🗑</button>'
+    + '<div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Formato</label>'
+    + '<select id="rep-ser-formato" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+    + '<option value="pdf"' + (formatoVal==='pdf'?' selected':'') + '>PDF</option>'
+    + '<option value="excel"' + (formatoVal==='excel'?' selected':'') + '>Excel (.xlsx)</option>'
+    + '<option value="csv"' + (formatoVal==='csv'?' selected':'') + '>CSV</option>'
+    + '</select></div>'
+    + '<button class="btn-secundario" onclick="repServiciosExportar()">⬇ Exportar</button>'
+    + '</div>'
+    + '</div>'
+    + '<div id="rep-ser-resumen" style="display:flex;gap:20px;margin-bottom:20px">'
+    + '<div style="flex:1;background:var(--gris2);border-radius:8px;padding:16px 20px">'
+    + '<div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Total de Servicios</div>'
+    + '<div id="rep-ser-total-servicios" style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">0</div>'
+    + '</div>'
+    + '<div style="flex:1;background:var(--gris2);border-radius:8px;padding:16px 20px">'
+    + '<div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Monto Total (USD)</div>'
+    + '<div id="rep-ser-total-monto" style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">0</div>'
+    + '</div>'
+    + '</div>'
+    + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 420px))"><table style="width:100%;border-collapse:collapse;table-layout:fixed">'
+    + '<thead><tr id="rep-ser-thead-row"></tr></thead>'
+    + '<tbody id="rep-ser-tbody"><tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Cargando...</td></tr></tbody>'
+    + '</table></div>'
+    + '</div>';
+
+  const catalogoPorId = {};
+  catalogo.forEach(function(s){ catalogoPorId[s.id_servicio] = s; });
+
+  let ordenesHead = {};
+  try {
+    let qOrd = '?estado=neq.ANULADA&fecha_entrada=gte.'+desdeVal+'&fecha_entrada=lte.'+hastaVal
+      + '&select=id_orden,fecha_entrada,id_cliente,id_vehiculo,clientes(nombre_completo),vehiculos(marca,modelo,tipo_carroceria)'
+      + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '');
+    const ordenesRows = await api('ordenes_servicio','GET',null, qOrd);
+    (ordenesRows||[]).forEach(function(o){
+      const veh = o.vehiculos;
+      if (marcaVal && (!veh || veh.marca !== marcaVal)) return;
+      if (modeloVal && (!veh || veh.modelo !== modeloVal)) return;
+      if (carroceriaVal && (!veh || veh.tipo_carroceria !== carroceriaVal)) return;
+      ordenesHead[o.id_orden] = o;
+    });
+  } catch(e) { console.warn('Error cargando Órdenes de Servicio:', e); }
+
+  const idsOrden = Object.keys(ordenesHead);
+  let lineas = [];
+  if (idsOrden.length) {
+    try {
+      let qSer = '?id_orden=in.(' + idsOrden.join(',') + ')&select=id_orden,id_servicio,descripcion,precio_usd';
+      if (servicioVal) qSer += '&id_servicio=eq.'+servicioVal;
+      lineas = await api('os_servicios','GET',null, qSer);
+    } catch(e) { console.warn('Error cargando líneas de Servicio:', e); }
+  }
+  if (grupoVal && !servicioVal) {
+    lineas = lineas.filter(function(l){ return l.id_servicio && catalogoPorId[l.id_servicio] && catalogoPorId[l.id_servicio].grupo === grupoVal; });
+  }
+
+  let idsFacturaOrden = {};
+  try {
+    const facRows = await api('facturas','GET',null,
+      '?id_orden=in.(' + (idsOrden.length ? idsOrden.join(',') : '0') + ')&select=id_factura,id_orden');
+    (facRows||[]).forEach(function(f){ idsFacturaOrden[f.id_orden] = f.id_factura; });
+  } catch(e) { console.warn('Error cargando Facturas de Servicio:', e); }
+  const idsFacturaSer = Object.values(idsFacturaOrden);
+  let metodoPorFactura = {};
+  if (idsFacturaSer.length) {
+    try {
+      const cxcRows = await api('cont_cxc','GET',null,
+        '?id_factura=in.(' + idsFacturaSer.join(',') + ')&select=id_factura,metodo_pago');
+      (cxcRows||[]).forEach(function(c){ if (c.metodo_pago) metodoPorFactura[c.id_factura] = c.metodo_pago; });
+    } catch(e) { console.warn('Error cargando Forma de Pago (cont_cxc):', e); }
+  }
+
+  let totalMonto = 0;
+  const filas = lineas.map(function(l) {
+    const o = ordenesHead[l.id_orden];
+    const idFact = idsFacturaOrden[l.id_orden];
+    const precio = parseFloat(l.precio_usd||0);
+    totalMonto += precio;
+    return {
+      fecha: o?.fecha_entrada, cliente: o?.clientes?.nombre_completo || '—',
+      servicio: l.id_servicio && catalogoPorId[l.id_servicio] ? catalogoPorId[l.id_servicio].nombre : (l.descripcion||'(Servicio libre)'),
+      precio: precio,
+      pago: idFact && metodoPorFactura[idFact] ? metodoPorFactura[idFact] : 'Pendiente de cobro'
+    };
+  });
+
+  document.getElementById('rep-ser-total-servicios').textContent = filas.length.toLocaleString('es-VE');
+  document.getElementById('rep-ser-total-monto').textContent = '$ ' + fmtUSD(totalMonto);
+
+  const filtrosActivos = [];
+  if (grupoVal) filtrosActivos.push('Grupo: ' + grupoVal);
+  if (servicioVal) { const s = catalogo.find(function(x){ return String(x.id_servicio)===String(servicioVal); }); if (s) filtrosActivos.push('Servicio: ' + s.nombre); }
+  if (carroceriaVal) filtrosActivos.push('Carrocería: ' + carroceriaVal);
+  if (marcaVal) filtrosActivos.push('Marca: ' + marcaVal);
+  if (modeloVal) filtrosActivos.push('Modelo: ' + modeloVal);
+  const filtrosTexto = filtrosActivos.length ? filtrosActivos.join('   |   ') : 'Sin filtros adicionales';
+
+  window._reporteServiciosActual = { desdeVal, hastaVal, filas, filtrosTexto };
+  _repSerOrdenCol = _repSerOrdenCol || null;
+  _repSerOrdenAsc = _repSerOrdenAsc !== false;
+  _repSerRenderTabla();
+}
+
+let _repSerOrdenCol = null;
+let _repSerOrdenAsc = true;
+const REP_SER_COLUMNAS = [
+  { campo: 'fecha',    tipo: 'texto',  label: 'Fecha',    ancho: '13%' },
+  { campo: 'cliente',  tipo: 'texto',  label: 'Cliente',  ancho: '27%' },
+  { campo: 'servicio', tipo: 'texto',  label: 'Servicio', ancho: '28%' },
+  { campo: 'precio',   tipo: 'numero', label: 'Precio',   ancho: '16%' },
+  { campo: 'pago',     tipo: 'texto',  label: 'Pago',     ancho: '16%' },
+];
+
+function repServiciosOrdenar(campo) {
+  if (_repSerOrdenCol === campo) { _repSerOrdenAsc = !_repSerOrdenAsc; }
+  else { _repSerOrdenCol = campo; _repSerOrdenAsc = true; }
+  _repSerRenderTabla();
+}
+
+function _repSerRenderTabla() {
+  const d = window._reporteServiciosActual;
+  if (!d) return;
+
+  const theadRow = REP_SER_COLUMNAS.map(function(c) {
+    const alinear = (c.tipo === 'numero') ? 'text-align:right' : (c.campo === 'pago' ? 'text-align:center' : 'text-align:left');
+    const flecha = _repSerOrdenCol === c.campo ? (_repSerOrdenAsc ? ' ▲' : ' ▼') : '';
+    return '<th style="width:'+c.ancho+';'+alinear+';cursor:pointer;user-select:none" onclick="repServiciosOrdenar(\''+c.campo+'\')" title="Ordenar">' + c.label + flecha + '</th>';
+  }).join('');
+  const theadEl = document.getElementById('rep-ser-thead-row');
+  if (theadEl) theadEl.innerHTML = theadRow;
+
+  let filasOrd = d.filas.slice();
+  if (_repSerOrdenCol) {
+    const colDef = REP_SER_COLUMNAS.find(function(c){ return c.campo === _repSerOrdenCol; });
+    filasOrd.sort(function(a, b) {
+      let va = a[_repSerOrdenCol], vb = b[_repSerOrdenCol];
+      let cmp = colDef.tipo === 'texto' ? String(va).localeCompare(String(vb), 'es', { sensitivity: 'base' }) : va - vb;
+      return _repSerOrdenAsc ? cmp : -cmp;
+    });
+  }
+
+  const filasHtml = filasOrd.map(function(f) {
+    return '<tr>'
+      + '<td style="font-family:var(--font-mono);font-size:15px">' + fmtFecha(f.fecha) + '</td>'
+      + '<td style="font-size:15px">' + escapeHtml(f.cliente) + '</td>'
+      + '<td style="font-size:15px">' + escapeHtml(f.servicio) + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono);color:var(--naranja);font-weight:600;font-size:15px">' + fmtUSD(f.precio) + '</td>'
+      + '<td style="text-align:center;font-size:13px;color:var(--suave)">' + escapeHtml(f.pago) + '</td>'
+      + '</tr>';
+  }).join('');
+
+  document.getElementById('rep-ser-tbody').innerHTML = filasHtml || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">No hay Servicios en el rango seleccionado</td></tr>';
+}
+
+async function repServiciosExportar() {
+  await repServiciosRender(document.getElementById('reportes-contenido'));
+  const formato = document.getElementById('rep-ser-formato')?.value || 'pdf';
+  if (formato === 'excel') _repSerExportarExcel();
+  else if (formato === 'pdf') _repSerExportarPDF();
+  else _repSerExportarCSV();
+}
+
+function _repSerDatosExportar() {
+  const d = window._reporteServiciosActual;
+  if (!d) return null;
+  const encabezados = ['Fecha','Cliente','Servicio','Precio','Pago'];
+  const filasNumericas = d.filas.map(function(f) { return [fmtFecha(f.fecha), f.cliente, f.servicio, f.precio, f.pago]; });
+  const filasTexto = d.filas.map(function(f) { return [fmtFecha(f.fecha), f.cliente, f.servicio, fmtUSD(f.precio), f.pago]; });
+  return { d, encabezados, filasNumericas, filasTexto };
+}
+
+function _repSerExportarCSV() {
+  const dat = _repSerDatosExportar();
+  if (!dat) return;
+  const filasCsv = [
+    ['Servicios del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal],
+    ['Filtros: ' + dat.d.filtrosTexto],
+    [],
+    dat.encabezados,
+  ].concat(dat.filasTexto);
+  const csv = filasCsv.map(function(f){ return f.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  const blob = new Blob(['\ufeff'+csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'reporte_servicios_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function _repSerExportarExcel() {
+  const dat = _repSerDatosExportar();
+  if (!dat || typeof XLSX === 'undefined') { alert('No se pudo cargar el generador de Excel. Verifica tu conexión e intenta de nuevo.'); return; }
+  const FILA_ENCAB = 3, FILA_DATOS_DESDE = 4;
+  const hoja = XLSX.utils.aoa_to_sheet([
+    ['Reporte por Servicios'],
+    ['Filtros: ' + dat.d.filtrosTexto],
+    [],
+    dat.encabezados,
+  ].concat(dat.filasNumericas));
+  hoja['!cols'] = [ {wch:14}, {wch:30}, {wch:34}, {wch:14}, {wch:18} ];
+  const NUM_FILAS = dat.filasNumericas.length;
+  for (let col = 0; col < 5; col++) {
+    const refEncab = XLSX.utils.encode_cell({ r: FILA_ENCAB, c: col });
+    if (hoja[refEncab]) hoja[refEncab].s = { alignment: { horizontal: 'center', vertical: 'center' }, font: { bold: true } };
+    if (col === 3) {
+      for (let i = 0; i < NUM_FILAS; i++) {
+        const ref = XLSX.utils.encode_cell({ r: FILA_DATOS_DESDE + i, c: col });
+        if (hoja[ref]) { hoja[ref].z = '#,##0.00'; hoja[ref].t = 'n'; hoja[ref].s = { alignment: { horizontal: 'right' } }; }
+      }
+    }
+  }
+  const libro = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(libro, hoja, 'Servicios');
+  XLSX.writeFile(libro, 'reporte_servicios_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '.xlsx', { cellStyles: true });
+}
+
+function _repSerExportarPDF() {
+  const dat = _repSerDatosExportar();
+  if (!dat || typeof window.jspdf === 'undefined') { alert('No se pudo cargar el generador de PDF. Verifica tu conexión e intenta de nuevo.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape' });
+  doc.setFontSize(14);
+  doc.text('Reporte por Servicios', 14, 15);
+  doc.setFontSize(9);
+  doc.text('Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal, 14, 21);
+  doc.text('Filtros: ' + dat.d.filtrosTexto, 14, 26);
+  doc.autoTable({
+    head: [dat.encabezados],
+    body: dat.filasTexto,
+    startY: 31,
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [255, 107, 0], halign: 'center' },
+    columnStyles: { 3: { halign: 'right' }, 4: { halign: 'center' } },
+  });
+  doc.save('reporte_servicios_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '.pdf');
 }
