@@ -621,7 +621,7 @@ function _onClienteRapidoCreadoVenta(cli) {
 // abre su ficha completa para editarlo. En ambos casos, al guardar se
 // actualiza el texto mostrado en el campo de Ventas (mismo callback).
 function _onClickBotonClienteVenta() {
-  abrirPropietario(window._vtaClienteSeleccionadoId || null, _onClienteRapidoCreadoVenta);
+  abrirCliente(window._vtaClienteSeleccionadoId || null, _onClienteRapidoCreadoVenta);
 }
 
 function agregarLineaVenta() {
