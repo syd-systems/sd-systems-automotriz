@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909140';
+const SYD_VERSION = '20260909141';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3562,8 +3562,15 @@ async function validarClaveUsuarioActual(clave) {
 async function validarClaveReceptor(id_empleado, clave) {
   if (!id_empleado || !clave) return { ok: false, msg: 'Debe seleccionar un empleado remitente e ingresar su contraseña.' };
   try {
-    // Buscar el correo del empleado
-    const empArr = await api('empleados', 'GET', null, '?id_empleado=eq.' + id_empleado + '&select=id_empleado,nombre_completo,correo');
+    // Buscar el correo del empleado -- vía RPC, no consulta directa a
+    // "empleados" (bloqueada por RLS sin EMPLEADOS→VER para quien no
+    // tenga ese permiso, igual que el selector de arriba).
+    const rpcEmp = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_empleado_por_id', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_id_empleado: id_empleado })
+    });
+    const empArr = rpcEmp.ok ? await rpcEmp.json() : [];
     const emp = empArr[0];
     if (!emp) return { ok: false, msg: 'Empleado no encontrado.' };
     if (!emp.correo) return { ok: false, msg: 'El empleado remitente no tiene correo registrado en el sistema.' };
@@ -3594,8 +3601,17 @@ async function cargarEmpleadosPorArea(id_area, selectId, soloConPermiso) {
   }
   sel.innerHTML = '<option value="">Cargando...</option>';
   try {
-    const emps = await api('empleados', 'GET', null,
-      '?id_area=eq.' + id_area + '&estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo,id_cargo,correo,param_cargos(nombre)');
+    // Vía RPC (no consulta directa a "empleados"): esa tabla exige el
+    // permiso EMPLEADOS→VER para SELECT, que la mayoría de quienes
+    // registran una Salida no tiene -- sin esto, la consulta se
+    // bloqueaba en silencio por RLS y siempre decía "Sin empleados en
+    // esta área", aunque sí los hubiera.
+    const rpcEmp = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_empleados_por_area', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_id_area: id_area })
+    });
+    const emps = rpcEmp.ok ? await rpcEmp.json() : [];
     if (!emps || !emps.length) {
       sel.innerHTML = '<option value="">— Sin empleados en esta área —</option>';
       return;
@@ -3628,7 +3644,7 @@ async function cargarEmpleadosPorArea(id_area, selectId, soloConPermiso) {
       + empsFiltrados.map(function(e) {
           return '<option value="' + e.id_empleado + '">'
             + escapeHtml(e.nombre_completo)
-            + (e.param_cargos ? ' · ' + escapeHtml(e.param_cargos.nombre) : '')
+            + (e.cargo_nombre ? ' · ' + escapeHtml(e.cargo_nombre) : '')
             + '</option>';
         }).join('');
   } catch(err) {
