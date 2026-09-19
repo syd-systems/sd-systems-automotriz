@@ -103,17 +103,22 @@ async function refrescarMargenesVigentes() {
   _margenesVigentesMap = {};
   try {
     const hoy = getHoyVzla();
-    const rows = await api('param_margen_bruto','GET',null,
-      '?id_empresa=eq.'+(_empresaActiva?.id_empresa||0)
-      +'&estado=neq.ANULADO&fecha_vigencia_desde=lte.'+hoy
-      +'&order=fecha_vigencia_desde.desc,id.desc&select=id_tipo_articulo,margen_pct') || [];
-    rows.forEach(function(r) {
-      // Ya viene ordenado desc -- la primera vez que aparece un Tipo es su
-      // vigente más reciente; las siguientes filas de ese mismo Tipo se
-      // ignoran (son vigencias más viejas, ya reemplazadas).
-      if (_margenesVigentesMap[r.id_tipo_articulo] === undefined) {
-        _margenesVigentesMap[r.id_tipo_articulo] = parseFloat(r.margen_pct);
-      }
+    // Vía RPC, no consulta directa a "param_margen_bruto": esa tabla exige
+    // el permiso INVENTARIO→VER_MARGEN_BRUTO para SELECT (correcto -- el
+    // % de margen es un dato sensible), pero calcular el Precio de Venta
+    // en Ventas/Órdenes de Servicio lo necesita CUALQUIER Usuario que
+    // pueda vender, no solo quien puede VER el margen crudo. El RPC
+    // devuelve el número (sí sigue siendo visible en la red), pero
+    // resuelve el problema real: sin esto, la consulta se bloqueaba en
+    // silencio por RLS y el Precio de Venta siempre daba 0.
+    const rpcResp = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_margenes_vigentes_venta', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_id_empresa: _empresaActiva?.id_empresa || 0, p_fecha: hoy })
+    });
+    const rows = rpcResp.ok ? await rpcResp.json() : [];
+    (rows||[]).forEach(function(r) {
+      _margenesVigentesMap[r.id_tipo_articulo] = parseFloat(r.margen_pct);
     });
   } catch(e) { console.warn('Error refrescando Márgenes vigentes:', e); }
 }
