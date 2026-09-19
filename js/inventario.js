@@ -259,11 +259,23 @@ async function calcularInvSaldoArea() {
 
     let id_areaUsuario = idAreaManual;
     if (!id_areaUsuario) {
-      // Camino original: usuario SIN el permiso -- se limita a su propia Área
+      // Camino original: usuario SIN el permiso -- se limita a su propia
+      // Área. Vía RPC (no consulta directa a "empleados"): esa tabla exige
+      // el permiso EMPLEADOS→VER para SELECT, que la mayoría de quienes
+      // usan Inventario/Órdenes de Servicio no tiene -- sin esto, la
+      // consulta se bloqueaba en silencio por RLS y _invSaldoArea quedaba
+      // en {} (vacío), mostrando saldo 0 para todos los Artículos.
       const correo = sesionActual?.correo_usuario;
       if (!correo) { _invSaldoArea = null; return; }
-      const empRes = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1').catch(function(){ return []; });
-      id_areaUsuario = empRes?.[0]?.id_area || null;
+      try {
+        const rpcAreaInv = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_area_por_correo', {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_correo: correo })
+        });
+        const areaInvRows = rpcAreaInv.ok ? await rpcAreaInv.json() : [];
+        id_areaUsuario = areaInvRows?.[0]?.id || null;
+      } catch(eAreaInv) { console.warn('Error resolviendo Área del usuario para saldo Inventario:', eAreaInv); id_areaUsuario = null; }
       if (!id_areaUsuario) { _invSaldoArea = {}; return; }
     }
 
