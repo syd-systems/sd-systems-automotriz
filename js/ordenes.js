@@ -1155,8 +1155,15 @@ async function ajustarStockOS(id_orden, operacion) {
     const correoCreadorOS = osRes && osRes[0] ? osRes[0].id_usuario : null;
     let id_areaTallerOS = null;
     if (correoCreadorOS) {
-      const empOS = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correoCreadorOS)+'&select=id_area&limit=1');
-      id_areaTallerOS = empOS && empOS[0] ? empOS[0].id_area : null;
+      try {
+        const rpcAreaTaller = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_area_por_correo', {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_correo: correoCreadorOS })
+        });
+        const areaTallerRows = rpcAreaTaller.ok ? await rpcAreaTaller.json() : [];
+        id_areaTallerOS = areaTallerRows?.[0]?.id || null;
+      } catch(eAreaTaller) { console.warn('Error resolviendo Área de Taller para ajuste de Stock:', eAreaTaller); }
     }
     if (!id_areaTallerOS) {
       console.warn('ajustarStockOS: no se pudo determinar el área de Taller — stock no ajustado.');
@@ -1624,9 +1631,18 @@ async function cargarSelectsOS() {
     if (!_invSaldoArea && !sesionActual?.administrador && !puedo('INVENTARIO','VER_INVENTARIO_GENERAL') && inventarioCache.length > 0) {
       try {
         const correo = sesionActual?.correo_usuario;
-        const empRes = correo ? await api('empleados','GET',null,
-          '?correo=eq.'+encodeURIComponent(correo)+'&select=id_area&limit=1') : [];
-        const id_areaUsuario = empRes?.[0]?.id_area || null;
+        let id_areaUsuario = null;
+        if (correo) {
+          try {
+            const rpcAreaUsu = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_area_por_correo', {
+              method: 'POST',
+              headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ p_correo: correo })
+            });
+            const areaUsuRows = rpcAreaUsu.ok ? await rpcAreaUsu.json() : [];
+            id_areaUsuario = areaUsuRows?.[0]?.id || null;
+          } catch(eAreaUsu) { console.warn('Error resolviendo Área del usuario para saldo OS:', eAreaUsu); }
+        }
         if (id_areaUsuario) {
           const inClause = inventarioCache.map(function(r){ return r.id_articulo; }).join(',');
           const t4s = function(){ return new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); },4000); }); };
