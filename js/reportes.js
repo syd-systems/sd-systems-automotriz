@@ -14,6 +14,14 @@ const REPORTES_DISPONIBLES = [
 ];
 
 let _reporteActual = 'inventario';
+let _repFiltrosVisibles = true;
+function repToggleFiltros() {
+  _repFiltrosVisibles = !_repFiltrosVisibles;
+  const el = document.getElementById('rep-filtros-extra');
+  if (el) el.style.display = _repFiltrosVisibles ? 'flex' : 'none';
+  const btn = document.getElementById('rep-filtros-toggle-btn');
+  if (btn) btn.innerHTML = _repFiltrosVisibles ? '🔽 Filtros' : '▶ Filtros';
+}
 
 async function renderReportes() {
   if (!sesionActual?.administrador && !modulosAcceso.includes('REPORTES')) {
@@ -22,11 +30,12 @@ async function renderReportes() {
   }
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="panel" id="panel-reportes" style="margin-top:-16px">'
-    + '<div class="panel-header" style="padding:14px 24px">'
+    + '<div class="panel-header" style="padding:14px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">'
     + '<select id="rep-selector" onchange="_reporteActual=this.value; renderReportes()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;cursor:pointer">'
     + REPORTES_DISPONIBLES.map(function(r){ return '<option value="'+r.id+'"' + (r.id === _reporteActual ? ' selected' : '') + '>' + r.nombre + '</option>'; }).join('')
     + '</select>'
-    + '<span id="rep-inv-tasa-info" style="margin-left:14px;font-size:12px;color:var(--suave);font-family:var(--font-mono)"></span>'
+    + '<div id="reportes-topbar-extra" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"></div>'
+    + '<span id="rep-inv-tasa-info" style="font-size:12px;color:var(--suave);font-family:var(--font-mono)"></span>'
     + '</div>'
     + '<div id="reportes-contenido"></div>'
     + '</div>';
@@ -77,16 +86,21 @@ async function repInventarioRender(cont) {
   const catNombrePorId = {};
   (categorias||[]).forEach(function(c){ catNombrePorId[c.id_categoria] = c.nombre; });
 
-  cont.innerHTML =
-    '<div style="padding:16px 24px">'
-    + '<div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--borde)">'
-    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Fecha de Corte</label>'
-    + '<input type="date" id="rep-inv-fecha" value="' + fechaCorteVal + '" max="' + getHoyVzla() + '" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none"></div>'
-    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Moneda</label>'
-    + '<select id="rep-inv-moneda" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+  // Fecha de Corte y Moneda van en la barra superior (junto al selector
+  // de Reporte); el resto de los filtros quedan en un panel plegable.
+  document.getElementById('reportes-topbar-extra').innerHTML =
+    '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Fecha de Corte</label>'
+    + '<input type="date" id="rep-inv-fecha" value="' + fechaCorteVal + '" max="' + getHoyVzla() + '" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:7px 10px;border-radius:5px;outline:none"></div>'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Moneda</label>'
+    + '<select id="rep-inv-moneda" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:7px 10px;border-radius:5px;outline:none">'
     + '<option value="VES"' + (monedaVal==='VES'?' selected':'') + '>VES</option>'
     + '<option value="USD"' + (monedaVal==='USD'?' selected':'') + '>USD</option>'
     + '</select></div>'
+    + '<button id="rep-filtros-toggle-btn" onclick="repToggleFiltros()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:7px 12px;border-radius:5px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px">🔽 Filtros</button>';
+
+  cont.innerHTML =
+    '<div style="padding:16px 24px">'
+    + '<div id="rep-filtros-extra" style="display:' + (_repFiltrosVisibles?'flex':'none') + ';gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--borde)">'
     + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Área</label>'
     + '<select id="rep-inv-area" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
     + '<option value=""' + (areaVal===''?' selected':'') + '>Todas las Áreas</option>'
@@ -106,7 +120,8 @@ async function repInventarioRender(cont) {
     + '<input type="checkbox" id="rep-inv-solo-stock" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))"' + (soloConStock ? ' checked' : '') + ' style="cursor:pointer">'
     + 'Solo Artículos con Stock</label>'
     + '<button onclick="repInventarioLimpiarFiltros()" title="Limpiar filtros" style="background:#dc2626;border:1px solid #dc2626;color:#fff;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:16px;line-height:1;box-shadow:0 1px 3px rgba(220,38,38,0.4)">🗑</button>'
-    + '<div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">'
+    + '</div>'
+    + '<div style="display:flex;gap:16px;align-items:flex-end;justify-content:flex-end;margin-bottom:20px">'
     + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Formato</label>'
     + '<select id="rep-inv-formato" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
     + '<option value="pdf"' + (formatoVal==='pdf'?' selected':'') + '>PDF</option>'
@@ -114,7 +129,6 @@ async function repInventarioRender(cont) {
     + '<option value="csv"' + (formatoVal==='csv'?' selected':'') + '>CSV</option>'
     + '</select></div>'
     + '<button class="btn-secundario" onclick="repInventarioExportar()">⬇ Exportar</button>'
-    + '</div>'
     + '</div>'
     + '<div id="rep-inv-resumen" style="display:flex;gap:20px;margin-bottom:20px">'
     + '<div style="flex:1;background:var(--gris2);border-radius:8px;padding:16px 20px">'
@@ -499,18 +513,21 @@ async function repComprasRender(cont) {
       '?estado=eq.ACTIVO&select=id_proveedor,nombre&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
   } catch(e) { console.warn('Error cargando Proveedores:', e); }
 
-  cont.innerHTML =
-    '<div style="padding:16px 24px">'
-    + '<div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--borde)">'
-    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Desde</label>'
-    + '<input type="date" id="rep-com-desde" value="' + desdeVal + '" max="' + hoy + '" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none"></div>'
-    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Hasta</label>'
-    + '<input type="date" id="rep-com-hasta" value="' + hastaVal + '" max="' + hoy + '" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none"></div>'
-    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Moneda</label>'
-    + '<select id="rep-com-moneda" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+  document.getElementById('reportes-topbar-extra').innerHTML =
+    '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Desde</label>'
+    + '<input type="date" id="rep-com-desde" value="' + desdeVal + '" max="' + hoy + '" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:7px 10px;border-radius:5px;outline:none"></div>'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Hasta</label>'
+    + '<input type="date" id="rep-com-hasta" value="' + hastaVal + '" max="' + hoy + '" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:7px 10px;border-radius:5px;outline:none"></div>'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Moneda</label>'
+    + '<select id="rep-com-moneda" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:7px 10px;border-radius:5px;outline:none">'
     + '<option value="VES"' + (monedaVal==='VES'?' selected':'') + '>VES</option>'
     + '<option value="USD"' + (monedaVal==='USD'?' selected':'') + '>USD</option>'
     + '</select></div>'
+    + '<button id="rep-filtros-toggle-btn" onclick="repToggleFiltros()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:7px 12px;border-radius:5px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px">🔽 Filtros</button>';
+
+  cont.innerHTML =
+    '<div style="padding:16px 24px">'
+    + '<div id="rep-filtros-extra" style="display:' + (_repFiltrosVisibles?'flex':'none') + ';gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--borde)">'
     + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Categoría</label>'
     + '<select id="rep-com-categoria" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
     + '<option value=""' + (categoriaVal===''?' selected':'') + '>Todas</option>'
@@ -527,7 +544,8 @@ async function repComprasRender(cont) {
     + proveedores.map(function(p){ return '<option value="'+p.id_proveedor+'"' + (String(proveedorVal)===String(p.id_proveedor)?' selected':'') + '>' + escapeHtml(p.nombre) + '</option>'; }).join('')
     + '</select></div>'
     + '<button onclick="repComprasLimpiarFiltros()" title="Limpiar filtros" style="background:#dc2626;border:1px solid #dc2626;color:#fff;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:16px;line-height:1;box-shadow:0 1px 3px rgba(220,38,38,0.4)">🗑</button>'
-    + '<div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">'
+    + '</div>'
+    + '<div style="display:flex;gap:16px;align-items:flex-end;justify-content:flex-end;margin-bottom:20px">'
     + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Formato</label>'
     + '<select id="rep-com-formato" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
     + '<option value="pdf"' + (formatoVal==='pdf'?' selected':'') + '>PDF</option>'
@@ -535,7 +553,6 @@ async function repComprasRender(cont) {
     + '<option value="csv"' + (formatoVal==='csv'?' selected':'') + '>CSV</option>'
     + '</select></div>'
     + '<button class="btn-secundario" onclick="repComprasExportar()">⬇ Exportar</button>'
-    + '</div>'
     + '</div>'
     + '<div id="rep-com-resumen" style="display:flex;gap:20px;margin-bottom:20px">'
     + '<div style="flex:1;background:var(--gris2);border-radius:8px;padding:16px 20px">'
@@ -810,18 +827,21 @@ async function repVentasRender(cont) {
     clientes = await api('clientes','GET',null, '?activo=eq.true&select=id_cliente,nombre_completo&order=nombre_completo.asc');
   } catch(e) { console.warn('Error cargando Clientes:', e); }
 
-  cont.innerHTML =
-    '<div style="padding:16px 24px">'
-    + '<div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--borde)">'
-    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Desde</label>'
-    + '<input type="date" id="rep-ven-desde" value="' + desdeVal + '" max="' + hoy + '" onchange="repVentasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none"></div>'
-    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Hasta</label>'
-    + '<input type="date" id="rep-ven-hasta" value="' + hastaVal + '" max="' + hoy + '" onchange="repVentasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none"></div>'
-    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Moneda</label>'
-    + '<select id="rep-ven-moneda" onchange="repVentasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
+  document.getElementById('reportes-topbar-extra').innerHTML =
+    '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Desde</label>'
+    + '<input type="date" id="rep-ven-desde" value="' + desdeVal + '" max="' + hoy + '" onchange="repVentasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:7px 10px;border-radius:5px;outline:none"></div>'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Hasta</label>'
+    + '<input type="date" id="rep-ven-hasta" value="' + hastaVal + '" max="' + hoy + '" onchange="repVentasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:7px 10px;border-radius:5px;outline:none"></div>'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Moneda</label>'
+    + '<select id="rep-ven-moneda" onchange="repVentasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:7px 10px;border-radius:5px;outline:none">'
     + '<option value="VES"' + (monedaVal==='VES'?' selected':'') + '>VES</option>'
     + '<option value="USD"' + (monedaVal==='USD'?' selected':'') + '>USD</option>'
     + '</select></div>'
+    + '<button id="rep-filtros-toggle-btn" onclick="repToggleFiltros()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:7px 12px;border-radius:5px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px">🔽 Filtros</button>';
+
+  cont.innerHTML =
+    '<div style="padding:16px 24px">'
+    + '<div id="rep-filtros-extra" style="display:' + (_repFiltrosVisibles?'flex':'none') + ';gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--borde)">'
     + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Área</label>'
     + '<select id="rep-ven-area" onchange="repVentasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
     + '<option value=""' + (areaVal===''?' selected':'') + '>Todas las Áreas</option>'
@@ -849,7 +869,8 @@ async function repVentasRender(cont) {
     + '<option value="Pendiente de cobro"' + (formaPagoVal==='Pendiente de cobro'?' selected':'') + '>Pendiente de cobro</option>'
     + '</select></div>'
     + '<button onclick="repVentasLimpiarFiltros()" title="Limpiar filtros" style="background:#dc2626;border:1px solid #dc2626;color:#fff;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:16px;line-height:1;box-shadow:0 1px 3px rgba(220,38,38,0.4)">🗑</button>'
-    + '<div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">'
+    + '</div>'
+    + '<div style="display:flex;gap:16px;align-items:flex-end;justify-content:flex-end;margin-bottom:20px">'
     + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Formato</label>'
     + '<select id="rep-ven-formato" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
     + '<option value="pdf"' + (formatoVal==='pdf'?' selected':'') + '>PDF</option>'
@@ -857,7 +878,6 @@ async function repVentasRender(cont) {
     + '<option value="csv"' + (formatoVal==='csv'?' selected':'') + '>CSV</option>'
     + '</select></div>'
     + '<button class="btn-secundario" onclick="repVentasExportar()">⬇ Exportar</button>'
-    + '</div>'
     + '</div>'
     + '<div id="rep-ven-resumen" style="display:flex;gap:20px;margin-bottom:20px">'
     + '<div style="flex:1;background:var(--gris2);border-radius:8px;padding:16px 20px">'
@@ -1159,13 +1179,16 @@ async function repServiciosRender(cont) {
   const gruposUnicos = [...new Set(catalogo.map(function(s){ return s.grupo; }).filter(Boolean))].sort();
   const serviciosDelGrupo = grupoVal ? catalogo.filter(function(s){ return s.grupo === grupoVal; }) : catalogo;
 
+  document.getElementById('reportes-topbar-extra').innerHTML =
+    '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Desde</label>'
+    + '<input type="date" id="rep-ser-desde" value="' + desdeVal + '" max="' + hoy + '" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:7px 10px;border-radius:5px;outline:none"></div>'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Hasta</label>'
+    + '<input type="date" id="rep-ser-hasta" value="' + hastaVal + '" max="' + hoy + '" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:7px 10px;border-radius:5px;outline:none"></div>'
+    + '<button id="rep-filtros-toggle-btn" onclick="repToggleFiltros()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:7px 12px;border-radius:5px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px">🔽 Filtros</button>';
+
   cont.innerHTML =
     '<div style="padding:16px 24px">'
-    + '<div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--borde)">'
-    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Desde</label>'
-    + '<input type="date" id="rep-ser-desde" value="' + desdeVal + '" max="' + hoy + '" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none"></div>'
-    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Hasta</label>'
-    + '<input type="date" id="rep-ser-hasta" value="' + hastaVal + '" max="' + hoy + '" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none"></div>'
+    + '<div id="rep-filtros-extra" style="display:' + (_repFiltrosVisibles?'flex':'none') + ';gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--borde)">'
     + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Grupo</label>'
     + '<select id="rep-ser-grupo" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
     + '<option value=""' + (grupoVal===''?' selected':'') + '>Todos</option>'
@@ -1198,7 +1221,8 @@ async function repServiciosRender(cont) {
     + '<option value="Pendiente de cobro"' + (formaPagoVal==='Pendiente de cobro'?' selected':'') + '>Pendiente de cobro</option>'
     + '</select></div>'
     + '<button onclick="repServiciosLimpiarFiltros()" title="Limpiar filtros" style="background:#dc2626;border:1px solid #dc2626;color:#fff;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:16px;line-height:1;box-shadow:0 1px 3px rgba(220,38,38,0.4)">🗑</button>'
-    + '<div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end">'
+    + '</div>'
+    + '<div style="display:flex;gap:16px;align-items:flex-end;justify-content:flex-end;margin-bottom:20px">'
     + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Formato</label>'
     + '<select id="rep-ser-formato" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none">'
     + '<option value="pdf"' + (formatoVal==='pdf'?' selected':'') + '>PDF</option>'
@@ -1206,7 +1230,6 @@ async function repServiciosRender(cont) {
     + '<option value="csv"' + (formatoVal==='csv'?' selected':'') + '>CSV</option>'
     + '</select></div>'
     + '<button class="btn-secundario" onclick="repServiciosExportar()">⬇ Exportar</button>'
-    + '</div>'
     + '</div>'
     + '<div id="rep-ser-resumen" style="display:flex;gap:20px;margin-bottom:20px">'
     + '<div style="flex:1;background:var(--gris2);border-radius:8px;padding:16px 20px">'
