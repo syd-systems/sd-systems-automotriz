@@ -621,9 +621,9 @@ async function repComprasRender(cont) {
 let _repComOrdenCol = null;
 let _repComOrdenAsc = true;
 const REP_COM_COLUMNAS = [
-  { campo: 'fecha',     tipo: 'texto',  label: 'Fecha Compra', ancho: '13%' },
+  { campo: 'fecha',     tipo: 'texto',  label: 'Fecha Compra', ancho: '18%' },
   { campo: 'proveedor', tipo: 'texto',  label: 'Proveedor',    ancho: '25%' },
-  { campo: 'articulo',  tipo: 'texto',  label: 'Artículo',     ancho: '32%' },
+  { campo: 'articulo',  tipo: 'texto',  label: 'Artículo',     ancho: '27%' },
   { campo: 'cantidad',  tipo: 'numero', label: 'Cantidad',     ancho: '12%' },
   { campo: 'precio',    tipo: 'numero', label: 'Precio',       ancho: '18%' },
 ];
@@ -966,9 +966,9 @@ async function repVentasRender(cont) {
 let _repVenOrdenCol = null;
 let _repVenOrdenAsc = true;
 const REP_VEN_COLUMNAS = [
-  { campo: 'fecha',    tipo: 'texto',  label: 'Fecha Venta', ancho: '11%' },
+  { campo: 'fecha',    tipo: 'texto',  label: 'Fecha Venta', ancho: '16%' },
   { campo: 'cliente',  tipo: 'texto',  label: 'Cliente',     ancho: '22%' },
-  { campo: 'articulo', tipo: 'texto',  label: 'Artículo',    ancho: '25%' },
+  { campo: 'articulo', tipo: 'texto',  label: 'Artículo',    ancho: '20%' },
   { campo: 'cantidad', tipo: 'numero', label: 'Cantidad',    ancho: '10%' },
   { campo: 'precio',   tipo: 'numero', label: 'Precio',      ancho: '16%' },
   { campo: 'pago',     tipo: 'texto',  label: 'Pago',        ancho: '16%' },
@@ -1308,9 +1308,9 @@ async function repServiciosRender(cont) {
 let _repSerOrdenCol = null;
 let _repSerOrdenAsc = true;
 const REP_SER_COLUMNAS = [
-  { campo: 'fecha',    tipo: 'texto',  label: 'Fecha',    ancho: '13%' },
+  { campo: 'fecha',    tipo: 'texto',  label: 'Fecha',    ancho: '18%' },
   { campo: 'cliente',  tipo: 'texto',  label: 'Cliente',  ancho: '27%' },
-  { campo: 'servicio', tipo: 'texto',  label: 'Servicio', ancho: '28%' },
+  { campo: 'servicio', tipo: 'texto',  label: 'Servicio', ancho: '23%' },
   { campo: 'precio',   tipo: 'numero', label: 'Precio',   ancho: '16%' },
   { campo: 'pago',     tipo: 'texto',  label: 'Pago',     ancho: '16%' },
 ];
