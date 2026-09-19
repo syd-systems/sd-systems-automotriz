@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909137';
+const SYD_VERSION = '20260909138';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3759,10 +3759,16 @@ function formatearRifBlur(el) {
     const cuerpo = digitos.slice(0, -1).padStart(8, '0').slice(0, 8);
     el.value = letra + '-' + cuerpo + '-' + verificador;
   } else {
-    // Persona natural (V/E/P/C): todos los dígitos escritos son la
-    // cédula (rellenada con ceros si tiene menos de 8) -- el dígito
-    // verificador se calcula, no se toma del último dígito escrito.
-    const cedula = digitos.padStart(8, '0').slice(-8);
+    // Persona natural (V/E/P/C): los primeros 8 dígitos son SIEMPRE la
+    // cédula (rellenada con ceros a la izquierda si escribieron menos) --
+    // el dígito verificador se calcula, nunca se toma del último dígito
+    // escrito. Importante: si el campo ya tenía el RIF completo (9
+    // dígitos = cédula + verificador, por ejemplo al reabrir Editar
+    // Cliente), hay que tomar los primeros 8 y descartar el 9° -- tomar
+    // los ÚLTIMOS 8 (como estaba antes) desplaza la cédula un dígito y
+    // corrompe el RIF cada vez que el campo pierde el foco sin que el
+    // usuario haya escrito nada.
+    const cedula = digitos.padStart(8, '0').slice(0, 8);
     const verificador = calcularDigitoVerificadorRif(letra, cedula);
     if (verificador === null) return;
     el.value = letra + '-' + cedula + '-' + verificador;
