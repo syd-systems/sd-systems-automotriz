@@ -1373,10 +1373,11 @@ async function repServiciosRender(cont) {
   }
 
   let idsFacturaOrden = {};
+  let numeroFacturaPorOrden = {};
   try {
     const facRows = await api('facturas','GET',null,
-      '?id_orden=in.(' + (idsOrden.length ? idsOrden.join(',') : '0') + ')&select=id_factura,id_orden');
-    (facRows||[]).forEach(function(f){ idsFacturaOrden[f.id_orden] = f.id_factura; });
+      '?id_orden=in.(' + (idsOrden.length ? idsOrden.join(',') : '0') + ')&select=id_factura,id_orden,numero_factura');
+    (facRows||[]).forEach(function(f){ idsFacturaOrden[f.id_orden] = f.id_factura; numeroFacturaPorOrden[f.id_orden] = f.numero_factura; });
   } catch(e) { console.warn('Error cargando Facturas de Servicio:', e); }
   const idsFacturaSer = Object.values(idsFacturaOrden);
   let metodoPorFactura = {};
@@ -1401,7 +1402,8 @@ async function repServiciosRender(cont) {
       vehiculoDesc: o?.vehiculos ? (o.vehiculos.marca||'') + ' ' + (o.vehiculos.modelo||'') : '',
       servicio: l.id_servicio && catalogoPorId[l.id_servicio] ? catalogoPorId[l.id_servicio].nombre : (l.descripcion||'(Servicio libre)'),
       precio: precio,
-      pago: idFact && metodoPorFactura[idFact] ? metodoPorFactura[idFact] : 'Pendiente de cobro'
+      pago: idFact && metodoPorFactura[idFact] ? metodoPorFactura[idFact] : 'Pendiente de cobro',
+      facturaRef: numeroFacturaPorOrden[l.id_orden] || ''
     };
   });
   if (formaPagoVal) filas = filas.filter(function(f){ return f.pago === formaPagoVal; });
@@ -1473,7 +1475,7 @@ function _repSerRenderTabla() {
       + '<td style="font-family:var(--font-mono);font-size:13px">' + escapeHtml(f.vehiculo) + '<div style="font-size:11px;color:var(--suave)">' + escapeHtml(f.vehiculoDesc) + '</div></td>'
       + '<td style="font-size:15px">' + escapeHtml(f.servicio) + '</td>'
       + '<td style="text-align:right;font-family:var(--font-mono);color:var(--naranja);font-weight:600;font-size:15px">' + (d.monedaVal==='VES' ? fmtBs(f.precio) : fmtUSD(f.precio)) + '</td>'
-      + '<td style="text-align:center;font-size:13px;color:var(--suave)">' + escapeHtml(f.pago) + '</td>'
+      + '<td style="text-align:center;font-size:13px;color:var(--suave)">' + (f.facturaRef ? '<div style="font-size:11px;font-family:var(--font-mono);color:var(--texto)">' + escapeHtml(f.facturaRef) + '</div>' : '') + escapeHtml(f.pago) + '</td>'
       + '</tr>';
   }).join('');
 
@@ -1493,8 +1495,9 @@ function _repSerDatosExportar() {
   if (!d) return null;
   const encabezados = ['N° OS','Fecha','Cliente','Vehículo','Servicio','Precio','Pago'];
   const fmtMoneda = d.monedaVal === 'VES' ? fmtBs : fmtUSD;
-  const filasNumericas = d.filas.map(function(f) { return [f.numeroOS, fmtFecha(f.fecha), f.cliente, (f.vehiculo+' '+f.vehiculoDesc).trim(), f.servicio, f.precio, f.pago]; });
-  const filasTexto = d.filas.map(function(f) { return [f.numeroOS, fmtFecha(f.fecha), f.cliente, (f.vehiculo+' '+f.vehiculoDesc).trim(), f.servicio, fmtMoneda(f.precio), f.pago]; });
+  const pagoTxt = function(f){ return f.facturaRef ? (f.facturaRef + ' — ' + f.pago) : f.pago; };
+  const filasNumericas = d.filas.map(function(f) { return [f.numeroOS, fmtFecha(f.fecha), f.cliente, (f.vehiculo+' '+f.vehiculoDesc).trim(), f.servicio, f.precio, pagoTxt(f)]; });
+  const filasTexto = d.filas.map(function(f) { return [f.numeroOS, fmtFecha(f.fecha), f.cliente, (f.vehiculo+' '+f.vehiculoDesc).trim(), f.servicio, fmtMoneda(f.precio), pagoTxt(f)]; });
   return { d, encabezados, filasNumericas, filasTexto };
 }
 
