@@ -903,7 +903,7 @@ async function repVentasRender(cont) {
     + '</div>'
     + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 420px))"><table style="min-width:900px;border-collapse:collapse;white-space:nowrap">'
     + '<thead><tr id="rep-ven-thead-row"></tr></thead>'
-    + '<tbody id="rep-ven-tbody"><tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Cargando...</td></tr></tbody>'
+    + '<tbody id="rep-ven-tbody"><tr><td colspan="8" style="text-align:center;color:var(--suave);padding:32px">Cargando...</td></tr></tbody>'
     + '</table></div>'
     + '</div>';
 
@@ -1065,13 +1065,14 @@ async function repVentasRender(cont) {
 let _repVenOrdenCol = null;
 let _repVenOrdenAsc = true;
 const REP_VEN_COLUMNAS = [
-  { campo: 'fecha',    tipo: 'texto',  label: 'Fecha Venta', ancho: '13%' },
-  { campo: 'cliente',  tipo: 'texto',  label: 'Cliente',     ancho: '19%' },
-  { campo: 'articulo', tipo: 'texto',  label: 'Artículo',    ancho: '18%' },
-  { campo: 'area',     tipo: 'texto',  label: 'Área',        ancho: '15%' },
-  { campo: 'cantidad', tipo: 'numero', label: 'Cantidad',    ancho: '9%' },
-  { campo: 'precio',   tipo: 'numero', label: 'Precio',      ancho: '13%' },
-  { campo: 'pago',     tipo: 'texto',  label: 'Pago',        ancho: '13%' },
+  { campo: 'fecha',       tipo: 'texto',  label: 'Fecha Venta', ancho: '12%' },
+  { campo: 'cliente',     tipo: 'texto',  label: 'Cliente',     ancho: '16%' },
+  { campo: 'articulo',    tipo: 'texto',  label: 'Artículo',    ancho: '15%' },
+  { campo: 'area',        tipo: 'texto',  label: 'Área',        ancho: '13%' },
+  { campo: 'cantidad',    tipo: 'numero', label: 'Cantidad',    ancho: '8%' },
+  { campo: 'precio',      tipo: 'numero', label: 'Precio',      ancho: '12%' },
+  { campo: 'referencia',  tipo: 'texto',  label: 'Factura',     ancho: '12%' },
+  { campo: 'pago',        tipo: 'texto',  label: 'Pago',        ancho: '12%' },
 ];
 
 function repVentasOrdenar(campo) {
@@ -1111,11 +1112,12 @@ function _repVenRenderTabla() {
       + '<td style="font-size:13px;color:var(--suave)">' + escapeHtml(f.area) + '</td>'
       + '<td style="text-align:right;font-family:var(--font-mono);font-size:15px">' + f.cantidad + '</td>'
       + '<td style="text-align:right;font-family:var(--font-mono);color:var(--naranja);font-weight:600;font-size:15px">' + (monedaVal==='VES' ? fmtBs(f.precio) : fmtUSD(f.precio)) + '</td>'
-      + '<td style="text-align:center;font-size:13px;color:var(--suave)">' + (f.referencia ? '<div style="font-size:11px;font-family:var(--font-mono);color:var(--texto)">' + escapeHtml(f.referencia) + '</div>' : '') + escapeHtml(f.pago) + '</td>'
+      + '<td style="text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--suave)">' + escapeHtml(f.referencia || '—') + '</td>'
+      + '<td style="text-align:center;font-size:13px;color:var(--suave)">' + escapeHtml(f.pago) + '</td>'
       + '</tr>';
   }).join('');
 
-  document.getElementById('rep-ven-tbody').innerHTML = filasHtml || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">No hay Ventas en el rango seleccionado</td></tr>';
+  document.getElementById('rep-ven-tbody').innerHTML = filasHtml || '<tr><td colspan="8" style="text-align:center;color:var(--suave);padding:32px">No hay Ventas en el rango seleccionado</td></tr>';
 }
 
 async function repVentasExportar() {
@@ -1129,7 +1131,7 @@ async function repVentasExportar() {
 function _repVenDatosExportar() {
   const d = window._reporteVentasActual;
   if (!d) return null;
-  const encabezados = ['Fecha Venta','Cliente','Artículo','Área','Cantidad','Precio','Referencia','Pago'];
+  const encabezados = ['Fecha Venta','Cliente','Artículo','Área','Cantidad','Precio','Factura','Pago'];
   const fmtMoneda = d.monedaVal === 'VES' ? fmtBs : fmtUSD;
   const filasNumericas = d.filas.map(function(f) {
     return [fmtFecha(f.fecha), f.cliente, f.articulo, f.area, f.cantidad, f.precio, f.referencia, f.pago];
@@ -1444,7 +1446,7 @@ const REP_SER_COLUMNAS = [
   { campo: 'vehiculo',   tipo: 'texto',  label: 'Vehículo',   ancho: '13%' },
   { campo: 'servicio',   tipo: 'texto',  label: 'Servicio',   ancho: '15%' },
   { campo: 'precio',     tipo: 'numero', label: 'Precio',     ancho: '11%' },
-  { campo: 'referencia', tipo: 'texto',  label: 'Referencia', ancho: '11%' },
+  { campo: 'referencia', tipo: 'texto',  label: 'Factura',    ancho: '11%' },
   { campo: 'pago',       tipo: 'texto',  label: 'Pago',       ancho: '12%' },
 ];
 
@@ -1503,7 +1505,7 @@ async function repServiciosExportar() {
 function _repSerDatosExportar() {
   const d = window._reporteServiciosActual;
   if (!d) return null;
-  const encabezados = ['N° OS','Fecha','Cliente','Vehículo','Servicio','Precio','Referencia','Pago'];
+  const encabezados = ['N° OS','Fecha','Cliente','Vehículo','Servicio','Precio','Factura','Pago'];
   const fmtMoneda = d.monedaVal === 'VES' ? fmtBs : fmtUSD;
   const filasNumericas = d.filas.map(function(f) { return [f.numeroOS, fmtFecha(f.fecha), f.cliente, (f.vehiculo+' '+f.vehiculoDesc).trim(), f.servicio, f.precio, f.facturaRef||'—', f.pago]; });
   const filasTexto = d.filas.map(function(f) { return [f.numeroOS, fmtFecha(f.fecha), f.cliente, (f.vehiculo+' '+f.vehiculoDesc).trim(), f.servicio, fmtMoneda(f.precio), f.facturaRef||'—', f.pago]; });
