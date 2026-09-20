@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909144';
+const SYD_VERSION = '20260909145';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3440,9 +3440,9 @@ function renderTarjetaEntregaVenta(v, lineas, opts) {
         + (opts.soloLectura ? '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">N° Factura</div>'
           + '<div style="font-family:var(--font-mono);font-size:13px;margin-bottom:6px">'+(v.facturas?.numero_factura||'—')+'</div>' : '')
         + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Cédula/RIF</div>'
-        + '<div style="font-family:var(--font-mono);font-size:13px;margin-bottom:6px">'+(cli?(cli.condicion_legal+'-'+cli.identificacion):'—')+'</div>'
+        + '<div style="font-family:var(--font-mono);font-size:13px;margin-bottom:6px">'+(cli?(cli.tipo_doc+'-'+cli.numero_doc):'—')+'</div>'
         + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Cliente</div>'
-        + '<div style="font-size:13px;font-weight:600">'+(cli?cli.nombre_apellido:'—')+'</div>'
+        + '<div style="font-size:13px;font-weight:600">'+(cli?cli.nombre_completo:'—')+'</div>'
       + '</div>'
       + '<div style="text-align:right">'
         + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Fecha</div>'
