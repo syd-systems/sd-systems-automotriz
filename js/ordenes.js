@@ -1389,28 +1389,6 @@ async function eliminarOS(id, numero) {
   } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
-// ─── REABRIR OS (requiere permiso SERVICIOS.REABRIR) ───
-async function reabrirOS(id, numero) {
-  if (!puedo('SERVICIOS','REABRIR')) {
-    alert('No tiene permiso para reabrir órdenes de servicio.');
-    return;
-  }
-  if (!confirm('¿Reabrir la orden ' + numero + '? El Artículo que se le había devuelto al Área de Taller se le volverá a restar (vuelve a quedar asignado a esta OS).')) return;
-  try {
-    const hoyReab = new Date(new Date().getTime() - 4*60*60*1000).toISOString().split('T')[0];
-    // Reabrir la OS le vuelve a restar al Área de Taller el stock que se
-    // le había devuelto al quedar Anulada (rama que solo aplica a registros
-    // históricos -- Anular OS ya no existe como acción del sistema).
-    await ajustarStockOS(id, 'descontar');
-    await api('ordenes_servicio', 'PATCH', {
-      estado: 'ABIERTA',
-      fecha_estado: hoyReab,
-      usuario_estado: sesionActual.nombre || sesionActual.correo_usuario,
-    }, '?id_orden=eq.' + id);
-    renderOrdenes();
-  } catch(e) { alert('Error: ' + msgErr(e)); }
-}
-
 // ─── FICHA OS ───
 
 async function verFichaOS(id) {
@@ -1631,23 +1609,9 @@ async function verFichaOS(id) {
     } else {
       btnFacturarOS.style.display = 'none';
     }
-    // Botón Reabrir (solo admins, solo en CERRADA -- ANULADA ya no existe
-    // como estado alcanzable)
-    let btnReabrir = document.getElementById('ficha-os-reabrir-btn');
-    if (!btnReabrir) {
-      btnReabrir = document.createElement('button');
-      btnReabrir.id = 'ficha-os-reabrir-btn';
-      btnReabrir.className = 'btn-secundario';
-      btnReabrir.style.cssText = 'border-color:rgba(255,107,0,0.4);color:var(--naranja)';
-      document.getElementById('ficha-os-editar-btn').parentNode.insertBefore(btnReabrir, document.getElementById('ficha-os-editar-btn'));
-    }
-    if (puedo('SERVICIOS','REABRIR') && o.estado === 'CERRADA') {
-      btnReabrir.textContent = '↺ Reabrir OS';
-      btnReabrir.setAttribute('onclick', 'cerrarModal(\'modal-ficha-os\');reabrirOS(' + id + ',\'' + (o.numero_os || '') + '\')');
-      btnReabrir.style.display = '';
-    } else {
-      btnReabrir.style.display = 'none';
-    }
+    // "Reabrir OS" se eliminó de raíz -- una OS Cerrada ya generó su
+    // Factura en el mismo clic (guardarOSyFacturar), y una venta facturada
+    // no se puede deshacer; reabrir dejaba de tener sentido.
     // "Anular OS" se eliminó de raíz -- ver eliminarOS() más abajo, que
     // queda como única acción de cancelación para OS que no estén Cerradas.
     // Botón Eliminar OS (borrado físico) -- solo para OS que NO estén
