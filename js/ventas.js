@@ -682,7 +682,7 @@ async function abrirVenta(id) {
 // exactamente como estaba antes de abrir el modal (en 0 si era una Venta
 // nueva, o con la reserva original si se estaba editando una ya guardada).
 async function cerrarModalVentaSinGuardar() {
-  const idArea = parseInt(document.getElementById('vta-id-area')?.value) || null;
+  const idArea = await _obtenerAreaAlmacenVentas(); // Stock siempre se descuenta de Compras (2300), no del Area organizativa de la Venta
   if (idArea) {
     // 1. Liberar TODO lo que quedó reservado por las líneas actuales
     for (const lin of _ventaLineas) {
@@ -764,7 +764,7 @@ function agregarLineaVenta() {
 
 async function quitarLineaVenta(idx) {
   const lin = _ventaLineas[idx];
-  const idArea = parseInt(document.getElementById('vta-id-area')?.value) || null;
+  const idArea = await _obtenerAreaAlmacenVentas(); // Stock siempre se descuenta de Compras (2300), no del Area organizativa de la Venta
   if (lin.id_articulo && lin.reservadoActual > 0 && idArea) {
     try { await ajustarReservaArea(lin.id_articulo, idArea, -lin.reservadoActual); } catch(e) {}
   }
@@ -775,7 +775,7 @@ async function quitarLineaVenta(idx) {
 
 async function _onCambioArticuloVenta(idx, idArticulo) {
   const lin = _ventaLineas[idx];
-  const idArea = parseInt(document.getElementById('vta-id-area')?.value) || null;
+  const idArea = await _obtenerAreaAlmacenVentas(); // Stock siempre se descuenta de Compras (2300), no del Area organizativa de la Venta
 
   // Liberar la reserva del artículo ANTERIOR de esta línea, si tenía
   if (lin.id_articulo && lin.reservadoActual > 0 && idArea) {
@@ -844,7 +844,7 @@ function _onCambioCantidadVenta(idx, valor) {
 async function _ajustarReservaLineaVenta(idx) {
   const lin = _ventaLineas[idx];
   lin.errorStock = null;
-  const idArea = parseInt(document.getElementById('vta-id-area')?.value) || null;
+  const idArea = await _obtenerAreaAlmacenVentas(); // Stock siempre se descuenta de Compras (2300), no del Area organizativa de la Venta
   if (!lin.id_articulo || !idArea) { _renderLineasVenta(); return; }
 
   const cantidadNueva = lin.cantidad || 0;
@@ -993,7 +993,7 @@ async function guardarVentaBorrador() {
   const moneda    = (_empresaActiva?.moneda_principal || 'VES').toUpperCase();
 
   if (!idCliente) { errEl.textContent = 'Debe seleccionar un Cliente.'; errEl.style.display = 'block'; return; }
-  if (!idArea)    { errEl.textContent = 'No se pudo determinar el Área de Almacén (Gerencia de Compras, código 2300). Verifique que esa Área exista en Parámetros.'; errEl.style.display = 'block'; return; }
+  if (!idArea)    { errEl.textContent = 'No se pudo determinar el Área de Ventas (Ventas y Marketing, código 6000). Verifique que esa Área exista en Parámetros.'; errEl.style.display = 'block'; return; }
   if (!_ventaLineas.length) { errEl.textContent = 'Debe agregar al menos un artículo.'; errEl.style.display = 'block'; return; }
 
   // Validar CADA línea agregada -- ya no se descartan en silencio las
