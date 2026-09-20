@@ -812,8 +812,7 @@ async function generarCxCyAsientoFactura(idFactura) {
         // con dónde salió físicamente el Artículo.
         const osRow = await api('ordenes_servicio','GET',null,'?id_orden=eq.'+fac.id_orden+'&select=id_usuario');
         const correoTaller = osRow && osRow[0] ? osRow[0].id_usuario : null;
-        const empRes = correoTaller ? await api('empleados','GET',null,
-          '?correo=eq.'+encodeURIComponent(correoTaller)+'&select=id_empleado,id_area&limit=1') : [];
+        const empRes = correoTaller ? await buscarEmpleados({ p_correo: correoTaller, p_limite: 1 }) : [];
         const id_areaEmp = empRes?.[0]?.id_area || null;
         const idEmpEmp  = empRes?.[0]?.id_empleado || null;
 
