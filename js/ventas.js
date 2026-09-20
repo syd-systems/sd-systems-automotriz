@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: VENTAS (mostrador / venta directa) ───
 // Creado el 2026-08-26. Una Venta pasa por 3 estados:
-//   BORRADOR ("Presupuesto", armando/editable, con la reserva de stock ya
+//   PRESUPUESTO (armando/editable, con la reserva de stock ya
 //   viva desde que se ingresa Cantidad) -> FACTURADA (genera factura + CxC
 //   + asiento + descuenta stock real, vía generarCxCyAsientoFactura() en
 //   ingresos.js) -> ANULADA
@@ -13,11 +13,7 @@
 //
 // El stock NO se descuenta hasta que la Venta se FACTURA -- antes de eso es
 // solo un "carrito" en memoria/BD, sin efecto real en Inventario/Contabilidad.
-//
-// NOTA: el valor interno 'BORRADOR' se muestra en la interfaz como
-// "Presupuesto" (ver ESTADO_LABEL) -- es más claro para el operador, ya que
-// en esta etapa aún no hay ningún compromiso real de stock ni contabilidad.
-const ESTADO_LABEL_VENTA = { BORRADOR: 'Presupuesto', FACTURADA: 'Facturada', ANULADA: 'Anulada' };
+const ESTADO_LABEL_VENTA = { PRESUPUESTO: 'Presupuesto', FACTURADA: 'Facturada', ANULADA: 'Anulada' };
 
 // ─── Filtros del listado de Ventas (Categoría/Tipo de Artículo, Cliente,
 // Rango de Fechas) -- estado persistente entre re-renders de la pestaña.
@@ -43,7 +39,7 @@ let _vtaFiltroSoloStock = false;
 async function _obtenerAreaAlmacenVentas() {
   if (_idAreaAlmacenVentas) return _idAreaAlmacenVentas;
   try {
-    const r = await api('param_areas','GET',null,'?codigo=eq.2300&select=id&limit=1');
+    const r = await api('param_areas','GET',null,'?codigo=eq.6000&select=id&limit=1');
     _idAreaAlmacenVentas = (r && r[0]) ? r[0].id : null;
   } catch(e) { _idAreaAlmacenVentas = null; }
   return _idAreaAlmacenVentas;
@@ -185,10 +181,10 @@ async function renderVentasListado() {
       _ventasFiltroFechaYaInicializada = true;
     }
 
-    const stats = { BORRADOR: 0, FACTURADA: 0, ANULADA: 0 };
+    const stats = { PRESUPUESTO: 0, FACTURADA: 0, ANULADA: 0 };
     ventas.forEach(function(v) { if (stats[v.estado] !== undefined) stats[v.estado]++; });
 
-    const ESTADO_BADGE = { BORRADOR: 'badge-gris', FACTURADA: 'badge-verde', ANULADA: 'badge-rojo' };
+    const ESTADO_BADGE = { PRESUPUESTO: 'badge-gris', FACTURADA: 'badge-verde', ANULADA: 'badge-rojo' };
 
     const filas = ventas.map(function(v) {
       const cli = v.clientes;
@@ -197,7 +193,7 @@ async function renderVentasListado() {
       const ves = (v.total_usd||0) * tasa;
       const totalDual = '<div style="' + (esVES?'color:var(--suave)':'color:var(--naranja)') + '">$ ' + fmtUSD(v.total_usd||0) + '</div>'
         + '<div style="' + (esVES?'color:var(--naranja)':'color:var(--suave)') + ';font-size:11px">Bs ' + fmtBs(ves) + '</div>';
-      const botonLabel = v.estado === 'BORRADOR' ? 'Editar / Facturar' : 'Ver';
+      const botonLabel = v.estado === 'PRESUPUESTO' ? 'Editar / Facturar' : 'Ver';
       return '<tr data-id="' + v.id_venta + '">'
         + '<td style="font-family:var(--font-mono);font-size:12px">' + (v.facturas?.numero_factura || 'V-' + v.id_venta) + '</td>'
         + '<td>' + (cli ? cli.nombre_completo : '—') + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (cli ? cli.tipo_doc + '-' + cli.numero_doc : '') + '</div></td>'
@@ -210,7 +206,7 @@ async function renderVentasListado() {
 
     c.innerHTML =
       '<div id="vta-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:12px">'
-      + ['BORRADOR','FACTURADA','ANULADA'].map(function(e) {
+      + ['PRESUPUESTO','FACTURADA','ANULADA'].map(function(e) {
           return '<div class="tarjeta-stat" style="padding:7px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">' + ESTADO_LABEL_VENTA[e] + '</div><div id="vta-stat-' + e + '" style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + stats[e] + '</div></div>';
         }).join('')
       + '</div>'
@@ -222,7 +218,7 @@ async function renderVentasListado() {
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:0 16px 10px">'
       + '<select id="vta-filtro-estado" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todos los estados</option>'
-      + '<option value="BORRADOR">Presupuesto</option>'
+      + '<option value="PRESUPUESTO">Presupuesto</option>'
       + '<option value="FACTURADA">Facturada</option><option value="ANULADA">Anulada</option>'
       + '</select>'
       + '<select id="vta-filtro-categoria" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
@@ -421,7 +417,7 @@ function filtrarTablaVentas() {
   // Los contadores (Presupuesto/Facturada/Anulada) responden SOLO al rango
   // de fechas -- no al resto de filtros (Estado, Categoría, Cliente), para
   // que siga teniendo sentido comparar los 3 conteos entre sí.
-  const statsRango = { BORRADOR: 0, FACTURADA: 0, ANULADA: 0 };
+  const statsRango = { PRESUPUESTO: 0, FACTURADA: 0, ANULADA: 0 };
   (ventasCache||[]).forEach(function(v) {
     const fechaVentaStat = (v.fecha_venta || '').substring(0, 10);
     const matchRango = (!desde || fechaVentaStat >= desde) && (!hasta || fechaVentaStat <= hasta);
@@ -463,14 +459,14 @@ function limpiarFiltrosVentas() {
 }
 
 // ═══════════════════════════════════════════════
-// ARMAR VENTA (crear / editar mientras está en BORRADOR)
+// ARMAR VENTA (crear / editar mientras está en PRESUPUESTO)
 // ═══════════════════════════════════════════════
 async function abrirVenta(id) {
   if (id && !puedo('VENTAS','EDITAR')) { alert('No tiene permiso para editar ventas.'); return; }
   if (!id && !puedo('VENTAS','CREAR'))  { alert('No tiene permiso para crear ventas.'); return; }
 
   const v = id ? ventasCache.find(function(x) { return x.id_venta === id; }) : null;
-  if (id && v && v.estado !== 'BORRADOR') { alert('Solo se puede editar una Venta mientras está en estado Presupuesto.'); return; }
+  if (id && v && v.estado !== 'PRESUPUESTO') { alert('Solo se puede editar una Venta mientras está en estado Presupuesto.'); return; }
 
   // Cargar clientes si no están en cache
   if (!clientesCache || !clientesCache.length) {
@@ -907,7 +903,7 @@ async function guardarVentaBorrador() {
       // Reemplazar por completo las líneas (más simple y confiable que hacer un diff)
       await api('venta_detalle','DELETE',null,'?id_venta=eq.'+id);
     } else {
-      datosVenta.estado = 'BORRADOR';
+      datosVenta.estado = 'PRESUPUESTO';
       const nueva = await api('ventas','POST',datosVenta);
       idVentaFinal = nueva && nueva[0] ? nueva[0].id_venta : null;
     }
@@ -943,7 +939,7 @@ async function verFichaVenta(id) {
       + '<td style="text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">$ '+fmtUSD(l.subtotal)+'</td></tr>';
   }).join('');
 
-  const ESTADO_BADGE = { BORRADOR: 'badge-gris', FACTURADA: 'badge-verde', ANULADA: 'badge-rojo' };
+  const ESTADO_BADGE = { PRESUPUESTO: 'badge-gris', FACTURADA: 'badge-verde', ANULADA: 'badge-rojo' };
   const tasa = v.tasa_bcv || 1;
   document.getElementById('ficha-venta-fecha-display').textContent = 'Fecha: ' + fmtFecha(v.fecha_venta);
   const esVES = v.moneda_cobro === 'VES';
@@ -982,13 +978,13 @@ async function verFichaVenta(id) {
   const btnFacturar  = document.getElementById('ficha-venta-btn-facturar');
   const btnEliminar  = document.getElementById('ficha-venta-btn-eliminar');
 
-  btnEditar.style.display    = (v.estado === 'BORRADOR' && puedo('VENTAS','EDITAR'))   ? '' : 'none';
-  btnFacturar.style.display  = (v.estado === 'BORRADOR' && puedo('VENTAS','CREAR'))    ? '' : 'none';
+  btnEditar.style.display    = (v.estado === 'PRESUPUESTO' && puedo('VENTAS','EDITAR'))   ? '' : 'none';
+  btnFacturar.style.display  = (v.estado === 'PRESUPUESTO' && puedo('VENTAS','CREAR'))    ? '' : 'none';
   btnFacturar.disabled = false;
   btnFacturar.textContent = '🧾 Facturar';
   // "Anular Venta" se eliminó de raíz -- "Eliminar" (solo en Borrador)
   // queda como única acción de cancelación antes de facturar.
-  btnEliminar.style.display  = (v.estado === 'BORRADOR' && puedo('VENTAS','ELIMINAR')) ? '' : 'none';
+  btnEliminar.style.display  = (v.estado === 'PRESUPUESTO' && puedo('VENTAS','ELIMINAR')) ? '' : 'none';
 
   btnEditar.onclick    = function() { cerrarModal('modal-ficha-venta'); abrirVenta(v.id_venta); };
   btnFacturar.onclick  = function() { facturarVenta(v.id_venta); };
@@ -1010,7 +1006,7 @@ async function facturarVenta(id) {
     _tlog('Venta consultada');
     const v = vRows && vRows[0];
     if (!v) throw new Error('Venta no encontrada.');
-    if (v.estado !== 'BORRADOR') throw new Error('Solo se puede facturar una Venta en estado Presupuesto.');
+    if (v.estado !== 'PRESUPUESTO') throw new Error('Solo se puede facturar una Venta en estado Presupuesto.');
 
     const cli = v.clientes;
     const anio = new Date().getFullYear();
@@ -1072,11 +1068,11 @@ async function facturarVenta(id) {
 // forma de cancelación (ver también anularFactura, eliminado en ingresos.js).
 
 async function eliminarVenta(id) {
-  // Segunda barrera (además de que el botón solo se muestra en BORRADOR):
+  // Segunda barrera (además de que el botón solo se muestra en PRESUPUESTO):
   // nunca eliminar físicamente una Venta que ya fue Facturada, sin
   // importar desde dónde se invoque esta función.
   const vChk = ventasCache.find(function(x) { return x.id_venta === id; });
-  if (vChk && vChk.estado !== 'BORRADOR') { alert('Solo se pueden eliminar Ventas en Borrador. Esta Venta ya fue Facturada y no puede eliminarse.'); return; }
+  if (vChk && vChk.estado !== 'PRESUPUESTO') { alert('Solo se pueden eliminar Ventas en Borrador. Esta Venta ya fue Facturada y no puede eliminarse.'); return; }
   if (!confirm('¿Eliminar esta Venta en Borrador? Esta acción no se puede deshacer.')) return;
   try {
     const v = ventasCache.find(function(x) { return x.id_venta === id; });
