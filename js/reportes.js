@@ -969,7 +969,7 @@ async function repVentasRender(cont) {
   // total real de lo vendido, sin importar por cuál Área se despachó.
   try {
     let qOrd = '?estado=neq.ANULADA&fecha_entrada=gte.'+desdeVal+'&fecha_entrada=lte.'+hastaVal
-      + '&select=id_orden,fecha_entrada,id_cliente,id_area,tasa_bcv,id_factura';
+      + '&select=id_orden,fecha_entrada,id_cliente,id_area,tasa_bcv';
     if (areaVal) qOrd += '&id_area=eq.'+areaVal;
     if (clienteVal) qOrd += '&id_cliente=eq.'+clienteVal;
     const ordenesRows = await api('ordenes_servicio','GET',null, qOrd);
@@ -986,7 +986,15 @@ async function repVentasRender(cont) {
       mercRows = mercRows.filter(function(m){ return itemsMap[m.id_articulo] !== undefined; });
     }
 
-    const idsFacturaOS = Object.values(ordenesHead).map(function(o){ return o.id_factura; }).filter(Boolean);
+    // El vínculo con la Factura es al revés: facturas.id_orden -> aquí, no
+    // una columna id_factura en ordenes_servicio (esa no existe).
+    let idFacturaPorOrden = {};
+    if (idsOrden.length) {
+      const facRowsOS = await api('facturas','GET',null,
+        '?id_orden=in.(' + idsOrden.join(',') + ')&select=id_factura,id_orden');
+      (facRowsOS||[]).forEach(function(f){ idFacturaPorOrden[f.id_orden] = f.id_factura; });
+    }
+    const idsFacturaOS = Object.values(idFacturaPorOrden);
     let metodoPorFacturaOS = {};
     if (idsFacturaOS.length) {
       const cxcRowsOS = await api('cont_cxc','GET',null,
@@ -1001,11 +1009,12 @@ async function repVentasRender(cont) {
       const tasaOS = parseFloat(o?.tasa_bcv||1);
       const precioMostrar = monedaVal === 'VES' ? precioUsd * tasaOS : precioUsd;
       const montoLinea = parseFloat(m.cantidad||0) * precioMostrar;
+      const idFacturaDeEstaOS = idFacturaPorOrden[m.id_orden];
       return {
         idVenta: 'OS'+m.id_orden, fecha: o?.fecha_entrada, cliente: clienteNombrePorId[o?.id_cliente]||'—',
         articulo: art ? art.nombre_articulo : '(Artículo eliminado)', area: areaNombrePorId[o?.id_area]||'—',
         cantidad: parseFloat(m.cantidad||0), precio: precioMostrar, montoLinea: montoLinea,
-        pago: o?.id_factura && metodoPorFacturaOS[o.id_factura] ? metodoPorFacturaOS[o.id_factura] : 'Pendiente de cobro',
+        pago: idFacturaDeEstaOS && metodoPorFacturaOS[idFacturaDeEstaOS] ? metodoPorFacturaOS[idFacturaDeEstaOS] : 'Pendiente de cobro',
         origen: 'Vía OS'
       };
     });
