@@ -891,7 +891,7 @@ async function repVentasRender(cont) {
     + '</div>'
     + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 420px))"><table style="width:100%;border-collapse:collapse;table-layout:fixed">'
     + '<thead><tr id="rep-ven-thead-row"></tr></thead>'
-    + '<tbody id="rep-ven-tbody"><tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">Cargando...</td></tr></tbody>'
+    + '<tbody id="rep-ven-tbody"><tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Cargando...</td></tr></tbody>'
     + '</table></div>'
     + '</div>';
 
@@ -955,12 +955,63 @@ async function repVentasRender(cont) {
     const precioMostrar = monedaVal === 'VES' ? precioUsd * tasaVen : precioUsd;
     const montoLinea = parseFloat(d.cantidad||0) * precioMostrar;
     return {
-      idVenta: d.id_venta, fecha: v?.fecha_venta, cliente: clienteNombrePorId[v?.id_cliente]||'—',
-      articulo: art ? art.nombre_articulo : '(Artículo eliminado)', area: areaNombrePorId[v?.id_area]||'',
+      idVenta: 'V'+d.id_venta, fecha: v?.fecha_venta, cliente: clienteNombrePorId[v?.id_cliente]||'—',
+      articulo: art ? art.nombre_articulo : '(Artículo eliminado)', area: areaNombrePorId[v?.id_area]||'—',
       cantidad: parseFloat(d.cantidad||0), precio: precioMostrar, montoLinea: montoLinea,
-      pago: v?.id_factura && metodoPorFactura[v.id_factura] ? metodoPorFactura[v.id_factura] : 'Pendiente de cobro'
+      pago: v?.id_factura && metodoPorFactura[v.id_factura] ? metodoPorFactura[v.id_factura] : 'Pendiente de cobro',
+      origen: 'Venta directa'
     };
   });
+
+  // Artículos vendidos a través de una Orden de Servicio (os_mercancias) --
+  // son también "ventas" de mercancía, solo que canalizadas por Taller en
+  // vez de mostrador. Se combinan aquí para que el Reporte de Ventas dé el
+  // total real de lo vendido, sin importar por cuál Área se despachó.
+  try {
+    let qOrd = '?estado=neq.ANULADA&fecha_entrada=gte.'+desdeVal+'&fecha_entrada=lte.'+hastaVal
+      + '&select=id_orden,fecha_entrada,id_cliente,id_area,tasa_bcv,id_factura';
+    if (areaVal) qOrd += '&id_area=eq.'+areaVal;
+    if (clienteVal) qOrd += '&id_cliente=eq.'+clienteVal;
+    const ordenesRows = await api('ordenes_servicio','GET',null, qOrd);
+    const ordenesHead = {};
+    (ordenesRows||[]).forEach(function(o){ ordenesHead[o.id_orden] = o; });
+
+    const idsOrden = Object.keys(ordenesHead);
+    let mercRows = [];
+    if (idsOrden.length) {
+      mercRows = await api('os_mercancias','GET',null,
+        '?id_orden=in.(' + idsOrden.join(',') + ')&select=id_orden,id_articulo,cantidad,precio_usd');
+    }
+    if (categoriaVal || tipoVal) {
+      mercRows = mercRows.filter(function(m){ return itemsMap[m.id_articulo] !== undefined; });
+    }
+
+    const idsFacturaOS = Object.values(ordenesHead).map(function(o){ return o.id_factura; }).filter(Boolean);
+    let metodoPorFacturaOS = {};
+    if (idsFacturaOS.length) {
+      const cxcRowsOS = await api('cont_cxc','GET',null,
+        '?id_factura=in.(' + idsFacturaOS.join(',') + ')&select=id_factura,metodo_pago');
+      (cxcRowsOS||[]).forEach(function(c){ if (c.metodo_pago) metodoPorFacturaOS[c.id_factura] = c.metodo_pago; });
+    }
+
+    const filasOS = mercRows.map(function(m) {
+      const o = ordenesHead[m.id_orden];
+      const art = itemsMap[m.id_articulo];
+      const precioUsd = parseFloat(m.precio_usd||0);
+      const tasaOS = parseFloat(o?.tasa_bcv||1);
+      const precioMostrar = monedaVal === 'VES' ? precioUsd * tasaOS : precioUsd;
+      const montoLinea = parseFloat(m.cantidad||0) * precioMostrar;
+      return {
+        idVenta: 'OS'+m.id_orden, fecha: o?.fecha_entrada, cliente: clienteNombrePorId[o?.id_cliente]||'—',
+        articulo: art ? art.nombre_articulo : '(Artículo eliminado)', area: areaNombrePorId[o?.id_area]||'—',
+        cantidad: parseFloat(m.cantidad||0), precio: precioMostrar, montoLinea: montoLinea,
+        pago: o?.id_factura && metodoPorFacturaOS[o.id_factura] ? metodoPorFacturaOS[o.id_factura] : 'Pendiente de cobro',
+        origen: 'Vía OS'
+      };
+    });
+    filas = filas.concat(filasOS);
+  } catch(eOS) { console.warn('Error cargando Artículos vendidos vía OS:', eOS); }
+
   if (formaPagoVal) filas = filas.filter(function(f){ return f.pago === formaPagoVal; });
 
   let totalVentasSet = new Set(), totalMonto = 0;
@@ -986,12 +1037,13 @@ async function repVentasRender(cont) {
 let _repVenOrdenCol = null;
 let _repVenOrdenAsc = true;
 const REP_VEN_COLUMNAS = [
-  { campo: 'fecha',    tipo: 'texto',  label: 'Fecha Venta', ancho: '16%' },
-  { campo: 'cliente',  tipo: 'texto',  label: 'Cliente',     ancho: '22%' },
-  { campo: 'articulo', tipo: 'texto',  label: 'Artículo',    ancho: '20%' },
-  { campo: 'cantidad', tipo: 'numero', label: 'Cantidad',    ancho: '10%' },
-  { campo: 'precio',   tipo: 'numero', label: 'Precio',      ancho: '16%' },
-  { campo: 'pago',     tipo: 'texto',  label: 'Pago',        ancho: '16%' },
+  { campo: 'fecha',    tipo: 'texto',  label: 'Fecha Venta', ancho: '13%' },
+  { campo: 'cliente',  tipo: 'texto',  label: 'Cliente',     ancho: '19%' },
+  { campo: 'articulo', tipo: 'texto',  label: 'Artículo',    ancho: '18%' },
+  { campo: 'area',     tipo: 'texto',  label: 'Área',        ancho: '15%' },
+  { campo: 'cantidad', tipo: 'numero', label: 'Cantidad',    ancho: '9%' },
+  { campo: 'precio',   tipo: 'numero', label: 'Precio',      ancho: '13%' },
+  { campo: 'pago',     tipo: 'texto',  label: 'Pago',        ancho: '13%' },
 ];
 
 function repVentasOrdenar(campo) {
@@ -1026,15 +1078,16 @@ function _repVenRenderTabla() {
   const filasHtml = filasOrd.map(function(f) {
     return '<tr>'
       + '<td style="font-family:var(--font-mono);font-size:15px">' + fmtFecha(f.fecha) + '</td>'
-      + '<td style="font-size:15px">' + escapeHtml(f.cliente) + (f.area ? '<div style="font-size:11px;color:var(--suave)">' + escapeHtml(f.area) + '</div>' : '') + '</td>'
+      + '<td style="font-size:15px">' + escapeHtml(f.cliente) + '</td>'
       + '<td style="font-size:15px">' + escapeHtml(f.articulo) + '</td>'
+      + '<td style="font-size:13px;color:var(--suave)">' + escapeHtml(f.area) + '</td>'
       + '<td style="text-align:right;font-family:var(--font-mono);font-size:15px">' + f.cantidad + '</td>'
       + '<td style="text-align:right;font-family:var(--font-mono);color:var(--naranja);font-weight:600;font-size:15px">' + (monedaVal==='VES' ? fmtBs(f.precio) : fmtUSD(f.precio)) + '</td>'
       + '<td style="text-align:center;font-size:13px;color:var(--suave)">' + escapeHtml(f.pago) + '</td>'
       + '</tr>';
   }).join('');
 
-  document.getElementById('rep-ven-tbody').innerHTML = filasHtml || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">No hay Ventas en el rango seleccionado</td></tr>';
+  document.getElementById('rep-ven-tbody').innerHTML = filasHtml || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">No hay Ventas en el rango seleccionado</td></tr>';
 }
 
 async function repVentasExportar() {
@@ -1048,13 +1101,13 @@ async function repVentasExportar() {
 function _repVenDatosExportar() {
   const d = window._reporteVentasActual;
   if (!d) return null;
-  const encabezados = ['Fecha Venta','Cliente','Artículo','Cantidad','Precio','Pago'];
+  const encabezados = ['Fecha Venta','Cliente','Artículo','Área','Cantidad','Precio','Pago'];
   const fmtMoneda = d.monedaVal === 'VES' ? fmtBs : fmtUSD;
   const filasNumericas = d.filas.map(function(f) {
-    return [fmtFecha(f.fecha), f.cliente, f.articulo, f.cantidad, f.precio, f.pago];
+    return [fmtFecha(f.fecha), f.cliente, f.articulo, f.area, f.cantidad, f.precio, f.pago];
   });
   const filasTexto = d.filas.map(function(f) {
-    return [fmtFecha(f.fecha), f.cliente, f.articulo, f.cantidad, fmtMoneda(f.precio), f.pago];
+    return [fmtFecha(f.fecha), f.cliente, f.articulo, f.area, f.cantidad, fmtMoneda(f.precio), f.pago];
   });
   return { d, encabezados, filasNumericas, filasTexto };
 }
@@ -1088,13 +1141,13 @@ function _repVenExportarExcel() {
     [],
     dat.encabezados,
   ].concat(dat.filasNumericas));
-  hoja['!cols'] = [ {wch:14}, {wch:28}, {wch:34}, {wch:12}, {wch:16}, {wch:18} ];
+  hoja['!cols'] = [ {wch:14}, {wch:26}, {wch:30}, {wch:20}, {wch:12}, {wch:16}, {wch:18} ];
   const NUM_FILAS = dat.filasNumericas.length;
-  for (let col = 0; col < 6; col++) {
+  for (let col = 0; col < 7; col++) {
     const refEncab = XLSX.utils.encode_cell({ r: FILA_ENCAB, c: col });
     if (hoja[refEncab]) hoja[refEncab].s = { alignment: { horizontal: 'center', vertical: 'center' }, font: { bold: true } };
-    if (col === 3 || col === 4) {
-      const formatoNum = col === 4 ? '#,##0.00' : '#,##0';
+    if (col === 4 || col === 5) {
+      const formatoNum = col === 5 ? '#,##0.00' : '#,##0';
       for (let i = 0; i < NUM_FILAS; i++) {
         const ref = XLSX.utils.encode_cell({ r: FILA_DATOS_DESDE + i, c: col });
         if (hoja[ref]) { hoja[ref].z = formatoNum; hoja[ref].t = 'n'; hoja[ref].s = { alignment: { horizontal: 'right' } }; }
@@ -1122,7 +1175,7 @@ function _repVenExportarPDF() {
     startY: 31,
     styles: { fontSize: 8 },
     headStyles: { fillColor: [255, 107, 0], halign: 'center' },
-    columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'center' } },
+    columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'center' } },
   });
   doc.save('reporte_ventas_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '_' + dat.d.monedaVal + '.pdf');
 }
