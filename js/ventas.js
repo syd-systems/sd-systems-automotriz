@@ -172,12 +172,12 @@ async function renderVentasListado() {
         if (m.inventario_almacen?.id_tipo_articulo) tiposPorOrden[m.id_orden].add(m.inventario_almacen.id_tipo_articulo);
       });
       const ventasOS = ordenesOS
-        .filter(function(o){ return totalPorOrden[o.id_orden] > 0; })
+        .filter(function(o){ return totalPorOrden[o.id_orden] > 0 && facturaPorOrden[o.id_orden]; })
         .map(function(o) {
           return {
             id_venta: -o.id_orden, fecha_venta: o.fecha_entrada, clientes: o.clientes,
             total_usd: totalPorOrden[o.id_orden], tasa_bcv: o.tasa_bcv, moneda_cobro: 'USD',
-            estado: facturaPorOrden[o.id_orden] ? 'FACTURADA' : 'VIA_OS', _esOS: true, _idOrden: o.id_orden, _numeroFactura: facturaPorOrden[o.id_orden] || null,
+            estado: 'FACTURADA', _esOS: true, _idOrden: o.id_orden, _numeroFactura: facturaPorOrden[o.id_orden],
             param_areas: o.param_areas,
             _categorias: catsPorOrden[o.id_orden], _tipos: tiposPorOrden[o.id_orden]
           };
