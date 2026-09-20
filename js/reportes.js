@@ -1331,7 +1331,7 @@ async function repServiciosRender(cont) {
     + '</div>'
     + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 420px))"><table style="width:100%;border-collapse:collapse;table-layout:fixed">'
     + '<thead><tr id="rep-ser-thead-row"></tr></thead>'
-    + '<tbody id="rep-ser-tbody"><tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">Cargando...</td></tr></tbody>'
+    + '<tbody id="rep-ser-tbody"><tr><td colspan="8" style="text-align:center;color:var(--suave);padding:32px">Cargando...</td></tr></tbody>'
     + '</table></div>'
     + '</div>';
 
@@ -1438,13 +1438,14 @@ async function repServiciosRender(cont) {
 let _repSerOrdenCol = null;
 let _repSerOrdenAsc = true;
 const REP_SER_COLUMNAS = [
-  { campo: 'numeroOS',  tipo: 'texto',  label: 'N° OS',    ancho: '10%' },
-  { campo: 'fecha',     tipo: 'texto',  label: 'Fecha',    ancho: '10%' },
-  { campo: 'cliente',   tipo: 'texto',  label: 'Cliente',  ancho: '18%' },
-  { campo: 'vehiculo',  tipo: 'texto',  label: 'Vehículo', ancho: '15%' },
-  { campo: 'servicio',  tipo: 'texto',  label: 'Servicio', ancho: '17%' },
-  { campo: 'precio',    tipo: 'numero', label: 'Precio',   ancho: '15%' },
-  { campo: 'pago',      tipo: 'texto',  label: 'Pago',     ancho: '15%' },
+  { campo: 'numeroOS',   tipo: 'texto',  label: 'N° OS',      ancho: '13%' },
+  { campo: 'fecha',      tipo: 'texto',  label: 'Fecha',      ancho: '10%' },
+  { campo: 'cliente',    tipo: 'texto',  label: 'Cliente',    ancho: '15%' },
+  { campo: 'vehiculo',   tipo: 'texto',  label: 'Vehículo',   ancho: '13%' },
+  { campo: 'servicio',   tipo: 'texto',  label: 'Servicio',   ancho: '15%' },
+  { campo: 'precio',     tipo: 'numero', label: 'Precio',     ancho: '11%' },
+  { campo: 'referencia', tipo: 'texto',  label: 'Referencia', ancho: '11%' },
+  { campo: 'pago',       tipo: 'texto',  label: 'Pago',       ancho: '12%' },
 ];
 
 function repServiciosOrdenar(campo) {
@@ -1483,11 +1484,12 @@ function _repSerRenderTabla() {
       + '<td style="font-family:var(--font-mono);font-size:13px">' + escapeHtml(f.vehiculo) + '<div style="font-size:11px;color:var(--suave)">' + escapeHtml(f.vehiculoDesc) + '</div></td>'
       + '<td style="font-size:15px">' + escapeHtml(f.servicio) + '</td>'
       + '<td style="text-align:right;font-family:var(--font-mono);color:var(--naranja);font-weight:600;font-size:15px">' + (d.monedaVal==='VES' ? fmtBs(f.precio) : fmtUSD(f.precio)) + '</td>'
-      + '<td style="text-align:center;font-size:13px;color:var(--suave)">' + (f.facturaRef ? '<div style="font-size:11px;font-family:var(--font-mono);color:var(--texto)">' + escapeHtml(f.facturaRef) + '</div>' : '') + escapeHtml(f.pago) + '</td>'
+      + '<td style="text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--suave)">' + escapeHtml(f.facturaRef || '—') + '</td>'
+      + '<td style="text-align:center;font-size:13px;color:var(--suave)">' + escapeHtml(f.pago) + '</td>'
       + '</tr>';
   }).join('');
 
-  document.getElementById('rep-ser-tbody').innerHTML = filasHtml || '<tr><td colspan="7" style="text-align:center;color:var(--suave);padding:32px">No hay Servicios en el rango seleccionado</td></tr>';
+  document.getElementById('rep-ser-tbody').innerHTML = filasHtml || '<tr><td colspan="8" style="text-align:center;color:var(--suave);padding:32px">No hay Servicios en el rango seleccionado</td></tr>';
 }
 
 async function repServiciosExportar() {
@@ -1501,11 +1503,10 @@ async function repServiciosExportar() {
 function _repSerDatosExportar() {
   const d = window._reporteServiciosActual;
   if (!d) return null;
-  const encabezados = ['N° OS','Fecha','Cliente','Vehículo','Servicio','Precio','Pago'];
+  const encabezados = ['N° OS','Fecha','Cliente','Vehículo','Servicio','Precio','Referencia','Pago'];
   const fmtMoneda = d.monedaVal === 'VES' ? fmtBs : fmtUSD;
-  const pagoTxt = function(f){ return f.facturaRef ? (f.facturaRef + ' — ' + f.pago) : f.pago; };
-  const filasNumericas = d.filas.map(function(f) { return [f.numeroOS, fmtFecha(f.fecha), f.cliente, (f.vehiculo+' '+f.vehiculoDesc).trim(), f.servicio, f.precio, pagoTxt(f)]; });
-  const filasTexto = d.filas.map(function(f) { return [f.numeroOS, fmtFecha(f.fecha), f.cliente, (f.vehiculo+' '+f.vehiculoDesc).trim(), f.servicio, fmtMoneda(f.precio), pagoTxt(f)]; });
+  const filasNumericas = d.filas.map(function(f) { return [f.numeroOS, fmtFecha(f.fecha), f.cliente, (f.vehiculo+' '+f.vehiculoDesc).trim(), f.servicio, f.precio, f.facturaRef||'—', f.pago]; });
+  const filasTexto = d.filas.map(function(f) { return [f.numeroOS, fmtFecha(f.fecha), f.cliente, (f.vehiculo+' '+f.vehiculoDesc).trim(), f.servicio, fmtMoneda(f.precio), f.facturaRef||'—', f.pago]; });
   return { d, encabezados, filasNumericas, filasTexto };
 }
 
@@ -1538,9 +1539,9 @@ function _repSerExportarExcel() {
     [],
     dat.encabezados,
   ].concat(dat.filasNumericas));
-  hoja['!cols'] = [ {wch:14}, {wch:12}, {wch:26}, {wch:24}, {wch:26}, {wch:14}, {wch:18} ];
+  hoja['!cols'] = [ {wch:14}, {wch:12}, {wch:24}, {wch:22}, {wch:24}, {wch:14}, {wch:14}, {wch:18} ];
   const NUM_FILAS = dat.filasNumericas.length;
-  for (let col = 0; col < 7; col++) {
+  for (let col = 0; col < 8; col++) {
     const refEncab = XLSX.utils.encode_cell({ r: FILA_ENCAB, c: col });
     if (hoja[refEncab]) hoja[refEncab].s = { alignment: { horizontal: 'center', vertical: 'center' }, font: { bold: true } };
     if (col === 5) {
@@ -1571,7 +1572,7 @@ function _repSerExportarPDF() {
     startY: 31,
     styles: { fontSize: 8 },
     headStyles: { fillColor: [255, 107, 0], halign: 'center' },
-    columnStyles: { 5: { halign: 'right' }, 6: { halign: 'center' } },
+    columnStyles: { 5: { halign: 'right' }, 6: { halign: 'center' }, 7: { halign: 'center' } },
   });
   doc.save('reporte_servicios_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '_' + dat.d.monedaVal + '.pdf');
 }
