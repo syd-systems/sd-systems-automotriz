@@ -519,8 +519,7 @@ async function repComprasRender(cont) {
       '?select=id_tipo,nombre&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
   } catch(e) { console.warn('Error cargando Tipos de Artículo:', e); }
   try {
-    proveedores = await api('proveedores','GET',null,
-      '?estado=eq.ACTIVO&select=id_proveedor,nombre&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+    proveedores = await rpc('obtener_proveedores_activos', { p_id_empresa: _empresaActiva ? _empresaActiva.id_empresa : null }) || [];
   } catch(e) { console.warn('Error cargando Proveedores:', e); }
 
   document.getElementById('reportes-topbar-extra').innerHTML =
@@ -834,7 +833,7 @@ async function repVentasRender(cont) {
       '?select=id_tipo,nombre&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
   } catch(e) { console.warn('Error cargando Tipos de Artículo:', e); }
   try {
-    clientes = await api('clientes','GET',null, '?activo=eq.true&select=id_cliente,nombre_completo&order=nombre_completo.asc');
+    clientes = await rpc('obtener_clientes_activos', {}) || [];
   } catch(e) { console.warn('Error cargando Clientes:', e); }
 
   document.getElementById('reportes-topbar-extra').innerHTML =
@@ -1336,7 +1335,7 @@ async function repServiciosRender(cont) {
   let ordenesHead = {};
   try {
     let qOrd = '?estado=neq.ANULADA&fecha_entrada=gte.'+desdeVal+'&fecha_entrada=lte.'+hastaVal
-      + '&select=id_orden,fecha_entrada,id_cliente,id_vehiculo,tasa_bcv,clientes(nombre_completo),vehiculos(marca,modelo,tipo_carroceria)'
+      + '&select=id_orden,fecha_entrada,id_cliente,id_vehiculo,tasa_bcv,vehiculos(marca,modelo,tipo_carroceria)'
       + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '');
     const ordenesRows = await api('ordenes_servicio','GET',null, qOrd);
     (ordenesRows||[]).forEach(function(o){
@@ -1347,6 +1346,18 @@ async function repServiciosRender(cont) {
       ordenesHead[o.id_orden] = o;
     });
   } catch(e) { console.warn('Error cargando Órdenes de Servicio:', e); }
+
+  // Nombres de Cliente vía RPC (no unión directa con "clientes", bloqueada
+  // por RLS para quien tenga REPORTES→VER_SERVICIOS pero no CLIENTES/VENTAS
+  // -- el permiso del Reporte debe bastar para ver estos datos agregados).
+  const clienteNombrePorIdOS = {};
+  try {
+    const idsClienteOS = [...new Set(Object.values(ordenesHead).map(function(o){ return o.id_cliente; }).filter(Boolean))];
+    if (idsClienteOS.length) {
+      const nombresRows = await rpc('obtener_nombres_clientes', { p_ids: idsClienteOS });
+      (nombresRows||[]).forEach(function(c){ clienteNombrePorIdOS[c.id_cliente] = c.nombre_completo; });
+    }
+  } catch(e) { console.warn('Error resolviendo nombres de Clientes:', e); }
 
   const idsOrden = Object.keys(ordenesHead);
   let lineas = [];
@@ -1384,7 +1395,7 @@ async function repServiciosRender(cont) {
     const tasaOrden = parseFloat(o?.tasa_bcv||1);
     const precio = monedaVal === 'VES' ? precioUsd * tasaOrden : precioUsd;
     return {
-      fecha: o?.fecha_entrada, cliente: o?.clientes?.nombre_completo || '—',
+      fecha: o?.fecha_entrada, cliente: clienteNombrePorIdOS[o?.id_cliente] || '—',
       servicio: l.id_servicio && catalogoPorId[l.id_servicio] ? catalogoPorId[l.id_servicio].nombre : (l.descripcion||'(Servicio libre)'),
       precio: precio,
       pago: idFact && metodoPorFactura[idFact] ? metodoPorFactura[idFact] : 'Pendiente de cobro'
