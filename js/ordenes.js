@@ -29,10 +29,22 @@ async function renderOrdenes() {
   try {
     const [ordenes, tasas] = await Promise.all([
       api('ordenes_servicio', 'GET', null,
-        '?order=fecha_registro.desc&select=*,vehiculos(placa,marca,modelo),clientes(nombre_completo)'+emisorQ()),
+        '?order=fecha_registro.desc&select=*,vehiculos(placa,marca,modelo)'+emisorQ()),
       api('tasas', 'GET', null, '?order=fecha_registro.desc&limit=1&select=tipo_cambio'),
     ]);
     ordenesCache = ordenes;
+    // Nombres de Cliente vía RPC (no unión directa con "clientes", bloqueada
+    // por RLS para quien no tenga CLIENTES/VENTAS -- ÓRDENES DE SERVICIO no
+    // debería depender de esos permisos para mostrar este dato).
+    try {
+      const idsCliOS = [...new Set(ordenesCache.map(function(o){ return o.id_cliente; }).filter(Boolean))];
+      if (idsCliOS.length) {
+        const nombresOS = await rpc('obtener_nombres_clientes', { p_ids: idsCliOS }) || [];
+        const mapaCliOS = {};
+        nombresOS.forEach(function(c){ mapaCliOS[c.id_cliente] = c.nombre_completo; });
+        ordenesCache.forEach(function(o){ o.clientes = mapaCliOS[o.id_cliente] ? { nombre_completo: mapaCliOS[o.id_cliente] } : null; });
+      }
+    } catch(eCliOS) { console.warn('Error resolviendo Clientes de las OS:', eCliOS); }
     if (tasas.length) tasaActualOS = parseFloat(tasas[0].tipo_cambio);
 
     // Resetear filtros al cargar el módulo
@@ -455,8 +467,12 @@ async function abrirEditarOS(id) {
   // Refrescar OS desde Supabase antes de editar
   try {
     const fresh = await api('ordenes_servicio', 'GET', null,
-      '?id_orden=eq.' + id + '&select=*,vehiculos(placa,marca,modelo),clientes(nombre_completo)');
+      '?id_orden=eq.' + id + '&select=*,vehiculos(placa,marca,modelo)');
     if (fresh && fresh[0]) {
+      try {
+        const nomRows = fresh[0].id_cliente ? await rpc('obtener_nombres_clientes', { p_ids: [fresh[0].id_cliente] }) : [];
+        fresh[0].clientes = (nomRows && nomRows[0]) ? { nombre_completo: nomRows[0].nombre_completo } : null;
+      } catch(eCli) { fresh[0].clientes = null; }
       const idx = ordenesCache.findIndex(function(x) { return x.id_orden === id; });
       if (idx >= 0) ordenesCache[idx] = fresh[0];
       else ordenesCache.push(fresh[0]);
@@ -574,13 +590,17 @@ async function buscarVehiculoOS() {
   infoDiv.innerHTML = '<div class="loading" style="padding:12px"><div class="spinner"></div> Buscando...</div>';
   try {
     const vehs = await api('vehiculos', 'GET', null,
-      '?placa=eq.' + encodeURIComponent(placa) + '&select=*,clientes(nombre_completo)');
+      '?placa=eq.' + encodeURIComponent(placa) + '&select=*');
     if (!vehs.length) {
       infoDiv.innerHTML = '<div style="color:#fc8181;font-size:12px;padding:8px">Vehículo no encontrado</div>';
       document.getElementById('os-veh-id').value = '';
       return;
     }
     const v = vehs[0];
+    try {
+      const nomRowsV = v.id_cliente ? await rpc('obtener_nombres_clientes', { p_ids: [v.id_cliente] }) : [];
+      v.clientes = (nomRowsV && nomRowsV[0]) ? { nombre_completo: nomRowsV[0].nombre_completo } : null;
+    } catch(eCliV) { v.clientes = null; }
     document.getElementById('os-veh-id').value = v.id_vehiculo;
     infoDiv.innerHTML = renderVehInfoOS(v);
   } catch(e) {
@@ -1197,9 +1217,13 @@ async function facturarOS(id, skipConfirm) {
   const textoOriginalBtn = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Procesando...'; }
   try {
-    const osRows = await api('ordenes_servicio','GET',null,'?id_orden=eq.'+id+'&select=*,clientes(nombre_completo,tipo_doc,numero_doc,direccion)');
+    const osRows = await api('ordenes_servicio','GET',null,'?id_orden=eq.'+id+'&select=*');
     const os = osRows && osRows[0];
     if (!os) throw new Error('Orden de Servicio no encontrada.');
+    try {
+      const cliRows = os.id_cliente ? await rpc('obtener_cliente_completo_por_id', { p_id_cliente: os.id_cliente }) : [];
+      os.clientes = (cliRows && cliRows[0]) ? cliRows[0] : null;
+    } catch(eCliFac) { os.clientes = null; }
     if (os.estado !== 'CERRADA') throw new Error('Solo se puede facturar una OS en estado Cerrada.');
 
     const yaFacturada = await api('facturas','GET',null,'?id_orden=eq.'+id+'&estado=neq.ANULADA&select=id_factura,numero_factura');
@@ -1341,8 +1365,12 @@ async function verFichaOS(id) {
   // Refrescar OS desde Supabase antes de mostrar
   try {
     const fresh = await api('ordenes_servicio', 'GET', null,
-      '?id_orden=eq.' + id + '&select=*,vehiculos(placa,marca,modelo),clientes(nombre_completo)');
+      '?id_orden=eq.' + id + '&select=*,vehiculos(placa,marca,modelo)');
     if (fresh && fresh[0]) {
+      try {
+        const nomRows = fresh[0].id_cliente ? await rpc('obtener_nombres_clientes', { p_ids: [fresh[0].id_cliente] }) : [];
+        fresh[0].clientes = (nomRows && nomRows[0]) ? { nombre_completo: nomRows[0].nombre_completo } : null;
+      } catch(eCli) { fresh[0].clientes = null; }
       const idx = ordenesCache.findIndex(function(x) { return x.id_orden === id; });
       if (idx >= 0) ordenesCache[idx] = fresh[0];
       else ordenesCache.push(fresh[0]);
