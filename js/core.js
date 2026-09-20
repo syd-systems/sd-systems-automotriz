@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909153';
+const SYD_VERSION = '20260909154';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -536,6 +536,28 @@ async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '', sinReprese
     throw new Error(err.message || `Error ${r.status}`);
   }
   return metodo === 'GET' ? r.json() : (r.status === 204 ? null : r.json().catch(() => null));
+}
+
+// ── Llamar a una función RPC de Postgres (POST /rest/v1/rpc/<nombre>) ──
+// Helper genérico para no repetir el boilerplate de fetch() en cada punto
+// que necesita un RPC. Devuelve el JSON parseado, o null si la respuesta
+// no fue exitosa (nunca lanza -- cada llamador decide cómo manejar null).
+async function rpc(nombre, params) {
+  try {
+    const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + nombre, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY), 'Content-Type': 'application/json' },
+      body: JSON.stringify(params || {})
+    });
+    return r.ok ? await r.json() : null;
+  } catch (e) { console.warn('[rpc]', nombre, e); return null; }
+}
+
+// Wrapper específico para buscar_empleados() -- siempre devuelve un array
+// (nunca null), para que los llamadores puedan usar .map/.find sin chequeos.
+async function buscarEmpleados(params) {
+  const r = await rpc('buscar_empleados', params);
+  return r || [];
 }
 
 // ── Subir un archivo (imagen/PDF) a Supabase Storage ──
@@ -1303,7 +1325,7 @@ function actualizarEmpresaUI() {
   if (empEl) empEl.textContent = '🏢 ' + _empresaActiva.nombre;
   const topbarEmp = document.getElementById('topbar-empresa');
   if (topbarEmp) topbarEmp.textContent = '🏢 ' + _empresaActiva.nombre;
-  try { var _taEl=document.getElementById('topbar-area'); if(_taEl && sesionActual && sesionActual.correo_usuario){ api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=areas:id_area(nombre,codigo)&limit=1').then(function(ea){ var ar=ea&&ea[0]?ea[0].areas:null; if(_taEl) _taEl.textContent=ar?ar.nombre+' ('+(ar.codigo||'')+')':''; }); } else if(_taEl){ _taEl.textContent=''; } } catch(eA){}
+  try { var _taEl=document.getElementById('topbar-area'); if(_taEl && sesionActual && sesionActual.correo_usuario){ buscarEmpleados({p_correo: sesionActual.correo_usuario, p_limite: 1}).then(function(ea){ var ar=ea&&ea[0]?{nombre:ea[0].area_nombre,codigo:ea[0].area_codigo}:null; if(_taEl) _taEl.textContent=(ar&&ar.nombre)?ar.nombre+' ('+(ar.codigo||'')+')':''; }); } else if(_taEl){ _taEl.textContent=''; } } catch(eA){}
   const btnCambiar = document.getElementById('btn-cambiar-empresa');
   if (btnCambiar) btnCambiar.style.display = _empresasUsuario.length > 1 ? '' : 'none';
 }
@@ -1426,7 +1448,7 @@ function seleccionarEmpresa(id_emisor) {
   if (empEl) empEl.textContent = '🏢 ' + _empresaActiva.nombre;
   const topbarEmp2 = document.getElementById('topbar-empresa');
   if (topbarEmp2) topbarEmp2.textContent = '🏢 ' + _empresaActiva.nombre;
-  try { var _taEl=document.getElementById('topbar-area'); if(_taEl && sesionActual && sesionActual.correo_usuario){ api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=areas:id_area(nombre,codigo)&limit=1').then(function(ea){ var ar=ea&&ea[0]?ea[0].areas:null; if(_taEl) _taEl.textContent=ar?ar.nombre+' ('+(ar.codigo||'')+')':''; }); } else if(_taEl){ _taEl.textContent=''; } } catch(eA){}
+  try { var _taEl=document.getElementById('topbar-area'); if(_taEl && sesionActual && sesionActual.correo_usuario){ buscarEmpleados({p_correo: sesionActual.correo_usuario, p_limite: 1}).then(function(ea){ var ar=ea&&ea[0]?{nombre:ea[0].area_nombre,codigo:ea[0].area_codigo}:null; if(_taEl) _taEl.textContent=(ar&&ar.nombre)?ar.nombre+' ('+(ar.codigo||'')+')':''; }); } else if(_taEl){ _taEl.textContent=''; } } catch(eA){}
   const btnCambiar2 = document.getElementById('btn-cambiar-empresa');
   if (btnCambiar2) btnCambiar2.style.display = _empresasUsuario.length > 1 ? '' : 'none';
   // Si ya estaba en la app, solo recargar el módulo actual
@@ -1767,12 +1789,15 @@ async function renderUsuarios(filtro) {
 
     // Cargar empresas de cada usuario (de la ficha de empleado)
     try {
-      const empleadosMap = await api('empleados','GET',null,'?select=correo,id_empresa,emisores(nombre),param_areas(nombre,codigo)');
+      const empleadosMap = await buscarEmpleados({});
+      const emisoresRows = await api('emisores','GET',null,'?select=id_empresa,nombre').catch(function(){ return []; });
+      const nombreEmisorPorId = {};
+      emisoresRows.forEach(function(em){ nombreEmisorPorId[em.id_empresa] = em.nombre; });
       const mapaEmpleados = {};
       const mapaAreas = {};
       empleadosMap.forEach(function(e){
-        mapaEmpleados[e.correo] = e.emisores ? e.emisores.nombre : null;
-        mapaAreas[e.correo] = e.param_areas ? e.param_areas : null;
+        mapaEmpleados[e.correo] = nombreEmisorPorId[e.id_empresa] || null;
+        mapaAreas[e.correo] = e.area_nombre ? { nombre: e.area_nombre, codigo: e.area_codigo } : null;
       });
       usuarios.forEach(function(u){
         u._empresaEmpleado = mapaEmpleados[u.correo_usuario] || null;
@@ -1987,7 +2012,7 @@ async function abrirNuevoUsuario() {
 
   // Cargar empleados para el selector (solo en nuevo usuario)
   try {
-    const emps = await api('empleados', 'GET', null, '?estatus=eq.ACTIVO&order=nombre_completo.asc&select=id_empleado,nombre_completo,correo&id_empresa=eq.'+(_empresaActiva?.id_empresa||0)+'');
+    const emps = await buscarEmpleados({p_id_empresa: _empresaActiva?.id_empresa || 0, p_solo_activos: true});
     const selEmp = document.getElementById('u-emp-selector');
     if (selEmp) {
       selEmp.innerHTML = '<option value="">— Seleccionar empleado —</option>'
@@ -3288,9 +3313,10 @@ async function notifSolicitarAnulacion() {
 
     // Buscar al responsable de mayor jerarquía del área (mismo patrón que
     // ya se usa para notificar reversos de Salida)
-    const responsables = await api('empleados', 'GET', null,
-      '?id_area=eq.' + (ent?.id_area || 0) + '&id_nivel_jerarquico=not.is.null&order=id_nivel_jerarquico.asc&select=correo&limit=1'
-      + (_empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : ''));
+    const responsables = await buscarEmpleados({
+      p_id_area: ent?.id_area || 0, p_solo_con_nivel: true, p_orden_por_nivel: true, p_limite: 1,
+      p_id_empresa: _empresaActiva ? _empresaActiva.id_empresa : null
+    });
     const correoSuperior = responsables && responsables[0] ? responsables[0].correo : null;
 
     if (!correoSuperior) {
@@ -3498,7 +3524,7 @@ async function cargarEmpresasAccesoModal(correo) {
       // La empresa donde está registrado como empleado (nómina) debe verse
       // marcada por defecto, aunque todavía no tenga fila en usuarios_empresas
       try {
-        const empRows = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correo)+'&select=id_empresa&limit=1');
+        const empRows = await buscarEmpleados({p_correo: correo, p_limite: 1});
         if (empRows && empRows[0] && empRows[0].id_empresa) {
           idEmpresaNomina = empRows[0].id_empresa;
           asignadas.add(idEmpresaNomina);
