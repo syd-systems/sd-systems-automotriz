@@ -593,23 +593,23 @@ async function eliminarParamItem() {
     try {
       const cargos = await api('param_cargos','GET',null,'?id_area=eq.'+id+'&select=id&limit=1') || [];
       if (cargos.length) { alert('No se puede eliminar: esta área tiene cargos asociados. Elimine o reasigne los cargos primero.'); return; }
-      const emps = await api('empleados','GET',null,'?id_area=eq.'+id+'&select=id_empleado&limit=1') || [];
-      if (emps.length) { alert('No se puede eliminar: esta área tiene empleados asignados. Reasigne los empleados primero.'); return; }
+      const tieneEmps = await rpc('existen_empleados_con_campo', { p_campo: 'id_area', p_valor: id });
+      if (tieneEmps) { alert('No se puede eliminar: esta área tiene empleados asignados. Reasigne los empleados primero.'); return; }
       const subAreas = await api('param_areas','GET',null,'?id_area_padre=eq.'+id+'&select=id&limit=1') || [];
       if (subAreas.length) { alert('No se puede eliminar: esta área tiene subáreas dependientes. Elimine primero las subáreas.'); return; }
     } catch(eVal) { alert('Error al validar: '+eVal.message); return; }
   }
   if (key === 'cargos') {
     try {
-      const emps2 = await api('empleados','GET',null,'?id_cargo=eq.'+id+'&select=id_empleado&limit=1') || [];
-      if (emps2.length) { alert('No se puede eliminar: este cargo tiene empleados asignados. Reasigne los empleados primero.'); return; }
+      const tieneEmps2 = await rpc('existen_empleados_con_campo', { p_campo: 'id_cargo', p_valor: id });
+      if (tieneEmps2) { alert('No se puede eliminar: este cargo tiene empleados asignados. Reasigne los empleados primero.'); return; }
     } catch(eValC) { alert('Error al validar: '+eValC.message); return; }
   }
   var _empCampos = { 'tipos_contrato':'id_tipo_contrato','tipos_salario':'id_tipo_salario','calculos_salario':'id_calculo_salario','frecuencias_pago':'id_frecuencia_pago','niveles_educativos':'id_nivel_educativo','estados_civiles':'id_estado_civil','sexos':'id_sexo' };
   if (_empCampos[key]) {
     try {
-      var empsD = await api('empleados','GET',null,'?'+_empCampos[key]+'=eq.'+id+'&select=id_empleado&limit=1') || [];
-      if (empsD.length) { alert('No se puede eliminar: este registro está siendo usado por uno o más empleados. Reasigne los empleados primero.'); return; }
+      var tieneEmpsD = await rpc('existen_empleados_con_campo', { p_campo: _empCampos[key], p_valor: id });
+      if (tieneEmpsD) { alert('No se puede eliminar: este registro está siendo usado por uno o más empleados. Reasigne los empleados primero.'); return; }
     } catch(eValD) { alert('Error al validar: '+eValD.message); return; }
   }
   if (key === 'cat_prov') {
