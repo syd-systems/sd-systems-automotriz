@@ -7,11 +7,15 @@
 // ═══════════════════════════════════════════════════════════════
 
 const REPORTES_DISPONIBLES = [
-  { id: 'inventario', nombre: '📦 Reporte de Inventario', render: repInventarioRender },
-  { id: 'compras',    nombre: '🛒 Reporte de Compras',    render: repComprasRender },
-  { id: 'ventas',     nombre: '💰 Reporte de Ventas',     render: repVentasRender },
-  { id: 'servicios',  nombre: '🔧 Reporte por Servicios', render: repServiciosRender },
+  { id: 'inventario', nombre: '📦 Reporte de Inventario', render: repInventarioRender, permiso: 'VER_INVENTARIO' },
+  { id: 'compras',    nombre: '🛒 Reporte de Compras',    render: repComprasRender,    permiso: 'VER_COMPRAS' },
+  { id: 'ventas',     nombre: '💰 Reporte de Ventas',     render: repVentasRender,     permiso: 'VER_VENTAS' },
+  { id: 'servicios',  nombre: '🔧 Reporte por Servicios', render: repServiciosRender,  permiso: 'VER_SERVICIOS' },
 ];
+function _reportesPermitidos() {
+  if (sesionActual?.administrador) return REPORTES_DISPONIBLES;
+  return REPORTES_DISPONIBLES.filter(function(r){ return puedo('REPORTES', r.permiso); });
+}
 
 let _reporteActual = 'inventario';
 let _repFiltrosVisibles = false;
@@ -28,11 +32,17 @@ async function renderReportes() {
     document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
     return;
   }
+  const reportesOK = _reportesPermitidos();
+  if (!reportesOK.length) {
+    document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">No tiene permiso para ver ningún Reporte.</div>';
+    return;
+  }
+  if (!reportesOK.find(function(r){ return r.id === _reporteActual; })) _reporteActual = reportesOK[0].id;
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="panel" id="panel-reportes" style="margin-top:-16px">'
     + '<div class="panel-header" style="padding:14px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">'
     + '<select id="rep-selector" onchange="_reporteActual=this.value; renderReportes()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;cursor:pointer;height:35px;box-sizing:border-box">'
-    + REPORTES_DISPONIBLES.map(function(r){ return '<option value="'+r.id+'"' + (r.id === _reporteActual ? ' selected' : '') + '>' + r.nombre + '</option>'; }).join('')
+    + reportesOK.map(function(r){ return '<option value="'+r.id+'"' + (r.id === _reporteActual ? ' selected' : '') + '>' + r.nombre + '</option>'; }).join('')
     + '</select>'
     + '<div id="reportes-topbar-extra" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"></div>'
     + '<span id="rep-inv-tasa-info" style="font-size:12px;color:var(--suave);font-family:var(--font-mono)"></span>'
