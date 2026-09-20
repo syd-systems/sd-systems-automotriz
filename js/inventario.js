@@ -2028,9 +2028,8 @@ async function _entconsCargarUsuarioActual() {
     const nomEl  = document.getElementById('entcons-usuario-nombre');
     const areaEl = document.getElementById('entcons-usuario-area');
     if (!correo) return;
-    const emps = await api('empleados','GET',null,
-      '?correo=eq.'+encodeURIComponent(correo)+'&select=nombre_completo,param_areas(nombre,codigo)');
-    const emp = emps && emps[0] ? emps[0] : null;
+    const emps = await buscarEmpleados({ p_correo: correo, p_limite: 1 });
+    const emp = emps && emps[0] ? { nombre_completo: emps[0].nombre_completo, param_areas: emps[0].area_nombre ? {nombre:emps[0].area_nombre, codigo:emps[0].area_codigo} : null } : null;
     if (emp) {
       if (nomEl)  nomEl.textContent  = emp.nombre_completo;
       if (areaEl) areaEl.textContent = emp.param_areas
@@ -2298,7 +2297,7 @@ async function guardarOrdenCompra() {
     // a mano -- se resuelve automáticamente por su correo.
     let idEmpleadoActual = null;
     try {
-      const empActualRows = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_empleado&limit=1');
+      const empActualRows = await buscarEmpleados({ p_correo: sesionActual.correo_usuario, p_limite: 1 });
       idEmpleadoActual = empActualRows && empActualRows[0] ? empActualRows[0].id_empleado : null;
     } catch(eEmpActualEntCons) {}
 
@@ -3450,11 +3449,10 @@ async function invCargarMovimientos() {
     if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) {
       try {
         const correo = sesionActual?.correo_usuario;
-        const empRes = correo ? await api('empleados','GET',null,
-          '?correo=eq.'+encodeURIComponent(correo)+'&select=id_area,param_areas(nombre,codigo)&limit=1') : [];
+        const empRes = correo ? await buscarEmpleados({ p_correo: correo, p_limite: 1 }) : [];
         id_areaMovs = empRes?.[0]?.id_area || null;
-        id_areaMovsNombre = empRes?.[0]?.param_areas
-          ? empRes[0].param_areas.nombre + (empRes[0].param_areas.codigo ? ' (' + empRes[0].param_areas.codigo + ')' : '')
+        id_areaMovsNombre = empRes?.[0]?.area_nombre
+          ? empRes[0].area_nombre + (empRes[0].area_codigo ? ' (' + empRes[0].area_codigo + ')' : '')
           : null;
       } catch(e) {}
     }
@@ -3886,7 +3884,7 @@ async function recargarHistorial(id_articulo) {
     const tienePermisoGeneralH = sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL');
     if (!tienePermisoGeneralH) {
       // Caso 1
-      const empH = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(sesionActual.correo_usuario)+'&select=id_area&limit=1').catch(function(){ return []; });
+      const empH = await buscarEmpleados({ p_correo: sesionActual.correo_usuario, p_limite: 1 }).catch(function(){ return []; });
       id_areaH = empH?.[0]?.id_area || null;
     } else if (_invFiltroAreaManual) {
       // Caso 2
@@ -4483,7 +4481,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
           }).join('');
       }
       if (areaDisplay2) areaDisplay2.textContent = m.area_receptora?.nombre || '—';
-      const emps2 = await api('empleados','GET',null,'?id_area=eq.'+m.id_area+'&select=id_empleado,nombre_completo&order=nombre_completo.asc');
+      const emps2 = await buscarEmpleados({ p_id_area: m.id_area });
       const selEmp2 = document.getElementById('edit-sal-empleado');
       if (selEmp2) {
         selEmp2.innerHTML = '<option value="">— Seleccionar empleado —</option>'
@@ -5648,9 +5646,8 @@ async function _guardarEdicionMovimientoInterno() {
             let correoDestNuevo = correoDestViejo;
             try {
               if (idEmp) {
-                const empNuevo = await api('empleados','GET',null,
-                  '?id_empleado=eq.'+idEmp+'&select=correo,usuarios(correo_usuario)');
-                correoDestNuevo = empNuevo?.[0]?.correo || empNuevo?.[0]?.usuarios?.correo_usuario || correoDestNuevo;
+                const empNuevo = await buscarEmpleados({ p_id_empleado: idEmp, p_limite: 1 });
+                correoDestNuevo = empNuevo?.[0]?.correo || correoDestNuevo;
               }
             } catch(eCorreoNuevo) { console.warn('No se pudo obtener el correo del Empleado actual (se reutiliza el anterior):', eCorreoNuevo); }
             await api('notificaciones', 'POST', {
@@ -6088,9 +6085,10 @@ async function confirmarAnulacion() {
       if (movOrig.id_area) {
         try {
           // Buscar responsable del área (empleado con nivel jerárquico más alto del área)
-          const responsables = await api('empleados', 'GET', null,
-            '?id_area=eq.' + movOrig.id_area + '&id_nivel_jerarquico=not.is.null&order=id_nivel_jerarquico.asc&select=correo,nombre_completo&limit=1'
-            + (_empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : ''));
+          const responsables = await buscarEmpleados({
+            p_id_area: movOrig.id_area, p_solo_con_nivel: true, p_orden_por_nivel: true, p_limite: 1,
+            p_id_empresa: _empresaActiva ? _empresaActiva.id_empresa : null
+          });
           if (responsables && responsables[0] && responsables[0].correo) {
             const resp = responsables[0];
             const areaName = movOrig.area_receptora ? movOrig.area_receptora.nombre : 'Área #' + movOrig.id_area;
@@ -6320,7 +6318,7 @@ async function onCambioAreaEditSalida() {
   if (!selEmp) return;
   if (!idArea) { selEmp.innerHTML = '<option value="">— Seleccionar Área primero —</option>'; return; }
   try {
-    const emps = await api('empleados','GET',null,'?id_area=eq.'+idArea+'&select=id_empleado,nombre_completo&order=nombre_completo.asc');
+    const emps = await buscarEmpleados({ p_id_area: idArea });
     selEmp.innerHTML = '<option value="">— Seleccionar empleado —</option>'
       + (emps||[]).map(function(e){
         return '<option value="'+e.id_empleado+'">'+escapeHtml(e.nombre_completo)+'</option>';
@@ -6863,7 +6861,7 @@ async function verFichaAjuste(tipoRegistro, idMovimiento, id_articulo) {
   document.getElementById('falt-stock-disponible').textContent = id_area && r ? ('Stock disponible en esta área: ' + await obtenerStockArea(id_articulo, id_area) + ' ' + (r.unidad||'UND')) : '';
 
   const idEmpleadoReporta = tipoRegistro === 'ENTRADA' ? m.id_empleado : m.id_empleado_entrega;
-  const empleados = id_area ? await api('empleados','GET',null,'?estatus=eq.ACTIVO&id_area=eq.'+id_area+'&order=nombre_completo.asc&select=id_empleado,nombre_completo').catch(function(){ return []; }) : [];
+  const empleados = id_area ? await buscarEmpleados({ p_id_area: id_area, p_solo_activos: true }).catch(function(){ return []; }) : [];
   const selEmp = document.getElementById('falt-empleado');
   selEmp.innerHTML = empleados.map(function(e) { return '<option value="'+e.id_empleado+'"'+(e.id_empleado==idEmpleadoReporta?' selected':'')+'>'+escapeHtml(e.nombre_completo)+'</option>'; }).join('');
 
@@ -6933,7 +6931,7 @@ async function cargarUsuarioConfirmacionFaltante() {
   try {
     const correo = sesionActual?.correo_usuario;
     if (!correo) { if (nomEl) nomEl.textContent = '—'; return; }
-    const emps = await api('empleados','GET',null,'?correo=eq.'+encodeURIComponent(correo)+'&select=nombre_completo');
+    const emps = await buscarEmpleados({ p_correo: correo, p_limite: 1 });
     const emp = emps && emps[0] ? emps[0] : null;
     if (nomEl) nomEl.textContent = emp ? emp.nombre_completo : correo;
   } catch(e) {
@@ -6953,7 +6951,7 @@ async function onCambiarAreaFaltante() {
   }
   const r = inventarioCache.find(function(x) { return x.id_articulo === id_articulo; });
   const [empleados, stockDisp] = await Promise.all([
-    api('empleados', 'GET', null, '?estatus=eq.ACTIVO&id_area=eq.'+id_area+'&order=nombre_completo.asc&select=id_empleado,nombre_completo').catch(function(){ return []; }),
+    buscarEmpleados({ p_id_area: id_area, p_solo_activos: true }).catch(function(){ return []; }),
     obtenerStockArea(id_articulo, id_area)
   ]);
   selEmp.innerHTML = empleados.length
@@ -7179,9 +7177,10 @@ async function cargarUsuarioReceptorEntrada() {
   try {
     const correo = sesionActual?.correo_usuario;
     if (!correo) return;
-    const emps = await api('empleados','GET',null,
-      '?correo=eq.'+encodeURIComponent(correo)+'&select=id_empleado,nombre_completo,id_area,param_areas(nombre,codigo)');
-    const emp = emps && emps[0] ? emps[0] : null;
+    const emps = await buscarEmpleados({ p_correo: correo, p_limite: 1 });
+    const emp0 = emps && emps[0] ? emps[0] : null;
+    const emp = emp0 ? { id_empleado: emp0.id_empleado, nombre_completo: emp0.nombre_completo, id_area: emp0.id_area,
+      param_areas: emp0.area_nombre ? { nombre: emp0.area_nombre, codigo: emp0.area_codigo } : null } : null;
 
     const nomEl    = document.getElementById('es-receptor-nombre');
     const areaEl   = document.getElementById('es-receptor-area');
