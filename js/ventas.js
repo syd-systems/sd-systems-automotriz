@@ -135,6 +135,91 @@ function _ventaCambiarVista(v) {
   renderVentas();
 }
 
+let _ventasCacheActual = [];
+let _ventasOrdenCol = 'numero';
+let _ventasOrdenAsc = true;
+const ESTADO_BADGE = { PRESUPUESTO: 'badge-gris', FACTURADA: 'badge-verde', ANULADA: 'badge-rojo', VIA_OS: 'badge-naranja' };
+const VTA_COLUMNAS = [
+  { campo: 'numero',  tipo: 'texto',  label: 'N° Factura', ordenable: true },
+  { campo: 'cliente', tipo: 'texto',  label: 'Cliente',     ordenable: true },
+  { campo: 'fecha',   tipo: 'texto',  label: 'Fecha',       ordenable: true },
+  { campo: 'total',   tipo: 'numero', label: 'Total',       ordenable: true, alinear: 'right' },
+  { campo: 'estado',  tipo: 'texto',  label: 'Estado',      ordenable: true },
+  { campo: 'accion',  tipo: 'texto',  label: 'Acción',      ordenable: false },
+];
+
+function _ventasValorOrden(v, campo) {
+  if (campo === 'numero') return v._esOS ? (v._numeroFactura || 'OS-'+v._idOrden) : (v.facturas?.numero_factura || 'V-'+v.id_venta);
+  if (campo === 'cliente') return (v.clientes?.nombre_completo || '').toLowerCase();
+  if (campo === 'fecha') return v.fecha_venta || '';
+  if (campo === 'total') return v.total_usd || 0;
+  if (campo === 'estado') return v.estado || '';
+  return '';
+}
+
+function _ventasOrdenar(lista) {
+  if (!_ventasOrdenCol) return lista;
+  const colDef = VTA_COLUMNAS.find(function(c){ return c.campo === _ventasOrdenCol; });
+  const copia = lista.slice();
+  copia.sort(function(a, b) {
+    const va = _ventasValorOrden(a, _ventasOrdenCol), vb = _ventasValorOrden(b, _ventasOrdenCol);
+    const cmp = colDef.tipo === 'texto' ? String(va).localeCompare(String(vb), 'es', { sensitivity: 'base' }) : va - vb;
+    return _ventasOrdenAsc ? cmp : -cmp;
+  });
+  return copia;
+}
+
+function ordenarTablaVentas(campo) {
+  if (_ventasOrdenCol === campo) { _ventasOrdenAsc = !_ventasOrdenAsc; }
+  else { _ventasOrdenCol = campo; _ventasOrdenAsc = true; }
+  _ventasRenderThead();
+  document.getElementById('vta-tbody').innerHTML = _ventasFilasHtml(_ventasOrdenar(_ventasCacheActual)) || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">No hay ventas registradas</td></tr>';
+  filtrarTablaVentas();
+}
+
+function _ventasRenderThead() {
+  const el = document.getElementById('vta-thead-row');
+  if (!el) return;
+  el.innerHTML = VTA_COLUMNAS.map(function(c) {
+    const alinear = c.alinear === 'right' ? 'text-align:right' : '';
+    if (!c.ordenable) return '<th style="' + alinear + '">' + c.label + '</th>';
+    const flecha = _ventasOrdenCol === c.campo ? (_ventasOrdenAsc ? ' ▲' : ' ▼') : '';
+    return '<th style="' + alinear + ';cursor:pointer;user-select:none" onclick="ordenarTablaVentas(\'' + c.campo + '\')" title="Ordenar">' + c.label + flecha + '</th>';
+  }).join('');
+}
+
+function _ventasFilasHtml(ventas) {
+  return ventas.map(function(v) {
+    const cli = v.clientes;
+    const tasa = v.tasa_bcv || 1;
+    const esVES = v.moneda_cobro === 'VES';
+    const ves = (v.total_usd||0) * tasa;
+    const totalDual = '<div style="' + (esVES?'color:var(--suave)':'color:var(--naranja)') + '">$ ' + fmtUSD(v.total_usd||0) + '</div>'
+      + '<div style="' + (esVES?'color:var(--naranja)':'color:var(--suave)') + ';font-size:11px">Bs ' + fmtBs(ves) + '</div>';
+    if (v._esOS) {
+      return '<tr data-id="' + v.id_venta + '">'
+        + '<td style="font-family:var(--font-mono);font-size:12px">' + (v._numeroFactura || 'OS-' + v._idOrden)
+        + (v.param_areas ? '<div style="font-size:10px;color:var(--suave)">' + v.param_areas.nombre + (v.param_areas.codigo ? ' (' + v.param_areas.codigo + ')' : '') + '</div>' : '') + '</td>'
+        + '<td>' + (cli ? cli.nombre_completo : '—') + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (cli ? cli.tipo_doc + '-' + cli.numero_doc : '') + '</div></td>'
+        + '<td style="font-size:12px">' + fmtFecha(v.fecha_venta) + '</td>'
+        + '<td style="text-align:right;font-family:var(--font-mono)">' + totalDual + '</td>'
+        + '<td><span class="badge ' + (ESTADO_BADGE[v.estado] || 'badge-gris') + '">' + (v.estado === 'VIA_OS' ? 'Vía OS' : (ESTADO_LABEL_VENTA[v.estado] || v.estado)) + '</span></td>'
+        + '<td><button class="btn-naranja" style="font-size:10px;padding:7px 10px;letter-spacing:0.3px;white-space:nowrap" onclick="verFichaOS(' + v._idOrden + ')">Ver</button></td>'
+        + '</tr>';
+    }
+    const botonLabel = v.estado === 'PRESUPUESTO' ? 'Editar / Facturar' : 'Ver';
+    return '<tr data-id="' + v.id_venta + '">'
+      + '<td style="font-family:var(--font-mono);font-size:12px">' + (v.facturas?.numero_factura || 'V-' + v.id_venta)
+      + (v.param_areas ? '<div style="font-size:10px;color:var(--suave)">' + v.param_areas.nombre + (v.param_areas.codigo ? ' (' + v.param_areas.codigo + ')' : '') + '</div>' : '') + '</td>'
+      + '<td>' + (cli ? cli.nombre_completo : '—') + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (cli ? cli.tipo_doc + '-' + cli.numero_doc : '') + '</div></td>'
+      + '<td style="font-size:12px">' + fmtFecha(v.fecha_venta) + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono)">' + totalDual + '</td>'
+      + '<td><span class="badge ' + (ESTADO_BADGE[v.estado] || 'badge-gris') + '">' + (ESTADO_LABEL_VENTA[v.estado] || v.estado) + '</span></td>'
+      + '<td><button class="btn-naranja" style="font-size:10px;padding:7px 10px;letter-spacing:0.3px;white-space:nowrap" onclick="verFichaVenta(' + v.id_venta + ')">' + botonLabel + '</button></td>'
+      + '</tr>';
+  }).join('');
+}
+
 async function renderVentasListado() {
   const c = document.getElementById('ventas-contenido-tab');
   if (!c) return;
@@ -230,37 +315,10 @@ async function renderVentasListado() {
     const stats = { PRESUPUESTO: 0, FACTURADA: 0, ANULADA: 0 };
     ventas.forEach(function(v) { if (stats[v.estado] !== undefined) stats[v.estado]++; });
 
-    const ESTADO_BADGE = { PRESUPUESTO: 'badge-gris', FACTURADA: 'badge-verde', ANULADA: 'badge-rojo', VIA_OS: 'badge-naranja' };
-
-    const filas = ventas.map(function(v) {
-      const cli = v.clientes;
-      const tasa = v.tasa_bcv || 1;
-      const esVES = v.moneda_cobro === 'VES';
-      const ves = (v.total_usd||0) * tasa;
-      const totalDual = '<div style="' + (esVES?'color:var(--suave)':'color:var(--naranja)') + '">$ ' + fmtUSD(v.total_usd||0) + '</div>'
-        + '<div style="' + (esVES?'color:var(--naranja)':'color:var(--suave)') + ';font-size:11px">Bs ' + fmtBs(ves) + '</div>';
-      if (v._esOS) {
-        return '<tr data-id="' + v.id_venta + '">'
-          + '<td style="font-family:var(--font-mono);font-size:12px">' + (v._numeroFactura || 'OS-' + v._idOrden)
-          + (v.param_areas ? '<div style="font-size:10px;color:var(--suave)">' + v.param_areas.nombre + (v.param_areas.codigo ? ' (' + v.param_areas.codigo + ')' : '') + '</div>' : '') + '</td>'
-          + '<td>' + (cli ? cli.nombre_completo : '—') + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (cli ? cli.tipo_doc + '-' + cli.numero_doc : '') + '</div></td>'
-          + '<td style="font-size:12px">' + fmtFecha(v.fecha_venta) + '</td>'
-          + '<td style="text-align:right;font-family:var(--font-mono)">' + totalDual + '</td>'
-          + '<td><span class="badge ' + (ESTADO_BADGE[v.estado] || 'badge-gris') + '">' + (v.estado === 'VIA_OS' ? 'Vía OS' : (ESTADO_LABEL_VENTA[v.estado] || v.estado)) + '</span></td>'
-          + '<td><button class="btn-naranja" style="font-size:10px;padding:7px 10px;letter-spacing:0.3px;white-space:nowrap" onclick="verFichaOS(' + v._idOrden + ')">Ver</button></td>'
-          + '</tr>';
-      }
-      const botonLabel = v.estado === 'PRESUPUESTO' ? 'Editar / Facturar' : 'Ver';
-      return '<tr data-id="' + v.id_venta + '">'
-        + '<td style="font-family:var(--font-mono);font-size:12px">' + (v.facturas?.numero_factura || 'V-' + v.id_venta)
-        + (v.param_areas ? '<div style="font-size:10px;color:var(--suave)">' + v.param_areas.nombre + (v.param_areas.codigo ? ' (' + v.param_areas.codigo + ')' : '') + '</div>' : '') + '</td>'
-        + '<td>' + (cli ? cli.nombre_completo : '—') + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (cli ? cli.tipo_doc + '-' + cli.numero_doc : '') + '</div></td>'
-        + '<td style="font-size:12px">' + fmtFecha(v.fecha_venta) + '</td>'
-        + '<td style="text-align:right;font-family:var(--font-mono)">' + totalDual + '</td>'
-        + '<td><span class="badge ' + (ESTADO_BADGE[v.estado] || 'badge-gris') + '">' + (ESTADO_LABEL_VENTA[v.estado] || v.estado) + '</span></td>'
-        + '<td><button class="btn-naranja" style="font-size:10px;padding:7px 10px;letter-spacing:0.3px;white-space:nowrap" onclick="verFichaVenta(' + v.id_venta + ')">' + botonLabel + '</button></td>'
-        + '</tr>';
-    }).join('');
+    _ventasCacheActual = ventas;
+    _ventasOrdenCol = _ventasOrdenCol || null;
+    _ventasOrdenAsc = _ventasOrdenAsc !== false;
+    const filas = _ventasFilasHtml(_ventasOrdenar(ventas));
 
     c.innerHTML =
       '<div id="vta-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:12px">'
@@ -298,11 +356,11 @@ async function renderVentasListado() {
       + '<button class="btn-secundario" style="font-size:12px;padding:8px 12px" onclick="limpiarFiltrosVentas()">Limpiar Filtros</button>'
       + (puedo('VENTAS','CREAR') ? '<button class="btn-primario" onclick="abrirVenta(null)">+ Nueva Venta</button>' : '')
       + '</div>'
-      + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 400px))"><table style="table-layout:fixed;width:100%"><thead><tr>'
-      + '<th>N° Factura</th><th>Cliente</th><th>Fecha</th><th style="text-align:right">Total</th><th>Estado</th><th>Acción</th>'
+      + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 400px))"><table style="table-layout:fixed;width:100%"><thead><tr id="vta-thead-row">'
       + '</tr></thead><tbody id="vta-tbody">'
       + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">No hay ventas registradas</td></tr>')
       + '</tbody></table></div></div>';
+    _ventasRenderThead();
     // Aplica el filtro inicial (fecha de hoy) apenas se pinta la tabla, para
     // que los contadores y la lista arranquen ya acotados al día.
     filtrarTablaVentas();
