@@ -915,7 +915,7 @@ async function repVentasRender(cont) {
   // (Efectivo/Transferencia/Pago Móvil, etc.) con la que se cobró.
   let ventasHead = {};
   try {
-    let qVen = '?estado=neq.ANULADA&fecha_venta=gte.'+desdeVal+'&fecha_venta=lte.'+hastaVal
+    let qVen = '?estado=eq.FACTURADA&fecha_venta=gte.'+desdeVal+'&fecha_venta=lte.'+hastaVal
       + '&select=id_venta,fecha_venta,id_cliente,id_area,moneda_cobro,estado,tasa_bcv,id_factura'
       + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '');
     if (areaVal) qVen += '&id_area=eq.'+areaVal;
@@ -994,6 +994,10 @@ async function repVentasRender(cont) {
         '?id_orden=in.(' + idsOrden.join(',') + ')&select=id_factura,id_orden');
       (facRowsOS||[]).forEach(function(f){ idFacturaPorOrden[f.id_orden] = f.id_factura; });
     }
+    // Solo cuenta como "Venta" lo ya Facturado -- lo que sigue en Taller
+    // sin facturar todavía no es una venta confirmada.
+    mercRows = mercRows.filter(function(m){ return !!idFacturaPorOrden[m.id_orden]; });
+
     const idsFacturaOS = Object.values(idFacturaPorOrden);
     let metodoPorFacturaOS = {};
     if (idsFacturaOS.length) {
