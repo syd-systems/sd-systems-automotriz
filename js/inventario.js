@@ -7577,20 +7577,20 @@ async function _cargarEntregasAlmacen() {
     let ventas;
     if (_entregasAlmacenSubVista === 'pendientes') {
       ventas = await api('ventas','GET',null,
-        '?estado=eq.FACTURADA&entregado=eq.false&select=id_venta,total_usd,fecha_venta,entregado,clientes(nombre_apellido,condicion_legal,identificacion),facturas!inner(estado,fecha_emision,total_ves)&facturas.estado=eq.PAGADA&order=fecha_venta.asc');
+        '?estado=eq.FACTURADA&entregado=eq.false&select=id_venta,total_usd,fecha_venta,entregado,clientes(nombre_completo,tipo_doc,numero_doc),facturas!inner(estado,fecha_emision,total_ves)&facturas.estado=eq.PAGADA&order=fecha_venta.asc');
     } else {
       let filtroFechaAlm = '';
       if (_entregasAlmacenHistDesde) filtroFechaAlm += '&fecha_entrega=gte.'+_entregasAlmacenHistDesde;
       if (_entregasAlmacenHistHasta) filtroFechaAlm += '&fecha_entrega=lte.'+_entregasAlmacenHistHasta+'T23:59:59';
       ventas = await api('ventas','GET',null,
-        '?entregado=eq.true&select=id_venta,total_usd,fecha_venta,entregado,fecha_entrega,entregado_por,clientes(nombre_apellido,condicion_legal,identificacion),facturas(numero_factura,fecha_emision,total_ves)'+filtroFechaAlm+'&order=fecha_entrega.desc');
+        '?entregado=eq.true&select=id_venta,total_usd,fecha_venta,entregado,fecha_entrega,entregado_por,clientes(nombre_completo,tipo_doc,numero_doc),facturas(numero_factura,fecha_emision,total_ves)'+filtroFechaAlm+'&order=fecha_entrega.desc');
       if (_entregasAlmacenHistBusqueda.trim()) {
         const qBusqAlm = _entregasAlmacenHistBusqueda.trim().toLowerCase();
         ventas = ventas.filter(function(v) {
           const cli = v.clientes;
           if (!cli) return false;
-          return (cli.nombre_apellido||'').toLowerCase().includes(qBusqAlm)
-              || (cli.identificacion||'').toLowerCase().includes(qBusqAlm);
+          return (cli.nombre_completo||'').toLowerCase().includes(qBusqAlm)
+              || (cli.numero_doc||'').toLowerCase().includes(qBusqAlm);
         });
       }
     }
@@ -7658,8 +7658,8 @@ function _entregasAlmacenRenderLista() {
   const filas = ventas.map(function(v) {
     const cli = v.clientes;
     return '<tr>'
-      + '<td style="font-family:var(--font-mono);font-size:13px">'+(cli?(cli.condicion_legal+'-'+cli.identificacion):'—')+'</td>'
-      + '<td style="font-size:13px;font-weight:600">'+(cli?cli.nombre_apellido:'—')+'</td>'
+      + '<td style="font-family:var(--font-mono);font-size:13px">'+(cli?(cli.tipo_doc+'-'+cli.numero_doc):'—')+'</td>'
+      + '<td style="font-size:13px;font-weight:600">'+(cli?cli.nombre_completo:'—')+'</td>'
       + '<td style="text-align:right"><button class="btn-primario" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="_entregasAlmacenToggleExpandir('+v.id_venta+')">🧾 FACTURA</button></td>'
       + '</tr>';
   }).join('');
