@@ -149,12 +149,20 @@ async function renderVentasListado() {
     // esta lista dé el total real de lo vendido sin importar el canal.
     try {
       const ordenesOS = await api('ordenes_servicio','GET',null,
-        '?estado=neq.ANULADA&select=id_orden,fecha_entrada,id_cliente,tasa_bcv,clientes(nombre_completo,tipo_doc,numero_doc)' + filtroEmpresa);
+        '?estado=neq.ANULADA&select=id_orden,fecha_entrada,id_cliente,id_area,tasa_bcv,clientes(nombre_completo,tipo_doc,numero_doc),param_areas(nombre,codigo)' + filtroEmpresa);
       const idsOrdenOS = ordenesOS.map(function(o){ return o.id_orden; });
       let mercOS = [];
       if (idsOrdenOS.length) {
         mercOS = await api('os_mercancias','GET',null,
           '?id_orden=in.(' + idsOrdenOS.join(',') + ')&select=id_orden,id_articulo,cantidad,precio_usd,inventario_almacen(id_categoria_articulo,id_tipo_articulo)');
+      }
+      // El vínculo con la Factura es al revés: facturas.id_orden -> aquí,
+      // no una columna id_factura en ordenes_servicio (esa no existe).
+      let facturaPorOrden = {};
+      if (idsOrdenOS.length) {
+        const facRowsOS = await api('facturas','GET',null,
+          '?id_orden=in.(' + idsOrdenOS.join(',') + ')&select=id_orden,numero_factura');
+        (facRowsOS||[]).forEach(function(f){ facturaPorOrden[f.id_orden] = f.numero_factura; });
       }
       const totalPorOrden = {}, catsPorOrden = {}, tiposPorOrden = {};
       mercOS.forEach(function(m) {
@@ -169,7 +177,8 @@ async function renderVentasListado() {
           return {
             id_venta: -o.id_orden, fecha_venta: o.fecha_entrada, clientes: o.clientes,
             total_usd: totalPorOrden[o.id_orden], tasa_bcv: o.tasa_bcv, moneda_cobro: 'USD',
-            estado: 'VIA_OS', _esOS: true, _idOrden: o.id_orden,
+            estado: 'VIA_OS', _esOS: true, _idOrden: o.id_orden, _numeroFactura: facturaPorOrden[o.id_orden] || null,
+            param_areas: o.param_areas,
             _categorias: catsPorOrden[o.id_orden], _tipos: tiposPorOrden[o.id_orden]
           };
         });
@@ -232,7 +241,8 @@ async function renderVentasListado() {
         + '<div style="' + (esVES?'color:var(--naranja)':'color:var(--suave)') + ';font-size:11px">Bs ' + fmtBs(ves) + '</div>';
       if (v._esOS) {
         return '<tr data-id="' + v.id_venta + '">'
-          + '<td style="font-family:var(--font-mono);font-size:12px">OS-' + v._idOrden + '</td>'
+          + '<td style="font-family:var(--font-mono);font-size:12px">' + (v._numeroFactura || 'OS-' + v._idOrden)
+          + (v.param_areas ? '<div style="font-size:10px;color:var(--suave)">' + v.param_areas.nombre + (v.param_areas.codigo ? ' (' + v.param_areas.codigo + ')' : '') + '</div>' : '') + '</td>'
           + '<td>' + (cli ? cli.nombre_completo : '—') + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (cli ? cli.tipo_doc + '-' + cli.numero_doc : '') + '</div></td>'
           + '<td style="font-size:12px">' + fmtFecha(v.fecha_venta) + '</td>'
           + '<td style="text-align:right;font-family:var(--font-mono)">' + totalDual + '</td>'
@@ -242,7 +252,8 @@ async function renderVentasListado() {
       }
       const botonLabel = v.estado === 'PRESUPUESTO' ? 'Editar / Facturar' : 'Ver';
       return '<tr data-id="' + v.id_venta + '">'
-        + '<td style="font-family:var(--font-mono);font-size:12px">' + (v.facturas?.numero_factura || 'V-' + v.id_venta) + '</td>'
+        + '<td style="font-family:var(--font-mono);font-size:12px">' + (v.facturas?.numero_factura || 'V-' + v.id_venta)
+        + (v.param_areas ? '<div style="font-size:10px;color:var(--suave)">' + v.param_areas.nombre + (v.param_areas.codigo ? ' (' + v.param_areas.codigo + ')' : '') + '</div>' : '') + '</td>'
         + '<td>' + (cli ? cli.nombre_completo : '—') + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (cli ? cli.tipo_doc + '-' + cli.numero_doc : '') + '</div></td>'
         + '<td style="font-size:12px">' + fmtFecha(v.fecha_venta) + '</td>'
         + '<td style="text-align:right;font-family:var(--font-mono)">' + totalDual + '</td>'
