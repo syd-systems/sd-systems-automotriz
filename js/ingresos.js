@@ -56,6 +56,24 @@ async function renderFacturas() {
       api('tasas','GET',null,'?moneda_origen=eq.USD&fecha_valor=lte.' + getHoyVzla() + '&order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
     facturasCache = facturas;
+    // Vía RPC (no consulta directa a "empleados", bloqueada por RLS sin
+    // EMPLEADOS→VER) -- una llamada por correo único de Vendedor en esta
+    // lista, para mostrar su Área debajo del nombre.
+    let areaPorCorreoVendedor = {};
+    try {
+      const correosVendedores = [...new Set(facturas.map(function(f){ return f.id_usuario; }).filter(Boolean))];
+      await Promise.all(correosVendedores.map(async function(correo) {
+        try {
+          const rpcAreaVend = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_area_por_correo', {
+            method: 'POST',
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ p_correo: correo })
+          });
+          const rows = rpcAreaVend.ok ? await rpcAreaVend.json() : [];
+          if (rows && rows[0]) areaPorCorreoVendedor[correo] = rows[0];
+        } catch(e) {}
+      }));
+    } catch(eAreaVend) {}
     const tasaActual = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
     const resumen = {};
     Object.keys(ESTADOS_FAC).forEach(function(k) { resumen[k]=0; });
@@ -68,7 +86,7 @@ async function renderFacturas() {
       return '<tr data-id="' + f.id_factura + '">'
         + '<td><div style="font-family:var(--font-display);font-size:17px;color:var(--naranja)">' + (f.numero_factura||'—') + '</div>'
         + '<div style="font-size:11px;color:var(--suave)">' + (f.fecha_emision ? fmtFecha(f.fecha_emision) : '—') + '</div></td>'
-        + '<td style="font-size:12px">' + vendedor + '</td>'
+        + '<td style="font-size:12px">' + vendedor + (areaPorCorreoVendedor[f.id_usuario] ? '<div style="font-size:10px;color:var(--suave)">' + areaPorCorreoVendedor[f.id_usuario].nombre + (areaPorCorreoVendedor[f.id_usuario].codigo ? ' (' + areaPorCorreoVendedor[f.id_usuario].codigo + ')' : '') + '</div>' : '') + '</td>'
         + '<td style="font-size:12px">' + (prop ? prop.nombre_completo : (f.receptor_nombre||'—')) + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + identifCliente + '</div></td>'
         + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
         + (puedo('FACTURAS','VER_TOTALES')
