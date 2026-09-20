@@ -1213,6 +1213,7 @@ function repServiciosLimpiarFiltros() {
   const hoy = getHoyVzla();
   const desde = document.getElementById('rep-ser-desde'); if (desde) desde.value = hoy;
   const hasta = document.getElementById('rep-ser-hasta'); if (hasta) hasta.value = hoy;
+  const moneda = document.getElementById('rep-ser-moneda'); if (moneda) moneda.value = 'VES';
   const grupo = document.getElementById('rep-ser-grupo'); if (grupo) grupo.value = '';
   const servicio = document.getElementById('rep-ser-servicio'); if (servicio) servicio.value = '';
   const carroceria = document.getElementById('rep-ser-carroceria'); if (carroceria) carroceria.value = '';
@@ -1227,6 +1228,7 @@ async function repServiciosRender(cont) {
   const hoy = getHoyVzla();
   const desdeVal = document.getElementById('rep-ser-desde')?.value || hoy;
   const hastaVal = document.getElementById('rep-ser-hasta')?.value || hoy;
+  const monedaVal = document.getElementById('rep-ser-moneda')?.value || 'VES';
   const formatoVal = document.getElementById('rep-ser-formato')?.value || 'pdf';
   const grupoVal = document.getElementById('rep-ser-grupo')?.value || '';
   const servicioVal = document.getElementById('rep-ser-servicio')?.value || '';
@@ -1260,6 +1262,11 @@ async function repServiciosRender(cont) {
     + '<input type="date" id="rep-ser-desde" value="' + desdeVal + '" max="' + hoy + '" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box"></div>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Hasta</label>'
     + '<input type="date" id="rep-ser-hasta" value="' + hastaVal + '" max="' + hoy + '" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box"></div>'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Moneda</label>'
+    + '<select id="rep-ser-moneda" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box">'
+    + '<option value="VES"' + (monedaVal==='VES'?' selected':'') + '>VES</option>'
+    + '<option value="USD"' + (monedaVal==='USD'?' selected':'') + '>USD</option>'
+    + '</select></div>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Filtro</label>'
     + '<button id="rep-filtros-toggle-btn" onclick="repToggleFiltros()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:8px 14px;border-radius:5px;cursor:pointer;font-size:13px;height:35px;box-sizing:border-box">' + (_repFiltrosVisibles?'Ocultar':'Mostrar') + '</button></div>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Formato</label>'
@@ -1313,7 +1320,7 @@ async function repServiciosRender(cont) {
     + '<div id="rep-ser-total-servicios" style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">0</div>'
     + '</div>'
     + '<div style="flex:1;background:var(--gris2);border-radius:8px;padding:10px 16px">'
-    + '<div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Monto Total (USD)</div>'
+    + '<div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Monto Total</div>'
     + '<div id="rep-ser-total-monto" style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">0</div>'
     + '</div>'
     + '</div>'
@@ -1329,7 +1336,7 @@ async function repServiciosRender(cont) {
   let ordenesHead = {};
   try {
     let qOrd = '?estado=neq.ANULADA&fecha_entrada=gte.'+desdeVal+'&fecha_entrada=lte.'+hastaVal
-      + '&select=id_orden,fecha_entrada,id_cliente,id_vehiculo,clientes(nombre_completo),vehiculos(marca,modelo,tipo_carroceria)'
+      + '&select=id_orden,fecha_entrada,id_cliente,id_vehiculo,tasa_bcv,clientes(nombre_completo),vehiculos(marca,modelo,tipo_carroceria)'
       + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '');
     const ordenesRows = await api('ordenes_servicio','GET',null, qOrd);
     (ordenesRows||[]).forEach(function(o){
@@ -1373,7 +1380,9 @@ async function repServiciosRender(cont) {
   let filas = lineas.map(function(l) {
     const o = ordenesHead[l.id_orden];
     const idFact = idsFacturaOrden[l.id_orden];
-    const precio = parseFloat(l.precio_usd||0);
+    const precioUsd = parseFloat(l.precio_usd||0);
+    const tasaOrden = parseFloat(o?.tasa_bcv||1);
+    const precio = monedaVal === 'VES' ? precioUsd * tasaOrden : precioUsd;
     return {
       fecha: o?.fecha_entrada, cliente: o?.clientes?.nombre_completo || '—',
       servicio: l.id_servicio && catalogoPorId[l.id_servicio] ? catalogoPorId[l.id_servicio].nombre : (l.descripcion||'(Servicio libre)'),
@@ -1387,7 +1396,7 @@ async function repServiciosRender(cont) {
   filas.forEach(function(f){ totalMonto += f.precio; });
 
   document.getElementById('rep-ser-total-servicios').textContent = filas.length.toLocaleString('es-VE');
-  document.getElementById('rep-ser-total-monto').textContent = '$ ' + fmtUSD(totalMonto);
+  document.getElementById('rep-ser-total-monto').textContent = (monedaVal==='VES' ? fmtBs(totalMonto) + ' Bs' : '$ ' + fmtUSD(totalMonto));
 
   const filtrosActivos = [];
   if (formaPagoVal) filtrosActivos.push('Forma de Pago: ' + formaPagoVal);
@@ -1398,7 +1407,7 @@ async function repServiciosRender(cont) {
   if (modeloVal) filtrosActivos.push('Modelo: ' + modeloVal);
   const filtrosTexto = filtrosActivos.length ? filtrosActivos.join('   |   ') : 'Sin filtros adicionales';
 
-  window._reporteServiciosActual = { desdeVal, hastaVal, filas, filtrosTexto };
+  window._reporteServiciosActual = { desdeVal, hastaVal, monedaVal, filas, filtrosTexto };
   _repSerOrdenCol = _repSerOrdenCol || null;
   _repSerOrdenAsc = _repSerOrdenAsc !== false;
   _repSerRenderTabla();
@@ -1447,7 +1456,7 @@ function _repSerRenderTabla() {
       + '<td style="font-family:var(--font-mono);font-size:15px">' + fmtFecha(f.fecha) + '</td>'
       + '<td style="font-size:15px">' + escapeHtml(f.cliente) + '</td>'
       + '<td style="font-size:15px">' + escapeHtml(f.servicio) + '</td>'
-      + '<td style="text-align:right;font-family:var(--font-mono);color:var(--naranja);font-weight:600;font-size:15px">' + fmtUSD(f.precio) + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono);color:var(--naranja);font-weight:600;font-size:15px">' + (d.monedaVal==='VES' ? fmtBs(f.precio) : fmtUSD(f.precio)) + '</td>'
       + '<td style="text-align:center;font-size:13px;color:var(--suave)">' + escapeHtml(f.pago) + '</td>'
       + '</tr>';
   }).join('');
@@ -1467,8 +1476,9 @@ function _repSerDatosExportar() {
   const d = window._reporteServiciosActual;
   if (!d) return null;
   const encabezados = ['Fecha','Cliente','Servicio','Precio','Pago'];
+  const fmtMoneda = d.monedaVal === 'VES' ? fmtBs : fmtUSD;
   const filasNumericas = d.filas.map(function(f) { return [fmtFecha(f.fecha), f.cliente, f.servicio, f.precio, f.pago]; });
-  const filasTexto = d.filas.map(function(f) { return [fmtFecha(f.fecha), f.cliente, f.servicio, fmtUSD(f.precio), f.pago]; });
+  const filasTexto = d.filas.map(function(f) { return [fmtFecha(f.fecha), f.cliente, f.servicio, fmtMoneda(f.precio), f.pago]; });
   return { d, encabezados, filasNumericas, filasTexto };
 }
 
@@ -1476,7 +1486,7 @@ function _repSerExportarCSV() {
   const dat = _repSerDatosExportar();
   if (!dat) return;
   const filasCsv = [
-    ['Servicios del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal],
+    ['Servicios del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Moneda: ' + dat.d.monedaVal],
     ['Filtros: ' + dat.d.filtrosTexto],
     [],
     dat.encabezados,
@@ -1485,7 +1495,7 @@ function _repSerExportarCSV() {
   const blob = new Blob(['\ufeff'+csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'reporte_servicios_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '.csv';
+  a.href = url; a.download = 'reporte_servicios_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '_' + dat.d.monedaVal + '.csv';
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -1493,9 +1503,10 @@ function _repSerExportarCSV() {
 function _repSerExportarExcel() {
   const dat = _repSerDatosExportar();
   if (!dat || typeof XLSX === 'undefined') { alert('No se pudo cargar el generador de Excel. Verifica tu conexión e intenta de nuevo.'); return; }
-  const FILA_ENCAB = 3, FILA_DATOS_DESDE = 4;
+  const FILA_ENCAB = 4, FILA_DATOS_DESDE = 5;
   const hoja = XLSX.utils.aoa_to_sheet([
     ['Reporte por Servicios'],
+    ['Moneda: ' + dat.d.monedaVal],
     ['Filtros: ' + dat.d.filtrosTexto],
     [],
     dat.encabezados,
@@ -1514,7 +1525,7 @@ function _repSerExportarExcel() {
   }
   const libro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(libro, hoja, 'Servicios');
-  XLSX.writeFile(libro, 'reporte_servicios_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '.xlsx', { cellStyles: true });
+  XLSX.writeFile(libro, 'reporte_servicios_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '_' + dat.d.monedaVal + '.xlsx', { cellStyles: true });
 }
 
 function _repSerExportarPDF() {
@@ -1525,7 +1536,7 @@ function _repSerExportarPDF() {
   doc.setFontSize(14);
   doc.text('Reporte por Servicios', 14, 15);
   doc.setFontSize(9);
-  doc.text('Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal, 14, 21);
+  doc.text('Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Moneda: ' + dat.d.monedaVal, 14, 21);
   doc.text('Filtros: ' + dat.d.filtrosTexto, 14, 26);
   doc.autoTable({
     head: [dat.encabezados],
@@ -1535,5 +1546,5 @@ function _repSerExportarPDF() {
     headStyles: { fillColor: [255, 107, 0], halign: 'center' },
     columnStyles: { 3: { halign: 'right' }, 4: { halign: 'center' } },
   });
-  doc.save('reporte_servicios_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '.pdf');
+  doc.save('reporte_servicios_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '_' + dat.d.monedaVal + '.pdf');
 }
