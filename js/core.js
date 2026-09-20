@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909152';
+const SYD_VERSION = '20260909153';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -318,9 +318,17 @@ let _areaSesion = undefined; // undefined = aún no resuelto
 async function _resolverAreaSesion() {
   if (_areaSesion !== undefined) return _areaSesion;
   try {
-    const empRows = await api('empleados','GET',null,
-      '?correo=eq.'+encodeURIComponent(sesionActual?.correo_usuario||'')+'&select=id_area&limit=1');
-    _areaSesion = empRows && empRows[0] ? empRows[0].id_area : null;
+    // Vía RPC (no consulta directa a "empleados", bloqueada por RLS sin
+    // EMPLEADOS→VER) -- sin esto, el Área del creador quedaba siempre en
+    // null, y el enrutamiento de aprobación de Órdenes de Compra se
+    // detenía de inmediato (nunca buscaba aprobador ni notificaba a nadie).
+    const rpcArea = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_area_por_correo', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_correo: sesionActual?.correo_usuario || '' })
+    });
+    const rows = rpcArea.ok ? await rpcArea.json() : [];
+    _areaSesion = rows && rows[0] ? rows[0].id : null;
   } catch(e) { _areaSesion = null; }
   return _areaSesion;
 }
@@ -329,12 +337,15 @@ async function _resolverOrdenNivelSesion() {
   if (_ordenNivelSesion !== undefined) return _ordenNivelSesion;
   try {
     if (sesionActual?.administrador) { _ordenNivelSesion = 0; return _ordenNivelSesion; } // admin siempre pasa
-    const empRows = await api('empleados','GET',null,
-      '?correo=eq.'+encodeURIComponent(sesionActual?.correo_usuario||'')+'&select=id_nivel_jerarquico&limit=1');
-    const idNivel = empRows && empRows[0] ? empRows[0].id_nivel_jerarquico : null;
-    if (!idNivel) { _ordenNivelSesion = null; return null; }
-    const nivRows = await api('param_niveles_jerarquicos','GET',null,'?id_jerarquicos=eq.'+idNivel+'&select=orden&limit=1');
-    _ordenNivelSesion = nivRows && nivRows[0] ? nivRows[0].orden : null;
+    // Vía RPC (no consulta directa a "empleados", bloqueada por RLS sin
+    // EMPLEADOS→VER) -- mismo problema que dejaba el Área del creador en
+    // null y detenía el enrutamiento de aprobación.
+    const rpcNivel = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_orden_nivel_por_correo', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_correo: sesionActual?.correo_usuario || '' })
+    });
+    _ordenNivelSesion = rpcNivel.ok ? await rpcNivel.json() : null;
   } catch(e) { _ordenNivelSesion = null; }
   return _ordenNivelSesion;
 }
@@ -347,12 +358,15 @@ async function _resolverMontoMaxAprobacionSesion() {
   if (_montoMaxAprobSesion !== undefined) return _montoMaxAprobSesion;
   try {
     if (sesionActual?.administrador) { _montoMaxAprobSesion = null; return null; }
-    const empRows = await api('empleados','GET',null,
-      '?correo=eq.'+encodeURIComponent(sesionActual?.correo_usuario||'')+'&select=id_nivel_jerarquico&limit=1');
-    const idNivel = empRows && empRows[0] ? empRows[0].id_nivel_jerarquico : null;
-    if (!idNivel) { _montoMaxAprobSesion = null; return null; }
-    const nivRows = await api('param_niveles_jerarquicos','GET',null,'?id_jerarquicos=eq.'+idNivel+'&select=monto_maximo_aprobacion&limit=1');
-    _montoMaxAprobSesion = (nivRows && nivRows[0] && nivRows[0].monto_maximo_aprobacion != null) ? Number(nivRows[0].monto_maximo_aprobacion) : null;
+    // Vía RPC (no consulta directa a "empleados", bloqueada por RLS sin
+    // EMPLEADOS→VER) -- mismo problema que las otras funciones de sesión.
+    const rpcMonto = await fetch(SUPABASE_URL + '/rest/v1/rpc/obtener_monto_max_aprobacion_por_correo', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + _sessionJWT, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_correo: sesionActual?.correo_usuario || '' })
+    });
+    const valor = rpcMonto.ok ? await rpcMonto.json() : null;
+    _montoMaxAprobSesion = valor != null ? Number(valor) : null;
   } catch(e) { _montoMaxAprobSesion = null; }
   return _montoMaxAprobSesion;
 }
