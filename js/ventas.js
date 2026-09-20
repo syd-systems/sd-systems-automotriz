@@ -29,7 +29,8 @@ let _ventasArticulosPorVenta = {};       // { id_venta: {categorias:Set, tipos:S
 
 let _ventaLineas = []; // líneas en edición del modal (en memoria, no se guardan hasta "Guardar Borrador")
 let _ventaLineasOriginales = []; // snapshot de las líneas YA GUARDADAS al abrir el modal -- para poder revertir la reserva en vivo si se cierra sin guardar (Retornar / ✕)
-let _idAreaAlmacenVentas = null; // id de "Gerencia de Compras" (código 2300) -- Ventas siempre descuenta de ahí, sin pedirle al operador que elija Área
+let _idAreaAlmacenVentas = null; // id de "Gerencia de Compras" (código 2300) -- Ventas siempre descuenta el Stock de ahí, sin pedirle al operador que elija Área
+let _idAreaOrganizacionalVentas = null; // id de "Ventas y Marketing" (código 6000) -- Área que queda asignada a la propia Venta, solo para efectos organizativos/reportes; NUNCA tiene Stock propio
 let _articulosMercanciaVentas = []; // artículos filtrados (solo Mercancías, cuenta 1.1.04.001) con su stock en el Almacén
 let _invTiposCacheVentas = []; // catálogo de Tipos de Artículo (inv_articulos_tipo) -- para el filtro por Tipo
 let _vtaFiltroCategoria = '';
@@ -39,10 +40,22 @@ let _vtaFiltroSoloStock = false;
 async function _obtenerAreaAlmacenVentas() {
   if (_idAreaAlmacenVentas) return _idAreaAlmacenVentas;
   try {
-    const r = await api('param_areas','GET',null,'?codigo=eq.6000&select=id&limit=1');
+    const r = await api('param_areas','GET',null,'?codigo=eq.2300&select=id&limit=1');
     _idAreaAlmacenVentas = (r && r[0]) ? r[0].id : null;
   } catch(e) { _idAreaAlmacenVentas = null; }
   return _idAreaAlmacenVentas;
+}
+
+// Área "Ventas y Marketing" (código 6000) -- se le asigna a la propia
+// Venta (venta.id_area) solo para efectos organizativos/reportes. NUNCA
+// tiene Stock propio -- el Stock siempre se descuenta de Compras (arriba).
+async function _obtenerAreaOrganizacionalVentas() {
+  if (_idAreaOrganizacionalVentas) return _idAreaOrganizacionalVentas;
+  try {
+    const r = await api('param_areas','GET',null,'?codigo=eq.6000&select=id&limit=1');
+    _idAreaOrganizacionalVentas = (r && r[0]) ? r[0].id : null;
+  } catch(e) { _idAreaOrganizacionalVentas = null; }
+  return _idAreaOrganizacionalVentas;
 }
 
 // Ventas solo puede vender artículos catalogados como Mercancías (cuenta
@@ -627,7 +640,7 @@ async function abrirVenta(id) {
 
   // Área fija de Almacén (Gerencia de Compras, código 2300) -- no se le
   // pregunta al operador, la Venta siempre descuenta stock de ahí.
-  document.getElementById('vta-id-area').value = v ? v.id_area : await _obtenerAreaAlmacenVentas();
+  document.getElementById('vta-id-area').value = v ? v.id_area : await _obtenerAreaOrganizacionalVentas();
 
   _ventaLineas = [];
   if (id) {
