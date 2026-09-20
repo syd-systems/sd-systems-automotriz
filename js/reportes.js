@@ -585,7 +585,7 @@ async function repComprasRender(cont) {
   const proveedorNombrePorId = {};
   proveedores.forEach(function(p){ proveedorNombrePorId[p.id_proveedor] = p.nombre; });
   const areaNombrePorId = {};
-  areas.forEach(function(a){ areaNombrePorId[a.id] = a.nombre; });
+  areas.forEach(function(a){ areaNombrePorId[a.id] = a.nombre + (a.codigo ? ' (' + a.codigo + ')' : ''); });
 
   let entradas = [];
   try {
@@ -907,7 +907,7 @@ async function repVentasRender(cont) {
   const clienteNombrePorId = {};
   clientes.forEach(function(c){ clienteNombrePorId[c.id_cliente] = c.nombre_completo; });
   const areaNombrePorId = {};
-  areas.forEach(function(a){ areaNombrePorId[a.id] = a.nombre; });
+  areas.forEach(function(a){ areaNombrePorId[a.id] = a.nombre + (a.codigo ? ' (' + a.codigo + ')' : ''); });
 
   // Cabecera de la Venta (fecha, cliente, área, moneda de cobro, estado,
   // tasa, factura) -- luego se cruza con venta_detalle para las líneas por
