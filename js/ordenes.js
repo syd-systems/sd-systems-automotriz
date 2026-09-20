@@ -752,7 +752,7 @@ function renderLineasOS() {
         ? '<input type="text" id="os-serv-concepto-' + i + '" value="' + (l.descripcion || '') + '" placeholder="Escribe el concepto..." oninput="onCambioConceptoFila(' + i + ',this.value)" onkeydown="' + enterCant + '" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-transform:uppercase">'
         : '<select id="os-serv-nombre-' + i + '" onchange="onCambioServicioFila(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">' + opcionesServ + '</select>';
 
-    const catalogado = !l.esLibre && l.id_servicio;
+    const catalogado = !l.esLibre && l.id_servicio && parseFloat(l.precio_original || 0) > 0;
     const estiloPrecio = catalogado
       ? 'width:100%;background:var(--gris1);border:1px solid var(--borde);color:var(--suave);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;cursor:not-allowed'
       : 'width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--naranja);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)';
