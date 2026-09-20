@@ -141,7 +141,7 @@ async function renderVentasListado() {
   try {
     const filtroEmpresa = _empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : '';
     const ventas = await api('ventas', 'GET', null,
-      '?order=fecha_registro.desc&select=*,clientes(nombre_completo,tipo_doc,numero_doc),facturas(numero_factura)' + filtroEmpresa);
+      '?order=fecha_registro.desc&select=*,clientes(nombre_completo,tipo_doc,numero_doc),facturas(numero_factura),param_areas(nombre,codigo)' + filtroEmpresa);
     ventasCache = ventas;
 
     // Catálogos de Categoría/Tipo de Artículo -- se cargan una sola vez
@@ -955,7 +955,9 @@ async function verFichaVenta(id) {
   document.getElementById('ficha-venta-contenido').innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">'
     + '<div><div style="font-weight:600;font-size:15px">'+(v.clientes?.nombre_completo||'—')+'</div>'
-    + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">'+(v.clientes?'V-'+v.id_venta:'')+(v.facturas?.numero_factura?' — '+v.facturas.numero_factura:'')+'</div></div>'
+    + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">'+(v.clientes?'V-'+v.id_venta:'')+(v.facturas?.numero_factura?' — '+v.facturas.numero_factura:'')+'</div>'
+    + (v.param_areas ? '<div style="font-size:11px;color:var(--suave)">📍 '+(v.param_areas.nombre)+(v.param_areas.codigo?' ('+v.param_areas.codigo+')':'')+'</div>' : '')
+    + '</div>'
     + '<span class="badge '+(ESTADO_BADGE[v.estado]||'badge-gris')+'">'+(ESTADO_LABEL_VENTA[v.estado]||v.estado)+'</span>'
     + '</div>'
     + '<table style="width:100%;margin-bottom:14px"><thead><tr>'
