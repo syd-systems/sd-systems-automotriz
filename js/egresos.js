@@ -497,13 +497,12 @@ async function resolverCreadorCxP(correo) {
   if (!correo) return { nombre: '—', areaCodigo: '', areaNombre: '' };
   if (_cacheCreadorCxP[correo]) return _cacheCreadorCxP[correo];
   try {
-    const rows = await api('empleados','GET',null,
-      '?correo=eq.'+encodeURIComponent(correo)+'&select=nombre_completo,areas:id_area(nombre,codigo)&limit=1');
+    const rows = await buscarEmpleados({ p_correo: correo, p_limite: 1 });
     const emp = rows && rows[0];
     const info = {
       nombre:     emp?.nombre_completo || correo,
-      areaCodigo: emp?.areas?.codigo || '',
-      areaNombre: emp?.areas?.nombre || ''
+      areaCodigo: emp?.area_codigo || '',
+      areaNombre: emp?.area_nombre || ''
     };
     _cacheCreadorCxP[correo] = info;
     return info;
@@ -791,10 +790,11 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
   const faltantesCreadores = correosCreadores.filter(function(c){ return !_cacheCreadorCxP[c]; });
   if (faltantesCreadores.length) {
     try {
-      const empsBulk = await api('empleados','GET',null,
-        '?correo=in.('+faltantesCreadores.map(encodeURIComponent).join(',')+')&select=correo,nombre_completo,areas:id_area(nombre,codigo)');
-      (empsBulk||[]).forEach(function(e){
-        _cacheCreadorCxP[e.correo] = { nombre: e.nombre_completo||e.correo, areaCodigo: e.areas?.codigo||'', areaNombre: e.areas?.nombre||'' };
+      const resultados = await Promise.all(faltantesCreadores.map(function(c){ return buscarEmpleados({ p_correo: c, p_limite: 1 }); }));
+      resultados.forEach(function(rows, i){
+        const e = rows && rows[0];
+        const c = faltantesCreadores[i];
+        _cacheCreadorCxP[c] = e ? { nombre: e.nombre_completo||c, areaCodigo: e.area_codigo||'', areaNombre: e.area_nombre||'' } : { nombre: c, areaCodigo: '', areaNombre: '' };
       });
     } catch(eBulk) { console.warn('Error resolviendo creadores:', eBulk); }
   }
