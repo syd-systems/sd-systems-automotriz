@@ -142,6 +142,40 @@ async function renderVentasListado() {
     const filtroEmpresa = _empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : '';
     const ventas = await api('ventas', 'GET', null,
       '?order=fecha_registro.desc&select=*,clientes(nombre_completo,tipo_doc,numero_doc),facturas(numero_factura),param_areas(nombre,codigo)' + filtroEmpresa);
+
+    // Artículos vendidos a través de una Orden de Servicio (os_mercancias)
+    // son también "ventas" de mercancía, solo canalizadas por Taller en vez
+    // de mostrador -- se agregan aquí como filas de solo lectura, para que
+    // esta lista dé el total real de lo vendido sin importar el canal.
+    try {
+      const ordenesOS = await api('ordenes_servicio','GET',null,
+        '?estado=neq.ANULADA&select=id_orden,fecha_entrada,id_cliente,tasa_bcv,clientes(nombre_completo,tipo_doc,numero_doc)' + filtroEmpresa);
+      const idsOrdenOS = ordenesOS.map(function(o){ return o.id_orden; });
+      let mercOS = [];
+      if (idsOrdenOS.length) {
+        mercOS = await api('os_mercancias','GET',null,
+          '?id_orden=in.(' + idsOrdenOS.join(',') + ')&select=id_orden,id_articulo,cantidad,precio_usd,inventario_almacen(id_categoria_articulo,id_tipo_articulo)');
+      }
+      const totalPorOrden = {}, catsPorOrden = {}, tiposPorOrden = {};
+      mercOS.forEach(function(m) {
+        totalPorOrden[m.id_orden] = (totalPorOrden[m.id_orden]||0) + parseFloat(m.cantidad||0) * parseFloat(m.precio_usd||0);
+        if (!catsPorOrden[m.id_orden]) { catsPorOrden[m.id_orden] = new Set(); tiposPorOrden[m.id_orden] = new Set(); }
+        if (m.inventario_almacen?.id_categoria_articulo) catsPorOrden[m.id_orden].add(m.inventario_almacen.id_categoria_articulo);
+        if (m.inventario_almacen?.id_tipo_articulo) tiposPorOrden[m.id_orden].add(m.inventario_almacen.id_tipo_articulo);
+      });
+      const ventasOS = ordenesOS
+        .filter(function(o){ return totalPorOrden[o.id_orden] > 0; })
+        .map(function(o) {
+          return {
+            id_venta: -o.id_orden, fecha_venta: o.fecha_entrada, clientes: o.clientes,
+            total_usd: totalPorOrden[o.id_orden], tasa_bcv: o.tasa_bcv, moneda_cobro: 'USD',
+            estado: 'VIA_OS', _esOS: true, _idOrden: o.id_orden,
+            _categorias: catsPorOrden[o.id_orden], _tipos: tiposPorOrden[o.id_orden]
+          };
+        });
+      ventas.push.apply(ventas, ventasOS);
+    } catch(eVentasOS) { console.warn('Error cargando Ventas vía OS:', eVentasOS); }
+
     ventasCache = ventas;
 
     // Catálogos de Categoría/Tipo de Artículo -- se cargan una sola vez
@@ -160,7 +194,7 @@ async function renderVentasListado() {
     // tener que volver a consultar Supabase cada vez que el operador
     // cambia el filtro (mismo patrón client-side que ya usa Estado/Buscar).
     _ventasArticulosPorVenta = {};
-    const idsVentasTodas = ventas.map(function(v){ return v.id_venta; });
+    const idsVentasTodas = ventas.filter(function(v){ return !v._esOS; }).map(function(v){ return v.id_venta; });
     if (idsVentasTodas.length) {
       const lineasTodas = await api('venta_detalle','GET',null,
         '?id_venta=in.('+idsVentasTodas.join(',')+')&select=id_venta,inventario_almacen(id_categoria_articulo,id_tipo_articulo)');
@@ -170,6 +204,9 @@ async function renderVentasListado() {
         if (l.inventario_almacen?.id_tipo_articulo) _ventasArticulosPorVenta[l.id_venta].tipos.add(l.inventario_almacen.id_tipo_articulo);
       });
     }
+    ventas.filter(function(v){ return v._esOS; }).forEach(function(v) {
+      _ventasArticulosPorVenta[v.id_venta] = { categorias: v._categorias || new Set(), tipos: v._tipos || new Set() };
+    });
 
     // Desde/Hasta arrancan en la fecha de hoy -- una sola vez por sesión de
     // este módulo; si el usuario las limpia después, no se le vuelven a
@@ -193,6 +230,16 @@ async function renderVentasListado() {
       const ves = (v.total_usd||0) * tasa;
       const totalDual = '<div style="' + (esVES?'color:var(--suave)':'color:var(--naranja)') + '">$ ' + fmtUSD(v.total_usd||0) + '</div>'
         + '<div style="' + (esVES?'color:var(--naranja)':'color:var(--suave)') + ';font-size:11px">Bs ' + fmtBs(ves) + '</div>';
+      if (v._esOS) {
+        return '<tr data-id="' + v.id_venta + '">'
+          + '<td style="font-family:var(--font-mono);font-size:12px">OS-' + v._idOrden + '</td>'
+          + '<td>' + (cli ? cli.nombre_completo : '—') + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (cli ? cli.tipo_doc + '-' + cli.numero_doc : '') + '</div></td>'
+          + '<td style="font-size:12px">' + fmtFecha(v.fecha_venta) + '</td>'
+          + '<td style="text-align:right;font-family:var(--font-mono)">' + totalDual + '</td>'
+          + '<td><span class="badge badge-naranja">Vía OS</span></td>'
+          + '<td><button class="btn-naranja" style="font-size:10px;padding:7px 10px;letter-spacing:0.3px;white-space:nowrap" onclick="verFichaOS(' + v._idOrden + ')">Ver</button></td>'
+          + '</tr>';
+      }
       const botonLabel = v.estado === 'PRESUPUESTO' ? 'Editar / Facturar' : 'Ver';
       return '<tr data-id="' + v.id_venta + '">'
         + '<td style="font-family:var(--font-mono);font-size:12px">' + (v.facturas?.numero_factura || 'V-' + v.id_venta) + '</td>'
