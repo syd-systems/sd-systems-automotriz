@@ -1016,6 +1016,7 @@ async function _guardarOSInterno() {
       id_empresa: _empresaActiva.id_empresa,
       id_vehiculo: parseInt(vehId),
       id_cliente: id_cliente,
+      id_area: parseInt(document.getElementById('os-area')?.value) || null,
       kilometraje_entrada: km,
       fecha_entrada:   fechaEnt,
       fecha_prometida: fechaProm    || null,
