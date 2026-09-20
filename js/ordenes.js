@@ -1281,7 +1281,7 @@ async function facturarOS(id, skipConfirm) {
 // asociada. Reutiliza el permiso SERVICIOS.ANULAR (misma autoridad que ya
 // permite cancelar una OS).
 async function eliminarOS(id, numero) {
-  if (!puedo('SERVICIOS','ANULAR')) {
+  if (!puedo('SERVICIOS','ELIMINAR')) {
     alert('No tiene permiso para eliminar órdenes de servicio.');
     return;
   }
