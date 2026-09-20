@@ -18,6 +18,82 @@ const ESTADOS_OS = {
   'CERRADA':          { clase: 'badge-gris',    label: 'Cerrada' },
 };
 
+let _osCacheActual = [];
+let _osOrdenCol = 'numero';
+let _osOrdenAsc = true;
+const OS_COLUMNAS = [
+  { campo: 'numero',   tipo: 'texto',  label: 'N° OS / Fecha', ordenable: true },
+  { campo: 'vehiculo', tipo: 'texto',  label: 'Vehículo',      ordenable: true },
+  { campo: 'cliente',  tipo: 'texto',  label: 'Cliente',       ordenable: true },
+  { campo: 'estado',   tipo: 'texto',  label: 'Estado',        ordenable: true },
+  { campo: 'total',    tipo: 'numero', label: 'Total',         ordenable: true },
+  { campo: 'accion',   tipo: 'texto',  label: 'Acción',        ordenable: false },
+];
+
+function _osValorOrden(o, campo) {
+  if (campo === 'numero') return o.numero_os || '';
+  if (campo === 'vehiculo') return (o.vehiculos ? o.vehiculos.placa : '') || '';
+  if (campo === 'cliente') return (o.clientes ? o.clientes.nombre_completo : '').toLowerCase();
+  if (campo === 'estado') return o.estado || '';
+  if (campo === 'total') return o.total_usd || 0;
+  return '';
+}
+
+function _osOrdenar(lista) {
+  if (!_osOrdenCol) return lista;
+  const colDef = OS_COLUMNAS.find(function(c){ return c.campo === _osOrdenCol; });
+  const copia = lista.slice();
+  copia.sort(function(a, b) {
+    const va = _osValorOrden(a, _osOrdenCol), vb = _osValorOrden(b, _osOrdenCol);
+    const cmp = colDef.tipo === 'texto' ? String(va).localeCompare(String(vb), 'es', { sensitivity: 'base' }) : va - vb;
+    return _osOrdenAsc ? cmp : -cmp;
+  });
+  return copia;
+}
+
+function ordenarTablaOS(campo) {
+  if (_osOrdenCol === campo) { _osOrdenAsc = !_osOrdenAsc; }
+  else { _osOrdenCol = campo; _osOrdenAsc = true; }
+  _osRenderThead();
+  document.getElementById('os-tbody').innerHTML = _osFilasHtml(_osOrdenar(_osCacheActual)) || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">Sin órdenes registradas</td></tr>';
+  filtrarTablaOS();
+}
+
+function _osRenderThead() {
+  const el = document.getElementById('os-thead-row');
+  if (!el) return;
+  el.innerHTML = OS_COLUMNAS.map(function(c) {
+    if (!c.ordenable) return '<th>' + c.label + '</th>';
+    const flecha = _osOrdenCol === c.campo ? (_osOrdenAsc ? ' ▲' : ' ▼') : '';
+    return '<th style="cursor:pointer;user-select:none" onclick="ordenarTablaOS(\'' + c.campo + '\')" title="Ordenar">' + c.label + flecha + '</th>';
+  }).join('');
+}
+
+function _osFilasHtml(ordenesFiltradas) {
+  return ordenesFiltradas.map(function(o) {
+      const est = ESTADOS_OS[o.estado] || { clase: 'badge-gris', label: o.estado };
+      const veh = o.vehiculos;
+      const prop = o.clientes;
+      return '<tr data-id="' + o.id_orden + '" data-estado="' + (o.estado||'') + '" data-fecha="' + (o.fecha_entrada ? o.fecha_entrada.substring(0,10) : '') + '">'
+        + '<td><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + (o.numero_os || '—') + '</div>'
+        + '<div style="font-size:11px;color:var(--suave)">' + fmtFecha(o.fecha_entrada) + '</div></td>'
+        + '<td>' + (veh ? '<div style="font-weight:500;font-size:15px">' + veh.placa + '</div><div style="font-size:13px;color:var(--suave)">' + veh.marca + ' ' + veh.modelo + '</div>' : '—') + '</td>'
+        + '<td style="font-size:15px">' + (prop ? prop.nombre_completo : '—') + '</td>'
+        + '<td><span class="badge ' + est.clase + '">' + est.label + '</span>'
+        + (o.fecha_estado ? '<div style="font-size:10px;color:var(--suave);margin-top:3px">' + fmtFecha(o.fecha_estado) + '</div>' : '')
+        + '</td>'
+        + (puedo('SERVICIOS','VER_TOTALES')
+            ? '<td style="font-family:var(--font-mono)"><span style="color:var(--naranja)">' + fmtBs(o.total_ves) + ' Bs</span>'
+              + '<div style="font-size:10px;color:var(--suave)">$ ' + fmtUSD(o.total_usd) + '</div></td>'
+            : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
+        + '<td><div style="display:flex;gap:6px;flex-wrap:wrap">'
+        + '<button class="btn-secundario" onclick="verFichaOS(' + o.id_orden + ')">Ver</button>'
+        
+        + '</div></td>'
+        + '</tr>';
+    }).join('');
+}
+
 async function renderOrdenes() {
   if (!sesionActual?.administrador && !modulosAcceso.includes('SERVICIOS')) {
     document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">Sin acceso a este módulo.</div>';
@@ -60,28 +136,8 @@ async function renderOrdenes() {
       ? ordenes.filter(function(o) { return o.estado === filtroEstado; })
       : ordenes;
 
-    const filas = ordenesFiltradas.map(function(o) {
-      const est = ESTADOS_OS[o.estado] || { clase: 'badge-gris', label: o.estado };
-      const veh = o.vehiculos;
-      const prop = o.clientes;
-      return '<tr data-id="' + o.id_orden + '" data-estado="' + (o.estado||'') + '" data-fecha="' + (o.fecha_entrada ? o.fecha_entrada.substring(0,10) : '') + '">'
-        + '<td><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + (o.numero_os || '—') + '</div>'
-        + '<div style="font-size:11px;color:var(--suave)">' + fmtFecha(o.fecha_entrada) + '</div></td>'
-        + '<td>' + (veh ? '<div style="font-weight:500;font-size:15px">' + veh.placa + '</div><div style="font-size:13px;color:var(--suave)">' + veh.marca + ' ' + veh.modelo + '</div>' : '—') + '</td>'
-        + '<td style="font-size:15px">' + (prop ? prop.nombre_completo : '—') + '</td>'
-        + '<td><span class="badge ' + est.clase + '">' + est.label + '</span>'
-        + (o.fecha_estado ? '<div style="font-size:10px;color:var(--suave);margin-top:3px">' + fmtFecha(o.fecha_estado) + '</div>' : '')
-        + '</td>'
-        + (puedo('SERVICIOS','VER_TOTALES')
-            ? '<td style="font-family:var(--font-mono)"><span style="color:var(--naranja)">' + fmtBs(o.total_ves) + ' Bs</span>'
-              + '<div style="font-size:10px;color:var(--suave)">$ ' + fmtUSD(o.total_usd) + '</div></td>'
-            : '<td style="text-align:center;color:#555;font-size:11px">🔒</td>')
-        + '<td><div style="display:flex;gap:6px;flex-wrap:wrap">'
-        + '<button class="btn-secundario" onclick="verFichaOS(' + o.id_orden + ')">Ver</button>'
-        
-        + '</div></td>'
-        + '</tr>';
-    }).join('');
+    _osCacheActual = ordenesFiltradas;
+    const filas = _osFilasHtml(_osOrdenar(ordenesFiltradas));
 
     const resumen = {
       ABIERTA:         ordenes.filter(function(o) { return o.estado === 'ABIERTA'; }).length,
@@ -130,11 +186,11 @@ async function renderOrdenes() {
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:220px">'
       + (puedo('SERVICIOS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevaOS()">+ Nueva OS</button>' : '')
       + '</div></div>'
-      + '<div class="tabla-container"><table id="os-tabla"><thead><tr>'
-      + '<th>N° OS / Fecha</th><th>Vehículo</th><th>Cliente</th><th>Estado</th><th>Total</th><th>Acción</th>'
+      + '<div class="tabla-container"><table id="os-tabla"><thead><tr id="os-thead-row">'
       + '</tr></thead><tbody id="os-tbody">'
       + (filas || '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:32px">Sin órdenes registradas</td></tr>')
       + '</tbody></table></div></div>';
+    _osRenderThead();
   } catch(e) {
     c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + msgErr(e) + '</div>';
   }
