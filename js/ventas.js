@@ -177,7 +177,7 @@ async function renderVentasListado() {
           return {
             id_venta: -o.id_orden, fecha_venta: o.fecha_entrada, clientes: o.clientes,
             total_usd: totalPorOrden[o.id_orden], tasa_bcv: o.tasa_bcv, moneda_cobro: 'USD',
-            estado: 'VIA_OS', _esOS: true, _idOrden: o.id_orden, _numeroFactura: facturaPorOrden[o.id_orden] || null,
+            estado: facturaPorOrden[o.id_orden] ? 'FACTURADA' : 'VIA_OS', _esOS: true, _idOrden: o.id_orden, _numeroFactura: facturaPorOrden[o.id_orden] || null,
             param_areas: o.param_areas,
             _categorias: catsPorOrden[o.id_orden], _tipos: tiposPorOrden[o.id_orden]
           };
@@ -230,7 +230,7 @@ async function renderVentasListado() {
     const stats = { PRESUPUESTO: 0, FACTURADA: 0, ANULADA: 0 };
     ventas.forEach(function(v) { if (stats[v.estado] !== undefined) stats[v.estado]++; });
 
-    const ESTADO_BADGE = { PRESUPUESTO: 'badge-gris', FACTURADA: 'badge-verde', ANULADA: 'badge-rojo' };
+    const ESTADO_BADGE = { PRESUPUESTO: 'badge-gris', FACTURADA: 'badge-verde', ANULADA: 'badge-rojo', VIA_OS: 'badge-naranja' };
 
     const filas = ventas.map(function(v) {
       const cli = v.clientes;
@@ -246,7 +246,7 @@ async function renderVentasListado() {
           + '<td>' + (cli ? cli.nombre_completo : '—') + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (cli ? cli.tipo_doc + '-' + cli.numero_doc : '') + '</div></td>'
           + '<td style="font-size:12px">' + fmtFecha(v.fecha_venta) + '</td>'
           + '<td style="text-align:right;font-family:var(--font-mono)">' + totalDual + '</td>'
-          + '<td><span class="badge badge-naranja">Vía OS</span></td>'
+          + '<td><span class="badge ' + (ESTADO_BADGE[v.estado] || 'badge-gris') + '">' + (v.estado === 'VIA_OS' ? 'Vía OS' : (ESTADO_LABEL_VENTA[v.estado] || v.estado)) + '</span></td>'
           + '<td><button class="btn-naranja" style="font-size:10px;padding:7px 10px;letter-spacing:0.3px;white-space:nowrap" onclick="verFichaOS(' + v._idOrden + ')">Ver</button></td>'
           + '</tr>';
       }
