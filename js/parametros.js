@@ -17,7 +17,7 @@ const TABLAS_MAESTRAS = [
   { key: 'cat_prov', tabla: 'param_categorias_proveedor', pk: 'id', nombre: 'Categorías de Servicios', icono: '🏷', tieneCodigo: true, tieneEstado: true, tieneCuentaContable: true, filtroCuentaCodigo: '6.' },
   { key: 'bancos',             tabla: 'param_bancos',   pk: 'id',             nombre: 'Instituciones Financieras', icono: '🏦', tieneCodigo: true,  tieneArea: false, tieneTipoSector: true },
   { key: 'niveles_jerarquicos', tabla: 'param_niveles_jerarquicos', pk: 'id_jerarquicos', nombre: 'Niveles Jerárquicos', icono: '🏅', tieneCodigo: false, tieneArea: false, tieneDescripcion: true, tieneOrden: true, tieneMontoMaxAprobacion: true, campoNombre: 'nivel_jerarquicos', campoDescripcion: 'descripcion_jerarquicos' },
-  { key: 'metodos_pago', tabla: 'param_metodos_pago', pk: 'id_metodo', nombre: 'Métodos de Pago', icono: '💳', tieneMoneda: true, tieneCuentaContable: true, filtroCuentaCodigo: '1.1.01', tieneTipoCanal: true, nombreAutomatico: true },
+  { key: 'metodos_pago', tabla: 'param_metodos_pago', pk: 'id_metodo', nombre: 'Métodos de Pago', icono: '💳', tieneMoneda: true, tieneCuentaContable: true, filtroCuentaCodigo: ['1.1.01', '1.1.02'], tieneTipoCanal: true, nombreAutomatico: true },
 ];
 
 // Cache de áreas para el selector de cargos
@@ -290,7 +290,7 @@ async function abrirParamItem(key, id) {
         + '</select></div>';
     }
     if (def.tieneTipoCanal) {
-      camposHTML += '<div class="form-campo form-full"><label>Modo de Pago *</label><select id="param-item-tipo-canal" onchange="_actualizarNombreMetodoPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
+      camposHTML += '<div class="form-campo form-full"><label>Modo de Pago</label><select id="param-item-tipo-canal" onchange="_actualizarNombreMetodoPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
         + '<option value="">— Seleccionar —</option>'
         + '<option value="EFECTIVO"'            + (item && item.tipo_canal === 'EFECTIVO'            ? ' selected' : '') + '>Efectivo</option>'
         + '<option value="TRANSFERENCIA"'       + (item && item.tipo_canal === 'TRANSFERENCIA'       ? ' selected' : '') + '>Transferencia</option>'
@@ -318,14 +318,15 @@ async function abrirParamItem(key, id) {
       var opcCuentas = [];
       try {
         const filtroCod = def.filtroCuentaCodigo || '1.1.01';
+        const prefijos = Array.isArray(filtroCod) ? filtroCod : [filtroCod];
         const ctas = (await obtenerCuentasContables()).filter(function(c) {
-          return c.codigo && c.codigo.indexOf(filtroCod) === 0 && c.estado === 'ACTIVA' && c.permite_movimiento === true;
+          return c.codigo && prefijos.some(function(p){ return c.codigo.indexOf(p) === 0; }) && c.estado === 'ACTIVA' && c.permite_movimiento === true;
         }).sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
         opcCuentas = ctas.map(function(c) {
           return '<option value="' + c.id_cuenta + '"' + (item && item.id_cuenta_contable == c.id_cuenta ? ' selected' : '') + '>' + c.codigo + ' — ' + c.nombre + '</option>';
         });
       } catch(e) {}
-      camposHTML += '<div class="form-campo form-full"><label>Cuenta Contable *</label><select id="param-item-cuenta-contable" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="">— Seleccionar cuenta —</option>' + opcCuentas.join('') + '</select></div>';
+      camposHTML += '<div class="form-campo form-full"><label>Cuenta Contable</label><select id="param-item-cuenta-contable" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="">— Seleccionar cuenta —</option>' + opcCuentas.join('') + '</select></div>';
     }
   }
   camposHTML += '<div class="form-campo form-full"><label>Estado</label><select id="param-item-estado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="ACTIVO"' + (!item || item.estado==='ACTIVO' ? ' selected' : '') + '>Activo</option><option value="INACTIVO"' + (item && item.estado==='INACTIVO' ? ' selected' : '') + '>Inactivo</option></select></div>';
