@@ -167,7 +167,7 @@ async function mostrarTablaParam(key) {
           + (def.tieneMontoMaxAprobacion ? '<td style="font-family:var(--font-mono);font-size:12px;color:var(--suave);text-align:center">' + (item.monto_maximo_aprobacion != null ? '$' + Number(item.monto_maximo_aprobacion).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : 'Sin límite') + '</td>' : '')
           + (def.tieneArea ? '<td style="font-size:12px;color:var(--suave)">' + (areasMap[item.id_area] ? areasMap[item.id_area].nombre : '—') + '</td>' : '')
           + (def.tieneTipoSector ? '<td style="font-size:12px;color:var(--suave)">' + (item.tipo_sector || '—') + '</td>' : '')
-          + (def.tieneTipoCanal ? '<td style="font-size:12px;color:var(--suave)">' + ({EFECTIVO:'Efectivo',TRANSFERENCIA:'Transferencia',AFILIACION_BANCARIA:'Afiliación Bancaria'}[item.tipo_canal] || '—') + '</td>' : '')
+          + (def.tieneTipoCanal ? '<td style="font-size:12px;color:var(--suave)">' + ({EFECTIVO:'Efectivo',TRANSFERENCIA:'Transferencia',AFILIACION_BANCARIA:'Afiliación Bancaria',PAGO_MOVIL:'Pago Móvil'}[item.tipo_canal] || '—') + '</td>' : '')
           + (def.tieneCategoria ? '<td style="font-size:12px;color:var(--suave)">' + (cat ? (cat.codigo?cat.codigo+' — ':'')+cat.nombre : '—') + '</td>' : '')
           + (def.tieneCuentaContable ? '<td style="font-size:12px;color:var(--suave)">' + (cuentasContMap[item.id_cuenta_contable] ? '<span style="font-family:var(--font-mono);color:var(--naranja)">' + cuentasContMap[item.id_cuenta_contable].codigo + '</span> — ' + cuentasContMap[item.id_cuenta_contable].nombre : '—') + '</td>' : '')
           + '<td><span class="badge ' + (item.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (item.estado || 'ACTIVO') + '</span></td>'
@@ -295,6 +295,7 @@ async function abrirParamItem(key, id) {
         + '<option value="EFECTIVO"'            + (item && item.tipo_canal === 'EFECTIVO'            ? ' selected' : '') + '>Efectivo</option>'
         + '<option value="TRANSFERENCIA"'       + (item && item.tipo_canal === 'TRANSFERENCIA'       ? ' selected' : '') + '>Transferencia</option>'
         + '<option value="AFILIACION_BANCARIA"' + (item && item.tipo_canal === 'AFILIACION_BANCARIA' ? ' selected' : '') + '>Afiliación Bancaria</option>'
+        + '<option value="PAGO_MOVIL"'          + (item && item.tipo_canal === 'PAGO_MOVIL'          ? ' selected' : '') + '>Pago Móvil</option>'
         + '</select></div>';
     }
     if (def.tieneArea) {
@@ -369,7 +370,7 @@ function _actualizarNombreMetodoPago() {
   const monEl  = document.getElementById('param-item-moneda');
   const nomEl  = document.getElementById('param-item-nombre');
   if (!tipoEl || !monEl || !nomEl) return;
-  const labels = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria' };
+  const labels = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria', PAGO_MOVIL: 'Pago Móvil' };
   const tipoLabel = labels[tipoEl.value] || '';
   const moneda = monEl.value || '';
   nomEl.value = (tipoLabel && moneda) ? (tipoLabel + ' — ' + moneda) : '';
