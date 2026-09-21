@@ -1588,7 +1588,6 @@ function repIngresosLimpiarFiltros() {
   const hoy = getHoyVzla();
   const desde = document.getElementById('rep-ing-desde'); if (desde) desde.value = hoy;
   const hasta = document.getElementById('rep-ing-hasta'); if (hasta) hasta.value = hoy;
-  const moneda = document.getElementById('rep-ing-moneda'); if (moneda) moneda.value = 'VES';
   repIngresosRender(document.getElementById('reportes-contenido'));
 }
 
@@ -1597,7 +1596,6 @@ async function repIngresosRender(cont) {
   const hoy = getHoyVzla();
   const desdeVal = document.getElementById('rep-ing-desde')?.value || hoy;
   const hastaVal = document.getElementById('rep-ing-hasta')?.value || hoy;
-  const monedaVal = document.getElementById('rep-ing-moneda')?.value || 'VES';
   const formatoVal = document.getElementById('rep-ing-formato')?.value || 'pdf';
 
   document.getElementById('reportes-topbar-extra').innerHTML =
@@ -1605,11 +1603,6 @@ async function repIngresosRender(cont) {
     + '<input type="date" id="rep-ing-desde" value="' + desdeVal + '" max="' + hoy + '" onchange="repIngresosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box"></div>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Hasta</label>'
     + '<input type="date" id="rep-ing-hasta" value="' + hastaVal + '" max="' + hoy + '" onchange="repIngresosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box"></div>'
-    + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Moneda</label>'
-    + '<select id="rep-ing-moneda" onchange="repIngresosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box">'
-    + '<option value="VES"' + (monedaVal==='VES'?' selected':'') + '>VES</option>'
-    + '<option value="USD"' + (monedaVal==='USD'?' selected':'') + '>USD</option>'
-    + '</select></div>'
     + '<button onclick="repIngresosLimpiarFiltros()" title="Limpiar filtros" style="background:#dc2626;border:1px solid #dc2626;color:#fff;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:16px;line-height:1;box-shadow:0 1px 3px rgba(220,38,38,0.4);height:35px;box-sizing:border-box">🗑</button>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Formato</label>'
     + '<select id="rep-ing-formato" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box">'
@@ -1619,24 +1612,6 @@ async function repIngresosRender(cont) {
     + '</select></div>'
     + '<button class="btn-secundario" onclick="repIngresosExportar()">⬇ Exportar</button>';
 
-  cont.innerHTML = '<div style="padding:16px 24px">'
-    + '<div id="rep-ing-grafico" style="margin-bottom:24px"></div>'
-    + '<div id="rep-ing-resumen" style="display:flex;gap:16px;margin-bottom:20px">'
-    + '<div style="flex:1;background:var(--gris2);border-radius:8px;padding:10px 16px">'
-    + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Total de Ingresos</div>'
-    + '<div id="rep-ing-total-monto" style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">0</div>'
-    + '</div>'
-    + '<div style="flex:1;background:var(--gris2);border-radius:8px;padding:10px 16px">'
-    + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Total de Transacciones</div>'
-    + '<div id="rep-ing-total-trans" style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">0</div>'
-    + '</div>'
-    + '</div>'
-    + '<div class="tabla-container" style="min-width:600px;max-height:max(200px, calc(100vh - 560px))"><table style="width:100%;border-collapse:collapse">'
-    + '<thead><tr id="rep-ing-thead-row"></tr></thead>'
-    + '<tbody id="rep-ing-tbody"><tr><td colspan="3" style="text-align:center;color:var(--suave);padding:32px">Cargando...</td></tr></tbody>'
-    + '</table></div>'
-    + '</div>';
-
   let rows = [];
   try {
     rows = await rpc('obtener_ingresos_por_metodo_pago', {
@@ -1645,39 +1620,70 @@ async function repIngresosRender(cont) {
     }) || [];
   } catch(e) { console.warn('Error cargando Ingresos por Método de Pago:', e); }
 
+  // Cada línea se muestra en la Moneda en la que REALMENTE se cobró
+  // (moneda_cobro) -- nunca se convierte una operación en USD a VES ni
+  // viceversa. "pagado_usd" sirve solo como referencia interna para la
+  // ALTURA proporcional de las barras del gráfico, nunca como el monto
+  // que se le muestra al Usuario.
   const porMetodo = {};
   rows.forEach(function(r) {
-    const monto = monedaVal === 'VES' ? parseFloat(r.pagado_usd||0) * parseFloat(r.tasa_bcv||1) : parseFloat(r.pagado_usd||0);
-    if (!porMetodo[r.metodo_pago]) porMetodo[r.metodo_pago] = { monto: 0, transacciones: 0 };
-    porMetodo[r.metodo_pago].monto += monto;
+    const esVES = r.moneda_cobro === 'VES';
+    const montoReal = esVES ? parseFloat(r.pagado_usd||0) * parseFloat(r.tasa_bcv||1) : parseFloat(r.pagado_usd||0);
+    if (!porMetodo[r.metodo_pago]) porMetodo[r.metodo_pago] = { monto: 0, transacciones: 0, moneda: r.moneda_cobro, refUsd: 0 };
+    porMetodo[r.metodo_pago].monto += montoReal;
+    porMetodo[r.metodo_pago].refUsd += parseFloat(r.pagado_usd||0);
     porMetodo[r.metodo_pago].transacciones++;
   });
 
   const filas = Object.keys(porMetodo).map(function(m) {
-    return { metodo: m, monto: porMetodo[m].monto, transacciones: porMetodo[m].transacciones };
-  }).sort(function(a,b){ return b.monto - a.monto; });
+    const d = porMetodo[m];
+    return { metodo: m, monto: d.monto, moneda: d.moneda, transacciones: d.transacciones, refUsd: d.refUsd };
+  }).sort(function(a,b){ return b.refUsd - a.refUsd; });
 
-  const totalMonto = filas.reduce(function(s,f){ return s + f.monto; }, 0);
+  const totalVES = filas.filter(function(f){ return f.moneda === 'VES'; }).reduce(function(s,f){ return s + f.monto; }, 0);
+  const totalUSD = filas.filter(function(f){ return f.moneda === 'USD'; }).reduce(function(s,f){ return s + f.monto; }, 0);
   const totalTrans = filas.reduce(function(s,f){ return s + f.transacciones; }, 0);
-  document.getElementById('rep-ing-total-monto').textContent = (monedaVal==='VES' ? fmtBs(totalMonto) + ' Bs' : '$ ' + fmtUSD(totalMonto));
-  document.getElementById('rep-ing-total-trans').textContent = totalTrans.toLocaleString('es-VE');
 
-  // ── Gráfico de barras (SVG simple, sin librerías externas) ──
-  const fmtMonedaChart = monedaVal === 'VES' ? fmtBs : fmtUSD;
-  const simboloMoneda = monedaVal === 'VES' ? 'Bs' : '$';
-  const maxMonto = Math.max.apply(null, filas.map(function(f){ return f.monto; }).concat([1]));
-  const anchoBarra = 90, espacio = 30, altoMax = 220, margenSup = 30, margenInf = 50;
+  cont.innerHTML = '<div style="padding:16px 24px">'
+    + '<div id="rep-ing-grafico" style="margin-bottom:24px"></div>'
+    + '<div id="rep-ing-resumen" style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">'
+    + '<div style="flex:1;min-width:150px;background:var(--gris2);border-radius:8px;padding:10px 16px">'
+    + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Total en VES</div>'
+    + '<div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + fmtBs(totalVES) + ' Bs</div>'
+    + '</div>'
+    + '<div style="flex:1;min-width:150px;background:var(--gris2);border-radius:8px;padding:10px 16px">'
+    + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Total en USD</div>'
+    + '<div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">$ ' + fmtUSD(totalUSD) + '</div>'
+    + '</div>'
+    + '<div style="flex:1;min-width:150px;background:var(--gris2);border-radius:8px;padding:10px 16px">'
+    + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Total de Transacciones</div>'
+    + '<div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + totalTrans.toLocaleString('es-VE') + '</div>'
+    + '</div>'
+    + '</div>'
+    + '<div class="tabla-container" style="min-width:600px;max-height:max(200px, calc(100vh - 560px))"><table style="width:100%;border-collapse:collapse">'
+    + '<thead><tr id="rep-ing-thead-row"></tr></thead>'
+    + '<tbody id="rep-ing-tbody"></tbody>'
+    + '</table></div>'
+    + '</div>';
+
+  // ── Gráfico de barras (SVG simple, sin librerías externas) -- la altura
+  // de cada barra es solo una referencia visual proporcional (usa el valor
+  // normalizado en USD internamente), pero la CIFRA que se muestra en cada
+  // barra siempre es el monto real en su propia Moneda de cobro.
+  const maxRef = Math.max.apply(null, filas.map(function(f){ return f.refUsd; }).concat([1]));
+  const anchoBarra = 100, espacio = 30, altoMax = 220, margenSup = 30, margenInf = 55;
   const anchoSvg = Math.max(500, filas.length * (anchoBarra + espacio) + espacio);
   const altoSvg = altoMax + margenSup + margenInf;
   let barrasSvg = filas.map(function(f, i) {
-    const alturaBarra = maxMonto > 0 ? (f.monto / maxMonto) * altoMax : 0;
+    const alturaBarra = maxRef > 0 ? (f.refUsd / maxRef) * altoMax : 0;
     const x = espacio + i * (anchoBarra + espacio);
     const y = margenSup + (altoMax - alturaBarra);
+    const etiqueta = (f.moneda === 'VES' ? fmtBs(f.monto) + ' Bs' : '$ ' + fmtUSD(f.monto));
     return '<g>'
       + '<rect x="' + x + '" y="' + y + '" width="' + anchoBarra + '" height="' + alturaBarra + '" rx="6" fill="#ff6b00" opacity="0.9">'
-      + '<title>' + escapeHtml(f.metodo) + ': ' + simboloMoneda + ' ' + fmtMonedaChart(f.monto) + ' — ' + f.transacciones + ' transacciones</title>'
+      + '<title>' + escapeHtml(f.metodo) + ': ' + etiqueta + ' — ' + f.transacciones + ' transacciones</title>'
       + '</rect>'
-      + '<text x="' + (x + anchoBarra/2) + '" y="' + (y - 8) + '" text-anchor="middle" font-size="11" fill="var(--texto)" font-family="var(--font-mono)">' + simboloMoneda + ' ' + fmtMonedaChart(f.monto) + '</text>'
+      + '<text x="' + (x + anchoBarra/2) + '" y="' + (y - 8) + '" text-anchor="middle" font-size="11" fill="var(--texto)" font-family="var(--font-mono)">' + etiqueta + '</text>'
       + '<text x="' + (x + anchoBarra/2) + '" y="' + (margenSup + altoMax + 18) + '" text-anchor="middle" font-size="11" fill="var(--suave)">' + escapeHtml(f.metodo) + '</text>'
       + '<text x="' + (x + anchoBarra/2) + '" y="' + (margenSup + altoMax + 33) + '" text-anchor="middle" font-size="10" fill="var(--suave)">' + f.transacciones + ' trans.</text>'
       + '</g>';
@@ -1686,20 +1692,19 @@ async function repIngresosRender(cont) {
     ? '<div style="overflow-x:auto"><svg width="' + anchoSvg + '" height="' + altoSvg + '" viewBox="0 0 ' + anchoSvg + ' ' + altoSvg + '">' + barrasSvg + '</svg></div>'
     : '<div style="text-align:center;color:var(--suave);padding:24px">Sin Ingresos en el rango seleccionado</div>';
 
-  window._reporteIngresosActual = { desdeVal, hastaVal, monedaVal, filas };
+  window._reporteIngresosActual = { desdeVal, hastaVal, filas };
   _repIngRenderTabla();
 }
 
 function _repIngRenderTabla() {
   const d = window._reporteIngresosActual;
   if (!d) return;
-  const fmtMoneda = d.monedaVal === 'VES' ? fmtBs : fmtUSD;
   document.getElementById('rep-ing-thead-row').innerHTML =
     '<th style="text-align:left">Método de Pago</th><th style="text-align:right">Ingresos</th><th style="text-align:right">Transacciones</th>';
   const filasHtml = d.filas.map(function(f) {
     return '<tr>'
       + '<td style="font-size:15px">' + escapeHtml(f.metodo) + '</td>'
-      + '<td style="text-align:right;font-family:var(--font-mono);color:var(--naranja);font-weight:600;font-size:15px">' + (d.monedaVal==='VES' ? fmtBs(f.monto) + ' Bs' : '$ ' + fmtUSD(f.monto)) + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono);color:var(--naranja);font-weight:600;font-size:15px">' + (f.moneda==='VES' ? fmtBs(f.monto) + ' Bs' : '$ ' + fmtUSD(f.monto)) + '</td>'
       + '<td style="text-align:right;font-family:var(--font-mono);font-size:15px">' + f.transacciones + '</td>'
       + '</tr>';
   }).join('');
@@ -1718,9 +1723,9 @@ function _repIngDatosExportar() {
   const d = window._reporteIngresosActual;
   if (!d) return null;
   const encabezados = ['Método de Pago','Ingresos','Transacciones'];
-  const fmtMoneda = d.monedaVal === 'VES' ? fmtBs : fmtUSD;
+  const montoTxt = function(f){ return f.moneda==='VES' ? fmtBs(f.monto)+' Bs' : '$ '+fmtUSD(f.monto); };
   const filasNumericas = d.filas.map(function(f) { return [f.metodo, f.monto, f.transacciones]; });
-  const filasTexto = d.filas.map(function(f) { return [f.metodo, fmtMoneda(f.monto), f.transacciones]; });
+  const filasTexto = d.filas.map(function(f) { return [f.metodo, montoTxt(f), f.transacciones]; });
   return { d, encabezados, filasNumericas, filasTexto };
 }
 
@@ -1728,7 +1733,7 @@ function _repIngExportarCSV() {
   const dat = _repIngDatosExportar();
   if (!dat) return;
   const filasCsv = [
-    ['Ingresos por Método de Pago del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Moneda: ' + dat.d.monedaVal],
+    ['Ingresos por Método de Pago del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Cada monto en su Moneda real de cobro'],
     [],
     dat.encabezados,
   ].concat(dat.filasTexto);
@@ -1736,7 +1741,7 @@ function _repIngExportarCSV() {
   const blob = new Blob(['\ufeff'+csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'reporte_ingresos_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '_' + dat.d.monedaVal + '.csv';
+  a.href = url; a.download = 'reporte_ingresos_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '.csv';
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -1745,27 +1750,31 @@ function _repIngExportarExcel() {
   const dat = _repIngDatosExportar();
   if (!dat || typeof XLSX === 'undefined') { alert('No se pudo cargar el generador de Excel. Verifica tu conexión e intenta de nuevo.'); return; }
   const FILA_ENCAB = 2, FILA_DATOS_DESDE = 3;
+  // En Excel el monto va como texto (ya trae Bs/$ y su propia Moneda) --
+  // mezclar VES y USD en una sola columna numérica sumaría cifras que no
+  // se pueden sumar entre sí.
+  const filasExcel = dat.d.filas.map(function(f) {
+    return [f.metodo, (f.moneda==='VES' ? fmtBs(f.monto)+' Bs' : '$ '+fmtUSD(f.monto)), f.transacciones];
+  });
   const hoja = XLSX.utils.aoa_to_sheet([
     ['Ingresos por Método de Pago'],
-    ['Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Moneda: ' + dat.d.monedaVal],
+    ['Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Cada monto en su Moneda real de cobro'],
     dat.encabezados,
-  ].concat(dat.filasNumericas));
-  hoja['!cols'] = [ {wch:24}, {wch:18}, {wch:16} ];
-  const NUM_FILAS = dat.filasNumericas.length;
-  for (let col = 0; col < 3; col++) {
+  ].concat(filasExcel));
+  hoja['!cols'] = [ {wch:24}, {wch:20}, {wch:16} ];
+  const refEncabF = XLSX.utils.encode_cell({ r: FILA_ENCAB, c: 0 });
+  [0,1,2].forEach(function(col) {
     const refEncab = XLSX.utils.encode_cell({ r: FILA_ENCAB, c: col });
     if (hoja[refEncab]) hoja[refEncab].s = { alignment: { horizontal: 'center', vertical: 'center' }, font: { bold: true } };
-    if (col === 1 || col === 2) {
-      const formatoNum = col === 1 ? '#,##0.00' : '#,##0';
-      for (let i = 0; i < NUM_FILAS; i++) {
-        const ref = XLSX.utils.encode_cell({ r: FILA_DATOS_DESDE + i, c: col });
-        if (hoja[ref]) { hoja[ref].z = formatoNum; hoja[ref].t = 'n'; hoja[ref].s = { alignment: { horizontal: 'right' } }; }
-      }
-    }
+  });
+  const NUM_FILAS = filasExcel.length;
+  for (let i = 0; i < NUM_FILAS; i++) {
+    const ref = XLSX.utils.encode_cell({ r: FILA_DATOS_DESDE + i, c: 2 });
+    if (hoja[ref]) { hoja[ref].z = '#,##0'; hoja[ref].t = 'n'; hoja[ref].s = { alignment: { horizontal: 'right' } }; }
   }
   const libro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(libro, hoja, 'Ingresos');
-  XLSX.writeFile(libro, 'reporte_ingresos_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '_' + dat.d.monedaVal + '.xlsx', { cellStyles: true });
+  XLSX.writeFile(libro, 'reporte_ingresos_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '.xlsx', { cellStyles: true });
 }
 
 function _repIngExportarPDF() {
@@ -1776,7 +1785,7 @@ function _repIngExportarPDF() {
   doc.setFontSize(14);
   doc.text('Ingresos por Método de Pago', 14, 15);
   doc.setFontSize(9);
-  doc.text('Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Moneda: ' + dat.d.monedaVal, 14, 21);
+  doc.text('Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Cada monto en su Moneda real de cobro', 14, 21);
   doc.autoTable({
     head: [dat.encabezados],
     body: dat.filasTexto,
@@ -1785,5 +1794,5 @@ function _repIngExportarPDF() {
     headStyles: { fillColor: [255, 107, 0], halign: 'center' },
     columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } },
   });
-  doc.save('reporte_ingresos_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '_' + dat.d.monedaVal + '.pdf');
+  doc.save('reporte_ingresos_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '.pdf');
 }
