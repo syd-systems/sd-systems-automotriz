@@ -1335,6 +1335,7 @@ async function contGuardarPagoCxc() {
       saldo_usd:   nuevoSaldo,
       estado:      nuevoEstado,
       metodo_pago: metodoNombre,
+      moneda_cobro: metodoNombre.toUpperCase().includes('USD') ? 'USD' : 'VES',
       referencia:  referencia,
       id_banco_origen: idBancoOrigen,
       fecha_cobro: new Date().toISOString()
