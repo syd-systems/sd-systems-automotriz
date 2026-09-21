@@ -1629,15 +1629,21 @@ async function repIngresosRender(cont) {
   rows.forEach(function(r) {
     const esVES = r.moneda_cobro === 'VES';
     const montoReal = esVES ? parseFloat(r.pagado_usd||0) * parseFloat(r.tasa_bcv||1) : parseFloat(r.pagado_usd||0);
-    if (!porMetodo[r.metodo_pago]) porMetodo[r.metodo_pago] = { monto: 0, transacciones: 0, moneda: r.moneda_cobro, refUsd: 0 };
-    porMetodo[r.metodo_pago].monto += montoReal;
-    porMetodo[r.metodo_pago].refUsd += parseFloat(r.pagado_usd||0);
-    porMetodo[r.metodo_pago].transacciones++;
+    // La clave de agrupación combina método + moneda -- el mismo nombre de
+    // método (ej. "Efectivo") se usa tanto en VES como en USD, y son dos
+    // grupos distintos que no se pueden mezclar ni sumar entre sí.
+    const clave = r.metodo_pago + '||' + r.moneda_cobro;
+    if (!porMetodo[clave]) porMetodo[clave] = { metodo: r.metodo_pago, monto: 0, transacciones: 0, moneda: r.moneda_cobro, refUsd: 0 };
+    porMetodo[clave].monto += montoReal;
+    porMetodo[clave].refUsd += parseFloat(r.pagado_usd||0);
+    porMetodo[clave].transacciones++;
   });
 
-  const filas = Object.keys(porMetodo).map(function(m) {
-    const d = porMetodo[m];
-    return { metodo: m, monto: d.monto, moneda: d.moneda, transacciones: d.transacciones, refUsd: d.refUsd };
+  const filas = Object.keys(porMetodo).map(function(clave) {
+    const d = porMetodo[clave];
+    const yaDistingue = d.metodo.toUpperCase().includes('USD') || d.metodo.toUpperCase().includes('VES');
+    const label = yaDistingue ? d.metodo : d.metodo + ' (' + d.moneda + ')';
+    return { metodo: label, moneda: d.moneda, monto: d.monto, transacciones: d.transacciones, refUsd: d.refUsd };
   }).sort(function(a,b){ return b.refUsd - a.refUsd; });
 
   const totalVES = filas.filter(function(f){ return f.moneda === 'VES'; }).reduce(function(s,f){ return s + f.monto; }, 0);
