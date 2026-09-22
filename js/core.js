@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909177';
+const SYD_VERSION = '20260909178';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -558,6 +558,20 @@ async function rpc(nombre, params) {
 async function buscarEmpleados(params) {
   const r = await rpc('buscar_empleados', params);
   return r || [];
+}
+
+// ── Poblar un <select> de Moneda desde param_monedas (catálogo real, ya
+// no VES/USD fijos en el HTML) -- reutilizable en cualquier pantalla que
+// necesite elegir Moneda. Cachea el resultado en memoria (cambia poco).
+let _monedasCache = null;
+async function _poblarSelectMonedas(selectEl, incluirTodas) {
+  if (!selectEl) return;
+  if (!_monedasCache) {
+    try { _monedasCache = await api('param_monedas','GET',null,'?estado=eq.ACTIVO&order=codigo.asc&select=*') || []; }
+    catch(e) { _monedasCache = []; }
+  }
+  selectEl.innerHTML = (incluirTodas ? '<option value="">— Todas —</option>' : '')
+    + _monedasCache.map(function(m) { return '<option value="'+m.codigo+'">'+m.codigo+' — '+escapeHtml(m.nombre)+'</option>'; }).join('');
 }
 
 // ── Subir un archivo (imagen/PDF) a Supabase Storage ──
