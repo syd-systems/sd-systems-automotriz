@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909180';
+const SYD_VERSION = '20260909181';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -572,6 +572,15 @@ async function _poblarSelectMonedas(selectEl, incluirTodas) {
   }
   selectEl.innerHTML = (incluirTodas ? '<option value="">— Todas —</option>' : '')
     + _monedasCache.map(function(m) { return '<option value="'+m.codigo+'">'+m.codigo+' — '+escapeHtml(m.nombre)+'</option>'; }).join('');
+}
+
+// ── Formato estándar para mostrar una Cuenta Contable en cualquier parte
+// de la app: "Nombre Moneda" (limpio, sin código/guiones/paréntesis) --
+// el objeto debe tener .nombre y .moneda (los trae obtenerCuentasContables()
+// y cualquier select=*,cont_cuentas(...) embebido).
+function formatearCuentaContable(cuenta) {
+  if (!cuenta) return '—';
+  return escapeHtml(cuenta.nombre) + ' ' + escapeHtml(cuenta.moneda || 'VES');
 }
 
 // ── Subir un archivo (imagen/PDF) a Supabase Storage ──
