@@ -384,16 +384,6 @@ function mostrarAlertaFecha(msg) {
 
 let tasasDisponiblesOS = { USD: 1, EUR: 1 };
 
-function cambiarTipoTasaOS(moneda) {
-  tasaActualOS = tasasDisponiblesOS[moneda] || 1;
-  const labelMap = { USD: '$', EUR: '€' };
-  const tasaEl = document.getElementById('os-tasa');
-  const monedaEl = document.getElementById('os-moneda-label');
-  if (tasaEl) tasaEl.textContent = tasaActualOS.toFixed(2);
-  if (monedaEl) monedaEl.textContent = labelMap[moneda] || '$';
-  calcularTotalesOS();
-}
-
 // ─── ABRIR NUEVA OS ───
 // Resuelve el Área que Realiza el Servicio a partir de un usuario (correo) --
 // se busca su ficha de empleado y de ahí su Área asignada. Se usa tanto para
@@ -425,6 +415,7 @@ async function _resolverAreaOS(correo) {
 }
 
 async function abrirNuevaOS() {
+  if (!_monedasCache) { try { _monedasCache = await api('param_monedas','GET',null,'?estado=eq.ACTIVO&order=codigo.asc&select=*') || []; } catch(e) { _monedasCache = []; } }
   setTimeout(function() {
     const body = document.querySelector('#modal-os .modal');
     if (body) body.scrollTop = 0;
@@ -512,6 +503,7 @@ async function abrirEditarOS(id) {
     alert('No tiene permiso para editar órdenes de servicio.');
     return;
   }
+  if (!_monedasCache) { try { _monedasCache = await api('param_monedas','GET',null,'?estado=eq.ACTIVO&order=codigo.asc&select=*') || []; } catch(e) { _monedasCache = []; } }
   setTimeout(function() {
     const body = document.querySelector('#modal-os .modal');
     if (body) body.scrollTop = 0;
@@ -841,7 +833,7 @@ function renderLineasOS() {
       + '<td style="padding:4px">' + celdaServicio + '</td>'
       + '<td style="padding:4px;width:70px"><input type="number" id="os-serv-cant-' + i + '" min="0.01" step="0.01" value="' + l.cantidad + '" onkeydown="' + enterCant + '" ' + (l.esLibre ? 'readonly style="width:100%;background:var(--gris1);color:var(--suave);border:1px solid var(--borde);font-size:12px;padding:6px 8px;border-radius:4px;cursor:not-allowed"' : 'oninput="onCambioCantidadFilaServ(' + i + ',this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"') + '></td>'
       + '<td style="padding:4px;width:90px"><input type="text" id="os-serv-precio-' + i + '" value="' + formatearMontoVE(l.precio_original || 0) + '" onkeydown="' + enterPrecio + '" ' + (catalogado ? 'readonly' : 'oninput="onCambioPrecioFilaServ(' + i + ',this.value)"') + ' style="' + estiloPrecio + '"></td>'
-      + '<td style="padding:4px;width:80px"><select id="os-serv-moneda-' + i + '" onchange="onCambioMonedaFilaServ(' + i + ',this.value)" ' + (catalogado ? 'disabled' : '') + ' style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none"><option value="USD"' + (l.moneda === 'USD' ? ' selected' : '') + '>$ USD</option><option value="EUR"' + (l.moneda === 'EUR' ? ' selected' : '') + '>€ EUR</option><option value="VES"' + (l.moneda === 'VES' ? ' selected' : '') + '>Bs VES</option></select></td>'
+      + '<td style="padding:4px;width:80px"><select id="os-serv-moneda-' + i + '" onchange="onCambioMonedaFilaServ(' + i + ',this.value)" ' + (catalogado ? 'disabled' : '') + ' style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">' + ((_monedasCache && _monedasCache.length) ? _monedasCache.map(function(m){ return '<option value="'+m.codigo+'"'+(l.moneda===m.codigo?' selected':'')+'>'+m.codigo+'</option>'; }).join('') : '<option value="USD"'+(l.moneda==='USD'?' selected':'')+'>USD</option>') + '</select></td>'
       + '<td style="padding:4px 8px;text-align:right;font-family:var(--font-mono);color:var(--naranja);white-space:nowrap">' + subtotalFmt + '</td>'
       + '<td style="padding:4px;text-align:center"><button onclick="quitarLineaServ(' + i + ')" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px">✕</button></td>'
       + '</tr>';
