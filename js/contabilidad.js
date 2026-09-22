@@ -1538,6 +1538,7 @@ async function contRenderCajaBancos() {
   const monedaPrincipal  = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
   const monedaSecundaria = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
   if (!_cajaBancosMoneda) _cajaBancosMoneda = monedaPrincipal;
+  const monedasDispCB = (_monedasCache && _monedasCache.length) ? _monedasCache.map(function(m){return m.codigo;}) : [monedaPrincipal, monedaSecundaria];
 
   const hoy = getHoyVzla();
   if (!_cajaBancosHasta) _cajaBancosHasta = hoy;
@@ -1547,8 +1548,7 @@ async function contRenderCajaBancos() {
     '<div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px;background:var(--gris2);border-radius:8px;padding:14px 16px">'
     + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Moneda</label>'
     + '<select id="cb-moneda" onchange="_cajaBancosMoneda=this.value;cbConsultarSaldos()" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-size:13px;padding:7px 10px;border-radius:5px;outline:none">'
-    + '<option value="'+monedaPrincipal+'"'+(_cajaBancosMoneda===monedaPrincipal?' selected':'')+'>'+monedaPrincipal+'</option>'
-    + (monedaSecundaria !== monedaPrincipal ? '<option value="'+monedaSecundaria+'"'+(_cajaBancosMoneda===monedaSecundaria?' selected':'')+'>'+monedaSecundaria+'</option>' : '')
+    + monedasDispCB.map(function(cod){ return '<option value="'+cod+'"'+(_cajaBancosMoneda===cod?' selected':'')+'>'+cod+'</option>'; }).join('')
     + '</select></div>'
     + '<div><label style="font-size:11px;color:var(--suave);display:block;margin-bottom:4px">Desde</label>'
     + '<input type="date" id="cb-desde" value="'+_cajaBancosDesde+'" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-size:13px;padding:6px 10px;border-radius:5px;outline:none"></div>'
@@ -1891,10 +1891,9 @@ async function abrirModalTraspasoCB() {
   document.getElementById('alerta-traspaso-cb-err').style.display = 'none';
 
   const monedaPrincipal  = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
-  const monedaSecundaria = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
   const selMonedaTrasp = document.getElementById('traspaso-cb-moneda');
-  selMonedaTrasp.innerHTML = '<option value="'+monedaPrincipal+'">'+monedaPrincipal+'</option>'
-    + (monedaSecundaria !== monedaPrincipal ? '<option value="'+monedaSecundaria+'">'+monedaSecundaria+'</option>' : '');
+  await _poblarSelectMonedas(selMonedaTrasp);
+  selMonedaTrasp.value = monedaPrincipal;
 
   await _traspasoCBActualizarCuentas();
   abrirModal('modal-traspaso-cb');
