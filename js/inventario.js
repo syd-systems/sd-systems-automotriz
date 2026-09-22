@@ -4306,6 +4306,13 @@ function habilitarEdicionMovimiento() {
 
 async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vistaComoEntrada) {
   if (tipo === 'ENTRADA') await cargarTasaIVAGlobal(); // refresca IVA vigente -- solo Entrada tiene IVA
+  if (tipo === 'SALIDA') {
+    // Poblar el select de Moneda (dinámico, desde el catálogo real) ANTES
+    // de que _aplicarSoloLecturaMovimiento() lo use más abajo -- esa
+    // función es síncrona y muy reutilizada, así que se evita tocarla.
+    const selMonVentaEd = document.getElementById('edit-sal-moneda-venta');
+    if (selMonVentaEd) { const valPrevio = selMonVentaEd.value; await _poblarSelectMonedas(selMonVentaEd); if (valPrevio) selMonVentaEd.value = valPrevio; }
+  }
   try {
   try {
     if (tipo === 'ENTRADA') {
