@@ -423,7 +423,7 @@ let contLineasAsiento = [];
 function actualizarEtiquetaTasaAsiento() {
   const moneda = document.getElementById('cont-form-moneda')?.value || 'USD';
   const lbl = document.getElementById('cont-form-tasa-label');
-  if (lbl) lbl.textContent = moneda === 'VES' ? 'Tasa BCV' : 'Tasa BCV (VES/' + moneda + ')';
+  if (lbl) lbl.textContent = moneda === 'VES' ? 'Tasa BCV' : 'Tasa BCV (Bs./' + moneda + ')';
 }
 
 async function contAbrirAsiento(id) {
@@ -475,47 +475,36 @@ async function contAbrirAsiento(id) {
   document.getElementById('alerta-cont-form-ok').style.display  = 'none';
   document.getElementById('alerta-cont-form-err').style.display = 'none';
   contRenderLineasForm();
-  // Poblar select de moneda con monedas de la empresa
+  // Poblar select de Moneda desde el catálogo real (ya no limitado a las
+  // 2 Monedas de la Empresa).
   const selMoneda = document.getElementById('cont-form-moneda');
   const mpEmisor = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
-  const msEmisor = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
-  const monedaLabels = { VES:'Bolívar', USD:'Dólar', EUR:'Euro', COP:'Peso Col.' };
-  selMoneda.innerHTML =
-    '<option value="'+mpEmisor+'">'+mpEmisor+' — '+(monedaLabels[mpEmisor]||mpEmisor)+'</option>' +
-    (msEmisor !== mpEmisor ? '<option value="'+msEmisor+'">'+msEmisor+' — '+(monedaLabels[msEmisor]||msEmisor)+'</option>' : '');
+  await _poblarSelectMonedas(selMoneda);
   selMoneda.value = id ? (document.getElementById('cont-form-moneda').value||mpEmisor) : mpEmisor;
   actualizarEtiquetaTasaAsiento();
   abrirModal('modal-cont-asiento-form');
   focusFirstField('modal-cont-asiento-form');
 }
 
-async function contSetLinea(idx, tipo, montoRef, tasaLinea) {
-  // montoRef = monto en Moneda de Referencia (lo que escribe el usuario)
-  // tasaLinea = tasa de esa línea específica
-  const tasa = tasaLinea > 0 ? tasaLinea : 1;
-  const montoFunc = montoRef * tasa; // equivalente en Moneda Funcional
-  contLineasAsiento[idx].tasa       = tasa;
+async function contSetLinea(idx, tipo, montoFunc, tasaGlob) {
+  // montoFunc = monto en Moneda Funcional (lo que escribe el Usuario en
+  // DEBE o HABER); se calcula el equivalente en Moneda de Referencia
+  // dividiendo entre la Tasa general del Asiento.
+  const tasa = tasaGlob > 0 ? tasaGlob : 1;
+  const montoRef = montoFunc / tasa;
+  contLineasAsiento[idx].tasa = tasa;
   if (tipo === 'debe') {
-    contLineasAsiento[idx].debe_usd  = montoRef;   // monto ref
-    contLineasAsiento[idx].debe_ves  = montoFunc;  // equivalente funcional
-    contLineasAsiento[idx].haber_usd = 0;
+    contLineasAsiento[idx].debe_ves  = montoFunc;
+    contLineasAsiento[idx].debe_usd  = montoRef;
     contLineasAsiento[idx].haber_ves = 0;
+    contLineasAsiento[idx].haber_usd = 0;
   } else {
-    contLineasAsiento[idx].haber_usd = montoRef;
     contLineasAsiento[idx].haber_ves = montoFunc;
-    contLineasAsiento[idx].debe_usd  = 0;
+    contLineasAsiento[idx].haber_usd = montoRef;
     contLineasAsiento[idx].debe_ves  = 0;
+    contLineasAsiento[idx].debe_usd  = 0;
   }
   contRenderLineasForm();
-}
-
-function contSetTasaLinea(idx) {
-  const tasa = parseFloat(document.getElementById('cont-tl-' + idx)?.value) || 1;
-  const tipo = (contLineasAsiento[idx].debe_usd || 0) > 0 ? 'debe' : 'haber';
-  const montoRef = tipo === 'debe'
-    ? parseFloat(contLineasAsiento[idx].debe_usd || 0)
-    : parseFloat(contLineasAsiento[idx].haber_usd || 0);
-  contSetLinea(idx, tipo, montoRef, tasa);
 }
 
 function contRenderLineasForm() {
@@ -530,11 +519,11 @@ function contRenderLineasForm() {
   cont.innerHTML =
     '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px">'
     + '<thead><tr>'
-    + '<th style="text-align:left;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:45%">CUENTA</th>'
-    + '<th style="padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:25%">DESCRIPCIÓN</th>'
-    + '<th style="text-align:center;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:10%">TASA</th>'
+    + '<th style="text-align:left;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:40%">CUENTA</th>'
+    + '<th style="padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:18%">DESCRIPCIÓN</th>'
+    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:#22c55e;font-size:10px;width:14%">DEBE (' + ((_empresaActiva?.moneda_principal)||'VES').toUpperCase() + ')</th>'
+    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:#f87171;font-size:10px;width:14%">HABER (' + ((_empresaActiva?.moneda_principal)||'VES').toUpperCase() + ')</th>'
     + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:14%">REF (' + ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase() + ')</th>'
-    + '<th style="text-align:right;padding:6px;border-bottom:1px solid var(--borde);color:var(--suave);font-size:10px;width:14%">FUNC (' + ((_empresaActiva?.moneda_principal)||'VES').toUpperCase() + ')</th>'
     + '<th style="width:40px"></th>'
     + '</tr></thead><tbody>'
     + contLineasAsiento.map(function(l, i) {
@@ -544,34 +533,33 @@ function contRenderLineasForm() {
           + (function() {
               const cInfo    = contCuentasCache.find(function(x){ return x.id_cuenta === l.id_cuenta; });
               const nat      = cInfo ? cInfo.naturaleza : null;
+              // La Tasa siempre es la Tasa BCV general del Asiento (arriba)
+              // -- ya no se permite una Tasa distinta por línea.
               const tasaGlob = parseMontoVE(document.getElementById('cont-form-tasa')?.value) || 1;
-              const tasaL    = parseFloat(l.tasa || tasaGlob);
-              const monedaRef  = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
-              const monedaFunc = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
+              const monedaRef = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
               if (!nat) {
                 return '<td colspan="3" style="padding:4px;text-align:center;color:var(--suave);font-size:11px;font-style:italic">← seleccionar cuenta</td>';
               }
-              const esDebe    = nat === 'DEUDORA';
-              const montoRef  = esDebe ? parseFloat(l.debe_usd||0)  : parseFloat(l.haber_usd||0);
-              const montoFunc = (esDebe ? parseFloat(l.debe_ves||0) : parseFloat(l.haber_ves||0)) || (montoRef * tasaL);
-              const colorB    = esDebe ? 'rgba(34,197,94,0.4)' : 'rgba(248,113,113,0.4)';
-              const colorT    = esDebe ? '#22c55e' : '#f87171';
-              const tipoStr   = esDebe ? 'debe' : 'haber';
-              return '<td style="padding:4px"><input id="cont-tl-' + i + '" type="number" value="' + tasaL.toFixed(4) + '" min="0" step="0.0001" placeholder="Tasa"'
-                + ' onchange="contSetTasaLinea(' + i + ')"'
-                + ' style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--suave);font-family:var(--font-mono);font-size:11px;padding:5px 6px;border-radius:4px;outline:none;text-align:right"></td>'
-                + '<td style="padding:4px"><input type="number" value="' + (montoRef||'') + '" min="0" step="0.01" placeholder="0.00 ' + monedaRef + '"'
-                + ' onchange="contSetLinea(' + i + ',\'' + tipoStr + '\',parseFloat(this.value)||0,parseFloat(document.getElementById(\'cont-tl-' + i + '\').value)||1)"'
-                + ' style="width:100%;background:var(--gris2);border:1px solid ' + colorB + ';color:' + colorT + ';font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right"></td>'
+              const esDebe   = nat === 'DEUDORA';
+              const montoRef = esDebe ? parseFloat(l.debe_usd||0) : parseFloat(l.haber_usd||0);
+              const colorT   = esDebe ? '#22c55e' : '#f87171';
+              // Campo habilitado según naturaleza de la Cuenta -- el
+              // contrario queda bloqueado (deshabilitado y atenuado).
+              return '<td style="padding:4px"><input type="number" value="' + (esDebe ? (l.debe_ves||'') : '') + '" min="0" step="0.01" placeholder="0.00"'
+                + (esDebe ? ' onchange="contSetLinea(' + i + ',\'debe\',parseFloat(this.value)||0,' + tasaGlob + ')"' : ' disabled')
+                + ' style="width:100%;background:' + (esDebe ? 'var(--gris2)' : 'rgba(255,255,255,0.02)') + ';border:1px solid ' + (esDebe ? 'rgba(34,197,94,0.4)' : 'var(--borde)') + ';color:' + (esDebe ? '#22c55e' : '#444') + ';font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right"></td>'
+                + '<td style="padding:4px"><input type="number" value="' + (!esDebe ? (l.haber_ves||'') : '') + '" min="0" step="0.01" placeholder="0.00"'
+                + (!esDebe ? ' onchange="contSetLinea(' + i + ',\'haber\',parseFloat(this.value)||0,' + tasaGlob + ')"' : ' disabled')
+                + ' style="width:100%;background:' + (!esDebe ? 'var(--gris2)' : 'rgba(255,255,255,0.02)') + ';border:1px solid ' + (!esDebe ? 'rgba(248,113,113,0.4)' : 'var(--borde)') + ';color:' + (!esDebe ? '#f87171' : '#444') + ';font-family:var(--font-mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;text-align:right"></td>'
                 + '<td style="padding:4px;text-align:right;font-family:var(--font-mono);font-size:12px;color:' + colorT + ';background:rgba(255,255,255,0.02);padding-right:10px">'
-                + (montoFunc > 0 ? montoFunc.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2,maximumFractionDigits:2}) : '—') + '</td>';
+                + (montoRef > 0 ? montoRef.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2,maximumFractionDigits:2}) + ' ' + monedaRef : '—') + '</td>';
             })()
           + '<td style="padding:4px;text-align:center"><button onclick="contLineasAsiento.splice(' + i + ',1);contRenderLineasForm()" style="background:none;border:none;color:#fc8181;cursor:pointer;font-size:16px">✕</button></td>'
           + '</tr>';
       }).join('')
     + '</tbody></table>'
     + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">'
-    + '<button onclick="contLineasAsiento.push({id_cuenta:null,descripcion:\'\',debe_usd:0,haber_usd:0});contRenderLineasForm()" style="background:none;border:1px dashed var(--borde);color:var(--suave);padding:7px 14px;border-radius:5px;cursor:pointer;font-size:12px">+ Agregar línea</button>'
+    + '<button onclick="contLineasAsiento.push({id_cuenta:null,descripcion:\'\',debe_usd:0,haber_usd:0});contRenderLineasForm()" class="btn-naranja" style="font-size:12px;padding:8px 16px">+ Agregar línea</button>'
     + '<div style="display:flex;gap:20px;align-items:center">'
     + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave)">DEBE</div><div style="font-family:var(--font-mono);font-size:14px;color:#22c55e">' + fmtUSD(totalDebe) + '</div></div>'
     + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave)">HABER</div><div style="font-family:var(--font-mono);font-size:14px;color:#fc8181">' + fmtUSD(totalHaber) + '</div></div>'
@@ -636,7 +624,7 @@ async function contGuardarAsiento() {
     // Insertar líneas
     for (let i = 0; i < contLineasAsiento.length; i++) {
       const l = contLineasAsiento[i];
-      const tasaL = parseFloat(l.tasa || tasa);
+      const tasaL = tasa; // Tasa siempre la general del Asiento -- ya no hay override por línea.
       await api('cont_asiento_lineas','POST',{
         id_asiento:  parseInt(asientoId),
         id_cuenta:   l.id_cuenta,
