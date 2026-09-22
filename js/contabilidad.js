@@ -1180,6 +1180,7 @@ async function contAbrirPagoCxc(id_cxc) {
   // en la otra moneda), y el listado de Métodos y el Monto principal se
   // refiltran/invierten según lo que elija aquí.
   const selMoneda = document.getElementById('cont-pago-cxc-moneda');
+  await _poblarSelectMonedas(selMoneda);
   if (selMoneda) selMoneda.value = monedaFacturaCxc;
   _actualizarMontoPrincipalCxc();
 
