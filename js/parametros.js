@@ -1530,6 +1530,7 @@ async function abrirFormTipoPago(id) {
 
   let monedas = [];
   try { monedas = await api('param_monedas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc&select=*') || []; } catch(e) {}
+  const monedaPorDefecto = (_empresaActiva?.moneda_principal || 'VES').toUpperCase();
 
   // Todas las Cuentas de Caja/Banco disponibles, con su propia Moneda --
   // no se pre-filtran por la Moneda elegida arriba; en vez de eso, al
@@ -1541,7 +1542,7 @@ async function abrirFormTipoPago(id) {
     }).sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
   } catch(e) {}
   const opcCuentas = '<option value="">— Sin configurar —</option>' + cuentas.map(function(c) {
-    return '<option value="' + c.id_cuenta + '" data-moneda="' + (c.moneda||'VES') + '"' + (item && item.id_cuenta_contable == c.id_cuenta ? ' selected' : '') + '>' + escapeHtml(c.codigo + ' — ' + c.nombre + ' (' + (c.moneda||'VES') + ')') + '</option>';
+    return '<option value="' + c.id_cuenta + '" data-moneda="' + (c.moneda||'VES') + '"' + (item && item.id_cuenta_contable == c.id_cuenta ? ' selected' : '') + '>' + escapeHtml(c.codigo + ' — ' + c.nombre) + '</option>';
   }).join('');
 
   document.getElementById('modal-param-titulo').textContent = (id ? 'EDITAR' : 'NUEVO') + ' — TIPO DE PAGO';
@@ -1549,8 +1550,8 @@ async function abrirFormTipoPago(id) {
     '<div class="alerta alerta-exito" id="alerta-param-ok" style="margin:0"></div>'
     + '<div class="alerta alerta-error" id="alerta-param-err" style="margin:0"></div>';
   document.getElementById('modal-param-body').innerHTML = '<div class="form-grid">'
-    + '<div class="form-campo form-full"><label>Nombre</label><input type="text" id="tipo-pago-nombre" value="' + (item ? escapeHtml(item.nombre) : '') + '"></div>'
-    + '<div class="form-campo form-full"><label>Moneda</label><select id="tipo-pago-moneda">' + monedas.map(function(m) { return '<option value="' + m.codigo + '"' + (item && item.moneda === m.codigo ? ' selected' : '') + '>' + m.codigo + ' — ' + escapeHtml(m.nombre) + '</option>'; }).join('') + '</select></div>'
+    + '<div class="form-campo form-full"><label>Nombre</label><input type="text" id="tipo-pago-nombre" oninput="this.value = this.value.charAt(0).toUpperCase() + this.value.slice(1)" value="' + (item ? escapeHtml(item.nombre) : '') + '"></div>'
+    + '<div class="form-campo form-full"><label>Moneda</label><select id="tipo-pago-moneda">' + monedas.map(function(m) { const sel = item ? item.moneda === m.codigo : m.codigo === monedaPorDefecto; return '<option value="' + m.codigo + '"' + (sel ? ' selected' : '') + '>' + m.codigo + ' — ' + escapeHtml(m.nombre) + '</option>'; }).join('') + '</select></div>'
     + '<div class="form-campo form-full"><label>Cuenta Contable</label><select id="tipo-pago-cuenta">' + opcCuentas + '</select></div>'
     + '<div class="form-campo form-full"><label>Estado</label><select id="tipo-pago-estado"><option value="ACTIVO"' + (!item || item.estado==='ACTIVO' ? ' selected':'') + '>Activo</option><option value="INACTIVO"' + (item && item.estado==='INACTIVO' ? ' selected':'') + '>Inactivo</option></select></div>'
     + '</div>';
@@ -1567,7 +1568,8 @@ async function guardarTipoPago(id) {
   const resetBtn = function() { if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'GUARDAR'; } };
   const errEl = document.getElementById('alerta-param-err');
   errEl.style.display = 'none';
-  const nombre = document.getElementById('tipo-pago-nombre')?.value.trim();
+  let nombre = document.getElementById('tipo-pago-nombre')?.value.trim();
+  if (nombre) nombre = nombre.charAt(0).toUpperCase() + nombre.slice(1);
   const moneda = document.getElementById('tipo-pago-moneda')?.value;
   const selCuenta = document.getElementById('tipo-pago-cuenta');
   const idCuenta = parseInt(selCuenta?.value) || null;
