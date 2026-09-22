@@ -259,6 +259,7 @@ async function abrirProveedor(id) {
   document.getElementById('prov-telefono').value             = p ? (p.telefono||'') : '';
   document.getElementById('prov-correo').value               = p ? (p.correo||'') : '';
   document.getElementById('prov-direccion').value            = p ? (p.direccion||'') : '';
+  await _poblarSelectMonedas(document.getElementById('prov-moneda'));
   document.getElementById('prov-moneda').value               = p ? (p.moneda_facturacion||'VES') : 'VES';
   document.getElementById('prov-dias-credito').value         = p ? (p.dias_credito||0) : 0;
   document.getElementById('prov-limite-credito').value       = p ? (p.limite_credito||0) : 0;
