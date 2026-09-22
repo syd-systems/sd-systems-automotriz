@@ -1987,6 +1987,7 @@ async function abrirOrdenCompra() {
   document.getElementById('entcons-proveedor').innerHTML = '<option value="">— Seleccionar —</option>';
   document.getElementById('entcons-fecha').value = getHoyVzla();
   document.getElementById('entcons-fecha').max = getHoyVzla();
+  await _poblarSelectMonedas(document.getElementById('entcons-moneda'));
   document.getElementById('entcons-moneda').value = 'USD';
   document.getElementById('entcons-tasa-bcv').value = '';
   document.getElementById('entcons-esquema-pago').value = '';
@@ -4802,7 +4803,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
   if (esEntrada) {
     // Moneda
     const selMoneda = document.getElementById('edit-mov-moneda');
-    if (selMoneda) selMoneda.value = m.moneda_compra || 'USD';
+    if (selMoneda) { await _poblarSelectMonedas(selMoneda, false, true); selMoneda.value = m.moneda_compra || 'USD'; }
     const lblMoneda = document.getElementById('edit-mov-label-moneda');
     if (lblMoneda) lblMoneda.textContent = '(' + (m.moneda_compra || 'USD') + ')';
 
