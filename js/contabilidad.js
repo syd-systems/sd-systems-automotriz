@@ -1227,17 +1227,15 @@ async function _cargarMetodosCobroCxc() {
   try {
     // "Afiliación Bancaria" es un Tipo de Pago (Egreso), no una forma de
     // Cobranza -- se excluye aquí igual que antes.
-    let combos = await api('param_tipos_pago_cuenta','GET','',
-      '?moneda=eq.'+monedaSel+'&estado=eq.ACTIVO&select=id_tipo,id_cuenta_contable,param_tipos_pago(nombre,estado)');
-    combos = (combos || []).filter(function(c) {
-      return c.param_tipos_pago && c.param_tipos_pago.estado === 'ACTIVO' && c.param_tipos_pago.nombre !== 'Afiliación Bancaria';
-    });
+    let combos = await api('param_tipos_pago','GET',null,
+      '?moneda=eq.'+monedaSel+'&estado=eq.ACTIVO&select=id_tipo,nombre,id_cuenta_contable');
+    combos = (combos || []).filter(function(c) { return c.nombre !== 'Afiliación Bancaria'; });
     if (!combos || !combos.length) {
       selMetodo.innerHTML = '<option value="">⚠ No hay métodos de Cobro en '+monedaSel+' configurados — configure uno en Parámetros</option>';
     } else {
       selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
         + combos.map(function(c) {
-            return '<option value="'+c.id_tipo+'" data-cuenta-id="'+(c.id_cuenta_contable||'')+'" data-moneda="'+monedaSel+'" data-tipo-canal="'+c.param_tipos_pago.nombre+'">'+c.param_tipos_pago.nombre+'</option>';
+            return '<option value="'+c.id_tipo+'" data-cuenta-id="'+(c.id_cuenta_contable||'')+'" data-moneda="'+monedaSel+'" data-tipo-canal="'+c.nombre+'">'+c.nombre+'</option>';
           }).join('');
       // Sin preselección -- el operador debe elegir explícitamente.
     }
@@ -1350,7 +1348,7 @@ async function contGuardarPagoCxc() {
     }
 
     // Generar asiento contable del Cobro -- Debe Caja/Banco (según método
-    // elegido, desde param_tipos_pago_cuenta) / Haber CxC Cliente. Si la tasa
+    // elegido, desde param_tipos_pago) / Haber CxC Cliente. Si la tasa
     // BCV cambió desde que se emitió la Factura, se registra diferencia
     // cambiaria (espejo exacto de cómo Egresos trata el Pago de CxP, pero
     // en sentido de Cobro: si sube la tasa, la empresa recibe más Bs de lo
@@ -1519,7 +1517,7 @@ async function contGuardarPagoCxc() {
 // Saldos REALES por Moneda -- no el equivalente en Moneda Funcional que ya
 // muestra el resto de la contabilidad (Diario/Mayor/Balance), sino la
 // suma/resta de los montos tal como se movieron en la Moneda seleccionada.
-// Las Cuentas relevantes se derivan de param_tipos_pago_cuenta (misma fuente
+// Las Cuentas relevantes se derivan de param_tipos_pago (misma fuente
 // que ya usa el sistema para saber a qué Cuenta va cada pago/cobro) --
 // si se agrega un Banco nuevo en Parámetros, aparece aquí solo.
 let _cajaBancosMoneda = null;
@@ -1640,7 +1638,7 @@ async function cbConsultarSaldos() {
 //  TRASPASOS CAJA/BANCO -- movimientos de EFECTIVO entre una Cuenta de
 //  Caja y una Cuenta de Banco (en cualquier dirección), dentro de la
 //  MISMA Moneda -- nunca se mezclan monedas en un mismo traspaso. Se
-//  apoya en el mismo catálogo (param_tipos_pago_cuenta) que ya usa el resto
+//  apoya en el mismo catálogo (param_tipos_pago) que ya usa el resto
 //  del sistema para Cobros/Pagos, para no duplicar cuentas.
 // ══════════════════════════════════════════════════════════════
 
@@ -1898,19 +1896,18 @@ async function abrirModalTraspasoCB() {
   focusFirstField('modal-traspaso-cb');
 }
 
-// Repuebla Cuenta Caja (param_tipos_pago_cuenta) y Cuenta
+// Repuebla Cuenta Caja (param_tipos_pago) y Cuenta
 // Bancaria (ahora param_cuentas_bancarias_empresa -- Institución + Tipo +
 // Número reales, no una cuenta contable abstracta) según la Moneda.
 async function _traspasoCBActualizarCuentas() {
   const moneda = document.getElementById('traspaso-cb-moneda')?.value;
   if (!moneda) return;
   try {
-    const metodosTrasp = await api('param_tipos_pago_cuenta','GET','',
-      '?estado=eq.ACTIVO&moneda=eq.'+moneda+'&select=id_tipo,id_cuenta_contable,param_tipos_pago(nombre,estado)');
-    const soloEfectivo = (metodosTrasp||[]).filter(function(m) { return m.param_tipos_pago && m.param_tipos_pago.estado === 'ACTIVO' && m.param_tipos_pago.nombre === 'Efectivo'; });
+    const metodosTrasp = await api('param_tipos_pago','GET',null,
+      '?estado=eq.ACTIVO&moneda=eq.'+moneda+'&nombre=eq.Efectivo&select=id_tipo,nombre,id_cuenta_contable');
     const selCaja = document.getElementById('traspaso-cb-cuenta-caja');
-    selCaja.innerHTML = soloEfectivo.length
-      ? soloEfectivo.map(function(m){ return '<option value="'+m.id_cuenta_contable+'" data-metodo="'+m.id_tipo+'">'+m.param_tipos_pago.nombre+'</option>'; }).join('')
+    selCaja.innerHTML = (metodosTrasp||[]).length
+      ? metodosTrasp.map(function(m){ return '<option value="'+m.id_cuenta_contable+'" data-metodo="'+m.id_tipo+'">'+m.nombre+'</option>'; }).join('')
       : '<option value="">— Sin Cuenta de Caja en '+moneda+' —</option>';
   } catch(eCtasTrasp) { console.warn('Error cargando Cuenta Caja de Traspaso:', eCtasTrasp); }
 
@@ -2437,6 +2434,8 @@ async function contAbrirCuenta(id) {
   document.getElementById('cont-cuenta-nombre').value = c ? c.nombre    : '';
   document.getElementById('cont-cuenta-tipo').value   = c ? c.tipo      : 'ACTIVO';
   document.getElementById('cont-cuenta-nat').value    = c ? c.naturaleza: 'DEUDORA';
+  await _poblarSelectMonedas(document.getElementById('cont-cuenta-moneda'));
+  document.getElementById('cont-cuenta-moneda').value = c ? c.moneda : 'VES';
   document.getElementById('cont-cuenta-nivel').value  = c ? c.nivel     : '4';
   document.getElementById('cont-cuenta-mov').checked  = c ? c.permite_movimiento : true;
   document.getElementById('alerta-cuenta-ok').style.display  = 'none';
@@ -2495,6 +2494,7 @@ async function contGuardarCuenta() {
   const nombre = document.getElementById('cont-cuenta-nombre').value.trim();
   const tipo   = document.getElementById('cont-cuenta-tipo').value;
   const nat    = document.getElementById('cont-cuenta-nat').value;
+  const moneda = document.getElementById('cont-cuenta-moneda').value || 'VES';
   const nivel  = parseInt(document.getElementById('cont-cuenta-nivel').value)||4;
   const mov    = document.getElementById('cont-cuenta-mov').checked;
   const padre  = parseInt(document.getElementById('cont-cuenta-padre').value)||null;
@@ -2503,7 +2503,7 @@ async function contGuardarCuenta() {
   okEl.style.display='none'; errEl.style.display='none';
   if (!codigo || !nombre) { errEl.textContent='Código y nombre son obligatorios.'; errEl.style.display='block'; return; }
   try {
-    const datos = { codigo, nombre, tipo, naturaleza: nat, nivel, permite_movimiento: mov, id_cuenta_padre: padre, id_usuario: sesionActual.correo_usuario };
+    const datos = { codigo, nombre, tipo, naturaleza: nat, moneda, nivel, permite_movimiento: mov, id_cuenta_padre: padre, id_usuario: sesionActual.correo_usuario };
     if (id) { await api('cont_cuentas','PATCH',datos,'?id_cuenta=eq.'+id); }
     else    { await api('cont_cuentas','POST',datos); }
     okEl.textContent='✓ Cuenta guardada.'; okEl.style.display='block';
