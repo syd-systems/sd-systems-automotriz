@@ -511,10 +511,12 @@ function contRenderLineasForm() {
   const cont = document.getElementById('cont-lineas-form');
   if (!cont) return;
 
-  const totalDebe  = contLineasAsiento.reduce(function(s,l){ return s+parseFloat(l.debe_usd||0); },0);
-  const totalHaber = contLineasAsiento.reduce(function(s,l){ return s+parseFloat(l.haber_usd||0); },0);
+  const monedaFunc = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
+  const totalDebe  = contLineasAsiento.reduce(function(s,l){ return s+parseFloat(l.debe_ves||0); },0);
+  const totalHaber = contLineasAsiento.reduce(function(s,l){ return s+parseFloat(l.haber_ves||0); },0);
   const cuadra = Math.abs(totalDebe - totalHaber) < 0.01;
   const diff   = totalDebe - totalHaber;
+  const fmtFunc = function(v) { return v.toLocaleString('es-VE', { timeZone: 'America/Caracas', minimumFractionDigits:2, maximumFractionDigits:2 }) + ' ' + monedaFunc; };
 
   cont.innerHTML =
     '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px">'
@@ -561,10 +563,10 @@ function contRenderLineasForm() {
     + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">'
     + '<button onclick="contLineasAsiento.push({id_cuenta:null,descripcion:\'\',debe_usd:0,haber_usd:0});contRenderLineasForm()" class="btn-naranja" style="font-size:12px;padding:8px 16px">+ Agregar línea</button>'
     + '<div style="display:flex;gap:20px;align-items:center">'
-    + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave)">DEBE</div><div style="font-family:var(--font-mono);font-size:14px;color:#22c55e">' + fmtUSD(totalDebe) + '</div></div>'
-    + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave)">HABER</div><div style="font-family:var(--font-mono);font-size:14px;color:#fc8181">' + fmtUSD(totalHaber) + '</div></div>'
+    + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave)">DEBE</div><div style="font-family:var(--font-mono);font-size:14px;color:#22c55e">' + fmtFunc(totalDebe) + '</div></div>'
+    + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave)">HABER</div><div style="font-family:var(--font-mono);font-size:14px;color:#fc8181">' + fmtFunc(totalHaber) + '</div></div>'
     + '<div style="text-align:right"><div style="font-size:10px;color:var(--suave)">DIFERENCIA</div>'
-    + '<div style="font-family:var(--font-mono);font-size:14px;color:' + (cuadra?'#22c55e':'#fc8181') + '">' + (cuadra ? '✓ Cuadrado' : fmtUSD(Math.abs(diff))) + '</div></div>'
+    + '<div style="font-family:var(--font-mono);font-size:14px;color:' + (cuadra?'#22c55e':'#fc8181') + '">' + (cuadra ? '✓ Cuadrado' : fmtFunc(Math.abs(diff))) + '</div></div>'
     + '</div></div>';
 }
 
@@ -595,16 +597,18 @@ async function contGuardarAsiento() {
   if (contLineasAsiento.some(function(l){ return !l.id_cuenta; })) {
     errEl.textContent = 'Todas las líneas deben tener una cuenta seleccionada.'; errEl.style.display='block'; return;
   }
+  if (contLineasAsiento.some(function(l){ return !(l.descripcion||'').trim(); })) {
+    errEl.textContent = 'Todas las líneas deben tener una Descripción (detalle) ingresada.'; errEl.style.display='block'; return;
+  }
 
   try {
     let asientoId = id;
     // moneda_base -- SIEMPRE la Moneda Funcional de la Empresa
     // (moneda_principal), sin excepción, sin importar qué Moneda haya
-    // elegido el Contador para capturar este Asiento puntual. Nada se
-    // puede ocultar contablemente: el select "cont-form-moneda" solo
-    // decide en cuál columna (REF/FUNC) escribe el monto de referencia --
-    // el equivalente en Moneda Funcional ya se calcula por línea (columna
-    // FUNC) y es siempre lo que queda como base del asiento.
+    // elegido el Contador para este Asiento puntual (el select
+    // "cont-form-moneda" solo afecta el cálculo de la Referencia por
+    // línea) -- lo que el Usuario ingresa directo en DEBE/HABER es
+    // siempre Moneda Funcional, y eso queda como base del asiento.
     const datos = { fecha, descripcion: desc, referencia: ref||null, tipo, moneda_base: monedaFunc, tasa_bcv: tasa, id_periodo: periodo || null, estado:'PENDIENTE', id_usuario: sesionActual.correo_usuario, id_empresa: _empresaActiva?.id_empresa || null };
 
     if (id) {
@@ -1712,10 +1716,8 @@ async function abrirModalCuentasBancariasEmpresa() {
   document.getElementById('cbe-tipo-cuenta').value = '';
   document.getElementById('alerta-cbe-err').style.display = 'none';
 
-  const monedaPrincipalCbe  = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
-  const monedaSecundariaCbe = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
-  document.getElementById('cbe-moneda').innerHTML = '<option value="'+monedaPrincipalCbe+'">'+monedaPrincipalCbe+'</option>'
-    + (monedaSecundariaCbe !== monedaPrincipalCbe ? '<option value="'+monedaSecundariaCbe+'">'+monedaSecundariaCbe+'</option>' : '');
+  await _poblarSelectMonedas(document.getElementById('cbe-moneda'));
+  document.getElementById('cbe-moneda').value = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
 
   try {
     // Mismo patrón que "Cuenta Nómina" en Empleados: código de 4 dígitos
