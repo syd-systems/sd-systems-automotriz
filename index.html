@@ -1544,20 +1544,16 @@
       <button class="modal-cerrar" onclick="cerrarModal('modal-tasa')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="alerta alerta-error" id="alerta-tasa-error"></div>
+      <div class="alerta alerta-error" id="alerta-tasa-error" style="display:none"></div>
       <div class="form-grid">
         <div class="form-campo">
           <label>Moneda Origen</label>
           <select id="t-origen">
-            <option value="USD">USD - Dólar</option>
-            <option value="EUR">EUR - Euro</option>
           </select>
         </div>
         <div class="form-campo">
           <label>Moneda Destino</label>
           <select id="t-destino">
-            <option value="VES">VES - Bolívar</option>
-            <option value="USD">USD - Dólar</option>
           </select>
         </div>
         <div class="form-campo form-full">
@@ -1572,9 +1568,8 @@
     </div>
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-tasa')">Retornar</button>
-      <div class="alerta alerta-error" id="alerta-tasa-error" style="display:none;margin:0 0 8px 0"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button class="btn-primario" onclick="guardarTasa()">REGISTRAR</button>
+        <button class="btn-primario" id="t-btn-guardar" onclick="guardarTasa()">REGISTRAR</button>
       </div>
     </div>
   </div>
@@ -1586,19 +1581,19 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="js/core.js?v=20260909183"></script>
-<script src="js/parametros.js?v=20260909183"></script>
-<script src="js/empresas.js?v=20260909183"></script>
-<script src="js/ingresos.js?v=20260909183"></script>
-<script src="js/inventario.js?v=20260909183"></script>
-<script src="js/proveedores.js?v=20260909183"></script>
-<script src="js/ventas.js?v=20260909183"></script>
-<script src="js/contabilidad.js?v=20260909183"></script>
-<script src="js/egresos.js?v=20260909183"></script>
-<script src="js/vehiculos.js?v=20260909183"></script>
-<script src="js/catalogo.js?v=20260909183"></script>
-<script src="js/ordenes.js?v=20260909183"></script>
-<script src="js/reportes.js?v=20260909183"></script>
+<script src="js/core.js?v=20260909184"></script>
+<script src="js/parametros.js?v=20260909184"></script>
+<script src="js/empresas.js?v=20260909184"></script>
+<script src="js/ingresos.js?v=20260909184"></script>
+<script src="js/inventario.js?v=20260909184"></script>
+<script src="js/proveedores.js?v=20260909184"></script>
+<script src="js/ventas.js?v=20260909184"></script>
+<script src="js/contabilidad.js?v=20260909184"></script>
+<script src="js/egresos.js?v=20260909184"></script>
+<script src="js/vehiculos.js?v=20260909184"></script>
+<script src="js/catalogo.js?v=20260909184"></script>
+<script src="js/ordenes.js?v=20260909184"></script>
+<script src="js/reportes.js?v=20260909184"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -5522,8 +5517,6 @@
             <label>Moneda</label>
             <div id="edit-sal-moneda-venta-display" style="font-size:16px;font-weight:600;color:#60a5fa;padding:11px 14px;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;box-sizing:border-box;height:46px;display:flex;align-items:center">—</div>
             <select id="edit-sal-moneda-venta" onchange="recalcularPrecioVentaEditSalida()" style="display:none;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;box-sizing:border-box;height:46px">
-              <option value="USD">USD — Dólar</option>
-              <option value="VES">VES — Bolívar</option>
             </select>
           </div>
           <div class="form-campo" id="edit-sal-precio-venta-cont">
