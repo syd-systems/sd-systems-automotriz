@@ -2381,7 +2381,7 @@ async function contRenderCuentas(filtro) {
     + (puedo('CONTABILIDAD','PLAN_CUENTAS') ? '<button class="btn-primario" onclick="contAbrirCuenta(null)">+ Nueva Cuenta</button>' : '')
     + '</div></div>'
     + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 410px))"><table style="width:100%"><thead><tr>'
-    + '<th style="width:160px">Código</th><th>Nombre</th><th style="width:110px">Tipo</th>'
+    + '<th style="width:160px">Código</th><th>Nombre</th><th style="width:80px">Moneda</th><th style="width:110px">Tipo</th>'
     + '<th style="width:100px">Naturaleza</th><th style="width:60px;text-align:center">Nivel</th>'
     + '<th style="width:80px;text-align:center">Mov.</th>'
     + (puedo('CONTABILIDAD','PLAN_CUENTAS') ? '<th style="width:60px"></th>' : '')
@@ -2400,6 +2400,7 @@ async function contRenderCuentas(filtro) {
           + 'font-weight:' + (esGrupo ? '700' : esSubGrp ? '600' : '400') + ';'
           + 'font-size:' + (esGrupo ? '13px' : '12px') + '">'
           + (esGrupo ? '▌ ' : esSubGrp ? '├ ' : '  └ ') + c.nombre + '</td>'
+          + '<td style="padding:6px 8px;font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (c.nivel >= 3 ? (c.moneda||'VES') : '') + '</td>'
           + '<td style="padding:6px 8px">'
           + (esGrupo ? '<span class="badge ' + (tipoBadge[c.tipo]||'badge-gris') + '" style="font-size:10px">' + c.tipo + '</span>' : '')
           + '</td>'
