@@ -23,6 +23,10 @@ async function renderContabilidad() {
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando módulo contable...</div>';
   try {
+    // Precarga del catálogo de Monedas (síncrono para contSelectorMoneda,
+    // que se reutiliza en muchas vistas y no puede volverse async sin
+    // tocar todos sus llamadores).
+    if (!_monedasCache) { try { _monedasCache = await api('param_monedas','GET',null,'?estado=eq.ACTIVO&order=codigo.asc&select=*') || []; } catch(e) { _monedasCache = []; } }
     let emisores = [];
     if (sesionActual?.administrador) {
       emisores = await api('emisores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=*');
@@ -134,15 +138,21 @@ function contConvertirMonto(monto, tasa) {
 }
 
 function contSelectorMoneda(fechaConsulta) {
-  const monedaPrincipal = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase().toUpperCase();
-  const monedaSecundaria = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
+  const monedaPrincipal = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
   const selVal = _contMoneda || monedaPrincipal;
+  // Lista de Monedas real, desde el catálogo (precargado en renderContabilidad)
+  // -- no las 2 fijas de la Empresa. Si el caché aún no cargó por alguna
+  // razón, cae de respaldo a Principal/Secundaria para no romper la vista.
+  const monedasDisp = (_monedasCache && _monedasCache.length)
+    ? _monedasCache.map(function(m){ return m.codigo; })
+    : [monedaPrincipal, ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase()];
   return '<div style="display:flex;align-items:center;gap:8px">'
     + '<label style="font-size:11px;color:var(--suave)">Moneda:</label>'
     + '<select id="cont-selector-moneda" onchange="_contMoneda=this.value;contCambiarVista(_contVista,true)" '
     + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:4px 8px;border-radius:4px;outline:none">'
-    + '<option value="'+monedaPrincipal+'"'+(selVal===monedaPrincipal?' selected':'')+'>'+monedaPrincipal+'</option>'
-    + '<option value="'+monedaSecundaria+'"'+(selVal===monedaSecundaria?' selected':'')+'>'+monedaSecundaria+' — Referencia</option>'
+    + monedasDisp.map(function(cod) {
+        return '<option value="'+cod+'"'+(selVal===cod?' selected':'')+'>'+cod+(cod===monedaPrincipal?'':' — Referencia')+'</option>';
+      }).join('')
     + '</select>'
     + '</div>';
 }
