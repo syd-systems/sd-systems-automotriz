@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909182';
+const SYD_VERSION = '20260909183';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -564,13 +564,14 @@ async function buscarEmpleados(params) {
 // no VES/USD fijos en el HTML) -- reutilizable en cualquier pantalla que
 // necesite elegir Moneda. Cachea el resultado en memoria (cambia poco).
 let _monedasCache = null;
-async function _poblarSelectMonedas(selectEl, incluirTodas) {
+async function _poblarSelectMonedas(selectEl, incluirTodas, placeholderVacio) {
   if (!selectEl) return;
   if (!_monedasCache) {
     try { _monedasCache = await api('param_monedas','GET',null,'?estado=eq.ACTIVO&order=codigo.asc&select=*') || []; }
     catch(e) { _monedasCache = []; }
   }
   selectEl.innerHTML = (incluirTodas ? '<option value="">— Todas —</option>' : '')
+    + (placeholderVacio ? '<option value="">— Seleccione moneda —</option>' : '')
     + _monedasCache.map(function(m) { return '<option value="'+m.codigo+'">'+m.codigo+' — '+escapeHtml(m.nombre)+'</option>'; }).join('');
 }
 
