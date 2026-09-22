@@ -46,6 +46,7 @@ async function renderParametros() {
               + t.icono + ' ' + t.nombre + '</button>';
           }).join('')}
           <button class="param-tab btn-secundario" id="tab-tipos_pago" onclick="mostrarTiposPago()" style="font-size:12px">💳 Tipos de Pago</button>
+          <button class="param-tab btn-secundario" id="tab-monedas" onclick="mostrarMonedas()" style="font-size:12px">💱 Monedas</button>
         </div>
       </div>
       <div id="param-tabla-cont" style="padding:12px 24px 24px">
@@ -1489,9 +1490,10 @@ async function mostrarTiposPago() {
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const [tipos, cuentasMapeo] = await Promise.all([
+    const [tipos, cuentasMapeo, monedas] = await Promise.all([
       api('param_tipos_pago', 'GET', null, '?order=nombre.asc&select=*'),
       api('param_tipos_pago_cuenta', 'GET', null, '?select=*,cont_cuentas(codigo,nombre)'),
+      api('param_monedas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc&select=*'),
     ]);
     const mapeoPorTipo = {};
     (cuentasMapeo || []).forEach(function(m) {
@@ -1500,12 +1502,13 @@ async function mostrarTiposPago() {
     });
 
     const filas = (tipos || []).map(function(t) {
-      const ves = mapeoPorTipo[t.id_tipo]?.VES;
-      const usd = mapeoPorTipo[t.id_tipo]?.USD;
+      const celdasMoneda = (monedas||[]).map(function(mon) {
+        const c = mapeoPorTipo[t.id_tipo]?.[mon.codigo];
+        return '<td style="font-size:12px;color:var(--suave)">' + (c ? '<span style="font-family:var(--font-mono);color:var(--naranja)">' + c.cont_cuentas.codigo + '</span> — ' + escapeHtml(c.cont_cuentas.nombre) : '<span style="color:#666">Sin configurar</span>') + '</td>';
+      }).join('');
       return '<tr>'
         + '<td style="font-size:15px">' + escapeHtml(t.nombre) + '</td>'
-        + '<td style="font-size:12px;color:var(--suave)">' + (ves ? '<span style="font-family:var(--font-mono);color:var(--naranja)">' + ves.cont_cuentas.codigo + '</span> — ' + escapeHtml(ves.cont_cuentas.nombre) : '<span style="color:#666">Sin configurar</span>') + '</td>'
-        + '<td style="font-size:12px;color:var(--suave)">' + (usd ? '<span style="font-family:var(--font-mono);color:var(--naranja)">' + usd.cont_cuentas.codigo + '</span> — ' + escapeHtml(usd.cont_cuentas.nombre) : '<span style="color:#666">Sin configurar</span>') + '</td>'
+        + celdasMoneda
         + '<td><span class="badge ' + (t.estado === 'ACTIVO' ? 'badge-verde' : 'badge-gris') + '">' + t.estado + '</span></td>'
         + '<td><div style="display:flex;gap:6px">'
         + '<button class="btn-secundario" style="font-size:11px;padding:6px 10px" onclick="abrirFormTipoPago(' + t.id_tipo + ')">Editar</button>'
@@ -1514,13 +1517,14 @@ async function mostrarTiposPago() {
         + '</tr>';
     }).join('');
 
+    const encabezadosMoneda = (monedas||[]).map(function(m){ return '<th style="text-align:left">Cuenta ' + escapeHtml(m.codigo) + '</th>'; }).join('');
     cont.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
-      + '<div style="font-size:13px;color:var(--suave)">Cada Tipo puede tener una Cuenta Contable distinta para VES y para USD.</div>'
+      + '<div style="font-size:13px;color:var(--suave)">Cada Tipo puede tener una Cuenta Contable distinta por Moneda (gestionadas en la pestaña Monedas).</div>'
       + '<button class="btn-naranja" onclick="abrirFormTipoPago()">+ Nuevo Tipo de Pago</button>'
       + '</div>'
       + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse">'
-      + '<thead><tr><th style="text-align:left">Tipo de Pago</th><th style="text-align:left">Cuenta VES</th><th style="text-align:left">Cuenta USD</th><th>Estado</th><th>Acción</th></tr></thead>'
-      + '<tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin Tipos de Pago registrados</td></tr>') + '</tbody>'
+      + '<thead><tr><th style="text-align:left">Tipo de Pago</th>' + encabezadosMoneda + '<th>Estado</th><th>Acción</th></tr></thead>'
+      + '<tbody>' + (filas || '<tr><td colspan="' + (3 + (monedas||[]).length) + '" style="text-align:center;color:var(--suave);padding:32px">Sin Tipos de Pago registrados</td></tr>') + '</tbody>'
       + '</table></div>';
   } catch(e) {
     cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error cargando Tipos de Pago: ' + msgErr(e) + '</div>';
@@ -1529,18 +1533,18 @@ async function mostrarTiposPago() {
 
 async function abrirFormTipoPago(id) {
   let item = null;
-  let cuentaVesId = '', cuentaUsdId = '';
+  const cuentaPorMoneda = {};
   if (id) {
     try {
       const rows = await api('param_tipos_pago', 'GET', null, '?id_tipo=eq.' + id + '&select=*');
       item = rows && rows[0];
       const mapeoRows = await api('param_tipos_pago_cuenta', 'GET', null, '?id_tipo=eq.' + id + '&select=*');
-      (mapeoRows || []).forEach(function(m) {
-        if (m.moneda === 'VES') cuentaVesId = m.id_cuenta_contable;
-        if (m.moneda === 'USD') cuentaUsdId = m.id_cuenta_contable;
-      });
+      (mapeoRows || []).forEach(function(m) { cuentaPorMoneda[m.moneda] = m.id_cuenta_contable; });
     } catch(e) {}
   }
+
+  let monedas = [];
+  try { monedas = await api('param_monedas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc&select=*') || []; } catch(e) {}
 
   let opcCuentas = [];
   try {
@@ -1561,8 +1565,9 @@ async function abrirFormTipoPago(id) {
     + '<div class="alerta alerta-error" id="alerta-param-err" style="margin:0"></div>';
   document.getElementById('modal-param-body').innerHTML = '<div class="form-grid">'
     + '<div class="form-campo form-full"><label>Nombre</label><input type="text" id="tipo-pago-nombre" value="' + (item ? escapeHtml(item.nombre) : '') + '"></div>'
-    + '<div class="form-campo form-full"><label>Cuenta Contable — VES</label><select id="tipo-pago-cuenta-ves">' + armarOpciones(cuentaVesId) + '</select></div>'
-    + '<div class="form-campo form-full"><label>Cuenta Contable — USD</label><select id="tipo-pago-cuenta-usd">' + armarOpciones(cuentaUsdId) + '</select></div>'
+    + monedas.map(function(m) {
+        return '<div class="form-campo form-full"><label>Cuenta Contable — ' + escapeHtml(m.codigo) + '</label><select id="tipo-pago-cuenta-' + m.codigo + '">' + armarOpciones(cuentaPorMoneda[m.codigo]) + '</select></div>';
+      }).join('')
     + '<div class="form-campo form-full"><label>Estado</label><select id="tipo-pago-estado"><option value="ACTIVO"' + (!item || item.estado==='ACTIVO' ? ' selected':'') + '>Activo</option><option value="INACTIVO"' + (item && item.estado==='INACTIVO' ? ' selected':'') + '>Inactivo</option></select></div>'
     + '</div>';
   document.getElementById('modal-param-guardar').onclick = function() { guardarTipoPago(id); };
@@ -1579,10 +1584,18 @@ async function guardarTipoPago(id) {
   const errEl = document.getElementById('alerta-param-err');
   errEl.style.display = 'none';
   const nombre = document.getElementById('tipo-pago-nombre')?.value.trim();
-  const cuentaVes = parseInt(document.getElementById('tipo-pago-cuenta-ves')?.value) || null;
-  const cuentaUsd = parseInt(document.getElementById('tipo-pago-cuenta-usd')?.value) || null;
   const estado = document.getElementById('tipo-pago-estado')?.value || 'ACTIVO';
   if (!nombre) { errEl.textContent = 'El Nombre es obligatorio.'; errEl.style.display = 'block'; resetBtn(); return; }
+
+  // Leer dinámicamente un selector de Cuenta por cada Moneda activa que
+  // haya en el formulario (id="tipo-pago-cuenta-<codigo>").
+  let monedasGuardar = [];
+  try { monedasGuardar = await api('param_monedas', 'GET', null, '?estado=eq.ACTIVO&select=codigo') || []; } catch(e) {}
+  const cuentasPorMonedaGuardar = {};
+  monedasGuardar.forEach(function(m) {
+    const val = parseInt(document.getElementById('tipo-pago-cuenta-' + m.codigo)?.value) || null;
+    if (val) cuentasPorMonedaGuardar[m.codigo] = val;
+  });
 
   try {
     let idTipo = id;
@@ -1594,13 +1607,14 @@ async function guardarTipoPago(id) {
     }
     if (!idTipo) throw new Error('No se pudo determinar el Tipo de Pago guardado.');
 
-    // Upsert manual de las 2 combinaciones (VES/USD) -- se borra la
-    // existente y se vuelve a crear si hay Cuenta seleccionada, o se deja
-    // sin fila si el Usuario quitó la Cuenta ("— Sin configurar —").
+    // Upsert manual de las combinaciones (una por cada Moneda activa) --
+    // se borran las existentes y se vuelven a crear las que tengan Cuenta
+    // seleccionada, o se dejan sin fila si el Usuario la quitó
+    // ("— Sin configurar —").
     await api('param_tipos_pago_cuenta', 'DELETE', null, '?id_tipo=eq.' + idTipo);
-    const nuevasFilas = [];
-    if (cuentaVes) nuevasFilas.push({ id_tipo: idTipo, moneda: 'VES', id_cuenta_contable: cuentaVes, estado: 'ACTIVO' });
-    if (cuentaUsd) nuevasFilas.push({ id_tipo: idTipo, moneda: 'USD', id_cuenta_contable: cuentaUsd, estado: 'ACTIVO' });
+    const nuevasFilas = Object.keys(cuentasPorMonedaGuardar).map(function(codigo) {
+      return { id_tipo: idTipo, moneda: codigo, id_cuenta_contable: cuentasPorMonedaGuardar[codigo], estado: 'ACTIVO' };
+    });
     if (nuevasFilas.length) await api('param_tipos_pago_cuenta', 'POST', nuevasFilas);
 
     cerrarModal('modal-param');
@@ -1618,5 +1632,108 @@ async function eliminarTipoPago(id, nombre) {
     await api('param_tipos_pago_cuenta', 'DELETE', null, '?id_tipo=eq.' + id);
     await api('param_tipos_pago', 'DELETE', null, '?id_tipo=eq.' + id);
     mostrarTiposPago();
+  } catch(e) { alert('Error: ' + msgErr(e)); }
+}
+
+// ═══════════════════ MONEDAS (VES, USD, etc.) ═══════════════════
+// Catálogo de referencia real para param_tipos_pago_cuenta.moneda (antes
+// era un CHECK fijo a 'VES'/'USD' -- ahora una tabla propia, editable).
+async function mostrarMonedas() {
+  _paramTabActivo = 'monedas';
+  document.querySelectorAll('.param-tab').forEach(function(b) {
+    b.style.background = ''; b.style.color = ''; b.style.borderColor = '';
+  });
+  const tabBtn = document.getElementById('tab-monedas');
+  if (tabBtn) { tabBtn.style.background = 'var(--naranja)'; tabBtn.style.color = '#fff'; tabBtn.style.borderColor = 'var(--naranja)'; }
+
+  const cont = document.getElementById('param-tabla-cont');
+  if (!cont) return;
+  cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+  try {
+    const monedas = await api('param_monedas', 'GET', null, '?order=codigo.asc&select=*');
+    const filas = (monedas || []).map(function(m) {
+      return '<tr>'
+        + '<td style="font-family:var(--font-mono);font-weight:600;color:var(--naranja)">' + escapeHtml(m.codigo) + '</td>'
+        + '<td style="font-size:15px">' + escapeHtml(m.nombre) + '</td>'
+        + '<td style="text-align:center;font-size:15px">' + escapeHtml(m.simbolo || '—') + '</td>'
+        + '<td><span class="badge ' + (m.estado === 'ACTIVO' ? 'badge-verde' : 'badge-gris') + '">' + m.estado + '</span></td>'
+        + '<td><div style="display:flex;gap:6px">'
+        + '<button class="btn-secundario" style="font-size:11px;padding:6px 10px" onclick="abrirFormMoneda(\'' + m.codigo + '\')">Editar</button>'
+        + '<button class="btn-secundario" style="font-size:11px;padding:6px 10px;color:#f87171;border-color:rgba(248,113,113,0.4)" onclick="eliminarMoneda(\'' + m.codigo + '\',\'' + escapeHtml(m.nombre).replace(/'/g,"\\'") + '\')">Eliminar</button>'
+        + '</div></td>'
+        + '</tr>';
+    }).join('');
+
+    cont.innerHTML = '<div style="display:flex;justify-content:flex-end;margin-bottom:14px">'
+      + '<button class="btn-naranja" onclick="abrirFormMoneda()">+ Nueva Moneda</button>'
+      + '</div>'
+      + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse">'
+      + '<thead><tr><th style="text-align:left">Código</th><th style="text-align:left">Nombre</th><th>Símbolo</th><th>Estado</th><th>Acción</th></tr></thead>'
+      + '<tbody>' + (filas || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">Sin Monedas registradas</td></tr>') + '</tbody>'
+      + '</table></div>';
+  } catch(e) {
+    cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error cargando Monedas: ' + msgErr(e) + '</div>';
+  }
+}
+
+async function abrirFormMoneda(codigo) {
+  let item = null;
+  if (codigo) {
+    try {
+      const rows = await api('param_monedas', 'GET', null, '?codigo=eq.' + encodeURIComponent(codigo) + '&select=*');
+      item = rows && rows[0];
+    } catch(e) {}
+  }
+
+  document.getElementById('modal-param-titulo').textContent = (codigo ? 'EDITAR' : 'NUEVA') + ' — MONEDA';
+  document.getElementById('modal-param-footer-alertas').innerHTML =
+    '<div class="alerta alerta-exito" id="alerta-param-ok" style="margin:0"></div>'
+    + '<div class="alerta alerta-error" id="alerta-param-err" style="margin:0"></div>';
+  document.getElementById('modal-param-body').innerHTML = '<div class="form-grid">'
+    + '<div class="form-campo form-full"><label>Código (3 letras, ej. VES, USD, EUR)</label><input type="text" id="moneda-codigo" maxlength="6" style="text-transform:uppercase" value="' + (item ? escapeHtml(item.codigo) : '') + '"' + (codigo ? ' disabled' : '') + '></div>'
+    + '<div class="form-campo form-full"><label>Nombre</label><input type="text" id="moneda-nombre" value="' + (item ? escapeHtml(item.nombre) : '') + '"></div>'
+    + '<div class="form-campo form-full"><label>Símbolo (opcional, ej. Bs, $, €)</label><input type="text" id="moneda-simbolo" maxlength="5" value="' + (item ? escapeHtml(item.simbolo||'') : '') + '"></div>'
+    + '<div class="form-campo form-full"><label>Estado</label><select id="moneda-estado"><option value="ACTIVO"' + (!item || item.estado==='ACTIVO' ? ' selected':'') + '>Activo</option><option value="INACTIVO"' + (item && item.estado==='INACTIVO' ? ' selected':'') + '>Inactivo</option></select></div>'
+    + '</div>';
+  document.getElementById('modal-param-guardar').onclick = function() { guardarMoneda(codigo); };
+  const btnElimM = document.getElementById('modal-param-eliminar');
+  if (btnElimM) btnElimM.style.display = 'none';
+  abrirModal('modal-param');
+}
+
+async function guardarMoneda(codigoOriginal) {
+  if (!puedo('PARAMETROS','EDITAR')) { alert('No tiene permiso.'); return; }
+  const btnGuardar = document.getElementById('modal-param-guardar');
+  if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...'; }
+  const resetBtn = function() { if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.textContent = 'GUARDAR'; } };
+  const errEl = document.getElementById('alerta-param-err');
+  errEl.style.display = 'none';
+  const codigo = document.getElementById('moneda-codigo')?.value.trim().toUpperCase();
+  const nombre = document.getElementById('moneda-nombre')?.value.trim();
+  const simbolo = document.getElementById('moneda-simbolo')?.value.trim() || null;
+  const estado = document.getElementById('moneda-estado')?.value || 'ACTIVO';
+  if (!codigo)  { errEl.textContent = 'El Código es obligatorio.'; errEl.style.display = 'block'; resetBtn(); return; }
+  if (!nombre)  { errEl.textContent = 'El Nombre es obligatorio.'; errEl.style.display = 'block'; resetBtn(); return; }
+
+  try {
+    if (codigoOriginal) {
+      await api('param_monedas', 'PATCH', { nombre: nombre, simbolo: simbolo, estado: estado }, '?codigo=eq.' + encodeURIComponent(codigoOriginal));
+    } else {
+      await api('param_monedas', 'POST', { codigo: codigo, nombre: nombre, simbolo: simbolo, estado: estado });
+    }
+    cerrarModal('modal-param');
+    mostrarMonedas();
+  } catch(e) {
+    errEl.textContent = 'Error: ' + msgErr(e);
+    errEl.style.display = 'block';
+  }
+  resetBtn();
+}
+
+async function eliminarMoneda(codigo, nombre) {
+  if (!confirm('¿Eliminar la Moneda "' + nombre + '" (' + codigo + ')? Si hay Tipos de Pago configurados con esta Moneda, la eliminación fallará hasta reasignarlos.')) return;
+  try {
+    await api('param_monedas', 'DELETE', null, '?codigo=eq.' + encodeURIComponent(codigo));
+    mostrarMonedas();
   } catch(e) { alert('Error: ' + msgErr(e)); }
 }
