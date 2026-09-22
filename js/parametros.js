@@ -1542,7 +1542,7 @@ async function abrirFormTipoPago(id) {
     }).sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
   } catch(e) {}
   const opcCuentas = '<option value="">— Sin configurar —</option>' + cuentas.map(function(c) {
-    return '<option value="' + c.id_cuenta + '" data-moneda="' + (c.moneda||'VES') + '"' + (item && item.id_cuenta_contable == c.id_cuenta ? ' selected' : '') + '>' + escapeHtml(c.codigo + ' — ' + c.nombre) + '</option>';
+    return '<option value="' + c.id_cuenta + '" data-moneda="' + (c.moneda||'VES') + '"' + (item && item.id_cuenta_contable == c.id_cuenta ? ' selected' : '') + '>' + escapeHtml(c.codigo) + ' — ' + formatearCuentaContable(c) + '</option>';
   }).join('');
 
   document.getElementById('modal-param-titulo').textContent = (id ? 'EDITAR' : 'NUEVO') + ' — TIPO DE PAGO';
