@@ -1224,22 +1224,19 @@ async function _cargarMetodosCobroCxc() {
   if (!selMetodo) return;
   selMetodo.innerHTML = '<option value="">— Cargando métodos —</option>';
   try {
-    let metodos = await api('param_metodos_pago','GET',null,
-      '?estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,tipo_canal,id_cuenta_contable,codigo' + emisorQ());
-    metodos = (metodos || []).filter(function(m) {
-      return m.tipo_canal !== 'AFILIACION_BANCARIA' && (m.codigo || '').toUpperCase() === monedaSel;
+    // "Afiliación Bancaria" es un Tipo de Pago (Egreso), no una forma de
+    // Cobranza -- se excluye aquí igual que antes.
+    let combos = await api('param_tipos_pago_cuenta','GET','',
+      '?moneda=eq.'+monedaSel+'&estado=eq.ACTIVO&select=id_tipo,id_cuenta_contable,param_tipos_pago(nombre,estado)');
+    combos = (combos || []).filter(function(c) {
+      return c.param_tipos_pago && c.param_tipos_pago.estado === 'ACTIVO' && c.param_tipos_pago.nombre !== 'Afiliación Bancaria';
     });
-    if (!metodos || !metodos.length) {
+    if (!combos || !combos.length) {
       selMetodo.innerHTML = '<option value="">⚠ No hay métodos de Cobro en '+monedaSel+' configurados — configure uno en Parámetros</option>';
     } else {
-      // Etiqueta homologada con Ejecutar Pago (METODO_PAGO_LABELS, definida
-      // en egresos.js): se muestra solo el tipo de canal ("Efectivo",
-      // "Transferencia"), sin repetir la Moneda -- ya se eligió arriba en
-      // el campo Moneda, y repetirla aquí era redundante/inconsistente.
       selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
-        + metodos.map(function(m) {
-            const etiqueta = (typeof METODO_PAGO_LABELS !== 'undefined' && METODO_PAGO_LABELS[m.tipo_canal]) || m.nombre;
-            return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-moneda="'+(m.codigo||'')+'" data-tipo-canal="'+(m.tipo_canal||'')+'">'+etiqueta+'</option>';
+        + combos.map(function(c) {
+            return '<option value="'+c.id_tipo+'" data-cuenta-id="'+(c.id_cuenta_contable||'')+'" data-moneda="'+monedaSel+'" data-tipo-canal="'+c.param_tipos_pago.nombre+'">'+c.param_tipos_pago.nombre+'</option>';
           }).join('');
       // Sin preselección -- el operador debe elegir explícitamente.
     }
@@ -1282,7 +1279,7 @@ async function contGuardarPagoCxc() {
     selMetodoEl?.focus(); return;
   }
   let idBancoOrigen = null;
-  if (tipoCanalSel === 'TRANSFERENCIA') {
+  if (tipoCanalSel.toUpperCase() === 'TRANSFERENCIA') {
     const selBancoEl = document.getElementById('cont-pago-cxc-banco-origen');
     idBancoOrigen = parseInt(selBancoEl?.value) || null;
     if (!idBancoOrigen) {
@@ -1330,12 +1327,13 @@ async function contGuardarPagoCxc() {
     const nuevoSaldo  = Math.max(0, parseFloat((parseFloat(c.monto_usd||0) - nuevoPagado).toFixed(2)));
     const nuevoEstado = nuevoSaldo <= 0.01 ? 'PAGADA' : 'PARCIAL';
 
+    const monedaSelGuardar = (document.getElementById('cont-pago-cxc-moneda')?.value || 'VES').toUpperCase();
     const patchDataCxc = {
       pagado_usd:  nuevoPagado,
       saldo_usd:   nuevoSaldo,
       estado:      nuevoEstado,
       metodo_pago: metodoNombre,
-      moneda_cobro: metodoNombre.toUpperCase().includes('USD') ? 'USD' : 'VES',
+      moneda_cobro: monedaSelGuardar,
       referencia:  referencia,
       id_banco_origen: idBancoOrigen,
       fecha_cobro: new Date().toISOString()
@@ -1351,7 +1349,7 @@ async function contGuardarPagoCxc() {
     }
 
     // Generar asiento contable del Cobro -- Debe Caja/Banco (según método
-    // elegido, desde param_metodos_pago) / Haber CxC Cliente. Si la tasa
+    // elegido, desde param_tipos_pago_cuenta) / Haber CxC Cliente. Si la tasa
     // BCV cambió desde que se emitió la Factura, se registra diferencia
     // cambiaria (espejo exacto de cómo Egresos trata el Pago de CxP, pero
     // en sentido de Cobro: si sube la tasa, la empresa recibe más Bs de lo
@@ -1520,7 +1518,7 @@ async function contGuardarPagoCxc() {
 // Saldos REALES por Moneda -- no el equivalente en Moneda Funcional que ya
 // muestra el resto de la contabilidad (Diario/Mayor/Balance), sino la
 // suma/resta de los montos tal como se movieron en la Moneda seleccionada.
-// Las Cuentas relevantes se derivan de param_metodos_pago (misma fuente
+// Las Cuentas relevantes se derivan de param_tipos_pago_cuenta (misma fuente
 // que ya usa el sistema para saber a qué Cuenta va cada pago/cobro) --
 // si se agrega un Banco nuevo en Parámetros, aparece aquí solo.
 let _cajaBancosMoneda = null;
@@ -1641,7 +1639,7 @@ async function cbConsultarSaldos() {
 //  TRASPASOS CAJA/BANCO -- movimientos de EFECTIVO entre una Cuenta de
 //  Caja y una Cuenta de Banco (en cualquier dirección), dentro de la
 //  MISMA Moneda -- nunca se mezclan monedas en un mismo traspaso. Se
-//  apoya en el mismo catálogo (param_metodos_pago) que ya usa el resto
+//  apoya en el mismo catálogo (param_tipos_pago_cuenta) que ya usa el resto
 //  del sistema para Cobros/Pagos, para no duplicar cuentas.
 // ══════════════════════════════════════════════════════════════
 
@@ -1899,18 +1897,19 @@ async function abrirModalTraspasoCB() {
   focusFirstField('modal-traspaso-cb');
 }
 
-// Repuebla Cuenta Caja (param_metodos_pago, sin cambios) y Cuenta
+// Repuebla Cuenta Caja (param_tipos_pago_cuenta) y Cuenta
 // Bancaria (ahora param_cuentas_bancarias_empresa -- Institución + Tipo +
 // Número reales, no una cuenta contable abstracta) según la Moneda.
 async function _traspasoCBActualizarCuentas() {
   const moneda = document.getElementById('traspaso-cb-moneda')?.value;
   if (!moneda) return;
   try {
-    const metodosTrasp = await api('param_metodos_pago','GET',null,
-      '?estado=eq.ACTIVO&codigo=eq.'+moneda+'&tipo_canal=eq.EFECTIVO&order=nombre.asc&select=id_metodo,nombre,tipo_canal,id_cuenta_contable');
+    const metodosTrasp = await api('param_tipos_pago_cuenta','GET','',
+      '?estado=eq.ACTIVO&moneda=eq.'+moneda+'&select=id_tipo,id_cuenta_contable,param_tipos_pago(nombre,estado)');
+    const soloEfectivo = (metodosTrasp||[]).filter(function(m) { return m.param_tipos_pago && m.param_tipos_pago.estado === 'ACTIVO' && m.param_tipos_pago.nombre === 'Efectivo'; });
     const selCaja = document.getElementById('traspaso-cb-cuenta-caja');
-    selCaja.innerHTML = (metodosTrasp||[]).length
-      ? metodosTrasp.map(function(m){ return '<option value="'+m.id_cuenta_contable+'" data-metodo="'+m.id_metodo+'">'+m.nombre+'</option>'; }).join('')
+    selCaja.innerHTML = soloEfectivo.length
+      ? soloEfectivo.map(function(m){ return '<option value="'+m.id_cuenta_contable+'" data-metodo="'+m.id_tipo+'">'+m.param_tipos_pago.nombre+'</option>'; }).join('')
       : '<option value="">— Sin Cuenta de Caja en '+moneda+' —</option>';
   } catch(eCtasTrasp) { console.warn('Error cargando Cuenta Caja de Traspaso:', eCtasTrasp); }
 
