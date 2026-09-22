@@ -79,6 +79,8 @@ async function abrirEmisor(id) {
   document.getElementById('em-correo').value                 = e ? (e.correo||'') : '';
   document.getElementById('em-direccion').value              = e ? (e.direccion||'') : '';
   document.getElementById('em-tipo-contribuyente').value     = e ? (e.tipo_contribuyente||'') : '';
+  await _poblarSelectMonedas(document.getElementById('em-moneda1'));
+  await _poblarSelectMonedas(document.getElementById('em-moneda2'));
   document.getElementById('em-moneda1').value                = e ? (e.moneda_principal||'VES') : 'VES';
   document.getElementById('em-moneda2').value                = e ? (e.moneda_secundaria||'USD') : 'USD';
   document.getElementById('em-estado').value                 = e ? (e.estado||'ACTIVO') : 'ACTIVO';
