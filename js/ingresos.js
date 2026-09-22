@@ -1079,7 +1079,7 @@ async function generarCxCyAsientoFactura(idFactura) {
 async function verFichaFactura(id) {
   try {
     const [facArr] = await Promise.all([
-      api('facturas','GET',null,'?id_factura=eq.'+id+'&select=*,emisores(*),clientes(nombre_completo,tipo_doc,numero_doc),cont_cxc(metodo_pago,referencia,fecha_cobro,pagado_usd,tasa_bcv,id_banco_origen,banco_origen:id_banco_origen(nombre))'),
+      api('facturas','GET',null,'?id_factura=eq.'+id+'&select=*,emisores(*),clientes(nombre_completo,tipo_doc,numero_doc),cont_cxc(metodo_pago,moneda_cobro,referencia,fecha_cobro,pagado_usd,tasa_bcv,id_banco_origen,banco_origen:id_banco_origen(nombre))'),
     ]);
     const f = facArr[0]; if (!f) return;
     let linServ=[], linRep=[];
@@ -1189,7 +1189,7 @@ async function verFichaFactura(id) {
             + (function() {
                 const pagadoUSD = cxcFicha.pagado_usd||0;
                 const pagadoVES = pagadoUSD * (cxcFicha.tasa_bcv||0);
-                const pagoEnUSD = /USD/i.test(cxcFicha.metodo_pago||'');
+                const pagoEnUSD = cxcFicha.moneda_cobro === 'USD';
                 const principal = pagoEnUSD ? '$ '+fmtUSD(pagadoUSD) : 'Bs '+fmtBs(pagadoVES);
                 const secundario = pagoEnUSD ? 'Bs '+fmtBs(pagadoVES) : '$ '+fmtUSD(pagadoUSD);
                 return '<div><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Monto Cobrado</div>'
