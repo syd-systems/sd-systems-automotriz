@@ -1491,13 +1491,13 @@ async function mostrarTiposPago() {
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
     // Tabla única: cada fila ES una combinación Nombre+Moneda+Cuenta.
-    const tipos = await api('param_tipos_pago', 'GET', null, '?order=nombre.asc,moneda.asc&select=*,cont_cuentas(codigo,nombre)');
+    const tipos = await api('param_tipos_pago', 'GET', null, '?order=nombre.asc,moneda.asc&select=*,cont_cuentas(codigo,nombre,moneda)');
 
     const filas = (tipos || []).map(function(t) {
       return '<tr>'
         + '<td style="font-size:15px">' + escapeHtml(t.nombre) + '</td>'
         + '<td style="font-family:var(--font-mono);font-weight:600;color:var(--naranja)">' + escapeHtml(t.moneda) + '</td>'
-        + '<td style="font-size:12px;color:var(--suave)">' + (t.cont_cuentas ? '<span style="font-family:var(--font-mono);color:var(--naranja)">' + t.cont_cuentas.codigo + '</span> — ' + escapeHtml(t.cont_cuentas.nombre) : '<span style="color:#666">Sin configurar</span>') + '</td>'
+        + '<td style="font-size:12px;color:var(--suave)">' + (t.cont_cuentas ? formatearCuentaContable(t.cont_cuentas) : '<span style="color:#666">Sin configurar</span>') + '</td>'
         + '<td><span class="badge ' + (t.estado === 'ACTIVO' ? 'badge-verde' : 'badge-gris') + '">' + t.estado + '</span></td>'
         + '<td><div style="display:flex;gap:6px">'
         + '<button class="btn-secundario" style="font-size:11px;padding:6px 10px" onclick="abrirFormTipoPago(' + t.id_tipo + ')">Editar</button>'
