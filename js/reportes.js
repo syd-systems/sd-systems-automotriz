@@ -818,7 +818,7 @@ async function repVentasRender(cont) {
 
   let areas = [], categorias = [], tipos = [], clientes = [], formasPago = [];
   try {
-    formasPago = await api('param_metodos_pago','GET',null, '?select=id_metodo,nombre&order=nombre.asc');
+    formasPago = await api('param_tipos_pago','GET',null, '?estado=eq.ACTIVO&select=id_tipo,nombre&order=nombre.asc');
   } catch(e) { console.warn('Error cargando Formas de Pago:', e); }
   try {
     areas = await api('param_areas','GET',null, '?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo');
@@ -1247,7 +1247,7 @@ async function repServiciosRender(cont) {
 
   let catalogo = [], carrocerias = [], marcas = [], modelos = [], formasPago = [];
   try {
-    formasPago = await api('param_metodos_pago','GET',null, '?select=id_metodo,nombre&order=nombre.asc');
+    formasPago = await api('param_tipos_pago','GET',null, '?estado=eq.ACTIVO&select=id_tipo,nombre&order=nombre.asc');
   } catch(e) { console.warn('Error cargando Formas de Pago:', e); }
   try {
     catalogo = await api('servicios_catalogo','GET',null,
