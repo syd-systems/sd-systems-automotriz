@@ -223,6 +223,7 @@ async function abrirNuevaFactura() {
   // pasar desapercibida y quedar guardada por error).
   document.getElementById('fac-aplica-iva').checked        = true;
   document.getElementById('fac-aplica-igtf').checked       = false;
+  await _poblarSelectMonedas(document.getElementById('fac-moneda'), false, true);
   document.getElementById('fac-moneda').value              = '';
   document.getElementById('fac-tasa').value                = formatearTasaVE(tasaActual);
   document.getElementById('fac-fecha').value               = getHoyVzla();
