@@ -1062,19 +1062,22 @@ let _pagoCxcActualId = null; // id_cxc que se esta cobrando en el modal
 function onCambiarMetodoCobroCxc() {
   const selMetodoEl = document.getElementById('cont-pago-cxc-metodo');
   const opt = selMetodoEl?.selectedOptions?.[0];
-  const tipoCanal = opt?.dataset?.tipoCanal || '';
+  const tipoCanal = (opt?.dataset?.tipoCanal || '').toUpperCase();
   const monedaMetodoSel = (opt?.dataset?.moneda || '').toUpperCase();
+  // Comprobante/Banco Origen aplican a cualquier canal bancario digital
+  // (Transferencia, Pago Móvil) -- no solo Transferencia. Efectivo es el
+  // único que genuinamente no tiene número que pedir.
+  const requiereComprobante = tipoCanal === 'TRANSFERENCIA' || tipoCanal === 'PAGO MÓVIL';
   const cont = document.getElementById('cont-pago-cxc-banco-origen-cont');
-  if (cont) cont.style.display = (tipoCanal === 'TRANSFERENCIA') ? '' : 'none';
-  if (tipoCanal !== 'TRANSFERENCIA') {
+  if (cont) cont.style.display = requiereComprobante ? '' : 'none';
+  if (!requiereComprobante) {
     const sel = document.getElementById('cont-pago-cxc-banco-origen');
     if (sel) sel.value = '';
   }
-  // Comprobante No. -- solo aplica (y solo se exige) cuando el Método es
-  // Transferencia; para Efectivo u otros canales no hay número que pedir.
+  // Comprobante No. -- se exige para cualquier canal bancario digital.
   const refCont = document.getElementById('cont-pago-cxc-ref-cont');
-  if (refCont) refCont.style.display = (tipoCanal === 'TRANSFERENCIA') ? '' : 'none';
-  if (tipoCanal !== 'TRANSFERENCIA') {
+  if (refCont) refCont.style.display = requiereComprobante ? '' : 'none';
+  if (!requiereComprobante) {
     const refEl = document.getElementById('cont-pago-cxc-ref');
     if (refEl) refEl.value = '';
   }
@@ -1278,7 +1281,9 @@ async function contGuardarPagoCxc() {
     selMetodoEl?.focus(); return;
   }
   let idBancoOrigen = null;
-  if (tipoCanalSel.toUpperCase() === 'TRANSFERENCIA') {
+  const tipoCanalUpper = tipoCanalSel.toUpperCase();
+  const requiereComprobanteGuardar = tipoCanalUpper === 'TRANSFERENCIA' || tipoCanalUpper === 'PAGO MÓVIL';
+  if (tipoCanalUpper === 'TRANSFERENCIA') {
     const selBancoEl = document.getElementById('cont-pago-cxc-banco-origen');
     idBancoOrigen = parseInt(selBancoEl?.value) || null;
     if (!idBancoOrigen) {
@@ -1287,8 +1292,8 @@ async function contGuardarPagoCxc() {
     }
   }
   const referencia = document.getElementById('cont-pago-cxc-ref')?.value.trim() || null;
-  if (tipoCanalSel === 'TRANSFERENCIA' && !referencia) {
-    errEl.textContent = 'El Comprobante No. es obligatorio para pagos por Transferencia.'; errEl.style.display = 'block';
+  if (requiereComprobanteGuardar && !referencia) {
+    errEl.textContent = 'El Comprobante No. es obligatorio para pagos por ' + tipoCanalSel + '.'; errEl.style.display = 'block';
     document.getElementById('cont-pago-cxc-ref')?.focus(); return;
   }
   const claveCxc = document.getElementById('cont-pago-cxc-clave')?.value || '';
@@ -2381,7 +2386,7 @@ async function contRenderCuentas(filtro) {
     + (puedo('CONTABILIDAD','PLAN_CUENTAS') ? '<button class="btn-primario" onclick="contAbrirCuenta(null)">+ Nueva Cuenta</button>' : '')
     + '</div></div>'
     + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 410px))"><table style="width:100%"><thead><tr>'
-    + '<th style="width:160px">Código</th><th>Nombre</th><th style="width:80px">Moneda</th><th style="width:110px">Tipo</th>'
+    + '<th style="width:160px">Código</th><th>Nombre</th><th style="width:80px;text-align:center">Moneda</th><th style="width:110px">Tipo</th>'
     + '<th style="width:100px">Naturaleza</th><th style="width:60px;text-align:center">Nivel</th>'
     + '<th style="width:80px;text-align:center">Mov.</th>'
     + (puedo('CONTABILIDAD','PLAN_CUENTAS') ? '<th style="width:60px"></th>' : '')
@@ -2400,7 +2405,7 @@ async function contRenderCuentas(filtro) {
           + 'font-weight:' + (esGrupo ? '700' : esSubGrp ? '600' : '400') + ';'
           + 'font-size:' + (esGrupo ? '13px' : '12px') + '">'
           + (esGrupo ? '▌ ' : esSubGrp ? '├ ' : '  └ ') + c.nombre + '</td>'
-          + '<td style="padding:6px 8px;font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (c.nivel >= 3 ? (c.moneda||'VES') : '') + '</td>'
+          + '<td style="padding:6px 8px;font-size:11px;color:var(--suave);font-family:var(--font-mono);text-align:center">' + (c.nivel >= 3 ? (c.moneda||'VES') : '') + '</td>'
           + '<td style="padding:6px 8px">'
           + (esGrupo ? '<span class="badge ' + (tipoBadge[c.tipo]||'badge-gris') + '" style="font-size:10px">' + c.tipo + '</span>' : '')
           + '</td>'
