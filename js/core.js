@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909183';
+const SYD_VERSION = '20260909184';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -2787,6 +2787,7 @@ async function renderTasas() {
       + '</div>'
       + '<div style="display:flex;gap:10px">'
       + '<button onclick="renderTasas()" class="btn-secundario">↻ Actualizar vista</button>'
+      + (puedo('TASAS','CREAR') ? '<button onclick="abrirModalNuevaTasa()" class="btn-secundario">+ Nueva Tasa</button>' : '')
       + (puedo('TASAS','CREAR') ? '<button onclick="sincronizarTasasBCV(this)" class="btn-primario" style="display:flex;align-items:center;gap:6px"><span>⬇</span> Sincronizar BCV</button>' : '')
       + '</div></div>'
       + '<div style="display:flex;gap:16px;flex-wrap:wrap">'
@@ -3900,3 +3901,73 @@ function formatearTasaVE(num) {
 // Re-trigger de build (index.html quedó desactualizado tras el push anterior, mismo síntoma ya documentado)
 
 // re-trigger build 2026-08-27-21-00
+
+// ═══════════════════ NUEVA TASA (registro manual) ═══════════════════
+// Complementa a sincronizarTasasBCV() (automático, vía dolarapi) -- para
+// cuando la API externa falla, o para cargar una tasa de un día anterior
+// que no se capturó a tiempo.
+async function abrirModalNuevaTasa() {
+  if (!puedo('TASAS','CREAR')) { alert('No tiene permiso para registrar Tasas.'); return; }
+  const selOrigen  = document.getElementById('t-origen');
+  const selDestino = document.getElementById('t-destino');
+  await _poblarSelectMonedas(selOrigen);
+  await _poblarSelectMonedas(selDestino);
+  selOrigen.value  = 'USD';
+  selDestino.value = 'VES';
+  document.getElementById('t-valor').value = '';
+  document.getElementById('t-fecha').value = getHoyVzla();
+  document.getElementById('t-fecha').max   = getHoyVzla();
+  const errEl = document.getElementById('alerta-tasa-error');
+  errEl.style.display = 'none'; errEl.textContent = '';
+  abrirModal('modal-tasa');
+  focusFirstField('modal-tasa');
+}
+
+async function guardarTasa() {
+  const errEl = document.getElementById('alerta-tasa-error');
+  errEl.style.display = 'none';
+  const btn = document.getElementById('t-btn-guardar');
+
+  const monedaOrigen  = document.getElementById('t-origen')?.value;
+  const monedaDestino = document.getElementById('t-destino')?.value;
+  const valor         = parseFloat(document.getElementById('t-valor')?.value);
+  const fecha          = document.getElementById('t-fecha')?.value;
+
+  if (monedaOrigen === monedaDestino) {
+    errEl.textContent = 'La Moneda Origen y Destino no pueden ser la misma.'; errEl.style.display = 'block'; return;
+  }
+  if (!valor || valor <= 0) {
+    errEl.textContent = 'Ingrese un Valor de Tasa válido.'; errEl.style.display = 'block';
+    document.getElementById('t-valor')?.focus(); return;
+  }
+  if (!fecha) {
+    errEl.textContent = 'Debe indicar la Fecha de Vigencia.'; errEl.style.display = 'block';
+    document.getElementById('t-fecha')?.focus(); return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+  try {
+    // Upsert manual: si ya existe una Tasa para esa Moneda+Fecha, se
+    // actualiza su valor en vez de fallar por la restricción UNIQUE.
+    const existente = await api('tasas','GET',null,
+      '?moneda_origen=eq.'+monedaOrigen+'&fecha_valor=eq.'+fecha+'&select=id_tasa');
+    if (existente && existente[0]) {
+      if (!confirm('Ya existe una Tasa ' + monedaOrigen + '→' + monedaDestino + ' para el ' + fecha + '. ¿Reemplazar su valor?')) {
+        if (btn) { btn.disabled = false; btn.textContent = 'REGISTRAR'; }
+        return;
+      }
+      await api('tasas','PATCH', { tipo_cambio: valor, moneda_destino: monedaDestino }, '?id_tasa=eq.'+existente[0].id_tasa);
+    } else {
+      await api('tasas','POST', {
+        moneda_origen: monedaOrigen, moneda_destino: monedaDestino,
+        tipo_cambio: valor, fecha_valor: fecha,
+        id_usuario: sesionActual?.correo_usuario || null
+      });
+    }
+    cerrarModal('modal-tasa');
+    renderTasas();
+  } catch(e) {
+    errEl.textContent = 'Error: ' + msgErr(e); errEl.style.display = 'block';
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'REGISTRAR'; }
+}
