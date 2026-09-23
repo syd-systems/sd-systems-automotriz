@@ -704,7 +704,7 @@ function calcularTotalesOS() {
     +   '<div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL CON IVA</div>'
     +   '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + fmtBs(totalConIvaBs) + ' Bs</div>'
     +   '<div style="font-size:12px;color:var(--suave)">$ ' + fmtUSD(totalConIvaUSD) + ' USD</div>'
-    +   '<div style="font-size:9px;color:var(--suave);margin-top:2px">Tasa: $ 1 = ' + fmtBs(tasaUSD) + ' Bs</div>'
+    +   '<div style="font-size:9px;color:var(--suave);margin-top:2px">Tasa BCV Bs/Usd: ' + fmtBs(tasaUSD) + '</div>'
     + '</div>'
     + '</div>';
 
@@ -1546,7 +1546,7 @@ async function verFichaOS(id) {
       + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Km Entrada</div>'
       + '<div style="font-size:12px">' + (o.kilometraje_entrada ? o.kilometraje_entrada.toLocaleString() + ' km' : '—') + '</div></div>'
       + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">'
-      + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' ? 'Tasa USD Actual' : 'Tasa USD al Cerrar')
+      + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' ? 'Tasa BCV Bs/Usd Actual' : 'Tasa BCV Bs/Usd al Cerrar')
       + '</div><div style="font-family:var(--font-mono);font-size:12px">'
       + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' && tasaActualFicha ? tasaActualFicha : tasaHistorica).toFixed(2) + ' VES/USD'
       + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' && tasaDiferente ? '<span style="font-size:9px;color:var(--suave);margin-left:6px">(creada: ' + tasaHistorica.toFixed(2) + ')</span>' : '')
