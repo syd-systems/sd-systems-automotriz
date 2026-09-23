@@ -3587,7 +3587,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       }
     }
 
-    const metodoLabels = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria' };
+    const metodoLabels = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria', PAGO_MOVIL: 'Pago Móvil' };
     const metodoDetEl = document.getElementById('cont-pago-cxp-metodo');
     if (metodoDetEl) {
       const metodoActualProv = (Array.isArray(prov.metodos_pago_tipos) && prov.metodos_pago_tipos[0]) || '';
@@ -3747,7 +3747,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       // arriba, en la sección "Datos de la Obligación".
       const detForma = document.getElementById('cont-pago-det-forma');
       if (detForma) {
-        const metodoPagoLabels = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria' };
+        const metodoPagoLabels = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria', PAGO_MOVIL: 'Pago Móvil' };
         const metodoPagoCrudo = c.metodo_pago || '';
         if (metodoPagoLabels[metodoPagoCrudo]) {
           detForma.textContent = metodoPagoLabels[metodoPagoCrudo];
@@ -4678,7 +4678,7 @@ async function ejecutarPagoCxP(id_cxp) {
   focusFirstField('modal-ejecutar-pago');
 }
 
-const METODO_PAGO_LABELS = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria' };
+const METODO_PAGO_LABELS = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria', PAGO_MOVIL: 'Pago Móvil' };
 
 // Se dispara al cambiar la Moneda de Pago en Ejecutar Pago -- recalcula
 // todo lo que depende de ella: el monto principal mostrado, si corresponde
