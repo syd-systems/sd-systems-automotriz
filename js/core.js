@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909194';
+const SYD_VERSION = '20260909195';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -329,7 +329,9 @@ async function _resolverAreaSesion() {
     });
     const rows = rpcArea.ok ? await rpcArea.json() : [];
     _areaSesion = rows && rows[0] ? rows[0].id : null;
-  } catch(e) { _areaSesion = null; }
+    _areaSesionNombre = rows && rows[0] ? rows[0].nombre : null;
+    _areaSesionCodigo = rows && rows[0] ? rows[0].codigo : null;
+  } catch(e) { _areaSesion = null; _areaSesionNombre = null; _areaSesionCodigo = null; }
   return _areaSesion;
 }
 
