@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909191';
+const SYD_VERSION = '20260909192';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -1699,7 +1699,7 @@ async function renderDashboard() {
         <div class="tarjeta-stat" onclick="mostrarModulo('tasas', document.getElementById('nav-TASAS'))">
           <div class="tarjeta-icono">💱</div>
           <div class="tarjeta-valor">${tasaValor}</div>
-          <div class="tarjeta-nombre">Última Tasa USD</div>
+          <div class="tarjeta-nombre">Última Tasa BCV Bs/Usd</div>
         </div>` : ''}
         ${puedo('VEHICULOS','VER') ? `
         <div class="tarjeta-stat" onclick="mostrarModulo('vehiculos', document.getElementById('nav-VEHICULOS'))">
