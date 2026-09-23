@@ -38,6 +38,9 @@ async function renderReportes() {
     document.getElementById('contenido-principal').innerHTML = '<div class="alerta alerta-error" style="display:block">No tiene permiso para ver ningún Reporte.</div>';
     return;
   }
+  // Precarga del catálogo de Monedas (síncrono para las funciones que
+  // generan HTML directamente, sin volverse todas async).
+  if (!_monedasCache) { try { _monedasCache = await api('param_monedas','GET',null,'?estado=eq.ACTIVO&order=codigo.asc&select=*') || []; } catch(e) { _monedasCache = []; } }
   if (!reportesOK.find(function(r){ return r.id === _reporteActual; })) _reporteActual = reportesOK[0].id;
   const c = document.getElementById('contenido-principal');
   c.innerHTML = '<div class="panel" id="panel-reportes" style="margin-top:-16px">'
@@ -104,8 +107,7 @@ async function repInventarioRender(cont) {
     + '<input type="date" id="rep-inv-fecha" value="' + fechaCorteVal + '" max="' + getHoyVzla() + '" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box"></div>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Moneda</label>'
     + '<select id="rep-inv-moneda" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box">'
-    + '<option value="VES"' + (monedaVal==='VES'?' selected':'') + '>VES</option>'
-    + '<option value="USD"' + (monedaVal==='USD'?' selected':'') + '>USD</option>'
+    + ((_monedasCache && _monedasCache.length) ? _monedasCache.map(function(m){ return '<option value="'+m.codigo+'"' + (monedaVal===m.codigo?' selected':'') + '>'+m.codigo+'</option>'; }).join('') : '<option value="VES">VES</option><option value="USD">USD</option>')
     + '</select></div>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Filtro</label>'
     + '<button id="rep-filtros-toggle-btn" onclick="repToggleFiltros()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:8px 14px;border-radius:5px;cursor:pointer;font-size:13px;height:35px;box-sizing:border-box">' + (_repFiltrosVisibles?'Ocultar':'Mostrar') + '</button></div>'
@@ -530,8 +532,7 @@ async function repComprasRender(cont) {
     + '<input type="date" id="rep-com-hasta" value="' + hastaVal + '" max="' + hoy + '" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box"></div>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Moneda</label>'
     + '<select id="rep-com-moneda" onchange="repComprasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box">'
-    + '<option value="VES"' + (monedaVal==='VES'?' selected':'') + '>VES</option>'
-    + '<option value="USD"' + (monedaVal==='USD'?' selected':'') + '>USD</option>'
+    + ((_monedasCache && _monedasCache.length) ? _monedasCache.map(function(m){ return '<option value="'+m.codigo+'"' + (monedaVal===m.codigo?' selected':'') + '>'+m.codigo+'</option>'; }).join('') : '<option value="VES">VES</option><option value="USD">USD</option>')
     + '</select></div>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Filtro</label>'
     + '<button id="rep-filtros-toggle-btn" onclick="repToggleFiltros()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:8px 14px;border-radius:5px;cursor:pointer;font-size:13px;height:35px;box-sizing:border-box">' + (_repFiltrosVisibles?'Ocultar':'Mostrar') + '</button></div>'
@@ -848,8 +849,7 @@ async function repVentasRender(cont) {
     + '<input type="date" id="rep-ven-hasta" value="' + hastaVal + '" max="' + hoy + '" onchange="repVentasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box"></div>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Moneda</label>'
     + '<select id="rep-ven-moneda" onchange="repVentasRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box">'
-    + '<option value="VES"' + (monedaVal==='VES'?' selected':'') + '>VES</option>'
-    + '<option value="USD"' + (monedaVal==='USD'?' selected':'') + '>USD</option>'
+    + ((_monedasCache && _monedasCache.length) ? _monedasCache.map(function(m){ return '<option value="'+m.codigo+'"' + (monedaVal===m.codigo?' selected':'') + '>'+m.codigo+'</option>'; }).join('') : '<option value="VES">VES</option><option value="USD">USD</option>')
     + '</select></div>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Filtro</label>'
     + '<button id="rep-filtros-toggle-btn" onclick="repToggleFiltros()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:8px 14px;border-radius:5px;cursor:pointer;font-size:13px;height:35px;box-sizing:border-box">' + (_repFiltrosVisibles?'Ocultar':'Mostrar') + '</button></div>'
@@ -1274,8 +1274,7 @@ async function repServiciosRender(cont) {
     + '<input type="date" id="rep-ser-hasta" value="' + hastaVal + '" max="' + hoy + '" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box"></div>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Moneda</label>'
     + '<select id="rep-ser-moneda" onchange="repServiciosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box">'
-    + '<option value="VES"' + (monedaVal==='VES'?' selected':'') + '>VES</option>'
-    + '<option value="USD"' + (monedaVal==='USD'?' selected':'') + '>USD</option>'
+    + ((_monedasCache && _monedasCache.length) ? _monedasCache.map(function(m){ return '<option value="'+m.codigo+'"' + (monedaVal===m.codigo?' selected':'') + '>'+m.codigo+'</option>'; }).join('') : '<option value="VES">VES</option><option value="USD">USD</option>')
     + '</select></div>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Filtro</label>'
     + '<button id="rep-filtros-toggle-btn" onclick="repToggleFiltros()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);padding:8px 14px;border-radius:5px;cursor:pointer;font-size:13px;height:35px;box-sizing:border-box">' + (_repFiltrosVisibles?'Ocultar':'Mostrar') + '</button></div>'
