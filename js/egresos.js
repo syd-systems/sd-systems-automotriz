@@ -366,7 +366,7 @@ async function _pendFacturarResolverMetodo() {
   const selTipoMetodo = document.getElementById('pend-fact-metodo-tipo');
   const tiposAceptados = (prov && Array.isArray(prov.metodos_pago_tipos)) ? prov.metodos_pago_tipos : [];
   if (selTipoMetodo && !selTipoMetodo.dataset.poblado) {
-    selTipoMetodo.innerHTML = tiposAceptados.map(function(t){ return '<option value="'+t+'">'+(METODO_PAGO_LABELS[t]||t)+'</option>'; }).join('');
+    selTipoMetodo.innerHTML = tiposAceptados.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('');
     selTipoMetodo.dataset.poblado = '1';
   }
   const tipoMetodo = selTipoMetodo?.value || '';
@@ -377,12 +377,12 @@ async function _pendFacturarResolverMetodo() {
   if (cuentaCont) cuentaCont.style.display = 'none';
   if (tipoMetodo) {
     try {
-      const metodos = await api('param_metodos_pago','GET',null,
-        '?codigo=eq.'+moneda+'&tipo_canal=eq.'+tipoMetodo+'&estado=eq.ACTIVO&limit=1&select=id_metodo,id_cuenta_contable');
+      const metodos = await api('param_tipos_pago','GET',null,
+        '?moneda=eq.'+moneda+'&nombre=eq.'+encodeURIComponent(tipoMetodo)+'&estado=eq.ACTIVO&limit=1&select=id_tipo,id_cuenta_contable');
       const m = metodos && metodos[0];
       if (m && m.id_cuenta_contable) {
         const cta = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === m.id_cuenta_contable; });
-        if (metodoHidden) metodoHidden.value = m.id_metodo;
+        if (metodoHidden) metodoHidden.value = m.id_tipo;
         if (cuentaHidden) cuentaHidden.value = m.id_cuenta_contable;
         if (cuentaDisplay) cuentaDisplay.textContent = cta ? (cta.codigo+' — '+cta.nombre) : '—';
         if (cuentaCont) cuentaCont.style.display = '';
@@ -1831,8 +1831,8 @@ function onCambioPagoMoneda() {
   const selMetodoManual = document.getElementById('cont-pago-manual-tipo');
   if (selMetodoManual && monedaPago) {
     selMetodoManual.innerHTML = '<option value="">⏳ Cargando...</option>';
-    api('param_metodos_pago','GET',null,
-      '?codigo=eq.'+monedaPago+'&estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,tipo_canal,id_cuenta_contable')
+    api('param_tipos_pago','GET',null,
+      '?moneda=eq.'+monedaPago+'&estado=eq.ACTIVO&order=nombre.asc&select=id_tipo,nombre,id_cuenta_contable')
     .then(async function(metodosRaw) {
       // Filtrar según lo que la ficha del proveedor realmente permite
       // (metodos_pago_tipos) -- si la ficha no tiene ninguno configurado,
@@ -1841,7 +1841,7 @@ function onCambioPagoMoneda() {
       try {
         const permitidos = JSON.parse(modal?.dataset.metodosPagoTipos || '[]');
         if (Array.isArray(permitidos) && permitidos.length) {
-          metodos = metodos.filter(function(m){ return permitidos.includes(m.tipo_canal); });
+          metodos = metodos.filter(function(m){ return permitidos.includes(m.nombre); });
         }
       } catch(eFiltro) {}
       var cuentasMap = {};
@@ -1859,14 +1859,14 @@ function onCambioPagoMoneda() {
       selMetodoManual.innerHTML = '<option value="">— Seleccione método —</option>'
         + metodos.map(function(m) {
             const cta = cuentasMap[m.id_cuenta_contable];
-            return '<option value="'+m.id_metodo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-cuenta-nombre="'+(cta ? cta.codigo+' — '+cta.nombre : '')+'">'+m.nombre+'</option>';
+            return '<option value="'+m.id_tipo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-cuenta-nombre="'+(cta ? cta.codigo+' — '+cta.nombre : '')+'">'+m.nombre+'</option>';
           }).join('');
       // El campo queda oculto (ver comentario en el HTML) -- ya no lo
       // elige la persona que autoriza el pago, así que se autoselecciona
       // el primero disponible (el que la ficha del proveedor permite, o
       // el primero activo si no hay restricción configurada).
       if (metodos.length) {
-        selMetodoManual.value = metodos[0].id_metodo;
+        selMetodoManual.value = metodos[0].id_tipo;
         onCambioMetodoPagoManual();
       }
     }).catch(function() {
@@ -2079,20 +2079,20 @@ async function contGuardarPagoCxp() {
     let idCuentaDestino  = null;
     try {
       let metRows = tipoMetodo
-        ? await api('param_metodos_pago','GET',null,'?codigo=eq.'+moneda+'&tipo_canal=eq.'+tipoMetodo+'&estado=eq.ACTIVO&limit=1&select=id_metodo,id_cuenta_contable,tipo_canal')
+        ? await api('param_tipos_pago','GET',null,'?moneda=eq.'+moneda+'&nombre=eq.'+encodeURIComponent(tipoMetodo)+'&estado=eq.ACTIVO&limit=1&select=id_tipo,id_cuenta_contable,nombre')
         : null;
       if (!metRows || !metRows[0]) {
         // Sin Método configurado en la ficha -- cae a un método activo
         // genérico para esa Moneda (mismo respaldo de siempre)
-        metRows = await api('param_metodos_pago','GET',null,'?codigo=eq.'+moneda+'&estado=eq.ACTIVO&order=nombre.asc&limit=1&select=id_metodo,id_cuenta_contable,tipo_canal');
+        metRows = await api('param_tipos_pago','GET',null,'?moneda=eq.'+moneda+'&estado=eq.ACTIVO&order=nombre.asc&limit=1&select=id_tipo,id_cuenta_contable,nombre');
       }
       if (metRows && metRows[0]) {
-        idMetodoResuelto = metRows[0].id_metodo;
+        idMetodoResuelto = metRows[0].id_tipo;
         idCuentaDestino  = metRows[0].id_cuenta_contable;
-        tipoMetodo       = metRows[0].tipo_canal || tipoMetodo;
+        tipoMetodo       = metRows[0].nombre || tipoMetodo;
       }
     } catch(eMet) {}
-    if (!tipoMetodo) tipoMetodo = 'TRANSFERENCIA';
+    if (!tipoMetodo) tipoMetodo = 'Transferencia';
     const metodo = tipoMetodo;
 
     // Redondeado a 2 decimales (precisión real de moneda) -- el formulario
@@ -2641,15 +2641,15 @@ async function onSelProveedorPago() {
     if (metodoCont) metodoCont.innerHTML =
       '<label>Método de Pago</label>'
       +'<select id="pago-metodo-hidden" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
-      +'<option value="TRANSFERENCIA">🏦 Transferencia Bancaria</option>'
-      +'<option value="PAGO_MOVIL">📱 Pago Móvil</option>'
+      +'<option value="Transferencia">🏦 Transferencia Bancaria</option>'
+      +'<option value="Pago Móvil">📱 Pago Móvil</option>'
       +'</select>';
   } else if (tieneBanco) {
     if (metodoDisp) metodoDisp.textContent = '🏦 Transferencia Bancaria';
-    if (metodoHid)  metodoHid.value = 'TRANSFERENCIA';
+    if (metodoHid)  metodoHid.value = 'Transferencia';
   } else if (tienePM) {
     if (metodoDisp) metodoDisp.textContent = '📱 Pago Móvil';
-    if (metodoHid)  metodoHid.value = 'PAGO_MOVIL';
+    if (metodoHid)  metodoHid.value = 'Pago Móvil';
   } else {
     if (manualInfo) manualInfo.style.display = '';
   }
@@ -3747,17 +3747,16 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       // arriba, en la sección "Datos de la Obligación".
       const detForma = document.getElementById('cont-pago-det-forma');
       if (detForma) {
-        const metodoPagoLabels = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria', PAGO_MOVIL: 'Pago Móvil' };
         const metodoPagoCrudo = c.metodo_pago || '';
-        if (metodoPagoLabels[metodoPagoCrudo]) {
-          detForma.textContent = metodoPagoLabels[metodoPagoCrudo];
-        } else if (/^\d+$/.test(String(metodoPagoCrudo))) {
-          // Guardado como id_metodo numérico (ruta "Ejecutar Pago") --
-          // resolver contra param_metodos_pago para obtener el tipo_canal.
+        if (/^\d+$/.test(String(metodoPagoCrudo))) {
+          // Guardado como id_tipo numérico (ruta "Ejecutar Pago") --
+          // resolver contra param_tipos_pago para obtener el Nombre.
           try {
-            const mRowsForma = await api('param_metodos_pago','GET',null,'?id_metodo=eq.'+metodoPagoCrudo+'&select=tipo_canal&limit=1');
-            detForma.textContent = metodoPagoLabels[mRowsForma?.[0]?.tipo_canal] || '—';
+            const mRowsForma = await api('param_tipos_pago','GET',null,'?id_tipo=eq.'+metodoPagoCrudo+'&select=nombre&limit=1');
+            detForma.textContent = mRowsForma?.[0]?.nombre || '—';
           } catch(eForma) { detForma.textContent = '—'; }
+        } else if (metodoPagoCrudo) {
+          detForma.textContent = metodoPagoCrudo;
         } else {
           detForma.textContent = '—';
         }
@@ -3788,7 +3787,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     const manualInfo = document.getElementById('cont-pago-manual-info');
     [bancoInfo, pmInfo, manualInfo].forEach(function(el){ if (el) el.style.display = 'none'; });
 
-    const aceptaTransferenciaHoy = Array.isArray(prov.metodos_pago_tipos) && prov.metodos_pago_tipos.includes('TRANSFERENCIA');
+    const aceptaTransferenciaHoy = Array.isArray(prov.metodos_pago_tipos) && prov.metodos_pago_tipos.includes('Transferencia');
     if (aceptaTransferenciaHoy && prov.id_banco && bancoDatos) {
       bancoDatos.innerHTML = dato('Institución', prov.banco_prov?.nombre||'—') + dato('Tipo', prov.tipo_cuenta||'—') + dato('N° Cuenta', fmtNumCuenta(prov.numero_cuenta), true);
       if (bancoInfo) bancoInfo.style.display = '';
@@ -3880,14 +3879,14 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       if (prov.id_banco && prov.pm_id_banco) {
         if (metodoCont) metodoCont.innerHTML =
           '<select id="cont-pago-cxp-metodo" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
-          +'<option value="TRANSFERENCIA">🏦 Transferencia Bancaria</option>'
-          +'<option value="PAGO_MOVIL">📱 Pago Móvil</option>'+'</select>';
+          +'<option value="Transferencia">🏦 Transferencia Bancaria</option>'
+          +'<option value="Pago Móvil">📱 Pago Móvil</option>'+'</select>';
       } else if (prov.id_banco) {
         if (metodoDisp) metodoDisp.textContent = '🏦 Transferencia Bancaria';
-        if (metodoHid)  metodoHid.value = 'TRANSFERENCIA';
+        if (metodoHid)  metodoHid.value = 'Transferencia';
       } else if (prov.pm_id_banco) {
         if (metodoDisp) metodoDisp.textContent = '📱 Pago Móvil';
-        if (metodoHid)  metodoHid.value = 'PAGO_MOVIL';
+        if (metodoHid)  metodoHid.value = 'Pago Móvil';
       } else {
         if (metodoDisp) metodoDisp.textContent = '—';
       }
@@ -4144,14 +4143,13 @@ async function _verCxPAutomatica(c, id_cxp) {
       if (formaPagoCont && formaPagoEl) {
         if (c.metodo_pago) {
           formaPagoCont.style.display = '';
-          // c.metodo_pago es un id_metodo (fila de param_metodos_pago) --
-          // no el tipo genérico (Efectivo/Transferencia). Hay que
-          // consultar esa fila para saber qué tipo fue realmente.
+          // c.metodo_pago es un id_tipo (fila de param_tipos_pago) --
+          // no el nombre directo (Efectivo/Transferencia). Hay que
+          // consultar esa fila para saber cuál fue realmente.
           formaPagoEl.textContent = '...';
           try {
-            const metodoRows = await api('param_metodos_pago','GET',null,'?id_metodo=eq.'+c.metodo_pago+'&select=tipo_canal');
-            const tipoCanalReal = metodoRows && metodoRows[0] ? metodoRows[0].tipo_canal : null;
-            formaPagoEl.textContent = tipoCanalReal ? (METODO_PAGO_LABELS[tipoCanalReal] || tipoCanalReal) : '—';
+            const metodoRows = await api('param_tipos_pago','GET',null,'?id_tipo=eq.'+c.metodo_pago+'&select=nombre');
+            formaPagoEl.textContent = (metodoRows && metodoRows[0] && metodoRows[0].nombre) || '—';
           } catch(eMetodoPago) { formaPagoEl.textContent = '—'; }
         } else {
           formaPagoCont.style.display = 'none';
@@ -4678,7 +4676,6 @@ async function ejecutarPagoCxP(id_cxp) {
   focusFirstField('modal-ejecutar-pago');
 }
 
-const METODO_PAGO_LABELS = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria', PAGO_MOVIL: 'Pago Móvil' };
 
 // Se dispara al cambiar la Moneda de Pago en Ejecutar Pago -- recalcula
 // todo lo que depende de ella: el monto principal mostrado, si corresponde
@@ -4703,7 +4700,7 @@ async function _resolverMetodoPagoEjecucion(moneda, prov) {
   const tiposAceptados = (prov && Array.isArray(prov.metodos_pago_tipos)) ? prov.metodos_pago_tipos : [];
   if (selTipoMetodo) {
     selTipoMetodo.innerHTML = tiposAceptados.map(function(t) {
-      return '<option value="'+t+'">'+(METODO_PAGO_LABELS[t] || t)+'</option>';
+      return '<option value="'+t+'">'+t+'</option>';
     }).join('');
   }
   if (sinCuentaCont) sinCuentaCont.style.display = 'none';
@@ -4743,12 +4740,12 @@ async function onCambiarTipoMetodoEjecPago() {
   if (!tipoMetodo) { _actualizarInfoPagoProveedor(); return; }
 
   try {
-    const metodos = await api('param_metodos_pago','GET',null,
-      '?codigo=eq.'+moneda+'&tipo_canal=eq.'+tipoMetodo+'&estado=eq.ACTIVO&limit=1&select=id_metodo,id_cuenta_contable');
+    const metodos = await api('param_tipos_pago','GET',null,
+      '?moneda=eq.'+moneda+'&nombre=eq.'+encodeURIComponent(tipoMetodo)+'&estado=eq.ACTIVO&limit=1&select=id_tipo,id_cuenta_contable');
     const m = metodos && metodos[0];
     if (m && m.id_cuenta_contable) {
       const cta = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === m.id_cuenta_contable; });
-      if (metodoHidden) metodoHidden.value = m.id_metodo;
+      if (metodoHidden) metodoHidden.value = m.id_tipo;
       if (cuentaHidden) cuentaHidden.value = m.id_cuenta_contable;
       if (cuentaDisplay) cuentaDisplay.textContent = cta ? (cta.codigo + ' — ' + cta.nombre) : '—';
       if (cuentaCont) cuentaCont.style.display = '';
@@ -4854,7 +4851,7 @@ function _actualizarInfoPagoProveedor() {
   const bancoOrigenContEl = document.getElementById('exec-pago-banco-origen-cont');
   [viaContEl, bancoInfoEl, pmInfoEl, manualInfoEl, bancoOrigenContEl].forEach(function(el){ if (el) el.style.display = 'none'; });
 
-  if (tipoCanal !== 'TRANSFERENCIA') {
+  if (tipoCanal !== 'Transferencia') {
     const selBancoOrigenReset = document.getElementById('exec-pago-banco-origen');
     if (selBancoOrigenReset) selBancoOrigenReset.value = '';
     return; // Efectivo, Afiliación Bancaria, etc. -- no se muestra nada
@@ -4960,7 +4957,7 @@ async function confirmarEjecucionPago() {
   // Banco Origen obligatorio si el Método de Pago es Transferencia --
   // mismo criterio y mismo campo que en Registrar Cobro.
   let idBancoOrigenExec = null;
-  if (window._execPagoTipoMetodo === 'TRANSFERENCIA') {
+  if (window._execPagoTipoMetodo === 'Transferencia') {
     const selBancoOrigenExec2 = document.getElementById('exec-pago-banco-origen');
     idBancoOrigenExec = parseInt(selBancoOrigenExec2?.value) || null;
     if (!idBancoOrigenExec) {
