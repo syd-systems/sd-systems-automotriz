@@ -1435,7 +1435,12 @@ async function _intentarAutoAprobarOrdenCompra(idAnclaFila, montoParaLimite) {
 async function enrutarAprobacionOrdenCompra(monto, idEntrada, numeroDoc, detalle) {
   try {
     const idAreaCreador = await _resolverAreaSesion();
-    const mensajeRico = _armarMensajeAprobacionOrdenCompra(monto, idEntrada, numeroDoc, detalle);
+    const detalleConSolicitante = Object.assign({}, detalle, {
+      areaNombre: _areaSesionNombre || null,
+      areaCodigo: _areaSesionCodigo || null,
+      solicitanteNombre: sesionActual?.nombre || sesionActual?.correo_usuario || null
+    });
+    const mensajeRico = _armarMensajeAprobacionOrdenCompra(monto, idEntrada, numeroDoc, detalleConSolicitante);
     // El monto que decide QUIÉN debe aprobar (contra el límite de su Nivel
     // de Firma) tiene que ser lo que REALMENTE se está autorizando -- Base
     // + IVA + IGTF (si aplica), no solo la Base+IVA. Si no se suma el
@@ -1497,6 +1502,13 @@ function _armarMensajeAprobacionOrdenCompra(monto, idEntrada, numeroDoc, detalle
   const piezasTotal = d.piezasTotal != null ? d.piezasTotal : (d.cantidad != null ? d.cantidad : '—');
   return (d.proveedorNombre ? '<div>Proveedor: <strong>' + d.proveedorNombre + '</strong></div>' : '')
     + '<div style="margin-top:'+(d.proveedorNombre?'8px':'0')+'">Ref: ' + (numeroDoc || ('OC-'+idEntrada)) + '</div>'
+    + (d.solicitanteNombre || d.areaNombre
+        ? '<div style="font-size:11px;color:var(--suave);margin-top:4px">'
+          + (d.solicitanteNombre || '')
+          + (d.solicitanteNombre && d.areaNombre ? ' - ' : '')
+          + (d.areaNombre ? d.areaNombre + (d.areaCodigo ? ' (' + d.areaCodigo + ')' : '') : '')
+          + '</div>'
+        : '')
     + '<div style="display:flex;gap:24px;margin-top:12px;flex-wrap:wrap">'
     + '<div>Artículos: <strong>' + numArticulos + '</strong></div>'
     + '<div>Piezas: <strong>' + piezasTotal + '</strong></div>'
