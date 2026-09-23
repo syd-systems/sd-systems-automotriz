@@ -166,7 +166,7 @@ async function repInventarioRender(cont) {
         '?moneda_origen=eq.USD&fecha_valor=lte.'+fechaCorteVal+'&order=fecha_valor.desc&limit=1&select=tipo_cambio,fecha_valor');
       if (tasaRows && tasaRows[0]) {
         tasaCorte = parseFloat(tasaRows[0].tipo_cambio);
-        document.getElementById('rep-inv-tasa-info').textContent = 'Tasa BCV (VES/USD) al ' + fmtFecha(tasaRows[0].fecha_valor) + ': ' + fmtBs(tasaCorte);
+        document.getElementById('rep-inv-tasa-info').textContent = 'Tasa BCV Bs/Usd al ' + fmtFecha(tasaRows[0].fecha_valor) + ': ' + fmtBs(tasaCorte);
       } else {
         document.getElementById('rep-inv-tasa-info').textContent = 'Sin tasa BCV registrada a esa fecha.';
       }
@@ -394,7 +394,7 @@ function _repInvExportarCSV() {
   const dat = _repInvDatosExportar();
   if (!dat) return;
   const filasCsv = [
-    ['Fecha de Corte: ' + dat.d.fechaCorteVal + '   |   Moneda: ' + dat.d.monedaVal + (dat.d.monedaVal === 'VES' ? '   |   Tasa BCV: ' + dat.d.tasaCorte : '')],
+    ['Fecha de Corte: ' + dat.d.fechaCorteVal + '   |   Moneda: ' + dat.d.monedaVal + (dat.d.monedaVal === 'VES' ? '   |   Tasa BCV Bs/Usd: ' + dat.d.tasaCorte : '')],
     ['Filtros: ' + dat.d.filtrosTexto],
     [],
     dat.encabezados,
@@ -414,7 +414,7 @@ function _repInvExportarExcel() {
   const FILA_ENCAB = 4, FILA_DATOS_DESDE = 5;
   const hoja = XLSX.utils.aoa_to_sheet([
     ['Reporte de Inventario'],
-    ['Fecha de Corte: ' + dat.d.fechaCorteVal + '   |   Moneda: ' + dat.d.monedaVal + (dat.d.monedaVal === 'VES' ? '   |   Tasa BCV: ' + dat.d.tasaCorte : '')],
+    ['Fecha de Corte: ' + dat.d.fechaCorteVal + '   |   Moneda: ' + dat.d.monedaVal + (dat.d.monedaVal === 'VES' ? '   |   Tasa BCV Bs/Usd: ' + dat.d.tasaCorte : '')],
     ['Filtros: ' + dat.d.filtrosTexto],
     [],
     dat.encabezados,
@@ -458,7 +458,7 @@ function _repInvExportarPDF() {
   doc.text('Reporte de Inventario', 14, 15);
   doc.setFontSize(9);
   doc.text('Fecha de Corte: ' + dat.d.fechaCorteVal + '   |   Moneda: ' + dat.d.monedaVal
-    + (dat.d.monedaVal === 'VES' ? '   |   Tasa BCV: ' + dat.d.tasaCorte : ''), 14, 21);
+    + (dat.d.monedaVal === 'VES' ? '   |   Tasa BCV Bs/Usd: ' + dat.d.tasaCorte : ''), 14, 21);
   doc.text('Filtros: ' + dat.d.filtrosTexto, 14, 26);
   doc.autoTable({
     head: [dat.encabezados],
