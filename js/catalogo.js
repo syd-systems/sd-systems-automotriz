@@ -159,26 +159,8 @@ function verFichaCatalogo(id) {
 async function cargarSelectMoneda(selId, valorActual) {
   const sel = document.getElementById(selId);
   if (!sel) return;
-  const lbl = { VES: 'Bolívar', USD: 'Dólar', EUR: 'Euro', USDT: 'USDT' };
-  const mp = ((_empresaActiva?.moneda_principal) || 'VES').toUpperCase();
-  try {
-    const tasas = await api('tasas', 'GET', null, '?select=moneda_origen&order=moneda_origen.asc');
-    const monedas = [mp];
-    tasas.forEach(function(t) {
-      const m = (t.moneda_origen || '').toUpperCase();
-      if (m && !monedas.includes(m)) monedas.push(m);
-    });
-    if (!monedas.includes('VES')) monedas.unshift('VES');
-    sel.innerHTML = monedas.map(function(m) {
-      return '<option value="' + m + '">' + m + ' — ' + (lbl[m] || m) + '</option>';
-    }).join('');
-  } catch(e) {
-    const ms = ((_empresaActiva?.moneda_secundaria) || 'USD').toUpperCase();
-    sel.innerHTML = '<option value="' + mp + '">' + mp + ' — ' + (lbl[mp] || mp) + '</option>'
-      + (ms !== mp ? '<option value="' + ms + '">' + ms + ' — ' + (lbl[ms] || ms) + '</option>' : '');
-  }
-  const monedaFinal = valorActual || mp;
-  sel.value = monedaFinal;
+  await _poblarSelectMonedas(sel);
+  if (valorActual) sel.value = valorActual;
 }
 
 async function abrirNuevoCatalogo() {
