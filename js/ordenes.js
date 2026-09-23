@@ -1548,7 +1548,7 @@ async function verFichaOS(id) {
       + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">'
       + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' ? 'Tasa BCV Bs/Usd Actual' : 'Tasa BCV Bs/Usd al Cerrar')
       + '</div><div style="font-family:var(--font-mono);font-size:12px">'
-      + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' && tasaActualFicha ? tasaActualFicha : tasaHistorica).toFixed(2) + ' VES/USD'
+      + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' && tasaActualFicha ? tasaActualFicha : tasaHistorica).toFixed(2)
       + (o.estado !== 'CERRADA' && o.estado !== 'ANULADA' && tasaDiferente ? '<span style="font-size:9px;color:var(--suave);margin-left:6px">(creada: ' + tasaHistorica.toFixed(2) + ')</span>' : '')
       + '</div></div>'
       + '</div>'
@@ -1560,7 +1560,7 @@ async function verFichaOS(id) {
 
       + (tasaDiferente && sesionActual && sesionActual.administrador && o.estado !== 'CERRADA' && o.estado !== 'ANULADA'
           ? '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.25);border-radius:6px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px">'
-            + '<div style="font-size:12px;color:var(--naranja)">⚠ La tasa vigente (' + tasaActualFicha.toFixed(2) + ' VES/USD) difiere de la registrada en esta OS (' + tasaHistorica.toFixed(2) + ' VES/USD).</div>'
+            + '<div style="font-size:12px;color:var(--naranja)">⚠ La tasa vigente (' + tasaActualFicha.toFixed(2) + ') difiere de la registrada en esta OS (' + tasaHistorica.toFixed(2) + ').</div>'
             + '<button class="btn-primario" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="recalcularTasaOS(' + id + ',' + tasaActualFicha + ')">Recalcular Bs</button>'
             + '</div>'
           : '')
@@ -1632,7 +1632,7 @@ async function verFichaOS(id) {
 // ─── RECALCULAR TOTAL EN BS CON TASA ACTUAL (solo admins) ───
 async function recalcularTasaOS(id, nuevaTasa) {
   if (!sesionActual || !sesionActual.administrador) return;
-  if (!confirm('¿Recalcular el Total en Bs de esta OS usando la tasa actual (' + formatearTasaVE(nuevaTasa) + ' VES/USD)?')) return;
+  if (!confirm('¿Recalcular el Total en Bs de esta OS usando la tasa actual (' + formatearTasaVE(nuevaTasa) + ')?')) return;
   try {
     const o = ordenesCache.find(function(x) { return x.id_orden === id; });
     if (!o) return;
