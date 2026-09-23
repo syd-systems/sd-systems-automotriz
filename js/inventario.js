@@ -2264,7 +2264,7 @@ async function guardarOrdenCompra() {
   if (!fecha) return err('Seleccione la Fecha.', 'entcons-fecha');
   if (fecha > getHoyVzla()) return err('La Fecha no puede ser mayor a hoy.', 'entcons-fecha');
   if (!moneda) return err('Seleccione la Moneda Negociación.', 'entcons-moneda');
-  if (!tasaBcv || tasaBcv <= 1) return err('Ingrese una Tasa BCV válida.', 'entcons-tasa-bcv');
+  if (!tasaBcv || tasaBcv <= 1) return err('Ingrese una Tasa BCV Bs/Usd válida.', 'entcons-tasa-bcv');
   const lineasValidas = _entconsLineas.filter(function(l){ return l.id_articulo && parseFloat(l.cantidad) > 0 && l.precio_unitario > 0; });
   if (!lineasValidas.length) return err('Agregue al menos un Artículo con Cantidad y Precio válidos.');
   const idsUnicos = lineasValidas.map(function(l){ return l.id_articulo; });
@@ -4664,7 +4664,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
     const lblUSDView = document.getElementById('edit-mov-label-precio-usd');
     if (lblUSDView) lblUSDView.innerHTML = 'Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(' + (moneda === 'VES' ? 'USD' : 'VES') + ')</span>';
     const elFormulaOpuestoTotalView = document.getElementById('edit-mov-formula-opuesto');
-    if (elFormulaOpuestoTotalView) elFormulaOpuestoTotalView.textContent = moneda === 'VES' ? 'Precio × Cantidad / Tasa BCV' : 'Precio × Cantidad × Tasa BCV';
+    if (elFormulaOpuestoTotalView) elFormulaOpuestoTotalView.textContent = moneda === 'VES' ? 'Precio × Cantidad / Tasa BCV Bs/Usd' : 'Precio × Cantidad × Tasa BCV Bs/Usd';
     // Precio unitario en la moneda CONTRARIA -- este bloque llena los
     // campos manualmente (no pasa por onCambiarPrecioEdit()), así que
     // había quedado sin actualizar cuando se agregó este campo.
@@ -4681,7 +4681,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
       }
     }
     const elFormulaOpuestoView = document.getElementById('edit-mov-formula-precio-opuesto');
-    if (elFormulaOpuestoView) elFormulaOpuestoView.textContent = moneda === 'VES' ? 'Precio / Tasa BCV' : 'Precio × Tasa BCV';
+    if (elFormulaOpuestoView) elFormulaOpuestoView.textContent = moneda === 'VES' ? 'Precio / Tasa BCV Bs/Usd' : 'Precio × Tasa BCV Bs/Usd';
     // Tasa cont y tributos
     const tasaCont = document.getElementById('edit-mov-tasa-cont');
     if (tasaCont) tasaCont.style.display = '';
@@ -5421,7 +5421,7 @@ async function _guardarEdicionMovimientoInterno() {
         // monto_ves quedaría igual al monto_usd (tasa 1:1), como pasó con
         // una CxP real de $30 USD que se guardó como Bs 30.
         if (!tasaEdit || tasaEdit <= 1) {
-          errEl.textContent = 'No se encontró una Tasa BCV válida para la Fecha de Negociación. Registre la tasa del día en Parámetros → Tasas de Cambio antes de continuar.';
+          errEl.textContent = 'No se encontró una Tasa BCV Bs/Usd válida para la Fecha de Negociación. Registre la tasa del día en Parámetros → Tasas de Cambio antes de continuar.';
           errEl.style.display = 'block';
           return;
         }
@@ -6199,7 +6199,7 @@ function onCambiarPrecioEdit() {
   const elFormulaPrecioOpuestoEdit = document.getElementById('edit-mov-formula-precio-opuesto');
   const opuestaEdit = moneda === 'VES' ? 'USD' : 'VES';
   if (lblMonedaOpuestaEdit) lblMonedaOpuestaEdit.textContent = '(' + opuestaEdit + ')';
-  if (elFormulaPrecioOpuestoEdit) elFormulaPrecioOpuestoEdit.textContent = moneda === 'VES' ? 'Precio / Tasa BCV' : 'Precio × Tasa BCV';
+  if (elFormulaPrecioOpuestoEdit) elFormulaPrecioOpuestoEdit.textContent = moneda === 'VES' ? 'Precio / Tasa BCV Bs/Usd' : 'Precio × Tasa BCV Bs/Usd';
   if (elPrecioOpuesto) {
     if (precio > 0 && tasa > 0) {
       const precioOpuesto = moneda === 'VES' ? (precio / tasa) : (precio * tasa);
@@ -6213,7 +6213,7 @@ function onCambiarPrecioEdit() {
     elCalc.value = moneda === 'VES' ? fmtBs(montoTotal / tasa) : fmtBs(montoTotal * tasa);
   }
   const elFormulaOpuestoEdit = document.getElementById('edit-mov-formula-opuesto');
-  if (elFormulaOpuestoEdit) elFormulaOpuestoEdit.textContent = moneda === 'VES' ? 'Precio × Cantidad / Tasa BCV' : 'Precio × Cantidad × Tasa BCV';
+  if (elFormulaOpuestoEdit) elFormulaOpuestoEdit.textContent = moneda === 'VES' ? 'Precio × Cantidad / Tasa BCV Bs/Usd' : 'Precio × Cantidad × Tasa BCV Bs/Usd';
   calcularTributosEdit();
   const cuotaMontoEditEl = document.getElementById('edit-mov-cuotas-monto');
   if (cuotaMontoEditEl) cuotaMontoEditEl.value = '';
