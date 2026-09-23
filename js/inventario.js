@@ -4468,7 +4468,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
           '?moneda_origen=eq.USD&fecha_valor=lte.'+fechaParaTasa
           +'&order=fecha_valor.desc&limit=1&select=tipo_cambio');
         const tasaHist = tasaHistRows && tasaHistRows[0] ? parseFloat(tasaHistRows[0].tipo_cambio) : null;
-        tasaDispEd.textContent = tasaHist ? 'Bs ' + fmtBs(tasaHist) : '—';
+        tasaDispEd.textContent = tasaHist ? 'Bs ' + formatearTasaVE(tasaHist) : '—';
       } catch(eTasaHist) { console.warn('Error obteniendo Tasa BCV histórica:', eTasaHist); }
     }
     const salPvEl = document.getElementById('edit-sal-precio-venta');
