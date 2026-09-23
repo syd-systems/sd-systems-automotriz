@@ -11,7 +11,6 @@ let _contVista         = 'diario';  // diario | mayor | balance | cxc | cxp | co
 
 const TIPOS_CUENTA   = ['ACTIVO','PASIVO','PATRIMONIO','INGRESO','EGRESO'];
 const NATURALE_CUENTA = { ACTIVO:'DEUDORA', PASIVO:'ACREEDORA', PATRIMONIO:'ACREEDORA', INGRESO:'ACREEDORA', EGRESO:'DEUDORA' };
-const METODOS_PAGO   = ['EFECTIVO_VES','EFECTIVO_USD','TRANSFERENCIA_VES','TRANSFERENCIA_USD','ZELLE','PAGO_MOVIL','DIVISAS','OTRO'];
 const ESTADOS_ASIENTO = { PENDIENTE:{clase:'badge-gris',label:'Pendiente'}, APROBADO:{clase:'badge-verde',label:'Aprobado'}, ANULADO:{clase:'badge-rojo',label:'Anulado'} };
 
 // ─── RENDER PRINCIPAL ───
