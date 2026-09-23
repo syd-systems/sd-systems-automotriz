@@ -357,17 +357,6 @@ async function abrirParamItem(key, id) {
   if (btnElimP) btnElimP.style.display = (id && puedo('PARAMETROS','EDITAR') && puedeEliminarNivel) ? '' : 'none';
   if (btnGuardP) btnGuardP.style.display = puedo('PARAMETROS','EDITAR') ? '' : 'none';
   const btnGR = document.getElementById('modal-param-guardar'); if (btnGR) { btnGR.disabled = false; btnGR.textContent = 'GUARDAR'; }
-  // Campos de Moneda del formulario genérico (ej. Empleados: Moneda de
-  // Cálculo/Pago) -- poblar dinámicamente desde el catálogo real,
-  // preservando el valor que el sistema genérico ya haya asignado.
-  for (const idCampoMoneda of ['emp-moneda-calc','emp-moneda-pago']) {
-    const elMoneda = document.getElementById(idCampoMoneda);
-    if (elMoneda) {
-      const valorPrevio = elMoneda.value;
-      await _poblarSelectMonedas(elMoneda);
-      if (valorPrevio) elMoneda.value = valorPrevio;
-    }
-  }
   abrirModal('modal-param');
   focusFirstField('modal-param');
   setTimeout(function() {
@@ -918,6 +907,8 @@ async function abrirEmpleado(id) {
   document.getElementById('emp-calc-sal').innerHTML  = selOpts(p.calculos, e?.id_calculo_salario);
   document.getElementById('emp-freq-pago').innerHTML = selOpts(p.frecuencias, e?.id_frecuencia_pago);
   document.getElementById('emp-monto-sal').value     = e ? (e.monto_salario||'') : '';
+  await _poblarSelectMonedas(document.getElementById('emp-moneda-calc'));
+  await _poblarSelectMonedas(document.getElementById('emp-moneda-pago'));
   document.getElementById('emp-moneda-calc').value   = e ? (e.moneda_calculo||'USD') : 'USD';
   document.getElementById('emp-moneda-pago').value   = e ? (e.moneda_pago||'VES') : 'VES';
 
