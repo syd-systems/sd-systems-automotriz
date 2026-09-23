@@ -363,7 +363,7 @@ async function contVerAsiento(id) {
       + (ast.referencia ? '<div style="font-size:11px;color:var(--suave)">Ref: ' + ast.referencia + '</div>' : '')
       + '</div>'
       + '<div style="text-align:right">'
-      + '<div style="font-size:11px;color:var(--suave)">Moneda: ' + ast.moneda_base + ' · Tasa BCV: ' + formatearTasaVE(ast.tasa_bcv||1) + '</div>'
+      + '<div style="font-size:11px;color:var(--suave)">Moneda: ' + ast.moneda_base + ' · Tasa BCV Bs/Usd: ' + formatearTasaVE(ast.tasa_bcv||1) + '</div>'
       + '<div style="font-size:11px;color:' + (cuadra ? '#22c55e' : '#fc8181') + ';margin-top:4px;font-weight:600">'
       + (cuadra ? '✓ Asiento cuadrado' : '✗ Asiento descuadrado') + '</div>'
       + '</div></div>'
@@ -431,9 +431,8 @@ let contLineasAsiento = [];
 // Referencia seleccionada, ya que ese Asiento puede ser en cualquier
 // moneda de la Empresa, no siempre USD.
 function actualizarEtiquetaTasaAsiento() {
-  const moneda = document.getElementById('cont-form-moneda')?.value || 'USD';
   const lbl = document.getElementById('cont-form-tasa-label');
-  if (lbl) lbl.textContent = moneda === 'VES' ? 'Tasa BCV' : 'Tasa BCV (Bs./' + moneda + ')';
+  if (lbl) lbl.textContent = 'Tasa BCV Bs/Usd';
 }
 
 async function contAbrirAsiento(id) {
