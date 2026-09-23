@@ -632,7 +632,7 @@ async function abrirVenta(id) {
   // La fecha SIEMPRE es la del día -- no se le permite al operador elegir
   // otra, para no someter el Inventario a ventas registradas a destiempo.
   document.getElementById('vta-fecha-display').textContent =
-    'Fecha: ' + fmtFecha(getHoyVzla()) + '   ·   Tasa BCV: ' + fmtBs(_tasaVigente || 0) + ' VES/USD';
+    'Fecha: ' + fmtFecha(getHoyVzla()) + '   ·   Tasa BCV Bs/Usd: ' + fmtBs(_tasaVigente || 0) + ' VES/USD';
 
   window._vtaClienteSeleccionadoId = v ? v.id_cliente : null;
   const clienteActual = v ? clientesCache.find(function(cl) { return cl.id_cliente === v.id_cliente; }) : null;
@@ -1098,7 +1098,7 @@ async function verFichaVenta(id) {
     + (v.igtf_usd > 0 ? '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:12px"><span style="color:var(--suave);font-family:var(--font-body);padding-top:1px">IGTF</span><div style="text-align:right">'+fmtDual(v.igtf_usd)+'</div></div>' : '')
     + '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:15px;padding-top:4px"><span style="font-family:var(--font-display);padding-top:2px">TOTAL</span><div style="text-align:right">'+fmtDual(v.total_usd)+'</div></div>'
     + '</div>'
-    + '<div style="font-size:10px;color:var(--suave);margin-top:4px;text-align:right">Moneda de Facturación: '+(esVES?'VES':'USD')+' · Tasa BCV: '+fmtBs(tasa)+' VES/USD</div>'
+    + '<div style="font-size:10px;color:var(--suave);margin-top:4px;text-align:right">Moneda de Facturación: '+(esVES?'VES':'USD')+' · Tasa BCV Bs/Usd: '+fmtBs(tasa)+' VES/USD</div>'
     + (v.estado === 'FACTURADA'
         ? '<div style="margin-top:10px;font-size:11px;color:var(--suave)">'
           + (v.entregado ? '📦 Entregado el ' + fmtFecha(v.fecha_entrega) + (v.entregado_por ? ' por ' + v.entregado_por : '') : '📦 Pendiente de entrega')
