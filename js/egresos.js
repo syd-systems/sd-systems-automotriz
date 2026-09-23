@@ -25,6 +25,7 @@ async function abrirPendientesFacturar() {
   document.getElementById('btn-confirmar-pago-consolidado').style.display = 'none';
   window._pendFacturarProvSel = null;
   window._pendFacturarEntradasSel = [];
+  await _poblarSelectMonedas(document.getElementById('pend-fact-moneda'));
   abrirModal('modal-pend-facturar');
   await _pendFacturarCargarProveedores();
 }
@@ -43,6 +44,7 @@ async function abrirPagoConsolidadoDesde(id_proveedor, fecha) {
   document.getElementById('btn-confirmar-pago-consolidado').style.display = 'none';
   window._pendFacturarProvSel = null;
   window._pendFacturarEntradasSel = [];
+  await _poblarSelectMonedas(document.getElementById('pend-fact-moneda'));
   abrirModal('modal-pend-facturar');
   _pendFacturarCargarProveedores();
   await _pendFacturarSeleccionarProveedor(id_proveedor, fecha);
@@ -376,7 +378,7 @@ async function _pendFacturarResolverMetodo() {
   if (tipoMetodo) {
     try {
       const metodos = await api('param_metodos_pago','GET',null,
-        '?codigo=eq.'+moneda+'&tipo_canal=eq.'+tipoMetodo+'&estado=eq.ACTIVO&limit=1&select=id_metodo,id_cuenta_contable'+emisorQ());
+        '?codigo=eq.'+moneda+'&tipo_canal=eq.'+tipoMetodo+'&estado=eq.ACTIVO&limit=1&select=id_metodo,id_cuenta_contable');
       const m = metodos && metodos[0];
       if (m && m.id_cuenta_contable) {
         const cta = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === m.id_cuenta_contable; });
@@ -906,6 +908,7 @@ async function abrirNuevoPago() {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   const pagoMonedaEl2 = document.getElementById('pago-moneda');
+  await _poblarSelectMonedas(pagoMonedaEl2, false, true);
   if (pagoMonedaEl2) pagoMonedaEl2.value = '';
   const tasaContNuevo = document.getElementById('pago-tasa-cont-nuevo');
   if (tasaContNuevo) tasaContNuevo.style.display = 'none';
@@ -1829,7 +1832,7 @@ function onCambioPagoMoneda() {
   if (selMetodoManual && monedaPago) {
     selMetodoManual.innerHTML = '<option value="">⏳ Cargando...</option>';
     api('param_metodos_pago','GET',null,
-      '?codigo=eq.'+monedaPago+'&estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,tipo_canal,id_cuenta_contable' + emisorQ())
+      '?codigo=eq.'+monedaPago+'&estado=eq.ACTIVO&order=nombre.asc&select=id_metodo,nombre,tipo_canal,id_cuenta_contable')
     .then(async function(metodosRaw) {
       // Filtrar según lo que la ficha del proveedor realmente permite
       // (metodos_pago_tipos) -- si la ficha no tiene ninguno configurado,
@@ -3891,7 +3894,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
 
       // Moneda por defecto y calcular
       const monedaEl3 = document.getElementById('cont-pago-cxp-moneda');
-      if (monedaEl3) { monedaEl3.value = modal?.dataset.monedaCxP || 'VES'; monedaEl3.disabled = false; }
+      if (monedaEl3) { await _poblarSelectMonedas(monedaEl3); monedaEl3.value = modal?.dataset.monedaCxP || 'VES'; monedaEl3.disabled = false; }
 
       setTimeout(function() {
         const saldoEl3 = document.getElementById('cont-pago-cxp-saldo');
@@ -4604,6 +4607,7 @@ async function ejecutarPagoCxP(id_cxp) {
   // toma recién en este momento, así que no tiene que heredar lo que se
   // haya guardado antes en la Obligación ni en el Proveedor.
   const monedaSelEl = document.getElementById('exec-pago-moneda');
+  await _poblarSelectMonedas(monedaSelEl);
   if (monedaSelEl) monedaSelEl.value = 'VES';
   const monedaCxP = 'VES';
 
@@ -4740,7 +4744,7 @@ async function onCambiarTipoMetodoEjecPago() {
 
   try {
     const metodos = await api('param_metodos_pago','GET',null,
-      '?codigo=eq.'+moneda+'&tipo_canal=eq.'+tipoMetodo+'&estado=eq.ACTIVO&limit=1&select=id_metodo,id_cuenta_contable' + emisorQ());
+      '?codigo=eq.'+moneda+'&tipo_canal=eq.'+tipoMetodo+'&estado=eq.ACTIVO&limit=1&select=id_metodo,id_cuenta_contable');
     const m = metodos && metodos[0];
     if (m && m.id_cuenta_contable) {
       const cta = (await obtenerCuentasContables()).find(function(c){ return c.id_cuenta === m.id_cuenta_contable; });
