@@ -115,7 +115,7 @@ async function verFichaProveedor(id) {
     } catch(e) {}
   }
 
-  const metodosLabel = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria' };
+  const metodosLabel = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria', PAGO_MOVIL: 'Pago Móvil' };
   const metodosProv = Array.isArray(p.metodos_pago_tipos) ? p.metodos_pago_tipos : [];
   const aceptaTransferenciaActual = metodosProv.includes('TRANSFERENCIA');
 
