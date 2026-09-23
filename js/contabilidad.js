@@ -1141,7 +1141,7 @@ async function contAbrirPagoCxc(id_cxc) {
     const tribCxc = await api('param_tributos','GET',null,'?codigo=eq.IGTF&select=alicuota&limit=1');
     window._contPagoCxcPctIGTF = (tribCxc && tribCxc[0]) ? parseFloat(tribCxc[0].alicuota) / 100 : 0.03;
   } catch(eTribCxc) { window._contPagoCxcPctIGTF = 0.03; }
-  document.getElementById('cont-pago-cxc-tasa').value   = formatearMontoVE(tasaActualPago) + ' VES/USD';
+  document.getElementById('cont-pago-cxc-tasa').value   = formatearMontoVE(tasaActualPago);
   document.getElementById('cont-pago-cxc-monto-raw').value = saldoPend;
   document.getElementById('cont-pago-cxc-tasa-raw').value  = tasaActualPago;
   document.getElementById('cont-pago-cxc-ref').value    = '';
@@ -1190,11 +1190,7 @@ async function contAbrirPagoCxc(id_cxc) {
   await _cargarMetodosCobroCxc();
 
   const infoEl = document.getElementById('cont-pago-cxc-tasa-info');
-  if (infoEl) {
-    infoEl.textContent = c.tasa_bcv
-      ? 'Tasa registrada en la Factura original: ' + formatearTasaVE(c.tasa_bcv) + ' VES/USD'
-      : '';
-  }
+  if (infoEl) { infoEl.textContent = ''; }
 
   abrirModal('modal-cont-pago-cxc');
   focusFirstField('modal-cont-pago-cxc');
