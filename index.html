@@ -1581,19 +1581,19 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="js/core.js?v=20260909191"></script>
-<script src="js/parametros.js?v=20260909191"></script>
-<script src="js/empresas.js?v=20260909191"></script>
-<script src="js/ingresos.js?v=20260909191"></script>
-<script src="js/inventario.js?v=20260909191"></script>
-<script src="js/proveedores.js?v=20260909191"></script>
-<script src="js/ventas.js?v=20260909191"></script>
-<script src="js/contabilidad.js?v=20260909191"></script>
-<script src="js/egresos.js?v=20260909191"></script>
-<script src="js/vehiculos.js?v=20260909191"></script>
-<script src="js/catalogo.js?v=20260909191"></script>
-<script src="js/ordenes.js?v=20260909191"></script>
-<script src="js/reportes.js?v=20260909191"></script>
+<script src="js/core.js?v=20260909192"></script>
+<script src="js/parametros.js?v=20260909192"></script>
+<script src="js/empresas.js?v=20260909192"></script>
+<script src="js/ingresos.js?v=20260909192"></script>
+<script src="js/inventario.js?v=20260909192"></script>
+<script src="js/proveedores.js?v=20260909192"></script>
+<script src="js/ventas.js?v=20260909192"></script>
+<script src="js/contabilidad.js?v=20260909192"></script>
+<script src="js/egresos.js?v=20260909192"></script>
+<script src="js/vehiculos.js?v=20260909192"></script>
+<script src="js/catalogo.js?v=20260909192"></script>
+<script src="js/ordenes.js?v=20260909192"></script>
+<script src="js/reportes.js?v=20260909192"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -3329,7 +3329,7 @@
         <!-- Tasa solo visible cuando moneda = VES -->
         <div id="fac-tasa-cont" style="margin-top:12px;display:none">
           <div class="form-campo" style="margin:0;max-width:220px">
-            <label style="font-size:7px">Tasa USD / Bs</label>
+            <label style="font-size:7px">Tasa BCV Bs/Usd</label>
             <input type="text" id="fac-tasa" inputmode="decimal" min="0" oninput="actualizarSubtotalOSLabel();if(document.getElementById('fac-os-id')?.value)onSelOSFactura();else calcularTotalesFactura();" onblur="this.value=formatearMontoVE(parseMontoVE(this.value))" style="background:var(--gris3);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:8px 10px;border-radius:4px;outline:none;width:100%">
           </div>
         </div>
@@ -3737,6 +3737,9 @@
           </label>
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
             <input type="checkbox" class="prov-metodo-pago-chk" value="AFILIACION_BANCARIA" onchange="onCambioMetodoPagoAceptadoProv()"> Afiliación Bancaria
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" class="prov-metodo-pago-chk" value="PAGO_MOVIL" onchange="onCambioMetodoPagoAceptadoProv()"> Pago Móvil
           </label>
         </div>
       </div>
