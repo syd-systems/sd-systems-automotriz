@@ -264,14 +264,6 @@ async function abrirParamItem(key, id) {
     if (def.tieneCodigo) {
       camposHTML += '<div class="form-campo form-full"><label>Código</label><input type="text" id="param-item-codigo" value="' + (item ? (item.codigo||'') : '') + '" placeholder="Ej: 0102" style="text-transform:uppercase"></div>';
     }
-    if (def.tieneMoneda) {
-      camposHTML += '<div class="form-campo form-full"><label>Moneda *</label><select id="param-item-moneda" onchange="_actualizarNombreMetodoPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
-        + '<option value="">— Seleccione Moneda —</option>'
-        + '<option value="USD"' + (item && item.codigo === 'USD' ? ' selected' : '') + '>USD — Dólar</option>'
-        + '<option value="VES"' + (item && item.codigo === 'VES' ? ' selected' : '') + '>VES — Bolívar</option>'
-        + '<option value="EUR"' + (item && item.codigo === 'EUR' ? ' selected' : '') + '>EUR — Euro</option>'
-        + '</select></div>';
-    }
     if (!def.nombreAutomatico) {
       camposHTML += '<div class="form-campo form-full"><label>' + (def.campoNombre ? 'Nivel' : 'Nombre') + '</label><input type="text" id="param-item-nombre" value="' + (item ? (item[def.campoNombre||'nombre']||'') : '') + '" placeholder="' + (def.campoNombre ? 'Nombre del nivel jerárquico' : 'Nombre del registro') + '"></div>';
     } else {
