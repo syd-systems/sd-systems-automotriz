@@ -1581,19 +1581,19 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="js/core.js?v=20260909190"></script>
-<script src="js/parametros.js?v=20260909190"></script>
-<script src="js/empresas.js?v=20260909190"></script>
-<script src="js/ingresos.js?v=20260909190"></script>
-<script src="js/inventario.js?v=20260909190"></script>
-<script src="js/proveedores.js?v=20260909190"></script>
-<script src="js/ventas.js?v=20260909190"></script>
-<script src="js/contabilidad.js?v=20260909190"></script>
-<script src="js/egresos.js?v=20260909190"></script>
-<script src="js/vehiculos.js?v=20260909190"></script>
-<script src="js/catalogo.js?v=20260909190"></script>
-<script src="js/ordenes.js?v=20260909190"></script>
-<script src="js/reportes.js?v=20260909190"></script>
+<script src="js/core.js?v=20260909191"></script>
+<script src="js/parametros.js?v=20260909191"></script>
+<script src="js/empresas.js?v=20260909191"></script>
+<script src="js/ingresos.js?v=20260909191"></script>
+<script src="js/inventario.js?v=20260909191"></script>
+<script src="js/proveedores.js?v=20260909191"></script>
+<script src="js/ventas.js?v=20260909191"></script>
+<script src="js/contabilidad.js?v=20260909191"></script>
+<script src="js/egresos.js?v=20260909191"></script>
+<script src="js/vehiculos.js?v=20260909191"></script>
+<script src="js/catalogo.js?v=20260909191"></script>
+<script src="js/ordenes.js?v=20260909191"></script>
+<script src="js/reportes.js?v=20260909191"></script>
 
 <!-- ═══════════════════════════════════════ -->
 <!--    MODAL CAMBIO OBLIGATORIO CLAVE      -->
@@ -2100,7 +2100,7 @@
           </select>
         </div>
         <div class="form-campo">
-          <label id="cont-form-tasa-label">Tasa BCV</label>
+          <label id="cont-form-tasa-label">Tasa BCV Bs/Usd</label>
           <input type="text" id="cont-form-tasa" inputmode="decimal" placeholder="0,00" onblur="this.value=formatearMontoVE(parseMontoVE(this.value))" style="font-family:var(--font-mono)">
         </div>
         <div class="form-campo form-full" style="grid-column:1/-1">
@@ -2193,7 +2193,7 @@
           </div>
         </div>
         <div class="form-campo" style="align-self:flex-end">
-          <label>Tasa BCV (VES/USD)</label>
+          <label>Tasa BCV Bs/Usd</label>
           <input type="text" id="cont-pago-cxc-tasa" readonly style="background:var(--gris2);border:1px solid var(--borde);color:var(--suave);font-family:var(--font-mono);padding:11px 14px;border-radius:5px;outline:none;width:100%;cursor:not-allowed">
         </div>
         <div id="cont-pago-cxc-tasa-info" style="font-size:11px;color:var(--suave);grid-column:1/-1;margin-top:-8px"></div>
@@ -2361,7 +2361,7 @@
             <div id="cont-pago-cxp-vencimiento" style="font-size:13px;font-family:var(--font-mono)">—</div></div>
           <div id="cont-pago-cxp-factura-no-cont" style="display:none"><div style="font-size:10px;color:var(--suave);margin-bottom:3px">N° Factura</div>
             <div id="cont-pago-cxp-factura-no-ver" style="font-size:13px;color:var(--naranja);font-weight:600">—</div></div>
-          <div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Tasa BCV (VES/USD, al crear)</div>
+          <div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">Tasa BCV Bs/Usd (al crear)</div>
             <div id="cont-pago-cxp-tasa-creacion" style="font-size:13px;font-family:var(--font-mono)">—</div></div>
           <div><div style="font-size:10px;color:var(--suave);margin-bottom:3px">IVA</div>
             <div id="cont-pago-cxp-iva-info" style="font-size:13px">—</div></div>
@@ -2430,9 +2430,6 @@
             <div class="form-campo form-full">
               <label>Moneda de Pago</label>
               <select id="cont-pago-cxp-moneda" onchange="onCambioPagoMoneda()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-                <option value="VES">VES — Bolívares (Funcional)</option>
-                <option value="USD">USD — Dólares</option>
-                <option value="EUR">EUR — Euros</option>
               </select>
             </div>
 
@@ -4422,7 +4419,7 @@
           <div id="cxp-auto-monto" style="font-size:16px;font-family:var(--font-mono);font-weight:700">—</div>
         </div>
         <div style="grid-column:1/-1">
-          <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Tasa BCV (día de pago)</div>
+          <div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Tasa BCV Bs/Usd (día de pago)</div>
           <div id="cxp-auto-tasa" style="font-size:13px;font-family:var(--font-mono)">—</div>
         </div>
       </div>
@@ -4560,25 +4557,22 @@
           <label>Moneda</label>
           <select id="pago-moneda" onchange="onCambiarMonedaPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar —</option>
-            <option value="VES">VES — Bolívares</option>
-            <option value="USD">USD — Dólares</option>
-            <option value="EUR">EUR — Euros</option>
           </select>
           <div id="pago-moneda-nota" style="font-size:10px;color:var(--suave);margin-top:4px">Se propone según la Moneda de Facturación del proveedor — puede ajustarla para esta Obligación puntual</div>
         </div>
         <div class="form-campo form-full" id="pago-tasa-cont-nuevo" style="display:none;grid-column:1/-1">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div>
-              <label>Tasa BCV</label>
+              <label>Tasa BCV Bs/Usd</label>
               <input type="text" id="pago-tasa-bcv" placeholder="0,00" readonly
                 style="font-family:var(--font-mono);background:var(--gris1);width:100%">
-              <div style="font-size:10px;color:var(--suave);margin-top:4px">Tasa BCV del <span id="pago-tasa-bcv-fecha">—</span></div>
+              <div style="font-size:10px;color:var(--suave);margin-top:4px">Tasa BCV Bs/Usd del <span id="pago-tasa-bcv-fecha">—</span></div>
             </div>
             <div>
               <label id="pago-label-moneda-calc">Monto en VES</label>
               <input type="text" id="pago-monto-calc" placeholder="0,00" readonly
                 style="font-family:var(--font-mono);background:var(--gris1);color:var(--naranja);width:100%;cursor:not-allowed;opacity:0.7">
-              <div style="font-size:10px;color:var(--suave);margin-top:4px">Monto × Tasa BCV</div>
+              <div style="font-size:10px;color:var(--suave);margin-top:4px">Monto × Tasa BCV Bs/Usd</div>
             </div>
           </div>
         </div>
@@ -4745,8 +4739,6 @@
               <div style="font-size:11px;color:var(--suave);margin-bottom:4px">MONEDA DE PAGO</div>
               <select id="exec-pago-moneda" onchange="onCambiarMonedaEjecPago()"
                 style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none;width:100%;font-weight:600">
-                <option value="USD">USD — Dólar</option>
-                <option value="VES">VES — Bolívar</option>
               </select>
             </div>
             <div style="flex:1;min-width:130px">
@@ -5049,7 +5041,7 @@
           </select>
         </div>
         <div class="form-campo">
-          <label>Tasa BCV</label>
+          <label>Tasa BCV Bs/Usd</label>
           <input type="text" id="entcons-tasa-bcv" inputmode="decimal" placeholder="0,00" oninput="_entconsRenderLineas()"
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-mono);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
         </div>
@@ -5198,8 +5190,6 @@
               <label>Moneda de Pago</label>
               <select id="pend-fact-moneda" onchange="_pendFacturarResolverMetodo()"
                 style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
-                <option value="USD">USD — Dólar</option>
-                <option value="VES">VES — Bolívar</option>
               </select>
             </div>
             <div class="form-campo">
@@ -5342,7 +5332,7 @@
           <label>Precio <span id="edit-mov-label-moneda-opuesta" style="font-size:10px;color:var(--naranja);font-weight:600">(VES)</span></label>
           <input type="text" id="edit-mov-precio-opuesto" readonly placeholder="0,00"
             style="font-family:var(--font-mono);background:var(--gris1);color:var(--naranja);width:100%;box-sizing:border-box;cursor:not-allowed;opacity:0.8">
-          <div id="edit-mov-formula-precio-opuesto" style="font-size:10px;color:var(--suave);margin-top:4px">Precio / Tasa BCV</div>
+          <div id="edit-mov-formula-precio-opuesto" style="font-size:10px;color:var(--suave);margin-top:4px">Precio / Tasa BCV Bs/Usd</div>
         </div>
         </div>
         </div>
@@ -5350,10 +5340,10 @@
         <div class="form-campo form-full" id="edit-mov-tasa-cont" style="grid-column:1/-1">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
             <div>
-              <label>Tasa BCV</label>
+              <label>Tasa BCV Bs/Usd</label>
               <input type="text" id="edit-mov-tasa-bcv" placeholder="0,00" inputmode="decimal"
                 style="font-family:var(--font-mono);background:var(--gris1);width:100%" readonly>
-              <div style="font-size:10px;color:var(--suave);margin-top:4px">Tasa BCV de la fecha de negociación</div>
+              <div style="font-size:10px;color:var(--suave);margin-top:4px">Tasa BCV Bs/Usd de la fecha de negociación</div>
             </div>
             <div id="edit-mov-precios-cont">
               <label id="edit-mov-label-monto-total">Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(USD)</span></label>
@@ -5365,7 +5355,7 @@
               <label id="edit-mov-label-precio-usd">Monto <span style="font-size:10px;color:var(--naranja);font-weight:600">(VES)</span></label>
               <input type="text" id="edit-mov-precio-usd-calc" placeholder="0,00"
                 style="font-family:var(--font-mono);background:var(--gris1);color:var(--naranja);width:100%;cursor:not-allowed;opacity:0.7" readonly>
-              <div id="edit-mov-formula-opuesto" style="font-size:10px;color:var(--suave);margin-top:4px">Precio × Cantidad × Tasa BCV</div>
+              <div id="edit-mov-formula-opuesto" style="font-size:10px;color:var(--suave);margin-top:4px">Precio × Cantidad × Tasa BCV Bs/Usd</div>
             </div>
           </div>
         </div>
@@ -5500,7 +5490,7 @@
             <input type="date" id="edit-sal-fecha" style="color-scheme:dark;box-sizing:border-box;height:46px">
           </div>
           <div class="form-campo">
-            <label>Tasa BCV</label>
+            <label>Tasa BCV Bs/Usd</label>
             <div id="edit-sal-tasa-bcv-display" style="font-family:var(--font-body);font-size:13px;padding:11px 14px;background:var(--gris2);border:1px solid var(--borde);border-radius:5px;color:var(--texto);box-sizing:border-box;height:46px;display:flex;align-items:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
           </div>
           <div class="form-campo">
