@@ -282,15 +282,6 @@ async function abrirParamItem(key, id) {
         + '<option value="EXTRANJERO"' + (item && item.tipo_sector === 'EXTRANJERO' ? ' selected' : '') + '>Extranjero</option>'
         + '</select></div>';
     }
-    if (def.tieneTipoCanal) {
-      camposHTML += '<div class="form-campo form-full"><label>Modo de Pago</label><select id="param-item-tipo-canal" onchange="_actualizarNombreMetodoPago()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
-        + '<option value="">— Seleccionar —</option>'
-        + '<option value="EFECTIVO"'            + (item && item.tipo_canal === 'EFECTIVO'            ? ' selected' : '') + '>Efectivo</option>'
-        + '<option value="TRANSFERENCIA"'       + (item && item.tipo_canal === 'TRANSFERENCIA'       ? ' selected' : '') + '>Transferencia</option>'
-        + '<option value="AFILIACION_BANCARIA"' + (item && item.tipo_canal === 'AFILIACION_BANCARIA' ? ' selected' : '') + '>Afiliación Bancaria</option>'
-        + '<option value="PAGO_MOVIL"'          + (item && item.tipo_canal === 'PAGO_MOVIL'          ? ' selected' : '') + '>Pago Móvil</option>'
-        + '</select></div>';
-    }
     if (def.tieneArea) {
       const opcAreas = _paramAreasCache.map(function(a) {
         return '<option value="' + a.id + '"' + (item && item.id_area === a.id ? ' selected' : '') + '>' + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>';
