@@ -704,7 +704,7 @@ function calcularTotalesOS() {
     +   '<div style="font-size:10px;color:var(--suave);letter-spacing:1px">TOTAL CON IVA</div>'
     +   '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + fmtBs(totalConIvaBs) + ' Bs</div>'
     +   '<div style="font-size:12px;color:var(--suave)">$ ' + fmtUSD(totalConIvaUSD) + ' USD</div>'
-    +   '<div style="font-size:9px;color:var(--suave);margin-top:2px">Tasa BCV Bs/Usd: ' + fmtBs(tasaUSD) + '</div>'
+    +   '<div style="font-size:9px;color:var(--suave);margin-top:2px">Tasa BCV Bs/Usd: ' + formatearTasaVE(tasaUSD) + '</div>'
     + '</div>'
     + '</div>';
 
