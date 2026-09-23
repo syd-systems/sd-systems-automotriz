@@ -115,9 +115,8 @@ async function verFichaProveedor(id) {
     } catch(e) {}
   }
 
-  const metodosLabel = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria', PAGO_MOVIL: 'Pago Móvil' };
   const metodosProv = Array.isArray(p.metodos_pago_tipos) ? p.metodos_pago_tipos : [];
-  const aceptaTransferenciaActual = metodosProv.includes('TRANSFERENCIA');
+  const aceptaTransferenciaActual = metodosProv.includes('Transferencia');
 
   document.getElementById('ficha-prov-contenido').innerHTML =
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
@@ -134,7 +133,7 @@ async function verFichaProveedor(id) {
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Límite de Crédito</div><div style="font-size:14px;font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(p.limite_credito||0) + '</div></div>'
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Estado</div><div><span class="badge ' + (p.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (p.estado||'ACTIVO') + '</span></div></div>'
     + '<div style="grid-column:1/-1"><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">💳 Método de Pago</div><div>'
-      + (metodosProv.length ? metodosProv.map(function(m){ return '<span class="badge badge-naranja" style="margin-right:6px">' + (metodosLabel[m]||m) + '</span>'; }).join('') : '<span style="color:var(--suave)">— Sin métodos marcados —</span>')
+      + (metodosProv.length ? metodosProv.map(function(m){ return '<span class="badge badge-naranja" style="margin-right:6px">' + m + '</span>'; }).join('') : '<span style="color:var(--suave)">— Sin métodos marcados —</span>')
       + '</div></div>'
     + (p.observaciones ? '<div style="grid-column:1/-1"><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Observaciones</div><div style="background:var(--gris2);border-radius:6px;padding:10px 14px;font-size:13px">' + escapeHtml(p.observaciones) + '</div></div>' : '')
     // ── Datos Bancarios (solo si "Transferencia" sigue marcado actualmente) ──
@@ -297,11 +296,19 @@ async function abrirProveedor(id) {
   document.getElementById('prov-pm-ci').value               = p ? (p.pm_ci||'') : '';
   document.getElementById('prov-pm-celular').value          = p ? (p.pm_celular||'') : '';
 
-  // Método de Pago -- selección múltiple (checkbox).
+  // Método de Pago -- selección múltiple (checkbox), generada
+  // dinámicamente desde el catálogo real param_tipos_pago (Nombres
+  // distintos, sin repetir por Moneda).
   const tiposAceptados = (p && Array.isArray(p.metodos_pago_tipos)) ? p.metodos_pago_tipos : [];
-  document.querySelectorAll('.prov-metodo-pago-chk').forEach(function(chk) {
-    chk.checked = tiposAceptados.includes(chk.value);
-  });
+  try {
+    const tiposPagoCat = await api('param_tipos_pago','GET',null,'?estado=eq.ACTIVO&select=nombre&order=nombre.asc');
+    const nombresUnicos = [...new Set((tiposPagoCat||[]).map(function(t){ return t.nombre; }))];
+    document.getElementById('prov-metodos-pago-cont').innerHTML = nombresUnicos.map(function(nombre) {
+      return '<label style="display:flex;align-items:center;gap:6px;cursor:pointer">'
+        + '<input type="checkbox" class="prov-metodo-pago-chk" value="' + nombre + '"' + (tiposAceptados.includes(nombre) ? ' checked' : '') + ' onchange="onCambioMetodoPagoAceptadoProv()"> ' + nombre
+        + '</label>';
+    }).join('');
+  } catch(e) { document.getElementById('prov-metodos-pago-cont').innerHTML = '<span style="color:var(--suave)">Error cargando Métodos de Pago.</span>'; }
   onCambioMetodoPagoAceptadoProv();
 
   abrirModal('modal-proveedor');
@@ -410,7 +417,7 @@ async function guardarProveedor() {
     errEl.style.display = 'block';
     return;
   }
-  if (metodosMarcados.includes('TRANSFERENCIA') && !document.getElementById('prov-banco')?.value && !document.getElementById('prov-pm-banco')?.value) {
+  if (metodosMarcados.includes('Transferencia') && !document.getElementById('prov-banco')?.value && !document.getElementById('prov-pm-banco')?.value) {
     errEl.textContent = 'Seleccionó "Transferencia" -- complete al menos una vía (Datos Bancarios o Pago Móvil).';
     errEl.style.display = 'block';
     return;
