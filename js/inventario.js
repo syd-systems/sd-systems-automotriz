@@ -1435,12 +1435,15 @@ async function _intentarAutoAprobarOrdenCompra(idAnclaFila, montoParaLimite) {
 async function enrutarAprobacionOrdenCompra(monto, idEntrada, numeroDoc, detalle) {
   try {
     const idAreaCreador = await _resolverAreaSesion();
+    console.log('[DEBUG notif OC] idAreaCreador:', idAreaCreador, '| _areaSesionNombre:', _areaSesionNombre, '| _areaSesionCodigo:', _areaSesionCodigo);
     const detalleConSolicitante = Object.assign({}, detalle, {
       areaNombre: _areaSesionNombre || null,
       areaCodigo: _areaSesionCodigo || null,
       solicitanteNombre: sesionActual?.nombre || sesionActual?.correo_usuario || null
     });
+    console.log('[DEBUG notif OC] detalleConSolicitante:', detalleConSolicitante);
     const mensajeRico = _armarMensajeAprobacionOrdenCompra(monto, idEntrada, numeroDoc, detalleConSolicitante);
+    console.log('[DEBUG notif OC] mensajeRico:', mensajeRico);
     // El monto que decide QUIÉN debe aprobar (contra el límite de su Nivel
     // de Firma) tiene que ser lo que REALMENTE se está autorizando -- Base
     // + IVA + IGTF (si aplica), no solo la Base+IVA. Si no se suma el
