@@ -46,9 +46,10 @@ async function _obtenerAreaAlmacenVentas() {
   return _idAreaAlmacenVentas;
 }
 
-// Área "Ventas y Marketing" (código 6000) -- se le asigna a la propia
-// Venta (venta.id_area) solo para efectos organizativos/reportes. NUNCA
-// tiene Stock propio -- el Stock siempre se descuenta de Compras (arriba).
+// Área "Ventas y Marketing" (código 6000) -- respaldo por si no se puede
+// resolver el Área del Empleado en sesión (ver _resolverAreaSesion(), que
+// ahora es la fuente principal de venta.id_area). NUNCA tiene Stock
+// propio -- el Stock siempre se descuenta de Compras (arriba).
 async function _obtenerAreaOrganizacionalVentas() {
   if (_idAreaOrganizacionalVentas) return _idAreaOrganizacionalVentas;
   try {
@@ -640,7 +641,7 @@ async function abrirVenta(id) {
 
   // Área fija de Almacén (Gerencia de Compras, código 2300) -- no se le
   // pregunta al operador, la Venta siempre descuenta stock de ahí.
-  document.getElementById('vta-id-area').value = v ? v.id_area : await _obtenerAreaOrganizacionalVentas();
+  document.getElementById('vta-id-area').value = v ? v.id_area : ((await _resolverAreaSesion()) || await _obtenerAreaOrganizacionalVentas());
 
   _ventaLineas = [];
   if (id) {
