@@ -1102,6 +1102,9 @@ async function _guardarOSInterno() {
         fecha_estado: hoyEstado,
         usuario_estado: sesionActual.nombre || sesionActual.correo_usuario,
       } : {}),
+      ...(estadoCambio && estado === 'CERRADA' ? {
+        fecha_hora_cierre: new Date().toISOString(),
+      } : {}),
     };
 
     if (id) {
@@ -1526,6 +1529,7 @@ async function verFichaOS(id) {
       + '<div><div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + (o.numero_os || '—') + '</div>'
       + '<span class="badge ' + est.clase + '">' + est.label + '</span>'
       + (o.fecha_estado ? '<span style="font-size:10px;color:var(--suave);margin-left:8px">desde ' + fmtFecha(o.fecha_estado) + (o.usuario_estado ? ' · ' + o.usuario_estado : '') + '</span>' : '')
+      + (o.estado === 'CERRADA' && o.fecha_hora_cierre ? '<span style="font-size:10px;color:var(--suave);margin-left:8px">· Cerrada el ' + fmtFechaHoraVzla(o.fecha_hora_cierre) + '</span>' : '')
       + (facturaRefOS ? '<span style="font-size:11px;color:var(--suave);margin-left:8px">· Factura: <span style="color:var(--naranja)">' + facturaRefOS.numero_factura + '</span></span>' : '')
       + '</div>'
       + '</div>'
