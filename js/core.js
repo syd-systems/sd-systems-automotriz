@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909203';
+const SYD_VERSION = '20260909204';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -77,40 +77,43 @@ function getHoyVzla() {
 }
 function hoyVenezuela() { return getHoyVzla(); }
 
+// Timestamp ACTUAL ajustado a hora de Venezuela, como string "naive" (SIN
+// sufijo de zona horaria) -- para columnas timestamp WITHOUT time zone
+// que guardan la hora venezolana real como valor crudo (no UTC + ajuste
+// al mostrar). Reemplaza a new Date().toISOString() en esas 19 columnas
+// específicas (fecha_registro, fecha_aprobacion, fecha_cobro,
+// fecha_creacion, fecha_respuesta, fecha_hora_cierre,
+// fecha_certificacion, fecha_reversa, fecha_entrega -- ver migración de
+// Fase 1). NO usar para columnas que sigan siendo timestamp WITH time
+// zone (esas siguen necesitando new Date().toISOString() normal).
+function ahoraVzla() {
+  const vzla = new Date(Date.now() - 4 * 60 * 60 * 1000);
+  return vzla.toISOString().replace('Z', '');
+}
+
 // Muestra un timestamp COMPLETO (fecha + hora, ej. fecha_creacion de una
-// Notificación) en hora de Venezuela (UTC-4) -- sin depender de la zona
-// horaria configurada en el navegador de quien lo vea, para que la hora
-// mostrada sea siempre la venezolana real (relevante legalmente para
-// registros de transacciones). NO usar con columnas tipo "date" sin
-// hora (esas se muestran con fmtFecha(), sin este ajuste).
-function fmtFechaHoraVzla(timestampISO) {
-  if (!timestampISO) return '—';
-  const d = new Date(timestampISO);
-  if (isNaN(d.getTime())) return '—';
-  const vzla = new Date(d.getTime() - 4 * 60 * 60 * 1000);
-  const dd = String(vzla.getUTCDate()).padStart(2,'0');
-  const mm = String(vzla.getUTCMonth()+1).padStart(2,'0');
-  const yyyy = vzla.getUTCFullYear();
-  const hh = String(vzla.getUTCHours()).padStart(2,'0');
-  const min = String(vzla.getUTCMinutes()).padStart(2,'0');
-  return dd + '-' + mm + '-' + yyyy + ' ' + hh + ':' + min;
+// Notificación) que YA viene guardado como hora venezolana real (columna
+// timestamp WITHOUT time zone, ver migración de Fase 1) -- solo cambia
+// el formato de visualización, sin ningún ajuste adicional de zona (el
+// valor ya es la hora correcta, restar horas otra vez lo dañaría). NO
+// usar con columnas tipo "date" sin hora (esas se muestran con
+// fmtFecha(), sin cambios).
+function fmtFechaHoraVzla(timestampStr) {
+  if (!timestampStr) return '—';
+  const m = String(timestampStr).match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if (!m) return '—';
+  return m[3] + '-' + m[2] + '-' + m[1] + ' ' + m[4] + ':' + m[5];
 }
 
 // Igual que fmtFechaHoraVzla() pero solo la fecha (sin hora) -- para
-// columnas tipo timestamp (CON hora) que se muestran como fecha simple
-// (ej. fecha_cobro, fecha_entrega). fmtFecha() NO sirve para esto: solo
-// recorta el string sin ajustar zona horaria, así que un timestamp
-// guardado ya entrada la noche en Venezuela (pero madrugada en UTC)
-// aparecía con la fecha del día SIGUIENTE.
-function fmtFechaVzla(timestampISO) {
-  if (!timestampISO) return '—';
-  const d = new Date(timestampISO);
-  if (isNaN(d.getTime())) return '—';
-  const vzla = new Date(d.getTime() - 4 * 60 * 60 * 1000);
-  const dd = String(vzla.getUTCDate()).padStart(2,'0');
-  const mm = String(vzla.getUTCMonth()+1).padStart(2,'0');
-  const yyyy = vzla.getUTCFullYear();
-  return dd + '-' + mm + '-' + yyyy;
+// columnas tipo timestamp (CON hora, ya guardada como hora venezolana
+// real) que se muestran como fecha simple (ej. fecha_cobro,
+// fecha_entrega).
+function fmtFechaVzla(timestampStr) {
+  if (!timestampStr) return '—';
+  const m = String(timestampStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return '—';
+  return m[3] + '-' + m[2] + '-' + m[1];
 }
 
 function tasaIVAActual() {
@@ -3174,7 +3177,7 @@ async function notifConfirmar() {
     // solo acreditar stock como hace confirmar_recepcion.
     if (accionNotif === 'aprobar_orden_compra' && extras && extras.id_entrada) {
       await api('notificaciones','PATCH',
-        { estado: 'APROBADO', fecha_respuesta: new Date().toISOString() },
+        { estado: 'APROBADO', fecha_respuesta: ahoraVzla() },
         '?id=eq.'+_notifPendienteActual.id);
       document.getElementById('modal-notif-pendiente').style.display = 'none';
       _notifPendienteActual = null;
@@ -3194,7 +3197,7 @@ async function notifConfirmar() {
     // rechazada en contexto y corregirla desde ahí.
     if (accionNotif === 'orden_compra_rechazada' && extras && extras.id_entrada) {
       await api('notificaciones','PATCH',
-        { estado: 'APROBADO', fecha_respuesta: new Date().toISOString() },
+        { estado: 'APROBADO', fecha_respuesta: ahoraVzla() },
         '?id=eq.'+_notifPendienteActual.id);
       document.getElementById('modal-notif-pendiente').style.display = 'none';
       _notifPendienteActual = null;
@@ -3229,7 +3232,7 @@ async function notifConfirmar() {
 
     // 1. Marcar notificación como APROBADO
     await api('notificaciones','PATCH',
-      { estado: 'APROBADO', fecha_respuesta: new Date().toISOString() },
+      { estado: 'APROBADO', fecha_respuesta: ahoraVzla() },
       '?id=eq.'+_notifPendienteActual.id);
 
     // 2. Sumar stock al ÁREA DESTINO (solo aplica a notificaciones de
@@ -3355,7 +3358,7 @@ async function notifRechazarOrdenCompra() {
   _notifPendienteActual = null;
   try {
     await api('notificaciones','PATCH',
-      { estado: 'APROBADO', fecha_respuesta: new Date().toISOString() },
+      { estado: 'APROBADO', fecha_respuesta: ahoraVzla() },
       '?id=eq.'+idNotifRech);
   } catch(eNotifRechCierre) { console.warn('Error cerrando notificación de aprobación:', eNotifRechCierre); }
   await verificarNotificacionesPendientes();
@@ -3393,7 +3396,7 @@ async function notifSolicitarAnulacion() {
       titulo: 'Solicitud de Anulación de Entrada de Stock',
       mensaje: (sesionActual?.nombre || sesionActual?.correo_usuario || 'Un operador') + ' solicita la anulación de ENT-' + _notifEntradaInfo.id_entrada + ' (' + (ent?.cantidad || '') + ' uds. de "' + nombreArt + '"), ya que la Obligación de Pago fue rechazada y no cuenta con el permiso para anularla directamente.',
       estado: 'PENDIENTE',
-      fecha_creacion: new Date().toISOString(),
+      fecha_creacion: ahoraVzla(),
       datos_extra: JSON.stringify({ accion: 'solicitud_anulacion_entrada', id_entrada: _notifEntradaInfo.id_entrada, nombre_articulo: nombreArt })
     }, '', true);
 
@@ -3401,7 +3404,7 @@ async function notifSolicitarAnulacion() {
     // escaló) -- se marca resuelta para el Operador; la responsabilidad
     // de resolverlo pasa ahora al Superior.
     if (_notifPendienteActual) {
-      await api('notificaciones','PATCH',{ estado: 'APROBADO', fecha_respuesta: new Date().toISOString() }, '?id=eq.'+_notifPendienteActual.id);
+      await api('notificaciones','PATCH',{ estado: 'APROBADO', fecha_respuesta: ahoraVzla() }, '?id=eq.'+_notifPendienteActual.id);
     }
 
     document.getElementById('modal-notif-pendiente').style.display = 'none';
