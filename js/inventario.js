@@ -1929,7 +1929,7 @@ async function aprobarOrdenCompra(id_entrada) {
     await api('stock_entradas','PATCH',{
       estado_aprobacion: 'APROBADA',
       aprobado_por: correoAprobador,
-      fecha_aprobacion: new Date().toISOString()
+      fecha_aprobacion: ahoraVzla()
     },'?id_entrada=in.('+idsLote.join(',')+')');
     await calcularInvSaldoArea();
     renderInventario();
@@ -3073,7 +3073,7 @@ async function rechazarOrdenCompra(id_entrada) {
           titulo: esLoteRech ? 'Lote de Compra Rechazado' : 'Orden de Compra Rechazada',
           mensaje: mensajeRechRico,
           estado: 'PENDIENTE',
-          fecha_creacion: new Date().toISOString(),
+          fecha_creacion: ahoraVzla(),
           datos_extra: JSON.stringify({ id_entrada: id_entrada, accion: 'orden_compra_rechazada' })
         }, '', true);
       } catch(eNotifRechEnt) {
@@ -5585,7 +5585,7 @@ async function _guardarEdicionMovimientoInterno() {
         const notifsRevRes = await api('notificaciones','GET',null,
           '?estado=eq.PENDIENTE&datos_extra=ilike.*%22id_entrada%22%3A'+id+'*&select=id');
         for (const nRes of (notifsRevRes||[])) {
-          await api('notificaciones','PATCH',{ estado: 'APROBADO', fecha_respuesta: new Date().toISOString() },'?id=eq.'+nRes.id);
+          await api('notificaciones','PATCH',{ estado: 'APROBADO', fecha_respuesta: ahoraVzla() },'?id=eq.'+nRes.id);
         }
       } catch(eResRev) { console.warn('Error resolviendo notificaciones de revisión:', eResRev); }
 
@@ -5639,7 +5639,7 @@ async function _guardarEdicionMovimientoInterno() {
             // fallo ahí no tumbe lo esencial, como pasó con el bug de
             // "param_areas.id_area does not exist" (la columna real es "id").
             await api('notificaciones', 'PATCH',
-              { estado: 'ANULADO', fecha_respuesta: new Date().toISOString() },
+              { estado: 'ANULADO', fecha_respuesta: ahoraVzla() },
               '?id=in.(' + notifsViejas.map(function(n){ return n.id; }).join(',') + ')');
             const correoDestViejo = notifsViejas[0].correo_destino;
 
@@ -6018,7 +6018,7 @@ async function confirmarAnulacion() {
         const notifsRevAnul = await api('notificaciones','GET',null,
           '?estado=eq.PENDIENTE&datos_extra=ilike.*%22id_entrada%22%3A'+idMovimiento+'*&select=id');
         for (const nAnul of (notifsRevAnul||[])) {
-          await api('notificaciones','PATCH',{ estado: 'APROBADO', fecha_respuesta: new Date().toISOString() },'?id=eq.'+nAnul.id);
+          await api('notificaciones','PATCH',{ estado: 'APROBADO', fecha_respuesta: ahoraVzla() },'?id=eq.'+nAnul.id);
         }
       } catch(eResAnul) { console.warn('Error resolviendo notificaciones de revisión:', eResAnul); }
     } else {
@@ -6073,7 +6073,7 @@ async function confirmarAnulacion() {
             mensaje: '<div style="font-size:13px">La Compra <strong>ENT-'+idMovimiento+'</strong> ("'+artNomAnul+'", '+cantidad+' uds.), que ya estaba aprobada, fue <strong style="color:#fc8181">anulada</strong> por '
               + (sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor') + '.<br><br><strong>Motivo:</strong> ' + motivo + '</div>',
             estado: 'PENDIENTE',
-            fecha_creacion: new Date().toISOString(),
+            fecha_creacion: ahoraVzla(),
             datos_extra: JSON.stringify({ id_entrada: idMovimiento, accion: 'orden_compra_rechazada' })
           }, '', true);
         } catch(eNotifAnulEnt) { console.warn('Error notificando anulación de Entrada:', eNotifAnulEnt); }
@@ -6096,7 +6096,7 @@ async function confirmarAnulacion() {
             mensaje:      'La salida de ' + cantidad + ' unidades de "' + nomArt + '" registrada a su nombre ha sido anulada. El inventario debe retornar al almacén.',
             leida:        false,
             id_usuario:   sesionActual.correo_usuario,
-            fecha_registro: new Date().toISOString()
+            fecha_registro: ahoraVzla()
           });
         } catch(eNot) { console.warn('Error creando notificación interna:', eNot); }
       }
@@ -7499,7 +7499,7 @@ async function guardarEntradaInventario(idRef, esLote) {
     await api('stock_entradas','PATCH',{
       certificado_almacen: true,
       certificado_por: sesionActual.correo_usuario,
-      fecha_certificacion: new Date().toISOString(),
+      fecha_certificacion: ahoraVzla(),
       nota_entrega_factura: notaEntrega
     }, '?id_entrada=in.('+idsEntrada.join(',')+')');
 
@@ -7739,7 +7739,7 @@ async function _confirmarEntregaAlmacen(id_venta) {
 
     await api('ventas','PATCH',{
       entregado: true,
-      fecha_entrega: new Date().toISOString(),
+      fecha_entrega: ahoraVzla(),
       entregado_por: sesionActual.nombre || sesionActual.correo_usuario
     },'?id_venta=eq.'+id_venta);
 
