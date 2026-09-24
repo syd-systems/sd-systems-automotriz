@@ -4401,7 +4401,7 @@ async function aprobarPagoCxP(id_cxp) {
       estado_aprobacion: 'APROBADA',
       motivo_rechazo: null,
       aprobado_por: sesionActual?.correo_usuario || null,
-      fecha_aprobacion: new Date().toISOString()
+      fecha_aprobacion: ahoraVzla()
     },'?id_cxp=eq.'+id_cxp);
 
     // ── Si esta CxP venía RECHAZADA (Entrada EN_REVISION) y se aprobó
@@ -4414,7 +4414,7 @@ async function aprobarPagoCxP(id_cxp) {
         const notifsRevAprob = await api('notificaciones','GET',null,
           '?estado=eq.PENDIENTE&datos_extra=ilike.*%22id_entrada%22%3A'+id_entradaAprob+'*&select=id');
         for (const nAprob of (notifsRevAprob||[])) {
-          await api('notificaciones','PATCH',{ estado: 'APROBADO', fecha_respuesta: new Date().toISOString() },'?id=eq.'+nAprob.id);
+          await api('notificaciones','PATCH',{ estado: 'APROBADO', fecha_respuesta: ahoraVzla() },'?id=eq.'+nAprob.id);
         }
       } catch(eResAprob) { console.warn('Error resolviendo notificaciones de revisión:', eResAprob); }
     }
@@ -4430,7 +4430,7 @@ async function aprobarPagoCxP(id_cxp) {
           titulo: 'Solicitud de Pago Aprobada',
           mensaje: fmtCreadorCxP(infoCreadorAprob) + ': tu solicitud de pago "' + (c.concepto || c.numero_doc || '') + '" fue aprobada por ' + (sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor') + '. Ya puedes proceder a Registrar el Pago.',
           estado: 'PENDIENTE',
-          fecha_creacion: new Date().toISOString(),
+          fecha_creacion: ahoraVzla(),
           datos_extra: JSON.stringify({ id_cxp: id_cxp, accion: 'registrar_pago' })
         }, '', true);
       } catch(eNotif) { console.warn('Error enviando notificación de aprobación:', eNotif); }
@@ -4517,7 +4517,7 @@ async function rechazarPagoCxP(id_cxp) {
           titulo: 'Solicitud de Pago Rechazada',
           mensaje: fmtCreadorCxP(infoCreadorRech) + ': tu solicitud de pago "' + (c.concepto || c.numero_doc || '') + '" fue rechazada por ' + (sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor') + '. Motivo: ' + motivo,
           estado: 'PENDIENTE',
-          fecha_creacion: new Date().toISOString(),
+          fecha_creacion: ahoraVzla(),
           datos_extra: JSON.stringify({ id_cxp: id_cxp, accion: 'ver_rechazo', id_entrada: id_entradaRech })
         }, '', true);
       } catch(eNotif) { console.warn('Error enviando notificación de rechazo:', eNotif); }
