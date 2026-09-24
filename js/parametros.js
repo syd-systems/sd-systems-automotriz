@@ -446,6 +446,7 @@ async function guardarParamItem() {
     const monedaVal   = def.tieneMoneda ? (document.getElementById('param-item-moneda')?.value || '') : '';
     const cuentaVal    = def.tieneCuentaContable ? (document.getElementById('param-item-cuenta-contable')?.value || '') : '';
     const tipoCanalVal = def.tieneTipoCanal ? (document.getElementById('param-item-tipo-canal')?.value || '') : '';
+    const areaVal      = def.tieneArea ? (document.getElementById('param-item-area')?.value || '') : '';
     const pkNeq      = id ? ('&' + def.pk + '=neq.' + id) : '';
     let existeQuery;
     if (def.nombreAutomatico) {
@@ -455,12 +456,17 @@ async function guardarParamItem() {
       existeQuery = '?nombre=ilike.' + encodeURIComponent(nombre) + pkNeq;
       if (def.tieneMoneda && monedaVal)          existeQuery += '&codigo=eq.' + monedaVal;
       if (def.tieneCuentaContable && cuentaVal)  existeQuery += '&id_cuenta_contable=eq.' + cuentaVal;
+      // Un mismo Nombre de Cargo SÍ puede repetirse en Áreas distintas
+      // (ej. "Supervisor" en Compras y en Ventas son cargos diferentes) --
+      // lo que no puede repetirse es el mismo Nombre DENTRO de la misma
+      // Área.
+      if (def.tieneArea && areaVal)              existeQuery += '&id_area=eq.' + areaVal;
     }
     const existe = await api(def.tabla, 'GET', null, existeQuery);
     if (existe && existe.length > 0) {
       errEl.textContent = def.nombreAutomatico
-        ? 'Ya existe un método con ese Modo de Pago y esa Moneda.'
-        : 'Ya existe un método de pago con el mismo nombre, moneda y cuenta contable.';
+        ? 'Ya existe un ' + def.nombre.toLowerCase().replace(/s$/,'') + ' con esos mismos datos.'
+        : 'Ya existe un(a) ' + def.nombre.toLowerCase().replace(/s$/,'') + ' con el mismo nombre' + (def.tieneMoneda ? ', moneda' : '') + (def.tieneCuentaContable ? ' y cuenta contable' : '') + (def.tieneArea ? ' en esa misma Área' : '') + '.';
       errEl.style.display = 'block'; resetBtn(); return;
     }
     // Duplicado por código (solo si tieneCodigo, no tieneMoneda)
