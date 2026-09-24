@@ -434,6 +434,49 @@ function actualizarEtiquetaTasaAsiento() {
   if (lbl) lbl.textContent = 'Tasa BCV Bs/Usd';
 }
 
+// Selector de Tasa BCV para Nuevo/Editar Asiento -- muestra las Tasas
+// registradas (fecha + valor real, sin redondear). Por defecto selecciona
+// la Tasa cuya fecha_valor coincide con la Fecha del Asiento (o la más
+// reciente anterior a esa fecha, si no hay una exacta) -- el Usuario
+// puede igual elegir otra manualmente.
+async function _poblarSelectTasasAsiento(fechaAsiento, valorHistorico) {
+  const sel = document.getElementById('cont-form-tasa');
+  if (!sel) return;
+  let tasas = [];
+  try {
+    tasas = await api('tasas','GET',null,'?moneda_origen=eq.USD&order=fecha_valor.desc&limit=30&select=id_tasa,tipo_cambio,fecha_valor');
+  } catch(e) {}
+
+  // La Tasa "correcta" por defecto: la más reciente cuya fecha_valor sea
+  // igual o anterior a la Fecha del Asiento.
+  const candidatas = (tasas||[]).filter(function(t){ return !fechaAsiento || t.fecha_valor <= fechaAsiento; });
+  const tasaPorFecha = candidatas.length ? candidatas[0] : null;
+
+  const valorNum = valorHistorico ? parseFloat(valorHistorico) : (tasaPorFecha ? parseFloat(tasaPorFecha.tipo_cambio) : null);
+  let coincide = false;
+  let opciones = (tasas||[]).map(function(t) {
+    const v = parseFloat(t.tipo_cambio);
+    const esDefault = valorNum !== null && Math.abs(v - valorNum) < 0.00005;
+    if (esDefault) coincide = true;
+    return '<option value="'+v+'"'+(esDefault ? ' selected' : '')+'>'+fmtFecha(t.fecha_valor)+' — '+formatearTasaVE(v)+'</option>';
+  }).join('');
+  // Si el valor por defecto (histórico al editar, o el que corresponde a
+  // la Fecha) no aparece entre las últimas 30, se agrega aparte para no
+  // perder ese dato real.
+  if (valorNum !== null && !coincide) {
+    opciones = '<option value="'+valorNum+'" selected>(Histórica) '+formatearTasaVE(valorNum)+'</option>' + opciones;
+  }
+  sel.innerHTML = opciones || '<option value="1">Sin Tasas registradas</option>';
+}
+
+// Al cambiar la Fecha del Asiento, re-selecciona la Tasa que corresponde
+// a esa fecha (el Usuario puede igual sobre-escribirla eligiendo otra).
+async function _onCambiarFechaAsiento() {
+  const fecha = document.getElementById('cont-form-fecha')?.value;
+  await _poblarSelectTasasAsiento(fecha, null);
+  contRenderLineasForm();
+}
+
 async function contAbrirAsiento(id) {
   if (!puedo('CONTABILIDAD', id ? 'EDITAR' : 'CREAR')) { alert('Sin permiso.'); return; }
   contLineasAsiento = [];
@@ -453,7 +496,7 @@ async function contAbrirAsiento(id) {
     document.getElementById('cont-form-desc').value        = ast.descripcion;
     document.getElementById('cont-form-ref').value         = ast.referencia || '';
     document.getElementById('cont-form-tipo').value        = ast.tipo;
-    document.getElementById('cont-form-tasa').value        = formatearMontoVE(ast.tasa_bcv||1);
+    await _poblarSelectTasasAsiento(ast.fecha, ast.tasa_bcv);
     document.getElementById('cont-form-periodo').value     = ast.id_periodo || '';
     document.getElementById('modal-cont-form-titulo').textContent = 'EDITAR ASIENTO — ' + ast.numero_asiento;
     contLineasAsiento = lineas.map(function(l){ return { id_cuenta: l.id_cuenta, descripcion: l.descripcion||'', debe_usd: l.debe_usd, haber_usd: l.haber_usd, debe_ves: l.debe_ves, haber_ves: l.haber_ves, tasa: l.tasa || 1 }; });
@@ -466,11 +509,11 @@ async function contAbrirAsiento(id) {
     document.getElementById('cont-form-moneda').value = ((_empresaActiva?.moneda_principal)||'VES').toUpperCase();
     document.getElementById('cont-form-periodo').value = periodoActivo ? periodoActivo.id_periodo : '';
     document.getElementById('modal-cont-form-titulo').textContent = 'NUEVO ASIENTO CONTABLE';
-    // Cargar tasa BCV del día
-    try {
-      const tasas = await api('tasas','GET',null,'?fecha_valor=lte.' + getHoyVzla() + '&order=fecha_valor.desc&limit=1&select=tipo_cambio');
-      document.getElementById('cont-form-tasa').value = tasas.length ? formatearMontoVE(tasas[0].tipo_cambio) : '1,00';
-    } catch(e) { document.getElementById('cont-form-tasa').value = '1,00'; }
+    // Selector de Tasa BCV -- preselecciona la que corresponde a la
+    // Fecha del Asiento (hoy, por defecto), pero el Usuario puede elegir
+    // la de otra fecha (Asiento con fecha retroactiva) en vez de tener
+    // que escribirla a mano.
+    await _poblarSelectTasasAsiento(getHoyVzla(), null);
   }
 
   // Llenar select de períodos
@@ -545,7 +588,7 @@ function contRenderLineasForm() {
               const nat      = cInfo ? cInfo.naturaleza : null;
               // La Tasa siempre es la Tasa BCV general del Asiento (arriba)
               // -- ya no se permite una Tasa distinta por línea.
-              const tasaGlob = parseMontoVE(document.getElementById('cont-form-tasa')?.value) || 1;
+              const tasaGlob = parseFloat(document.getElementById('cont-form-tasa')?.value) || 1;
               const monedaRef = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
               if (!nat) {
                 return '<td colspan="3" style="padding:4px;text-align:center;color:var(--suave);font-size:11px;font-style:italic">← seleccionar cuenta</td>';
@@ -585,7 +628,7 @@ async function contGuardarAsiento() {
   const ref     = document.getElementById('cont-form-ref').value.trim();
   const tipo    = document.getElementById('cont-form-tipo').value;
   const moneda  = document.getElementById('cont-form-moneda').value;
-  const tasa    = parseMontoVE(document.getElementById('cont-form-tasa').value) || 1;
+  const tasa    = parseFloat(document.getElementById('cont-form-tasa').value) || 1;
   const periodo = parseInt(document.getElementById('cont-form-periodo').value) || null;
   const okEl    = document.getElementById('alerta-cont-form-ok');
   const errEl   = document.getElementById('alerta-cont-form-err');
@@ -2142,7 +2185,7 @@ async function contRenderCxc() {
         +'<td style="padding:4px 8px;text-align:right;font-size:10px;font-family:var(--font-mono)">'+((tusd>0||tves>0)?fmtMonto(tusd,tves):'--')+'</td>'
         +'<td style="padding:4px 8px;text-align:right;font-size:10px;font-family:var(--font-mono)">'+((cobUSD>0||cobVES>0)?fmtMonto(cobUSD,cobVES):'--')+'</td>'
         +'<td style="padding:4px 8px;text-align:right;font-size:10px;font-family:var(--font-mono);color:'+(saldoUSD>0?'#fc8181':'#22c55e')+'">'+((tusd>0||tves>0)?fmtMonto(saldoUSD,saldoVES):'--')+'</td>'
-        +'<td style="padding:4px 8px">'+(cxc?.fecha_cobro?fmtFecha(cxc.fecha_cobro):'--')+'</td>'+'<td style="padding:4px 8px">'+(eb[f.estado]||f.estado)+'</td>'
+        +'<td style="padding:4px 8px">'+(cxc?.fecha_cobro?fmtFechaVzla(cxc.fecha_cobro):'--')+'</td>'+'<td style="padding:4px 8px">'+(eb[f.estado]||f.estado)+'</td>'
         +'</tr>';
     }).join('');
 
