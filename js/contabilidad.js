@@ -434,46 +434,29 @@ function actualizarEtiquetaTasaAsiento() {
   if (lbl) lbl.textContent = 'Tasa BCV Bs/Usd';
 }
 
-// Selector de Tasa BCV para Nuevo/Editar Asiento -- muestra las Tasas
-// registradas (fecha + valor real, sin redondear). Por defecto selecciona
-// la Tasa cuya fecha_valor coincide con la Fecha del Asiento (o la más
-// reciente anterior a esa fecha, si no hay una exacta) -- el Usuario
-// puede igual elegir otra manualmente.
-async function _poblarSelectTasasAsiento(fechaAsiento, valorHistorico) {
-  const sel = document.getElementById('cont-form-tasa');
-  if (!sel) return;
+// Tasa BCV de solo lectura para Nuevo/Editar Asiento -- toma la Tasa
+// registrada cuya fecha coincide con la Fecha del Asiento (o la más
+// reciente anterior a esa fecha, si no hay una exacta). Al editar un
+// Asiento existente, respeta el valor histórico ya guardado.
+async function _establecerTasaAsiento(fechaAsiento, valorHistorico) {
+  const campo = document.getElementById('cont-form-tasa');
+  if (!campo) return;
+  if (valorHistorico) {
+    campo.value = formatearTasaVE(valorHistorico);
+    return;
+  }
   let tasas = [];
   try {
-    tasas = await api('tasas','GET',null,'?moneda_origen=eq.USD&order=fecha_valor.desc&limit=30&select=id_tasa,tipo_cambio,fecha_valor');
+    tasas = await api('tasas','GET',null,'?moneda_origen=eq.USD&fecha_valor=lte.'+(fechaAsiento||getHoyVzla())+'&order=fecha_valor.desc&limit=1&select=tipo_cambio');
   } catch(e) {}
-
-  // La Tasa "correcta" por defecto: la más reciente cuya fecha_valor sea
-  // igual o anterior a la Fecha del Asiento.
-  const candidatas = (tasas||[]).filter(function(t){ return !fechaAsiento || t.fecha_valor <= fechaAsiento; });
-  const tasaPorFecha = candidatas.length ? candidatas[0] : null;
-
-  const valorNum = valorHistorico ? parseFloat(valorHistorico) : (tasaPorFecha ? parseFloat(tasaPorFecha.tipo_cambio) : null);
-  let coincide = false;
-  let opciones = (tasas||[]).map(function(t) {
-    const v = parseFloat(t.tipo_cambio);
-    const esDefault = valorNum !== null && Math.abs(v - valorNum) < 0.00005;
-    if (esDefault) coincide = true;
-    return '<option value="'+v+'"'+(esDefault ? ' selected' : '')+'>'+fmtFecha(t.fecha_valor)+' — '+formatearTasaVE(v)+'</option>';
-  }).join('');
-  // Si el valor por defecto (histórico al editar, o el que corresponde a
-  // la Fecha) no aparece entre las últimas 30, se agrega aparte para no
-  // perder ese dato real.
-  if (valorNum !== null && !coincide) {
-    opciones = '<option value="'+valorNum+'" selected>(Histórica) '+formatearTasaVE(valorNum)+'</option>' + opciones;
-  }
-  sel.innerHTML = opciones || '<option value="1">Sin Tasas registradas</option>';
+  campo.value = tasas && tasas[0] ? formatearTasaVE(tasas[0].tipo_cambio) : '1,0000';
 }
 
-// Al cambiar la Fecha del Asiento, re-selecciona la Tasa que corresponde
-// a esa fecha (el Usuario puede igual sobre-escribirla eligiendo otra).
+// Al cambiar la Fecha del Asiento, actualiza la Tasa a la que corresponde
+// a esa fecha.
 async function _onCambiarFechaAsiento() {
   const fecha = document.getElementById('cont-form-fecha')?.value;
-  await _poblarSelectTasasAsiento(fecha, null);
+  await _establecerTasaAsiento(fecha, null);
   contRenderLineasForm();
 }
 
@@ -496,7 +479,7 @@ async function contAbrirAsiento(id) {
     document.getElementById('cont-form-desc').value        = ast.descripcion;
     document.getElementById('cont-form-ref').value         = ast.referencia || '';
     document.getElementById('cont-form-tipo').value        = ast.tipo;
-    await _poblarSelectTasasAsiento(ast.fecha, ast.tasa_bcv);
+    await _establecerTasaAsiento(ast.fecha, ast.tasa_bcv);
     document.getElementById('cont-form-periodo').value     = ast.id_periodo || '';
     document.getElementById('modal-cont-form-titulo').textContent = 'EDITAR ASIENTO — ' + ast.numero_asiento;
     contLineasAsiento = lineas.map(function(l){ return { id_cuenta: l.id_cuenta, descripcion: l.descripcion||'', debe_usd: l.debe_usd, haber_usd: l.haber_usd, debe_ves: l.debe_ves, haber_ves: l.haber_ves, tasa: l.tasa || 1 }; });
@@ -513,7 +496,7 @@ async function contAbrirAsiento(id) {
     // Fecha del Asiento (hoy, por defecto), pero el Usuario puede elegir
     // la de otra fecha (Asiento con fecha retroactiva) en vez de tener
     // que escribirla a mano.
-    await _poblarSelectTasasAsiento(getHoyVzla(), null);
+    await _establecerTasaAsiento(getHoyVzla(), null);
   }
 
   // Llenar select de períodos
@@ -588,7 +571,7 @@ function contRenderLineasForm() {
               const nat      = cInfo ? cInfo.naturaleza : null;
               // La Tasa siempre es la Tasa BCV general del Asiento (arriba)
               // -- ya no se permite una Tasa distinta por línea.
-              const tasaGlob = parseFloat(document.getElementById('cont-form-tasa')?.value) || 1;
+              const tasaGlob = parseMontoVE(document.getElementById('cont-form-tasa')?.value) || 1;
               const monedaRef = ((_empresaActiva?.moneda_secundaria)||'USD').toUpperCase();
               if (!nat) {
                 return '<td colspan="3" style="padding:4px;text-align:center;color:var(--suave);font-size:11px;font-style:italic">← seleccionar cuenta</td>';
@@ -628,7 +611,7 @@ async function contGuardarAsiento() {
   const ref     = document.getElementById('cont-form-ref').value.trim();
   const tipo    = document.getElementById('cont-form-tipo').value;
   const moneda  = document.getElementById('cont-form-moneda').value;
-  const tasa    = parseFloat(document.getElementById('cont-form-tasa').value) || 1;
+  const tasa    = parseMontoVE(document.getElementById('cont-form-tasa').value) || 1;
   const periodo = parseInt(document.getElementById('cont-form-periodo').value) || null;
   const okEl    = document.getElementById('alerta-cont-form-ok');
   const errEl   = document.getElementById('alerta-cont-form-err');
