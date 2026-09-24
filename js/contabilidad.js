@@ -685,7 +685,7 @@ async function contGuardarAsiento() {
 async function contAprobarAsiento(id) {
   if (!confirm('¿Aprobar este asiento? Una vez aprobado no podrá editarse.')) return;
   try {
-    await api('cont_asientos','PATCH',{ estado:'APROBADO', aprobado_por: sesionActual.correo_usuario, fecha_aprobacion: new Date().toISOString() },'?id_asiento=eq.' + id);
+    await api('cont_asientos','PATCH',{ estado:'APROBADO', aprobado_por: sesionActual.correo_usuario, fecha_aprobacion: ahoraVzla() },'?id_asiento=eq.' + id);
     contCambiarVista('diario');
   } catch(e) { alert('Error: ' + msgErr(e)); }
 }
@@ -1362,7 +1362,7 @@ async function contGuardarPagoCxc() {
       moneda_cobro: monedaSelGuardar,
       referencia:  referencia,
       id_banco_origen: idBancoOrigen,
-      fecha_cobro: new Date().toISOString()
+      fecha_cobro: ahoraVzla()
     };
     if (urlComprobanteCxc) patchDataCxc.url_comprobante = urlComprobanteCxc;
 
@@ -2980,7 +2980,7 @@ async function guardarTributo() {
       // registro viejo (conserva su alícuota y fecha originales tal cual
       // estaban) y se crea uno nuevo con el valor actualizado.
       await api('param_tributos','PATCH', { estado: 'INACTIVO' }, '?id_tributo=eq.'+id);
-      const nuevaFecha = { ...datos, fecha_registro: new Date().toISOString() };
+      const nuevaFecha = { ...datos, fecha_registro: ahoraVzla() };
       await api('param_tributos','POST', nuevaFecha);
     } else if (id) {
       // Sin cambio de alícuota -- edición normal (descripción, base legal,
