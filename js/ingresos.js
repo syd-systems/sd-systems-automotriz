@@ -1182,7 +1182,7 @@ async function verFichaFactura(id) {
             + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px">Datos de Cobro</div>'
             + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">'
             + '<div style="display:flex;flex-direction:column;gap:10px">'
-            + '<div><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Fecha de Cobro</div><div style="font-weight:600">'+fmtFecha(cxcFicha.fecha_cobro)+'</div></div>'
+            + '<div><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Fecha de Cobro</div><div style="font-weight:600">'+fmtFechaVzla(cxcFicha.fecha_cobro)+'</div></div>'
             + (cxcFicha.banco_origen?.nombre ? '<div><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Banco Origen</div><div style="font-weight:600">'+cxcFicha.banco_origen.nombre+'</div></div>' : '')
             + '</div>'
             + '<div style="display:flex;flex-direction:column;gap:10px">'
