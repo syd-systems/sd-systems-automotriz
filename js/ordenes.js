@@ -1103,7 +1103,7 @@ async function _guardarOSInterno() {
         usuario_estado: sesionActual.nombre || sesionActual.correo_usuario,
       } : {}),
       ...(estadoCambio && estado === 'CERRADA' ? {
-        fecha_hora_cierre: new Date().toISOString(),
+        fecha_hora_cierre: ahoraVzla(),
       } : {}),
     };
 
