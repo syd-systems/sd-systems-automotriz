@@ -457,7 +457,7 @@ async function renderVentasEntregas() {
               // "Marcar Entregado" vive exclusivamente en Inventario General
               // (el Custodio de la Mercancía), no aquí.
               + '<td style="font-size:12px;color:var(--suave)">⏳ Pendiente en Almacén</td>'
-            : '<td style="font-size:12px">'+(v.fecha_entrega?fmtFecha(v.fecha_entrega):'—')+'</td>'
+            : '<td style="font-size:12px">'+(v.fecha_entrega?fmtFechaVzla(v.fecha_entrega):'—')+'</td>'
               + '<td style="font-size:12px">'+(v.entregado_por||'—')+'</td>')
         + '</tr>';
     }).join('');
@@ -1101,7 +1101,7 @@ async function verFichaVenta(id) {
     + '<div style="font-size:10px;color:var(--suave);margin-top:4px;text-align:right">Moneda de Facturación: '+(esVES?'VES':'USD')+' · Tasa BCV Bs/Usd: '+formatearTasaVE(tasa)+'</div>'
     + (v.estado === 'FACTURADA'
         ? '<div style="margin-top:10px;font-size:11px;color:var(--suave)">'
-          + (v.entregado ? '📦 Entregado el ' + fmtFecha(v.fecha_entrega) + (v.entregado_por ? ' por ' + v.entregado_por : '') : '📦 Pendiente de entrega')
+          + (v.entregado ? '📦 Entregado el ' + fmtFechaVzla(v.fecha_entrega) + (v.entregado_por ? ' por ' + v.entregado_por : '') : '📦 Pendiente de entrega')
           + '</div>'
         : '');
 
