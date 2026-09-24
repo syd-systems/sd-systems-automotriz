@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909201';
+const SYD_VERSION = '20260909202';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -76,6 +76,42 @@ function getHoyVzla() {
   return _vzla.toISOString().split('T')[0];
 }
 function hoyVenezuela() { return getHoyVzla(); }
+
+// Muestra un timestamp COMPLETO (fecha + hora, ej. fecha_creacion de una
+// Notificación) en hora de Venezuela (UTC-4) -- sin depender de la zona
+// horaria configurada en el navegador de quien lo vea, para que la hora
+// mostrada sea siempre la venezolana real (relevante legalmente para
+// registros de transacciones). NO usar con columnas tipo "date" sin
+// hora (esas se muestran con fmtFecha(), sin este ajuste).
+function fmtFechaHoraVzla(timestampISO) {
+  if (!timestampISO) return '—';
+  const d = new Date(timestampISO);
+  if (isNaN(d.getTime())) return '—';
+  const vzla = new Date(d.getTime() - 4 * 60 * 60 * 1000);
+  const dd = String(vzla.getUTCDate()).padStart(2,'0');
+  const mm = String(vzla.getUTCMonth()+1).padStart(2,'0');
+  const yyyy = vzla.getUTCFullYear();
+  const hh = String(vzla.getUTCHours()).padStart(2,'0');
+  const min = String(vzla.getUTCMinutes()).padStart(2,'0');
+  return dd + '-' + mm + '-' + yyyy + ' ' + hh + ':' + min;
+}
+
+// Igual que fmtFechaHoraVzla() pero solo la fecha (sin hora) -- para
+// columnas tipo timestamp (CON hora) que se muestran como fecha simple
+// (ej. fecha_cobro, fecha_entrega). fmtFecha() NO sirve para esto: solo
+// recorta el string sin ajustar zona horaria, así que un timestamp
+// guardado ya entrada la noche en Venezuela (pero madrugada en UTC)
+// aparecía con la fecha del día SIGUIENTE.
+function fmtFechaVzla(timestampISO) {
+  if (!timestampISO) return '—';
+  const d = new Date(timestampISO);
+  if (isNaN(d.getTime())) return '—';
+  const vzla = new Date(d.getTime() - 4 * 60 * 60 * 1000);
+  const dd = String(vzla.getUTCDate()).padStart(2,'0');
+  const mm = String(vzla.getUTCMonth()+1).padStart(2,'0');
+  const yyyy = vzla.getUTCFullYear();
+  return dd + '-' + mm + '-' + yyyy;
+}
 
 function tasaIVAActual() {
   return (window._tasaIVAGlobal != null) ? window._tasaIVAGlobal : 0.16;
@@ -2993,7 +3029,7 @@ async function mostrarNotifPendiente(notif) {
   if (!lista) return;
   lista.innerHTML =
     '<div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:16px;margin-bottom:12px">'
-    +'<div style="font-size:12px;color:var(--suave);margin-bottom:8px">'+fmtFecha(notif.fecha_creacion)+'</div>'
+    +'<div style="font-size:12px;color:var(--suave);margin-bottom:8px">'+fmtFechaHoraVzla(notif.fecha_creacion)+'</div>'
     +'<div style="font-size:13px;color:var(--texto);line-height:1.6">'+notif.mensaje+'</div>'
     +'</div>';
 
@@ -3483,7 +3519,7 @@ function renderTarjetaEntregaVenta(v, lineas, opts) {
   let pie;
   if (opts.soloLectura) {
     pie = entregada
-      ? '<div style="color:#22c55e;font-size:12px">✓ Entregado el '+(v.fecha_entrega?fmtFecha(v.fecha_entrega):'—')+' por '+(v.entregado_por||'—')+'</div>'
+      ? '<div style="color:#22c55e;font-size:12px">✓ Entregado el '+(v.fecha_entrega?fmtFechaVzla(v.fecha_entrega):'—')+' por '+(v.entregado_por||'—')+'</div>'
       : '<div style="color:var(--suave);font-size:12px">⏳ Pendiente de entrega en Almacén</div>';
   } else {
     pie = '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
