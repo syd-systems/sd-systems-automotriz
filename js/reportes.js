@@ -1849,15 +1849,17 @@ async function repPuntoVentaRender(cont) {
     const montoReal = esVES ? parseFloat(r.total_usd||0) * parseFloat(r.tasa_bcv||1) : parseFloat(r.total_usd||0);
     const nombreArea = r.area_nombre ? (r.area_codigo ? r.area_nombre + ' (' + r.area_codigo + ')' : r.area_nombre) : '— Sin Área —';
     const clave = nombreArea + '||' + r.moneda_cobro;
-    if (!porArea[clave]) porArea[clave] = { area: nombreArea, monto: 0, transacciones: 0, moneda: r.moneda_cobro, refUsd: 0 };
+    if (!porArea[clave]) porArea[clave] = { area: nombreArea, monto: 0, transacciones: 0, moneda: r.moneda_cobro, refUsd: 0, articulos: 0, piezas: 0 };
     porArea[clave].monto += montoReal;
     porArea[clave].refUsd += parseFloat(r.total_usd||0);
     porArea[clave].transacciones++;
+    porArea[clave].articulos += parseInt(r.num_articulos||0);
+    porArea[clave].piezas += parseFloat(r.num_piezas||0);
   });
 
   const filas = Object.keys(porArea).map(function(clave) {
     const d = porArea[clave];
-    return { area: d.area, moneda: d.moneda, monto: d.monto, transacciones: d.transacciones, refUsd: d.refUsd };
+    return { area: d.area, moneda: d.moneda, monto: d.monto, transacciones: d.transacciones, refUsd: d.refUsd, articulos: d.articulos, piezas: d.piezas };
   }).sort(function(a,b){ return b.refUsd - a.refUsd; });
 
   const totalVES = filas.filter(function(f){ return f.moneda === 'VES'; }).reduce(function(s,f){ return s + f.monto; }, 0);
@@ -1916,15 +1918,17 @@ function _repPVRenderTabla() {
   const d = window._reportePuntoVentaActual;
   if (!d) return;
   document.getElementById('rep-pv-thead-row').innerHTML =
-    '<th style="text-align:left">Área (Punto de Venta)</th><th style="text-align:right">Ventas</th><th style="text-align:right">Cantidad</th>';
+    '<th style="text-align:left">Área (Punto de Venta)</th><th style="text-align:right">Ventas</th><th style="text-align:right">Cantidad</th><th style="text-align:right">No. Artículos</th><th style="text-align:right">No. Piezas</th>';
   const filasHtml = d.filas.map(function(f) {
     return '<tr>'
       + '<td style="font-size:15px">' + escapeHtml(f.area) + '</td>'
       + '<td style="text-align:right;font-family:var(--font-mono);color:var(--naranja);font-weight:600;font-size:15px">' + (f.moneda==='VES' ? fmtBs(f.monto) + ' Bs' : '$ ' + fmtUSD(f.monto)) + '</td>'
       + '<td style="text-align:right;font-family:var(--font-mono);font-size:15px">' + f.transacciones + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono);font-size:15px">' + f.articulos.toLocaleString('es-VE') + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono);font-size:15px">' + f.piezas.toLocaleString('es-VE') + '</td>'
       + '</tr>';
   }).join('');
-  document.getElementById('rep-pv-tbody').innerHTML = filasHtml || '<tr><td colspan="3" style="text-align:center;color:var(--suave);padding:32px">No hay Ventas en el rango seleccionado</td></tr>';
+  document.getElementById('rep-pv-tbody').innerHTML = filasHtml || '<tr><td colspan="5" style="text-align:center;color:var(--suave);padding:32px">No hay Ventas en el rango seleccionado</td></tr>';
 }
 
 function repPuntoVentaLimpiarFiltros() {
@@ -1945,10 +1949,10 @@ async function repPuntoVentaExportar() {
 function _repPVDatosExportar() {
   const d = window._reportePuntoVentaActual;
   if (!d) return null;
-  const encabezados = ['Área (Punto de Venta)','Ventas','Cantidad'];
+  const encabezados = ['Área (Punto de Venta)','Ventas','Cantidad','No. Artículos','No. Piezas'];
   const montoTxt = function(f){ return f.moneda==='VES' ? fmtBs(f.monto)+' Bs' : '$ '+fmtUSD(f.monto); };
-  const filasNumericas = d.filas.map(function(f) { return [f.area, f.monto, f.transacciones]; });
-  const filasTexto = d.filas.map(function(f) { return [f.area, montoTxt(f), f.transacciones]; });
+  const filasNumericas = d.filas.map(function(f) { return [f.area, f.monto, f.transacciones, f.articulos, f.piezas]; });
+  const filasTexto = d.filas.map(function(f) { return [f.area, montoTxt(f), f.transacciones, f.articulos, f.piezas]; });
   return { d, encabezados, filasNumericas, filasTexto };
 }
 
@@ -1974,23 +1978,25 @@ function _repPVExportarExcel() {
   if (!dat || typeof XLSX === 'undefined') { alert('No se pudo cargar el generador de Excel. Verifica tu conexión e intenta de nuevo.'); return; }
   const FILA_ENCAB = 2, FILA_DATOS_DESDE = 3;
   const filasExcel = dat.d.filas.map(function(f) {
-    return [f.area, (f.moneda==='VES' ? fmtBs(f.monto)+' Bs' : '$ '+fmtUSD(f.monto)), f.transacciones];
+    return [f.area, (f.moneda==='VES' ? fmtBs(f.monto)+' Bs' : '$ '+fmtUSD(f.monto)), f.transacciones, f.articulos, f.piezas];
   });
   const hoja = XLSX.utils.aoa_to_sheet([
     ['Ventas por Punto de Venta'],
     ['Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Cada monto en su Moneda real de cobro'],
     dat.encabezados,
   ].concat(filasExcel));
-  hoja['!cols'] = [ {wch:28}, {wch:20}, {wch:14} ];
+  hoja['!cols'] = [ {wch:28}, {wch:20}, {wch:14}, {wch:14}, {wch:12} ];
   const refEncabF = XLSX.utils.encode_cell({ r: FILA_ENCAB, c: 0 });
-  [0,1,2].forEach(function(col) {
+  [0,1,2,3,4].forEach(function(col) {
     const refEncab = XLSX.utils.encode_cell({ r: FILA_ENCAB, c: col });
     if (hoja[refEncab]) hoja[refEncab].s = { alignment: { horizontal: 'center', vertical: 'center' }, font: { bold: true } };
   });
   const NUM_FILAS = filasExcel.length;
   for (let i = 0; i < NUM_FILAS; i++) {
-    const ref = XLSX.utils.encode_cell({ r: FILA_DATOS_DESDE + i, c: 2 });
-    if (hoja[ref]) { hoja[ref].z = '#,##0'; hoja[ref].t = 'n'; hoja[ref].s = { alignment: { horizontal: 'right' } }; }
+    [2,3,4].forEach(function(col) {
+      const ref = XLSX.utils.encode_cell({ r: FILA_DATOS_DESDE + i, c: col });
+      if (hoja[ref]) { hoja[ref].z = '#,##0'; hoja[ref].t = 'n'; hoja[ref].s = { alignment: { horizontal: 'right' } }; }
+    });
   }
   const libro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(libro, hoja, 'Punto de Venta');
@@ -2012,7 +2018,7 @@ function _repPVExportarPDF() {
     startY: 27,
     styles: { fontSize: 9 },
     headStyles: { fillColor: [255, 107, 0], halign: 'center' },
-    columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } },
+    columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
   });
   doc.save('reporte_punto_venta_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '.pdf');
 }
