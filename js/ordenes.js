@@ -1185,6 +1185,44 @@ async function _guardarOSInterno() {
       }
     }
 
+    // ── Validar que el Taller tenga stock suficiente ANTES de descontar --
+    // sin esto, se permitía asignar Artículos que Taller nunca recibió
+    // (vía Transferencia), dejando el stock en 0 en vez de rechazarlo, y
+    // el Reporte de Inventario parecía "no rebajar por salidas" cuando en
+    // realidad nunca hubo stock real disponible en esa Área.
+    if (id_areaTallerOS && osArtículosLineas.length) {
+      const necesarioPorArticulo = {};
+      osArtículosLineas.forEach(function(lr) {
+        if (!lr.id_articulo) return;
+        necesarioPorArticulo[lr.id_articulo] = (necesarioPorArticulo[lr.id_articulo] || 0) + parseFloat(lr.cantidad || 0);
+      });
+      const idsArticulosOS = Object.keys(necesarioPorArticulo);
+      if (idsArticulosOS.length) {
+        try {
+          const stockActualTaller = await api('inventario_stock_area','GET',null,
+            '?id_area=eq.'+id_areaTallerOS+'&id_articulo=in.('+idsArticulosOS.join(',')+')&select=id_articulo,stock_actual,reservado');
+          const disponiblePorArticulo = {};
+          (stockActualTaller||[]).forEach(function(s) {
+            disponiblePorArticulo[s.id_articulo] = parseFloat(s.stock_actual||0) - parseFloat(s.reservado||0);
+          });
+          const faltantes = [];
+          for (const idArt in necesarioPorArticulo) {
+            const disponible = disponiblePorArticulo[idArt] || 0;
+            if (necesarioPorArticulo[idArt] > disponible) {
+              const infoArt = await api('inventario_almacen','GET',null,'?id_articulo=eq.'+idArt+'&select=nombre_articulo,codigo_articulo');
+              const nombreArt = infoArt && infoArt[0] ? (infoArt[0].nombre_articulo || infoArt[0].codigo_articulo) : ('Art#'+idArt);
+              faltantes.push(nombreArt + ' (necesita ' + necesarioPorArticulo[idArt] + ', hay ' + disponible + ' en Taller)');
+            }
+          }
+          if (faltantes.length) {
+            errEl.textContent = 'No hay stock suficiente en el Taller para: ' + faltantes.join('; ') + '. Transfiera el stock desde Compras antes de asignarlo a la Orden.';
+            errEl.style.display = 'block';
+            return;
+          }
+        } catch(eValStock) { console.warn('Error validando stock de Taller:', eValStock); }
+      }
+    }
+
     // ── Insertar nuevas líneas de artículos y descontar del stock de Taller ──
     for (var j = 0; j < osArtículosLineas.length; j++) {
       var lr = osArtículosLineas[j];
