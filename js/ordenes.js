@@ -1167,21 +1167,25 @@ async function _guardarOSInterno() {
       });
     }
 
-    // ── Restaurar stock de artículos anteriores (solo en edición) ──
-    // Asignar un Artículo a la OS RESTA del stock que Taller YA TIENE
-    // (no genera una entrega nueva desde Compras -- Compras no interviene
-    // en este momento). Si es edición, las líneas anteriores ya fueron
-    // borradas arriba -- hay que devolverle a Taller esa cantidad antes
-    // de aplicar las líneas nuevas.
+    // ── Devolver artículos anteriores (solo en edición) ──
+    // Asignar un Artículo a una OS abierta RESERVA stock del Taller (no lo
+    // descuenta de verdad todavía -- la Venta recién se materializa al
+    // CERRAR la Orden). Pero si esta OS YA ESTABA CERRADA antes de esta
+    // edición, sus líneas anteriores ya tenían el stock REAL descontado
+    // (no solo reservado) -- hay que devolverlo como stock real, no como
+    // reserva, o el Artículo quedaría "perdido" (ni reservado ni
+    // disponible).
     const id_areaTallerOS = parseInt(document.getElementById('os-area')?.value) || null;
+    const osYaEstabaCerrada = osActual && osActual.estado === 'CERRADA';
     if (id && lineasArtículosAntes && lineasArtículosAntes.length && id_areaTallerOS) {
       for (var k = 0; k < lineasArtículosAntes.length; k++) {
         var la = lineasArtículosAntes[k];
         if (!la.id_articulo) continue;
         try {
           var cantAntes = parseFloat(la.cantidad || 0);
-          await upsertStockArea(la.id_articulo, id_areaTallerOS, cantAntes);
-        } catch(eRest) { console.warn('Error restaurando stock:', eRest); }
+          if (osYaEstabaCerrada) { await upsertStockArea(la.id_articulo, id_areaTallerOS, cantAntes); }
+          else { await ajustarReservaArea(la.id_articulo, id_areaTallerOS, -cantAntes); }
+        } catch(eRest) { console.warn('Error devolviendo artículo anterior:', eRest); }
       }
     }
 
@@ -1235,20 +1239,44 @@ async function _guardarOSInterno() {
         moneda: monR, precio_original: precR,
         precio_usd: lr.precio_usd, subtotal_usd: subtUsdR
       });
-      // Descontar del stock que Taller YA TIENE -- no se toca Compras. Si
-      // esto falla (ej. el trigger de stock negativo lo bloquea), NO se
-      // debe dejar la línea de mercancía "fantasma" sin su descuento real
-      // -- se revierte la inserción y se avisa, en vez de tragar el error
-      // silenciosamente (eso fue justo lo que dejó datos desincronizados
-      // entre os_mercancias y el stock real).
+      // Si la OS ya estaba Cerrada (se están editando sus Artículos
+      // después de Cerrada), la Venta YA se materializó -- este Artículo
+      // se descuenta de verdad de una vez, no se reserva. Si sigue
+      // abierta (o se está Cerrando justo ahora en este mismo guardado),
+      // se RESERVA -- el descuento real ocurre más abajo, al detectar el
+      // cambio de estado a CERRADA. Si esto falla, NO se debe dejar la
+      // línea de mercancía "fantasma" sin su reserva/descuento real -- se
+      // revierte la inserción y se avisa, en vez de tragar el error
+      // silenciosamente.
       if (lr.id_articulo && id_areaTallerOS) {
         try {
           var cantNueva = parseFloat(lr.cantidad);
-          await upsertStockArea(lr.id_articulo, id_areaTallerOS, -cantNueva);
+          if (osYaEstabaCerrada) { await upsertStockArea(lr.id_articulo, id_areaTallerOS, -cantNueva); }
+          else { await ajustarReservaArea(lr.id_articulo, id_areaTallerOS, cantNueva); }
         } catch(eStock) {
           const idLineaCreada = lineaMercResp && lineaMercResp[0] ? lineaMercResp[0].id_os_mercancia : null;
           if (idLineaCreada) { try { await api('os_mercancias', 'DELETE', null, '?id_os_mercancia=eq.' + idLineaCreada); } catch(eDel) {} }
-          throw new Error('No se pudo descontar el stock de "' + (lr.descripcion||'') + '": ' + msgErr(eStock));
+          throw new Error('No se pudo ajustar el stock de "' + (lr.descripcion||'') + '": ' + msgErr(eStock));
+        }
+      }
+    }
+
+    // ── Al CERRAR la Orden: aquí SÍ se materializa la Venta -- se
+    // descuenta el stock REAL de Taller (convierte la Reserva en un
+    // descuento real) para todas las líneas de mercancía de esta OS.
+    // Antes de esto, mientras la Orden estaba abierta, el Artículo seguía
+    // contando como disponible en el Reporte de Inventario (solo
+    // reservado), igual que una Venta en Presupuesto.
+    if (estadoCambio && estado === 'CERRADA' && id_areaTallerOS) {
+      for (var m = 0; m < osArtículosLineas.length; m++) {
+        var lm = osArtículosLineas[m];
+        if (!lm.id_articulo) continue;
+        var cantCierre = parseFloat(lm.cantidad || 0);
+        try {
+          await upsertStockArea(lm.id_articulo, id_areaTallerOS, -cantCierre);
+          await ajustarReservaArea(lm.id_articulo, id_areaTallerOS, -cantCierre);
+        } catch(eCierre) {
+          throw new Error('No se pudo descontar el stock real de "' + (lm.descripcion||'') + '" al Cerrar la Orden: ' + msgErr(eCierre));
         }
       }
     }
@@ -1294,11 +1322,12 @@ async function ajustarStockOS(id_orden, operacion) {
       try {
         var cant = parseFloat(l.cantidad || 0);
         if (operacion === 'restaurar') {
-          // Anular OS: se le devuelve la cantidad a Taller
-          await upsertStockArea(l.id_articulo, id_areaTallerOS, cant);
+          // Eliminar OS (siempre abierta, nunca Cerrada -- ver eliminarOS):
+          // se libera la Reserva de Taller, ya que el stock real nunca
+          // llegó a descontarse (eso solo ocurre al Cerrar la Orden).
+          await ajustarReservaArea(l.id_articulo, id_areaTallerOS, -cant);
         } else {
-          // Reabrir OS: se le vuelve a restar a Taller
-          await upsertStockArea(l.id_articulo, id_areaTallerOS, -cant);
+          await ajustarReservaArea(l.id_articulo, id_areaTallerOS, cant);
         }
       } catch(eInv) { console.warn('Error ajustando stock artículo', l.id_articulo, eInv); }
     }
