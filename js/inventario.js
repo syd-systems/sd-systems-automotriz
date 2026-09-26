@@ -2059,7 +2059,7 @@ async function _entconsActualizarTasa() {
   const fecha = document.getElementById('entcons-fecha')?.value || getHoyVzla();
   try {
     const tasaRows = await api('tasas','GET',null,'?fecha_valor=lte.'+fecha+'&moneda_origen=eq.USD&order=fecha_valor.desc&limit=1&select=tipo_cambio');
-    if (tasaRows && tasaRows[0]) document.getElementById('entcons-tasa-bcv').value = formatearMontoVE(tasaRows[0].tipo_cambio);
+    if (tasaRows && tasaRows[0]) document.getElementById('entcons-tasa-bcv').value = formatearTasaVE(tasaRows[0].tipo_cambio);
   } catch(eTasaEntCons) {}
   _entconsRenderLineas();
 }
@@ -2841,7 +2841,7 @@ async function retomarLoteRechazado(id_orden_compra) {
     if (monedaLR) monedaLR.value = primeraR.moneda_compra || 'USD';
     await _entconsActualizarTasa();
     const tasaLR = document.getElementById('entcons-tasa-bcv');
-    if (tasaLR && primeraR.tasa_bcv) tasaLR.value = formatearMontoVE(primeraR.tasa_bcv);
+    if (tasaLR && primeraR.tasa_bcv) tasaLR.value = formatearTasaVE(primeraR.tasa_bcv);
 
     const esquemaLR = document.getElementById('entcons-esquema-pago');
     if (esquemaLR) { esquemaLR.value = primeraR.esquema_pago || 'CONTADO'; _entconsCambiarEsquemaPago(); }
