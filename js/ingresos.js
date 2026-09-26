@@ -957,9 +957,16 @@ async function generarCxCyAsientoFactura(idFactura) {
           if (!lin.id_articulo || !parseFloat(lin.cantidad)) continue;
           const cantidadVenta = parseFloat(lin.cantidad);
 
-          // Descontar el stock real del área de la Venta
+          // Descontar el stock real del área de la Venta. Si esto falla
+          // (ej. el Área de la Venta no tenía suficiente stock real
+          // transferido desde Compras), NO se debe continuar como si la
+          // Factura hubiera quedado correcta -- antes se tragaba el error
+          // silenciosamente, dejando la Venta marcada FACTURADA con la
+          // Factura ya creada, pero sin el descuento real de stock (el
+          // Reporte de Inventario seguía mostrando el Artículo disponible
+          // aunque ya estuviera vendido).
           try { await upsertStockArea(lin.id_articulo, ventaOrigen.id_area, -cantidadVenta); }
-          catch(eStockVenta) { console.warn('Error descontando stock de Venta directa:', eStockVenta); }
+          catch(eStockVenta) { throw new Error('No se pudo descontar el stock del Artículo (id ' + lin.id_articulo + '): ' + msgErr(eStockVenta)); }
 
           // Liberar la reserva de esta línea -- ya se descontó como stock
           // REAL arriba, así que la reserva "en vivo" que traía desde el
