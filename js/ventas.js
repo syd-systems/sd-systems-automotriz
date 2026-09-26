@@ -967,13 +967,17 @@ function _renderLineasVenta() {
 function _calcularTotalesVenta() {
   const errElCalc = document.getElementById('alerta-vta-err');
   if (errElCalc) errElCalc.style.display = 'none';
-  const subtotal = _ventaLineas.reduce(function(a, l) { return a + (l.cantidad||0)*(l.precio_unitario||0); }, 0);
-  const iva  = subtotal * tasaIVAActual();
+  // Redondeado a 2 decimales aquí mismo, antes de guardar -- si no, el
+  // valor crudo (ej. 63.636363...) quedaba guardado tal cual en la base
+  // de datos, aunque en pantalla se viera redondeado (fmtUSD solo
+  // redondea al MOSTRAR, no cambia lo que se guarda).
+  const subtotal = parseFloat(_ventaLineas.reduce(function(a, l) { return a + (l.cantidad||0)*(l.precio_unitario||0); }, 0).toFixed(2));
+  const iva  = parseFloat((subtotal * tasaIVAActual()).toFixed(2));
   // El IGTF NO se decide aquí -- depende de en qué moneda decida pagar el
   // Cliente y de si la Empresa es Contribuyente Especial, algo que solo se
   // sabe con certeza al momento del Cobro (igual que ya funciona para
   // Órdenes de Servicio). El asiento inicial de la Factura sale sin IGTF.
-  const total = subtotal + iva;
+  const total = parseFloat((subtotal + iva).toFixed(2));
 
   const el = document.getElementById('vta-totales');
   if (el) {
