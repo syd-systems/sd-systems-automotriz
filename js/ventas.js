@@ -166,7 +166,7 @@ function _ventasValorOrden(v, campo) {
   if (campo === 'numero') return v._esOS ? (v._numeroFactura || 'OS-'+v._idOrden) : (v.facturas?.numero_factura || 'V-'+v.id_venta);
   if (campo === 'cliente') return (v.clientes?.nombre_completo || '').toLowerCase();
   if (campo === 'fecha') return v.fecha_venta || '';
-  if (campo === 'total') return v.total_usd || 0;
+  if (campo === 'total') return v.subtotal_usd || 0;
   if (campo === 'estado') return v.estado || '';
   return '';
 }
@@ -207,8 +207,11 @@ function _ventasFilasHtml(ventas) {
     const cli = v.clientes;
     const tasa = v.tasa_bcv || 1;
     const esVES = v.moneda_cobro === 'VES';
-    const ves = (v.total_usd||0) * tasa;
-    const totalDual = '<div style="' + (esVES?'color:var(--suave)':'color:var(--naranja)') + '">$ ' + fmtUSD(v.total_usd||0) + '</div>'
+    // Columna "TOTAL" del listado = monto de la Venta pura, SIN IVA
+    // (subtotal_usd) -- es el monto real vendido, no el facturado (que ya
+    // incluye el IVA y se muestra aparte, en la Ficha/Factura).
+    const ves = (v.subtotal_usd||0) * tasa;
+    const totalDual = '<div style="' + (esVES?'color:var(--suave)':'color:var(--naranja)') + '">$ ' + fmtUSD(v.subtotal_usd||0) + '</div>'
       + '<div style="' + (esVES?'color:var(--naranja)':'color:var(--suave)') + ';font-size:11px">Bs ' + fmtBs(ves) + '</div>';
     if (v._esOS) {
       return '<tr data-id="' + v.id_venta + '">'
@@ -275,7 +278,11 @@ async function renderVentasListado() {
         .map(function(o) {
           return {
             id_venta: -o.id_orden, fecha_venta: o.fecha_entrada, clientes: o.clientes,
-            total_usd: totalPorOrden[o.id_orden], tasa_bcv: o.tasa_bcv, moneda_cobro: 'USD',
+            // totalPorOrden ya es cantidad × precio_usd (sin IVA) -- es el
+            // Subtotal real, se expone también como subtotal_usd para que
+            // la columna TOTAL del listado (que ahora muestra el monto sin
+            // IVA) lo use igual que las Ventas de mostrador.
+            total_usd: totalPorOrden[o.id_orden], subtotal_usd: totalPorOrden[o.id_orden], tasa_bcv: o.tasa_bcv, moneda_cobro: 'USD',
             estado: 'FACTURADA', _esOS: true, _idOrden: o.id_orden, _numeroFactura: facturaPorOrden[o.id_orden],
             param_areas: o.param_areas,
             _categorias: catsPorOrden[o.id_orden], _tipos: tiposPorOrden[o.id_orden]
