@@ -4623,7 +4623,13 @@ async function ejecutarPagoCxP(id_cxp) {
   // en la Moneda Funcional de la Empresa (Bs), y debajo el contravalor a
   // la tasa BCV del día de pago (_tasaVigente).
   const monedaNegFact = (c.moneda_negociacion || 'USD').toUpperCase();
-  const tasaDiaPago = _tasaVigente || parseFloat(c.tasa_bcv || 0) || 1;
+  // Usa SIEMPRE la Tasa histórica real de la Compra (c.tasa_bcv) primero
+  // -- el comentario de arriba ya explica que estos montos están
+  // congelados y no deben recalcularse con la Tasa de hoy (_tasaVigente).
+  // El orden anterior lo hacía al revés, causando que este monto
+  // difiriera del "Total Facturado" mostrado más abajo (que sí usa la
+  // Tasa histórica correctamente).
+  const tasaDiaPago = parseFloat(c.tasa_bcv || 0) || _tasaVigente || 1;
   const montoBsFuncional = monedaNegFact === 'VES' ? montoVESShow : parseFloat((montoUSDShow * tasaDiaPago).toFixed(2));
   const montoUSDContravalor = monedaNegFact === 'USD' ? montoUSDShow : parseFloat((montoVESShow / tasaDiaPago).toFixed(2));
   const montoFactEl = document.getElementById('exec-pago-monto-facturacion');
