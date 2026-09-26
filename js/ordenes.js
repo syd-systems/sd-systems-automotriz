@@ -1229,18 +1229,27 @@ async function _guardarOSInterno() {
       const monR   = (lr.moneda || 'USD').toUpperCase();
       const precR  = parseFloat(lr.precio_original || lr.precio_usd || 0);
       const subtUsdR = parseFloat(lr.precio_usd || 0) * parseFloat(lr.cantidad);
-      await api('os_mercancias', 'POST', {
+      const lineaMercResp = await api('os_mercancias', 'POST', {
         id_orden: parseInt(osId), id_articulo: lr.id_articulo || null,
         descripcion: lr.descripcion, cantidad: lr.cantidad,
         moneda: monR, precio_original: precR,
         precio_usd: lr.precio_usd, subtotal_usd: subtUsdR
       });
-      // Descontar del stock que Taller YA TIENE -- no se toca Compras
+      // Descontar del stock que Taller YA TIENE -- no se toca Compras. Si
+      // esto falla (ej. el trigger de stock negativo lo bloquea), NO se
+      // debe dejar la línea de mercancía "fantasma" sin su descuento real
+      // -- se revierte la inserción y se avisa, en vez de tragar el error
+      // silenciosamente (eso fue justo lo que dejó datos desincronizados
+      // entre os_mercancias y el stock real).
       if (lr.id_articulo && id_areaTallerOS) {
         try {
           var cantNueva = parseFloat(lr.cantidad);
           await upsertStockArea(lr.id_articulo, id_areaTallerOS, -cantNueva);
-        } catch(eStock) { console.warn('Error descontando stock:', eStock); }
+        } catch(eStock) {
+          const idLineaCreada = lineaMercResp && lineaMercResp[0] ? lineaMercResp[0].id_os_mercancia : null;
+          if (idLineaCreada) { try { await api('os_mercancias', 'DELETE', null, '?id_os_mercancia=eq.' + idLineaCreada); } catch(eDel) {} }
+          throw new Error('No se pudo descontar el stock de "' + (lr.descripcion||'') + '": ' + msgErr(eStock));
+        }
       }
     }
 
