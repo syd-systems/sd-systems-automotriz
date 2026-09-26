@@ -953,19 +953,26 @@ async function generarCxCyAsientoFactura(idFactura) {
           if (tasasCOGS && tasasCOGS[0]) tasaCOGS = parseFloat(tasasCOGS[0].tipo_cambio) || tasaCOGS;
         } catch(eTasaCOGSVenta) {}
 
+        // El stock de una Venta directa SIEMPRE se descuenta de Compras
+        // (2300) directamente, sin necesitar una Transferencia previa --
+        // a diferencia de una OS, que sí requiere que Taller ya tenga el
+        // stock. Antes se descontaba del Área organizativa de la Venta
+        // (ej. "Ventas en Tienda"), que nunca tiene stock real propio, así
+        // que el descuento fallaba silenciosamente y el Artículo seguía
+        // apareciendo disponible en Compras aunque ya estuviera vendido.
+        const idAreaAlmacenVenta = await _obtenerAreaAlmacenVentas();
+
         for (const lin of (lineasVenta||[])) {
           if (!lin.id_articulo || !parseFloat(lin.cantidad)) continue;
           const cantidadVenta = parseFloat(lin.cantidad);
 
-          // Descontar el stock real del área de la Venta. Si esto falla
-          // (ej. el Área de la Venta no tenía suficiente stock real
-          // transferido desde Compras), NO se debe continuar como si la
-          // Factura hubiera quedado correcta -- antes se tragaba el error
-          // silenciosamente, dejando la Venta marcada FACTURADA con la
-          // Factura ya creada, pero sin el descuento real de stock (el
-          // Reporte de Inventario seguía mostrando el Artículo disponible
-          // aunque ya estuviera vendido).
-          try { await upsertStockArea(lin.id_articulo, ventaOrigen.id_area, -cantidadVenta); }
+          // Descontar el stock real de Compras. Si esto falla, NO se debe
+          // continuar como si la Factura hubiera quedado correcta -- antes
+          // se tragaba el error silenciosamente, dejando la Venta marcada
+          // FACTURADA con la Factura ya creada, pero sin el descuento real
+          // de stock (el Reporte de Inventario seguía mostrando el
+          // Artículo disponible aunque ya estuviera vendido).
+          try { await upsertStockArea(lin.id_articulo, idAreaAlmacenVenta, -cantidadVenta); }
           catch(eStockVenta) { throw new Error('No se pudo descontar el stock del Artículo (id ' + lin.id_articulo + '): ' + msgErr(eStockVenta)); }
 
           // Liberar la reserva de esta línea -- ya se descontó como stock
@@ -973,11 +980,11 @@ async function generarCxCyAsientoFactura(idFactura) {
           // Presupuesto debe soltarse aquí. Sin esto, quedaba colgada y
           // restaba el disponible dos veces (una como reserva fantasma,
           // otra como salida real ya reflejada en stock_actual).
-          try { await ajustarReservaArea(lin.id_articulo, ventaOrigen.id_area, -cantidadVenta); }
+          try { await ajustarReservaArea(lin.id_articulo, idAreaAlmacenVenta, -cantidadVenta); }
           catch(eReservaVenta) { console.warn('Error liberando reserva al facturar Venta:', eReservaVenta); }
 
           const sal = await api('stock_salidas','POST',{
-            id_articulo:   lin.id_articulo, id_area: ventaOrigen.id_area, cantidad: cantidadVenta,
+            id_articulo:   lin.id_articulo, id_area: idAreaAlmacenVenta, cantidad: cantidadVenta,
             fecha_salida:  fac.fecha_emision || hoyVenezuela(),
             observaciones: 'Venta '+fac.numero_factura,
             id_usuario:    correo
