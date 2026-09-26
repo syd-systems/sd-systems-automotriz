@@ -632,8 +632,7 @@ async function abrirVenta(id) {
   document.getElementById('vta-id').value = id || '';
   // La fecha SIEMPRE es la del día -- no se le permite al operador elegir
   // otra, para no someter el Inventario a ventas registradas a destiempo.
-  document.getElementById('vta-fecha-display').textContent =
-    'Fecha: ' + fmtFecha(getHoyVzla()) + '   ·   Tasa BCV Bs/Usd: ' + formatearTasaVE(_tasaVigente || 0);
+  document.getElementById('vta-fecha-display').textContent = 'Fecha: ' + fmtFecha(getHoyVzla());
 
   window._vtaClienteSeleccionadoId = v ? v.id_cliente : null;
   const clienteActual = v ? clientesCache.find(function(cl) { return cl.id_cliente === v.id_cliente; }) : null;
@@ -976,7 +975,8 @@ function _calcularTotalesVenta() {
       + '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IVA ('+Math.round(tasaIVAActual()*100)+'%)</span><span style="font-family:var(--font-mono);text-align:right">'+_fmtMonedaVentaDual(iva)+'</span></div>'
       + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:6px;margin-top:2px">'
       + '<span style="font-family:var(--font-display);font-size:15px;letter-spacing:1px">TOTAL</span>'
-      + '<span style="font-family:var(--font-mono);font-size:17px;color:var(--naranja);text-align:right">'+_fmtMonedaVentaDual(total)+'</span></div></div>';
+      + '<span style="font-family:var(--font-mono);font-size:17px;color:var(--naranja);text-align:right">'+_fmtMonedaVentaDual(total)+'</span></div>'
+      + '<div style="text-align:right;font-size:10px;color:var(--suave)">Tasa BCV Bs/Usd: '+formatearTasaVE(_tasaVigente||0)+'</div></div>';
   }
   window._vtaTotales = { subtotal: subtotal, iva: iva, igtf: 0, total: total };
 }
