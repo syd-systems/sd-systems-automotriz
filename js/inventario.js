@@ -4133,6 +4133,13 @@ function _renderFilaHistorial(m) {
         + (m.proveedores ? '<div style="font-size:11px;color:#a78bfa">🏭 ' + m.proveedores.nombre + '</div>' : '')
         + ((puedo('INVENTARIO','VER_COSTOS') && (m.precio_compra_original ?? m.precio_costo_moneda))
             ? '<div style="font-size:11px;color:var(--suave)">' + (m.moneda_compra === 'VES' ? 'Bs. ' + fmtBs(m.precio_compra_original ?? m.precio_costo_moneda) : '$ ' + fmtUSD(m.precio_compra_original ?? m.precio_costo_moneda)) + ' / u</div>'
+              // Moneda de Referencia -- equivalente en Bs a la Tasa BCV
+              // HISTÓRICA de la fecha de esta Compra (m.tasa_bcv, ya
+              // congelada en la propia fila) -- nunca la de hoy, este
+              // precio quedó fijado en esa fecha.
+              + ((m.moneda_compra !== 'VES' && m.tasa_bcv)
+                  ? '<div style="font-size:10px;color:var(--suave)">Bs ' + fmtBs((m.precio_compra_original ?? m.precio_costo_moneda) * parseFloat(m.tasa_bcv)) + ' (Tasa BCV Bs/Usd al ' + fmtFecha(m.fecha) + ': ' + formatearTasaVE(m.tasa_bcv) + ')</div>'
+                  : '')
             : '')
       : '<div>' + area + '</div>')
     + ((esEntrada && m.motivo === 'compra' && m._solicitanteNombre) ? '<div style="font-size:11px;color:#60a5fa">👤 Solicitante: ' + escapeHtml(m._solicitanteNombre) + '</div>' : (esEntrada && !(m.motivo === 'compra') && m.empleado_recibe) ? '<div style="font-size:11px;color:#60a5fa">👤 Recibe: ' + (m.empleado_recibe?.nombre_completo||'') + '</div>' : '')
@@ -6387,6 +6394,11 @@ async function abrirStockArticulo(id, nombre) {
   if (puedo('INVENTARIO','VER_PRECIOS_VENTA')) {
     const dualVentaModal = stockActual === 0 ? {usd:0} : precioVentaEnVivo(r);
     document.getElementById('stock-art-venta').textContent = '$ ' + fmtUSD(dualVentaModal.usd);
+    // Moneda de Referencia -- equivalente en Bs a la Tasa BCV del día de
+    // la consulta (hoy), no de una fecha histórica -- este precio de
+    // venta es vigente ahora mismo, no algo que quedó congelado.
+    const ventaRefEl = document.getElementById('stock-art-venta-ref');
+    if (ventaRefEl) ventaRefEl.textContent = 'Bs ' + fmtBs(dualVentaModal.usd * (_tasaVigente||1)) + ' (Tasa BCV Bs/Usd al ' + fmtFecha(getHoyVzla()) + ': ' + formatearTasaVE(_tasaVigente||1) + ')';
     if (ventaCont) ventaCont.style.display = '';
   } else {
     if (ventaCont) ventaCont.style.display = 'none';
@@ -6396,6 +6408,8 @@ async function abrirStockArticulo(id, nombre) {
   const costoEl   = document.getElementById('stock-art-costo');
   if (puedo('INVENTARIO','VER_COSTOS')) {
     if (costoEl)   costoEl.textContent = '$ ' + fmtUSD(cppActual);
+    const costoRefEl = document.getElementById('stock-art-costo-ref');
+    if (costoRefEl) costoRefEl.textContent = 'Bs ' + fmtBs(cppActual * (_tasaVigente||1)) + ' (Tasa BCV Bs/Usd al ' + fmtFecha(getHoyVzla()) + ': ' + formatearTasaVE(_tasaVigente||1) + ')';
     if (costoCont) costoCont.style.display = '';
   } else {
     if (costoCont) costoCont.style.display = 'none';
