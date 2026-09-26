@@ -66,7 +66,7 @@ function repInventarioLimpiarFiltros() {
   const area = document.getElementById('rep-inv-area');         if (area) area.value = '';
   const categoria = document.getElementById('rep-inv-categoria'); if (categoria) categoria.value = '';
   const tipo = document.getElementById('rep-inv-tipo');         if (tipo) tipo.value = '';
-  const soloStock = document.getElementById('rep-inv-solo-stock'); if (soloStock) soloStock.checked = false;
+  const filtroStock = document.getElementById('rep-inv-filtro-stock'); if (filtroStock) filtroStock.value = 'todos';
   repInventarioRender(document.getElementById('reportes-contenido'));
 }
 
@@ -75,7 +75,7 @@ async function repInventarioRender(cont) {
   const fechaCorteVal = document.getElementById('rep-inv-fecha')?.value || getHoyVzla();
   const monedaVal = document.getElementById('rep-inv-moneda')?.value || 'VES';
   const formatoVal = document.getElementById('rep-inv-formato')?.value || 'pdf';
-  const soloConStock = document.getElementById('rep-inv-solo-stock')?.checked || false;
+  const filtroStockVal = document.getElementById('rep-inv-filtro-stock')?.value || 'todos';
   const areaVal = document.getElementById('rep-inv-area')?.value || '';
   const categoriaVal = document.getElementById('rep-inv-categoria')?.value || '';
   const tipoVal = document.getElementById('rep-inv-tipo')?.value || '';
@@ -139,9 +139,12 @@ async function repInventarioRender(cont) {
     + '<option value=""' + (tipoVal===''?' selected':'') + '>Todos</option>'
     + tipos.map(function(t){ return '<option value="'+t.id_tipo+'"' + (String(tipoVal)===String(t.id_tipo)?' selected':'') + '>' + escapeHtml(t.nombre) + '</option>'; }).join('')
     + '</select></div>'
-    + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--texto);cursor:pointer;height:35px;box-sizing:border-box">'
-    + '<input type="checkbox" id="rep-inv-solo-stock" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))"' + (soloConStock ? ' checked' : '') + ' style="cursor:pointer">'
-    + 'Solo Artículos con Stock</label>'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Stock</label>'
+    + '<select id="rep-inv-filtro-stock" onchange="repInventarioRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 12px;border-radius:5px;outline:none;height:35px;box-sizing:border-box">'
+    + '<option value="todos"' + (filtroStockVal==='todos'?' selected':'') + '>Todos</option>'
+    + '<option value="con"' + (filtroStockVal==='con'?' selected':'') + '>En Stock</option>'
+    + '<option value="sin"' + (filtroStockVal==='sin'?' selected':'') + '>Sin Stock</option>'
+    + '</select></div>'
     + '<button onclick="repInventarioLimpiarFiltros()" title="Limpiar filtros" style="background:#dc2626;border:1px solid #dc2626;color:#fff;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:16px;line-height:1;box-shadow:0 1px 3px rgba(220,38,38,0.4);height:35px;box-sizing:border-box">🗑</button>'
     + '</div>'
     + '<div id="rep-inv-resumen" style="display:flex;gap:16px;margin-bottom:20px">'
@@ -231,9 +234,11 @@ async function repInventarioRender(cont) {
     });
   } catch(eMargenRep) { console.warn('Error trayendo Márgenes vigentes:', eMargenRep); }
 
-  const itemsFiltrados = soloConStock
+  const itemsFiltrados = filtroStockVal === 'con'
     ? items.filter(function(a){ return (stockPorArticulo[a.id_articulo] || 0) > 0; })
-    : items;
+    : filtroStockVal === 'sin'
+      ? items.filter(function(a){ return (stockPorArticulo[a.id_articulo] || 0) === 0; })
+      : items;
 
   let totalUnidades = 0, totalValor = 0;
   const filas = itemsFiltrados.map(function(a) {
@@ -268,7 +273,8 @@ async function repInventarioRender(cont) {
   if (areaVal) { const a = areas.find(function(x){ return String(x.id)===String(areaVal); }); if (a) filtrosActivos.push('Área: ' + a.nombre); }
   if (categoriaVal) { const c = categorias.find(function(x){ return String(x.id_categoria)===String(categoriaVal); }); if (c) filtrosActivos.push('Categoría: ' + c.nombre); }
   if (tipoVal) { const t = tipos.find(function(x){ return String(x.id_tipo)===String(tipoVal); }); if (t) filtrosActivos.push('Tipo: ' + t.nombre); }
-  if (soloConStock) filtrosActivos.push('Solo Artículos con Stock');
+  if (filtroStockVal === 'con') filtrosActivos.push('Solo Artículos en Stock');
+  if (filtroStockVal === 'sin') filtrosActivos.push('Solo Artículos sin Stock');
   const filtrosTexto = filtrosActivos.length ? filtrosActivos.join('   |   ') : 'Sin filtros adicionales (todos los Artículos, todas las Áreas)';
 
   window._reporteInvActual = { items, monedaVal, tasaCorte, fechaCorteVal, catNombrePorId, consumoPorArticulo, stockPorArticulo, filas, filtrosTexto };
