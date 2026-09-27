@@ -5817,6 +5817,29 @@ function calcularCuotasEdit() {
   preview.dataset.cuotas = JSON.stringify(cuotas);
 }
 
+// Regla de negocio: la ÚNICA Salida que se puede anular desde Inventario
+// es un FALTANTE (Ajuste de Inventario). Devuelve el mensaje de bloqueo,
+// o null si se permite.
+//  - Artículos FACTURADOS (Factura de OS o Venta directa): anular la
+//    Salida devolvería el stock mientras la Factura sigue vigente
+//    (descuadre inventario/facturación). Una Factura emitida no se anula;
+//    la devolución va por Nota de Crédito.
+//  - Entregas entre Áreas / Transferencias: se revierten con una
+//    Transferencia en sentido contrario.
+function _bloqueoAnulacionSalida(sal) {
+  const obs = (sal && sal.observaciones) || '';
+  if (obs.indexOf('FALTANTE (Ajuste de Inventario)') === 0) return null;
+  if (obs.indexOf('Factura ') === 0 || obs.indexOf('Venta ') === 0) {
+    return 'Esta Salida corresponde a artículos ya FACTURADOS (' + obs.split(' ').slice(0, 2).join(' ') + ').\n\n'
+      + 'No se puede anular desde Inventario: el stock volvería al almacén pero la Factura seguiría vigente. '
+      + 'La devolución de artículos facturados debe hacerse mediante una Nota de Crédito.';
+  }
+  if (sal && sal.id_area) {
+    return 'Esta es una entrega entre Áreas -- no se puede anular desde aquí. Si hay que revertirla, use una Transferencia (Entrada de Stock, Área de Origen = el Área que la recibió).';
+  }
+  return 'Solo se pueden anular Salidas por Faltante (Ajuste de Inventario).';
+}
+
 async function anularMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
   // Verificar permiso -- para ENTRADA, además del permiso propio de
   // Inventario, también se acepta PAGOS.APROBAR (Nivel de Aprobar/Rechazar
@@ -5845,10 +5868,8 @@ async function anularMovimiento(tipo, idMovimiento, cantidad, id_articulo) {
         '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo)');
       if (!rows || !rows[0]) { alert('Movimiento no encontrado.'); return; }
       if (rows[0].anulada) { alert('Este movimiento ya fue anulado.'); return; }
-      if (rows[0].id_area) {
-        alert('Esta es una entrega entre Áreas -- no se puede anular desde aquí. Si hay que revertirla, use una Transferencia (Entrada de Stock, Área de Origen = el Área que la recibió).');
-        return;
-      }
+      const bloqueoSal = _bloqueoAnulacionSalida(rows[0]);
+      if (bloqueoSal) { alert(bloqueoSal); return; }
       movOrig = rows[0];
     }
   } catch(e) { alert('Error cargando movimiento: ' + msgErr(e)); return; }
@@ -5960,9 +5981,8 @@ async function confirmarAnulacion() {
       const rows = await api('stock_salidas', 'GET', null, '?id_salida=eq.' + idMovimiento + '&select=*,area_receptora:id_area(nombre,codigo),empleado_recibe:id_empleado(nombre_completo,correo,id_area,param_areas:id_area(nombre))');
       if (!rows || !rows[0]) throw new Error('Movimiento no encontrado.');
       if (rows[0].anulada) throw new Error('Este movimiento ya fue anulado.');
-      if (rows[0].id_area) {
-        throw new Error('Esta es una entrega entre Áreas -- no se puede anular desde aquí. Si hay que revertirla, use una Transferencia (Entrada de Stock, Área de Origen = el Área que la recibió).');
-      }
+      const bloqueoSal = _bloqueoAnulacionSalida(rows[0]);
+      if (bloqueoSal) throw new Error(bloqueoSal);
       movOrig = rows[0];
     }
 
@@ -6004,13 +6024,10 @@ async function confirmarAnulacion() {
       // (movOrig.id_area — en la práctica, siempre Compras)
       if (movOrig.id_area) await upsertStockArea(id_articulo, movOrig.id_area, -cantidad);
     } else {
-      // Se anula una Salida: devolver la cantidad al área que la entregó
-      // (movOrig.id_area_entrega). Este bloque ya solo se alcanza para
-      // Salidas de venta a Cliente (id_area = null, ver más arriba) --
-      // las entregas Área↔Área (id_area = área receptora real) se
-      // bloquean antes de llegar aquí; su reverso correcto es una
-      // Transferencia explícita, que ajusta ambas áreas correctamente.
-      if (movOrig.id_area_entrega) await upsertStockArea(id_articulo, movOrig.id_area_entrega, cantidad);
+      // Se anula una Salida: solo se llega aquí con un FALTANTE (Ajuste
+      // de Inventario) -- ver _bloqueoAnulacionSalida(). El Faltante
+      // descontó el stock de movOrig.id_area, así que se le devuelve ahí.
+      if (movOrig.id_area) await upsertStockArea(id_articulo, movOrig.id_area, cantidad);
     }
 
 
@@ -6084,60 +6101,6 @@ async function confirmarAnulacion() {
             datos_extra: JSON.stringify({ id_entrada: idMovimiento, accion: 'orden_compra_rechazada' })
           }, '', true);
         } catch(eNotifAnulEnt) { console.warn('Error notificando anulación de Entrada:', eNotifAnulEnt); }
-      }
-    }
-
-    // 9. Notificaciones para SALIDAS
-    if (tipo === 'SALIDA') {
-      const r = (Array.isArray(window.inventarioCache) ? window.inventarioCache : []).find(function(x) { return x.id_articulo === id_articulo; });
-      const nomArt = r ? r.nombre_articulo : 'Artículo #' + id_articulo;
-
-      // 9a. Notificación interna al empleado que recibió
-      if (movOrig.id_empleado) {
-        try {
-          await api('notificaciones', 'POST', {
-            id_empresa:   _empresaActiva?.id_empresa,
-            id_empleado:  movOrig.id_empleado,
-            tipo:         'ANULACION_SALIDA',
-            titulo:       '⚠ Anulación de Salida de Inventario',
-            mensaje:      'La salida de ' + cantidad + ' unidades de "' + nomArt + '" registrada a su nombre ha sido anulada. El inventario debe retornar al almacén.',
-            leida:        false,
-            id_usuario:   sesionActual.correo_usuario,
-            fecha_registro: ahoraVzla()
-          });
-        } catch(eNot) { console.warn('Error creando notificación interna:', eNot); }
-      }
-
-      // 9b. Correo al responsable del área receptora
-      if (movOrig.id_area) {
-        try {
-          // Buscar responsable del área (empleado con nivel jerárquico más alto del área)
-          const responsables = await buscarEmpleados({
-            p_id_area: movOrig.id_area, p_solo_con_nivel: true, p_orden_por_nivel: true, p_limite: 1,
-            p_id_empresa: _empresaActiva ? _empresaActiva.id_empresa : null
-          });
-          if (responsables && responsables[0] && responsables[0].correo) {
-            const resp = responsables[0];
-            const areaName = movOrig.area_receptora ? movOrig.area_receptora.nombre : 'Área #' + movOrig.id_area;
-            await fetch(SUPABASE_URL + '/functions/v1/send-email', {
-              method: 'POST',
-              headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                to:      resp.correo,
-                subject: '⚠ Anulación de Salida de Inventario — ' + areaName,
-                html:    '<p>Estimado/a <strong>' + escapeHtml(resp.nombre_completo) + '</strong>,</p>'
-                       + '<p>Se ha anulado una salida de inventario registrada para su área.</p>'
-                       + '<table style="border-collapse:collapse;width:100%">'
-                       + '<tr><td style="padding:6px;border:1px solid #ddd"><strong>Artículo</strong></td><td style="padding:6px;border:1px solid #ddd">' + nomArt + '</td></tr>'
-                       + '<tr><td style="padding:6px;border:1px solid #ddd"><strong>Cantidad</strong></td><td style="padding:6px;border:1px solid #ddd">' + cantidad + '</td></tr>'
-                       + '<tr><td style="padding:6px;border:1px solid #ddd"><strong>Área</strong></td><td style="padding:6px;border:1px solid #ddd">' + areaName + '</td></tr>'
-                       + '<tr><td style="padding:6px;border:1px solid #ddd"><strong>Anulado por</strong></td><td style="padding:6px;border:1px solid #ddd">' + sesionActual.correo_usuario + '</td></tr>'
-                       + '</table>'
-                       + '<p>El inventario debe retornar al almacén. Por favor coordine la devolución.</p>'
-              })
-            });
-          }
-        } catch(eEmail) { console.warn('Error enviando correo responsable:', eEmail); }
       }
     }
 
