@@ -18,10 +18,10 @@ async function renderEmisores() {
     const tipoColor = { 'ORDINARIO':'badge-naranja','ESPECIAL':'badge-verde','FORMAL':'badge-gris' };
     const filas = emisores.map(function(e) {
       return '<tr>'
-        + '<td><div style="font-weight:600">' + e.nombre + '</div><div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (e.rif||'—') + '</div></td>'
+        + '<td><div style="font-weight:600">' + escapeHtml(e.nombre) + '</div><div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + escapeHtml((e.rif||'—')) + '</div></td>'
         + '<td><span class="badge ' + (tipoColor[e.tipo_contribuyente]||'badge-gris') + '">' + (tipoLabel[e.tipo_contribuyente]||'—') + '</span></td>'
-        + '<td style="font-size:12px">' + (e.telefono||'—') + '</td>'
-        + '<td style="font-size:12px">' + (e.correo||'—') + '</td>'
+        + '<td style="font-size:12px">' + escapeHtml((e.telefono||'—')) + '</td>'
+        + '<td style="font-size:12px">' + escapeHtml((e.correo||'—')) + '</td>'
         + '<td><span class="badge ' + (e.estado==='ACTIVO'?'badge-verde':'badge-rojo') + '">' + (e.estado||'ACTIVO') + '</span></td>'
         + '<td><button class="btn-secundario" onclick="verFichaEmisor(' + e.id_empresa + ')">Ver</button></td>'
         + '</tr>';
@@ -49,13 +49,13 @@ async function verFichaEmisor(id) {
   const tipoLabel = { 'ORDINARIO':'Contribuyente Ordinario','ESPECIAL':'Contribuyente Especial','FORMAL':'Contribuyente Formal' };
   document.getElementById('ficha-emisor-contenido').innerHTML =
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
-    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Nombre</div><div style="font-size:14px;font-weight:600">' + e.nombre + '</div></div>'
-    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">RIF</div><div style="font-size:14px;font-family:var(--font-mono)">' + (e.rif||'—') + '</div></div>'
+    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Nombre</div><div style="font-size:14px;font-weight:600">' + escapeHtml(e.nombre) + '</div></div>'
+    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">RIF</div><div style="font-size:14px;font-family:var(--font-mono)">' + escapeHtml((e.rif||'—')) + '</div></div>'
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Tipo Contribuyente</div><div style="font-size:14px">' + (tipoLabel[e.tipo_contribuyente]||'—') + '</div></div>'
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Estado</div><span class="badge ' + (e.estado==='ACTIVO'?'badge-verde':'badge-rojo') + '">' + (e.estado||'ACTIVO') + '</span></div>'
-    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div style="font-size:14px">' + (e.telefono||'—') + '</div></div>'
-    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:14px">' + (e.correo||'—') + '</div></div>'
-    + '<div style="grid-column:1/-1"><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:14px">' + (e.direccion||'—') + '</div></div>'
+    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div style="font-size:14px">' + escapeHtml((e.telefono||'—')) + '</div></div>'
+    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:14px">' + escapeHtml((e.correo||'—')) + '</div></div>'
+    + '<div style="grid-column:1/-1"><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:14px">' + escapeHtml((e.direccion||'—')) + '</div></div>'
     + '</div>';
   var btnEditar   = document.getElementById('ficha-emisor-btn-editar');
   window._fichaEmisorId     = e.id_empresa;

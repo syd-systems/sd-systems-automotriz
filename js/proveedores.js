@@ -22,12 +22,12 @@ async function renderProveedores() {
     const filas = proveedores.map(function(p) {
       return '<tr data-id="' + p.id_proveedor + '">'
         + '<td>'
-        + '<div style="font-weight:500;font-size:15px">' + p.nombre + '</div>'
-        + '<div style="font-size:13px;color:var(--suave);font-family:var(--font-mono)">' + (p.rif||'—') + '</div>'
+        + '<div style="font-weight:500;font-size:15px">' + escapeHtml(p.nombre) + '</div>'
+        + '<div style="font-size:13px;color:var(--suave);font-family:var(--font-mono)">' + escapeHtml((p.rif||'—')) + '</div>'
         + (p.tipo_contribuyente ? '<span class="badge ' + (tipoColor[p.tipo_contribuyente]||'badge-gris') + '" style="font-size:9px;margin-top:3px;display:inline-block">' + (tipoLabel[p.tipo_contribuyente]||p.tipo_contribuyente) + '</span>' : '')
         + '</td>'
-        + '<td style="font-size:12px">' + (p.telefono||'—') + '</td>'
-        + '<td style="font-size:12px">' + (p.correo||'—') + '</td>'
+        + '<td style="font-size:12px">' + escapeHtml((p.telefono||'—')) + '</td>'
+        + '<td style="font-size:12px">' + escapeHtml((p.correo||'—')) + '</td>'
         + '<td><span class="badge ' + (p.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (p.estado||'ACTIVO') + '</span></td>'
         + '<td><button class="btn-naranja" onclick="verFichaProveedor(' + p.id_proveedor + ')">Ver</button>'
         + '</td>'
@@ -120,14 +120,14 @@ async function verFichaProveedor(id) {
 
   document.getElementById('ficha-prov-contenido').innerHTML =
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
-    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Nombre</div><div style="font-weight:600;font-size:15px">' + p.nombre + '</div></div>'
-    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">RIF</div><div style="font-size:14px;font-family:var(--font-mono)">' + (p.rif||'—') + '</div></div>'
+    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Nombre</div><div style="font-weight:600;font-size:15px">' + escapeHtml(p.nombre) + '</div></div>'
+    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">RIF</div><div style="font-size:14px;font-family:var(--font-mono)">' + escapeHtml((p.rif||'—')) + '</div></div>'
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Tipo Contribuyente</div><div style="font-size:14px">' + (p.tipo_contribuyente ? '<span class="badge ' + (tipoColor[p.tipo_contribuyente]||'badge-gris') + '">' + (tipoLabel[p.tipo_contribuyente]||p.tipo_contribuyente) + '</span>' : '—') + '</div></div>'
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Tipo Proveedor</div><div><span class="badge ' + (p.tipo_proveedor === 'NACIONAL' ? 'badge-naranja' : 'badge-gris') + '">' + (p.tipo_proveedor||'NACIONAL') + '</span></div></div>'
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Categoría</div><div style="font-size:14px">' + catNombre + '</div></div>'
-    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div style="font-size:14px">' + (p.telefono||'—') + '</div></div>'
-    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:14px">' + (p.correo||'—') + '</div></div>'
-    + '<div style="grid-column:1/-1"><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:14px">' + (p.direccion||'—') + '</div></div>'
+    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div style="font-size:14px">' + escapeHtml((p.telefono||'—')) + '</div></div>'
+    + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:14px">' + escapeHtml((p.correo||'—')) + '</div></div>'
+    + '<div style="grid-column:1/-1"><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:14px">' + escapeHtml((p.direccion||'—')) + '</div></div>'
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Moneda Facturación</div><div style="font-size:14px;font-family:var(--font-mono)">' + (p.moneda_facturacion||'USD') + '</div></div>'
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Días de Crédito</div><div style="font-size:14px">' + (p.dias_credito||0) + ' días</div></div>'
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Límite de Crédito</div><div style="font-size:14px;font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(p.limite_credito||0) + '</div></div>'
@@ -186,13 +186,13 @@ function cargarBancosProveedor(id_bancoSel, id_bancoPMSel) {
   var bancos = _provBancosCache || [];
   var opts = '<option value="">— Seleccionar —</option>'
     + bancos.map(function(b){
-        return '<option value="'+b.id+'"'+(b.id===id_bancoSel?' selected':'')+'>'+b.nombre+'</option>';
+        return '<option value="'+b.id+'"'+(b.id===id_bancoSel?' selected':'')+'>'+escapeHtml(b.nombre)+'</option>';
       }).join('');
   var el = document.getElementById('prov-banco');
   if (el) { el.innerHTML = opts; if (id_bancoSel) onSelBancoProveedor(); }
   var opts2 = '<option value="">— Seleccionar —</option>'
     + bancos.map(function(b){
-        return '<option value="'+b.id+'"'+(b.id===id_bancoPMSel?' selected':'')+'>'+b.nombre+'</option>';
+        return '<option value="'+b.id+'"'+(b.id===id_bancoPMSel?' selected':'')+'>'+escapeHtml(b.nombre)+'</option>';
       }).join('');
   var el2 = document.getElementById('prov-pm-banco');
   if (el2) el2.innerHTML = opts2;
@@ -282,7 +282,7 @@ async function abrirProveedor(id) {
     if (selCat) {
       selCat.innerHTML = '<option value="">— Seleccionar —</option>'
         + (cats||[]).map(function(c){
-            return '<option value="'+c.id+'"'+(c.id===(p?.id_categoria)?' selected':'')+'>'+c.nombre+'</option>';
+            return '<option value="'+c.id+'"'+(c.id===(p?.id_categoria)?' selected':'')+'>'+escapeHtml(c.nombre)+'</option>';
           }).join('');
     }
   } catch(e) {}

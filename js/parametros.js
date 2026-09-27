@@ -133,7 +133,7 @@ async function mostrarTablaParam(key) {
           + '<td style="' + indent + ';font-size:13px;font-weight:' + (nivel === 0 ? '600' : '400') + '">'
           + (nivel > 0 ? '<span style="color:var(--borde);margin-right:4px">└</span>' : '')
           + item.nombre + '</td>'
-          + '<td style="font-size:11px;color:var(--suave)">' + (padre ? '<span style="font-family:var(--font-mono);color:var(--suave)">' + padre.codigo + '</span> ' + padre.nombre : '—') + '</td>'
+          + '<td style="font-size:11px;color:var(--suave)">' + (padre ? '<span style="font-family:var(--font-mono);color:var(--suave)">' + escapeHtml(padre.codigo) + '</span> ' + escapeHtml(padre.nombre) : '—') + '</td>'
           + '<td><span class="badge ' + (item.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (item.estado || 'ACTIVO') + '</span></td>'
           + '<td><div style="display:flex;gap:6px">'
           + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-naranja" onclick="abrirParamItem(\'' + key + '\',' + item[def.pk] + ')" style="font-size:11px;padding:5px 10px">Ver</button>' : '')
@@ -169,8 +169,8 @@ async function mostrarTablaParam(key) {
           + (def.tieneArea ? '<td style="font-size:12px;color:var(--suave)">' + (areasMap[item.id_area] ? areasMap[item.id_area].nombre : '—') + '</td>' : '')
           + (def.tieneTipoSector ? '<td style="font-size:12px;color:var(--suave)">' + (item.tipo_sector || '—') + '</td>' : '')
           + (def.tieneTipoCanal ? '<td style="font-size:12px;color:var(--suave)">' + ({EFECTIVO:'Efectivo',TRANSFERENCIA:'Transferencia',AFILIACION_BANCARIA:'Afiliación Bancaria',PAGO_MOVIL:'Pago Móvil'}[item.tipo_canal] || '—') + '</td>' : '')
-          + (def.tieneCategoria ? '<td style="font-size:12px;color:var(--suave)">' + (cat ? (cat.codigo?cat.codigo+' — ':'')+cat.nombre : '—') + '</td>' : '')
-          + (def.tieneCuentaContable ? '<td style="font-size:12px;color:var(--suave)">' + (cuentasContMap[item.id_cuenta_contable] ? '<span style="font-family:var(--font-mono);color:var(--naranja)">' + cuentasContMap[item.id_cuenta_contable].codigo + '</span> — ' + cuentasContMap[item.id_cuenta_contable].nombre : '—') + '</td>' : '')
+          + (def.tieneCategoria ? '<td style="font-size:12px;color:var(--suave)">' + (cat ? escapeHtml((cat.codigo?cat.codigo+' — ':'')+cat.nombre) : '—') + '</td>' : '')
+          + (def.tieneCuentaContable ? '<td style="font-size:12px;color:var(--suave)">' + (cuentasContMap[item.id_cuenta_contable] ? '<span style="font-family:var(--font-mono);color:var(--naranja)">' + cuentasContMap[item.id_cuenta_contable].codigo + '</span> — ' + escapeHtml(cuentasContMap[item.id_cuenta_contable].nombre) : '—') + '</td>' : '')
           + '<td><span class="badge ' + (item.estado === 'ACTIVO' ? 'badge-verde' : 'badge-rojo') + '">' + (item.estado || 'ACTIVO') + '</span></td>'
           + '<td><div style="display:flex;gap:6px">'
           + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-naranja" onclick="abrirParamItem(\'' + key + '\',' + item[def.pk] + ')" style="font-size:11px;padding:5px 10px">Ver</button>' : '')
@@ -186,7 +186,7 @@ async function mostrarTablaParam(key) {
 
     cont.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
-      + '<div style="font-family:var(--font-display);font-size:20px;letter-spacing:1px">' + def.icono + ' ' + def.nombre + ' <span style="font-size:14px;color:var(--suave)">(' + items.length + ')</span></div>'
+      + '<div style="font-family:var(--font-display);font-size:20px;letter-spacing:1px">' + def.icono + ' ' + escapeHtml(def.nombre) + ' <span style="font-size:14px;color:var(--suave)">(' + items.length + ')</span></div>'
       + (puedo('PARAMETROS','EDITAR') ? '<button class="btn-primario" onclick="abrirParamItem(\'' + key + '\',null)" style="font-size:12px">+ Nuevo</button>' : '')
       + '</div>'
       + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 620px))"><table style="table-layout:fixed;width:100%"><thead><tr>' + thead + '</tr></thead><tbody>'
@@ -284,7 +284,7 @@ async function abrirParamItem(key, id) {
     }
     if (def.tieneArea) {
       const opcAreas = _paramAreasCache.map(function(a) {
-        return '<option value="' + a.id + '"' + (item && item.id_area === a.id ? ' selected' : '') + '>' + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>';
+        return '<option value="' + a.id + '"' + (item && item.id_area === a.id ? ' selected' : '') + '>' + escapeHtml(a.nombre) + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>';
       }).join('');
       camposHTML += '<div class="form-campo form-full"><label>Área</label><select id="param-item-area" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="">— Sin área —</option>' + opcAreas + '</select></div>';
     }
@@ -293,7 +293,7 @@ async function abrirParamItem(key, id) {
       try {
         const cats = await api('inv_categorias','GET',null,'?estado=eq.ACTIVO&order=nombre.asc' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
         opcCats = cats.map(function(c) {
-          return '<option value="' + c.id + '"' + (item && item.id_categoria === c.id ? ' selected' : '') + '>' + (c.codigo ? c.codigo + ' — ' : '') + c.nombre + '</option>';
+          return '<option value="' + c.id + '"' + (item && item.id_categoria === c.id ? ' selected' : '') + '>' + (c.codigo ? c.codigo + ' — ' : '') + escapeHtml(c.nombre) + '</option>';
         });
       } catch(e) {}
       camposHTML += '<div class="form-campo form-full"><label>Categoría *</label><select id="param-item-categoria" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="">— Seleccionar categoría —</option>' + opcCats.join('') + '</select></div>';
@@ -307,7 +307,7 @@ async function abrirParamItem(key, id) {
           return c.codigo && prefijos.some(function(p){ return c.codigo.indexOf(p) === 0; }) && c.estado === 'ACTIVA' && c.permite_movimiento === true;
         }).sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
         opcCuentas = ctas.map(function(c) {
-          return '<option value="' + c.id_cuenta + '"' + (item && item.id_cuenta_contable == c.id_cuenta ? ' selected' : '') + '>' + c.codigo + ' — ' + c.nombre + '</option>';
+          return '<option value="' + c.id_cuenta + '"' + (item && item.id_cuenta_contable == c.id_cuenta ? ' selected' : '') + '>' + c.codigo + ' — ' + escapeHtml(c.nombre) + '</option>';
         });
       } catch(e) {}
       camposHTML += '<div class="form-campo form-full"><label>Cuenta Contable</label><select id="param-item-cuenta-contable" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="">— Seleccionar cuenta —</option>' + opcCuentas.join('') + '</select></div>';
@@ -907,7 +907,7 @@ async function abrirEmpleado(id) {
     const selEmisor = document.getElementById('emp-emisor');
     if (selEmisor) {
       selEmisor.innerHTML = '<option value="">— Seleccionar empresa —</option>'
-        + emisores.map(function(em){ return '<option value="'+em.id_empresa+'">'+ em.nombre+'</option>'; }).join('');
+        + emisores.map(function(em){ return '<option value="'+em.id_empresa+'">'+ escapeHtml(em.nombre)+'</option>'; }).join('');
       if (e && e.id_empresa) selEmisor.value = e.id_empresa;
     }
   } catch(eEm) {}
@@ -1323,10 +1323,10 @@ async function verFichaEmpleado(id) {
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Estado Civil</div><div style="font-size:13px">' + getNombre(p.civiles, e.id_estado_civil) + '</div></div>'
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Sexo</div><div style="font-size:13px">' + getNombre(p.sexos, e.id_sexo) + '</div></div>'
     + '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Nivel Educativo</div><div style="font-size:13px">' + getNombre(p.niveles, e.id_nivel_educativo) + '</div></div>'
-    + (verDatos ? '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:13px">' + (e.correo||'—') + '</div></div>' : '')
+    + (verDatos ? '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:13px">' + escapeHtml((e.correo||'—')) + '</div></div>' : '')
     + (verDatos ? '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Teléfono Móvil</div><div style="font-size:13px">' + (e.telefono_movil||'—') + '</div></div>' : '')
     + (verDatos ? '<div><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Teléfono Fijo</div><div style="font-size:13px">' + (e.telefono_fijo||'—') + '</div></div>' : '')
-    + (verDatos ? '<div class="form-full" style="grid-column:1/-1"><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:13px">' + (e.direccion||'—') + '</div></div>' : '')
+    + (verDatos ? '<div class="form-full" style="grid-column:1/-1"><div style="font-size:13px;font-weight:700;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:13px">' + escapeHtml((e.direccion||'—')) + '</div></div>' : '')
     + '</div>'
 
     // Contacto Emergencia
@@ -1492,7 +1492,7 @@ async function mostrarTiposPago() {
         + '<td><span class="badge ' + (t.estado === 'ACTIVO' ? 'badge-verde' : 'badge-gris') + '">' + t.estado + '</span></td>'
         + '<td><div style="display:flex;gap:6px">'
         + '<button class="btn-secundario" style="font-size:11px;padding:6px 10px" onclick="abrirFormTipoPago(' + t.id_tipo + ')">Editar</button>'
-        + '<button class="btn-secundario" style="font-size:11px;padding:6px 10px;color:#f87171;border-color:rgba(248,113,113,0.4)" onclick="eliminarTipoPago(' + t.id_tipo + ',\'' + escapeHtml(t.nombre).replace(/'/g,"\\'") + ' (' + t.moneda + ')\')">Eliminar</button>'
+        + '<button class="btn-secundario" style="font-size:11px;padding:6px 10px;color:#f87171;border-color:rgba(248,113,113,0.4)" onclick="eliminarTipoPago(' + t.id_tipo + ',' + jsArg(t.nombre + ' (' + t.moneda + ')') + ')">Eliminar</button>'
         + '</div></td>'
         + '</tr>';
     }).join('');
@@ -1620,7 +1620,7 @@ async function mostrarMonedas() {
         + '<td><span class="badge ' + (m.estado === 'ACTIVO' ? 'badge-verde' : 'badge-gris') + '">' + m.estado + '</span></td>'
         + '<td><div style="display:flex;gap:6px">'
         + '<button class="btn-secundario" style="font-size:11px;padding:6px 10px" onclick="abrirFormMoneda(\'' + m.codigo + '\')">Editar</button>'
-        + '<button class="btn-secundario" style="font-size:11px;padding:6px 10px;color:#f87171;border-color:rgba(248,113,113,0.4)" onclick="eliminarMoneda(\'' + m.codigo + '\',\'' + escapeHtml(m.nombre).replace(/'/g,"\\'") + '\')">Eliminar</button>'
+        + '<button class="btn-secundario" style="font-size:11px;padding:6px 10px;color:#f87171;border-color:rgba(248,113,113,0.4)" onclick="eliminarMoneda(' + jsArg(m.codigo) + ',' + jsArg(m.nombre) + ')">Eliminar</button>'
         + '</div></td>'
         + '</tr>';
     }).join('');

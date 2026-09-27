@@ -54,9 +54,9 @@ function contRenderShell() {
   const selectorEmpresa = emisores.length > 1
     ? '<select onchange="window._contEmisorActivo=parseInt(this.value);contCambiarVista(_contVista,true)" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:6px 10px;border-radius:5px;outline:none">'
-      + emisores.map(function(e){ return '<option value="'+e.id_empresa+'"'+(window._contEmisorActivo===e.id_empresa?' selected':'')+'>🏢 '+e.nombre+'</option>'; }).join('')
+      + emisores.map(function(e){ return '<option value="'+e.id_empresa+'"'+(window._contEmisorActivo===e.id_empresa?' selected':'')+'>🏢 '+escapeHtml(e.nombre)+'</option>'; }).join('')
       + '</select>'
-    : (emisores.length===1 ? '<span style="font-size:12px;color:var(--suave)">🏢 '+emisores[0].nombre+'</span>' : '');
+    : (emisores.length===1 ? '<span style="font-size:12px;color:var(--suave)">🏢 '+escapeHtml(emisores[0].nombre)+'</span>' : '');
 
   c.innerHTML =
     '<div class="panel" style="padding:0">'
@@ -245,7 +245,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
     };
 
     const perSelect = contPeriodosCache.map(function(p){
-      return '<option value="' + p.id_periodo + '"' + (filtroPeriodo == p.id_periodo ? ' selected':'') + '>' + p.nombre + '</option>';
+      return '<option value="' + p.id_periodo + '"' + (filtroPeriodo == p.id_periodo ? ' selected':'') + '>' + escapeHtml(p.nombre) + '</option>';
     }).join('');
 
     const hoyDiario = hoyVenezuela();
@@ -273,7 +273,7 @@ async function contRenderDiario(filtroEstado, filtroPeriodo) {
             + '<td style="font-family:var(--font-mono);font-weight:600;color:var(--naranja)">' + a.numero_asiento + '</td>'
             + '<td style="font-size:12px">' + fmtFecha(a.fecha) + '</td>'
             + '<td style="font-size:12px">' + escapeHtml(a.descripcion)
-            + (a.referencia ? '<div style="font-size:10px;color:var(--suave)">Ref: ' + a.referencia + '</div>' : '')
+            + (a.referencia ? '<div style="font-size:10px;color:var(--suave)">Ref: ' + escapeHtml(a.referencia) + '</div>' : '')
             + '</td>'
             + '<td style="font-size:11px;color:var(--suave)">' + (a.cont_periodos ? a.cont_periodos.nombre : '—') + '</td>'
             + '<td style="text-align:right;font-size:12px;font-family:var(--font-mono);font-weight:600">' + fmtMontoAst(a.id_asiento)
@@ -359,7 +359,7 @@ async function contVerAsiento(id) {
       + '<div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + ast.numero_asiento + '</div>'
       + '<span class="badge ' + est.clase + '">' + est.label + '</span>'
       + '<div style="font-size:12px;color:var(--suave);margin-top:4px">Fecha: ' + fmtFecha(ast.fecha) + '</div>'
-      + (ast.referencia ? '<div style="font-size:11px;color:var(--suave)">Ref: ' + ast.referencia + '</div>' : '')
+      + (ast.referencia ? '<div style="font-size:11px;color:var(--suave)">Ref: ' + escapeHtml(ast.referencia) + '</div>' : '')
       + '</div>'
       + '<div style="text-align:right">'
       + '<div style="font-size:11px;color:var(--suave)">Moneda: ' + ast.moneda_base + ' · Tasa BCV Bs/Usd: ' + formatearTasaVE(ast.tasa_bcv||1) + '</div>'
@@ -503,7 +503,7 @@ async function contAbrirAsiento(id) {
   document.getElementById('cont-form-periodo').innerHTML =
     '<option value="">— Sin período —</option>'
     + contPeriodosCache.map(function(p){
-      return '<option value="' + p.id_periodo + '"' + (p.estado==='ABIERTO' ? '':' style="color:#fc8181"')+'>' + p.nombre + (p.estado!=='ABIERTO'?' (Cerrado)':'') + '</option>';
+      return '<option value="' + p.id_periodo + '"' + (p.estado==='ABIERTO' ? '':' style="color:#fc8181"')+'>' + escapeHtml(p.nombre) + (p.estado!=='ABIERTO'?' (Cerrado)':'') + '</option>';
     }).join('');
 
   document.getElementById('alerta-cont-form-ok').style.display  = 'none';
@@ -565,7 +565,7 @@ function contRenderLineasForm() {
     + contLineasAsiento.map(function(l, i) {
         return '<tr>'
           + '<td style="padding:4px"><select onchange="contLineasAsiento[' + i + '].id_cuenta=parseInt(this.value);contRenderLineasForm()" style="width:100%;' + contSelStyle() + ';font-size:11px">' + contBuildCuentaSelect(l.id_cuenta) + '</select></td>'
-          + '<td style="padding:4px"><input type="text" value="' + (l.descripcion||'') + '" onchange="contLineasAsiento[' + i + '].descripcion=this.value" placeholder="Detalle..." style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:11px;padding:6px 8px;border-radius:4px;outline:none"></td>'
+          + '<td style="padding:4px"><input type="text" value="' + escapeHtml(l.descripcion||'') + '" onchange="contLineasAsiento[' + i + '].descripcion=this.value" placeholder="Detalle..." style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:11px;padding:6px 8px;border-radius:4px;outline:none"></td>'
           + (function() {
               const cInfo    = contCuentasCache.find(function(x){ return x.id_cuenta === l.id_cuenta; });
               const nat      = cInfo ? cInfo.naturaleza : null;
@@ -812,8 +812,8 @@ async function contCargarMayor() {
           saldo += esDeud ? (d-h) : (h-d);
           return '<tr>'
             + '<td style="padding:7px;font-size:12px">' + fmtFecha(l.cont_asientos?.fecha||'') + '</td>'
-            + '<td style="padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">' + (l.cont_asientos?.numero_asiento||'—') + (l.cont_asientos?.referencia ? '<div style="font-size:10px;color:var(--suave)">Ref: ' + l.cont_asientos.referencia + '</div>' : '') + '</td>'
-            + '<td style="padding:7px;font-size:12px">' + (l.descripcion||'') + '</td>'
+            + '<td style="padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">' + (l.cont_asientos?.numero_asiento||'—') + (l.cont_asientos?.referencia ? '<div style="font-size:10px;color:var(--suave)">Ref: ' + escapeHtml(l.cont_asientos.referencia) + '</div>' : '') + '</td>'
+            + '<td style="padding:7px;font-size:12px">' + escapeHtml((l.descripcion||'')) + '</td>'
             + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#22c55e">' + (d>0 ? '$ '+fmtUSD(d) : '—') + '</td>'
             + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#fc8181">' + (h>0 ? '$ '+fmtUSD(h) : '—') + '</td>'
             + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-weight:700;color:' + (saldo>=0?'var(--naranja)':'#fc8181') + '">$ ' + fmtUSD(Math.abs(saldo)) + (saldo<0?' Cr':' Dr') + '</td>'
@@ -847,7 +847,7 @@ async function contCargarMayor() {
           const cInfo = contCuentasCache.find(function(c){ return c.id_cuenta === cid; });
           html += '<div style="margin-bottom:24px">'
             + '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:10px 14px;margin-bottom:8px">'
-            + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + (cInfo ? cInfo.codigo + ' — ' + cInfo.nombre : 'Cuenta #'+cid) + '</div>'
+            + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + (cInfo ? escapeHtml(cInfo.codigo + ' — ' + cInfo.nombre) : 'Cuenta #'+cid) + '</div>'
             + '<div style="font-size:11px;color:var(--suave)">Libro Auxiliar ' + monedaRef + '</div>'
             + '</div>'
             + renderGrupo(lineasG, cInfo)
@@ -857,7 +857,7 @@ async function contCargarMayor() {
       } else {
         res.innerHTML = '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
           + '<div style="font-size:10px;color:var(--suave)">CUENTA · AUXILIAR ' + monedaRef + '</div>'
-          + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + (cuenta ? cuenta.codigo + ' — ' + cuenta.nombre : '') + '</div>'
+          + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + (cuenta ? escapeHtml(cuenta.codigo + ' — ' + cuenta.nombre) : '') + '</div>'
           + '</div>'
           + renderGrupo(lineasRef, cuenta);
       }
@@ -889,8 +889,8 @@ async function contCargarMayor() {
           saldoCta += esDeud ? (d-h) : (h-d);
           return '<tr>'
             + '<td style="padding:7px;font-size:12px">' + fmtFecha(l.cont_asientos?.fecha||'') + '</td>'
-            + '<td style="padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">' + (l.cont_asientos?.numero_asiento||'—') + (l.cont_asientos?.referencia ? '<div style="font-size:10px;color:var(--suave)">Ref: ' + l.cont_asientos.referencia + '</div>' : '') + '</td>'
-            + '<td style="padding:7px;font-size:12px">' + (l.descripcion||'') + '</td>'
+            + '<td style="padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">' + (l.cont_asientos?.numero_asiento||'—') + (l.cont_asientos?.referencia ? '<div style="font-size:10px;color:var(--suave)">Ref: ' + escapeHtml(l.cont_asientos.referencia) + '</div>' : '') + '</td>'
+            + '<td style="padding:7px;font-size:12px">' + escapeHtml((l.descripcion||'')) + '</td>'
             + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#22c55e">' + (d>0 ? fmtM(d) : '—') + '</td>'
             + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#fc8181">' + (h>0 ? fmtM(h) : '—') + '</td>'
             + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-weight:700;color:' + (saldoCta>=0?'var(--naranja)':'#fc8181') + '">' + fmtM(Math.abs(saldoCta)) + (saldoCta<0?' Cr':' Dr') + '</td>'
@@ -898,7 +898,7 @@ async function contCargarMayor() {
         });
         html += '<div style="margin-bottom:24px">'
           + '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:10px 14px;margin-bottom:8px">'
-          + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + (cInfo ? cInfo.codigo + ' — ' + cInfo.nombre : 'Cuenta #'+cid) + '</div>'
+          + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + (cInfo ? escapeHtml(cInfo.codigo + ' — ' + cInfo.nombre) : 'Cuenta #'+cid) + '</div>'
           + '<div style="font-size:11px;color:var(--suave)">' + (cInfo ? cInfo.naturaleza + ' · ' + cInfo.tipo : '') + '</div>'
           + '</div>'
           + '<table style="width:100%;border-collapse:collapse"><thead><tr>'
@@ -924,8 +924,8 @@ async function contCargarMayor() {
       saldo += esDeudora ? (debe-haber) : (haber-debe);
       return '<tr>'
         + '<td style="padding:7px;font-size:12px">' + fmtFecha(l.cont_asientos?.fecha||'') + '</td>'
-        + '<td style="padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">' + (l.cont_asientos?.numero_asiento||'—') + (l.cont_asientos?.referencia ? '<div style="font-size:10px;color:var(--suave)">Ref: ' + l.cont_asientos.referencia + '</div>' : '') + '</td>'
-        + '<td style="padding:7px;font-size:12px">' + (l.descripcion||'') + '</td>'
+        + '<td style="padding:7px;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">' + (l.cont_asientos?.numero_asiento||'—') + (l.cont_asientos?.referencia ? '<div style="font-size:10px;color:var(--suave)">Ref: ' + escapeHtml(l.cont_asientos.referencia) + '</div>' : '') + '</td>'
+        + '<td style="padding:7px;font-size:12px">' + escapeHtml((l.descripcion||'')) + '</td>'
         + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#22c55e">' + (debe>0 ? fmtM(debe) : '—') + '</td>'
         + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);color:#fc8181">' + (haber>0 ? fmtM(haber) : '—') + '</td>'
         + '<td style="text-align:right;padding:7px;font-family:var(--font-mono);font-weight:700;color:' + (saldo>=0?'var(--naranja)':'#fc8181') + '">' + fmtM(Math.abs(saldo)) + (saldo<0?' Cr':' Dr') + '</td>'
@@ -934,7 +934,7 @@ async function contCargarMayor() {
     res.innerHTML =
       '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
       + '<div style="font-size:10px;color:var(--suave)">CUENTA</div>'
-      + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + (cuenta ? cuenta.codigo + ' — ' + cuenta.nombre : '') + '</div>'
+      + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + (cuenta ? escapeHtml(cuenta.codigo + ' — ' + cuenta.nombre) : '') + '</div>'
       + '<div style="font-size:11px;color:var(--suave);margin-top:4px">Naturaleza: ' + (cuenta?.naturaleza||'') + ' · Tipo: ' + (cuenta?.tipo||'') + '</div>'
       + '</div>'
       + '<table style="width:100%;border-collapse:collapse"><thead><tr>'
@@ -1018,7 +1018,7 @@ function contSaldoGrupo(saldos, tipoCuenta, desde, hasta) {
 function contRenderGrupoBalance(saldos, tipo, titulo, color) {
   const cuentas = contCuentasCache.filter(function(c){ return c.tipo === tipo && c.nivel <= 3 && !c.permite_movimiento; });
   let html = '<div style="margin-bottom:20px">'
-    + '<div style="font-size:11px;color:' + color + ';letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px;border-bottom:1px solid ' + color + '44;padding-bottom:4px">' + titulo + '</div>';
+    + '<div style="font-size:11px;color:' + color + ';letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px;border-bottom:1px solid ' + color + '44;padding-bottom:4px">' + escapeHtml(titulo) + '</div>';
   let total = 0;
   cuentas.forEach(function(grp) {
     const subctas = contCuentasCache.filter(function(c){ return c.permite_movimiento && c.codigo.startsWith(grp.codigo + '.'); });
@@ -1027,11 +1027,11 @@ function contRenderGrupoBalance(saldos, tipo, titulo, color) {
     total += subtotal;
   html = contSelectorMoneda(hoy) + html;
     html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px">'
-      + '<span style="color:var(--suave)">' + grp.nombre + '</span>'
+      + '<span style="color:var(--suave)">' + escapeHtml(grp.nombre) + '</span>'
       + '<span style="font-family:var(--font-mono)">$ ' + fmtUSD(subtotal) + '</span></div>';
   });
   html += '<div style="display:flex;justify-content:space-between;padding:6px 0;font-weight:700;border-top:1px solid var(--borde);margin-top:4px">'
-    + '<span>TOTAL ' + titulo + '</span>'
+    + '<span>TOTAL ' + escapeHtml(titulo) + '</span>'
     + '<span style="font-family:var(--font-mono);color:' + color + '">$ ' + fmtUSD(total) + '</span></div></div>';
   return { html, total };
 }
@@ -1190,7 +1190,7 @@ async function contAbrirPagoCxc(id_cxc) {
     try {
       const bancos = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre');
       selBancoOrigen.innerHTML = '<option value="">— Seleccionar —</option>'
-        + (bancos||[]).map(function(b){ return '<option value="'+b.id+'">'+b.nombre+'</option>'; }).join('');
+        + (bancos||[]).map(function(b){ return '<option value="'+b.id+'">'+escapeHtml(b.nombre)+'</option>'; }).join('');
     } catch(eBanCxc) { selBancoOrigen.innerHTML = '<option value="">— Sin bancos disponibles —</option>'; }
     selBancoOrigen.value = '';
   }
@@ -1260,7 +1260,7 @@ async function _cargarMetodosCobroCxc() {
     } else {
       selMetodo.innerHTML = '<option value="">— Seleccione método —</option>'
         + combos.map(function(c) {
-            return '<option value="'+c.id_tipo+'" data-cuenta-id="'+(c.id_cuenta_contable||'')+'" data-moneda="'+monedaSel+'" data-tipo-canal="'+c.nombre+'">'+c.nombre+'</option>';
+            return '<option value="'+c.id_tipo+'" data-cuenta-id="'+(c.id_cuenta_contable||'')+'" data-moneda="'+monedaSel+'" data-tipo-canal="'+escapeHtml(c.nombre)+'">'+escapeHtml(c.nombre)+'</option>';
           }).join('');
       // Sin preselección -- el operador debe elegir explícitamente.
     }
@@ -1648,7 +1648,7 @@ async function cbConsultarSaldos() {
       + '</tr></thead><tbody>'
       + filas.map(function(f) {
           return '<tr>'
-            + '<td style="padding:8px;border-bottom:1px solid var(--borde);font-size:15px"><span style="color:var(--naranja);font-family:var(--font-mono)">'+f.codigo+'</span><br>'+f.nombre+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde);font-size:15px"><span style="color:var(--naranja);font-family:var(--font-mono)">'+f.codigo+'</span><br>'+escapeHtml(f.nombre)+'</td>'
             + '<td style="padding:8px;border-bottom:1px solid var(--borde);text-align:right;font-family:var(--font-mono);font-size:15px">'+fmt(f.saldo_inicial)+'</td>'
             + '<td style="padding:8px;border-bottom:1px solid var(--borde);text-align:right;font-family:var(--font-mono);font-size:15px;color:#22c55e">+'+fmt(f.entradas)+'</td>'
             + '<td style="padding:8px;border-bottom:1px solid var(--borde);text-align:right;font-family:var(--font-mono);font-size:15px;color:#f87171">-'+fmt(f.salidas)+'</td>'
@@ -1706,10 +1706,10 @@ async function cbCargarTraspasosRecientes() {
           return '<tr>'
             + '<td style="padding:8px;border-bottom:1px solid var(--borde);color:var(--naranja);font-family:var(--font-mono)">'+a.numero_asiento+'</td>'
             + '<td style="padding:8px;border-bottom:1px solid var(--borde)">'+fmtFecha(a.fecha)+'</td>'
-            + '<td style="padding:8px;border-bottom:1px solid var(--borde)">'+(a.descripcion||'—')+'</td>'
-            + '<td style="padding:8px;border-bottom:1px solid var(--borde);font-family:var(--font-mono)">'+(a.referencia||'—')+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde)">'+escapeHtml((a.descripcion||'—'))+'</td>'
+            + '<td style="padding:8px;border-bottom:1px solid var(--borde);font-family:var(--font-mono)">'+escapeHtml((a.referencia||'—'))+'</td>'
             + '<td style="padding:8px;border-bottom:1px solid var(--borde)">'
-              + (rutaComp ? '<a href="#" onclick="_verComprobanteTraspaso(\''+rutaComp.replace(/'/g,"\\'")+'\');return false" style="color:var(--naranja)">📄 Ver</a>' : '—')
+              + (rutaComp ? '<a href="#" onclick="_verComprobanteTraspaso('+jsArg(rutaComp)+');return false" style="color:var(--naranja)">📄 Ver</a>' : '—')
             + '</td>'
             + '</tr>';
         }).join('')
@@ -1754,7 +1754,7 @@ async function abrirModalCuentasBancariasEmpresa() {
     // del Banco se auto-llena al elegirlo (ver onSelBancoCbe más abajo).
     _cbeBancosCache = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo') || [];
     document.getElementById('cbe-banco').innerHTML = '<option value="">— Seleccionar —</option>'
-      + _cbeBancosCache.map(function(b){ return '<option value="'+b.id+'">'+b.nombre+'</option>'; }).join('');
+      + _cbeBancosCache.map(function(b){ return '<option value="'+b.id+'">'+escapeHtml(b.nombre)+'</option>'; }).join('');
   } catch(eBancosCbe) {}
 
   try {
@@ -1762,7 +1762,7 @@ async function abrirModalCuentasBancariasEmpresa() {
     // Solo cuentas de Banco (código 1.1.02.x) tienen sentido enlazar aquí.
     const ctasBanco = cuentasContablesCbe.filter(function(c){ return c.codigo && c.codigo.indexOf('1.1.02') === 0; });
     document.getElementById('cbe-cuenta-contable').innerHTML = '<option value="">— Seleccionar —</option>'
-      + ctasBanco.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join('');
+      + ctasBanco.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+escapeHtml(c.nombre)+'</option>'; }).join('');
   } catch(eCtasCbe) {}
 
   await cbeCargarListado();
@@ -1931,7 +1931,7 @@ async function _traspasoCBActualizarCuentas() {
       '?estado=eq.ACTIVO&moneda=eq.'+moneda+'&nombre=eq.Efectivo&select=id_tipo,nombre,id_cuenta_contable');
     const selCaja = document.getElementById('traspaso-cb-cuenta-caja');
     selCaja.innerHTML = (metodosTrasp||[]).length
-      ? metodosTrasp.map(function(m){ return '<option value="'+m.id_cuenta_contable+'" data-metodo="'+m.id_tipo+'">'+m.nombre+'</option>'; }).join('')
+      ? metodosTrasp.map(function(m){ return '<option value="'+m.id_cuenta_contable+'" data-metodo="'+m.id_tipo+'">'+escapeHtml(m.nombre)+'</option>'; }).join('')
       : '<option value="">— Sin Cuenta de Caja en '+moneda+' —</option>';
   } catch(eCtasTrasp) { console.warn('Error cargando Cuenta Caja de Traspaso:', eCtasTrasp); }
 
@@ -2249,7 +2249,7 @@ async function contRenderCxp() {
         : '';
       const acciones = ''; // Gestión de pagos en módulo Pagos
       return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
-        +'<td style="padding:8px;font-size:11px;color:var(--naranja);font-family:var(--font-mono)">'+c.numero_doc+'</td>'
+        +'<td style="padding:8px;font-size:11px;color:var(--naranja);font-family:var(--font-mono)">'+escapeHtml(c.numero_doc)+'</td>'
         +'<td style="padding:8px;font-size:12px">'+prov+'</td>'
         +'<td style="padding:8px;font-size:11px;color:var(--suave)">'+fmtFecha(est === 'PAGADA' ? c.fecha_pago : c.fecha_vencimiento)+'</td>'
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+( c.tipo||'').replace('_',' ')+'</td>'
@@ -2312,7 +2312,7 @@ async function contRenderConciliacion() {
     + '<div style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">'
     + '<select id="cont-conc-cuenta" style="' + contSelStyle() + ';width:280px">'
     + '<option value="">— Cuenta Bancaria —</option>'
-    + cuentasBanco.map(function(c){ return '<option value="' + c.id_cuenta + '">' + c.codigo + ' — ' + c.nombre + '</option>'; }).join('')
+    + cuentasBanco.map(function(c){ return '<option value="' + c.id_cuenta + '">' + c.codigo + ' — ' + escapeHtml(c.nombre) + '</option>'; }).join('')
     + '</select>'
     + '<input type="month" id="cont-conc-mes" value="' + getHoyVzla().substring(0,7) + '" style="' + contSelStyle() + '">'
     + '<button class="btn-primario" onclick="contIniciarConciliacion()">Iniciar</button>'
@@ -2346,7 +2346,7 @@ async function contIniciarConciliacion() {
     return '<tr>'
       + '<td style="padding:6px;font-size:12px">' + (l.cont_asientos ? l.cont_asientos.fecha : '') + '</td>'
       + '<td style="padding:6px;font-size:12px;font-family:var(--font-mono);color:var(--naranja)">' + (l.cont_asientos ? l.cont_asientos.numero_asiento : '') + '</td>'
-      + '<td style="padding:6px;font-size:12px">' + (l.descripcion || (l.cont_asientos ? l.cont_asientos.descripcion : '')) + '</td>'
+      + '<td style="padding:6px;font-size:12px">' + escapeHtml(l.descripcion || (l.cont_asientos ? l.cont_asientos.descripcion : '')) + '</td>'
       + '<td style="text-align:right;padding:6px;font-family:var(--font-mono);color:#22c55e">' + (l.debe_usd>0?fmtUSD(l.debe_usd):'—') + '</td>'
       + '<td style="text-align:right;padding:6px;font-family:var(--font-mono);color:#fc8181">' + (l.haber_usd>0?fmtUSD(l.haber_usd):'—') + '</td>'
       + '<td style="text-align:right;padding:6px;font-family:var(--font-mono)">' + (saldoLibros>=0?'':'- ') + '$ ' + fmtUSD(Math.abs(saldoLibros)) + '</td>'
@@ -2559,12 +2559,12 @@ async function contRenderPeriodos() {
     + '</tr></thead><tbody>'
     + contPeriodosCache.map(function(p) {
         return '<tr>'
-          + '<td style="font-weight:600">' + p.nombre + '</td>'
+          + '<td style="font-weight:600">' + escapeHtml(p.nombre) + '</td>'
           + '<td style="font-size:12px">' + fmtFecha(p.fecha_inicio) + '</td>'
           + '<td style="font-size:12px">' + fmtFecha(p.fecha_fin) + '</td>'
           + '<td><span class="badge ' + (p.estado==='ABIERTO'?'badge-verde':'badge-gris') + '">' + p.estado + '</span></td>'
           + '<td><div style="display:flex;gap:6px">'
-          + (p.estado==='ABIERTO' ? '<button class="btn-secundario" style="font-size:11px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="btnSetGuardando(this,true,null,\'Procesando...\');contCerrarPeriodo(' + p.id_periodo + ',\'' + p.nombre + '\').finally(()=>btnSetGuardando(this,false))">🔒 Cerrar</button>' : '')
+          + (p.estado==='ABIERTO' ? '<button class="btn-secundario" style="font-size:11px;color:#fc8181;border-color:rgba(252,129,129,0.4)" onclick="btnSetGuardando(this,true,null,\'Procesando...\');contCerrarPeriodo(' + p.id_periodo + ',' + jsArg(p.nombre) + ').finally(()=>btnSetGuardando(this,false))">🔒 Cerrar</button>' : '')
           + '<button class="btn-secundario" style="font-size:11px" onclick="contAbrirPeriodo(' + p.id_periodo + ')">✏</button>'
           + '</div></td></tr>';
       }).join('')
@@ -2765,7 +2765,7 @@ function renderTablaTributos(filtro) {
         : (parseFloat(t.alicuota) > 0 ? parseFloat(t.alicuota).toFixed(2) + '%' : 'Variable');
       return '<tr>'
         + '<td style="padding:10px 14px;font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--naranja)">' + t.codigo + '</td>'
-        + '<td style="padding:10px 14px;font-size:10px"><div style="font-weight:600">' + t.nombre + '</div>'
+        + '<td style="padding:10px 14px;font-size:10px"><div style="font-weight:600">' + escapeHtml(t.nombre) + '</div>'
         + '<div style="font-size:9px;color:var(--suave)">' + (t.organismo||'') + '</div>'
         + (t.base_legal ? '<div style="font-size:10px;color:var(--suave)">' + t.base_legal + '</div>' : '')
         + '</td>'

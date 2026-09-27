@@ -47,7 +47,7 @@ async function renderReportes() {
   c.innerHTML = '<div class="panel" id="panel-reportes" style="margin-top:-16px">'
     + '<div class="panel-header" style="padding:14px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">'
     + '<select id="rep-selector" onchange="_reporteActual=this.value; renderReportes()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none;cursor:pointer;height:35px;box-sizing:border-box">'
-    + reportesOK.map(function(r){ return '<option value="'+r.id+'"' + (r.id === _reporteActual ? ' selected' : '') + '>' + r.nombre + '</option>'; }).join('')
+    + reportesOK.map(function(r){ return '<option value="'+r.id+'"' + (r.id === _reporteActual ? ' selected' : '') + '>' + escapeHtml(r.nombre) + '</option>'; }).join('')
     + '</select>'
     + '<div id="reportes-topbar-extra" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"></div>'
     + '<span id="rep-inv-tasa-info" style="font-size:12px;color:var(--suave);font-family:var(--font-mono)"></span>'

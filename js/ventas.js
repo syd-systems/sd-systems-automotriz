@@ -216,8 +216,8 @@ function _ventasFilasHtml(ventas) {
     if (v._esOS) {
       return '<tr data-id="' + v.id_venta + '">'
         + '<td style="font-family:var(--font-mono);font-size:12px">' + (v._numeroFactura || 'OS-' + v._idOrden)
-        + (v.param_areas ? '<div style="font-size:10px;color:var(--suave)">' + v.param_areas.nombre + (v.param_areas.codigo ? ' (' + v.param_areas.codigo + ')' : '') + '</div>' : '') + '</td>'
-        + '<td>' + (cli ? cli.nombre_completo : '—') + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (cli ? cli.tipo_doc + '-' + cli.numero_doc : '') + '</div></td>'
+        + (v.param_areas ? '<div style="font-size:10px;color:var(--suave)">' + escapeHtml(v.param_areas.nombre) + (v.param_areas.codigo ? ' (' + v.param_areas.codigo + ')' : '') + '</div>' : '') + '</td>'
+        + '<td>' + (cli ? escapeHtml(cli.nombre_completo) : '—') + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (cli ? escapeHtml(cli.tipo_doc + '-' + cli.numero_doc) : '') + '</div></td>'
         + '<td style="font-size:12px">' + fmtFecha(v.fecha_venta) + '</td>'
         + '<td style="text-align:right;font-family:var(--font-mono)">' + totalDual + '</td>'
         + '<td><span class="badge ' + (ESTADO_BADGE[v.estado] || 'badge-gris') + '">' + (v.estado === 'VIA_OS' ? 'Vía OS' : (ESTADO_LABEL_VENTA[v.estado] || v.estado)) + '</span></td>'
@@ -227,8 +227,8 @@ function _ventasFilasHtml(ventas) {
     const botonLabel = v.estado === 'PRESUPUESTO' ? 'Editar / Facturar' : 'Ver';
     return '<tr data-id="' + v.id_venta + '">'
       + '<td style="font-family:var(--font-mono);font-size:12px">' + (v.facturas?.numero_factura || 'V-' + v.id_venta)
-      + (v.param_areas ? '<div style="font-size:10px;color:var(--suave)">' + v.param_areas.nombre + (v.param_areas.codigo ? ' (' + v.param_areas.codigo + ')' : '') + '</div>' : '') + '</td>'
-      + '<td>' + (cli ? cli.nombre_completo : '—') + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (cli ? cli.tipo_doc + '-' + cli.numero_doc : '') + '</div></td>'
+      + (v.param_areas ? '<div style="font-size:10px;color:var(--suave)">' + escapeHtml(v.param_areas.nombre) + (v.param_areas.codigo ? ' (' + v.param_areas.codigo + ')' : '') + '</div>' : '') + '</td>'
+      + '<td>' + (cli ? escapeHtml(cli.nombre_completo) : '—') + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (cli ? escapeHtml(cli.tipo_doc + '-' + cli.numero_doc) : '') + '</div></td>'
       + '<td style="font-size:12px">' + fmtFecha(v.fecha_venta) + '</td>'
       + '<td style="text-align:right;font-family:var(--font-mono)">' + totalDual + '</td>'
       + '<td><span class="badge ' + (ESTADO_BADGE[v.estado] || 'badge-gris') + '">' + (ESTADO_LABEL_VENTA[v.estado] || v.estado) + '</span></td>'
@@ -360,11 +360,11 @@ async function renderVentasListado() {
       + '</select>'
       + '<select id="vta-filtro-categoria" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todas las Categorías</option>'
-      + _ventasFiltroCategoriasCache.map(function(cat){ return '<option value="'+cat.id_categoria+'">'+cat.nombre+'</option>'; }).join('')
+      + _ventasFiltroCategoriasCache.map(function(cat){ return '<option value="'+cat.id_categoria+'">'+escapeHtml(cat.nombre)+'</option>'; }).join('')
       + '</select>'
       + '<select id="vta-filtro-tipo" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todos los Tipos</option>'
-      + _ventasFiltroTiposCache.map(function(t){ return '<option value="'+t.id_tipo+'">'+t.nombre+'</option>'; }).join('')
+      + _ventasFiltroTiposCache.map(function(t){ return '<option value="'+t.id_tipo+'">'+escapeHtml(t.nombre)+'</option>'; }).join('')
       + '</select>'
       + '<input type="text" id="vta-buscar" placeholder="Buscar por Cliente o Cédula/RIF..." oninput="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:220px">'
       + '</div>'
@@ -453,7 +453,7 @@ async function renderVentasEntregas() {
       const cli = v.clientes;
       return '<tr>'
         + '<td style="font-family:var(--font-mono);font-size:12px">'+(v.facturas?.numero_factura||'—')+'</td>'
-        + '<td style="font-size:12px">'+(cli?cli.nombre_completo:'—')+'<div style="font-size:10px;color:var(--suave);font-family:var(--font-mono)">'+(cli?cli.tipo_doc+'-'+cli.numero_doc:'')+(cli?.telefono?' · '+cli.telefono:'')+'</div></td>'
+        + '<td style="font-size:12px">'+(cli?escapeHtml(cli.nombre_completo):'—')+'<div style="font-size:10px;color:var(--suave);font-family:var(--font-mono)">'+(cli?escapeHtml(cli.tipo_doc+'-'+cli.numero_doc):'')+(cli?.telefono?' · '+escapeHtml(cli.telefono):'')+'</div></td>'
         + '<td><button class="btn-secundario" style="font-size:11px;padding:5px 10px" onclick="verListaArticulosVenta('+v.id_venta+')">📋 Lista</button></td>'
         + '<td style="text-align:right;font-family:var(--font-mono)">'
           + '<div style="color:var(--naranja)">'+fmtBs(v.facturas?.total_ves||0)+' Bs</div>'
@@ -629,10 +629,10 @@ async function abrirVenta(id) {
   _vtaFiltroCategoria = ''; _vtaFiltroTipo = ''; _vtaFiltroSoloStock = true;
   document.getElementById('vta-filtro-categoria').innerHTML =
     '<option value="">Todas las categorías</option>'
-    + _invCategoriasCache.map(function(c) { return '<option value="'+c.id_categoria+'">'+c.nombre+'</option>'; }).join('');
+    + _invCategoriasCache.map(function(c) { return '<option value="'+c.id_categoria+'">'+escapeHtml(c.nombre)+'</option>'; }).join('');
   document.getElementById('vta-filtro-tipo').innerHTML =
     '<option value="">Todos los tipos</option>'
-    + _invTiposCacheVentas.map(function(t) { return '<option value="'+t.id_tipo+'">'+t.nombre+'</option>'; }).join('');
+    + _invTiposCacheVentas.map(function(t) { return '<option value="'+t.id_tipo+'">'+escapeHtml(t.nombre)+'</option>'; }).join('');
   document.getElementById('vta-filtro-solo-stock').checked = true;
 
   document.getElementById('vta-modal-titulo').textContent = id ? 'EDITAR VENTA' : 'NUEVA VENTA';
@@ -1074,7 +1074,7 @@ async function verFichaVenta(id) {
   try { lineas = await api('venta_detalle','GET',null,'?id_venta=eq.'+id+'&select=*,inventario_almacen(nombre_articulo,codigo_articulo)'); } catch(e) {}
 
   const filasLin = lineas.map(function(l) {
-    return '<tr><td style="padding:5px 0;font-size:12px">'+(l.inventario_almacen?.nombre_articulo||'Art#'+l.id_articulo)+'</td>'
+    return '<tr><td style="padding:5px 0;font-size:12px">'+escapeHtml(l.inventario_almacen?.nombre_articulo||'Art#'+l.id_articulo)+'</td>'
       + '<td style="text-align:center;font-family:var(--font-mono);font-size:12px">'+l.cantidad+'</td>'
       + '<td style="text-align:right;font-family:var(--font-mono);font-size:12px">$ '+fmtUSD(l.precio_unitario)+'</td>'
       + '<td style="text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">$ '+fmtUSD(l.subtotal)+'</td></tr>';
@@ -1095,9 +1095,9 @@ async function verFichaVenta(id) {
   };
   document.getElementById('ficha-venta-contenido').innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">'
-    + '<div><div style="font-weight:600;font-size:15px">'+(v.clientes?.nombre_completo||'—')+'</div>'
+    + '<div><div style="font-weight:600;font-size:15px">'+escapeHtml(v.clientes?.nombre_completo||'—')+'</div>'
     + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">'+(v.clientes?'V-'+v.id_venta:'')+(v.facturas?.numero_factura?' — '+v.facturas.numero_factura:'')+'</div>'
-    + (v.param_areas ? '<div style="font-size:11px;color:var(--suave)">📍 '+(v.param_areas.nombre)+(v.param_areas.codigo?' ('+v.param_areas.codigo+')':'')+'</div>' : '')
+    + (v.param_areas ? '<div style="font-size:11px;color:var(--suave)">📍 '+escapeHtml(v.param_areas.nombre)+(v.param_areas.codigo?' ('+v.param_areas.codigo+')':'')+'</div>' : '')
     + '</div>'
     + '<span class="badge '+(ESTADO_BADGE[v.estado]||'badge-gris')+'">'+(ESTADO_LABEL_VENTA[v.estado]||v.estado)+'</span>'
     + '</div>'

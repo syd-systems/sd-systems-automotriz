@@ -90,8 +90,8 @@ async function renderCatalogo(filtro) {
     const filas = itemsFiltrados.map(function(s) {
       return '<tr>'
         + '<td><div style="font-size:13px;font-weight:700;color:var(--naranja)">' + (s.grupo || '—') + '</div></td>'
-        + '<td><div style="font-weight:600;font-size:14px;color:var(--texto)">' + s.nombre + '</div>'
-        + (s.descripcion ? '<div style="font-size:12px;color:var(--suave);margin-top:2px">' + s.descripcion + '</div>' : '')
+        + '<td><div style="font-weight:600;font-size:14px;color:var(--texto)">' + escapeHtml(s.nombre) + '</div>'
+        + (s.descripcion ? '<div style="font-size:12px;color:var(--suave);margin-top:2px">' + escapeHtml(s.descripcion) + '</div>' : '')
         + '</td>'
         + '<td><span class="badge badge-gris" style="font-size:12px;font-weight:600">' + (s.tipo_carroceria || 'Todas') + '</span></td>'
         + '<td style="font-family:var(--font-mono);font-size:14px;font-weight:700">'
@@ -132,8 +132,8 @@ function verFichaCatalogo(id) {
   document.getElementById('ficha-cat-contenido').innerHTML =
     '<div style="margin-bottom:20px">'
     + '<div style="font-size:12px;color:var(--naranja);letter-spacing:2px;font-weight:700;margin-bottom:4px">' + (s.grupo || 'Sin grupo') + '</div>'
-    + '<div style="font-family:var(--font-display);font-size:22px;color:var(--texto)">' + s.nombre + '</div>'
-    + (s.descripcion ? '<div style="font-size:13px;color:var(--suave);margin-top:4px">' + s.descripcion + '</div>' : '')
+    + '<div style="font-family:var(--font-display);font-size:22px;color:var(--texto)">' + escapeHtml(s.nombre) + '</div>'
+    + (s.descripcion ? '<div style="font-size:13px;color:var(--suave);margin-top:4px">' + escapeHtml(s.descripcion) + '</div>' : '')
     + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">'
     + '<div><div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Precio</div>'
@@ -374,7 +374,7 @@ async function renderListaServicios(grupo) {
     lista.innerHTML = servicios.map(function(s) {
       return '<div id="serv-row-' + s.id_servicio + '" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--gris2);border-radius:6px;margin-bottom:8px">'
         + '<div style="flex:1">'
-        + '<div style="font-size:14px;font-weight:600;color:var(--texto)">' + s.nombre + '</div>'
+        + '<div style="font-size:14px;font-weight:600;color:var(--texto)">' + escapeHtml(s.nombre) + '</div>'
         + '<div style="font-size:11px;color:var(--suave);margin-top:2px">'
         + (s.grupo ? '<span style="color:var(--naranja)">' + s.grupo + '</span> · ' : '')
         + '<span style="font-family:var(--font-mono);color:var(--naranja)">'
@@ -383,7 +383,7 @@ async function renderListaServicios(grupo) {
         + '</div></div>'
         + '<div style="display:flex;gap:6px;flex-shrink:0">'
         + '<button class="btn-secundario" onclick="editarServicioEnLinea(' + s.id_servicio + ')" style="font-size:11px;padding:5px 10px">✏️ Editar</button>'
-        + '<button class="btn-peligro" onclick="eliminarServicioEnLinea(' + s.id_servicio + ',\'' + s.nombre.replace(/'/g, "\\'") + '\')" style="font-size:11px;padding:5px 10px">🗑</button>'
+        + '<button class="btn-peligro" onclick="eliminarServicioEnLinea(' + s.id_servicio + ',' + jsArg(s.nombre) + ')" style="font-size:11px;padding:5px 10px">🗑</button>'
         + '</div></div>';
     }).join('');
   } catch(e) {
