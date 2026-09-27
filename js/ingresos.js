@@ -86,7 +86,7 @@ async function renderFacturas() {
       return '<tr data-id="' + f.id_factura + '">'
         + '<td><div style="font-family:var(--font-display);font-size:17px;color:var(--naranja)">' + (f.numero_factura||'—') + '</div>'
         + '<div style="font-size:11px;color:var(--suave)">' + (f.fecha_emision ? fmtFecha(f.fecha_emision) : '—') + '</div></td>'
-        + '<td style="font-size:12px">' + vendedor + (areaPorCorreoVendedor[f.id_usuario] ? '<div style="font-size:10px;color:var(--suave)">' + areaPorCorreoVendedor[f.id_usuario].nombre + (areaPorCorreoVendedor[f.id_usuario].codigo ? ' (' + areaPorCorreoVendedor[f.id_usuario].codigo + ')' : '') + '</div>' : '') + '</td>'
+        + '<td style="font-size:12px">' + escapeHtml(vendedor) + (areaPorCorreoVendedor[f.id_usuario] ? '<div style="font-size:10px;color:var(--suave)">' + escapeHtml(areaPorCorreoVendedor[f.id_usuario].nombre) + (areaPorCorreoVendedor[f.id_usuario].codigo ? ' (' + areaPorCorreoVendedor[f.id_usuario].codigo + ')' : '') + '</div>' : '') + '</td>'
         + '<td style="font-size:12px">' + (prop ? prop.nombre_completo : (f.receptor_nombre||'—')) + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + identifCliente + '</div></td>'
         + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
         + (puedo('FACTURAS','VER_TOTALES')
@@ -236,7 +236,7 @@ async function abrirNuevaFactura() {
 
   const selEm = document.getElementById('fac-emisor');
   selEm.innerHTML = '<option value="">— Seleccionar empresa —</option>'
-    + emisoresList.map(function(e) { return '<option value="' + e.id_empresa + '" data-tipo-contrib="' + (e.tipo_contribuyente||'') + '">' + e.nombre + ' (' + (e.rif||'') + ')</option>'; }).join('');
+    + emisoresList.map(function(e) { return '<option value="' + e.id_empresa + '" data-tipo-contrib="' + (e.tipo_contribuyente||'') + '">' + escapeHtml(e.nombre) + ' (' + escapeHtml((e.rif||'')) + ')</option>'; }).join('');
   // Preseleccionar empresa activa
   if (_empresaActiva) selEm.value = _empresaActiva.id_empresa;
   _aplicarReglaIGTFFactura();
@@ -355,7 +355,7 @@ async function onSelOSFactura() {
     infoDiv.innerHTML = '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:10px 14px;margin-top:6px">'
       + '<div style="display:flex;gap:16px;flex-wrap:wrap">'
       + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">OS</div><div style="font-weight:600;color:var(--naranja)">' + o.numero_os + '</div></div>'
-      + (veh ? '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Vehículo</div><div>' + veh.placa + ' · ' + veh.marca + ' ' + veh.modelo + '</div></div>' : '')
+      + (veh ? '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Vehículo</div><div>' + escapeHtml(veh.placa) + ' · ' + escapeHtml(veh.marca) + ' ' + escapeHtml(veh.modelo) + '</div></div>' : '')
       + (prop ? '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Cliente</div><div>' + escapeHtml(prop.nombre_completo) + '</div></div>' : '')
       + '</div></div>';
 
@@ -1163,8 +1163,8 @@ async function verFichaFactura(id) {
       + '</div>'
       + (emisor ? '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
           + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Empresa</div>'
-          + '<div style="font-weight:600">'+emisor.nombre+'</div>'
-          + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">'+(emisor.rif||'')+'</div>'
+          + '<div style="font-weight:600">'+escapeHtml(emisor.nombre)+'</div>'
+          + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">'+escapeHtml((emisor.rif||''))+'</div>'
           + (emisor.direccion ? '<div style="font-size:11px;color:var(--suave);margin-top:2px">'+escapeHtml(emisor.direccion)+'</div>' : '')
           + '</div>' : '')
       + '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
@@ -1197,7 +1197,7 @@ async function verFichaFactura(id) {
             + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">'
             + '<div style="display:flex;flex-direction:column;gap:10px">'
             + '<div><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Fecha de Cobro</div><div style="font-weight:600">'+fmtFechaVzla(cxcFicha.fecha_cobro)+'</div></div>'
-            + (cxcFicha.banco_origen?.nombre ? '<div><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Banco Origen</div><div style="font-weight:600">'+cxcFicha.banco_origen.nombre+'</div></div>' : '')
+            + (cxcFicha.banco_origen?.nombre ? '<div><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Banco Origen</div><div style="font-weight:600">'+escapeHtml(cxcFicha.banco_origen.nombre)+'</div></div>' : '')
             + '</div>'
             + '<div style="display:flex;flex-direction:column;gap:10px">'
             + '<div><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Forma de Cobro</div><div style="font-weight:600">'+(cxcFicha.metodo_pago||'—')+'</div></div>'
@@ -1212,7 +1212,7 @@ async function verFichaFactura(id) {
                   + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">'+secundario+'</div></div>';
               })()
             + '</div>'
-            + '<div style="grid-column:1/-1"><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Comprobante de Cobro No.</div><div style="font-weight:600;font-family:var(--font-mono)">'+(cxcFicha.referencia||'—')+'</div></div>'
+            + '<div style="grid-column:1/-1"><div style="font-size:10px;color:var(--suave);margin-bottom:2px">Comprobante de Cobro No.</div><div style="font-weight:600;font-family:var(--font-mono)">'+escapeHtml((cxcFicha.referencia||'—'))+'</div></div>'
             + '</div></div>';
         })()
       + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px">Detalle</div>'

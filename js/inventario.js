@@ -322,7 +322,7 @@ async function renderInventario(filtro) {
       + '</div>'
       + '<select id="inv-filtro-cat" onchange="invFiltrarCategoria()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todas las categorías</option>'
-      + (_invCategoriasCache.map ? _invCategoriasCache.map(function(c){ return '<option value="'+c.id_categoria+'">'+c.nombre+'</option>'; }).join('') : '')
+      + (_invCategoriasCache.map ? _invCategoriasCache.map(function(c){ return '<option value="'+c.id_categoria+'">'+escapeHtml(c.nombre)+'</option>'; }).join('') : '')
       + '</select>'
       // Filtro por Área -- visible SOLO para quien ya tiene VER_INVENTARIO_GENERAL
       // (o es Administrador). Sin este permiso, el usuario ya está limitado a su
@@ -330,7 +330,7 @@ async function renderInventario(filtro) {
       + ((sesionActual?.administrador || puedo('INVENTARIO','VER_INVENTARIO_GENERAL')) ?
           '<select id="inv-filtro-area" onchange="invFiltrarArea()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
           + '<option value="">Todas las Áreas (consolidado)</option>'
-          + (_invAreasCache.map ? _invAreasCache.map(function(a){ return '<option value="'+a.id+'">'+a.nombre+(a.codigo?' ('+a.codigo+')':'')+'</option>'; }).join('') : '')
+          + (_invAreasCache.map ? _invAreasCache.map(function(a){ return '<option value="'+a.id+'">'+escapeHtml(a.nombre)+(a.codigo?' ('+a.codigo+')':'')+'</option>'; }).join('') : '')
           + '</select>'
         : '')
       + '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--suave);cursor:pointer">'
@@ -407,7 +407,7 @@ async function renderInventario(filtro) {
         const selCat = document.getElementById('inv-filtro-cat');
         if (selCat && _invCategoriasCache.length) {
           const optsExtra = _invCategoriasCache.map(function(c){
-            return '<option value="'+c.id_categoria+'">'+c.nombre+'</option>';
+            return '<option value="'+c.id_categoria+'">'+escapeHtml(c.nombre)+'</option>';
           }).join('');
           if (!selCat.innerHTML.includes(optsExtra)) {
             selCat.innerHTML = '<option value="">Todas las categorías</option>' + optsExtra;
@@ -537,7 +537,7 @@ async function renderInventario(filtro) {
     if (selArea) {
       const areasConStockList = _invAreasCache.filter(function(a){ return _invAreasConStock.has(String(a.id)); });
       const optsExtraArea = areasConStockList.map(function(a){
-        return '<option value="'+a.id+'">'+a.nombre+(a.codigo?' ('+a.codigo+')':'')+'</option>';
+        return '<option value="'+a.id+'">'+escapeHtml(a.nombre)+(a.codigo?' ('+a.codigo+')':'')+'</option>';
       }).join('');
       // Siempre se reconstruye -- antes había una comprobación
       // (".includes()") para evitar reconstruir si "parecía" no haber
@@ -691,10 +691,10 @@ function invRenderTabla(items, cont) {
     return '<tr>'
       + '<td style="padding:5px 8px;vertical-align:middle"><div style="display:flex;align-items:center;gap:8px">'
       + '<span style="font-size:10px;font-weight:700;color:' + (abcColor[abc]||'#888') + ';background:' + (abcColor[abc]||'#888') + '22;padding:2px 6px;border-radius:3px">' + abc + '</span>'
-      + '<div><div style="font-family:var(--font-mono);font-size:10px;color:var(--suave);line-height:1.3">' + (r.codigo_articulo || '—')
+      + '<div><div style="font-family:var(--font-mono);font-size:10px;color:var(--suave);line-height:1.3">' + escapeHtml(r.codigo_articulo || '—')
       + (r.id_categoria_articulo ? ' · <span style="color:var(--suave)">' + (_invCategoriasCache.find(function(c){return c.id_categoria===r.id_categoria_articulo;})?.nombre || '') + '</span>' : '')
       + '</div>'
-      + '<div style="font-weight:500;font-size:13px;line-height:1.3">' + r.nombre_articulo + '</div>'
+      + '<div style="font-weight:500;font-size:13px;line-height:1.3">' + escapeHtml(r.nombre_articulo) + '</div>'
       + (r.descripcion_articulo ? '<div style="font-size:10px;color:var(--suave);line-height:1.3">' + escapeHtml(r.descripcion_articulo) + '</div>' : '') + '</div></div></td>'
       + (function() {
           const pendientesArt = _invPendientesPorArticulo[r.id_articulo] || [];
@@ -738,7 +738,7 @@ function invRenderTabla(items, cont) {
       + '<td style="padding:5px 8px;vertical-align:middle"><span class="badge ' + (r.estado === 'INACTIVO' ? 'badge-rojo' : 'badge-verde') + '">' + (r.estado || 'ACTIVO') + '</span></td>'
       + '<td style="padding:5px 8px;vertical-align:middle"><div style="display:flex;gap:6px">'
       + '<button class="btn-naranja" onclick="verFichaInventario(' + r.id_articulo + ')">Ver</button>'
-      + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" style="border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="abrirStockArticulo(' + r.id_articulo + ',\'' + r.nombre_articulo.replace(/'/g,"\\'"  ) + '\')" >Stock</button>' : '')
+      + (puedo('INVENTARIO','ENTRADA_STOCK') ? '<button class="btn-secundario" style="border-color:rgba(255,107,0,0.4);color:var(--naranja)" onclick="abrirStockArticulo(' + r.id_articulo + ',' + jsArg(r.nombre_articulo) + ')" >Stock</button>' : '')
       + '</div></td></tr>';
   }).join('');
   const thStyleInv = 'background:var(--gris1);position:sticky;top:0;z-index:1';
@@ -763,7 +763,7 @@ function invRenderABC(items, cont) {
     gs.forEach(function(r) {
       filasHTML += '<tr>'
         + '<td><span style="font-size:10px;font-weight:700;color:' + abcColor[g] + ';background:' + abcColor[g] + '22;padding:2px 7px;border-radius:3px">' + g + '</span></td>'
-        + '<td style="font-weight:500">' + r.nombre_articulo + '</td>'
+        + '<td style="font-weight:500">' + escapeHtml(r.nombre_articulo) + '</td>'
         + '<td style="font-family:var(--font-mono);text-align:center">' + stockMostrarArticulo(r.id_articulo) + ' ' + (r.unidad||'UND') + '</td>'
         + '<td style="font-family:var(--font-mono)">$ ' + fmtUSD(precioVentaEnVivo(r).usd) + '</td>'
         + '<td style="font-family:var(--font-mono);color:var(--naranja)">$ ' + fmtUSD(r.valor_inventario) + '</td>'
@@ -789,7 +789,7 @@ function invRenderReorden(items, cont) {
     const enReorden = !critico && stockMostrarReord <= pr;
     const demanda = r.demanda_diaria || (r.demanda_anual ? (r.demanda_anual/365).toFixed(2) : null);
     return '<tr>'
-      + '<td><div style="font-weight:500">' + r.nombre_articulo + '</div><div style="font-size:10px;color:var(--suave)">' + (r.codigo_articulo||'') + '</div></td>'
+      + '<td><div style="font-weight:500">' + escapeHtml(r.nombre_articulo) + '</div><div style="font-size:10px;color:var(--suave)">' + escapeHtml((r.codigo_articulo||'')) + '</div></td>'
       + '<td style="font-family:var(--font-mono);text-align:center">' + stockMostrarReord + '</td>'
       + '<td style="font-family:var(--font-mono);text-align:center">' + r.stock_minimo_articulo + '</td>'
       + '<td style="font-family:var(--font-mono);text-align:center">' + (demanda !== null ? demanda : '<span style="color:var(--suave);font-size:10px">—</span>') + '</td>'
@@ -820,7 +820,7 @@ function invRenderEOQ(items, cont) {
     var nPed = (eoq && D) ? Math.ceil(D / eoq) : null;
     var ciclo = (nPed && nPed > 0) ? Math.round(365 / nPed) : null;
     return '<tr>'
-      + '<td><div style="font-weight:500">' + r.nombre_articulo + '</div></td>'
+      + '<td><div style="font-weight:500">' + escapeHtml(r.nombre_articulo) + '</div></td>'
       + '<td style="font-family:var(--font-mono);text-align:center">' + (D || '<span style="color:var(--suave);font-size:10px">No configurado</span>') + '</td>'
       + '<td style="font-family:var(--font-mono);text-align:center">$ ' + fmtUSD(S) + '</td>'
       + '<td style="font-family:var(--font-mono);text-align:center">$ ' + fmtUSD(H) + '</td>'
@@ -884,8 +884,8 @@ async function verFichaInventario(id) {
   document.getElementById('ficha-inv-contenido').innerHTML =
     '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">'
     + '<span style="font-size:11px;font-weight:700;color:' + (abcColor[abc]||'#888') + ';background:' + (abcColor[abc]||'#888') + '22;padding:4px 10px;border-radius:4px">Clase ' + abc + '</span>'
-    + '<div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + r.nombre_articulo + '</div>'
-    + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + (r.codigo_articulo || 'Sin código') + ' · ' + (r.unidad || 'UND') + '</div>'
+    + '<div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + escapeHtml(r.nombre_articulo) + '</div>'
+    + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + escapeHtml((r.codigo_articulo || 'Sin código')) + ' · ' + (r.unidad || 'UND') + '</div>'
     + '</div></div>'
     + (r.descripcion_articulo ? '<div style="background:var(--gris2);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--suave)">' + escapeHtml(r.descripcion_articulo) + '</div>' : '')
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">'
@@ -965,7 +965,7 @@ async function verFichaInventario(id) {
   // sin límite — evita duplicar lógica y hereda los fixes ya hechos ahí.
   const contHist = document.getElementById('ficha-inv-historial');
   if (contHist) {
-    contHist.innerHTML = '<div style="padding:12px 0"><button class="btn-secundario" style="width:100%;padding:10px;font-size:12px" onclick="cerrarModal(\'modal-ficha-inv\');verHistorialStock(' + r.id_articulo + ',\'' + (r.nombre_articulo||'').replace(/'/g,"\\'") + '\')">📋 Ver Historial de Movimientos</button></div>';
+    contHist.innerHTML = '<div style="padding:12px 0"><button class="btn-secundario" style="width:100%;padding:10px;font-size:12px" onclick="cerrarModal(\'modal-ficha-inv\');verHistorialStock(' + r.id_articulo + ',' + jsArg(r.nombre_articulo) + ')">📋 Ver Historial de Movimientos</button></div>';
   }
 }
 
@@ -1034,7 +1034,7 @@ async function abrirEntradaStock(id) {
         ? areas.filter(function(a){ return String(a.id) !== String(idAreaReceptoraForm); })
         : areas;
       selOrigen.innerHTML = '<option value="">— Seleccionar área de origen —</option>'
-        + areasOrigenDisp.map(function(a) { return '<option value="' + a.id + '">' + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>'; }).join('');
+        + areasOrigenDisp.map(function(a) { return '<option value="' + a.id + '">' + escapeHtml(a.nombre) + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>'; }).join('');
     }
     // Cargar facturas elegibles para Devolución (solo las que facturaron ESTE artículo)
     var selFact = document.getElementById('es-factura-devolucion');
@@ -2019,7 +2019,7 @@ async function abrirOrdenCompra() {
   try {
     const provRows = await api('proveedores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif');
     document.getElementById('entcons-proveedor').innerHTML = '<option value="">— Seleccionar —</option>'
-      + (provRows||[]).map(function(p){ return '<option value="'+p.id_proveedor+'">'+p.nombre+(p.rif?' — '+p.rif:'')+'</option>'; }).join('');
+      + (provRows||[]).map(function(p){ return '<option value="'+p.id_proveedor+'">'+escapeHtml(p.nombre)+(p.rif?' — '+p.rif:'')+'</option>'; }).join('');
   } catch(eProvEntCons) {}
 
   await _entconsCargarUsuarioActual();
@@ -2173,7 +2173,7 @@ function _entconsRenderLineas() {
   const cont = document.getElementById('entcons-lineas-cuerpo');
   if (!cont) return;
   const opcionesArt = '<option value="">— Seleccionar —</option>' + (inventarioCache||[]).map(function(a){
-    return '<option value="'+a.id_articulo+'">'+a.nombre_articulo+' ('+a.codigo_articulo+')</option>';
+    return '<option value="'+a.id_articulo+'">'+escapeHtml(a.nombre_articulo)+' ('+escapeHtml(a.codigo_articulo)+')</option>';
   }).join('');
 
   cont.innerHTML = _entconsLineas.map(function(lin, idx) {
@@ -2459,7 +2459,7 @@ async function abrirNuevoInventario() {
     const todasCtasN = await obtenerCuentasContables();
     const ctas114 = todasCtasN.filter(function(c){ return c.codigo && c.codigo.indexOf('1.1.04') === 0 && c.estado === 'ACTIVA' && c.permite_movimiento === true; }).sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
     const selCta = document.getElementById('inv-cuenta-contable');
-    if (selCta) selCta.innerHTML = '<option value="">— Seleccionar cuenta 1.1.04.xxx —</option>' + ctas114.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join('');
+    if (selCta) selCta.innerHTML = '<option value="">— Seleccionar cuenta 1.1.04.xxx —</option>' + ctas114.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+escapeHtml(c.nombre)+'</option>'; }).join('');
     const ctasCGn = todasCtasN.filter(function(c){ return c.codigo && (c.codigo.indexOf('5.1.02') === 0 || c.codigo.indexOf('6.1.02.004') === 0) && c.estado === 'ACTIVA' && c.permite_movimiento === true; })
       // Excluir cuentas "padre" (que tienen hijas) -- solo las hijas pueden
       // recibir Asientos Contables, sin importar lo que diga su propia
@@ -2467,7 +2467,7 @@ async function abrirNuevoInventario() {
       .filter(function(c){ return !todasCtasN.some(function(otra){ return otra.codigo && otra.codigo.indexOf(c.codigo + '.') === 0; }); })
       .sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
     const selCGn = document.getElementById('inv-cuenta-costo-gasto');
-    if (selCGn) { selCGn.innerHTML = '<option value="">— Seleccionar cuenta —</option>' + ctasCGn.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join(''); selCGn.value = ''; }
+    if (selCGn) { selCGn.innerHTML = '<option value="">— Seleccionar cuenta —</option>' + ctasCGn.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+escapeHtml(c.nombre)+'</option>'; }).join(''); selCGn.value = ''; }
   } catch(e2) {}
   ['inv-id','inv-codigo','inv-nombre','inv-descripcion','inv-stock','inv-stock-min','inv-costo','inv-venta','inv-demanda-anual','inv-lead-time','inv-costo-pedido','inv-stock-seg'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.value = '';
@@ -2507,12 +2507,12 @@ async function abrirEditarInventario(id) {
     const todasCtasE = await obtenerCuentasContables();
     const ctas114e = todasCtasE.filter(function(c){ return c.codigo && c.codigo.indexOf('1.1.04') === 0 && c.estado === 'ACTIVA' && c.permite_movimiento === true; }).sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
     const selCtaE = document.getElementById('inv-cuenta-contable');
-    if (selCtaE) { selCtaE.innerHTML = '<option value="">— Seleccionar —</option>' + ctas114e.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join(''); }
+    if (selCtaE) { selCtaE.innerHTML = '<option value="">— Seleccionar —</option>' + ctas114e.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+escapeHtml(c.nombre)+'</option>'; }).join(''); }
     const ctasCGe = todasCtasE.filter(function(c){ return c.codigo && (c.codigo.indexOf('5.1.02') === 0 || c.codigo.indexOf('6.1.02.004') === 0) && c.estado === 'ACTIVA' && c.permite_movimiento === true; })
       .filter(function(c){ return !todasCtasE.some(function(otra){ return otra.codigo && otra.codigo.indexOf(c.codigo + '.') === 0; }); })
       .sort(function(a,b){ return a.codigo.localeCompare(b.codigo); });
     const selCGe = document.getElementById('inv-cuenta-costo-gasto');
-    if (selCGe) selCGe.innerHTML = '<option value="">— Seleccionar cuenta —</option>' + ctasCGe.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join('');
+    if (selCGe) selCGe.innerHTML = '<option value="">— Seleccionar cuenta —</option>' + ctasCGe.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+escapeHtml(c.nombre)+'</option>'; }).join('');
   } catch(e3) {}
   const r = inventarioCache.find(function(x) { return x.id_articulo === id; });
   if (!r) return;
@@ -2704,8 +2704,8 @@ async function invRenderCategorias(cont) {
     const filas = cats.map(function(c) {
       return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
         +'<td style="padding:8px;font-family:var(--font-mono);color:var(--naranja);font-size:12px">'+(c.codigo||'—')+'</td>'
-        +'<td style="padding:8px;font-size:13px;font-weight:500">'+c.nombre+'</td>'
-        +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(c.descripcion||'')+'</td>'
+        +'<td style="padding:8px;font-size:13px;font-weight:500">'+escapeHtml(c.nombre)+'</td>'
+        +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+escapeHtml((c.descripcion||''))+'</td>'
         +'<td style="padding:8px"><span class="badge '+(c.estado==='ACTIVO'?'badge-verde':'badge-rojo')+'">'+c.estado+'</span></td>'
         +'<td style="padding:8px"><button class="btn-naranja" onclick="invAbrirCategoria('+c.id_categoria+')" style="font-size:11px;padding:4px 10px">Ver</button></td>'
         +'</tr>';
@@ -2731,8 +2731,8 @@ async function invAbrirCategoria(id) {
   if (id) { const r = await api('inv_categorias','GET',null,'?id_categoria=eq.'+id)||[]; item=r[0]||null; }
   const html = '<div class="form-grid">'
     +'<div class="form-campo"><label>Código</label><input type="text" id="icat-codigo" value="'+(item?.codigo||'')+'" placeholder="Ej: CAT-01" oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase"></div>'
-    +'<div class="form-campo form-full"><label>Nombre</label><input type="text" id="icat-nombre" value="'+(item?.nombre||'')+'" placeholder="Nombre de la categoría" onblur="this.value=capitalizarNombre(this.value)"></div>'
-    +'<div class="form-campo form-full"><label>Descripción</label><textarea id="icat-desc" onblur="this.value=capitalizarNombre(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%">'+(item?.descripcion||'')+'</textarea></div>'
+    +'<div class="form-campo form-full"><label>Nombre</label><input type="text" id="icat-nombre" value="'+escapeHtml(item?.nombre||'')+'" placeholder="Nombre de la categoría" onblur="this.value=capitalizarNombre(this.value)"></div>'
+    +'<div class="form-campo form-full"><label>Descripción</label><textarea id="icat-desc" onblur="this.value=capitalizarNombre(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%">'+escapeHtml(item?.descripcion||'')+'</textarea></div>'
     +'<div class="form-campo form-full"><label>Estado</label><select id="icat-estado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="ACTIVO"'+((!item||item.estado==="ACTIVO")?" selected":"")+'>Activo</option><option value="INACTIVO"'+(item?.estado==="INACTIVO"?" selected":"")+'>Inactivo</option></select></div>'
     +'</div><input type="hidden" id="icat-id" value="'+(id||'')+'">'
     +'<div class="alerta alerta-exito" id="icat-ok" style="margin-top:12px;display:none"></div>'
@@ -2783,8 +2783,8 @@ async function invRenderTipos(cont) {
       const cat=catsMap[t.id_categoria];
       return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
         +'<td style="padding:8px;font-family:var(--font-mono);color:var(--naranja);font-size:12px">'+(t.codigo||'—')+'</td>'
-        +'<td style="padding:8px;font-size:13px;font-weight:500">'+t.nombre+'</td>'
-        +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(cat?(cat.codigo?cat.codigo+' — ':'')+cat.nombre:'—')+'</td>'
+        +'<td style="padding:8px;font-size:13px;font-weight:500">'+escapeHtml(t.nombre)+'</td>'
+        +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(cat?escapeHtml((cat.codigo?cat.codigo+' — ':'')+cat.nombre):'—')+'</td>'
         +'<td style="padding:8px"><span class="badge '+(t.estado==='ACTIVO'?'badge-verde':'badge-rojo')+'">'+t.estado+'</span></td>'
         +'<td style="padding:8px"><button class="btn-naranja" onclick="invAbrirTipo('+t.id_tipo+')" style="font-size:11px;padding:4px 10px">Ver</button></td>'
         +'</tr>';
@@ -3065,8 +3065,8 @@ async function rechazarOrdenCompra(id_entrada) {
           montoBsExacto: montoBsRech,
           montoIGTF: 0
         }) + '<div style="border-top:1px solid var(--borde);margin-top:12px;padding-top:10px;font-size:12px">'
-          + '<div><span style="color:var(--suave)">Rechazada por:</span> ' + (sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor') + '</div>'
-          + '<div style="margin-top:4px"><span style="color:var(--suave)">Motivo:</span> ' + motivo + '</div>'
+          + '<div><span style="color:var(--suave)">Rechazada por:</span> ' + escapeHtml(sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor') + '</div>'
+          + '<div style="margin-top:4px"><span style="color:var(--suave)">Motivo:</span> ' + escapeHtml(motivo) + '</div>'
           + '</div>';
         await api('notificaciones','POST',{
           correo_destino: m.id_usuario,
@@ -3121,13 +3121,13 @@ async function invRenderMargenBruto(cont) {
       const tieneHistorial = _invMargenBrutoCache.some(function(m){ return m.id_tipo_articulo===t.id_tipo; });
       const puedeDefinir = sesionActual?.administrador || puedo('INVENTARIO','DEFINIR_MARGEN_BRUTO');
       return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">'
-        +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(cat?(cat.codigo?cat.codigo+' — ':'')+cat.nombre:'—')+'</td>'
-        +'<td style="padding:8px;font-size:13px;font-weight:500">'+(t.codigo?t.codigo+' — ':'')+t.nombre+'</td>'
+        +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+(cat?escapeHtml((cat.codigo?cat.codigo+' — ':'')+cat.nombre):'—')+'</td>'
+        +'<td style="padding:8px;font-size:13px;font-weight:500">'+(t.codigo?t.codigo+' — ':'')+escapeHtml(t.nombre)+'</td>'
         +'<td style="padding:8px;font-family:var(--font-mono);font-weight:600;color:'+(vig?'#22c55e':'var(--suave)')+'">'+margenTxt+'</td>'
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+vigDesdeTxt+'</td>'
         +'<td style="padding:8px;white-space:nowrap">'
-        +(puedeDefinir?'<button class="btn-naranja" onclick="abrirDefinirMargen('+t.id_tipo+',\''+t.nombre.replace(/'/g,"\\'")+'\')" style="font-size:11px;padding:4px 10px;margin-right:6px">Definir/Cambiar</button>':'')
-        +(tieneHistorial?'<button class="btn-secundario" onclick="verHistorialMargen('+t.id_tipo+',\''+t.nombre.replace(/'/g,"\\'")+'\')" style="font-size:11px;padding:4px 10px">Ver historial</button>':'')
+        +(puedeDefinir?'<button class="btn-naranja" onclick="abrirDefinirMargen('+t.id_tipo+','+jsArg(t.nombre)+')" style="font-size:11px;padding:4px 10px;margin-right:6px">Definir/Cambiar</button>':'')
+        +(tieneHistorial?'<button class="btn-secundario" onclick="verHistorialMargen('+t.id_tipo+','+jsArg(t.nombre)+')" style="font-size:11px;padding:4px 10px">Ver historial</button>':'')
         +'</td>'
         +'</tr>';
     }).join('');
@@ -3245,7 +3245,7 @@ async function verHistorialMargen(id_tipo, nombreTipo) {
           +'<td style="padding:8px;font-size:12px;color:var(--suave);'+styleTachado+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(m.id_usuario||'')+'">'+(m.id_usuario||'—')+'</td>'
           +'<td style="padding:8px"><span class="badge '+(anulado?'badge-rojo':'badge-verde')+'" style="font-size:10px">'+(anulado?'ANULADO':'ACTIVO')+'</span></td>'
           +'<td style="padding:8px">'+(m.id===idMasRecienteActivo && masRecienteEsHoy && (sesionActual?.administrador || puedo('INVENTARIO','CORREGIR_MARGEN_BRUTO'))
-              ? '<button class="btn-naranja" onclick="abrirCorregirMargen('+m.id+','+m.id_tipo_articulo+',\''+(nombreTipo||'').replace(/'/g,"\\'")+'\','+parseFloat(m.margen_pct)+')" style="font-size:11px;padding:4px 10px">✏ Corregir</button>'
+              ? '<button class="btn-naranja" onclick="abrirCorregirMargen('+m.id+','+m.id_tipo_articulo+','+jsArg(nombreTipo)+','+parseFloat(m.margen_pct)+')" style="font-size:11px;padding:4px 10px">✏ Corregir</button>'
               : '')+'</td>'
           +'</tr>';
       }).join('')
@@ -3352,9 +3352,9 @@ async function invAbrirTipo(id) {
   }).join('');
   const html = '<div class="form-grid">'
     +'<div class="form-campo"><label>Código</label><input type="text" id="itipo-codigo" value="'+(item?.codigo||'')+'" placeholder="Ej: TIPO-01" oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase"></div>'
-    +'<div class="form-campo form-full"><label>Nombre</label><input type="text" id="itipo-nombre" value="'+(item?.nombre||'')+'" placeholder="Nombre del tipo" onblur="this.value=capitalizarNombre(this.value)"></div>'
+    +'<div class="form-campo form-full"><label>Nombre</label><input type="text" id="itipo-nombre" value="'+escapeHtml(item?.nombre||'')+'" placeholder="Nombre del tipo" onblur="this.value=capitalizarNombre(this.value)"></div>'
     +'<div class="form-campo form-full"><label>Categoría</label><select id="itipo-categoria" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="">— Seleccionar —</option>'+opcCats+'</select></div>'
-    +'<div class="form-campo form-full"><label>Descripción</label><textarea id="itipo-desc" onblur="this.value=capitalizarNombre(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%">'+(item?.descripcion||'')+'</textarea></div>'
+    +'<div class="form-campo form-full"><label>Descripción</label><textarea id="itipo-desc" onblur="this.value=capitalizarNombre(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:10px 14px;border-radius:5px;outline:none;resize:vertical;min-height:60px;width:100%">'+escapeHtml(item?.descripcion||'')+'</textarea></div>'
     +'<div class="form-campo form-full"><label>Estado</label><select id="itipo-estado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%"><option value="ACTIVO"'+((!item||item.estado==="ACTIVO")?" selected":"")+'>Activo</option><option value="INACTIVO"'+(item?.estado==="INACTIVO"?" selected":"")+'>Inactivo</option></select></div>'
     +'</div><input type="hidden" id="itipo-id" value="'+(id||'')+'">'
     +'<div class="alerta alerta-exito" id="itipo-ok" style="margin-top:12px;display:none"></div>'
@@ -4129,8 +4129,8 @@ function _renderFilaHistorial(m) {
     + '<td style="padding:8px;font-size:12px">'
     + (esEntrada
       ? '<div>' + (m.area_receptora ? m.area_receptora.nombre + (m.area_receptora.codigo ? ' (' + m.area_receptora.codigo + ')' : '') : '—') + '</div>'
-        + (m.area_origen ? '<div style="font-size:11px;color:#60a5fa">↩ Origen: ' + m.area_origen.nombre + (m.area_origen.codigo ? ' (' + m.area_origen.codigo + ')' : '') + '</div>' : '')
-        + (m.proveedores ? '<div style="font-size:11px;color:#a78bfa">🏭 ' + m.proveedores.nombre + '</div>' : '')
+        + (m.area_origen ? '<div style="font-size:11px;color:#60a5fa">↩ Origen: ' + escapeHtml(m.area_origen.nombre) + (m.area_origen.codigo ? ' (' + m.area_origen.codigo + ')' : '') + '</div>' : '')
+        + (m.proveedores ? '<div style="font-size:11px;color:#a78bfa">🏭 ' + escapeHtml(m.proveedores.nombre) + '</div>' : '')
         + ((puedo('INVENTARIO','VER_COSTOS') && (m.precio_compra_original ?? m.precio_costo_moneda))
             ? '<div style="font-size:11px;color:var(--suave)">' + (m.moneda_compra === 'VES' ? 'Bs. ' + fmtBs(m.precio_compra_original ?? m.precio_costo_moneda) : '$ ' + fmtUSD(m.precio_compra_original ?? m.precio_costo_moneda)) + ' / u</div>'
               // Moneda de Referencia -- equivalente en Bs a la Tasa BCV
@@ -4144,9 +4144,9 @@ function _renderFilaHistorial(m) {
       : '<div>' + area + '</div>')
     + ((esEntrada && m.motivo === 'compra' && m._solicitanteNombre) ? '<div style="font-size:11px;color:#60a5fa">👤 Solicitante: ' + escapeHtml(m._solicitanteNombre) + '</div>' : (esEntrada && !(m.motivo === 'compra') && m.empleado_recibe) ? '<div style="font-size:11px;color:#60a5fa">👤 Recibe: ' + (m.empleado_recibe?.nombre_completo||'') + '</div>' : '')
     + ((esEntrada && m.motivo === 'compra' && m._receptorNombre) ? '<div style="font-size:11px;color:#60a5fa">👤 Receptor: ' + escapeHtml(m._receptorNombre) + '</div>' : '')
-    + ((!esEntrada && m.empleado_entrega) ? '<div style="font-size:11px;color:#fb923c">👤 Entrega: ' + m.empleado_entrega.nombre_completo + '</div>' : '')
+    + ((!esEntrada && m.empleado_entrega) ? '<div style="font-size:11px;color:#fb923c">👤 Entrega: ' + escapeHtml(m.empleado_entrega.nombre_completo) + '</div>' : '')
     + (tieneMarcadorTransf ? '<div style="font-size:11px;font-weight:600;color:var(--naranja);margin-top:2px">[TRANSFERENCIA]</div>' : '')
-    + (m.motivo === 'compra' ? '' : (obsSinMarcador ? '<div style="font-size:11px;color:var(--suave)">' + obsSinMarcador + '</div>' : ''))
+    + (m.motivo === 'compra' ? '' : (obsSinMarcador ? '<div style="font-size:11px;color:var(--suave)">' + escapeHtml(obsSinMarcador) + '</div>' : ''))
     + '</td>'
     + '<td style="text-align:center;padding:8px 0">'
     + (anulada
@@ -4504,7 +4504,7 @@ async function editarMovimiento(tipo, idMovimiento, id_articulo, soloLectura, vi
       if (selArea2) {
         selArea2.innerHTML = '<option value="">— Seleccionar Área —</option>'
           + (areas||[]).map(function(a) {
-            return '<option value="'+a.id+'"'+(m.id_area==a.id?' selected':'')+'>'+a.nombre+(a.codigo?' ('+a.codigo+')':'')+'</option>';
+            return '<option value="'+a.id+'"'+(m.id_area==a.id?' selected':'')+'>'+escapeHtml(a.nombre)+(a.codigo?' ('+a.codigo+')':'')+'</option>';
           }).join('');
       }
       if (areaDisplay2) areaDisplay2.textContent = m.area_receptora?.nombre || '—';
@@ -6095,7 +6095,7 @@ async function confirmarAnulacion() {
             correo_destino: movOrig.id_usuario,
             titulo: 'Orden de Compra Rechazada',
             mensaje: '<div style="font-size:13px">La Compra <strong>ENT-'+idMovimiento+'</strong> ("'+artNomAnul+'", '+cantidad+' uds.), que ya estaba aprobada, fue <strong style="color:#fc8181">anulada</strong> por '
-              + (sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor') + '.<br><br><strong>Motivo:</strong> ' + motivo + '</div>',
+              + escapeHtml(sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor') + '.<br><br><strong>Motivo:</strong> ' + escapeHtml(motivo) + '</div>',
             estado: 'PENDIENTE',
             fecha_creacion: ahoraVzla(),
             datos_extra: JSON.stringify({ id_entrada: idMovimiento, accion: 'orden_compra_rechazada' })
@@ -6500,7 +6500,7 @@ function _reqIntRenderLineas() {
 
   cont.innerHTML = _reqIntLineas.map(function(lin, idx) {
     const opcionesArt = '<option value="">— Seleccionar —</option>' + _reqIntArticulosFiltrados(lin.id_articulo).map(function(a){
-      return '<option value="'+a.id_articulo+'">'+a.nombre_articulo+' ('+a.codigo_articulo+')</option>';
+      return '<option value="'+a.id_articulo+'">'+escapeHtml(a.nombre_articulo)+' ('+escapeHtml(a.codigo_articulo)+')</option>';
     }).join('');
     const art = _reqIntCatalogo.find(function(a){ return a.id_articulo === lin.id_articulo; });
     const stockTxt = art ? (art.stockAlmacen + ' ' + (art.unidad||'UND')) : '—';
@@ -6588,10 +6588,10 @@ async function abrirRequerimientoInterno(idArticuloPrecargado) {
   _reqIntFiltroCategoria = ''; _reqIntFiltroTipo = ''; _reqIntFiltroSoloStock = true;
   document.getElementById('reqint-filtro-categoria').innerHTML =
     '<option value="">Todas las categorías</option>'
-    + _invCategoriasCache.map(function(c) { return '<option value="'+c.id_categoria+'">'+c.nombre+'</option>'; }).join('');
+    + _invCategoriasCache.map(function(c) { return '<option value="'+c.id_categoria+'">'+escapeHtml(c.nombre)+'</option>'; }).join('');
   document.getElementById('reqint-filtro-tipo').innerHTML =
     '<option value="">Todos los tipos</option>'
-    + _reqIntTiposCache.map(function(t) { return '<option value="'+t.id_tipo+'">'+t.nombre+'</option>'; }).join('');
+    + _reqIntTiposCache.map(function(t) { return '<option value="'+t.id_tipo+'">'+escapeHtml(t.nombre)+'</option>'; }).join('');
   document.getElementById('reqint-filtro-solo-stock').checked = true;
 
   // Área receptora: cualquier área activa EXCEPTO Compras (no tiene
@@ -6601,7 +6601,7 @@ async function abrirRequerimientoInterno(idArticuloPrecargado) {
   const idAreaComprasReqInt = await obtenerIdAreaCompras();
   const areasDispReqInt = idAreaComprasReqInt ? areasReqInt.filter(function(a){ return String(a.id) !== String(idAreaComprasReqInt); }) : areasReqInt;
   document.getElementById('reqint-area').innerHTML = '<option value="">— Seleccionar área —</option>'
-    + areasDispReqInt.map(function(a) { return '<option value="' + a.id + '">' + a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>'; }).join('');
+    + areasDispReqInt.map(function(a) { return '<option value="' + a.id + '">' + escapeHtml(a.nombre) + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>'; }).join('');
   document.getElementById('reqint-empleado').innerHTML = '<option value="">— Seleccionar área primero —</option>';
 
   await cargarUsuarioEntregaReqInt();
@@ -6854,7 +6854,7 @@ async function verFichaAjuste(tipoRegistro, idMovimiento, id_articulo) {
   let areas = [];
   try { areas = await api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'); } catch(e) {}
   const selArea = document.getElementById('falt-area');
-  selArea.innerHTML = areas.map(function(a) { return '<option value="'+a.id+'"'+(a.id==id_area?' selected':'')+'>'+a.nombre+(a.codigo?' ('+a.codigo+')':'')+'</option>'; }).join('');
+  selArea.innerHTML = areas.map(function(a) { return '<option value="'+a.id+'"'+(a.id==id_area?' selected':'')+'>'+escapeHtml(a.nombre)+(a.codigo?' ('+a.codigo+')':'')+'</option>'; }).join('');
   document.getElementById('falt-stock-disponible').textContent = id_area && r ? ('Stock disponible en esta área: ' + await obtenerStockArea(id_articulo, id_area) + ' ' + (r.unidad||'UND')) : '';
 
   const idEmpleadoReporta = tipoRegistro === 'ENTRADA' ? m.id_empleado : m.id_empleado_entrega;
@@ -6907,7 +6907,7 @@ async function abrirFaltanteInventario(id) {
   let areas = [];
   try { areas = await api('param_areas', 'GET', null, '?estado=eq.ACTIVO&order=codigo.asc,nombre.asc'); } catch(e) {}
   selArea.innerHTML = '<option value="">— Seleccionar área —</option>'
-    + areas.map(function(a) { return '<option value="'+a.id+'">'+a.nombre+(a.codigo?' ('+a.codigo+')':'')+'</option>'; }).join('');
+    + areas.map(function(a) { return '<option value="'+a.id+'">'+escapeHtml(a.nombre)+(a.codigo?' ('+a.codigo+')':'')+'</option>'; }).join('');
   selArea.value = '';   // sin preselección — es una decisión del usuario
   selTipo.value = '';   // sin preselección — es una decisión del usuario
   onCambiarTipoFaltante();
@@ -7375,7 +7375,7 @@ async function _entInvVerDetalle(idRef, esLote) {
       + filas.map(function(f) {
           const a = artMap[f.id_articulo] || {};
           return '<tr>'
-            + '<td style="padding:6px 8px">'+(a.nombre_articulo||'Art#'+f.id_articulo)+' <span style="color:var(--suave);font-size:11px">('+(a.codigo_articulo||'')+')</span></td>'
+            + '<td style="padding:6px 8px">'+escapeHtml(a.nombre_articulo||'Art#'+f.id_articulo)+' <span style="color:var(--suave);font-size:11px">('+escapeHtml((a.codigo_articulo||''))+')</span></td>'
             + '<td style="padding:6px 8px;text-align:center;font-family:var(--font-mono)">'+f.cantidad+' '+(a.unidad||'UND')+'</td>'
             + '<td style="padding:6px 8px;text-align:center"><input type="checkbox" class="chk-ent-inv" data-id-entrada="'+f.id_entrada+'" onchange="_entInvValidarTodos()" style="width:18px;height:18px;cursor:pointer"></td>'
             + '</tr>';
@@ -7389,7 +7389,7 @@ async function _entInvVerDetalle(idRef, esLote) {
       + '</div>'
       + '<div class="form-campo" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">'
       + '<div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>'
-      + '<div style="font-size:13px;color:var(--texto);margin-bottom:12px">Usuario: <span style="font-weight:600;color:var(--naranja)">'+(sesionActual?.nombre || sesionActual?.correo_usuario || '—')+'</span></div>'
+      + '<div style="font-size:13px;color:var(--texto);margin-bottom:12px">Usuario: <span style="font-weight:600;color:var(--naranja)">'+escapeHtml(sesionActual?.nombre || sesionActual?.correo_usuario || '—')+'</span></div>'
       + '<label style="font-size:12px">Contraseña</label>'
       + '<input type="password" id="ent-inv-clave" placeholder="Ingrese su contraseña para confirmar" onkeydown="if(event.key===\'Enter\'){guardarEntradaInventario('+idRef+','+esLote+')}"'
       + ' style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">'
@@ -7654,8 +7654,8 @@ function _entregasAlmacenRenderLista() {
   const filas = ventas.map(function(v) {
     const cli = v.clientes;
     return '<tr>'
-      + '<td style="font-family:var(--font-mono);font-size:13px">'+(cli?(cli.tipo_doc+'-'+cli.numero_doc):'—')+'</td>'
-      + '<td style="font-size:13px;font-weight:600">'+(cli?cli.nombre_completo:'—')+'</td>'
+      + '<td style="font-family:var(--font-mono);font-size:13px">'+(cli?escapeHtml(cli.tipo_doc+'-'+cli.numero_doc):'—')+'</td>'
+      + '<td style="font-size:13px;font-weight:600">'+(cli?escapeHtml(cli.nombre_completo):'—')+'</td>'
       + '<td style="text-align:right"><button class="btn-primario" style="font-size:11px;padding:7px 14px;white-space:nowrap" onclick="_entregasAlmacenToggleExpandir('+v.id_venta+')">🧾 FACTURA</button></td>'
       + '</tr>';
   }).join('');

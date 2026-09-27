@@ -77,7 +77,7 @@ function _osFilasHtml(ordenesFiltradas) {
       return '<tr data-id="' + o.id_orden + '" data-estado="' + (o.estado||'') + '" data-fecha="' + (o.fecha_entrada ? o.fecha_entrada.substring(0,10) : '') + '">'
         + '<td><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + (o.numero_os || '—') + '</div>'
         + '<div style="font-size:11px;color:var(--suave)">' + fmtFecha(o.fecha_entrada) + '</div></td>'
-        + '<td>' + (veh ? '<div style="font-weight:500;font-size:15px">' + veh.placa + '</div><div style="font-size:13px;color:var(--suave)">' + veh.marca + ' ' + veh.modelo + '</div>' : '—') + '</td>'
+        + '<td>' + (veh ? '<div style="font-weight:500;font-size:15px">' + escapeHtml(veh.placa) + '</div><div style="font-size:13px;color:var(--suave)">' + escapeHtml(veh.marca) + ' ' + escapeHtml(veh.modelo) + '</div>' : '—') + '</td>'
         + '<td style="font-size:15px">' + (prop ? prop.nombre_completo : '—') + '</td>'
         + '<td><span class="badge ' + est.clase + '">' + est.label + '</span>'
         + (o.fecha_estado ? '<div style="font-size:10px;color:var(--suave);margin-top:3px">' + fmtFecha(o.fecha_estado) + '</div>' : '')
@@ -659,9 +659,9 @@ async function buscarVehiculoOS() {
 function renderVehInfoOS(v) {
   return '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:12px 16px;margin-top:8px">'
     + '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">'
-    + '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + v.placa + '</div>'
-    + '<div><div style="font-weight:500">' + v.marca + ' ' + v.modelo + '</div>'
-    + (v.clientes ? '<div style="font-size:12px;color:var(--suave)">👤 ' + v.clientes.nombre_completo + '</div>' : '')
+    + '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + escapeHtml(v.placa) + '</div>'
+    + '<div><div style="font-weight:500">' + escapeHtml(v.marca) + ' ' + escapeHtml(v.modelo) + '</div>'
+    + (v.clientes ? '<div style="font-size:12px;color:var(--suave)">👤 ' + escapeHtml(v.clientes.nombre_completo) + '</div>' : '')
     + '</div></div></div>';
 }
 
@@ -806,7 +806,7 @@ function renderLineasOS() {
 
     const serviciosFiltrados = catalogoCache.filter(function(s) { return !l.id_grupo || s.grupo === l.id_grupo; });
     const opcionesServ = '<option value="">— Seleccionar —</option>'
-      + serviciosFiltrados.map(function(s) { return '<option value="' + s.id_servicio + '"' + (l.id_servicio == s.id_servicio ? ' selected' : '') + '>' + s.nombre + '</option>'; }).join('');
+      + serviciosFiltrados.map(function(s) { return '<option value="' + s.id_servicio + '"' + (l.id_servicio == s.id_servicio ? ' selected' : '') + '>' + escapeHtml(s.nombre) + '</option>'; }).join('');
 
     // Enter en Cantidad/Precio avanza al siguiente campo de ESTA fila --
     // estos dos no re-renderizan al escribir (solo recalculan totales),
@@ -932,7 +932,7 @@ function renderLineasRep() {
   cont.innerHTML = osArtículosLineas.map(function(l, i) {
     const opcionesArt = '<option value="">— Seleccionar —</option>'
       + _itemsDisponiblesOS.filter(function(a) { return a.id_articulo === l.id_articulo || _stockDisponibleFilaOS(a.id_articulo, i) > 0; })
-        .map(function(a) { return '<option value="' + a.id_articulo + '"' + (l.id_articulo === a.id_articulo ? ' selected' : '') + '>' + a.nombre_articulo + '</option>'; }).join('');
+        .map(function(a) { return '<option value="' + a.id_articulo + '"' + (l.id_articulo === a.id_articulo ? ' selected' : '') + '>' + escapeHtml(a.nombre_articulo) + '</option>'; }).join('');
 
     const stockTxt  = l.id_articulo ? _stockDisponibleFilaOS(l.id_articulo, i) : '—';
     const subtotal    = (parseFloat(l.cantidad) || 0) * (parseFloat(l.precio_original) || 0);
@@ -1613,7 +1613,7 @@ async function verFichaOS(id) {
 
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
       + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Vehículo</div>'
-      + '<div style="font-weight:500;color:var(--suave)">' + (veh ? veh.placa + ' — ' + veh.marca + ' ' + veh.modelo : '—') + '</div></div>'
+      + '<div style="font-weight:500;color:var(--suave)">' + (veh ? veh.placa + ' — ' + escapeHtml(veh.marca) + ' ' + veh.modelo : '—') + '</div></div>'
       + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">Cliente</div>'
       + '<div style="color:var(--suave)">' + (prop ? prop.nombre_completo : '—') + '</div></div>'
       + '</div>'
@@ -1634,7 +1634,7 @@ async function verFichaOS(id) {
       + '</div>'
 
       + (o.diagnostico ? '<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Diagnóstico</div>'
-        + '<div style="background:var(--gris2);border-radius:6px;padding:12px;font-size:13px">' + o.diagnostico + '</div></div>' : '')
+        + '<div style="background:var(--gris2);border-radius:6px;padding:12px;font-size:13px">' + escapeHtml(o.diagnostico) + '</div></div>' : '')
       + (o.observaciones ? '<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Observaciones</div>'
         + '<div style="background:var(--gris2);border-radius:6px;padding:12px;font-size:13px">' + escapeHtml(o.observaciones) + '</div></div>' : '')
 

@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909222';
+const SYD_VERSION = '20260909223';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -1496,7 +1496,7 @@ function mostrarSeleccionEmpresa() {
           + ' >'
           + '<div style="font-family:var(--font-display);font-size:18px;letter-spacing:1px;color:var(--texto)">'
           + '🏢 ' + e.nombre + '</div>'
-          + '<div style="font-size:11px;color:var(--suave);margin-top:4px">' + (e.rif||'') + '</div>'
+          + '<div style="font-size:11px;color:var(--suave);margin-top:4px">' + escapeHtml((e.rif||'')) + '</div>'
           + '</button>';
       }).join('')
     + '<button onclick="cerrarSesion()" style="background:none;border:none;color:var(--suave);font-size:12px;cursor:pointer;margin-top:16px;display:block">← Cerrar sesión</button>'
@@ -1738,7 +1738,7 @@ async function renderDashboard() {
       <div class="bienvenida">
         <div>
           <h1>BIENVENIDO</h1>
-          <p>${sesionActual.nombre}</p>
+          <p>${escapeHtml(sesionActual.nombre)}</p>
         </div>
         <div class="hora">${hora}</div>
       </div>
@@ -1900,14 +1900,14 @@ async function renderUsuarios(filtro) {
         <td>
           <div style="display:flex;align-items:center;gap:10px">
             <div style="position:relative">
-              <div class="usuario-avatar" style="width:30px;height:30px;font-size:13px">${u.nombre.charAt(0)}</div>
+              <div class="usuario-avatar" style="width:30px;height:30px;font-size:13px">${escapeHtml(u.nombre.charAt(0))}</div>
               <div style="position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;background:${enLinea ? '#38a169' : '#444'};border:2px solid var(--gris1)"></div>
             </div>
             <div>
-              <div style="font-weight:500;font-size:15px">${u.nombre}</div>
+              <div style="font-weight:500;font-size:15px">${escapeHtml(u.nombre)}</div>
               <div style="font-size:13px;color:var(--suave)">${u.correo_usuario}</div>
               ${u._empresaEmpleado ? `<div style="font-size:10px;color:var(--naranja);font-weight:600">🏢 ${u._empresaEmpleado}</div>` : ''}
-              ${u._areaEmpleado ? `<div style="font-size:10px;color:var(--suave)">📍 ${u._areaEmpleado.nombre}${u._areaEmpleado.codigo ? ' (' + String(u._areaEmpleado.codigo).replace(/-/g,'') + ')' : ''}</div>` : ''}
+              ${u._areaEmpleado ? `<div style="font-size:10px;color:var(--suave)">📍 ${escapeHtml(u._areaEmpleado.nombre)}${u._areaEmpleado.codigo ? ' (' + String(u._areaEmpleado.codigo).replace(/-/g,'') + ')' : ''}</div>` : ''}
             </div>
           </div>
         </td>
@@ -1996,7 +1996,7 @@ async function verFichaUsuario(id) {
     if (!accs || !accs.length) return '';
     const puedeAprob = facMap[m.sigla] ? ' <span style="font-size:10px;background:rgba(34,197,94,0.2);color:#22c55e;border-radius:10px;padding:1px 6px">✓ Aprueba</span>' : '';
     const badgeAprob = MODULOS_CON_APROBACION.includes(m.sigla) ? puedeAprob : '';
-    return '<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,107,0,0.1);color:var(--naranja);padding:5px 12px;border-radius:20px;margin:3px;font-size:12px;font-weight:600">' + m.icono + ' ' + m.nombre + badgeAprob + '</span>';
+    return '<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,107,0,0.1);color:var(--naranja);padding:5px 12px;border-radius:20px;margin:3px;font-size:12px;font-weight:600">' + m.icono + ' ' + escapeHtml(m.nombre) + badgeAprob + '</span>';
   }).filter(Boolean).join('');
 
 
@@ -2008,10 +2008,10 @@ async function verFichaUsuario(id) {
   document.getElementById('ficha-usu-contenido').innerHTML =
     '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">'
     + '<div style="position:relative">'
-    + '<div class="usuario-avatar" style="width:48px;height:48px;font-size:20px">' + u.nombre.charAt(0) + '</div>'
+    + '<div class="usuario-avatar" style="width:48px;height:48px;font-size:20px">' + escapeHtml(u.nombre.charAt(0)) + '</div>'
     + '<div style="position:absolute;bottom:0;right:0;width:12px;height:12px;border-radius:50%;background:' + (enLinea ? '#38a169' : '#444') + ';border:2px solid var(--gris1)"></div>'
     + '</div>'
-    + '<div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + u.nombre + '</div>'
+    + '<div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + escapeHtml(u.nombre) + '</div>'
     + '<div style="font-size:12px;color:var(--suave)">' + u.correo_usuario + '</div>'
     + '<span class="badge ' + (u.administrador ? 'badge-naranja' : 'badge-gris') + '" style="margin-top:4px">' + (u.administrador ? 'Administrador' : 'Operador') + '</span>'
     + '</div></div>'
@@ -2089,7 +2089,7 @@ async function abrirNuevoUsuario() {
     if (selEmp) {
       selEmp.innerHTML = '<option value="">— Seleccionar empleado —</option>'
         + emps.map(function(e) {
-            return '<option value="' + e.id_empleado + '" data-nombre="' + (e.nombre_completo||'') + '" data-correo="' + (e.correo||'') + '">'
+            return '<option value="' + e.id_empleado + '" data-nombre="' + escapeHtml((e.nombre_completo||'')) + '" data-correo="' + escapeHtml((e.correo||'')) + '">'
               + escapeHtml(e.nombre_completo) + (e.correo ? ' · ' + escapeHtml(e.correo) : '') + '</option>';
           }).join('');
     }
@@ -2698,7 +2698,7 @@ async function renderTasas() {
         + '<div style="display:flex;align-items:center;gap:10px">'
         + '<span style="font-size:26px">' + icono + '</span>'
         + '<div>'
-        + '<div style="font-family:var(--font-display);font-size:20px;letter-spacing:2px;color:var(--texto)">' + nombre + ' / VES</div>'
+        + '<div style="font-family:var(--font-display);font-size:20px;letter-spacing:2px;color:var(--texto)">' + escapeHtml(nombre) + ' / VES</div>'
         + '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-top:2px">' + fuente + '</div>'
         + '</div></div>'
         + '<div style="font-size:10px;color:#444;font-family:var(--font-mono)">' + horaActual + '</div>'
@@ -2960,7 +2960,7 @@ async function consultarTasaPorFecha() {
         return '<div style="background:var(--gris2);border:1px solid var(--borde);border-radius:8px;padding:16px 20px;'
           + 'display:flex;align-items:center;gap:12px;margin-bottom:10px">'
           + '<span style="font-size:20px">' + icono + '</span>'
-          + '<div><div style="font-size:13px;color:#444">' + nombre + ' — Sin datos para esta fecha</div>'
+          + '<div><div style="font-size:13px;color:#444">' + escapeHtml(nombre) + ' — Sin datos para esta fecha</div>'
           + '<div style="font-size:10px;color:#555;margin-top:4px">El historial del mercado P2P está disponible desde mediados de febrero 2026</div>'
           + '</div></div>';
       }
@@ -2969,7 +2969,7 @@ async function consultarTasaPorFecha() {
         + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'
         + '<div style="display:flex;align-items:center;gap:10px">'
         + '<span style="font-size:22px">' + icono + '</span>'
-        + '<div style="font-family:var(--font-display);font-size:17px;letter-spacing:1px;color:var(--texto)">' + nombre + '</div>'
+        + '<div style="font-family:var(--font-display);font-size:17px;letter-spacing:1px;color:var(--texto)">' + escapeHtml(nombre) + '</div>'
         + '</div>'
         + '<div style="font-family:var(--font-mono);font-size:32px;font-weight:700;color:' + color + '">'
         + formatearTasaVE(val) + ' <span style="font-size:13px;color:#555;font-weight:400">Bs</span>'
@@ -3316,7 +3316,7 @@ async function confirmarSiNo(mensaje) {
     const div = document.createElement('div');
     div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10001;display:flex;align-items:center;justify-content:center';
     div.innerHTML = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:24px;max-width:360px;width:90%">'
-      + '<div style="font-size:14px;margin-bottom:20px;color:#e8e8e8;text-align:center">'+mensaje+'</div>'
+      + '<div style="font-size:14px;margin-bottom:20px;color:#e8e8e8;text-align:center">'+sanitizarHtml(mensaje)+'</div>'
       + '<div style="display:flex;gap:12px;justify-content:center">'
       + '<button id="btn-sn-si" style="background:#fc8181;border:none;color:#1a1a1a;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600">Sí</button>'
       + '<button id="btn-sn-no" style="background:#333;border:1px solid #555;color:#e8e8e8;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">No</button>'
@@ -3335,7 +3335,7 @@ async function mostrarAvisoOk(mensaje, esError) {
     const div = document.createElement('div');
     div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10001;display:flex;align-items:center;justify-content:center';
     div.innerHTML = '<div style="background:#1a1a1a;border:1px solid '+(esError?'#fc8181':'#333')+';border-radius:10px;padding:24px;max-width:360px;width:90%">'
-      + '<div style="font-size:14px;margin-bottom:20px;color:'+(esError?'#fc8181':'#e8e8e8')+';text-align:center">'+mensaje+'</div>'
+      + '<div style="font-size:14px;margin-bottom:20px;color:'+(esError?'#fc8181':'#e8e8e8')+';text-align:center">'+sanitizarHtml(mensaje)+'</div>'
       + '<div style="display:flex;justify-content:center">'
       + '<button id="btn-aviso-ok" style="background:'+(esError?'#333':'var(--naranja)')+';border:none;color:'+(esError?'#e8e8e8':'#1a1a1a')+';padding:10px 32px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600">Aceptar</button>'
       + '</div></div>';
@@ -3520,7 +3520,7 @@ function renderTarjetaEntregaVenta(v, lineas, opts) {
     ? lineas.map(function(l) {
         return '<tr>'
           + '<td style="text-align:center;font-family:var(--font-mono)">'+l.cantidad+'</td>'
-          + '<td>'+l.nombre+'</td>'
+          + '<td>'+escapeHtml(l.nombre)+'</td>'
           + '<td style="text-align:center"><input type="checkbox" class="'+(opts.soloLectura?'':'chk-entrega-articulo chk-entrega-articulo-'+v.id_venta)+'" '+(opts.soloLectura?('disabled'+(entregada?' checked':'')):'')+' style="width:16px;height:16px;cursor:'+(opts.soloLectura?'default':'pointer')+'"></td>'
           + '</tr>';
       }).join('')
@@ -3556,9 +3556,9 @@ function renderTarjetaEntregaVenta(v, lineas, opts) {
         + (opts.soloLectura ? '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">N° Factura</div>'
           + '<div style="font-family:var(--font-mono);font-size:13px;margin-bottom:6px">'+(v.facturas?.numero_factura||'—')+'</div>' : '')
         + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Cédula/RIF</div>'
-        + '<div style="font-family:var(--font-mono);font-size:13px;margin-bottom:6px">'+(cli?(cli.tipo_doc+'-'+cli.numero_doc):'—')+'</div>'
+        + '<div style="font-family:var(--font-mono);font-size:13px;margin-bottom:6px">'+(cli?escapeHtml(cli.tipo_doc+'-'+cli.numero_doc):'—')+'</div>'
         + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Cliente</div>'
-        + '<div style="font-size:13px;font-weight:600">'+(cli?cli.nombre_completo:'—')+'</div>'
+        + '<div style="font-size:13px;font-weight:600">'+(cli?escapeHtml(cli.nombre_completo):'—')+'</div>'
       + '</div>'
       + '<div style="text-align:right">'
         + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">Fecha</div>'
@@ -3611,8 +3611,8 @@ async function cargarEmpresasAccesoModal(correo) {
       const disabled = esNomina ? 'disabled' : '';
       return '<label style="display:flex;align-items:center;gap:8px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;padding:8px 12px;cursor:'+(esNomina?'not-allowed':'pointer')+';font-size:12px"'+(esNomina?' title="Empresa de Nómina -- no se puede quitar"':'')+'>'
         + '<input type="checkbox" value="'+e.id_empresa+'" '+checked+' '+disabled+' class="emp-acceso-check" style="accent-color:var(--naranja);width:15px;height:15px">'
-        + '<div><div style="font-weight:600">'+e.nombre+(esNomina ? ' <span style="font-size:10px;color:var(--naranja);font-weight:400">🔒 (Empresa de Nómina)</span>' : '')+'</div>'
-        + (e.rif ? '<div style="font-size:10px;color:var(--suave)">'+e.rif+'</div>' : '')
+        + '<div><div style="font-weight:600">'+escapeHtml(e.nombre)+(esNomina ? ' <span style="font-size:10px;color:var(--naranja);font-weight:400">🔒 (Empresa de Nómina)</span>' : '')+'</div>'
+        + (e.rif ? '<div style="font-size:10px;color:var(--suave)">'+escapeHtml(e.rif)+'</div>' : '')
         + '</div></label>';
     }).join('');
   } catch(e) {
@@ -3825,10 +3825,9 @@ function mostrarSugerenciasCorreo(input) {
 
   cont.innerHTML = dominios.map(function(d) {
     const correoCompleto = valor + '@' + d;
-    const correoEscapado = correoCompleto.replace(/'/g, "\\'");
     return '<div style="padding:9px 14px;font-size:13px;cursor:pointer;color:var(--texto);font-family:var(--font-mono)" '
       + 'onmouseover="this.style.background=\'var(--gris3)\'" onmouseout="this.style.background=\'\'" '
-      + 'onmousedown="event.preventDefault(); document.getElementById(\'' + input.id + '\').value = \'' + correoEscapado + '\'; cerrarSugerenciasCorreo();">'
+      + 'onmousedown="event.preventDefault(); document.getElementById(\'' + input.id + '\').value = ' + jsArg(correoCompleto) + '; cerrarSugerenciasCorreo();">'
       + escapeHtml(correoCompleto) + '</div>';
   }).join('');
 
@@ -3942,6 +3941,14 @@ function sanitizarHtml(html) {
     });
   });
   return tpl.innerHTML;
+}
+
+// Argumento de texto para una función dentro de un atributo onclick="..."
+// (u otro on*): lo convierte en literal JS entre comillas y lo escapa para
+// HTML. Antes se usaba .replace(/'/g,"\\'"), que no protegía comillas
+// dobles (un nombre con " podía romper el atributo e inyectar código).
+function jsArg(valor) {
+  return escapeHtml(JSON.stringify(valor === null || valor === undefined ? '' : String(valor)));
 }
 
 function escapeHtml(valor) {

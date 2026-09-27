@@ -84,7 +84,7 @@ async function _pendFacturarCargarProveedores() {
     cont.innerHTML = Object.keys(porProveedor).map(function(id) {
       const p = porProveedor[id];
       return '<div onclick="_pendFacturarSeleccionarProveedor('+id+')" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--gris2);border:1px solid var(--borde);border-radius:8px;margin-bottom:8px;cursor:pointer">'
-        + '<div><div style="font-weight:600">'+p.nombre+'</div><div style="font-size:11px;color:var(--suave)">'+p.rif+' — '+p.cant+' Entrada(s) pendiente(s)</div></div>'
+        + '<div><div style="font-weight:600">'+escapeHtml(p.nombre)+'</div><div style="font-size:11px;color:var(--suave)">'+escapeHtml(p.rif)+' — '+p.cant+' Entrada(s) pendiente(s)</div></div>'
         + '<div style="color:var(--naranja);font-weight:700;font-family:var(--font-mono)">$ '+p.totalUsd.toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div>'
         + '</div>';
     }).join('');
@@ -171,7 +171,7 @@ async function _pendFacturarSeleccionarProveedor(id_proveedor, fechaFiltro) {
             : (errorDetalleEntrada ? '<div style="font-size:11px;color:#f87171;margin-top:2px">Error cargando detalle: '+errorDetalleEntrada+'</div>' : '');
           return '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--gris2);border:1px solid var(--borde);border-radius:6px;margin-bottom:6px;cursor:pointer">'
             + '<input type="checkbox" class="pend-fact-chk-entrada" value="'+r.id_cxp+'" data-fecha="'+fecha+'" onchange="_pendFacturarOnCambioSeleccion()">'
-            + '<div style="flex:1"><span style="color:var(--naranja);font-weight:600">'+fmtNumeroDoc(r.numero_doc)+'</span> <span style="font-size:11px;color:var(--suave)">('+r.moneda_negociacion+')</span>'+detalleLinea+'</div>'
+            + '<div style="flex:1"><span style="color:var(--naranja);font-weight:600">'+escapeHtml(fmtNumeroDoc(r.numero_doc))+'</span> <span style="font-size:11px;color:var(--suave)">('+r.moneda_negociacion+')</span>'+detalleLinea+'</div>'
             + '<div style="font-family:var(--font-mono);font-weight:600;white-space:nowrap">Monto $ '+parseFloat(r.monto_usd||0).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div>'
             + '</label>';
         }).join('')
@@ -458,7 +458,7 @@ async function _renderDesglosePagoConsolidado() {
     '<table style="width:100%;font-size:12px;border-collapse:collapse">'
     + window._pendFacturarDetalle.map(function(d) {
         const montoLinea = esUSD ? d.montoUSD : d.montoVES;
-        return '<tr><td style="padding:4px 0;color:var(--suave)">'+fmtNumeroDoc(d.numero_doc)+'</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono)">'+fmt(montoLinea)+'</td></tr>';
+        return '<tr><td style="padding:4px 0;color:var(--suave)">'+escapeHtml(fmtNumeroDoc(d.numero_doc))+'</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono)">'+fmt(montoLinea)+'</td></tr>';
       }).join('')
     + '<tr style="border-top:1px solid var(--borde)"><td style="padding:4px 0;font-weight:600">Total Facturado</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono);font-weight:600">'+fmt(totalPago)+'</td></tr>'
     + (Math.abs(diferencialTotal) > 0.01 ? '<tr><td style="padding:4px 0;font-size:11px;color:'+(diferencialTotal>0?'#f87171':'#22c55e')+'">↳ '+(diferencialTotal>0?'Pérdida':'Ganancia')+' Cambiaria (consolidada)</td><td style="padding:4px 0;text-align:right;font-family:var(--font-mono);font-size:11px;color:'+(diferencialTotal>0?'#f87171':'#22c55e')+'">'+fmt(Math.abs(diferencialTotal))+'</td></tr>' : '')
@@ -556,7 +556,7 @@ function _armarMensajeAprobacionCxP(monto, idCxp, numeroDoc, detalle) {
     ? '<div style="font-size:10px;color:var(--suave);margin-top:2px">Incluye IGTF: $ ' + fmtUSD(montoIgtf) + '</div>'
     : '';
   return '<div style="font-size:10px;color:var(--suave);letter-spacing:0.5px;margin-bottom:2px">OBLIGACIÓN DE PAGO — ' + (numeroDoc || ('#'+idCxp)) + '</div>'
-    + '<div style="font-weight:600;margin-bottom:12px">' + (d.concepto || '—') + '</div>'
+    + '<div style="font-weight:600;margin-bottom:12px">' + escapeHtml((d.concepto || '—')) + '</div>'
     + '<div style="display:flex;gap:24px;margin-bottom:12px">'
     + '<div><div style="font-size:10px;color:var(--suave)">PROVEEDOR</div><div style="font-weight:600">' + (d.proveedor || '—') + '</div></div>'
     + '<div><div style="font-size:10px;color:var(--suave)">MONEDA DE PAGO</div><div style="font-weight:600">' + monedaPago + '</div></div>'
@@ -949,7 +949,7 @@ async function abrirNuevoPago() {
     const sel = document.getElementById('pago-categoria-prov');
     if (sel) {
       sel.innerHTML = '<option value="">— Seleccionar —</option>'
-        + cats.map(function(c){ return '<option value="'+c.id+'">'+c.nombre+'</option>'; }).join('');
+        + cats.map(function(c){ return '<option value="'+c.id+'">'+escapeHtml(c.nombre)+'</option>'; }).join('');
     }
   } catch(e) {}
 
@@ -962,7 +962,7 @@ async function abrirNuevoPago() {
     const selC = document.getElementById('pago-cuenta-gasto');
     if (selC) {
       selC.innerHTML = '<option value="">— Seleccionar cuenta —</option>'
-        + cuentas.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+c.nombre+'</option>'; }).join('');
+        + cuentas.map(function(c){ return '<option value="'+c.id_cuenta+'">'+c.codigo+' — '+escapeHtml(c.nombre)+'</option>'; }).join('');
     }
   } catch(e) {}
 
@@ -974,7 +974,7 @@ async function abrirNuevoPago() {
     const selProv = document.getElementById('pago-proveedor');
     if (selProv) {
       selProv.innerHTML = '<option value="">— Seleccionar proveedor —</option>'
-        + provs.map(function(p){ return '<option value="'+p.id_proveedor+'">'+p.nombre+'</option>'; }).join('');
+        + provs.map(function(p){ return '<option value="'+p.id_proveedor+'">'+escapeHtml(p.nombre)+'</option>'; }).join('');
     }
     window._pagoProveedores = provs;
   } catch(e) { console.warn('Error cargando proveedores:', e); }
@@ -1813,7 +1813,7 @@ function onCambioPagoMoneda() {
       selMetodoManual.innerHTML = '<option value="">— Seleccione método —</option>'
         + metodos.map(function(m) {
             const cta = cuentasMap[m.id_cuenta_contable];
-            return '<option value="'+m.id_tipo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-cuenta-nombre="'+(cta ? cta.codigo+' — '+cta.nombre : '')+'">'+m.nombre+'</option>';
+            return '<option value="'+m.id_tipo+'" data-cuenta-id="'+(m.id_cuenta_contable||'')+'" data-cuenta-nombre="'+(cta ? escapeHtml(cta.codigo+' — '+cta.nombre) : '')+'">'+escapeHtml(m.nombre)+'</option>';
           }).join('');
       // El campo queda oculto (ver comentario en el HTML) -- ya no lo
       // elige la persona que autoriza el pago, así que se autoselecciona
@@ -3626,7 +3626,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
         creadorEl.textContent = '…';
         resolverCreadorCxP(c.id_usuario).then(function(info){
           const areaLinea = [info.areaNombre, info.areaCodigo ? '(' + info.areaCodigo + ')' : ''].filter(Boolean).join(' ');
-          creadorEl.innerHTML = (areaLinea ? '<div>' + areaLinea + '</div>' : '') + '<div>' + (info.nombre || '—') + '</div>';
+          creadorEl.innerHTML = (areaLinea ? '<div>' + areaLinea + '</div>' : '') + '<div>' + escapeHtml((info.nombre || '—')) + '</div>';
         });
       } else {
         creadorEl.textContent = '—';
@@ -3645,7 +3645,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       el.textContent = '…';
       resolverCreadorCxP(correo).then(function(info){
         const areaLinea = [info.areaNombre, info.areaCodigo ? '(' + info.areaCodigo + ')' : ''].filter(Boolean).join(' ');
-        el.innerHTML = (areaLinea ? '<div>' + areaLinea + '</div>' : '') + '<div>' + (info.nombre || '—') + '</div>';
+        el.innerHTML = (areaLinea ? '<div>' + areaLinea + '</div>' : '') + '<div>' + escapeHtml((info.nombre || '—')) + '</div>';
       });
     };
     pintarQuienCxP('cont-pago-cxp-modificado-cont', 'cont-pago-cxp-modificado', c.modificado_por);
@@ -3668,7 +3668,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
           detAprobado.textContent = '…';
           resolverCreadorCxP(c.aprobado_por).then(function(info){
             const areaLinea = [info.areaNombre, info.areaCodigo ? '(' + info.areaCodigo + ')' : ''].filter(Boolean).join(' ');
-            detAprobado.innerHTML = (areaLinea ? '<div>' + areaLinea + '</div>' : '') + '<div>' + (info.nombre || '—') + '</div>';
+            detAprobado.innerHTML = (areaLinea ? '<div>' + areaLinea + '</div>' : '') + '<div>' + escapeHtml((info.nombre || '—')) + '</div>';
           });
         } else {
           detAprobado.textContent = '—';
@@ -3680,7 +3680,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
           detPagado.textContent = '…';
           resolverCreadorCxP(c.pagado_por).then(function(info){
             const areaLinea = [info.areaNombre, info.areaCodigo ? '(' + info.areaCodigo + ')' : ''].filter(Boolean).join(' ');
-            detPagado.innerHTML = (areaLinea ? '<div>' + areaLinea + '</div>' : '') + '<div>' + (info.nombre || '—') + '</div>';
+            detPagado.innerHTML = (areaLinea ? '<div>' + areaLinea + '</div>' : '') + '<div>' + escapeHtml((info.nombre || '—')) + '</div>';
           });
         } else {
           detPagado.textContent = '—';
@@ -4511,7 +4511,7 @@ async function ejecutarPagoCxP(id_cxp) {
     const sel = document.getElementById('exec-pago-cuenta-banco');
     if (sel) sel.innerHTML = '<option value="">— Seleccionar cuenta —</option>'
       + (ctas||[]).map(function(ct){
-          return '<option value="'+ct.id_cuenta+'">'+ct.codigo+' — '+ct.nombre+'</option>';
+          return '<option value="'+ct.id_cuenta+'">'+ct.codigo+' — '+escapeHtml(ct.nombre)+'</option>';
         }).join('');
   } catch(e) {}
 
@@ -4522,7 +4522,7 @@ async function ejecutarPagoCxP(id_cxp) {
     try {
       const bancosExec = await api('param_bancos','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre');
       selBancoOrigenExec.innerHTML = '<option value="">— Seleccionar —</option>'
-        + (bancosExec||[]).map(function(b){ return '<option value="'+b.id+'">'+b.nombre+'</option>'; }).join('');
+        + (bancosExec||[]).map(function(b){ return '<option value="'+b.id+'">'+escapeHtml(b.nombre)+'</option>'; }).join('');
     } catch(eBanExec) { selBancoOrigenExec.innerHTML = '<option value="">— Sin bancos disponibles —</option>'; }
     selBancoOrigenExec.value = '';
   }

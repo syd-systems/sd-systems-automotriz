@@ -171,8 +171,8 @@ async function cargarClientes(filtro) {
           ? '<img src="' + p.foto_documento + '" onerror="imgError(this)" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--borde)">'
           : '<div style="width:32px;height:32px;border-radius:50%;background:var(--gris3);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--suave)">👤</div>')
         + '<div>'
-        + '<div style="font-weight:500;font-size:15px">' + p.nombre_completo + '</div>'
-        + '<div style="font-size:11px;color:var(--suave)">' + p.tipo_doc + '-' + p.numero_doc + '</div>'
+        + '<div style="font-weight:500;font-size:15px">' + escapeHtml(p.nombre_completo) + '</div>'
+        + '<div style="font-size:11px;color:var(--suave)">' + p.tipo_doc + '-' + escapeHtml(p.numero_doc) + '</div>'
         + (p.tipo_contribuyente ? '<span class="badge ' + ({'ORDINARIO':'badge-naranja','ESPECIAL':'badge-verde','FORMAL':'badge-gris'}[p.tipo_contribuyente]||'badge-gris') + '" style="font-size:9px;margin-top:3px;display:inline-block">' + ({'ORDINARIO':'Ord.','ESPECIAL':'Esp.','FORMAL':'Form.'}[p.tipo_contribuyente]||p.tipo_contribuyente) + '</span>' : '')
         + '</div></div></td>'
         + '<td style="font-size:12px">' + (puedo('CLIENTES','VER_DATOS_PERSONALES') ? (p.telefono || '—') : '🔒') + '</td>'
@@ -426,7 +426,7 @@ async function verFichaCliente(id) {
   const vehsHTML = vehs.length ? vehs.map(function(v) {
     return '<div style="background:var(--gris3);border-radius:6px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">'
       + '<div>'
-      + '<div style="font-weight:500;font-size:14px">' + v.placa + ' — ' + v.marca + ' ' + v.modelo + ' ' + v.anio + '</div>'
+      + '<div style="font-weight:500;font-size:14px">' + escapeHtml(v.placa) + ' — ' + escapeHtml(v.marca) + ' ' + escapeHtml(v.modelo) + ' ' + v.anio + '</div>'
       + '<div style="font-size:11px;color:var(--suave)">' + (v.color || '') + ' · ' + (v.tipo_carroceria || '') + '</div>'
       + '</div>'
       + '<button class="btn-secundario" style="font-size:11px" onclick="cerrarModal(\'modal-ficha-prop\');verFichaVehiculo(' + v.id_vehiculo + ')">Ver</button>'
@@ -444,16 +444,16 @@ async function verFichaCliente(id) {
     '<div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">'
     + (p.foto_documento ? '<img src="' + p.foto_documento + '" onerror="imgError(this)" style="width:60px;height:60px;border-radius:8px;object-fit:cover;border:2px solid var(--borde);cursor:zoom-in" onclick="abrirVisor(\'' + p.foto_documento + '\')">' : '')
     + '<div>'
-    + '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + p.nombre_completo + '</div>'
-    + (verDatosProp ? '<div style="font-size:13px;color:var(--suave)">' + p.tipo_doc + '-' + p.numero_doc + '</div>' : '<div style="font-size:13px;color:#555">🔒 Restringido</div>')
+    + '<div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + escapeHtml(p.nombre_completo) + '</div>'
+    + (verDatosProp ? '<div style="font-size:13px;color:var(--suave)">' + p.tipo_doc + '-' + escapeHtml(p.numero_doc) + '</div>' : '<div style="font-size:13px;color:#555">🔒 Restringido</div>')
     + '</div></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
-    + (verDatosProp ? '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div style="font-size:13px">' + (p.telefono || '—') + '</div></div>' : '')
-    + (verDatosProp ? '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:13px">' + (p.correo || '—') + '</div></div>' : '')
+    + (verDatosProp ? '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Teléfono</div><div style="font-size:13px">' + escapeHtml((p.telefono || '—')) + '</div></div>' : '')
+    + (verDatosProp ? '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Correo</div><div style="font-size:13px">' + escapeHtml((p.correo || '—')) + '</div></div>' : '')
     + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Empresa</div><div style="font-size:13px">' + (p.empresa || '—') + '</div></div>'
     + '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Tipo Contribuyente</div>'
     + '<div>' + (p.tipo_contribuyente ? '<span class="badge ' + ({'ORDINARIO':'badge-naranja','ESPECIAL':'badge-verde','FORMAL':'badge-gris'}[p.tipo_contribuyente]||'badge-gris') + '">' + ({'ORDINARIO':'Contribuyente Ordinario','ESPECIAL':'Contribuyente Especial','FORMAL':'Contribuyente Formal'}[p.tipo_contribuyente]||p.tipo_contribuyente) + '</span>' : '<span style="color:var(--suave);font-size:12px">No especificado</span>') + '</div></div>'
-    + (verDatosProp ? '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:13px">' + (p.direccion || '—') + '</div></div>' : '')
+    + (verDatosProp ? '<div><div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Dirección</div><div style="font-size:13px">' + escapeHtml((p.direccion || '—')) + '</div></div>' : '')
     + '</div>'
     + '<div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Vehículos (' + vehs.length + ')</div>'
     + vehsHTML;
@@ -509,7 +509,7 @@ async function cargarVehiculos(filtro, propId) {
       + '<select id="filtro-prop-veh" onchange="filtrarVehiculosPorCliente(this.value || null)" '
       + 'style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 14px;border-radius:5px;outline:none">'
       + '<option value="">Todos los clientes</option>'
-      + clientesSimple.map(function(p) { return '<option value="' + p.id_cliente + '">' + p.nombre_completo + '</option>'; }).join('')
+      + clientesSimple.map(function(p) { return '<option value="' + p.id_cliente + '">' + escapeHtml(p.nombre_completo) + '</option>'; }).join('')
       + '</select>'
       + (puedo('VEHICULOS','CREAR') ? '<button class="btn-primario" onclick="abrirVehiculo(null)">+ Nuevo Vehículo</button>' : '')
       + '</div></div>'
@@ -558,15 +558,15 @@ async function cargarVehiculos(filtro, propId) {
           ? '<img src="' + foto + '" onerror="imgError(this)" style="width:44px;height:34px;object-fit:cover;border-radius:4px;border:1px solid var(--borde);flex-shrink:0">'
           : '<div style="width:44px;height:34px;background:var(--gris3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🚗</div>')
         + '<div>'
-        + '<div style="font-family:var(--font-mono);font-weight:700;color:var(--naranja);font-size:13px">' + v.placa + '</div>'
-        + '<div style="font-size:15px;font-weight:500">' + v.marca + ' ' + v.modelo + '</div>'
+        + '<div style="font-family:var(--font-mono);font-weight:700;color:var(--naranja);font-size:13px">' + escapeHtml(v.placa) + '</div>'
+        + '<div style="font-size:15px;font-weight:500">' + escapeHtml(v.marca) + ' ' + escapeHtml(v.modelo) + '</div>'
         + '</div></div></td>'
         + '<td style="font-size:12px">' + v.anio + '</td>'
         + '<td style="font-size:12px;color:var(--suave)">' + (v.color || '—') + ' · ' + (v.tipo_carroceria || '—') + '</td>'
         + '<td>'
         + (prop
-          ? '<div style="font-size:12px;font-weight:500">' + prop.nombre_completo + '</div>'
-          + '<div style="font-size:11px;color:var(--suave)">' + prop.tipo_doc + '-' + prop.numero_doc + '</div>'
+          ? '<div style="font-size:12px;font-weight:500">' + escapeHtml(prop.nombre_completo) + '</div>'
+          + '<div style="font-size:11px;color:var(--suave)">' + prop.tipo_doc + '-' + escapeHtml(prop.numero_doc) + '</div>'
           : '<span style="color:#444;font-size:12px">Sin cliente</span>')
         + '</td>'
         + '<td style="font-size:12px;text-align:center">' + fotos.length + ' 📷</td>'
@@ -901,8 +901,8 @@ async function verFichaVehiculo(id) {
     + (v.foto_carnet ? '<img src="' + v.foto_carnet + '" onerror="imgError(this)" style="height:80px;border-radius:6px;border:1px solid var(--borde);cursor:pointer" onclick="abrirVisor(\'' + v.foto_carnet + '\')">'
       : '<span style="font-size:12px;color:var(--suave)">Sin carnet registrado</span>')
     + '<div>'
-    + '<div style="font-family:var(--font-display);font-size:24px;color:var(--naranja)">' + v.placa + '</div>'
-    + '<div style="font-size:16px;font-weight:500">' + v.marca + ' ' + v.modelo + ' ' + v.anio + '</div>'
+    + '<div style="font-family:var(--font-display);font-size:24px;color:var(--naranja)">' + escapeHtml(v.placa) + '</div>'
+    + '<div style="font-size:16px;font-weight:500">' + escapeHtml(v.marca) + ' ' + escapeHtml(v.modelo) + ' ' + v.anio + '</div>'
     + '<div style="font-size:12px;color:var(--suave)">' + (v.color || '') + ' · ' + (v.tipo_carroceria || '') + '</div>'
     + '</div></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">'
@@ -912,8 +912,8 @@ async function verFichaVehiculo(id) {
     + '</div>'
     + (prop ? '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:12px 16px;margin-bottom:20px">'
       + '<div style="font-size:9px;color:var(--naranja);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Cliente Actual</div>'
-      + '<div style="font-weight:500">' + prop.nombre_completo + '</div>'
-      + '<div style="font-size:11px;color:var(--suave)">' + prop.tipo_doc + '-' + prop.numero_doc + '</div>'
+      + '<div style="font-weight:500">' + escapeHtml(prop.nombre_completo) + '</div>'
+      + '<div style="font-size:11px;color:var(--suave)">' + prop.tipo_doc + '-' + escapeHtml(prop.numero_doc) + '</div>'
       + '</div>' : '')
     + '<div style="width:100%">'
     + '<div style="font-size:10px;color:#aaa;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Fotos del Vehículo</div>'
