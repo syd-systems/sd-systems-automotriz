@@ -3074,8 +3074,7 @@ async function mostrarNotifPendiente(notif) {
     registrar_pago:       { titulo: '✅ Solicitud de Pago Aprobada', instruccion: 'Puede ir al módulo de Pagos para Registrar el Pago cuando guste.', boton: 'Entendido' },
     ver_rechazo:          { titulo: '❌ Solicitud de Pago Rechazada', instruccion: 'Revise el motivo y corrija la Obligación en el módulo de Pagos.', boton: 'Entendido' },
     sin_firma_disponible: { titulo: '⚠️ Sin Firma Autorizada Disponible', instruccion: 'Ningún aprobador con Nivel de Firma tiene sesión activa en este momento. Avise a su supervisor o intente más tarde.', boton: 'Entendido' },
-    solicitud_anulacion_entrada: { titulo: '⚠ Solicitud de Anulación de Entrada', instruccion: 'Revise el detalle e ingrese a Inventario → Historial para decidir si anula el movimiento.', boton: 'Ir a Revisar' },
-    anulacion_salida:     { titulo: '⚠ Anulación de Salida de Inventario', instruccion: 'Devuelva el inventario al almacén.', boton: 'Entendido' }
+    solicitud_anulacion_entrada: { titulo: '⚠ Solicitud de Anulación de Entrada', instruccion: 'Revise el detalle e ingrese a Inventario → Historial para decidir si anula el movimiento.', boton: 'Ir a Revisar' }
   };
   let cfgNotif = CONFIG_NOTIF[accionNotif] || CONFIG_NOTIF.confirmar_recepcion;
 
