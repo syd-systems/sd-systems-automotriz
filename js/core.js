@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909221';
+const SYD_VERSION = '20260909222';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3040,7 +3040,7 @@ async function mostrarNotifPendiente(notif) {
   lista.innerHTML =
     '<div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:16px;margin-bottom:12px">'
     +'<div style="font-size:12px;color:var(--suave);margin-bottom:8px">'+fmtFechaHoraVzla(notif.fecha_creacion)+'</div>'
-    +'<div style="font-size:13px;color:var(--texto);line-height:1.6">'+notif.mensaje+'</div>'
+    +'<div style="font-size:13px;color:var(--texto);line-height:1.6">'+sanitizarHtml(notif.mensaje)+'</div>'
     +'</div>';
 
   // Detectar el tipo de notificación por su 'accion' en datos_extra, para
@@ -3917,6 +3917,31 @@ function formatearRifBlur(el) {
 
 function validarFormatoRif(valor) {
   return /^[VEJGPC]-\d{8}-\d$/.test((valor || '').toUpperCase().trim());
+}
+
+// Limpia HTML que SÍ debe mostrarse con formato (ej. el mensaje de una
+// Notificación, que se arma con <div>, <strong>, etc.) pero que puede
+// contener texto escrito por usuarios: elimina etiquetas ejecutables
+// (script, iframe, formularios, svg...) y atributos peligrosos (onclick,
+// onerror..., enlaces javascript:). Conserva el formato visual (estilos).
+function sanitizarHtml(html) {
+  if (html === null || html === undefined) return '';
+  const tpl = document.createElement('template');
+  tpl.innerHTML = String(html);
+  const PROHIBIDAS = 'script,iframe,frame,frameset,object,embed,applet,link,meta,base,style,form,input,button,textarea,select,option,svg,math,template,noscript';
+  tpl.content.querySelectorAll(PROHIBIDAS).forEach(function(el) { el.remove(); });
+  tpl.content.querySelectorAll('*').forEach(function(el) {
+    Array.from(el.attributes).forEach(function(at) {
+      const nombre = at.name.toLowerCase();
+      const valor  = String(at.value || '').replace(/[\s\u0000-\u001f]/g, '').toLowerCase();
+      if (nombre.indexOf('on') === 0
+          || ((nombre === 'href' || nombre === 'src' || nombre === 'xlink:href' || nombre === 'action' || nombre === 'formaction')
+              && (valor.indexOf('javascript:') === 0 || valor.indexOf('vbscript:') === 0 || valor.indexOf('data:') === 0))) {
+        el.removeAttribute(at.name);
+      }
+    });
+  });
+  return tpl.innerHTML;
 }
 
 function escapeHtml(valor) {
