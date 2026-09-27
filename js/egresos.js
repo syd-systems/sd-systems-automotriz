@@ -1531,50 +1531,11 @@ function mostrarLogin() {
   document.getElementById('form-nueva-clave').style.display = 'none';
 }
 
-function generarToken() {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36) + Math.random().toString(36).substring(2);
-}
-
-async function enviarCorreoRecuperacion(destinatario, nombre, enlace, esAdmin = false) {
-  const asunto = esAdmin
-    ? 'Restablecimiento de contraseña — S&D Systems Automotriz'
-    : 'Recuperación de contraseña — S&D Systems Automotriz';
-
-  const intro = esAdmin
-    ? 'El administrador del sistema ha solicitado restablecer tu contraseña de acceso.'
-    : 'Recibimos una solicitud para restablecer la contraseña de tu cuenta.';
-
-  const btnTexto = esAdmin ? 'CREAR NUEVA CONTRASEÑA' : 'RESTABLECER CONTRASEÑA';
-
-  const htmlCorreo = `
-    <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;background:#0a0a0a;color:#e8e8e8;padding:40px;border-radius:10px">
-      <div style="text-align:center;margin-bottom:30px">
-        <h1 style="color:#FF6B00;font-size:36px;letter-spacing:4px;margin:0">S&D</h1>
-        <p style="color:#888;font-size:11px;letter-spacing:4px;margin:4px 0 0">SYSTEMS AUTOMOTRIZ</p>
-      </div>
-      <h2 style="color:#e8e8e8;font-size:18px">Hola, ${nombre}</h2>
-      <p style="color:#888;font-size:14px;line-height:1.6">${intro}</p>
-      <div style="text-align:center;margin:30px 0">
-        <a href="${enlace}" style="background:#FF6B00;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:bold;letter-spacing:2px">${btnTexto}</a>
-      </div>
-      <p style="color:#555;font-size:12px">Este enlace es válido por <strong style="color:#888">30 minutos</strong>.<br>Si no solicitaste este cambio, ignora este correo.</p>
-      <hr style="border:none;border-top:1px solid #333;margin:24px 0">
-      <p style="color:#444;font-size:11px;text-align:center">S&D Systems Automotriz · Sistema de Gestión</p>
-    </div>`;
-
-  const resp = await fetch(`${SUPABASE_URL}/functions/v1/resend-email`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ to: destinatario, subject: asunto, html: htmlCorreo })
-  });
-
-  if (!resp.ok) throw new Error('No se pudo enviar el correo');
-  return true;
-}
-
+// Recuperación de contraseña: el token y el correo se generan y envían
+// COMPLETAMENTE del lado del servidor (solicitar_recuperacion /
+// admin_enviar_recuperacion). Antes el servidor devolvía el token al
+// navegador y era éste quien armaba y enviaba el correo -- cualquiera podía
+// pedir el token de cualquier correo y tomar control de esa cuenta.
 async function enviarRecuperacion() {
   const correo = document.getElementById('rec-correo').value.trim();
   const errEl  = document.getElementById('rec-error');
@@ -1601,11 +1562,8 @@ async function enviarRecuperacion() {
       return;
     }
 
-    const enlace = `${window.location.origin}${window.location.pathname}?reset=${solicitud.token}`;
-
-    await enviarCorreoRecuperacion(correo, solicitud.nombre, enlace, false);
-
-    okEl.textContent = `✓ Enlace enviado a ${correo}. Revisa tu bandeja de entrada y haz clic en el botón del correo -- puedes cerrar esta pestaña, el enlace abre una nueva.`;
+    // Mensaje neutro a propósito: no revela si el correo existe o no.
+    okEl.textContent = `✓ Si ${correo} está registrado, recibirás un enlace para restablecer tu contraseña. Revisa tu bandeja de entrada (y la carpeta de spam) -- el enlace vence en 30 minutos.`;
     okEl.style.display = 'block';
 
   } catch(e) {
@@ -1693,18 +1651,14 @@ async function resetearClave(correo, nombre) {
   if (!confirm(`¿Enviar correo de recuperación a ${nombre} (${correo})?`)) return;
 
   try {
-    // Invalidar tokens anteriores
-    await api('tokens_recuperacion', 'PATCH', { usado: true },
-      `?correo=eq.${encodeURIComponent(correo)}&usado=eq.false`);
-
-    const token  = generarToken();
-    const expira = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-
-    await api('tokens_recuperacion', 'POST', { token, correo, expira, usado: false });
-
-    const enlace = `${window.location.origin}${window.location.pathname}?reset=${token}`;
-
-    await enviarCorreoRecuperacion(correo, nombre, enlace, true);
+    // Todo del lado del servidor (valida que quien lo pide sea Administrador)
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/admin_enviar_recuperacion', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_sessionJWT || SUPABASE_KEY), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_correo: correo })
+    });
+    const r = await res.json().catch(function() { return null; });
+    if (!res.ok || !r || !r.ok) throw new Error((r && (r.msg || r.message)) || 'No se pudo enviar el correo');
 
     alert(`✓ Correo de recuperación enviado a ${correo}`);
   } catch(e) {
