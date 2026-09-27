@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909218';
+const SYD_VERSION = '20260909219';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -80,12 +80,13 @@ function hoyVenezuela() { return getHoyVzla(); }
 // Timestamp ACTUAL ajustado a hora de Venezuela, como string "naive" (SIN
 // sufijo de zona horaria) -- para columnas timestamp WITHOUT time zone
 // que guardan la hora venezolana real como valor crudo (no UTC + ajuste
-// al mostrar). Reemplaza a new Date().toISOString() en esas 19 columnas
-// específicas (fecha_registro, fecha_aprobacion, fecha_cobro,
-// fecha_creacion, fecha_respuesta, fecha_hora_cierre,
-// fecha_certificacion, fecha_reversa, fecha_entrega -- ver migración de
-// Fase 1). NO usar para columnas que sigan siendo timestamp WITH time
-// zone (esas siguen necesitando new Date().toISOString() normal).
+// al mostrar). Desde la Fase 2 TODAS las columnas timestamp de la app son
+// WITHOUT time zone con hora venezolana real (Fase 1: 19 columnas
+// transaccionales; Fase 2: maestros, param_*, usuarios, inventario,
+// auditoria_fiscal, etc.), y sus DEFAULT son now() AT TIME ZONE
+// 'America/Caracas'. Única excepción: tokens_recuperacion (sigue WITH time
+// zone, solo la maneja el servidor). NUNCA escribir new Date().toISOString()
+// en una columna timestamp: el sufijo "Z" se ignora y queda 4 horas adelantada.
 function ahoraVzla() {
   const vzla = new Date(Date.now() - 4 * 60 * 60 * 1000);
   return vzla.toISOString().replace('Z', '');
@@ -103,6 +104,17 @@ function fmtFechaHoraVzla(timestampStr) {
   const m = String(timestampStr).match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
   if (!m) return '—';
   return m[3] + '-' + m[2] + '-' + m[1] + ' ' + m[4] + ':' + m[5];
+}
+
+// Convierte un timestamp guardado como hora venezolana real (sin zona) a
+// milisegundos epoch reales -- para comparar contra Date.now() (ej. "en
+// línea si se conectó hace menos de 6 minutos") sin depender de la zona
+// horaria del navegador. Venezuela es UTC-4 fijo (sin horario de verano).
+function vzlaAEpoch(timestampStr) {
+  if (!timestampStr) return null;
+  const m = String(timestampStr).match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!m) return null;
+  return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4] + 4, +m[5], +(m[6] || 0));
 }
 
 // Igual que fmtFechaHoraVzla() pero solo la fecha (sin hora) -- para
@@ -761,7 +773,7 @@ async function upsertStockArea(id_articulo, id_area, delta) {
     return nuevo;
   }
   const nuevoStock = parseFloat((actual + parseFloat(delta || 0)).toFixed(4));
-  await api('inventario_stock_area', 'PATCH', { stock_actual: nuevoStock, actualizado_en: new Date().toISOString() },
+  await api('inventario_stock_area', 'PATCH', { stock_actual: nuevoStock, actualizado_en: ahoraVzla() },
     '?id_articulo=eq.' + id_articulo + '&id_area=eq.' + id_area);
   return nuevoStock;
 }
@@ -798,7 +810,7 @@ async function ajustarReservaArea(id_articulo, id_area, delta) {
     return nuevo;
   }
   const nuevoReservado = Math.max(0, parseFloat((actual + parseFloat(delta || 0)).toFixed(4)));
-  await api('inventario_stock_area', 'PATCH', { reservado: nuevoReservado, actualizado_en: new Date().toISOString() },
+  await api('inventario_stock_area', 'PATCH', { reservado: nuevoReservado, actualizado_en: ahoraVzla() },
     '?id_articulo=eq.' + id_articulo + '&id_area=eq.' + id_area);
   return nuevoReservado;
 }
@@ -1877,16 +1889,11 @@ async function renderUsuarios(filtro) {
 
     const filas = usuariosFiltrados.map(u => {
       // Considerar conectado solo si ultima_conexion fue hace menos de 6 minutos
-      const ahora = new Date();
-      const fechaUltimaCon = u.ultima_conexion ? new Date(u.ultima_conexion) : null;
-      const minutosDesdeConexion = fechaUltimaCon ? (ahora - fechaUltimaCon) / (1000 * 60) : 999;
+      const epochUltimaCon = vzlaAEpoch(u.ultima_conexion);
+      const minutosDesdeConexion = epochUltimaCon ? (Date.now() - epochUltimaCon) / (1000 * 60) : 999;
       const enLinea = u.sesion_activa === true && minutosDesdeConexion < 6;
-      const ultimaCon = u.ultima_conexion
-        ? new Date(u.ultima_conexion).toLocaleString('es-VE', { timeZone: 'America/Caracas',  day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
-        : 'Nunca';
-      const ultimaDes = u.ultima_desconexion
-        ? new Date(u.ultima_desconexion).toLocaleString('es-VE', { timeZone: 'America/Caracas',  day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
-        : '—';
+      const ultimaCon = u.ultima_conexion ? fmtFechaHoraVzla(u.ultima_conexion) : 'Nunca';
+      const ultimaDes = u.ultima_desconexion ? fmtFechaHoraVzla(u.ultima_desconexion) : '—';
 
       return `
       <tr>
@@ -1914,7 +1921,7 @@ async function renderUsuarios(filtro) {
           </div>
         </td>
         <td style="font-size:11px;color:var(--suave)">
-          <div>Reg: ${new Date(u.fecha_registro).toLocaleDateString('es-VE', { timeZone: 'America/Caracas', day:'2-digit', month:'2-digit', year:'numeric' })}</div>
+          <div>Reg: ${fmtFechaVzla(u.fecha_registro)}</div>
           <div style="margin-top:3px">Ent: ${ultimaCon}</div>
           <div style="margin-top:3px;color:#444">Sal: ${ultimaDes}</div>
         </td>
@@ -1969,9 +1976,8 @@ async function verFichaUsuario(id) {
     });
   } catch(e) {}
 
-  const ahora = new Date();
-  const fechaUltimaCon = u.ultima_conexion ? new Date(u.ultima_conexion) : null;
-  const minutosDesde = fechaUltimaCon ? (ahora - fechaUltimaCon) / (1000*60) : 999;
+  const epochUltimaCon = vzlaAEpoch(u.ultima_conexion);
+  const minutosDesde = epochUltimaCon ? (Date.now() - epochUltimaCon) / (1000*60) : 999;
   const enLinea = u.sesion_activa && minutosDesde < 6;
 
   // Cargar facultades de aprobación del usuario
@@ -2015,9 +2021,9 @@ async function verFichaUsuario(id) {
     + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Conexión</div>'
     + '<div style="font-size:12px;color:' + (enLinea ? '#68d391' : 'var(--suave)') + '">' + (enLinea ? '● En línea' : '○ Desconectado') + '</div></div>'
     + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Última Conexión</div>'
-    + '<div style="font-size:12px">' + (u.ultima_conexion ? new Date(u.ultima_conexion).toLocaleString('es-VE', { timeZone: 'America/Caracas', day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'Nunca') + '</div></div>'
+    + '<div style="font-size:12px">' + (u.ultima_conexion ? fmtFechaHoraVzla(u.ultima_conexion) : 'Nunca') + '</div></div>'
     + '<div><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Registrado</div>'
-    + '<div style="font-size:12px">' + new Date(u.fecha_registro).toLocaleDateString('es-VE', { timeZone: 'America/Caracas', day:'2-digit', month:'2-digit', year:'numeric' }) + '</div></div>'
+    + '<div style="font-size:12px">' + fmtFechaVzla(u.fecha_registro) + '</div></div>'
     + '</div>'
     + (u.administrador ? '<div style="background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.2);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--naranja)">👑 Acceso total al sistema — Administrador</div>'
       : ('<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px;margin-top:4px">Permisos Asignados</div>'
@@ -2418,7 +2424,7 @@ async function guardarUsuario() {
             await api('usuarios', 'PATCH', {
               sesion_activa: false,
               sesion_invalidada: true,
-              ultima_desconexion: new Date().toISOString()
+              ultima_desconexion: ahoraVzla()
             }, `?id_usuario=eq.${idEdit}`);
             okEl.textContent = '✓ Usuario desactivado. Su sesión activa fue cerrada.';
           } else {
@@ -2507,7 +2513,7 @@ async function cerrarSesionUsuario(correo, nombre, modalOrigen) {
     await api('usuarios', 'PATCH', {
       sesion_activa: false,
       sesion_invalidada: true,
-      ultima_desconexion: new Date().toISOString()
+      ultima_desconexion: ahoraVzla()
     }, '?correo_usuario=eq.' + encodeURIComponent(correo));
     cerrarModal(modalOrigen || 'modal-ficha-usu');
     renderUsuarios();
@@ -2523,7 +2529,7 @@ async function cerrarTodasLasSesiones() {
     await api('usuarios', 'PATCH', {
       sesion_activa: false,
       sesion_invalidada: true,
-      ultima_desconexion: new Date().toISOString()
+      ultima_desconexion: ahoraVzla()
     }, '?sesion_activa=eq.true&correo_usuario=neq.' + encodeURIComponent(sesionActual.correo_usuario));
     renderUsuarios();
     // Mostrar confirmación en el panel

@@ -1610,7 +1610,7 @@ async function ejecutarEfectosEntradaCompraLote(filasLote) {
   const totalUSDLote = lineasAsiento.reduce(function(a,l){ return a + l.totalExactoUSD; }, 0);
   const totalBsLote = lineasAsiento.reduce(function(a,l){ return a + (l.totalExactoBs||0); }, 0);
   const nombresArticulosLote = lineasAsiento.map(function(l){ return l.articulo; }).join(', ');
-  const ahoraIsoLote = new Date().toISOString();
+  const ahoraIsoLote = ahoraVzla();
 
   try {
     if (primeraFila.esquema_pago === 'CREDITO') {
@@ -1789,7 +1789,7 @@ async function ejecutarEfectosEntradaCompra(m) {
     const numDocBase = 'CPRA-' + (m.id_orden_compra || m.id_entrada);
     const artNomCxP = r.nombre_articulo || r.codigo_articulo || 'Art#'+id;
     const fechaNegCxP = m.fecha_negociacion || m.fecha_entrada;
-    const ahoraIso = new Date().toISOString();
+    const ahoraIso = ahoraVzla();
 
     if (m.esquema_pago === 'CREDITO') {
       const cuotas = m.cuotas_json ? (typeof m.cuotas_json === 'string' ? JSON.parse(m.cuotas_json) : m.cuotas_json) : [];

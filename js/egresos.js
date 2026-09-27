@@ -1729,7 +1729,7 @@ window.addEventListener('beforeunload', async () => {
   if (sesionActual) {
     navigator.sendBeacon(
       `${SUPABASE_URL}/rest/v1/usuarios?correo_usuario=eq.${encodeURIComponent(sesionActual.correo_usuario)}`,
-      JSON.stringify({ sesion_activa: false, ultima_desconexion: new Date().toISOString() })
+      JSON.stringify({ sesion_activa: false, ultima_desconexion: ahoraVzla() })
     );
   }
 });
