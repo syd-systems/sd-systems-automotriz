@@ -6092,19 +6092,31 @@ async function confirmarAnulacion() {
       const r = (Array.isArray(window.inventarioCache) ? window.inventarioCache : []).find(function(x) { return x.id_articulo === id_articulo; });
       const nomArt = r ? r.nombre_articulo : 'Artículo #' + id_articulo;
 
-      // 9a. Notificación interna al empleado que recibió
+      // 9a. Notificación interna al empleado que recibió. Las
+      // notificaciones se muestran por correo_destino + estado PENDIENTE,
+      // así que se resuelve el correo del Empleado (antes se enviaban
+      // columnas inexistentes -- id_empleado, leida, fecha_registro -- y
+      // el POST fallaba siempre, tragado por el catch).
       if (movOrig.id_empleado) {
         try {
-          await api('notificaciones', 'POST', {
-            id_empresa:   _empresaActiva?.id_empresa,
-            id_empleado:  movOrig.id_empleado,
-            tipo:         'ANULACION_SALIDA',
-            titulo:       '⚠ Anulación de Salida de Inventario',
-            mensaje:      'La salida de ' + cantidad + ' unidades de "' + nomArt + '" registrada a su nombre ha sido anulada. El inventario debe retornar al almacén.',
-            leida:        false,
-            id_usuario:   sesionActual.correo_usuario,
-            fecha_registro: ahoraVzla()
-          });
+          const empAnul = await buscarEmpleados({ p_id_empleado: movOrig.id_empleado, p_limite: 1 });
+          const correoEmpAnul = empAnul?.[0]?.correo || null;
+          if (correoEmpAnul) {
+            await api('notificaciones', 'POST', {
+              tipo:           'ANULACION_SALIDA',
+              id_empresa:     _empresaActiva?.id_empresa || null,
+              correo_destino: correoEmpAnul,
+              titulo:         '⚠ Anulación de Salida de Inventario',
+              mensaje:        'La salida SAL-' + idMovimiento + ' de ' + cantidad + ' unidades de "' + nomArt + '" registrada a su nombre ha sido anulada por '
+                + (sesionActual?.nombre || sesionActual?.correo_usuario || 'un supervisor') + '. El inventario debe retornar al almacén.',
+              estado:         'PENDIENTE',
+              id_salida:      idMovimiento,
+              fecha_creacion: ahoraVzla(),
+              datos_extra:    JSON.stringify({ accion: 'anulacion_salida', id_salida: idMovimiento })
+            }, '', true);
+          } else {
+            console.warn('Anulación de Salida: el Empleado #' + movOrig.id_empleado + ' no tiene correo -- no se pudo notificar.');
+          }
         } catch(eNot) { console.warn('Error creando notificación interna:', eNot); }
       }
 
