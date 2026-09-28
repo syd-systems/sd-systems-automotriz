@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909224';
+const SYD_VERSION = '20260909225';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -973,12 +973,26 @@ async function cerrarSesionInactividad() {
 }
 
 // ─── RELOJ ───
+// Hora y fecha de Venezuela (independiente de la zona del navegador).
+function _horaVzlaTexto() {
+  return new Date().toLocaleTimeString('es-VE', { timeZone: 'America/Caracas', hour:'2-digit', minute:'2-digit' });
+}
+function _fechaVzlaTexto() {
+  const f = new Date().toLocaleDateString('es-VE', { timeZone: 'America/Caracas', weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  return f.charAt(0).toUpperCase() + f.slice(1);
+}
 function actualizarReloj() {
   const ahora = new Date();
   const f = ahora.toLocaleDateString('es-VE', { timeZone: 'America/Caracas',  weekday:'long', year:'numeric', month:'long', day:'numeric' });
   const h = ahora.toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' });
   const el = document.getElementById('topbar-fecha');
   if (el) el.textContent = `${f}  ${h}`;
+  // Tarjeta de Bienvenida del Dashboard (antes la hora quedaba fija al
+  // momento de abrir la pantalla)
+  const dh = document.getElementById('dash-hora');
+  if (dh) dh.textContent = _horaVzlaTexto();
+  const df = document.getElementById('dash-fecha');
+  if (df) df.textContent = _fechaVzlaTexto();
 }
 setInterval(actualizarReloj, 1000);
 actualizarReloj();
@@ -1770,8 +1784,6 @@ async function renderDashboard() {
       if (t.length > 0) tasaValor = formatearTasaVE(t[0].tipo_cambio);
     }
 
-    const hora = new Date().toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' });
-
     const esAdmin = sesionActual.administrador;
 
     c.innerHTML = `
@@ -1780,7 +1792,7 @@ async function renderDashboard() {
           <h1>BIENVENIDO</h1>
           <p>${escapeHtml(sesionActual.nombre)}</p>
         </div>
-        <div class="hora">${hora}</div>
+        <div class="hora"><div id="dash-hora">${_horaVzlaTexto()}</div><div class="hora-fecha" id="dash-fecha">${_fechaVzlaTexto()}</div></div>
       </div>
 
       <div class="tarjetas-grid">
