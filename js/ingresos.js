@@ -12,6 +12,8 @@ const ESTADOS_FAC = {
   'EMITIDA':  { clase: 'badge-naranja', label: 'Pendiente' },
   'APROBADA': { clase: 'badge-verde',   label: 'Aprobada'  },
   'PAGADA':   { clase: 'badge-verde',   label: 'Cobrada'   },
+  'ACREDITADA_PARCIAL': { clase: 'badge-naranja', label: 'Acreditada parcial' },
+  'ACREDITADA_TOTAL':   { clase: 'badge-gris',    label: 'Acreditada total'   },
 };
 
 // ── Verificar facultad de aprobación ──
@@ -1097,6 +1099,10 @@ async function verFichaFactura(id) {
       api('facturas','GET',null,'?id_factura=eq.'+id+'&select=*,emisores(*),clientes(nombre_completo,tipo_doc,numero_doc),cont_cxc(metodo_pago,moneda_cobro,referencia,fecha_cobro,pagado_usd,tasa_bcv,id_banco_origen,banco_origen:id_banco_origen(nombre))'),
     ]);
     const f = facArr[0]; if (!f) return;
+    let ncsFactura = [];
+    try {
+      ncsFactura = await api('notas_credito','GET',null,'?id_factura=eq.'+id+'&select=id_nc,numero_nc,fecha_emision,tipo,destino,total_usd,estado&order=id_nc.asc') || [];
+    } catch(eNcs) { ncsFactura = []; }
     let linServ=[], linRep=[];
     if (f.id_orden) {
       [linServ,linRep] = await Promise.all([
@@ -1143,7 +1149,7 @@ async function verFichaFactura(id) {
     const tablaLineas = [...linServ.map(function(l){return{desc:l.descripcion,tipo:'Serv.',cant:l.cantidad,precio:l.precio_usd,sub:l.subtotal_usd};}),
                          ...linRep.map(function(l) {return{desc:l.descripcion,tipo:'Rep.', cant:l.cantidad,precio:l.precio_usd,sub:l.subtotal_usd};})]
       .map(function(l) {
-        return '<tr><td style="padding:6px 0;font-size:12px">'+l.desc+'</td>'
+        return '<tr><td style="padding:6px 0;font-size:12px">'+escapeHtml(l.desc)+'</td>'
           + '<td style="text-align:center;padding:6px"><span class="badge badge-gris" style="font-size:11px">'+l.tipo+'</span></td>'
           + '<td style="text-align:center;font-family:var(--font-mono);font-size:12px">'+l.cant+'</td>'
           + '<td style="text-align:right;font-family:var(--font-mono);font-size:12px;white-space:nowrap">'+fmtF(l.precio)+'</td>'
@@ -1169,10 +1175,10 @@ async function verFichaFactura(id) {
           + '</div>' : '')
       + '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
       + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Cliente</div>'
-      + '<div style="font-weight:600">'+(f.receptor_nombre||'—')+'</div>'
-      + (f.receptor_rif ? '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">'+f.receptor_rif+'</div>' : '')
+      + '<div style="font-weight:600">'+escapeHtml(f.receptor_nombre||'—')+'</div>'
+      + (f.receptor_rif ? '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">'+escapeHtml(f.receptor_rif)+'</div>' : '')
       + (f.receptor_tipo_contribuyente ? '<span class="badge '+(({'ORDINARIO':'badge-naranja','ESPECIAL':'badge-verde','FORMAL':'badge-gris'})[f.receptor_tipo_contribuyente]||'badge-gris')+'" style="font-size:10px;margin-top:4px;display:inline-block">'+(({'ORDINARIO':'Contribuyente Ordinario','ESPECIAL':'Contribuyente Especial','FORMAL':'Contribuyente Formal'})[f.receptor_tipo_contribuyente]||f.receptor_tipo_contribuyente)+'</span>' : '')
-      + (f.receptor_direccion ? '<div style="font-size:11px;color:var(--suave);margin-top:4px">'+f.receptor_direccion+'</div>' : '')
+      + (f.receptor_direccion ? '<div style="font-size:11px;color:var(--suave);margin-top:4px">'+escapeHtml(f.receptor_direccion)+'</div>' : '')
       + '</div>'
       + (puedo('FACTURAS','VER_TOTALES')
           ? '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px">'
@@ -1225,7 +1231,8 @@ async function verFichaFactura(id) {
       + '</tr></thead><tbody>'
       + (tablaLineas||'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--suave)">Sin líneas</td></tr>')
       + '</tbody></table></div>'
-      + (f.observaciones ? '<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Observaciones</div><div style="background:var(--gris2);border-radius:6px;padding:10px 14px;font-size:13px">'+escapeHtml(f.observaciones)+'</div></div>' : '');
+      + (f.observaciones ? '<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Observaciones</div><div style="background:var(--gris2);border-radius:6px;padding:10px 14px;font-size:13px">'+escapeHtml(f.observaciones)+'</div></div>' : '')
+      + htmlSeccionNotasCredito(ncsFactura);
 
     var btnEditar   = document.getElementById('ficha-fac-btn-editar');
     var btnEmitir   = document.getElementById('ficha-fac-btn-emitir');
@@ -1259,6 +1266,11 @@ async function verFichaFactura(id) {
           }
         } catch(e) { alert('Error: ' + msgErr(e)); }
       };
+    }
+    var btnNC = document.getElementById('ficha-fac-btn-nc');
+    if (btnNC) {
+      btnNC.style.display = ((sesionActual?.administrador || puedo('FACTURAS','EMITIR_NC')) && facturaAdmiteNC(f)) ? '' : 'none';
+      btnNC.onclick = function() { cerrarModal('modal-ficha-fac'); abrirNotaCredito(f.id_factura); };
     }
     if (btnEditar)  { btnEditar._id=f.id_factura;  btnEditar.onclick=function(){cerrarModal('modal-ficha-fac');abrirEditarFactura(this._id);}; btnEditar.style.display=puedo('FACTURAS','EDITAR')&&f.estado==='BORRADOR'?'':'none'; }
     if (btnEmitir)  { btnEmitir._id=f.id_factura;  btnEmitir.onclick=function(){emitirFactura(this._id);};   btnEmitir.style.display=puedo('FACTURAS','CREAR')&&f.estado==='BORRADOR'?'':'none'; }
@@ -1474,3 +1486,252 @@ async function aprobarFactura(id) {
 
 
 
+
+// ══════════════════════════════════════════════════════════════
+//  NOTAS DE CRÉDITO — Etapa 2: emisión desde la Ficha de Factura
+// ══════════════════════════════════════════════════════════════
+// La NC la CREA EL SERVIDOR (RPC crear_nota_credito): recalcula precios,
+// cantidades disponibles (facturado − ya acreditado en NC no rechazadas),
+// IVA (misma proporción de la factura), destino del dinero y numeración
+// correlativa sin saltos. Esta pantalla solo arma la solicitud y muestra
+// una vista previa de los montos. Queda en estado PENDIENTE hasta su
+// aprobación (Etapa 3: efectos en CxC, inventario y contabilidad).
+const TIPOS_NC = {
+  DEVOLUCION:        'Devolución de mercancía',
+  ERROR_FACTURA:     'Error en la factura (acredita todo lo pendiente)',
+  GARANTIA_SERVICIO: 'Garantía / reclamo de servicio'
+};
+const DESTINOS_NC = {
+  REBAJA_CXC:  'Rebaja la deuda del cliente',
+  REEMBOLSO:   'Reembolso al cliente',
+  SALDO_FAVOR: 'Saldo a favor del cliente'
+};
+const ESTADOS_NC = {
+  PENDIENTE: { clase: 'badge-naranja', label: 'Pendiente' },
+  APROBADA:  { clase: 'badge-verde',   label: 'Aprobada'  },
+  RECHAZADA: { clase: 'badge-rojo',    label: 'Rechazada' }
+};
+let _nc = null;
+
+// ¿La factura admite emitir NC hoy? (estado + mismo mes; el servidor
+// vuelve a validar todo esto)
+function facturaAdmiteNC(f) {
+  if (!f) return false;
+  if (['EMITIDA','APROBADA','PAGADA','PARCIAL','ACREDITADA_PARCIAL'].indexOf(f.estado) === -1) return false;
+  return String(f.fecha_emision || '').substring(0, 7) === getHoyVzla().substring(0, 7);
+}
+
+// Sección "Notas de Crédito" dentro de la Ficha de Factura
+function htmlSeccionNotasCredito(ncs) {
+  if (!ncs || !ncs.length) return '';
+  return '<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Notas de Crédito</div>'
+    + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse;font-size:12px"><tbody>'
+    + ncs.map(function(n) {
+        const est = ESTADOS_NC[n.estado] || { clase: 'badge-gris', label: n.estado };
+        return '<tr><td style="padding:6px 0;font-family:var(--font-mono);color:var(--naranja);font-weight:600">' + escapeHtml(n.numero_nc) + '</td>'
+          + '<td style="padding:6px">' + fmtFecha(n.fecha_emision) + '</td>'
+          + '<td style="padding:6px">' + escapeHtml(TIPOS_NC[n.tipo] || n.tipo) + '<div style="font-size:10px;color:var(--suave)">' + escapeHtml(DESTINOS_NC[n.destino] || n.destino) + '</div></td>'
+          + '<td style="padding:6px;text-align:right;font-family:var(--font-mono)">$ ' + fmtUSD(n.total_usd) + '</td>'
+          + '<td style="padding:6px;text-align:right"><span class="badge ' + est.clase + '" style="font-size:10px">' + est.label + '</span></td></tr>';
+      }).join('')
+    + '</tbody></table></div></div>';
+}
+
+async function abrirNotaCredito(idFactura) {
+  try {
+    const [facArr, cxcs, acreditadas, pendRebaja, areas] = await Promise.all([
+      api('facturas','GET',null,'?id_factura=eq.'+idFactura+'&select=id_factura,numero_factura,id_orden,id_cliente,fecha_emision,estado,aplica_iva,subtotal_usd,iva_usd,total_usd,tasa_bcv,moneda_cobro,receptor_nombre'),
+      api('cont_cxc','GET',null,'?id_factura=eq.'+idFactura+'&estado=neq.ANULADA&select=saldo_usd'),
+      api('notas_credito_detalle','GET',null,'?select=origen,id_linea_origen,cantidad,notas_credito!inner(id_factura,estado)&notas_credito.id_factura=eq.'+idFactura+'&notas_credito.estado=neq.RECHAZADA'),
+      api('notas_credito','GET',null,'?id_factura=eq.'+idFactura+'&estado=eq.PENDIENTE&destino=eq.REBAJA_CXC&select=total_usd'),
+      api('param_areas','GET',null,'?estado=eq.ACTIVO&select=id,nombre,codigo&order=codigo.asc,nombre.asc')
+    ]);
+    const f = facArr && facArr[0];
+    if (!f) { alert('Factura no encontrada.'); return; }
+    if (!facturaAdmiteNC(f)) {
+      alert('La factura ' + f.numero_factura + ' no admite Notas de Crédito: solo se emiten dentro del mismo mes de la factura y sobre facturas emitidas.');
+      return;
+    }
+
+    // Líneas facturadas (con su ID de origen)
+    let lineas = [];
+    if (f.id_orden) {
+      const [serv, merc] = await Promise.all([
+        api('os_servicios','GET',null,'?id_orden=eq.'+f.id_orden+'&select=id_os_serv,descripcion,cantidad,precio_usd&order=id_os_serv'),
+        api('os_mercancias','GET',null,'?id_orden=eq.'+f.id_orden+'&select=id_os_mercancia,descripcion,cantidad,precio_usd&order=id_os_mercancia')
+      ]);
+      (merc || []).forEach(function(m) { lineas.push({ origen: 'OS_MERCANCIA', id: m.id_os_mercancia, tipo: 'MERCANCIA', desc: m.descripcion, cant: parseFloat(m.cantidad || 0), precio: parseFloat(m.precio_usd || 0) }); });
+      (serv || []).forEach(function(s) { lineas.push({ origen: 'OS_SERVICIO',  id: s.id_os_serv,      tipo: 'SERVICIO',  desc: s.descripcion, cant: parseFloat(s.cantidad || 0), precio: parseFloat(s.precio_usd || 0) }); });
+    } else {
+      const ventas = await api('ventas','GET',null,'?id_factura=eq.'+idFactura+'&select=id_venta&limit=1');
+      if (ventas && ventas[0]) {
+        const det = await api('venta_detalle','GET',null,'?id_venta=eq.'+ventas[0].id_venta+'&select=id_venta_detalle,cantidad,precio_unitario,inventario_almacen(nombre_articulo)&order=id_venta_detalle');
+        (det || []).forEach(function(d) { lineas.push({ origen: 'VENTA_DETALLE', id: d.id_venta_detalle, tipo: 'MERCANCIA', desc: d.inventario_almacen?.nombre_articulo || 'Artículo', cant: parseFloat(d.cantidad || 0), precio: parseFloat(d.precio_unitario || 0) }); });
+      }
+    }
+    // Disponible = facturado − ya acreditado (NC pendientes o aprobadas)
+    lineas.forEach(function(l) {
+      const acred = (acreditadas || []).filter(function(a) { return a.origen === l.origen && a.id_linea_origen === l.id; })
+        .reduce(function(s, a) { return s + parseFloat(a.cantidad || 0); }, 0);
+      l.acreditado = acred;
+      l.disponible = Math.max(0, Math.round((l.cant - acred) * 10000) / 10000);
+    });
+    if (!lineas.some(function(l) { return l.disponible > 0; })) {
+      alert('Todas las líneas de la factura ' + f.numero_factura + ' ya están acreditadas en Notas de Crédito.');
+      return;
+    }
+
+    const saldoCxc = (cxcs || []).reduce(function(s, c) { return s + parseFloat(c.saldo_usd || 0); }, 0);
+    const reservado = (pendRebaja || []).reduce(function(s, n) { return s + parseFloat(n.total_usd || 0); }, 0);
+    const idCompras = ((areas || []).find(function(a) { return String(a.codigo) === '2300'; }) || {}).id || '';
+
+    _nc = { f: f, lineas: lineas, areas: areas || [], idCompras: idCompras,
+            saldoDisp: Math.round((saldoCxc - reservado) * 100) / 100,
+            ratioIva: (f.aplica_iva && parseFloat(f.subtotal_usd) > 0) ? parseFloat(f.iva_usd || 0) / parseFloat(f.subtotal_usd) : 0 };
+    renderNotaCredito();
+    abrirModal('modal-nc');
+  } catch(e) { alert('Error: ' + msgErr(e)); console.error(e); }
+}
+
+function renderNotaCredito() {
+  const f = _nc.f;
+  const tipoSel = document.getElementById('nc-tipo')?.value || 'DEVOLUCION';
+  const motivo = document.getElementById('nc-motivo')?.value || '';
+  const obs = document.getElementById('nc-obs')?.value || '';
+  const optsAreas = function(sel) {
+    return _nc.areas.map(function(a) {
+      return '<option value="' + a.id + '"' + (String(a.id) === String(sel) ? ' selected' : '') + '>' + escapeHtml((a.codigo ? a.codigo + ' — ' : '') + a.nombre) + '</option>';
+    }).join('');
+  };
+
+  const filas = _nc.lineas.map(function(l, i) {
+    const habilitada = l.disponible > 0 && (tipoSel === 'ERROR_FACTURA'
+      || (tipoSel === 'DEVOLUCION' && l.tipo === 'MERCANCIA')
+      || (tipoSel === 'GARANTIA_SERVICIO' && l.tipo === 'SERVICIO'));
+    const cantVal = tipoSel === 'ERROR_FACTURA' ? l.disponible : (l.cantNC || 0);
+    const esMerc = l.tipo === 'MERCANCIA';
+    return '<tr style="' + (habilitada ? '' : 'opacity:0.45') + '">'
+      + '<td style="padding:6px 0;font-size:12px">' + escapeHtml(l.desc) + '<div style="font-size:10px;color:var(--suave)">' + (esMerc ? 'Mercancía' : 'Servicio') + ' · $ ' + fmtUSD(l.precio) + ' c/u</div></td>'
+      + '<td style="text-align:center;font-family:var(--font-mono);font-size:12px">' + l.cant + (l.acreditado > 0 ? '<div style="font-size:10px;color:var(--suave)">acred. ' + l.acreditado + '</div>' : '') + '</td>'
+      + '<td style="text-align:center"><input type="number" id="nc-cant-' + i + '" min="0" max="' + l.disponible + '" step="any" value="' + cantVal + '"'
+        + (habilitada && tipoSel !== 'ERROR_FACTURA' ? '' : ' disabled')
+        + ' oninput="_nc.lineas[' + i + '].cantNC=parseFloat(this.value)||0;actualizarTotalesNC()" style="width:70px;text-align:center"></td>'
+      + '<td style="font-size:12px">' + (esMerc && habilitada
+          ? '<select id="nc-estado-' + i + '" onchange="_nc.lineas[' + i + '].buen=this.value;renderNotaCredito()" style="font-size:12px">'
+            + '<option value="">— Estado —</option>'
+            + '<option value="1"' + (l.buen === '1' ? ' selected' : '') + '>Buen estado (vuelve)</option>'
+            + '<option value="0"' + (l.buen === '0' ? ' selected' : '') + '>Dañada (merma)</option></select>'
+            + (l.buen === '1' ? '<select id="nc-area-' + i + '" onchange="_nc.lineas[' + i + '].area=this.value" style="font-size:12px;margin-top:4px;display:block">' + optsAreas(l.area || _nc.idCompras) + '</select>' : '')
+          : '<span style="color:var(--suave)">—</span>') + '</td>'
+      + '</tr>';
+  }).join('');
+
+  document.getElementById('nc-contenido').innerHTML =
+    '<div style="background:var(--gris2);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:13px">'
+    + '<div>Referencia: <strong style="font-family:var(--font-mono);color:var(--naranja)">' + escapeHtml(f.numero_factura) + '</strong> · ' + fmtFecha(f.fecha_emision) + '</div>'
+    + '<div style="color:var(--suave);font-size:12px">' + escapeHtml(f.receptor_nombre || '—') + ' · Tasa BCV Bs/Usd de la factura: ' + formatearTasaVE(f.tasa_bcv) + '</div></div>'
+    + '<div class="form-campo form-full"><label>Tipo de Nota de Crédito</label><select id="nc-tipo" onchange="_nc.lineas.forEach(function(l){l.cantNC=0;});renderNotaCredito()">'
+    + Object.keys(TIPOS_NC).map(function(k) { return '<option value="' + k + '"' + (k === tipoSel ? ' selected' : '') + '>' + TIPOS_NC[k] + '</option>'; }).join('')
+    + '</select></div>'
+    + '<div class="form-campo form-full"><label>Motivo *</label><textarea id="nc-motivo" rows="2" style="width:100%">' + escapeHtml(motivo) + '</textarea></div>'
+    + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin:10px 0 6px">Líneas a acreditar</div>'
+    + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+    + '<th style="text-align:left;font-size:10px;color:var(--suave)">DESCRIPCIÓN</th><th style="font-size:10px;color:var(--suave)">FACTURADO</th>'
+    + '<th style="font-size:10px;color:var(--suave)">A ACREDITAR</th><th style="text-align:left;font-size:10px;color:var(--suave)">MERCANCÍA DEVUELTA</th>'
+    + '</tr></thead><tbody>' + filas + '</tbody></table></div>'
+    + '<div id="nc-totales" style="margin-top:14px"></div>'
+    + '<div id="nc-destino" style="margin-top:10px"></div>'
+    + '<div class="form-campo form-full" style="margin-top:10px"><label>Observaciones</label><textarea id="nc-obs" rows="2" style="width:100%">' + escapeHtml(obs) + '</textarea></div>'
+    + '<div class="alerta alerta-error" id="nc-error" style="display:none"></div>';
+
+  if (tipoSel === 'ERROR_FACTURA') _nc.lineas.forEach(function(l) { l.cantNC = l.disponible; });
+  actualizarTotalesNC();
+}
+
+function _calcTotalesNC() {
+  const sub = _nc.lineas.reduce(function(s, l) { return s + Math.round((l.cantNC || 0) * l.precio * 100) / 100; }, 0);
+  const iva = Math.round(sub * _nc.ratioIva * 100) / 100;
+  return { sub: Math.round(sub * 100) / 100, iva: iva, total: Math.round((sub + iva) * 100) / 100 };
+}
+
+function actualizarTotalesNC() {
+  const t = _calcTotalesNC();
+  const tasa = parseFloat(_nc.f.tasa_bcv || 1);
+  const fila = function(lbl, v, fuerte) {
+    return '<div style="display:flex;justify-content:space-between;' + (fuerte ? 'font-weight:700;border-top:1px solid var(--borde);padding-top:6px' : '') + '">'
+      + '<span style="color:' + (fuerte ? 'var(--texto)' : 'var(--suave)') + '">' + lbl + '</span>'
+      + '<span style="font-family:var(--font-mono);text-align:right">$ ' + fmtUSD(v) + '<div style="font-size:10px;color:var(--suave)">' + fmtBs(v * tasa) + ' Bs</div></span></div>';
+  };
+  document.getElementById('nc-totales').innerHTML =
+    '<div style="background:var(--gris2);border-radius:6px;padding:10px 14px;display:flex;flex-direction:column;gap:6px;font-size:12px">'
+    + fila('Subtotal', t.sub) + (_nc.ratioIva > 0 ? fila('IVA (' + Math.round(_nc.ratioIva * 100) + '%)', t.iva) : '')
+    + fila('Total Nota de Crédito', t.total, true)
+    + '<div style="font-size:10px;color:var(--suave)">El IGTF no se devuelve.</div></div>';
+
+  // Destino del dinero (mismo criterio que aplica el servidor)
+  const d = document.getElementById('nc-destino');
+  const prev = document.querySelector('input[name="nc-dest"]:checked')?.value || '';
+  if (t.total <= 0) { d.innerHTML = ''; _nc.destinoFijo = null; return; }
+  if (t.total <= _nc.saldoDisp + 0.005) {
+    _nc.destinoFijo = 'REBAJA_CXC';
+    d.innerHTML = '<div style="font-size:12px;color:var(--suave)">💳 La factura tiene $ ' + fmtUSD(_nc.saldoDisp) + ' pendientes por cobrar: esta NC <strong style="color:var(--texto)">rebaja la deuda del cliente</strong>.</div>';
+  } else if (_nc.saldoDisp <= 0.005) {
+    _nc.destinoFijo = null;
+    const sinCliente = !_nc.f.id_cliente;
+    d.innerHTML = '<div style="font-size:12px;font-weight:700;color:var(--texto);margin-bottom:4px">La factura ya está cobrada — ¿qué se hace con el dinero?</div>'
+      + '<label style="display:block;font-size:13px"><input type="radio" name="nc-dest" value="REEMBOLSO"' + (prev === 'REEMBOLSO' ? ' checked' : '') + '> Reembolso al cliente</label>'
+      + '<label style="display:block;font-size:13px;' + (sinCliente ? 'opacity:0.5' : '') + '"><input type="radio" name="nc-dest" value="SALDO_FAVOR"' + (sinCliente ? ' disabled' : (prev === 'SALDO_FAVOR' ? ' checked' : '')) + '> Saldo a favor del cliente' + (sinCliente ? ' (la factura no tiene cliente registrado)' : '') + '</label>';
+  } else {
+    _nc.destinoFijo = 'EXCEDE';
+    d.innerHTML = '<div class="alerta alerta-error" style="display:block;font-size:12px">El total ($ ' + fmtUSD(t.total) + ') supera lo pendiente por cobrar ($ ' + fmtUSD(_nc.saldoDisp) + '). Emita primero una NC por hasta $ ' + fmtUSD(_nc.saldoDisp) + ' (rebaja la deuda) y luego otra por el resto.</div>';
+  }
+}
+
+async function guardarNotaCredito(btn) {
+  const errEl = document.getElementById('nc-error');
+  const mostrar = function(m) { errEl.textContent = m; errEl.style.display = 'block'; };
+  errEl.style.display = 'none';
+  const tipo = document.getElementById('nc-tipo').value;
+  const motivo = document.getElementById('nc-motivo').value.trim();
+  if (!motivo) { mostrar('Indique el motivo de la Nota de Crédito.'); return; }
+
+  const lineas = [];
+  for (let i = 0; i < _nc.lineas.length; i++) {
+    const l = _nc.lineas[i];
+    const c = l.cantNC || 0;
+    if (c <= 0) continue;
+    if (c > l.disponible + 0.00001) { mostrar('"' + l.desc + '": máximo a acreditar ' + l.disponible + '.'); return; }
+    const x = { origen: l.origen, id_linea_origen: l.id, cantidad: c };
+    if (l.tipo === 'MERCANCIA') {
+      if (l.buen !== '1' && l.buen !== '0') { mostrar('Indique si "' + l.desc + '" vuelve en buen estado o está dañada.'); return; }
+      x.buen_estado = l.buen === '1';
+      if (x.buen_estado) x.id_area_destino = parseInt(l.area || _nc.idCompras) || null;
+    }
+    lineas.push(x);
+  }
+  if (!lineas.length) { mostrar('Indique la cantidad a acreditar en al menos una línea.'); return; }
+  if (_nc.destinoFijo === 'EXCEDE') { mostrar('El total supera lo pendiente por cobrar. Ajuste las cantidades.'); return; }
+  const destino = _nc.destinoFijo || document.querySelector('input[name="nc-dest"]:checked')?.value || null;
+  if (!destino) { mostrar('Indique si se hace Reembolso o queda como Saldo a favor.'); return; }
+
+  const t = _calcTotalesNC();
+  const ok = await confirmarSiNo('¿Emitir Nota de Crédito por <strong>$ ' + fmtUSD(t.total) + '</strong> sobre la factura <strong>' + escapeHtml(_nc.f.numero_factura) + '</strong>?<br><span style="font-size:12px;color:#aaa">' + escapeHtml(DESTINOS_NC[destino] || destino) + ' · quedará Pendiente de aprobación</span>');
+  if (!ok) return;
+
+  btnSetGuardando(btn, true, null, 'Emitiendo...');
+  try {
+    const r = await api('rpc/crear_nota_credito', 'POST', {
+      p_id_factura: _nc.f.id_factura, p_tipo: tipo, p_motivo: motivo,
+      p_destino: destino === 'REBAJA_CXC' ? null : destino,
+      p_observaciones: document.getElementById('nc-obs').value.trim() || null,
+      p_lineas: lineas
+    });
+    cerrarModal('modal-nc');
+    await mostrarAvisoOk('✓ Nota de Crédito <strong>' + escapeHtml(r?.numero_nc || '') + '</strong> emitida por $ ' + fmtUSD(r?.total_usd || t.total) + '.<br><span style="font-size:12px">Queda Pendiente de aprobación.</span>');
+    verFichaFactura(_nc.f.id_factura);
+  } catch(e) {
+    mostrar(msgErr(e));
+  } finally {
+    btnSetGuardando(btn, false);
+  }
+}
