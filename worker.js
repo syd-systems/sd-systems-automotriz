@@ -53,7 +53,7 @@ export default {
     headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
     headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
     headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-    headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://fpqvgefclvrhfehtvkbd.supabase.co; connect-src 'self' https://fpqvgefclvrhfehtvkbd.supabase.co https://ve.dolarapi.com; frame-ancestors 'self'");
+    headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://fpqvgefclvrhfehtvkbd.supabase.co; connect-src 'self' https://fpqvgefclvrhfehtvkbd.supabase.co https://ve.dolarapi.com https://challenges.cloudflare.com; frame-ancestors 'self'");
 
     return new Response(resp.body, { status: resp.status, statusText: resp.statusText, headers });
   }
