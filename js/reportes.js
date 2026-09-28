@@ -1596,6 +1596,7 @@ function repIngresosLimpiarFiltros() {
   const hoy = getHoyVzla();
   const desde = document.getElementById('rep-ing-desde'); if (desde) desde.value = hoy;
   const hasta = document.getElementById('rep-ing-hasta'); if (hasta) hasta.value = hoy;
+  const mon = document.getElementById('rep-ing-moneda'); if (mon) mon.value = 'TODAS';
   repIngresosRender(document.getElementById('reportes-contenido'));
 }
 
@@ -1605,12 +1606,19 @@ async function repIngresosRender(cont) {
   const desdeVal = document.getElementById('rep-ing-desde')?.value || hoy;
   const hastaVal = document.getElementById('rep-ing-hasta')?.value || hoy;
   const formatoVal = document.getElementById('rep-ing-formato')?.value || 'pdf';
+  const monedaVal = document.getElementById('rep-ing-moneda')?.value || 'TODAS';
 
   document.getElementById('reportes-topbar-extra').innerHTML =
     '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Desde</label>'
     + '<input type="date" id="rep-ing-desde" value="' + desdeVal + '" max="' + hoy + '" onchange="repIngresosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box"></div>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Hasta</label>'
     + '<input type="date" id="rep-ing-hasta" value="' + hastaVal + '" max="' + hoy + '" onchange="repIngresosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box"></div>'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Moneda de Cobro</label>'
+    + '<select id="rep-ing-moneda" onchange="repIngresosRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box">'
+    + '<option value="TODAS"' + (monedaVal==='TODAS'?' selected':'') + '>Todas</option>'
+    + '<option value="VES"' + (monedaVal==='VES'?' selected':'') + '>Bolívares (Bs)</option>'
+    + '<option value="USD"' + (monedaVal==='USD'?' selected':'') + '>Dólares (US$)</option>'
+    + '</select></div>'
     + '<button onclick="repIngresosLimpiarFiltros()" title="Limpiar filtros" style="background:#dc2626;border:1px solid #dc2626;color:#fff;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:16px;line-height:1;box-shadow:0 1px 3px rgba(220,38,38,0.4);height:35px;box-sizing:border-box">🗑</button>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Formato</label>'
     + '<select id="rep-ing-formato" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box">'
@@ -1627,6 +1635,7 @@ async function repIngresosRender(cont) {
       p_id_empresa: _empresaActiva ? _empresaActiva.id_empresa : null
     }) || [];
   } catch(e) { console.warn('Error cargando Ingresos por Método de Pago:', e); }
+  if (monedaVal !== 'TODAS') rows = rows.filter(function(r) { return r.moneda_cobro === monedaVal; });
 
   // Cada línea se muestra en la Moneda en la que REALMENTE se cobró
   // (moneda_cobro) -- nunca se convierte una operación en USD a VES ni
@@ -1706,7 +1715,7 @@ async function repIngresosRender(cont) {
     ? '<div style="overflow-x:auto"><svg width="' + anchoSvg + '" height="' + altoSvg + '" viewBox="0 0 ' + anchoSvg + ' ' + altoSvg + '">' + barrasSvg + '</svg></div>'
     : '<div style="text-align:center;color:var(--suave);padding:24px">Sin Ingresos en el rango seleccionado</div>';
 
-  window._reporteIngresosActual = { desdeVal, hastaVal, filas };
+  window._reporteIngresosActual = { desdeVal, hastaVal, monedaVal, filas };
   _repIngRenderTabla();
 }
 
@@ -1747,7 +1756,7 @@ function _repIngExportarCSV() {
   const dat = _repIngDatosExportar();
   if (!dat) return;
   const filasCsv = [
-    ['Ingresos por Método de Pago del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Cada monto en su Moneda real de cobro'],
+    ['Ingresos por Método de Pago del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + (dat.d.monedaVal && dat.d.monedaVal !== 'TODAS' ? '   |   Solo ' + (dat.d.monedaVal === 'VES' ? 'Bolívares' : 'Dólares') : '') + '   |   Cada monto en su Moneda real de cobro'],
     [],
     dat.encabezados,
   ].concat(dat.filasTexto);
@@ -1772,7 +1781,7 @@ function _repIngExportarExcel() {
   });
   const hoja = XLSX.utils.aoa_to_sheet([
     ['Ingresos por Método de Pago'],
-    ['Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Cada monto en su Moneda real de cobro'],
+    ['Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + (dat.d.monedaVal && dat.d.monedaVal !== 'TODAS' ? '   |   Solo ' + (dat.d.monedaVal === 'VES' ? 'Bolívares' : 'Dólares') : '') + '   |   Cada monto en su Moneda real de cobro'],
     dat.encabezados,
   ].concat(filasExcel));
   hoja['!cols'] = [ {wch:24}, {wch:20}, {wch:16} ];
@@ -1799,7 +1808,7 @@ function _repIngExportarPDF() {
   doc.setFontSize(14);
   doc.text('Ingresos por Método de Pago', 14, 15);
   doc.setFontSize(9);
-  doc.text('Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Cada monto en su Moneda real de cobro', 14, 21);
+  doc.text('Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + (dat.d.monedaVal && dat.d.monedaVal !== 'TODAS' ? '   |   Solo ' + (dat.d.monedaVal === 'VES' ? 'Bolívares' : 'Dólares') : '') + '   |   Cada monto en su Moneda real de cobro', 14, 21);
   doc.autoTable({
     head: [dat.encabezados],
     body: dat.filasTexto,
@@ -1822,12 +1831,19 @@ async function repPuntoVentaRender(cont) {
   const desdeVal = document.getElementById('rep-pv-desde')?.value || hoy;
   const hastaVal = document.getElementById('rep-pv-hasta')?.value || hoy;
   const formatoVal = document.getElementById('rep-pv-formato')?.value || 'pdf';
+  const monedaVal = document.getElementById('rep-pv-moneda')?.value || 'TODAS';
 
   document.getElementById('reportes-topbar-extra').innerHTML =
     '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Desde</label>'
     + '<input type="date" id="rep-pv-desde" value="' + desdeVal + '" max="' + hoy + '" onchange="repPuntoVentaRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box"></div>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Hasta</label>'
     + '<input type="date" id="rep-pv-hasta" value="' + hastaVal + '" max="' + hoy + '" onchange="repPuntoVentaRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box"></div>'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Moneda de Facturación</label>'
+    + '<select id="rep-pv-moneda" onchange="repPuntoVentaRender(document.getElementById(\'reportes-contenido\'))" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box">'
+    + '<option value="TODAS"' + (monedaVal==='TODAS'?' selected':'') + '>Todas</option>'
+    + '<option value="VES"' + (monedaVal==='VES'?' selected':'') + '>Bolívares (Bs)</option>'
+    + '<option value="USD"' + (monedaVal==='USD'?' selected':'') + '>Dólares (US$)</option>'
+    + '</select></div>'
     + '<button onclick="repPuntoVentaLimpiarFiltros()" title="Limpiar filtros" style="background:#dc2626;border:1px solid #dc2626;color:#fff;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:16px;line-height:1;box-shadow:0 1px 3px rgba(220,38,38,0.4);height:35px;box-sizing:border-box">🗑</button>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Formato</label>'
     + '<select id="rep-pv-formato" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box">'
@@ -1844,6 +1860,7 @@ async function repPuntoVentaRender(cont) {
       p_id_empresa: _empresaActiva ? _empresaActiva.id_empresa : null
     }) || [];
   } catch(e) { console.warn('Error cargando Ventas por Área:', e); }
+  if (monedaVal !== 'TODAS') rows = rows.filter(function(r) { return r.moneda_cobro === monedaVal; });
 
   // Cada línea se muestra en la Moneda en la que REALMENTE se cobró
   // (moneda_cobro), igual que el Reporte de Ingresos -- nunca se convierte
@@ -1916,7 +1933,7 @@ async function repPuntoVentaRender(cont) {
     ? '<div style="overflow-x:auto"><svg width="' + anchoSvg + '" height="' + altoSvg + '" viewBox="0 0 ' + anchoSvg + ' ' + altoSvg + '">' + barrasSvg + '</svg></div>'
     : '<div style="text-align:center;color:var(--suave);padding:24px">Sin Ventas en el rango seleccionado</div>';
 
-  window._reportePuntoVentaActual = { desdeVal, hastaVal, filas };
+  window._reportePuntoVentaActual = { desdeVal, hastaVal, monedaVal, filas };
   _repPVRenderTabla();
 }
 
@@ -1941,6 +1958,7 @@ function repPuntoVentaLimpiarFiltros() {
   const hoy = getHoyVzla();
   const elD = document.getElementById('rep-pv-desde'); if (elD) elD.value = hoy;
   const elH = document.getElementById('rep-pv-hasta'); if (elH) elH.value = hoy;
+  const elM = document.getElementById('rep-pv-moneda'); if (elM) elM.value = 'TODAS';
   repPuntoVentaRender(document.getElementById('reportes-contenido'));
 }
 
@@ -1966,7 +1984,7 @@ function _repPVExportarCSV() {
   const dat = _repPVDatosExportar();
   if (!dat) return;
   const filasCsv = [
-    ['Ventas por Punto de Venta del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Cada monto en su Moneda real de cobro'],
+    ['Ventas por Punto de Venta del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + (dat.d.monedaVal && dat.d.monedaVal !== 'TODAS' ? '   |   Solo ' + (dat.d.monedaVal === 'VES' ? 'Bolívares' : 'Dólares') : '') + '   |   Cada monto en su Moneda real de cobro'],
     [],
     dat.encabezados,
   ].concat(dat.filasTexto);
@@ -1988,7 +2006,7 @@ function _repPVExportarExcel() {
   });
   const hoja = XLSX.utils.aoa_to_sheet([
     ['Ventas por Punto de Venta'],
-    ['Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Cada monto en su Moneda real de cobro'],
+    ['Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + (dat.d.monedaVal && dat.d.monedaVal !== 'TODAS' ? '   |   Solo ' + (dat.d.monedaVal === 'VES' ? 'Bolívares' : 'Dólares') : '') + '   |   Cada monto en su Moneda real de cobro'],
     dat.encabezados,
   ].concat(filasExcel));
   hoja['!cols'] = [ {wch:28}, {wch:20}, {wch:14}, {wch:14}, {wch:12} ];
@@ -2017,7 +2035,7 @@ function _repPVExportarPDF() {
   doc.setFontSize(14);
   doc.text('Ventas por Punto de Venta', 14, 15);
   doc.setFontSize(9);
-  doc.text('Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Cada monto en su Moneda real de cobro', 14, 21);
+  doc.text('Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + (dat.d.monedaVal && dat.d.monedaVal !== 'TODAS' ? '   |   Solo ' + (dat.d.monedaVal === 'VES' ? 'Bolívares' : 'Dólares') : '') + '   |   Cada monto en su Moneda real de cobro', 14, 21);
   doc.autoTable({
     head: [dat.encabezados],
     body: dat.filasTexto,
