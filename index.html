@@ -1591,19 +1591,19 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="js/core.js?v=20260909226"></script>
-<script src="js/parametros.js?v=20260909226"></script>
-<script src="js/empresas.js?v=20260909226"></script>
-<script src="js/ingresos.js?v=20260909226"></script>
-<script src="js/inventario.js?v=20260909226"></script>
-<script src="js/proveedores.js?v=20260909226"></script>
-<script src="js/ventas.js?v=20260909226"></script>
-<script src="js/contabilidad.js?v=20260909226"></script>
-<script src="js/egresos.js?v=20260909226"></script>
-<script src="js/vehiculos.js?v=20260909226"></script>
-<script src="js/catalogo.js?v=20260909226"></script>
-<script src="js/ordenes.js?v=20260909226"></script>
-<script src="js/reportes.js?v=20260909226"></script>
+<script src="js/core.js?v=20260909227"></script>
+<script src="js/parametros.js?v=20260909227"></script>
+<script src="js/empresas.js?v=20260909227"></script>
+<script src="js/ingresos.js?v=20260909227"></script>
+<script src="js/inventario.js?v=20260909227"></script>
+<script src="js/proveedores.js?v=20260909227"></script>
+<script src="js/ventas.js?v=20260909227"></script>
+<script src="js/contabilidad.js?v=20260909227"></script>
+<script src="js/egresos.js?v=20260909227"></script>
+<script src="js/vehiculos.js?v=20260909227"></script>
+<script src="js/catalogo.js?v=20260909227"></script>
+<script src="js/ordenes.js?v=20260909227"></script>
+<script src="js/reportes.js?v=20260909227"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=_onTurnstileListo" async defer></script>
 
 <!-- ═══════════════════════════════════════ -->
@@ -3387,6 +3387,21 @@
       <button class="btn-primario"   id="ficha-fac-btn-emitir"  style="display:none">✓ Emitir</button>
       <button class="btn-primario"   id="ficha-fac-btn-aprobar" style="display:none;background:#8b5cf6;border-color:#8b5cf6">✓ Aprobar</button>
       <button class="btn-primario"   id="ficha-fac-btn-pago"    style="display:none">💰 Registrar Cobro</button>
+      <button class="btn-secundario" id="ficha-fac-btn-nc"      style="display:none;color:var(--naranja);border-color:rgba(255,107,0,0.5)">↩ Emitir Nota de Crédito</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-nc">
+  <div class="modal" style="max-width:820px">
+    <div class="modal-header">
+      <h3>NOTA DE CRÉDITO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-nc')">✕</button>
+    </div>
+    <div class="modal-body" id="nc-contenido"></div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-nc')">Cancelar</button>
+      <button class="btn-primario" onclick="guardarNotaCredito(this)">↩ Emitir Nota de Crédito</button>
     </div>
   </div>
 </div>
