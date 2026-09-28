@@ -9,12 +9,24 @@ let facturasCache = [];
 
 const ESTADOS_FAC = {
   'BORRADOR': { clase: 'badge-gris',    label: 'Borrador'  },
-  'EMITIDA':  { clase: 'badge-naranja', label: 'Pendiente' },
+  'EMITIDA':  { clase: 'badge-naranja', label: 'Por aprobar' },
   'APROBADA': { clase: 'badge-verde',   label: 'Aprobada'  },
   'PAGADA':   { clase: 'badge-verde',   label: 'Cobrada'   },
   'ACREDITADA_PARCIAL': { clase: 'badge-naranja', label: 'Acreditada parcial' },
   'ACREDITADA_TOTAL':   { clase: 'badge-gris',    label: 'Acreditada total'   },
 };
+
+// Estado de COBRO de una factura (independiente de su aprobación), según
+// su Cuenta por Cobrar real: Por cobrar / Cobro parcial / Cobrada.
+function estadoCobroFactura(f) {
+  const cxcs = (f && f.cont_cxc) || [];
+  if (!cxcs.length || f.estado === 'BORRADOR') return null;
+  const saldo  = cxcs.reduce(function(s, c) { return s + parseFloat(c.saldo_usd || 0); }, 0);
+  const pagado = cxcs.reduce(function(s, c) { return s + parseFloat(c.pagado_usd || 0); }, 0);
+  if (saldo <= 0.005) return { clase: 'badge-verde',   label: '● Cobrada',       saldo: 0,     pagado: pagado };
+  if (pagado > 0.005) return { clase: 'badge-naranja', label: '◐ Cobro parcial', saldo: saldo, pagado: pagado };
+  return                     { clase: 'badge-rojo',    label: '○ Por cobrar',    saldo: saldo, pagado: 0 };
+}
 
 // ── Verificar facultad de aprobación ──
 let _facultadesAprobacion = null;
@@ -54,7 +66,7 @@ async function renderFacturas() {
       try { usuariosCache = await api('usuarios','GET',null,'?select=id_usuario,correo_usuario,nombre') || []; } catch(eUsu) { usuariosCache = []; }
     }
     const [facturas, tasas] = await Promise.all([
-      api('facturas','GET',null,'?order=fecha_emision.desc&select=*,emisores(nombre,rif),clientes(nombre_completo,tipo_doc,numero_doc)'+emisorQ()),
+      api('facturas','GET',null,'?order=fecha_emision.desc&select=*,emisores(nombre,rif),clientes(nombre_completo,tipo_doc,numero_doc),cont_cxc(saldo_usd,pagado_usd,estado)'+emisorQ()),
       api('tasas','GET',null,'?moneda_origen=eq.USD&fecha_valor=lte.' + getHoyVzla() + '&order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
     facturasCache = facturas;
@@ -89,8 +101,10 @@ async function renderFacturas() {
         + '<td><div style="font-family:var(--font-display);font-size:17px;color:var(--naranja)">' + (f.numero_factura||'—') + '</div>'
         + '<div style="font-size:11px;color:var(--suave)">' + (f.fecha_emision ? fmtFecha(f.fecha_emision) : '—') + '</div></td>'
         + '<td style="font-size:12px">' + escapeHtml(vendedor) + (areaPorCorreoVendedor[f.id_usuario] ? '<div style="font-size:10px;color:var(--suave)">' + escapeHtml(areaPorCorreoVendedor[f.id_usuario].nombre) + (areaPorCorreoVendedor[f.id_usuario].codigo ? ' (' + areaPorCorreoVendedor[f.id_usuario].codigo + ')' : '') + '</div>' : '') + '</td>'
-        + '<td style="font-size:12px">' + (prop ? prop.nombre_completo : (f.receptor_nombre||'—')) + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + identifCliente + '</div></td>'
-        + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
+        + '<td style="font-size:12px">' + escapeHtml(prop ? prop.nombre_completo : (f.receptor_nombre||'—')) + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + escapeHtml(identifCliente) + '</div></td>'
+        + '<td><span class="badge ' + est.clase + '">' + est.label + '</span>'
+        + (function() { const ec = estadoCobroFactura(f); return ec ? '<div style="margin-top:4px"><span class="badge ' + ec.clase + '" style="font-size:10px">' + ec.label + '</span></div>' : ''; })()
+        + '</td>'
         + (puedo('FACTURAS','VER_TOTALES')
             ? '<td style="font-family:var(--font-mono)">'
               + (f.moneda_cobro==='VES'
@@ -1096,9 +1110,20 @@ async function generarCxCyAsientoFactura(idFactura) {
 async function verFichaFactura(id) {
   try {
     const [facArr] = await Promise.all([
-      api('facturas','GET',null,'?id_factura=eq.'+id+'&select=*,emisores(*),clientes(nombre_completo,tipo_doc,numero_doc),cont_cxc(metodo_pago,moneda_cobro,referencia,fecha_cobro,pagado_usd,tasa_bcv,id_banco_origen,banco_origen:id_banco_origen(nombre))'),
+      api('facturas','GET',null,'?id_factura=eq.'+id+'&select=*,emisores(*),clientes(nombre_completo,tipo_doc,numero_doc),cont_cxc(metodo_pago,moneda_cobro,referencia,fecha_cobro,pagado_usd,saldo_usd,estado,tasa_bcv,id_banco_origen,banco_origen:id_banco_origen(nombre))'),
     ]);
     const f = facArr[0]; if (!f) return;
+    // Origen de la factura: Venta directa u Orden de Servicio
+    let origenFac = null;
+    try {
+      if (f.id_orden) {
+        const osOrig = await api('ordenes_servicio','GET',null,'?id_orden=eq.'+f.id_orden+'&select=id_orden,numero_os&limit=1');
+        origenFac = { tipo: 'OS', id: f.id_orden, etiqueta: 'Orden de Servicio ' + ((osOrig && osOrig[0] && osOrig[0].numero_os) || ('OS-' + f.id_orden)) };
+      } else {
+        const vOrig = await api('ventas','GET',null,'?id_factura=eq.'+id+'&select=id_venta&limit=1');
+        if (vOrig && vOrig[0]) origenFac = { tipo: 'VENTA', id: vOrig[0].id_venta, etiqueta: 'Venta V-' + vOrig[0].id_venta };
+      }
+    } catch(eOrig) { origenFac = null; }
     let ncsFactura = [];
     try {
       ncsFactura = await api('notas_credito','GET',null,'?id_factura=eq.'+id+'&select=id_nc,numero_nc,fecha_emision,tipo,destino,total_usd,estado&order=id_nc.asc') || [];
@@ -1160,7 +1185,16 @@ async function verFichaFactura(id) {
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">'
       + '<div><div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">'+(f.numero_factura||'—')+'</div>'
       + '<span class="badge '+est.clase+'">'+est.label+'</span>'
-      + '<div style="font-size:11px;color:var(--suave);margin-top:4px">Fecha: '+(f.fecha_emision ? fmtFecha(f.fecha_emision) : '—')+'</div></div>'
+      + (function() {
+          const ec = estadoCobroFactura(f);
+          if (!ec) return '';
+          return ' <span class="badge '+ec.clase+'">'+ec.label+'</span>'
+            + (ec.label.indexOf('parcial') >= 0 ? '<div style="font-size:11px;color:var(--suave);margin-top:4px">Cobrado $ '+fmtUSD(ec.pagado)+' · Resta $ '+fmtUSD(ec.saldo)+'</div>'
+               : (ec.saldo > 0 ? '<div style="font-size:11px;color:var(--suave);margin-top:4px">Saldo por cobrar: $ '+fmtUSD(ec.saldo)+'</div>' : ''));
+        })()
+      + '<div style="font-size:11px;color:var(--suave);margin-top:4px">Fecha: '+(f.fecha_emision ? fmtFecha(f.fecha_emision) : '—')+'</div>'
+      + (origenFac ? '<div style="font-size:12px;margin-top:4px">Origen: <a href="#" onclick="cerrarModal(\'modal-ficha-fac\');'+(origenFac.tipo==='OS' ? 'verFichaOS' : 'verFichaVenta')+'('+origenFac.id+');return false" style="color:var(--naranja);font-weight:600">'+escapeHtml(origenFac.etiqueta)+'</a></div>' : '')
+      + '</div>'
       + (puedo('FACTURAS','VER_TOTALES')
           ? '<div style="text-align:right"><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase">TOTAL</div>'
             + fmtFDual(f.total_usd, '28px', 'var(--naranja)')
