@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909223';
+const SYD_VERSION = '20260909224';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -1148,6 +1148,37 @@ async function actualizarMiSesion(opts, intentos) {
   }
 }
 
+// ─── CAPTCHA (Cloudflare Turnstile) en la pantalla de login ───
+// Supabase Auth verifica el token del lado del servidor (Authentication →
+// Attack Protection → CAPTCHA). Mientras esa opción esté apagada en
+// Supabase, el token simplemente se ignora y el login funciona igual.
+// Cada token sirve para UN intento: se reinicia el widget después de cada
+// intento de login (exitoso o no).
+const TURNSTILE_SITE_KEY = '0x4AAAAAAFFpNOgBE75RwRO3';
+let _captchaToken    = null;
+let _captchaWidgetId = null;
+
+function renderizarCaptchaLogin() {
+  const cont = document.getElementById('login-captcha');
+  if (!cont || !window.turnstile || _captchaWidgetId !== null) return;
+  try {
+    _captchaWidgetId = window.turnstile.render(cont, {
+      sitekey: TURNSTILE_SITE_KEY,
+      theme: 'dark',
+      language: 'es',
+      callback: function(token) { _captchaToken = token; },
+      'expired-callback': function() { _captchaToken = null; },
+      'error-callback': function() { _captchaToken = null; }
+    });
+  } catch(eCaptcha) { console.warn('No se pudo mostrar el CAPTCHA:', eCaptcha); }
+}
+window._onTurnstileListo = renderizarCaptchaLogin;
+
+function reiniciarCaptchaLogin() {
+  _captchaToken = null;
+  try { if (window.turnstile && _captchaWidgetId !== null) window.turnstile.reset(_captchaWidgetId); } catch(eReset) {}
+}
+
 async function iniciarSesion() {
   const correo = document.getElementById('login-correo').value.trim();
   const clave  = document.getElementById('login-clave').value;
@@ -1171,11 +1202,19 @@ async function iniciarSesion() {
     const loginRes = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
       method: 'POST',
       headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: correo, password: clave })
+      body: JSON.stringify(_captchaToken
+        ? { email: correo, password: clave, gotrue_meta_security: { captcha_token: _captchaToken } }
+        : { email: correo, password: clave })
     });
+    reiniciarCaptchaLogin(); // el token ya se consumió -- pedir uno nuevo para el próximo intento
     const loginData = await loginRes.json().catch(function() { return null; });
     if (!loginData || !loginData.access_token) {
-      mostrarError((loginData && (loginData.msg || loginData.error_description)) || 'Correo o contraseña incorrectos.');
+      const msgLogin = (loginData && (loginData.msg || loginData.error_description || loginData.message)) || '';
+      if (/captcha/i.test(msgLogin)) {
+        mostrarError('Espere a que se complete la verificación de seguridad (casilla sobre el botón) e intente de nuevo.');
+      } else {
+        mostrarError(msgLogin || 'Correo o contraseña incorrectos.');
+      }
       return;
     }
     _sessionJWT          = loginData.access_token;
@@ -1591,6 +1630,7 @@ function limpiarSesionLocal() {
   localStorage.removeItem('sd_empresa_activa');
   document.getElementById('pantalla-app').style.display   = 'none';
   document.getElementById('pantalla-login').style.display = 'flex';
+  reiniciarCaptchaLogin(); // token nuevo para el próximo inicio de sesión
   document.getElementById('login-correo').value = '';
   resetCampoPass('login-clave');
   setTimeout(function() { document.getElementById('login-correo').focus(); }, 100);
