@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909233';
+const SYD_VERSION = '20260909234';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -229,6 +229,7 @@ const PERMISOS_POR_MODULO = {
     { accion: 'ELIMINAR',    label: 'Eliminar OS' },
     { accion: 'VER_TOTALES', label: '🔒 Ver totales y montos' },
     { accion: 'VER_TASA',    label: '🔒 Ver tasa de cambio en OS' },
+    { accion: 'SOLICITAR_NC', label: 'Solicitar Nota de Crédito (reembolso / reverso) de facturas de OS' },
   ],
   INVENTARIO: [
     { accion: 'VER',              label: 'Ver Ficha' },
@@ -294,7 +295,7 @@ const PERMISOS_POR_MODULO = {
     { accion: 'APROBAR',     label: '🔒 Aprobar y emitir factura manual' },
     { accion: 'COBRAR',      label: 'Registrar Cobro (Cuenta por Cobrar)' },
     { accion: 'VER_TOTALES', label: '🔒 Ver montos y totales' },
-    { accion: 'EMITIR_NC',   label: 'Solicitar Nota de Crédito (reembolso / reverso)' },
+    { accion: 'EMITIR_NC',   label: 'Solicitar Nota de Crédito (reembolso / reverso) de facturas manuales' },
     { accion: 'APROBAR_NC',  label: '🔒 Aprobar / Rechazar Notas de Crédito (reembolso y reverso)' },
   ],
   PAGOS: [
@@ -334,6 +335,7 @@ const PERMISOS_POR_MODULO = {
     { accion: 'CREAR',    label: 'Armar / Facturar Venta' },
     { accion: 'EDITAR',   label: 'Editar Venta' },
     { accion: 'ELIMINAR', label: 'Eliminar Venta (Presupuesto)' },
+    { accion: 'SOLICITAR_NC', label: 'Solicitar Nota de Crédito (reembolso / reverso) de facturas de Venta' },
   ],
   TRIBUTOS: [
     { accion: 'VER',    label: 'Ver Ficha' },
@@ -3302,6 +3304,8 @@ async function notifConfirmar() {
       _notifPendienteActual = null;
       if (btn) { btn.disabled = false; btn.textContent = btn.dataset.textoOriginal || 'Ver Factura'; }
       window._suprimirCheckNotifUnaVez = true;
+      // Quien no ve Cuentas por Cobrar (Ventas / Taller) va a la Venta u OS de origen
+      if (!puedo('FACTURAS','VER')) { abrirOrigenDeFactura(extras.id_factura); return; }
       mostrarModulo('facturas', document.getElementById('nav-FACTURAS'));
       setTimeout(function() { if (typeof verFichaFactura === 'function') verFichaFactura(extras.id_factura); }, 400);
       return;

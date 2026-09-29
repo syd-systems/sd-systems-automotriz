@@ -1706,6 +1706,10 @@ async function verFichaOS(id) {
     window._fichaOSId = o.id_orden;
     abrirModal('modal-ficha-os');
   focusFirstField('modal-ficha-os');
+    // Notas de Crédito de su factura: las solicita el Taller (ver ingresos.js)
+    montarNCEnFicha({ contenedorId: 'ficha-os-contenido', anclaId: 'ficha-os-editar-btn', prefijo: 'ficha-os',
+      params: { p_id_orden: o.id_orden }, cerrar: 'modal-ficha-os',
+      alTerminar: function() { verFichaOS(o.id_orden); } });
   } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
