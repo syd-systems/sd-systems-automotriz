@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909229';
+const SYD_VERSION = '20260909230';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -291,7 +291,7 @@ const PERMISOS_POR_MODULO = {
     { accion: 'VER',         label: 'Ver Ficha' },
     { accion: 'CREAR',       label: 'Crear factura' },
     { accion: 'EDITAR',      label: 'Editar factura borrador' },
-    { accion: 'APROBAR',     label: 'Aprobar factura' },
+    { accion: 'APROBAR',     label: '🔒 Aprobar y emitir factura manual' },
     { accion: 'COBRAR',      label: 'Registrar Cobro (Cuenta por Cobrar)' },
     { accion: 'VER_TOTALES', label: '🔒 Ver montos y totales' },
     { accion: 'EMITIR_NC',   label: 'Emitir Nota de Crédito' },
@@ -2044,7 +2044,7 @@ async function verFichaUsuario(id) {
 
   // Armar lista de módulos y permisos
   let modulosHTML = '';
-  const MODULOS_CON_APROBACION = ['PAGOS','CONTABILIDAD'];
+  const MODULOS_CON_APROBACION = ['PAGOS','FACTURAS','CONTABILIDAD'];
   modulosHTML = TODOS_LOS_MODULOS.map(function(m) {
     const accs = permisosU[m.sigla];
     if (!accs || !accs.length) return '';
@@ -2492,7 +2492,7 @@ async function guardarUsuario() {
     // Guardar facultades de aprobación
     const idUsrFac = parseInt(document.getElementById('usr-id')?.value||'0');
     if (idUsrFac) {
-      for (const mod of ['PAGOS','CONTABILIDAD']) {
+      for (const mod of ['PAGOS','FACTURAS','CONTABILIDAD']) {
         const checked = document.getElementById('u-aprueba-'+mod.toLowerCase())?.checked || false;
         try { await api('usuario_aprobaciones','DELETE',null,'?id_usuario=eq.'+idUsrFac+'&modulo=eq.'+mod); } catch(e) {}
         try { await api('usuario_aprobaciones','POST',{ id_usuario: idUsrFac, modulo: mod, puede_aprobar: checked }); } catch(e) {}
@@ -2523,6 +2523,7 @@ async function guardarUsuario() {
 // ─── GUARDAR/CARGAR FACULTADES DE APROBACIÓN ───
 async function guardarFacultadesAprobacion(id_usuario) {
   const modulos = [
+    { id: 'u-aprueba-facturas',     modulo: 'FACTURAS' },
     { id: 'u-aprueba-pagos',        modulo: 'PAGOS' },
     { id: 'u-aprueba-contabilidad', modulo: 'CONTABILIDAD' },
   ];
@@ -2539,6 +2540,7 @@ async function guardarFacultadesAprobacion(id_usuario) {
 
 async function cargarFacultadesEnModal(id_usuario) {
   const checks = {
+    'FACTURAS':      'u-aprueba-facturas',
     'PAGOS':         'u-aprueba-pagos',
     'CONTABILIDAD':  'u-aprueba-contabilidad',
   };

@@ -7,10 +7,13 @@
 // ══════════════════════════════════════════════════════════════
 let facturasCache = [];
 
-// Estado de la factura = estado de su COBRO. La "aprobación de factura"
-// se eliminó (decisión de negocio: la Venta que origina la factura no
-// requiere aprobación, el precio no depende del vendedor). Facturas
-// antiguas en estado APROBADA se muestran como "Por cobrar".
+// Estado de la factura = estado de su COBRO. Las facturas que nacen de
+// una Venta o de una Orden de Servicio NO requieren aprobación (el precio
+// no depende del vendedor). La FACTURA MANUAL (Factura por Cobranza, sin
+// Venta ni OS) SÍ la requiere: solo la emite quien tenga el permiso
+// FACTURAS → APROBAR ("Aprobar y emitir factura manual" en Usuarios); los
+// demás la dejan en Borrador para que un aprobador la revise y la emita.
+// Facturas antiguas en estado APROBADA se muestran como "Por cobrar".
 const ESTADOS_FAC = {
   'BORRADOR': { clase: 'badge-gris',    label: 'Borrador'      },
   'EMITIDA':  { clase: 'badge-rojo',    label: 'Por cobrar'    },
@@ -20,6 +23,9 @@ const ESTADOS_FAC = {
   'ACREDITADA_TOTAL':   { clase: 'badge-gris',    label: 'Acreditada total'   },
 };
 function estadoFacVisible(estado) { return estado === 'APROBADA' ? 'EMITIDA' : estado; }
+function puedeEmitirFacturaManual() { return puedo('FACTURAS','APROBAR'); }
+const MSG_FAC_MANUAL_APROBACION = 'Las facturas manuales (sin Venta ni Orden de Servicio) requieren aprobación. '
+  + 'Guárdela como Borrador: un usuario con el permiso "Aprobar y emitir factura manual" la revisará y la emitirá.';
 
 // Estado de COBRO de una factura (independiente de su aprobación), según
 // su Cuenta por Cobrar real: Por cobrar / Cobro parcial / Cobrada.
@@ -107,7 +113,9 @@ async function renderFacturas() {
         + '<div style="font-size:11px;color:var(--suave)">' + (f.fecha_emision ? fmtFecha(f.fecha_emision) : '—') + '</div></td>'
         + '<td style="font-size:12px">' + escapeHtml(vendedor) + (areaPorCorreoVendedor[f.id_usuario] ? '<div style="font-size:10px;color:var(--suave)">' + escapeHtml(areaPorCorreoVendedor[f.id_usuario].nombre) + (areaPorCorreoVendedor[f.id_usuario].codigo ? ' (' + areaPorCorreoVendedor[f.id_usuario].codigo + ')' : '') + '</div>' : '') + '</td>'
         + '<td style="font-size:12px">' + escapeHtml(prop ? prop.nombre_completo : (f.receptor_nombre||'—')) + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + escapeHtml(identifCliente) + '</div></td>'
-        + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
+        + '<td><span class="badge ' + est.clase + '">' + est.label + '</span>'
+        + (f.estado === 'BORRADOR' && !f.id_orden ? '<div style="font-size:10px;color:#8b5cf6;margin-top:3px;font-weight:600">Manual · por aprobar</div>' : '')
+        + '</td>'
         + (puedo('FACTURAS','VER_TOTALES')
             ? '<td style="font-family:var(--font-mono)">'
               + (f.moneda_cobro==='VES'
@@ -565,6 +573,12 @@ async function guardarFactura(emitir) {
     const fecha    = document.getElementById('fac-fecha').value;
     const estadoActual = document.getElementById('fac-estado').value;
 
+    // Factura manual (sin OS): emitirla requiere la facultad de aprobación.
+    if (emitir && !id_os && !puedeEmitirFacturaManual()) {
+      errEl.textContent = MSG_FAC_MANUAL_APROBACION;
+      errEl.style.display = 'block';
+      return;
+    }
     const estado   = emitir ? 'EMITIDA' : 'BORRADOR';
     const obs      = document.getElementById('fac-observaciones').value.trim();
     const aplIVA   = document.getElementById('fac-aplica-iva').checked;
@@ -1183,6 +1197,7 @@ async function verFichaFactura(id) {
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">'
       + '<div><div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">'+(f.numero_factura||'—')+'</div>'
       + '<span class="badge '+est.clase+'">'+est.label+'</span>'
+      + (f.estado === 'BORRADOR' && !f.id_orden ? '<div style="font-size:11px;color:#8b5cf6;margin-top:4px;font-weight:600">Factura manual · requiere aprobación para emitirse</div>' : '')
       + (function() {
           const ec = estadoCobroFactura(f);
           if (!ec) return '';
@@ -1297,7 +1312,14 @@ async function verFichaFactura(id) {
       btnNC.onclick = function() { cerrarModal('modal-ficha-fac'); abrirNotaCredito(f.id_factura); };
     }
     if (btnEditar)  { btnEditar._id=f.id_factura;  btnEditar.onclick=function(){cerrarModal('modal-ficha-fac');abrirEditarFactura(this._id);}; btnEditar.style.display=puedo('FACTURAS','EDITAR')&&f.estado==='BORRADOR'?'':'none'; }
-    if (btnEmitir)  { btnEmitir._id=f.id_factura;  btnEmitir.onclick=function(){emitirFactura(this._id);};   btnEmitir.style.display=puedo('FACTURAS','CREAR')&&f.estado==='BORRADOR'?'':'none'; }
+    if (btnEmitir)  {
+      // Borrador manual (sin OS): solo lo emite quien tiene la facultad de aprobación.
+      const esManualFicha = !f.id_orden;
+      btnEmitir._id = f.id_factura;
+      btnEmitir.onclick = function(){ emitirFactura(this._id); };
+      btnEmitir.textContent = esManualFicha ? '✓ Aprobar y Emitir' : '✓ Emitir';
+      btnEmitir.style.display = (f.estado==='BORRADOR' && (esManualFicha ? puedeEmitirFacturaManual() : puedo('FACTURAS','CREAR'))) ? '' : 'none';
+    }
     // "Anular Factura" se eliminó de raíz (botón HTML, wiring y función) --
     // decisión de negocio: una vez Emitida, la Empresa no está dispuesta a
     // asumir el riesgo fiscal de que el IVA ya reportado al SENIAT quede
@@ -1348,12 +1370,18 @@ async function abrirEditarFactura(id) {
 }
 
 async function emitirFactura(id) {
-  if (!confirm('¿Emitir esta factura? Una vez emitida no podrá editarse.')) return;
   // Verificar que no esté ya emitida
-  const facCheck = await api('facturas','GET',null,'?id_factura=eq.'+id+'&select=estado');
+  const facCheck = await api('facturas','GET',null,'?id_factura=eq.'+id+'&select=estado,id_orden');
   if (facCheck && facCheck[0] && facCheck[0].estado !== 'BORRADOR') {
     alert('Esta factura ya fue procesada.'); return;
   }
+  if (facCheck && facCheck[0] && !facCheck[0].id_orden && !puedeEmitirFacturaManual()) {
+    alert(MSG_FAC_MANUAL_APROBACION); return;
+  }
+  const esManual = facCheck && facCheck[0] && !facCheck[0].id_orden;
+  if (!confirm(esManual
+      ? '¿Aprueba y emite esta factura manual? Una vez emitida no podrá editarse.'
+      : '¿Emitir esta factura? Una vez emitida no podrá editarse.')) return;
   // Deshabilitar botón para evitar doble clic
   const btnEmitir = document.getElementById('ficha-fac-btn-emitir');
   if (btnEmitir) { btnEmitir.disabled = true; btnEmitir.textContent = '⏳ Procesando...'; }
@@ -1367,7 +1395,7 @@ async function emitirFactura(id) {
     renderFacturas();
   }
   catch(err) { alert('Error: '+msgErr(err)); }
-  finally { if (btnEmitir) { btnEmitir.disabled=false; btnEmitir.textContent='✓ Emitir'; } }
+  finally { if (btnEmitir) { btnEmitir.disabled=false; btnEmitir.textContent = esManual ? '✓ Aprobar y Emitir' : '✓ Emitir'; } }
 }
 
 // "Anular Factura" se eliminó de raíz de este archivo -- decisión de
@@ -1383,7 +1411,8 @@ async function emitirFactura(id) {
 // La función y el botón anteriores quedan recuperables en el historial de
 // Git si alguna vez se retoma ese diseño.
 
-// aprobarFactura() se eliminó: las facturas no requieren aprobación.
+// La aprobación de la factura manual es el botón "Aprobar y Emitir" de la
+// Ficha (emitirFactura), reservado al permiso FACTURAS → APROBAR.
 
 // "eliminarFactura()" se eliminó de raíz -- dependía por completo de una
 // Factura en estado ANULADA, que ya no puede ocurrir. Recuperable en el
