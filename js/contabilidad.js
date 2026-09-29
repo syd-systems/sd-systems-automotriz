@@ -2122,7 +2122,7 @@ async function contRenderCxc() {
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    const facturas = await api('facturas','GET',null,'?estado=not.in.(ANULADA,REVERSADA,BORRADOR,POR_APROBAR)&order=fecha_emision.desc&select=*,clientes(nombre_completo),cont_cxc(pagado_usd,saldo_usd,fecha_cobro,monto_usd)'+emisorQ());
+    const facturas = await api('facturas','GET',null,'?estado=not.in.(ANULADA,REVERSADA,ACREDITADA_TOTAL,BORRADOR,POR_APROBAR)&order=fecha_emision.desc&select=*,clientes(nombre_completo),cont_cxc(pagado_usd,saldo_usd,fecha_cobro,monto_usd)'+emisorQ());
     const pendientes = facturas.filter(function(f){ return f.estado!=='PAGADA'&&f.estado!=='ANULADA'; });
     const cobradas   = facturas.filter(function(f){ return f.estado==='PAGADA'; });
 

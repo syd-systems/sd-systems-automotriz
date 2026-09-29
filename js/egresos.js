@@ -719,7 +719,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
 
   const itemsCxP = (cxps||[]).map(function(c) {
     const m = (c.numero_doc||'').match(/^([A-Za-z]+-\d+)-\d+-C(\d+)$/);
-    let tipoDisplay = 'CONTADO';
+    let tipoDisplay = c.tipo === 'REEMBOLSO_CLIENTE' ? 'Reembolso a cliente' : 'CONTADO';
     if (m) {
       const prefix = m[1];
       const num    = parseInt(m[2]);
@@ -740,7 +740,7 @@ async function cargarPagos(filtroEstado, filtroTipo, busqueda, filtroRef, filtro
       _id:         c.id_cxp,
       id_usuario:  c.id_usuario,
       numero:      fmtNumeroDoc(c.numero_doc) || '—',
-      beneficiario: c.proveedores?.nombre || '—',
+      beneficiario: c.proveedores?.nombre || c.beneficiario || '—',
       fecha:       (c.estado === 'PAGADA' ? c.fecha_pago : c.fecha_vencimiento) || c.fecha_emision || '',
       tipo:        tipoDisplay,
       origen:      c.tipo === 'PAGO_MANUAL' ? 'Manual' : 'Automático',
@@ -2093,7 +2093,9 @@ async function contGuardarPagoCxp() {
       const cuentasAstFull = await obtenerCuentasContables();
       const cuentasAst = cuentasAstFull.filter(function(c){ return codigosArr.includes(c.codigo); });
       const getCta = function(cod){ return cuentasAst.find(function(x){ return x.codigo===cod; }); };
-      const cCxP      = getCta('2.1.01.001');
+      // Reembolso a cliente (Nota de Crédito): el pasivo vive en 2.1.01.003
+      // Otras Cuentas por Pagar, no en Proveedores.
+      const cCxP      = (c.tipo === 'REEMBOLSO_CLIENTE' && cuentasAstFull.find(function(x){ return x.codigo === '2.1.01.003'; })) || getCta('2.1.01.001');
       const cDifGasto = getCta('6.2.01.003');
       const cDifIngr  = getCta('4.2.01.003');
       const cIGTF     = getCta('6.1.04.003');
@@ -2127,7 +2129,7 @@ async function contGuardarPagoCxp() {
 
       const ast = await api('cont_asientos','POST',{
         id_empresa: id_emisor, numero_asiento: numAst, tipo: 'PAGO_PROVEEDOR', fecha: fecha,
-        descripcion: 'Pago ' + (c.proveedores?.nombre||'Proveedor') + ' | Doc: ' + (c.numero_doc||'') + ' | Ref: ' + ref,
+        descripcion: 'Pago ' + (c.proveedores?.nombre||c.beneficiario||'Proveedor') + ' | Doc: ' + (c.numero_doc||'') + ' | Ref: ' + ref,
         referencia: c.numero_doc || ('CXP-'+id_cxp),
         // moneda_base -- la Moneda FUNCIONAL de la Empresa (normalmente
         // VES), no la de esta transacción puntual. Antes quedaba en
@@ -3486,7 +3488,7 @@ async function verDetalleCxP(id_cxp, modoInicial) {
       return;
     }
 
-    const prov = c.proveedores || {};
+    const prov = c.proveedores || { nombre: c.beneficiario };
     const est  = estadoCxPCompuesto(c).texto;
 
     // Limpiar dataset
@@ -3933,7 +3935,7 @@ async function _verCxPAutomatica(c, id_cxp) {
   const esCredito = c.esquema_pago === 'CREDITO' || /-C\d+$/.test(c.numero_doc || '');
 
   // Proveedor -- nombre y RIF, ya vienen en el join de la consulta
-  const provAuto = c.proveedores || {};
+  const provAuto = c.proveedores || { nombre: c.beneficiario };
   document.getElementById('cxp-auto-prov-nombre').textContent = provAuto.nombre || '—';
   document.getElementById('cxp-auto-prov-rif').textContent = provAuto.rif || '—';
 
@@ -4501,7 +4503,9 @@ async function ejecutarPagoCxP(id_cxp) {
     +'proveedores:id_proveedor(nombre,rif,tipo_contribuyente,moneda_facturacion,id_banco,tipo_cuenta,numero_cuenta,pm_id_banco,pm_ci,pm_celular,metodos_pago_tipos,banco_prov:id_banco(nombre),banco_pm:pm_id_banco(nombre))');
   const c = rows && rows[0];
   if (!c) { alert('CxP no encontrada.'); return; }
-  const prov = c.proveedores || {};
+  // Reembolso a cliente (Nota de Crédito): no hay proveedor -- se paga al
+  // cliente con cualquier Método de Pago activo de la Moneda.
+  const prov = c.proveedores || { nombre: c.beneficiario, _esCliente: true };
 
   // Cargar cuentas bancarias
   try {
@@ -4657,7 +4661,13 @@ async function _resolverMetodoPagoEjecucion(moneda, prov) {
   window._execPagoMoneda = moneda;
   window._execPagoProv = prov;
 
-  const tiposAceptados = (prov && Array.isArray(prov.metodos_pago_tipos)) ? prov.metodos_pago_tipos : [];
+  let tiposAceptados = (prov && Array.isArray(prov.metodos_pago_tipos)) ? prov.metodos_pago_tipos : [];
+  if (prov && prov._esCliente) {
+    try {
+      const metCli = await api('param_tipos_pago','GET',null,'?moneda=eq.'+moneda+'&estado=eq.ACTIVO&order=nombre.asc&select=nombre');
+      tiposAceptados = (metCli || []).map(function(m){ return m.nombre; }).filter(function(v, i, a){ return v && a.indexOf(v) === i; });
+    } catch(eMetCli) { tiposAceptados = []; }
+  }
   if (selTipoMetodo) {
     selTipoMetodo.innerHTML = tiposAceptados.map(function(t) {
       return '<option value="'+t+'">'+t+'</option>';
@@ -5078,7 +5088,7 @@ async function confirmarEjecucionPago() {
     const idCtaIGTF       = buscarCta('6.1.04.003')?.id_cuenta || null;
     const idCtaPerdCambio = buscarCta('6.2.01.003')?.id_cuenta || null;
     const idCtaGanCambio  = buscarCta('4.2.01.003')?.id_cuenta || null;
-    const idCtaCxP        = buscarCta('2.1.01.001')?.id_cuenta || null;
+    const idCtaCxP        = (c.tipo === 'REEMBOLSO_CLIENTE' ? buscarCta('2.1.01.003')?.id_cuenta : null) || buscarCta('2.1.01.001')?.id_cuenta || null;
 
     // 6. Crear asiento contable
     const numAst = await _siguienteNumeroAsiento();
@@ -5099,7 +5109,7 @@ async function confirmarEjecucionPago() {
         const prefDetectado = (numDoc.match(/^(ENT|CPRA)/) || [])[1] || 'CPRA';
         if (cuotaM) return 'Cuota ' + cuotaM[2] + ' — Pago compra Inventario ' + prefDetectado + '-' + cuotaM[1];
         if (entM)   return 'Pago contado Inventario ' + prefDetectado + '-' + entM[1];
-        return obs || ('Pago ' + (c.proveedores?.nombre || numDoc));
+        return obs || ('Pago ' + (c.proveedores?.nombre || c.beneficiario || numDoc));
       })(),
       id_usuario:     sesionActual?.correo_usuario
     });

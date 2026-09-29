@@ -1591,19 +1591,19 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="js/core.js?v=20260909231"></script>
-<script src="js/parametros.js?v=20260909231"></script>
-<script src="js/empresas.js?v=20260909231"></script>
-<script src="js/ingresos.js?v=20260909231"></script>
-<script src="js/inventario.js?v=20260909231"></script>
-<script src="js/proveedores.js?v=20260909231"></script>
-<script src="js/ventas.js?v=20260909231"></script>
-<script src="js/contabilidad.js?v=20260909231"></script>
-<script src="js/egresos.js?v=20260909231"></script>
-<script src="js/vehiculos.js?v=20260909231"></script>
-<script src="js/catalogo.js?v=20260909231"></script>
-<script src="js/ordenes.js?v=20260909231"></script>
-<script src="js/reportes.js?v=20260909231"></script>
+<script src="js/core.js?v=20260909232"></script>
+<script src="js/parametros.js?v=20260909232"></script>
+<script src="js/empresas.js?v=20260909232"></script>
+<script src="js/ingresos.js?v=20260909232"></script>
+<script src="js/inventario.js?v=20260909232"></script>
+<script src="js/proveedores.js?v=20260909232"></script>
+<script src="js/ventas.js?v=20260909232"></script>
+<script src="js/contabilidad.js?v=20260909232"></script>
+<script src="js/egresos.js?v=20260909232"></script>
+<script src="js/vehiculos.js?v=20260909232"></script>
+<script src="js/catalogo.js?v=20260909232"></script>
+<script src="js/ordenes.js?v=20260909232"></script>
+<script src="js/reportes.js?v=20260909232"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=_onTurnstileListo" async defer></script>
 
 <!-- ═══════════════════════════════════════ -->
@@ -2894,7 +2894,6 @@
           <label>Transacción</label>
           <select id="es-motivo" onchange="onCambiarMotivoEntrada()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
             <option value="" style="color:var(--suave)">— Seleccione transacción —</option>
-            <option value="devolucion">Devolución de cliente</option>
             <option value="transferencia">Transferencia</option>
           </select>
         </div>
@@ -5041,8 +5040,8 @@
     </div>
     <div class="modal-body">
       <p style="font-size:12px;color:var(--suave);margin-bottom:16px" id="ent-inv-leyenda">
-        Compras ya Aprobadas (Asiento y CxP ya generados) pendientes de que Almacén certifique que
-        físicamente llegó todo lo que dice la Compra. El Stock recién entra al Inventario cuando se certifica aquí.
+        Compras ya Aprobadas (Asiento y CxP ya generados) y Devoluciones de clientes (Notas de Crédito aprobadas)
+        pendientes de que Almacén certifique que físicamente llegó la mercancía. El Stock recién entra al Inventario cuando se certifica aquí.
       </p>
       <div id="ent-inv-lista-cont"></div>
       <div id="ent-inv-detalle-cont" style="display:none"></div>
@@ -5405,7 +5404,7 @@
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccione transacción —</option>
             <option value="compra">Compra a proveedor</option>
-            <option value="devolucion">Devolución de cliente</option>
+            <option value="devolucion" disabled>Devolución de cliente (solo desde Nota de Crédito)</option>
             <option value="ajuste">Ajuste de inventario</option>
             <option value="transferencia">Transferencia</option>
           </select>

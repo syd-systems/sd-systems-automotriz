@@ -263,7 +263,7 @@ async function renderVentasListado() {
       let facturaPorOrden = {};
       if (idsOrdenOS.length) {
         const facRowsOS = await api('facturas','GET',null,
-          '?id_orden=in.(' + idsOrdenOS.join(',') + ')&estado=not.in.(ANULADA,REVERSADA,BORRADOR,POR_APROBAR)&select=id_orden,numero_factura');
+          '?id_orden=in.(' + idsOrdenOS.join(',') + ')&estado=not.in.(ANULADA,REVERSADA,ACREDITADA_TOTAL,BORRADOR,POR_APROBAR)&select=id_orden,numero_factura');
         (facRowsOS||[]).forEach(function(f){ facturaPorOrden[f.id_orden] = f.numero_factura; });
       }
       const totalPorOrden = {}, catsPorOrden = {}, tiposPorOrden = {};
