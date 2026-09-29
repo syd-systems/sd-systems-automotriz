@@ -1009,7 +1009,6 @@ async function abrirEntradaStock(id) {
   const esLblUnidad = document.getElementById('es-label-unidad');
   if (esLblUnidad) esLblUnidad.textContent = r.unidad || 'UND';
   document.getElementById('es-cantidad').value = '';
-  var selDevEstado = document.getElementById('es-dev-estado'); if (selDevEstado) selDevEstado.value = '';
   var selMotivo = document.getElementById('es-motivo');
   if (selMotivo) selMotivo.selectedIndex = 0;
   if (document.getElementById('es-fecha-negociacion')) document.getElementById('es-fecha-negociacion').value = getHoyVzla();
@@ -1036,26 +1035,6 @@ async function abrirEntradaStock(id) {
         : areas;
       selOrigen.innerHTML = '<option value="">— Seleccionar área de origen —</option>'
         + areasOrigenDisp.map(function(a) { return '<option value="' + a.id + '">' + escapeHtml(a.nombre) + (a.codigo ? ' (' + a.codigo + ')' : '') + '</option>'; }).join('');
-    }
-    // Devolución de cliente: SOLO contra una Nota de Crédito (reembolso) de
-    // Devolución ya aprobada que tenga ESTE artículo pendiente de recibir.
-    // (Antes se elegía una factura y el asiento se armaba aquí sin Nota de
-    // Crédito ni aprobación -- se retiró.)
-    var selFact = document.getElementById('es-factura-devolucion');
-    window._devolucionesPendArt = [];
-    if (selFact) {
-      selFact.innerHTML = '<option value="">Cargando…</option>';
-      api('rpc/listar_devoluciones_pendientes','POST',{ p_id_articulo: id }).then(function(rows) {
-        window._devolucionesPendArt = rows || [];
-        selFact.innerHTML = window._devolucionesPendArt.length
-          ? '<option value="">— Seleccionar Nota de Crédito —</option>'
-            + window._devolucionesPendArt.map(function(d) {
-                return '<option value="' + d.id_nc_detalle + '">' + escapeHtml(d.numero_nc + ' — Factura ' + d.numero_factura + ' — ' + (d.cliente || '') + ' (pendiente: ' + parseFloat(d.pendiente) + ')') + '</option>';
-              }).join('')
-          : '<option value="">— No hay Notas de Crédito con este artículo pendiente de recibir —</option>';
-      }).catch(function() {
-        selFact.innerHTML = '<option value="">— No se pudieron cargar las Notas de Crédito —</option>';
-      });
     }
     onCambiarMotivoEntrada();
   }).catch(function(){});
@@ -1113,11 +1092,10 @@ async function guardarEntradaStock() {
   if (motivoSel === 'transferencia') {
     const areaOrig = document.getElementById('es-area-origen')?.value;
     if (!areaOrig)                  return mostrarError('Seleccione el Área de Origen.', 'es-area-origen');
-  } else if (motivoSel === 'devolucion') {
-    const ncSel = document.getElementById('es-factura-devolucion')?.value;
-    if (!ncSel)                     return mostrarError('Seleccione la Nota de Crédito a la que corresponde esta devolución.', 'es-factura-devolucion');
-    const estadoDev = document.getElementById('es-dev-estado')?.value;
-    if (!estadoDev)                 return mostrarError('Indique si la mercancía llegó en buen estado o dañada.', 'es-dev-estado');
+  } else if (motivoSel !== 'transferencia') {
+    // "Devolución de cliente" ya no se registra aquí: se certifica en la bandeja
+    // "Entrada de Inventario" contra la Nota de Crédito aprobada.
+    return mostrarError('Transacción no válida.', 'es-motivo');
   }
   // Observaciones — opcional, no se valida
 
@@ -1132,13 +1110,7 @@ async function guardarEntradaStock() {
 
     // ── FASE 1: Todas las validaciones ANTES de tocar BD ──
     const motivoEnt = motivoSel;
-    if (motivoEnt === 'devolucion') {
-      const detSel = (window._devolucionesPendArt || []).find(function(d){ return String(d.id_nc_detalle) === String(document.getElementById('es-factura-devolucion')?.value); });
-      if (detSel && cantidad > parseFloat(detSel.pendiente) + 0.00001) {
-        errEl.textContent = 'La cantidad (' + cantidad + ') supera lo pendiente de recibir en la ' + detSel.numero_nc + ' (' + parseFloat(detSel.pendiente) + ').';
-        errEl.style.display = 'block'; document.getElementById('es-cantidad')?.focus(); resetBtn(); return;
-      }
-    } else if (motivoEnt === 'transferencia') {
+    if (motivoEnt === 'transferencia') {
       const idOrigenVal = document.getElementById('es-area-origen')?.value;
       if (!idOrigenVal) { errEl.textContent = 'Debe seleccionar el área de origen.'; errEl.style.display = 'block'; document.getElementById('es-area-origen')?.focus(); resetBtn(); return; }
       // Transferencia solo aplica a Mercancías (cuenta 1.1.04.001) — un Consumible
@@ -1171,27 +1143,6 @@ async function guardarEntradaStock() {
     }
     const id_areaOrigenH  = (motivoEnt === 'transferencia') ? (parseInt(document.getElementById('es-area-origen')?.value) || null) : null;
 
-    // ── Devolución de cliente: la registra el servidor contra la Nota de Crédito ──
-    if (motivoEnt === 'devolucion') {
-      const buenEstado = document.getElementById('es-dev-estado')?.value === 'buen';
-      const rDev = await api('rpc/recibir_devolucion_nc','POST',{
-        p_id_nc_detalle: parseInt(document.getElementById('es-factura-devolucion').value),
-        p_cantidad: cantidad, p_buen_estado: buenEstado, p_id_area: id_areaEnt,
-        p_id_empleado: idEmpEntVal, p_fecha: fechaNeg,
-        p_observaciones: document.getElementById('es-observaciones')?.value.trim() || null
-      });
-      okEl.textContent = buenEstado
-        ? '✓ Devolución recibida (' + ((rDev && rDev.numero_nc) || '') + '): ' + cantidad + ' ' + (r?.unidad || 'UND') + ' ingresadas al inventario.'
-        : '✓ Devolución recibida (' + ((rDev && rDev.numero_nc) || '') + '): ' + cantidad + ' ' + (r?.unidad || 'UND') + ' registradas como merma (no suman stock).';
-      okEl.style.display = 'block';
-      setTimeout(function() {
-        cerrarModal('modal-entrada-stock');
-        cerrarModal('modal-stock-articulo');
-        renderInventario();
-      }, 1500);
-      resetBtn();
-      return;
-    }
 
     // Bloqueo real (no solo visual): el Área de Origen nunca puede ser la
     // misma que la receptora -- una auto-transferencia no tiene sentido y
@@ -7075,20 +7026,8 @@ function onSelAreaEntrada() {
   cargarEmpleadosPorArea(parseInt(id_area)||null, 'es-empleado', true);
 }
 
-function onCambiarFacturaDevolucion() {
-  const idDet  = document.getElementById('es-factura-devolucion')?.value;
-  const infoEl = document.getElementById('es-factura-devolucion-info');
-  const cantEl = document.getElementById('es-cantidad');
-  if (!idDet || !infoEl) { if (infoEl) infoEl.style.display = 'none'; return; }
-  const d = (window._devolucionesPendArt || []).find(function(x) { return String(x.id_nc_detalle) === String(idDet); });
-  if (!d) { infoEl.style.display = 'none'; return; }
-  infoEl.innerHTML = 'Acreditado en la ' + escapeHtml(d.numero_nc) + ': <b>' + parseFloat(d.acreditado) + '</b> — ya recibido: ' + parseFloat(d.recibido)
-    + (parseFloat(d.merma) > 0 ? ' — merma: ' + parseFloat(d.merma) : '')
-    + ' — <b>pendiente: ' + parseFloat(d.pendiente) + '</b>'
-    + '<br>En buen estado vuelve al inventario y se reversa su costo de venta; dañada queda como merma (no suma stock).';
-  infoEl.style.display = 'block';
-  if (cantEl) cantEl.max = parseFloat(d.pendiente);
-}
+// onCambiarFacturaDevolucion() se retiró: la Devolución de cliente se certifica en la bandeja Entrada de Inventario.
+function onCambiarFacturaDevolucion() {}
 
 function onCambiarMotivoEntrada() {
   const motivo = document.getElementById('es-motivo')?.value;
@@ -7203,8 +7142,10 @@ async function revisarBadgeEntradaInventario() {
   try {
     const pend = await api('stock_entradas','GET',null,
       '?motivo=eq.compra&estado_aprobacion=eq.APROBADA&certificado_almacen=eq.false&select=id_entrada&limit=1');
-    badgeEl.innerHTML = (pend && pend.length)
-      ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fc8181;margin-left:6px;vertical-align:middle;animation:parpadeoAlerta 1.2s ease-in-out infinite" title="Hay Compras pendientes de Entrada de Inventario"></span>'
+    let devPend = [];
+    try { devPend = await api('rpc/listar_devoluciones_por_recibir','POST',{}) || []; } catch(eDevBadge) { devPend = []; }
+    badgeEl.innerHTML = ((pend && pend.length) || devPend.length)
+      ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fc8181;margin-left:6px;vertical-align:middle;animation:parpadeoAlerta 1.2s ease-in-out infinite" title="Hay Compras o Devoluciones pendientes de Entrada de Inventario"></span>'
       : '';
   } catch(eBadgeEntInv) { console.warn('Error revisando badge de Entrada de Inventario:', eBadgeEntInv); }
 }
@@ -7239,11 +7180,31 @@ async function _entInvCargarLista() {
   try {
     const filas = await api('stock_entradas','GET',null,
       '?motivo=eq.compra&estado_aprobacion=eq.APROBADA&certificado_almacen=eq.false&order=id_entrada.asc'
-      + '&select=id_entrada,id_articulo,cantidad,id_orden_compra,id_proveedor,fecha_negociacion,fecha_entrada');
-    if (!filas || !filas.length) {
-      cont.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">✅ No hay Compras pendientes de Entrada de Inventario.</div>';
+      + '&select=id_entrada,id_articulo,cantidad,id_orden_compra,id_proveedor,fecha_negociacion,fecha_entrada') || [];
+    // Devoluciones de clientes (Notas de Crédito aprobadas) pendientes de recibir
+    let devs = [];
+    try { devs = await api('rpc/listar_devoluciones_por_recibir','POST',{}) || []; } catch(eDevLista) { devs = []; }
+    window._entInvDevoluciones = devs;
+    const gruposDev = {};
+    devs.forEach(function(d) {
+      if (!gruposDev[d.id_nc]) gruposDev[d.id_nc] = { id_nc: d.id_nc, numero_nc: d.numero_nc, numero_factura: d.numero_factura, cliente: d.cliente, fecha: d.fecha_aprobacion, n: 0 };
+      gruposDev[d.id_nc].n++;
+    });
+    const htmlDevs = Object.values(gruposDev).map(function(g) {
+      return '<div onclick="_entInvVerDevolucion(' + g.id_nc + ')" style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid var(--borde);border-radius:8px;margin-bottom:8px;cursor:pointer" onmouseover="this.style.borderColor=\'var(--naranja)\'" onmouseout="this.style.borderColor=\'var(--borde)\'">'
+        + '<div>'
+        + '<div style="font-size:11px;color:var(--naranja);font-family:var(--font-mono)">Ref: ' + escapeHtml(g.numero_nc) + ' · Devolución de cliente' + (g.n > 1 ? ' (x' + g.n + ' artículos)' : '') + '</div>'
+        + '<div style="font-weight:600;margin-top:2px">' + escapeHtml(g.cliente || '—') + '</div>'
+        + '<div style="font-size:11px;color:var(--suave);margin-top:2px">Factura ' + escapeHtml(g.numero_factura || '') + (g.fecha ? ' · ' + fmtFechaVzla(g.fecha) : '') + '</div>'
+        + '</div>'
+        + '<button class="btn-secundario" style="font-size:11px;padding:6px 12px">Ver →</button>'
+        + '</div>';
+    }).join('');
+    if (!filas.length && !devs.length) {
+      cont.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">✅ No hay Compras ni Devoluciones pendientes de Entrada de Inventario.</div>';
       return;
     }
+    if (!filas.length) { cont.innerHTML = htmlDevs; return; }
     const idsProv = [...new Set(filas.map(function(f){ return f.id_proveedor; }).filter(Boolean))];
     const provs = idsProv.length ? await api('proveedores','GET',null,'?id_proveedor=in.('+idsProv.join(',')+')&select=id_proveedor,nombre') : [];
     const provMap = {}; (provs||[]).forEach(function(p){ provMap[p.id_proveedor] = p.nombre; });
@@ -7256,7 +7217,7 @@ async function _entInvCargarLista() {
       grupos[clave].filas.push(f);
     });
 
-    cont.innerHTML = Object.values(grupos).map(function(g) {
+    cont.innerHTML = htmlDevs + Object.values(grupos).map(function(g) {
       const primeraF = g.filas[0];
       const nomProv = provMap[primeraF.id_proveedor] || '—';
       const ref = (g.esLote ? 'CPRA-' : 'CPRA-') + g.idRef;
@@ -7346,11 +7307,115 @@ async function _entInvVerDetalle(idRef, esLote) {
   }
 }
 
+// ── Devolución de cliente (Nota de Crédito aprobada): el almacén verifica
+// cada artículo, indica si llegó en buen estado o dañado, y certifica.
+async function _entInvVerDevolucion(idNC) {
+  const contLista = document.getElementById('ent-inv-lista-cont');
+  const contDet = document.getElementById('ent-inv-detalle-cont');
+  contLista.style.display = 'none';
+  document.getElementById('ent-inv-leyenda').style.display = 'none';
+  document.getElementById('ent-inv-btn-volver').style.display = '';
+  contDet.style.display = '';
+  const lineas = (window._entInvDevoluciones || []).filter(function(d){ return d.id_nc === idNC; });
+  if (!lineas.length) { contDet.innerHTML = '<div class="alerta alerta-error" style="display:block">No se encontró esta Devolución.</div>'; return; }
+  let arts = [];
+  try {
+    const ids = [...new Set(lineas.map(function(l){ return l.id_articulo; }).filter(Boolean))];
+    if (ids.length) arts = await api('inventario_almacen','GET',null,'?id_articulo=in.('+ids.join(',')+')&select=id_articulo,codigo_articulo,unidad') || [];
+  } catch(eArtsDev) { arts = []; }
+  const artMap = {}; arts.forEach(function(a){ artMap[a.id_articulo] = a; });
+  const l0 = lineas[0];
+  contDet.innerHTML = '<div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-bottom:16px">'
+    + '<div style="font-size:11px;color:var(--naranja);font-family:var(--font-mono)">Ref: ' + escapeHtml(l0.numero_nc) + ' · Devolución de cliente</div>'
+    + '<div style="font-weight:700;font-size:15px;margin-top:2px">' + escapeHtml(l0.cliente || '—') + '</div>'
+    + '<div style="font-size:11px;color:var(--suave);margin-top:2px">Factura ' + escapeHtml(l0.numero_factura || '') + (l0.fecha_aprobacion ? ' · NC aprobada el ' + fmtFechaVzla(l0.fecha_aprobacion) : '') + '</div>'
+    + '</div>'
+    + '<div style="font-size:11px;color:var(--suave);margin-bottom:10px">Verifique físicamente cada Artículo e indique su estado. En buen estado vuelve al Inventario; dañado queda como merma (no suma stock). Todos deben quedar tildados para poder confirmar.</div>'
+    + '<div class="tabla-container" style="max-height:260px;margin-bottom:16px">'
+    + '<table style="width:100%"><thead><tr>'
+    + '<th style="font-size:11px">Artículo</th><th style="font-size:11px;text-align:center">Cant.</th><th style="font-size:11px">Estado</th><th style="font-size:11px;text-align:center">Recibido</th>'
+    + '</tr></thead><tbody>'
+    + lineas.map(function(l) {
+        const a = artMap[l.id_articulo] || {};
+        return '<tr>'
+          + '<td style="padding:6px 8px">' + escapeHtml(l.descripcion || ('Art#' + l.id_articulo)) + (a.codigo_articulo ? ' <span style="color:var(--suave);font-size:11px">(' + escapeHtml(a.codigo_articulo) + ')</span>' : '') + '</td>'
+          + '<td style="padding:6px 8px;text-align:center;font-family:var(--font-mono)">' + parseFloat(l.pendiente) + ' ' + escapeHtml(a.unidad || 'UND') + '</td>'
+          + '<td style="padding:6px 8px"><select class="sel-ent-dev-estado" data-id-det="' + l.id_nc_detalle + '" onchange="_entInvValidarTodos()" style="font-size:12px;padding:6px;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);border-radius:5px">'
+          + '<option value="">— Estado —</option><option value="buen">Buen estado</option><option value="danada">Dañado (merma)</option></select></td>'
+          + '<td style="padding:6px 8px;text-align:center"><input type="checkbox" class="chk-ent-inv" data-id-det="' + l.id_nc_detalle + '" onchange="_entInvValidarTodos()" style="width:18px;height:18px;cursor:pointer"></td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table></div>'
+    + '<div class="form-campo" style="margin-bottom:16px">'
+    + '<label>Documento de la Devolución No.</label>'
+    + '<input type="text" id="ent-inv-nota-entrega" placeholder="N° del documento con que el cliente devuelve la mercancía"'
+    + ' onkeydown="if(event.key===\'Enter\'){document.getElementById(\'ent-inv-clave\')?.focus()}"'
+    + ' style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">'
+    + '</div>'
+    + '<div class="form-campo" style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px">'
+    + '<div style="font-size:11px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🔐 Confirmación de Usuario</div>'
+    + '<div style="font-size:13px;color:var(--texto);margin-bottom:12px">Usuario: <span style="font-weight:600;color:var(--naranja)">' + escapeHtml(sesionActual?.nombre || sesionActual?.correo_usuario || '—') + '</span></div>'
+    + '<label style="font-size:12px">Contraseña</label>'
+    + '<input type="password" id="ent-inv-clave" placeholder="Ingrese su contraseña para confirmar" onkeydown="if(event.key===\'Enter\'){guardarDevolucionInventario(' + idNC + ')}"'
+    + ' style="background:var(--gris1);border:1px solid rgba(255,107,0,0.3);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%;margin-top:4px">'
+    + '</div>'
+    + '<div class="alerta alerta-error" id="alerta-ent-inv-err" style="display:none;margin-top:14px"></div>'
+    + '<div style="margin-top:16px;text-align:right">'
+    + '<button class="btn-primario" id="btn-ent-inv-confirmar" disabled onclick="guardarDevolucionInventario(' + idNC + ')">✓ Confirmar Recepción</button>'
+    + '</div>';
+  const modalBodyEntInvDev = document.querySelector('#modal-entrada-inventario .modal');
+  if (modalBodyEntInvDev) modalBodyEntInvDev.scrollTop = 0;
+}
+
+async function guardarDevolucionInventario(idNC) {
+  const errEl = document.getElementById('alerta-ent-inv-err');
+  errEl.style.display = 'none';
+  const checks = Array.from(document.querySelectorAll('.chk-ent-inv'));
+  const estados = Array.from(document.querySelectorAll('.sel-ent-dev-estado'));
+  if (!checks.length || !checks.every(function(c){ return c.checked; }) || !estados.every(function(s){ return s.value; })) {
+    errEl.textContent = 'Debe indicar el estado y tildar todos los Artículos como Recibidos antes de confirmar.';
+    errEl.style.display = 'block';
+    return;
+  }
+  const documento = document.getElementById('ent-inv-nota-entrega')?.value.trim() || '';
+  if (!documento) {
+    errEl.textContent = 'Debe ingresar el N° del documento de la devolución.';
+    errEl.style.display = 'block';
+    document.getElementById('ent-inv-nota-entrega')?.focus();
+    return;
+  }
+  const clave = document.getElementById('ent-inv-clave')?.value || '';
+  if (!clave) {
+    errEl.textContent = 'Debe ingresar su contraseña para confirmar.';
+    errEl.style.display = 'block';
+    document.getElementById('ent-inv-clave')?.focus();
+    return;
+  }
+  const btn = document.getElementById('btn-ent-inv-confirmar');
+  btnSetGuardando(btn, true, null, 'Procesando...');
+  try {
+    const valid = await validarClaveUsuarioActual(clave);
+    if (!valid.ok) { errEl.textContent = valid.msg; errEl.style.display = 'block'; btnSetGuardando(btn, false); return; }
+    const lineas = estados.map(function(s) { return { id_nc_detalle: parseInt(s.dataset.idDet), buen_estado: s.value === 'buen' }; });
+    await api('rpc/recibir_devolucion_nc','POST',{ p_id_nc: idNC, p_lineas: lineas, p_documento: documento });
+    await revisarBadgeEntradaInventario();
+    _entInvVolverLista();
+    renderInventario(document.getElementById('buscar-inv')?.value || '');
+  } catch(eGuardarDev) {
+    errEl.textContent = 'Error: ' + msgErr(eGuardarDev);
+    errEl.style.display = 'block';
+  } finally {
+    btnSetGuardando(btn, false);
+  }
+}
+
 function _entInvValidarTodos() {
   const checks = document.querySelectorAll('.chk-ent-inv');
   const btn = document.getElementById('btn-ent-inv-confirmar');
   if (!btn) return;
-  btn.disabled = !Array.from(checks).every(function(c){ return c.checked; });
+  const estadosDev = document.querySelectorAll('.sel-ent-dev-estado');
+  btn.disabled = !Array.from(checks).every(function(c){ return c.checked; })
+    || !Array.from(estadosDev).every(function(s){ return s.value; });
 }
 
 async function guardarEntradaInventario(idRef, esLote) {

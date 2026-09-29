@@ -1754,7 +1754,7 @@ function renderNotaCredito() {
     + '<th style="font-size:10px;color:var(--suave)">A ACREDITAR</th>'
     + '</tr></thead><tbody>' + filas + '</tbody></table></div>'
     + (tipoSel === 'DEVOLUCION'
-        ? '<div style="font-size:11px;color:var(--suave);margin-top:6px">📦 La mercancía devuelta la recibe el almacén (Inventario → Entrada → "Devolución de cliente"), donde se indica si llegó en buen estado o dañada.</div>'
+        ? '<div style="font-size:11px;color:var(--suave);margin-top:6px">📦 La mercancía devuelta la recibe el almacén en la bandeja "✓ Entrada de Inventario", donde se indica si llegó en buen estado o dañada.</div>'
         : (tipoSel === 'ERROR_FACTURA' ? '<div style="font-size:11px;color:var(--suave);margin-top:6px">La mercancía no se mueve físicamente: se reversa su costo y la Venta u Orden de Servicio queda lista para facturarse de nuevo.</div>' : ''))
     + '<div id="nc-totales" style="margin-top:14px"></div>'
     + '<div id="nc-destino" style="margin-top:10px"></div>'
