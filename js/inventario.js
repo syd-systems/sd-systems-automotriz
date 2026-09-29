@@ -7118,8 +7118,8 @@ async function revisarBadgeEntregasAlmacen() {
   if (!sesionActual?.administrador && !puedo('INVENTARIO','VER_ENTREGAS')) { badgeEl.innerHTML = ''; return; }
   try {
     // Mismo criterio EXACTO que la consulta de Pendientes de Entrega.
-    const ventas = await api('ventas','GET',null,
-      '?estado=eq.FACTURADA&entregado=eq.false&select=id_venta,facturas!inner(estado)&facturas.estado=eq.PAGADA&limit=1');
+    // Vía función del servidor: el Almacén no necesita permisos del módulo Ventas
+    const ventas = await api('rpc/listar_entregas_almacen','POST',{ p_historico: false, p_desde: null, p_hasta: null });
     badgeEl.innerHTML = (ventas && ventas.length)
       ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fc8181;margin-left:6px;vertical-align:middle;animation:parpadeoAlerta 1.2s ease-in-out infinite" title="Hay Ventas pendientes de entrega"></span>'
       : '';
@@ -7576,14 +7576,13 @@ async function _cargarEntregasAlmacen() {
     // ese valor solo se consulta puntualmente al confirmar una entrega.
     let ventas;
     if (_entregasAlmacenSubVista === 'pendientes') {
-      ventas = await api('ventas','GET',null,
-        '?estado=eq.FACTURADA&entregado=eq.false&select=id_venta,total_usd,fecha_venta,entregado,clientes(nombre_completo,tipo_doc,numero_doc),facturas!inner(estado,fecha_emision,total_ves)&facturas.estado=eq.PAGADA&order=fecha_venta.asc');
+      // Vía función del servidor (listar_entregas_almacen): el Almacén no
+      // necesita permisos del módulo Ventas -- antes leía la tabla ventas
+      // directo y, sin esos permisos, la lista salía vacía.
+      ventas = await api('rpc/listar_entregas_almacen','POST',{ p_historico: false, p_desde: null, p_hasta: null }) || [];
     } else {
-      let filtroFechaAlm = '';
-      if (_entregasAlmacenHistDesde) filtroFechaAlm += '&fecha_entrega=gte.'+_entregasAlmacenHistDesde;
-      if (_entregasAlmacenHistHasta) filtroFechaAlm += '&fecha_entrega=lte.'+_entregasAlmacenHistHasta+'T23:59:59';
-      ventas = await api('ventas','GET',null,
-        '?entregado=eq.true&select=id_venta,total_usd,fecha_venta,entregado,fecha_entrega,entregado_por,clientes(nombre_completo,tipo_doc,numero_doc),facturas(numero_factura,fecha_emision,total_ves)'+filtroFechaAlm+'&order=fecha_entrega.desc');
+      ventas = await api('rpc/listar_entregas_almacen','POST',{
+        p_historico: true, p_desde: _entregasAlmacenHistDesde || null, p_hasta: _entregasAlmacenHistHasta || null }) || [];
       if (_entregasAlmacenHistBusqueda.trim()) {
         const qBusqAlm = _entregasAlmacenHistBusqueda.trim().toLowerCase();
         ventas = ventas.filter(function(v) {
@@ -7597,16 +7596,9 @@ async function _cargarEntregasAlmacen() {
 
     // Detalle de Artículos -- una sola consulta por lote para todas las
     // Ventas de esta lista (evita N llamadas, una por tarjeta).
-    const idsVentasAlm = ventas.map(function(v){ return v.id_venta; });
+    // (ya vienen en la respuesta del servidor)
     let lineasPorVentaAlm = {};
-    if (idsVentasAlm.length) {
-      const lineasAlm = await api('venta_detalle','GET',null,
-        '?id_venta=in.('+idsVentasAlm.join(',')+')&select=id_venta,cantidad,inventario_almacen(nombre_articulo)');
-      (lineasAlm||[]).forEach(function(l) {
-        if (!lineasPorVentaAlm[l.id_venta]) lineasPorVentaAlm[l.id_venta] = [];
-        lineasPorVentaAlm[l.id_venta].push({ nombre: l.inventario_almacen?.nombre_articulo||'Artículo', cantidad: l.cantidad });
-      });
-    }
+    ventas.forEach(function(v) { lineasPorVentaAlm[v.id_venta] = v.lineas || []; });
 
     _entregasAlmacenCache = { ventas: ventas, lineasPorVenta: lineasPorVentaAlm, subTabsHtml: subTabsHtml, filtroHtml: filtroHtml };
     _entregasAlmacenRenderLista();
@@ -7706,10 +7698,14 @@ async function _confirmarEntregaAlmacen(id_venta) {
     // Validación contra Supabase, en el momento -- nunca se compara contra
     // un número ya cargado en el navegador. ilike (sin comodines) para
     // tolerar mayúsculas/minúsculas, no espacios de más.
-    const check = await api('ventas','GET',null,
-      '?id_venta=eq.'+id_venta+'&select=id_venta,facturas!inner(numero_factura)&facturas.numero_factura=ilike.'+encodeURIComponent(numeroTecleado));
+    // Validación y registro en el servidor (confirmar_entrega_venta): el
+    // N° de Factura nunca viaja al navegador.
+    const check = await api('rpc/confirmar_entrega_venta','POST',{
+      p_id_venta: id_venta, p_numero_factura: numeroTecleado,
+      p_entregado_por: sesionActual.nombre || sesionActual.correo_usuario
+    });
 
-    if (!check || !check.length) {
+    if (!check || !check.ok) {
       msgEl.textContent = '⚠ El número ingresado no corresponde a esta Factura. Verifique con el Cliente.';
       msgEl.style.color = '#fc8181';
       msgEl.style.display = '';
@@ -7717,12 +7713,6 @@ async function _confirmarEntregaAlmacen(id_venta) {
       inputEl?.focus();
       return;
     }
-
-    await api('ventas','PATCH',{
-      entregado: true,
-      fecha_entrega: ahoraVzla(),
-      entregado_por: sesionActual.nombre || sesionActual.correo_usuario
-    },'?id_venta=eq.'+id_venta);
 
     msgEl.textContent = '✓ Entrega confirmada.';
     msgEl.style.color = '#22c55e';
