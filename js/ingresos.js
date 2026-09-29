@@ -1357,15 +1357,17 @@ async function verFichaFactura(id) {
         } catch(e) { alert('Error: ' + msgErr(e)); }
       };
     }
-    // Por cobrar y sin cobros -> Nota de Crédito (reverso); con cobros -> Nota de Crédito (reembolso)
+    // Por cobrar y sin cobros -> Nota de Crédito (reverso); con cobros -> Nota de Crédito (reembolso).
+    // Con una NC en espera de aprobación no se solicita otra: primero se decide esa.
+    const ncPendFicha = ncsFactura.some(function(n){ return n.estado === 'PENDIENTE'; });
     var btnNC = document.getElementById('ficha-fac-btn-nc');
     if (btnNC) {
-      btnNC.style.display = (puedeSolicitarNC(origenFactura(f)) && facturaAdmiteNC(f)) ? '' : 'none';
+      btnNC.style.display = (puedeSolicitarNC(origenFactura(f)) && facturaAdmiteNC(f) && !ncPendFicha) ? '' : 'none';
       btnNC.onclick = function() { cerrarModal('modal-ficha-fac'); abrirNotaCredito(f.id_factura); };
     }
     var btnReverso = document.getElementById('ficha-fac-btn-reverso');
     if (btnReverso) {
-      btnReverso.style.display = (puedeSolicitarNC(origenFactura(f)) && facturaAdmiteReverso(f, cobradoFicha) && !ncReversoPend) ? '' : 'none';
+      btnReverso.style.display = (puedeSolicitarNC(origenFactura(f)) && facturaAdmiteReverso(f, cobradoFicha) && !ncPendFicha) ? '' : 'none';
       btnReverso.onclick = function() { solicitarNCReverso(f.id_factura, f.numero_factura); };
     }
     if (btnEditar)  { btnEditar._id=f.id_factura;  btnEditar.onclick=function(){cerrarModal('modal-ficha-fac');abrirEditarFactura(this._id);}; btnEditar.style.display=puedo('FACTURAS','EDITAR')&&f.estado==='BORRADOR'?'':'none'; }
@@ -1977,12 +1979,13 @@ async function montarNCEnFicha(opts) {
   if (cont && d.ncs && d.ncs.length) cont.insertAdjacentHTML('beforeend', htmlSeccionNotasCredito(d.ncs, true));
   if (!puedeSolicitarNC(f.origen)) return;
 
-  const reversoPend = (d.ncs || []).some(function(n) { return n.estado === 'PENDIENTE' && n.tipo === 'REVERSO'; });
+  // Con una NC en espera de aprobación no se solicita otra: primero se decide esa
+  if ((d.ncs || []).some(function(n) { return n.estado === 'PENDIENTE'; })) return;
   if (btnNC && facturaAdmiteNC(f)) {
     btnNC.style.display = '';
     btnNC.onclick = function() { cerrarModal(opts.cerrar); abrirNotaCredito(f.id_factura, opts.alTerminar); };
   }
-  if (btnReverso && !reversoPend && facturaAdmiteReverso(f, parseFloat(d.cobrado || 0))) {
+  if (btnReverso && facturaAdmiteReverso(f, parseFloat(d.cobrado || 0))) {
     btnReverso.style.display = '';
     btnReverso.onclick = function() { solicitarNCReverso(f.id_factura, f.numero_factura, opts.alTerminar); };
   }
