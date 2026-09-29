@@ -1134,6 +1134,10 @@ async function verFichaVenta(id) {
   btnEliminar.onclick  = function() { btnSetGuardando(this,true,null,'Procesando...'); eliminarVenta(v.id_venta).finally(()=>btnSetGuardando(this,false)); };
 
   abrirModal('modal-ficha-venta');
+  // Notas de Crédito de su factura: las solicita Ventas (ver ingresos.js)
+  montarNCEnFicha({ contenedorId: 'ficha-venta-contenido', anclaId: 'ficha-venta-btn-eliminar', prefijo: 'ficha-venta',
+    params: { p_id_venta: v.id_venta }, cerrar: 'modal-ficha-venta',
+    alTerminar: function() { verFichaVenta(v.id_venta); } });
 }
 
 async function facturarVenta(id) {

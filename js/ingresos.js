@@ -31,6 +31,15 @@ function estadoFacVisible(estado) { return estado === 'APROBADA' ? 'EMITIDA' : e
 function puedeEmitirFacturaManual() { return puedo('FACTURAS','APROBAR'); }
 // Manual = sin Venta ni OS (facturas.origen lo fija el servidor)
 function esFacturaManual(f) { return f && (f.origen ? f.origen === 'MANUAL' : (!f.id_orden && !f.id_venta)); }
+function origenFactura(f) { return f.origen || (f.id_orden ? 'OS' : (f.id_venta ? 'VENTA' : 'MANUAL')); }
+// ¿Quién solicita la Nota de Crédito? Según el origen de la factura:
+// Venta -> Ventas · Orden de Servicio -> Órdenes de Servicio · Manual -> Cuentas por Cobrar
+// (el servidor lo vuelve a validar: _sd_puede_solicitar_nc)
+function puedeSolicitarNC(origen) {
+  if (origen === 'VENTA') return !!puedo('VENTAS','SOLICITAR_NC');
+  if (origen === 'OS')    return !!puedo('SERVICIOS','SOLICITAR_NC');
+  return !!puedo('FACTURAS','EMITIR_NC');
+}
 const MSG_FAC_MANUAL_APROBACION = 'Las facturas manuales (sin Venta ni Orden de Servicio) requieren aprobación. '
   + 'Envíela a aprobación: un usuario con el permiso "Aprobar y emitir factura manual" la revisará y la emitirá.';
 // Filtro de facturas "activas" de una OS/Venta (las Reversadas liberan la OS para facturarla de nuevo)
@@ -1351,12 +1360,12 @@ async function verFichaFactura(id) {
     // Por cobrar y sin cobros -> Nota de Crédito (reverso); con cobros -> Nota de Crédito (reembolso)
     var btnNC = document.getElementById('ficha-fac-btn-nc');
     if (btnNC) {
-      btnNC.style.display = (puedo('FACTURAS','EMITIR_NC') && facturaAdmiteNC(f)) ? '' : 'none';
+      btnNC.style.display = (puedeSolicitarNC(origenFactura(f)) && facturaAdmiteNC(f)) ? '' : 'none';
       btnNC.onclick = function() { cerrarModal('modal-ficha-fac'); abrirNotaCredito(f.id_factura); };
     }
     var btnReverso = document.getElementById('ficha-fac-btn-reverso');
     if (btnReverso) {
-      btnReverso.style.display = (puedo('FACTURAS','EMITIR_NC') && facturaAdmiteReverso(f, cobradoFicha) && !ncReversoPend) ? '' : 'none';
+      btnReverso.style.display = (puedeSolicitarNC(origenFactura(f)) && facturaAdmiteReverso(f, cobradoFicha) && !ncReversoPend) ? '' : 'none';
       btnReverso.onclick = function() { solicitarNCReverso(f.id_factura, f.numero_factura); };
     }
     if (btnEditar)  { btnEditar._id=f.id_factura;  btnEditar.onclick=function(){cerrarModal('modal-ficha-fac');abrirEditarFactura(this._id);}; btnEditar.style.display=puedo('FACTURAS','EDITAR')&&f.estado==='BORRADOR'?'':'none'; }
@@ -1631,14 +1640,15 @@ function facturaAdmiteReverso(f, cobrado) {
   return String(f.fecha_emision || '').substring(0, 7) === getHoyVzla().substring(0, 7);
 }
 
-// Sección "Notas de Crédito" dentro de la Ficha de Factura
-function htmlSeccionNotasCredito(ncs) {
+// Sección "Notas de Crédito" dentro de la Ficha de Factura (y, sin los
+// botones de aprobar, en las Fichas de Venta y de Orden de Servicio)
+function htmlSeccionNotasCredito(ncs, soloLectura) {
   if (!ncs || !ncs.length) return '';
   return '<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Notas de Crédito</div>'
     + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse;font-size:12px"><tbody>'
     + ncs.map(function(n) {
         const est = ESTADOS_NC[n.estado] || { clase: 'badge-gris', label: n.estado };
-        const puedeDecidir = n.estado === 'PENDIENTE' && puedo('FACTURAS','APROBAR_NC');
+        const puedeDecidir = !soloLectura && n.estado === 'PENDIENTE' && puedo('FACTURAS','APROBAR_NC');
         const acciones = puedeDecidir
           ? '<div style="margin-top:6px;display:flex;gap:6px;justify-content:flex-end">'
             + '<button class="btn-primario" style="padding:4px 10px;font-size:11px" onclick="aprobarNotaCredito(' + jsArg(n.id_nc) + ',' + jsArg(n.numero_nc) + ',' + jsArg(n.tipo) + ',' + jsArg(n.destino) + ',this)">✓ Aprobar</button>'
@@ -1664,56 +1674,32 @@ function htmlSeccionNotasCredito(ncs) {
     + '</tbody></table></div></div>';
 }
 
-async function abrirNotaCredito(idFactura) {
+// Los datos vienen de datos_nc_factura (servidor), así quien solicita desde
+// Ventas o el Taller no necesita permisos de Cuentas por Cobrar.
+// alTerminar: qué refrescar al emitir (por defecto, la Ficha de la Factura).
+async function abrirNotaCredito(idFactura, alTerminar) {
   try {
-    const [facArr, cxcs, acreditadas, pendRebaja, areas] = await Promise.all([
-      api('facturas','GET',null,'?id_factura=eq.'+idFactura+'&select=*'),
-      api('cont_cxc','GET',null,'?id_factura=eq.'+idFactura+'&estado=neq.ANULADA&select=saldo_usd'),
-      api('notas_credito_detalle','GET',null,'?select=origen,id_linea_origen,cantidad,notas_credito!inner(id_factura,estado)&notas_credito.id_factura=eq.'+idFactura+'&notas_credito.estado=neq.RECHAZADA'),
-      api('notas_credito','GET',null,'?id_factura=eq.'+idFactura+'&estado=eq.PENDIENTE&destino=eq.REBAJA_CXC&select=total_usd'),
-      api('param_areas','GET',null,'?estado=eq.ACTIVO&select=id,nombre,codigo&order=codigo.asc,nombre.asc')
-    ]);
-    const f = facArr && facArr[0];
+    const d = await api('rpc/datos_nc_factura','POST',{ p_id_factura: idFactura });
+    const f = d && d.factura;
     if (!f) { alert('Factura no encontrada.'); return; }
     if (!facturaAdmiteNC(f)) {
       alert('La factura ' + f.numero_factura + ' no admite Nota de Crédito (reembolso): solo se emite sobre facturas con cobros y dentro del mismo mes de la factura. Si no tiene cobros, corresponde la Nota de Crédito (reverso).');
       return;
     }
 
-    // Líneas facturadas (con su ID de origen)
-    let lineas = [];
-    if (f.id_orden) {
-      const [serv, merc] = await Promise.all([
-        api('os_servicios','GET',null,'?id_orden=eq.'+f.id_orden+'&select=id_os_serv,descripcion,cantidad,precio_usd&order=id_os_serv'),
-        api('os_mercancias','GET',null,'?id_orden=eq.'+f.id_orden+'&select=id_os_mercancia,descripcion,cantidad,precio_usd&order=id_os_mercancia')
-      ]);
-      (merc || []).forEach(function(m) { lineas.push({ origen: 'OS_MERCANCIA', id: m.id_os_mercancia, tipo: 'MERCANCIA', desc: m.descripcion, cant: parseFloat(m.cantidad || 0), precio: parseFloat(m.precio_usd || 0) }); });
-      (serv || []).forEach(function(s) { lineas.push({ origen: 'OS_SERVICIO',  id: s.id_os_serv,      tipo: 'SERVICIO',  desc: s.descripcion, cant: parseFloat(s.cantidad || 0), precio: parseFloat(s.precio_usd || 0) }); });
-    } else {
-      const ventas = await api('ventas','GET',null,(f.id_venta ? '?id_venta=eq.'+f.id_venta : '?id_factura=eq.'+idFactura)+'&select=id_venta&limit=1');
-      if (ventas && ventas[0]) {
-        const det = await api('venta_detalle','GET',null,'?id_venta=eq.'+ventas[0].id_venta+'&select=id_venta_detalle,cantidad,precio_unitario,inventario_almacen(nombre_articulo)&order=id_venta_detalle');
-        (det || []).forEach(function(d) { lineas.push({ origen: 'VENTA_DETALLE', id: d.id_venta_detalle, tipo: 'MERCANCIA', desc: d.inventario_almacen?.nombre_articulo || 'Artículo', cant: parseFloat(d.cantidad || 0), precio: parseFloat(d.precio_unitario || 0) }); });
-      }
-    }
-    // Disponible = facturado − ya acreditado (NC pendientes o aprobadas)
-    lineas.forEach(function(l) {
-      const acred = (acreditadas || []).filter(function(a) { return a.origen === l.origen && a.id_linea_origen === l.id; })
-        .reduce(function(s, a) { return s + parseFloat(a.cantidad || 0); }, 0);
-      l.acreditado = acred;
-      l.disponible = Math.max(0, Math.round((l.cant - acred) * 10000) / 10000);
+    // Líneas facturadas; disponible = facturado − ya acreditado (NC pendientes o aprobadas)
+    const lineas = (d.lineas || []).map(function(l) {
+      const cant = parseFloat(l.cant || 0), acred = parseFloat(l.acreditado || 0);
+      return { origen: l.origen, id: l.id, tipo: l.tipo, desc: l.desc, cant: cant, precio: parseFloat(l.precio || 0),
+               acreditado: acred, disponible: Math.max(0, Math.round((cant - acred) * 10000) / 10000) };
     });
     if (!lineas.some(function(l) { return l.disponible > 0; })) {
       alert('Todas las líneas de la factura ' + f.numero_factura + ' ya están acreditadas en Notas de Crédito.');
       return;
     }
 
-    const saldoCxc = (cxcs || []).reduce(function(s, c) { return s + parseFloat(c.saldo_usd || 0); }, 0);
-    const reservado = (pendRebaja || []).reduce(function(s, n) { return s + parseFloat(n.total_usd || 0); }, 0);
-    const idCompras = ((areas || []).find(function(a) { return String(a.codigo) === '2300'; }) || {}).id || '';
-
-    _nc = { f: f, lineas: lineas, areas: areas || [], idCompras: idCompras,
-            saldoDisp: Math.round((saldoCxc - reservado) * 100) / 100,
+    _nc = { f: f, lineas: lineas, alTerminar: alTerminar || null,
+            saldoDisp: Math.round((parseFloat(d.saldo_cxc || 0) - parseFloat(d.reservado || 0)) * 100) / 100,
             ratioIva: (f.aplica_iva && parseFloat(f.subtotal_usd) > 0) ? parseFloat(f.iva_usd || 0) / parseFloat(f.subtotal_usd) : 0 };
     renderNotaCredito();
     abrirModal('modal-nc');
@@ -1839,7 +1825,7 @@ async function guardarNotaCredito(btn) {
     });
     cerrarModal('modal-nc');
     await mostrarAvisoOk('✓ Nota de Crédito <strong>' + escapeHtml(r?.numero_nc || '') + '</strong> emitida por $ ' + fmtUSD(r?.total_usd || t.total) + '.<br><span style="font-size:12px">Queda Pendiente de aprobación.</span>');
-    verFichaFactura(_nc.f.id_factura);
+    if (_nc.alTerminar) _nc.alTerminar(); else verFichaFactura(_nc.f.id_factura);
   } catch(e) {
     mostrar(msgErr(e));
   } finally {
@@ -1906,7 +1892,7 @@ async function rechazarFacturaManual(id, btn) {
   finally { btnSetGuardando(btn, false); }
 }
 
-async function solicitarNCReverso(idFactura, numeroFactura) {
+async function solicitarNCReverso(idFactura, numeroFactura, alTerminar) {
   const motivo = await pedirMotivo('NOTA DE CRÉDITO (REVERSO)',
     'Se solicitará reversar la factura ' + numeroFactura + ' completa (asientos contables en sentido contrario). '
     + 'Mientras se aprueba, no se podrán registrar cobros. Una vez aprobada, la Venta vuelve a Presupuesto '
@@ -1915,6 +1901,7 @@ async function solicitarNCReverso(idFactura, numeroFactura) {
   try {
     const r = await api('rpc/solicitar_nc_reverso','POST',{ p_id_factura: idFactura, p_motivo: motivo });
     alert('✓ ' + ((r && r.numero_nc) || 'Nota de Crédito') + ' (reverso) solicitada. Se notificó a los aprobadores.');
+    if (alTerminar) { alTerminar(); return; }
     verFichaFactura(idFactura);
     renderFacturas();
   } catch(e) { alert('Error: ' + msgErr(e)); }
@@ -1952,4 +1939,73 @@ async function rechazarNotaCredito(idNC, numeroNC, btn) {
     cerrarModal('modal-ficha-fac');
     renderFacturas();
   } catch(e) { alert('Error: ' + msgErr(e)); btnSetGuardando(btn, false); }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// NOTAS DE CRÉDITO DESDE LA FICHA DE VENTA / ORDEN DE SERVICIO
+// El reclamo lo canaliza quien originó la factura: Ventas o el Taller.
+// Se muestran las NC de su factura y, a quien tenga el permiso del
+// módulo, los botones para solicitarlas. La aprobación sigue en
+// Cuentas por Cobrar.
+// ══════════════════════════════════════════════════════════════
+// opts: { contenedorId, anclaId (botón del pie antes del cual van los
+//         nuevos), prefijo, params ({p_id_venta} o {p_id_orden}),
+//         cerrar (modal a cerrar al abrir el formulario), alTerminar }
+async function montarNCEnFicha(opts) {
+  const ancla = document.getElementById(opts.anclaId);
+  const crear = function(sufijo, texto) {
+    let b = document.getElementById(opts.prefijo + sufijo);
+    if (!b && ancla) {
+      b = document.createElement('button');
+      b.id = opts.prefijo + sufijo;
+      b.className = 'btn-secundario';
+      b.style.cssText = 'color:var(--naranja);border-color:rgba(255,107,0,0.5)';
+      ancla.parentNode.insertBefore(b, ancla);
+    }
+    if (b) { b.textContent = texto; b.style.display = 'none'; }
+    return b;
+  };
+  const btnReverso = crear('-btn-reverso', '↩ Nota de Crédito (reverso)');
+  const btnNC      = crear('-btn-nc',      '↩ Nota de Crédito (reembolso)');
+
+  let d = null;
+  try { d = await api('rpc/datos_nc_factura','POST', opts.params); } catch(e) { d = null; }
+  if (!d || !d.factura) return;
+  const f = d.factura;
+  const cont = document.getElementById(opts.contenedorId);
+  if (cont && d.ncs && d.ncs.length) cont.insertAdjacentHTML('beforeend', htmlSeccionNotasCredito(d.ncs, true));
+  if (!puedeSolicitarNC(f.origen)) return;
+
+  const reversoPend = (d.ncs || []).some(function(n) { return n.estado === 'PENDIENTE' && n.tipo === 'REVERSO'; });
+  if (btnNC && facturaAdmiteNC(f)) {
+    btnNC.style.display = '';
+    btnNC.onclick = function() { cerrarModal(opts.cerrar); abrirNotaCredito(f.id_factura, opts.alTerminar); };
+  }
+  if (btnReverso && !reversoPend && facturaAdmiteReverso(f, parseFloat(d.cobrado || 0))) {
+    btnReverso.style.display = '';
+    btnReverso.onclick = function() { solicitarNCReverso(f.id_factura, f.numero_factura, opts.alTerminar); };
+  }
+}
+
+// Notificación de una NC para quien no ve Cuentas por Cobrar: abre la
+// Ficha de la Venta o de la Orden de Servicio de origen.
+async function abrirOrigenDeFactura(idFactura) {
+  let d = null;
+  try { d = await api('rpc/datos_nc_factura','POST',{ p_id_factura: idFactura }); } catch(e) { d = null; }
+  const f = d && d.factura;
+  if (!f) { alert('No tiene acceso a esta factura.'); return; }
+  if (f.origen === 'OS' && f.id_orden) {
+    mostrarModulo('ordenes', document.getElementById('nav-SERVICIOS'));
+    setTimeout(function() { verFichaOS(f.id_orden); }, 400);
+  } else if (f.origen === 'VENTA' && f.id_venta) {
+    mostrarModulo('ventas', document.getElementById('nav-VENTAS'));
+    for (let i = 0; i < 25; i++) {
+      await new Promise(function(r) { setTimeout(r, 200); });
+      if ((ventasCache || []).some(function(v) { return v.id_venta === f.id_venta; })) break;
+    }
+    verFichaVenta(f.id_venta);
+  } else {
+    alert('No tiene acceso a esta factura.');
+  }
 }
