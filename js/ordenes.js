@@ -1353,7 +1353,7 @@ async function facturarOS(id, skipConfirm) {
     } catch(eCliFac) { os.clientes = null; }
     if (os.estado !== 'CERRADA') throw new Error('Solo se puede facturar una OS en estado Cerrada.');
 
-    const yaFacturada = await api('facturas','GET',null,'?id_orden=eq.'+id+'&estado=not.in.(ANULADA,REVERSADA)&select=id_factura,numero_factura');
+    const yaFacturada = await api('facturas','GET',null,'?id_orden=eq.'+id+'&estado=not.in.(ANULADA,REVERSADA,ACREDITADA_TOTAL)&select=id_factura,numero_factura');
     if (yaFacturada && yaFacturada.length) throw new Error('Esta OS ya tiene una factura activa: '+yaFacturada[0].numero_factura);
 
     // Validar que NINGUNA línea (Servicio o Mercancía) tenga precio en $0
@@ -1580,7 +1580,7 @@ async function verFichaOS(id) {
 
     let facturaRefOS = null;
     try {
-      const facRefRows = await api('facturas','GET',null,'?id_orden=eq.'+id+'&estado=not.in.(ANULADA,REVERSADA)&select=numero_factura,subtotal_usd,iva_usd,total_usd,total_ves&limit=1');
+      const facRefRows = await api('facturas','GET',null,'?id_orden=eq.'+id+'&estado=not.in.(ANULADA,REVERSADA,ACREDITADA_TOTAL)&select=numero_factura,subtotal_usd,iva_usd,total_usd,total_ves&limit=1');
       facturaRefOS = (facRefRows && facRefRows[0]) || null;
     } catch(eFacRefOS) {}
 

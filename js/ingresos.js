@@ -34,7 +34,13 @@ function esFacturaManual(f) { return f && (f.origen ? f.origen === 'MANUAL' : (!
 const MSG_FAC_MANUAL_APROBACION = 'Las facturas manuales (sin Venta ni Orden de Servicio) requieren aprobación. '
   + 'Envíela a aprobación: un usuario con el permiso "Aprobar y emitir factura manual" la revisará y la emitirá.';
 // Filtro de facturas "activas" de una OS/Venta (las Reversadas liberan la OS para facturarla de nuevo)
-const FAC_ACTIVA_Q = 'estado=not.in.(ANULADA,REVERSADA)';
+// (Reversadas y Acreditadas en su totalidad liberan la OS para facturarla de nuevo)
+const FAC_ACTIVA_Q = 'estado=not.in.(ANULADA,REVERSADA,ACREDITADA_TOTAL)';
+// Monto acreditado por Notas de Crédito (reembolso) APROBADAS
+function montoAcreditadoFactura(ncs) {
+  return (ncs || []).filter(function(n){ return n.estado === 'APROBADA' && n.tipo !== 'REVERSO'; })
+    .reduce(function(a, n){ return a + parseFloat(n.total_usd || 0); }, 0);
+}
 
 // Estado de COBRO de una factura (independiente de su aprobación), según
 // su Cuenta por Cobrar real: Por cobrar / Cobro parcial / Cobrada.
@@ -86,7 +92,7 @@ async function renderFacturas() {
       try { usuariosCache = await api('usuarios','GET',null,'?select=id_usuario,correo_usuario,nombre') || []; } catch(eUsu) { usuariosCache = []; }
     }
     const [facturas, tasas] = await Promise.all([
-      api('facturas','GET',null,'?order=fecha_emision.desc&select=*,emisores(nombre,rif),clientes(nombre_completo,tipo_doc,numero_doc),cont_cxc(saldo_usd,pagado_usd,estado)'+emisorQ()),
+      api('facturas','GET',null,'?order=fecha_emision.desc&select=*,emisores(nombre,rif),clientes(nombre_completo,tipo_doc,numero_doc),cont_cxc(saldo_usd,pagado_usd,estado),notas_credito(total_usd,estado,tipo)'+emisorQ()),
       api('tasas','GET',null,'?moneda_origen=eq.USD&fecha_valor=lte.' + getHoyVzla() + '&order=fecha_valor.desc&limit=1&select=tipo_cambio'),
     ]);
     facturasCache = facturas;
@@ -124,6 +130,7 @@ async function renderFacturas() {
         + '<td style="font-size:12px">' + escapeHtml(prop ? prop.nombre_completo : (f.receptor_nombre||'—')) + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + escapeHtml(identifCliente) + '</div></td>'
         + '<td><span class="badge ' + est.clase + '">' + est.label + '</span>'
         + (f.estado === 'BORRADOR' && f.motivo_rechazo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px;font-weight:600">Devuelta por el aprobador</div>' : '')
+        + (f.estado !== 'ACREDITADA_TOTAL' && montoAcreditadoFactura(f.notas_credito) > 0 ? '<div style="font-size:10px;color:var(--suave);margin-top:3px">Acreditada parcial</div>' : '')
         + '</td>'
         + (puedo('FACTURAS','VER_TOTALES')
             ? '<td style="font-family:var(--font-mono)">'
@@ -1224,6 +1231,11 @@ async function verFichaFactura(id) {
           const ncAprob = ncsFactura.find(function(n){ return n.estado === 'APROBADA' && n.tipo === 'REVERSO'; });
           if (f.estado === 'REVERSADA' && ncAprob) return '<div style="font-size:11px;color:var(--suave);margin-top:4px">Reversada por la '+escapeHtml(ncAprob.numero_nc)+'</div>';
           if (ncPend) return '<div style="font-size:11px;color:var(--naranja);margin-top:4px;font-weight:600">'+escapeHtml(ncPend.numero_nc)+' (reverso) pendiente de aprobación · cobros bloqueados</div>';
+          const acred = montoAcreditadoFactura(ncsFactura);
+          if (acred > 0 && f.estado !== 'ACREDITADA_TOTAL') {
+            const nums = ncsFactura.filter(function(n){ return n.estado === 'APROBADA' && n.tipo !== 'REVERSO'; }).map(function(n){ return n.numero_nc; }).join(', ');
+            return '<div style="font-size:11px;color:var(--suave);margin-top:4px">Acreditada parcial: $ '+fmtUSD(acred)+' ('+escapeHtml(nums)+')</div>';
+          }
           return '';
         })()
       + (function() {
@@ -1626,11 +1638,10 @@ function htmlSeccionNotasCredito(ncs) {
     + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse;font-size:12px"><tbody>'
     + ncs.map(function(n) {
         const est = ESTADOS_NC[n.estado] || { clase: 'badge-gris', label: n.estado };
-        // Aprobar: por ahora solo el reverso (la NC (reembolso) se aprueba en la siguiente etapa)
         const puedeDecidir = n.estado === 'PENDIENTE' && puedo('FACTURAS','APROBAR_NC');
         const acciones = puedeDecidir
           ? '<div style="margin-top:6px;display:flex;gap:6px;justify-content:flex-end">'
-            + (n.tipo === 'REVERSO' ? '<button class="btn-primario" style="padding:4px 10px;font-size:11px" onclick="aprobarNCReverso(' + jsArg(n.id_nc) + ',' + jsArg(n.numero_nc) + ',this)">✓ Aprobar</button>' : '')
+            + '<button class="btn-primario" style="padding:4px 10px;font-size:11px" onclick="aprobarNotaCredito(' + jsArg(n.id_nc) + ',' + jsArg(n.numero_nc) + ',' + jsArg(n.tipo) + ',' + jsArg(n.destino) + ',this)">✓ Aprobar</button>'
             + '<button class="btn-secundario" style="padding:4px 10px;font-size:11px;color:#fc8181;border-color:rgba(252,129,129,0.5)" onclick="rechazarNotaCredito(' + jsArg(n.id_nc) + ',' + jsArg(n.numero_nc) + ',this)">✕ Rechazar</button></div>'
           : '';
         const detalle = (n.tipo === 'REVERSO' ? '' : escapeHtml(DESTINOS_NC[n.destino] || n.destino))
@@ -1917,13 +1928,24 @@ async function solicitarNCReverso(idFactura, numeroFactura) {
   } catch(e) { alert('Error: ' + msgErr(e)); }
 }
 
-async function aprobarNCReverso(idNC, numeroNC, btn) {
-  if (!confirm('¿Aprobar la ' + numeroNC + ' (reverso)?\n\nSe registrarán los asientos en sentido contrario, se saldará la Cuenta por Cobrar, '
-    + 'la mercancía de una Venta volverá al inventario y la factura quedará Reversada. Esta acción no se puede deshacer.')) return;
+const TEXTO_DESTINO_APROB = {
+  REBAJA_CXC:  'se rebajará la deuda del cliente',
+  SALDO_FAVOR: 'el cliente quedará con saldo a favor',
+  REEMBOLSO:   'se creará la Obligación de Pago del reembolso en el módulo de Pagos'
+};
+async function aprobarNotaCredito(idNC, numeroNC, tipo, destino, btn) {
+  const esReverso = tipo === 'REVERSO';
+  const texto = esReverso
+    ? '¿Aprobar la ' + numeroNC + ' (reverso)?\n\nSe registrarán los asientos en sentido contrario, se saldará la Cuenta por Cobrar, '
+      + 'la mercancía de una Venta volverá al inventario y la factura quedará Reversada. Esta acción no se puede deshacer.'
+    : '¿Aprobar la ' + numeroNC + ' (reembolso)?\n\nSe registrará el asiento (Devoluciones en Ventas + IVA), '
+      + (TEXTO_DESTINO_APROB[destino] || '') + ' y la mercancía en buen estado volverá al Área indicada. Esta acción no se puede deshacer.';
+  if (!confirm(texto)) return;
   btnSetGuardando(btn, true, null, 'Procesando...');
   try {
-    const r = await api('rpc/aprobar_nc_reverso','POST',{ p_id_nc: parseInt(idNC) });
-    alert('✓ ' + numeroNC + ' aprobada. Asientos de reverso: ' + (((r && r.asientos) || []).join(', ') || 'ninguno') + '.');
+    const r = await api(esReverso ? 'rpc/aprobar_nc_reverso' : 'rpc/aprobar_nc_reembolso','POST',{ p_id_nc: parseInt(idNC) });
+    alert('✓ ' + numeroNC + ' aprobada. Asientos: ' + (((r && r.asientos) || []).join(', ') || 'ninguno') + '.'
+      + (r && r.id_cxp ? '\nEl reembolso quedó por pagar en el módulo de Pagos.' : ''));
     cerrarModal('modal-ficha-fac');
     renderFacturas();
   } catch(e) { alert('Error: ' + msgErr(e)); btnSetGuardando(btn, false); }
