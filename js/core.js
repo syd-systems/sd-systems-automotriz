@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909235';
+const SYD_VERSION = '20260909236';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3073,6 +3073,7 @@ function btnSetGuardando(btn, guardando, textoOriginal, textoEnProgreso) {
 let _notifPendienteActual = null;
 let _notifEsEntradaSinResolver = false;
 let _notifEntradaInfo = null; // { id_entrada, id_articulo, nombre_articulo }
+let _notifNC = null; // Nota de Crédito por aprobar: { id_nc, numero_nc, tipo }
 
 async function verificarNotificacionesPendientes() {
   if (window._suprimirCheckNotifUnaVez) { window._suprimirCheckNotifUnaVez = false; return; }
@@ -3091,6 +3092,7 @@ async function mostrarNotifPendiente(notif) {
   _notifPendienteActual = notif;
   _notifEsEntradaSinResolver = false;
   _notifEntradaInfo = null;
+  _notifNC = null;
   const lista = document.getElementById('notif-pendiente-lista');
   if (!lista) return;
   lista.innerHTML =
@@ -3179,6 +3181,51 @@ async function mostrarNotifPendiente(notif) {
     } catch(eChkEnt2) { console.warn('Error verificando estado de Entrada:', eChkEnt2); }
   }
 
+  // ── Nota de Crédito por aprobar: mismo formato que la Orden de Compra
+  // (detalle + Aprobar / Rechazar en la misma notificación). Si ya fue
+  // decidida por otro aprobador, queda como aviso normal ("Ver Factura").
+  if (accionNotif === 'ver_factura' && extrasNotif && extrasNotif.id_nc && puedo('FACTURAS','APROBAR_NC')) {
+    try {
+      const d = await api('rpc/datos_nc_factura','POST',{ p_id_factura: extrasNotif.id_factura });
+      const f = d && d.factura;
+      const n = d && (d.ncs || []).find(function(x) { return x.id_nc === extrasNotif.id_nc; });
+      if (f && n && n.estado === 'PENDIENTE') {
+        const esRev = n.tipo === 'REVERSO';
+        let area = null, nombre = null;
+        try {
+          const [aRows, nRows] = await Promise.all([
+            rpc('obtener_area_por_correo', { p_correo: n.id_usuario }),
+            rpc('obtener_nombres_por_correos', { p_correos: [n.id_usuario] })
+          ]);
+          area = aRows && aRows[0]; nombre = nRows && nRows[0] && nRows[0].nombre_completo;
+        } catch(eSol) {}
+        const tasaNC = parseFloat(f.tasa_bcv || 1), totUSD = parseFloat(n.total_usd || 0);
+        const TIPO_NC_TXT = { DEVOLUCION: 'Devolución de mercancía', ERROR_FACTURA: 'Error en la factura', GARANTIA_SERVICIO: 'Garantía de servicio' };
+        const DEST_NC_TXT = { REEMBOLSO: 'Reembolso al cliente', SALDO_FAVOR: 'Saldo a favor del cliente', REBAJA_CXC: 'Rebaja de la deuda del cliente' };
+        const MONTO_NC_TXT = { REEMBOLSO: 'MONTO A REEMBOLSAR', SALDO_FAVOR: 'SALDO A FAVOR DEL CLIENTE', REBAJA_CXC: 'MONTO A REBAJAR DE LA DEUDA' };
+        lista.innerHTML =
+          '<div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:16px;margin-bottom:12px;font-size:13px;color:var(--texto)">'
+          + '<div style="font-size:12px;color:var(--suave);margin-bottom:8px">' + fmtFechaHoraVzla(notif.fecha_creacion) + '</div>'
+          + '<div style="font-size:11px;color:var(--suave)">'
+            + (area ? escapeHtml(area.nombre) + (area.codigo ? ' (' + escapeHtml(area.codigo) + ')' : '') + ' - ' : '')
+            + escapeHtml(nombre || n.id_usuario || '') + '</div>'
+          + '<div style="margin-top:8px">Cliente: <strong>' + escapeHtml(f.receptor_nombre || '—') + '</strong></div>'
+          + '<div style="margin-top:8px">Ref: ' + escapeHtml(n.numero_nc) + ' · Factura ' + escapeHtml(f.numero_factura) + '</div>'
+          + '<div style="margin-top:8px">Tipo: <strong>' + (esRev ? 'Reverso de la factura' : escapeHtml(TIPO_NC_TXT[n.tipo] || n.tipo)) + '</strong></div>'
+          + (esRev ? '' : '<div style="margin-top:8px">Destino: <strong>' + escapeHtml(DEST_NC_TXT[n.destino] || n.destino) + '</strong></div>')
+          + (n.motivo ? '<div style="margin-top:8px">Motivo: ' + escapeHtml(n.motivo) + '</div>' : '')
+          + '<div style="margin-top:14px"><div style="font-size:10px;color:var(--suave)">' + (esRev ? 'MONTO A REVERSAR' : (MONTO_NC_TXT[n.destino] || 'MONTO')) + '</div>'
+          + '<div style="font-weight:700;color:var(--naranja);font-size:16px">Bs ' + fmtBs(totUSD * tasaNC) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a $ ' + fmtUSD(totUSD) + ')</span></div></div>'
+          + '</div>';
+        _notifNC = { id_nc: n.id_nc, numero_nc: n.numero_nc, tipo: n.tipo };
+        cfgNotif = { titulo: '🧾 Nota de Crédito (' + (esRev ? 'reverso' : 'reembolso') + ')',
+                     instruccion: 'Revise el detalle e indique si Aprueba o Rechaza esta Nota de Crédito.', boton: '✓ Aprobar' };
+        if (btnRechazarEnt) btnRechazarEnt.style.display = '';
+        if (btnVerDespues) btnVerDespues.style.display = 'none';
+      }
+    } catch(eNC) { console.warn('Error cargando la Nota de Crédito:', eNC); }
+  }
+
   if (titEl) titEl.textContent = cfgNotif.titulo;
   if (instrEl) { instrEl.textContent = cfgNotif.instruccion; instrEl.style.display = cfgNotif.instruccion ? '' : 'none'; }
   if (btnConf) { btnConf.textContent = cfgNotif.boton; btnConf.dataset.textoOriginal = cfgNotif.boton; }
@@ -3188,6 +3235,7 @@ async function mostrarNotifPendiente(notif) {
 
 async function notifConfirmar() {
   if (!_notifPendienteActual) return;
+  if (_notifNC) { await notifDecidirNC(true); return; }
 
   // ── Caso especial: Entrada de Stock rechazada, todavía sin resolver ──
   // No se marca como leída -- solo navega a corregirla. Volverá a aparecer
@@ -3420,6 +3468,7 @@ async function mostrarAvisoOk(mensaje, esError) {
 
 async function notifRechazarOrdenCompra() {
   if (!_notifPendienteActual) return;
+  if (_notifNC) { await notifDecidirNC(false); return; }
   const extras = _notifPendienteActual.datos_extra
     ? (typeof _notifPendienteActual.datos_extra === 'string'
         ? JSON.parse(_notifPendienteActual.datos_extra)
@@ -3444,6 +3493,48 @@ async function notifRechazarOrdenCompra() {
   } catch(eNotifRechCierre) { console.warn('Error cerrando notificación de aprobación:', eNotifRechCierre); }
   await verificarNotificacionesPendientes();
   mostrarModulo('pagos', document.getElementById('nav-PAGOS'));
+}
+
+// Aprobar / Rechazar una Nota de Crédito desde la notificación. El servidor
+// valida permiso, límite del nivel jerárquico y separación de funciones.
+async function notifDecidirNC(aprobar) {
+  const nc = _notifNC, idNotif = _notifPendienteActual && _notifPendienteActual.id;
+  if (!nc || !idNotif) return;
+  const esRev = nc.tipo === 'REVERSO';
+  const modal = document.getElementById('modal-notif-pendiente');
+  const btn = document.getElementById(aprobar ? 'btn-notif-confirmar' : 'btn-notif-rechazar-orden');
+  let motivo = null;
+  if (aprobar) {
+    const ok = await confirmarSiNo('¿Aprobar la <strong>' + escapeHtml(nc.numero_nc) + '</strong> (' + (esRev ? 'reverso' : 'reembolso') + ')?<br><span style="font-size:12px;color:#aaa">'
+      + (esRev ? 'Se registrarán los asientos en sentido contrario y la factura quedará Reversada.' : 'Se registrará el asiento de la Nota de Crédito.')
+      + ' Esta acción no se puede deshacer.</span>');
+    if (!ok) return;
+  } else {
+    modal.style.display = 'none';
+    motivo = await pedirMotivo('RECHAZAR ' + nc.numero_nc, 'Se notificará a quien la solicitó.', '✕ Rechazar');
+    if (!motivo) { modal.style.display = 'flex'; return; }
+    modal.style.display = 'flex';
+  }
+  btnSetGuardando(btn, true, null, 'Procesando...');
+  try {
+    const r = aprobar
+      ? await api(esRev ? 'rpc/aprobar_nc_reverso' : 'rpc/aprobar_nc_reembolso', 'POST', { p_id_nc: nc.id_nc })
+      : await api('rpc/rechazar_nota_credito', 'POST', { p_id_nc: nc.id_nc, p_motivo: motivo });
+    try { await api('notificaciones','PATCH', { estado: 'APROBADO', fecha_respuesta: ahoraVzla() }, '?id=eq.' + idNotif); } catch(eN) {}
+    modal.style.display = 'none';
+    _notifPendienteActual = null; _notifNC = null;
+    btnSetGuardando(btn, false);
+    if (aprobar) {
+      alert('✓ ' + nc.numero_nc + ' aprobada. Asientos: ' + (((r && r.asientos) || []).join(', ') || 'ninguno') + '.'
+        + (r && r.id_cxp ? '\nEl reembolso quedó por pagar en el módulo de Pagos.' : ''));
+    } else {
+      alert('✓ ' + nc.numero_nc + ' rechazada. Se notificó a quien la solicitó.');
+    }
+    await verificarNotificacionesPendientes();
+  } catch(e) {
+    btnSetGuardando(btn, false);
+    alert('Error: ' + msgErr(e));
+  }
 }
 
 async function notifSolicitarAnulacion() {
