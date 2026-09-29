@@ -1163,7 +1163,7 @@ async function verFichaFactura(id) {
     } catch(eOrig) { origenFac = null; }
     let ncsFactura = [];
     try {
-      ncsFactura = await api('notas_credito','GET',null,'?id_factura=eq.'+id+'&select=id_nc,numero_nc,fecha_emision,tipo,destino,total_usd,estado,motivo,motivo_rechazo,id_usuario&order=id_nc.asc') || [];
+      ncsFactura = await api('notas_credito','GET',null,'?id_factura=eq.'+id+'&select=id_nc,numero_nc,fecha_emision,tipo,destino,total_usd,estado,motivo,motivo_rechazo,id_usuario,notas_credito_detalle(tipo_linea,cantidad,cantidad_recibida,cantidad_merma)&order=id_nc.asc') || [];
     } catch(eNcs) { ncsFactura = []; }
     let linServ=[], linRep=[];
     if (f.id_orden) {
@@ -1646,7 +1646,15 @@ function htmlSeccionNotasCredito(ncs) {
           : '';
         const detalle = (n.tipo === 'REVERSO' ? '' : escapeHtml(DESTINOS_NC[n.destino] || n.destino))
           + (n.motivo ? '<div>Motivo: ' + escapeHtml(n.motivo) + '</div>' : '')
-          + (n.estado === 'RECHAZADA' && n.motivo_rechazo ? '<div style="color:#fc8181">Rechazo: ' + escapeHtml(n.motivo_rechazo) + '</div>' : '');
+          + (n.estado === 'RECHAZADA' && n.motivo_rechazo ? '<div style="color:#fc8181">Rechazo: ' + escapeHtml(n.motivo_rechazo) + '</div>' : '')
+          + (function() {
+              if (n.estado !== 'APROBADA' || n.tipo !== 'DEVOLUCION') return '';
+              const pend = (n.notas_credito_detalle || []).filter(function(d){ return d.tipo_linea === 'MERCANCIA'; })
+                .reduce(function(a, d){ return a + parseFloat(d.cantidad || 0) - parseFloat(d.cantidad_recibida || 0) - parseFloat(d.cantidad_merma || 0); }, 0);
+              return pend > 0.00001
+                ? '<div style="color:var(--naranja);font-weight:600">📦 Mercancía pendiente de recibir en almacén: ' + (Math.round(pend * 100) / 100) + ' ud.</div>'
+                : '<div>📦 Mercancía recibida por el almacén</div>';
+            })();
         return '<tr><td style="padding:6px 0;font-family:var(--font-mono);color:var(--naranja);font-weight:600;vertical-align:top">' + escapeHtml(n.numero_nc) + '</td>'
           + '<td style="padding:6px;vertical-align:top">' + fmtFecha(n.fecha_emision) + '</td>'
           + '<td style="padding:6px;vertical-align:top">' + escapeHtml(n.tipo === 'REVERSO' ? TIPOS_NC.REVERSO : 'Nota de Crédito (reembolso) · ' + (TIPOS_NC[n.tipo] || n.tipo)) + '<div style="font-size:10px;color:var(--suave)">' + detalle + '</div></td>'
@@ -1717,12 +1725,6 @@ function renderNotaCredito() {
   const tipoSel = document.getElementById('nc-tipo')?.value || 'DEVOLUCION';
   const motivo = document.getElementById('nc-motivo')?.value || '';
   const obs = document.getElementById('nc-obs')?.value || '';
-  const optsAreas = function(sel) {
-    return _nc.areas.map(function(a) {
-      return '<option value="' + a.id + '"' + (String(a.id) === String(sel) ? ' selected' : '') + '>' + escapeHtml((a.codigo ? a.codigo + ' — ' : '') + a.nombre) + '</option>';
-    }).join('');
-  };
-
   const filas = _nc.lineas.map(function(l, i) {
     const habilitada = l.disponible > 0 && (tipoSel === 'ERROR_FACTURA'
       || (tipoSel === 'DEVOLUCION' && l.tipo === 'MERCANCIA')
@@ -1735,13 +1737,6 @@ function renderNotaCredito() {
       + '<td style="text-align:center"><input type="number" id="nc-cant-' + i + '" min="0" max="' + l.disponible + '" step="any" value="' + cantVal + '"'
         + (habilitada && tipoSel !== 'ERROR_FACTURA' ? '' : ' disabled')
         + ' oninput="_nc.lineas[' + i + '].cantNC=parseFloat(this.value)||0;actualizarTotalesNC()" style="width:70px;text-align:center"></td>'
-      + '<td style="font-size:12px">' + (esMerc && habilitada
-          ? '<select id="nc-estado-' + i + '" onchange="_nc.lineas[' + i + '].buen=this.value;renderNotaCredito()" style="font-size:12px">'
-            + '<option value="">— Estado —</option>'
-            + '<option value="1"' + (l.buen === '1' ? ' selected' : '') + '>Buen estado (vuelve)</option>'
-            + '<option value="0"' + (l.buen === '0' ? ' selected' : '') + '>Dañada (merma)</option></select>'
-            + (l.buen === '1' ? '<select id="nc-area-' + i + '" onchange="_nc.lineas[' + i + '].area=this.value" style="font-size:12px;margin-top:4px;display:block">' + optsAreas(l.area || _nc.idCompras) + '</select>' : '')
-          : '<span style="color:var(--suave)">—</span>') + '</td>'
       + '</tr>';
   }).join('');
 
@@ -1750,14 +1745,17 @@ function renderNotaCredito() {
     + '<div>Referencia: <strong style="font-family:var(--font-mono);color:var(--naranja)">' + escapeHtml(f.numero_factura) + '</strong> · ' + fmtFecha(f.fecha_emision) + '</div>'
     + '<div style="color:var(--suave);font-size:12px">' + escapeHtml(f.receptor_nombre || '—') + ' · Tasa BCV Bs/Usd de la factura: ' + formatearTasaVE(f.tasa_bcv) + '</div></div>'
     + '<div class="form-campo form-full"><label>Tipo de Nota de Crédito</label><select id="nc-tipo" onchange="_nc.lineas.forEach(function(l){l.cantNC=0;});renderNotaCredito()">'
-    + Object.keys(TIPOS_NC).map(function(k) { return '<option value="' + k + '"' + (k === tipoSel ? ' selected' : '') + '>' + TIPOS_NC[k] + '</option>'; }).join('')
+    + Object.keys(TIPOS_NC).filter(function(k) { return k !== 'REVERSO'; }).map(function(k) { return '<option value="' + k + '"' + (k === tipoSel ? ' selected' : '') + '>' + TIPOS_NC[k] + '</option>'; }).join('')
     + '</select></div>'
     + '<div class="form-campo form-full"><label>Motivo *</label><textarea id="nc-motivo" rows="2" style="width:100%">' + escapeHtml(motivo) + '</textarea></div>'
     + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin:10px 0 6px">Líneas a acreditar</div>'
     + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
     + '<th style="text-align:left;font-size:10px;color:var(--suave)">DESCRIPCIÓN</th><th style="font-size:10px;color:var(--suave)">FACTURADO</th>'
-    + '<th style="font-size:10px;color:var(--suave)">A ACREDITAR</th><th style="text-align:left;font-size:10px;color:var(--suave)">MERCANCÍA DEVUELTA</th>'
+    + '<th style="font-size:10px;color:var(--suave)">A ACREDITAR</th>'
     + '</tr></thead><tbody>' + filas + '</tbody></table></div>'
+    + (tipoSel === 'DEVOLUCION'
+        ? '<div style="font-size:11px;color:var(--suave);margin-top:6px">📦 La mercancía devuelta la recibe el almacén (Inventario → Entrada → "Devolución de cliente"), donde se indica si llegó en buen estado o dañada.</div>'
+        : (tipoSel === 'ERROR_FACTURA' ? '<div style="font-size:11px;color:var(--suave);margin-top:6px">La mercancía no se mueve físicamente: se reversa su costo y la Venta u Orden de Servicio queda lista para facturarse de nuevo.</div>' : ''))
     + '<div id="nc-totales" style="margin-top:14px"></div>'
     + '<div id="nc-destino" style="margin-top:10px"></div>'
     + '<div class="form-campo form-full" style="margin-top:10px"><label>Observaciones</label><textarea id="nc-obs" rows="2" style="width:100%">' + escapeHtml(obs) + '</textarea></div>'
@@ -1820,13 +1818,7 @@ async function guardarNotaCredito(btn) {
     const c = l.cantNC || 0;
     if (c <= 0) continue;
     if (c > l.disponible + 0.00001) { mostrar('"' + l.desc + '": máximo a acreditar ' + l.disponible + '.'); return; }
-    const x = { origen: l.origen, id_linea_origen: l.id, cantidad: c };
-    if (l.tipo === 'MERCANCIA') {
-      if (l.buen !== '1' && l.buen !== '0') { mostrar('Indique si "' + l.desc + '" vuelve en buen estado o está dañada.'); return; }
-      x.buen_estado = l.buen === '1';
-      if (x.buen_estado) x.id_area_destino = parseInt(l.area || _nc.idCompras) || null;
-    }
-    lineas.push(x);
+    lineas.push({ origen: l.origen, id_linea_origen: l.id, cantidad: c });
   }
   if (!lineas.length) { mostrar('Indique la cantidad a acreditar en al menos una línea.'); return; }
   if (_nc.destinoFijo === 'EXCEDE') { mostrar('El total supera lo pendiente por cobrar. Ajuste las cantidades.'); return; }

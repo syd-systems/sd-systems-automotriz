@@ -2909,11 +2909,17 @@
             style="font-size:15px;font-family:var(--font-mono);text-align:center;color:var(--naranja)">
         </div>
         <div class="form-campo form-full" id="es-campo-cliente-cont" style="grid-column:1/-1;display:none">
-          <label>Factura</label>
+          <label>Nota de Crédito</label>
           <select id="es-factura-devolucion" onchange="onCambiarFacturaDevolucion()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccionar factura —</option>
           </select>
           <div id="es-factura-devolucion-info" style="margin-top:8px;font-size:12px;color:var(--suave);display:none"></div>
+          <label style="margin-top:10px">Estado de la mercancía</label>
+          <select id="es-dev-estado" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;width:100%">
+            <option value="">— Seleccionar —</option>
+            <option value="buen">Buen estado (vuelve al inventario)</option>
+            <option value="danada">Dañada (merma, no suma stock)</option>
+          </select>
         </div>
         <div class="form-campo form-full" id="es-campo-transferencia-cont" style="grid-column:1/-1;display:none">
           <label>Área de Origen</label>
@@ -5405,7 +5411,7 @@
             style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);padding:10px 12px;border-radius:5px;outline:none;width:100%">
             <option value="">— Seleccione transacción —</option>
             <option value="compra">Compra a proveedor</option>
-            <option value="devolucion">Devolución de cliente</option>
+            <option value="devolucion" disabled>Devolución de cliente (solo desde Nota de Crédito)</option>
             <option value="ajuste">Ajuste de inventario</option>
             <option value="transferencia">Transferencia</option>
           </select>
