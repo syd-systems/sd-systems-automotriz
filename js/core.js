@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909230';
+const SYD_VERSION = '20260909231';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -294,8 +294,8 @@ const PERMISOS_POR_MODULO = {
     { accion: 'APROBAR',     label: '🔒 Aprobar y emitir factura manual' },
     { accion: 'COBRAR',      label: 'Registrar Cobro (Cuenta por Cobrar)' },
     { accion: 'VER_TOTALES', label: '🔒 Ver montos y totales' },
-    { accion: 'EMITIR_NC',   label: 'Emitir Nota de Crédito' },
-    { accion: 'APROBAR_NC',  label: '🔒 Aprobar / Rechazar Nota de Crédito' },
+    { accion: 'EMITIR_NC',   label: 'Solicitar Nota de Crédito (reembolso / reverso)' },
+    { accion: 'APROBAR_NC',  label: '🔒 Aprobar / Rechazar Notas de Crédito (reembolso y reverso)' },
   ],
   PAGOS: [
     { accion: 'VER',      label: 'Ver Obligaciones de Pago' },
@@ -3128,7 +3128,8 @@ async function mostrarNotifPendiente(notif) {
     registrar_pago:       { titulo: '✅ Solicitud de Pago Aprobada', instruccion: 'Puede ir al módulo de Pagos para Registrar el Pago cuando guste.', boton: 'Entendido' },
     ver_rechazo:          { titulo: '❌ Solicitud de Pago Rechazada', instruccion: 'Revise el motivo y corrija la Obligación en el módulo de Pagos.', boton: 'Entendido' },
     sin_firma_disponible: { titulo: '⚠️ Sin Firma Autorizada Disponible', instruccion: 'Ningún aprobador con Nivel de Firma tiene sesión activa en este momento. Avise a su supervisor o intente más tarde.', boton: 'Entendido' },
-    solicitud_anulacion_entrada: { titulo: '⚠ Solicitud de Anulación de Entrada', instruccion: 'Revise el detalle e ingrese a Inventario → Historial para decidir si anula el movimiento.', boton: 'Ir a Revisar' }
+    solicitud_anulacion_entrada: { titulo: '⚠ Solicitud de Anulación de Entrada', instruccion: 'Revise el detalle e ingrese a Inventario → Historial para decidir si anula el movimiento.', boton: 'Ir a Revisar' },
+    ver_factura:          { titulo: '🧾 ' + (notif.titulo || 'Factura'), instruccion: '', boton: 'Ver Factura' }
   };
   let cfgNotif = CONFIG_NOTIF[accionNotif] || CONFIG_NOTIF.confirmar_recepcion;
 
@@ -3288,6 +3289,21 @@ async function notifConfirmar() {
           }, 350);
         }
       } catch(eNavRech) { console.warn('Error navegando al Historial de Movimientos:', eNavRech); }
+      return;
+    }
+
+    // ── Facturas (aprobación de factura manual / Nota de Crédito): se
+    // marca como leída y se abre la Ficha de la Factura para decidir ahí.
+    if (accionNotif === 'ver_factura' && extras && extras.id_factura) {
+      await api('notificaciones','PATCH',
+        { estado: 'APROBADO', fecha_respuesta: ahoraVzla() },
+        '?id=eq.'+_notifPendienteActual.id);
+      document.getElementById('modal-notif-pendiente').style.display = 'none';
+      _notifPendienteActual = null;
+      if (btn) { btn.disabled = false; btn.textContent = btn.dataset.textoOriginal || 'Ver Factura'; }
+      window._suprimirCheckNotifUnaVez = true;
+      mostrarModulo('facturas', document.getElementById('nav-FACTURAS'));
+      setTimeout(function() { if (typeof verFichaFactura === 'function') verFichaFactura(extras.id_factura); }, 400);
       return;
     }
 

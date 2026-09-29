@@ -263,7 +263,7 @@ async function renderVentasListado() {
       let facturaPorOrden = {};
       if (idsOrdenOS.length) {
         const facRowsOS = await api('facturas','GET',null,
-          '?id_orden=in.(' + idsOrdenOS.join(',') + ')&select=id_orden,numero_factura');
+          '?id_orden=in.(' + idsOrdenOS.join(',') + ')&estado=not.in.(ANULADA,REVERSADA,BORRADOR,POR_APROBAR)&select=id_orden,numero_factura');
         (facRowsOS||[]).forEach(function(f){ facturaPorOrden[f.id_orden] = f.numero_factura; });
       }
       const totalPorOrden = {}, catsPorOrden = {}, tiposPorOrden = {};
@@ -1160,7 +1160,9 @@ async function facturarVenta(id) {
     const numeroFactura = 'FAC-'+anio+'-'+String(seq).padStart(4,'0');
 
     const datosFactura = {
-      id_orden: null, id_empresa: v.id_empresa, id_cliente: v.id_cliente,
+      // id_venta: el servidor verifica con él que la factura nace de esta
+      // Venta (origen VENTA, sin aprobación) y no es una factura manual.
+      id_orden: null, id_venta: id, id_empresa: v.id_empresa, id_cliente: v.id_cliente,
       numero_factura: numeroFactura,
       receptor_nombre: cli?.nombre_completo || 'Cliente sin nombre',
       receptor_rif: cli ? (cli.tipo_doc + '-' + cli.numero_doc) : null,
@@ -1218,13 +1220,16 @@ async function eliminarVenta(id) {
   if (vChk && vChk.estado !== 'PRESUPUESTO') { alert('Solo se pueden eliminar Ventas en Borrador. Esta Venta ya fue Facturada y no puede eliminarse.'); return; }
   if (!confirm('¿Eliminar esta Venta en Borrador? Esta acción no se puede deshacer.')) return;
   try {
-    const v = ventasCache.find(function(x) { return x.id_venta === id; });
-    if (v && v.id_area) {
+    // La reserva vive en Compras (2300), igual que al crearla/facturarla --
+    // antes se liberaba en el Área organizativa de la Venta y quedaba
+    // "pegada" en Compras.
+    const idAreaReserva = await _obtenerAreaAlmacenVentas();
+    if (idAreaReserva) {
       try {
         const lineas = await api('venta_detalle','GET',null,'?id_venta=eq.'+id+'&select=id_articulo,cantidad');
         for (const lin of (lineas||[])) {
           if (lin.id_articulo && parseFloat(lin.cantidad) > 0) {
-            await ajustarReservaArea(lin.id_articulo, v.id_area, -parseFloat(lin.cantidad));
+            await ajustarReservaArea(lin.id_articulo, idAreaReserva, -parseFloat(lin.cantidad));
           }
         }
       } catch(eLibRes) { console.warn('Error liberando reserva al eliminar:', eLibRes); }
