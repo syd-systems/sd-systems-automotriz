@@ -7,14 +7,19 @@
 // ══════════════════════════════════════════════════════════════
 let facturasCache = [];
 
+// Estado de la factura = estado de su COBRO. La "aprobación de factura"
+// se eliminó (decisión de negocio: la Venta que origina la factura no
+// requiere aprobación, el precio no depende del vendedor). Facturas
+// antiguas en estado APROBADA se muestran como "Por cobrar".
 const ESTADOS_FAC = {
-  'BORRADOR': { clase: 'badge-gris',    label: 'Borrador'  },
-  'EMITIDA':  { clase: 'badge-naranja', label: 'Por aprobar' },
-  'APROBADA': { clase: 'badge-verde',   label: 'Aprobada'  },
-  'PAGADA':   { clase: 'badge-verde',   label: 'Cobrada'   },
+  'BORRADOR': { clase: 'badge-gris',    label: 'Borrador'      },
+  'EMITIDA':  { clase: 'badge-rojo',    label: 'Por cobrar'    },
+  'PARCIAL':  { clase: 'badge-naranja', label: 'Cobro parcial' },
+  'PAGADA':   { clase: 'badge-verde',   label: 'Cobrada'       },
   'ACREDITADA_PARCIAL': { clase: 'badge-naranja', label: 'Acreditada parcial' },
   'ACREDITADA_TOTAL':   { clase: 'badge-gris',    label: 'Acreditada total'   },
 };
+function estadoFacVisible(estado) { return estado === 'APROBADA' ? 'EMITIDA' : estado; }
 
 // Estado de COBRO de una factura (independiente de su aprobación), según
 // su Cuenta por Cobrar real: Por cobrar / Cobro parcial / Cobrada.
@@ -91,9 +96,9 @@ async function renderFacturas() {
     const tasaActual = tasas.length ? parseFloat(tasas[0].tipo_cambio) : 1;
     const resumen = {};
     Object.keys(ESTADOS_FAC).forEach(function(k) { resumen[k]=0; });
-    facturas.forEach(function(f) { if (resumen[f.estado]!==undefined) resumen[f.estado]++; });
+    facturas.forEach(function(f) { const e = estadoFacVisible(f.estado); if (resumen[e]!==undefined) resumen[e]++; });
     const filas = facturas.map(function(f) {
-      const est = ESTADOS_FAC[f.estado] || { clase:'badge-gris', label:f.estado };
+      const est = ESTADOS_FAC[estadoFacVisible(f.estado)] || { clase:'badge-gris', label:f.estado };
       const prop   = f.clientes;
       const vendedor = (usuariosCache.find(function(u) { return u.correo_usuario === f.id_usuario; }) || {}).nombre || f.id_usuario || '—';
       const identifCliente = prop ? ((prop.tipo_doc||'') + '-' + (prop.numero_doc||'')) : (f.receptor_rif || '');
@@ -102,9 +107,7 @@ async function renderFacturas() {
         + '<div style="font-size:11px;color:var(--suave)">' + (f.fecha_emision ? fmtFecha(f.fecha_emision) : '—') + '</div></td>'
         + '<td style="font-size:12px">' + escapeHtml(vendedor) + (areaPorCorreoVendedor[f.id_usuario] ? '<div style="font-size:10px;color:var(--suave)">' + escapeHtml(areaPorCorreoVendedor[f.id_usuario].nombre) + (areaPorCorreoVendedor[f.id_usuario].codigo ? ' (' + areaPorCorreoVendedor[f.id_usuario].codigo + ')' : '') + '</div>' : '') + '</td>'
         + '<td style="font-size:12px">' + escapeHtml(prop ? prop.nombre_completo : (f.receptor_nombre||'—')) + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + escapeHtml(identifCliente) + '</div></td>'
-        + '<td><span class="badge ' + est.clase + '">' + est.label + '</span>'
-        + (function() { const ec = estadoCobroFactura(f); return ec ? '<div style="margin-top:4px"><span class="badge ' + ec.clase + '" style="font-size:10px">' + ec.label + '</span></div>' : ''; })()
-        + '</td>'
+        + '<td><span class="badge ' + est.clase + '">' + est.label + '</span></td>'
         + (puedo('FACTURAS','VER_TOTALES')
             ? '<td style="font-family:var(--font-mono)">'
               + (f.moneda_cobro==='VES'
@@ -562,11 +565,6 @@ async function guardarFactura(emitir) {
     const fecha    = document.getElementById('fac-fecha').value;
     const estadoActual = document.getElementById('fac-estado').value;
 
-    if (emitir && estadoActual === 'BORRADOR' && !puedeAprobar('FACTURAS')) {
-      errEl.textContent = 'Esta factura requiere aprobación antes de emitirse.';
-      errEl.style.display = 'block';
-      return;
-    }
     const estado   = emitir ? 'EMITIDA' : 'BORRADOR';
     const obs      = document.getElementById('fac-observaciones').value.trim();
     const aplIVA   = document.getElementById('fac-aplica-iva').checked;
@@ -1149,7 +1147,7 @@ async function verFichaFactura(id) {
         }
       } catch(eLineasVentaFicha) { console.warn('Error cargando líneas de Venta para la ficha:', eLineasVentaFicha); }
     }
-    const est    = ESTADOS_FAC[f.estado]||{clase:'badge-gris',label:f.estado};
+    const est    = ESTADOS_FAC[estadoFacVisible(f.estado)]||{clase:'badge-gris',label:f.estado};
     const emisor = f.emisores;
     const esVES  = f.moneda_cobro==='VES';
     const t      = parseFloat(f.tasa_bcv||1);
@@ -1188,8 +1186,7 @@ async function verFichaFactura(id) {
       + (function() {
           const ec = estadoCobroFactura(f);
           if (!ec) return '';
-          return ' <span class="badge '+ec.clase+'">'+ec.label+'</span>'
-            + (ec.label.indexOf('parcial') >= 0 ? '<div style="font-size:11px;color:var(--suave);margin-top:4px">Cobrado $ '+fmtUSD(ec.pagado)+' · Resta $ '+fmtUSD(ec.saldo)+'</div>'
+          return (ec.label.indexOf('parcial') >= 0 ? '<div style="font-size:11px;color:var(--suave);margin-top:4px">Cobrado $ '+fmtUSD(ec.pagado)+' · Resta $ '+fmtUSD(ec.saldo)+'</div>'
                : (ec.saldo > 0 ? '<div style="font-size:11px;color:var(--suave);margin-top:4px">Saldo por cobrar: $ '+fmtUSD(ec.saldo)+'</div>' : ''));
         })()
       + '<div style="font-size:11px;color:var(--suave);margin-top:4px">Fecha: '+(f.fecha_emision ? fmtFecha(f.fecha_emision) : '—')+'</div>'
@@ -1274,13 +1271,6 @@ async function verFichaFactura(id) {
     // "Eliminar Factura Anulada" se eliminó de raíz -- dependía por completo
     // de estado==='ANULADA', y ese estado ya no se genera desde que se
     // eliminó "Anular Factura" de raíz (ver notas de esa sesión).
-    // Botón Aprobar
-    await cargarFacultades();
-    var btnAprobar = document.getElementById('ficha-fac-btn-aprobar');
-    if (btnAprobar) {
-      btnAprobar.style.display = (f.estado==='EMITIDA' && puedeAprobar('FACTURAS')) ? '' : 'none';
-      btnAprobar.onclick = function() { btnSetGuardando(this,true,null,'Procesando...'); aprobarFactura(f.id_factura).finally(()=>btnSetGuardando(this,false)); };
-    }
     if (btnPago) {
       btnPago._id = f.id_factura;
       btnPago.style.display = ((f.estado==='EMITIDA'||f.estado==='APROBADA'||f.estado==='PARCIAL') && (sesionActual?.administrador || puedo('FACTURAS','COBRAR'))) ? '' : 'none';
@@ -1393,17 +1383,7 @@ async function emitirFactura(id) {
 // La función y el botón anteriores quedan recuperables en el historial de
 // Git si alguna vez se retoma ese diseño.
 
-async function aprobarFactura(id) {
-  if (!puedeAprobar('FACTURAS')) { alert('No tiene facultad para aprobar facturas.'); return; }
-  if (!confirm('¿Confirma la aprobación de esta factura?')) return;
-  try {
-    await api('facturas','PATCH',{
-      estado: 'APROBADA'
-    },'?id_factura=eq.'+id);
-    cerrarModal('modal-ficha-fac');
-    renderFacturas();
-  } catch(e) { alert('Error: '+msgErr(e)); }
-}
+// aprobarFactura() se eliminó: las facturas no requieren aprobación.
 
 // "eliminarFactura()" se eliminó de raíz -- dependía por completo de una
 // Factura en estado ANULADA, que ya no puede ocurrir. Recuperable en el
