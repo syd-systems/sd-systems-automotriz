@@ -1014,7 +1014,7 @@ async function repVentasRender(cont) {
     let numeroFacturaPorOrdenVta = {};
     if (idsOrden.length) {
       const facRowsOS = await api('facturas','GET',null,
-        '?id_orden=in.(' + idsOrden.join(',') + ')&select=id_factura,id_orden,numero_factura');
+        '?id_orden=in.(' + idsOrden.join(',') + ')&estado=not.in.(ANULADA,REVERSADA,BORRADOR,POR_APROBAR)&select=id_factura,id_orden,numero_factura');
       (facRowsOS||[]).forEach(function(f){ idFacturaPorOrden[f.id_orden] = f.id_factura; numeroFacturaPorOrdenVta[f.id_orden] = f.numero_factura; });
     }
     // Solo cuenta como "Venta" lo ya Facturado -- lo que sigue en Taller
@@ -1393,7 +1393,7 @@ async function repServiciosRender(cont) {
   let numeroFacturaPorOrden = {};
   try {
     const facRows = await api('facturas','GET',null,
-      '?id_orden=in.(' + (idsOrden.length ? idsOrden.join(',') : '0') + ')&select=id_factura,id_orden,numero_factura');
+      '?id_orden=in.(' + (idsOrden.length ? idsOrden.join(',') : '0') + ')&estado=not.in.(ANULADA,REVERSADA,BORRADOR,POR_APROBAR)&select=id_factura,id_orden,numero_factura');
     (facRows||[]).forEach(function(f){ idsFacturaOrden[f.id_orden] = f.id_factura; numeroFacturaPorOrden[f.id_orden] = f.numero_factura; });
   } catch(e) { console.warn('Error cargando Facturas de Servicio:', e); }
   const idsFacturaSer = Object.values(idsFacturaOrden);

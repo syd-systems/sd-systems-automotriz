@@ -1591,19 +1591,19 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="js/core.js?v=20260909230"></script>
-<script src="js/parametros.js?v=20260909230"></script>
-<script src="js/empresas.js?v=20260909230"></script>
-<script src="js/ingresos.js?v=20260909230"></script>
-<script src="js/inventario.js?v=20260909230"></script>
-<script src="js/proveedores.js?v=20260909230"></script>
-<script src="js/ventas.js?v=20260909230"></script>
-<script src="js/contabilidad.js?v=20260909230"></script>
-<script src="js/egresos.js?v=20260909230"></script>
-<script src="js/vehiculos.js?v=20260909230"></script>
-<script src="js/catalogo.js?v=20260909230"></script>
-<script src="js/ordenes.js?v=20260909230"></script>
-<script src="js/reportes.js?v=20260909230"></script>
+<script src="js/core.js?v=20260909231"></script>
+<script src="js/parametros.js?v=20260909231"></script>
+<script src="js/empresas.js?v=20260909231"></script>
+<script src="js/ingresos.js?v=20260909231"></script>
+<script src="js/inventario.js?v=20260909231"></script>
+<script src="js/proveedores.js?v=20260909231"></script>
+<script src="js/ventas.js?v=20260909231"></script>
+<script src="js/contabilidad.js?v=20260909231"></script>
+<script src="js/egresos.js?v=20260909231"></script>
+<script src="js/vehiculos.js?v=20260909231"></script>
+<script src="js/catalogo.js?v=20260909231"></script>
+<script src="js/ordenes.js?v=20260909231"></script>
+<script src="js/reportes.js?v=20260909231"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=_onTurnstileListo" async defer></script>
 
 <!-- ═══════════════════════════════════════ -->
@@ -3386,7 +3386,10 @@
       <button class="btn-naranja" id="ficha-fac-btn-editar"  style="display:none">Editar</button>
       <button class="btn-primario"   id="ficha-fac-btn-emitir"  style="display:none">✓ Emitir</button>
       <button class="btn-primario"   id="ficha-fac-btn-pago"    style="display:none">💰 Registrar Cobro</button>
-      <button class="btn-secundario" id="ficha-fac-btn-nc"      style="display:none;color:var(--naranja);border-color:rgba(255,107,0,0.5)">↩ Emitir Nota de Crédito</button>
+      <button class="btn-secundario" id="ficha-fac-btn-rechazar" style="display:none;color:#fc8181;border-color:rgba(252,129,129,0.5)">✕ Rechazar</button>
+      <button class="btn-primario"   id="ficha-fac-btn-solicitar" style="display:none">📨 Solicitar Aprobación</button>
+      <button class="btn-secundario" id="ficha-fac-btn-reverso" style="display:none;color:var(--naranja);border-color:rgba(255,107,0,0.5)">↩ Nota de Crédito (reverso)</button>
+      <button class="btn-secundario" id="ficha-fac-btn-nc"      style="display:none;color:var(--naranja);border-color:rgba(255,107,0,0.5)">↩ Nota de Crédito (reembolso)</button>
     </div>
   </div>
 </div>
@@ -3394,13 +3397,32 @@
 <div class="modal-overlay" id="modal-nc">
   <div class="modal" style="max-width:820px">
     <div class="modal-header">
-      <h3>NOTA DE CRÉDITO</h3>
+      <h3>NOTA DE CRÉDITO (REEMBOLSO)</h3>
       <button class="modal-cerrar" onclick="cerrarModal('modal-nc')">✕</button>
     </div>
     <div class="modal-body" id="nc-contenido"></div>
     <div class="modal-footer">
       <button class="btn-secundario" onclick="cerrarModal('modal-nc')">Cancelar</button>
       <button class="btn-primario" onclick="guardarNotaCredito(this)">↩ Emitir Nota de Crédito</button>
+    </div>
+  </div>
+</div>
+
+<!-- Motivo (rechazos y solicitudes de reverso) -->
+<div class="modal-overlay" id="modal-motivo">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <h3 id="motivo-titulo">MOTIVO</h3>
+      <button class="modal-cerrar" onclick="document.getElementById('motivo-btn-cancelar').click()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="motivo-texto" style="font-size:13px;color:var(--suave);margin-bottom:10px;line-height:1.5"></div>
+      <div class="form-campo form-full"><label>Motivo *</label><textarea id="motivo-valor" rows="3" maxlength="500" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:11px 14px;border-radius:5px;outline:none;resize:vertical;min-height:70px;width:100%"></textarea></div>
+      <div class="alerta alerta-error" id="motivo-error" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secundario" id="motivo-btn-cancelar">Cancelar</button>
+      <button class="btn-primario" id="motivo-btn-ok">Aceptar</button>
     </div>
   </div>
 </div>

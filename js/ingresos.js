@@ -10,22 +10,31 @@ let facturasCache = [];
 // Estado de la factura = estado de su COBRO. Las facturas que nacen de
 // una Venta o de una Orden de Servicio NO requieren aprobación (el precio
 // no depende del vendedor). La FACTURA MANUAL (Factura por Cobranza, sin
-// Venta ni OS) SÍ la requiere: solo la emite quien tenga el permiso
-// FACTURAS → APROBAR ("Aprobar y emitir factura manual" en Usuarios); los
-// demás la dejan en Borrador para que un aprobador la revise y la emita.
+// Venta ni OS) SÍ la requiere: quien no tenga el permiso FACTURAS → APROBAR
+// ("Aprobar y emitir factura manual" en Usuarios) la envía a aprobación
+// (POR_APROBAR) y un aprobador la emite o la devuelve a Borrador. El
+// servidor (trigger fn_facturas_control) hace cumplir esta regla.
+// Una factura Por cobrar y sin cobros se corrige con la Nota de Crédito
+// (reverso) -> REVERSADA; una con cobros, con la Nota de Crédito (reembolso).
 // Facturas antiguas en estado APROBADA se muestran como "Por cobrar".
 const ESTADOS_FAC = {
   'BORRADOR': { clase: 'badge-gris',    label: 'Borrador'      },
+  'POR_APROBAR': { clase: 'badge-naranja', label: 'Por aprobar' },
   'EMITIDA':  { clase: 'badge-rojo',    label: 'Por cobrar'    },
   'PARCIAL':  { clase: 'badge-naranja', label: 'Cobro parcial' },
   'PAGADA':   { clase: 'badge-verde',   label: 'Cobrada'       },
   'ACREDITADA_PARCIAL': { clase: 'badge-naranja', label: 'Acreditada parcial' },
   'ACREDITADA_TOTAL':   { clase: 'badge-gris',    label: 'Acreditada total'   },
+  'REVERSADA':          { clase: 'badge-gris',    label: 'Reversada'          },
 };
 function estadoFacVisible(estado) { return estado === 'APROBADA' ? 'EMITIDA' : estado; }
 function puedeEmitirFacturaManual() { return puedo('FACTURAS','APROBAR'); }
+// Manual = sin Venta ni OS (facturas.origen lo fija el servidor)
+function esFacturaManual(f) { return f && (f.origen ? f.origen === 'MANUAL' : (!f.id_orden && !f.id_venta)); }
 const MSG_FAC_MANUAL_APROBACION = 'Las facturas manuales (sin Venta ni Orden de Servicio) requieren aprobación. '
-  + 'Guárdela como Borrador: un usuario con el permiso "Aprobar y emitir factura manual" la revisará y la emitirá.';
+  + 'Envíela a aprobación: un usuario con el permiso "Aprobar y emitir factura manual" la revisará y la emitirá.';
+// Filtro de facturas "activas" de una OS/Venta (las Reversadas liberan la OS para facturarla de nuevo)
+const FAC_ACTIVA_Q = 'estado=not.in.(ANULADA,REVERSADA)';
 
 // Estado de COBRO de una factura (independiente de su aprobación), según
 // su Cuenta por Cobrar real: Por cobrar / Cobro parcial / Cobrada.
@@ -114,7 +123,7 @@ async function renderFacturas() {
         + '<td style="font-size:12px">' + escapeHtml(vendedor) + (areaPorCorreoVendedor[f.id_usuario] ? '<div style="font-size:10px;color:var(--suave)">' + escapeHtml(areaPorCorreoVendedor[f.id_usuario].nombre) + (areaPorCorreoVendedor[f.id_usuario].codigo ? ' (' + areaPorCorreoVendedor[f.id_usuario].codigo + ')' : '') + '</div>' : '') + '</td>'
         + '<td style="font-size:12px">' + escapeHtml(prop ? prop.nombre_completo : (f.receptor_nombre||'—')) + '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + escapeHtml(identifCliente) + '</div></td>'
         + '<td><span class="badge ' + est.clase + '">' + est.label + '</span>'
-        + (f.estado === 'BORRADOR' && !f.id_orden ? '<div style="font-size:10px;color:#8b5cf6;margin-top:3px;font-weight:600">Manual · por aprobar</div>' : '')
+        + (f.estado === 'BORRADOR' && f.motivo_rechazo ? '<div style="font-size:10px;color:#fc8181;margin-top:3px;font-weight:600">Devuelta por el aprobador</div>' : '')
         + '</td>'
         + (puedo('FACTURAS','VER_TOTALES')
             ? '<td style="font-family:var(--font-mono)">'
@@ -177,7 +186,7 @@ async function revisarBadgeOSCerradas() {
     const os = await api('ordenes_servicio','GET',null,'?estado=eq.CERRADA&select=id_orden'+emisorQ());
     if (!os || !os.length) { badgeEl.innerHTML = ''; return; }
     const facturadas = await api('facturas','GET',null,
-      '?id_orden=not.is.null&estado=neq.ANULADA&select=id_orden'+emisorQ());
+      '?id_orden=not.is.null&'+FAC_ACTIVA_Q+'&select=id_orden'+emisorQ());
     const idsFacturadas = new Set((facturadas||[]).map(function(f){ return f.id_orden; }));
     const pendientes = os.filter(function(o){ return !idsFacturadas.has(o.id_orden); });
     badgeEl.innerHTML = pendientes.length
@@ -298,7 +307,7 @@ async function cargarOSParaFactura(id_empresa, idFacturaExcluir) {
     let osDisponibles = os;
     try {
       const facturadas = await api('facturas','GET',null,
-        '?id_orden=not.is.null&estado=neq.ANULADA&select=id_orden,id_factura&id_empresa=eq.'+id_empresa);
+        '?id_orden=not.is.null&'+FAC_ACTIVA_Q+'&select=id_orden,id_factura&id_empresa=eq.'+id_empresa);
       const idsFacturadas = new Set(
         facturadas.filter(function(f){ return f.id_factura !== idFacturaExcluir; })
                   .map(function(f){ return f.id_orden; })
@@ -500,7 +509,17 @@ function onCambiarMonedaFactura() {
   if (id_os) onSelOSFactura(); else calcularTotalesFactura();
 }
 
+// Formulario: una factura manual (sin OS) de quien no tiene la facultad se
+// "envía a aprobación" en vez de emitirse -- el botón lo dice claramente.
+function actualizarBotonEmitirFactura() {
+  const btn = document.getElementById('btn-fac-emitir');
+  if (!btn || btn.disabled) return;
+  const conOS = !!(document.getElementById('fac-os-id')?.value);
+  btn.textContent = (!conOS && !puedeEmitirFacturaManual()) ? '📨 Enviar a Aprobación' : '✓ Emitir Factura';
+}
+
 function calcularTotalesFactura() {
+  actualizarBotonEmitirFactura();
   const ivaLbl = document.getElementById('fac-iva-label');
   if (ivaLbl) ivaLbl.textContent = 'IVA (' + Math.round(tasaIVAActual()*100) + '%)';
   const igtfLbl = document.getElementById('fac-igtf-label');
@@ -573,13 +592,11 @@ async function guardarFactura(emitir) {
     const fecha    = document.getElementById('fac-fecha').value;
     const estadoActual = document.getElementById('fac-estado').value;
 
-    // Factura manual (sin OS): emitirla requiere la facultad de aprobación.
-    if (emitir && !id_os && !puedeEmitirFacturaManual()) {
-      errEl.textContent = MSG_FAC_MANUAL_APROBACION;
-      errEl.style.display = 'block';
-      return;
-    }
-    const estado   = emitir ? 'EMITIDA' : 'BORRADOR';
+    // Factura manual (sin OS): sin la facultad de aprobación no se emite,
+    // se envía a aprobación (el servidor aplica la misma regla).
+    const enviarAAprobacion = emitir && !id_os && !puedeEmitirFacturaManual();
+    if (enviarAAprobacion && !confirm('Esta factura manual requiere aprobación.\n\n¿Enviarla a aprobación? Mientras esté en revisión no podrá modificarse.')) return;
+    const estado   = enviarAAprobacion ? 'POR_APROBAR' : (emitir ? 'EMITIDA' : 'BORRADOR');
     const obs      = document.getElementById('fac-observaciones').value.trim();
     const aplIVA   = document.getElementById('fac-aplica-iva').checked;
     const aplIGTF  = document.getElementById('fac-aplica-igtf').checked;
@@ -623,7 +640,7 @@ async function guardarFactura(emitir) {
       // si esta Factura está vinculada a una OS)
       if (id_os) {
         const osFacturada = await api('facturas','GET',null,
-          '?id_orden=eq.'+id_os+'&estado=neq.ANULADA&select=id_factura,numero_factura');
+          '?id_orden=eq.'+id_os+'&'+FAC_ACTIVA_Q+'&select=id_factura,numero_factura');
         if (osFacturada && osFacturada.length) {
           errEl.textContent = 'Esta OS ya tiene una factura activa: ' + osFacturada[0].numero_factura;
           errEl.style.display = 'block';
@@ -642,11 +659,12 @@ async function guardarFactura(emitir) {
     // Si se emite: crear CxC, asiento contable, salida de inventario y
     // asiento de Costo de Venta -- toda esa lógica vive en una sola función
     // reutilizable (también la usa emitirFactura() en la Ficha de Factura).
-    if (emitir && idFacturaFinal) {
+    if (emitir && !enviarAAprobacion && idFacturaFinal) {
       await generarCxCyAsientoFactura(idFacturaFinal);
     }
 
-    okEl.textContent = emitir ? '✓ Factura emitida correctamente.' : '✓ Factura guardada como borrador.';
+    okEl.textContent = enviarAAprobacion ? '✓ Factura enviada a aprobación.'
+      : (emitir ? '✓ Factura emitida correctamente.' : '✓ Factura guardada como borrador.');
     okEl.style.display='block';
     setTimeout(function() { cerrarModal('modal-factura'); renderFacturas(); }, 1200);
   } catch(err) {
@@ -683,7 +701,7 @@ async function generarCxCyAsientoFactura(idFactura) {
     let ventaOrigen = null;
     if (!fac.id_orden) {
       try {
-        const ventaRows = await api('ventas','GET',null,'?id_factura=eq.'+idFactura+'&select=id_venta,id_area');
+        const ventaRows = await api('ventas','GET',null,(fac.id_venta ? '?id_venta=eq.'+fac.id_venta : '?id_factura=eq.'+idFactura)+'&select=id_venta,id_area');
         ventaOrigen = ventaRows && ventaRows[0] ? ventaRows[0] : null;
       } catch(eVentaOrigen) { console.warn('Error buscando Venta de origen de la factura:', eVentaOrigen); }
     }
@@ -1132,13 +1150,13 @@ async function verFichaFactura(id) {
         const osOrig = await api('ordenes_servicio','GET',null,'?id_orden=eq.'+f.id_orden+'&select=id_orden,numero_os&limit=1');
         origenFac = { tipo: 'OS', id: f.id_orden, etiqueta: 'Orden de Servicio ' + ((osOrig && osOrig[0] && osOrig[0].numero_os) || ('OS-' + f.id_orden)) };
       } else {
-        const vOrig = await api('ventas','GET',null,'?id_factura=eq.'+id+'&select=id_venta&limit=1');
+        const vOrig = await api('ventas','GET',null,(f.id_venta ? '?id_venta=eq.'+f.id_venta : '?id_factura=eq.'+id)+'&select=id_venta&limit=1');
         if (vOrig && vOrig[0]) origenFac = { tipo: 'VENTA', id: vOrig[0].id_venta, etiqueta: 'Venta V-' + vOrig[0].id_venta };
       }
     } catch(eOrig) { origenFac = null; }
     let ncsFactura = [];
     try {
-      ncsFactura = await api('notas_credito','GET',null,'?id_factura=eq.'+id+'&select=id_nc,numero_nc,fecha_emision,tipo,destino,total_usd,estado&order=id_nc.asc') || [];
+      ncsFactura = await api('notas_credito','GET',null,'?id_factura=eq.'+id+'&select=id_nc,numero_nc,fecha_emision,tipo,destino,total_usd,estado,motivo,motivo_rechazo,id_usuario&order=id_nc.asc') || [];
     } catch(eNcs) { ncsFactura = []; }
     let linServ=[], linRep=[];
     if (f.id_orden) {
@@ -1151,7 +1169,7 @@ async function verFichaFactura(id) {
       // en os_mercancias. Se ubica la Venta de origen por id_factura
       // (mismo criterio ya usado en generarCxCyAsientoFactura).
       try {
-        const ventaOrigenFicha = await api('ventas','GET',null,'?id_factura=eq.'+id+'&select=id_venta&limit=1');
+        const ventaOrigenFicha = await api('ventas','GET',null,(f.id_venta ? '?id_venta=eq.'+f.id_venta : '?id_factura=eq.'+id)+'&select=id_venta&limit=1');
         if (ventaOrigenFicha && ventaOrigenFicha[0]) {
           const lineasVentaFicha = await api('venta_detalle','GET',null,
             '?id_venta=eq.'+ventaOrigenFicha[0].id_venta+'&select=cantidad,precio_unitario,subtotal,inventario_almacen(nombre_articulo)');
@@ -1197,7 +1215,17 @@ async function verFichaFactura(id) {
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">'
       + '<div><div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">'+(f.numero_factura||'—')+'</div>'
       + '<span class="badge '+est.clase+'">'+est.label+'</span>'
-      + (f.estado === 'BORRADOR' && !f.id_orden ? '<div style="font-size:11px;color:#8b5cf6;margin-top:4px;font-weight:600">Factura manual · requiere aprobación para emitirse</div>' : '')
+      + (f.estado === 'POR_APROBAR' ? '<div style="font-size:11px;color:var(--naranja);margin-top:4px;font-weight:600">Factura manual en revisión · espera aprobación</div>' : '')
+      + (f.estado === 'BORRADOR' && esFacturaManual(f) ? '<div style="font-size:11px;color:var(--suave);margin-top:4px">Factura manual · requiere aprobación para emitirse</div>' : '')
+      + (f.estado === 'BORRADOR' && f.motivo_rechazo ? '<div style="font-size:11px;color:#fc8181;margin-top:4px">Devuelta por el aprobador. Motivo: '+escapeHtml(f.motivo_rechazo)+'</div>' : '')
+      + (f.aprobado_por && esFacturaManual(f) && f.estado !== 'BORRADOR' && f.estado !== 'POR_APROBAR' ? '<div style="font-size:11px;color:var(--suave);margin-top:4px">Aprobada por '+escapeHtml(f.aprobado_por)+'</div>' : '')
+      + (function() {
+          const ncPend = ncsFactura.find(function(n){ return n.estado === 'PENDIENTE' && n.tipo === 'REVERSO'; });
+          const ncAprob = ncsFactura.find(function(n){ return n.estado === 'APROBADA' && n.tipo === 'REVERSO'; });
+          if (f.estado === 'REVERSADA' && ncAprob) return '<div style="font-size:11px;color:var(--suave);margin-top:4px">Reversada por la '+escapeHtml(ncAprob.numero_nc)+'</div>';
+          if (ncPend) return '<div style="font-size:11px;color:var(--naranja);margin-top:4px;font-weight:600">'+escapeHtml(ncPend.numero_nc)+' (reverso) pendiente de aprobación · cobros bloqueados</div>';
+          return '';
+        })()
       + (function() {
           const ec = estadoCobroFactura(f);
           if (!ec) return '';
@@ -1286,9 +1314,11 @@ async function verFichaFactura(id) {
     // "Eliminar Factura Anulada" se eliminó de raíz -- dependía por completo
     // de estado==='ANULADA', y ese estado ya no se genera desde que se
     // eliminó "Anular Factura" de raíz (ver notas de esa sesión).
+    const ncReversoPend = ncsFactura.find(function(n){ return n.estado === 'PENDIENTE' && n.tipo === 'REVERSO'; });
+    const cobradoFicha = (Array.isArray(f.cont_cxc) ? f.cont_cxc : []).reduce(function(a, c){ return a + parseFloat(c.pagado_usd || 0); }, 0);
     if (btnPago) {
       btnPago._id = f.id_factura;
-      btnPago.style.display = ((f.estado==='EMITIDA'||f.estado==='APROBADA'||f.estado==='PARCIAL') && (sesionActual?.administrador || puedo('FACTURAS','COBRAR'))) ? '' : 'none';
+      btnPago.style.display = ((f.estado==='EMITIDA'||f.estado==='APROBADA'||f.estado==='PARCIAL') && !ncReversoPend && (sesionActual?.administrador || puedo('FACTURAS','COBRAR'))) ? '' : 'none';
       btnPago._facId = f.id_factura;
       btnPago.onclick = async function() {
         try {
@@ -1306,19 +1336,37 @@ async function verFichaFactura(id) {
         } catch(e) { alert('Error: ' + msgErr(e)); }
       };
     }
+    // Por cobrar y sin cobros -> Nota de Crédito (reverso); con cobros -> Nota de Crédito (reembolso)
     var btnNC = document.getElementById('ficha-fac-btn-nc');
     if (btnNC) {
-      btnNC.style.display = ((sesionActual?.administrador || puedo('FACTURAS','EMITIR_NC')) && facturaAdmiteNC(f)) ? '' : 'none';
+      btnNC.style.display = (puedo('FACTURAS','EMITIR_NC') && facturaAdmiteNC(f)) ? '' : 'none';
       btnNC.onclick = function() { cerrarModal('modal-ficha-fac'); abrirNotaCredito(f.id_factura); };
+    }
+    var btnReverso = document.getElementById('ficha-fac-btn-reverso');
+    if (btnReverso) {
+      btnReverso.style.display = (puedo('FACTURAS','EMITIR_NC') && facturaAdmiteReverso(f, cobradoFicha) && !ncReversoPend) ? '' : 'none';
+      btnReverso.onclick = function() { solicitarNCReverso(f.id_factura, f.numero_factura); };
     }
     if (btnEditar)  { btnEditar._id=f.id_factura;  btnEditar.onclick=function(){cerrarModal('modal-ficha-fac');abrirEditarFactura(this._id);}; btnEditar.style.display=puedo('FACTURAS','EDITAR')&&f.estado==='BORRADOR'?'':'none'; }
     if (btnEmitir)  {
-      // Borrador manual (sin OS): solo lo emite quien tiene la facultad de aprobación.
-      const esManualFicha = !f.id_orden;
+      // Factura manual: el aprobador la emite (desde Borrador o Por aprobar).
+      const esManualFicha = esFacturaManual(f);
       btnEmitir._id = f.id_factura;
       btnEmitir.onclick = function(){ emitirFactura(this._id); };
       btnEmitir.textContent = esManualFicha ? '✓ Aprobar y Emitir' : '✓ Emitir';
-      btnEmitir.style.display = (f.estado==='BORRADOR' && (esManualFicha ? puedeEmitirFacturaManual() : puedo('FACTURAS','CREAR'))) ? '' : 'none';
+      btnEmitir.style.display = esManualFicha
+        ? ((f.estado==='BORRADOR' || f.estado==='POR_APROBAR') && puedeEmitirFacturaManual() ? '' : 'none')
+        : (f.estado==='BORRADOR' && puedo('FACTURAS','CREAR') ? '' : 'none');
+    }
+    var btnSolicitar = document.getElementById('ficha-fac-btn-solicitar');
+    if (btnSolicitar) {
+      btnSolicitar.style.display = (esFacturaManual(f) && f.estado==='BORRADOR' && !puedeEmitirFacturaManual() && puedo('FACTURAS','CREAR')) ? '' : 'none';
+      btnSolicitar.onclick = function() { solicitarAprobacionFactura(f.id_factura, this); };
+    }
+    var btnRechazarFac = document.getElementById('ficha-fac-btn-rechazar');
+    if (btnRechazarFac) {
+      btnRechazarFac.style.display = (f.estado==='POR_APROBAR' && puedeEmitirFacturaManual()) ? '' : 'none';
+      btnRechazarFac.onclick = function() { rechazarFacturaManual(f.id_factura, this); };
     }
     // "Anular Factura" se eliminó de raíz (botón HTML, wiring y función) --
     // decisión de negocio: una vez Emitida, la Empresa no está dispuesta a
@@ -1371,14 +1419,14 @@ async function abrirEditarFactura(id) {
 
 async function emitirFactura(id) {
   // Verificar que no esté ya emitida
-  const facCheck = await api('facturas','GET',null,'?id_factura=eq.'+id+'&select=estado,id_orden');
-  if (facCheck && facCheck[0] && facCheck[0].estado !== 'BORRADOR') {
+  const facCheck = await api('facturas','GET',null,'?id_factura=eq.'+id+'&select=*');
+  if (facCheck && facCheck[0] && facCheck[0].estado !== 'BORRADOR' && facCheck[0].estado !== 'POR_APROBAR') {
     alert('Esta factura ya fue procesada.'); return;
   }
-  if (facCheck && facCheck[0] && !facCheck[0].id_orden && !puedeEmitirFacturaManual()) {
+  const esManual = facCheck && facCheck[0] && esFacturaManual(facCheck[0]);
+  if (esManual && !puedeEmitirFacturaManual()) {
     alert(MSG_FAC_MANUAL_APROBACION); return;
   }
-  const esManual = facCheck && facCheck[0] && !facCheck[0].id_orden;
   if (!confirm(esManual
       ? '¿Aprueba y emite esta factura manual? Una vez emitida no podrá editarse.'
       : '¿Emitir esta factura? Una vez emitida no podrá editarse.')) return;
@@ -1386,7 +1434,7 @@ async function emitirFactura(id) {
   const btnEmitir = document.getElementById('ficha-fac-btn-emitir');
   if (btnEmitir) { btnEmitir.disabled = true; btnEmitir.textContent = '⏳ Procesando...'; }
   try {
-    await api('facturas','PATCH',{estado:'EMITIDA'},'?id_factura=eq.'+id);
+    await api('facturas','PATCH',{estado:'EMITIDA', motivo_rechazo:null},'?id_factura=eq.'+id);
     // Antes, emitir desde aquí solo cambiaba el estado -- nunca creaba la
     // CxC ni el asiento contable, a diferencia de emitir directo desde el
     // formulario. Ahora usa la misma función que guardarFactura().
@@ -1542,7 +1590,8 @@ async function emitirFactura(id) {
 const TIPOS_NC = {
   DEVOLUCION:        'Devolución de mercancía',
   ERROR_FACTURA:     'Error en la factura (acredita todo lo pendiente)',
-  GARANTIA_SERVICIO: 'Garantía / reclamo de servicio'
+  GARANTIA_SERVICIO: 'Garantía / reclamo de servicio',
+  REVERSO:           'Nota de Crédito (reverso)'
 };
 const DESTINOS_NC = {
   REBAJA_CXC:  'Rebaja la deuda del cliente',
@@ -1556,11 +1605,17 @@ const ESTADOS_NC = {
 };
 let _nc = null;
 
-// ¿La factura admite emitir NC hoy? (estado + mismo mes; el servidor
-// vuelve a validar todo esto)
+// ¿La factura admite la Nota de Crédito (reembolso) hoy? Solo con cobros
+// (estado + mismo mes; el servidor vuelve a validar todo esto)
 function facturaAdmiteNC(f) {
   if (!f) return false;
-  if (['EMITIDA','APROBADA','PAGADA','PARCIAL','ACREDITADA_PARCIAL'].indexOf(f.estado) === -1) return false;
+  if (['PAGADA','PARCIAL','ACREDITADA_PARCIAL'].indexOf(f.estado) === -1) return false;
+  return String(f.fecha_emision || '').substring(0, 7) === getHoyVzla().substring(0, 7);
+}
+// ¿Admite la Nota de Crédito (reverso)? Por cobrar, sin cobros, mismo mes
+function facturaAdmiteReverso(f, cobrado) {
+  if (!f || (f.estado !== 'EMITIDA' && f.estado !== 'APROBADA')) return false;
+  if ((cobrado || 0) > 0.005) return false;
   return String(f.fecha_emision || '').substring(0, 7) === getHoyVzla().substring(0, 7);
 }
 
@@ -1571,11 +1626,21 @@ function htmlSeccionNotasCredito(ncs) {
     + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse;font-size:12px"><tbody>'
     + ncs.map(function(n) {
         const est = ESTADOS_NC[n.estado] || { clase: 'badge-gris', label: n.estado };
-        return '<tr><td style="padding:6px 0;font-family:var(--font-mono);color:var(--naranja);font-weight:600">' + escapeHtml(n.numero_nc) + '</td>'
-          + '<td style="padding:6px">' + fmtFecha(n.fecha_emision) + '</td>'
-          + '<td style="padding:6px">' + escapeHtml(TIPOS_NC[n.tipo] || n.tipo) + '<div style="font-size:10px;color:var(--suave)">' + escapeHtml(DESTINOS_NC[n.destino] || n.destino) + '</div></td>'
-          + '<td style="padding:6px;text-align:right;font-family:var(--font-mono)">$ ' + fmtUSD(n.total_usd) + '</td>'
-          + '<td style="padding:6px;text-align:right"><span class="badge ' + est.clase + '" style="font-size:10px">' + est.label + '</span></td></tr>';
+        // Aprobar: por ahora solo el reverso (la NC (reembolso) se aprueba en la siguiente etapa)
+        const puedeDecidir = n.estado === 'PENDIENTE' && puedo('FACTURAS','APROBAR_NC');
+        const acciones = puedeDecidir
+          ? '<div style="margin-top:6px;display:flex;gap:6px;justify-content:flex-end">'
+            + (n.tipo === 'REVERSO' ? '<button class="btn-primario" style="padding:4px 10px;font-size:11px" onclick="aprobarNCReverso(' + jsArg(n.id_nc) + ',' + jsArg(n.numero_nc) + ',this)">✓ Aprobar</button>' : '')
+            + '<button class="btn-secundario" style="padding:4px 10px;font-size:11px;color:#fc8181;border-color:rgba(252,129,129,0.5)" onclick="rechazarNotaCredito(' + jsArg(n.id_nc) + ',' + jsArg(n.numero_nc) + ',this)">✕ Rechazar</button></div>'
+          : '';
+        const detalle = (n.tipo === 'REVERSO' ? '' : escapeHtml(DESTINOS_NC[n.destino] || n.destino))
+          + (n.motivo ? '<div>Motivo: ' + escapeHtml(n.motivo) + '</div>' : '')
+          + (n.estado === 'RECHAZADA' && n.motivo_rechazo ? '<div style="color:#fc8181">Rechazo: ' + escapeHtml(n.motivo_rechazo) + '</div>' : '');
+        return '<tr><td style="padding:6px 0;font-family:var(--font-mono);color:var(--naranja);font-weight:600;vertical-align:top">' + escapeHtml(n.numero_nc) + '</td>'
+          + '<td style="padding:6px;vertical-align:top">' + fmtFecha(n.fecha_emision) + '</td>'
+          + '<td style="padding:6px;vertical-align:top">' + escapeHtml(n.tipo === 'REVERSO' ? TIPOS_NC.REVERSO : 'Nota de Crédito (reembolso) · ' + (TIPOS_NC[n.tipo] || n.tipo)) + '<div style="font-size:10px;color:var(--suave)">' + detalle + '</div></td>'
+          + '<td style="padding:6px;text-align:right;font-family:var(--font-mono);vertical-align:top">$ ' + fmtUSD(n.total_usd) + '</td>'
+          + '<td style="padding:6px;text-align:right;vertical-align:top"><span class="badge ' + est.clase + '" style="font-size:10px">' + est.label + '</span>' + acciones + '</td></tr>';
       }).join('')
     + '</tbody></table></div></div>';
 }
@@ -1583,7 +1648,7 @@ function htmlSeccionNotasCredito(ncs) {
 async function abrirNotaCredito(idFactura) {
   try {
     const [facArr, cxcs, acreditadas, pendRebaja, areas] = await Promise.all([
-      api('facturas','GET',null,'?id_factura=eq.'+idFactura+'&select=id_factura,numero_factura,id_orden,id_cliente,fecha_emision,estado,aplica_iva,subtotal_usd,iva_usd,total_usd,tasa_bcv,moneda_cobro,receptor_nombre'),
+      api('facturas','GET',null,'?id_factura=eq.'+idFactura+'&select=*'),
       api('cont_cxc','GET',null,'?id_factura=eq.'+idFactura+'&estado=neq.ANULADA&select=saldo_usd'),
       api('notas_credito_detalle','GET',null,'?select=origen,id_linea_origen,cantidad,notas_credito!inner(id_factura,estado)&notas_credito.id_factura=eq.'+idFactura+'&notas_credito.estado=neq.RECHAZADA'),
       api('notas_credito','GET',null,'?id_factura=eq.'+idFactura+'&estado=eq.PENDIENTE&destino=eq.REBAJA_CXC&select=total_usd'),
@@ -1592,7 +1657,7 @@ async function abrirNotaCredito(idFactura) {
     const f = facArr && facArr[0];
     if (!f) { alert('Factura no encontrada.'); return; }
     if (!facturaAdmiteNC(f)) {
-      alert('La factura ' + f.numero_factura + ' no admite Notas de Crédito: solo se emiten dentro del mismo mes de la factura y sobre facturas emitidas.');
+      alert('La factura ' + f.numero_factura + ' no admite Nota de Crédito (reembolso): solo se emite sobre facturas con cobros y dentro del mismo mes de la factura. Si no tiene cobros, corresponde la Nota de Crédito (reverso).');
       return;
     }
 
@@ -1606,7 +1671,7 @@ async function abrirNotaCredito(idFactura) {
       (merc || []).forEach(function(m) { lineas.push({ origen: 'OS_MERCANCIA', id: m.id_os_mercancia, tipo: 'MERCANCIA', desc: m.descripcion, cant: parseFloat(m.cantidad || 0), precio: parseFloat(m.precio_usd || 0) }); });
       (serv || []).forEach(function(s) { lineas.push({ origen: 'OS_SERVICIO',  id: s.id_os_serv,      tipo: 'SERVICIO',  desc: s.descripcion, cant: parseFloat(s.cantidad || 0), precio: parseFloat(s.precio_usd || 0) }); });
     } else {
-      const ventas = await api('ventas','GET',null,'?id_factura=eq.'+idFactura+'&select=id_venta&limit=1');
+      const ventas = await api('ventas','GET',null,(f.id_venta ? '?id_venta=eq.'+f.id_venta : '?id_factura=eq.'+idFactura)+'&select=id_venta&limit=1');
       if (ventas && ventas[0]) {
         const det = await api('venta_detalle','GET',null,'?id_venta=eq.'+ventas[0].id_venta+'&select=id_venta_detalle,cantidad,precio_unitario,inventario_almacen(nombre_articulo)&order=id_venta_detalle');
         (det || []).forEach(function(d) { lineas.push({ origen: 'VENTA_DETALLE', id: d.id_venta_detalle, tipo: 'MERCANCIA', desc: d.inventario_almacen?.nombre_articulo || 'Artículo', cant: parseFloat(d.cantidad || 0), precio: parseFloat(d.precio_unitario || 0) }); });
@@ -1777,4 +1842,100 @@ async function guardarNotaCredito(btn) {
   } finally {
     btnSetGuardando(btn, false);
   }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// APROBACIÓN DE FACTURA MANUAL y NOTA DE CRÉDITO (REVERSO)
+// Las reglas las hace cumplir el servidor (fn_facturas_control,
+// solicitar_nc_reverso, aprobar_nc_reverso, rechazar_nota_credito);
+// las notificaciones a aprobadores/solicitantes también las envía él.
+// ══════════════════════════════════════════════════════════════
+
+// Pide un motivo en un modal propio. Devuelve el texto, o null si se cancela.
+function pedirMotivo(titulo, texto, textoBoton) {
+  return new Promise(function(resolve) {
+    document.getElementById('motivo-titulo').textContent = titulo;
+    document.getElementById('motivo-texto').textContent = texto || '';
+    const ta = document.getElementById('motivo-valor');
+    const err = document.getElementById('motivo-error');
+    const ok = document.getElementById('motivo-btn-ok');
+    const cancel = document.getElementById('motivo-btn-cancelar');
+    ta.value = ''; err.style.display = 'none';
+    ok.textContent = textoBoton || 'Aceptar';
+    const esRechazo = /^✕/.test(textoBoton || '');
+    ok.style.background = esRechazo ? 'rgba(229,62,62,0.15)' : '';
+    ok.style.color = esRechazo ? '#e53e3e' : '';
+    ok.style.borderColor = esRechazo ? 'rgba(229,62,62,0.5)' : '';
+    const cerrar = function(val) { ok.onclick = null; cancel.onclick = null; cerrarModal('modal-motivo'); resolve(val); };
+    ok.onclick = function() {
+      const v = ta.value.trim();
+      if (!v) { err.textContent = 'Indique el motivo.'; err.style.display = 'block'; ta.focus(); return; }
+      cerrar(v);
+    };
+    cancel.onclick = function() { cerrar(null); };
+    abrirModal('modal-motivo');
+    setTimeout(function() { ta.focus(); }, 50);
+  });
+}
+
+async function solicitarAprobacionFactura(id, btn) {
+  if (!confirm('¿Enviar esta factura manual a aprobación? Mientras esté en revisión no podrá modificarse.')) return;
+  btnSetGuardando(btn, true, null, 'Enviando...');
+  try {
+    await api('facturas','PATCH',{ estado: 'POR_APROBAR' },'?id_factura=eq.'+id);
+    alert('✓ Factura enviada a aprobación. Se notificó a los aprobadores.');
+    cerrarModal('modal-ficha-fac');
+    renderFacturas();
+  } catch(e) { alert('Error: ' + msgErr(e)); }
+  finally { btnSetGuardando(btn, false); }
+}
+
+async function rechazarFacturaManual(id, btn) {
+  const motivo = await pedirMotivo('RECHAZAR FACTURA MANUAL', 'La factura vuelve a Borrador y se notifica a quien la creó.', '✕ Rechazar');
+  if (!motivo) return;
+  btnSetGuardando(btn, true, null, 'Procesando...');
+  try {
+    await api('facturas','PATCH',{ estado: 'BORRADOR', motivo_rechazo: motivo },'?id_factura=eq.'+id);
+    cerrarModal('modal-ficha-fac');
+    renderFacturas();
+  } catch(e) { alert('Error: ' + msgErr(e)); }
+  finally { btnSetGuardando(btn, false); }
+}
+
+async function solicitarNCReverso(idFactura, numeroFactura) {
+  const motivo = await pedirMotivo('NOTA DE CRÉDITO (REVERSO)',
+    'Se solicitará reversar la factura ' + numeroFactura + ' completa (asientos contables en sentido contrario). '
+    + 'Mientras se aprueba, no se podrán registrar cobros. Una vez aprobada, la Venta vuelve a Presupuesto '
+    + '(o la Orden de Servicio queda lista para facturarse de nuevo).', '↩ Solicitar reverso');
+  if (!motivo) return;
+  try {
+    const r = await api('rpc/solicitar_nc_reverso','POST',{ p_id_factura: idFactura, p_motivo: motivo });
+    alert('✓ ' + ((r && r.numero_nc) || 'Nota de Crédito') + ' (reverso) solicitada. Se notificó a los aprobadores.');
+    verFichaFactura(idFactura);
+    renderFacturas();
+  } catch(e) { alert('Error: ' + msgErr(e)); }
+}
+
+async function aprobarNCReverso(idNC, numeroNC, btn) {
+  if (!confirm('¿Aprobar la ' + numeroNC + ' (reverso)?\n\nSe registrarán los asientos en sentido contrario, se saldará la Cuenta por Cobrar, '
+    + 'la mercancía de una Venta volverá al inventario y la factura quedará Reversada. Esta acción no se puede deshacer.')) return;
+  btnSetGuardando(btn, true, null, 'Procesando...');
+  try {
+    const r = await api('rpc/aprobar_nc_reverso','POST',{ p_id_nc: parseInt(idNC) });
+    alert('✓ ' + numeroNC + ' aprobada. Asientos de reverso: ' + (((r && r.asientos) || []).join(', ') || 'ninguno') + '.');
+    cerrarModal('modal-ficha-fac');
+    renderFacturas();
+  } catch(e) { alert('Error: ' + msgErr(e)); btnSetGuardando(btn, false); }
+}
+
+async function rechazarNotaCredito(idNC, numeroNC, btn) {
+  const motivo = await pedirMotivo('RECHAZAR ' + numeroNC, 'Se notificará a quien la solicitó.', '✕ Rechazar');
+  if (!motivo) return;
+  btnSetGuardando(btn, true, null, 'Procesando...');
+  try {
+    await api('rpc/rechazar_nota_credito','POST',{ p_id_nc: parseInt(idNC), p_motivo: motivo });
+    cerrarModal('modal-ficha-fac');
+    renderFacturas();
+  } catch(e) { alert('Error: ' + msgErr(e)); btnSetGuardando(btn, false); }
 }
