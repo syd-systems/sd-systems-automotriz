@@ -609,9 +609,13 @@ async function abrirVenta(id) {
   if (!clientesCache || !clientesCache.length) {
     try { clientesCache = await api('clientes','GET',null,'?activo=eq.true&order=nombre_completo.asc'); } catch(e) { clientesCache = []; }
   }
-  if (!inventarioCache || !inventarioCache.length) {
-    try { inventarioCache = await api('inventario_almacen','GET',null,'?order=nombre_articulo.asc&select=*' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '')); } catch(e) { inventarioCache = []; }
-  }
+  // Inventario SIEMPRE fresco (igual que en Órdenes de Servicio): el precio
+  // se calcula con el CPP en vivo, y un artículo recién recibido en una
+  // Entrada tendría en la copia vieja su CPP anterior (0 si es nuevo).
+  try {
+    const invFresco = await api('inventario_almacen','GET',null,'?order=nombre_articulo.asc&select=*' + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : ''));
+    if (invFresco) inventarioCache = invFresco;
+  } catch(e) { if (!inventarioCache) inventarioCache = []; }
   // Refrescar Márgenes Vigentes antes de calcular precios -- si nunca se
   // abrió Inventario en esta sesión, _margenesVigentesMap queda vacío y
   // precioVentaEnVivo() siempre da 0, aunque el artículo sí tenga margen.
