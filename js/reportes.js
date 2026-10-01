@@ -13,6 +13,7 @@ const REPORTES_DISPONIBLES = [
   { id: 'servicios',  nombre: '🔧 Reporte por Servicios', render: repServiciosRender,  permiso: 'VER_SERVICIOS' },
   { id: 'ingresos',   nombre: '💳 Reporte de Ingresos',   render: repIngresosRender,   permiso: 'VER_INGRESOS' },
   { id: 'puntoventa', nombre: '🏬 Reporte por Punto de Venta', render: repPuntoVentaRender, permiso: 'VER_PUNTO_VENTA' },
+  { id: 'notascredito', nombre: '🧾 Reporte de Notas de Crédito', render: repNotasCreditoRender, permiso: 'VER_NOTAS_CREDITO' },
 ];
 function _reportesPermitidos() {
   if (sesionActual?.administrador) return REPORTES_DISPONIBLES;
@@ -913,6 +914,14 @@ async function repVentasRender(cont) {
     + '<div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Monto Total</div>'
     + '<div id="rep-ven-total-monto" style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">0</div>'
     + '</div>'
+    + '<div style="flex:1;background:var(--gris2);border-radius:8px;padding:10px 16px">'
+    + '<div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Devoluciones (Notas de Crédito)</div>'
+    + '<div id="rep-ven-devol" style="font-family:var(--font-display);font-size:18px;color:#e53e3e">0</div>'
+    + '</div>'
+    + '<div style="flex:1;background:var(--gris2);border-radius:8px;padding:10px 16px">'
+    + '<div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Ventas Netas</div>'
+    + '<div id="rep-ven-neto" style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">0</div>'
+    + '</div>'
     + '</div>'
     + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 420px))"><table style="min-width:900px;border-collapse:collapse;white-space:nowrap">'
     + '<thead><tr id="rep-ven-thead-row"></tr></thead>'
@@ -1065,6 +1074,35 @@ async function repVentasRender(cont) {
   document.getElementById('rep-ven-total-ventas').textContent = totalVentasSet.size.toLocaleString('es-VE');
   document.getElementById('rep-ven-total-monto').textContent = (monedaVal==='VES' ? fmtBs(totalMonto) + ' Bs' : '$ ' + fmtUSD(totalMonto));
 
+  // Devoluciones de mercancía por Nota de Crédito aprobada en el período.
+  // Solo tipo DEVOLUCION: el reverso y el error en la factura devuelven la
+  // Venta a Presupuesto (ya no aparece arriba), así que restarlos de nuevo
+  // los contaría dos veces. Mismo criterio para la OS acreditada total
+  // (sus artículos ya quedan fuera del reporte).
+  let totalDevol = 0;
+  try {
+    let qNC = '?estado=eq.APROBADA&tipo=eq.DEVOLUCION&fecha_emision=gte.'+desdeVal+'&fecha_emision=lte.'+hastaVal
+      + '&select=id_nc,tasa_bcv,id_cliente,facturas(estado,id_orden),notas_credito_detalle(origen,id_articulo,cantidad,subtotal_usd)'
+      + (_empresaActiva ? '&id_empresa=eq.'+_empresaActiva.id_empresa : '');
+    if (clienteVal) qNC += '&id_cliente=eq.'+clienteVal;
+    const ncsDev = await api('notas_credito','GET',null, qNC) || [];
+    ncsDev.forEach(function(n) {
+      const fac = n.facturas || {};
+      (n.notas_credito_detalle || []).forEach(function(l) {
+        if (l.origen !== 'VENTA_DETALLE' && l.origen !== 'OS_MERCANCIA') return;
+        if (l.origen === 'OS_MERCANCIA' && fac.estado === 'ACREDITADA_TOTAL') return;
+        if ((categoriaVal || tipoVal) && itemsMap[l.id_articulo] === undefined) return;
+        const usd = parseFloat(l.subtotal_usd || 0);
+        totalDevol += monedaVal === 'VES' ? usd * parseFloat(n.tasa_bcv || 1) : usd;
+      });
+    });
+  } catch(eDev) { console.warn('Error cargando Devoluciones (NC):', eDev); }
+  const fmtMon = function(v) { return monedaVal==='VES' ? fmtBs(v) + ' Bs' : '$ ' + fmtUSD(v); };
+  const devolTexto = (areaVal || formaPagoVal) ? 'n/d' : (totalDevol > 0 ? '- ' : '') + fmtMon(totalDevol);
+  const netoTexto = (areaVal || formaPagoVal) ? 'n/d' : fmtMon(totalMonto - totalDevol);
+  document.getElementById('rep-ven-devol').textContent = devolTexto;
+  document.getElementById('rep-ven-neto').textContent = netoTexto;
+
   const filtrosActivos = [];
   if (areaVal) filtrosActivos.push('Área: ' + (areaNombrePorId[areaVal]||areaVal));
   if (categoriaVal) { const c = categorias.find(function(x){ return String(x.id_categoria)===String(categoriaVal); }); if (c) filtrosActivos.push('Categoría: ' + c.nombre); }
@@ -1073,7 +1111,8 @@ async function repVentasRender(cont) {
   if (formaPagoVal) filtrosActivos.push('Forma de Pago: ' + formaPagoVal);
   const filtrosTexto = filtrosActivos.length ? filtrosActivos.join('   |   ') : 'Sin filtros adicionales (todos los Artículos, todas las Áreas)';
 
-  window._reporteVentasActual = { monedaVal, desdeVal, hastaVal, filas, filtrosTexto };
+  window._reporteVentasActual = { monedaVal, desdeVal, hastaVal, filas, filtrosTexto,
+    resumenNC: 'Ventas: ' + fmtMon(totalMonto) + '   |   Devoluciones (NC): ' + devolTexto + '   |   Ventas Netas: ' + netoTexto };
   _repVenOrdenCol = _repVenOrdenCol || null;
   _repVenOrdenAsc = _repVenOrdenAsc !== false;
   _repVenRenderTabla();
@@ -1167,6 +1206,7 @@ function _repVenExportarCSV() {
   const filasCsv = [
     ['Ventas del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Moneda: ' + dat.d.monedaVal],
     ['Filtros: ' + dat.d.filtrosTexto],
+    [dat.d.resumenNC || ''],
     [],
     dat.encabezados,
   ].concat(dat.filasTexto);
@@ -1187,7 +1227,7 @@ function _repVenExportarExcel() {
     ['Reporte de Ventas'],
     ['Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Moneda: ' + dat.d.monedaVal],
     ['Filtros: ' + dat.d.filtrosTexto],
-    [],
+    [dat.d.resumenNC || ''],
     dat.encabezados,
   ].concat(dat.filasNumericas));
   hoja['!cols'] = [ {wch:14}, {wch:26}, {wch:30}, {wch:20}, {wch:12}, {wch:16}, {wch:14}, {wch:18}, {wch:14} ];
@@ -1218,10 +1258,11 @@ function _repVenExportarPDF() {
   doc.setFontSize(9);
   doc.text('Del ' + dat.d.desdeVal + ' al ' + dat.d.hastaVal + '   |   Moneda: ' + dat.d.monedaVal, 14, 21);
   doc.text('Filtros: ' + dat.d.filtrosTexto, 14, 26);
+  doc.text(dat.d.resumenNC || '', 14, 31);
   doc.autoTable({
     head: [dat.encabezados],
     body: dat.filasTexto,
-    startY: 31,
+    startY: 36,
     styles: { fontSize: 8 },
     headStyles: { fillColor: [255, 107, 0], halign: 'center' },
     columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' }, 7: { halign: 'center' }, 8: { halign: 'center' } },
@@ -2055,4 +2096,198 @@ function _repPVExportarPDF() {
     columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
   });
   doc.save('reporte_punto_venta_' + dat.d.desdeVal + '_a_' + dat.d.hastaVal + '.pdf');
+}
+
+// ═══════════════════ REPORTE DE NOTAS DE CRÉDITO ═══════════════════
+// Fuente: notas_credito (+ factura afectada). Montos a la tasa de la
+// factura original (la misma con la que se registró la NC).
+const _REP_NC_SEL = 'background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:13px;padding:8px 10px;border-radius:5px;outline:none;height:35px;box-sizing:border-box';
+function repNotasCreditoLimpiarFiltros() {
+  const hoy = getHoyVzla();
+  ['rep-nc-desde','rep-nc-hasta'].forEach(function(id){ const el = document.getElementById(id); if (el) el.value = hoy; });
+  ['rep-nc-estado','rep-nc-tipo','rep-nc-destino'].forEach(function(id){ const el = document.getElementById(id); if (el) el.value = ''; });
+  repNotasCreditoRender(document.getElementById('reportes-contenido'));
+}
+
+async function repNotasCreditoRender(cont) {
+  if (!cont) return;
+  const hoy = getHoyVzla();
+  const desdeVal = document.getElementById('rep-nc-desde')?.value || (hoy.substring(0, 8) + '01');
+  const hastaVal = document.getElementById('rep-nc-hasta')?.value || hoy;
+  const monedaVal = document.getElementById('rep-nc-moneda')?.value || 'VES';
+  const formatoVal = document.getElementById('rep-nc-formato')?.value || 'pdf';
+  const estadoVal = document.getElementById('rep-nc-estado')?.value || '';
+  const tipoVal = document.getElementById('rep-nc-tipo')?.value || '';
+  const destinoVal = document.getElementById('rep-nc-destino')?.value || '';
+  const re = "repNotasCreditoRender(document.getElementById('reportes-contenido'))";
+
+  document.getElementById('reportes-topbar-extra').innerHTML =
+    '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Desde</label>'
+    + '<input type="date" id="rep-nc-desde" value="' + desdeVal + '" max="' + hoy + '" onchange="' + re + '" style="' + _REP_NC_SEL + '"></div>'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Hasta</label>'
+    + '<input type="date" id="rep-nc-hasta" value="' + hastaVal + '" max="' + hoy + '" onchange="' + re + '" style="' + _REP_NC_SEL + '"></div>'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Moneda</label>'
+    + '<select id="rep-nc-moneda" onchange="' + re + '" style="' + _REP_NC_SEL + '">'
+    + ['VES','USD'].map(function(m){ return '<option value="'+m+'"' + (monedaVal===m?' selected':'') + '>'+m+'</option>'; }).join('')
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Filtro</label>'
+    + '<button id="rep-filtros-toggle-btn" onclick="repToggleFiltros()" style="' + _REP_NC_SEL + ';cursor:pointer">' + (_repFiltrosVisibles?'Ocultar':'Mostrar') + '</button></div>'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Formato</label>'
+    + '<select id="rep-nc-formato" style="' + _REP_NC_SEL + '">'
+    + '<option value="pdf"' + (formatoVal==='pdf'?' selected':'') + '>PDF</option>'
+    + '<option value="excel"' + (formatoVal==='excel'?' selected':'') + '>Excel (.xlsx)</option>'
+    + '<option value="csv"' + (formatoVal==='csv'?' selected':'') + '>CSV</option>'
+    + '</select></div>'
+    + '<div><label style="display:block;font-size:10px;color:transparent;margin-bottom:2px">.</label>'
+    + '<button class="btn-secundario" onclick="repNotasCreditoExportar()" style="height:35px;box-sizing:border-box">⬇ Exportar</button></div>';
+
+  const opt = function(v, lbl, sel) { return '<option value="' + v + '"' + (sel===v?' selected':'') + '>' + lbl + '</option>'; };
+  cont.innerHTML =
+    '<div style="padding:16px 24px">'
+    + '<div id="rep-filtros-extra" style="display:' + (_repFiltrosVisibles?'flex':'none') + ';gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--borde)">'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Estado</label><select id="rep-nc-estado" onchange="' + re + '" style="' + _REP_NC_SEL + '">'
+      + opt('', 'Todos', estadoVal) + opt('APROBADA', 'Aprobada', estadoVal) + opt('PENDIENTE', 'Pendiente', estadoVal) + opt('RECHAZADA', 'Rechazada', estadoVal) + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Tipo</label><select id="rep-nc-tipo" onchange="' + re + '" style="' + _REP_NC_SEL + '">'
+      + opt('', 'Todos', tipoVal) + opt('REVERSO', 'Reverso', tipoVal) + opt('DEVOLUCION', 'Devolución de mercancía', tipoVal) + opt('ERROR_FACTURA', 'Error en la factura', tipoVal) + opt('GARANTIA_SERVICIO', 'Garantía de servicio', tipoVal) + '</select></div>'
+    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Destino</label><select id="rep-nc-destino" onchange="' + re + '" style="' + _REP_NC_SEL + '">'
+      + opt('', 'Todos', destinoVal) + opt('REBAJA_CXC', 'Rebaja de la deuda', destinoVal) + opt('REEMBOLSO', 'Reembolso al cliente', destinoVal) + opt('SALDO_FAVOR', 'Saldo a favor', destinoVal) + '</select></div>'
+    + '<button onclick="repNotasCreditoLimpiarFiltros()" title="Limpiar filtros" style="background:#dc2626;border:1px solid #dc2626;color:#fff;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:16px;line-height:1;height:35px;box-sizing:border-box">🗑</button>'
+    + '</div>'
+    + '<div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">'
+    + ['Notas de Crédito|rep-nc-cant', 'Monto Aprobado|rep-nc-aprob', 'Monto Pendiente|rep-nc-pend', 'Reembolsos|rep-nc-reemb'].map(function(x) {
+        const p = x.split('|');
+        return '<div style="flex:1;min-width:160px;background:var(--gris2);border-radius:8px;padding:10px 16px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">' + p[0] + '</div>'
+          + '<div id="' + p[1] + '" style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">0</div></div>';
+      }).join('')
+    + '</div>'
+    + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 420px))"><table style="min-width:1000px;border-collapse:collapse;white-space:nowrap">'
+    + '<thead><tr id="rep-nc-thead-row"></tr></thead>'
+    + '<tbody id="rep-nc-tbody"><tr><td colspan="9" style="text-align:center;color:var(--suave);padding:32px">Cargando...</td></tr></tbody>'
+    + '</table></div></div>';
+
+  let ncs = [];
+  try {
+    let q = '?fecha_emision=gte.' + desdeVal + '&fecha_emision=lte.' + hastaVal + '&order=fecha_emision.asc,id_nc.asc'
+      + '&select=id_nc,numero_nc,fecha_emision,tipo,destino,total_usd,total_ves,tasa_bcv,estado,motivo,id_usuario,aprobado_por,numero_factura_ref,facturas(receptor_nombre)'
+      + (_empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : '');
+    if (estadoVal) q += '&estado=eq.' + estadoVal;
+    if (tipoVal) q += '&tipo=eq.' + tipoVal;
+    if (destinoVal) q += '&destino=eq.' + destinoVal + '&tipo=neq.REVERSO';
+    ncs = await api('notas_credito','GET',null, q) || [];
+  } catch(e) { console.warn('Error cargando Notas de Crédito:', e); }
+
+  const TIPO_TXT = { REVERSO: 'Reverso', DEVOLUCION: 'Devolución', ERROR_FACTURA: 'Error en factura', GARANTIA_SERVICIO: 'Garantía servicio' };
+  const DEST_TXT = { REBAJA_CXC: 'Rebaja deuda', REEMBOLSO: 'Reembolso', SALDO_FAVOR: 'Saldo a favor' };
+  const EST_TXT = { APROBADA: 'Aprobada', PENDIENTE: 'Pendiente', RECHAZADA: 'Rechazada' };
+  let aprob = 0, pend = 0, reemb = 0;
+  const filas = ncs.map(function(n) {
+    const monto = monedaVal === 'VES' ? parseFloat(n.total_ves || (n.total_usd * n.tasa_bcv) || 0) : parseFloat(n.total_usd || 0);
+    if (n.estado === 'APROBADA') { aprob += monto; if (n.destino === 'REEMBOLSO' && n.tipo !== 'REVERSO') reemb += monto; }
+    if (n.estado === 'PENDIENTE') pend += monto;
+    return {
+      fecha: n.fecha_emision, numero: n.numero_nc, factura: n.numero_factura_ref || '',
+      cliente: (n.facturas && n.facturas.receptor_nombre) || '—',
+      tipo: TIPO_TXT[n.tipo] || n.tipo, destino: n.tipo === 'REVERSO' ? '—' : (DEST_TXT[n.destino] || n.destino || ''),
+      motivo: n.motivo || '', monto: monto, estado: EST_TXT[n.estado] || n.estado, aprobadoPor: n.aprobado_por || ''
+    };
+  });
+  const fmtM = function(v) { return monedaVal === 'VES' ? fmtBs(v) + ' Bs' : '$ ' + fmtUSD(v); };
+  document.getElementById('rep-nc-cant').textContent = filas.length.toLocaleString('es-VE');
+  document.getElementById('rep-nc-aprob').textContent = fmtM(aprob);
+  document.getElementById('rep-nc-pend').textContent = fmtM(pend);
+  document.getElementById('rep-nc-reemb').textContent = fmtM(reemb);
+
+  const fil = [];
+  if (estadoVal) fil.push('Estado: ' + (EST_TXT[estadoVal] || estadoVal));
+  if (tipoVal) fil.push('Tipo: ' + (TIPO_TXT[tipoVal] || tipoVal));
+  if (destinoVal) fil.push('Destino: ' + (DEST_TXT[destinoVal] || destinoVal));
+  window._reporteNCActual = { monedaVal, desdeVal, hastaVal, filas,
+    filtrosTexto: fil.length ? fil.join('   |   ') : 'Sin filtros adicionales',
+    resumen: 'Notas de Crédito: ' + filas.length + '   |   Aprobado: ' + fmtM(aprob) + '   |   Pendiente: ' + fmtM(pend) + '   |   Reembolsos: ' + fmtM(reemb) };
+  _repNCRenderTabla();
+}
+
+let _repNCOrdenCol = null, _repNCOrdenAsc = true;
+const REP_NC_COLUMNAS = [
+  { campo: 'fecha',    tipo: 'texto',  label: 'Fecha' },
+  { campo: 'numero',   tipo: 'texto',  label: 'N° NC' },
+  { campo: 'factura',  tipo: 'texto',  label: 'Factura' },
+  { campo: 'cliente',  tipo: 'texto',  label: 'Cliente' },
+  { campo: 'tipo',     tipo: 'texto',  label: 'Tipo' },
+  { campo: 'destino',  tipo: 'texto',  label: 'Destino' },
+  { campo: 'monto',    tipo: 'numero', label: 'Monto' },
+  { campo: 'estado',   tipo: 'texto',  label: 'Estado' },
+  { campo: 'aprobadoPor', tipo: 'texto', label: 'Aprobada / Rechazada por' },
+];
+function repNotasCreditoOrdenar(campo) {
+  if (_repNCOrdenCol === campo) _repNCOrdenAsc = !_repNCOrdenAsc; else { _repNCOrdenCol = campo; _repNCOrdenAsc = true; }
+  _repNCRenderTabla();
+}
+function _repNCRenderTabla() {
+  const d = window._reporteNCActual; if (!d) return;
+  document.getElementById('rep-nc-thead-row').innerHTML = REP_NC_COLUMNAS.map(function(c) {
+    const al = c.tipo === 'numero' ? 'text-align:right' : (c.campo === 'estado' ? 'text-align:center' : 'text-align:left');
+    const fl = _repNCOrdenCol === c.campo ? (_repNCOrdenAsc ? ' ▲' : ' ▼') : '';
+    return '<th style="' + al + ';cursor:pointer;user-select:none" onclick="repNotasCreditoOrdenar(\'' + c.campo + '\')" title="Ordenar">' + c.label + fl + '</th>';
+  }).join('');
+  let filas = d.filas.slice();
+  if (_repNCOrdenCol) {
+    const cd = REP_NC_COLUMNAS.find(function(c){ return c.campo === _repNCOrdenCol; });
+    filas.sort(function(a, b) {
+      const va = a[_repNCOrdenCol], vb = b[_repNCOrdenCol];
+      const cmp = cd.tipo === 'texto' ? String(va).localeCompare(String(vb), 'es', { sensitivity: 'base' }) : va - vb;
+      return _repNCOrdenAsc ? cmp : -cmp;
+    });
+  }
+  const badge = { Aprobada: 'badge-verde', Pendiente: 'badge-naranja', Rechazada: 'badge-rojo' };
+  document.getElementById('rep-nc-tbody').innerHTML = filas.map(function(f) {
+    return '<tr>'
+      + '<td style="font-family:var(--font-mono);font-size:14px">' + fmtFecha(f.fecha) + '</td>'
+      + '<td style="font-family:var(--font-mono);font-size:13px;color:var(--naranja)">' + escapeHtml(f.numero) + '</td>'
+      + '<td style="font-family:var(--font-mono);font-size:13px;color:var(--suave)">' + escapeHtml(f.factura) + '</td>'
+      + '<td style="font-size:14px">' + escapeHtml(f.cliente) + '</td>'
+      + '<td style="font-size:13px">' + escapeHtml(f.tipo) + '</td>'
+      + '<td style="font-size:13px;color:var(--suave)">' + escapeHtml(f.destino) + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono);color:var(--naranja);font-weight:600;font-size:14px">' + (d.monedaVal === 'VES' ? fmtBs(f.monto) : fmtUSD(f.monto)) + '</td>'
+      + '<td style="text-align:center"><span class="badge ' + (badge[f.estado] || 'badge-gris') + '">' + escapeHtml(f.estado) + '</span></td>'
+      + '<td style="font-size:12px;color:var(--suave)">' + escapeHtml(f.aprobadoPor) + '</td>'
+      + '</tr>';
+  }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--suave);padding:32px">No hay Notas de Crédito en el rango seleccionado</td></tr>';
+}
+
+async function repNotasCreditoExportar() {
+  await repNotasCreditoRender(document.getElementById('reportes-contenido'));
+  const d = window._reporteNCActual; if (!d) return;
+  const formato = document.getElementById('rep-nc-formato')?.value || 'pdf';
+  const enc = ['Fecha','N° NC','Factura','Cliente','Tipo','Destino','Monto (' + d.monedaVal + ')','Estado','Aprobada / Rechazada por','Motivo'];
+  const fmtMoneda = d.monedaVal === 'VES' ? fmtBs : fmtUSD;
+  const filaBase = function(f, monto) { return [fmtFecha(f.fecha), f.numero, f.factura, f.cliente, f.tipo, f.destino, monto, f.estado, f.aprobadoPor, f.motivo]; };
+  const nombre = 'reporte_notas_credito_' + d.desdeVal + '_a_' + d.hastaVal + '_' + d.monedaVal;
+  const cab = [['Reporte de Notas de Crédito'], ['Del ' + d.desdeVal + ' al ' + d.hastaVal + '   |   Moneda: ' + d.monedaVal], ['Filtros: ' + d.filtrosTexto], [d.resumen]];
+  if (formato === 'csv') {
+    const filas = cab.concat([[], enc]).concat(d.filas.map(function(f){ return filaBase(f, fmtMoneda(f.monto)); }));
+    const csv = filas.map(function(r){ return r.map(function(v){ return '"' + String(v).replace(/"/g,'""') + '"'; }).join(','); }).join('\n');
+    const url = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a'); a.href = url; a.download = nombre + '.csv'; a.click(); URL.revokeObjectURL(url);
+  } else if (formato === 'excel') {
+    if (typeof XLSX === 'undefined') { alert('No se pudo cargar el generador de Excel. Verifica tu conexión e intenta de nuevo.'); return; }
+    const hoja = XLSX.utils.aoa_to_sheet(cab.concat([enc]).concat(d.filas.map(function(f){ return filaBase(f, f.monto); })));
+    hoja['!cols'] = [ {wch:12}, {wch:10}, {wch:16}, {wch:28}, {wch:16}, {wch:14}, {wch:16}, {wch:12}, {wch:26}, {wch:40} ];
+    for (let i = 0; i < d.filas.length; i++) {
+      const ref = XLSX.utils.encode_cell({ r: cab.length + 1 + i, c: 6 });
+      if (hoja[ref]) { hoja[ref].z = '#,##0.00'; hoja[ref].t = 'n'; }
+    }
+    const libro = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(libro, hoja, 'Notas de Crédito');
+    XLSX.writeFile(libro, nombre + '.xlsx', { cellStyles: true });
+  } else {
+    if (typeof window.jspdf === 'undefined') { alert('No se pudo cargar el generador de PDF. Verifica tu conexión e intenta de nuevo.'); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+    doc.setFontSize(14); doc.text('Reporte de Notas de Crédito', 14, 15);
+    doc.setFontSize(9);
+    doc.text(cab[1][0], 14, 21); doc.text(cab[2][0], 14, 26); doc.text(d.resumen, 14, 31);
+    doc.autoTable({ head: [enc.slice(0, 9)], body: d.filas.map(function(f){ return filaBase(f, fmtMoneda(f.monto)).slice(0, 9); }), startY: 36,
+      styles: { fontSize: 8 }, headStyles: { fillColor: [255, 107, 0], halign: 'center' }, columnStyles: { 6: { halign: 'right' }, 7: { halign: 'center' } } });
+    doc.save(nombre + '.pdf');
+  }
 }
