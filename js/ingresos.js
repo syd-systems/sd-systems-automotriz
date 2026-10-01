@@ -176,6 +176,7 @@ async function renderFacturas() {
       + Object.entries(ESTADOS_FAC).map(function(e) { return '<option value="' + e[0] + '">' + e[1].label + '</option>'; }).join('')
       + '</select>'
       + '<input type="text" id="fac-buscar" placeholder="Buscar N° factura, cliente..." oninput="buscarFac(this.value)" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 12px;border-radius:5px;outline:none;width:200px">'
+      + ((puedo('FACTURAS','VER') || puedo('FACTURAS','APROBAR_NC')) ? '<button class="btn-secundario" onclick="abrirListadoNC()">📄 Notas de Crédito</button>' : '')
       + (puedo('FACTURAS','CREAR') ? '<button class="btn-primario" onclick="abrirNuevaFactura()">+ Nueva Factura<span id="badge-os-cerradas-fac"></span></button>' : '')
       + '</div></div>'
       + '<div class="tabla-container"><table id="fac-tabla"><thead><tr>'
@@ -1669,7 +1670,11 @@ function htmlSeccionNotasCredito(ncs, soloLectura) {
                 ? '<div style="color:var(--naranja);font-weight:600">📦 Mercancía pendiente de recibir en almacén: ' + (Math.round(pend * 100) / 100) + ' ud.</div>'
                 : '<div>📦 Mercancía recibida por el almacén</div>';
             })();
-        return '<tr><td style="padding:6px 0;font-family:var(--font-mono);color:var(--naranja);font-weight:600;vertical-align:top">' + escapeHtml(n.numero_nc) + '</td>'
+        const puedeVerNC = puedo('FACTURAS','VER') || puedo('FACTURAS','APROBAR_NC');
+        return '<tr><td style="padding:6px 0;font-family:var(--font-mono);color:var(--naranja);font-weight:600;vertical-align:top">'
+          + (puedeVerNC ? '<a href="#" onclick="verFichaNC(' + parseInt(n.id_nc) + ');return false" style="color:var(--naranja)">' + escapeHtml(n.numero_nc) + '</a>'
+              + '<div><a href="#" onclick="descargarPDFNotaCredito(' + parseInt(n.id_nc) + ');return false" style="font-size:10px;color:var(--suave)">📄 PDF</a></div>'
+            : escapeHtml(n.numero_nc)) + '</td>'
           + '<td style="padding:6px;vertical-align:top">' + fmtFecha(n.fecha_emision) + '</td>'
           + '<td style="padding:6px;vertical-align:top">' + escapeHtml(n.tipo === 'REVERSO' ? TIPOS_NC.REVERSO : 'Nota de Crédito (reembolso) · ' + (TIPOS_NC[n.tipo] || n.tipo)) + '<div style="font-size:10px;color:var(--suave)">' + detalle + '</div></td>'
           + '<td style="padding:6px;text-align:right;font-family:var(--font-mono);vertical-align:top">$ ' + fmtUSD(n.total_usd) + '</td>'
@@ -2013,4 +2018,233 @@ async function abrirOrigenDeFactura(idFactura) {
   } else {
     alert('No tiene acceso a esta factura.');
   }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// ETAPA 4 · LISTADO, FICHA y PDF DE NOTAS DE CRÉDITO
+// ══════════════════════════════════════════════════════════════
+let _ncListaCache = [];
+const NC_SELECT_LISTA = 'id_nc,numero_nc,fecha_emision,tipo,destino,subtotal_usd,iva_usd,total_usd,total_ves,tasa_bcv,estado,motivo,motivo_rechazo,id_usuario,aprobado_por,fecha_aprobacion,id_factura,numero_factura_ref,id_cliente';
+
+function _tipoNCTexto(n) {
+  return n.tipo === 'REVERSO' ? 'Nota de Crédito (reverso)' : 'Nota de Crédito (reembolso) · ' + (TIPOS_NC[n.tipo] || n.tipo);
+}
+
+async function abrirListadoNC() {
+  const cont = document.getElementById('lista-nc-contenido');
+  const hoy = getHoyVzla();
+  const desde = hoy.substring(0, 8) + '01';
+  cont.innerHTML =
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave)">Desde</label><input type="date" id="nc-l-desde" value="' + desde + '" onchange="_ncListaCargar()"></div>'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave)">Hasta</label><input type="date" id="nc-l-hasta" value="' + hoy + '" onchange="_ncListaCargar()"></div>'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave)">Estado</label><select id="nc-l-estado" onchange="_ncListaRender()"><option value="">Todos</option>'
+      + Object.keys(ESTADOS_NC).map(function(k) { return '<option value="' + k + '">' + ESTADOS_NC[k].label + '</option>'; }).join('') + '</select></div>'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave)">Tipo</label><select id="nc-l-tipo" onchange="_ncListaRender()"><option value="">Todos</option>'
+      + '<option value="REVERSO">Reverso</option><option value="DEVOLUCION">Devolución de mercancía</option><option value="ERROR_FACTURA">Error en la factura</option><option value="GARANTIA_SERVICIO">Garantía de servicio</option></select></div>'
+    + '<div style="flex:1;min-width:180px"><label style="display:block;font-size:10px;color:var(--suave)">Buscar</label><input type="text" id="nc-l-buscar" placeholder="N° NC, factura o cliente..." oninput="_ncListaRender()" style="width:100%"></div>'
+    + '</div>'
+    + '<div id="nc-l-resumen" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:14px"></div>'
+    + '<div class="tabla-container"><table style="width:100%"><thead><tr>'
+    + '<th>N° / Fecha</th><th>Factura</th><th>Cliente</th><th>Tipo</th><th style="text-align:right">Monto</th><th>Estado</th><th>Acción</th>'
+    + '</tr></thead><tbody id="nc-l-tbody"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--suave)">Cargando...</td></tr></tbody></table></div>';
+  abrirModal('modal-lista-nc');
+  await _ncListaCargar();
+}
+
+async function _ncListaCargar() {
+  const desde = document.getElementById('nc-l-desde').value, hasta = document.getElementById('nc-l-hasta').value;
+  try {
+    _ncListaCache = await api('notas_credito','GET',null,'?order=id_nc.desc&select=' + NC_SELECT_LISTA + ',facturas(receptor_nombre,receptor_rif)'
+      + (desde ? '&fecha_emision=gte.' + desde : '') + (hasta ? '&fecha_emision=lte.' + hasta : '') + emisorQ()) || [];
+  } catch(e) {
+    _ncListaCache = [];
+    document.getElementById('nc-l-tbody').innerHTML = '<tr><td colspan="7" style="color:#fc8181;padding:16px">Error: ' + escapeHtml(msgErr(e)) + '</td></tr>';
+    return;
+  }
+  _ncListaRender();
+}
+
+function _ncListaRender() {
+  const est = document.getElementById('nc-l-estado').value, tipo = document.getElementById('nc-l-tipo').value;
+  const q = (document.getElementById('nc-l-buscar').value || '').toLowerCase().trim();
+  const filas = _ncListaCache.filter(function(n) {
+    if (est && n.estado !== est) return false;
+    if (tipo && n.tipo !== tipo) return false;
+    if (q) {
+      const txt = [n.numero_nc, n.numero_factura_ref, n.facturas && n.facturas.receptor_nombre, n.facturas && n.facturas.receptor_rif].join(' ').toLowerCase();
+      if (txt.indexOf(q) === -1) return false;
+    }
+    return true;
+  });
+  const cuenta = { PENDIENTE: 0, APROBADA: 0, RECHAZADA: 0 }; let montoAprob = 0;
+  filas.forEach(function(n) { cuenta[n.estado] = (cuenta[n.estado] || 0) + 1; if (n.estado === 'APROBADA') montoAprob += parseFloat(n.total_usd || 0); });
+  const tarjeta = function(lbl, val) { return '<div class="tarjeta-stat" style="padding:12px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">' + lbl + '</div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + val + '</div></div>'; };
+  document.getElementById('nc-l-resumen').innerHTML = tarjeta('Pendientes', cuenta.PENDIENTE) + tarjeta('Aprobadas', cuenta.APROBADA) + tarjeta('Rechazadas', cuenta.RECHAZADA)
+    + (puedo('FACTURAS','VER_TOTALES') ? tarjeta('Monto aprobado', '$ ' + fmtUSD(montoAprob)) : '');
+  document.getElementById('nc-l-tbody').innerHTML = filas.map(function(n) {
+    const e = ESTADOS_NC[n.estado] || { clase: 'badge-gris', label: n.estado };
+    return '<tr>'
+      + '<td><div style="font-family:var(--font-mono);color:var(--naranja);font-weight:600">' + escapeHtml(n.numero_nc) + '</div><div style="font-size:11px;color:var(--suave)">' + fmtFecha(n.fecha_emision) + '</div></td>'
+      + '<td style="font-family:var(--font-mono);font-size:12px">' + escapeHtml(n.numero_factura_ref || '—') + '</td>'
+      + '<td style="font-size:12px">' + escapeHtml((n.facturas && n.facturas.receptor_nombre) || '—') + '</td>'
+      + '<td style="font-size:12px">' + escapeHtml(n.tipo === 'REVERSO' ? 'Reverso' : (TIPOS_NC[n.tipo] || n.tipo).replace(/ \(.*\)$/, '')) + (n.tipo !== 'REVERSO' ? '<div style="font-size:10px;color:var(--suave)">' + escapeHtml(DESTINOS_NC[n.destino] || '') + '</div>' : '') + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono);font-size:12px">' + (puedo('FACTURAS','VER_TOTALES') ? fmtBs(n.total_ves) + ' Bs<div style="font-size:10px;color:var(--suave)">$ ' + fmtUSD(n.total_usd) + '</div>' : '🔒') + '</td>'
+      + '<td><span class="badge ' + e.clase + '">' + e.label + '</span></td>'
+      + '<td style="white-space:nowrap"><button class="btn-naranja" onclick="verFichaNC(' + parseInt(n.id_nc) + ')">Ver</button> '
+      + '<button class="btn-secundario" title="Descargar PDF" onclick="descargarPDFNotaCredito(' + parseInt(n.id_nc) + ')">📄</button></td>'
+      + '</tr>';
+  }).join('') || '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--suave)">No hay Notas de Crédito en el rango seleccionado</td></tr>';
+}
+
+// Carga completa de una NC: cabecera, líneas, factura y empresa
+async function _cargarNCCompleta(idNC) {
+  const [ncs, det] = await Promise.all([
+    api('notas_credito','GET',null,'?id_nc=eq.' + parseInt(idNC) + '&select=*'),
+    api('notas_credito_detalle','GET',null,'?id_nc=eq.' + parseInt(idNC) + '&select=*&order=id_nc_detalle.asc')
+  ]);
+  const n = ncs && ncs[0];
+  if (!n) throw new Error('Nota de Crédito no encontrada.');
+  let f = null;
+  try {
+    const fr = await api('facturas','GET',null,'?id_factura=eq.' + n.id_factura + '&select=numero_factura,fecha_emision,receptor_nombre,receptor_rif,receptor_direccion,moneda_cobro,emisores(*)');
+    f = fr && fr[0];
+  } catch(eF) { f = null; }
+  return { n: n, det: det || [], f: f };
+}
+
+async function verFichaNC(idNC) {
+  try {
+    const d = await _cargarNCCompleta(idNC);
+    const n = d.n, f = d.f || {}, emisor = f.emisores;
+    const t = parseFloat(n.tasa_bcv || 1);
+    const e = ESTADOS_NC[n.estado] || { clase: 'badge-gris', label: n.estado };
+    const verTot = puedo('FACTURAS','VER_TOTALES');
+    const dual = function(usd, tam) {
+      return '<div style="font-family:var(--font-mono);' + (tam ? 'font-size:' + tam + ';color:var(--naranja)' : '') + '">' + fmtBs(usd * t) + ' Bs</div>'
+        + '<div style="font-family:var(--font-mono);font-size:10px;color:var(--suave)">$ ' + fmtUSD(usd) + '</div>';
+    };
+    const lineas = d.det.map(function(l) {
+      return '<tr><td style="padding:6px 0;font-size:12px">' + escapeHtml(l.descripcion || '—') + '</td>'
+        + '<td style="text-align:center"><span class="badge badge-gris" style="font-size:11px">' + (l.tipo_linea === 'SERVICIO' ? 'Serv.' : 'Rep.') + '</span></td>'
+        + '<td style="text-align:center;font-family:var(--font-mono);font-size:12px">' + parseFloat(l.cantidad) + '</td>'
+        + '<td style="text-align:right;font-size:12px">' + (verTot ? dual(parseFloat(l.precio_usd || 0)) : '🔒') + '</td>'
+        + '<td style="text-align:right;font-size:12px">' + (verTot ? dual(parseFloat(l.subtotal_usd || 0)) : '🔒') + '</td></tr>';
+    }).join('');
+    document.getElementById('ficha-nc-contenido').innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px">'
+      + '<div><div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + escapeHtml(n.numero_nc) + '</div>'
+      + '<span class="badge ' + e.clase + '">' + e.label + '</span>'
+      + '<div style="font-size:11px;color:var(--suave);margin-top:4px">Fecha: ' + fmtFecha(n.fecha_emision) + '</div>'
+      + '<div style="font-size:12px;margin-top:4px">Factura afectada: <a href="#" onclick="cerrarModal(\'modal-ficha-nc\');verFichaFactura(' + parseInt(n.id_factura) + ');return false" style="color:var(--naranja);font-weight:600">' + escapeHtml(n.numero_factura_ref || '') + '</a>'
+        + (f.fecha_emision ? ' <span style="color:var(--suave)">del ' + fmtFecha(f.fecha_emision) + '</span>' : '') + '</div></div>'
+      + (verTot ? '<div style="text-align:right"><div style="font-size:12px;font-weight:700;text-transform:uppercase">Total</div>' + dual(parseFloat(n.total_usd || 0), '26px')
+          + '<div style="font-size:10px;color:#555;margin-top:3px">Tasa BCV Bs/Usd de la factura: ' + formatearTasaVE(t) + '</div></div>' : '')
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">'
+      + (emisor ? '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px"><div style="font-size:12px;font-weight:700;text-transform:uppercase;margin-bottom:4px">Empresa</div><div style="font-weight:600">' + escapeHtml(emisor.nombre) + '</div><div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + escapeHtml(emisor.rif || '') + '</div></div>' : '<div></div>')
+      + '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px"><div style="font-size:12px;font-weight:700;text-transform:uppercase;margin-bottom:4px">Cliente</div><div style="font-weight:600">' + escapeHtml(f.receptor_nombre || '—') + '</div>'
+        + (f.receptor_rif ? '<div style="font-size:11px;color:var(--suave);font-family:var(--font-mono)">' + escapeHtml(f.receptor_rif) + '</div>' : '') + '</div>'
+      + '</div>'
+      + '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-bottom:14px;font-size:13px;display:flex;flex-direction:column;gap:6px">'
+      + '<div>Tipo: <strong>' + escapeHtml(_tipoNCTexto(n)) + '</strong></div>'
+      + (n.tipo !== 'REVERSO' ? '<div>Destino: <strong>' + escapeHtml(DESTINOS_NC[n.destino] || n.destino) + '</strong></div>' : '')
+      + '<div>Motivo: ' + escapeHtml(n.motivo || '—') + '</div>'
+      + (n.observaciones ? '<div>Observaciones: ' + escapeHtml(n.observaciones) + '</div>' : '')
+      + '<div style="font-size:11px;color:var(--suave)">Solicitada por: ' + escapeHtml(n.id_usuario || '—')
+        + (n.aprobado_por ? ' · ' + (n.estado === 'RECHAZADA' ? 'Rechazada' : 'Aprobada') + ' por: ' + escapeHtml(n.aprobado_por) + (n.fecha_aprobacion ? ' el ' + fmtFechaHoraVzla(n.fecha_aprobacion) : '') : '') + '</div>'
+      + (n.estado === 'RECHAZADA' && n.motivo_rechazo ? '<div style="color:#fc8181">Motivo del rechazo: ' + escapeHtml(n.motivo_rechazo) + '</div>' : '')
+      + '</div>'
+      + '<div style="font-size:12px;font-weight:700;text-transform:uppercase;margin-bottom:8px">Detalle</div>'
+      + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+      + '<th style="text-align:left;font-size:10px;color:var(--suave)">DESCRIPCIÓN</th><th style="font-size:10px;color:var(--suave)">TIPO</th><th style="font-size:10px;color:var(--suave)">CANT</th><th style="text-align:right;font-size:10px;color:var(--suave)">P/U</th><th style="text-align:right;font-size:10px;color:var(--suave)">SUBTOTAL</th>'
+      + '</tr></thead><tbody>' + (lineas || '<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--suave)">Sin líneas</td></tr>') + '</tbody></table></div>'
+      + (verTot ? '<div style="background:var(--gris2);border-radius:6px;padding:12px 16px;margin-top:14px;display:flex;flex-direction:column;gap:8px;font-size:12px">'
+          + '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">Subtotal</span><div style="text-align:right">' + dual(parseFloat(n.subtotal_usd || 0)) + '</div></div>'
+          + (parseFloat(n.iva_usd || 0) > 0 ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--suave)">IVA</span><div style="text-align:right">' + dual(parseFloat(n.iva_usd || 0)) + '</div></div>' : '')
+          + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:8px;font-weight:600"><span>Total</span><div style="text-align:right">' + dual(parseFloat(n.total_usd || 0), '13px') + '</div></div>'
+          + '</div>' : '');
+
+    const bFac = document.getElementById('ficha-nc-btn-factura');
+    bFac.style.display = puedo('FACTURAS','VER') ? '' : 'none';
+    bFac.onclick = function() { cerrarModal('modal-ficha-nc'); verFichaFactura(n.id_factura); };
+    const decidir = n.estado === 'PENDIENTE' && puedo('FACTURAS','APROBAR_NC');
+    const bAp = document.getElementById('ficha-nc-btn-aprobar'), bRe = document.getElementById('ficha-nc-btn-rechazar');
+    bAp.style.display = decidir ? '' : 'none'; bRe.style.display = decidir ? '' : 'none';
+    bAp.onclick = async function() { await aprobarNotaCredito(n.id_nc, n.numero_nc, n.tipo, n.destino, this); cerrarModal('modal-ficha-nc'); _ncListaRefrescarSiAbierto(); };
+    bRe.onclick = async function() { await rechazarNotaCredito(n.id_nc, n.numero_nc, this); cerrarModal('modal-ficha-nc'); _ncListaRefrescarSiAbierto(); };
+    document.getElementById('ficha-nc-btn-pdf').onclick = function() { descargarPDFNotaCredito(n.id_nc); };
+    abrirModal('modal-ficha-nc');
+  } catch(e) { alert('Error: ' + msgErr(e)); }
+}
+
+function _ncListaRefrescarSiAbierto() {
+  const m = document.getElementById('modal-lista-nc');
+  if (m && m.classList.contains('abierto') && document.getElementById('nc-l-desde')) _ncListaCargar();
+}
+
+// PDF de la Nota de Crédito: comprobante interno (sin validez fiscal)
+async function descargarPDFNotaCredito(idNC) {
+  if (typeof window.jspdf === 'undefined') { alert('No se pudo cargar el generador de PDF. Verifica tu conexión e intenta de nuevo.'); return; }
+  try {
+    const d = await _cargarNCCompleta(idNC);
+    const n = d.n, f = d.f || {}, emisor = f.emisores || {};
+    const t = parseFloat(n.tasa_bcv || 1);
+    const bs = function(usd) { return fmtBs(usd * t) + ' Bs'; };
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'letter' });
+    const W = doc.internal.pageSize.getWidth();
+    let y = 16;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+    doc.text(emisor.nombre || 'S&D Systems', 14, y);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+    if (emisor.rif) doc.text('RIF: ' + emisor.rif, 14, y + 5);
+    if (emisor.direccion) doc.text(doc.splitTextToSize(emisor.direccion, 110), 14, y + 10);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(255, 107, 0);
+    doc.text('NOTA DE CRÉDITO', W - 14, y, { align: 'right' });
+    doc.setTextColor(0); doc.setFontSize(12);
+    doc.text(n.numero_nc, W - 14, y + 7, { align: 'right' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+    doc.text('Fecha: ' + fmtFecha(n.fecha_emision), W - 14, y + 12, { align: 'right' });
+    doc.text('Estado: ' + ((ESTADOS_NC[n.estado] || {}).label || n.estado), W - 14, y + 17, { align: 'right' });
+    y = 42;
+    doc.setDrawColor(255, 107, 0); doc.line(14, y, W - 14, y); y += 7;
+    doc.setFont('helvetica', 'bold'); doc.text('Cliente:', 14, y); doc.setFont('helvetica', 'normal');
+    doc.text((f.receptor_nombre || '—') + (f.receptor_rif ? '   RIF/C.I.: ' + f.receptor_rif : ''), 34, y); y += 5;
+    if (f.receptor_direccion) { doc.text(doc.splitTextToSize(f.receptor_direccion, W - 48), 34, y); y += 5; }
+    doc.setFont('helvetica', 'bold'); doc.text('Factura afectada:', 14, y); doc.setFont('helvetica', 'normal');
+    doc.text((n.numero_factura_ref || '') + (f.fecha_emision ? ' de fecha ' + fmtFecha(f.fecha_emision) : ''), 46, y); y += 5;
+    doc.setFont('helvetica', 'bold'); doc.text('Tipo:', 14, y); doc.setFont('helvetica', 'normal');
+    doc.text(_tipoNCTexto(n) + (n.tipo !== 'REVERSO' ? ' — ' + (DESTINOS_NC[n.destino] || n.destino) : ''), 26, y); y += 5;
+    doc.setFont('helvetica', 'bold'); doc.text('Motivo:', 14, y); doc.setFont('helvetica', 'normal');
+    const mot = doc.splitTextToSize(n.motivo || '—', W - 44); doc.text(mot, 30, y); y += 5 * mot.length + 2;
+    doc.autoTable({
+      startY: y,
+      head: [['Descripción', 'Cant.', 'P/U (Bs)', 'Subtotal (Bs)', 'Subtotal ($)']],
+      body: d.det.map(function(l) {
+        return [l.descripcion || '—', String(parseFloat(l.cantidad)), fmtBs(parseFloat(l.precio_usd || 0) * t), fmtBs(parseFloat(l.subtotal_usd || 0) * t), fmtUSD(parseFloat(l.subtotal_usd || 0))];
+      }),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [255, 107, 0], halign: 'center' },
+      columnStyles: { 1: { halign: 'center' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
+    });
+    y = doc.lastAutoTable.finalY + 6;
+    const fila = function(lbl, usd, negrita) {
+      doc.setFont('helvetica', negrita ? 'bold' : 'normal');
+      doc.text(lbl, W - 125, y); doc.text(bs(usd), W - 40, y, { align: 'right' }); doc.text('$ ' + fmtUSD(usd), W - 14, y, { align: 'right' }); y += 5;
+    };
+    fila('Subtotal', parseFloat(n.subtotal_usd || 0));
+    if (parseFloat(n.iva_usd || 0) > 0) fila('IVA', parseFloat(n.iva_usd || 0));
+    fila('Total Nota de Crédito', parseFloat(n.total_usd || 0), true);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+    doc.text('Tasa BCV Bs/Usd de la factura: ' + formatearTasaVE(t), W - 14, y, { align: 'right' }); y += 14;
+    doc.setFontSize(9);
+    doc.line(20, y, 85, y); doc.line(W - 85, y, W - 20, y);
+    doc.text('Elaborado por: ' + (n.id_usuario || ''), 20, y + 4);
+    doc.text((n.estado === 'RECHAZADA' ? 'Rechazado' : 'Aprobado') + ' por: ' + (n.aprobado_por || '________________'), W - 85, y + 4);
+    doc.setFontSize(8); doc.setTextColor(120);
+    doc.text('Comprobante interno — Documento sin validez fiscal.', W / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+    doc.save(n.numero_nc + '_' + (n.numero_factura_ref || '') + '.pdf');
+  } catch(e) { alert('Error generando el PDF: ' + msgErr(e)); }
 }

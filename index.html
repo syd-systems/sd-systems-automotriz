@@ -1591,19 +1591,19 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="js/core.js?v=20260909241"></script>
-<script src="js/parametros.js?v=20260909241"></script>
-<script src="js/empresas.js?v=20260909241"></script>
-<script src="js/ingresos.js?v=20260909241"></script>
-<script src="js/inventario.js?v=20260909241"></script>
-<script src="js/proveedores.js?v=20260909241"></script>
-<script src="js/ventas.js?v=20260909241"></script>
-<script src="js/contabilidad.js?v=20260909241"></script>
-<script src="js/egresos.js?v=20260909241"></script>
-<script src="js/vehiculos.js?v=20260909241"></script>
-<script src="js/catalogo.js?v=20260909241"></script>
-<script src="js/ordenes.js?v=20260909241"></script>
-<script src="js/reportes.js?v=20260909241"></script>
+<script src="js/core.js?v=20260909242"></script>
+<script src="js/parametros.js?v=20260909242"></script>
+<script src="js/empresas.js?v=20260909242"></script>
+<script src="js/ingresos.js?v=20260909242"></script>
+<script src="js/inventario.js?v=20260909242"></script>
+<script src="js/proveedores.js?v=20260909242"></script>
+<script src="js/ventas.js?v=20260909242"></script>
+<script src="js/contabilidad.js?v=20260909242"></script>
+<script src="js/egresos.js?v=20260909242"></script>
+<script src="js/vehiculos.js?v=20260909242"></script>
+<script src="js/catalogo.js?v=20260909242"></script>
+<script src="js/ordenes.js?v=20260909242"></script>
+<script src="js/reportes.js?v=20260909242"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=_onTurnstileListo" async defer></script>
 
 <!-- ═══════════════════════════════════════ -->
@@ -3389,6 +3389,42 @@
       <button class="btn-secundario" id="ficha-fac-btn-reverso" style="display:none;color:var(--naranja);border-color:rgba(255,107,0,0.5)">↩ Nota de Crédito (reverso)</button>
       <button class="btn-secundario" id="ficha-fac-btn-nc"      style="display:none;color:var(--naranja);border-color:rgba(255,107,0,0.5)">↩ Nota de Crédito (reembolso)</button>
       <button class="btn-primario"   id="ficha-fac-btn-pago"    style="display:none">💰 Registrar Cobro</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL LISTADO NOTAS DE CRÉDITO       -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-lista-nc">
+  <div class="modal" style="max-width:1100px">
+    <div class="modal-header">
+      <h3>NOTAS DE CRÉDITO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-lista-nc')">✕</button>
+    </div>
+    <div class="modal-body" id="lista-nc-contenido"></div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-lista-nc')">Retornar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!--    MODAL FICHA NOTA DE CRÉDITO          -->
+<!-- ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-ficha-nc">
+  <div class="modal" style="max-width:820px">
+    <div class="modal-header">
+      <h3>NOTA DE CRÉDITO</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-nc')">✕</button>
+    </div>
+    <div class="modal-body" id="ficha-nc-contenido"></div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-nc')">Retornar</button>
+      <button class="btn-secundario" id="ficha-nc-btn-factura" style="display:none">🧾 Ver Factura</button>
+      <button class="btn-secundario" id="ficha-nc-btn-rechazar" style="display:none;color:#fc8181;border-color:rgba(252,129,129,0.5)">✕ Rechazar</button>
+      <button class="btn-primario"   id="ficha-nc-btn-aprobar" style="display:none">✓ Aprobar</button>
+      <button class="btn-naranja"    id="ficha-nc-btn-pdf">📄 Descargar PDF</button>
     </div>
   </div>
 </div>
