@@ -153,14 +153,14 @@ async function renderFacturas() {
         + '</tr>';
     }).join('');
     c.innerHTML =
-      '<div style="display:flex;flex-wrap:nowrap;gap:6px;margin-bottom:16px;overflow-x:auto">'
+      '<div style="display:grid;grid-template-columns:repeat(' + (Object.keys(ESTADOS_FAC).length + 1) + ',minmax(86px,1fr));gap:6px;margin-bottom:16px;overflow-x:auto">'
       + Object.entries(ESTADOS_FAC).map(function(entry) {
-          return '<div class="tarjeta-stat" style="padding:6px 8px;flex:1 1 auto">'
-            + '<div style="font-size:9px;color:var(--suave);letter-spacing:0;text-transform:uppercase;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + entry[1].label + '">' + entry[1].label + '</div>'
+          return '<div class="tarjeta-stat" style="padding:6px 8px;min-width:0">'
+            + '<div style="font-size:9px;color:var(--suave);letter-spacing:0;text-transform:uppercase;margin-bottom:2px;line-height:1.15" title="' + entry[1].label + '">' + entry[1].label + '</div>'
             + '<div style="font-family:var(--font-display);font-size:15px;color:var(--naranja)">' + (resumen[entry[0]]||0) + '</div>'
             + '</div>';
         }).join('')
-      + '<div class="tarjeta-stat" style="padding:6px 8px;flex:1 1 auto"><div style="font-size:9px;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:2px">Total</div>'
+      + '<div class="tarjeta-stat" style="padding:6px 8px;min-width:0"><div style="font-size:9px;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:2px">Total</div>'
       + '<div style="font-family:var(--font-display);font-size:15px;color:var(--naranja)">' + facturas.length + '</div></div></div>'
       + '<div class="panel"><div class="panel-header" style="flex-wrap:wrap;gap:10px">'
       + '<h3 style="white-space:nowrap">Facturas</h3>'
