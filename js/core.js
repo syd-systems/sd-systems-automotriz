@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909240';
+const SYD_VERSION = '20260909241';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3074,6 +3074,8 @@ let _notifPendienteActual = null;
 let _notifEsEntradaSinResolver = false;
 let _notifEntradaInfo = null; // { id_entrada, id_articulo, nombre_articulo }
 let _notifNC = null; // Nota de Crédito por aprobar: { id_nc, numero_nc, tipo }
+let _notifFacManual = null; // Factura manual por aprobar: { id_factura, numero_factura }
+let _notifIrPagos = false;  // Reembolso a cliente por pagar: el botón lleva a Pagos
 
 async function verificarNotificacionesPendientes() {
   if (window._suprimirCheckNotifUnaVez) { window._suprimirCheckNotifUnaVez = false; return; }
@@ -3093,6 +3095,8 @@ async function mostrarNotifPendiente(notif) {
   _notifEsEntradaSinResolver = false;
   _notifEntradaInfo = null;
   _notifNC = null;
+  _notifFacManual = null;
+  _notifIrPagos = false;
   const lista = document.getElementById('notif-pendiente-lista');
   if (!lista) return;
   lista.innerHTML =
@@ -3181,49 +3185,120 @@ async function mostrarNotifPendiente(notif) {
     } catch(eChkEnt2) { console.warn('Error verificando estado de Entrada:', eChkEnt2); }
   }
 
-  // ── Nota de Crédito por aprobar: mismo formato que la Orden de Compra
-  // (detalle + Aprobar / Rechazar en la misma notificación). Si ya fue
-  // decidida por otro aprobador, queda como aviso normal ("Ver Factura").
-  if (accionNotif === 'ver_factura' && extrasNotif && extrasNotif.id_nc && puedo('FACTURAS','APROBAR_NC')) {
+  // ── Notas de Crédito: mismo formato que la Orden de Compra.
+  //    a) Por aprobar (aprobador): detalle + Aprobar / Rechazar. Si otro
+  //       aprobador ya la decidió, queda como aviso normal ("Ver Factura").
+  //    b) Aprobada / Rechazada (solicitante): detalle + resultado.
+  const numNCMsg = ((notif.mensaje || '').match(/\bNC-\d+\b/) || [])[0] || null;
+  const esResultadoNC = !!numNCMsg && /(aprobada|rechazada)/i.test(notif.titulo || '') && /nota de cr[ée]dito/i.test(notif.titulo || '');
+  if (accionNotif === 'ver_factura' && extrasNotif && extrasNotif.id_factura
+      && ((extrasNotif.id_nc && puedo('FACTURAS','APROBAR_NC')) || esResultadoNC)) {
     try {
       const d = await api('rpc/datos_nc_factura','POST',{ p_id_factura: extrasNotif.id_factura });
       const f = d && d.factura;
-      const n = d && (d.ncs || []).find(function(x) { return x.id_nc === extrasNotif.id_nc; });
-      if (f && n && n.estado === 'PENDIENTE') {
-        const esRev = n.tipo === 'REVERSO';
-        let area = null, nombre = null;
-        try {
-          const [aRows, nRows] = await Promise.all([
-            rpc('obtener_area_por_correo', { p_correo: n.id_usuario }),
-            rpc('obtener_nombres_por_correos', { p_correos: [n.id_usuario] })
-          ]);
-          area = aRows && aRows[0]; nombre = nRows && nRows[0] && nRows[0].nombre_completo;
-        } catch(eSol) {}
-        const tasaNC = parseFloat(f.tasa_bcv || 1), totUSD = parseFloat(n.total_usd || 0);
-        const TIPO_NC_TXT = { DEVOLUCION: 'Devolución de mercancía', ERROR_FACTURA: 'Error en la factura', GARANTIA_SERVICIO: 'Garantía de servicio' };
-        const DEST_NC_TXT = { REEMBOLSO: 'Reembolso al cliente', SALDO_FAVOR: 'Saldo a favor del cliente', REBAJA_CXC: 'Rebaja de la deuda del cliente' };
-        const MONTO_NC_TXT = { REEMBOLSO: 'MONTO A REEMBOLSAR', SALDO_FAVOR: 'SALDO A FAVOR DEL CLIENTE', REBAJA_CXC: 'MONTO A REBAJAR DE LA DEUDA' };
-        lista.innerHTML =
-          '<div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:16px;margin-bottom:12px;font-size:13px;color:var(--texto)">'
-          + '<div style="font-size:12px;color:var(--suave);margin-bottom:8px">' + fmtFechaHoraVzla(notif.fecha_creacion) + '</div>'
-          + '<div style="font-size:11px;color:var(--suave)">'
-            + (area ? escapeHtml(area.nombre) + (area.codigo ? ' (' + escapeHtml(area.codigo) + ')' : '') + ' - ' : '')
-            + escapeHtml(nombre || n.id_usuario || '') + '</div>'
-          + '<div style="margin-top:8px">Cliente: <strong>' + escapeHtml(f.receptor_nombre || '—') + '</strong></div>'
-          + '<div style="margin-top:8px">Ref: ' + escapeHtml(n.numero_nc) + ' · Factura ' + escapeHtml(f.numero_factura) + '</div>'
-          + '<div style="margin-top:8px">Tipo: <strong>' + (esRev ? 'Reverso de la factura' : escapeHtml(TIPO_NC_TXT[n.tipo] || n.tipo)) + '</strong></div>'
-          + (esRev ? '' : '<div style="margin-top:8px">Destino: <strong>' + escapeHtml(DEST_NC_TXT[n.destino] || n.destino) + '</strong></div>')
-          + (n.motivo ? '<div style="margin-top:8px">Motivo: ' + escapeHtml(n.motivo) + '</div>' : '')
-          + '<div style="margin-top:14px"><div style="font-size:10px;color:var(--suave)">' + (esRev ? 'MONTO A REVERSAR' : (MONTO_NC_TXT[n.destino] || 'MONTO')) + '</div>'
-          + '<div style="font-weight:700;color:var(--naranja);font-size:16px">Bs ' + fmtBs(totUSD * tasaNC) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a $ ' + fmtUSD(totUSD) + ')</span></div></div>'
-          + '</div>';
+      const n = d && (d.ncs || []).find(function(x) { return extrasNotif.id_nc ? x.id_nc === extrasNotif.id_nc : x.numero_nc === numNCMsg; });
+      const esRev = n && n.tipo === 'REVERSO';
+      if (f && n && extrasNotif.id_nc && n.estado === 'PENDIENTE' && puedo('FACTURAS','APROBAR_NC')) {
+        lista.innerHTML = await _htmlTarjetaNotifNC(notif, f, n, n.id_usuario, '');
         _notifNC = { id_nc: n.id_nc, numero_nc: n.numero_nc, tipo: n.tipo };
         cfgNotif = { titulo: '🧾 Nota de Crédito (' + (esRev ? 'reverso' : 'reembolso') + ')',
                      instruccion: 'Revise el detalle e indique si Aprueba o Rechaza esta Nota de Crédito.', boton: '✓ Aprobar' };
         if (btnRechazarEnt) btnRechazarEnt.style.display = '';
         if (btnVerDespues) btnVerDespues.style.display = 'none';
+      } else if (f && n && esResultadoNC && (n.estado === 'APROBADA' || n.estado === 'RECHAZADA')) {
+        const aprobada = n.estado === 'APROBADA';
+        const msg = notif.mensaje || '';
+        const quien = ((msg.match(/por\s+(\S+@\S+?)\.(?:\s|$)/) || [])[1]) || null;
+        // Lo que pasó después de aprobarla (texto del servidor, tras el correo del aprobador)
+        const consecuencia = aprobada && quien ? msg.slice(msg.indexOf(quien) + quien.length).replace(/^\.\s*/, '').trim() : '';
+        const extra = aprobada
+          ? (consecuencia ? '<div style="font-size:12px;color:#38a169;margin-top:10px;padding-top:8px;border-top:1px solid var(--borde)">✓ ' + escapeHtml(consecuencia) + '</div>' : '')
+          : '<div style="font-size:12px;color:#e53e3e;margin-top:10px;padding-top:8px;border-top:1px solid var(--borde)">Motivo del rechazo: ' + escapeHtml(n.motivo_rechazo || '—') + '</div>';
+        lista.innerHTML = await _htmlTarjetaNotifNC(notif, f, n, quien, extra, aprobada ? 'Aprobada por' : 'Rechazada por');
+        cfgNotif = { titulo: (aprobada ? '✅' : '❌') + ' Nota de Crédito (' + (esRev ? 'reverso' : 'reembolso') + ') ' + (aprobada ? 'Aprobada' : 'Rechazada'),
+                     instruccion: aprobada ? 'La Nota de Crédito quedó registrada.' : 'Revise el motivo; si corresponde, puede solicitar una nueva Nota de Crédito.',
+                     boton: 'Ver Factura' };
+        if (btnVerDespues) btnVerDespues.style.display = 'none';
       }
     } catch(eNC) { console.warn('Error cargando la Nota de Crédito:', eNC); }
+  }
+
+  // ── Factura manual: por aprobar (aprobador) / aprobada o rechazada (quien la creó)
+  const tituloN = notif.titulo || '';
+  if (accionNotif === 'ver_factura' && extrasNotif && extrasNotif.id_factura && !_notifNC && /^Factura manual/i.test(tituloN)) {
+    try {
+      const fr = await api('facturas','GET',null,'?id_factura=eq.' + extrasNotif.id_factura
+        + '&select=id_factura,numero_factura,receptor_nombre,receptor_rif,total_usd,tasa_bcv,estado,motivo_rechazo,id_usuario,aprobado_por,observaciones');
+      const f = fr && fr[0];
+      if (f) {
+        const porAprobar = /por aprobar/i.test(tituloN);
+        if (porAprobar && f.estado === 'POR_APROBAR' && puedo('FACTURAS','APROBAR')) {
+          lista.innerHTML = await _htmlTarjetaNotifFactura(notif, f, f.id_usuario, 'Solicitado por', 'MONTO A FACTURAR', '');
+          _notifFacManual = { id_factura: f.id_factura, numero_factura: f.numero_factura };
+          cfgNotif = { titulo: '🧾 Factura Manual por Aprobar', instruccion: 'Revise el detalle e indique si Aprueba (y emite) o Rechaza esta Factura.', boton: '✓ Aprobar y Emitir' };
+          if (btnRechazarEnt) btnRechazarEnt.style.display = '';
+          if (btnVerDespues) btnVerDespues.style.display = 'none';
+        } else {
+          const rechazada = /rechazada/i.test(tituloN);
+          const quien = ((( notif.mensaje || '').match(/por\s+(\S+@\S+?)\.(?:\s|$)/) || [])[1]) || (rechazada ? null : f.aprobado_por);
+          const extra = porAprobar
+            ? '<div style="font-size:12px;color:var(--suave);margin-top:10px;padding-top:8px;border-top:1px solid var(--borde)">Esta factura ya fue decidida (estado actual: ' + escapeHtml((ESTADOS_FAC[f.estado] || {}).label || f.estado) + ').</div>'
+            : (rechazada
+                ? '<div style="font-size:12px;color:#e53e3e;margin-top:10px;padding-top:8px;border-top:1px solid var(--borde)">Motivo del rechazo: ' + escapeHtml(f.motivo_rechazo || (((notif.mensaje || '').match(/Motivo:\s*(.*)$/) || [])[1]) || '—') + '</div>'
+                : '<div style="font-size:12px;color:#38a169;margin-top:10px;padding-top:8px;border-top:1px solid var(--borde)">✓ La factura fue emitida y quedó por cobrar.</div>');
+          lista.innerHTML = await _htmlTarjetaNotifFactura(notif, f, porAprobar ? f.id_usuario : quien,
+            porAprobar ? 'Solicitado por' : (rechazada ? 'Rechazada por' : 'Aprobada por'), rechazada || porAprobar ? 'MONTO A FACTURAR' : 'MONTO FACTURADO', extra);
+          cfgNotif = { titulo: porAprobar ? '🧾 Factura Manual por Aprobar' : (rechazada ? '❌ Factura Manual Rechazada' : '✅ Factura Manual Aprobada'),
+                       instruccion: rechazada ? 'La factura volvió a Borrador: corríjala y vuelva a solicitar la aprobación.' : '',
+                       boton: 'Ver Factura' };
+          if (btnVerDespues) btnVerDespues.style.display = 'none';
+        }
+      }
+    } catch(eFM) { console.warn('Error cargando la factura manual:', eFM); }
+  }
+
+  // ── Reembolso a cliente por pagar (módulo de Pagos)
+  if (accionNotif === 'registrar_pago' && extrasNotif && extrasNotif.id_cxp && /reembolso/i.test(tituloN)) {
+    try {
+      const cr = await api('cont_cxp','GET',null,'?id_cxp=eq.' + extrasNotif.id_cxp
+        + '&select=id_cxp,numero_doc,beneficiario,concepto,observaciones,moneda_pago,monto_usd,monto_ves,estado,aprobado_por,esquema_pago');
+      const c = cr && cr[0];
+      if (c) {
+        let area = null, nombre = null;
+        if (c.aprobado_por) {
+          try {
+            const [aRows, nRows] = await Promise.all([
+              rpc('obtener_area_por_correo', { p_correo: c.aprobado_por }),
+              rpc('obtener_nombres_por_correos', { p_correos: [c.aprobado_por] })
+            ]);
+            area = aRows && aRows[0]; nombre = nRows && nRows[0] && nRows[0].nombre_completo;
+          } catch(eAp) {}
+        }
+        const enUSD = (c.moneda_pago || '').toUpperCase() === 'USD';
+        const refFactura = ((c.concepto || '').match(/Factura\s+([A-Z]+-\d{4}-\d+)/) || [])[1];
+        lista.innerHTML =
+          '<div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:16px;margin-bottom:12px;font-size:13px;color:var(--texto)">'
+          + '<div style="font-size:12px;color:var(--suave);margin-bottom:8px">' + fmtFechaHoraVzla(notif.fecha_creacion) + '</div>'
+          + (c.aprobado_por ? '<div style="font-size:11px;color:var(--suave)">Aprobado por: '
+              + (area ? escapeHtml(area.nombre) + (area.codigo ? ' (' + escapeHtml(area.codigo) + ')' : '') + ' - ' : '')
+              + escapeHtml(nombre || c.aprobado_por) + '</div>' : '')
+          + '<div style="margin-top:8px">Beneficiario: <strong>' + escapeHtml(c.beneficiario || '—') + '</strong> (cliente)</div>'
+          + '<div style="margin-top:8px">Ref: ' + escapeHtml(c.numero_doc || ('CXP-' + c.id_cxp)) + (refFactura ? ' · Factura ' + escapeHtml(refFactura) : '') + '</div>'
+          + '<div style="display:flex;gap:24px;margin-top:12px;flex-wrap:wrap">'
+          + '<div>Moneda de Pago: <strong>' + (enUSD ? 'Dólares' : 'Bolívares') + '</strong></div>'
+          + '<div>Modalidad de Pago: <strong>Contado</strong></div>'
+          + '</div>'
+          + (c.observaciones ? '<div style="margin-top:8px">Motivo: ' + escapeHtml(c.observaciones) + '</div>' : '')
+          + '<div style="margin-top:14px"><div style="font-size:10px;color:var(--suave)">MONTO A PAGAR</div>'
+          + (enUSD
+              ? '<div style="font-weight:700;color:var(--naranja);font-size:16px">$ ' + fmtUSD(c.monto_usd) + ' <span style="font-weight:400;color:var(--suave)">(mismo día de la venta)</span></div>'
+              : '<div style="font-weight:700;color:var(--naranja);font-size:16px">Bs ' + fmtBs(c.monto_ves) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a $ ' + fmtUSD(c.monto_usd) + ')</span></div>')
+          + '</div></div>';
+        _notifIrPagos = true;
+        cfgNotif = { titulo: '💸 Reembolso a Cliente por Pagar', instruccion: 'Registre el pago del reembolso en el módulo de Pagos.', boton: 'Ir a Pagos' };
+        if (btnVerDespues) btnVerDespues.style.display = '';
+      }
+    } catch(eRe) { console.warn('Error cargando el reembolso:', eRe); }
   }
 
   if (titEl) titEl.textContent = cfgNotif.titulo;
@@ -3233,9 +3308,57 @@ async function mostrarNotifPendiente(notif) {
   document.getElementById('modal-notif-pendiente').style.display = 'flex';
 }
 
+// Tarjeta de una Nota de Crédito en la notificación (mismo formato que la
+// Orden de Compra). persona: correo del solicitante o de quien la decidió.
+async function _htmlTarjetaNotifNC(notif, f, n, persona, extraHtml, etiquetaPersona) {
+  let area = null, nombre = null;
+  if (persona) {
+    try {
+      const [aRows, nRows] = await Promise.all([
+        rpc('obtener_area_por_correo', { p_correo: persona }),
+        rpc('obtener_nombres_por_correos', { p_correos: [persona] })
+      ]);
+      area = aRows && aRows[0]; nombre = nRows && nRows[0] && nRows[0].nombre_completo;
+    } catch(eSol) {}
+  }
+  const esRev = n.tipo === 'REVERSO';
+  const tasaNC = parseFloat(f.tasa_bcv || 1), totUSD = parseFloat(n.total_usd || 0);
+  const TIPO_NC_TXT = { DEVOLUCION: 'Devolución de mercancía', ERROR_FACTURA: 'Error en la factura', GARANTIA_SERVICIO: 'Garantía de servicio' };
+  const DEST_NC_TXT = { REEMBOLSO: 'Reembolso al cliente', SALDO_FAVOR: 'Saldo a favor del cliente', REBAJA_CXC: 'Rebaja de la deuda del cliente' };
+  const pend = n.estado === 'PENDIENTE';
+  const MONTO_NC_TXT = pend
+    ? { REEMBOLSO: 'MONTO A REEMBOLSAR', SALDO_FAVOR: 'SALDO A FAVOR DEL CLIENTE', REBAJA_CXC: 'MONTO A REBAJAR DE LA DEUDA' }
+    : { REEMBOLSO: 'MONTO DEL REEMBOLSO', SALDO_FAVOR: 'SALDO A FAVOR DEL CLIENTE', REBAJA_CXC: 'MONTO REBAJADO DE LA DEUDA' };
+  const lblMonto = esRev ? (pend || n.estado === 'RECHAZADA' ? 'MONTO A REVERSAR' : 'MONTO REVERSADO') : (MONTO_NC_TXT[n.destino] || 'MONTO');
+  return '<div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:16px;margin-bottom:12px;font-size:13px;color:var(--texto)">'
+    + '<div style="font-size:12px;color:var(--suave);margin-bottom:8px">' + fmtFechaHoraVzla(notif.fecha_creacion) + '</div>'
+    + (persona ? '<div style="font-size:11px;color:var(--suave)">' + (etiquetaPersona ? escapeHtml(etiquetaPersona) + ': ' : '')
+        + (area ? escapeHtml(area.nombre) + (area.codigo ? ' (' + escapeHtml(area.codigo) + ')' : '') + ' - ' : '')
+        + escapeHtml(nombre || persona) + '</div>' : '')
+    + '<div style="margin-top:8px">Cliente: <strong>' + escapeHtml(f.receptor_nombre || '—') + '</strong></div>'
+    + '<div style="margin-top:8px">Ref: ' + escapeHtml(n.numero_nc) + ' · Factura ' + escapeHtml(f.numero_factura) + '</div>'
+    + '<div style="margin-top:8px">Tipo: <strong>' + (esRev ? 'Reverso de la factura' : escapeHtml(TIPO_NC_TXT[n.tipo] || n.tipo)) + '</strong></div>'
+    + (esRev ? '' : '<div style="margin-top:8px">Destino: <strong>' + escapeHtml(DEST_NC_TXT[n.destino] || n.destino) + '</strong></div>')
+    + (n.motivo ? '<div style="margin-top:8px">Motivo: ' + escapeHtml(n.motivo) + '</div>' : '')
+    + '<div style="margin-top:14px"><div style="font-size:10px;color:var(--suave)">' + lblMonto + '</div>'
+    + '<div style="font-weight:700;color:var(--naranja);font-size:16px">Bs ' + fmtBs(totUSD * tasaNC) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a $ ' + fmtUSD(totUSD) + ')</span></div></div>'
+    + (extraHtml || '')
+    + '</div>';
+}
+
 async function notifConfirmar() {
   if (!_notifPendienteActual) return;
   if (_notifNC) { await notifDecidirNC(true); return; }
+  if (_notifFacManual) { await notifDecidirFacturaManual(true); return; }
+  if (_notifIrPagos) {
+    const idN = _notifPendienteActual.id;
+    try { await api('notificaciones','PATCH', { estado: 'APROBADO', fecha_respuesta: ahoraVzla() }, '?id=eq.' + idN); } catch(eN) {}
+    document.getElementById('modal-notif-pendiente').style.display = 'none';
+    _notifPendienteActual = null; _notifIrPagos = false;
+    window._suprimirCheckNotifUnaVez = true;
+    mostrarModulo('pagos', document.getElementById('nav-PAGOS'));
+    return;
+  }
 
   // ── Caso especial: Entrada de Stock rechazada, todavía sin resolver ──
   // No se marca como leída -- solo navega a corregirla. Volverá a aparecer
@@ -3469,6 +3592,7 @@ async function mostrarAvisoOk(mensaje, esError) {
 async function notifRechazarOrdenCompra() {
   if (!_notifPendienteActual) return;
   if (_notifNC) { await notifDecidirNC(false); return; }
+  if (_notifFacManual) { await notifDecidirFacturaManual(false); return; }
   const extras = _notifPendienteActual.datos_extra
     ? (typeof _notifPendienteActual.datos_extra === 'string'
         ? JSON.parse(_notifPendienteActual.datos_extra)
@@ -3493,6 +3617,61 @@ async function notifRechazarOrdenCompra() {
   } catch(eNotifRechCierre) { console.warn('Error cerrando notificación de aprobación:', eNotifRechCierre); }
   await verificarNotificacionesPendientes();
   mostrarModulo('pagos', document.getElementById('nav-PAGOS'));
+}
+
+// Aprobar (y emitir) / Rechazar una factura manual desde la notificación.
+// Reutiliza emitirFactura / rechazarFacturaManual (ingresos.js); la
+// notificación se cierra solo si la factura realmente cambió de estado.
+async function notifDecidirFacturaManual(aprobar) {
+  const fm = _notifFacManual, idNotif = _notifPendienteActual && _notifPendienteActual.id;
+  if (!fm || !idNotif) return;
+  const modal = document.getElementById('modal-notif-pendiente');
+  const btn = document.getElementById(aprobar ? 'btn-notif-confirmar' : 'btn-notif-rechazar-orden');
+  modal.style.display = 'none';
+  try {
+    if (aprobar) await emitirFactura(fm.id_factura);
+    else await rechazarFacturaManual(fm.id_factura, btn);
+    const fr = await api('facturas','GET',null,'?id_factura=eq.' + fm.id_factura + '&select=estado');
+    const estado = fr && fr[0] && fr[0].estado;
+    if (estado && estado !== 'POR_APROBAR') {
+      try { await api('notificaciones','PATCH', { estado: 'APROBADO', fecha_respuesta: ahoraVzla() }, '?id=eq.' + idNotif); } catch(eN) {}
+      _notifPendienteActual = null; _notifFacManual = null;
+      await verificarNotificacionesPendientes();
+      mostrarModulo('facturas', document.getElementById('nav-FACTURAS'));
+    } else {
+      modal.style.display = 'flex';
+    }
+  } catch(e) {
+    modal.style.display = 'flex';
+    alert('Error: ' + msgErr(e));
+  }
+}
+
+// Tarjeta de una factura manual en la notificación (mismo formato que la Orden de Compra)
+async function _htmlTarjetaNotifFactura(notif, f, persona, etiquetaPersona, lblMonto, extraHtml) {
+  let area = null, nombre = null;
+  if (persona) {
+    try {
+      const [aRows, nRows] = await Promise.all([
+        rpc('obtener_area_por_correo', { p_correo: persona }),
+        rpc('obtener_nombres_por_correos', { p_correos: [persona] })
+      ]);
+      area = aRows && aRows[0]; nombre = nRows && nRows[0] && nRows[0].nombre_completo;
+    } catch(eSol) {}
+  }
+  const totUSD = parseFloat(f.total_usd || 0), tasa = parseFloat(f.tasa_bcv || 1);
+  return '<div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:16px;margin-bottom:12px;font-size:13px;color:var(--texto)">'
+    + '<div style="font-size:12px;color:var(--suave);margin-bottom:8px">' + fmtFechaHoraVzla(notif.fecha_creacion) + '</div>'
+    + (persona ? '<div style="font-size:11px;color:var(--suave)">' + escapeHtml(etiquetaPersona) + ': '
+        + (area ? escapeHtml(area.nombre) + (area.codigo ? ' (' + escapeHtml(area.codigo) + ')' : '') + ' - ' : '')
+        + escapeHtml(nombre || persona) + '</div>' : '')
+    + '<div style="margin-top:8px">Cliente: <strong>' + escapeHtml(f.receptor_nombre || '—') + '</strong>' + (f.receptor_rif ? ' — ' + escapeHtml(f.receptor_rif) : '') + '</div>'
+    + '<div style="margin-top:8px">Ref: ' + escapeHtml(f.numero_factura || '—') + ' · Factura manual</div>'
+    + (f.observaciones ? '<div style="margin-top:8px">Concepto: ' + escapeHtml(f.observaciones) + '</div>' : '')
+    + '<div style="margin-top:14px"><div style="font-size:10px;color:var(--suave)">' + lblMonto + '</div>'
+    + '<div style="font-weight:700;color:var(--naranja);font-size:16px">Bs ' + fmtBs(totUSD * tasa) + ' <span style="font-weight:400;color:var(--suave)">(equivalente a $ ' + fmtUSD(totUSD) + ')</span></div></div>'
+    + (extraHtml || '')
+    + '</div>';
 }
 
 // Aprobar / Rechazar una Nota de Crédito desde la notificación. El servidor
