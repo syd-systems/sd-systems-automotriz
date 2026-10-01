@@ -342,7 +342,8 @@ async function renderVentasListado() {
     const filas = _ventasFilasHtml(_ventasOrdenar(ventas));
 
     c.innerHTML =
-      htmlContadores(['PRESUPUESTO','FACTURADA','ANULADA'].map(function(e) { return htmlContadorItem(ESTADO_LABEL_VENTA[e], stats[e], { id: 'vta-stat-' + e }); }), 'vta-stats')
+      htmlContadores(['PRESUPUESTO','FACTURADA'].map(function(e) { return htmlContadorItem(ESTADO_LABEL_VENTA[e], stats[e], { id: 'vta-stat-' + e }); })
+        .concat([htmlContadorItem('NC (rev/reemb)', '…', { id: 'vta-stat-NC' })]), 'vta-stats')
       + '<div class="panel">'
       + '<div class="panel-header" style="flex-wrap:wrap;gap:10px">'
       + '<h3 style="white-space:nowrap">Ventas</h3>'
@@ -381,6 +382,7 @@ async function renderVentasListado() {
     // Aplica el filtro inicial (fecha de hoy) apenas se pinta la tabla, para
     // que los contadores y la lista arranquen ya acotados al día.
     filtrarTablaVentas();
+    _cargarNCVentas();
   } catch(err) {
     c.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: ' + err.message + '</div>';
   }
@@ -537,6 +539,31 @@ function _entregaLimpiarFiltroHistorico() {
 // inventario.js), donde lo ejecuta el Custodio de la Mercancía. Esta
 // pestaña de Ventas queda como consulta de solo lectura para el vendedor.
 
+// Contador "NC (rev/reemb)": Notas de Crédito APROBADAS sobre facturas de
+// Venta, por fecha de la NC (mismo rango Desde/Hasta que los otros
+// contadores). Se muestra "reversos / reembolsos".
+let _ncVentasCache = null;
+async function _cargarNCVentas() {
+  try { _ncVentasCache = await api('rpc/listar_nc_ventas','POST',{ p_id_empresa: _empresaActiva ? _empresaActiva.id_empresa : 0 }) || []; }
+  catch(e) { _ncVentasCache = null; }
+  _actualizarContadorNCVentas();
+}
+function _actualizarContadorNCVentas() {
+  const el = document.getElementById('vta-stat-NC');
+  if (!el) return;
+  if (!_ncVentasCache) { el.textContent = '—'; return; }
+  const desde = document.getElementById('vta-filtro-desde')?.value || '';
+  const hasta = document.getElementById('vta-filtro-hasta')?.value || '';
+  let rev = 0, reemb = 0;
+  _ncVentasCache.forEach(function(n) {
+    const f = String(n.fecha_emision || '').substring(0, 10);
+    if ((desde && f < desde) || (hasta && f > hasta)) return;
+    if (n.tipo === 'REVERSO') rev++; else reemb++;
+  });
+  el.textContent = rev + ' / ' + reemb;
+  el.parentNode.title = 'Notas de Crédito aprobadas en el rango: ' + rev + ' de reverso y ' + reemb + ' de reembolso';
+}
+
 function filtrarTablaVentas() {
   const estado = document.getElementById('vta-filtro-estado')?.value || '';
   const categoria = document.getElementById('vta-filtro-categoria')?.value || '';
@@ -547,7 +574,7 @@ function filtrarTablaVentas() {
   const tbody  = document.getElementById('vta-tbody');
   if (!tbody) return;
 
-  // Los contadores (Presupuesto/Facturada/Anulada) responden SOLO al rango
+  // Los contadores (Presupuesto/Facturada/NC) responden SOLO al rango
   // de fechas -- no al resto de filtros (Estado, Categoría, Cliente), para
   // que siga teniendo sentido comparar los 3 conteos entre sí.
   const statsRango = { PRESUPUESTO: 0, FACTURADA: 0, ANULADA: 0 };
@@ -560,6 +587,7 @@ function filtrarTablaVentas() {
     const statEl = document.getElementById('vta-stat-' + e);
     if (statEl) statEl.textContent = statsRango[e];
   });
+  _actualizarContadorNCVentas();
 
   Array.from(tbody.querySelectorAll('tr[data-id]')).forEach(function(tr) {
     const vId = parseInt(tr.dataset.id);
