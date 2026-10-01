@@ -18,7 +18,7 @@ let facturasCache = [];
 // (reverso) -> REVERSADA; una con cobros, con la Nota de Crédito (reembolso).
 // Facturas antiguas en estado APROBADA se muestran como "Por cobrar".
 const ESTADOS_FAC = {
-  'BORRADOR': { clase: 'badge-gris',    label: 'Por emitir'    },
+  'BORRADOR': { clase: 'badge-gris',    label: 'Por facturar'    },
   'POR_APROBAR': { clase: 'badge-naranja', label: 'Por aprobar' },
   'EMITIDA':  { clase: 'badge-rojo',    label: 'Por cobrar'    },
   'PARCIAL':  { clase: 'badge-naranja', label: 'Cobro parcial' },
@@ -1408,11 +1408,11 @@ async function verFichaFactura(id) {
 
 async function abrirEditarFactura(id) {
   const f = facturasCache.find(function(x){return x.id_factura===id;});
-  if (!f||f.estado!=='BORRADOR') { alert('Solo se pueden editar facturas Por emitir.'); return; }
+  if (!f||f.estado!=='BORRADOR') { alert('Solo se pueden editar facturas en estado Por facturar.'); return; }
   await abrirNuevaFactura();
   setTimeout(async function() {
     document.getElementById('fac-id').value=''+f.id_factura;
-    document.getElementById('fac-numero').textContent=f.numero_factura||'Por emitir';
+    document.getElementById('fac-numero').textContent=f.numero_factura||'Por facturar';
     document.getElementById('fac-emisor').value=f.id_empresa||'';
     document.getElementById('fac-fecha').value=f.fecha_emision||getHoyVzla();
     document.getElementById('fac-estado').value=f.estado;
@@ -1425,7 +1425,7 @@ async function abrirEditarFactura(id) {
     document.getElementById('fac-aplica-iva').checked=!!f.aplica_iva;
     document.getElementById('fac-aplica-igtf').checked=!!f.aplica_igtf;
     document.getElementById('fac-observaciones').value=f.observaciones||'';
-    document.getElementById('modal-fac-titulo').textContent='EDITAR FACTURA — '+(f.numero_factura||'Por emitir');
+    document.getElementById('modal-fac-titulo').textContent='EDITAR FACTURA — '+(f.numero_factura||'Por facturar');
     // Solo visibilidad -- NO se debe pisar el IVA/IGTF real que ya se
     // guardó, con el default de "cambio de moneda manual".
     actualizarVisibilidadMonedaFactura();
@@ -1890,7 +1890,7 @@ async function solicitarAprobacionFactura(id, btn) {
 }
 
 async function rechazarFacturaManual(id, btn) {
-  const motivo = await pedirMotivo('RECHAZAR FACTURA MANUAL', 'La factura vuelve a Por emitir y se notifica a quien la creó.', '✕ Rechazar');
+  const motivo = await pedirMotivo('RECHAZAR FACTURA MANUAL', 'La factura vuelve a Por facturar y se notifica a quien la creó.', '✕ Rechazar');
   if (!motivo) return;
   btnSetGuardando(btn, true, null, 'Procesando...');
   try {
