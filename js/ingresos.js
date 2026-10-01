@@ -18,7 +18,7 @@ let facturasCache = [];
 // (reverso) -> REVERSADA; una con cobros, con la Nota de Crédito (reembolso).
 // Facturas antiguas en estado APROBADA se muestran como "Por cobrar".
 const ESTADOS_FAC = {
-  'BORRADOR': { clase: 'badge-gris',    label: 'Borrador'      },
+  'BORRADOR': { clase: 'badge-gris',    label: 'Por emitir'    },
   'POR_APROBAR': { clase: 'badge-naranja', label: 'Por aprobar' },
   'EMITIDA':  { clase: 'badge-rojo',    label: 'Por cobrar'    },
   'PARCIAL':  { clase: 'badge-naranja', label: 'Cobro parcial' },
@@ -153,15 +153,15 @@ async function renderFacturas() {
         + '</tr>';
     }).join('');
     c.innerHTML =
-      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:24px">'
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px;margin-bottom:16px">'
       + Object.entries(ESTADOS_FAC).map(function(entry) {
-          return '<div class="tarjeta-stat" style="padding:16px">'
-            + '<div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">' + entry[1].label + '</div>'
-            + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + (resumen[entry[0]]||0) + '</div>'
+          return '<div class="tarjeta-stat" style="padding:7px 10px">'
+            + '<div style="font-size:9px;color:var(--suave);letter-spacing:0.3px;text-transform:uppercase;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + entry[1].label + '">' + entry[1].label + '</div>'
+            + '<div style="font-family:var(--font-display);font-size:15px;color:var(--naranja)">' + (resumen[entry[0]]||0) + '</div>'
             + '</div>';
         }).join('')
-      + '<div class="tarjeta-stat" style="padding:16px"><div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Total</div>'
-      + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + facturas.length + '</div></div></div>'
+      + '<div class="tarjeta-stat" style="padding:7px 10px"><div style="font-size:9px;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:2px">Total</div>'
+      + '<div style="font-family:var(--font-display);font-size:15px;color:var(--naranja)">' + facturas.length + '</div></div></div>'
       + '<div class="panel"><div class="panel-header" style="flex-wrap:wrap;gap:10px">'
       + '<h3 style="white-space:nowrap">Facturas</h3>'
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;gap:10px">'
@@ -587,7 +587,7 @@ async function guardarFactura(emitir) {
   if (window._facturaProcesando) return;
   window._facturaProcesando = true;
   const btnGuardar = document.getElementById(emitir ? 'btn-fac-emitir' : 'btn-fac-borrador');
-  const btnGuardarTextoOriginal = btnGuardar ? btnGuardar.textContent : (emitir ? '✓ Emitir Factura' : 'Guardar Borrador');
+  const btnGuardarTextoOriginal = btnGuardar ? btnGuardar.textContent : (emitir ? '✓ Emitir Factura' : 'Guardar sin emitir');
   if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = '⏳ Procesando...'; }
 
   const okEl  = document.getElementById('alerta-fac-ok');
@@ -1408,11 +1408,11 @@ async function verFichaFactura(id) {
 
 async function abrirEditarFactura(id) {
   const f = facturasCache.find(function(x){return x.id_factura===id;});
-  if (!f||f.estado!=='BORRADOR') { alert('Solo se pueden editar facturas en Borrador.'); return; }
+  if (!f||f.estado!=='BORRADOR') { alert('Solo se pueden editar facturas Por emitir.'); return; }
   await abrirNuevaFactura();
   setTimeout(async function() {
     document.getElementById('fac-id').value=''+f.id_factura;
-    document.getElementById('fac-numero').textContent=f.numero_factura||'Borrador';
+    document.getElementById('fac-numero').textContent=f.numero_factura||'Por emitir';
     document.getElementById('fac-emisor').value=f.id_empresa||'';
     document.getElementById('fac-fecha').value=f.fecha_emision||getHoyVzla();
     document.getElementById('fac-estado').value=f.estado;
@@ -1425,7 +1425,7 @@ async function abrirEditarFactura(id) {
     document.getElementById('fac-aplica-iva').checked=!!f.aplica_iva;
     document.getElementById('fac-aplica-igtf').checked=!!f.aplica_igtf;
     document.getElementById('fac-observaciones').value=f.observaciones||'';
-    document.getElementById('modal-fac-titulo').textContent='EDITAR FACTURA — '+(f.numero_factura||'Borrador');
+    document.getElementById('modal-fac-titulo').textContent='EDITAR FACTURA — '+(f.numero_factura||'Por emitir');
     // Solo visibilidad -- NO se debe pisar el IVA/IGTF real que ya se
     // guardó, con el default de "cambio de moneda manual".
     actualizarVisibilidadMonedaFactura();
@@ -1890,7 +1890,7 @@ async function solicitarAprobacionFactura(id, btn) {
 }
 
 async function rechazarFacturaManual(id, btn) {
-  const motivo = await pedirMotivo('RECHAZAR FACTURA MANUAL', 'La factura vuelve a Borrador y se notifica a quien la creó.', '✕ Rechazar');
+  const motivo = await pedirMotivo('RECHAZAR FACTURA MANUAL', 'La factura vuelve a Por emitir y se notifica a quien la creó.', '✕ Rechazar');
   if (!motivo) return;
   btnSetGuardando(btn, true, null, 'Procesando...');
   try {

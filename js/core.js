@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909244';
+const SYD_VERSION = '20260909245';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3250,7 +3250,7 @@ async function mostrarNotifPendiente(notif) {
           lista.innerHTML = await _htmlTarjetaNotifFactura(notif, f, porAprobar ? f.id_usuario : quien,
             porAprobar ? 'Solicitado por' : (rechazada ? 'Rechazada por' : 'Aprobada por'), rechazada || porAprobar ? 'MONTO A FACTURAR' : 'MONTO FACTURADO', extra);
           cfgNotif = { titulo: porAprobar ? '🧾 Factura Manual por Aprobar' : (rechazada ? '❌ Factura Manual Rechazada' : '✅ Factura Manual Aprobada'),
-                       instruccion: rechazada ? 'La factura volvió a Borrador: corríjala y vuelva a solicitar la aprobación.' : '',
+                       instruccion: rechazada ? 'La factura volvió a Por emitir: corríjala y vuelva a solicitar la aprobación.' : '',
                        boton: 'Ver Factura' };
           if (btnVerDespues) btnVerDespues.style.display = 'none';
         }
