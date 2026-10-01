@@ -1220,6 +1220,74 @@ async function contAbrirPagoCxc(id_cxc) {
 
   abrirModal('modal-cont-pago-cxc');
   focusFirstField('modal-cont-pago-cxc');
+  _mostrarSaldoFavorCxc(c, facturaRefCxc);
+}
+
+// ── Saldo a favor del cliente como forma de pago (Etapa 4D) ──
+// Se lleva en Bolívares fijos. Lo aplica el servidor (aplicar_saldo_favor):
+// valida saldo y deuda, rebaja la CxC y registra el asiento
+// Debe 2.1.01.002 Saldo a favor / Haber 1.1.03.001 CxC.
+async function _mostrarSaldoFavorCxc(c, facturaRefCxc) {
+  const box = document.getElementById('cont-pago-cxc-saldo-favor');
+  if (!box) return;
+  box.style.display = 'none'; box.innerHTML = '';
+  if (!c.id_factura) return;
+  let s = null;
+  try { s = await api('rpc/obtener_saldo_favor_factura','POST',{ p_id_factura: c.id_factura }); } catch(e) { s = null; }
+  const saldoVES = parseFloat(s && s.saldo_ves || 0);
+  if (saldoVES <= 0.005 || _pagoCxcActualId !== c.id_cxc) return;
+  const deudaVES = parseFloat(window._contPagoCxcMontoVES || 0);
+  const sugerido = Math.min(saldoVES, deudaVES);
+  box.innerHTML =
+    '<div style="background:rgba(56,161,105,0.08);border:1px solid rgba(56,161,105,0.35);border-radius:6px;padding:10px 14px">'
+    + '<div style="font-size:13px;color:var(--texto)">💚 El cliente tiene <strong>saldo a favor: Bs ' + fmtBs(saldoVES) + '</strong></div>'
+    + '<div style="font-size:11px;color:var(--suave);margin:2px 0 8px">Puede usarlo para pagar esta factura, total o parcialmente. El resto se cobra con otra forma de pago. Requiere su contraseña (Confirmación de Usuario).</div>'
+    + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    + '<label style="font-size:12px;color:var(--suave)">Monto a aplicar (Bs)</label>'
+    + '<input type="number" id="cont-pago-cxc-sf-monto" min="0" step="0.01" value="' + sugerido.toFixed(2) + '" style="width:150px;text-align:right;font-family:var(--font-mono)">'
+    + '<button class="btn-primario" id="cont-pago-cxc-sf-btn" style="font-size:12px" onclick="aplicarSaldoFavorCxc(' + parseInt(c.id_cxc) + ',' + saldoVES + ',' + deudaVES + ')">💚 Aplicar saldo a favor</button>'
+    + '</div></div>';
+  box.style.display = '';
+}
+
+async function aplicarSaldoFavorCxc(idCxc, saldoVES, deudaVES) {
+  const errEl = document.getElementById('alerta-pago-cxc-err');
+  const okEl  = document.getElementById('alerta-pago-cxc-ok');
+  if (errEl) errEl.style.display = 'none';
+  const monto = Math.round((parseFloat(document.getElementById('cont-pago-cxc-sf-monto').value) || 0) * 100) / 100;
+  const mostrarErr = function(m) { if (errEl) { errEl.textContent = m; errEl.style.display = 'block'; } else alert(m); };
+  if (monto <= 0) { mostrarErr('Indique el monto en Bs a aplicar del saldo a favor.'); return; }
+  if (monto > saldoVES + 0.005) { mostrarErr('El monto supera el saldo a favor del cliente (Bs ' + fmtBs(saldoVES) + ').'); return; }
+  if (monto > deudaVES + 0.005) { mostrarErr('El monto supera la deuda pendiente (Bs ' + fmtBs(deudaVES) + ').'); return; }
+  // Misma confirmación con contraseña que exige "Confirmar Cobro"
+  const clave = document.getElementById('cont-pago-cxc-clave')?.value || '';
+  if (!clave) { mostrarErr('Ingrese su contraseña (abajo, en "Confirmación de Usuario") para aplicar el saldo a favor.'); document.getElementById('cont-pago-cxc-clave')?.focus(); return; }
+  const vClave = await validarClaveUsuarioActual(clave);
+  if (!vClave.ok) { mostrarErr(vClave.msg); document.getElementById('cont-pago-cxc-clave')?.focus(); return; }
+  const ok = await confirmarSiNo('¿Aplicar <strong>Bs ' + fmtBs(monto) + '</strong> del saldo a favor del cliente a esta factura?'
+    + '<br><span style="font-size:12px;color:#aaa">Se registra como cobro y se genera el asiento contable. No se puede deshacer.</span>');
+  if (!ok) return;
+  const btn = document.getElementById('cont-pago-cxc-sf-btn');
+  btnSetGuardando(btn, true, null, 'Aplicando...');
+  try {
+    const r = await api('rpc/aplicar_saldo_favor','POST',{ p_id_cxc: idCxc, p_monto_ves: monto });
+    const i = (contCxcCache || []).findIndex(function(x){ return x.id_cxc === idCxc; });
+    if (i >= 0) contCxcCache[i] = Object.assign({}, contCxcCache[i], { saldo_usd: r.deuda_restante_usd, estado: r.estado });
+    if (okEl) {
+      okEl.textContent = '✓ Saldo a favor aplicado: Bs ' + fmtBs(r.aplicado_ves) + ' (asiento ' + r.numero_asiento + ').'
+        + (r.estado === 'PAGADA' ? ' La factura quedó cobrada.' : ' Queda por cobrar $ ' + fmtUSD(r.deuda_restante_usd) + '.');
+      okEl.style.display = 'block';
+    }
+    setTimeout(function() {
+      cerrarModal('modal-cont-pago-cxc');
+      cerrarModal('modal-ficha-fac');
+      if (typeof renderFacturas === 'function') renderFacturas();
+      if (document.getElementById('cont-vista-cont') && typeof contRenderCxc === 'function') contRenderCxc();
+    }, 1500);
+  } catch(e) {
+    btnSetGuardando(btn, false);
+    mostrarErr('Error al aplicar el saldo a favor: ' + msgErr(e));
+  }
 }
 
 // Invierte cuál Monto (Bs o USD) se muestra como principal (grande) según
