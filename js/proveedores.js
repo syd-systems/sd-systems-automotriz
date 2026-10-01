@@ -35,11 +35,7 @@ async function renderProveedores() {
     }).join('');
 
     c.innerHTML =
-      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:12px">'
-      + '<div class="tarjeta-stat" style="padding:7px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Total</div><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + proveedores.length + '</div></div>'
-      + '<div class="tarjeta-stat" style="padding:7px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Activos</div><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + activos + '</div></div>'
-      + '<div class="tarjeta-stat" style="padding:7px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Inactivos</div><div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + inactivos + '</div></div>'
-      + '</div>'
+      htmlContadores([htmlContadorItem('Total', proveedores.length), htmlContadorItem('Activos', activos), htmlContadorItem('Inactivos', inactivos)])
       + '<div class="panel">'
       + '<div class="panel-header" style="flex-wrap:wrap;gap:10px">'
       + '<h3 style="white-space:nowrap">Proveedores</h3>'

@@ -342,11 +342,7 @@ async function renderVentasListado() {
     const filas = _ventasFilasHtml(_ventasOrdenar(ventas));
 
     c.innerHTML =
-      '<div id="vta-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:12px">'
-      + ['PRESUPUESTO','FACTURADA','ANULADA'].map(function(e) {
-          return '<div class="tarjeta-stat" style="padding:7px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">' + ESTADO_LABEL_VENTA[e] + '</div><div id="vta-stat-' + e + '" style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + stats[e] + '</div></div>';
-        }).join('')
-      + '</div>'
+      htmlContadores(['PRESUPUESTO','FACTURADA','ANULADA'].map(function(e) { return htmlContadorItem(ESTADO_LABEL_VENTA[e], stats[e], { id: 'vta-stat-' + e }); }), 'vta-stats')
       + '<div class="panel">'
       + '<div class="panel-header" style="flex-wrap:wrap;gap:10px">'
       + '<h3 style="white-space:nowrap">Ventas</h3>'
