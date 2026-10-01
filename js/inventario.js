@@ -1921,6 +1921,89 @@ async function abrirOrdenCompra() {
   if (modalBodyEC) modalBodyEC.scrollTop = 0;
 }
 
+// Ficha de una Orden de Compra (solo lectura): mismos datos y mismo orden
+// que el formulario con que se creó. idEntrada: cualquier fila de la OC.
+async function verFichaOrdenCompra(idEntrada) {
+  try {
+    const ancla = await api('stock_entradas','GET',null,'?id_entrada=eq.' + parseInt(idEntrada) + '&select=id_entrada,id_orden_compra');
+    if (!ancla || !ancla[0]) { alert('No se encontró la Orden de Compra.'); return; }
+    const idOC = ancla[0].id_orden_compra;
+    const filas = await api('stock_entradas','GET',null,
+      (idOC ? '?id_orden_compra=eq.' + idOC : '?id_entrada=eq.' + parseInt(idEntrada))
+      + '&select=*,inventario_almacen(nombre_articulo,codigo_articulo),proveedores(nombre,rif)&order=id_entrada.asc') || [];
+    if (!filas.length) { alert('No se encontró la Orden de Compra.'); return; }
+    const f0 = filas[0];
+    const moneda = (f0.moneda_compra || 'USD').toUpperCase();
+    const tasa = parseFloat(f0.tasa_bcv || 0) || 1;
+    const esVES = moneda === 'VES';
+    // Monto en la moneda negociada -> principal en Bs y equivalente en $
+    const dual = function(v, grande) {
+      const bs = esVES ? v : v * tasa, usd = esVES ? v / tasa : v;
+      return '<div style="font-family:var(--font-mono);' + (grande ? 'font-size:17px;color:var(--naranja)' : '') + '">' + fmtBs(bs) + ' Bs</div>'
+        + '<div style="font-family:var(--font-mono);font-size:10px;color:var(--suave)">$ ' + fmtUSD(usd) + '</div>';
+    };
+    let base = 0, total = 0;
+    const lineas = filas.map(function(r) {
+      const cant = parseFloat(r.cantidad || 0), pu = parseFloat(r.precio_compra_original || 0);
+      const sub = r.base_moneda_original != null ? parseFloat(r.base_moneda_original) : cant * pu;
+      base += sub; total += r.monto_total_moneda_original != null ? parseFloat(r.monto_total_moneda_original) : sub;
+      return '<tr><td style="padding:6px 0;font-size:12px">' + escapeHtml((r.inventario_almacen && r.inventario_almacen.nombre_articulo) || 'Artículo')
+        + (r.inventario_almacen && r.inventario_almacen.codigo_articulo ? ' <span style="color:var(--suave)">(' + escapeHtml(r.inventario_almacen.codigo_articulo) + ')</span>' : '') + '</td>'
+        + '<td style="text-align:center;font-family:var(--font-mono);font-size:12px">' + cant + '</td>'
+        + '<td style="text-align:right;font-size:12px">' + dual(pu) + '</td>'
+        + '<td style="text-align:right;font-size:12px;color:var(--naranja)">' + dual(sub) + '</td></tr>';
+    }).join('');
+    const iva = total - base;
+    let cuotas = [];
+    try { cuotas = f0.cuotas_json ? (typeof f0.cuotas_json === 'string' ? JSON.parse(f0.cuotas_json) : f0.cuotas_json) : []; } catch(eC) { cuotas = []; }
+    let nombre = f0.id_usuario || '—', area = null;
+    try {
+      const [aRows, nRows] = await Promise.all([
+        rpc('obtener_area_por_correo', { p_correo: f0.id_usuario }),
+        rpc('obtener_nombres_por_correos', { p_correos: [f0.id_usuario] })
+      ]);
+      area = aRows && aRows[0]; if (nRows && nRows[0]) nombre = nRows[0].nombre_completo;
+    } catch(eU) {}
+    const EST = { PENDIENTE: ['badge-naranja','Pendiente de aprobación'], APROBADA: ['badge-verde','Aprobada'], RECHAZADA: ['badge-rojo','Rechazada'] };
+    const est = EST[f0.estado_aprobacion] || ['badge-gris', f0.estado_aprobacion || '—'];
+    const campo = function(lbl, val) { return '<div><div style="font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--suave);margin-bottom:3px">' + lbl + '</div><div style="font-size:13px">' + val + '</div></div>'; };
+    document.getElementById('ficha-oc-titulo').textContent = '📥 ORDEN DE COMPRA ' + (idOC ? 'OC-' + idOC : 'CPRA-' + f0.id_entrada);
+    document.getElementById('ficha-oc-contenido').innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span class="badge ' + est[0] + '">' + est[1] + '</span>'
+      + '<span style="font-size:11px;color:var(--suave)">Solo lectura</span></div>'
+      + (f0.estado_aprobacion === 'RECHAZADA' && f0.motivo_rechazo ? '<div style="color:#fc8181;font-size:12px;margin-bottom:10px">Motivo del rechazo: ' + escapeHtml(f0.motivo_rechazo) + '</div>' : '')
+      + campo('Proveedor', '<strong>' + escapeHtml((f0.proveedores && f0.proveedores.nombre) || '—') + '</strong>' + (f0.proveedores && f0.proveedores.rif ? ' — ' + escapeHtml(f0.proveedores.rif) : ''))
+      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:14px">'
+      + campo('Fecha de Negociación', fmtFecha(f0.fecha_negociacion || f0.fecha_entrada))
+      + campo('Moneda Negociación', moneda)
+      + campo('Tasa BCV Bs/Usd', '<span style="font-family:var(--font-mono)">' + formatearTasaVE(tasa) + '</span>')
+      + '</div>'
+      + '<div style="font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--naranja);margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--borde)">Artículos de esta Compra</div>'
+      + '<div class="tabla-container"><table style="width:100%"><thead><tr>'
+      + '<th style="font-size:12px;text-align:left">Artículo</th><th style="font-size:12px">Cant.</th><th style="font-size:12px;text-align:right">P. Unit.</th><th style="font-size:12px;text-align:right">Subtotal</th>'
+      + '</tr></thead><tbody>' + lineas + '</tbody></table></div>'
+      + '<div style="display:flex;flex-direction:column;gap:6px;padding:10px 0">'
+      + '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">Base</span><span style="text-align:right">' + dual(base) + '</span></div>'
+      + '<div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--suave)">IVA</span><span style="text-align:right">' + dual(iva) + '</span></div>'
+      + '<div style="display:flex;justify-content:space-between;border-top:1px solid var(--borde);padding-top:6px"><span style="font-family:var(--font-display);font-size:15px;letter-spacing:1px">TOTAL</span><span style="text-align:right">' + dual(total, true) + '</span></div></div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:6px">'
+      + campo('Modalidad de Pago', f0.esquema_pago === 'CREDITO' ? 'Crédito' : (f0.esquema_pago === 'CONTADO' ? 'Contado' : '—'))
+      + (f0.esquema_pago === 'CONTADO' ? campo('Fecha de Pago', f0.fecha_pago ? fmtFecha(f0.fecha_pago) : '—') : campo('N° de Cuotas', cuotas.length || '—'))
+      + '</div>'
+      + (f0.esquema_pago === 'CREDITO' && cuotas.length
+          ? '<div style="margin-top:10px;background:var(--gris2);border-radius:6px;padding:10px 14px">' + cuotas.map(function(c) {
+              return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span>Cuota ' + c.num + ' — ' + fmtFecha(c.fecha) + '</span><span style="font-family:var(--font-mono)">$ ' + fmtUSD(c.monto) + '</span></div>';
+            }).join('') + '</div>' : '')
+      + '<div style="background:rgba(255,107,0,0.06);border:1px solid rgba(255,107,0,0.2);border-radius:8px;padding:14px;margin-top:16px">'
+      + '<div style="font-size:12px;color:var(--naranja);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600">🔐 Persona que gestiona la Compra</div>'
+      + '<div style="font-size:13px">Usuario: <span style="font-weight:600;color:var(--naranja)">' + escapeHtml(nombre) + '</span>'
+      + (area ? ' <span style="color:var(--suave)">— ' + escapeHtml(area.nombre) + (area.codigo ? ' (' + escapeHtml(area.codigo) + ')' : '') + '</span>' : '') + '</div></div>';
+    abrirModal('modal-ficha-oc');
+    // Por encima del aviso de aprobación (que usa z-index 9999)
+    document.getElementById('modal-ficha-oc').style.zIndex = '10050';
+  } catch(e) { alert('Error: ' + msgErr(e)); }
+}
+
 // ENTER avanza al siguiente campo en el mismo orden que TAB (de arriba
 // hacia abajo: Proveedor, Fecha, Moneda, Tasa, Artículos, Modalidad y
 // Fecha de Pago, Contraseña) y desde el último va al botón de guardar.

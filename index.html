@@ -1591,19 +1591,19 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="js/core.js?v=20260909251"></script>
-<script src="js/parametros.js?v=20260909251"></script>
-<script src="js/empresas.js?v=20260909251"></script>
-<script src="js/ingresos.js?v=20260909251"></script>
-<script src="js/inventario.js?v=20260909251"></script>
-<script src="js/proveedores.js?v=20260909251"></script>
-<script src="js/ventas.js?v=20260909251"></script>
-<script src="js/contabilidad.js?v=20260909251"></script>
-<script src="js/egresos.js?v=20260909251"></script>
-<script src="js/vehiculos.js?v=20260909251"></script>
-<script src="js/catalogo.js?v=20260909251"></script>
-<script src="js/ordenes.js?v=20260909251"></script>
-<script src="js/reportes.js?v=20260909251"></script>
+<script src="js/core.js?v=20260909252"></script>
+<script src="js/parametros.js?v=20260909252"></script>
+<script src="js/empresas.js?v=20260909252"></script>
+<script src="js/ingresos.js?v=20260909252"></script>
+<script src="js/inventario.js?v=20260909252"></script>
+<script src="js/proveedores.js?v=20260909252"></script>
+<script src="js/ventas.js?v=20260909252"></script>
+<script src="js/contabilidad.js?v=20260909252"></script>
+<script src="js/egresos.js?v=20260909252"></script>
+<script src="js/vehiculos.js?v=20260909252"></script>
+<script src="js/catalogo.js?v=20260909252"></script>
+<script src="js/ordenes.js?v=20260909252"></script>
+<script src="js/reportes.js?v=20260909252"></script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=_onTurnstileListo" async defer></script>
 
 <!-- ═══════════════════════════════════════ -->
@@ -5180,6 +5180,20 @@
   </div>
 </div>
 
+<!-- ══ MODAL FICHA ORDEN DE COMPRA (solo lectura) ══ -->
+<div class="modal-overlay" id="modal-ficha-oc" style="z-index:10050">
+  <div class="modal" style="max-width:900px">
+    <div class="modal-header">
+      <h3 id="ficha-oc-titulo">📥 ORDEN DE COMPRA</h3>
+      <button class="modal-cerrar" onclick="cerrarModal('modal-ficha-oc')">✕</button>
+    </div>
+    <div class="modal-body" id="ficha-oc-contenido"></div>
+    <div class="modal-footer">
+      <button class="btn-secundario" onclick="cerrarModal('modal-ficha-oc')">Retornar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL LISTA DE ARTÍCULOS DE LA VENTA (solo lectura) ══ -->
 <div class="modal-overlay" id="modal-lista-articulos-venta">
   <div class="modal" style="max-width:480px">
@@ -5311,6 +5325,7 @@
     <div class="modal-footer">
       <button class="btn-naranja" id="btn-notif-ver-despues" onclick="notifVerDespues()" style="font-size:12px;color:var(--suave)">Ver después</button>
       <button class="btn-secundario" id="btn-notif-escalar" onclick="notifSolicitarAnulacion()" style="display:none;font-size:12px;color:#fc8181;border-color:rgba(252,129,129,0.4)">⬆ Solicitar Anulación al Superior</button>
+      <button class="btn-secundario" id="btn-notif-ver-oc" onclick="notifVerOrdenCompra()" style="display:none;font-size:12px">👁 Ver</button>
       <button class="btn-secundario" id="btn-notif-rechazar-orden" onclick="notifRechazarOrdenCompra()" style="display:none;font-size:12px;color:#fc8181;border-color:rgba(252,129,129,0.4)">✕ Rechazar</button>
       <button class="btn-primario"   onclick="notifConfirmar()" id="btn-notif-confirmar">✓ Confirmar Recepción</button>
     </div>

@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909251';
+const SYD_VERSION = '20260909252';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3124,6 +3124,8 @@ async function mostrarNotifPendiente(notif) {
   const btnRechazarEnt = document.getElementById('btn-notif-rechazar-orden');
   if (btnEscalar) btnEscalar.style.display = 'none';
   if (btnRechazarEnt) btnRechazarEnt.style.display = accionNotif === 'aprobar_orden_compra' ? '' : 'none';
+  const btnVerOC = document.getElementById('btn-notif-ver-oc');
+  if (btnVerOC) btnVerOC.style.display = (accionNotif === 'aprobar_orden_compra' && extrasNotif && extrasNotif.id_entrada) ? '' : 'none';
   const btnVerDespues = document.getElementById('btn-notif-ver-despues');
   // No tiene sentido "posponer" una aprobación de Orden de Compra, ni el
   // aviso de que ya fue rechazada -- en ambos casos hay una única acción
@@ -3588,6 +3590,16 @@ async function mostrarAvisoOk(mensaje, esError) {
     document.body.appendChild(div);
     div.querySelector('#btn-aviso-ok').onclick = function(){ document.body.removeChild(div); resolve(); };
   });
+}
+
+// "👁 Ver" en el aviso de aprobación: abre la Ficha de la Orden de Compra
+// (solo lectura) encima del aviso, sin cerrarlo ni decidir nada.
+function notifVerOrdenCompra() {
+  const n = _notifPendienteActual;
+  if (!n) return;
+  let extras = null;
+  try { extras = typeof n.datos_extra === 'string' ? JSON.parse(n.datos_extra) : n.datos_extra; } catch(e) {}
+  if (extras && extras.id_entrada && typeof verFichaOrdenCompra === 'function') verFichaOrdenCompra(extras.id_entrada);
 }
 
 async function notifRechazarOrdenCompra() {
