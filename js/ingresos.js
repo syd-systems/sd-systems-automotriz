@@ -153,14 +153,14 @@ async function renderFacturas() {
         + '</tr>';
     }).join('');
     c.innerHTML =
-      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px;margin-bottom:16px">'
+      '<div style="display:flex;flex-wrap:nowrap;gap:6px;margin-bottom:16px;overflow-x:auto">'
       + Object.entries(ESTADOS_FAC).map(function(entry) {
-          return '<div class="tarjeta-stat" style="padding:7px 10px">'
-            + '<div style="font-size:9px;color:var(--suave);letter-spacing:0.3px;text-transform:uppercase;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + entry[1].label + '">' + entry[1].label + '</div>'
+          return '<div class="tarjeta-stat" style="padding:6px 8px;flex:1 1 auto">'
+            + '<div style="font-size:9px;color:var(--suave);letter-spacing:0;text-transform:uppercase;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + entry[1].label + '">' + entry[1].label + '</div>'
             + '<div style="font-family:var(--font-display);font-size:15px;color:var(--naranja)">' + (resumen[entry[0]]||0) + '</div>'
             + '</div>';
         }).join('')
-      + '<div class="tarjeta-stat" style="padding:7px 10px"><div style="font-size:9px;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:2px">Total</div>'
+      + '<div class="tarjeta-stat" style="padding:6px 8px;flex:1 1 auto"><div style="font-size:9px;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:2px">Total</div>'
       + '<div style="font-family:var(--font-display);font-size:15px;color:var(--naranja)">' + facturas.length + '</div></div></div>'
       + '<div class="panel"><div class="panel-header" style="flex-wrap:wrap;gap:10px">'
       + '<h3 style="white-space:nowrap">Facturas</h3>'
