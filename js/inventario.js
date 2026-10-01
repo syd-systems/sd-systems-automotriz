@@ -1901,7 +1901,7 @@ async function abrirOrdenCompra() {
   document.getElementById('entcons-cuotas-preview').innerHTML = '';
   document.getElementById('entcons-clave-usuario').value = '';
   document.getElementById('alerta-entcons-err').style.display = 'none';
-  _entconsLineas = [];
+  _entconsLineas = [{ id_articulo: null, cantidad: '', precio_unitario: 0 }];
 
   try {
     const provRows = await api('proveedores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif');
@@ -1914,10 +1914,34 @@ async function abrirOrdenCompra() {
   _entconsRenderLineas();
   abrirModal('modal-orden-compra');
   focusFirstField('modal-orden-compra');
+  _entconsActivarNavegacion();
   // Que siempre se muestre desde el principio del formulario, sin importar
   // en qué parte haya quedado el scroll de una vez anterior.
   const modalBodyEC = document.querySelector('#modal-orden-compra .modal');
   if (modalBodyEC) modalBodyEC.scrollTop = 0;
+}
+
+// ENTER avanza al siguiente campo en el mismo orden que TAB (de arriba
+// hacia abajo: Proveedor, Fecha, Moneda, Tasa, Artículos, Modalidad y
+// Fecha de Pago, Contraseña) y desde el último va al botón de guardar.
+// Se escucha en fase de captura sobre el modal, así cubre también las
+// líneas de Artículos que se redibujan y los campos de fecha.
+function _entconsActivarNavegacion() {
+  const modal = document.getElementById('modal-orden-compra');
+  if (!modal || modal._navEntconsSet) return;
+  modal._navEntconsSet = true;
+  modal.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    const el = e.target;
+    if (!el || el.tagName === 'TEXTAREA' || el.tagName === 'BUTTON') return;
+    e.preventDefault(); e.stopPropagation();
+    const campos = Array.from(modal.querySelectorAll(
+      'input:not([type=hidden]):not([disabled]):not([readonly]):not([type=file]), select:not([disabled])'
+    )).filter(function(c) { return c.offsetParent !== null; });
+    const i = campos.indexOf(el);
+    if (i >= 0 && i < campos.length - 1) campos[i + 1].focus();
+    else document.getElementById('btn-entcons-guardar')?.focus();
+  }, true);
 }
 
 // El usuario actual ES quien gestiona la Compra -- no es selectivo, mismo
@@ -1974,6 +1998,7 @@ function _entconsAgregarLinea() {
   if (errEl) errEl.style.display = 'none';
   _entconsLineas.push({ id_articulo: null, cantidad: '', precio_unitario: 0 });
   _entconsRenderLineas();
+  document.getElementById('entcons-art-' + (_entconsLineas.length - 1))?.focus();
 }
 
 function _entconsQuitarLinea(idx) {
@@ -2068,13 +2093,13 @@ function _entconsRenderLineas() {
     const artEntConsCant = inventarioCache.find(function(a) { return a.id_articulo === lin.id_articulo; });
     const esUnidadEnteraEC = (artEntConsCant?.unidad || 'UND') === 'UND';
     return '<tr>'
-      + '<td style="padding:4px"><select onchange="_entconsCambioArticulo('+idx+', this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">'
+      + '<td style="padding:4px"><select id="entcons-art-'+idx+'" onchange="_entconsCambioArticulo('+idx+', this.value)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none">'
         + opcionesArt.replace('value="'+lin.id_articulo+'"', 'value="'+lin.id_articulo+'" selected')
         + '</select></td>'
       + '<td style="padding:4px;width:90px"><input type="number" id="entcons-cantidad-'+idx+'" class="'+(esUnidadEnteraEC?'sin-flechas':'')+'" min="'+(esUnidadEnteraEC?'1':'0')+'" step="'+(esUnidadEnteraEC?'1':'any')+'" value="'+(lin.cantidad||'')+'" oninput="_entconsCambioCampo('+idx+',\'cantidad\',this.value)" onkeydown="_entconsEnterCantidad('+idx+',event)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
       + '<td style="padding:4px;width:110px"><input type="text" id="entcons-precio-'+idx+'" inputmode="decimal" placeholder="0,00" value="'+(lin.precio_unitario||'')+'" oninput="_entconsCambioCampo('+idx+',\'precio_unitario\',this.value)" onblur="_entconsFormatearPrecioBlur(this)" onkeydown="_entconsEnterPrecio('+idx+',event)" style="width:100%;background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-size:12px;padding:6px 8px;border-radius:4px;outline:none;font-family:var(--font-mono)"></td>'
       + '<td id="entcons-subtotal-'+idx+'" style="padding:4px 8px;width:120px;text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--naranja)">'+_entconsFmtDual(subtotal)+'</td>'
-      + '<td style="padding:4px;width:36px;text-align:center"><button onclick="_entconsQuitarLinea('+idx+')" style="background:none;border:none;color:var(--rojo,#e57373);cursor:pointer;font-size:16px">✕</button></td>'
+      + '<td style="padding:4px;width:36px;text-align:center"><button tabindex="-1" title="Quitar línea" onclick="_entconsQuitarLinea('+idx+')" style="background:none;border:none;color:var(--rojo,#e57373);cursor:pointer;font-size:16px">✕</button></td>'
       + '</tr>';
   }).join('');
 
@@ -2165,7 +2190,14 @@ async function guardarOrdenCompra() {
   if (!moneda) return err('Seleccione la Moneda Negociación.', 'entcons-moneda');
   if (!tasaBcv || tasaBcv <= 1) return err('Ingrese una Tasa BCV Bs/Usd válida.', 'entcons-tasa-bcv');
   const lineasValidas = _entconsLineas.filter(function(l){ return l.id_articulo && parseFloat(l.cantidad) > 0 && l.precio_unitario > 0; });
-  if (!lineasValidas.length) return err('Agregue al menos un Artículo con Cantidad y Precio válidos.');
+  if (!lineasValidas.length) {
+    const iInc = _entconsLineas.findIndex(function(l){ return !l.id_articulo || !(parseFloat(l.cantidad) > 0) || !(l.precio_unitario > 0); });
+    if (iInc < 0) return err('Agregue al menos un Artículo con Cantidad y Precio válidos.', 'entcons-btn-agregar');
+    const lInc = _entconsLineas[iInc];
+    if (!lInc.id_articulo) return err('Seleccione el Artículo.', 'entcons-art-' + iInc);
+    if (!(parseFloat(lInc.cantidad) > 0)) return err('Ingrese la Cantidad del Artículo.', 'entcons-cantidad-' + iInc);
+    return err('Ingrese el Precio del Artículo.', 'entcons-precio-' + iInc);
+  }
   const idsUnicos = lineasValidas.map(function(l){ return l.id_articulo; });
   if (new Set(idsUnicos).size !== idsUnicos.length) return err('Hay Artículos duplicados en la lista -- combine la Cantidad en una sola línea.');
   if (!esquemaPago) return err('Seleccione la Modalidad de Pago.', 'entcons-esquema-pago');
