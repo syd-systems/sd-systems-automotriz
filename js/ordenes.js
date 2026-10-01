@@ -146,20 +146,10 @@ async function renderOrdenes() {
       CERRADA:         ordenes.filter(function(o) { return o.estado === 'CERRADA'; }).length,
     };
 
-    c.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:24px">'
-      + Object.entries(resumen).map(function(entry) {
-          var k = entry[0], v = entry[1];
-          var est = ESTADOS_OS[k];
-          var activo = window._osEstadoFiltro === k ? ';border-color:var(--naranja)' : '';
-          return '<div class="tarjeta-stat" style="padding:16px;cursor:pointer' + activo + '" onclick="window._osEstadoFiltro=\'' + k + '\';renderOrdenes()">'
-            + '<div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">' + est.label + '</div>'
-            + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + v + '</div>'
-            + '</div>';
-        }).join('')
-      + '<div class="tarjeta-stat" style="padding:16px;cursor:pointer;' + (!window._osEstadoFiltro ? 'border-color:var(--naranja)' : '') + '" onclick="window._osEstadoFiltro=\'\';renderOrdenes()">'
-      + '<div style="font-size:11px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Todas</div>'
-      + '<div style="font-family:var(--font-display);font-size:28px;color:var(--naranja)">' + ordenes.length + '</div>'
-      + '</div></div>'
+    c.innerHTML = htmlContadores(Object.entries(resumen).map(function(entry) {
+          var k = entry[0];
+          return htmlContadorItem(ESTADOS_OS[k].label, entry[1], { onclick: "window._osEstadoFiltro='" + k + "';renderOrdenes()", activo: window._osEstadoFiltro === k });
+        }).concat([htmlContadorItem('Todas', ordenes.length, { onclick: "window._osEstadoFiltro='';renderOrdenes()", activo: !window._osEstadoFiltro })]))
 
       + '<div class="panel">'
       + '<div class="panel-header" style="flex-wrap:wrap;gap:12px">'

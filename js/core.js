@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909248';
+const SYD_VERSION = '20260909249';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3774,6 +3774,26 @@ async function notifSolicitarAnulacion() {
 
 
 // ═══ SECCION: Utilidades compartidas (movidas desde facturacion.js) ═══
+
+// ── Contadores de estado: formato homologado en todo el sistema ──
+// Mismo ancho y misma altura, todos en una sola línea; si un nombre no
+// cabe se parte en dos renglones (no se corta).
+function htmlContadorItem(label, valor, opts) {
+  opts = opts || {};
+  return '<div class="tarjeta-stat" style="padding:6px 8px;min-width:0' + (opts.onclick ? ';cursor:pointer' : '') + (opts.activo ? ';border-color:var(--naranja)' : '') + '"'
+    + (opts.onclick ? ' onclick="' + opts.onclick + '"' : '') + '>'
+    + '<div style="font-size:9px;color:var(--suave);letter-spacing:0;text-transform:uppercase;margin-bottom:2px;line-height:1.15">' + label + '</div>'
+    + '<div' + (opts.id ? ' id="' + opts.id + '"' : '') + ' style="font-family:var(--font-display);font-size:15px;color:var(--naranja)">' + valor + '</div></div>';
+}
+// Ancho de referencia: el de Cuentas por Cobrar (9 recuadros a lo ancho);
+// con menos recuadros conservan ese mismo ancho, alineados a la izquierda.
+function estiloContadores(n) {
+  const max = n >= 9 ? '1fr' : 'calc((100% - 48px) / 9)';
+  return 'display:grid;grid-template-columns:repeat(' + n + ',minmax(86px,' + max + '));gap:6px;margin-bottom:16px;overflow-x:auto';
+}
+function htmlContadores(items, idContenedor) {
+  return '<div' + (idContenedor ? ' id="' + idContenedor + '"' : '') + ' style="' + estiloContadores(items.length) + '">' + items.join('') + '</div>';
+}
 
 function emisorQ() {
   return _empresaActiva ? '&id_empresa=eq.' + _empresaActiva.id_empresa : '';

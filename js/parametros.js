@@ -704,17 +704,8 @@ async function renderEmpleados() {
     }).join('');
 
     c.innerHTML =
-      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:12px">'
-      + Object.entries(ESTATUS_EMP).map(function(entry) {
-          return '<div class="tarjeta-stat" style="padding:7px">'
-            + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">' + entry[1].label + '</div>'
-            + '<div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + (resumen[entry[0]]||0) + '</div>'
-            + '</div>';
-        }).join('')
-      + '<div class="tarjeta-stat" style="padding:7px">'
-      + '<div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Total</div>'
-      + '<div style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">' + empleados.length + '</div>'
-      + '</div></div>'
+      htmlContadores(Object.entries(ESTATUS_EMP).map(function(entry) { return htmlContadorItem(entry[1].label, resumen[entry[0]]||0); })
+        .concat([htmlContadorItem('Total', empleados.length)]))
       + '<div class="panel">'
       + '<div class="panel-header" style="flex-wrap:wrap;gap:10px">'
       + '<h3 style="white-space:nowrap">Empleados</h3>'

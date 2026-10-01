@@ -153,15 +153,8 @@ async function renderFacturas() {
         + '</tr>';
     }).join('');
     c.innerHTML =
-      '<div style="display:grid;grid-template-columns:repeat(' + (Object.keys(ESTADOS_FAC).length + 1) + ',minmax(86px,1fr));gap:6px;margin-bottom:16px;overflow-x:auto">'
-      + Object.entries(ESTADOS_FAC).map(function(entry) {
-          return '<div class="tarjeta-stat" style="padding:6px 8px;min-width:0">'
-            + '<div style="font-size:9px;color:var(--suave);letter-spacing:0;text-transform:uppercase;margin-bottom:2px;line-height:1.15" title="' + entry[1].label + '">' + entry[1].label + '</div>'
-            + '<div style="font-family:var(--font-display);font-size:15px;color:var(--naranja)">' + (resumen[entry[0]]||0) + '</div>'
-            + '</div>';
-        }).join('')
-      + '<div class="tarjeta-stat" style="padding:6px 8px;min-width:0"><div style="font-size:9px;color:var(--suave);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:2px">Total</div>'
-      + '<div style="font-family:var(--font-display);font-size:15px;color:var(--naranja)">' + facturas.length + '</div></div></div>'
+      htmlContadores(Object.entries(ESTADOS_FAC).map(function(entry) { return htmlContadorItem(entry[1].label, resumen[entry[0]]||0); })
+        .concat([htmlContadorItem('Total', facturas.length)]))
       + '<div class="panel"><div class="panel-header" style="flex-wrap:wrap;gap:10px">'
       + '<h3 style="white-space:nowrap">Facturas</h3>'
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;gap:10px">'
@@ -2080,9 +2073,11 @@ function _ncListaRender() {
   });
   const cuenta = { PENDIENTE: 0, APROBADA: 0, RECHAZADA: 0 }; let montoAprob = 0;
   filas.forEach(function(n) { cuenta[n.estado] = (cuenta[n.estado] || 0) + 1; if (n.estado === 'APROBADA') montoAprob += parseFloat(n.total_usd || 0); });
-  const tarjeta = function(lbl, val) { return '<div class="tarjeta-stat" style="padding:12px"><div style="font-size:10px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">' + lbl + '</div><div style="font-family:var(--font-display);font-size:22px;color:var(--naranja)">' + val + '</div></div>'; };
-  document.getElementById('nc-l-resumen').innerHTML = tarjeta('Pendientes', cuenta.PENDIENTE) + tarjeta('Aprobadas', cuenta.APROBADA) + tarjeta('Rechazadas', cuenta.RECHAZADA)
-    + (puedo('FACTURAS','VER_TOTALES') ? tarjeta('Monto aprobado', '$ ' + fmtUSD(montoAprob)) : '');
+  const itemsNC = [htmlContadorItem('Pendientes', cuenta.PENDIENTE), htmlContadorItem('Aprobadas', cuenta.APROBADA), htmlContadorItem('Rechazadas', cuenta.RECHAZADA)];
+  if (puedo('FACTURAS','VER_TOTALES')) itemsNC.push(htmlContadorItem('Monto aprobado', '$ ' + fmtUSD(montoAprob)));
+  const contNC = document.getElementById('nc-l-resumen');
+  contNC.style.cssText = estiloContadores(itemsNC.length);
+  contNC.innerHTML = itemsNC.join('');
   document.getElementById('nc-l-tbody').innerHTML = filas.map(function(n) {
     const e = ESTADOS_NC[n.estado] || { clase: 'badge-gris', label: n.estado };
     return '<tr>'
