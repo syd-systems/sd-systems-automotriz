@@ -318,6 +318,7 @@ async function renderInventario(filtro) {
       + (puedo('INVENTARIO','VER_CATEGORIAS') ? '<button id="inv-tab-categorias" onclick="invCambiarVista(\'categorias\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">📦 Categorías</button>' : '')
       + (puedo('INVENTARIO','VER_TIPOS') ? '<button id="inv-tab-tipos" onclick="invCambiarVista(\'tipos\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">🔩 Tipos</button>' : '')
       + (puedo('INVENTARIO','VER_MARGEN_BRUTO') ? '<button id="inv-tab-margen" onclick="invCambiarVista(\'margen\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">📊 Margen Bruto</button>' : '')
+      + ((sesionActual?.administrador || puedo('INVENTARIO','ENTRADA_STOCK')) ? '<button id="inv-tab-pendientes" onclick="invCambiarVista(\'pendientes\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">⏳ Órdenes Pendientes</button>' : '')
       + ((sesionActual?.administrador || puedo('INVENTARIO','ENTRADA_STOCK')) ? '<button id="inv-tab-rechazadas" onclick="invCambiarVista(\'rechazadas\')" class="inv-tab" style="font-size:11px;padding:5px 10px;border-radius:4px;border:none;cursor:pointer;background:transparent;color:var(--suave)">⚠ Órdenes Rechazadas<span id="badge-ordenes-rechazadas"></span></button>' : '')
       + '</div>'
       + '<select id="inv-filtro-cat" onchange="invFiltrarCategoria()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
@@ -656,7 +657,7 @@ async function invCambiarVista(vista) {
   // Ocultar "+ Nuevo Artículo" en vistas de administración
   const btnNuevo = document.querySelector('#panel-inventario .btn-primario[onclick="abrirNuevoInventario()"]');
   if (btnNuevo) {
-    btnNuevo.style.display = (vista === 'categorias' || vista === 'tipos' || vista === 'margen' || vista === 'rechazadas') ? 'none' : '';
+    btnNuevo.style.display = (vista === 'categorias' || vista === 'tipos' || vista === 'margen' || vista === 'rechazadas' || vista === 'pendientes') ? 'none' : '';
   }
   const contTabla = document.getElementById('tabla-inv-cont');
   if (vista === 'movimientos') {
@@ -678,6 +679,7 @@ async function invRenderVista(items, vista) {
   else if (vista === 'tipos')      await invRenderTipos(cont);
   else if (vista === 'margen')     await invRenderMargenBruto(cont);
   else if (vista === 'rechazadas') await invRenderOrdenesRechazadas(cont);
+  else if (vista === 'pendientes') await invRenderOrdenesRechazadas(cont, 'PENDIENTE');
 }
 
 function invRenderTabla(items, cont) {
@@ -2890,18 +2892,22 @@ async function retomarLoteRechazado(id_orden_compra) {
   }
 }
 
-async function invRenderOrdenesRechazadas(cont) {
+// modo 'RECHAZADA' (por defecto): Órdenes Rechazadas, con "Retomar Orden".
+// modo 'PENDIENTE': Órdenes en espera de aprobación, con "Ver" (Ficha de
+// la Orden de Compra en solo lectura, la misma del aviso de aprobación).
+async function invRenderOrdenesRechazadas(cont, modo) {
+  const esPend = modo === 'PENDIENTE';
   if (!cont) cont = document.getElementById('tabla-inv-cont');
   if (!cont) return;
   cont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
   try {
-    let qRech = '?motivo=eq.compra&estado_aprobacion=eq.RECHAZADA&order=fecha_registro.desc'
+    let qRech = '?motivo=eq.compra&estado_aprobacion=eq.' + (esPend ? 'PENDIENTE' : 'RECHAZADA') + '&order=fecha_registro.desc'
       +'&select=id_entrada,id_articulo,cantidad,fecha_negociacion,monto_total_con_iva,monto_total_moneda_original,moneda_compra,tasa_bcv,esquema_pago,id_usuario,id_proveedor,motivo_rechazo,aplica_igtf,monto_igtf,id_orden_compra';
     // Cada quien ve solo lo suyo -- salvo administrador, que ve todo.
     if (!sesionActual?.administrador) qRech += '&id_usuario=eq.'+encodeURIComponent(sesionActual?.correo_usuario||'');
     const rechazadas = await api('stock_entradas','GET',null,qRech) || [];
     if (!rechazadas.length) {
-      cont.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">✅ No tiene Entradas de Compra rechazadas pendientes de corregir.</div>';
+      cont.innerHTML = '<div style="text-align:center;color:var(--suave);padding:40px">' + (esPend ? '✅ No tiene Órdenes de Compra pendientes de aprobación.' : '✅ No tiene Entradas de Compra rechazadas pendientes de corregir.') + '</div>';
       return;
     }
     const idsProv = [...new Set(rechazadas.map(function(p){ return p.id_proveedor; }).filter(Boolean))];
@@ -2932,31 +2938,35 @@ async function invRenderOrdenesRechazadas(cont) {
           : (p.tasa_bcv ? parseFloat((p.monto_total_con_iva * p.tasa_bcv).toFixed(2)) + igtfBs : 0);
         return a + (bs||0);
       }, 0);
-      const motivoG = filasG[0].motivo_rechazo || '—';
+      const motivoG = esPend ? '⏳ Pendiente de aprobación' : (filasG[0].motivo_rechazo || '—');
       return '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);background:rgba(255,107,0,0.03)">'
         +'<td style="padding:8px;font-size:12px">'+formatearFechaCorta(filasG[0].fecha_negociacion)+'</td>'
         +'<td style="padding:8px;font-size:12px">📦 Orden de Compra<div style="font-size:10px;color:var(--suave);font-family:var(--font-mono)">Ref: OC-'+idLoteKey+' — '+filasG.length+' artículo'+(filasG.length>1?'s':'')+'</div></td>'
         +'<td style="padding:8px;text-align:right;font-family:var(--font-mono);font-size:12px">'+cantidadTotalG+'</td>'
         +'<td style="padding:8px;font-size:12px">'+nomProvG+'</td>'
         +'<td style="padding:8px;text-align:right;font-family:var(--font-mono)">'
-          +'<div style="font-weight:600;color:#fc8181">'+fmtBs(montoBs_G)+' Bs</div>'
+          +'<div style="font-weight:600;color:'+(esPend ? 'var(--naranja)' : '#fc8181')+'">'+fmtBs(montoBs_G)+' Bs</div>'
           +'<div style="font-size:10px;color:var(--suave)">$ '+fmtUSD(montoUSD_G)+(montoIGTF_USD_G > 0 ? ' (incl. IGTF)' : '')+'</div>'
         +'</td>'
         +'<td style="padding:8px;font-size:12px;color:var(--suave)">'+motivoG+'</td>'
-        +'<td style="padding:8px;text-align:center"><button class="btn-naranja" onclick="retomarLoteRechazado('+idLoteKey+')" style="font-size:11px;padding:4px 8px;white-space:nowrap">↻ Retomar Orden</button></td>'
+        +'<td style="padding:8px;text-align:center">' + (esPend
+          ? '<button class="btn-naranja" onclick="verFichaOrdenCompra('+filasG[0].id_entrada+')" style="font-size:11px;padding:4px 8px;white-space:nowrap">👁 Ver</button>'
+          : '<button class="btn-naranja" onclick="retomarLoteRechazado('+idLoteKey+')" style="font-size:11px;padding:4px 8px;white-space:nowrap">↻ Retomar Orden</button>') + '</td>'
         +'</tr>';
     });
 
     const filas = filasLote.join('');
 
-    cont.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-bottom:10px">Estas Entradas fueron rechazadas por un Nivel de Firma -- todavía no afectaron Stock ni Contabilidad. Corríjalas y vuelva a guardarlas para que se reenvíen a aprobación.</div>'
+    cont.innerHTML = '<div style="font-size:11px;color:var(--suave);margin-bottom:10px">' + (esPend
+        ? 'Estas Órdenes de Compra esperan la aprobación de un Nivel de Firma -- todavía no afectan Stock ni Contabilidad. Pulse "Ver" para revisar el detalle.'
+        : 'Estas Entradas fueron rechazadas por un Nivel de Firma -- todavía no afectaron Stock ni Contabilidad. Corríjalas y vuelva a guardarlas para que se reenvíen a aprobación.') + '</div>'
       + '<div class="tabla-container"><table style="width:100%;border-collapse:collapse;table-layout:fixed"><thead><tr>'
       +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:9%">Fecha</th>'
       +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:20%">Artículo</th>'
       +'<th style="padding:8px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:6%">Cant.</th>'
       +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:13%">Proveedor</th>'
       +'<th style="padding:8px;text-align:right;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:17%">Monto</th>'
-      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:19%">Motivo del Rechazo</th>'
+      +'<th style="padding:8px;text-align:left;font-size:11px;color:var(--suave);border-bottom:1px solid var(--borde);width:19%">' + (esPend ? 'Estado' : 'Motivo del Rechazo') + '</th>'
       +'<th style="padding:8px;width:16%"></th>'
       +'</tr></thead><tbody>'+filas+'</tbody></table></div>';
   } catch(e) { cont.innerHTML = '<div class="alerta alerta-error" style="display:block">Error: '+msgErr(e)+'</div>'; }
