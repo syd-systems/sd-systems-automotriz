@@ -3546,8 +3546,13 @@ async function verDetalleCxP(id_cxp, modoInicial) {
     const metodoLabels = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', AFILIACION_BANCARIA: 'Afiliación Bancaria', PAGO_MOVIL: 'Pago Móvil' };
     const metodoDetEl = document.getElementById('cont-pago-cxp-metodo');
     if (metodoDetEl) {
-      const metodoActualProv = (Array.isArray(prov.metodos_pago_tipos) && prov.metodos_pago_tipos[0]) || '';
-      metodoDetEl.textContent = metodoLabels[metodoActualProv] || '— No configurado en la ficha —';
+      // La ficha del Proveedor guarda el NOMBRE del método (ej. "Afiliación
+      // Bancaria"), no un código -- se muestra tal cual; el mapa de códigos
+      // queda solo como respaldo para registros antiguos.
+      const metodosProvDet = (Array.isArray(prov.metodos_pago_tipos) ? prov.metodos_pago_tipos : []).filter(Boolean);
+      metodoDetEl.textContent = metodosProvDet.length
+        ? metodosProvDet.map(function(t) { return metodoLabels[t] || t; }).join(', ')
+        : '— No configurado en la ficha —';
     }
 
     const tasaCreacionEl = document.getElementById('cont-pago-cxp-tasa-creacion');
