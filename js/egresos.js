@@ -3957,6 +3957,25 @@ async function _verCxPAutomatica(c, id_cxp) {
     if (numeroDocBox) numeroDocBox.style.display = 'none';
   }
 
+  // Ref: OC-xx -- si la Obligación nace de una Orden de Compra (numero_doc
+  // CPRA-<id_orden_compra>...). Se confirma que la OC exista y sea del mismo
+  // proveedor, porque las compras antiguas sin OC usan CPRA-<id_entrada>.
+  const refOcEl = document.getElementById('cxp-auto-ref-oc');
+  if (refOcEl) {
+    refOcEl.style.display = 'none'; refOcEl.innerHTML = '';
+    const mOc = (c.numero_doc || '').match(/^CPRA-(\d+)/);
+    if (mOc) {
+      try {
+        const ocRows = await api('stock_entradas','GET',null,'?id_orden_compra=eq.' + mOc[1] + '&select=id_entrada,id_proveedor&order=id_entrada.asc&limit=1');
+        const oc = ocRows && ocRows[0];
+        if (oc && window._cxpAutoIdActual === id_cxp && (!c.id_proveedor || !oc.id_proveedor || oc.id_proveedor === c.id_proveedor)) {
+          refOcEl.innerHTML = 'Ref: <a href="#" onclick="verFichaOrdenCompra(' + oc.id_entrada + ');return false" title="Ver la Orden de Compra" style="color:var(--naranja);text-decoration:underline">OC-' + mOc[1] + '</a>';
+          refOcEl.style.display = '';
+        }
+      } catch(e) { /* la referencia es informativa; no bloquea la ficha */ }
+    }
+  }
+
   // Estado
   const estadoEl = document.getElementById('cxp-auto-estado');
   const compEstadoAuto = estadoCxPCompuesto(c);
