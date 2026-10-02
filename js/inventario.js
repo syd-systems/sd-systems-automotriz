@@ -391,6 +391,7 @@ async function renderInventario(filtro) {
   }
   const tablaCont = document.getElementById('tabla-inv-cont');
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
+  activarOrdenColumnas(tablaCont);
   // Si estamos en vista movimientos, no recargar la tabla
   if (_invVista === 'movimientos' || _invVista === 'categorias' || _invVista === 'tipos') return;
 
@@ -691,7 +692,7 @@ function invRenderTabla(items, cont) {
     const stockBajo = parseFloat(r.stock_minimo_articulo||0) > 0 && stockMostrar <= r.stock_minimo_articulo;
     const abc = abcMap[r.id_articulo] || '—';
     return '<tr>'
-      + '<td style="padding:5px 8px;vertical-align:middle"><div style="display:flex;align-items:center;gap:8px">'
+      + '<td data-orden="' + escapeHtml(r.nombre_articulo || '') + '" style="padding:5px 8px;vertical-align:middle"><div style="display:flex;align-items:center;gap:8px">'
       + '<span style="font-size:10px;font-weight:700;color:' + (abcColor[abc]||'#888') + ';background:' + (abcColor[abc]||'#888') + '22;padding:2px 6px;border-radius:3px">' + abc + '</span>'
       + '<div><div style="font-family:var(--font-mono);font-size:10px;color:var(--suave);line-height:1.3">' + escapeHtml(r.codigo_articulo || '—')
       + (r.id_categoria_articulo ? ' · <span style="color:var(--suave)">' + (_invCategoriasCache.find(function(c){return c.id_categoria===r.id_categoria_articulo;})?.nombre || '') + '</span>' : '')

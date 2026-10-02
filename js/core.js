@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909253';
+const SYD_VERSION = '20260909254';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3805,6 +3805,150 @@ function estiloContadores(n) {
 }
 function htmlContadores(items, idContenedor) {
   return '<div' + (idContenedor ? ' id="' + idContenedor + '"' : '') + ' style="' + estiloContadores(items.length) + '">' + items.join('') + '</div>';
+}
+
+// ── Ordenar columnas de tablas con clic en el encabezado ──────────
+// activarOrdenColumnas(cont): toda tabla con <thead>/<tbody> dentro de
+// cont se puede ordenar (alfabético, numérico o por fecha dd/mm/aaaa).
+// Las filas con colspan (títulos de grupo) actúan como separadores: se
+// ordena dentro de cada grupo. El orden elegido se recuerda y se vuelve
+// a aplicar cuando la tabla se redibuja (buscar, filtrar, cambiar fechas).
+// Una celda puede fijar su valor de orden con data-orden="...".
+const _ordenColEstado = {};
+const _ordenColObservers = [];
+
+function _ordenColValor(td) {
+  if (!td) return '';
+  if (td.dataset && td.dataset.orden !== undefined) return td.dataset.orden;
+  return (td.innerText || td.textContent || '').trim();
+}
+
+function _ordenColNumero(txt) {
+  // Toma la primera línea con número (la celda puede traer un rótulo arriba)
+  const lineas = String(txt).split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+  if (!lineas.length || /^[—–-]+$/.test(lineas[0])) return null;
+  for (let i = 0; i < lineas.length; i++) {
+    const v = _ordenColNumeroLinea(lineas[i]);
+    if (v === null || !isNaN(v)) return v;
+    // Solo se salta un rótulo inicial sin dígitos (ej. "COSTO PROM.", "Venta")
+    if (/\d/.test(lineas[i]) || i >= 1) return NaN;
+  }
+  return NaN;
+}
+
+function _ordenColNumeroLinea(t) {
+  if (/^[—–-]+$/.test(t)) return null;
+  t = t.replace(/\(.*\)/g, '').replace(/US\$|Bs\.?S?|USD|VES|EUR|€|\$|%|\bud(s|es)?\.?|\bunid\.?|\bd[ií]as?\b/gi, '').replace(/[\s+]/g, '');
+  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(t) || /^-?\d+(,\d+)?$/.test(t)) return parseFloat(t.replace(/\./g, '').replace(',', '.'));
+  if (/^-?\d+\.\d+$/.test(t)) return parseFloat(t);
+  return NaN;
+}
+
+function _ordenColFecha(txt) {
+  const t = String(txt).split('\n')[0].trim();
+  if (!t || /^[—–-]+$/.test(t)) return null;
+  const m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[\s,]+(\d{1,2}):(\d{2}))?/);
+  if (!m) return NaN;
+  return Date.UTC(+m[3], +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0));
+}
+
+function _ordenColCeldas(tr) {
+  // Celdas por posición visual (respeta colspan)
+  const pos = [];
+  Array.prototype.forEach.call(tr.children, function(td) {
+    const span = td.colSpan || 1;
+    for (let i = 0; i < span; i++) pos.push(span > 1 ? null : td);
+  });
+  return pos;
+}
+
+function _ordenColClave(tabla) {
+  const ths = tabla.tHead ? tabla.tHead.rows[tabla.tHead.rows.length - 1].cells : [];
+  return Array.prototype.map.call(ths, function(th) { return th.textContent.trim(); }).join('|');
+}
+
+function _ordenColAplicar(tabla, col, dir) {
+  const tb = tabla.tBodies[0];
+  if (!tb) return;
+  const filas = Array.prototype.slice.call(tb.rows);
+  // Agrupar: una fila con colspan (o menos celdas) es separador de grupo
+  const grupos = []; let actual = { sep: null, filas: [] };
+  filas.forEach(function(tr) {
+    const celdas = _ordenColCeldas(tr);
+    const esSep = !celdas[col];
+    if (esSep) { grupos.push(actual); actual = { sep: tr, filas: [] }; }
+    else actual.filas.push({ tr: tr, txt: _ordenColValor(celdas[col]) });
+  });
+  grupos.push(actual);
+  const todos = [];
+  grupos.forEach(function(g) { g.filas.forEach(function(f) { todos.push(f.txt); }); });
+  const llenos = todos.filter(function(t) { const s = String(t).split('\n')[0].trim(); return s && !/^[—–-]+$/.test(s); });
+  let tipo = 'texto';
+  if (llenos.length && llenos.every(function(t) { return !isNaN(_ordenColNumero(t)); })) tipo = 'numero';
+  else if (llenos.length && llenos.every(function(t) { return !isNaN(_ordenColFecha(t)); })) tipo = 'fecha';
+  const conv = tipo === 'numero' ? _ordenColNumero : tipo === 'fecha' ? _ordenColFecha : function(t) { const s = String(t).trim(); return (!s || /^[—–-]+$/.test(s)) ? null : s; };
+  const signo = dir === 'desc' ? -1 : 1;
+  grupos.forEach(function(g) {
+    g.filas.forEach(function(f, i) { f.v = conv(f.txt); f.i = i; });
+    g.filas.sort(function(a, b) {
+      if (a.v === null && b.v === null) return a.i - b.i;
+      if (a.v === null) return 1;          // vacíos siempre al final
+      if (b.v === null) return -1;
+      const r = tipo === 'texto' ? a.v.localeCompare(b.v, 'es', { numeric: true, sensitivity: 'base' }) : a.v - b.v;
+      return r ? r * signo : a.i - b.i;
+    });
+    if (g.sep) tb.appendChild(g.sep);
+    g.filas.forEach(function(f) { tb.appendChild(f.tr); });
+  });
+  Array.prototype.forEach.call(tabla.tHead.querySelectorAll('th'), function(th) { th.removeAttribute('data-orden-dir'); });
+  const th = tabla.tHead.rows[tabla.tHead.rows.length - 1].cells[col];
+  if (th) th.setAttribute('data-orden-dir', dir);
+  // Descarta las mutaciones propias del reordenamiento
+  _ordenColObservers.forEach(function(o) { o.takeRecords(); });
+}
+
+function _ordenColPreparar(cont) {
+  cont.querySelectorAll('table').forEach(function(tabla) {
+    if (!tabla.tHead || !tabla.tBodies[0] || !tabla.tHead.rows.length) return;
+    const fila = tabla.tHead.rows[tabla.tHead.rows.length - 1];
+    Array.prototype.forEach.call(fila.cells, function(th) {
+      const txt = th.textContent.trim();
+      if (txt && !/^acci[oó]n(es)?$/i.test(txt) && !th.querySelector('input,button,select')) th.classList.add('th-ordenable');
+    });
+    const est = _ordenColEstado[_ordenColClave(tabla)];
+    if (est && !tabla._ordenAplicado) { tabla._ordenAplicado = true; _ordenColAplicar(tabla, est.col, est.dir); }
+  });
+}
+
+function activarOrdenColumnas(cont) {
+  if (!cont) return;
+  if (!document.getElementById('estilo-orden-col')) {
+    const st = document.createElement('style'); st.id = 'estilo-orden-col';
+    st.textContent = 'th.th-ordenable{cursor:pointer;user-select:none;white-space:nowrap}'
+      + 'th.th-ordenable:hover{color:var(--naranja) !important}'
+      + 'th.th-ordenable::after{content:" \\2195";opacity:.35;font-size:10px}'
+      + 'th.th-ordenable[data-orden-dir="asc"]::after{content:" \\25B2";opacity:1;color:var(--naranja)}'
+      + 'th.th-ordenable[data-orden-dir="desc"]::after{content:" \\25BC";opacity:1;color:var(--naranja)}';
+    document.head.appendChild(st);
+  }
+  _ordenColPreparar(cont);
+  if (cont._ordenActivo) return;
+  cont._ordenActivo = true;
+  cont.addEventListener('click', function(e) {
+    const th = e.target.closest && e.target.closest('th.th-ordenable');
+    if (!th || !cont.contains(th)) return;
+    const tabla = th.closest('table');
+    const col = Array.prototype.indexOf.call(th.parentNode.cells, th);
+    const clave = _ordenColClave(tabla);
+    const previo = _ordenColEstado[clave];
+    const dir = previo && previo.col === col && previo.dir === 'asc' ? 'desc' : 'asc';
+    _ordenColEstado[clave] = { col: col, dir: dir };
+    _ordenColAplicar(tabla, col, dir);
+  });
+  // Al redibujarse (búsqueda, filtros, fechas) se reaplica el orden elegido
+  const obs = new MutationObserver(function() { _ordenColPreparar(cont); });
+  obs.observe(cont, { childList: true, subtree: true });
+  _ordenColObservers.push(obs);
 }
 
 function emisorQ() {
