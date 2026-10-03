@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909260';
+const SYD_VERSION = '20260909261';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3081,6 +3081,7 @@ let _notifPendienteActual = null;
 let _notifEsEntradaSinResolver = false;
 let _notifEntradaInfo = null; // { id_entrada, id_articulo, nombre_articulo }
 let _notifNC = null; // Nota de Crédito por aprobar: { id_nc, numero_nc, tipo }
+let _notifNCFactura = null; // id_factura de la NC mostrada en el aviso (botón "👁 Ver")
 let _notifFacManual = null; // Factura manual por aprobar: { id_factura, numero_factura }
 let _notifIrPagos = false;  // Reembolso a cliente por pagar: el botón lleva a Pagos
 
@@ -3102,6 +3103,7 @@ async function mostrarNotifPendiente(notif) {
   _notifEsEntradaSinResolver = false;
   _notifEntradaInfo = null;
   _notifNC = null;
+  _notifNCFactura = null;
   _notifFacManual = null;
   _notifIrPagos = false;
   const lista = document.getElementById('notif-pendiente-lista');
@@ -3132,6 +3134,8 @@ async function mostrarNotifPendiente(notif) {
   if (btnRechazarEnt) btnRechazarEnt.style.display = accionNotif === 'aprobar_orden_compra' ? '' : 'none';
   const btnVerOC = document.getElementById('btn-notif-ver-oc');
   if (btnVerOC) btnVerOC.style.display = (accionNotif === 'aprobar_orden_compra' && extrasNotif && extrasNotif.id_entrada) ? '' : 'none';
+  const btnVerFacNC = document.getElementById('btn-notif-ver-fac-nc');
+  if (btnVerFacNC) btnVerFacNC.style.display = 'none';
   const btnVerDespues = document.getElementById('btn-notif-ver-despues');
   // No tiene sentido "posponer" una aprobación de Orden de Compra, ni el
   // aviso de que ya fue rechazada -- en ambos casos hay una única acción
@@ -3210,6 +3214,8 @@ async function mostrarNotifPendiente(notif) {
       if (f && n && extrasNotif.id_nc && n.estado === 'PENDIENTE' && puedo('FACTURAS','APROBAR_NC')) {
         lista.innerHTML = await _htmlTarjetaNotifNC(notif, f, n, n.id_usuario, '');
         _notifNC = { id_nc: n.id_nc, numero_nc: n.numero_nc, tipo: n.tipo };
+        _notifNCFactura = extrasNotif.id_factura;
+        if (btnVerFacNC) btnVerFacNC.style.display = '';
         cfgNotif = { titulo: '🧾 Nota de Crédito (' + (esRev ? 'reverso' : 'reembolso') + ')',
                      instruccion: 'Revise el detalle e indique si Aprueba o Rechaza esta Nota de Crédito.', boton: '✓ Aprobar' };
         if (btnRechazarEnt) btnRechazarEnt.style.display = '';
@@ -3596,6 +3602,12 @@ async function mostrarAvisoOk(mensaje, esError) {
     document.body.appendChild(div);
     div.querySelector('#btn-aviso-ok').onclick = function(){ document.body.removeChild(div); resolve(); };
   });
+}
+
+// "👁 Ver" en el aviso de Nota de Crédito por aprobar: abre la Ficha de la
+// Factura (solo lectura) encima del aviso, sin cerrarlo ni decidir nada.
+function notifVerFacturaNC() {
+  if (_notifNCFactura && typeof verFichaFactura === 'function') verFichaFactura(_notifNCFactura, { soloLectura: true });
 }
 
 // "👁 Ver" en el aviso de aprobación: abre la Ficha de la Orden de Compra

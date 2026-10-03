@@ -1147,7 +1147,9 @@ async function generarCxCyAsientoFactura(idFactura) {
   } catch(eGen) { _tglog('ERROR: ' + eGen.message); console.warn('Error generando CxC/asiento/salida de la factura:', eGen); }
 }
 
-async function verFichaFactura(id) {
+// opts.soloLectura: se abre desde un aviso (ej. aprobación de Nota de
+// Crédito) -- sin botones de acción y por encima del aviso.
+async function verFichaFactura(id, opts) {
   try {
     const [facArr] = await Promise.all([
       api('facturas','GET',null,'?id_factura=eq.'+id+'&select=*,emisores(*),clientes(nombre_completo,tipo_doc,numero_doc),cont_cxc(metodo_pago,moneda_cobro,referencia,fecha_cobro,pagado_usd,saldo_usd,estado,tasa_bcv,id_banco_origen,banco_origen:id_banco_origen(nombre))'),
@@ -1395,6 +1397,14 @@ async function verFichaFactura(id) {
     // ordenes.js) -- esta era la única puerta que quedaba abierta.
     // (ver comentario arriba sobre btnEliminar)
     abrirModal('modal-ficha-fac');
+    if (opts && opts.soloLectura) {
+      document.querySelectorAll('#modal-ficha-fac .modal-footer [id^="ficha-fac-btn-"]').forEach(function(b) { b.style.display = 'none'; });
+      document.getElementById('modal-ficha-fac').style.zIndex = 10050;
+      // Enlaces (Origen, NC) como texto: no navegar fuera del aviso
+      document.querySelectorAll('#ficha-fac-contenido a[onclick]').forEach(function(a) {
+        a.removeAttribute('onclick'); a.removeAttribute('href'); a.style.textDecoration = 'none'; a.style.cursor = 'default';
+      });
+    }
   focusFirstField('modal-ficha-fac');
   } catch(err) { alert('Error: '+msgErr(err)); console.error(err); }
 }
