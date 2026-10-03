@@ -536,13 +536,13 @@ async function guardarParamItem() {
     cerrarModal('modal-param');
     await mostrarTablaParam(key);
   } catch(e) {
-    const msg = e.message || '';
+    const msg = e.mensajeOriginal || e.message || '';
     if (msg.includes('duplicate key') && msg.includes('uq_niveles_jerarquicos_orden_empresa')) {
       errEl.textContent = 'Ya existe otro Nivel Jerárquico con ese mismo Nivel Aprobación. Cada nivel debe tener un número distinto.';
     } else if (msg.includes('duplicate key')) {
       errEl.textContent = 'Ya existe un registro con esos mismos datos.';
     } else {
-      errEl.textContent = 'Error: ' + msg;
+      errEl.textContent = 'Error: ' + traducirMensajeSistema(msg);
     }
     errEl.style.display = 'block';
     resetBtn();

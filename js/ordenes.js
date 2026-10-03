@@ -1132,7 +1132,7 @@ async function _guardarOSInterno() {
           if (res && res[0]) osId = res[0].id_orden;
           break; // éxito
         } catch(eDup) {
-          if (eDup.message && eDup.message.includes('duplicate key')) {
+          if ((eDup.mensajeOriginal || eDup.message || '').includes('duplicate key')) {
             seq++;
             intentos++;
           } else {

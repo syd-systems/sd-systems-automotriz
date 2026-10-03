@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909257';
+const SYD_VERSION = '20260909258';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -592,7 +592,13 @@ async function api(tabla, metodo = 'GET', cuerpo = null, filtro = '', sinReprese
   }
   if (!r.ok) {
     const err = await r.json().catch(() => ({}));
-    throw new Error(err.message || `Error ${r.status}`);
+    // El mensaje se muestra en Español; el original (inglés) queda en
+    // .mensajeOriginal para quien necesite detectar un error puntual
+    // (ej. 'duplicate key', una FK concreta).
+    const errApi = new Error(traducirMensajeSistema(err.message) || _msgPorEstadoHttp(r.status));
+    errApi.mensajeOriginal = err.message || '';
+    errApi.codigo = err.code || null;
+    throw errApi;
   }
   return metodo === 'GET' ? r.json() : (r.status === 204 ? null : r.json().catch(() => null));
 }
@@ -671,7 +677,7 @@ async function subirFoto(file, path) {
   });
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}));
-    throw new Error(err.message || `Error subiendo archivo (${resp.status})`);
+    throw new Error(traducirMensajeSistema(err.message || err.error) || ('Error subiendo archivo: ' + _msgPorEstadoHttp(resp.status)));
   }
   return rutaCompleta;
 }
@@ -1232,7 +1238,7 @@ async function iniciarSesion() {
       if (/captcha/i.test(msgLogin)) {
         mostrarError('Espere a que se complete la verificación de seguridad (casilla sobre el botón) e intente de nuevo.');
       } else {
-        mostrarError(msgLogin || 'Correo o contraseña incorrectos.');
+        mostrarError(traducirMensajeSistema(msgLogin) || 'Correo o contraseña incorrectos.');
       }
       return;
     }
@@ -1450,7 +1456,7 @@ async function iniciarSesion() {
 
 function mostrarError(msg) {
   const el = document.getElementById('login-error');
-  el.textContent = msg;
+  el.textContent = traducirMensajeSistema(msg);
   el.style.display = 'block';
 }
 
@@ -3978,34 +3984,122 @@ function fmtNumeroDoc(numeroDoc) {
   return numeroDoc;
 }
 
-function msgErr(e) {
-  const m = (e && e.message) || String(e || '');
-  if (/Failed to fetch|NetworkError|Load failed/i.test(m)) {
-    return 'Falla de Comunicación — verifique su conexión a Internet e intente de nuevo.';
-  }
-  // Postgres avisa "... violates foreign key constraint ... on table
-  // \"XXX\"" cuando no se puede eliminar/actualizar un registro porque
-  // otra tabla todavía lo referencia -- se traduce a un mensaje legible,
-  // nombrando el módulo relacionado en vez del nombre crudo de la tabla.
-  const fk = m.match(/violates foreign key constraint[^"]*"[^"]*"\s*on table\s*"([a-z_]+)"/i);
-  if (fk) {
-    const tablasAmigables = {
-      vehiculos: 'Vehículos', vehiculos_clientes_hist: 'Historial de Vehículos',
-      ordenes_servicio: 'Órdenes de Servicio', os_servicios: 'Servicios de una Orden',
-      os_mercancias: 'Artículos de una Orden', facturas: 'Facturas',
-      ventas: 'Ventas', venta_detalle: 'líneas de una Venta',
-      cont_cxc: 'Cuentas por Cobrar', cont_cxp: 'Cuentas por Pagar',
-      cont_asientos: 'Asientos Contables', cont_asiento_lineas: 'líneas de un Asiento',
-      stock_entradas: 'Entradas de Stock', stock_salidas: 'Salidas de Stock',
-      empleados: 'Empleados', usuarios: 'Usuarios', usuarios_permisos: 'Permisos de Usuarios',
-      proveedores: 'Proveedores', clientes: 'Clientes',
-      param_cuentas_bancarias_empresa: 'Cuentas Bancarias de la Empresa',
-      historial_claves: 'historial de contraseñas', tokens_recuperacion: 'recuperaciones de contraseña',
-    };
-    const tablaAmigable = tablasAmigables[fk[1]] || fk[1];
-    return 'No se puede eliminar -- todavía tiene registros relacionados en ' + tablaAmigable + '.';
+// ── Mensajes del sistema SIEMPRE en Español ──────────────────────
+// Supabase (Auth / PostgREST) y Postgres responden en inglés. Todo
+// mensaje que llega al usuario pasa por traducirMensajeSistema(): api(),
+// el login, msgErr(), mostrarError() y alert(). Los mensajes propios
+// (RAISE EXCEPTION en Español) no coinciden con ningún patrón y pasan
+// tal cual.
+const _TABLAS_AMIGABLES = {
+  vehiculos: 'Vehículos', vehiculos_clientes_hist: 'Historial de Vehículos',
+  ordenes_servicio: 'Órdenes de Servicio', os_servicios: 'Servicios de una Orden',
+  os_mercancias: 'Artículos de una Orden', facturas: 'Facturas',
+  ventas: 'Ventas', venta_detalle: 'líneas de una Venta',
+  cont_cxc: 'Cuentas por Cobrar', cont_cxp: 'Cuentas por Pagar',
+  cont_asientos: 'Asientos Contables', cont_asiento_lineas: 'líneas de un Asiento',
+  stock_entradas: 'Entradas de Stock', stock_salidas: 'Salidas de Stock',
+  empleados: 'Empleados', usuarios: 'Usuarios', usuarios_permisos: 'Permisos de Usuarios',
+  proveedores: 'Proveedores', clientes: 'Clientes',
+  param_cuentas_bancarias_empresa: 'Cuentas Bancarias de la Empresa',
+  historial_claves: 'historial de contraseñas', tokens_recuperacion: 'recuperaciones de contraseña',
+  inventario_almacen: 'Artículos de Inventario', notas_credito: 'Notas de Crédito',
+};
+function _tablaAmigable(t) { return _TABLAS_AMIGABLES[t] || t; }
+
+const _TRADUCCIONES_SISTEMA = [
+  // Conexión
+  [/Failed to fetch|NetworkError[^.]*|Load failed|Network request failed/i, 'Falla de Comunicación — verifique su conexión a Internet e intente de nuevo.'],
+  // Inicio de sesión / Auth
+  [/Invalid login credentials/i, 'Correo o contraseña incorrectos.'],
+  [/Email not confirmed/i, 'El correo de este usuario aún no ha sido confirmado.'],
+  [/User not found/i, 'Usuario no encontrado.'],
+  [/User already registered|A user with this email address has already been registered|email address has already been registered/i, 'Ya existe un usuario registrado con ese correo.'],
+  [/Password should be at least (\d+) characters?\.?/i, 'La contraseña debe tener al menos $1 caracteres.'],
+  [/New password should be different from the old password\.?/i, 'La nueva contraseña debe ser distinta a la anterior.'],
+  [/Password is known to be weak and easy to guess[^.]*\.?|weak[_ ]password/i, 'La contraseña es muy débil o fácil de adivinar. Use una más segura.'],
+  [/For security purposes, you can only request this after (\d+) seconds?\.?/i, 'Por seguridad, espere $1 segundos antes de intentarlo de nuevo.'],
+  [/Email rate limit exceeded|over_email_send_rate_limit/i, 'Se superó el límite de envío de correos. Intente más tarde.'],
+  [/Request rate limit reached|Too many requests|rate limit exceeded/i, 'Demasiados intentos seguidos. Espere unos minutos e intente de nuevo.'],
+  [/Unable to validate email address: invalid format|invalid email/i, 'El formato del correo no es válido.'],
+  [/Signups? not allowed for this instance/i, 'No está permitido el registro de nuevos usuarios.'],
+  [/captcha verification process failed|captcha protection[^.]*/i, 'La verificación de seguridad falló. Espere a que se complete la casilla e intente de nuevo.'],
+  [/Invalid Refresh Token[^.]*|Refresh Token Not Found|refresh_token_not_found/i, 'La sesión expiró. Inicie sesión nuevamente.'],
+  [/JWT expired|token is expired/i, 'La sesión expiró. Inicie sesión nuevamente.'],
+  [/invalid JWT[^.]*|JWSError[^.]*|JWT cryptographic operation failed/i, 'La sesión no es válida. Inicie sesión nuevamente.'],
+  [/Auth session missing!?/i, 'No hay una sesión activa. Inicie sesión nuevamente.'],
+  [/Token has expired or is invalid|Email link is invalid or has expired/i, 'El enlace o código expiró o no es válido.'],
+  [/User is banned/i, 'Este usuario está bloqueado.'],
+  [/Anonymous sign-ins are disabled/i, 'Debe ingresar su correo y contraseña.'],
+  [/Database error (saving new user|querying schema|finding user|granting user)[^.]*/i, 'Error de la base de datos al procesar el usuario. Intente de nuevo o contacte al administrador.'],
+  // Base de datos (Postgres / PostgREST)
+  [/update or delete on table "[a-z_]+" violates foreign key constraint "[^"]*" on table "([a-z_]+)"/i,
+    function(m, t) { return 'No se puede eliminar — todavía tiene registros relacionados en ' + _tablaAmigable(t) + '.'; }],
+  [/insert or update on table "([a-z_]+)" violates foreign key constraint "[^"]*"/i,
+    function(m, t) { return 'No se pudo guardar en ' + _tablaAmigable(t) + ': un dato relacionado no existe.'; }],
+  [/violates foreign key constraint[^"]*"[^"]*"\s*on table\s*"([a-z_]+)"/i,
+    function(m, t) { return 'No se puede eliminar — todavía tiene registros relacionados en ' + _tablaAmigable(t) + '.'; }],
+  [/new row violates row-level security policy(?: for table "([a-z_]+)")?/i, 'No tiene permiso para realizar esta operación.'],
+  [/permission denied for (?:table|relation|view|schema|function|sequence) ([a-z_]+)/i, 'No tiene permiso para acceder a esta información.'],
+  [/duplicate key value violates unique constraint "[^"]*"/i, 'Ya existe un registro con esos datos (valor duplicado).'],
+  [/null value in column "([a-z_]+)"[^.]* violates not-null constraint/i, 'Falta un dato obligatorio (campo "$1").'],
+  [/value too long for type character varying\((\d+)\)/i, 'Un texto excede el largo permitido ($1 caracteres).'],
+  [/invalid input syntax for type (integer|bigint|numeric|smallint|double precision|real): "([^"]*)"/i, 'Valor numérico inválido: "$2".'],
+  [/invalid input syntax for type (date|timestamp[^:]*): "([^"]*)"/i, 'Fecha inválida: "$2".'],
+  [/invalid input syntax for type ([a-z ]+): "([^"]*)"/i, 'Valor inválido: "$2".'],
+  [/date\/time field value out of range: "([^"]*)"/i, 'Fecha fuera de rango: "$1".'],
+  [/numeric field overflow/i, 'Un monto es demasiado grande para guardarse.'],
+  [/division by zero/i, 'Error de cálculo: división entre cero.'],
+  [/(?:new row for relation "[a-z_]+" )?violates check constraint "([^"]*)"/i, 'Un dato no cumple las reglas de validación ($1).'],
+  [/Could not find the function ([a-z_.]+)[^.]*in the schema cache/i, 'La función $1 no existe en la base de datos (puede faltar una actualización).'],
+  [/Could not find the '([^']+)' column of '([^']+)' in the schema cache/i, 'El campo "$1" no existe en $2.'],
+  [/Could not find a relationship between '([^']+)' and '([^']+)'[^.]*/i, 'No hay relación entre $1 y $2 en la base de datos.'],
+  [/relation "([a-z_.]+)" does not exist/i, 'La tabla $1 no existe.'],
+  [/column "?([a-z_.]+)"? does not exist/i, 'El campo $1 no existe.'],
+  [/function ([a-z_.]+\([^)]*\)) does not exist/i, 'La función $1 no existe.'],
+  [/canceling statement due to statement timeout/i, 'La consulta tardó demasiado. Intente de nuevo o reduzca el rango.'],
+  [/(?:JSON object requested, )?multiple \(or no\) rows returned|Cannot coerce the result to a single JSON object/i, 'Se esperaba un único registro y se encontraron varios o ninguno.'],
+  [/deadlock detected/i, 'Otra operación estaba usando los mismos datos. Intente de nuevo.'],
+  [/could not serialize access[^.]*/i, 'Otra operación modificó los mismos datos. Intente de nuevo.'],
+  [/The resource already exists/i, 'El archivo ya existe.'],
+  [/Payload too large|The object exceeded the maximum allowed size/i, 'El archivo es demasiado grande.'],
+  [/mime type [^ ]+ is not supported/i, 'Tipo de archivo no permitido.'],
+  [/Bucket not found/i, 'No se encontró el almacenamiento de archivos.'],
+  [/Object not found/i, 'Archivo no encontrado.'],
+  [/Internal Server Error/i, 'Error interno del servidor. Intente de nuevo.'],
+  [/Service Unavailable|Bad Gateway|Gateway Timeout/i, 'El servidor no está disponible en este momento. Intente de nuevo en unos minutos.'],
+  [/Unauthorized/i, 'No autorizado. Inicie sesión nuevamente.'],
+  [/Forbidden/i, 'Acceso denegado.'],
+];
+
+function traducirMensajeSistema(msg) {
+  if (msg === null || msg === undefined) return msg;
+  let m = String(msg);
+  for (let i = 0; i < _TRADUCCIONES_SISTEMA.length; i++) {
+    const par = _TRADUCCIONES_SISTEMA[i];
+    if (par[0].test(m)) { m = m.replace(par[0], par[1]); }
   }
   return m;
+}
+
+// Mensaje genérico por código HTTP cuando el servidor no manda texto
+function _msgPorEstadoHttp(status) {
+  return ({ 400: 'Solicitud inválida.', 401: 'No autorizado. Inicie sesión nuevamente.', 403: 'Acceso denegado.',
+            404: 'No encontrado.', 409: 'Conflicto: el registro ya existe o fue modificado.', 413: 'El archivo o los datos son demasiado grandes.',
+            429: 'Demasiados intentos seguidos. Espere unos minutos.', 500: 'Error interno del servidor.', 502: 'El servidor no está disponible.',
+            503: 'El servidor no está disponible.', 504: 'El servidor tardó demasiado en responder.' })[status] || ('Error ' + status);
+}
+
+// Red de seguridad: cualquier alert() con un mensaje del sistema en inglés
+(function() {
+  if (typeof window === 'undefined' || window._alertTraducido) return;
+  const alertOriginal = window.alert;
+  window.alert = function(m) { return alertOriginal.call(window, traducirMensajeSistema(m)); };
+  window._alertTraducido = true;
+})();
+
+function msgErr(e) {
+  const m = (e && e.message) || String(e || '');
+  return traducirMensajeSistema(m);
 }
 
 function fmtFecha(fecha) {
