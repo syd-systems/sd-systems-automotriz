@@ -2393,6 +2393,18 @@ async function repEgresosRender(cont) {
     return;
   }
 
+  // metodo_pago guarda el id_tipo de param_tipos_pago (no el nombre) --
+  // se traduce al nombre del Método; si no es un id, se muestra tal cual
+  const nombreMetodo = {};
+  const idsMetodo = rows.map(function(c){ return c.metodo_pago; }).filter(function(m){ return m !== null && m !== undefined && /^\d+$/.test(String(m)); });
+  if (idsMetodo.length) {
+    try {
+      const tiposPago = await api('param_tipos_pago','GET',null,'?id_tipo=in.(' + Array.from(new Set(idsMetodo)).join(',') + ')&select=id_tipo,nombre') || [];
+      tiposPago.forEach(function(t){ nombreMetodo[String(t.id_tipo)] = t.nombre; });
+    } catch(eTipos) { console.warn('No se pudieron cargar los Métodos de Pago:', eTipos); }
+  }
+  const metodoTxt = function(m) { return (m === null || m === undefined || m === '') ? '' : (nombreMetodo[String(m)] || String(m)); };
+
   // Monto en la moneda elegida (Bs a la tasa de la Obligación)
   const enMoneda = function(usd, c) {
     if (monedaVal === 'USD') return usd;
@@ -2425,7 +2437,7 @@ async function repEgresosRender(cont) {
       fecha: c.fecha_emision, documento: fmtNumeroDoc(c.numero_doc) || ('#' + c.id_cxp), area: area,
       proveedor: c.proveedor_nombre || '—', concepto: _repEgrConcepto(c),
       descripcion: c.concepto || c.observaciones || '', estado: grupo === 'PAGADA' ? 'Pagada' : grupo === 'ANULADA' ? 'Anulada' : (String(c.estado).toUpperCase() === 'PARCIAL' ? 'Parcial' : 'Por Pagar'),
-      fechaPago: c.fecha_pago || '', metodo: c.metodo_pago || '', monto: total, pagado: pag, usuario: c.id_usuario || ''
+      fechaPago: c.fecha_pago || '', metodo: metodoTxt(c.metodo_pago), monto: total, pagado: pag, usuario: c.id_usuario || ''
     });
   });
   const resumen = Object.keys(porArea).map(function(k){ return porArea[k]; })
