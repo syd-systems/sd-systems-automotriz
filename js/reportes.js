@@ -157,17 +157,21 @@ async function repInventarioRender(cont) {
     + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Valor Total del Inventario</div>'
     + '<div id="rep-inv-total-valor" style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">0</div>'
     + '</div>'
+    + '<div style="flex:1;background:var(--gris2);border-radius:8px;padding:10px 16px">'
+    + '<div style="font-size:9px;color:var(--suave);letter-spacing:1px;text-transform:uppercase">Valor a Tasa BCV del Día</div>'
+    + '<div id="rep-inv-total-valor-dia" style="font-family:var(--font-display);font-size:18px;color:var(--naranja)">0</div>'
+    + '</div>'
     + '</div>'
     + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 420px))"><table style="min-width:900px;border-collapse:collapse;white-space:nowrap">'
     + '<thead><tr id="rep-inv-thead-row">'
-    + '</tr></thead><tbody id="rep-inv-tbody"><tr><td colspan="8" style="text-align:center;color:var(--suave);padding:32px">Cargando...</td></tr></tbody>'
+    + '</tr></thead><tbody id="rep-inv-tbody"><tr><td colspan="9" style="text-align:center;color:var(--suave);padding:32px">Cargando...</td></tr></tbody>'
     + '</table></div>'
     + '</div>';
 
   // Tasa BCV vigente A la fecha de corte (nunca una posterior, aunque ya
   // esté publicada -- mismo criterio legal usado en el resto de la app).
   let tasaCorte = 1;
-  if (monedaVal === 'VES') {
+  {
     try {
       const tasaRows = await api('tasas','GET',null,
         '?moneda_origen=eq.USD&fecha_valor=lte.'+fechaCorteVal+'&order=fecha_valor.desc&limit=1&select=tipo_cambio,fecha_valor');
@@ -178,9 +182,20 @@ async function repInventarioRender(cont) {
         document.getElementById('rep-inv-tasa-info').textContent = 'Sin tasa BCV registrada a esa fecha.';
       }
     } catch(eTasaRep) { document.getElementById('rep-inv-tasa-info').textContent = 'Error obteniendo la tasa.'; }
-  } else {
-    document.getElementById('rep-inv-tasa-info').textContent = '';
   }
+
+  // Tasa histórica del CPP -- la de la última Entrada de cada Artículo
+  // hasta la fecha de corte (la que quedó congelada en esa Entrada). Es el
+  // MISMO criterio de Inventario General, para que ambos muestren el mismo
+  // Costo Prom. en Bs. Si el Artículo no tiene Entradas, se usa la de corte.
+  let tasaCppPorArticulo = {};
+  try {
+    const entTasaRows = await api('stock_entradas','GET',null,
+      '?fecha_entrada=lte.'+fechaCorteVal+'&or=(anulada.eq.false,anulada.is.null)&order=fecha_entrada.desc&select=id_articulo,tasa_bcv');
+    (entTasaRows||[]).forEach(function(e) {
+      if (tasaCppPorArticulo[e.id_articulo] === undefined && e.tasa_bcv) tasaCppPorArticulo[e.id_articulo] = parseFloat(e.tasa_bcv);
+    });
+  } catch(eTasaCppRep) { console.warn('Error trayendo tasas históricas del CPP:', eTasaCppRep); }
 
   // Consumo de los últimos 90 días (hasta la fecha de corte), por Artículo
   // -- base para calcular la Rotación (Días de Cobertura).
@@ -241,13 +256,17 @@ async function repInventarioRender(cont) {
       ? items.filter(function(a){ return (stockPorArticulo[a.id_articulo] || 0) === 0; })
       : items;
 
-  let totalUnidades = 0, totalValor = 0;
+  let totalUnidades = 0, totalValor = 0, totalValorDia = 0;
   const filas = itemsFiltrados.map(function(a) {
     const stock = stockPorArticulo[a.id_articulo] || 0;
     const stockMin = parseFloat(a.stock_minimo_articulo||0);
-    const costoUsd = parseFloat(a.precio_costo_moneda||0);
-    const precioPromMostrar = monedaVal === 'VES' ? costoUsd * tasaCorte : costoUsd;
+    // Igual que Inventario General: sin stock, el CPP se muestra en 0
+    const costoUsd = stock === 0 ? 0 : parseFloat(a.precio_costo_moneda||0);
+    const costoBs = costoUsd * (tasaCppPorArticulo[a.id_articulo] || tasaCorte);
+    const precioPromMostrar = monedaVal === 'VES' ? costoBs : costoUsd;
     const valorLinea = stock * precioPromMostrar;
+    const valorDia = stock * costoUsd * tasaCorte;
+    totalValorDia += valorDia;
     const margen = (a.id_tipo_articulo !== null && a.id_tipo_articulo !== undefined && margenPorTipo[a.id_tipo_articulo] !== undefined)
       ? margenPorTipo[a.id_tipo_articulo] : null;
     totalUnidades += stock;
@@ -260,12 +279,15 @@ async function repInventarioRender(cont) {
     return {
       codigo: a.codigo_articulo||'', nombre: a.nombre_articulo||'', categoria: catNombrePorId[a.id_categoria_articulo]||'',
       stock: stock, stockMin: stockMin, diasCobertura: diasCobertura, precioProm: precioPromMostrar,
-      valorLinea: valorLinea, margen: margen
+      precioPromBs: costoBs, precioPromUsd: costoUsd,
+      valorLinea: valorLinea, valorDia: valorDia, margen: margen
     };
   });
 
   document.getElementById('rep-inv-total-unidades').textContent = totalUnidades.toLocaleString('es-VE');
   document.getElementById('rep-inv-total-valor').textContent = (monedaVal==='VES' ? fmtBs(totalValor) + ' Bs' : '$ ' + fmtUSD(totalValor));
+  const elValorDia = document.getElementById('rep-inv-total-valor-dia');
+  if (elValorDia) elValorDia.textContent = fmtBs(totalValorDia) + ' Bs';
 
   // Filtros activos, en texto legible -- para que quede explícito en los
   // reportes exportados (no basta con que los datos YA vengan filtrados;
@@ -288,14 +310,15 @@ async function repInventarioRender(cont) {
 let _repInvOrdenCol = null;
 let _repInvOrdenAsc = true;
 const REP_INV_COLUMNAS = [
-  { campo: 'codigo',        tipo: 'texto',  label: 'Código',       ancho: '11%' },
-  { campo: 'nombre',        tipo: 'texto',  label: 'Artículo',     ancho: '22%' },
-  { campo: 'stock',         tipo: 'numero', label: 'Stock',        ancho: '9%'  },
-  { campo: 'stockMin',      tipo: 'numero', label: 'Stock Mín.',   ancho: '10%' },
-  { campo: 'diasCobertura', tipo: 'numero', label: 'Rotación',     ancho: '14%' },
-  { campo: 'precioProm',    tipo: 'numero', label: 'Precio Prom.', ancho: '12%' },
-  { campo: 'valorLinea',    tipo: 'numero', label: 'Valor Total',  ancho: '12%' },
-  { campo: 'margen',        tipo: 'numero', label: 'Margen',       ancho: '10%' },
+  { campo: 'codigo',        tipo: 'texto',  label: 'Código',       ancho: '9%'  },
+  { campo: 'nombre',        tipo: 'texto',  label: 'Artículo',     ancho: '20%' },
+  { campo: 'stock',         tipo: 'numero', label: 'Stock',        ancho: '7%'  },
+  { campo: 'stockMin',      tipo: 'numero', label: 'Stock Mín.',   ancho: '8%'  },
+  { campo: 'diasCobertura', tipo: 'numero', label: 'Rotación',     ancho: '12%' },
+  { campo: 'precioPromUsd', tipo: 'numero', label: 'Costo Prom. (CPP)', ancho: '13%' },
+  { campo: 'valorLinea',    tipo: 'numero', label: 'Valor Total',  ancho: '11%' },
+  { campo: 'valorDia',      tipo: 'numero', label: 'Valor Tasa del Día', ancho: '12%' },
+  { campo: 'margen',        tipo: 'numero', label: 'Margen',       ancho: '8%'  },
 ];
 
 function repInventarioOrdenar(campo) {
@@ -351,13 +374,17 @@ function _repInvRenderTabla() {
       + '<td style="text-align:right;font-family:var(--font-mono);font-size:15px">' + f.stock + '</td>'
       + '<td style="text-align:right;font-family:var(--font-mono);color:var(--suave);font-size:15px">' + f.stockMin + '</td>'
       + '<td style="text-align:center;font-size:15px">' + rotacionHtml + '</td>'
-      + '<td style="text-align:right;font-family:var(--font-mono);font-size:15px">' + (monedaVal==='VES' ? fmtBs(f.precioProm) : fmtUSD(f.precioProm)) + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono);font-size:13px">'
+        + '<div style="color:var(--suave);font-size:9px">COSTO PROM. (CPP)</div>'
+        + '<div style="font-size:15px">' + fmtBs(f.precioPromBs) + ' Bs</div>'
+        + '<div style="color:var(--suave);font-size:11px">$ ' + fmtUSD(f.precioPromUsd) + '</div></td>'
       + '<td style="text-align:right;font-family:var(--font-mono);color:var(--naranja);font-weight:600;font-size:15px">' + (monedaVal==='VES' ? fmtBs(f.valorLinea) : fmtUSD(f.valorLinea)) + '</td>'
+      + '<td style="text-align:right;font-family:var(--font-mono);font-size:15px">' + fmtBs(f.valorDia) + '</td>'
       + '<td style="text-align:right;font-family:var(--font-mono);font-size:15px">' + (f.margen !== null ? f.margen.toFixed(1) + '%' : '—') + '</td>'
       + '</tr>';
   }).join('');
 
-  document.getElementById('rep-inv-tbody').innerHTML = filasHtml || '<tr><td colspan="8" style="text-align:center;color:var(--suave);padding:32px">No hay Artículos activos</td></tr>';
+  document.getElementById('rep-inv-tbody').innerHTML = filasHtml || '<tr><td colspan="9" style="text-align:center;color:var(--suave);padding:32px">No hay Artículos activos</td></tr>';
 }
 
 async function repInventarioExportar() {
@@ -381,19 +408,21 @@ async function repInventarioExportar() {
 function _repInvDatosExportar() {
   const d = window._reporteInvActual;
   if (!d) return null;
-  const encabezados = ['Código','Artículo','Stock','Stock Mínimo','Rotación (días)','Precio Promedio','Valor Total','Margen %'];
+  const encabezados = ['Código','Artículo','Stock','Stock Mínimo','Rotación (días)','Costo Prom. (CPP) Bs','Costo Prom. (CPP) $',
+    'Valor Total (' + (d.monedaVal === 'VES' ? 'Bs' : '$') + ')','Valor Tasa del Día (Bs)','Margen %'];
   const fmtMoneda = d.monedaVal === 'VES' ? fmtBs : fmtUSD;
   const filasNumericas = d.filas.map(function(f) {
     return [
       f.codigo, f.nombre, f.stock, f.stockMin,
-      f.diasCobertura !== null ? f.diasCobertura : 0, f.precioProm, f.valorLinea,
+      f.diasCobertura !== null ? f.diasCobertura : 0, f.precioPromBs, f.precioPromUsd, f.valorLinea, f.valorDia,
       f.margen !== null ? f.margen : 0
     ];
   });
   const filasTexto = d.filas.map(function(f) {
     return [
       f.codigo, f.nombre, f.stock, f.stockMin,
-      f.diasCobertura !== null ? f.diasCobertura : 0, fmtMoneda(f.precioProm), fmtMoneda(f.valorLinea),
+      f.diasCobertura !== null ? f.diasCobertura : 0, fmtBs(f.precioPromBs), fmtUSD(f.precioPromUsd),
+      fmtMoneda(f.valorLinea), fmtBs(f.valorDia),
       (f.margen !== null ? f.margen : 0).toFixed(1) + '%'
     ];
   });
@@ -404,7 +433,7 @@ function _repInvExportarCSV() {
   const dat = _repInvDatosExportar();
   if (!dat) return;
   const filasCsv = [
-    ['Fecha de Corte: ' + dat.d.fechaCorteVal + '   |   Moneda: ' + dat.d.monedaVal + (dat.d.monedaVal === 'VES' ? '   |   Tasa BCV Bs/Usd: ' + formatearTasaVE(dat.d.tasaCorte) : '')],
+    ['Fecha de Corte: ' + dat.d.fechaCorteVal + '   |   Moneda: ' + dat.d.monedaVal + '   |   Tasa BCV Bs/Usd del día: ' + formatearTasaVE(dat.d.tasaCorte)],
     ['Filtros: ' + dat.d.filtrosTexto],
     [],
     dat.encabezados,
@@ -424,12 +453,12 @@ function _repInvExportarExcel() {
   const FILA_ENCAB = 4, FILA_DATOS_DESDE = 5;
   const hoja = XLSX.utils.aoa_to_sheet([
     ['Reporte de Inventario'],
-    ['Fecha de Corte: ' + dat.d.fechaCorteVal + '   |   Moneda: ' + dat.d.monedaVal + (dat.d.monedaVal === 'VES' ? '   |   Tasa BCV Bs/Usd: ' + formatearTasaVE(dat.d.tasaCorte) : '')],
+    ['Fecha de Corte: ' + dat.d.fechaCorteVal + '   |   Moneda: ' + dat.d.monedaVal + '   |   Tasa BCV Bs/Usd del día: ' + formatearTasaVE(dat.d.tasaCorte)],
     ['Filtros: ' + dat.d.filtrosTexto],
     [],
     dat.encabezados,
   ].concat(dat.filasNumericas));
-  hoja['!cols'] = [ {wch:14}, {wch:38}, {wch:10}, {wch:12}, {wch:14}, {wch:16}, {wch:16}, {wch:10} ];
+  hoja['!cols'] = [ {wch:14}, {wch:38}, {wch:10}, {wch:12}, {wch:14}, {wch:18}, {wch:16}, {wch:16}, {wch:20}, {wch:10} ];
 
   // Encabezados centrados; columnas numéricas (2 a 7) con formato de
   // celda -- el valor sigue siendo un número real (se puede sumar/
@@ -439,11 +468,11 @@ function _repInvExportarExcel() {
   // Excel de quien lo abre -- esa traducción automática es de Excel, no
   // de este archivo. Stock/Stock Mínimo/Rotación sin decimales.
   const NUM_FILAS = dat.filasNumericas.length;
-  for (let col = 0; col < 8; col++) {
+  for (let col = 0; col < 10; col++) {
     const refEncab = XLSX.utils.encode_cell({ r: FILA_ENCAB, c: col });
     if (hoja[refEncab]) hoja[refEncab].s = { alignment: { horizontal: 'center', vertical: 'center' }, font: { bold: true } };
     if (col < 2) continue; // Código y Artículo: texto, sin formato numérico
-    const formatoNum = (col === 5 || col === 6) ? '#,##0.00' : (col === 7 ? '0.0"%"' : '#,##0');
+    const formatoNum = (col >= 5 && col <= 8) ? '#,##0.00' : (col === 9 ? '0.0"%"' : '#,##0');
     for (let i = 0; i < NUM_FILAS; i++) {
       const ref = XLSX.utils.encode_cell({ r: FILA_DATOS_DESDE + i, c: col });
       if (hoja[ref]) {
@@ -468,7 +497,7 @@ function _repInvExportarPDF() {
   doc.text('Reporte de Inventario', 14, 15);
   doc.setFontSize(9);
   doc.text('Fecha de Corte: ' + dat.d.fechaCorteVal + '   |   Moneda: ' + dat.d.monedaVal
-    + (dat.d.monedaVal === 'VES' ? '   |   Tasa BCV Bs/Usd: ' + formatearTasaVE(dat.d.tasaCorte) : ''), 14, 21);
+    + '   |   Tasa BCV Bs/Usd del día: ' + formatearTasaVE(dat.d.tasaCorte), 14, 21);
   doc.text('Filtros: ' + dat.d.filtrosTexto, 14, 26);
   doc.autoTable({
     head: [dat.encabezados],
@@ -481,6 +510,7 @@ function _repInvExportarPDF() {
     columnStyles: {
       2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' },
       5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' },
+      8: { halign: 'right' }, 9: { halign: 'right' },
     },
   });
   doc.save('reporte_inventario_' + dat.d.fechaCorteVal + '_' + dat.d.monedaVal + '.pdf');
