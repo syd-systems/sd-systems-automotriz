@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909266';
+const SYD_VERSION = '20260909267';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -4039,7 +4039,8 @@ function activarOrdenColumnas(cont) {
 
 // ── Primera letra de cada palabra en Mayúscula ─────────────────
 // En todo el sistema, al escribir en un campo de texto o un área de texto
-// la primera letra de cada palabra pasa a Mayúscula (el resto se respeta
+// la primera letra de cada palabra pasa a Mayúscula, salvo las palabras de
+// enlace dentro de la frase -- ver _MAYUS_ENLACES (el resto se respeta
 // tal como se escribe: "IVA", "C.A" no se tocan). Se guarda así porque el
 // valor del campo ya queda transformado. Excluidos: correos, contraseñas,
 // URL, números/fechas, campos de solo lectura y los marcados con
@@ -4055,8 +4056,27 @@ function _mayusAplica(el) {
   if (_MAYUS_EXCLUIR_ID.test((el.id || '') + ' ' + (el.name || '') + ' ' + (el.getAttribute('autocomplete') || ''))) return false;
   return true;
 }
+// Palabras de enlace que van en minúscula dentro de la frase ("Servicio de
+// Agua", "Frío y Caliente"); al inicio del campo o tras un punto sí van en
+// Mayúscula. Si se escriben en MAYÚSCULAS ("DE", "A") se respetan.
+const _MAYUS_ENLACES = new Set(['de','del','la','las','el','los','lo','en','y','e','o','u','a','al','con','por','para','sin','un','una','unos','unas','que','se','su','sus','ni']);
 function capitalizarPalabras(txt) {
-  return String(txt).replace(/(^|[\s(\/"'«“.\-])(\p{Ll})/gu, function(m, previo, letra) { return previo + letra.toUpperCase(); });
+  txt = String(txt);
+  return txt.replace(/\p{L}[\p{L}\p{M}]*/gu, function(w, i) {
+    const previo = i > 0 ? txt.charAt(i - 1) : '';
+    // Solo inicio de palabra: al comienzo o tras espacio / ( / " ' « “ . - &
+    if (previo && !/[\s(\/"'«“.\-&]/.test(previo)) return w;
+    const antes = txt.slice(0, i).replace(/\s+$/, '');
+    const inicioFrase = !antes || /[.!?:\n]$/.test(antes) || !/\p{L}/u.test(antes);
+    const bajo = w.toLowerCase();
+    if (!inicioFrase && _MAYUS_ENLACES.has(bajo)) {
+      // "De" (puesta en Mayúscula al escribirla) vuelve a "de"; "DE" se respeta
+      const esTitulo = w.length > 1 && w.charAt(0) !== bajo.charAt(0) && w.slice(1) === bajo.slice(1);
+      return esTitulo ? bajo : w;
+    }
+    const primera = w.charAt(0);
+    return primera === primera.toLowerCase() && primera !== primera.toUpperCase() ? primera.toUpperCase() + w.slice(1) : w;
+  });
 }
 if (typeof document !== 'undefined') {
   document.addEventListener('input', function(e) {
