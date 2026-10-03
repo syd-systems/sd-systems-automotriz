@@ -2499,9 +2499,11 @@ async function repEgresosExportar() {
   const formato = document.getElementById('rep-egr-formato')?.value || 'pdf';
   const fmtMon = d.monedaVal === 'VES' ? fmtBs : fmtUSD;
   const nombre = 'reporte_egresos_' + d.desdeVal + '_a_' + d.hastaVal + '_' + d.monedaVal;
-  const cab = [['Reporte de Egresos'], ['Del ' + d.desdeVal + ' al ' + d.hastaVal + '   |   Moneda: ' + d.monedaVal], ['Filtros: ' + d.filtrosTexto], [d.resumenTexto]];
+  // Fechas en formato dd/mm/aaaa
+  const fB = function(f) { if (!f) return ''; const p = String(f).substring(0, 10).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : String(f); };
+  const cab = [['Reporte de Egresos'], ['Del ' + fB(d.desdeVal) + ' al ' + fB(d.hastaVal) + '   |   Moneda: ' + d.monedaVal], ['Filtros: ' + d.filtrosTexto], [d.resumenTexto]];
   const encDet = ['Fecha', 'N° Documento', 'Área', 'Proveedor / Beneficiario', 'Concepto', 'Descripción', 'Estado', 'Fecha Pago', 'Método', 'Monto (' + d.monedaVal + ')', 'Creada por'];
-  const filaDet = function(x, f) { return [fmtFecha(x.fecha), x.documento, x.area, x.proveedor, x.concepto, x.descripcion, x.estado, x.fechaPago ? fmtFecha(x.fechaPago) : '', x.metodo, f(x.monto), x.usuario]; };
+  const filaDet = function(x, f) { return [fB(x.fecha), x.documento, x.area, x.proveedor, x.concepto, x.descripcion, x.estado, fB(x.fechaPago), x.metodo, f(x.monto), x.usuario]; };
   if (formato === 'csv') {
     const filas = cab.concat([[], encDet]).concat(d.det.map(function(x){ return filaDet(x, fmtMon); }));
     const csv = filas.map(function(r){ return r.map(function(v){ return '"' + String(v).replace(/"/g,'""') + '"'; }).join(','); }).join('\n');
