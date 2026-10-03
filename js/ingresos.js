@@ -2115,7 +2115,7 @@ async function _cargarNCCompleta(idNC) {
   if (!n) throw new Error('Nota de Crédito no encontrada.');
   let f = null;
   try {
-    const fr = await api('facturas','GET',null,'?id_factura=eq.' + n.id_factura + '&select=numero_factura,fecha_emision,receptor_nombre,receptor_rif,receptor_direccion,moneda_cobro,emisores(*)');
+    const fr = await api('facturas','GET',null,'?id_factura=eq.' + n.id_factura + '&select=numero_factura,fecha_emision,receptor_nombre,receptor_rif,receptor_direccion,moneda_cobro,origen,id_orden,id_venta,emisores(*)');
     f = fr && fr[0];
   } catch(eF) { f = null; }
   return { n: n, det: det || [], f: f };
@@ -2268,7 +2268,8 @@ async function descargarPDFNotaCredito(idNC) {
       if (p && p.area) { doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.text(p.area, xCentro, y + 12.5, { align: 'center' }); }
     };
     doc.line(20, y, 85, y); doc.line(W - 85, y, W - 20, y);
-    firma(52.5, 'Vendido por:', pSolicita);
+    // Venta -> "Vendido por"; Orden de Servicio (Taller) o factura manual -> "Solicitado por"
+    firma(52.5, origenFactura(f) === 'VENTA' ? 'Vendido por:' : 'Solicitado por:', pSolicita);
     firma(W - 52.5, (n.estado === 'RECHAZADA' ? 'Rechazado' : 'Aprobado') + ' por:', pAprueba);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8); doc.setTextColor(120);
