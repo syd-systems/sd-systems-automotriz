@@ -1325,7 +1325,7 @@ async function verFichaFactura(id, opts) {
             + '</div></div>';
         })()
       + (f.observaciones ? '<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--texto);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Observaciones</div><div style="background:var(--gris2);border-radius:6px;padding:10px 14px;font-size:13px">'+escapeHtml(f.observaciones)+'</div></div>' : '')
-      + htmlSeccionNotasCredito(ncsFactura);
+      + htmlSeccionNotasCredito(ncsFactura, !!(opts && opts.soloLectura));
 
     var btnEditar   = document.getElementById('ficha-fac-btn-editar');
     var btnEmitir   = document.getElementById('ficha-fac-btn-emitir');
@@ -1935,6 +1935,7 @@ async function aprobarNotaCredito(idNC, numeroNC, tipo, destino, btn) {
   btnSetGuardando(btn, true, null, 'Procesando...');
   try {
     const r = await api(esReverso ? 'rpc/aprobar_nc_reverso' : 'rpc/aprobar_nc_reembolso','POST',{ p_id_nc: parseInt(idNC) });
+    await resolverNotifsNC(idNC);
     alert('✓ ' + numeroNC + ' aprobada. Asientos: ' + (((r && r.asientos) || []).join(', ') || 'ninguno') + '.'
       + (r && r.id_cxp ? '\nEl reembolso quedó por pagar en el módulo de Pagos.' : ''));
     cerrarModal('modal-ficha-fac');
@@ -1948,6 +1949,7 @@ async function rechazarNotaCredito(idNC, numeroNC, btn) {
   btnSetGuardando(btn, true, null, 'Procesando...');
   try {
     await api('rpc/rechazar_nota_credito','POST',{ p_id_nc: parseInt(idNC), p_motivo: motivo });
+    await resolverNotifsNC(idNC);
     cerrarModal('modal-ficha-fac');
     renderFacturas();
   } catch(e) { alert('Error: ' + msgErr(e)); btnSetGuardando(btn, false); }

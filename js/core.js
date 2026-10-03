@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909261';
+const SYD_VERSION = '20260909262';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3707,6 +3707,28 @@ async function _htmlTarjetaNotifFactura(notif, f, persona, etiquetaPersona, lblM
 
 // Aprobar / Rechazar una Nota de Crédito desde la notificación. El servidor
 // valida permiso, límite del nivel jerárquico y separación de funciones.
+// Una NC decidida fuera del aviso (desde la Ficha de la Factura): los
+// avisos de aprobación de esa NC que sigan pendientes quedan resueltos y,
+// si el aviso está abierto en pantalla, se cierra.
+async function resolverNotifsNC(idNC) {
+  idNC = parseInt(idNC);
+  try {
+    const pend = await api('notificaciones','GET',null,'?estado=eq.PENDIENTE&datos_extra=ilike.*id_nc*&select=id,datos_extra') || [];
+    const ids = pend.filter(function(n) {
+      let x = null;
+      try { x = typeof n.datos_extra === 'string' ? JSON.parse(n.datos_extra) : n.datos_extra; } catch(e) {}
+      return x && parseInt(x.id_nc) === idNC;
+    }).map(function(n) { return n.id; });
+    if (ids.length) await api('notificaciones','PATCH', { estado: 'APROBADO', fecha_respuesta: ahoraVzla() }, '?id=in.(' + ids.join(',') + ')');
+  } catch(eRes) { console.warn('No se pudieron cerrar los avisos de la NC:', eRes); }
+  if (_notifNC && parseInt(_notifNC.id_nc) === idNC) {
+    const modal = document.getElementById('modal-notif-pendiente');
+    if (modal) modal.style.display = 'none';
+    _notifPendienteActual = null; _notifNC = null; _notifNCFactura = null;
+  }
+  try { await verificarNotificacionesPendientes(); } catch(eVer) {}
+}
+
 async function notifDecidirNC(aprobar) {
   const nc = _notifNC, idNotif = _notifPendienteActual && _notifPendienteActual.id;
   if (!nc || !idNotif) return;
