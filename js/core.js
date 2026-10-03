@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909265';
+const SYD_VERSION = '20260909266';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -4035,6 +4035,39 @@ function activarOrdenColumnas(cont) {
   const obs = new MutationObserver(function() { _ordenColPreparar(cont); });
   obs.observe(cont, { childList: true, subtree: true });
   _ordenColObservers.push(obs);
+}
+
+// ── Primera letra de cada palabra en Mayúscula ─────────────────
+// En todo el sistema, al escribir en un campo de texto o un área de texto
+// la primera letra de cada palabra pasa a Mayúscula (el resto se respeta
+// tal como se escribe: "IVA", "C.A" no se tocan). Se guarda así porque el
+// valor del campo ya queda transformado. Excluidos: correos, contraseñas,
+// URL, números/fechas, campos de solo lectura y los marcados con
+// data-sin-mayuscula.
+const _MAYUS_EXCLUIR_ID = /correo|e-?mail|clave|password|pass\b|url|web|token|usuario-correo/i;
+function _mayusAplica(el) {
+  if (!el || el.readOnly || el.disabled) return false;
+  if (el.closest && el.closest('[data-sin-mayuscula]')) return false;
+  if (el.tagName === 'TEXTAREA') return true;
+  if (el.tagName !== 'INPUT') return false;
+  const tipo = (el.getAttribute('type') || 'text').toLowerCase();
+  if (tipo !== 'text' && tipo !== 'search') return false;
+  if (_MAYUS_EXCLUIR_ID.test((el.id || '') + ' ' + (el.name || '') + ' ' + (el.getAttribute('autocomplete') || ''))) return false;
+  return true;
+}
+function capitalizarPalabras(txt) {
+  return String(txt).replace(/(^|[\s(\/"'«“.\-])(\p{Ll})/gu, function(m, previo, letra) { return previo + letra.toUpperCase(); });
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('input', function(e) {
+    const el = e.target;
+    if (e.isComposing || !_mayusAplica(el)) return;
+    const v = el.value, nuevo = capitalizarPalabras(v);
+    if (nuevo === v) return;
+    const ini = el.selectionStart, fin = el.selectionEnd;
+    el.value = nuevo; // mismo largo: el cursor queda en su sitio
+    try { el.setSelectionRange(ini, fin); } catch(eSel) {}
+  }, true);
 }
 
 // Activo en TODO el sistema: cualquier listado con encabezados (módulos,
