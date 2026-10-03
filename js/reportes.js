@@ -2327,8 +2327,8 @@ async function repNotasCreditoExportar() {
 // ═══════════════════ REPORTE DE EGRESOS ═══════════════════
 // Fuente: Obligaciones de Pago (cont_cxp) por su Fecha de emisión, vía
 // RPC obtener_egresos_reporte (basta el permiso REPORTES→VER_EGRESOS).
-// Incluye Pagadas, Por Pagar (Pendiente / Parcial) y Anuladas. El Área es
-// la de quien generó la Obligación (Empleados), igual que la aprobación.
+// Incluye Pagadas, Por Pagar (Pendiente / Parcial) y Anuladas, con filtro
+// por Área: la de quien generó la Obligación (Empleados), igual que la aprobación.
 function repEgresosLimpiarFiltros() {
   const hoy = getHoyVzla();
   const d = document.getElementById('rep-egr-desde'); if (d) d.value = hoy.substring(0, 8) + '01';
@@ -2368,6 +2368,8 @@ async function repEgresosRender(cont) {
     + '<input type="date" id="rep-egr-desde" value="' + desdeVal + '" max="' + hoy + '" onchange="' + re + '" style="' + S + '"></div>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Hasta</label>'
     + '<input type="date" id="rep-egr-hasta" value="' + hastaVal + '" max="' + hoy + '" onchange="' + re + '" style="' + S + '"></div>'
+    + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Área</label>'
+    + '<select id="rep-egr-area" onchange="' + re + '" style="' + S + ';max-width:240px"><option value="">Todas las Áreas</option></select></div>'
     + '<div><label style="display:block;font-size:10px;color:var(--suave);margin-bottom:2px">Moneda</label>'
     + '<select id="rep-egr-moneda" onchange="' + re + '" style="' + S + '">'
     + ['VES','USD'].map(function(m){ return '<option value="'+m+'"' + (monedaVal===m?' selected':'') + '>'+m+'</option>'; }).join('')
@@ -2384,6 +2386,8 @@ async function repEgresosRender(cont) {
     + '<button class="btn-secundario" onclick="repEgresosExportar()" style="height:35px;box-sizing:border-box">⬇ Exportar</button></div>';
 
   cont.innerHTML = '<div style="padding:16px 24px"><div style="text-align:center;color:var(--suave);padding:32px">Cargando...</div></div>';
+  let areasParam = [];
+  try { areasParam = await api('param_areas','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id,nombre,codigo') || []; } catch(eAr) { areasParam = []; }
   let rows = [];
   try {
     rows = await api('rpc/obtener_egresos_reporte','POST',{ p_desde: desdeVal, p_hasta: hastaVal,
@@ -2414,11 +2418,17 @@ async function repEgresosRender(cont) {
     return usd * (tasa || 1);
   };
   const areaDe = function(c) { return c.area_nombre ? c.area_nombre + (c.area_codigo ? ' (' + c.area_codigo + ')' : '') : 'Sin Área asignada'; };
+  // Filtro de Área: todas las Áreas activas + las que aparezcan en los datos
   const areasDisp = {};
+  areasParam.forEach(function(a) { areasDisp[a.nombre + (a.codigo ? ' (' + a.codigo + ')' : '')] = true; });
   rows.forEach(function(c) { areasDisp[areaDe(c)] = true; });
+  const selArea = document.getElementById('rep-egr-area');
+  if (selArea) {
+    selArea.innerHTML = '<option value="">Todas las Áreas</option>' + Object.keys(areasDisp).sort(function(a, b){ return a.localeCompare(b, 'es'); })
+      .map(function(a){ return '<option value="' + escapeHtml(a) + '"' + (a === areaVal ? ' selected' : '') + '>' + escapeHtml(a) + '</option>'; }).join('');
+  }
 
   const det = [];
-  const porArea = {};
   let tPag = 0, tPor = 0, tAnu = 0;
   rows.forEach(function(c) {
     const area = areaDe(c);
@@ -2431,8 +2441,6 @@ async function repEgresosRender(cont) {
     else if (grupo === 'PAGADA') pag = total;
     else { pag = Math.min(enMoneda(parseFloat(c.pagado_usd || 0), c), total); por = total - pag; }
     tPag += pag; tPor += por; tAnu += anu;
-    if (!porArea[area]) porArea[area] = { area: area, pagado: 0, porPagar: 0, anulado: 0, n: 0 };
-    porArea[area].pagado += pag; porArea[area].porPagar += por; porArea[area].anulado += anu; porArea[area].n++;
     det.push({
       fecha: c.fecha_emision, documento: fmtNumeroDoc(c.numero_doc) || ('#' + c.id_cxp), area: area,
       proveedor: c.proveedor_nombre || '—', concepto: _repEgrConcepto(c),
@@ -2440,8 +2448,6 @@ async function repEgresosRender(cont) {
       fechaPago: c.fecha_pago || '', metodo: metodoTxt(c.metodo_pago), monto: total, pagado: pag, usuario: c.id_usuario || ''
     });
   });
-  const resumen = Object.keys(porArea).map(function(k){ return porArea[k]; })
-    .sort(function(a, b){ return (b.pagado + b.porPagar) - (a.pagado + a.porPagar); });
 
   const fmtM = function(v) { return monedaVal === 'VES' ? fmtBs(v) + ' Bs' : '$ ' + fmtUSD(v); };
   const num = function(v) { return monedaVal === 'VES' ? fmtBs(v) : fmtUSD(v); };
@@ -2455,8 +2461,6 @@ async function repEgresosRender(cont) {
 
   cont.innerHTML = '<div style="padding:16px 24px">'
     + '<div id="rep-filtros-extra" style="display:' + (_repFiltrosVisibles?'flex':'none') + ';gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--borde)">'
-    + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Área</label><select id="rep-egr-area" onchange="' + re + '" style="' + S + '">'
-      + opt('', 'Todas', areaVal) + Object.keys(areasDisp).sort().map(function(a){ return opt(a, a, areaVal); }).join('') + '</select></div>'
     + '<div><label style="display:block;font-size:11px;color:var(--suave);margin-bottom:4px">Estado</label><select id="rep-egr-estado" onchange="' + re + '" style="' + S + '">'
       + opt('', 'Todos', estadoVal) + opt('PAGADA', 'Pagadas', estadoVal) + opt('POR_PAGAR', 'Por Pagar', estadoVal) + opt('ANULADA', 'Anuladas', estadoVal) + '</select></div>'
     + '<button onclick="repEgresosLimpiarFiltros()" title="Limpiar filtros" style="background:#dc2626;border:1px solid #dc2626;color:#fff;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:16px;line-height:1;height:35px;box-sizing:border-box">🗑</button>'
@@ -2464,28 +2468,7 @@ async function repEgresosRender(cont) {
     + '<div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">'
     + card('Obligaciones', det.length.toLocaleString('es-VE')) + card('Pagado', fmtM(tPag)) + card('Por Pagar', fmtM(tPor)) + card('Anulado', fmtM(tAnu))
     + '</div>'
-    + '<div style="font-size:12px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Egresos por Área</div>'
-    + '<div class="tabla-container" style="margin-bottom:20px"><table style="width:100%;border-collapse:collapse">'
-    + '<thead><tr>' + th('Área') + th('Pagado','right') + th('Por Pagar','right') + th('Total (sin anulado)','right') + th('Anulado','right') + th('Obligaciones','right') + '</tr></thead><tbody>'
-    + (resumen.map(function(r) {
-        return '<tr style="cursor:pointer" title="Ver solo esta Área" onclick="document.getElementById(\'rep-egr-area\').value=' + escapeHtml(JSON.stringify(r.area)) + ';' + re + '">'
-          + '<td style="font-size:14px;font-weight:600">' + escapeHtml(r.area) + '</td>'
-          + '<td style="text-align:right;font-family:var(--font-mono);font-size:14px;color:#22c55e">' + num(r.pagado) + '</td>'
-          + '<td style="text-align:right;font-family:var(--font-mono);font-size:14px;color:var(--naranja)">' + num(r.porPagar) + '</td>'
-          + '<td style="text-align:right;font-family:var(--font-mono);font-size:14px;font-weight:700">' + num(r.pagado + r.porPagar) + '</td>'
-          + '<td style="text-align:right;font-family:var(--font-mono);font-size:14px;color:#fc8181">' + num(r.anulado) + '</td>'
-          + '<td style="text-align:right;font-family:var(--font-mono)">' + r.n + '</td></tr>';
-      }).join('')
-      + (resumen.length ? '<tr style="border-top:2px solid var(--borde)"><td style="font-weight:700">TOTAL</td>'
-          + '<td style="text-align:right;font-family:var(--font-mono);font-size:14px;font-weight:700">' + num(tPag) + '</td>'
-          + '<td style="text-align:right;font-family:var(--font-mono);font-size:14px;font-weight:700">' + num(tPor) + '</td>'
-          + '<td style="text-align:right;font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--naranja)">' + num(tPag + tPor) + '</td>'
-          + '<td style="text-align:right;font-family:var(--font-mono);font-size:14px;font-weight:700">' + num(tAnu) + '</td>'
-          + '<td style="text-align:right;font-family:var(--font-mono);font-size:14px;font-weight:700">' + det.length + '</td></tr>'
-        : '<tr><td colspan="6" style="text-align:center;color:var(--suave);padding:24px">No hay Egresos en el rango seleccionado</td></tr>'))
-    + '</tbody></table></div>'
-    + '<div style="font-size:12px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Detalle de Obligaciones</div>'
-    + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 520px))"><table style="min-width:1100px;border-collapse:collapse;white-space:nowrap">'
+    + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 360px))"><table style="min-width:1100px;border-collapse:collapse;white-space:nowrap">'
     + '<thead><tr>' + th('Fecha') + th('N° Documento') + th('Área') + th('Proveedor / Beneficiario') + th('Concepto') + th('Estado','center') + th('Fecha Pago') + th('Método') + th('Monto (' + monedaVal + ')','right') + '</tr></thead><tbody>'
     + (det.map(function(f) {
         return '<tr>'
@@ -2505,7 +2488,7 @@ async function repEgresosRender(cont) {
   const fil = [];
   if (areaVal) fil.push('Área: ' + areaVal);
   if (estadoVal) fil.push('Estado: ' + ({ PAGADA: 'Pagadas', POR_PAGAR: 'Por Pagar', ANULADA: 'Anuladas' }[estadoVal]));
-  window._reporteEgrActual = { monedaVal, desdeVal, hastaVal, resumen, det, tPag, tPor, tAnu,
+  window._reporteEgrActual = { monedaVal, desdeVal, hastaVal, det, tPag, tPor, tAnu,
     filtrosTexto: fil.length ? fil.join('   |   ') : 'Sin filtros adicionales (todas las Áreas y estados)',
     resumenTexto: 'Obligaciones: ' + det.length + '   |   Pagado: ' + fmtM(tPag) + '   |   Por Pagar: ' + fmtM(tPor) + '   |   Anulado: ' + fmtM(tAnu) };
 }
@@ -2517,14 +2500,10 @@ async function repEgresosExportar() {
   const fmtMon = d.monedaVal === 'VES' ? fmtBs : fmtUSD;
   const nombre = 'reporte_egresos_' + d.desdeVal + '_a_' + d.hastaVal + '_' + d.monedaVal;
   const cab = [['Reporte de Egresos'], ['Del ' + d.desdeVal + ' al ' + d.hastaVal + '   |   Moneda: ' + d.monedaVal], ['Filtros: ' + d.filtrosTexto], [d.resumenTexto]];
-  const encRes = ['Área', 'Pagado', 'Por Pagar', 'Total (sin anulado)', 'Anulado', 'Obligaciones'];
-  const filaRes = function(r, f) { return [r.area, f(r.pagado), f(r.porPagar), f(r.pagado + r.porPagar), f(r.anulado), r.n]; };
-  const totRes = function(f) { return ['TOTAL', f(d.tPag), f(d.tPor), f(d.tPag + d.tPor), f(d.tAnu), d.det.length]; };
   const encDet = ['Fecha', 'N° Documento', 'Área', 'Proveedor / Beneficiario', 'Concepto', 'Descripción', 'Estado', 'Fecha Pago', 'Método', 'Monto (' + d.monedaVal + ')', 'Creada por'];
   const filaDet = function(x, f) { return [fmtFecha(x.fecha), x.documento, x.area, x.proveedor, x.concepto, x.descripcion, x.estado, x.fechaPago ? fmtFecha(x.fechaPago) : '', x.metodo, f(x.monto), x.usuario]; };
   if (formato === 'csv') {
-    const filas = cab.concat([[], ['EGRESOS POR ÁREA'], encRes]).concat(d.resumen.map(function(r){ return filaRes(r, fmtMon); })).concat([totRes(fmtMon)])
-      .concat([[], ['DETALLE DE OBLIGACIONES'], encDet]).concat(d.det.map(function(x){ return filaDet(x, fmtMon); }));
+    const filas = cab.concat([[], encDet]).concat(d.det.map(function(x){ return filaDet(x, fmtMon); }));
     const csv = filas.map(function(r){ return r.map(function(v){ return '"' + String(v).replace(/"/g,'""') + '"'; }).join(','); }).join('\n');
     const url = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
     const a = document.createElement('a'); a.href = url; a.download = nombre + '.csv'; a.click(); URL.revokeObjectURL(url);
@@ -2532,12 +2511,9 @@ async function repEgresosExportar() {
     if (typeof XLSX === 'undefined') { alert('No se pudo cargar el generador de Excel. Verifica tu conexión e intenta de nuevo.'); return; }
     const ident = function(v) { return Math.round(v * 100) / 100; };
     const libro = XLSX.utils.book_new();
-    const h1 = XLSX.utils.aoa_to_sheet(cab.concat([[], encRes]).concat(d.resumen.map(function(r){ return filaRes(r, ident); })).concat([totRes(ident)]));
-    h1['!cols'] = [ {wch:32}, {wch:16}, {wch:16}, {wch:20}, {wch:16}, {wch:14} ];
-    XLSX.utils.book_append_sheet(libro, h1, 'Por Área');
     const h2 = XLSX.utils.aoa_to_sheet(cab.concat([[], encDet]).concat(d.det.map(function(x){ return filaDet(x, ident); })));
     h2['!cols'] = [ {wch:12}, {wch:18}, {wch:28}, {wch:30}, {wch:22}, {wch:40}, {wch:12}, {wch:12}, {wch:18}, {wch:16}, {wch:28} ];
-    XLSX.utils.book_append_sheet(libro, h2, 'Detalle');
+    XLSX.utils.book_append_sheet(libro, h2, 'Egresos');
     XLSX.writeFile(libro, nombre + '.xlsx', { cellStyles: true });
   } else {
     if (typeof window.jspdf === 'undefined') { alert('No se pudo cargar el generador de PDF. Verifica tu conexión e intenta de nuevo.'); return; }
@@ -2546,13 +2522,7 @@ async function repEgresosExportar() {
     doc.setFontSize(14); doc.text('Reporte de Egresos', 14, 15);
     doc.setFontSize(9);
     doc.text(cab[1][0], 14, 21); doc.text(cab[2][0], 14, 26); doc.text(d.resumenTexto, 14, 31);
-    doc.setFontSize(11); doc.text('Egresos por Área', 14, 39);
-    doc.autoTable({ head: [encRes], body: d.resumen.map(function(r){ return filaRes(r, fmtMon); }).concat([totRes(fmtMon)]), startY: 42,
-      styles: { fontSize: 8 }, headStyles: { fillColor: [255, 107, 0], halign: 'center' },
-      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } },
-      didParseCell: function(h) { if (h.section === 'body' && h.row.index === d.resumen.length) h.cell.styles.fontStyle = 'bold'; } });
-    const y = doc.lastAutoTable.finalY + 10;
-    doc.setFontSize(11); doc.text('Detalle de Obligaciones', 14, y);
+    const y = 34;
     const sinDesc = function(x) { const r = filaDet(x, fmtMon); r.splice(5, 1); r.pop(); return r; };
     const encPdf = encDet.slice(); encPdf.splice(5, 1); encPdf.pop();
     doc.autoTable({ head: [encPdf], body: d.det.map(sinDesc), startY: y + 3,
