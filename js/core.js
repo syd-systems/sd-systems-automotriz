@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909262';
+const SYD_VERSION = '20260909263';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3082,6 +3082,7 @@ let _notifEsEntradaSinResolver = false;
 let _notifEntradaInfo = null; // { id_entrada, id_articulo, nombre_articulo }
 let _notifNC = null; // Nota de Crédito por aprobar: { id_nc, numero_nc, tipo }
 let _notifNCFactura = null; // id_factura de la NC mostrada en el aviso (botón "👁 Ver")
+let _notifSoloCerrar = false; // aviso ya atendido: "Entendido" solo lo marca leído
 let _notifFacManual = null; // Factura manual por aprobar: { id_factura, numero_factura }
 let _notifIrPagos = false;  // Reembolso a cliente por pagar: el botón lleva a Pagos
 
@@ -3104,6 +3105,7 @@ async function mostrarNotifPendiente(notif) {
   _notifEntradaInfo = null;
   _notifNC = null;
   _notifNCFactura = null;
+  _notifSoloCerrar = false;
   _notifFacManual = null;
   _notifIrPagos = false;
   const lista = document.getElementById('notif-pendiente-lista');
@@ -3219,6 +3221,20 @@ async function mostrarNotifPendiente(notif) {
         cfgNotif = { titulo: '🧾 Nota de Crédito (' + (esRev ? 'reverso' : 'reembolso') + ')',
                      instruccion: 'Revise el detalle e indique si Aprueba o Rechaza esta Nota de Crédito.', boton: '✓ Aprobar' };
         if (btnRechazarEnt) btnRechazarEnt.style.display = '';
+        if (btnVerDespues) btnVerDespues.style.display = 'none';
+      } else if (f && n && extrasNotif.id_nc && !esResultadoNC && n.estado !== 'PENDIENTE') {
+        // Aviso de "por aprobar" de una NC que ya se decidió (desde la Ficha
+        // de la Factura o por otro aprobador): mismo formato, solo informativo.
+        const aprobadaYa = n.estado === 'APROBADA';
+        const extraYa = '<div style="font-size:12px;color:' + (aprobadaYa ? '#38a169' : '#e53e3e') + ';margin-top:10px;padding-top:8px;border-top:1px solid var(--borde)">'
+          + (aprobadaYa ? '✓ Esta Nota de Crédito ya fue Aprobada.' : '✕ Esta Nota de Crédito ya fue Rechazada.' + (n.motivo_rechazo ? ' Motivo: ' + escapeHtml(n.motivo_rechazo) : ''))
+          + '</div>';
+        lista.innerHTML = await _htmlTarjetaNotifNC(notif, f, n, n.id_usuario, extraYa, 'Solicitada por');
+        _notifNCFactura = extrasNotif.id_factura;
+        cfgNotif = { titulo: '🧾 Nota de Crédito (' + (esRev ? 'reverso' : 'reembolso') + ') ' + (aprobadaYa ? 'Aprobada' : 'Rechazada'),
+                     instruccion: 'Esta solicitud ya fue atendida; no requiere acción.', boton: 'Entendido' };
+        _notifSoloCerrar = true;
+        if (btnVerFacNC) btnVerFacNC.style.display = '';
         if (btnVerDespues) btnVerDespues.style.display = 'none';
       } else if (f && n && esResultadoNC && (n.estado === 'APROBADA' || n.estado === 'RECHAZADA')) {
         const aprobada = n.estado === 'APROBADA';
@@ -3477,6 +3493,16 @@ async function notifConfirmar() {
           }, 350);
         }
       } catch(eNavRech) { console.warn('Error navegando al Historial de Movimientos:', eNavRech); }
+      return;
+    }
+
+    // ── Aviso ya atendido (ej. NC decidida desde la Ficha): solo se marca leído
+    if (_notifSoloCerrar) {
+      await api('notificaciones','PATCH', { estado: 'APROBADO', fecha_respuesta: ahoraVzla() }, '?id=eq.'+_notifPendienteActual.id);
+      document.getElementById('modal-notif-pendiente').style.display = 'none';
+      _notifPendienteActual = null; _notifSoloCerrar = false; _notifNCFactura = null;
+      if (btn) { btn.disabled = false; btn.textContent = btn.dataset.textoOriginal || 'Entendido'; }
+      await verificarNotificacionesPendientes();
       return;
     }
 
