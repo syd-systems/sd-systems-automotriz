@@ -826,7 +826,8 @@ async function contCargarMayor() {
           + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Debe ' + monedaRef + '</th>'
           + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Haber ' + monedaRef + '</th>'
           + '<th style="padding:7px;text-align:right;border-bottom:1px solid var(--borde);font-size:11px">Saldo ' + monedaRef + '</th>';
-        return '<table style="width:100%;border-collapse:collapse"><thead><tr>' + headers + '</tr></thead>'
+        // data-sin-orden: el Saldo es acumulado, solo tiene sentido en orden cronológico
+        return '<table data-sin-orden style="width:100%;border-collapse:collapse"><thead><tr>' + headers + '</tr></thead>'
           + '<tbody>' + filas.join('') + '</tbody>'
           + '<tfoot><tr style="border-top:2px solid var(--borde)">'
           + '<td colspan="3" style="padding:8px;font-weight:700">SALDO FINAL</td>'
@@ -901,7 +902,7 @@ async function contCargarMayor() {
           + '<div style="font-family:var(--font-mono);color:var(--naranja)">' + (cInfo ? escapeHtml(cInfo.codigo + ' — ' + cInfo.nombre) : 'Cuenta #'+cid) + '</div>'
           + '<div style="font-size:11px;color:var(--suave)">' + (cInfo ? cInfo.naturaleza + ' · ' + cInfo.tipo : '') + '</div>'
           + '</div>'
-          + '<table style="width:100%;border-collapse:collapse"><thead><tr>'
+          + '<table data-sin-orden style="width:100%;border-collapse:collapse"><thead><tr>'
           + '<th style="padding:7px;text-align:left;border-bottom:1px solid var(--borde);font-size:11px">Fecha</th>'
           + '<th style="padding:7px;text-align:left;border-bottom:1px solid var(--borde);font-size:11px">Asiento</th>'
           + '<th style="padding:7px;text-align:left;border-bottom:1px solid var(--borde);font-size:11px">Descripción</th>'
@@ -2435,7 +2436,7 @@ async function contIniciarConciliacion() {
     + '<input type="number" id="cont-conc-saldo-banco" placeholder="0.00" step="0.01" style="width:100%;background:var(--gris3);border:1px solid var(--naranja);color:var(--naranja);font-family:var(--font-display);font-size:22px;padding:8px 12px;border-radius:5px;outline:none;font-weight:700" onchange="contActualizarDiferencia(' + saldoLibros + ')">'
     + '<div id="cont-conc-dif" style="margin-top:6px;font-size:12px;color:var(--suave)">Diferencia: —</div>'
     + '</div></div>'
-    + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 440px))"><table style="table-layout:fixed;width:100%"><thead><tr>'
+    + '<div class="tabla-container" style="max-height:max(200px, calc(100vh - 440px))"><table data-sin-orden style="table-layout:fixed;width:100%"><thead><tr>'
     + '<th>Fecha</th><th>Asiento</th><th>Descripción</th><th style="text-align:right">Debe</th><th style="text-align:right">Haber</th><th style="text-align:right">Saldo Acum.</th>'
     + '</tr></thead><tbody>'
     + (filas.length ? filas.join('') : '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--suave)">Sin movimientos en este período.</td></tr>')

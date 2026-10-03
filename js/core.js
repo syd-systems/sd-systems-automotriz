@@ -1,6 +1,6 @@
 // ─── S&D Systems — Módulo: CORE ───
 
-const SYD_VERSION = '20260909258';
+const SYD_VERSION = '20260909259';
 // Re-trigger de build (por si el anterior quedó atascado/desactualizado en Cloudflare)
 // Re-trigger de build (timeout de infraestructura en el build anterior, no relacionado al código)
 console.log('%c S&D Systems %c v' + SYD_VERSION + ' ', 
@@ -3881,7 +3881,9 @@ function _ordenColAplicar(tabla, col, dir) {
   const grupos = []; let actual = { sep: null, filas: [] };
   filas.forEach(function(tr) {
     const celdas = _ordenColCeldas(tr);
-    const esSep = !celdas[col];
+    // Separadores: filas de grupo (colspan) y filas de totales, que se
+    // quedan fijas en su lugar
+    const esSep = !celdas[col] || /^(sub)?total(es)?\b/i.test((tr.cells[0] && tr.cells[0].textContent || '').trim());
     if (esSep) { grupos.push(actual); actual = { sep: tr, filas: [] }; }
     else actual.filas.push({ tr: tr, txt: _ordenColValor(celdas[col]) });
   });
@@ -3913,9 +3915,23 @@ function _ordenColAplicar(tabla, col, dir) {
   _ordenColObservers.forEach(function(o) { o.takeRecords(); });
 }
 
+// Una tabla se ordena solo si es de consulta: no es editable (sin campos
+// de captura en sus filas), no trae su propio ordenamiento (th con
+// onclick) y no está marcada con data-sin-orden.
+function _ordenColElegible(tabla) {
+  if (!tabla.tHead || !tabla.tBodies[0] || !tabla.tHead.rows.length) return false;
+  if (tabla.hasAttribute('data-sin-orden') || tabla.closest('[data-sin-orden]')) return false;
+  if (tabla.tHead.querySelector('th[onclick]')) return false;
+  if (tabla.tBodies[0].querySelector('input:not([type="hidden"]),select,textarea,[contenteditable="true"]')) return false;
+  return true;
+}
+
 function _ordenColPreparar(cont) {
   cont.querySelectorAll('table').forEach(function(tabla) {
-    if (!tabla.tHead || !tabla.tBodies[0] || !tabla.tHead.rows.length) return;
+    if (!_ordenColElegible(tabla)) {
+      if (tabla.tHead) tabla.tHead.querySelectorAll('th.th-ordenable').forEach(function(th) { th.classList.remove('th-ordenable'); th.removeAttribute('data-orden-dir'); });
+      return;
+    }
     const fila = tabla.tHead.rows[tabla.tHead.rows.length - 1];
     Array.prototype.forEach.call(fila.cells, function(th) {
       const txt = th.textContent.trim();
@@ -3934,16 +3950,20 @@ function activarOrdenColumnas(cont) {
       + 'th.th-ordenable:hover{color:var(--naranja) !important}'
       + 'th.th-ordenable::after{content:" \\2195";opacity:.35;font-size:10px}'
       + 'th.th-ordenable[data-orden-dir="asc"]::after{content:" \\25B2";opacity:1;color:var(--naranja)}'
-      + 'th.th-ordenable[data-orden-dir="desc"]::after{content:" \\25BC";opacity:1;color:var(--naranja)}';
+      + 'th.th-ordenable[data-orden-dir="desc"]::after{content:" \\25BC";opacity:1;color:var(--naranja)}'
+      + '@media print{th.th-ordenable::after{content:none !important}}';
     document.head.appendChild(st);
   }
   _ordenColPreparar(cont);
   if (cont._ordenActivo) return;
   cont._ordenActivo = true;
   cont.addEventListener('click', function(e) {
+    if (e._ordenManejado) return; // contenedores anidados: se ordena una sola vez
     const th = e.target.closest && e.target.closest('th.th-ordenable');
     if (!th || !cont.contains(th)) return;
+    e._ordenManejado = true;
     const tabla = th.closest('table');
+    if (!_ordenColElegible(tabla)) return;
     const col = Array.prototype.indexOf.call(th.parentNode.cells, th);
     const clave = _ordenColClave(tabla);
     const previo = _ordenColEstado[clave];
@@ -3955,6 +3975,14 @@ function activarOrdenColumnas(cont) {
   const obs = new MutationObserver(function() { _ordenColPreparar(cont); });
   obs.observe(cont, { childList: true, subtree: true });
   _ordenColObservers.push(obs);
+}
+
+// Activo en TODO el sistema: cualquier listado con encabezados (módulos,
+// fichas y modales de consulta) se puede ordenar con clic en la columna.
+if (typeof document !== 'undefined') {
+  const _activarOrdenGlobal = function() { activarOrdenColumnas(document.body); };
+  if (document.body) _activarOrdenGlobal();
+  else document.addEventListener('DOMContentLoaded', _activarOrdenGlobal);
 }
 
 function emisorQ() {
