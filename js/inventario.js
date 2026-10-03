@@ -391,7 +391,6 @@ async function renderInventario(filtro) {
   }
   const tablaCont = document.getElementById('tabla-inv-cont');
   if (tablaCont) tablaCont.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando...</div>';
-  activarOrdenColumnas(tablaCont);
   // Si estamos en vista movimientos, no recargar la tabla
   if (_invVista === 'movimientos' || _invVista === 'categorias' || _invVista === 'tipos') return;
 
