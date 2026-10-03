@@ -2246,10 +2246,31 @@ async function descargarPDFNotaCredito(idNC) {
     fila('Total Nota de Crédito', parseFloat(n.total_usd || 0), true);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
     doc.text('Tasa BCV Bs/Usd de la factura: ' + formatearTasaVE(t), W - 14, y, { align: 'right' }); y += 14;
-    doc.setFontSize(9);
+    // Firmas: nombre completo y Área de cada persona (no el correo)
+    const personaPDF = async function(correo) {
+      if (!correo) return null;
+      try {
+        const [aRows, nRows] = await Promise.all([
+          rpc('obtener_area_por_correo', { p_correo: correo }),
+          rpc('obtener_nombres_por_correos', { p_correos: [correo] })
+        ]);
+        const ar = aRows && aRows[0];
+        return { nombre: (nRows && nRows[0] && nRows[0].nombre_completo) || correo,
+                 area: ar ? ar.nombre + (ar.codigo ? ' (' + ar.codigo + ')' : '') : '' };
+      } catch(eP) { return { nombre: correo, area: '' }; }
+    };
+    const [pSolicita, pAprueba] = await Promise.all([personaPDF(n.id_usuario), personaPDF(n.aprobado_por)]);
+    const firma = function(xCentro, etiqueta, p) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(110);
+      doc.text(etiqueta, xCentro, y + 4, { align: 'center' });
+      doc.setTextColor(0); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+      doc.text(p ? p.nombre : '________________', xCentro, y + 8.5, { align: 'center' });
+      if (p && p.area) { doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.text(p.area, xCentro, y + 12.5, { align: 'center' }); }
+    };
     doc.line(20, y, 85, y); doc.line(W - 85, y, W - 20, y);
-    doc.text('Elaborado por: ' + (n.id_usuario || ''), 20, y + 4);
-    doc.text((n.estado === 'RECHAZADA' ? 'Rechazado' : 'Aprobado') + ' por: ' + (n.aprobado_por || '________________'), W - 85, y + 4);
+    firma(52.5, 'Vendido por:', pSolicita);
+    firma(W - 52.5, (n.estado === 'RECHAZADA' ? 'Rechazado' : 'Aprobado') + ' por:', pAprueba);
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(8); doc.setTextColor(120);
     doc.text('Comprobante interno — Documento sin validez fiscal.', W / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
     doc.save(n.numero_nc + '_' + (n.numero_factura_ref || '') + '.pdf');
