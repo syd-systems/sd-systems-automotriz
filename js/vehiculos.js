@@ -403,13 +403,13 @@ async function eliminarCliente(id, nombre) {
     document.getElementById('contenido-principal').innerHTML = '';
     renderClientes();
   } catch(e) {
-    const msg = String(e.message || '');
+    const msg = String(e.mensajeOriginal || e.message || '');
     if (msg.indexOf('vehiculos_id_cliente_fkey') !== -1 || msg.indexOf('vehiculos_id_cliente_fkey') !== -1 || /violates foreign key constraint.*vehiculos/i.test(msg)) {
       alert('No se puede eliminar este cliente porque tiene Vehículos registrados a su nombre. Reasigne o elimine esos vehículos primero.');
     } else if (/violates foreign key constraint/i.test(msg)) {
       alert('No se puede eliminar este cliente porque tiene registros relacionados en otro módulo (Órdenes de Servicio, Facturas, etc.).');
     } else {
-      alert('Error al eliminar: ' + msg);
+      alert('Error al eliminar: ' + traducirMensajeSistema(msg));
     }
   }
 }
