@@ -13,7 +13,9 @@
 //
 // El stock NO se descuenta hasta que la Venta se FACTURA -- antes de eso es
 // solo un "carrito" en memoria/BD, sin efecto real en Inventario/Contabilidad.
-const ESTADO_LABEL_VENTA = { PRESUPUESTO: 'Presupuesto', FACTURADA: 'Facturada', ANULADA: 'Anulada' };
+// "Anulada" no se usa en Facturación (SENIAT): una venta facturada solo se
+// revierte con Nota de Crédito. El estado interno ANULADA se muestra así.
+const ESTADO_LABEL_VENTA = { PRESUPUESTO: 'Presupuesto', FACTURADA: 'Facturada', ANULADA: 'Nota de Crédito' };
 
 // ─── Filtros del listado de Ventas (Categoría/Tipo de Artículo, Cliente,
 // Rango de Fechas) -- estado persistente entre re-renders de la pestaña.
@@ -353,7 +355,7 @@ async function renderVentasListado() {
       + '<select id="vta-filtro-estado" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todos los estados</option>'
       + '<option value="PRESUPUESTO">Presupuesto</option>'
-      + '<option value="FACTURADA">Facturada</option><option value="ANULADA">Anulada</option>'
+      + '<option value="FACTURADA">Facturada</option><option value="NC">Nota de Crédito</option>'
       + '</select>'
       + '<select id="vta-filtro-categoria" onchange="filtrarTablaVentas()" style="background:var(--gris2);border:1px solid var(--borde);color:var(--texto);font-family:var(--font-body);font-size:12px;padding:8px 10px;border-radius:5px;outline:none;cursor:pointer">'
       + '<option value="">Todas las Categorías</option>'
@@ -547,6 +549,8 @@ async function _cargarNCVentas() {
   try { _ncVentasCache = await api('rpc/listar_nc_ventas','POST',{ p_id_empresa: _empresaActiva ? _empresaActiva.id_empresa : 0 }) || []; }
   catch(e) { _ncVentasCache = null; }
   _actualizarContadorNCVentas();
+  // Si ya está elegido el filtro "Nota de Crédito", refiltrar con las NC recién cargadas
+  if ((document.getElementById('vta-filtro-estado')?.value || '') === 'NC') filtrarTablaVentas();
 }
 function _actualizarContadorNCVentas() {
   const el = document.getElementById('vta-stat-NC');
@@ -593,7 +597,12 @@ function filtrarTablaVentas() {
     const vId = parseInt(tr.dataset.id);
     const v   = ventasCache.find(function(x) { return x.id_venta === vId; });
     if (!v) { tr.style.display = 'none'; return; }
-    const matchEstado = !estado || v.estado === estado;
+    // "Nota de Crédito": ventas con al menos una NC aprobada (reverso o
+    // reembolso), más las que quedaron en estado interno ANULADA
+    const matchEstado = !estado
+      || (estado === 'NC'
+          ? (v.estado === 'ANULADA' || (_ncVentasCache || []).some(function(n) { return n.id_venta === vId; }))
+          : v.estado === estado);
 
     const artsVenta = _ventasArticulosPorVenta[vId];
     const matchCategoria = !categoria || (artsVenta && artsVenta.categorias.has(parseInt(categoria)));
