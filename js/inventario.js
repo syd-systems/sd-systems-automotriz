@@ -1906,7 +1906,16 @@ async function abrirOrdenCompra() {
   _entconsLineas = [{ id_articulo: null, cantidad: '', precio_unitario: 0 }];
 
   try {
-    const provRows = await api('proveedores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif');
+    // Solo Proveedores cuya Categoría de Servicio es "Suministros de
+    // Inventarios" (si esa Categoría no existe, se muestran todos para no
+    // dejar la Orden sin Proveedores).
+    let idsCatSuministros = [];
+    try {
+      const catsSum = await api('param_categorias_proveedor','GET',null,'?nombre=ilike.*suministro*inventario*&select=id') || [];
+      idsCatSuministros = catsSum.map(function(c){ return c.id; });
+    } catch(eCatSum) {}
+    const provRows = await api('proveedores','GET',null,'?estado=eq.ACTIVO&order=nombre.asc&select=id_proveedor,nombre,rif'
+      + (idsCatSuministros.length ? '&id_categoria=in.(' + idsCatSuministros.join(',') + ')' : ''));
     document.getElementById('entcons-proveedor').innerHTML = '<option value="">— Seleccionar —</option>'
       + (provRows||[]).map(function(p){ return '<option value="'+p.id_proveedor+'">'+escapeHtml(p.nombre)+(p.rif?' — '+p.rif:'')+'</option>'; }).join('');
   } catch(eProvEntCons) {}
@@ -2836,7 +2845,20 @@ async function retomarLoteRechazado(id_orden_compra) {
     await new Promise(function(res) { setTimeout(res, 400); });
 
     const provSelLR = document.getElementById('entcons-proveedor');
-    if (provSelLR && primeraR.id_proveedor) provSelLR.value = primeraR.id_proveedor;
+    if (provSelLR && primeraR.id_proveedor) {
+      provSelLR.value = primeraR.id_proveedor;
+      // Orden anterior con un Proveedor fuera de "Suministros de Inventarios":
+      // se agrega a la lista para no perderlo al corregirla
+      if (provSelLR.value !== String(primeraR.id_proveedor)) {
+        try {
+          const pFuera = await api('proveedores','GET',null,'?id_proveedor=eq.' + primeraR.id_proveedor + '&select=id_proveedor,nombre,rif&limit=1');
+          if (pFuera && pFuera[0]) {
+            provSelLR.insertAdjacentHTML('beforeend', '<option value="' + pFuera[0].id_proveedor + '">' + escapeHtml(pFuera[0].nombre) + (pFuera[0].rif ? ' — ' + pFuera[0].rif : '') + '</option>');
+            provSelLR.value = primeraR.id_proveedor;
+          }
+        } catch(ePFuera) {}
+      }
+    }
 
     const fechaLR = document.getElementById('entcons-fecha');
     if (fechaLR) fechaLR.value = (primeraR.fecha_negociacion || primeraR.fecha_entrada || '').slice(0,10);
