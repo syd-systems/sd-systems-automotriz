@@ -406,6 +406,15 @@ async function guardarProveedor() {
     }
   }
 
+  // ── Validar Categoría de Servicio (obligatoria: define, por ejemplo,
+  // si el Proveedor aparece en las Órdenes de Compra de Inventario) ──
+  if (!document.getElementById('prov-categoria')?.value) {
+    errEl.textContent = 'Debe seleccionar la Categoría de Servicio del Proveedor.';
+    errEl.style.display = 'block';
+    document.getElementById('prov-categoria')?.focus();
+    return;
+  }
+
   // ── Validar Método de Pago (selección múltiple) ──
   const metodosMarcados = Array.from(document.querySelectorAll('.prov-metodo-pago-chk:checked')).map(function(el){ return el.value; });
   if (!metodosMarcados.length) {
